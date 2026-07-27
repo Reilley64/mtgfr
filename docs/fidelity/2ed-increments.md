@@ -11,7 +11,8 @@ Ranked S-first within dependency order. The centre of gravity is three clusters 
 them gate 51 cards:
 
 - **Damage prevention** (#4, #5, #6) — 1993 white and artifact are built almost entirely out of
-  prevention shields, and the engine has none. 18 cards.
+  prevention shields, and the engine has none. 18 cards. (#4 landed the consumable shield the
+  rest of the cluster is built on; its four odd-arithmetic residuals are #68–#71.)
 - **Continuous characteristic-defining values** (#1, #2) — `*/*` creatures and "damage equal to
   the number of Swamps" both want a permanent count as a live amount. 11 cards.
 - **Untap-step manipulation** (#7, #18) — Stasis, Winter Orb, Mana Vault, Time Vault. 10 cards.
@@ -84,22 +85,30 @@ out of shapes that already existed. Two of the seven cards did not fit after all
 their own increments: Island Sanctuary (#65) and Zombie Master (#66).
 *Cards:* bog_wraith, burrowing, goblin_king, lord_of_atlantis, shanodin_dryads.
 
-### 4. `damage-prevention-shields` — 13 cards, M
+### 4. `damage-prevention-shields` — 3 cards, M — **done**
 Depends on: nothing.
-"Prevent the next N damage that would be dealt to any target this turn" (CR 615). The engine has
+"Prevent the next N damage that would be dealt to any target this turn" (CR 615). The engine had
 prevention *statics* — `prevent_all_combat_damage_this_turn` (Fog), `prevent_combat_damage`,
 `prevent_damage_to_self_removing_counter` (Phantom Centaur) — but no consumable shield: a
 turn-scoped counter attached to a permanent or player that damage decrements as it is dealt.
-Nine white/artifact cards in 2ed are this one shape. *Sketch:* a turn-scoped
-`Vec<PreventionShield { target: Target, amount: u32, source_filter: Option<…> }>` on `Game`,
-cleared at cleanup alongside the other until-end-of-turn state, consulted in the single
-`deal_damage` path (all damage already funnels through it, so this is one guard, not one per
-caller) and decremented in place. Forcefield's "prevent all but 1" and Rock Hydra's
-per-1-damage counter removal are the same consumption hook with different arithmetic. Guardian
-Angel's repeatable top-up ("you may pay {1} … prevent the next 1") adds to an existing shield.
-*Cards:* circle_of_protection_black, circle_of_protection_blue, circle_of_protection_green,
-circle_of_protection_red, circle_of_protection_white, conservator, forcefield, guardian_angel,
-healing_salve, power_leak, reverse_damage, rock_hydra, samite_healer.
+*Landed:* `MiscEffect::PreventNextDamage { amount, target }` pushes a `(Target, i32)` entry onto a
+turn-scoped `Game::damage_prevention_shields`, armed by direct mutation in `resolve_misc.rs` (the
+Inkshield / Moment's Peace precedent) and cleared at the next untap step. Spending goes through
+the *two* damage chokes rather than each of their dozen callers: `Game::creature_damage_events`
+and `Game::player_damage_events` now return `(Vec<Event>, i32)` — the events and *what actually
+landed* — so every caller's marker, lifelink, deathtouch and commander tally resize by shadowing
+one binding, and the compiler found them all. Damage a shield covers entirely emits no
+`DamageMarked` at all (CR 615.1), so a fully-prevented hit feeds no damage watch. The spend rides
+a new `Event::DamagePrevented`, projected to the wire as `VisibleEventDamagePrevented` beside the
+all-or-nothing `CombatDamagePrevented` it complements. A latent bug fell out on the way:
+`DamageEffect::EachOpponent` hand-rolled its own `LifeChanged` and so bypassed infect — it routes
+through the choke now.
+
+Ten of the thirteen cards turned out not to be this shape and moved to their own increments:
+the Circles and Reverse Damage were already #5, and Guardian Angel (#68), Forcefield (#69),
+Rock Hydra (#70) and Power Leak (#71) each need arithmetic or a hook the plain shield doesn't
+have.
+*Cards:* conservator, healing_salve, samite_healer.
 
 ### 5. `source-of-your-choice-prevention` — 6 cards, M
 Depends on: #4, #9.
@@ -822,3 +831,59 @@ untouched. The second clause needs a genuinely new hook: an activation-cost tax 
 `ActivationCost::mana` is spent from. The spell half alone is worth landing first; the ability
 half is what makes this M rather than S.
 *Cards:* gloom.
+
+### 68. `prevention-shield-top-up` — 1 card, M
+Depends on: #4.
+Split out of #4. Guardian Angel's first sentence is plain #4 work; its second is not: "Until end
+of turn, you may pay {1} any time you could cast an instant. If you do, prevent the next 1 damage
+that would be dealt to that permanent or player this turn." That is a repeatable, optional,
+priority-timed payment offered by a spell that has already left the stack — there is no permanent
+to hang an activated ability on, and the engine's only until-end-of-turn *offers* are triggered
+(`ScheduleAtNextUpkeep`) or cost riders on a cast, never a standing "you may pay, whenever you
+have priority."
+*Sketch:* a turn-scoped `Game` list of standing optional payments, each remembering its target and
+its effect, surfaced as a legal action wherever the priority path already enumerates activatable
+abilities so the existing pay-and-resolve plumbing covers the rest; paying pushes another entry
+onto `damage_prevention_shields` for the same target. Worth checking whether the same list can
+express other "any time you could cast an instant, you may pay" riders before shaping it around
+this one card.
+*Cards:* guardian_angel.
+
+### 69. `prevent-all-but-n` — 1 card, M
+Depends on: #4, #5.
+Split out of #4. Forcefield: "{1}: The next time an unblocked creature of your choice would deal
+combat damage to you this turn, prevent all but 1 of that damage." The shield from #4 subtracts a
+fixed count; this one is the complement — it prevents *everything except* a fixed count, so its
+arithmetic at the choke is `amount.min(1)` surviving rather than `amount - points`. It also needs
+#5's source-keyed shield (the chosen creature) plus an unblocked-attacker restriction #5 doesn't
+have.
+*Sketch:* let the shield entry carry its arithmetic — `Consume { points }` vs `AllBut { keep }` —
+rather than adding a parallel list, and key it to the source with whatever #5 lands. The
+"unblocked creature" filter is readable from combat state at the choke.
+*Cards:* forcefield.
+
+### 70. `damage-replaced-by-counter-removal` — 1 card, M
+Depends on: #4.
+Split out of #4. Rock Hydra's third ability ("{R}: Prevent the next 1 damage that would be dealt
+to this creature this turn") is plain #4 work with a self target. Its second is a *replacement*
+that consumes a resource on the permanent instead of a shield: "For each 1 damage that would be
+dealt to this creature, if it has a +1/+1 counter on it, remove a +1/+1 counter from it and
+prevent that 1 damage." Per-point, conditional on the counter still being there, so it can eat
+part of a hit and let the rest through. `prevent_damage_to_self_removing_counter` (Phantom
+Centaur) is the nearest existing shape, but that one removes a counter per *event*, not per point.
+*Sketch:* generalise that static to a per-point loop bounded by the counters present, evaluated at
+the same choke #4 spends shields at, with the counter removals riding the same event that records
+the prevention. Rock Hydra's `enters with X +1/+1 counters` is already expressible.
+*Cards:* rock_hydra.
+
+### 71. `pay-any-amount-of-mana` — 1 card, M
+Depends on: #4.
+Split out of #4. Power Leak: "that player may pay any amount of mana. This Aura deals 2 damage to
+that player. Prevent X of that damage, where X is the amount of mana that player paid this way."
+The engine's optional payments are all for a *fixed* amount (the pay-or-suffer triggers landed in
+this grind, `unless_pays`); an unbounded "any amount" needs the paying player to name a number and
+the trigger to carry it forward as an `Amount` into a prevention sized by it.
+*Sketch:* a `PendingChoice::PayAnyAmount` answered with a count, funded through the existing mana
+payment path, whose answer is bound as the resolving ability's `x` — at which point the prevention
+half is a #4 shield of `Amount::X` armed on the same player immediately before the damage.
+*Cards:* power_leak.

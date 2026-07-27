@@ -2626,6 +2626,27 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
             "one card of any kind, to hand"
         );
 
+        // Healing Salve's two modes: a life gain and a prevention shield, the latter targeting
+        // creature or player alike.
+        let salve = get_by_name("Healing Salve").expect("Healing Salve is in the pool");
+        let Effect::ChooseOne { options } = &salve.abilities[0].effect else {
+            panic!("Healing Salve is a choose-one");
+        };
+        assert_eq!(
+            options.as_ref(),
+            &[
+                Effect::Life(LifeEffect::TargetPlayerGains {
+                    amount: Amount::Fixed(3),
+                    opponent: false,
+                }),
+                Effect::Misc(MiscEffect::PreventNextDamage {
+                    amount: Amount::Fixed(3),
+                    target: TargetSpec::AnyTarget,
+                }),
+            ],
+            "3 life, or a 3-point shield on any target"
+        );
+
         // Twiddle's "tap or untap" is a two-mode choice, each mode carrying its own target.
         let twiddle = get_by_name("Twiddle").expect("Twiddle is in the pool");
         let artifact_creature_or_land = TargetSpec::Permanent(PermanentFilter {
@@ -2849,6 +2870,22 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                         ..PermanentFilter::default()
                     }),
                     count: TargetCount::default(),
+                }),
+            ),
+            (
+                "Samite Healer",
+                Effect::Misc(MiscEffect::PreventNextDamage {
+                    amount: Amount::Fixed(1),
+                    target: TargetSpec::AnyTarget,
+                }),
+            ),
+            (
+                "Conservator",
+                // "…dealt to you" names no target at all, so the shield lands on whoever
+                // activated it.
+                Effect::Misc(MiscEffect::PreventNextDamage {
+                    amount: Amount::Fixed(2),
+                    target: TargetSpec::None,
                 }),
             ),
             (

@@ -60,6 +60,20 @@ pub enum MiscEffect {
 
     PreventAllCombatDamageThisTurn,
 
+    /// "Prevent the next N damage that would be dealt to any target this turn" (CR 615 — Healing
+    /// Salve, Samite Healer). Arms a consumable entry on
+    /// [`Game::damage_prevention_shields`](crate::Game::damage_prevention_shields) worth `amount`
+    /// points, spent at the two damage chokes against any damage — combat or not — unlike the
+    /// all-or-nothing, combat-only shields on either side of it here.
+    ///
+    /// `target` left at [`TargetSpec::None`] shields the ability's controller instead of a chosen
+    /// target: Conservator's "dealt to you", which takes no target at all.
+    PreventNextDamage {
+        amount: Amount,
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        target: TargetSpec,
+    },
+
     PreventCombatDamageToYouCreatingTokens {
         #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::token_profile"))]
         token: CardDef,

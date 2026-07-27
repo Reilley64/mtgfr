@@ -184,6 +184,20 @@ pub struct Game {
     /// new object (CR 400.7) and rightly won't match. Reset alongside
     /// [`permanents_died_this_turn`](Self::permanents_died_this_turn) at every Untap step.
     pub(crate) damaged_this_turn: Vec<(ObjectId, ObjectId)>,
+    /// "Prevent the next N damage that would be dealt to `target` this turn" (CR 615 — Healing
+    /// Salve, Samite Healer, Conservator): each entry is a *consumable* shield, `(what it
+    /// protects, how many points are left on it)`. Spent at the two damage chokes
+    /// ([`Game::creature_damage_events`] and [`Game::player_damage_events`]) by
+    /// [`Game::spend_prevention_shields`], which is the only reader; the spend rides
+    /// [`Event::DamagePrevented`] so the decrement happens in `apply` like every other state
+    /// change. Cleared at the next Untap step, the same "this turn" boundary as
+    /// [`CombatExtras::combat_damage_prevention_shields`](state::CombatExtras::combat_damage_prevention_shields)
+    /// — that shield's uncountable "prevent all combat damage" twin.
+    ///
+    /// ponytail: several shields on one target are spent in the order they were created, not in
+    /// the order their controller chooses (CR 615.8). Same total prevented either way unless a
+    /// card reads *which* shield paid, and none in the pool does.
+    pub(crate) damage_prevention_shields: Vec<(Target, i32)>,
     /// Resolution-local "this way" scratch (DestroyAll / ExileAll / mill / council / edict riders).
     /// Not turn-scoped — see [`resolution::ResolutionFrame`].
     pub(crate) resolution_frame: resolution::ResolutionFrame,

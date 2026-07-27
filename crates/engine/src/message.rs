@@ -227,6 +227,7 @@ message_keys! {
     EFFECT_MISC_MUST_ATTACK_RANDOM_OPPONENT => "effect.misc_must_attack_random_opponent",
     EFFECT_MISC_MUST_ATTACK_TARGET => "effect.misc_must_attack_target",
     EFFECT_MISC_PREVENT_ALL_COMBAT_DAMAGE_THIS_TURN => "effect.misc_prevent_all_combat_damage_this_turn",
+    EFFECT_MISC_PREVENT_NEXT_DAMAGE => "effect.misc_prevent_next_damage",
     EFFECT_MISC_PREVENT_COMBAT_DAMAGE_TO_YOU_CREATING_TOKENS => "effect.misc_prevent_combat_damage_to_you_creating_tokens",
     EFFECT_MISC_SCHEDULE_AT_NEXT_UPKEEP => "effect.misc_schedule_at_next_upkeep",
     EFFECT_MISC_SCHEDULE_COLORLESS_MANA_FOR_COUNTERED_SPELL_NEXT_MAIN_PHASE => "effect.misc_schedule_colorless_mana_for_countered_spell_next_main_phase",
@@ -2094,6 +2095,9 @@ impl Effect {
             }
             Effect::Misc(PreventAllCombatDamageThisTurn) => {
                 MessageRef::new(MessageKey::EFFECT_MISC_PREVENT_ALL_COMBAT_DAMAGE_THIS_TURN)
+            }
+            Effect::Misc(PreventNextDamage { .. }) => {
+                MessageRef::new(MessageKey::EFFECT_MISC_PREVENT_NEXT_DAMAGE)
             }
             Effect::Misc(Fight {
                 ally_is_shared_target,

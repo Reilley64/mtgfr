@@ -104201,3 +104201,99 @@ fn winding_constrictor_adds_to_counters_an_opponent_puts_on_your_creature() {
         "a creature you control receives them, whoever put them: 2 + 1 = 3"
     );
 }
+
+/// Tap a "prevent the next N damage" permanent (Samite Healer, Conservator) for its shield.
+fn shield_with(game: &mut Game, source: ObjectId, target: Option<Target>) {
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: source,
+        ability_index: 0,
+        target,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(game);
+}
+
+#[test]
+fn samite_healers_shield_eats_a_hit_whole_and_is_then_gone() {
+    // "{T}: Prevent the next 1 damage that would be dealt to any target this turn." Damage a
+    // shield covers entirely was never dealt (CR 615.1), so it marks nothing at all — a
+    // `DamageMarked { amount: 0 }` would tell every damage watcher in the game the creature was
+    // dealt damage this turn.
+    let mut game = TestGame::new();
+    let healer = game.spawn_on_battlefield(PlayerId(0), card("Samite Healer"));
+    let big = game.spawn_on_battlefield(PlayerId(0), BIG.clone());
+    let first = game.spawn_in_hand(PlayerId(0), DEAL_ONE.clone());
+    let second = game.spawn_in_hand(PlayerId(0), DEAL_ONE.clone());
+
+    shield_with(&mut game, healer, Some(Target::Object(big)));
+
+    game.cast(first).at(Target::Object(big)).submit();
+    let events = resolve_top_of_stack_events(&mut game);
+    assert!(
+        !events
+            .iter()
+            .any(|e| matches!(e, Event::DamageMarked { object, .. } if *object == big)),
+        "the 1 damage was prevented, so none was dealt"
+    );
+
+    // One point of shield paid for one point of damage — the next one lands.
+    game.cast(second).at(Target::Object(big)).submit();
+    let events = resolve_top_of_stack_events(&mut game);
+    assert_eq!(damage_marked(&events, big), 1, "the shield is spent");
+}
+
+#[test]
+fn conservators_shield_covers_you_and_is_spent_down() {
+    // "{3}, {T}: Prevent the next 2 damage that would be dealt to you this turn." No target — the
+    // shield lands on the activating player, and covers noncombat damage like any other.
+    let mut game = TestGame::new();
+    let conservator = game.spawn_on_battlefield(PlayerId(0), card("Conservator"));
+    let first = game.spawn_in_hand(PlayerId(0), card("Lightning Bolt"));
+    let second = game.spawn_in_hand(PlayerId(0), card("Lightning Bolt"));
+    let start = game.life(PlayerId(0));
+
+    shield_with(&mut game, conservator, None);
+
+    game.cast(first).at(Target::Player(PlayerId(0))).resolve();
+    assert_eq!(
+        game.life(PlayerId(0)),
+        start - 1,
+        "2 of the 3 prevented, 1 got through"
+    );
+
+    game.cast(second).at(Target::Player(PlayerId(0))).resolve();
+    assert_eq!(
+        game.life(PlayerId(0)),
+        start - 4,
+        "nothing left on the shield — the second bolt lands in full"
+    );
+}
+
+#[test]
+fn a_prevention_shield_expires_at_the_turn_boundary() {
+    // "…this turn": an unspent shield is gone by the next turn, noncombat damage included.
+    let mut game = TestGame::new();
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    let healer = game.spawn_on_battlefield(PlayerId(0), card("Samite Healer"));
+    let bolt = game.spawn_in_hand(PlayerId(0), card("Lightning Bolt"));
+    let start = game.life(PlayerId(0));
+
+    shield_with(&mut game, healer, Some(Target::Player(PlayerId(0))));
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(1)
+            && g.current_step() == Step::Main1
+            && g.priority_holder() == PlayerId(0)
+    });
+    game.cast(bolt).at(Target::Player(PlayerId(0))).resolve();
+    assert_eq!(
+        game.life(PlayerId(0)),
+        start - 3,
+        "the shield expired with the turn that armed it"
+    );
+}

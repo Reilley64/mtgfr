@@ -1257,6 +1257,15 @@ pub fn visible_event_to_pb(event: VisibleEvent) -> Option<pb::VisibleEvent> {
                 amount,
             })
         }
+        VisibleEvent::DamagePrevented {
+            object,
+            player,
+            amount,
+        } => Event::DamagePrevented(pb::VisibleEventDamagePrevented {
+            object,
+            player: player.map(u32::from),
+            amount,
+        }),
         VisibleEvent::MovedToCommandZone { card, from } => {
             Event::MovedToCommandZone(pb::VisibleEventMovedToCommandZone { card, from })
         }

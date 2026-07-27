@@ -1070,6 +1070,7 @@ message VisibleEvent {
     VisibleEventPlayerCountersPlaced player_counters_placed = 133;
     VisibleEventBecameMonstrous became_monstrous = 134;
     VisibleEventEmblemCreated emblem_created = 135;
+    VisibleEventDamagePrevented damage_prevented = 136;
   }
   // 132 was VisibleEventPlayerPoisonChanged, superseded by the general player-counter
   // subsystem (`player_counters_placed`). Burned, not reused (docs/WIRE_COMPAT.md).
@@ -1597,6 +1598,16 @@ message VisibleEventCombatDamageDealtToPlayer {
 message VisibleEventCombatDamagePrevented {
   uint32 player = 1;
   int32 amount = 2;
+}
+
+// `amount` damage that would have been dealt to a creature or a player was prevented by a
+// consumable "prevent the next N damage … this turn" shield (Healing Salve, Samite Healer,
+// Conservator; CR 615), spending that much of it. Exactly one of `object`/`player` is set — what
+// the damage was headed for.
+message VisibleEventDamagePrevented {
+  optional uint32 object = 1;
+  optional uint32 player = 2;
+  int32 amount = 3;
 }
 
 message VisibleEventMovedToCommandZone {

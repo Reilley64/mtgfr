@@ -576,6 +576,17 @@ pub(crate) fn project_event(
             player: player.0,
             amount,
         },
+        Event::DamagePrevented { target, amount } => VisibleEvent::DamagePrevented {
+            object: match target {
+                engine::Target::Object(id) => Some(id),
+                engine::Target::Player(_) => None,
+            },
+            player: match target {
+                engine::Target::Object(_) => None,
+                engine::Target::Player(p) => Some(p.0),
+            },
+            amount,
+        },
         Event::MovedToCommandZone { card, from } => VisibleEvent::MovedToCommandZone { card, from },
         Event::ManaEmptied { player, .. } => VisibleEvent::ManaEmptied { player: player.0 },
         Event::DamageCleared { object } => VisibleEvent::DamageCleared { object },

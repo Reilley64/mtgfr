@@ -187,6 +187,20 @@ impl Game {
             Effect::Misc(MiscEffect::PreventAllCombatDamageThisTurn) => {
                 self.combat_extras.prevent_all_combat_damage_this_turn = true;
             }
+            // "Prevent the next N damage that would be dealt to any target this turn" (CR 615 —
+            // Healing Salve, Samite Healer, Conservator): arm a consumable shield worth `amount`
+            // points on the chosen target, or on this ability's controller when the card takes no
+            // target ("dealt to you"). Runtime orchestration state like the shields above; only
+            // the *spending* is an event (`Event::DamagePrevented`), because it happens inside the
+            // pure damage mint.
+            Effect::Misc(MiscEffect::PreventNextDamage { amount, .. }) => {
+                let amount = self.resolve_amount(amount, controller, source, target, x);
+                if amount <= 0 {
+                    return;
+                }
+                let shielded = target.unwrap_or(Target::Player(controller));
+                self.damage_prevention_shields.push((shielded, amount));
+            }
             // Master Warcraft: hand the attack / block declaration to this spell's controller for
             // the rest of the turn. Runtime orchestration state like the shields above — the
             // declarations themselves stay ordinary, only the seat that makes them moves.

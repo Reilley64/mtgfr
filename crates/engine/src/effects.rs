@@ -1173,9 +1173,10 @@ impl Game {
             Effect::Zone(ZoneEffect::ReanimateRandomFromTargetOpponentGraveyard { .. }) => {
                 self.run_misc_choreo(effect, ctx, events)
             }
-            // Inkshield / Moment's Peace — see `resolution/resolve_misc.rs`.
+            // Inkshield / Moment's Peace / Healing Salve — see `resolution/resolve_misc.rs`.
             Effect::Misc(MiscEffect::PreventCombatDamageToYouCreatingTokens { .. })
-            | Effect::Misc(MiscEffect::PreventAllCombatDamageThisTurn) => {
+            | Effect::Misc(MiscEffect::PreventAllCombatDamageThisTurn)
+            | Effect::Misc(MiscEffect::PreventNextDamage { .. }) => {
                 self.run_misc_choreo(effect, ctx, events)
             }
             // Master Warcraft — see `resolution/resolve_misc.rs`.

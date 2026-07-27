@@ -197,7 +197,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Clone** {3}{U} · Creature — Shapeshifter — increment 12
 - [ ] **Cockatrice** {3}{G}{G} · Creature — Cockatrice — increment 21
 - [ ] **Consecrate Land** {W} · Enchantment — Aura — increment 35
-- [ ] **Conservator** {4} · Artifact — increment 4
+- [x] **Conservator** {4} · Artifact — increment 4
 - [ ] **Conversion** {2}{W}{W} · Enchantment — increment 8
 - [ ] **Copper Tablet** {2} · Artifact — increment 60
 - [ ] **Copy Artifact** {1}{U} · Enchantment — increment 12
@@ -231,7 +231,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Gloom** {2}{B} · Enchantment — increment 67
 - [x] **Goblin King** {1}{R}{R} · Creature — Goblin — increment 3
 - [ ] **Guardian Angel** {X}{W} · Instant — increment 4
-- [ ] **Healing Salve** {W} · Instant — increment 4
+- [x] **Healing Salve** {W} · Instant — increment 4
 - [ ] **Helm of Chatzuk** {1} · Artifact — increment 14
 - [ ] **Hypnotic Specter** {1}{B}{B} · Creature — Specter — increment 17
 - [ ] **Instill Energy** {G} · Enchantment — Aura — increment 7
@@ -285,7 +285,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Righteousness** {W} · Instant — increment 52
 - [ ] **Rock Hydra** {X}{R}{R} · Creature — Hydra — increment 4, 28
 - [ ] **Sacrifice** {B} · Instant — increment 46
-- [ ] **Samite Healer** {1}{W} · Creature — Human Cleric — increment 4
+- [x] **Samite Healer** {1}{W} · Creature — Human Cleric — increment 4
 - [x] **Scavenging Ghoul** {3}{B} · Creature — Zombie — increment 28
 - [ ] **Sea Serpent** {5}{U} · Creature — Serpent — increment 24
 - [x] **Shanodin Dryads** {G} · Creature — Nymph Dryad — increment 3

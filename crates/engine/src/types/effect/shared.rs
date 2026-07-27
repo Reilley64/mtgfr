@@ -551,7 +551,10 @@ impl Effect {
             | Effect::Zone(ZoneEffect::AttachMintedAuraToTarget { target })
             | Effect::Token(TokenEffect::BecomeCopyOfTargetCreatureGainingMyriad { target })
             | Effect::Copy(CopyEffect::ChangeTargetOfTargetSpellOrAbility { target, .. })
-            | Effect::Destroy(DestroyEffect::Target { target, .. }) => target,
+            | Effect::Destroy(DestroyEffect::Target { target, .. })
+            // Conservator's "dealt to you" leaves this `TargetSpec::None`, which is exactly what
+            // an untargeted effect reports anyway.
+            | Effect::Misc(MiscEffect::PreventNextDamage { target, .. }) => target,
             Effect::Zone(ZoneEffect::ReturnToHand { target, .. }) => target,
             // The first target clause is the ability's own target; the second is chosen separately
             // (see `Game::ability_second_target_clause`) and read off `targets_second`.

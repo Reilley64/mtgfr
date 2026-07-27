@@ -398,6 +398,7 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     "Choose an opponent at random. This attacks that player this combat if able",
   ),
   "effect.misc_prevent_all_combat_damage_this_turn": literal("Prevent all combat damage that would be dealt this turn"),
+  "effect.misc_prevent_next_damage": literal("Prevent the next N damage that would be dealt to any target this turn"),
   "effect.misc_prevent_combat_damage_to_you_creating_tokens": literal(
     "Prevent all combat damage that would be dealt to you this turn, creating a token per point prevented",
   ),

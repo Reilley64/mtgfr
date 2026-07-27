@@ -2722,6 +2722,13 @@ pub enum Event {
     /// combat damage would otherwise have caused. The Inkling mints it drives ride in accompanying
     /// [`Self::TokenCreated`] events. Public — combat damage (and its prevention) is announced.
     CombatDamagePrevented { player: PlayerId, amount: i32 },
+    /// `amount` damage that would have been dealt to `target` was prevented by
+    /// [`damage_prevention_shields`](crate::Game::damage_prevention_shields) entries ("Prevent the
+    /// next N damage that would be dealt to any target this turn", CR 615), spending that many
+    /// points off them. The consumable twin of [`Self::CombatDamagePrevented`], which records an
+    /// all-or-nothing Inkshield shield and spends nothing. Public — like the damage it replaces,
+    /// and the client needs it to explain why a lethal-looking hit left the creature standing.
+    DamagePrevented { target: Target, amount: i32 },
     /// `from` left play and became the command-zone card `card` (commander replacement).
     MovedToCommandZone { card: ObjectId, from: ObjectId },
     /// "You get an emblem with …" (CR 114.1): `controller` got the emblem object `emblem`, whose

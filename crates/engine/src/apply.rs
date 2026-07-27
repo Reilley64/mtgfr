@@ -1105,6 +1105,12 @@ impl Game {
                     // expires at the next Untap — same behavior-exact turn-boundary idiom as the
                     // per-player Inkshield shield just above.
                     self.combat_extras.prevent_all_combat_damage_this_turn = false;
+                    // "Prevent the next N damage … this turn" (Healing Salve, Samite Healer,
+                    // Conservator) expires here too. Unlike the two combat-only shields above this
+                    // one also covers noncombat damage, so "this turn" has to mean through the
+                    // cleanup step — it does: Untap is the first step of the *next* turn, so
+                    // nothing between the shield's turn ending and this clear can be damaged.
+                    self.damage_prevention_shields.clear();
                     // "Entered the battlefield this turn" (Oran-Rief, the Vastwood) and "attacked
                     // this turn" (Agent Frank Horrigan's indestructible grant, CR 508.1) both
                     // expire at the same turn boundary — every battlefield permanent's, not just
@@ -1749,6 +1755,23 @@ impl Game {
             // mints (accompanying `TokenCreated` events) carry all the state; this event mutates
             // nothing itself.
             Event::CombatDamagePrevented { .. } => {}
+            // Unlike the marker above, this one is the whole state change: spend `amount` points
+            // off `target`'s shields, oldest first, dropping each as it empties.
+            // `Game::spend_prevention_shields` minted the event by walking the same list in the
+            // same order, so the two never disagree about what there was to spend.
+            Event::DamagePrevented { target, amount } => {
+                let mut left = amount;
+                self.damage_prevention_shields
+                    .retain_mut(|(shielded, points)| {
+                        if left <= 0 || *shielded != target {
+                            return true;
+                        }
+                        let spent = left.min(*points);
+                        left -= spent;
+                        *points -= spent;
+                        *points > 0
+                    });
+            }
             Event::MovedToCommandZone { card, from } => {
                 let def = self.def_id_of(from);
                 let owner = self.owner_of(from);

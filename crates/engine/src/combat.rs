@@ -1005,10 +1005,18 @@ impl Game {
                 }
                 continue;
             }
-            dealt += amount;
-            for event in self.creature_damage_events(attacker, blocker, amount) {
+            // A "prevent the next N damage" shield on the blocker (CR 615) eats part or all of
+            // this share; `amount` from here down is what actually landed, so the marker, lifelink
+            // and deathtouch below all size off that. The share still counts as *assigned* — the
+            // same trample reasoning as protection above (CR 510.1c).
+            let (damage_events, amount) = self.creature_damage_events(attacker, blocker, amount);
+            for event in damage_events {
                 self.push_apply(events, event);
             }
+            if amount <= 0 {
+                continue;
+            }
+            dealt += amount;
             // CR 510.2: this is combat damage to a creature — a `DealsCombatDamageToCreature`
             // watch (Stinkweed Imp) fires off this marker, not the plain `DamageMarked` above.
             self.push_apply(
@@ -1148,8 +1156,15 @@ impl Game {
         if combat && self.replacement_registry().prevents_all_combat_damage() {
             return;
         }
-        for event in self.creature_damage_events(source, target, amount) {
+        // A "prevent the next N damage" shield on `target` (CR 615) eats part or all of this hit;
+        // `amount` from here down is what actually landed, so the combat marker, deathtouch and
+        // lifelink below all size off that.
+        let (damage_events, amount) = self.creature_damage_events(source, target, amount);
+        for event in damage_events {
             self.push_apply(events, event);
+        }
+        if amount <= 0 {
+            return;
         }
         // CR 510.2: combat damage to a creature (blocker → attacker) also fires a
         // `DealsCombatDamageToCreature` watch (Stinkweed Imp) — `fight`'s noncombat call
@@ -1234,8 +1249,16 @@ impl Game {
             self.push_apply(events, Event::CombatDamagePrevented { player, amount });
             return;
         }
-        for event in self.player_damage_events(source, player, amount) {
+        // A "prevent the next N damage" shield on `player` (Conservator's "dealt to you", CR 615)
+        // eats part or all of this hit — the consumable counterpart to the all-or-nothing shields
+        // above. `amount` from here down is what actually landed, so the commander tally, the
+        // combat marker and lifelink below all size off that.
+        let (damage_events, amount) = self.player_damage_events(source, player, amount);
+        for event in damage_events {
             self.push_apply(events, event);
+        }
+        if amount <= 0 {
+            return;
         }
         if self.is_commander(source) {
             self.push_apply(

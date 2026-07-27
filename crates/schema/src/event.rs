@@ -510,6 +510,14 @@ pub enum VisibleEvent {
         player: u8,
         amount: i32,
     },
+    /// `amount` damage that would have been dealt to a creature or a player was prevented by a
+    /// consumable "prevent the next N damage … this turn" shield (CR 615), spending that much of
+    /// it. Exactly one of `object`/`player` is set — what the damage was headed for.
+    DamagePrevented {
+        object: Option<ObjectId>,
+        player: Option<u8>,
+        amount: i32,
+    },
     MovedToCommandZone {
         card: ObjectId,
         from: ObjectId,

@@ -11,8 +11,13 @@ impl Game {
     /// once. An infect source's damage is dealt in the form of that many -1/-1 counters instead of
     /// being marked; everything else marks damage as usual (CR 120.3/506).
     ///
-    /// Prevention and protection are the caller's job and stay ahead of this call — a prevented
-    /// hit never reaches here, so it places no counters either.
+    /// Returns `(the events, the damage actually dealt)` — the second half is what's left of
+    /// `amount` after this creature's [`spend_prevention_shields`](Self::spend_prevention_shields)
+    /// took its bite (CR 615), so a caller that also mints damage *markers* (the combat-damage
+    /// watch, lifelink, deathtouch) sizes them off damage that was really dealt.
+    ///
+    /// All-or-nothing prevention and protection stay the caller's job and run ahead of this call —
+    /// a fully prevented hit never reaches here, so it places no counters either.
     ///
     /// ponytail: an infect hit emits no [`Event::DamageMarked`], so the two watchers that ride
     /// that event alone — Armadillo Cloak's enchanted-host damage trigger and Vampiric Dragon's
@@ -25,8 +30,42 @@ impl Game {
         source: ObjectId,
         object: ObjectId,
         amount: i32,
-    ) -> Vec<Event> {
+    ) -> (Vec<Event>, i32) {
         self.creature_damage_events_with_riders(source, object, amount, false, false)
+    }
+
+    /// Spend the "prevent the next N damage that would be dealt to `target` this turn" shields
+    /// (CR 615) standing between `amount` damage and `target`, returning `(the event recording the
+    /// spend, the damage left to deal)`. Both damage chokes call this, so every damage path in the
+    /// game — combat, burn, fight, mass sweeps — is covered by construction.
+    ///
+    /// The shields themselves are only decremented when [`Event::DamagePrevented`] is applied.
+    /// That's fine for a batch minted from one pre-apply snapshot as long as no two damage events
+    /// in it share a target — the mass-damage sweeps deal to each creature or player once.
+    ///
+    /// ponytail: two *sources* hitting one shielded target in a single batch (several blockers
+    /// dealing combat damage to the same shielded creature) would each see the full shield and
+    /// double-spend it. Combat's own path applies each event as it pushes it (`push_apply`), so
+    /// the case that actually arises today is already correct; the general fix is a spend ledger
+    /// threaded through the mint, which no pool card yet needs.
+    fn spend_prevention_shields(&self, target: Target, amount: i32) -> (Vec<Event>, i32) {
+        let available: i32 = self
+            .damage_prevention_shields
+            .iter()
+            .filter(|&&(shielded, _)| shielded == target)
+            .map(|&(_, points)| points)
+            .sum();
+        let prevented = available.min(amount);
+        if prevented <= 0 {
+            return (Vec::new(), amount);
+        }
+        (
+            vec![Event::DamagePrevented {
+                target,
+                amount: prevented,
+            }],
+            amount - prevented,
+        )
     }
 
     /// [`creature_damage_events`](Self::creature_damage_events) plus Disintegrate's two riders on
@@ -46,25 +85,34 @@ impl Game {
         amount: i32,
         cant_be_regenerated: bool,
         exile_instead_of_dying: bool,
-    ) -> Vec<Event> {
+    ) -> (Vec<Event>, i32) {
+        let (mut events, amount) = self.spend_prevention_shields(Target::Object(object), amount);
+        // CR 615: damage a shield ate entirely was never dealt, so it marks nothing and feeds no
+        // damage watch. (An *unshielded* 0 still emits its `DamageMarked`, as it always has —
+        // callers guard 0 amounts themselves where it matters.)
+        if !events.is_empty() && amount <= 0 {
+            return (events, 0);
+        }
         if !self.has_keyword(source, Keyword::Infect) {
-            return vec![Event::DamageMarked {
+            events.push(Event::DamageMarked {
                 object,
                 amount,
                 source: Some(source),
                 cant_be_regenerated,
                 exile_instead_of_dying,
-            }];
+            });
+            return (events, amount);
         }
         // 0 or less damage is never dealt (CR 120.8) — and never placed as counters.
         if amount <= 0 {
-            return Vec::new();
+            return (events, amount);
         }
-        vec![Event::KindCountersPlaced {
+        events.push(Event::KindCountersPlaced {
             object,
             kind: CounterKind::MinusOneMinusOne,
             count: amount,
-        }]
+        });
+        (events, amount)
     }
 
     /// The event that lands `amount` damage from `source` on `player` — the player twin of
@@ -75,28 +123,39 @@ impl Game {
     /// [`Event::CombatDamageDealtToPlayer`] marker, commander-damage tally and lifelink gain all
     /// still fire off the original amount, because infect changes the form of the damage, not the
     /// fact that it was dealt (CR 120.3).
+    ///
+    /// Returns `(the events, the damage actually dealt)`, the second half reduced by this player's
+    /// [`spend_prevention_shields`](Self::spend_prevention_shields) bite — see the creature twin.
     pub(crate) fn player_damage_events(
         &self,
         source: ObjectId,
         player: PlayerId,
         amount: i32,
-    ) -> Vec<Event> {
+    ) -> (Vec<Event>, i32) {
+        let (mut events, amount) = self.spend_prevention_shields(Target::Player(player), amount);
+        // CR 615: damage a shield ate entirely was never dealt — no life loss, and the caller's
+        // `amount > 0` guard drops the `DamageDealtToPlayer` marker and lifelink with it.
+        if !events.is_empty() && amount <= 0 {
+            return (events, 0);
+        }
         if !self.has_keyword(source, Keyword::Infect) {
-            return vec![Event::LifeChanged {
+            events.push(Event::LifeChanged {
                 player,
                 amount: -amount,
                 source: Some(source),
-            }];
+            });
+            return (events, amount);
         }
         // 0 or less damage is never dealt (CR 120.8) — and never placed as counters.
         if amount <= 0 {
-            return Vec::new();
+            return (events, amount);
         }
-        vec![Event::PlayerCountersPlaced {
+        events.push(Event::PlayerCountersPlaced {
             player,
             kind: PlayerCounterKind::Poison,
             count: amount,
-        }]
+        });
+        (events, amount)
     }
 
     pub(crate) fn mint_damage(
@@ -176,11 +235,13 @@ impl Game {
                             cant_be_regenerated,
                             exile_instead_of_dying,
                         )
+                        .0
                     }
                     // Damage to a player is life loss. ponytail: the commander-damage tally is
                     // combat-only (CR 903.10a), so a burn spell never adds to it.
                     Target::Player(player) => {
-                        let mut events = self.player_damage_events(source, player, amount);
+                        let (mut events, amount) =
+                            self.player_damage_events(source, player, amount);
                         // 0 damage is never dealt (CR 120.8) — no marker, no trigger.
                         if amount > 0 {
                             events.push(Event::DamageDealtToPlayer {
@@ -295,7 +356,7 @@ impl Game {
                         if self.phantom_shield_active(object) {
                             return self.phantom_shield_counter_removal(object, object_amount);
                         }
-                        self.creature_damage_events(source, object, object_amount)
+                        self.creature_damage_events(source, object, object_amount).0
                     })
                     .collect()
             }
@@ -342,7 +403,8 @@ impl Game {
                 let amount = self.resolve_amount(amount, controller, source, target, x);
                 self.living_players()
                     .flat_map(|player| {
-                        let mut events = self.player_damage_events(source, player, amount);
+                        let (mut events, amount) =
+                            self.player_damage_events(source, player, amount);
                         // 0 damage is never dealt (CR 120.8) — no marker, no trigger.
                         if amount > 0 {
                             events.push(Event::DamageDealtToPlayer {
@@ -366,11 +428,8 @@ impl Game {
                 self.living_players()
                     .filter(|&player| player != controller)
                     .flat_map(|player| {
-                        let mut events = vec![Event::LifeChanged {
-                            player,
-                            amount: -amount,
-                            source: Some(source),
-                        }];
+                        let (mut events, amount) =
+                            self.player_damage_events(source, player, amount);
                         // 0 damage is never dealt (CR 120.8) — no marker, no trigger.
                         if amount > 0 {
                             events.push(Event::DamageDealtToPlayer {
@@ -395,7 +454,8 @@ impl Game {
                 self.living_players()
                     .filter(|&player| player != controller && player != damaged)
                     .flat_map(|player| {
-                        let mut events = self.player_damage_events(source, player, amount);
+                        let (mut events, amount) =
+                            self.player_damage_events(source, player, amount);
                         // 0 damage is never dealt (CR 120.8) — no marker, no trigger.
                         if amount > 0 {
                             events.push(Event::DamageDealtToPlayer {
@@ -430,14 +490,14 @@ impl Game {
                 if self.noncombat_damage_prevented_to_creature(object) {
                     return Vec::new();
                 }
-                self.creature_damage_events(source, object, amount)
+                self.creature_damage_events(source, object, amount).0
             }
 
             // Real damage to the ability's own controller — mirrors `DealDamage`'s
             // `Target::Player` arm, substituting `controller` for the chosen target.
             DamageEffect::ToSelf { amount } => {
                 let amount = self.resolve_amount(amount, controller, source, target, x);
-                let mut events = self.player_damage_events(source, controller, amount);
+                let (mut events, amount) = self.player_damage_events(source, controller, amount);
                 // 0 damage is never dealt (CR 120.8) — no marker, no trigger.
                 if amount > 0 {
                     events.push(Event::DamageDealtToPlayer {
@@ -459,7 +519,7 @@ impl Game {
                 let creature = expect_object_target(target, "deal damage to target's controller");
                 let recipient = self.controller_of(creature);
                 let amount = self.resolve_amount(amount, controller, source, target, x);
-                let mut events = self.player_damage_events(source, recipient, amount);
+                let (mut events, amount) = self.player_damage_events(source, recipient, amount);
                 // 0 damage is never dealt (CR 120.8) — no marker, no trigger.
                 if amount > 0 {
                     events.push(Event::DamageDealtToPlayer {
