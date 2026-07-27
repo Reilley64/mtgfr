@@ -1,22 +1,30 @@
 //! Library / graveyard / hand look-and-select raises (scry, search, put land, …).
 
-use crate::{CardFilter, Game, ObjectId, PendingChoice, PlayerId, RestDest, SearchDest, TopDest};
+use crate::{
+    ArrangeRest, CardFilter, Game, ObjectId, PendingChoice, PlayerId, RestDest, SearchDest, TopDest,
+};
 
 pub(super) fn arrange_top(
     game: &Game,
     player: PlayerId,
+    library: PlayerId,
     count: u32,
-    to_graveyard: bool,
+    rest: ArrangeRest,
 ) -> Option<PendingChoice> {
-    let library = &game.players[player.0 as usize].library;
-    let cards: Vec<ObjectId> = library.iter().take(count as usize).copied().collect();
+    let cards: Vec<ObjectId> = game.players[library.0 as usize]
+        .library
+        .iter()
+        .take(count as usize)
+        .copied()
+        .collect();
     if cards.is_empty() {
         return None;
     }
     Some(PendingChoice::ArrangeTop {
         player,
+        library,
         cards,
-        to_graveyard,
+        rest,
     })
 }
 

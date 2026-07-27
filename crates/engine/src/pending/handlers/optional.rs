@@ -119,6 +119,15 @@ impl Game {
                         },
                     },
                 );
+            } else if let Effect::Dig(DigEffect::MayShuffleTargetPlayersLibrary { owner }) = effect
+            {
+                // Natural Selection: the caster said yes, so the player whose library they just
+                // sorted shuffles it — order and all.
+                let owner =
+                    owner.expect("the targeted player is baked in when the yes/no is raised");
+                let event = Event::LibraryShuffled { player: owner };
+                self.apply(&event);
+                events.push(event);
             } else if matches!(resume, MayYesNoResume::ResolveInline)
                 && matches!(effect, Effect::Dig(DigEffect::SearchLibrary { .. }))
             {

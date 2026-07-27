@@ -149,8 +149,9 @@ impl Game {
                 self,
                 crate::pending::ChoiceRequest::ArrangeTop {
                     player: opponent,
+                    library: opponent,
                     count: 1,
-                    to_graveyard: false,
+                    rest: crate::ArrangeRest::Bottom,
                 },
             );
             if self.resolution_is_paused() {

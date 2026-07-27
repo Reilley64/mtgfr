@@ -128,10 +128,10 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.choice_defending_player_sacrifices": (params) =>
     `Defending player sacrifices ${param(params, "count")} permanents of their choice`,
   "effect.choice_discard": (params) => {
-    const suffix = bool(params, "random") ? " at random" : ""
+    const suffix = bool(params, "random") ? " at random" : "";
     return bool(params, "target_player")
       ? `Target player discards ${param(params, "count")}${suffix}${bool(params, "or_one_matching") ? " unless they discard a land card" : ""}`
-      : `Discard ${param(params, "count")}${suffix}${bool(params, "or_one_matching") ? " unless you discard a land card" : ""}`
+      : `Discard ${param(params, "count")}${suffix}${bool(params, "or_one_matching") ? " unless you discard a land card" : ""}`;
   },
   "effect.choice_each_other_token_becomes_copy_of_chosen": literal(
     "You may choose a token you control; if you do, each other token you control becomes a copy of that token",
@@ -186,8 +186,7 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     `Put a land from hand onto the battlefield${bool(params, "tapped") ? " tapped" : ""}`,
   "effect.choice_sacrifice_own": (params) =>
     `Sacrifice ${param(params, "count")} ${humanize(param(params, "filter", "permanents"))}`,
-  "effect.choice_pay_or_else": (params, children) =>
-    `Pay ${param(params, "cost")} or: ${children.join(", then ")}`,
+  "effect.choice_pay_or_else": (params, children) => `Pay ${param(params, "cost")} or: ${children.join(", then ")}`,
   "effect.choice_sacrifice_self_unless_return_land": literal(
     "Sacrifice this unless you return a non-Lair land you control",
   ),
@@ -294,8 +293,7 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.damage_to_self": (params) => `Deals ${param(params, "amount")} damage to you`,
   "effect.damage_to_target_controller": (params) =>
     `Deals ${param(params, "amount")} damage to that creature's controller`,
-  "effect.damage_to_triggering_player": (params) =>
-    `Deals ${param(params, "amount")} damage to that player`,
+  "effect.damage_to_triggering_player": (params) => `Deals ${param(params, "amount")} damage to that player`,
   "effect.destroy_all": (params) => `Destroy all ${humanize(param(params, "filter", "permanents"))}`,
   "effect.destroy_target": literal("Destroy target"),
   "effect.destroy_triggering_damaged_creature": literal("Destroy that creature"),
@@ -324,9 +322,12 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.dig_look_at_target_players_hand": literal("Look at target player's hand"),
   "effect.dig_look_at_top": (params) =>
     `Look at the top ${param(params, "count")} cards, put up to ${param(params, "up_to")} ${topDest(params)}, rest on the bottom`,
+  "effect.dig_may_shuffle_target_players_library": literal("You may have that player shuffle"),
   "effect.dig_opponent_splits_exile_piles": literal(
     "Exile the top four cards in one pile, then the top four in a second pile. An opponent chooses one pile; put it into your graveyard. You may cast a card from the other pile without paying its mana cost; put the rest into your hand",
   ),
+  "effect.dig_rearrange_target_players_top": (params) =>
+    `Look at the top ${param(params, "count")} cards of target player's library, then put them back in any order`,
   "effect.dig_reveal_top_opponent_picks_one_to_graveyard": (params) =>
     `Reveal the top ${param(params, "count")} cards of your library. An opponent chooses one of them. Put that card into your graveyard and the rest into your hand`,
   "effect.dig_reveal_top_split_piles": literal(
@@ -519,9 +520,7 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     `${bool(params, "all_players") ? "All permanents" : "Permanents you control"} have ${humanize(param(params, "keywords"))}`,
   "effect.static_life_gain_replacement": (params) => `life gained: n + ${param(params, "plus")}`,
   "effect.static_no_maximum_hand_size": literal("You have no maximum hand size"),
-  "effect.static_play_any_number_of_lands": literal(
-    "You may play any number of lands on each of your turns",
-  ),
+  "effect.static_play_any_number_of_lands": literal("You may play any number of lands on each of your turns"),
   "effect.static_play_from_graveyard_once_per_turn": literal(
     "Once during each of your turns, you may play a land or cast a permanent spell with mana value 3 or less from your graveyard",
   ),
@@ -543,16 +542,16 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.static_spend_mana_as_though_another_color": (params) =>
     `You may spend ${param(params, "from")} mana as though it were ${param(params, "to")} mana`,
   "effect.static_tapped_for_mana_bonus": (params) => {
-    const bonus = param(params, "bonus_color")
+    const bonus = param(params, "bonus_color");
     const added =
       bonus === "any_color"
         ? "one mana of any color"
         : bonus === "produced"
           ? "one mana of any type that land produced"
-          : `one ${bonus} mana`
+          : `one ${bonus} mana`;
     return param(params, "scope") === "enchanted_host"
       ? `Whenever enchanted land is tapped for mana, its controller adds an additional ${added}`
-      : `Whenever you tap a land for mana, add an additional ${added}`
+      : `Whenever you tap a land for mana, add an additional ${added}`;
   },
   "effect.static_token_replacement": (params) => `tokens created: n x ${param(params, "times")}`,
   "effect.static_trigger_doubling": literal("That triggered ability triggers an additional time"),

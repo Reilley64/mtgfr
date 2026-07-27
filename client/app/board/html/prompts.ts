@@ -2,7 +2,7 @@
 //
 // Pending-choice formulators collect answers and route every submission through `choiceIntent`.
 
-import { Option } from "effect";
+import { Match, Option } from "effect";
 import { type Html, html } from "foldkit/html";
 import {
   cardPickIsSearchable,
@@ -265,7 +265,7 @@ function arrangeLaneCard(
 }
 
 function arrangeLanesPrompt(
-  pending: Extract<PendingChoiceView, { kind: "scry" | "surveil" }>,
+  pending: Extract<PendingChoiceView, { kind: "scry" | "surveil" | "reorder_top" }>,
   state: VisibleState,
   board: BoardModel,
 ): Html {
@@ -283,12 +283,29 @@ function arrangeLanesPrompt(
     const item = byId.get(id);
     return item != null ? [item] : [];
   });
-  const title = pending.kind === "scry" ? `Scry ${pending.items.length}` : `Surveil ${pending.items.length}`;
-  const bottomLabel = pending.kind === "surveil" ? "Graveyard" : "Bottom of library";
-  const hint =
-    pending.kind === "surveil"
-      ? "Click a card to move it between Top and Graveyard. Order on Top is left to right."
-      : "Click a card to move it between Top and Bottom. Order in each lane is left to right.";
+  const title = Match.value(pending.kind).pipe(
+    Match.withReturnType<string>(),
+    Match.when("scry", () => `Scry ${pending.items.length}`),
+    Match.when("surveil", () => `Surveil ${pending.items.length}`),
+    Match.orElse(() => `Put back ${pending.items.length}`),
+  );
+  // Natural Selection's cards all go back on top, so its second lane is not a destination —
+  // it holds the ones the player has not placed yet, and they follow the ordered pile up.
+  const bottomLabel = Match.value(pending.kind).pipe(
+    Match.withReturnType<string>(),
+    Match.when("surveil", () => "Graveyard"),
+    Match.when("reorder_top", () => "Not yet ordered"),
+    Match.orElse(() => "Bottom of library"),
+  );
+  const hint = Match.value(pending.kind).pipe(
+    Match.withReturnType<string>(),
+    Match.when("surveil", () => "Click a card to move it between Top and Graveyard. Order on Top is left to right."),
+    Match.when(
+      "reorder_top",
+      () => "Click a card to place it on Top. Order on Top is left to right; anything left follows behind it.",
+    ),
+    Match.orElse(() => "Click a card to move it between Top and Bottom. Order in each lane is left to right."),
+  );
 
   return h.div(
     [
@@ -1619,7 +1636,7 @@ function cardPickForKind(
     );
   }
 
-  if (pending.kind === "scry" || pending.kind === "surveil") {
+  if (pending.kind === "scry" || pending.kind === "surveil" || pending.kind === "reorder_top") {
     return arrangeLanesPrompt(pending, state, board);
   }
 

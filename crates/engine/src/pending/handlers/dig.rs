@@ -836,8 +836,9 @@ impl Game {
             self,
             pending::ChoiceRequest::ArrangeTop {
                 player: controller,
+                library: controller,
                 count: 1,
-                to_graveyard: false,
+                rest: ArrangeRest::Bottom,
             },
         );
         if self.resolution_is_paused() {
@@ -849,8 +850,9 @@ impl Game {
             self,
             pending::ChoiceRequest::ArrangeTop {
                 player: opponent,
+                library: opponent,
                 count: 1,
-                to_graveyard: false,
+                rest: ArrangeRest::Bottom,
             },
         );
     }

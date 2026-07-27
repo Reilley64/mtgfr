@@ -348,6 +348,7 @@ export type VisibleEvent =
   | { amount: number; kind: "combat_damage_dealt_to_creature"; source: U32; target: U32 }
   | { amount: number; kind: "damage_dealt_to_player"; player: number; source: U32 }
   | { amount: number; kind: "combat_damage_prevented"; player: number }
+  | { amount: number; kind: "damage_prevented"; object?: null | number; player?: null | number }
   | { card: U32; from: U32; kind: "moved_to_command_zone" }
   | { kind: "mana_emptied"; player: number }
   | { kind: "damage_cleared"; object: U32 }
@@ -386,6 +387,7 @@ export type VisibleEvent =
   | { card: U32; from: U32; kind: "returned_to_hand" }
   | { card: U32; from: U32; kind: "tucked_to_library"; to_top: boolean }
   | { kind: "library_shuffled"; player: number }
+  | { kind: "looked_at_hand"; player: number; target: number }
   | { card: U32; def: string; kind: "revealed_top_of_library"; player: number }
   | { card: U32; kind: "put_on_bottom_of_library"; player: number }
   | { card?: string | null; from?: null | U32; kind: "searched_to_hand"; object: U32; player: number }
@@ -482,6 +484,7 @@ export type PendingChoiceView =
   | { items: Array<ChoiceItem>; kind: "divide_counters"; player: number; spell: U32; total: number }
   | { items: Array<ChoiceItem>; kind: "scry"; player: number }
   | { items: Array<ChoiceItem>; kind: "surveil"; player: number }
+  | { items: Array<ChoiceItem>; kind: "reorder_top"; player: number }
   | { items: Array<ChoiceItem>; kind: "search_library"; player: number }
   | { items: Array<ChoiceItem>; kind: "select_from_top"; player: number; up_to: number }
   | {

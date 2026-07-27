@@ -826,8 +826,11 @@ impl Game {
             return;
         }
         match effect {
-            // Scry/surveil — ArrangeTop pause peel (`resolution/pause_arrange`).
-            Effect::Dig(DigEffect::Scry { .. }) | Effect::Dig(DigEffect::Surveil { .. }) => {
+            // Scry/surveil/reorder-a-target's-top — ArrangeTop pause peel
+            // (`resolution/pause_arrange`).
+            Effect::Dig(DigEffect::Scry { .. })
+            | Effect::Dig(DigEffect::Surveil { .. })
+            | Effect::Dig(DigEffect::RearrangeTargetPlayersTop { .. }) => {
                 self.run_arrange_top(effect, controller, source, target, x)
             }
             // Clash (CR 701.22): pick an opponent, both reveal + scry-1 their top, score the clash.
@@ -920,7 +923,10 @@ impl Game {
             | Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
             | Effect::Choice(ChoiceEffect::MayDrawUpToThenOpponentMayRepeat { .. })
             | Effect::Choice(ChoiceEffect::MayPutCounterOnCreature)
-            | Effect::Choice(ChoiceEffect::PayOrElse { .. }) => self.run_may_pause(effect, ctx),
+            | Effect::Choice(ChoiceEffect::PayOrElse { .. })
+            | Effect::Dig(DigEffect::MayShuffleTargetPlayersLibrary { .. }) => {
+                self.run_may_pause(effect, ctx)
+            }
             // ChooseCreatureType / ChooseColor / SetOwnColorUntilEndOfTurn / ChooseOne /
             // Demonstrate / Proliferate / PhaseOut — choose pause peel (`resolution/pause_choose`).
             Effect::Choice(ChoiceEffect::ChooseCreatureType)

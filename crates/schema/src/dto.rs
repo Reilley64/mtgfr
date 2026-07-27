@@ -719,6 +719,10 @@ pub enum PendingChoiceView {
     Scry { player: u8, items: Vec<ChoiceItem> },
     /// The looked-at cards, top of library. Private to the surveilling player.
     Surveil { player: u8, items: Vec<ChoiceItem> },
+    /// The looked-at cards, top of a library the player may reorder but not split (Natural
+    /// Selection). Private to that player; every card goes back on top, so unlike
+    /// [`Self::Scry`] there is no second pile to answer with.
+    ReorderTop { player: u8, items: Vec<ChoiceItem> },
     /// The matching library cards found. Private to the searching player.
     SearchLibrary { player: u8, items: Vec<ChoiceItem> },
     /// The looked-at top cards; the player may select up to `up_to` into a zone. Private to them.
@@ -1076,6 +1080,7 @@ impl PendingChoiceView {
             | Self::DivideCounters { items, .. }
             | Self::Scry { items, .. }
             | Self::Surveil { items, .. }
+            | Self::ReorderTop { items, .. }
             | Self::SearchLibrary { items, .. }
             | Self::SelectFromTop { items, .. }
             | Self::DistributeTop { items, .. }

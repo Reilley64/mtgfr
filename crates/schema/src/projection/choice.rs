@@ -339,21 +339,14 @@ impl<'a> ChoiceCtx<'a> {
                 total: cap,
             },
             engine::PendingChoice::ArrangeTop {
-                player,
-                cards,
-                to_graveyard,
+                player, cards, rest, ..
             } => {
                 let items = private_items(player, self.viewer, cards, |ids| self.label_items(ids));
-                if to_graveyard {
-                    PendingChoiceView::Surveil {
-                        player: player.0,
-                        items,
-                    }
-                } else {
-                    PendingChoiceView::Scry {
-                        player: player.0,
-                        items,
-                    }
+                let player = player.0;
+                match rest {
+                    engine::ArrangeRest::Bottom => PendingChoiceView::Scry { player, items },
+                    engine::ArrangeRest::Graveyard => PendingChoiceView::Surveil { player, items },
+                    engine::ArrangeRest::Nowhere => PendingChoiceView::ReorderTop { player, items },
                 }
             }
             engine::PendingChoice::SearchLibrary {
@@ -916,7 +909,9 @@ mod coverage_tests {
     use super::project_pending_choice;
     use crate::dto::PendingChoiceView;
     use crate::test_support::def;
-    use engine::{Amount, DrawEffect, Effect, Game, LifeEffect, PendingChoice, PlayerId, Target};
+    use engine::{
+        Amount, ArrangeRest, DrawEffect, Effect, Game, LifeEffect, PendingChoice, PlayerId, Target,
+    };
 
     const CHOOSE_ONE_MODES: &[Effect] = &[
         Effect::Draw(DrawEffect::Cards {
@@ -1043,16 +1038,18 @@ mod coverage_tests {
             (
                 PendingChoice::ArrangeTop {
                     player: PlayerId(0),
+                    library: PlayerId(0),
                     cards: vec![hand_card],
-                    to_graveyard: false,
+                    rest: ArrangeRest::Bottom,
                 },
                 |view| matches!(view, PendingChoiceView::Scry { .. }),
             ),
             (
                 PendingChoice::ArrangeTop {
                     player: PlayerId(0),
+                    library: PlayerId(0),
                     cards: vec![hand_card],
-                    to_graveyard: true,
+                    rest: ArrangeRest::Graveyard,
                 },
                 |view| matches!(view, PendingChoiceView::Surveil { .. }),
             ),

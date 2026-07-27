@@ -844,6 +844,18 @@ pub enum MayDrawUpToResume {
     },
 }
 
+/// Where the cards a [`PendingChoice::ArrangeTop`] answer doesn't keep on top go.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ArrangeRest {
+    /// The bottom of the same library — a scry (CR 701.42).
+    Bottom,
+    /// That library owner's graveyard — a surveil (CR 701.43).
+    Graveyard,
+    /// Nowhere: "put them back in any order" (Natural Selection) returns every card to the top,
+    /// so the only thing the answer decides is the order and a bottom pile is illegal.
+    Nowhere,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PendingChoice {
     /// `player` must order their simultaneously-triggered abilities (put on the stack
@@ -1084,14 +1096,16 @@ pub enum PendingChoice {
         legal: Vec<ObjectId>,
         cap: i32,
     },
-    /// `player` looks at the top `cards` of their library (a scry/surveil) and must split them
-    /// into a kept pile (back on top, in the answered order) and a bottom pile — put on the
-    /// library bottom (scry) or into the graveyard when `to_graveyard` (surveil). Answered by
+    /// `player` looks at the top `cards` of `library`'s library and must split them into a kept
+    /// pile (back on top, in the answered order) and a rest pile, which goes where `rest` says.
+    /// `library` is `player`'s own for every scry and surveil; Natural Selection is the one card
+    /// that sorts somebody else's, so the two are separate fields. Answered by
     /// [`Intent::ArrangeTop`].
     ArrangeTop {
         player: PlayerId,
+        library: PlayerId,
         cards: Vec<ObjectId>,
-        to_graveyard: bool,
+        rest: ArrangeRest,
     },
     /// `player` looked at the top `cards` of their library ([`Effect::Dig(DigEffect::LookAtTop)`]) and may select
     /// up to `up_to` of them that match `filter` into `dest`; every non-selected card goes to

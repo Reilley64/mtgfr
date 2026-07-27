@@ -37,6 +37,7 @@ const ALL_PENDING_CHOICE_KINDS = [
   "divide_counters",
   "scry",
   "surveil",
+  "reorder_top",
   "search_library",
   "select_from_top",
   "distribute_top",

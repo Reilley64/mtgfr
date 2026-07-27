@@ -3,15 +3,18 @@
 use crate::*;
 
 impl Game {
+    /// `_answering` is the seat that sent the intent; `submit` has already checked it against the
+    /// choice's own `player`, which for Natural Selection is not the library's owner.
     pub(crate) fn arrange_top(
         &mut self,
-        player: PlayerId,
+        _answering: PlayerId,
         top: Vec<ObjectId>,
         bottom: Vec<ObjectId>,
     ) -> Result<Vec<Event>, Reject> {
         let Some(PendingChoice::ArrangeTop {
+            library: player,
             cards,
-            to_graveyard,
+            rest: rest_dest,
             ..
         }) = self.pending_choice.clone()
         else {
@@ -19,6 +22,10 @@ impl Game {
         };
         if !is_partition(&top, &bottom, &cards) {
             return Err(Reject::IllegalChoice); // not a split of exactly the shown cards
+        }
+        if rest_dest == ArrangeRest::Nowhere && !bottom.is_empty() {
+            // "Put them back in any order" — there is nowhere else to put one.
+            return Err(Reject::IllegalChoice);
         }
         self.finish_answer();
 
@@ -28,7 +35,7 @@ impl Game {
         let rest: Vec<ObjectId> = self.players[player.0 as usize].library[count..].to_vec();
 
         let mut events = Vec::new();
-        if to_graveyard {
+        if rest_dest == ArrangeRest::Graveyard {
             // Surveil: the bottom pile is put into the graveyard — the same library→graveyard
             // zone change as a mill (each mints a fresh graveyard-object id in order).
             let base = self.next_object_id();
@@ -48,7 +55,7 @@ impl Game {
         // ponytail: library order isn't event-sourced (neither is `shuffle`) — mutate it directly.
         let mut library = top;
         library.extend(rest);
-        if !to_graveyard {
+        if rest_dest == ArrangeRest::Bottom {
             library.extend(bottom);
         }
         self.players[player.0 as usize].library = library;

@@ -370,6 +370,37 @@ test("surveil bottom lane is labeled Graveyard", () => {
   );
 });
 
+test("reorder_top second lane holds the cards not placed yet, and they still go back on top", () => {
+  const s = state({
+    pending_choice: {
+      kind: "reorder_top",
+      player: 0,
+      items: [
+        { id: 1, label: "Island" },
+        { id: 2, label: "Forest" },
+        { id: 3, label: "Swamp" },
+      ],
+    },
+  });
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(s)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("prompt-arrange-lanes")).toExist(),
+    Scene.expect(Scene.testId("prompt-arrange-bottom-label")).toHaveText("Not yet ordered"),
+  );
+
+  const gf = gameFold(s);
+  const board = updateBoard(initialBoardModel(), PromptCardToggled({ id: 3 }), gf, "T1")[0];
+  const [, commands] = updateBoard(board, PromptSubmitted(), gf, "T1");
+  expect(intentFromCommand(commands[0])).toEqual({
+    kind: "arrange_top",
+    player: 0,
+    top: [3, 1, 2],
+    bottom: [],
+  });
+});
+
 test("scry card click moves from Bottom lane to Top lane", () => {
   const s = state({
     pending_choice: {

@@ -152,11 +152,13 @@ pub(crate) enum ChoiceRequest {
         source: crate::ObjectId,
         filter: crate::PermanentFilter,
     },
-    /// [`Effect::Dig(DigEffect::Scry)`] / [`Effect::Dig(DigEffect::Surveil)`] — empty library skips.
+    /// [`Effect::Dig(DigEffect::Scry)`] / [`Effect::Dig(DigEffect::Surveil)`] /
+    /// [`Effect::Dig(DigEffect::RearrangeTargetPlayersTop)`] — empty library skips.
     ArrangeTop {
         player: crate::PlayerId,
+        library: crate::PlayerId,
         count: u32,
-        to_graveyard: bool,
+        rest: crate::ArrangeRest,
     },
     /// [`Effect::Dig(DigEffect::LookAtTop)`] — empty library skips.
     SelectFromTop {
@@ -451,9 +453,10 @@ pub(super) fn choice_from_request(game: &Game, request: ChoiceRequest) -> Option
         } => optional::sacrifice_unless_return_land(game, player, source, filter),
         ChoiceRequest::ArrangeTop {
             player,
+            library,
             count,
-            to_graveyard,
-        } => library::arrange_top(game, player, count, to_graveyard),
+            rest,
+        } => library::arrange_top(game, player, library, count, rest),
         ChoiceRequest::SelectFromTop {
             player,
             count,

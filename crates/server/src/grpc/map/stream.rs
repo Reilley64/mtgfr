@@ -329,6 +329,12 @@ pub fn pending_choice_view_to_pb(choice: PendingChoiceView) -> pb::PendingChoice
             items: choice_items_to_pb(items),
             total,
         }),
+        PendingChoiceView::ReorderTop { player, items } => {
+            Choice::ReorderTop(pb::PendingChoiceViewReorderTop {
+                player: u32::from(player),
+                items: choice_items_to_pb(items),
+            })
+        }
         PendingChoiceView::Scry { player, items } => Choice::Scry(pb::PendingChoiceViewScry {
             player: u32::from(player),
             items: choice_items_to_pb(items),

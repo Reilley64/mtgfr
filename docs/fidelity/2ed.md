@@ -265,7 +265,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Meekstone** {1} · Artifact — increment 7
 - [ ] **Mesa Pegasus** {1}{W} · Creature — Pegasus — increment 14
 - [x] **Mind Twist** {X}{B} · Sorcery — increment 17
-- [ ] **Natural Selection** {G} · Instant — increment 55
+- [x] **Natural Selection** {G} · Instant — increment 55
 - [ ] **Nether Shadow** {B}{B} · Creature — Spirit — increment 39
 - [ ] **Nettling Imp** {2}{B} · Creature — Imp — increment 26
 - [x] **Nightmare** {5}{B} · Creature — Nightmare Horse — increment 2

@@ -178,7 +178,9 @@ message_keys! {
     EFFECT_DIG_EXILE_TOP_UNTIL_STOP_CAST_FREE_UNDER_BUDGET => "effect.dig_exile_top_until_stop_cast_free_under_budget",
     EFFECT_DIG_LOOK_AT_TARGET_PLAYERS_HAND => "effect.dig_look_at_target_players_hand",
     EFFECT_DIG_LOOK_AT_TOP => "effect.dig_look_at_top",
+    EFFECT_DIG_MAY_SHUFFLE_TARGET_PLAYERS_LIBRARY => "effect.dig_may_shuffle_target_players_library",
     EFFECT_DIG_OPPONENT_SPLITS_EXILE_PILES => "effect.dig_opponent_splits_exile_piles",
+    EFFECT_DIG_REARRANGE_TARGET_PLAYERS_TOP => "effect.dig_rearrange_target_players_top",
     EFFECT_DIG_REVEAL_TOP_OPPONENT_PICKS_ONE_TO_GRAVEYARD => "effect.dig_reveal_top_opponent_picks_one_to_graveyard",
     EFFECT_DIG_REVEAL_TOP_SPLIT_PILES => "effect.dig_reveal_top_split_piles",
     EFFECT_DIG_REVEAL_UNTIL_EXILE_CAST_FREE => "effect.dig_reveal_until_exile_cast_free",
@@ -1797,6 +1799,13 @@ impl Effect {
                 .with_params(vec![int_param("count", count)]),
             Effect::Dig(LookAtTargetPlayersHand) => {
                 MessageRef::new(MessageKey::EFFECT_DIG_LOOK_AT_TARGET_PLAYERS_HAND)
+            }
+            Effect::Dig(RearrangeTargetPlayersTop { count }) => {
+                MessageRef::new(MessageKey::EFFECT_DIG_REARRANGE_TARGET_PLAYERS_TOP)
+                    .with_params(vec![int_param("count", count)])
+            }
+            Effect::Dig(MayShuffleTargetPlayersLibrary { .. }) => {
+                MessageRef::new(MessageKey::EFFECT_DIG_MAY_SHUFFLE_TARGET_PLAYERS_LIBRARY)
             }
             Effect::Dig(LookAtTop {
                 count,

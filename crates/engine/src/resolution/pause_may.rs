@@ -84,6 +84,25 @@ impl Game {
                     then,
                 },
             ),
+            // Natural Selection's tail: "You may have that player shuffle." The caster decides —
+            // they just ordered that library and may throw their own ordering away. The targeted
+            // player is baked into the effect so the answer knows whose library to shuffle.
+            Effect::Dig(DigEffect::MayShuffleTargetPlayersLibrary { .. }) => {
+                let Some(Target::Player(owner)) = target else {
+                    return;
+                };
+                pending::raise(
+                    self,
+                    pending::ChoiceRequest::MayYesNo {
+                        player: controller,
+                        source,
+                        effect: Effect::Dig(DigEffect::MayShuffleTargetPlayersLibrary {
+                            owner: Some(owner),
+                        }),
+                        resume: crate::MayYesNoResume::Default,
+                    },
+                );
+            }
             // Rhystic Study's "you may draw a card unless that player pays {1}": pause the
             // ability's own controller on whether they want to draw at all (the card's ruling —
             // declining is quiet, no pay window is ever offered). Only a "yes" here raises the

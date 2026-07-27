@@ -22,8 +22,9 @@ impl Game {
                     self,
                     pending::ChoiceRequest::ArrangeTop {
                         player: controller,
+                        library: controller,
                         count,
-                        to_graveyard: false,
+                        rest: ArrangeRest::Bottom,
                     },
                 )
             }
@@ -31,10 +32,27 @@ impl Game {
                 self,
                 pending::ChoiceRequest::ArrangeTop {
                     player: controller,
+                    library: controller,
                     count,
-                    to_graveyard: true,
+                    rest: ArrangeRest::Graveyard,
                 },
             ),
+            // Natural Selection sorts somebody else's library: the caster answers, the target's
+            // library is the one shown, and every card goes back on top.
+            Effect::Dig(DigEffect::RearrangeTargetPlayersTop { count }) => {
+                let Some(Target::Player(owner)) = target else {
+                    return;
+                };
+                pending::raise(
+                    self,
+                    pending::ChoiceRequest::ArrangeTop {
+                        player: controller,
+                        library: owner,
+                        count,
+                        rest: ArrangeRest::Nowhere,
+                    },
+                )
+            }
             _ => unreachable!("arrange-top pause family received a non-family effect"),
         }
     }

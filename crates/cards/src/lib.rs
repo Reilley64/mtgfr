@@ -2491,6 +2491,27 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
         );
     }
 
+    /// Natural Selection's shuffle is a second effect, not a flag on the look: the caster is asked
+    /// only after they have already put the three cards back in the order they wanted, so the
+    /// choice they are making is whether to throw that ordering away.
+    #[test]
+    fn unlimited_natural_selection_offers_the_shuffle_after_the_reorder() {
+        let selection = get_by_name("Natural Selection").expect("Natural Selection is in the pool");
+        let [ability] = &selection.abilities[..] else {
+            panic!("one spell ability");
+        };
+        let Effect::Sequence { steps } = &ability.effect else {
+            panic!("a reorder followed by an optional shuffle");
+        };
+        assert_eq!(
+            &steps[..],
+            &[
+                Effect::Dig(DigEffect::RearrangeTargetPlayersTop { count: 3 }),
+                Effect::Dig(DigEffect::MayShuffleTargetPlayersLibrary { owner: None }),
+            ]
+        );
+    }
+
     /// Demonic Hordes' unpaid upkeep taps itself *and* gives up a land, and the land is picked by
     /// someone else — the order matters (the tap is part of the same penalty, not a cost) and so
     /// does `opponent_chooses`, which is the only thing separating this from an ordinary edict.

@@ -36809,8 +36809,9 @@ fn restless_spire_scries_when_it_attacks() {
         game.pending_choice(),
         Some(PendingChoice::ArrangeTop {
             player: PlayerId(0),
+            library: PlayerId(0),
             cards: vec![lib[0]],
-            to_graveyard: false,
+            rest: ArrangeRest::Bottom,
         }),
         "the attack trigger's scry 1 fired",
     );
@@ -39636,8 +39637,9 @@ fn scry_pauses_on_an_arrange_top_choice_and_reorders_the_library() {
         game.pending_choice(),
         Some(PendingChoice::ArrangeTop {
             player: PlayerId(0),
+            library: PlayerId(0),
             cards: vec![lib[0], lib[1], lib[2]],
-            to_graveyard: false,
+            rest: ArrangeRest::Bottom,
         }),
         "scry 3 shows the top three cards to arrange",
     );
@@ -39719,8 +39721,9 @@ fn surveil_puts_the_bottom_pile_into_the_graveyard() {
         game.pending_choice(),
         Some(PendingChoice::ArrangeTop {
             player: PlayerId(0),
+            library: PlayerId(0),
             cards: vec![lib[0], lib[1]],
-            to_graveyard: true,
+            rest: ArrangeRest::Graveyard,
         }),
         "surveil 2 shows the top two cards, bottom pile bound for the graveyard",
     );
@@ -40707,8 +40710,9 @@ fn scry_for_more_than_the_library_holds_is_safe() {
         game.pending_choice(),
         Some(PendingChoice::ArrangeTop {
             player: PlayerId(0),
+            library: PlayerId(0),
             cards: vec![lib[0], lib[1]],
-            to_graveyard: false,
+            rest: ArrangeRest::Bottom,
         }),
         "scry 3 over a two-card library operates on the two cards that exist",
     );
@@ -40747,8 +40751,9 @@ fn a_scry_lands_etb_scry_fires_when_it_enters() {
         game.pending_choice(),
         Some(PendingChoice::ArrangeTop {
             player: PlayerId(0),
+            library: PlayerId(0),
             cards: vec![lib[0]],
-            to_graveyard: false,
+            rest: ArrangeRest::Bottom,
         }),
         "the scry land's ETB scry 1 fired on entering",
     );
@@ -100754,9 +100759,10 @@ fn deathcap_glade_enters_tapped_unless_you_control_two_or_more_other_lands() {
 }
 
 /// Empty every player's priority pass until the stack is empty — `resolve_top_of_stack` assumes a
-/// two-player table, so a three/four-player table needs a pass from everyone in turn.
+/// two-player table, so a three/four-player table needs a pass from everyone in turn. Stops early
+/// if a resolution pauses on a choice: nobody has priority to pass while one is owed.
 fn resolve_top_of_stack_multiplayer(game: &mut Game) {
-    while !game.stack().is_empty() {
+    while !game.stack().is_empty() && game.pending_choice().is_none() {
         let player = game.priority_holder();
         game.submit(Intent::PassPriority { player }).unwrap();
     }
@@ -105841,5 +105847,145 @@ fn glasses_of_urza_does_not_keep_showing_cards_drawn_after_the_look() {
     assert!(
         !game.has_seen_hand_card(PlayerId(0), drawn),
         "a look is a snapshot, not a standing window onto the hand"
+    );
+}
+
+// Natural Selection: "Look at the top three cards of target player's library, then put them back in
+// any order. You may have that player shuffle." The library being sorted is somebody else's, every
+// card goes back on top (there is no bottom pile to bury one in), and the shuffle at the end is the
+// caster's call — the whole point of the card is that they may throw their own sorting away.
+
+fn cast_natural_selection(game: &mut Game, at: PlayerId) {
+    game.fund_mana(PlayerId(0));
+    let spell = game.spawn_in_hand(PlayerId(0), card("Natural Selection"));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: spell,
+        target: Some(Target::Player(at)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        multikicker_count: 0,
+        alternative_cost: false,
+    })
+    .expect("targeting another player's library is legal");
+    resolve_top_of_stack_multiplayer(game);
+}
+
+#[test]
+fn natural_selection_reorders_the_top_of_the_library_it_looked_at() {
+    let mut game = Game::with_players(3, 0);
+    let lib = game.stack_library(
+        PlayerId(1),
+        &[
+            card("Forest"),
+            card("Island"),
+            card("Mountain"),
+            card("Swamp"),
+        ],
+    );
+    cast_natural_selection(&mut game, PlayerId(1));
+
+    assert_eq!(
+        game.pending_choice(),
+        Some(PendingChoice::ArrangeTop {
+            player: PlayerId(0),
+            library: PlayerId(1),
+            cards: vec![lib[0], lib[1], lib[2]],
+            rest: ArrangeRest::Nowhere,
+        }),
+        "the caster orders the top three of the library they targeted",
+    );
+
+    game.submit(Intent::ArrangeTop {
+        player: PlayerId(0),
+        top: vec![lib[2], lib[0], lib[1]],
+        bottom: vec![],
+    })
+    .expect("any order of the three is legal");
+
+    let Some(PendingChoice::MayYesNo { player, .. }) = game.pending_choice() else {
+        panic!("\"you may have that player shuffle\" is the caster's own choice");
+    };
+    assert_eq!(
+        player,
+        PlayerId(0),
+        "the caster decides, not the library's owner"
+    );
+    game.submit(Intent::AnswerMay {
+        player: PlayerId(0),
+        yes: false,
+    })
+    .unwrap();
+
+    assert!(game.pending_choice().is_none(), "the spell is done");
+    assert_eq!(draw_top_from(&mut game, PlayerId(1)), lib[2]);
+    assert_eq!(draw_top_from(&mut game, PlayerId(1)), lib[0]);
+    assert_eq!(draw_top_from(&mut game, PlayerId(1)), lib[1]);
+    assert_eq!(
+        draw_top_from(&mut game, PlayerId(1)),
+        lib[3],
+        "the library below the three looked-at cards never moved"
+    );
+}
+
+#[test]
+fn natural_selection_cannot_bury_a_card_it_looked_at() {
+    let mut game = Game::with_players(3, 0);
+    let lib = game.stack_library(
+        PlayerId(1),
+        &[card("Forest"), card("Island"), card("Mountain")],
+    );
+    cast_natural_selection(&mut game, PlayerId(1));
+
+    assert_eq!(
+        game.submit(Intent::ArrangeTop {
+            player: PlayerId(0),
+            top: vec![lib[0], lib[1]],
+            bottom: vec![lib[2]],
+        }),
+        Err(Reject::IllegalChoice),
+        "\"put them back\" leaves no bottom pile to hide a card in",
+    );
+    assert!(
+        game.pending_choice().is_some(),
+        "the arrangement is still owed"
+    );
+}
+
+#[test]
+fn natural_selection_may_have_that_player_shuffle_the_order_away() {
+    let mut game = Game::with_players(3, 0);
+    let lib = game.stack_library(
+        PlayerId(1),
+        &[card("Forest"), card("Island"), card("Mountain")],
+    );
+    cast_natural_selection(&mut game, PlayerId(1));
+
+    game.submit(Intent::ArrangeTop {
+        player: PlayerId(0),
+        top: vec![lib[0], lib[1], lib[2]],
+        bottom: vec![],
+    })
+    .unwrap();
+    let events = game
+        .submit(Intent::AnswerMay {
+            player: PlayerId(0),
+            yes: true,
+        })
+        .unwrap();
+
+    assert!(
+        events
+            .iter()
+            .any(|e| matches!(e, Event::LibraryShuffled { player } if *player == PlayerId(1))),
+        "the targeted player shuffles, not the caster"
     );
 }

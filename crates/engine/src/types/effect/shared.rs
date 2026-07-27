@@ -727,7 +727,11 @@ impl Effect {
             // "If target player has fewer than nine poison counters …" (Vraska, Betrayal's Sting).
             | Effect::Counters(CountersEffect::TopUpCountersOnPlayer { .. })
             // "Look at target player's hand" (Glasses of Urza).
-            | Effect::Dig(DigEffect::LookAtTargetPlayersHand) => TargetSpec::Player,
+            | Effect::Dig(DigEffect::LookAtTargetPlayersHand)
+            // "Look at the top three cards of target player's library …" (Natural Selection), and
+            // its own "you may have that player shuffle" tail, which reads the same target.
+            | Effect::Dig(DigEffect::RearrangeTargetPlayersTop { .. })
+            | Effect::Dig(DigEffect::MayShuffleTargetPlayersLibrary { .. }) => TargetSpec::Player,
             // Equip targets "target creature you control" (CR 702.6e). The activation gate
             // enforces it too; the spec must say so as well, or the enumeration the client
             // highlights from offers opponents' creatures the gate can only bounce.

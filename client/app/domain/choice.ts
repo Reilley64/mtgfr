@@ -51,6 +51,7 @@ export const FORMULATOR_FOR_KIND: { [K in PendingChoiceView["kind"]]: Formulator
   divide_counters: "divideTotal",
   scry: "cardPick",
   surveil: "cardPick",
+  reorder_top: "cardPick",
   search_library: "cardPick",
   select_from_top: "cardPick",
   distribute_top: "partition",
@@ -308,6 +309,7 @@ export function initPromptDraft(pc: PendingChoiceView, state: VisibleState): Pro
       return { kind: "destination", choice: null };
     case "scry":
     case "surveil":
+    case "reorder_top":
       return {
         kind: "partition",
         buckets: {
@@ -437,6 +439,13 @@ export function answerFromDraft(pc: PendingChoiceView, draft: PromptDraft): Answ
         return { kind: "revealed", choice: draft.choice };
       }
       return null;
+    case "reorder_top": {
+      const all = pc.items.map((it) => it.id);
+      const ordered =
+        draft.kind === "partition" ? (draft.buckets.top ?? []) : draft.kind === "card-pick" ? draft.picked : [];
+      const top = ordered.filter((id) => all.includes(id));
+      return { kind: "arrange", top: [...top, ...all.filter((id) => !top.includes(id))], bottom: [] };
+    }
     case "scry":
     case "surveil": {
       if (draft.kind === "partition") {

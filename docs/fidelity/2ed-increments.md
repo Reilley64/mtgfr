@@ -855,7 +855,7 @@ second, independent gap: `Cost` has no per-symbol colour restriction on `{X}`. *
 `x_colors = ["black"]` field on `[cost]` gating payment.
 *Cards:* drain_life.
 
-### 55. `rearrange-target-players-library-top` — 1 card, S
+### 55. `rearrange-target-players-library-top` — 1 card, M — **done**
 Depends on: 31 (`look-at-target-players-hand`) shares its "look at another player's hidden zone"
 visibility work.
 `look_at_top` always digs the resolving controller's own library. Natural Selection looks at the
@@ -864,6 +864,28 @@ top three of **target player's** library, reorders them, and may then have that 
 already has "put back in any order" for scry/surveil — reuse that pending-choice shape) and an
 optional shuffle step.
 *Cards:* natural_selection.
+
+*Landed:* the sketch picked the wrong neighbour. `look_at_top` is a *select* choice (filter some
+cards out of the top N into a destination), so a `whose` axis on it would have bought nothing —
+Natural Selection makes no selection at all. The choice it actually makes is the scry/surveil one,
+so the two new `dig` modes lean on `PendingChoice::ArrangeTop`, and the honest cost was widening
+that choice twice. It had assumed the chooser owns the library, which stopped being true, so
+`player` (who answers) and `library` (whose cards) are now separate fields. And its `to_graveyard:
+bool` became an `ArrangeRest` of `Bottom` / `Graveyard` / `Nowhere`, because "put them back" gives
+the rest pile nowhere to go: the answer handler rejects a non-empty bottom outright, or the caster
+could bury a card the card never let them bury.
+
+That third destination is why this was really an M and not an S. A pending choice the client
+renders has to reach the client, so `ArrangeRest::Nowhere` projects to a new `reorder_top`
+`PendingChoiceView` (proto field 71) rather than lying about itself as a scry — a scry prompt would
+offer a bottom lane the engine will refuse. The prompt reuses the same two lanes, relabelled: the
+second one is "Not yet ordered", and anything left in it follows the ordered pile back onto the top.
+
+The shuffle is a second `[[abilities.effects]]` step, not a flag on the first, and it is addressed
+to the **controller** — "you may have that player shuffle" is the caster choosing whether to throw
+away the ordering they just picked. `MayYesNoResume` has no "then run this" variant, so the
+targeted player is baked into `MayShuffleTargetPlayersLibrary { owner }` when the pause is raised,
+the same way `MayDrawUnlessPays { caster }` carries its seat.
 
 ### 56. `activate-only-during-your-turn` — 1 card, S — **done**
 Depends on: nothing.

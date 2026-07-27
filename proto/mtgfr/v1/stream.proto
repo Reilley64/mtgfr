@@ -293,6 +293,7 @@ message PendingChoiceView {
     PendingChoiceViewChooseLegendaryKeep choose_legendary_keep = 68;
     PendingChoiceViewMayExileDiscardedToPlay may_exile_discarded_to_play = 69;
     PendingChoiceViewPayLifeOrEntersTapped pay_life_or_enters_tapped = 70;
+    PendingChoiceViewReorderTop reorder_top = 71;
   }
 }
 
@@ -435,6 +436,13 @@ message PendingChoiceViewDivideCounters {
 
 // The looked-at cards, top of library. Private to the scrying player.
 message PendingChoiceViewScry {
+  uint32 player = 1;
+  repeated ChoiceItem items = 2;
+}
+
+// The looked-at cards, top of a library the player may reorder but not split (Natural
+// Selection). Private to that player; every card goes back on top, so there is no second pile.
+message PendingChoiceViewReorderTop {
   uint32 player = 1;
   repeated ChoiceItem items = 2;
 }
