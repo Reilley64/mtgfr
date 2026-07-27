@@ -78,7 +78,7 @@ specs for the current module split, especially
 
    1. **Avatar paint** follows resting battlefield cards in layer 3; **clear bands** packing must not cover it. **Orb hits** stay in layer 7.
    2. **Two mana surfaces:** battlefield in-play mana (layer 2) vs spell/payment mana tray on the hand layer (5).
-   3. No resting permanent paint or DOM card face may sit above layer 4 while combat/spell arrows are active. Declare-drag arrows use the **same arrow layer** as committed arrows.
+   3. No resting permanent paint or DOM card face may sit above layer 4 while combat/spell arrows are active. Declare-drag arrows and **declared stack→target arrows** use the **same Mount arrow layer** as committed combat arrows (not the Foldkit Canvas under resting art).
    4. Flights and battlefield exit FX paint above hand/stack (layer 6 over 5).
    5. Prompts (8) above combat/life hits (7).
    6. Inspect (10) above everything else on the board, including system modals, while pinned.

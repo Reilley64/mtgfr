@@ -1,5 +1,6 @@
-import type { ActionView, PlayerView, WireAttack, WireBlock } from "~/wire/types";
+import type { ActionView, PlayerView, StackObjectView, WireAttack, WireBlock } from "~/wire/types";
 import type { RenderCard } from "../geometry/layout";
+import type { StackPresentation } from "../geometry/stackLayout";
 import type { ExitFx } from "../motion/exit-fx";
 import type { CardFlight } from "../motion/flights";
 import type { BitmapFrame } from "./mount";
@@ -72,6 +73,13 @@ function actionPaintKey(action: ActionView): Record<string, unknown> {
   };
 }
 
+function stackEntryPaintKey(entry: StackObjectView): string {
+  const targets = (entry.targets ?? (entry.target != null ? [entry.target] : []))
+    .map((t) => (t.kind === "player" ? `p${t.player}` : `o${t.id}`))
+    .join(",");
+  return `${entry.source}:${entry.kind}:${targets}`;
+}
+
 export function restingPaintSnapshot(frame: Omit<BitmapFrame, "flights">): RestingPaintSnapshot {
   const cursorActive = frame.aimFrom != null || (frame.combatDragFrom != null && frame.combatDragStroke != null);
 
@@ -101,6 +109,8 @@ export function restingPaintSnapshot(frame: Omit<BitmapFrame, "flights">): Resti
     },
     stagedAttackers: [...frame.stagedAttackers].map(attackKey).sort(),
     stagedBlocks: [...frame.stagedBlocks].map(blockKey).sort(),
+    stack: (frame.stack ?? []).map(stackEntryPaintKey),
+    stackPresentation: (frame.stackPresentation ?? "pile") as StackPresentation,
     aimFrom: frame.aimFrom,
     cursor: cursorActive ? frame.cursor : null,
     combatDragFrom: frame.combatDragFrom,

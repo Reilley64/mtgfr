@@ -1,6 +1,6 @@
 # Battlefield
 
-**Status:** Current (as of 2026-07-25)
+**Status:** Current (as of 2026-07-27)
 **Module:** `client/app/board/canvas/`, `client/app/board/bitmap/`, `client/app/board/chrome.ts`, `client/app/board/geometry/layout.ts`, `client/app/board/geometry/density.ts`
 
 ---
@@ -89,7 +89,7 @@ Alternate lose-the-game and attrition clocks stack below the username as chips (
 
 ### Arrows and target highlights
 
-`canvas/arrows.ts` paints combat and targeting arrows above resting permanents. Attack arrows are Mountain Red (`#ff6b6b`), block arrows are Wall Green (`#66ff99`), and spell/object target highlights use Island Blue (`#77CCFF`). Declare-attackers drag aim uses the same arrow layer as committed arrows.
+`canvas/arrows.ts` defines combat and targeting arrow geometry. The Mount bitmap layer (`paintBitmapLayer`) paints those arrows above resting permanents and avatars — attack arrows Mountain Red (`#ff6b6b`), block arrows Wall Green (`#66ff99`), Island Blue (`#77CCFF`) for staged/pending aim and for declared stack→target arrows. Declare-attackers drag aim uses the same arrow layer as committed arrows. Stack target arrows must not rely on the Foldkit Canvas vector pass alone: that canvas sits under the Mount resting-art layer, so arrows painted only there disappear under permanent faces.
 
 ### Canvas hex colors
 
@@ -132,6 +132,7 @@ These are visual/layout rules only; they do not collapse engine objects.
 - Avatar unit tests assert Gravatar image paint, monogram fallback, mirrored flipped/upright label offsets, and `Cmd N` paint from `commander_damage` (max source only; omitted at 0) on both Mount `paintAvatars` and the vector `avatarShapes` helper, plus `Poison N` / `Rad N` chips: omitted at 0, stacked on distinct rows, and the poison fill flipping to red inside lethal range.
 - Resting-snapshot tests assert `gravatar_hash`-only and `commander_damage`-only player changes invalidate Mount resting paint.
 - Bitmap paint tests assert playable, commander, target, auto-tap, P/T, loyalty, counter, and damage chrome on the resting layer.
+- Bitmap paint tests assert stack→target arrows paint after resting card art and avatars.
 - Scene tests assert arrows and interactive life-orb hit targets remain layered correctly.
 - Density tests assert packing, cluster fan, and hover raise order.
 
