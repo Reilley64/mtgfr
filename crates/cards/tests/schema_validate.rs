@@ -31,3 +31,48 @@ fn accepts_abrade_pool_card() {
 
     cards::validate_toml_str(&abrade).expect("Abrade TOML validates against the card schema");
 }
+
+/// A promoted opaque surface (Wave C) now carries a real typed schema, so a wrong-typed value is
+/// rejected — where the former `any` escape silently accepted anything. `cumulative_upkeep` is an
+/// object with an integer `graveyard_cards`, so a bare string no longer validates.
+#[test]
+fn rejects_wrong_typed_promoted_cumulative_upkeep() {
+    let card = r#"
+name = "Bad Upkeep"
+id = "00000000-0000-0000-0000-000000000001"
+default_print = "00000000-0000-0000-0000-000000000002"
+cumulative_upkeep = "nonsense"
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+"#;
+
+    let errors =
+        cards::validate_toml_str(card).expect_err("wrong-typed cumulative_upkeep must fail");
+    assert!(errors.join("\n").contains("/cumulative_upkeep"), "{errors:?}");
+}
+
+/// The promoted `enter_as_copy` surface likewise rejects an unknown key rather than accepting any
+/// object, proving the schema tightened beyond the former `any` escape.
+#[test]
+fn rejects_unknown_key_in_promoted_enter_as_copy() {
+    let card = r#"
+name = "Bad Copy"
+id = "00000000-0000-0000-0000-000000000003"
+default_print = "00000000-0000-0000-0000-000000000004"
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+[enter_as_copy]
+gains_haste = true
+bogus = true
+"#;
+
+    let errors = cards::validate_toml_str(card).expect_err("unknown enter_as_copy key must fail");
+    assert!(errors.join("\n").contains("/enter_as_copy"), "{errors:?}");
+}

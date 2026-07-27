@@ -194,7 +194,6 @@ pub enum SpellSpeed {
 /// `Copy` so [`Keyword`] stays a small value enum. In TOML, `{ protection = "<value>" }` where
 /// `<value>` is a color name or `"creatures"`/`"multicolored"` — see the `de` module.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 pub enum ProtectionScope {
     Color(Color),
     Creatures,
@@ -955,6 +954,7 @@ pub enum CastXMax {
     derive(serde::Deserialize),
     serde(deny_unknown_fields)
 )]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 pub struct EnterAsCopy {
     #[cfg_attr(feature = "card-dsl", serde(default))]
     pub until_eot: bool,
@@ -975,6 +975,7 @@ pub struct EnterAsCopy {
     derive(serde::Deserialize),
     serde(rename_all = "snake_case")
 )]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 pub enum CopyTargetKind {
     #[default]
     Creature,

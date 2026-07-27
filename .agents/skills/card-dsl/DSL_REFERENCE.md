@@ -16,7 +16,7 @@ This mirrors the DSL's top-level card shape with owned fields, then folds into t
 |---|---|---:|---|---|
 | `abilities` | array<AbilityTomlSchema> | no | - | Authored rules text as ability blocks. Each block has a `timing` and one or more `effects`; multiple effects fold into `Effect::Sequence` in order. |
 | `adventure` | CardToml \| null | no | - | An adventure card's adventure half (CR 715, soc/sos) — an inline `[adventure]` `CardDef` table (its own `cost`, `kind`, `abilities`), parsed like `back` and interned below. Absent for ordinary cards. |
-| `alternative_cost` | any | no | - | A printed non-mana alternative cost (CR 601.2f) — `alternative_cost = { condition = { .. }, rider = { .. } }`; absent for a card without one. |
+| `alternative_cost` | AlternativeCostTomlSchema \| null | no | - | A printed non-mana alternative cost (CR 601.2f) — `alternative_cost = { condition = { .. }, rider = { .. } }`; absent for a card without one. |
 | `approximates` | string \| null | no | `null` | Machine-readable fidelity note for modeled divergences. Set this whenever a `# ponytail:` comment marks a deliberate simplification; leave absent for faithful cards. |
 | `back` | CardToml \| null | no | - | A "prepare" DFC's back face (soc/sos) — an inline `[back]` `CardDef` table, parsed via `CardDef`'s own impl and interned below. Absent for ordinary cards. |
 | `bestow` | CostToml \| null | no | - | Bestow (CR 702.103) — `[bestow]` with the same `[cost]`-table shape as `[echo]`; absent for a card without bestow. |
@@ -30,9 +30,9 @@ This mirrors the DSL's top-level card shape with owned fields, then folds into t
 | `colors` | array<Color> | no | - | Explicit colors (CR 105.2a) overriding the cost-pip derivation — a token's stated color, since it has no mana cost to derive one from. `colors = ["green"]` in TOML; empty (every ordinary card) derives color from cost pips as usual. |
 | `conditional_keywords` | array<ConditionalKeywordToml> | no | - | A keyword granted only while a `Condition` holds (Primordial Hydra's trample at ten-or-more +1/+1 counters) — `conditional_keywords = [{ condition = { type = "..." }, keyword = "..." }]` in TOML. Empty for every ordinary card. |
 | `cost` | CostToml | no | - | Printed mana cost. Omit the table for free cards such as lands and most token profiles. |
-| `cumulative_upkeep` | any | no | - | Cumulative upkeep (CR 702.24) — `[cumulative_upkeep]` (`graveyard_cards = N`); absent for a card without cumulative upkeep. |
+| `cumulative_upkeep` | CumulativeUpkeepCost \| null | no | - | Cumulative upkeep (CR 702.24) — `[cumulative_upkeep]` (`graveyard_cards = N`); absent for a card without cumulative upkeep. |
 | `cycling` | CostToml \| null | no | - | Cycling {N} (CR 702.29a) — `cycling = { generic = N }`; absent for a card with none. |
-| `cycling_sacrifice` | any | no | - | A sacrifice folded into the cycling cost (CR 702.29b — Edge of Autumn's "Cycling—Sacrifice a land"), same [`SacrificeCost`] table/shorthand shape as an activation sacrifice cost. Absent (`SacrificeCost::None`) for ordinary cycling. |
+| `cycling_sacrifice` | SacrificeCost | no | - | A sacrifice folded into the cycling cost (CR 702.29b — Edge of Autumn's "Cycling—Sacrifice a land"), same [`SacrificeCost`] table/shorthand shape as an activation sacrifice cost. Absent (`SacrificeCost::None`) for ordinary cycling. |
 | `default_print` | string | no | `` | Scryfall card UUID for the default Printing — required on top-level pool TOMLs. |
 | `delve` | boolean | no | `false` | Delve (CR 702.66) — `delve = true`; absent (`false`) for a card without delve. |
 | `demonstrate` | boolean | no | `false` | Demonstrate (CR 702.147) — `demonstrate = true`; absent (`false`) for a card without demonstrate. |
@@ -40,18 +40,18 @@ This mirrors the DSL's top-level card shape with owned fields, then folds into t
 | `devour` | integer \| null | no | `null` | Devour N (CR 702.82) — `devour = N`; absent for a card without devour. |
 | `dredge` | integer \| null | no | `null` | Dredge N (CR 702.52) — `dredge = N` for a dredger; absent (`None`) otherwise. |
 | `echo` | CostToml \| null | no | - | Echo (CR 702.31) — `[echo]` with the same `[cost]`-table shape; absent for a card without echo. |
-| `enchant` | any | no | - | An Aura's enchant subject restriction (CR 303.4a) — `enchant = { … }`, the same [`PermanentFilter`] table/shorthand shape as any other filter field; absent means "any creature" (every ordinary Aura). |
+| `enchant` | PermanentFilter \| null | no | - | An Aura's enchant subject restriction (CR 303.4a) — `enchant = { … }`, the same [`PermanentFilter`] table/shorthand shape as any other filter field; absent means "any creature" (every ordinary Aura). |
 | `enchant_graveyard` | boolean | no | `false` | Animate Dead's cast-time "enchant creature card in a graveyard" (CR 303.4a) — `enchant_graveyard = true`; absent (`false`) for every ordinary card. |
 | `encore` | CostToml \| null | no | - | Encore [cost] (CR 702.140, Angel of Indemnity) — an `[encore]` table with the same `[cost]`-table shape as `[flashback]`, leaked to `'static` below. Absent for a card without encore. |
-| `enter_as_copy` | any | no | - | Enter-as-a-copy replacement (CR 706/707.2) — an inline `enter_as_copy = { .. }` table (`until_eot`/`extra_counters`/`gains_haste`, all optional). Absent for a card without it. |
+| `enter_as_copy` | EnterAsCopy \| null | no | - | Enter-as-a-copy replacement (CR 706/707.2) — an inline `enter_as_copy = { .. }` table (`until_eot`/`extra_counters`/`gains_haste`, all optional). Absent for a card without it. |
 | `enters_tapped` | boolean | no | `false` | Unconditional enters-tapped replacement (CR 614.13), usually for lands. |
-| `enters_tapped_unless` | any | no | - |  |
+| `enters_tapped_unless` | Condition \| null | no | - |  |
 | `enters_tapped_unless_you_pay_life` | integer \| null | no | `null` | A CR 614.12 as-enters replacement choice (Overgrown Tomb) — `enters_tapped_unless_you_pay_life = 2`; absent for a card without one. |
-| `escape` | any | no | - | Escape (CR 702.19) — `[escape]` (an `[escape.cost]` sub-table plus `exile`/ `plus_one_plus_one_counters`); absent for a card without escape. |
+| `escape` | EscapeCost \| null | no | - | Escape (CR 702.19) — `[escape]` (an `[escape.cost]` sub-table plus `exile`/ `plus_one_plus_one_counters`); absent for a card without escape. |
 | `evoke` | CostToml \| null | no | - | Evoke (CR 702.74) — `[evoke]` with the same `[cost]`-table shape as `[echo]`; absent for a card without evoke. |
 | `flashback` | CostToml \| null | no | - | Flashback (CR 702.34) — `[flashback]` with the same `[cost]`-table shape (may carry a `[flashback.additional]` rider); absent for a card without flashback. |
 | `forecast` | HandActivatedAbilityTomlSchema \| null | no | - | Forecast (CR 702.57, Skyscribing) — a `[forecast]` table (`[forecast.cost]` + `[[forecast.effects]]`), the reveal-and-keep sibling of `hand_ability`. Absent for a card without one. |
-| `free_cast_if` | any | no | - | A printed conditional free-cast permission (CR 118.5) — `free_cast_if = { .. }` with the same `Condition` table shape as `enters_tapped_unless`; absent for a card without one. |
+| `free_cast_if` | Condition \| null | no | - | A printed conditional free-cast permission (CR 118.5) — `free_cast_if = { .. }` with the same `Condition` table shape as `enters_tapped_unless`; absent for a card without one. |
 | `functions_in_graveyard` | boolean | no | `false` | CR 603.6e — this card's triggered abilities fire from its owner's graveyard rather than the battlefield (Squee, Nether Traitor). `false` for every ordinary card. |
 | `graveyard_cast_cost` | CostToml \| null | no | - | Cast-from-graveyard alternative cost for a permanent (CR 118.9) — `[graveyard_cast_cost]` with the same `[cost]`-table shape as `[flashback]`; absent for a card without it. |
 | `half` | array<CardToml> | no | - | A split card's two castable halves (CR 709, Fire // Ice) — `[[half]]` tables, each its own inline `CardDef` (name, oracle, `cost`, `kind`, `abilities`) parsed like `adventure`. Empty for every non-split card. |

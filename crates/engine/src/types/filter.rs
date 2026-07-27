@@ -167,6 +167,7 @@ impl Target {
 /// spells") grow from a real card that wants one (they'd need a color/subtype read).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "card-dsl", derive(serde::Deserialize))]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 pub enum SpellFilter {
     /// Every spell you cast.
     #[default]
@@ -586,6 +587,7 @@ pub enum SearchScope {
     derive(serde::Deserialize),
     serde(rename_all = "snake_case")
 )]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 pub enum FilterController {
     /// Any controller (default).
     #[default]
@@ -603,6 +605,7 @@ pub enum FilterController {
     derive(serde::Deserialize),
     serde(rename_all = "snake_case")
 )]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 pub enum TokenFilter {
     /// A token or a nontoken (default).
     #[default]
@@ -621,6 +624,7 @@ pub enum TokenFilter {
     derive(serde::Deserialize),
     serde(rename_all = "snake_case")
 )]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 pub enum Parity {
     Even,
     Odd,
@@ -637,6 +641,7 @@ pub enum Parity {
     derive(serde::Deserialize),
     serde(rename_all = "snake_case")
 )]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 pub enum ColorFilter {
     #[default]
     Any,
@@ -828,6 +833,7 @@ pub struct PermanentFilter {
     derive(serde::Deserialize),
     serde(rename_all = "snake_case")
 )]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 pub enum CounterAxis {
     /// Any counter of any kind (Innkeeper's Talent's "with counters on them").
     Any,

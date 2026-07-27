@@ -1185,6 +1185,7 @@ pub enum SacrificeCost {
     derive(serde::Deserialize),
     serde(rename_all = "snake_case")
 )]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 pub enum CounterKind {
     Charge,
     Story,
@@ -1299,6 +1300,7 @@ impl PlayerCounterKind {
 /// upkeep instead.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "card-dsl", derive(serde::Deserialize))]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 pub struct CumulativeUpkeepCost {
     /// Cards from a single graveyard put on the bottom of their owner's library, per age
     /// counter (Jotun Grunt: 2).
@@ -1513,6 +1515,7 @@ pub struct ActivationCost {
     derive(serde::Deserialize),
     serde(tag = "type", rename_all = "snake_case")
 )]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 pub enum Condition {
     /// "if you control `count` or more creatures" (Leonin Vanguard).
     /// ponytail: counts creatures only — the one object kind the pool needs; add a `kind`

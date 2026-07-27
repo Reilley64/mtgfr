@@ -9,6 +9,8 @@ use crate::{
     EnterAsCopy, EscapeCost, HandActivatedAbility, Keyword, PermanentFilter, SacrificeCost,
     Suspend, intern_card_def,
 };
+#[cfg(feature = "card-schema")]
+use crate::{Amount, CounterKind, SpellFilter};
 
 #[cfg(feature = "card-schema")]
 #[allow(dead_code)]
@@ -91,17 +93,14 @@ struct AbilityTomlSchema {
     taps_self: bool,
     #[serde(default)]
     activation_cost: CostToml,
-    // WAVE_C: model activation sacrifice cost surface instead of an opaque runtime enum.
     #[serde(default)]
-    sacrifice: serde_json::Value,
-    // WAVE_C: model Amount's scalar/table TOML surface instead of an opaque runtime enum.
+    sacrifice: SacrificeCost,
     #[serde(default)]
-    pay_life: serde_json::Value,
+    pay_life: Amount,
     #[serde(default)]
     remove_counters: u8,
-    // WAVE_C: model CounterKind enum surface in the schema wave that owns counters.
     #[serde(default)]
-    remove_counters_kind: Option<serde_json::Value>,
+    remove_counters_kind: Option<CounterKind>,
     #[serde(default)]
     remove_counters_x: bool,
     #[serde(default)]
@@ -122,27 +121,24 @@ struct AbilityTomlSchema {
     exile_self: bool,
     #[serde(default)]
     graveyard_exile_target_count: u8,
-    // WAVE_C: model Condition's tagged TOML surface.
     #[serde(default)]
-    condition: Option<serde_json::Value>,
+    condition: Option<Condition>,
     #[serde(default)]
     optional: bool,
     #[serde(default)]
     min_level: u8,
     #[serde(default)]
     cost: CostToml,
-    // WAVE_C: model PermanentFilter's shorthand/table TOML surface.
     #[serde(default)]
-    filter: serde_json::Value,
+    filter: PermanentFilter,
     #[serde(default)]
     controller: String,
     #[serde(default)]
     who: String,
     #[serde(default)]
     targeted: String,
-    // WAVE_C: model SpellFilter's TOML surface.
     #[serde(default)]
-    spell_filter: serde_json::Value,
+    spell_filter: SpellFilter,
     #[serde(default)]
     caster: String,
     #[serde(default)]
@@ -157,6 +153,20 @@ struct AbilityTomlSchema {
     spend_predicate: String,
     #[serde(default)]
     effects: Vec<EffectTomlSchema>,
+}
+
+/// The author-facing shape of a [`crate::AlternativeCost`] — an optional [`Condition`] gate plus
+/// a `rider` effect. The runtime type leaks its `rider` to `&'static Effect`, so its schema is
+/// mirrored here to reference the shared [`EffectTomlSchema`] surface instead.
+#[cfg(feature = "card-schema")]
+#[allow(dead_code)]
+#[derive(schemars::JsonSchema, Deserialize)]
+#[schemars(deny_unknown_fields)]
+#[serde(deny_unknown_fields)]
+struct AlternativeCostTomlSchema {
+    #[serde(default)]
+    condition: Option<Condition>,
+    rider: EffectTomlSchema,
 }
 
 #[cfg(feature = "card-schema")]
@@ -190,8 +200,6 @@ struct HandActivatedAbilityTomlSchema {
 )]
 #[serde(deny_unknown_fields)]
 pub struct ConditionalKeywordToml {
-    // WAVE_C: model Condition's tagged TOML surface.
-    #[cfg_attr(feature = "card-schema", schemars(with = "serde_json::Value"))]
     pub condition: Condition,
     #[cfg_attr(feature = "card-schema", schemars(with = "String"))]
     pub keyword: Keyword,
@@ -232,8 +240,6 @@ pub struct CardToml {
     /// [`PermanentFilter`] table/shorthand shape as any other filter field; absent means
     /// "any creature" (every ordinary Aura).
     #[serde(default)]
-    // WAVE_C: model PermanentFilter's shorthand/table TOML surface.
-    #[cfg_attr(feature = "card-schema", schemars(with = "Option<serde_json::Value>"))]
     pub enchant: Option<PermanentFilter>,
     /// Animate Dead's cast-time "enchant creature card in a graveyard" (CR 303.4a) —
     /// `enchant_graveyard = true`; absent (`false`) for every ordinary card.
@@ -293,8 +299,6 @@ pub struct CardToml {
     /// Unconditional enters-tapped replacement (CR 614.13), usually for lands.
     pub enters_tapped: bool,
     #[serde(default)]
-    // WAVE_C: model Condition's tagged TOML surface.
-    #[cfg_attr(feature = "card-schema", schemars(with = "Option<serde_json::Value>"))]
     pub enters_tapped_unless: Option<Condition>,
     /// A CR 614.12 as-enters replacement choice (Overgrown Tomb) —
     /// `enters_tapped_unless_you_pay_life = 2`; absent for a card without one.
@@ -304,14 +308,14 @@ pub struct CardToml {
     /// with the same `Condition` table shape as `enters_tapped_unless`; absent for a
     /// card without one.
     #[serde(default)]
-    // WAVE_C: model Condition's tagged TOML surface.
-    #[cfg_attr(feature = "card-schema", schemars(with = "Option<serde_json::Value>"))]
     pub free_cast_if: Option<Condition>,
     /// A printed non-mana alternative cost (CR 601.2f) — `alternative_cost = { condition =
     /// { .. }, rider = { .. } }`; absent for a card without one.
     #[serde(default)]
-    // WAVE_C: model AlternativeCost's rider effect TOML surface.
-    #[cfg_attr(feature = "card-schema", schemars(with = "Option<serde_json::Value>"))]
+    #[cfg_attr(
+        feature = "card-schema",
+        schemars(with = "Option<AlternativeCostTomlSchema>")
+    )]
     pub alternative_cost: Option<AlternativeCost>,
     /// "Cast this spell only during combat" (CR 601.3e) — `cast_only_during_combat = true`;
     /// absent (`false`) for every ordinary card.
@@ -349,8 +353,6 @@ pub struct CardToml {
     /// "Cycling—Sacrifice a land"), same [`SacrificeCost`] table/shorthand shape as an
     /// activation sacrifice cost. Absent (`SacrificeCost::None`) for ordinary cycling.
     #[serde(default)]
-    // WAVE_C: model SacrificeCost's string/table TOML surface.
-    #[cfg_attr(feature = "card-schema", schemars(with = "serde_json::Value"))]
     pub cycling_sacrifice: SacrificeCost,
     /// Flashback (CR 702.34) — `[flashback]` with the same `[cost]`-table shape (may carry
     /// a `[flashback.additional]` rider); absent for a card without flashback.
@@ -365,8 +367,6 @@ pub struct CardToml {
     /// Cumulative upkeep (CR 702.24) — `[cumulative_upkeep]` (`graveyard_cards = N`);
     /// absent for a card without cumulative upkeep.
     #[serde(default)]
-    // WAVE_C: model CumulativeUpkeepCost's TOML surface.
-    #[cfg_attr(feature = "card-schema", schemars(with = "Option<serde_json::Value>"))]
     pub cumulative_upkeep: Option<CumulativeUpkeepCost>,
     /// Recover (CR 702.59) — `[recover]` with the same `[cost]`-table shape as `[echo]`;
     /// absent for a card without recover.
@@ -394,8 +394,6 @@ pub struct CardToml {
     /// Escape (CR 702.19) — `[escape]` (an `[escape.cost]` sub-table plus `exile`/
     /// `plus_one_plus_one_counters`); absent for a card without escape.
     #[serde(default)]
-    // WAVE_C: model EscapeCost's nested cost/exile TOML surface.
-    #[cfg_attr(feature = "card-schema", schemars(with = "Option<serde_json::Value>"))]
     pub escape: Option<EscapeCost>,
     /// Retrace (CR 702.83) — `retrace = true`; absent (`false`) for a card without
     /// retrace.
@@ -448,8 +446,6 @@ pub struct CardToml {
     /// table (`until_eot`/`extra_counters`/`gains_haste`, all optional). Absent for a card
     /// without it.
     #[serde(default)]
-    // WAVE_C: model EnterAsCopy's amount/copy-target TOML surface.
-    #[cfg_attr(feature = "card-schema", schemars(with = "Option<serde_json::Value>"))]
     pub enter_as_copy: Option<EnterAsCopy>,
     /// Encore [cost] (CR 702.140, Angel of Indemnity) — an `[encore]` table with the same
     /// `[cost]`-table shape as `[flashback]`, leaked to `'static` below. Absent for a card

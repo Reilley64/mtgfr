@@ -320,6 +320,7 @@ pub enum SacrificeAdditionalCostCount {
     derive(serde::Deserialize),
     serde(deny_unknown_fields)
 )]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 pub struct EscapeCost {
     pub cost: Cost,
     pub exile: u8,

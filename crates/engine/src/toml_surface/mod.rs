@@ -1,5 +1,7 @@
 mod card;
 mod cost;
+#[cfg(feature = "card-schema")]
+mod dsl_schema;
 mod kind;
 
 pub use card::{CardToml, ConditionalKeywordToml};
