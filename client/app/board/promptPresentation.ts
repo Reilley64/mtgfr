@@ -10,7 +10,7 @@ import {
   pendingHandPickIds,
   pendingPlayerAimSeats,
   sacrificeCostObjectIds,
-  targetMode,
+  stagedPickTargets,
 } from "./action/targeting";
 import { ZONE } from "./geometry/layout";
 import type { BoardModel } from "./submodel";
@@ -74,7 +74,7 @@ function localPresentation(board: BoardModel, state: VisibleState): PromptPresen
   }
 
   if (board.staged != null) {
-    return targetMode(board.staged.action, state).kind === "pick" ? modal("local") : none();
+    return stagedPickTargets(board.staged, state) != null ? modal("local") : none();
   }
 
   return null;

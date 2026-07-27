@@ -461,6 +461,51 @@ test("staged targeting shows cancel affordance and staged hint", () => {
   );
 });
 
+test("staged preferPick on-board target pick uses a center modal", () => {
+  const target = card(22, {
+    controller: 1,
+    owner: 1,
+    zone: ZONE.Battlefield,
+    kind: { kind: "creature", power: 2, toughness: 2 },
+    power: 2,
+    toughness: 2,
+    name: "Bear",
+    print: "bear-print",
+  });
+  const spell = card(10, {
+    kind: { kind: "sorcery" },
+    name: "Shock",
+    owner: 0,
+    controller: 0,
+  });
+  overlayScene(
+    overlayModel(
+      stagedBoard({
+        staged: {
+          card: spell,
+          action: action(10, {
+            object: spell.id,
+            label: testMessageRef("Cast Shock"),
+            needs_target: true,
+            targets: [{ kind: "object", id: 22 }],
+          }),
+          picks: emptyCostPicks(),
+          preferPick: true,
+          playOrigin: { x: 0, y: 0 },
+          playOriginScreen: { x: 0, y: 0 },
+        },
+      }),
+      gameState({ objects: [target] }),
+    ),
+    resolveBoardCardArtMounts(),
+    Scene.expect(Scene.testId("target-pick-modal")).toExist(),
+    Scene.expect(Scene.testId("target-pick-0")).toExist(),
+    Scene.expect(Scene.testId("target-pick-aim")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-cancel-target")).toBeAbsent(),
+  );
+});
+
 test("board reject surface renders when local reject text is set", () => {
   overlayScene(
     overlayModel({ ...initialBoardModel(), reject: "Choose a legal target" }),

@@ -30,7 +30,7 @@ Use `PriorityContextBar` for action controls, `TurnBanner` for active player and
 - Simple prompt takeovers reuse that slot directly: `priority-context-bar` renders the answer buttons for `may_yes_no` / `dance_exile_more`, optional-pay prompts, `choose_mode`, `choose_trigger_modes` submit/cancel, pile picks, revealed/countered destination picks, board-aim Confirm / Decline / Assign / Cancel actions, and local `playModePick` / both phases of `modalCast`, while the matching bottom coach stays informational-only.
 - Board-aim simple prompts keep their existing bottom-docked `*-aim` coach placement above the hand bar; takeover changes only the primary-action slot, not coach placement.
 - Rich prompt presentations (`promptPresentation(...).mode === "modal"`) leave `priority-context-bar` with no prompt buttons and instead use centered `*-modal` shells with a dimmed backdrop; no idle priority companions remain visible under the modal.
-- Pure on-board staged targeting that does not classify as a prompt keeps the existing bar-level `Cancel` control; classified prompt flows such as `playModePick` hand off cancellation to prompt chrome.
+- Pure on-board staged targeting without a staged picker keeps the existing bar-level `Cancel` control; classified prompt flows such as `playModePick` and staged `preferPick` target pickers hand off cancellation to prompt chrome.
 - Space mirrors the primary/pass action. Enter toggles End Turn or Until my turn.
 - While `VisibleState.mulliganing` is true and the local seated viewer has not kept (`!hand_kept`), `mulliganOverlayView` shows full-viewport `mulligan-overlay` (dimmed hard-lock backdrop, large opening-hand faces via shared `cardArt` / `BindCardArt`, Keep / Mulligan). Opening-hand prints resolve through `CardArtTick` passthrough on the board submodel boundary (not `GotBoardMessage`). Status copy from `mulliganChrome` explains the friendly first mulligan (free redraw to 7, no London bottom) and, after that, the next hand size. The normal `hand-bar` and priority bar are hidden. Space and Enter stay inert; Concede remains available above the overlay.
 - After the local seat keeps while others are still deciding, the overlay dismisses, `hand-bar` returns, and `mulligan-waiting` shows waiting copy that names undecided living seats (username, or `P{seat}` when empty). Lost seats are omitted. When every living seat has kept, status is “All players kept. Starting game…”.
@@ -44,7 +44,7 @@ Use `PriorityContextBar` for action controls, `TurnBanner` for active player and
 ## Implementation Decisions
 
 - `priorityBarView` derives controls from current board model and `VisibleState`; server flags such as `yielded` and `turn_yielded` are authoritative.
-- `promptPresentation(board, state)` is the single decision-chrome classifier for the priority bar: it checks local prompt sessions before the viewer-owned `pending_choice`, returns `none | simple | modal`, and leaves pure staged on-board targeting on the legacy Cancel path.
+- `promptPresentation(board, state)` is the single decision-chrome classifier for the priority bar: it checks local prompt sessions before the viewer-owned `pending_choice`, returns `none | simple | modal`, classifies staged pickers from `stagedPickTargets(...)` as local modals, and leaves only pure staged on-board arrow aim on the legacy Cancel path.
 - Unknown or uncategorized pending kinds fall back to `modal`, so the bar hides idle controls instead of guessing new simple-button layouts.
 - Stack yield is one-shot and disabled while armed until the stack empties.
 - End Turn reuses `SetTurnYield`; there is no separate end-turn intent.
@@ -55,7 +55,7 @@ Use `PriorityContextBar` for action controls, `TurnBanner` for active player and
 
 - Chrome tests cover Next, Resolve card, Resolve stack, End Turn, Until my turn, and staged / parked play-mode cancel controls.
 - Surface Scene tests cover simple and modal prompt takeovers hiding idle priority actions, including yes/no, pay-cost, mode, pile, destination, board-aim commit/decline/cancel actions, play-mode, modal-mode actions moving into `priority-context-bar`, and centered rich-prompt shells such as library search / color / creature-type / card-name while the matching coach prompt stays button-free.
-- `promptPresentation.test.ts` covers the chrome classifier itself, including `simple` vs `modal`, board-aim tagging, staged-target `none`, and modal fallback for uncategorized/off-board prompt cases.
+- `promptPresentation.test.ts` covers the chrome classifier itself, including `simple` vs `modal`, board-aim tagging, pure staged-target `none`, staged `preferPick` modal classification, and modal fallback for uncategorized/off-board prompt cases.
 - Chrome Scene tests cover the undecided `mulligan-overlay`, disabled `mulligan-take`, and the post-keep `mulligan-waiting` banner with the restored `hand-bar`.
 - A live board Scene test resolves mulligan `BindCardArt` with `CardArtTick` through the app `toParentMessage` boundary so art ticks are not wrapped as `GotBoardMessage`.
 - Mulligan unit tests cover Keep/Mulligan copy, enablement, and waiting status that names undecided seats (including empty-username fallback).

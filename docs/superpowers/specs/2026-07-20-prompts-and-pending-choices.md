@@ -46,7 +46,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 ## Behavior
 
 - Local prompts render in this order: hand play-mode chooser, X prompt, modal cast, sacrifice pick, discard pick, graveyard-exile pick, staged target picker.
-- `promptPresentation(board, state)` owns prompt classification for both local sessions and engine `pending_choice`: local prompt sessions win first, then the seated viewer's own `pending_choice`, and pure staged on-board targeting that keeps the ordinary Cancel/priority path stays `none`.
+- `promptPresentation(board, state)` owns prompt classification for both local sessions and engine `pending_choice`: local prompt sessions win first, then the seated viewer's own `pending_choice`; staged target pickers returned by `stagedPickTargets(...)` classify as local `modal`, while only pure staged on-board arrow aim that keeps the ordinary Cancel/priority path stays `none`.
 - Classified `simple` prompts keep only informational coach chrome at the bottom dock (`*-aim`, title/count copy only) while their answer buttons move into `priority-context-bar`.
 - Classified `modal` prompts use centered `*-modal` shells with a dimmed backdrop and keep answer actions inside the modal; the primary priority controls stay hidden while that modal is open.
 - Pending-choice kinds without a dedicated simple mapping fall back to `modal` so new or off-board pickers do not invent primary-bar buttons.

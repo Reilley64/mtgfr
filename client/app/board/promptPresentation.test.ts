@@ -385,7 +385,7 @@ describe("promptPresentation", () => {
     expect(presentation).toEqual({ mode: "none" });
   });
 
-  it("keeps staged preferPick on-board targeting as none after a cost dialog", () => {
+  it("classifies staged preferPick on-board targeting as modal after a cost dialog", () => {
     const target = card(22, {
       controller: 1,
       owner: 1,
@@ -418,7 +418,7 @@ describe("promptPresentation", () => {
       state({ objects: [target] }),
     );
 
-    expect(presentation).toEqual({ mode: "none" });
+    expect(presentation).toEqual({ mode: "modal", source: "local" });
   });
 
   // PendingChoiceView.kind is exhaustive in typed tests, so this off-board choose_target case
