@@ -17,8 +17,8 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - As a non-deciding player or spectator, I see who the table is waiting on while a pending choice is open.
 - As a player choosing X, I adjust a clamped stepper within server `min_x`…`max_x` and see what I will pay before confirming.
 - As a player assigning combat damage with trample, I can leave leftover damage for the defending player and see that overflow before Assign.
-- As a player dividing combat damage, spell damage, or counters, I adjust each share with a clamped stepper instead of typing numbers.
-- As a player assigning combat damage among battlefield blockers, I can click a blocker to move 1 damage onto it (steppers remain for fine control).
+- As a player dividing combat damage, spell damage, or counters, I assign on-board targets via board clicks and Assign in the primary bar; clamped steppers remain only when off-board blockers or targets remain.
+- As a player assigning combat damage among battlefield blockers, I click blockers to move 1 damage and confirm with Assign in the primary bar (no per-blocker steppers on-board).
 - As a player naming a card, I use docked `pending-card-name-aim` with a focused Card name field, optional catalog typeahead suggestions, and Name or Enter.
 - As a player searching their library, I filter faces by name in docked `pending-library-aim` chrome (title, filter, and Choose/Fail to find stay pinned above the scroll strip).
 - As a player choosing a creature type, I filter the long option list by name in docked `pending-creature-type-aim` before picking.
