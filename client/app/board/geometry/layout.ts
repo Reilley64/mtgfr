@@ -249,6 +249,13 @@ export function avatarPos(seat: number, viewer: number, count: number): { x: num
   return { x: band.x + band.w / 2, y };
 }
 
+/** World-space center of the first land slot in a seat's lands row — provisional land-play flight aim. */
+export function landRowCenter(seat: number, viewer: number, count: number): { x: number; y: number } {
+  const o = seatOrigin(seat, viewer, count);
+  const landsY = isFlipped(seat, viewer, count) ? o.y : o.y + 2 * ROW_H;
+  return { x: centerOutX(o.x, 0, 1) + CARD_W / 2, y: landsY + CARD_H / 2 };
+}
+
 /** Synthetic canvas id for a seat's Library pile face (`deckCard`). */
 export function libraryPileId(owner: number): number {
   return -1 - owner;
