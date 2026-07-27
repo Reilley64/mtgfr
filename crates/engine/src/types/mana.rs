@@ -118,7 +118,7 @@ impl Cost {
     /// colorless pips, WUBRG colored pips, `{a/b}` hybrid pips, then `{a/P}` Phyrexian pips.
     /// Ignores non-mana riders
     /// (`additional`); used wherever a full `Cost` needs to read back as a pip string, e.g.
-    /// [`Effect`](super::Effect)'s `SacrificeSelfUnlessPay` label (Keldon Vandals' `{2}{R}`).
+    /// [`Effect`](super::Effect)'s `PayOrElse` label (Keldon Vandals' `{2}{R}`).
     pub fn mana_label(&self) -> String {
         let mut out = String::new();
         for _ in 0..self.x {

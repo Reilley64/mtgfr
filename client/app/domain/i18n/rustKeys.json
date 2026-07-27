@@ -117,7 +117,7 @@
   "effect.choice_put_from_hand_on_top",
   "effect.choice_put_land_from_hand",
   "effect.choice_sacrifice_own",
-  "effect.choice_sacrifice_self_unless_pay",
+  "effect.choice_pay_or_else",
   "effect.choice_sacrifice_self_unless_return_land",
   "effect.choice_set_own_color_until_end_of_turn",
   "effect.choice_target_player_exiles_from_graveyard",

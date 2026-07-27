@@ -143,7 +143,7 @@ message_keys! {
     EFFECT_CHOICE_PUT_FROM_HAND_ON_TOP => "effect.choice_put_from_hand_on_top",
     EFFECT_CHOICE_PUT_LAND_FROM_HAND => "effect.choice_put_land_from_hand",
     EFFECT_CHOICE_SACRIFICE_OWN => "effect.choice_sacrifice_own",
-    EFFECT_CHOICE_SACRIFICE_SELF_UNLESS_PAY => "effect.choice_sacrifice_self_unless_pay",
+    EFFECT_CHOICE_PAY_OR_ELSE => "effect.choice_pay_or_else",
     EFFECT_CHOICE_SACRIFICE_SELF_UNLESS_RETURN_LAND => "effect.choice_sacrifice_self_unless_return_land",
     EFFECT_CHOICE_SET_OWN_COLOR_UNTIL_END_OF_TURN => "effect.choice_set_own_color_until_end_of_turn",
     EFFECT_CHOICE_TARGET_PLAYER_EXILES_FROM_GRAVEYARD => "effect.choice_target_player_exiles_from_graveyard",
@@ -1830,9 +1830,10 @@ impl Effect {
             Effect::Choice(CastCreatureFaceDown) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_CAST_CREATURE_FACE_DOWN)
             }
-            Effect::Choice(SacrificeSelfUnlessPay { cost }) => {
-                MessageRef::new(MessageKey::EFFECT_CHOICE_SACRIFICE_SELF_UNLESS_PAY)
+            Effect::Choice(PayOrElse { cost, otherwise }) => {
+                MessageRef::new(MessageKey::EFFECT_CHOICE_PAY_OR_ELSE)
                     .with_params(vec![mana_param("cost", cost)])
+                    .with_children(otherwise.iter().map(|e| e.clone().message()).collect())
             }
             Effect::Choice(SacrificeSelfUnlessReturnLand { filter }) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_SACRIFICE_SELF_UNLESS_RETURN_LAND)

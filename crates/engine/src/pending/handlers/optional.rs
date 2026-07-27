@@ -590,8 +590,9 @@ impl Game {
         Ok(events)
     }
 
-    /// Answer a [`PendingChoice::SacrificeUnlessPay`]: pay `cost` to keep `source`, or decline
-    /// and sacrifice it (CR 701.16). Rupture Spire's own-ETB twin of [`Game::pay_echo`] — same
+    /// Answer a [`PendingChoice::PayOrElse`]: pay `cost`, or decline and take the card's printed
+    /// penalty (CR 701.16) — usually sacrificing `source` (Rupture Spire, Phantasmal Forces),
+    /// sometimes not (Force of Nature's 8 damage). The twin of [`Game::pay_echo`] — same
     /// [`Intent::PayOptionalCost`] shape and polarity, kept as its own handler since it isn't
     /// Echo (see the variant's doc). An unaffordable "pay" leaves the choice pending.
     pub(crate) fn pay_sacrifice_unless(
@@ -599,8 +600,12 @@ impl Game {
         player: PlayerId,
         pay: bool,
     ) -> Result<Vec<Event>, Reject> {
-        let Some(PendingChoice::SacrificeUnlessPay { source, cost, .. }) =
-            self.pending_choice.clone()
+        let Some(PendingChoice::PayOrElse {
+            source,
+            cost,
+            otherwise,
+            ..
+        }) = self.pending_choice.clone()
         else {
             return Err(Reject::IllegalChoice);
         };
@@ -608,20 +613,20 @@ impl Game {
         if !pay {
             self.finish_answer();
             let mut events = Vec::new();
-            self.run(
-                Effect::Sacrifice(SacrificeEffect::Object {
-                    object: Some(source),
-                }),
-                ResolveCtx {
-                    controller: player,
-                    source,
-                    target: None,
-                    targets_second: TargetList::default(),
-                    x: 0,
-                    spent_mana: [0; 6],
-                },
-                &mut events,
-            );
+            for effect in otherwise {
+                self.run(
+                    effect.clone(),
+                    ResolveCtx {
+                        controller: player,
+                        source,
+                        target: None,
+                        targets_second: TargetList::default(),
+                        x: 0,
+                        spent_mana: [0; 6],
+                    },
+                    &mut events,
+                );
+            }
             return Ok(events);
         }
         let mut events = Vec::new();

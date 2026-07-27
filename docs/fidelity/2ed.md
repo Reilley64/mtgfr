@@ -207,7 +207,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Cyclopean Tomb** {4} · Artifact — increment 8, 28
 - [x] **Deathgrip** {B}{B} · Enchantment — increment 9
 - [ ] **Deathlace** {B} · Instant — increment 15
-- [ ] **Demonic Hordes** {3}{B}{B}{B} · Creature — Demon — increment 20, 41
+- [ ] **Demonic Hordes** {3}{B}{B}{B} · Creature — Demon — increment 41
 - [ ] **Dingus Egg** {4} · Artifact — increment 59
 - [x] **Disintegrate** {X}{R} · Sorcery — increment 34
 - [ ] **Disrupting Scepter** {3} · Artifact — increment 56
@@ -221,7 +221,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Feedback** {2}{U} · Enchantment — Aura — increment 61
 - [ ] **Fireball** {X}{R} · Sorcery — increment 53
 - [ ] **Flashfires** {3}{R} · Sorcery — increment 51
-- [ ] **Force of Nature** {2}{G}{G}{G}{G} · Creature — Elemental — increment 20
+- [x] **Force of Nature** {2}{G}{G}{G}{G} · Creature — Elemental — increment 20
 - [ ] **Forcefield** {3} · Artifact — increment 4
 - [ ] **Fork** {R}{R} · Instant — increment 13
 - [ ] **Fungusaur** {3}{G} · Creature — Fungus Dinosaur — increment 63
@@ -255,7 +255,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Living Artifact** {G} · Enchantment — Aura — increment 22, 28
 - [ ] **Living Lands** {3}{G} · Enchantment — increment 8
 - [x] **Lord of Atlantis** {U}{U} · Creature — Merfolk — increment 3
-- [ ] **Lord of the Pit** {4}{B}{B}{B} · Creature — Demon — increment 20
+- [ ] **Lord of the Pit** {4}{B}{B}{B} · Creature — Demon — increment 72
 - [ ] **Lure** {1}{G}{G} · Enchantment — Aura — increment 11
 - [ ] **Magical Hack** {U} · Instant — increment 16
 - [ ] **Mana Flare** {2}{R} · Enchantment — increment 19

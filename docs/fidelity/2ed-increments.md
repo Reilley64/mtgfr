@@ -307,15 +307,27 @@ adds an additional {R}" is the existing static over a wider scope. Psychic Venom
 tap, not just for mana, so it hangs off the tap event rather than the mana path.
 *Cards:* gauntlet_of_might, lifetap, mana_flare, manabarbs, psychic_venom.
 
-### 20. `pay-or-consequence-upkeep` — 3 cards, S
+### 20. `pay-or-consequence-upkeep` — 1 card, S — **done**
 Depends on: nothing.
 "At the beginning of your upkeep, this creature deals 8 damage to you unless you pay {G}{G}{G}{G}."
-`sacrifice_self_unless_pay` and `PayEchoOrSacrifice` cover pay-or-sacrifice; there is no
-pay-or-damage, and Lord of the Pit's is pay-a-*sacrifice*-or-damage. *Sketch:* generalize the
-existing `SacrificeUnlessPay` pending choice into `PayOrElse { cost, otherwise: Vec<Effect> }` so
-the penalty is an effect list rather than a hardcoded sacrifice — the three cards then differ only
-in their `otherwise`. Demonic Hordes' penalty also needs #41.
-*Cards:* demonic_hordes, force_of_nature, lord_of_the_pit.
+`sacrifice_self_unless_pay` and `PayEchoOrSacrifice` cover pay-or-sacrifice; there was no
+pay-or-damage.
+
+*Landed:* `ChoiceEffect::SacrificeSelfUnlessPay { cost }` became
+`PayOrElse { cost, otherwise: &'static [Effect] }` — the penalty is now the card's own effect list
+rather than a hardcoded sacrifice, carried through `ChoiceRequest`/`PendingChoice::PayOrElse` into
+`Game::pay_sacrifice_unless`, whose decline branch runs it in order with the source as source and
+the controller as controller. `otherwise` is required in the DSL, so the two existing consumers
+(Phantasmal Forces, Rupture Spire) now spell their sacrifice out; the effect's message renders
+`otherwise` as children ("Pay {G}{G}{G}{G} or: …"), which is why the i18n key moved to
+`effect.choice_pay_or_else`. The wire's `PendingChoiceViewSacrificeUnlessPay` keeps its old name
+and field number — `docs/WIRE_COMPAT.md` is expand-only, and the client never read the penalty.
+
+The increment's other two cards each want a *second* mechanism and moved out: Demonic Hordes'
+"tap this creature and sacrifice a land of an opponent's choice" to #41, Lord of the Pit's
+"sacrifice a creature other than this creature. If you can't, …" to #72 — that one is not a
+pay-or-else at all, since nothing is optional.
+*Cards:* force_of_nature.
 
 ### 21. `blocks-or-blocked-by-trigger` — 2 cards, M
 Depends on: nothing.
@@ -539,13 +551,15 @@ invalidating on tap/untap (confirm it already does — the cache invalidates on
 *Cards:* castle.
 
 ### 41. `opponent-chosen-sacrifice` — 1 card, S
-Depends on: nothing.
-Demonic Hordes' "sacrifice a land of an opponent's choice." Sacrifice effects always let the
-sacrificing player choose. *Sketch:* a `chooser: Who` field on the sacrifice effect routing the
-existing `PendingChoice` to a different player. In a 4-player game "an opponent's choice" is
-underspecified by the printed card — pick the one whose upkeep-trigger controller is being
-punished, i.e. raise the choice to the next opponent in turn order, and record that as an
-`approximates` on the card.
+Depends on: #20 (landed).
+Demonic Hordes' "At the beginning of your upkeep, unless you pay {B}{B}{B}, tap this creature and
+sacrifice a land of an opponent's choice." The pay-or-else half is #20's landed `pay_or_else`; what
+is left is the penalty. Sacrifice effects always let the sacrificing player choose. *Sketch:* a
+`chooser: Who` field on the sacrifice effect routing the existing `PendingChoice` to a different
+player. In a 4-player game "an opponent's choice" is underspecified by the printed card — pick the
+one whose upkeep-trigger controller is being punished, i.e. raise the choice to the next opponent
+in turn order, and record that as an `approximates` on the card. The penalty's other half, "tap
+this creature", has no effect either — the pool taps *targets*, not the source.
 *Cards:* demonic_hordes.
 
 ### 42. `filter-comparing-to-source` — 1 card, S
@@ -895,3 +909,18 @@ the trigger to carry it forward as an `Amount` into a prevention sized by it.
 payment path, whose answer is bound as the resolving ability's `x` — at which point the prevention
 half is a #4 shield of `Amount::X` armed on the same player immediately before the damage.
 *Cards:* power_leak.
+
+### 72. `mandatory-sacrifice-or-inability-penalty` — 1 card, S
+Depends on: nothing.
+Split out of #20. Lord of the Pit: "At the beginning of your upkeep, sacrifice a creature other
+than this creature. If you can't, this creature deals 7 damage to you." Not a pay-or-else — nothing
+is optional, and the fallback fires on *inability*, not on a declined payment. Two gaps: the edict
+machinery (`EachPlayerSacrifices`) has no `EdictScope` for the controller alone, and nothing
+expresses "if you can't".
+*Sketch:* an `EdictScope::Controller` variant (exhaustive arms in `message.rs` `edict_scope_token`
+and `resolution/counters.rs`), with `PermanentFilter.other = true` supplying "other than this
+creature"; wrap it in the existing `Conditional { condition, then, otherwise }`, whose else branch
+already exists. `YouControlAtLeastCreatures { count = 2 }` is the available proxy for "you control
+another creature" and is exact while the Lord is on the battlefield — record the residual as a
+`ponytail:` comment rather than a new condition.
+*Cards:* lord_of_the_pit.

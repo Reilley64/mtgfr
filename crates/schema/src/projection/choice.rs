@@ -261,10 +261,14 @@ impl<'a> ChoiceCtx<'a> {
                 items: self.label_items(options),
                 count,
             },
-            engine::PendingChoice::SacrificeUnlessPay {
+            // The view still spells the sacrifice case because its proto field is wire-locked
+            // (docs/WIRE_COMPAT.md is expand-only — no renames); the engine variant it maps from
+            // has since grown a general `otherwise` penalty, which the client doesn't read.
+            engine::PendingChoice::PayOrElse {
                 player,
                 source,
                 cost,
+                ..
             } => PendingChoiceView::SacrificeUnlessPay {
                 player: player.0,
                 source,

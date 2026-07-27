@@ -987,7 +987,7 @@ impl Effect {
             // no chosen target (see the variant doc).
             | Effect::Zone(ZoneEffect::ReturnExiledCardToOwnersGraveyard { .. })
             // Both ETB sacrifice-unless arms always act on their own source — no chosen target.
-            | Effect::Choice(ChoiceEffect::SacrificeSelfUnlessPay { .. })
+            | Effect::Choice(ChoiceEffect::PayOrElse { .. })
             | Effect::Choice(ChoiceEffect::SacrificeSelfUnlessReturnLand { .. })
             // Gomazoa enumerates its own blocked creatures internally — no chosen target.
             | Effect::Zone(ZoneEffect::TuckSelfAndBlockedCreatures)

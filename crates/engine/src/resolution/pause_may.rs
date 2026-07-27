@@ -6,7 +6,7 @@
 use crate::*;
 
 impl Game {
-    /// Pause on the matching may-* / SacrificeSelfUnlessPay effect.
+    /// Pause on the matching may-* / PayOrElse effect.
     pub(crate) fn run_may_pause(&mut self, effect: Effect, ctx: ResolveCtx) {
         let ResolveCtx {
             controller,
@@ -185,15 +185,17 @@ impl Game {
                     },
                 );
             }
-            // Rupture Spire's own ETB trigger: "sacrifice it unless you pay {1}." Pauses on the
-            // same pay-or-sacrifice shape Echo's `PayEchoOrSacrifice` uses, under its own variant
-            // (this is a real triggered ability, not Echo — CR 603.3b, not CR 702.31).
-            Effect::Choice(ChoiceEffect::SacrificeSelfUnlessPay { cost }) => pending::raise(
+            // "…unless you pay {cost}" (Rupture Spire's ETB, Phantasmal Forces' and Force of
+            // Nature's upkeeps). Pauses on the same pay-or-decline shape Echo's
+            // `PayEchoOrSacrifice` uses, under its own variant (these are real triggered
+            // abilities, not Echo — CR 603.3b, not CR 702.31).
+            Effect::Choice(ChoiceEffect::PayOrElse { cost, otherwise }) => pending::raise(
                 self,
-                pending::ChoiceRequest::SacrificeUnlessPay {
+                pending::ChoiceRequest::PayOrElse {
                     player: controller,
                     source,
                     cost,
+                    otherwise,
                 },
             ),
             _ => unreachable!("may pause family received a non-family effect"),

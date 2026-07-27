@@ -3088,7 +3088,7 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
             forces.abilities[0].timing,
             Timing::Triggered(Trigger::Upkeep)
         );
-        let Effect::Choice(ChoiceEffect::SacrificeSelfUnlessPay { cost }) =
+        let Effect::Choice(ChoiceEffect::PayOrElse { cost, otherwise }) =
             forces.abilities[0].effect
         else {
             panic!("Phantasmal Forces asks for rent");
@@ -3099,6 +3099,34 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
             "{{U}}, not one generic"
         );
         assert_eq!(cost.generic, 0);
+        assert_eq!(
+            otherwise,
+            &[Effect::Sacrifice(SacrificeEffect::Source)],
+            "skipping the rent sacrifices the Illusion itself"
+        );
+
+        // Force of Nature shares that upkeep shape but bills in damage, not a sacrifice.
+        let force = get_by_name("Force of Nature").expect("Force of Nature is in the pool");
+        assert_eq!(
+            force.abilities[0].timing,
+            Timing::Triggered(Trigger::Upkeep)
+        );
+        let Effect::Choice(ChoiceEffect::PayOrElse { cost, otherwise }) = force.abilities[0].effect
+        else {
+            panic!("Force of Nature asks for rent too");
+        };
+        assert_eq!(
+            cost.colored[Color::Green.index()],
+            4,
+            "{{G}}{{G}}{{G}}{{G}}"
+        );
+        assert_eq!(
+            otherwise,
+            &[Effect::Damage(DamageEffect::ToSelf {
+                amount: Amount::Fixed(8)
+            })],
+            "the unpaid Force stays on the battlefield and mauls you for 8"
+        );
 
         // Verduran Enchantress watches enchantment casts, and the draw is optional.
         let enchantress =

@@ -180,7 +180,8 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     `Put a land from hand onto the battlefield${bool(params, "tapped") ? " tapped" : ""}`,
   "effect.choice_sacrifice_own": (params) =>
     `Sacrifice ${param(params, "count")} ${humanize(param(params, "filter", "permanents"))}`,
-  "effect.choice_sacrifice_self_unless_pay": (params) => `Sacrifice this unless you pay ${param(params, "cost")}`,
+  "effect.choice_pay_or_else": (params, children) =>
+    `Pay ${param(params, "cost")} or: ${children.join(", then ")}`,
   "effect.choice_sacrifice_self_unless_return_land": literal(
     "Sacrifice this unless you return a non-Lair land you control",
   ),

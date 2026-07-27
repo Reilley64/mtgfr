@@ -906,7 +906,7 @@ impl Game {
                 self.each_player_exiles_until_nonland(controller, source, events)
             }
             // MaySacrifice / MayReturnFromGraveyard / MayDiscard / MayDraw* /
-            // SacrificeSelfUnlessPay — may pause peel (`resolution/pause_may`).
+            // PayOrElse — may pause peel (`resolution/pause_may`).
             Effect::Choice(ChoiceEffect::MaySacrifice { .. })
             | Effect::Choice(ChoiceEffect::MayReturnFromGraveyard { .. })
             | Effect::Choice(ChoiceEffect::MayExileDiscardedNonlandMayPlay { .. })
@@ -917,9 +917,7 @@ impl Game {
             | Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
             | Effect::Choice(ChoiceEffect::MayDrawUpToThenOpponentMayRepeat { .. })
             | Effect::Choice(ChoiceEffect::MayPutCounterOnCreature)
-            | Effect::Choice(ChoiceEffect::SacrificeSelfUnlessPay { .. }) => {
-                self.run_may_pause(effect, ctx)
-            }
+            | Effect::Choice(ChoiceEffect::PayOrElse { .. }) => self.run_may_pause(effect, ctx),
             // ChooseCreatureType / ChooseColor / SetOwnColorUntilEndOfTurn / ChooseOne /
             // Demonstrate / Proliferate / PhaseOut — choose pause peel (`resolution/pause_choose`).
             Effect::Choice(ChoiceEffect::ChooseCreatureType)

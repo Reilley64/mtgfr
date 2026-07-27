@@ -25,5 +25,6 @@ timing = "upkeep"
 # Sacrifice this creature unless you pay {U}.
 [[abilities.effects]]
 type = "choice"
-mode = "sacrifice_self_unless_pay"
+mode = "pay_or_else"
 cost = { blue = 1 }
+otherwise = [{ type = "sacrifice", mode = "source" }]

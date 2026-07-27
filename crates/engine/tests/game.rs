@@ -27507,7 +27507,7 @@ fn rupture_spire_kept_when_paid() {
     assert!(
         matches!(
             game.pending_choice(),
-            Some(PendingChoice::SacrificeUnlessPay {
+            Some(PendingChoice::PayOrElse {
                 player: PlayerId(0),
                 source,
                 ..
@@ -27571,11 +27571,12 @@ fn echo_label_renders_colored_pips() {
         additional: NO_ADD,
         reduce_own_generic: None,
     };
-    let message = Effect::Choice(ChoiceEffect::SacrificeSelfUnlessPay { cost }).message();
-    assert_eq!(
-        message.key.as_str(),
-        "effect.choice_sacrifice_self_unless_pay"
-    );
+    let message = Effect::Choice(ChoiceEffect::PayOrElse {
+        cost,
+        otherwise: &[],
+    })
+    .message();
+    assert_eq!(message.key.as_str(), "effect.choice_pay_or_else");
     assert_eq!(message.params[0].name, "cost");
     assert_eq!(
         message.params[0].value,
@@ -27757,11 +27758,12 @@ fn generic_only_sacrifice_unless_pay_label() {
         additional: NO_ADD,
         reduce_own_generic: None,
     };
-    let message = Effect::Choice(ChoiceEffect::SacrificeSelfUnlessPay { cost }).message();
-    assert_eq!(
-        message.key.as_str(),
-        "effect.choice_sacrifice_self_unless_pay"
-    );
+    let message = Effect::Choice(ChoiceEffect::PayOrElse {
+        cost,
+        otherwise: &[],
+    })
+    .message();
+    assert_eq!(message.key.as_str(), "effect.choice_pay_or_else");
     assert_eq!(message.params[0].name, "cost");
     assert_eq!(
         message.params[0].value,
@@ -104372,4 +104374,57 @@ fn hypnotic_specter_makes_the_player_it_hit_discard_not_its_controller() {
         1,
         "the Specter's controller keeps their own hand"
     );
+}
+
+// "At the beginning of your upkeep, this creature deals 8 damage to you unless you pay
+// {G}{G}{G}{G}." — Phantasmal Forces' pay-or-else upkeep with a penalty that isn't a sacrifice.
+
+#[test]
+fn force_of_nature_mauls_its_controller_when_the_upkeep_cost_goes_unpaid() {
+    let mut game = Game::new();
+    let force = game.spawn_on_battlefield(PlayerId(0), card("Force of Nature"));
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
+    });
+    resolve_top_of_stack(&mut game);
+
+    game.submit(Intent::PayOptionalCost {
+        player: PlayerId(0),
+        pay: false,
+        discard_cost: vec![],
+    })
+    .expect("declining is legal");
+
+    assert_eq!(game.life(PlayerId(0)), 12, "the unpaid Force bites for 8");
+    assert_eq!(
+        game.zone_of(force),
+        Zone::Battlefield,
+        "the penalty is damage, not a sacrifice — the Force stays"
+    );
+}
+
+#[test]
+fn force_of_nature_paid_off_deals_no_damage() {
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Force of Nature"));
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
+    });
+    resolve_top_of_stack(&mut game);
+    game.fund_mana(PlayerId(0)); // mana empties each step — fund it here, at the pause.
+
+    game.submit(Intent::PayOptionalCost {
+        player: PlayerId(0),
+        pay: true,
+        discard_cost: vec![],
+    })
+    .expect("paying {G}{G}{G}{G} is legal");
+
+    assert_eq!(game.life(PlayerId(0)), 20, "the paid Force deals nothing");
 }

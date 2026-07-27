@@ -91,7 +91,7 @@ pub(crate) fn answer(game: &mut Game, intent: Intent) -> Result<Vec<Event>, Reje
             Intent::PayOptionalCost { player, pay, .. } => game.pay_recover(player, pay),
             _ => Err(Reject::IllegalChoice),
         },
-        PendingChoice::SacrificeUnlessPay { .. } => match intent {
+        PendingChoice::PayOrElse { .. } => match intent {
             Intent::PayOptionalCost { player, pay, .. } => game.pay_sacrifice_unless(player, pay),
             _ => Err(Reject::IllegalChoice),
         },
@@ -498,7 +498,7 @@ pub(crate) fn forced(game: &Game) -> Option<Intent> {
         | PendingChoice::PayEchoOrSacrifice { .. }
         | PendingChoice::PayCumulativeUpkeepOrSacrifice { .. }
         | PendingChoice::PayRecoverOrExile { .. }
-        | PendingChoice::SacrificeUnlessPay { .. }
+        | PendingChoice::PayOrElse { .. }
         | PendingChoice::PayLifeOrEntersTapped { .. }
         | PendingChoice::SacrificeUnlessReturnLand { .. }
         | PendingChoice::AssignCombatDamage { .. }

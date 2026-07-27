@@ -239,8 +239,14 @@ pub enum ChoiceEffect {
         count: u32,
     },
 
-    SacrificeSelfUnlessPay {
+    /// "…unless you pay `cost`" (CR 701.16's optional-cost shape): the controller is offered the
+    /// payment, and declining runs `otherwise` instead. Most printings sacrifice the source
+    /// (Phantasmal Forces, Rupture Spire) but the penalty is whatever the card prints — Force of
+    /// Nature's is "this creature deals 8 damage to you". Always pauses: only the player can answer.
+    PayOrElse {
         cost: Cost,
+        #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::static_slice"))]
+        otherwise: &'static [Effect],
     },
 
     SacrificeSelfUnlessReturnLand {

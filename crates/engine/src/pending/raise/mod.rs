@@ -139,11 +139,12 @@ pub(crate) enum ChoiceRequest {
     },
     /// [`Effect::Choice(ChoiceEffect::PutFromHandOnTop)`] — empty (or zero-count) hand skips.
     PutFromHandOnTop { player: crate::PlayerId, count: u32 },
-    /// [`Effect::Choice(ChoiceEffect::SacrificeSelfUnlessPay)`] — always pauses.
-    SacrificeUnlessPay {
+    /// [`Effect::Choice(ChoiceEffect::PayOrElse)`] — always pauses.
+    PayOrElse {
         player: crate::PlayerId,
         source: crate::ObjectId,
         cost: crate::Cost,
+        otherwise: &'static [crate::Effect],
     },
     /// [`Effect::Choice(ChoiceEffect::SacrificeSelfUnlessReturnLand)`] — no candidates → `None` (caller sacrifices).
     SacrificeUnlessReturnLand {
@@ -612,7 +613,7 @@ pub(super) fn choice_from_request(game: &Game, request: ChoiceRequest) -> Option
         | ChoiceRequest::DivideSpellDamage { .. }
         | ChoiceRequest::DivideCounters { .. }
         | ChoiceRequest::ChooseManaColor { .. }
-        | ChoiceRequest::SacrificeUnlessPay { .. }
+        | ChoiceRequest::PayOrElse { .. }
         | ChoiceRequest::ChooseTargetPlayers { .. }
         | ChoiceRequest::DanceExileMore { .. }
         | ChoiceRequest::OpponentChoosesPile { .. }

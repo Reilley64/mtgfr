@@ -1006,16 +1006,17 @@ pub enum PendingChoice {
         source: ObjectId,
         cost: Cost,
     },
-    /// `player` (`source`'s controller) may pay `cost` to keep `source`, or decline and sacrifice
-    /// it — Rupture Spire's own ETB triggered ability (CR 603.3b), NOT Echo, though it shares
-    /// [`Self::PayEchoOrSacrifice`]'s pay-or-sacrifice polarity and its
-    /// [`Intent::PayOptionalCost`] answer shape. Kept as its own variant (rather than reused)
-    /// because it's a real triggered ability firing once at ETB, not Echo's own upkeep-scoped
-    /// keyword (CR 702.31) — conflating the two would misname what's happening on the stack.
-    SacrificeUnlessPay {
+    /// `player` (`source`'s controller) may pay `cost`, or decline and take `otherwise` — Rupture
+    /// Spire's own ETB triggered ability and Phantasmal Forces' upkeep both sacrifice `source`,
+    /// Force of Nature's upkeep instead deals 8 damage to its controller. NOT Echo, though it
+    /// shares [`Self::PayEchoOrSacrifice`]'s polarity and its [`Intent::PayOptionalCost`] answer
+    /// shape: these are real triggered abilities (CR 603.3b), not Echo's keyword (CR 702.31), and
+    /// their penalty is whatever the card prints rather than a fixed sacrifice.
+    PayOrElse {
         player: PlayerId,
         source: ObjectId,
         cost: Cost,
+        otherwise: &'static [Effect],
     },
     /// `player` (a land card's controller, about to play it) may pay `life` to have it enter
     /// untapped, or decline and have it enter tapped (CR 614.12 — [`CardDef::enters_tapped_unless_you_pay_life`],
@@ -1023,7 +1024,7 @@ pub enum PendingChoice {
     /// tapped."). Raised by [`Game::play_land`] *before* the land's own [`Event::LandPlayed`] is
     /// minted (the land isn't on the battlefield yet — CR 614.12's replacement locks in before
     /// the permanent exists), so `source` is the land *card*, not a permanent. Answered by
-    /// [`Intent::PayOptionalCost`], the land-drop-scoped twin of [`Self::SacrificeUnlessPay`] —
+    /// [`Intent::PayOptionalCost`], the land-drop-scoped twin of [`Self::PayOrElse`] —
     /// same shape, opposite consequence (there, sacrifice; here, tapped).
     PayLifeOrEntersTapped {
         player: PlayerId,
@@ -1032,7 +1033,7 @@ pub enum PendingChoice {
     },
     /// `player` (`source`'s controller) must return one of `candidates` (their own non-Lair
     /// lands) to its owner's hand to keep `source`, or decline and sacrifice it — Treva's Ruins'
-    /// own ETB triggered ability. The land-bounce twin of [`Self::SacrificeUnlessPay`]; answered
+    /// own ETB triggered ability. The land-bounce twin of [`Self::PayOrElse`]; answered
     /// by [`Intent::ReturnLandOrSacrifice`]. `candidates` are public battlefield permanents.
     SacrificeUnlessReturnLand {
         player: PlayerId,
@@ -1894,7 +1895,7 @@ impl PendingChoice {
             | PendingChoice::PayEchoOrSacrifice { player, .. }
             | PendingChoice::PayCumulativeUpkeepOrSacrifice { player, .. }
             | PendingChoice::PayRecoverOrExile { player, .. }
-            | PendingChoice::SacrificeUnlessPay { player, .. }
+            | PendingChoice::PayOrElse { player, .. }
             | PendingChoice::PayLifeOrEntersTapped { player, .. }
             | PendingChoice::SacrificeUnlessReturnLand { player, .. }
             | PendingChoice::AssignCombatDamage { player, .. }
