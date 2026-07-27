@@ -1466,6 +1466,14 @@ impl Game {
                     p.temp_lost_keywords = Box::leak(union.into_boxed_slice());
                 }
             }
+            Event::AttachedKeywordsLost {
+                source, keywords, ..
+            } => {
+                // ponytail: clobber, not the union `KeywordsStripped` above does — one Aura gains
+                // one such ability, and the only card that has it can only gain it once (its own
+                // enters trigger). Union here when a second source can stack onto the same Aura.
+                self.permanent_mut(source).attachment_lost_keywords = keywords;
+            }
             Event::ControlGainedUntilEndOfTurn {
                 object,
                 controller,

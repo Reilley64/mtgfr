@@ -242,6 +242,7 @@ message_keys! {
     EFFECT_MISC_YOU_CHOOSE_WHICH_CREATURES_BLOCK => "effect.misc_you_choose_which_creatures_block",
     EFFECT_PUMP_ANIMATE_SELF_UNTIL_END_OF_TURN => "effect.pump_animate_self_until_end_of_turn",
     EFFECT_PUMP_ENCHANTED_ATTACKER_PUMP_ATTACKING_OPPONENT_ELSE_CONTROLLER_LOSES_LIFE => "effect.pump_enchanted_attacker_pump_attacking_opponent_else_controller_loses_life",
+    EFFECT_PUMP_ENCHANTED_CREATURE_LOSES_KEYWORDS => "effect.pump_enchanted_creature_loses_keywords",
     EFFECT_PUMP_GRANT_CHOSEN_COLOR_PROTECTION_UNTIL_END_OF_TURN => "effect.pump_grant_chosen_color_protection_until_end_of_turn",
     EFFECT_PUMP_GRANT_KEYWORDS_TO_PERMANENTS_YOU_CONTROL_UNTIL_END_OF_TURN => "effect.pump_grant_keywords_to_permanents_you_control_until_end_of_turn",
     EFFECT_PUMP_PUMP_EACH_CREATURE_UNTIL_END_OF_TURN => "effect.pump_pump_each_creature_until_end_of_turn",
@@ -1508,6 +1509,10 @@ impl Effect {
                 int_param("toughness", toughness),
                 int_param("life", life),
             ]),
+            Effect::Pump(EnchantedCreatureLosesKeywords { keywords }) => {
+                MessageRef::new(MessageKey::EFFECT_PUMP_ENCHANTED_CREATURE_LOSES_KEYWORDS)
+                    .with_params(vec![keyword_list_param("keywords", keywords)])
+            }
             Effect::Pump(StripKeywordsFromOpponentsCreatures { keywords }) => {
                 MessageRef::new(MessageKey::EFFECT_PUMP_STRIP_KEYWORDS_FROM_OPPONENTS_CREATURES)
                     .with_params(vec![keyword_list_param("keywords", keywords)])

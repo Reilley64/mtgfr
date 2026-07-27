@@ -1169,6 +1169,7 @@ pub(crate) fn fresh_permanent(
         set_color_eot: None,
         temp_keywords: &[],
         temp_lost_keywords: &[],
+        attachment_lost_keywords: &[],
         set_base_pt: None,
         set_base_pt_timestamp: 0,
         added_types: TypeSet::NONE,
@@ -1827,6 +1828,13 @@ pub(crate) struct Permanent {
     /// free from the same mechanism as "lose." Cleared at cleanup alongside `temp_keywords`
     /// above (see [`Event::TempBoostsEnded`]'s handler).
     pub(crate) temp_lost_keywords: &'static [Keyword],
+    /// Keywords the creature this Aura is attached to loses, indefinitely (Earthbind's "this Aura
+    /// gains 'Enchanted creature loses flying'"). Set on the *Aura*, not on its host (see
+    /// [`Event::AttachedKeywordsLost`]), and read through the Aura's live attachment at the end of
+    /// [`Game::compute_effective_keywords_uncached`] — so it lapses on its own when the Aura leaves
+    /// the battlefield, and follows the Aura if it is moved to a new host. Never cleared at
+    /// cleanup, unlike `temp_lost_keywords` above.
+    pub(crate) attachment_lost_keywords: &'static [Keyword],
     /// An *indefinite* base-P/T SET (CR 611.2c — Excava, the Risen Past's "It's a 1/1 Spirit
     /// creature with flying"): the indefinite twin of `base_pt_set_eot`, `Some((p, t))` while
     /// active, emitted as the same 7b `BasePtSet` layer by [`Game::pt_layers`] (before the 7c

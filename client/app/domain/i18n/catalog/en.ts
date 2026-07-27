@@ -433,6 +433,8 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     `Becomes a ${param(params, "base_power")}/${param(params, "base_toughness")} creature until end of turn`,
   "effect.pump_enchanted_attacker_pump_attacking_opponent_else_controller_loses_life": (params) =>
     `It gets +${param(params, "power")}/+${param(params, "toughness")} until end of turn if it's attacking one of your opponents. Otherwise, its controller loses ${param(params, "life")} life`,
+  "effect.pump_enchanted_creature_loses_keywords": (params) =>
+    `Enchanted creature loses ${humanize(param(params, "keywords"))}`,
   "effect.pump_grant_chosen_color_protection_until_end_of_turn": literal(
     "Target creature you control gains protection from the color of your choice until end of turn",
   ),

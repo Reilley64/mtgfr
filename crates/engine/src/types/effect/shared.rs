@@ -803,6 +803,7 @@ impl Effect {
             | Effect::Pump(PumpEffect::PumpOtherAttackersAttackingYourOpponents { .. })
             | Effect::Pump(PumpEffect::EnchantedAttackerPumpAttackingOpponentElseControllerLosesLife { .. })
             | Effect::Pump(PumpEffect::StripKeywordsFromOpponentsCreatures { .. })
+            | Effect::Pump(PumpEffect::EnchantedCreatureLosesKeywords { .. })
             | Effect::Pump(PumpEffect::PumpSelfUntilEndOfTurn { .. })
             | Effect::Static(StaticEffect::ControlAttached)
             | Effect::Choice(ChoiceEffect::EachPlayerSacrifices { .. })
@@ -1723,6 +1724,13 @@ pub enum Condition {
     ///   is filtered out at placement never reaches the stack, so it is indistinguishable from one
     ///   that never fired. Give it a real variant if a card ever needs to *see* the non-fire.
     EnchantedPermanentsControllersUpkeep,
+    /// "if enchanted creature has `keyword`" (Earthbind's enters trigger: "if enchanted creature
+    /// has flying"). Source-object-based like
+    /// [`EnchantedPermanentsControllersUpkeep`](Self::EnchantedPermanentsControllersUpkeep) above —
+    /// it reads the Aura's own attachment — and asks after the host's *effective* keyword set, so a
+    /// granted flying counts. An Aura with no host (or on a host that has since lost the keyword)
+    /// never holds.
+    EnchantedCreatureHasKeyword { keyword: Keyword },
     /// "if that spell's mana value is `at_least` or greater" (Prismari Pianist's "if that
     /// spell's mana value is 5 or greater, create three of those tokens instead") — a
     /// `Trigger::CastSpell` (magecraft) intervening-if, read off `TriggerContext::cast_mana_value`.

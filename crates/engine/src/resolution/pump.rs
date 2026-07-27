@@ -325,6 +325,20 @@ impl Game {
                     source: Some(source),
                 }]
             }
+            // Earthbind: "this Aura gains 'Enchanted creature loses flying.'" The gained ability
+            // is modelled as the loss itself, recorded on the Aura — see
+            // `Event::AttachedKeywordsLost`. An Aura whose host left in response has nothing to
+            // ground (CR 704.5m).
+            PumpEffect::EnchantedCreatureLosesKeywords { keywords } => {
+                let Some(host) = self.attached_to(source) else {
+                    return Vec::new();
+                };
+                vec![Event::AttachedKeywordsLost {
+                    source,
+                    object: host,
+                    keywords,
+                }]
+            }
             // Mass keyword strip: every creature an opponent of the controller controls loses
             // `keywords` and can't have them until end of turn (arcane_lighthouse).
             PumpEffect::StripKeywordsFromOpponentsCreatures { keywords } => self

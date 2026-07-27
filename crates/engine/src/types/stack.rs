@@ -2466,6 +2466,17 @@ pub enum Event {
         object: ObjectId,
         keywords: &'static [Keyword],
     },
+    /// An Aura's own resolving trigger gave it "Enchanted creature loses `keywords`" (Earthbind).
+    /// Recorded on the *Aura* ([`Permanent::attachment_lost_keywords`]) rather than on `object`, so
+    /// the loss ends when the Aura leaves the battlefield and moves with it if it is re-attached —
+    /// the indefinite, Aura-bound counterpart of [`Event::KeywordsStripped`] above. `object` is the
+    /// host at the time, carried for the wire projection and the characteristics cache; the live
+    /// read always goes through the Aura's current attachment. Public battlefield state.
+    AttachedKeywordsLost {
+        source: ObjectId,
+        object: ObjectId,
+        keywords: &'static [Keyword],
+    },
     /// A one-shot control-changing effect (CR 720) took effect: `object` is now controlled by
     /// `controller` until end of turn (Besmirch). Read back by [`Game::controller_of`] via
     /// [`Game::control_overrides`], reverted by [`Event::ControlEndedUntilEndOfTurn`] at cleanup.

@@ -30486,6 +30486,56 @@ fn an_aura_granting_flying_makes_its_host_unblockable_by_grounders() {
 }
 
 #[test]
+fn earthbind_grounds_a_flyer_only_while_it_stays_attached() {
+    // "When this Aura enters, if enchanted creature has flying, this Aura deals 2 damage to that
+    // creature and this Aura gains 'Enchanted creature loses flying.'" The grounding is an
+    // ability the Aura *gains*, so it leaves with the Aura.
+    let mut game = Game::new();
+    let elemental = game.spawn_on_battlefield(PlayerId(1), card("Air Elemental")); // 4/4 flying
+    let earthbind = game.spawn_in_hand(PlayerId(0), card("Earthbind"));
+    cast_and_resolve(&mut game, earthbind, Some(Target::Object(elemental)));
+    resolve_top_of_stack(&mut game); // the enters trigger
+
+    assert_eq!(game.marked_damage(elemental), 2, "it deals 2 to the flyer");
+    assert!(
+        !game.has_keyword(elemental, Keyword::Flying),
+        "and grounds it"
+    );
+
+    let aura = game.attachments(elemental)[0];
+    let disenchant = game.spawn_in_hand(PlayerId(0), card("Disenchant"));
+    cast_and_resolve(&mut game, disenchant, Some(Target::Object(aura)));
+    assert!(
+        game.has_keyword(elemental, Keyword::Flying),
+        "the grounding rode the Aura, so it flies again once the Aura is gone"
+    );
+}
+
+#[test]
+fn earthbind_never_grounds_a_host_that_had_no_flying_when_it_entered() {
+    // The intervening-if is checked when the trigger would be put on the stack (CR 603.4), and
+    // the Aura only gains its grounding ability if that check passed — so a host that picks up
+    // flying afterwards keeps it.
+    let mut game = Game::new();
+    let minotaur = game.spawn_on_battlefield(PlayerId(1), card("Hurloon Minotaur")); // 2/3, no flying
+    let earthbind = game.spawn_in_hand(PlayerId(0), card("Earthbind"));
+    cast_and_resolve(&mut game, earthbind, Some(Target::Object(minotaur)));
+
+    assert!(
+        game.stack_is_empty(),
+        "no flying, so nothing even triggered"
+    );
+    assert_eq!(game.marked_damage(minotaur), 0, "and no damage");
+
+    let ideal = game.spawn_in_hand(PlayerId(0), card("Fallen Ideal"));
+    cast_and_resolve(&mut game, ideal, Some(Target::Object(minotaur)));
+    assert!(
+        game.has_keyword(minotaur, Keyword::Flying),
+        "Earthbind never gained its grounding ability, so a later flying grant sticks"
+    );
+}
+
+#[test]
 fn an_aura_falls_to_the_graveyard_when_its_host_dies() {
     let mut game = Game::new();
     let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears")); // 2/2

@@ -2472,6 +2472,43 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
         }
     }
 
+    /// Earthbind's enters trigger is gated on the host already flying, and the grounding it hands
+    /// itself is a loss that rides the Aura rather than a printed static — so a host enchanted
+    /// while grounded keeps a flying granted later.
+    #[test]
+    fn unlimited_earthbind_grounds_only_a_host_that_entered_flying() {
+        let earthbind = get_by_name("Earthbind").expect("Earthbind is in the pool");
+        let ability = &earthbind.abilities[0];
+        assert!(
+            matches!(ability.timing, Timing::Triggered(Trigger::Etb)),
+            "the grounding happens as the Aura enters"
+        );
+        assert_eq!(
+            ability.condition,
+            Some(Condition::EnchantedCreatureHasKeyword {
+                keyword: Keyword::Flying
+            }),
+            "and only if enchanted creature has flying"
+        );
+        let Effect::Sequence { steps } = &ability.effect else {
+            panic!("expected the damage and the grounding as two steps");
+        };
+        assert!(matches!(
+            steps[0],
+            Effect::Damage(DamageEffect::Target {
+                amount: Amount::Fixed(2),
+                target: TargetSpec::EnchantedCreature,
+                ..
+            })
+        ));
+        assert!(matches!(
+            steps[1],
+            Effect::Pump(PumpEffect::EnchantedCreatureLosesKeywords {
+                keywords: [Keyword::Flying]
+            })
+        ));
+    }
+
     /// Ankh of Mishra bills the entering land's controller, not the Ankh's — so the effect reads
     /// the trigger's own object rather than a target or the source's controller.
     #[test]

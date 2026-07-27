@@ -340,6 +340,11 @@ pub(crate) fn project_event(
             object,
             keywords: _,
         } => VisibleEvent::KeywordsStripped { object },
+        // ponytail: an Aura grounding its host is the same "this object's keywords changed, re-read
+        // it" cue as the until-end-of-turn strip above, so it reuses that wire event rather than
+        // adding one — neither the duration nor the Aura that carries it is on the wire, and the
+        // client's per-object keyword state comes from a fresh snapshot each delta anyway.
+        Event::AttachedKeywordsLost { object, .. } => VisibleEvent::KeywordsStripped { object },
         Event::ControlGainedUntilEndOfTurn {
             object,
             controller,

@@ -1585,6 +1585,18 @@ impl Game {
         if let Some(p) = self.as_permanent(object) {
             keywords.retain(|k| !p.temp_lost_keywords.contains(k));
         }
+        // "Enchanted creature loses flying" (Earthbind), an ability the Aura gained rather than one
+        // printed on it: stripped last for the same reason as the losses above — it beats every
+        // grant regardless of source — but indefinitely, and only for as long as the Aura is still
+        // attached here, since the loss lives on the Aura.
+        // ponytail: no CR 613 timestamp ordering against the grants it undoes; no pool card wants a
+        // grant applied later to win.
+        for aura in self.attachments(object) {
+            let Some(lost) = self.as_permanent(aura).map(|p| p.attachment_lost_keywords) else {
+                continue;
+            };
+            keywords.retain(|k| !lost.contains(k));
+        }
         keywords
     }
 

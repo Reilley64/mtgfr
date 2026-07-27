@@ -661,7 +661,7 @@ exists but takes a fixed count; the novelty is the derived per-player count and 
 sequencing.
 *Cards:* balance.
 
-### 44. `aura-etb-conditional-self-grant` — 1 card, S
+### 44. `aura-etb-conditional-self-grant` — 1 card, S — **done**
 Depends on: nothing.
 Earthbind — "When this Aura enters, **if** enchanted creature has flying, this Aura deals 2 damage
 to that creature **and this Aura gains** 'Enchanted creature loses flying.'" The intervening-if
@@ -670,6 +670,18 @@ entry, so it can't be a plain printed static. *Sketch:* a
 `Effect::GrantStaticToSelf { effect }` writing a granted-static onto the permanent that
 `characteristics.rs`'s static scanners read alongside printed ones.
 *Cards:* earthbind.
+
+*Landed:* the sketch's granted-static machinery turned out to be unnecessary. Nothing needs to
+record that the Aura *gained an ability*; the ability's only observable effect is the keyword loss,
+so the trigger's second step applies that loss directly and the intervening-if
+(`Condition::EnchantedCreatureHasKeyword`, source-object-based like the upkeep-tax cycle's gate)
+decides whether it ever happens. The loss is recorded on the **Aura**
+(`Permanent::attachment_lost_keywords`, written by `Event::AttachedKeywordsLost`) rather than on the
+host, and read at the end of `compute_effective_keywords_uncached` through the Aura's live
+attachment — so it ends by itself when the Aura leaves, follows the Aura if it is re-attached, and
+needs no cleanup arm. That also let the wire stay put: an Aura grounding its host is the same
+"re-read this object's keywords" cue as the until-end-of-turn strip, so the projection reuses
+`VisibleEvent::KeywordsStripped` instead of growing a new event and a proto message.
 
 ### 45. `pump-by-own-power-with-delayed-destroy` — 1 card, S
 Depends on: nothing.

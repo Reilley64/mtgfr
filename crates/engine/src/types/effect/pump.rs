@@ -38,6 +38,17 @@ pub enum PumpEffect {
         life: u32,
     },
 
+    /// "This Aura gains 'Enchanted creature loses flying'" (Earthbind's enters trigger, whose
+    /// intervening-if already checked that the host had it): the host loses `keywords` for as long
+    /// as this Aura stays attached to it, with no end-of-turn expiry. The indefinite, Aura-bound
+    /// sibling of [`StripKeywordsFromOpponentsCreatures`](Self::StripKeywordsFromOpponentsCreatures)
+    /// — see [`Event::AttachedKeywordsLost`](crate::Event). Nothing happens if the Aura has already
+    /// fallen off (CR 704.5m).
+    EnchantedCreatureLosesKeywords {
+        #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::static_slice"))]
+        keywords: &'static [Keyword],
+    },
+
     GrantChosenColorProtectionUntilEndOfTurn {
         target: TargetSpec,
     },

@@ -3840,6 +3840,11 @@ impl Game {
             Condition::EnchantedPermanentsControllersUpkeep => self
                 .attached_to(source)
                 .is_some_and(|host| Some(self.controller_of(host)) == ctx.active_player),
+            // Earthbind: "if enchanted creature has flying" — source-object-based like the
+            // upkeep gate above, reading this Aura's host rather than its controller.
+            Condition::EnchantedCreatureHasKeyword { keyword } => self
+                .attached_to(source)
+                .is_some_and(|host| self.has_keyword(host, keyword)),
             // Dread Cacodemon/Reiver Demon: "if you cast it from your hand" — source-object-based
             // like the four conditions above.
             Condition::CastFromHand => self.as_permanent(source).is_some_and(|p| p.cast_from_hand),
@@ -3987,6 +3992,10 @@ impl Game {
             // at trigger placement (the only site that has a source id) before falling through
             // here.
             Condition::EnchantedPermanentsControllersUpkeep => false,
+            // ponytail: source-object-based like `EnchantedPermanentsControllersUpkeep` above —
+            // Earthbind's gate needs the Aura's host, so `Game::ability_condition_holds` intercepts
+            // it at trigger placement before it can fall through here.
+            Condition::EnchantedCreatureHasKeyword { .. } => false,
             // ponytail: target-based like `ThisPermanentEnteredUntapped` above — `TriggerContext`
             // carries no target either. Reachable only through the `Effect::Conditional` resolve
             // site (`Game::run`), which intercepts it directly against the shared

@@ -104,7 +104,10 @@ impl Game {
                 | Event::BasePtSetIndefinite { object, .. }
                 | Event::TypesAddedUntilEndOfTurn { object, .. }
                 | Event::TempBoostsEnded { object }
-                | Event::KeywordsStripped { object, .. } => {
+                | Event::KeywordsStripped { object, .. }
+                // The host named here is the one whose keyword set just shrank; the Aura carrying
+                // the loss has no keywords of its own to recompute.
+                | Event::AttachedKeywordsLost { object, .. } => {
                     cache.invalidate_object(object);
                 }
                 // A Backup grant (CR 702.166) adds the source's keywords to the target — drop its
