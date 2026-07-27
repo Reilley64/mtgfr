@@ -1491,6 +1491,13 @@ impl Game {
         {
             return false;
         }
+        // Power floor (Meekstone's "creatures with power 3 or greater"), the mirror of the
+        // ceiling above and read just as live — a creature that shrinks below it walks free.
+        if let Some(min) = filter.power_min
+            && self.power(id) < min as i32
+        {
+            return false;
+        }
         // Power parity (Zimone's Hypothesis's "power of the chosen quality" — zero is even).
         if let Some(parity) = filter.power_parity {
             let is_even = self.power(id).rem_euclid(2) == 0;

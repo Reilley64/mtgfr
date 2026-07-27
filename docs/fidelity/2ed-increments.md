@@ -161,7 +161,7 @@ dealt to this creature instead", conditioned on the bodyguard being untapped, so
 `StaticEffect` scanned at damage time rather than an activated shield.
 *Cards:* jade_monolith, personal_incarnation, veteran_bodyguard.
 
-### 7. `untap-step-restrictions` — 9 cards, M
+### 7. `untap-step-restrictions` — 9 cards, M — **7a done, 7b–7d open**
 Depends on: nothing.
 "Doesn't untap during your untap step" / "players skip their untap steps" / "can't untap more
 than one." The untap step currently untaps everything a player controls unconditionally.
@@ -175,6 +175,32 @@ step already knows how to pause. Instill Energy is the inverse — an *extra* un
 step, which is an ordinary `untap_target` gated to once each turn.
 *Cards:* basalt_monolith, instill_energy, mana_vault, meekstone, paralyze, smoke, stasis,
 time_vault, winter_orb.
+*Landed (7a — basalt_monolith, mana_vault, meekstone):* the nine cards are four unrelated
+mechanisms wearing one heading, so only the printed-static family shipped. `StaticEffect::DoesntUntap
+{ self_only, filter }` and `Game::doesnt_untap` are the whole of it: the untap step's turn-based
+action consults the scanner and nothing else does, which is exactly why Basalt Monolith's
+"{3}: Untap this artifact" still frees it — an untap *effect* never reads the static. The scanner
+copies `Game::cant_block_filter`'s battlefield-wide idiom rather than scoping to the source's
+controller, and that is what makes Meekstone reach across the table for free: `FilterController::Any`
+is already the filter default, so "their controllers' untap steps" needs no `all_players` flag of
+the sort `Anthem` carries. `self_only` is the printed-on-itself form and ignores the filter outright.
+The only genuinely new filter axis was `power_min`, the mirror of the existing `power_max`.
+Mana Vault cost two small trigger additions and no new machinery: `Trigger::DrawStep`, the
+controller-scoped twin of `each_draw_step` riding the same watch table and the same
+`TriggerWatchEvent::for_active_player`, and `Condition::SourceTapped`, spelled as its own variant
+because `[abilities.condition]` has no negation axis — only a nested `conditional` step carries
+`negate`. Its "you may pay {4}" is #10's landed optional-trigger-with-`[abilities.cost]` shape
+unchanged. Two corrections to the sketch above, both from the printed oracle: the Vault's ping is at
+the **draw** step, not the upkeep its pay-{4} clause lives in, and Time Vault's untap clause is
+tangled with #18's extra turn, not with this static at all.
+*Deferred, with the blocker each hit:* **7b Paralyze** — its "enchanted creature's controller may
+pay {4}" is billed to the *host's* controller, and neither `ChoiceEffect::PayOrElse` nor the
+optional-trigger `PendingChoice::PayCost` has a payer axis; it would also want
+`GrantToAttached { doesnt_untap: true }`, since `GrantedAbility` carries no static timing.
+**7c Stasis / Smoke / Winter Orb** — a per-player skipped untap step and a per-player cap on how
+many permanents may untap, the latter needing the `PendingChoice::ChooseUntapSet` the sketch names.
+**7d Instill Energy / Time Vault** — "can attack as though it had haste" plus a once-each-turn
+untap, and an extra turn that belongs to #18.
 
 ### 8. `basic-land-type-changing` — 7 cards, M
 Depends on: nothing.

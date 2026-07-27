@@ -280,6 +280,7 @@ message_keys! {
     EFFECT_STATIC_CANT_BLOCK_FILTER => "effect.static_cant_block_filter",
     EFFECT_STATIC_CANT_CAST_DURING_COMBAT => "effect.static_cant_cast_during_combat",
     EFFECT_STATIC_CANT_CAST_IF_ATTACKED_THIS_TURN => "effect.static_cant_cast_if_attacked_this_turn",
+    EFFECT_STATIC_DOESNT_UNTAP => "effect.static_doesnt_untap",
     EFFECT_STATIC_MUST_ATTACK_EACH_COMBAT => "effect.static_must_attack_each_combat",
     EFFECT_STATIC_OPPONENTS_CANT_SEARCH_LIBRARIES => "effect.static_opponents_cant_search_libraries",
     EFFECT_STATIC_PROTECTION_FROM_CHOSEN_COLOR => "effect.static_protection_from_chosen_color",
@@ -849,6 +850,9 @@ fn permanent_filter_token(filter: PermanentFilter) -> String {
     }
     if let Some(max) = filter.power_max {
         parts.push(format!("power_lte_{max}"));
+    }
+    if let Some(min) = filter.power_min {
+        parts.push(format!("power_gte_{min}"));
     }
     if let Some(parity) = filter.power_parity {
         parts.push(format!("power_{}", parity_token(parity)));
@@ -2102,6 +2106,12 @@ impl Effect {
             }
             Effect::Static(CantBlockFilter { filter }) => MessageRef::new(MessageKey::EFFECT_STATIC_CANT_BLOCK_FILTER)
                 .with_params(vec![permanent_filter_param("filter", filter)]),
+            Effect::Static(DoesntUntap { self_only, filter }) => {
+                MessageRef::new(MessageKey::EFFECT_STATIC_DOESNT_UNTAP).with_params(vec![
+                    bool_param("self_only", self_only),
+                    permanent_filter_param("filter", filter),
+                ])
+            }
             Effect::Static(CantAttackUnlessDefenderControls { filter }) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_CANT_ATTACK_UNLESS_DEFENDER_CONTROLS)
                     .with_params(vec![permanent_filter_param("filter", filter)])

@@ -1570,7 +1570,7 @@ impl<'de> Deserialize<'de> for TypeSet {
 /// (`"creatures"`, `"nonland"`, `"artifact"`, `"creature_or_planeswalker"`, …) — which keeps
 /// the old `destroy_all`/edict spellings working — or a full `{ … }` table with any of the
 /// composable axes (`types`, `controller`, `token`, `other`, `enchanted`, `attached_to_creature`,
-/// `enchanted_by_you`, `mv_max`, `mv_min`, `mv_eq_x`, `mv_max_x`, `power_max`, `power_parity`,
+/// `enchanted_by_you`, `mv_max`, `mv_min`, `mv_eq_x`, `mv_max_x`, `power_max`, `power_min`, `power_parity`,
 /// `noncreature`, `exclude`, `color`, `not_color`, `modified`, `attacking`, `attacking_you`,
 /// `blocking`, `power_less_than_source`, `toughness_less_than_source_power`, `entered_this_turn`,
 /// `nonbasic`, `nonlegendary`, `nonlair`, `exclude_subtypes`,
@@ -1644,6 +1644,8 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     tapped: Option<bool>,
                     #[serde(default)]
                     power_max: Option<u8>,
+                    #[serde(default)]
+                    power_min: Option<u8>,
                     #[serde(default)]
                     power_parity: Option<Parity>,
                     /// Sugar for `exclude = "creature"` (kept for the pool's existing spelling).
@@ -1719,6 +1721,7 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     mv_max_x: t.mv_max_x,
                     tapped: t.tapped,
                     power_max: t.power_max,
+                    power_min: t.power_min,
                     power_parity: t.power_parity,
                     exclude: t.exclude.union(if t.noncreature {
                         TypeSet::CREATURE
@@ -1874,6 +1877,7 @@ enum TriggerTag {
     EndStep,
     EachEndStep,
     EachDrawStep,
+    DrawStep,
     EachOtherPlayerUntapStep,
     YouGainLife,
     OpponentGainsLife,
@@ -2145,6 +2149,7 @@ impl<'de> Deserialize<'de> for Ability {
                 TriggerTag::EndStep => Trigger::EndStep,
                 TriggerTag::EachEndStep => Trigger::EachEndStep,
                 TriggerTag::EachDrawStep => Trigger::EachDrawStep,
+                TriggerTag::DrawStep => Trigger::DrawStep,
                 TriggerTag::EachOtherPlayerUntapStep => Trigger::EachOtherPlayerUntapStep,
                 TriggerTag::YouGainLife => Trigger::YouGainLife,
                 TriggerTag::OpponentGainsLife => Trigger::OpponentGainsLife,

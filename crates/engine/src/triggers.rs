@@ -336,10 +336,13 @@ const UPKEEP_TRIGGER_WATCHES: &[TriggerWatch] = &[
     TriggerWatch::graveyard_controller(Trigger::Upkeep),
     TriggerWatch::battlefield_all_with_active_player(Trigger::EachUpkeep),
 ];
-const DRAW_STEP_TRIGGER_WATCHES: &[TriggerWatch] =
-    &[TriggerWatch::battlefield_all_with_active_player(
-        Trigger::EachDrawStep,
-    )];
+const DRAW_STEP_TRIGGER_WATCHES: &[TriggerWatch] = &[
+    TriggerWatch::battlefield_all_with_active_player(Trigger::EachDrawStep),
+    // Mana Vault's "at the beginning of your draw step": the controller-scoped half of the same
+    // table, riding the same event — `TriggerWatchEvent::for_active_player` sets `player`, which
+    // is what a `ControlledPlayer` watch reads, so "your" and "each player's" resolve off one queue.
+    TriggerWatch::battlefield_controller(Trigger::DrawStep),
+];
 const UNTAP_STEP_TRIGGER_WATCHES: &[TriggerWatch] = &[TriggerWatch::battlefield_all_except_player(
     Trigger::EachOtherPlayerUntapStep,
 )];
@@ -3833,6 +3836,9 @@ impl Game {
             // Howling Mine: "if Howling Mine is untapped" — source-object-based like the three
             // conditions above.
             Condition::SourceUntapped => self.as_permanent(source).is_some_and(|p| !p.tapped),
+            // Mana Vault: "if this artifact is tapped" — the same live read as Howling Mine's
+            // above, the other way round.
+            Condition::SourceTapped => self.as_permanent(source).is_some_and(|p| p.tapped),
             // The 2ed upkeep-tax Aura cycle: "at the beginning of the upkeep of enchanted land's
             // controller" — an `EachUpkeep` watch narrowed to the one upkeep that belongs to this
             // Aura's host's controller. Unattached (the host left in response, CR 704.5m), it
@@ -3998,7 +4004,7 @@ impl Game {
             // through `Game::ability_condition_holds` (Howling Mine's CR 603.4 first check, at
             // trigger placement) or `Effect::Conditional`'s resolve site (the second check), both
             // of which intercept it before falling through here.
-            Condition::SourceUntapped => false,
+            Condition::SourceUntapped | Condition::SourceTapped => false,
             // ponytail: source-object-based like `SourceUntapped` above — the 2ed upkeep-tax Aura
             // cycle's gate needs the Aura's host, so `Game::ability_condition_holds` intercepts it
             // at trigger placement (the only site that has a source id) before falling through

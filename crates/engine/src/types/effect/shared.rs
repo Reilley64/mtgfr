@@ -933,6 +933,7 @@ impl Effect {
             | Effect::Static(StaticEffect::CounterScaledAttackTax)
             | Effect::Static(StaticEffect::CantBeAttackedBy { .. })
             | Effect::Static(StaticEffect::CantBlockFilter { .. })
+            | Effect::Static(StaticEffect::DoesntUntap { .. })
             | Effect::Static(StaticEffect::CantCastDuringCombat)
             // "Each opponent who cast a spell this turn can't attack with creatures" /
             // "...who attacked with a creature this turn can't cast spells" (Angelic Arbiter): a
@@ -1759,6 +1760,13 @@ pub enum Condition {
     /// *both* checks, and the pool falsifies skipping the second (Magma Opus's instant-speed "tap
     /// two target permanents" can tap the source in response, after it triggered untapped).
     SourceUntapped,
+    /// "if [this permanent] is tapped" (Mana Vault's draw-step ping) — the exact negation of
+    /// [`SourceUntapped`](Self::SourceUntapped), spelled as its own variant because an
+    /// `[abilities.condition]` intervening-if has no negation axis (only a nested
+    /// [`Effect::Conditional`] carries `negate`). Read at both of CR 603.4's checks the same way
+    /// its twin is: at trigger placement in [`Game::ability_condition_holds`], and again fresh at
+    /// resolution.
+    SourceTapped,
     /// The gate that turns "at the beginning of **each** upkeep" into "at the beginning of the
     /// upkeep of **enchanted permanent's controller**" (the 2ed upkeep-tax Aura cycle — Cursed
     /// Land, Feedback, Wanderlust, Warp Artifact): holds only on the upkeep of the player who

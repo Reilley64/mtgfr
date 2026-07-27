@@ -4013,6 +4013,62 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
             assert_eq!(*filter, SpellFilter::Color(countered));
         }
     }
+
+    /// The two shapes of "doesn't untap" have to stay apart: the printed-on-itself form
+    /// (`self_only`) holds down only its own source no matter what its filter says, while
+    /// Meekstone's form reads a power floor across the whole table, so its filter must keep the
+    /// default `FilterController::Any` — scoping it to the Meekstone's controller would let every
+    /// opponent's fatty untap.
+    #[test]
+    fn unlimited_doesnt_untap_statics_split_between_self_only_and_a_table_wide_filter() {
+        for name in ["Basalt Monolith", "Mana Vault"] {
+            let def = get_by_name(name).expect("in the pool");
+            assert_eq!(
+                def.abilities[0].effect,
+                Effect::Static(StaticEffect::DoesntUntap {
+                    self_only: true,
+                    filter: PermanentFilter::default(),
+                }),
+                "{name} holds only itself down"
+            );
+        }
+
+        let meekstone = get_by_name("Meekstone").expect("Meekstone is in the pool");
+        let Effect::Static(StaticEffect::DoesntUntap { self_only, filter }) =
+            &meekstone.abilities[0].effect
+        else {
+            panic!("Meekstone's only ability is the static");
+        };
+        assert!(!self_only, "it holds down creatures, not itself");
+        assert_eq!(filter.power_min, Some(3), "power 3 or greater");
+        assert_eq!(filter.types, TypeSet::CREATURE);
+        assert_eq!(
+            filter.controller,
+            FilterController::Any,
+            "their controllers' untap steps — every seat, not just Meekstone's"
+        );
+    }
+
+    /// Mana Vault's ping is at the *draw* step, not the upkeep its pay-{4} clause lives in, and
+    /// the intervening-if has to be on the ability as well as inside it: CR 603.4 checks the
+    /// condition when the trigger would go on the stack, and an untapped Vault must not trigger
+    /// at all.
+    #[test]
+    fn unlimited_mana_vault_pays_at_upkeep_and_pings_at_the_draw_step() {
+        let vault = get_by_name("Mana Vault").expect("Mana Vault is in the pool");
+        let [_static, upkeep, draw, tap] = &vault.abilities[..] else {
+            panic!("a static, an optional upkeep untap, a draw-step ping, and a mana ability");
+        };
+        assert_eq!(upkeep.timing, Timing::Triggered(Trigger::Upkeep));
+        assert!(upkeep.optional, "you may pay {{4}}");
+        assert_eq!(upkeep.cost.generic, 4, "pay {{4}}");
+        assert_eq!(draw.timing, Timing::Triggered(Trigger::DrawStep));
+        assert_eq!(draw.condition, Some(Condition::SourceTapped));
+        let Timing::Activated(cost) = &tap.timing else {
+            panic!("{{T}}: Add {{C}}{{C}}{{C}}");
+        };
+        assert!(cost.taps_self);
+    }
 }
 
 #[cfg(test)]

@@ -168,6 +168,25 @@ pub enum StaticEffect {
         count: Amount,
     },
 
+    /// "This artifact doesn't untap during your untap step" (Mana Vault, Basalt Monolith) /
+    /// "Creatures with power 3 or greater don't untap during their controllers' untap steps"
+    /// (Meekstone) — CR 502.2's untap-step exception. Read by
+    /// [`Game::doesnt_untap`](crate::Game), which the untap step consults before it untaps
+    /// anything; nothing else in the game is affected, so a permanent held down here still
+    /// untaps from an ordinary untap *effect* ({3}: Untap this artifact).
+    ///
+    /// `self_only` is the printed-on-itself form and ignores `filter` entirely — the source is
+    /// the only permanent held down. Otherwise `filter` is matched against every permanent
+    /// about to untap, and its default [`FilterController::Any`](crate::FilterController) is
+    /// what makes Meekstone reach across the table ("their controllers' untap steps"), with no
+    /// `all_players` flag of the sort [`Anthem`](Self::Anthem) needs.
+    DoesntUntap {
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        self_only: bool,
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        filter: PermanentFilter,
+    },
+
     EntersWithCounters {
         #[cfg_attr(feature = "card-dsl", serde(rename = "count"))]
         amount: Amount,

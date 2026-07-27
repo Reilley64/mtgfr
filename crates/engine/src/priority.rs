@@ -1596,7 +1596,7 @@ impl Game {
                     // it was tapped), so it untaps normally on every later untap step.
                     if self.skip_next_untap.contains(&id) {
                         self.push_apply(events, Event::NextUntapSkipConsumed { object: id });
-                    } else if self.permanent(id).tapped {
+                    } else if self.permanent(id).tapped && !self.doesnt_untap(id) {
                         if self.def_of(id).may_choose_not_to_untap {
                             optional_untap.push(id);
                         } else {

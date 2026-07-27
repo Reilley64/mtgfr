@@ -734,6 +734,9 @@ pub struct PermanentFilter {
     /// on power. Non-creatures have power 0 (see [`Game::power`]), so they always pass a power
     /// gate — no pool card combines `power_max` with a non-creature `types` set.
     pub power_max: Option<u8>,
+    /// Power floor (Meekstone's "creatures with power 3 or greater"); `None` doesn't gate on
+    /// power. The mirror of [`power_max`](Self::power_max) and read live like it.
+    pub power_min: Option<u8>,
     /// Power parity gate (Zimone's Hypothesis's "return each creature with power of the chosen
     /// quality"); `None` doesn't gate on parity.
     pub power_parity: Option<Parity>,
@@ -884,6 +887,7 @@ impl PermanentFilter {
             mv_max_x: false,
             tapped: None,
             power_max: None,
+            power_min: None,
             power_parity: None,
             exclude: TypeSet::NONE,
             color: ColorFilter::Any,

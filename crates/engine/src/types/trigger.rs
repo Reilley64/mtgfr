@@ -148,6 +148,11 @@ pub enum Trigger {
     /// is, not just who controls the permanent, so [`Game::queue_each_draw_step_triggers`] threads
     /// the active player into [`TriggerContext::active_player`].
     EachDrawStep,
+    /// At the beginning of the controller's own draw step (Mana Vault's "At the beginning of your
+    /// draw step, if this artifact is tapped, …") — the your-turn twin of
+    /// [`EachDrawStep`](Self::EachDrawStep) above, scoped to the active player's own permanents
+    /// exactly like [`Upkeep`](Self::Upkeep) is. Spelled `"draw_step"` in TOML.
+    DrawStep,
     /// At the beginning of every *other* player's untap step — CR "during each other player's
     /// untap step" (Drumbellower). Fires under the ability's own controller, excluding the
     /// controller's own untap step (contrast [`EachUpkeep`](Self::EachUpkeep)/

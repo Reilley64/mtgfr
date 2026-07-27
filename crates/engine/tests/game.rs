@@ -106370,3 +106370,122 @@ fn berserk_cant_be_cast_once_the_combat_damage_step_has_passed() {
         "the same cast that was legal in the first main phase is closed after combat damage"
     );
 }
+
+// ── "Doesn't untap during your untap step" (fidelity #7a) ─────────────────────────────
+
+#[test]
+fn basalt_monolith_stays_tapped_through_its_controllers_untap_step() {
+    // Basalt Monolith: "This artifact doesn't untap during your untap step. {T}: Add {C}{C}{C}.
+    // {3}: Untap this artifact." (CR 502.2)
+    let mut game = Game::new();
+    let monolith = game.spawn_on_battlefield(PlayerId(0), card("Basalt Monolith"));
+
+    tap(&mut game, PlayerId(0), monolith);
+    assert!(game.is_tapped(monolith), "tapped for its three colorless");
+
+    advance_to_next_upkeep(&mut game, PlayerId(0));
+    assert!(
+        game.is_tapped(monolith),
+        "its own untap step passed it by (CR 502.2)"
+    );
+}
+
+#[test]
+fn basalt_monoliths_own_untap_ability_still_frees_it() {
+    // The "doesn't untap" static only speaks to the untap *step* — an untap effect ignores it,
+    // which is the whole point of the card printing one.
+    let mut game = Game::new();
+    let monolith = game.spawn_on_battlefield(PlayerId(0), card("Basalt Monolith"));
+    tap(&mut game, PlayerId(0), monolith);
+    game.fund_mana(PlayerId(0));
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: monolith,
+        ability_index: 2, // {3}: Untap this artifact.
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert!(!game.is_tapped(monolith), "{{3}} bought it back untapped");
+}
+
+#[test]
+fn meekstone_holds_down_the_big_creatures_and_lets_the_small_ones_up() {
+    // Meekstone: "Creatures with power 3 or greater don't untap during their controllers' untap
+    // steps." Read live off current power, and across the table — "their controllers'", not the
+    // Meekstone controller's.
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Meekstone"));
+    let big = game.spawn_on_battlefield(PlayerId(0), BIG.clone());
+    let small = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
+
+    attack_with(&mut game, vec![big, small]);
+    assert!(
+        game.is_tapped(big) && game.is_tapped(small),
+        "both attacked"
+    );
+
+    advance_to_next_upkeep(&mut game, PlayerId(0));
+    assert!(game.is_tapped(big), "power 4 is held down");
+    assert!(!game.is_tapped(small), "power 2 untaps as usual");
+}
+
+#[test]
+fn a_tapped_mana_vault_pings_its_controller_at_their_draw_step() {
+    // Mana Vault: "At the beginning of your upkeep, you may pay {4}. If you do, untap this
+    // artifact. At the beginning of your draw step, if this artifact is tapped, it deals 1 damage
+    // to you."
+    let mut game = Game::new();
+    let vault = game.spawn_on_battlefield(PlayerId(0), card("Mana Vault"));
+    tap(&mut game, PlayerId(0), vault);
+    // The ping lands *after* the draw-step draw, so the deck has to survive it — an empty library
+    // loses the game before the trigger is ever placed.
+    game.spawn_in_library(PlayerId(0), VANILLA.clone());
+
+    advance_to_next_upkeep(&mut game, PlayerId(0));
+    // Decline the {4}: the Vault stays tapped into the draw step.
+    game.submit(Intent::PayOptionalCost {
+        player: PlayerId(0),
+        pay: false,
+        discard_cost: vec![],
+    })
+    .unwrap();
+
+    advance_until(&mut game, |g| g.current_step() == Step::Main1);
+    assert_eq!(game.life(PlayerId(0)), 19, "the tapped Vault dealt 1");
+}
+
+#[test]
+fn paying_mana_vaults_upkeep_four_untaps_it_and_spares_the_ping() {
+    let mut game = Game::new();
+    let vault = game.spawn_on_battlefield(PlayerId(0), card("Mana Vault"));
+    tap(&mut game, PlayerId(0), vault);
+    // Survive the draw-step draw, so "life is still 20" reads the untapped Vault and not a player
+    // who decked out before the trigger would have been placed.
+    game.spawn_in_library(PlayerId(0), VANILLA.clone());
+
+    advance_to_next_upkeep(&mut game, PlayerId(0));
+    // Fund only now: a pool emptied at every step boundary (CR 500.4) would be long gone if this
+    // came before the two turns of passing above.
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::PayOptionalCost {
+        player: PlayerId(0),
+        pay: true,
+        discard_cost: vec![],
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    assert!(!game.is_tapped(vault), "paying {{4}} untapped it");
+
+    advance_until(&mut game, |g| g.current_step() == Step::Main1);
+    assert_eq!(
+        game.life(PlayerId(0)),
+        20,
+        "an untapped Vault never triggers at all — the intervening-if fails at placement"
+    );
+}

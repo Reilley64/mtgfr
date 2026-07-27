@@ -497,6 +497,10 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.static_cant_cast_if_attacked_this_turn": literal(
     "Each opponent who attacked with a creature this turn can't cast spells",
   ),
+  "effect.static_doesnt_untap": (params) =>
+    bool(params, "self_only")
+      ? "This permanent doesn't untap during your untap step"
+      : `${humanize(param(params, "filter", "Permanents"))} don't untap during their controllers' untap steps`,
   "effect.static_must_attack_each_combat": literal("All creatures attack each combat if able"),
   "effect.static_opponents_cant_search_libraries": literal("Your opponents can't search libraries"),
   "effect.static_protection_from_chosen_color": literal("This creature has protection from the chosen color"),

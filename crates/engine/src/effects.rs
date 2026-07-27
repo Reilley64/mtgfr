@@ -1071,6 +1071,9 @@ impl Game {
                     Condition::SourceUntapped => {
                         self.as_permanent(source).is_some_and(|p| !p.tapped)
                     }
+                    // Mana Vault's draw-step ping re-reads the same state at CR 603.4's second
+                    // check, the other way round from Howling Mine above.
+                    Condition::SourceTapped => self.as_permanent(source).is_some_and(|p| p.tapped),
                     // Dragon Whelp: "If this ability has been activated four or more times this
                     // turn" — counts this turn's `once_per_turn.activated` entries for `source`
                     // (every activated-ability activation records one, not just a

@@ -1131,6 +1131,37 @@ impl Game {
         })
     }
 
+    /// Whether any permanent on the battlefield holds `id` down with a live
+    /// [`Effect::Static(StaticEffect::DoesntUntap)`] (CR 502.2 — Mana Vault's own
+    /// `self_only` printing, Meekstone's power-3 filter over the whole table). Consulted by the
+    /// untap step's turn-based action and nowhere else: an untap *effect* ({3}: Untap this
+    /// artifact) ignores this entirely, which is exactly how those cards get free again.
+    /// Battlefield-wide like `Game::cant_block_filter`, not controller-scoped — Meekstone reads
+    /// "their controllers' untap steps", so who controls the Meekstone never enters into it.
+    pub(crate) fn doesnt_untap(&self, id: ObjectId) -> bool {
+        self.battlefield().into_iter().any(|source| {
+            self.functional_abilities(source)
+                .iter()
+                .any(|a| match (a.timing, a.effect.clone()) {
+                    (
+                        Timing::Static,
+                        Effect::Static(StaticEffect::DoesntUntap { self_only, filter }),
+                    ) => {
+                        if self_only {
+                            return source == id;
+                        }
+                        self.permanent_matches(
+                            &filter,
+                            id,
+                            self.controller_of(source),
+                            Some(source),
+                        )
+                    }
+                    _ => false,
+                })
+        })
+    }
+
     /// Whether a live Aura attached to `host` *other than* `aura` carries a static
     /// [`Effect::Static(StaticEffect::GrantToAttached)`] with `cant_be_enchanted = true`
     /// (Consecrate Land — "Enchanted land … can't be enchanted by other Auras"). Skipping `aura`

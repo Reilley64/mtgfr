@@ -177,7 +177,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [x] **Ankh of Mishra** {2} · Artifact — increment 58
 - [x] **Aspect of Wolf** {1}{G} · Enchantment — Aura — increment 75, 25
 - [ ] **Balance** {1}{W} · Sorcery — increment 43
-- [ ] **Basalt Monolith** {3} · Artifact — increment 7
+- [x] **Basalt Monolith** {3} · Artifact — increment 7
 - [ ] **Benalish Hero** {W} · Creature — Human Soldier — increment 14
 - [x] **Berserk** {G} · Instant — increment 45
 - [x] **Black Vise** {1} · Artifact — increment 25
@@ -260,9 +260,9 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Magical Hack** {U} · Instant — increment 16
 - [ ] **Mana Flare** {2}{R} · Enchantment — increment 19
 - [ ] **Mana Short** {2}{U} · Instant — increment 23
-- [ ] **Mana Vault** {1} · Artifact — increment 7
+- [x] **Mana Vault** {1} · Artifact — increment 7
 - [ ] **Manabarbs** {3}{R} · Enchantment — increment 19
-- [ ] **Meekstone** {1} · Artifact — increment 7
+- [x] **Meekstone** {1} · Artifact — increment 7
 - [ ] **Mesa Pegasus** {1}{W} · Creature — Pegasus — increment 14
 - [x] **Mind Twist** {X}{B} · Sorcery — increment 17
 - [x] **Natural Selection** {G} · Instant — increment 55
