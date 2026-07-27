@@ -832,27 +832,24 @@
     },
     "text": {
       "title": {
-        "$type": "dimension",
-        "$value": "18px",
-        "font-weight": {
-          "$type": "number",
-          "$value": 700
+        "$type": "typography",
+        "$value": {
+          "fontSize": { "value": 18, "unit": "px" },
+          "fontWeight": 700
         }
       },
       "body": {
-        "$type": "dimension",
-        "$value": "14px",
-        "line-height": {
-          "$type": "number",
-          "$value": 1.5
+        "$type": "typography",
+        "$value": {
+          "fontSize": { "value": 14, "unit": "px" },
+          "lineHeight": 1.5
         }
       },
       "button": {
-        "$type": "dimension",
-        "$value": "14px",
-        "font-weight": {
-          "$type": "number",
-          "$value": 600
+        "$type": "typography",
+        "$value": {
+          "fontSize": { "value": 14, "unit": "px" },
+          "fontWeight": 600
         }
       },
       "label": {
@@ -872,19 +869,17 @@
         "$value": "10px"
       },
       "game": {
-        "$type": "dimension",
-        "$value": "15px",
-        "font-weight": {
-          "$type": "number",
-          "$value": 600
+        "$type": "typography",
+        "$value": {
+          "fontSize": { "value": 15, "unit": "px" },
+          "fontWeight": 600
         }
       },
       "display": {
-        "$type": "dimension",
-        "$value": "22px",
-        "font-weight": {
-          "$type": "number",
-          "$value": 700
+        "$type": "typography",
+        "$value": {
+          "fontSize": { "value": 22, "unit": "px" },
+          "fontWeight": 700
         }
       }
     },
