@@ -54,7 +54,7 @@ export function resultOverlayView(state: VisibleState, resultSeen: boolean): Htm
   return h.div(
     [
       h.DataAttribute("testid", "result-overlay"),
-      h.Class("fixed inset-0 z-55 flex items-center justify-center bg-black/70"),
+      h.Class("pointer-events-auto fixed inset-0 z-55 flex items-center justify-center bg-black/70"),
     ],
     [
       h.div(
