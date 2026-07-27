@@ -85,6 +85,10 @@ BFF `mtgfr_web` database work that crosses the temporary `runWebDb` Promise brid
 `db.namespace=mtgfr_web` attributes only. The BFF does not attach SQL strings, `db.query.text`, or
 `db.statement` to DB spans.
 
+Lobby HTTP helpers in `client/server/lobby-http.ts` annotate traced failures with `exception.type`
+only (`LobbyDbError` for wrapped DB/upstream failures). JSON error bodies may include truncated
+messages for clients; those strings never appear on span attributes.
+
 ### API (OTEL)
 
 **API:** `tracing` + `opentelemetry-otlp` (HTTP export) in `crates/server`. Engine

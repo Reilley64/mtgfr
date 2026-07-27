@@ -3,6 +3,7 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import type { H3Event } from "nitro/h3";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { EXCEPTION_TYPE } from "../app/domain/otel/semconv";
 import { json, readJsonObject, runMetaGet, tableParam, unknownLobby, withLobbyAuth } from "./lobby-http";
 
 vi.hoisted ??= <T>(factory: () => T): T => factory();
@@ -119,6 +120,21 @@ describe("lobby-http", () => {
 
     expect(res.status).toBe(500);
     await expect(res.json()).resolves.toEqual({ error: "LobbyDb", message });
+  });
+
+  it("annotates exception.type on traced failures without message bodies", async () => {
+    const annotateSpy = vi.spyOn(Effect, "annotateCurrentSpan");
+    const message = "secret db payload";
+
+    await withLobbyAuth(authEvent(), "api test", () => Effect.fail(new Error(message)));
+
+    const failureCall = annotateSpy.mock.calls.find(
+      (call) => (call[0] as Record<string, unknown>)[EXCEPTION_TYPE] === "LobbyDbError",
+    );
+    expect(failureCall?.[0]).toMatchObject({ [EXCEPTION_TYPE]: "LobbyDbError" });
+    expect(failureCall?.[0]).not.toHaveProperty("exception.message");
+    expect(Object.values(failureCall?.[0] ?? {})).not.toContain(message);
+    annotateSpy.mockRestore();
   });
 
   it("runMetaGet executes Effect response bodies", async () => {
