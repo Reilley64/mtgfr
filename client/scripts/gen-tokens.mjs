@@ -103,6 +103,16 @@ function dim(value, unit = "px") {
   return String(value);
 }
 
+function shadowDim(value) {
+  if (value && typeof value === "object" && "value" in value && Number(value.value) === 0) {
+    return "0";
+  }
+  if (Number(value) === 0) {
+    return "0";
+  }
+  return dim(value);
+}
+
 function serializeColor(value) {
   if (typeof value === "string") {
     // Temporary during migration; Task 6 removes hex source path.
@@ -129,10 +139,10 @@ function serializeColor(value) {
 
 function serializeShadowLayer(layer) {
   const inset = layer.inset ? "inset " : "";
-  const x = dim(layer.offsetX);
-  const y = dim(layer.offsetY);
-  const blur = dim(layer.blur ?? { value: 0, unit: "px" });
-  const spread = layer.spread != null ? ` ${dim(layer.spread)}` : "";
+  const x = shadowDim(layer.offsetX);
+  const y = shadowDim(layer.offsetY);
+  const blur = shadowDim(layer.blur ?? { value: 0, unit: "px" });
+  const spread = layer.spread != null ? ` ${shadowDim(layer.spread)}` : "";
   const color = serializeColor(layer.color);
   return `${inset}${x} ${y} ${blur}${spread} ${color}`.replace(/ {2,}/g, " ").trim();
 }
@@ -460,7 +470,7 @@ function buildConfig(buildPath) {
           {
             destination: "design-tokens.generated.ts",
             format: "mtgfr/ts-colors",
-            filter: (token) => token.path[0] === "color",
+            filter: (token) => publicColorKey(token.path) != null,
             options: { showFileHeader: false },
           },
         ],

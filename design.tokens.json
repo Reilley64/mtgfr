@@ -1,65 +1,22 @@
 {
-  "color": {
-    "forest-floor": {
-      "$type": "color",
-      "$value": "#0B1310",
-      "$description": "Canvas / app background"
-    },
-    "forest-surface": { "$type": "color", "$value": "#101816FA" },
-    "forest-hud": { "$type": "color", "$value": "#0C1412EB" },
-    "llanowar": { "$type": "color", "$value": "#2F7D46" },
-    "llanowar-deep": { "$type": "color", "$value": "#276B3C" },
-    "vine": { "$type": "color", "$value": "#22CC44" },
-    "vine-dim": { "$type": "color", "$value": "#11CC33" },
-    "snow": { "$type": "color", "$value": "#EEFFFF" },
-    "seafoam": { "$type": "color", "$value": "#DDFFEE" },
-    "mist": { "$type": "color", "$value": "#CCDDEE" },
-    "lichen": { "$type": "color", "$value": "#99CCBB" },
-    "fog": { "$type": "color", "$value": "#8899AA" },
-    "snow-mint": { "$type": "color", "$value": "#EAFFF0" },
-    "glass": { "$type": "color", "$value": "#FFFFFF0F" },
-    "glass-dim": { "$type": "color", "$value": "#FFFFFF0D" },
-    "priority-gold": {
-      "$type": "color",
-      "$value": "#FFD76A",
-      "$description": "Gold Means Act — a decision is owed"
-    },
-    "playable-border": { "$type": "color", "$value": "#EAFFF0" },
-    "commander-gold": { "$type": "color", "$value": "#E9B84A" },
-    "graveyard-outline": { "$type": "color", "$value": "#7B5CFF" },
-    "exile-outline": { "$type": "color", "$value": "#3DDC97" },
-    "oracle-ivory": { "$type": "color", "$value": "#E8E4D8" },
-    "morph-slate": { "$type": "color", "$value": "#2A3742" },
-    "mountain-red": { "$type": "color", "$value": "#FF5555" },
-    "wall-green": { "$type": "color", "$value": "#66FF99" },
-    "island-blue": { "$type": "color", "$value": "#77CCFF" },
-    "burn-red": { "$type": "color", "$value": "#FF8888" },
-    "caution-amber": { "$type": "color", "$value": "#FFEE88" },
-    "damage-crimson": { "$type": "color", "$value": "#8F2F2F" },
-    "tapped-out": { "$type": "color", "$value": "#24312B" },
-    "tapped-ink": { "$type": "color", "$value": "#66786E" },
-    "seat-forest": { "$type": "color", "$value": "#5AC88C" },
-    "seat-island": { "$type": "color", "$value": "#5A96F0" },
-    "seat-mountain": { "$type": "color", "$value": "#F0785A" },
-    "seat-arcane": { "$type": "color", "$value": "#C88CF0" },
-    "turn-mint": { "$type": "color", "$value": "#8FDCAA" },
-    "turn-ember": { "$type": "color", "$value": "#E0A878" },
-    "phase-mint": { "$type": "color", "$value": "#55CC99" },
-    "phase-ember": { "$type": "color", "$value": "#CC8855" },
-    "note-gold": { "$type": "color", "$value": "#F0C674" },
-    "auto-moss": { "$type": "color", "$value": "#3A7D52" },
-    "reconnect-rust": { "$type": "color", "$value": "#7A3B13" },
-    "assign-clover": { "$type": "color", "$value": "#99FF99" },
-    "watch-sage": { "$type": "color", "$value": "#9FB4A8" },
-    "watch-flare": { "$type": "color", "$value": "#F87171" },
-    "ready-sprout": { "$type": "color", "$value": "#8FE3A8" },
-    "phase-fern": { "$type": "color", "$value": "#8FA398" },
-    "preview-ash": { "$type": "color", "$value": "#E8E8EA" },
-    "hud-edge": { "$type": "color", "$value": "#5A786966" },
-    "yielded": { "$type": "color", "$value": "#6B5A1F" },
-    "yielded-hover": { "$type": "color", "$value": "#7D6A26" },
-    "yielded-ink": { "$type": "color", "$value": "#FFE9A8" },
-    "quiet-hover": { "$type": "color", "$value": "#2C3F35" }
+  "primitive": {
+    "color": {
+      "forest-floor": {
+        "$type": "color",
+        "$value": {
+          "colorSpace": "oklch",
+          "components": [0.177355, 0.013649, 169.618301]
+        },
+        "$description": "Canvas / app background"
+      },
+      "snow-mint": {
+        "$type": "color",
+        "$value": {
+          "colorSpace": "oklch",
+          "components": [0.980563, 0.029516, 154.720631]
+        }
+      }
+    }
   },
   "font": {
     "sans": {
@@ -130,31 +87,69 @@
   "size": {
     "shell-stage-max": { "$type": "dimension", "$value": "1100px" }
   },
-  "shadow": {
-    "table": { "$type": "css", "$value": "0 12px 40px rgb(0 0 0 / 0.6)" },
-    "hand": { "$type": "css", "$value": "0 6px 18px rgb(0 0 0 / 0.5)" },
-    "hud": { "$type": "css", "$value": "0 6px 20px rgb(0 0 0 / 0.45)" },
-    "press": {
-      "$type": "css",
-      "$value": "inset 0 1px 0 rgb(255 255 255 / 0.16), 0 6px 16px rgb(0 0 0 / 0.4)"
-    },
-    "press-active": {
-      "$type": "css",
-      "$value": "inset 0 1px 0 rgb(255 255 255 / 0.1), 0 3px 10px rgb(0 0 0 / 0.4)"
-    },
-    "glow": {
-      "$type": "css",
-      "$value": "inset 0 1px 0 rgb(255 255 255 / 0.18), 0 0 0 2px rgb(90 200 140 / 0.55), 0 6px 20px rgb(47 140 90 / 0.45)"
-    },
-    "pick": {
-      "$type": "css",
-      "$value": "0 0 0 3px #22cc44, 0 10px 24px rgb(0 0 0 / 0.6)"
-    }
-  },
-  "drop-shadow": {
-    "drag": { "$type": "css", "$value": "0 16px 36px rgb(0 0 0 / 0.72)" }
-  },
   "semantic": {
+    "color": {
+      "forest-floor": {
+        "$type": "color",
+        "$value": "{primitive.color.forest-floor}",
+        "$description": "Canvas / app background"
+      },
+      "forest-surface": { "$type": "color", "$value": "#101816FA" },
+      "forest-hud": { "$type": "color", "$value": "#0C1412EB" },
+      "llanowar": { "$type": "color", "$value": "#2F7D46" },
+      "llanowar-deep": { "$type": "color", "$value": "#276B3C" },
+      "vine": { "$type": "color", "$value": "#22CC44" },
+      "vine-dim": { "$type": "color", "$value": "#11CC33" },
+      "snow": { "$type": "color", "$value": "#EEFFFF" },
+      "seafoam": { "$type": "color", "$value": "#DDFFEE" },
+      "mist": { "$type": "color", "$value": "#CCDDEE" },
+      "lichen": { "$type": "color", "$value": "#99CCBB" },
+      "fog": { "$type": "color", "$value": "#8899AA" },
+      "snow-mint": { "$type": "color", "$value": "{primitive.color.snow-mint}" },
+      "glass": { "$type": "color", "$value": "#FFFFFF0F" },
+      "glass-dim": { "$type": "color", "$value": "#FFFFFF0D" },
+      "priority-gold": {
+        "$type": "color",
+        "$value": "#FFD76A",
+        "$description": "Gold Means Act — a decision is owed"
+      },
+      "playable-border": { "$type": "color", "$value": "{semantic.color.snow-mint}" },
+      "commander-gold": { "$type": "color", "$value": "#E9B84A" },
+      "graveyard-outline": { "$type": "color", "$value": "#7B5CFF" },
+      "exile-outline": { "$type": "color", "$value": "#3DDC97" },
+      "oracle-ivory": { "$type": "color", "$value": "#E8E4D8" },
+      "morph-slate": { "$type": "color", "$value": "#2A3742" },
+      "mountain-red": { "$type": "color", "$value": "#FF5555" },
+      "wall-green": { "$type": "color", "$value": "#66FF99" },
+      "island-blue": { "$type": "color", "$value": "#77CCFF" },
+      "burn-red": { "$type": "color", "$value": "#FF8888" },
+      "caution-amber": { "$type": "color", "$value": "#FFEE88" },
+      "damage-crimson": { "$type": "color", "$value": "#8F2F2F" },
+      "tapped-out": { "$type": "color", "$value": "#24312B" },
+      "tapped-ink": { "$type": "color", "$value": "#66786E" },
+      "seat-forest": { "$type": "color", "$value": "#5AC88C" },
+      "seat-island": { "$type": "color", "$value": "#5A96F0" },
+      "seat-mountain": { "$type": "color", "$value": "#F0785A" },
+      "seat-arcane": { "$type": "color", "$value": "#C88CF0" },
+      "turn-mint": { "$type": "color", "$value": "#8FDCAA" },
+      "turn-ember": { "$type": "color", "$value": "#E0A878" },
+      "phase-mint": { "$type": "color", "$value": "#55CC99" },
+      "phase-ember": { "$type": "color", "$value": "#CC8855" },
+      "note-gold": { "$type": "color", "$value": "#F0C674" },
+      "auto-moss": { "$type": "color", "$value": "#3A7D52" },
+      "reconnect-rust": { "$type": "color", "$value": "#7A3B13" },
+      "assign-clover": { "$type": "color", "$value": "#99FF99" },
+      "watch-sage": { "$type": "color", "$value": "#9FB4A8" },
+      "watch-flare": { "$type": "color", "$value": "#F87171" },
+      "ready-sprout": { "$type": "color", "$value": "#8FE3A8" },
+      "phase-fern": { "$type": "color", "$value": "#8FA398" },
+      "preview-ash": { "$type": "color", "$value": "#E8E8EA" },
+      "hud-edge": { "$type": "color", "$value": "#5A786966" },
+      "yielded": { "$type": "color", "$value": "#6B5A1F" },
+      "yielded-hover": { "$type": "color", "$value": "#7D6A26" },
+      "yielded-ink": { "$type": "color", "$value": "#FFE9A8" },
+      "quiet-hover": { "$type": "color", "$value": "#2C3F35" }
+    },
     "ease": {
       "state": {
         "$type": "cubicBezier",
@@ -168,6 +163,136 @@
       "breathe": { "$type": "duration", "$value": { "value": 1.8, "unit": "s" } },
       "skeleton": { "$type": "duration", "$value": { "value": 1.2, "unit": "s" } },
       "shell-enter": { "$type": "duration", "$value": { "value": 0.2, "unit": "s" } }
+    },
+    "shadow": {
+      "table": {
+        "$type": "shadow",
+        "$value": {
+          "offsetX": { "value": 0, "unit": "px" },
+          "offsetY": { "value": 12, "unit": "px" },
+          "blur": { "value": 40, "unit": "px" },
+          "color": { "colorSpace": "srgb", "components": [0, 0, 0], "alpha": 0.6 }
+        }
+      },
+      "hand": {
+        "$type": "shadow",
+        "$value": {
+          "offsetX": { "value": 0, "unit": "px" },
+          "offsetY": { "value": 6, "unit": "px" },
+          "blur": { "value": 18, "unit": "px" },
+          "color": { "colorSpace": "srgb", "components": [0, 0, 0], "alpha": 0.5 }
+        }
+      },
+      "hud": {
+        "$type": "shadow",
+        "$value": {
+          "offsetX": { "value": 0, "unit": "px" },
+          "offsetY": { "value": 6, "unit": "px" },
+          "blur": { "value": 20, "unit": "px" },
+          "color": { "colorSpace": "srgb", "components": [0, 0, 0], "alpha": 0.45 }
+        }
+      },
+      "press": {
+        "$type": "shadow",
+        "$value": [
+          {
+            "inset": true,
+            "offsetX": { "value": 0, "unit": "px" },
+            "offsetY": { "value": 1, "unit": "px" },
+            "blur": { "value": 0, "unit": "px" },
+            "color": { "colorSpace": "srgb", "components": [1, 1, 1], "alpha": 0.16 }
+          },
+          {
+            "offsetX": { "value": 0, "unit": "px" },
+            "offsetY": { "value": 6, "unit": "px" },
+            "blur": { "value": 16, "unit": "px" },
+            "color": { "colorSpace": "srgb", "components": [0, 0, 0], "alpha": 0.4 }
+          }
+        ]
+      },
+      "press-active": {
+        "$type": "shadow",
+        "$value": [
+          {
+            "inset": true,
+            "offsetX": { "value": 0, "unit": "px" },
+            "offsetY": { "value": 1, "unit": "px" },
+            "blur": { "value": 0, "unit": "px" },
+            "color": { "colorSpace": "srgb", "components": [1, 1, 1], "alpha": 0.1 }
+          },
+          {
+            "offsetX": { "value": 0, "unit": "px" },
+            "offsetY": { "value": 3, "unit": "px" },
+            "blur": { "value": 10, "unit": "px" },
+            "color": { "colorSpace": "srgb", "components": [0, 0, 0], "alpha": 0.4 }
+          }
+        ]
+      },
+      "glow": {
+        "$type": "shadow",
+        "$value": [
+          {
+            "inset": true,
+            "offsetX": { "value": 0, "unit": "px" },
+            "offsetY": { "value": 1, "unit": "px" },
+            "blur": { "value": 0, "unit": "px" },
+            "color": { "colorSpace": "srgb", "components": [1, 1, 1], "alpha": 0.18 }
+          },
+          {
+            "offsetX": { "value": 0, "unit": "px" },
+            "offsetY": { "value": 0, "unit": "px" },
+            "blur": { "value": 0, "unit": "px" },
+            "spread": { "value": 2, "unit": "px" },
+            "color": {
+              "colorSpace": "srgb",
+              "components": [0.35294117647058826, 0.7843137254901961, 0.5490196078431373],
+              "alpha": 0.55
+            }
+          },
+          {
+            "offsetX": { "value": 0, "unit": "px" },
+            "offsetY": { "value": 6, "unit": "px" },
+            "blur": { "value": 20, "unit": "px" },
+            "color": {
+              "colorSpace": "srgb",
+              "components": [0.1843137254901961, 0.5490196078431373, 0.35294117647058826],
+              "alpha": 0.45
+            }
+          }
+        ]
+      },
+      "pick": {
+        "$type": "shadow",
+        "$value": [
+          {
+            "offsetX": { "value": 0, "unit": "px" },
+            "offsetY": { "value": 0, "unit": "px" },
+            "blur": { "value": 0, "unit": "px" },
+            "spread": { "value": 3, "unit": "px" },
+            "color": {
+              "colorSpace": "srgb",
+              "components": [0.13333333333333333, 0.8, 0.26666666666666666]
+            }
+          },
+          {
+            "offsetX": { "value": 0, "unit": "px" },
+            "offsetY": { "value": 10, "unit": "px" },
+            "blur": { "value": 24, "unit": "px" },
+            "color": { "colorSpace": "srgb", "components": [0, 0, 0], "alpha": 0.6 }
+          }
+        ]
+      }
+    },
+    "drop-shadow": {
+      "drag": {
+        "$type": "shadow",
+        "$value": {
+          "offsetX": { "value": 0, "unit": "px" },
+          "offsetY": { "value": 16, "unit": "px" },
+          "blur": { "value": 36, "unit": "px" },
+          "color": { "colorSpace": "srgb", "components": [0, 0, 0], "alpha": 0.72 }
+        }
+      }
     }
   }
 }

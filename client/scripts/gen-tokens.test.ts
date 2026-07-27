@@ -89,7 +89,7 @@ describe("gen-tokens helpers", () => {
           alpha: 0.72,
         },
       }),
-    ).toBe("0px 16px 36px rgb(0 0 0 / 0.72)");
+    ).toBe("0 16px 36px rgb(0 0 0 / 0.72)");
     expect(serializeTokenValue("cubicBezier", [0.22, 1, 0.36, 1])).toBe("cubic-bezier(0.22, 1, 0.36, 1)");
     expect(serializeTokenValue("duration", { value: 0.25, unit: "s" })).toBe("0.25s");
     expect(serializeTokenValue("css", "var(--legacy-bridge)")).toBe("var(--legacy-bridge)");
@@ -142,7 +142,7 @@ describe("gen-tokens helpers", () => {
     };
 
     expect(buildShadowDragExport(root)).toEqual({
-      css: "0px 16px 36px rgb(0 0 0 / 0.72)",
+      css: "0 16px 36px rgb(0 0 0 / 0.72)",
       offsetY: 16,
       blur: 36,
       color: "rgba(0,0,0,0.72)",

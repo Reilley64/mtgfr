@@ -2,7 +2,7 @@
  * Source: design.tokens.json. Regenerate: bun run gen:tokens
  */
 export const colors = {
-  forestFloor: "#0B1310",
+  forestFloor: "oklch(0.177355 0.013649 169.618301)",
   forestSurface: "#101816FA",
   forestHud: "#0C1412EB",
   llanowar: "#2F7D46",
@@ -14,11 +14,11 @@ export const colors = {
   mist: "#CCDDEE",
   lichen: "#99CCBB",
   fog: "#8899AA",
-  snowMint: "#EAFFF0",
+  snowMint: "oklch(0.980563 0.029516 154.720631)",
   glass: "#FFFFFF0F",
   glassDim: "#FFFFFF0D",
   priorityGold: "#FFD76A",
-  playableBorder: "#EAFFF0",
+  playableBorder: "oklch(0.980563 0.029516 154.720631)",
   commanderGold: "#E9B84A",
   graveyardOutline: "#7B5CFF",
   exileOutline: "#3DDC97",
