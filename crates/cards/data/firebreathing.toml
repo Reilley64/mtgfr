@@ -1,0 +1,29 @@
+# Enchant creature
+# {R}: Enchanted creature gets +1/+0 until end of turn.
+name = "Firebreathing"
+sets = ["10e", "2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "9ed", "ced", "cei", "fbb", "lea", "leb", "m10", "m12", "mir", "sum"]
+id = "8603bf74-faab-4910-8e45-0f2e3b318efb"
+default_print = "dc2bfe7b-9850-4450-9bad-73fa0d678a5f"
+oracle = "Enchant creature\n{R}: Enchanted creature gets +1/+0 until end of turn."
+subtypes = ["Aura"]
+
+[cost]
+red = 1
+
+[kind]
+type = "aura"
+
+# {R}: Enchanted creature gets +1/+0 until end of turn.
+[[abilities]]
+timing = "activated"
+
+[abilities.activation_cost]
+red = 1
+
+# Enchanted creature gets +1/+0 until end of turn.
+[[abilities.effects]]
+type = "pump"
+mode = "pump_until_end_of_turn"
+target = "enchanted_creature"
+power = 1
+toughness = 0

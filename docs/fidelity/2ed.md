@@ -60,11 +60,11 @@ Authorable in Phase 3 with no engine change. TDD each one.
 - [x] **Bayou** — · Land — Swamp Forest
 - [ ] **Black Knight** {B}{B} · Creature — Human Knight
 - [x] **Black Lotus** {0} · Artifact
-- [ ] **Black Ward** {W} · Enchantment — Aura
-- [ ] **Blessing** {W}{W} · Enchantment — Aura
-- [ ] **Blue Ward** {W} · Enchantment — Aura
+- [x] **Black Ward** {W} · Enchantment — Aura
+- [x] **Blessing** {W}{W} · Enchantment — Aura
+- [x] **Blue Ward** {W} · Enchantment — Aura
 - [x] **Celestial Prism** {3} · Artifact
-- [ ] **Control Magic** {2}{U}{U} · Enchantment — Aura
+- [x] **Control Magic** {2}{U}{U} · Enchantment — Aura
 - [ ] **Copper Tablet** {2} · Artifact
 - [ ] **Counterspell** {U}{U} · Instant
 - [x] **Craw Wurm** {4}{G}{G} · Creature — Wurm
@@ -82,13 +82,13 @@ Authorable in Phase 3 with no engine change. TDD each one.
 - [ ] **Dwarven Warriors** {2}{R} · Creature — Dwarf Warrior
 - [x] **Earth Elemental** {3}{R}{R} · Creature — Elemental
 - [x] **Elvish Archers** {1}{G} · Creature — Elf Archer
-- [ ] **Fear** {B}{B} · Enchantment — Aura
+- [x] **Fear** {B}{B} · Enchantment — Aura
 - [ ] **Feedback** {2}{U} · Enchantment — Aura
 - [x] **Fire Elemental** {3}{R}{R} · Creature — Elemental
 - [ ] **Fireball** {X}{R} · Sorcery
-- [ ] **Firebreathing** {R} · Enchantment — Aura
+- [x] **Firebreathing** {R} · Enchantment — Aura
 - [ ] **Flashfires** {3}{R} · Sorcery
-- [ ] **Flight** {U} · Enchantment — Aura
+- [x] **Flight** {U} · Enchantment — Aura
 - [ ] **Fog** {G} · Instant
 - [ ] **Frozen Shade** {2}{B} · Creature — Shade
 - [ ] **Fungusaur** {3}{G} · Creature — Fungus Dinosaur
@@ -97,10 +97,10 @@ Authorable in Phase 3 with no engine change. TDD each one.
 - [ ] **Goblin Balloon Brigade** {R} · Creature — Goblin Warrior
 - [ ] **Granite Gargoyle** {2}{R} · Creature — Gargoyle
 - [x] **Gray Ogre** {2}{R} · Creature — Ogre
-- [ ] **Green Ward** {W} · Enchantment — Aura
+- [x] **Green Ward** {W} · Enchantment — Aura
 - [x] **Hill Giant** {3}{R} · Creature — Giant
-- [ ] **Holy Armor** {W} · Enchantment — Aura
-- [ ] **Holy Strength** {W} · Enchantment — Aura
+- [x] **Holy Armor** {W} · Enchantment — Aura
+- [x] **Holy Strength** {W} · Enchantment — Aura
 - [ ] **Howl from Beyond** {X}{B} · Instant
 - [x] **Hurloon Minotaur** {1}{R}{R} · Creature — Minotaur
 - [ ] **Hurricane** {X}{G} · Sorcery
@@ -110,7 +110,7 @@ Authorable in Phase 3 with no engine change. TDD each one.
 - [ ] **Jade Statue** {4} · Artifact
 - [ ] **Jayemdae Tome** {4} · Artifact — Book
 - [ ] **Jump** {U} · Instant
-- [ ] **Lance** {W} · Enchantment — Aura
+- [x] **Lance** {W} · Enchantment — Aura
 - [ ] **Ley Druid** {2}{G} · Creature — Human Druid
 - [ ] **Living Wall** {4} · Artifact Creature — Wall
 - [x] **Mahamoti Djinn** {4}{U}{U} · Creature — Djinn
@@ -134,7 +134,7 @@ Authorable in Phase 3 with no engine change. TDD each one.
 - [x] **Plateau** — · Land — Mountain Plains
 - [ ] **Prodigal Sorcerer** {2}{U} · Creature — Human Wizard Sorcerer
 - [ ] **Psionic Blast** {2}{U} · Instant
-- [ ] **Red Ward** {W} · Enchantment — Aura
+- [x] **Red Ward** {W} · Enchantment — Aura
 - [ ] **Regeneration** {1}{G} · Enchantment — Aura
 - [ ] **Regrowth** {1}{G} · Sorcery
 - [ ] **Righteousness** {W} · Instant
@@ -150,7 +150,7 @@ Authorable in Phase 3 with no engine change. TDD each one.
 - [ ] **Shatter** {1}{R} · Instant
 - [ ] **Shivan Dragon** {4}{R}{R} · Creature — Dragon
 - [ ] **Sinkhole** {B}{B} · Sorcery
-- [ ] **Steal Artifact** {2}{U}{U} · Enchantment — Aura
+- [x] **Steal Artifact** {2}{U}{U} · Enchantment — Aura
 - [ ] **Stone Rain** {2}{R} · Sorcery
 - [ ] **Stream of Life** {X}{G} · Sorcery
 - [x] **Taiga** — · Land — Mountain Forest
@@ -162,7 +162,7 @@ Authorable in Phase 3 with no engine change. TDD each one.
 - [ ] **Tunnel** {R} · Instant
 - [ ] **Twiddle** {U} · Instant
 - [x] **Underground Sea** — · Land — Island Swamp
-- [ ] **Unholy Strength** {B} · Enchantment — Aura
+- [x] **Unholy Strength** {B} · Enchantment — Aura
 - [ ] **Uthden Troll** {2}{R} · Creature — Troll
 - [ ] **Verduran Enchantress** {1}{G}{G} · Creature — Human Druid
 - [x] **Volcanic Island** — · Land — Island Mountain
@@ -179,9 +179,9 @@ Authorable in Phase 3 with no engine change. TDD each one.
 - [x] **War Mammoth** {3}{G} · Creature — Elephant
 - [ ] **Warp Artifact** {B}{B} · Enchantment — Aura
 - [x] **Water Elemental** {3}{U}{U} · Creature — Elemental
-- [ ] **Weakness** {B} · Enchantment — Aura
-- [ ] **Web** {G} · Enchantment — Aura
-- [ ] **White Ward** {W} · Enchantment — Aura
+- [x] **Weakness** {B} · Enchantment — Aura
+- [x] **Web** {G} · Enchantment — Aura
+- [x] **White Ward** {W} · Enchantment — Aura
 - [ ] **Wild Growth** {G} · Enchantment — Aura
 - [ ] **Will-o'-the-Wisp** {B} · Creature — Spirit
 - [ ] **Wrath of God** {2}{W}{W} · Sorcery

@@ -1,0 +1,24 @@
+# Enchant creature
+# Enchanted creature has protection from blue. This effect doesn't remove this Aura.
+name = "Blue Ward"
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
+id = "fc0bf1d0-46a2-4305-ab2e-466d79d60ab2"
+default_print = "1704d11c-569c-4b4e-bbe0-df42af98c4fc"
+oracle = "Enchant creature\nEnchanted creature has protection from blue. This effect doesn't remove this Aura."
+subtypes = ["Aura"]
+
+[cost]
+white = 1
+
+[kind]
+type = "aura"
+
+# Enchanted creature has protection from blue. This effect doesn't remove this Aura.
+[[abilities]]
+timing = "static"
+
+# Enchanted creature has protection from blue.
+[[abilities.effects]]
+type = "static"
+mode = "grant_to_attached"
+keywords = [{ protection = "blue" }]

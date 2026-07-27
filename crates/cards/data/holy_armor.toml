@@ -1,0 +1,40 @@
+# Enchant creature
+# Enchanted creature gets +0/+2.
+# {W}: Enchanted creature gets +0/+1 until end of turn.
+name = "Holy Armor"
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
+id = "912164c2-b4d4-42e3-a10e-903b8c7b2e6d"
+default_print = "9a7d92de-d663-4919-a23f-38389ba5593e"
+oracle = "Enchant creature\nEnchanted creature gets +0/+2.\n{W}: Enchanted creature gets +0/+1 until end of turn."
+subtypes = ["Aura"]
+
+[cost]
+white = 1
+
+[kind]
+type = "aura"
+
+# Enchanted creature gets +0/+2.
+[[abilities]]
+timing = "static"
+
+# Enchanted creature gets +0/+2.
+[[abilities.effects]]
+type = "static"
+mode = "grant_to_attached"
+toughness = 2
+
+# {W}: Enchanted creature gets +0/+1 until end of turn.
+[[abilities]]
+timing = "activated"
+
+[abilities.activation_cost]
+white = 1
+
+# Enchanted creature gets +0/+1 until end of turn.
+[[abilities.effects]]
+type = "pump"
+mode = "pump_until_end_of_turn"
+target = "enchanted_creature"
+power = 0
+toughness = 1

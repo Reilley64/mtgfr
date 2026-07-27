@@ -30137,6 +30137,38 @@ fn an_aura_falls_to_the_graveyard_when_its_host_dies() {
     assert_eq!(game.power(bear), 0, "the buff is gone");
 }
 
+#[test]
+fn firebreathing_pumps_the_creature_it_enchants_without_a_fresh_target() {
+    // Firebreathing (2ed): "{R}: Enchanted creature gets +1/+0 until end of turn." The ability
+    // lives on the Aura, so its pump resolves onto the host with no target choice (CR 601.2c —
+    // "enchanted creature" names an object, it doesn't target).
+    let mut game = Game::new();
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears")); // 2/2
+    let aura = game.spawn_in_hand(PlayerId(0), card("Firebreathing"));
+    cast_and_resolve(&mut game, aura, Some(Target::Object(bear)));
+    let attached = game.attachments(bear)[0];
+    game.fund_mana(PlayerId(0));
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: attached,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.power(bear),
+        3,
+        "+1/+0 landed on the enchanted creature"
+    );
+    assert_eq!(game.toughness(bear), 2, "toughness is untouched");
+}
+
 /// The index at which `source`'s granted activated ability is offered as a meaningful action
 /// (exercises the `granted_attachment_abilities` enumeration in `push_activatable_abilities`). (CR 602, CR 113)
 fn granted_activate_index(game: &Game, player: PlayerId, source: ObjectId) -> usize {

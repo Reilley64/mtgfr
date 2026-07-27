@@ -1,0 +1,25 @@
+# Enchant creature
+# Enchanted creature gets +1/+2.
+name = "Holy Strength"
+sets = ["10e", "2ed", "30a", "3ed", "4bb", "4ed", "5ed", "7ed", "8ed", "9ed", "ced", "cei", "fbb", "lea", "leb", "m10", "m11", "ps11", "sum"]
+id = "9357de36-f8be-4f49-b2c8-9fe9eaf82b07"
+default_print = "f25cea1b-22c0-4323-8119-0ca627426aa7"
+oracle = "Enchant creature\nEnchanted creature gets +1/+2."
+subtypes = ["Aura"]
+
+[cost]
+white = 1
+
+[kind]
+type = "aura"
+
+# Enchanted creature gets +1/+2.
+[[abilities]]
+timing = "static"
+
+# Enchanted creature gets +1/+2.
+[[abilities.effects]]
+type = "static"
+mode = "grant_to_attached"
+power = 1
+toughness = 2

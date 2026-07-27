@@ -2236,4 +2236,146 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
         };
         assert_eq!(mana.any, 1, "one mana of any color");
     }
+
+    /// Unlimited's Auras whose whole text is a static grant to the host: the five Wards, the
+    /// strength cycle, and the keyword-granters.
+    #[test]
+    fn unlimited_auras_grant_their_printed_statics_to_the_enchanted_creature() {
+        let cases: &[(&str, i32, i32, &[Keyword])] = &[
+            (
+                "White Ward",
+                0,
+                0,
+                &[Keyword::ProtectionFrom(ProtectionScope::Color(
+                    Color::White,
+                ))],
+            ),
+            (
+                "Blue Ward",
+                0,
+                0,
+                &[Keyword::ProtectionFrom(ProtectionScope::Color(Color::Blue))],
+            ),
+            (
+                "Black Ward",
+                0,
+                0,
+                &[Keyword::ProtectionFrom(ProtectionScope::Color(
+                    Color::Black,
+                ))],
+            ),
+            (
+                "Red Ward",
+                0,
+                0,
+                &[Keyword::ProtectionFrom(ProtectionScope::Color(Color::Red))],
+            ),
+            (
+                "Green Ward",
+                0,
+                0,
+                &[Keyword::ProtectionFrom(ProtectionScope::Color(
+                    Color::Green,
+                ))],
+            ),
+            ("Fear", 0, 0, &[Keyword::Fear]),
+            ("Flight", 0, 0, &[Keyword::Flying]),
+            ("Lance", 0, 0, &[Keyword::FirstStrike]),
+            ("Web", 0, 2, &[Keyword::Reach]),
+            ("Holy Strength", 1, 2, &[]),
+            ("Unholy Strength", 2, 1, &[]),
+            ("Weakness", -2, -1, &[]),
+            ("Holy Armor", 0, 2, &[]),
+        ];
+        for &(name, power, toughness, keywords) in cases {
+            let aura = get_by_name(name).unwrap_or_else(|| panic!("{name} is in the pool"));
+            assert_eq!(aura.kind, CardKind::Aura, "{name} is an Aura");
+            let grant = aura
+                .abilities
+                .iter()
+                .find_map(|a| match a.effect {
+                    Effect::Static(StaticEffect::GrantToAttached {
+                        power: p,
+                        toughness: t,
+                        keywords: k,
+                        ..
+                    }) => Some((p, t, k)),
+                    _ => None,
+                })
+                .unwrap_or_else(|| panic!("{name} grants something to its host"));
+            assert_eq!(grant.0, Amount::Fixed(power), "{name} power grant");
+            assert_eq!(grant.1, Amount::Fixed(toughness), "{name} toughness grant");
+            assert_eq!(grant.2, keywords, "{name} keyword grant");
+        }
+
+        // A Ward grants protection from its own color, and the printed "This effect doesn't
+        // remove this Aura" holds: the CR 704.5m sweep checks the `enchant` filter, not
+        // protection, so the Aura stays attached to the creature it just made protected.
+        let white_ward = get_by_name("White Ward").expect("White Ward is in the pool");
+        assert_eq!(white_ward.cost.colored[Color::White.index()], 1);
+    }
+
+    /// The three Auras that hand their host a repeatable pump — the ability lives on the Aura and
+    /// affects the enchanted creature, so it is activated, not granted.
+    #[test]
+    fn unlimited_pump_auras_activate_off_the_aura_onto_its_host() {
+        for (name, activation_color, power, toughness) in [
+            ("Blessing", Color::White, 1, 1),
+            ("Holy Armor", Color::White, 0, 1),
+            ("Firebreathing", Color::Red, 1, 0),
+        ] {
+            let aura = get_by_name(name).unwrap_or_else(|| panic!("{name} is in the pool"));
+            let ability = aura
+                .abilities
+                .iter()
+                .find(|a| matches!(a.timing, Timing::Activated(_)))
+                .unwrap_or_else(|| panic!("{name} has an activated ability"));
+            let Timing::Activated(activation) = ability.timing else {
+                unreachable!();
+            };
+            assert_eq!(
+                activation.mana.colored[activation_color.index()],
+                1,
+                "{name} activation cost"
+            );
+            assert_eq!(
+                ability.effect,
+                Effect::Pump(PumpEffect::PumpUntilEndOfTurn {
+                    power: Amount::Fixed(power),
+                    toughness: Amount::Fixed(toughness),
+                    // The pump lands on the creature this Aura enchants, not on a fresh target.
+                    target: TargetSpec::EnchantedCreature,
+                    keywords: &[],
+                }),
+                "{name} pumps its host"
+            );
+        }
+    }
+
+    /// Control Magic and Steal Artifact: the Aura's controller controls the enchanted permanent.
+    /// Steal Artifact is the pool's proof that `enchant` restricts to a non-creature type.
+    #[test]
+    fn unlimited_control_auras_take_control_of_their_host() {
+        for name in ["Control Magic", "Steal Artifact"] {
+            let aura = get_by_name(name).unwrap_or_else(|| panic!("{name} is in the pool"));
+            assert!(
+                aura.abilities
+                    .iter()
+                    .any(|a| matches!(a.effect, Effect::Static(StaticEffect::ControlAttached))),
+                "{name} controls its host"
+            );
+        }
+
+        let steal = get_by_name("Steal Artifact").expect("Steal Artifact is in the pool");
+        assert_eq!(
+            steal.enchant.map(|f| f.types),
+            Some(TypeSet::ARTIFACT),
+            "Steal Artifact enchants an artifact, not a creature"
+        );
+        assert_eq!(
+            get_by_name("Control Magic").expect("in pool").enchant,
+            None,
+            "Control Magic's plain \"Enchant creature\" is the default"
+        );
+    }
 }
