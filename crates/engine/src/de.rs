@@ -1874,6 +1874,7 @@ enum TriggerTag {
     CreatureAnOpponentControlsDies,
     EnchantmentYouControlDies,
     NonlandPermanentYouControlDiesIncludingThis,
+    LandPutIntoGraveyard,
     Upkeep,
     EachUpkeep,
     FirstMainPhase,
@@ -2144,6 +2145,7 @@ impl<'de> Deserialize<'de> for Ability {
                     Trigger::CreatureAnOpponentControlsDies
                 }
                 TriggerTag::EnchantmentYouControlDies => Trigger::EnchantmentYouControlDies,
+                TriggerTag::LandPutIntoGraveyard => Trigger::LandPutIntoGraveyard,
                 TriggerTag::NonlandPermanentYouControlDiesIncludingThis => {
                     Trigger::NonlandPermanentYouControlDiesIncludingThis
                 }

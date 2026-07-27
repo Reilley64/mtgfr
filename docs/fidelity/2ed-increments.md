@@ -1056,7 +1056,7 @@ It reads `controller_of`, not `owner_of`, so a land stolen by a Confiscate bills
 is what the printed word says. The test needed a stocked library for the second player: an empty
 one loses them the game in their draw step and their hand with it.
 
-### 59. `land-put-into-graveyard-watch` — 1 card, M
+### 59. `land-put-into-graveyard-watch` — 1 card, M — **done**
 Depends on: 58 (`damage-the-entering-permanents-controller`) — Dingus Egg's payoff is the exit-side
 twin of Ankh's and wants the same "that land's controller" addressing.
 There is no trigger for a *land* leaving the battlefield for a graveyard. The death watches are
@@ -1066,6 +1066,25 @@ outside all of them, and every arm is controller-scoped besides. *Sketch:* a
 `Trigger::PermanentPutIntoGraveyard { filter: PermanentFilter, controller: EnterController }`
 mirroring `PermanentEnters`'s filter+scope shape, with the dying permanent's controller on the
 context. *Cards:* dingus_egg.
+*Landed:* the trigger is fieldless — `Trigger::LandPutIntoGraveyard`, not the sketched
+`{ filter, controller }` pair. The filter+scope shape is `PermanentEnters`', where the entering
+permanent is still on the battlefield for `permanent_matches` to read; a dead land is a graveyard
+card, so the scanner can only ask its last-known `CardDef` — which is exactly what the two existing
+death scanners do (`def.kind.types().intersects(…)`) and all Dingus Egg needs. The scope half is
+moot for the one card: its text names no seat, so the scan is battlefield-wide with the watcher's
+own controller on the context.
+No new `DamageEffect` either. `ToTriggeringPlayer` already means "the one player this trigger
+names, baked in at placement" — increment 60 filled it from `active_player`, and a second filler
+(`fill_dying_permanent_controller`, off a new `TriggerContext::dying_permanent_controller`) reuses
+the variant unchanged. `ToEnteringPermanentController` was the other candidate and is the wrong
+one: it asks `controller_of` at *resolution*, which answers the owner once the land is in the
+graveyard.
+Both accepted ceilings ride on `ponytail:` notes in `queue_land_death_watchers`. The
+controller-at-death is owner-based, like both sibling scanners — a land stolen with Confiscate
+bills its owner. And there are three near-identical batch death scanners now, differing only in a
+type filter and a controller scope; worth folding into one filter+scope scanner when a fourth
+lands, not before (retrofitting the two older ones would churn Starfield Mystic and Martyr's Bond
+for nothing).
 
 ### 60. `each-upkeep-payoff-addresses-that-player` — 1 card, S — **done**
 Depends on: nothing.

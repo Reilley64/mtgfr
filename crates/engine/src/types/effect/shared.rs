@@ -2189,6 +2189,12 @@ pub(crate) fn contextualize_effect(effect: Effect, ctx: TriggerContext) -> Effec
     } else {
         fill_discarded_nonland_cards(effect, ctx.discarded_nonland_cards)
     };
+    // A land-death watch's payoff (Dingus Egg's "that land's controller") needs the dead land's
+    // controller baked in — `controller_of` would answer its owner once it is a graveyard card.
+    let effect = match ctx.dying_permanent_controller {
+        Some(player) => fill_dying_permanent_controller(effect, player),
+        None => effect,
+    };
     // A delayed one-shot's copy payoff (Thunderclap Drake) needs the spell that fired the
     // armed watch, not the attack tuple below — guarded separately for the same reason as
     // `entering`/`dying_enchanted_creature` above.
@@ -2744,6 +2750,29 @@ fn fill_damage_recipient(effect: Effect, player: PlayerId) -> Effect {
             let filled: Vec<Effect> = steps
                 .iter()
                 .map(|step| fill_damage_recipient(step.clone(), player))
+                .collect();
+            Effect::Sequence {
+                steps: Arc::from(filled),
+            }
+        }
+        other => other,
+    }
+}
+
+/// Rewrite a [`TriggerContext::dying_permanent_controller`]-reading effect placeholder to the
+/// player who controlled the land that died: [`Effect::Damage(DamageEffect::ToTriggeringPlayer)`]
+/// (Dingus Egg's "deals 2 damage to that land's controller") — the same slot Copper Tablet fills
+/// from `active_player`, since either way it names the one player the trigger is about.
+fn fill_dying_permanent_controller(effect: Effect, player: PlayerId) -> Effect {
+    match effect {
+        Effect::Damage(DamageEffect::ToTriggeringPlayer { amount, .. }) => Effect::Damage(DamageEffect::ToTriggeringPlayer {
+            player: Some(player),
+            amount,
+        }),
+        Effect::Sequence { steps } => {
+            let filled: Vec<Effect> = steps
+                .iter()
+                .map(|step| fill_dying_permanent_controller(step.clone(), player))
                 .collect();
             Effect::Sequence {
                 steps: Arc::from(filled),

@@ -387,6 +387,7 @@ impl Game {
         let batch_deaths = self.batch_creature_deaths(events);
         self.queue_enchantment_death_watchers(events);
         self.queue_nonland_permanent_death_watchers(events);
+        self.queue_land_death_watchers(events);
         for (idx, event) in events.iter().enumerate() {
             match event.clone() {
                 // Self-referential: the source is the object the event is about. A land enters via
@@ -1824,6 +1825,62 @@ impl Game {
         }
     }
 
+    /// Queue [`Trigger::LandPutIntoGraveyard`] watch triggers for this event batch (Dingus Egg):
+    /// for each land put into a graveyard from the battlefield (or a land token that ceased to
+    /// exist), fire the ability on every battlefield permanent — any controller, since the printed
+    /// text scopes to no seat — with the dead land's controller on
+    /// [`TriggerContext::dying_permanent_controller`] for the "that land's controller" payoff. The
+    /// land twin of [`queue_enchantment_death_watchers`](Self::queue_enchantment_death_watchers)
+    /// and [`queue_nonland_permanent_death_watchers`](Self::queue_nonland_permanent_death_watchers)
+    /// above; lands are the one permanent type both of those exclude.
+    /// ponytail: three near-identical batch death scanners now, differing only in a type filter and
+    ///   a controller scope — worth folding into one filter+scope scanner when a fourth lands.
+    ///   Owner-based controller-at-death like its siblings (a land stolen with Confiscate bills its
+    ///   owner, not the thief), and no CR 603.6c simultaneous-death look-back: an Egg dying in the
+    ///   same sweep as the land won't fire.
+    fn queue_land_death_watchers(&mut self, events: &[Event]) {
+        for event in events {
+            let (owner, def) = match event.clone() {
+                Event::MovedToGraveyard { from, .. } => {
+                    // Owner left the game in this same sweep: no death to watch (matches the
+                    // guard in `enqueue_triggers`/`batch_creature_deaths`).
+                    if matches!(
+                        &self.objects[self.current_id(from) as usize],
+                        Object::Removed { .. }
+                    ) {
+                        continue;
+                    }
+                    // CR 700.4 "put into a graveyard from the battlefield" — a discard/mill of a
+                    // land card is not a land leaving the battlefield.
+                    if !self
+                        .batch_trigger_scratch
+                        .permanents_put_into_graveyard_from_battlefield
+                        .contains(&from)
+                    {
+                        continue;
+                    }
+                    (self.owner_of(from), self.def_of(from))
+                }
+                Event::TokenCeasedToExist {
+                    token: _,
+                    controller,
+                    def,
+                } => (controller, card_def(def).as_ref().clone()),
+                _ => continue,
+            };
+            if !def.kind.types().intersects(TypeSet::LAND) {
+                continue;
+            }
+            for id in self.battlefield() {
+                let ctx = TriggerContext {
+                    dying_permanent_controller: Some(owner),
+                    ..TriggerContext::of(self.controller_of(id))
+                };
+                self.queue_trigger_group(ctx, id, self.def_of(id), Trigger::LandPutIntoGraveyard);
+            }
+        }
+    }
+
     /// Queue a controller-scoped trigger: every permanent `player` controls whose ability
     /// matches `trigger` fires. `exclude` skips one source (used to break a life-gain self-loop).
     pub(crate) fn queue_controller_triggers(
@@ -2200,6 +2257,7 @@ impl Game {
                 source_power: None,
                 dead_creature: None,
                 dying_permanent_types: None,
+                dying_permanent_controller: None,
                 cards_left_graveyard: &[],
                 left_battlefield_host: None,
                 triggering_ability: None,
@@ -2419,6 +2477,7 @@ impl Game {
                 source_power: None,
                 dead_creature: None,
                 dying_permanent_types: None,
+                dying_permanent_controller: None,
                 cards_left_graveyard: &[],
                 left_battlefield_host: None,
                 triggering_ability: None,
@@ -2698,6 +2757,7 @@ impl Game {
             source_power: None,
             dead_creature: None,
             dying_permanent_types: None,
+            dying_permanent_controller: None,
             cards_left_graveyard: &[],
             left_battlefield_host: None,
             triggering_ability: None,

@@ -128,6 +128,13 @@ pub enum Trigger {
     /// with it" (`Effect::Choice(ChoiceEffect::EachPlayerSacrifices)`'s `shares_type_with_dying_permanent` filter axis).
     /// See [`Game::queue_nonland_permanent_death_watchers`].
     NonlandPermanentYouControlDiesIncludingThis,
+    /// Whenever a *land* — any player's — is put into a graveyard from the battlefield (Dingus
+    /// Egg). Lands are the one permanent type the watches above deliberately exclude, and this is
+    /// also the one that isn't controller-scoped: the Egg fires on every land that dies anywhere.
+    /// The dead land's controller-at-death rides along on
+    /// [`TriggerContext::dying_permanent_controller`] for the "that land's controller" payoff.
+    /// See [`Game::queue_land_death_watchers`].
+    LandPutIntoGraveyard,
     /// At the beginning of the controller's upkeep step.
     Upkeep,
     /// At the beginning of *every* player's upkeep, not just the controller's — CR "at the
@@ -848,6 +855,13 @@ pub(crate) struct TriggerContext {
     /// `shares_type_with_dying_permanent`-marked filter via `contextualize_effect`; see
     /// [`Game::queue_nonland_permanent_death_watchers`] for where this is captured.
     pub(crate) dying_permanent_types: Option<TypeSet>,
+    /// CR 603.10a last-known information: the player who controlled the dying permanent, for a
+    /// [`Trigger::LandPutIntoGraveyard`] payoff that names "that land's controller" (Dingus Egg).
+    /// `None` for every other trigger. Baked in at trigger placement because the land is a
+    /// graveyard card by resolution, where `controller_of` would answer its owner. Feeds
+    /// [`Effect::Damage(DamageEffect::ToTriggeringPlayer)`] via `contextualize_effect`'s
+    /// `fill_dying_permanent_controller`; see [`Game::queue_land_death_watchers`].
+    pub(crate) dying_permanent_controller: Option<PlayerId>,
     /// CR 603.10a last-known information: the graveyard-object ids of the cards that left this
     /// batch, for a [`Trigger::CardsLeaveYourGraveyard`] payoff that becomes a copy of one of them
     /// (Spirit of Resilience's "become a copy of an artifact or creature card from among those
@@ -907,6 +921,7 @@ impl TriggerContext {
             source_power: None,
             dead_creature: None,
             dying_permanent_types: None,
+            dying_permanent_controller: None,
             cards_left_graveyard: &[],
             left_battlefield_host: None,
             triggering_ability: None,

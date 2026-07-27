@@ -208,7 +208,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [x] **Deathgrip** {B}{B} · Enchantment — increment 9
 - [ ] **Deathlace** {B} · Instant — increment 15
 - [x] **Demonic Hordes** {3}{B}{B}{B} · Creature — Demon — increment 41
-- [ ] **Dingus Egg** {4} · Artifact — increment 59
+- [x] **Dingus Egg** {4} · Artifact — increment 59
 - [x] **Disintegrate** {X}{R} · Sorcery — increment 34
 - [x] **Disrupting Scepter** {3} · Artifact — increment 56
 - [ ] **Drain Life** {X}{1}{B} · Sorcery — increment 54

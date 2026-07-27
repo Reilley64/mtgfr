@@ -4070,6 +4070,28 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
         assert!(cost.taps_self);
     }
 
+    /// Dingus Egg watches lands leaving the battlefield — the one permanent type the
+    /// controller-scoped death watches all exclude — and bills the dead land's controller through
+    /// the same `to_triggering_player` slot Copper Tablet fills from whose upkeep it is.
+    #[test]
+    fn unlimited_dingus_egg_watches_lands_dying_and_bills_their_controller() {
+        let egg = get_by_name("Dingus Egg").expect("Dingus Egg is in the pool");
+        assert_eq!(
+            egg.abilities[0].timing,
+            Timing::Triggered(Trigger::LandPutIntoGraveyard)
+        );
+        let Effect::Damage(DamageEffect::ToTriggeringPlayer { amount, player }) =
+            egg.abilities[0].effect
+        else {
+            panic!("damage aimed at the player the trigger names");
+        };
+        assert_eq!(amount, Amount::Fixed(2));
+        assert!(
+            player.is_none(),
+            "filled at trigger placement, not authored"
+        );
+    }
+
     /// Jade Statue prints two restrictions the DSL keeps on separate axes: *when* it may be
     /// activated (a `during_combat` condition) and *how long* the animation lasts (a shorter
     /// duration than the effect's until-end-of-turn default). Neither implies the other.

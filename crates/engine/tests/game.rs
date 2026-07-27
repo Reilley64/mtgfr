@@ -104877,6 +104877,38 @@ fn mind_twist_for_more_than_the_hand_holds_just_empties_it() {
     assert!(hand_ids(&game, PlayerId(1)).is_empty(), "the hand is empty");
 }
 
+// ── A land dying bills its controller (fidelity #59) ─────────────────────────────────────────
+
+#[test]
+fn dingus_egg_bills_the_controller_of_the_land_that_died() {
+    // "Whenever a land is put into a graveyard from the battlefield, this artifact deals 2 damage
+    // to that land's controller." Any player's land, and the damage follows the land — not the
+    // Egg's controller.
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Dingus Egg"));
+    let theirs = game.spawn_on_battlefield(PlayerId(1), card("Forest"));
+    let rain = game.spawn_in_hand(PlayerId(0), card("Stone Rain"));
+
+    cast_and_resolve(&mut game, rain, Some(Target::Object(theirs)));
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(game.life(PlayerId(1)), 18, "the dead land's controller");
+    assert_eq!(game.life(PlayerId(0)), 20, "not the Egg's controller");
+}
+
+#[test]
+fn dingus_egg_ignores_a_nonland_permanent_dying() {
+    // The watch is land-only: a creature dying under the same Egg is nothing to it.
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Dingus Egg"));
+    let theirs = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
+    let terror = game.spawn_in_hand(PlayerId(0), card("Terror"));
+
+    cast_and_resolve(&mut game, terror, Some(Target::Object(theirs)));
+
+    assert_eq!(game.life(PlayerId(1)), 20, "a creature is not a land");
+}
+
 // ── An animation that ends at end of combat (fidelity #57) ───────────────────────────────────
 
 #[test]
