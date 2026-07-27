@@ -248,7 +248,7 @@ describe("stack flight settle handoff", () => {
     expect(parked.phase).toBe("settled");
     expect(parked.hold).toBe(true);
 
-    const fold = gameFold();
+    const fold = gameFold(state());
     const [afterSyncMsg] = updateBoard(
       {
         ...board0,
