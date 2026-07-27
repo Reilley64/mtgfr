@@ -635,28 +635,18 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
       }
       if (existing.hold && poseNearHandoff(existing, aim)) {
         const remainingPx = Math.hypot(aim.x - existing.x, aim.y - existing.y);
-        if (existing.phase === "settled") {
-          traceFlightSync({
-            op: "handoff",
-            zone: "land",
-            id: permanent,
-            hold: true,
-            phase: existing.phase,
-            remainingPx,
-          });
-          flights.delete(permanent);
-          handHidden.delete(from);
-        } else {
-          traceFlightSync({
-            op: "skip-near",
-            zone: "land",
-            id: permanent,
-            hold: true,
-            phase: existing.phase,
-            remainingPx,
-          });
-          handHidden.add(from);
-        }
+        // Near the real slot — hand off now (flying or settled). Keeping a stale glide
+        // toward the provisional aim then correcting later is the short second ease.
+        traceFlightSync({
+          op: "handoff",
+          zone: "land",
+          id: permanent,
+          hold: true,
+          phase: existing.phase,
+          remainingPx,
+        });
+        flights.delete(permanent);
+        handHidden.delete(from);
         continue;
       }
       {
@@ -719,28 +709,18 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
       }
       if (existing.hold && poseNearHandoff(existing, aim)) {
         const remainingPx = Math.hypot(aim.x - existing.x, aim.y - existing.y);
-        if (existing.phase === "settled") {
-          traceFlightSync({
-            op: "handoff",
-            zone: "stack",
-            id: spell,
-            hold: true,
-            phase: existing.phase,
-            remainingPx,
-          });
-          flights.delete(spell);
-          if (meta.from != null) handHidden.delete(meta.from);
-        } else if (meta.from != null) {
-          traceFlightSync({
-            op: "skip-near",
-            zone: "stack",
-            id: spell,
-            hold: true,
-            phase: existing.phase,
-            remainingPx,
-          });
-          handHidden.add(meta.from);
-        }
+        // Near the stack face — hand off now. Do not keep easing toward a stale seed aim
+        // (that path later retargets and reads as a short second glide).
+        traceFlightSync({
+          op: "handoff",
+          zone: "stack",
+          id: spell,
+          hold: true,
+          phase: existing.phase,
+          remainingPx,
+        });
+        flights.delete(spell);
+        if (meta.from != null) handHidden.delete(meta.from);
         continue;
       }
       {
@@ -798,12 +778,11 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
     if (flight.kind === "stack") {
       if (!state.stack.some((entry) => entry.source === id)) continue;
       const aim = stackFlightAimForSource(model, state.stack, id);
-      if (poseAtTarget(flight, aim) || (flight.phase === "settled" && poseNearHandoff(flight, aim))) {
+      if (poseAtTarget(flight, aim) || poseNearHandoff(flight, aim)) {
         flights.delete(id);
         if (flight.fromCardId != null) handHidden.delete(flight.fromCardId);
         continue;
       }
-      if (poseNearHandoff(flight, aim)) continue;
       flights.set(id, retargetFlight(flight, { x: aim.x, y: aim.y, scale: aim.scale }, { retainHold: true }));
       continue;
     }
@@ -812,12 +791,11 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
     if (card == null) continue;
     const target = cardTarget(model.camera, card);
     const aim = { x: target.x, y: target.y, scale: 1 };
-    if (poseAtTarget(flight, aim) || (flight.phase === "settled" && poseNearHandoff(flight, aim))) {
+    if (poseAtTarget(flight, aim) || poseNearHandoff(flight, aim)) {
       flights.delete(id);
       if (flight.fromCardId != null) handHidden.delete(flight.fromCardId);
       continue;
     }
-    if (poseNearHandoff(flight, aim)) continue;
     flights.set(id, retargetFlight(flight, aim, { retainHold: true }));
   }
 

@@ -196,7 +196,7 @@ export const view = Submodel.defineView<BoardViewModel, ViewMessage>((model) => 
     stagedBlocks: model.board.combatBlocks,
     stack: state.stack,
     stackPresentation: stackMode,
-    flights: [...model.board.flights.values()],
+    flights: [...(model.board.flights instanceof Map ? model.board.flights.values() : [])],
     dragGhost:
       model.board.handDrag == null
         ? null
