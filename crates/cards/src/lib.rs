@@ -163,12 +163,12 @@ fn load_from_data_dir() -> Pool {
 mod tests {
     use super::*;
     use engine::{
-        Amount, CardFilter, CardKind, ChoiceEffect, Color, ColorFilter, Condition, ControlEffect,
-        CopyEffect, Cost, CountersEffect, DamageEffect, DestroyEffect, DigEffect, DrawEffect,
-        Effect, EnterController, ExileEffect, GraveyardScope, Keyword, LandProduces, LifeEffect,
-        Mana, ManaEffect, MillEffect, MiscEffect, PermanentFilter, ProtectionScope, PumpEffect,
-        SacrificeCost, SacrificeEffect, SearchDest, SpellFilter, SpellSpeed, StaticEffect,
-        TargetCount, TargetSpec, Timing, TokenEffect, Trigger, TypeSet, ZoneEffect,
+        Amount, CardFilter, CardKind, CasterScope, ChoiceEffect, Color, ColorFilter, Condition,
+        ControlEffect, CopyEffect, Cost, CountersEffect, DamageEffect, DestroyEffect, DigEffect,
+        DrawEffect, Effect, EnterController, ExileEffect, GraveyardScope, Keyword, LandProduces,
+        LifeEffect, Mana, ManaEffect, MillEffect, MiscEffect, PermanentFilter, ProtectionScope,
+        PumpEffect, SacrificeCost, SacrificeEffect, SearchDest, SpellFilter, SpellSpeed,
+        StaticEffect, TargetCount, TargetSpec, Timing, TokenEffect, Trigger, TypeSet, ZoneEffect,
     };
 
     #[test]
@@ -2913,6 +2913,185 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                 also: TypeSet::ARTIFACT,
             },
             "a 1/1 artifact creature"
+        );
+    }
+
+    /// The set's three anthems differ only in who they reach: two colors, every battlefield;
+    /// one attack lord, your side only.
+    #[test]
+    fn unlimited_anthems_buff_exactly_the_creatures_they_name() {
+        for (
+            name,
+            want_colors,
+            want_all_players,
+            want_attacking_only,
+            want_power,
+            want_toughness,
+        ) in [
+            ("Bad Moon", &[Color::Black][..], true, false, 1, 1),
+            ("Crusade", &[Color::White][..], true, false, 1, 1),
+            ("Orcish Oriflamme", &[][..], false, true, 1, 0),
+        ] {
+            let card = get_by_name(name).unwrap_or_else(|| panic!("{name} is in the pool"));
+            let Effect::Static(StaticEffect::Anthem {
+                power,
+                toughness,
+                colors,
+                all_players,
+                attacking_only,
+                self_only,
+                condition,
+                subtypes,
+                keywords,
+                ..
+            }) = card.abilities[0].effect
+            else {
+                panic!("{name} is an anthem");
+            };
+            assert_eq!(
+                (power, toughness),
+                (Amount::Fixed(want_power), Amount::Fixed(want_toughness)),
+                "{name}"
+            );
+            assert_eq!(colors, want_colors, "{name} buffs only its named color");
+            assert_eq!(
+                all_players, want_all_players,
+                "{name}: does the buff cross the table?"
+            );
+            assert_eq!(attacking_only, want_attacking_only, "{name}");
+            assert!(
+                !self_only && condition.is_none() && subtypes.is_empty() && keywords.is_empty(),
+                "{name} carries no rider its oracle doesn't print"
+            );
+        }
+    }
+
+    /// The set's triggered abilities: each fires off a different watch, and the watch is the
+    /// half a wrong port would silently get wrong.
+    #[test]
+    fn unlimited_triggers_fire_off_the_event_their_oracle_names() {
+        // Sengir Vampire grows off kills it caused, not off every creature death.
+        let vampire = get_by_name("Sengir Vampire").expect("Sengir Vampire is in the pool");
+        assert_eq!(
+            vampire.abilities[0].timing,
+            Timing::Triggered(Trigger::CreatureDealtDamageByThisDies)
+        );
+        assert_eq!(
+            vampire.abilities[0].effect,
+            Effect::Counters(CountersEffect::PutCounters {
+                count: Amount::Fixed(1),
+                target: TargetSpec::ThisPermanent,
+                targets: TargetCount::default(),
+                kind: None,
+                divided: false,
+            })
+        );
+
+        // Phantasmal Forces is a 4/1 flier with rent due every upkeep.
+        let forces = get_by_name("Phantasmal Forces").expect("Phantasmal Forces is in the pool");
+        assert_eq!(
+            forces.abilities[0].timing,
+            Timing::Triggered(Trigger::Upkeep)
+        );
+        let Effect::Choice(ChoiceEffect::SacrificeSelfUnlessPay { cost }) =
+            forces.abilities[0].effect
+        else {
+            panic!("Phantasmal Forces asks for rent");
+        };
+        assert_eq!(
+            cost.colored[Color::Blue.index()],
+            1,
+            "{{U}}, not one generic"
+        );
+        assert_eq!(cost.generic, 0);
+
+        // Verduran Enchantress watches enchantment casts, and the draw is optional.
+        let enchantress =
+            get_by_name("Verduran Enchantress").expect("Verduran Enchantress is in the pool");
+        assert_eq!(
+            enchantress.abilities[0].timing,
+            Timing::Triggered(Trigger::CastSpell {
+                filter: SpellFilter::Enchantment,
+                caster: CasterScope::You,
+                nth_each_turn: None,
+                from_hand: false,
+            })
+        );
+        assert!(enchantress.abilities[0].optional, "\"you may draw a card\"");
+    }
+
+    /// Pestilence: a sweeper you rent by the point, with a gate that removes it once the board
+    /// is already empty.
+    #[test]
+    fn pestilence_sacrifices_itself_only_once_no_creatures_remain() {
+        let pestilence = get_by_name("Pestilence").expect("Pestilence is in the pool");
+        assert_eq!(
+            pestilence.abilities[0].timing,
+            Timing::Triggered(Trigger::EachEndStep),
+            "every end step, not only yours"
+        );
+        assert_eq!(
+            pestilence.abilities[0].condition,
+            Some(Condition::NoCreaturesOnBattlefield),
+            "an intervening-if, so a board that refills before resolution keeps it"
+        );
+        assert_eq!(
+            pestilence.abilities[0].effect,
+            Effect::Sacrifice(SacrificeEffect::Source)
+        );
+
+        let Effect::Sequence { steps } = &pestilence.abilities[1].effect else {
+            panic!("Pestilence pings creatures and players");
+        };
+        assert_eq!(
+            steps.as_ref(),
+            &[
+                Effect::Damage(DamageEffect::EachCreature {
+                    amount: Amount::Fixed(1),
+                    opponents_only: false,
+                    filter: None,
+                    include_planeswalkers: false,
+                }),
+                Effect::Damage(DamageEffect::EachPlayer {
+                    amount: Amount::Fixed(1)
+                }),
+            ],
+            "each creature and each player — its own controller included"
+        );
+        let Timing::Activated(activation) = pestilence.abilities[1].timing else {
+            panic!("the ping is activated");
+        };
+        assert_eq!(activation.mana.colored[Color::Black.index()], 1);
+        assert!(
+            !activation.taps_self,
+            "the ping is repeatable, not once a turn"
+        );
+    }
+
+    /// Regeneration and Black Knight: the Aura that shields its host, and the knight whose
+    /// protection is a parameterized keyword rather than an ability.
+    #[test]
+    fn unlimited_protection_is_a_keyword_and_regeneration_shields_its_host() {
+        let regeneration = get_by_name("Regeneration").expect("Regeneration is in the pool");
+        assert_eq!(
+            regeneration.abilities[0].effect,
+            Effect::Control(ControlEffect::RegenerateShield {
+                target: TargetSpec::EnchantedCreature,
+            }),
+            "the shield lands on the host, not on the Aura"
+        );
+
+        let knight = get_by_name("Black Knight").expect("Black Knight is in the pool");
+        assert_eq!(
+            knight.keywords.as_ref(),
+            &[
+                Keyword::FirstStrike,
+                Keyword::ProtectionFrom(ProtectionScope::Color(Color::White))
+            ],
+        );
+        assert!(
+            knight.abilities.is_empty(),
+            "both halves are keywords — nothing to script"
         );
     }
 }

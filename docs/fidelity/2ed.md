@@ -7,8 +7,8 @@ Engine backlog for section D: [`2ed-increments.md`](2ed-increments.md).
 | --- | --- | ---: |
 | A | In the pool, faithful | 28 |
 | B | In the pool, approximated | 0 |
-| C | New, expressible with today's DSL | 125 |
-| D | New, needs engine work | 135 |
+| C | New, expressible with today's DSL | 115 |
+| D | New, needs engine work | 145 |
 | — | Out of scope (flag-don't-force) | 4 |
 
 ## A. In the pool, faithful
@@ -53,27 +53,22 @@ Empty — no 2ed card already in the pool carries an `approximates` field.
 Authorable in Phase 3 with no engine change. TDD each one.
 
 - [x] **Air Elemental** {3}{U}{U} · Creature — Elemental
-- [ ] **Ankh of Mishra** {2} · Artifact
 - [x] **Armageddon** {3}{W} · Sorcery
-- [ ] **Bad Moon** {1}{B} · Enchantment
+- [x] **Bad Moon** {1}{B} · Enchantment
 - [x] **Badlands** — · Land — Swamp Mountain
 - [x] **Bayou** — · Land — Swamp Forest
-- [ ] **Black Knight** {B}{B} · Creature — Human Knight
+- [x] **Black Knight** {B}{B} · Creature — Human Knight
 - [x] **Black Lotus** {0} · Artifact
 - [x] **Black Ward** {W} · Enchantment — Aura
 - [x] **Blessing** {W}{W} · Enchantment — Aura
 - [x] **Blue Ward** {W} · Enchantment — Aura
 - [x] **Celestial Prism** {3} · Artifact
 - [x] **Control Magic** {2}{U}{U} · Enchantment — Aura
-- [ ] **Copper Tablet** {2} · Artifact
 - [x] **Counterspell** {U}{U} · Instant
 - [x] **Craw Wurm** {4}{G}{G} · Creature — Wurm
-- [ ] **Creature Bond** {1}{U} · Enchantment — Aura
-- [ ] **Crusade** {W}{W} · Enchantment
-- [ ] **Cursed Land** {2}{B}{B} · Enchantment — Aura
+- [x] **Crusade** {W}{W} · Enchantment
 - [x] **Death Ward** {W} · Instant
 - [x] **Demonic Tutor** {1}{B} · Sorcery
-- [ ] **Dingus Egg** {4} · Artifact
 - [x] **Disenchant** {1}{W} · Instant
 - [x] **Drudge Skeletons** {1}{B} · Creature — Skeleton
 - [x] **Dwarven Demolition Team** {2}{R} · Creature — Dwarf
@@ -81,13 +76,11 @@ Authorable in Phase 3 with no engine change. TDD each one.
 - [x] **Earth Elemental** {3}{R}{R} · Creature — Elemental
 - [x] **Elvish Archers** {1}{G} · Creature — Elf Archer
 - [x] **Fear** {B}{B} · Enchantment — Aura
-- [ ] **Feedback** {2}{U} · Enchantment — Aura
 - [x] **Fire Elemental** {3}{R}{R} · Creature — Elemental
 - [x] **Firebreathing** {R} · Enchantment — Aura
 - [x] **Flight** {U} · Enchantment — Aura
 - [x] **Fog** {G} · Instant
 - [x] **Frozen Shade** {2}{B} · Creature — Shade
-- [ ] **Fungusaur** {3}{G} · Creature — Fungus Dinosaur
 - [x] **Giant Growth** {G} · Instant
 - [x] **Giant Spider** {3}{G} · Creature — Spider
 - [x] **Goblin Balloon Brigade** {R} · Creature — Goblin Warrior
@@ -120,16 +113,16 @@ Authorable in Phase 3 with no engine change. TDD each one.
 - [x] **Northern Paladin** {2}{W}{W} · Creature — Human Knight
 - [x] **Obsianus Golem** {6} · Artifact Creature — Golem
 - [x] **Orcish Artillery** {1}{R}{R} · Creature — Orc Warrior
-- [ ] **Orcish Oriflamme** {3}{R} · Enchantment
+- [x] **Orcish Oriflamme** {3}{R} · Enchantment
 - [x] **Pearled Unicorn** {2}{W} · Creature — Unicorn
-- [ ] **Pestilence** {2}{B}{B} · Enchantment
-- [ ] **Phantasmal Forces** {3}{U} · Creature — Illusion
+- [x] **Pestilence** {2}{B}{B} · Enchantment
+- [x] **Phantasmal Forces** {3}{U} · Creature — Illusion
 - [x] **Phantom Monster** {3}{U} · Creature — Illusion
 - [x] **Plateau** — · Land — Mountain Plains
 - [x] **Prodigal Sorcerer** {2}{U} · Creature — Human Wizard Sorcerer
 - [x] **Psionic Blast** {2}{U} · Instant
 - [x] **Red Ward** {W} · Enchantment — Aura
-- [ ] **Regeneration** {1}{G} · Enchantment — Aura
+- [x] **Regeneration** {1}{G} · Enchantment — Aura
 - [x] **Regrowth** {1}{G} · Sorcery
 - [x] **Roc of Kher Ridges** {3}{R} · Creature — Bird
 - [x] **Rod of Ruin** {4} · Artifact
@@ -139,7 +132,7 @@ Authorable in Phase 3 with no engine change. TDD each one.
 - [x] **Scrubland** — · Land — Plains Swamp
 - [x] **Scryb Sprites** {G} · Creature — Faerie
 - [x] **Sedge Troll** {2}{R} · Creature — Troll
-- [ ] **Sengir Vampire** {3}{B}{B} · Creature — Vampire
+- [x] **Sengir Vampire** {3}{B}{B} · Creature — Vampire
 - [x] **Shatter** {1}{R} · Instant
 - [x] **Shivan Dragon** {4}{R}{R} · Creature — Dragon
 - [x] **Sinkhole** {B}{B} · Sorcery
@@ -156,7 +149,7 @@ Authorable in Phase 3 with no engine change. TDD each one.
 - [x] **Underground Sea** — · Land — Island Swamp
 - [x] **Unholy Strength** {B} · Enchantment — Aura
 - [x] **Uthden Troll** {2}{R} · Creature — Troll
-- [ ] **Verduran Enchantress** {1}{G}{G} · Creature — Human Druid
+- [x] **Verduran Enchantress** {1}{G}{G} · Creature — Human Druid
 - [x] **Volcanic Island** — · Land — Island Mountain
 - [x] **Wall of Air** {1}{U}{U} · Creature — Wall
 - [x] **Wall of Bone** {2}{B} · Creature — Skeleton Wall
@@ -167,14 +160,11 @@ Authorable in Phase 3 with no engine change. TDD each one.
 - [x] **Wall of Swords** {3}{W} · Creature — Wall
 - [x] **Wall of Water** {1}{U}{U} · Creature — Wall
 - [x] **Wall of Wood** {G} · Creature — Wall
-- [ ] **Wanderlust** {2}{G} · Enchantment — Aura
 - [x] **War Mammoth** {3}{G} · Creature — Elephant
-- [ ] **Warp Artifact** {B}{B} · Enchantment — Aura
 - [x] **Water Elemental** {3}{U}{U} · Creature — Elemental
 - [x] **Weakness** {B} · Enchantment — Aura
 - [x] **Web** {G} · Enchantment — Aura
 - [x] **White Ward** {W} · Enchantment — Aura
-- [ ] **Wild Growth** {G} · Enchantment — Aura
 - [x] **Will-o'-the-Wisp** {B} · Creature — Spirit
 - [x] **Wrath of God** {2}{W}{W} · Sorcery
 
@@ -184,6 +174,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 
 - [ ] **Animate Artifact** {3}{U} · Enchantment — Aura — increment 2
 - [ ] **Animate Wall** {W} · Enchantment — Aura — increment 24
+- [ ] **Ankh of Mishra** {2} · Artifact — increment 58
 - [ ] **Aspect of Wolf** {1}{G} · Enchantment — Aura — increment 2, 25
 - [ ] **Balance** {1}{W} · Sorcery — increment 43
 - [ ] **Basalt Monolith** {3} · Artifact — increment 7
@@ -208,12 +199,16 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Consecrate Land** {W} · Enchantment — Aura — increment 35
 - [ ] **Conservator** {4} · Artifact — increment 4
 - [ ] **Conversion** {2}{W}{W} · Enchantment — increment 8
+- [ ] **Copper Tablet** {2} · Artifact — increment 60
 - [ ] **Copy Artifact** {1}{U} · Enchantment — increment 12
+- [ ] **Creature Bond** {1}{U} · Enchantment — Aura — increment 62
 - [ ] **Crystal Rod** {1} · Artifact — increment 9, 10
+- [ ] **Cursed Land** {2}{B}{B} · Enchantment — Aura — increment 61
 - [ ] **Cyclopean Tomb** {4} · Artifact — increment 8, 28
 - [ ] **Deathgrip** {B}{B} · Enchantment — increment 9
 - [ ] **Deathlace** {B} · Instant — increment 15
 - [ ] **Demonic Hordes** {3}{B}{B}{B} · Creature — Demon — increment 20, 41
+- [ ] **Dingus Egg** {4} · Artifact — increment 59
 - [ ] **Disintegrate** {X}{R} · Sorcery — increment 34
 - [ ] **Disrupting Scepter** {3} · Artifact — increment 56
 - [ ] **Drain Life** {X}{1}{B} · Sorcery — increment 54
@@ -223,11 +218,13 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **False Orders** {R} · Instant — increment 11
 - [ ] **Farmstead** {W}{W}{W} · Enchantment — Aura — increment 36
 - [ ] **Fastbond** {G} · Enchantment — increment 29
+- [ ] **Feedback** {2}{U} · Enchantment — Aura — increment 61
 - [ ] **Fireball** {X}{R} · Sorcery — increment 53
 - [ ] **Flashfires** {3}{R} · Sorcery — increment 51
 - [ ] **Force of Nature** {2}{G}{G}{G}{G} · Creature — Elemental — increment 20
 - [ ] **Forcefield** {3} · Artifact — increment 4
 - [ ] **Fork** {R}{R} · Instant — increment 13
+- [ ] **Fungusaur** {3}{G} · Creature — Fungus Dinosaur — increment 63
 - [ ] **Gaea's Liege** {3}{G}{G}{G} · Creature — Avatar — increment 1, 2, 8
 - [ ] **Gauntlet of Might** {4} · Artifact — increment 19
 - [ ] **Glasses of Urza** {1} · Artifact — increment 31
@@ -313,6 +310,9 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Vesuvan Doppelganger** {3}{U}{U} · Creature — Shapeshifter — increment 12
 - [ ] **Veteran Bodyguard** {3}{W}{W} · Creature — Human — increment 6
 - [ ] **Volcanic Eruption** {X}{U}{U}{U} · Sorcery — increment 1
+- [ ] **Wanderlust** {2}{G} · Enchantment — Aura — increment 61
+- [ ] **Warp Artifact** {B}{B} · Enchantment — Aura — increment 61
+- [ ] **Wild Growth** {G} · Enchantment — Aura — increment 64
 - [ ] **Winter Orb** {2} · Artifact — increment 7
 - [ ] **Wooden Sphere** {1} · Artifact — increment 9, 10
 - [ ] **Word of Command** {B}{B} · Instant — increment 49

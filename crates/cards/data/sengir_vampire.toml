@@ -1,0 +1,31 @@
+# Flying (This creature can't be blocked except by creatures with flying or reach.)
+# Whenever a creature dealt damage by this creature this turn dies, put a +1/+1 counter on this
+# creature.
+name = "Sengir Vampire"
+sets = ["10e", "2ed", "30a", "3ed", "4bb", "4ed", "9ed", "anb", "brb", "btd", "ced", "cei", "ddk", "dpa", "fbb", "jmp", "lea", "leb", "m12", "m14", "m15", "mb2", "me4", "ori", "p30h", "plst", "ps11", "ptc", "sum", "tor", "w16", "w17"]
+id = "749141aa-f6c4-4ad8-b146-406e68ae9b0b"
+default_print = "ffd7ca8e-6437-4b85-81dd-7173200dcec7"
+oracle = "Flying (This creature can't be blocked except by creatures with flying or reach.)\nWhenever a creature dealt damage by this creature this turn dies, put a +1/+1 counter on this creature."
+subtypes = ["Vampire"]
+keywords = ["flying"]
+
+[cost]
+generic = 3
+black = 2
+
+[kind]
+type = "creature"
+power = 4
+toughness = 4
+
+# Whenever a creature dealt damage by this creature this turn dies, put a +1/+1 counter on this
+# creature.
+[[abilities]]
+timing = "creature_dealt_damage_by_this_dies"
+
+# Put a +1/+1 counter on this creature.
+[[abilities.effects]]
+type = "counters"
+mode = "put_counters"
+count = 1
+target = "this"

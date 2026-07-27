@@ -1,0 +1,29 @@
+# Whenever you cast an enchantment spell, you may draw a card.
+name = "Verduran Enchantress"
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "8ed", "9ed", "ced", "cei", "cmm", "fbb", "lea", "leb", "sld", "sum"]
+id = "cd98a31b-cc7e-43f9-982e-109ad9850908"
+default_print = "55454150-de1b-4921-9c23-7d10724c2ee7"
+oracle = "Whenever you cast an enchantment spell, you may draw a card."
+subtypes = ["Human", "Druid"]
+
+[cost]
+generic = 1
+green = 2
+
+[kind]
+type = "creature"
+power = 0
+toughness = 2
+
+# Whenever you cast an enchantment spell, you may draw a card.
+[[abilities]]
+timing = "cast_spell"
+spell_filter = "enchantment"
+caster = "you"
+optional = true
+
+# Draw a card.
+[[abilities.effects]]
+type = "draw"
+mode = "cards"
+count = 1

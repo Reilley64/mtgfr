@@ -670,3 +670,79 @@ approximated down. *Sketch:* a `duration` field on the animation effect (`end_of
 `end_of_combat`, cleared at the end-of-combat step alongside the existing cleanup) plus a
 `combat_only` activation gate reusing `cast_only_during_combat`'s own window predicate.
 *Cards:* jade_statue.
+
+### 58. `damage-the-entering-permanents-controller` — 1 card, S
+Depends on: nothing.
+Ankh of Mishra watches lands enter (`Trigger::PermanentEnters` with `EnterController::AnyPlayer`
+already covers the watch) and then damages *that land's controller*. The two damage effects that
+read a triggering object aim elsewhere: `DamageEffect::ToEnteringPermanent` hits the permanent
+itself, and `DamageEffect::ToTargetController` reads an enclosing `Sequence`'s shared target, which
+a trigger with no target never sets. *Sketch:* a `DamageEffect::ToEnteringPermanentController {
+amount }` reading the same `TriggerContext` slot `ToEnteringPermanent` already threads.
+*Cards:* ankh_of_mishra.
+
+### 59. `land-put-into-graveyard-watch` — 1 card, M
+Depends on: 58 (`damage-the-entering-permanents-controller`) — Dingus Egg's payoff is the exit-side
+twin of Ankh's and wants the same "that land's controller" addressing.
+There is no trigger for a *land* leaving the battlefield for a graveyard. The death watches are
+creature-, enchantment-, and nonland-permanent-scoped (`CreatureDies`, `EnchantmentYouControlDies`,
+`NonlandPermanentYouControlDiesIncludingThis`) — lands are the one permanent type deliberately
+outside all of them, and every arm is controller-scoped besides. *Sketch:* a
+`Trigger::PermanentPutIntoGraveyard { filter: PermanentFilter, controller: EnterController }`
+mirroring `PermanentEnters`'s filter+scope shape, with the dying permanent's controller on the
+context. *Cards:* dingus_egg.
+
+### 60. `each-upkeep-payoff-addresses-that-player` — 1 card, S
+Depends on: nothing.
+`Trigger::EachUpkeep` fires on every player's upkeep but, per its own `ponytail:` note on
+`queue_each_upkeep_triggers`, does not thread `TriggerContext::active_player` the way
+`EachDrawStep` does. Copper Tablet's "deals 1 damage to **that player**" therefore has no way to
+name whose upkeep it is; `DamageEffect::EachPlayer` would hit the whole table once per upkeep,
+which is four times the printed damage in a four-player game. *Sketch:* thread `active_player` in
+`queue_each_upkeep_triggers` (the note already sketches it) plus a
+`DamageEffect::ToTriggeringPlayer { amount }`. *Cards:* copper_tablet.
+
+### 61. `upkeep-of-the-enchanted-permanents-controller` — 4 cards, M
+Depends on: 60 (`each-upkeep-payoff-addresses-that-player`) — same "damage the player this upkeep
+belongs to" payoff, reached from an Aura rather than from a free-standing permanent.
+The 2ed upkeep-tax Aura cycle reads "At the beginning of the upkeep of enchanted <permanent>'s
+controller, this Aura deals 1 damage to that player." Both halves are missing: `Trigger::Upkeep`
+is scoped to the *Aura's* controller, not the host's (an Aura you cast on an opponent's land
+would tax you), and the payoff needs the same "that player" addressing as increment 60. Note the
+cycle is deliberately type-agnostic — land, enchantment, creature, and artifact hosts — so the
+trigger wants the enchant restriction it already carries rather than a per-type variant.
+*Sketch:* a `Trigger::UpkeepOfEnchantedPermanentsController` queued off the same upkeep event as
+`EachUpkeep`, gated on the Aura's attachment and firing with the host's controller in the
+context's player slot. *Cards:* cursed_land, feedback, wanderlust, warp_artifact.
+
+### 62. `damage-equal-to-the-dying-creatures-toughness` — 1 card, M
+Depends on: 61 (`upkeep-of-the-enchanted-permanents-controller`) — both are Aura payoffs aimed at
+the host's controller, so they want the same context plumbing.
+Creature Bond's `Trigger::EnchantedCreatureDies` watch already exists, but the payoff needs two
+things it can't get: an amount read from the dying creature's *last-known* toughness (CR
+603.6c/603.10 — the creature is gone by resolution, so no live characteristic read works), and the
+dying creature's controller as the damage recipient. `Amount` has no last-known-information arm.
+*Sketch:* an `Amount::DyingPermanentToughness` fed from the death snapshot `Game::apply` already
+captures for the `*IncludingThis` arms, plus the increment-61 "damage the host's controller"
+recipient. *Cards:* creature_bond.
+
+### 63. `whenever-this-is-dealt-damage` — 1 card, M
+Depends on: nothing.
+Fungusaur grows every time it is dealt damage, from any source — combat, a burn spell, a ping.
+The damage-shaped triggers in the pool all watch damage *this permanent deals*
+(`DealsCombatDamageToCreature`, `DealsDamageToOpponent`, `CreatureDealtDamageByThisDies`); nothing
+watches damage *received*. This is not a rename of one of those — the event is a different one,
+and it fires once per damage event rather than once per combat. *Sketch:* a
+`Trigger::ThisIsDealtDamage` queued off the damage-marking path with the amount on the context (a
+"dealt damage" watcher that scales with the amount is the obvious next consumer, so thread it
+even though Fungusaur ignores it). *Cards:* fungusaur.
+
+### 64. `fixed-color-tapped-for-mana-bonus` — 1 card, S
+Depends on: nothing.
+`StaticEffect::TappedForManaBonus` already has the right watch and the right scope
+(`LandTapScope::EnchantedHost`), but `LandTapBonusColor` offers only `AnyColor` (Fertile Ground's
+"one mana of any color") and `Produced` (Mirari's Wake's "any type that land produced"). Wild
+Growth adds an additional **{G}** specifically — strictly narrower than `AnyColor` and unrelated
+to `Produced`, so neither approximation is faithful. *Sketch:* a
+`LandTapBonusColor::Fixed(Color)` arm, credited without the `ChooseManaColor` pause `AnyColor`
+raises. *Cards:* wild_growth.
