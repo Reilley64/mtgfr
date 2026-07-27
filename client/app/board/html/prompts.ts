@@ -1138,7 +1138,9 @@ function pendingHandAimCoach(
     case "put_land_from_hand":
       return "Click a land in your hand to put onto the battlefield";
     case "put_creature_from_hand":
-      return "Click a creature in your hand to put onto the battlefield";
+      return oneClick
+        ? "Click a creature in your hand to put onto the battlefield"
+        : "Click a creature in your hand, then Confirm";
     case "cast_creature_face_down":
       return "Click a creature in your hand to cast face down";
     case "put_from_hand_on_top":

@@ -2793,6 +2793,36 @@ test("pending put-from-hand aim shows coach when cards are in hand", () => {
   );
 });
 
+test("put_creature_from_hand uses select then Confirm like discard", () => {
+  const angel = card(21, {
+    name: "Angel",
+    zone: ZONE.Hand,
+    kind: { kind: "creature", power: 4, toughness: 4 },
+  });
+  overlayScene(
+    overlayModel(
+      {
+        ...initialBoardModel(),
+        promptDraft: { kind: "card-pick", picked: [21], filter: "" },
+      },
+      gameState({
+        objects: [angel],
+        pending_choice: {
+          kind: "put_creature_from_hand",
+          player: 0,
+          items: [{ id: 21, label: "Angel" }],
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-hand-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-hand-count")).toHaveText("1 / 1 selected"),
+    Scene.expect(Scene.selector('[data-testid="priority-context-bar"] [data-testid="prompt-submit"]')).toBeEnabled(),
+    Scene.expect(Scene.selector('[data-testid="priority-context-bar"] [data-testid="prompt-decline"]')).toExist(),
+    Scene.expect(Scene.selector('[data-testid="pending-hand-aim"] [data-testid="prompt-submit"]')).toBeAbsent(),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
+  );
+});
+
 test("full board view mounts the bitmap layer", () => {
   liveBoardScene(
     fullBoardModel(initialBoardModel(), gameState()),

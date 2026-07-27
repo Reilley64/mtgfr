@@ -2487,7 +2487,7 @@ test("DiscardChosen during cast_creature_face_down submits cast face-down intent
   });
 });
 
-test("DiscardChosen during put_creature_from_hand submits put_creature intent", () => {
+test("DiscardChosen during put_creature_from_hand toggles selection without submitting", () => {
   const elf = creature(21, 0, { name: "Elf", zone: ZONE.Hand });
   const gameFold = fold(
     state({
@@ -2501,7 +2501,32 @@ test("DiscardChosen during put_creature_from_hand submits put_creature intent", 
       can_act: true,
     }),
   );
-  const [, commands] = updateBoard(initialBoardModel(), DiscardChosen({ ids: [21] }), gameFold, "T1");
+  const [next, commands] = updateBoard(initialBoardModel(), DiscardChosen({ ids: [21] }), gameFold, "T1");
+  expect(commands).toEqual([]);
+  expect(next.promptDraft).toEqual({ kind: "card-pick", picked: [21], filter: "" });
+});
+
+test("PromptSubmitted during put_creature_from_hand submits put_creature intent", () => {
+  const elf = creature(21, 0, { name: "Elf", zone: ZONE.Hand });
+  const pending = {
+    kind: "put_creature_from_hand" as const,
+    player: 0,
+    items: [{ id: 21, label: "Elf" }],
+  };
+  const gameFold = fold(
+    state({
+      objects: [elf],
+      actions: [],
+      pending_choice: pending,
+      can_act: true,
+    }),
+  );
+  const selected = {
+    ...initialBoardModel(),
+    promptDraft: { kind: "card-pick" as const, picked: [21], filter: "" },
+    pendingChoiceKey: choiceDraftKey(pending),
+  };
+  const [, commands] = updateBoard(selected, PromptSubmitted(), gameFold, "T1");
   expect(intentFromCommand(commands[0])).toEqual({
     kind: "put_creature_from_hand",
     player: 0,

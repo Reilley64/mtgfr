@@ -789,6 +789,16 @@ describe("pendingHandPickOneClick", () => {
       }),
     ).toBe(true);
   });
+
+  it("is false for put_creature_from_hand so Kaalia-style puts use select then Confirm", () => {
+    expect(
+      pendingHandPickOneClick({
+        kind: "put_creature_from_hand",
+        player: 0,
+        items: [{ id: 1, label: "Angel" }],
+      }),
+    ).toBe(false);
+  });
 });
 
 describe("pendingHandPickIds", () => {

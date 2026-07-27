@@ -1138,12 +1138,6 @@ function submitPendingHandPick(
       boardIntentSubmit(tableId, choiceIntent(pc, { kind: "put_land", choice: objectId })),
     ];
   }
-  if (pc.kind === "put_creature_from_hand") {
-    return [
-      { ...idle, promptDraft: null, pendingChoiceKey: null },
-      boardIntentSubmit(tableId, choiceIntent(pc, { kind: "put_creature", choice: objectId })),
-    ];
-  }
   if (pc.kind === "cast_creature_face_down") {
     return [
       { ...idle, promptDraft: null, pendingChoiceKey: null },
