@@ -109,7 +109,7 @@ impl pb::game_server::Game for GameSvc {
         let user = auth_ctx::authenticate(&self.state, &request).await?;
         let inner = request.into_inner();
         let table_id = inner.table_id.clone();
-        tracing::Span::current().record("table_id", tracing::field::display(&table_id));
+        tracing::Span::current().record(crate::otel_semconv::MTGFR_TABLE_ID, tracing::field::display(&table_id));
         let envelope = map::intent_envelope_from_pb(
             inner
                 .envelope
@@ -122,9 +122,9 @@ impl pb::game_server::Game for GameSvc {
             ));
         }
         let intent_kind = intent_kind_label(&envelope.intent);
-        tracing::Span::current().record("intent.kind", intent_kind.as_str());
+        tracing::Span::current().record(crate::otel_semconv::MTGFR_INTENT_KIND, intent_kind.as_str());
         let ack = submit_intent_core(&self.state, user.id, &table_id, envelope).await;
-        tracing::Span::current().record("accepted", ack.accepted);
+        tracing::Span::current().record(crate::otel_semconv::MTGFR_INTENT_ACCEPTED, ack.accepted);
         Ok(Response::new(ack_msg(ack)))
     }
 
@@ -164,6 +164,30 @@ mod tests {
     use schema::{MessageParam, MessageRef};
 
     use super::*;
+
+    #[test]
+    fn intent_kind_label_returns_discriminant_only() {
+        let intent = schema::WireIntent::Cast {
+            player: 0,
+            object: 42,
+            target: None,
+            x: 0,
+            modes: vec![],
+            discard_cost: vec![],
+            graveyard_exile: vec![],
+            sacrifice_cost: vec![],
+            kicked: false,
+            bought_back: false,
+            evoked: false,
+            strive_count: 0,
+            replicate_count: 0,
+            multikicker_count: 0,
+            alternative_cost: false,
+        };
+        let label = intent_kind_label(&intent);
+        assert_eq!(label, "Cast");
+        assert!(!label.contains("42"));
+    }
 
     #[test]
     fn ack_msg_maps_reject_reason_message_ref() {

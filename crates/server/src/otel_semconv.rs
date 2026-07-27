@@ -45,8 +45,7 @@ mod tests {
 
     #[test]
     fn parse_grpc_path_splits_service_and_method() {
-        let (svc, method) =
-            parse_grpc_path("/mtgfr.v1.Game/SubmitIntent").expect("path");
+        let (svc, method) = parse_grpc_path("/mtgfr.v1.Game/SubmitIntent").expect("path");
         assert_eq!(svc, "mtgfr.v1.Game");
         assert_eq!(method, "SubmitIntent");
         assert_eq!(rpc_span_name(svc, method), "mtgfr.v1.Game/SubmitIntent");
@@ -63,5 +62,14 @@ mod tests {
         assert!(FORBIDDEN_ATTR_KEYS.contains(&"db.query.text"));
         assert!(FORBIDDEN_ATTR_KEYS.contains(&"intent.kind"));
         assert!(FORBIDDEN_ATTR_KEYS.contains(&"mtgfr.intent.payload"));
+    }
+
+    #[test]
+    fn submit_intent_span_keys_are_mtgfr_namespaced() {
+        assert_eq!(MTGFR_TABLE_ID, "mtgfr.table.id");
+        assert_eq!(MTGFR_INTENT_KIND, "mtgfr.intent.kind");
+        assert_eq!(MTGFR_INTENT_ACCEPTED, "mtgfr.intent.accepted");
+        assert_eq!(MTGFR_USER_ID, "mtgfr.user.id");
+        assert!(FORBIDDEN_ATTR_KEYS.contains(&"intent.kind"));
     }
 }
