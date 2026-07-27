@@ -526,9 +526,18 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.static_set_attached_types": (params) => `Attached creature is a ${humanize(param(params, "subtypes"))}`,
   "effect.static_spend_mana_as_though_another_color": (params) =>
     `You may spend ${param(params, "from")} mana as though it were ${param(params, "to")} mana`,
-  "effect.static_tapped_for_mana_bonus": literal(
-    "Whenever you tap a land for mana, add one mana of any type that land produced",
-  ),
+  "effect.static_tapped_for_mana_bonus": (params) => {
+    const bonus = param(params, "bonus_color")
+    const added =
+      bonus === "any_color"
+        ? "one mana of any color"
+        : bonus === "produced"
+          ? "one mana of any type that land produced"
+          : `one ${bonus} mana`
+    return param(params, "scope") === "enchanted_host"
+      ? `Whenever enchanted land is tapped for mana, its controller adds an additional ${added}`
+      : `Whenever you tap a land for mana, add an additional ${added}`
+  },
   "effect.static_token_replacement": (params) => `tokens created: n x ${param(params, "times")}`,
   "effect.static_trigger_doubling": literal("That triggered ability triggers an additional time"),
   "effect.token_become_copy_of_target_creature_gaining_myriad": literal(

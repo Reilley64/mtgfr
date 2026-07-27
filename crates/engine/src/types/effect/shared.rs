@@ -421,6 +421,11 @@ pub enum LandTapBonusColor {
     /// "One mana of any type that land produced" — copied from the type the tap just produced, no
     /// pause when the tap made a single concrete credit (Mirari's Wake).
     Produced,
+    /// "An additional {G}" — one named color, whatever the land itself produced (Wild Growth).
+    /// Strictly narrower than [`AnyColor`](Self::AnyColor) and unrelated to
+    /// [`Produced`](Self::Produced), so it's credited inline with no pause: there's nothing to
+    /// choose. `bonus_color = { fixed = "green" }` in TOML.
+    Fixed(Color),
 }
 
 /// A single parametrized game action. The enum grows only as the pool demands it.

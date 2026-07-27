@@ -312,7 +312,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Volcanic Eruption** {X}{U}{U}{U} · Sorcery — increment 1
 - [ ] **Wanderlust** {2}{G} · Enchantment — Aura — increment 61
 - [ ] **Warp Artifact** {B}{B} · Enchantment — Aura — increment 61
-- [ ] **Wild Growth** {G} · Enchantment — Aura — increment 64
+- [x] **Wild Growth** {G} · Enchantment — Aura — increment 64
 - [ ] **Winter Orb** {2} · Artifact — increment 7
 - [x] **Wooden Sphere** {1} · Artifact — increment 10
 - [ ] **Word of Command** {B}{B} · Instant — increment 49

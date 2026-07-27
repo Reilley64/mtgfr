@@ -722,6 +722,7 @@ fn land_tap_bonus_color_token(color: LandTapBonusColor) -> &'static str {
     match color {
         LandTapBonusColor::AnyColor => "any_color",
         LandTapBonusColor::Produced => "produced",
+        LandTapBonusColor::Fixed(color) => color_token(color),
     }
 }
 

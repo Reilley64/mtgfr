@@ -228,6 +228,7 @@ impl Game {
         // says what mana it adds (a `Produced` credit inline, or an `AnyColor` credit the
         // controller names via a pause).
         let mut produced_bonuses = 0usize;
+        let mut fixed_bonuses: Vec<Color> = Vec::new();
         let mut any_color_source: Option<ObjectId> = None;
         for id in self.battlefield() {
             for ability in self.def_of(id).abilities.iter().cloned() {
@@ -247,6 +248,9 @@ impl Game {
                 }
                 match bonus_color {
                     LandTapBonusColor::Produced => produced_bonuses += 1,
+                    // A named color (Wild Growth's "an additional {G}") is nothing to choose and
+                    // nothing to copy — credit it straight away.
+                    LandTapBonusColor::Fixed(color) => fixed_bonuses.push(color),
                     // ponytail: only the FIRST any-color watch raises its pause — a second on the
                     // same tap is dropped (the `ChooseManaColor` answer path doesn't re-enter this
                     // watch to queue another). No pool board stacks two. Queue them if one ever does.
@@ -263,6 +267,17 @@ impl Game {
                 Event::ManaAdded {
                     player,
                     mana: produced,
+                    amount: 1,
+                    persist: false,
+                },
+            );
+        }
+        for color in fixed_bonuses {
+            self.push_apply(
+                events,
+                Event::ManaAdded {
+                    player,
+                    mana: Mana::Color(color),
                     amount: 1,
                     persist: false,
                 },

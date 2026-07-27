@@ -104961,3 +104961,36 @@ fn flashfires_destroys_every_land_with_the_plains_type() {
         "every other land, whoever controls it, is untouched"
     );
 }
+
+// Wild Growth: "Whenever enchanted land is tapped for mana, its controller adds an additional {G}."
+// A named color, not Fertile Ground's "any color" — so the bonus is credited inline with no pause.
+
+#[test]
+fn wild_growth_adds_its_named_green_with_no_choice() {
+    let mut game = Game::new();
+    let plains = game.spawn_on_battlefield(PlayerId(0), card("Plains"));
+    let aura = game.spawn_in_hand(PlayerId(0), card("Wild Growth"));
+    tap_forests(&mut game, 1); // {G}
+    cast_aura_at(&mut game, PlayerId(0), aura, plains);
+
+    game.submit(Intent::TapForMana {
+        player: PlayerId(0),
+        object: plains,
+    })
+    .unwrap();
+
+    assert!(
+        game.pending_choice().is_none(),
+        "a named color needs no ChooseManaColor pause"
+    );
+    assert_eq!(
+        game.mana_in_pool(PlayerId(0), Color::White),
+        1,
+        "the enchanted Plains' own {{W}}"
+    );
+    assert_eq!(
+        game.mana_in_pool(PlayerId(0), Color::Green),
+        1,
+        "plus Wild Growth's additional {{G}}, whatever the land produces"
+    );
+}

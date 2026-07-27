@@ -166,10 +166,10 @@ mod tests {
         Amount, BasicLandType, CardFilter, CardKind, CasterScope, ChoiceEffect, Color, ColorFilter,
         Condition, ControlEffect, CopyEffect, Cost, CountersEffect, DamageEffect, DestroyEffect,
         DigEffect, DrawEffect, Effect, EnterController, ExileEffect, GraveyardScope, Keyword,
-        LandProduces, LifeEffect, Mana, ManaEffect, MillEffect, MiscEffect, PermanentFilter,
-        ProtectionScope, PumpEffect, SacrificeCost, SacrificeEffect, SearchDest, SpellFilter,
-        SpellSpeed, StaticEffect, TargetCount, TargetSpec, Timing, TokenEffect, Trigger, TypeSet,
-        ZoneEffect,
+        LandProduces, LandTapBonusColor, LandTapScope, LifeEffect, Mana, ManaEffect, MillEffect,
+        MiscEffect, PermanentFilter, ProtectionScope, PumpEffect, SacrificeCost, SacrificeEffect,
+        SearchDest, SpellFilter, SpellSpeed, StaticEffect, TargetCount, TargetSpec, Timing,
+        TokenEffect, Trigger, TypeSet, ZoneEffect,
     };
 
     #[test]
@@ -2373,6 +2373,21 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
             fastbond.abilities[1].condition,
             Some(Condition::LandsPlayedThisTurnAtLeast { at_least: 2 }),
             "if it wasn't the first land you played this turn"
+        );
+    }
+
+    /// Wild Growth names its bonus color outright, where Fertile Ground's sibling watch says
+    /// "any color" — same scope, no choice to make.
+    #[test]
+    fn unlimited_wild_growth_adds_a_named_green() {
+        let wild_growth = get_by_name("Wild Growth").expect("Wild Growth is in the pool");
+        assert_eq!(
+            wild_growth.abilities[0].effect,
+            Effect::Static(StaticEffect::TappedForManaBonus {
+                scope: LandTapScope::EnchantedHost,
+                bonus_color: LandTapBonusColor::Fixed(Color::Green),
+            }),
+            "whenever enchanted land is tapped for mana, its controller adds an additional {{G}}"
         );
     }
 

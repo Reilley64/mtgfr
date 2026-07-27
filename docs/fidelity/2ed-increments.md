@@ -879,7 +879,7 @@ and it fires once per damage event rather than once per combat. *Sketch:* a
 "dealt damage" watcher that scales with the amount is the obvious next consumer, so thread it
 even though Fungusaur ignores it). *Cards:* fungusaur.
 
-### 64. `fixed-color-tapped-for-mana-bonus` — 1 card, S
+### 64. `fixed-color-tapped-for-mana-bonus` — 1 card, S — **done**
 Depends on: nothing.
 `StaticEffect::TappedForManaBonus` already has the right watch and the right scope
 (`LandTapScope::EnchantedHost`), but `LandTapBonusColor` offers only `AnyColor` (Fertile Ground's
@@ -888,6 +888,12 @@ Growth adds an additional **{G}** specifically — strictly narrower than `AnyCo
 to `Produced`, so neither approximation is faithful. *Sketch:* a
 `LandTapBonusColor::Fixed(Color)` arm, credited without the `ChooseManaColor` pause `AnyColor`
 raises. *Cards:* wild_growth.
+*Landed:* exactly the sketch — a `Fixed(Color)` arm, one `Vec<Color>` accumulator beside the
+existing `produced_bonuses` counter, credited inline. The `{ fixed = "green" }` TOML shape falls
+straight out of serde's externally-tagged enum, so the DSL needed nothing. One thing came along:
+the client string for this whole watch was a `literal` reading "any type that land produced" —
+wrong for Fertile Ground already, and wrong for every scope. It reads its `scope`/`bonus_color`
+params now.
 
 ### 65. `skip-your-draw-step-for-an-attack-shield` — 1 card, M
 Depends on: #3 (landwalk), which supplies half the exemption.
