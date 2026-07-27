@@ -1,6 +1,6 @@
 # Board Composition
 
-**Status:** Current (as of 2026-07-26)
+**Status:** Current (as of 2026-07-27)
 **Module:** `client/app/board/view.ts`, `client/app/board/submodel.ts`, `client/app/board/messages.ts`, `client/app/board/html/`, `client/app/board/bitmap/`, `client/app/board/canvas/`
 
 ---
@@ -51,6 +51,8 @@ The layer order is not redefined here; [`docs/client-canvas-map.md`](../../clien
 ### Submodel and messages
 
 `BoardModel` carries camera, viewport, pointer state, selected permanent, staged action, combat staging, prompts, modal picks, pile expand, inspect, sound, hand hiding, and flight ownership. `updateBoard` handles `Message` values from pointer events, keyboard, prompts, sound, action planning, flight sync, and game sync.
+
+During declare-attackers / declare-blockers, drag-staging a creature onto a defender (life orb / planeswalker) or attacker stages it locally. A tap-in-place click on a staged attacker or blocker un-stages it (`CombatCancelAttacker` / `CombatCancelBlocker`); required/goad attackers cannot be cancelled. Confirm still submits the remaining staging list.
 
 HTML controls dispatch board messages; board updates either mutate local state, return Effect commands, or submit wire intents through the BFF. Engine choices remain server-authoritative.
 
@@ -109,6 +111,7 @@ Stable markers include `board-mount`, `board-connecting`, `board-keyboard-mount`
 ## Testing Decisions
 
 - Scene tests cover root mounting, `select-none`, layer order, board keyboard/audio mounts, overlays, prompts, hand chrome, life-orb hit targets, and inspect.
+- Board pointer tests cover combat staging drops and click-to-cancel on staged attackers/blockers (including refusing cancel for required/goad attackers).
 - Unit tests cover board update outcomes for spectator/eliminated behavior, prompt state, sound toggles, and keyboard handling.
 - Live board verification should exercise route entry, reconnect banner visibility where feasible, and a seated play path with hand, stack, and priority chrome.
 

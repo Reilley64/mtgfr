@@ -1,5 +1,5 @@
 # Turn and Priority Chrome
-**Status:** Current (as of 2026-07-26)
+**Status:** Current (as of 2026-07-27)
 **Module:** `client/app/board/html/priority-bar.ts`, `client/app/board/html/turn-chrome.ts`, `client/app/board/html/discoverability.ts`, `client/app/domain/combatCoach.ts`, `client/app/board/html/sound-chrome.ts`, `client/app/board/html/keyboard-mount.ts`, `client/app/board/html/mulligan-overlay.ts`
 
 ## Problem Statement
@@ -17,7 +17,7 @@ Use `PriorityContextBar` for action controls, `TurnBanner` for active player and
 - As a non-active player, I can auto-pass Until my turn.
 - As a player, I can use Space and Enter for common board actions.
 - As a new player, I can discover drag, Alt inspect, Space pass, and badge meanings.
-- As a player declaring attackers or blockers, I see a combat coach strip explaining drag-to-stage and Confirm.
+- As a player declaring attackers or blockers, I see a combat coach strip explaining drag-to-stage, click-to-cancel, and Confirm.
 
 ## Behavior
 
@@ -32,7 +32,7 @@ Use `PriorityContextBar` for action controls, `TurnBanner` for active player and
 - After the local seat keeps while others are still deciding, the overlay dismisses, `hand-bar` returns, and `mulligan-waiting` shows waiting copy that names undecided living seats (username, or `P{seat}` when empty). Lost seats are omitted. When every living seat has kept, status is “All players kept. Starting game…”.
 - `TurnBanner` shows five phase bands: Beginning, Main 1, Combat, Main 2, End, plus step detail when needed.
 - `HintStrip` explains drag, activation click, Alt inspect, and Space pass; it auto-hides after 12 seconds and persists dismissal as `mtgfr.hintDismissed`.
-- During local declare-attackers / declare-blockers windows, `board-combat-coach` shows drag-to-stage copy (independent of hint dismissal): attack → opponent life orb, block → attacker creature.
+- During local declare-attackers / declare-blockers windows, `board-combat-coach` shows drag-to-stage and click-to-cancel copy (independent of hint dismissal): attack → opponent life orb (click attacker to un-stage), block → attacker creature (click blocker to un-stage).
 - `LegendPanel` explains badges, target/combat outlines, playable border, commander outline, and graveyard/exile outlines.
 - Sound toggle sits in the top-left toolbar with legend controls and is visible to all viewers.
 - Playability is communicated with playable borders and zone outlines, not with a dim veil over unplayable permanents.
