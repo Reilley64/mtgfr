@@ -1102,6 +1102,11 @@ test("on-board choose_target aims instead of showing a card grid", () => {
     Scene.expect(Scene.testId("pending-target-aim")).toHaveText("Target creature"),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-card-7")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
+    Scene.expect(Scene.selector('[data-testid="pending-target-aim"] [data-testid="prompt-submit"]')).toBeAbsent(),
+    Scene.expect(Scene.selector('[data-testid="pending-target-aim"] [data-testid="prompt-decline"]')).toBeAbsent(),
+    Scene.expect(Scene.testId("prompt-submit")).toBeAbsent(),
+    Scene.expect(Scene.testId("prompt-decline")).toBeAbsent(),
   );
 });
 

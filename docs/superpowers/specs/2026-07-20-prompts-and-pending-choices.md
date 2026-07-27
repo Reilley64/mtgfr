@@ -23,7 +23,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - As a player searching their library, I filter faces by name in docked `pending-library-aim` chrome (title, filter, and Choose/Fail to find stay pinned above the scroll strip).
 - As a player choosing a creature type, I filter the long option list by name in docked `pending-creature-type-aim` before picking.
 - As a player choosing a color or mana color, I pick from mana-font pip buttons (not letter labels).
-- As a player answering a one-click on-board target choice, I aim at highlighted permanents/players (no card grid); optional choices keep Decline on the aim chrome.
+- As a player answering a one-click on-board target choice, I aim at highlighted permanents/players (no card grid); optional choices keep Decline in the primary bar (`priority-context-bar`).
 - As a player targeting only cards in one graveyard, I click selectable pile cards under `pending-gy-aim` instead of a modal grid.
 - As an opponent choosing a revealed card for the graveyard, I click a face in the docked `pending-revealed-aim` strip (or Choose none).
 - As a player choosing battlefield or hand for a revealed card, I see the face in docked `pending-revealed-destination-aim` while Battlefield / Hand lives in `priority-context-bar`.
