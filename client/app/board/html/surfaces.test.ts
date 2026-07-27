@@ -2775,7 +2775,10 @@ test("pending put-from-hand aim shows coach when cards are in hand", () => {
   });
   overlayScene(
     overlayModel(
-      initialBoardModel(),
+      {
+        ...initialBoardModel(),
+        promptDraft: { kind: "card-pick", picked: [20], filter: "" },
+      },
       gameState({
         objects: [forest],
         pending_choice: {
@@ -2786,8 +2789,10 @@ test("pending put-from-hand aim shows coach when cards are in hand", () => {
       }),
     ),
     Scene.expect(Scene.testId("pending-hand-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-hand-count")).toHaveText("1 / 1 selected"),
+    Scene.expect(Scene.selector('[data-testid="priority-context-bar"] [data-testid="prompt-submit"]')).toBeEnabled(),
     Scene.expect(Scene.selector('[data-testid="priority-context-bar"] [data-testid="prompt-decline"]')).toExist(),
-    Scene.expect(Scene.selector('[data-testid="pending-hand-aim"] [data-testid="prompt-decline"]')).toBeAbsent(),
+    Scene.expect(Scene.selector('[data-testid="pending-hand-aim"] [data-testid="prompt-submit"]')).toBeAbsent(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
     Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
   );

@@ -1127,29 +1127,11 @@ function togglePendingObjectAimPick(
 function submitPendingHandPick(
   model: BoardModel,
   fold: GameFoldState,
-  tableId: string | null,
+  _tableId: string | null,
   pc: NonNullable<NonNullable<GameFoldState["state"]>["pending_choice"]>,
   objectId: number,
 ): BoardReturn {
   const idle = { ...model, handDrag: null, hoverActionId: null };
-  if (pc.kind === "put_land_from_hand") {
-    return [
-      { ...idle, promptDraft: null, pendingChoiceKey: null },
-      boardIntentSubmit(tableId, choiceIntent(pc, { kind: "put_land", choice: objectId })),
-    ];
-  }
-  if (pc.kind === "cast_creature_face_down") {
-    return [
-      { ...idle, promptDraft: null, pendingChoiceKey: null },
-      boardIntentSubmit(tableId, choiceIntent(pc, { kind: "cast_face_down_choice", choice: objectId })),
-    ];
-  }
-  if (pc.kind === "put_from_hand_on_top" && pc.count === 1) {
-    return [
-      { ...idle, promptDraft: null, pendingChoiceKey: null },
-      boardIntentSubmit(tableId, choiceIntent(pc, { kind: "hand_on_top", cards: [objectId] })),
-    ];
-  }
   return togglePendingObjectAimPick(idle, fold, pc, objectId);
 }
 

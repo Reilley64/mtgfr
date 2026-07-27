@@ -299,8 +299,11 @@ function handSubmitLabel(kind: PendingChoiceView["kind"]): string {
       return "Continue";
     case "put_from_hand_on_top":
       return "Put on top";
+    case "put_land_from_hand":
     case "put_creature_from_hand":
       return "Put onto battlefield";
+    case "cast_creature_face_down":
+      return "Cast face down";
     default:
       return "Discard";
   }

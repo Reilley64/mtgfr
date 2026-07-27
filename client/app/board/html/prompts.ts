@@ -1136,17 +1136,21 @@ function pendingHandAimCoach(
     case "may_discard":
       return oneClick ? "Click a card in your hand to discard" : "Click cards in your hand to discard";
     case "put_land_from_hand":
-      return "Click a land in your hand to put onto the battlefield";
+      return oneClick
+        ? "Click a land in your hand to put onto the battlefield"
+        : "Click a land in your hand, then Confirm";
     case "put_creature_from_hand":
       return oneClick
         ? "Click a creature in your hand to put onto the battlefield"
         : "Click a creature in your hand, then Confirm";
     case "cast_creature_face_down":
-      return "Click a creature in your hand to cast face down";
+      return oneClick
+        ? "Click a creature in your hand to cast face down"
+        : "Click a creature in your hand, then Confirm";
     case "put_from_hand_on_top":
       return oneClick
         ? "Click a card in your hand to put on top of your library"
-        : "Click cards in your hand to put on top of your library";
+        : "Click cards in your hand, then Confirm";
     default: {
       const _exhaustive: never = kind;
       return _exhaustive;
