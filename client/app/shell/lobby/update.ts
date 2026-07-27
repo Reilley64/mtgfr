@@ -55,7 +55,6 @@ function applyRouteChange(
       tableId: route.tableId,
       selectedDeckId: route.selectedDeckId,
       code: "",
-      entryMode: "choose",
       view: null,
       started: false,
       error: null,
@@ -70,7 +69,6 @@ function applyRouteChange(
       tableId: null,
       selectedDeckId: route.selectedDeckId,
       code: "",
-      entryMode: "choose",
       view: null,
       started: false,
       error: null,
@@ -188,8 +186,6 @@ export const update = (
     M.tagsExhaustive({
       ChangedLobbyRoute: ({ tableId, selectedDeckId }) => [applyRouteChange(model, { tableId, selectedDeckId }), []],
       ChangedLobbyCode: ({ code }) => [{ ...model, code }, []],
-      RequestedLobbyOpenJoin: () => [{ ...model, entryMode: "join" }, []],
-      RequestedLobbyCancelJoin: () => [{ ...model, entryMode: "choose", code: "", error: null }, []],
       RequestedLobbyHost: () => {
         const deckId = selectedDeckId(model);
         if (deckId == null) {
