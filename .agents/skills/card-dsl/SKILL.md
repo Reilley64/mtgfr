@@ -42,8 +42,10 @@ disagree, the code wins. Engine gaps for a deck live in that deck's
 - **When you must trim/approximate:** set the machine-readable `approximates` field (what the
   catalog and audits read) *and* leave a `# ponytail:` comment next to the divergence naming the
   rule approximated (for humans). Both, not either — comment alone doesn't count.
-- **Flag, don't force-script.** If a card needs something the DSL can't express (see reference
-  §10, "Unsupported"), don't contort the model to fake it — flag it as a gap instead.
+- **Flag, don't force-script.** If a card needs something the DSL can't express, don't contort
+  the model to fake it — flag the gap in that deck's `docs/fidelity/<slug>-increments.md` and
+  see [`card-dsl-and-card-pool` Out of Scope](docs/superpowers/specs/2026-07-20-card-dsl-and-card-pool.md#out-of-scope)
+  for deliberate DSL limits.
 - **Test-first when behavior changes.** New or changed card behavior that needs engine
   support goes through the **`test-driven-development`** skill (failing test in
   `crates/engine/tests/game.rs` before the TOML / `Effect` arm). Pure TOML authoring against

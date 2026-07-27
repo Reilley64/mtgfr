@@ -68,7 +68,7 @@ branch commit range.
   `.agents/skills/card-dsl/DSL_REFERENCE.md`. Key is computed
   on a clean checkout at restore and again at save (identical inputs; do not
   re-`hashFiles` after mutating the tree).
-  - `verify-server-gate`: `actions/cache/restore@v5` on `.ci-pass`; emits
+  - `verify-server-gate`: `actions/cache/restore@v6` on `.ci-pass`; emits
     `cache-hit`.
   - On miss: `verify-server-lint`, `verify-server-test` (matrix partitions
     `1`/`2`/`3`), and `verify-server-migrate` run in parallel inside
@@ -84,7 +84,7 @@ branch commit range.
     - Migrate: Postgres 16 service + `just migrate` only;
       `DATABASE_URL=postgresql://mtgfr:mtgfr@postgres:5432/mtgfr` (service
       hostname, not `localhost`).
-  - `verify-server-mark`: `actions/cache/save@v5` only when gate miss and lint +
+  - `verify-server-mark`: `actions/cache/save@v6` only when gate miss and lint +
     all test shards + migrate succeeded.
   - Aggregator job `Verify (server)`: green on cache hit, or on miss when lint +
     tests + migrate + mark succeeded.
