@@ -791,7 +791,7 @@ already has "put back in any order" for scry/surveil — reuse that pending-choi
 optional shuffle step.
 *Cards:* natural_selection.
 
-### 56. `activate-only-during-your-turn` — 1 card, S
+### 56. `activate-only-during-your-turn` — 1 card, S — **done**
 Depends on: nothing.
 `sorcery_speed` is the only activation-timing gate the DSL has, and it is stricter than what
 Disrupting Scepter prints: "Activate only during your turn" allows activation in combat, in
@@ -800,6 +800,8 @@ a plain turn check). Authoring it as `sorcery_speed` would quietly narrow a card
 waits. *Sketch:* a `your_turn_only` bool on the activated-ability cost fields, checked in
 `ability_activation_gate` next to `sorcery_speed` — an independent axis, not a widening of it.
 *Cards:* disrupting_scepter.
+
+*Landed:* the sketch was wrong — `sorcery_speed` is not the only activation-timing gate. `ability_activation_gate` already runs an ability's `condition` as an activation restriction ("Activate only if you control five or more lands" — Temple of the False God), and `Condition::DuringYourTurn` already existed for Restless Spire's conditional first strike. Disrupting Scepter is `[abilities.condition] type = "during_your_turn"` and nothing else: zero engine lines. The new `your_turn_only` bool would have been a second spelling of a predicate the gate already evaluates. Worth remembering for #57 and anything else that reaches for a new cost flag — check `Condition` first, since the activation gate and the intervening-if evaluator are the same code path.
 
 ### 57. `until-end-of-combat-animation` — 1 card, M
 Depends on: 56 (`activate-only-during-your-turn`) — both are activation/duration gates on the

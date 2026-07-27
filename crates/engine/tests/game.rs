@@ -31944,6 +31944,62 @@ fn creature_bond_bills_the_hosts_controller_for_its_last_known_toughness() {
     );
 }
 
+// Disrupting Scepter: "{3}, {T}: Target player discards a card. Activate only during your turn."
+// A turn restriction, not a sorcery-speed one (CR 602.5b) — it stays legal in the Scepter
+// controller's combat and end step, and only their own turn closes it off.
+
+#[test]
+fn disrupting_scepter_only_activates_on_its_controllers_turn() {
+    let mut game = Game::new();
+    let scepter = game.spawn_on_battlefield(PlayerId(0), card("Disrupting Scepter"));
+    game.stack_library(PlayerId(0), &vec![card("Plains"); 5]);
+    game.stack_library(PlayerId(1), &vec![card("Plains"); 5]);
+    let doomed = game.spawn_in_hand(PlayerId(1), card("Plains"));
+
+    pass_until_next_turn(&mut game); // now it is PlayerId(1)'s turn
+    advance_until(&mut game, |g| g.current_step() == Step::Main1);
+    game.fund_mana(PlayerId(0));
+    assert_eq!(
+        game.submit(Intent::ActivateAbility {
+            player: PlayerId(0),
+            object: scepter,
+            ability_index: 0,
+            target: Some(Target::Player(PlayerId(1))),
+            sacrifice: vec![],
+            discard_cost: vec![],
+            x: 0,
+        }),
+        Err(Reject::CannotActivate),
+        "not your turn"
+    );
+
+    pass_until_next_turn(&mut game); // back around to PlayerId(0)
+    advance_until(&mut game, |g| g.current_step() == Step::End);
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: scepter,
+        ability_index: 0,
+        target: Some(Target::Player(PlayerId(1))),
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .expect("your own end step is still your turn");
+    resolve_top_of_stack(&mut game);
+    game.submit(Intent::Discard {
+        player: PlayerId(1),
+        cards: vec![doomed],
+    })
+    .unwrap();
+
+    assert_eq!(
+        game.zone_of(doomed),
+        Zone::Graveyard,
+        "the targeted player discarded"
+    );
+}
+
 // ── Watch-any-enchanted-creature triggers (#108, Hateful Eidolon / Killian's second ability) ──
 
 /// A test-only Aura with no abilities of its own — isolates the attach relationship (who

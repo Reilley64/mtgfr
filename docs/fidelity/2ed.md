@@ -210,7 +210,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Demonic Hordes** {3}{B}{B}{B} · Creature — Demon — increment 41
 - [ ] **Dingus Egg** {4} · Artifact — increment 59
 - [x] **Disintegrate** {X}{R} · Sorcery — increment 34
-- [ ] **Disrupting Scepter** {3} · Artifact — increment 56
+- [x] **Disrupting Scepter** {3} · Artifact — increment 56
 - [ ] **Drain Life** {X}{1}{B} · Sorcery — increment 54
 - [ ] **Drain Power** {U}{U} · Sorcery — increment 23, 49
 - [ ] **Earthbind** {R} · Enchantment — Aura — increment 44

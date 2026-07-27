@@ -3059,6 +3059,35 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
         );
     }
 
+    /// "Activate only during your turn" is a turn restriction, not sorcery speed — the Scepter is
+    /// live in its controller's combat and end step, which `sorcery_speed` would forbid.
+    #[test]
+    fn unlimited_disrupting_scepter_is_turn_restricted_not_sorcery_speed() {
+        let scepter = get_by_name("Disrupting Scepter").expect("Disrupting Scepter is in the pool");
+        let ability = &scepter.abilities[0];
+        let Timing::Activated(cost) = &ability.timing else {
+            panic!("the Scepter's only ability is activated");
+        };
+        assert!(!cost.sorcery_speed, "not restricted to a sorcery moment");
+        assert_eq!(
+            ability.condition,
+            Some(Condition::DuringYourTurn),
+            "activate only during your turn"
+        );
+        assert_eq!(
+            ability.effect,
+            Effect::Choice(ChoiceEffect::Discard {
+                count: Amount::Fixed(1),
+                target_player: true,
+                or_one_matching: None,
+                random: false,
+                damaged_player: false,
+                discarder: None,
+            }),
+            "target player discards a card"
+        );
+    }
+
     /// The tap-to-do-something permanents: pingers, a card drawer, a tapper, and the removal.
     #[test]
     fn unlimited_tap_abilities_carry_their_printed_effects() {
