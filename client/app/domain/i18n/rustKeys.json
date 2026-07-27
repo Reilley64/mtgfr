@@ -265,6 +265,7 @@
   "effect.static_counter_scaled_attack_tax",
   "effect.static_creatures_you_control_enter_with_counters",
   "effect.static_enters_with_counters",
+  "effect.static_grant_activated_ability",
   "effect.static_grant_mana_ability",
   "effect.static_grant_to_attached",
   "effect.static_keyword_anthem",

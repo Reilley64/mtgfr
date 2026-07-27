@@ -201,6 +201,22 @@ pub enum StaticEffect {
         kind: Option<CounterKind>,
     },
 
+    /// Zombie Master's "Other Zombies have '{B}: Regenerate this permanent.'" — an activated
+    /// ability granted to every permanent matching `filter`, wherever it is on the battlefield.
+    /// The filter-scoped twin of [`GrantToAttached`](Self::GrantToAttached)'s own
+    /// `granted_ability`, which can only reach a host this permanent is attached to, and the
+    /// non-mana twin of [`GrantManaAbility`](Self::GrantManaAbility). Both grant kinds are read
+    /// back through [`Game::granted_activated_abilities`](crate::Game), so a granted ability
+    /// activates at the same indices whichever way it arrived.
+    GrantActivatedAbility {
+        filter: PermanentFilter,
+        #[cfg_attr(
+            feature = "card-dsl",
+            serde(deserialize_with = "de::opt_static_granted_ability")
+        )]
+        granted_ability: Option<&'static GrantedAbility>,
+    },
+
     GrantManaAbility {
         filter: PermanentFilter,
         cost: ActivationCost,

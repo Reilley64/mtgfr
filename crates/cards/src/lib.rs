@@ -4070,6 +4070,33 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
         assert!(cost.taps_self);
     }
 
+    /// Zombie Master's second clause has to be a filter-scoped grant, not the attachment-scoped
+    /// `GrantToAttached` one — the Master enchants nothing, so an attachment grant would reach no
+    /// permanent at all. The `other` axis is what keeps the lord from regenerating itself.
+    #[test]
+    fn unlimited_zombie_master_grants_its_regeneration_to_other_zombies_by_filter() {
+        let master = get_by_name("Zombie Master").expect("Zombie Master is in the pool");
+        let Effect::Static(StaticEffect::Anthem {
+            keywords, subtypes, ..
+        }) = master.abilities[0].effect
+        else {
+            panic!("the swampwalk half is a keyword anthem");
+        };
+        assert_eq!(keywords, [Keyword::Landwalk(BasicLandType::Swamp)]);
+        assert_eq!(subtypes, ["Zombie"]);
+        let Effect::Static(StaticEffect::GrantActivatedAbility {
+            filter,
+            granted_ability: Some(granted),
+        }) = master.abilities[1].effect
+        else {
+            panic!("a filter-scoped activated-ability grant");
+        };
+        assert_eq!(filter.subtypes, ["Zombie"]);
+        assert!(filter.other, "\"other\" Zombies");
+        assert_eq!(granted.cost.mana.colored[Color::Black.index()], 1, "{{B}}");
+        assert_eq!(granted.cost.mana.generic, 0);
+    }
+
     /// Fungusaur watches damage it *takes*, which is a different trigger from the three
     /// damage-shaped ones already in the pool — every one of those watches damage the permanent
     /// *deals*. Reading `deals_combat_damage_to_creature` onto this card would also silently

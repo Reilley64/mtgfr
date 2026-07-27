@@ -1149,7 +1149,7 @@ per-player shield with an expiry of the controller's next upkeep and read it in
 "creatures with flying can't …" is a common template.
 *Cards:* island_sanctuary.
 
-### 66. `grant-an-activated-ability-to-a-filter` — 1 card, M
+### 66. `grant-an-activated-ability-to-a-filter` — 1 card, M — **done**
 Depends on: nothing.
 Zombie Master's second clause — "Other Zombies have '{B}: Regenerate this permanent.'" The engine
 can grant an activated ability, but only from an *attachment*: `GrantToAttached`'s
@@ -1161,6 +1161,27 @@ has, and widen the granted-ability lookup from the attachment scan to the same
 `matching_anthems`-style filter scan the keyword grants already use, so `ability_at` addresses
 both sources through one accessor. Zombie Master then becomes two anthem blocks.
 *Cards:* zombie_master.
+
+*Landed:* the one-accessor half of the sketch held; the "make it an `Anthem` field" half didn't.
+`Anthem` is a P/T-and-keyword grant whose fifteen axes all describe *characteristics*, and its
+message key renders that shape — a sixteenth field carrying an activated ability would have made
+every Zombie Master log line read "Other Zombies get +0/+0". It ships instead as a sibling
+`StaticEffect::GrantActivatedAbility { filter, granted_ability }`, which is `GrantManaAbility`'s
+own shape with the mana swapped for the `GrantedAbility` sub-table `GrantToAttached` already
+carries, and it reuses `PermanentFilter` rather than duplicating `Anthem`'s parallel subtype axis.
+So the card is one keyword anthem (the swampwalk half, unchanged #3 machinery) plus one grant.
+
+`Game::granted_attachment_abilities` is now `Game::granted_activated_abilities` and returns both
+kinds, attachment grants first — the rename is the whole "one accessor" ask, and keeping the
+attachment block ahead of the filter block means an Aura's granted index doesn't shift when a lord
+walks in. `ability_at`, `query.rs`'s activatable-action enumeration, and the activation gate all
+went along for free, since each addresses grants through that single accessor.
+
+Two things the printed text pins that the filter gets right by default: "other **Zombies**", not
+"Zombies you control", so `filter.controller` stays `Any` and an opponent's Zombie is granted the
+ability too; and `filter.other` reads against the *granting* permanent, which is what stops the
+Master regenerating itself. A granted `target = "this"` names the host, not the lord — the
+activation's source is the permanent whose index was addressed.
 
 ### 67. `spells-and-abilities-cost-more` — 1 card, M
 Depends on: nothing.

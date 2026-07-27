@@ -1967,18 +1967,22 @@ impl Game {
         grants
     }
 
-    /// Every *activated* (non-mana) ability granted to `host` by a live
-    /// [`Effect::Static(StaticEffect::GrantToAttached)`] on an Aura attached to it (Fallen Ideal's "Sacrifice a
-    /// creature: This creature gets +2/+1 until end of turn."), as `(cost, effects)`. The
-    /// non-mana twin of [`Game::granted_mana_abilities`], sourced from the attachment scan
-    /// ([`Game::attachment_grants`]'s shape) rather than an owner-wide filter. Recomputed live —
-    /// the grant disappears the instant the Aura leaves. Read by [`Game::ability_at`], which
-    /// addresses these past `host`'s own abilities and its granted mana abilities.
-    pub(crate) fn granted_attachment_abilities(
+    /// Every *activated* (non-mana) ability granted to `host`, as `(cost, effects)` — the
+    /// non-mana twin of [`Game::granted_mana_abilities`]. Two grant kinds land here: an
+    /// [`Effect::Static(StaticEffect::GrantToAttached)`] on an Aura attached to `host` (Fallen
+    /// Ideal's "Sacrifice a creature: This creature gets +2/+1 until end of turn.") and an
+    /// [`Effect::Static(StaticEffect::GrantActivatedAbility)`] anywhere on the battlefield whose
+    /// filter `host` matches (Zombie Master's "Other Zombies have '{B}: Regenerate this
+    /// permanent.'"). Attachment grants come first so an existing grant keeps its index when a
+    /// lord arrives. Recomputed live off the board — a grant disappears the instant its source
+    /// leaves. Read by [`Game::ability_at`], which addresses these past `host`'s own abilities
+    /// and its granted mana abilities.
+    pub(crate) fn granted_activated_abilities(
         &self,
         host: ObjectId,
     ) -> Vec<(ActivationCost, &'static [Effect])> {
-        self.attachments(host)
+        let mut grants: Vec<(ActivationCost, &'static [Effect])> = self
+            .attachments(host)
             .into_iter()
             // A phased-out Aura grants nothing (CR 702.26e), mirroring `attachment_grants`.
             .filter(|&id| !self.is_phased_out(id))
@@ -1998,14 +2002,39 @@ impl Game {
                     })
                     .collect::<Vec<_>>()
             })
-            .collect()
+            .collect();
+        for (source, object) in self.objects.iter().enumerate() {
+            let Object::Permanent(p) = object else {
+                continue;
+            };
+            let source = source as ObjectId;
+            for ability in self.functional_abilities(source).iter().cloned() {
+                let (
+                    Timing::Static,
+                    Effect::Static(StaticEffect::GrantActivatedAbility {
+                        filter,
+                        granted_ability: Some(g),
+                    }),
+                ) = (ability.timing, ability.effect.clone())
+                else {
+                    continue;
+                };
+                // `you` is the *granting* permanent's controller, so a `controller = "you"` filter
+                // reads off the lord (as its printed text does), not off the candidate.
+                if !self.permanent_matches(&filter, host, p.owner, Some(source)) {
+                    continue;
+                }
+                grants.push((g.cost, g.effects));
+            }
+        }
+        grants
     }
 
     /// Every *triggered* ability granted to `host` by a live
     /// [`Effect::Static(StaticEffect::GrantToAttached)`] Aura/Equipment attached to it (Power
     /// Fist's "Whenever this creature deals combat damage to a player, put that many +1/+1
     /// counters on it."), synthesized directly as an [`Ability`] — unlike the activated twin
-    /// ([`Game::granted_attachment_abilities`]), there is no `ability_at` index to address, since
+    /// ([`Game::granted_activated_abilities`]), there is no `ability_at` index to address, since
     /// a triggered ability isn't activated. Recomputed live off the same attachment scan, so it
     /// disappears the instant the Aura/Equipment leaves (CR 702.26e for a phased-out one).
     /// ponytail: only the combat-damage-to-a-player scanner consults granted triggered abilities —
@@ -2055,8 +2084,9 @@ impl Game {
     /// (`index < def.abilities.len()`), then those granted by a live static
     /// [`Effect::Static(StaticEffect::GrantManaAbility)`] elsewhere on the battlefield
     /// ([`Game::granted_mana_abilities`]), then those granted by an
-    /// [`Effect::Static(StaticEffect::GrantToAttached)`] on an Aura attached to it
-    /// ([`Game::granted_attachment_abilities`]). Each grant block occupies contiguous indices
+    /// [`Effect::Static(StaticEffect::GrantToAttached)`] on an Aura attached to it or by a
+    /// filter-scoped [`Effect::Static(StaticEffect::GrantActivatedAbility)`]
+    /// ([`Game::granted_activated_abilities`]). Each grant block occupies contiguous indices
     /// immediately past the prior. The one seam [`Game::ability_activation_gate`] and
     /// [`Game::legal_targets`] read so every granted ability activates exactly like an own one.
     /// `None` for an out-of-range index.
@@ -2092,7 +2122,7 @@ impl Game {
             });
         }
         let (cost, effects) = self
-            .granted_attachment_abilities(object)
+            .granted_activated_abilities(object)
             .into_iter()
             .nth(granted_index - mana_grants.len())?;
         // A one-effect grant is used directly; multiple run as a `Sequence` (the same shape a

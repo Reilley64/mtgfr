@@ -905,6 +905,7 @@ impl Effect {
             | Effect::Zone(ZoneEffect::ExileSelfOnResolve)
             | Effect::Dig(DigEffect::ExileRandomFromGraveyardMayPlay)
             | Effect::Static(StaticEffect::Anthem { .. })
+            | Effect::Static(StaticEffect::GrantActivatedAbility { .. })
             | Effect::Static(StaticEffect::KeywordAnthem { .. })
             | Effect::Static(StaticEffect::TappedForManaBonus { .. })
             | Effect::Static(StaticEffect::TriggerDoubling { .. })
@@ -1414,7 +1415,7 @@ pub enum AbilityRestriction {
 /// by [`Effect::Static(StaticEffect::GrantToAttached)`]. `cost` and `trigger` are mutually
 /// exclusive: an activated grant (`cost`, `trigger: None`) is the non-mana twin of
 /// [`Effect::Static(StaticEffect::GrantManaAbility)`]'s inline `cost`/`mana`, surfaced by
-/// [`Game::granted_attachment_abilities`] and synthesized into an [`Ability`] by
+/// [`Game::granted_activated_abilities`] and synthesized into an [`Ability`] by
 /// [`Game::ability_at`]; a triggered grant (`trigger: Some(_)`, `cost` unused) is surfaced by
 /// [`Game::granted_attachment_triggers`] instead and never becomes an activatable index. Neither
 /// is ever resolved off the stack itself. Read live off the attachment scan, so it disappears the

@@ -558,7 +558,7 @@ impl Game {
         // abilities — see `Game::ability_at` for the index order. (Granted *mana* abilities are
         // skipped, like own ones, by the `is_mana_ability` guard above's counterpart in the gate.)
         let base = abilities.len() + self.granted_mana_abilities(source).len();
-        for offset in 0..self.granted_attachment_abilities(source).len() {
+        for offset in 0..self.granted_activated_abilities(source).len() {
             let index = base + offset;
             let Ok((_, cost)) = self.ability_activation_gate(player, source, index) else {
                 continue;

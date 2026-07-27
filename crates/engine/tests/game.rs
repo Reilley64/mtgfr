@@ -104876,6 +104876,62 @@ fn mind_twist_for_more_than_the_hand_holds_just_empties_it() {
     assert!(hand_ids(&game, PlayerId(1)).is_empty(), "the hand is empty");
 }
 
+// ── A lord granting an activated ability to a filter (fidelity #66) ──────────────────────────
+
+#[test]
+fn zombie_master_grants_regeneration_to_every_other_zombie() {
+    // "Other Zombies have '{B}: Regenerate this permanent.'" The grant is filter-scoped, not
+    // attachment-scoped: it reaches a Zombie anywhere on the battlefield, including one an
+    // opponent controls, and it lands past that Zombie's own abilities in the activation index.
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Zombie Master"));
+    let mine = game.spawn_on_battlefield(PlayerId(0), card("Scathe Zombies"));
+    let theirs = game.spawn_on_battlefield(PlayerId(1), card("Scathe Zombies"));
+
+    // Scathe Zombies is a vanilla 2/2, so the granted ability is its index 0.
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: mine,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .expect("the granted regenerate ability");
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.regeneration_shields(mine),
+        1,
+        "the granted ability shielded its own host"
+    );
+    assert!(
+        game.ability_at(theirs, 0).is_some(),
+        "\"other Zombies\" is not \"other Zombies you control\" — the opponent's Zombie gets it too"
+    );
+}
+
+#[test]
+fn zombie_master_doesnt_grant_regeneration_to_itself_or_to_a_non_zombie() {
+    // "*Other* Zombies" — the lord is excluded by the filter's `other` axis, and a creature that
+    // isn't a Zombie was never in scope. Both statics are the Master's own abilities (indices 0
+    // and 1), so a third index existing would mean it had granted to itself.
+    let mut game = Game::new();
+    let master = game.spawn_on_battlefield(PlayerId(0), card("Zombie Master"));
+    let bears = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+
+    assert!(
+        game.ability_at(master, 2).is_none(),
+        "the lord grants to others, not to itself"
+    );
+    assert!(
+        game.ability_at(bears, 0).is_none(),
+        "a non-Zombie gets nothing"
+    );
+}
+
 // ── "Whenever this creature is dealt damage" (fidelity #63) ──────────────────────────────────
 
 #[test]

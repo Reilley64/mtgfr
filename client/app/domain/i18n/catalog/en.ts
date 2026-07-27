@@ -520,6 +520,8 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     params.kind == null
       ? `Enters with ${param(params, "amount")} +1/+1 counters`
       : `Enters with ${param(params, "amount")} ${humanize(param(params, "kind"))} counters`,
+  "effect.static_grant_activated_ability": (params) =>
+    `${humanize(param(params, "filter", "Permanents"))} gain an activated ability`,
   "effect.static_grant_mana_ability": (params) =>
     `${humanize(param(params, "filter", "Artifacts"))} you control gain a mana ability`,
   "effect.static_grant_to_attached": (params) =>

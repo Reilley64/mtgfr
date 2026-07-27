@@ -291,6 +291,7 @@ message_keys! {
     EFFECT_STATIC_COUNTER_SCALED_ATTACK_TAX => "effect.static_counter_scaled_attack_tax",
     EFFECT_STATIC_CREATURES_YOU_CONTROL_ENTER_WITH_COUNTERS => "effect.static_creatures_you_control_enter_with_counters",
     EFFECT_STATIC_ENTERS_WITH_COUNTERS => "effect.static_enters_with_counters",
+    EFFECT_STATIC_GRANT_ACTIVATED_ABILITY => "effect.static_grant_activated_ability",
     EFFECT_STATIC_GRANT_MANA_ABILITY => "effect.static_grant_mana_ability",
     EFFECT_STATIC_GRANT_TO_ATTACHED => "effect.static_grant_to_attached",
     EFFECT_STATIC_KEYWORD_ANTHEM => "effect.static_keyword_anthem",
@@ -1993,6 +1994,10 @@ impl Effect {
             Effect::Choice(DefendingPlayerSacrifices { count, .. }) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_DEFENDING_PLAYER_SACRIFICES)
                     .with_params(vec![int_param("count", count)])
+            }
+            Effect::Static(GrantActivatedAbility { filter, .. }) => {
+                MessageRef::new(MessageKey::EFFECT_STATIC_GRANT_ACTIVATED_ABILITY)
+                    .with_params(vec![permanent_filter_param("filter", filter)])
             }
             Effect::Static(GrantManaAbility { filter, .. }) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_GRANT_MANA_ABILITY)
