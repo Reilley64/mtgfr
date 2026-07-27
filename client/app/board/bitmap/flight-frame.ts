@@ -126,7 +126,8 @@ export function mergeFlightPoses(live: readonly CardFlight[], incoming: readonly
       x: prev.x,
       y: prev.y,
       scale: prev.scale,
-      phase: prev.phase,
+      // Authority retargets release hold and set flying — don't trap that as a live settled park.
+      phase: prev.phase === "flying" || inc.phase === "flying" ? "flying" : "settled",
     };
   });
 }

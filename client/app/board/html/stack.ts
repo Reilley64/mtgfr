@@ -54,7 +54,9 @@ type StackItem = {
  * caption). */
 function hideStackRestingFace(board: BoardModel, source: number): boolean {
   const flight = board.flights.get(source);
-  return flight != null && flight.phase === "flying" && flight.kind === "stack";
+  if (flight == null || flight.kind !== "stack") return false;
+  // Held seeds park as settled while awaiting rebind — keep the resting face suppressed.
+  return flight.phase === "flying" || flight.hold === true;
 }
 
 function objectMeta(state: VisibleState, source: number): { print: string; name: string | null; cardId?: string } {

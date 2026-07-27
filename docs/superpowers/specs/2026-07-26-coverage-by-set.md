@@ -75,6 +75,7 @@ Ship an authenticated `/coverage` shell route that renders a searchable set tabl
 - Represent unavailable denominators as `null` on the wire and `—` in the UI. Do not coerce them to `0`.
 - Compute `faithful_by_set` from `cards::registry()` inside server health with no extra I/O.
 - Use 24-hour in-memory caches for Scryfall set metadata, `default_cards` per-set denominators, and the global oracle-cards total; coverage awaits cold fills and SWR-refreshes when warm.
+- Parse Scryfall gzip bulks with streaming `DecompressionStream` (never `gunzipSync` / full `arrayBuffer`) so cold coverage fills do not freeze the shared Nitro event loop that also serves lobby HTTP and `/api/rpc` game intents.
 - Align the coverage shell feature with other `Got*` submodels: `shell/coverage/index.ts` namespace exports, `informRouteChanged`, parent `GotCoverageMessage`, and `Command.mapMessages` lift — no flat coverage tags in the parent `Message` union.
 - Keep coverage HTTP behind the `LobbyClient` Effect service so tests can inject the same same-origin meta client used by lobby commands.
 
@@ -82,6 +83,7 @@ Ship an authenticated `/coverage` shell route that renders a searchable set tabl
 
 - `crates/server/src/health.rs` tests assert `faithful_by_set` matches the registry, omits empty set codes, excludes approximated cards, and multi-credits cards whose `sets` list has more than one code; tests do not require the aggregate to stay below the global faithful count.
 - `client/app/domain/scryfall-set-oracle-totals.test.ts` asserts per-set denominators count unique oracle ids across `default_cards` printings.
+- `client/app/domain/scryfall-oracle-total.test.ts` asserts the global oracle total is counted from a gzip `ReadableStream` body without calling `arrayBuffer` (regression for event-loop stalls during cold coverage / badge refresh).
 - `client/app/domain/coverage-meta.test.ts` asserts the BFF join uses Scryfall rows as the source of truth for the set list, joins printing-aware per-set oracle totals, and leaves missing per-set oracle totals as `null`.
 - `client/app/shell/coverage/view.test.ts` asserts release-date-desc row sorting, lowercase filtering, and `—` formatting when either count is missing.
 - `client/app/shell/coverage/story.test.ts` asserts `GotCoverageMessage` parent folding for refresh.
