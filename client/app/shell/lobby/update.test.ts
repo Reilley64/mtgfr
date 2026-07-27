@@ -4,12 +4,7 @@ import { client as lobbyHttpClient } from "../../domain/lobby/client";
 import { LobbyNotFound } from "../../domain/lobby/errors";
 import * as tableAudio from "../../domain/tableAudio";
 import { LobbyClient } from "../../resources";
-import {
-  LobbyRequestFailed,
-  RequestedLobbyHost,
-  RequestedLobbyReady,
-  ChangedLobbyRoute,
-} from "./messages";
+import { ChangedLobbyRoute, LobbyRequestFailed, RequestedLobbyHost, RequestedLobbyReady } from "./messages";
 import { initialLobbySlice } from "./submodel";
 import { CreateLobbyTable, JoinLobbyTable, ReadyLobby, update } from "./update";
 
@@ -60,11 +55,7 @@ describe("lobby entry slice", () => {
       code: "ABC123",
       error: "UnknownTable" as string | null,
     };
-    const [next, commands] = update(
-      model,
-      ChangedLobbyRoute({ tableId: null, selectedDeckId: 9 }),
-      [],
-    );
+    const [next, commands] = update(model, ChangedLobbyRoute({ tableId: null, selectedDeckId: 9 }), []);
     expect(next.selectedDeckId).toBe(9);
     expect(next.code).toBe("");
     expect(next.error).toBeNull();
