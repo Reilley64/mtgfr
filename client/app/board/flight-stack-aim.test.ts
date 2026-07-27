@@ -336,7 +336,7 @@ describe("stack flight settle handoff", () => {
     const handId = 9;
     const land: ObjectView = {
       ...spell(handId, "Forest"),
-      kind: { kind: "land" },
+      kind: { kind: "land", colors: [] },
       zone: ZONE.Hand,
       print: "forest-print",
     };
