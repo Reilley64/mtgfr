@@ -1080,7 +1080,16 @@ function togglePendingObjectAimPick(
   } else {
     next = [...picked, objectId];
   }
-  return [{ ...synced, promptDraft: { kind: "card-pick", picked: next, filter: synced.promptDraft.filter } }, []];
+  return [
+    {
+      ...synced,
+      promptDraft: {
+        ...synced.promptDraft,
+        picked: next,
+      },
+    },
+    [],
+  ];
 }
 
 function submitPendingHandPick(
@@ -2425,10 +2434,8 @@ export function updateBoard(
           {
             ...synced,
             promptDraft: {
-              kind: "card-pick",
+              ...synced.promptDraft,
               picked: next,
-              filter: synced.promptDraft.filter,
-              host: synced.promptDraft.host,
             },
           },
           [],

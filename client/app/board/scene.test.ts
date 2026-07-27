@@ -1355,6 +1355,51 @@ test("pointer up on a proliferate avatar accumulates the seat and answers with b
   });
 });
 
+// Clicking a permanent after a seat must keep both lists — otherwise Confirm quietly drops
+// the player pick and proliferate feels like the avatar click did nothing.
+test("proliferate permanent toggle keeps previously picked seats through Confirm", () => {
+  const bear = creature(31, 0);
+  const pending = {
+    kind: "proliferate" as const,
+    player: 0,
+    source: 1,
+    items: [
+      { id: bear.id, label: "Bear" },
+      { id: 0, label: "Player 2", player: 1 },
+    ],
+  };
+  const players = [player(), player({ player: 1, username: "Bob" })];
+  const gameFold = fold(state({ objects: [bear], pending_choice: pending, players }));
+  let board: BoardModel = initialBoardModel();
+  const world = avatarPos(1, 0, 2);
+  const screen = worldToScreen(board.camera, world.x, world.y);
+  let commands: ReturnType<typeof updateBoard>[1];
+  [board, commands] = updateBoard(board, BoardPointerUp({ x: screen.x, y: screen.y }), gameFold, "T1");
+  expect(commands).toEqual([]);
+  expect(board.promptDraft).toMatchObject({ kind: "card-pick", players: [1] });
+
+  board = {
+    ...board,
+    pointer: { kind: "drag", card: renderStub(bear.id), x: 100, y: 100, moved: false },
+  };
+  [board, commands] = updateBoard(board, BoardPointerUp({ x: 100, y: 100 }), gameFold, "T1");
+  expect(commands).toEqual([]);
+  expect(board.promptDraft).toEqual({
+    kind: "card-pick",
+    picked: [bear.id],
+    filter: "",
+    players: [1],
+  });
+
+  [, commands] = updateBoard(board, PromptSubmitted(), gameFold, "T1");
+  expect(intentFromCommand(commands[0])).toEqual({
+    kind: "choose_proliferate",
+    player: 0,
+    permanents: [bear.id],
+    players: [1],
+  });
+});
+
 test("pointer up on non-target while staged clears drag without submitting", () => {
   const attacker = creature(11, 0);
   const other = creature(99, 1);

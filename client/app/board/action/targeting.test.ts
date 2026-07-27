@@ -22,6 +22,7 @@ import {
   pendingPlayerAimOverlay,
   pendingTargetingOverlay,
   pendingTargetOneClick,
+  pickedPlayersFromDraft,
   sacrificeCostObjectIds,
   sacrificeCostOverlay,
   stackAimOrigin,
@@ -971,5 +972,25 @@ describe("stagedTargetTitle", () => {
 
   it("uses the action label for casts", () => {
     expect(stagedTargetTitle(staged())).toBe("Reanimate");
+  });
+});
+
+describe("pickedPlayersFromDraft", () => {
+  it("paints player-pick seats while aiming", () => {
+    expect([...pickedPlayersFromDraft(true, { kind: "player-pick", players: [1, 2] })]).toEqual([1, 2]);
+  });
+
+  // Proliferate stores seats on card-pick.players — without this, avatar clicks look dead.
+  it("paints proliferate card-pick seats while aiming", () => {
+    expect([
+      ...pickedPlayersFromDraft(true, { kind: "card-pick", picked: [7], filter: "", players: [1] }),
+    ]).toEqual([1]);
+  });
+
+  it("stays empty when not aiming or when no seats are picked", () => {
+    expect([...pickedPlayersFromDraft(false, { kind: "card-pick", picked: [], filter: "", players: [1] })]).toEqual(
+      [],
+    );
+    expect([...pickedPlayersFromDraft(true, { kind: "card-pick", picked: [7], filter: "" })]).toEqual([]);
   });
 });
