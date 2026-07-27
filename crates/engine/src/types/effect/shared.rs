@@ -61,6 +61,14 @@ pub enum Amount {
     LifeGainedThisTurn,
     /// How many spells the effect's controller has cast this turn (a turn-scoped tally).
     SpellsCastThisTurn,
+    /// How many untapped lands the effect's controller controlled when the current turn began
+    /// (Power Surge's "the number of untapped lands they controlled at the beginning of this
+    /// turn") — a snapshot, not a live count, so tapping out with the trigger on the stack
+    /// changes nothing. Reads [`Player::untapped_lands_at_turn_start`], which is taken as the
+    /// upkeep begins; "they" is the taxed player because
+    /// [`DamageEffect::ToTriggeringPlayer`](crate::DamageEffect::ToTriggeringPlayer) resolves its
+    /// amount against the recipient.
+    UntappedLandsAtTurnStart,
     /// The number of cards in the resolving spell's *chosen player target's* hand (Rousing
     /// Refrain's "Add {R} for each card in target opponent's hand"). Read off the spell's target,
     /// like [`CommanderCastsFromCommandZone`](Self::CommanderCastsFromCommandZone) — the ability

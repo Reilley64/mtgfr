@@ -225,7 +225,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Forcefield** {3} · Artifact — increment 4
 - [ ] **Fork** {R}{R} · Instant — increment 13
 - [ ] **Fungusaur** {3}{G} · Creature — Fungus Dinosaur — increment 63
-- [ ] **Gaea's Liege** {3}{G}{G}{G} · Creature — Avatar — increment 1, 2, 8
+- [ ] **Gaea's Liege** {3}{G}{G}{G} · Creature — Avatar — increment 2, 8
 - [ ] **Gauntlet of Might** {4} · Artifact — increment 19
 - [ ] **Glasses of Urza** {1} · Artifact — increment 31
 - [ ] **Gloom** {2}{B} · Enchantment — increment 67
@@ -243,8 +243,8 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Jade Monolith** {4} · Artifact — increment 6
 - [ ] **Jade Statue** {4} · Artifact — increment 57
 - [ ] **Juggernaut** {4} · Artifact Creature — Juggernaut — increment 11
-- [ ] **Karma** {2}{W}{W} · Enchantment — increment 1
-- [ ] **Keldon Warlord** {2}{R}{R} · Creature — Human Barbarian — increment 1, 2
+- [x] **Karma** {2}{W}{W} · Enchantment — increment 1
+- [ ] **Keldon Warlord** {2}{R}{R} · Creature — Human Barbarian — increment 2
 - [ ] **Kormus Bell** {4} · Artifact — increment 8
 - [ ] **Kudzu** {1}{G}{G} · Enchantment — Aura — increment 37
 - [ ] **Library of Leng** {1} · Artifact — increment 33
@@ -268,15 +268,15 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Natural Selection** {G} · Instant — increment 55
 - [ ] **Nether Shadow** {B}{B} · Creature — Spirit — increment 39
 - [ ] **Nettling Imp** {2}{B} · Creature — Imp — increment 26
-- [ ] **Nightmare** {5}{B} · Creature — Nightmare Horse — increment 1, 2
+- [ ] **Nightmare** {5}{B} · Creature — Nightmare Horse — increment 2
 - [ ] **Paralyze** {B} · Enchantment — Aura — increment 7
 - [ ] **Personal Incarnation** {3}{W}{W}{W} · Creature — Avatar Incarnation — increment 6
 - [ ] **Phantasmal Terrain** {U}{U} · Enchantment — Aura — increment 8
 - [ ] **Pirate Ship** {4}{U} · Creature — Human Pirate — increment 24
-- [ ] **Plague Rats** {2}{B} · Creature — Rat — increment 1, 2
+- [ ] **Plague Rats** {2}{B} · Creature — Rat — increment 2
 - [ ] **Power Leak** {1}{U} · Enchantment — Aura — increment 4
 - [ ] **Power Sink** {X}{U} · Instant — increment 23
-- [ ] **Power Surge** {R}{R} · Enchantment — increment 1
+- [x] **Power Surge** {R}{R} · Enchantment — increment 1
 - [ ] **Psychic Venom** {1}{U} · Enchantment — Aura — increment 19
 - [ ] **Purelace** {W} · Instant — increment 15
 - [ ] **Raging River** {R}{R} · Enchantment — increment 48
@@ -309,7 +309,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Two-Headed Giant of Foriys** {4}{R} · Creature — Giant — increment 11
 - [ ] **Vesuvan Doppelganger** {3}{U}{U} · Creature — Shapeshifter — increment 12
 - [ ] **Veteran Bodyguard** {3}{W}{W} · Creature — Human — increment 6
-- [ ] **Volcanic Eruption** {X}{U}{U}{U} · Sorcery — increment 1
+- [ ] **Volcanic Eruption** {X}{U}{U}{U} · Sorcery — increment 73
 - [x] **Wanderlust** {2}{G} · Enchantment — Aura — increment 61
 - [x] **Warp Artifact** {B}{B} · Enchantment — Aura — increment 61
 - [x] **Wild Growth** {G} · Enchantment — Aura — increment 64

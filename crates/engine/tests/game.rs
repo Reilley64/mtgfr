@@ -105293,6 +105293,80 @@ fn copper_tablet_bills_whoever_the_upkeep_belongs_to() {
     );
 }
 
+// Karma: "At the beginning of each player's upkeep, this enchantment deals damage to that player
+// equal to the number of Swamps they control." The count is the *taxed* player's, not Karma's
+// controller's — the same "that player" the damage is aimed at.
+
+#[test]
+fn karma_counts_the_taxed_players_own_swamps() {
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Karma"));
+    game.spawn_on_battlefield(PlayerId(0), card("Swamp"));
+    for _ in 0..3 {
+        game.spawn_on_battlefield(PlayerId(1), card("Swamp"));
+    }
+    for p in 0..2u8 {
+        game.stack_library(PlayerId(p), &vec![card("Plains"); 5]);
+    }
+
+    // Turn one's upkeep is already behind us, so the first fire we see is the opponent's.
+    pass_until_next_turn(&mut game);
+    advance_until(&mut game, |g| g.current_step() == Step::Main1);
+    assert_eq!(
+        game.life(PlayerId(1)),
+        17,
+        "three Swamps of their own, three damage"
+    );
+    assert_eq!(
+        game.life(PlayerId(0)),
+        20,
+        "Karma's controller is not billed on someone else's upkeep"
+    );
+
+    pass_until_next_turn(&mut game);
+    advance_until(&mut game, |g| g.current_step() == Step::Main1);
+    assert_eq!(
+        game.life(PlayerId(0)),
+        19,
+        "and their own upkeep counts the one Swamp they control, not the table's four"
+    );
+}
+
+// Power Surge: "At the beginning of each player's upkeep, this enchantment deals X damage to that
+// player, where X is the number of untapped lands they controlled at the beginning of this turn."
+// The count is snapshotted, so tapping out with the trigger on the stack saves nobody.
+
+#[test]
+fn power_surge_bills_the_lands_that_were_untapped_when_the_turn_began() {
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Power Surge"));
+    let lands: Vec<ObjectId> = (0..4)
+        .map(|_| game.spawn_on_battlefield(PlayerId(1), card("Forest")))
+        .collect();
+    for p in 0..2u8 {
+        game.stack_library(PlayerId(p), &vec![card("Plains"); 5]);
+    }
+
+    // Stop on the opponent's upkeep with the trigger still on the stack.
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(1) && g.current_step() == Step::Upkeep && !g.stack_is_empty()
+    });
+    for &land in &lands {
+        game.tap(land);
+    }
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        game.life(PlayerId(1)),
+        16,
+        "four lands stood untapped when their turn began; tapping out in response is too late"
+    );
+    assert_eq!(
+        game.life(PlayerId(0)),
+        20,
+        "and Power Surge's controller, with no lands, is billed nothing on an upkeep that is not theirs"
+    );
+}
+
 // The 2ed upkeep-tax Aura cycle (Cursed Land, Feedback, Wanderlust, Warp Artifact): "At the
 // beginning of the upkeep of enchanted <permanent>'s controller, this Aura deals 1 damage to that
 // player." The host's controller pays, not the Aura's — so enchanting an opponent's permanent

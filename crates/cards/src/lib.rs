@@ -165,11 +165,12 @@ mod tests {
     use engine::{
         Amount, BasicLandType, CardFilter, CardKind, CasterScope, ChoiceEffect, Color, ColorFilter,
         Condition, ControlEffect, CopyEffect, Cost, CountersEffect, DamageEffect, DestroyEffect,
-        DigEffect, DrawEffect, Effect, EnterController, ExileEffect, GraveyardScope, Keyword,
-        LandProduces, LandTapBonusColor, LandTapScope, LifeEffect, Mana, ManaEffect, MillEffect,
-        MiscEffect, PermanentFilter, ProtectionScope, PumpEffect, SacrificeAdditionalCostCount,
-        SacrificeCost, SacrificeEffect, SearchDest, SpellFilter, SpellSpeed, StaticEffect,
-        TargetCount, TargetSpec, Timing, TokenEffect, Trigger, TypeSet, ZoneEffect,
+        DigEffect, DrawEffect, Effect, EnterController, ExileEffect, FilterController,
+        GraveyardScope, Keyword, LandProduces, LandTapBonusColor, LandTapScope, LifeEffect, Mana,
+        ManaEffect, MillEffect, MiscEffect, PermanentFilter, ProtectionScope, PumpEffect,
+        SacrificeAdditionalCostCount, SacrificeCost, SacrificeEffect, SearchDest, SpellFilter,
+        SpellSpeed, StaticEffect, TargetCount, TargetSpec, Timing, TokenEffect, Trigger, TypeSet,
+        ZoneEffect,
     };
 
     #[test]
@@ -2470,6 +2471,41 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                 "{name} deals 1 damage to that player"
             );
         }
+    }
+
+    /// Karma counts Swamps with a plain `controller = "you"` filter: on a `to_triggering_player`
+    /// payoff, "you" is the player being billed, so one card covers every seat's own Swamps.
+    #[test]
+    fn unlimited_karma_counts_the_taxed_players_swamps() {
+        let karma = get_by_name("Karma").expect("Karma is in the pool");
+        let ability = &karma.abilities[0];
+        assert!(matches!(
+            ability.timing,
+            Timing::Triggered(Trigger::EachUpkeep)
+        ));
+        let Effect::Damage(DamageEffect::ToTriggeringPlayer { amount, .. }) = &ability.effect
+        else {
+            panic!("expected the upkeep tax to bill the player whose upkeep it is");
+        };
+        let Amount::PerPermanentMatching { filter, .. } = amount else {
+            panic!("expected a filtered board count");
+        };
+        assert_eq!(filter.subtypes, ["Swamp"]);
+        assert_eq!(filter.controller, FilterController::You);
+    }
+
+    /// Power Surge reads a snapshot, not a live board scan — the count was taken when the turn
+    /// began, so tapping out with the trigger on the stack saves nothing.
+    #[test]
+    fn unlimited_power_surge_bills_a_turn_start_snapshot() {
+        let surge = get_by_name("Power Surge").expect("Power Surge is in the pool");
+        assert!(matches!(
+            surge.abilities[0].effect,
+            Effect::Damage(DamageEffect::ToTriggeringPlayer {
+                amount: Amount::UntappedLandsAtTurnStart,
+                ..
+            })
+        ));
     }
 
     /// Earthbind's enters trigger is gated on the host already flying, and the grounding it hands

@@ -2137,6 +2137,14 @@ pub(crate) struct Player {
     /// Spells this player has cast this turn (turn-scoped; reset each turn at untap). Feeds
     /// [`Amount::SpellsCastThisTurn`].
     pub(crate) spells_cast_this_turn: u32,
+    /// How many untapped lands this player controlled at the beginning of the current turn —
+    /// Power Surge's "the number of untapped lands they controlled at the beginning of this
+    /// turn". Snapshotted for every player when the *upkeep* begins (`Game::apply`'s
+    /// `Event::StepBegan` arm), not at untap: no player receives priority between untapping and
+    /// that point (CR 502.3), so the two moments hold the same count and only the later one runs
+    /// after the untap step's turn-based action. Feeds
+    /// [`Amount::UntappedLandsAtTurnStart`].
+    pub(crate) untapped_lands_at_turn_start: u32,
     /// Spells with {X} in their mana cost this player has cast this turn (turn-scoped; reset
     /// at untap) — the filter-scoped sibling of `spells_cast_this_turn`, for the "first {X}-
     /// spell each turn" gate (Nev, Zimone Infinite Analyst). CR 107.3.

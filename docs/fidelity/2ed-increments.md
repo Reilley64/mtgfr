@@ -39,7 +39,7 @@ the pool is faithful, so section B is empty.
 
 ---
 
-### 1. `permanent-count-amount` — 7 cards, M
+### 1. `permanent-count-amount` — 2 cards, M — **done**
 Depends on: nothing.
 `Amount` can count creatures you control, creatures that died, cards in a hand — but it cannot
 count *permanents matching a filter that a given player controls*. Every "equal to the number of
@@ -51,11 +51,24 @@ resolve it per-player inside an each-upkeep trigger, so it must be evaluated at 
 against the *triggering* player, not the source's controller. Power Surge additionally needs the
 count snapshotted at the beginning of the turn rather than read live — a turn-scoped
 `untapped_lands_at_turn_start` per player, set in the Untap step.
-*Cards:* gaea_s_liege, karma, keldon_warlord, nightmare, plague_rats, power_surge,
-volcanic_eruption.
+*Landed:* the sketch was wrong about what was missing. `Amount::PerPermanentMatching { filter,
+zone }` already counts permanents matching a filter, and `filter.controller = "you"` already picks
+a side; what no card could say was *whose* "you" it is. Karma's count belongs to the player being
+billed, not to Karma's controller — so `DamageEffect::ToTriggeringPlayer` now resolves its amount
+against the recipient rather than the source's controller. That is the whole `who` axis: no new
+`Amount` variant, no new field, and every other `to_triggering_player` card in the pool is a flat
+`amount = 1` that cannot tell the difference. Power Surge needed one genuinely new amount,
+`"untapped_lands_at_turn_start"`, because its count is a snapshot — tapping out with the trigger on
+the stack must not shrink it. The snapshot is taken in `Game::apply`'s `Event::StepBegan` arm when
+the *upkeep* begins, not at untap: the Untap arm runs *before* the untap turn-based action, and no
+player receives priority between untapping and the upkeep (CR 502.3), so the later moment holds the
+same count and needs no new event or wire message. The five other cards listed here never needed
+this increment: the four `*/*` creatures are pure #2 (the existing filtered count already says what
+they count), and volcanic_eruption turned out to be unrelated — see #73.
+*Cards:* karma, power_surge.
 
 ### 2. `characteristic-defining-power-toughness` — 6 cards, M
-Depends on: #1.
+Depends on: nothing (#1 turned out not to be a prerequisite — see its *Landed:* note).
 `*/*` creatures. The pool has `set_own_base_pt_from_amount` (Trench Gorger), but that is a
 one-shot resolution effect that writes a fixed number; a CDA (CR 604.3) is continuous — it
 re-reads its count every time characteristics are computed, in layer 7a, before any other P/T
@@ -1082,3 +1095,19 @@ and the mandatory sacrifice stalled on an unanswerable pause. "You control anoth
 spelled `you_control_at_least_creatures { count = 2 }`, exact while the Lord is on the battlefield
 (the only time the trigger resolves) and recorded as a `ponytail:` comment on the card.
 *Cards:* lord_of_the_pit.
+
+### 73. `destroyed-this-way-count-from-targets` — 1 card, M
+Depends on: nothing.
+Split out of #1, which it never belonged to. Volcanic Eruption: "Destroy X target Mountains. This
+spell deals damage equal to the number of Mountains destroyed this way to each creature and each
+player." The target side is already expressible — `{ min = 1, max = 1, x_scaled = true }` is
+"exactly X targets" (Curse of the Swine) — and both damage halves are plain `each_creature` /
+`each_player`. What is missing is the count: `Amount::PermanentsDestroyedThisWay` reads
+`ResolutionFrame::destroyed_this_way`, which only `DestroyEffect::DestroyAll` ever writes, so a
+*targeted* destroy leaves it at zero. *Sketch:* have the targeted destroy path record its
+successful destructions into the same resolution frame, so "destroyed this way" means the same
+thing after either destroy flavor. Resist approximating it as `Amount::X`: a Mountain that left in
+response, gained shroud, or regenerated (CR 701.15 — regeneration replaces the destruction, so it
+was not destroyed) makes the two diverge, and this card's whole point is the symmetry between what
+it destroys and what it burns.
+*Cards:* volcanic_eruption.

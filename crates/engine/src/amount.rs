@@ -54,6 +54,10 @@ impl Game {
             Amount::SpellsCastThisTurn => {
                 self.players[controller.0 as usize].spells_cast_this_turn as i32
             }
+            // A snapshot taken as the upkeep began, not a live scan — see the field's own doc.
+            Amount::UntappedLandsAtTurnStart => {
+                self.players[controller.0 as usize].untapped_lands_at_turn_start as i32
+            }
             // Reads the resolving spell's chosen player target's hand size (Rousing Refrain's
             // "for each card in target opponent's hand"), off the target like
             // `CommanderCastsFromCommandZone` above.

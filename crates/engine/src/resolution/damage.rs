@@ -519,7 +519,13 @@ impl Game {
             // the recipient arriving as a player rather than as a permanent to ask.
             DamageEffect::ToTriggeringPlayer { player, amount } => {
                 let recipient = player.expect("the triggering player is filled in at placement");
-                let amount = self.resolve_amount(amount, controller, source, target, x);
+                // Karma's "damage to that player equal to the number of Swamps *they* control" and
+                // Power Surge's "lands *they* controlled": a player-relative amount on this effect
+                // reads the recipient, not the source's controller.
+                // ponytail: no `who` axis on `Amount` — every "deals damage to that player equal
+                // to …" the pool prints counts that same player's things. Add one if a card ever
+                // bills the triggering player for something *you* control.
+                let amount = self.resolve_amount(amount, recipient, source, target, x);
                 let (mut events, amount) = self.player_damage_events(source, recipient, amount);
                 // 0 damage is never dealt (CR 120.8) — no marker, no trigger.
                 if amount > 0 {

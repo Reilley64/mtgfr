@@ -1146,6 +1146,27 @@ impl Game {
                         p.cant_be_regenerated_this_turn = false;
                         p.exile_instead_of_dying_this_turn = false;
                     }
+                } else if step == Step::Upkeep {
+                    // Power Surge reads "the number of untapped lands they controlled at the
+                    // beginning of this turn" when its upkeep trigger resolves, by which time the
+                    // taxed player may have tapped out in response. Snapshot it here, the last
+                    // moment before anyone can act (the untap step grants no priority, CR 502.3),
+                    // rather than in the Untap arm above — that one applies *before* the untap
+                    // turn-based action, so it would count the board as it stood last turn.
+                    let counts: Vec<u32> = (0..self.players.len())
+                        .map(|i| {
+                            self.controlled_battlefield(PlayerId(i as u8))
+                                .into_iter()
+                                .filter(|&id| {
+                                    self.def_of(id).kind.types().intersects(TypeSet::LAND)
+                                        && !self.permanent(id).tapped
+                                })
+                                .count() as u32
+                        })
+                        .collect();
+                    for (player, count) in self.players.iter_mut().zip(counts) {
+                        player.untapped_lands_at_turn_start = count;
+                    }
                 } else if step == Step::EndCombat {
                     // CR "this combat": an `ArmCombatDamageWatch` watch that never fired this
                     // combat expires here, same silent-clear shape as `pending_next_cast`'s own

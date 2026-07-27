@@ -1068,6 +1068,7 @@ fn amount_token(amount: Amount) -> &'static str {
         Amount::PerCounterOfKindOnSource { .. } => "per_counter_of_kind_on_source",
         Amount::LifeGainedThisTurn => "life_gained_this_turn",
         Amount::SpellsCastThisTurn => "spells_cast_this_turn",
+        Amount::UntappedLandsAtTurnStart => "untapped_lands_at_turn_start",
         Amount::CardsInTargetPlayerHand => "cards_in_target_player_hand",
         Amount::CardsInYourHand => "cards_in_your_hand",
         Amount::CommanderCastsFromCommandZone => "commander_casts_from_command_zone",
