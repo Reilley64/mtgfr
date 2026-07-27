@@ -56,3 +56,7 @@ export const colors = {
   quietHover: "#2C3F35",
 } as const;
 export type ColorToken = keyof typeof colors;
+export const shadowDrag = null;
+export const hexFallbacks = {
+  forestFloor: "#0B1310",
+} as const;
