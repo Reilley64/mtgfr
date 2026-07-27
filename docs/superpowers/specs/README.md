@@ -79,6 +79,7 @@ These documents are **not superseded** and must stay current alongside the specs
 | [bff-route-split](2026-07-26-bff-route-split-design.md) | Design input: Nitro one-file-per lobby/meta op, `defineHandler` + h3 web APIs, path-param join/ready/start; update shell/lobby/coverage specs at implement time |
 | [shell-polish-redesign](2026-07-26-shell-polish-redesign-design.md) | Shipped design input (#252/#259/#261/#262): shared `shellFrame`, shell type pair, atmosphere, CSS portrait→landscape rotate, per-surface reflows + Wave 4 consistency/scroll pass |
 | [effect-deepening](2026-07-26-effect-deepening-design.md) | Design input: deepen Effect on client (LobbyClient, BFF gRPC Effect dispatch, Drizzle RC effect-postgres, Effect HTTP helpers); update shell/lobby/wire specs per wave |
+| [prompt-primary-bar-takeover](2026-07-27-prompt-primary-bar-takeover-design.md) | Design input: simple prompt actions own the primary-bar slot; rich pickers are center modals; board-aim coaches stay bottom-docked; update prompts + turn-and-priority-chrome at implement time |
 
 ## Authoring conventions
 
