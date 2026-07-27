@@ -130,7 +130,9 @@ messages for clients; those strings never appear on span attributes.
 
 **API:** `tracing` + `opentelemetry-otlp` (HTTP export) in `crates/server`. Inbound tonic spans
 use `rpc.system=grpc`, `rpc.service`, short `rpc.method`, `rpc.grpc.status_code`, and
-`{rpc.service}/{rpc.method}` names. Game submit spans use `mtgfr.table.id`, `mtgfr.intent.kind`,
+`{rpc.service}/{rpc.method}` names. Tower `TraceLayer` records `rpc.grpc.status_code` from
+response headers only; mid-stream trailer-only failures may default to OK (`0`). Game submit spans
+use `mtgfr.table.id`, `mtgfr.intent.kind`,
 `mtgfr.intent.accepted`, and `mtgfr.user.id` only; legacy bare `table_id`, `intent.kind`,
 `accepted`, and `user_id` are not emitted as OTEL attribute keys. Engine (`crates/engine`) emits
 `tracing` spans but no OTEL exporters (engine is pure).
@@ -225,9 +227,10 @@ still drives `tracing` / fmt output.
 - Dashboard provisioning changes are validated with JSON syntax checks and `terraform validate`
   from `iac/`; dashboard query behavior is checked manually through operator Grafana after
   port-forwarding.
-- API Rust golden fixtures assert resource/span helper output includes allowlisted resource,
-  RPC/gRPC, exception, and `mtgfr.*` keys while excluding legacy bare game keys, payloads,
-  hand/library data, auth headers, and SQL/query text.
+- API Rust unit tests cover RPC/gRPC and `mtgfr.*` span fields in `grpc/trace.rs` and
+  `otel_semconv.rs` (including legacy bare game key exclusion on span field names), plus
+  `deployment.environment` trim/omit behavior in `telemetry.rs`. They do not golden-fixture full
+  resource attribute sets, exception attrs, or payload/SQL/auth scrubbing.
 - BFF TypeScript golden fixtures assert HTTP server, outbound gRPC, safe DB, exception, and build
   metadata resource attributes match the shared dictionary and omit forbidden body/query/auth keys.
 - Manual golden trace verification uses the good Tempo tree shown in Behavior and the API leaf-span

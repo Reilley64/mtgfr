@@ -1,5 +1,6 @@
 //! OpenTelemetry Semantic Conventions 1.37.0 helpers (observability-ops design).
-//! Task 3 TraceLayer wiring will consume these symbols; allow dead_code until then.
+//! `#![allow(dead_code)]` remains because `FORBIDDEN_ATTR_KEYS` is a test-only guardrail registry
+//! in this module and is not referenced by production span wiring yet.
 #![allow(dead_code)]
 
 pub const RPC_SYSTEM: &str = "rpc.system";
