@@ -26,7 +26,7 @@ impl Extractor for HeaderExtractor<'_> {
 
 /// Span for an inbound gRPC HTTP/2 request path (e.g. `/mtgfr.v1.Game/SubmitIntent`).
 pub fn span_for_http_request(path: &str, headers: &http::HeaderMap) -> tracing::Span {
-    let (service, method) = parse_grpc_path(path).unwrap_or(("unknown", path));
+    let (service, method) = parse_grpc_path(path).unwrap_or(("unknown", "unknown"));
     let name = rpc_span_name(service, method);
     let span = tracing::info_span!(
         "grpc",
@@ -236,5 +236,41 @@ mod tests {
         assert!(!observed.fields.contains("table_id"));
         assert!(!observed.fields.contains("intent.kind"));
         assert!(!observed.fields.contains("accepted"));
+    }
+
+    #[test]
+    fn span_for_http_request_scrubs_unparseable_path_from_rpc_method() {
+        opentelemetry::global::set_text_map_propagator(TraceContextPropagator::new());
+        let headers = http::HeaderMap::new();
+        let layer = CapturingLayer::default();
+        let observed = layer.observed.clone();
+        let subscriber = tracing_subscriber::registry().with(layer);
+        let garbage_path = "/not-a-valid-grpc-path/with/extra/segments";
+
+        tracing::subscriber::with_default(subscriber, || {
+            let span = span_for_http_request(garbage_path, &headers);
+            let _enter = span.enter();
+        });
+
+        let observed = observed
+            .lock()
+            .expect("observed span lock")
+            .take()
+            .expect("span was created");
+        assert_eq!(
+            observed.values.get(RPC_SERVICE).map(String::as_str),
+            Some("unknown")
+        );
+        assert_eq!(
+            observed.values.get(RPC_METHOD).map(String::as_str),
+            Some("unknown")
+        );
+        assert!(
+            observed
+                .values
+                .get(RPC_METHOD)
+                .is_none_or(|method| method != garbage_path),
+            "rpc.method must not contain the raw HTTP path"
+        );
     }
 }
