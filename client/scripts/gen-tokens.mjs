@@ -141,7 +141,8 @@ function serializeShadowLayer(layer) {
   const x = shadowDim(layer.offsetX);
   const y = shadowDim(layer.offsetY);
   const blur = shadowDim(layer.blur ?? { value: 0, unit: "px" });
-  const spread = layer.spread != null ? ` ${shadowDim(layer.spread)}` : "";
+  const spreadValue = layer.spread != null ? shadowDim(layer.spread) : null;
+  const spread = spreadValue != null && spreadValue !== "0" ? ` ${spreadValue}` : "";
   const color = serializeColor(layer.color);
   return `${inset}${x} ${y} ${blur}${spread} ${color}`.replace(/ {2,}/g, " ").trim();
 }
@@ -158,20 +159,6 @@ function normalizeRgbForCanvas(color) {
   }
   const [, r, g, b, alpha] = match;
   return `rgba(${r},${g},${b},${alpha})`;
-}
-
-function parseCssShadowLayer(css) {
-  const match = css.trim().match(/^0\s+(-?[0-9.]+)px\s+([0-9.]+)px\s+(.+)$/);
-  if (!match) {
-    return null;
-  }
-  const [, offsetY, blur, color] = match;
-  return {
-    css,
-    offsetY: Number(offsetY),
-    blur: Number(blur),
-    color: normalizeRgbForCanvas(color),
-  };
 }
 
 function serializeCubicBezier(value) {
@@ -247,8 +234,6 @@ function serializeTokenValue($type, $value) {
     case "number":
     case "fontWeight":
       return typeof $value === "object" && $value && "value" in $value ? dim($value) : String($value);
-    case "css":
-      return String($value);
     case "typography":
       throw new Error("typography must be expanded before serializeTokenValue");
     default:
@@ -344,10 +329,7 @@ function publicColorKey(path) {
 }
 
 function buildShadowDragExport(root) {
-  const node = getNode(root, ["semantic", "drop-shadow", "drag"]) ?? getNode(root, ["drop-shadow", "drag"]);
-  if (node?.$type === "css" && typeof node.$value === "string") {
-    return parseCssShadowLayer(node.$value);
-  }
+  const node = getNode(root, ["semantic", "drop-shadow", "drag"]);
   if (node?.$type !== "shadow") {
     return null;
   }
@@ -366,7 +348,7 @@ function buildShadowDragExport(root) {
 }
 
 function buildHexFallbacksExport(root) {
-  const node = getNode(root, ["semantic", "color", "forest-floor"]) ?? getNode(root, ["color", "forest-floor"]);
+  const node = getNode(root, ["semantic", "color", "forest-floor"]);
   if (node?.$type !== "color") {
     return {};
   }

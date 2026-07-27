@@ -37,6 +37,26 @@ function readTokens(): DesignTokens {
   return JSON.parse(readFileSync(tokensPath, "utf8"));
 }
 
+function visitTokens(
+  value: unknown,
+  visit: (token: { $type?: unknown; $value?: unknown }, path: string) => void,
+  path = "",
+): void {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return;
+  }
+
+  if ("$value" in value) {
+    visit(value, path);
+  }
+  for (const [key, child] of Object.entries(value)) {
+    if (key.startsWith("$")) {
+      continue;
+    }
+    visitTokens(child, visit, path ? `${path}.${key}` : key);
+  }
+}
+
 describe("design.tokens.json", () => {
   it("has no $type css passthroughs", () => {
     const raw = readFileSync(tokensPath, "utf8");
@@ -84,6 +104,29 @@ describe("design.tokens.json", () => {
     expect(json.semantic.spacing["shell-gutter"].$value).toBe("{primitive.space.xxl}");
     expect(json.semantic.spacing["shell-header-y"].$value).toBe("{primitive.space.shell-header-y}");
   });
+
+  it("authors every shadow layer with an explicit spread", () => {
+    const json = readTokens();
+    const missing: string[] = [];
+
+    visitTokens(json, (token, path) => {
+      if (token.$type !== "shadow") {
+        return;
+      }
+
+      const layers = Array.isArray(token.$value) ? token.$value : [token.$value];
+      layers.forEach((layer, index) => {
+        if (!layer || typeof layer !== "object" || Array.isArray(layer)) {
+          return;
+        }
+        if (!("spread" in layer)) {
+          missing.push(`${path}[${index}]`);
+        }
+      });
+    });
+
+    expect(missing).toEqual([]);
+  });
 });
 
 describe("tokens.generated.css", () => {
@@ -102,7 +145,12 @@ describe("tokens.generated.css", () => {
     expect(css).toMatch(/--duration-stack-in\s*:\s*0\.25s/);
     expect(css).toMatch(/--animate-stack-in\s*:\s*stack-in 0\.25s ease-out/);
     expect(css).toMatch(/--animate-shell-enter\s*:\s*shell-enter 0\.2s var\(--ease-state\)/);
-    expect(css).toMatch(/--drop-shadow-drag\s*:\s*0 16px 36px /);
+    expect(css).toMatch(/--drop-shadow-drag\s*:\s*0 16px 36px rgb\(0 0 0 \/ 0\.72\);/);
+  });
+
+  it("does not leave unresolved token aliases in generated outputs", () => {
+    expect(readFileSync(cssPath, "utf8")).not.toMatch(/\{[a-z0-9.-]+\}/i);
+    expect(readFileSync(tsPath, "utf8")).not.toMatch(/\{[a-z0-9.-]+\}/i);
   });
 });
 

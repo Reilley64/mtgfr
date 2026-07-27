@@ -83,6 +83,7 @@ describe("gen-tokens helpers", () => {
         offsetX: { value: 0, unit: "px" },
         offsetY: { value: 16, unit: "px" },
         blur: { value: 36, unit: "px" },
+        spread: { value: 0, unit: "px" },
         color: {
           colorSpace: "srgb",
           components: [0, 0, 0],
@@ -92,7 +93,7 @@ describe("gen-tokens helpers", () => {
     ).toBe("0 16px 36px rgb(0 0 0 / 0.72)");
     expect(serializeTokenValue("cubicBezier", [0.22, 1, 0.36, 1])).toBe("cubic-bezier(0.22, 1, 0.36, 1)");
     expect(serializeTokenValue("duration", { value: 0.25, unit: "s" })).toBe("0.25s");
-    expect(serializeTokenValue("css", "var(--legacy-bridge)")).toBe("var(--legacy-bridge)");
+    expect(() => serializeTokenValue("css", "var(--legacy-bridge)")).toThrow("unsupported $type: css");
     expect(
       serializeTokenCss({
         path: ["semantic", "color", "snow"],
@@ -109,19 +110,26 @@ describe("gen-tokens helpers", () => {
     expect(() => serializeTokenValue("color", "#0B1310")).toThrow("color tokens must be DTCG color objects");
   });
 
-  it("maps the current CSS drag drop-shadow token to the canvas shadow shape", () => {
+  it("ignores legacy root drag drop-shadow tokens", () => {
     const root = {
       "drop-shadow": {
-        drag: { $type: "css", $value: "0 16px 36px rgb(0 0 0 / 0.72)" },
+        drag: {
+          $type: "shadow",
+          $value: {
+            offsetX: { value: 0, unit: "px" },
+            offsetY: { value: 16, unit: "px" },
+            blur: { value: 36, unit: "px" },
+            color: {
+              colorSpace: "srgb",
+              components: [0, 0, 0],
+              alpha: 0.72,
+            },
+          },
+        },
       },
     };
 
-    expect(buildShadowDragExport(root)).toEqual({
-      css: "0 16px 36px rgb(0 0 0 / 0.72)",
-      offsetY: 16,
-      blur: 36,
-      color: "rgba(0,0,0,0.72)",
-    });
+    expect(buildShadowDragExport(root)).toBeNull();
   });
 
   it("maps a typed drag drop-shadow token to the canvas shadow shape", () => {

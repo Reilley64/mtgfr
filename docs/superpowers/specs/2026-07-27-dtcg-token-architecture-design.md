@@ -124,7 +124,10 @@ Author every `shadow.*` and `drop-shadow.drag` as `$type: "shadow"` composites
 Multi-layer tokens (`press`, `glow`, `pick`) use a **JSON array** of shadow
 layers. Inset layers set `"inset": true` (Format 2025.10 shadow composite).
 Codegen owns serialization to CSS (custom format, same as today) so Style
-Dictionary gaps cannot force a return to `$type: "css"`.
+Dictionary gaps cannot force a return to `$type: "css"`. Each layer authors
+`spread`; codegen treats zero spread as the CSS default and omits it from the
+serialized string, so `--drop-shadow-drag` remains the three-length form
+`0 16px 36px ...`.
 
 **Codegen:** emit CSS `box-shadow` / `filter: drop-shadow(...)` strings into the
 existing `--shadow-*` / `--drop-shadow-*` names. Also emit a small TS module
@@ -165,7 +168,10 @@ children — awkward for DTCG. Migrate screen ramp entries that bundle size +
 weight/line-height to `$type: "typography"` composites (Format 9.x), still
 emitting the same `--text-*` / `--text-*--font-weight` CSS vars Tailwind
 already consumes. Pure size steps (`label`, `caption`, …) may remain
-`dimension`.
+`dimension`. The current typography composites are DTCG 2025.10-aligned
+authoring: unused composite sub-values such as `fontFamily`, `letterSpacing`,
+or a redundant `lineHeight` may be omitted and are treated as defaults by
+codegen rather than emitted as public CSS variables.
 
 ### 2. Aliases (Format references — not Resolver themes)
 
