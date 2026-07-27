@@ -24,11 +24,7 @@ toughness = 4
 
 # Whenever one or more creatures you control deal combat damage to a player, this creature
 # becomes prepared.
-# ponytail: the real trigger is a single batch "one or more ... deal ..." watch (fires once per
-# combat damage step); `who = "your_creatures"` fires once per damaging creature instead. Both
-# converge on the same prepared state (`become_prepared` is idempotent), so the divergence is
-# unobservable — upgrade to a batch combat-damage trigger if a card ever needs to count how many
-# creatures connected, not just whether any did.
+# become_prepared is idempotent — per-creature vs batch combat-damage watches converge.
 [[abilities]]
 timing = "deals_combat_damage_to_player"
 who = "your_creatures"

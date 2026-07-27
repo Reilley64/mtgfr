@@ -494,6 +494,41 @@ describe("answerFromDraft builds accepted intents", () => {
     );
   });
 
+  test("builds pay answers with discard_cost when pay_cost requires discard", () => {
+    expectDraftIntent(
+      {
+        kind: "pay_cost",
+        can_pay: true,
+        cost: { colored: [], generic: 1 },
+        discard_count: 1,
+        discard_choices: [11],
+        label: testMessageRef("Pay 1 and discard"),
+        player: 0,
+        source: 1,
+      },
+      { kind: "card-pick", picked: [11], filter: "" },
+      { kind: "pay_optional_cost", pay: true, player: 0, discard_cost: [11] },
+    );
+  });
+
+  test("decline pay_cost with discard emits pay false without discard_cost", () => {
+    const pc: PendingChoiceView = {
+      kind: "pay_cost",
+      can_pay: true,
+      cost: { colored: [], generic: 1 },
+      discard_count: 1,
+      discard_choices: [11],
+      label: testMessageRef("Pay 1 and discard"),
+      player: 0,
+      source: 1,
+    };
+    expect(choiceIntent(pc, { kind: "pay", pay: false })).toEqual({
+      kind: "pay_optional_cost",
+      pay: false,
+      player: 0,
+    });
+  });
+
   test("builds mode answers for choose_mode", () => {
     expectDraftIntent(
       { kind: "choose_mode", labels: [testMessageRef("A"), testMessageRef("B")], player: 0, source: 1 },
@@ -878,8 +913,59 @@ describe("answerFromDraft builds accepted intents", () => {
     expectDraftIntent(
       { kind: "choose_exiled_dig_to_cast_free", items: [{ id: 33, label: "Spell" }], player: 0, source: 1 },
       { kind: "card-pick", picked: [33] },
-      { kind: "choose_exiled_dig_to_cast_free", choice: 33, player: 0 },
+      { kind: "choose_exiled_dig_to_cast_free", choice: 33, player: 0, target: null },
     );
+    expectDraftIntent(
+      {
+        kind: "choose_exiled_dig_to_cast_free",
+        items: [{ id: 34, label: "Spirit Mantle" }],
+        cast_targets: [{ id: 7, label: "Bear" }],
+        player: 0,
+        source: 1,
+      },
+      { kind: "card-pick", picked: [34], host: 7 },
+      {
+        kind: "choose_exiled_dig_to_cast_free",
+        choice: 34,
+        player: 0,
+        target: { kind: "object", id: 7 },
+      },
+    );
+    expect(answerFromDraft(
+      {
+        kind: "choose_exiled_dig_to_cast_free",
+        items: [{ id: 34, label: "Spirit Mantle" }],
+        cast_targets: [{ id: 7, label: "Bear" }],
+        player: 0,
+        source: 1,
+      },
+      { kind: "card-pick", picked: [34] },
+    )).toBeNull();
+    expect(choiceIntent(
+      {
+        kind: "choose_exiled_dig_to_cast_free",
+        items: [{ id: 34, label: "Spirit Mantle" }],
+        cast_targets: [{ id: 7, label: "Bear" }],
+        player: 0,
+        source: 1,
+      },
+      (() => {
+        const declined = declineAnswer({
+          kind: "choose_exiled_dig_to_cast_free",
+          items: [{ id: 34, label: "Spirit Mantle" }],
+          cast_targets: [{ id: 7, label: "Bear" }],
+          player: 0,
+          source: 1,
+        });
+        if (declined == null) throw new Error("expected decline answer for dig cast");
+        return declined;
+      })(),
+    )).toEqual({
+      kind: "choose_exiled_dig_to_cast_free",
+      choice: null,
+      player: 0,
+      target: null,
+    });
   });
 
   test("builds copy, attach, hand-on-top, dredge, and face-down answers", () => {

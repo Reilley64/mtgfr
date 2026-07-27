@@ -95,7 +95,13 @@ export const view = Submodel.defineView<BoardViewModel, ViewMessage>((model) => 
 
   const cards = layout(state, state.viewer);
   const stagedOverlay = stagingOverlay(model.board.staged, state, model.board.viewport, state.stack.length);
-  const pendingOverlay = pendingTargetingOverlay(state.pending_choice, state, model.board.viewport, state.stack.length);
+  const pendingOverlay = pendingTargetingOverlay(
+    state.pending_choice,
+    state,
+    model.board.viewport,
+    state.stack.length,
+    model.board.promptDraft,
+  );
   const damageOverlay = pendingDamageAssignOverlay(state.pending_choice, state);
   const divideOverlay = pendingDivideSpellOverlay(state.pending_choice, state);
   const playerOverlay = pendingPlayerAimOverlay(state.pending_choice, state);

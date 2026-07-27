@@ -60,13 +60,11 @@ mandatory sibling (or an optionality flag) that:
 That restores the printed "target player mills three cards, then you return a land card from your
 graveyard to your hand" without papering over a real graveyard-resource choice.
 
-### 3. `final-act-missing-mode-family` — 1 card, L — **DEFERRED APPROXIMATION**
+### 3. `final-act-missing-mode-family` — 1 card, L — **LANDED (2026-07-27)**
 
-**Depends on:** battle permanents and player-counter tracking (neither exists in the current pool).
-**Cards:** `final_act.toml`
-**Sketch:** `Final Act` is already honest about its residual: the engine can destroy all creatures,
-destroy all planeswalkers, and exile all graveyards, but it cannot yet express "destroy all
-battles" or "each opponent loses all counters." Keep the card in section B for Witherbloom rather
-than promoting it to D: this deck does not falsify the existing premise that neither missing surface
-is live yet. Once battles or player counters enter the faithful target set, land both missing
-families and widen the authored modal card back to its printed five-mode "choose one or more."
+Landed: `CardKind::Battle` + `TypeSet::BATTLE`, player poison counters, and Final Act modes
+"destroy all battles" / "each opponent loses all counters". Pool observers authored:
+`invasion_of_mercadia.toml` (battle body with deliberate siege/transform residual) and
+`infectious_inquiry.toml` (poison). `choose_max` is now 5 over the printed mode order.
+**Depends on:** none (observers authored in the same change).
+**Cards:** `final_act.toml`, `invasion_of_mercadia.toml`, `infectious_inquiry.toml`

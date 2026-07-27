@@ -1,3 +1,6 @@
+# Whenever this creature attacks, you may pay {1} and discard a card. If you do, draw a card.
+# Whenever you discard one or more nonland cards, you may exile one of them from your graveyard. If you do, you may cast
+# it this turn.
 name = "Conspiracy Theorist"
 sets = ["prm", "pstx", "soc", "stx"]
 id = "fa81e7ff-0f2c-40df-9169-c0a22f00cd76"
@@ -16,11 +19,6 @@ power = 2
 toughness = 2
 
 # Whenever this creature attacks, you may pay {1} and discard a card. If you do, draw a card.
-# ponytail: models "pay {1} and discard" as a paid activation gate (settled up front) then a
-# separate may-discard, rather than one all-or-nothing "pay {1} and discard a card" cost — a
-# player could pay {1} and decline the discard, drawing nothing, a strictly-dominated line no
-# one takes. Upgrade path: a combined mana-plus-discard cost type, if a card ever punishes
-# paying without discarding.
 [[abilities]]
 timing = "attacks"
 optional = true
@@ -28,12 +26,11 @@ optional = true
 [abilities.cost]
 generic = 1
 
-# you may pay {1} and discard a card. If you do, draw a card.
-[[abilities.effects]]
-type = "choice"
-mode = "may_discard"
+[abilities.cost.additional]
+discard = 1
 
-[[abilities.effects.then]]
+# If you do, draw a card.
+[[abilities.effects]]
 type = "draw"
 mode = "cards"
 count = 1

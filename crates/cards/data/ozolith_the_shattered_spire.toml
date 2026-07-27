@@ -7,9 +7,6 @@
 # plus one +1/+1 counters are put on it instead.
 # {1}{G}, {T}: Put a +1/+1 counter on target artifact or creature you control. Sorcery speed.
 # Cycling {2}."
-# ponytail: CounterReplacement applies to any permanent this source's controller controls (no
-# permanent-type gate) — a strict superset of the printed "artifact or creature you control",
-# indistinguishable while counters are never placed on a land/enchantment in this pool.
 name = "Ozolith, the Shattered Spire"
 sets = ["mom", "pmom", "soc"]
 id = "41fed659-237c-4d8e-ad31-d17fa0d3f764"
@@ -37,6 +34,7 @@ timing = "static"
 type = "static"
 mode = "counter_replacement"
 add = 1
+filter = "artifact_or_creature"
 
 # {1}{G}, {T}: Put a +1/+1 counter on target artifact or creature you control. Activate only as a sorcery.
 [[abilities]]

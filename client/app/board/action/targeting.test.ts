@@ -5,10 +5,12 @@ import { ZONE } from "../geometry/layout";
 import type { StagedAction } from "./execution";
 import { emptyCostPicks } from "./execution";
 import {
+  digCastNeedsHost,
   gyExileCostObjectIds,
   gyExileCostPile,
   pendingDamageAssignBlockers,
   pendingDamageAssignOverlay,
+  pendingDigCastHostMode,
   pendingDiscardHandIds,
   pendingDivideSpellObjectIndexes,
   pendingDivideSpellOverlay,
@@ -656,6 +658,43 @@ describe("pendingExilePickIds", () => {
   });
 });
 
+describe("pendingDigCastHostMode", () => {
+  it("aims cast_targets after an exile dig pick when hosts are projected", () => {
+    const host = object({ id: 7, zone: ZONE.Battlefield, name: "Bear" });
+    const pc = {
+      kind: "choose_exiled_dig_to_cast_free" as const,
+      player: 0,
+      source: 1,
+      items: [{ id: 33, label: "Spirit Mantle" }],
+      cast_targets: [{ id: 7, label: "Bear" }],
+    };
+    expect(digCastNeedsHost(pc)).toBe(true);
+    expect(pendingDigCastHostMode(pc, state([host]), { kind: "card-pick", picked: [] })).toBeNull();
+    const mode = pendingDigCastHostMode(pc, state([host]), { kind: "card-pick", picked: [33] });
+    expect(mode).not.toBeNull();
+    expect(mode?.objects.has(7)).toBe(true);
+    const overlay = pendingTargetingOverlay(pc, state([host]), { width: 1440, height: 900 }, 0, {
+      kind: "card-pick",
+      picked: [33],
+    });
+    expect(overlay.aiming).toBe(true);
+    expect(overlay.targetObjects.has(7)).toBe(true);
+  });
+
+  it("stays idle when cast_targets are empty (untargeted dig)", () => {
+    const pc = {
+      kind: "choose_exiled_dig_to_cast_free" as const,
+      player: 0,
+      source: 1,
+      items: [{ id: 33, label: "Bear" }],
+    };
+    expect(digCastNeedsHost(pc)).toBe(false);
+    expect(
+      pendingDigCastHostMode(pc, state([object({ id: 7 })]), { kind: "card-pick", picked: [33] }),
+    ).toBeNull();
+  });
+});
+
 describe("pendingDiscardHandIds", () => {
   it("returns hand ids for discard when every item is in hand", () => {
     const ids = pendingDiscardHandIds(
@@ -719,6 +758,41 @@ describe("pendingHandPickOneClick", () => {
 });
 
 describe("pendingHandPickIds", () => {
+  it("returns discard_choices for pay_cost when discard_count > 0", () => {
+    const ids = pendingHandPickIds(
+      {
+        kind: "pay_cost",
+        can_pay: true,
+        cost: { colored: [], generic: 1 },
+        discard_count: 1,
+        discard_choices: [20],
+        label: testMessageRef("Pay"),
+        player: 0,
+        source: 1,
+      },
+      state([object({ id: 20, zone: ZONE.Hand, name: "Fodder" })]),
+    );
+    expect(ids).not.toBeNull();
+    if (ids == null) throw new Error("expected pay_cost discard hand ids");
+    expect([...ids]).toEqual([20]);
+  });
+
+  it("returns null for pay_cost without discard", () => {
+    expect(
+      pendingHandPickIds(
+        {
+          kind: "pay_cost",
+          can_pay: true,
+          cost: { colored: [], generic: 1 },
+          label: testMessageRef("Pay"),
+          player: 0,
+          source: 1,
+        },
+        state([object({ id: 20, zone: ZONE.Hand, name: "Fodder" })]),
+      ),
+    ).toBeNull();
+  });
+
   it("returns hand ids for put_land_from_hand", () => {
     const ids = pendingHandPickIds(
       {

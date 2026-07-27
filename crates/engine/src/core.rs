@@ -181,6 +181,10 @@ impl Game {
     }
 
     /// A player's current life total.
+    pub fn poison(&self, player: PlayerId) -> u8 {
+        self.players[player.0 as usize].poison
+    }
+
     pub fn life(&self, player: PlayerId) -> i32 {
         self.players[player.0 as usize].life
     }

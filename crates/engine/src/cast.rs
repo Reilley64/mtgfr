@@ -1062,11 +1062,31 @@ impl Game {
             return Err(Reject::WrongTiming);
         }
 
+        // Reveal lands (CR 614.12 — Vineglimmer Snarl): "as this land enters, you may reveal…"
+        // pauses before LandPlayed when the hand has a matching card. No match → enters tapped
+        // with no choice. SearchedToBattlefield / put-from-hand paths still use the automatic
+        // hand scan via [`Game::enters_tapped`] (LandPlayed-only pause for now).
+        if let Some(Condition::HandHasLandWithSubtype { subtypes }) = printed.enters_tapped_unless
+            && self.hand_has_land_with_subtype(player, subtypes)
+        {
+            pending::raise_choice(
+                self,
+                PendingChoice::MayRevealLandFromHand {
+                    player,
+                    land: object,
+                    subtypes,
+                },
+            );
+            return Ok(Vec::new());
+        }
+
         let permanent = self.next_object_id();
+        let tapped = self.enters_tapped(&printed, player);
         let mut events = vec![Event::LandPlayed {
             permanent,
             from: object,
             player,
+            tapped,
         }];
         self.apply_all(&events);
         // A land's own as-enters static (CR 616.1 — Vivid Crag's "enters with two charge

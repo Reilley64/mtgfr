@@ -535,6 +535,7 @@ static FLASHBACK_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         speed: SpellSpeed::Sorcery,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -604,6 +605,7 @@ static COMBAT_ONLY_INSTANT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         speed: SpellSpeed::Instant,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -1968,6 +1970,7 @@ static TWO_ETB: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         also: TypeSet::NONE,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -2060,6 +2063,7 @@ static PINGER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         also: TypeSet::NONE,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -2149,6 +2153,7 @@ static MAY_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         also: TypeSet::NONE,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -2226,6 +2231,7 @@ static MAY_PAY_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         also: TypeSet::NONE,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -2325,6 +2331,7 @@ static LOOK_DIG: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         also: TypeSet::NONE,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -2411,6 +2418,7 @@ static LOOK_DIG_MANDATORY_TWO: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         also: TypeSet::NONE,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -2498,6 +2506,7 @@ static LOOK_DIG_TO_BATTLEFIELD: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         also: TypeSet::NONE,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -2628,6 +2637,7 @@ fn creature(
             also: TypeSet::NONE,
         },
         legendary: false,
+        snow: false,
         uncounterable: false,
         modal: false,
         modal_choose: 1,
@@ -2751,6 +2761,7 @@ static INTIMIDATE_ATTACKER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
 /// gate needs a legendary host to trigger on.
 static LEGENDARY_CREATURE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     legendary: true,
+    snow: false,
     ..creature("Legendary Test Creature", 2, 2, &[])
 });
 /// Bloodghast's printed "This creature can't block" static, as a keyword tag.
@@ -5280,6 +5291,7 @@ static PUMP_POWER_PLUS_2: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         speed: SpellSpeed::Instant,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -5360,6 +5372,7 @@ static GRANT_FLYING: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         speed: SpellSpeed::Instant,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -5438,6 +5451,7 @@ static GRANT_INDESTRUCTIBLE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         speed: SpellSpeed::Instant,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -5517,6 +5531,7 @@ static DESTROY: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         speed: SpellSpeed::Instant,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -5604,6 +5619,7 @@ static DESTROY_NONARTIFACT_NONBLACK: LazyLock<CardDef> = LazyLock::new(|| CardDe
         speed: SpellSpeed::Instant,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -5695,6 +5711,7 @@ static DESTROY_ANY_PERMANENT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         speed: SpellSpeed::Instant,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -5782,6 +5799,7 @@ static DESTROY_NONBASIC_LAND: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         speed: SpellSpeed::Instant,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -5872,6 +5890,7 @@ static EXILE_FROM_ANY_GRAVEYARD: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         speed: SpellSpeed::Instant,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -5959,6 +5978,7 @@ static EXILE_ANY_CARD_FROM_ANY_GRAVEYARD: LazyLock<CardDef> = LazyLock::new(|| C
         speed: SpellSpeed::Instant,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -6049,6 +6069,7 @@ static EXILE_NONCREATURE_ARTIFACT_OR_ENCHANTMENT: LazyLock<CardDef> = LazyLock::
         speed: SpellSpeed::Instant,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -6138,6 +6159,7 @@ static EXILE_SMALL_CREATURE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         speed: SpellSpeed::Instant,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -6227,6 +6249,7 @@ static EXILE_ENCHANTMENT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         speed: SpellSpeed::Instant,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -6313,6 +6336,7 @@ static EXILE_ARTIFACT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         speed: SpellSpeed::Instant,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -6401,6 +6425,7 @@ static SHROUD_CREATURE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         also: TypeSet::NONE,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -6469,6 +6494,7 @@ static HEXPROOF_CREATURE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         also: TypeSet::NONE,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -6536,6 +6562,7 @@ static MASS_INDESTRUCTIBLE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         speed: SpellSpeed::Instant,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -6615,6 +6642,7 @@ static MASS_FLYING_PER_CREATURE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         speed: SpellSpeed::Instant,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -6695,6 +6723,7 @@ static GRANT_UNBLOCKABLE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         speed: SpellSpeed::Instant,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -7294,6 +7323,7 @@ static GROWTH: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         speed: SpellSpeed::Instant,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -7421,6 +7451,7 @@ static INKLING: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         also: TypeSet::NONE,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -7486,6 +7517,7 @@ static MAKE_INKLINGS: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         speed: SpellSpeed::Sorcery,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -9169,6 +9201,7 @@ static PEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         also: TypeSet::NONE,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -9244,6 +9277,7 @@ static MAKE_PEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         speed: SpellSpeed::Sorcery,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -9673,6 +9707,7 @@ static HERALD: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         also: TypeSet::NONE,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -11533,8 +11568,7 @@ fn a_slowland_enters_tapped_unless_opponents_control_eight_or_more_lands() {
 }
 
 #[test]
-fn a_reveal_land_enters_tapped_unless_your_hand_has_a_matching_land_card() {
-    // Tapped: no Forest or Island card in hand to (automatically) reveal.
+fn a_reveal_land_with_no_matching_hand_card_enters_tapped_without_a_choice() {
     let mut game = Game::new();
     let snarl = game.spawn_in_hand(PlayerId(0), card("Vineglimmer Snarl"));
     let events = game
@@ -11543,25 +11577,83 @@ fn a_reveal_land_enters_tapped_unless_your_hand_has_a_matching_land_card() {
             object: snarl,
         })
         .unwrap();
+    assert!(
+        game.pending_choice().is_none(),
+        "no Forest or Island in hand → no may-reveal pause, got {:?}",
+        game.pending_choice()
+    );
     assert!(
         game.is_tapped(land_permanent(&events)),
         "Vineglimmer Snarl enters tapped with no Forest or Island in hand",
     );
+}
 
-    // Untapped: a Forest in hand is (automatically) revealed instead — see
-    // Condition::HandHasLandWithSubtype's ponytail note on why no reveal choice is offered.
+#[test]
+fn a_reveal_land_enters_tapped_when_you_decline_to_reveal_a_matching_hand_card() {
     let mut game = Game::new();
     game.spawn_in_hand(PlayerId(0), card("Forest"));
     let snarl = game.spawn_in_hand(PlayerId(0), card("Vineglimmer Snarl"));
+    game.submit(Intent::PlayLand {
+        player: PlayerId(0),
+        object: snarl,
+    })
+    .unwrap();
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::MayRevealLandFromHand { .. })
+        ),
+        "holding a Forest offers a may-reveal pause, got {:?}",
+        game.pending_choice()
+    );
     let events = game
-        .submit(Intent::PlayLand {
+        .submit(Intent::AnswerMay {
             player: PlayerId(0),
-            object: snarl,
+            yes: false,
+        })
+        .unwrap();
+    assert!(
+        game.is_tapped(land_permanent(&events)),
+        "declining the reveal enters Vineglimmer Snarl tapped",
+    );
+    assert!(
+        !events
+            .iter()
+            .any(|e| matches!(e, Event::RevealedFromHand { .. })),
+        "declining must not reveal a hand card, got {events:?}"
+    );
+}
+
+#[test]
+fn a_reveal_land_enters_untapped_and_reveals_when_you_accept() {
+    let mut game = Game::new();
+    let forest = game.spawn_in_hand(PlayerId(0), card("Forest"));
+    let snarl = game.spawn_in_hand(PlayerId(0), card("Vineglimmer Snarl"));
+    game.submit(Intent::PlayLand {
+        player: PlayerId(0),
+        object: snarl,
+    })
+    .unwrap();
+    let events = game
+        .submit(Intent::AnswerMay {
+            player: PlayerId(0),
+            yes: true,
         })
         .unwrap();
     assert!(
         !game.is_tapped(land_permanent(&events)),
-        "Vineglimmer Snarl enters untapped with a Forest in hand to reveal",
+        "accepting the reveal enters Vineglimmer Snarl untapped",
+    );
+    assert!(
+        events.iter().any(|e| matches!(
+            e,
+            Event::RevealedFromHand {
+                player: PlayerId(0),
+                card,
+                ..
+            } if *card == forest
+        )),
+        "accepting must reveal the matching Forest, got {events:?}"
     );
 }
 
@@ -12134,6 +12226,7 @@ fn auto_tap_pays_with_a_free_granted_mana_ability() {
             also: TypeSet::NONE,
         },
         legendary: false,
+        snow: false,
         modal: false,
         modal_choose: 1,
         modal_choose_max: None,
@@ -12195,6 +12288,7 @@ fn auto_tap_pays_with_a_free_granted_mana_ability() {
         cost: Cost::FREE,
         kind: CardKind::Artifact,
         legendary: false,
+        snow: false,
         modal: false,
         modal_choose: 1,
         modal_choose_max: None,
@@ -13616,6 +13710,7 @@ static TARGET_OPPONENT_DRAWS_THREE: LazyLock<CardDef> = LazyLock::new(|| CardDef
         speed: SpellSpeed::Sorcery,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -13960,6 +14055,7 @@ fn a_pay_cost_trigger_fires_only_after_paying() {
     game.submit(Intent::PayOptionalCost {
         player: PlayerId(0),
         pay: true,
+        discard_cost: vec![],
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // The paid draw trigger resolves.
@@ -14037,6 +14133,7 @@ fn trudge_gardens_pay_2_trigger_creates_a_fungus_beast_only_after_paying() {
     game.submit(Intent::PayOptionalCost {
         player: PlayerId(0),
         pay: true,
+        discard_cost: vec![],
     })
     .unwrap();
 
@@ -14982,6 +15079,7 @@ static ANTHEM_LORD: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         also: TypeSet::NONE,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -15651,6 +15749,7 @@ fn hofri_ghostforge_no_return_if_exiled_card_already_moved() {
                 speed: SpellSpeed::Instant,
             },
             legendary: false,
+            snow: false,
             uncounterable: false,
             modal: false,
             modal_choose: 1,
@@ -15808,6 +15907,7 @@ static TEST_COUNTER_SHEDDER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         also: TypeSet::NONE,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -15913,6 +16013,7 @@ static TEST_FOOD: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cost: Cost::FREE,
     kind: CardKind::Artifact,
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -15981,6 +16082,7 @@ static TEST_SAC_A_FOOD: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         also: TypeSet::NONE,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -19385,6 +19487,7 @@ static COLORLESS_ROCK: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     },
     kind: CardKind::Artifact,
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -20027,6 +20130,7 @@ fn dual_land(name: &'static str, a: Color, b: Color) -> CardDef {
             basic: false,
         },
         legendary: false,
+        snow: false,
         uncounterable: false,
         modal: false,
         modal_choose: 1,
@@ -20116,6 +20220,7 @@ fn vanilla(name: &'static str, generic: u8, colored: [u8; 5]) -> CardDef {
             also: TypeSet::NONE,
         },
         legendary: false,
+        snow: false,
         uncounterable: false,
         modal: false,
         modal_choose: 1,
@@ -20441,6 +20546,7 @@ fn hybrid_filter_land(name: &'static str, a: Color, b: Color) -> CardDef {
             basic: false,
         },
         legendary: false,
+        snow: false,
         uncounterable: false,
         modal: false,
         modal_choose: 1,
@@ -20703,6 +20809,7 @@ static DIES_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         also: TypeSet::NONE,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -21297,6 +21404,7 @@ static WATCHES_CREATURE_DIES: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         also: TypeSet::NONE,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -21418,6 +21526,7 @@ static WATCHES_CREATURE_DIES_ONCE_EACH_TURN: LazyLock<CardDef> = LazyLock::new(|
         also: TypeSet::NONE,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -21574,6 +21683,7 @@ static CREATURE_MV3: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         also: TypeSet::NONE,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -21695,6 +21805,7 @@ static WATCHES_ANY_SACRIFICE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         also: TypeSet::NONE,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -22295,6 +22406,7 @@ static UPKEEP_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cost: Cost::FREE,
     kind: CardKind::Enchantment,
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -22397,6 +22509,7 @@ static GRAVEYARD_UPKEEP_RETURN: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         also: TypeSet::NONE,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -22629,6 +22742,7 @@ fn nether_traitor_returns_itself_from_graveyard_when_your_creature_dies() {
     game.submit(Intent::PayOptionalCost {
         player: PlayerId(0),
         pay: true,
+        discard_cost: vec![],
     })
     .unwrap();
     // Resolve the paid trigger.
@@ -22676,6 +22790,7 @@ fn nether_traitor_declining_the_cost_leaves_it_in_the_graveyard() {
     game.submit(Intent::PayOptionalCost {
         player: PlayerId(0),
         pay: false,
+        discard_cost: vec![],
     })
     .unwrap();
 
@@ -22769,6 +22884,7 @@ fn punishing_fire_returns_from_graveyard_when_an_opponent_gains_life() {
     game.submit(Intent::PayOptionalCost {
         player: PlayerId(0),
         pay: true,
+        discard_cost: vec![],
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Resolve the paid trigger.
@@ -22943,6 +23059,7 @@ fn vanguard_of_the_restless_returns_itself_when_a_spirit_you_control_enters() {
     game.submit(Intent::PayOptionalCost {
         player: PlayerId(0),
         pay: true,
+        discard_cost: vec![],
     })
     .unwrap();
     while !game.stack().is_empty() {
@@ -22965,6 +23082,7 @@ static EACH_UPKEEP_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cost: Cost::FREE,
     kind: CardKind::Enchantment,
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -23086,6 +23204,7 @@ static END_STEP_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cost: Cost::FREE,
     kind: CardKind::Enchantment,
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -23179,6 +23298,7 @@ static BEGIN_COMBAT_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cost: Cost::FREE,
     kind: CardKind::Enchantment,
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -23304,6 +23424,7 @@ static GAIN_LIFE_ETB: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         also: TypeSet::NONE,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -23378,6 +23499,7 @@ static LIFE_GAIN_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cost: Cost::FREE,
     kind: CardKind::Enchantment,
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -23565,6 +23687,7 @@ static MAGECRAFT_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         also: TypeSet::NONE,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -23980,6 +24103,7 @@ fn rhystic_study_draws_when_opponent_declines_to_pay() {
     game.submit(Intent::PayOptionalCost {
         player: PlayerId(1),
         pay: false,
+        discard_cost: vec![],
     })
     .unwrap();
 
@@ -24011,6 +24135,7 @@ fn rhystic_study_no_draw_when_opponent_pays() {
         .submit(Intent::PayOptionalCost {
             player: PlayerId(1),
             pay: true,
+            discard_cost: vec![],
         })
         .unwrap();
 
@@ -24078,6 +24203,7 @@ static INSTANT_FILLER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         speed: SpellSpeed::Instant,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -24158,6 +24284,7 @@ static BECOMES_TARGETED_TREASURE_MAKER: LazyLock<CardDef> = LazyLock::new(|| Car
         also: TypeSet::NONE,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -24271,6 +24398,7 @@ static AURA_CAST_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         also: TypeSet::NONE,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -24397,6 +24525,7 @@ static X_INSTANT_FILLER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         speed: SpellSpeed::Instant,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -24471,6 +24600,7 @@ static HISTORIC_TEST_ARTIFACT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cost: Cost::FREE,
     kind: CardKind::Artifact,
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -24928,6 +25058,7 @@ static DRAW_ONE_TARGET: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         speed: SpellSpeed::Instant,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -25618,6 +25749,7 @@ static COUNTER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         speed: SpellSpeed::Instant,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -26063,6 +26195,7 @@ fn counter_unless_pays_declined_counters_spell() {
         .submit(Intent::PayOptionalCost {
             player: PlayerId(0),
             pay: false,
+            discard_cost: vec![],
         })
         .unwrap();
 
@@ -26106,6 +26239,7 @@ fn counter_unless_pays_paid_saves_spell() {
         .submit(Intent::PayOptionalCost {
             player: PlayerId(0),
             pay: true,
+            discard_cost: vec![],
         })
         .unwrap();
 
@@ -26640,6 +26774,7 @@ static X_EXILE_SELF_ON_RESOLVE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         speed: SpellSpeed::Instant,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -26837,6 +26972,7 @@ fn echo_paid_keeps_the_creature_and_does_not_retrigger() {
         .submit(Intent::PayOptionalCost {
             player: PlayerId(0),
             pay: true,
+            discard_cost: vec![],
         })
         .expect("paying the echo cost is legal");
 
@@ -26887,6 +27023,7 @@ fn echo_declined_sacrifices_the_creature() {
         .submit(Intent::PayOptionalCost {
             player: PlayerId(0),
             pay: false,
+            discard_cost: vec![],
         })
         .expect("declining echo is legal");
 
@@ -26942,6 +27079,7 @@ fn rupture_spire_kept_when_paid() {
     game.submit(Intent::PayOptionalCost {
         player: PlayerId(0),
         pay: true,
+        discard_cost: vec![],
     })
     .expect("paying {1} is legal");
 
@@ -26969,6 +27107,7 @@ fn rupture_spire_sacrificed_when_pay_declined() {
     game.submit(Intent::PayOptionalCost {
         player: PlayerId(0),
         pay: false,
+        discard_cost: vec![],
     })
     .expect("declining is legal");
 
@@ -28870,6 +29009,7 @@ static FLIGHT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cost: Cost::FREE,
     kind: CardKind::Aura,
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -28955,6 +29095,7 @@ static PRO_WHITE_CLOAK: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cost: Cost::FREE,
     kind: CardKind::Aura,
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -29128,6 +29269,7 @@ static MUTATION: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cost: Cost::FREE,
     kind: CardKind::Aura,
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -29442,6 +29584,7 @@ static MUTABLE_FLYER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         also: TypeSet::NONE,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -31177,6 +31320,7 @@ static WATCHES_HOST_DIES_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cost: Cost::FREE,
     kind: CardKind::Aura,
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -31278,6 +31422,7 @@ static PLAIN_AURA: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cost: Cost::FREE,
     kind: CardKind::Aura,
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -32688,6 +32833,7 @@ static CONTROL_ATTACHED_AURA: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cost: Cost::FREE,
     kind: CardKind::Aura,
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -33501,6 +33647,7 @@ static EACH_EXILE_GRAVEYARD: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         speed: SpellSpeed::Sorcery,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -37016,6 +37163,7 @@ static NONCREATURE_PERMANENT_MV2: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     },
     kind: CardKind::Artifact,
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -37656,6 +37804,7 @@ static RETURN_LAND_FROM_GRAVEYARD: LazyLock<CardDef> = LazyLock::new(|| CardDef 
         speed: SpellSpeed::Instant,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -37791,6 +37940,7 @@ static RETURN_SORCERY_FROM_GRAVEYARD: LazyLock<CardDef> = LazyLock::new(|| CardD
         speed: SpellSpeed::Sorcery,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -38058,6 +38208,7 @@ static EXILE_CARD_FROM_OPPONENTS_GRAVEYARD: LazyLock<CardDef> = LazyLock::new(||
         speed: SpellSpeed::Instant,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -38264,6 +38415,7 @@ static REPLENISH: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         speed: SpellSpeed::Sorcery,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -38399,6 +38551,7 @@ static MASS_RETURN_ALL_CREATURES: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         speed: SpellSpeed::Sorcery,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -42309,6 +42462,7 @@ static STEAL_UNTIL_EOT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         speed: SpellSpeed::Sorcery,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -42429,6 +42583,7 @@ fn stolen_creature_reverts_control_at_cleanup() {
 /// this and this remains tapped."
 static RUBINIA: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     legendary: true,
+    snow: false,
     may_choose_not_to_untap: true,
     abilities: arc_slice([Ability {
         timing: Timing::Activated(ActivationCost {
@@ -42674,6 +42829,7 @@ static MELODY: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         speed: SpellSpeed::Sorcery,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -44659,6 +44815,7 @@ static CHOOSE_TWO: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         speed: SpellSpeed::Instant,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: true,
     modal_choose: 2,
@@ -45099,6 +45256,7 @@ static CHOOSE_ONE_OR_MORE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         speed: SpellSpeed::Instant,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: true,
     modal_choose: 1,
@@ -45497,6 +45655,7 @@ static FIGHT_SPELL: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         speed: SpellSpeed::Instant,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -46938,6 +47097,7 @@ static GRAVEYARD_EXIT_WATCHER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cost: Cost::FREE,
     kind: CardKind::Enchantment,
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -47291,6 +47451,7 @@ fn pack_a_punch() -> CardDef {
             speed: SpellSpeed::Sorcery,
         },
         legendary: false,
+        snow: false,
         uncounterable: false,
         modal: false,
         modal_choose: 1,
@@ -47402,6 +47563,7 @@ fn kirol() -> CardDef {
             also: TypeSet::NONE,
         },
         legendary: true,
+        snow: false,
         uncounterable: false,
         modal: false,
         modal_choose: 1,
@@ -47745,6 +47907,7 @@ static PETTY_THEFT_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         speed: SpellSpeed::Instant,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -47841,6 +48004,7 @@ fn brazen_borrower_test() -> CardDef {
             also: TypeSet::NONE,
         },
         legendary: false,
+        snow: false,
         uncounterable: false,
         modal: false,
         modal_choose: 1,
@@ -47914,6 +48078,7 @@ static GROVES_BOUNTY_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         speed: SpellSpeed::Sorcery,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -48012,6 +48177,7 @@ fn elusive_otter_test() -> CardDef {
             also: TypeSet::NONE,
         },
         legendary: false,
+        snow: false,
         uncounterable: false,
         modal: false,
         modal_choose: 1,
@@ -48640,6 +48806,7 @@ static BRAINGEYSER_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         speed: SpellSpeed::Sorcery,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -48721,6 +48888,7 @@ fn dirgur_test() -> CardDef {
             also: TypeSet::NONE,
         },
         legendary: false,
+        snow: false,
         uncounterable: false,
         modal: false,
         modal_choose: 1,
@@ -49150,6 +49318,7 @@ fn unfiltered_cast_trigger_still_fires_from_any_zone() {
             also: TypeSet::NONE,
         },
         legendary: false,
+        snow: false,
         uncounterable: false,
         modal: false,
         modal_choose: 1,
@@ -50082,6 +50251,7 @@ fn test_planeswalker(name: &'static str, loyalty: i32) -> CardDef {
         cost: Cost::FREE,
         kind: CardKind::Planeswalker { loyalty },
         legendary: false,
+        snow: false,
         uncounterable: false,
         modal: false,
         modal_choose: 1,
@@ -51593,6 +51763,7 @@ static CREATURE_TUTOR: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         speed: SpellSpeed::Sorcery,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -51624,6 +51795,7 @@ static CREATURE_TUTOR: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             count: 1,
             count_amount: None,
             overflow: None,
+            optional: false,
         }),
         optional: false,
         min_level: 0,
@@ -54320,6 +54492,7 @@ static MASS_SHOCK: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         speed: SpellSpeed::Sorcery,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -54399,6 +54572,7 @@ static MASS_BOUNCE_CREATURES: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         speed: SpellSpeed::Sorcery,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -54558,6 +54732,7 @@ static POPULATE_AT_END_STEP: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cost: Cost::FREE,
     kind: CardKind::Enchantment,
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -55349,6 +55524,7 @@ static MAKE_TREASURES: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         speed: SpellSpeed::Sorcery,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -55590,6 +55766,7 @@ fn instant_with_mana_value(generic: u8) -> CardDef {
             speed: SpellSpeed::Instant,
         },
         legendary: false,
+        snow: false,
         uncounterable: false,
         modal: false,
         modal_choose: 1,
@@ -55664,6 +55841,7 @@ fn instant_with_generic_and_x(generic: u8) -> CardDef {
             speed: SpellSpeed::Instant,
         },
         legendary: false,
+        snow: false,
         uncounterable: false,
         modal: false,
         modal_choose: 1,
@@ -55797,6 +55975,7 @@ static DEEKAH_MAGECRAFT_FRACTAL: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         also: TypeSet::NONE,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -56007,6 +56186,7 @@ static MANAFORM_DRAGON_TOKEN: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         also: TypeSet::NONE,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -56077,6 +56257,7 @@ static MANAFORM_HELLKITE_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         also: TypeSet::NONE,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -56394,6 +56575,7 @@ static ROOTHA_ELEMENTAL_TOKEN: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         also: TypeSet::NONE,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -56464,6 +56646,7 @@ static ROOTHA_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         also: TypeSet::NONE,
     },
     legendary: true,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -56668,6 +56851,7 @@ static RIONYA_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         also: TypeSet::NONE,
     },
     legendary: true,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -56927,6 +57111,7 @@ static IMPULSE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         also: TypeSet::NONE,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -57143,6 +57328,7 @@ static RANDOM_GRAVEYARD_EXILE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         also: TypeSet::NONE,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -57428,6 +57614,7 @@ fn modal_dragon() -> CardDef {
             also: TypeSet::NONE,
         },
         legendary: false,
+        snow: false,
         uncounterable: false,
         modal: false,
         modal_choose: 1,
@@ -58147,42 +58334,81 @@ fn conspiracy_theorist_attack_loot_pays_one_and_draws() {
                 ..
             })
         ),
-        "the attack trigger raises a pay-{{1}}-or-decline choice, got {:?}",
+        "the attack trigger raises a pay-{{1}}-and-discard-or-decline choice, got {:?}",
         game.pending_choice(),
+    );
+    // Paying without naming a discard is illegal — the cost is all-or-nothing.
+    assert_eq!(
+        game.submit(Intent::PayOptionalCost {
+            player: PlayerId(0),
+            pay: true,
+            discard_cost: vec![],
+        }),
+        Err(Reject::IllegalChoice),
+        "there is no path to pay {{1}} without discarding"
     );
     game.submit(Intent::PayOptionalCost {
         player: PlayerId(0),
         pay: true,
+        discard_cost: vec![fodder],
     })
     .unwrap();
-    resolve_top_of_stack(&mut game); // the loot ability resolves: pauses on a MayDiscard choice
-
-    assert!(
-        matches!(
-            game.pending_choice(),
-            Some(PendingChoice::MayDiscard {
-                player: PlayerId(0),
-                ..
-            })
-        ),
-        "paying {{1}} pauses on the may-discard choice, got {:?}",
-        game.pending_choice(),
-    );
-    game.submit(Intent::ChooseSacrifices {
-        player: PlayerId(0),
-        sacrifices: vec![fodder],
-    })
-    .unwrap();
+    resolve_top_of_stack(&mut game); // the loot ability resolves: draw
 
     assert_eq!(
         game.zone_of(fodder),
         Zone::Graveyard,
         "discarding paid the loot's cost"
     );
-    assert_eq!(game.zone_of(lib[0]), Zone::Hand, "the discard drew a card");
+    assert_eq!(game.zone_of(lib[0]), Zone::Hand, "paying drew a card");
     assert!(
         game.pending_choice().is_none() && game.stack().is_empty(),
         "discarding a land feeds no nonland-discard impulse trigger, got {:?}",
+        game.pending_choice(),
+    );
+}
+
+#[test]
+fn conspiracy_theorist_declining_optional_loot_cost_discards_and_draws_nothing() {
+    // Declining "you may pay {1} and discard a card" skips both halves — no discard, no draw.
+    let mut game = Game::new();
+    let theorist = game.spawn_on_battlefield(PlayerId(0), card("Conspiracy Theorist"));
+    let fodder = game.spawn_in_hand(PlayerId(0), card("Shock"));
+    let lib = game.stack_library(PlayerId(0), &[card("Plains")]);
+
+    attack_with(&mut game, vec![theorist]);
+    game.fund_mana(PlayerId(0));
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::PayCost {
+                player: PlayerId(0),
+                ..
+            })
+        ),
+        "the attack trigger raises the optional cost, got {:?}",
+        game.pending_choice(),
+    );
+    game.submit(Intent::PayOptionalCost {
+        player: PlayerId(0),
+        pay: false,
+        discard_cost: vec![],
+    })
+    .unwrap();
+
+    assert_eq!(
+        game.zone_of(fodder),
+        Zone::Hand,
+        "declining discards nothing"
+    );
+    assert_eq!(
+        game.zone_of(lib[0]),
+        Zone::Library,
+        "declining draws nothing"
+    );
+    assert!(
+        game.pending_choice().is_none() && game.stack().is_empty(),
+        "declining ends the trigger with no further pause, got {:?}",
         game.pending_choice(),
     );
 }
@@ -59227,6 +59453,7 @@ static NO_MAX_HAND_SIZE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cost: Cost::FREE,
     kind: CardKind::Artifact,
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -59333,6 +59560,7 @@ macro_rules! amount_spell {
             cost: $cost,
             kind: CardKind::Spell { speed: $speed },
             legendary: false,
+            snow: false,
             uncounterable: false,
             modal: false,
             modal_choose: 1,
@@ -59505,6 +59733,7 @@ macro_rules! hydra_with_etb {
                 also: TypeSet::NONE,
             },
             legendary: false,
+            snow: false,
             uncounterable: false,
             modal: false,
             modal_choose: 1,
@@ -60605,6 +60834,7 @@ fn sorcery(name: &'static str, abilities: &'static [Ability]) -> CardDef {
             speed: SpellSpeed::Sorcery,
         },
         legendary: false,
+        snow: false,
         uncounterable: false,
         modal: false,
         modal_choose: 1,
@@ -62716,8 +62946,12 @@ fn flusterstorm_storm_copy_ceases_to_exist_when_countered() {
         );
     };
     assert_eq!(spell, filler_on_stack);
-    game.submit(Intent::PayOptionalCost { player, pay: false })
-        .unwrap();
+    game.submit(Intent::PayOptionalCost {
+        player,
+        pay: false,
+        discard_cost: vec![],
+    })
+    .unwrap();
 
     assert_eq!(
         game.zone_of(filler_on_stack),
@@ -63366,6 +63600,7 @@ fn chain_lightning_deals_3_to_any_target() {
     game.submit(Intent::PayOptionalCost {
         player: PlayerId(1),
         pay: false,
+        discard_cost: vec![],
     })
     .unwrap();
 }
@@ -63382,6 +63617,7 @@ fn chain_lightning_damaged_player_may_pay_to_copy() {
     game.submit(Intent::PayOptionalCost {
         player: PlayerId(1),
         pay: true,
+        discard_cost: vec![],
     })
     .unwrap();
 
@@ -63415,6 +63651,7 @@ fn chain_lightning_damaged_player_may_pay_to_copy() {
     game.submit(Intent::PayOptionalCost {
         player: PlayerId(1),
         pay: false,
+        discard_cost: vec![],
     })
     .unwrap();
 }
@@ -63430,6 +63667,7 @@ fn chain_lightning_decline_pay_does_not_copy() {
     game.submit(Intent::PayOptionalCost {
         player: PlayerId(1),
         pay: false,
+        discard_cost: vec![],
     })
     .unwrap();
 
@@ -63461,6 +63699,7 @@ fn chain_lightning_copy_chains() {
         game.submit(Intent::PayOptionalCost {
             player: PlayerId(1),
             pay: true,
+            discard_cost: vec![],
         })
         .unwrap();
         let Some(PendingChoice::ChooseTarget { player, .. }) = game.pending_choice() else {
@@ -63479,6 +63718,7 @@ fn chain_lightning_copy_chains() {
     game.submit(Intent::PayOptionalCost {
         player: PlayerId(1),
         pay: false,
+        discard_cost: vec![],
     })
     .unwrap();
     assert_eq!(game.life(PlayerId(1)), 11, "3 total hits, chain stops here");
@@ -63498,6 +63738,7 @@ fn chain_lightning_no_copy_if_payer_cannot_pay() {
         game.submit(Intent::PayOptionalCost {
             player: PlayerId(1),
             pay: true,
+            discard_cost: vec![],
         }),
         Err(Reject::CannotPayCost),
         "no red mana funded for the damaged player"
@@ -63505,6 +63746,7 @@ fn chain_lightning_no_copy_if_payer_cannot_pay() {
     game.submit(Intent::PayOptionalCost {
         player: PlayerId(1),
         pay: false,
+        discard_cost: vec![],
     })
     .unwrap();
 
@@ -63538,6 +63780,7 @@ fn chain_lightning_permanents_controller_may_pay() {
     game.submit(Intent::PayOptionalCost {
         player: PlayerId(1),
         pay: false,
+        discard_cost: vec![],
     })
     .unwrap();
 }
@@ -63695,6 +63938,7 @@ static TEST_STEELBANE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         also: TypeSet::NONE,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -64081,6 +64325,7 @@ static TEST_ENCHANTMENT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cost: Cost::FREE,
     kind: CardKind::Enchantment,
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -64147,6 +64392,7 @@ static WATCHES_ENCHANTMENTS_ENTER: LazyLock<CardDef> = LazyLock::new(|| CardDef 
     cost: Cost::FREE,
     kind: CardKind::Enchantment,
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -64185,6 +64431,7 @@ static WATCHES_ENCHANTMENTS_ENTER: LazyLock<CardDef> = LazyLock::new(|| CardDef 
                     also: TypeSet::NONE,
                 },
                 legendary: false,
+                snow: false,
                 uncounterable: false,
                 modal: false,
                 modal_choose: 1,
@@ -64302,6 +64549,7 @@ static WATCHES_OPPONENT_LANDFALL: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         also: TypeSet::NONE,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -64475,6 +64723,7 @@ fn ajanis_chosen_cannot_snap_an_enchant_land_aura_onto_its_cat_token() {
         cost: Cost::FREE,
         kind: CardKind::Aura,
         legendary: false,
+        snow: false,
         uncounterable: false,
         modal: false,
         modal_choose: 1,
@@ -65223,6 +65472,7 @@ fn of_colors_land(name: &'static str, mask: u8) -> CardDef {
             basic: false,
         },
         legendary: false,
+        snow: false,
         uncounterable: false,
         modal: false,
         modal_choose: 1,
@@ -65714,6 +65964,7 @@ static FIVE_MANA_VALUE_SORCERY: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         speed: SpellSpeed::Sorcery,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -66634,8 +66885,8 @@ fn witherbloom_charm_mode0_optional_sacrifice_gates_draw() {
 fn ozolith_targets_an_artifact_you_control_and_doubles_its_counter() {
     // "{1}{G}, {T}: Put a +1/+1 counter on target artifact or creature you control." — an
     // opponent's artifact isn't offered; Ozolith itself (an artifact you control) is. The
-    // counter-replacement static, which is unrestricted by permanent type, doubles-plus-one the
-    // counter placed on the targeted artifact too.
+    // counter-replacement static (artifact or creature) doubles-plus-one the counter placed on
+    // the targeted artifact too.
     let mut game = Game::new();
     let ozolith = game.spawn_on_battlefield(PlayerId(0), card("Ozolith, the Shattered Spire"));
     let my_artifact = game.spawn_on_battlefield(PlayerId(0), card("Arcane Signet"));
@@ -66669,6 +66920,36 @@ fn ozolith_targets_an_artifact_you_control_and_doubles_its_counter() {
         game.plus_counters(my_artifact),
         2,
         "Ozolith's replacement doubles-plus-one the counter placed on the artifact too"
+    );
+}
+
+#[test]
+fn ozolith_grows_creature_counters_but_not_llanowar_reborn_etb() {
+    // Ozolith: "If one or more +1/+1 counters would be put on an artifact or creature you
+    // control…" — a creature placement gets +1; Llanowar Reborn (a land entering with a +1/+1
+    // counter) does not.
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Ozolith, the Shattered Spire"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    put_two_counters(&mut game, PlayerId(0), bear);
+    assert_eq!(
+        game.plus_counters(bear),
+        3,
+        "Ozolith grows counters on a creature you control: 2 -> 3"
+    );
+
+    let reborn = game.spawn_in_hand(PlayerId(0), card("Llanowar Reborn"));
+    let events = game
+        .submit(Intent::PlayLand {
+            player: PlayerId(0),
+            object: reborn,
+        })
+        .unwrap();
+    let land = land_permanent(&events);
+    assert_eq!(
+        game.plus_counters(land),
+        1,
+        "Ozolith's artifact-or-creature filter skips a land's ETB +1/+1 counter"
     );
 }
 
@@ -66834,6 +67115,22 @@ fn white_orchid_phantom_lets_destroyed_lands_controller_ramp() {
         Zone::Graveyard,
         "the land was destroyed"
     );
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::MayYesNo {
+                player: PlayerId(1),
+                ..
+            })
+        ),
+        "the ramp may-search is owed to the destroyed land's controller (P1), got {:?}",
+        game.pending_choice(),
+    );
+    game.submit(Intent::AnswerMay {
+        player: PlayerId(1),
+        yes: true,
+    })
+    .unwrap();
     assert_eq!(
         game.pending_choice(),
         Some(PendingChoice::SearchLibrary {
@@ -66844,7 +67141,7 @@ fn white_orchid_phantom_lets_destroyed_lands_controller_ramp() {
             remaining: 1,
             overflow: None,
         }),
-        "the ramp search is owed to the destroyed land's controller (P1), not the caster (P0)"
+        "accepting the may raises P1's library search"
     );
     assert_eq!(
         game.library_size(PlayerId(0)),
@@ -66871,14 +67168,24 @@ fn white_orchid_phantom_lets_destroyed_lands_controller_ramp() {
     );
 }
 
-/// A "may" search declined (fail to find, CR 701.19c) — no basic enters, no shuffle-less no-op.
+/// White Orchid Phantom's printed "may search": declining the up-front may must not search and
+/// must not shuffle (CR 701.19c's fail-to-find shuffle only applies once a search actually begins).
 #[test]
-fn white_orchid_phantom_ramp_search_can_be_declined() {
-    let mut game = Game::new();
+fn white_orchid_phantom_declining_may_search_does_not_shuffle() {
+    let mut game = Game::with_players(2, 7);
     let land = game.spawn_on_battlefield(PlayerId(1), card("Tangled Islet"));
     let phantom = game.spawn_in_hand(PlayerId(0), card("White Orchid Phantom"));
-    let p1_lib = game.stack_library(PlayerId(1), &[card("Forest")]);
-    let forest = p1_lib[0];
+    // Multi-card library so a real shuffle would change draw order (len < 2 is a shuffle no-op).
+    let stacked = [
+        card("Shock"),
+        card("Forest"),
+        card("Island"),
+        card("Mountain"),
+        card("Plains"),
+        card("Swamp"),
+    ];
+    let p1_lib = game.stack_library(PlayerId(1), &stacked);
+    let forest = p1_lib[1];
 
     game.fund_mana(PlayerId(0));
     game.submit(Intent::Cast {
@@ -66911,20 +67218,140 @@ fn white_orchid_phantom_ramp_search_can_be_declined() {
         targets: vec![Target::Object(land)],
     })
     .unwrap();
+    resolve_top_of_stack(&mut game); // destroy resolves; land's controller faces the may-search
+
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::MayYesNo {
+                player: PlayerId(1),
+                ..
+            })
+        ),
+        "the printed may-search pauses P1 before any search, got {:?}",
+        game.pending_choice(),
+    );
+
+    let events = game
+        .submit(Intent::AnswerMay {
+            player: PlayerId(1),
+            yes: false,
+        })
+        .unwrap();
+
+    assert!(
+        !events
+            .iter()
+            .any(|e| matches!(e, Event::LibraryShuffled { player } if *player == PlayerId(1))),
+        "declining the may must not emit LibraryShuffled"
+    );
+    assert_eq!(game.pending_choice(), None, "declining ends the ability");
+    assert_eq!(
+        game.zone_of(forest),
+        Zone::Library,
+        "declining leaves the basic in the library"
+    );
+    assert_eq!(
+        game.zone_of(land),
+        Zone::Graveyard,
+        "the land was still destroyed"
+    );
+
+    // Library order unchanged — declining never searched, so CR 701.19 never shuffled.
+    let drawn: Vec<&str> = (0..stacked.len())
+        .map(|_| {
+            let id = draw_top_from(&mut game, PlayerId(1));
+            game.def_of(id).name
+        })
+        .collect();
+    let stacked_names: Vec<&str> = stacked.iter().map(|d| d.name).collect();
+    assert_eq!(
+        drawn, stacked_names,
+        "declining the may-search must leave library order untouched"
+    );
+}
+
+/// Accepting White Orchid's may-search still runs a real search (fail-to-find shuffles, CR 701.19c).
+#[test]
+fn white_orchid_phantom_accepting_may_search_shuffles_on_fail_to_find() {
+    let mut game = Game::with_players(2, 7);
+    let land = game.spawn_on_battlefield(PlayerId(1), card("Tangled Islet"));
+    let phantom = game.spawn_in_hand(PlayerId(0), card("White Orchid Phantom"));
+    let stacked = [
+        card("Shock"),
+        card("Forest"),
+        card("Island"),
+        card("Mountain"),
+        card("Plains"),
+        card("Swamp"),
+    ];
+    game.stack_library(PlayerId(1), &stacked);
+
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: phantom,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        multikicker_count: 0,
+        alternative_cost: false,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    game.submit(Intent::AnswerMay {
+        player: PlayerId(0),
+        yes: true,
+    })
+    .unwrap();
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(land)],
+    })
+    .unwrap();
     resolve_top_of_stack(&mut game);
 
+    game.submit(Intent::AnswerMay {
+        player: PlayerId(1),
+        yes: true,
+    })
+    .unwrap();
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::SearchLibrary {
+                player: PlayerId(1),
+                ..
+            })
+        ),
+        "accepting the may raises the library search, got {:?}",
+        game.pending_choice(),
+    );
     game.submit(Intent::SearchLibrary {
         player: PlayerId(1),
         choice: None,
     })
     .unwrap();
 
-    assert_eq!(
-        game.zone_of(forest),
-        Zone::Library,
-        "declining the may leaves the basic in the library"
+    let drawn: Vec<&str> = (0..stacked.len())
+        .map(|_| {
+            let id = draw_top_from(&mut game, PlayerId(1));
+            game.def_of(id).name
+        })
+        .collect();
+    let stacked_names: Vec<&str> = stacked.iter().map(|d| d.name).collect();
+    assert_ne!(
+        drawn, stacked_names,
+        "accepting then failing to find still shuffles (CR 701.19c)"
     );
-    assert_eq!(game.pending_choice(), None);
 }
 
 /// Decline Zimone's Hypothesis' resolution-time optional "+1/+1 counter on a creature" primer
@@ -67161,6 +67588,7 @@ static SAPROLING_ANTHEM: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cost: Cost::FREE,
     kind: CardKind::Enchantment,
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -67286,6 +67714,7 @@ static TAP_TWO_PERMANENTS: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         speed: SpellSpeed::Instant,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -67373,6 +67802,7 @@ static COUNTER_EACH_UP_TO_TWO: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         speed: SpellSpeed::Instant,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -68401,6 +68831,7 @@ static MASS_HEXPROOF_TO_MODIFIED: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         speed: SpellSpeed::Instant,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -70284,6 +70715,7 @@ static TEST_STUDY_COUNTER_SOURCE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cost: Cost::FREE,
     kind: CardKind::Enchantment,
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -71356,11 +71788,8 @@ fn ingenious_prodigy_no_counters_no_upkeep_draw() {
 }
 
 #[test]
-fn final_act_choose_one_or_more_over_its_two_expressible_modes() {
-    // Final Act: "Choose one or more — destroy all creatures / destroy all planeswalkers /
-    // destroy all battles / exile all graveyards / each opponent loses all counters." Only two of
-    // the five modes are expressible; choosing both at once destroys the creature and the
-    // planeswalker.
+fn final_act_choose_one_or_more_destroys_creatures_and_planeswalkers() {
+    // Final Act: "Choose one or more — …" — modes 0 and 1 destroy all creatures / planeswalkers.
     let mut g = TestGame::new();
     let creature = g.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
     let walker = g.spawn_on_battlefield(PlayerId(1), test_planeswalker("Test Walker", 3));
@@ -71382,7 +71811,7 @@ fn final_act_choose_one_or_more_over_its_two_expressible_modes() {
 
 #[test]
 fn final_act_exile_all_graveyards_mode_empties_every_graveyard() {
-    // Final Act mode 2 ("exile all graveyards") exiles every player's graveyard, no target —
+    // Final Act mode 3 ("exile all graveyards") exiles every player's graveyard, no target —
     // contrast with the single-target `exile_graveyard` (Bojuka Bog) above, which only empties
     // whichever player it's aimed at.
     let mut g = TestGame::new();
@@ -71391,7 +71820,7 @@ fn final_act_exile_all_graveyards_mode_empties_every_graveyard() {
     let forest = g.spawn_in_graveyard(PlayerId(1), card("Forest"));
 
     let act = g.spawn_in_hand(PlayerId(0), card("Final Act"));
-    g.cast(act).mode(2, None).resolve();
+    g.cast(act).mode(3, None).resolve();
 
     assert_eq!(
         g.zone_of(mountain),
@@ -71413,6 +71842,57 @@ fn final_act_exile_all_graveyards_mode_empties_every_graveyard() {
         0,
         "a graveyard that isn't the caster's own is fully emptied"
     );
+}
+
+#[test]
+fn final_act_destroy_all_battles_mode_destroys_battles() {
+    let mut g = TestGame::new();
+    let battle = g.spawn_on_battlefield(PlayerId(1), card("Invasion of Mercadia"));
+    let bear = g.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+
+    let act = g.spawn_in_hand(PlayerId(0), card("Final Act"));
+    g.cast(act).mode(2, None).resolve();
+
+    assert_eq!(
+        g.zone_of(battle),
+        Zone::Graveyard,
+        "destroy all battles hits the siege"
+    );
+    assert_eq!(
+        g.zone_of(bear),
+        Zone::Battlefield,
+        "creatures are untouched by the battles-only mode"
+    );
+}
+
+#[test]
+fn final_act_each_opponent_loses_all_counters_clears_poison() {
+    let mut g = TestGame::new();
+    // Infectious Inquiry: draw 2, lose 2, each opponent gets a poison counter.
+    let inquiry = g.spawn_in_hand(PlayerId(0), card("Infectious Inquiry"));
+    g.cast(inquiry).resolve();
+    assert_eq!(
+        g.poison(PlayerId(1)),
+        1,
+        "opponent received a poison counter"
+    );
+    assert_eq!(g.poison(PlayerId(0)), 0, "caster does not poison themself");
+
+    let act = g.spawn_in_hand(PlayerId(0), card("Final Act"));
+    g.cast(act).mode(4, None).resolve();
+
+    assert_eq!(
+        g.poison(PlayerId(1)),
+        0,
+        "each opponent loses all counters clears poison"
+    );
+}
+
+#[test]
+fn invasion_of_mercadia_enters_with_starting_defense() {
+    let mut g = TestGame::new();
+    let battle = g.spawn_on_battlefield(PlayerId(0), card("Invasion of Mercadia"));
+    assert_eq!(g.loyalty(battle), 4, "battle enters with printed defense");
 }
 
 #[test]
@@ -71668,11 +72148,76 @@ fn open_the_way_reveals_until_x_lands() {
     }
 
     // The two non-lands went to the bottom of the library; the untouched fifth card is still on
-    // top, ahead of them.
+    // top, ahead of them (order among bottoms is random — see
+    // `open_the_way_bottoms_rest_in_random_order`).
     assert_eq!(game.library_size(PlayerId(0)), 3);
     assert_eq!(draw_top_from(&mut game, PlayerId(0)), lib[4]);
-    assert_eq!(draw_top_from(&mut game, PlayerId(0)), lib[0]);
-    assert_eq!(draw_top_from(&mut game, PlayerId(0)), lib[2]);
+    let mut bottomed = [
+        draw_top_from(&mut game, PlayerId(0)),
+        draw_top_from(&mut game, PlayerId(0)),
+    ];
+    bottomed.sort();
+    let mut expected = [lib[0], lib[2]];
+    expected.sort();
+    assert_eq!(bottomed, expected, "the two non-lands land on the bottom");
+}
+
+#[test]
+fn open_the_way_bottoms_rest_in_random_order() {
+    // "…and the rest on the bottom of your library in a random order." Five non-lands give
+    // Fisher–Yates room to differ from reveal order (mirror of armored_skyhunter).
+    let mut game = Game::with_seed(0);
+    game.fund_mana(PlayerId(0));
+    let lib = game.stack_library(
+        PlayerId(0),
+        &[
+            card("Grizzly Bear"),
+            card("Grizzly Bear"),
+            card("Grizzly Bear"),
+            card("Grizzly Bear"),
+            card("Grizzly Bear"),
+            card("Forest"), // X=1 stop after this land
+            card("Island"), // untouched remainder
+        ],
+    );
+    let bears: Vec<ObjectId> = lib[..5].to_vec();
+    let spell = game.spawn_in_hand(PlayerId(0), card("Open the Way"));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: spell,
+        target: None,
+        x: 1,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        multikicker_count: 0,
+        alternative_cost: false,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(draw_top_from(&mut game, PlayerId(0)), lib[6]); // untouched Island
+    let bottomed: Vec<ObjectId> = (0..5)
+        .map(|_| draw_top_from(&mut game, PlayerId(0)))
+        .collect();
+    assert_ne!(
+        bottomed, bears,
+        "seed 0's Fisher-Yates reorders the bottomed pile away from reveal order"
+    );
+    let mut sorted_bottomed = bottomed.clone();
+    sorted_bottomed.sort();
+    let mut expected = bears.clone();
+    expected.sort();
+    assert_eq!(
+        sorted_bottomed, expected,
+        "the same five Bears land on the bottom, just reordered"
+    );
 }
 
 #[test]
@@ -71921,6 +72466,7 @@ fn songbirds_blessing_no_legal_host_sweeps_aura_to_graveyard() {
         cost: Cost::FREE,
         kind: CardKind::Aura,
         legendary: false,
+        snow: false,
         uncounterable: false,
         modal: false,
         modal_choose: 1,
@@ -72322,48 +72868,25 @@ fn creative_technique_reveals_until_nonland_exiles_and_casts_free() {
         "lands never leave the library"
     );
 
-    game.submit(Intent::ChooseExiledDigToCastFree {
-        player,
-        choice: Some(hit),
-    })
-    .unwrap();
-    assert_eq!(
-        game.zone_of(bear),
-        Zone::Exile,
-        "stays in exile, free-cast permission granted"
-    );
-
     let events = game
-        .submit(Intent::Cast {
-            player: PlayerId(0),
-            object: hit,
+        .submit(Intent::ChooseExiledDigToCastFree {
+            player,
+            choice: Some(hit),
             target: None,
-            x: 0,
-            modes: vec![],
-            discard_cost: vec![],
-            graveyard_exile: vec![],
-            sacrifice_cost: vec![],
-            kicked: false,
-            bought_back: false,
-            evoked: false,
-            strive_count: 0,
-            replicate_count: 0,
-            multikicker_count: 0,
-            alternative_cost: false,
         })
-        .expect("the exiled nonland is castable for free, unfunded");
+        .expect("mid-resolution free cast puts the hit on the stack");
     let spent = events
         .iter()
         .find_map(|e| match e {
             Event::ManaSpent { mana, .. } => Some(mana_pool_pips(mana)),
             _ => None,
         })
-        .expect("casting settles a (possibly empty) payment");
+        .unwrap_or(0);
     assert_eq!(spent, 0, "cast without paying its mana cost");
     assert_eq!(
         game.zone_of(bear),
         Zone::Stack,
-        "the free cast is on the stack"
+        "the free cast is on the stack during dig resolution"
     );
 }
 
@@ -72559,9 +73082,71 @@ fn animists_awakening_reveals_top_x_and_deploys_all_lands() {
         3,
         "the three Bears sit on the bottom"
     );
-    assert_eq!(draw_top_from(&mut game, PlayerId(0)), lib[1]);
-    assert_eq!(draw_top_from(&mut game, PlayerId(0)), lib[3]);
-    assert_eq!(draw_top_from(&mut game, PlayerId(0)), lib[4]);
+    let mut bottomed = [
+        draw_top_from(&mut game, PlayerId(0)),
+        draw_top_from(&mut game, PlayerId(0)),
+        draw_top_from(&mut game, PlayerId(0)),
+    ];
+    bottomed.sort();
+    let mut expected = [lib[1], lib[3], lib[4]];
+    expected.sort();
+    assert_eq!(bottomed, expected, "the three Bears land on the bottom");
+}
+
+#[test]
+fn animists_awakening_bottoms_rest_in_random_order() {
+    // "…and the rest on the bottom of your library in a random order." Five non-lands among the
+    // revealed top give Fisher–Yates room to differ from reveal order (mirror of armored_skyhunter).
+    let mut game = Game::with_seed(0);
+    game.fund_mana(PlayerId(0));
+    let lib = game.stack_library(
+        PlayerId(0),
+        &[
+            card("Grizzly Bear"),
+            card("Grizzly Bear"),
+            card("Grizzly Bear"),
+            card("Grizzly Bear"),
+            card("Grizzly Bear"),
+            card("Forest"), // land among the revealed six — deployed, not bottomed
+        ],
+    );
+    let bears: Vec<ObjectId> = lib[..5].to_vec();
+    let spell = game.spawn_in_hand(PlayerId(0), card("Animist's Awakening"));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: spell,
+        target: None,
+        x: 6,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        multikicker_count: 0,
+        alternative_cost: false,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    let bottomed: Vec<ObjectId> = (0..5)
+        .map(|_| draw_top_from(&mut game, PlayerId(0)))
+        .collect();
+    assert_ne!(
+        bottomed, bears,
+        "seed 0's Fisher-Yates reorders the bottomed pile away from reveal order"
+    );
+    let mut sorted_bottomed = bottomed.clone();
+    sorted_bottomed.sort();
+    let mut expected = bears.clone();
+    expected.sort();
+    assert_eq!(
+        sorted_bottomed, expected,
+        "the same five Bears land on the bottom, just reordered"
+    );
 }
 
 #[test]
@@ -72860,6 +73445,7 @@ static GRANT_HEXPROOF_ANY_TARGET: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         speed: SpellSpeed::Instant,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -73418,6 +74004,7 @@ static ZERO_POWER_WITH_COUNTER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         also: TypeSet::NONE,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -73938,15 +74525,14 @@ fn herald_of_amity_attack_pump_is_zero_with_no_auras_you_control() {
 
 #[test]
 fn herald_of_amity_etb_exiles_top_eight_and_casts_chosen_aura_free() {
-    // Herald of Amity (soc): "When this creature enters, exile the top eight cards of your
-    // library. You may cast an Aura spell from among them without paying its mana cost. Then put
-    // the rest on the bottom of your library in a random order."
+    // Herald of Amity (soc): mid-resolution free cast — choosing the Aura casts it onto the stack
+    // *now* (with its host), then bottoms the rest (not a later-priority permission window).
     let mut game = TestGame::new();
     let host = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
     let library = game.stack_library(
         PlayerId(0),
         &[
-            card("Redemption Arc"),
+            card("Spirit Mantle"),
             card("Grizzly Bear"),
             card("Grizzly Bear"),
             card("Grizzly Bear"),
@@ -73959,8 +74545,8 @@ fn herald_of_amity_etb_exiles_top_eight_and_casts_chosen_aura_free() {
     let rest = library[1..].to_vec();
 
     let herald_card = game.spawn_in_hand(PlayerId(0), card("Herald of Amity"));
-    game.cast(herald_card).resolve(); // the Griffin enters, placing its ETB trigger
-    resolve_top_of_stack(&mut game); // the ETB trigger resolves: exile the top eight
+    game.cast(herald_card).resolve();
+    resolve_top_of_stack(&mut game);
 
     let Some(PendingChoice::ChooseExiledDigToCastFree {
         player, candidates, ..
@@ -73978,16 +74564,27 @@ fn herald_of_amity_etb_exiles_top_eight_and_casts_chosen_aura_free() {
     );
     let exiled_aura = candidates[0];
 
+    assert_eq!(
+        game.submit(Intent::ChooseExiledDigToCastFree {
+            player,
+            choice: Some(exiled_aura),
+            target: None,
+        }),
+        Err(Reject::IllegalChoice),
+        "an Aura dig-cast without a host is rejected"
+    );
+
     game.submit(Intent::ChooseExiledDigToCastFree {
         player,
         choice: Some(exiled_aura),
+        target: Some(Target::Object(host)),
     })
-    .unwrap();
+    .expect("mid-resolution free cast with a legal host");
 
     assert_eq!(
         game.zone_of(exiled_aura),
-        Zone::Exile,
-        "the chosen Aura stays in exile, granted free-cast permission rather than moved"
+        Zone::Stack,
+        "the chosen Aura was cast onto the stack during dig resolution"
     );
     for &card in &rest {
         assert_eq!(
@@ -73996,34 +74593,15 @@ fn herald_of_amity_etb_exiles_top_eight_and_casts_chosen_aura_free() {
             "every other exiled card was put on the bottom of the library"
         );
     }
-    assert_eq!(
-        game.library_size(PlayerId(0)),
-        7,
-        "the seven declined cards are back in the library; the chosen Aura stayed in exile"
-    );
+    assert_eq!(game.library_size(PlayerId(0)), 7);
 
-    game.submit(Intent::Cast {
-        player: PlayerId(0),
-        object: exiled_aura,
-        target: Some(Target::Object(host)),
-        x: 0,
-        modes: vec![],
-        discard_cost: vec![],
-        graveyard_exile: vec![],
-        sacrifice_cost: vec![],
-        kicked: false,
-        bought_back: false,
-        evoked: false,
-        strive_count: 0,
-        replicate_count: 0,
-        multikicker_count: 0,
-        alternative_cost: false,
-    })
-    .expect("the Aura is castable from exile under the free-cast permission, unfunded");
+    resolve_top_of_stack(&mut game);
+    let aura = game.current_id(exiled_aura);
+    assert_eq!(game.zone_of(aura), Zone::Battlefield);
     assert_eq!(
-        game.zone_of(exiled_aura),
-        Zone::Stack,
-        "the free cast went on the stack"
+        game.attached_to(aura),
+        Some(host),
+        "Spirit Mantle attached to the named host"
     );
 }
 
@@ -74060,6 +74638,7 @@ fn herald_of_amity_etb_declining_the_cast_bottoms_all_eight() {
     game.submit(Intent::ChooseExiledDigToCastFree {
         player,
         choice: None,
+        target: None,
     })
     .unwrap();
 
@@ -74173,45 +74752,20 @@ fn cascade_exiles_until_cheaper_nonland_and_casts_it_free() {
         "the hit is the cheaper nonland — the Grizzly Bear"
     );
 
-    game.submit(Intent::ChooseExiledDigToCastFree {
-        player,
-        choice: Some(hit),
-    })
-    .unwrap();
-
-    // The hit stays in exile with free-cast permission; the skipped land was bottomed.
-    assert_eq!(game.zone_of(bear), Zone::Exile);
-    assert_eq!(game.zone_of(forest), Zone::Library);
-
-    // "Without paying its mana cost": the free cast spends no mana (no `ManaSpent`).
     let events = game
-        .submit(Intent::Cast {
-            player: PlayerId(0),
-            object: hit,
+        .submit(Intent::ChooseExiledDigToCastFree {
+            player,
+            choice: Some(hit),
             target: None,
-            x: 0,
-            modes: vec![],
-            discard_cost: vec![],
-            graveyard_exile: vec![],
-            sacrifice_cost: vec![],
-            kicked: false,
-            bought_back: false,
-            evoked: false,
-            strive_count: 0,
-            replicate_count: 0,
-            multikicker_count: 0,
-            alternative_cost: false,
         })
-        .expect(
-            "the cascade hit is castable from exile for free, even with the sorcery on the stack",
-        );
+        .expect("mid-resolution cascade cast puts the hit on the stack for free");
     let spent = events
         .iter()
         .find_map(|e| match e {
             Event::ManaSpent { mana, .. } => Some(mana_pool_pips(mana)),
             _ => None,
         })
-        .expect("casting settles a (possibly empty) payment");
+        .unwrap_or(0);
     assert_eq!(
         spent, 0,
         "the cascade hit is cast without paying its mana cost"
@@ -74219,7 +74773,12 @@ fn cascade_exiles_until_cheaper_nonland_and_casts_it_free() {
     assert_eq!(
         game.zone_of(bear),
         Zone::Stack,
-        "the free cast is on the stack"
+        "the free cast is on the stack during dig resolution"
+    );
+    assert_eq!(
+        game.zone_of(forest),
+        Zone::Library,
+        "the skipped land was bottomed"
     );
 
     resolve_top_of_stack(&mut game); // the hit resolves onto the battlefield
@@ -74305,6 +74864,7 @@ fn cascade_declining_the_free_cast_bottoms_the_hit_too() {
     game.submit(Intent::ChooseExiledDigToCastFree {
         player,
         choice: None,
+        target: None,
     })
     .unwrap();
 
@@ -74620,6 +75180,7 @@ fn creative_technique_demonstrate_reruns_body() {
         game.submit(Intent::ChooseExiledDigToCastFree {
             player,
             choice: None,
+            target: None,
         })
         .unwrap();
     }
@@ -76821,20 +77382,22 @@ fn ao_the_dawn_sky_mode_1_puts_nonland_permanents_under_mv_budget_onto_battlefie
 }
 
 #[test]
-fn ao_the_dawn_sky_mode_2_puts_two_counters_on_each_creature() {
+fn ao_the_dawn_sky_mode_2_puts_two_counters_on_each_creature_or_vehicle() {
     // Ao, the Dawn Sky mode 2: "Put two +1/+1 counters on each permanent you control that's a
-    // creature or Vehicle." (Vehicle trimmed — no Vehicle type in the pool.)
+    // creature or Vehicle."
     let mut game = TestGame::new();
     let ao = game.spawn_on_battlefield(PlayerId(0), card("Ao, the Dawn Sky"));
     let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let copter = game.spawn_on_battlefield(PlayerId(0), card("Smuggler's Copter"));
+    let sol_ring = game.spawn_on_battlefield(PlayerId(0), card("Sol Ring"));
     let opp_bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
     kill_and_reach_dies_mode(&mut game, ao);
 
     let Some(PendingChoice::ChooseMode { player, .. }) = game.pending_choice() else {
         panic!("Ao's dies trigger pauses to choose a mode");
     };
-    game.submit(Intent::ChooseMode { player, mode: 1 }).unwrap(); // the +1/+1-counters mode
-    resolve_top_of_stack(&mut game); // the chosen +1/+1-counters branch resolves off the stack
+    game.submit(Intent::ChooseMode { player, mode: 1 }).unwrap();
+    resolve_top_of_stack(&mut game);
 
     assert_eq!(
         game.pending_choice(),
@@ -76847,10 +77410,73 @@ fn ao_the_dawn_sky_mode_2_puts_two_counters_on_each_creature() {
         "each creature you control gets two +1/+1 counters"
     );
     assert_eq!(
+        game.plus_counters(copter),
+        2,
+        "a Vehicle you control also gets two +1/+1 counters"
+    );
+    assert_eq!(
+        game.plus_counters(sol_ring),
+        0,
+        "a non-Vehicle artifact gets none"
+    );
+    assert_eq!(
         game.plus_counters(opp_bear),
         0,
         "an opponent's creature is untouched"
     );
+}
+
+#[test]
+fn into_the_north_finds_snow_covered_forest_not_plain_forest_or_ohran() {
+    // Into the North: "Search your library for a snow land card, put it onto the battlefield
+    // tapped, then shuffle." Snow-Covered Forest qualifies; Forest and Ohran Frostfang (snow
+    // creature) do not.
+    let mut game = TestGame::new();
+    let lib = game.stack_library(
+        PlayerId(0),
+        &[
+            card("Forest"),
+            card("Ohran Frostfang"),
+            card("Snow-Covered Forest"),
+            card("Island"),
+        ],
+    );
+    let (forest, ohran, snow_forest, island) = (lib[0], lib[1], lib[2], lib[3]);
+
+    let tutor = game.spawn_in_hand(PlayerId(0), card("Into the North"));
+    game.cast(tutor).resolve();
+
+    let Some(PendingChoice::SearchLibrary {
+        player, matches, ..
+    }) = game.pending_choice()
+    else {
+        panic!(
+            "Into the North pauses on a search, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert!(
+        matches.contains(&snow_forest),
+        "Snow-Covered Forest is a snow land"
+    );
+    assert!(
+        !matches.contains(&forest),
+        "a non-snow Forest is not a snow land"
+    );
+    assert!(
+        !matches.contains(&ohran),
+        "Ohran Frostfang is a snow creature, not a snow land"
+    );
+    assert!(!matches.contains(&island));
+
+    game.submit(Intent::SearchLibrary {
+        player,
+        choice: Some(snow_forest),
+    })
+    .unwrap();
+    let snow = game.current_id(snow_forest);
+    assert_eq!(game.zone_of(snow), Zone::Battlefield);
+    assert!(game.is_tapped(snow), "enters tapped");
 }
 
 #[test]
@@ -77311,6 +77937,7 @@ static TEST_CLASS: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cost: Cost::FREE,
     kind: CardKind::Enchantment,
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -77625,6 +78252,74 @@ fn advanced_reconstruction_level_two_burns_each_opponent_on_graveyard_leave() {
         opp_before - 2,
         "at level 2 a card leaving the graveyard deals 2 to each opponent"
     );
+}
+
+#[test]
+fn advanced_reconstruction_level_two_emits_damage_dealt_to_player() {
+    // Level 2 deals real damage to each opponent (not plain life loss) so a
+    // "whenever a source deals damage to an opponent/player" watch can fire.
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let class = game.spawn_on_battlefield(PlayerId(0), card("Advanced Reconstruction"));
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: class,
+        ability_index: 1, // {1}{R}: Level 2
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let reanimate = game.spawn_in_hand(PlayerId(0), card("Reanimate"));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: reanimate,
+        target: Some(Target::Object(corpse)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        multikicker_count: 0,
+        alternative_cost: false,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game); // Reanimate; leaves-graveyard trigger queues
+    let events = resolve_top_of_stack_events(&mut game); // Class damage resolves
+
+    assert!(
+        events.iter().any(|e| {
+            matches!(
+                e,
+                Event::DamageDealtToPlayer {
+                    source,
+                    player: PlayerId(1),
+                    amount: 2,
+                } if *source == class
+            )
+        }),
+        "real DamageDealtToPlayer marker fires for the opponent"
+    );
+    assert!(
+        !events.iter().any(|e| matches!(
+            e,
+            Event::DamageDealtToPlayer {
+                player: PlayerId(0),
+                ..
+            }
+        )),
+        "the controller is not damaged"
+    );
+    assert_eq!(game.life(PlayerId(1)), 18, "the opponent lost 2 to damage");
 }
 
 #[test]
@@ -78450,6 +79145,7 @@ static SCREAM_EXILE_RETURN_CREATURES: LazyLock<CardDef> = LazyLock::new(|| CardD
         speed: SpellSpeed::Sorcery,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -82949,6 +83645,7 @@ fn raven_familiar_echo_paid_keeps_it() {
     game.submit(Intent::PayOptionalCost {
         player: PlayerId(0),
         pay: true,
+        discard_cost: vec![],
     })
     .unwrap();
     assert_eq!(
@@ -82971,6 +83668,7 @@ fn raven_familiar_echo_declined_sacrifices_it() {
     game.submit(Intent::PayOptionalCost {
         player: PlayerId(0),
         pay: false,
+        discard_cost: vec![],
     })
     .unwrap();
     assert_eq!(
@@ -85922,6 +86620,7 @@ fn genesis_pays_2g_at_upkeep_to_regrow_a_creature_card_from_its_graveyard() {
     game.submit(Intent::PayOptionalCost {
         player: PlayerId(0),
         pay: true,
+        discard_cost: vec![],
     })
     .unwrap();
 
@@ -85963,6 +86662,7 @@ fn genesis_declining_the_upkeep_payment_returns_nothing() {
     game.submit(Intent::PayOptionalCost {
         player: PlayerId(0),
         pay: false,
+        discard_cost: vec![],
     })
     .unwrap();
 
@@ -86054,6 +86754,7 @@ static MAY_DRAW_UPKEEP: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cost: Cost::FREE,
     kind: CardKind::Enchantment,
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -86376,6 +87077,7 @@ fn keldon_vandals_echo_unpaid_sacrifices_it_at_upkeep() {
     game.submit(Intent::PayOptionalCost {
         player: PlayerId(0),
         pay: false,
+        discard_cost: vec![],
     })
     .expect("declining echo is legal");
     assert_eq!(
@@ -86641,6 +87343,7 @@ fn grim_harvest_recover_paid_returns_it_to_hand() {
     game.submit(Intent::PayOptionalCost {
         player: PlayerId(0),
         pay: true,
+        discard_cost: vec![],
     })
     .expect("paying the recover cost is legal");
 
@@ -86685,6 +87388,7 @@ fn grim_harvest_recover_declined_exiles_it() {
     game.submit(Intent::PayOptionalCost {
         player: PlayerId(0),
         pay: false,
+        discard_cost: vec![],
     })
     .expect("declining recover is legal");
 
@@ -87055,6 +87759,7 @@ static DRAW_ONE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         speed: SpellSpeed::Sorcery,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -87123,6 +87828,7 @@ static DRAW_THREE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         speed: SpellSpeed::Sorcery,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -87190,6 +87896,7 @@ static DREDGER_3: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         speed: SpellSpeed::Sorcery,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -87258,6 +87965,7 @@ static DIES_FODDER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         also: TypeSet::NONE,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -89279,6 +89987,7 @@ fn numot_destroys_up_to_two_lands_on_combat_damage() {
     game.submit(Intent::PayOptionalCost {
         player: PlayerId(0),
         pay: true,
+        discard_cost: vec![],
     })
     .unwrap();
 
@@ -89324,6 +90033,7 @@ fn numot_choosing_zero_lands_is_legal() {
     game.submit(Intent::PayOptionalCost {
         player: PlayerId(0),
         pay: true,
+        discard_cost: vec![],
     })
     .unwrap();
 
@@ -89356,6 +90066,7 @@ fn intet_exile_top(game: &mut Game, intet: ObjectId, top: ObjectId) -> ObjectId 
     game.submit(Intent::PayOptionalCost {
         player: PlayerId(0),
         pay: true,
+        discard_cost: vec![],
     })
     .unwrap();
     resolve_top_of_stack(game);
@@ -90896,6 +91607,7 @@ static TEST_LAND_WITH_CHARGE_COUNTERS: LazyLock<CardDef> = LazyLock::new(|| Card
         basic: false,
     },
     legendary: false,
+    snow: false,
     uncounterable: false,
     modal: false,
     modal_choose: 1,
@@ -91871,6 +92583,7 @@ fn riku_copies_your_instant_when_you_pay_ur() {
     g.submit(Intent::PayOptionalCost {
         player: PlayerId(0),
         pay: true,
+        discard_cost: vec![],
     })
     .unwrap();
 
@@ -91912,6 +92625,7 @@ fn riku_declines_the_pay_and_mints_no_copy() {
     g.submit(Intent::PayOptionalCost {
         player: PlayerId(0),
         pay: false,
+        discard_cost: vec![],
     })
     .unwrap();
     resolve_whole_stack(&mut g);
@@ -91965,6 +92679,7 @@ fn riku_token_copies_another_nontoken_creature_that_enters_when_you_pay_gu() {
     g.submit(Intent::PayOptionalCost {
         player: PlayerId(0),
         pay: true,
+        discard_cost: vec![],
     })
     .unwrap();
     resolve_top_of_stack(&mut g);
@@ -93647,6 +94362,7 @@ fn oros_reflexive_trigger_deals_three_to_each_nonwhite_creature() {
     game.submit(Intent::PayOptionalCost {
         player: PlayerId(0),
         pay: true,
+        discard_cost: vec![],
     })
     .unwrap();
     let events = resolve_top_of_stack_events(&mut game);

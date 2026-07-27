@@ -74,4 +74,13 @@ pub enum CountersEffect {
     },
 
     RemoveCounterFromSelf,
+
+    /// Each opponent gets `count` poison counters (CR 122.1 — Infectious Inquiry).
+    EachOpponentGetsPoison {
+        count: u32,
+    },
+
+    /// Each opponent loses all counters they have (CR 122.1 — Final Act). Today that clears
+    /// poison only; widen when other player-counter kinds enter the pool.
+    EachOpponentLosesAllCounters,
 }

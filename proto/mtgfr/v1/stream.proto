@@ -362,6 +362,11 @@ message PendingChoiceViewPayCost {
   MessageRef label = 5;
   // Whether the player can actually produce this cost right now — false greys out Pay.
   bool can_pay = 6;
+  // Additional discard count on the optional cost (Conspiracy Theorist's "pay {1} and discard a
+  // card"). 0 when the cost is mana-only.
+  uint32 discard_count = 7;
+  // Hand cards that may pay `discard_count` (private to `player`). Empty when `discard_count` is 0.
+  repeated uint32 discard_choices = 8;
 }
 
 // Pay `cost` to save `spell` from being countered, or decline and let it be countered (CR
@@ -644,12 +649,15 @@ message PendingChoiceViewChooseExiledWithCardToCast {
 }
 
 // This player may choose one card (`items`, public — exile-zone) among a just-exiled dig batch
-// to grant the free-cast permission (CR 118.5), or decline. Every other card in the batch goes
-// to the bottom of the library once answered.
+// to cast without paying its mana cost now (mid-resolution dig cast), or decline. Every other
+// card in the batch goes to the bottom of the library once answered. `cast_targets` are legal
+// cast-time hosts when any candidate needs one (an Aura); empty when every candidate is
+// untargeted.
 message PendingChoiceViewChooseExiledDigToCastFree {
   uint32 player = 1;
   uint32 source = 2;
   repeated ChoiceItem items = 3;
+  repeated ChoiceItem cast_targets = 4;
 }
 
 // This player (the caster) may exile another top-of-library card or stop (Dance with
@@ -1044,6 +1052,7 @@ message VisibleEvent {
     VisibleEventPutFromHandOnTop put_from_hand_on_top = 129;
     VisibleEventBasePtSetIndefinite base_pt_set_indefinite = 130;
     VisibleEventSplitHalfSpellCast split_half_spell_cast = 131;
+    VisibleEventPlayerPoisonChanged player_poison_changed = 132;
   }
 }
 
@@ -1243,6 +1252,11 @@ message VisibleEventKindCountersPlaced {
 message VisibleEventLoyaltyChanged {
   uint32 object = 1;
   int32 amount = 2;
+}
+
+message VisibleEventPlayerPoisonChanged {
+  uint32 player = 1;
+  int32 count = 2;
 }
 
 // A planeswalker's once-per-turn loyalty flag was set/cleared (CR 606.3).

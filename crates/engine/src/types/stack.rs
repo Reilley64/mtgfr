@@ -263,7 +263,14 @@ pub enum Intent {
         dredger: Option<ObjectId>,
     },
     /// Answer a [`PendingChoice::PayCost`]: pay the cost (getting the effect) or decline.
-    PayOptionalCost { player: PlayerId, pay: bool },
+    /// When the optional cost includes an additional discard ([`Cost::additional`](crate::Cost)'s
+    /// `discard`), `discard_cost` names those hand cards — empty when declining or when the cost
+    /// has no discard. Paying succeeds only when mana *and* the named discards are both settled.
+    PayOptionalCost {
+        player: PlayerId,
+        pay: bool,
+        discard_cost: Vec<ObjectId>,
+    },
     /// Answer a [`PendingChoice::PayCost`] whose `cost` carries a chosen `{X}` (CR 107.3 — Decree
     /// of Justice's cycling rider "you may pay {X}. If you do, create X 1/1 white Soldier
     /// creature tokens."): pay `cost.with_x(x)` and thread `x` onto the placed ability so its own
@@ -378,10 +385,12 @@ pub enum Intent {
         choice: Option<ObjectId>,
     },
     /// Answer a [`PendingChoice::ChooseExiledDigToCastFree`]: `choice` is the just-exiled card
-    /// granted the free-cast permission (one of the offered candidates), or `None` to decline.
+    /// cast without paying its mana cost now (one of the offered candidates), or `None` to
+    /// decline. `target` is the cast-time target when the chosen card needs one (an Aura).
     ChooseExiledDigToCastFree {
         player: PlayerId,
         choice: Option<ObjectId>,
+        target: Option<Target>,
     },
     /// Answer a [`PendingChoice::OpponentChoosesPile`] (Abstract Performance): `pile` is `0` for
     /// the first pile or `1` for the second — the pile this opponent puts into the controller's
@@ -606,11 +615,11 @@ impl Intent {
                 .iter()
                 .filter_map(|(_, t)| t.and_then(Target::object_id))
                 .collect(),
+            Intent::PayOptionalCost { discard_cost, .. } => discard_cost.clone(),
             Intent::ChooseOrder { .. }
             | Intent::ChooseTargetPlayers { .. }
             | Intent::AnswerMay { .. }
             | Intent::ChooseDrawCount { .. }
-            | Intent::PayOptionalCost { .. }
             | Intent::PayOptionalCostX { .. }
             | Intent::ChooseMode { .. }
             | Intent::ChooseOpponentPile { .. }
@@ -791,7 +800,14 @@ pub enum SplittingContinuation {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MayYesNoResume {
     /// The default yes/no path: a "yes" runs the baked-in effect and a "no" declines it.
+    /// Ability-level `optional` triggers (Borderland Ranger) use this — accepting places the
+    /// ability on the stack rather than resolving it inline.
     Default,
+    /// Mid-resolution "may" (White Orchid Phantom's `SearchLibrary.optional`): a "yes" continues
+    /// the still-resolving ability by running `effect` inline; a "no" skips it (and walks an
+    /// AllPlayers search fan-out forward when one is live). Distinct from [`Self::Default`], which
+    /// would re-place a SearchLibrary effect as a new stack object.
+    ResolveInline,
     /// Trade Secrets' repeat gate: "yes" draws two for `player`, then pauses `caster` on the next
     /// `MayDrawUpTo`.
     TradeSecretsRepeat { caster: PlayerId, max: u8 },
@@ -852,6 +868,16 @@ pub enum PendingChoice {
         source: ObjectId,
         effect: Effect,
         resume: MayYesNoResume,
+    },
+    /// `player` may reveal a hand land whose printed subtypes intersect `subtypes` as `land`
+    /// enters (CR 614.12 — Vineglimmer Snarl / Port Town). Raised from [`Game::play_land`] before
+    /// [`Event::LandPlayed`] when the hand has a match; answered by [`Intent::AnswerMay`].
+    /// Accepting reveals one matching card and the land enters untapped; declining (or having no
+    /// match, which never raises this) enters it tapped.
+    MayRevealLandFromHand {
+        player: PlayerId,
+        land: ObjectId,
+        subtypes: &'static [&'static str],
     },
     /// `player` chooses how many cards to draw — any number `0..=max` (CR 120.4 / 601.2c —
     /// Arcane Denial's "may draw up to two cards", Trade Secrets' caster draw, and similar
@@ -1447,11 +1473,11 @@ pub enum PendingChoice {
         candidates: Vec<ObjectId>,
     },
     /// `player` must choose up to one of `candidates` — the cards among `source`'s just-exiled
-    /// dig batch (`exiled`) that match the effect's filter — to grant the free-cast permission
-    /// (CR 118.5), or decline (Herald of Amity's "exile the top eight … you may cast an Aura
-    /// spell from among them without paying its mana cost" resolving). Answered by
-    /// [`Intent::ChooseExiledDigToCastFree`]. Answering (either way) also puts every other card
-    /// in `exiled` on the bottom of the library (CR "put the rest on the bottom") — unlike
+    /// dig batch (`exiled`) that match the effect's filter — to cast without paying its mana
+    /// cost **now** (mid-resolution, CR 608.2g), or decline (Herald of Amity / Cascade). Answered
+    /// by [`Intent::ChooseExiledDigToCastFree`] (whose `target` names a cast-time target when the
+    /// chosen card needs one). Answering (either way) also puts every other card in `exiled` on
+    /// the bottom of the library (CR "put the rest on the bottom") — unlike
     /// [`ChooseExiledWithCardToCast`](Self::ChooseExiledWithCardToCast), whose non-chosen
     /// candidates simply stay in their pile. The candidates are exile-zone cards, so public.
     ChooseExiledDigToCastFree {
@@ -1820,6 +1846,7 @@ impl PendingChoice {
             | PendingChoice::ChooseTarget { player, .. }
             | PendingChoice::ChooseActivationCostTargets { player, .. }
             | PendingChoice::MayYesNo { player, .. }
+            | PendingChoice::MayRevealLandFromHand { player, .. }
             | PendingChoice::MayDrawUpTo { player, .. }
             | PendingChoice::DeclineUntap { player, .. }
             | PendingChoice::ChooseDredge { player, .. }
@@ -2176,11 +2203,13 @@ pub enum Event {
     AbilityCountered { source: ObjectId },
     /// A new step began (also carries the active player, which changes each turn).
     StepBegan { step: Step, active_player: PlayerId },
-    /// A land `from` was played from hand and became the permanent `permanent`.
+    /// A land `from` was played from hand and became the permanent `permanent`, entering
+    /// `tapped` when its replacement effect says so (CR 614.13 — check lands, reveal lands).
     LandPlayed {
         permanent: ObjectId,
         from: ObjectId,
         player: PlayerId,
+        tapped: bool,
     },
     /// A permanent became tapped.
     Tapped { object: ObjectId },
@@ -2222,6 +2251,9 @@ pub enum Event {
     },
     /// A planeswalker's loyalty changed by `amount` (a loyalty ability's cost: +N / 0 / −N).
     LoyaltyChanged { object: ObjectId, amount: i32 },
+    /// `count` poison counters were placed on (positive) or removed from (negative) a player.
+    /// Absolute clear to zero is a negative delta equal to their current poison.
+    PlayerPoisonChanged { player: PlayerId, count: i32 },
     /// A planeswalker's once-per-turn loyalty-ability flag was set (`active = true`, when a loyalty
     /// ability is activated) or cleared (`active = false`, at its controller's untap). CR 606.3.
     LoyaltyActivated { object: ObjectId, active: bool },
@@ -2835,6 +2867,13 @@ pub enum Event {
     /// one does (Goblin Guide's [`Effect::Reveal(RevealEffect::TopToHand)`], Keen Duelist's
     /// [`Effect::Reveal(RevealEffect::TopAndDrainMutual)`]).
     RevealedTopOfLibrary {
+        player: PlayerId,
+        card: ObjectId,
+        def: CardId,
+    },
+    /// A card in `player`'s hand was revealed (CR 701.30 — Vineglimmer Snarl's "you may reveal a
+    /// Forest or Island card from your hand"). `card` stays in hand; a reveal is not a zone change.
+    RevealedFromHand {
         player: PlayerId,
         card: ObjectId,
         def: CardId,

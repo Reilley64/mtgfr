@@ -1,0 +1,27 @@
+# (As a Siege enters, choose an opponent to protect it. You and others can attack it. When it's
+# defeated, exile it, then cast it transformed.)
+# When this Siege enters, you may discard a card. If you do, draw two cards.
+# //
+# {2}{R}, {T}, Discard a card: Create two 1/1 blue and red Elemental creature tokens. Creatures you
+# control get +1/+0 and gain haste until end of turn.
+#
+# ponytail: authored as a front-face Battle permanent only — siege protector choice, attack-for-
+# defense, transform-on-defeat, the ETB loot, and the entire back face (Kyren Flamewright) are
+# dropped. Present so Final Act's "destroy all battles" mode is observable against a real pool
+# battle.
+name = "Invasion of Mercadia"
+sets = ["mom"]
+id = "dd5a9ea5-0f27-4492-97d1-1a9970094c19"
+default_print = "407d6723-bf58-403e-b2ac-ba52c51d356f"
+otags = ["battle", "siege"]
+oracle = "(As a Siege enters, choose an opponent to protect it. You and others can attack it. When it's defeated, exile it, then cast it transformed.)\nWhen this Siege enters, you may discard a card. If you do, draw two cards. // {2}{R}, {T}, Discard a card: Create two 1/1 blue and red Elemental creature tokens. Creatures you control get +1/+0 and gain haste until end of turn."
+approximates = "front-face Battle body only — siege protector choice, attack-for-defense, transform-on-defeat, the ETB loot, and the Kyren Flamewright back face are dropped so Final Act's destroy-all-battles mode has a pool observer"
+subtypes = ["Siege"]
+
+[cost]
+generic = 1
+red = 1
+
+[kind]
+type = "battle"
+defense = 4

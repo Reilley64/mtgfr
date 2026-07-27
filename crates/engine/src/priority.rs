@@ -772,6 +772,9 @@ impl Game {
     /// only pay that way reads `false` until the player floats the mana by hand; teach
     /// [`Game::plan_auto_taps`] sacrifice costs if that ever gates a real prompt.
     pub fn can_pay_cost(&self, player: PlayerId, cost: Cost) -> bool {
+        if cost.additional.discard as usize > self.hand_of(player).len() {
+            return false;
+        }
         self.plan_auto_taps(player, cost, None, None).is_some()
     }
 
@@ -1850,6 +1853,7 @@ mod tests {
                 basic: true,
             },
             legendary: false,
+            snow: false,
             uncounterable: false,
             enchant: None,
             enchant_graveyard: false,

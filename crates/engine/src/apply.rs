@@ -107,7 +107,7 @@ impl Game {
                         || (!self.has_keyword(id, Keyword::Indestructible)
                             && (p.marked_damage >= toughness || p.deathtouched))
                 }
-                CardKind::Planeswalker { .. } => p.loyalty <= 0,
+                CardKind::Planeswalker { .. } | CardKind::Battle { .. } => p.loyalty <= 0,
                 _ => false,
             };
             if !dies {
@@ -1103,9 +1103,9 @@ impl Game {
                 permanent,
                 from,
                 player,
+                tapped,
             } => {
                 let def = self.def_id_of(from);
-                let printed = card_def(def);
                 let commander = self.is_commander(from);
                 // Serra Paragon (CR 118.9): a land can only be played from the graveyard under its
                 // once-per-turn permission (no other effect plays lands from there), so a
@@ -1113,9 +1113,9 @@ impl Game {
                 let serra_recursion = self.zone_of(from) == Zone::Graveyard;
                 let mut perm = fresh_permanent(def, player, false, commander);
                 perm.serra_recursion = serra_recursion;
-                // A land's own `enters_tapped` is unconditional; a conditional gate (check
-                // lands, slowlands, reveal lands) is resolved here instead, at this one ETB site.
-                perm.tapped = self.enters_tapped(&printed, player);
+                // `tapped` is decided at the LandPlayed construction site ([`Game::play_land`] /
+                // may-reveal answer) via [`Game::enters_tapped`] or the reveal choice — CR 614.13.
+                perm.tapped = tapped;
                 let id = self.create_object(Some(from), Object::Permanent(perm));
                 assert_eq!(id, permanent);
                 self.permanent_mut(permanent).continuous_timestamp =
@@ -1184,6 +1184,10 @@ impl Game {
             }
             Event::LoyaltyChanged { object, amount } => {
                 self.permanent_mut(object).loyalty += amount
+            }
+            Event::PlayerPoisonChanged { player, count } => {
+                let slot = &mut self.players[player.0 as usize].poison;
+                *slot = ((*slot as i32) + count).max(0) as u8;
             }
             Event::LoyaltyActivated { object, active } => {
                 self.permanent_mut(object).loyalty_activated = active
@@ -2521,7 +2525,7 @@ impl Game {
             }
             // A reveal is not a zone change (CR 701.30) — the card stays exactly where it is;
             // nothing to mutate here.
-            Event::RevealedTopOfLibrary { .. } => {}
+            Event::RevealedTopOfLibrary { .. } | Event::RevealedFromHand { .. } => {}
             Event::PutOnBottomOfLibrary { player, card } => {
                 // Same-zone reorder, not a zone change — no new object, just move it in the vec.
                 let library = &mut self.players[player.0 as usize].library;

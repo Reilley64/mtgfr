@@ -86,6 +86,7 @@ pub enum Answer {
     },
     ChooseExiledDig {
         choice: Option<ObjectId>,
+        target: Option<WireTarget>,
     },
     TriggerModes {
         modes: Vec<WireModeChoice>,
@@ -156,11 +157,13 @@ pub fn encode_answer(view: &PendingChoiceView, answer: Answer) -> WireIntent {
             player,
             pay,
             x: None,
+            discard_cost: vec![],
         },
         Answer::PayX { pay, x } => WireIntent::PayOptionalCost {
             player,
             pay,
             x: Some(x),
+            discard_cost: vec![],
         },
         Answer::Assign { assignment } => WireIntent::AssignDamage { player, assignment },
         Answer::Arrange { top, bottom } => WireIntent::ArrangeTop {
@@ -204,9 +207,11 @@ pub fn encode_answer(view: &PendingChoiceView, answer: Answer) -> WireIntent {
         Answer::ChooseExiledCast { choice } => {
             WireIntent::ChooseExiledWithCardToCast { player, choice }
         }
-        Answer::ChooseExiledDig { choice } => {
-            WireIntent::ChooseExiledDigToCastFree { player, choice }
-        }
+        Answer::ChooseExiledDig { choice, target } => WireIntent::ChooseExiledDigToCastFree {
+            player,
+            choice,
+            target,
+        },
         Answer::TriggerModes { modes } => WireIntent::ChooseTriggerModes { player, modes },
         Answer::ManaColor { color } => WireIntent::ChooseManaColor { player, color },
         Answer::CreatureType { subtype } => WireIntent::ChooseCreatureType { player, subtype },

@@ -1,11 +1,42 @@
-//! Reveal-family event mint — pure Event vectors for related [`Effect`] variants.
+//! Reveal-family event mint — pure Event vectors for related [`Effect`] variants —
+//! plus the mut resolve path that bottoms rest cards in random order via
+//! [`Game::bottom_pile_in_library`] (Animist's Awakening / Open the Way).
 //!
-//! Called only from the private mint path behind [`Game::run`] (card-dsl-and-card-pool spec / explore-all deepen).
-//! Apply stays in [`crate::apply`]; this module never mutates the board.
+//! Called only from the private mint / run path behind [`Game::run`] (card-dsl-and-card-pool
+//! spec / explore-all deepen). Apply stays in [`crate::apply`]; `mint_reveal` never mutates.
 
 use crate::*;
 
 impl Game {
+    /// Resolve a reveal-until / reveal-top-cards effect whose rest goes to the library bottom
+    /// "in a random order": mint reveal + matched destinations, strip the library-order bottom
+    /// events, apply those, then [`Game::bottom_pile_in_library`] (same Fisher–Yates as dig).
+    pub(crate) fn resolve_reveal_random_bottoms(
+        &mut self,
+        effect: RevealEffect,
+        ctx: ResolveCtx,
+        events: &mut Vec<Event>,
+    ) {
+        let ResolveCtx {
+            controller,
+            source,
+            target,
+            x,
+            ..
+        } = ctx;
+        let mut evs = self.mint_reveal(effect, controller, source, target, x);
+        let mut bottoms = Vec::new();
+        evs.retain(|event| match event {
+            Event::PutOnBottomOfLibrary { card, .. } => {
+                bottoms.push(*card);
+                false
+            }
+            _ => true,
+        });
+        self.apply_effect_events_with_replacements(evs, events);
+        self.bottom_pile_in_library(controller, &bottoms, events);
+    }
+
     pub(crate) fn mint_reveal(
         &self,
         effect: RevealEffect,

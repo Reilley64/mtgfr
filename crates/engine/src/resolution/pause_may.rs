@@ -95,6 +95,7 @@ impl Game {
                         player: controller,
                         source,
                         effect: Effect::Choice(ChoiceEffect::MayDrawUnlessPays { cost, caster }),
+                        resume: crate::MayYesNoResume::Default,
                     },
                 );
             }
@@ -114,6 +115,7 @@ impl Game {
                             count,
                             opponent,
                         }),
+                        resume: crate::MayYesNoResume::Default,
                     },
                 );
             }
@@ -134,6 +136,7 @@ impl Game {
                             count,
                             drawer,
                         }),
+                        resume: crate::MayYesNoResume::Default,
                     },
                 );
             }

@@ -220,6 +220,10 @@ pub enum WireKind {
     Planeswalker {
         loyalty: i32,
     },
+    /// A battle with its starting defense (the printed number it enters with).
+    Battle {
+        defense: i32,
+    },
     /// A land and the colors it can tap for (WUBRG indices; see `engine::Color::index`):
     /// one entry for a mono producer, two for a dual ("{T}: Add {G} or {U}"), all five
     /// for "any color", empty for a pure colorless producer. Informational for the client
@@ -598,8 +602,17 @@ pub enum PendingChoiceView {
         /// Short English for the paid effect (`Effect::label`) — e.g. "Create 1 Fungus Beast token(s)".
         label: MessageRef,
         /// Whether `player` can actually produce `cost` right now (`Game::can_pay_cost`): false
-        /// greys out Pay instead of advertising a payment the engine would reject.
+        /// greys out Pay instead of advertising a payment the engine would reject. Also false when
+        /// `discard_count > 0` and the hand is too short.
         can_pay: bool,
+        /// Additional discard count on the optional cost (Conspiracy Theorist's "pay {1} and
+        /// discard a card"). `0` when the cost is mana-only.
+        #[serde(default)]
+        discard_count: u8,
+        /// Hand cards that may pay `discard_count` (private to `player`). `None` when
+        /// `discard_count` is 0.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        discard_choices: Option<Vec<ObjectId>>,
     },
     /// Pay `cost` to save `spell` from being countered, or decline and let it be countered
     /// (CR 701.5c "unless its controller pays" — the mirror image of `PayCost`).
@@ -867,12 +880,16 @@ pub enum PendingChoiceView {
         items: Vec<ChoiceItem>,
     },
     /// This player may choose one card (`items`, public — exile-zone) among a just-exiled dig
-    /// batch to grant the free-cast permission (CR 118.5), or decline. Every other card in the
-    /// batch goes to the bottom of the library once answered.
+    /// batch to cast without paying its mana cost **now** (mid-resolution dig cast — Herald of
+    /// Amity / Cascade), or decline. Every other card in the batch goes to the bottom of the
+    /// library once answered. `cast_targets` are legal cast-time hosts when any candidate needs
+    /// one (an Aura); empty when every candidate is untargeted.
     ChooseExiledDigToCastFree {
         player: u8,
         source: ObjectId,
         items: Vec<ChoiceItem>,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        cast_targets: Vec<ChoiceItem>,
     },
     /// This player (the caster) may exile another top-of-library card or stop (Dance with
     /// Calamity). `items` are the cards exiled so far (public — exile-zone), `total_mv` their
@@ -1063,7 +1080,6 @@ impl PendingChoiceView {
             | Self::CastCreatureFaceDown { items, .. }
             | Self::ChooseExiledWithCard { items, .. }
             | Self::ChooseExiledWithCardToCast { items, .. }
-            | Self::ChooseExiledDigToCastFree { items, .. }
             | Self::DanceExileMore { items, .. }
             | Self::OpponentChoosesExiledNonland { items, .. }
             | Self::ChooseSplittingOpponent { items, .. }
@@ -1075,6 +1091,15 @@ impl PendingChoiceView {
             | Self::ChooseLegendaryKeep { items, .. }
             | Self::PayCumulativeUpkeepOrSacrifice { items, .. } => {
                 for item in items {
+                    f(item);
+                }
+            }
+            Self::ChooseExiledDigToCastFree {
+                items,
+                cast_targets,
+                ..
+            } => {
+                for item in items.iter_mut().chain(cast_targets.iter_mut()) {
                     f(item);
                 }
             }
@@ -1457,6 +1482,8 @@ mod tests {
                 },
                 label: msg("effect.draw_cards"),
                 can_pay: true,
+                discard_count: 0,
+                discard_choices: None,
             })
             .unwrap(),
             serde_json::json!({
@@ -1464,6 +1491,7 @@ mod tests {
                 "cost": {"generic": 1, "colored": [0, 0, 1, 0, 0], "has_x": false, "x_symbols": 0},
                 "label": {"key": "effect.draw_cards", "params": [], "children": []},
                 "can_pay": true,
+                "discard_count": 0,
             }),
         );
         assert_eq!(

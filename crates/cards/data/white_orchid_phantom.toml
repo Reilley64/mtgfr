@@ -20,9 +20,6 @@ toughness = 2
 
 # When this creature enters, destroy up to one target nonbasic land. Its controller may search
 # their library for a basic land card, put it onto the battlefield tapped, then shuffle.
-# ponytail: the printed "may search" is modeled as fail-to-find (CR 701.19c) on the search step
-# itself, not a separate up-front opt-out — declining the search is indistinguishable from
-# searching and finding nothing.
 [[abilities]]
 timing = "etb"
 optional = true
@@ -42,3 +39,4 @@ filter = "basic_land"
 to_zone = "battlefield"
 tapped = true
 searcher = "target_controller"
+optional = true

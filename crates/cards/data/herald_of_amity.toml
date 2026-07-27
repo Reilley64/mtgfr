@@ -1,4 +1,9 @@
 # Flying
+# When this creature enters, exile the top eight cards of your library. You may cast an Aura spell
+# from among them without paying its mana cost. Then put the rest on the bottom of your library in a
+# random order.
+# Whenever this creature attacks, it gets +X/+X until end of turn, where X is the number of Auras you
+# control.
 name = "Herald of Amity"
 sets = ["soc"]
 id = "6c25c6b5-d98c-4eb4-aacd-b6960a8779a9"
@@ -25,10 +30,6 @@ timing = "etb"
 
 # exile the top eight cards of your library. You may cast an Aura spell from among them without
 # paying its mana cost. Then put the rest on the bottom of your library in a random order.
-# ponytail: the free cast is offered at a later priority window this turn, not mid-resolution of
-# this ability (same approximation Quintorius, Loremaster's free-cast permission already
-# carries); "random order" for the bottomed rest is the deterministic library-order stand-in
-# every other impulse-dig effect in this pool uses (no `rand` in the pure engine).
 [[abilities.effects]]
 type = "dig"
 mode = "exile_top_cast_matching_free"

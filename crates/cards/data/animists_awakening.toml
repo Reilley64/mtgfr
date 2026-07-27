@@ -23,8 +23,6 @@ timing = "spell"
 # tapped and the rest on the bottom of your library in a random order.
 # Spell mastery — If there are two or more instant and/or sorcery cards in your graveyard, untap
 # those lands.
-# ponytail: "in a random order" — the engine is pure (no rand); non-matching reveals go to the
-# bottom in library order instead, the same deterministic stand-in `reveal_until` uses.
 [[abilities.effects]]
 type = "reveal"
 mode = "top_cards"

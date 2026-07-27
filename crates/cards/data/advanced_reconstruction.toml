@@ -57,11 +57,9 @@ timing = "cards_leave_your_graveyard"
 min_level = 2
 
 # this Class deals 2 damage to each opponent.
-# ponytail: modeled as each opponent losing 2 life (the engine models player damage as life
-# loss); no combat/prevention interaction distinguishes the two for this card.
 [[abilities.effects]]
-type = "life"
-mode = "each_opponent_loses"
+type = "damage"
+mode = "each_opponent"
 amount = 2
 
 # {1}{R}: Level 3

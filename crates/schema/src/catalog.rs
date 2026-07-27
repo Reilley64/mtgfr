@@ -200,6 +200,7 @@ pub(crate) fn wire_kind(def: &engine::CardDef) -> WireKind {
         CardKind::Aura => WireKind::Enchantment,
         CardKind::Artifact => WireKind::Artifact,
         CardKind::Planeswalker { loyalty } => WireKind::Planeswalker { loyalty },
+        CardKind::Battle { defense } => WireKind::Battle { defense },
         CardKind::Land { .. } => WireKind::Land {
             colors: land_colors(def),
         },
@@ -533,17 +534,12 @@ mod tests {
     }
 
     #[test]
-    fn catalog_card_surfaces_a_known_faithfulness_gap() {
-        // Final Act drops three of its five modes (battles, mass-graveyard exile, counters on
-        // players — none a modeled game object) — the gap is recorded as a datum, not just a TOML
-        // comment, so the deck builder / audits can read it.
+    fn catalog_card_final_act_is_faithful() {
         let final_act = catalog_card(&def("Final Act"));
-        let note = final_act
-            .approximates
-            .expect("Final Act's dropped modes are a known approximation");
         assert!(
-            note.contains("dropped"),
-            "expected the note to call out the dropped modes, got {note:?}"
+            final_act.approximates.is_none(),
+            "Final Act's five modes are expressible; got {:?}",
+            final_act.approximates
         );
     }
 }

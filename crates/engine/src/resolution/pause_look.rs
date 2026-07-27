@@ -71,6 +71,7 @@ impl Game {
                 count,
                 overflow,
                 count_amount,
+                optional,
             }) => {
                 // Collective Voyage's "up to X basic land cards, where X is the total amount of
                 // mana paid this way": resolve the dynamic cap once, here, so every seat of an
@@ -116,6 +117,35 @@ impl Game {
                         first
                     }
                 };
+                // Printed "may search" (White Orchid Phantom): pause for a yes/no *before* any
+                // search begins. Declining skips the search and its shuffle (CR 701.19c only
+                // applies once a search actually starts). Accepting re-runs this effect with
+                // `optional = false` and `searcher = You` under the answering player
+                // (`Game::answer_may`). An AllPlayers fan-out keeps its queue; declining walks to
+                // the next seat via `continue_search_fanout`.
+                if optional {
+                    pending::raise(
+                        self,
+                        pending::ChoiceRequest::MayYesNo {
+                            player: searching_player,
+                            source: ctx.source,
+                            effect: Effect::Dig(DigEffect::SearchLibrary {
+                                filter,
+                                to_zone,
+                                tapped,
+                                searcher: SearchScope::You,
+                                count,
+                                overflow,
+                                count_amount: None,
+                                optional: false,
+                            }),
+                            // Mid-resolution may-search: accept runs the search inline (not as a
+                            // new stack object). Ability-level optional tutors keep Default.
+                            resume: crate::MayYesNoResume::ResolveInline,
+                        },
+                    );
+                    return;
+                }
                 pending::raise(
                     self,
                     pending::ChoiceRequest::SearchLibrary {

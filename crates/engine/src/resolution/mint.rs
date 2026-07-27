@@ -50,7 +50,9 @@ impl Game {
                 | CountersEffect::PutCounters { .. }
                 | CountersEffect::PutCountersEach { .. }
                 | CountersEffect::RemoveAllCountersThenDraw { .. }
-                | CountersEffect::RemoveCounterFromSelf) => {
+                | CountersEffect::RemoveCounterFromSelf
+                | CountersEffect::EachOpponentGetsPoison { .. }
+                | CountersEffect::EachOpponentLosesAllCounters) => {
                     self.mint_counters(c, controller, source, target, x)
                 }
                 CountersEffect::CommanderEntersWithBonusCounters { .. }

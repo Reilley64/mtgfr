@@ -161,6 +161,29 @@ impl Game {
                     source_name,
                 }]
             }
+            CountersEffect::EachOpponentGetsPoison { count } => {
+                if count == 0 {
+                    return Vec::new();
+                }
+                self.living_players()
+                    .filter(|&p| p != controller)
+                    .map(|player| Event::PlayerPoisonChanged {
+                        player,
+                        count: count as i32,
+                    })
+                    .collect()
+            }
+            CountersEffect::EachOpponentLosesAllCounters => self
+                .living_players()
+                .filter(|&p| p != controller)
+                .filter_map(|player| {
+                    let poison = self.players[player.0 as usize].poison as i32;
+                    (poison > 0).then_some(Event::PlayerPoisonChanged {
+                        player,
+                        count: -poison,
+                    })
+                })
+                .collect(),
 
             _ => unreachable!("counters family mint received a non-family effect"),
         }

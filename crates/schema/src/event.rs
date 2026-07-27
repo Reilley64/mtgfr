@@ -198,6 +198,11 @@ pub enum VisibleEvent {
         object: ObjectId,
         amount: i32,
     },
+    /// Poison counters on a player changed by `count` (positive place / negative remove).
+    PlayerPoisonChanged {
+        player: u8,
+        count: i32,
+    },
     /// A planeswalker's once-per-turn loyalty flag was set/cleared (CR 606.3).
     LoyaltyActivated {
         object: ObjectId,

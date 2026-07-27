@@ -39,6 +39,13 @@ pub enum DamageEffect {
         amount: Amount,
     },
 
+    /// Damage to each living opponent of the ability's controller (CR 102.3) — Advanced
+    /// Reconstruction / Fateful Tempest. Same per-player events as [`Self::EachPlayer`], but
+    /// the controller is carved out.
+    EachOpponent {
+        amount: Amount,
+    },
+
     Target {
         amount: Amount,
         target: TargetSpec,

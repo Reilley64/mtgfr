@@ -308,6 +308,8 @@ function pt(o: ObjectView): string {
   // Current loyalty in the P/T badge slot. Fall back to printed starting loyalty when the
   // live field is absent (old payloads / partial fixtures).
   if (o.kind.kind === "planeswalker") return `${o.loyalty ?? o.kind.loyalty}`;
+  // Battles reuse ObjectView.loyalty for live defense counters.
+  if (o.kind.kind === "battle") return `${o.loyalty ?? o.kind.defense}`;
   return "";
 }
 

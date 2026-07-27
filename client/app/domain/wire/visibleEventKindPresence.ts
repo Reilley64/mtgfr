@@ -90,6 +90,7 @@ export const VISIBLE_EVENT_KIND_PRESENCE = {
   play_from_exile_ended: true,
   play_from_exile_permission_armed: true,
   player_lost: true,
+  player_poison_changed: true,
   prepared_changed: true,
   prepared_spell_cast: true,
   priority_passed: true,
