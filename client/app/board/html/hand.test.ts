@@ -433,7 +433,7 @@ describe("handView hover stacking", () => {
     expect(treeHasClass(tree, "group-hover/hand-tile:z-30")).toBe(false);
   });
 
-  it("does not elevate z for discard-selected without relying on selection z", () => {
+  it("does not elevate z for discard-selected — no hover bring-to-front either", () => {
     const a = object(42, { name: "Lightning Bolt" });
     const tree = handView({
       state: state({ objects: [a], actions: [] }),
@@ -446,16 +446,15 @@ describe("handView hover stacking", () => {
     });
     const root = findTestId(tree, "hand-tile-42");
     expect(root).not.toBeNull();
-    // Root still has hover elevate available, but selection alone must not add a selected z class.
+    // Selected tiles keep fan z; they must not get hover bring-to-front like idle tiles.
     expect(treeHasClass(root, "[z-index:var(--hand-z)]")).toBe(true);
-    expect(treeHasClass(root, "hover:[z-index:50]")).toBe(true);
+    expect(treeHasClass(root, "hover:[z-index:50]")).toBe(false);
     expect(styleValue(root, "--hand-z")).toBe("1");
     expect(styleValue(root, "z-index")).toBeUndefined();
     expect(className(root)).not.toContain("z-30");
-    expect(treeHasClass(root, "z-50")).toBe(false); // bare z-50 without hover: prefix
+    expect(treeHasClass(root, "z-50")).toBe(false);
     const face = findTestId(tree, "hand-card-face-42");
     expect(className(face)).toContain("ring-llanowar");
-    // Face raise for selection must not use elevated z-30:
     expect(treeHasClass(findTestId(tree, "hand-tile-42"), "z-30")).toBe(false);
   });
 });

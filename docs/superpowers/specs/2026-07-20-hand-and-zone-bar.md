@@ -22,7 +22,7 @@ Render a fixed DOM hand bar at the bottom of the board. It groups tiles in Arena
 - One DOM tile per hand card; multiple legal hand-section actions on the same object do not mint extra tiles.
 - Hand tiles fan with Arena-forward resting geometry (`HAND_FACE_W` 208, `HAND_BAR_PEEK` 92, `HAND_VISIBLE_H` 178, derived `HAND_BAR_H` 218 — pip-row 24 + bar bottom padding 16 are already implied by that height), hover raise, and cost pips above the card face.
 - Resting cost pips show the card's printed cast cost, not cycle or hand-ability costs. Multi-legal-mode tiles omit Cycle/Discard captions; a sole legal `cycle` or `activate_hand_ability` keeps that caption.
-- Hovering a bar tile elevates that tile's root above all other action-bar tiles (`[z-index:var(--hand-z)]` resting + `hover:[z-index:50]` on the slot; resting z is not inline). Discard-selected (and the same chrome for pending hand puts / face-down cast) raises and rings Llanowar but does not elevate z; legal unselected choices ring Island blue; non-choices stay off that target chrome.
+- Hovering a bar tile elevates that tile's root above all other action-bar tiles (`[z-index:var(--hand-z)]` resting + `hover:[z-index:50]` on the slot; resting z is not inline). Discard-selected (and the same chrome for pending hand puts / face-down cast) raises and rings Llanowar but does **not** get hover bring-to-front (`hover:[z-index:50]` is omitted while selected); legal unselected choices ring Island blue; non-choices stay off that target chrome.
 - A release above `HAND_BAR_H - HAND_PLAY_SLACK_PX` commits the drop (`HAND_PLAY_SLACK_PX` is 96); releasing below snaps back.
 - Activating a hand tile with exactly one legal mode runs the existing play/cost/target pipeline immediately. With two or more legal modes, activation clears other local action sessions, seeds a stack flight, parks the card in local `playModePick` state, and opens docked `play-mode-aim` until `PlayModeChosen` continues the selected action through the same cost/target pipeline or Cancel restores the card.
 - Design: [`2026-07-26-hand-play-mode-chooser-design.md`](2026-07-26-hand-play-mode-chooser-design.md).
@@ -51,7 +51,7 @@ Render a fixed DOM hand bar at the bottom of the board. It groups tiles in Arena
 - Interaction checks should drag above and below the play threshold and assert commit versus cancel outcomes.
 - Scene tests cover multi-mode hand activation entering `playModePick`, local-session exclusivity, `PlayModeChosen` continuation, the single-mode auto path, stale legality prune/cancel behavior, stale `PlayModeChosen` without intent, and Cancel restoring the parked hand card.
 - Geometry lock in `handBarHit.test.ts` asserts face/peek/visible/`HAND_BAR_H` targets so a silent regress to the old dense values fails.
-- `hand.test.ts` locks hover elevate on `hand-tile-{id}` and asserts discard-selected does not add selection z elevate.
+- `hand.test.ts` locks hover elevate on `hand-tile-{id}` and asserts discard-selected omits `hover:[z-index:50]` (no bring-to-front while selected).
 
 ## Out of Scope
 
