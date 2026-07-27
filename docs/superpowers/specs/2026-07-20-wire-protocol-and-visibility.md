@@ -82,9 +82,9 @@ rule): during an ordinary rolling deploy, the active SPA may talk to a Terminati
 runs an older binary. All concurrent binaries must share a parseable protocol. This means:
 additive optional fields only, new field numbers for new fields, new RPC/intent/event variants
 that old peers never send — never rename, remove, or reuse field numbers while older pods serve
-tables. Intentional hard cuts use a semver-major PR title (`!:` or `BREAKING CHANGE`) and skip
-the automated breaking check for that release; later hard breaks should prefer a package/path bump
-such as `mtgfr/v2`.
+tables. Intentional hard cuts use a semver-major PR with a `BREAKING CHANGE:` footer in the PR
+body (squash commit body) and skip the automated breaking check for that release; later hard
+breaks should prefer a package/path bump such as `mtgfr/v2`.
 
 ---
 
@@ -280,9 +280,10 @@ The engine/schema event model includes `MulliganTaken { player, mulligans_taken,
   kind is raised, answered, and produces the correct events.
 - Expand-only compliance is machine-checked by `verify-wire` and the local `just proto-*`
   recipes. `buf lint` runs under full `STANDARD` with no silenced rules, and `buf breaking`
-  enforces `WIRE` compatibility against `origin/main` on non-major PRs. Major-title PRs
-  intentionally skip `buf breaking` and represent a hard cut with no N↔N−1 coexistence for that
-  release; later hard breaks should prefer a package/path bump such as `mtgfr/v2`.
+  enforces `WIRE` compatibility against `origin/main` on non-major PRs. Major PRs (Angular
+  `BREAKING CHANGE:` footer in the PR body) intentionally skip `buf breaking` and represent a
+  hard cut with no N↔N−1 coexistence for that release; later hard breaks should prefer a
+  package/path bump such as `mtgfr/v2`.
 
 ---
 

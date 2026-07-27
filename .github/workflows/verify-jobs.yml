@@ -288,11 +288,14 @@ jobs:
       - name: buf breaking (non-major PRs only)
         if: github.event_name == 'pull_request'
         env:
+          # Angular commitlint forbids `!:` in the subject; majors use a BREAKING CHANGE
+          # footer in the PR body (squash commit body). Title may also contain the marker.
           PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
         run: |
           set -euo pipefail
-          if [[ "$PR_TITLE" == *'!:'* ]] || [[ "$PR_TITLE" == *'BREAKING CHANGE'* ]]; then
-            echo "wire: PR title indicates a semver major — skipping buf breaking."
+          if [[ "$PR_TITLE" == *'BREAKING CHANGE'* ]] || [[ "$PR_BODY" == *'BREAKING CHANGE'* ]]; then
+            echo "wire: PR indicates a semver major (BREAKING CHANGE) — skipping buf breaking."
             echo "This release is a hard cut (no N↔N−1 drain coexistence). Prefer proto package mtgfr.v2"
             echo "for intentional wire breaks after the STANDARD rename lands. See docs/WIRE_COMPAT.md."
             exit 0
@@ -301,8 +304,9 @@ jobs:
             echo "wire: buf breaking failed against origin/main."
             echo "Expand-only changes are allowed (new fields/numbers, new oneof arms, new RPCs)."
             echo "Do not rename/remove/repurpose field numbers while N↔N−1 drain coexistence is required."
-            echo "If this is an intentional hard break: use PR title feat!: / fix!: (or BREAKING CHANGE)"
-            echo "so semantic-release cuts a major, and prefer package mtgfr.v2. See docs/WIRE_COMPAT.md."
+            echo "If this is an intentional hard break: put BREAKING CHANGE: in the PR body"
+            echo "(Angular footer; squash subject stays feat:/fix:) so semantic-release cuts a major."
+            echo "Prefer package mtgfr.v2. See docs/WIRE_COMPAT.md."
             exit 1
           }
 

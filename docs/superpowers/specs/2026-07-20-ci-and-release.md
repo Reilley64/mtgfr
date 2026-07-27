@@ -100,10 +100,11 @@ branch commit range.
   `just proto-*`. `buf lint` runs on every PR and main push under full
   `STANDARD` with no lint rule exceptions (`except`, `ignore`, or
   `ignore_only` are not allowed). On pull requests, `buf breaking` runs with
-  category `WIRE` against `origin/main` unless the `PR_TITLE` environment value
-  indicates a semver major (`!:` or contains `BREAKING CHANGE`). Major-title
-  PRs print the hard-cut notice and skip `buf breaking`; main pushes run lint
-  only because breaking against `origin/main` is vacuous after merge.
+  category `WIRE` against `origin/main` unless the PR title or body contains
+  `BREAKING CHANGE` (Angular major footer; `@commitlint/config-angular` forbids
+  `!:` in the subject). Major PRs print the hard-cut notice and skip
+  `buf breaking`; main pushes run lint only because breaking against
+  `origin/main` is vacuous after merge.
 
 ### `verify-and-release.yml` (push to main)
 

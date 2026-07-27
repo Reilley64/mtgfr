@@ -49,10 +49,12 @@ Service renames, gRPC path changes, field removals, field renumbering, and incom
 changes are hard breaks. Prefer a new proto package/path such as `mtgfr/v2` for later intentional
 hard breaks when practical.
 
-An in-place hard break under the current package is allowed only on a semver-major PR title
-(`!:` or `BREAKING CHANGE`). That PR skips `buf breaking`, cuts a major release through
-semantic-release, and is a hard cut: no N↔N−1 wire coexistence is promised for that release.
-After the merge, `main` is the new breaking baseline for subsequent PRs.
+An in-place hard break under the current package is allowed only on a semver-major PR: the PR
+body (squash commit body) must include an Angular `BREAKING CHANGE:` footer. That PR skips
+`buf breaking`, cuts a major release through semantic-release, and is a hard cut: no N↔N−1
+wire coexistence is promised for that release. After the merge, `main` is the new breaking
+baseline for subsequent PRs. (`@commitlint/config-angular` forbids `!:` in the subject; do not
+put a bang in the PR title.)
 
 ## 4. Lobby vs game
 
