@@ -182,7 +182,7 @@ function chooseEntry(
             [
               h.Type("button"),
               h.DataAttribute("testid", "lobby-open-join"),
-              h.Disabled(model.submitting),
+              h.Disabled(true),
               h.Class(joinCardClass()),
             ],
             [
