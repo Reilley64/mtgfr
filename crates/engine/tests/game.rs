@@ -104877,6 +104877,74 @@ fn mind_twist_for_more_than_the_hand_holds_just_empties_it() {
     assert!(hand_ids(&game, PlayerId(1)).is_empty(), "the hand is empty");
 }
 
+// ── Recursion gated on graveyard position (fidelity #39) ─────────────────────────────────────
+
+#[test]
+fn nether_shadow_returns_itself_from_under_three_creature_cards() {
+    // "At the beginning of your upkeep, if this card is in your graveyard with three or more
+    // creature cards above it, you may put this card onto the battlefield." A graveyard is ordered
+    // bottom to top, so the Shadow has to have been buried first.
+    let mut game = Game::new();
+    let shadow = game.spawn_in_graveyard(PlayerId(0), card("Nether Shadow"));
+    for _ in 0..3 {
+        game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
+    }
+    game.stack_library(PlayerId(0), &vec![card("Plains"); 5]);
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
+    });
+    game.submit(Intent::AnswerMay {
+        player: PlayerId(0),
+        yes: true,
+    })
+    .expect("the buried Shadow's optional upkeep trigger");
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(game.zone_of(shadow), Zone::Battlefield);
+    assert!(
+        game.has_keyword(shadow, Keyword::Haste),
+        "and it can attack the turn it claws back out"
+    );
+}
+
+#[test]
+fn nether_shadow_stays_buried_under_two_creature_cards() {
+    // Two above it is not three, and a card *below* it never counts however creature it is.
+    let mut game = Game::new();
+    game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
+    let shadow = game.spawn_in_graveyard(PlayerId(0), card("Nether Shadow"));
+    for _ in 0..2 {
+        game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
+    }
+    game.stack_library(PlayerId(0), &vec![card("Plains"); 5]);
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
+    });
+
+    assert!(game.pending_choice().is_none(), "no trigger, no pause");
+    assert_eq!(game.zone_of(shadow), Zone::Graveyard);
+}
+
+#[test]
+fn nether_shadow_ignores_noncreature_cards_stacked_on_top_of_it() {
+    // "three or more *creature* cards above it" — lands piled on don't dig it out.
+    let mut game = Game::new();
+    let shadow = game.spawn_in_graveyard(PlayerId(0), card("Nether Shadow"));
+    for _ in 0..3 {
+        game.spawn_in_graveyard(PlayerId(0), card("Plains"));
+    }
+    game.stack_library(PlayerId(0), &vec![card("Plains"); 5]);
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
+    });
+
+    assert!(game.pending_choice().is_none(), "no trigger, no pause");
+    assert_eq!(game.zone_of(shadow), Zone::Graveyard);
+}
+
 // ── A land dying bills its controller (fidelity #59) ─────────────────────────────────────────
 
 #[test]

@@ -1357,6 +1357,26 @@ impl Game {
             .collect()
     }
 
+    /// How many creature cards sit *above* `card` in its owner's graveyard (Nether Shadow's "with
+    /// three or more creature cards above it"). A graveyard is an ordered pile, and its order is
+    /// object-id order: every arrival mints a fresh object through `Game::create_object`, so a
+    /// later id is a later burial. Answers 0 for a card that isn't in a graveyard at all.
+    pub(crate) fn creature_cards_above_in_graveyard(&self, card: ObjectId) -> u32 {
+        if self.zone_of(card) != Zone::Graveyard {
+            return 0;
+        }
+        self.graveyard_cards(self.owner_of(card))
+            .into_iter()
+            .filter(|&id| {
+                id > card
+                    && card_def(self.def_id_of(id))
+                        .kind
+                        .types()
+                        .intersects(TypeSet::CREATURE)
+            })
+            .count() as u32
+    }
+
     /// Ids of every emblem `player` owns (CR 114). An emblem is an ownerless-but-controlled,
     /// unremovable, non-permanent object that exists only in the command zone (CR 114.1) and has
     /// no characteristics other than its abilities (CR 114.5), so it is stored as a command-zone

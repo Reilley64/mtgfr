@@ -4070,6 +4070,24 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
         assert!(cost.taps_self);
     }
 
+    /// Nether Shadow's recursion is gated on where it sits in the pile, not on what is in the
+    /// graveyard — the condition is positional, and the ability functions from the graveyard at
+    /// all only because the card says so (CR 603.6e).
+    #[test]
+    fn unlimited_nether_shadow_digs_itself_out_from_under_three_creature_cards() {
+        let shadow = get_by_name("Nether Shadow").expect("Nether Shadow is in the pool");
+        assert!(shadow.functions_in_graveyard);
+        assert_eq!(
+            shadow.abilities[0].condition,
+            Some(Condition::CreatureCardsAboveThisInGraveyardAtLeast { count: 3 })
+        );
+        assert!(shadow.abilities[0].optional, "\"you may put\"");
+        assert_eq!(
+            shadow.abilities[0].effect,
+            Effect::Zone(ZoneEffect::ReturnThisFromGraveyardToBattlefield { tapped: false })
+        );
+    }
+
     /// Dingus Egg watches lands leaving the battlefield — the one permanent type the
     /// controller-scoped death watches all exclude — and bills the dead land's controller through
     /// the same `to_triggering_player` slot Copper Tablet fills from whose upkeep it is.

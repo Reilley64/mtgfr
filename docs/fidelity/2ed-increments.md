@@ -717,7 +717,7 @@ still on the stack while everyone shuffles, which the test pins. One test-shaped
 keeping: a recycled card can be *redrawn* by the same effect, so asserting "back in the library" is
 wrong; the honest assertion is "never in a graveyard".
 
-### 39. `graveyard-position-recursion` — 1 card, M
+### 39. `graveyard-position-recursion` — 1 card, S — **done**
 Depends on: nothing.
 Nether Shadow — "if this card is in your graveyard with three or more creature cards above it."
 The graveyard is ordered in the model but nothing reads position. *Sketch:* a
@@ -726,6 +726,20 @@ the upkeep trigger firing from the graveyard (triggers from a non-battlefield zo
 the scanner already sweeps graveyards for `may_return_from_graveyard`; if it does, this is only
 the condition).
 *Cards:* nether_shadow.
+*Landed:* only the condition, and it is S rather than M. The sketch's second half was already
+built: `TriggerWatch::graveyard_controller(Trigger::Upkeep)` sweeps graveyards for any card marked
+`functions_in_graveyard`, and `ZoneEffect::ReturnThisFromGraveyardToBattlefield` is the effect four
+pool cards (Bloodghast, Nether Traitor, …) already use.
+The sketch's "the graveyard is ordered in the model" is true by accident rather than by design:
+nothing stores a pile position, but every arrival mints a fresh object through
+`Game::create_object`, so a later object id *is* a later burial and `Game::graveyard_cards`
+(an `objects`-index scan) already hands the pile back bottom to top. `creature_cards_above_in_graveyard`
+is that one comparison. A card reaching a graveyard without minting a new object would break it —
+none do today.
+No `filter` axis on the condition, either: `CreatureCardsAboveThisInGraveyardAtLeast { count }` is
+named for its one reading, like the `*CardsInYourGraveyardAtLeast` conditions beside it. Like every
+other `[abilities.condition]`, it is checked once at trigger placement — the CR 603.4 second check
+on an intervening-if is an engine-wide gap, not this card's.
 
 ### 40. `untapped-conditioned-anthem` — 1 card, S — **done**
 Depends on: nothing.

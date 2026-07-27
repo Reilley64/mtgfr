@@ -3919,6 +3919,11 @@ impl Game {
             // Mana Vault: "if this artifact is tapped" — the same live read as Howling Mine's
             // above, the other way round.
             Condition::SourceTapped => self.as_permanent(source).is_some_and(|p| p.tapped),
+            // Nether Shadow: "if this card is in your graveyard with three or more creature cards
+            // above it" — source-object-based like the conditions above, and positional besides.
+            Condition::CreatureCardsAboveThisInGraveyardAtLeast { count } => {
+                self.creature_cards_above_in_graveyard(source) >= count
+            }
             // The 2ed upkeep-tax Aura cycle: "at the beginning of the upkeep of enchanted land's
             // controller" — an `EachUpkeep` watch narrowed to the one upkeep that belongs to this
             // Aura's host's controller. Unattached (the host left in response, CR 704.5m), it
@@ -4085,6 +4090,11 @@ impl Game {
             // trigger placement) or `Effect::Conditional`'s resolve site (the second check), both
             // of which intercept it before falling through here.
             Condition::SourceUntapped | Condition::SourceTapped => false,
+            // ponytail: source-object-based like `SourceUntapped` above — Nether Shadow's gate
+            // needs the source card's own place in the graveyard pile, so
+            // `Game::ability_condition_holds` intercepts it at trigger placement (the only site
+            // that has a source id) before falling through here.
+            Condition::CreatureCardsAboveThisInGraveyardAtLeast { .. } => false,
             // ponytail: source-object-based like `SourceUntapped` above — the 2ed upkeep-tax Aura
             // cycle's gate needs the Aura's host, so `Game::ability_condition_holds` intercepts it
             // at trigger placement (the only site that has a source id) before falling through

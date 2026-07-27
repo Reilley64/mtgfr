@@ -1841,6 +1841,12 @@ pub enum Condition {
     /// the controller — the all-graveyards sibling of
     /// [`ArtifactOrCreatureCardsInYourGraveyardAtLeast`](Self::ArtifactOrCreatureCardsInYourGraveyardAtLeast).
     CreatureCardsInAllGraveyardsAtLeast { count: u32 },
+    /// "if this card is in your graveyard with `count` or more creature cards above it" (Nether
+    /// Shadow). A *positional* graveyard read: only the cards buried on top of the source count,
+    /// so a creature card underneath it never digs it out. Source-object-based like
+    /// [`SourceHasCounters`](Self::SourceHasCounters), so `Game::ability_condition_holds`
+    /// intercepts it at trigger placement.
+    CreatureCardsAboveThisInGraveyardAtLeast { count: u32 },
     /// "if that creature has power `at_least` or greater" (Yavimaya Bloomsage's "Then if that
     /// creature has power 7 or greater, this creature becomes prepared") — reads the *resolving
     /// effect's own chosen target's* power, not a `TriggerContext` field like every other arm
