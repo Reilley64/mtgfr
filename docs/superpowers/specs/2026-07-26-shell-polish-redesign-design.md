@@ -1,6 +1,6 @@
 # Shell polish redesign (design)
 
-**Status:** Approved design input (2026-07-26).
+**Status:** Shipped (2026-07-27). Waves 1–4 on `main` via #252, #259, #261, #262.
 **Surfaces:** `shell-routes-and-auth`, `deck-list-and-builder`, `lobby-entry-ui`, `coverage-by-set`, `system-overlays`, `board-composition` (Landscape Rule), `DESIGN.md`, `design.tokens.json`, shared shell UI helpers (`client/app/shell/**`, `client/app/domain/ui/**`).
 
 ---
@@ -118,9 +118,9 @@ Same routes and actions; composition may change. Each surface mounts inside `she
 | **1 — Foundation** | Fonts + theme wiring; `shellFrame` + atmosphere variants; CSS portrait→landscape rotate (remove dialog); `DESIGN.md` + living updates for `shell-routes-and-auth`, `system-overlays`, and `board-composition` Landscape Rule; Scene tests for frame + no dialog |
 | **2 — Arrival** | Auth, deck list, lobby entry + seated reflows + living specs (`shell-routes-and-auth` / `deck-list-and-builder` / `lobby-entry-ui` as touched) |
 | **3 — Tools** | Builder, leaderboard, coverage reflows + living specs (`deck-list-and-builder`, `shell-routes-and-auth`, `coverage-by-set`) |
-| **4 — Pass** | Motion/enter polish, empty states, visual consistency sweep, deslop |
+| **4 — Pass** | Motion/enter polish, empty states, visual consistency sweep, deslop; builder/coverage `lockStageScroll` containment |
 
-This document is design input only. Each implementation wave **must** update the corresponding living module spec(s) in the same change so Behavior / Implementation / Testing describe what ships. Index this file under Process/policy in `docs/superpowers/specs/README.md`.
+All four waves shipped. Living module specs describe current Behavior / Implementation / Testing. This file remains historical design input under Process/policy in `docs/superpowers/specs/README.md`.
 
 ### Testing
 
@@ -152,4 +152,4 @@ This document is design input only. Each implementation wave **must** update the
 - Concrete font pair selection belongs in the Wave 1 implementation plan (license, glyph coverage, file size, tracking with display titles).
 - `PRODUCT.md` “auth, lobby, and builder are quiet surfaces” is relaxed for shell atmosphere and auth brand beat; the board remains the hero and shell still must not invent reward chrome.
 - Landscape-first composition rules remain; portrait no longer blocks with a dialog — it renders those landscape compositions rotated.
-- Living specs that mention the portrait gate in z-order or out-of-scope notes (`card-inspect`, deck/lobby cross-links) should drop or rephrase the dialog when Wave 1 lands; no behavior change beyond removing a layer that no longer exists.
+- Living specs no longer document a portrait rotate dialog; board/system-overlay out-of-scope notes refer to CSS landscape rotate at the app root.
