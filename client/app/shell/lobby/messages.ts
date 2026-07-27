@@ -8,8 +8,6 @@ export const ChangedLobbyRoute = m("ChangedLobbyRoute", {
 });
 export const ChangedLobbyCode = m("ChangedLobbyCode", { code: S.String });
 export const RequestedLobbyHost = m("RequestedLobbyHost");
-export const RequestedLobbyOpenJoin = m("RequestedLobbyOpenJoin");
-export const RequestedLobbyCancelJoin = m("RequestedLobbyCancelJoin");
 export const LobbyTableCreated = m("LobbyTableCreated", { tableId: S.String });
 export const RequestedLobbyJoin = m("RequestedLobbyJoin");
 export const RequestedLobbyReady = m("RequestedLobbyReady", { ready: S.Boolean });
@@ -23,8 +21,6 @@ export const Message = S.Union([
   ChangedLobbyRoute,
   ChangedLobbyCode,
   RequestedLobbyHost,
-  RequestedLobbyOpenJoin,
-  RequestedLobbyCancelJoin,
   LobbyTableCreated,
   RequestedLobbyJoin,
   RequestedLobbyReady,

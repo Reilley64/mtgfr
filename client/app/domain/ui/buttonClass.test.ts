@@ -33,4 +33,13 @@ describe("buttonClass (design.tokens.json / client/app/domain/ui)", () => {
     expect(buttonClass("ghost", "fixed top-3")).toContain("fixed");
     expect(buttonClass("ghost", "text-burn-red")).toContain("text-burn-red");
   });
+
+  it("ghost keeps vine border and uses high-contrast snow-mint ink", () => {
+    const c = buttonClass("ghost");
+    expect(c).toContain("border-vine");
+    expect(c).toContain("bg-transparent");
+    expect(c).toContain("text-snow-mint");
+    expect(c).not.toContain("text-mist");
+    expect(c).not.toContain("bg-llanowar");
+  });
 });
