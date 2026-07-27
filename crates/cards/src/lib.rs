@@ -1647,7 +1647,7 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         assert_eq!(twincast.abilities[0].timing, Timing::Spell);
         assert!(matches!(
             twincast.abilities[0].effect,
-            Effect::Copy(CopyEffect::TargetSpell)
+            Effect::Copy(CopyEffect::TargetSpell { set_color: None })
         ));
 
         // Hardened Scales: "…that many plus one." — a static +1 counter-replacement.
@@ -4107,6 +4107,20 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
         assert!(
             player.is_none(),
             "filled at trigger placement, not authored"
+        );
+    }
+
+    /// Fork is Twincast's copy effect plus one rider: the copy is red. The recolor is authored on
+    /// the copy effect, not on the card, so Twincast's identical effect keeps `set_color: None`.
+    #[test]
+    fn unlimited_fork_recolors_the_copy_it_makes() {
+        let fork = get_by_name("Fork").expect("Fork is in the pool");
+        assert_eq!(fork.abilities[0].timing, Timing::Spell);
+        assert_eq!(
+            fork.abilities[0].effect,
+            Effect::Copy(CopyEffect::TargetSpell {
+                set_color: Some(Color::Red)
+            })
         );
     }
 

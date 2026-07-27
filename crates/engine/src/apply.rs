@@ -595,6 +595,7 @@ impl Game {
                         commander,
                         x,
                         chosen_color: None,
+                        set_color: None,
                         modes,
                         copy: false,
                         flashback,
@@ -682,6 +683,7 @@ impl Game {
                         commander,
                         x,
                         chosen_color: None,
+                        set_color: None,
                         modes: Modes::default(),
                         copy: false,
                         flashback: false,
@@ -768,6 +770,7 @@ impl Game {
                         commander,
                         x,
                         chosen_color: None,
+                        set_color: None,
                         modes: Modes::default(),
                         copy: false,
                         flashback: false,
@@ -847,6 +850,7 @@ impl Game {
                 copy,
                 original,
                 controller,
+                set_color,
             } => {
                 // The copy takes the original's copiable characteristics/x/mode/target, but is
                 // controlled by the copier and is a copy (not a commander, never graveyard-bound).
@@ -862,6 +866,9 @@ impl Game {
                             controller,
                             commander: false,
                             copy: true,
+                            // Fork's "except that the copy is red" — the recolor belongs to the
+                            // copy alone, so it overrides whatever the original carried.
+                            set_color,
                             ..src.clone()
                         },
                         _ => Spell {
@@ -872,6 +879,7 @@ impl Game {
                             commander: false,
                             x: 0,
                             chosen_color: None,
+                            set_color,
                             modes: Modes::default(),
                             copy: true,
                             flashback: false,
@@ -975,6 +983,7 @@ impl Game {
                         commander: false,
                         x,
                         chosen_color: None,
+                        set_color: None,
                         modes: Modes::default(),
                         // "Cast a **copy**" (CR): it ceases to exist on resolve rather than
                         // becoming a graveyard card (there is no card behind it).

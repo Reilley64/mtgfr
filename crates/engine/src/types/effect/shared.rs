@@ -674,7 +674,7 @@ impl Effect {
                     other: false,
                 }
             }
-            Effect::Copy(CopyEffect::TargetSpell) => TargetSpec::InstantOrSorcerySpellOnStack,
+            Effect::Copy(CopyEffect::TargetSpell { .. }) => TargetSpec::InstantOrSorcerySpellOnStack,
             Effect::Misc(MiscEffect::CounterTargetSpell { filter, .. }) => TargetSpec::SpellOnStack(filter),
             Effect::Misc(MiscEffect::CounterTargetActivatedAbility) => TargetSpec::ActivatedAbilityOnStack,
             // The cast-time target is the *opponent's* creature; the controller's own creature

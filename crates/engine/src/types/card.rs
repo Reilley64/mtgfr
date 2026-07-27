@@ -1588,6 +1588,12 @@ pub(crate) struct Spell {
     /// own slot rather than sharing that one. `None` until the choice is answered, and for every
     /// spell without such a choice.
     pub(crate) chosen_color: Option<Color>,
+    /// A CR 613.3c layer-5 color SET on this spell, granted by the copy effect that minted it
+    /// (Fork's "except that the copy is red"). *Replaces* the copiable color derived from the
+    /// card's pips rather than unioning with it, exactly like the permanent-side
+    /// [`Permanent::set_color_eot`] — see [`Game::colors_of`]. `None` for every cast spell and
+    /// for a copy from an effect that doesn't recolor (Twincast).
+    pub(crate) set_color: Option<Color>,
     /// A modal spell's chosen modes (CR 700.2), each with its own target. An empty selection for
     /// a non-modal spell (which uses `target` and runs every effect).
     pub(crate) modes: Modes,

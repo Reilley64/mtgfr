@@ -1725,7 +1725,7 @@ impl Effect {
             }
             Effect::Zone(ExileSelfOnResolve) => MessageRef::new(MessageKey::EFFECT_ZONE_EXILE_SELF_ON_RESOLVE),
             Effect::Zone(UntapSearchedLand) => MessageRef::new(MessageKey::EFFECT_ZONE_UNTAP_SEARCHED_LAND),
-            Effect::Copy(TargetSpell) => MessageRef::new(MessageKey::EFFECT_COPY_TARGET_SPELL),
+            Effect::Copy(TargetSpell { .. }) => MessageRef::new(MessageKey::EFFECT_COPY_TARGET_SPELL),
             Effect::Copy(ThisSpell { .. }) => MessageRef::new(MessageKey::EFFECT_COPY_THIS_SPELL),
             Effect::Copy(RetargetSpellCopy { .. }) => {
                 MessageRef::new(MessageKey::EFFECT_COPY_RETARGET_SPELL_COPY)

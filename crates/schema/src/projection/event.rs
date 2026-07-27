@@ -653,10 +653,13 @@ pub(crate) fn project_event(
             controller: controller.0,
             name: def.name.to_string(),
         },
+        // `set_color` (Fork's recolored copy) stays engine-side: the client reads a spell's
+        // color off the projected object, not off this event.
         Event::SpellCopied {
             copy,
             original,
             controller,
+            ..
         } => VisibleEvent::SpellCopied {
             copy,
             original,

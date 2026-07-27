@@ -975,7 +975,7 @@ impl Game {
                 self.run_fight_pause(effect, ctx)
             }
             // Copy-family choreography — see `resolution/copy.rs::run_copy`.
-            Effect::Copy(CopyEffect::TargetSpell)
+            Effect::Copy(CopyEffect::TargetSpell { .. })
             | Effect::Copy(CopyEffect::ThisSpell { .. })
             | Effect::Copy(CopyEffect::RetargetSpellCopy { .. })
             | Effect::Copy(CopyEffect::MayPayToCopyThis { .. })

@@ -81330,7 +81330,7 @@ fn wild_ricochet() -> CardDef {
                     target: TargetSpec::InstantOrSorcerySpellOnStack,
                     optional: true,
                 }),
-                Effect::Copy(CopyEffect::TargetSpell),
+                Effect::Copy(CopyEffect::TargetSpell { set_color: None }),
             ]),
         },
         optional: false,
@@ -104875,6 +104875,84 @@ fn mind_twist_for_more_than_the_hand_holds_just_empties_it() {
         .resolve();
 
     assert!(hand_ids(&game, PlayerId(1)).is_empty(), "the hand is empty");
+}
+
+// ── A copy recolored by the copy effect (fidelity #13) ───────────────────────────────────────
+
+#[test]
+fn a_forked_spell_copy_is_red_instead_of_the_originals_color() {
+    // Fork: "except that the copy is red". A CR 613.3c layer-5 color SET on the copy alone —
+    // the green Giant Growth it copied is still green on the stack under it.
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let bear = game.spawn_on_battlefield(PlayerId(0), creature("Test Bear", 2, 2, &[]));
+    let ox = game.spawn_on_battlefield(PlayerId(0), creature("Test Ox", 0, 7, &[]));
+    let growth = game.spawn_in_hand(PlayerId(0), card("Giant Growth"));
+    let fork = game.spawn_in_hand(PlayerId(0), card("Fork"));
+
+    game.submit(cast_intent(PlayerId(0), growth, Some(Target::Object(bear))))
+        .expect("Giant Growth is castable");
+    let growth_on_stack = top_spell(&game);
+    game.submit(cast_intent(
+        PlayerId(0),
+        fork,
+        Some(Target::Object(growth_on_stack)),
+    ))
+    .expect("Fork can target the Giant Growth on the stack");
+
+    resolve_top_of_stack(&mut game);
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(ox)],
+    })
+    .expect("CR 707.10c lets the copier choose new targets for the copy");
+
+    let copy = top_spell(&game);
+    assert!(game.colors_of(copy)[Color::Red.index()], "the copy is red");
+    assert!(
+        !game.colors_of(copy)[Color::Green.index()],
+        "red *instead of* green, not as well as"
+    );
+    assert!(
+        game.colors_of(growth_on_stack)[Color::Green.index()],
+        "the original spell keeps its own color"
+    );
+}
+
+#[test]
+fn a_twincast_copy_keeps_the_originals_color() {
+    // The recolor rides on Fork's own copy effect, not on copying: Twincast's copy of the same
+    // green spell is still green.
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let bear = game.spawn_on_battlefield(PlayerId(0), creature("Test Bear", 2, 2, &[]));
+    let ox = game.spawn_on_battlefield(PlayerId(0), creature("Test Ox", 0, 7, &[]));
+    let growth = game.spawn_in_hand(PlayerId(0), card("Giant Growth"));
+    let twincast = game.spawn_in_hand(PlayerId(0), card("Twincast"));
+
+    game.submit(cast_intent(PlayerId(0), growth, Some(Target::Object(bear))))
+        .expect("Giant Growth is castable");
+    let growth_on_stack = top_spell(&game);
+    game.submit(cast_intent(
+        PlayerId(0),
+        twincast,
+        Some(Target::Object(growth_on_stack)),
+    ))
+    .expect("Twincast can target the Giant Growth on the stack");
+
+    resolve_top_of_stack(&mut game);
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(ox)],
+    })
+    .expect("CR 707.10c lets the copier choose new targets for the copy");
+
+    let copy = top_spell(&game);
+    assert!(
+        game.colors_of(copy)[Color::Green.index()],
+        "nothing recolored this copy"
+    );
+    assert!(!game.colors_of(copy)[Color::Red.index()]);
 }
 
 // ── Recursion gated on graveyard position (fidelity #39) ─────────────────────────────────────

@@ -423,11 +423,16 @@ impl Game {
     /// callers).
     ///
     /// A CR 613.3c layer-5 color-SET ([`Permanent::set_color_eot`] — Wild Mongrel's "becomes the
-    /// color of your choice until end of turn") wins ahead of the derived/added colors below: it
-    /// *replaces* them rather than unioning, so a green Mongrel that becomes black reads as black
-    /// only, never green-and-black.
+    /// color of your choice until end of turn"; [`Spell::set_color`] — Fork's "except that the
+    /// copy is red") wins ahead of the derived/added colors below: it *replaces* them rather than
+    /// unioning, so a green Mongrel that becomes black reads as black only, never green-and-black.
     pub fn colors_of(&self, object: ObjectId) -> [bool; Color::COUNT] {
-        if let Some(color) = self.as_permanent(object).and_then(|p| p.set_color_eot) {
+        let set_color = match &self.objects[object as usize] {
+            Object::Permanent(p) => p.set_color_eot,
+            Object::Spell(s) => s.set_color,
+            _ => None,
+        };
+        if let Some(color) = set_color {
             let mut colors = [false; Color::COUNT];
             colors[color.index()] = true;
             return colors;
@@ -2826,6 +2831,7 @@ mod cache_tests {
                 commander: false,
                 x: 0,
                 chosen_color: None,
+                set_color: None,
                 modes: Modes::default(),
                 copy: false,
                 flashback: false,

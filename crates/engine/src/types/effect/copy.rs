@@ -17,7 +17,12 @@ pub enum CopyEffect {
         optional: bool,
     },
 
-    TargetSpell,
+    TargetSpell {
+        /// Fork's "except that the copy is red" — a CR 613.3c layer-5 color SET on the copy
+        /// alone (see [`Spell::set_color`]). `None` for a plain copy (Twincast).
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        set_color: Option<Color>,
+    },
 
     ThisSpell {
         #[cfg_attr(feature = "card-dsl", serde(default = "de::one_amount"))]

@@ -2190,10 +2190,13 @@ pub enum Event {
     /// A spell on the stack was copied (Twincast): `original` (still on the stack) is copied to a
     /// new spell object `copy` on top of it, controlled by `controller`. The copy has the same
     /// copiable characteristics/`x`/`mode` and (per this engine) the same target as the original.
+    /// `set_color` is the copy effect's own recolor rider (Fork's "except that the copy is
+    /// red") — `None` for a plain copy.
     SpellCopied {
         copy: ObjectId,
         original: ObjectId,
         controller: PlayerId,
+        set_color: Option<Color>,
     },
     /// A spell *copy* finished resolving and ceased to exist (CR 707.10a / CR 111.7) — it leaves
     /// the stack without becoming a graveyard card. Distinct from [`Self::MovedToGraveyard`],

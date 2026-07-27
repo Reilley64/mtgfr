@@ -276,7 +276,7 @@ exceptions on top (doesn't copy color; keeps its own upkeep ability) plus an upk
 Copy Artifact adds "it's an enchantment in addition to its other types."
 *Cards:* clone, copy_artifact, vesuvan_doppelganger.
 
-### 13. `copy-target-spell` — 1 card, M
+### 13. `copy-target-spell` — 1 card, S — **done**
 Depends on: nothing.
 Fork. `copy_triggering_spell` copies the spell that *triggered* the ability; Fork copies a
 targeted spell on the stack, may choose new targets, and the copy is red regardless of the
@@ -285,6 +285,27 @@ reusing the existing stack-copy machinery with the target chosen at cast time
 (`instant_or_sorcery_spell_on_stack` already exists as a target spec) and a
 `PendingChoice::ChooseTarget` raised at resolution for the copy's targets.
 *Cards:* fork.
+
+*Landed:* no new effect. `CopyEffect::TargetSpell` (Twincast) already is the sketch minus the
+recolor: it mints the copy, and its resolution arm already runs CR 707.10c's retarget through the
+same `choose_spell_targets` a fresh cast uses, so `new_targets` was never a knob worth having — the
+sketch assumed a copy that keeps its targets, but the only pool card that wants that is
+`copy_triggering_spell` with `may_choose_new_targets = false`. The variant went from a unit to a
+struct with one optional `set_color`, and Twincast/Wild Ricochet/Rootha's TOML didn't move.
+
+"Except that the copy is red" is a CR 613.3c layer-5 color SET, and the battlefield twin was
+already built: `Permanent::set_color_eot` (Wild Mongrel), which `Game::colors_of` honors ahead of
+the derived pips and *replaces* them with. `Spell::set_color` is that field on the stack side —
+a spell isn't a permanent, so it needs its own slot, the same split `chosen_color` already has —
+plus one arm in `colors_of`. The recolor rides on `Event::SpellCopied` so it lands inside `apply`
+with the rest of the copy; the field is unprojected (`..` in the schema event projection), since
+what a client renders is the copy object's color, not this event's payload.
+
+Fork is the first card whose fidelity is only observable through another card: nothing about the
+copy's *behavior* changes, only its color. The in-set payoffs that read it are Blue/Red Elemental
+Blast and Circle of Protection: Red, so the regression tests assert `colors_of` directly on the
+minted copy — red, not green — and a matching Twincast test pins the copy's color to the original
+when no effect recolors it.
 
 ### 14. `banding` — 4 cards, L
 Depends on: #11.
