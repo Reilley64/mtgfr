@@ -1,8 +1,7 @@
 # Buf proto lint + breaking (design)
 
-**Status:** Proposed design input (2026-07-27; revised: full `STANDARD` via rename, no
-rule exceptions). Design/spec only — do not treat as shipped until an implementation PR
-updates the living surfaces listed below.
+**Status:** Shipped (2026-07-27; full `STANDARD` via rename, no rule exceptions,
+`verify-wire` gate live). Living surfaces now document shipped behavior.
 **Surfaces:** `ci-and-release` (`.github/workflows/verify-jobs.yml`, `justfile`),
 `wire-protocol-and-visibility` (codegen / compat testing + gRPC service names),
 `docs/WIRE_COMPAT.md` (ops rules + major/`/v2` exception path), `proto/mtgfr/v1/*.proto`.
