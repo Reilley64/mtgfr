@@ -24,6 +24,37 @@ struct CountRow {
 }
 
 #[test]
+fn card_toml_round_trips_abrade_name_and_effect_type() {
+    let raw = r#"
+name = "Abrade"
+id = "f9db72dc-9a5b-48a4-a86e-7464d9a2166a"
+default_print = "1add1757-c1f8-448a-b279-c6940fb7ad5f"
+oracle = "Choose one —"
+
+[cost]
+generic = 1
+red = 1
+
+[kind]
+type = "instant"
+
+[[abilities]]
+timing = "spell"
+
+[[abilities.effects]]
+type = "damage"
+mode = "target"
+amount = 3
+target = "creature"
+"#;
+    let toml_card: engine::toml_surface::CardToml = toml::from_str(raw).expect("CardToml parse");
+    assert_eq!(toml_card.name, "Abrade");
+    let def: engine::CardDef = toml_card.into();
+    assert_eq!(def.name, "Abrade");
+    assert!(matches!(def.abilities[0].effect, engine::Effect::Damage(_)));
+}
+
+#[test]
 fn cost_rejects_a_mono_hybrid_pair() {
     let err = toml::from_str::<Cost>(
         r#"

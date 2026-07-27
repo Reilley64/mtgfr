@@ -21,9 +21,14 @@
 #[cfg(feature = "card-dsl")]
 mod de;
 
+#[cfg(feature = "card-dsl")]
+pub mod toml_surface;
+
 /// Install / look up token profiles (`data/tokens/*.toml`) for card-DSL load.
 #[cfg(feature = "card-dsl")]
 pub use de::{install_token_defs, token_def};
+#[cfg(feature = "card-dsl")]
+pub use toml_surface::CardToml;
 
 mod amount;
 mod apply;
