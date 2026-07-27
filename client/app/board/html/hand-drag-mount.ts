@@ -149,7 +149,8 @@ export const MountHandBarDrag = Mount.defineStream(
             cancel = () => {
               teardown();
               Queue.offerUnsafe(queue, HandDragEnded({ x: at.x, y: at.y }));
-            };            window.addEventListener("pointermove", move);
+            };
+            window.addEventListener("pointermove", move);
             window.addEventListener("pointerup", up);
             window.addEventListener("pointercancel", cancel);
           };

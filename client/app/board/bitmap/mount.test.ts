@@ -1155,10 +1155,7 @@ describe("flight clock helpers", () => {
     };
     const first = applyPublishedFrame(flightClockState(), frame({ dragGhost: ghost, cards: [] }));
     expect(first.paintFlight).toBe(true);
-    const moved = applyPublishedFrame(
-      first.state,
-      frame({ dragGhost: { ...ghost, x: 140, y: 180 }, cards: [] }),
-    );
+    const moved = applyPublishedFrame(first.state, frame({ dragGhost: { ...ghost, x: 140, y: 180 }, cards: [] }));
     expect(moved.paintResting).toBe(false);
     expect(moved.paintFlight).toBe(true);
   });

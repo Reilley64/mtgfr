@@ -5,7 +5,12 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ActionView } from "~/wire/types";
-import { armHandDragGrabbingCursor, clientToHandDragPoint, readHandDragPayload, setHandDragGrabbingCursor } from "./hand-drag-mount";
+import {
+  armHandDragGrabbingCursor,
+  clientToHandDragPoint,
+  readHandDragPayload,
+  setHandDragGrabbingCursor,
+} from "./hand-drag-mount";
 
 function action(section: ActionView["section"]): ActionView {
   return {
