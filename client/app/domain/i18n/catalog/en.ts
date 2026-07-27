@@ -144,6 +144,9 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     `${edictWho(param(params, "scope"))} ${bool(params, "keep_one") ? "keeps one creature and sacrifices the rest" : "sacrifices a permanent"}`,
   "effect.choice_join_forces_pay_mana": literal("Starting with you, each player may pay any amount of mana"),
   "effect.choice_may_discard": literal("You may discard a card"),
+  "effect.choice_may_reveal_land_from_hand": literal(
+    "You may reveal a matching land card from your hand",
+  ),
   "effect.choice_may_draw_unless_pays": (params) =>
     `You may draw a card unless that player pays ${param(params, "cost")}`,
   "effect.choice_may_draw_up_to": (params) => `You may draw up to ${param(params, "count")}`,
@@ -260,6 +263,7 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.counters_each_opponent_loses_all_counters": literal("Each opponent loses all counters"),
   "effect.damage_each_creature": (params) =>
     `Deal ${param(params, "amount")} damage to ${damageEachCreatureSubject(params)}`,
+  "effect.damage_each_opponent": (params) => `Deal ${param(params, "amount")} damage to each opponent`,
   "effect.damage_each_other_opponent": (params) => `Deal ${param(params, "amount")} damage to each other opponent`,
   "effect.damage_each_player": (params) => `Deal ${param(params, "amount")} damage to each player`,
   "effect.damage_radiance": (params) =>

@@ -9,6 +9,7 @@
 //     DOM overlay, so neither can be clicked → offer them as a picker instead
 
 import { colors } from "~/design-tokens.generated";
+import type { PromptDraft } from "~/choice";
 import type { ActionView, PendingChoiceView, VisibleState, WireTarget } from "~/wire/types";
 import { formatMessage } from "../../domain/i18n/message";
 import { ZONE } from "../geometry/layout";
@@ -194,6 +195,7 @@ export function pendingTargetingOverlay(
   state: VisibleState,
   viewport: { width: number; height: number },
   stackLen: number,
+  draft?: PromptDraft | null,
 ): StagingOverlay {
   const idle: StagingOverlay = {
     aiming: false,
@@ -201,7 +203,8 @@ export function pendingTargetingOverlay(
     targetPlayers: new Set(),
     aimFrom: null,
   };
-  const mode = pendingBoardTargetMode(pc, state);
+  const digHost = pendingDigCastHostMode(pc, state, draft);
+  const mode = digHost ?? pendingBoardTargetMode(pc, state);
   if (mode == null) return idle;
   return {
     aiming: true,
@@ -274,9 +277,33 @@ function isPendingHandPick(pc: PendingChoiceView): pc is PendingHandPickChoice {
   );
 }
 
+/** Hand ids for `pay_cost` optional discard (Conspiracy Theorist) when choices are in hand. */
+export function pendingPayCostDiscardIds(
+  pc: PendingChoiceView | null | undefined,
+  state: VisibleState,
+): ReadonlySet<number> | null {
+  if (pc == null || pc.kind !== "pay_cost") return null;
+  if (pc.player !== state.viewer) return null;
+  const need = pc.discard_count ?? 0;
+  if (need <= 0) return null;
+  const choices = pc.discard_choices ?? [];
+  if (choices.length === 0) return null;
+  const handIds = new Set(
+    state.objects.filter((o) => o.zone === ZONE.Hand && o.owner === state.viewer).map((o) => o.id),
+  );
+  const ids = new Set<number>();
+  for (const id of choices) {
+    if (!handIds.has(id)) return null;
+    ids.add(id);
+  }
+  return ids;
+}
+
 /** True when a hand-bar click should auto-submit (no accumulate chrome). */
 export function pendingHandPickOneClick(pc: PendingChoiceView | null | undefined): boolean {
-  if (pc == null || !isPendingHandPick(pc)) return false;
+  if (pc == null) return false;
+  if (pc.kind === "pay_cost") return false;
+  if (!isPendingHandPick(pc)) return false;
   if (pc.kind === "discard" || pc.kind === "may_discard") return false;
   if (
     pc.kind === "put_land_from_hand" ||
@@ -290,13 +317,15 @@ export function pendingHandPickOneClick(pc: PendingChoiceView | null | undefined
 }
 
 /**
- * Legal hand object ids for pending discard / put-from-hand choices when every item is in the
- * viewer's hand. Off-hand items keep the modal card picker.
+ * Legal hand object ids for pending discard / put-from-hand / pay-cost-discard choices when every
+ * item is in the viewer's hand. Off-hand items keep the modal card picker.
  */
 export function pendingHandPickIds(
   pc: PendingChoiceView | null | undefined,
   state: VisibleState,
 ): ReadonlySet<number> | null {
+  const payDiscard = pendingPayCostDiscardIds(pc, state);
+  if (payDiscard != null) return payDiscard;
   if (pc == null || !isPendingHandPick(pc)) return null;
   if (pc.player !== state.viewer) return null;
   if (pc.items.length === 0) return null;
@@ -461,6 +490,31 @@ function isPendingExilePick(pc: PendingChoiceView): pc is PendingExilePickChoice
     pc.kind === "opponent_chooses_exiled_nonland" ||
     pc.kind === "choose_exiled_to_cast_free"
   );
+}
+
+/** True when dig-cast has projected cast-time hosts (Aura) the player must name after the exile pick. */
+export function digCastNeedsHost(pc: PendingChoiceView | null | undefined): boolean {
+  return pc?.kind === "choose_exiled_dig_to_cast_free" && (pc.cast_targets?.length ?? 0) > 0;
+}
+
+/**
+ * Battlefield aim for dig-cast Aura hosts after the exile candidate is picked.
+ * Idle until `draft` holds exactly one exile choice.
+ */
+export function pendingDigCastHostMode(
+  pc: PendingChoiceView | null | undefined,
+  state: VisibleState,
+  draft: PromptDraft | null | undefined,
+): Extract<TargetMode, { kind: "arrow" }> | null {
+  if (pc == null || pc.kind !== "choose_exiled_dig_to_cast_free") return null;
+  if (!digCastNeedsHost(pc)) return null;
+  if (pc.player !== state.viewer) return null;
+  if (draft?.kind !== "card-pick" || draft.picked.length !== 1) return null;
+  const hosts = pc.cast_targets ?? [];
+  if (hosts.length === 0) return null;
+  const mode = askFor(choiceItemsAsWireTargets(hosts), state);
+  if (mode.kind !== "arrow") return null;
+  return mode;
 }
 
 /** True when an exile-pile click should auto-submit (no accumulate chrome). */

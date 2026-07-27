@@ -376,6 +376,10 @@ pub enum CardFilter {
     /// [`CardKind`] match, so an Aura counts (it's still an enchantment card, CR 205.4a) the same
     /// way [`Enchantment`](Self::Enchantment) does.
     ArtifactOrEnchantment,
+    /// A snow land card (Into the North: "Search your library for a snow land card") — any land
+    /// with [`CardDef::snow`], basic or not. Distinct from [`Land`](Self::Land) (no snow gate) and
+    /// from a snow *creature* (Ohran Frostfang fails this).
+    SnowLand,
 }
 
 impl CardFilter {
@@ -478,6 +482,7 @@ impl CardFilter {
                 .kind
                 .types()
                 .intersects(TypeSet::ARTIFACT.union(TypeSet::ENCHANTMENT)),
+            CardFilter::SnowLand => matches!(def.kind, CardKind::Land { .. }) && def.snow,
         }
     }
 }
@@ -798,6 +803,15 @@ pub struct PermanentFilter {
     /// `TriggerContext::dying_permanent_types` before [`Game::permanent_matches`] ever reads this
     /// filter, so [`Game::permanent_matches`] itself never consults this flag.
     pub shares_type_with_dying_permanent: bool,
+    /// "each permanent you control that's a creature or Vehicle" (Ao, the Dawn Sky mode 2) —
+    /// matches a creature **or** a permanent carrying the Vehicle artifact subtype (CR 205.3g;
+    /// Vehicle is not a card type). When `true`, the ordinary `types` axis is ignored for the
+    /// match (this OR-gate replaces it). `false` (default) imposes no restriction.
+    pub creature_or_vehicle: bool,
+    /// Restrict to snow permanents (CR 205.4g — Into the North's "snow land" via
+    /// [`CardFilter::SnowLand`], or a battlefield "snow permanent" scan). `false` (default)
+    /// imposes no restriction. Reads [`CardDef::snow`].
+    pub snow: bool,
 }
 
 impl PermanentFilter {
@@ -833,6 +847,8 @@ impl PermanentFilter {
             without_flying: false,
             with_flying: false,
             shares_type_with_dying_permanent: false,
+            creature_or_vehicle: false,
+            snow: false,
         }
     }
 }

@@ -533,8 +533,13 @@ pub struct CardDef {
     /// type mirroring `enchant` if a second graveyard-enchanting Aura needs a narrower one.
     pub enchant_graveyard: bool,
     /// Whether the card is legendary — the only cards that may be a deck's commander.
-    /// ponytail: a bare bool, not a supertype set; the pool has no other supertypes yet.
+    /// ponytail: a bare bool, not a full CR 205.4a supertype set; snow is the only other
+    /// supertype the pool tracks today ([`Self::snow`]).
     pub legendary: bool,
+    /// Whether the card is snow (CR 205.4g — Snow-Covered Forest, Ohran Frostfang). Read by
+    /// snow-matters filters ([`crate::CardFilter::SnowLand`], [`crate::PermanentFilter::snow`]).
+    /// `false` (default) for every ordinary card. `snow = true` in TOML.
+    pub snow: bool,
     /// "This spell can't be countered" (CR 701.5g, e.g. Altered Ego). Checked in
     /// [`Game::counter_spell`], the shared choke for both the unconditional
     /// [`Effect::Misc(MiscEffect::CounterTargetSpell)`] arm and a declined `PayOrCounter` — the counter fizzles,
@@ -607,9 +612,8 @@ pub struct CardDef {
     /// opponent controls a Plains and you control a Swamp, you may cast this spell without
     /// paying its mana cost"). `None` (the common case) leaves the printed cost untouched. When
     /// the condition holds, [`Game::cast_cost`] returns [`Cost::FREE`] outright rather than
-    /// pausing for a decline — the same "always take the strictly-better option" modeling
-    /// [`Condition::HandHasLandWithSubtype`]'s reveal-lands already use, since nothing in this
-    /// pool wants to voluntarily pay a cost it could skip.
+    /// pausing for a decline — revealing is free and strictly better, so nothing in this pool
+    /// wants to voluntarily pay a cost it could skip.
     pub free_cast_if: Option<Condition>,
     /// A printed alternative cost that isn't a mana cost at all (CR 601.2f — Invigorate: "If you
     /// control a Forest, rather than pay this spell's mana cost, you may have an opponent gain 3
@@ -1230,6 +1234,7 @@ fn treasure_token_builtin() -> CardDef {
         cost: Cost::FREE,
         kind: CardKind::Artifact,
         legendary: false,
+        snow: false,
         uncounterable: false,
         modal: false,
         modal_choose: 1,
@@ -1300,6 +1305,7 @@ pub(crate) fn rogue_token_stub() -> CardDef {
             also: TypeSet::NONE,
         },
         legendary: false,
+        snow: false,
         uncounterable: false,
         modal: false,
         modal_choose: 1,
@@ -1372,6 +1378,7 @@ pub(crate) fn illusion_token() -> CardDef {
             also: TypeSet::NONE,
         },
         legendary: false,
+        snow: false,
         uncounterable: false,
         modal: false,
         modal_choose: 1,

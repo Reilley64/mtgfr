@@ -103,6 +103,13 @@ pub enum DigEffect {
         overflow: Option<SearchDest>,
         #[cfg_attr(feature = "card-dsl", serde(default))]
         count_amount: Option<Amount>,
+        /// Printed "may search" (White Orchid Phantom): pause on a yes/no *before* searching.
+        /// Declining skips the search entirely — no fail-to-find, no shuffle (CR 701.19c only
+        /// applies once a search actually begins). Accepting runs the ordinary search (including
+        /// fail-to-find + shuffle). Distinct from ability-level `optional` (Fierce Empath), which
+        /// gates the whole ability before it goes on the stack.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        optional: bool,
     },
 
     ShuffleLibrary,

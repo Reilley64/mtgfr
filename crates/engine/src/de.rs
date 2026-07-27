@@ -292,6 +292,9 @@ impl<'de> Deserialize<'de> for CardDef {
             enchant_graveyard: bool,
             #[serde(default)]
             legendary: bool,
+            /// Snow supertype (CR 205.4g) — `snow = true`; absent (`false`) for every ordinary card.
+            #[serde(default)]
+            snow: bool,
             /// "This spell can't be countered" (CR 701.5g) — `uncounterable = true`; absent
             /// (`false`) for every ordinary card.
             #[serde(default)]
@@ -492,6 +495,7 @@ impl<'de> Deserialize<'de> for CardDef {
             enchant: card.enchant,
             enchant_graveyard: card.enchant_graveyard,
             legendary: card.legendary,
+            snow: card.snow,
             uncounterable: card.uncounterable,
             modal: card.modal,
             modal_choose: card.modal_choose,
@@ -1581,6 +1585,12 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     /// bare-string shorthand of the same name above.
                     #[serde(default)]
                     shares_type_with_dying_permanent: bool,
+                    /// Ao, the Dawn Sky mode 2: creature OR Vehicle subtype (not a card type).
+                    #[serde(default)]
+                    creature_or_vehicle: bool,
+                    /// Snow permanents (CR 205.4g).
+                    #[serde(default)]
+                    snow: bool,
                 }
 
                 let t = Table::deserialize(de::value::MapAccessDeserializer::new(map))?;
@@ -1621,6 +1631,8 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     without_flying: t.without_flying,
                     with_flying: t.with_flying,
                     shares_type_with_dying_permanent: t.shares_type_with_dying_permanent,
+                    creature_or_vehicle: t.creature_or_vehicle,
+                    snow: t.snow,
                 })
             }
         }

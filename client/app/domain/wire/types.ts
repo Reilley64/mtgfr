@@ -451,7 +451,16 @@ export type PendingChoiceView =
     }
   | { kind: "may_yes_no"; label: MessageRef; player: number; source: U32 }
   | { items: Array<ChoiceItem>; kind: "decline_untap"; player: number }
-  | { can_pay: boolean; cost: WireCost; kind: "pay_cost"; label: MessageRef; player: number; source: U32 }
+  | {
+      can_pay: boolean;
+      cost: WireCost;
+      discard_choices?: Array<U32> | null;
+      discard_count?: number;
+      kind: "pay_cost";
+      label: MessageRef;
+      player: number;
+      source: U32;
+    }
   | { cost: WireCost; kind: "pay_or_counter"; player: number; spell: U32 }
   | { controller: number; cost: WireCost; kind: "pay_or_controller_draws"; player: number }
   | { kind: "choose_countered_spell_destination"; player: number; spell: U32 }
@@ -508,7 +517,13 @@ export type PendingChoiceView =
   | { items: Array<ChoiceItem>; kind: "cast_creature_face_down"; player: number }
   | { items: Array<ChoiceItem>; kind: "choose_exiled_with_card"; player: number; source: U32 }
   | { items: Array<ChoiceItem>; kind: "choose_exiled_with_card_to_cast"; player: number; source: U32 }
-  | { items: Array<ChoiceItem>; kind: "choose_exiled_dig_to_cast_free"; player: number; source: U32 }
+  | {
+      cast_targets?: Array<ChoiceItem>;
+      items: Array<ChoiceItem>;
+      kind: "choose_exiled_dig_to_cast_free";
+      player: number;
+      source: U32;
+    }
   | {
       budget: number;
       items: Array<ChoiceItem>;
@@ -600,7 +615,13 @@ export type WireIntent =
   | { half: number; kind: "cast_split_half"; player: number; source: U32; target?: null | WireTarget; x?: number }
   | { kind: "choose_target_players"; player: number; players: Array<number> }
   | { kind: "answer_may"; player: number; yes: boolean }
-  | { kind: "pay_optional_cost"; pay: boolean; player: number; x?: number }
+  | {
+      discard_cost?: Array<U32>;
+      kind: "pay_optional_cost";
+      pay: boolean;
+      player: number;
+      x?: number;
+    }
   | { keep_tapped: Array<U32>; kind: "decline_untap"; player: number }
   | { assignment: Array<WireDamage>; kind: "assign_damage"; player: number }
   | { assignment: Array<WireSpellDamage>; kind: "divide_spell_damage"; player: number }
@@ -626,7 +647,7 @@ export type WireIntent =
   | { kind: "return_land_or_sacrifice"; land?: null | U32; player: number }
   | { choice?: null | U32; kind: "choose_exiled_with_card"; player: number }
   | { choice?: null | U32; kind: "choose_exiled_with_card_to_cast"; player: number }
-  | { choice?: null | U32; kind: "choose_exiled_dig_to_cast_free"; player: number }
+  | { choice?: null | U32; kind: "choose_exiled_dig_to_cast_free"; player: number; target?: null | WireTarget }
   | { kind: "choose_opponent_pile"; pile: number; player: number }
   | { choice?: null | U32; kind: "revealed_card_to_battlefield_or_hand"; player: number }
   | { kind: "choose_mode"; mode: number; player: number }

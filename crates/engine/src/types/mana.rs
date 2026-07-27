@@ -183,15 +183,13 @@ pub struct AdditionalCost {
     /// revealed card's mana value on the resulting [`Spell::revealed_creature_mana_value`] (read
     /// by [`Amount::RevealedCreatureManaValue`]). Which specific card is revealed is never a real
     /// decision: revealing has no cost or downside, so a rational caster always reveals the
-    /// highest-mana-value creature card in hand (Disaster Radius wants the biggest X) — the same
-    /// "no real choice" idiom [`Condition::HandHasLandWithSubtype`]'s reveal lands already use.
+    /// highest-mana-value creature card in hand (Disaster Radius wants the biggest X).
     /// TOML `reveal_creature_from_hand = true`.
-    /// ponytail: an automatic hand scan rather than a genuine reveal choice, mirroring
-    /// `HandHasLandWithSubtype`'s own note; a bare bool (not a filtered struct like
-    /// [`Self::sacrifice`]) since only a creature-card reveal exists in the pool — widen to a
-    /// [`CardFilter`] if a future card reveals a different card type. Grow a real pick (a
-    /// `PendingChoice`) if a future card makes concealment matter (an opponent reacting to which
-    /// specific card is revealed).
+    /// ponytail: an automatic hand scan rather than a genuine reveal choice; a bare bool (not a
+    /// filtered struct like [`Self::sacrifice`]) since only a creature-card reveal exists in the
+    /// pool — widen to a [`CardFilter`] if a future card reveals a different card type. Grow a
+    /// real pick (a `PendingChoice`) if a future card makes concealment matter (an opponent
+    /// reacting to which specific card is revealed).
     pub reveal_creature_from_hand: bool,
     /// Whether this spell's chosen `{X}` (CR 601.2b) is paid as life rather than mana (CR
     /// 601.2f) — Toxic Deluge's "As an additional cost to cast this spell, pay X life." When

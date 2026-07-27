@@ -15,7 +15,7 @@ Card behavior in Magic is vast and varied. Encoding it per-card in engine code w
 
 Each card is a TOML file in `crates/cards/data/` that deserializes into a `CardDef` struct in `crates/engine`. `CardDef` is `Clone`, not `Copy`. Printed list-like fields (`abilities`, `keywords`, `conditional_keywords`, `identity_pips`, `colors`, `subtypes`, `otags`, `hand_ability`, `halves`) deserialize into `Arc<[T]>`, while runtime game objects and events intern each printed definition into a `CardId -> Arc<CardDef>` table and carry the small handle instead. Nested `[back]` / `[adventure]` faces are interned during deserialization as stable `CardId`s, so flip/adventure/prepare flows read and restore them without minting new handles at runtime. Card behavior is expressed as `Ability { timing, effect }` pairs; the `Effect` enum is the vocabulary. The DSL grows **only when a real card demands it** (card-dsl-and-card-pool spec). Gaps are flagged via the `approximates` field and `# ponytail:` comments rather than forced approximations. Token profiles live in `data/tokens/` and are referenced by Scryfall oracle id from creating cards.
 
-Thirty-nine token profiles and 724 deckable card TOMLs are present as of 2026-07-27. Ten decklists live in `docs/decklists/*.md` (the five Secrets of Strixhaven decks and five additional non-SoC lists). The five Secrets of Strixhaven precons cover every Scryfall `soc` oracle (375), including the three Talismans that were previously missing from the pool; `Final Act` is fully modal. Remaining named SoC residuals are honest `approximates` notes (including `Herald of Amity`'s deferred resolution-time free cast) — every `# ponytail:` now pairs with an `approximates` field.
+Thirty-nine token profiles and 729 deckable card TOMLs are present as of 2026-07-27. Ten decklists live in `docs/decklists/*.md` (the five Secrets of Strixhaven decks and five additional non-SoC lists). The five Secrets of Strixhaven precons cover every Scryfall `soc` oracle (375), including the three Talismans that were previously missing from the pool; `Final Act` is fully modal. Named SoC cards carry no remaining `approximates` notes — observer cards from other sets (`Llanowar Reborn`, `Port Town`, `Smuggler's Copter`, `Snow-Covered Forest`, `Into the North`) land the filters/choices those residuals needed. Every `# ponytail:` still pairs with an `approximates` field where a gap remains outside SoC.
 
 ---
 
@@ -68,7 +68,7 @@ target = "any"
 
 **Identity:** `name` (registry key), `id` (Scryfall oracle id), `default_print` (Scryfall print UUID for art), `sets` (all Scryfall set codes with a printing of the oracle), `oracle` (verbatim text for catalog hover), `otags` (Scryfall tagger slugs for search).
 
-**Rules identity:** `legendary`, `colors` (explicit color override; empty = derive from cost pips), `devoid`, `identity_pips` (extra color-identity pips the simplified model would otherwise drop).
+**Rules identity:** `legendary`, `snow` (CR 205.4g Snow supertype), `colors` (explicit color override; empty = derive from cost pips), `devoid`, `identity_pips` (extra color-identity pips the simplified model would otherwise drop).
 
 **Fidelity:** `approximates` (machine-readable gap note for the catalog and audits), `# ponytail:` inline comment at the divergence point.
 
@@ -173,7 +173,7 @@ Ten decklists live in `docs/decklists/*.md`:
 - Five additional lists: Political Puppets, Mirror Mastery, Enchantress Rubinia, Deathdancer Xira,
   Heavenly Inferno.
 
-These are the **first closed fidelity target** (card-dsl-and-card-pool spec): every card in these lists is now in the pool and closed at the fidelity-report bar. `Final Act`'s five modes are expressible; remaining named SoC residuals ride honest `approximates` notes (notably `Herald of Amity`'s deferred mid-resolution free cast). The north star (card-dsl-and-card-pool spec) remains any card, faithfully — the SoC decks are the proving ground, not the ceiling.
+These are the **first closed fidelity target** (card-dsl-and-card-pool spec): every card in these lists is now in the pool and closed at the fidelity-report bar. `Final Act`'s five modes are expressible; SoC snow / Vehicle / mid-resolution dig-cast residuals (`Ohran Frostfang`, `Ao, the Dawn Sky`, `Herald of Amity`) landed with `snow`, `creature_or_vehicle`, and mid-resolution `ChooseExiledDigToCastFree`. The north star (card-dsl-and-card-pool spec) remains any card, faithfully — the SoC decks are the proving ground, not the ceiling.
 
 ### Deck-builder legality
 

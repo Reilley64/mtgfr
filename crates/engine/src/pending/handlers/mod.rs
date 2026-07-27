@@ -81,6 +81,7 @@ mod tests {
                     also: TypeSet::NONE,
                 },
                 legendary: false,
+                snow: false,
                 uncounterable: false,
                 enchant: None,
                 enchant_graveyard: false,

@@ -205,6 +205,7 @@ pub(crate) fn project_event(
             permanent,
             from,
             player,
+            ..
         } => VisibleEvent::LandPlayed {
             permanent,
             from,
@@ -691,6 +692,13 @@ pub(crate) fn project_event(
         }
         // A reveal is public (CR 701.30) — every viewer, including a spectator, sees it.
         Event::RevealedTopOfLibrary { player, card, def } => VisibleEvent::RevealedTopOfLibrary {
+            player: player.0,
+            card,
+            def: card_name(def),
+        },
+        // ponytail: reuse the library-reveal wire shape for hand reveals (same public card info;
+        // grow a dedicated VisibleEvent when the client wants a distinct animation).
+        Event::RevealedFromHand { player, card, def } => VisibleEvent::RevealedTopOfLibrary {
             player: player.0,
             card,
             def: card_name(def),

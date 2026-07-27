@@ -142,14 +142,18 @@ impl Game {
         }
     }
 
-    /// Answer a [`PendingChoice::ChooseExiledDigToCastFree`]: grant the free-cast permission
-    /// (CR 118.5) for the chosen card — it stays in exile — or decline (`choice = None`). Either
-    /// way, every other card in the exiled batch (non-matching, or simply not chosen) goes to the
-    /// bottom of the library (CR "put the rest on the bottom of your library").
+    /// Answer a [`PendingChoice::ChooseExiledDigToCastFree`]: cast the chosen card without
+    /// paying its mana cost **now** as part of this dig's resolution (CR 608.2g / cascade-style
+    /// mid-resolution cast — Herald of Amity, Cascade), or decline (`choice = None`). Either way,
+    /// every other card in the exiled batch (non-matching, or simply not chosen) goes to the
+    /// bottom of the library (CR "put the rest on the bottom of your library"). `target` is the
+    /// cast-time target when the chosen card needs one (an Aura); ignored for an untargeted
+    /// permanent or spell.
     pub(crate) fn choose_exiled_dig_to_cast_free(
         &mut self,
         player: PlayerId,
         choice: Option<ObjectId>,
+        target: Option<Target>,
     ) -> Result<Vec<Event>, Reject> {
         let Some(PendingChoice::ChooseExiledDigToCastFree {
             candidates, exiled, ..
@@ -160,14 +164,42 @@ impl Game {
         if choice.is_some_and(|c| !candidates.contains(&c)) {
             return Err(Reject::IllegalChoice);
         }
+        // An Aura (and any other targeted dig-cast) must name its cast-time target up front —
+        // reject before clearing the pause so a missing target doesn't strand the dig.
+        if let Some(card) = choice {
+            let def = self.def_of(card);
+            if matches!(def.kind, CardKind::Aura) && target.is_none() {
+                return Err(Reject::IllegalChoice);
+            }
+        }
         self.finish_answer();
 
         let mut events = Vec::new();
         if let Some(card) = choice {
+            // Grant the free-cast permission, then cast immediately so the spell goes on the
+            // stack during this dig's own resolution (not at a later priority window).
             self.push_apply(
                 &mut events,
                 Event::CastFromExileFreePermissionGranted { card, player },
             );
+            let cast_events = self.cast(
+                player,
+                card,
+                target,
+                0,
+                vec![],
+                vec![],
+                vec![],
+                vec![],
+                false,
+                false,
+                false,
+                0,
+                0,
+                0,
+                false,
+            )?;
+            events.extend(cast_events);
         }
         let rest: Vec<ObjectId> = exiled
             .into_iter()

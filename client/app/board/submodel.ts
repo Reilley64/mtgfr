@@ -61,9 +61,11 @@ import {
 } from "./action/execution";
 import { advance } from "./action/modal";
 import {
+  digCastNeedsHost,
   gyExileCostPile,
   pendingBoardTargetMode,
   pendingDamageAssignBlockers,
+  pendingDigCastHostMode,
   pendingDivideSpellObjectIndexes,
   pendingExilePickIds,
   pendingExilePickOneClick,
@@ -922,6 +924,21 @@ function pointerUpModel(
         const amounts = clickDamageAssign(draft.amounts, itemIndex, pc.total, false);
         return [{ ...synced, promptDraft: { kind: "divide", amounts } }, []];
       }
+    }
+    const syncedForDig = syncPromptDraft(idle, fold);
+    const digHostAim =
+      fold.state != null ? pendingDigCastHostMode(pc, fold.state, syncedForDig.promptDraft) : null;
+    if (digHostAim != null && pc != null && digHostAim.objects.has(release.card.id)) {
+      if (syncedForDig.promptDraft?.kind !== "card-pick" || syncedForDig.promptDraft.picked.length !== 1) {
+        return [syncedForDig, []];
+      }
+      const draft = { ...syncedForDig.promptDraft, host: release.card.id };
+      const answer = buildAnswerFromDraft(pc, draft);
+      if (answer == null) return [syncedForDig, []];
+      return [
+        { ...syncedForDig, promptDraft: null, pendingChoiceKey: null, pileExpand: null },
+        boardIntentSubmit(tableId, choiceIntent(pc, answer)),
+      ];
     }
     const pendingAim = fold.state != null ? pendingBoardTargetMode(pc, fold.state) : null;
     if (pendingAim != null && pc != null && pendingAim.objects.has(release.card.id)) {
@@ -2141,8 +2158,27 @@ export function updateBoard(
         return completeStagedTarget(model, fold, tableId, message.target);
       }
       const pc = fold.state?.pending_choice ?? null;
-      const pendingAim = fold.state != null ? pendingBoardTargetMode(pc, fold.state) : null;
-      if (pendingAim == null || pc == null) return [model, []];
+      const state = fold.state;
+      if (pc == null || state == null) return [model, []];
+      const synced = syncPromptDraft(model, fold);
+      const digHostAim = pendingDigCastHostMode(pc, state, synced.promptDraft);
+      if (digHostAim != null) {
+        if (message.target.kind !== "object" || !digHostAim.objects.has(message.target.id)) {
+          return [synced, []];
+        }
+        if (synced.promptDraft?.kind !== "card-pick" || synced.promptDraft.picked.length !== 1) {
+          return [synced, []];
+        }
+        const draft = { ...synced.promptDraft, host: message.target.id };
+        const answer = buildAnswerFromDraft(pc, draft);
+        if (answer == null) return [synced, []];
+        return [
+          { ...synced, promptDraft: null, pendingChoiceKey: null, pileExpand: null },
+          boardIntentSubmit(tableId, choiceIntent(pc, answer)),
+        ];
+      }
+      const pendingAim = pendingBoardTargetMode(pc, state);
+      if (pendingAim == null) return [model, []];
       if (message.target.kind === "object" && !pendingAim.objects.has(message.target.id)) {
         return [model, []];
       }
@@ -2362,7 +2398,7 @@ export function updateBoard(
         } else {
           next = [...picked, message.id];
         }
-        return [{ ...synced, promptDraft: { kind: "card-pick", picked: next, filter: synced.promptDraft.filter } }, []];
+        return [{ ...synced, promptDraft: { kind: "card-pick", picked: next, filter: synced.promptDraft.filter, host: synced.promptDraft.host } }, []];
       }
 
       if (synced.promptDraft.kind === "player-pick") {
@@ -2712,6 +2748,16 @@ export function updateBoard(
       if (pileIds == null || !pileIds.has(message.id)) return [model, []];
       const oneClick = pendingGraveyardPickOneClick(pc) || pendingExilePickOneClick(pc);
       if (oneClick) {
+        if (digCastNeedsHost(pc)) {
+          return [
+            {
+              ...model,
+              promptDraft: { kind: "card-pick", picked: [message.id], filter: "" },
+              pileExpand: null,
+            },
+            [],
+          ];
+        }
         const answer = buildAnswerFromDraft(pc, { kind: "card-pick", picked: [message.id], filter: "" });
         if (answer == null) return [model, []];
         return [

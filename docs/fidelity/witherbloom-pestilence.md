@@ -110,7 +110,8 @@ Notes on cards deliberately kept in A despite intake `ponytail:` prompts:
   residual.
 - **Necroblossom Snarl** — auto-reveal is behaviorally exact here: revealing is strictly upside and
   no Witherbloom card or current pool card punishes showing the land.
-- **Ohran Frostfang** — flattening away snow is cosmetic only; no Witherbloom card reads snow.
+- **Ohran Frostfang** — `snow = true` is authored; Into the North / Snow-Covered Forest make the
+  snow supertype observable. No Witherbloom card reads snow as a payoff, but the residual is gone.
 - **Toxic Deluge** — the note explains that X is paid as life, not mana. The cast-time life-payment
   behavior itself is landed.
 

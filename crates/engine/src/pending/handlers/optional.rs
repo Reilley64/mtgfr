@@ -4,6 +4,11 @@ use crate::*;
 
 impl Game {
     pub(crate) fn answer_may(&mut self, player: PlayerId, yes: bool) -> Result<Vec<Event>, Reject> {
+        if let Some(PendingChoice::MayRevealLandFromHand { land, subtypes, .. }) =
+            self.pending_choice.clone()
+        {
+            return self.answer_may_reveal_land_from_hand(player, land, subtypes, yes);
+        }
         let Some(PendingChoice::MayYesNo {
             source,
             effect,
@@ -114,13 +119,72 @@ impl Game {
                         },
                     },
                 );
+            } else if let Effect::Dig(DigEffect::SearchLibrary { .. }) = effect {
+                // Resolution-time "may search" (`DigEffect::SearchLibrary::optional`): accepting
+                // re-runs the (now non-optional) search under the answering player as part of the
+                // still-resolving ability — not a fresh stack object. Declining is handled below
+                // (continue an AllPlayers fan-out if one is live; otherwise a quiet no-op).
+                self.run(
+                    effect,
+                    ResolveCtx {
+                        controller: player,
+                        source,
+                        target: None,
+                        targets_second: TargetList::default(),
+                        x: 0,
+                        spent_mana: [0; 6],
+                    },
+                    &mut events,
+                );
             } else {
                 // A targeted "may" (Sun Titan) pauses again to choose its target; a targetless
                 // one (Solemn's dies-draw) goes straight on the stack. NoLegalTarget = accepted
                 // but nothing to aim at, so it fizzles harmlessly.
                 self.place_targeted_ability(player, source, effect, 0, false, &mut events);
             }
+        } else if matches!(effect, Effect::Dig(DigEffect::SearchLibrary { .. })) {
+            // Declining an optional search still advances an AllPlayers fan-out (Veteran Explorer
+            // style) so later seats aren't dropped; a single-searcher decline is a no-op.
+            self.continue_search_fanout();
         }
+        Ok(events)
+    }
+
+    /// Answer a [`PendingChoice::MayRevealLandFromHand`]: yes reveals one matching hand land and
+    /// plays `land` untapped; no plays it tapped with no reveal.
+    pub(crate) fn answer_may_reveal_land_from_hand(
+        &mut self,
+        player: PlayerId,
+        land: ObjectId,
+        subtypes: &'static [&'static str],
+        yes: bool,
+    ) -> Result<Vec<Event>, Reject> {
+        let Some(PendingChoice::MayRevealLandFromHand { .. }) = self.pending_choice else {
+            return Err(Reject::IllegalChoice);
+        };
+        self.finish_answer();
+
+        let mut events = Vec::new();
+        let revealed = yes
+            .then(|| self.first_hand_land_with_subtype(player, subtypes))
+            .flatten();
+        if let Some(card) = revealed {
+            events.push(Event::RevealedFromHand {
+                player,
+                card,
+                def: self.def_id_of(card),
+            });
+        }
+        let permanent = self.next_object_id();
+        let printed = card_def(self.def_id_of(land));
+        events.push(Event::LandPlayed {
+            permanent,
+            from: land,
+            player,
+            tapped: revealed.is_none(),
+        });
+        self.apply_all(&events);
+        self.push_enters_with_counters(&printed, permanent, player, None, 0, &mut events);
         Ok(events)
     }
 
@@ -164,10 +228,14 @@ impl Game {
 
     /// Answer a [`PendingChoice::PayCost`]: pay the cost to get the optional trigger, or decline.
     /// An unaffordable "pay" leaves the choice pending so the player can still decline.
+    /// When `cost.additional.discard > 0`, `discard_cost` must name that many distinct hand cards
+    /// (Conspiracy Theorist's "pay {1} and discard a card") — paying is all-or-nothing with the
+    /// mana; a short/illegal discard list rejects without settling either half.
     pub(crate) fn pay_optional_cost(
         &mut self,
         player: PlayerId,
         pay: bool,
+        discard_cost: &[ObjectId],
     ) -> Result<Vec<Event>, Reject> {
         let Some(PendingChoice::PayCost {
             source,
@@ -184,9 +252,35 @@ impl Game {
             self.finish_answer();
             return Ok(events);
         }
+        let discard_n = cost.additional.discard as usize;
+        if discard_cost.len() != discard_n {
+            return Err(Reject::IllegalChoice);
+        }
+        let hand = self.hand_of(player);
+        let mut named: Vec<ObjectId> = Vec::with_capacity(discard_n);
+        for &id in discard_cost {
+            if named.contains(&id) || !hand.contains(&id) {
+                return Err(Reject::IllegalChoice);
+            }
+            named.push(id);
+        }
         // Settle the mana (auto-tapping lands for a pool shortfall); unaffordable leaves the
-        // choice pending with nothing tapped.
+        // choice pending with nothing tapped / discarded.
         self.settle_payment(player, cost, None, None, &mut events)?;
+        for &id in &named {
+            let card = self.next_object_id();
+            let def = self.def_id_of(id);
+            self.push_apply(&mut events, Event::MovedToGraveyard { card, from: id });
+            self.push_apply(
+                &mut events,
+                Event::Discarded {
+                    card,
+                    from: id,
+                    def,
+                    player,
+                },
+            );
+        }
         self.finish_answer();
         if let Effect::Copy(CopyEffect::ThisSpell { count, .. }) = effect {
             // Chain Lightning's reflexive rider (`Effect::Copy(CopyEffect::MayPayToCopyThis)`): mint inline as part

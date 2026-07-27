@@ -5,6 +5,24 @@ use crate::dto::{ChoiceItem, ModeView, PendingChoiceView};
 use crate::intent::WireTarget;
 use crate::message::{named_message, to_wire_message};
 use crate::projection::privacy::private_items;
+use engine::{Target, TargetSpec};
+
+/// Union of legal cast-time targets across dig candidates that need one (Aura enchant hosts).
+/// Empty when every candidate is untargeted (cascade creature hit, etc.).
+fn dig_cast_targets(game: &engine::Game, candidates: &[engine::ObjectId]) -> Vec<Target> {
+    let mut out = Vec::new();
+    for &card in candidates {
+        if game.target_spec_of(card) == TargetSpec::None {
+            continue;
+        }
+        for target in game.legal_targets(card, None) {
+            if !out.contains(&target) {
+                out.push(target);
+            }
+        }
+    }
+    out
+}
 
 /// Per-snapshot context for labeling object ids and applying owner-gated privacy.
 pub(crate) struct ChoiceCtx<'a> {
@@ -145,6 +163,13 @@ impl<'a> ChoiceCtx<'a> {
                 source,
                 label: to_wire_message(effect.message()),
             },
+            engine::PendingChoice::MayRevealLandFromHand { player, land, .. } => {
+                PendingChoiceView::MayYesNo {
+                    player: player.0,
+                    source: land,
+                    label: crate::message::message("effect.choice_may_reveal_land_from_hand"),
+                }
+            }
             engine::PendingChoice::MayDrawUpTo {
                 player,
                 max,
@@ -170,13 +195,19 @@ impl<'a> ChoiceCtx<'a> {
                 source,
                 cost,
                 effect,
-            } => PendingChoiceView::PayCost {
-                player: player.0,
-                source,
-                can_pay: self.game.can_pay_cost(player, cost),
-                cost: wire_cost(cost),
-                label: to_wire_message(effect.message()),
-            },
+            } => {
+                let discard_count = cost.additional.discard;
+                let discard_choices = (discard_count > 0).then(|| self.game.hand(player));
+                PendingChoiceView::PayCost {
+                    player: player.0,
+                    source,
+                    can_pay: self.game.can_pay_cost(player, cost),
+                    cost: wire_cost(cost),
+                    label: to_wire_message(effect.message()),
+                    discard_count,
+                    discard_choices,
+                }
+            }
             engine::PendingChoice::PayOrCounter {
                 player,
                 cost,
@@ -614,11 +645,15 @@ impl<'a> ChoiceCtx<'a> {
                 source,
                 candidates,
                 ..
-            } => PendingChoiceView::ChooseExiledDigToCastFree {
-                player: player.0,
-                source,
-                items: self.label_items(candidates),
-            },
+            } => {
+                let cast_targets = dig_cast_targets(self.game, &candidates);
+                PendingChoiceView::ChooseExiledDigToCastFree {
+                    player: player.0,
+                    source,
+                    items: self.label_items(candidates),
+                    cast_targets: self.label_targets(cast_targets),
+                }
+            }
             engine::PendingChoice::DanceExileMore {
                 player,
                 source,
@@ -940,6 +975,14 @@ mod coverage_tests {
                 |view| matches!(view, PendingChoiceView::MayYesNo { .. }),
             ),
             (
+                PendingChoice::MayRevealLandFromHand {
+                    player: PlayerId(0),
+                    land: hand_card,
+                    subtypes: &["Forest", "Island"],
+                },
+                |view| matches!(view, PendingChoiceView::MayYesNo { .. }),
+            ),
+            (
                 PendingChoice::PayCost {
                     player: PlayerId(0),
                     source,
@@ -1225,6 +1268,68 @@ mod coverage_tests {
         assert!(
             put_counter_on_creature,
             "the reused copy-target view must advertise counter wording"
+        );
+    }
+
+    /// Herald of Amity dig-cast: an Aura candidate projects legal enchant hosts so the client
+    /// can name a cast-time target with the dig answer.
+    #[test]
+    fn choose_exiled_dig_to_cast_free_projects_cast_targets_for_aura() {
+        let mut game = Game::new();
+        let host = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bear"));
+        let aura = game.spawn_in_hand(PlayerId(0), def("Spirit Mantle"));
+        let source = game.spawn_on_battlefield(PlayerId(0), def("Herald of Amity"));
+        let view = project_pending_choice(
+            &game,
+            Some(PlayerId(0)),
+            PendingChoice::ChooseExiledDigToCastFree {
+                player: PlayerId(0),
+                source,
+                candidates: vec![aura],
+                exiled: vec![aura],
+            },
+        );
+
+        let PendingChoiceView::ChooseExiledDigToCastFree {
+            items,
+            cast_targets,
+            ..
+        } = view
+        else {
+            panic!("expected ChooseExiledDigToCastFree, got {view:?}");
+        };
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].id, aura);
+        assert!(
+            cast_targets.iter().any(|item| item.id == host),
+            "Aura dig must project the legal host, got {cast_targets:?}"
+        );
+    }
+
+    /// Cascade / untargeted dig hits: no cast-time target → empty `cast_targets`.
+    #[test]
+    fn choose_exiled_dig_to_cast_free_omits_cast_targets_for_untargeted() {
+        let mut game = Game::new();
+        let _host = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bear"));
+        let bear = game.spawn_in_hand(PlayerId(0), def("Grizzly Bear"));
+        let source = game.spawn_on_battlefield(PlayerId(0), def("Herald of Amity"));
+        let view = project_pending_choice(
+            &game,
+            Some(PlayerId(0)),
+            PendingChoice::ChooseExiledDigToCastFree {
+                player: PlayerId(0),
+                source,
+                candidates: vec![bear],
+                exiled: vec![bear],
+            },
+        );
+
+        let PendingChoiceView::ChooseExiledDigToCastFree { cast_targets, .. } = view else {
+            panic!("expected ChooseExiledDigToCastFree, got {view:?}");
+        };
+        assert!(
+            cast_targets.is_empty(),
+            "untargeted dig must not project cast hosts, got {cast_targets:?}"
         );
     }
 }

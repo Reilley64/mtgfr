@@ -119,16 +119,12 @@ small sibling) so an attached effect can say "replace the host's card types with
 while still reusing the existing subtype replacement / lose-all-abilities logic. Regression should
 assert that a mutated Doomwake is an artifact creature Insect with no enchantment type left.
 
-### 5. `resolution-time-free-cast-from-dig` — 1 card, M — **DEFERRED RESIDUAL** (2026-07-26)
-Deliberately not landed this wave. The delayed-permission model
-(`ExileTopCastMatchingFree` → one-shot `pending_next_cast` at a later priority window this turn) is
-shared engine infrastructure — cascade and Quintorius, Loremaster's free casts ride the same path,
-and `herald_of_amity.toml` already carries the matching ponytail note. Making the chosen Aura cast
-*inside* the ETB ability's own resolution (then resuming to bottom the rest) needs new
-nested-cast-during-resolution machinery on the core sequential stack/priority model, with blast
-radius across the whole impulse-cast family. That is a dedicated feature change (own brainstorm +
-plan), not a grind rider, so Herald stays on its documented approximation and unchecked on the deck
-report. **Depends on:** none.
+### 5. `resolution-time-free-cast-from-dig` — 1 card, M — **LANDED** (2026-07-27)
+Landed: `ChooseExiledDigToCastFree` now casts the chosen card without paying its mana cost
+**during** dig resolution (CR 608.2g / cascade-style), carrying an optional cast-time `target`
+for Auras, then bottoms the rest. Herald of Amity's ETB dig and the shared cascade /
+Creative Technique path ride the same mid-resolution cast. Approximates / ponytail cleared.
+**Depends on:** none.
 **Cards:** `herald_of_amity.toml`
 **Sketch:** `Effect::Dig(ExileTopCastMatchingFree)` currently exiles the top eight, raises a choice,
 grants a one-shot permission, and bottoms the rest. That means Herald's chosen Aura is cast at a
