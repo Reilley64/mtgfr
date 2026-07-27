@@ -7,8 +7,8 @@ Engine backlog for section D: [`2ed-increments.md`](2ed-increments.md).
 | --- | --- | ---: |
 | A | In the pool, faithful | 28 |
 | B | In the pool, approximated | 0 |
-| C | New, expressible with today's DSL | 133 |
-| D | New, needs engine work | 127 |
+| C | New, expressible with today's DSL | 127 |
+| D | New, needs engine work | 133 |
 | — | Out of scope (flag-don't-force) | 4 |
 
 ## A. In the pool, faithful
@@ -54,7 +54,7 @@ Authorable in Phase 3 with no engine change. TDD each one.
 
 - [x] **Air Elemental** {3}{U}{U} · Creature — Elemental
 - [ ] **Ankh of Mishra** {2} · Artifact
-- [ ] **Armageddon** {3}{W} · Sorcery
+- [x] **Armageddon** {3}{W} · Sorcery
 - [ ] **Bad Moon** {1}{B} · Enchantment
 - [x] **Badlands** — · Land — Swamp Mountain
 - [x] **Bayou** — · Land — Swamp Forest
@@ -66,17 +66,16 @@ Authorable in Phase 3 with no engine change. TDD each one.
 - [x] **Celestial Prism** {3} · Artifact
 - [x] **Control Magic** {2}{U}{U} · Enchantment — Aura
 - [ ] **Copper Tablet** {2} · Artifact
-- [ ] **Counterspell** {U}{U} · Instant
+- [x] **Counterspell** {U}{U} · Instant
 - [x] **Craw Wurm** {4}{G}{G} · Creature — Wurm
 - [ ] **Creature Bond** {1}{U} · Enchantment — Aura
 - [ ] **Crusade** {W}{W} · Enchantment
 - [ ] **Cursed Land** {2}{B}{B} · Enchantment — Aura
-- [ ] **Death Ward** {W} · Instant
-- [ ] **Demonic Tutor** {1}{B} · Sorcery
+- [x] **Death Ward** {W} · Instant
+- [x] **Demonic Tutor** {1}{B} · Sorcery
 - [ ] **Dingus Egg** {4} · Artifact
-- [ ] **Disenchant** {1}{W} · Instant
+- [x] **Disenchant** {1}{W} · Instant
 - [ ] **Disrupting Scepter** {3} · Artifact
-- [ ] **Drain Life** {X}{1}{B} · Sorcery
 - [ ] **Drudge Skeletons** {1}{B} · Creature — Skeleton
 - [ ] **Dwarven Demolition Team** {2}{R} · Creature — Dwarf
 - [ ] **Dwarven Warriors** {2}{R} · Creature — Dwarf Warrior
@@ -85,14 +84,12 @@ Authorable in Phase 3 with no engine change. TDD each one.
 - [x] **Fear** {B}{B} · Enchantment — Aura
 - [ ] **Feedback** {2}{U} · Enchantment — Aura
 - [x] **Fire Elemental** {3}{R}{R} · Creature — Elemental
-- [ ] **Fireball** {X}{R} · Sorcery
 - [x] **Firebreathing** {R} · Enchantment — Aura
-- [ ] **Flashfires** {3}{R} · Sorcery
 - [x] **Flight** {U} · Enchantment — Aura
-- [ ] **Fog** {G} · Instant
+- [x] **Fog** {G} · Instant
 - [ ] **Frozen Shade** {2}{B} · Creature — Shade
 - [ ] **Fungusaur** {3}{G} · Creature — Fungus Dinosaur
-- [ ] **Giant Growth** {G} · Instant
+- [x] **Giant Growth** {G} · Instant
 - [x] **Giant Spider** {3}{G} · Creature — Spider
 - [ ] **Goblin Balloon Brigade** {R} · Creature — Goblin Warrior
 - [ ] **Granite Gargoyle** {2}{R} · Creature — Gargoyle
@@ -101,15 +98,15 @@ Authorable in Phase 3 with no engine change. TDD each one.
 - [x] **Hill Giant** {3}{R} · Creature — Giant
 - [x] **Holy Armor** {W} · Enchantment — Aura
 - [x] **Holy Strength** {W} · Enchantment — Aura
-- [ ] **Howl from Beyond** {X}{B} · Instant
+- [x] **Howl from Beyond** {X}{B} · Instant
 - [x] **Hurloon Minotaur** {1}{R}{R} · Creature — Minotaur
-- [ ] **Hurricane** {X}{G} · Sorcery
-- [ ] **Ice Storm** {2}{G} · Sorcery
+- [x] **Hurricane** {X}{G} · Sorcery
+- [x] **Ice Storm** {2}{G} · Sorcery
 - [ ] **Icy Manipulator** {4} · Artifact
 - [x] **Ironroot Treefolk** {4}{G} · Creature — Treefolk
 - [ ] **Jade Statue** {4} · Artifact
 - [ ] **Jayemdae Tome** {4} · Artifact — Book
-- [ ] **Jump** {U} · Instant
+- [x] **Jump** {U} · Instant
 - [x] **Lance** {W} · Enchantment — Aura
 - [ ] **Ley Druid** {2}{G} · Creature — Human Druid
 - [ ] **Living Wall** {4} · Artifact Creature — Wall
@@ -121,7 +118,6 @@ Authorable in Phase 3 with no engine change. TDD each one.
 - [x] **Mox Pearl** {0} · Artifact
 - [x] **Mox Ruby** {0} · Artifact
 - [x] **Mox Sapphire** {0} · Artifact
-- [ ] **Natural Selection** {G} · Instant
 - [ ] **Nevinyrral's Disk** {4} · Artifact
 - [ ] **Northern Paladin** {2}{W}{W} · Creature — Human Knight
 - [x] **Obsianus Golem** {6} · Artifact Creature — Golem
@@ -133,11 +129,10 @@ Authorable in Phase 3 with no engine change. TDD each one.
 - [x] **Phantom Monster** {3}{U} · Creature — Illusion
 - [x] **Plateau** — · Land — Mountain Plains
 - [ ] **Prodigal Sorcerer** {2}{U} · Creature — Human Wizard Sorcerer
-- [ ] **Psionic Blast** {2}{U} · Instant
+- [x] **Psionic Blast** {2}{U} · Instant
 - [x] **Red Ward** {W} · Enchantment — Aura
 - [ ] **Regeneration** {1}{G} · Enchantment — Aura
-- [ ] **Regrowth** {1}{G} · Sorcery
-- [ ] **Righteousness** {W} · Instant
+- [x] **Regrowth** {1}{G} · Sorcery
 - [x] **Roc of Kher Ridges** {3}{R} · Creature — Bird
 - [ ] **Rod of Ruin** {4} · Artifact
 - [ ] **Royal Assassin** {1}{B}{B} · Creature — Human Assassin
@@ -147,20 +142,19 @@ Authorable in Phase 3 with no engine change. TDD each one.
 - [x] **Scryb Sprites** {G} · Creature — Faerie
 - [ ] **Sedge Troll** {2}{R} · Creature — Troll
 - [ ] **Sengir Vampire** {3}{B}{B} · Creature — Vampire
-- [ ] **Shatter** {1}{R} · Instant
+- [x] **Shatter** {1}{R} · Instant
 - [ ] **Shivan Dragon** {4}{R}{R} · Creature — Dragon
-- [ ] **Sinkhole** {B}{B} · Sorcery
+- [x] **Sinkhole** {B}{B} · Sorcery
 - [x] **Steal Artifact** {2}{U}{U} · Enchantment — Aura
-- [ ] **Stone Rain** {2}{R} · Sorcery
-- [ ] **Stream of Life** {X}{G} · Sorcery
+- [x] **Stone Rain** {2}{R} · Sorcery
+- [x] **Stream of Life** {X}{G} · Sorcery
 - [x] **Taiga** — · Land — Mountain Forest
 - [ ] **The Hive** {5} · Artifact
-- [ ] **Tranquility** {2}{G} · Sorcery
+- [x] **Tranquility** {2}{G} · Sorcery
 - [x] **Tropical Island** — · Land — Forest Island
-- [ ] **Tsunami** {3}{G} · Sorcery
 - [x] **Tundra** — · Land — Plains Island
-- [ ] **Tunnel** {R} · Instant
-- [ ] **Twiddle** {U} · Instant
+- [x] **Tunnel** {R} · Instant
+- [x] **Twiddle** {U} · Instant
 - [x] **Underground Sea** — · Land — Island Swamp
 - [x] **Unholy Strength** {B} · Enchantment — Aura
 - [ ] **Uthden Troll** {2}{R} · Creature — Troll
@@ -184,7 +178,7 @@ Authorable in Phase 3 with no engine change. TDD each one.
 - [x] **White Ward** {W} · Enchantment — Aura
 - [ ] **Wild Growth** {G} · Enchantment — Aura
 - [ ] **Will-o'-the-Wisp** {B} · Creature — Spirit
-- [ ] **Wrath of God** {2}{W}{W} · Sorcery
+- [x] **Wrath of God** {2}{W}{W} · Sorcery
 
 ## D. New, needs engine work
 
@@ -223,12 +217,15 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Deathlace** {B} · Instant — increment 15
 - [ ] **Demonic Hordes** {3}{B}{B}{B} · Creature — Demon — increment 20, 41
 - [ ] **Disintegrate** {X}{R} · Sorcery — increment 34
+- [ ] **Drain Life** {X}{1}{B} · Sorcery — increment 54
 - [ ] **Drain Power** {U}{U} · Sorcery — increment 23, 49
 - [ ] **Earthbind** {R} · Enchantment — Aura — increment 44
 - [ ] **Evil Presence** {B} · Enchantment — Aura — increment 8
 - [ ] **False Orders** {R} · Instant — increment 11
 - [ ] **Farmstead** {W}{W}{W} · Enchantment — Aura — increment 36
 - [ ] **Fastbond** {G} · Enchantment — increment 29
+- [ ] **Fireball** {X}{R} · Sorcery — increment 53
+- [ ] **Flashfires** {3}{R} · Sorcery — increment 51
 - [ ] **Force of Nature** {2}{G}{G}{G}{G} · Creature — Elemental — increment 20
 - [ ] **Forcefield** {3} · Artifact — increment 4
 - [ ] **Fork** {R}{R} · Instant — increment 13
@@ -271,6 +268,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Meekstone** {1} · Artifact — increment 7
 - [ ] **Mesa Pegasus** {1}{W} · Creature — Pegasus — increment 14
 - [ ] **Mind Twist** {X}{B} · Sorcery — increment 17
+- [ ] **Natural Selection** {G} · Instant — increment 55
 - [ ] **Nether Shadow** {B}{B} · Creature — Spirit — increment 39
 - [ ] **Nettling Imp** {2}{B} · Creature — Imp — increment 26
 - [ ] **Nightmare** {5}{B} · Creature — Nightmare Horse — increment 1, 2
@@ -287,6 +285,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Raging River** {R}{R} · Enchantment — increment 48
 - [ ] **Red Elemental Blast** {R} · Instant — increment 9
 - [ ] **Reverse Damage** {1}{W}{W} · Instant — increment 4, 5
+- [ ] **Righteousness** {W} · Instant — increment 52
 - [ ] **Rock Hydra** {X}{R}{R} · Creature — Hydra — increment 4, 28
 - [ ] **Sacrifice** {B} · Instant — increment 46
 - [ ] **Samite Healer** {1}{W} · Creature — Human Cleric — increment 4
@@ -309,6 +308,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Time Vault** {2} · Artifact — increment 7, 18
 - [ ] **Time Walk** {1}{U} · Sorcery — increment 18
 - [ ] **Timetwister** {2}{U} · Sorcery — increment 38
+- [ ] **Tsunami** {3}{G} · Sorcery — increment 51
 - [ ] **Two-Headed Giant of Foriys** {4}{R} · Creature — Giant — increment 11
 - [ ] **Vesuvan Doppelganger** {3}{U}{U} · Creature — Shapeshifter — increment 12
 - [ ] **Veteran Bodyguard** {3}{W}{W} · Creature — Human — increment 6

@@ -1,0 +1,24 @@
+# You may tap or untap target artifact, creature, or land.
+name = "Twiddle"
+sets = ["2ed", "30a", "4bb", "4ed", "5ed", "7ed", "8ed", "ced", "cei", "itp", "lea", "leb", "ren", "rin", "rqs"]
+id = "773ad2ef-5acc-49ea-8d85-056330e87039"
+default_print = "ba01195b-05a0-4de7-807e-934e71feb8c7"
+oracle = "You may tap or untap target artifact, creature, or land."
+
+[cost]
+blue = 1
+
+[kind]
+type = "instant"
+
+# You may tap or untap target artifact, creature, or land.
+[[abilities]]
+timing = "spell"
+
+# You may tap or untap target artifact, creature, or land.
+[[abilities.effects]]
+type = "choose_one"
+options = [
+    { type = "control", mode = "tap_target", target = { permanent = { types = ["artifact", "creature", "land"] } } },
+    { type = "control", mode = "untap_target", target = { permanent = { types = ["artifact", "creature", "land"] } } },
+]

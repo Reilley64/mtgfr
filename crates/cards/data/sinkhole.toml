@@ -1,0 +1,22 @@
+# Destroy target land.
+name = "Sinkhole"
+sets = ["2ed", "30a", "ced", "cei", "ema", "g10", "lea", "leb", "me4", "prm"]
+id = "5a46ad2a-35b1-4dd5-b7c3-fec36b7c67ab"
+default_print = "485cef94-d7aa-4bb3-b2e6-61d0ccf8007e"
+oracle = "Destroy target land."
+
+[cost]
+black = 2
+
+[kind]
+type = "sorcery"
+
+# Destroy target land.
+[[abilities]]
+timing = "spell"
+
+# Destroy target land.
+[[abilities.effects]]
+type = "destroy"
+mode = "target"
+target = { permanent = { types = "land" } }

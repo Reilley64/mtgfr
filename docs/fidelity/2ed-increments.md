@@ -595,3 +595,56 @@ missing a printed characteristic with a green suite. This is a fidelity hazard f
 grind, not a card gap. *Sketch:* `#[serde(deny_unknown_fields)]` on `CardDef`'s `card-dsl`
 deserialize, then fix whatever in the existing pool it turns red.
 *Cards:* none — a guard against silently unfaithful cards.
+
+### 51. `land-subtype-permanent-filter` — 2 cards, S
+Depends on: nothing.
+A land's printed types live under `[kind].subtypes` (CR 305), but `PermanentFilter::subtypes`
+matches against `Game::effective_subtypes`, which reads only the card's **top-level** `subtypes`.
+So `filter = { types = "land", subtypes = ["Plains"] }` matches no Plains at all, and the two
+mass land-hate spells have no faithful shape. *Sketch:* fold a land's `[kind].subtypes` into
+`effective_subtypes` for battlefield lands, the way the catalog already unions the two — then the
+existing `subtypes` axis covers both halves and `CardFilter::LandWithSubtype` gets a battlefield
+twin for free.
+*Cards:* flashfires, tsunami.
+
+### 52. `blocking-creature-filter` — 1 card, S
+Depends on: nothing.
+`PermanentFilter` has an `attacking` axis but no `blocking` one, so "target blocking creature"
+can't be expressed. `anthem_static`'s own `blocking_only` already reads `CombatState::blocks` for
+Crescendo of War — this is the same read, hoisted onto the shared filter. *Sketch:* add
+`blocking: bool` to `PermanentFilter`, checked against `Game::blockers_of` in
+`permanent_matches`, and drop `anthem_static::blocking_only` in favour of it.
+*Cards:* righteousness.
+
+### 53. `evenly-divided-damage-and-per-target-cost` — 1 card, M
+Depends on: nothing.
+Fireball needs two things the DSL lacks. `DamageEffect::Target`'s `divided` splits an amount
+**as the caster chooses**; Fireball divides it *evenly, rounded down*, which is a computed split
+with no choice at all. And "this spell costs {1} more to cast for each target beyond the first"
+is a cost modification keyed to a target count chosen during casting — the cost pipeline has no
+hook that late. *Sketch:* a `divided = "evenly"` arm on the damage effect (an enum where the bool
+is now), plus a `cost_per_extra_target` field on `CardDef` consulted after targets are declared
+in the cast path.
+*Cards:* fireball.
+
+### 54. `damage-then-gain-that-much-life` — 1 card, M
+Depends on: nothing.
+Drain Life deals X damage to any target and gains life "equal to the damage dealt" — capped by
+the victim's life total / loyalty / toughness before the damage. The existing
+`each_opponent_drain` bundles its own loss+gain and can't target; there is no way to write "gain
+life equal to what the previous step actually dealt". Its "Spend only black mana on X" rider is a
+second, independent gap: `Cost` has no per-symbol colour restriction on `{X}`. *Sketch:* a
+`gain_life_equal_to_damage_dealt` effect reading the resolving ability's own damage-dealt tally
+(the cap falls out of it, since the tally is already the *actual* damage), plus an
+`x_colors = ["black"]` field on `[cost]` gating payment.
+*Cards:* drain_life.
+
+### 55. `rearrange-target-players-library-top` — 1 card, S
+Depends on: 31 (`look-at-target-players-hand`) shares its "look at another player's hidden zone"
+visibility work.
+`look_at_top` always digs the resolving controller's own library. Natural Selection looks at the
+top three of **target player's** library, reorders them, and may then have that player shuffle.
+*Sketch:* a `whose = "target_player"` axis on `look_at_top` plus an ordering choice (the pool
+already has "put back in any order" for scry/surveil — reuse that pending-choice shape) and an
+optional shuffle step.
+*Cards:* natural_selection.

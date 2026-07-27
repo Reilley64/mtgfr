@@ -1,0 +1,23 @@
+# Destroy target Wall. It can't be regenerated.
+name = "Tunnel"
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
+id = "80559618-9dd9-4987-b3bc-1a1b5537bbc5"
+default_print = "a0176176-0530-43e6-85e4-d1f4296f0697"
+oracle = "Destroy target Wall. It can't be regenerated."
+
+[cost]
+red = 1
+
+[kind]
+type = "instant"
+
+# Destroy target Wall. It can't be regenerated.
+[[abilities]]
+timing = "spell"
+
+# Destroy target Wall. It can't be regenerated.
+[[abilities.effects]]
+type = "destroy"
+mode = "target"
+target = { permanent = { types = "creature", subtypes = ["Wall"] } }
+cant_be_regenerated = true

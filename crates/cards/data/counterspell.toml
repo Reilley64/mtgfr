@@ -1,0 +1,21 @@
+# Counter target spell.
+name = "Counterspell"
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "a25", "brb", "btd", "ced", "cei", "cmm", "cmr", "dd2", "dmr", "dsc", "ema", "f05", "fbb", "fca", "g00", "gn3", "ice", "jvc", "lea", "leb", "mar", "mb2", "me2", "me4", "mh2", "mmq", "mp2", "omb", "pf24", "pf26", "plgm", "plst", "pmei", "prm", "ptc", "purl", "s99", "scd", "sld", "ss1", "sta", "sum", "tmp", "tpr", "vma", "wc00", "wc01", "wc02", "wc97", "wc98"]
+id = "cc187110-1148-4090-bbb8-e205694a39f5"
+default_print = "7c666b4b-c4ff-40ca-9d16-c76aafebaa83"
+oracle = "Counter target spell."
+
+[cost]
+blue = 2
+
+[kind]
+type = "instant"
+
+# Counter target spell.
+[[abilities]]
+timing = "spell"
+
+# Counter target spell.
+[[abilities.effects]]
+type = "misc"
+mode = "counter_target_spell"

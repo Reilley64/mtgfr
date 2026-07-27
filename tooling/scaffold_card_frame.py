@@ -123,6 +123,8 @@ def cost_block(mana_cost: str) -> list[str]:
         else:
             raise SystemExit(f"unhandled mana pip {{{pip}}} in {mana_cost}")
     lines = ["", "[cost]"]
+    if "X" in pips:
+        lines.append("x = true")
     if generic:
         lines.append(f"generic = {generic}")
     if colorless:
@@ -183,8 +185,6 @@ def frame(card: dict) -> str:
     keywords = [k.lower() for k in card.get("keywords", []) if k.lower() in BARE_KEYWORDS]
     if keywords:
         lines.append("keywords = [" + ", ".join(toml_str(k.replace(" ", "_")) for k in keywords) + "]")
-    if "{X}" in (card.get("mana_cost") or ""):
-        lines.append("x_cost = true")
     lines += cost_block(card.get("mana_cost", ""))
     lines += kind_block(card)
     return "\n".join(lines) + "\n"

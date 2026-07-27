@@ -1,0 +1,23 @@
+# Destroy all lands.
+name = "Armageddon"
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "a25", "ath", "ced", "cei", "fbb", "g04", "lea", "leb", "me1", "me4", "mp2", "p02", "por", "prm", "ptc", "s99", "sld", "soa", "sum", "v14", "vma", "wc00", "wc98"]
+id = "c9ed8b01-959a-47d6-891e-0abbdccf6e4f"
+default_print = "df2c5d5c-f1c9-4639-bf72-3f6bde554864"
+oracle = "Destroy all lands."
+
+[cost]
+generic = 3
+white = 1
+
+[kind]
+type = "sorcery"
+
+# Destroy all lands.
+[[abilities]]
+timing = "spell"
+
+# Destroy all lands.
+[[abilities.effects]]
+type = "destroy"
+mode = "all"
+filter = { types = "land" }

@@ -165,10 +165,10 @@ mod tests {
     use engine::{
         Amount, CardFilter, CardKind, ChoiceEffect, Color, Condition, ControlEffect, CopyEffect,
         Cost, CountersEffect, DamageEffect, DestroyEffect, DigEffect, DrawEffect, Effect,
-        EnterController, ExileEffect, Keyword, LandProduces, LifeEffect, Mana, ManaEffect,
-        MillEffect, MiscEffect, PermanentFilter, ProtectionScope, PumpEffect, SacrificeCost,
-        SacrificeEffect, SearchDest, SpellFilter, SpellSpeed, StaticEffect, TargetSpec, Timing,
-        TokenEffect, Trigger, TypeSet, ZoneEffect,
+        EnterController, ExileEffect, GraveyardScope, Keyword, LandProduces, LifeEffect, Mana,
+        ManaEffect, MillEffect, MiscEffect, PermanentFilter, ProtectionScope, PumpEffect,
+        SacrificeCost, SacrificeEffect, SearchDest, SpellFilter, SpellSpeed, StaticEffect,
+        TargetCount, TargetSpec, Timing, TokenEffect, Trigger, TypeSet, ZoneEffect,
     };
 
     #[test]
@@ -2376,6 +2376,265 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
             get_by_name("Control Magic").expect("in pool").enchant,
             None,
             "Control Magic's plain \"Enchant creature\" is the default"
+        );
+    }
+
+    /// The one-shot removal spells: each destroys exactly the permanent its text names, and only
+    /// Tunnel and Wrath of God deny regeneration.
+    #[test]
+    fn unlimited_removal_spells_destroy_exactly_what_they_name() {
+        let spot: &[(&str, TargetSpec, bool)] = &[
+            (
+                "Ice Storm",
+                TargetSpec::Permanent(PermanentFilter {
+                    types: TypeSet::LAND,
+                    ..PermanentFilter::default()
+                }),
+                false,
+            ),
+            (
+                "Sinkhole",
+                TargetSpec::Permanent(PermanentFilter {
+                    types: TypeSet::LAND,
+                    ..PermanentFilter::default()
+                }),
+                false,
+            ),
+            (
+                "Stone Rain",
+                TargetSpec::Permanent(PermanentFilter {
+                    types: TypeSet::LAND,
+                    ..PermanentFilter::default()
+                }),
+                false,
+            ),
+            (
+                "Shatter",
+                TargetSpec::Permanent(PermanentFilter {
+                    types: TypeSet::ARTIFACT,
+                    ..PermanentFilter::default()
+                }),
+                false,
+            ),
+            (
+                "Disenchant",
+                TargetSpec::Permanent(PermanentFilter {
+                    types: TypeSet::ARTIFACT.union(TypeSet::ENCHANTMENT),
+                    ..PermanentFilter::default()
+                }),
+                false,
+            ),
+            (
+                "Tunnel",
+                TargetSpec::Permanent(PermanentFilter {
+                    types: TypeSet::CREATURE,
+                    subtypes: &["Wall"],
+                    ..PermanentFilter::default()
+                }),
+                true,
+            ),
+        ];
+        for (name, target, cant_be_regenerated) in spot {
+            let card = get_by_name(name).unwrap_or_else(|| panic!("{name} is in the pool"));
+            assert_eq!(
+                card.abilities[0].effect,
+                Effect::Destroy(DestroyEffect::Target {
+                    target: *target,
+                    count: TargetCount::default(),
+                    cant_be_regenerated: *cant_be_regenerated,
+                }),
+                "{name} destroys what it names"
+            );
+        }
+
+        let sweepers: &[(&str, TypeSet, bool)] = &[
+            ("Armageddon", TypeSet::LAND, false),
+            ("Tranquility", TypeSet::ENCHANTMENT, false),
+            ("Wrath of God", TypeSet::CREATURE, true),
+        ];
+        for (name, types, cant_be_regenerated) in sweepers {
+            let card = get_by_name(name).unwrap_or_else(|| panic!("{name} is in the pool"));
+            assert_eq!(
+                card.abilities[0].effect,
+                Effect::Destroy(DestroyEffect::All {
+                    filter: PermanentFilter {
+                        types: *types,
+                        ..PermanentFilter::default()
+                    },
+                    cant_be_regenerated: *cant_be_regenerated,
+                }),
+                "{name} sweeps what it names"
+            );
+        }
+    }
+
+    /// Giant Growth, Jump and Howl from Beyond: the pool's plain until-end-of-turn combat tricks.
+    /// Howl is the pool's first `+X/+0`, so its power reads off the spell's own `{X}`.
+    #[test]
+    fn unlimited_combat_tricks_pump_their_target_until_end_of_turn() {
+        let cases: &[(&str, Amount, Amount, &[Keyword])] = &[
+            ("Giant Growth", Amount::Fixed(3), Amount::Fixed(3), &[]),
+            (
+                "Jump",
+                Amount::Fixed(0),
+                Amount::Fixed(0),
+                &[Keyword::Flying],
+            ),
+            ("Howl from Beyond", Amount::X, Amount::Fixed(0), &[]),
+        ];
+        for (name, power, toughness, keywords) in cases {
+            let card = get_by_name(name).unwrap_or_else(|| panic!("{name} is in the pool"));
+            assert_eq!(
+                card.abilities[0].effect,
+                Effect::Pump(PumpEffect::PumpUntilEndOfTurn {
+                    power: *power,
+                    toughness: *toughness,
+                    target: TargetSpec::Creature,
+                    keywords,
+                }),
+                "{name} pumps its target"
+            );
+        }
+        assert!(
+            get_by_name("Howl from Beyond").expect("in pool").cost.x > 0,
+            "Howl from Beyond's {{X}} is what its power reads"
+        );
+    }
+
+    /// Psionic Blast and Hurricane: the set's two damage spells that hit more than one thing.
+    #[test]
+    fn unlimited_burn_spells_deal_their_printed_damage() {
+        let blast = get_by_name("Psionic Blast").expect("Psionic Blast is in the pool");
+        let Effect::Sequence { steps } = &blast.abilities[0].effect else {
+            panic!("Psionic Blast is two damage steps");
+        };
+        assert_eq!(
+            steps.as_ref(),
+            &[
+                Effect::Damage(DamageEffect::Target {
+                    amount: Amount::Fixed(4),
+                    target: TargetSpec::AnyTarget,
+                    count: TargetCount::default(),
+                    divided: false,
+                }),
+                // The 2 to its own caster is damage, not life loss — Psionic Blast can be
+                // prevented, redirected, or seen by a damage watcher like any other 2 damage.
+                Effect::Damage(DamageEffect::ToSelf {
+                    amount: Amount::Fixed(2)
+                }),
+            ],
+            "4 to any target, then 2 to you"
+        );
+
+        let hurricane = get_by_name("Hurricane").expect("Hurricane is in the pool");
+        let Effect::Sequence { steps } = &hurricane.abilities[0].effect else {
+            panic!("Hurricane is a creature sweep plus a player sweep");
+        };
+        assert_eq!(
+            steps.as_ref(),
+            &[
+                Effect::Damage(DamageEffect::EachCreature {
+                    amount: Amount::X,
+                    opponents_only: false,
+                    filter: Some(PermanentFilter {
+                        with_flying: true,
+                        ..PermanentFilter::default()
+                    }),
+                    include_planeswalkers: false,
+                }),
+                Effect::Damage(DamageEffect::EachPlayer { amount: Amount::X }),
+            ],
+            "X to each flier and X to each player — the caster included"
+        );
+    }
+
+    /// The set's remaining one-shots, each a single non-damage effect.
+    #[test]
+    fn unlimited_utility_spells_carry_their_printed_effects() {
+        let expected: &[(&str, Effect)] = &[
+            (
+                "Counterspell",
+                Effect::Misc(MiscEffect::CounterTargetSpell {
+                    unless_pays: None,
+                    filter: SpellFilter::default(),
+                    countered_dest: None,
+                }),
+            ),
+            (
+                "Death Ward",
+                Effect::Control(ControlEffect::RegenerateShield {
+                    target: TargetSpec::Creature,
+                }),
+            ),
+            (
+                "Fog",
+                Effect::Misc(MiscEffect::PreventAllCombatDamageThisTurn),
+            ),
+            (
+                "Regrowth",
+                Effect::Zone(ZoneEffect::ReturnFromGraveyardToHand {
+                    target: TargetSpec::CardInGraveyard {
+                        whose: GraveyardScope::Yours,
+                        filter: CardFilter::AnyCard,
+                        other: false,
+                    },
+                    count: TargetCount::default(),
+                }),
+            ),
+            (
+                "Stream of Life",
+                Effect::Life(LifeEffect::TargetPlayerGains {
+                    amount: Amount::X,
+                    opponent: false,
+                }),
+            ),
+        ];
+        for (name, effect) in expected {
+            let card = get_by_name(name).unwrap_or_else(|| panic!("{name} is in the pool"));
+            assert_eq!(&card.abilities[0].effect, effect, "{name}'s printed effect");
+        }
+
+        // Demonic Tutor's unrestricted search: any card, straight to hand.
+        let tutor = get_by_name("Demonic Tutor").expect("Demonic Tutor is in the pool");
+        let Effect::Dig(DigEffect::SearchLibrary {
+            filter,
+            to_zone,
+            count,
+            ..
+        }) = tutor.abilities[0].effect
+        else {
+            panic!("Demonic Tutor searches the library");
+        };
+        assert_eq!(
+            (filter, to_zone, count),
+            (CardFilter::AnyCard, SearchDest::Hand, 1),
+            "one card of any kind, to hand"
+        );
+
+        // Twiddle's "tap or untap" is a two-mode choice, each mode carrying its own target.
+        let twiddle = get_by_name("Twiddle").expect("Twiddle is in the pool");
+        let artifact_creature_or_land = TargetSpec::Permanent(PermanentFilter {
+            types: TypeSet::ARTIFACT
+                .union(TypeSet::CREATURE)
+                .union(TypeSet::LAND),
+            ..PermanentFilter::default()
+        });
+        let Effect::ChooseOne { options } = &twiddle.abilities[0].effect else {
+            panic!("Twiddle is a choose-one");
+        };
+        assert_eq!(
+            options.as_ref(),
+            &[
+                Effect::Control(ControlEffect::TapTarget {
+                    target: artifact_creature_or_land,
+                    count: TargetCount::default(),
+                }),
+                Effect::Control(ControlEffect::UntapTarget {
+                    target: artifact_creature_or_land,
+                    count: TargetCount::default(),
+                }),
+            ],
+            "tap or untap, same legal targets either way"
         );
     }
 }
