@@ -272,6 +272,15 @@ pub enum StaticEffect {
         lose_all_abilities: bool,
     },
 
+    /// Sunglasses of Urza's "You may spend white mana as though it were red mana" (CR 609.4b):
+    /// while this permanent's controller pays a cost, each of their `from` credits may pay a `to`
+    /// pip as well as its own. Gathered by [`Game::mana_substitutions`](crate::Game) and applied
+    /// to the pool by [`ManaPool::substituted`](crate::ManaPool) before the payment planners run.
+    SpendManaAsThoughAnotherColor {
+        from: Color,
+        to: Color,
+    },
+
     TappedForManaBonus {
         #[cfg_attr(feature = "card-dsl", serde(default))]
         scope: LandTapScope,

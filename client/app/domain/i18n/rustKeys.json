@@ -264,6 +264,7 @@
   "effect.static_reduce_spell_cost",
   "effect.static_set_attached_base_pt",
   "effect.static_set_attached_types",
+  "effect.static_spend_mana_as_though_another_color",
   "effect.static_tapped_for_mana_bonus",
   "effect.static_token_replacement",
   "effect.static_trigger_doubling",

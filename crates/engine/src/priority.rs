@@ -668,7 +668,9 @@ impl Game {
                 used[idx] = true;
             }
         }
-        mana
+        // Widen last, so the estimate offers the same colors the payment planners will accept
+        // (Sunglasses of Urza) — the merges above compare colors and want the printed ones.
+        mana.substituted(&self.mana_substitutions(player))
     }
 
     /// Whether `cost` can be paid from `available` mana — `spell` is the spell being cast
@@ -760,9 +762,10 @@ impl Game {
         cost: Cost,
         spell: Option<SpellCharacteristics>,
     ) -> Option<ManaPool> {
-        self.players[player.0 as usize]
-            .mana_pool
-            .spend_plan(&cost, spell)
+        let subs = self.mana_substitutions(player);
+        let pool = self.players[player.0 as usize].mana_pool;
+        let spend = pool.substituted(&subs).spend_plan(&cost, spell)?;
+        Some(pool.unsubstitute(&subs, spend))
     }
 
     /// Can `player` still pay `cost`? The same planner [`Game::settle_payment`] runs, so a `false`
@@ -795,12 +798,23 @@ impl Game {
         exclude: Option<ObjectId>,
         spell: Option<SpellCharacteristics>,
     ) -> Option<Vec<PlannedTap>> {
-        let mut pool = self.players[player.0 as usize].mana_pool;
+        // Every credit — floating and yet to be tapped for — is widened by whatever "spend {W} as
+        // though it were {R}" statics the player controls, so the whole greedy search plans in
+        // that widened space; the plan is a list of taps, and the real spend is re-planned (and
+        // mapped back to real credits) by [`Game::plan_payment`].
+        let subs = self.mana_substitutions(player);
+        let mut pool = self.players[player.0 as usize].mana_pool.substituted(&subs);
         if pool.can_pay(&cost, spell) {
             return Some(Vec::new());
         }
 
         let (mut free, mut paid) = self.auto_tap_candidates(player, exclude);
+        for candidate in &mut free {
+            candidate.credit = candidate.credit.substituted(&subs);
+        }
+        for candidate in &mut paid {
+            candidate.credit = candidate.credit.substituted(&subs);
+        }
         let mut taps = Vec::new();
 
         while !pool.can_pay(&cost, spell) {

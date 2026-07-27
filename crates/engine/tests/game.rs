@@ -104661,3 +104661,119 @@ fn consecrate_land_puts_an_aura_already_on_the_land_into_the_graveyard() {
         "the Aura doing the closing isn't an *other* Aura"
     );
 }
+
+// "You may spend white mana as though it were red mana." (Sunglasses of Urza) — a white credit is
+// widened, not recolored: it still pays a white pip, and it now also pays a red one (CR 609.4b).
+
+/// Cast `object` for `player` paying honestly — no [`Game::fund_mana`], so the payment planner has
+/// to reach the cost from the battlefield.
+fn cast_unfunded(
+    game: &mut Game,
+    player: PlayerId,
+    object: ObjectId,
+    target: Option<Target>,
+) -> Result<Vec<Event>, Reject> {
+    game.submit(Intent::Cast {
+        player,
+        object,
+        target,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        multikicker_count: 0,
+        alternative_cost: false,
+    })
+}
+
+#[test]
+fn sunglasses_of_urza_lets_floating_white_mana_pay_a_red_spell() {
+    let mut game = Game::new();
+    let plains = game.spawn_on_battlefield(PlayerId(0), card("Plains"));
+    game.spawn_on_battlefield(PlayerId(0), card("Sunglasses of Urza"));
+    let bolt = game.spawn_in_hand(PlayerId(0), card("Lightning Bolt"));
+
+    game.submit(Intent::TapForMana {
+        player: PlayerId(0),
+        object: plains,
+    })
+    .expect("a Plains taps for {W}");
+    cast_unfunded(
+        &mut game,
+        PlayerId(0),
+        bolt,
+        Some(Target::Player(PlayerId(1))),
+    )
+    .expect("the white mana pays {R}");
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(game.life(PlayerId(1)), 17, "the bolt resolved");
+}
+
+#[test]
+fn sunglasses_of_urza_auto_taps_a_plains_for_a_red_spell() {
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Plains"));
+    game.spawn_on_battlefield(PlayerId(0), card("Sunglasses of Urza"));
+    let bolt = game.spawn_in_hand(PlayerId(0), card("Lightning Bolt"));
+
+    assert!(
+        game.can_pay_cost(PlayerId(0), card("Lightning Bolt").cost),
+        "an untapped Plains covers {{R}} through the sunglasses"
+    );
+    cast_unfunded(
+        &mut game,
+        PlayerId(0),
+        bolt,
+        Some(Target::Player(PlayerId(1))),
+    )
+    .expect("the planner taps the Plains for it");
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(game.life(PlayerId(1)), 17, "the bolt resolved");
+}
+
+#[test]
+fn white_mana_cant_pay_a_red_spell_without_sunglasses_of_urza() {
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Plains"));
+    let bolt = game.spawn_in_hand(PlayerId(0), card("Lightning Bolt"));
+
+    assert!(
+        !game.can_pay_cost(PlayerId(0), card("Lightning Bolt").cost),
+        "white mana is white mana on its own"
+    );
+    assert!(
+        cast_unfunded(
+            &mut game,
+            PlayerId(0),
+            bolt,
+            Some(Target::Player(PlayerId(1)))
+        )
+        .is_err(),
+        "the cast is rejected, and nothing is tapped for it"
+    );
+}
+
+#[test]
+fn sunglasses_of_urza_leaves_white_mana_paying_white() {
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Plains"));
+    game.spawn_on_battlefield(PlayerId(0), card("Sunglasses of Urza"));
+    let lions = game.spawn_in_hand(PlayerId(0), card("Savannah Lions"));
+
+    cast_unfunded(&mut game, PlayerId(0), lions, None).expect("{W} still pays {W}");
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.zone_of(game.current_id(lions)),
+        Zone::Battlefield,
+        "the Lions landed"
+    );
+}

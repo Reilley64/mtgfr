@@ -290,6 +290,7 @@ message_keys! {
     EFFECT_STATIC_REDUCE_SPELL_COST => "effect.static_reduce_spell_cost",
     EFFECT_STATIC_SET_ATTACHED_BASE_PT => "effect.static_set_attached_base_pt",
     EFFECT_STATIC_SET_ATTACHED_TYPES => "effect.static_set_attached_types",
+    EFFECT_STATIC_SPEND_MANA_AS_THOUGH_ANOTHER_COLOR => "effect.static_spend_mana_as_though_another_color",
     EFFECT_STATIC_TAPPED_FOR_MANA_BONUS => "effect.static_tapped_for_mana_bonus",
     EFFECT_STATIC_TOKEN_REPLACEMENT => "effect.static_token_replacement",
     EFFECT_STATIC_TRIGGER_DOUBLING => "effect.static_trigger_doubling",
@@ -1972,6 +1973,13 @@ impl Effect {
                 bool_param("has_counters", has_counters),
                 bool_param("all_players", all_players),
             ]),
+            Effect::Static(SpendManaAsThoughAnotherColor { from, to }) => {
+                MessageRef::new(MessageKey::EFFECT_STATIC_SPEND_MANA_AS_THOUGH_ANOTHER_COLOR)
+                    .with_params(vec![
+                        str_param("from", color_token(from)),
+                        str_param("to", color_token(to)),
+                    ])
+            }
             Effect::Static(TappedForManaBonus { scope, bonus_color }) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_TAPPED_FOR_MANA_BONUS)
                     .with_params(vec![

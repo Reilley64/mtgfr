@@ -2075,6 +2075,35 @@ impl Game {
         })
     }
 
+    /// Every "you may spend `from` mana as though it were `to` mana" substitution `player`
+    /// controls (Sunglasses of Urza, CR 609.4b), as `(from, to)` color pairs. The payment path
+    /// hands these to [`ManaPool::substituted`] before planning — [`Game::plan_payment`] and
+    /// [`Game::plan_auto_taps`] (so a cost can actually be paid and auto-tapped that way) and
+    /// [`Game::available_mana`] (so the playability/`{X}`-ceiling estimate agrees with them).
+    /// Empty — and so free — for every board without one.
+    pub(crate) fn mana_substitutions(&self, player: PlayerId) -> Vec<(Color, Color)> {
+        let mut subs = Vec::new();
+        for (id, object) in self.objects.iter().enumerate() {
+            let Object::Permanent(p) = object else {
+                continue;
+            };
+            if self.controller_of(id as ObjectId) != player {
+                continue;
+            }
+            for ability in card_def(p.def).abilities.iter() {
+                let (
+                    Timing::Static,
+                    Effect::Static(StaticEffect::SpendManaAsThoughAnotherColor { from, to }),
+                ) = (ability.timing, ability.effect.clone())
+                else {
+                    continue;
+                };
+                subs.push((from, to));
+            }
+        }
+        subs
+    }
+
     /// Total generic cost reduction `player`'s static [`Effect::Static(StaticEffect::ReduceSpellCost)`] abilities grant
     /// to a spell they're casting (`def`, aimed at `target`): the sum of every matching reducer
     /// they control (CR 118.9 — reduces generic mana only, so the caller floors generic at 0).

@@ -517,6 +517,8 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.static_set_attached_base_pt": (params) =>
     `Attached creature has base power and toughness ${param(params, "power")}/${param(params, "toughness")}`,
   "effect.static_set_attached_types": (params) => `Attached creature is a ${humanize(param(params, "subtypes"))}`,
+  "effect.static_spend_mana_as_though_another_color": (params) =>
+    `You may spend ${param(params, "from")} mana as though it were ${param(params, "to")} mana`,
   "effect.static_tapped_for_mana_bonus": literal(
     "Whenever you tap a land for mana, add one mana of any type that land produced",
   ),

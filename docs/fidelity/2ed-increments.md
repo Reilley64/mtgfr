@@ -467,13 +467,31 @@ through the same visibility filter that already special-cases revealed cards. No
 changes; this is a projection-layer effect.
 *Cards:* glasses_of_urza.
 
-### 32. `spend-mana-as-another-color` — 1 card, S
+### 32. `spend-mana-as-another-color` — 1 card, S — **done**
 Depends on: nothing.
 Sunglasses of Urza. The mana payment path matches colors exactly. *Sketch:* a
 `StaticEffect::SpendManaAsThoughAnotherColor { from: Color, to: Color }` consulted by the payment
 matcher as a fallback when an exact match fails. Cost *reduction* already hooks the payment path,
 so the seam exists.
 *Cards:* sunglasses_of_urza.
+
+*Landed:* the static is the sketch's, but nothing consults it "as a fallback when an exact match
+fails" — the pool already carries a credit kind that means exactly *this*. `Mana::OfColors(mask)`
+is "one mana of any colour in this set", so widening each mono `{W}` credit into `of_colors{W,R}`
+before planning **is** the permission, and every existing branch of `ManaPool::spend_plan`
+(colored pips, hybrid pips, generic) already spends that kind correctly — no matcher change at
+all. Widening rather than recolouring is what makes it a "may": the credit still pays `{W}`.
+A mask rather than an `either` pair because a colour can carry several substitutions at once, and
+`of_colors` keys on the whole set.
+The catch the sketch doesn't mention: `Event::ManaSpent` subtracts the planned spend from the
+*real* pool, so a plan made against a widened pool has to be mapped back —
+`ManaPool::unsubstitute` charges whatever the plan spent beyond the real `of_colors` stock to the
+mono colour it was widened from. That is the same substitute-plan-map-back shape `spend_plan`
+already runs for `Mana::Restricted` credits, one function up.
+Three chokes, not one: `plan_payment` (the real spend), `plan_auto_taps` (widening the starting
+pool *and* every candidate credit, so a Plains gets auto-tapped for `{R}`), and the tail of
+`available_mana` (so playability hints and the `{X}` ceiling agree with what the payment path will
+accept).
 
 ### 33. `discard-to-library-top-replacement` — 1 card, S
 Depends on: nothing.

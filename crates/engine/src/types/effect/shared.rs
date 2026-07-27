@@ -756,6 +756,7 @@ impl Effect {
             | Effect::Reveal(RevealEffect::TopCards { .. })
             | Effect::Dig(DigEffect::SearchLibrary { .. })
             | Effect::Static(StaticEffect::ReduceSpellCost { .. })
+            | Effect::Static(StaticEffect::SpendManaAsThoughAnotherColor { .. })
             | Effect::Static(StaticEffect::CounterReplacement { .. })
             | Effect::Static(StaticEffect::TokenReplacement { .. })
             | Effect::Static(StaticEffect::LifeGainReplacement { .. })

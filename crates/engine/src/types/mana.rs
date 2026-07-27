@@ -1069,6 +1069,65 @@ impl ManaPool {
     pub(crate) fn can_pay(&self, cost: &Cost, spell: Option<SpellCharacteristics>) -> bool {
         self.spend_plan(cost, spell).is_some()
     }
+
+    /// This pool with every "you may spend `from` as though it were `to`" substitution in `subs`
+    /// (Sunglasses of Urza, CR 609.4b) folded in: each mono `from` credit is *widened* into a
+    /// [`Mana::OfColors`] credit over `from` plus every color it may be spent as. Widening rather
+    /// than recoloring is the "may" — the credit still pays its own color — and the planner
+    /// already knows how to spend a restricted-set credit, so nothing downstream changes.
+    /// [`ManaPool::unsubstitute`] maps a plan made against this back onto real credits.
+    ///
+    /// ponytail: a [`Mana::Restricted`] credit keeps its base color — [`ManaPool::spend_plan`]
+    /// folds those in itself, after this has run. No card in the pool prints both restricted mana
+    /// and a substitution; widen inside `spend_plan` if one ever does.
+    pub(crate) fn substituted(&self, subs: &[(Color, Color)]) -> ManaPool {
+        if subs.is_empty() {
+            return *self;
+        }
+        let mut pool = *self;
+        for i in 0..Color::COUNT {
+            let Some(mask) = widened_mask(subs, i) else {
+                continue;
+            };
+            pool.of_colors[mask] += std::mem::take(&mut pool.colored[i]);
+        }
+        pool
+    }
+
+    /// Map a spend planned against [`ManaPool::substituted`] back onto credits this pool really
+    /// holds: whatever the plan spent beyond the real [`Mana::OfColors`] stock of a widened set is
+    /// mono mana of the color it was widened from. Without this the resulting
+    /// [`Event::ManaSpent`](crate::Event) would name mana the pool never had.
+    pub(crate) fn unsubstitute(&self, subs: &[(Color, Color)], mut spend: ManaPool) -> ManaPool {
+        if subs.is_empty() {
+            return spend;
+        }
+        for i in 0..Color::COUNT {
+            let Some(mask) = widened_mask(subs, i) else {
+                continue;
+            };
+            // Two colors can widen into the same set (W as R *and* R as W), so cap each by the
+            // mono mana of that color the plan hasn't already claimed.
+            let widened = spend.of_colors[mask]
+                .saturating_sub(self.of_colors[mask])
+                .min(self.colored[i].saturating_sub(spend.colored[i]));
+            spend.of_colors[mask] -= widened;
+            spend.colored[i] += widened;
+        }
+        spend
+    }
+}
+
+/// The [`Mana::OfColors`] set a mono credit of color index `color` widens into under `subs` — its
+/// own color plus every color it may be spent as — or `None` when no substitution touches it.
+fn widened_mask(subs: &[(Color, Color)], color: usize) -> Option<usize> {
+    let mut mask = 1usize << color;
+    for &(from, to) in subs {
+        if from.index() == color {
+            mask |= 1 << to.index();
+        }
+    }
+    (mask.count_ones() > 1).then_some(mask)
 }
 
 /// Move `need` spend-restricted credits of `base` — usable for `spell` — from `pool`'s slots

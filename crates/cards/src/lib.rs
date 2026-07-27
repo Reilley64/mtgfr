@@ -2334,6 +2334,25 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
         assert_eq!(white_ward.cost.colored[Color::White.index()], 1);
     }
 
+    /// The set's one mana-substitution artifact — a static naming the two colors and nothing
+    /// else, which is all the payment planner needs to widen the pool.
+    #[test]
+    fn unlimited_sunglasses_of_urza_spends_white_as_red() {
+        let sunglasses =
+            get_by_name("Sunglasses of Urza").expect("Sunglasses of Urza is in the pool");
+        assert_eq!(sunglasses.cost.generic, 3, "{{3}}");
+        assert!(
+            matches!(
+                sunglasses.abilities[0].effect,
+                Effect::Static(StaticEffect::SpendManaAsThoughAnotherColor {
+                    from: Color::White,
+                    to: Color::Red,
+                })
+            ),
+            "you may spend white mana as though it were red mana"
+        );
+    }
+
     /// The set's one Aura that enchants a land. Both printed halves ride a single
     /// `grant_to_attached`: the keyword and the closed door.
     #[test]
