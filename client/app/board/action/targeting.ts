@@ -189,22 +189,35 @@ export function pendingTargetOneClick(pc: PendingChoiceView): boolean {
   return false;
 }
 
+/** Object id whose art should appear at the stack aim origin for this pending choice, if any. */
+function pendingStackGhostSourceId(pc: PendingChoiceView): number | null {
+  if ("source" in pc && typeof pc.source === "number") return pc.source;
+  if (pc.kind === "choose_attach_host") return pc.attachment;
+  return null;
+}
+
 /**
- * Source permanent/spell to ghost on the stack while answering `choose_target`, when that source
- * is not already a stack entry.
+ * Source permanent/spell to ghost on the stack while answering a board-aim pending choice, when
+ * that source is not already a stack entry.
  *
- * Ability placement (Innkeeper's Talent begin-combat, etc.) pauses on ChooseTarget *before* the
- * ability is pushed (`Placement::Paused`) — the arrow aims at the stack, so the source card's art
- * must appear there the same way a local staged cast does. Spells that choose targets after they
- * are already on the stack must not duplicate the existing face.
+ * Two engine shapes leave the aim arrow on an empty stack slot:
+ * - Ability placement pauses on `choose_target` *before* the ability is pushed (`Placement::Paused`
+ *   — Innkeeper's Talent begin-combat).
+ * - Mid-resolution onboard card-picks (`proliferate`, `phase_out`, sacrifice edicts, …) pause
+ *   *after* the ability left the stack (CR 608 — `AbilityResolved` before effects run).
+ *
+ * Spells that stay on the stack until finish (`resume.spell_finish`) must not duplicate the face.
  */
 export function pendingStackGhost(
   state: VisibleState,
   pc: PendingChoiceView | null | undefined = state.pending_choice,
 ): ObjectView | null {
-  if (pc == null || pc.kind !== "choose_target") return null;
-  if (state.stack.some((entry) => entry.source === pc.source)) return null;
-  return state.objects.find((o) => o.id === pc.source) ?? null;
+  if (pc == null) return null;
+  if (pc.kind !== "choose_target" && !ONBOARD_CARD_PICK_KINDS.has(pc.kind)) return null;
+  const source = pendingStackGhostSourceId(pc);
+  if (source == null) return null;
+  if (state.stack.some((entry) => entry.source === source)) return null;
+  return state.objects.find((o) => o.id === source) ?? null;
 }
 
 /** How many faces the pile should count for aim origin while a pending board aim is live. */
@@ -214,7 +227,8 @@ export function pendingAimStackCount(
   pc: PendingChoiceView | null | undefined = state.pending_choice,
 ): number {
   if (pendingStackGhost(state, pc) != null) return stackLen + 1;
-  if (pc?.kind === "choose_target" && state.stack.some((entry) => entry.source === pc.source)) {
+  const source = pc != null ? pendingStackGhostSourceId(pc) : null;
+  if (source != null && state.stack.some((entry) => entry.source === source)) {
     return Math.max(1, stackLen);
   }
   return stackLen + 1;
@@ -717,10 +731,7 @@ export function pendingPlayerAimOverlay(pc: PendingChoiceView | null | undefined
  * `choose_target_players` uses `player-pick`; proliferate (CR 701.27) stores seats on
  * `card-pick.players` alongside permanent ids in `picked`.
  */
-export function pickedPlayersFromDraft(
-  aiming: boolean,
-  draft: PromptDraft | null | undefined,
-): ReadonlySet<number> {
+export function pickedPlayersFromDraft(aiming: boolean, draft: PromptDraft | null | undefined): ReadonlySet<number> {
   if (!aiming || draft == null) return new Set();
   if (draft.kind === "player-pick") return new Set(draft.players);
   if (draft.kind === "card-pick" && draft.players != null && draft.players.length > 0) {
