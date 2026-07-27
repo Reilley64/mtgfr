@@ -34,6 +34,15 @@ fn cost_toml_schema_lists_pip_keys() {
 }
 
 #[test]
+fn kind_toml_schema_includes_instant_and_creature() {
+    let schema = schemars::schema_for!(engine::toml_surface::KindToml);
+    let json = serde_json::to_value(schema).unwrap();
+    let text = json.to_string();
+    assert!(text.contains("instant"), "{text}");
+    assert!(text.contains("creature"), "{text}");
+}
+
+#[test]
 fn card_toml_round_trips_abrade_name_and_effect_type() {
     let raw = r#"
 name = "Abrade"
@@ -62,6 +71,32 @@ target = "creature"
     let def: engine::CardDef = toml_card.into();
     assert_eq!(def.name, "Abrade");
     assert!(matches!(def.abilities[0].effect, engine::Effect::Damage(_)));
+}
+
+#[test]
+fn card_toml_accepts_late_keys_inside_kind_table() {
+    let raw = r#"
+name = "Late Keywords"
+id = "00000000-0000-0000-0000-000000000003"
+default_print = "00000000-0000-0000-0000-000000000004"
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+keywords = ["flying"]
+"#;
+    let def: engine::CardDef = toml::from_str(raw).expect("CardDef parse");
+    assert_eq!(def.name, "Late Keywords");
+    assert!(matches!(
+        def.kind,
+        CardKind::Creature {
+            power: 2,
+            toughness: 2,
+            ..
+        }
+    ));
 }
 
 #[test]

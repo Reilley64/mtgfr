@@ -3,11 +3,11 @@ use std::sync::Arc;
 use serde::Deserialize;
 
 use crate::de::{arc_strs, one_u8};
-use crate::toml_surface::CostToml;
+use crate::toml_surface::{CostToml, KindToml};
 use crate::{
-    Ability, AlternativeCost, CardDef, CardKind, CastXMax, Color, Condition, Cost,
-    CumulativeUpkeepCost, EnterAsCopy, EscapeCost, HandActivatedAbility, Keyword, PermanentFilter,
-    SacrificeCost, Suspend, intern_card_def,
+    Ability, AlternativeCost, CardDef, CastXMax, Color, Condition, Cost, CumulativeUpkeepCost,
+    EnterAsCopy, EscapeCost, HandActivatedAbility, Keyword, PermanentFilter, SacrificeCost,
+    Suspend, intern_card_def,
 };
 
 /// One entry of `CardDef::conditional_keywords` as spelled in TOML — an
@@ -38,7 +38,7 @@ pub struct CardToml {
         deserialize_with = "crate::toml_surface::deserialize_cost_toml"
     )]
     pub cost: CostToml,
-    pub kind: CardKind,
+    pub kind: KindToml,
     /// An Aura's enchant subject restriction (CR 303.4a) — `enchant = { … }`, the same
     /// [`PermanentFilter`] table/shorthand shape as any other filter field; absent means
     /// "any creature" (every ordinary Aura).
@@ -255,7 +255,7 @@ impl From<CardToml> for CardDef {
             default_print: Box::leak(card.default_print.into_boxed_str()),
             name: Box::leak(card.name.into_boxed_str()),
             cost: card.cost.into(),
-            kind: card.kind,
+            kind: card.kind.into(),
             enchant: card.enchant,
             enchant_graveyard: card.enchant_graveyard,
             legendary: card.legendary,

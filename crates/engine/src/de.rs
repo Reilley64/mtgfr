@@ -23,9 +23,8 @@ use crate::{
     CounterAxis, CounterKind, EdictScope, Effect, EnterController, FilterController,
     GrantedAbility, LandProduces, Mana, ManaPool, Parity, PermanentFilter, ProtectionScope,
     ReanimateBecomes, SacrificeAdditionalCost, SacrificeAdditionalCostCount, SacrificeCost,
-    SpellFilter, SpellSpeed, SpendToCastPredicate, TargetCount, Timing, TokenFilter, Trigger,
-    TypeSet,
-    toml_surface::{CardToml, CostToml},
+    SpellFilter, SpendToCastPredicate, TargetCount, Timing, TokenFilter, Trigger, TypeSet,
+    toml_surface::{CardToml, CostToml, KindToml},
 };
 
 /// Token profiles loaded from `cards/data/tokens/` before deckable cards deserialize. Keyed by
@@ -422,76 +421,7 @@ impl<'de> Deserialize<'de> for AdditionalCost {
 /// (`type = "instant"`) rather than as [`CardKind::Spell`]'s `speed` field.
 impl<'de> Deserialize<'de> for CardKind {
     fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        #[derive(Deserialize)]
-        #[serde(tag = "type", rename_all = "snake_case")]
-        enum Kind {
-            Creature {
-                power: i32,
-                toughness: i32,
-                /// Additional card types (Artifact Creature, Enchantment Creature) — a list of
-                /// type names. Empty for a plain creature.
-                #[serde(default)]
-                also: TypeSet,
-            },
-            Instant,
-            Sorcery,
-            Enchantment,
-            Aura,
-            Artifact,
-            Planeswalker {
-                loyalty: i32,
-            },
-            Battle {
-                defense: i32,
-            },
-            Land {
-                /// Optional sugar for a free "{T}: Add one mana" base tap; omitted for a
-                /// fetch-only land or a land whose mana is all explicit `add_mana` abilities.
-                #[serde(default)]
-                produces: Option<LandProduces>,
-                /// Printed land types (CR 305 — "Forest", "Island", …). Empty for a land with
-                /// none (a check land, an untyped scry land).
-                #[serde(default)]
-                subtypes: Vec<String>,
-                /// The "Basic" supertype (CR 205.4a) — `basic = true` in TOML for the five
-                /// basics. Independent of `subtypes`: a nonbasic dual can carry the same type
-                /// strings without being basic.
-                #[serde(default)]
-                basic: bool,
-            },
-        }
-
-        Ok(match Kind::deserialize(d)? {
-            Kind::Creature {
-                power,
-                toughness,
-                also,
-            } => CardKind::Creature {
-                power,
-                toughness,
-                also,
-            },
-            Kind::Instant => CardKind::Spell {
-                speed: SpellSpeed::Instant,
-            },
-            Kind::Sorcery => CardKind::Spell {
-                speed: SpellSpeed::Sorcery,
-            },
-            Kind::Enchantment => CardKind::Enchantment,
-            Kind::Aura => CardKind::Aura,
-            Kind::Artifact => CardKind::Artifact,
-            Kind::Planeswalker { loyalty } => CardKind::Planeswalker { loyalty },
-            Kind::Battle { defense } => CardKind::Battle { defense },
-            Kind::Land {
-                produces,
-                subtypes,
-                basic,
-            } => CardKind::Land {
-                produces,
-                subtypes: intern_strs(subtypes),
-                basic,
-            },
-        })
+        Ok(KindToml::deserialize(d)?.into())
     }
 }
 
