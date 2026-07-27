@@ -3,6 +3,7 @@ use std::sync::Arc;
 use serde::Deserialize;
 
 use crate::de::{arc_strs, one_u8};
+use crate::toml_surface::CostToml;
 use crate::{
     Ability, AlternativeCost, CardDef, CardKind, CastXMax, Color, Condition, Cost,
     CumulativeUpkeepCost, EnterAsCopy, EscapeCost, HandActivatedAbility, Keyword, PermanentFilter,
@@ -32,8 +33,11 @@ pub struct CardToml {
     #[serde(default)]
     pub default_print: String,
     pub name: String,
-    #[serde(default)]
-    pub cost: Cost,
+    #[serde(
+        default,
+        deserialize_with = "crate::toml_surface::deserialize_cost_toml"
+    )]
+    pub cost: CostToml,
     pub kind: CardKind,
     /// An Aura's enchant subject restriction (CR 303.4a) — `enchant = { … }`, the same
     /// [`PermanentFilter`] table/shorthand shape as any other filter field; absent means
@@ -250,7 +254,7 @@ impl From<CardToml> for CardDef {
             id: Box::leak(card.id.into_boxed_str()),
             default_print: Box::leak(card.default_print.into_boxed_str()),
             name: Box::leak(card.name.into_boxed_str()),
-            cost: card.cost,
+            cost: card.cost.into(),
             kind: card.kind,
             enchant: card.enchant,
             enchant_graveyard: card.enchant_graveyard,

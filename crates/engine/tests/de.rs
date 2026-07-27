@@ -24,6 +24,16 @@ struct CountRow {
 }
 
 #[test]
+fn cost_toml_schema_lists_pip_keys() {
+    let schema = schemars::schema_for!(engine::toml_surface::CostToml);
+    let json = serde_json::to_value(schema).unwrap();
+    let props = json["properties"].as_object().expect("properties");
+    assert!(props.contains_key("generic"));
+    assert!(props.contains_key("red"));
+    assert!(props.contains_key("hybrid"));
+}
+
+#[test]
 fn card_toml_round_trips_abrade_name_and_effect_type() {
     let raw = r#"
 name = "Abrade"
@@ -62,6 +72,23 @@ hybrid = [["red", "red"]]
 "#,
     )
     .unwrap_err();
+    assert!(err.to_string().contains("must differ"));
+}
+
+#[test]
+fn card_toml_rejects_a_mono_hybrid_pair() {
+    let raw = r#"
+name = "Bad Hybrid"
+id = "00000000-0000-0000-0000-000000000001"
+default_print = "00000000-0000-0000-0000-000000000002"
+
+[cost]
+hybrid = [["red", "red"]]
+
+[kind]
+type = "artifact"
+"#;
+    let err = toml::from_str::<CardDef>(raw).unwrap_err();
     assert!(err.to_string().contains("must differ"));
 }
 

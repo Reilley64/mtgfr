@@ -133,6 +133,7 @@ impl Step {
     derive(serde::Deserialize),
     serde(rename_all = "snake_case")
 )]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 pub enum Color {
     White,
     Blue,

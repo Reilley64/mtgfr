@@ -6,7 +6,9 @@ license.workspace = true
 
 [dependencies]
 blake3 = "1"
+schemars = { version = "0.8", optional = true }
 serde = { version = "1", features = ["derive"], optional = true }
+serde_json = { version = "1", optional = true }
 tracing = { version = "0.1", default-features = false, features = ["attributes"] }
 
 [features]
@@ -15,6 +17,7 @@ tracing = { version = "0.1", default-features = false, features = ["attributes"]
 # for what it gates (DSL-shaped, Deserialize-only impls) so a future wire-protocol
 # `serde` feature can mean plain round-trippable serde support.
 card-dsl = ["dep:serde"]
+card-schema = ["card-dsl", "dep:schemars", "dep:serde_json"]
 
 # Tests load the real card pool from the `cards` crate (which depends on `engine`);
 # Cargo permits this cycle because it's only through dev-dependencies.
@@ -25,4 +28,4 @@ toml = "0.8"
 [[test]]
 name = "de"
 path = "tests/de.rs"
-required-features = ["card-dsl"]
+required-features = ["card-schema"]

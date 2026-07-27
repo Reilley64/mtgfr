@@ -24,7 +24,8 @@ use crate::{
     GrantedAbility, LandProduces, Mana, ManaPool, Parity, PermanentFilter, ProtectionScope,
     ReanimateBecomes, SacrificeAdditionalCost, SacrificeAdditionalCostCount, SacrificeCost,
     SpellFilter, SpellSpeed, SpendToCastPredicate, TargetCount, Timing, TokenFilter, Trigger,
-    TypeSet, toml_surface::CardToml,
+    TypeSet,
+    toml_surface::{CardToml, CostToml},
 };
 
 /// Token profiles loaded from `cards/data/tokens/` before deckable cards deserialize. Keyed by
@@ -288,87 +289,13 @@ impl<'de> Deserialize<'de> for CardDef {
     }
 }
 
-/// `[cost]`'s `x` key: the common case `x = true` (a single `{X}`) or an integer count of
-/// `{X}` symbols (`x = 3` for Astral Cornucopia's `{X}{X}{X}`, CR 107.3). `false`/absent means
-/// no `{X}`. Untagged so TOML's own scalar type picks the arm.
-#[derive(Deserialize)]
-#[serde(untagged)]
-enum XPips {
-    Bool(bool),
-    Count(u8),
-}
-
-impl Default for XPips {
-    fn default() -> Self {
-        XPips::Bool(false)
-    }
-}
-
-impl From<XPips> for u8 {
-    fn from(pips: XPips) -> u8 {
-        match pips {
-            XPips::Bool(false) => 0,
-            XPips::Bool(true) => 1,
-            XPips::Count(n) => n,
-        }
-    }
-}
-
 /// A `[cost]` table spells each color by name (`white = 1`) rather than as the
 /// [`Cost::colored`] WUBRG array; every field is optional.
 impl<'de> Deserialize<'de> for Cost {
     fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        #[derive(Deserialize, Default)]
-        #[serde(default, deny_unknown_fields)]
-        struct Pips {
-            generic: u8,
-            white: u8,
-            blue: u8,
-            black: u8,
-            red: u8,
-            green: u8,
-            colorless: u8,
-            x: XPips,
-            /// Hybrid mana pips (CR 107.4e — `{a/b}`): a list of two-color arrays, one per
-            /// hybrid symbol (`hybrid = [["black", "green"]]` for one `{B/G}`).
-            hybrid: Vec<[Color; 2]>,
-            /// Phyrexian mana pips (CR 107.4f — `{a/P}`): a list of colors, one per Phyrexian
-            /// symbol (`phyrexian = ["black"]` for one `{B/P}`, Vraska, Betrayal's Sting's cost).
-            phyrexian: Vec<Color>,
-            /// `[cost.additional]` — an additional cost paid alongside mana (CR 601.2f).
-            additional: AdditionalCost,
-            /// A spell's own board-derived generic reduction (Blasphemous Act's "costs {1} less
-            /// ... for each creature on the battlefield"), e.g.
-            /// `reduce_own_generic = "per_creature_on_battlefield"`.
-            reduce_own_generic: Option<Amount>,
-        }
-
-        let pips = Pips::deserialize(d)?;
-        let mut hybrid = Vec::with_capacity(pips.hybrid.len());
-        for [a, b] in pips.hybrid {
-            if a == b {
-                return Err(de::Error::custom(
-                    "a hybrid pip's two colors must differ (spell a mono pip as a colored cost)",
-                ));
-            }
-            // Normalize to WUBRG order so either spelling interns identically, mirroring
-            // Mana::Either's dual-symbol normalization below.
-            hybrid.push(if a.index() < b.index() {
-                (a, b)
-            } else {
-                (b, a)
-            });
-        }
-        Ok(Cost {
-            generic: pips.generic,
-            colored: [pips.white, pips.blue, pips.black, pips.red, pips.green],
-            colorless: pips.colorless,
-            x: pips.x.into(),
-            hybrid: intern(hybrid),
-            phyrexian: intern(pips.phyrexian),
-            additional: pips.additional,
-            reduce_own_generic: pips.reduce_own_generic,
-        })
+        let cost = CostToml::deserialize(d)?;
+        cost.validate_hybrid()?;
+        Ok(cost.into())
     }
 }
 
