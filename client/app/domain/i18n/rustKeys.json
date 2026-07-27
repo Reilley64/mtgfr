@@ -150,6 +150,7 @@
   "effect.dig_exile_target_graveyard_spell_cast_free",
   "effect.dig_exile_top_cast_matching_free",
   "effect.dig_exile_top_until_stop_cast_free_under_budget",
+  "effect.dig_look_at_target_players_hand",
   "effect.dig_look_at_top",
   "effect.dig_opponent_splits_exile_piles",
   "effect.dig_reveal_top_opponent_picks_one_to_graveyard",

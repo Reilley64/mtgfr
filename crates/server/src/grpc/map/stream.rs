@@ -1442,6 +1442,12 @@ pub fn visible_event_to_pb(event: VisibleEvent) -> Option<pb::VisibleEvent> {
                 player: u32::from(player),
             })
         }
+        VisibleEvent::LookedAtHand { player, target } => {
+            Event::LookedAtHand(pb::VisibleEventLookedAtHand {
+                player: u32::from(player),
+                target: u32::from(target),
+            })
+        }
         VisibleEvent::RevealedTopOfLibrary { player, card, def } => {
             Event::RevealedTopOfLibrary(pb::VisibleEventRevealedTopOfLibrary {
                 player: u32::from(player),

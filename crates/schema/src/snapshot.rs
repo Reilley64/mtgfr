@@ -831,10 +831,14 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
         .iter()
         .copied()
         .filter(|&id| {
-            // A hand card is private to its owner; libraries are never itemized.
+            // A hand card is private to its owner, plus whoever has looked at it (CR 701.20 —
+            // Glasses of Urza); libraries are never itemized.
             match game.zone_of(id) {
                 Zone::Library => false,
-                Zone::Hand => viewer == Some(game.owner_of(id)),
+                Zone::Hand => {
+                    viewer == Some(game.owner_of(id))
+                        || viewer.is_some_and(|v| game.has_seen_hand_card(v, id))
+                }
                 _ => true,
             }
         })
@@ -1057,6 +1061,7 @@ mod tests {
     use crate::intent::{WireAttack, WireTarget};
     use crate::test_support::{
         card_id, def, pass_until_choice, refresh_via_mana_tap, resolve_top_of_stack,
+        resolve_top_of_stack_multiplayer,
     };
     use engine::{Defender, Effect, Game, ObjectId, PlayerId, TokenEffect};
 
@@ -1379,6 +1384,52 @@ mod tests {
         assert_eq!(
             snap.players[1].library_count, 3,
             "libraries are counts only"
+        );
+    }
+
+    #[test]
+    fn a_look_at_a_hand_itemizes_it_to_the_looker_alone() {
+        // Glasses of Urza: the hand privacy gate is per-card, so the one seat that looked sees
+        // exactly the cards it saw, by name, and every other seat still sees a count.
+        let mut game = Game::with_players(3, 0);
+        let p0 = PlayerId(0);
+        let p1 = PlayerId(1);
+        let glasses = game.spawn_on_battlefield(p0, def("Glasses of Urza"));
+        let theirs = game.spawn_in_hand(p1, def("Grizzly Bears"));
+
+        game.submit(engine::Intent::ActivateAbility {
+            player: p0,
+            object: glasses,
+            ability_index: 0,
+            target: Some(engine::Target::Player(p1)),
+            sacrifice: vec![],
+            discard_cost: vec![],
+            x: 0,
+        })
+        .expect("looking at a hand is legal");
+        resolve_top_of_stack_multiplayer(&mut game);
+
+        let looker = snapshot(&game, p0);
+        assert!(
+            looker
+                .objects
+                .iter()
+                .any(|o| o.id == theirs && o.name == "Grizzly Bears"),
+            "the looker reads the card it looked at",
+        );
+        assert_eq!(looker.players[1].hand_count, 1);
+
+        let bystander = snapshot(&game, PlayerId(2));
+        assert!(
+            !bystander.objects.iter().any(|o| o.id == theirs),
+            "a seat that did not look still sees only a count",
+        );
+        assert!(
+            !spectator_snapshot(&game)
+                .objects
+                .iter()
+                .any(|o| o.id == theirs),
+            "and a spectator never sees a hand at all",
         );
     }
 

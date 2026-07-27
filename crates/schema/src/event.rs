@@ -699,6 +699,13 @@ pub enum VisibleEvent {
     LibraryShuffled {
         player: u8,
     },
+    /// `player` looked at `target`'s hand (Glasses of Urza). Public that it happened, which is
+    /// why no card ids ride along — the cards themselves reach `player` through the snapshot,
+    /// whose hand gate now itemizes them for that one seat.
+    LookedAtHand {
+        player: u8,
+        target: u8,
+    },
     /// The top card of `player`'s library was revealed — public to every player (CR 701.30),
     /// unlike a private look. The card stays on top; a later event moves it if the effect does.
     RevealedTopOfLibrary {

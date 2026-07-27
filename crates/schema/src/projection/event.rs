@@ -737,6 +737,12 @@ pub(crate) fn project_event(
         Event::LibraryHandSmoothed { player, .. } => {
             VisibleEvent::LibraryShuffled { player: player.0 }
         }
+        // That a look happened is public; what was looked at rides the snapshot's hand gate, not
+        // the log, so no redaction is needed here.
+        Event::LookedAtHand { player, target } => VisibleEvent::LookedAtHand {
+            player: player.0,
+            target: target.0,
+        },
         // A reveal is public (CR 701.30) — every viewer, including a spectator, sees it.
         Event::RevealedTopOfLibrary { player, card, def } => VisibleEvent::RevealedTopOfLibrary {
             player: player.0,

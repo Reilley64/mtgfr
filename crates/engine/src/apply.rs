@@ -2693,6 +2693,15 @@ impl Game {
             // A reveal is not a zone change (CR 701.30) — the card stays exactly where it is;
             // nothing to mutate here.
             Event::RevealedTopOfLibrary { .. } | Event::RevealedFromHand { .. } => {}
+            // A look is not a zone change either; it only records what one seat now knows. Snapshot
+            // the hand as it stands — later draws are not part of what was looked at.
+            Event::LookedAtHand { player, target } => {
+                for card in self.hand(target) {
+                    if !self.hand_cards_seen.contains(&(player, card)) {
+                        self.hand_cards_seen.push((player, card));
+                    }
+                }
+            }
             Event::PutOnBottomOfLibrary { player, card } => {
                 // Same-zone reorder, not a zone change — no new object, just move it in the vec.
                 let library = &mut self.players[player.0 as usize].library;

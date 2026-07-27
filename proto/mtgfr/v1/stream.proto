@@ -1071,6 +1071,7 @@ message VisibleEvent {
     VisibleEventBecameMonstrous became_monstrous = 134;
     VisibleEventEmblemCreated emblem_created = 135;
     VisibleEventDamagePrevented damage_prevented = 136;
+    VisibleEventLookedAtHand looked_at_hand = 137;
   }
   // 132 was VisibleEventPlayerPoisonChanged, superseded by the general player-counter
   // subsystem (`player_counters_placed`). Burned, not reused (docs/WIRE_COMPAT.md).
@@ -1809,6 +1810,13 @@ message VisibleEventTuckedToLibrary {
 // information — the library is a hidden zone.
 message VisibleEventLibraryShuffled {
   uint32 player = 1;
+}
+
+// `player` looked at `target`'s hand (Glasses of Urza). Public that it happened; the cards
+// themselves reach `player` through the snapshot's hand gate, not through this event.
+message VisibleEventLookedAtHand {
+  uint32 player = 1;
+  uint32 target = 2;
 }
 
 // The top card of `player`'s library was revealed — public to every player (CR 701.30), unlike

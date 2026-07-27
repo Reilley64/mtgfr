@@ -105773,3 +105773,73 @@ fn cursed_land_taxes_the_lands_controller_not_the_auras() {
     );
     assert_eq!(game.life(PlayerId(1)), 19, "once a round, not once a turn");
 }
+
+// "{T}: Look at target player's hand." — a private look (CR 701.20), not a reveal: the cards the
+// looker saw become known to that one seat and to nobody else, and stay known only while those
+// same objects sit in that hand.
+
+#[test]
+fn glasses_of_urza_shows_one_seat_the_hand_it_looked_at() {
+    let mut game = Game::with_players(3, 0);
+    let glasses = game.spawn_on_battlefield(PlayerId(0), card("Glasses of Urza"));
+    let seen = game.spawn_in_hand(PlayerId(1), card("Shock"));
+    let also_seen = game.spawn_in_hand(PlayerId(1), card("Grizzly Bears"));
+    let elsewhere = game.spawn_in_hand(PlayerId(2), card("Lightning Bolt"));
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: glasses,
+        ability_index: 0,
+        target: Some(Target::Player(PlayerId(1))),
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .expect("looking at a player's hand is legal");
+    resolve_top_of_stack_multiplayer(&mut game);
+
+    assert!(game.has_seen_hand_card(PlayerId(0), seen));
+    assert!(game.has_seen_hand_card(PlayerId(0), also_seen));
+    assert!(
+        !game.has_seen_hand_card(PlayerId(2), seen),
+        "the look is private to the player who took it"
+    );
+    assert!(
+        !game.has_seen_hand_card(PlayerId(0), elsewhere),
+        "only the targeted hand"
+    );
+    assert!(game.is_tapped(glasses));
+}
+
+#[test]
+fn glasses_of_urza_does_not_keep_showing_cards_drawn_after_the_look() {
+    let mut game = Game::with_players(3, 0);
+    let glasses = game.spawn_on_battlefield(PlayerId(0), card("Glasses of Urza"));
+    let seen = game.spawn_in_hand(PlayerId(1), card("Shock"));
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears")]);
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: glasses,
+        ability_index: 0,
+        target: Some(Target::Player(PlayerId(1))),
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .expect("looking at a player's hand is legal");
+    resolve_top_of_stack_multiplayer(&mut game);
+
+    game.draw_card(PlayerId(1));
+    let drawn = *game
+        .hand(PlayerId(1))
+        .iter()
+        .find(|&&id| id != seen)
+        .expect("they drew one");
+
+    assert!(game.has_seen_hand_card(PlayerId(0), seen), "still known");
+    assert!(
+        !game.has_seen_hand_card(PlayerId(0), drawn),
+        "a look is a snapshot, not a standing window onto the hand"
+    );
+}

@@ -853,8 +853,11 @@ impl Game {
             Effect::Dig(DigEffect::RevealUntilExileCastFree { filter }) => {
                 self.reveal_until_exile_cast_free(controller, source, filter, events)
             }
-            // ShuffleLibrary — see `resolution/resolve_misc.rs`.
-            Effect::Dig(DigEffect::ShuffleLibrary) => self.run_misc_choreo(effect, ctx, events),
+            // ShuffleLibrary / LookAtTargetPlayersHand — see `resolution/resolve_misc.rs`.
+            Effect::Dig(DigEffect::ShuffleLibrary)
+            | Effect::Dig(DigEffect::LookAtTargetPlayersHand) => {
+                self.run_misc_choreo(effect, ctx, events)
+            }
             // Dance with Calamity: the player-driven exile-until-stop loop, then a free cast of any
             // number of the exiled cards if the tally stayed under budget. Pauses on a
             // DanceExileMore choice.

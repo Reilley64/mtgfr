@@ -66,6 +66,7 @@ impl Game {
             batch_trigger_scratch: state::BatchTriggerScratch::default(),
             permanents_died_this_turn: 0,
             damaged_this_turn: Vec::new(),
+            hand_cards_seen: Vec::new(),
             damage_prevention_shields: Vec::new(),
             resolution_frame: crate::resolution::ResolutionFrame::default(),
             characteristics_cache: characteristics_cache::CharacteristicsCacheCell::default(),
@@ -715,6 +716,13 @@ impl Game {
             Object::Moved { to } => self.is_card_face_down(*to),
             _ => false,
         }
+    }
+
+    /// Whether `viewer` has privately looked at the hand card `card` (CR 701.20 — Glasses of
+    /// Urza) and so may still read it. A card's own owner doesn't need this; the redaction layer
+    /// gates on ownership first.
+    pub fn has_seen_hand_card(&self, viewer: PlayerId, card: ObjectId) -> bool {
+        self.hand_cards_seen.contains(&(viewer, card))
     }
 
     /// What casting the card at `id` targets (its first spell-timed targeting effect).

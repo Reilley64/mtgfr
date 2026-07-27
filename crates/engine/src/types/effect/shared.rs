@@ -725,7 +725,9 @@ impl Effect {
                 ..
             })
             // "If target player has fewer than nine poison counters …" (Vraska, Betrayal's Sting).
-            | Effect::Counters(CountersEffect::TopUpCountersOnPlayer { .. }) => TargetSpec::Player,
+            | Effect::Counters(CountersEffect::TopUpCountersOnPlayer { .. })
+            // "Look at target player's hand" (Glasses of Urza).
+            | Effect::Dig(DigEffect::LookAtTargetPlayersHand) => TargetSpec::Player,
             // Equip targets "target creature you control" (CR 702.6e). The activation gate
             // enforces it too; the spec must say so as well, or the enumeration the client
             // highlights from offers opponents' creatures the gate can only bounce.

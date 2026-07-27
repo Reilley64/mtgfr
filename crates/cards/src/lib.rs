@@ -2473,6 +2473,24 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
         }
     }
 
+    /// Glasses of Urza's whole card is one `{T}` look — the tap has to be the activation cost, not
+    /// an effect, or the artifact would look every time priority came round.
+    #[test]
+    fn unlimited_glasses_of_urza_pays_its_look_by_tapping() {
+        let glasses = get_by_name("Glasses of Urza").expect("Glasses of Urza is in the pool");
+        let [ability] = &glasses.abilities[..] else {
+            panic!("one activated ability");
+        };
+        let Timing::Activated(cost) = ability.timing else {
+            panic!("it is activated");
+        };
+        assert!(cost.taps_self);
+        assert_eq!(
+            ability.effect,
+            Effect::Dig(DigEffect::LookAtTargetPlayersHand)
+        );
+    }
+
     /// Demonic Hordes' unpaid upkeep taps itself *and* gives up a land, and the land is picked by
     /// someone else — the order matters (the tap is part of the same penalty, not a cost) and so
     /// does `opponent_chooses`, which is the only thing separating this from an ordinary edict.

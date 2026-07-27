@@ -67,6 +67,8 @@ pub enum DigEffect {
         mv_budget: Option<u32>,
     },
 
+    LookAtTargetPlayersHand,
+
     OpponentSplitsExilePiles,
 
     RevealTopOpponentPicksOneToGraveyard {

@@ -24,6 +24,20 @@ impl Game {
             ..
         } = ctx;
         match effect {
+            // Glasses of Urza's "{T}: Look at target player's hand." Nothing moves and nothing is
+            // chosen — the resolution's whole product is that one seat now knows those cards.
+            Effect::Dig(DigEffect::LookAtTargetPlayersHand) => {
+                let Some(Target::Player(looked_at)) = target else {
+                    return;
+                };
+                self.push_apply(
+                    events,
+                    Event::LookedAtHand {
+                        player: controller,
+                        target: looked_at,
+                    },
+                )
+            }
             // Creative Technique's "Shuffle your library, then reveal…" lead-in step.
             Effect::Dig(DigEffect::ShuffleLibrary) => {
                 self.push_apply(events, Event::LibraryShuffled { player: controller })

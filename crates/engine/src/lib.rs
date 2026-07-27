@@ -184,6 +184,13 @@ pub struct Game {
     /// new object (CR 400.7) and rightly won't match. Reset alongside
     /// [`permanents_died_this_turn`](Self::permanents_died_this_turn) at every Untap step.
     pub(crate) damaged_this_turn: Vec<(ObjectId, ObjectId)>,
+    /// `(looker, card)` pairs for every hand card a player has privately looked at (CR 701.20 —
+    /// Glasses of Urza). Read only by the wire redaction layer, which itemizes a hand card to its
+    /// owner and to anyone holding a pair for it. Never cleared: a card that leaves the hand is a
+    /// new object when it comes back (CR 400.7), so a stale pair can't re-expose it, and cards
+    /// drawn after the look were never in it — which is exactly what "look at" means, as against a
+    /// standing window onto the hand.
+    pub(crate) hand_cards_seen: Vec<(PlayerId, ObjectId)>,
     /// "Prevent the next N damage that would be dealt to `target` this turn" (CR 615 — Healing
     /// Salve, Samite Healer, Conservator): each entry is a *consumable* shield, `(what it
     /// protects, how many points are left on it)`. Spent at the two damage chokes

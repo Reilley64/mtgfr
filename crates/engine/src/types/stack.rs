@@ -3000,6 +3000,10 @@ pub enum Event {
         card: ObjectId,
         def: CardId,
     },
+    /// `player` looked at `target`'s hand (CR 701.20 — Glasses of Urza). *That* it happened is
+    /// public, which is why this event carries no card ids: the cards themselves become known to
+    /// `player` only, through the per-card hand privacy gate the apply step widens.
+    LookedAtHand { player: PlayerId, target: PlayerId },
     /// A card in `player`'s hand was revealed (CR 701.30 — Vineglimmer Snarl's "you may reveal a
     /// Forest or Island card from your hand"). `card` stays in hand; a reveal is not a zone change.
     RevealedFromHand {

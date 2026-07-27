@@ -176,6 +176,7 @@ message_keys! {
     EFFECT_DIG_EXILE_TARGET_GRAVEYARD_SPELL_CAST_FREE => "effect.dig_exile_target_graveyard_spell_cast_free",
     EFFECT_DIG_EXILE_TOP_CAST_MATCHING_FREE => "effect.dig_exile_top_cast_matching_free",
     EFFECT_DIG_EXILE_TOP_UNTIL_STOP_CAST_FREE_UNDER_BUDGET => "effect.dig_exile_top_until_stop_cast_free_under_budget",
+    EFFECT_DIG_LOOK_AT_TARGET_PLAYERS_HAND => "effect.dig_look_at_target_players_hand",
     EFFECT_DIG_LOOK_AT_TOP => "effect.dig_look_at_top",
     EFFECT_DIG_OPPONENT_SPLITS_EXILE_PILES => "effect.dig_opponent_splits_exile_piles",
     EFFECT_DIG_REVEAL_TOP_OPPONENT_PICKS_ONE_TO_GRAVEYARD => "effect.dig_reveal_top_opponent_picks_one_to_graveyard",
@@ -1794,6 +1795,9 @@ impl Effect {
                 .with_params(vec![amount_param("count", count)]),
             Effect::Dig(Surveil { count }) => MessageRef::new(MessageKey::EFFECT_DIG_SURVEIL)
                 .with_params(vec![int_param("count", count)]),
+            Effect::Dig(LookAtTargetPlayersHand) => {
+                MessageRef::new(MessageKey::EFFECT_DIG_LOOK_AT_TARGET_PLAYERS_HAND)
+            }
             Effect::Dig(LookAtTop {
                 count,
                 up_to,

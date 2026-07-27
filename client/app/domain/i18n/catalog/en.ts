@@ -321,6 +321,7 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     `Exile the top ${param(params, "count")} card(s); you may cast ${humanize(param(params, "filter", "a card"))} from among them without paying its mana cost. Put the rest on the bottom of your library`,
   "effect.dig_exile_top_until_stop_cast_free_under_budget": (params) =>
     `As many times as you choose, you may exile the top card of your library. If the total mana value of the cards exiled this way is ${param(params, "budget")} or less, you may cast any number of spells from among those cards without paying their mana costs`,
+  "effect.dig_look_at_target_players_hand": literal("Look at target player's hand"),
   "effect.dig_look_at_top": (params) =>
     `Look at the top ${param(params, "count")} cards, put up to ${param(params, "up_to")} ${topDest(params)}, rest on the bottom`,
   "effect.dig_opponent_splits_exile_piles": literal(

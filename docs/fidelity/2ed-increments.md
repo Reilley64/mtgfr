@@ -499,7 +499,7 @@ there plus two exhaustiveness arms — no new field, and no signature change to
 `spell_matches_filter`'s call sites, which have no X of their own and so answer `false`.
 *Cards:* spell_blast.
 
-### 31. `look-at-target-players-hand` — 1 card, S
+### 31. `look-at-target-players-hand` — 1 card, S — **done**
 Depends on: nothing.
 Glasses of Urza. The engine reveals cards and looks at library tops but has no "look at a hand"
 — it is purely a visibility grant to one player, with the server-side per-player filter being the
@@ -507,6 +507,16 @@ thing that has to change. *Sketch:* a one-shot `Effect::LookAtHand { target_play
 the activating player's projection of that hand for the duration of the resolution, threaded
 through the same visibility filter that already special-cases revealed cards. No game state
 changes; this is a projection-layer effect.
+*Landed:* the sketch's "widen the projection for the duration of the resolution" was the wrong
+unit. A look has no duration — you see the cards and you keep knowing them, so the state it leaves
+is a set of `(looker, card)` pairs, and the hand gate in `snapshot` becomes per-card instead of
+per-hand. That is both smaller and more faithful than a hand-wide grant: cards drawn after the look
+were never looked at, and a card that leaves the hand and comes back is a new object (CR 400.7), so
+the set never needs clearing and can't re-expose anything. The pairs are recorded by an
+`Event::LookedAtHand { player, target }` that carries no card ids at all — *that* a look happened is
+public at a table, what was in the hand is not, so the log stays honest for every seat with no
+redaction arm to get wrong. No pending choice and no DTO: the cards simply appear in the looker's
+next snapshot.
 *Cards:* glasses_of_urza.
 
 ### 32. `spend-mana-as-another-color` — 1 card, S — **done**
