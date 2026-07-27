@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { webDbSpanAttrs } from "../../../server/db/client";
 import {
   assertNoForbiddenKeys,
   dbAttrs,
@@ -40,6 +41,17 @@ describe("otel semconv dictionary", () => {
     expect(attrs).toEqual({
       "db.system": "postgresql",
       "db.operation.name": "SELECT",
+      "db.namespace": "mtgfr_web",
+    });
+    assertNoForbiddenKeys(attrs);
+  });
+
+  it("builds hand-set BFF db span attrs without query text", () => {
+    const attrs = webDbSpanAttrs();
+
+    expect(attrs).toEqual({
+      "db.system": "postgresql",
+      "db.operation.name": "QUERY",
       "db.namespace": "mtgfr_web",
     });
     assertNoForbiddenKeys(attrs);

@@ -80,6 +80,11 @@ Outbound BFF gRPC calls from `client/app/domain/wire/grpcClient.ts` open client 
 `GrpcStatusError` failures annotate only `rpc.grpc.status_code` and `exception.type`; gRPC status
 messages, request bodies, and intent payloads stay out of span attributes.
 
+BFF `mtgfr_web` database work that crosses the temporary `runWebDb` Promise bridge opens a
+`db.mtgfr_web` span with hand-set `db.system=postgresql`, `db.operation.name=QUERY`, and
+`db.namespace=mtgfr_web` attributes only. The BFF does not attach SQL strings, `db.query.text`, or
+`db.statement` to DB spans.
+
 ### API (OTEL)
 
 **API:** `tracing` + `opentelemetry-otlp` (HTTP export) in `crates/server`. Engine
@@ -135,6 +140,8 @@ still drives `tracing` / fmt output.
   require Alloy.
 - BFF outbound gRPC semantic-convention spans are covered by
   `client/app/domain/wire/grpcClient.semconv.test.ts`.
+- BFF DB semantic-convention attrs are covered by
+  `client/app/domain/otel/semconv.test.ts`.
 - Build metadata consumed by BFF OTEL resource attributes is covered by
   `client/app/domain/build-meta.test.ts` ([shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md)).
 
