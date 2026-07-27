@@ -677,4 +677,135 @@ describe("stack flight settle handoff", () => {
     );
     expect(afterSettle.flights.size).toBe(0);
   });
+
+  it("FlightsSynced hands off a settled held stack flight once the spell is on the stack", () => {
+    // After retarget, the Mount parks at the face with hold still set. Without a handoff on
+    // FlightsSynced, the screen-space flight stays until the next game sync and tracks the camera.
+    const handId = 7;
+    const spellId = 42;
+    const bolt = spell(spellId, "Lightning Bolt");
+    const board0 = { ...initialBoardModel(), viewport: { ...BOARD_VIEWPORT } };
+    const face = restingStackFace(board0, 1, 0);
+    const scale = stackFlightScale(board0.camera.zoom);
+    const parked = {
+      ...spawnFlight({
+        id: spellId,
+        print: bolt.print ?? "",
+        name: bolt.name,
+        x: face.x,
+        y: face.y,
+        scale,
+        targetX: face.x,
+        targetY: face.y,
+        targetScale: scale,
+        kind: "stack",
+        fromCardId: handId,
+        hold: true,
+      }),
+      phase: "settled" as const,
+    };
+    const fold = gameFold(
+      state({
+        objects: [bolt],
+        stack: [{ controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: spellId }],
+      }),
+    );
+    const [after] = updateBoard(
+      {
+        ...board0,
+        flights: new Map([[spellId, parked]]),
+        handHidden: new Set([handId]),
+        hideCardIds: new Set([spellId]),
+        ownedIds: new Set([spellId]),
+      },
+      FlightsSynced({ flights: [parked], exitFx: [], now: 900 }),
+      fold,
+      null,
+    );
+    expect(after.flights.size).toBe(0);
+    expect(after.hideCardIds.size).toBe(0);
+    expect(after.handHidden.has(handId)).toBe(false);
+  });
+
+  it("FlightsSynced keeps a settled held seed when the spell is not on the stack yet", () => {
+    const handId = 7;
+    const board0 = { ...initialBoardModel(), viewport: { ...BOARD_VIEWPORT } };
+    const face = restingStackFace(board0, 1, 0);
+    const scale = stackFlightScale(board0.camera.zoom);
+    const parked = {
+      ...spawnFlight({
+        id: handId,
+        print: "bolt-print",
+        name: "Lightning Bolt",
+        x: face.x,
+        y: face.y,
+        scale,
+        targetX: face.x,
+        targetY: face.y,
+        targetScale: scale,
+        kind: "stack",
+        fromCardId: handId,
+        hold: true,
+      }),
+      phase: "settled" as const,
+    };
+    const [after] = updateBoard(
+      {
+        ...board0,
+        flights: new Map([[handId, parked]]),
+        handHidden: new Set([handId]),
+        hideCardIds: new Set([handId]),
+        ownedIds: new Set([handId]),
+      },
+      FlightsSynced({ flights: [parked], exitFx: [], now: 900 }),
+      gameFold(state()),
+      null,
+    );
+    expect(after.flights.has(handId)).toBe(true);
+    expect(after.handHidden.has(handId)).toBe(true);
+  });
+
+  it("FlightsSynced hands off a settled held land flight once the permanent is on the battlefield", () => {
+    const handId = 9;
+    const permanentId = 90;
+    const forest: ObjectView = {
+      ...spell(permanentId, "Forest"),
+      kind: { kind: "land", colors: [] },
+      zone: ZONE.Battlefield,
+      print: "forest-print",
+    };
+    const board0 = { ...initialBoardModel(), viewport: { ...BOARD_VIEWPORT } };
+    const parked = {
+      ...spawnFlight({
+        id: permanentId,
+        print: forest.print ?? "",
+        name: forest.name,
+        x: 400,
+        y: 300,
+        scale: 1,
+        targetX: 400,
+        targetY: 300,
+        targetScale: 1,
+        kind: "battlefield",
+        fromCardId: handId,
+        hold: true,
+      }),
+      phase: "settled" as const,
+    };
+    const [after] = updateBoard(
+      {
+        ...board0,
+        flights: new Map([[permanentId, parked]]),
+        handHidden: new Set([handId]),
+        hideCardIds: new Set([permanentId]),
+        ownedIds: new Set([permanentId]),
+      },
+      FlightsSynced({ flights: [parked], exitFx: [], now: 900 }),
+      gameFold(state({ objects: [forest] })),
+      null,
+    );
+    expect(after.flights.size).toBe(0);
+    expect(after.hideCardIds.size).toBe(0);
+    expect(after.handHidden.has(handId)).toBe(false);
+  });
 });

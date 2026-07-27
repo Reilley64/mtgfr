@@ -1240,11 +1240,28 @@ function submitPendingHandPick(
   return togglePendingObjectAimPick(idle, fold, pc, objectId);
 }
 
+/** True when the flight id already names the resting destination object (post-rebind). */
+function authorityOwnsFlightDestination(fold: BoardFold | null, flight: CardFlight): boolean {
+  const state = fold?.state;
+  if (state == null) return false;
+
+  if (flight.kind === "stack") {
+    return state.stack.some((entry) => entry.source === flight.id);
+  }
+
+  if (flight.kind === "battlefield") {
+    return state.objects.some((object) => object.id === flight.id && object.zone === ZONE.Battlefield);
+  }
+
+  return false;
+}
+
 function applyFlightsSynced(
   model: BoardModel,
   flightsIn: readonly CardFlight[],
   exitFxIn: readonly ExitFx[],
   now: number,
+  fold: BoardFold | null,
 ): BoardModel {
   const flights = new Map<number, CardFlight>();
   const exitFx = new Map<number, ExitFx>(exitFxIn.map((fx) => [fx.id, fx]));
@@ -1253,6 +1270,14 @@ function applyFlightsSynced(
 
   for (const flight of flightsIn) {
     if (flight.fromCardId != null) retainedSourceIds.add(flight.fromCardId);
+
+    // Settled + hold with authority already at the destination: hand off now. Keeping the
+    // screen-space flight would hide the resting face and track the camera until the next
+    // provenance sync.
+    if (flight.phase === "settled" && flight.hold === true && authorityOwnsFlightDestination(fold, flight)) {
+      if (flight.fromCardId != null) handHidden.delete(flight.fromCardId);
+      continue;
+    }
 
     // Keep held seeds after they park at the aim pose so stack/land sync can rebind them
     // instead of spawning a second flight from the avatar.
@@ -2199,7 +2224,7 @@ export function updateBoard(
     case "BoardPointerUp":
       return pointerUpModel(model, fold, tableId, message.x, message.y);
     case "FlightsSynced":
-      return [applyFlightsSynced(model, message.flights, message.exitFx, message.now), []];
+      return [applyFlightsSynced(model, message.flights, message.exitFx, message.now, fold), []];
     case "HandActionActivated": {
       const x = message.x ?? model.viewport.width / 2;
       const y = message.y ?? model.viewport.height / 2;
