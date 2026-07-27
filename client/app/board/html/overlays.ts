@@ -107,7 +107,6 @@ export function boardOverlays(
       : null,
     seatedViewer ? mulliganOverlayView(state) : null,
     seatedViewer ? mulliganWaitingView(state) : null,
-    seatedViewer && !chrome.show ? priorityBarView(board, state, tableId) : null,
     seatedViewer && !chrome.show ? promptsView(board, state, tableId) : null,
     seatedViewer && !chrome.show ? activationMenuView(board, state) : null,
     seatedViewer ? concedeButtonView() : null,
@@ -125,6 +124,8 @@ export function boardOverlays(
         return null;
       })(),
     }),
+    // After pile/prompt backdrops so equal-z siblings still keep actions on top; simple prompts use z-45.
+    seatedViewer && !chrome.show ? priorityBarView(board, state, tableId) : null,
     resultOverlayView(state, board.resultSeen),
     // Inspect stays off during undecided mulligans so the opening-hand overlay is a true hard lock.
     undecidedMulligan
