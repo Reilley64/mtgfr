@@ -136,6 +136,7 @@ export function extractProvenance(
         "damage_cleared",
         "damage_dealt_to_player",
         "damage_marked",
+        "damage_prevented",
         "deathtouch_marked",
         "delayed_trigger_scheduled",
         "delayed_triggers_fired",
@@ -159,6 +160,7 @@ export function extractProvenance(
         "leaves_illusion_minted",
         "library_shuffled",
         "life_changed",
+        "looked_at_hand",
         "lost_summoning_sickness",
         "loyalty_activated",
         "loyalty_changed",
@@ -244,6 +246,12 @@ export function describe(e: VisibleEvent, state: VisibleState): string | null {
         `${name(e.source)}'s ability triggers${e.target != null ? ` → ${t(e.target)}` : ""}`,
       damage_marked: (e) => `${name(e.object)} takes ${e.amount}${e.source != null ? ` from ${name(e.source)}` : ""}`,
       damage_dealt_to_player: (e) => `${name(e.source)} deals ${e.amount} damage to ${p(e.player)}`,
+      // Prevention leaves no other trace: the shield eats the points before any damage_marked or
+      // life_changed would have been minted, so this line is the only thing that says it happened.
+      damage_prevented: (e) => {
+        const to = e.object != null ? name(e.object) : e.player != null ? p(e.player) : null;
+        return to == null ? null : `${e.amount} damage to ${to} is prevented`;
+      },
       life_changed: (e) => `${p(e.player)} ${e.amount < 0 ? "loses" : "gains"} ${Math.abs(e.amount)} life`,
       moved_to_graveyard: (e) => `${name(e.card)} dies`,
       moved_to_command_zone: (e) => `${name(e.card)} returns to the command zone`,
@@ -252,6 +260,7 @@ export function describe(e: VisibleEvent, state: VisibleState): string | null {
       attacker_declared: (e) =>
         `${name(e.object)} attacks ${e.defender_planeswalker != null ? name(e.defender_planeswalker) : p(e.defender)}`,
       blocker_declared: (e) => `${name(e.blocker)} blocks ${name(e.attacker)}`,
+      looked_at_hand: (e) => `${p(e.player)} looks at ${p(e.target)}'s hand`,
       card_drawn: (e) => `${p(e.player)} draws${e.card ? ` ${e.card}` : " a card"}`,
       // Decking out is the one loss with no visible cause on the board — no lethal damage, no
       // commander damage, just a library that ran out. Say it, or the `player_lost` line below
