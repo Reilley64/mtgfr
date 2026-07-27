@@ -1,4 +1,4 @@
-//! `mtgfr.v1.Tables` — `Seed` builds a live `Table` from BFF-resolved seats.
+//! `mtgfr.v1.TablesService` — `Seed` builds a live `Table` from BFF-resolved seats.
 
 use axum::http::StatusCode;
 use tonic::{Request, Response, Status};
@@ -31,7 +31,7 @@ fn status_of(code: StatusCode) -> Status {
 }
 
 #[tonic::async_trait]
-impl pb::tables_server::Tables for TablesSvc {
+impl pb::tables_service_server::TablesService for TablesSvc {
     async fn seed(
         &self,
         request: Request<pb::SeedRequest>,

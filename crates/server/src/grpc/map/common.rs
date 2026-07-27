@@ -291,12 +291,12 @@ mod tests {
     #[test]
     fn heartbeat_round_trips() {
         let heartbeat = pb::Heartbeat {};
-        let frame = pb::StreamFrame {
-            frame: Some(pb::stream_frame::Frame::Heartbeat(heartbeat)),
+        let frame = pb::StreamResponse {
+            frame: Some(pb::stream_response::Frame::Heartbeat(heartbeat)),
         };
         assert!(matches!(
             frame.frame,
-            Some(pb::stream_frame::Frame::Heartbeat(_))
+            Some(pb::stream_response::Frame::Heartbeat(_))
         ));
     }
 

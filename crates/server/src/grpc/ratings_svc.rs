@@ -1,4 +1,4 @@
-//! `mtgfr.v1.Ratings` — leaderboard reads over the persistent user ratings table.
+//! `mtgfr.v1.RatingsService` — leaderboard reads over the persistent user ratings table.
 
 use tonic::{Request, Response, Status};
 
@@ -18,17 +18,17 @@ impl RatingsSvc {
 }
 
 #[tonic::async_trait]
-impl pb::ratings_server::Ratings for RatingsSvc {
+impl pb::ratings_service_server::RatingsService for RatingsSvc {
     async fn get_leaderboard(
         &self,
         request: Request<pb::GetLeaderboardRequest>,
-    ) -> Result<Response<pb::Leaderboard>, Status> {
+    ) -> Result<Response<pb::GetLeaderboardResponse>, Status> {
         auth_ctx::authenticate(&self.state, &request).await?;
         let req = request.into_inner();
         let (rows, total) = ratings::leaderboard(&self.state.db, req.limit, req.offset)
             .await
             .map_err(|_| Status::internal("leaderboard query failed"))?;
-        Ok(Response::new(pb::Leaderboard {
+        Ok(Response::new(pb::GetLeaderboardResponse {
             entries: rows
                 .into_iter()
                 .enumerate()

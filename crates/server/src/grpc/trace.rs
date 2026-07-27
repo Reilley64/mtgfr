@@ -22,7 +22,7 @@ impl Extractor for HeaderExtractor<'_> {
     }
 }
 
-/// Span for an inbound gRPC HTTP/2 request path (e.g. `/mtgfr.v1.Game/SubmitIntent`).
+/// Span for an inbound gRPC HTTP/2 request path (e.g. `/mtgfr.v1.GameService/SubmitIntent`).
 pub fn span_for_http_request(path: &str, headers: &http::HeaderMap) -> tracing::Span {
     let span = tracing::info_span!(
         "grpc",
@@ -92,7 +92,7 @@ mod tests {
                 .parse()
                 .unwrap(),
         );
-        let span = span_for_http_request("/mtgfr.v1.Auth/GetMe", &headers);
+        let span = span_for_http_request("/mtgfr.v1.AuthService/GetMe", &headers);
         // Does not panic; parent link is best-effort when a global tracer is absent.
         let _ = span.enter();
     }
