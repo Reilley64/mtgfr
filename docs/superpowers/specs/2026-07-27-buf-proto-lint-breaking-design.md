@@ -45,6 +45,7 @@ Do not replace tonic Rust codegen, Buf Schema Registry, or remote plugins.
 | Breaking baseline (PRs) | `origin/main` via `buf breaking --against '.git#branch=origin/main'` |
 | Breaking on `main` push | Lint only; breaking is vacuous against self — do **not** require a tag baseline on main |
 | Major / hard-break hatch | Skip `buf breaking` when the **PR title** is an Angular major (`!:` bang **or** contains `BREAKING CHANGE`) |
+| Shipped hatch detection | `verify-wire` also accepts `BREAKING CHANGE` in the **PR body** (squash commit footer); commitlint forbids `!:` in subjects |
 | First implement PR shape | **One major PR** (`feat!:` …): STANDARD renames + call-site/codegen updates + turn on `verify-wire` / `just proto-*` together |
 | Preferred later hard-break shape | New package path `mtgfr/v2` when practical; in-place breaks only via the major-title hatch |
 | Tooling source | Existing `@bufbuild/buf` from `client/` (`bun install`); no new GHCR image bake for this work |

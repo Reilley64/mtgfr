@@ -112,8 +112,9 @@ breaks should prefer a package/path bump such as `mtgfr/v2`.
 
 The proto services use Buf STANDARD `*Service` names, which are also the gRPC path names.
 
-**`AuthService`** — `Signup`, `Login`, `Logout`, `GetMe`. Signup/login return `AuthSession` carrying
-the session token; the BFF sets it as an HttpOnly cookie (`session`) on the browser. `GetMe`
+**`AuthService`** — `Signup`, `Login`, `Logout`, `GetMe`. Signup/login return `SignupResponse` /
+`LoginResponse` carrying the session token; the BFF sets it as an HttpOnly cookie (`session`) on
+the browser. `GetMe`
 resolves the token from `x-session-token` metadata.
 
 **`DecksService`** — `Create`, `List`, `Get`, `Update`, `Delete`. All operations require auth. Decks
@@ -123,7 +124,8 @@ list with Printing UUIDs.
 **`RatingsService`** — `GetLeaderboard`. Requires auth. `limit == 0` uses the default page size, values
 above the server max clamp to that max, and `offset` pages the global ratings table ordered by
 `rating DESC`, `rating_set_at ASC`, then `id ASC`. Each `LeaderboardEntry` carries `rank`,
-`user_id`, `username`, and `rating`; `Leaderboard.total` carries the full row count for paging.
+`user_id`, `username`, and `rating`; `GetLeaderboardResponse.total` carries the full row count
+for paging.
 
 **`CardsService`** — `Catalog`, `Search`, `Lookup`. No auth required. `Search` accepts a freetext
 query `q` plus `limit`/`offset`; `Lookup` accepts a list of card ids for deck hydration.
@@ -132,7 +134,7 @@ printing, and optional `oracle` and `approximates` fields.
 
 **`GameService`** — `Stream`, `SubmitIntent`, `SetYield`, `SetTurnYield`, `SetStackDwell`. Auth
 required for `SubmitIntent` and the yield/dwell setters. `Stream` is a server-streaming RPC;
-it sends `StreamFrame` (snapshot → deltas → heartbeats). Intent and yield routes carry
+it sends `StreamResponse` (snapshot → deltas → heartbeats). Intent and yield routes carry
 `table_id` in the path (not just the body) for BFF routing via `table_routes`.
 
 **`TablesService`** — `Seed`. Called by the BFF Start handler, never by the browser directly. Seeds a

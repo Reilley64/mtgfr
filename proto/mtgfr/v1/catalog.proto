@@ -37,7 +37,7 @@ message DeckDetail {
   repeated DeckCardEntry cards = 5;
 }
 
-// Body for creating or updating a deck (nested in DecksService Create/Update requests).
+// Body for updating a deck (nested in DecksService UpdateRequest; CreateRequest inlines fields).
 message DeckSaveBody {
   string name = 1;
   // Commander Card id (Scryfall oracle id).
