@@ -1120,18 +1120,19 @@ test("pay_cost with discard emits discard_cost on pay and omit on decline", () =
     toughness: 1,
     zone: ZONE.Hand,
   };
+  const pending = {
+    kind: "pay_cost" as const,
+    can_pay: true,
+    cost: { colored: [] as number[], generic: 1 },
+    discard_count: 1,
+    discard_choices: [11],
+    label: testMessageRef("Pay 1 and discard"),
+    player: 0,
+    source: 1,
+  };
   const s = state({
     objects: [fodder],
-    pending_choice: {
-      kind: "pay_cost",
-      can_pay: true,
-      cost: { colored: [], generic: 1 },
-      discard_count: 1,
-      discard_choices: [11],
-      label: testMessageRef("Pay 1 and discard"),
-      player: 0,
-      source: 1,
-    },
+    pending_choice: pending,
   });
   const decline = clickPromptIntent(s, Scene.click(Scene.testId("prompt-decline")));
   expect(decline).toEqual([{ kind: "pay_optional_cost", player: 0, pay: false }]);
@@ -1147,7 +1148,7 @@ test("pay_cost with discard emits discard_cost on pay and omit on decline", () =
     Scene.with(
       viewModel(s, {
         ...initialBoardModel(),
-        pendingChoiceKey: choiceDraftKey(s.pending_choice!),
+        pendingChoiceKey: choiceDraftKey(pending),
         promptDraft: { kind: "card-pick", picked: [11], filter: "" },
       }),
     ),

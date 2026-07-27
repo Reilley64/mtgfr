@@ -119,11 +119,14 @@ impl Game {
                         },
                     },
                 );
-            } else if let Effect::Dig(DigEffect::SearchLibrary { .. }) = effect {
-                // Resolution-time "may search" (`DigEffect::SearchLibrary::optional`): accepting
-                // re-runs the (now non-optional) search under the answering player as part of the
-                // still-resolving ability — not a fresh stack object. Declining is handled below
-                // (continue an AllPlayers fan-out if one is live; otherwise a quiet no-op).
+            } else if matches!(resume, MayYesNoResume::ResolveInline)
+                && matches!(effect, Effect::Dig(DigEffect::SearchLibrary { .. }))
+            {
+                // Mid-resolution "may search" (`DigEffect::SearchLibrary::optional` +
+                // `MayYesNoResume::ResolveInline`): accepting re-runs the (now non-optional)
+                // search under the answering player as part of the still-resolving ability —
+                // not a fresh stack object. Ability-level optional tutors (Borderland Ranger)
+                // keep `MayYesNoResume::Default` and fall through to `place_targeted_ability`.
                 self.run(
                     effect,
                     ResolveCtx {
@@ -142,9 +145,12 @@ impl Game {
                 // but nothing to aim at, so it fizzles harmlessly.
                 self.place_targeted_ability(player, source, effect, 0, false, &mut events);
             }
-        } else if matches!(effect, Effect::Dig(DigEffect::SearchLibrary { .. })) {
-            // Declining an optional search still advances an AllPlayers fan-out (Veteran Explorer
-            // style) so later seats aren't dropped; a single-searcher decline is a no-op.
+        } else if matches!(resume, MayYesNoResume::ResolveInline)
+            && matches!(effect, Effect::Dig(DigEffect::SearchLibrary { .. }))
+        {
+            // Declining a mid-resolution optional search still advances an AllPlayers fan-out
+            // (Veteran Explorer style) so later seats aren't dropped; a single-searcher decline
+            // is a no-op. Ability-level optional declines (Default resume) do nothing here.
             self.continue_search_fanout();
         }
         Ok(events)

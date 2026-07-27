@@ -139,6 +139,9 @@ impl Game {
                                 count_amount: None,
                                 optional: false,
                             }),
+                            // Mid-resolution may-search: accept runs the search inline (not as a
+                            // new stack object). Ability-level optional tutors keep Default.
+                            resume: crate::MayYesNoResume::ResolveInline,
                         },
                     );
                     return;

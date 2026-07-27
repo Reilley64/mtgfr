@@ -949,13 +949,17 @@ describe("answerFromDraft builds accepted intents", () => {
         player: 0,
         source: 1,
       },
-      declineAnswer({
-        kind: "choose_exiled_dig_to_cast_free",
-        items: [{ id: 34, label: "Spirit Mantle" }],
-        cast_targets: [{ id: 7, label: "Bear" }],
-        player: 0,
-        source: 1,
-      })!,
+      (() => {
+        const declined = declineAnswer({
+          kind: "choose_exiled_dig_to_cast_free",
+          items: [{ id: 34, label: "Spirit Mantle" }],
+          cast_targets: [{ id: 7, label: "Bear" }],
+          player: 0,
+          source: 1,
+        });
+        if (declined == null) throw new Error("expected decline answer for dig cast");
+        return declined;
+      })(),
     )).toEqual({
       kind: "choose_exiled_dig_to_cast_free",
       choice: null,

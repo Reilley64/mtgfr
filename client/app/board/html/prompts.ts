@@ -1506,7 +1506,10 @@ function cardPickForKind(
       ].filter((v): v is Html => v !== null),
     );
   }
-  if (pendingBoardTargetMode(pending, state) != null || pendingDigCastHostMode(pending, state, board.promptDraft) != null) {
+  if (
+    pendingBoardTargetMode(pending, state) != null ||
+    pendingDigCastHostMode(pending, state, board.promptDraft) != null
+  ) {
     const decline = declineAnswer(pending);
     const digHost = pendingDigCastHostMode(pending, state, board.promptDraft);
     const label =

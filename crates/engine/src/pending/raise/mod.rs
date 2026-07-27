@@ -57,6 +57,9 @@ pub(crate) enum ChoiceRequest {
         player: crate::PlayerId,
         source: crate::ObjectId,
         effect: crate::Effect,
+        /// [`crate::MayYesNoResume::Default`] for ability-level optional triggers;
+        /// [`crate::MayYesNoResume::ResolveInline`] for mid-resolution may-search.
+        resume: crate::MayYesNoResume,
     },
     DivideSpellDamage {
         player: crate::PlayerId,

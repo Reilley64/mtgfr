@@ -800,7 +800,14 @@ pub enum SplittingContinuation {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MayYesNoResume {
     /// The default yes/no path: a "yes" runs the baked-in effect and a "no" declines it.
+    /// Ability-level `optional` triggers (Borderland Ranger) use this — accepting places the
+    /// ability on the stack rather than resolving it inline.
     Default,
+    /// Mid-resolution "may" (White Orchid Phantom's `SearchLibrary.optional`): a "yes" continues
+    /// the still-resolving ability by running `effect` inline; a "no" skips it (and walks an
+    /// AllPlayers search fan-out forward when one is live). Distinct from [`Self::Default`], which
+    /// would re-place a SearchLibrary effect as a new stack object.
+    ResolveInline,
     /// Trade Secrets' repeat gate: "yes" draws two for `player`, then pauses `caster` on the next
     /// `MayDrawUpTo`.
     TradeSecretsRepeat { caster: PlayerId, max: u8 },

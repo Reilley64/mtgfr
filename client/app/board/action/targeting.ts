@@ -8,8 +8,8 @@
 //   - graveyard/exile cards are collapsed into a single pile card, and stack objects live in the
 //     DOM overlay, so neither can be clicked → offer them as a picker instead
 
-import { colors } from "~/design-tokens.generated";
 import type { PromptDraft } from "~/choice";
+import { colors } from "~/design-tokens.generated";
 import type { ActionView, PendingChoiceView, VisibleState, WireTarget } from "~/wire/types";
 import { formatMessage } from "../../domain/i18n/message";
 import { ZONE } from "../geometry/layout";
