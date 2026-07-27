@@ -1,8 +1,11 @@
+import { readFileSync } from "node:fs";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import type { H3Event } from "nitro/h3";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { json, readJsonObject, runMetaGet, tableParam, unknownLobby, withLobbyAuth } from "./lobby-http";
+
+vi.hoisted ??= <T>(factory: () => T): T => factory();
 
 const mocks = vi.hoisted(() => ({
   fetchMe: vi.fn(),
@@ -30,6 +33,10 @@ vi.mock("./db/client", () => ({
 
 const env = { sessionToken: "session-token" };
 const me = { id: 42, email: "player@example.test", username: "Player" };
+const bffHttpSpanSources = [
+  new URL("./lobby-http.ts", import.meta.url),
+  new URL("./routes/api/rpc/[...path].ts", import.meta.url),
+];
 
 function eventWithBody(body: string): H3Event {
   return {
@@ -119,5 +126,15 @@ describe("lobby-http", () => {
 
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toEqual({ ok: true });
+  });
+
+  it("keeps BFF HTTP spans on OTel 1.37 server attribute keys", () => {
+    for (const sourcePath of bffHttpSpanSources) {
+      const source = readFileSync(sourcePath, "utf8");
+
+      expect(source).toContain("httpServerAttrs");
+      expect(source).not.toContain('"http.method"');
+      expect(source).not.toContain('"rpc.path"');
+    }
   });
 });

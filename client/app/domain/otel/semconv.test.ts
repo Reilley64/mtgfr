@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
-  FORBIDDEN_ATTR_KEYS,
-  dbAttrs,
-  httpServerAttrs,
-  rpcAttrs,
   assertNoForbiddenKeys,
-  MTGFR_INTENT_KIND,
+  dbAttrs,
+  FORBIDDEN_ATTR_KEYS,
+  httpServerAttrs,
   MTGFR_INTENT_ACCEPTED,
+  MTGFR_INTENT_KIND,
   MTGFR_TABLE_ID,
+  rpcAttrs,
 } from "./semconv";
 
 describe("otel semconv dictionary", () => {
@@ -17,6 +17,13 @@ describe("otel semconv dictionary", () => {
       "http.route": "GET /api/meta",
       "http.response.status_code": 200,
     });
+  });
+
+  it("does not emit legacy HTTP or RPC path keys from HTTP server attrs", () => {
+    const attrs = httpServerAttrs({ method: "POST", route: "rpc game/submit", statusCode: 200 });
+
+    expect(attrs).not.toHaveProperty("http.method");
+    expect(attrs).not.toHaveProperty("rpc.path");
   });
 
   it("builds rpc attrs without full path as rpc.method", () => {

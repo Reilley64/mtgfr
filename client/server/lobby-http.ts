@@ -3,6 +3,7 @@ import { getCookie, type H3Event } from "nitro/h3";
 import { fetchMe, type Me } from "../app/domain/api-upstream-auth";
 import { type LobbySnapshot, sweepWebDb } from "../app/domain/lobby-store";
 import { grpcRequestEnv, runTracedRequest } from "../app/domain/otel";
+import { HTTP_RESPONSE_STATUS_CODE, httpServerAttrs } from "../app/domain/otel/semconv";
 import type { GrpcRequestEnv } from "../app/domain/wire/grpcClient";
 import { type WebDb, WebDbLive } from "./db/client";
 
@@ -41,6 +42,12 @@ function lobbyDbErrorMessage(err: unknown): string {
   return String(err).slice(0, 300);
 }
 
+function annotateHttpStatus(response: Response): Effect.Effect<void> {
+  return Effect.annotateCurrentSpan({
+    [HTTP_RESPONSE_STATUS_CODE]: response.status,
+  });
+}
+
 type LobbyAuthCtx = {
   me: Me;
   env: GrpcRequestEnv;
@@ -58,15 +65,18 @@ export async function withLobbyAuth<E>(
       traceparent,
       spanName,
       Effect.gen(function* () {
-        yield* Effect.annotateCurrentSpan({
-          "http.method": event.req.method,
-          "http.route": spanName,
-        });
+        yield* Effect.annotateCurrentSpan(httpServerAttrs({ method: event.req.method, route: spanName }));
         const env = yield* grpcRequestEnv(sessionToken);
         const me = yield* fetchMe(env);
-        if (!me) return new Response("Unauthorized", { status: 401 });
+        if (!me) {
+          const response = new Response("Unauthorized", { status: 401 });
+          yield* annotateHttpStatus(response);
+          return response;
+        }
         yield* sweepWebDb();
-        return yield* body({ me, env });
+        const response = yield* body({ me, env });
+        yield* annotateHttpStatus(response);
+        return response;
       }).pipe(Effect.provide(WebDbLive)),
     );
   } catch (err) {
@@ -84,11 +94,10 @@ export async function runMetaGet<E>(
     traceparent,
     spanName,
     Effect.gen(function* () {
-      yield* Effect.annotateCurrentSpan({
-        "http.method": event.req.method,
-        "http.route": spanName,
-      });
-      return yield* body();
+      yield* Effect.annotateCurrentSpan(httpServerAttrs({ method: event.req.method, route: spanName }));
+      const response = yield* body();
+      yield* annotateHttpStatus(response);
+      return response;
     }),
   );
 }
