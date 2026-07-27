@@ -1695,6 +1695,17 @@ pub enum Condition {
     /// *both* checks, and the pool falsifies skipping the second (Magma Opus's instant-speed "tap
     /// two target permanents" can tap the source in response, after it triggered untapped).
     SourceUntapped,
+    /// The gate that turns "at the beginning of **each** upkeep" into "at the beginning of the
+    /// upkeep of **enchanted permanent's controller**" (the 2ed upkeep-tax Aura cycle — Cursed
+    /// Land, Feedback, Wanderlust, Warp Artifact): holds only on the upkeep of the player who
+    /// controls this Aura's host, which need not be the Aura's own controller. Source-object-based
+    /// like [`SourceUntapped`](Self::SourceUntapped), and it also reads
+    /// `TriggerContext::active_player`, so it belongs on a [`Trigger::EachUpkeep`] ability — the
+    /// only trigger that threads one.
+    /// ponytail: an intervening-if rather than its own trigger variant — a trigger that fires and
+    ///   is filtered out at placement never reaches the stack, so it is indistinguishable from one
+    ///   that never fired. Give it a real variant if a card ever needs to *see* the non-fire.
+    EnchantedPermanentsControllersUpkeep,
     /// "if that spell's mana value is `at_least` or greater" (Prismari Pianist's "if that
     /// spell's mana value is 5 or greater, create three of those tokens instead") — a
     /// `Trigger::CastSpell` (magecraft) intervening-if, read off `TriggerContext::cast_mana_value`.

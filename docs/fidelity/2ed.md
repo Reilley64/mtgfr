@@ -203,7 +203,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Copy Artifact** {1}{U} · Enchantment — increment 12
 - [ ] **Creature Bond** {1}{U} · Enchantment — Aura — increment 62
 - [x] **Crystal Rod** {1} · Artifact — increment 10
-- [ ] **Cursed Land** {2}{B}{B} · Enchantment — Aura — increment 61
+- [x] **Cursed Land** {2}{B}{B} · Enchantment — Aura — increment 61
 - [ ] **Cyclopean Tomb** {4} · Artifact — increment 8, 28
 - [x] **Deathgrip** {B}{B} · Enchantment — increment 9
 - [ ] **Deathlace** {B} · Instant — increment 15
@@ -218,7 +218,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **False Orders** {R} · Instant — increment 11
 - [ ] **Farmstead** {W}{W}{W} · Enchantment — Aura — increment 36
 - [x] **Fastbond** {G} · Enchantment — increment 29
-- [ ] **Feedback** {2}{U} · Enchantment — Aura — increment 61
+- [x] **Feedback** {2}{U} · Enchantment — Aura — increment 61
 - [ ] **Fireball** {X}{R} · Sorcery — increment 53
 - [x] **Flashfires** {3}{R} · Sorcery — increment 51
 - [x] **Force of Nature** {2}{G}{G}{G}{G} · Creature — Elemental — increment 20
@@ -310,8 +310,8 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Vesuvan Doppelganger** {3}{U}{U} · Creature — Shapeshifter — increment 12
 - [ ] **Veteran Bodyguard** {3}{W}{W} · Creature — Human — increment 6
 - [ ] **Volcanic Eruption** {X}{U}{U}{U} · Sorcery — increment 1
-- [ ] **Wanderlust** {2}{G} · Enchantment — Aura — increment 61
-- [ ] **Warp Artifact** {B}{B} · Enchantment — Aura — increment 61
+- [x] **Wanderlust** {2}{G} · Enchantment — Aura — increment 61
+- [x] **Warp Artifact** {B}{B} · Enchantment — Aura — increment 61
 - [x] **Wild Growth** {G} · Enchantment — Aura — increment 64
 - [ ] **Winter Orb** {2} · Artifact — increment 7
 - [x] **Wooden Sphere** {1} · Artifact — increment 10

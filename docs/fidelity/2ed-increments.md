@@ -858,7 +858,7 @@ costs the pool's existing each-upkeep cards nothing. The new damage mode fills i
 through the same walker Howling Mine uses, now renamed `fill_active_player_payoff` since it is no
 longer draw-only. The stale `ponytail:` note on `queue_each_upkeep_triggers` is gone with it.
 
-### 61. `upkeep-of-the-enchanted-permanents-controller` — 4 cards, M
+### 61. `upkeep-of-the-enchanted-permanents-controller` — 4 cards, M — **done**
 Depends on: 60 (`each-upkeep-payoff-addresses-that-player`) — same "damage the player this upkeep
 belongs to" payoff, reached from an Aura rather than from a free-standing permanent.
 The 2ed upkeep-tax Aura cycle reads "At the beginning of the upkeep of enchanted <permanent>'s
@@ -870,6 +870,16 @@ trigger wants the enchant restriction it already carries rather than a per-type 
 *Sketch:* a `Trigger::UpkeepOfEnchantedPermanentsController` queued off the same upkeep event as
 `EachUpkeep`, gated on the Aura's attachment and firing with the host's controller in the
 context's player slot. *Cards:* cursed_land, feedback, wanderlust, warp_artifact.
+*Landed:* no new trigger variant. Increment 60 had just taught `Trigger::EachUpkeep` to carry
+the active player, so the cycle is that same watch plus one intervening-if `Condition`,
+`EnchantedPermanentsControllersUpkeep`, that holds only when the Aura's host's controller is
+whose upkeep it is — and `damage/to_triggering_player` from 60 addresses the same player. A
+trigger filtered out at placement never reaches the stack, so it is indistinguishable from one
+that never fired; a real variant is only worth it if a card ever needs to *see* the non-fire.
+The condition is source-object-based, so it is handled in `ability_condition_holds` (the one
+site with a source id) and falls through to `false` in `condition_holds`, exactly like
+`SourceUntapped`. Type-agnostic for free: each card's own `enchant` restriction does the
+typing, so all four Auras share one ability shape and one shape test.
 
 ### 62. `damage-equal-to-the-dying-creatures-toughness` — 1 card, M
 Depends on: 61 (`upkeep-of-the-enchanted-permanents-controller`) — both are Aura payoffs aimed at

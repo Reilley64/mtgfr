@@ -105068,3 +105068,41 @@ fn copper_tablet_bills_whoever_the_upkeep_belongs_to() {
         "once per upkeep, not once per player"
     );
 }
+
+// The 2ed upkeep-tax Aura cycle (Cursed Land, Feedback, Wanderlust, Warp Artifact): "At the
+// beginning of the upkeep of enchanted <permanent>'s controller, this Aura deals 1 damage to that
+// player." The host's controller pays, not the Aura's — so enchanting an opponent's permanent
+// taxes them, and enchanting your own taxes you.
+
+#[test]
+fn cursed_land_taxes_the_lands_controller_not_the_auras() {
+    let mut game = Game::new();
+    let theirs = game.spawn_on_battlefield(PlayerId(1), card("Forest"));
+    let cursed = game.spawn_in_hand(PlayerId(0), card("Cursed Land"));
+    cast_and_resolve(&mut game, cursed, Some(Target::Object(theirs)));
+    for p in 0..2u8 {
+        game.stack_library(PlayerId(p), &vec![card("Plains"); 5]);
+    }
+
+    pass_until_next_turn(&mut game);
+    advance_until(&mut game, |g| g.current_step() == Step::Main1);
+    assert_eq!(
+        game.life(PlayerId(1)),
+        19,
+        "their land, their upkeep, their 1"
+    );
+    assert_eq!(
+        game.life(PlayerId(0)),
+        20,
+        "the Aura's controller is not the one being taxed"
+    );
+
+    pass_until_next_turn(&mut game);
+    advance_until(&mut game, |g| g.current_step() == Step::Main1);
+    assert_eq!(
+        game.life(PlayerId(0)),
+        20,
+        "and their own upkeep is not the upkeep this Aura watches"
+    );
+    assert_eq!(game.life(PlayerId(1)), 19, "once a round, not once a turn");
+}

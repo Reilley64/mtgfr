@@ -2411,6 +2411,44 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
         );
     }
 
+    /// The upkeep-tax Aura cycle taxes the *host's* controller, so each one is an each-upkeep
+    /// trigger narrowed by an intervening-if to the one upkeep that belongs to its host — not an
+    /// `Upkeep` trigger, which would read the Aura's own controller.
+    #[test]
+    fn unlimited_upkeep_tax_auras_bill_the_host_permanents_controller() {
+        for (name, host) in [
+            ("Cursed Land", TypeSet::LAND),
+            ("Feedback", TypeSet::ENCHANTMENT),
+            ("Wanderlust", TypeSet::CREATURE),
+            ("Warp Artifact", TypeSet::ARTIFACT),
+        ] {
+            let aura = get_by_name(name).unwrap_or_else(|| panic!("{name} is in the pool"));
+            assert_eq!(
+                aura.enchant.as_ref().map(|filter| filter.types),
+                Some(host),
+                "{name} enchants only its printed permanent type"
+            );
+            let ability = &aura.abilities[0];
+            assert!(
+                matches!(ability.timing, Timing::Triggered(Trigger::EachUpkeep)),
+                "{name} watches every upkeep, then filters"
+            );
+            assert_eq!(
+                ability.condition,
+                Some(Condition::EnchantedPermanentsControllersUpkeep),
+                "{name} fires only on the upkeep of enchanted permanent's controller"
+            );
+            assert_eq!(
+                ability.effect,
+                Effect::Damage(DamageEffect::ToTriggeringPlayer {
+                    player: None,
+                    amount: Amount::Fixed(1),
+                }),
+                "{name} deals 1 damage to that player"
+            );
+        }
+    }
+
     /// Ankh of Mishra bills the entering land's controller, not the Ankh's — so the effect reads
     /// the trigger's own object rather than a target or the source's controller.
     #[test]

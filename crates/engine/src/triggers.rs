@@ -3815,6 +3815,13 @@ impl Game {
             // Howling Mine: "if Howling Mine is untapped" — source-object-based like the three
             // conditions above.
             Condition::SourceUntapped => self.as_permanent(source).is_some_and(|p| !p.tapped),
+            // The 2ed upkeep-tax Aura cycle: "at the beginning of the upkeep of enchanted land's
+            // controller" — an `EachUpkeep` watch narrowed to the one upkeep that belongs to this
+            // Aura's host's controller. Unattached (the host left in response, CR 704.5m), it
+            // never holds.
+            Condition::EnchantedPermanentsControllersUpkeep => self
+                .attached_to(source)
+                .is_some_and(|host| Some(self.controller_of(host)) == ctx.active_player),
             // Dread Cacodemon/Reiver Demon: "if you cast it from your hand" — source-object-based
             // like the four conditions above.
             Condition::CastFromHand => self.as_permanent(source).is_some_and(|p| p.cast_from_hand),
@@ -3957,6 +3964,11 @@ impl Game {
             // trigger placement) or `Effect::Conditional`'s resolve site (the second check), both
             // of which intercept it before falling through here.
             Condition::SourceUntapped => false,
+            // ponytail: source-object-based like `SourceUntapped` above — the 2ed upkeep-tax Aura
+            // cycle's gate needs the Aura's host, so `Game::ability_condition_holds` intercepts it
+            // at trigger placement (the only site that has a source id) before falling through
+            // here.
+            Condition::EnchantedPermanentsControllersUpkeep => false,
             // ponytail: target-based like `ThisPermanentEnteredUntapped` above — `TriggerContext`
             // carries no target either. Reachable only through the `Effect::Conditional` resolve
             // site (`Game::run`), which intercepts it directly against the shared
