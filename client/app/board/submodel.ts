@@ -99,6 +99,7 @@ import {
   pointerMove,
   pointerUp,
   primaryActionFor,
+  resolveClick,
 } from "./geometry/interaction";
 import { avatarPos, CARD_H, CARD_W, layout, type RenderCard, ZONE } from "./geometry/layout";
 import { type RadialPress, radialPressDown, radialPressUp } from "./geometry/radial";
@@ -115,7 +116,7 @@ import { selectedRadialOptions } from "./html/activation-menu";
 import { persistHintDismissed, readHintDismissed } from "./html/discoverability";
 import { HAND_BAR_H, HAND_INSPECT_STICKY_BAND, HAND_PLAY_SLACK_PX } from "./html/hand";
 import { CopyBoardLog } from "./log-commands";
-import { GyExileChosen, type Message } from "./messages";
+import { CombatCancelAttacker, CombatCancelBlocker, GyExileChosen, type Message } from "./messages";
 import { type ExitFx, spawnExitFx } from "./motion/exit-fx";
 import {
   type CardFlight,
@@ -964,6 +965,23 @@ function pointerUpModel(
         }
       } else {
         return togglePendingObjectAimPick(idle, fold, pc, release.card.id);
+      }
+    }
+    // Combat cancel + permanent select share `resolveClick` so tap-in-place on a staged
+    // attacker/blocker un-stages it before the activation radial can open.
+    if (fold.state != null) {
+      const click = resolveClick(fold.state, fold.state.viewer, release.card, {
+        spectating: false,
+        staged: null,
+        stagedTargets: new Set(),
+        attackers: idle.combatAttackers,
+        blocks: idle.combatBlocks,
+      });
+      if (click.kind === "cancel-attacker") {
+        return updateBoard(idle, CombatCancelAttacker({ attackerId: click.id }), fold, tableId);
+      }
+      if (click.kind === "cancel-blocker") {
+        return updateBoard(idle, CombatCancelBlocker({ blockerId: click.id }), fold, tableId);
       }
     }
     if (
