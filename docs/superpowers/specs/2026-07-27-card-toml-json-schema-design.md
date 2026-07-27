@@ -1,9 +1,12 @@
-# Card TOML JSON Schema (design)
+# Card TOML JSON Schema + generated DSL reference (design)
 
-**Status:** Approved design input (2026-07-27).
-**Surfaces:** `card-dsl-and-card-pool` (`crates/cards/data/`, `crates/engine` `de` / `CardDef` / `Effect`), `.agents/skills/card-dsl/`.
+**Status:** Approved design input (2026-07-27; revised same day — full generation from
+CardDef TOML surface + generated `DSL_REFERENCE`).
+**Surfaces:** `card-dsl-and-card-pool` (`crates/cards/data/`, `crates/engine` `de` /
+`CardDef` / `Effect`), `.agents/skills/card-dsl/`.
 
-Related: [card-dsl-and-card-pool](2026-07-20-card-dsl-and-card-pool.md), `.agents/skills/card-dsl/SKILL.md`, `.agents/skills/card-dsl/DSL_REFERENCE.md`.
+Related: [card-dsl-and-card-pool](2026-07-20-card-dsl-and-card-pool.md),
+`.agents/skills/card-dsl/SKILL.md`, `.agents/skills/card-dsl/DSL_REFERENCE.md`.
 
 This document is **design input only**. Implement-time work must update the living surface
 spec and skill docs listed below — a design sidecar does not replace those updates
@@ -14,23 +17,26 @@ spec and skill docs listed below — a design sidecar does not replace those upd
 ## Problem Statement
 
 Card authors and agents edit ~780 deckable TOMLs (plus ~43 token profiles) that only become
-validated when Rust `toml::from_str` → `CardDef` runs (pool load / tests). Typos in effect
-`type` / `mode`, missing identity fields, or malformed `[kind]` tables fail late and with
-serde-oriented messages. There is no editor-associated schema, no non-Rust validator for a
-single file, and no drift-checked vocabulary list tools can consult without reading
-`crates/engine` source or `DSL_REFERENCE.md`.
+validated when Rust `toml::from_str` → `CardDef` runs (pool load / tests). Typos fail late
+with serde-oriented messages. There is no editor-associated schema and no non-Rust single-file
+validator.
 
-JSON Schema is a natural projection for **tools and people** — the same “author once →
-validate → consume” posture as DTCG tokens — without replacing serde as the rules-facing
-source of truth.
+Separately, `.agents/skills/card-dsl/DSL_REFERENCE.md` (~2k lines) hand-documents the same
+surface. It drifts from `types` / `de.rs` whenever the DSL grows; agents are told “code wins,”
+but the reference is still the human/agent field guide.
+
+Both artifacts should be **projections of one Rust TOML surface**, not parallel hand lists.
 
 ---
 
 ## Goal
 
-Ship a **JSON Schema projection of the card/token TOML surface** so authors, Cursor agents
-(`card-dsl` / `fidelity-grind`), editors, and optionally CI can catch structural and
-vocabulary errors early — while **Rust `CardDef` / `de.rs` remains authoritative**.
+1. **JSON Schema** for card/token TOML — fully generated from the Rust types that define the
+   CardDef TOML deserialize surface (not a hand-maintained skeleton).
+2. **`DSL_REFERENCE.md`** — generated from the same surface (rustdoc / structured field
+   metadata), with `--check` drift detection.
+3. Keep **runtime deserialize into `CardDef`** as the engine authority; schema and markdown are
+   projections for tools and people.
 
 ---
 
@@ -38,126 +44,121 @@ vocabulary errors early — while **Rust `CardDef` / `de.rs` remains authoritati
 
 | Decision | Choice |
 |---|---|
-| Authority | Rust serde (`CardDef`, `Effect`, custom `de.rs`) wins; schema is a projection |
-| Schema strategy | **Hybrid:** generate closed vocabularies from Rust; hand-author the TOML skeleton |
-| Depth (ship) | **Medium, two waves** — Wave 1 skeleton + generated enums; Wave 2 common effect required keys |
-| Depth (not now) | Full parity with every `de.rs` visitor / nested filter shape |
-| Card vs token | One schema file with shared `$defs`; token root relaxes/requires fields as today (non-empty `id` / `default_print`) |
-| Validator runtime | Small **Rust** path in `crates/cards` (TOML → JSON value → `jsonschema`); checked-in `.schema.json` for editors |
-| Comments | Oracle header / `# ponytail:` stay in source files; TOML parsers strip comments before validate |
-| Not generated from | `schemars` on live `CardDef` (Rust memory shape ≠ TOML spelling) |
-| Not in schema | Fidelity, oracle correctness, Scryfall liveness, rules behavior, deck legality |
+| Authority | Rust CardDef TOML deserialize surface wins; schema + DSL reference are generated projections |
+| Schema strategy | **Fully generated** from TOML-facing Rust types (schemars or equivalent) — **no hand skeleton** |
+| Why not `JsonSchema` on today’s `CardDef` as-is | Memory shape ≠ TOML (`'static` / `Arc` / `deserialize_with`, `[kind] type = "instant"` vs `CardKind::Spell`, flat `[cost]`, flat activated `[[abilities]]`). Generation targets the **TOML document types** that serde already conceptually implements |
+| How “from CardDef” is achieved | Extract / introduce an explicit **TOML surface** (`CardToml` / existing raw structs in `de.rs` promoted) that **is** what `toml::from_str` parses, then `Into` / existing fold into `CardDef`. Schema + docs derive from that surface |
+| DSL reference | **Generated** `DSL_REFERENCE.md` (or `.generated.md` checked in) from the same types’ docs + enum tags; process/header discipline (§0 comments) stays in `SKILL.md` (not schemaable) |
+| Depth | Full structural coverage of the TOML surface as types gain `JsonSchema` + docs — ship incrementally by migrating `de.rs` special cases onto named surface types, but **direction is full gen**, not permanent hybrid |
+| Card vs token | Shared generated `$defs`; thin token root requires non-empty `id` / `default_print` |
+| Validator | Rust in `crates/cards` (TOML → JSON → schema); committed schema for editors |
+| Comments | Oracle / `# ponytail:` remain in source files; stripped before validate |
+| Not in schema / generated reference | Fidelity judgment, Scryfall liveness, deck legality, live-game rules behavior |
 
 ---
 
 ## Approaches considered
 
-1. **Hand-written full schema** — Fast first draft; drifts from `Effect` / `Keyword` / timing
-   growth on every grind wave. Rejected as sole strategy.
-2. **`schemars` (or similar) on `CardDef` / `Effect`** — Attractive codegen, but `CardDef`
-   uses `'static` / `Arc` / `deserialize_with` and TOML spellings that differ from Rust
-   (`[kind] type = "instant"` vs `CardKind::Spell`, flat `[cost]`, activated timing tables,
-   internally tagged `type`/`mode`). Generated schema would describe the wrong document.
-   Rejected as primary path.
-3. **Hybrid generate vocabularies + hand skeleton (chosen)** — Generate the high-churn closed
-   sets (`Effect` `type` tags, family `mode` tags, `Timing`, `Keyword`, `[kind].type` strings,
-   color pip keys). Hand-maintain the slow-changing document skeleton (`name` / `id` /
-   `[cost]` / `[kind]` / `[[abilities]]` / `[[abilities.effects]]`). CI fails if generated
-   fragments are stale — same pattern as `just client-tokens-check`.
+1. **Hybrid gen vocabularies + hand skeleton** (prior revision) — Smaller first PR; permanent
+   dual maintenance of the skeleton. **Superseded** by product preference for full generation.
+2. **`schemars` directly on today’s `CardDef` / `Effect` without a TOML surface** — Would emit
+   the wrong document shape. Rejected.
+3. **Explicit TOML surface types → `CardDef` + generate schema and DSL reference (chosen)** —
+   One Rust authoring model for what appears in TOML; schemars (or sibling) emits JSON Schema;
+   a doc renderer emits `DSL_REFERENCE.md` from rustdoc / attributes on those same types.
+   Custom `de.rs` visitors become named types instead of opaque functions over time.
 
 ---
 
 ## Design
 
-### Document model
+### Architecture
 
-- **Dialect:** JSON Schema 2020-12.
-- **Checked-in artifact:** `crates/cards/schema/card.schema.json` (committed; editors and CI
-  read this path).
-- **Generation:** recipe merges generated vocabularies into one **committed**
-  `card.schema.json` (and thin `token.schema.json`). `--check` fails if the tree is stale
-  (same posture as Style Dictionary `gen:tokens:check`). Intermediate `.generated.json`
-  fragments may exist as build inputs but are not the editor-facing contract — clone-and-open
-  always has a complete committed schema.
-- **Root instance:** one card or token object after TOML→JSON conversion (tables → objects,
-  array-of-tables → arrays). Comments are not part of the instance.
+```text
+  crates/engine (card-dsl)
+       │
+       ├─ TOML surface types  (CardToml, KindToml, AbilityToml, Effect, …)
+       │     serde Deserialize  ──►  fold / Into  ──►  CardDef (runtime)
+       │     JsonSchema + rustdoc
+       │
+       └─ gen (just cards-schema / cards-dsl-ref)
+              ├─► crates/cards/schema/card.schema.json
+              ├─► crates/cards/schema/token.schema.json
+              └─► .agents/skills/card-dsl/DSL_REFERENCE.md
+```
 
-### Vocabulary generation (from Rust)
+Authors still write TOML. Load path stays `toml::from_str::<CardToml>` (or today’s entry that
+becomes that) then convert to `CardDef`. Engine tests that build `CardDef` literals unchanged.
 
-A small generator (build script, `xtask`, or `cargo run -p cards --bin gen-card-schema`)
-extracts snake_case serde tags from the enums that already declare them, including at least:
+### Making the surface generatable
 
-| Vocabulary | Source (illustrative) | Used for |
-|---|---|---|
-| Effect `type` | `Effect` `serde(tag = "type", rename_all = "snake_case")` | `[[abilities.effects]].type` enum |
-| Effect family `mode` | per-family enums (`DamageEffect`, …) `tag = "mode"` | `mode` enums where tagged |
-| Timing | `Timing` (+ activated flat-table note in skeleton prose / `$comment`) | `[[abilities]].timing` |
-| Keyword | `Keyword` | `keywords` / conditional keyword values |
-| Kind `type` | TOML spellings from `de.rs` (`instant`, `sorcery`, `creature`, …) | `[kind].type` |
+Today many TOML spellings live only inside `de.rs` `deserialize_with` / manual `Deserialize`
+impls. Implement work:
 
-Generation must follow **TOML author-facing** names, not Rust variant paths (`Misc(…)` is not
-a `type` string). Prefer deriving from existing serde attributes over a second hand list.
+1. **Inventory** opaque deserializers (`CardKind`, `Cost`, flat `Ability` / `Timing`, filter
+   shorthands, etc.).
+2. **Promote** each to a public (or `pub(crate)`) TOML struct/enum with ordinary serde attrs
+   (`tag`, `rename_all`, `flatten` where honest) that schemars can see.
+3. **Fold** those types into existing `CardDef` / `Timing` / … runtime values (keep current
+   runtime types stable).
+4. Derive or implement **`JsonSchema`** on the TOML surface. Map `&'static str` / `Arc<[T]>`
+   load-only fields to `String` / `Vec<T>` on the surface types.
+5. Prefer **doc comments on surface fields** as the single prose source for both schema
+   `description` and generated markdown tables.
 
-### Hand-authored skeleton (medium)
+Do not invent a second hand-written JSON Schema. Do not generate Rust from JSON Schema.
 
-Wave 1 requires / shapes:
+### JSON Schema outputs
 
-- Top-level: `name` (string), `id` (string), `default_print` (string), `oracle` (string,
-  optional for some test stubs — match pool rules), `sets` (array of strings), common bools
-  (`modal`, `legendary`, …) as optional booleans.
-- `[cost]`: object with known pip keys (`generic`, `white`, … / whatever `de.rs` accepts);
-  unknown keys: prefer `additionalProperties: false` once the pip key set is generated.
-- `[kind]`: object with required `type` enum; additional properties allowed per kind
-  (`power` / `toughness` / `produces` / …) without fully encoding every kind variant in Wave 1.
-- `[[abilities]]`: array of objects with `timing` and `effects` (array).
-- `[[abilities.effects]]`: objects with required `type` (generated enum); other properties
-  allowed (`additionalProperties: true`) in Wave 1 so serde can still accept richer payloads.
+- Dialect: JSON Schema 2020-12.
+- Committed: `crates/cards/schema/card.schema.json`, `token.schema.json`.
+- `just cards-schema` regenerates; `just cards-schema-check` fails on drift.
+- Root instance = one card/token after TOML→JSON (comments stripped).
 
-Wave 2 tightens common effect families (e.g. `damage` requires `mode` + `amount` where the
-TOML surface always has them) via `if`/`then` or `oneOf` on `type` — only where the TOML
-convention is stable and documented in `DSL_REFERENCE.md`. Stop before encoding every
-`PermanentFilter` shorthand.
+### Generated DSL reference
 
-### Cards vs tokens
+- Output: `.agents/skills/card-dsl/DSL_REFERENCE.md` (committed; agents already read this path).
+- `just cards-dsl-ref` / `just cards-dsl-ref-check` — same regenerate/check posture.
+- Content generated from surface types:
+  - Top-level fields table (name, JSON-schema-ish type, default, rustdoc notes).
+  - `[cost]`, `[kind]`, keywords, timings, effect `type` / `mode` enums with variant docs.
+  - Nested tables (`[[abilities]]`, effect families) as sections mirroring type nesting.
+- **Not generated from types** (remain in `SKILL.md` or a tiny hand prologue include):
+  - §0 oracle-comment / `# ponytail:` / `approximates` discipline (file comments are outside
+    the schema instance).
+  - “Flag, don’t force-script” and fidelity process pointers.
+- Optional: generated file starts with a banner `<!-- generated by just cards-dsl-ref; do not
+  edit -->` and a short pointer to `SKILL.md` for process rules.
+- **Migration:** first implement PR may generate a structural reference that is thinner than
+  today’s hand prose; **move long CR / example / ponytail notes from the hand file into rustdoc
+  on the surface types** as those types are promoted, until the generated doc replaces the hand
+  file. Do not maintain two full references long-term — delete or shrink the hand body once gen
+  coverage matches.
 
-Shared `$defs` for cost, kind, ability, effect. Two validation entrypoints (or one schema with
-a `card` vs `token` flag is unnecessary — use:
+### Validator CLI
 
-- `card.schema.json` `$ref` defs, and
-- `token.schema.json` (thin) that `$ref`s the same defs but requires non-empty `id` and
-  `default_print` (matching `crates/cards` load panics today).
-
-Deckable cards keep current pool rules (empty id only for engine test stubs **not** in
-`data/`).
-
-### Validator CLI / recipes
-
-- `just cards-schema` — regenerate merged schema from Rust vocabularies + skeleton.
-- `just cards-schema-check` — fail if regenerated output differs (CI + local).
-- `just cards-toml-validate` — validate all `data/**/*.toml` (or paths passed as args) via
-  TOML parse → JSON → schema. Exit non-zero with **file path + JSON Pointer + message**
-  (and, when cheap, “expected one of: …” for enum failures).
-
-Wire `cards-schema-check` into the existing server/check path that already cares about the
-card pool (same family as compile-time pool load), not a separate flaky job. Full-pool
-`cards-toml-validate` may run in CI once Wave 1 schema is green against the current pool;
-if the hand skeleton is too strict on day one, fix the schema before gating — do not weaken
-Rust deserialize.
+- `just cards-toml-validate [paths…]` — TOML → JSON → schema; path + JSON Pointer + message
+  (+ enum hints when available).
+- Wire schema/ref `--check` into the card-pool verify path used by `just check` / server verify.
+- Full-pool validate once the generated schema accepts the current pool; fix surface/schema if
+  not — do not loosen Rust deserialize to match a bad schema.
 
 ### Editor / agent integration
 
-- Document schema path in `card-dsl` skill; point agents at `just cards-toml-validate <file>`
-  before finishing a card edit.
-- Optional: root or `crates/cards` Taplo / VS Code settings associating
-  `crates/cards/data/**/*.toml` and `data/tokens/**/*.toml` with the schema (implement only if
-  a single checked-in config works without fighting other TOML in the repo).
-- `fidelity-grind`: optional step to run validate on touched TOMLs during authoring waves —
-  not a substitute for engine tests.
+- `card-dsl` skill: validate via `just cards-toml-validate`; treat generated
+  `DSL_REFERENCE.md` as the field guide; on disagreement, Rust surface types win (regenerate).
+- Optional Taplo / editor schema association for `crates/cards/data/**/*.toml`.
+- `fidelity-grind`: optional validate on touched TOMLs.
 
-### Privacy / non-goals reminder
+### Waves (implementation sequencing, still one design)
 
-Schema validation sees only card definition files (public oracle scripts), not live game
-state. No change to observability scrub rules.
+| Wave | Deliverable |
+|---|---|
+| **A** | TOML surface entry (`CardToml` + kind/cost/ability enough for a large fraction of pool) + schemars → `card.schema.json` + validate CLI + check recipes |
+| **B** | Generate `DSL_REFERENCE.md` from the same surface docs; check recipe; move field prose from hand reference into rustdoc as types land |
+| **C** | Finish promoting remaining `de.rs` special cases onto surface types until schema/reference cover the full authoring surface; remove obsolete hand reference body |
+
+Waves may ship as separate PRs; each must keep pool load green and `--check` honest.
 
 ---
 
@@ -165,12 +166,12 @@ state. No change to observability scrub rules.
 
 | Doc | What to add |
 |---|---|
-| [card-dsl-and-card-pool](2026-07-20-card-dsl-and-card-pool.md) | Behavior: schema path, gen/check/validate recipes; Testing: schema check + sample invalid fixture; Implementation: hybrid gen + skeleton; Out of scope: schema ≠ fidelity |
-| `.agents/skills/card-dsl/SKILL.md` | How to validate; schema is assistive; Rust still wins on disagreement |
-| `.agents/skills/card-dsl/DSL_REFERENCE.md` | Short pointer to schema / recipes (do not duplicate the whole reference into JSON Schema prose) |
-| `justfile` (server/cards group as appropriate) | `cards-schema`, `cards-schema-check`, `cards-toml-validate` |
-| CI / [ci-and-release](2026-07-20-ci-and-release.md) | Only if a new verify step is added beyond recipes already pulled in by `just check` / server verify |
-| `.agents/skills/fidelity-grind/SKILL.md` | Only if the grind loop gains an explicit validate gate |
+| [card-dsl-and-card-pool](2026-07-20-card-dsl-and-card-pool.md) | TOML surface → CardDef; schema + DSL ref generation; recipes; testing seams |
+| `.agents/skills/card-dsl/SKILL.md` | Validate/gen commands; generated reference; process §0 stays here; rustdoc is field prose SoT |
+| `.agents/skills/card-dsl/DSL_REFERENCE.md` | Becomes generated (banner + content); hand edits redirected to Rust docs |
+| `justfile` | `cards-schema`, `cards-schema-check`, `cards-dsl-ref`, `cards-dsl-ref-check`, `cards-toml-validate` |
+| CI / [ci-and-release](2026-07-20-ci-and-release.md) | If check recipes are added to verify beyond existing `just check` wiring |
+| `.agents/skills/fidelity-grind/SKILL.md` | Only if grind gains an explicit validate / ref-check step |
 
 Index this design under Process/policy in [specs README](README.md).
 
@@ -178,35 +179,34 @@ Index this design under Process/policy in [specs README](README.md).
 
 ## Verification plan (implementation PR)
 
-1. `just cards-schema` produces stable `card.schema.json`; `just cards-schema-check` passes on a
-   clean tree.
-2. Known-good: `crates/cards/data/abrade.toml` (or another modal instant) validates.
-3. Deliberately broken: wrong `type = "damge"` (typo) fails with enum hint; missing `name`
-   fails; report includes file path.
-4. Stale gen: edit a generated vocabulary fragment without regenerating → `--check` fails.
-5. Token: one `data/tokens/*.toml` validates under `token.schema.json`; empty `id` fails.
-6. Regression: full pool still loads via existing Rust path (`cards` tests / server build).
+1. `just cards-schema` / `cards-dsl-ref` produce stable committed artifacts; `--check` variants
+   pass on a clean tree.
+2. Known-good card TOML validates; typo’d effect `type` fails with enum hint + file path.
+3. Stale schema or stale `DSL_REFERENCE.md` fails the matching `--check`.
+4. Token profile validates; empty token `id` fails.
+5. Changing a surface field’s rustdoc and regenerating updates the reference section for that
+   field.
+6. Full pool still loads via Rust (`cards` tests / server build).
+7. Engine `CardDef { … }` literal tests still compile without going through TOML.
 
 ---
 
 ## Out of scope
 
-- Replacing serde / `CardDef` as source of truth
-- Generating Rust types from JSON Schema (wrong direction)
-- Encoding rules fidelity, Scryfall API checks, or deck legality in schema
-- Full `PermanentFilter` / `Condition` / every `de.rs` special case in Wave 1–2
-- OpenAPI / AsyncAPI for the card pool
-- Requiring schema validate to pass before engine unit tests that construct `CardDef` in Rust
-  literals (those bypass TOML)
+- Generating Rust / `CardDef` from JSON Schema (wrong direction)
+- Encoding fidelity, Scryfall API freshness, or deck legality in schema
+- Putting exporters or schema gen inside pure engine gameplay paths (gen is a build/dev binary
+  or `card-dsl`-featured tool crate path)
+- Auto-generating SKILL.md process rules (§0 comment discipline)
+- Requiring schema validate before Rust-literal engine unit tests
 
 ---
 
 ## Further notes
 
-- DTCG analogy: `design.tokens.json` → Style Dictionary; here Rust enums → schema fragments →
-  merged `card.schema.json` → editors/CLI. Different source language, same posture.
-- When a grind adds an `Effect` variant, the gen step must pick it up; failing
-  `cards-schema-check` is the intended nudge (update skeleton `if`/`then` only if Wave 2
-  covered that family).
-- If Wave 2 `if`/`then` cost exceeds value, stop at Wave 1 — vocabulary + skeleton already
-  catches the highest-frequency agent/author typos.
+- “Fully generated from CardDef” means **from the CardDef TOML deserialize surface**, not from
+  the interned runtime struct layout. If those diverge, fix the surface types — do not paper
+  over with a hand schema.
+- Prior hybrid design is obsolete; do not implement a permanent hand-maintained skeleton.
+- DTCG analogy: one authored source → many projections. Here the authored source is Rust TOML
+  surface types (+ rustdoc); projections are schema, DSL reference, and runtime `CardDef`.
