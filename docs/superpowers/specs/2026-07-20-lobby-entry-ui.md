@@ -13,13 +13,13 @@ After choosing a deck, a player must host or join a table, claim a seat, ready u
 
 ## Solution
 
-Lobby UI lives under `client/app/shell/lobby/**` on path-param play routes (`/play/:deckId` entry, `/play/:deckId/:table` seated pregame, `/play/:table` table-scoped table/game links). The lobby submodel boundary lifts through `GotLobbyMessage`; route entry and post-session cold-load call `informRouteChanged` so lobby reset/load stays child-owned while the parent keeps auth redirects and game-slice activation. Host/Join uses `entryMode` (`choose` | `join`); seated chrome shows seat-color dots, Gravatar/monogram seat faces, Ready/Start, and table-code copy. Polling is a Foldkit subscription over `lobbyPoll`. Server lobby/seed/affinity mechanics are owned by [lobby-table-routing-and-live-game](2026-07-20-lobby-table-routing-and-live-game.md); the route table and auth guard by [shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md). Face behavior follows [Gravatar Seat Faces Design](2026-07-25-gravatar-seat-faces-design.md).
+Lobby UI lives under `client/app/shell/lobby/**` on path-param play routes (`/play/:deckId` entry, `/play/:deckId/:table` seated pregame, `/play/:table` table-scoped table/game links). The lobby submodel boundary lifts through `GotLobbyMessage`; route entry and post-session cold-load call `informRouteChanged` so lobby reset/load stays child-owned while the parent keeps auth redirects and game-slice activation. Entry uses a single Layout C surface: selected deck card on the left, Host as the primary Llanowar action, inline join-code input + ghost Join action, and a ghost Back link; seated chrome still shows seat-color dots, Gravatar/monogram seat faces, Ready/Start, and table-code copy. Entry renders without the enclosing panel so the deck card and action stack breathe inside the shell stage, while seated lobby keeps the panel chrome. Polling is a Foldkit subscription over `lobbyPoll`. Server lobby/seed/affinity mechanics are owned by [lobby-table-routing-and-live-game](2026-07-20-lobby-table-routing-and-live-game.md); the route table and auth guard by [shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md). Face behavior follows [Gravatar Seat Faces Design](2026-07-25-gravatar-seat-faces-design.md).
 
 ---
 
 ## User Stories
 
-- As a player, I visit `/play/:deckId`, choose Host or Join for the selected deck, optionally paste a copied table code in the focused Join panel, ready up, and wait for the host to start.
+- As a player, I visit `/play/:deckId`, review the selected deck, Host immediately, or paste a copied table code into the inline Join row, ready up, and wait for the host to start.
 - As a host, after creating a table I land on `/play/:deckId/:table` without seeing claim-seat chrome flash on the entry route.
 - As a player, I can copy the table code (or fall back to a manual-copy input if clipboard permission is denied) and unlock table audio by pressing Ready.
 - As a signed-in watcher, I can stay on a table link without claiming a seat and understand that the game will open in spectator view when it starts.
@@ -35,7 +35,7 @@ Required identifiers live in path params (see route table in [shell-routes-and-a
 
 | Path | Lobby UI surface |
 |---|---|
-| `/play/:deckId` | Entry (`surface: "entry"`) — Host/Join choose or focused join panel |
+| `/play/:deckId` | Entry (`surface: "entry"`) — deck-left Layout C with Host primary and inline Join |
 | `/play/:deckId/:table` | Seated lobby / board mount after start |
 | `/play/:table` | Table-scoped seated lobby / board mount for generated table codes containing at least one letter |
 
@@ -47,9 +47,9 @@ Bare `/play` and `?deck=` entry points are Not found (hard cut). Single-segment 
 
 Home ↔ `/play/{id}` morphs the shared deck-card chrome with a short FLIP animation (`deck-card-nav.ts`; skipped for reduced motion) — list-side detail in [deck-list-and-builder](2026-07-20-deck-list-and-builder.md).
 
-### Host / Join entry (`entryMode`)
+### Host / Join entry (Layout C)
 
-On entry, `entryMode` is `choose` | `join`. The shared shell header owns the `Lobby` title; the lobby stage does not render a second wordmark or hero. Stage beats (`Ready to play?`, `Join a table`) use display typography. **Choose** uses the selected deck-card chrome (`lobby-deck-card` / `lobby-deck-card-{id}`) as the visual anchor, then presents Host as the primary Llanowar action (`lobby-host`) beside a quieter dashed Join affordance (`lobby-open-join`) that opens **join** mode. **Join** replaces the choose row with a focused panel (`lobby-bringing`, `lobby-join-code`, `lobby-join`, `lobby-join-cancel`) that keeps the selected deck visible in the Bringing strip and makes Join table the primary action. When the player has no decks or no selected deck, amber copy (`lobby-empty`) points them back to Your decks. Transport errors use `lobby-error` via `alertClass` (burn-red). Claim-seat and seated lobby still use the deck card + Ready/Start chrome as before. It does not render the old deck `<select>` or `Bring:` name strip in entry or claim-seat states; claim-seat shows **Back** to Your decks without a deck picker.
+On entry, the shared shell header owns the `Lobby` title; the lobby stage does not render a second wordmark or hero. The entry surface is a two-column Layout C grid with the selected deck-card chrome (`lobby-deck-card` / `lobby-deck-card-{id}`) on the left and the action stack on the right, rooted at `lobby-entry`. Stage beats keep display typography (`Ready to play?`), Host stays the primary Llanowar action (`lobby-host`), and Join is always available inline through `lobby-join-code` plus a ghost `lobby-join` button beneath “Have a code?”. `lobby-back` stays as a ghost link under the stack. The entry surface does not render the old dashed `lobby-open-join` card, focused join panel, Bringing strip, or cancel affordance. When the player has no decks or no selected deck, amber copy (`lobby-empty`) points them back to Your decks. Transport errors use `lobby-error` via `alertClass` (burn-red). Claim-seat and seated lobby still use the deck card + Ready/Start chrome as before. It does not render the old deck `<select>` or `Bring:` name strip in entry or claim-seat states; claim-seat shows **Back** to Your decks without a deck picker.
 
 ### Seated lobby chrome
 

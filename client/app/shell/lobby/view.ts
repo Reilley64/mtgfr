@@ -1,7 +1,6 @@
 import { Submodel } from "foldkit";
 import { type Html, html } from "foldkit/html";
 import type { DeckCardFlipTick } from "../../deck-card-nav";
-import { cn } from "../../domain/cn";
 import type { BuilderCatalogCard } from "../../domain/deck-builder/cards";
 import type { AppChromeMeta } from "../../domain/ui/app-version";
 import { buttonClass } from "../../domain/ui/buttonClass";
@@ -15,6 +14,7 @@ import { accountChrome } from "../account-chrome/view";
 import { type DeckCardModel, renderDeckCard } from "../decks/deck-card";
 import { shellFrame } from "../frame/shell-frame";
 import {
+  ChangedLobbyCode,
   type Message as LobbyMessage,
   RequestedLobbyCopy,
   RequestedLobbyHost,
@@ -111,13 +111,6 @@ function deckCardAndBack(
   );
 }
 
-function joinCardClass(): string {
-  return cn(
-    "flex min-h-full flex-col gap-sm rounded-hud border border-vine border-dashed bg-glass-dim p-md text-left",
-    "hover:bg-white/8 disabled:opacity-60",
-  );
-}
-
 function selectedDeckCard(
   deck: DeckSummary | undefined,
   decksLoading: boolean,
@@ -136,73 +129,84 @@ function selectedDeckCard(
   });
 }
 
-function chooseEntry(
+function entrySurface(
   model: LobbySlice,
   deck: DeckSummary | undefined,
   decksLoading: boolean,
   knownCommanders: Readonly<Record<string, BuilderCatalogCard>>,
 ): Html {
   return h.div(
-    [h.Class("flex flex-col gap-lg")],
+    [
+      h.DataAttribute("testid", "lobby-entry"),
+      h.DataAttribute("lobby-entry-motion", "1"),
+      h.Class("grid grid-cols-[minmax(0,240px)_minmax(0,1fr)] items-center gap-xl max-w-[min(100%,720px)]"),
+    ],
     [
       h.div(
-        [
-          h.DataAttribute("testid", "lobby-entry-choose"),
-          h.DataAttribute("lobby-entry-motion", "1"),
-          h.Class("grid grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] gap-lg"),
-        ],
+        [h.Class("max-w-[240px]"), h.DataAttribute("testid", "lobby-deck-card")],
+        [selectedDeckCard(deck, decksLoading, knownCommanders)],
+      ),
+      h.div(
+        [h.Class("flex flex-col gap-md")],
         [
           h.div(
-            [h.Class("flex flex-col gap-md")],
+            [h.Class("flex flex-col gap-xs")],
             [
-              h.div(
-                [h.Class("max-w-[280px]"), h.DataAttribute("testid", "lobby-deck-card")],
-                [selectedDeckCard(deck, decksLoading, knownCommanders)],
-              ),
-              h.div(
-                [h.Class("flex flex-col gap-xs")],
-                [
-                  h.div([h.Class("font-display font-semibold text-title tracking-[-0.02em]")], ["Ready to play?"]),
-                  h.div([h.Class("text-label text-lichen")], ["Host a fresh Commander table with this deck."]),
-                ],
-              ),
-              h.button(
-                [
-                  h.Type("button"),
-                  h.DataAttribute("testid", "lobby-host"),
-                  h.Disabled(model.submitting),
-                  h.OnClick(RequestedLobbyHost()),
-                  h.Class(buttonClass("primary", "w-fit")),
-                ],
-                ["Host a table"],
-              ),
+              h.div([h.Class("font-display font-semibold text-title tracking-[-0.02em]")], ["Ready to play?"]),
+              h.div([h.Class("text-label text-lichen")], ["Host a fresh Commander table with this deck."]),
             ],
           ),
           h.button(
             [
               h.Type("button"),
-              h.DataAttribute("testid", "lobby-open-join"),
-              h.Disabled(true),
-              h.Class(joinCardClass()),
+              h.DataAttribute("testid", "lobby-host"),
+              h.Disabled(model.submitting),
+              h.OnClick(RequestedLobbyHost()),
+              h.Class(buttonClass("primary", "w-fit")),
             ],
+            ["Host a table"],
+          ),
+          h.div(
+            [h.Class("flex flex-col gap-sm")],
             [
+              h.div([h.Class("text-label text-lichen")], ["Have a code?"]),
+              h.label([h.For("table-code"), h.Class("sr-only")], ["Table code"]),
               h.div(
+                [h.Class("flex flex-wrap items-center gap-sm")],
                 [
-                  h.Class(
-                    "flex aspect-[137/100] w-full items-center justify-center rounded-hud border border-dashed border-vine-dim bg-glass text-display text-lichen",
+                  h.input([
+                    h.Id("table-code"),
+                    h.DataAttribute("testid", "lobby-join-code"),
+                    h.Placeholder("Table code"),
+                    h.Value(model.code),
+                    h.OnInput((code) => ChangedLobbyCode({ code })),
+                    h.Autocomplete("off"),
+                    h.Spellcheck(false),
+                    h.Class(fieldClass("min-w-[10rem] flex-1")),
+                  ]),
+                  h.button(
+                    [
+                      h.Type("button"),
+                      h.DataAttribute("testid", "lobby-join"),
+                      h.Disabled(model.submitting),
+                      h.OnClick(RequestedLobbyJoin()),
+                      h.Class(buttonClass("ghost")),
+                    ],
+                    ["Join table"],
                   ),
                 ],
-                ["#"],
               ),
-              h.div([h.Class("font-display font-semibold text-title tracking-[-0.02em]")], ["Join a table"]),
-              h.div([h.Class("text-label text-lichen")], ["enter a code"]),
             ],
           ),
+          h.a(
+            [
+              h.Href(routePath(HomeRoute())),
+              h.DataAttribute("testid", "lobby-back"),
+              h.Class(buttonClass("ghost", "w-fit")),
+            ],
+            ["Back"],
+          ),
         ],
-      ),
-      h.a(
-        [h.Href(routePath(HomeRoute())), h.DataAttribute("testid", "lobby-back"), h.Class(buttonClass("ghost"))],
-        ["Back"],
       ),
     ],
   );
@@ -227,7 +231,7 @@ function entry(
   }
 
   const deck = decks.find((item) => item.id === model.selectedDeckId);
-  return chooseEntry(model, deck, decksLoading, knownCommanders);
+  return entrySurface(model, deck, decksLoading, knownCommanders);
 }
 
 function seats(model: LobbySlice): Html {
@@ -423,6 +427,34 @@ export const view = Submodel.defineView<LobbySlice, ViewMessage, ViewInputs>((mo
       ? entry(model, decks, decksLoading, knownCommanders)
       : tableLobby(model, decks, decksLoading, knownCommanders);
 
+  const error =
+    model.error == null
+      ? null
+      : h.div(
+          [h.Role("alert"), h.DataAttribute("testid", "lobby-error"), h.Class(alertClass("text-burn-red"))],
+          [humanError(model.error)],
+        );
+
+  const stage =
+    surface === "entry"
+      ? h.div(
+          [h.Class("flex justify-center py-xxl"), h.DataAttribute("testid", "lobby")],
+          [h.div([h.Class("w-full max-w-[min(100%-2rem,720px)]")], [body, error])],
+        )
+      : h.div(
+          [h.Class("flex justify-center py-xxl")],
+          [
+            h.section(
+              [
+                h.DataAttribute("testid", "lobby"),
+                h.DataAttribute("ui", "panel"),
+                h.Class(panelClass("max-w-[min(100%-2rem,640px)]")),
+              ],
+              [body, error],
+            ),
+          ],
+        );
+
   return shellFrame(h, {
     atmosphere: "shell",
     title: "Lobby",
@@ -433,26 +465,6 @@ export const view = Submodel.defineView<LobbySlice, ViewMessage, ViewInputs>((mo
       menuOpen: accountMenuOpen,
       showLeaderboardLink: true,
     }),
-    stage: h.div(
-      [h.Class("flex justify-center py-xxl")],
-      [
-        h.section(
-          [
-            h.DataAttribute("testid", "lobby"),
-            h.DataAttribute("ui", "panel"),
-            h.Class(panelClass("max-w-[min(100%-2rem,640px)]")),
-          ],
-          [
-            body,
-            model.error == null
-              ? null
-              : h.div(
-                  [h.Role("alert"), h.DataAttribute("testid", "lobby-error"), h.Class(alertClass("text-burn-red"))],
-                  [humanError(model.error)],
-                ),
-          ],
-        ),
-      ],
-    ),
+    stage,
   });
 });
