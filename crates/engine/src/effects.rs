@@ -1152,6 +1152,10 @@ impl Game {
             Effect::Choice(ChoiceEffect::EachPlayerDiscardsHandThenDraws { .. }) => {
                 self.run_misc_choreo(effect, ctx, events)
             }
+            // Timetwister — see `resolution/resolve_misc.rs`.
+            Effect::Choice(ChoiceEffect::EachPlayerShufflesHandAndGraveyardThenDraws {
+                ..
+            }) => self.run_misc_choreo(effect, ctx, events),
             // Malfegor's "discard your hand" — see `resolution/resolve_misc.rs`.
             Effect::Choice(ChoiceEffect::DiscardYourHand) => {
                 self.run_misc_choreo(effect, ctx, events)

@@ -572,13 +572,23 @@ named player, with the state-based orphan sweep exempting the Aura for the windo
 destruction and the choice resolving — the same exemption `enchant_graveyard` already carves out.
 *Cards:* kudzu.
 
-### 38. `shuffle-hand-and-graveyard-then-draw` — 1 card, S
+### 38. `shuffle-hand-and-graveyard-then-draw` — 1 card, S — **done**
 Depends on: nothing.
 Timetwister. `each_player_discards_hand_then_draws` (Wheel of Fortune, already in the pool) is the
 neighbour; Timetwister shuffles hand *and* graveyard into the library instead of discarding, and
 Timetwister itself goes to the graveyard after (so it isn't shuffled in). *Sketch:* a sibling mode
 on that effect with the zones to shuffle and no discard step.
 *Cards:* timetwister.
+
+*Landed:* a sibling `ChoiceEffect` variant (`each_player_shuffles_hand_and_graveyard_then_draws`),
+not a flag on the wheel — the zones read, the zone written, and the triggers fired all differ, and a
+bool that flips discard-to-shuffle *and* adds the graveyard is two axes wearing one name. The move
+itself needed nothing new: `Event::TuckedToLibrary` already accepts any origin (the graveyard
+shuffle-backs use it) and `Event::LibraryShuffled` already existed. Timetwister's "(Then put
+Timetwister into its owner's graveyard.)" is CR 608.2m restated, so it gets no effect — the spell is
+still on the stack while everyone shuffles, which the test pins. One test-shaped surprise worth
+keeping: a recycled card can be *redrawn* by the same effect, so asserting "back in the library" is
+wrong; the honest assertion is "never in a graveyard".
 
 ### 39. `graveyard-position-recursion` — 1 card, M
 Depends on: nothing.

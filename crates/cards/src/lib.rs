@@ -2876,6 +2876,13 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                     opponent: false,
                 }),
             ),
+            (
+                "Timetwister",
+                // Recycles rather than discards — the shuffle-back sibling of the wheel.
+                Effect::Choice(ChoiceEffect::EachPlayerShufflesHandAndGraveyardThenDraws {
+                    count: Amount::Fixed(7),
+                }),
+            ),
         ];
         for (name, effect) in expected {
             let card = get_by_name(name).unwrap_or_else(|| panic!("{name} is in the pool"));

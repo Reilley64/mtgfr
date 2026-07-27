@@ -823,6 +823,7 @@ impl Effect {
             | Effect::Choice(ChoiceEffect::EachOtherTokenBecomesCopyOfChosen)
             | Effect::Choice(ChoiceEffect::PutCounterThenMayBecomeCopyOfCardFromList { .. })
             | Effect::Choice(ChoiceEffect::EachPlayerDiscardsHandThenDraws { .. })
+            | Effect::Choice(ChoiceEffect::EachPlayerShufflesHandAndGraveyardThenDraws { .. })
             | Effect::Choice(ChoiceEffect::MaySacrifice { .. })
             | Effect::Choice(ChoiceEffect::MayReturnFromGraveyard { .. })
             | Effect::Choice(ChoiceEffect::MayDiscard { .. })

@@ -125,6 +125,7 @@ message_keys! {
     EFFECT_CHOICE_EACH_PLAYER_EXILES_FROM_GRAVEYARD => "effect.choice_each_player_exiles_from_graveyard",
     EFFECT_CHOICE_EACH_PLAYER_NAMES_CARD_THEN_REVEALS_TOP => "effect.choice_each_player_names_card_then_reveals_top",
     EFFECT_CHOICE_EACH_PLAYER_SACRIFICES => "effect.choice_each_player_sacrifices",
+    EFFECT_CHOICE_EACH_PLAYER_SHUFFLES_HAND_AND_GRAVEYARD_THEN_DRAWS => "effect.choice_each_player_shuffles_hand_and_graveyard_then_draws",
     EFFECT_CHOICE_JOIN_FORCES_PAY_MANA => "effect.choice_join_forces_pay_mana",
     EFFECT_CHOICE_MAY_DISCARD => "effect.choice_may_discard",
     EFFECT_CHOICE_MAY_REVEAL_LAND_FROM_HAND => "effect.choice_may_reveal_land_from_hand",
@@ -1906,6 +1907,12 @@ impl Effect {
             Effect::Choice(EachPlayerDiscardsHandThenDraws { count }) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_EACH_PLAYER_DISCARDS_HAND_THEN_DRAWS)
                     .with_params(vec![amount_param("count", count)])
+            }
+            Effect::Choice(EachPlayerShufflesHandAndGraveyardThenDraws { count }) => {
+                MessageRef::new(
+                    MessageKey::EFFECT_CHOICE_EACH_PLAYER_SHUFFLES_HAND_AND_GRAVEYARD_THEN_DRAWS,
+                )
+                .with_params(vec![amount_param("count", count)])
             }
             Effect::Choice(EachOtherTokenBecomesCopyOfChosen) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_EACH_OTHER_TOKEN_BECOMES_COPY_OF_CHOSEN)

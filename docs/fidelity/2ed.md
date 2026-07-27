@@ -304,7 +304,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Timber Wolves** {G} · Creature — Wolf — increment 14
 - [ ] **Time Vault** {2} · Artifact — increment 7, 18
 - [ ] **Time Walk** {1}{U} · Sorcery — increment 18
-- [ ] **Timetwister** {2}{U} · Sorcery — increment 38
+- [x] **Timetwister** {2}{U} · Sorcery — increment 38
 - [x] **Tsunami** {3}{G} · Sorcery — increment 51
 - [ ] **Two-Headed Giant of Foriys** {4}{R} · Creature — Giant — increment 11
 - [ ] **Vesuvan Doppelganger** {3}{U}{U} · Creature — Shapeshifter — increment 12

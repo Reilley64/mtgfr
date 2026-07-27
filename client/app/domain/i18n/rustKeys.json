@@ -99,6 +99,7 @@
   "effect.choice_each_player_exiles_from_graveyard",
   "effect.choice_each_player_names_card_then_reveals_top",
   "effect.choice_each_player_sacrifices",
+  "effect.choice_each_player_shuffles_hand_and_graveyard_then_draws",
   "effect.choice_join_forces_pay_mana",
   "effect.choice_may_discard",
   "effect.choice_may_reveal_land_from_hand",

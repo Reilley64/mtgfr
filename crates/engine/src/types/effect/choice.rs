@@ -83,6 +83,17 @@ pub enum ChoiceEffect {
         count: Amount,
     },
 
+    /// Timetwister's "Each player shuffles their hand and graveyard into their library, then draws
+    /// seven cards." The recycling sibling of
+    /// [`EachPlayerDiscardsHandThenDraws`](Self::EachPlayerDiscardsHandThenDraws): same APNAP
+    /// fan-out and same redraw, but the old cards are tucked back into the library and shuffled
+    /// instead of discarded, so no card reaches a graveyard and `you_discard` triggers stay quiet.
+    /// A separate variant rather than a flag on the discard one — the zones moved, the zone moved
+    /// *to*, and the triggers fired all differ.
+    EachPlayerShufflesHandAndGraveyardThenDraws {
+        count: Amount,
+    },
+
     /// Each other player discards a card of their choice (Syphon Mind, "Each other player discards
     /// a card"). A fan-out over the opponents in APNAP order — a player with an empty hand is
     /// skipped — tallying [`ResolutionFrame::cards_discarded_this_way`](crate::resolution::ResolutionFrame)

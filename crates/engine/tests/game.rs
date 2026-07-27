@@ -74638,6 +74638,67 @@ fn wheel_of_fortune_each_player_discards_then_draws() {
     );
 }
 
+// ── Timetwister (2ed): the shuffle-back sibling of the wheel ────────────────────────────────
+
+#[test]
+fn timetwister_shuffles_hands_and_graveyards_back_before_the_redraw() {
+    // "Each player shuffles their hand and graveyard into their library, then draws seven cards."
+    // The wheel above *discards*; Timetwister recycles, so nothing new reaches a graveyard — and
+    // Timetwister itself is still on the stack while that happens, so it is not shuffled in
+    // (CR 608.2m puts it into the graveyard only after the effect finishes).
+    let mut game = Game::with_players(3, 0);
+    let p0_hand = game.spawn_in_hand(PlayerId(0), card("Forest"));
+    let p1_hand = game.spawn_in_hand(PlayerId(1), card("Forest"));
+    let p0_yard = game.spawn_in_graveyard(PlayerId(0), card("Forest"));
+    let p2_yard = game.spawn_in_graveyard(PlayerId(2), card("Forest"));
+    game.stack_library(PlayerId(0), &vec![card("Forest"); 10]);
+    game.stack_library(PlayerId(1), &vec![card("Forest"); 10]);
+    game.stack_library(PlayerId(2), &vec![card("Forest"); 10]);
+
+    let twister = game.spawn_in_hand(PlayerId(0), card("Timetwister"));
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: twister,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        multikicker_count: 0,
+        alternative_cost: false,
+    })
+    .expect("the spell is castable");
+    advance_until(&mut game, |g| g.stack_is_empty()); // every seat passes in turn to resolve it.
+
+    for id in [p0_hand, p1_hand, p0_yard, p2_yard] {
+        // Library, or back in hand if the redraw happened to turn it up again — never a
+        // graveyard, which is the whole difference from the wheel.
+        assert!(
+            matches!(game.zone_of(id), Zone::Library | Zone::Hand),
+            "hands and graveyards alike were shuffled back in, not discarded"
+        );
+    }
+    assert_eq!(
+        game.zone_of(twister),
+        Zone::Graveyard,
+        "Timetwister was on the stack while everyone shuffled, so it lands in the graveyard after"
+    );
+    for player in 0..3 {
+        assert_eq!(
+            hand_ids(&game, PlayerId(player)).len(),
+            7,
+            "every player draws a fresh seven"
+        );
+    }
+}
+
 #[test]
 fn any_player_hand_size_condition_gates_naktamun_lorespinner_prepare() {
     // "At the beginning of your upkeep, if a player has one or fewer cards in hand, this

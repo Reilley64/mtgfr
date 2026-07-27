@@ -149,6 +149,8 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   ),
   "effect.choice_each_player_sacrifices": (params) =>
     `${edictWho(param(params, "scope"))} ${bool(params, "keep_one") ? "keeps one creature and sacrifices the rest" : "sacrifices a permanent"}`,
+  "effect.choice_each_player_shuffles_hand_and_graveyard_then_draws": (params) =>
+    `Each player shuffles their hand and graveyard into their library, then draws ${param(params, "count")}`,
   "effect.choice_join_forces_pay_mana": literal("Starting with you, each player may pay any amount of mana"),
   "effect.choice_may_discard": literal("You may discard a card"),
   "effect.choice_may_reveal_land_from_hand": literal("You may reveal a matching land card from your hand"),

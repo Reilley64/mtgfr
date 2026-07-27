@@ -80,6 +80,37 @@ impl Game {
                     }
                 }
             }
+            // "Each player shuffles their hand and graveyard into their library, then draws seven
+            // cards." (Timetwister): the same APNAP loop as the wheel above, but each old card is
+            // tucked back into the library (`TuckedToLibrary`, the zone move the graveyard
+            // shuffle-backs already use) and the library shuffled once per player before they
+            // draw. Timetwister itself is still on the stack here, so it isn't swept up (CR
+            // 608.2m puts it into the graveyard only once the effect has finished).
+            Effect::Choice(ChoiceEffect::EachPlayerShufflesHandAndGraveyardThenDraws { count }) => {
+                let n = self.resolve_count(count, controller, source, target, x);
+                for player in self.apnap_order() {
+                    let recycled: Vec<ObjectId> = self
+                        .hand_of(player)
+                        .into_iter()
+                        .chain(self.graveyard_cards(player))
+                        .collect();
+                    for from in recycled {
+                        self.push_apply(
+                            events,
+                            Event::TuckedToLibrary {
+                                card: self.next_object_id(),
+                                from,
+                                to_top: false,
+                                second_from_top: false,
+                            },
+                        );
+                    }
+                    self.push_apply(events, Event::LibraryShuffled { player });
+                    for event in self.draw_events(player, n) {
+                        self.push_apply(events, event);
+                    }
+                }
+            }
             // Malfegor's "discard your hand": the controller discards their whole hand (no choice,
             // so no `PendingChoice`), setting `cards_discarded_this_way` to its size so a following
             // Sequence step (Malfegor's each-opponent sacrifice) reads "for each card discarded
