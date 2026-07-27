@@ -25,6 +25,7 @@ pub mod grpc;
 pub mod health;
 pub mod legality;
 mod lobby;
+mod otel_semconv;
 pub mod precons;
 mod ratings;
 mod session;
