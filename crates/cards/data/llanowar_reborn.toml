@@ -1,0 +1,30 @@
+# This land enters tapped.
+# {T}: Add {G}.
+# Graft 1 (This land enters with a +1/+1 counter on it. Whenever a creature enters, you may move a
+# +1/+1 counter from this land onto it.)
+# Observer for Ozolith's artifact-or-creature CounterReplacement filter: a non-artifact non-creature
+# permanent that receives a +1/+1 counter on entry.
+name = "Llanowar Reborn"
+sets = ["lcc", "moc", "ncc", "c21", "c15", "c13", "ddl", "arc", "fut", "plst"]
+id = "92acb789-0e42-465c-ac16-40fefec48805"
+default_print = "284e165e-9ab6-47fc-9685-0fb03de237df"
+otags = ["graft", "mana-land", "pp-counters-matter"]
+oracle = "This land enters tapped.\n{T}: Add {G}.\nGraft 1 (This land enters with a +1/+1 counter on it. Whenever a creature enters, you may move a +1/+1 counter from this land onto it.)"
+approximates = "Graft's move-counter trigger is not modeled — only the enters-with-+1/+1 half (the Ozolith filter observer)."
+enters_tapped = true
+
+[kind]
+type = "land"
+produces = "green"
+
+# This land enters with a +1/+1 counter on it. (Graft 1's ETB half.)
+[[abilities]]
+timing = "static"
+
+# Graft 1 — enters with a +1/+1 counter.
+# ponytail: Graft's "whenever a creature enters, you may move a +1/+1 counter from this land onto
+# it" is not modeled; only the ETB counter placement is authored (Ozolith filter observer).
+[[abilities.effects]]
+type = "static"
+mode = "enters_with_counters"
+count = 1

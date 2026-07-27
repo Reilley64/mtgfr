@@ -102,6 +102,11 @@ pub enum StaticEffect {
         times: i32,
         #[cfg_attr(feature = "card-dsl", serde(default))]
         other: bool,
+        /// Restrict which permanents this replacement applies to (Ozolith's "artifact or
+        /// creature", Hardened Scales' "creature"). `None` (default) = any permanent you
+        /// control — Doubling Season's printed "a permanent you control".
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        filter: Option<PermanentFilter>,
     },
 
     CounterScaledAttackTax,

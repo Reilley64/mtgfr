@@ -721,6 +721,7 @@ impl Effect {
             })
             | Effect::Damage(DamageEffect::EachCreature { .. })
             | Effect::Damage(DamageEffect::EachPlayer { .. })
+            | Effect::Damage(DamageEffect::EachOpponent { .. })
             | Effect::Damage(DamageEffect::EachOtherOpponent { .. })
             | Effect::Pump(PumpEffect::WeakenEachCreature { .. })
             | Effect::Pump(PumpEffect::PumpCreaturesYouControlUntilEndOfTurn { .. })

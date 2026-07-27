@@ -66634,8 +66634,8 @@ fn witherbloom_charm_mode0_optional_sacrifice_gates_draw() {
 fn ozolith_targets_an_artifact_you_control_and_doubles_its_counter() {
     // "{1}{G}, {T}: Put a +1/+1 counter on target artifact or creature you control." — an
     // opponent's artifact isn't offered; Ozolith itself (an artifact you control) is. The
-    // counter-replacement static, which is unrestricted by permanent type, doubles-plus-one the
-    // counter placed on the targeted artifact too.
+    // counter-replacement static (artifact or creature) doubles-plus-one the counter placed on
+    // the targeted artifact too.
     let mut game = Game::new();
     let ozolith = game.spawn_on_battlefield(PlayerId(0), card("Ozolith, the Shattered Spire"));
     let my_artifact = game.spawn_on_battlefield(PlayerId(0), card("Arcane Signet"));
@@ -66669,6 +66669,36 @@ fn ozolith_targets_an_artifact_you_control_and_doubles_its_counter() {
         game.plus_counters(my_artifact),
         2,
         "Ozolith's replacement doubles-plus-one the counter placed on the artifact too"
+    );
+}
+
+#[test]
+fn ozolith_grows_creature_counters_but_not_llanowar_reborn_etb() {
+    // Ozolith: "If one or more +1/+1 counters would be put on an artifact or creature you
+    // control…" — a creature placement gets +1; Llanowar Reborn (a land entering with a +1/+1
+    // counter) does not.
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Ozolith, the Shattered Spire"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    put_two_counters(&mut game, PlayerId(0), bear);
+    assert_eq!(
+        game.plus_counters(bear),
+        3,
+        "Ozolith grows counters on a creature you control: 2 -> 3"
+    );
+
+    let reborn = game.spawn_in_hand(PlayerId(0), card("Llanowar Reborn"));
+    let events = game
+        .submit(Intent::PlayLand {
+            player: PlayerId(0),
+            object: reborn,
+        })
+        .unwrap();
+    let land = land_permanent(&events);
+    assert_eq!(
+        game.plus_counters(land),
+        1,
+        "Ozolith's artifact-or-creature filter skips a land's ETB +1/+1 counter"
     );
 }
 
@@ -71716,11 +71746,73 @@ fn open_the_way_reveals_until_x_lands() {
     }
 
     // The two non-lands went to the bottom of the library; the untouched fifth card is still on
-    // top, ahead of them.
+    // top, ahead of them (order among bottoms is random — see
+    // `open_the_way_bottoms_rest_in_random_order`).
     assert_eq!(game.library_size(PlayerId(0)), 3);
     assert_eq!(draw_top_from(&mut game, PlayerId(0)), lib[4]);
-    assert_eq!(draw_top_from(&mut game, PlayerId(0)), lib[0]);
-    assert_eq!(draw_top_from(&mut game, PlayerId(0)), lib[2]);
+    let mut bottomed = [draw_top_from(&mut game, PlayerId(0)), draw_top_from(&mut game, PlayerId(0))];
+    bottomed.sort();
+    let mut expected = [lib[0], lib[2]];
+    expected.sort();
+    assert_eq!(bottomed, expected, "the two non-lands land on the bottom");
+}
+
+#[test]
+fn open_the_way_bottoms_rest_in_random_order() {
+    // "…and the rest on the bottom of your library in a random order." Five non-lands give
+    // Fisher–Yates room to differ from reveal order (mirror of armored_skyhunter).
+    let mut game = Game::with_seed(0);
+    game.fund_mana(PlayerId(0));
+    let lib = game.stack_library(
+        PlayerId(0),
+        &[
+            card("Grizzly Bear"),
+            card("Grizzly Bear"),
+            card("Grizzly Bear"),
+            card("Grizzly Bear"),
+            card("Grizzly Bear"),
+            card("Forest"), // X=1 stop after this land
+            card("Island"), // untouched remainder
+        ],
+    );
+    let bears: Vec<ObjectId> = lib[..5].to_vec();
+    let spell = game.spawn_in_hand(PlayerId(0), card("Open the Way"));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: spell,
+        target: None,
+        x: 1,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        multikicker_count: 0,
+        alternative_cost: false,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(draw_top_from(&mut game, PlayerId(0)), lib[6]); // untouched Island
+    let bottomed: Vec<ObjectId> = (0..5)
+        .map(|_| draw_top_from(&mut game, PlayerId(0)))
+        .collect();
+    assert_ne!(
+        bottomed, bears,
+        "seed 0's Fisher-Yates reorders the bottomed pile away from reveal order"
+    );
+    let mut sorted_bottomed = bottomed.clone();
+    sorted_bottomed.sort();
+    let mut expected = bears.clone();
+    expected.sort();
+    assert_eq!(
+        sorted_bottomed, expected,
+        "the same five Bears land on the bottom, just reordered"
+    );
 }
 
 #[test]
@@ -72607,9 +72699,71 @@ fn animists_awakening_reveals_top_x_and_deploys_all_lands() {
         3,
         "the three Bears sit on the bottom"
     );
-    assert_eq!(draw_top_from(&mut game, PlayerId(0)), lib[1]);
-    assert_eq!(draw_top_from(&mut game, PlayerId(0)), lib[3]);
-    assert_eq!(draw_top_from(&mut game, PlayerId(0)), lib[4]);
+    let mut bottomed = [
+        draw_top_from(&mut game, PlayerId(0)),
+        draw_top_from(&mut game, PlayerId(0)),
+        draw_top_from(&mut game, PlayerId(0)),
+    ];
+    bottomed.sort();
+    let mut expected = [lib[1], lib[3], lib[4]];
+    expected.sort();
+    assert_eq!(bottomed, expected, "the three Bears land on the bottom");
+}
+
+#[test]
+fn animists_awakening_bottoms_rest_in_random_order() {
+    // "…and the rest on the bottom of your library in a random order." Five non-lands among the
+    // revealed top give Fisher–Yates room to differ from reveal order (mirror of armored_skyhunter).
+    let mut game = Game::with_seed(0);
+    game.fund_mana(PlayerId(0));
+    let lib = game.stack_library(
+        PlayerId(0),
+        &[
+            card("Grizzly Bear"),
+            card("Grizzly Bear"),
+            card("Grizzly Bear"),
+            card("Grizzly Bear"),
+            card("Grizzly Bear"),
+            card("Forest"), // land among the revealed six — deployed, not bottomed
+        ],
+    );
+    let bears: Vec<ObjectId> = lib[..5].to_vec();
+    let spell = game.spawn_in_hand(PlayerId(0), card("Animist's Awakening"));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: spell,
+        target: None,
+        x: 6,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        multikicker_count: 0,
+        alternative_cost: false,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    let bottomed: Vec<ObjectId> = (0..5)
+        .map(|_| draw_top_from(&mut game, PlayerId(0)))
+        .collect();
+    assert_ne!(
+        bottomed, bears,
+        "seed 0's Fisher-Yates reorders the bottomed pile away from reveal order"
+    );
+    let mut sorted_bottomed = bottomed.clone();
+    sorted_bottomed.sort();
+    let mut expected = bears.clone();
+    expected.sort();
+    assert_eq!(
+        sorted_bottomed, expected,
+        "the same five Bears land on the bottom, just reordered"
+    );
 }
 
 #[test]
@@ -77673,6 +77827,70 @@ fn advanced_reconstruction_level_two_burns_each_opponent_on_graveyard_leave() {
         opp_before - 2,
         "at level 2 a card leaving the graveyard deals 2 to each opponent"
     );
+}
+
+#[test]
+fn advanced_reconstruction_level_two_emits_damage_dealt_to_player() {
+    // Level 2 deals real damage to each opponent (not plain life loss) so a
+    // "whenever a source deals damage to an opponent/player" watch can fire.
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let class = game.spawn_on_battlefield(PlayerId(0), card("Advanced Reconstruction"));
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: class,
+        ability_index: 1, // {1}{R}: Level 2
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let reanimate = game.spawn_in_hand(PlayerId(0), card("Reanimate"));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: reanimate,
+        target: Some(Target::Object(corpse)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        multikicker_count: 0,
+        alternative_cost: false,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game); // Reanimate; leaves-graveyard trigger queues
+    let events = resolve_top_of_stack_events(&mut game); // Class damage resolves
+
+    assert!(
+        events.iter().any(|e| {
+            matches!(
+                e,
+                Event::DamageDealtToPlayer {
+                    source,
+                    player: PlayerId(1),
+                    amount: 2,
+                } if *source == class
+            )
+        }),
+        "real DamageDealtToPlayer marker fires for the opponent"
+    );
+    assert!(
+        !events
+            .iter()
+            .any(|e| matches!(e, Event::DamageDealtToPlayer { player: PlayerId(0), .. })),
+        "the controller is not damaged"
+    );
+    assert_eq!(game.life(PlayerId(1)), 18, "the opponent lost 2 to damage");
 }
 
 #[test]

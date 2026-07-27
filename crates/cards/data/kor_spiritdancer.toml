@@ -1,15 +1,11 @@
 # This creature gets +2/+2 for each Aura attached to it.
 # Whenever you cast an Aura spell, you may draw a card.
-# Kor Spiritdancer (soc). Real oracle text:
-#   "This creature gets +2/+2 for each Aura attached to it.
-#    Whenever you cast an Aura spell, you may draw a card."
 name = "Kor Spiritdancer"
 sets = ["bbd", "jmp", "pc2", "pca", "plst", "roe", "soc", "woc"]
 id = "2bfc7467-1316-43d3-9ca6-ff36cc2de607"
 default_print = "48da45bd-ed72-4239-af02-e848703a1d02"
 otags = ["cast-trigger-you", "color-break", "draw-engine", "enchantment-engine", "repeatable-pure-draw", "uril-ability"]
 oracle = "This creature gets +2/+2 for each Aura attached to it.\nWhenever you cast an Aura spell, you may draw a card."
-approximates = "Amounts carry no per-unit coefficient, so the +2/+2-per-Aura is modeled as two summed +1/+1-per-Aura self-statics (the pool's idiom — eidolon_of_countless_battles does the same for a doubled anthem)."
 subtypes = ["Kor", "Wizard"]
 
 [cost]
@@ -21,9 +17,6 @@ type = "creature"
 power = 0
 toughness = 2
 
-# ponytail: Amounts carry no per-unit coefficient, so the +2/+2-per-Aura is modeled as two
-# summed +1/+1-per-Aura self-statics (the pool's idiom — eidolon_of_countless_battles does the
-# same for a doubled anthem).
 # This creature gets +2/+2 for each Aura attached to it.
 [[abilities]]
 timing = "static"
@@ -33,20 +26,8 @@ timing = "static"
 type = "static"
 mode = "anthem"
 self_only = true
-power = { auras_attached_to_source = {} }
-toughness = { auras_attached_to_source = {} }
-
-# This creature gets +2/+2 for each Aura attached to it.
-[[abilities]]
-timing = "static"
-
-# This creature gets +2/+2 for each Aura attached to it.
-[[abilities.effects]]
-type = "static"
-mode = "anthem"
-self_only = true
-power = { auras_attached_to_source = {} }
-toughness = { auras_attached_to_source = {} }
+power = { times = 2, per = { auras_attached_to_source = {} } }
+toughness = { times = 2, per = { auras_attached_to_source = {} } }
 
 # Whenever you cast an Aura spell, you may draw a card.
 [[abilities]]

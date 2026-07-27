@@ -90,7 +90,7 @@ Discriminates on `type`:
 
 - `"creature"`: requires `power` and `toughness` (i32); optional `also` for dual-type creatures (e.g. `also = "artifact"` for artifact creatures). Creature subtypes go in top-level `subtypes`.
 - `"instant"` / `"sorcery"`: collectively `CardKind::Spell`.
-- `"enchantment"` / `"artifact"` / `"planeswalker"`: non-creature permanents. Planeswalker requires `loyalty: i32`.
+- `"enchantment"` / `"artifact"` / `"planeswalker"` / `"battle"`: non-creature permanents. Planeswalker requires `loyalty: i32`; battle requires `defense: i32` (stored in `Permanent::loyalty`).
 - `"aura"`: permanent Aura; the `enchant` top-level field supplies the attach filter.
 - `"land"`: optional `produces` (what mana it taps for), `subtypes` (Forest/Island/Plains/Swamp/Mountain for basic subtypes), `basic: true`.
 - `"token"`: used only in `data/tokens/*.toml` files; not a deckable card type.

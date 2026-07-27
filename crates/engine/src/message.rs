@@ -143,6 +143,7 @@ message_keys! {
     EFFECT_CHOICE_TARGET_PLAYER_EXILES_FROM_GRAVEYARD => "effect.choice_target_player_exiles_from_graveyard",
     EFFECT_CHOICE_TARGET_PLAYER_MAY_DRAW => "effect.choice_target_player_may_draw",
     EFFECT_DAMAGE_EACH_CREATURE => "effect.damage_each_creature",
+    EFFECT_DAMAGE_EACH_OPPONENT => "effect.damage_each_opponent",
     EFFECT_DAMAGE_EACH_OTHER_OPPONENT => "effect.damage_each_other_opponent",
     EFFECT_DAMAGE_EACH_PLAYER => "effect.damage_each_player",
     EFFECT_DAMAGE_RADIANCE => "effect.damage_radiance",
@@ -1123,6 +1124,10 @@ impl Effect {
                 MessageRef::new(MessageKey::EFFECT_DAMAGE_EACH_PLAYER)
                     .with_params(vec![amount_param("amount", amount)])
             }
+            Effect::Damage(EachOpponent { amount }) => {
+                MessageRef::new(MessageKey::EFFECT_DAMAGE_EACH_OPPONENT)
+                    .with_params(vec![amount_param("amount", amount)])
+            }
             Effect::Damage(EachOtherOpponent { amount, .. }) => {
                 MessageRef::new(MessageKey::EFFECT_DAMAGE_EACH_OTHER_OPPONENT)
                     .with_params(vec![amount_param("amount", amount)])
@@ -1989,10 +1994,16 @@ impl Effect {
                 MessageRef::new(MessageKey::EFFECT_STATIC_PREVENT_COMBAT_DAMAGE)
                     .with_params(vec![bool_param("to_self", to_self), bool_param("by_self", by_self)])
             }
-            Effect::Static(CounterReplacement { add, times, .. }) => {
-                MessageRef::new(MessageKey::EFFECT_STATIC_COUNTER_REPLACEMENT)
-                    .with_params(vec![int_param("add", add), int_param("times", times)])
-            }
+            Effect::Static(CounterReplacement {
+                add,
+                times,
+                filter,
+                ..
+            }) => MessageRef::new(MessageKey::EFFECT_STATIC_COUNTER_REPLACEMENT).with_params(vec![
+                int_param("add", add),
+                int_param("times", times),
+                optional_permanent_filter_param("filter", filter),
+            ]),
             Effect::Static(TokenReplacement { times }) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_TOKEN_REPLACEMENT)
                     .with_params(vec![int_param("times", times)])

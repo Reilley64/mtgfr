@@ -276,6 +276,34 @@ impl Game {
                     })
                     .collect()
             }
+            // Advanced Reconstruction / Fateful Tempest: same per-player damage events as
+            // `EachPlayer` above, but only to living opponents (CR 102.3) — the controller is
+            // carved out.
+            DamageEffect::EachOpponent { amount } => {
+                let amount = self.resolve_amount(amount, controller, source, target, x);
+                self.living_players()
+                    .filter(|&player| player != controller)
+                    .flat_map(|player| {
+                        let mut events = vec![Event::LifeChanged {
+                            player,
+                            amount: -amount,
+                            source: Some(source),
+                        }];
+                        // 0 damage is never dealt (CR 120.8) — no marker, no trigger.
+                        if amount > 0 {
+                            events.push(Event::DamageDealtToPlayer {
+                                source,
+                                player,
+                                amount,
+                            });
+                            // Lifelink (CR 702.15e): a source dealing damage to multiple players
+                            // gains life separately for each.
+                            events.extend(self.lifelink_gain(source, amount));
+                        }
+                        events
+                    })
+                    .collect()
+            }
             // Hydra Omnivore's splash: same per-player damage events as `DamageEachPlayer` above,
             // but only to opponents of the ability's controller (CR 102.3) other than the one who
             // already took the combat damage — that player is baked in at trigger placement.

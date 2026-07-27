@@ -1,17 +1,10 @@
 # Whenever one or more other creatures die, draw a card. This ability triggers only once each turn.
-# Morbid Opportunist (soc). Real oracle text:
-#   "Whenever one or more other creatures die, draw a card. This ability triggers only once
-#    each turn."
-# ponytail: the printed "one or more other creatures die" batch trigger is modeled as a
-# per-creature watch-others death trigger capped once_each_turn — the cap collapses a
-# simultaneous batch to a single draw.
 name = "Morbid Opportunist"
 sets = ["blc", "dbl", "dsc", "fic", "inr", "j25", "mid", "otc", "pip", "plst", "soc", "spg", "tdc"]
 id = "322f44f0-e6da-4ee0-b474-e7d5e9a461c5"
 default_print = "08838865-a9b6-4323-96a2-0d3a7aba9d3d"
 otags = ["death-trigger", "draw-engine", "morbid", "repeatable-pure-draw"]
 oracle = "Whenever one or more other creatures die, draw a card. This ability triggers only once each turn."
-approximates = "the printed \"one or more other creatures die\" batch trigger is modeled as a per-creature watch-others death trigger capped once_each_turn — the cap collapses a simultaneous batch to a single draw."
 subtypes = ["Human", "Rogue"]
 
 [cost]
@@ -25,6 +18,7 @@ toughness = 3
 
 # Whenever one or more other creatures die, draw a card. This ability triggers only once each
 # turn.
+# once_each_turn: per-creature vs batch death watches draw the same once-per-turn.
 [[abilities]]
 timing = "creature_dies"
 once_each_turn = true

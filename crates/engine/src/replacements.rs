@@ -30,6 +30,7 @@ enum ReplacementEffect {
         add: i32,
         times: i32,
         other: bool,
+        filter: Option<PermanentFilter>,
     },
     CreaturesYouControlEnterWithCounters {
         source: ObjectId,
@@ -88,13 +89,19 @@ impl ReplacementRegistry {
                             },
                         );
                     }
-                    Effect::Static(StaticEffect::CounterReplacement { add, times, other }) => {
+                    Effect::Static(StaticEffect::CounterReplacement {
+                        add,
+                        times,
+                        other,
+                        filter,
+                    }) => {
                         effects.push(ReplacementEffect::CounterReplacement {
                             source,
                             controller,
                             add,
                             times,
                             other,
+                            filter,
                         });
                     }
                     Effect::Static(StaticEffect::CreaturesYouControlEnterWithCounters {
@@ -198,6 +205,7 @@ impl ReplacementRegistry {
                 add: next_add,
                 times: next_times,
                 other,
+                filter,
             } = effect
             else {
                 continue;
@@ -206,6 +214,11 @@ impl ReplacementRegistry {
                 continue;
             }
             if *other && *source == object {
+                continue;
+            }
+            if filter.is_some_and(|f| {
+                !game.permanent_matches(&f, object, *replacement_controller, Some(*source))
+            }) {
                 continue;
             }
             add += *next_add;
