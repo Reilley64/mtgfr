@@ -83,6 +83,7 @@ These documents are **not superseded** and must stay current alongside the specs
 | [effect-deepening](2026-07-26-effect-deepening-design.md) | Design input: deepen Effect on client (LobbyClient, BFF gRPC Effect dispatch, Drizzle RC effect-postgres, Effect HTTP helpers); update shell/lobby/wire specs per wave |
 | [prompt-primary-bar-takeover](2026-07-27-prompt-primary-bar-takeover-design.md) | Design input: simple prompt actions own the primary-bar slot; rich pickers are center modals; board-aim coaches stay bottom-docked; update prompts + turn-and-priority-chrome at implement time |
 | [unified-screen-motion](2026-07-27-unified-screen-motion-design.md) | Design input: unify hand-drag ghost + flights + ExitFx onto the Mount flight / screen-motion paint layer; update flights + hand-and-zone-bar |
+| [otel-semantic-conventions](2026-07-27-otel-semantic-conventions-design.md) | Design input: OTel Semantic Conventions 1.37.0 for resource/HTTP/RPC/DB/exceptions + `mtgfr.*` extensions across Faro→BFF→API; update observability-ops (+ topology if env/dashboards) at implement time |
 
 ## Authoring conventions
 
