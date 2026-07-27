@@ -1,5 +1,3 @@
-import { gunzipSync } from "node:zlib";
-
 const TTL_MS = 24 * 60 * 60 * 1000;
 const UA = "edh.reilley.dev/0.1";
 const BULK_URL = "https://api.scryfall.com/bulk-data/oracle-cards";
@@ -25,17 +23,36 @@ function cacheIsFresh(now: number): boolean {
   return cache != null && now - cache.fetchedAt < TTL_MS;
 }
 
-function parseOracleTotal(text: string): number {
+function countNonEmptyLines(text: string): number {
   let value = 0;
-
   for (const rawLine of text.split("\n")) {
-    const line = rawLine.trim();
-    if (!line) continue;
+    if (rawLine.trim()) value += 1;
+  }
+  return value;
+}
 
-    value += 1;
+/** Stream-count gzip JSONL so we never gunzipSync a ~200MB buffer on the Nitro event loop. */
+async function countOracleTotalFromGzipStream(body: ReadableStream<BufferSource>): Promise<number> {
+  const decoder = new TextDecoder();
+  let carry = "";
+  let total = 0;
+
+  const reader = body.pipeThrough(new DecompressionStream("gzip")).getReader();
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (value == null) continue;
+
+    const text = carry + decoder.decode(value, { stream: true });
+    const lines = text.split("\n");
+    carry = lines.pop() ?? "";
+    for (const line of lines) {
+      if (line.trim()) total += 1;
+    }
   }
 
-  return value;
+  total += countNonEmptyLines(carry + decoder.decode());
+  return total;
 }
 
 export async function refreshOracleTotal(fetchImpl: typeof fetch = globalThis.fetch): Promise<number | null> {
@@ -49,10 +66,8 @@ export async function refreshOracleTotal(fetchImpl: typeof fetch = globalThis.fe
     const fileRes = await fetchImpl(meta.jsonl_download_uri, {
       headers: { "User-Agent": UA },
     });
-    if (!fileRes.ok) return cache?.value ?? null;
-    const buf = Buffer.from(await fileRes.arrayBuffer());
-    const text = gunzipSync(buf).toString("utf8");
-    const value = parseOracleTotal(text);
+    if (!fileRes.ok || fileRes.body == null) return cache?.value ?? null;
+    const value = await countOracleTotalFromGzipStream(fileRes.body);
     if (value <= 0) return cache?.value ?? null;
     cache = { value, fetchedAt: Date.now() };
     return value;
