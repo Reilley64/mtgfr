@@ -1989,9 +1989,9 @@ message SnapshotFrame {
 
 message Heartbeat {}
 
-// The stream's per-line frame union: an initial full snapshot, a per-event delta, or a
+// The stream's per-line response union: an initial full snapshot, a per-event delta, or a
 // keepalive heartbeat (ADR 0006).
-message StreamFrame {
+message StreamResponse {
   oneof frame {
     SnapshotFrame snapshot = 1;
     DeltaEnvelope delta = 2;

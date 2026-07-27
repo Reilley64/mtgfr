@@ -11,53 +11,110 @@ option java_multiple_files = true;
 
 // Auth, Decks, Cards, Game, Tables. Shared vocabulary lives in common.proto.
 
-message Empty {}
-
-message Ack {
-  bool accepted = 1;
-  reserved 2;
-  reserved "reason";
-  optional MessageRef reject_reason = 3;
-}
-
 message Me {
   int64 id = 1;
   string email = 2;
   string username = 3;
 }
 
-message Credentials {
-  string email = 1;
-  string password = 2;
-}
-
-message SignupCredentials {
+message SignupRequest {
   string email = 1;
   string password = 2;
   string username = 3;
 }
 
-// Auth responses that mint a session: token is returned for the BFF to Set-Cookie.
-message AuthSession {
+message SignupResponse {
   Me me = 1;
   string session_token = 2;
 }
 
-service Auth {
-  rpc Signup(SignupCredentials) returns (AuthSession);
-  rpc Login(Credentials) returns (AuthSession);
-  rpc Logout(Empty) returns (Empty);
-  // Named GetMe, not Me: protoc can't resolve a `returns (Me)` type inside an rpc method also
-  // named `Me` (the method name shadows the message name).
-  rpc GetMe(Empty) returns (Me);
+message LoginRequest {
+  string email = 1;
+  string password = 2;
 }
 
-message DeckId {
+message LoginResponse {
+  Me me = 1;
+  string session_token = 2;
+}
+
+message LogoutRequest {}
+
+message LogoutResponse {}
+
+message GetMeRequest {}
+
+message GetMeResponse {
+  int64 id = 1;
+  string email = 2;
+  string username = 3;
+}
+
+service AuthService {
+  rpc Signup(SignupRequest) returns (SignupResponse);
+  rpc Login(LoginRequest) returns (LoginResponse);
+  rpc Logout(LogoutRequest) returns (LogoutResponse);
+  rpc GetMe(GetMeRequest) returns (GetMeResponse);
+}
+
+message CreateRequest {
+  string name = 1;
+  string commander = 2;
+  string commander_print = 3;
+  repeated DeckCardEntry cards = 4;
+}
+
+message CreateResponse {
+  int64 id = 1;
+  string name = 2;
+  string commander = 3;
+  string commander_print = 4;
+  repeated DeckCardEntry cards = 5;
+}
+
+message ListRequest {}
+
+message ListResponse {
+  repeated DeckSummary decks = 1;
+}
+
+message GetRequest {
   int64 id = 1;
 }
 
-message DeckList {
-  repeated DeckSummary decks = 1;
+message GetResponse {
+  int64 id = 1;
+  string name = 2;
+  string commander = 3;
+  string commander_print = 4;
+  repeated DeckCardEntry cards = 5;
+}
+
+message UpdateRequest {
+  int64 id = 1;
+  DeckSaveBody request = 2;
+}
+
+message UpdateResponse {
+  int64 id = 1;
+  string name = 2;
+  string commander = 3;
+  string commander_print = 4;
+  repeated DeckCardEntry cards = 5;
+}
+
+message DeleteRequest {
+  int64 id = 1;
+}
+
+message DeleteResponse {}
+
+service DecksService {
+  rpc Create(CreateRequest) returns (CreateResponse);
+  rpc List(ListRequest) returns (ListResponse);
+  rpc Get(GetRequest) returns (GetResponse);
+  rpc Update(UpdateRequest) returns (UpdateResponse);
+  rpc Delete(DeleteRequest) returns (DeleteResponse);
 }
 
 message LeaderboardEntry {
@@ -72,75 +129,105 @@ message GetLeaderboardRequest {
   uint32 offset = 2;
 }
 
-message Leaderboard {
+message GetLeaderboardResponse {
   repeated LeaderboardEntry entries = 1;
   uint32 total = 2;
 }
 
-message UpdateDeckRequest {
-  int64 id = 1;
-  SaveDeckRequest request = 2;
+service RatingsService {
+  rpc GetLeaderboard(GetLeaderboardRequest) returns (GetLeaderboardResponse);
 }
 
-service Decks {
-  rpc Create(SaveDeckRequest) returns (DeckDetail);
-  rpc List(Empty) returns (DeckList);
-  rpc Get(DeckId) returns (DeckDetail);
-  rpc Update(UpdateDeckRequest) returns (DeckDetail);
-  rpc Delete(DeckId) returns (Empty);
+message CatalogRequest {}
+
+message CatalogResponse {
+  repeated CatalogCard cards = 1;
 }
 
-service Ratings {
-  rpc GetLeaderboard(GetLeaderboardRequest) returns (Leaderboard);
-}
-
-message SearchCardsRequest {
+message SearchRequest {
   string q = 1;
   uint32 limit = 2;
   uint32 offset = 3;
 }
 
-message CardList {
+message SearchResponse {
   repeated CatalogCard cards = 1;
 }
 
-message LookupCardsRequest {
+message LookupRequest {
   repeated string ids = 1;
 }
 
-service Cards {
-  rpc Catalog(Empty) returns (CardList);
-  rpc Search(SearchCardsRequest) returns (CardList);
-  rpc Lookup(LookupCardsRequest) returns (CardList);
+message LookupResponse {
+  repeated CatalogCard cards = 1;
+}
+
+service CardsService {
+  rpc Catalog(CatalogRequest) returns (CatalogResponse);
+  rpc Search(SearchRequest) returns (SearchResponse);
+  rpc Lookup(LookupRequest) returns (LookupResponse);
 }
 
 message StreamRequest {
   string table_id = 1;
 }
 
-message IntentRequest {
+message SubmitIntentRequest {
   string table_id = 1;
   IntentEnvelope envelope = 2;
 }
 
-message YieldRequest {
+message SubmitIntentResponse {
+  bool accepted = 1;
+  reserved 2;
+  reserved "reason";
+  optional MessageRef reject_reason = 3;
+}
+
+message SetYieldRequest {
   string table_id = 1;
   bool enabled = 2;
 }
 
-message StackDwellRequest {
+message SetYieldResponse {
+  bool accepted = 1;
+  reserved 2;
+  reserved "reason";
+  optional MessageRef reject_reason = 3;
+}
+
+message SetTurnYieldRequest {
+  string table_id = 1;
+  bool enabled = 2;
+}
+
+message SetTurnYieldResponse {
+  bool accepted = 1;
+  reserved 2;
+  reserved "reason";
+  optional MessageRef reject_reason = 3;
+}
+
+message SetStackDwellRequest {
   string table_id = 1;
   bool dwelling = 2;
 }
 
-service Game {
-  rpc Stream(StreamRequest) returns (stream StreamFrame);
-  rpc SubmitIntent(IntentRequest) returns (Ack);
-  rpc SetYield(YieldRequest) returns (Ack);
-  rpc SetTurnYield(YieldRequest) returns (Ack);
-  rpc SetStackDwell(StackDwellRequest) returns (Ack);
+message SetStackDwellResponse {
+  bool accepted = 1;
+  reserved 2;
+  reserved "reason";
+  optional MessageRef reject_reason = 3;
 }
 
-service Tables {
+service GameService {
+  rpc Stream(StreamRequest) returns (stream StreamResponse);
+  rpc SubmitIntent(SubmitIntentRequest) returns (SubmitIntentResponse);
+  rpc SetYield(SetYieldRequest) returns (SetYieldResponse);
+  rpc SetTurnYield(SetTurnYieldRequest) returns (SetTurnYieldResponse);
+  rpc SetStackDwell(SetStackDwellRequest) returns (SetStackDwellResponse);
+}
+
+service TablesService {
   rpc Seed(SeedRequest) returns (SeedResponse);
 }
