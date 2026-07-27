@@ -120,10 +120,9 @@ Author every `shadow.*` and `drop-shadow.drag` as `$type: "shadow"` composites
 ```
 
 Multi-layer tokens (`press`, `glow`, `pick`) use a **JSON array** of shadow
-layers. Inset layers set `"inset": true` when the Format/tooling path supports
-it; if Style Dictionary’s DTCG shadow serializer lacks inset, codegen owns a
-small custom serializer (same as today’s custom formats) rather than falling
-back to `$type: "css"`.
+layers. Inset layers set `"inset": true` (Format 2025.10 shadow composite).
+Codegen owns serialization to CSS (custom format, same as today) so Style
+Dictionary gaps cannot force a return to `$type: "css"`.
 
 **Codegen:** emit CSS `box-shadow` / `filter: drop-shadow(...)` strings into the
 existing `--shadow-*` / `--drop-shadow-*` names. Also emit a small TS module
