@@ -371,6 +371,18 @@ legendery = true\n\n[kind]\ntype = \"creature\"\npower = 1\ntoughness = 1\n";
         // quietly produce a cost-free activated ability.
         let card = "name = \"Typo\"\nid = \"00000000-0000-0000-0000-000000000001\"\ndefault_print = \"00000000-0000-0000-0000-000000000002\"\n\n[kind]\ntype = \"creature\"\npower = 1\ntoughness = 1\n\n[[abilities]]\ntiming = \"activated\"\ntap_self = true\n\n[[abilities.effects]]\ntype = \"gain_life\"\namount = 1\n";
         assert!(toml::from_str::<CardDef>(card).is_err());
+
+        // …and inside an effect table, the deepest and highest-churn surface of the DSL. An
+        // effect block is the last table in most card files, so a key appended one line too far
+        // lands here rather than at the top level — `toughness` misspelled on an anthem must not
+        // load as a +1/+0 lord.
+        let card = "name = \"Typo\"\nid = \"00000000-0000-0000-0000-000000000001\"\ndefault_print = \"00000000-0000-0000-0000-000000000002\"\n\n[kind]\ntype = \"enchantment\"\n\n[[abilities]]\ntiming = \"static\"\n\n[[abilities.effects]]\ntype = \"static\"\nmode = \"anthem\"\npower = 1\ntoughnes = 1\n";
+        assert!(toml::from_str::<CardDef>(card).is_err());
+
+        // The structural composers are tagged by `type` alone, with no `mode` leaf — they need
+        // the guard on their own arm, not on a family enum.
+        let card = "name = \"Typo\"\nid = \"00000000-0000-0000-0000-000000000001\"\ndefault_print = \"00000000-0000-0000-0000-000000000002\"\n\n[kind]\ntype = \"sorcery\"\n\n[[abilities]]\ntiming = \"spell\"\n\n[[abilities.effects]]\ntype = \"sequence\"\nsteps = []\nstep = []\n";
+        assert!(toml::from_str::<CardDef>(card).is_err());
     }
 
     #[test]

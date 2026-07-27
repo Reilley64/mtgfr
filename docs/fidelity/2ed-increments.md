@@ -585,15 +585,18 @@ land for mana", so it can be modelled as a direct effect without a real control 
 Command is the hard half and should be the last thing attempted in this set.
 *Cards:* drain_power, word_of_command.
 
-### 50. `deny-unknown-fields-on-carddef` — 0 cards, S
+### 50. `deny-unknown-fields-on-effect-tables` — 0 cards, S — **done**
 Depends on: nothing.
-Found while authoring this set, not by reading a card. `[[abilities]]` blocks reject unknown keys
-(the pool has a test for it), but the **top-level** card table does not: appending
-`bogus_field_check = 7` to a card TOML loads clean. A typo'd top-level key — `keyword` for
-`keywords`, `subtype` for `subtypes` — therefore silently drops the field, and the card ships
-missing a printed characteristic with a green suite. This is a fidelity hazard for every future
-grind, not a card gap. *Sketch:* `#[serde(deny_unknown_fields)]` on `CardDef`'s `card-dsl`
-deserialize, then fix whatever in the existing pool it turns red.
+Found while authoring this set, not by reading a card. The top-level card table and
+`[[abilities]]` blocks already reject unknown keys; **effect** tables did not, so appending
+`bogus_field_check = 7` to a card TOML loaded clean. That is the worst place for the hole to be:
+an `[[abilities.effects]]` block is the last table in most card files, so a key written one line
+too far lands in the effect rather than at top level, and effects are the highest-churn surface
+in the DSL. A typo'd `toughnes` on an anthem shipped a +1/+0 lord with a green suite. This is a
+fidelity hazard for every future grind, not a card gap.
+*Landed:* `deny_unknown_fields` on all nineteen `mode`-tagged effect family enums and on the
+`type`-tagged `Effect` itself (which covers the structural composers, whose arms carry no `mode`
+leaf). Nothing in the existing pool turned red — no card was relying on an ignored key.
 *Cards:* none — a guard against silently unfaithful cards.
 
 ### 51. `land-subtype-permanent-filter` — 2 cards, S

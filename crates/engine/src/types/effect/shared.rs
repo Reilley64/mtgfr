@@ -433,7 +433,7 @@ pub enum LandTapBonusColor {
 #[cfg_attr(
     feature = "card-dsl",
     derive(serde::Deserialize),
-    serde(tag = "type", rename_all = "snake_case")
+    serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)
 )]
 pub enum Effect {
     Damage(DamageEffect),

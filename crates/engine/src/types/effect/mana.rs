@@ -7,7 +7,7 @@ use crate::de;
 #[cfg_attr(
     feature = "card-dsl",
     derive(serde::Deserialize),
-    serde(tag = "mode", rename_all = "snake_case")
+    serde(tag = "mode", rename_all = "snake_case", deny_unknown_fields)
 )]
 pub enum ManaEffect {
     Add {
