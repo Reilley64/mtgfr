@@ -480,6 +480,8 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.static_anthem": (params) => staticAnthem(params),
   "effect.static_attack_tax": (params) =>
     `Creatures can't attack you unless their controller pays {${param(params, "amount")}} for each creature they control that's attacking you`,
+  "effect.static_base_power_toughness_from_amount": (params) =>
+    `This creature's power and toughness are each equal to ${param(params, "power")}`,
   "effect.static_cant_attack_if_cast_this_turn": literal(
     "Each opponent who cast a spell this turn can't attack with creatures",
   ),

@@ -841,6 +841,13 @@ pub struct PermanentFilter {
     /// [`CardFilter::SnowLand`], or a battlefield "snow permanent" scan). `false` (default)
     /// imposes no restriction. Reads [`CardDef::snow`].
     pub snow: bool,
+    /// Excluded subtypes (Keldon Warlord's "non-Wall creatures you control") — a permanent
+    /// carrying *any* of these fails. Empty (default) imposes no restriction. Matched against
+    /// [`Game::effective_subtypes`], the same layered view the positive `subtypes` axis reads, so
+    /// a creature turned into an Insect by Darksteel Mutation is excluded by `["Insect"]` and no
+    /// longer by its printed subtype. Distinct from `nonlair` above, which deliberately reads a
+    /// land's *printed* type line instead.
+    pub exclude_subtypes: &'static [&'static str],
 }
 
 /// TOML `with_counter = "any"` / `with_counter = "plus_one_plus_one"` — the two counter shapes
@@ -897,6 +904,7 @@ impl PermanentFilter {
             with_counter: None,
             creature_or_vehicle: false,
             snow: false,
+            exclude_subtypes: &[],
         }
     }
 }

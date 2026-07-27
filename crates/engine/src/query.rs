@@ -1418,6 +1418,13 @@ impl Game {
                 return false;
             }
         }
+        // Excluded subtypes (Keldon Warlord's "non-Wall creatures"): carrying any one is fatal.
+        if !filter.exclude_subtypes.is_empty() {
+            let subtypes = self.effective_subtypes(id);
+            if filter.exclude_subtypes.iter().any(|s| subtypes.contains(s)) {
+                return false;
+            }
+        }
         // Controller, relative to "you".
         let yours = self.controller_of(id) == you;
         match filter.controller {

@@ -105293,6 +105293,74 @@ fn copper_tablet_bills_whoever_the_upkeep_belongs_to() {
     );
 }
 
+// The 2ed `*/*` creatures, whose power and toughness are each equal to some count of permanents.
+// A characteristic-defining ability (CR 604.3) is continuous and applies in layer 7a: it re-reads
+// its count every time characteristics are computed, and every later P/T effect stacks on top.
+
+#[test]
+fn nightmare_is_as_big_as_your_swamps_are_many() {
+    // "Nightmare's power and toughness are each equal to the number of Swamps you control."
+    let mut game = Game::new();
+    let nightmare = game.spawn_on_battlefield(PlayerId(0), card("Nightmare"));
+    for _ in 0..3 {
+        game.spawn_on_battlefield(PlayerId(0), card("Swamp"));
+    }
+    game.spawn_on_battlefield(PlayerId(1), card("Swamp"));
+    assert_eq!(
+        (game.power(nightmare), game.toughness(nightmare)),
+        (3, 3),
+        "three Swamps of your own; the opponent's is not yours to count"
+    );
+
+    game.spawn_on_battlefield(PlayerId(0), card("Swamp"));
+    assert_eq!(
+        (game.power(nightmare), game.toughness(nightmare)),
+        (4, 4),
+        "the count is read live, not frozen when it entered"
+    );
+
+    // Layer 7a first, then the 7d counter on top of it.
+    game.add_plus_counter(nightmare);
+    assert_eq!((game.power(nightmare), game.toughness(nightmare)), (5, 5));
+}
+
+#[test]
+fn plague_rats_count_every_copy_on_the_battlefield() {
+    // "Plague Rats's power and toughness are each equal to the number of creatures named Plague
+    // Rats on the battlefield." Every seat's, not just yours — so all of them grow together.
+    let mut game = Game::new();
+    let mine = game.spawn_on_battlefield(PlayerId(0), card("Plague Rats"));
+    game.spawn_on_battlefield(PlayerId(0), card("Plague Rats"));
+    let theirs = game.spawn_on_battlefield(PlayerId(1), card("Plague Rats"));
+    game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
+    assert_eq!(
+        (game.power(mine), game.toughness(mine)),
+        (3, 3),
+        "three Rats on the battlefield; the 2/2 next to them is not one of them"
+    );
+    assert_eq!(
+        game.power(theirs),
+        3,
+        "and the opponent's Rat counts the same three"
+    );
+}
+
+#[test]
+fn keldon_warlord_counts_your_creatures_but_not_your_walls() {
+    // "Keldon Warlord's power and toughness are each equal to the number of non-Wall creatures you
+    // control." It counts itself.
+    let mut game = Game::new();
+    let warlord = game.spawn_on_battlefield(PlayerId(0), card("Keldon Warlord"));
+    game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
+    game.spawn_on_battlefield(PlayerId(0), card("Fog Bank"));
+    game.spawn_on_battlefield(PlayerId(1), VANILLA.clone());
+    assert_eq!(
+        (game.power(warlord), game.toughness(warlord)),
+        (2, 2),
+        "itself and the other non-Wall it controls — the Wall and the opponent's creature are not counted"
+    );
+}
+
 // Karma: "At the beginning of each player's upkeep, this enchantment deals damage to that player
 // equal to the number of Swamps they control." The count is the *taxed* player's, not Karma's
 // controller's — the same "that player" the damage is aimed at.

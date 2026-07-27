@@ -1428,9 +1428,30 @@ impl Game {
         match self.def_of(object).kind {
             CardKind::Creature {
                 power, toughness, ..
-            } => Some((power, toughness)),
+            } => Some(self.defined_base_pt(object).unwrap_or((power, toughness))),
             _ => Some((0, 0)),
         }
+    }
+
+    /// The CR 604.3 layer-7a base P/T `object`'s own printed characteristic-defining ability
+    /// declares (Nightmare's "power and toughness are each equal to the number of Swamps you
+    /// control"), or `None` when it has no such ability. Both counts are resolved against today's
+    /// board on every recompute, so the creature tracks the count live; because this feeds
+    /// [`Game::pt_base`] rather than [`Game::pt_layers`], everything else — a base-set Aura, a
+    /// counter, an anthem — still applies on top in its own layer.
+    fn defined_base_pt(&self, object: ObjectId) -> Option<(i32, i32)> {
+        let controller = self.controller_of(object);
+        self.def_of(object).abilities.iter().find_map(|ability| {
+            let Effect::Static(StaticEffect::BasePowerToughnessFromAmount { power, toughness }) =
+                &ability.effect
+            else {
+                return None;
+            };
+            Some((
+                self.resolve_amount(*power, controller, object, None, 0),
+                self.resolve_amount(*toughness, controller, object, None, 0),
+            ))
+        })
     }
 
     /// Every CR 613 P/T continuous-effect entry currently affecting `object`: base-set 7b entries

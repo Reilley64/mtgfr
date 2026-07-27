@@ -1540,7 +1540,7 @@ impl<'de> Deserialize<'de> for TypeSet {
 /// `enchanted_by_you`, `mv_max`, `mv_min`, `mv_eq_x`, `mv_max_x`, `power_max`, `power_parity`,
 /// `noncreature`, `exclude`, `color`, `not_color`, `modified`, `attacking`, `attacking_you`,
 /// `blocking`, `power_less_than_source`, `toughness_less_than_source_power`, `entered_this_turn`,
-/// `nonbasic`, `nonlegendary`, `nonlair`,
+/// `nonbasic`, `nonlegendary`, `nonlair`, `exclude_subtypes`,
 /// `without_flying`, `with_flying`, `with_counter`). `noncreature` is sugar for `exclude = "creature"`;
 /// `not_color` is sugar for `color`'s negated-color arm — both fold into the same
 /// [`PermanentFilter`] fields as their general spelling (see below).
@@ -1665,6 +1665,9 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     /// Snow permanents (CR 205.4g).
                     #[serde(default)]
                     snow: bool,
+                    /// Subtype exclusion (Keldon Warlord's "non-Wall creatures you control").
+                    #[serde(default)]
+                    exclude_subtypes: Vec<String>,
                 }
 
                 let t = Table::deserialize(de::value::MapAccessDeserializer::new(map))?;
@@ -1710,6 +1713,7 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     with_counter: t.with_counter,
                     creature_or_vehicle: t.creature_or_vehicle,
                     snow: t.snow,
+                    exclude_subtypes: intern_strs(t.exclude_subtypes),
                 })
             }
         }

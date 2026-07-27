@@ -172,10 +172,10 @@ Authorable in Phase 3 with no engine change. TDD each one.
 
 Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 
-- [ ] **Animate Artifact** {3}{U} · Enchantment — Aura — increment 2
+- [ ] **Animate Artifact** {3}{U} · Enchantment — Aura — increment 76
 - [ ] **Animate Wall** {W} · Enchantment — Aura — increment 24
 - [x] **Ankh of Mishra** {2} · Artifact — increment 58
-- [ ] **Aspect of Wolf** {1}{G} · Enchantment — Aura — increment 2, 25
+- [ ] **Aspect of Wolf** {1}{G} · Enchantment — Aura — increment 75, 25
 - [ ] **Balance** {1}{W} · Sorcery — increment 43
 - [ ] **Basalt Monolith** {3} · Artifact — increment 7
 - [ ] **Benalish Hero** {W} · Creature — Human Soldier — increment 14
@@ -225,7 +225,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Forcefield** {3} · Artifact — increment 4
 - [ ] **Fork** {R}{R} · Instant — increment 13
 - [ ] **Fungusaur** {3}{G} · Creature — Fungus Dinosaur — increment 63
-- [ ] **Gaea's Liege** {3}{G}{G}{G} · Creature — Avatar — increment 2, 8
+- [ ] **Gaea's Liege** {3}{G}{G}{G} · Creature — Avatar — increment 74, 8
 - [ ] **Gauntlet of Might** {4} · Artifact — increment 19
 - [ ] **Glasses of Urza** {1} · Artifact — increment 31
 - [ ] **Gloom** {2}{B} · Enchantment — increment 67
@@ -244,7 +244,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Jade Statue** {4} · Artifact — increment 57
 - [ ] **Juggernaut** {4} · Artifact Creature — Juggernaut — increment 11
 - [x] **Karma** {2}{W}{W} · Enchantment — increment 1
-- [ ] **Keldon Warlord** {2}{R}{R} · Creature — Human Barbarian — increment 2
+- [x] **Keldon Warlord** {2}{R}{R} · Creature — Human Barbarian — increment 2
 - [ ] **Kormus Bell** {4} · Artifact — increment 8
 - [ ] **Kudzu** {1}{G}{G} · Enchantment — Aura — increment 37
 - [ ] **Library of Leng** {1} · Artifact — increment 33
@@ -268,12 +268,12 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Natural Selection** {G} · Instant — increment 55
 - [ ] **Nether Shadow** {B}{B} · Creature — Spirit — increment 39
 - [ ] **Nettling Imp** {2}{B} · Creature — Imp — increment 26
-- [ ] **Nightmare** {5}{B} · Creature — Nightmare Horse — increment 2
+- [x] **Nightmare** {5}{B} · Creature — Nightmare Horse — increment 2
 - [ ] **Paralyze** {B} · Enchantment — Aura — increment 7
 - [ ] **Personal Incarnation** {3}{W}{W}{W} · Creature — Avatar Incarnation — increment 6
 - [ ] **Phantasmal Terrain** {U}{U} · Enchantment — Aura — increment 8
 - [ ] **Pirate Ship** {4}{U} · Creature — Human Pirate — increment 24
-- [ ] **Plague Rats** {2}{B} · Creature — Rat — increment 2
+- [x] **Plague Rats** {2}{B} · Creature — Rat — increment 2
 - [ ] **Power Leak** {1}{U} · Enchantment — Aura — increment 4
 - [ ] **Power Sink** {X}{U} · Instant — increment 23
 - [x] **Power Surge** {R}{R} · Enchantment — increment 1

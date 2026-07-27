@@ -152,7 +152,15 @@ def kind_block(card: dict) -> list[str]:
         return lines
     if "Creature" in type_line:
         also = [t for t in ("Artifact", "Enchantment") if t in type_line.split("—")[0]]
-        lines = ["", "[kind]", 'type = "creature"', f"power = {card['power']}", f"toughness = {card['toughness']}"]
+        # A `*` box is supplied by a characteristic-defining ability (CR 604.3), and `*` is not
+        # valid TOML — scaffold 0/0 and let a `base_power_toughness_from_amount` static fill it in.
+        star = "*" in card["power"] or "*" in card["toughness"]
+        if star:
+            lines = ["", "# The printed box reads "
+                     f"{card['power']}/{card['toughness']}; a defining ability supplies both numbers.",
+                     "[kind]", 'type = "creature"', "power = 0", "toughness = 0"]
+        else:
+            lines = ["", "[kind]", 'type = "creature"', f"power = {card['power']}", f"toughness = {card['toughness']}"]
         if also:
             lines.append("also = [" + ", ".join(toml_str(t.lower()) for t in also) + "]")
         return lines

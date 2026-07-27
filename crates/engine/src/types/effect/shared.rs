@@ -763,6 +763,7 @@ impl Effect {
             | Effect::Mill(MillEffect::ExileDiscardedWithThis { .. })
             | Effect::Dig(DigEffect::CashOutExiledWithThis)
             | Effect::Dig(DigEffect::CastExiledWithThisFree)
+            | Effect::Static(StaticEffect::BasePowerToughnessFromAmount { .. })
             | Effect::Static(StaticEffect::GrantToAttached { .. })
             | Effect::Static(StaticEffect::ProtectionFromChosenColor)
             | Effect::Static(StaticEffect::SetAttachedBasePt { .. })

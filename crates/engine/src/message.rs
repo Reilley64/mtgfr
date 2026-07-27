@@ -268,6 +268,7 @@ message_keys! {
     EFFECT_SEQUENCE => "effect.sequence",
     EFFECT_STATIC_ANTHEM => "effect.static_anthem",
     EFFECT_STATIC_ATTACK_TAX => "effect.static_attack_tax",
+    EFFECT_STATIC_BASE_POWER_TOUGHNESS_FROM_AMOUNT => "effect.static_base_power_toughness_from_amount",
     EFFECT_STATIC_CANT_ATTACK_IF_CAST_THIS_TURN => "effect.static_cant_attack_if_cast_this_turn",
     EFFECT_STATIC_CANT_BE_ATTACKED_BY => "effect.static_cant_be_attacked_by",
     EFFECT_STATIC_CANT_BLOCK_FILTER => "effect.static_cant_block_filter",
@@ -792,6 +793,12 @@ fn permanent_filter_token(filter: PermanentFilter) -> String {
     }
     if !filter.subtypes.is_empty() {
         parts.push(format!("subtype_{}", string_list_token(filter.subtypes)));
+    }
+    if !filter.exclude_subtypes.is_empty() {
+        parts.push(format!(
+            "not_subtype_{}",
+            string_list_token(filter.exclude_subtypes)
+        ));
     }
     match filter.controller {
         FilterController::Any => {}
@@ -2118,6 +2125,10 @@ impl Effect {
                 power, toughness, ..
             }) => MessageRef::new(MessageKey::EFFECT_STATIC_GRANT_TO_ATTACHED)
                 .with_params(vec![amount_param("power", power), amount_param("toughness", toughness)]),
+            Effect::Static(BasePowerToughnessFromAmount { power, toughness }) => {
+                MessageRef::new(MessageKey::EFFECT_STATIC_BASE_POWER_TOUGHNESS_FROM_AMOUNT)
+                    .with_params(vec![amount_param("power", power), amount_param("toughness", toughness)])
+            }
             Effect::Static(SetAttachedBasePt { power, toughness }) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_SET_ATTACHED_BASE_PT)
                     .with_params(vec![int_param("power", power), int_param("toughness", toughness)])

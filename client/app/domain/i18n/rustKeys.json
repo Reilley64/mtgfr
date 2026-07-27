@@ -242,6 +242,7 @@
   "effect.sequence",
   "effect.static_anthem",
   "effect.static_attack_tax",
+  "effect.static_base_power_toughness_from_amount",
   "effect.static_cant_attack_if_cast_this_turn",
   "effect.static_cant_be_attacked_by",
   "effect.static_cant_block_filter",

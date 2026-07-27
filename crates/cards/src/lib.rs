@@ -2473,6 +2473,53 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
         }
     }
 
+    /// "Power and toughness are each equal to …": both halves read the same count, and the
+    /// printed box stays 0/0 so the defining ability is the only thing supplying numbers.
+    #[test]
+    fn unlimited_star_creatures_define_both_halves_from_one_count() {
+        for name in ["Nightmare", "Plague Rats", "Keldon Warlord"] {
+            let def = get_by_name(name).expect("in the pool");
+            assert!(
+                matches!(
+                    def.kind,
+                    CardKind::Creature {
+                        power: 0,
+                        toughness: 0,
+                        ..
+                    }
+                ),
+                "{name} prints */*, so its frame carries no numbers"
+            );
+            let Effect::Static(StaticEffect::BasePowerToughnessFromAmount { power, toughness }) =
+                &def.abilities[0].effect
+            else {
+                panic!("{name} should define its own base power and toughness");
+            };
+            assert_eq!(power, toughness, "{name}'s two halves read the same count");
+        }
+    }
+
+    /// Keldon Warlord's "non-Wall creatures you control" is the pool's first subtype *exclusion*.
+    /// It counts itself, so the filter must not be `other`.
+    #[test]
+    fn unlimited_keldon_warlord_counts_itself_but_not_its_walls() {
+        let warlord = get_by_name("Keldon Warlord").expect("Keldon Warlord is in the pool");
+        let Effect::Static(StaticEffect::BasePowerToughnessFromAmount { power, .. }) =
+            &warlord.abilities[0].effect
+        else {
+            panic!("expected a defining base power and toughness");
+        };
+        let Amount::PerPermanentMatching { filter, .. } = power else {
+            panic!("expected a filtered board count");
+        };
+        assert_eq!(filter.exclude_subtypes, ["Wall"]);
+        assert_eq!(filter.controller, FilterController::You);
+        assert!(
+            !filter.other,
+            "the Warlord is one of the creatures it counts"
+        );
+    }
+
     /// Karma counts Swamps with a plain `controller = "you"` filter: on a `to_triggering_player`
     /// payoff, "you" is the player being billed, so one card covers every seat's own Swamps.
     #[test]

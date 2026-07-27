@@ -70,6 +70,18 @@ pub enum StaticEffect {
         amount: u8,
     },
 
+    /// A characteristic-defining ability (CR 604.3) setting the source's own base power and
+    /// toughness to a count — Nightmare's "power and toughness are each equal to the number of
+    /// Swamps you control". Applied in layer 7a by [`Game::pt_base`](crate::Game): it replaces the
+    /// printed box before every other P/T effect, so a later base-set (Darksteel Mutation) still
+    /// overrides it and counters and anthems still sum on top. Resolved live on every recompute,
+    /// which is what makes it *defining* rather than a one-shot write — the creature grows the
+    /// instant a Swamp arrives.
+    BasePowerToughnessFromAmount {
+        power: Amount,
+        toughness: Amount,
+    },
+
     /// "Each opponent who cast a spell this turn can't attack with creatures" (Angelic Arbiter):
     /// a blanket per-player attack ban, unlike [`StaticEffect::CantBeAttackedBy`]'s
     /// defender-scoped filter — the gated player can't declare *any* attacker, not just ones

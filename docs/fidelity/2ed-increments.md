@@ -67,7 +67,7 @@ this increment: the four `*/*` creatures are pure #2 (the existing filtered coun
 they count), and volcanic_eruption turned out to be unrelated — see #73.
 *Cards:* karma, power_surge.
 
-### 2. `characteristic-defining-power-toughness` — 6 cards, M
+### 2. `characteristic-defining-power-toughness` — 3 cards, M — **done**
 Depends on: nothing (#1 turned out not to be a prerequisite — see its *Landed:* note).
 `*/*` creatures. The pool has `set_own_base_pt_from_amount` (Trench Gorger), but that is a
 one-shot resolution effect that writes a fixed number; a CDA (CR 604.3) is continuous — it
@@ -80,7 +80,22 @@ permanent-entered/left invalidation hooks cover it). Gaea's Liege switches its c
 it is attacking, so the CDA amount is evaluated in combat context. Aspect of Wolf and Animate
 Artifact are the Aura form — the same static, scoped to `enchanted_host` rather than self, which
 `set_attached_base_pt` (Darksteel Mutation) already has a scope for.
-*Cards:* animate_artifact, aspect_of_wolf, gaea_s_liege, keldon_warlord, nightmare, plague_rats.
+*Landed:* the CDA needed no new continuous-effect machinery and no cache work.
+`StaticEffect::BasePowerToughnessFromAmount { power, toughness }` is read by `pt_base` — the
+function that hands `apply_pt_layers` its starting numbers — so the defining count *replaces the
+printed box* rather than joining the layer list. That is exactly CR 604.3/613.3's layer 7a for
+free: a later base-set Aura (Darksteel Mutation) still clobbers it in 7b, and counters and anthems
+still sum on top in 7c/7d, with no timestamp to invent. Both amounts resolve on every uncached
+recompute, so the count is live; the battlefield invalidation hooks that already existed cover it
+(the test proves a Swamp entering grows Nightmare immediately). The `[kind]` box is authored 0/0 —
+`*` is not valid TOML, and `tooling/scaffold_card_frame.py` used to emit a literal `power = *`, so
+it now scaffolds 0/0 with a comment instead. Keldon Warlord's "non-Wall" needed one new filter
+axis, `exclude_subtypes`, which is the general form the `nonlair` field's own ponytail note asked
+for on a second subtype exclusion; `nonlair` stays as it is because it deliberately reads a land's
+*printed* type line, not the layered view. Three of the six cards listed here turned out to want
+different things and were split out — Gaea's Liege into #74, Aspect of Wolf into #75, Animate
+Artifact into #76.
+*Cards:* keldon_warlord, nightmare, plague_rats.
 
 ### 3. `landwalk` — 5 cards, S — **done**
 Depends on: nothing.
@@ -1111,3 +1126,48 @@ response, gained shroud, or regenerated (CR 701.15 — regeneration replaces the
 was not destroyed) makes the two diverge, and this card's whole point is the symmetry between what
 it destroys and what it burns.
 *Cards:* volcanic_eruption.
+
+### 74. `defining-count-that-switches-on-attacking` — 1 card, M
+Depends on: #2 (done).
+Split out of #2. Gaea's Liege: "As long as Gaea's Liege isn't attacking, its power and toughness
+are each equal to the number of Forests you control. As long as Gaea's Liege is attacking, its
+power and toughness are each equal to the number of Forests defending player controls." The
+defining static from #2 is the right shape, but two things are missing. First, a *condition* on
+which of two counts applies: no `Condition` in the pool asks whether the ability's own source is
+attacking (`PermanentFilter.attacking` gates candidates, not the source). Second, a filter
+controller of "defending player" — `FilterController` is `Any`/`You`/`Opponent`, and with three
+opponents at a Commander table the defending player is a specific one, read from
+`Game::defender_of` the way the goad and attack-tax paths already do. *Sketch:* give
+`base_power_toughness_from_amount` an optional second `{ condition, power, toughness }` arm rather
+than bolting a ternary onto `Amount`, and add `FilterController::DefendingPlayer` resolved against
+the source's declared defender. Note the card is also blocked on #8 for its second ability
+("{T}: Target land becomes a Forest until this creature leaves the battlefield"), which is a
+land-subtype change with an unusual duration.
+*Cards:* gaea_s_liege.
+
+### 75. `half-of-a-count-amounts` — 1 card, S
+Depends on: nothing.
+Split out of #2, where it never belonged — this is an Aura pump, not a defining ability. Aspect of
+Wolf: "Enchanted creature gets +X/+Y, where X is half the number of Forests you control, rounded
+down, and Y is half the number of Forests you control, rounded up." `grant_to_attached` already
+takes a live `Amount` for each of `power` and `toughness` (Sage's Reverie), so the whole card is
+one existing static — what is missing is halving. The pool has `Amount::HalfX` /
+`Amount::HalfXRoundedDown`, but those are scoped to a spell's chosen `{X}`, not to an arbitrary
+count. *Sketch:* an `Amount::Half { of: Box<Amount>, round_up: bool }` wrapper, which subsumes the
+two X-scoped variants; check whether folding them in is smaller than leaving them alone before
+doing it.
+*Cards:* aspect_of_wolf.
+
+### 76. `defining-power-toughness-on-an-enchanted-host` — 1 card, M
+Depends on: #2 (done).
+Split out of #2. Animate Artifact: "As long as enchanted artifact isn't a creature, it's an
+artifact creature with power and toughness each equal to its mana value." Three separate gaps.
+`set_attached_base_p_t` takes fixed `i32`s, so it cannot express a count at all — it needs to
+widen to `Amount`, and then the amount has to be *host*-relative, which no amount currently is (a
+`grant_to_attached` amount resolves against the Aura's controller, not against the enchanted
+permanent). There is no "this permanent's mana value" amount, only `Amount::TargetManaValue`,
+which reads a target rather than an attachment host. And the whole thing is gated on "isn't a
+creature", which — unlike #74's attacking switch — is a condition on the *host*, so the type-set
+half (`set_attached_types` adding creature) has to be gated too or the Aura would make an already-
+animated artifact stop being what it was.
+*Cards:* animate_artifact.
