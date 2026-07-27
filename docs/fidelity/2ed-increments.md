@@ -591,7 +591,7 @@ pool *and* every candidate credit, so a Plains gets auto-tapped for `{R}`), and 
 `available_mana` (so playability hints and the `{X}` ceiling agree with what the payment path will
 accept).
 
-### 33. `discard-to-library-top-replacement` — 1 card, S
+### 33. `discard-to-library-top-replacement` — 1 card, S — **done, with the choice approximated**
 Depends on: nothing.
 Library of Leng. "If an effect causes you to discard a card, discard it, but you may put it on
 top of your library instead." `no_maximum_hand_size` (the card's other half) already exists.
@@ -599,6 +599,28 @@ top of your library instead." `no_maximum_hand_size` (the card's other half) alr
 `PendingChoice::ChooseDiscardDestination`. Note the Oracle wording — the card *is* discarded
 (discard triggers still fire), it just lands elsewhere.
 *Cards:* library_of_leng.
+
+*Landed:* `StaticEffect::DiscardToLibraryTopInstead` (fieldless — the discarding player is read off
+the discard itself) plus `Game::discards_to_library_top`, a copy of `has_no_max_hand_size`'s live
+permanent scan. `Game::discard_ids` is already the shared tail every discard routes through, so the
+whole replacement is one `match` there swapping `Event::MovedToGraveyard` for the existing
+`Event::TuckedToLibrary { to_top: true }` — no new event, no proto field, no client change. The
+`Event::Discarded` marker is emitted either way, which is what keeps "whenever you discard" watchers
+blind to the swap.
+
+*The sketch's `PendingChoice::ChooseDiscardDestination` was not built, and the "you may" is
+approximated as always-yes* (recorded in the card's `approximates`). `discard_ids` returns
+synchronously into six callers that keep working afterwards — `answer_may_discard`'s "if you do"
+rider, `answer_discard_edict`'s next-seat prompt, the cleanup step's `advance_step`, the wheel's
+per-player draw — so pausing per card needs a resumable discard path first. Split that out as its
+own increment when a second card wants the choice.
+
+*Two scope findings that made the gate cheaper than the sketch expected:* CR 701.8c replaces only
+*effect* discards, and neither of the two exceptions can reach `discard_ids` — discard **costs** are
+paid in `cast.rs` / `pending/handlers/optional.rs` on their own zone moves, and the cleanup-step
+hand-size trim can't arise for a Leng controller at all, since the card's other half gives them no
+maximum hand size. So `discard_ids` needed no `is_cleanup`/`by_effect` parameter and no call-site
+churn.
 
 ### 34. `exile-instead-of-dying-replacement` — 1 card, S — **done**
 Depends on: nothing.

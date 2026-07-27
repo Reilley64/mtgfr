@@ -497,6 +497,9 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.static_cant_cast_if_attacked_this_turn": literal(
     "Each opponent who attacked with a creature this turn can't cast spells",
   ),
+  "effect.static_discard_to_library_top_instead": literal(
+    "If an effect causes you to discard a card, discard it, but you may put it on top of your library instead of into your graveyard",
+  ),
   "effect.static_doesnt_untap": (params) =>
     bool(params, "self_only")
       ? "This permanent doesn't untap during your untap step"

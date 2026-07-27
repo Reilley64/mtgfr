@@ -2135,6 +2135,30 @@ impl Game {
         })
     }
 
+    /// Whether an *effect* discard by `player` lands on top of their library instead of in their
+    /// graveyard (CR 701.8c — Library of Leng): true if any permanent they control has a live
+    /// [`Effect::Static(StaticEffect::DiscardToLibraryTopInstead)`] static. Read by
+    /// [`Game::discard_ids`], the shared tail every effect discard routes through.
+    /// ponytail: the printed "you *may*" is taken as always-yes — the engine has no pause it can
+    ///   raise mid-discard, since `discard_ids` returns into six callers that keep working. Take
+    ///   the choice when a resumable discard path exists (see the 2ed increments backlog).
+    pub(crate) fn discards_to_library_top(&self, player: PlayerId) -> bool {
+        self.objects.iter().any(|object| {
+            let Object::Permanent(p) = object else {
+                return false;
+            };
+            let def = card_def(p.def);
+            p.owner == player
+                && def.abilities.iter().any(|a| {
+                    (a.timing, a.effect.clone())
+                        == (
+                            Timing::Static,
+                            Effect::Static(StaticEffect::DiscardToLibraryTopInstead),
+                        )
+                })
+        })
+    }
+
     /// Whether `player` may still play a land this turn (CR 305.2): one per turn, unless a
     /// permanent they control lifts the cap with a live
     /// [`Effect::Static(StaticEffect::PlayAnyNumberOfLands)`] (Fastbond). The single gate both the

@@ -104876,6 +104876,57 @@ fn mind_twist_for_more_than_the_hand_holds_just_empties_it() {
     assert!(hand_ids(&game, PlayerId(1)).is_empty(), "the hand is empty");
 }
 
+// ── Library of Leng's discard replacement (fidelity #33) ─────────────────────────────────────
+
+#[test]
+fn library_of_leng_sends_an_effect_discard_to_the_top_of_the_library_instead_of_the_graveyard() {
+    // "If an effect causes you to discard a card, discard it, but you may put it on top of your
+    // library instead of into your graveyard." The card is still *discarded* — it just lands
+    // somewhere else, which is why the hand empties either way.
+    let mut game = TestGame::new();
+    game.spawn_on_battlefield(PlayerId(1), card("Library of Leng"));
+    game.spawn_in_hand(PlayerId(1), card("Grizzly Bears"));
+    let twist = game.spawn_in_hand(PlayerId(0), card("Mind Twist"));
+    let library = game.library_size(PlayerId(1));
+
+    game.cast(twist)
+        .at(Target::Player(PlayerId(1)))
+        .x(1)
+        .resolve();
+
+    assert!(
+        hand_ids(&game, PlayerId(1)).is_empty(),
+        "the card was still discarded"
+    );
+    assert_eq!(
+        game.library_size(PlayerId(1)),
+        library + 1,
+        "it went on top of the library, not into the graveyard"
+    );
+}
+
+#[test]
+fn library_of_leng_only_redirects_its_own_controllers_discards() {
+    // "causes *you* to discard" — the replacement is the Library's controller's, so an opponent
+    // made to discard still fills their own graveyard.
+    let mut game = TestGame::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Library of Leng"));
+    game.spawn_in_hand(PlayerId(1), card("Grizzly Bears"));
+    let twist = game.spawn_in_hand(PlayerId(0), card("Mind Twist"));
+    let library = game.library_size(PlayerId(1));
+
+    game.cast(twist)
+        .at(Target::Player(PlayerId(1)))
+        .x(1)
+        .resolve();
+
+    assert_eq!(
+        game.library_size(PlayerId(1)),
+        library,
+        "the discarder controls no Library of Leng, so the card went to the graveyard"
+    );
+}
+
 #[test]
 fn hypnotic_specter_makes_the_player_it_hit_discard_not_its_controller() {
     // "Whenever Hypnotic Specter deals damage to an opponent, that player discards a card at

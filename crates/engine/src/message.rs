@@ -280,6 +280,7 @@ message_keys! {
     EFFECT_STATIC_CANT_BLOCK_FILTER => "effect.static_cant_block_filter",
     EFFECT_STATIC_CANT_CAST_DURING_COMBAT => "effect.static_cant_cast_during_combat",
     EFFECT_STATIC_CANT_CAST_IF_ATTACKED_THIS_TURN => "effect.static_cant_cast_if_attacked_this_turn",
+    EFFECT_STATIC_DISCARD_TO_LIBRARY_TOP_INSTEAD => "effect.static_discard_to_library_top_instead",
     EFFECT_STATIC_DOESNT_UNTAP => "effect.static_doesnt_untap",
     EFFECT_STATIC_MUST_ATTACK_EACH_COMBAT => "effect.static_must_attack_each_combat",
     EFFECT_STATIC_OPPONENTS_CANT_SEARCH_LIBRARIES => "effect.static_opponents_cant_search_libraries",
@@ -2062,6 +2063,9 @@ impl Effect {
             }
             Effect::Static(PreventDamageToSelfRemovingCounter) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_PREVENT_DAMAGE_TO_SELF_REMOVING_COUNTER)
+            }
+            Effect::Static(DiscardToLibraryTopInstead) => {
+                MessageRef::new(MessageKey::EFFECT_STATIC_DISCARD_TO_LIBRARY_TOP_INSTEAD)
             }
             Effect::Static(NoMaximumHandSize) => MessageRef::new(MessageKey::EFFECT_STATIC_NO_MAXIMUM_HAND_SIZE),
             Effect::Static(PlayAnyNumberOfLands) => {

@@ -1024,6 +1024,7 @@ impl Effect {
             // activation target — same as `ReturnThisAuraAttachedTo` above.
             | Effect::Zone(ZoneEffect::ReturnThisAuraFromGraveyardAttachedToChosenHost)
             | Effect::Zone(ZoneEffect::ScheduleReturnThisAuraFromGraveyardAttachedToChosenHost)
+            | Effect::Static(StaticEffect::DiscardToLibraryTopInstead)
             | Effect::Static(StaticEffect::NoMaximumHandSize)
             | Effect::Static(StaticEffect::OpponentsCantSearchLibraries)
             | Effect::Static(StaticEffect::PlayAnyNumberOfLands)

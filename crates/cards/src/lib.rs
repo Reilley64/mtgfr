@@ -4069,6 +4069,28 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
         };
         assert!(cost.taps_self);
     }
+
+    /// Library of Leng's two halves are independent statics, and the replacement is fieldless —
+    /// it reads the discarding player off the discard itself, so nothing on the card says
+    /// "you". Losing the `no_maximum_hand_size` half would quietly hand its controller a cleanup
+    /// trim, the one discard the replacement must *not* catch.
+    #[test]
+    fn unlimited_library_of_leng_pairs_no_max_hand_size_with_the_discard_replacement() {
+        let leng = get_by_name("Library of Leng").expect("Library of Leng is in the pool");
+        let effects: Vec<&Effect> = leng
+            .abilities
+            .iter()
+            .inspect(|a| assert_eq!(a.timing, Timing::Static))
+            .map(|a| &a.effect)
+            .collect();
+        assert_eq!(
+            effects,
+            vec![
+                &Effect::Static(StaticEffect::NoMaximumHandSize),
+                &Effect::Static(StaticEffect::DiscardToLibraryTopInstead),
+            ]
+        );
+    }
 }
 
 #[cfg(test)]

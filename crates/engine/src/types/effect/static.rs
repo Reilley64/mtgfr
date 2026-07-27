@@ -180,6 +180,13 @@ pub enum StaticEffect {
     /// about to untap, and its default [`FilterController::Any`](crate::FilterController) is
     /// what makes Meekstone reach across the table ("their controllers' untap steps"), with no
     /// `all_players` flag of the sort [`Anthem`](Self::Anthem) needs.
+    /// Library of Leng's "If an effect causes you to discard a card, discard it, but you may put
+    /// it on top of your library instead of into your graveyard" (CR 701.8c). A replacement the
+    /// controller's own effect discards consult in [`Game::discard_ids`](crate::Game): the card is
+    /// still discarded — [`Event::Discarded`](crate::Event::Discarded) still fires for every
+    /// "whenever you discard" watcher — only its destination changes.
+    DiscardToLibraryTopInstead,
+
     DoesntUntap {
         #[cfg_attr(feature = "card-dsl", serde(default))]
         self_only: bool,

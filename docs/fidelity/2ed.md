@@ -247,7 +247,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [x] **Keldon Warlord** {2}{R}{R} · Creature — Human Barbarian — increment 2
 - [ ] **Kormus Bell** {4} · Artifact — increment 8
 - [ ] **Kudzu** {1}{G}{G} · Enchantment — Aura — increment 37
-- [ ] **Library of Leng** {1} · Artifact — increment 33
+- [x] **Library of Leng** {1} · Artifact — increment 33
 - [ ] **Lich** {B}{B}{B}{B} · Enchantment — increment 22, 47
 - [x] **Lifeforce** {G}{G} · Enchantment — increment 9
 - [ ] **Lifelace** {G} · Instant — increment 15

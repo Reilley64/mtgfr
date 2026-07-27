@@ -335,10 +335,25 @@ impl Game {
         player: PlayerId,
         events: &mut Vec<Event>,
     ) {
+        // CR 701.8c: Library of Leng replaces only the *destination*. Every discard below still
+        // emits `Discarded`, so the "whenever you discard" watchers can't tell the two apart.
+        // Cleanup-step trims and discard costs aren't effect discards and so aren't replaced —
+        // neither routes through here (the cleanup trim can't even arise for a Leng controller,
+        // who has no maximum hand size).
+        let to_library_top = self.discards_to_library_top(player);
         for &id in ids {
             let card = self.next_object_id();
             let def = self.def_id_of(id);
-            self.push_apply(events, Event::MovedToGraveyard { card, from: id });
+            let moved = match to_library_top {
+                true => Event::TuckedToLibrary {
+                    card,
+                    from: id,
+                    to_top: true,
+                    second_from_top: false,
+                },
+                false => Event::MovedToGraveyard { card, from: id },
+            };
+            self.push_apply(events, moved);
             self.push_apply(
                 events,
                 Event::Discarded {
