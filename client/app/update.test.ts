@@ -1,8 +1,9 @@
 import { Option } from "effect";
 import { expect, test } from "vitest";
+import { LeaveGame } from "./board/messages";
 import { StreamTerminalError } from "./game/messages";
 import { init, update } from "./main-exports";
-import { GotAuthMessage, GotGameMessage, GotLobbyMessage, UrlChanged } from "./messages";
+import { GotAuthMessage, GotBoardMessage, GotGameMessage, GotLobbyMessage, UrlChanged } from "./messages";
 import { emptyGameSlice } from "./model";
 import { GameTableRoute, routePath } from "./routes";
 import * as Auth from "./shell/auth";
@@ -49,6 +50,13 @@ test("GotAuthMessage updates auth email through the parent update", () => {
   );
 
   expect(next.auth.email).toBe("a@b.c");
+});
+
+test("LeaveGame redirects home from the result overlay", () => {
+  const [base] = init();
+  const [, commands] = update(base, GotBoardMessage({ message: LeaveGame() }));
+  const redirect = commands.find((command) => command.name === "Redirect") as { args?: { path?: string } } | undefined;
+  expect(redirect?.args?.path).toBe("/");
 });
 
 test("lobby start redirect followed by UrlChanged keeps the active GameTableRoute game slice", () => {

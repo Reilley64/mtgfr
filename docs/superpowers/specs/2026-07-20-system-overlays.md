@@ -21,6 +21,7 @@ Compose system overlays in `boardOverlays` as DOM layers above the board surface
 
 - `ResultOverlay` appears for win, loss, elimination, or game-over outcomes until dismissed.
 - Result actions are Watch/Stay on the board and Back to your decks.
+- Result overlay root uses `pointer-events-auto` so Stay/Leave receive clicks under the board overlays `pointer-events-none` layer.
 - Concede is a top-right button for active seated players.
 - Concede confirmation submits a real `concede` intent only after confirmation.
 - `PileOverlay` opens for non-battlefield zone piles, shows an art grid, and closes by backdrop, Close, or Escape.
@@ -37,7 +38,9 @@ Compose system overlays in `boardOverlays` as DOM layers above the board surface
 ## Testing Decisions
 
 - Scene tests cover result overlay actions, concede confirm/cancel, pile overlay contents/close, and reconnect banner copy for transient and terminal stream states.
+- Result overlay Scene coverage asserts `pointer-events-auto` so Stay/Leave remain hittable under the board overlays root.
 - Board update tests cover `ConcedeConfirmed` submitting a `concede` intent.
+- App update tests cover `LeaveGame` redirecting home.
 - Layer tests should preserve inspect above all system overlays.
 
 ## Out of Scope
