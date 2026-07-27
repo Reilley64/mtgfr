@@ -835,14 +835,36 @@ describe("pendingHandPickOneClick", () => {
     ).toBe(false);
   });
 
-  it("stays true for put_land_from_hand", () => {
+  it("is false for all put-from-hand and face-down hand picks (select then Confirm)", () => {
     expect(
       pendingHandPickOneClick({
         kind: "put_land_from_hand",
         player: 0,
         items: [{ id: 1, label: "Forest" }],
       }),
-    ).toBe(true);
+    ).toBe(false);
+    expect(
+      pendingHandPickOneClick({
+        kind: "put_creature_from_hand",
+        player: 0,
+        items: [{ id: 1, label: "Angel" }],
+      }),
+    ).toBe(false);
+    expect(
+      pendingHandPickOneClick({
+        kind: "cast_creature_face_down",
+        player: 0,
+        items: [{ id: 1, label: "Bear" }],
+      }),
+    ).toBe(false);
+    expect(
+      pendingHandPickOneClick({
+        kind: "put_from_hand_on_top",
+        player: 0,
+        count: 1,
+        items: [{ id: 1, label: "Island" }],
+      }),
+    ).toBe(false);
   });
 });
 

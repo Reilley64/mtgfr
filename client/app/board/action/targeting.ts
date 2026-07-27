@@ -348,16 +348,7 @@ export function pendingPayCostDiscardIds(
 export function pendingHandPickOneClick(pc: PendingChoiceView | null | undefined): boolean {
   if (pc == null) return false;
   if (pc.kind === "pay_cost") return false;
-  if (!isPendingHandPick(pc)) return false;
-  if (pc.kind === "discard" || pc.kind === "may_discard") return false;
-  if (
-    pc.kind === "put_land_from_hand" ||
-    pc.kind === "put_creature_from_hand" ||
-    pc.kind === "cast_creature_face_down"
-  ) {
-    return true;
-  }
-  if (pc.kind === "put_from_hand_on_top") return pc.count === 1;
+  // All hand picks (discard, put land/creature, face-down cast, put on top) use select → Confirm.
   return false;
 }
 
