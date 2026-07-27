@@ -1,4 +1,4 @@
-//! Self-hosted email+password accounts. Live path is gRPC `Auth` (`grpc::auth_svc`); the BFF
+//! Self-hosted email+password accounts. Live path is gRPC `AuthService` (`grpc::auth_svc`); the BFF
 //! terminates cookies and forwards `x-session-token` metadata. An expired session is lazily
 //! swept so a leaked token can't be probed repeatedly.
 
@@ -99,8 +99,9 @@ fn random_token() -> String {
     bytes.iter().map(|b| format!("{b:02x}")).collect()
 }
 
-/// Create a session row for `user_id` and return its raw token, for the gRPC `Auth` service
-/// (signup/login) to hand back as `AuthSession.session_token` — the BFF does the `Set-Cookie`
+/// Create a session row for `user_id` and return its raw token, for the gRPC `AuthService`
+/// (signup/login) to hand back as `SignupResponse` / `LoginResponse` `session_token` — the BFF
+/// does the `Set-Cookie`
 /// itself from that.
 pub(crate) async fn mint_session(db: &mut toasty::Db, user_id: i64) -> Result<String, StatusCode> {
     let token = random_token();

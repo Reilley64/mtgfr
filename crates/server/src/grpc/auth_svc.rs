@@ -1,5 +1,5 @@
-//! `mtgfr.v1.Auth` — signup/login mint a session and hand the raw token back as
-//! `AuthSession.session_token` (cookies terminate at the BFF, which does the `Set-Cookie`).
+//! `mtgfr.v1.AuthService` — signup/login mint a session and hand the raw token back as
+//! `SignupResponse.session_token` / `LoginResponse.session_token` (cookies terminate at the BFF).
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -43,12 +43,20 @@ fn pb_me(user: &User) -> pb::Me {
     }
 }
 
+fn pb_get_me(user: &User) -> pb::GetMeResponse {
+    pb::GetMeResponse {
+        id: user.id,
+        email: user.email.clone(),
+        username: user.username.clone(),
+    }
+}
+
 #[tonic::async_trait]
-impl pb::auth_server::Auth for AuthSvc {
+impl pb::auth_service_server::AuthService for AuthSvc {
     async fn signup(
         &self,
-        request: Request<pb::SignupCredentials>,
-    ) -> Result<Response<pb::AuthSession>, Status> {
+        request: Request<pb::SignupRequest>,
+    ) -> Result<Response<pb::SignupResponse>, Status> {
         let cred = request.into_inner();
         let username = validate_username(&cred.username).map_err(status_of)?;
         let mut db = self.state.db.clone();
@@ -67,7 +75,7 @@ impl pb::auth_server::Auth for AuthSvc {
             .await
             .map_err(|e| status_of(signup_create_error(e)))?;
         let session_token = mint_session(&mut db, user.id).await.map_err(status_of)?;
-        Ok(Response::new(pb::AuthSession {
+        Ok(Response::new(pb::SignupResponse {
             me: Some(pb_me(&user)),
             session_token,
         }))
@@ -75,8 +83,8 @@ impl pb::auth_server::Auth for AuthSvc {
 
     async fn login(
         &self,
-        request: Request<pb::Credentials>,
-    ) -> Result<Response<pb::AuthSession>, Status> {
+        request: Request<pb::LoginRequest>,
+    ) -> Result<Response<pb::LoginResponse>, Status> {
         let cred = request.into_inner();
         let mut db = self.state.db.clone();
         let user = User::filter_by_email(&cred.email)
@@ -87,21 +95,27 @@ impl pb::auth_server::Auth for AuthSvc {
             return Err(Status::unauthenticated("invalid email or password"));
         }
         let session_token = mint_session(&mut db, user.id).await.map_err(status_of)?;
-        Ok(Response::new(pb::AuthSession {
+        Ok(Response::new(pb::LoginResponse {
             me: Some(pb_me(&user)),
             session_token,
         }))
     }
 
-    async fn logout(&self, request: Request<pb::Empty>) -> Result<Response<pb::Empty>, Status> {
+    async fn logout(
+        &self,
+        request: Request<pb::LogoutRequest>,
+    ) -> Result<Response<pb::LogoutResponse>, Status> {
         let token = auth_ctx::session_token(&request)?.to_string();
         let mut db = self.state.db.clone();
         revoke_session(&mut db, &token).await.map_err(status_of)?;
-        Ok(Response::new(pb::Empty {}))
+        Ok(Response::new(pb::LogoutResponse {}))
     }
 
-    async fn get_me(&self, request: Request<pb::Empty>) -> Result<Response<pb::Me>, Status> {
+    async fn get_me(
+        &self,
+        request: Request<pb::GetMeRequest>,
+    ) -> Result<Response<pb::GetMeResponse>, Status> {
         let user = auth_ctx::authenticate(&self.state, &request).await?;
-        Ok(Response::new(pb_me(&user)))
+        Ok(Response::new(pb_get_me(&user)))
     }
 }

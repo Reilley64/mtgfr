@@ -46,6 +46,24 @@ server-run: server-build-prod
 server-codegen:
     cd client && bun run gen
 
+[group('server')]
+[doc("buf lint on proto/ (full STANDARD; no silenced rules)")]
+proto-lint:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd client && PATH="$PWD/node_modules/.bin:$PATH" bunx --bun buf lint ../proto
+
+[group('server')]
+[doc("buf breaking WIRE vs origin/main (git fetch origin main first)")]
+proto-breaking:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd client && PATH="$PWD/node_modules/.bin:$PATH" bunx --bun buf breaking --against '../.git#branch=origin/main' ../proto
+
+[group('server')]
+[doc("proto-lint + proto-breaking")]
+proto-check: proto-lint proto-breaking
+
 # ── Client ───────────────────────────────────────────────────────────────────────────
 
 [group('client')]

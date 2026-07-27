@@ -1,7 +1,7 @@
 # CI and Release
 
-**Status:** Current (as of 2026-07-26; verify uses `mtgfr-ci` + migrate job)
-**Module:** `.github/workflows/`, root `package.json`, `.husky/commit-msg`,
+**Status:** Current (as of 2026-07-27; verify uses `mtgfr-ci` + migrate + wire gates)
+**Module:** `.github/workflows/`, `justfile`, root `package.json`, `.husky/commit-msg`,
 `.cursor/scripts/wire-cloud-git-hooks.sh`
 
 Related: [production-topology-and-operations](2026-07-20-production-topology-and-operations.md)
@@ -94,6 +94,17 @@ branch commit range.
   `design.tokens.json`, `.bun-version`, `justfile`, and this workflow — not
   `crates/**` (wire codegen does not compile Rust). On miss: Vitest JUnit
   (`client/junit.xml`) upload + test summary. No Rust toolchain on this job.
+- `verify-wire`: no pass-marker. Checks out full history, fetches
+  `origin/main`, installs Bun from `.bun-version`, runs `bun install
+  --frozen-lockfile` in `client/`, and uses the client `@bufbuild/buf` CLI via
+  `just proto-*`. `buf lint` runs on every PR and main push under full
+  `STANDARD` with no lint rule exceptions (`except`, `ignore`, or
+  `ignore_only` are not allowed). On pull requests, `buf breaking` runs with
+  category `WIRE` against `origin/main` unless the PR title or body contains
+  `BREAKING CHANGE` (Angular major footer; `@commitlint/config-angular` forbids
+  `!:` in the subject). Major PRs print the hard-cut notice and skip
+  `buf breaking`; main pushes run lint only because breaking against
+  `origin/main` is vacuous after merge.
 
 ### `verify-and-release.yml` (push to main)
 
@@ -157,6 +168,11 @@ Not published to npm. `@semantic-release/npm` bumps `package.json` version only 
   title; title PRs with `feat:` / `fix:` (or a `BREAKING CHANGE:` footer) when the merge
   should cut a release; `build:` / `ci:` / `docs:` / `refactor:` / `test:` / `style:` /
   `perf:` alone verify green and skip a version bump.
+- **Wire gate is distinct from client/server caches**: `verify-wire` has no
+  pass-marker and owns proto lint/breaking checks. It intentionally uses
+  `client`'s `@bufbuild/buf` dependency instead of baking Buf into
+  `mtgfr-ci`. `proto/buf.yaml` stays on full `STANDARD` lint and `WIRE`
+  breaking with no silenced lint rules.
 
 ---
 
@@ -164,7 +180,10 @@ Not published to npm. `@semantic-release/npm` bumps `package.json` version only 
 
 - CI itself is the verification surface: `verify-jobs.yml` gates merge and release.
 - `iac/` terraform validate runs from `ci.yml` when iac paths change (plan not run in CI).
-- Local equivalents: `just server-check`, `just client-check`, `just check`.
+- Wire compatibility is machine-checked by `verify-wire`: `buf lint` always and
+  `buf breaking` on non-major PRs against `origin/main`.
+- Local equivalents: `just server-check`, `just client-check`, `just proto-check`,
+  `just check`.
 
 ---
 
