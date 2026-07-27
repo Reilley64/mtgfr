@@ -131,6 +131,7 @@ import {
   retargetFlight,
   spawnFlight,
   stackFlightScale,
+  traceFlightSync,
 } from "./motion/flights";
 
 export const BOARD_VIEWPORT = { width: 1440, height: 900 } as const;
@@ -633,13 +634,42 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
         continue;
       }
       if (existing.hold && poseNearHandoff(existing, aim)) {
+        const remainingPx = Math.hypot(aim.x - existing.x, aim.y - existing.y);
         if (existing.phase === "settled") {
+          traceFlightSync({
+            op: "handoff",
+            zone: "land",
+            id: permanent,
+            hold: true,
+            phase: existing.phase,
+            remainingPx,
+          });
           flights.delete(permanent);
           handHidden.delete(from);
         } else {
+          traceFlightSync({
+            op: "skip-near",
+            zone: "land",
+            id: permanent,
+            hold: true,
+            phase: existing.phase,
+            remainingPx,
+          });
           handHidden.add(from);
         }
         continue;
+      }
+      {
+        const remainingPx = Math.hypot(aim.x - existing.x, aim.y - existing.y);
+        traceFlightSync({
+          op: "retarget",
+          zone: "land",
+          id: permanent,
+          hold: existing.hold === true,
+          phase: existing.phase,
+          remainingPx,
+          retainedHold: existing.hold === true,
+        });
       }
       flights.set(
         permanent,
@@ -688,13 +718,42 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
         continue;
       }
       if (existing.hold && poseNearHandoff(existing, aim)) {
+        const remainingPx = Math.hypot(aim.x - existing.x, aim.y - existing.y);
         if (existing.phase === "settled") {
+          traceFlightSync({
+            op: "handoff",
+            zone: "stack",
+            id: spell,
+            hold: true,
+            phase: existing.phase,
+            remainingPx,
+          });
           flights.delete(spell);
           if (meta.from != null) handHidden.delete(meta.from);
         } else if (meta.from != null) {
+          traceFlightSync({
+            op: "skip-near",
+            zone: "stack",
+            id: spell,
+            hold: true,
+            phase: existing.phase,
+            remainingPx,
+          });
           handHidden.add(meta.from);
         }
         continue;
+      }
+      {
+        const remainingPx = Math.hypot(aim.x - existing.x, aim.y - existing.y);
+        traceFlightSync({
+          op: "retarget",
+          zone: "stack",
+          id: spell,
+          hold: existing.hold === true,
+          phase: existing.phase,
+          remainingPx,
+          retainedHold: existing.hold === true,
+        });
       }
       flights.set(
         spell,

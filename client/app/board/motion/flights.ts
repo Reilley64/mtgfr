@@ -138,6 +138,26 @@ export function rebindFlightId(
   return next;
 }
 
+export type FlightSyncTrace = {
+  t: number;
+  op: "handoff" | "retarget" | "skip-near" | "spawn";
+  zone: "stack" | "land";
+  id: number;
+  hold: boolean;
+  phase: FlightPhase | "none";
+  remainingPx: number;
+  retainedHold?: boolean;
+};
+
+/** DEV-only ring buffer for live verify (Playwright reads `globalThis.__flightSyncEvents`). */
+export function traceFlightSync(ev: Omit<FlightSyncTrace, "t">): void {
+  if (!import.meta.env.DEV) return;
+  const g = globalThis as typeof globalThis & { __flightSyncEvents?: FlightSyncTrace[] };
+  const list = (g.__flightSyncEvents ??= []);
+  list.push({ ...ev, t: performance.now() });
+  if (list.length > 200) list.splice(0, list.length - 200);
+}
+
 export function retargetFlight(
   flight: CardFlight,
   target: { x: number; y: number; scale: number },
