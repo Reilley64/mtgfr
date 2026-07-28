@@ -200,7 +200,7 @@ const CELLS: { col: number; row: number }[] = [
   { col: 1, row: 1 }, // offset 2 — side (beside you)
   { col: 1, row: 0 }, // offset 3 — diagonal
 ];
-function seatCell(seat: number, viewer: number, count: number): { col: number; row: number } {
+export function seatCell(seat: number, viewer: number, count: number): { col: number; row: number } {
   return CELLS[(seat - viewer + count) % count] ?? CELLS[0];
 }
 

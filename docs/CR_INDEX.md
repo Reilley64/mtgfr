@@ -6,7 +6,7 @@ Reverse index of Comprehensive Rules citations in `crates/engine` and `crates/ca
 Regenerate with `just engine-cr-index` after adding `CR …` comments.
 Check freshness with `just engine-cr-index-check`.
 
-**487** unique rules · **4414** rule→line hits · **3711** unique source lines
+**488** unique rules · **4416** rule→line hits · **3713** unique source lines
 
 ## Rules
 
@@ -41,9 +41,14 @@ Check freshness with `just engine-cr-index-check`.
 - `crates/cards/src/types/effect/shared.rs:1583` — is an opponent (CR 102.3), but an eliminated seat no longer counts (CR 800.4a) — the
 - `crates/cards/src/types/trigger.rs:340` — `source`); every player other than the controller is an opponent (CR 102.3). See
 
+### CR 103.1
+
+- `crates/engine/src/core.rs:17` — rolls the real starter from the master seed at seed time (CR 103.1); the raw
+- `crates/engine/src/core.rs:93` — CR 103.1 — a random player takes the first turn. The roll is the game's first
+
 ### CR 103.8a
 
-- `crates/engine/src/core.rs:100` — where they skip it (CR 103.8a/c) — armed here, spent in [`Game::perform_turn_based_actions`].
+- `crates/engine/src/core.rs:110` — where they skip it (CR 103.8a/c) — armed here, spent in [`Game::perform_turn_based_actions`].
 - `crates/engine/src/lib.rs:158` — first draw in a two-player game only (CR 103.8a; multiplayer skips no one, CR 103.8c).
 - `crates/engine/src/priority.rs:1694` — The starting player skips their first draw step in a two-player game (CR 103.8a);
 - `crates/engine/tests/game.rs:50002` — CR 103.8a: in a two-player game the starting player skips their first draw step.
@@ -52,7 +57,7 @@ Check freshness with `just engine-cr-index-check`.
 
 ### CR 103.8c
 
-- `crates/engine/src/core.rs:100` — where they skip it (CR 103.8a/c) — armed here, spent in [`Game::perform_turn_based_actions`].
+- `crates/engine/src/core.rs:110` — where they skip it (CR 103.8a/c) — armed here, spent in [`Game::perform_turn_based_actions`].
 - `crates/engine/src/lib.rs:158` — first draw in a two-player game only (CR 103.8a; multiplayer skips no one, CR 103.8c).
 - `crates/engine/src/priority.rs:1695` — in multiplayer no one skips (CR 103.8c). `begin_first_turn` arms the flag from the
 - `crates/engine/tests/game.rs:49974` — CR 103.8c: in a multiplayer game no one skips their first draw. The turn-1 draw step must
@@ -66,7 +71,7 @@ Check freshness with `just engine-cr-index-check`.
 
 ### CR 104.3a
 
-- `crates/engine/src/core.rs:985` — has lost makes no choices (CR 104.3a), so the declaration falls back to whoever would
+- `crates/engine/src/core.rs:995` — has lost makes no choices (CR 104.3a), so the declaration falls back to whoever would
 - `crates/engine/src/priority.rs:101` — Leave the game (CR 104.3a). Cannot fail: a player may always quit, with or without priority,
 - `crates/engine/src/types/stack.rs:464` — Leave the game (CR 104.3a). Legal at any time, with or without priority, and even while the
 - `crates/engine/tests/game.rs:12535` — Concede is legal without priority — you may quit on someone else's turn. (CR 117, CR 500, CR 104.3a)
@@ -147,7 +152,7 @@ Check freshness with `just engine-cr-index-check`.
 - `crates/engine/src/cast.rs:489` — CR 106.9's "spent to cast" query (Court Hussar's "unless {W} was spent to cast it"):
 - `crates/engine/src/cast.rs:2425` — just a spell's — Nin, the Pain Artist's own `{X}{U}{R}` activation qualifies (CR 106.9).
 - `crates/engine/src/cast.rs:2751` — `events` (CR 106.9 — Court Hussar's "unless {W} was spent to cast it"), read off its trailing
-- `crates/engine/src/core.rs:888` — The colors of mana spent to cast the spell at `id` (CR 106.9 — [`Spell::spent_colors`]),
+- `crates/engine/src/core.rs:898` — The colors of mana spent to cast the spell at `id` (CR 106.9 — [`Spell::spent_colors`]),
 - `crates/engine/src/types/object.rs:263` — The colors of mana actually spent to cast this spell (CR 106.9 — Court Hussar's "unless
 - `crates/engine/src/types/object.rs:579` — The colors of mana spent to cast the spell that became this permanent (CR 106.9), fixed
 - `crates/engine/src/types/stack.rs:2115` — The colors of mana actually spent to pay this cast's cost (CR 106.9); see
@@ -375,7 +380,7 @@ Check freshness with `just engine-cr-index-check`.
 - `crates/engine/src/apply.rs:183` — CR 111.7: a token Aura (a Replicate copy, CR 707.10a) that falls off ceases to
 - `crates/engine/src/cast.rs:2517` — hand (CR 111.7) — same branch `Effect::Zone(ZoneEffect::ReturnToHand)` takes for a targeted bounce.
 - `crates/engine/src/cast.rs:2535` — artifact"). A token ceases to exist instead of reaching exile (CR 111.7) — the same
-- `crates/engine/src/core.rs:409` — CR 111.7 / 603.10a last-known information: a ceased token's stack ability still
+- `crates/engine/src/core.rs:419` — CR 111.7 / 603.10a last-known information: a ceased token's stack ability still
 - `crates/engine/src/effects.rs:196` — CR 707.10a/111.7: a copy that fails to resolve never becomes a card — it
 - `crates/engine/src/resolution/frame.rs:63` — CR 111.7) — written unconditionally whenever that event applies (`apply.rs`), read by
 - `crates/engine/src/resolution/zones.rs:42` — CR 111.7: a token that leaves the battlefield ceases to exist rather than
@@ -529,7 +534,7 @@ Check freshness with `just engine-cr-index-check`.
 ### CR 114.6
 
 - `crates/engine/src/cast.rs:783` — legality is evaluated from (the bent/copied spell's own controller — CR 114.6/707.10a);
-- `crates/engine/src/core.rs:807` — Whether the spell at `id` currently has exactly one target (CR 114.6's "single target" —
+- `crates/engine/src/core.rs:817` — Whether the spell at `id` currently has exactly one target (CR 114.6's "single target" —
 - `crates/engine/src/query.rs:1079` — single target", CR 114.6). Any controller's spell — Willbender bends an opponent's
 - `crates/engine/src/resolution/copy.rs:153` — Willbender (CR 114.6 / 702.37f) / Wild Ricochet (CR 114.6a). The bent spell is this
 - `crates/engine/src/resolution/copy.rs:183` — targets computed for the SPELL's controller (CR 114.6 — the new target must be
@@ -576,7 +581,7 @@ Check freshness with `just engine-cr-index-check`.
 - `crates/engine/src/cast.rs:2006` — Casting is an action: reset the pass count; the caster keeps priority. (CR 117, CR 601)
 - `crates/engine/src/cast.rs:2054` — Casting is an action: reset the pass count; the caster keeps priority. (CR 117, CR 601)
 - `crates/engine/src/cast.rs:2595` — Mana abilities resolve immediately — no stack, no priority change. Goes through (CR 117, CR 405, CR…
-- `crates/engine/src/core.rs:114` — Untap has no priority window, so this rolls straight on to the upkeep and stops there. (CR 117, CR …
+- `crates/engine/src/core.rs:124` — Untap has no priority window, so this rolls straight on to the upkeep and stops there. (CR 117, CR …
 - `crates/engine/src/lib.rs:2` — Primary: CR 117 (priority), CR 405 (stack), CR 903 (Commander).
 - `crates/engine/src/lib.rs:526` — diffing — revisit only if profiling ever shows this hot. (CR 117, CR 601, CR 500)
 - `crates/engine/src/pending/handlers/combat.rs:44` — Chain to the next multi-blocked attacker's division, or hand back priority. (CR 117, CR 402.5, CR 5…
@@ -972,9 +977,9 @@ Check freshness with `just engine-cr-index-check`.
 - `crates/engine/src/combat.rs:362` — attacker owes it nothing (CR 122.1: only creatures with counters are taxed).
 - `crates/engine/src/combat.rs:560` — Vow counters (CR 122.1 — Promise of Loyalty): a creature marked with a vow counter
 - `crates/engine/src/combat.rs:574` — Vow auras (Vow of Duty/Flight/Lightning — CR 122.1 sibling): a live attached Aura can
-- `crates/engine/src/core.rs:193` — How many counters of `kind` sit on `player` (CR 122.1). Public information — ten or more
-- `crates/engine/src/core.rs:646` — Whether the permanent at `id` has any counter on it at all — CR 122.1's unqualified
-- `crates/engine/src/core.rs:657` — The total number of counters on the permanent at `id` — CR 122.1's unqualified count (Nils,
+- `crates/engine/src/core.rs:203` — How many counters of `kind` sit on `player` (CR 122.1). Public information — ten or more
+- `crates/engine/src/core.rs:656` — Whether the permanent at `id` has any counter on it at all — CR 122.1's unqualified
+- `crates/engine/src/core.rs:667` — The total number of counters on the permanent at `id` — CR 122.1's unqualified count (Nils,
 - `crates/engine/src/priority.rs:1719` — Rad counters (CR 122.1, Fallout): "At the beginning of each player's precombat main
 - `crates/engine/src/priority.rs:1838` — The rad-counter turn-based action for `player`'s precombat main phase (CR 122.1, Fallout):
 - `crates/engine/src/query.rs:1529` — Counter axis (CR 122.1 — Innkeeper's Talent's "with counters on them", Inspiring
@@ -1023,7 +1028,7 @@ Check freshness with `just engine-cr-index-check`.
 
 ### CR 122.3g
 
-- `crates/engine/src/core.rs:634` — Whether the permanent at `id` has a finality counter (CR 122.3g), i.e. it's exiled
+- `crates/engine/src/core.rs:644` — Whether the permanent at `id` has a finality counter (CR 122.3g), i.e. it's exiled
 - `crates/engine/src/types/object.rs:432` — Whether this permanent has a finality counter (CR 122.3g/614.12): if it would be put into
 
 ### CR 201.2
@@ -1500,7 +1505,7 @@ Check freshness with `just engine-cr-index-check`.
 
 ### CR 502.1
 
-- `crates/engine/src/core.rs:114` — Untap has no priority window, so this rolls straight on to the upkeep and stops there. (CR 117, CR …
+- `crates/engine/src/core.rs:124` — Untap has no priority window, so this rolls straight on to the upkeep and stops there. (CR 117, CR …
 - `crates/engine/src/state.rs:38` — expiry, the same reasoning `pending_next_cast`'s turn-boundary clear uses. (CR 508.1a, CR 502.1, CR…
 
 ### CR 502.2
@@ -1516,7 +1521,7 @@ Check freshness with `just engine-cr-index-check`.
 
 ### CR 503
 
-- `crates/engine/src/core.rs:114` — Untap has no priority window, so this rolls straight on to the upkeep and stops there. (CR 117, CR …
+- `crates/engine/src/core.rs:124` — Untap has no priority window, so this rolls straight on to the upkeep and stops there. (CR 117, CR …
 - `crates/engine/src/triggers.rs:688` — going on the stack at the next priority window (the following upkeep) rather (CR 117, CR 405, CR 50…
 - `crates/engine/tests/game.rs:59642` — The turn actually rolled on: player 1 is now active, paused at their upkeep's priority (CR 117, CR …
 
@@ -1530,7 +1535,7 @@ Check freshness with `just engine-cr-index-check`.
 - `crates/engine/src/apply.rs:661` — CR 505.1a/505.1b: same ambient-timing read `Event::SpellCast` uses above.
 - `crates/engine/src/apply.rs:746` — CR 505.1a/505.1b: same ambient-timing read `Event::SpellCast` uses above.
 - `crates/engine/src/apply.rs:949` — CR 505.1a/505.1b: same ambient-timing read `Event::SpellCast` uses above.
-- `crates/engine/src/core.rs:856` — main phase (CR 505.1a/505.1b — [`Spell::cast_during_main_phase`]), `false` if `id` isn't a
+- `crates/engine/src/core.rs:866` — main phase (CR 505.1a/505.1b — [`Spell::cast_during_main_phase`]), `false` if `id` isn't a
 - `crates/engine/src/types/object.rs:168` — (CR 505.1a/505.1b) — Sulfurous Blast's "If you cast this spell during your main phase..."
 
 ### CR 505.1b
@@ -1539,7 +1544,7 @@ Check freshness with `just engine-cr-index-check`.
 - `crates/engine/src/apply.rs:661` — CR 505.1a/505.1b: same ambient-timing read `Event::SpellCast` uses above.
 - `crates/engine/src/apply.rs:746` — CR 505.1a/505.1b: same ambient-timing read `Event::SpellCast` uses above.
 - `crates/engine/src/apply.rs:949` — CR 505.1a/505.1b: same ambient-timing read `Event::SpellCast` uses above.
-- `crates/engine/src/core.rs:856` — main phase (CR 505.1a/505.1b — [`Spell::cast_during_main_phase`]), `false` if `id` isn't a
+- `crates/engine/src/core.rs:866` — main phase (CR 505.1a/505.1b — [`Spell::cast_during_main_phase`]), `false` if `id` isn't a
 - `crates/engine/src/types/object.rs:168` — (CR 505.1a/505.1b) — Sulfurous Blast's "If you cast this spell during your main phase..."
 
 ### CR 506
@@ -1639,8 +1644,8 @@ Check freshness with `just engine-cr-index-check`.
 - `crates/engine/src/combat.rs:641` — their planeswalkers doesn't discharge the requirement (CR 508.1a).
 - `crates/engine/src/combat.rs:647` — A global "creatures attack each combat if able" static (CR 508.1a — Avatar of
 - `crates/engine/src/combat.rs:1031` — Deal `amount` combat damage from `source` to whatever it's attacking (CR 508.1a): the
-- `crates/engine/src/core.rs:943` — Each declared attacker paired with what it is attacking (CR 508.1a).
-- `crates/engine/src/core.rs:969` — Who makes this turn's attack declaration — the active player (CR 508.1a) unless a live
+- `crates/engine/src/core.rs:953` — Each declared attacker paired with what it is attacking (CR 508.1a).
+- `crates/engine/src/core.rs:979` — Who makes this turn's attack declaration — the active player (CR 508.1a) unless a live
 - `crates/engine/src/resolution/tokens.rs:40` — 1v1 game; with more opponents, still just the first one found — CR 508.1a).
 - `crates/engine/src/state.rs:32` — "Attacks … this turn if able" (CR 508.1a — Furygale Flocking's minted tokens): each entry
 - `crates/engine/src/state.rs:38` — expiry, the same reasoning `pending_next_cast`'s turn-boundary clear uses. (CR 508.1a, CR 502.1, CR…
@@ -1716,7 +1721,7 @@ Check freshness with `just engine-cr-index-check`.
 - `crates/engine/src/combat.rs:528` — Attack-restriction statics (CR 509.1a — Combat Calligrapher, Eriette of the Charmed
 - `crates/engine/src/combat.rs:734` — controller, so no one gains a block they couldn't otherwise make (CR 509.1a).
 - `crates/engine/src/combat.rs:794` — CR 509.1a) or empty; with a live Master Warcraft it's the whole undeclared table for its
-- `crates/engine/src/core.rs:977` — Who makes this turn's block declarations — each attacked player for themselves (CR 509.1a)
+- `crates/engine/src/core.rs:987` — Who makes this turn's block declarations — each attacked player for themselves (CR 509.1a)
 - `crates/engine/src/state.rs:71` — "You choose which creatures block this turn and how those creatures block" (CR 509.1a —
 - `crates/engine/tests/game.rs:10146` — Bloodghast: "This creature can't block." (CR 509.1a — it's never a legal blocker.)
 - `crates/engine/tests/game.rs:43134` — ── CR 800.4a control-effect timestamp precedence + CR 602.2/509.1a controller gates ────────
@@ -1742,7 +1747,7 @@ Check freshness with `just engine-cr-index-check`.
 ### CR 509.1h
 
 - `crates/engine/src/combat.rs:886` — CR 509.1h — remains blocked; no damage to player/PW.
-- `crates/engine/src/core.rs:959` — Attackers that became blocked this combat (CR 509.1h), including those whose blockers left.
+- `crates/engine/src/core.rs:969` — Attackers that became blocked this combat (CR 509.1h), including those whose blockers left.
 - `crates/engine/src/triggers.rs:2310` — keeps a multiply-blocked attacker's "becomes blocked" to a single fire (CR 509.1h). Called
 - `crates/engine/src/types/stack.rs:1978` — Attackers that became blocked this combat (CR 509.1h). Survives when all blockers leave.
 - `crates/engine/tests/game.rs:13679` — CR 509.1h: remains blocked even if all blocking creatures are removed.
@@ -2202,7 +2207,7 @@ Check freshness with `just engine-cr-index-check`.
 - `crates/engine/src/cast.rs:862` — CR 601.2f: the sacrifice-defined sibling of the above — Immoral Bargain's X is settled
 - `crates/engine/src/cast.rs:867` — CR 601.2c/601.2f/702.42: Strive's own sibling — Twinflame's target count is the
 - `crates/engine/src/characteristics.rs:2091` — increments the tally (CR 601.2f applies the reduction as the spell is cast), so
-- `crates/engine/src/core.rs:822` — copy-per-sacrifice rider reads once one exists (CR 601.2f's "copy this spell for each
+- `crates/engine/src/core.rs:832` — copy-per-sacrifice rider reads once one exists (CR 601.2f's "copy this spell for each
 - `crates/engine/src/playable.rs:36` — Whether the caster is casting the spell for its printed alternative cost (CR 601.2f —
 - `crates/engine/src/playable.rs:574` — An additional sacrifice cost (CR 601.2f), either optional (Plumb the Forbidden: 0 up to
 - `crates/engine/src/playable.rs:639` — Alternative cost (CR 601.2f — Invigorate): only declarable if the card actually has one,
@@ -2252,7 +2257,7 @@ Check freshness with `just engine-cr-index-check`.
 - `crates/engine/src/cast.rs:108` — "Reveal a creature card from your hand" (CR 601.2g — Disaster Radius): can't be cast
 - `crates/engine/src/cast.rs:124` — (CR 601.2g — Disaster Radius). 0 if there is no such card; [`Game::cast_additional_cost_gate`]
 - `crates/engine/src/cast.rs:508` — "Reveal a creature card from your hand" (CR 601.2g — Disaster Radius): read before any
-- `crates/engine/src/core.rs:832` — [`AdditionalCost::reveal_creature_from_hand`] (CR 601.2g — Disaster Radius's "reveal a
+- `crates/engine/src/core.rs:842` — [`AdditionalCost::reveal_creature_from_hand`] (CR 601.2g — Disaster Radius's "reveal a
 - `crates/engine/src/resolution/damage.rs:209` — Disaster Radius's "X is the revealed card's mana value" (CR 601.2g) reads
 - `crates/engine/src/types/object.rs:201` — [`AdditionalCost::reveal_creature_from_hand`] (CR 601.2g — Disaster Radius's "reveal a
 - `crates/engine/tests/game.rs:60835` — "the revealed card stays in hand — a reveal, not a discard (CR 601.2g)",
@@ -2613,7 +2618,7 @@ Check freshness with `just engine-cr-index-check`.
 ### CR 603.4
 
 - `crates/engine/src/amount.rs:29` — this to `Fixed` at trigger placement (CR 603.4). The arm exists only so this match
-- `crates/engine/src/core.rs:291` — its owner's turn-scoped "a card left your graveyard this turn" flag — the CR 603.4
+- `crates/engine/src/core.rs:301` — its owner's turn-scoped "a card left your graveyard this turn" flag — the CR 603.4
 - `crates/engine/src/effects.rs:1017` — `SourceUntapped` (Howling Mine's CR 603.4 *second* check), and `SourcePowerAtMost`
 - `crates/engine/src/effects.rs:1054` — Howling Mine's CR 603.4 *second* check: re-read the source's own tapped
 - `crates/engine/src/resolution/copy.rs:242` — CR 603.4: the triggering spell may have left the stack (countered in
@@ -3258,7 +3263,7 @@ Check freshness with `just engine-cr-index-check`.
 ### CR 613.7
 
 - `crates/engine/src/characteristics.rs:23` — `CardDef` or serialized. `timestamp` is the CR 613.7 same-layer ordering key.
-- `crates/engine/src/core.rs:527` — The next continuous-effect timestamp (CR 613.7), consuming it. Static-permanent effects
+- `crates/engine/src/core.rs:537` — The next continuous-effect timestamp (CR 613.7), consuming it. Static-permanent effects
 - `crates/engine/src/lib.rs:141` — Monotonic source of continuous-effect timestamps (CR 613.7 — later same-layer effects win
 - `crates/engine/src/types/object.rs:342` — The CR 613.7 timestamp of [`Permanent::base_pt_set_eot`], so a later 7b set (Darksteel
 - `crates/engine/src/types/object.rs:351` — The CR 613.7 timestamp of [`Permanent::added_types_eot`] / [`Permanent::added_subtypes_eot`].
@@ -3275,7 +3280,7 @@ Check freshness with `just engine-cr-index-check`.
 - `crates/engine/src/characteristics.rs:2233` — `recipient`'s control, after that player's static token-creation replacements (CR 614 —
 - `crates/engine/src/characteristics.rs:2242` — life-gain replacements (CR 614 — Pest Rescuer, "you gain that much life plus 1 instead").
 - `crates/engine/src/combat.rs:1293` — replacements (Doubling Season, CR 614) the same way `Effect::Token(TokenEffect::Create)`'s mint is.
-- `crates/engine/src/core.rs:201` — A real placement, so CR 614 replacements apply (Winding Constrictor, Vorinclex).
+- `crates/engine/src/core.rs:211` — A real placement, so CR 614 replacements apply (Winding Constrictor, Vorinclex).
 - `crates/engine/src/pending/handlers/common.rs:34` — doublers would apply to any other "put a counter" (CR 614); `all_kinds` also moves every
 - `crates/engine/src/pending/handlers/common.rs:99` — replaceable-counters pipeline (CR 614) [`Self::move_counters`] uses for its single-
 - `crates/engine/src/pending/handlers/edict.rs:89` — counters on `source` through [`Game::counters_after_replacements`] (CR 614 doublers apply).
@@ -3652,7 +3657,7 @@ Check freshness with `just engine-cr-index-check`.
 - `crates/engine/src/apply.rs:117` — regeneration instead (CR 701.15b) — the same substitution `DestroyTarget` already
 - `crates/engine/src/apply.rs:1170` — Remove the regenerated creature from combat (CR 701.15b).
 - `crates/engine/src/apply.rs:2665` — [`Event::Regenerated`]'s CR 701.15b removal, [`Event::RemovedFromCombat`]
-- `crates/engine/src/core.rs:640` — How many regeneration shields the permanent at `id` currently has (CR 701.15b); 0 if it
+- `crates/engine/src/core.rs:650` — How many regeneration shields the permanent at `id` currently has (CR 701.15b); 0 if it
 - `crates/engine/src/priority.rs:1765` — Regeneration shields last only "this turn" (CR 701.15b) — any unused one expires.
 - `crates/engine/src/resolution/destroy.rs:53` — regeneration (CR 701.15b), unless "can't be regenerated" turns it off (CR
 - `crates/engine/src/types/object.rs:438` — How many regeneration shields this permanent currently has (CR 701.15b): each is a
@@ -3860,7 +3865,7 @@ Check freshness with `just engine-cr-index-check`.
 ### CR 701.28b
 
 - `crates/engine/src/apply.rs:903` — CR 701.28b: a one-way flag, never cleared by the Untap `StepBegan` turn-boundary reset.
-- `crates/engine/src/core.rs:681` — Whether the permanent at `id` is monstrous (CR 701.28b — has had a "Monstrosity N"
+- `crates/engine/src/core.rs:691` — Whether the permanent at `id` is monstrous (CR 701.28b — has had a "Monstrosity N"
 - `crates/engine/src/triggers.rs:441` — CR 701.28b: the flag is already set (the apply ran first) — same self-scan idiom
 - `crates/engine/src/types/object.rs:320` — Whether this permanent has become monstrous (CR 701.28b) — a one-way state, not
 - `crates/engine/src/types/stack.rs:2151` — A permanent became monstrous (CR 701.28b — [`Effect::Counters(CountersEffect::Monstrosity)`]):
@@ -4343,7 +4348,7 @@ Check freshness with `just engine-cr-index-check`.
 
 ### CR 702.26
 
-- `crates/engine/src/core.rs:675` — Whether the permanent at `id` is phased out (CR 702.26 — treated as though it doesn't
+- `crates/engine/src/core.rs:685` — Whether the permanent at `id` is phased out (CR 702.26 — treated as though it doesn't
 - `crates/engine/src/pending/handlers/targets.rs:373` — phases out (CR 702.26). An empty answer is a legal "phase out nothing" (CR "any number ...
 - `crates/engine/src/resolution/pause_choose.rs:104` — Guardian of Faith's ETB (CR 702.26): pause to choose any number of the *other*
 - `crates/engine/src/types/object.rs:509` — Whether this permanent is *phased out* (CR 702.26): treated as though it doesn't exist —
@@ -4517,7 +4522,7 @@ Check freshness with `just engine-cr-index-check`.
 - `crates/engine/src/cast.rs:349` — Multikicker (CR 702.33c): "you may pay an additional [cost] any number of times as you
 - `crates/engine/src/cast.rs:870` — CR 601.2c/702.33c: Multikicker's own sibling, "1 + N" rather than "exactly N" — see the
 - `crates/engine/src/cast.rs:888` — CR 601.2c/702.33c: Multikicker's own sibling — Comet Storm's "choose any target,
-- `crates/engine/src/core.rs:922` — How many times the spell at `id` had its Multikicker cost paid (CR 702.33c —
+- `crates/engine/src/core.rs:932` — How many times the spell at `id` had its Multikicker cost paid (CR 702.33c —
 - `crates/engine/src/playable.rs:32` — How many times the caster paid the spell's Multikicker cost (CR 702.33c —
 - `crates/engine/src/playable.rs:235` — Multikicker (CR 601.2c/702.33c): "choose any target, then choose another
 - `crates/engine/src/playable.rs:634` — Multikicker (CR 702.33c): only declarable if the spell actually has one, mirroring
@@ -4538,7 +4543,7 @@ Check freshness with `just engine-cr-index-check`.
 
 - `crates/engine/src/cast.rs:162` — `kicked` folds [`AdditionalCost::kicker`]'s cost on top (CR 702.33d) — `false` for a
 - `crates/engine/src/cast.rs:282` — Kicker (CR 702.33d): the caster's chosen kicker cost, paid alongside the printed cost.
-- `crates/engine/src/core.rs:843` — Whether the spell at `id` was cast with its kicker cost paid (CR 702.33d —
+- `crates/engine/src/core.rs:853` — Whether the spell at `id` was cast with its kicker cost paid (CR 702.33d —
 - `crates/engine/src/playable.rs:17` — Whether the caster is paying the spell's kicker cost (CR 702.33d — [`AdditionalCost::kicker`]).
 - `crates/engine/src/playable.rs:607` — Kicker (CR 702.33d): only payable if the spell actually has one — a client can't opt
 - `crates/engine/src/resolution/damage.rs:183` — `Amount::IfSpellKicked` (CR 702.33d) reads the resolving *spell's* own kicked
@@ -4685,7 +4690,7 @@ Check freshness with `just engine-cr-index-check`.
 - `crates/engine/src/cast.rs:172` — `strive_count.saturating_sub(1)` (CR 702.42 — "for each target beyond the first") — 0 for
 - `crates/engine/src/cast.rs:315` — Strive (CR 601.2f/702.42): "{2}{R} more to cast for each target beyond the first" —
 - `crates/engine/src/cast.rs:867` — CR 601.2c/601.2f/702.42: Strive's own sibling — Twinflame's target count is the
-- `crates/engine/src/core.rs:900` — The spell at `id`'s declared Strive target count (CR 702.42 — [`AdditionalCost::strive`]),
+- `crates/engine/src/core.rs:910` — The spell at `id`'s declared Strive target count (CR 702.42 — [`AdditionalCost::strive`]),
 - `crates/engine/src/playable.rs:25` — The caster's declared Strive target count (CR 702.42 — [`AdditionalCost::strive`]); 0 for
 - `crates/engine/src/playable.rs:223` — Strive (CR 601.2c/702.42): the caster commits to a target count before
 - `crates/engine/src/playable.rs:624` — Strive (CR 702.42): only declarable if the spell actually has one, mirroring kicker's
@@ -4764,7 +4769,7 @@ Check freshness with `just engine-cr-index-check`.
 ### CR 702.62
 
 - `crates/engine/src/cast.rs:1386` — Suspend a hand card (CR 702.62 — Rousing Refrain): rather than cast it, pay its
-- `crates/engine/src/core.rs:588` — How many time counters (CR 702.62 — suspend) the exiled card at `id` has (0 if it carries
+- `crates/engine/src/core.rs:598` — How many time counters (CR 702.62 — suspend) the exiled card at `id` has (0 if it carries
 - `crates/engine/src/effects.rs:722` — Move the card object `from` to exile with `counters` time counters on it (CR 702.62 —
 - `crates/engine/src/lib.rs:200` — Time counters (CR 702.62 — suspend) on cards in exile, each `(exile object, count)`. Kept
 - `crates/engine/src/query.rs:271` — Whether `card` may be offered as a Suspend action (CR 702.62): priority holder, in hand
@@ -5013,7 +5018,7 @@ Check freshness with `just engine-cr-index-check`.
 ### CR 702.108
 
 - `crates/engine/src/cast.rs:176` — count itself (CR 702.108 — each payment is a full extra instance of the cost, unlike
-- `crates/engine/src/core.rs:910` — How many times the spell at `id` had its Replicate cost paid (CR 702.108 —
+- `crates/engine/src/core.rs:920` — How many times the spell at `id` had its Replicate cost paid (CR 702.108 —
 - `crates/engine/src/playable.rs:28` — How many times the caster paid the spell's Replicate cost (CR 702.108 —
 - `crates/engine/src/playable.rs:629` — Replicate (CR 702.108): only declarable if the spell actually has one, mirroring
 - `crates/engine/src/triggers.rs:3608` — Queue prowess triggers (CR 702.108): `spell_controller` just cast `def` (aimed at
@@ -5297,7 +5302,7 @@ Check freshness with `just engine-cr-index-check`.
 
 - `crates/engine/src/apply.rs:206` — commander damage loses (CR 704.5a/b/c, CR 903.10a).
 - `crates/engine/src/apply.rs:215` — CR 704.5c: ten or more poison counters loses the game.
-- `crates/engine/src/core.rs:194` — poison counters loses the game (CR 704.5c).
+- `crates/engine/src/core.rs:204` — poison counters loses the game (CR 704.5c).
 - `crates/engine/src/types/object.rs:646` — Poison counters on a player that lose the game (CR 704.5c).
 - `crates/engine/src/types/object.rs:767` — (CR 704.5c).
 - `crates/engine/src/types/stack.rs:2301` — [`Player::kind_counters`]; ten or more poison then loses the game via CR 704.5c's
@@ -5435,7 +5440,7 @@ Check freshness with `just engine-cr-index-check`.
 - `crates/engine/src/apply.rs:1406` — A copy made "except it has <keywords>" (CR 707.2): union the exception keywords into
 - `crates/engine/src/characteristics.rs:898` — Copy-effect exception keywords (CR 707.2 — "except it has haste/myriad") are part of
 - `crates/engine/src/characteristics_cache.rs:180` — board (CR 706/707.2 — Altered Ego, Cursed Mirror; the same at the until-EOT revert).
-- `crates/engine/src/core.rs:381` — values (CR 707.2 — a copy made "except it has haste"/"except it has myriad"). The keyword
+- `crates/engine/src/core.rs:391` — values (CR 707.2 — a copy made "except it has haste"/"except it has myriad"). The keyword
 - `crates/engine/src/effects.rs:428` — Enter-as-a-copy (CR 706/707.2 — Altered Ego, Cursed Mirror): pause as the
 - `crates/engine/src/pending/handlers/edict.rs:132` — `candidates`) has `source` become a copy of it — overwriting its `def` (CR 707.2) and
 - `crates/engine/src/pending/handlers/edict.rs:197` — Cursed Mirror's "except it has haste" — a copiable value (CR 707.2): a copy of this
@@ -5575,7 +5580,7 @@ Check freshness with `just engine-cr-index-check`.
 ### CR 708
 
 - `crates/engine/src/apply.rs:1899` — Morph (CR 702.37b/708): a face-down creature spell enters as a face-down 2/2 —
-- `crates/engine/src/core.rs:688` — Whether the permanent at `id` is face down (CR 708 — a manifested card): a 2/2 colorless
+- `crates/engine/src/core.rs:698` — Whether the permanent at `id` is face down (CR 708 — a manifested card): a 2/2 colorless
 - `crates/engine/src/types/object.rs:251` — so the permanent enters face down (CR 708). `false` for an ordinary face-up cast.
 - `crates/engine/src/types/object.rs:536` — Whether this permanent is *face down* (CR 708 — a manifested card, CR 701.34): while set,
 - `crates/engine/tests/game.rs:79826` — --- Manifest / face-down permanents (CR 701.34, CR 708 — Reality Shift) ---
@@ -5623,7 +5628,7 @@ Check freshness with `just engine-cr-index-check`.
 
 - `crates/engine/src/apply.rs:733` — Only the cast half is on the stack (CR 709.4); the card moves from hand onto the
 - `crates/engine/src/cast.rs:1832` — (CR 709.4) — the fused card is not itself castable. Mirrors [`Game::cast_adventure`], minus
-- `crates/engine/src/core.rs:276` — CR 709.4: a split card is only the half that was cast while that half is on the stack;
+- `crates/engine/src/core.rs:286` — CR 709.4: a split card is only the half that was cast while that half is on the stack;
 - `crates/engine/src/state.rs:180` — the object is the whole split card again (CR 709.4), so [`Game::create_object`](crate::Game)
 - `crates/engine/src/types/stack.rs:2213` — come from that one half rather than from the fused card (CR 709.4).
 - `crates/engine/tests/game.rs:84198` — every other zone (CR 709.4).
@@ -5634,7 +5639,7 @@ Check freshness with `just engine-cr-index-check`.
 ### CR 709.4a
 
 - `crates/engine/src/cast.rs:1830` — Cast one half of a split card from hand (CR 709.4a — Fire // Ice). `source` is the card in
-- `crates/engine/src/core.rs:748` — Target need and legal targets for casting half `half` of the split card `card` (CR 709.4a).
+- `crates/engine/src/core.rs:758` — Target need and legal targets for casting half `half` of the split card `card` (CR 709.4a).
 - `crates/engine/src/playable.rs:138` — A split card is cast as one of its halves (CR 709.4a — `Intent::CastSplitHalf`), never
 - `crates/engine/src/query.rs:454` — card in hand (CR 709.4a) — the fused card itself is never castable, so this is the only way
 - `crates/engine/src/state.rs:179` — CardId to restore)`. Only the cast half is on the stack (CR 709.4a); in every other zone
@@ -5650,8 +5655,8 @@ Check freshness with `just engine-cr-index-check`.
 - `crates/engine/src/apply.rs:907` — CR 712: the permanent flips to its back face (one-way, permanent). Its live
 - `crates/engine/src/characteristics.rs:1387` — CR 712: a flipped permanent's base P/T comes from its back face — read through `def_of`
 - `crates/engine/src/characteristics_cache.rs:176` — Flipping (CR 712) swaps the front face's name/types/P/T/abilities for the back's.
-- `crates/engine/src/core.rs:398` — CR 712: a flipped permanent (a Kamigawa flip card) permanently uses its back face's
-- `crates/engine/src/core.rs:415` — The object's *printed front* card definition, ignoring any flip swap. For a CR 712 flip
+- `crates/engine/src/core.rs:408` — CR 712: a flipped permanent (a Kamigawa flip card) permanently uses its back face's
+- `crates/engine/src/core.rs:425` — The object's *printed front* card definition, ignoring any flip swap. For a CR 712 flip
 - `crates/engine/src/resolution/misc.rs:151` — Nezumi Graverobber: the source permanent flips to its back face (CR 712). One-way and
 - `crates/engine/src/types/object.rs:548` — Whether this permanent has *flipped* (CR 712 — a Kamigawa flip card, Nezumi Graverobber →
 - `crates/engine/src/types/stack.rs:2155` — `object` flipped (CR 712 — a Kamigawa flip card's [`Effect::Misc(MiscEffect::FlipSource)`]): sets
@@ -5724,7 +5729,7 @@ Check freshness with `just engine-cr-index-check`.
 
 - `crates/engine/src/amount.rs:90` — "Creatures you control" is a *control* test (CR 109.4/CR 720) — a creature you own
 - `crates/engine/src/amount.rs:112` — controller isn't you (CR 108.3/720). A permanent you own is controlled by you or an
-- `crates/engine/src/core.rs:535` — The control-changing Aura (CR 720 — [`Effect::Static(StaticEffect::ControlAttached)`]) currently at…
+- `crates/engine/src/core.rs:545` — The control-changing Aura (CR 720 — [`Effect::Static(StaticEffect::ControlAttached)`]) currently at…
 - `crates/engine/src/priority.rs:1772` — A one-shot until-end-of-turn control change (CR 720) ends in the cleanup
 - `crates/engine/src/priority.rs:1885` — summoning sickness, and meets goad requirements under its new controller (CR 720).
 - `crates/engine/src/resolution/control.rs:81` — Reins of Power (CR 720): the mass, two-player until-EOT control exchange. `target` is
@@ -5767,8 +5772,8 @@ Check freshness with `just engine-cr-index-check`.
 - `crates/engine/src/apply.rs:2533` — CR 800.4a also purges the departing player's own outstanding pending trigger/
 - `crates/engine/src/combat.rs:122` — since been eliminated (CR 800.4a drops the target pair but leaves the attacker in combat).
 - `crates/engine/src/core.rs:4` — Also: multiplayer elimination handoff (CR 800.4a). Deferred / gaps: see
-- `crates/engine/src/core.rs:477` — The controller of the permanent at `id` under CR 800.4a: when several control-changing
-- `crates/engine/src/core.rs:519` — The next control-change timestamp (CR 800.4a), consuming it. Called as each control
+- `crates/engine/src/core.rs:487` — The controller of the permanent at `id` under CR 800.4a: when several control-changing
+- `crates/engine/src/core.rs:529` — The next control-change timestamp (CR 800.4a), consuming it. Called as each control
 - `crates/engine/src/lib.rs:136` — Monotonic source of control-change timestamps (CR 800.4a — "the most recent control-changing
 - `crates/engine/src/priority.rs:107` — The CR 800.4a elimination sweep — remove everything the leaver owns (even permanents others
 - `crates/engine/src/priority.rs:1515` — discards to hand size. Their zones were emptied by the CR 800.4a sweep, so a draw here
@@ -5878,7 +5883,7 @@ Check freshness with `just engine-cr-index-check`.
 
 - `crates/engine/src/apply.rs:206` — commander damage loses (CR 704.5a/b/c, CR 903.10a).
 - `crates/engine/src/combat.rs:1048` — toughness. No commander-damage tally (CR 903.10a is player-only); lifelink still applies
-- `crates/engine/src/core.rs:188` — commanders that have actually connected appear. 21 from any single one is lethal (CR 903.10a).
+- `crates/engine/src/core.rs:198` — commanders that have actually connected appear. 21 from any single one is lethal (CR 903.10a).
 - `crates/engine/src/resolution/damage.rs:148` — combat-only (CR 903.10a), so a burn spell never adds to it.
 
 ### CR 957

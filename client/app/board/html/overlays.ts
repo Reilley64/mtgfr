@@ -17,6 +17,7 @@ import type { BoardModel } from "../submodel";
 import { activationMenuView } from "./activation-menu";
 import { concedeButtonView, concedeDialogView } from "./concede";
 import { discoverabilityView } from "./discoverability";
+import { firstPlayerRevealView } from "./first-player-reveal";
 import { handView } from "./hand";
 import { inspectView } from "./inspect";
 import { logPanelView } from "./log-panel";
@@ -135,6 +136,8 @@ export function boardOverlays(
           state.players,
           state.objects,
         ),
+    // CR 103.1 spotlight sits above everything, spectators included — no seatedViewer gate.
+    firstPlayerRevealView(board.firstPlayerReveal, state),
   ];
 
   return h.div(

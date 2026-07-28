@@ -18,8 +18,15 @@ import { view as appView } from "../../view";
 import { MountBitmapLayer, MountFlightLayer } from "../bitmap/mount";
 import { ZONE } from "../geometry/layout";
 import type { Message } from "../messages";
-import { AltDown, ArtLoaded, BoardCameraZoomed, HintAutoHidden, PriorityElapsed } from "../messages";
-import { type BoardModel, initialBoardModel } from "../submodel";
+import {
+  AltDown,
+  ArtLoaded,
+  BoardCameraZoomed,
+  FirstPlayerRevealFinished,
+  HintAutoHidden,
+  PriorityElapsed,
+} from "../messages";
+import { type BoardModel, initialBoardModel, updateBoard } from "../submodel";
 import { type BoardViewModel, view as boardView } from "../view";
 import { MountBoardAudio, MountHintAutoHide, MountPriorityWatch } from "./audio-mount";
 import { MountBoardCameraGesture } from "./camera-gesture-mount";
@@ -121,6 +128,12 @@ const overlayView = Submodel.defineView<OverlayModel, Message>((model) => {
   if (model.fold.state == null) return h.div([], []);
   return boardOverlays(model.board, model.fold.state, model.tableId, model.fold.log);
 });
+
+/** Real board `update` for scenes that assert what a message does, not just how a model renders. */
+function overlayUpdate(model: OverlayModel, message: Message): [OverlayModel, []] {
+  const [board] = updateBoard(model.board, message, model.fold, model.tableId);
+  return [{ ...model, board }, []];
+}
 
 const fullBoardView = Submodel.defineView<BoardViewModel, Message>(boardView);
 
@@ -228,6 +241,106 @@ test("mulliganing undecided seat sees overlay and hides hand bar", () => {
     Scene.expect(Scene.testId("board-primary")).not.toExist(),
     Scene.expect(Scene.testId("board-concede")).toExist(),
     Scene.expect(Scene.testId("inspect-overlay")).not.toExist(),
+  );
+});
+
+// CR 103.1 reveal: the spotlight sits above the mulligan lock (z-50 over z-40) and paints
+// for every viewer, including the winner's own quadrant, while the mulligan overlay below
+// stays reachable-blocked but present in the DOM.
+test("spotlights the winning seat over the mulligan overlay", () => {
+  const state = gameState({
+    active_player: 2,
+    mulliganing: true,
+    viewer: 0,
+    players: [
+      { ...player(0), hand_kept: false, can_mulligan: true, mulligans_taken: 0 },
+      { ...player(1), hand_kept: false, can_mulligan: true, mulligans_taken: 0 },
+      { ...player(2), hand_kept: false, can_mulligan: true, mulligans_taken: 0 },
+      { ...player(3), hand_kept: false, can_mulligan: true, mulligans_taken: 0 },
+    ],
+  });
+  const model: OverlayModel = {
+    board: {
+      ...initialBoardModel(),
+      firstPlayerReveal: { winner: 2, steps: [{ slot: 2, delayMs: 0 }], index: 0 },
+    },
+    fold: gameFold(state),
+    tableId: "T1",
+  };
+  Scene.scene(
+    { update: (m) => [m, []], view: overlayView },
+    Scene.with(model),
+    Scene.Mount.resolveAll([MountPriorityWatch(), PriorityElapsed({ seconds: 0 })]),
+    Scene.expect(Scene.testId("first-player-reveal")).toExist(),
+    Scene.expect(Scene.testId("reveal-winner")).toHaveText("Bob goes first"),
+    Scene.expect(Scene.testId("reveal-seat-2")).toHaveAttr("data-winner", "true"),
+    Scene.expect(Scene.testId("reveal-seat-2")).toHaveAttr("data-lit", "true"),
+    Scene.expect(Scene.testId("reveal-seat-0")).toHaveAttr("data-lit", "false"),
+    Scene.expect(Scene.testId("mulligan-overlay")).toExist(),
+  );
+});
+
+// CR 103.1 reveal: mid-hop, the spotlight has landed on a seat that isn't the winner yet, so
+// the banner must stay silent about who goes first — only the final hop names the winner.
+test("does not name the winner mid-hop, before the reveal settles", () => {
+  const state = gameState({
+    viewer: 0,
+    players: [player(0), player(1), player(2), player(3)],
+  });
+  const model: OverlayModel = {
+    board: {
+      ...initialBoardModel(),
+      firstPlayerReveal: {
+        winner: 2,
+        steps: [
+          { slot: 0, delayMs: 0 },
+          { slot: 2, delayMs: 0 },
+        ],
+        index: 0,
+      },
+    },
+    fold: gameFold(state),
+    tableId: "T1",
+  };
+  Scene.scene(
+    { update: (m) => [m, []], view: overlayView },
+    Scene.with(model),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("first-player-reveal")).toExist(),
+    Scene.expect(Scene.testId("reveal-winner")).toHaveText(""),
+    Scene.expect(Scene.testId("reveal-seat-0")).toHaveAttr("data-lit", "true"),
+    Scene.expect(Scene.testId("reveal-seat-2")).toHaveAttr("data-winner", "true"),
+    Scene.expect(Scene.testId("reveal-seat-2")).toHaveAttr("data-lit", "false"),
+  );
+});
+
+test("clears the spotlight once the reveal finishes", () => {
+  const state = gameState({
+    active_player: 1,
+    mulliganing: true,
+    viewer: 0,
+    players: [
+      { ...player(0), hand_kept: false, can_mulligan: true, mulligans_taken: 0 },
+      { ...player(1), hand_kept: false, can_mulligan: true, mulligans_taken: 0 },
+    ],
+  });
+  const model: OverlayModel = {
+    board: {
+      ...initialBoardModel(),
+      firstPlayerReveal: { winner: 1, steps: [{ slot: 1, delayMs: 0 }], index: 0 },
+    },
+    fold: gameFold(state),
+    tableId: "T1",
+  };
+  Scene.scene(
+    { update: overlayUpdate, view: overlayView },
+    Scene.with(model),
+    Scene.expect(Scene.testId("first-player-reveal")).toExist(),
+    // Any pending Mount will do as the courier; the subject is what `FirstPlayerRevealFinished`
+    // does to the board model, not which surface raised it.
+    Scene.Mount.resolveAll([MountPriorityWatch(), FirstPlayerRevealFinished()]),
+    Scene.expect(Scene.testId("first-player-reveal")).not.toExist(),
+    Scene.expect(Scene.testId("mulligan-keep")).toExist(),
   );
 });
 

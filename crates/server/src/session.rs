@@ -634,7 +634,7 @@ fn forced_action_message(game: &Game, choice: &PendingChoice) -> MessageRef {
 mod tests {
     use super::*;
     use crate::db;
-    use crate::decks::{keep_all_hands, master_from_u64, seed_game};
+    use crate::decks::{keep_all_hands, master_seed_rolling, seed_game};
     use crate::test_support::{as_user, seat_deck, user_with_deck};
     use engine::{DamageEffect, Defender, PlayerId, SacrificeCost, arc_slice, empty_slice};
     use schema::{IntentEnvelope, WireIntent, to_intent};
@@ -745,7 +745,7 @@ mod tests {
         let mut table = Table::empty();
         let mut game = seed_game(
             &[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())],
-            master_from_u64(0),
+            master_seed_rolling(0, 2),
         );
         keep_all_hands(&mut game);
         table.game = Some(game);
@@ -763,7 +763,7 @@ mod tests {
         let mut table = Table::empty();
         let mut game = seed_game(
             &[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())],
-            master_from_u64(0),
+            master_seed_rolling(0, 2),
         );
         keep_all_hands(&mut game);
         table.game = Some(game);
@@ -918,7 +918,7 @@ mod tests {
         let mut table = Table::empty();
         let mut game = seed_game(
             &[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())],
-            master_from_u64(0),
+            master_seed_rolling(0, 2),
         );
         keep_all_hands(&mut game);
         game.fund_mana(PlayerId(0));
@@ -1640,7 +1640,7 @@ mod tests {
         let mut table = Table::empty();
         let mut game = seed_game(
             &[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())],
-            master_from_u64(0),
+            master_seed_rolling(0, 2),
         );
         keep_all_hands(&mut game);
         assert_eq!(game.active_player(), PlayerId(0));
@@ -1887,7 +1887,7 @@ mod tests {
     fn a_yield_is_inert_once_the_stack_is_empty() {
         let mut game = seed_game(
             &[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())],
-            master_from_u64(0),
+            master_seed_rolling(0, 2),
         );
         keep_all_hands(&mut game);
         assert_eq!(game.priority_holder(), PlayerId(0));
@@ -2047,7 +2047,7 @@ mod tests {
         table.seats[0].user_id = Some(uid);
         let mut game = seed_game(
             &[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())],
-            master_from_u64(0),
+            master_seed_rolling(0, 2),
         );
         keep_all_hands(&mut game);
         table.game = Some(game);
@@ -2101,7 +2101,7 @@ mod tests {
         table.seats[1].user_id = Some(uid1);
         let mut game = seed_game(
             &[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())],
-            master_from_u64(0),
+            master_seed_rolling(0, 2),
         );
         keep_all_hands(&mut game);
         table.game = Some(game);
@@ -2125,7 +2125,7 @@ mod tests {
         table.seats[0].user_id = Some(uid);
         let mut game = seed_game(
             &[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())],
-            master_from_u64(0),
+            master_seed_rolling(0, 2),
         );
         keep_all_hands(&mut game);
         game.set_life(PlayerId(1), 0);
@@ -2152,7 +2152,7 @@ mod tests {
         let mut table = Table::empty();
         let mut game = seed_game(
             &[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())],
-            master_from_u64(0),
+            master_seed_rolling(0, 2),
         );
         keep_all_hands(&mut game);
         table.game = Some(game);
