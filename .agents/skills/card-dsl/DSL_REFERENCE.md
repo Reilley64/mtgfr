@@ -330,7 +330,12 @@ color with it, same `Game::can_block` check), and
 `lesser_power_cant_block` (Elusive Otter's printed evasion, "creatures with power less than this
 creature's power can't block it" — not a named MTG keyword; a card-specific tag riding the same
 `Game::can_block` check), `cant_block` (CR 509.1a — Bloodghast's "This creature can't block"; never
-a legal blocker), `can_block_only_flyers` (Brazen Borrower's "can block only creatures with
+a legal blocker), `banding` (CR 702.22 — **only the damage-assignment half is wired**: when a
+creature with banding is among a blocked attacker's blockers, `Game::damage_assigner` hands that
+attacker's `PendingChoice::AssignCombatDamage` to the *blocking* player instead of the attacking
+one (CR 702.22e). Attacking in a band is not modeled — `Intent::DeclareAttackers` carries a flat
+list with no grouping — so a card printing banding wants an `approximates` naming that. Grantable
+the usual way, through `pump_until_end_of_turn`'s `keywords` (Helm of Chatzuk)), `can_block_only_flyers` (Brazen Borrower's "can block only creatures with
 flying" — not a named MTG keyword; a card-specific tag on the same `Game::can_block` check, so pair
 it with `flying` if the creature should still block flyers), `decayed` (CR 702.148 — can't
 block, checked in `Game::can_block`; and "when it attacks, sacrifice it at the beginning of the

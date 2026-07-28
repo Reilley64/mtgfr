@@ -968,7 +968,7 @@ impl Game {
             crate::pending::raise_choice(
                 self,
                 PendingChoice::AssignCombatDamage {
-                    player: self.active_player,
+                    player: self.damage_assigner(&blockers),
                     attacker,
                     blockers,
                 },
@@ -1055,6 +1055,18 @@ impl Game {
     }
 
     /// The first multi-blocked attacker whose damage division hasn't been chosen yet, if any.
+    /// Who divides a multi-blocked attacker's combat damage among its blockers: the attacking
+    /// creature's controller (CR 510.1a), unless one of those blockers has banding — then that
+    /// blocker's controller does it instead (CR 702.22e). All of an attacker's blockers belong to
+    /// the one defending player, so the first banding blocker names the answer.
+    pub(crate) fn damage_assigner(&self, blockers: &[ObjectId]) -> PlayerId {
+        blockers
+            .iter()
+            .find(|&&b| self.has_keyword(b, Keyword::Banding))
+            .map(|&b| self.controller_of(b))
+            .unwrap_or(self.active_player)
+    }
+
     pub(crate) fn next_undivided_multiblock(&self) -> Option<(ObjectId, Vec<ObjectId>)> {
         for &attacker in &self.combat.attackers {
             let blockers = self.blockers_of(attacker);

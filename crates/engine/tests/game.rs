@@ -110690,3 +110690,143 @@ fn blaze_of_glory_is_shut_out_of_the_main_phase() {
         "the main phase is outside the window on both counts, and the mana is already paid for",
     );
 }
+
+// ── Banding (CR 702.22) ──────────────────────────────────────────────────────────────
+// Only the damage-assignment half is modeled: a banding blocker's controller divides the
+// attacker's combat damage. Attacking in a band is increment #79.
+
+#[test]
+fn a_banding_blocker_takes_the_division_away_from_the_attacking_player() {
+    // "If any creatures with banding you control are blocking ... you divide that creature's
+    // combat damage, not its controller."
+    let mut game = Game::new();
+    stock_libraries(&mut game);
+    let ogre = game.spawn_on_battlefield(PlayerId(0), creature("Ogre", 3, 3, &[]));
+    let hero = game.spawn_on_battlefield(PlayerId(1), card("Benalish Hero"));
+    let wolves = game.spawn_on_battlefield(PlayerId(1), card("Timber Wolves"));
+
+    attack_with(&mut game, vec![ogre]);
+    block_with(&mut game, vec![(hero, ogre), (wolves, ogre)]).unwrap();
+
+    let Some(PendingChoice::AssignCombatDamage {
+        player, attacker, ..
+    }) = game.pending_choice()
+    else {
+        panic!("a doubly-blocked attacker's damage is divided by somebody");
+    };
+    assert_eq!(attacker, ogre);
+    assert_eq!(
+        player,
+        PlayerId(1),
+        "the banding blocker's controller divides, not the attacking player",
+    );
+}
+
+#[test]
+fn without_banding_the_attacking_player_still_divides() {
+    let mut game = Game::new();
+    stock_libraries(&mut game);
+    let ogre = game.spawn_on_battlefield(PlayerId(0), creature("Ogre", 3, 3, &[]));
+    let one = game.spawn_on_battlefield(PlayerId(1), VANILLA.clone());
+    let two = game.spawn_on_battlefield(PlayerId(1), VANILLA.clone());
+
+    attack_with(&mut game, vec![ogre]);
+    block_with(&mut game, vec![(one, ogre), (two, ogre)]).unwrap();
+
+    let Some(PendingChoice::AssignCombatDamage { player, .. }) = game.pending_choice() else {
+        panic!("a doubly-blocked attacker's damage is divided by somebody");
+    };
+    assert_eq!(player, PlayerId(0), "CR 510.1a's default is the attacker");
+}
+
+#[test]
+fn a_banding_blocker_spends_the_attackers_damage_where_it_likes() {
+    // The point of taking the division over: the defender can dump all 3 onto the creature it
+    // doesn't mind losing and bring both blockers' damage back at the Ogre.
+    let mut game = Game::new();
+    stock_libraries(&mut game);
+    let ogre = game.spawn_on_battlefield(PlayerId(0), creature("Ogre", 3, 3, &[]));
+    let hero = game.spawn_on_battlefield(PlayerId(1), card("Benalish Hero"));
+    let wolves = game.spawn_on_battlefield(PlayerId(1), card("Timber Wolves"));
+
+    attack_with(&mut game, vec![ogre]);
+    block_with(&mut game, vec![(hero, ogre), (wolves, ogre)]).unwrap();
+    game.submit(Intent::AssignDamage {
+        player: PlayerId(1),
+        assignment: vec![(hero, 3), (wolves, 0)],
+    })
+    .expect("the banding blocker's controller answers the division");
+
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+    assert_eq!(
+        game.zone_of(wolves),
+        Zone::Battlefield,
+        "the Wolves took none of it",
+    );
+    assert_eq!(
+        game.zone_of(hero),
+        Zone::Graveyard,
+        "the Hero soaked it all"
+    );
+    assert_eq!(game.marked_damage(ogre), 2, "both blockers hit back");
+}
+
+#[test]
+fn the_attacking_player_cannot_answer_a_banding_division() {
+    let mut game = Game::new();
+    stock_libraries(&mut game);
+    let ogre = game.spawn_on_battlefield(PlayerId(0), creature("Ogre", 3, 3, &[]));
+    let hero = game.spawn_on_battlefield(PlayerId(1), card("Benalish Hero"));
+    let wolves = game.spawn_on_battlefield(PlayerId(1), card("Timber Wolves"));
+
+    attack_with(&mut game, vec![ogre]);
+    block_with(&mut game, vec![(hero, ogre), (wolves, ogre)]).unwrap();
+    assert!(
+        game.submit(Intent::AssignDamage {
+            player: PlayerId(0),
+            assignment: vec![(hero, 3), (wolves, 0)],
+        })
+        .is_err(),
+        "the division is not the attacking player's to make any more",
+    );
+}
+
+#[test]
+fn helm_of_chatzuk_hands_the_division_over_for_the_turn() {
+    // "{1}, {T}: Target creature gains banding until end of turn."
+    let mut game = Game::new();
+    stock_libraries(&mut game);
+    let ogre = game.spawn_on_battlefield(PlayerId(0), creature("Ogre", 3, 3, &[]));
+    let helm = game.spawn_on_battlefield(PlayerId(1), card("Helm of Chatzuk"));
+    let one = game.spawn_on_battlefield(PlayerId(1), VANILLA.clone());
+    let two = game.spawn_on_battlefield(PlayerId(1), VANILLA.clone());
+
+    attack_with(&mut game, vec![ogre]);
+    game.submit(Intent::PassPriority {
+        player: PlayerId(0),
+    })
+    .unwrap();
+    game.fund_mana(PlayerId(1));
+    let idx = only_activated_ability_index(&game, helm);
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(1),
+        object: helm,
+        ability_index: idx,
+        target: Some(Target::Object(one)),
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .expect("the Helm activates at declare attackers");
+    resolve_top_of_stack(&mut game);
+
+    block_with(&mut game, vec![(one, ogre), (two, ogre)]).unwrap();
+    let Some(PendingChoice::AssignCombatDamage { player, .. }) = game.pending_choice() else {
+        panic!("a doubly-blocked attacker's damage is divided by somebody");
+    };
+    assert_eq!(
+        player,
+        PlayerId(1),
+        "a granted banding moves the division just like a printed one",
+    );
+}

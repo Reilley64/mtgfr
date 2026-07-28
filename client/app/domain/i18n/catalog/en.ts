@@ -729,6 +729,7 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   ),
   "effect.zone_tuck_self_to_library_bottom": literal("Put this on the bottom of its owner's library"),
   "effect.zone_untap_searched_land": literal("Untap the searched land"),
+  "keyword.banding": literal("Banding"),
   "keyword.can_block_only_flyers": literal("Can block only creatures with flying"),
   "keyword.cant_block": literal("Can't block"),
   "keyword.deathtouch": literal("Deathtouch"),

@@ -5,6 +5,7 @@
   "auto.only_one_legal_target",
   "auto.sacrificed_forced",
   "auto.trigger_order_forced",
+  "keyword.banding",
   "keyword.can_block_only_flyers",
   "keyword.cant_block",
   "keyword.deathtouch",

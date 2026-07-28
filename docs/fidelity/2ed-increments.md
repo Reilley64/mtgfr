@@ -564,8 +564,8 @@ Blast and Circle of Protection: Red, so the regression tests assert `colors_of` 
 minted copy — red, not green — and a matching Twincast test pins the copy's color to the original
 when no effect recolors it.
 
-### 14. `banding` — 4 cards, L
-Depends on: #11.
+### 14. `banding` — 4 cards, L — **done**
+Depends on: #11 (done).
 Banding (CR 702.22). Attacking as a band, being blocked as a group, and the defining ugly part:
 when a banding creature blocks or is blocked, *its controller* — not the attacking creature's
 controller — assigns that creature's combat damage. *Sketch:* an attack-declaration grouping
@@ -574,7 +574,41 @@ object, and a damage-assignment ownership flip in the existing `AssignCombatDama
 choice, which already knows how to ask a player to divide damage among blockers — it needs to ask
 a *different* player. Helm of Chatzuk grants it until end of turn, so it must be a real
 `Keyword`, not a card flag.
-*Cards:* benalish_hero, helm_of_chatzuk, mesa_pegasus, timber_wolves.
+*Cards:* benalish_hero, helm_of_chatzuk, mesa_pegasus, timber_wolves. Attacking in a band split
+out — see #79.
+
+*Landed:* the sketch's three pieces are not one increment. The ownership flip is nine lines; the
+attack-declaration grouping is a wire change. Only the flip landed, and all four cards carry an
+`approximates` saying so.
+
+`Keyword::Banding` is a real keyword because Helm of Chatzuk lends it, and lending goes through
+`pump_until_end_of_turn`'s existing `keywords` bag — so the Helm needed no new DSL at all, just an
+activated ability with a 0/0 pump. That is also the thing worth pinning in the cards crate: a
+printed banding and a lent one have to land in the same bag or `has_keyword` would see two
+different things.
+
+`Game::damage_assigner` is the whole engine change. Both places that raise
+`PendingChoice::AssignCombatDamage` used to hardcode `self.active_player`; they now ask, and the
+answer is the first banding blocker's controller (CR 702.22e) or the attacker's controller
+(CR 510.1a) otherwise. All of an attacker's blockers belong to the one defending player, so the
+first banding blocker names the answer — no tie to break. Nothing else moved: the choice already
+carries a `player`, the wire already routes an answer by it, and the client already renders it.
+
+"Pegasus" was missing from `CREATURE_TYPES`, which the pool-wide chooseable-type test catches.
+
+### 79. `attacking-bands` — 0 cards, XL
+Depends on: #14 (done).
+Split out of #14. The half of CR 702.22 that isn't damage assignment: "any creatures with banding,
+and up to one without, can attack in a band", bands are blocked as a group (CR 702.22c — blocking
+one member blocks them all), and a creature attacking in a band that is blocked has *its*
+controller divide the blocker's damage among the creatures that blocker is blocking (the other
+direction of the flip #14 landed). *Sketch:* `Intent::DeclareAttackers` carries a flat
+`Vec<ObjectId>`, so bands have to travel through the intent, `schema`'s projection, the proto, and
+the client's attack UI before the engine can even hear about them; then `Game::declare_blockers`
+needs a band to count as one object for legality, and a *blocker*-side `AssignCombatDamage` has to
+exist at all — today a blocker's damage goes straight to the one attacker it blocks, with no
+division step, so the second flip has nothing to flip. No card is blocked on this beyond the
+`approximates` on #14's four; it is listed so the ceiling is named rather than implied.
 
 ### 15. `color-changing-effects` — 5 cards, M — **done**
 Depends on: nothing.

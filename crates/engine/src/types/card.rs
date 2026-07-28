@@ -310,6 +310,13 @@ pub enum Keyword {
     /// "This creature can't block" (CR 509.1a — Bloodghast is never a legal blocker). Read by
     /// [`Game::can_block`].
     CantBlock,
+    /// Banding (CR 702.22). Only the damage-assignment half is modeled: when a creature with
+    /// banding is among an attacker's blockers, *its* controller divides that attacker's combat
+    /// damage rather than the attacking player (CR 702.22e). See [`Game::damage_assigner`].
+    /// ponytail: attacking as a band is not modeled — `Intent::DeclareAttackers` carries a flat
+    /// list of attackers with no grouping, and bands would have to travel through the intent, the
+    /// projection, the proto, and the client's attack UI. See increment #79.
+    Banding,
     /// Brazen Borrower's printed "can block only creatures with flying" static — MTG names no
     /// keyword for it.
     /// ponytail: modeled as a card-specific keyword-bag arm on the shared block-legality check

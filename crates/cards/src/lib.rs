@@ -4883,6 +4883,50 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
         );
     }
 
+    /// Banding is a printed keyword on three creatures and a granted one on the Helm, so the
+    /// grant has to arrive through the same `keywords` bag the printed ones live in — otherwise
+    /// `has_keyword` would see two different things.
+    #[test]
+    fn unlimited_banding_is_one_keyword_whether_printed_or_lent() {
+        for name in ["Benalish Hero", "Timber Wolves", "Mesa Pegasus"] {
+            let def = get_by_name(name).expect("the card is in the pool");
+            assert!(
+                def.keywords.contains(&Keyword::Banding),
+                "{name} prints banding",
+            );
+            assert!(
+                def.abilities.is_empty(),
+                "{name} is keyword-only — banding is not an authored ability",
+            );
+        }
+        let pegasus = get_by_name("Mesa Pegasus").expect("Mesa Pegasus is in the pool");
+        assert_eq!(
+            &pegasus.keywords[..],
+            [Keyword::Flying, Keyword::Banding],
+            "both printed keywords, in printed order",
+        );
+
+        let helm = get_by_name("Helm of Chatzuk").expect("Helm of Chatzuk is in the pool");
+        let [grant] = &helm.abilities[..] else {
+            panic!("one activated ability");
+        };
+        let Effect::Pump(PumpEffect::PumpUntilEndOfTurn {
+            power,
+            toughness,
+            keywords,
+            ..
+        }) = &grant.effect
+        else {
+            panic!("a keyword grant rides the pump effect");
+        };
+        assert_eq!(
+            (power, toughness),
+            (&Amount::Fixed(0), &Amount::Fixed(0)),
+            "the Helm lends banding and nothing else",
+        );
+        assert_eq!(*keywords, &[Keyword::Banding][..]);
+    }
+
     /// Juggernaut and Invisibility print the same restriction from opposite sides — "can't be
     /// blocked by Walls" and "can't be blocked except by Walls" — and the DSL has one axis for
     /// both. The inverted authoring is the whole trick, so it is the thing worth pinning: get the

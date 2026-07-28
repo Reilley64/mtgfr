@@ -1916,6 +1916,7 @@ pub const CREATURE_TYPES: &[&str] = &[
     "Orc",
     "Otter",
     "Ox",
+    "Pegasus",
     "Pest",
     "Phelddagrif",
     "Phyrexian",
