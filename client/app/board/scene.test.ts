@@ -1979,6 +1979,30 @@ test("RadialOptionPicked submits the selected activate action id", () => {
   });
 });
 
+test("RadialOptionPicked keeps the source permanent painted while aiming a targeted ability", () => {
+  const pinger = creature(5, 0, { name: "Prodigal Pyromancer" });
+  const victim = creature(6, 1, { name: "Goat" });
+  const action: ActionView = {
+    id: 93,
+    kind: "activate",
+    label: testMessageRef("Deal 1 damage to any target"),
+    needs_target: true,
+    object: pinger.id,
+    section: "battlefield",
+    targets: [{ kind: "object", id: victim.id }],
+  };
+  const board: BoardModel = { ...initialBoardModel(), selectedId: pinger.id };
+  const gameFold = fold(state({ objects: [pinger, victim], actions: [action], can_act: true }));
+
+  const [next] = updateBoard(board, RadialOptionPicked({ index: 0 }), gameFold, "T1");
+
+  // The ability goes on the stack; the permanent itself never leaves the battlefield.
+  expect(next.staged?.action.id).toBe(93);
+  expect([...next.flights.keys()]).toEqual([]);
+  expect([...next.hideCardIds]).toEqual([]);
+  expect([...next.handHidden]).toEqual([]);
+});
+
 test("RadialOptionPicked opens sacrifice picker before submitting a payable activate", () => {
   const seer = creature(5, 0, { name: "Viscera Seer" });
   const fodder = creature(6, 0, { name: "Goat" });
