@@ -231,6 +231,61 @@ test("mulliganing undecided seat sees overlay and hides hand bar", () => {
   );
 });
 
+// CR 103.1 reveal: the spotlight sits above the mulligan lock (z-50 over z-40) and paints
+// for every viewer, including the winner's own quadrant, while the mulligan overlay below
+// stays reachable-blocked but present in the DOM.
+test("spotlights the winning seat over the mulligan overlay", () => {
+  const state = gameState({
+    active_player: 2,
+    mulliganing: true,
+    viewer: 0,
+    players: [
+      { ...player(0), hand_kept: false, can_mulligan: true, mulligans_taken: 0 },
+      { ...player(1), hand_kept: false, can_mulligan: true, mulligans_taken: 0 },
+      { ...player(2), hand_kept: false, can_mulligan: true, mulligans_taken: 0 },
+      { ...player(3), hand_kept: false, can_mulligan: true, mulligans_taken: 0 },
+    ],
+  });
+  const model: OverlayModel = {
+    board: {
+      ...initialBoardModel(),
+      firstPlayerReveal: { winner: 2, steps: [{ slot: 2, delayMs: 0 }], index: 0 },
+    },
+    fold: gameFold(state),
+    tableId: "T1",
+  };
+  Scene.scene(
+    { update: (m) => [m, []], view: overlayView },
+    Scene.with(model),
+    Scene.Mount.resolveAll([MountPriorityWatch(), PriorityElapsed({ seconds: 0 })]),
+    Scene.expect(Scene.testId("first-player-reveal")).toExist(),
+    Scene.expect(Scene.testId("reveal-winner")).toExist(),
+    Scene.expect(Scene.testId("reveal-seat-2")).toHaveAttr("data-winner", "true"),
+    Scene.expect(Scene.testId("reveal-seat-2")).toHaveAttr("data-lit", "true"),
+    Scene.expect(Scene.testId("reveal-seat-0")).toHaveAttr("data-lit", "false"),
+    Scene.expect(Scene.testId("mulligan-overlay")).toExist(),
+  );
+});
+
+test("clears the spotlight once the reveal finishes", () => {
+  const state = gameState({
+    active_player: 2,
+    mulliganing: true,
+    viewer: 0,
+    players: [
+      { ...player(0), hand_kept: false, can_mulligan: true, mulligans_taken: 0 },
+      { ...player(1), hand_kept: false, can_mulligan: true, mulligans_taken: 0 },
+    ],
+  });
+  Scene.scene(
+    { update: (m) => [m, []], view: overlayView },
+    Scene.with({ board: initialBoardModel(), fold: gameFold(state), tableId: "T1" }),
+    Scene.Mount.resolveAll([MountPriorityWatch(), PriorityElapsed({ seconds: 0 })]),
+    Scene.expect(Scene.testId("first-player-reveal")).not.toExist(),
+    Scene.expect(Scene.testId("mulligan-keep")).toExist(),
+  );
+});
+
 // Regression: wrapping CardArtTick as GotBoardMessage throws (not a BoardMessage) and
 // tears down BindCardArt's cache subscription — mulligan faces stay on skeletons forever.
 test("live board submodel lifts mulligan CardArtTick without wrapping as GotBoardMessage", () => {
