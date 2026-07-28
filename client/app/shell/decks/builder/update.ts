@@ -1,4 +1,5 @@
 import * as Dialog from "@foldkit/ui/dialog";
+import * as VirtualList from "@foldkit/ui/virtualList";
 import { Effect, Match as M, Option, Schema as S } from "effect";
 import type { Command as FoldkitCommand } from "foldkit";
 import { Command, Navigation } from "foldkit";
@@ -29,6 +30,7 @@ import {
   DeckSaveFailed,
   GotDiscardDialogMessage,
   GotPrintDialogMessage,
+  GotPrintGridMessage,
   HydratedBuilderCards,
   type Message,
   NavigatedAwayFromBuilder,
@@ -36,7 +38,13 @@ import {
   ReceivedBuilderSearchPage,
   ReceivedDeckForBuilder,
 } from "./messages";
-import { type DeckBuilderSubmodel, initialDeckBuilderSubmodel } from "./submodel";
+import {
+  type DeckBuilderSubmodel,
+  initialDeckBuilderSubmodel,
+  PRINT_GRID_ID,
+  printGridRowHeightPx,
+  viewportWidthPx,
+} from "./submodel";
 
 export const NavigateHome = Command.define(
   "NavigateHome",
@@ -295,6 +303,7 @@ type UpdateReturn = readonly [DeckBuilderSubmodel, ReadonlyArray<FoldkitCommand.
 
 const toDiscardDialogMessage = (message: Dialog.Message): Message => GotDiscardDialogMessage({ message });
 const toPrintDialogMessage = (message: Dialog.Message): Message => GotPrintDialogMessage({ message });
+const toPrintGridMessage = (message: VirtualList.Message): Message => GotPrintGridMessage({ message });
 
 /** Dismisses the discard confirmation. */
 function closeDiscardConfirm(model: DeckBuilderSubmodel): UpdateReturn {
@@ -310,6 +319,10 @@ function openPrintPicker(model: DeckBuilderSubmodel, args: { addOnPick: boolean;
       ...model,
       menu: null,
       printDialog,
+      // Tile height follows the viewport, and VirtualList fixes the row height at init, so the grid
+      // is rebuilt each time the picker opens — also resetting it to the top.
+      // ponytail: rotating the device with the picker open misaligns rows until it is reopened.
+      printGrid: VirtualList.init({ id: PRINT_GRID_ID, rowHeightPx: printGridRowHeightPx(viewportWidthPx()) }),
       printPicker: { addOnPick: args.addOnPick, cardId: args.cardId, error: false, loading: true, prints: [] },
     },
     [...Command.mapMessages(commands, toPrintDialogMessage), SearchBuilderPrints({ cardId: args.cardId })],
@@ -416,6 +429,10 @@ export const update = (
 
         const [dismissed, dismissCommands] = closePrintPicker(withDialog);
         return [dismissed, [...mapped, ...dismissCommands]];
+      },
+      GotPrintGridMessage: ({ message }) => {
+        const [printGrid, commands] = VirtualList.update(model.printGrid, message);
+        return [{ ...model, printGrid }, Command.mapMessages(commands, toPrintGridMessage)];
       },
       SubmittedDeckSave: () => {
         if (model.saving) return [model, []];

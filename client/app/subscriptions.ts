@@ -1,8 +1,10 @@
+import * as VirtualList from "@foldkit/ui/virtualList";
 import { Subscription } from "foldkit";
 import { subscriptions as gameSubscriptions } from "./game";
 import type { Message } from "./messages";
-import { GotGameMessage, GotLobbyMessage, LandscapeRotateChanged } from "./messages";
+import { GotDeckBuilderMessage, GotGameMessage, GotLobbyMessage, LandscapeRotateChanged } from "./messages";
 import type { Model } from "./model";
+import { GotPrintGridMessage } from "./shell/decks/builder/messages";
 import { subscriptions as lobbySubscriptions } from "./shell/lobby/subscriptions";
 
 const PORTRAIT_QUERY = "(orientation: portrait) and (max-width: 900px)";
@@ -32,5 +34,11 @@ export const subscriptions = Subscription.aggregate<Model, Message>()(
   Subscription.lift(lobbySubscriptions)<Model, Message>({
     toChildModel: (model) => model.lobby,
     toParentMessage: (message) => GotLobbyMessage({ message }),
+  }),
+  // The print picker's grid learns its height and scroll position here — VirtualList has no view
+  // handlers, so without this the grid stays unmeasured and paints nothing.
+  Subscription.lift(VirtualList.subscriptions)<Model, Message>({
+    toChildModel: (model) => model.decks.builder.printGrid,
+    toParentMessage: (message) => GotDeckBuilderMessage({ message: GotPrintGridMessage({ message }) }),
   }),
 );

@@ -1,4 +1,5 @@
 import * as Dialog from "@foldkit/ui/dialog";
+import * as VirtualList from "@foldkit/ui/virtualList";
 import { Schema as S } from "effect";
 import { m } from "foldkit/message";
 import { CatalogCardSchema } from "../../../domain/deck-builder/cards";
@@ -49,6 +50,9 @@ export const PickedBuilderPrint = m("PickedBuilderPrint", { cardId: S.String, pr
 /** Delegation envelope for the print picker's Dialog submodel. Escape, a backdrop click, and
  *  Close all arrive as its `Closed` out-message, so there is no separate dismiss message. */
 export const GotPrintDialogMessage = m("GotPrintDialogMessage", { message: Dialog.Message });
+/** Delegation envelope for the print grid's VirtualList submodel. Scroll position and container
+ *  height arrive from its Subscription, not from the view. */
+export const GotPrintGridMessage = m("GotPrintGridMessage", { message: VirtualList.Message });
 export const SubmittedDeckSave = m("SubmittedDeckSave");
 export const DeckSaved = m("DeckSaved");
 export const DeckSaveFailed = m("DeckSaveFailed", { problems: S.Array(S.String) });
@@ -104,6 +108,7 @@ export const Message = S.Union([
   BuilderPrintSearchFailed,
   PickedBuilderPrint,
   GotPrintDialogMessage,
+  GotPrintGridMessage,
   SubmittedDeckSave,
   DeckSaved,
   DeckSaveFailed,

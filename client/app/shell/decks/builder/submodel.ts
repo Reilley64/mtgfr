@@ -1,4 +1,5 @@
 import * as Dialog from "@foldkit/ui/dialog";
+import * as VirtualList from "@foldkit/ui/virtualList";
 import { Schema as S } from "effect";
 import { CatalogCardSchema } from "../../../domain/deck-builder/cards";
 import { ScryfallPrintSchema } from "../../../domain/deck-builder/scryfall";
@@ -9,6 +10,36 @@ export const DISCARD_DIALOG_ID = "builder-discard-confirm";
 
 /** Document-unique id for the print picker. Doubles as its `data-testid`. */
 export const PRINT_DIALOG_ID = "builder-print-picker";
+
+/** Document-unique id for the print picker's scrolling grid. Doubles as its `data-testid`. */
+export const PRINT_GRID_ID = "builder-print-picker-scroll";
+
+/** Print tiles per row. Matches `grid-cols-2` on the picker's rows in `view.ts`. */
+export const PRINT_GRID_COLUMNS = 2;
+
+// The windowed grid needs one row height for the whole list, so a print tile's vertical pieces are
+// spelled out here. They mirror `PRINT_TILE` / `CARD_ART` / `PRINT_BADGE_ROW` in `view.ts`; change
+// one and change the other.
+const TILE_PADDING_PX = 20; // p-md, top and bottom
+const TILE_GAP_PX = 6; // gap-1.5 between the art and the badges
+const BADGE_ROW_PX = 40; // h-10 — two badge lines, reserved so every tile is the same height
+const ROW_GAP_PX = 10; // gap-md between rows, which the row's own height has to carry
+const CARD_ASPECT = 0.72; // CARD_ART's aspect-[0.72]
+const TILE_WIDTH_VW = 0.38; // PRINT_PICKER_COL's w-[min(38vw,200px)]
+const TILE_WIDTH_MAX_PX = 200;
+
+/** Height of one row of print tiles. The tile's width is a fraction of the viewport and its art is
+ *  a fixed aspect ratio of that width, so the row height follows from the viewport alone. */
+export function printGridRowHeightPx(viewportWidth: number): number {
+  const tileWidth = Math.min(viewportWidth * TILE_WIDTH_VW, TILE_WIDTH_MAX_PX);
+  const artHeight = Math.max(0, tileWidth - TILE_PADDING_PX) / CARD_ASPECT;
+  return TILE_PADDING_PX + artHeight + TILE_GAP_PX + BADGE_ROW_PX + ROW_GAP_PX;
+}
+
+/** Viewport width in px, or a desktop-sized default where there is no window (SSR, tests). */
+export function viewportWidthPx(): number {
+  return typeof window === "undefined" ? 1024 : window.innerWidth;
+}
 
 export const DeckEntry = S.Struct({
   count: S.Number,
@@ -63,6 +94,7 @@ export const DeckBuilderSubmodel = S.Struct({
   pool: S.Array(CatalogCardSchema),
   preferredPrint: S.Record(S.String, S.String),
   printDialog: Dialog.Model,
+  printGrid: VirtualList.Model,
   printPicker: S.NullOr(BuilderPrintPicker),
   problems: S.Array(S.String),
   query: S.String,
@@ -88,6 +120,7 @@ export function initialDeckBuilderSubmodel(editingId: string | null = null): Dec
     pool: [],
     preferredPrint: {},
     printDialog: Dialog.init({ id: PRINT_DIALOG_ID }),
+    printGrid: VirtualList.init({ id: PRINT_GRID_ID, rowHeightPx: printGridRowHeightPx(viewportWidthPx()) }),
     printPicker: null,
     problems: [],
     query: "",

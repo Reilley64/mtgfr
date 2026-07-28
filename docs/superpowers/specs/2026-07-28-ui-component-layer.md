@@ -1,6 +1,6 @@
 # UI Component Layer
 **Status:** Current (as of 2026-07-28)
-**Module:** `client/app/domain/ui/recipe.ts`, `client/app/domain/ui/button.ts`, `client/app/domain/ui/input.ts`, `client/app/domain/ui/dialog.ts`, `client/app/domain/ui/confirmDialog.ts`, `client/app/domain/ui/menu.ts`, `client/app/domain/ui/surfaces.ts`, `client/app/domain/cn.ts`
+**Module:** `client/app/domain/ui/recipe.ts`, `client/app/domain/ui/button.ts`, `client/app/domain/ui/input.ts`, `client/app/domain/ui/dialog.ts`, `client/app/domain/ui/confirmDialog.ts`, `client/app/domain/ui/menu.ts`, `client/app/domain/ui/windowedGrid.ts`, `client/app/domain/ui/surfaces.ts`, `client/app/domain/cn.ts`
 
 ## Problem Statement
 
@@ -77,10 +77,23 @@ Buttons and text fields appear on every shell route and in most board HTML overl
 - Remaining props: `value`, `onInput`, `type` (the primitive defaults to `text`), `placeholder`, `autofocus`, `testId`, `ariaLabel`, `class`, and `attrs`.
 - `Input.view` unconditionally emits `aria-describedby="<id>-description"` referencing an element nothing renders. Per the accessible name and description spec an unresolvable IDREF is skipped, so no screen reader announces anything extra and this is not a WCAG failure; it does surface as `aria-valid-attr-value` needs-review noise in axe-core. A call site that wants it gone passes a later `h.AriaDescribedBy` through `attrs`, which overrides the value.
 
+### `windowedGrid`
+
+`windowedGrid(h, props)` — a tile grid that renders only the rows inside its viewport, so a grid of thousands of tiles costs a couple of dozen DOM nodes and a couple of dozen art requests.
+
+- Scroll tracking, container measurement, and the spacers that keep the scrollbar honest come from `@foldkit/ui`'s `VirtualList`. The chunking into rows, the row element, and its classes come from here.
+- `VirtualList` is a one-item-per-row list, so a grid is modelled as a list of rows: `columns` items chunk into one row, and each row renders as a `grid content-start` div wearing the caller's `rowClass`. A trailing partial row keeps whatever items are left. Rendered pixels match the unwindowed grid.
+- Props: `model` (the owner's `VirtualList.Model`), `toGridMessage`, `items`, `columns`, `itemToKey`, `itemToView`, `rowClass` (the row's columns and column gap), optional `containerClass` (max height, width), and `testId` — emitted as the container's `data-testid` and used as the submodel slot id.
+- Like `Dialog`, `VirtualList` is a **submodel**: the owner holds the model, delegates to `VirtualList.update`, and — because `VirtualList` has no view handlers — must also lift `VirtualList.subscriptions`. Without that subscription the grid never learns its height and paints nothing.
+- Two constraints the caller carries. **Rows must be uniform height**: `rowHeightPx` is one number fixed at `VirtualList.init`, applied as the row's inline height, so callers truncate or reserve space rather than reach for the variable-height path, which rebuilds prefix sums over every item on every scroll event. **`rowHeightPx` includes the row gap**: the row element has an exact height and no margin, so the gap between rows is the space left under a top-aligned row, and `rowClass` sets no bottom margin.
+- `VirtualList` writes `overflow: auto` on the container as an inline style, before `containerClassName`, so a class-based scroll lock cannot freeze a windowed grid.
+- `itemToKey` reads the row's first item, since rows are a pure chunking of `items` and are therefore as stable as the caller's own keys.
+
 ### Call sites
 
 - Every text field in the shell routes and the board HTML overlays renders through `input`, and standard button chrome renders through `button`. View files pass props; they do not compose variant class strings.
 - `confirmDialog` renders the deck-list delete prompt and the deck-builder discard prompt; the deck builder's print picker renders on `modalDialog` directly, supplying its own heading, Close button, and print grid — see [deck-list-and-builder](2026-07-20-deck-list-and-builder.md).
+- `windowedGrid` renders that print grid, two tiles per row, and the builder owns its `VirtualList.Model`, its row height, and the subscription lift — see [deck-list-and-builder](2026-07-20-deck-list-and-builder.md).
 - `menuPanelClass` / `menuItemClass` dress both dropdowns: the account chrome's `Menu` panel and rows (see [shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md)) and the hand-rolled deck-list right-click context menu, which supplies its own pointer positioning as `extra` (see [deck-list-and-builder](2026-07-20-deck-list-and-builder.md)).
 - Controls whose chrome is not button chrome stay hand-written `h.button` elements with their own classes: the prompt HUD rows and submit/cancel in `prompts.ts`, the radial scrim and wedge rows in `activation-menu.ts`, the turn-yield rocker in `priority-bar.ts`, selectable pile cards in `pile-overlay.ts`, and the tile chrome in the deck and app-shell views.
 - Canvas and Mount board surfaces are unaffected — they paint pixels rather than emitting DOM.
@@ -94,6 +107,7 @@ Buttons and text fields appear on every shell route and in most board HTML overl
 - Type the Foldkit factory parameter as `ReturnType<typeof createHtml<Msg>>`, matching `seat-face.ts` and `deck-card.ts`.
 - Pin `@foldkit/ui` exactly, in lockstep with `foldkit` and `effect`: `@foldkit/ui@0.132.0` peer-requires `effect 4.0.0-beta.101` and `foldkit ^0`.
 - Keep component recipes in TypeScript rather than a component-token tier in `design.tokens.json`, per `DESIGN.md`.
+- Give `windowedGrid` no cva recipe. It owns structure, not chrome — the row and container classes are the caller's, because the grid's columns, gaps, and sizing differ per surface and there is no variant vocabulary to name.
 
 ## Testing Decisions
 
@@ -102,6 +116,7 @@ Buttons and text fields appear on every shell route and in most board HTML overl
 - `client/app/domain/ui/input.test.ts` asserts both variants' chrome, call-site override with `hud` sizing preserved, array and null `class` values, the `id` a label points at, `value` / `placeholder` / `type` / `autofocus` bindings, keystroke dispatch, `testId` / `ariaLabel`, and `attrs` pass-through.
 - Component tests read snabbdom's `data.class`, `data.attrs`, `data.props`, and `data.on` maps directly, so a native property (`disabled`, `value`) is distinguished from an attribute rather than conflated.
 - `client/app/domain/ui/confirmDialog.test.ts` is a Scene suite over a stand-in host, and covers `modalDialog`'s frame through its one wrapper rather than duplicating it: it asserts the closed dialog renders an empty `<dialog>`, that opening paints backdrop / title / body / both buttons, that Cancel and a backdrop click both reach the owner as `Closed`, that Cancel carries the initial-focus marker, that `danger` picks the danger variant, and that `onConfirm` dispatches the parent's message unwrapped.
+- `client/app/domain/ui/windowedGrid.test.ts` is a Scene suite over a stand-in host: an unmeasured grid renders its container but no tiles, a 1000-tile grid mounts only the tiles near the viewport, scrolling swaps which tiles are mounted, two columns put two tiles in one row, and a trailing partial row keeps its tiles. Scene has no message step, so grid state is seeded by folding `VirtualList.update` over the messages the grid would have heard.
 - `client/app/domain/ui/menu.test.ts` asserts each helper's chrome tokens and that a call-site class merges last — the panel's positioning `extra` and a row's `no-underline`.
 - Surface-level coverage of the rendered controls stays in `client/app/shell/surfaces.test.ts` and `client/app/board/html/surfaces.test.ts`; the component suites do not duplicate it.
 - Scene suites that open a `Menu` must resolve its `FocusItems` command and its `PortalMenuBackdrop` / `AnchorMenu` Mounts, and acknowledge those Mounts with `expectEnded` once a row commits. `Menu.update` builds its `InertOthers` command eagerly, whose factory calls `CSS.escape`, so `client/vitest-setup.ts` shims `CSS.escape` for the repo's `environment: "node"` config.
