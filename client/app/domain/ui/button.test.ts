@@ -127,6 +127,7 @@ describe("button", () => {
   it("drops a null class instead of rendering it as a literal class name", () => {
     const node = button(h, { variant: "ghost", class: null }, ["Leave"]);
 
+    expect(classes(node)).not.toContain("null");
     expect(classes(node)).toContain("border-vine");
   });
 

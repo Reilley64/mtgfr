@@ -44,9 +44,12 @@ type SharedProps<Msg> = {
 };
 
 // `as: "a"` and `as: "button"` (or omitted) are mutually exclusive shapes, not one shape with
-// optional fields — an anchor has no `disabled`/`type` and a button has no `href`. Modelling this
-// as a union makes `{ as: "a", disabled: true }` and a missing `href` on an anchor unrepresentable
-// instead of bugs caught (or missed) at render time.
+// optional fields — an anchor has no `disabled`/`type` and a button has no `href`. The union
+// rejects `{ as: "a", disabled: true }` and a missing anchor `href` wherever excess-property
+// checking applies: object literals passed inline, and values assigned or returned into a
+// ButtonProps-annotated position. It does NOT catch props built through an unannotated
+// intermediate (`const p = { ...anchorProps, disabled: true }`), where structural assignability
+// lets the extra field through to be silently ignored at render.
 export type ButtonProps<Msg> = SharedProps<Msg> &
   ({ as?: "button"; type?: "button" | "submit" | "reset"; disabled?: boolean } | { as: "a"; href: string });
 
