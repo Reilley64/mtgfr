@@ -7,7 +7,7 @@ import type { AppChromeMeta } from "../../../domain/ui/app-version";
 import { button } from "../../../domain/ui/button";
 import { confirmDialog } from "../../../domain/ui/confirmDialog";
 import { input } from "../../../domain/ui/input";
-import { menuItemClass } from "../../../domain/ui/menu";
+import { menuItemClass, menuPanelClass } from "../../../domain/ui/menu";
 import { alertClass, listRowClass } from "../../../domain/ui/surfaces";
 import type { CardArtTick, DeckCardFlipTick, GotAuthMessage } from "../../../messages";
 import { DeckRoute, NewDeckRoute, PlayRoute, routePath } from "../../../routes";
@@ -141,9 +141,7 @@ function contextMenu(model: DeckListSubmodel): Html {
       h.div(
         [
           h.DataAttribute("testid", "deck-list-context-menu"),
-          h.Class(
-            "fixed top-(--y) left-(--x) z-41 flex min-w-[160px] flex-col rounded-hud border border-vine bg-forest-surface p-xs shadow-table",
-          ),
+          h.Class(menuPanelClass("fixed top-(--y) left-(--x) z-41 min-w-[160px]")),
           h.Style({ "--x": `${x}px`, "--y": `${y}px` }),
         ],
         [

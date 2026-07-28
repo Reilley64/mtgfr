@@ -19,7 +19,6 @@ test("GotLeaderboardMessage updates the leaderboard through the parent update", 
       ...model,
       leaderboard: {
         ...model.leaderboard,
-        accountMenuOpen: true,
         entries: [{ rank: 2, rating: 1188, user_id: 2, username: "bob" }],
         error: "Could not load the leaderboard.",
         status: "error",

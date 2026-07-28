@@ -168,15 +168,17 @@ across 19 files and the 12 `h.input` sites
 Delete `buttonClass` / `gameButtonClass`. New indexed surface spec for
 `client/app/domain/ui/`; update `DESIGN.md` components prose.
 
-**W2 — Shell submodel components.**
-`dialog` → `domain/ui/confirmDialog.ts`. `menu` → `shell/account-chrome/view.ts`
-(replacing hand-rolled `aria-haspopup` + `BindAccountMenuEscape`) and the decks-list
-context menu (replacing `BindDeckListContextMenu`). Those three are the confirmed
-surfaces. `tooltip` / `popover` / `tabs` are **not** committed here: the wave plan
-surveys the shell for a surface that already implements that pattern by hand, and
-adopts the primitive only where one exists — no surface, no adoption, no placeholder
-component. Verify native `<dialog>` + focus trap under the Scene/happy-dom harness in
-this wave, before W4 depends on it. Updates
+**W2 — Shell submodel components. Shipped.**
+`dialog` → `domain/ui/confirmDialog.ts`, wired to the deck-list delete and deck-builder
+discard prompts. `menu` → `shell/account-chrome/view.ts`, replacing hand-rolled
+`aria-haspopup` + `BindAccountMenuEscape` and hoisting the open flag from three
+duplicated `accountMenuOpen` booleans to one `Menu.Model` on the root model.
+
+Two planned adoptions did not land. The decks-list context menu **stays hand-rolled**:
+it is pointer-positioned, and `Menu` anchors its panel to a trigger button and returns
+focus there. It takes the shared `menuPanelClass` / `menuItemClass` chrome instead.
+`tooltip` / `popover` / `tabs` found no hand-rolled surface to replace — the only
+tooltip-shaped code is the native `title=` attribute — so none were adopted. Updates
 [`shell-routes-and-auth`](2026-07-20-shell-routes-and-auth.md) and
 [`deck-list-and-builder`](2026-07-20-deck-list-and-builder.md).
 

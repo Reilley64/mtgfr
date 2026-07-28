@@ -265,7 +265,7 @@ describe("shell surface scenes", () => {
       Scene.expect(Scene.selector('[data-testid="deck-list-search"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="deck-tile-1"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="delete-deck-1"]')).not.toExist(),
-      Scene.expect(Scene.selector('[data-testid="account-gravatar-link"]')).not.toExist(),
+      Scene.expect(Scene.selector('[data-testid="account-menu-gravatar"]')).not.toExist(),
       Scene.expect(Scene.text("Sign out")).not.toExist(),
       Scene.expect(Scene.text("Your decks")).toExist(),
       Scene.expect(Scene.text("Superfriends")).toExist(),

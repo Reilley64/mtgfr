@@ -15,7 +15,6 @@ test("GotCoverageMessage updates coverage through the parent update", () => {
       ...model,
       coverage: {
         ...model.coverage,
-        accountMenuOpen: true,
         error: "Could not load coverage.",
         query: "soc",
         sets: [
