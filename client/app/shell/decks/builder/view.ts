@@ -15,6 +15,7 @@ import { confirmDialog } from "../../../domain/ui/confirmDialog";
 import { modalDialog } from "../../../domain/ui/dialog";
 import { input } from "../../../domain/ui/input";
 import { alertClass } from "../../../domain/ui/surfaces";
+import { windowedGrid } from "../../../domain/ui/windowedGrid";
 import { type CardArtTick, GotAccountMenuMessage, type GotAuthMessage } from "../../../messages";
 import { accountChrome } from "../../account-chrome/view";
 import { shellFrame } from "../../frame/shell-frame";
@@ -27,6 +28,7 @@ import {
   ConfirmedBuilderDiscard,
   GotDiscardDialogMessage,
   GotPrintDialogMessage,
+  GotPrintGridMessage,
   type Message,
   MovedBuilderHover,
   OpenedBuilderMenu,
@@ -36,7 +38,13 @@ import {
   RequestedNextBuilderPage,
   SubmittedDeckSave,
 } from "./messages";
-import { type DeckBuilderSubmodel, PRINT_DIALOG_ID } from "./submodel";
+import {
+  type BuilderPrintPicker,
+  type DeckBuilderSubmodel,
+  PRINT_DIALOG_ID,
+  PRINT_GRID_COLUMNS,
+  PRINT_GRID_ID,
+} from "./submodel";
 
 export type ViewMessage =
   | Message
@@ -65,6 +73,11 @@ const PRINT_TILE = cn(
   "flex cursor-pointer flex-col items-center gap-1.5 rounded-hud p-md text-label hover:bg-white/8 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-vine",
 );
 const PRINT_PICKER_GRID = "grid w-fit grid-cols-2 gap-md";
+/** Classes on one row of the windowed print grid. `windowedGrid` adds `grid`. */
+const PRINT_PICKER_ROW = "grid-cols-2 gap-md";
+// Two badge lines, always reserved: set / collector / date wrap to a second line on narrow tiles,
+// and the windowed grid needs every tile the same height. `h-10` is the 40px `submodel.ts` budgets.
+const PRINT_BADGE_ROW = "flex h-10 w-full flex-wrap content-center items-center justify-center gap-1";
 const PRINT_BADGE =
   "rounded-full border border-vine-dim bg-glass-dim px-[7px] py-px font-semibold text-chip text-lichen";
 const CARD_ART = cn("aspect-[0.72] w-full rounded-control object-cover");
@@ -288,7 +301,7 @@ function printTile(cardId: string, print: ScryfallPrint): Html {
     [
       builderCardArt(print.id, `${print.set_name} #${print.collector_number}`, CARD_ART),
       h.div(
-        [h.Class("flex w-full flex-wrap items-center justify-center gap-1")],
+        [h.Class(PRINT_BADGE_ROW)],
         [
           h.span([h.Class(PRINT_BADGE), h.Title(print.set_name)], [print.set.toUpperCase()]),
           h.span([h.Class(PRINT_BADGE)], [`#${print.collector_number}`]),
@@ -307,6 +320,35 @@ function skeletonPrintTile(): Html {
       h.div([h.Class("h-2.5 w-[70%] animate-skeleton rounded-[3px] bg-white/8")], []),
     ],
   );
+}
+
+/** The picker's scrolling area: skeletons, a status line, or the prints themselves. A card can have
+ *  hundreds of printings (basic lands especially), so the prints are windowed. */
+function printPickerBody(model: DeckBuilderSubmodel, picker: BuilderPrintPicker): Html {
+  if (picker.loading) {
+    return h.div(
+      [h.Class(PRINT_PICKER_GRID)],
+      Array.from({ length: 4 }, () => skeletonPrintTile()),
+    );
+  }
+  if (picker.error) {
+    return h.div([h.Class("text-burn-red text-label")], ["Could not load printings. Close and try again."]);
+  }
+  if (picker.prints.length === 0) {
+    return h.div([h.Class("text-label text-lichen")], ["No printings found."]);
+  }
+
+  return windowedGrid(h, {
+    model: model.printGrid,
+    toGridMessage: (message) => GotPrintGridMessage({ message }),
+    items: picker.prints,
+    columns: PRINT_GRID_COLUMNS,
+    itemToKey: (print) => print.id,
+    itemToView: (print) => printTile(picker.cardId, print),
+    rowClass: PRINT_PICKER_ROW,
+    containerClass: "max-h-[min(60vh,720px)] w-fit",
+    testId: PRINT_GRID_ID,
+  });
 }
 
 function printPicker(model: DeckBuilderSubmodel): Html {
@@ -333,26 +375,7 @@ function printPicker(model: DeckBuilderSubmodel): Html {
                 ]),
               ],
             ),
-            h.div(
-              [
-                h.Class(cn(PRINT_PICKER_GRID, "max-h-[min(60vh,720px)] overflow-y-auto overscroll-contain")),
-                h.DataAttribute("testid", "builder-print-picker-scroll"),
-              ],
-              [
-                !picker.loading && picker.error
-                  ? h.div(
-                      [h.Class("col-span-2 text-burn-red text-label")],
-                      ["Could not load printings. Close and try again."],
-                    )
-                  : null,
-                !picker.loading && !picker.error && picker.prints.length === 0
-                  ? h.div([h.Class("col-span-2 text-label text-lichen")], ["No printings found."])
-                  : null,
-                ...(picker.loading
-                  ? Array.from({ length: 4 }, () => skeletonPrintTile())
-                  : picker.prints.map((p) => printTile(picker.cardId, p))),
-              ],
-            ),
+            printPickerBody(model, picker),
           ],
   );
 }

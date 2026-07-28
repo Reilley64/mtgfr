@@ -1,5 +1,6 @@
 import * as Dialog from "@foldkit/ui/dialog";
 import * as Menu from "@foldkit/ui/menu";
+import * as VirtualList from "@foldkit/ui/virtualList";
 import { Effect, Option } from "effect";
 import { Story } from "foldkit";
 import { Scene } from "foldkit/test";
@@ -33,7 +34,7 @@ import {
   RequestedBuilderCancel,
   SetBuilderCommander,
 } from "./messages";
-import { DISCARD_DIALOG_ID, initialDeckBuilderSubmodel, PRINT_DIALOG_ID } from "./submodel";
+import { DISCARD_DIALOG_ID, initialDeckBuilderSubmodel, PRINT_DIALOG_ID, printGridRowHeightPx } from "./submodel";
 import { update as builderUpdate, NavigateHome, SaveDeck, SearchBuilderPrints } from "./update";
 import { BindBuilderCardPointer, view as builderView } from "./view";
 
@@ -76,6 +77,16 @@ function card(overrides: Partial<CatalogCard> = {}): CatalogCard {
     summary: [],
     ...overrides,
   };
+}
+
+/** A print grid that has already heard its height from the ResizeObserver. The grid shows nothing
+ *  until it knows how tall it is, so a scene that wants to see print tiles has to say. */
+function measuredPrintGrid(containerHeight = 720) {
+  const [grid] = VirtualList.update(
+    initialDeckBuilderSubmodel().printGrid,
+    VirtualList.MeasuredContainer({ containerHeight }),
+  );
+  return grid;
 }
 
 function print(overrides: Partial<ScryfallPrint> = {}): ScryfallPrint {
@@ -285,6 +296,7 @@ test("print picker freezes catalog and decklist scroll while print grid stays sc
     known: { "sol-ring": solRing },
     preferredPrint: { "sol-ring": solRing.default_print },
     printDialog: Dialog.init({ id: PRINT_DIALOG_ID, isOpen: true }),
+    printGrid: measuredPrintGrid(),
     printPicker: { addOnPick: false, cardId: "sol-ring", error: false, loading: false, prints: [alternatePrint] },
   };
 
@@ -301,7 +313,9 @@ test("print picker freezes catalog and decklist scroll while print grid stays sc
     Scene.expect(Scene.selector('[data-testid="builder-pool-scroll"]')).not.toHaveClass("overflow-y-auto"),
     Scene.expect(Scene.selector('[data-testid="builder-decklist-scroll"]')).toHaveClass("overflow-hidden"),
     Scene.expect(Scene.selector('[data-testid="builder-decklist-scroll"]')).not.toHaveClass("overflow-y-auto"),
-    Scene.expect(Scene.selector('[data-testid="builder-print-picker-scroll"]')).toHaveClass("overflow-y-auto"),
+    // The picker's own grid still scrolls: VirtualList owns `overflow: auto` on it as an inline
+    // style, so the class-based scroll lock on the page behind cannot reach it.
+    Scene.expect(Scene.selector('[data-testid="builder-print-picker-scroll"]')).toExist(),
     Scene.expect(Scene.selector('[data-testid="builder-print-picker-scroll"]')).toHaveClass("overscroll-contain"),
   );
 });
@@ -316,6 +330,7 @@ test("clicking the dimmed page behind the print picker dismisses it and unfreeze
     known: { "sol-ring": solRing },
     preferredPrint: { "sol-ring": solRing.default_print },
     printDialog: Dialog.init({ id: PRINT_DIALOG_ID, isOpen: true }),
+    printGrid: measuredPrintGrid(),
     printPicker: { addOnPick: false, cardId: "sol-ring", error: false, loading: false, prints: [alternatePrint] },
   };
 
@@ -347,6 +362,7 @@ test("the print picker's Close button dismisses it", () => {
     known: { "sol-ring": solRing },
     preferredPrint: { "sol-ring": solRing.default_print },
     printDialog: Dialog.init({ id: PRINT_DIALOG_ID, isOpen: true }),
+    printGrid: measuredPrintGrid(),
     printPicker: { addOnPick: false, cardId: "sol-ring", error: false, loading: false, prints: [alternatePrint] },
   };
 
@@ -376,6 +392,7 @@ test("print selection renders a Scryfall tile picker instead of a UUID input", (
     known: { "sol-ring": solRing },
     preferredPrint: { "sol-ring": solRing.default_print },
     printDialog: Dialog.init({ id: PRINT_DIALOG_ID, isOpen: true }),
+    printGrid: measuredPrintGrid(),
     printPicker: { addOnPick: false, cardId: "sol-ring", error: false, loading: false, prints: [alternatePrint] },
   };
 
@@ -392,6 +409,39 @@ test("print selection renders a Scryfall tile picker instead of a UUID input", (
     Scene.expect(Scene.selector('[data-testid="print-tile-sol-ring-alt-print"]')).toExist(),
     Scene.expect(Scene.text("REX")).toExist(),
     Scene.expect(Scene.text("#42")).toExist(),
+  );
+});
+
+test("print rows grow with the viewport until the tile hits its 200px cap", () => {
+  // A 200px tile: 20 padding + 250 of art at aspect 0.72 + 6 gap + 40 of badges + 10 row gap.
+  expect(printGridRowHeightPx(1024)).toBeCloseTo(326);
+  // Half that width, so half the tile and a shorter row — the cap is not in play.
+  expect(printGridRowHeightPx(400)).toBeLessThan(printGridRowHeightPx(1024));
+  // Past the cap the tile stops growing, so rows stop growing with it.
+  expect(printGridRowHeightPx(4000)).toBeCloseTo(printGridRowHeightPx(1024));
+});
+
+test("a card with hundreds of printings paints a screenful of tiles, not all of them", () => {
+  const prints = Array.from({ length: 400 }, (_, index) => print({ collector_number: `${index}`, id: `p-${index}` }));
+  const model = {
+    ...initialDeckBuilderSubmodel(),
+    atEnd: true,
+    printDialog: Dialog.init({ id: PRINT_DIALOG_ID, isOpen: true }),
+    printGrid: measuredPrintGrid(),
+    printPicker: { addOnPick: false, cardId: "island", error: false, loading: false, prints },
+  };
+
+  Scene.scene(
+    { update: builderUpdate, view: (model) => builderView(model, emptyViewInputs) },
+    Scene.with(model),
+    // Every rendered tile also loads its art, so this count is how many Scryfall images the picker
+    // asks for: eight rows around the viewport, not all 400.
+    Scene.Mount.resolveAll(
+      ...Array.from({ length: 16 }, () => [BindCardArt, ClearedBuilderHover() as never] as [typeof BindCardArt, never]),
+    ),
+    Scene.expectAll(Scene.all.selector('[data-testid^="print-tile-"]')).toHaveCount(16),
+    Scene.expect(Scene.selector('[data-testid="print-tile-p-0"]')).toExist(),
+    Scene.expect(Scene.selector('[data-testid="print-tile-p-399"]')).not.toExist(),
   );
 });
 
