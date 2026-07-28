@@ -262,6 +262,9 @@ resource "helm_release" "prometheus" {
 
 # ── Grafana (port-forward only) ─────────────────────────────────────────────────────────────────
 
+# Helm resolves `chart` as a local path before consulting `repository`, so a directory named
+# `grafana/` next to this file would shadow the remote chart ("Chart.yaml file is missing").
+# Dashboards live in `dashboards/` for that reason — do not name a local dir after a chart.
 resource "helm_release" "grafana" {
   name       = "grafana"
   repository = "https://grafana.github.io/helm-charts"
@@ -365,7 +368,7 @@ resource "helm_release" "grafana" {
       dashboards = {
         mtgfr = {
           "mtgfr-otel-red" = {
-            json = file("${path.module}/grafana/dashboards/mtgfr-otel-red.json")
+            json = file("${path.module}/dashboards/mtgfr-otel-red.json")
           }
         }
       }
