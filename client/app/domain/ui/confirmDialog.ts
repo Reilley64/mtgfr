@@ -11,7 +11,7 @@ import { Effect } from "effect";
 import type { html as createHtml, Html } from "foldkit/html";
 import { m } from "foldkit/message";
 import * as Mount from "foldkit/mount";
-import { buttonClass } from "./buttonClass";
+import { button } from "./button";
 import { modalClass } from "./surfaces";
 
 /** Dispatched when a modal dialog mounts — handled as a no-op by update. Declare it in every
@@ -88,25 +88,12 @@ export function confirmDialog<M>(
           h.div(
             [h.Class("flex justify-end gap-sm")],
             [
-              h.button(
-                [
-                  h.Type("button"),
-                  h.DataAttribute("testid", "confirm-cancel"),
-                  h.Autofocus(true),
-                  h.OnClick(onCancel),
-                  h.Class(buttonClass("ghost")),
-                ],
-                ["Cancel"],
-              ),
-              h.button(
-                [
-                  h.Type("button"),
-                  h.DataAttribute("testid", "confirm-ok"),
-                  h.OnClick(onConfirm),
-                  h.Class(buttonClass(danger ? "danger" : "primary")),
-                ],
-                [confirmLabel],
-              ),
+              button(h, { testId: "confirm-cancel", onClick: onCancel, variant: "ghost", attrs: [h.Autofocus(true)] }, [
+                "Cancel",
+              ]),
+              button(h, { testId: "confirm-ok", onClick: onConfirm, variant: danger ? "danger" : "primary" }, [
+                confirmLabel,
+              ]),
             ],
           ),
         ],
