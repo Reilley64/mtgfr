@@ -54,6 +54,21 @@ describe("button", () => {
     expect(classes(node)).toContain("bg-transparent");
   });
 
+  it("renders game as chunky pressed board chrome", () => {
+    const node = button(h, { variant: "game" }, ["Pass"]);
+
+    expect(classes(node)).toContain("min-w-[132px]");
+    expect(classes(node)).toContain("bg-llanowar-deep");
+    expect(classes(node)).toContain("shadow-press");
+  });
+
+  it("renders game-yielded in amber earth rather than priority gold", () => {
+    const node = button(h, { variant: "game-yielded" }, ["Yielded"]);
+
+    expect(classes(node)).toContain("bg-yielded");
+    expect(classes(node)).toContain("text-yielded-ink");
+  });
+
   it("lets game-quiet drop the game min-width", () => {
     const node = button(h, { variant: "game-quiet" }, ["Yield"]);
 

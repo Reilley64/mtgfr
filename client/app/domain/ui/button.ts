@@ -62,8 +62,8 @@ function shared<Msg>(h: HtmlFactory<Msg>, props: ButtonProps<Msg>): Array<Attrib
 }
 
 export function button<Msg>(h: HtmlFactory<Msg>, props: ButtonProps<Msg>, children: ReadonlyArray<Child>): Html {
-  // An anchor is not a button: @foldkit/ui's button emits `type`/`disabled`, which are invalid on
-  // <a>. Link-styled navigation therefore renders directly instead of through Button.view.
+  // An anchor is not a button: @foldkit/ui's button emits `type`, which is invalid on <a>.
+  // Link-styled navigation therefore renders directly instead of through Button.view.
   if (props.as === "a") {
     // Button.view wires onClick for the button branch; an anchor bypasses Button.view entirely
     // (see above), so onClick has to be attached here or it silently does nothing.

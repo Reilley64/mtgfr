@@ -38,7 +38,7 @@ Buttons and text fields appear on every shell route and in most board HTML overl
 - `variant` is `primary` | `ghost` | `danger` | `link` | `game` | `game-quiet` | `game-yielded`, defaulting to `primary`. The first four are shell chrome; the three `game*` variants are the board's chunky pressed chrome.
 - Shared props: `onClick`, `testId` (emitted as `data-testid`), `ariaLabel`, `class` (any `ClassValue`), and `attrs` — extra Foldkit attributes appended after the component's own.
 - The element-specific props are a discriminated union rather than optional fields on one shape: `{ as?: "button"; type?; disabled? }` or `{ as: "a"; href }`. `type` defaults to `"button"`, so a button inside a form cannot submit it by accident.
-- `as: "a"` renders `h.a` directly and bypasses `@foldkit/ui`'s `Button.view` entirely, because that primitive emits `type` and `disabled`, which are invalid on an anchor. The anchor branch attaches `onClick` itself, since `Button.view` is what wires it on the button branch.
+- `as: "a"` renders `h.a` directly and bypasses `@foldkit/ui`'s `Button.view` entirely, because that primitive emits `type`, which is invalid on an anchor. The anchor branch attaches `onClick` itself, since `Button.view` is what wires it on the button branch.
 - `Button.view` marks a disabled button only with `aria-disabled` and `data-disabled`. `button.ts` additionally sets the native `disabled` DOM property, which is what makes the browser block focus, click, and form submission, and what the variants' `disabled:` and `hover:enabled:` Tailwind selectors key off.
 
 ### `input`
@@ -52,7 +52,8 @@ Buttons and text fields appear on every shell route and in most board HTML overl
 
 ### Call sites
 
-- Every button and text field in the shell routes and the board HTML overlays renders through these two components. View files pass props; they do not compose variant class strings.
+- Every text field in the shell routes and the board HTML overlays renders through `input`, and standard button chrome renders through `button`. View files pass props; they do not compose variant class strings.
+- Controls whose chrome is not button chrome stay hand-written `h.button` elements with their own classes: the prompt HUD rows and submit/cancel in `prompts.ts`, the radial scrim and wedge rows in `activation-menu.ts`, the turn-yield rocker in `priority-bar.ts`, selectable pile cards in `pile-overlay.ts`, and the tile and menu-item chrome in the deck, account-chrome, and app-shell views.
 - Canvas and Mount board surfaces are unaffected — they paint pixels rather than emitting DOM.
 
 ## Implementation Decisions
@@ -80,6 +81,7 @@ Buttons and text fields appear on every shell route and in most board HTML overl
 - Canvas-drawn board chrome, which has no DOM element to wrap.
 - Rendering `@foldkit/ui`'s label and description slots; components emit the control only, and call sites own their own labels.
 - A component-token tier in `design.tokens.json`.
+- The other `client/app/domain/ui/` modules, which are not primitive wrappers: `confirmDialog.ts` delegates to the native `<dialog>`, and `card-art.ts`, `seat-face.ts`, and `app-version.ts` belong to the specs for the surfaces that render them.
 
 ## Further Notes
 
