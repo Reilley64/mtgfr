@@ -109,6 +109,16 @@ describe("formatMessage", () => {
     ).toBe("Activated abilities of permanent enchantment white cost {3} more to activate");
   });
 
+  it("reads Kudzu's re-attachment offer back with the hosts on offer", () => {
+    expect(
+      formatMessage({
+        key: "effect.choice_triggering_player_may_attach_this_aura_to_chosen",
+        params: [{ name: "filter", string_value: "permanent_land" }],
+        children: [],
+      }),
+    ).toBe("That permanent's controller may attach this Aura to a permanent land of their choice");
+  });
+
   it("reads Power Leak's payment pause back with the damage it shields against", () => {
     expect(
       formatMessage({

@@ -110072,3 +110072,95 @@ fn forcefield_is_spent_by_the_first_hit_it_stands_in_front_of() {
         "1 in the first-strike step, then the full 4"
     );
 }
+
+/// Hang a Kudzu on `host` (P1's land), then have P1 tap it and roll the trigger to its pause.
+fn kudzu_on(game: &mut Game, host: ObjectId) -> ObjectId {
+    let kudzu = game.spawn_in_hand(PlayerId(0), card("Kudzu"));
+    advance_until(game, |g| g.current_step() == Step::Main1);
+    fund_cast_resolve(game, PlayerId(0), kudzu, Some(Target::Object(host)));
+    game.submit(Intent::TapForMana {
+        player: PlayerId(1),
+        object: host,
+    })
+    .unwrap();
+    resolve_top_of_stack(game);
+    kudzu
+}
+
+#[test]
+fn kudzu_destroys_the_land_it_rode_and_moves_to_one_that_lands_controller_picks() {
+    // "When enchanted land becomes tapped, destroy it. That land's controller may attach this
+    // Aura to a land of their choice." The Aura outlives its own host — the only card in the pool
+    // that does — and the seat that re-hangs it is the victim's, not the Aura controller's.
+    let mut game = Game::new();
+    stock_libraries(&mut game);
+    let host = game.spawn_on_battlefield(PlayerId(1), card("Mountain"));
+    let next = game.spawn_on_battlefield(PlayerId(1), card("Forest"));
+    let mine = game.spawn_on_battlefield(PlayerId(0), card("Plains"));
+
+    let kudzu = kudzu_on(&mut game, host);
+    assert_eq!(
+        game.zone_of(host),
+        Zone::Graveyard,
+        "the tapped land is destroyed"
+    );
+
+    let Some(PendingChoice::ChooseAttachHost {
+        player, candidates, ..
+    }) = game.pending_choice()
+    else {
+        panic!("the host's controller is asked for a new land");
+    };
+    assert_eq!(
+        player,
+        PlayerId(1),
+        "\"that land's controller\", not Kudzu's"
+    );
+    assert!(
+        candidates.contains(&next) && candidates.contains(&mine),
+        "any land will do — the card puts no controller restriction on the choice",
+    );
+
+    game.submit(Intent::ChooseAttachHost {
+        player: PlayerId(1),
+        host: Some(next),
+    })
+    .unwrap();
+    assert_eq!(
+        game.zone_of(kudzu),
+        Zone::Battlefield,
+        "re-attached, so the orphan sweep leaves it alone",
+    );
+}
+
+#[test]
+fn kudzu_goes_to_the_graveyard_when_that_controller_declines_to_move_it() {
+    // "**may** attach" — declining is a real answer, and an unattached Aura is then swept by
+    // CR 704.5m.
+    let mut game = Game::new();
+    stock_libraries(&mut game);
+    let host = game.spawn_on_battlefield(PlayerId(1), card("Mountain"));
+    game.spawn_on_battlefield(PlayerId(1), card("Forest"));
+
+    let kudzu = kudzu_on(&mut game, host);
+    game.submit(Intent::ChooseAttachHost {
+        player: PlayerId(1),
+        host: None,
+    })
+    .unwrap();
+
+    assert_eq!(game.zone_of(kudzu), Zone::Graveyard, "nothing to hang on");
+}
+
+#[test]
+fn kudzu_with_no_land_left_to_move_to_is_swept_with_its_host() {
+    // No legal host means no pause at all, and the same orphan sweep takes it.
+    let mut game = Game::new();
+    stock_libraries(&mut game);
+    let host = game.spawn_on_battlefield(PlayerId(1), card("Mountain"));
+
+    let kudzu = kudzu_on(&mut game, host);
+
+    assert!(game.pending_choice().is_none(), "no land to offer");
+    assert_eq!(game.zone_of(kudzu), Zone::Graveyard);
+}

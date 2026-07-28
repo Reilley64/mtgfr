@@ -879,6 +879,7 @@ impl Effect {
             | Effect::Choice(ChoiceEffect::CouncilsDilemmaVote { .. })
             | Effect::Choice(ChoiceEffect::JoinForcesPayMana)
             | Effect::Choice(ChoiceEffect::TriggeringPlayerMayPayAnyAmountToPrevent { .. })
+            | Effect::Choice(ChoiceEffect::TriggeringPlayerMayAttachThisAuraToChosen { .. })
             | Effect::Choice(ChoiceEffect::EachPlayerNamesCardThenRevealsTop)
             | Effect::Dig(DigEffect::OpponentSplitsExilePiles)
             | Effect::Dig(DigEffect::RevealTopSplitPiles)
@@ -2877,6 +2878,14 @@ fn fill_triggering_permanent_controller(effect: Effect, player: PlayerId) -> Eff
             prevent_up_to,
             player: Some(player),
         }),
+        // Kudzu's "*that land's* controller may attach this Aura" — the same one player the
+        // trigger is about, filled from the same slot Psychic Venom's damage step uses.
+        Effect::Choice(ChoiceEffect::TriggeringPlayerMayAttachThisAuraToChosen { filter, .. }) => {
+            Effect::Choice(ChoiceEffect::TriggeringPlayerMayAttachThisAuraToChosen {
+                filter,
+                player: Some(player),
+            })
+        }
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()

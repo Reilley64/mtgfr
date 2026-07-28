@@ -105,6 +105,7 @@
   "effect.choice_each_player_sacrifices",
   "effect.choice_each_player_shuffles_hand_and_graveyard_then_draws",
   "effect.choice_join_forces_pay_mana",
+  "effect.choice_triggering_player_may_attach_this_aura_to_chosen",
   "effect.choice_triggering_player_may_pay_any_amount_to_prevent",
   "effect.choice_may_discard",
   "effect.choice_may_reveal_land_from_hand",

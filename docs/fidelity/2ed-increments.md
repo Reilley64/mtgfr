@@ -1127,7 +1127,7 @@ Not folded into `functional_abilities`, the other candidate: that returns a chea
 clone and is called in tight battlefield loops by the static scans, so a per-call attachment walk
 plus a `Vec` allocation would have been a real regression for a grant only the trigger paths read.
 
-### 37. `aura-reattachment-on-trigger` — 1 card, M
+### 37. `aura-reattachment-on-trigger` — 1 card, M — **done**
 Depends on: nothing.
 Kudzu — when the enchanted land becomes tapped, destroy it, and *that land's controller* attaches
 Kudzu to a land of their choice. Two novelties: an Aura surviving its host's destruction (rather
@@ -1136,6 +1136,23 @@ than being swept as an orphan) and a re-attachment choice made by an opponent. *
 named player, with the state-based orphan sweep exempting the Aura for the window between host
 destruction and the choice resolving — the same exemption `enchant_graveyard` already carves out.
 *Cards:* kudzu.
+
+*Landed:* one choice effect, and nothing else new. Both "novelties" turned out to already exist.
+The trigger is Psychic Venom's `enchanted_permanent_becomes_tapped` verbatim, and the sketch's
+`PendingChoice::ChooseAttachHost` is not hypothetical — it is what a deployed Aura (Armored
+Skyhunter, Open the Armory) already raises, complete with the answer handler, the attachment event,
+and the exact orphan-sweep exemption the sketch asked for (`awaiting_host` in the CR 704.5m pass).
+So `ChoiceEffect::TriggeringPlayerMayAttachThisAuraToChosen` just builds the candidate list and
+raises it, with `optional: true` for the card's "**may** attach" where a deployed Aura's is
+mandatory.
+
+The chooser fills from the same `fill_triggering_permanent_controller` slot Psychic Venom's damage
+step uses, so "that land's controller" needed no new plumbing either. Destroying the host is plain
+`destroy` / `target` over `target = "enchanted_creature"` — that spec is "whatever this is attached
+to" with no creature check, so it reads a land fine.
+
+Declining and having no land to offer both land in the same place: unattached, swept by CR 704.5m.
+That is the card, not an approximation, so no `approximates` note.
 
 ### 38. `shuffle-hand-and-graveyard-then-draw` — 1 card, S — **done**
 Depends on: nothing.

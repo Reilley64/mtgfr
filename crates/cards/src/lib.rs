@@ -2701,6 +2701,40 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
         );
     }
 
+    /// Kudzu destroys its own host and then survives it — the re-attachment step is what keeps it
+    /// off the CR 704.5m orphan sweep, and the chooser is the host's controller, not Kudzu's.
+    #[test]
+    fn unlimited_kudzu_destroys_its_host_then_offers_itself_to_that_lands_controller() {
+        let kudzu = get_by_name("Kudzu").expect("Kudzu is in the pool");
+        assert_eq!(
+            kudzu.enchant.expect("Enchant land").types,
+            TypeSet::LAND,
+            "the host is a land, and so is every candidate it moves to",
+        );
+        let Effect::Sequence { steps } = &kudzu.abilities[0].effect else {
+            panic!("the tap trigger destroys, then re-attaches");
+        };
+        assert!(
+            matches!(
+                steps[0],
+                Effect::Destroy(DestroyEffect::Target {
+                    target: TargetSpec::EnchantedCreature,
+                    ..
+                })
+            ),
+            "\"destroy it\" names the host, not a chosen target",
+        );
+        let Effect::Choice(ChoiceEffect::TriggeringPlayerMayAttachThisAuraToChosen {
+            filter,
+            player,
+        }) = &steps[1]
+        else {
+            panic!("then the host's controller picks a new land");
+        };
+        assert_eq!(filter.types, TypeSet::LAND, "a land of their choice");
+        assert_eq!(*player, None, "filled in at trigger placement");
+    }
+
     /// Forcefield's shield is keyed to the creature it names, not to the player it protects —
     /// `target_is_source` swaps the two — and it lets a point *through* rather than stopping one.
     #[test]

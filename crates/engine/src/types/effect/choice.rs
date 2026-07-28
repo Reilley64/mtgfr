@@ -157,6 +157,26 @@ pub enum ChoiceEffect {
 
     JoinForcesPayMana,
 
+    /// Kudzu's "That land's controller may attach this Aura to a land of their choice" — the Aura
+    /// moves itself, and the seat that picks its new host is the one the trigger is about rather
+    /// than the Aura's own controller. Raises the same [`PendingChoice::ChooseAttachHost`] a
+    /// deployed Aura raises, so the answer handler, the attachment event and the state-based
+    /// orphan exemption all come from there; only the chooser and the "may" differ.
+    ///
+    /// Declining is a real answer, not a no-op: the Aura is left unattached and CR 704.5m sweeps
+    /// it to the graveyard on the next check, which is what "may" buys you on this card.
+    TriggeringPlayerMayAttachThisAuraToChosen {
+        /// The hosts on offer ("a **land** of their choice"). Evaluated for the chooser, so a
+        /// `FilterController::You` axis would read as *their* battlefield, not the Aura's
+        /// controller's — Kudzu's own filter has no controller restriction.
+        filter: PermanentFilter,
+        /// Filled in at trigger placement from the permanent the trigger is about, the same slot
+        /// [`Effect::Damage(DamageEffect::ToTriggeringPlayer)`](crate::DamageEffect) fills for
+        /// Psychic Venom's "that land's controller".
+        #[cfg_attr(feature = "card-dsl", serde(skip))]
+        player: Option<PlayerId>,
+    },
+
     /// Power Leak's "that player may pay any amount of mana. This Aura deals 2 damage to that
     /// player. Prevent X of that damage, where X is the amount of mana that player paid this way"
     /// (CR 615). The single-seat twin of [`JoinForcesPayMana`](Self::JoinForcesPayMana): the same

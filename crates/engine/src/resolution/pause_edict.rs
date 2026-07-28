@@ -122,6 +122,31 @@ impl Game {
                     },
                 )
             }
+            // Kudzu: "That land's controller may attach this Aura to a land of their choice."
+            // The same choose-host pause a deployed Aura raises, with two differences the card
+            // spells out — the chooser is the triggering permanent's controller, not this Aura's,
+            // and the "may" makes declining legal (an unattached Aura is then swept by CR 704.5m).
+            // No legal land means no pause at all, and the same sweep takes it.
+            Effect::Choice(ChoiceEffect::TriggeringPlayerMayAttachThisAuraToChosen {
+                filter,
+                player,
+            }) => {
+                let chooser = player.expect("the triggering player is filled in at placement");
+                let candidates: Vec<ObjectId> = self
+                    .battlefield()
+                    .into_iter()
+                    .filter(|&id| self.permanent_matches(&filter, id, chooser, Some(source)))
+                    .collect();
+                pending::raise(
+                    self,
+                    pending::ChoiceRequest::ChooseAttachHost {
+                        player: chooser,
+                        attachment: source,
+                        candidates,
+                        optional: true,
+                    },
+                )
+            }
             // Power Leak: "that player may pay any amount of mana … Prevent X of that damage."
             // The same payment pause as join forces with a one-seat guest list, and a cap that
             // turns the payment into a prevention shield on the payer instead of a shared X.
