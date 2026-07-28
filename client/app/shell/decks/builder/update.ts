@@ -1,4 +1,5 @@
-import { Effect, Match as M, Schema as S } from "effect";
+import * as Dialog from "@foldkit/ui/dialog";
+import { Effect, Match as M, Option, Schema as S } from "effect";
 import type { Command as FoldkitCommand } from "foldkit";
 import { Command, Navigation } from "foldkit";
 import {
@@ -26,6 +27,8 @@ import {
   DeckBuilderLoadFailed,
   DeckSaved,
   DeckSaveFailed,
+  GotDiscardDialogMessage,
+  GotPrintDialogMessage,
   HydratedBuilderCards,
   type Message,
   NavigatedAwayFromBuilder,
@@ -205,7 +208,6 @@ function pickPrint(model: DeckBuilderSubmodel, cardId: string, print: string): D
     dirty: true,
     entries: nextEntries,
     preferredPrint: { ...model.preferredPrint, [cardId]: print },
-    printPicker: null,
   };
 }
 
@@ -285,20 +287,39 @@ function runMenuAction(
       ];
     }
     case "choosePrint":
-      return [
-        {
-          ...closed,
-          printPicker: {
-            addOnPick: action.addOnPick,
-            cardId: action.cardId,
-            error: false,
-            loading: true,
-            prints: [],
-          },
-        },
-        [SearchBuilderPrints({ cardId: action.cardId })],
-      ];
+      return openPrintPicker(closed, { addOnPick: action.addOnPick, cardId: action.cardId });
   }
+}
+
+type UpdateReturn = readonly [DeckBuilderSubmodel, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>];
+
+const toDiscardDialogMessage = (message: Dialog.Message): Message => GotDiscardDialogMessage({ message });
+const toPrintDialogMessage = (message: Dialog.Message): Message => GotPrintDialogMessage({ message });
+
+/** Dismisses the discard confirmation. */
+function closeDiscardConfirm(model: DeckBuilderSubmodel): UpdateReturn {
+  const [discardDialog, commands] = Dialog.close(model.discardDialog);
+  return [{ ...model, discardDialog }, Command.mapMessages(commands, toDiscardDialogMessage)];
+}
+
+/** Opens the print picker on a card and starts its search. Closes the context menu it came from. */
+function openPrintPicker(model: DeckBuilderSubmodel, args: { addOnPick: boolean; cardId: string }): UpdateReturn {
+  const [printDialog, commands] = Dialog.open(model.printDialog);
+  return [
+    {
+      ...model,
+      menu: null,
+      printDialog,
+      printPicker: { addOnPick: args.addOnPick, cardId: args.cardId, error: false, loading: true, prints: [] },
+    },
+    [...Command.mapMessages(commands, toPrintDialogMessage), SearchBuilderPrints({ cardId: args.cardId })],
+  ];
+}
+
+/** Dismisses the print picker; the prints it loaded go with it. */
+function closePrintPicker(model: DeckBuilderSubmodel): UpdateReturn {
+  const [printDialog, commands] = Dialog.close(model.printDialog);
+  return [{ ...model, printDialog, printPicker: null }, Command.mapMessages(commands, toPrintDialogMessage)];
 }
 
 export const update = (
@@ -370,10 +391,7 @@ export const update = (
           [],
         ];
       },
-      OpenedBuilderPrintPicker: ({ addOnPick, cardId }) => [
-        { ...model, menu: null, printPicker: { addOnPick, cardId, error: false, loading: true, prints: [] } },
-        [SearchBuilderPrints({ cardId })],
-      ],
+      OpenedBuilderPrintPicker: ({ addOnPick, cardId }) => openPrintPicker(model, { addOnPick, cardId }),
       ReceivedBuilderPrints: ({ cardId, prints }) => {
         if (model.printPicker?.cardId !== cardId) return [model, []];
         return [
@@ -388,8 +406,17 @@ export const update = (
         if (model.printPicker?.cardId !== cardId) return [model, []];
         return [{ ...model, printPicker: { ...model.printPicker, error: true, loading: false, prints: [] } }, []];
       },
-      PickedBuilderPrint: ({ cardId, print }) => [pickPrint(model, cardId, print), []],
-      ClosedBuilderPrintPicker: () => [{ ...model, printPicker: null }, []],
+      PickedBuilderPrint: ({ cardId, print }) => closePrintPicker(pickPrint(model, cardId, print)),
+      // Escape, a backdrop click, and Close all reach here as Dialog's Closed out-message.
+      GotPrintDialogMessage: ({ message }) => {
+        const [printDialog, commands, outMessage] = Dialog.update(model.printDialog, message);
+        const withDialog = { ...model, printDialog };
+        const mapped = Command.mapMessages(commands, toPrintDialogMessage);
+        if (Option.isNone(outMessage) || outMessage.value._tag !== "Closed") return [withDialog, mapped];
+
+        const [dismissed, dismissCommands] = closePrintPicker(withDialog);
+        return [dismissed, [...mapped, ...dismissCommands]];
+      },
       SubmittedDeckSave: () => {
         if (model.saving) return [model, []];
         if (deckCount(model.entries) > DECK_SIZE) {
@@ -424,11 +451,24 @@ export const update = (
         return [{ ...model, commander: { id: "", print: "" }, dirty: true }, []];
       },
       RequestedBuilderCancel: () => {
-        if (model.dirty) return [{ ...model, confirmingDiscard: true }, []];
-        return [model, [NavigateHome()]];
+        if (!model.dirty) return [model, [NavigateHome()]];
+        const [discardDialog, commands] = Dialog.open(model.discardDialog);
+        return [{ ...model, discardDialog }, Command.mapMessages(commands, toDiscardDialogMessage)];
       },
-      ConfirmedBuilderDiscard: () => [{ ...model, confirmingDiscard: false }, [NavigateHome()]],
-      CancelledBuilderDiscard: () => [{ ...model, confirmingDiscard: false }, []],
+      ConfirmedBuilderDiscard: () => {
+        const [closed, commands] = closeDiscardConfirm(model);
+        return [closed, [...commands, NavigateHome()]];
+      },
+      // Escape, a backdrop click, and Cancel all reach here as Dialog's Closed out-message.
+      GotDiscardDialogMessage: ({ message }) => {
+        const [discardDialog, commands, outMessage] = Dialog.update(model.discardDialog, message);
+        const withDialog = { ...model, discardDialog };
+        const mapped = Command.mapMessages(commands, toDiscardDialogMessage);
+        if (Option.isNone(outMessage) || outMessage.value._tag !== "Closed") return [withDialog, mapped];
+
+        const [cancelled, cancelCommands] = closeDiscardConfirm(withDialog);
+        return [cancelled, [...mapped, ...cancelCommands]];
+      },
       NavigatedAwayFromBuilder: () => [model, []],
     }),
   );

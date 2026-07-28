@@ -3,18 +3,14 @@ import { Story } from "foldkit";
 import { expect, test } from "vitest";
 import { init } from "./init";
 import {
-  ClosedAccountMenu,
   GotAuthMessage,
   GotCoverageMessage,
-  GotDeckListMessage,
   GotLeaderboardMessage,
   NavigationCompleted,
   ReceivedLeaderboardPage,
   ReceivedMeGravatarHash,
-  ToggledAccountMenu,
   UrlChanged,
 } from "./messages";
-import type { Model } from "./model";
 import {
   CoverageRoute,
   DeckRoute,
@@ -52,17 +48,6 @@ const url = (pathname: string, search = "") => ({
 });
 
 const me = { id: 1, email: "alice@example.com", username: "alice" };
-
-function homeModel(overrides: Partial<Model> = {}): Model {
-  const [base] = init(url("/"));
-  return {
-    ...base,
-    route: HomeRoute(),
-    session: { me, meGravatarHash: null },
-    sessionLoaded: true,
-    ...overrides,
-  };
-}
 
 test("parses the Foldkit shell routes", () => {
   expect(routeFromUrl(url("/"))).toEqual(HomeRoute());
@@ -262,7 +247,6 @@ test("UrlChanged to HomeRoute clears transient deck list UI before loading decks
         ...base.decks,
         list: {
           ...base.decks.list,
-          accountMenuOpen: true,
           confirmingDeleteId: 7,
           contextMenu: { deckId: 7, x: 10, y: 20 },
           error: "Could not load decks.",
@@ -274,7 +258,6 @@ test("UrlChanged to HomeRoute clears transient deck list UI before loading decks
     Story.model((m) => {
       expect(m.route).toEqual(HomeRoute());
       expect(m.decks.list.loading).toBe(true);
-      expect(m.decks.list.accountMenuOpen).toBe(false);
       expect(m.decks.list.confirmingDeleteId).toBeNull();
       expect(m.decks.list.contextMenu).toBeNull();
       expect(m.decks.list.error).toBeNull();
@@ -298,7 +281,6 @@ test("HomeRoute cold load clears transient deck list UI through the same route e
         ...base.decks,
         list: {
           ...base.decks.list,
-          accountMenuOpen: true,
           confirmingDeleteId: 7,
           contextMenu: { deckId: 7, x: 10, y: 20 },
           error: "Could not load decks.",
@@ -310,7 +292,6 @@ test("HomeRoute cold load clears transient deck list UI through the same route e
     Story.model((m) => {
       expect(m.route).toEqual(HomeRoute());
       expect(m.decks.list.loading).toBe(true);
-      expect(m.decks.list.accountMenuOpen).toBe(false);
       expect(m.decks.list.confirmingDeleteId).toBeNull();
       expect(m.decks.list.contextMenu).toBeNull();
       expect(m.decks.list.error).toBeNull();
@@ -321,79 +302,6 @@ test("HomeRoute cold load clears transient deck list UI through the same route e
       DeckList.LookupDeckListCommanders({ ids: [] }),
       DeckList.Message.ReceivedDeckListCommanders({ cards: [] }),
     ),
-  );
-});
-
-test("HomeRoute toggles the account menu open and clears the deck context menu", () => {
-  const model = homeModel();
-
-  Story.story(
-    update,
-    Story.with({
-      ...model,
-      decks: {
-        ...model.decks,
-        list: {
-          ...model.decks.list,
-          accountMenuOpen: false,
-          contextMenu: { deckId: 7, x: 10, y: 20 },
-        },
-      },
-    }),
-    Story.message(ToggledAccountMenu()),
-    Story.model((m) => {
-      expect(m.decks.list.accountMenuOpen).toBe(true);
-      expect(m.decks.list.contextMenu).toBeNull();
-    }),
-  );
-});
-
-test("HomeRoute closes the account menu when requested", () => {
-  const model = homeModel();
-
-  Story.story(
-    update,
-    Story.with({
-      ...model,
-      decks: {
-        ...model.decks,
-        list: {
-          ...model.decks.list,
-          accountMenuOpen: true,
-        },
-      },
-    }),
-    Story.message(ClosedAccountMenu()),
-    Story.model((m) => {
-      expect(m.decks.list.accountMenuOpen).toBe(false);
-    }),
-  );
-});
-
-test("HomeRoute opening a deck context menu closes the account menu", () => {
-  const model = homeModel();
-
-  Story.story(
-    update,
-    Story.with({
-      ...model,
-      decks: {
-        ...model.decks,
-        list: {
-          ...model.decks.list,
-          accountMenuOpen: true,
-        },
-      },
-    }),
-    Story.message(
-      GotDeckListMessage({
-        message: DeckList.Message.OpenedDeckListMenu({ deckId: 7, x: 10, y: 20 }),
-      }),
-    ),
-    Story.model((m) => {
-      expect(m.decks.list.accountMenuOpen).toBe(false);
-      expect(m.decks.list.contextMenu).toEqual({ deckId: 7, x: 10, y: 20 });
-    }),
   );
 });
 
@@ -408,7 +316,6 @@ test("leaderboard retry refreshes from the first page after an error", () => {
     ...base,
     leaderboard: {
       ...base.leaderboard,
-      accountMenuOpen: true,
       entries: [{ rank: 1, rating: 1200, user_id: 1, username: "alice" }],
       error: "Could not load the leaderboard.",
       status: "error",
@@ -422,7 +329,6 @@ test("leaderboard retry refreshes from the first page after an error", () => {
     Story.message(GotLeaderboardMessage({ message: RequestedLeaderboardRefresh() })),
     Story.Command.expectExact(load),
     Story.model((m) => {
-      expect(m.leaderboard.accountMenuOpen).toBe(false);
       expect(m.leaderboard.entries).toEqual([]);
       expect(m.leaderboard.error).toBeNull();
       expect(m.leaderboard.status).toBe("loading");
@@ -438,7 +344,6 @@ test("coverage retry clears rows and re-enters loading", () => {
     ...base,
     coverage: {
       ...base.coverage,
-      accountMenuOpen: true,
       status: "error",
       query: "soc",
       sets: [
@@ -462,7 +367,6 @@ test("coverage retry clears rows and re-enters loading", () => {
     Story.message(GotCoverageMessage({ message: RequestedCoverageRefresh() })),
     Story.Command.expectExact(load),
     Story.model((m) => {
-      expect(m.coverage.accountMenuOpen).toBe(false);
       expect(m.coverage.status).toBe("loading");
       expect(m.coverage.error).toBeNull();
       expect(m.coverage.sets).toEqual([]);
@@ -486,23 +390,6 @@ test("coverage query updates in place", () => {
     Story.message(GotCoverageMessage({ message: ChangedCoverageQuery({ query: "strix" }) })),
     Story.model((m) => {
       expect(m.coverage.query).toBe("strix");
-    }),
-  );
-});
-
-test("CoverageRoute toggles and closes the account menu", () => {
-  const [base] = init(url("/coverage"));
-
-  Story.story(
-    update,
-    Story.with(base),
-    Story.message(ToggledAccountMenu()),
-    Story.model((m) => {
-      expect(m.coverage.accountMenuOpen).toBe(true);
-    }),
-    Story.message(ClosedAccountMenu()),
-    Story.model((m) => {
-      expect(m.coverage.accountMenuOpen).toBe(false);
     }),
   );
 });

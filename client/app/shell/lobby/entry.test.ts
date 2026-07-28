@@ -31,10 +31,9 @@ const url = (pathname: string, search = "") => ({
 function toParentLobbyMessage(message: LobbyViewMessage): Message {
   switch (message._tag) {
     case "CardArtTick":
-    case "ClosedAccountMenu":
     case "DeckCardFlipTick":
+    case "GotAccountMenuMessage":
     case "GotAuthMessage":
-    case "ToggledAccountMenu":
       return message;
     default:
       return GotLobbyMessage({ message });
@@ -114,7 +113,7 @@ const lobbyAppView = (model: Model) =>
       surface: model.route._tag === "PregameTableRoute" || model.route._tag === "GameTableRoute" ? "table" : "entry",
       username: model.session.me?.username ?? "",
       meGravatarHash: model.session.meGravatarHash,
-      accountMenuOpen: model.decks.list.accountMenuOpen,
+      accountMenu: model.accountMenu,
     },
     toParentMessage: toParentLobbyMessage,
   });

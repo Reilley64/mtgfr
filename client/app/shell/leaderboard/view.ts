@@ -1,9 +1,10 @@
+import type * as Menu from "@foldkit/ui/menu";
 import { Submodel } from "foldkit";
 import { type Html, html } from "foldkit/html";
 import type { AppChromeMeta } from "../../domain/ui/app-version";
 import { button } from "../../domain/ui/button";
 import { alertClass, listRowClass } from "../../domain/ui/surfaces";
-import type { ClosedAccountMenu, GotAuthMessage, ToggledAccountMenu } from "../../messages";
+import { GotAccountMenuMessage, type GotAuthMessage } from "../../messages";
 import { HomeRoute, routePath } from "../../routes";
 import { accountChrome } from "../account-chrome/view";
 import { shellFrame } from "../frame/shell-frame";
@@ -14,16 +15,13 @@ import {
 } from "./messages";
 import type { LeaderboardStatus, LeaderboardSubmodel } from "./submodel";
 
-export type ViewMessage =
-  | LeaderboardMessage
-  | typeof ClosedAccountMenu.Type
-  | typeof GotAuthMessage.Type
-  | typeof ToggledAccountMenu.Type;
+export type ViewMessage = LeaderboardMessage | typeof GotAccountMenuMessage.Type | typeof GotAuthMessage.Type;
 
 export type ViewInputs = {
   username: string;
   meGravatarHash: string | null;
   chrome: AppChromeMeta;
+  accountMenu: Menu.Model;
 };
 
 const h = html<ViewMessage>();
@@ -60,7 +58,7 @@ function row(entry: LeaderboardSubmodel["entries"][number]): Html {
 }
 
 export const view = Submodel.defineView<LeaderboardSubmodel, ViewMessage, ViewInputs>((model, viewInputs): Html => {
-  const { chrome, meGravatarHash, username } = viewInputs;
+  const { accountMenu, chrome, meGravatarHash, username } = viewInputs;
   const status = statusCopy(model.status);
   const canLoadMore = model.status !== "error" && model.entries.length < model.total;
 
@@ -72,7 +70,8 @@ export const view = Submodel.defineView<LeaderboardSubmodel, ViewMessage, ViewIn
     trailing: accountChrome(h, {
       username,
       gravatarHash: meGravatarHash,
-      menuOpen: model.accountMenuOpen,
+      menu: accountMenu,
+      toMenuMessage: (message) => GotAccountMenuMessage({ message }),
       showLeaderboardLink: false,
     }),
     stage: h.div(

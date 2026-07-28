@@ -1,3 +1,4 @@
+import * as Dialog from "@foldkit/ui/dialog";
 import { Schema as S } from "effect";
 import { m } from "foldkit/message";
 import { CatalogCardSchema } from "../../../domain/deck-builder/cards";
@@ -45,7 +46,9 @@ export const ReceivedBuilderPrints = m("ReceivedBuilderPrints", {
 });
 export const BuilderPrintSearchFailed = m("BuilderPrintSearchFailed", { cardId: S.String });
 export const PickedBuilderPrint = m("PickedBuilderPrint", { cardId: S.String, print: S.String });
-export const ClosedBuilderPrintPicker = m("ClosedBuilderPrintPicker");
+/** Delegation envelope for the print picker's Dialog submodel. Escape, a backdrop click, and
+ *  Close all arrive as its `Closed` out-message, so there is no separate dismiss message. */
+export const GotPrintDialogMessage = m("GotPrintDialogMessage", { message: Dialog.Message });
 export const SubmittedDeckSave = m("SubmittedDeckSave");
 export const DeckSaved = m("DeckSaved");
 export const DeckSaveFailed = m("DeckSaveFailed", { problems: S.Array(S.String) });
@@ -54,8 +57,8 @@ export const DeckSaveFailed = m("DeckSaveFailed", { problems: S.Array(S.String) 
 export const RequestedBuilderCancel = m("RequestedBuilderCancel");
 /** Player confirmed discarding unsaved changes. */
 export const ConfirmedBuilderDiscard = m("ConfirmedBuilderDiscard");
-/** Player dismissed the discard confirmation without discarding. */
-export const CancelledBuilderDiscard = m("CancelledBuilderDiscard");
+/** Delegation envelope for the discard confirmation's Dialog submodel. */
+export const GotDiscardDialogMessage = m("GotDiscardDialogMessage", { message: Dialog.Message });
 /** Navigation away from the builder completed — handled as a no-op. */
 export const NavigatedAwayFromBuilder = m("NavigatedAwayFromBuilder");
 
@@ -100,7 +103,7 @@ export const Message = S.Union([
   ReceivedBuilderPrints,
   BuilderPrintSearchFailed,
   PickedBuilderPrint,
-  ClosedBuilderPrintPicker,
+  GotPrintDialogMessage,
   SubmittedDeckSave,
   DeckSaved,
   DeckSaveFailed,
@@ -112,7 +115,7 @@ export const Message = S.Union([
   ActivatedBuilderTarget,
   RequestedBuilderCancel,
   ConfirmedBuilderDiscard,
-  CancelledBuilderDiscard,
+  GotDiscardDialogMessage,
   NavigatedAwayFromBuilder,
 ]);
 export type Message = typeof Message.Type;

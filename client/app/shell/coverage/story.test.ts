@@ -15,7 +15,6 @@ test("GotCoverageMessage updates coverage through the parent update", () => {
       ...model,
       coverage: {
         ...model.coverage,
-        accountMenuOpen: true,
         error: "Could not load coverage.",
         query: "soc",
         sets: [
@@ -35,7 +34,6 @@ test("GotCoverageMessage updates coverage through the parent update", () => {
     Story.message(GotCoverageMessage({ message: RequestedCoverageRefresh() })),
     Story.Command.expectExact(load),
     Story.model((next) => {
-      expect(next.coverage.accountMenuOpen).toBe(false);
       expect(next.coverage.sets).toEqual([]);
       expect(next.coverage.error).toBeNull();
       expect(next.coverage.status).toBe("loading");

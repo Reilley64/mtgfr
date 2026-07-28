@@ -1,3 +1,4 @@
+import * as Menu from "@foldkit/ui/menu";
 import { Schema as S } from "effect";
 import { type BoardModel, initialBoardModel } from "./board/submodel";
 import { Me } from "./domain/wire/types";
@@ -57,6 +58,8 @@ export function emptyGameSlice(tableId: string | null = null): GameSlice {
 
 export const Model = S.Struct({
   ready: S.Boolean,
+  /** One account menu for the whole shell — the avatar chrome is the same element on every route. */
+  accountMenu: Menu.Model,
   route: AppRoute,
   currentPath: S.String,
   session: SessionSlice,

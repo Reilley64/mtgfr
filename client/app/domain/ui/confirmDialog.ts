@@ -1,101 +1,63 @@
-// Shared ConfirmDialog view helper — renders a native <dialog> opened with showModal() so the
-// browser provides the focus trap, top-layer stacking, and Escape-to-cancel behaviour for free.
-// Mirrors the native modal pattern used by the app's confirm prompts.
+// Confirm prompt — a question and two choices in `modalDialog`'s frame. The modal behaviour
+// (open/close, focus trap, Escape, scroll lock, backdrop click) is Dialog's; the frame is
+// `dialog.ts`'s; the question, the two buttons, and which one takes focus are here.
 //
-// Usage: call confirmDialog(h, { ... }) from within a view that has ModalOpened in its Message
-// union. The OpenDialogAsModal Mount dispatches ModalOpened (a no-op) when the element mounts;
-// h.OnCancel(onCancel) prevents the native Escape-close and instead dispatches the cancel message
-// so the model drives visibility, not the browser.
+// Dialog is a submodel, not a pure view: the owner holds a `Dialog.Model`, delegates to
+// `Dialog.update`, and maps its `Closed` OutMessage to its own cancel message. Escape, a backdrop
+// click, and the Cancel button all take that one path, so there is no `onCancel` prop — only
+// Confirm carries a parent message.
 
-import { Effect } from "effect";
+import type * as Dialog from "@foldkit/ui/dialog";
 import type { html as createHtml, Html } from "foldkit/html";
-import { m } from "foldkit/message";
-import * as Mount from "foldkit/mount";
 import { button } from "./button";
-import { modalClass } from "./surfaces";
+import { modalDialog } from "./dialog";
 
-/** Dispatched when a modal dialog mounts — handled as a no-op by update. Declare it in every
- *  Message union that hosts a dialog opened with OpenDialogAsModal. */
-export const ModalOpened = m("ModalOpened");
+type HtmlFactory<Msg> = ReturnType<typeof createHtml<Msg>>;
 
-/** Opens an HTMLDialogElement as a modal via showModal() when mounted; closes it on unmount. */
-export const OpenDialogAsModal = Mount.define(
-  "OpenDialogAsModal",
-  ModalOpened,
-)((element) =>
-  Effect.gen(function* () {
-    yield* Effect.acquireRelease(
-      Effect.sync(() => {
-        if (typeof HTMLDialogElement === "undefined") return null;
-        if (!(element instanceof HTMLDialogElement)) return null;
-        const handle = { cancelled: false, dialog: element };
-        queueMicrotask(() => {
-          if (handle.cancelled || !element.isConnected || element.open) return;
-          element.showModal();
-        });
-        return handle;
-      }),
-      (handle) =>
-        Effect.sync(() => {
-          if (handle == null) return;
-          handle.cancelled = true;
-          if (handle.dialog.open) handle.dialog.close();
-        }),
-    );
-    return ModalOpened();
-  }),
-);
+export type ConfirmDialogProps<Msg> = {
+  /** The owner's dialog state. Create with `Dialog.init({ id })`; drive with `Dialog.update`. */
+  model: Dialog.Model;
+  /** Lifts a `Dialog.Message` into the owner's message union. */
+  toDialogMessage: (message: Dialog.Message) => Msg;
+  title: string;
+  body?: string;
+  confirmLabel: string;
+  danger?: boolean;
+  onConfirm: Msg;
+  testId?: string;
+};
 
-/** Renders a native <dialog> confirm prompt as a showModal modal.
+/** Renders a confirm prompt over a `Dialog` submodel.
  *
- * Escape: h.OnCancel calls event.preventDefault() (keeping the dialog open) then dispatches
- * onCancel, so the model drives closure — no race between browser-close and re-render.
- * Cancel autofocuses so a destructive confirm is never one Enter away.
- *
- * @param h  The html builder from the calling view (typed to include ModalOpened in Message).
+ * Cancel spreads Dialog's `closeButton` (so a plain dismiss needs no parent message) and its
+ * `initialFocus` marker, so a destructive confirm is never one Enter away.
  */
-export function confirmDialog<M>(
-  h: ReturnType<typeof createHtml<M>>,
-  params: {
-    title: string;
-    body?: string;
-    confirmLabel: string;
-    danger?: boolean;
-    onConfirm: M;
-    onCancel: M;
-    testId?: string;
-  },
-): Html {
-  const { title, body, confirmLabel, danger = false, onConfirm, onCancel, testId = "confirm-dialog" } = params;
+export function confirmDialog<Msg>(h: HtmlFactory<Msg>, props: ConfirmDialogProps<Msg>): Html {
+  const { model, toDialogMessage, title, body, confirmLabel, danger = false, onConfirm } = props;
 
-  return h.dialog(
-    [
-      h.DataAttribute("testid", testId),
-      h.Class(`${modalClass()} m-auto backdrop:bg-black/60`),
-      h.Attribute("aria-labelledby", `${testId}-title`),
-      h.OnMount(OpenDialogAsModal() as never),
-      h.OnCancel(onCancel),
-    ],
-    [
+  return modalDialog(
+    h,
+    {
+      model,
+      toDialogMessage,
+      panel: "max-w-[380px]",
+      testId: props.testId ?? "confirm-dialog",
+      backdropTestId: "confirm-backdrop",
+    },
+    (render) => [
+      h.div([...render.title, h.Class("font-semibold text-body"), h.DataAttribute("testid", "confirm-title")], [title]),
+      body != null ? h.div([...render.description, h.Class("text-label text-lichen")], [body]) : null,
       h.div(
-        [h.Class("flex max-w-[380px] flex-col gap-md")],
+        [h.Class("flex justify-end gap-sm")],
         [
-          h.div(
-            [h.Id(`${testId}-title`), h.Class("font-semibold text-body"), h.DataAttribute("testid", "confirm-title")],
-            [title],
+          button(
+            h,
+            { testId: "confirm-cancel", variant: "ghost", attrs: [...render.closeButton, ...render.initialFocus] },
+            ["Cancel"],
           ),
-          body != null ? h.div([h.Class("text-label text-lichen")], [body]) : null,
-          h.div(
-            [h.Class("flex justify-end gap-sm")],
-            [
-              button(h, { testId: "confirm-cancel", onClick: onCancel, variant: "ghost", attrs: [h.Autofocus(true)] }, [
-                "Cancel",
-              ]),
-              button(h, { testId: "confirm-ok", onClick: onConfirm, variant: danger ? "danger" : "primary" }, [
-                confirmLabel,
-              ]),
-            ],
-          ),
+          button(h, { testId: "confirm-ok", onClick: onConfirm, variant: danger ? "danger" : "primary" }, [
+            confirmLabel,
+          ]),
         ],
       ),
     ],

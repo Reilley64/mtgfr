@@ -36,9 +36,11 @@ The page title (`Your decks`) lives in the shared `shellFrame` header title slot
 custom left-side title block. The shared header trailing slot holds account chrome: a
 `Leaderboard` link (`header-leaderboard-link`) plus an avatar trigger backed by the same
 circular Gravatar/monogram face helper used for seats. Opening the avatar menu shows a
-username title, an outbound `Change at Gravatar` link (`account-gravatar-link`) to
-`https://gravatar.com`, and `Sign out`. Search and grid share the shell stage max-width
-column (no nested 960px wrappers).
+username heading, `Change at Gravatar` (`account-menu-gravatar`), which opens
+`https://gravatar.com` in a new tab, and `Sign out` (`account-menu-sign-out`). The menu is
+a `@foldkit/ui` `Menu` submodel owned by the root model — see
+[shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md). Search and grid share the
+shell stage max-width column (no nested 960px wrappers).
 
 Tiles use a raised `minmax(220px, 1fr)` track, landscape commander `art_crop`
 (~1.37:1), deck name, color-identity pips, and a Precon chip when `id < 0`. Names stay
@@ -60,7 +62,13 @@ no deck tiles, the grid keeps the create tile first and shows `No decks match.`
 (`deck-list-filter-empty`). Load errors use the shared `alertClass` recipe. Display order:
 owned decks first (API relative order), then precons by
 ascending id (newest release first). Right-click on an owned deck opens Edit
-(`/decks/{id}`) and Delete (confirm dialog); precons do not open a context menu.
+(`/decks/{id}`) and Delete; precons do not open a context menu. The context menu is
+pointer-positioned, so it stays hand-rolled markup dressed with the shared
+`menuPanelClass` / `menuItemClass` chrome rather than a `@foldkit/ui` `Menu`, which anchors
+to a trigger button. Delete raises `confirm-delete-dialog`, a `confirmDialog`
+([ui-component-layer](2026-07-28-ui-component-layer.md)) over a `Dialog` submodel held as
+`confirmDialog` on the deck list model; Escape, a backdrop click, and Cancel all close it
+through the dialog's `Closed` out-message, and confirming issues the delete.
 
 ### Deck builder (`client/app/shell/decks/builder/**`, `/decks/new`, `/decks/:id`)
 
@@ -76,7 +84,9 @@ stage body is a split-pane layout (no duplicate page title in the decklist pane)
 - **Full Commander legality** is enforced server-side on save; the client surfaces validation errors returned as `CreateDeck422` / `UpdateDeck422` tagged Schema errors.
 - **Card lookup.** `lookupCardsByIds(ids, client)` fetches oracle data for deck hydration through `/api/rpc/cards/lookup`.
 - **Scroll.** `shellFrame` is a viewport-contained flex column (`overflow-hidden`); the builder passes `lockStageScroll` so the stage is `flex-1 min-h-0 overflow-hidden`. The builder page fills that stage (`h-full min-h-0 flex-1`, single `minmax(0,1fr)` grid row, `overflow-hidden`) and does not scroll the page. The left catalog grid and the right decklist are independent `overflow-y-auto` scrollports with `overscroll-contain` so wheel/trackpad in one pane does not move the other or the document. Both columns use `min-h-0` so their scroll hosts form real scrollports inside the grid instead of growing the page.
-- **Print picker scroll lock.** While the choose-printing `<dialog>` is open (`printPicker` set), catalog and decklist scrollports use `overflow-hidden` (background frozen). The print tile grid inside the dialog remains `overflow-y-auto` with `overscroll-contain`. Closing the picker restores independent pane scrolling.
+- **Print picker modal.** The choose-printing dialog renders on the shared `modalDialog` frame ([ui-component-layer](2026-07-28-ui-component-layer.md)), so it gets `@foldkit/ui` `Dialog`'s focus trap, focus restore, Escape, and managed close. It is not a `confirmDialog` — it supplies its own heading, Close button, and print grid as `modalDialog` children. `printDialog` (a `Dialog.Model`, id `builder-print-picker`) holds open/closed; `printPicker` holds the picked card and its loaded prints. Escape, a backdrop click, and Close all arrive as `Dialog`'s `Closed` and clear both, so the prints it loaded go with it.
+- **Print picker scroll lock.** While the picker is open (`printPicker` set), catalog and decklist scrollports use `overflow-hidden` (background frozen). The print tile grid inside the dialog remains `overflow-y-auto` with `overscroll-contain`. Closing the picker restores independent pane scrolling. `Dialog`'s own scroll lock only freezes `documentElement`, so freezing the two inner scrollports stays the builder's concern.
+- **Discard confirm.** Cancel navigates home directly when the builder is clean. When `dirty`, it raises `builder-discard-confirm`, a `confirmDialog` ([ui-component-layer](2026-07-28-ui-component-layer.md)) over a `Dialog` submodel held as `discardDialog` on the builder model. Escape, a backdrop click, and Cancel all dismiss it through the dialog's `Closed` out-message; confirming leaves the builder.
 
 ### Card art CDN (`client/app/domain/deck-builder/scryfall.ts`, `client/app/domain/ui/card-art.ts`, `client/app/domain/image-cache.ts`)
 
@@ -114,7 +124,7 @@ Missing ordinary (non-`art_crop`) CDN art stays empty after load failure (no Scr
 - `client/app/domain/ui/card-art.test.ts` — art URL / host sync against `ImageCache`.
 - `client/app/domain/image-cache.test.ts` — cache settle / subscriber behavior.
 - Scene coverage for shell deck surfaces lives with other shell Scene tests, including
-  `header-leaderboard-link`, `account-menu-*`, `account-gravatar-link`,
+  `header-leaderboard-link`, `account-menu-trigger`, `account-menu-*`,
   `deck-list-empty`, and `deck-list-new-deck`; the home surface does not render
   `data-testid="leaderboard-teaser"` or a header `New deck` control. Route-entry Stories cover the home fetch path
   without a separate teaser request (see

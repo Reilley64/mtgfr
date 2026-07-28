@@ -1,4 +1,4 @@
-import { Effect, Match as M, Schema as S } from "effect";
+import { Effect, Match as M, Option, Schema as S } from "effect";
 import type { Command as FoldkitCommand } from "foldkit";
 import { Command, Navigation } from "foldkit";
 import { toString as urlToString } from "foldkit/url";
@@ -9,6 +9,7 @@ import { parseDeckIdParam, playDeckAccess } from "./deck-id";
 import { gravatarHash } from "./domain/gravatar";
 import { updateGame } from "./game";
 import {
+  GotAccountMenuMessage,
   GotAuthMessage,
   GotBoardMessage,
   GotCoverageMessage,
@@ -35,6 +36,7 @@ import {
   routePath,
   safeNext,
 } from "./routes";
+import { AccountMenu, GRAVATAR_URL } from "./shell/account-chrome/menu";
 import * as Auth from "./shell/auth";
 import type { Message as AuthMessage } from "./shell/auth/messages";
 import * as Coverage from "./shell/coverage";
@@ -61,6 +63,17 @@ const PushUrl = Command.define(
   { url: S.String },
   NavigationCompleted,
 )(({ url }) => Navigation.pushUrl(url).pipe(Effect.as(NavigationCompleted())));
+
+/** Gravatar in a new tab, so a half-edited deck is not navigated away from. */
+export const OpenGravatar = Command.define(
+  "OpenGravatar",
+  NavigationCompleted,
+)(
+  Effect.sync(() => {
+    window.open(GRAVATAR_URL, "_blank", "noopener,noreferrer");
+    return NavigationCompleted();
+  }),
+);
 
 const LoadExternalUrl = Command.define(
   "LoadExternalUrl",
@@ -399,7 +412,6 @@ export const update = (
         if (model.session.me?.email !== email) return [model, []];
         return [{ ...model, session: { ...model.session, meGravatarHash: hash } }, []];
       },
-      ModalOpened: () => [model, []],
       CardArtTick: () => [model, []],
       DeckCardFlipTick: () => [model, []],
       GotBoardMessage: ({ message }) => foldBoard(model, message),
@@ -418,96 +430,17 @@ export const update = (
       GotLeaderboardMessage: ({ message }) => foldLeaderboard(model, message),
       GotCoverageMessage: ({ message }) => foldCoverage(model, message),
       GotLobbyMessage: ({ message }) => foldLobby(model, message),
-      ToggledAccountMenu: () => {
-        if (
-          model.route._tag === "HomeRoute" ||
-          model.route._tag === "NewDeckRoute" ||
-          model.route._tag === "DeckRoute" ||
-          model.route._tag === "PlayRoute" ||
-          model.route._tag === "PregameTableRoute" ||
-          model.route._tag === "GameTableRoute"
-        ) {
-          const list = model.decks.list;
-          return [
-            {
-              ...model,
-              decks: {
-                ...model.decks,
-                list: {
-                  ...list,
-                  accountMenuOpen: !list.accountMenuOpen,
-                  contextMenu: null,
-                },
-              },
-            },
-            [],
-          ];
-        }
-        if (model.route._tag === "LeaderboardRoute") {
-          return [
-            {
-              ...model,
-              leaderboard: {
-                ...model.leaderboard,
-                accountMenuOpen: !model.leaderboard.accountMenuOpen,
-              },
-            },
-            [],
-          ];
-        }
-        if (model.route._tag === "CoverageRoute") {
-          return [
-            {
-              ...model,
-              coverage: {
-                ...model.coverage,
-                accountMenuOpen: !model.coverage.accountMenuOpen,
-              },
-            },
-            [],
-          ];
-        }
-        return [model, []];
-      },
-      ClosedAccountMenu: () => {
-        if (
-          model.route._tag === "HomeRoute" ||
-          model.route._tag === "NewDeckRoute" ||
-          model.route._tag === "DeckRoute" ||
-          model.route._tag === "PlayRoute" ||
-          model.route._tag === "PregameTableRoute" ||
-          model.route._tag === "GameTableRoute"
-        ) {
-          return [
-            {
-              ...model,
-              decks: {
-                ...model.decks,
-                list: { ...model.decks.list, accountMenuOpen: false },
-              },
-            },
-            [],
-          ];
-        }
-        if (model.route._tag === "LeaderboardRoute") {
-          return [
-            {
-              ...model,
-              leaderboard: { ...model.leaderboard, accountMenuOpen: false },
-            },
-            [],
-          ];
-        }
-        if (model.route._tag === "CoverageRoute") {
-          return [
-            {
-              ...model,
-              coverage: { ...model.coverage, accountMenuOpen: false },
-            },
-            [],
-          ];
-        }
-        return [model, []];
+      // Escape, click-away, arrow keys, typeahead, and focus return are Menu's; the shell only
+      // has to act on what was picked.
+      GotAccountMenuMessage: ({ message }) => {
+        const [accountMenu, commands, outMessage] = AccountMenu.update(model.accountMenu, message);
+        const withMenu = { ...model, accountMenu };
+        const mapped = Command.mapMessages(commands, (child) => GotAccountMenuMessage({ message: child }));
+        if (Option.isNone(outMessage)) return [withMenu, mapped];
+
+        if (outMessage.value.value === "gravatar") return [withMenu, [...mapped, OpenGravatar()]];
+        const [signedOut, authCommands] = foldAuth(withMenu, Auth.Message.RequestedLogout());
+        return [signedOut, [...mapped, ...authCommands]];
       },
     }),
   );

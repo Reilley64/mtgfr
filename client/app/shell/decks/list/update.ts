@@ -1,4 +1,5 @@
-import { Effect, Match as M, Schema as S } from "effect";
+import * as Dialog from "@foldkit/ui/dialog";
+import { Effect, Match as M, Option, Schema as S } from "effect";
 import type { Command as FoldkitCommand } from "foldkit";
 import { Command } from "foldkit";
 import { lookupCardsByIds } from "../../../domain/deck-builder/lookup-cards";
@@ -7,6 +8,7 @@ import {
   DeckDeleted,
   DeckDeleteFailed,
   DecksLoadFailed,
+  GotConfirmDialogMessage,
   type Message,
   ReceivedDeckListCommanders,
   ReceivedDecks,
@@ -61,22 +63,29 @@ export const DeleteDeck = Command.define(
 export function loadDeckList(
   model: DeckListSubmodel,
 ): readonly [DeckListSubmodel, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
-  return [{ ...model, accountMenuOpen: false, error: null, loading: true }, [FetchDecks()]];
+  return [{ ...model, error: null, loading: true }, [FetchDecks()]];
 }
 
-function enterDeckListRoute(
-  model: DeckListSubmodel,
-): readonly [DeckListSubmodel, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
+type UpdateReturn = readonly [DeckListSubmodel, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>];
+
+const toConfirmDialogMessage = (message: Dialog.Message): Message => GotConfirmDialogMessage({ message });
+
+/** Dismisses the delete confirmation and forgets which deck it was asking about. */
+function closeDeleteConfirm(model: DeckListSubmodel): UpdateReturn {
+  const [confirmDialog, commands] = Dialog.close(model.confirmDialog);
+  return [{ ...model, confirmDialog, confirmingDeleteId: null }, Command.mapMessages(commands, toConfirmDialogMessage)];
+}
+
+function enterDeckListRoute(model: DeckListSubmodel): UpdateReturn {
+  const [closed, closeCommands] = closeDeleteConfirm(model);
   return [
     {
-      ...model,
-      accountMenuOpen: false,
-      confirmingDeleteId: null,
+      ...closed,
       contextMenu: null,
       error: null,
       loading: true,
     },
-    [FetchDecks()],
+    [...closeCommands, FetchDecks()],
   ];
 }
 
@@ -101,12 +110,33 @@ export const update = (
       ChangedDeckListSearch: ({ query }) => [{ ...model, searchQuery: query }, []],
       OpenedDeckListMenu: ({ deckId, x, y }) => {
         if (!deckListContextMenuAllowed(deckId)) return [model, []];
-        return [{ ...model, accountMenuOpen: false, contextMenu: { deckId, x, y } }, []];
+        return [{ ...model, contextMenu: { deckId, x, y } }, []];
       },
       ClosedDeckListMenu: () => [{ ...model, contextMenu: null }, []],
-      AskedDeckDelete: ({ id }) => [{ ...model, confirmingDeleteId: id, error: null, contextMenu: null }, []],
-      CancelledDeckDelete: () => [{ ...model, confirmingDeleteId: null }, []],
-      RequestedDeckDelete: ({ id }) => [{ ...model, confirmingDeleteId: null }, [DeleteDeck({ id })]],
+      AskedDeckDelete: ({ id }) => {
+        const [confirmDialog, commands] = Dialog.open(model.confirmDialog);
+        return [
+          { ...model, confirmDialog, confirmingDeleteId: id, error: null, contextMenu: null },
+          Command.mapMessages(commands, toConfirmDialogMessage),
+        ];
+      },
+      RequestedDeckDelete: () => {
+        const id = model.confirmingDeleteId;
+        const [closed, commands] = closeDeleteConfirm(model);
+        if (id == null) return [closed, commands];
+        return [closed, [...commands, DeleteDeck({ id })]];
+      },
+      // Escape, a backdrop click, and Cancel all reach here as Dialog's Closed out-message; the
+      // deck being confirmed is forgotten with the same handler that a programmatic cancel uses.
+      GotConfirmDialogMessage: ({ message }) => {
+        const [confirmDialog, commands, outMessage] = Dialog.update(model.confirmDialog, message);
+        const withDialog = { ...model, confirmDialog };
+        const mapped = Command.mapMessages(commands, toConfirmDialogMessage);
+        if (Option.isNone(outMessage) || outMessage.value._tag !== "Closed") return [withDialog, mapped];
+
+        const [cancelled, cancelCommands] = closeDeleteConfirm(withDialog);
+        return [cancelled, [...mapped, ...cancelCommands]];
+      },
       DeckDeleted: () => loadDeckList(model),
       DeckDeleteFailed: ({ message }) => [{ ...model, error: message }, []],
     }),

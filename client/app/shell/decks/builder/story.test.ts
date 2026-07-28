@@ -1,3 +1,5 @@
+import * as Dialog from "@foldkit/ui/dialog";
+import * as Menu from "@foldkit/ui/menu";
 import { Effect, Option } from "effect";
 import { Story } from "foldkit";
 import { Scene } from "foldkit/test";
@@ -5,7 +7,6 @@ import { expect, test } from "vitest";
 import type { ScryfallPrint } from "../../../domain/deck-builder/scryfall";
 import { client } from "../../../domain/rpc-client";
 import { BindCardArt } from "../../../domain/ui/card-art";
-import { OpenDialogAsModal } from "../../../domain/ui/confirmDialog";
 import { type CatalogCard, CreateDeck422, type SaveDeckRequest } from "../../../domain/wire/types";
 import { update as appUpdate, init } from "../../../main-exports";
 import { GotDeckBuilderMessage, UrlChanged } from "../../../messages";
@@ -15,11 +16,11 @@ import {
   ActivatedBuilderTarget,
   AddedBuilderCard,
   type Message as BuilderMessage,
-  CancelledBuilderDiscard,
   ChangedBuilderName,
   ClearedBuilderHover,
   ConfirmedBuilderDiscard,
   DeckSaveFailed,
+  GotDiscardDialogMessage,
   MovedBuilderHover,
   NavigatedAwayFromBuilder,
   OpenedBuilderMenu,
@@ -32,7 +33,7 @@ import {
   RequestedBuilderCancel,
   SetBuilderCommander,
 } from "./messages";
-import { initialDeckBuilderSubmodel } from "./submodel";
+import { DISCARD_DIALOG_ID, initialDeckBuilderSubmodel, PRINT_DIALOG_ID } from "./submodel";
 import { update as builderUpdate, NavigateHome, SaveDeck, SearchBuilderPrints } from "./update";
 import { BindBuilderCardPointer, view as builderView } from "./view";
 
@@ -42,7 +43,7 @@ const emptyViewInputs = {
   chrome: emptyChrome,
   username: me.username,
   meGravatarHash: null,
-  accountMenuOpen: false,
+  accountMenu: Menu.init({ id: "account-menu" }),
 };
 
 const url = (pathname: string, search = "") => ({
@@ -118,7 +119,7 @@ test("UrlChanged to DeckRoute resets stale builder state through the parent rout
           ...base.decks.builder,
           atEnd: true,
           commander: { id: staleCard.id, print: staleCard.default_print },
-          confirmingDiscard: true,
+          discardDialog: Dialog.init({ id: DISCARD_DIALOG_ID, isOpen: true }),
           dirty: true,
           editingId: "old-deck",
           entries: { [staleCard.id]: { count: 1, print: staleCard.default_print } },
@@ -200,11 +201,13 @@ test("picking a print for a commander-only card updates commander art", () => {
     Story.message(appMessage(ReceivedBuilderSearchPage({ cards: [commander], offset: 0, query: "" }))),
     Story.message(appMessage(SetBuilderCommander({ card: commander }))),
     Story.message(appMessage(OpenedBuilderPrintPicker({ addOnPick: false, cardId: "commander" }))),
+    Story.Command.resolve(Dialog.ShowDialog, Dialog.CompletedShowDialog()),
     Story.Command.resolve(
       SearchBuilderPrints,
       ReceivedBuilderPrints({ cardId: "commander", prints: [alternatePrint] }),
     ),
     Story.message(appMessage(PickedBuilderPrint({ cardId: "commander", print: alternatePrint.id }))),
+    Story.Command.resolve(Dialog.CloseDialog, Dialog.CompletedCloseDialog()),
     Story.model((m) => {
       expect(m.decks.builder.commander.print).toBe(alternatePrint.id);
       expect(m.decks.builder.entries.commander).toBeUndefined();
@@ -225,8 +228,10 @@ test("picking a print for a deck row updates preferredPrint and the entry print"
     Story.message(appMessage(ReceivedBuilderSearchPage({ cards: [solRing], offset: 0, query: "" }))),
     Story.message(appMessage(AddedBuilderCard({ card: solRing }))),
     Story.message(appMessage(OpenedBuilderPrintPicker({ addOnPick: false, cardId: "sol-ring" }))),
+    Story.Command.resolve(Dialog.ShowDialog, Dialog.CompletedShowDialog()),
     Story.Command.resolve(SearchBuilderPrints, ReceivedBuilderPrints({ cardId: "sol-ring", prints: [alternatePrint] })),
     Story.message(appMessage(PickedBuilderPrint({ cardId: "sol-ring", print: alternatePrint.id }))),
+    Story.Command.resolve(Dialog.CloseDialog, Dialog.CompletedCloseDialog()),
     Story.model((m) => {
       expect(m.decks.builder.entries["sol-ring"]?.print).toBe(alternatePrint.id);
       expect(m.decks.builder.entries["sol-ring"]?.count).toBe(1);
@@ -264,7 +269,9 @@ test("catalog and decklist are independent overscroll-contained scroll hosts", (
     Scene.expect(Scene.selector('[data-testid="builder-pool-scroll"]')).toHaveClass("overscroll-contain"),
     Scene.expect(Scene.selector('[data-testid="builder-decklist-scroll"]')).toHaveClass("overflow-y-auto"),
     Scene.expect(Scene.selector('[data-testid="builder-decklist-scroll"]')).toHaveClass("overscroll-contain"),
-    Scene.expect(Scene.selector('[data-testid="builder-print-picker"]')).not.toExist(),
+    // The <dialog> element stays mounted so Dialog can open it; a closed picker paints nothing.
+    Scene.expect(Scene.selector('[data-testid="builder-print-picker-backdrop"]')).not.toExist(),
+    Scene.expect(Scene.selector('[data-testid="builder-print-picker-scroll"]')).not.toExist(),
   );
 });
 
@@ -277,6 +284,7 @@ test("print picker freezes catalog and decklist scroll while print grid stays sc
     entries: { "sol-ring": { count: 1, print: solRing.default_print } },
     known: { "sol-ring": solRing },
     preferredPrint: { "sol-ring": solRing.default_print },
+    printDialog: Dialog.init({ id: PRINT_DIALOG_ID, isOpen: true }),
     printPicker: { addOnPick: false, cardId: "sol-ring", error: false, loading: false, prints: [alternatePrint] },
   };
 
@@ -284,7 +292,6 @@ test("print picker freezes catalog and decklist scroll while print grid stays sc
     { update: builderUpdate, view: (model) => builderView(model, emptyViewInputs) },
     Scene.with(model),
     Scene.Mount.resolve(BindBuilderCardPointer({ cardId: "sol-ring", kind: "deck" }), ClearedBuilderHover()),
-    Scene.Mount.resolve(OpenDialogAsModal(), ClearedBuilderHover()),
     Scene.Mount.resolveAll(
       [BindCardArt, ClearedBuilderHover() as never],
       [BindCardArt, ClearedBuilderHover() as never],
@@ -299,6 +306,66 @@ test("print picker freezes catalog and decklist scroll while print grid stays sc
   );
 });
 
+test("clicking the dimmed page behind the print picker dismisses it and unfreezes the builder", () => {
+  const solRing = card({ id: "sol-ring", name: "Sol Ring" });
+  const alternatePrint = print({ collector_number: "42", id: "sol-ring-alt-print", set: "rex", set_name: "Rex" });
+  const model = {
+    ...initialDeckBuilderSubmodel(),
+    atEnd: true,
+    entries: { "sol-ring": { count: 1, print: solRing.default_print } },
+    known: { "sol-ring": solRing },
+    preferredPrint: { "sol-ring": solRing.default_print },
+    printDialog: Dialog.init({ id: PRINT_DIALOG_ID, isOpen: true }),
+    printPicker: { addOnPick: false, cardId: "sol-ring", error: false, loading: false, prints: [alternatePrint] },
+  };
+
+  Scene.scene(
+    { update: builderUpdate, view: (model) => builderView(model, emptyViewInputs) },
+    Scene.with(model),
+    Scene.Mount.resolve(BindBuilderCardPointer({ cardId: "sol-ring", kind: "deck" }), ClearedBuilderHover()),
+    Scene.Mount.resolveAll(
+      [BindCardArt, ClearedBuilderHover() as never],
+      [BindCardArt, ClearedBuilderHover() as never],
+    ),
+    Scene.click(Scene.testId("builder-print-picker-backdrop")),
+    Scene.Command.resolve(Dialog.CloseDialog, Dialog.CompletedCloseDialog()),
+    Scene.expect(Scene.selector('[data-testid="print-tile-sol-ring-alt-print"]')).not.toExist(),
+    Scene.expect(Scene.selector('[data-testid="builder-pool-scroll"]')).toHaveClass("overflow-y-auto"),
+    Scene.expect(Scene.selector('[data-testid="builder-decklist-scroll"]')).toHaveClass("overflow-y-auto"),
+    // The print tiles' art mounts end with the picker.
+    Scene.Mount.expectEnded(BindCardArt),
+  );
+});
+
+test("the print picker's Close button dismisses it", () => {
+  const solRing = card({ id: "sol-ring", name: "Sol Ring" });
+  const alternatePrint = print({ collector_number: "42", id: "sol-ring-alt-print", set: "rex", set_name: "Rex" });
+  const model = {
+    ...initialDeckBuilderSubmodel(),
+    atEnd: true,
+    entries: { "sol-ring": { count: 1, print: solRing.default_print } },
+    known: { "sol-ring": solRing },
+    preferredPrint: { "sol-ring": solRing.default_print },
+    printDialog: Dialog.init({ id: PRINT_DIALOG_ID, isOpen: true }),
+    printPicker: { addOnPick: false, cardId: "sol-ring", error: false, loading: false, prints: [alternatePrint] },
+  };
+
+  Scene.scene(
+    { update: builderUpdate, view: (model) => builderView(model, emptyViewInputs) },
+    Scene.with(model),
+    Scene.Mount.resolve(BindBuilderCardPointer({ cardId: "sol-ring", kind: "deck" }), ClearedBuilderHover()),
+    Scene.Mount.resolveAll(
+      [BindCardArt, ClearedBuilderHover() as never],
+      [BindCardArt, ClearedBuilderHover() as never],
+    ),
+    Scene.click(Scene.testId("close-print-picker")),
+    Scene.Command.resolve(Dialog.CloseDialog, Dialog.CompletedCloseDialog()),
+    Scene.expect(Scene.text("Choose printing")).not.toExist(),
+    // The print tiles' art mounts end with the picker.
+    Scene.Mount.expectEnded(BindCardArt),
+  );
+});
+
 test("print selection renders a Scryfall tile picker instead of a UUID input", () => {
   const solRing = card({ id: "sol-ring", name: "Sol Ring" });
   const alternatePrint = print({ collector_number: "42", id: "sol-ring-alt-print", set: "rex", set_name: "Rex" });
@@ -308,6 +375,7 @@ test("print selection renders a Scryfall tile picker instead of a UUID input", (
     entries: { "sol-ring": { count: 1, print: solRing.default_print } },
     known: { "sol-ring": solRing },
     preferredPrint: { "sol-ring": solRing.default_print },
+    printDialog: Dialog.init({ id: PRINT_DIALOG_ID, isOpen: true }),
     printPicker: { addOnPick: false, cardId: "sol-ring", error: false, loading: false, prints: [alternatePrint] },
   };
 
@@ -315,7 +383,6 @@ test("print selection renders a Scryfall tile picker instead of a UUID input", (
     { update: builderUpdate, view: (model) => builderView(model, emptyViewInputs) },
     Scene.with(model),
     Scene.Mount.resolve(BindBuilderCardPointer({ cardId: "sol-ring", kind: "deck" }), ClearedBuilderHover()),
-    Scene.Mount.resolve(OpenDialogAsModal(), ClearedBuilderHover()),
     Scene.Mount.resolveAll(
       [BindCardArt, ClearedBuilderHover() as never],
       [BindCardArt, ClearedBuilderHover() as never],
@@ -407,15 +474,22 @@ test("decklist rows are keyed by card id so pointer mounts remount after remove"
 
   // Keys force snabbdom to destroy/recreate rows; without them BindBuilderCardPointer
   // keeps the removed cardId after the first click (Mount args are mount-time only).
-  const html = builderView(model, emptyViewInputs);
-  expect(html).not.toBeNull();
-  if (html == null) return;
-  for (const id of ["mana-crypt", "sol-ring"] as const) {
-    const row = Scene.selector(`[data-testid="deck-row-${id}"]`)(html);
-    expect(Option.isSome(row)).toBe(true);
-    if (Option.isNone(row)) return;
-    expect(row.value.key).toBe(id);
-  }
+  Scene.scene(
+    { update: builderUpdate, view: (model) => builderView(model, emptyViewInputs) },
+    Scene.with(model),
+    Scene.tap((sim) => {
+      for (const id of ["mana-crypt", "sol-ring"] as const) {
+        const row = Scene.selector(`[data-testid="deck-row-${id}"]`)(sim.html);
+        expect(Option.isSome(row)).toBe(true);
+        if (Option.isNone(row)) return;
+        expect(row.value.key).toBe(id);
+      }
+    }),
+    Scene.Mount.resolve(BindBuilderCardPointer({ cardId: "mana-crypt", kind: "deck" }), ClearedBuilderHover()),
+    Scene.Mount.resolve(BindBuilderCardPointer({ cardId: "sol-ring", kind: "deck" }), ClearedBuilderHover()),
+    Scene.Mount.resolve(BindCardArt, ClearedBuilderHover() as never),
+    Scene.Mount.resolve(BindCardArt, ClearedBuilderHover() as never),
+  );
 });
 
 test("choose-print menu action opens the print picker without adding a copy", () => {
@@ -434,6 +508,7 @@ test("choose-print menu action opens the print picker without adding a copy", ()
         }),
       ),
     ),
+    Story.Command.resolve(Dialog.ShowDialog, Dialog.CompletedShowDialog()),
     Story.Command.resolve(SearchBuilderPrints, ReceivedBuilderPrints({ cardId: "sol-ring", prints: [] })),
     Story.model((m) => {
       expect(m.decks.builder.menu).toBeNull();
@@ -530,7 +605,7 @@ test("Cancel on a clean builder does not open the discard confirm", () => {
     Story.message(appMessage(RequestedBuilderCancel())),
     Story.Command.resolve(NavigateHome, NavigatedAwayFromBuilder()),
     Story.model((m) => {
-      expect(m.decks.builder.confirmingDiscard).toBe(false);
+      expect(m.decks.builder.discardDialog.isOpen).toBe(false);
     }),
   );
 });
@@ -545,14 +620,15 @@ test("Cancel on a dirty builder opens the discard confirm", () => {
     Story.message(appMessage(ReceivedBuilderSearchPage({ cards: [solRing], offset: 0, query: "" }))),
     Story.message(appMessage(AddedBuilderCard({ card: solRing }))),
     Story.message(appMessage(RequestedBuilderCancel())),
+    Story.Command.resolve(Dialog.ShowDialog, Dialog.CompletedShowDialog()),
     Story.model((m) => {
       expect(m.decks.builder.dirty).toBe(true);
-      expect(m.decks.builder.confirmingDiscard).toBe(true);
+      expect(m.decks.builder.discardDialog.isOpen).toBe(true);
     }),
   );
 });
 
-test("CancelledBuilderDiscard closes the discard confirm without navigating", () => {
+test("dismissing the discard confirm keeps the edits and stays in the builder", () => {
   const [model] = init();
   const solRing = card({ id: "sol-ring", name: "Sol Ring" });
 
@@ -562,9 +638,11 @@ test("CancelledBuilderDiscard closes the discard confirm without navigating", ()
     Story.message(appMessage(ReceivedBuilderSearchPage({ cards: [solRing], offset: 0, query: "" }))),
     Story.message(appMessage(AddedBuilderCard({ card: solRing }))),
     Story.message(appMessage(RequestedBuilderCancel())),
-    Story.message(appMessage(CancelledBuilderDiscard())),
+    Story.Command.resolve(Dialog.ShowDialog, Dialog.CompletedShowDialog()),
+    Story.message(appMessage(GotDiscardDialogMessage({ message: Dialog.RequestedClose() }))),
+    Story.Command.resolve(Dialog.CloseDialog, Dialog.CompletedCloseDialog()),
     Story.model((m) => {
-      expect(m.decks.builder.confirmingDiscard).toBe(false);
+      expect(m.decks.builder.discardDialog.isOpen).toBe(false);
       expect(m.decks.builder.dirty).toBe(true);
     }),
   );
@@ -579,7 +657,7 @@ test("ConfirmedBuilderDiscard is handled without throwing", () => {
     Story.message(appMessage(ConfirmedBuilderDiscard())),
     Story.Command.resolve(NavigateHome, NavigatedAwayFromBuilder()),
     Story.model((m) => {
-      expect(m.decks.builder.confirmingDiscard).toBe(false);
+      expect(m.decks.builder.discardDialog.isOpen).toBe(false);
     }),
   );
 });
@@ -598,18 +676,53 @@ test("Cancel button renders in builder view", () => {
   );
 });
 
-test("discard confirm dialog renders when confirmingDiscard is true", () => {
+/** A dirty builder with its discard prompt already up — what `RequestedBuilderCancel` leaves behind. */
+const askingToDiscard = {
+  ...initialDeckBuilderSubmodel(),
+  atEnd: true,
+  dirty: true,
+  discardDialog: Dialog.init({ id: DISCARD_DIALOG_ID, isOpen: true }),
+  searching: false,
+};
+
+const builderProgram = {
+  update: builderUpdate,
+  view: (model: typeof askingToDiscard) => builderView(model, emptyViewInputs),
+};
+
+test("backing out of the discard prompt keeps the edits", () => {
+  Scene.scene(
+    builderProgram,
+    Scene.with(askingToDiscard),
+    Scene.click(Scene.selector('[data-testid="confirm-cancel"]')),
+    Scene.Command.resolve(Dialog.CloseDialog, Dialog.CompletedCloseDialog()),
+    Scene.expect(Scene.selector('[data-testid="confirm-title"]')).not.toExist(),
+    Scene.expect(Scene.selector('[data-testid="deck-builder-page"]')).toExist(),
+  );
+});
+
+test("confirming the discard prompt leaves the builder", () => {
+  Scene.scene(
+    builderProgram,
+    Scene.with(askingToDiscard),
+    Scene.click(Scene.selector('[data-testid="confirm-ok"]')),
+    Scene.Command.resolve(Dialog.CloseDialog, Dialog.CompletedCloseDialog()),
+    Scene.Command.resolve(NavigateHome, NavigatedAwayFromBuilder()),
+    Scene.expect(Scene.selector('[data-testid="confirm-title"]')).not.toExist(),
+  );
+});
+
+test("the discard prompt asks before throwing edits away", () => {
   const model = {
     ...initialDeckBuilderSubmodel(),
     atEnd: true,
-    confirmingDiscard: true,
+    discardDialog: Dialog.init({ id: DISCARD_DIALOG_ID, isOpen: true }),
     searching: false,
   };
 
   Scene.scene(
     { update: builderUpdate, view: (model) => builderView(model, emptyViewInputs) },
     Scene.with(model),
-    Scene.Mount.resolve(OpenDialogAsModal(), ClearedBuilderHover()),
     Scene.expect(Scene.selector('[data-testid="builder-discard-confirm"]')).toExist(),
     Scene.expect(Scene.text("Discard changes?")).toExist(),
   );

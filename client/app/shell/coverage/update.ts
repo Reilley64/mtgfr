@@ -37,7 +37,6 @@ export function loadCoverage(
       faithfulCount: null,
       oracleTotal: null,
       error: null,
-      accountMenuOpen: false,
     },
     [FetchCoverage()],
   ];

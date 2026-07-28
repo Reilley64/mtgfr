@@ -168,24 +168,38 @@ across 19 files and the 12 `h.input` sites
 Delete `buttonClass` / `gameButtonClass`. New indexed surface spec for
 `client/app/domain/ui/`; update `DESIGN.md` components prose.
 
-**W2 — Shell submodel components.**
-`dialog` → `domain/ui/confirmDialog.ts`. `menu` → `shell/account-chrome/view.ts`
-(replacing hand-rolled `aria-haspopup` + `BindAccountMenuEscape`) and the decks-list
-context menu (replacing `BindDeckListContextMenu`). Those three are the confirmed
-surfaces. `tooltip` / `popover` / `tabs` are **not** committed here: the wave plan
-surveys the shell for a surface that already implements that pattern by hand, and
-adopts the primitive only where one exists — no surface, no adoption, no placeholder
-component. Verify native `<dialog>` + focus trap under the Scene/happy-dom harness in
-this wave, before W4 depends on it. Updates
+**W2 — Shell submodel components. Shipped.**
+`dialog` → `domain/ui/confirmDialog.ts`, wired to the deck-list delete and deck-builder
+discard prompts. `menu` → `shell/account-chrome/view.ts`, replacing hand-rolled
+`aria-haspopup` + `BindAccountMenuEscape` and hoisting the open flag from three
+duplicated `accountMenuOpen` booleans to one `Menu.Model` on the root model.
+
+Two planned adoptions did not land. The decks-list context menu **stays hand-rolled**:
+it is pointer-positioned, and `Menu` anchors its panel to a trigger button and returns
+focus there. It takes the shared `menuPanelClass` / `menuItemClass` chrome instead.
+`tooltip` / `popover` / `tabs` found no hand-rolled surface to replace — the only
+tooltip-shaped code is the native `title=` attribute — so none were adopted. Updates
 [`shell-routes-and-auth`](2026-07-20-shell-routes-and-auth.md) and
 [`deck-list-and-builder`](2026-07-20-deck-list-and-builder.md).
 
-**W3 — Shell listbox / combobox / virtualList.**
-Deck-builder card lists and shell pickers. `toast` is adopted only if the wave plan
-finds an existing transient-notification surface to replace; it is not introduced as
-a new UI affordance. Introduces `@floating-ui/dom` anchoring in earnest. Updates
-[`deck-list-and-builder`](2026-07-20-deck-list-and-builder.md) and
-[`lobby-entry-ui`](2026-07-20-lobby-entry-ui.md).
+**W3 — One modal chrome. Shipped.**
+The planned W3 primitives had no shell surface to adopt. `listbox` / `combobox` are
+anchored trigger+popup submodels, but the shell's three searches — deck-list, card
+pool, coverage — are plain inputs whose results render **inline** in the page, so
+adopting either would move results into a floating panel: a restyle, which the
+Non-goals forbid. `virtualList` windows fixed-height rows; the card pool is a
+responsive auto-fill grid paged by an IntersectionObserver sentinel — fetch paging,
+not render windowing. `toast` found zero transient-notification surfaces (errors are
+inline `alertClass` panels), so it was not introduced. `@floating-ui/dom` anchoring
+therefore stays unexercised beyond W2's `Menu`.
+
+W3 shipped the remaining `dialog` adoption instead. `domain/ui/dialog.ts` factors the
+modal frame — `<dialog>`, backdrop, panel — out of `confirmDialog` into `modalDialog`,
+and the deck builder's print picker moves onto it, gaining a focus trap, focus restore,
+Escape, and a managed close. That emptied the hand-rolled `native-dialog.ts`, so it and
+its `ModalOpened` / `OpenDialogAsModal` plumbing are gone and every modal in the client
+is one chrome. Updates [`ui-component-layer`](2026-07-28-ui-component-layer.md) and
+[`deck-list-and-builder`](2026-07-20-deck-list-and-builder.md).
 
 **W4 — Board blocking modals.**
 `prompt-modal`, `result-overlay`, `mulligan-overlay`, and the concede confirm →
