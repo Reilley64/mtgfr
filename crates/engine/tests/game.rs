@@ -109958,3 +109958,117 @@ fn power_leak_overpayment_does_not_bank_prevention_for_a_later_hit() {
         "the two mana over the cap were spent, not banked",
     );
 }
+
+/// P1's Forcefield names `creature` for its shield. Combat has already reached declare blockers,
+/// so "unblocked" is a settled fact by the time the target is checked.
+fn arm_forcefield(
+    game: &mut Game,
+    forcefield: ObjectId,
+    creature: ObjectId,
+) -> Result<Vec<Event>, Reject> {
+    advance_until(game, |g| g.priority_holder() == PlayerId(1));
+    game.fund_mana(PlayerId(1));
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(1),
+        object: forcefield,
+        ability_index: 0,
+        target: Some(Target::Object(creature)),
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+}
+
+#[test]
+fn forcefield_lets_one_point_of_the_named_attackers_damage_through() {
+    // "{1}: The next time an unblocked creature of your choice would deal combat damage to you
+    // this turn, prevent all but 1 of that damage." The complement of every other shield in the
+    // pool: those subtract a point total, this one leaves one behind.
+    let mut game = Game::new();
+    let forcefield = game.spawn_on_battlefield(PlayerId(1), card("Forcefield"));
+    let attacker = game.spawn_on_battlefield(PlayerId(0), creature("Ogre (test)", 4, 4, &[]));
+
+    attack_with(&mut game, vec![attacker]);
+    block_with(&mut game, vec![]).unwrap();
+    arm_forcefield(&mut game, forcefield, attacker).unwrap();
+    resolve_top_of_stack(&mut game);
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+
+    assert_eq!(
+        game.life(PlayerId(1)),
+        19,
+        "3 of the 4 prevented, 1 got through"
+    );
+}
+
+#[test]
+fn forcefield_does_not_shield_against_an_attacker_something_is_blocking() {
+    // "An *unblocked* creature of your choice" — a creature the defender threw a body in front of
+    // is not one, so naming it fizzles the ability (CR 608.2b) and its trample damage lands whole.
+    // Targets are not re-validated at activation here, only at resolution.
+    let mut game = Game::new();
+    let forcefield = game.spawn_on_battlefield(PlayerId(1), card("Forcefield"));
+    let attacker = game.spawn_on_battlefield(
+        PlayerId(0),
+        creature("Trampling Ogre (test)", 4, 4, &[Keyword::Trample]),
+    );
+    let blocker = game.spawn_on_battlefield(PlayerId(1), creature("Wall (test)", 0, 1, &[]));
+
+    attack_with(&mut game, vec![attacker]);
+    block_with(&mut game, vec![(blocker, attacker)]).unwrap();
+    arm_forcefield(&mut game, forcefield, attacker).unwrap();
+    resolve_top_of_stack(&mut game);
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+
+    assert_eq!(
+        game.life(PlayerId(1)),
+        17,
+        "1 to the wall and 3 trampled over, none of it shielded",
+    );
+}
+
+#[test]
+fn forcefield_shields_only_the_creature_it_named() {
+    // The shield is keyed to the source it names, not to the player it stands in front of, so the
+    // rest of the attack lands in full.
+    let mut game = Game::new();
+    let forcefield = game.spawn_on_battlefield(PlayerId(1), card("Forcefield"));
+    let named = game.spawn_on_battlefield(PlayerId(0), creature("Ogre (test)", 4, 4, &[]));
+    let other = game.spawn_on_battlefield(PlayerId(0), creature("Bear (test)", 3, 3, &[]));
+
+    attack_with(&mut game, vec![named, other]);
+    block_with(&mut game, vec![]).unwrap();
+    arm_forcefield(&mut game, forcefield, named).unwrap();
+    resolve_top_of_stack(&mut game);
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+
+    assert_eq!(
+        game.life(PlayerId(1)),
+        16,
+        "1 from the named ogre, all 3 from the bear"
+    );
+}
+
+#[test]
+fn forcefield_is_spent_by_the_first_hit_it_stands_in_front_of() {
+    // "The *next* time" — a double striker's first-strike damage spends the shield, and the
+    // regular combat damage step then lands whole.
+    let mut game = Game::new();
+    let forcefield = game.spawn_on_battlefield(PlayerId(1), card("Forcefield"));
+    let attacker = game.spawn_on_battlefield(
+        PlayerId(0),
+        creature("Twin Ogre (test)", 4, 4, &[Keyword::DoubleStrike]),
+    );
+
+    attack_with(&mut game, vec![attacker]);
+    block_with(&mut game, vec![]).unwrap();
+    arm_forcefield(&mut game, forcefield, attacker).unwrap();
+    resolve_top_of_stack(&mut game);
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+
+    assert_eq!(
+        game.life(PlayerId(1)),
+        15,
+        "1 in the first-strike step, then the full 4"
+    );
+}

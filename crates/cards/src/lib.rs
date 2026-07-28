@@ -2701,6 +2701,42 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
         );
     }
 
+    /// Forcefield's shield is keyed to the creature it names, not to the player it protects —
+    /// `target_is_source` swaps the two — and it lets a point *through* rather than stopping one.
+    #[test]
+    fn unlimited_forcefield_shields_its_controller_against_the_creature_it_names() {
+        let forcefield = get_by_name("Forcefield").expect("Forcefield is in the pool");
+        let Effect::Misc(MiscEffect::PreventNextDamage {
+            amount,
+            target,
+            all_but,
+            target_is_source,
+            combat_only,
+            ..
+        }) = &forcefield.abilities[0].effect
+        else {
+            panic!("the activated ability arms a prevention shield");
+        };
+        assert_eq!(
+            *amount, None,
+            "all but 1 gets through, so there is no point total to stop"
+        );
+        assert_eq!(*all_but, Some(Amount::Fixed(1)));
+        assert!(
+            *target_is_source,
+            "the named creature is the damage's source, not the protectee"
+        );
+        assert!(*combat_only, "would deal combat damage");
+        let TargetSpec::Permanent(filter) = target else {
+            panic!("an unblocked creature of your choice");
+        };
+        assert!(
+            filter.attacking_you,
+            "attacking you — it deals its combat damage to you"
+        );
+        assert!(filter.unblocked, "an unblocked creature");
+    }
+
     /// Power Leak's payment step has to be capped at the damage the step after it deals: without
     /// `prevent_up_to`, "prevent X of *that* damage" would leave an overpayment sitting on the
     /// player as a shield for the rest of the turn.
@@ -3487,6 +3523,9 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                 }),
                 Effect::Misc(MiscEffect::PreventNextDamage {
                     shield_source: false,
+                    all_but: None,
+                    target_is_source: false,
+                    combat_only: false,
                     redirect_to_controller: false,
                     amount: Some(Amount::Fixed(3)),
                     from_color: ColorFilter::Any,
@@ -3778,6 +3817,9 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                 "Samite Healer",
                 Effect::Misc(MiscEffect::PreventNextDamage {
                     shield_source: false,
+                    all_but: None,
+                    target_is_source: false,
+                    combat_only: false,
                     redirect_to_controller: false,
                     amount: Some(Amount::Fixed(1)),
                     from_color: ColorFilter::Any,
@@ -3791,6 +3833,9 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                 // activated it.
                 Effect::Misc(MiscEffect::PreventNextDamage {
                     shield_source: false,
+                    all_but: None,
+                    target_is_source: false,
+                    combat_only: false,
                     redirect_to_controller: false,
                     amount: Some(Amount::Fixed(2)),
                     from_color: ColorFilter::Any,
@@ -4699,6 +4744,9 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                 ability.effect,
                 Effect::Misc(MiscEffect::PreventNextDamage {
                     shield_source: false,
+                    all_but: None,
+                    target_is_source: false,
+                    combat_only: false,
                     redirect_to_controller: false,
                     amount: None,
                     target: TargetSpec::None,
@@ -4717,6 +4765,9 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
             spell.effect,
             Effect::Misc(MiscEffect::PreventNextDamage {
                 shield_source: false,
+                all_but: None,
+                target_is_source: false,
+                combat_only: false,
                 redirect_to_controller: false,
                 amount: None,
                 target: TargetSpec::None,
@@ -4745,6 +4796,9 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
             ability.effect,
             Effect::Misc(MiscEffect::PreventNextDamage {
                 shield_source: false,
+                all_but: None,
+                target_is_source: false,
+                combat_only: false,
                 redirect_to_controller: true,
                 amount: None,
                 target: TargetSpec::Creature,
@@ -4801,6 +4855,9 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                 gain_life: false,
                 redirect_to_controller: true,
                 shield_source: true,
+                all_but: None,
+                target_is_source: false,
+                combat_only: false,
             }),
             "one point, off itself, onto the player who armed it"
         );

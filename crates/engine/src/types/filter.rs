@@ -818,6 +818,13 @@ pub struct PermanentFilter {
     /// [`CombatState::blocks`], the same declared-blocks list `anthem_static`'s own
     /// `blocking_only` axis consults.
     pub blocking: bool,
+    /// Restrict to attacking creatures no creature is blocking (Forcefield — "an *unblocked*
+    /// creature of your choice"). The complement of [`blocking`](Self::blocking) one step over:
+    /// that one asks whether this creature blocks something, this one whether anything blocks it.
+    /// `false` (default) imposes no restriction. Pair it with [`attacking`](Self::attacking) or
+    /// [`attacking_you`](Self::attacking_you) — on its own it also matches every creature sitting
+    /// at home, which no attacker is blocking either.
+    pub unblocked: bool,
     /// Power strictly less than the filter's own source permanent's power (Mentor, CR 702.121a
     /// "lesser power"). `false` (default) imposes no restriction. Meaningless without a `source`
     /// (see [`Game::permanent_matches`]) — every filter that sets this pairs it with a targeted
@@ -961,6 +968,7 @@ impl PermanentFilter {
             attacking: false,
             attacking_you: false,
             blocking: false,
+            unblocked: false,
             power_less_than_source: false,
             toughness_less_than_source_power: false,
             entered_this_turn: false,

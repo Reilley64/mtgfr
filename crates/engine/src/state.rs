@@ -459,9 +459,21 @@ pub struct PreventionShield {
     /// Points left on it, or `None` for "prevent *that* damage": the whole of the next qualifying
     /// hit, spending the shield outright however big that hit turns out to be.
     pub amount: Option<i32>,
+    /// Points that get through rather than points stopped — Forcefield's "prevent all but 1 of
+    /// that damage" (CR 615.4). `None` is every other shield in the pool, which subtracts. A
+    /// keep-shield ignores `amount` and is spent outright by the hit it stood in front of,
+    /// however big, exactly as an `amount: None` shield is.
+    pub keep: Option<i32>,
     /// Which sources it stops (CR 105.2a — the Circle of Protection cycle's "a black source").
     /// [`ColorFilter::Any`](crate::ColorFilter) stops every source, which is the plain shield.
     pub from_color: crate::ColorFilter,
+    /// The one source it stops, when the card names a source rather than a color (Forcefield's
+    /// chosen creature). `None` — every shield but Forcefield's — leaves `from_color` as the only
+    /// gate.
+    pub from_source: Option<crate::ObjectId>,
+    /// "Would deal *combat* damage" (Forcefield): the shield only stands in front of damage dealt
+    /// in a combat damage step. `false` — every other shield — covers combat and noncombat alike.
+    pub combat_only: bool,
     /// Reverse Damage's "you gain life equal to the damage prevented this way" — paid to the
     /// shield's own controller as the spend is minted.
     pub gain_life: bool,

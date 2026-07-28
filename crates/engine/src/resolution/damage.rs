@@ -68,11 +68,13 @@ impl Game {
             if shield.redirect_to.is_some() && !allow_redirect {
                 continue;
             }
-            // "Prevent that damage" (no point total) eats everything still coming; a point
-            // shield eats what it has left.
-            let bite = match shield.amount {
-                None => amount - prevented,
-                Some(points) => points.min(amount - prevented),
+            // "Prevent all but 1 of that damage" (Forcefield) subtracts from the other end:
+            // everything still coming *except* the points it lets through. "Prevent that damage"
+            // (no point total) eats everything still coming; a point shield eats what it has left.
+            let bite = match (shield.keep, shield.amount) {
+                (Some(keep), _) => (amount - prevented - keep).max(0),
+                (None, None) => amount - prevented,
+                (None, Some(points)) => points.min(amount - prevented),
             };
             prevented += bite;
             if shield.gain_life {
@@ -135,9 +137,42 @@ impl Game {
         target: Target,
         source: ObjectId,
     ) -> impl Iterator<Item = &crate::state::PreventionShield> {
-        self.damage_prevention_shields.iter().filter(move |shield| {
-            shield.target == target && self.color_matches(shield.from_color, source)
-        })
+        self.damage_prevention_shields
+            .iter()
+            .filter(move |shield| self.shield_stands_between(shield, target, source))
+    }
+
+    /// Whether `shield` stands between `source` and `target` at this moment — the one predicate
+    /// the mint above and [`Game::apply`]'s [`Event::DamagePrevented`] arm both ask, so the two
+    /// can't drift about which shields paid.
+    pub(crate) fn shield_stands_between(
+        &self,
+        shield: &crate::state::PreventionShield,
+        target: Target,
+        source: ObjectId,
+    ) -> bool {
+        if shield.target != target {
+            return false;
+        }
+        // A named source (Forcefield's chosen creature) replaces the colour gate rather than
+        // joining it — the card names the one thing it stops, not a class of them.
+        if let Some(named) = shield.from_source {
+            return named == source && (!shield.combat_only || self.in_combat_damage_step());
+        }
+        if shield.combat_only && !self.in_combat_damage_step() {
+            return false;
+        }
+        self.color_matches(shield.from_color, source)
+    }
+
+    /// Whether damage being dealt right now is combat damage — read off the step rather than
+    /// carried on the event, since combat damage is the only damage either combat damage step
+    /// deals (CR 510.2).
+    fn in_combat_damage_step(&self) -> bool {
+        matches!(
+            self.current_step(),
+            crate::Step::FirstStrikeCombatDamage | crate::Step::CombatDamage
+        )
     }
 
     /// [`creature_damage_events`](Self::creature_damage_events) plus Disintegrate's two riders on

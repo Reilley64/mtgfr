@@ -222,7 +222,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [x] **Fireball** {X}{R} · Sorcery — increment 53
 - [x] **Flashfires** {3}{R} · Sorcery — increment 51
 - [x] **Force of Nature** {2}{G}{G}{G}{G} · Creature — Elemental — increment 20
-- [ ] **Forcefield** {3} · Artifact — increment 4
+- [x] **Forcefield** {3} · Artifact
 - [x] **Fork** {R}{R} · Instant — increment 13
 - [x] **Fungusaur** {3}{G} · Creature — Fungus Dinosaur — increment 63
 - [x] **Gaea's Liege** {3}{G}{G}{G} · Creature — Avatar — increment 74, 8e

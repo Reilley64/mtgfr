@@ -233,7 +233,10 @@ impl Game {
                     .push(crate::state::PreventionShield {
                         target: crate::Target::Player(payer),
                         amount: Some(points),
+                        keep: None,
                         from_color: crate::ColorFilter::Any,
+                        from_source: None,
+                        combat_only: false,
                         gain_life: false,
                         redirect_to: None,
                     });

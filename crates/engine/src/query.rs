@@ -1640,6 +1640,11 @@ impl Game {
         if filter.blocking && !self.combat.blocks.iter().any(|&(b, _)| b == id) {
             return false;
         }
+        // Nothing is blocking *it* (Forcefield's "an unblocked creature of your choice") — the
+        // mirror image of the line above, read off the same declared-blocks list.
+        if filter.unblocked && self.combat.blocks.iter().any(|&(_, a)| a == id) {
+            return false;
+        }
         // Nonlegendary exclusion (CR 205.4a — Muddle, the Ever-Changing's "nonlegendary
         // creature you control"). Reads the current (possibly copied) def.
         if filter.nonlegendary && self.def_of(id).legendary {

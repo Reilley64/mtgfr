@@ -1772,7 +1772,7 @@ express other "any time you could cast an instant, you may pay" riders before sh
 this one card.
 *Cards:* guardian_angel.
 
-### 69. `prevent-all-but-n` — 1 card, M
+### 69. `prevent-all-but-n` — 1 card, M — **done**
 Depends on: #4, #5.
 Split out of #4. Forcefield: "{1}: The next time an unblocked creature of your choice would deal
 combat damage to you this turn, prevent all but 1 of that damage." The shield from #4 subtracts a
@@ -1784,6 +1784,29 @@ have.
 rather than adding a parallel list, and key it to the source with whatever #5 lands. The
 "unblocked creature" filter is readable from combat state at the choke.
 *Cards:* forcefield.
+
+*Landed:* three fields on `PreventNextDamage` and three on `PreventionShield`, no new effect and no
+parallel shield list. The sketch's `Consume`/`AllBut` enum was more than the arithmetic needed: one
+`keep: Option<i32>` alongside the existing `amount: Option<i32>` covers all three readings at the
+choke — `Some(keep)` subtracts from the other end (`amount - prevented - keep`), `None`/`None` eats
+the whole hit, `None`/`Some(points)` eats what it has left. A keep-shield is then spent outright by
+the hit it stood in front of, exactly as an `amount`-less shield already was, so the spend side in
+`apply` needed one guard rather than a branch per arithmetic.
+
+#5's source-keyed shield never landed, so `from_source: Option<ObjectId>` landed here instead — a
+named source *replaces* the colour gate rather than joining it, since a card names either a class of
+sources or one of them, never both. `combat_only` reads the step (CR 510.2 — a combat damage step
+deals nothing but combat damage) rather than threading a flag through the damage events.
+
+`target_is_source` is the one piece with no precedent: every other prevention card targets what it
+protects, Forcefield targets what it stops. Rather than a second target slot, the flag swaps the
+meaning of the existing one — the chosen creature becomes `from_source` and the shield goes up in
+front of the ability's controller.
+
+The `unblocked` filter axis is the mirror of `blocking`, read off the same declared-blocks list from
+the other end. Targets aren't re-validated at activation in this engine (the established CR 608.2b
+posture), so naming a creature that gets blocked fizzles the ability at resolution rather than
+rejecting the activation; the regression test pins that with a trampler.
 
 ### 70. `damage-replaced-by-counter-removal` — 1 card, M — **done**
 Depends on: #4.

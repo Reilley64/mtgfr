@@ -1853,16 +1853,25 @@ impl Game {
                 source,
             } => {
                 let mut left = amount;
-                let colors = self.colors_of(source);
+                let stands: Vec<bool> = self
+                    .damage_prevention_shields
+                    .iter()
+                    .map(|shield| self.shield_stands_between(shield, target, source))
+                    .collect();
+                let mut index = 0;
                 self.damage_prevention_shields.retain_mut(|shield| {
-                    if left <= 0
-                        || shield.target != target
-                        || !shield.from_color.matched_by(&colors)
-                    {
+                    let stood = stands[index];
+                    index += 1;
+                    if left <= 0 || !stood {
                         return true;
                     }
-                    // "Prevent that damage" is spent outright by the hit it stopped, however big;
-                    // a point shield keeps whatever the hit didn't need.
+                    // "Prevent that damage" and Forcefield's "prevent all but 1 of that damage"
+                    // are both spent outright by the hit they stood in front of, however big; a
+                    // point shield keeps whatever the hit didn't need.
+                    if shield.keep.is_some() {
+                        left = 0;
+                        return false;
+                    }
                     let Some(points) = shield.amount.as_mut() else {
                         left = 0;
                         return false;

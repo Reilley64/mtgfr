@@ -287,6 +287,9 @@ impl Game {
                 gain_life,
                 redirect_to_controller,
                 shield_source,
+                all_but,
+                target_is_source,
+                combat_only,
                 ..
             }) => {
                 // No point total is "prevent *that* damage" (the Circles, Reverse Damage) — the
@@ -302,17 +305,33 @@ impl Game {
                         Some(points)
                     }
                 };
+                // Forcefield names a *source* rather than a protectee: the chosen creature is
+                // what the shield stops, and what it stands in front of is this ability's own
+                // controller.
+                let from_source = match (target_is_source, target) {
+                    (true, Some(Target::Object(creature))) => Some(creature),
+                    (true, _) => return,
+                    (false, _) => None,
+                };
                 self.damage_prevention_shields
                     .push(crate::state::PreventionShield {
                         // Personal Incarnation's shield sits on the permanent that armed it;
                         // every other one covers whatever the ability targeted, or its controller.
                         target: if shield_source {
                             Target::Object(source)
+                        } else if target_is_source {
+                            Target::Player(controller)
                         } else {
                             target.unwrap_or(Target::Player(controller))
                         },
                         amount: points,
+                        keep: all_but.map(|keep| {
+                            self.resolve_amount(keep, controller, source, target, x)
+                                .max(0)
+                        }),
                         from_color,
+                        from_source,
+                        combat_only,
                         gain_life,
                         redirect_to: redirect_to_controller.then_some(Target::Player(controller)),
                     });

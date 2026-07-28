@@ -1596,7 +1596,7 @@ impl<'de> Deserialize<'de> for TypeSet {
 /// composable axes (`types`, `controller`, `token`, `other`, `enchanted`, `attached_to_creature`,
 /// `enchanted_by_you`, `mv_max`, `mv_min`, `mv_eq_x`, `mv_max_x`, `power_max`, `power_min`, `power_parity`,
 /// `noncreature`, `exclude`, `color`, `not_color`, `modified`, `attacking`, `attacking_you`,
-/// `blocking`, `power_less_than_source`, `toughness_less_than_source_power`, `entered_this_turn`,
+/// `blocking`, `unblocked`, `power_less_than_source`, `toughness_less_than_source_power`, `entered_this_turn`,
 /// `has_mana_ability`,
 /// `controlled_since_turn_start`, `did_not_attack_this_turn`,
 /// `nonbasic`, `nonlegendary`, `nonlair`, `exclude_subtypes`,
@@ -1698,6 +1698,8 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     #[serde(default)]
                     blocking: bool,
                     #[serde(default)]
+                    unblocked: bool,
+                    #[serde(default)]
                     power_less_than_source: bool,
                     #[serde(default)]
                     toughness_less_than_source_power: bool,
@@ -1770,6 +1772,7 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     attacking: t.attacking,
                     attacking_you: t.attacking_you,
                     blocking: t.blocking,
+                    unblocked: t.unblocked,
                     power_less_than_source: t.power_less_than_source,
                     toughness_less_than_source_power: t.toughness_less_than_source_power,
                     entered_this_turn: t.entered_this_turn,

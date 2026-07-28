@@ -125,6 +125,21 @@ pub enum MiscEffect {
         /// no [`TargetSpec`](crate::TargetSpec) can name an effect's own source.
         #[cfg_attr(feature = "card-dsl", serde(default))]
         shield_source: bool,
+        /// "Prevent all but 1 of that damage" (Forcefield, CR 615.4) — the points that get
+        /// *through*, rather than the points stopped. Set it instead of `amount`, not alongside:
+        /// a keep-shield is spent outright by the hit it stood in front of.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        all_but: Option<Amount>,
+        /// "An unblocked creature of your choice would deal combat damage **to you**"
+        /// (Forcefield): the chosen `target` is the damage's *source*, and the shield goes up in
+        /// front of this ability's controller. The ordinary reading — `target` is what the shield
+        /// protects — is what every other card in the pool prints.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        target_is_source: bool,
+        /// "Would deal *combat* damage" (Forcefield): only damage dealt in a combat damage step
+        /// is stopped. `false` (default) covers combat and noncombat alike.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        combat_only: bool,
     },
 
     PreventCombatDamageToYouCreatingTokens {
