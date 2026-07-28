@@ -2611,6 +2611,7 @@ mod cache_tests {
             multikicker: None,
         },
         reduce_own_generic: None,
+        x_color: None,
     };
 
     fn creature(power: i32, toughness: i32) -> CardDef {
@@ -3043,6 +3044,7 @@ mod characteristic_query_tests {
             multikicker: None,
         },
         reduce_own_generic: None,
+        x_color: None,
     };
 
     fn creature_with(keywords: &'static [Keyword]) -> CardDef {

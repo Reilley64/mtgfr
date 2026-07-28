@@ -990,7 +990,7 @@ is now), plus a `cost_per_extra_target` field on `CardDef` consulted after targe
 in the cast path.
 *Cards:* fireball.
 
-### 54. `damage-then-gain-that-much-life` — 1 card, M
+### 54. `damage-then-gain-that-much-life` — 1 card, M — **done**
 Depends on: nothing.
 Drain Life deals X damage to any target and gains life "equal to the damage dealt" — capped by
 the victim's life total / loyalty / toughness before the damage. The existing
@@ -1001,6 +1001,26 @@ second, independent gap: `Cost` has no per-symbol colour restriction on `{X}`. *
 (the cap falls out of it, since the tally is already the *actual* damage), plus an
 `x_colors = ["black"]` field on `[cost]` gating payment.
 *Cards:* drain_life.
+
+*Landed:* neither half became its own effect. The life gain is a `gain_life_equal_to_damage` bool
+on `damage/target`, sitting beside Disintegrate's `cant_be_regenerated` and
+`exile_instead_of_dying` — the same rider shape, for the same reason: what the caster gains is a
+property of *this* damage landing, not of a separate step that would have to go looking for a
+tally. `creature_damage_events_with_riders` and `player_damage_events` were already returning
+`(events, actually_dealt)` for prevention shields, so "equal to the damage dealt" was a value
+already in hand; the arm's three `return Vec::new()` prevention exits moved into a new
+`single_target_damage_events` so they could return a 0 alongside their events.
+
+The oracle's cap is not redundant with the actual-damage tally, which is where the backlog sketch
+was wrong: 5 damage to a player at 2 life still *deals* all 5 (they go to -3), and only 2 comes
+back. So `drain_gain` reads the target's own capacity to absorb damage — life total, loyalty, or
+toughness — before any of it lands, and mins against it.
+
+"Spend only black mana on X" is one `Option<Color>` on `Cost`. `Cost::with_x` already existed to
+fold the chosen value into `generic` "so mana planning never has to know about `{X}`"; with
+`x_color` set it folds into that color's pips instead, and the colored-pip payment planner — which
+has always been the thing that refuses a Forest for a `{B}` — enforces the restriction with no new
+code. `max_payable_x` needed nothing either, since it drives everything through `cost_at(x)`.
 
 ### 55. `rearrange-target-players-library-top` — 1 card, M — **done**
 Depends on: 31 (`look-at-target-players-hand`) shares its "look at another player's hidden zone"

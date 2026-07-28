@@ -158,6 +158,104 @@ impl Game {
         (events, amount)
     }
 
+    /// The events for one targeted damage effect landing on `chosen`, plus the damage actually
+    /// dealt (0 when a shield, protection, or a prevention effect ate it) — the second half is
+    /// what Drain Life's "equal to the damage dealt" reads.
+    fn single_target_damage_events(
+        &self,
+        source: ObjectId,
+        chosen: Target,
+        amount: i32,
+        cant_be_regenerated: bool,
+        exile_instead_of_dying: bool,
+    ) -> (Vec<Event>, i32) {
+        match chosen {
+            // Damage to a creature is marked (an SBA later checks it against toughness), (CR 704, CR 120.3)
+            // unless protection from the source's color prevents it (CR 702.16d).
+            Target::Object(object) => {
+                if self.damage_prevented_by_protection(object, Some(source)) {
+                    return (Vec::new(), 0);
+                }
+                // Phantom Centaur's self-shield (or Bloatfly Swarm's scaling variant)
+                // prevents this damage outright and removes +1/+1 counters instead (CR 615).
+                if self.phantom_shield_active(object) {
+                    return (self.phantom_shield_counter_removal(object, amount), 0);
+                }
+                // Damage to a planeswalker removes that many loyalty counters instead of
+                // being marked (CR 120.3c/306.9) — checked ahead of Tajic's creature-only
+                // prevention below, since a planeswalker is never "another creature".
+                if matches!(self.def_of(object).kind, CardKind::Planeswalker { .. }) {
+                    return (
+                        vec![Event::LoyaltyChanged {
+                            object,
+                            amount: -amount,
+                        }],
+                        amount,
+                    );
+                }
+                // Tajic prevents noncombat damage to its controller's other creatures (CR 615).
+                if self.noncombat_damage_prevented_to_creature(object) {
+                    return (Vec::new(), 0);
+                }
+                self.creature_damage_events_with_riders(
+                    source,
+                    object,
+                    amount,
+                    cant_be_regenerated,
+                    exile_instead_of_dying,
+                )
+            }
+            // Damage to a player is life loss. ponytail: the commander-damage tally is
+            // combat-only (CR 903.10a), so a burn spell never adds to it.
+            Target::Player(player) => {
+                let (mut events, amount) = self.player_damage_events(source, player, amount);
+                // 0 damage is never dealt (CR 120.8) — no marker, no trigger.
+                if amount > 0 {
+                    events.push(Event::DamageDealtToPlayer {
+                        source,
+                        player,
+                        amount,
+                    });
+                    // Lifelink (CR 702.15/119.3) triggers on ANY damage the source
+                    // deals, not just combat damage (Brion Stoutarm's fling ability).
+                    events.extend(self.lifelink_gain(source, amount));
+                }
+                (events, amount)
+            }
+        }
+    }
+
+    /// Drain Life's "You gain life equal to the damage dealt, but not more life than the player's
+    /// life total before the damage was dealt, the planeswalker's loyalty before the damage was
+    /// dealt, or the creature's toughness." The cap is the target's own capacity to absorb damage,
+    /// read before any of it lands (nothing in this module has mutated the board yet).
+    fn drain_gain(
+        &self,
+        controller: PlayerId,
+        source: ObjectId,
+        chosen: Target,
+        dealt: i32,
+    ) -> Option<Event> {
+        let capacity = match chosen {
+            Target::Player(player) => self.life(player),
+            Target::Object(object)
+                if matches!(self.def_of(object).kind, CardKind::Planeswalker { .. }) =>
+            {
+                self.loyalty(object)
+            }
+            Target::Object(object) => self.toughness(object),
+        };
+        let gain = dealt.min(capacity);
+        if gain <= 0 {
+            return None;
+        }
+        Some(Event::LifeChanged {
+            player: controller,
+            amount: self.life_gain_after_replacements(controller, gain),
+            source: Some(source),
+        })
+    }
+
     pub(crate) fn mint_damage(
         &self,
         effect: DamageEffect,
@@ -173,6 +271,7 @@ impl Game {
                 divided,
                 cant_be_regenerated,
                 exile_instead_of_dying,
+                gain_life_equal_to_damage,
                 ..
             } => {
                 let chosen = target.expect("a targeted effect resolves with a chosen target");
@@ -203,59 +302,17 @@ impl Game {
                 } else {
                     self.resolve_amount(amount, controller, source, target, x)
                 };
-                match chosen {
-                    // Damage to a creature is marked (an SBA later checks it against toughness), (CR 704, CR 120.3)
-                    // unless protection from the source's color prevents it (CR 702.16d).
-                    Target::Object(object) => {
-                        if self.damage_prevented_by_protection(object, Some(source)) {
-                            return Vec::new();
-                        }
-                        // Phantom Centaur's self-shield (or Bloatfly Swarm's scaling variant)
-                        // prevents this damage outright and removes +1/+1 counters instead (CR 615).
-                        if self.phantom_shield_active(object) {
-                            return self.phantom_shield_counter_removal(object, amount);
-                        }
-                        // Damage to a planeswalker removes that many loyalty counters instead of
-                        // being marked (CR 120.3c/306.9) — checked ahead of Tajic's creature-only
-                        // prevention below, since a planeswalker is never "another creature".
-                        if matches!(self.def_of(object).kind, CardKind::Planeswalker { .. }) {
-                            return vec![Event::LoyaltyChanged {
-                                object,
-                                amount: -amount,
-                            }];
-                        }
-                        // Tajic prevents noncombat damage to its controller's other creatures (CR 615).
-                        if self.noncombat_damage_prevented_to_creature(object) {
-                            return Vec::new();
-                        }
-                        self.creature_damage_events_with_riders(
-                            source,
-                            object,
-                            amount,
-                            cant_be_regenerated,
-                            exile_instead_of_dying,
-                        )
-                        .0
-                    }
-                    // Damage to a player is life loss. ponytail: the commander-damage tally is
-                    // combat-only (CR 903.10a), so a burn spell never adds to it.
-                    Target::Player(player) => {
-                        let (mut events, amount) =
-                            self.player_damage_events(source, player, amount);
-                        // 0 damage is never dealt (CR 120.8) — no marker, no trigger.
-                        if amount > 0 {
-                            events.push(Event::DamageDealtToPlayer {
-                                source,
-                                player,
-                                amount,
-                            });
-                            // Lifelink (CR 702.15/119.3) triggers on ANY damage the source
-                            // deals, not just combat damage (Brion Stoutarm's fling ability).
-                            events.extend(self.lifelink_gain(source, amount));
-                        }
-                        events
-                    }
+                let (mut events, dealt) = self.single_target_damage_events(
+                    source,
+                    chosen,
+                    amount,
+                    cant_be_regenerated,
+                    exile_instead_of_dying,
+                );
+                if gain_life_equal_to_damage {
+                    events.extend(self.drain_gain(controller, source, chosen, dealt));
                 }
+                events
             }
             // Mass damage: mark `amount` on every creature; the SBA sweep clears the dead. (CR 704, CR 120.3)
             // `amount` is resolved *per creature*, with that creature substituted in as the

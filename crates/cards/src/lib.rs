@@ -3085,6 +3085,7 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                     divided: false,
                     cant_be_regenerated: false,
                     exile_instead_of_dying: false,
+                    gain_life_equal_to_damage: false,
                 }),
                 // The 2 to its own caster is damage, not life loss — Psionic Blast can be
                 // prevented, redirected, or seen by a damage watcher like any other 2 damage.
@@ -3449,6 +3450,7 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                     divided: false,
                     cant_be_regenerated: false,
                     exile_instead_of_dying: false,
+                    gain_life_equal_to_damage: false,
                 }),
             ),
             (
@@ -3460,6 +3462,7 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                     divided: false,
                     cant_be_regenerated: false,
                     exile_instead_of_dying: false,
+                    gain_life_equal_to_damage: false,
                 }),
             ),
             (
@@ -3575,6 +3578,7 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                     divided: false,
                     cant_be_regenerated: false,
                     exile_instead_of_dying: false,
+                    gain_life_equal_to_damage: false,
                 }),
                 Effect::Damage(DamageEffect::ToSelf {
                     amount: Amount::Fixed(3)
@@ -4120,6 +4124,27 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
             fork.abilities[0].effect,
             Effect::Copy(CopyEffect::TargetSpell {
                 set_color: Some(Color::Red)
+            })
+        );
+    }
+
+    /// Drain Life's two riders live on different tables: the "spend only black mana on X"
+    /// restriction is part of the cost, the life gain is part of the damage.
+    #[test]
+    fn unlimited_drain_life_restricts_its_x_to_black_and_feeds_its_caster() {
+        let drain = get_by_name("Drain Life").expect("Drain Life is in the pool");
+        assert_eq!(drain.cost.x, 1);
+        assert_eq!(drain.cost.x_color, Some(Color::Black));
+        assert_eq!(
+            drain.abilities[0].effect,
+            Effect::Damage(DamageEffect::Target {
+                amount: Amount::X,
+                target: TargetSpec::AnyTarget,
+                count: TargetCount::default(),
+                divided: false,
+                cant_be_regenerated: false,
+                exile_instead_of_dying: false,
+                gain_life_equal_to_damage: true,
             })
         );
     }

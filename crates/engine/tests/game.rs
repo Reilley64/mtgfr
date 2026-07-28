@@ -508,6 +508,7 @@ const fn flash_cost(generic: u8, colored: [u8; 5], additional: AdditionalCost) -
         phyrexian: &[],
         additional,
         reduce_own_generic: None,
+        x_color: None,
     }
 }
 
@@ -1975,6 +1976,7 @@ static TWO_ETB: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             multikicker: None,
         },
         reduce_own_generic: None,
+        x_color: None,
     },
     kind: CardKind::Creature {
         power: 1,
@@ -2120,6 +2122,7 @@ static PINGER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             divided: false,
             cant_be_regenerated: false,
             exile_instead_of_dying: false,
+            gain_life_equal_to_damage: false,
         }),
         optional: false,
         min_level: 0,
@@ -2306,6 +2309,7 @@ static MAY_PAY_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
                 multikicker: None,
             },
             reduce_own_generic: None,
+            x_color: None,
         },
     }]),
     cycling: None,
@@ -11388,6 +11392,7 @@ static LIFELINK_PINGER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             divided: false,
             cant_be_regenerated: false,
             exile_instead_of_dying: false,
+            gain_life_equal_to_damage: false,
         }),
         optional: false,
         min_level: 0,
@@ -19847,6 +19852,7 @@ static COLORLESS_ROCK: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             multikicker: None,
         },
         reduce_own_generic: None,
+        x_color: None,
     },
     kind: CardKind::Artifact,
     legendary: false,
@@ -20581,6 +20587,7 @@ fn vanilla(name: &'static str, generic: u8, colored: [u8; 5]) -> CardDef {
                 multikicker: None,
             },
             reduce_own_generic: None,
+            x_color: None,
         },
         kind: CardKind::Creature {
             power: 2,
@@ -20870,6 +20877,7 @@ fn hybrid_filter_land(name: &'static str, a: Color, b: Color) -> CardDef {
                     multikicker: None,
                 },
                 reduce_own_generic: None,
+                x_color: None,
                 hybrid,
                 phyrexian: &[],
             },
@@ -27772,6 +27780,7 @@ fn echo_label_renders_colored_pips() {
         phyrexian: &[],
         additional: NO_ADD,
         reduce_own_generic: None,
+        x_color: None,
     };
     let message = Effect::Choice(ChoiceEffect::PayOrElse {
         cost,
@@ -27959,6 +27968,7 @@ fn generic_only_sacrifice_unless_pay_label() {
         phyrexian: &[],
         additional: NO_ADD,
         reduce_own_generic: None,
+        x_color: None,
     };
     let message = Effect::Choice(ChoiceEffect::PayOrElse {
         cost,
@@ -38004,6 +38014,7 @@ static NONCREATURE_PERMANENT_MV2: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             multikicker: None,
         },
         reduce_own_generic: None,
+        x_color: None,
     },
     kind: CardKind::Artifact,
     legendary: false,
@@ -38091,6 +38102,7 @@ static NONCREATURE_PERMANENT_MV4: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             multikicker: None,
         },
         reduce_own_generic: None,
+        x_color: None,
     },
     ..NONCREATURE_PERMANENT_MV2.clone()
 });
@@ -38399,6 +38411,7 @@ static NONCREATURE_PERMANENT_MV5: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             multikicker: None,
         },
         reduce_own_generic: None,
+        x_color: None,
     },
     ..NONCREATURE_PERMANENT_MV2.clone()
 });
@@ -45728,6 +45741,7 @@ static CHOOSE_TWO: LazyLock<CardDef> = LazyLock::new(|| CardDef {
                 divided: false,
                 cant_be_regenerated: false,
                 exile_instead_of_dying: false,
+                gain_life_equal_to_damage: false,
             }),
             optional: false,
             min_level: 0,
@@ -46174,6 +46188,7 @@ static CHOOSE_ONE_OR_MORE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
                 divided: false,
                 cant_be_regenerated: false,
                 exile_instead_of_dying: false,
+                gain_life_equal_to_damage: false,
             }),
             optional: false,
             min_level: 0,
@@ -60828,6 +60843,7 @@ static BURN_CREATURE_OR_PW: LazyLock<CardDef> = LazyLock::new(|| {
             divided: false,
             cant_be_regenerated: false,
             exile_instead_of_dying: false,
+            gain_life_equal_to_damage: false,
         })
     )
 });
@@ -60853,6 +60869,7 @@ static BURN_TARGET_POWER: LazyLock<CardDef> = LazyLock::new(|| {
             divided: false,
             cant_be_regenerated: false,
             exile_instead_of_dying: false,
+            gain_life_equal_to_damage: false,
         })
     )
 });
@@ -60878,6 +60895,7 @@ static BURN_TARGET_MV: LazyLock<CardDef> = LazyLock::new(|| {
             divided: false,
             cant_be_regenerated: false,
             exile_instead_of_dying: false,
+            gain_life_equal_to_damage: false,
         })
     )
 });
@@ -64991,6 +65009,7 @@ static TEST_STEELBANE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
                         multikicker: None,
                     },
                     reduce_own_generic: None,
+                    x_color: None,
                     hybrid: &[],
                     phyrexian: &[],
                 },
@@ -67057,6 +67076,7 @@ static TWO_MANA_VALUE_X_SORCERY: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         phyrexian: &[],
         additional: NO_ADD,
         reduce_own_generic: None,
+        x_color: None,
     },
     name: "Two Mana Value X Sorcery (test)",
     ..FIVE_MANA_VALUE_SORCERY.clone()
@@ -77968,6 +77988,7 @@ static DEAL_ONE: LazyLock<CardDef> = LazyLock::new(|| {
             divided: false,
             cant_be_regenerated: false,
             exile_instead_of_dying: false,
+            gain_life_equal_to_damage: false,
         })
     )
 });
@@ -81019,6 +81040,7 @@ static CREATURE_BOLT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         divided: false,
         cant_be_regenerated: false,
         exile_instead_of_dying: false,
+        gain_life_equal_to_damage: false,
     }))]),
     ..creature("Test Creature Bolt", 0, 0, &[])
 });
@@ -81306,6 +81328,7 @@ static MULTI_BOLT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             divided: false,
             cant_be_regenerated: false,
             exile_instead_of_dying: false,
+            gain_life_equal_to_damage: false,
         }),
         optional: false,
         min_level: 0,
@@ -82829,6 +82852,7 @@ static BURN_FIXED_2: LazyLock<CardDef> = LazyLock::new(|| {
             divided: false,
             cant_be_regenerated: false,
             exile_instead_of_dying: false,
+            gain_life_equal_to_damage: false,
         })
     )
 });
@@ -84348,6 +84372,7 @@ static OPPONENT_DAMAGE_WATCHER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
                 divided: false,
                 cant_be_regenerated: false,
                 exile_instead_of_dying: false,
+                gain_life_equal_to_damage: false,
             }),
             optional: false,
             min_level: 0,
@@ -95122,6 +95147,7 @@ static BLACK_BOLT: LazyLock<CardDef> = LazyLock::new(|| {
             divided: false,
             cant_be_regenerated: false,
             exile_instead_of_dying: false,
+            gain_life_equal_to_damage: false,
         })
     )
 });
@@ -102348,6 +102374,7 @@ static TOXIC_PINGER_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             divided: false,
             cant_be_regenerated: false,
             exile_instead_of_dying: false,
+            gain_life_equal_to_damage: false,
         }),
         optional: false,
         min_level: 0,
@@ -103711,6 +103738,7 @@ static BURN_FIXED_3: LazyLock<CardDef> = LazyLock::new(|| {
             divided: false,
             cant_be_regenerated: false,
             exile_instead_of_dying: false,
+            gain_life_equal_to_damage: false,
         })
     )
 });
@@ -103738,6 +103766,7 @@ static BURN_FIXED_5: LazyLock<CardDef> = LazyLock::new(|| {
             divided: false,
             cant_be_regenerated: false,
             exile_instead_of_dying: false,
+            gain_life_equal_to_damage: false,
         })
     )
 });
@@ -103765,6 +103794,7 @@ static BURN_FIXED_9: LazyLock<CardDef> = LazyLock::new(|| {
             divided: false,
             cant_be_regenerated: false,
             exile_instead_of_dying: false,
+            gain_life_equal_to_damage: false,
         })
     )
 });
@@ -104875,6 +104905,122 @@ fn mind_twist_for_more_than_the_hand_holds_just_empties_it() {
         .resolve();
 
     assert!(hand_ids(&game, PlayerId(1)).is_empty(), "the hand is empty");
+}
+
+// ── Damage that feeds the caster, paid for in one color (fidelity #54) ───────────────────────
+
+/// [`cast_intent`]'s `{X}`-carrying twin — the chosen X rides on the cast intent (CR 601.2b).
+fn cast_intent_x(player: PlayerId, object: ObjectId, target: Option<Target>, x: u32) -> Intent {
+    let mut intent = cast_intent(player, object, target);
+    if let Intent::Cast { x: chosen, .. } = &mut intent {
+        *chosen = x;
+    }
+    intent
+}
+
+#[test]
+fn drain_life_gains_life_equal_to_the_damage_it_dealt() {
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let drain = game.spawn_in_hand(PlayerId(0), card("Drain Life"));
+
+    game.submit(cast_intent_x(
+        PlayerId(0),
+        drain,
+        Some(Target::Player(PlayerId(1))),
+        3,
+    ))
+    .expect("Drain Life is castable for X = 3");
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(game.life(PlayerId(1)), 17, "3 damage");
+    assert_eq!(game.life(PlayerId(0)), 23, "and 3 life back");
+}
+
+#[test]
+fn drain_life_gains_no_more_life_than_the_victims_life_total_before_the_damage() {
+    // "but not more life than the player's life total before the damage was dealt": X = 5 into a
+    // player at 2 still deals all 5 (their life goes to -3), but only 2 come back.
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    game.set_life(PlayerId(1), 2);
+    let drain = game.spawn_in_hand(PlayerId(0), card("Drain Life"));
+
+    game.submit(cast_intent_x(
+        PlayerId(0),
+        drain,
+        Some(Target::Player(PlayerId(1))),
+        5,
+    ))
+    .expect("Drain Life is castable for X = 5");
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(game.life(PlayerId(1)), -3, "all 5 damage was dealt");
+    assert_eq!(
+        game.life(PlayerId(0)),
+        22,
+        "but only their 2 life came back"
+    );
+}
+
+#[test]
+fn drain_life_gains_no_more_life_than_the_creatures_toughness() {
+    // "...or the creature's toughness": X = 5 marks all 5 on a 2/2, and 2 comes back.
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
+    let drain = game.spawn_in_hand(PlayerId(0), card("Drain Life"));
+
+    game.submit(cast_intent_x(
+        PlayerId(0),
+        drain,
+        Some(Target::Object(bear)),
+        5,
+    ))
+    .expect("Drain Life is castable for X = 5");
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(game.life(PlayerId(0)), 22, "capped at the bear's toughness");
+}
+
+#[test]
+fn drain_lifes_x_is_payable_only_with_black_mana() {
+    // "Spend only black mana on X." Drain Life is {X}{1}{B}, so X = 2 wants three black and one
+    // generic; two Swamps and a pile of Forests can't get there, three Swamps can.
+    let mut game = Game::new();
+    for _ in 0..2 {
+        let swamp = game.spawn_on_battlefield(PlayerId(0), card("Swamp"));
+        tap(&mut game, PlayerId(0), swamp);
+    }
+    for _ in 0..5 {
+        let forest = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
+        tap(&mut game, PlayerId(0), forest);
+    }
+    let drain = game.spawn_in_hand(PlayerId(0), card("Drain Life"));
+
+    assert!(
+        game.submit(cast_intent_x(
+            PlayerId(0),
+            drain,
+            Some(Target::Player(PlayerId(1))),
+            2,
+        ))
+        .is_err(),
+        "green mana can't be spent on the {{X}}"
+    );
+
+    let swamp = game.spawn_on_battlefield(PlayerId(0), card("Swamp"));
+    tap(&mut game, PlayerId(0), swamp);
+    game.submit(cast_intent_x(
+        PlayerId(0),
+        drain,
+        Some(Target::Player(PlayerId(1))),
+        2,
+    ))
+    .expect("three black and a Forest for the {1} pays {X=2}{1}{B}");
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(game.life(PlayerId(1)), 18);
 }
 
 // ── A copy recolored by the copy effect (fidelity #13) ───────────────────────────────────────

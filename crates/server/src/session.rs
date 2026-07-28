@@ -849,6 +849,7 @@ mod tests {
                 divided: false,
                 cant_be_regenerated: false,
                 exile_instead_of_dying: false,
+                gain_life_equal_to_damage: false,
             }),
             optional: false,
             min_level: 0,

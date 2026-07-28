@@ -62,6 +62,12 @@ pub enum DamageEffect {
         /// replacement a finality counter applies (CR 614.12), but nameless and turn-scoped.
         #[cfg_attr(feature = "card-dsl", serde(default))]
         exile_instead_of_dying: bool,
+        /// Drain Life's "You gain life equal to the damage dealt, but not more life than the
+        /// player's life total before the damage was dealt, the planeswalker's loyalty before the
+        /// damage was dealt, or the creature's toughness" — the controller gains what this effect
+        /// actually landed, so a prevented or shielded hit feeds nothing.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        gain_life_equal_to_damage: bool,
     },
 
     ToEnteringPermanent {

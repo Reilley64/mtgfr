@@ -16,6 +16,11 @@ pub struct Cost {
     /// ponytail: `{X}` on a permanent's own characteristics (a CDA, CR 107.3) isn't modeled; grow
     /// that from a real card that needs it.
     pub x: u8,
+    /// A color restriction on the mana spent for `{X}` (CR 601.2g) — Drain Life's "Spend only
+    /// black mana on X." [`Cost::with_x`] folds the chosen value into [`Cost::colored`] for this
+    /// color instead of into [`Cost::generic`], so the ordinary colored-pip planner enforces it.
+    /// `None` for every other `{X}` cost, where any mana pays.
+    pub x_color: Option<Color>,
     /// Hybrid mana pips (CR 107.4e — `{a/b}`), one entry per symbol: each is payable by mana of
     /// color `a` *or* `b`, a dual credit touching either color, or an "any" wildcard — strictly
     /// more flexible than a mono colored pip, so [`ManaPool::spend_plan`] pays these after the
@@ -51,6 +56,7 @@ impl Cost {
         colored: [0; Color::COUNT],
         colorless: 0,
         x: 0,
+        x_color: None,
         hybrid: &[],
         phyrexian: &[],
         additional: AdditionalCost {
@@ -72,13 +78,26 @@ impl Cost {
     /// This cost with a chosen `x` folded into its generic component (CR 601.2b/107.3: paying
     /// `{X}` adds `x` generic mana per `{X}` symbol in the cost — `{X}{X}{X}` pays the chosen
     /// value three times). A no-`{X}` cost ignores `x`, matching "must stay 0."
+    ///
+    /// A cost with an [`x_color`](Cost::x_color) restriction (Drain Life's "Spend only black mana
+    /// on X.") folds the value into that color's pips instead, which is the whole enforcement:
+    /// colored pips are already payable only by their own color.
     pub fn with_x(self, x: u32) -> Cost {
         // Clamp before narrowing so a huge chosen X (or a large multiplier) can never truncate
         // down to a cheap cost (a payment-bypass); a cost that saturates at 255 generic is
         // already unpayable.
         let extra = (self.x as u32).saturating_mul(x).min(u8::MAX as u32) as u8;
+        let Some(color) = self.x_color else {
+            return Cost {
+                generic: self.generic.saturating_add(extra),
+                x: 0,
+                ..self
+            };
+        };
+        let mut colored = self.colored;
+        colored[color.index()] = colored[color.index()].saturating_add(extra);
         Cost {
-            generic: self.generic.saturating_add(extra),
+            colored,
             x: 0,
             ..self
         }

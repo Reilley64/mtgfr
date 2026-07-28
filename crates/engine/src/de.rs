@@ -650,6 +650,9 @@ impl<'de> Deserialize<'de> for Cost {
             green: u8,
             colorless: u8,
             x: XPips,
+            /// A color restriction on the mana spent for `{X}` (`x_color = "black"` — Drain
+            /// Life's "Spend only black mana on X.", CR 601.2g).
+            x_color: Option<Color>,
             /// Hybrid mana pips (CR 107.4e — `{a/b}`): a list of two-color arrays, one per
             /// hybrid symbol (`hybrid = [["black", "green"]]` for one `{B/G}`).
             hybrid: Vec<[Color; 2]>,
@@ -685,6 +688,7 @@ impl<'de> Deserialize<'de> for Cost {
             colored: [pips.white, pips.blue, pips.black, pips.red, pips.green],
             colorless: pips.colorless,
             x: pips.x.into(),
+            x_color: pips.x_color,
             hybrid: intern(hybrid),
             phyrexian: intern(pips.phyrexian),
             additional: pips.additional,

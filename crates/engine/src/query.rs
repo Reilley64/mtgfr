@@ -1696,6 +1696,7 @@ mod permanent_filter_tests {
                 phyrexian: &[],
                 additional: AdditionalCost::default(),
                 reduce_own_generic: None,
+                x_color: None,
             },
             kind,
             legendary: false,
