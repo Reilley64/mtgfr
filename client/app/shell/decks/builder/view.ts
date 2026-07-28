@@ -27,23 +27,26 @@ import {
   ClosedBuilderMenu,
   ConfirmedBuilderDiscard,
   GotDiscardDialogMessage,
+  GotPoolGridMessage,
   GotPrintDialogMessage,
   GotPrintGridMessage,
+  MeasuredPoolGrid,
   type Message,
   MovedBuilderHover,
   OpenedBuilderMenu,
   PickedBuilderPrint,
   RanBuilderMenuAction,
   RequestedBuilderCancel,
-  RequestedNextBuilderPage,
   SubmittedDeckSave,
 } from "./messages";
 import {
   type BuilderPrintPicker,
   type DeckBuilderSubmodel,
+  POOL_GRID_ID,
   PRINT_DIALOG_ID,
   PRINT_GRID_COLUMNS,
   PRINT_GRID_ID,
+  poolGridColumns,
 } from "./submodel";
 
 export type ViewMessage =
@@ -83,25 +86,29 @@ const PRINT_BADGE =
 const CARD_ART = cn("aspect-[0.72] w-full rounded-control object-cover");
 const PRINT_SKELETON = cn(PRINT_PICKER_COL, "flex cursor-default flex-col items-center gap-1.5 p-md");
 
-export const ObserveBuilderSentinel = Mount.defineStream(
-  "ObserveBuilderSentinel",
-  RequestedNextBuilderPage,
+/** Reports the pool column's width. The pool grid is windowed, and both its column count and its row
+ *  height come from that width — VirtualList's own observer reports height only. */
+export const ObservePoolWidth = Mount.defineStream(
+  "ObservePoolWidth",
+  MeasuredPoolGrid,
 )((element) =>
-  Stream.callback<typeof RequestedNextBuilderPage.Type>((queue) =>
+  Stream.callback<typeof MeasuredPoolGrid.Type>((queue) =>
     Effect.gen(function* () {
       yield* Effect.acquireRelease(
         Effect.sync(() => {
-          if (typeof IntersectionObserver === "undefined") {
-            Queue.offerUnsafe(queue, RequestedNextBuilderPage());
+          const report = (width: number) => {
+            if (width > 0) Queue.offerUnsafe(queue, MeasuredPoolGrid({ width }));
+          };
+
+          if (typeof ResizeObserver === "undefined") {
+            report(element.clientWidth);
             return null;
           }
 
-          const observer = new IntersectionObserver(
-            (entries) => {
-              if (entries[0]?.isIntersecting) Queue.offerUnsafe(queue, RequestedNextBuilderPage());
-            },
-            { rootMargin: "300px" },
-          );
+          const observer = new ResizeObserver((entries) => {
+            const width = entries[0]?.contentRect.width;
+            if (width !== undefined) report(width);
+          });
           observer.observe(element);
           return observer;
         }),
@@ -400,7 +407,11 @@ function poolTile(model: DeckBuilderSubmodel, card: DeckBuilderSubmodel["pool"][
     ],
     [
       builderCardArt(print, card.name, CARD_ART),
-      h.span([h.Class("text-center leading-[1.1]")], [`${card.legendary ? "★ " : ""}${card.name}`]),
+      // One line, ellipsised: the windowed grid needs every tile the same height, and a long card
+      // name that wrapped would push its art out of the row. `w-full` because `items-center`
+      // otherwise shrinks the span to its text and leaves nothing to truncate. No `title` — the
+      // full name is what the hover preview is for.
+      h.span([h.Class("w-full truncate text-center leading-[1.1]")], [`${card.legendary ? "★ " : ""}${card.name}`]),
     ],
   );
 }
@@ -413,6 +424,39 @@ function skeletonTile(): Html {
       h.div([h.Class("h-2.5 w-[70%] animate-skeleton rounded-[3px] bg-white/8")], []),
     ],
   );
+}
+
+/** Classes on one row of the windowed pool grid. The column count is measured, so it arrives as an
+ *  inline `grid-template-columns` rather than a `grid-cols-*` class. */
+const POOL_ROW = "gap-md";
+const POOL_SKELETON_GRID = "grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] content-start gap-md";
+
+/** The pool's scrolling area. Windowed, because the catalog runs to tens of thousands of cards and
+ *  every tile that renders also fetches its art. */
+function poolBody(model: DeckBuilderSubmodel, scrollLocked: boolean): Html {
+  if (model.pool.length === 0) {
+    if (model.searching)
+      return h.div(
+        [h.Class(POOL_SKELETON_GRID)],
+        Array.from({ length: 10 }, () => skeletonTile()),
+      );
+    return h.div([h.Class("text-label text-lichen")], ["No cards match."]);
+  }
+
+  return windowedGrid(h, {
+    model: model.poolGrid,
+    toGridMessage: (message) => GotPoolGridMessage({ message }),
+    items: model.pool,
+    columns: poolGridColumns(model.poolWidth),
+    itemToKey: (card) => card.id,
+    itemToView: (card) => poolTile(model, card),
+    rowClass: POOL_ROW,
+    rowStyle: { "grid-template-columns": `repeat(${poolGridColumns(model.poolWidth)},minmax(0,1fr))` },
+    // VirtualList writes `overflow: auto` on the container as an inline style, so freezing the pool
+    // behind the print picker needs `!important` to reach past it.
+    containerClass: cn("min-h-0 flex-1", scrollLocked && "overflow-hidden!"),
+    testId: POOL_GRID_ID,
+  });
 }
 
 export type ViewInputs = {
@@ -484,31 +528,13 @@ export const view = Submodel.defineView<DeckBuilderSubmodel, ViewMessage, ViewIn
             }),
             h.div(
               [
-                h.Class(
-                  cn(
-                    "mt-3 grid min-h-0 flex-1 grid-cols-[repeat(auto-fill,minmax(120px,1fr))] content-start gap-md overscroll-contain",
-                    backgroundScrollLocked ? "overflow-hidden" : "overflow-y-auto",
-                  ),
-                ),
-                h.DataAttribute("testid", "builder-pool-scroll"),
+                // The grid inside is what scrolls; this wrapper only bounds it and is what the
+                // width observer measures, since the scrollport itself belongs to VirtualList.
+                h.Class("mt-3 flex min-h-0 min-w-0 flex-1 flex-col"),
+                h.DataAttribute("testid", "builder-pool-measure"),
+                h.OnMount(ObservePoolWidth()),
               ],
-              [
-                ...model.pool.map((card) => poolTile(model, card)),
-                ...(model.searching ? Array.from({ length: 10 }, () => skeletonTile()) : []),
-                !model.searching && model.pool.length === 0
-                  ? h.div([h.Class("col-span-full text-label text-lichen")], ["No cards match."])
-                  : null,
-                model.atEnd
-                  ? null
-                  : h.div(
-                      [
-                        h.Class("col-span-full h-px"),
-                        h.DataAttribute("testid", "builder-scroll-sentinel"),
-                        h.OnMount(ObserveBuilderSentinel()),
-                      ],
-                      [],
-                    ),
-              ],
+              [poolBody(model, backgroundScrollLocked)],
             ),
           ],
         ),

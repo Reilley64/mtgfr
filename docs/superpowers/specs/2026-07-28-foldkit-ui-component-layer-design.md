@@ -187,9 +187,8 @@ The planned W3 primitives had no shell surface to adopt. `listbox` / `combobox` 
 anchored trigger+popup submodels, but the shell's three searches — deck-list, card
 pool, coverage — are plain inputs whose results render **inline** in the page, so
 adopting either would move results into a floating panel: a restyle, which the
-Non-goals forbid. `virtualList` windows fixed-height rows; the card pool is a
-responsive auto-fill grid paged by an IntersectionObserver sentinel — fetch paging,
-not render windowing. `toast` found zero transient-notification surfaces (errors are
+Non-goals forbid. `virtualList` windows fixed-height rows, and the grids
+that would want it were reserved for W4. `toast` found zero transient-notification surfaces (errors are
 inline `alertClass` panels), so it was not introduced. `@floating-ui/dom` anchoring
 therefore stays unexercised beyond W2's `Menu`.
 
@@ -201,7 +200,18 @@ its `ModalOpened` / `OpenDialogAsModal` plumbing are gone and every modal in the
 is one chrome. Updates [`ui-component-layer`](2026-07-28-ui-component-layer.md) and
 [`deck-list-and-builder`](2026-07-20-deck-list-and-builder.md).
 
-**W4 — Board blocking modals.**
+**W4 — Windowed grids. Shipped.**
+`domain/ui/windowedGrid.ts` wraps `@foldkit/ui`'s `virtualList` as a tile grid: rows of
+`columns` items, only the rows near the viewport in the DOM. Both of the deck builder's
+grids adopt it — the print picker, where a basic land's hundreds of printings each
+fetched art, and the card pool, which is heading for tens of thousands of cards. Each
+grid is a `VirtualList` submodel with a lifted subscription; the pool measures its own
+column width, since `virtualList` reports height only, and its paging moves from an
+IntersectionObserver sentinel to the window's own `endIndex` — a windowed grid has no
+bottom element to observe. Updates [`ui-component-layer`](2026-07-28-ui-component-layer.md)
+and [`deck-list-and-builder`](2026-07-20-deck-list-and-builder.md).
+
+**W5 — Board blocking modals.**
 `prompt-modal`, `result-overlay`, `mulligan-overlay`, and the concede confirm →
 `dialog`; the card-name typeahead (`game/intents.ts`, `board/messages.ts`, covered by
 `board/card-name-typeahead.test.ts`) → `combobox`, provided it is reached from a

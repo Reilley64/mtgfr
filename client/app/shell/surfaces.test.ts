@@ -5,6 +5,7 @@
  */
 import * as Dialog from "@foldkit/ui/dialog";
 import * as Menu from "@foldkit/ui/menu";
+import * as VirtualList from "@foldkit/ui/virtualList";
 import { Effect } from "effect";
 import { Scene } from "foldkit/test";
 import { describe, expect, it } from "vitest";
@@ -30,15 +31,26 @@ import {
 import { OpenGravatar } from "../update";
 import { view } from "../view";
 import * as Auth from "./auth";
-import { ClearedBuilderHover } from "./decks/builder/messages";
-import { DISCARD_DIALOG_ID, initialDeckBuilderSubmodel } from "./decks/builder/submodel";
-import { BindBuilderCardPointer } from "./decks/builder/view";
+import { ClearedBuilderHover, MeasuredPoolGrid } from "./decks/builder/messages";
+import { DISCARD_DIALOG_ID, initialDeckBuilderSubmodel, poolGridRowHeightPx } from "./decks/builder/submodel";
+import { BindBuilderCardPointer, ObservePoolWidth } from "./decks/builder/view";
 import { ClosedDeckListMenu } from "./decks/list/messages";
 import { DELETE_DIALOG_ID } from "./decks/list/submodel";
 import { BindDeckListContextMenu, BindDeckListContextMenuEscape } from "./decks/list/view";
 import { initialLobbySlice } from "./lobby/submodel";
 
 const me = { id: 1, email: "alice@example.com", username: "alice" };
+
+const POOL_WIDTH = 640;
+
+/** The card pool is a windowed grid: it paints no tiles until it knows its width and its height. */
+function measuredPoolGrid() {
+  const [poolGrid] = VirtualList.update(
+    { ...initialDeckBuilderSubmodel().poolGrid, rowHeightPx: poolGridRowHeightPx(POOL_WIDTH) },
+    VirtualList.MeasuredContainer({ containerHeight: 720 }),
+  );
+  return { poolGrid, poolWidth: POOL_WIDTH };
+}
 
 /** Preorder `data-testid` walk for DOM-order assertions in Scene tests. */
 function collectTestIds(node: unknown, out: string[] = []): string[] {
@@ -666,6 +678,7 @@ describe("shell surface scenes", () => {
               discardDialog: Dialog.init({ id: DISCARD_DIALOG_ID, isOpen: true }),
               known: { "sol-ring": solRing },
               pool: [solRing],
+              ...measuredPoolGrid(),
               preferredPrint: { "sol-ring": "sol-ring-print" },
               problems: ["Choose a commander first."],
               searching: false,
@@ -689,6 +702,7 @@ describe("shell surface scenes", () => {
         expect(ids.indexOf("save-deck")).toBeLessThan(ids.indexOf("account-menu-trigger"));
         expect(ids.indexOf("shell-header-trailing")).toBeLessThan(ids.indexOf("deck-name"));
       }),
+      Scene.Mount.resolve(ObservePoolWidth(), MeasuredPoolGrid({ width: POOL_WIDTH })),
       Scene.Mount.resolve(BindBuilderCardPointer({ cardId: "sol-ring", kind: "pool" }), ClearedBuilderHover()),
       Scene.Mount.resolve(BindCardArt, CardArtTick()),
     );
