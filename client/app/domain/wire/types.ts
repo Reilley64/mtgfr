@@ -505,7 +505,14 @@ export type PendingChoiceView =
       player: number;
       source: U32;
     }
-  | { items: Array<ChoiceItem>; keep_one?: boolean; kind: "sacrifice_edict"; player: number; source: U32 }
+  | {
+      count: number;
+      items: Array<ChoiceItem>;
+      keep_one?: boolean;
+      kind: "sacrifice_edict";
+      player: number;
+      source: U32;
+    }
   | { items: Array<ChoiceItem>; kind: "proliferate"; player: number; source: U32 }
   | { items: Array<ChoiceItem>; kind: "phase_out"; player: number; source: U32 }
   | { count: number; items: Array<ChoiceItem>; kind: "choose_activation_cost_targets"; player: number; source: U32 }

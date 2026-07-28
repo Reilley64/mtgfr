@@ -632,7 +632,7 @@ export function cardPickRequiredCount(pc: PendingChoiceView): number | null {
     case "choose_own_sacrifices":
       return pc.count;
     case "sacrifice_edict":
-      return pc.keep_one ? Math.max(0, pc.items.length - 1) : 1;
+      return pc.keep_one ? Math.max(0, pc.items.length - 1) : pc.count;
     case "scry":
     case "surveil":
     case "proliferate":

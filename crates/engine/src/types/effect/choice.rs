@@ -120,12 +120,20 @@ pub enum ChoiceEffect {
         count: Amount,
     },
 
-    /// Each other player discards a card of their choice (Syphon Mind, "Each other player discards
-    /// a card"). A fan-out over the opponents in APNAP order — a player with an empty hand is
-    /// skipped — tallying [`ResolutionFrame::cards_discarded_this_way`](crate::resolution::ResolutionFrame)
+    /// Each player in `scope` discards a card of their choice (Syphon Mind, "Each other player
+    /// discards a card"). A fan-out over those players in APNAP order — a player with an empty
+    /// hand is skipped — tallying [`ResolutionFrame::cards_discarded_this_way`](crate::resolution::ResolutionFrame)
     /// so a following `then`/Sequence step can read it (Syphon Mind's "You draw a card for each
     /// card discarded this way").
-    EachOpponentDiscards,
+    EachPlayerDiscards {
+        #[cfg_attr(feature = "card-dsl", serde(default = "de::all_players"))]
+        scope: EdictScope,
+        /// Balance's "Players discard cards … the same way": instead of one card each, every
+        /// player discards down to the smallest hand in `scope` — see
+        /// [`down_to_fewest`](Self::EachPlayerSacrifices::down_to_fewest).
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        down_to_fewest: bool,
+    },
 
     /// The effect's controller discards their whole hand (Malfegor's "discard your hand"). A
     /// choiceless whole-hand discard (the discard sibling of
@@ -158,6 +166,14 @@ pub enum ChoiceEffect {
         /// of them. Not used with `keep_one`.
         #[cfg_attr(feature = "card-dsl", serde(default = "de::one_amount"))]
         count: Amount,
+        /// Balance's "Each player chooses a number of lands they control equal to the number of
+        /// lands controlled by the player who controls the fewest, then sacrifices the rest": the
+        /// number sacrificed isn't fixed but each player's own excess over the smallest matching
+        /// battlefield in `scope`, measured once as this effect starts. Overrides `count`; a player
+        /// already at that floor is skipped entirely, the way an empty-handed seat is skipped by a
+        /// discard fan-out.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        down_to_fewest: bool,
         #[cfg_attr(
             feature = "card-dsl",
             serde(default, deserialize_with = "de::static_slice")

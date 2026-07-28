@@ -20,7 +20,8 @@ timing = "spell"
 # Each other player discards a card.
 [[abilities.effects]]
 type = "choice"
-mode = "each_opponent_discards"
+mode = "each_player_discards"
+scope = "each_opponent"
 
 # You draw a card for each card discarded this way.
 [[abilities.effects]]

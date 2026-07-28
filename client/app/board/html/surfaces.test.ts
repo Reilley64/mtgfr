@@ -1079,6 +1079,7 @@ test("on-board sacrifice_edict shows aim chrome instead of card grid", () => {
         objects: [bear],
         pending_choice: {
           kind: "sacrifice_edict",
+          count: 1,
           player: 0,
           source: 1,
           items: [{ id: 7, label: "Bear" }],

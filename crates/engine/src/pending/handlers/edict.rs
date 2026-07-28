@@ -448,6 +448,7 @@ impl Game {
         filter: PermanentFilter,
         life_loss: i32,
         count: u32,
+        down_to_fewest: bool,
         follow_up: &'static [Effect],
         controller: PlayerId,
         source: ObjectId,
@@ -495,8 +496,17 @@ impl Game {
                 );
             }
         }
+        // Balance's "equal to the number … the player who controls the fewest": measured once,
+        // here, before anybody sacrifices — every affected seat is judged against the same floor.
+        let floor = down_to_fewest.then(|| {
+            affected
+                .iter()
+                .map(|&p| self.edict_options(p, filter, Some(source)).len() as u32)
+                .min()
+                .unwrap_or(0)
+        });
         self.prompt_next_sacrifice(
-            affected, keep_one, filter, count, follow_up, controller, source, events,
+            affected, keep_one, filter, count, floor, follow_up, controller, source, events,
         );
     }
 
@@ -547,6 +557,8 @@ impl Game {
             keep_one,
             filter,
             count,
+            // No pool card combines "any number of target players" with "down to the fewest".
+            None,
             then,
             chooser,
             source,
@@ -564,6 +576,7 @@ impl Game {
         keep_one: bool,
         filter: PermanentFilter,
         count: u32,
+        floor: Option<u32>,
         follow_up: &'static [Effect],
         controller: PlayerId,
         source: ObjectId,
@@ -576,6 +589,7 @@ impl Game {
                 keep_one,
                 filter,
                 count,
+                floor,
                 follow_up,
                 controller,
                 source,
@@ -618,6 +632,7 @@ impl Game {
             filter,
             remaining,
             count,
+            floor,
             controller,
             source,
             follow_up,
@@ -658,6 +673,7 @@ impl Game {
             keep_one,
             filter,
             count,
+            floor,
             follow_up,
             controller,
             source,

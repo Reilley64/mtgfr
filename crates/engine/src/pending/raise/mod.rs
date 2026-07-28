@@ -263,6 +263,9 @@ pub(crate) enum ChoiceRequest {
     },
     /// Next opponent in a discard fan-out (Syphon Mind) — empty-hand seats skipped.
     NextDiscardEdict {
+        /// Balance's "down to the fewest": each seat discards its own excess over this hand size.
+        /// `None` is the plain one-card-each fan-out (Syphon Mind).
+        floor: Option<u32>,
         remaining: Vec<crate::PlayerId>,
         source: crate::ObjectId,
     },
@@ -305,6 +308,9 @@ pub(crate) enum ChoiceRequest {
         keep_one: bool,
         filter: crate::PermanentFilter,
         count: u32,
+        /// Balance's "down to the fewest": each seat sacrifices its own excess over this many
+        /// matching permanents, overriding `count`. `None` is the ordinary fixed-count edict.
+        floor: Option<u32>,
         follow_up: &'static [crate::Effect],
         controller: crate::PlayerId,
         source: crate::ObjectId,
@@ -550,9 +556,11 @@ pub(super) fn choice_from_request(game: &Game, request: ChoiceRequest) -> Option
         ChoiceRequest::NextGraveyardExile { remaining, source } => {
             fanout::next_graveyard_exile(game, remaining, source)
         }
-        ChoiceRequest::NextDiscardEdict { remaining, source } => {
-            fanout::next_discard_edict(game, remaining, source)
-        }
+        ChoiceRequest::NextDiscardEdict {
+            remaining,
+            source,
+            floor,
+        } => fanout::next_discard_edict(game, remaining, source, floor),
         ChoiceRequest::NextCasterKeep {
             remaining,
             caster,
@@ -581,11 +589,12 @@ pub(super) fn choice_from_request(game: &Game, request: ChoiceRequest) -> Option
             keep_one,
             filter,
             count,
+            floor,
             follow_up,
             controller,
             source,
         } => fanout::next_sacrifice_edict(
-            game, remaining, keep_one, filter, count, follow_up, controller, source,
+            game, remaining, keep_one, filter, count, floor, follow_up, controller, source,
         ),
         ChoiceRequest::ChooseExiledDigToCastFree {
             player,

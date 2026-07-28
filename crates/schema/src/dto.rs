@@ -758,6 +758,9 @@ pub enum PendingChoiceView {
         /// When true, the player keeps one permanent and sacrifices all others.
         #[serde(default)]
         keep_one: bool,
+        /// How many of `items` to choose (ignored when `keep_one`): 1 for a plain edict, more for
+        /// Malfegor's "for each card discarded this way" or Balance's "down to the fewest".
+        count: u32,
         items: Vec<ChoiceItem>,
     },
     /// Every counter-bearing permanent on the battlefield; this player may choose any number
@@ -1567,10 +1570,11 @@ mod tests {
                 player: 0,
                 source: 9,
                 keep_one: false,
+                count: 1,
                 items: Vec::new(),
             })
             .unwrap(),
-            serde_json::json!({"kind": "sacrifice_edict", "player": 0, "source": 9, "keep_one": false, "items": []}),
+            serde_json::json!({"kind": "sacrifice_edict", "player": 0, "source": 9, "keep_one": false, "count": 1, "items": []}),
         );
         assert_eq!(
             serde_json::to_value(PendingChoiceView::Discard {

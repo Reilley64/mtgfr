@@ -110,10 +110,19 @@ impl Game {
 
     /// Pause on the next opponent with a card to discard (skipping any with an empty hand), or —
     /// when none remain — return, letting the enclosing sequence resume into the draw payoff.
-    pub(crate) fn prompt_next_discard_edict(&mut self, remaining: Vec<PlayerId>, source: ObjectId) {
+    pub(crate) fn prompt_next_discard_edict(
+        &mut self,
+        remaining: Vec<PlayerId>,
+        source: ObjectId,
+        floor: Option<u32>,
+    ) {
         crate::pending::raise(
             self,
-            crate::pending::ChoiceRequest::NextDiscardEdict { remaining, source },
+            crate::pending::ChoiceRequest::NextDiscardEdict {
+                remaining,
+                source,
+                floor,
+            },
         );
     }
 
@@ -130,21 +139,31 @@ impl Game {
             options,
             remaining,
             source,
+            count,
+            floor,
             ..
         }) = self.pending_choice.clone()
         else {
             return Err(Reject::IllegalChoice);
         };
-        // Mandatory: exactly one of the offered cards (declining isn't legal when they have one).
-        if discards.len() != 1 || !options.contains(&discards[0]) {
+        // Mandatory: exactly `count` distinct offered cards (declining isn't legal when they have
+        // them). One for a plain fan-out; under Balance, their whole excess in one answer.
+        let distinct = discards
+            .iter()
+            .enumerate()
+            .all(|(i, id)| !discards[..i].contains(id));
+        if discards.len() as u32 != count
+            || !distinct
+            || discards.iter().any(|id| !options.contains(id))
+        {
             return Err(Reject::IllegalChoice);
         }
         self.finish_answer();
 
         let mut events = Vec::new();
         self.discard_ids(&discards, player, &mut events);
-        self.resolution_frame.cards_discarded_this_way += 1;
-        self.prompt_next_discard_edict(remaining, source);
+        self.resolution_frame.cards_discarded_this_way += discards.len() as u32;
+        self.prompt_next_discard_edict(remaining, source, floor);
         Ok(events)
     }
 

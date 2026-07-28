@@ -112168,3 +112168,151 @@ fn landwalk_reads_the_land_type_a_land_has_now() {
         "the defender controls a Swamp now, whatever it was printed as"
     );
 }
+
+// ── Balance: three symmetrical "down to the fewest" sweeps (fidelity #43) ─────────────
+
+/// The player a pending `DiscardEdict` is waiting on, and how many cards it wants.
+fn discard_edict_ask(game: &Game) -> Option<(PlayerId, u32)> {
+    match game.pending_choice() {
+        Some(PendingChoice::DiscardEdict { player, count, .. }) => Some((player, count)),
+        _ => None,
+    }
+}
+
+#[test]
+fn balance_cuts_every_battlefield_down_to_the_fewest_lands() {
+    // "Each player chooses a number of lands they control equal to the number of lands controlled
+    // by the player who controls the fewest, then sacrifices the rest." P0 has three to P1's one,
+    // so P0 gives up two and P1 — already at the floor — is never asked.
+    let mut game = Game::new();
+    let first = game.spawn_on_battlefield(PlayerId(0), card("Plains"));
+    let second = game.spawn_on_battlefield(PlayerId(0), card("Plains"));
+    let kept = game.spawn_on_battlefield(PlayerId(0), card("Plains"));
+    let theirs = game.spawn_on_battlefield(PlayerId(1), card("Plains"));
+    let balance = game.spawn_in_hand(PlayerId(0), card("Balance"));
+
+    cast_and_resolve(&mut game, balance, None);
+
+    assert_eq!(
+        sacrifice_chooser(&game),
+        Some(PlayerId(0)),
+        "only the player above the floor is asked, and P0 chooses first (APNAP)"
+    );
+    choose_sacrifices(&mut game, PlayerId(0), vec![first, second]);
+
+    assert!(
+        game.pending_choice().is_none(),
+        "P1 is already at the fewest, so the fan-out is done"
+    );
+    assert_eq!(game.zone_of(first), Zone::Graveyard);
+    assert_eq!(game.zone_of(second), Zone::Graveyard);
+    assert_eq!(game.zone_of(kept), Zone::Battlefield, "P0 keeps one land");
+    assert_eq!(game.zone_of(theirs), Zone::Battlefield, "P1 keeps theirs");
+}
+
+#[test]
+fn balance_asks_no_one_when_the_lands_are_already_level() {
+    // Nobody is above the floor, so the sweep is a silent no-op rather than a pause offering
+    // zero sacrifices.
+    let mut game = Game::new();
+    let mine = game.spawn_on_battlefield(PlayerId(0), card("Plains"));
+    let theirs = game.spawn_on_battlefield(PlayerId(1), card("Plains"));
+    let balance = game.spawn_in_hand(PlayerId(0), card("Balance"));
+
+    cast_and_resolve(&mut game, balance, None);
+
+    assert!(game.pending_choice().is_none(), "nothing to choose");
+    assert_eq!(game.zone_of(mine), Zone::Battlefield);
+    assert_eq!(game.zone_of(theirs), Zone::Battlefield);
+}
+
+#[test]
+fn balance_cuts_every_hand_down_to_the_fewest_cards() {
+    // "Players discard cards … the same way." Balance itself is on the stack as it resolves, so
+    // P0's hand is the two cards behind it against P1's one — P0 pitches exactly one.
+    let mut game = Game::new();
+    let toss = game.spawn_in_hand(PlayerId(0), VANILLA.clone());
+    let kept = game.spawn_in_hand(PlayerId(0), VANILLA.clone());
+    let theirs = game.spawn_in_hand(PlayerId(1), VANILLA.clone());
+    let balance = game.spawn_in_hand(PlayerId(0), card("Balance"));
+
+    cast_and_resolve(&mut game, balance, None);
+
+    assert_eq!(
+        discard_edict_ask(&game),
+        Some((PlayerId(0), 1)),
+        "P0 holds one more card than P1 does"
+    );
+    game.submit(Intent::Discard {
+        player: PlayerId(0),
+        cards: vec![toss],
+    })
+    .expect("a legal discard-edict answer");
+
+    assert!(
+        game.pending_choice().is_none(),
+        "P1 is already at the fewest, so the fan-out is done"
+    );
+    assert_eq!(game.zone_of(toss), Zone::Graveyard);
+    assert_eq!(game.zone_of(kept), Zone::Hand, "P0 keeps one card");
+    assert_eq!(game.zone_of(theirs), Zone::Hand, "P1 keeps theirs");
+}
+
+#[test]
+fn balance_cuts_every_battlefield_down_to_the_fewest_creatures() {
+    // The third sweep, with no lands and no cards in hand to distract it: P0's two creatures
+    // against P1's none means P0 sacrifices both.
+    let mut game = Game::new();
+    let first = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
+    let second = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
+    let balance = game.spawn_in_hand(PlayerId(0), card("Balance"));
+
+    cast_and_resolve(&mut game, balance, None);
+
+    assert_eq!(sacrifice_chooser(&game), Some(PlayerId(0)));
+    choose_sacrifices(&mut game, PlayerId(0), vec![first, second]);
+
+    assert!(game.pending_choice().is_none());
+    assert_eq!(game.zone_of(first), Zone::Graveyard);
+    assert_eq!(game.zone_of(second), Zone::Graveyard);
+}
+
+#[test]
+fn balance_runs_its_three_sweeps_in_printed_order() {
+    // Lands, then hands, then creatures — one resolution, three fan-outs, each measuring its own
+    // floor. P0 is above P1 in all three.
+    let mut game = Game::new();
+    let land = game.spawn_on_battlefield(PlayerId(0), card("Plains"));
+    let creature = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
+    let in_hand = game.spawn_in_hand(PlayerId(0), VANILLA.clone());
+    let balance = game.spawn_in_hand(PlayerId(0), card("Balance"));
+
+    cast_and_resolve(&mut game, balance, None);
+
+    // Sweep 1 — lands (P1 controls none).
+    assert_eq!(sacrifice_chooser(&game), Some(PlayerId(0)), "lands first");
+    choose_sacrifices(&mut game, PlayerId(0), vec![land]);
+    // Sweep 2 — hands (P1 holds none).
+    assert_eq!(
+        discard_edict_ask(&game),
+        Some((PlayerId(0), 1)),
+        "then hands"
+    );
+    game.submit(Intent::Discard {
+        player: PlayerId(0),
+        cards: vec![in_hand],
+    })
+    .expect("a legal discard-edict answer");
+    // Sweep 3 — creatures (P1 controls none).
+    assert_eq!(
+        sacrifice_chooser(&game),
+        Some(PlayerId(0)),
+        "then creatures"
+    );
+    choose_sacrifices(&mut game, PlayerId(0), vec![creature]);
+
+    assert!(game.pending_choice().is_none());
+    assert_eq!(game.zone_of(land), Zone::Graveyard);
+    assert_eq!(game.zone_of(in_hand), Zone::Graveyard);
+    assert_eq!(game.zone_of(creature), Zone::Graveyard);
+}

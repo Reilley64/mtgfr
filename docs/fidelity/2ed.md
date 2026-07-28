@@ -176,7 +176,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [x] **Animate Wall** {W} · Enchantment — Aura — increment 24
 - [x] **Ankh of Mishra** {2} · Artifact — increment 58
 - [x] **Aspect of Wolf** {1}{G} · Enchantment — Aura — increment 75, 25
-- [ ] **Balance** {1}{W} · Sorcery — increment 43
+- [x] **Balance** {1}{W} · Sorcery — increment 43
 - [x] **Basalt Monolith** {3} · Artifact — increment 7
 - [x] **Benalish Hero** {W} · Creature — Human Soldier — increment 14 (approximated: banding's blocking half only — see increment 79)
 - [x] **Berserk** {G} · Instant — increment 45

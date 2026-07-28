@@ -28,28 +28,50 @@ impl Game {
                 filter,
                 life_loss,
                 count,
+                down_to_fewest,
                 then,
             }) => {
                 let count = self.resolve_count(count, controller, source, target, ctx.x);
                 self.sacrifice_edict(
-                    scope, keep_one, filter, life_loss, count, then, controller, source, events,
+                    scope,
+                    keep_one,
+                    filter,
+                    life_loss,
+                    count,
+                    down_to_fewest,
+                    then,
+                    controller,
+                    source,
+                    events,
                 )
             }
-            // Syphon Mind's "Each other player discards a card." A fan-out over the opponents in
-            // APNAP order (empty-hand seats skipped), tallying `cards_discarded_this_way` so the
-            // enclosing `Sequence`'s draw step reads it.
-            Effect::Choice(ChoiceEffect::EachOpponentDiscards) => {
+            // Syphon Mind's "Each other player discards a card." A fan-out over the scoped seats
+            // in APNAP order (empty hands skipped), tallying `cards_discarded_this_way` so the
+            // enclosing `Sequence`'s draw step reads it. Balance's `down_to_fewest` measures the
+            // smallest hand among those seats first, and each of them pitches its own excess.
+            Effect::Choice(ChoiceEffect::EachPlayerDiscards {
+                scope,
+                down_to_fewest,
+            }) => {
                 self.resolution_frame.cards_discarded_this_way = 0;
-                let opponents: Vec<PlayerId> = self
+                let affected: Vec<PlayerId> = self
                     .apnap_order()
                     .into_iter()
-                    .filter(|&p| p != controller)
+                    .filter(|&p| scope != EdictScope::EachOpponent || p != controller)
                     .collect();
+                let floor = down_to_fewest.then(|| {
+                    affected
+                        .iter()
+                        .map(|&p| self.hand_of(p).len() as u32)
+                        .min()
+                        .unwrap_or(0)
+                });
                 pending::raise(
                     self,
                     pending::ChoiceRequest::NextDiscardEdict {
-                        remaining: opponents,
+                        remaining: affected,
                         source,
+                        floor,
                     },
                 )
             }

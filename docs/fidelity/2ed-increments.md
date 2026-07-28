@@ -1509,7 +1509,7 @@ resolution instead), so the lift gate is asserted where a player meets it: `lega
 the 2/2 and withholds the 3/3 and the opponent's creature.
 *Cards:* stone_giant.
 
-### 43. `mass-symmetrical-rebalancing` — 1 card, L
+### 43. `mass-symmetrical-rebalancing` — 1 card, L — **done**
 Depends on: nothing.
 Balance. Three sequential symmetrical operations, each finding the minimum across players and
 making everyone else match: sacrifice lands down to the fewest, discard down to the fewest, and
@@ -1518,6 +1518,23 @@ sacrifice creatures down to the fewest — with each affected player choosing wh
 `PendingChoice` per player over-threshold in APNAP order (CR 101.4). `each_player_sacrifices`
 exists but takes a fixed count; the novelty is the derived per-player count and the three-phase
 sequencing.
+*Landed:* no `BalanceZone` — the sketch would have meant a fourth pending-choice family and its own
+proto messages for what is, in the end, a different *count* on two fan-outs the pool already has.
+Both `each_player_sacrifices` and the discard fan-out took a `down_to_fewest` flag instead, and the
+derived per-player count rides a `floor: Option<u32>` carried on the choice request *and* the
+`PendingChoice`: the smallest matching battlefield (or hand) among the scoped seats is measured
+once as the effect starts — before anybody sacrifices, so every seat is judged against the same
+number, CR 701.16 — and each seat's `count` is then `options.len() - floor` at raise time. A seat
+already at the floor is skipped outright rather than asked for zero, the way an empty hand is
+already skipped. Carrying `floor` beside `count` is what lets an answered seat hand the *next* one
+its own derived count. The three-phase sequencing is a plain `Sequence` of three steps.
+`EachOpponentDiscards` became `EachPlayerDiscards { scope, down_to_fewest }` on the way through —
+Balance's middle clause is all-players and Syphon Mind's is opponents-only, which is the axis
+`each_player_sacrifices` already had — so syphon_mind.toml now names `scope = "each_opponent"`.
+Two pre-existing wire gaps closed with it: `PendingChoiceView::SacrificeEdict` never carried
+`count`, so the client's `choice.ts` guessed 1 and asked for one creature under Malfegor's "for
+each card discarded this way"; and the `DiscardEdict` projection hardcoded `count: 1`. Both now
+send the real number.
 *Cards:* balance.
 
 ### 44. `aura-etb-conditional-self-grant` — 1 card, S — **done**

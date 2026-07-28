@@ -874,7 +874,7 @@ impl Effect {
             | Effect::Static(StaticEffect::ControlAttached)
             | Effect::Choice(ChoiceEffect::EachPlayerSacrifices { .. })
             | Effect::Choice(ChoiceEffect::EachPlayerChoosesWarOrPeace)
-            | Effect::Choice(ChoiceEffect::EachOpponentDiscards)
+            | Effect::Choice(ChoiceEffect::EachPlayerDiscards { .. })
             | Effect::Choice(ChoiceEffect::DiscardYourHand)
             | Effect::Choice(ChoiceEffect::EachPlayerExilesFromGraveyard)
             | Effect::Choice(ChoiceEffect::CasterKeepsOneOfEachTypePerPlayer)
@@ -2663,6 +2663,7 @@ fn fill_dying_permanent_types(effect: Effect, types: TypeSet) -> Effect {
             keep_one,
             life_loss,
             count,
+            down_to_fewest,
             then,
         }) if filter.shares_type_with_dying_permanent => Effect::Choice(ChoiceEffect::EachPlayerSacrifices {
             filter: PermanentFilter { types, ..filter },
@@ -2670,6 +2671,7 @@ fn fill_dying_permanent_types(effect: Effect, types: TypeSet) -> Effect {
             keep_one,
             life_loss,
             count,
+            down_to_fewest,
             then,
         }),
         Effect::Sequence { steps } => {

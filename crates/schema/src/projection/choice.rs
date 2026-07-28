@@ -400,11 +400,13 @@ impl<'a> ChoiceCtx<'a> {
                 options,
                 source,
                 keep_one,
+                count,
                 ..
             } => PendingChoiceView::SacrificeEdict {
                 player: player.0,
                 source,
                 keep_one,
+                count,
                 items: self.label_items(options),
             },
             engine::PendingChoice::Proliferate {
@@ -588,17 +590,18 @@ impl<'a> ChoiceCtx<'a> {
                 count: count as u32,
                 items: private_items(player, self.viewer, hand, |ids| self.label_items(ids)),
             },
-            // Syphon Mind's per-opponent discard: exactly one card from a private hand — the same
-            // wire shape as a `DiscardCards` of one, with the options redacted from other viewers.
-            engine::PendingChoice::DiscardEdict { player, options, .. } => {
-                PendingChoiceView::Discard {
-                    player: player.0,
-                    count: 1,
-                    items: private_items(player, self.viewer, options, |ids| {
-                        self.label_items(ids)
-                    }),
-                }
-            }
+            // Syphon Mind's per-seat discard: `count` cards from a private hand — the same wire
+            // shape as a `DiscardCards`, with the options redacted from other viewers.
+            engine::PendingChoice::DiscardEdict {
+                player,
+                options,
+                count,
+                ..
+            } => PendingChoiceView::Discard {
+                player: player.0,
+                count,
+                items: private_items(player, self.viewer, options, |ids| self.label_items(ids)),
+            },
             engine::PendingChoice::PutFromHandOnTop {
                 player,
                 hand,
@@ -1098,6 +1101,7 @@ mod coverage_tests {
                     options: vec![source],
                     keep_one: true,
                     count: 1,
+                    floor: None,
                     filter: engine::PermanentFilter::default(),
                     remaining: vec![],
                     controller: PlayerId(0),

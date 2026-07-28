@@ -5479,6 +5479,45 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
         }
     }
 
+    /// Balance's one sentence and a half is three sweeps, and every one of them has to carry
+    /// `down_to_fewest` — a plain edict would take one land, one card and one creature from
+    /// everybody instead of levelling them. The middle sweep is the discard twin, so it has to be
+    /// scoped to all players rather than left on Syphon Mind's opponents-only default.
+    #[test]
+    fn unlimited_balance_levels_lands_then_hands_then_creatures() {
+        let balance = get_by_name("Balance").expect("Balance is in the pool");
+        let [spell] = &balance.abilities[..] else {
+            panic!("one spell ability holding all three sweeps");
+        };
+        assert_eq!(spell.timing, Timing::Spell);
+        let Effect::Sequence { steps } = &spell.effect else {
+            panic!("three sweeps, run in printed order");
+        };
+        let sacrifices = |filter| {
+            Effect::Choice(ChoiceEffect::EachPlayerSacrifices {
+                scope: engine::EdictScope::AllPlayers,
+                keep_one: false,
+                filter,
+                life_loss: 0,
+                count: Amount::Fixed(1),
+                down_to_fewest: true,
+                then: &[],
+            })
+        };
+        assert_eq!(
+            steps[..],
+            [
+                sacrifices(PermanentFilter::of(TypeSet::LAND)),
+                Effect::Choice(ChoiceEffect::EachPlayerDiscards {
+                    scope: engine::EdictScope::AllPlayers,
+                    down_to_fewest: true,
+                }),
+                sacrifices(PermanentFilter::of(TypeSet::CREATURE)),
+            ],
+            "lands, then hands, then creatures — each levelled to the fewest"
+        );
+    }
+
     /// Phantasmal Terrain is Evil Presence with the type answered instead of printed, and the
     /// two halves have to agree: the as-enters choice writes `chosen_subtype`, and only a
     /// `set_chosen_land_type` type change reads it back. Print a `set_subtypes` list here

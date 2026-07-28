@@ -122,11 +122,11 @@ message_keys! {
     EFFECT_CHOICE_DEFENDING_PLAYER_SACRIFICES => "effect.choice_defending_player_sacrifices",
     EFFECT_CHOICE_DISCARD => "effect.choice_discard",
     EFFECT_CHOICE_DISCARD_YOUR_HAND => "effect.choice_discard_your_hand",
-    EFFECT_CHOICE_EACH_OPPONENT_DISCARDS => "effect.choice_each_opponent_discards",
     EFFECT_CHOICE_EACH_OTHER_TOKEN_BECOMES_COPY_OF_CHOSEN => "effect.choice_each_other_token_becomes_copy_of_chosen",
     EFFECT_CHOICE_EACH_PLAYER_CHOOSES_WAR_OR_PEACE => "effect.choice_each_player_chooses_war_or_peace",
     EFFECT_CHOICE_EACH_PLAYER_CONTROLLER_CHOOSES_COUNTER_TARGET => "effect.choice_each_player_controller_chooses_counter_target",
     EFFECT_CHOICE_EACH_PLAYER_CREATES_FRACTAL_FROM_EXILED_POWER => "effect.choice_each_player_creates_fractal_from_exiled_power",
+    EFFECT_CHOICE_EACH_PLAYER_DISCARDS => "effect.choice_each_player_discards",
     EFFECT_CHOICE_EACH_PLAYER_DISCARDS_HAND_THEN_DRAWS => "effect.choice_each_player_discards_hand_then_draws",
     EFFECT_CHOICE_EACH_PLAYER_EXILES_FROM_GRAVEYARD => "effect.choice_each_player_exiles_from_graveyard",
     EFFECT_CHOICE_EACH_PLAYER_NAMES_CARD_THEN_REVEALS_TOP => "effect.choice_each_player_names_card_then_reveals_top",
@@ -1962,9 +1962,13 @@ impl Effect {
             Effect::Choice(PutCreatureFromHand { .. }) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_PUT_CREATURE_FROM_HAND)
             }
-            Effect::Choice(EachOpponentDiscards) => {
-                MessageRef::new(MessageKey::EFFECT_CHOICE_EACH_OPPONENT_DISCARDS)
-            }
+            Effect::Choice(EachPlayerDiscards {
+                scope,
+                down_to_fewest,
+            }) => MessageRef::new(MessageKey::EFFECT_CHOICE_EACH_PLAYER_DISCARDS).with_params(vec![
+                edict_scope_param("scope", scope),
+                bool_param("down_to_fewest", down_to_fewest),
+            ]),
             Effect::Choice(EachPlayerChoosesWarOrPeace) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_EACH_PLAYER_CHOOSES_WAR_OR_PEACE)
             }
@@ -1992,9 +1996,17 @@ impl Effect {
                     .with_params(vec![int_param("count", count)])
             }
             Effect::Choice(EachPlayerSacrifices {
-                scope, keep_one, ..
-            }) => MessageRef::new(MessageKey::EFFECT_CHOICE_EACH_PLAYER_SACRIFICES)
-                .with_params(vec![edict_scope_param("scope", scope), bool_param("keep_one", keep_one)]),
+                scope,
+                keep_one,
+                filter,
+                down_to_fewest,
+                ..
+            }) => MessageRef::new(MessageKey::EFFECT_CHOICE_EACH_PLAYER_SACRIFICES).with_params(vec![
+                edict_scope_param("scope", scope),
+                bool_param("keep_one", keep_one),
+                bool_param("down_to_fewest", down_to_fewest),
+                permanent_filter_param("filter", filter),
+            ]),
             Effect::Choice(EachPlayerExilesFromGraveyard) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_EACH_PLAYER_EXILES_FROM_GRAVEYARD)
             }

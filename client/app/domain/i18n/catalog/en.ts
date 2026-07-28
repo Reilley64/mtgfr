@@ -167,8 +167,18 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.choice_each_player_names_card_then_reveals_top": literal(
     "Each player chooses a card name. Then each player reveals the top card of their library. If the card a player revealed has the name they chose, that player puts it into their hand. If it does not, that player puts it on the bottom of their library",
   ),
+  "effect.choice_each_player_discards": (params) =>
+    `${edictWho(param(params, "scope"))} ${
+      bool(params, "down_to_fewest") ? "discards down to the fewest cards in hand" : "discards a card"
+    }`,
   "effect.choice_each_player_sacrifices": (params) =>
-    `${edictWho(param(params, "scope"))} ${bool(params, "keep_one") ? "keeps one creature and sacrifices the rest" : "sacrifices a permanent"}`,
+    `${edictWho(param(params, "scope"))} ${
+      bool(params, "keep_one")
+        ? "keeps one creature and sacrifices the rest"
+        : bool(params, "down_to_fewest")
+          ? `sacrifices ${humanize(param(params, "filter"))} down to the fewest anyone controls`
+          : "sacrifices a permanent"
+    }`,
   "effect.choice_each_player_shuffles_hand_and_graveyard_then_draws": (params) =>
     `Each player shuffles their hand and graveyard into their library, then draws ${param(params, "count")}`,
   "effect.choice_join_forces_pay_mana": literal("Starting with you, each player may pay any amount of mana"),
@@ -196,7 +206,6 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     "Put a +1/+1 counter on this creature, then you may have this creature become a copy of an artifact or creature card from among those cards until end of turn",
   ),
   "effect.choice_discard_your_hand": literal("Discard your hand"),
-  "effect.choice_each_opponent_discards": literal("Each other player discards a card"),
   "effect.choice_each_player_chooses_war_or_peace": literal("Each player chooses war or peace"),
   "effect.choice_put_creature_from_hand": literal(
     "You may put a creature card from your hand onto the battlefield. It gains haste. Sacrifice it at the beginning of the next end step",

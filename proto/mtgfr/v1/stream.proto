@@ -494,6 +494,8 @@ message PendingChoiceViewSacrificeEdict {
   // When true, the player keeps one permanent and sacrifices all others.
   bool keep_one = 3;
   repeated ChoiceItem items = 4;
+  // How many of `items` to choose (ignored when `keep_one`).
+  uint32 count = 5;
 }
 
 // Every counter-bearing permanent on the battlefield; this player may choose any number

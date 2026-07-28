@@ -1310,6 +1310,9 @@ pub enum PendingChoice {
         /// How many of `options` this player sacrifices (Malfegor's "a creature … for each card
         /// discarded this way"), capped at what they control. 1 for a plain edict.
         count: u32,
+        /// Balance's "down to the fewest" floor, carried so the *next* player in `remaining`
+        /// derives their own `count` from it. `None` for a fixed-count edict.
+        floor: Option<u32>,
         controller: PlayerId,
         source: ObjectId,
         follow_up: &'static [Effect],
@@ -1346,17 +1349,24 @@ pub enum PendingChoice {
         options: Vec<ObjectId>,
         remaining: Vec<PlayerId>,
     },
-    /// `player` must discard one of `options` (a card in their own hand) to a multi-player discard
-    /// fan-out ([`Effect::Choice(ChoiceEffect::EachOpponentDiscards)`] — Syphon Mind). Mandatory
-    /// (exactly one, when they have any). Answered by [`Intent::Discard`]. `remaining` are the
-    /// still-to-choose opponents (APNAP order) after this one; the hand is private, so `options`
-    /// are redacted from other seats. No `follow_up`: the "you draw a card for each card discarded
-    /// this way" payoff rides in the enclosing `Sequence`, resumed once every opponent has answered.
+    /// `player` must discard `count` of `options` (cards in their own hand) to a multi-player
+    /// discard fan-out ([`Effect::Choice(ChoiceEffect::EachPlayerDiscards)`] — Syphon Mind,
+    /// Balance). Mandatory (exactly `count`, when they have that many). Answered by
+    /// [`Intent::Discard`]. `remaining` are the still-to-choose seats (APNAP order) after this one;
+    /// the hand is private, so `options` are redacted from other seats. No `follow_up`: the "you
+    /// draw a card for each card discarded this way" payoff rides in the enclosing `Sequence`,
+    /// resumed once every seat has answered.
     DiscardEdict {
         player: PlayerId,
         source: ObjectId,
         options: Vec<ObjectId>,
         remaining: Vec<PlayerId>,
+        /// How many of `options` this player discards. 1 for a plain fan-out; under Balance's
+        /// `down_to_fewest`, their own excess over `floor`.
+        count: u32,
+        /// Balance's "down to the fewest" floor, carried so the *next* seat in `remaining` derives
+        /// their own `count` from it. `None` for a plain one-card-each fan-out.
+        floor: Option<u32>,
     },
     /// `caster` (Tragic Arrogance's controller) chooses which of `target_player`'s nonland
     /// permanents (`options`) to keep — up to one of each type (artifact, creature, enchantment;

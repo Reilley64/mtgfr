@@ -390,11 +390,13 @@ pub fn pending_choice_view_to_pb(choice: PendingChoiceView) -> pb::PendingChoice
             player,
             source,
             keep_one,
+            count,
             items,
         } => Choice::SacrificeEdict(pb::PendingChoiceViewSacrificeEdict {
             player: u32::from(player),
             source,
             keep_one,
+            count,
             items: choice_items_to_pb(items),
         }),
         PendingChoiceView::Proliferate {

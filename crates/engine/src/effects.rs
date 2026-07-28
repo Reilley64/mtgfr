@@ -881,7 +881,7 @@ impl Game {
             // Edict / fan-out pauses — edict pause peel (`resolution/pause_edict`).
             Effect::Choice(ChoiceEffect::EachPlayerSacrifices { .. })
             | Effect::Choice(ChoiceEffect::EachPlayerChoosesWarOrPeace)
-            | Effect::Choice(ChoiceEffect::EachOpponentDiscards)
+            | Effect::Choice(ChoiceEffect::EachPlayerDiscards { .. })
             | Effect::Choice(ChoiceEffect::EachPlayerExilesFromGraveyard)
             | Effect::Choice(ChoiceEffect::TargetPlayerExilesFromGraveyard { .. })
             | Effect::Choice(ChoiceEffect::CasterKeepsOneOfEachTypePerPlayer)
