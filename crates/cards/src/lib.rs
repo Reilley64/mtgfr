@@ -169,8 +169,8 @@ mod tests {
         GraveyardScope, Keyword, LandProduces, LandTapBonusColor, LandTapScope, LifeEffect, Mana,
         ManaEffect, MillEffect, MiscEffect, PermanentFilter, ProtectionScope, PumpEffect,
         SacrificeAdditionalCostCount, SacrificeCost, SacrificeEffect, SearchDest, SpellFilter,
-        SpellSpeed, StaticEffect, TargetCount, TargetSpec, Timing, TokenEffect, Trigger, TypeSet,
-        ZoneEffect,
+        SpellSpeed, StaticEffect, Step, TargetCount, TargetSpec, Timing, TokenEffect, Trigger,
+        TypeSet, ZoneEffect,
     };
 
     #[test]
@@ -4126,6 +4126,42 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                 set_color: Some(Color::Red)
             })
         );
+    }
+
+    /// Both petrifiers carry the same one ability, and both halves of it earn their keep: the
+    /// trigger has to exclude Walls (a Wall that blocks a Basilisk lives), and the destroy has to
+    /// carry `at` — a blocker destroyed as the trigger resolved would never deal its combat damage.
+    #[test]
+    fn unlimited_petrifiers_spare_walls_and_wait_for_end_of_combat() {
+        for name in ["Cockatrice", "Thicket Basilisk"] {
+            let petrifier = get_by_name(name).expect("both petrifiers are in the pool");
+            let [block] = &petrifier.abilities[..] else {
+                panic!("{name}: one triggered ability");
+            };
+            assert!(
+                matches!(
+                    block.timing,
+                    Timing::Triggered(Trigger::BlocksOrBecomesBlockedBy {
+                        filter: PermanentFilter {
+                            types: TypeSet::CREATURE,
+                            exclude_subtypes: ["Wall"],
+                            ..
+                        }
+                    })
+                ),
+                "{name} watches blocks by non-Wall creatures only, got {:?}",
+                block.timing
+            );
+            assert_eq!(
+                block.effect,
+                Effect::Destroy(DestroyEffect::ThatCreature {
+                    creature: None,
+                    only_if_it_attacked: false,
+                    at: Some(Step::EndCombat),
+                }),
+                "{name} postpones the destroy to end of combat"
+            );
+        }
     }
 
     /// Fireball prints Strive without the keyword's name: "costs {1} more to cast for each target

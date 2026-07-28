@@ -195,7 +195,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Circle of Protection: White** {1}{W} · Enchantment — increment 4, 5
 - [ ] **Clockwork Beast** {6} · Artifact Creature — Beast — increment 28
 - [ ] **Clone** {3}{U} · Creature — Shapeshifter — increment 12
-- [ ] **Cockatrice** {3}{G}{G} · Creature — Cockatrice — increment 21
+- [x] **Cockatrice** {3}{G}{G} · Creature — Cockatrice — increment 21
 - [x] **Consecrate Land** {W} · Enchantment — Aura — increment 35
 - [x] **Conservator** {4} · Artifact — increment 4
 - [ ] **Conversion** {2}{W}{W} · Enchantment — increment 8
@@ -298,7 +298,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Stasis** {1}{U} · Enchantment — increment 7
 - [x] **Stone Giant** {2}{R}{R} · Creature — Giant — increment 42
 - [x] **Sunglasses of Urza** {3} · Artifact — increment 32
-- [ ] **Thicket Basilisk** {3}{G}{G} · Creature — Basilisk — increment 21
+- [x] **Thicket Basilisk** {3}{G}{G} · Creature — Basilisk — increment 21
 - [ ] **Thoughtlace** {U} · Instant — increment 15
 - [x] **Throne of Bone** {1} · Artifact — increment 10
 - [ ] **Timber Wolves** {G} · Creature — Wolf — increment 14

@@ -49,5 +49,12 @@ pub enum DestroyEffect {
         /// this turn ([`Permanent::attacked_this_turn`]). `false` for every other filler.
         #[cfg_attr(feature = "card-dsl", serde(skip))]
         only_if_it_attacked: bool,
+        /// "Destroy that creature **at end of combat**" (Cockatrice): `Some(step)` postpones once
+        /// more, re-scheduling this same already-filled payload as a CR 603.7 delayed ability at
+        /// that step — the id is baked in, so nothing is re-chosen when it fires. `None` (the
+        /// default, and what the re-scheduled copy carries) destroys as this resolves, which is
+        /// Stinkweed Imp's shape. Same schedule-or-do-it-now knob as [`Self::Target::at`].
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        at: Option<Step>,
     },
 }

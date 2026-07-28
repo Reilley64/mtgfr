@@ -2262,6 +2262,7 @@ impl Game {
                 left_battlefield_host: None,
                 triggering_ability: None,
                 triggering_caster: None,
+                blocking_partner: None,
             };
             self.queue_trigger_group(ctx, id, self.def_of(id), Trigger::PlayerAttacksYourOpponent);
         }
@@ -2417,6 +2418,54 @@ impl Game {
         }
     }
 
+    /// Queue [`Trigger::BlocksOrBecomesBlockedBy`] (Cockatrice, Thicket Basilisk, CR 509.1a): the
+    /// payoff names the *other* creature, so unlike
+    /// [`queue_blocks_or_becomes_blocked_triggers`](Self::queue_blocks_or_becomes_blocked_triggers)
+    /// above this walks every (blocker, attacker) pair with no dedup — two creatures blocking one
+    /// Basilisk each get destroyed, and each fire carries its own partner in
+    /// [`TriggerContext::blocking_partner`]. Bespoke-queued like
+    /// [`queue_batch_attack_triggers`](Self::queue_batch_attack_triggers) rather than watch-tabled,
+    /// since the partner has to be baked into the ability before it goes on the stack. Called
+    /// directly from [`Game::declare_blockers`].
+    pub(crate) fn queue_blocks_or_becomes_blocked_by_triggers(
+        &mut self,
+        blocks: &[(ObjectId, ObjectId)],
+    ) {
+        for &(blocker, attacker) in blocks {
+            for (watcher, partner) in [(blocker, attacker), (attacker, blocker)] {
+                let controller = self.owner_of(watcher);
+                let ctx = TriggerContext {
+                    blocking_partner: Some(partner),
+                    ..TriggerContext::of(controller)
+                };
+                let abilities: Vec<Ability> = self
+                    .functional_abilities(watcher)
+                    .iter()
+                    .filter(|a| match a.timing {
+                        Timing::Triggered(Trigger::BlocksOrBecomesBlockedBy { filter }) => {
+                            self.permanent_matches(&filter, partner, controller, Some(watcher))
+                        }
+                        _ => false,
+                    })
+                    .filter(|a| a.condition.is_none_or(|c| self.condition_holds(c, ctx)))
+                    .map(|a| Ability {
+                        effect: contextualize_effect(a.effect.clone(), ctx),
+                        ..*a
+                    })
+                    .collect();
+                if abilities.is_empty() {
+                    continue;
+                }
+                self.pending_trigger_groups.push(TriggerGroup {
+                    expanded: false,
+                    controller,
+                    source: watcher,
+                    abilities,
+                });
+            }
+        }
+    }
+
     /// Queue [`Trigger::AttacksOrBlocks`]'s block half (Mana-Charged Dragon, CR 509.3a): unlike
     /// [`queue_blocks_or_becomes_blocked_triggers`](Self::queue_blocks_or_becomes_blocked_triggers)
     /// above, only the *blocker* side of each pair fires — a blocked attacker doesn't "block".
@@ -2482,6 +2531,7 @@ impl Game {
                 left_battlefield_host: None,
                 triggering_ability: None,
                 triggering_caster: None,
+                blocking_partner: None,
             };
             self.queue_trigger_group(
                 ctx,
@@ -2762,6 +2812,7 @@ impl Game {
             left_battlefield_host: None,
             triggering_ability: None,
             triggering_caster: None,
+            blocking_partner: None,
         };
         for id in self.battlefield() {
             if self.owner_of(id) != player {

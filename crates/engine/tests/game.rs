@@ -104907,6 +104907,82 @@ fn mind_twist_for_more_than_the_hand_holds_just_empties_it() {
     assert!(hand_ids(&game, PlayerId(1)).is_empty(), "the hand is empty");
 }
 
+// ── Blocking that petrifies the other creature (fidelity #21) ────────────────────────────────
+
+#[test]
+fn thicket_basilisk_destroys_the_creature_that_blocked_it_at_end_of_combat() {
+    // Thicket Basilisk: "Whenever this creature blocks or becomes blocked by a non-Wall
+    // creature, destroy that creature at end of combat."
+    let mut game = Game::new();
+    let basilisk = game.spawn_on_battlefield(PlayerId(0), card("Thicket Basilisk"));
+    let ox = game.spawn_on_battlefield(PlayerId(1), creature("Test Ox", 0, 7, &[]));
+
+    attack_with(&mut game, vec![basilisk]);
+    block_with(&mut game, vec![(ox, basilisk)]).expect("a 0/7 can block a 2/4");
+    resolve_top_of_stack(&mut game); // the "becomes blocked" trigger schedules the destroy
+
+    assert_eq!(
+        game.zone_of(ox),
+        Zone::Battlefield,
+        "the blocker is still around to deal its combat damage"
+    );
+
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+    resolve_top_of_stack(&mut game); // the scheduled destroy fires
+
+    assert_eq!(
+        game.zone_of(ox),
+        Zone::Graveyard,
+        "and turns to stone once combat is over"
+    );
+}
+
+#[test]
+fn thicket_basilisk_leaves_a_wall_that_blocked_it_alone() {
+    // "…blocked by a **non-Wall** creature": Wall of Wood survives the block it made.
+    let mut game = Game::new();
+    let basilisk = game.spawn_on_battlefield(PlayerId(0), card("Thicket Basilisk"));
+    let wall = game.spawn_on_battlefield(PlayerId(1), card("Wall of Wood"));
+
+    attack_with(&mut game, vec![basilisk]);
+    block_with(&mut game, vec![(wall, basilisk)]).expect("a 0/3 Wall can block");
+
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+
+    assert_eq!(
+        game.zone_of(wall),
+        Zone::Battlefield,
+        "a Wall blocks a Basilisk and lives"
+    );
+}
+
+#[test]
+fn cockatrice_destroys_the_creature_it_blocked_at_end_of_combat() {
+    // The "blocks" half of the same trigger, from the blocker's side — and Cockatrice's flying
+    // doesn't stop it from blocking a ground creature (CR 509.1b).
+    let mut game = Game::new();
+    let ox = game.spawn_on_battlefield(PlayerId(0), creature("Test Ox", 0, 7, &[]));
+    let cockatrice = game.spawn_on_battlefield(PlayerId(1), card("Cockatrice"));
+
+    attack_with(&mut game, vec![ox]);
+    block_with(&mut game, vec![(cockatrice, ox)]).expect("a flyer can block a ground creature");
+    resolve_top_of_stack(&mut game); // the "blocks" trigger schedules the destroy
+
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.zone_of(ox),
+        Zone::Graveyard,
+        "the attacker a Cockatrice blocked is destroyed at end of combat"
+    );
+    assert_eq!(
+        game.zone_of(cockatrice),
+        Zone::Battlefield,
+        "the Cockatrice itself is untouched"
+    );
+}
+
 // ── Damage split evenly, priced per target (fidelity #53) ────────────────────────────────────
 
 /// [`Intent::Cast`] declaring `strive_count` targets and a chosen `x`.

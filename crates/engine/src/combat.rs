@@ -812,6 +812,9 @@ impl Game {
         // whole declaration once, not per `BlockerDeclared` event — a multiply-blocked attacker's
         // "becomes blocked" fires only once, same reasoning as the batch attack-count scan below.
         self.queue_blocks_or_becomes_blocked_triggers(blocks);
+        // Cockatrice's "whenever this creature blocks or becomes blocked by a non-Wall creature"
+        // — the same declaration, walked per pair, since its payoff names the other creature.
+        self.queue_blocks_or_becomes_blocked_by_triggers(blocks);
         // Mana-Charged Dragon's "whenever this creature attacks or blocks" — the block half
         // (blocker side only; a blocked attacker "becomes blocked", it doesn't "block").
         self.queue_attacks_or_blocks_block_triggers(blocks);

@@ -35,6 +35,7 @@ impl Game {
                         effect: Effect::Destroy(DestroyEffect::ThatCreature {
                             creature: Some(object),
                             only_if_it_attacked,
+                            at: None,
                         }),
                     }];
                 }
@@ -88,10 +89,25 @@ impl Game {
             DestroyEffect::ThatCreature {
                 creature,
                 only_if_it_attacked,
+                at,
             } => {
                 let Some(id) = creature else {
                     return Vec::new();
                 };
+                // Cockatrice's "destroy that creature at end of combat": re-schedule the same
+                // payload as a CR 603.7 delayed ability, minus the `at` that got it here.
+                if let Some(fire_at) = at {
+                    return vec![Event::DelayedTriggerScheduled {
+                        controller,
+                        source,
+                        fire_at,
+                        effect: Effect::Destroy(DestroyEffect::ThatCreature {
+                            creature,
+                            only_if_it_attacked,
+                            at: None,
+                        }),
+                    }];
+                }
                 // Berserk: the rider only collects on a creature that was declared an attacker
                 // this turn (CR 508.1), which is why the check waits until the delayed ability
                 // fires rather than happening when it was scheduled.

@@ -69,6 +69,16 @@ pub enum Trigger {
     /// [`Game::declare_blockers`] (batch-deduped, like [`Trigger::YouAttackWithCreatures`]'s
     /// [`Game::queue_batch_attack_triggers`]), not [`Game::enqueue_triggers`]'s per-event scan.
     BlocksOrBecomesBlocked,
+    /// Whenever this creature blocks or becomes blocked by a creature matching `filter`
+    /// (Cockatrice, Thicket Basilisk — "…by a non-Wall creature"; CR 509.1a/509.1h). Unlike
+    /// [`BlocksOrBecomesBlocked`](Self::BlocksOrBecomesBlocked) above this fires once per
+    /// (blocker, attacker) *pair* and isn't deduped, because the payoff names the *other*
+    /// creature: two creatures blocking one Basilisk each turn to stone. That partner rides in
+    /// [`TriggerContext::blocking_partner`], which fills the payoff's
+    /// [`DestroyEffect::ThatCreature`](crate::DestroyEffect::ThatCreature). Batch-scanned from
+    /// [`Game::declare_blockers`] like the variant above, not [`Game::enqueue_triggers`]'s
+    /// per-event pass. Spelled `"blocks_or_becomes_blocked_by"` in TOML, with a sibling `filter`.
+    BlocksOrBecomesBlockedBy { filter: PermanentFilter },
     /// Whenever this creature attacks or blocks (Mana-Charged Dragon, CR 508.1a / CR 509.3a) —
     /// unlike [`BlocksOrBecomesBlocked`](Self::BlocksOrBecomesBlocked), the *attacker* half of a
     /// block declaration doesn't fire this (an attacker "becomes blocked", it doesn't "block").
@@ -892,6 +902,12 @@ pub(crate) struct TriggerContext {
     /// — `controller` alone can't name the payer for those scopes. `None` for every other
     /// trigger. See [`Game::queue_cast_spell_triggers`] for where this is captured.
     pub(crate) triggering_caster: Option<PlayerId>,
+    /// The creature on the other side of a [`Trigger::BlocksOrBecomesBlockedBy`] block pair
+    /// (Cockatrice's "that creature") — the attacker for the blocker's fire, the blocker for the
+    /// attacker's. `None` for every other trigger. Feeds
+    /// [`Effect::Destroy(DestroyEffect::ThatCreature)`] through the same `fill_that_creature`
+    /// filler `damaged_creature` above uses; see [`Game::queue_blocks_or_becomes_blocked_by_triggers`].
+    pub(crate) blocking_partner: Option<ObjectId>,
 }
 
 impl TriggerContext {
@@ -926,6 +942,7 @@ impl TriggerContext {
             left_battlefield_host: None,
             triggering_ability: None,
             triggering_caster: None,
+            blocking_partner: None,
         }
     }
 }

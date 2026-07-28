@@ -1856,7 +1856,9 @@ impl<'de> Deserialize<'de> for SacrificeCost {
 /// [`CreatureEnchantedByYourAuraAttacks`](TriggerTag::CreatureEnchantedByYourAuraAttacks) and
 /// [`AnotherPlayerAttacksWithCreatures`](TriggerTag::AnotherPlayerAttacksWithCreatures) reuse
 /// that same `at_least` sibling. A ninth ([`SpellTargetsThisOnly`](TriggerTag::SpellTargetsThisOnly),
-/// `timing = "spell_targets_this"`) reuses `CastSpell`'s `spell_filter` sibling.
+/// `timing = "spell_targets_this"`) reuses `CastSpell`'s `spell_filter` sibling. A tenth
+/// ([`BlocksOrBecomesBlockedBy`](TriggerTag::BlocksOrBecomesBlockedBy)) reuses `YouSacrifice`'s
+/// `filter` sibling for the creature on the other side of the block.
 #[derive(Deserialize)]
 #[serde(rename_all = "snake_case")]
 enum TriggerTag {
@@ -1867,6 +1869,7 @@ enum TriggerTag {
     BecomesMonstrous,
     Attacks,
     BlocksOrBecomesBlocked,
+    BlocksOrBecomesBlockedBy,
     AttacksOrBlocks,
     Dies,
     CreatureDies,
@@ -2131,6 +2134,9 @@ impl<'de> Deserialize<'de> for Ability {
                 TriggerTag::BecomesMonstrous => Trigger::BecomesMonstrous,
                 TriggerTag::Attacks => Trigger::Attacks,
                 TriggerTag::BlocksOrBecomesBlocked => Trigger::BlocksOrBecomesBlocked,
+                TriggerTag::BlocksOrBecomesBlockedBy => Trigger::BlocksOrBecomesBlockedBy {
+                    filter: flat.filter,
+                },
                 TriggerTag::AttacksOrBlocks => Trigger::AttacksOrBlocks,
                 TriggerTag::Dies => Trigger::Dies,
                 TriggerTag::CreatureDies => Trigger::CreatureDies,

@@ -2153,8 +2153,12 @@ pub(crate) fn contextualize_effect(effect: Effect, ctx: TriggerContext) -> Effec
     // A `DealsCombatDamageToCreature` trigger's destroy payoff needs the damaged creature's id,
     // not the attack tuple below — guarded separately for the same reason as
     // `dying_enchanted_creature` above.
+    let effect = match ctx.blocking_partner {
+        Some(partner) => fill_that_creature(effect, partner),
+        None => effect,
+    };
     let effect = match ctx.damaged_creature {
-        Some(damaged) => fill_damaged_creature(effect, damaged),
+        Some(damaged) => fill_that_creature(effect, damaged),
         None => effect,
     };
     // A `ThisPermanentLeavesBattlefield` trigger's sacrifice payoff needs the host this
@@ -2450,21 +2454,23 @@ fn fill_dying_enchanted_creature_payoff(
     }
 }
 
-/// Rewrite a [`Trigger::DealsCombatDamageToCreature`] look-back destroy placeholder (Stinkweed
-/// Imp) to the damaged creature's id — mirrors [`fill_dying_enchanted_creature`] above, one
-/// effect variant only (flag-don't-force: no other pool card reads this context field yet).
-fn fill_damaged_creature(effect: Effect, damaged: ObjectId) -> Effect {
+/// Rewrite a look-back destroy placeholder to the creature the trigger's context named — the one
+/// a [`Trigger::DealsCombatDamageToCreature`] source just damaged (Stinkweed Imp), or the one on
+/// the other side of a [`Trigger::BlocksOrBecomesBlockedBy`] block pair (Cockatrice). Mirrors
+/// [`fill_dying_enchanted_creature`] above, one effect variant only.
+fn fill_that_creature(effect: Effect, creature: ObjectId) -> Effect {
     match effect {
-        Effect::Destroy(DestroyEffect::ThatCreature { .. }) => {
+        Effect::Destroy(DestroyEffect::ThatCreature { at, .. }) => {
             Effect::Destroy(DestroyEffect::ThatCreature {
-                creature: Some(damaged),
+                creature: Some(creature),
                 only_if_it_attacked: false,
+                at,
             })
         }
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
-                .map(|step| fill_damaged_creature(step.clone(), damaged))
+                .map(|step| fill_that_creature(step.clone(), creature))
                 .collect();
             Effect::Sequence {
                 steps: Arc::from(filled),

@@ -404,7 +404,7 @@ The increment's other two cards each want a *second* mechanism and moved out: De
 pay-or-else at all, since nothing is optional.
 *Cards:* force_of_nature.
 
-### 21. `blocks-or-blocked-by-trigger` — 2 cards, M
+### 21. `blocks-or-blocked-by-trigger` — 2 cards, M — **done**
 Depends on: nothing.
 "Whenever this creature blocks or becomes blocked by a non-Wall creature, destroy that creature at
 end of combat." Two gaps meet here. (a) No trigger fires on the blocking relationship itself —
@@ -415,6 +415,24 @@ once per blocking pair at declare-blockers with the other creature as `triggerin
 `PermanentFilter::subtypes_exclude: &[&str]` replacing the ad-hoc bools. The delayed destroy is an
 end-of-combat scheduled effect, which `schedule_*` effects already have a shape for.
 *Cards:* cockatrice, thicket_basilisk.
+
+*Landed:* gap (b) was already closed and nobody had noticed. `PermanentFilter::exclude_subtypes`
+has been in the engine since Keldon Warlord's "non-Wall creatures you control", so "non-Wall" is a
+plain `filter = { types = "creature", exclude_subtypes = ["Wall"] }` sibling on the trigger tag —
+the same `filter` key `you_sacrifice` reads. Gap (a) was half-closed too:
+`Trigger::BlocksOrBecomesBlocked` already exists for Goblin Cadets, but it's deduped *once per
+creature* and records no partner, which is precisely wrong for a payoff that names the other
+creature. So the new variant is `BlocksOrBecomesBlockedBy { filter }`, walked per (blocker,
+attacker) pair with no dedup — two creatures blocking one Basilisk both turn to stone, and each
+fire carries its own partner in `TriggerContext::blocking_partner`.
+
+"Destroy that creature at end of combat" cost one field rather than a new scheduled effect:
+`DestroyEffect::ThatCreature` grew the same `at: Option<Step>` knob `DestroyEffect::Target` already
+carries, so on resolution it re-schedules its own already-filled payload as a CR 603.7 delayed
+ability. `Step::EndCombat` was already a real `fire_at` (decayed sacrifices there), and the partner
+reaches the payload through the existing funnel — Stinkweed Imp's `fill_damaged_creature`, renamed
+`fill_that_creature` and given a second caller. The `at` matters for more than flavor: a blocker
+destroyed as the trigger resolved would never deal its combat damage.
 
 ### 22. `damage-taken-history` — 3 cards, M
 Depends on: nothing.
