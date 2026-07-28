@@ -11,6 +11,7 @@ import {
   pendingDivideSpellOverlay,
   pendingPlayerAimOverlay,
   pendingTargetingOverlay,
+  pickedPlayersFromDraft,
   sacrificeCostOverlay,
   stagingOverlay,
 } from "./action/targeting";
@@ -26,6 +27,7 @@ import { MountBoardKeyboard } from "./html/keyboard-mount";
 import { manaTrayView } from "./html/mana-tray";
 import { boardOverlays } from "./html/overlays";
 import { BoardPointerDown, BoardPointerMove, BoardPointerUp, type Message } from "./messages";
+import { dragGhostFromHandDrag } from "./motion/screen-motion";
 import type { BoardModel } from "./submodel";
 
 /** Board TEA messages plus shell ticks emitted by shared mounts (e.g. `cardArt`). */
@@ -175,6 +177,12 @@ export const view = Submodel.defineView<BoardViewModel, ViewMessage>((model) => 
           }),
         )
       : null;
+  const stackMode = stackPresentation({
+    count: state.stack.length,
+    expandedOpen: model.board.stackExpand,
+    viewportW: model.board.viewport.width,
+    viewportH: model.board.viewport.height,
+  });
   publishBitmapFrame({
     width: model.board.viewport.width,
     height: model.board.viewport.height,
@@ -186,8 +194,12 @@ export const view = Submodel.defineView<BoardViewModel, ViewMessage>((model) => 
     combat: state.combat,
     stagedAttackers: model.board.combatAttackers,
     stagedBlocks: model.board.combatBlocks,
-    flights: [...model.board.flights.values()],
-    exitFx: [...model.board.exitFx.values()],
+    stack: state.stack,
+    stackPresentation: stackMode,
+    flights: [...(model.board.flights instanceof Map ? model.board.flights.values() : [])],
+    dragGhost:
+      model.board.handDrag == null ? null : dragGhostFromHandDrag(model.board.handDrag, model.board.camera.zoom),
+    exitFx: [...(model.board.exitFx instanceof Map ? model.board.exitFx.values() : [])],
     hideCardIds: model.board.hideCardIds,
     targetObjects: overlay.targetObjects,
     pickedObjects:
@@ -202,10 +214,7 @@ export const view = Submodel.defineView<BoardViewModel, ViewMessage>((model) => 
         ? new Map(Object.entries(model.board.promptDraft.amounts).map(([id, amount]) => [Number(id), amount]))
         : new Map()),
     targetPlayers: overlay.targetPlayers,
-    pickedPlayers:
-      overlay.aiming && model.board.promptDraft?.kind === "player-pick"
-        ? new Set(model.board.promptDraft.players)
-        : new Set(),
+    pickedPlayers: pickedPlayersFromDraft(overlay.aiming, model.board.promptDraft),
     aimFrom: overlay.aiming ? overlay.aimFrom : null,
     cursor: model.board.cursor,
     combatDragFrom: combatDrag?.from ?? null,
@@ -294,12 +303,7 @@ export const view = Submodel.defineView<BoardViewModel, ViewMessage>((model) => 
           stagedBlocks: model.board.combatBlocks,
           stagedTargeting,
           combatDrag: combatDragShapes,
-          stackPresentation: stackPresentation({
-            count: state.stack.length,
-            expandedOpen: model.board.stackExpand,
-            viewportW: model.board.viewport.width,
-            viewportH: model.board.viewport.height,
-          }),
+          stackPresentation: stackMode,
         }),
         onPointerDown: ({ x, y }) => BoardPointerDown({ x, y }),
         onPointerMove: ({ x, y }) => BoardPointerMove({ x, y }),

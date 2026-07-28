@@ -8,6 +8,7 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as ManagedRuntime from "effect/ManagedRuntime";
 import * as Redacted from "effect/Redacted";
+import { dbAttrs } from "../../app/domain/otel/semconv";
 import { webDatabaseUrl } from "./url";
 
 export { DEFAULT_WEB_DATABASE_URL, webDatabaseUrl } from "./url";
@@ -15,6 +16,10 @@ export { DEFAULT_WEB_DATABASE_URL, webDatabaseUrl } from "./url";
 const dbEffect = PgDrizzle.makeWithDefaults();
 
 type WebDbHandle = Effect.Success<typeof dbEffect>;
+
+export function webDbSpanAttrs(): Record<string, string> {
+  return dbAttrs({ operation: "QUERY", namespace: "mtgfr_web" });
+}
 
 /** Effect Drizzle handle for `mtgfr_web`. Provide via `WebDbLive` (or a `webDbLayer(url)`). */
 export class WebDb extends Context.Service<WebDb, WebDbHandle>()("WebDb") {}
@@ -46,5 +51,5 @@ export function runWebDb<A, E>(effect: Effect.Effect<A, E, WebDb>, url = webData
   if (cache?.url !== url) {
     cache = { url, runtime: makeRuntime(url) };
   }
-  return cache.runtime.runPromise(effect);
+  return cache.runtime.runPromise(effect.pipe(Effect.withSpan("db.mtgfr_web", { attributes: webDbSpanAttrs() })));
 }

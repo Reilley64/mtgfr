@@ -4143,12 +4143,11 @@ impl Game {
             // Dread Cacodemon/Reiver Demon: "if you cast it from your hand" — source-object-based
             // like the four conditions above.
             Condition::CastFromHand => self.as_permanent(source).is_some_and(|p| p.cast_from_hand),
-            // Clockwork Beast's "if this creature attacked or blocked this combat" — the live
-            // combat declarations, still populated because `queue_end_of_combat_triggers` runs
-            // ahead of `Event::CombatCleared` in the same turn-based action.
+            // Clockwork Beast's "if this creature attacked or blocked this combat" — the historic
+            // declaration list, still populated because `queue_end_of_combat_triggers` runs ahead
+            // of `Event::CombatCleared` in the same turn-based action.
             Condition::SourceAttackedOrBlockedThisCombat => {
-                self.combat.attackers.contains(&source)
-                    || self.combat.blocks.iter().any(|&(b, _)| b == source)
+                self.combat.attacked_or_blocked.contains(&source)
             }
             // Plumb the Forbidden's reflexive "When you do": the copy trigger happens only if one
             // or more creatures were sacrificed to the additional cost — source-object-based like

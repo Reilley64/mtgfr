@@ -51,7 +51,7 @@ function state(overrides: Partial<VisibleState> = {}): VisibleState {
   return {
     active_player: 0,
     can_act: true,
-    combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+    combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [], blocked_attackers: [] },
     objects: [],
     pending_choice: null,
     players: [
@@ -290,7 +290,7 @@ describe("handView playable outlines", () => {
 });
 
 describe("handView drag chrome", () => {
-  it("moves playable border from source to ghost while dragging", () => {
+  it("fades the drag source and leaves the ghost to the flight canvas", () => {
     const castable = object(42, { name: "Lightning Bolt" });
     const cast = action(7, { object: 42 });
     const tree = handView({
@@ -311,13 +311,10 @@ describe("handView drag chrome", () => {
     const source = findTestId(tree, "hand-card-face-42");
     expect(className(source)).not.toContain("ring-playable-border");
     expect(treeHasClass(source, "opacity-25")).toBe(true);
-    const ghost = findTestId(tree, "hand-drag-ghost");
-    expect(ghost).not.toBeNull();
-    expect(treeHasClass(ghost, "ring-playable-border")).toBe(true);
-    expect(treeHasClass(ghost, "drop-shadow-drag")).toBe(true);
+    expect(findTestId(tree, "hand-drag-ghost")).toBeNull();
   });
 
-  it("applies drop-shadow-drag on name-only drag ghost fallback", () => {
+  it("does not render an HTML drag ghost for name-only cards", () => {
     const castable = object(42, { name: "Lightning Bolt", print: "" });
     const cast = action(7, { object: 42 });
     const tree = handView({
@@ -335,12 +332,10 @@ describe("handView drag chrome", () => {
         y: 10,
       },
     });
-    const ghost = findTestId(tree, "hand-drag-ghost");
-    expect(ghost).not.toBeNull();
-    expect(treeHasClass(ghost, "drop-shadow-drag")).toBe(true);
+    expect(findTestId(tree, "hand-drag-ghost")).toBeNull();
   });
 
-  it("uses command playable aura classes on a command-zone drag ghost", () => {
+  it("does not render an HTML command-zone drag ghost", () => {
     const commander = object(9, {
       zone: ZONE.Command,
       is_commander: true,
@@ -362,10 +357,10 @@ describe("handView drag chrome", () => {
         y: 10,
       },
     });
-    const ghost = findTestId(tree, "hand-drag-ghost");
-    expect(ghost).not.toBeNull();
-    expect(treeHasClass(ghost, "ring-playable-border")).toBe(true);
-    expect(treeHasClass(ghost, "outline-commander-gold")).toBe(true);
+    expect(findTestId(tree, "hand-drag-ghost")).toBeNull();
+    const source = findTestId(tree, "hand-card-face-9");
+    expect(className(source)).not.toContain("ring-playable-border");
+    expect(treeHasClass(source, "opacity-25")).toBe(true);
   });
 
   it("uses not-allowed on unplayable and grab on playable hit strips", () => {
@@ -438,7 +433,7 @@ describe("handView hover stacking", () => {
     expect(treeHasClass(tree, "group-hover/hand-tile:z-30")).toBe(false);
   });
 
-  it("does not elevate z for discard-selected without relying on selection z", () => {
+  it("does not elevate z for discard-selected without hover; hover still brings to front", () => {
     const a = object(42, { name: "Lightning Bolt" });
     const tree = handView({
       state: state({ objects: [a], actions: [] }),
@@ -451,7 +446,7 @@ describe("handView hover stacking", () => {
     });
     const root = findTestId(tree, "hand-tile-42");
     expect(root).not.toBeNull();
-    // Root still has hover elevate available, but selection alone must not add a selected z class.
+    // Selection alone must not add a selected z class; hover elevate stays available.
     expect(treeHasClass(root, "[z-index:var(--hand-z)]")).toBe(true);
     expect(treeHasClass(root, "hover:[z-index:50]")).toBe(true);
     expect(styleValue(root, "--hand-z")).toBe("1");
@@ -459,8 +454,9 @@ describe("handView hover stacking", () => {
     expect(className(root)).not.toContain("z-30");
     expect(treeHasClass(root, "z-50")).toBe(false); // bare z-50 without hover: prefix
     const face = findTestId(tree, "hand-card-face-42");
-    expect(className(face)).toContain("ring-llanowar");
-    // Face raise for selection must not use elevated z-30:
+    expect(className(face)).toContain("group-data-[selected=true]/hand-tile:ring-llanowar");
+    expect(attr(root, "data-selected")).toBe("true");
+    expect(attr(root, "data-selectable")).toBe("true");
     expect(treeHasClass(findTestId(tree, "hand-tile-42"), "z-30")).toBe(false);
   });
 });

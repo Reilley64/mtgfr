@@ -5,7 +5,6 @@ import { Url } from "foldkit/url";
 import { Message as BoardMessage } from "./board/messages";
 import { DeckCardFlipTick } from "./deck-card-nav";
 import { CardArtTick } from "./domain/ui/card-art";
-import { ModalOpened } from "./domain/ui/confirmDialog";
 import { Message as GameMessage } from "./game/messages";
 import { Message as AccountChromeMessage } from "./shell/account-chrome/messages";
 import { Message as AuthMessage } from "./shell/auth/messages";
@@ -34,7 +33,7 @@ export const GotLeaderboardMessage = m("GotLeaderboardMessage", { message: Leade
 export const GotLobbyMessage = m("GotLobbyMessage", { message: LobbyMessage });
 export const GotBoardMessage = m("GotBoardMessage", { message: BoardMessage });
 export const GotGameMessage = m("GotGameMessage", { message: GameMessage });
-export { CardArtTick, DeckCardFlipTick, ModalOpened };
+export { CardArtTick, DeckCardFlipTick };
 
 export const Message = S.Union([
   Booted,
@@ -52,7 +51,6 @@ export const Message = S.Union([
   GotLobbyMessage,
   GotBoardMessage,
   GotGameMessage,
-  ModalOpened,
   CardArtTick,
   DeckCardFlipTick,
   AccountChromeMessage,
@@ -74,10 +72,7 @@ export {
   StreamStatus,
   StreamTerminalError,
 } from "./game/messages";
-export {
-  ClosedAccountMenu,
-  ToggledAccountMenu,
-} from "./shell/account-chrome/messages";
+export { GotAccountMenuMessage } from "./shell/account-chrome/messages";
 export {
   LeaderboardLoadFailed,
   ReceivedLeaderboardPage,

@@ -1,3 +1,4 @@
+import * as Menu from "@foldkit/ui/menu";
 import { Scene } from "foldkit/test";
 import { test } from "vitest";
 import { ClosedDeckListMenu } from "./messages";
@@ -17,6 +18,7 @@ test("deck list errors use reconnect rust label styling", () => {
             username: "alice",
             meGravatarHash: null,
             chrome: emptyChrome,
+            accountMenu: Menu.init({ id: "account-menu" }),
           },
         ),
     },

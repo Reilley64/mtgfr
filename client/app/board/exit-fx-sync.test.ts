@@ -23,7 +23,7 @@ function state(overrides: Partial<VisibleState> = {}): VisibleState {
   return {
     active_player: 0,
     can_act: true,
-    combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+    combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [], blocked_attackers: [] },
     objects: [],
     pending_choice: null,
     players: [player(), player({ player: 1, username: "Bob" })],
@@ -121,6 +121,8 @@ describe("syncBoardWithGame exit FX", () => {
     const bearId = 33;
     const board: BoardModel = {
       ...initialBoardModel(),
+      // Match fold player count so auto fitCamera does not remap flight scale mid-assertion.
+      cameraFitPlayers: 2,
       flights: new Map([
         [
           bearId,

@@ -1236,11 +1236,17 @@ fn amount_token(amount: Amount) -> &'static str {
     }
 }
 
-impl Effect {
-    /// Stable key + params for effect prose rendered by the client catalog.
-    ///
+/// Stable key + params for effect prose rendered by the client catalog.
+///
+/// [`Effect`] belongs to the `cards` crate and [`MessageRef`] to the engine, so the orphan rule
+/// forbids an inherent method here — callers import this trait.
+pub trait EffectMessage {
+    fn message(self) -> MessageRef;
+}
+
+impl EffectMessage for Effect {
     /// The match is intentionally exhaustive: every new [`Effect`] variant must choose an i18n key.
-    pub fn message(self) -> MessageRef {
+    fn message(self) -> MessageRef {
         use ChoiceEffect::*;
         use ControlEffect::*;
         use CopyEffect::*;

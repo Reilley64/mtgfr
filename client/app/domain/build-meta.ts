@@ -29,3 +29,10 @@ export function gitCommit(
   if (fromVite) return fromVite;
   return "unknown";
 }
+
+/** OTEL `deployment.environment` — omit when unset; never invent a default. */
+export function deploymentEnvironment(env: EnvBag = processEnv()): string | undefined {
+  const fromEnv = env.DEPLOYMENT_ENVIRONMENT?.trim();
+  if (fromEnv) return fromEnv;
+  return undefined;
+}

@@ -6,7 +6,7 @@
 import { type Html, html } from "foldkit/html";
 import { priorityPrimaryClass } from "~/priorityContextChrome";
 import { turnYieldRockerClass, turnYieldThumbClass, turnYieldTrackClass } from "~/turnYieldChrome";
-import { gameButtonClass } from "~/ui/buttonClass";
+import { button } from "~/ui/button";
 import type { VisibleState } from "~/wire/types";
 import { formatMessage } from "../../domain/i18n/message";
 import { canArmEndTurn, stagedAttackersForDisplay } from "../geometry/combat-staging";
@@ -19,8 +19,10 @@ import {
   StackYieldArmed,
   TurnYieldToggled,
 } from "../messages";
+import { promptPresentation } from "../promptPresentation";
 import type { BoardModel } from "../submodel";
 import { HAND_BAR_H } from "./hand";
+import { simplePromptBarActions } from "./prompt-bar-actions";
 
 const h = html<Message>();
 
@@ -66,7 +68,32 @@ function showTurnYield(state: VisibleState): boolean {
   return state.viewer !== state.active_player;
 }
 
-export function priorityBarView(board: BoardModel, state: VisibleState): Html {
+export function priorityBarView(board: BoardModel, state: VisibleState, tableId: string | null): Html | null {
+  const presentation = promptPresentation(board, state);
+  if (presentation.mode === "modal") {
+    // Rich prompts keep answer chrome inside the centered modal; an empty bar above the
+    // backdrop would steal pointer events from the modal panel.
+    return null;
+  }
+  if (presentation.mode === "simple") {
+    const simpleActions = simplePromptBarActions(board, state, tableId);
+
+    return h.div(
+      [
+        h.DataAttribute("testid", "priority-context-bar"),
+        // Above pile (z-29) and prompt-modal (z-40) backdrops so Choose / Confirm stay clickable.
+        h.Class("pointer-events-auto fixed right-md z-45 flex flex-col items-end gap-sm"),
+        h.Style({ bottom: `${HAND_BAR_H + 10}px` }),
+      ],
+      [
+        simpleActions,
+        board.reject != null
+          ? h.div([h.DataAttribute("testid", "board-reject"), h.Class("text-caption text-burn-red")], [board.reject])
+          : null,
+      ].filter((v): v is Html => v !== null),
+    );
+  }
+
   const primary = primaryFor(board, state);
   const yours = state.can_act && state.priority === state.viewer;
   const stackLen = state.stack.length;
@@ -76,62 +103,43 @@ export function priorityBarView(board: BoardModel, state: VisibleState): Html {
 
   const showPrimary = !(stackLen > 0 && primary.kind === "pass");
   const primaryBtn: Html | null = showPrimary
-    ? h.button(
-        [
-          h.Type("button"),
-          h.DataAttribute("testid", "board-primary"),
-          h.Disabled(!yours),
-          h.OnClick(PrimaryClicked()),
-          h.Class(gameButtonClass("game", priorityPrimaryClass(yours))),
-        ],
+    ? button(
+        h,
+        {
+          testId: "board-primary",
+          disabled: !yours,
+          onClick: PrimaryClicked(),
+          variant: "game",
+          class: priorityPrimaryClass(yours),
+        },
         [primary.label],
       )
     : null;
 
   const passBtn: Html | null = canResolveCard(state)
-    ? h.button(
-        [
-          h.Type("button"),
-          h.DataAttribute("testid", "board-pass"),
-          h.OnClick(PassClicked()),
-          h.Class(gameButtonClass("game", "shadow-glow")),
-        ],
-        ["Resolve card"],
-      )
+    ? button(h, { testId: "board-pass", onClick: PassClicked(), variant: "game", class: "shadow-glow" }, [
+        "Resolve card",
+      ])
     : null;
 
   const stackYieldBtn: Html | null = canArmStackYield(state, yielded)
-    ? h.button(
-        [
-          h.Type("button"),
-          h.DataAttribute("testid", "board-stack-yield"),
-          h.OnClick(StackYieldArmed()),
-          h.Class(gameButtonClass("game-quiet")),
-        ],
-        ["Resolve stack"],
-      )
+    ? button(h, { testId: "board-stack-yield", onClick: StackYieldArmed(), variant: "game-quiet" }, ["Resolve stack"])
     : yielded && stackLen > 0
-      ? h.button(
-          [
-            h.Type("button"),
-            h.DataAttribute("testid", "board-stack-yield-armed"),
-            h.Disabled(true),
-            h.Class(gameButtonClass("game-yielded")),
-          ],
-          ["Resolve stack"],
-        )
+      ? button(h, { testId: "board-stack-yield-armed", disabled: true, variant: "game-yielded" }, ["Resolve stack"])
       : null;
 
   const endTurnBtn: Html | null = showEndTurn(state, pendingAttackers)
-    ? h.button(
-        [
-          h.Type("button"),
-          h.DataAttribute("testid", "board-end-turn"),
-          h.Attribute("aria-pressed", turnYielded ? "true" : "false"),
-          h.Attribute("title", turnYielded ? "Cancel end turn" : "End turn (Enter)"),
-          h.OnClick(TurnYieldToggled({ enabled: !turnYielded })),
-          h.Class(gameButtonClass(turnYielded ? "game-yielded" : "game-quiet")),
-        ],
+    ? button(
+        h,
+        {
+          testId: "board-end-turn",
+          onClick: TurnYieldToggled({ enabled: !turnYielded }),
+          variant: turnYielded ? "game-yielded" : "game-quiet",
+          attrs: [
+            h.Attribute("aria-pressed", turnYielded ? "true" : "false"),
+            h.Attribute("title", turnYielded ? "Cancel end turn" : "End turn (Enter)"),
+          ],
+        },
         [turnYielded ? "Ending turn…" : "End Turn"],
       )
     : null;
@@ -166,15 +174,7 @@ export function priorityBarView(board: BoardModel, state: VisibleState): Html {
     board.discardPick != null ||
     board.gyExilePick != null;
   const cancelBtn: Html | null = hasStaged
-    ? h.button(
-        [
-          h.Type("button"),
-          h.DataAttribute("testid", "board-cancel-target"),
-          h.OnClick(CancelActionClicked()),
-          h.Class(gameButtonClass("game-quiet")),
-        ],
-        ["Cancel"],
-      )
+    ? button(h, { testId: "board-cancel-target", onClick: CancelActionClicked(), variant: "game-quiet" }, ["Cancel"])
     : null;
 
   const companions = [endTurnBtn, passBtn, stackYieldBtn, turnYieldBtn, cancelBtn].filter((v): v is Html => v !== null);

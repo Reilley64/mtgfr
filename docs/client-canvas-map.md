@@ -15,12 +15,13 @@ specs for the current module split, especially
 1. **Paint (pixels):** `client/app/board/canvas/scene.ts` builds the vector `BoardScene`; `felt.ts` / `avatars.ts` / `arrows.ts` are dumb paint helpers under `client/app/board/canvas/`.
 2. **Bitmaps (card art):** `client/app/board/bitmap/mount.ts` — Foldkit `Mount` regions blit card faces + flights on top of the canvas via the shared `ImageCache`.
 3. **Hits / camera:** `client/app/board/geometry/{camera,hit-test,density,layout,interaction}.ts` — pure geometry; used by the board submodel + `action/` planners.
-4. **Flights:** `client/app/board/motion/flights.ts` — canvas-owned in-flight cards; battlefield exit FX share the same Mount flight layer; resting hand/stack stay HTML.
+4. **Screen motion / flights:** `client/app/board/motion/flights.ts`, `exit-fx.ts`, `screen-motion.ts` — canvas-owned drag ghosts, in-flight cards, and battlefield exit FX share the Mount flight layer; resting hand/stack stay HTML.
 
-   Flight animation is Mount-local rAF: mid-flight ticks paint only the flight
-   canvas. Resting bitmap republishes when layout/chrome/hide sets change, not on
-   every pose tick. Model receives `FlightsSynced` when flying or `ExitFx`
-   membership changes.
+   Flight / ExitFx animation is Mount-local rAF: mid-flight ticks paint only the
+   flight canvas. Drag ghosts republish with Foldkit pointer updates (no rAF
+   required for drag alone). Resting bitmap republishes when layout/chrome/hide
+   sets change, not on every pose tick. Model receives `FlightsSynced` when
+   flying or `ExitFx` membership changes.
 
 5. **Board submodel:** `client/app/board/submodel.ts` composes canvas, bitmap, motion, action-session, and HTML overlays. `view.ts` is the composition root.
 6. **HTML chrome:** `client/app/board/html/` — `stack.ts`, `turn-chrome.ts`, `priority-bar.ts`, `discoverability.ts`, `overlays.ts`, `hand.ts`, `mana-tray.ts`, `actions.ts`, `log-panel.ts`, `prompts.ts`, `activation-menu.ts`, `inspect.ts`.
@@ -41,6 +42,8 @@ specs for the current module split, especially
 | `app/board/bitmap/paint-cards.ts` / `paint-flights.ts` | Bitmap draw routines using `ImageCache` |
 | `app/board/motion/flights.ts` | Flight spawn/step; `hideCardIds` / `flightOwnedIds` |
 | `app/board/motion/exit-fx.ts` | Battlefield destroy/exile FX step + particle budgeting |
+| `app/board/motion/screen-motion.ts` | Drag ghost pose; screen-motion paint ownership helpers |
+| `app/board/bitmap/paint-screen-motion.ts` | Single flight-layer paint: drag + flights + ExitFx |
 | `app/board/action/session.ts` | Play / target / combat staging session state |
 | `app/board/action/{execution,targeting,modal,chrome}.ts` | Pure action planners |
 | `app/board/bitmap/paint-exit-fx.ts` | Paint battlefield exit FX on the flight canvas |
@@ -70,17 +73,17 @@ specs for the current module split, especially
    | 5 | Hand / stack / spell mana | HTML | Resting hand & stack; **spell/payment mana tray** (same layer as hand, above hand cards) |
    | 6 | Flights | Mount / motion | In-flight play cards and battlefield exit FX — **above** hand and stack |
    | 7 | Combat / life hit targets | HTML | Interactive orbs when needed (paint stays in layer 2; hits here) |
-   | 8 | Prompts / choice UI | HTML | `pending_choice` and related |
-   | 9 | Turn HUD | HTML | Phase track, Next / End Turn, discoverability |
+   | 8 | Prompts / choice UI | HTML | `pending_choice` and related; centered `*-modal` / pile overlays (`z-40` / `z-29`) |
+   | 9 | Turn HUD / simple prompt bar | HTML | Phase track; idle Next / End Turn (`z-25`); **simple** prompt answer chrome in `priority-context-bar` at `z-45` so it stays above prompt/pile backdrops |
    | 10 | Inspect dock | HTML | Mode `dock` + backdrop — **topmost** |
 
    **Layer rules:**
 
    1. **Avatar paint** follows resting battlefield cards in layer 3; **clear bands** packing must not cover it. **Orb hits** stay in layer 7.
    2. **Two mana surfaces:** battlefield in-play mana (layer 2) vs spell/payment mana tray on the hand layer (5).
-   3. No resting permanent paint or DOM card face may sit above layer 4 while combat/spell arrows are active. Declare-drag arrows use the **same arrow layer** as committed arrows.
+   3. No resting permanent paint or DOM card face may sit above layer 4 while combat/spell arrows are active. Declare-drag arrows and **declared stack→target arrows** use the **same Mount arrow layer** as committed combat arrows (not the Foldkit Canvas under resting art).
    4. Flights and battlefield exit FX paint above hand/stack (layer 6 over 5).
-   5. Prompts (8) above combat/life hits (7).
+   5. Prompts (8) above combat/life hits (7). Simple-prompt primary actions live in layer 9 above prompt/pile dimmers; rich modals omit the priority bar.
    6. Inspect (10) above everything else on the board, including system modals, while pinned.
    7. Under-card name labels are forbidden on resting permanents (not a separate layer — deleted).
 

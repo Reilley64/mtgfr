@@ -27,7 +27,7 @@ jobs:
         id: pass
         with:
           path: .ci-pass
-          key: verify-server-v3-${{ hashFiles('crates/**', 'proto/**', 'Cargo.toml', 'Cargo.lock', 'Toasty.toml', 'toasty/**', '.config/nextest.toml', 'justfile', '.github/workflows/verify-jobs.yml', 'docs/CR_INDEX.md', 'scripts/gen_cr_index.py') }}
+          key: verify-server-v3-${{ hashFiles('crates/**', 'proto/**', 'Cargo.toml', 'Cargo.lock', 'Toasty.toml', 'toasty/**', '.config/nextest.toml', 'justfile', '.github/workflows/verify-jobs.yml', 'docs/CR_INDEX.md', 'scripts/gen_cr_index.py', '.agents/skills/card-dsl/DSL_REFERENCE.md') }}
 
       - name: Report pass-marker status
         run: |
@@ -56,10 +56,13 @@ jobs:
         with:
           shared-key: verify-server
 
-      - name: CR index + fmt + clippy
+      - name: CR index + card schema + DSL reference + pool validation + fmt + clippy
         run: |
           set -euo pipefail
           just engine-cr-index-check
+          just cards-schema-check
+          just cards-dsl-ref-check
+          just cards-toml-validate-pool
           just server-format-check
           just server-lint
 
@@ -164,7 +167,7 @@ jobs:
       - uses: actions/cache/save@v6
         with:
           path: .ci-pass
-          key: verify-server-v3-${{ hashFiles('crates/**', 'proto/**', 'Cargo.toml', 'Cargo.lock', 'Toasty.toml', 'toasty/**', '.config/nextest.toml', 'justfile', '.github/workflows/verify-jobs.yml', 'docs/CR_INDEX.md', 'scripts/gen_cr_index.py') }}
+          key: verify-server-v3-${{ hashFiles('crates/**', 'proto/**', 'Cargo.toml', 'Cargo.lock', 'Toasty.toml', 'toasty/**', '.config/nextest.toml', 'justfile', '.github/workflows/verify-jobs.yml', 'docs/CR_INDEX.md', 'scripts/gen_cr_index.py', '.agents/skills/card-dsl/DSL_REFERENCE.md') }}
 
   verify-server:
     name: Verify (server)
@@ -259,3 +262,58 @@ jobs:
       - name: Write pass marker
         if: steps.pass.outputs.cache-hit != 'true'
         run: mkdir -p .ci-pass && echo ok > .ci-pass/marker
+
+  verify-wire:
+    name: Verify (wire)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Fetch origin/main for buf breaking
+        run: git fetch origin main --depth=1
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+
+      - uses: extractions/setup-just@v4
+
+      - name: Install client dependencies (buf CLI)
+        run: cd client && bun install --frozen-lockfile
+
+      - name: buf lint
+        run: |
+          echo "wire: buf lint (STANDARD; no silenced rules). See docs/WIRE_COMPAT.md"
+          just proto-lint
+
+      - name: buf breaking (non-major PRs only)
+        if: github.event_name == 'pull_request'
+        env:
+          # Angular commitlint forbids `!:` in the subject; majors use a BREAKING CHANGE
+          # footer in the PR body (squash commit body). Title may also contain the marker.
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          set -euo pipefail
+          if [[ "$PR_TITLE" == *'BREAKING CHANGE'* ]] || [[ "$PR_BODY" == *'BREAKING CHANGE'* ]]; then
+            echo "wire: PR indicates a semver major (BREAKING CHANGE) — skipping buf breaking."
+            echo "This release is a hard cut (no N↔N−1 drain coexistence). Prefer proto package mtgfr.v2"
+            echo "for intentional wire breaks after the STANDARD rename lands. See docs/WIRE_COMPAT.md."
+            exit 0
+          fi
+          just proto-breaking || {
+            echo "wire: buf breaking failed against origin/main."
+            echo "Expand-only changes are allowed (new fields/numbers, new oneof arms, new RPCs)."
+            echo "Do not rename/remove/repurpose field numbers while N↔N−1 drain coexistence is required."
+            echo "If this is an intentional hard break: put BREAKING CHANGE: in the PR body"
+            echo "(Angular footer; squash subject stays feat:/fix:) so semantic-release cuts a major."
+            echo "Prefer package mtgfr.v2. See docs/WIRE_COMPAT.md."
+            exit 1
+          }
+
+      - name: buf breaking skipped on main push
+        if: github.event_name != 'pull_request'
+        run: |
+          echo "wire: main push — lint only (breaking vs origin/main is vacuous)."

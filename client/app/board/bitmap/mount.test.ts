@@ -175,7 +175,7 @@ function frame(overrides: Partial<BitmapFrame> = {}): BitmapFrame {
     viewer: 0,
     players: [player()],
     priority: 0,
-    combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+    combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [], blocked_attackers: [] },
     stagedAttackers: [],
     stagedBlocks: [],
     flights: [],
@@ -199,6 +199,7 @@ function flightClockState(overrides: Partial<FlightClockState> = {}): FlightCloc
   return {
     liveFlights: [],
     liveExitFx: [],
+    liveDragGhost: null,
     lastRestingSnapshot: null,
     ...overrides,
   };
@@ -232,7 +233,7 @@ describe("paintBitmapLayer", () => {
         viewer: 0,
         players: [player()],
         priority: 0,
-        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [], blocked_attackers: [] },
         stagedAttackers: [],
         stagedBlocks: [],
         flights: [],
@@ -295,6 +296,7 @@ describe("paintBitmapLayer", () => {
           blocks: [],
           attackers_declared: true,
           blockers_declared: [],
+          blocked_attackers: [],
         },
         stagedAttackers: [],
         stagedBlocks: [],
@@ -316,6 +318,103 @@ describe("paintBitmapLayer", () => {
 
     expect(calls.indexOf("image:resting")).toBeGreaterThan(calls.indexOf("clear"));
     expect(calls.indexOf("avatar")).toBeGreaterThan(calls.indexOf("image:resting"));
+    expect(calls.indexOf("arrow")).toBeGreaterThan(calls.indexOf("avatar"));
+  });
+
+  it("does not paint an arrow for a blocked attacker with no living blocker after blockers declare", () => {
+    const calls: string[] = [];
+    vi.stubGlobal("window", { devicePixelRatio: 1 });
+    const canvas = {
+      width: 0,
+      height: 0,
+      getContext: vi.fn(() => mockCtx(calls)),
+      style: {},
+    } as unknown as HTMLCanvasElement;
+
+    paintBitmapLayer(
+      canvas,
+      frame({
+        players: [player(), player({ player: 1, username: "Bob" })],
+        combat: {
+          attackers: [{ attacker: 1, defender: 1 }],
+          blocks: [],
+          attackers_declared: true,
+          blockers_declared: [1],
+          blocked_attackers: [1],
+        },
+      }),
+      { get: vi.fn(() => undefined) },
+    );
+
+    expect(calls).not.toContain("arrow");
+  });
+
+  it("paints stack target arrows above resting permanents (not under card art)", () => {
+    // Stack→target arrows used to live only on the Foldkit Canvas under the Mount bitmap,
+    // so Island Blue arrows disappeared under permanent faces. Mount layer 4 must paint them.
+    const calls: string[] = [];
+    vi.stubGlobal("window", { devicePixelRatio: 1 });
+    const canvas = {
+      width: 0,
+      height: 0,
+      getContext: vi.fn(() => mockCtx(calls)),
+      style: {},
+    } as unknown as HTMLCanvasElement;
+    const image = (label: string) => ({ label }) as unknown as HTMLImageElement;
+    const cache = {
+      get: vi.fn((url: string) => {
+        if (url.includes("resting-print")) return image("resting");
+        return undefined;
+      }),
+    };
+
+    paintBitmapLayer(
+      canvas,
+      {
+        width: 800,
+        height: 600,
+        camera: { panX: 0, panY: 0, zoom: 1 },
+        cards: [card()],
+        viewer: 0,
+        players: [player(), player({ player: 1, username: "Bob" })],
+        priority: 0,
+        combat: {
+          attackers: [],
+          blocks: [],
+          attackers_declared: false,
+          blockers_declared: [],
+          blocked_attackers: [],
+        },
+        stagedAttackers: [],
+        stagedBlocks: [],
+        stack: [
+          {
+            controller: 0,
+            kind: "spell",
+            label: testMessageRef("Lightning Bolt"),
+            source: 9,
+            target: { kind: "object", id: 1 },
+          },
+        ],
+        stackPresentation: "pile",
+        flights: [],
+        hideCardIds: new Set(),
+        targetObjects: new Set(),
+        pickedObjects: new Set(),
+        assignAmounts: new Map(),
+        targetPlayers: new Set(),
+        pickedPlayers: new Set(),
+        aimFrom: null,
+        cursor: { x: 0, y: 0 },
+        combatDragFrom: null,
+        combatDragStroke: null,
+        paymentPreviewIds: new Set(),
+      },
+      cache,
+    );
+
+    expect(calls.includes("arrow")).toBe(true);
+    expect(calls.indexOf("arrow")).toBeGreaterThan(calls.indexOf("image:resting"));
     expect(calls.indexOf("arrow")).toBeGreaterThan(calls.indexOf("avatar"));
   });
 
@@ -347,7 +446,7 @@ describe("paintBitmapLayer", () => {
           player({ player: 1, username: "Bob" }),
         ],
         priority: 0,
-        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [], blocked_attackers: [] },
         stagedAttackers: [],
         stagedBlocks: [],
         flights: [],
@@ -429,7 +528,7 @@ describe("paintBitmapLayer", () => {
         viewer: 0,
         players: [player({ gravatar_hash: hash })],
         priority: 0,
-        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [], blocked_attackers: [] },
         stagedAttackers: [],
         stagedBlocks: [],
         flights: [],
@@ -503,7 +602,7 @@ describe("paintBitmapLayer", () => {
         players: [player(), player({ player: 1, username: "Bob" })],
         priority: 0,
         // Nothing committed yet — the arrow only exists in staging.
-        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [], blocked_attackers: [] },
         stagedAttackers: [{ attacker: 1, defender: 1 }],
         stagedBlocks: [],
         flights: [],
@@ -547,7 +646,7 @@ describe("paintBitmapLayer", () => {
         viewer: 0,
         players: [player()],
         priority: 0,
-        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [], blocked_attackers: [] },
         stagedAttackers: [],
         stagedBlocks: [],
         flights: [],
@@ -593,7 +692,7 @@ describe("paintBitmapLayer", () => {
         viewer: 0,
         players: [player()],
         priority: 0,
-        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [], blocked_attackers: [] },
         stagedAttackers: [],
         stagedBlocks: [],
         flights: [],
@@ -636,7 +735,7 @@ describe("paintBitmapLayer", () => {
       viewer: 0,
       players: [player()],
       priority: 0,
-      combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+      combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [], blocked_attackers: [] },
       stagedAttackers: [],
       stagedBlocks: [],
       flights: [],
@@ -656,7 +755,7 @@ describe("paintBitmapLayer", () => {
 
     paintBitmapLayer(canvas, frame, cache);
 
-    expect(calls).toContain("stroke:#EAFFF0");
+    expect(calls).toContain(`stroke:${colors.playableBorder}`);
     expect(calls).toContain("stroke:#1a1a1a");
     expect(calls).not.toContain("fill:rgba(0,0,0,0.45)");
   });
@@ -679,7 +778,7 @@ describe("paintBitmapLayer", () => {
       viewer: 0,
       players: [player()],
       priority: 0,
-      combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+      combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [], blocked_attackers: [] },
       stagedAttackers: [],
       stagedBlocks: [],
       flights: [],
@@ -699,7 +798,7 @@ describe("paintBitmapLayer", () => {
 
     paintBitmapLayer(canvas, frame, cache);
 
-    expect(calls).not.toContain("stroke:#EAFFF0");
+    expect(calls).not.toContain(`stroke:${colors.playableBorder}`);
     expect(calls).toContain("stroke:#1a1a1a");
   });
 
@@ -724,7 +823,7 @@ describe("paintBitmapLayer", () => {
         viewer: 0,
         players: [player()],
         priority: 0,
-        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [], blocked_attackers: [] },
         stagedAttackers: [],
         stagedBlocks: [],
         flights: [],
@@ -769,7 +868,7 @@ describe("paintBitmapLayer", () => {
         viewer: 0,
         players: [player()],
         priority: 0,
-        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [], blocked_attackers: [] },
         stagedAttackers: [],
         stagedBlocks: [],
         flights: [],
@@ -815,7 +914,7 @@ describe("paintBitmapLayer", () => {
         viewer: 0,
         players: [player(), player({ player: 1, username: "Bob" })],
         priority: 0,
-        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [], blocked_attackers: [] },
         stagedAttackers: [],
         stagedBlocks: [],
         flights: [],
@@ -859,7 +958,7 @@ describe("paintBitmapLayer", () => {
         viewer: 0,
         players: [player()],
         priority: 0,
-        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [], blocked_attackers: [] },
         stagedAttackers: [],
         stagedBlocks: [],
         flights: [
@@ -918,7 +1017,7 @@ describe("paintFlightLayer", () => {
         viewer: 0,
         players: [player()],
         priority: 0,
-        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [], blocked_attackers: [] },
         stagedAttackers: [],
         stagedBlocks: [],
         flights: [
@@ -1045,6 +1144,22 @@ describe("bitmapFrameNeedsRaf", () => {
 });
 
 describe("flight clock helpers", () => {
+  it("drag-ghost pose change paints the flight layer without resting paint", () => {
+    const ghost = {
+      print: "bolt",
+      name: "Lightning Bolt",
+      x: 100,
+      y: 200,
+      scale: 2,
+      zone: "hand" as const,
+    };
+    const first = applyPublishedFrame(flightClockState(), frame({ dragGhost: ghost, cards: [] }));
+    expect(first.paintFlight).toBe(true);
+    const moved = applyPublishedFrame(first.state, frame({ dragGhost: { ...ghost, x: 140, y: 180 }, cards: [] }));
+    expect(moved.paintResting).toBe(false);
+    expect(moved.paintFlight).toBe(true);
+  });
+
   it("pose-only flight tick does not request resting paint", () => {
     const flight = spawnFlight({
       id: 3,

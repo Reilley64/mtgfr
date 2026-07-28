@@ -8,6 +8,7 @@ import {
   digCastNeedsHost,
   gyExileCostObjectIds,
   gyExileCostPile,
+  pendingAimStackCount,
   pendingDamageAssignBlockers,
   pendingDamageAssignOverlay,
   pendingDigCastHostMode,
@@ -20,8 +21,10 @@ import {
   pendingHandPickOneClick,
   pendingPlayerAimOneClick,
   pendingPlayerAimOverlay,
+  pendingStackGhost,
   pendingTargetingOverlay,
   pendingTargetOneClick,
+  pickedPlayersFromDraft,
   sacrificeCostObjectIds,
   sacrificeCostOverlay,
   stackAimOrigin,
@@ -61,7 +64,7 @@ function state(objects: ObjectView[]): VisibleState {
   return {
     active_player: 0,
     can_act: true,
-    combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+    combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [], blocked_attackers: [] },
     objects,
     players: [
       {
@@ -268,6 +271,94 @@ describe("pendingTargetingOverlay", () => {
     );
     expect(overlay.aiming).toBe(true);
     expect([...overlay.targetObjects]).toEqual([7]);
+  });
+
+  it("aims from the pending source ghost slot when the ability is not yet on the stack", () => {
+    const talent = object({ id: 3, name: "Innkeeper's Talent", print: "talent-print" });
+    const bear = object({ id: 7 });
+    const game = state([talent, bear]);
+    game.pending_choice = {
+      kind: "choose_target",
+      label: testMessageRef("Put a +1/+1 counter"),
+      min: 1,
+      max: 1,
+      player: 0,
+      source: 3,
+      items: [{ id: 7, label: "Bear" }],
+    };
+    const overlay = pendingTargetingOverlay(game.pending_choice, game, { width: 1440, height: 900 }, 0);
+    expect(overlay.aimFrom).toEqual(stackAimOrigin(1440, 900, 1));
+  });
+
+  it("aims at the existing stack face when the spell source is already on the stack", () => {
+    const bolt = object({ id: 42, zone: ZONE.Stack, name: "Bolt", print: "bolt-print" });
+    const bear = object({ id: 7 });
+    const game = state([bolt, bear]);
+    game.stack = [{ controller: 0, kind: "spell", label: testMessageRef("Bolt"), source: 42 }];
+    game.pending_choice = {
+      kind: "choose_target",
+      label: testMessageRef("Bolt"),
+      min: 1,
+      max: 1,
+      player: 0,
+      source: 42,
+      items: [{ id: 7, label: "Bear" }],
+    };
+    const overlay = pendingTargetingOverlay(game.pending_choice, game, { width: 1440, height: 900 }, 1);
+    expect(overlay.aimFrom).toEqual(stackAimOrigin(1440, 900, 1));
+  });
+
+  it("ghosts the ability source for mid-resolution proliferate after the ability left the stack", () => {
+    // Abilities leave the stack before their effects run (CR 608) — proliferate pauses with an
+    // empty stack and source = the permanent. Aim still uses the stack origin, so ghost the art.
+    const engine = object({ id: 3, name: "Contagion Engine", print: "engine-print", kind: { kind: "artifact" } });
+    const infected = object({ id: 7, plus_counters: 1 });
+    const game = state([engine, infected]);
+    game.pending_choice = {
+      kind: "proliferate",
+      player: 0,
+      source: 3,
+      items: [{ id: 7, label: "Infected" }],
+    };
+    expect(pendingStackGhost(game)?.id).toBe(3);
+    expect(pendingAimStackCount(game, 0)).toBe(1);
+    const overlay = pendingTargetingOverlay(game.pending_choice, game, { width: 1440, height: 900 }, 0);
+    expect(overlay.aimFrom).toEqual(stackAimOrigin(1440, 900, 1));
+  });
+
+  it("ghosts mid-resolution onboard card-picks that share the proliferate empty-stack shape", () => {
+    const guardian = object({ id: 5, name: "Guardian of Faith", print: "guardian-print" });
+    const ally = object({ id: 8 });
+    const game = state([guardian, ally]);
+    game.pending_choice = {
+      kind: "phase_out",
+      player: 0,
+      source: 5,
+      items: [{ id: 8, label: "Ally" }],
+    };
+    expect(pendingStackGhost(game)?.print).toBe("guardian-print");
+  });
+
+  it("does not ghost proliferate when the resolving spell is still on the stack", () => {
+    // Instants/sorceries stay on the stack until finish (resume.spell_finish) — no duplicate face.
+    const atomize = object({
+      id: 42,
+      zone: ZONE.Stack,
+      name: "Atomize",
+      print: "atomize-print",
+      kind: { kind: "instant" },
+    });
+    const infected = object({ id: 7, plus_counters: 1 });
+    const game = state([atomize, infected]);
+    game.stack = [{ controller: 0, kind: "spell", label: testMessageRef("Atomize"), source: 42 }];
+    game.pending_choice = {
+      kind: "proliferate",
+      player: 0,
+      source: 42,
+      items: [{ id: 7, label: "Infected" }],
+    };
+    expect(pendingStackGhost(game)).toBeNull();
+    expect(pendingAimStackCount(game, 1)).toBe(1);
   });
 
   it("aims for multi-target choose_target when all items are on the battlefield", () => {
@@ -746,14 +837,36 @@ describe("pendingHandPickOneClick", () => {
     ).toBe(false);
   });
 
-  it("stays true for put_land_from_hand", () => {
+  it("is false for all put-from-hand and face-down hand picks (select then Confirm)", () => {
     expect(
       pendingHandPickOneClick({
         kind: "put_land_from_hand",
         player: 0,
         items: [{ id: 1, label: "Forest" }],
       }),
-    ).toBe(true);
+    ).toBe(false);
+    expect(
+      pendingHandPickOneClick({
+        kind: "put_creature_from_hand",
+        player: 0,
+        items: [{ id: 1, label: "Angel" }],
+      }),
+    ).toBe(false);
+    expect(
+      pendingHandPickOneClick({
+        kind: "cast_creature_face_down",
+        player: 0,
+        items: [{ id: 1, label: "Bear" }],
+      }),
+    ).toBe(false);
+    expect(
+      pendingHandPickOneClick({
+        kind: "put_from_hand_on_top",
+        player: 0,
+        count: 1,
+        items: [{ id: 1, label: "Island" }],
+      }),
+    ).toBe(false);
   });
 });
 
@@ -973,5 +1086,23 @@ describe("stagedTargetTitle", () => {
 
   it("uses the action label for casts", () => {
     expect(stagedTargetTitle(staged())).toBe("Reanimate");
+  });
+});
+
+describe("pickedPlayersFromDraft", () => {
+  it("paints player-pick seats while aiming", () => {
+    expect([...pickedPlayersFromDraft(true, { kind: "player-pick", players: [1, 2] })]).toEqual([1, 2]);
+  });
+
+  // Proliferate stores seats on card-pick.players — without this, avatar clicks look dead.
+  it("paints proliferate card-pick seats while aiming", () => {
+    expect([...pickedPlayersFromDraft(true, { kind: "card-pick", picked: [7], filter: "", players: [1] })]).toEqual([
+      1,
+    ]);
+  });
+
+  it("stays empty when not aiming or when no seats are picked", () => {
+    expect([...pickedPlayersFromDraft(false, { kind: "card-pick", picked: [], filter: "", players: [1] })]).toEqual([]);
+    expect([...pickedPlayersFromDraft(true, { kind: "card-pick", picked: [7], filter: "" })]).toEqual([]);
   });
 });

@@ -3,13 +3,17 @@
  * (or in a focused sibling Scene test) with a data-testid or unique-copy assertion.
  * See AGENTS.md: "Client UI: every surface gets a Scene test."
  */
+import * as Dialog from "@foldkit/ui/dialog";
+import * as Menu from "@foldkit/ui/menu";
+import * as VirtualList from "@foldkit/ui/virtualList";
+import { Effect } from "effect";
 import { Scene } from "foldkit/test";
 import { describe, expect, it } from "vitest";
 import { BindDeckCardFlip, DeckCardFlipTick } from "../deck-card-nav";
 import { BindCardArt, CardArtTick } from "../domain/ui/card-art";
-import { ModalOpened, OpenDialogAsModal } from "../domain/ui/confirmDialog";
 import type { CatalogCard } from "../domain/wire/types";
 import { init, update } from "../main-exports";
+import { NavigationCompleted } from "../messages";
 import type { Model as AppModel } from "../model";
 import { emptyGameSlice } from "../model";
 import {
@@ -24,17 +28,29 @@ import {
   PregameTableRoute,
   routePath,
 } from "../routes";
+import { OpenGravatar } from "../update";
 import { view } from "../view";
-import { BindAccountMenuEscape } from "./account-chrome/escape";
-import { ClosedAccountMenu } from "./account-chrome/messages";
-import { ClearedBuilderHover } from "./decks/builder/messages";
-import { initialDeckBuilderSubmodel } from "./decks/builder/submodel";
-import { BindBuilderCardPointer } from "./decks/builder/view";
+import * as Auth from "./auth";
+import { ClearedBuilderHover, MeasuredPoolGrid } from "./decks/builder/messages";
+import { DISCARD_DIALOG_ID, initialDeckBuilderSubmodel, poolGridRowHeightPx } from "./decks/builder/submodel";
+import { BindBuilderCardPointer, ObservePoolWidth } from "./decks/builder/view";
 import { ClosedDeckListMenu } from "./decks/list/messages";
+import { DELETE_DIALOG_ID } from "./decks/list/submodel";
 import { BindDeckListContextMenu, BindDeckListContextMenuEscape } from "./decks/list/view";
 import { initialLobbySlice } from "./lobby/submodel";
 
 const me = { id: 1, email: "alice@example.com", username: "alice" };
+
+const POOL_WIDTH = 640;
+
+/** The card pool is a windowed grid: it paints no tiles until it knows its width and its height. */
+function measuredPoolGrid() {
+  const [poolGrid] = VirtualList.update(
+    { ...initialDeckBuilderSubmodel().poolGrid, rowHeightPx: poolGridRowHeightPx(POOL_WIDTH) },
+    VirtualList.MeasuredContainer({ containerHeight: 720 }),
+  );
+  return { poolGrid, poolWidth: POOL_WIDTH };
+}
 
 /** Preorder `data-testid` walk for DOM-order assertions in Scene tests. */
 function collectTestIds(node: unknown, out: string[] = []): string[] {
@@ -134,6 +150,22 @@ function loginModel(overrides: Partial<AppModel> = {}): AppModel {
     ...overrides,
   };
 }
+
+/** Menu portals its backdrop and anchors its panel with Floating-UI; both are Mounts a Scene must
+ *  resolve once the dropdown is open. */
+const resolveAccountMenuMounts = () => [
+  Scene.Command.resolve(Menu.FocusItems, Menu.CompletedFocusItems()),
+  Scene.Mount.resolve(Menu.PortalMenuBackdrop, Menu.CompletedPortalMenuBackdrop() as never),
+  Scene.Mount.resolve(Menu.AnchorMenu, Menu.CompletedAnchorMenu() as never),
+];
+
+/** Committing a row closes the dropdown: its portal and anchor unmount, and focus returns to the
+ *  trigger. */
+const expectAccountMenuClosed = () => [
+  Scene.Command.resolve(Menu.FocusButton, Menu.CompletedFocusButton()),
+  Scene.Mount.expectEnded(Menu.PortalMenuBackdrop),
+  Scene.Mount.expectEnded(Menu.AnchorMenu),
+];
 
 function authedModel(route: AppModel["route"], overrides: Partial<AppModel> = {}): AppModel {
   const [model] = init();
@@ -245,7 +277,7 @@ describe("shell surface scenes", () => {
       Scene.expect(Scene.selector('[data-testid="deck-list-search"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="deck-tile-1"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="delete-deck-1"]')).not.toExist(),
-      Scene.expect(Scene.selector('[data-testid="account-gravatar-link"]')).not.toExist(),
+      Scene.expect(Scene.selector('[data-testid="account-menu-gravatar"]')).not.toExist(),
       Scene.expect(Scene.text("Sign out")).not.toExist(),
       Scene.expect(Scene.text("Your decks")).toExist(),
       Scene.expect(Scene.text("Superfriends")).toExist(),
@@ -271,22 +303,21 @@ describe("shell surface scenes", () => {
               decks: [deck],
               knownCommanders: { atraxa },
               loading: false,
-              accountMenuOpen: true,
             },
           },
         }),
       ),
-      Scene.expect(Scene.selector('[data-testid="account-menu"]')).toExist(),
-      Scene.expect(Scene.selector('[data-testid="account-menu-username"]')).toExist(),
-      Scene.expect(Scene.text("alice")).toExist(),
-      Scene.expect(Scene.selector('[data-testid="account-gravatar-link"]')).toExist(),
-      Scene.expect(Scene.selector('[data-testid="account-menu-sign-out"]')).toExist(),
       Scene.Mount.resolve(BindDeckListContextMenu({ deckId: 1 }), ClosedDeckListMenu()),
       Scene.Mount.resolve(BindDeckCardFlip({ deckId: 1 }), DeckCardFlipTick()),
       Scene.Mount.resolve(BindCardArt, CardArtTick()),
       Scene.Mount.resolve(BindDeckListContextMenuEscape(), ClosedDeckListMenu()),
-      Scene.Mount.resolve(BindAccountMenuEscape(), ClosedAccountMenu()),
-      Scene.Mount.expectEnded(BindAccountMenuEscape),
+      Scene.click(Scene.testId("account-menu-trigger")),
+      Scene.expect(Scene.selector('[data-testid="account-menu"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="account-menu-username"]')).toExist(),
+      Scene.expect(Scene.text("alice")).toExist(),
+      Scene.expect(Scene.selector('[data-testid="account-menu-gravatar"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="account-menu-sign-out"]')).toExist(),
+      ...resolveAccountMenuMounts(),
     );
   });
 
@@ -299,6 +330,7 @@ describe("shell surface scenes", () => {
             ...init()[0].decks,
             list: {
               ...init()[0].decks.list,
+              confirmDialog: Dialog.init({ id: DELETE_DIALOG_ID, isOpen: true }),
               confirmingDeleteId: 1,
               decks: [deck],
               knownCommanders: { atraxa },
@@ -309,7 +341,6 @@ describe("shell surface scenes", () => {
       ),
       Scene.expect(Scene.selector('[data-testid="confirm-delete-dialog"]')).toExist(),
       Scene.expect(Scene.text('Delete "Superfriends"?')).toExist(),
-      Scene.Mount.resolve(OpenDialogAsModal(), ModalOpened()),
       Scene.Mount.resolve(BindDeckListContextMenu({ deckId: 1 }), ClosedDeckListMenu()),
       Scene.Mount.resolve(BindDeckCardFlip({ deckId: 1 }), DeckCardFlipTick()),
       Scene.Mount.resolve(BindCardArt, CardArtTick()),
@@ -369,7 +400,6 @@ describe("shell surface scenes", () => {
               { rank: 1, rating: 1200, user_id: 1, username: "alice" },
               { rank: 2, rating: 1175, user_id: 2, username: "bruno" },
             ],
-            accountMenuOpen: false,
             error: null,
             status: "ready",
             total: 2,
@@ -399,7 +429,6 @@ describe("shell surface scenes", () => {
         authedModel(LeaderboardRoute(), {
           leaderboard: {
             entries: [],
-            accountMenuOpen: false,
             error: null,
             status: "ready",
             total: 0,
@@ -567,17 +596,48 @@ describe("shell surface scenes", () => {
         authedModel(LeaderboardRoute(), {
           leaderboard: {
             entries: [{ rank: 1, rating: 1200, user_id: 1, username: "alice" }],
-            accountMenuOpen: true,
             error: null,
             status: "ready",
             total: 1,
           },
         }),
       ),
+      Scene.click(Scene.testId("account-menu-trigger")),
       Scene.expect(Scene.selector('[data-testid="account-menu"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="account-menu-sign-out"]')).toExist(),
-      Scene.Mount.resolve(BindAccountMenuEscape(), ClosedAccountMenu()),
-      Scene.Mount.expectEnded(BindAccountMenuEscape),
+      ...resolveAccountMenuMounts(),
+    );
+  });
+
+  it("signing out from the account menu ends the session", () => {
+    Scene.scene(
+      { update, view },
+      Scene.with(authedModel(LeaderboardRoute())),
+      Scene.click(Scene.testId("account-menu-trigger")),
+      ...resolveAccountMenuMounts(),
+      Scene.click(Scene.testId("account-menu-sign-out")),
+      Scene.expect(Scene.selector('[data-testid="account-menu"]')).not.toExist(),
+      ...expectAccountMenuClosed(),
+      Scene.Command.resolve(Auth.Logout, Auth.Message.ReceivedMe({ me: null }) as never),
+      Scene.expect(Scene.selector('[data-testid="account-menu-trigger"]')).not.toExist(),
+      // Losing the session on a protected route bounces to login.
+      Scene.Command.resolve(
+        { name: "Redirect", args: { path: "/login?next=%2F" }, effect: Effect.succeed(NavigationCompleted()) },
+        NavigationCompleted(),
+      ),
+    );
+  });
+
+  it("picking Gravatar from the account menu opens gravatar.com", () => {
+    Scene.scene(
+      { update, view },
+      Scene.with(authedModel(LeaderboardRoute())),
+      Scene.click(Scene.testId("account-menu-trigger")),
+      ...resolveAccountMenuMounts(),
+      Scene.click(Scene.testId("account-menu-gravatar")),
+      Scene.expect(Scene.selector('[data-testid="account-menu"]')).not.toExist(),
+      ...expectAccountMenuClosed(),
+      Scene.Command.resolve(OpenGravatar, NavigationCompleted()),
     );
   });
 
@@ -588,7 +648,6 @@ describe("shell surface scenes", () => {
         authedModel(LeaderboardRoute(), {
           leaderboard: {
             entries: [{ rank: 1, rating: 1200, user_id: 1, username: "alice" }],
-            accountMenuOpen: false,
             error: "Could not load the leaderboard.",
             status: "error",
             total: 2,
@@ -616,9 +675,10 @@ describe("shell surface scenes", () => {
             builder: {
               ...initialDeckBuilderSubmodel(),
               atEnd: true,
-              confirmingDiscard: true,
+              discardDialog: Dialog.init({ id: DISCARD_DIALOG_ID, isOpen: true }),
               known: { "sol-ring": solRing },
               pool: [solRing],
+              ...measuredPoolGrid(),
               preferredPrint: { "sol-ring": "sol-ring-print" },
               problems: ["Choose a commander first."],
               searching: false,
@@ -642,13 +702,13 @@ describe("shell surface scenes", () => {
         expect(ids.indexOf("save-deck")).toBeLessThan(ids.indexOf("account-menu-trigger"));
         expect(ids.indexOf("shell-header-trailing")).toBeLessThan(ids.indexOf("deck-name"));
       }),
+      Scene.Mount.resolve(ObservePoolWidth(), MeasuredPoolGrid({ width: POOL_WIDTH })),
       Scene.Mount.resolve(BindBuilderCardPointer({ cardId: "sol-ring", kind: "pool" }), ClearedBuilderHover()),
-      Scene.Mount.resolve(OpenDialogAsModal(), ModalOpened()),
       Scene.Mount.resolve(BindCardArt, CardArtTick()),
     );
   });
 
-  it("renders lobby entry choose destinations with decks", () => {
+  it("renders lobby entry with Host primary and soft-inline Join", () => {
     Scene.scene(
       { update, view },
       Scene.with(
@@ -660,17 +720,18 @@ describe("shell surface scenes", () => {
           lobby: { ...initialLobbySlice(), selectedDeckId: 1 },
         }),
       ),
-      Scene.expect(Scene.selector('[data-testid="lobby-entry-choose"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="lobby-entry"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="lobby"][data-ui="panel"]')).toBeAbsent(),
       ...expectShellFrame(),
       Scene.expect(Scene.selector('[data-testid="account-menu-trigger"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="lobby-host"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="lobby-host"]')).toHaveClass("bg-llanowar"),
-      Scene.expect(Scene.selector('[data-testid="lobby-open-join"]')).toExist(),
-      Scene.expect(Scene.selector('[data-testid="lobby-open-join"]')).toHaveClass("border-dashed"),
-      Scene.expect(Scene.selector('[data-testid="lobby-open-join"]')).not.toHaveClass("bg-llanowar"),
+      Scene.expect(Scene.selector('[data-testid="lobby-join-code"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="lobby-join"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="lobby-join"]')).not.toHaveClass("bg-llanowar"),
+      Scene.expect(Scene.selector('[data-testid="lobby-open-join"]')).toBeAbsent(),
       Scene.expect(Scene.selector('[data-testid="lobby-deck-card"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="lobby-deck-card-1"]')).toExist(),
-      Scene.expect(Scene.selector('[data-testid="lobby-join-code"]')).toBeAbsent(),
       Scene.expect(Scene.text("Lobby")).toExist(),
       Scene.expect(Scene.text("edh.reilley.dev")).not.toExist(),
       Scene.Mount.resolve(BindDeckCardFlip({ deckId: 1 }), DeckCardFlipTick()),

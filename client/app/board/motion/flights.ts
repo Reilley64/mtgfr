@@ -8,6 +8,9 @@ export { STACK_CARD_W };
 const TAU_MS = 75;
 const EPSILON_PX = 0.5;
 const EPSILON_SCALE = 0.02;
+/** Authority handoff radius — near enough that a correction ease would read as a second short glide. */
+export const FLIGHT_HANDOFF_PX = 72;
+export const FLIGHT_HANDOFF_SCALE = 0.25;
 
 export type FlightPhase = "flying" | "settled";
 export type FlightKind = "battlefield" | "stack" | "from-stack";
@@ -96,7 +99,10 @@ export function stepFlights(
   const alpha = 1 - Math.exp(-dtMs / TAU_MS);
 
   for (const [id, cur] of prev) {
-    if (reducedMotion || alreadyAtTarget(cur)) {
+    const aim = { x: cur.targetX, y: cur.targetY, scale: cur.targetScale };
+    // Snap the last inches — exponential ease otherwise crawls for hundreds of ms after the
+    // card looks "arrived", which reads as a second land/stack settle animation every time.
+    if (reducedMotion || alreadyAtTarget(cur) || poseNearHandoff(cur, aim)) {
       flights.set(id, snapToTarget(cur));
       continue;
     }
@@ -109,7 +115,7 @@ export function stepFlights(
       phase: "flying" as const,
     };
 
-    if (alreadyAtTarget(next)) {
+    if (alreadyAtTarget(next) || poseNearHandoff(next, aim)) {
       flights.set(id, snapToTarget(next));
       continue;
     }
@@ -135,14 +141,65 @@ export function rebindFlightId(
   return next;
 }
 
-export function retargetFlight(flight: CardFlight, target: { x: number; y: number; scale: number }): CardFlight {
+export type FlightSyncTrace = {
+  t: number;
+  op: "handoff" | "retarget" | "skip-near" | "spawn" | "seed" | "zoom-remap" | "synced-keep" | "synced-drop";
+  zone?: "stack" | "land" | "from-stack" | "battlefield" | "unknown";
+  id: number;
+  hold: boolean;
+  phase: FlightPhase | "none";
+  remainingPx: number;
+  retainedHold?: boolean;
+  /** Absolute change in aim between previous target and new target (retarget / zoom). */
+  aimDeltaPx?: number;
+  aimDeltaScale?: number;
+  fromTarget?: { x: number; y: number; scale: number };
+  toTarget?: { x: number; y: number; scale: number };
+  note?: string;
+};
+
+/** DEV-only ring buffer for live verify (Playwright reads `globalThis.__flightSyncEvents`). */
+export function traceFlightSync(ev: Omit<FlightSyncTrace, "t">): void {
+  if (!import.meta.env.DEV) return;
+  const g = globalThis as typeof globalThis & { __flightSyncEvents?: FlightSyncTrace[] };
+  if (g.__flightSyncEvents == null) g.__flightSyncEvents = [];
+  const list = g.__flightSyncEvents;
+  list.push({ ...ev, t: performance.now() });
+  if (list.length > 400) list.splice(0, list.length - 400);
+}
+
+export function retargetFlight(
+  flight: CardFlight,
+  target: { x: number; y: number; scale: number },
+  opts?: { retainHold?: boolean; zone?: FlightSyncTrace["zone"]; note?: string },
+): CardFlight {
+  const fromTarget = { x: flight.targetX, y: flight.targetY, scale: flight.targetScale };
+  const aimDeltaPx = Math.hypot(target.x - fromTarget.x, target.y - fromTarget.y);
+  const aimDeltaScale = Math.abs(target.scale - fromTarget.scale);
+  const remainingPx = Math.hypot(target.x - flight.x, target.y - flight.y);
+  traceFlightSync({
+    op: "retarget",
+    zone: opts?.zone ?? flight.kind,
+    id: flight.id,
+    hold: flight.hold === true,
+    phase: flight.phase,
+    remainingPx,
+    retainedHold: opts?.retainHold === true,
+    aimDeltaPx,
+    aimDeltaScale,
+    fromTarget,
+    toTarget: target,
+    note: opts?.note,
+  });
   return {
     ...flight,
     targetX: target.x,
     targetY: target.y,
     targetScale: target.scale,
     phase: "flying",
-    hold: false,
+    // Local seeds keep hold through authority aim updates so later sync can hand off cleanly
+    // instead of clearing hold and inviting a short second ease / early HTML reveal.
+    hold: opts?.retainHold === true ? flight.hold : false,
   };
 }
 
@@ -154,11 +211,65 @@ export function flyingCardIds(flights: ReadonlyMap<number, CardFlight>): Set<num
   return ids;
 }
 
-function alreadyAtTarget(flight: CardFlight): boolean {
+/** True when pose is within settle epsilon of the target (shared by step + authority handoff). */
+export function poseAtTarget(
+  pose: { x: number; y: number; scale: number },
+  target: { x: number; y: number; scale: number },
+): boolean {
   return (
-    Math.hypot(flight.targetX - flight.x, flight.targetY - flight.y) <= EPSILON_PX &&
-    Math.abs(flight.targetScale - flight.scale) <= EPSILON_SCALE
+    Math.hypot(target.x - pose.x, target.y - pose.y) <= EPSILON_PX &&
+    Math.abs(target.scale - pose.scale) <= EPSILON_SCALE
   );
+}
+
+/**
+ * True when a held local seed is close enough to the authoritative pose that retargeting would
+ * only play a short second ease after the main glide.
+ */
+export function poseNearHandoff(
+  pose: { x: number; y: number; scale: number },
+  target: { x: number; y: number; scale: number },
+): boolean {
+  return (
+    Math.hypot(target.x - pose.x, target.y - pose.y) <= FLIGHT_HANDOFF_PX &&
+    Math.abs(target.scale - pose.scale) <= FLIGHT_HANDOFF_SCALE
+  );
+}
+
+/** Preserve on-screen flight size when camera zoom changes (scale is zoom-coupled in paint). */
+export function remapFlightsForZoom(
+  flights: ReadonlyMap<number, CardFlight>,
+  oldZoom: number,
+  newZoom: number,
+): Map<number, CardFlight> {
+  if (!(oldZoom > 0) || !(newZoom > 0) || oldZoom === newZoom) return new Map(flights);
+  const factor = oldZoom / newZoom;
+  const next = new Map<number, CardFlight>();
+  for (const [id, flight] of flights) {
+    const remapped = {
+      ...flight,
+      scale: flight.scale * factor,
+      targetScale: flight.targetScale * factor,
+    };
+    traceFlightSync({
+      op: "zoom-remap",
+      zone: flight.kind,
+      id,
+      hold: flight.hold === true,
+      phase: flight.phase,
+      remainingPx: Math.hypot(flight.targetX - flight.x, flight.targetY - flight.y),
+      aimDeltaScale: Math.abs(remapped.targetScale - flight.targetScale),
+      fromTarget: { x: flight.targetX, y: flight.targetY, scale: flight.targetScale },
+      toTarget: { x: remapped.targetX, y: remapped.targetY, scale: remapped.targetScale },
+      note: `zoom ${oldZoom.toFixed(3)}→${newZoom.toFixed(3)} factor=${factor.toFixed(3)}`,
+    });
+    next.set(id, remapped);
+  }
+  return next;
+}
+
+function alreadyAtTarget(flight: CardFlight): boolean {
+  return poseAtTarget(flight, { x: flight.targetX, y: flight.targetY, scale: flight.targetScale });
 }
 
 function snapToTarget(flight: CardFlight): CardFlight {

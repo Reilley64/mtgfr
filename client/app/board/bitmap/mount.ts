@@ -1,19 +1,23 @@
 import { Effect, type Queue as EffectQueue, Queue, Stream } from "effect";
 import * as Mount from "foldkit/mount";
 import { colors } from "~/design-tokens.generated";
-import type { ActionView, PlayerView, VisibleState, WireAttack, WireBlock } from "~/wire/types";
+import type { ActionView, PlayerView, StackObjectView, VisibleState, WireAttack, WireBlock } from "~/wire/types";
 import { cardBackUrl, imageUrlByPrint } from "../../domain/deck-builder/scryfall";
 import { gravatarUrl, monogramLetter } from "../../domain/gravatar";
 import { type ImageCache, sharedImageCache } from "../../domain/image-cache";
 import type { Vec } from "../action/targeting";
 import { TARGET_COLOR } from "../action/targeting";
+import { stackTargetArrowEndpoints } from "../canvas/arrows";
 import { clockChips } from "../canvas/avatars";
+import { combatArrowEndpoints } from "../canvas/combatArrowEndpoints";
 import { PLAYABLE_BORDER, playableBattlefieldObjectIds } from "../chrome";
 import { type Camera, worldToScreen } from "../geometry/camera";
 import { AVATAR_R, avatarLabelOffsets, avatarPos, type RenderCard, seatColor } from "../geometry/layout";
+import type { StackPresentation } from "../geometry/stackLayout";
 import { ArtLoaded, FlightsSynced } from "../messages";
-import { type ExitFx, exitFxParticles, particleAllowancePerFx, stepExitFx } from "../motion/exit-fx";
+import { type ExitFx, stepExitFx } from "../motion/exit-fx";
 import { type CardFlight, stepFlights } from "../motion/flights";
+import type { DragGhost } from "../motion/screen-motion";
 import { mergeExitFxPoses, mergeFlightPoses, restingPaintChanged, restingPaintSnapshot } from "./flight-frame";
 import {
   paintAutoTapPreview,
@@ -22,8 +26,7 @@ import {
   paintCardPickedHighlight,
   paintCardTargetHighlight,
 } from "./paint-cards";
-import { paintExitFx } from "./paint-exit-fx";
-import { paintFlightCard } from "./paint-flights";
+import { paintScreenMotion } from "./paint-screen-motion";
 
 export type BitmapFrame = {
   width: number;
@@ -37,7 +40,12 @@ export type BitmapFrame = {
   /** Attackers/blocks declared during the current staging session but not yet committed. */
   stagedAttackers: readonly WireAttack[];
   stagedBlocks: readonly WireBlock[];
+  /** Stack entries for declared-target arrows (Mount layer 4, above resting permanents). */
+  stack?: readonly StackObjectView[];
+  stackPresentation?: StackPresentation;
   flights: readonly CardFlight[];
+  /** Active hand-drag ghost painted on the flight / screen-motion layer. */
+  dragGhost?: DragGhost | null;
   exitFx?: readonly ExitFx[];
   hideCardIds: ReadonlySet<number>;
   targetObjects: ReadonlySet<number>;
@@ -46,7 +54,7 @@ export type BitmapFrame = {
   /** Combat-damage assign draft amounts keyed by blocker object id. */
   assignAmounts: ReadonlyMap<number, number>;
   targetPlayers: ReadonlySet<number>;
-  /** Multi player-aim seats already toggled in the player-pick draft (Priority Gold solid ring). */
+  /** Multi player-aim seats already toggled (Priority Gold solid ring). */
   pickedPlayers: ReadonlySet<number>;
   aimFrom: Vec | null;
   cursor: Vec;
@@ -59,6 +67,7 @@ export type BitmapFrame = {
 export type FlightClockState = {
   liveFlights: CardFlight[];
   liveExitFx: ExitFx[];
+  liveDragGhost: DragGhost | null;
   lastRestingSnapshot: ReturnType<typeof restingPaintSnapshot> | null;
 };
 
@@ -69,6 +78,7 @@ let currentFrame: BitmapFrame | null = null;
 let flightClockState: FlightClockState = {
   liveFlights: [],
   liveExitFx: [],
+  liveDragGhost: null,
   lastRestingSnapshot: null,
 };
 const mountedLayers = new Set<BitmapMountHandle>();
@@ -119,21 +129,24 @@ export function applyPublishedFrame(
     prefersReducedMotion(),
   );
   const liveExitFx = [...steppedExitFx.exitFx.values()];
-  const mergedFrame = { ...frame, flights: liveFlights, exitFx: liveExitFx };
-  const { flights: _flights, exitFx: _exitFx, ...restingFrame } = mergedFrame;
+  const liveDragGhost = frame.dragGhost ?? null;
+  const mergedFrame = { ...frame, flights: liveFlights, exitFx: liveExitFx, dragGhost: liveDragGhost };
+  const { flights: _flights, exitFx: _exitFx, dragGhost: _dragGhost, ...restingFrame } = mergedFrame;
   const nextRestingSnapshot = restingPaintSnapshot(restingFrame);
 
   return {
     state: {
       liveFlights,
       liveExitFx,
+      liveDragGhost,
       lastRestingSnapshot: nextRestingSnapshot,
     },
     paintResting: restingPaintChanged(state.lastRestingSnapshot, nextRestingSnapshot),
     paintFlight:
       state.lastRestingSnapshot == null ||
       flightsChanged(state.liveFlights, liveFlights) ||
-      exitFxChanged(state.liveExitFx, liveExitFx),
+      exitFxChanged(state.liveExitFx, liveExitFx) ||
+      dragGhostChanged(state.liveDragGhost, liveDragGhost),
     sync:
       steppedExitFx.completedIds.length > 0 ? { flights: liveFlights, exitFx: liveExitFx, now: animationNow() } : null,
     frame: mergedFrame,
@@ -168,7 +181,7 @@ export function tickFlightClock(
       liveFlights,
       liveExitFx,
     },
-    frame: { ...frame, flights: liveFlights, exitFx: liveExitFx },
+    frame: { ...frame, flights: liveFlights, exitFx: liveExitFx, dragGhost: frame.dragGhost ?? null },
     paintFlight: true,
     sync:
       flyingMembershipChanged || allSettled || exitFxMembershipChanged
@@ -228,6 +241,19 @@ function exitFxChanged(prev: readonly ExitFx[], next: readonly ExitFx[]): boolea
   return false;
 }
 
+function dragGhostChanged(prev: DragGhost | null, next: DragGhost | null): boolean {
+  if (prev == null && next == null) return false;
+  if (prev == null || next == null) return true;
+  return (
+    prev.x !== next.x ||
+    prev.y !== next.y ||
+    prev.scale !== next.scale ||
+    prev.print !== next.print ||
+    prev.name !== next.name ||
+    prev.zone !== next.zone
+  );
+}
+
 function flyingIds(flights: readonly CardFlight[]): Set<number> {
   return new Set(flights.filter((flight) => flight.phase === "flying").map((flight) => flight.id));
 }
@@ -249,6 +275,7 @@ function resetClockState(): void {
   flightClockState = {
     liveFlights: [],
     liveExitFx: [],
+    liveDragGhost: null,
     lastRestingSnapshot: null,
   };
 }
@@ -308,25 +335,61 @@ export function paintBitmapLayer(canvas: HTMLCanvasElement, frame: BitmapFrame, 
 
   paintAvatars(ctx, frame, cache);
   paintCombatArrows(ctx, frame);
+  paintStackTargetArrows(ctx, frame);
   paintStagingAimArrow(ctx, frame);
   if (frame.combatDragFrom != null && frame.combatDragStroke != null) {
     paintArrow(ctx, frame.combatDragFrom, frame.cursor, frame.combatDragStroke);
   }
 }
 
-/** Layer 6: in-flight cards only, on a canvas above the hand/stack HTML. */
+/** Layer 6: screen motion (drag ghost + flights + ExitFx), above hand/stack HTML. */
 export function paintFlightLayer(canvas: HTMLCanvasElement, frame: BitmapFrame, cache: Pick<ImageCache, "get">): void {
   const ctx = prepareLayerCtx(canvas, frame);
   if (ctx == null) return;
 
-  for (const flight of frame.flights) {
-    paintFlightCard(ctx, flight, frame.camera.zoom, cache);
+  if (import.meta.env.DEV) {
+    const g = globalThis as typeof globalThis & {
+      __liveFlightPoses?: Array<{
+        id: number;
+        x: number;
+        y: number;
+        scale: number;
+        targetX: number;
+        targetY: number;
+        targetScale: number;
+        phase: string;
+        hold?: boolean;
+        remaining: number;
+        t: number;
+      }>;
+    };
+    if (g.__liveFlightPoses == null) g.__liveFlightPoses = [];
+    const now = performance.now();
+    for (const flight of frame.flights) {
+      g.__liveFlightPoses.push({
+        id: flight.id,
+        x: flight.x,
+        y: flight.y,
+        scale: flight.scale,
+        targetX: flight.targetX,
+        targetY: flight.targetY,
+        targetScale: flight.targetScale,
+        phase: flight.phase,
+        hold: flight.hold,
+        remaining: Math.hypot(flight.targetX - flight.x, flight.targetY - flight.y),
+        t: now,
+      });
+    }
+    if (g.__liveFlightPoses.length > 2000) g.__liveFlightPoses.splice(0, g.__liveFlightPoses.length - 2000);
   }
-  const exitFx = frame.exitFx ?? [];
-  const particleAllowance = particleAllowancePerFx(exitFx.length);
-  for (const fx of exitFx) {
-    paintExitFx(ctx, fx, frame.camera.zoom, cache, exitFxParticles(fx, particleAllowance));
-  }
+
+  paintScreenMotion(ctx, {
+    dragGhost: frame.dragGhost,
+    flights: frame.flights,
+    exitFx: frame.exitFx ?? [],
+    zoom: frame.camera.zoom,
+    cache,
+  });
 }
 
 function renderBoardLayer(canvas: HTMLCanvasElement): void {
@@ -498,38 +561,53 @@ function paintAvatars(ctx: CanvasRenderingContext2D, frame: BitmapFrame, cache: 
 }
 
 function paintCombatArrows(ctx: CanvasRenderingContext2D, frame: BitmapFrame): void {
-  const cardsById = new Map(frame.cards.map((card) => [card.id, card]));
-  const avatars = new Map<number, { x: number; y: number }>();
+  const avatars: Record<number, { x: number; y: number }> = {};
   const count = Math.max(1, frame.players.length);
   for (const player of frame.players) {
     const pos = avatarPos(player.player, frame.viewer, count);
-    avatars.set(player.player, worldToScreen(frame.camera, pos.x, pos.y));
+    avatars[player.player] = worldToScreen(frame.camera, pos.x, pos.y);
   }
 
   // Declare-drag staging arrows share the arrow layer with committed arrows (canvas map layer 4).
-  for (const attack of [...frame.stagedAttackers, ...frame.combat.attackers]) {
-    const from = cardsById.get(attack.attacker);
-    const to = avatars.get(attack.defender);
-    if (from == null || to == null) continue;
+  for (const endpoint of combatArrowEndpoints({
+    camera: frame.camera,
+    cards: frame.cards,
+    avatars,
+    attackers: [...frame.stagedAttackers, ...frame.combat.attackers],
+    blocks: [...frame.stagedBlocks, ...frame.combat.blocks],
+    blockersDeclared: frame.combat.blockers_declared,
+    blockedAttackers: frame.combat.blocked_attackers,
+  })) {
     // Attack stroke matches arrows.ts ATTACK_STROKE (not colors.mountainRed).
-    paintArrow(ctx, cardCenter(frame.camera, from), to, "#ff6b6b");
+    paintArrow(ctx, endpoint.from, endpoint.to, endpoint.kind === "block" ? colors.wallGreen : "#ff6b6b");
   }
+}
 
-  for (const block of [...frame.stagedBlocks, ...frame.combat.blocks]) {
-    const from = cardsById.get(block.blocker);
-    const to = cardsById.get(block.attacker);
-    if (from == null || to == null) continue;
-    paintArrow(ctx, cardCenter(frame.camera, from), cardCenter(frame.camera, to), colors.wallGreen);
+/** Stack→target arrows must share Mount layer 4 with combat/aim — Canvas vector sits under resting art. */
+function paintStackTargetArrows(ctx: CanvasRenderingContext2D, frame: BitmapFrame): void {
+  const stack = frame.stack ?? [];
+  if (stack.length === 0) return;
+  const count = Math.max(1, frame.players.length);
+  const avatars: Record<number, { x: number; y: number }> = {};
+  for (const player of frame.players) {
+    const pos = avatarPos(player.player, frame.viewer, count);
+    avatars[player.player] = worldToScreen(frame.camera, pos.x, pos.y);
+  }
+  for (const { from, to } of stackTargetArrowEndpoints({
+    viewport: { width: frame.width, height: frame.height },
+    stack,
+    cards: frame.cards,
+    avatars,
+    camera: frame.camera,
+    presentation: frame.stackPresentation ?? "pile",
+  })) {
+    paintArrow(ctx, from, to, TARGET_COLOR);
   }
 }
 
 function paintStagingAimArrow(ctx: CanvasRenderingContext2D, frame: BitmapFrame): void {
   if (frame.aimFrom == null) return;
   paintArrow(ctx, frame.aimFrom, frame.cursor, TARGET_COLOR, [2, 6]);
-}
-
-function cardCenter(camera: Camera, card: RenderCard): { x: number; y: number } {
-  return worldToScreen(camera, card.x + card.w / 2, card.y + card.h / 2);
 }
 
 function paintArrow(
@@ -579,6 +657,7 @@ function preloadFrameArt(frame: BitmapFrame, cache: Pick<ImageCache, "preload">)
   for (const flight of frame.flights) {
     if (flight.print) urls.push(imageUrlByPrint(flight.print));
   }
+  if (frame.dragGhost?.print) urls.push(imageUrlByPrint(frame.dragGhost.print));
   for (const fx of frame.exitFx ?? []) {
     if (fx.print) urls.push(imageUrlByPrint(fx.print));
   }

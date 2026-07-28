@@ -1,5 +1,5 @@
 # Action Session and Targeting
-**Status:** Current (as of 2026-07-23)
+**Status:** Current (as of 2026-07-27)
 **Module:** `client/app/board/action/session.ts`, `client/app/board/action/execution.ts`, `client/app/board/action/targeting.ts`, `client/app/board/geometry/combat-staging.ts`, `client/app/board/submodel.ts`
 
 ## Problem Statement
@@ -28,8 +28,9 @@ Keep an action session in the board model. Pure planners decide whether an actio
 - Arrow aiming highlights legal objects and players and submits only after a legal target click.
 - Stack faces that are legal targets show an Island Blue ring (`legal-target`) and click via `TargetChosen` to complete staged or pending aim.
 - Engine `choose_target` with `max === 1`, and `choose_spell_targets` / `choose_ability_targets` with `min === max === 1`, use the same on-board aim when every legal item is a battlefield permanent, stack object, or player (`pendingBoardTargetMode` / `pendingTargetingOverlay`). Multi-target or any off-board item stays on the modal card picker. Staged local cast aim wins over pending aim for the overlay.
+- While a pending board-aim choice aims from the stack and the source is not a stack entry (ability placement `choose_target`, or mid-resolution onboard card-picks like `proliferate` after `AbilityResolved`), the stack overlay shows a source-art ghost (`pendingStackGhost`) matching local staged casts. Resolving spells that remain on the stack are not duplicated.
 - Battlefield card-picks (`sacrifice_edict`, `choose_own_sacrifices`, `may_sacrifice`, `devour`, `proliferate`, `phase_out`, `decline_untap`, `choose_attach_host`, `sacrifice_unless_return_land`, `choose_copy_target`, `choose_counter_target_for_player`, `caster_keep_permanents`, `choose_activation_cost_targets`) use the same on-board aim when every item is on the canvas; one-click when the required count is 1, otherwise accumulate until Confirm / Enter / Space.
-- `choose_target_players` / `choose_splitting_opponent` highlight life-orb avatars (`pendingPlayerAimOverlay`); one-click when `max === 1` (or splitting); multi-pick accumulates seats until Confirm / Enter / Space.
+- `choose_target_players` / `choose_splitting_opponent` highlight life-orb avatars (`pendingPlayerAimOverlay`); one-click when `max === 1` (or splitting); multi-pick accumulates seats until Confirm / Enter / Space. Picked seats paint Priority Gold (`pickedPlayers`). Proliferate stores seats on `card-pick.players` and paints them through the same `pickedPlayersFromDraft` path; toggling a permanent does not clear those seats.
 - On-board `divide_spell_damage` highlights battlefield targets (`pendingDivideSpellOverlay`) and redistributes 1 damage per click; player/off-board targets stay modal-only.
 - On-board `divide_counters` reuses `pendingDamageAssignOverlay` / `clickDamageAssign` for battlefield permanents.
 - On-board pending aim clicks pack `answerFromBoardTarget` → `choiceIntent` → `SubmitIntent`. Optional `choose_target` keeps a Decline control on `pending-target-aim` chrome.
@@ -60,8 +61,8 @@ Keep an action session in the board model. Pure planners decide whether an actio
 
 - Unit tests cover `paymentPreviewAction` preferring staged/X session actions over hover.
 - Action execution tests cover cost pipeline ordering, X prompt creation, target staging, and submit intent shape.
-- Targeting tests cover arrow versus picker target modes and pending on-board aim versus modal idle.
-- Board pointer tests cover pending on-board choose_target click → `choose_targets` intent.
+- Targeting tests cover arrow versus picker target modes, pending on-board aim versus modal idle, `pendingStackGhost` for mid-resolution proliferate / phase-out (and no duplicate when the spell remains on the stack), and `pickedPlayersFromDraft` for proliferate `card-pick.players`.
+- Board pointer tests cover pending on-board choose_target click → `choose_targets` intent and proliferate seat+permanent accumulate → Confirm.
 - Combat staging tests cover attacker/blocker drops, required attack merge, and step-transition clearing.
 - Board tests cover cancel behavior and keyboard Escape ordering.
 

@@ -11,63 +11,6 @@
 
 use crate::*;
 
-/// The five color words, in WUBRG order — the vocabulary Sleight of Mind replaces one of, and the
-/// color twin of [`BASIC_LAND_TYPES`]. Offered through [`PendingChoice::ChooseCreatureType`]'s
-/// picker like the land types are, so both text-changers ask their two questions the same way.
-pub const COLOR_WORDS: &[&str] = &["White", "Blue", "Black", "Red", "Green"];
-
-/// Which enumerated vocabulary a text-changing spell replaces a word from — Magical Hack's basic
-/// land types, Sleight of Mind's color words. Names the *vocabulary* only; which word becomes
-/// which is picked as [`Effect::Choice(ChoiceEffect::ChangeText)`] resolves.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(
-    feature = "card-dsl",
-    derive(serde::Deserialize),
-    serde(rename_all = "snake_case")
-)]
-pub enum TextWords {
-    /// "…replacing all instances of one basic land type with another" (Magical Hack).
-    BasicLandType,
-    /// "…replacing all instances of one color word with another" (Sleight of Mind).
-    Color,
-}
-
-impl TextWords {
-    /// The words this vocabulary offers, in printed order — the picker's candidate list, asked
-    /// once for the word being replaced and once for its replacement.
-    pub fn options(self) -> &'static [&'static str] {
-        match self {
-            TextWords::BasicLandType => BASIC_LAND_TYPES,
-            TextWords::Color => COLOR_WORDS,
-        }
-    }
-
-    /// What this vocabulary is called in the printed sentence — "one **basic land type**", "one
-    /// **color word**" — for rendering the effect.
-    pub fn label(self) -> &'static str {
-        match self {
-            TextWords::BasicLandType => "basic land type",
-            TextWords::Color => "color word",
-        }
-    }
-
-    /// The substitution two picked words describe, or `None` if either isn't one of
-    /// [`options`](Self::options). The picker only ever offers those, so this is the defensive
-    /// read at the answer boundary rather than a case a real answer reaches.
-    pub fn swap(self, from: &str, to: &str) -> Option<TextSwap> {
-        match self {
-            TextWords::BasicLandType => Some(TextSwap::LandType {
-                from: BasicLandType::from_subtype(from)?,
-                to: BasicLandType::from_subtype(to)?,
-            }),
-            TextWords::Color => Some(TextSwap::Color {
-                from: crate::Color::from_word(from)?,
-                to: crate::Color::from_word(to)?,
-            }),
-        }
-    }
-}
-
 /// One resolved "replace all instances of one word with another" (CR 612.1), riding the object
 /// whose text it changed ([`Permanent::text_swap`] / [`Spell::text_swap`]).
 ///
@@ -89,6 +32,22 @@ pub enum TextSwap {
 }
 
 impl TextSwap {
+    /// The substitution two picked words from `words` describe, or `None` if either isn't one of
+    /// [`TextWords::options`]. The picker only ever offers those, so this is the defensive read at
+    /// the answer boundary rather than a case a real answer reaches.
+    pub fn of_words(words: TextWords, from: &str, to: &str) -> Option<TextSwap> {
+        match words {
+            TextWords::BasicLandType => Some(TextSwap::LandType {
+                from: BasicLandType::from_subtype(from)?,
+                to: BasicLandType::from_subtype(to)?,
+            }),
+            TextWords::Color => Some(TextSwap::Color {
+                from: Color::from_word(from)?,
+                to: Color::from_word(to)?,
+            }),
+        }
+    }
+
     /// The two words this swap reads as, replaced first — for the log line ("Swamp becomes
     /// Plains") and nothing else; every rule read goes through the typed methods below.
     pub fn words(self) -> (&'static str, &'static str) {

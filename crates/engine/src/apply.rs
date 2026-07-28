@@ -1629,6 +1629,7 @@ impl Game {
                 // — set here, not in `declare_attackers` (event-sourced state: intents mint events,
                 // events mutate board facts); cleared at the next Untap step below.
                 self.permanent_mut(object).attacked_this_turn = true;
+                self.combat.attacked_or_blocked.push(object);
                 // Angelic Arbiter's "attacked with a creature this turn" tracking (turn-scoped;
                 // reset at Untap alongside the other this-turn tallies above).
                 let controller = self.controller_of(object);
@@ -1833,6 +1834,7 @@ impl Game {
             Event::BlockerDeclared { blocker, attacker } => {
                 self.combat.blocks.push((blocker, attacker));
                 self.combat.blocked_ever.push((blocker, attacker));
+                self.combat.attacked_or_blocked.push(blocker);
             }
             Event::CombatDamageDivided {
                 attacker,
@@ -2157,6 +2159,8 @@ impl Game {
                 controller,
                 def,
             } => {
+                // CR 506.4: a token that ceases to exist is removed from combat.
+                self.remove_from_combat(token, false);
                 let printed = card_def(def);
                 // CR 603.6c/704.5m last-known information: capture the Aura(s) attached to this
                 // token *before* it vanishes, so `Trigger::EnchantedCreatureDies` can still find
@@ -2226,6 +2230,10 @@ impl Game {
             // `TokenCeasedToExist`) emitted alongside it at the same call site.
             Event::Sacrificed { .. } => {}
             Event::MovedToGraveyard { card, from } => {
+                // CR 506.4: a permanent that leaves the battlefield is removed from combat.
+                if matches!(&self.objects[from as usize], Object::Permanent(_)) {
+                    self.remove_from_combat(from, false);
+                }
                 // Feeds `Amount::PermanentsDiedThisTurn` (Ominous Harvest's Gravestorm): `from`
                 // being a live battlefield `Object::Permanent` (not a hand/exile/stack card
                 // heading to the graveyard by discard, resolution, or counter) is exactly CR

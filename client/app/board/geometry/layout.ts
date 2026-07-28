@@ -200,8 +200,17 @@ const CELLS: { col: number; row: number }[] = [
   { col: 1, row: 1 }, // offset 2 — side (beside you)
   { col: 1, row: 0 }, // offset 3 — diagonal
 ];
-function seatCell(seat: number, viewer: number, count: number): { col: number; row: number } {
-  return CELLS[(seat - viewer + count) % count] ?? CELLS[0];
+/** A seat's screen slot: its offset from the viewer in turn order (viewer = slot 0). A viewer
+ *  that sits at no seat — the spectator sentinel — anchors on seat 0, so spectators get plain
+ *  seat order rather than every seat folding onto one slot. */
+export function seatSlot(seat: number, viewer: number, count: number): number {
+  const seats = Math.max(1, count);
+  const anchor = viewer < seats ? viewer : 0;
+  return (seat - anchor + seats) % seats;
+}
+
+export function seatCell(seat: number, viewer: number, count: number): { col: number; row: number } {
+  return CELLS[seatSlot(seat, viewer, count)] ?? CELLS[0];
 }
 
 /** The world-space top-left of a seat's band (its battlefield origin). */
@@ -247,6 +256,13 @@ export function avatarPos(seat: number, viewer: number, count: number): { x: num
   const band = seatBand(seat, viewer, count);
   const y = isFlipped(seat, viewer, count) ? o.y - AVATAR_R - GAP : o.y + BATTLE_H + AVATAR_R + GAP;
   return { x: band.x + band.w / 2, y };
+}
+
+/** World-space center of the first land slot in a seat's lands row — provisional land-play flight aim. */
+export function landRowCenter(seat: number, viewer: number, count: number): { x: number; y: number } {
+  const o = seatOrigin(seat, viewer, count);
+  const landsY = isFlipped(seat, viewer, count) ? o.y : o.y + 2 * ROW_H;
+  return { x: centerOutX(o.x, 0, 1) + CARD_W / 2, y: landsY + CARD_H / 2 };
 }
 
 /** Synthetic canvas id for a seat's Library pile face (`deckCard`). */

@@ -1,6 +1,6 @@
 # Wire Protocol and Visibility
 
-**Status:** Current (as of 2026-07-26)
+**Status:** Current (as of 2026-07-27)
 **Module:** `proto/mtgfr/v1/`, `crates/schema/`, `crates/server/src/grpc/`, `client/app/domain/wire/`
 (`types.ts`, `protoMap.ts`, `visibleEventKindPresence.ts`, `wire-case-coverage.test.ts`, generated/)
 
@@ -40,13 +40,13 @@ that identify visible objects remain plain string data; hidden names must not be
 |-----|-----------|
 | Browser → BFF | `@effect/rpc` over HTTP/JSON (same-origin `/api`) |
 | BFF → API pod | `@effect-grpc/effect-grpc` (Connect native-gRPC) → tonic on `:50051` |
-| Game stream | gRPC server-streaming `Game.Stream` → BFF bridges to SSE on `/api/rpc/.../stream` |
+| Game stream | gRPC server-streaming `GameService.Stream` → BFF bridges to SSE on `/api/rpc/.../stream` |
 
 The BFF (Nitro) handles cookie termination: the session cookie never
 travels beyond the BFF, and the resolved session token flows as gRPC metadata
 (`x-session-token`) to tonic. Health-check HTTP lives on `:8080` (Axum `GET /health/live`,
-`/health/ready`, `/health/drain`); all `Auth`, `Decks`, `Ratings`, `Cards`, `Game`, and
-`Tables` RPCs live on `:50051` (tonic).
+`/health/ready`, `/health/drain`); all `AuthService`, `DecksService`, `RatingsService`,
+`CardsService`, `GameService`, and `TablesService` RPCs live on `:50051` (tonic).
 
 The `/api/rpc/[...path]` BFF route runs one `runTracedRequest` per request and dispatches the
 matched RPC as an Effect. `dispatchRpc` maps gRPC failures into `RpcOutcome` values at the dispatch
@@ -70,7 +70,7 @@ at the current `seq`, then a sequence of `DeltaEnvelope` frames. Each `DeltaEnve
 
 The client folds deltas in place — replace the board from `state`, grow the log from `events`.
 No mid-stream snapshot refetch is needed. On reconnect after a `seq` gap, the client re-fetches
-a snapshot via `Game.Stream` (which always opens with a snapshot at the current `seq`). Game
+a snapshot via `GameService.Stream` (which always opens with a snapshot at the current `seq`). Game
 setup emits no events, so the very first frame for a newly seeded table is always a snapshot.
 
 **Heartbeats** (`Heartbeat` frames at regular intervals) keep the Cloudflare Tunnel idle
@@ -78,10 +78,13 @@ timeout from dropping the SSE edge stream. Cloudflare Configuration Rules disabl
 buffering on `edh.example.com` so frames are not held at the edge.
 
 **Expand-only wire compat** (see `docs/WIRE_COMPAT.md`, which remains the living authoritative
-rule): during a rolling deploy, the active SPA may talk to a Terminating API pod that runs an
-older binary. All concurrent binaries must share a parseable protocol. This means: additive
-optional fields only, new field numbers for new fields, new RPC/intent/event variants that old
-peers never send — never rename, remove, or reuse field numbers while older pods serve tables.
+rule): during an ordinary rolling deploy, the active SPA may talk to a Terminating API pod that
+runs an older binary. All concurrent binaries must share a parseable protocol. This means:
+additive optional fields only, new field numbers for new fields, new RPC/intent/event variants
+that old peers never send — never rename, remove, or reuse field numbers while older pods serve
+tables. Intentional hard cuts use a semver-major PR with a `BREAKING CHANGE:` footer in the PR
+body (squash commit body) and skip the automated breaking check for that release; later hard
+breaks should prefer a package/path bump such as `mtgfr/v2`.
 
 ---
 
@@ -107,30 +110,34 @@ peers never send — never rename, remove, or reuse field numbers while older po
 
 ### gRPC Services
 
-**`Auth`** — `Signup`, `Login`, `Logout`, `GetMe`. Signup/login return `AuthSession` carrying
-the session token; the BFF sets it as an HttpOnly cookie (`session`) on the browser. `GetMe`
+The proto services use Buf STANDARD `*Service` names, which are also the gRPC path names.
+
+**`AuthService`** — `Signup`, `Login`, `Logout`, `GetMe`. Signup/login return `SignupResponse` /
+`LoginResponse` carrying the session token; the BFF sets it as an HttpOnly cookie (`session`) on
+the browser. `GetMe`
 resolves the token from `x-session-token` metadata.
 
-**`Decks`** — `Create`, `List`, `Get`, `Update`, `Delete`. All operations require auth. Decks
+**`DecksService`** — `Create`, `List`, `Get`, `Update`, `Delete`. All operations require auth. Decks
 are owned by the authenticated user; `DeckDetail` carries the full `(id, count, print)` card
 list with Printing UUIDs.
 
-**`Ratings`** — `GetLeaderboard`. Requires auth. `limit == 0` uses the default page size, values
+**`RatingsService`** — `GetLeaderboard`. Requires auth. `limit == 0` uses the default page size, values
 above the server max clamp to that max, and `offset` pages the global ratings table ordered by
 `rating DESC`, `rating_set_at ASC`, then `id ASC`. Each `LeaderboardEntry` carries `rank`,
-`user_id`, `username`, and `rating`; `Leaderboard.total` carries the full row count for paging.
+`user_id`, `username`, and `rating`; `GetLeaderboardResponse.total` carries the full row count
+for paging.
 
-**`Cards`** — `Catalog`, `Search`, `Lookup`. No auth required. `Search` accepts a freetext
+**`CardsService`** — `Catalog`, `Search`, `Lookup`. No auth required. `Search` accepts a freetext
 query `q` plus `limit`/`offset`; `Lookup` accepts a list of card ids for deck hydration.
 Results are `CatalogCard` — engine-true stats, keywords, a `MessageRef[]` ability summary,
 printing, and optional `oracle` and `approximates` fields.
 
-**`Game`** — `Stream`, `SubmitIntent`, `SetYield`, `SetTurnYield`, `SetStackDwell`. Auth
+**`GameService`** — `Stream`, `SubmitIntent`, `SetYield`, `SetTurnYield`, `SetStackDwell`. Auth
 required for `SubmitIntent` and the yield/dwell setters. `Stream` is a server-streaming RPC;
-it sends `StreamFrame` (snapshot → deltas → heartbeats). Intent and yield routes carry
+it sends `StreamResponse` (snapshot → deltas → heartbeats). Intent and yield routes carry
 `table_id` in the path (not just the body) for BFF routing via `table_routes`.
 
-**`Tables`** — `Seed`. Called by the BFF Start handler, never by the browser directly. Seeds a
+**`TablesService`** — `Seed`. Called by the BFF Start handler, never by the browser directly. Seeds a
 new game from a lobby the BFF already resolved; returns `SeedResponse` with `pod_dns` so the
 BFF can pin later `table_id` hops to this pod.
 
@@ -145,7 +152,7 @@ BFF can pin later `table_id` hops to this pod.
 | `players` | Per-seat `PlayerView`: username, public `gravatar_hash` (SHA-256 hex; empty = monogram), life, commander tax, commander damage, `hand_count`, `library_count`, mana pool |
 | `objects` | Every `ObjectView` visible to this viewer: hand cards (own only), battlefield, stack, graveyard, exile, command zone |
 | `stack` | `StackObjectView` list, bottom-first; `MessageRef` label, optional primary `target`, `targets` list (clause 0 then clause 1; empty when targetless), and source art identity (`print` / `name` / `card_id`) for when `source` is omitted from `objects` (Moved tombstone or ceased token) |
-| `combat` | `CombatView`: declared attackers with defenders, declared blocks, confirmed flags |
+| `combat` | `CombatView`: declared attackers with defenders, declared blocks, confirmed flags, and `blocked_attackers` for attackers that remain blocked after their blockers leave combat |
 | `pending_choice` | The `PendingChoiceView` the engine is blocked on, if any; effect/mode titles use `MessageRef` labels |
 | `actions` | `ActionView` list for this viewer's own legal actions with `MessageRef` labels (empty for spectators) |
 | `can_act`, `yielded`, `turn_yielded` | Priority / yield state for auto-pass logic |
@@ -153,6 +160,8 @@ BFF can pin later `table_id` hops to this pod.
 | `mulliganing` | Whether the game is still in simultaneous pre-game mulligans |
 
 During mulligans, each `PlayerView` also carries `mulligans_taken`, `hand_kept`, and `can_mulligan`. These are public status fields; card identities remain private through the existing hand/object redaction rules. The local player's legal actions include setup-section `keep_hand` and `mulligan` actions while they are undecided.
+
+`CombatView.blocked_attackers` (field 5, expand-only) lists attackers that received at least one declared blocker and remain blocked for the rest of combat (CR 509.1h), including after their blockers leave. After every attacked seat has declared blockers, the client uses this set with `blocks` and living battlefield objects to paint post-declare attack arrows per [`2026-07-20-battlefield.md`](2026-07-20-battlefield.md): blocked attackers aim at living blockers; blocked attackers with no living blockers paint no combat arrow.
 
 ### Redaction rules
 
@@ -221,12 +230,16 @@ The engine/schema event model includes `MulliganTaken { player, mulligans_taken,
   unions aligned with generated `PendingChoiceView` / `VisibleEvent` oneofs after codegen.
 - **BFF cookie termination**: cookies are host-only on `edh.example.com`; they never cross the
   same-origin boundary. The token moves as gRPC metadata inside the cluster.
+- **Buf STANDARD service names**: every tonic service in `proto/mtgfr/v1/mtgfr.proto` uses the
+  `*Service` suffix (`AuthService`, `DecksService`, `RatingsService`, `CardsService`,
+  `GameService`, `TablesService`). Service renames are gRPC path changes and therefore ship only
+  through the hard-cut path documented in `docs/WIRE_COMPAT.md`.
 - **Effect RPC dispatch boundary**: `/api/rpc/[...path]` performs request body/cookie plumbing in
   Nitro, then runs a single traced Effect dispatch. `dispatchRpc` routes to the generated gRPC
   clients as Effects and converts dispatch-time gRPC errors to HTTP-shaped `RpcOutcome` values.
 - **Snapshot-then-deltas** (lobby-table-routing-and-live-game spec): a `tokio::broadcast` channel per table fans events to
   all subscribers; the subscribe edge redacts per viewer. Reconnect re-snapshots by opening a
-  new `Game.Stream` — the initial frame is always a `SnapshotFrame`.
+  new `GameService.Stream` — the initial frame is always a `SnapshotFrame`.
 - **Public avatar identity**: `ViewExtras.gravatar_hashes` stamps `PlayerView.gravatar_hash` at
   projection time from table seat chrome. The wire exposes the hash, not email; see
   [Gravatar Seat Faces Design](2026-07-25-gravatar-seat-faces-design.md).
@@ -240,7 +253,7 @@ The engine/schema event model includes `MulliganTaken { player, mulligans_taken,
 - **Spectator projection** (wire-protocol-and-visibility spec, partial): `snapshot` / `redact` / `spectator_redact` take `Option<PlayerId>`;
   `None` = spectator (all hands/libraries hidden, `viewer = SPECTATOR_VIEWER`). Eliminated
   players and signed-in non-seated users receive the spectator projection, not a 403.
-- **Codegen lifecycle**: `just server-codegen` (Rust, via `build.rs` → `OUT_DIR`) and
+- **Codegen lifecycle**: `just server-codegen` (Rust tonic/prost, via `build.rs` → `OUT_DIR`) and
   `bun run gen` (TypeScript: `buf generate` via `client/package.json` `gen:wire`, plus design
   tokens via `gen-tokens.mjs` / `gen:tokens`) regenerate bindings from `.proto` and token
   outputs. Generated TS files under `client/app/domain/wire/generated/` are gitignored and regenerated
@@ -267,10 +280,12 @@ The engine/schema event model includes `MulliganTaken { player, mulligans_taken,
   `PlayerView` while leaving empty strings for seats without a hash.
 - `PendingChoice` variants are tested via `crates/engine/` unit tests that verify each choice
   kind is raised, answered, and produces the correct events.
-- Expand-only compliance is enforced by code review discipline for ordinary protocol changes;
-  `WIRE_COMPAT.md` documents the invariants for reviewers. The approved engine-refactor program is
-  the narrow exception: its PendingChoice wire simplification shipped as a coordinated hard cut
-  across engine, schema, proto, and client in one branch.
+- Expand-only compliance is machine-checked by `verify-wire` and the local `just proto-*`
+  recipes. `buf lint` runs under full `STANDARD` with no silenced rules, and `buf breaking`
+  enforces `WIRE` compatibility against `origin/main` on non-major PRs. Major PRs (Angular
+  `BREAKING CHANGE:` footer in the PR body) intentionally skip `buf breaking` and represent a
+  hard cut with no N↔N−1 coexistence for that release; later hard breaks should prefer a
+  package/path bump such as `mtgfr/v2`.
 
 ---
 

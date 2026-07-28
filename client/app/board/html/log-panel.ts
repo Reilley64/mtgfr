@@ -1,7 +1,7 @@
 // Game log panel: recent or expanded fold lines in a Hud surface above the hand bar (left column).
 
 import { type Html, html } from "foldkit/html";
-import { buttonClass } from "~/ui/buttonClass";
+import { button } from "~/ui/button";
 import type { LogLine } from "../../game/fold";
 import { LogCopyRequested, LogExpandToggled, type Message } from "../messages";
 import type { BoardModel } from "../submodel";
@@ -53,24 +53,26 @@ export function logPanelView(board: BoardModel, log: ReadonlyArray<LogLine>): Ht
           h.Class("pointer-events-auto flex w-[min(300px,46vw)] items-center justify-between gap-xs"),
         ],
         [
-          h.button(
-            [
-              h.Type("button"),
-              h.DataAttribute("testid", "board-log-expand"),
-              h.OnClick(LogExpandToggled()),
-              h.Class(buttonClass("ghost", "px-2 py-1 text-chip")),
-              h.Attribute("aria-expanded", board.logExpanded ? "true" : "false"),
-            ],
+          button(
+            h,
+            {
+              testId: "board-log-expand",
+              onClick: LogExpandToggled(),
+              variant: "ghost",
+              class: "px-2 py-1 text-chip",
+              attrs: [h.Attribute("aria-expanded", board.logExpanded ? "true" : "false")],
+            },
             [board.logExpanded ? "Collapse" : "Expand"],
           ),
-          h.button(
-            [
-              h.Type("button"),
-              h.DataAttribute("testid", "board-log-copy"),
-              h.OnClick(LogCopyRequested()),
-              h.Class(buttonClass("ghost", "px-2 py-1 text-chip")),
-              h.Attribute("aria-label", "Copy game log"),
-            ],
+          button(
+            h,
+            {
+              testId: "board-log-copy",
+              onClick: LogCopyRequested(),
+              variant: "ghost",
+              class: "px-2 py-1 text-chip",
+              ariaLabel: "Copy game log",
+            },
             [copyLabel],
           ),
         ],

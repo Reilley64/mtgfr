@@ -1,4 +1,6 @@
-import { Effect, Match as M, Schema as S } from "effect";
+import * as Dialog from "@foldkit/ui/dialog";
+import * as VirtualList from "@foldkit/ui/virtualList";
+import { Effect, Match as M, Option, Schema as S } from "effect";
 import type { Command as FoldkitCommand } from "foldkit";
 import { Command, Navigation } from "foldkit";
 import {
@@ -12,7 +14,7 @@ import {
 import { lookupCardsByIds } from "../../../domain/deck-builder/lookup-cards";
 import { commanderMenuItems, poolMenuItems, rowMenuItems } from "../../../domain/deck-builder/menu";
 import { commanderPrintForRow, reconcileEntries } from "../../../domain/deck-builder/print";
-import { searchPrints } from "../../../domain/deck-builder/scryfall";
+import { printSearchUrl, searchPrintPage } from "../../../domain/deck-builder/scryfall";
 import {
   type DeckCardEntry,
   SaveDeckRequest,
@@ -26,6 +28,10 @@ import {
   DeckBuilderLoadFailed,
   DeckSaved,
   DeckSaveFailed,
+  GotDiscardDialogMessage,
+  GotPoolGridMessage,
+  GotPrintDialogMessage,
+  GotPrintGridMessage,
   HydratedBuilderCards,
   type Message,
   NavigatedAwayFromBuilder,
@@ -33,7 +39,15 @@ import {
   ReceivedBuilderSearchPage,
   ReceivedDeckForBuilder,
 } from "./messages";
-import { type DeckBuilderSubmodel, initialDeckBuilderSubmodel } from "./submodel";
+import {
+  type DeckBuilderSubmodel,
+  initialDeckBuilderSubmodel,
+  PRINT_GRID_ID,
+  poolGridColumns,
+  poolGridRowHeightPx,
+  printGridRowHeightPx,
+  viewportWidthPx,
+} from "./submodel";
 
 export const NavigateHome = Command.define(
   "NavigateHome",
@@ -84,14 +98,16 @@ export const HydrateBuilderCards = Command.define(
   }),
 );
 
+/** Fetches one page of printings. The update re-issues this for `nextPage` until there is none,
+ *  so a card with hundreds of printings shows its first 175 while the rest are still arriving. */
 export const SearchBuilderPrints = Command.define(
   "SearchBuilderPrints",
-  { cardId: S.String },
+  { cardId: S.String, url: S.String },
   ReceivedBuilderPrints,
   BuilderPrintSearchFailed,
-)(({ cardId }) =>
-  searchPrints(cardId).pipe(
-    Effect.map((prints) => ReceivedBuilderPrints({ cardId, prints })),
+)(({ cardId, url }) =>
+  searchPrintPage(url).pipe(
+    Effect.map(({ nextPage, prints }) => ReceivedBuilderPrints({ cardId, nextPage, prints, url })),
     Effect.catch(() => Effect.succeed(BuilderPrintSearchFailed({ cardId }))),
   ),
 );
@@ -205,7 +221,6 @@ function pickPrint(model: DeckBuilderSubmodel, cardId: string, print: string): D
     dirty: true,
     entries: nextEntries,
     preferredPrint: { ...model.preferredPrint, [cardId]: print },
-    printPicker: null,
   };
 }
 
@@ -285,20 +300,70 @@ function runMenuAction(
       ];
     }
     case "choosePrint":
-      return [
-        {
-          ...closed,
-          printPicker: {
-            addOnPick: action.addOnPick,
-            cardId: action.cardId,
-            error: false,
-            loading: true,
-            prints: [],
-          },
-        },
-        [SearchBuilderPrints({ cardId: action.cardId })],
-      ];
+      return openPrintPicker(closed, { addOnPick: action.addOnPick, cardId: action.cardId });
   }
+}
+
+type UpdateReturn = readonly [DeckBuilderSubmodel, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>];
+
+const toDiscardDialogMessage = (message: Dialog.Message): Message => GotDiscardDialogMessage({ message });
+const toPrintDialogMessage = (message: Dialog.Message): Message => GotPrintDialogMessage({ message });
+const toPrintGridMessage = (message: VirtualList.Message): Message => GotPrintGridMessage({ message });
+
+const toPoolGridMessage = (message: VirtualList.Message): Message => GotPoolGridMessage({ message });
+
+/** Rows of lookahead before the next page is fetched. Wider than VirtualList's own render overscan
+ *  so the request is in flight before the blank rows would show. */
+const POOL_PAGE_OVERSCAN_ROWS = 12;
+
+/** Dismisses the discard confirmation. */
+function closeDiscardConfirm(model: DeckBuilderSubmodel): UpdateReturn {
+  const [discardDialog, commands] = Dialog.close(model.discardDialog);
+  return [{ ...model, discardDialog }, Command.mapMessages(commands, toDiscardDialogMessage)];
+}
+
+/** Opens the print picker on a card and starts its search. Closes the context menu it came from. */
+function openPrintPicker(model: DeckBuilderSubmodel, args: { addOnPick: boolean; cardId: string }): UpdateReturn {
+  const [printDialog, commands] = Dialog.open(model.printDialog);
+  const url = printSearchUrl(args.cardId);
+  return [
+    {
+      ...model,
+      menu: null,
+      printDialog,
+      // Tile height follows the viewport, and VirtualList fixes the row height at init, so the grid
+      // is rebuilt each time the picker opens — also resetting it to the top.
+      // ponytail: rotating the device with the picker open misaligns rows until it is reopened.
+      printGrid: VirtualList.init({ id: PRINT_GRID_ID, rowHeightPx: printGridRowHeightPx(viewportWidthPx()) }),
+      printPicker: { addOnPick: args.addOnPick, cardId: args.cardId, error: false, pendingPage: url, prints: [] },
+    },
+    [...Command.mapMessages(commands, toPrintDialogMessage), SearchBuilderPrints({ cardId: args.cardId, url })],
+  ];
+}
+
+/** Asks the catalog for the next page, unless one is already in flight or the pool is complete. */
+function nextPoolPage(model: DeckBuilderSubmodel): UpdateReturn {
+  if (model.atEnd || model.searching) return [model, []];
+  const offset = model.offset + PAGE;
+  return [{ ...model, offset, searching: true }, [SearchDeckBuilderCards({ query: model.query, offset })]];
+}
+
+/** True once the windowed grid is rendering rows within an overscan of the end of the loaded pool.
+ *  This is what pages the catalog: the windowed grid renders no sentinel element at the bottom to
+ *  hang an IntersectionObserver on, because the bottom is not in the DOM until you scroll to it. */
+function poolWindowNearEnd(model: DeckBuilderSubmodel): boolean {
+  const columns = poolGridColumns(model.poolWidth);
+  const rowCount = Math.ceil(model.pool.length / columns);
+  return Option.match(VirtualList.visibleWindow(model.poolGrid, rowCount, POOL_PAGE_OVERSCAN_ROWS), {
+    onNone: () => false,
+    onSome: ({ endIndex }) => endIndex >= rowCount,
+  });
+}
+
+/** Dismisses the print picker; the prints it loaded go with it. */
+function closePrintPicker(model: DeckBuilderSubmodel): UpdateReturn {
+  const [printDialog, commands] = Dialog.close(model.printDialog);
+  return [{ ...model, printDialog, printPicker: null }, Command.mapMessages(commands, toPrintDialogMessage)];
 }
 
 export const update = (
@@ -311,21 +376,24 @@ export const update = (
     >(),
     M.tagsExhaustive({
       ChangedBuilderName: ({ name }) => [{ ...model, dirty: true, name }, []],
-      ChangedBuilderQuery: ({ query }) => [
-        { ...model, atEnd: false, offset: 0, pool: [], query, searching: true },
-        [SearchDeckBuilderCards({ query, offset: 0 })],
-      ],
-      ChangedBuilderRoute: ({ editingId }) => enterBuilder(editingId),
-      RequestedNextBuilderPage: () => {
-        if (model.atEnd || model.searching) return [model, []];
-        const offset = model.offset + PAGE;
-        return [{ ...model, offset, searching: true }, [SearchDeckBuilderCards({ query: model.query, offset })]];
+      ChangedBuilderQuery: ({ query }) => {
+        // New results start at the top. The container element survives the query change, so its
+        // scroll position has to be driven back rather than reset in the model alone.
+        const [poolGrid, scrollCommands] = VirtualList.scrollToIndex(model.poolGrid, 0);
+        return [
+          { ...model, atEnd: false, offset: 0, pool: [], poolGrid, query, searching: true },
+          [SearchDeckBuilderCards({ query, offset: 0 }), ...Command.mapMessages(scrollCommands, toPoolGridMessage)],
+        ];
       },
+      ChangedBuilderRoute: ({ editingId }) => enterBuilder(editingId),
       ReceivedBuilderSearchPage: ({ cards, offset, query }) => {
         if (query !== model.query || offset !== model.offset) return [model, []];
         const seen = new Set(model.pool.map((card) => card.id));
         const pool = [...model.pool, ...cards.filter((card) => !seen.has(card.id))];
-        return [rememberCards({ ...model, atEnd: cards.length < PAGE, pool, searching: false }, cards), []];
+        const loaded = rememberCards({ ...model, atEnd: cards.length < PAGE, pool, searching: false }, cards);
+        // A page that still does not reach past the viewport asks for the next one straight away —
+        // nothing else would, since there is no scroll event to hang the request on.
+        return poolWindowNearEnd(loaded) ? nextPoolPage(loaded) : [loaded, []];
       },
       BuilderSearchFailed: () => [{ ...model, atEnd: true, searching: false }, []],
       ReceivedDeckForBuilder: ({ deck }) => {
@@ -370,26 +438,59 @@ export const update = (
           [],
         ];
       },
-      OpenedBuilderPrintPicker: ({ addOnPick, cardId }) => [
-        { ...model, menu: null, printPicker: { addOnPick, cardId, error: false, loading: true, prints: [] } },
-        [SearchBuilderPrints({ cardId })],
-      ],
-      ReceivedBuilderPrints: ({ cardId, prints }) => {
-        if (model.printPicker?.cardId !== cardId) return [model, []];
+      OpenedBuilderPrintPicker: ({ addOnPick, cardId }) => openPrintPicker(model, { addOnPick, cardId }),
+      // Pages append, and the next one is asked for only once this one is in the model, so a picker
+      // that was closed and reopened cannot have a stale chain still feeding it.
+      ReceivedBuilderPrints: ({ cardId, nextPage, prints, url }) => {
+        const picker = model.printPicker;
+        if (picker?.cardId !== cardId || picker.pendingPage !== url) return [model, []];
         return [
           {
             ...model,
-            printPicker: { ...model.printPicker, error: false, loading: false, prints: [...prints] },
+            printPicker: { ...picker, error: false, pendingPage: nextPage, prints: [...picker.prints, ...prints] },
           },
-          [],
+          nextPage === null ? [] : [SearchBuilderPrints({ cardId, url: nextPage })],
         ];
       },
+      // Pages that already landed stay on screen — a later page failing should not empty the picker.
+      // ponytail: the picker then shows a short list with no hint that it is short.
       BuilderPrintSearchFailed: ({ cardId }) => {
         if (model.printPicker?.cardId !== cardId) return [model, []];
-        return [{ ...model, printPicker: { ...model.printPicker, error: true, loading: false, prints: [] } }, []];
+        return [{ ...model, printPicker: { ...model.printPicker, error: true, pendingPage: null } }, []];
       },
-      PickedBuilderPrint: ({ cardId, print }) => [pickPrint(model, cardId, print), []],
-      ClosedBuilderPrintPicker: () => [{ ...model, printPicker: null }, []],
+      PickedBuilderPrint: ({ cardId, print }) => closePrintPicker(pickPrint(model, cardId, print)),
+      // Escape, a backdrop click, and Close all reach here as Dialog's Closed out-message.
+      GotPrintDialogMessage: ({ message }) => {
+        const [printDialog, commands, outMessage] = Dialog.update(model.printDialog, message);
+        const withDialog = { ...model, printDialog };
+        const mapped = Command.mapMessages(commands, toPrintDialogMessage);
+        if (Option.isNone(outMessage) || outMessage.value._tag !== "Closed") return [withDialog, mapped];
+
+        const [dismissed, dismissCommands] = closePrintPicker(withDialog);
+        return [dismissed, [...mapped, ...dismissCommands]];
+      },
+      GotPrintGridMessage: ({ message }) => {
+        const [printGrid, commands] = VirtualList.update(model.printGrid, message);
+        return [{ ...model, printGrid }, Command.mapMessages(commands, toPrintGridMessage)];
+      },
+      GotPoolGridMessage: ({ message }) => {
+        const [poolGrid, commands] = VirtualList.update(model.poolGrid, message);
+        const scrolled = { ...model, poolGrid };
+        const [paged, pageCommands] = poolWindowNearEnd(scrolled) ? nextPoolPage(scrolled) : [scrolled, []];
+        return [paged, [...Command.mapMessages(commands, toPoolGridMessage), ...pageCommands]];
+      },
+      MeasuredPoolGrid: ({ width }) => {
+        if (width === model.poolWidth) return [model, []];
+        // `rowHeightPx` is fixed at init, but it is a plain field: writing it keeps the scroll
+        // position and the container measurement that a re-init would have thrown away.
+        const measured = {
+          ...model,
+          poolGrid: { ...model.poolGrid, rowHeightPx: poolGridRowHeightPx(width) },
+          poolWidth: width,
+        };
+        // A wider pool fits more rows, which can leave the first page no longer filling it.
+        return poolWindowNearEnd(measured) ? nextPoolPage(measured) : [measured, []];
+      },
       SubmittedDeckSave: () => {
         if (model.saving) return [model, []];
         if (deckCount(model.entries) > DECK_SIZE) {
@@ -424,11 +525,24 @@ export const update = (
         return [{ ...model, commander: { id: "", print: "" }, dirty: true }, []];
       },
       RequestedBuilderCancel: () => {
-        if (model.dirty) return [{ ...model, confirmingDiscard: true }, []];
-        return [model, [NavigateHome()]];
+        if (!model.dirty) return [model, [NavigateHome()]];
+        const [discardDialog, commands] = Dialog.open(model.discardDialog);
+        return [{ ...model, discardDialog }, Command.mapMessages(commands, toDiscardDialogMessage)];
       },
-      ConfirmedBuilderDiscard: () => [{ ...model, confirmingDiscard: false }, [NavigateHome()]],
-      CancelledBuilderDiscard: () => [{ ...model, confirmingDiscard: false }, []],
+      ConfirmedBuilderDiscard: () => {
+        const [closed, commands] = closeDiscardConfirm(model);
+        return [closed, [...commands, NavigateHome()]];
+      },
+      // Escape, a backdrop click, and Cancel all reach here as Dialog's Closed out-message.
+      GotDiscardDialogMessage: ({ message }) => {
+        const [discardDialog, commands, outMessage] = Dialog.update(model.discardDialog, message);
+        const withDialog = { ...model, discardDialog };
+        const mapped = Command.mapMessages(commands, toDiscardDialogMessage);
+        if (Option.isNone(outMessage) || outMessage.value._tag !== "Closed") return [withDialog, mapped];
+
+        const [cancelled, cancelCommands] = closeDiscardConfirm(withDialog);
+        return [cancelled, [...mapped, ...cancelCommands]];
+      },
       NavigatedAwayFromBuilder: () => [model, []],
     }),
   );

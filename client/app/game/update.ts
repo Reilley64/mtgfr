@@ -1,6 +1,13 @@
 import type { Command as FoldkitCommand } from "foldkit";
 import { Command } from "foldkit";
-import { type OutMessage as BoardOutMessage, drainPlayModeIfSingleton, syncBoardWithGame } from "../board/submodel";
+import {
+  armFirstPlayerReveal,
+  type OutMessage as BoardOutMessage,
+  drainPlayModeIfSingleton,
+  dropHeldSeeds,
+  raiseResultDialog,
+  syncBoardWithGame,
+} from "../board/submodel";
 import { type Message as AppMessage, GotBoardMessage, GotGameMessage } from "../messages";
 import type { GameSlice } from "../model";
 import type { RpcClient } from "../resources";
@@ -19,8 +26,10 @@ function mergeGameFold(
 ): readonly [GameSlice, ReadonlyArray<FoldkitCommand.Command<BoardOutMessage, never, RpcClient>>] {
   const next = { ...game, ...folded };
   const synced = { ...next, board: syncBoardWithGame(next.board, next) };
-  const [board, commands] = drainPlayModeIfSingleton(synced.board, synced, synced.tableId);
-  return [{ ...synced, board }, commands];
+  const [armed, revealCmds] = armFirstPlayerReveal(synced.board, synced, synced.tableId);
+  const [raised, resultCmds] = raiseResultDialog(armed, synced);
+  const [board, commands] = drainPlayModeIfSingleton(raised, synced, synced.tableId);
+  return [{ ...synced, board }, [...revealCmds, ...resultCmds, ...commands]];
 }
 
 function deltaEnvelope(message: Extract<Message, { _tag: "ReceivedDelta" }>): DeltaEnvelope {
@@ -83,9 +92,11 @@ export function updateGame(
           // Also clear optimistic combat confirm latches — a rejected goad/empty declare
           // must not leave staging disabled for the rest of the step.
           board: {
-            ...game.board,
+            // The play never happened: drop the optimistic flight seed and unhide its hand tile.
+            ...dropHeldSeeds(game.board),
             reject: message.reason,
             promptSubmitInFlight: false,
+            promptSubmitSeq: null,
             attackersConfirmed: false,
             blockersConfirmed: false,
           },

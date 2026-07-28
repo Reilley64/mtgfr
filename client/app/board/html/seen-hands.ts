@@ -4,7 +4,7 @@
 
 import { type Html, html } from "foldkit/html";
 import { playerLabel } from "~/players";
-import { buttonClass } from "~/ui/buttonClass";
+import { button } from "~/ui/button";
 import type { VisibleState } from "~/wire/types";
 import { ZONE } from "../geometry/layout";
 import { type Message, PileExpanded } from "../messages";
@@ -29,13 +29,13 @@ export function seenHandsView(state: VisibleState): Html | null {
   return h.div(
     [h.DataAttribute("testid", "seen-hands"), h.Class("pointer-events-auto flex items-center gap-xs")],
     seen.map(({ owner, count }) =>
-      h.button(
-        [
-          h.Type("button"),
-          h.DataAttribute("testid", `seen-hand-${owner}`),
-          h.OnClick(PileExpanded({ zone: ZONE.Hand, owner })),
-          h.Class(buttonClass("game-quiet")),
-        ],
+      button(
+        h,
+        {
+          testId: `seen-hand-${owner}`,
+          onClick: PileExpanded({ zone: ZONE.Hand, owner }),
+          variant: "game-quiet",
+        },
         [`${playerLabel(state.players, owner)}'s hand (${count})`],
       ),
     ),

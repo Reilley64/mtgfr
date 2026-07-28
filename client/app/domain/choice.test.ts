@@ -197,7 +197,7 @@ function damageState(attacker: ObjectView): VisibleState {
   return {
     active_player: 0,
     can_act: true,
-    combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+    combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [], blocked_attackers: [] },
     objects: [attacker],
     pending_choice: null,
     players: [],
@@ -316,6 +316,31 @@ test("proliferate answers name chosen permanents and player seats separately", (
     permanents: [7, 9],
     players: [2],
   });
+});
+
+test("choose_exiled_to_cast_free is up-to count (including none)", () => {
+  const pc = {
+    kind: "choose_exiled_to_cast_free" as const,
+    count: 2,
+    items: [
+      { id: 10, label: "Bear" },
+      { id: 11, label: "Bolt" },
+    ],
+    player: 0,
+    source: 1,
+  };
+
+  expect(cardPickReady(pc, [])).toBe(true);
+  expect(cardPickReady(pc, [10])).toBe(true);
+  expect(cardPickReady(pc, [10, 11])).toBe(true);
+  expect(cardPickReady(pc, [10, 11, 12])).toBe(false);
+
+  expectDraftIntent(pc, { kind: "card-pick", picked: [] }, { kind: "choose_sacrifices", player: 0, sacrifices: [] });
+  expectDraftIntent(
+    pc,
+    { kind: "card-pick", picked: [10] },
+    { kind: "choose_sacrifices", player: 0, sacrifices: [10] },
+  );
 });
 
 test("mandatory may_return_from_graveyard requires a pick and optional may_return can decline", () => {

@@ -24,7 +24,6 @@ export const CoverageSubmodel = S.Struct({
   faithfulCount: S.NullOr(S.Number),
   oracleTotal: S.NullOr(S.Number),
   error: S.NullOr(S.String),
-  accountMenuOpen: S.Boolean,
 });
 export type CoverageSubmodel = typeof CoverageSubmodel.Type;
 
@@ -36,6 +35,5 @@ export function initialCoverageSubmodel(): CoverageSubmodel {
     faithfulCount: null,
     oracleTotal: null,
     error: null,
-    accountMenuOpen: false,
   };
 }

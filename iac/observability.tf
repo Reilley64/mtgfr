@@ -126,7 +126,7 @@ resource "helm_release" "loki" {
   name       = "loki"
   repository = "https://grafana.github.io/helm-charts"
   chart      = "loki"
-  version    = "6.55.0"
+  version    = "7.1.0"
   namespace  = local.observability_namespace
 
   wait    = true
@@ -231,7 +231,7 @@ resource "helm_release" "prometheus" {
   name       = "prometheus"
   repository = "https://prometheus-community.github.io/helm-charts"
   chart      = "prometheus"
-  version    = "29.17.0"
+  version    = "29.19.0"
   namespace  = local.observability_namespace
 
   wait    = true
@@ -262,6 +262,9 @@ resource "helm_release" "prometheus" {
 
 # ── Grafana (port-forward only) ─────────────────────────────────────────────────────────────────
 
+# Helm resolves `chart` as a local path before consulting `repository`, so a directory named
+# `grafana/` next to this file would shadow the remote chart ("Chart.yaml file is missing").
+# Dashboards live in `dashboards/` for that reason — do not name a local dir after a chart.
 resource "helm_release" "grafana" {
   name       = "grafana"
   repository = "https://grafana.github.io/helm-charts"
@@ -346,6 +349,29 @@ resource "helm_release" "grafana" {
           ]
         }
       }
+      dashboardProviders = {
+        "dashboardproviders.yaml" = {
+          apiVersion = 1
+          providers = [{
+            name            = "mtgfr"
+            orgId           = 1
+            folder          = "mtgfr"
+            type            = "file"
+            disableDeletion = false
+            editable        = true
+            options = {
+              path = "/var/lib/grafana/dashboards/mtgfr"
+            }
+          }]
+        }
+      }
+      dashboards = {
+        mtgfr = {
+          "mtgfr-otel-red" = {
+            json = file("${path.module}/dashboards/mtgfr-otel-red.json")
+          }
+        }
+      }
     })
   ]
 
@@ -363,7 +389,7 @@ resource "helm_release" "alloy" {
   name       = "alloy"
   repository = "https://grafana.github.io/helm-charts"
   chart      = "alloy"
-  version    = "1.10.1"
+  version    = "1.11.0"
   namespace  = local.observability_namespace
 
   wait    = true

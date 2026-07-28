@@ -14,7 +14,7 @@ describe("combatCoachText", () => {
         attackersConfirmedLocally: false,
         blockersConfirmedLocally: false,
       }),
-    ).toBe("Drag a creature onto an opponent to attack · Confirm with Attack");
+    ).toBe("Drag onto an opponent to attack · Click attacker to cancel · Confirm with Attack");
   });
 
   test("hides attack coach after declaration or local confirm", () => {
@@ -56,7 +56,7 @@ describe("combatCoachText", () => {
         attackersConfirmedLocally: true,
         blockersConfirmedLocally: false,
       }),
-    ).toBe("Drag a creature onto an attacker to block · Confirm with Block");
+    ).toBe("Drag onto an attacker to block · Click blocker to cancel · Confirm with Block");
   });
 
   test("hides block coach when not under attack or already declared", () => {

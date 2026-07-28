@@ -23,13 +23,13 @@ fn authed<T>(msg: T, token: &str) -> Request<T> {
 
 #[tokio::test]
 async fn signup_mints_a_session_that_get_me_resolves_over_metadata() {
-    use pb::auth_server::Auth;
+    use pb::auth_service_server::AuthService;
 
     let state = test_state().await;
     let auth = auth_svc::AuthSvc::new(state.clone());
 
     let session = auth
-        .signup(Request::new(pb::SignupCredentials {
+        .signup(Request::new(pb::SignupRequest {
             email: "a@b.c".to_string(),
             password: "hunter2".to_string(),
             username: "alice".to_string(),
@@ -42,7 +42,7 @@ async fn signup_mints_a_session_that_get_me_resolves_over_metadata() {
     assert!(!session.session_token.is_empty(), "a raw token is minted");
 
     let resolved = auth
-        .get_me(authed(pb::Empty {}, &session.session_token))
+        .get_me(authed(pb::GetMeRequest {}, &session.session_token))
         .await
         .expect("the minted token authenticates GetMe")
         .into_inner();
@@ -63,13 +63,13 @@ async fn signup_mints_a_session_that_get_me_resolves_over_metadata() {
 
 #[tokio::test]
 async fn get_me_without_a_token_is_unauthenticated() {
-    use pb::auth_server::Auth;
+    use pb::auth_service_server::AuthService;
 
     let state = test_state().await;
     let auth = auth_svc::AuthSvc::new(state);
 
     let err = auth
-        .get_me(Request::new(pb::Empty {}))
+        .get_me(Request::new(pb::GetMeRequest {}))
         .await
         .expect_err("no x-session-token metadata");
     assert_eq!(err.code(), tonic::Code::Unauthenticated);
@@ -77,11 +77,11 @@ async fn get_me_without_a_token_is_unauthenticated() {
 
 #[tokio::test]
 async fn login_rejects_a_wrong_password() {
-    use pb::auth_server::Auth;
+    use pb::auth_service_server::AuthService;
 
     let state = test_state().await;
     let auth = auth_svc::AuthSvc::new(state);
-    auth.signup(Request::new(pb::SignupCredentials {
+    auth.signup(Request::new(pb::SignupRequest {
         email: "w@b.c".to_string(),
         password: "right".to_string(),
         username: "wpass".to_string(),
@@ -90,7 +90,7 @@ async fn login_rejects_a_wrong_password() {
     .expect("signup");
 
     let err = auth
-        .login(Request::new(pb::Credentials {
+        .login(Request::new(pb::LoginRequest {
             email: "w@b.c".to_string(),
             password: "wrong".to_string(),
         }))
@@ -101,12 +101,12 @@ async fn login_rejects_a_wrong_password() {
 
 #[tokio::test]
 async fn login_then_logout_revokes_the_session() {
-    use pb::auth_server::Auth;
+    use pb::auth_service_server::AuthService;
 
     let state = test_state().await;
     let auth = auth_svc::AuthSvc::new(state);
     let signup = auth
-        .signup(Request::new(pb::SignupCredentials {
+        .signup(Request::new(pb::SignupRequest {
             email: "l@b.c".to_string(),
             password: "pw".to_string(),
             username: "lee".to_string(),
@@ -116,7 +116,7 @@ async fn login_then_logout_revokes_the_session() {
         .into_inner();
 
     let login = auth
-        .login(Request::new(pb::Credentials {
+        .login(Request::new(pb::LoginRequest {
             email: "l@b.c".to_string(),
             password: "pw".to_string(),
         }))
@@ -124,28 +124,28 @@ async fn login_then_logout_revokes_the_session() {
         .expect("login with the right password")
         .into_inner();
 
-    auth.logout(authed(pb::Empty {}, &login.session_token))
+    auth.logout(authed(pb::LogoutRequest {}, &login.session_token))
         .await
         .expect("logout");
 
     // The signup session is untouched; the logged-in-then-out session no longer authenticates.
     let still_signed_in = auth
-        .get_me(authed(pb::Empty {}, &signup.session_token))
+        .get_me(authed(pb::GetMeRequest {}, &signup.session_token))
         .await;
     assert!(still_signed_in.is_ok());
     let logged_out = auth
-        .get_me(authed(pb::Empty {}, &login.session_token))
+        .get_me(authed(pb::GetMeRequest {}, &login.session_token))
         .await;
     assert!(logged_out.is_err());
 }
 
 /// Sign up a fresh user and mint a session token, for tests that need an authenticated caller.
 async fn signed_up(state: &AppState, email: &str, username: &str) -> (i64, String) {
-    use pb::auth_server::Auth;
+    use pb::auth_service_server::AuthService;
 
     let auth = auth_svc::AuthSvc::new(state.clone());
     let session = auth
-        .signup(Request::new(pb::SignupCredentials {
+        .signup(Request::new(pb::SignupRequest {
             email: email.to_string(),
             password: "pw".to_string(),
             username: username.to_string(),
@@ -173,7 +173,7 @@ async fn set_user_rating(state: &AppState, user_id: i64, rating: i32, rating_set
 
 #[tokio::test]
 async fn ratings_get_leaderboard_requires_authentication() {
-    use pb::ratings_server::Ratings;
+    use pb::ratings_service_server::RatingsService;
 
     let state = test_state().await;
     let ratings_svc = ratings_svc::RatingsSvc::new(state);
@@ -190,7 +190,7 @@ async fn ratings_get_leaderboard_requires_authentication() {
 
 #[tokio::test]
 async fn ratings_get_leaderboard_orders_stably_and_pages() {
-    use pb::ratings_server::Ratings;
+    use pb::ratings_service_server::RatingsService;
 
     let state = test_state().await;
     let (alice_id, alice_token) = signed_up(&state, "lb-alice@x.c", "alice").await;
@@ -252,7 +252,7 @@ async fn ratings_get_leaderboard_orders_stably_and_pages() {
 
 #[tokio::test]
 async fn decks_round_trip_create_list_get_update_delete() {
-    use pb::decks_server::Decks;
+    use pb::decks_service_server::DecksService;
 
     let state = test_state().await;
     let (_uid, token) = signed_up(&state, "d@b.c", "deckbuilder").await;
@@ -260,7 +260,7 @@ async fn decks_round_trip_create_list_get_update_delete() {
 
     let tajic = cards::get_by_name("Tajic, Legion's Edge").unwrap();
     let plains = cards::get_by_name("Plains").unwrap();
-    let save = pb::SaveDeckRequest {
+    let save = pb::CreateRequest {
         name: "My Deck".to_string(),
         commander: tajic.id.to_string(),
         commander_print: tajic.default_print.to_string(),
@@ -279,26 +279,28 @@ async fn decks_round_trip_create_list_get_update_delete() {
     assert_eq!(deck.name, "My Deck");
 
     let list = decks_svc
-        .list(authed(pb::Empty {}, &token))
+        .list(authed(pb::ListRequest {}, &token))
         .await
         .expect("list")
         .into_inner();
     assert!(list.decks.iter().any(|d| d.id == deck.id));
 
     let got = decks_svc
-        .get(authed(pb::DeckId { id: deck.id }, &token))
+        .get(authed(pb::GetRequest { id: deck.id }, &token))
         .await
         .expect("get")
         .into_inner();
     assert_eq!(got.id, deck.id);
 
-    let renamed = pb::SaveDeckRequest {
+    let renamed = pb::DeckSaveBody {
         name: "Renamed".to_string(),
-        ..save
+        commander: save.commander,
+        commander_print: save.commander_print,
+        cards: save.cards,
     };
     let updated = decks_svc
         .update(authed(
-            pb::UpdateDeckRequest {
+            pb::UpdateRequest {
                 id: deck.id,
                 request: Some(renamed),
             },
@@ -310,11 +312,11 @@ async fn decks_round_trip_create_list_get_update_delete() {
     assert_eq!(updated.name, "Renamed");
 
     decks_svc
-        .delete(authed(pb::DeckId { id: deck.id }, &token))
+        .delete(authed(pb::DeleteRequest { id: deck.id }, &token))
         .await
         .expect("delete");
     let err = decks_svc
-        .get(authed(pb::DeckId { id: deck.id }, &token))
+        .get(authed(pb::GetRequest { id: deck.id }, &token))
         .await
         .expect_err("deleted deck is gone");
     assert_eq!(err.code(), tonic::Code::NotFound);
@@ -322,13 +324,13 @@ async fn decks_round_trip_create_list_get_update_delete() {
 
 #[tokio::test]
 async fn cards_catalog_and_search_are_public() {
-    use pb::cards_server::Cards;
+    use pb::cards_service_server::CardsService;
 
     let state = test_state().await;
     let cards_svc = cards_svc::CardsSvc::new(state);
 
     let catalog = cards_svc
-        .catalog(Request::new(pb::Empty {}))
+        .catalog(Request::new(pb::CatalogRequest {}))
         .await
         .expect("catalog needs no auth")
         .into_inner();
@@ -339,8 +341,8 @@ async fn cards_catalog_and_search_are_public() {
 /// `Game.SubmitIntent` — exercising the same live-registry path the HTTP routes drive.
 #[tokio::test]
 async fn tables_seed_and_game_submit_intent_round_trip() {
-    use pb::game_server::Game;
-    use pb::tables_server::Tables;
+    use pb::game_service_server::GameService;
+    use pb::tables_service_server::TablesService;
 
     let state = test_state().await;
     let (host_id, host_token) = signed_up(&state, "host@x.c", "host").await;
@@ -384,7 +386,7 @@ async fn tables_seed_and_game_submit_intent_round_trip() {
     });
     let ack = game_svc
         .submit_intent(authed(
-            pb::IntentRequest {
+            pb::SubmitIntentRequest {
                 table_id: "grpc-tbl".to_string(),
                 envelope: Some(envelope),
             },
@@ -398,7 +400,7 @@ async fn tables_seed_and_game_submit_intent_round_trip() {
 
 #[tokio::test]
 async fn conceding_a_seeded_table_persists_elo_ratings() {
-    use pb::game_server::Game;
+    use pb::game_service_server::GameService;
 
     let state = test_state().await;
     let (alice_id, bob_id, alice_token) =
@@ -412,7 +414,7 @@ async fn conceding_a_seeded_table_persists_elo_ratings() {
     });
     let ack = game_svc
         .submit_intent(authed(
-            pb::IntentRequest {
+            pb::SubmitIntentRequest {
                 table_id: "elo-concede-tbl".to_string(),
                 envelope: Some(envelope),
             },
@@ -438,8 +440,8 @@ async fn conceding_a_seeded_table_persists_elo_ratings() {
 
 #[tokio::test]
 async fn submit_intent_rejects_mismatched_envelope_table_id() {
-    use pb::game_server::Game;
-    use pb::tables_server::Tables;
+    use pb::game_service_server::GameService;
+    use pb::tables_service_server::TablesService;
 
     let state = test_state().await;
     let (host_id, host_token) = signed_up(&state, "mismatch-host@x.c", "host").await;
@@ -482,7 +484,7 @@ async fn submit_intent_rejects_mismatched_envelope_table_id() {
     });
     let err = game_svc
         .submit_intent(authed(
-            pb::IntentRequest {
+            pb::SubmitIntentRequest {
                 table_id: "match-tbl".to_string(),
                 envelope: Some(envelope),
             },
@@ -511,7 +513,7 @@ async fn seed_two_player_table_with_players(
     state: &AppState,
     table_id: &str,
 ) -> (i64, i64, String) {
-    use pb::tables_server::Tables;
+    use pb::tables_service_server::TablesService;
 
     let (host_id, host_token) = signed_up(state, &format!("{table_id}-host@x.c"), "host").await;
     let (guest_id, _guest_token) =
@@ -555,11 +557,11 @@ fn keep_table_hands(state: &AppState, table_id: &str) {
     keep_all_hands(game);
 }
 
-/// Pull the next decoded `StreamFrame` off a live `Game.Stream` response, bounded so a stalled
+/// Pull the next decoded `StreamResponse` off a live `Game.Stream` response, bounded so a stalled
 /// stream fails the test instead of hanging.
 async fn next_frame(
-    stream: &mut (impl tokio_stream::Stream<Item = Result<pb::StreamFrame, Status>> + Unpin),
-) -> pb::stream_frame::Frame {
+    stream: &mut (impl tokio_stream::Stream<Item = Result<pb::StreamResponse, Status>> + Unpin),
+) -> pb::stream_response::Frame {
     use tokio_stream::StreamExt;
     let msg = tokio::time::timeout(std::time::Duration::from_secs(5), stream.next())
         .await
@@ -573,7 +575,7 @@ async fn next_frame(
 /// open before the intent was submitted.
 #[tokio::test]
 async fn game_stream_emits_snapshot_then_a_delta_on_intent() {
-    use pb::game_server::Game;
+    use pb::game_service_server::GameService;
 
     let state = test_state().await;
     let (_host_id, host_token) = seed_two_player_table(&state, "gs-tbl").await;
@@ -592,7 +594,7 @@ async fn game_stream_emits_snapshot_then_a_delta_on_intent() {
 
     let opening = next_frame(&mut stream).await;
     assert!(
-        matches!(opening, pb::stream_frame::Frame::Snapshot(_)),
+        matches!(opening, pb::stream_response::Frame::Snapshot(_)),
         "first frame is a snapshot: {opening:?}"
     );
 
@@ -603,7 +605,7 @@ async fn game_stream_emits_snapshot_then_a_delta_on_intent() {
     });
     let ack = game_svc
         .submit_intent(authed(
-            pb::IntentRequest {
+            pb::SubmitIntentRequest {
                 table_id: "gs-tbl".to_string(),
                 envelope: Some(envelope),
             },
@@ -616,7 +618,7 @@ async fn game_stream_emits_snapshot_then_a_delta_on_intent() {
 
     let delta = next_frame(&mut stream).await;
     assert!(
-        matches!(delta, pb::stream_frame::Frame::Delta(_)),
+        matches!(delta, pb::stream_response::Frame::Delta(_)),
         "the pass broadcasts a delta on the open stream: {delta:?}"
     );
 }
@@ -626,7 +628,7 @@ async fn game_stream_emits_snapshot_then_a_delta_on_intent() {
 /// the heartbeat interval automatically once the task parks, so this is deterministic and fast.
 #[tokio::test(start_paused = true)]
 async fn game_stream_emits_a_heartbeat_on_a_quiet_table() {
-    use pb::game_server::Game;
+    use pb::game_service_server::GameService;
 
     let state = test_state().await;
     let (_host_id, host_token) = seed_two_player_table(&state, "hb-tbl").await;
@@ -644,11 +646,11 @@ async fn game_stream_emits_a_heartbeat_on_a_quiet_table() {
         .into_inner();
 
     let opening = next_frame(&mut stream).await;
-    assert!(matches!(opening, pb::stream_frame::Frame::Snapshot(_)));
+    assert!(matches!(opening, pb::stream_response::Frame::Snapshot(_)));
 
     let beat = next_frame(&mut stream).await;
     assert!(
-        matches!(beat, pb::stream_frame::Frame::Heartbeat(_)),
+        matches!(beat, pb::stream_response::Frame::Heartbeat(_)),
         "a quiet stream still beats: {beat:?}"
     );
 }
@@ -658,7 +660,7 @@ async fn game_stream_emits_a_heartbeat_on_a_quiet_table() {
 /// and an unknown table is `NOT_FOUND`.
 #[tokio::test]
 async fn game_stream_spectates_outsiders_and_errors_on_an_unknown_table() {
-    use pb::game_server::Game;
+    use pb::game_service_server::GameService;
 
     let state = test_state().await;
     let (_host_id, host_token) = seed_two_player_table(&state, "spec-tbl").await;
@@ -677,7 +679,7 @@ async fn game_stream_spectates_outsiders_and_errors_on_an_unknown_table() {
         .expect("an outsider may still watch as a spectator")
         .into_inner();
     let opening = next_frame(&mut stream).await;
-    let pb::stream_frame::Frame::Snapshot(snapshot) = opening else {
+    let pb::stream_response::Frame::Snapshot(snapshot) = opening else {
         panic!("expected a snapshot frame");
     };
     let view = snapshot.state.expect("snapshot carries a state");
@@ -704,8 +706,8 @@ async fn game_stream_spectates_outsiders_and_errors_on_an_unknown_table() {
 /// owns, and rejects *new* `Tables.Seed` calls.
 #[tokio::test]
 async fn draining_still_serves_an_owned_stream_but_rejects_new_seeds() {
-    use pb::game_server::Game;
-    use pb::tables_server::Tables;
+    use pb::game_service_server::GameService;
+    use pb::tables_service_server::TablesService;
 
     let state = test_state().await;
     let (host_id, host_token) = seed_two_player_table(&state, "drain-tbl").await;
@@ -725,7 +727,7 @@ async fn draining_still_serves_an_owned_stream_but_rejects_new_seeds() {
         .expect("a draining instance still streams a table it already owns")
         .into_inner();
     let opening = next_frame(&mut stream).await;
-    assert!(matches!(opening, pb::stream_frame::Frame::Snapshot(_)));
+    assert!(matches!(opening, pb::stream_response::Frame::Snapshot(_)));
 
     // Draining is checked before anything else in `seed_table_core`, so this seat list need not
     // be otherwise valid.

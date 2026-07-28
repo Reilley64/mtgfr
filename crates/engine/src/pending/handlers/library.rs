@@ -343,7 +343,8 @@ impl Game {
             self.objects[pick.object as usize],
             Object::Permanent(_) | Object::Spell(_)
         );
-        let Some(swap) = pick.words.swap(from, chosen).filter(|_| is_text_bearing) else {
+        let Some(swap) = TextSwap::of_words(pick.words, from, chosen).filter(|_| is_text_bearing)
+        else {
             return Ok(events);
         };
         self.push_apply(

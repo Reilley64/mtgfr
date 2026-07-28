@@ -40,7 +40,7 @@ function state(overrides: Partial<VisibleState> = {}): VisibleState {
   return {
     active_player: 0,
     can_act: true,
-    combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+    combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [], blocked_attackers: [] },
     objects: [],
     pending_choice: null,
     players: [
@@ -507,7 +507,7 @@ test("select_from_top Take lane click emits select_from_top intent", () => {
   });
 });
 
-test("distribute_top shows docked Hand Bottom Exile lanes", () => {
+test("distribute_top uses a center modal with Hand Bottom Exile lanes", () => {
   const s = state({
     pending_choice: {
       kind: "distribute_top",
@@ -526,8 +526,10 @@ test("distribute_top shows docked Hand Bottom Exile lanes", () => {
     { update: sceneUpdate, view },
     Scene.with(viewModel(s)),
     resolveBoardOverlayMounts(),
-    Scene.expect(Scene.testId("pending-distribute-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-distribute-modal")).toExist(),
+    Scene.expect(Scene.testId("pending-distribute-aim")).toBeAbsent(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-distribute-lanes")).toExist(),
     Scene.expect(Scene.testId("prompt-distribute-pool")).toExist(),
     Scene.expect(Scene.testId("prompt-distribute-hand")).toExist(),
@@ -564,7 +566,7 @@ test("distribute_top card click cycles into Hand then Bottom", () => {
   });
 });
 
-test("partition_revealed shows docked Pile A and Pile B lanes", () => {
+test("partition_revealed uses a center modal with Pile A and Pile B lanes", () => {
   const s = state({
     pending_choice: {
       kind: "partition_revealed",
@@ -580,8 +582,10 @@ test("partition_revealed shows docked Pile A and Pile B lanes", () => {
     { update: sceneUpdate, view },
     Scene.with(viewModel(s)),
     resolveBoardOverlayMounts(),
-    Scene.expect(Scene.testId("pending-partition-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-partition-modal")).toExist(),
+    Scene.expect(Scene.testId("pending-partition-aim")).toBeAbsent(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-partition-lanes")).toExist(),
     Scene.expect(Scene.testId("prompt-partition-a")).toExist(),
     Scene.expect(Scene.testId("prompt-partition-b")).toExist(),
@@ -604,7 +608,8 @@ test("partition_revealed relabels itself for Raging River's creature piles", () 
     { update: sceneUpdate, view },
     Scene.with(viewModel(s)),
     resolveBoardOverlayMounts(),
-    Scene.expect(Scene.testId("prompt-partition-heading")).toHaveText("Choose creatures for this pile"),
+    Scene.expect(Scene.testId("pending-partition-modal")).toExist(),
+    Scene.expect(Scene.testId("prompt-modal-title")).toHaveText("Choose creatures for this pile"),
   );
 });
 
@@ -948,7 +953,9 @@ test("choose_copy_target swaps to counter wording for the MayPutCounterOnCreatur
     { update: sceneUpdate, view },
     Scene.with(viewModel(s)),
     resolveBoardOverlayMounts(),
-    Scene.expect(Scene.testId("pending-card-pick-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-card-pick-modal")).toExist(),
+    Scene.expect(Scene.testId("pending-card-pick-aim")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
     Scene.expect(Scene.testId("pick-title")).toHaveText("Choose a creature to get a +1/+1 counter"),
     Scene.expect(Scene.testId("prompt-submit")).toHaveText("Put counter"),
   );
@@ -969,7 +976,7 @@ test("choose_copy_target swaps to block wording for False Orders' re-aim", () =>
     { update: sceneUpdate, view },
     Scene.with(viewModel(s)),
     resolveBoardOverlayMounts(),
-    Scene.expect(Scene.testId("pending-card-pick-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-card-pick-modal")).toExist(),
     Scene.expect(Scene.testId("pick-title")).toHaveText("Choose an attacking creature to block"),
     Scene.expect(Scene.testId("prompt-submit")).toHaveText("Block"),
   );
@@ -989,7 +996,9 @@ test("choose_copy_target keeps copy wording for real copy prompts", () => {
     { update: sceneUpdate, view },
     Scene.with(viewModel(s)),
     resolveBoardOverlayMounts(),
-    Scene.expect(Scene.testId("pending-card-pick-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-card-pick-modal")).toExist(),
+    Scene.expect(Scene.testId("pending-card-pick-aim")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
     Scene.expect(Scene.testId("pick-title")).toHaveText("Choose a copy target"),
     Scene.expect(Scene.testId("prompt-submit")).toHaveText("Copy"),
   );
@@ -1663,7 +1672,8 @@ test("choose_color prompt renders mana-font pips instead of letter labels", () =
       ),
     ),
     resolveBoardOverlayMounts(),
-    Scene.expect(Scene.testId("pending-color-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-color-modal")).toExist(),
+    Scene.expect(Scene.testId("pending-color-aim")).toBeAbsent(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-color-0")).toExist(),
     Scene.expect(Scene.testId("prompt-color-pip-0")).toExist(),
@@ -1687,7 +1697,8 @@ test("choose_creature_type prompt emits choose_creature_type intent from UI", ()
     { update: sceneUpdate, view },
     Scene.with(viewModel(s)),
     resolveBoardOverlayMounts(),
-    Scene.expect(Scene.testId("pending-creature-type-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-creature-type-modal")).toExist(),
+    Scene.expect(Scene.testId("pending-creature-type-aim")).toBeAbsent(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
   );
   const intents = clickPromptIntent(s, Scene.click(Scene.testId("prompt-string-1")));
@@ -1706,7 +1717,8 @@ test("choose_card_name prompt has placeholder and Names a typed card", () => {
     { update: sceneUpdate, view },
     Scene.with(viewModel(s)),
     resolveBoardOverlayMounts(),
-    Scene.expect(Scene.testId("pending-card-name-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-card-name-modal")).toExist(),
+    Scene.expect(Scene.testId("pending-card-name-aim")).toBeAbsent(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
     Scene.expect(Scene.placeholder("Card name")).toExist(),
     Scene.expect(Scene.testId("prompt-name-input")).toExist(),
@@ -1736,8 +1748,10 @@ test("may_draw_up_to prompt emits choose_draw_count intent from UI", () => {
     { update: sceneUpdate, view },
     Scene.with(viewModel(s)),
     resolveBoardOverlayMounts(),
-    Scene.expect(Scene.testId("pending-draw-count-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-draw-count-modal")).toExist(),
+    Scene.expect(Scene.testId("pending-draw-count-aim")).toBeAbsent(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
   );
   const intents = clickPromptIntent(s, Scene.click(Scene.testId("prompt-number-2")));
   expect(intents).toEqual([{ kind: "choose_draw_count", player: 0, count: 2 }]);
@@ -1756,8 +1770,10 @@ test("pay_any_amount_of_mana uses a stepper and submits the draft amount", () =>
     { update: sceneUpdate, view },
     Scene.with(viewModel(s)),
     resolveBoardOverlayMounts(),
-    Scene.expect(Scene.testId("pending-join-forces-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-join-forces-modal")).toExist(),
+    Scene.expect(Scene.testId("pending-join-forces-aim")).toBeAbsent(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-number-value")).toHaveText("0"),
     Scene.expect(Scene.testId("prompt-number-0")).not.toExist(),
     Scene.expect(Scene.testId("prompt-number-dec")).toBeDisabled(),

@@ -43,6 +43,8 @@ spec:
               value: {{ .Values.otelExporterOtlpEndpoint | quote }}
             - name: OTEL_SERVICE_NAME
               value: "edh-web"
+            - name: DEPLOYMENT_ENVIRONMENT
+              value: "production"
             - name: FARO_COLLECT_UPSTREAM
               value: {{ .Values.faroCollectUpstream | quote }}
           livenessProbe:

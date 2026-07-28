@@ -1,3 +1,4 @@
+import type * as Menu from "@foldkit/ui/menu";
 import { Effect, Option, Queue, Schema as S, Stream } from "effect";
 import { Submodel } from "foldkit";
 import { type Html, html } from "foldkit/html";
@@ -8,46 +9,51 @@ import { DECK_SIZE, deckCount, sortedDeckList } from "../../../domain/deck-build
 import { formatReleasedAt } from "../../../domain/deck-builder/print";
 import type { ScryfallPrint } from "../../../domain/deck-builder/scryfall";
 import type { AppChromeMeta } from "../../../domain/ui/app-version";
-import { buttonClass } from "../../../domain/ui/buttonClass";
+import { button } from "../../../domain/ui/button";
 import { cardArt } from "../../../domain/ui/card-art";
-import { confirmDialog, OpenDialogAsModal } from "../../../domain/ui/confirmDialog";
-import { alertClass, fieldClass } from "../../../domain/ui/surfaces";
-import type {
-  CardArtTick,
-  ClosedAccountMenu,
-  GotAuthMessage,
-  ModalOpened,
-  ToggledAccountMenu,
-} from "../../../messages";
+import { confirmDialog } from "../../../domain/ui/confirmDialog";
+import { modalDialog } from "../../../domain/ui/dialog";
+import { input } from "../../../domain/ui/input";
+import { alertClass } from "../../../domain/ui/surfaces";
+import { windowedGrid } from "../../../domain/ui/windowedGrid";
+import { type CardArtTick, GotAccountMenuMessage, type GotAuthMessage } from "../../../messages";
 import { accountChrome } from "../../account-chrome/view";
 import { shellFrame } from "../../frame/shell-frame";
 import {
   ActivatedBuilderTarget,
-  CancelledBuilderDiscard,
   ChangedBuilderName,
   ChangedBuilderQuery,
   ClearedBuilderHover,
   ClosedBuilderMenu,
-  ClosedBuilderPrintPicker,
   ConfirmedBuilderDiscard,
+  GotDiscardDialogMessage,
+  GotPoolGridMessage,
+  GotPrintDialogMessage,
+  GotPrintGridMessage,
+  MeasuredPoolGrid,
   type Message,
   MovedBuilderHover,
   OpenedBuilderMenu,
   PickedBuilderPrint,
   RanBuilderMenuAction,
   RequestedBuilderCancel,
-  RequestedNextBuilderPage,
   SubmittedDeckSave,
 } from "./messages";
-import type { DeckBuilderSubmodel } from "./submodel";
+import {
+  type BuilderPrintPicker,
+  type DeckBuilderSubmodel,
+  POOL_GRID_ID,
+  PRINT_DIALOG_ID,
+  PRINT_GRID_COLUMNS,
+  PRINT_GRID_ID,
+  poolGridColumns,
+} from "./submodel";
 
 export type ViewMessage =
   | Message
-  | typeof ModalOpened.Type
   | typeof CardArtTick.Type
-  | typeof ClosedAccountMenu.Type
-  | typeof GotAuthMessage.Type
-  | typeof ToggledAccountMenu.Type;
+  | typeof GotAccountMenuMessage.Type
+  | typeof GotAuthMessage.Type;
 
 const h = html<ViewMessage>();
 
@@ -70,30 +76,39 @@ const PRINT_TILE = cn(
   "flex cursor-pointer flex-col items-center gap-1.5 rounded-hud p-md text-label hover:bg-white/8 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-vine",
 );
 const PRINT_PICKER_GRID = "grid w-fit grid-cols-2 gap-md";
+/** Classes on one row of the windowed print grid. `windowedGrid` adds `grid`. */
+const PRINT_PICKER_ROW = "grid-cols-2 gap-md";
+// Two badge lines, always reserved: set / collector / date wrap to a second line on narrow tiles,
+// and the windowed grid needs every tile the same height. `h-10` is the 40px `submodel.ts` budgets.
+const PRINT_BADGE_ROW = "flex h-10 w-full flex-wrap content-center items-center justify-center gap-1";
 const PRINT_BADGE =
   "rounded-full border border-vine-dim bg-glass-dim px-[7px] py-px font-semibold text-chip text-lichen";
 const CARD_ART = cn("aspect-[0.72] w-full rounded-control object-cover");
 const PRINT_SKELETON = cn(PRINT_PICKER_COL, "flex cursor-default flex-col items-center gap-1.5 p-md");
 
-export const ObserveBuilderSentinel = Mount.defineStream(
-  "ObserveBuilderSentinel",
-  RequestedNextBuilderPage,
+/** Reports the pool column's width. The pool grid is windowed, and both its column count and its row
+ *  height come from that width — VirtualList's own observer reports height only. */
+export const ObservePoolWidth = Mount.defineStream(
+  "ObservePoolWidth",
+  MeasuredPoolGrid,
 )((element) =>
-  Stream.callback<typeof RequestedNextBuilderPage.Type>((queue) =>
+  Stream.callback<typeof MeasuredPoolGrid.Type>((queue) =>
     Effect.gen(function* () {
       yield* Effect.acquireRelease(
         Effect.sync(() => {
-          if (typeof IntersectionObserver === "undefined") {
-            Queue.offerUnsafe(queue, RequestedNextBuilderPage());
+          const report = (width: number) => {
+            if (width > 0) Queue.offerUnsafe(queue, MeasuredPoolGrid({ width }));
+          };
+
+          if (typeof ResizeObserver === "undefined") {
+            report(element.clientWidth);
             return null;
           }
 
-          const observer = new IntersectionObserver(
-            (entries) => {
-              if (entries[0]?.isIntersecting) Queue.offerUnsafe(queue, RequestedNextBuilderPage());
-            },
-            { rootMargin: "300px" },
-          );
+          const observer = new ResizeObserver((entries) => {
+            const width = entries[0]?.contentRect.width;
+            if (width !== undefined) report(width);
+          });
           observer.observe(element);
           return observer;
         }),
@@ -293,7 +308,7 @@ function printTile(cardId: string, print: ScryfallPrint): Html {
     [
       builderCardArt(print.id, `${print.set_name} #${print.collector_number}`, CARD_ART),
       h.div(
-        [h.Class("flex w-full flex-wrap items-center justify-center gap-1")],
+        [h.Class(PRINT_BADGE_ROW)],
         [
           h.span([h.Class(PRINT_BADGE), h.Title(print.set_name)], [print.set.toUpperCase()]),
           h.span([h.Class(PRINT_BADGE)], [`#${print.collector_number}`]),
@@ -306,7 +321,7 @@ function printTile(cardId: string, print: ScryfallPrint): Html {
 
 function skeletonPrintTile(): Html {
   return h.div(
-    [h.Class(cn(PRINT_SKELETON, "pointer-events-none"))],
+    [h.Class(cn(PRINT_SKELETON, "pointer-events-none")), h.DataAttribute("testid", "print-skeleton")],
     [
       h.div([h.Class(cn("aspect-[0.72] w-full animate-skeleton rounded-control bg-white/8"))], []),
       h.div([h.Class("h-2.5 w-[70%] animate-skeleton rounded-[3px] bg-white/8")], []),
@@ -314,61 +329,62 @@ function skeletonPrintTile(): Html {
   );
 }
 
+/** The picker's scrolling area: skeletons, a status line, or the prints themselves. A card can have
+ *  hundreds of printings (basic lands especially), so the prints are windowed. */
+function printPickerBody(model: DeckBuilderSubmodel, picker: BuilderPrintPicker): Html {
+  // Skeletons only until the first page lands; later pages append under the prints already shown.
+  if (picker.prints.length === 0) {
+    if (picker.error) {
+      return h.div([h.Class("text-burn-red text-label")], ["Could not load printings. Close and try again."]);
+    }
+    if (picker.pendingPage !== null) {
+      return h.div(
+        [h.Class(PRINT_PICKER_GRID)],
+        Array.from({ length: 4 }, () => skeletonPrintTile()),
+      );
+    }
+    return h.div([h.Class("text-label text-lichen")], ["No printings found."]);
+  }
+
+  return windowedGrid(h, {
+    model: model.printGrid,
+    toGridMessage: (message) => GotPrintGridMessage({ message }),
+    items: picker.prints,
+    columns: PRINT_GRID_COLUMNS,
+    itemToKey: (print) => print.id,
+    itemToView: (print) => printTile(picker.cardId, print),
+    rowClass: PRINT_PICKER_ROW,
+    containerClass: "max-h-[min(60vh,720px)] w-fit",
+    testId: PRINT_GRID_ID,
+  });
+}
+
 function printPicker(model: DeckBuilderSubmodel): Html {
   const picker = model.printPicker;
-  if (picker == null) return null;
 
-  return h.dialog(
-    [
-      h.DataAttribute("testid", "builder-print-picker"),
-      h.Class(
-        "m-auto w-fit max-w-[90vw] rounded-modal border border-vine bg-forest-surface p-xl text-body text-snow shadow-table backdrop:bg-black/60",
-      ),
-      h.OnMount(OpenDialogAsModal()),
-      h.OnCancel(ClosedBuilderPrintPicker()),
-    ],
-    [
-      h.div(
-        [h.Class("flex w-fit max-w-full flex-col gap-md")],
-        [
-          h.div(
-            [h.Class("flex items-center justify-between gap-lg")],
-            [
-              h.div([h.Class("font-semibold text-body")], ["Choose printing"]),
-              h.button(
-                [
-                  h.Type("button"),
-                  h.DataAttribute("testid", "close-print-picker"),
-                  h.OnClick(ClosedBuilderPrintPicker()),
-                  h.Class(buttonClass("ghost")),
-                ],
-                ["Close"],
-              ),
-            ],
-          ),
-          h.div(
-            [
-              h.Class(cn(PRINT_PICKER_GRID, "max-h-[min(60vh,720px)] overflow-y-auto overscroll-contain")),
-              h.DataAttribute("testid", "builder-print-picker-scroll"),
-            ],
-            [
-              !picker.loading && picker.error
-                ? h.div(
-                    [h.Class("col-span-2 text-burn-red text-label")],
-                    ["Could not load printings. Close and try again."],
-                  )
-                : null,
-              !picker.loading && !picker.error && picker.prints.length === 0
-                ? h.div([h.Class("col-span-2 text-label text-lichen")], ["No printings found."])
-                : null,
-              ...(picker.loading
-                ? Array.from({ length: 4 }, () => skeletonPrintTile())
-                : picker.prints.map((p) => printTile(picker.cardId, p))),
-            ],
-          ),
-        ],
-      ),
-    ],
+  return modalDialog(
+    h,
+    {
+      model: model.printDialog,
+      toDialogMessage: (message) => GotPrintDialogMessage({ message }),
+      panel: "w-fit max-w-[90vw]",
+      testId: PRINT_DIALOG_ID,
+    },
+    (render) =>
+      picker == null
+        ? []
+        : [
+            h.div(
+              [h.Class("flex items-center justify-between gap-lg")],
+              [
+                h.div([...render.title, h.Class("font-semibold text-body")], ["Choose printing"]),
+                button(h, { testId: "close-print-picker", variant: "ghost", attrs: [...render.closeButton] }, [
+                  "Close",
+                ]),
+              ],
+            ),
+            printPickerBody(model, picker),
+          ],
   );
 }
 
@@ -392,7 +408,11 @@ function poolTile(model: DeckBuilderSubmodel, card: DeckBuilderSubmodel["pool"][
     ],
     [
       builderCardArt(print, card.name, CARD_ART),
-      h.span([h.Class("text-center leading-[1.1]")], [`${card.legendary ? "★ " : ""}${card.name}`]),
+      // One line, ellipsised: the windowed grid needs every tile the same height, and a long card
+      // name that wrapped would push its art out of the row. `w-full` because `items-center`
+      // otherwise shrinks the span to its text and leaves nothing to truncate. No `title` — the
+      // full name is what the hover preview is for.
+      h.span([h.Class("w-full truncate text-center leading-[1.1]")], [`${card.legendary ? "★ " : ""}${card.name}`]),
     ],
   );
 }
@@ -407,11 +427,44 @@ function skeletonTile(): Html {
   );
 }
 
+/** Classes on one row of the windowed pool grid. The column count is measured, so it arrives as an
+ *  inline `grid-template-columns` rather than a `grid-cols-*` class. */
+const POOL_ROW = "gap-md";
+const POOL_SKELETON_GRID = "grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] content-start gap-md";
+
+/** The pool's scrolling area. Windowed, because the catalog runs to tens of thousands of cards and
+ *  every tile that renders also fetches its art. */
+function poolBody(model: DeckBuilderSubmodel, scrollLocked: boolean): Html {
+  if (model.pool.length === 0) {
+    if (model.searching)
+      return h.div(
+        [h.Class(POOL_SKELETON_GRID)],
+        Array.from({ length: 10 }, () => skeletonTile()),
+      );
+    return h.div([h.Class("text-label text-lichen")], ["No cards match."]);
+  }
+
+  return windowedGrid(h, {
+    model: model.poolGrid,
+    toGridMessage: (message) => GotPoolGridMessage({ message }),
+    items: model.pool,
+    columns: poolGridColumns(model.poolWidth),
+    itemToKey: (card) => card.id,
+    itemToView: (card) => poolTile(model, card),
+    rowClass: POOL_ROW,
+    rowStyle: { "grid-template-columns": `repeat(${poolGridColumns(model.poolWidth)},minmax(0,1fr))` },
+    // VirtualList writes `overflow: auto` on the container as an inline style, so freezing the pool
+    // behind the print picker needs `!important` to reach past it.
+    containerClass: cn("min-h-0 flex-1", scrollLocked && "overflow-hidden!"),
+    testId: POOL_GRID_ID,
+  });
+}
+
 export type ViewInputs = {
   readonly chrome: AppChromeMeta;
   readonly username: string;
   readonly meGravatarHash: string | null;
-  readonly accountMenuOpen: boolean;
+  readonly accountMenu: Menu.Model;
 };
 
 export const view = Submodel.defineView<DeckBuilderSubmodel, ViewMessage, ViewInputs>((model, viewInputs) => {
@@ -424,32 +477,26 @@ export const view = Submodel.defineView<DeckBuilderSubmodel, ViewMessage, ViewIn
     title: model.editingId == null ? "New deck" : "Edit deck",
     chrome: viewInputs.chrome,
     lockStageScroll: true,
-    leading: h.button(
-      [
-        h.Type("button"),
-        h.DataAttribute("testid", "builder-cancel"),
-        h.OnClick(RequestedBuilderCancel()),
-        h.Class(buttonClass("ghost")),
-      ],
-      ["Cancel"],
-    ),
+    leading: button(h, { testId: "builder-cancel", onClick: RequestedBuilderCancel(), variant: "ghost" }, ["Cancel"]),
     trailing: h.div(
       [h.Class("flex items-center gap-sm")],
       [
-        h.button(
-          [
-            h.Type("button"),
-            h.DataAttribute("testid", "save-deck"),
-            h.Disabled(model.saving),
-            h.OnClick(SubmittedDeckSave()),
-            h.Class(buttonClass("primary", "shrink-0")),
-          ],
+        button(
+          h,
+          {
+            testId: "save-deck",
+            disabled: model.saving,
+            onClick: SubmittedDeckSave(),
+            variant: "primary",
+            class: "shrink-0",
+          },
           [model.saving ? "Saving…" : "Save deck"],
         ),
         accountChrome(h, {
           username: viewInputs.username,
           gravatarHash: viewInputs.meGravatarHash,
-          menuOpen: viewInputs.accountMenuOpen,
+          menu: viewInputs.accountMenu,
+          toMenuMessage: (message) => GotAccountMenuMessage({ message }),
           showLeaderboardLink: true,
         }),
       ],
@@ -472,41 +519,23 @@ export const view = Submodel.defineView<DeckBuilderSubmodel, ViewMessage, ViewIn
               ["Click to add. Right-click or long-press for print and other options. Only basics may exceed one copy."],
             ),
             h.label([h.Class("sr-only"), h.For("pool-search")], ["Search card pool"]),
-            h.input([
-              h.Id("pool-search"),
-              h.Type("search"),
-              h.Value(model.query),
-              h.Placeholder("Search name, type, subtype, color, set, tag…"),
-              h.OnInput((query) => ChangedBuilderQuery({ query })),
-              h.Class(fieldClass("mt-2 w-full")),
-            ]),
+            input(h, {
+              id: "pool-search",
+              type: "search",
+              value: model.query,
+              placeholder: "Search name, type, subtype, color, set, tag…",
+              onInput: (query) => ChangedBuilderQuery({ query }),
+              class: "mt-2 w-full",
+            }),
             h.div(
               [
-                h.Class(
-                  cn(
-                    "mt-3 grid min-h-0 flex-1 grid-cols-[repeat(auto-fill,minmax(120px,1fr))] content-start gap-md overscroll-contain",
-                    backgroundScrollLocked ? "overflow-hidden" : "overflow-y-auto",
-                  ),
-                ),
-                h.DataAttribute("testid", "builder-pool-scroll"),
+                // The grid inside is what scrolls; this wrapper only bounds it and is what the
+                // width observer measures, since the scrollport itself belongs to VirtualList.
+                h.Class("mt-3 flex min-h-0 min-w-0 flex-1 flex-col"),
+                h.DataAttribute("testid", "builder-pool-measure"),
+                h.OnMount(ObservePoolWidth()),
               ],
-              [
-                ...model.pool.map((card) => poolTile(model, card)),
-                ...(model.searching ? Array.from({ length: 10 }, () => skeletonTile()) : []),
-                !model.searching && model.pool.length === 0
-                  ? h.div([h.Class("col-span-full text-label text-lichen")], ["No cards match."])
-                  : null,
-                model.atEnd
-                  ? null
-                  : h.div(
-                      [
-                        h.Class("col-span-full h-px"),
-                        h.DataAttribute("testid", "builder-scroll-sentinel"),
-                        h.OnMount(ObserveBuilderSentinel()),
-                      ],
-                      [],
-                    ),
-              ],
+              [poolBody(model, backgroundScrollLocked)],
             ),
           ],
         ),
@@ -514,13 +543,13 @@ export const view = Submodel.defineView<DeckBuilderSubmodel, ViewMessage, ViewIn
           [h.Class("flex min-h-0 min-w-0 flex-col gap-3")],
           [
             h.label([h.Class("sr-only"), h.For("deck-name")], ["Deck name"]),
-            h.input([
-              h.Id("deck-name"),
-              h.DataAttribute("testid", "deck-name"),
-              h.Value(model.name),
-              h.OnInput((name) => ChangedBuilderName({ name })),
-              h.Class(fieldClass("w-full")),
-            ]),
+            input(h, {
+              id: "deck-name",
+              testId: "deck-name",
+              value: model.name,
+              onInput: (name) => ChangedBuilderName({ name }),
+              class: "w-full",
+            }),
             h.div([h.Class("text-label text-lichen")], ["Commander"]),
             model.commander.id === ""
               ? h.div(
@@ -598,17 +627,18 @@ export const view = Submodel.defineView<DeckBuilderSubmodel, ViewMessage, ViewIn
                 ),
               ],
             ),
-            model.confirmingDiscard
-              ? confirmDialog(h, {
-                  title: "Discard changes?",
-                  body: "Everything you've edited since the deck loaded will be lost.",
-                  confirmLabel: "Discard",
-                  danger: true,
-                  onConfirm: ConfirmedBuilderDiscard(),
-                  onCancel: CancelledBuilderDiscard(),
-                  testId: "builder-discard-confirm",
-                })
-              : null,
+            // Always rendered: Dialog opens and closes the <dialog> element itself, so it has to
+            // stay in the tree. `model.discardDialog.isOpen` is what makes the prompt visible.
+            confirmDialog(h, {
+              model: model.discardDialog,
+              toDialogMessage: (message) => GotDiscardDialogMessage({ message }),
+              title: "Discard changes?",
+              body: "Everything you've edited since the deck loaded will be lost.",
+              confirmLabel: "Discard",
+              danger: true,
+              onConfirm: ConfirmedBuilderDiscard(),
+              testId: "builder-discard-confirm",
+            }),
             model.problems.length === 0
               ? null
               : h.div(

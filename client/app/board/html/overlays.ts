@@ -17,6 +17,7 @@ import type { BoardModel } from "../submodel";
 import { activationMenuView } from "./activation-menu";
 import { concedeButtonView, concedeDialogView } from "./concede";
 import { discoverabilityView } from "./discoverability";
+import { firstPlayerRevealView } from "./first-player-reveal";
 import { handView } from "./hand";
 import { inspectView } from "./inspect";
 import { logPanelView } from "./log-panel";
@@ -96,13 +97,9 @@ export function boardOverlays(
           })(),
           discardSelectedIds: (() => {
             if (board.discardPick != null) return new Set(board.discardPick.picks.discard_cost);
-            if (
-              state.pending_choice != null &&
-              (state.pending_choice.kind === "discard" ||
-                state.pending_choice.kind === "may_discard" ||
-                (state.pending_choice.kind === "pay_cost" && (state.pending_choice.discard_count ?? 0) > 0)) &&
-              board.promptDraft?.kind === "card-pick"
-            ) {
+            // Same gate as discardCostIds: any on-hand pending hand pick (discard, put land/creature,
+            // face-down cast, put on top, pay-cost discard) paints Llanowar on draft picks.
+            if (pendingHandPickIds(state.pending_choice, state) != null && board.promptDraft?.kind === "card-pick") {
               return new Set(board.promptDraft.picked);
             }
             return null;
@@ -111,11 +108,10 @@ export function boardOverlays(
       : null,
     seatedViewer ? mulliganOverlayView(state) : null,
     seatedViewer ? mulliganWaitingView(state) : null,
-    seatedViewer && !chrome.show ? priorityBarView(board, state) : null,
     seatedViewer && !chrome.show ? promptsView(board, state, tableId) : null,
     seatedViewer && !chrome.show ? activationMenuView(board, state) : null,
     seatedViewer ? concedeButtonView() : null,
-    concedeDialogView(board.confirmConcede),
+    concedeDialogView(board.concedeDialog),
     pileOverlayView(board.pileExpand, state, {
       selectableIds: (() => {
         if (board.gyExilePick != null) {
@@ -129,7 +125,9 @@ export function boardOverlays(
         return null;
       })(),
     }),
-    resultOverlayView(state, board.resultSeen),
+    // After pile/prompt backdrops so equal-z siblings still keep actions on top; simple prompts use z-45.
+    seatedViewer && !chrome.show ? priorityBarView(board, state, tableId) : null,
+    resultOverlayView(state, board.resultDialog),
     // Inspect stays off during undecided mulligans so the opening-hand overlay is a true hard lock.
     undecidedMulligan
       ? null
@@ -141,6 +139,8 @@ export function boardOverlays(
           state.players,
           state.objects,
         ),
+    // CR 103.1 spotlight sits above everything, spectators included — no seatedViewer gate.
+    firstPlayerRevealView(board.firstPlayerReveal, state),
   ];
 
   return h.div(

@@ -36,22 +36,22 @@ pub async fn serve(
 ) -> Result<(), tonic::transport::Error> {
     Server::builder()
         .layer(TraceLayer)
-        .add_service(pb::auth_server::AuthServer::new(auth_svc::AuthSvc::new(
-            state.clone(),
-        )))
-        .add_service(pb::decks_server::DecksServer::new(
+        .add_service(pb::auth_service_server::AuthServiceServer::new(
+            auth_svc::AuthSvc::new(state.clone()),
+        ))
+        .add_service(pb::decks_service_server::DecksServiceServer::new(
             decks_svc::DecksSvc::new(state.clone()),
         ))
-        .add_service(pb::ratings_server::RatingsServer::new(
+        .add_service(pb::ratings_service_server::RatingsServiceServer::new(
             ratings_svc::RatingsSvc::new(state.clone()),
         ))
-        .add_service(pb::cards_server::CardsServer::new(
+        .add_service(pb::cards_service_server::CardsServiceServer::new(
             cards_svc::CardsSvc::new(state.clone()),
         ))
-        .add_service(pb::game_server::GameServer::new(game_svc::GameSvc::new(
-            state.clone(),
-        )))
-        .add_service(pb::tables_server::TablesServer::new(
+        .add_service(pb::game_service_server::GameServiceServer::new(
+            game_svc::GameSvc::new(state.clone()),
+        ))
+        .add_service(pb::tables_service_server::TablesServiceServer::new(
             tables_svc::TablesSvc::new(state),
         ))
         .serve_with_shutdown(addr, shutdown)

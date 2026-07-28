@@ -4,6 +4,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::dto::{MessageParam, MessageRef, WireCost, WireKind};
+use engine::EffectMessage;
 
 /// One pool card, for the deck builder to browse. Stats/keywords/summary are engine truth.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

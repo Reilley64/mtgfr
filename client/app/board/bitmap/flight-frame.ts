@@ -1,5 +1,6 @@
-import type { ActionView, PlayerView, WireAttack, WireBlock } from "~/wire/types";
+import type { ActionView, PlayerView, StackObjectView, WireAttack, WireBlock } from "~/wire/types";
 import type { RenderCard } from "../geometry/layout";
+import type { StackPresentation } from "../geometry/stackLayout";
 import type { ExitFx } from "../motion/exit-fx";
 import type { CardFlight } from "../motion/flights";
 import type { BitmapFrame } from "./mount";
@@ -72,7 +73,16 @@ function actionPaintKey(action: ActionView): Record<string, unknown> {
   };
 }
 
-export function restingPaintSnapshot(frame: Omit<BitmapFrame, "flights">): RestingPaintSnapshot {
+function stackEntryPaintKey(entry: StackObjectView): string {
+  const targets = (entry.targets ?? (entry.target != null ? [entry.target] : []))
+    .map((t) => (t.kind === "player" ? `p${t.player}` : `o${t.id}`))
+    .join(",");
+  return `${entry.source}:${entry.kind}:${targets}`;
+}
+
+export function restingPaintSnapshot(
+  frame: Omit<BitmapFrame, "flights" | "exitFx" | "dragGhost">,
+): RestingPaintSnapshot {
   const cursorActive = frame.aimFrom != null || (frame.combatDragFrom != null && frame.combatDragStroke != null);
 
   const payload = {
@@ -101,6 +111,8 @@ export function restingPaintSnapshot(frame: Omit<BitmapFrame, "flights">): Resti
     },
     stagedAttackers: [...frame.stagedAttackers].map(attackKey).sort(),
     stagedBlocks: [...frame.stagedBlocks].map(blockKey).sort(),
+    stack: (frame.stack ?? []).map(stackEntryPaintKey),
+    stackPresentation: (frame.stackPresentation ?? "pile") as StackPresentation,
     aimFrom: frame.aimFrom,
     cursor: cursorActive ? frame.cursor : null,
     combatDragFrom: frame.combatDragFrom,
@@ -119,7 +131,17 @@ export function restingPaintChanged(prev: RestingPaintSnapshot | null, next: Res
 export function mergeFlightPoses(live: readonly CardFlight[], incoming: readonly CardFlight[]): CardFlight[] {
   const liveById = new Map(live.map((f) => [f.id, f]));
   return incoming.map((inc) => {
-    const prev = liveById.get(inc.id);
+    // Same id, or land/stack rebind where the permanent/spell id replaces the hand seed id.
+    // Without the fromCardId match, publish resets to the stale model spawn pose and the card
+    // restarts its glide — the every-time land double animation.
+    const prev =
+      liveById.get(inc.id) ??
+      (inc.fromCardId != null ? liveById.get(inc.fromCardId) : undefined) ??
+      live.find(
+        (flight) =>
+          (inc.fromCardId != null && flight.fromCardId === inc.fromCardId) ||
+          (flight.fromCardId != null && flight.fromCardId === inc.id),
+      );
     if (prev == null) return inc;
     return {
       ...inc,

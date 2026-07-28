@@ -1,12 +1,15 @@
 // Game result overlay: shown when a player wins, loses, or the game ends.
 // Mirrors Solid board-overlays.tsx ResultOverlay.
 
+import type * as Dialog from "@foldkit/ui/dialog";
 import { type Html, html } from "foldkit/html";
 import { outcome } from "~/outcome";
 import { playerLabel } from "~/players";
-import { buttonClass } from "~/ui/buttonClass";
+import { button } from "~/ui/button";
+import { modalDialog } from "~/ui/dialog";
 import type { VisibleState } from "~/wire/types";
-import { LeaveGame, type Message, ResultSeen } from "../messages";
+import { GotResultDialogMessage, LeaveGame, type Message } from "../messages";
+import { RESULT_DIALOG_ID } from "../submodel";
 
 const h = html<Message>();
 
@@ -44,51 +47,35 @@ function watchLabel(state: VisibleState): string {
 }
 
 /**
- * Result overlay — shown when the game has concluded or the viewer was eliminated.
- * Returns null when the game is still playing or the viewer has already seen the result.
+ * Result overlay — raised once the game has concluded or the viewer was eliminated
+ * (`raiseResultDialog` on the fold that ends it). Always rendered: a closed `<dialog>` is what
+ * Dialog opens. Staying on the board is the dismiss, so it takes Dialog's close path.
  */
-export function resultOverlayView(state: VisibleState, resultSeen: boolean): Html | null {
-  const o = outcome(state.players, state.viewer);
-  if (o.kind === "playing" || resultSeen) return null;
-
-  return h.div(
-    [
-      h.DataAttribute("testid", "result-overlay"),
-      h.Class("fixed inset-0 z-55 flex items-center justify-center bg-black/70"),
-    ],
-    [
+export function resultOverlayView(state: VisibleState, model: Dialog.Model): Html {
+  return modalDialog(
+    h,
+    {
+      model,
+      toDialogMessage: (message) => GotResultDialogMessage({ message }),
+      panel: "max-w-[420px] items-center text-center",
+      testId: RESULT_DIALOG_ID,
+    },
+    (render) => [
+      h.div([...render.title, h.Class("font-bold text-title text-snow")], [headline(state)]),
+      h.div([...render.description, h.Class("text-label text-lichen")], [detail(state)]),
       h.div(
+        [h.Class("flex gap-md")],
         [
-          h.Class(
-            "rounded-panel border border-vine bg-forest-surface p-xl shadow-hud flex max-w-[420px] flex-col items-center gap-lg text-center",
+          button(
+            h,
+            {
+              testId: "result-watch",
+              variant: "ghost",
+              attrs: [...render.closeButton, ...render.initialFocus],
+            },
+            [watchLabel(state)],
           ),
-        ],
-        [
-          h.div([h.Class("font-bold text-title text-snow")], [headline(state)]),
-          h.div([h.Class("text-label text-lichen")], [detail(state)]),
-          h.div(
-            [h.Class("flex gap-md")],
-            [
-              h.button(
-                [
-                  h.Type("button"),
-                  h.DataAttribute("testid", "result-watch"),
-                  h.OnClick(ResultSeen()),
-                  h.Class(buttonClass("ghost")),
-                ],
-                [watchLabel(state)],
-              ),
-              h.button(
-                [
-                  h.Type("button"),
-                  h.DataAttribute("testid", "result-leave"),
-                  h.OnClick(LeaveGame()),
-                  h.Class(buttonClass("primary")),
-                ],
-                ["Back to your decks"],
-              ),
-            ],
-          ),
+          button(h, { testId: "result-leave", onClick: LeaveGame(), variant: "primary" }, ["Back to your decks"]),
         ],
       ),
     ],

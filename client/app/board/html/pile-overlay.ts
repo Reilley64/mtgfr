@@ -2,7 +2,7 @@
 // Mirrors Solid board-overlays.tsx PileOverlay.
 
 import { type Html, html } from "foldkit/html";
-import { buttonClass } from "~/ui/buttonClass";
+import { button } from "~/ui/button";
 import { cardArt } from "~/ui/card-art";
 import type { ObjectView, VisibleState } from "~/wire/types";
 import { ZONE } from "../geometry/layout";
@@ -38,7 +38,6 @@ function cardThumb(card: ObjectView, selectable: boolean, selected: boolean): Ht
         ],
         [card.name],
       );
-  const ring = selected ? "ring-2 ring-priority-gold" : selectable ? "ring-2 ring-dashed ring-island-blue" : "";
   if (!selectable) {
     return h.div([h.Class("relative"), h.Attribute("title", card.name)], [face]);
   }
@@ -46,9 +45,17 @@ function cardThumb(card: ObjectView, selectable: boolean, selected: boolean): Ht
     [
       h.Type("button"),
       h.DataAttribute("testid", `pile-card-${card.id}`),
+      h.DataAttribute("selected", selected ? "true" : "false"),
+      h.DataAttribute("selectable", "true"),
       h.Attribute("title", card.name),
       h.OnClick(PileCardClicked({ id: card.id })),
-      h.Class(["relative rounded-md", ring].filter(Boolean).join(" ")),
+      h.Class(
+        [
+          "group/pile-card relative rounded-md ring-2",
+          "data-[selected=true]:ring-priority-gold",
+          "data-[selected=false]:ring-dashed data-[selected=false]:ring-island-blue",
+        ].join(" "),
+      ),
     ],
     [face],
   );
@@ -95,17 +102,7 @@ export function pileOverlayView(
       h.div([h.Class("flex flex-wrap gap-xs")], cardList),
       h.div(
         [h.Class("mt-sm flex justify-end")],
-        [
-          h.button(
-            [
-              h.Type("button"),
-              h.DataAttribute("testid", "pile-overlay-close"),
-              h.OnClick(PileOverlayClosed()),
-              h.Class(buttonClass("ghost")),
-            ],
-            ["Close"],
-          ),
-        ],
+        [button(h, { testId: "pile-overlay-close", onClick: PileOverlayClosed(), variant: "ghost" }, ["Close"])],
       ),
     ],
   );

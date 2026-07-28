@@ -1,4 +1,4 @@
-//! `mtgfr.v1.Game` — intents, yield/dwell chrome, and the per-viewer delta stream.
+//! `mtgfr.v1.GameService` — intents, yield/dwell chrome, and the per-viewer delta stream.
 //! `Stream` reuses [`crate::stream::subscribe`] (same heartbeat, seq-dedup, redaction).
 #![allow(clippy::result_large_err)] // `tonic::Status` is a large `Err` by design; see auth_ctx.rs.
 
@@ -26,10 +26,39 @@ impl GameSvc {
     }
 }
 
-fn ack_msg(ack: crate::game_loop::Ack) -> pb::Ack {
-    pb::Ack {
-        accepted: ack.accepted,
-        reject_reason: ack.reject_reason.map(map::message_ref_to_pb),
+fn ack_fields(ack: crate::game_loop::Ack) -> (bool, Option<pb::MessageRef>) {
+    (ack.accepted, ack.reject_reason.map(map::message_ref_to_pb))
+}
+
+fn submit_intent_response(ack: crate::game_loop::Ack) -> pb::SubmitIntentResponse {
+    let (accepted, reject_reason) = ack_fields(ack);
+    pb::SubmitIntentResponse {
+        accepted,
+        reject_reason,
+    }
+}
+
+fn set_yield_response(ack: crate::game_loop::Ack) -> pb::SetYieldResponse {
+    let (accepted, reject_reason) = ack_fields(ack);
+    pb::SetYieldResponse {
+        accepted,
+        reject_reason,
+    }
+}
+
+fn set_turn_yield_response(ack: crate::game_loop::Ack) -> pb::SetTurnYieldResponse {
+    let (accepted, reject_reason) = ack_fields(ack);
+    pb::SetTurnYieldResponse {
+        accepted,
+        reject_reason,
+    }
+}
+
+fn set_stack_dwell_response(ack: crate::game_loop::Ack) -> pb::SetStackDwellResponse {
+    let (accepted, reject_reason) = ack_fields(ack);
+    pb::SetStackDwellResponse {
+        accepted,
+        reject_reason,
     }
 }
 
@@ -43,9 +72,9 @@ fn intent_kind_label(intent: &schema::WireIntent) -> String {
 }
 
 #[tonic::async_trait]
-impl pb::game_server::Game for GameSvc {
+impl pb::game_service_server::GameService for GameSvc {
     type StreamStream =
-        Pin<Box<dyn tokio_stream::Stream<Item = Result<pb::StreamFrame, Status>> + Send>>;
+        Pin<Box<dyn tokio_stream::Stream<Item = Result<pb::StreamResponse, Status>> + Send>>;
 
     async fn stream(
         &self,
@@ -103,13 +132,16 @@ impl pb::game_server::Game for GameSvc {
 
     async fn submit_intent(
         &self,
-        request: Request<pb::IntentRequest>,
-    ) -> Result<Response<pb::Ack>, Status> {
+        request: Request<pb::SubmitIntentRequest>,
+    ) -> Result<Response<pb::SubmitIntentResponse>, Status> {
         // Parent span is created by `trace::TraceLayer` for every gRPC method.
         let user = auth_ctx::authenticate(&self.state, &request).await?;
         let inner = request.into_inner();
         let table_id = inner.table_id.clone();
-        tracing::Span::current().record("table_id", tracing::field::display(&table_id));
+        tracing::Span::current().record(
+            crate::otel_semconv::MTGFR_TABLE_ID,
+            tracing::field::display(&table_id),
+        );
         let envelope = map::intent_envelope_from_pb(
             inner
                 .envelope
@@ -118,44 +150,45 @@ impl pb::game_server::Game for GameSvc {
         .map_err(Status::invalid_argument)?;
         if envelope.table_id != table_id {
             return Err(Status::invalid_argument(
-                "envelope.table_id does not match IntentRequest.table_id",
+                "envelope.table_id does not match SubmitIntentRequest.table_id",
             ));
         }
         let intent_kind = intent_kind_label(&envelope.intent);
-        tracing::Span::current().record("intent.kind", intent_kind.as_str());
+        tracing::Span::current()
+            .record(crate::otel_semconv::MTGFR_INTENT_KIND, intent_kind.as_str());
         let ack = submit_intent_core(&self.state, user.id, &table_id, envelope).await;
-        tracing::Span::current().record("accepted", ack.accepted);
-        Ok(Response::new(ack_msg(ack)))
+        tracing::Span::current().record(crate::otel_semconv::MTGFR_INTENT_ACCEPTED, ack.accepted);
+        Ok(Response::new(submit_intent_response(ack)))
     }
 
     async fn set_yield(
         &self,
-        request: Request<pb::YieldRequest>,
-    ) -> Result<Response<pb::Ack>, Status> {
+        request: Request<pb::SetYieldRequest>,
+    ) -> Result<Response<pb::SetYieldResponse>, Status> {
         let user = auth_ctx::authenticate(&self.state, &request).await?;
         let inner = request.into_inner();
         let ack = set_yield_core(&self.state, user.id, &inner.table_id, inner.enabled).await;
-        Ok(Response::new(ack_msg(ack)))
+        Ok(Response::new(set_yield_response(ack)))
     }
 
     async fn set_turn_yield(
         &self,
-        request: Request<pb::YieldRequest>,
-    ) -> Result<Response<pb::Ack>, Status> {
+        request: Request<pb::SetTurnYieldRequest>,
+    ) -> Result<Response<pb::SetTurnYieldResponse>, Status> {
         let user = auth_ctx::authenticate(&self.state, &request).await?;
         let inner = request.into_inner();
         let ack = set_turn_yield_core(&self.state, user.id, &inner.table_id, inner.enabled).await;
-        Ok(Response::new(ack_msg(ack)))
+        Ok(Response::new(set_turn_yield_response(ack)))
     }
 
     async fn set_stack_dwell(
         &self,
-        request: Request<pb::StackDwellRequest>,
-    ) -> Result<Response<pb::Ack>, Status> {
+        request: Request<pb::SetStackDwellRequest>,
+    ) -> Result<Response<pb::SetStackDwellResponse>, Status> {
         let user = auth_ctx::authenticate(&self.state, &request).await?;
         let inner = request.into_inner();
         let ack = set_stack_dwell_core(&self.state, user.id, &inner.table_id, inner.dwelling);
-        Ok(Response::new(ack_msg(ack)))
+        Ok(Response::new(set_stack_dwell_response(ack)))
     }
 }
 
@@ -166,7 +199,31 @@ mod tests {
     use super::*;
 
     #[test]
-    fn ack_msg_maps_reject_reason_message_ref() {
+    fn intent_kind_label_returns_discriminant_only() {
+        let intent = schema::WireIntent::Cast {
+            player: 0,
+            object: 42,
+            target: None,
+            x: 0,
+            modes: vec![],
+            discard_cost: vec![],
+            graveyard_exile: vec![],
+            sacrifice_cost: vec![],
+            kicked: false,
+            bought_back: false,
+            evoked: false,
+            strive_count: 0,
+            replicate_count: 0,
+            multikicker_count: 0,
+            alternative_cost: false,
+        };
+        let label = intent_kind_label(&intent);
+        assert_eq!(label, "Cast");
+        assert!(!label.contains("42"));
+    }
+
+    #[test]
+    fn submit_intent_response_maps_reject_reason_message_ref() {
         let ack = crate::game_loop::Ack {
             accepted: false,
             reject_reason: Some(
@@ -176,7 +233,7 @@ mod tests {
             ),
         };
 
-        let pb = ack_msg(ack);
+        let pb = submit_intent_response(ack);
         let reason = pb.reject_reason.expect("reject reason");
         assert_eq!(reason.key, "reject.engine_error");
         assert!(matches!(

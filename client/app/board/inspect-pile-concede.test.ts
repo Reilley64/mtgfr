@@ -1,5 +1,6 @@
 // TDD tests for new board model state: inspect pin, pile overlay, concede, result, keyboard shortcuts.
 
+import * as Dialog from "@foldkit/ui/dialog";
 import { Story } from "foldkit";
 import { expect, test } from "vitest";
 import type { ObjectView, VisibleState } from "~/wire/types";
@@ -12,9 +13,10 @@ import {
   AltDown,
   AltUp,
   BoardPointerMove,
-  ConcedeCancelled,
   ConcedeClicked,
   ConcedeConfirmed,
+  GotConcedeDialogMessage,
+  GotResultDialogMessage,
   InspectAuxHovered,
   InspectCardFetched,
   InspectDismissed,
@@ -26,15 +28,14 @@ import {
   PileExpanded,
   PileOverlayClosed,
   RadialWedgeArmed,
-  ResultSeen,
 } from "./messages";
-import { type BoardModel, initialBoardModel, updateBoard } from "./submodel";
+import { type BoardModel, initialBoardModel, raiseResultDialog, updateBoard } from "./submodel";
 
 function twoPlayerState(): VisibleState {
   return {
     active_player: 0,
     can_act: true,
-    combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+    combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [], blocked_attackers: [] },
     objects: [],
     pending_choice: null,
     players: [
@@ -456,25 +457,28 @@ test("PileOverlayClosed clears pileExpand", () => {
 
 // ── Concede ─────────────────────────────────────────────────────────────────────
 
-test("ConcedeClicked sets confirmConcede", () => {
+test("ConcedeClicked asks before conceding", () => {
   const model = update(initialBoardModel(), ConcedeClicked());
-  expect(model.confirmConcede).toBe(true);
+  expect(model.concedeDialog.isOpen).toBe(true);
 });
 
-test("ConcedeCancelled clears confirmConcede", () => {
-  const model = update({ ...initialBoardModel(), confirmConcede: true }, ConcedeCancelled());
-  expect(model.confirmConcede).toBe(false);
-});
-
-test("ConcedeConfirmed clears confirmConcede and submits intent", () => {
-  const [resultModel, cmds] = updateBoard(
-    { ...initialBoardModel(), confirmConcede: true },
-    ConcedeConfirmed(),
+test("dismissing the concede confirmation leaves the player in the game", () => {
+  const asked = update(initialBoardModel(), ConcedeClicked());
+  const [dismissed, cmds] = updateBoard(
+    asked,
+    GotConcedeDialogMessage({ message: Dialog.RequestedClose() }),
     gameFold(),
     "table-1",
   );
-  expect(resultModel.confirmConcede).toBe(false);
-  expect(cmds.length).toBeGreaterThan(0);
+  expect(dismissed.concedeDialog.isOpen).toBe(false);
+  expect(cmds.some((c) => c.name === SubmitIntent.name)).toBe(false);
+});
+
+test("ConcedeConfirmed closes the dialog and submits the concede intent", () => {
+  const asked = update(initialBoardModel(), ConcedeClicked());
+  const [resultModel, cmds] = updateBoard(asked, ConcedeConfirmed(), gameFold(), "table-1");
+  expect(resultModel.concedeDialog.isOpen).toBe(false);
+  expect(cmds.some((c) => c.name === SubmitIntent.name)).toBe(true);
 });
 
 test("KeepHandClicked submits keep_hand for the viewer", () => {
@@ -511,9 +515,29 @@ test("KeyboardSpacePressed is inert while mulliganing", () => {
 
 // ── Game result ────────────────────────────────────────────────────────────────
 
-test("ResultSeen sets resultSeen flag", () => {
-  const model = update(initialBoardModel(), ResultSeen());
-  expect(model.resultSeen).toBe(true);
+test("the result overlay stays down while the game is still on", () => {
+  const [model] = raiseResultDialog(initialBoardModel(), gameFold());
+  expect(model.resultDialog.isOpen).toBe(false);
+});
+
+test("the result overlay comes up once, and staying on the board keeps it down", () => {
+  const eliminated = gameFold({
+    players: [{ ...twoPlayerState().players[0], lost: true }, twoPlayerState().players[1]],
+  });
+
+  const [raised] = raiseResultDialog(initialBoardModel(), eliminated);
+  expect(raised.resultDialog.isOpen).toBe(true);
+
+  const [dismissed] = updateBoard(
+    raised,
+    GotResultDialogMessage({ message: Dialog.RequestedClose() }),
+    eliminated,
+    "table-1",
+  );
+  expect(dismissed.resultDialog.isOpen).toBe(false);
+
+  const [nextFold] = raiseResultDialog(dismissed, eliminated);
+  expect(nextFold.resultDialog.isOpen).toBe(false);
 });
 
 // ── Keyboard escape ────────────────────────────────────────────────────────────

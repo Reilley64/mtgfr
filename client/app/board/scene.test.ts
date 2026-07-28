@@ -42,7 +42,7 @@ import {
   StackDwellChanged,
   TargetChosen,
 } from "./messages";
-import { BOARD_VIEWPORT, type BoardModel, initialBoardModel, updateBoard } from "./submodel";
+import { BOARD_VIEWPORT, type BoardModel, initialBoardModel, syncBoardWithGame, updateBoard } from "./submodel";
 import { type BoardViewModel, view as boardView } from "./view";
 
 const h = html<Message>();
@@ -87,7 +87,7 @@ function state(overrides: Partial<VisibleState> = {}): VisibleState {
   return {
     active_player: 0,
     can_act: true,
-    combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+    combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [], blocked_attackers: [] },
     objects: [],
     pending_choice: null,
     players: [player(), player({ player: 1, username: "Bob" })],
@@ -445,6 +445,69 @@ test("PlayModeChosen runs the selected action and clears playModePick", () => {
   });
 });
 
+test("PlayModeChosen cast keeps the in-flight seed pose instead of restarting from origin", () => {
+  // Choose already seeded a stack flight mid-glide. Casting must not spawnDrop again from
+  // screenOrigin — that reset is the visible double animation on multi-mode hand cards.
+  const card = creature(42, 0, { name: "Valley Rannet", zone: ZONE.Hand });
+  const castAction: ActionView = {
+    id: 7,
+    kind: "cast",
+    label: testMessageRef("Cast Valley Rannet"),
+    needs_target: false,
+    object: card.id,
+    section: "hand",
+  };
+  const cycleAction: ActionView = {
+    id: 8,
+    kind: "cycle",
+    label: testMessageRef("Mountaincycling"),
+    needs_target: false,
+    object: card.id,
+    section: "hand",
+  };
+  const midFlight = {
+    id: card.id,
+    print: "print-rannet",
+    name: card.name,
+    x: 510,
+    y: 320,
+    scale: 1.4,
+    targetX: 720,
+    targetY: 140,
+    targetScale: 0.5,
+    phase: "flying" as const,
+    kind: "stack" as const,
+    fromCardId: card.id,
+    hold: true,
+  };
+  const board: BoardModel = {
+    ...initialBoardModel(),
+    playModePick: {
+      card,
+      modes: [castAction, cycleAction],
+      dropSeed: { x: 0, y: 0 },
+      screenOrigin: { x: 400, y: 700 },
+    },
+    handHidden: new Set([card.id]),
+    flights: new Map([[card.id, midFlight]]),
+    hideCardIds: new Set([card.id]),
+    ownedIds: new Set([card.id]),
+  };
+  const gameFold = fold(state({ objects: [card], actions: [castAction, cycleAction] }));
+
+  const [next, commands] = updateBoard(board, PlayModeChosen({ actionId: castAction.id }), gameFold, "T1");
+
+  expect(playModePickOf(next)).toBeNull();
+  expect(commands).toHaveLength(1);
+  const flight = next.flights.get(card.id);
+  expect(flight).toBeDefined();
+  expect(flight?.x).toBe(510);
+  expect(flight?.y).toBe(320);
+  expect(flight?.scale).toBe(1.4);
+  expect(flight?.hold).toBe(true);
+  expect(flight?.kind).toBe("stack");
+});
+
 test("PlayModeChosen with a stale pruned action clears playModePick without intent", () => {
   const card = creature(42, 0, { name: "Valley Rannet", zone: ZONE.Hand });
   const staleCastAction: ActionView = {
@@ -623,7 +686,7 @@ test("HandActionActivated with one mode does not open playModePick", () => {
   expect(commands[0]?.name).toBe(SubmitIntent.name);
 });
 
-test("priority bar shows Cancel while playModePick is parked", () => {
+test("playModePick prompt hides bar-level Cancel and keeps prompt Cancel", () => {
   const card = creature(42, 0, { name: "Valley Rannet", zone: ZONE.Hand });
   const castAction: ActionView = {
     id: 7,
@@ -651,7 +714,8 @@ test("priority bar shows Cancel while playModePick is parked", () => {
 
   overlayScene(
     { ...model, board: { ...model.board, playModePick } as BoardModel & { playModePick: PlayModePick } },
-    Scene.expect(Scene.testId("board-cancel-target")).toExist(),
+    Scene.expect(Scene.testId("board-cancel-target")).toBeAbsent(),
+    Scene.expect(Scene.testId("prompt-cancel")).toExist(),
   );
 });
 
@@ -855,6 +919,55 @@ test("pointer up on proliferate accumulates picks until Confirm", () => {
     kind: "choose_proliferate",
     player: 0,
     permanents: [1, 2],
+    players: [],
+  });
+});
+
+// CR 701.27b "proliferate twice" re-raises with the same items/source. choiceDraftKey stays
+// identical, so a frozen promptSubmitInFlight must clear when authority advances — otherwise the
+// second Confirm is a silent no-op.
+test("proliferate twice unfreezes Confirm after the second iteration arrives", () => {
+  const a = creature(1, 0, { name: "A" });
+  const pending = {
+    kind: "proliferate" as const,
+    player: 0,
+    source: 9,
+    items: [{ id: 1, label: "A" }],
+  };
+  const firstFold = fold(state({ objects: [a], pending_choice: pending }));
+  let board = syncBoardWithGame(initialBoardModel(), firstFold);
+  board = {
+    ...board,
+    pointer: { kind: "drag", card: renderStub(1), x: 100, y: 100, moved: false },
+  };
+  [board] = updateBoard(board, BoardPointerUp({ x: 100, y: 100 }), firstFold, "T1");
+  const [submitted, firstCommands] = updateBoard(board, PromptSubmitted(), firstFold, "T1");
+  expect(intentFromCommand(firstCommands[0])).toEqual({
+    kind: "choose_proliferate",
+    player: 0,
+    permanents: [1],
+    players: [],
+  });
+  expect(submitted.promptSubmitInFlight).toBe(true);
+
+  const secondFold: GameFoldState = {
+    ...firstFold,
+    seq: firstFold.seq + 1,
+    state: state({ objects: [a], pending_choice: pending }),
+  };
+  board = syncBoardWithGame(submitted, secondFold);
+  expect(board.promptSubmitInFlight).toBe(false);
+
+  board = {
+    ...board,
+    pointer: { kind: "drag", card: renderStub(1), x: 100, y: 100, moved: false },
+  };
+  [board] = updateBoard(board, BoardPointerUp({ x: 100, y: 100 }), secondFold, "T1");
+  const [, secondCommands] = updateBoard(board, PromptSubmitted(), secondFold, "T1");
+  expect(intentFromCommand(secondCommands[0])).toEqual({
+    kind: "choose_proliferate",
+    player: 0,
+    permanents: [1],
     players: [],
   });
 });
@@ -1356,6 +1469,51 @@ test("pointer up on a proliferate avatar accumulates the seat and answers with b
   });
 });
 
+// Clicking a permanent after a seat must keep both lists — otherwise Confirm quietly drops
+// the player pick and proliferate feels like the avatar click did nothing.
+test("proliferate permanent toggle keeps previously picked seats through Confirm", () => {
+  const bear = creature(31, 0);
+  const pending = {
+    kind: "proliferate" as const,
+    player: 0,
+    source: 1,
+    items: [
+      { id: bear.id, label: "Bear" },
+      { id: 0, label: "Player 2", player: 1 },
+    ],
+  };
+  const players = [player(), player({ player: 1, username: "Bob" })];
+  const gameFold = fold(state({ objects: [bear], pending_choice: pending, players }));
+  let board: BoardModel = initialBoardModel();
+  const world = avatarPos(1, 0, 2);
+  const screen = worldToScreen(board.camera, world.x, world.y);
+  let commands: ReturnType<typeof updateBoard>[1];
+  [board, commands] = updateBoard(board, BoardPointerUp({ x: screen.x, y: screen.y }), gameFold, "T1");
+  expect(commands).toEqual([]);
+  expect(board.promptDraft).toMatchObject({ kind: "card-pick", players: [1] });
+
+  board = {
+    ...board,
+    pointer: { kind: "drag", card: renderStub(bear.id), x: 100, y: 100, moved: false },
+  };
+  [board, commands] = updateBoard(board, BoardPointerUp({ x: 100, y: 100 }), gameFold, "T1");
+  expect(commands).toEqual([]);
+  expect(board.promptDraft).toEqual({
+    kind: "card-pick",
+    picked: [bear.id],
+    filter: "",
+    players: [1],
+  });
+
+  [, commands] = updateBoard(board, PromptSubmitted(), gameFold, "T1");
+  expect(intentFromCommand(commands[0])).toEqual({
+    kind: "choose_proliferate",
+    player: 0,
+    permanents: [bear.id],
+    players: [1],
+  });
+});
+
 test("pointer up on non-target while staged clears drag without submitting", () => {
   const attacker = creature(11, 0);
   const other = creature(99, 1);
@@ -1394,6 +1552,7 @@ test("confirm attackers submits engine-required goad attacks when local staging 
         blocks: [],
         attackers_declared: false,
         blockers_declared: [],
+        blocked_attackers: [],
       },
       actions: [
         {
@@ -1429,6 +1588,7 @@ test("pointer combat drop on opponent life orb stages an attacker", () => {
         blocks: [],
         attackers_declared: false,
         blockers_declared: [],
+        blocked_attackers: [],
       },
       actions: [
         {
@@ -1455,6 +1615,118 @@ test("pointer combat drop on opponent life orb stages an attacker", () => {
   expect(commands).toEqual([]);
   expect(nextBoard.combatAttackers).toEqual([{ attacker: myCreature.id, defender: 1 }]);
   expect(nextBoard.pointer).toEqual({ kind: "idle" });
+});
+
+test("clicking a staged attacker un-stages it", () => {
+  const myCreature = creature(30, 0, { has_haste: true });
+  const gameFold = fold(
+    state({
+      step: STEP.DeclareAttackers,
+      objects: [myCreature],
+      combat: {
+        attackers: [],
+        blocks: [],
+        attackers_declared: false,
+        blockers_declared: [],
+        blocked_attackers: [],
+      },
+      actions: [
+        {
+          id: 1,
+          kind: "declare_attackers",
+          label: testMessageRef("Attack"),
+          needs_target: false,
+          section: "combat",
+          declare_for: [0],
+        } as ActionView,
+      ],
+    }),
+  );
+  const board: BoardModel = {
+    ...initialBoardModel(),
+    combatAttackers: [{ attacker: myCreature.id, defender: 1 }],
+    pointer: { kind: "drag", card: renderStub(myCreature.id), x: 100, y: 100, moved: false },
+  };
+  const [nextBoard, commands] = updateBoard(board, BoardPointerUp({ x: 100, y: 100 }), gameFold, "T1");
+  expect(commands).toEqual([]);
+  expect(nextBoard.combatAttackers).toEqual([]);
+  expect(nextBoard.pointer).toEqual({ kind: "idle" });
+  expect(nextBoard.selectedId).toBeNull();
+});
+
+test("clicking a staged blocker un-stages it", () => {
+  const attacker = creature(7, 1, { has_haste: true });
+  const blocker = creature(8, 0);
+  const gameFold = fold(
+    state({
+      step: STEP.DeclareBlockers,
+      active_player: 1,
+      objects: [attacker, blocker],
+      combat: {
+        attackers: [{ attacker: attacker.id, defender: 0 }],
+        blocks: [],
+        attackers_declared: true,
+        blockers_declared: [],
+        blocked_attackers: [],
+      },
+      actions: [
+        {
+          id: 1,
+          kind: "declare_blockers",
+          label: testMessageRef("Block"),
+          needs_target: false,
+          section: "combat",
+          declare_for: [0],
+        } as ActionView,
+      ],
+    }),
+  );
+  const board: BoardModel = {
+    ...initialBoardModel(),
+    combatBlocks: [{ blocker: blocker.id, attacker: attacker.id }],
+    pointer: { kind: "drag", card: renderStub(blocker.id), x: 100, y: 100, moved: false },
+  };
+  const [nextBoard, commands] = updateBoard(board, BoardPointerUp({ x: 100, y: 100 }), gameFold, "T1");
+  expect(commands).toEqual([]);
+  expect(nextBoard.combatBlocks).toEqual([]);
+  expect(nextBoard.pointer).toEqual({ kind: "idle" });
+  expect(nextBoard.selectedId).toBeNull();
+});
+
+test("clicking a required goad attacker does not un-stage it", () => {
+  const goaded = creature(7, 0, { has_haste: true });
+  const gameFold = fold(
+    state({
+      step: STEP.DeclareAttackers,
+      objects: [goaded],
+      combat: {
+        attackers: [],
+        blocks: [],
+        attackers_declared: false,
+        blockers_declared: [],
+        blocked_attackers: [],
+      },
+      actions: [
+        {
+          id: 1,
+          kind: "declare_attackers",
+          label: testMessageRef("Attack"),
+          needs_target: false,
+          section: "combat",
+          declare_for: [0],
+          required_attacks: [{ attacker: goaded.id, defender: 1 }],
+        } as ActionView,
+      ],
+    }),
+  );
+  const board: BoardModel = {
+    ...initialBoardModel(),
+    combatAttackers: [{ attacker: goaded.id, defender: 1 }],
+    pointer: { kind: "drag", card: renderStub(goaded.id), x: 100, y: 100, moved: false },
+  };
+  const [nextBoard, commands] = updateBoard(board, BoardPointerUp({ x: 100, y: 100 }), gameFold, "T1");
+  expect(commands).toEqual([]);
+  expect(nextBoard.combatAttackers).toEqual([{ attacker: goaded.id, defender: 1 }]);
 });
 
 test("PendingChoiceAnswered folds into a SubmitIntent command", () => {
@@ -1706,6 +1978,30 @@ test("RadialOptionPicked submits the selected activate action id", () => {
     discard_cost: [],
     graveyard_exile: [],
   });
+});
+
+test("RadialOptionPicked keeps the source permanent painted while aiming a targeted ability", () => {
+  const pinger = creature(5, 0, { name: "Prodigal Pyromancer" });
+  const victim = creature(6, 1, { name: "Goat" });
+  const action: ActionView = {
+    id: 93,
+    kind: "activate",
+    label: testMessageRef("Deal 1 damage to any target"),
+    needs_target: true,
+    object: pinger.id,
+    section: "battlefield",
+    targets: [{ kind: "object", id: victim.id }],
+  };
+  const board: BoardModel = { ...initialBoardModel(), selectedId: pinger.id };
+  const gameFold = fold(state({ objects: [pinger, victim], actions: [action], can_act: true }));
+
+  const [next] = updateBoard(board, RadialOptionPicked({ index: 0 }), gameFold, "T1");
+
+  // The ability goes on the stack; the permanent itself never leaves the battlefield.
+  expect(next.staged?.action.id).toBe(93);
+  expect([...next.flights.keys()]).toEqual([]);
+  expect([...next.hideCardIds]).toEqual([]);
+  expect([...next.handHidden]).toEqual([]);
 });
 
 test("RadialOptionPicked opens sacrifice picker before submitting a payable activate", () => {
@@ -2272,7 +2568,7 @@ test("HandActionActivated during pending discard toggles selection off", () => {
   expect(next.promptDraft).toEqual({ kind: "card-pick", picked: [], filter: "" });
 });
 
-test("HandActionActivated during put_land_from_hand submits put_land intent", () => {
+test("HandActionActivated during put_land_from_hand toggles selection without submitting", () => {
   const forest = creature(20, 0, {
     name: "Forest",
     zone: ZONE.Hand,
@@ -2298,12 +2594,41 @@ test("HandActionActivated during put_land_from_hand submits put_land intent", ()
       can_act: true,
     }),
   );
-  const [, commands] = updateBoard(
+  const [next, commands] = updateBoard(
     initialBoardModel(),
     HandActionActivated({ action: landAction, x: 400, y: 200 }),
     gameFold,
     "T1",
   );
+  expect(commands).toEqual([]);
+  expect(next.promptDraft).toEqual({ kind: "card-pick", picked: [20], filter: "" });
+});
+
+test("PromptSubmitted during put_land_from_hand submits put_land intent", () => {
+  const forest = creature(20, 0, {
+    name: "Forest",
+    zone: ZONE.Hand,
+    kind: { kind: "land", colors: [0, 0, 0, 0, 1] },
+  });
+  const pending = {
+    kind: "put_land_from_hand" as const,
+    player: 0,
+    items: [{ id: 20, label: "Forest" }],
+  };
+  const gameFold = fold(
+    state({
+      objects: [forest],
+      actions: [],
+      pending_choice: pending,
+      can_act: true,
+    }),
+  );
+  const selected = {
+    ...initialBoardModel(),
+    promptDraft: { kind: "card-pick" as const, picked: [20], filter: "" },
+    pendingChoiceKey: choiceDraftKey(pending),
+  };
+  const [, commands] = updateBoard(selected, PromptSubmitted(), gameFold, "T1");
   expect(intentFromCommand(commands[0])).toEqual({
     kind: "put_land_from_hand",
     player: 0,
@@ -2311,7 +2636,7 @@ test("HandActionActivated during put_land_from_hand submits put_land intent", ()
   });
 });
 
-test("DiscardChosen during cast_creature_face_down submits cast face-down intent", () => {
+test("DiscardChosen during cast_creature_face_down toggles selection without submitting", () => {
   const bear = creature(22, 0, { name: "Bear", zone: ZONE.Hand });
   const gameFold = fold(
     state({
@@ -2325,7 +2650,32 @@ test("DiscardChosen during cast_creature_face_down submits cast face-down intent
       can_act: true,
     }),
   );
-  const [, commands] = updateBoard(initialBoardModel(), DiscardChosen({ ids: [22] }), gameFold, "T1");
+  const [next, commands] = updateBoard(initialBoardModel(), DiscardChosen({ ids: [22] }), gameFold, "T1");
+  expect(commands).toEqual([]);
+  expect(next.promptDraft).toEqual({ kind: "card-pick", picked: [22], filter: "" });
+});
+
+test("PromptSubmitted during cast_creature_face_down submits cast face-down intent", () => {
+  const bear = creature(22, 0, { name: "Bear", zone: ZONE.Hand });
+  const pending = {
+    kind: "cast_creature_face_down" as const,
+    player: 0,
+    items: [{ id: 22, label: "Bear" }],
+  };
+  const gameFold = fold(
+    state({
+      objects: [bear],
+      actions: [],
+      pending_choice: pending,
+      can_act: true,
+    }),
+  );
+  const selected = {
+    ...initialBoardModel(),
+    promptDraft: { kind: "card-pick" as const, picked: [22], filter: "" },
+    pendingChoiceKey: choiceDraftKey(pending),
+  };
+  const [, commands] = updateBoard(selected, PromptSubmitted(), gameFold, "T1");
   expect(intentFromCommand(commands[0])).toEqual({
     kind: "cast_creature_face_down",
     player: 0,
@@ -2333,7 +2683,7 @@ test("DiscardChosen during cast_creature_face_down submits cast face-down intent
   });
 });
 
-test("DiscardChosen during put_creature_from_hand submits put_creature intent", () => {
+test("DiscardChosen during put_creature_from_hand toggles selection without submitting", () => {
   const elf = creature(21, 0, { name: "Elf", zone: ZONE.Hand });
   const gameFold = fold(
     state({
@@ -2347,7 +2697,32 @@ test("DiscardChosen during put_creature_from_hand submits put_creature intent", 
       can_act: true,
     }),
   );
-  const [, commands] = updateBoard(initialBoardModel(), DiscardChosen({ ids: [21] }), gameFold, "T1");
+  const [next, commands] = updateBoard(initialBoardModel(), DiscardChosen({ ids: [21] }), gameFold, "T1");
+  expect(commands).toEqual([]);
+  expect(next.promptDraft).toEqual({ kind: "card-pick", picked: [21], filter: "" });
+});
+
+test("PromptSubmitted during put_creature_from_hand submits put_creature intent", () => {
+  const elf = creature(21, 0, { name: "Elf", zone: ZONE.Hand });
+  const pending = {
+    kind: "put_creature_from_hand" as const,
+    player: 0,
+    items: [{ id: 21, label: "Elf" }],
+  };
+  const gameFold = fold(
+    state({
+      objects: [elf],
+      actions: [],
+      pending_choice: pending,
+      can_act: true,
+    }),
+  );
+  const selected = {
+    ...initialBoardModel(),
+    promptDraft: { kind: "card-pick" as const, picked: [21], filter: "" },
+    pendingChoiceKey: choiceDraftKey(pending),
+  };
+  const [, commands] = updateBoard(selected, PromptSubmitted(), gameFold, "T1");
   expect(intentFromCommand(commands[0])).toEqual({
     kind: "put_creature_from_hand",
     player: 0,

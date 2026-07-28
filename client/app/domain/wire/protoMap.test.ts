@@ -2,7 +2,15 @@ import { create, toBinary } from "@bufbuild/protobuf";
 import * as Schema from "effect/Schema";
 import { describe, expect, it } from "vitest";
 import { PendingChoiceViewMayReturnFromGraveyardSchema } from "./generated/mtgfr/v1/stream_pb";
-import { catalogCardsFromProto, fromProtoWire, intentEnvelopeToProto } from "./protoMap";
+import {
+  catalogCardsFromProto,
+  createDeckSaveBodyToProto,
+  fromProtoWire,
+  intentEnvelopeToProto,
+  loginRequestToProto,
+  signupRequestToProto,
+  updateDeckToProto,
+} from "./protoMap";
 import type { ActionView, CatalogCard, IntentEnvelope } from "./types";
 import { MessageRef } from "./types";
 
@@ -433,6 +441,40 @@ describe("catalogCardsFromProto", () => {
 describe("MessageRef schema", () => {
   it("rejects bare strings", () => {
     expect(() => Schema.decodeUnknownSync(MessageRef)("Scry 1")).toThrow();
+  });
+});
+
+describe("auth and deck request mapping", () => {
+  it("maps auth domain requests to generated proto request shapes", () => {
+    expect(signupRequestToProto({ email: "r@example.test", password: "secret", username: "Rowan" })).toEqual({
+      email: "r@example.test",
+      password: "secret",
+      username: "Rowan",
+    });
+    expect(loginRequestToProto({ email: "r@example.test", password: "secret" })).toEqual({
+      email: "r@example.test",
+      password: "secret",
+    });
+  });
+
+  it("maps deck update bodies through the DeckSaveBody proto shape", () => {
+    const deck = {
+      cards: [{ count: 1, id: "opt", print: "sta-19" }],
+      commander: "codie-vociferous-codex",
+      commander_print: "sta-253",
+      name: "Codie Spells",
+    };
+
+    const body = createDeckSaveBodyToProto(deck);
+    const update = updateDeckToProto(42, deck);
+
+    expect(body).toEqual({
+      cards: [{ count: 1, id: "opt", print: "sta-19" }],
+      commander: "codie-vociferous-codex",
+      commanderPrint: "sta-253",
+      name: "Codie Spells",
+    });
+    expect(update).toEqual({ id: 42n, request: body });
   });
 });
 

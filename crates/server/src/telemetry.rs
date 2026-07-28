@@ -43,7 +43,11 @@ fn otlp_endpoint() -> Option<String> {
 }
 
 fn env_nonempty(key: &str) -> Option<String> {
-    let raw = std::env::var(key).ok()?;
+    optional_deployment_environment(std::env::var(key).ok().as_deref())
+}
+
+fn optional_deployment_environment(raw: Option<&str>) -> Option<String> {
+    let raw = raw?;
     let trimmed = raw.trim();
     if trimmed.is_empty() {
         return None;
@@ -75,6 +79,9 @@ fn resource_attributes() -> Vec<KeyValue> {
     }
     if let Some(instance_id) = env_nonempty("INSTANCE_ID") {
         attrs.push(KeyValue::new("service.instance.id", instance_id));
+    }
+    if let Some(env) = env_nonempty("DEPLOYMENT_ENVIRONMENT") {
+        attrs.push(KeyValue::new("deployment.environment", env));
     }
     attrs
 }
@@ -229,6 +236,15 @@ mod tests {
     fn image_tag_strips_registry_ref() {
         assert_eq!(image_tag("ghcr.io/reilley64/mtgfr-server:2.3.0"), "2.3.0");
         assert_eq!(image_tag("2.3.0"), "2.3.0");
+    }
+
+    #[test]
+    fn deployment_environment_omitted_when_unset() {
+        assert_eq!(optional_deployment_environment(None), None);
+        assert_eq!(
+            optional_deployment_environment(Some("  staging ")),
+            Some("staging".into())
+        );
     }
 
     /// Regression: Tokio batch processors + async HTTP client must build on a runtime

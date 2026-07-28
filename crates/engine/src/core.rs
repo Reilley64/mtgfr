@@ -13,8 +13,9 @@ impl Game {
     }
 
     /// A fresh `players`-seat game with empty zones, seeded for deterministic shuffles.
-    /// Player 0 is the starting active player and holds priority; a lobby that wants a
-    /// random first player randomizes the seat→person assignment instead.
+    /// Player 0 is the starting active player and holds priority; `choose_starting_player`
+    /// rolls the real starter from the master seed at seed time (CR 103.1); the raw
+    /// constructor parks on seat 0 for hand-built tests.
     pub fn with_players(players: u8, seed: u64) -> Self {
         let mut master = [0u8; 32];
         master[..8].copy_from_slice(&seed.to_le_bytes());
@@ -91,6 +92,15 @@ impl Game {
         let key = crate::rng::derive_op_key(&self.master_seed, player.0, iteration);
         let mut rng = crate::rng::op_rng_from_key(&key);
         f(&mut rng)
+    }
+
+    /// CR 103.1 — a random player takes the first turn. The roll is the game's first
+    /// derive-per-op draw, carried on seat 0's counter as a game-level op.
+    pub fn choose_starting_player(&mut self) {
+        let count = self.players.len();
+        let seat = self.with_op_rng(PlayerId(0), |rng| rng.gen_index(count));
+        self.active_player = PlayerId(seat as u8);
+        self.priority = PlayerId(seat as u8);
     }
 
     /// Begin the game's first turn, once setup is done (libraries shuffled, opening hands drawn).
@@ -990,6 +1000,19 @@ impl Game {
         self.combat.blocks.clone()
     }
 
+    /// Attackers that became blocked this combat (CR 509.1h), including those whose blockers left.
+    /// Derived from `blocked_ever` — one storage path for blocked-ness, since the pair list is
+    /// what False Orders has to prune.
+    pub fn blocked_attackers(&self) -> Vec<ObjectId> {
+        let mut attackers: Vec<ObjectId> = Vec::new();
+        for &(_, attacker) in &self.combat.blocked_ever {
+            if !attackers.contains(&attacker) {
+                attackers.push(attacker);
+            }
+        }
+        attackers
+    }
+
     /// Seats that have already finalized their block declaration this combat (including empty).
     pub fn blockers_declared(&self) -> Vec<PlayerId> {
         self.combat.blocked_by.clone()
@@ -1017,6 +1040,65 @@ impl Game {
         match override_seat {
             Some(seat) if !self.players[seat.0 as usize].lost => seat,
             _ => default,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::BTreeSet;
+
+    fn master(k: u64) -> [u8; 32] {
+        let mut seed = [0u8; 32];
+        seed[..8].copy_from_slice(&k.to_le_bytes());
+        seed
+    }
+
+    #[test]
+    fn choose_starting_player_is_deterministic_for_a_seed() {
+        let mut a = Game::with_master_seed(4, master(11));
+        let mut b = Game::with_master_seed(4, master(11));
+        a.choose_starting_player();
+        b.choose_starting_player();
+        assert_eq!(a.active_player, b.active_player);
+        // Pinned so the assertion above can't pass by both sides parking at seat 0.
+        assert_eq!(a.active_player, PlayerId(2));
+    }
+
+    #[test]
+    fn choose_starting_player_gives_priority_to_the_starter() {
+        let mut game = Game::with_master_seed(4, master(11));
+        game.choose_starting_player();
+        assert_eq!(game.priority, game.active_player);
+    }
+
+    #[test]
+    fn choose_starting_player_reaches_every_seat() {
+        let mut seen = BTreeSet::new();
+        for k in 0..64u64 {
+            let mut game = Game::with_master_seed(4, master(k));
+            game.choose_starting_player();
+            seen.insert(game.active_player.0);
+        }
+        assert_eq!(
+            seen,
+            BTreeSet::from([0, 1, 2, 3]),
+            "roll pinned to a subset of seats"
+        );
+    }
+
+    #[test]
+    fn choose_starting_player_spends_one_op_on_seat_zero() {
+        let mut game = Game::with_master_seed(4, master(3));
+        game.choose_starting_player();
+        assert_eq!(game.op_iteration(PlayerId(0)), 1);
+        for seat in 1..4u8 {
+            assert_eq!(
+                game.op_iteration(PlayerId(seat)),
+                0,
+                "seat {seat} stream disturbed"
+            );
         }
     }
 }

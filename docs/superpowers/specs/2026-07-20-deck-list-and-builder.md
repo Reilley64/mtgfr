@@ -1,6 +1,6 @@
 # Deck List and Builder
 
-**Status:** Current (as of 2026-07-26)
+**Status:** Current (as of 2026-07-27)
 **Module:** `client/app/shell/decks/**`, `client/app/domain/deck-builder/**`, `client/app/domain/ui/card-art.ts`, `client/app/domain/image-cache.ts`, `client/app/domain/deck-builder/scryfall.ts`
 
 ---
@@ -36,9 +36,11 @@ The page title (`Your decks`) lives in the shared `shellFrame` header title slot
 custom left-side title block. The shared header trailing slot holds account chrome: a
 `Leaderboard` link (`header-leaderboard-link`) plus an avatar trigger backed by the same
 circular Gravatar/monogram face helper used for seats. Opening the avatar menu shows a
-username title, an outbound `Change at Gravatar` link (`account-gravatar-link`) to
-`https://gravatar.com`, and `Sign out`. Search and grid share the shell stage max-width
-column (no nested 960px wrappers).
+username heading, `Change at Gravatar` (`account-menu-gravatar`), which opens
+`https://gravatar.com` in a new tab, and `Sign out` (`account-menu-sign-out`). The menu is
+a `@foldkit/ui` `Menu` submodel owned by the root model — see
+[shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md). Search and grid share the
+shell stage max-width column (no nested 960px wrappers).
 
 Tiles use a raised `minmax(220px, 1fr)` track, landscape commander `art_crop`
 (~1.37:1), deck name, color-identity pips, and a Precon chip when `id < 0`. Names stay
@@ -60,7 +62,13 @@ no deck tiles, the grid keeps the create tile first and shows `No decks match.`
 (`deck-list-filter-empty`). Load errors use the shared `alertClass` recipe. Display order:
 owned decks first (API relative order), then precons by
 ascending id (newest release first). Right-click on an owned deck opens Edit
-(`/decks/{id}`) and Delete (confirm dialog); precons do not open a context menu.
+(`/decks/{id}`) and Delete; precons do not open a context menu. The context menu is
+pointer-positioned, so it stays hand-rolled markup dressed with the shared
+`menuPanelClass` / `menuItemClass` chrome rather than a `@foldkit/ui` `Menu`, which anchors
+to a trigger button. Delete raises `confirm-delete-dialog`, a `confirmDialog`
+([ui-component-layer](2026-07-28-ui-component-layer.md)) over a `Dialog` submodel held as
+`confirmDialog` on the deck list model; Escape, a backdrop click, and Cancel all close it
+through the dialog's `Closed` out-message, and confirming issues the delete.
 
 ### Deck builder (`client/app/shell/decks/builder/**`, `/decks/new`, `/decks/:id`)
 
@@ -69,14 +77,22 @@ or `Edit deck`; the leading slot holds Cancel (`builder-cancel`); the trailing s
 primary Save (`save-deck`) before the same avatar account chrome as the deck list. The
 stage body is a split-pane layout (no duplicate page title in the decklist pane):
 
-- **Left: card pool grid.** Loads from `/api/rpc/cards/search` in 100-card pages via an `IntersectionObserver` sentinel at the grid bottom. Filters: text search (tokenized LIKE over `search_blob`), set, subtypes ([accounts-decks-and-catalog](2026-07-20-accounts-decks-and-catalog.md)). Pool tiles are `POOL_CARD` style: art thumbnail + name + type + cost pips, click-to-add. Right-click (or 500 ms long-press) opens a context menu with printing options and basics shortcuts.
+- **Left: card pool grid.** Loads from `/api/rpc/cards/search` in 100-card pages. Filters: text search (tokenized LIKE over `search_blob`), set, subtypes ([accounts-decks-and-catalog](2026-07-20-accounts-decks-and-catalog.md)). Pool tiles are `POOL_CARD` style: art thumbnail + name + type + cost pips, click-to-add. Card names are one truncated line — a name that wrapped would make its row taller than the rest. Right-click (or 500 ms long-press) opens a context menu with printing options and basics shortcuts.
 - **Right: decklist panel.** Deck name field (`deck-name`), commander picker (legendary creatures in the list), 99-card decklist with per-card counts and a running total, and client legality problems (`deck-problems`) via the shared `alertClass` recipe. Click a row to remove one. Decklist rows (and pool tiles / commander chip) are keyed by oracle id so `BindBuilderCardPointer` remounts after list churn — Mount args are captured at insert, so unkeyed reuse left later rows activating the removed card until refresh. Deck save calls `/api/rpc/decks` or `/api/rpc/decks/:id` with `SaveDeckRequest` from the header Save control.
-- **Printing preference.** Card identity is the Scryfall oracle id (`CardDef.id`); a Printing is a Scryfall UUID used only for art ([accounts-decks-and-catalog](2026-07-20-accounts-decks-and-catalog.md)). `preferredPrint` is session-sticky per oracle id — once you pick a printing for a card, adding it again reuses that choice. `searchPrints(oracleId)` fetches Scryfall prints for the picker.
+- **Printing preference.** Card identity is the Scryfall oracle id (`CardDef.id`); a Printing is a Scryfall UUID used only for art ([accounts-decks-and-catalog](2026-07-20-accounts-decks-and-catalog.md)). `preferredPrint` is session-sticky per oracle id — once you pick a printing for a card, adding it again reuses that choice. `printSearchUrl(oracleId)` gives the first page of a card's printings and `searchPrintPage(url)` fetches exactly that one page — up to 175 printings, plus the URL of the next. On HTTP **429**, it waits `Retry-After` (integer seconds or HTTP-date; default **30s** when absent/invalid, clamped to **60s**) and retries the same page up to **2** times before failing. Non-429 failures fail immediately with no wait.
 - **Singleton enforcement.** Non-basic non-commander cards cap at 1. Commander is set via the context menu only; `canBeCommander` restricts to legendary creatures.
 - **Full Commander legality** is enforced server-side on save; the client surfaces validation errors returned as `CreateDeck422` / `UpdateDeck422` tagged Schema errors.
 - **Card lookup.** `lookupCardsByIds(ids, client)` fetches oracle data for deck hydration through `/api/rpc/cards/lookup`.
-- **Scroll.** `shellFrame` is a viewport-contained flex column (`overflow-hidden`); the builder passes `lockStageScroll` so the stage is `flex-1 min-h-0 overflow-hidden`. The builder page fills that stage (`h-full min-h-0 flex-1`, single `minmax(0,1fr)` grid row, `overflow-hidden`) and does not scroll the page. The left catalog grid and the right decklist are independent `overflow-y-auto` scrollports with `overscroll-contain` so wheel/trackpad in one pane does not move the other or the document. Both columns use `min-h-0` so their scroll hosts form real scrollports inside the grid instead of growing the page.
-- **Print picker scroll lock.** While the choose-printing `<dialog>` is open (`printPicker` set), catalog and decklist scrollports use `overflow-hidden` (background frozen). The print tile grid inside the dialog remains `overflow-y-auto` with `overscroll-contain`. Closing the picker restores independent pane scrolling.
+- **Pool grid.** The catalog runs to tens of thousands of cards and every tile that renders also fetches its art, so the pool is a `windowedGrid` ([ui-component-layer](2026-07-28-ui-component-layer.md)) over a `VirtualList.Model` held as `poolGrid` — container id and `data-testid` `builder-pool-scroll`. Its subscription is lifted in `client/app/subscriptions.ts` alongside the print grid's; until measured it paints no tiles. Skeletons and "No cards match." render as a plain grid — there is nothing to window.
+- **Pool grid geometry.** The pool sizes itself to its column, not the viewport, and `VirtualList` measures only height — so a `ResizeObserver` Mount (`ObservePoolWidth`) on the wrapper around the grid reports width as `MeasuredPoolGrid`, kept as `poolWidth`. `poolGridColumns(width)` divides it by the 120px minimum tile plus gap (never below one column) and `poolGridRowHeightPx(width)` derives row height from the resulting tile width, its `aspect-[0.72]` art, the name line, and the row gap, rounding **up** — a row taller than its tiles reads as gap, a shorter one clips them. The column count reaches the row as an inline `grid-template-columns`, since Tailwind cannot generate a class for a number measured at runtime; that also means a scrollbar narrows tiles rather than rewrapping the row. A width change rewrites `rowHeightPx` on the existing `poolGrid` rather than re-initing it, which would throw away the container measurement the observer will not re-fire.
+- **Pool paging.** Scrolling within `POOL_PAGE_OVERSCAN_ROWS` (12) rows of the end of the loaded pool requests the next 100-card page. The trigger is `VirtualList.visibleWindow`'s `endIndex` against the row count, checked on every grid message, on `MeasuredPoolGrid`, and on each arriving page — a windowed grid puts no element at the bottom of the list to hang an `IntersectionObserver` on, because the bottom is not in the DOM until you scroll to it. Checking on arrival is what keeps a page that does not fill a tall pool column from stalling: nothing else would ask. Changing the query empties the pool and drives the container back to the top with `VirtualList.scrollToIndex`, since the element itself survives the change.
+- **Scroll.** `shellFrame` is a viewport-contained flex column (`overflow-hidden`); the builder passes `lockStageScroll` so the stage is `flex-1 min-h-0 overflow-hidden`. The builder page fills that stage (`h-full min-h-0 flex-1`, single `minmax(0,1fr)` grid row, `overflow-hidden`) and does not scroll the page. The right decklist is an `overflow-y-auto` scrollport and the left pool scrolls inside its windowed grid; both are `overscroll-contain`, so wheel/trackpad in one pane does not move the other or the document. Both columns use `min-h-0` so their scroll hosts form real scrollports inside the grid instead of growing the page.
+- **Print picker modal.** The choose-printing dialog renders on the shared `modalDialog` frame ([ui-component-layer](2026-07-28-ui-component-layer.md)), so it gets `@foldkit/ui` `Dialog`'s focus trap, focus restore, Escape, and managed close. It is not a `confirmDialog` — it supplies its own heading, Close button, and print grid as `modalDialog` children. `printDialog` (a `Dialog.Model`, id `builder-print-picker`) holds open/closed; `printPicker` holds the picked card, the prints loaded so far, and `pendingPage` — the URL of the page in flight, or null once every page has landed. Escape, a backdrop click, and Close all arrive as `Dialog`'s `Closed` and clear both, so the prints it loaded go with it.
+- **Print grid.** A card can have hundreds of printings (basic lands especially), so the picker's tile grid is a `windowedGrid` ([ui-component-layer](2026-07-28-ui-component-layer.md)) over a `VirtualList.Model` held as `printGrid` on the builder model — container id and `data-testid` `builder-print-picker-scroll`, two tiles per row. Only rows near the viewport are in the DOM, so only their art is requested. The grid learns its height and scroll position from `VirtualList.subscriptions`, lifted in `client/app/subscriptions.ts`; until it is measured it paints no tiles. Loading skeletons, the load-failure line, and "No printings found." render as a plain grid — there is nothing to window.
+- **Printings arrive a page at a time.** A basic land runs to a thousand printings across six Scryfall pages, and waiting for the last one leaves the picker on skeletons for seconds. `SearchBuilderPrints({ cardId, url })` fetches one page; `ReceivedBuilderPrints` appends it and re-issues the command for `nextPage` until there is none, so the first page paints while the rest are still in flight. `pendingPage` is both the loading flag and the token that matches a page to the request it answers — a page whose `url` is not what the picker is waiting on came from a run that has since been closed and reopened, and is dropped. A page that fails leaves the printings that already arrived on screen; skeletons show only until the first page lands. *ponytail:* the picker then shows a short list with no hint that it is short.
+- **Uniform print tiles.** Windowing needs one row height for the whole grid, so every print tile reserves two lines (`h-10`) for its set / collector / date badges whether they wrap or not. `printGridRowHeightPx(viewportWidth)` derives the row height from the tile's `w-[min(38vw,200px)]` width, its `aspect-[0.72]` art, the badge block, and the row gap. Opening the picker re-inits `printGrid` at the current viewport width — which also returns the grid to the top. *ponytail:* rotating the device with the picker already open misaligns rows until it is reopened.
+- **Print picker scroll lock.** While the picker is open (`printPicker` set), catalog and decklist scrollports freeze — the decklist with `overflow-hidden`, the pool with Tailwind's important modifier `overflow-hidden!`, since `VirtualList` writes `overflow: auto` on its container as an inline style that a plain class cannot beat. The print grid keeps scrolling for the same reason. Closing the picker restores independent pane scrolling. `Dialog`'s own scroll lock only freezes `documentElement`, so freezing the two inner scrollports stays the builder's concern.
+- **Discard confirm.** Cancel navigates home directly when the builder is clean. When `dirty`, it raises `builder-discard-confirm`, a `confirmDialog` ([ui-component-layer](2026-07-28-ui-component-layer.md)) over a `Dialog` submodel held as `discardDialog` on the builder model. Escape, a backdrop click, and Cancel all dismiss it through the dialog's `Closed` out-message; confirming leaves the builder.
 
 ### Card art CDN (`client/app/domain/deck-builder/scryfall.ts`, `client/app/domain/ui/card-art.ts`, `client/app/domain/image-cache.ts`)
 
@@ -99,7 +115,7 @@ Missing ordinary (non-`art_crop`) CDN art stays empty after load failure (no Scr
 
 ## Implementation Decisions
 
-- **Deck-builder search is server-side.** The client holds no full catalog. `/api/rpc/cards/search` calls `Cards.Search` with tokenized LIKE over `search_blob` (includes `otags`) on the server ([accounts-decks-and-catalog](2026-07-20-accounts-decks-and-catalog.md)). The pool grid pages in 100-card chunks via IntersectionObserver — no client-side filtering of a local dataset.
+- **Deck-builder search is server-side.** The client holds no full catalog. `/api/rpc/cards/search` calls `Cards.Search` with tokenized LIKE over `search_blob` (includes `otags`) on the server ([accounts-decks-and-catalog](2026-07-20-accounts-decks-and-catalog.md)). The pool grid pages in 100-card chunks off its own scroll position — no client-side filtering of a local dataset.
 - **Route entry is child-owned.** Home and `/decks/...` entry run through deck-surface `informRouteChanged` helpers, which call the child update with route-change messages instead of having the parent mutate deck-list or builder state directly.
 - **Printing is art-preference only.** Card rules identity is the oracle id. Decks store `(id, count, print)` with `print` required. The engine is print-agnostic. Wire DTOs carry `print` for consistent art across all clients.
 - **`VITE_CARD_CDN` is build-time baked**, not runtime. Changing CDN requires a new image build.
@@ -109,12 +125,12 @@ Missing ordinary (non-`art_crop`) CDN art stays empty after load failure (no Scr
 
 ## Testing Decisions
 
-- `client/app/shell/decks/**/*.test.ts` — decks list/builder stories and helpers (including sequential multi-card remove and keyed decklist rows for pointer-Mount remount).
-- `client/app/domain/deck-builder/*.test.ts` — print prefs, menus, hover preview.
+- `client/app/shell/decks/**/*.test.ts` — decks list/builder stories and helpers (including sequential multi-card remove and keyed decklist rows for pointer-Mount remount). Builder stories assert that a 400-print picker paints one screenful of tiles (and so requests one screenful of art), and that `printGridRowHeightPx` grows with the viewport until the tile hits its 200px cap. Picker scenes seed a measured `printGrid`, since an unmeasured grid renders no tiles. The same holds for the pool: a 2000-card pool paints 45 tiles, `poolGridColumns` fits five 120px tiles into 640px and one into 200px, and scenes that want pool tiles seed both a `poolWidth` and a measured `poolGrid`. Print paging is asserted on the update — a first page appends and issues the request for the next, a later page appends under it, a page for a URL the picker is not waiting on is dropped, and a failed page keeps what arrived — plus a scene showing tiles while `pendingPage` is still set. Pool paging is asserted on the update: a scroll to the end of the loaded pool asks for the next page, an arriving page that does not fill a tall pool column asks for the next one with no scroll at all, and an unmeasured grid asks for nothing.
+- `client/app/domain/deck-builder/*.test.ts` — print prefs, menus, hover preview; `scryfall.test.ts` covers `Retry-After` parsing, 429 wait-then-retry, and that `searchPrintPage` fetches only its own page and reports `nextPage`.
 - `client/app/domain/ui/card-art.test.ts` — art URL / host sync against `ImageCache`.
 - `client/app/domain/image-cache.test.ts` — cache settle / subscriber behavior.
 - Scene coverage for shell deck surfaces lives with other shell Scene tests, including
-  `header-leaderboard-link`, `account-menu-*`, `account-gravatar-link`,
+  `header-leaderboard-link`, `account-menu-trigger`, `account-menu-*`,
   `deck-list-empty`, and `deck-list-new-deck`; the home surface does not render
   `data-testid="leaderboard-teaser"` or a header `New deck` control. Route-entry Stories cover the home fetch path
   without a separate teaser request (see

@@ -55,6 +55,7 @@ pub fn combat_view_to_pb(combat: CombatView) -> pb::CombatView {
             .into_iter()
             .map(u32::from)
             .collect(),
+        blocked_attackers: combat.blocked_attackers,
     }
 }
 
@@ -1666,8 +1667,8 @@ pub fn visible_state_to_pb(state: VisibleState) -> pb::VisibleState {
     }
 }
 
-pub fn stream_frame_to_pb(frame: StreamFrame) -> pb::StreamFrame {
-    use pb::stream_frame::Frame;
+pub fn stream_frame_to_pb(frame: StreamFrame) -> pb::StreamResponse {
+    use pb::stream_response::Frame;
     let frame = match frame {
         StreamFrame::Snapshot { seq, state } => Frame::Snapshot(pb::SnapshotFrame {
             seq,
@@ -1689,7 +1690,7 @@ pub fn stream_frame_to_pb(frame: StreamFrame) -> pb::StreamFrame {
         }),
         StreamFrame::Heartbeat => Frame::Heartbeat(pb::Heartbeat {}),
     };
-    pb::StreamFrame { frame: Some(frame) }
+    pb::StreamResponse { frame: Some(frame) }
 }
 
 #[cfg(test)]
@@ -1830,7 +1831,7 @@ mod tests {
         let pb = stream_frame_to_pb(StreamFrame::Heartbeat);
         assert!(matches!(
             pb.frame,
-            Some(pb::stream_frame::Frame::Heartbeat(_))
+            Some(pb::stream_response::Frame::Heartbeat(_))
         ));
     }
 
@@ -1841,7 +1842,7 @@ mod tests {
             seq: 9,
             state: state.clone(),
         });
-        let Some(pb::stream_frame::Frame::Snapshot(snap)) = pb.frame else {
+        let Some(pb::stream_response::Frame::Snapshot(snap)) = pb.frame else {
             panic!("expected Snapshot frame");
         };
         assert_eq!(snap.seq, 9);
@@ -1895,7 +1896,7 @@ mod tests {
                     .with_children(vec![MessageRef::key("auto.automatic")]),
             ],
         }));
-        let Some(pb::stream_frame::Frame::Delta(delta)) = pb.frame else {
+        let Some(pb::stream_response::Frame::Delta(delta)) = pb.frame else {
             panic!("expected Delta frame");
         };
         assert_eq!(delta.seq, 10);
@@ -1943,7 +1944,7 @@ mod tests {
             state,
             auto_actions: vec![],
         }));
-        let Some(pb::stream_frame::Frame::Delta(delta)) = pb.frame else {
+        let Some(pb::stream_response::Frame::Delta(delta)) = pb.frame else {
             panic!("expected Delta frame");
         };
         assert!(delta.events.is_empty());

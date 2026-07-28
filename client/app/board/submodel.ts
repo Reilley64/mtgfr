@@ -1,4 +1,8 @@
+import * as Combobox from "@foldkit/ui/combobox";
+import * as Dialog from "@foldkit/ui/dialog";
+import { Option } from "effect";
 import type { Command as FoldkitCommand } from "foldkit";
+import { Command } from "foldkit";
 import {
   answerFromBoardTarget,
   buildAnswerFromDraft,
@@ -13,6 +17,7 @@ import {
   type PromptDraft,
 } from "~/choice";
 import { mulliganChrome } from "~/mulligan";
+import { outcome } from "~/outcome";
 import type {
   ActionView,
   CatalogCard,
@@ -76,10 +81,23 @@ import {
   pendingPilePickPile,
   pendingPlayerAimOneClick,
   pendingPlayerAimSeats,
+  pendingStackGhost,
   pendingTargetOneClick,
   sacrificeCostObjectIds,
   stagedPickTargets,
 } from "./action/targeting";
+import { CARD_NAME_COMBOBOX_ID, CardNameCombobox } from "./card-name-combobox";
+import {
+  markRevealSeen,
+  prefersReducedMotion,
+  REVEAL_HOLD_MS,
+  REVEAL_HOLD_REDUCED_MS,
+  RevealHoldTimer,
+  RevealStepTimer,
+  revealSeen,
+  type SpotlightStep,
+  spotlightSteps,
+} from "./first-player-reveal";
 import type { Camera, Vec2 } from "./geometry/camera";
 import { panBy, screenToWorld, worldToScreen, zoomAt } from "./geometry/camera";
 import {
@@ -99,8 +117,9 @@ import {
   pointerMove,
   pointerUp,
   primaryActionFor,
+  resolveClick,
 } from "./geometry/interaction";
-import { avatarPos, CARD_H, CARD_W, layout, type RenderCard, ZONE } from "./geometry/layout";
+import { avatarPos, CARD_H, CARD_W, landRowCenter, layout, type RenderCard, seatSlot, ZONE } from "./geometry/layout";
 import { type RadialPress, radialPressDown, radialPressUp } from "./geometry/radial";
 import {
   STACK_HOLD_MAX_MS,
@@ -115,17 +134,30 @@ import { selectedRadialOptions } from "./html/activation-menu";
 import { persistHintDismissed, readHintDismissed } from "./html/discoverability";
 import { HAND_BAR_H, HAND_INSPECT_STICKY_BAND, HAND_PLAY_SLACK_PX } from "./html/hand";
 import { CopyBoardLog } from "./log-commands";
-import { GyExileChosen, type Message } from "./messages";
+import {
+  CombatCancelAttacker,
+  CombatCancelBlocker,
+  GotCardNameComboboxMessage,
+  GotConcedeDialogMessage,
+  GotResultDialogMessage,
+  GyExileChosen,
+  type Message,
+  PromptStringSet,
+} from "./messages";
 import { type ExitFx, spawnExitFx } from "./motion/exit-fx";
 import {
   type CardFlight,
   flightOwnsId,
   flyingCardIds,
   handFlightScale,
+  poseAtTarget,
+  poseNearHandoff,
   rebindFlightId,
+  remapFlightsForZoom,
   retargetFlight,
   spawnFlight,
   stackFlightScale,
+  traceFlightSync,
 } from "./motion/flights";
 
 export const BOARD_VIEWPORT = { width: 1440, height: 900 } as const;
@@ -150,6 +182,9 @@ type BattlefieldPose = {
   print: string;
   name: string;
 };
+
+/** CR 103.1 spotlight: which seat won, the hop schedule, and where the spotlight sits. */
+export type FirstPlayerReveal = { winner: number; steps: SpotlightStep[]; index: number };
 
 export type BoardModel = {
   camera: Camera;
@@ -215,9 +250,12 @@ export type BoardModel = {
   /** Last board log copy failed; paired with `logCopied` for toolbar feedback. */
   logCopyFailed: boolean;
   // Concede.
-  confirmConcede: boolean;
+  concedeDialog: Dialog.Model;
   // Game result.
-  resultSeen: boolean;
+  resultDialog: Dialog.Model;
+  /** The result overlay has already been raised for this game — it is a one-shot, so dismissing it
+   *  must not let the next fold put it straight back up. */
+  resultRaised: boolean;
   // Discoverability chrome.
   hintDismissed: boolean;
   hintAutoHidden: boolean;
@@ -232,11 +270,16 @@ export type BoardModel = {
   /**
    * True after a prompt answer was submitted while `pending_choice` still matches.
    * Keeps the draft painted (no re-init flash) and blocks double-submit / edits until
-   * the choice key changes or the intent is rejected.
+   * the choice key changes, a newer board seq arrives for an equivalent-looking re-raise
+   * (CR 701.27b proliferate twice), or the intent is rejected.
    */
   promptSubmitInFlight: boolean;
+  /** Board `seq` at the moment `promptSubmitInFlight` was set — used to detect re-raises. */
+  promptSubmitSeq: number | null;
   /** Catalog name suggestions for `choose_card_name` (query must match current draft). */
   cardNameSuggestions: { query: string; names: ReadonlyArray<string> } | null;
+  /** The `choose_card_name` typeahead. Owns the input text; the string draft mirrors it. */
+  cardNameCombobox: Combobox.Model;
   /** Filter query for closed option prompts (creature types). */
   promptOptionFilter: string;
   /** Selected row while click-to-place reordering `order_triggers` (null when idle). */
@@ -245,7 +288,15 @@ export type BoardModel = {
   handDrag: HandDragState | null;
   /** Hovered hand/radial action id — resolves `auto_tap` from the live action list. */
   hoverActionId: number | null;
+  /** CR 103.1 one-shot starting-player spotlight; null once dismissed or already shown. */
+  firstPlayerReveal: FirstPlayerReveal | null;
 };
+
+/** Document-unique id for the concede confirmation. Doubles as its `data-testid`. */
+export const CONCEDE_DIALOG_ID = "concede-dialog";
+
+/** Document-unique id for the game-result overlay. Doubles as its `data-testid`. */
+export const RESULT_DIALOG_ID = "result-overlay";
 
 export function initialBoardModel(): BoardModel {
   return {
@@ -291,8 +342,9 @@ export function initialBoardModel(): BoardModel {
     logExpanded: false,
     logCopied: false,
     logCopyFailed: false,
-    confirmConcede: false,
-    resultSeen: false,
+    concedeDialog: Dialog.init({ id: CONCEDE_DIALOG_ID }),
+    resultDialog: Dialog.init({ id: RESULT_DIALOG_ID }),
+    resultRaised: false,
     hintDismissed: readHintDismissed(),
     hintAutoHidden: false,
     legendOpen: false,
@@ -302,11 +354,14 @@ export function initialBoardModel(): BoardModel {
     pendingChoiceKey: null,
     promptDraft: null,
     promptSubmitInFlight: false,
+    promptSubmitSeq: null,
     cardNameSuggestions: null,
+    cardNameCombobox: Combobox.init({ id: CARD_NAME_COMBOBOX_ID }),
     promptOptionFilter: "",
     orderPickPos: null,
     handDrag: null,
     hoverActionId: null,
+    firstPlayerReveal: null,
   };
 }
 
@@ -323,9 +378,11 @@ export function syncBoardWithGame(model: BoardModel, fold: BoardFold): BoardMode
   }
   const playerCount = Math.max(1, fold.state.players.length);
   if (!next.cameraUserMoved && next.cameraFitPlayers !== playerCount) {
+    const fitted = fitCamera({ x: next.viewport.width, y: next.viewport.height }, playerCount, HAND_BAR_H);
     next = {
       ...next,
-      camera: fitCamera({ x: next.viewport.width, y: next.viewport.height }, playerCount, HAND_BAR_H),
+      flights: remapFlightsForZoom(next.flights, next.camera.zoom, fitted.zoom),
+      camera: fitted,
       cameraFitPlayers: playerCount,
     };
   }
@@ -363,7 +420,8 @@ function syncStackChrome(model: BoardModel, fold: BoardFold): BoardModel {
   const holdMs = state.stack_hold_remaining_ms ?? 0;
   const stackHoldPeak = holdMs > 0 ? Math.min(STACK_HOLD_MAX_MS, Math.max(model.stackHoldPeak, holdMs)) : 0;
 
-  const showStaged = model.staged != null && stagedPickTargets(model.staged, state) === null;
+  const showStaged =
+    (model.staged != null && stagedPickTargets(model.staged, state) === null) || pendingStackGhost(state) != null;
   const visualCount = state.stack.length + (showStaged ? 1 : 0);
   const peek = stackPeekFor(visualCount, model.viewport.height, STACK_VERTICAL_RESERVED);
   const stackExpand = shouldAutoCollapseStackExpand({
@@ -383,14 +441,33 @@ function syncPromptDraft(model: BoardModel, fold: BoardFold): BoardModel {
   const gameState = fold.state;
   const pc = gameState?.pending_choice ?? null;
   const key = pc != null ? choiceDraftKey(pc) : null;
-  if (key === model.pendingChoiceKey) return model;
+  if (key === model.pendingChoiceKey) {
+    // Same draft identity — but a newer board seq after submit means the engine re-raised an
+    // equivalent-looking choice (CR 701.27b "proliferate twice"). Unfreeze and reset so Confirm
+    // is not a silent no-op on the next iteration.
+    if (model.promptSubmitInFlight && model.promptSubmitSeq != null && fold.seq !== model.promptSubmitSeq) {
+      return {
+        ...model,
+        promptDraft: pc != null && gameState != null ? initPromptDraft(pc, gameState) : null,
+        promptSubmitInFlight: false,
+        promptSubmitSeq: null,
+        cardNameSuggestions: null,
+        cardNameCombobox: Combobox.init({ id: CARD_NAME_COMBOBOX_ID }),
+        promptOptionFilter: "",
+        orderPickPos: null,
+      };
+    }
+    return model;
+  }
   const pile = pc != null && gameState != null ? pendingPilePickPile(pc, gameState) : null;
   return {
     ...model,
     pendingChoiceKey: key,
     promptDraft: pc != null && gameState != null ? initPromptDraft(pc, gameState) : null,
     promptSubmitInFlight: false,
+    promptSubmitSeq: null,
     cardNameSuggestions: null,
+    cardNameCombobox: Combobox.init({ id: CARD_NAME_COMBOBOX_ID }),
     promptOptionFilter: "",
     orderPickPos: null,
     pileExpand: pile != null ? pile : model.gyExilePick != null ? model.pileExpand : null,
@@ -398,8 +475,8 @@ function syncPromptDraft(model: BoardModel, fold: BoardFold): BoardModel {
 }
 
 /** Freeze the current prompt draft after submitting an answer (avoids Bottom-lane re-init flash). */
-function withPromptSubmitInFlight(model: BoardModel, extras: Partial<BoardModel> = {}): BoardModel {
-  return { ...model, ...extras, promptSubmitInFlight: true };
+function withPromptSubmitInFlight(model: BoardModel, seq: number, extras: Partial<BoardModel> = {}): BoardModel {
+  return { ...model, ...extras, promptSubmitInFlight: true, promptSubmitSeq: seq };
 }
 
 function samePromptTarget(a: WireTarget | null | undefined, b: WireTarget | null | undefined): boolean {
@@ -506,9 +583,14 @@ function playerOrigin(model: BoardModel, fold: BoardFold, seat: number): Vec2 {
   return worldToScreen(model.camera, pos.x, pos.y);
 }
 
-function retargetFlightToCard(flight: CardFlight, model: BoardModel, card: RenderCard): CardFlight {
+function retargetFlightToCard(
+  flight: CardFlight,
+  model: BoardModel,
+  card: RenderCard,
+  opts?: { retainHold?: boolean; zone?: "stack" | "land" | "from-stack" | "battlefield"; note?: string },
+): CardFlight {
   const target = cardTarget(model.camera, card);
-  return retargetFlight(flight, { x: target.x, y: target.y, scale: 1 });
+  return retargetFlight(flight, { x: target.x, y: target.y, scale: 1 }, opts);
 }
 
 function hiddenCardIds(flights: ReadonlyMap<number, CardFlight>, exitFx: ReadonlyMap<number, ExitFx>): Set<number> {
@@ -610,7 +692,39 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
 
     const existing = flights.get(permanent);
     if (existing != null) {
-      flights.set(permanent, retargetFlightToCard({ ...existing, kind: "battlefield", fromCardId: from }, model, card));
+      const target = cardTarget(model.camera, card);
+      const aim = { x: target.x, y: target.y, scale: 1 };
+      // On/near the real slot — hand off when parked, or keep easing without a short retarget.
+      // Settled far from the slot (provisional row) must still retarget with hold retained.
+      if (existing.hold && poseAtTarget(existing, aim)) {
+        flights.delete(permanent);
+        handHidden.delete(from);
+        continue;
+      }
+      if (existing.hold && poseNearHandoff(existing, aim)) {
+        const remainingPx = Math.hypot(aim.x - existing.x, aim.y - existing.y);
+        // Near the real slot — hand off now (flying or settled). Keeping a stale glide
+        // toward the provisional aim then correcting later is the short second ease.
+        traceFlightSync({
+          op: "handoff",
+          zone: "land",
+          id: permanent,
+          hold: true,
+          phase: existing.phase,
+          remainingPx,
+        });
+        flights.delete(permanent);
+        handHidden.delete(from);
+        continue;
+      }
+      flights.set(
+        permanent,
+        retargetFlightToCard({ ...existing, kind: "battlefield", fromCardId: from }, model, card, {
+          retainHold: existing.hold === true,
+          zone: "land",
+          note: "landPlayFrom",
+        }),
+      );
       handHidden.add(from);
       continue;
     }
@@ -644,6 +758,29 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
 
     const existing = flights.get(spell);
     if (existing != null) {
+      // At the face — hand off. Near but still flying: keep the current glide (do not retarget
+      // the last inches — that is the short second ease). Far: retarget, retain hold.
+      if (poseAtTarget(existing, aim)) {
+        flights.delete(spell);
+        if (meta.from != null) handHidden.delete(meta.from);
+        continue;
+      }
+      if (existing.hold && poseNearHandoff(existing, aim)) {
+        const remainingPx = Math.hypot(aim.x - existing.x, aim.y - existing.y);
+        // Near the stack face — hand off now. Do not keep easing toward a stale seed aim
+        // (that path later retargets and reads as a short second glide).
+        traceFlightSync({
+          op: "handoff",
+          zone: "stack",
+          id: spell,
+          hold: true,
+          phase: existing.phase,
+          remainingPx,
+        });
+        flights.delete(spell);
+        if (meta.from != null) handHidden.delete(meta.from);
+        continue;
+      }
       flights.set(
         spell,
         retargetFlight(
@@ -653,6 +790,7 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
             y: aim.y,
             scale: aim.scale,
           },
+          { retainHold: existing.hold === true, zone: "stack", note: "stackEntrances" },
         ),
       );
       handHidden.add(meta.from);
@@ -677,6 +815,45 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
       }),
     );
     handHidden.add(meta.from);
+  }
+
+  // After provenance folds, held seeds may still be easing. Hand off when parked; while far,
+  // refresh aim without clearing hold (avoids the post-retarget short second ease).
+  for (const [id, flight] of [...flights.entries()]) {
+    if (!flight.hold) continue;
+    if (flight.kind === "stack") {
+      if (!state.stack.some((entry) => entry.source === id)) continue;
+      const aim = stackFlightAimForSource(model, state.stack, id);
+      if (poseAtTarget(flight, aim) || poseNearHandoff(flight, aim)) {
+        flights.delete(id);
+        if (flight.fromCardId != null) handHidden.delete(flight.fromCardId);
+        continue;
+      }
+      flights.set(
+        id,
+        retargetFlight(
+          flight,
+          { x: aim.x, y: aim.y, scale: aim.scale },
+          {
+            retainHold: true,
+            zone: "stack",
+            note: "post-hold-refresh",
+          },
+        ),
+      );
+      continue;
+    }
+    if (flight.kind !== "battlefield") continue;
+    const card = cardsById.get(id);
+    if (card == null) continue;
+    const target = cardTarget(model.camera, card);
+    const aim = { x: target.x, y: target.y, scale: 1 };
+    if (poseAtTarget(flight, aim) || poseNearHandoff(flight, aim)) {
+      flights.delete(id);
+      if (flight.fromCardId != null) handHidden.delete(flight.fromCardId);
+      continue;
+    }
+    flights.set(id, retargetFlight(flight, aim, { retainHold: true, zone: "land", note: "post-hold-refresh" }));
   }
 
   for (const id of new Set([...fold.provenance.resolvedFromStack, ...fold.provenance.leftStackToPile])) {
@@ -955,6 +1132,23 @@ function pointerUpModel(
         return togglePendingObjectAimPick(idle, fold, pc, release.card.id);
       }
     }
+    // Combat cancel + permanent select share `resolveClick` so tap-in-place on a staged
+    // attacker/blocker un-stages it before the activation radial can open.
+    if (fold.state != null) {
+      const click = resolveClick(fold.state, fold.state.viewer, release.card, {
+        spectating: false,
+        staged: null,
+        stagedTargets: new Set(),
+        attackers: idle.combatAttackers,
+        blocks: idle.combatBlocks,
+      });
+      if (click.kind === "cancel-attacker") {
+        return updateBoard(idle, CombatCancelAttacker({ attackerId: click.id }), fold, tableId);
+      }
+      if (click.kind === "cancel-blocker") {
+        return updateBoard(idle, CombatCancelBlocker({ blockerId: click.id }), fold, tableId);
+      }
+    }
     if (
       !canSelectPermanent(release.card.id, release.card.tapsForMana, fold.state?.actions, {
         summoningSick: release.card.summoningSick,
@@ -1080,42 +1274,43 @@ function togglePendingObjectAimPick(
   } else {
     next = [...picked, objectId];
   }
-  return [{ ...synced, promptDraft: { kind: "card-pick", picked: next, filter: synced.promptDraft.filter } }, []];
+  return [
+    {
+      ...synced,
+      promptDraft: {
+        ...synced.promptDraft,
+        picked: next,
+      },
+    },
+    [],
+  ];
 }
 
 function submitPendingHandPick(
   model: BoardModel,
   fold: GameFoldState,
-  tableId: string | null,
+  _tableId: string | null,
   pc: NonNullable<NonNullable<GameFoldState["state"]>["pending_choice"]>,
   objectId: number,
 ): BoardReturn {
   const idle = { ...model, handDrag: null, hoverActionId: null };
-  if (pc.kind === "put_land_from_hand") {
-    return [
-      { ...idle, promptDraft: null, pendingChoiceKey: null },
-      boardIntentSubmit(tableId, choiceIntent(pc, { kind: "put_land", choice: objectId })),
-    ];
-  }
-  if (pc.kind === "put_creature_from_hand") {
-    return [
-      { ...idle, promptDraft: null, pendingChoiceKey: null },
-      boardIntentSubmit(tableId, choiceIntent(pc, { kind: "put_creature", choice: objectId })),
-    ];
-  }
-  if (pc.kind === "cast_creature_face_down") {
-    return [
-      { ...idle, promptDraft: null, pendingChoiceKey: null },
-      boardIntentSubmit(tableId, choiceIntent(pc, { kind: "cast_face_down_choice", choice: objectId })),
-    ];
-  }
-  if (pc.kind === "put_from_hand_on_top" && pc.count === 1) {
-    return [
-      { ...idle, promptDraft: null, pendingChoiceKey: null },
-      boardIntentSubmit(tableId, choiceIntent(pc, { kind: "hand_on_top", cards: [objectId] })),
-    ];
-  }
   return togglePendingObjectAimPick(idle, fold, pc, objectId);
+}
+
+/** True when the flight id already names the resting destination object (post-rebind). */
+function authorityOwnsFlightDestination(fold: BoardFold | null, flight: CardFlight): boolean {
+  const state = fold?.state;
+  if (state == null) return false;
+
+  if (flight.kind === "stack") {
+    return state.stack.some((entry) => entry.source === flight.id);
+  }
+
+  if (flight.kind === "battlefield") {
+    return state.objects.some((object) => object.id === flight.id && object.zone === ZONE.Battlefield);
+  }
+
+  return false;
 }
 
 function applyFlightsSynced(
@@ -1123,6 +1318,7 @@ function applyFlightsSynced(
   flightsIn: readonly CardFlight[],
   exitFxIn: readonly ExitFx[],
   now: number,
+  fold: BoardFold | null,
 ): BoardModel {
   const flights = new Map<number, CardFlight>();
   const exitFx = new Map<number, ExitFx>(exitFxIn.map((fx) => [fx.id, fx]));
@@ -1132,14 +1328,49 @@ function applyFlightsSynced(
   for (const flight of flightsIn) {
     if (flight.fromCardId != null) retainedSourceIds.add(flight.fromCardId);
 
+    // Settled + hold with authority already at the destination: hand off now. Keeping the
+    // screen-space flight would hide the resting face and track the camera until the next
+    // provenance sync.
+    if (flight.phase === "settled" && flight.hold === true && authorityOwnsFlightDestination(fold, flight)) {
+      traceFlightSync({
+        op: "synced-drop",
+        zone: flight.kind,
+        id: flight.id,
+        hold: true,
+        phase: flight.phase,
+        remainingPx: Math.hypot(flight.targetX - flight.x, flight.targetY - flight.y),
+        note: "authority-owns-destination",
+      });
+      if (flight.fromCardId != null) handHidden.delete(flight.fromCardId);
+      continue;
+    }
+
     // Keep held seeds after they park at the aim pose so stack/land sync can rebind them
     // instead of spawning a second flight from the avatar.
     if (flightOwnsId(flight)) {
+      traceFlightSync({
+        op: "synced-keep",
+        zone: flight.kind,
+        id: flight.id,
+        hold: flight.hold === true,
+        phase: flight.phase,
+        remainingPx: Math.hypot(flight.targetX - flight.x, flight.targetY - flight.y),
+        toTarget: { x: flight.targetX, y: flight.targetY, scale: flight.targetScale },
+      });
       flights.set(flight.id, flight);
       if (flight.fromCardId != null) handHidden.add(flight.fromCardId);
       continue;
     }
 
+    traceFlightSync({
+      op: "synced-drop",
+      zone: flight.kind,
+      id: flight.id,
+      hold: flight.hold === true,
+      phase: flight.phase,
+      remainingPx: Math.hypot(flight.targetX - flight.x, flight.targetY - flight.y),
+      note: "unowned-settled",
+    });
     if (flight.fromCardId != null) handHidden.delete(flight.fromCardId);
   }
 
@@ -1316,6 +1547,19 @@ function ensureXPrompt(
   };
 }
 
+/** Provisional battlefield aim: seat lands-row center so land seeds keep moving until authority. */
+function provisionalLandAim(
+  model: BoardModel,
+  fold: BoardFold,
+  controller: number,
+): { x: number; y: number; scale: number } {
+  const playerCount = Math.max(1, fold.state?.players.length ?? 1);
+  const viewer = fold.state?.viewer ?? 0;
+  const world = landRowCenter(controller, viewer, playerCount);
+  const screen = worldToScreen(model.camera, world.x, world.y);
+  return { x: screen.x, y: screen.y, scale: 1 };
+}
+
 /** Solid `spawnFromHand` / `seedDrop`: hide the bar tile immediately and fly from the drop point. */
 function seedDropFromHand(
   model: BoardModel,
@@ -1323,31 +1567,87 @@ function seedDropFromHand(
   screenOrigin: Vec,
   kind: "battlefield" | "stack",
   stackCount = 0,
+  fold: BoardFold | null = null,
 ): BoardModel {
   const flights = new Map(model.flights);
   const handHidden = new Set(model.handHidden);
-  const startScale = handFlightScale(model.camera.zoom);
-  const stackAim =
+  const aim =
     kind === "stack"
       ? stackFlightAim(model, { count: Math.max(1, stackCount + 1), row: stackCount })
-      : { x: screenOrigin.x, y: screenOrigin.y, scale: 1 };
-  flights.set(
-    card.id,
-    spawnFlight({
+      : fold != null
+        ? provisionalLandAim(model, fold, card.controller)
+        : { x: screenOrigin.x, y: screenOrigin.y, scale: 1 };
+
+  // Play-mode / cost pipelines may seed before the final runAction cast. Replacing that flight
+  // from screenOrigin restarts the glide and reads as a second animation.
+  const existing =
+    flights.get(card.id) ??
+    [...flights.values()].find((flight) => flight.fromCardId === card.id || flight.id === card.id);
+  if (existing != null) {
+    if (existing.id !== card.id) flights.delete(existing.id);
+    const continued = {
+      ...existing,
       id: card.id,
-      print: card.print ?? "",
+      print: card.print ?? existing.print,
       name: card.name,
-      x: screenOrigin.x,
-      y: screenOrigin.y,
-      scale: startScale,
-      targetX: stackAim.x,
-      targetY: stackAim.y,
-      targetScale: stackAim.scale,
+      targetX: aim.x,
+      targetY: aim.y,
+      targetScale: aim.scale,
       kind,
       fromCardId: card.id,
       hold: true,
-    }),
-  );
+      phase: "flying" as const,
+    };
+    traceFlightSync({
+      op: "seed",
+      zone: kind === "stack" ? "stack" : "land",
+      id: card.id,
+      hold: true,
+      phase: existing.phase,
+      remainingPx: Math.hypot(aim.x - existing.x, aim.y - existing.y),
+      aimDeltaPx: Math.hypot(aim.x - existing.targetX, aim.y - existing.targetY),
+      aimDeltaScale: Math.abs(aim.scale - existing.targetScale),
+      fromTarget: { x: existing.targetX, y: existing.targetY, scale: existing.targetScale },
+      toTarget: { x: aim.x, y: aim.y, scale: aim.scale },
+      note: `seedDrop continue kind=${kind}`,
+    });
+    flights.set(card.id, continued);
+    handHidden.add(card.id);
+    return {
+      ...model,
+      flights,
+      handHidden,
+      hideCardIds: hiddenCardIds(flights, model.exitFx),
+      ownedIds: new Set(flights.keys()),
+    };
+  }
+
+  const startScale = handFlightScale(model.camera.zoom);
+  const seeded = spawnFlight({
+    id: card.id,
+    print: card.print ?? "",
+    name: card.name,
+    x: screenOrigin.x,
+    y: screenOrigin.y,
+    scale: startScale,
+    targetX: aim.x,
+    targetY: aim.y,
+    targetScale: aim.scale,
+    kind,
+    fromCardId: card.id,
+    hold: true,
+  });
+  traceFlightSync({
+    op: "seed",
+    zone: kind === "stack" ? "stack" : "land",
+    id: card.id,
+    hold: true,
+    phase: "flying",
+    remainingPx: Math.hypot(aim.x - screenOrigin.x, aim.y - screenOrigin.y),
+    toTarget: { x: aim.x, y: aim.y, scale: aim.scale },
+    note: `seedDrop kind=${kind}`,
+  });
+  flights.set(card.id, seeded);
   handHidden.add(card.id);
   return {
     ...model,
@@ -1375,6 +1675,29 @@ function clearPlayOrigin(model: BoardModel, cardId: number): BoardModel {
   };
 }
 
+/**
+ * Drop optimistic seeds when the intent that would have justified them was rejected. A rejected play
+ * never produces provenance and a reject does not advance `fold.seq`, so nothing else re-examines a
+ * parked hold — it would stay painted (and its hand tile hidden) for the rest of the game.
+ */
+export function dropHeldSeeds(model: BoardModel): BoardModel {
+  const flights = new Map(model.flights);
+  const handHidden = new Set(model.handHidden);
+  for (const [id, flight] of model.flights) {
+    if (flight.hold !== true) continue;
+    flights.delete(id);
+    handHidden.delete(flight.fromCardId ?? id);
+  }
+  if (flights.size === model.flights.size) return model;
+  return {
+    ...model,
+    flights,
+    handHidden,
+    hideCardIds: hiddenCardIds(flights, model.exitFx),
+    ownedIds: new Set(flights.keys()),
+  };
+}
+
 function runAction(
   model: BoardModel,
   fold: GameFoldState,
@@ -1391,7 +1714,13 @@ function runAction(
     return [{ ...model, reject: humanReason(plan.reason) }, []];
   }
   if (plan.kind === "stage") {
-    const seeded = seedDropFromHand(model, plan.card, screenOrigin, "stack", fold.state?.stack.length ?? 0);
+    // A permanent activating an ability doesn't change zones: only its ability goes on the stack.
+    // Seeding a flight here would hide the resting battlefield art, and activated abilities emit no
+    // stack-entrance provenance to hand the seed off to, so it would also leak.
+    const seeded =
+      plan.card.zone === ZONE.Battlefield
+        ? model
+        : seedDropFromHand(model, plan.card, screenOrigin, "stack", fold.state?.stack.length ?? 0, fold);
     return [
       {
         ...seeded,
@@ -1408,12 +1737,12 @@ function runAction(
     ];
   }
   if (plan.kind === "play-land") {
-    const seeded = card != null ? seedDropFromHand(model, card, screenOrigin, "battlefield") : model;
+    const seeded = card != null ? seedDropFromHand(model, card, screenOrigin, "battlefield", 0, fold) : model;
     return [seeded, boardIntentSubmit(tableId, takeAction(fold, action, null, 0, [], plan.picks))];
   }
   if (plan.kind === "cast") {
     const seeded =
-      card != null ? seedDropFromHand(model, card, screenOrigin, "stack", fold.state?.stack.length ?? 0) : model;
+      card != null ? seedDropFromHand(model, card, screenOrigin, "stack", fold.state?.stack.length ?? 0, fold) : model;
     const xPrompt = ensureXPrompt(fold, plan.action, null, [], plan.picks);
     if (xPrompt != null) return [{ ...seeded, xPrompt }, []];
     return [seeded, boardIntentSubmit(tableId, takeAction(fold, plan.action, null, 0, [], plan.picks))];
@@ -1557,6 +1886,51 @@ export function drainPlayModeIfSingleton(model: BoardModel, fold: GameFoldState,
   );
   if (next.reject != null) return [clearPlayOrigin(next, pick.card.id), commands];
   return [next, commands];
+}
+
+function revealTimer(reveal: FirstPlayerReveal): BoardCmd[] {
+  const next = reveal.steps[reveal.index + 1];
+  if (next != null) return [RevealStepTimer({ ms: next.delayMs }) as unknown as BoardCmd];
+  const hold = reveal.steps.length === 1 ? REVEAL_HOLD_REDUCED_MS : REVEAL_HOLD_MS;
+  return [RevealHoldTimer({ ms: hold }) as unknown as BoardCmd];
+}
+
+const toCardNameComboboxMessage = (message: Combobox.Message): OutMessage => GotCardNameComboboxMessage({ message });
+const toConcedeDialogMessage = (message: Dialog.Message): OutMessage => GotConcedeDialogMessage({ message });
+const toResultDialogMessage = (message: Dialog.Message): OutMessage => GotResultDialogMessage({ message });
+
+/** Dismisses the concede confirmation. */
+function closeConcedeConfirm(model: BoardModel): BoardReturn {
+  const [concedeDialog, commands] = Dialog.close(model.concedeDialog);
+  return [{ ...model, concedeDialog }, Command.mapMessages(commands, toConcedeDialogMessage)];
+}
+
+/** CR 104 — raise the one-shot result overlay on the fold that ends the game for the viewer. */
+export function raiseResultDialog(model: BoardModel, fold: BoardFold): BoardReturn {
+  if (model.resultRaised) return [model, []];
+  const state = fold.state;
+  if (state == null || outcome(state.players, state.viewer).kind === "playing") return [model, []];
+
+  const [resultDialog, commands] = Dialog.open(model.resultDialog);
+  return [{ ...model, resultDialog, resultRaised: true }, Command.mapMessages(commands, toResultDialogMessage)];
+}
+
+/** CR 103.1 — arm the one-shot starting-player spotlight on the first mulligan fold. */
+export function armFirstPlayerReveal(model: BoardModel, fold: BoardFold, tableId: string | null): BoardReturn {
+  if (model.firstPlayerReveal != null) return [model, []];
+  const state = fold.state;
+  if (state == null || !state.mulliganing) return [model, []];
+  if (tableId == null || revealSeen(tableId)) return [model, []];
+
+  markRevealSeen(tableId);
+  const count = Math.max(1, state.players.length);
+  const slot = seatSlot(state.active_player, state.viewer, count);
+  const reveal: FirstPlayerReveal = {
+    winner: state.active_player,
+    steps: spotlightSteps(slot, count, prefersReducedMotion()),
+    index: 0,
+  };
+  return [{ ...model, firstPlayerReveal: reveal }, revealTimer(reveal)];
 }
 
 function hideHintOnHandUse(model: BoardModel): BoardModel {
@@ -1725,7 +2099,9 @@ function cancelAll(model: BoardModel): BoardModel {
     pendingChoiceKey: null,
     promptDraft: null,
     promptSubmitInFlight: false,
+    promptSubmitSeq: null,
     cardNameSuggestions: null,
+    cardNameCombobox: Combobox.init({ id: CARD_NAME_COMBOBOX_ID }),
     promptOptionFilter: "",
     orderPickPos: null,
     handDrag: null,
@@ -1834,7 +2210,7 @@ function trySubmitReadyPendingDraft(
   ) {
     const answer = buildAnswerFromDraft(pc, synced.promptDraft);
     if (answer != null) {
-      return [withPromptSubmitInFlight(synced), boardIntentSubmit(tableId, choiceIntent(pc, answer))];
+      return [withPromptSubmitInFlight(synced, fold.seq), boardIntentSubmit(tableId, choiceIntent(pc, answer))];
     }
   }
   if (
@@ -1845,7 +2221,7 @@ function trySubmitReadyPendingDraft(
   ) {
     const answer = buildAnswerFromDraft(pc, synced.promptDraft);
     if (answer != null) {
-      return [withPromptSubmitInFlight(synced), boardIntentSubmit(tableId, choiceIntent(pc, answer))];
+      return [withPromptSubmitInFlight(synced, fold.seq), boardIntentSubmit(tableId, choiceIntent(pc, answer))];
     }
   }
   if (
@@ -1855,7 +2231,7 @@ function trySubmitReadyPendingDraft(
   ) {
     const answer = buildAnswerFromDraft(pc, synced.promptDraft);
     if (answer != null) {
-      return [withPromptSubmitInFlight(synced), boardIntentSubmit(tableId, choiceIntent(pc, answer))];
+      return [withPromptSubmitInFlight(synced, fold.seq), boardIntentSubmit(tableId, choiceIntent(pc, answer))];
     }
   }
   if (
@@ -1868,7 +2244,7 @@ function trySubmitReadyPendingDraft(
     if (count >= pc.min && count <= pc.max) {
       const answer = buildAnswerFromDraft(pc, synced.promptDraft);
       if (answer != null) {
-        return [withPromptSubmitInFlight(synced), boardIntentSubmit(tableId, choiceIntent(pc, answer))];
+        return [withPromptSubmitInFlight(synced, fold.seq), boardIntentSubmit(tableId, choiceIntent(pc, answer))];
       }
     }
   }
@@ -1895,7 +2271,7 @@ function trySubmitReadyPendingDraft(
     }
     const answer = buildAnswerFromDraft(pc, synced.promptDraft);
     if (answer != null) {
-      return [withPromptSubmitInFlight(synced), boardIntentSubmit(tableId, choiceIntent(pc, answer))];
+      return [withPromptSubmitInFlight(synced, fold.seq), boardIntentSubmit(tableId, choiceIntent(pc, answer))];
     }
   }
   if (
@@ -1908,7 +2284,7 @@ function trySubmitReadyPendingDraft(
     const answer = buildAnswerFromDraft(pc, synced.promptDraft);
     if (answer != null) {
       return [
-        withPromptSubmitInFlight(synced, { pileExpand: null }),
+        withPromptSubmitInFlight(synced, fold.seq, { pileExpand: null }),
         boardIntentSubmit(tableId, choiceIntent(pc, answer)),
       ];
     }
@@ -1923,7 +2299,7 @@ function trySubmitReadyPendingDraft(
     const answer = buildAnswerFromDraft(pc, synced.promptDraft);
     if (answer != null) {
       return [
-        withPromptSubmitInFlight(synced, { pileExpand: null }),
+        withPromptSubmitInFlight(synced, fold.seq, { pileExpand: null }),
         boardIntentSubmit(tableId, choiceIntent(pc, answer)),
       ];
     }
@@ -1938,7 +2314,7 @@ function trySubmitReadyPendingDraft(
     const answer = buildAnswerFromDraft(pc, synced.promptDraft);
     if (answer != null) {
       return [
-        withPromptSubmitInFlight(synced, { pileExpand: null }),
+        withPromptSubmitInFlight(synced, fold.seq, { pileExpand: null }),
         boardIntentSubmit(tableId, choiceIntent(pc, answer)),
       ];
     }
@@ -2041,14 +2417,18 @@ export function updateBoard(
       return [model, []];
     case "BoardCameraZoomed":
       if (!Number.isFinite(message.factor) || message.factor <= 0) return [model, []];
-      return [
-        {
-          ...model,
-          camera: zoomAt(model.camera, message.x, message.y, message.factor),
-          cameraUserMoved: true,
-        },
-        [],
-      ];
+      {
+        const camera = zoomAt(model.camera, message.x, message.y, message.factor);
+        return [
+          {
+            ...model,
+            flights: remapFlightsForZoom(model.flights, model.camera.zoom, camera.zoom),
+            camera,
+            cameraUserMoved: true,
+          },
+          [],
+        ];
+      }
     case "BoardPointerDown":
       return [pointerDownModel(model, fold, message.x, message.y), []];
     case "BoardPointerMove": {
@@ -2058,7 +2438,7 @@ export function updateBoard(
     case "BoardPointerUp":
       return pointerUpModel(model, fold, tableId, message.x, message.y);
     case "FlightsSynced":
-      return [applyFlightsSynced(model, message.flights, message.exitFx, message.now), []];
+      return [applyFlightsSynced(model, message.flights, message.exitFx, message.now, fold), []];
     case "HandActionActivated": {
       const x = message.x ?? model.viewport.width / 2;
       const y = message.y ?? model.viewport.height / 2;
@@ -2426,10 +2806,8 @@ export function updateBoard(
           {
             ...synced,
             promptDraft: {
-              kind: "card-pick",
+              ...synced.promptDraft,
               picked: next,
-              filter: synced.promptDraft.filter,
-              host: synced.promptDraft.host,
             },
           },
           [],
@@ -2579,6 +2957,22 @@ export function updateBoard(
       }
       return [next, [SearchCardNames({ query: q }) as unknown as BoardCmd]];
     }
+    // Open/close, arrow keys, active descendant, and blur are the Combobox's. The board only has
+    // to keep the string draft — what the answer is built from — level with the input.
+    case "GotCardNameComboboxMessage": {
+      const [cardNameCombobox, commands, outMessage] = CardNameCombobox.update(model.cardNameCombobox, message.message);
+      const lifted = Command.mapMessages(commands, toCardNameComboboxMessage);
+      // A picked suggestion re-runs the catalog search for a name that is already exact; the
+      // popup is closed by then, so the refreshed list is never seen.
+      const typed = message.message._tag === "UpdatedInputValue" ? message.message.value : null;
+      const picked = Option.isSome(outMessage) && outMessage.value._tag === "Selected" ? outMessage.value.value : null;
+      const value = picked ?? typed;
+      if (value == null) return [{ ...model, cardNameCombobox }, lifted];
+      // Draft first, then seat the input: `PromptStringSet` resyncs the draft, and a resync onto a
+      // different prompt resets the combobox — which would drop the keystroke that got us here.
+      const [drafted, draftCommands] = updateBoard(model, PromptStringSet({ value }), fold, tableId);
+      return [{ ...drafted, cardNameCombobox }, [...lifted, ...draftCommands]];
+    }
     case "CardNameSuggestionsFetched": {
       const draft = model.promptDraft;
       if (draft?.kind !== "string") return [model, []];
@@ -2681,7 +3075,7 @@ export function updateBoard(
       }
       const answer = buildAnswerFromDraft(pc, synced.promptDraft);
       if (answer == null) return [synced, []];
-      return [withPromptSubmitInFlight(synced), boardIntentSubmit(tableId, choiceIntent(pc, answer))];
+      return [withPromptSubmitInFlight(synced, fold.seq), boardIntentSubmit(tableId, choiceIntent(pc, answer))];
     }
     case "PromptDeclined": {
       const synced = syncPromptDraft(model, fold);
@@ -2689,7 +3083,7 @@ export function updateBoard(
       if (pc == null || synced.promptSubmitInFlight) return [synced, []];
       const answer = declineAnswer(pc);
       if (answer == null) return [synced, []];
-      return [withPromptSubmitInFlight(synced), boardIntentSubmit(tableId, choiceIntent(pc, answer))];
+      return [withPromptSubmitInFlight(synced, fold.seq), boardIntentSubmit(tableId, choiceIntent(pc, answer))];
     }
     case "ModalModeToggled": {
       const mc = model.modalCast;
@@ -2818,20 +3212,31 @@ export function updateBoard(
       return [{ ...model, pileExpand: null }, []];
     }
     // ── Concede ───────────────────────────────────────────────────────────────
-    case "ConcedeClicked":
-      return [{ ...model, confirmConcede: true }, []];
-    case "ConcedeCancelled":
-      return [{ ...model, confirmConcede: false }, []];
+    case "ConcedeClicked": {
+      const [concedeDialog, commands] = Dialog.open(model.concedeDialog);
+      return [{ ...model, concedeDialog }, Command.mapMessages(commands, toConcedeDialogMessage)];
+    }
     case "ConcedeConfirmed": {
-      if (fold.state == null) return [{ ...model, confirmConcede: false }, []];
+      const [closed, closeCommands] = closeConcedeConfirm(model);
+      if (fold.state == null) return [closed, closeCommands];
       return [
-        { ...model, confirmConcede: false },
-        boardIntentSubmit(tableId, { kind: "concede", player: fold.state.viewer }),
+        closed,
+        [...closeCommands, ...boardIntentSubmit(tableId, { kind: "concede", player: fold.state.viewer })],
       ];
     }
+    // Escape, a backdrop click, and Cancel all close the dialog inside Dialog.update — cancelling a
+    // concede leaves nothing else to undo, so its Closed out-message needs no handling here.
+    case "GotConcedeDialogMessage": {
+      const [concedeDialog, commands] = Dialog.update(model.concedeDialog, message.message);
+      return [{ ...model, concedeDialog }, Command.mapMessages(commands, toConcedeDialogMessage)];
+    }
     // ── Game result ───────────────────────────────────────────────────────────
-    case "ResultSeen":
-      return [{ ...model, resultSeen: true }, []];
+    // "Stay on the board", Escape, and the backdrop all dismiss it the same way. `resultRaised`
+    // already latched when it was raised, so a dismissed result stays dismissed.
+    case "GotResultDialogMessage": {
+      const [resultDialog, commands] = Dialog.update(model.resultDialog, message.message);
+      return [{ ...model, resultDialog }, Command.mapMessages(commands, toResultDialogMessage)];
+    }
     case "HintDismissed":
       persistHintDismissed();
       return [{ ...model, hintDismissed: true }, []];
@@ -2908,6 +3313,14 @@ export function updateBoard(
       }
       return [cancelAll(model), []];
     }
+    case "FirstPlayerRevealStepped": {
+      const reveal = model.firstPlayerReveal;
+      if (reveal == null) return [model, []];
+      const next = { ...reveal, index: Math.min(reveal.index + 1, reveal.steps.length - 1) };
+      return [{ ...model, firstPlayerReveal: next }, revealTimer(next)];
+    }
+    case "FirstPlayerRevealFinished":
+      return [{ ...model, firstPlayerReveal: null }, []];
     default: {
       const _exhaustive: never = message;
       return [model, []];

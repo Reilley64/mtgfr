@@ -82,7 +82,7 @@ function tile(args: {
   manaCost: WireCost;
   action: ActionView | null;
   slotInert: boolean;
-  /** Action id of the in-flight hand drag ghost — fades the source tile (Solid parity). */
+  /** Action id of the active hand drag — fades the source tile while the canvas ghost follows. */
   draggingActionId?: number | null;
   caption?: string;
   index: number;
@@ -114,14 +114,11 @@ function tile(args: {
   const raisedHitH = handBarHitHeight(true, HAND_VISIBLE_H, HAND_CARD_H);
   const raiseY = handBarRaiseTranslateY(true, HAND_VISIBLE_H, HAND_CARD_H);
   const pips = costPips(manaCost, { showZero: objectKind != null && objectKind !== "land" });
-  const faceClass = [
-    "pointer-events-none absolute top-0 right-0 transition-transform duration-[120ms] ease-state",
-    discardSelected
-      ? "[transform:translateY(var(--raise-y))]"
-      : "group-hover/hand-tile:[transform:translateY(var(--raise-y))]",
-  ].join(" ");
+  // Raise on hover or when the group carries data-selected=true (discard / hand-put picks).
+  const faceClass =
+    "pointer-events-none absolute top-0 right-0 transition-transform duration-[120ms] ease-state group-hover/hand-tile:[transform:translateY(var(--raise-y))] group-data-[selected=true]/hand-tile:[transform:translateY(var(--raise-y))]";
 
-  // Solid parity: the drag source fades so the ghost carries the face; inert slots stay non-interactive.
+  // The drag source fades so the canvas DragGhost carries the face; inert slots stay non-interactive.
   const dragSource = playable && action != null && draggingActionId != null && action.id === draggingActionId;
   const artClass = [
     "pointer-events-none block touch-none rounded-game object-cover shadow-hand transition-[filter,opacity] duration-[80ms] ease-state",
@@ -130,22 +127,25 @@ function tile(args: {
   ]
     .filter((v) => v !== "")
     .join(" ");
+  const pickChrome = discardSelectable || discardSelected;
   const faceChromeClass = [
     "relative origin-bottom rounded-game",
-    discardSelected
-      ? "ring-2 ring-llanowar shadow-[0_0_12px_rgba(47,125,70,0.55)]"
-      : discardSelectable
-        ? "ring-2 ring-island-blue shadow-[0_0_12px_rgba(74,158,255,0.45)]"
-        : dragSource
-          ? ""
-          : barZoneAura(zone, playable),
+    pickChrome
+      ? [
+          "ring-2",
+          "group-data-[selected=true]/hand-tile:ring-llanowar group-data-[selected=true]/hand-tile:shadow-[0_0_12px_rgba(47,125,70,0.55)]",
+          "group-data-[selected=false]/hand-tile:group-data-[selectable=true]/hand-tile:ring-island-blue group-data-[selected=false]/hand-tile:group-data-[selectable=true]/hand-tile:shadow-[0_0_12px_rgba(74,158,255,0.45)]",
+        ].join(" ")
+      : dragSource
+        ? ""
+        : barZoneAura(zone, playable),
   ]
     .filter((v) => v !== "")
     .join(" ");
 
   const hitClass = [
     "pointer-events-auto absolute bottom-0",
-    discardSelected ? "[height:var(--hit-raised-h)]" : "group-hover/hand-tile:[height:var(--hit-raised-h)]",
+    "group-hover/hand-tile:[height:var(--hit-raised-h)] group-data-[selected=true]/hand-tile:[height:var(--hit-raised-h)]",
     playable ? "cursor-grab" : "cursor-not-allowed",
   ].join(" ");
 
@@ -153,7 +153,7 @@ function tile(args: {
     h.Class(hitClass),
     h.Style({
       width: `${hitW}px`,
-      height: `${discardSelected ? raisedHitH : restHitH}px`,
+      height: `${restHitH}px`,
       right: `${HAND_CARD_W - hitW}px`,
       "--hit-raised-h": `${raisedHitH}px`,
     }),
@@ -231,9 +231,6 @@ function tile(args: {
   if (objectId != null) {
     cardFaceAttrs.push(h.DataAttribute("testid", `hand-card-face-${objectId}`));
   }
-  if (discardSelectable || discardSelected) {
-    cardFaceAttrs.push(h.DataAttribute("discard-selected", discardSelected ? "1" : "0"));
-  }
 
   const art: Html = print
     ? cardArt(h, {
@@ -258,47 +255,52 @@ function tile(args: {
         [h.div([h.Class("overflow-hidden text-ellipsis whitespace-nowrap font-semibold")], [name])],
       );
 
-  return h.div(
-    [
-      h.Class(
-        "group/hand-tile pointer-events-none relative shrink-0 origin-bottom overflow-visible [z-index:var(--hand-z)] hover:[z-index:50]",
-      ),
-      h.Style({
-        width: `${HAND_CARD_PEEK}px`,
-        height: `${HAND_VISIBLE_H}px`,
-        transform: fanTransform(index, count),
-        "--raise-y": `${raiseY}px`,
-        "--hand-z": String(index + 1),
-      }),
-      h.DataAttribute("hand-index", String(index)),
-      ...(objectId != null ? [h.DataAttribute("testid", `hand-tile-${objectId}`)] : []),
-    ],
-    [
-      h.div(
-        [h.Class(faceClass), h.Style({ width: `${HAND_CARD_W}px` })],
-        [
-          pipRow,
-          h.div(
-            cardFaceAttrs,
-            [
-              art,
-              caption
-                ? h.div(
-                    [
-                      h.Class(
-                        "pointer-events-none absolute right-0 bottom-2 left-0 mx-1.5 overflow-hidden text-ellipsis whitespace-nowrap rounded-control bg-forest-hud px-1 py-0.5 text-center font-semibold text-micro text-snow",
-                      ),
-                    ],
-                    [caption],
-                  )
-                : null,
-            ].filter((v): v is Html => v !== null),
-          ),
-        ].filter((v): v is Html => v !== null),
-      ),
-      h.div(hitAttrs, []),
-    ],
-  );
+  const tileAttrs: Attribute<Message>[] = [
+    h.Class(
+      "group/hand-tile pointer-events-none relative shrink-0 origin-bottom overflow-visible [z-index:var(--hand-z)] hover:[z-index:50]",
+    ),
+    h.Style({
+      width: `${HAND_CARD_PEEK}px`,
+      height: `${HAND_VISIBLE_H}px`,
+      transform: fanTransform(index, count),
+      "--raise-y": `${raiseY}px`,
+      "--hand-z": String(index + 1),
+    }),
+    h.DataAttribute("hand-index", String(index)),
+  ];
+  if (objectId != null) {
+    tileAttrs.push(h.DataAttribute("testid", `hand-tile-${objectId}`));
+  }
+  if (pickChrome) {
+    tileAttrs.push(h.DataAttribute("selected", discardSelected ? "true" : "false"));
+    tileAttrs.push(h.DataAttribute("selectable", discardSelectable || discardSelected ? "true" : "false"));
+  }
+
+  return h.div(tileAttrs, [
+    h.div(
+      [h.Class(faceClass), h.Style({ width: `${HAND_CARD_W}px` })],
+      [
+        pipRow,
+        h.div(
+          cardFaceAttrs,
+          [
+            art,
+            caption
+              ? h.div(
+                  [
+                    h.Class(
+                      "pointer-events-none absolute right-0 bottom-2 left-0 mx-1.5 overflow-hidden text-ellipsis whitespace-nowrap rounded-control bg-forest-hud px-1 py-0.5 text-center font-semibold text-micro text-snow",
+                    ),
+                  ],
+                  [caption],
+                )
+              : null,
+          ].filter((v): v is Html => v !== null),
+        ),
+      ].filter((v): v is Html => v !== null),
+    ),
+    h.div(hitAttrs, []),
+  ]);
 }
 
 function section(name: string, tiles: ReadonlyArray<Html>): Html | null {
@@ -326,53 +328,6 @@ export type HandViewInputs = {
   /** Object ids currently selected for discard cost / pending discard pick. */
   discardSelectedIds?: ReadonlySet<number> | null;
 };
-
-function handDragGhost(drag: HandDragState): Html {
-  const pips = costPips(drag.manaCost, { showZero: drag.kind != null && drag.kind !== "land" });
-  const zone = drag.zone ?? "hand";
-  const aura = barZoneAura(zone, true);
-  const artClass = `pointer-events-none block touch-none rounded-game object-cover drop-shadow-drag shadow-hand ${aura}`;
-
-  return h.div(
-    [
-      h.DataAttribute("testid", "hand-drag-ghost"),
-      h.Class("pointer-events-none fixed z-[21] -translate-x-1/2 -translate-y-1/2"),
-      h.Style({
-        left: `${drag.x}px`,
-        top: `${drag.y}px`,
-        width: `${HAND_CARD_W}px`,
-      }),
-    ],
-    [
-      pips.length > 0
-        ? h.div(
-            [
-              h.Class("pointer-events-none absolute right-0 left-0 flex items-end justify-end gap-px pb-0.5"),
-              h.Style({ top: `-${HAND_PIP_ROW_H}px`, height: `${HAND_PIP_ROW_H}px` }),
-              h.Attribute("aria-hidden", "true"),
-            ],
-            pips.map((pip: CostPip) => costPipView(pip.ms, pip.code, 17)),
-          )
-        : null,
-      drag.print
-        ? cardArt(h, {
-            print: drag.print,
-            alt: drag.name,
-            className: artClass,
-            style: { width: `${HAND_CARD_W}px`, height: `${HAND_CARD_H}px` },
-          })
-        : h.div(
-            [
-              h.Class(
-                `flex items-center justify-center rounded-game bg-forest-shadow p-1 text-center text-caption text-snow drop-shadow-drag shadow-hand ${aura}`,
-              ),
-              h.Style({ width: `${HAND_CARD_W}px`, height: `${HAND_CARD_H}px` }),
-            ],
-            [h.div([h.Class("overflow-hidden text-ellipsis whitespace-nowrap font-semibold")], [drag.name])],
-          ),
-    ].filter((v): v is Html => v !== null),
-  );
-}
 
 export function handView(inputs: HandViewInputs): Html {
   const { state, hiddenId, flyingIds, hiddenIds, handDrag, discardCostIds = null, discardSelectedIds = null } = inputs;
@@ -506,7 +461,6 @@ export function handView(inputs: HandViewInputs): Html {
           section("Exile", zoneTiles("exile", grouped.exile)),
         ].filter((child): child is Html => child !== null),
       ),
-      handDrag != null ? handDragGhost(handDrag) : null,
     ].filter((child): child is Html => child !== null),
   );
 }

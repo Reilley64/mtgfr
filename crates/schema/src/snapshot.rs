@@ -19,6 +19,7 @@ use crate::event::DeltaEnvelope;
 use crate::intent::{WireAttack, WireBlock, WireTarget};
 use crate::message::{child_message, message, named_message, to_wire_message};
 use crate::projection::project_pending_choice;
+use engine::EffectMessage;
 
 fn format_modifier_contribution(contribution: engine::ModifierContribution) -> String {
     use engine::ModifierContribution;
@@ -1035,6 +1036,7 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
             .collect(),
         attackers_declared: game.attackers_declared(),
         blockers_declared: game.blockers_declared().into_iter().map(|p| p.0).collect(),
+        blocked_attackers: game.blocked_attackers(),
     };
 
     // Only the viewer's own actions — an opponent's are never listed, and a spectator (no seat)
@@ -2718,6 +2720,42 @@ mod tests {
             snap.combat.blockers_declared,
             vec![1],
             "empty block declare must list the defending seat"
+        );
+    }
+
+    #[test]
+    fn combat_view_lists_blocked_attackers_after_declare() {
+        use engine::{Intent, Step};
+        let mut game = Game::new();
+        let attacker = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bears"));
+        let blocker = game.spawn_on_battlefield(PlayerId(1), def("Grizzly Bears"));
+        while game.current_step() != Step::DeclareAttackers {
+            game.submit(Intent::PassPriority {
+                player: game.priority_holder(),
+            })
+            .unwrap();
+        }
+        game.submit(Intent::DeclareAttackers {
+            player: PlayerId(0),
+            attackers: vec![(attacker, Defender::Player(PlayerId(1)))],
+        })
+        .unwrap();
+        while game.current_step() != Step::DeclareBlockers {
+            game.submit(Intent::PassPriority {
+                player: game.priority_holder(),
+            })
+            .unwrap();
+        }
+        game.submit(Intent::DeclareBlockers {
+            player: PlayerId(1),
+            blocks: vec![(blocker, attacker)],
+        })
+        .unwrap();
+
+        let snap = snapshot(&game, PlayerId(0));
+        assert!(
+            snap.combat.blocked_attackers.contains(&attacker),
+            "wire must expose durable blocked attackers for client arrows"
         );
     }
 

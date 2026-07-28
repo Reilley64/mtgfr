@@ -10,7 +10,7 @@ const baseResting = {
   viewer: 0,
   players: [],
   priority: 0,
-  combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+  combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [], blocked_attackers: [] },
   stagedAttackers: [],
   stagedBlocks: [],
   hideCardIds: new Set<number>(),
@@ -44,6 +44,26 @@ describe("restingPaintChanged", () => {
     const flat = restingPaintSnapshot({ ...baseResting, cards: [{ id: 1, fanAngle: 0 }] } as never);
     const fanned = restingPaintSnapshot({ ...baseResting, cards: [{ id: 1, fanAngle: 0.12 }] } as never);
     expect(restingPaintChanged(flat, fanned)).toBe(true);
+  });
+
+  it("is true when only stack declared targets change", () => {
+    const before = restingPaintSnapshot({
+      ...baseResting,
+      stack: [{ controller: 0, kind: "spell", label: { key: "card.name", params: [] }, source: 9 }],
+    } as never);
+    const after = restingPaintSnapshot({
+      ...baseResting,
+      stack: [
+        {
+          controller: 0,
+          kind: "spell",
+          label: { key: "card.name", params: [] },
+          source: 9,
+          target: { kind: "object", id: 1 },
+        },
+      ],
+    } as never);
+    expect(restingPaintChanged(before, after)).toBe(true);
   });
 
   it("is true when only commander_damage changes on a player", () => {
@@ -153,6 +173,55 @@ describe("mergeFlightPoses", () => {
       phase: "flying",
       hold: false,
       targetX: 120,
+    });
+  });
+
+  it("keeps the live pose across landPlayFrom id rebind instead of restarting from the stale seed", () => {
+    // Mount has advanced the hand-id seed; model still holds the spawn pose and land sync
+    // rebinds to the permanent id. Matching only by id drops the live pose and the card
+    // jumps back toward the hand — the every-time land double animation.
+    const live = [
+      {
+        ...spawnFlight({
+          id: 102,
+          print: "forest",
+          name: "Forest",
+          x: 400,
+          y: 200,
+          scale: 2.5,
+          targetX: 737,
+          targetY: 565,
+          targetScale: 1,
+          kind: "battlefield",
+          fromCardId: 102,
+          hold: true,
+        }),
+        x: 680,
+        y: 480,
+        scale: 1.3,
+        phase: "flying" as const,
+      },
+    ];
+    const incoming = [
+      {
+        ...live[0],
+        id: 214,
+        fromCardId: 102,
+        // Stale model spawn pose — must not win over the live Mount pose.
+        x: 400,
+        y: 200,
+        scale: 2.5,
+      },
+    ];
+    expect(mergeFlightPoses(live, incoming)[0]).toMatchObject({
+      id: 214,
+      fromCardId: 102,
+      x: 680,
+      y: 480,
+      scale: 1.3,
+      targetX: 737,
+      targetY: 565,
+      phase: "flying",
     });
   });
 });

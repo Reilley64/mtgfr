@@ -7,6 +7,7 @@ import type { RenderCard } from "../geometry/layout";
 import { STACK_PEEK, type StackPresentation, stackFaceScreenOrigin } from "../geometry/stackLayout";
 import { stackEntryTargets } from "../geometry/stackTargets";
 import type { AvatarScreenPositions } from "./avatars";
+import { combatArrowEndpoints } from "./combatArrowEndpoints";
 
 type Shape = Canvas.Shape;
 
@@ -81,20 +82,20 @@ export function stackPileFaceOrigin(
   });
 }
 
-/** Declared stack targets → Island Blue arrows (presentation-aware origins). */
-export function stackTargetArrowShapes(input: {
+/** Declared stack targets → Island Blue arrow endpoints (presentation-aware origins). */
+export function stackTargetArrowEndpoints(input: {
   viewport: { width: number; height: number };
   stack: ReadonlyArray<StackObjectView>;
   cards: ReadonlyArray<RenderCard>;
   avatars: AvatarScreenPositions;
   camera: Camera;
   presentation?: StackPresentation;
-}): Shape[] {
+}): Array<{ from: Vec; to: Vec }> {
   const count = input.stack.length;
   if (count === 0) return [];
   const presentation = input.presentation ?? "pile";
   const byId = new Map(input.cards.map((card) => [card.id, card]));
-  const shapes: Shape[] = [];
+  const endpoints: Array<{ from: Vec; to: Vec }> = [];
   for (let row = 0; row < count; row++) {
     const entry = input.stack[row];
     if (entry == null) continue;
@@ -114,8 +115,24 @@ export function stackTargetArrowShapes(input: {
         if (card != null) to = cardCenter(input.camera, card);
       }
       if (to == null) continue;
-      shapes.push(...arrowPath(from, to, TARGET_COLOR));
+      endpoints.push({ from, to });
     }
+  }
+  return endpoints;
+}
+
+/** Declared stack targets → Island Blue arrows (presentation-aware origins). */
+export function stackTargetArrowShapes(input: {
+  viewport: { width: number; height: number };
+  stack: ReadonlyArray<StackObjectView>;
+  cards: ReadonlyArray<RenderCard>;
+  avatars: AvatarScreenPositions;
+  camera: Camera;
+  presentation?: StackPresentation;
+}): Shape[] {
+  const shapes: Shape[] = [];
+  for (const { from, to } of stackTargetArrowEndpoints(input)) {
+    shapes.push(...arrowPath(from, to, TARGET_COLOR));
   }
   return shapes;
 }
@@ -126,23 +143,13 @@ export function arrowShapes(input: {
   avatars: AvatarScreenPositions;
   attackers: ReadonlyArray<WireAttack>;
   blocks: ReadonlyArray<WireBlock>;
+  blockersDeclared: ReadonlyArray<number>;
+  blockedAttackers: ReadonlyArray<number>;
 }): Shape[] {
-  const byId = new Map(input.cards.map((card) => [card.id, card]));
   const shapes: Shape[] = [];
-
-  for (const attack of input.attackers) {
-    const from = byId.get(attack.attacker);
-    const to = input.avatars[attack.defender];
-    if (from == null || to == null) continue;
-    shapes.push(...arrowPath(cardCenter(input.camera, from), to, ATTACK_STROKE));
+  for (const endpoint of combatArrowEndpoints(input)) {
+    const stroke = endpoint.kind === "block" ? BLOCK_STROKE : ATTACK_STROKE;
+    shapes.push(...arrowPath(endpoint.from, endpoint.to, stroke));
   }
-
-  for (const block of input.blocks) {
-    const from = byId.get(block.blocker);
-    const to = byId.get(block.attacker);
-    if (from == null || to == null) continue;
-    shapes.push(...arrowPath(cardCenter(input.camera, from), cardCenter(input.camera, to), BLOCK_STROKE));
-  }
-
   return shapes;
 }

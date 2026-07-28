@@ -1,9 +1,11 @@
+import * as Menu from "@foldkit/ui/menu";
 import { Option } from "effect";
 import { Command } from "foldkit";
 import type { Url } from "foldkit/url";
 import { FetchApiVersion } from "./fetch-api-version";
 import { GotAuthMessage } from "./messages";
 import { nextFromUrl, normalizeAppRoute, pathWithSearch, routeFromUrl } from "./routes";
+import { ACCOUNT_MENU_ID } from "./shell/account-chrome/menu";
 import { initialAuthSubmodel } from "./shell/auth/submodel";
 import { FetchMe } from "./shell/auth/update";
 import { initialCoverageSubmodel } from "./shell/coverage/submodel";
@@ -40,6 +42,7 @@ export const init = (url?: Url) => {
     coverage: initialCoverageSubmodel(),
     lobby: initialLobbySlice(),
     game: null,
+    accountMenu: Menu.init({ id: ACCOUNT_MENU_ID }),
     landscapeRotate: { active: isPortraitPhone() },
   };
   const commands = [

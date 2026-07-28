@@ -106,9 +106,10 @@ Password is argon2id PHC format, stored in `Session.token` is a random hex token
 
 Account-facing deck-list chrome derives the signed-in user's Gravatar face from `Me.email`
 (`trim().toLowerCase()` → SHA-256 hex → `https://www.gravatar.com/avatar/{hash}?s=64&d=404`).
-The header uses the same circular Gravatar/monogram helper as lobby seats and exposes
-`account-gravatar-link`, an outbound `Change at Gravatar` link to `https://gravatar.com` with
-`target="_blank"` and `rel="noopener noreferrer"`. There is no in-app upload, crop, or moderation
+The header uses the same circular Gravatar/monogram helper as lobby seats, on the avatar trigger
+of the shared account menu. Its `Change at Gravatar` row (`account-menu-gravatar`) opens
+`https://gravatar.com` in a new tab — see
+[shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md). There is no in-app upload, crop, or moderation
 surface. Public lobby/game seat payloads carry only `gravatar_hash`, never email; see
 [Gravatar Seat Faces Design](2026-07-25-gravatar-seat-faces-design.md).
 
@@ -275,7 +276,7 @@ for hydrating a saved deck without fetching the full catalog.
 - gRPC service-level tests in `crates/server/src/grpc/tests.rs` cover `Auth.Signup`, `Auth.Login`,
   `Decks.Create`, `Decks.List` (including precon interleaving), `Decks.Delete`, and
   `Ratings.GetLeaderboard` ordering/paging with auth enforcement.
-- Shell Scene coverage asserts account chrome includes `account-gravatar-link`; Gravatar hashing
+- Shell Scene coverage opens the account menu and asserts `account-menu-gravatar` reaches `OpenGravatar`; Gravatar hashing
   and URL construction are covered in `client/app/domain/gravatar.test.ts`.
 - `crates/server/src/db.rs` and `crates/server/src/grpc/tests.rs` cover the rating persistence
   slice: explicit `User` rating round-trip in sqlite plus signup seeding `rating = 1000` with a

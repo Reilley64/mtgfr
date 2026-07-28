@@ -6,11 +6,11 @@
 // share an ability's source permanent id.
 
 import { type Attribute, type Html, html } from "foldkit/html";
-import { buttonClass } from "~/ui/buttonClass";
+import { button } from "~/ui/button";
 import { cardArt } from "~/ui/card-art";
 import type { VisibleState } from "~/wire/types";
 import { formatMessage } from "../../domain/i18n/message";
-import { aimingObjectIds, stagedPickTargets } from "../action/targeting";
+import { aimingObjectIds, pendingStackGhost, stagedPickTargets } from "../action/targeting";
 import {
   STACK_CARD_W,
   STACK_HORIZONTAL_MARGIN,
@@ -55,8 +55,9 @@ type StackItem = {
 function hideStackRestingFace(board: BoardModel, source: number): boolean {
   const flight = board.flights.get(source);
   if (flight == null || flight.kind !== "stack") return false;
-  // Held seeds park as settled while awaiting rebind — keep the resting face suppressed.
-  return flight.phase === "flying" || flight.hold === true;
+  // Any in-model stack flight still owns the face — including settled frames before FlightsSynced
+  // drops it. Revealing HTML while the canvas flight is still painted reads as a short second ease.
+  return true;
 }
 
 function objectMeta(state: VisibleState, source: number): { print: string; name: string | null; cardId?: string } {
@@ -64,7 +65,7 @@ function objectMeta(state: VisibleState, source: number): { print: string; name:
   return { print: obj?.print ?? "", name: obj?.name ?? null, cardId: obj?.card_id };
 }
 
-function stackItems(board: BoardModel, state: VisibleState, showStaged: boolean): StackItem[] {
+function stackItems(board: BoardModel, state: VisibleState, showGhost: boolean): StackItem[] {
   const items: StackItem[] = state.stack.map((entry, row) => {
     const meta = objectMeta(state, entry.source);
     const label = formatMessage(entry.label);
@@ -83,7 +84,10 @@ function stackItems(board: BoardModel, state: VisibleState, showStaged: boolean)
       staged: false,
     };
   });
-  if (showStaged && board.staged != null) {
+  if (!showGhost) return items;
+
+  // Local staged cast/activate wins over a pending ghost (both should not be live together).
+  if (board.staged != null && stagedPickTargets(board.staged, state) === null) {
     const card = board.staged.card;
     items.push({
       row: state.stack.length,
@@ -92,6 +96,20 @@ function stackItems(board: BoardModel, state: VisibleState, showStaged: boolean)
       print: card.print ?? "",
       cardId: card.card_id,
       label: card.name,
+      staged: true,
+    });
+    return items;
+  }
+
+  const pending = pendingStackGhost(state);
+  if (pending != null) {
+    items.push({
+      row: state.stack.length,
+      source: pending.id,
+      imageName: pending.name,
+      print: pending.print ?? "",
+      cardId: pending.card_id,
+      label: pending.name,
       staged: true,
     });
   }
@@ -112,16 +130,13 @@ function stackFace(opts: {
   style: Record<string, string>;
 }): Html {
   const faceClass = [
-    "absolute rounded-game shadow-hand",
-    opts.staged || opts.legalTarget ? "ring-2" : "",
-    opts.legalTarget ? "cursor-pointer" : "",
+    "group/stack-face absolute rounded-game shadow-hand",
+    "data-[legal-target=true]:cursor-pointer data-[legal-target=true]:ring-2 data-[legal-target=true]:ring-island-blue",
+    "data-[staged=true]:ring-2 data-[staged=true]:ring-island-blue",
     opts.isTop ? "group-hover/stack:shadow-[0_0_16px_rgba(255,215,106,0.4)]" : "",
   ]
     .filter((v) => v !== "")
     .join(" ");
-
-  const faceStyle: Record<string, string> = { ...opts.style };
-  if (opts.staged || opts.legalTarget) faceStyle["--tw-ring-color"] = TARGET_COLOR;
 
   const art: Html =
     opts.imageName && opts.print
@@ -144,12 +159,15 @@ function stackFace(opts: {
 
   const faceAttrs: Attribute<Message>[] = [
     h.Class(faceClass),
-    h.Style(faceStyle),
+    h.Style(opts.style),
     h.DataAttribute("testid", `stack-face-${opts.row}`),
     h.Attribute("title", opts.imageName ?? opts.label),
   ];
+  if (opts.staged) {
+    faceAttrs.push(h.DataAttribute("staged", "true"));
+  }
   if (opts.legalTarget) {
-    faceAttrs.push(h.DataAttribute("legal-target", "1"));
+    faceAttrs.push(h.DataAttribute("legal-target", "true"));
     faceAttrs.push(h.OnClick(TargetChosen({ target: { kind: "object", id: opts.source } })));
   }
   // Solid stack overlay: hover a face → Alt-inspect aux for that card.
@@ -285,19 +303,15 @@ function pileView(
       [
         ...faces,
         showMagnifier
-          ? h.button(
-              [
-                h.Type("button"),
-                h.DataAttribute("testid", "stack-expand"),
-                h.OnClick(StackExpandClicked()),
-                h.Class(
-                  buttonClass(
-                    "ghost",
-                    "absolute -top-9 right-0 flex items-center gap-1 px-2 py-1 text-chip text-seafoam",
-                  ),
-                ),
-                h.Attribute("aria-label", `Expand stack (${items.length} objects)`),
-              ],
+          ? button(
+              h,
+              {
+                testId: "stack-expand",
+                onClick: StackExpandClicked(),
+                variant: "ghost",
+                class: "absolute -top-9 right-0 flex items-center gap-1 px-2 py-1 text-chip text-seafoam",
+                ariaLabel: `Expand stack (${items.length} objects)`,
+              },
               [`Expand · ${items.length}`],
             )
           : null,
@@ -379,14 +393,15 @@ function stripView(
       [h.Class("flex w-full items-center justify-between gap-sm")],
       [
         h.span([h.Class("text-chip text-seafoam")], [`Stack · ${n}${mode === "full" ? " · full" : ""}`]),
-        h.button(
-          [
-            h.Type("button"),
-            h.DataAttribute("testid", "stack-collapse"),
-            h.OnClick(StackCollapseClicked()),
-            h.Class(buttonClass("ghost", "hit-quiet px-2 py-1 text-chip")),
-            h.Attribute("aria-label", "Collapse stack"),
-          ],
+        button(
+          h,
+          {
+            testId: "stack-collapse",
+            onClick: StackCollapseClicked(),
+            variant: "ghost",
+            class: "hit-quiet px-2 py-1 text-chip",
+            ariaLabel: "Collapse stack",
+          },
           ["✕"],
         ),
       ],
@@ -404,8 +419,14 @@ function shouldEmitDwell(_board: BoardModel, state: VisibleState): boolean {
   return state.can_act && state.priority === state.viewer;
 }
 
+/** Local staged aim or pending board-aim source that needs a stack ghost. */
+function showStackGhost(board: BoardModel, state: VisibleState): boolean {
+  if (board.staged != null && stagedPickTargets(board.staged, state) === null) return true;
+  return pendingStackGhost(state) != null;
+}
+
 export function stackView(board: BoardModel, state: VisibleState): Html | null {
-  const showStaged = board.staged != null && stagedPickTargets(board.staged, state) === null;
+  const showStaged = showStackGhost(board, state);
   const items = stackItems(board, state, showStaged);
   if (items.length === 0) return null;
 

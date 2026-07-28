@@ -1,25 +1,24 @@
+import type * as Menu from "@foldkit/ui/menu";
 import { Submodel } from "foldkit";
 import { type Html, html } from "foldkit/html";
 import { type AppChromeMeta, formatFaithfulPercent } from "../../domain/ui/app-version";
-import { buttonClass } from "../../domain/ui/buttonClass";
-import { alertClass, fieldClass, listRowClass } from "../../domain/ui/surfaces";
-import type { ClosedAccountMenu, GotAuthMessage, ToggledAccountMenu } from "../../messages";
+import { button } from "../../domain/ui/button";
+import { input } from "../../domain/ui/input";
+import { alertClass, listRowClass } from "../../domain/ui/surfaces";
+import { GotAccountMenuMessage, type GotAuthMessage } from "../../messages";
 import { HomeRoute, routePath } from "../../routes";
 import { accountChrome } from "../account-chrome/view";
 import { shellFrame } from "../frame/shell-frame";
 import { ChangedCoverageQuery, type Message as CoverageMessage, RequestedCoverageRefresh } from "./messages";
 import type { CoverageSetRow, CoverageStatus, CoverageSubmodel } from "./submodel";
 
-export type ViewMessage =
-  | CoverageMessage
-  | typeof ClosedAccountMenu.Type
-  | typeof GotAuthMessage.Type
-  | typeof ToggledAccountMenu.Type;
+export type ViewMessage = CoverageMessage | typeof GotAccountMenuMessage.Type | typeof GotAuthMessage.Type;
 
 export type ViewInputs = {
   username: string;
   meGravatarHash: string | null;
   chrome: AppChromeMeta;
+  accountMenu: Menu.Model;
 };
 
 const h = html<ViewMessage>();
@@ -113,11 +112,12 @@ export const view = Submodel.defineView<CoverageSubmodel, ViewMessage, ViewInput
     ),
     chrome,
     lockStageScroll: true,
-    leading: h.a([h.Href(routePath(HomeRoute())), h.Class(buttonClass("ghost"))], ["Play"]),
+    leading: button(h, { as: "a", href: routePath(HomeRoute()), variant: "ghost" }, ["Play"]),
     trailing: accountChrome(h, {
       username,
       gravatarHash: meGravatarHash,
-      menuOpen: model.accountMenuOpen,
+      menu: viewInputs.accountMenu,
+      toMenuMessage: (message) => GotAccountMenuMessage({ message }),
       showLeaderboardLink: true,
     }),
     stage: h.div(
@@ -133,15 +133,16 @@ export const view = Submodel.defineView<CoverageSubmodel, ViewMessage, ViewInput
             model.error == null ? null : h.div([h.Role("alert"), h.Class(alertClass("shrink-0"))], [model.error]),
             status == null ? null : h.div([h.Class("shrink-0 text-label text-lichen")], [status]),
             model.status !== "loading"
-              ? h.input([
-                  h.Type("search"),
-                  h.DataAttribute("testid", "coverage-search"),
-                  h.AriaLabel("Search sets"),
-                  h.Placeholder("Search sets…"),
-                  h.Value(model.query),
-                  h.OnInput((query) => ChangedCoverageQuery({ query })),
-                  h.Class(fieldClass("mb-sm w-full max-w-[420px] shrink-0")),
-                ])
+              ? input(h, {
+                  id: "coverage-search",
+                  type: "search",
+                  testId: "coverage-search",
+                  ariaLabel: "Search sets",
+                  placeholder: "Search sets…",
+                  value: model.query,
+                  onInput: (query) => ChangedCoverageQuery({ query }),
+                  class: "mb-sm w-full max-w-[420px] shrink-0",
+                })
               : null,
             model.status === "ready" && rows.length > 0
               ? h.div(
@@ -174,13 +175,14 @@ export const view = Submodel.defineView<CoverageSubmodel, ViewMessage, ViewInput
               ? h.div([h.Class("text-label text-lichen"), h.DataAttribute("testid", "coverage-empty")], [emptyCopy])
               : null,
             model.status === "error"
-              ? h.button(
-                  [
-                    h.Type("button"),
-                    h.DataAttribute("testid", "coverage-try-again"),
-                    h.OnClick(RequestedCoverageRefresh()),
-                    h.Class(buttonClass("ghost", "mt-md self-start")),
-                  ],
+              ? button(
+                  h,
+                  {
+                    testId: "coverage-try-again",
+                    onClick: RequestedCoverageRefresh(),
+                    variant: "ghost",
+                    class: "mt-md self-start",
+                  },
                   ["Try again"],
                 )
               : null,
