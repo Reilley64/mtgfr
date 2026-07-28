@@ -321,7 +321,7 @@ function printTile(cardId: string, print: ScryfallPrint): Html {
 
 function skeletonPrintTile(): Html {
   return h.div(
-    [h.Class(cn(PRINT_SKELETON, "pointer-events-none"))],
+    [h.Class(cn(PRINT_SKELETON, "pointer-events-none")), h.DataAttribute("testid", "print-skeleton")],
     [
       h.div([h.Class(cn("aspect-[0.72] w-full animate-skeleton rounded-control bg-white/8"))], []),
       h.div([h.Class("h-2.5 w-[70%] animate-skeleton rounded-[3px] bg-white/8")], []),
@@ -332,16 +332,17 @@ function skeletonPrintTile(): Html {
 /** The picker's scrolling area: skeletons, a status line, or the prints themselves. A card can have
  *  hundreds of printings (basic lands especially), so the prints are windowed. */
 function printPickerBody(model: DeckBuilderSubmodel, picker: BuilderPrintPicker): Html {
-  if (picker.loading) {
-    return h.div(
-      [h.Class(PRINT_PICKER_GRID)],
-      Array.from({ length: 4 }, () => skeletonPrintTile()),
-    );
-  }
-  if (picker.error) {
-    return h.div([h.Class("text-burn-red text-label")], ["Could not load printings. Close and try again."]);
-  }
+  // Skeletons only until the first page lands; later pages append under the prints already shown.
   if (picker.prints.length === 0) {
+    if (picker.error) {
+      return h.div([h.Class("text-burn-red text-label")], ["Could not load printings. Close and try again."]);
+    }
+    if (picker.pendingPage !== null) {
+      return h.div(
+        [h.Class(PRINT_PICKER_GRID)],
+        Array.from({ length: 4 }, () => skeletonPrintTile()),
+      );
+    }
     return h.div([h.Class("text-label text-lichen")], ["No printings found."]);
   }
 

@@ -1,6 +1,13 @@
 import * as Effect from "effect/Effect";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { artCropFallbackUrl, buildImageUrl, parseRetryAfterMs, scryfallImageUrl, searchPrints } from "./scryfall";
+import {
+  artCropFallbackUrl,
+  buildImageUrl,
+  parseRetryAfterMs,
+  printSearchUrl,
+  scryfallImageUrl,
+  searchPrintPage,
+} from "./scryfall";
 
 afterEach(() => {
   vi.useRealTimers();
@@ -30,7 +37,7 @@ describe("parseRetryAfterMs", () => {
   });
 });
 
-describe("searchPrints User-Agent", () => {
+describe("searchPrintPage User-Agent", () => {
   it("identifies as edh.reilley.dev/0.1", async () => {
     const fetchMock = vi.fn(
       async (_url: string, _init?: RequestInit) =>
@@ -41,7 +48,7 @@ describe("searchPrints User-Agent", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
 
-    await Effect.runPromise(searchPrints("00000000-0000-0000-0000-000000000000"));
+    await Effect.runPromise(searchPrintPage(printSearchUrl("00000000-0000-0000-0000-000000000000")));
 
     expect(fetchMock).toHaveBeenCalled();
     const init = fetchMock.mock.calls[0]?.[1] as RequestInit | undefined;
@@ -50,7 +57,7 @@ describe("searchPrints User-Agent", () => {
   });
 });
 
-describe("searchPrints 429 retry", () => {
+describe("searchPrintPage 429 retry", () => {
   it("waits Retry-After then retries and succeeds", async () => {
     vi.useFakeTimers();
     const fetchMock = vi
@@ -80,12 +87,12 @@ describe("searchPrints 429 retry", () => {
       );
     vi.stubGlobal("fetch", fetchMock);
 
-    const pending = Effect.runPromise(searchPrints("e4912bc3-bee9-4a2f-a13e-3a99018f8a65"));
+    const pending = Effect.runPromise(searchPrintPage(printSearchUrl("e4912bc3-bee9-4a2f-a13e-3a99018f8a65")));
     await vi.advanceTimersByTimeAsync(2_000);
-    const prints = await pending;
+    const page = await pending;
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(prints).toEqual([
+    expect(page.prints).toEqual([
       {
         collector_number: "91",
         id: "print-1",
@@ -106,9 +113,9 @@ describe("searchPrints 429 retry", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(Effect.runPromise(searchPrints("e4912bc3-bee9-4a2f-a13e-3a99018f8a65"))).rejects.toThrow(
-      /Scryfall print search failed \(400\)/,
-    );
+    await expect(
+      Effect.runPromise(searchPrintPage(printSearchUrl("e4912bc3-bee9-4a2f-a13e-3a99018f8a65"))),
+    ).rejects.toThrow(/Scryfall print search failed \(400\)/);
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
@@ -123,12 +130,50 @@ describe("searchPrints 429 retry", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
 
-    const pending = Effect.runPromise(searchPrints("e4912bc3-bee9-4a2f-a13e-3a99018f8a65"));
+    const pending = Effect.runPromise(searchPrintPage(printSearchUrl("e4912bc3-bee9-4a2f-a13e-3a99018f8a65")));
     const expectation = expect(pending).rejects.toThrow(/Scryfall print search failed \(429\)/);
     await vi.advanceTimersByTimeAsync(1_000);
     await vi.advanceTimersByTimeAsync(1_000);
     await expectation;
     expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe("searchPrintPage paging", () => {
+  function pageResponse(body: unknown) {
+    return new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } });
+  }
+
+  const print = {
+    id: "print-1",
+    set: "one",
+    set_name: "Phyrexia: All Will Be One",
+    collector_number: "91",
+    released_at: "2023-02-03",
+  };
+
+  it("fetches only the page it was given and reports where the rest are", async () => {
+    const fetchMock = vi.fn(async () =>
+      pageResponse({ data: [print], has_more: true, next_page: "https://api.scryfall.com/next" }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const page = await Effect.runPromise(searchPrintPage(printSearchUrl("e4912bc3-bee9-4a2f-a13e-3a99018f8a65")));
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(page.prints).toHaveLength(1);
+    expect(page.nextPage).toBe("https://api.scryfall.com/next");
+  });
+
+  it("reports no next page on the last one", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => pageResponse({ data: [print], has_more: false })),
+    );
+
+    const page = await Effect.runPromise(searchPrintPage("https://api.scryfall.com/next"));
+
+    expect(page.nextPage).toBeNull();
   });
 });
 

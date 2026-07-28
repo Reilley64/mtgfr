@@ -40,9 +40,13 @@ export const AddedBuilderCard = m("AddedBuilderCard", { card: CatalogCardSchema 
 export const RemovedBuilderCard = m("RemovedBuilderCard", { id: S.String });
 export const SetBuilderCommander = m("SetBuilderCommander", { card: S.NullOr(CatalogCardSchema) });
 export const OpenedBuilderPrintPicker = m("OpenedBuilderPrintPicker", { addOnPick: S.Boolean, cardId: S.String });
+/** One page of a card's printings. `url` is the page that was asked for — it identifies which
+ *  request this answers — and `nextPage` is the one still to fetch, if any. */
 export const ReceivedBuilderPrints = m("ReceivedBuilderPrints", {
   cardId: S.String,
+  nextPage: S.NullOr(S.String),
   prints: S.Array(ScryfallPrintSchema),
+  url: S.String,
 });
 export const BuilderPrintSearchFailed = m("BuilderPrintSearchFailed", { cardId: S.String });
 export const PickedBuilderPrint = m("PickedBuilderPrint", { cardId: S.String, print: S.String });

@@ -208,7 +208,12 @@ fetched art, and the card pool, which is heading for tens of thousands of cards.
 grid is a `VirtualList` submodel with a lifted subscription; the pool measures its own
 column width, since `virtualList` reports height only, and its paging moves from an
 IntersectionObserver sentinel to the window's own `endIndex` — a windowed grid has no
-bottom element to observe. Updates [`ui-component-layer`](2026-07-28-ui-component-layer.md)
+bottom element to observe. Windowing exposed the picker's other wait: Scryfall paginates
+printings at 175, and the picker fetched every page before showing any, so a basic land
+sat on skeletons. `searchPrints` splits into a single-page `searchPrintPage`, and the
+update re-issues its own command for `nextPage` until there is none — foldkit `Command`s
+emit exactly one message each, so a self-rechaining command is what stands in for a
+stream. Updates [`ui-component-layer`](2026-07-28-ui-component-layer.md)
 and [`deck-list-and-builder`](2026-07-20-deck-list-and-builder.md).
 
 **W5 — Board blocking modals.**
