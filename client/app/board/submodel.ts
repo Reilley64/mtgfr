@@ -3160,6 +3160,11 @@ export function updateBoard(
       }
       return [cancelAll(model), []];
     }
+    // ponytail: no-op stubs so the switch stays exhaustive — Task 4 fills in the reveal
+    // animation state (spec: first-player-reveal).
+    case "FirstPlayerRevealStepped":
+    case "FirstPlayerRevealFinished":
+      return [model, []];
     default: {
       const _exhaustive: never = message;
       return [model, []];

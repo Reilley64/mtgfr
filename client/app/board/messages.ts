@@ -266,6 +266,12 @@ export const PriorityElapsed = m("PriorityElapsed", { seconds: S.Number });
 /** Toggle the board legend panel. */
 export const LegendToggled = m("LegendToggled");
 
+// ── First-player reveal (CR 103.1) ────────────────────────────────────────────
+/** CR 103.1 reveal: spotlight moved to the next seat in the hop schedule. */
+export const FirstPlayerRevealStepped = m("FirstPlayerRevealStepped");
+/** CR 103.1 reveal: hold on the winner elapsed — dismiss the overlay. */
+export const FirstPlayerRevealFinished = m("FirstPlayerRevealFinished");
+
 export const Message = S.Union([
   ArtLoaded,
   BoardCameraZoomed,
@@ -350,5 +356,7 @@ export const Message = S.Union([
   SoundToggled,
   PriorityElapsed,
   LegendToggled,
+  FirstPlayerRevealStepped,
+  FirstPlayerRevealFinished,
 ]);
 export type Message = typeof Message.Type;
