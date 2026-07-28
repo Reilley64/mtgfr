@@ -138,17 +138,41 @@ Rock Hydra (#70) and Power Leak (#71) each need arithmetic or a hook the plain s
 have.
 *Cards:* conservator, healing_salve, samite_healer.
 
-### 5. `source-of-your-choice-prevention` — 6 cards, M
+### 5a. `color-keyed-prevention` — 6 cards, M — **done**
 Depends on: #4, #9.
-The Circle of Protection cycle. Beyond #4 this needs the shield to be keyed to a *source chosen
-on activation* rather than the damaged object — "the next time a black source of your choice
-would deal damage to you." *Sketch:* `PendingChoice::ChooseDamageSource` offering every object
-matching a `ColorFilter` (from #9) that could deal damage — battlefield permanents plus objects
-on the stack, since a source need not be a permanent (CR 609.7) — recorded as the shield's
-`source_filter`. Reverse Damage is the same shield with a life-gain rider on consumption, so the
-shield needs to report how much it prevented.
+The Circle of Protection cycle plus Reverse Damage, on a shield keyed to the *color* of the
+source rather than to one source picked by name. All six cards ship; the source pick is #5b.
+
+*Landed:* the shield stopped being a `(Target, i32)` pair and became `state::PreventionShield`,
+because three of its four fields are riders one card prints and the plain Healing Salve shield
+prints none of them. `amount` went `Option`: `None` is "prevent *that* damage", which is not
+"prevent a very large amount" — it is spent outright by whatever hit it stops, so a {1} Circle
+eats a four-point Drain Life and a one-point one for the same price, and there is no leftover to
+carry to a second hit. `Event::DamagePrevented` grew a `source` because `apply` has to re-find
+the exact shields the mint already spent, and with a color gate in play "the shields against this
+target" is no longer the same list for every source; the schema projection ignores the field, so
+the wire shape did not move. Both walks share `Game::shields_against` for that reason. Reverse
+Damage's life rider is minted inside `spend_prevention_shields`, next to the `DamagePrevented`
+and reading the actual bite, since only the spend knows how much the shield really ate.
+`ColorFilter::matched_by` was pulled out as a pure predicate over the `[bool; Color::COUNT]` that
+`colors_of` returns — `query.rs` now routes its own color axis through it too, and `apply` can
+precompute the source's colors once instead of fighting `retain_mut` for a `&self` borrow.
 *Cards:* circle_of_protection_black, circle_of_protection_blue, circle_of_protection_green,
 circle_of_protection_red, circle_of_protection_white, reverse_damage.
+
+### 5b. `source-of-your-choice-prevention` — 0 cards, L
+Depends on: #5a.
+Turns #5a's color gate into the printed "a black source **of your choice**". Nothing new enters
+the pool; the six cards of #5a drop their `approximates` and the `ponytail:` on
+`MiscEffect::PreventNextDamage::from_color` goes away. *Sketch:* `PendingChoice::ChooseDamageSource`
+raised as the ability resolves, offering every object that could deal damage and matches the
+`ColorFilter` — battlefield permanents *plus* objects on the stack, since a source need not be a
+permanent (CR 609.7) — with the answer recorded as the shield's source `ObjectId` and checked
+instead of the color at the damage choke. Sized L rather than M because a new `PendingChoice`
+variant is 14 non-generated files plus proto regen, i18n, and a client prompt Scene test; the
+approximation it removes only bites when two sources of the named color would hit the same player
+in one turn, which the ordinary line (activate the Circle in response to the damage) never
+reaches.
 
 ### 6. `damage-redirection` — 3 cards, M
 Depends on: #4.

@@ -48,24 +48,62 @@ impl Game {
     /// double-spend it. Combat's own path applies each event as it pushes it (`push_apply`), so
     /// the case that actually arises today is already correct; the general fix is a spend ledger
     /// threaded through the mint, which no pool card yet needs.
-    fn spend_prevention_shields(&self, target: Target, amount: i32) -> (Vec<Event>, i32) {
-        let available: i32 = self
-            .damage_prevention_shields
-            .iter()
-            .filter(|&&(shielded, _)| shielded == target)
-            .map(|&(_, points)| points)
-            .sum();
-        let prevented = available.min(amount);
+    fn spend_prevention_shields(
+        &self,
+        target: Target,
+        source: ObjectId,
+        amount: i32,
+    ) -> (Vec<Event>, i32) {
+        let mut prevented = 0;
+        let mut life_gained = 0;
+        for shield in self.shields_against(target, source) {
+            if prevented >= amount {
+                break;
+            }
+            // "Prevent that damage" (no point total) eats everything still coming; a point
+            // shield eats what it has left.
+            let bite = match shield.amount {
+                None => amount - prevented,
+                Some(points) => points.min(amount - prevented),
+            };
+            prevented += bite;
+            if shield.gain_life {
+                life_gained += bite;
+            }
+        }
         if prevented <= 0 {
             return (Vec::new(), amount);
         }
-        (
-            vec![Event::DamagePrevented {
-                target,
-                amount: prevented,
-            }],
-            amount - prevented,
-        )
+        let mut events = vec![Event::DamagePrevented {
+            target,
+            amount: prevented,
+            source,
+        }];
+        // Reverse Damage's "you gain life equal to the damage prevented this way" — paid to the
+        // shielded player, who is the only thing any pool card with this rider protects.
+        if life_gained > 0
+            && let Target::Player(player) = target
+        {
+            events.push(Event::LifeChanged {
+                player,
+                amount: life_gained,
+                source: Some(source),
+            });
+        }
+        (events, amount - prevented)
+    }
+
+    /// The shields standing between `source` and `target`, oldest first — the one order both the
+    /// mint above and [`Game::apply`]'s [`Event::DamagePrevented`] arm walk, so the two never
+    /// disagree about which shields paid.
+    pub(crate) fn shields_against(
+        &self,
+        target: Target,
+        source: ObjectId,
+    ) -> impl Iterator<Item = &crate::state::PreventionShield> {
+        self.damage_prevention_shields.iter().filter(move |shield| {
+            shield.target == target && self.color_matches(shield.from_color, source)
+        })
     }
 
     /// [`creature_damage_events`](Self::creature_damage_events) plus Disintegrate's two riders on
@@ -86,7 +124,8 @@ impl Game {
         cant_be_regenerated: bool,
         exile_instead_of_dying: bool,
     ) -> (Vec<Event>, i32) {
-        let (mut events, amount) = self.spend_prevention_shields(Target::Object(object), amount);
+        let (mut events, amount) =
+            self.spend_prevention_shields(Target::Object(object), source, amount);
         // CR 615: damage a shield ate entirely was never dealt, so it marks nothing and feeds no
         // damage watch. (An *unshielded* 0 still emits its `DamageMarked`, as it always has —
         // callers guard 0 amounts themselves where it matters.)
@@ -132,7 +171,8 @@ impl Game {
         player: PlayerId,
         amount: i32,
     ) -> (Vec<Event>, i32) {
-        let (mut events, amount) = self.spend_prevention_shields(Target::Player(player), amount);
+        let (mut events, amount) =
+            self.spend_prevention_shields(Target::Player(player), source, amount);
         // CR 615: damage a shield ate entirely was never dealt — no life loss, and the caller's
         // `amount > 0` guard drops the `DamageDealtToPlayer` marker and lifelink with it.
         if !events.is_empty() && amount <= 0 {

@@ -1394,6 +1394,13 @@ impl Game {
             .map(|(id, _)| id as ObjectId)
             .collect()
     }
+    /// Whether `object`'s colors (CR 105.2a, read live off [`Game::colors_of`]) satisfy `filter`.
+    /// Shared by the permanent filter's own color axis and by the Circle of Protection cycle's
+    /// colored damage shields, which ask the same question of a damage source that need not be a
+    /// permanent at all (CR 609.7) — so this takes a bare [`ObjectId`], not a battlefield one.
+    pub(crate) fn color_matches(&self, filter: ColorFilter, object: ObjectId) -> bool {
+        filter.matched_by(&self.colors_of(object))
+    }
 
     /// Whether the permanent `id` satisfies `filter`. `you` is the effect's controller (the
     /// "you" the filter's `controller` axis is relative to); `source` is the filter's own source
@@ -1536,32 +1543,7 @@ impl Game {
         if filter.exclude.intersects(printed.kind.types()) {
             return false;
         }
-        // Color-count (Vanishing Verse's "monocolored permanent", CR 105.2a) — a colorless
-        // permanent has zero trues in `colors_of` and correctly fails "exactly one".
-        if filter.color == ColorFilter::Monocolored
-            && self.colors_of(id).iter().filter(|&&c| c).count() != 1
-        {
-            return false;
-        }
-        // Specific color (CR 105.2a — Oran-Rief, the Vastwood's "each green creature").
-        let specific_color = match filter.color {
-            ColorFilter::White => Some(Color::White),
-            ColorFilter::Blue => Some(Color::Blue),
-            ColorFilter::Black => Some(Color::Black),
-            ColorFilter::Red => Some(Color::Red),
-            ColorFilter::Green => Some(Color::Green),
-            ColorFilter::Any | ColorFilter::Monocolored | ColorFilter::NotColor(_) => None,
-        };
-        if let Some(color) = specific_color
-            && !self.colors_of(id)[color.index()]
-        {
-            return false;
-        }
-        // Negated specific color (CR 105.2a's negation — Terror/Shriekmaw's "nonblack
-        // creature"). A colorless permanent has no colors, so it always passes.
-        if let ColorFilter::NotColor(color) = filter.color
-            && self.colors_of(id)[color.index()]
-        {
+        if !self.color_matches(filter.color, id) {
             return false;
         }
         // Entered the battlefield this turn (Oran-Rief, the Vastwood). A permanent in a

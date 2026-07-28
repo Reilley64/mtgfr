@@ -2812,7 +2812,14 @@ pub enum Event {
     /// points off them. The consumable twin of [`Self::CombatDamagePrevented`], which records an
     /// all-or-nothing Inkshield shield and spends nothing. Public — like the damage it replaces,
     /// and the client needs it to explain why a lethal-looking hit left the creature standing.
-    DamagePrevented { target: Target, amount: i32 },
+    /// `source` is what would have dealt it, kept because a colored shield (the Circle of
+    /// Protection cycle) only pays for sources of its own color and `apply` has to re-find the
+    /// same shields the mint spent.
+    DamagePrevented {
+        target: Target,
+        amount: i32,
+        source: ObjectId,
+    },
     /// `from` left play and became the command-zone card `card` (commander replacement).
     MovedToCommandZone { card: ObjectId, from: ObjectId },
     /// "You get an emblem with …" (CR 114.1): `controller` got the emblem object `emblem`, whose

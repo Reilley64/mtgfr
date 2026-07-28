@@ -281,13 +281,32 @@ impl Game {
             // target ("dealt to you"). Runtime orchestration state like the shields above; only
             // the *spending* is an event (`Event::DamagePrevented`), because it happens inside the
             // pure damage mint.
-            Effect::Misc(MiscEffect::PreventNextDamage { amount, .. }) => {
-                let amount = self.resolve_amount(amount, controller, source, target, x);
-                if amount <= 0 {
-                    return;
-                }
-                let shielded = target.unwrap_or(Target::Player(controller));
-                self.damage_prevention_shields.push((shielded, amount));
+            Effect::Misc(MiscEffect::PreventNextDamage {
+                amount,
+                from_color,
+                gain_life,
+                ..
+            }) => {
+                // No point total is "prevent *that* damage" (the Circles, Reverse Damage) — the
+                // whole of the next hit, so there is nothing to compute and nothing that can
+                // round down to a no-op shield.
+                let points = match amount {
+                    None => None,
+                    Some(amount) => {
+                        let points = self.resolve_amount(amount, controller, source, target, x);
+                        if points <= 0 {
+                            return;
+                        }
+                        Some(points)
+                    }
+                };
+                self.damage_prevention_shields
+                    .push(crate::state::PreventionShield {
+                        target: target.unwrap_or(Target::Player(controller)),
+                        amount: points,
+                        from_color,
+                        gain_life,
+                    });
             }
             // Master Warcraft: hand the attack / block declaration to this spell's controller for
             // the rest of the turn. Runtime orchestration state like the shields above — the

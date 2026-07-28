@@ -188,11 +188,11 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Camouflage** {G} · Instant — increment 48
 - [x] **Castle** {3}{W} · Enchantment — increment 40
 - [ ] **Chaoslace** {R} · Instant — increment 15
-- [ ] **Circle of Protection: Black** {1}{W} · Enchantment — increment 4, 5
-- [ ] **Circle of Protection: Blue** {1}{W} · Enchantment — increment 4, 5
-- [ ] **Circle of Protection: Green** {1}{W} · Enchantment — increment 4, 5
-- [ ] **Circle of Protection: Red** {1}{W} · Enchantment — increment 4, 5
-- [ ] **Circle of Protection: White** {1}{W} · Enchantment — increment 4, 5
+- [x] **Circle of Protection: Black** {1}{W} · Enchantment — increment 4, 5a
+- [x] **Circle of Protection: Blue** {1}{W} · Enchantment — increment 4, 5a
+- [x] **Circle of Protection: Green** {1}{W} · Enchantment — increment 4, 5a
+- [x] **Circle of Protection: Red** {1}{W} · Enchantment — increment 4, 5a
+- [x] **Circle of Protection: White** {1}{W} · Enchantment — increment 4, 5a
 - [ ] **Clockwork Beast** {6} · Artifact Creature — Beast — increment 28
 - [ ] **Clone** {3}{U} · Creature — Shapeshifter — increment 12
 - [x] **Cockatrice** {3}{G}{G} · Creature — Cockatrice — increment 21
@@ -281,7 +281,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Purelace** {W} · Instant — increment 15
 - [ ] **Raging River** {R}{R} · Enchantment — increment 48
 - [x] **Red Elemental Blast** {R} · Instant — increment 9
-- [ ] **Reverse Damage** {1}{W}{W} · Instant — increment 4, 5
+- [x] **Reverse Damage** {1}{W}{W} · Instant — increment 4, 5a
 - [x] **Righteousness** {W} · Instant — increment 52
 - [ ] **Rock Hydra** {X}{R}{R} · Creature — Hydra — increment 4, 28
 - [x] **Sacrifice** {B} · Instant — increment 46

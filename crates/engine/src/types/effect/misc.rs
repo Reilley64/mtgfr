@@ -85,10 +85,29 @@ pub enum MiscEffect {
     ///
     /// `target` left at [`TargetSpec::None`] shields the ability's controller instead of a chosen
     /// target: Conservator's "dealt to you", which takes no target at all.
+    ///
+    /// `amount` left at `None` is "prevent *that* damage" rather than "the next N" — the whole of
+    /// the next qualifying hit, however big (the Circle of Protection cycle, Reverse Damage).
     PreventNextDamage {
-        amount: Amount,
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        amount: Option<Amount>,
         #[cfg_attr(feature = "card-dsl", serde(default))]
         target: TargetSpec,
+        /// "a **black** source of your choice" (CR 105.2a) — only damage from a source of this
+        /// color is prevented. [`ColorFilter::Any`] (the default) is the plain uncolored shield.
+        ///
+        /// ponytail: the color, but not the *choice*. A Circle's source is picked when the
+        /// ability resolves (CR 609.7), which lets its controller hold the shield for the second
+        /// of two black hits; this arms against whichever black source strikes first. Identical
+        /// in the ordinary line — the Circle is activated in response to the damage — and the
+        /// upgrade path is `PendingChoice::ChooseDamageSource`, offering every battlefield and
+        /// stack object of the color.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        from_color: ColorFilter,
+        /// "You gain life equal to the damage prevented this way" (Reverse Damage): the shield's
+        /// controller gains whatever this shield actually ate, minted alongside the spend.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        gain_life: bool,
     },
 
     PreventCombatDamageToYouCreatingTokens {

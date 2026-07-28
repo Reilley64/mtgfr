@@ -675,6 +675,27 @@ pub enum ColorFilter {
     NotColor(Color),
 }
 
+impl ColorFilter {
+    /// Whether an object with these colors (CR 105.2a — the `[bool; Color::COUNT]`
+    /// [`Game::colors_of`](crate::Game::colors_of) returns) satisfies this filter. Pure, so a
+    /// caller that already holds the colors can ask without re-reading the game.
+    pub fn matched_by(self, colors: &[bool; Color::COUNT]) -> bool {
+        let named = match self {
+            ColorFilter::White => Color::White,
+            ColorFilter::Blue => Color::Blue,
+            ColorFilter::Black => Color::Black,
+            ColorFilter::Red => Color::Red,
+            ColorFilter::Green => Color::Green,
+            // A colorless object has zero trues, so it fails "exactly one".
+            ColorFilter::Monocolored => return colors.iter().filter(|&&c| c).count() == 1,
+            // "Nonblack" (Terror): a colorless object has no colors, so it always passes.
+            ColorFilter::NotColor(color) => return !colors[color.index()],
+            ColorFilter::Any => return true,
+        };
+        colors[named.index()]
+    }
+}
+
 /// A composable predicate over a battlefield permanent — the one filter behind targeted
 /// removal ([`TargetSpec::Permanent`]), mass effects ([`Effect::Destroy(DestroyEffect::DestroyAll)`] /
 /// [`Effect::Zone(ZoneEffect::ReturnAllToHand)`]), and sacrifice edicts ([`Effect::Choice(ChoiceEffect::EachPlayerSacrifices)`]).

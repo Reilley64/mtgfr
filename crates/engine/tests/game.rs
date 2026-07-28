@@ -105064,6 +105064,103 @@ fn a_prevention_shield_expires_at_the_turn_boundary() {
     );
 }
 
+// ── Shields that only stop one color (fidelity #5) ────────────────────────────────────
+
+#[test]
+fn circle_of_protection_black_eats_a_black_hit_whole_however_big() {
+    // "{1}: The next time a black source of your choice would deal damage to you this turn,
+    // prevent that damage." Not "the next N damage" — the whole hit goes, so a four-point Drain
+    // Life is stopped by the same {1} that stops a one-point one. And with no damage dealt there
+    // is nothing for Drain Life's own "you gain life equal to the damage dealt" to gain.
+    let mut game = TestGame::new();
+    let circle = game.spawn_on_battlefield(PlayerId(0), card("Circle of Protection: Black"));
+    let drain = game.spawn_in_hand(PlayerId(0), card("Drain Life"));
+    let start = game.life(PlayerId(0));
+
+    shield_with(&mut game, circle, None);
+
+    game.cast(drain)
+        .x(4)
+        .at(Target::Player(PlayerId(0)))
+        .resolve();
+    assert_eq!(
+        game.life(PlayerId(0)),
+        start,
+        "all four points were prevented, and none were dealt to drain back"
+    );
+}
+
+#[test]
+fn circle_of_protection_black_lets_a_red_source_through() {
+    // "a **black** source": the color is the whole point of the cycle, so a Lightning Bolt walks
+    // past a black Circle untouched.
+    let mut game = TestGame::new();
+    let circle = game.spawn_on_battlefield(PlayerId(0), card("Circle of Protection: Black"));
+    let bolt = game.spawn_in_hand(PlayerId(0), card("Lightning Bolt"));
+    let start = game.life(PlayerId(0));
+
+    shield_with(&mut game, circle, None);
+
+    game.cast(bolt).at(Target::Player(PlayerId(0))).resolve();
+    assert_eq!(
+        game.life(PlayerId(0)),
+        start - 3,
+        "the shield is armed but a red source is not what it was armed against"
+    );
+}
+
+#[test]
+fn circle_of_protection_black_is_spent_on_the_first_black_hit() {
+    // "The **next** time": one activation buys one hit, however small — the Circle is repeatable
+    // precisely because each use is spent.
+    let mut game = TestGame::new();
+    let circle = game.spawn_on_battlefield(PlayerId(0), card("Circle of Protection: Black"));
+    let first = game.spawn_in_hand(PlayerId(0), card("Drain Life"));
+    let second = game.spawn_in_hand(PlayerId(0), card("Drain Life"));
+    let start = game.life(PlayerId(0));
+
+    shield_with(&mut game, circle, None);
+
+    game.cast(first)
+        .x(1)
+        .at(Target::Player(PlayerId(0)))
+        .resolve();
+    assert_eq!(
+        game.life(PlayerId(0)),
+        start,
+        "the shield ate the first hit"
+    );
+
+    game.cast(second)
+        .x(1)
+        .at(Target::Player(PlayerId(0)))
+        .resolve();
+    assert_eq!(
+        game.life(PlayerId(0)),
+        start,
+        "the second is drained back as fast as it lands"
+    );
+}
+
+#[test]
+fn reverse_damage_pays_the_prevented_damage_back_as_life() {
+    // "The next time a source of your choice would deal damage to you this turn, prevent that
+    // damage. You gain life equal to the damage prevented this way." Any color, and the rider
+    // reads what the shield actually ate — so a three-point Bolt is worth three life.
+    let mut game = TestGame::new();
+    let reverse = game.spawn_in_hand(PlayerId(0), card("Reverse Damage"));
+    let bolt = game.spawn_in_hand(PlayerId(0), card("Lightning Bolt"));
+    let start = game.life(PlayerId(0));
+
+    game.cast(reverse).resolve();
+    game.cast(bolt).at(Target::Player(PlayerId(0))).resolve();
+    assert_eq!(
+        game.life(PlayerId(0)),
+        start + 3,
+        "three points prevented, three points gained — and no color gate to pass"
+    );
+}
+
 #[test]
 fn mind_twist_takes_x_cards_from_the_targeted_players_hand_without_asking_them() {
     // "Target player discards X cards at random." At random means *nobody* chooses — the

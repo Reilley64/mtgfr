@@ -209,7 +209,7 @@ pub struct Game {
     /// ponytail: several shields on one target are spent in the order they were created, not in
     /// the order their controller chooses (CR 615.8). Same total prevented either way unless a
     /// card reads *which* shield paid, and none in the pool does.
-    pub(crate) damage_prevention_shields: Vec<(Target, i32)>,
+    pub(crate) damage_prevention_shields: Vec<state::PreventionShield>,
     /// Resolution-local "this way" scratch (DestroyAll / ExileAll / mill / council / edict riders).
     /// Not turn-scoped — see [`resolution::ResolutionFrame`].
     pub(crate) resolution_frame: resolution::ResolutionFrame,

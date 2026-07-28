@@ -3240,7 +3240,9 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                     opponent: false,
                 }),
                 Effect::Misc(MiscEffect::PreventNextDamage {
-                    amount: Amount::Fixed(3),
+                    amount: Some(Amount::Fixed(3)),
+                    from_color: ColorFilter::Any,
+                    gain_life: false,
                     target: TargetSpec::AnyTarget,
                 }),
             ],
@@ -3527,7 +3529,9 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
             (
                 "Samite Healer",
                 Effect::Misc(MiscEffect::PreventNextDamage {
-                    amount: Amount::Fixed(1),
+                    amount: Some(Amount::Fixed(1)),
+                    from_color: ColorFilter::Any,
+                    gain_life: false,
                     target: TargetSpec::AnyTarget,
                 }),
             ),
@@ -3536,7 +3540,9 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                 // "…dealt to you" names no target at all, so the shield lands on whoever
                 // activated it.
                 Effect::Misc(MiscEffect::PreventNextDamage {
-                    amount: Amount::Fixed(2),
+                    amount: Some(Amount::Fixed(2)),
+                    from_color: ColorFilter::Any,
+                    gain_life: false,
                     target: TargetSpec::None,
                 }),
             ),
@@ -4412,6 +4418,56 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                 &Effect::Static(StaticEffect::NoMaximumHandSize),
                 &Effect::Static(StaticEffect::DiscardToLibraryTopInstead),
             ]
+        );
+    }
+
+    /// The Circle of Protection cycle is one sentence printed five times with the color swapped,
+    /// and that color is the only thing standing between a Circle and a hit it was never printed
+    /// to stop. Reverse Damage is the same shield with the gate open and a life rider, so the six
+    /// belong in one assertion: `from_color` here is exactly what the damage choke rechecks, and
+    /// a missing `amount` is what makes the shield eat the whole hit rather than one point of it.
+    #[test]
+    fn unlimited_the_protection_circles_gate_their_shield_on_their_own_color() {
+        for (name, color) in [
+            ("Circle of Protection: White", ColorFilter::White),
+            ("Circle of Protection: Blue", ColorFilter::Blue),
+            ("Circle of Protection: Black", ColorFilter::Black),
+            ("Circle of Protection: Red", ColorFilter::Red),
+            ("Circle of Protection: Green", ColorFilter::Green),
+        ] {
+            let circle = get_by_name(name).unwrap_or_else(|| panic!("{name} is in the pool"));
+            let [ability] = &circle.abilities[..] else {
+                panic!("{name} has one activated ability");
+            };
+            assert!(
+                matches!(ability.timing, Timing::Activated(_)),
+                "{name}: \"{{1}}:\", not a static"
+            );
+            assert_eq!(
+                ability.effect,
+                Effect::Misc(MiscEffect::PreventNextDamage {
+                    amount: None,
+                    target: TargetSpec::None,
+                    from_color: color,
+                    gain_life: false,
+                }),
+                "{name}: no point total — \"prevent that damage\" spends the shield on the whole hit"
+            );
+        }
+
+        let reverse = get_by_name("Reverse Damage").expect("Reverse Damage is in the pool");
+        let [spell] = &reverse.abilities[..] else {
+            panic!("one spell ability");
+        };
+        assert_eq!(
+            spell.effect,
+            Effect::Misc(MiscEffect::PreventNextDamage {
+                amount: None,
+                target: TargetSpec::None,
+                from_color: ColorFilter::Any,
+                gain_life: true,
+            }),
+            "no color gate, and what the shield eats comes back as life"
         );
     }
 }

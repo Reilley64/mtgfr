@@ -1816,18 +1816,31 @@ impl Game {
             // off `target`'s shields, oldest first, dropping each as it empties.
             // `Game::spend_prevention_shields` minted the event by walking the same list in the
             // same order, so the two never disagree about what there was to spend.
-            Event::DamagePrevented { target, amount } => {
+            Event::DamagePrevented {
+                target,
+                amount,
+                source,
+            } => {
                 let mut left = amount;
-                self.damage_prevention_shields
-                    .retain_mut(|(shielded, points)| {
-                        if left <= 0 || *shielded != target {
-                            return true;
-                        }
-                        let spent = left.min(*points);
-                        left -= spent;
-                        *points -= spent;
-                        *points > 0
-                    });
+                let colors = self.colors_of(source);
+                self.damage_prevention_shields.retain_mut(|shield| {
+                    if left <= 0
+                        || shield.target != target
+                        || !shield.from_color.matched_by(&colors)
+                    {
+                        return true;
+                    }
+                    // "Prevent that damage" is spent outright by the hit it stopped, however big;
+                    // a point shield keeps whatever the hit didn't need.
+                    let Some(points) = shield.amount.as_mut() else {
+                        left = 0;
+                        return false;
+                    };
+                    let spent = left.min(*points);
+                    left -= spent;
+                    *points -= spent;
+                    *points > 0
+                });
             }
             Event::MovedToCommandZone { card, from } => {
                 let def = self.def_id_of(from);

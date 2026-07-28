@@ -587,7 +587,7 @@ pub(crate) fn project_event(
             player: player.0,
             amount,
         },
-        Event::DamagePrevented { target, amount } => VisibleEvent::DamagePrevented {
+        Event::DamagePrevented { target, amount, .. } => VisibleEvent::DamagePrevented {
             object: match target {
                 engine::Target::Object(id) => Some(id),
                 engine::Target::Player(_) => None,

@@ -447,3 +447,22 @@ pub(crate) struct ModifierProvenance {
     /// [`Event::TempBoostsEnded`](crate::Event::TempBoostsEnded).
     pub temp_boosts: Vec<(ObjectId, i32, i32, &'static [Keyword], &'static str)>,
 }
+
+/// One consumable "prevent the next … damage" shield (CR 615) on
+/// [`Game::damage_prevention_shields`](crate::Game::damage_prevention_shields). Every field but
+/// `target` is a rider some card in the pool prints; the plain Healing Salve shield is
+/// `{ amount: Some(3), from_color: Any, gain_life: false }`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PreventionShield {
+    /// What the shield stands in front of — a permanent, or a player for the "dealt to you" cards.
+    pub target: crate::Target,
+    /// Points left on it, or `None` for "prevent *that* damage": the whole of the next qualifying
+    /// hit, spending the shield outright however big that hit turns out to be.
+    pub amount: Option<i32>,
+    /// Which sources it stops (CR 105.2a — the Circle of Protection cycle's "a black source").
+    /// [`ColorFilter::Any`](crate::ColorFilter) stops every source, which is the plain shield.
+    pub from_color: crate::ColorFilter,
+    /// Reverse Damage's "you gain life equal to the damage prevented this way" — paid to the
+    /// shield's own controller as the spend is minted.
+    pub gain_life: bool,
+}
