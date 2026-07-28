@@ -142,9 +142,33 @@ pub enum Trigger {
     /// Egg). Lands are the one permanent type the watches above deliberately exclude, and this is
     /// also the one that isn't controller-scoped: the Egg fires on every land that dies anywhere.
     /// The dead land's controller-at-death rides along on
-    /// [`TriggerContext::dying_permanent_controller`] for the "that land's controller" payoff.
+    /// [`TriggerContext::triggering_permanent_controller`] for the "that land's controller" payoff.
     /// See [`Game::queue_land_death_watchers`].
     LandPutIntoGraveyard,
+    /// Whenever a permanent matching `filter` — any player's — becomes tapped. `for_mana` picks
+    /// which tap: `false` is every tap there is (Lifetap's "whenever a Forest an opponent controls
+    /// becomes tapped" — an attack, an Icy Manipulator, a mana ability alike), `true` narrows to a
+    /// land tapped *for mana* (Manabarbs, CR 106.11 — a tap that actually produced mana). The two
+    /// fire from different chokes and never overlap: `false` off [`Event::Tapped`] in
+    /// [`Game::enqueue_triggers`], `true` off [`Game::land_tapped_for_mana`], the same choke the
+    /// [`Effect::Static(StaticEffect::TappedForManaBonus)`] watches read. Not controller-scoped —
+    /// both cards watch the whole table — so the tapped permanent's controller rides on
+    /// [`TriggerContext::triggering_permanent_controller`] for a "that player" payoff. Spelled
+    /// `"permanent_becomes_tapped"` in TOML, with sibling `filter` and `for_mana` fields. See
+    /// [`Game::queue_becomes_tapped_triggers`].
+    PermanentBecomesTapped {
+        filter: PermanentFilter,
+        for_mana: bool,
+    },
+    /// Whenever the permanent this Aura is attached to becomes tapped (Psychic Venom's "whenever
+    /// enchanted land becomes tapped") — the tap twin of
+    /// [`EnchantedCreatureAttacks`](Self::EnchantedCreatureAttacks), and fieldless for the same
+    /// reason: the host is whatever this attachment is on, which no [`PermanentFilter`] can say.
+    /// Fires off [`Event::Tapped`] for *every* tap, mana or not. The host's controller rides on
+    /// [`TriggerContext::triggering_permanent_controller`] for the "that land's controller"
+    /// payoff. Spelled `"enchanted_permanent_becomes_tapped"` in TOML. See
+    /// [`Game::queue_becomes_tapped_triggers`].
+    EnchantedPermanentBecomesTapped,
     /// At the beginning of the controller's upkeep step.
     Upkeep,
     /// At the beginning of *every* player's upkeep, not just the controller's — CR "at the
@@ -865,13 +889,17 @@ pub(crate) struct TriggerContext {
     /// `shares_type_with_dying_permanent`-marked filter via `contextualize_effect`; see
     /// [`Game::queue_nonland_permanent_death_watchers`] for where this is captured.
     pub(crate) dying_permanent_types: Option<TypeSet>,
-    /// CR 603.10a last-known information: the player who controlled the dying permanent, for a
-    /// [`Trigger::LandPutIntoGraveyard`] payoff that names "that land's controller" (Dingus Egg).
-    /// `None` for every other trigger. Baked in at trigger placement because the land is a
-    /// graveyard card by resolution, where `controller_of` would answer its owner. Feeds
+    /// The player who controlled the permanent the trigger is *about* — not the ability's own
+    /// controller — for a payoff that names them: [`Trigger::LandPutIntoGraveyard`]'s "that land's
+    /// controller" (Dingus Egg), [`Trigger::PermanentBecomesTapped`]'s "that player" (Manabarbs),
+    /// [`Trigger::EnchantedPermanentBecomesTapped`]'s "that land's controller" (Psychic Venom).
+    /// `None` for every other trigger. Baked in at trigger placement — CR 603.10a last-known
+    /// information for the death watch, where the land is a graveyard card by resolution and
+    /// `controller_of` would answer its owner; the tap watches merely follow suit. Feeds
     /// [`Effect::Damage(DamageEffect::ToTriggeringPlayer)`] via `contextualize_effect`'s
-    /// `fill_dying_permanent_controller`; see [`Game::queue_land_death_watchers`].
-    pub(crate) dying_permanent_controller: Option<PlayerId>,
+    /// `fill_triggering_permanent_controller`; see [`Game::queue_land_death_watchers`] and
+    /// [`Game::queue_becomes_tapped_triggers`].
+    pub(crate) triggering_permanent_controller: Option<PlayerId>,
     /// CR 603.10a last-known information: the graveyard-object ids of the cards that left this
     /// batch, for a [`Trigger::CardsLeaveYourGraveyard`] payoff that becomes a copy of one of them
     /// (Spirit of Resilience's "become a copy of an artifact or creature card from among those
@@ -937,7 +965,7 @@ impl TriggerContext {
             source_power: None,
             dead_creature: None,
             dying_permanent_types: None,
-            dying_permanent_controller: None,
+            triggering_permanent_controller: None,
             cards_left_graveyard: &[],
             left_battlefield_host: None,
             triggering_ability: None,

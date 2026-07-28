@@ -226,7 +226,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [x] **Fork** {R}{R} · Instant — increment 13
 - [x] **Fungusaur** {3}{G} · Creature — Fungus Dinosaur — increment 63
 - [x] **Gaea's Liege** {3}{G}{G}{G} · Creature — Avatar — increment 74, 8e
-- [ ] **Gauntlet of Might** {4} · Artifact — increment 19
+- [x] **Gauntlet of Might** {4} · Artifact — increment 19
 - [x] **Glasses of Urza** {1} · Artifact — increment 31
 - [ ] **Gloom** {2}{B} · Enchantment — increment 67
 - [x] **Goblin King** {1}{R}{R} · Creature — Goblin — increment 3
@@ -251,17 +251,17 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Lich** {B}{B}{B}{B} · Enchantment — increment 22, 47
 - [x] **Lifeforce** {G}{G} · Enchantment — increment 9
 - [x] **Lifelace** {G} · Instant — increment 15
-- [ ] **Lifetap** {U}{U} · Enchantment — increment 19
+- [x] **Lifetap** {U}{U} · Enchantment — increment 19
 - [ ] **Living Artifact** {G} · Enchantment — Aura — increment 22, 28
 - [x] **Living Lands** {3}{G} · Enchantment — increment 8c
 - [x] **Lord of Atlantis** {U}{U} · Creature — Merfolk — increment 3
 - [x] **Lord of the Pit** {4}{B}{B}{B} · Creature — Demon — increment 72
 - [ ] **Lure** {1}{G}{G} · Enchantment — Aura — increment 11
 - [ ] **Magical Hack** {U} · Instant — increment 16
-- [ ] **Mana Flare** {2}{R} · Enchantment — increment 19
+- [x] **Mana Flare** {2}{R} · Enchantment — increment 19
 - [ ] **Mana Short** {2}{U} · Instant — increment 23
 - [x] **Mana Vault** {1} · Artifact — increment 7
-- [ ] **Manabarbs** {3}{R} · Enchantment — increment 19
+- [x] **Manabarbs** {3}{R} · Enchantment — increment 19
 - [x] **Meekstone** {1} · Artifact — increment 7
 - [ ] **Mesa Pegasus** {1}{W} · Creature — Pegasus — increment 14
 - [x] **Mind Twist** {X}{B} · Sorcery — increment 17
@@ -277,7 +277,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Power Leak** {1}{U} · Enchantment — Aura — increment 4
 - [ ] **Power Sink** {X}{U} · Instant — increment 23
 - [x] **Power Surge** {R}{R} · Enchantment — increment 1
-- [ ] **Psychic Venom** {1}{U} · Enchantment — Aura — increment 19
+- [x] **Psychic Venom** {1}{U} · Enchantment — Aura — increment 19
 - [x] **Purelace** {W} · Instant — increment 15
 - [ ] **Raging River** {R}{R} · Enchantment — increment 48
 - [x] **Red Elemental Blast** {R} · Instant — increment 9

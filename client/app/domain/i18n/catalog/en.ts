@@ -588,9 +588,14 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
         : bonus === "produced"
           ? "one mana of any type that land produced"
           : `one ${bonus} mana`;
-    return param(params, "scope") === "enchanted_host"
-      ? `Whenever enchanted land is tapped for mana, its controller adds an additional ${added}`
-      : `Whenever you tap a land for mana, add an additional ${added}`;
+    const scope = param(params, "scope");
+    if (scope === "enchanted_host") {
+      return `Whenever enchanted land is tapped for mana, its controller adds an additional ${added}`;
+    }
+    if (scope === "any_land") {
+      return `Whenever ${humanize(param(params, "filter", "lands"))} are tapped for mana, their controller adds an additional ${added}`;
+    }
+    return `Whenever you tap a land for mana, add an additional ${added}`;
   },
   "effect.static_token_replacement": (params) => `tokens created: n x ${param(params, "times")}`,
   "effect.static_trigger_doubling": literal("That triggered ability triggers an additional time"),

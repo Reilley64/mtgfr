@@ -445,6 +445,13 @@ pub enum LandTapScope {
     /// Every land the watcher's controller taps for mana — Mirari's Wake's "whenever you tap a
     /// land for mana".
     Controller,
+    /// Every land on the battlefield matching `filter`, whoever taps it — Mana Flare's "whenever a
+    /// player taps a land for mana" (an unrestricted land filter) and Gauntlet of Might's
+    /// "whenever a Mountain is tapped for mana" (`subtypes = ["Mountain"]`, which reads
+    /// [`Game::effective_subtypes`] so a dual counts too, CR 305.6). The bonus still lands in the
+    /// *tapping* player's pool, not the watcher's — "**its controller** adds an additional {R}".
+    /// `scope = { any_land = { … } }` in TOML.
+    AnyLand(PermanentFilter),
 }
 
 /// What color the bonus mana of an [`Effect::Static(StaticEffect::TappedForManaBonus)`] watch is.
@@ -2247,8 +2254,8 @@ pub(crate) fn contextualize_effect(effect: Effect, ctx: TriggerContext) -> Effec
     };
     // A land-death watch's payoff (Dingus Egg's "that land's controller") needs the dead land's
     // controller baked in — `controller_of` would answer its owner once it is a graveyard card.
-    let effect = match ctx.dying_permanent_controller {
-        Some(player) => fill_dying_permanent_controller(effect, player),
+    let effect = match ctx.triggering_permanent_controller {
+        Some(player) => fill_triggering_permanent_controller(effect, player),
         None => effect,
     };
     // A delayed one-shot's copy payoff (Thunderclap Drake) needs the spell that fired the
@@ -2817,11 +2824,13 @@ fn fill_damage_recipient(effect: Effect, player: PlayerId) -> Effect {
     }
 }
 
-/// Rewrite a [`TriggerContext::dying_permanent_controller`]-reading effect placeholder to the
-/// player who controlled the land that died: [`Effect::Damage(DamageEffect::ToTriggeringPlayer)`]
-/// (Dingus Egg's "deals 2 damage to that land's controller") — the same slot Copper Tablet fills
-/// from `active_player`, since either way it names the one player the trigger is about.
-fn fill_dying_permanent_controller(effect: Effect, player: PlayerId) -> Effect {
+/// Rewrite a [`TriggerContext::triggering_permanent_controller`]-reading effect placeholder to the
+/// player who controlled the permanent the trigger is about:
+/// [`Effect::Damage(DamageEffect::ToTriggeringPlayer)`] (Dingus Egg's "deals 2 damage to that
+/// land's controller", Manabarbs' "deals 1 damage to that player", Psychic Venom's "deals 2 damage
+/// to that land's controller") — the same slot Copper Tablet fills from `active_player`, since
+/// either way it names the one player the trigger is about.
+fn fill_triggering_permanent_controller(effect: Effect, player: PlayerId) -> Effect {
     match effect {
         Effect::Damage(DamageEffect::ToTriggeringPlayer { amount, .. }) => Effect::Damage(DamageEffect::ToTriggeringPlayer {
             player: Some(player),
@@ -2830,7 +2839,7 @@ fn fill_dying_permanent_controller(effect: Effect, player: PlayerId) -> Effect {
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
-                .map(|step| fill_dying_permanent_controller(step.clone(), player))
+                .map(|step| fill_triggering_permanent_controller(step.clone(), player))
                 .collect();
             Effect::Sequence {
                 steps: Arc::from(filled),

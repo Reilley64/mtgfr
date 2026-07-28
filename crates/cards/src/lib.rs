@@ -4836,6 +4836,72 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
             assert_eq!(target, TargetSpec::SpellOrPermanent);
         }
     }
+
+    /// The five 1993 land-tap payoffs split two ways, and which side a card lands on is the whole
+    /// increment: Mana Flare and Gauntlet of Might are inline mana bonuses (a mana ability never
+    /// uses the stack, CR 605.3), while Manabarbs, Lifetap, and Psychic Venom are real triggered
+    /// abilities that do.
+    #[test]
+    fn unlimited_land_tap_payoffs_split_bonus_from_trigger() {
+        let flare = get_by_name("Mana Flare").expect("Mana Flare is in the pool");
+        let [flare_line] = &flare.abilities[..] else {
+            panic!("Mana Flare prints one line");
+        };
+        let Effect::Static(StaticEffect::TappedForManaBonus { scope, bonus_color }) =
+            flare_line.effect
+        else {
+            panic!("Mana Flare is an inline mana bonus, not a trigger");
+        };
+        assert_eq!(bonus_color, LandTapBonusColor::Produced);
+        let LandTapScope::AnyLand(filter) = scope else {
+            panic!("Mana Flare watches every seat's lands");
+        };
+        assert!(filter.subtypes.is_empty(), "any land, not one type of land");
+
+        let gauntlet = get_by_name("Gauntlet of Might").expect("Gauntlet of Might is in the pool");
+        let [anthem, bonus] = &gauntlet.abilities[..] else {
+            panic!("Gauntlet of Might prints two lines");
+        };
+        assert!(matches!(
+            anthem.effect,
+            Effect::Static(StaticEffect::Anthem { .. })
+        ));
+        let Effect::Static(StaticEffect::TappedForManaBonus { scope, bonus_color }) = bonus.effect
+        else {
+            panic!("the Gauntlet's second line is an inline mana bonus");
+        };
+        assert_eq!(bonus_color, LandTapBonusColor::Fixed(Color::Red));
+        let LandTapScope::AnyLand(filter) = scope else {
+            panic!("the Gauntlet watches every seat's Mountains");
+        };
+        assert_eq!(filter.subtypes, ["Mountain"]);
+
+        // The two table-wide tap triggers. Manabarbs alone narrows to a tap that made mana.
+        for (name, for_mana) in [("Manabarbs", true), ("Lifetap", false)] {
+            let def = get_by_name(name).unwrap_or_else(|| panic!("{name} is in the pool"));
+            let [line] = &def.abilities[..] else {
+                panic!("{name} prints one line");
+            };
+            let Timing::Triggered(Trigger::PermanentBecomesTapped {
+                filter,
+                for_mana: wants_mana,
+            }) = line.timing
+            else {
+                panic!("{name} is a triggered ability");
+            };
+            assert_eq!(wants_mana, for_mana);
+            assert!(filter.types.intersects(TypeSet::LAND));
+        }
+
+        let venom = get_by_name("Psychic Venom").expect("Psychic Venom is in the pool");
+        let [venom_line] = &venom.abilities[..] else {
+            panic!("Psychic Venom prints one ability line — its enchant clause isn't one");
+        };
+        assert_eq!(
+            venom_line.timing,
+            Timing::Triggered(Trigger::EnchantedPermanentBecomesTapped)
+        );
+    }
 }
 
 #[cfg(test)]

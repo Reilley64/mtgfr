@@ -752,6 +752,7 @@ fn land_tap_scope_token(scope: LandTapScope) -> &'static str {
     match scope {
         LandTapScope::EnchantedHost => "enchanted_host",
         LandTapScope::Controller => "controller",
+        LandTapScope::AnyLand(_) => "any_land",
     }
 }
 
@@ -2102,11 +2103,17 @@ impl Effect {
                     ])
             }
             Effect::Static(TappedForManaBonus { scope, bonus_color }) => {
+                let mut params = vec![
+                    str_param("scope", land_tap_scope_token(scope)),
+                    str_param("bonus_color", land_tap_bonus_color_token(bonus_color)),
+                ];
+                // Gauntlet of Might's "a Mountain" against Mana Flare's bare "a land": the only
+                // scope whose wording varies per card, so the only one carrying a filter.
+                if let LandTapScope::AnyLand(filter) = scope {
+                    params.push(permanent_filter_param("filter", filter));
+                }
                 MessageRef::new(MessageKey::EFFECT_STATIC_TAPPED_FOR_MANA_BONUS)
-                    .with_params(vec![
-                        str_param("scope", land_tap_scope_token(scope)),
-                        str_param("bonus_color", land_tap_bonus_color_token(bonus_color)),
-                    ])
+                    .with_params(params)
             }
             Effect::Static(TriggerDoubling { .. }) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_TRIGGER_DOUBLING)

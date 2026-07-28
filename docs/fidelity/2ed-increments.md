@@ -615,7 +615,7 @@ needs a pause the turn-advance path can raise, which nothing in `advance_step` c
 `perform_turn_based_actions` can set a `pending_choice`, but the untap step is the wrong step and
 the choice arrives before the turn it would skip exists.
 
-### 19. `land-tap-triggers-and-bonuses` — 5 cards, M
+### 19. `land-tap-triggers-and-bonuses` — 5 cards, M — **done**
 Depends on: nothing.
 "Whenever a player taps a land for mana" (Mana Flare, Manabarbs, Gauntlet of Might) and "whenever
 enchanted land becomes tapped" (Psychic Venom, Lifetap). `tapped_for_mana_bonus` (Fertile Ground,
@@ -627,6 +627,46 @@ permanent filter, so Gauntlet of Might's "whenever a Mountain is tapped for mana
 adds an additional {R}" is the existing static over a wider scope. Psychic Venom triggers on *any*
 tap, not just for mana, so it hangs off the tap event rather than the mana path.
 *Cards:* gauntlet_of_might, lifetap, mana_flare, manabarbs, psychic_venom.
+
+*Landed:* the sketch's two halves held, and the split turned out to be the load-bearing part of
+the card text rather than an implementation convenience. A mana ability never uses the stack (CR
+605.3), so Mana Flare and Gauntlet of Might are *not* triggered abilities at all — they are the
+existing inline `tapped_for_mana_bonus` watch read at `Game::land_tapped_for_mana`, and all they
+needed was a scope that isn't "you" or "the land I enchant". `LandTapScope::AnyLand(PermanentFilter)`
+covers both: Mana Flare passes an unrestricted land filter, Gauntlet of Might passes
+`subtypes = ["Mountain"]`, and because the filter matches against the effective type line a dual
+Mountain counts (CR 305.6). The bonus keeps landing in the *tapping* player's pool, which is what
+both cards print. Gauntlet's anthem half cost nothing — it is Crusade's shape with
+`colors = ["red"]` and `all_players = true`.
+
+Manabarbs, Lifetap, and Psychic Venom really are triggered abilities and really do use the stack,
+so they needed `Trigger`s the pool had never asked for: no tap-related variant existed.
+`PermanentBecomesTapped { filter, for_mana }` and the fieldless
+`EnchantedPermanentBecomesTapped` (the tap twin of `EnchantedCreatureAttacks`, fieldless for the
+same reason — no `PermanentFilter` can say "the permanent I am attached to"). Neither is
+controller-scoped: both cards watch the whole table.
+
+The `for_mana` bool is the interesting bit. "Becomes tapped" and "taps a land for mana" are
+different events, and only one choke in the engine knows the difference. So the two fire from two
+places — `for_mana: false` off `Event::Tapped` in `enqueue_triggers` (every tap there is: an
+attack, an Icy Manipulator, a mana ability), `for_mana: true` off `land_tapped_for_mana`, which is
+already the choke the inline bonus watches read and the only code that knows the tap produced mana
+(CR 106.11). A land tapped for mana runs *both* chokes, so the watches partition on the flag and
+the attachment pass runs only on the every-tap side; the Manabarbs test asserts 19 life, not 18,
+to keep that honest.
+
+For "that player" / "that land's controller" nothing new was needed either.
+`DamageEffect::ToTriggeringPlayer` already exists, and `TriggerContext` already had a slot for the
+controller of the permanent a trigger is about — it was just named `dying_permanent_controller`
+for its one caller (Dingus Egg). Renamed to `triggering_permanent_controller` and reused. That was
+a 14-line diff; adding a 34th context field would have meant touching all 33 explicit
+`TriggerContext { … }` literals in `triggers.rs`.
+
+ponytail: Gauntlet of Might's log line renders through the shared
+`effect.static_tapped_for_mana_bonus` template, which now takes the scope's filter as a param and
+reads "Whenever Mountains are tapped for mana, their controller adds an additional one red mana" —
+plural where the card says "a Mountain". Give the template a singular form if a log ever needs to
+quote the card.
 
 ### 20. `pay-or-consequence-upkeep` — 1 card, S — **done**
 Depends on: nothing.

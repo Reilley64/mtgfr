@@ -237,6 +237,12 @@ impl Game {
                 let watches = match scope {
                     LandTapScope::Controller => self.controller_of(id) == player,
                     LandTapScope::EnchantedHost => self.attached_to(id) == Some(land),
+                    // "Whenever a player taps a land for mana" / "whenever a Mountain is tapped
+                    // for mana" — the tapped land itself is what's filtered, not the tapper, so
+                    // `you` is the watcher's own controller and goes unread by both filters.
+                    LandTapScope::AnyLand(filter) => {
+                        self.permanent_matches(&filter, land, self.controller_of(id), Some(id))
+                    }
                 };
                 if !watches {
                     continue;
@@ -288,6 +294,11 @@ impl Game {
                 },
             );
         }
+        // Manabarbs' "whenever a player taps a land for mana" is a real triggered ability, not an
+        // inline bonus — it uses the stack. It hangs here rather than off `Event::Tapped` because
+        // this is the only choke that knows the tap produced mana (CR 106.11); the every-tap
+        // watches fire from that event instead, so the two never double-fire.
+        self.queue_becomes_tapped_triggers(land, true);
     }
 
     /// Pay 1 life to add {C} under Yavimaya Bloomsage's Channel grant (a CR 605 mana ability —

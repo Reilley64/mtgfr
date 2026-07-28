@@ -1012,6 +1012,17 @@ impl Game {
             };
             self.queue_controller_triggers(*player, Trigger::YouPlayALand, None);
         }
+        // Lifetap's "whenever a Forest an opponent controls becomes tapped" and Psychic Venom's
+        // "whenever enchanted land becomes tapped": every tap counts — an attack, an Icy
+        // Manipulator, a mana ability alike — so the plain tap event is the choke. The
+        // for-mana-only watches (Manabarbs) are skipped here and fire from
+        // `Game::land_tapped_for_mana`, which is the only place that knows a tap made mana.
+        for event in events {
+            let Event::Tapped { object } = event else {
+                continue;
+            };
+            self.queue_becomes_tapped_triggers(*object, false);
+        }
         // CR "one or more cards leave your graveyard" (Quintorius Field Historian / Lorehold): the
         // whole batch, not each card, is the trigger event — a board-wipe-then-reanimate or a
         // multi-card exile fires each affected player's watcher once. `create_object` recorded every
@@ -1829,7 +1840,7 @@ impl Game {
     /// for each land put into a graveyard from the battlefield (or a land token that ceased to
     /// exist), fire the ability on every battlefield permanent — any controller, since the printed
     /// text scopes to no seat — with the dead land's controller on
-    /// [`TriggerContext::dying_permanent_controller`] for the "that land's controller" payoff. The
+    /// [`TriggerContext::triggering_permanent_controller`] for the "that land's controller" payoff. The
     /// land twin of [`queue_enchantment_death_watchers`](Self::queue_enchantment_death_watchers)
     /// and [`queue_nonland_permanent_death_watchers`](Self::queue_nonland_permanent_death_watchers)
     /// above; lands are the one permanent type both of those exclude.
@@ -1873,7 +1884,7 @@ impl Game {
             }
             for id in self.battlefield() {
                 let ctx = TriggerContext {
-                    dying_permanent_controller: Some(owner),
+                    triggering_permanent_controller: Some(owner),
                     ..TriggerContext::of(self.controller_of(id))
                 };
                 self.queue_trigger_group(ctx, id, self.def_of(id), Trigger::LandPutIntoGraveyard);
@@ -2257,7 +2268,7 @@ impl Game {
                 source_power: None,
                 dead_creature: None,
                 dying_permanent_types: None,
-                dying_permanent_controller: None,
+                triggering_permanent_controller: None,
                 cards_left_graveyard: &[],
                 left_battlefield_host: None,
                 triggering_ability: None,
@@ -2486,6 +2497,83 @@ impl Game {
         }
     }
 
+    /// Queue becomes-tapped watch triggers for the permanent `tapped` (CR 701.21a — "becomes
+    /// tapped" is the change from untapped to tapped, so a second tap of an already-tapped
+    /// permanent mints no [`Event::Tapped`] and fires nothing here). Two families, both
+    /// table-wide rather than controller-scoped because both cards watch every seat:
+    /// [`Trigger::PermanentBecomesTapped`] on any battlefield permanent whose `filter` matches
+    /// `tapped` (Lifetap's "a Forest an opponent controls", Manabarbs' "a land"), and
+    /// [`Trigger::EnchantedPermanentBecomesTapped`] on `tapped`'s own attachments (Psychic
+    /// Venom), controlled by *that Aura's own controller* like
+    /// [`queue_enchanted_creature_attacks_triggers`](Self::queue_enchanted_creature_attacks_triggers)
+    /// below. `for_mana` says which choke is calling: `false` from
+    /// [`Game::enqueue_triggers`]'s [`Event::Tapped`] scan (every tap there is), `true` from
+    /// [`Game::land_tapped_for_mana`] (a land that actually produced mana, CR 106.11). The two
+    /// partition the filter watches by their own `for_mana` field, and the attachment watches —
+    /// which print no such restriction — run only on the `false` pass, so nothing double-fires
+    /// when a land is tapped for mana and both chokes run. Either way the tapped permanent's
+    /// controller rides on [`TriggerContext::triggering_permanent_controller`] for a "that
+    /// player" / "that land's controller" payoff.
+    pub(crate) fn queue_becomes_tapped_triggers(&mut self, tapped: ObjectId, for_mana: bool) {
+        // The tapper may have sacrificed its own source to pay the cost (a Treasure), and a spell
+        // or graveyard card has no controller to bill.
+        if self.as_permanent(tapped).is_none() {
+            return;
+        }
+        let tapped_controller = self.controller_of(tapped);
+        for id in self.battlefield() {
+            let controller = self.controller_of(id);
+            let ctx = TriggerContext {
+                triggering_permanent_controller: Some(tapped_controller),
+                ..TriggerContext::of(controller)
+            };
+            let abilities: Vec<Ability> = self
+                .functional_abilities(id)
+                .iter()
+                .filter(|a| match a.timing {
+                    Timing::Triggered(Trigger::PermanentBecomesTapped {
+                        filter,
+                        for_mana: wants_mana,
+                    }) => {
+                        wants_mana == for_mana
+                            && self.permanent_matches(&filter, tapped, controller, Some(id))
+                    }
+                    _ => false,
+                })
+                .filter(|a| a.condition.is_none_or(|c| self.condition_holds(c, ctx)))
+                .map(|a| Ability {
+                    effect: contextualize_effect(a.effect.clone(), ctx),
+                    ..*a
+                })
+                .collect();
+            if !abilities.is_empty() {
+                self.pending_trigger_groups.push(TriggerGroup {
+                    expanded: false,
+                    controller,
+                    source: id,
+                    abilities,
+                });
+            }
+        }
+        // Psychic Venom prints no "for mana" restriction, so its watch belongs entirely to the
+        // every-tap pass — running it on the mana pass too would bite twice for one tap.
+        if for_mana {
+            return;
+        }
+        for aura in self.attachments(tapped) {
+            let ctx = TriggerContext {
+                triggering_permanent_controller: Some(tapped_controller),
+                ..TriggerContext::of(self.controller_of(aura))
+            };
+            self.queue_trigger_group(
+                ctx,
+                aura,
+                self.def_of(aura),
+                Trigger::EnchantedPermanentBecomesTapped,
+            );
+        }
+    }
+
     /// Queue attached-permanent attack triggers (CR 508.1, the Impetus cycle — and CR 301.5g's
     /// Equipment twin, Fractal Harness's "whenever equipped creature attacks"): the attacking
     /// `attacker_object`'s attachments (`self.attachments`, Auras *and* Equipment alike) each
@@ -2526,7 +2614,7 @@ impl Game {
                 source_power: None,
                 dead_creature: None,
                 dying_permanent_types: None,
-                dying_permanent_controller: None,
+                triggering_permanent_controller: None,
                 cards_left_graveyard: &[],
                 left_battlefield_host: None,
                 triggering_ability: None,
@@ -2807,7 +2895,7 @@ impl Game {
             source_power: None,
             dead_creature: None,
             dying_permanent_types: None,
-            dying_permanent_controller: None,
+            triggering_permanent_controller: None,
             cards_left_graveyard: &[],
             left_battlefield_host: None,
             triggering_ability: None,

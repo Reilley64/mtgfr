@@ -109070,3 +109070,192 @@ fn thoughtlace_makes_a_red_spell_counterable_by_red_elemental_blast() {
         "the Bolt was countered, so its 3 damage never happened"
     );
 }
+
+// ── Lands that pay and lands that bite when they tap (fidelity increment #19) ──
+
+/// Keep every seat's library stocked so passing priority to resolve a trigger can't deck anybody.
+fn stock_libraries(game: &mut Game) {
+    for player in 0..2 {
+        for _ in 0..10 {
+            game.spawn_in_library(PlayerId(player), card("Mountain"));
+        }
+    }
+}
+
+#[test]
+fn mana_flare_pays_every_seat_that_taps_a_land() {
+    // Mana Flare: "Whenever a player taps a land for mana, that player adds one mana of any type
+    // that land produced." Every seat, and the bonus goes to the tapper's own pool.
+    let mut game = Game::new();
+    stock_libraries(&mut game);
+    game.spawn_on_battlefield(PlayerId(0), card("Mana Flare"));
+    let mine = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
+    let theirs = game.spawn_on_battlefield(PlayerId(1), card("Mountain"));
+
+    game.submit(Intent::TapForMana {
+        player: PlayerId(0),
+        object: mine,
+    })
+    .unwrap();
+    assert_eq!(
+        game.mana_in_pool(PlayerId(0), Color::Green),
+        2,
+        "the Flare's owner taps for green and gets a second green of the type the land produced"
+    );
+
+    game.submit(Intent::TapForMana {
+        player: PlayerId(1),
+        object: theirs,
+    })
+    .unwrap();
+    assert_eq!(
+        game.mana_in_pool(PlayerId(1), Color::Red),
+        2,
+        "\"a player\" is every player — the opponent's Mountain doubles too, into their pool"
+    );
+}
+
+#[test]
+fn gauntlet_of_might_pumps_red_creatures_and_only_boosts_mountains() {
+    // Gauntlet of Might: "Red creatures get +1/+1." / "Whenever a Mountain is tapped for mana, its
+    // controller adds an additional {R}."
+    let mut game = Game::new();
+    stock_libraries(&mut game);
+    game.spawn_on_battlefield(PlayerId(0), card("Gauntlet of Might"));
+    let goblin = game.spawn_on_battlefield(PlayerId(1), card("Goblin Balloon Brigade")); // 1/1 red
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears")); // 2/2 green
+    let mountain = game.spawn_on_battlefield(PlayerId(1), card("Mountain"));
+    let forest = game.spawn_on_battlefield(PlayerId(1), card("Forest"));
+
+    assert_eq!(
+        (game.power(goblin), game.toughness(goblin)),
+        (2, 2),
+        "the anthem is table-wide — an opponent's red creature gets +1/+1 too"
+    );
+    assert_eq!(
+        (game.power(bear), game.toughness(bear)),
+        (2, 2),
+        "a green creature is untouched"
+    );
+
+    game.submit(Intent::TapForMana {
+        player: PlayerId(1),
+        object: mountain,
+    })
+    .unwrap();
+    assert_eq!(
+        game.mana_in_pool(PlayerId(1), Color::Red),
+        2,
+        "the Mountain's own controller gets the additional red, not the Gauntlet's"
+    );
+
+    game.submit(Intent::TapForMana {
+        player: PlayerId(1),
+        object: forest,
+    })
+    .unwrap();
+    assert_eq!(
+        game.mana_in_pool(PlayerId(1), Color::Green),
+        1,
+        "only a Mountain is watched — a Forest taps for its one green and no more"
+    );
+}
+
+#[test]
+fn manabarbs_burns_whoever_taps_a_land_for_mana() {
+    // Manabarbs: "Whenever a player taps a land for mana, this enchantment deals 1 damage to that
+    // player." A real triggered ability, so it uses the stack.
+    let mut game = Game::new();
+    stock_libraries(&mut game);
+    game.spawn_on_battlefield(PlayerId(0), card("Manabarbs"));
+    let theirs = game.spawn_on_battlefield(PlayerId(1), card("Mountain"));
+
+    game.submit(Intent::TapForMana {
+        player: PlayerId(1),
+        object: theirs,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.life(PlayerId(1)),
+        19,
+        "the tapping player takes 1, and exactly once — the mana choke and the tap event must \
+         not both fire the watch"
+    );
+    assert_eq!(
+        game.life(PlayerId(0)),
+        20,
+        "Manabarbs' own controller pays nothing for someone else's tap"
+    );
+}
+
+#[test]
+fn psychic_venom_bites_the_land_it_poisons() {
+    // Psychic Venom: "Enchant land / Whenever enchanted land becomes tapped, this Aura deals 2
+    // damage to that land's controller." P0 hangs it on P1's land.
+    let mut game = Game::new();
+    stock_libraries(&mut game);
+    let theirs = game.spawn_on_battlefield(PlayerId(1), card("Mountain"));
+    let untouched = game.spawn_on_battlefield(PlayerId(1), card("Forest"));
+    let venom = game.spawn_in_hand(PlayerId(0), card("Psychic Venom"));
+
+    advance_until(&mut game, |g| g.current_step() == Step::Main1);
+    fund_cast_resolve(&mut game, PlayerId(0), venom, Some(Target::Object(theirs)));
+
+    game.submit(Intent::TapForMana {
+        player: PlayerId(1),
+        object: theirs,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        game.life(PlayerId(1)),
+        18,
+        "the enchanted land's controller takes 2 — the Aura's controller is not the victim"
+    );
+
+    game.submit(Intent::TapForMana {
+        player: PlayerId(1),
+        object: untouched,
+    })
+    .unwrap();
+    assert_eq!(
+        game.life(PlayerId(1)),
+        18,
+        "only the land the Aura is attached to is watched"
+    );
+}
+
+#[test]
+fn lifetap_pays_you_only_for_an_opponents_forest() {
+    // Lifetap: "Whenever a Forest an opponent controls becomes tapped, you gain 1 life."
+    let mut game = Game::new();
+    stock_libraries(&mut game);
+    game.spawn_on_battlefield(PlayerId(0), card("Lifetap"));
+    let theirs = game.spawn_on_battlefield(PlayerId(1), card("Forest"));
+    let mine = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
+
+    game.submit(Intent::TapForMana {
+        player: PlayerId(1),
+        object: theirs,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        game.life(PlayerId(0)),
+        21,
+        "an opponent's Forest tapping pays the Lifetap's controller"
+    );
+
+    game.submit(Intent::TapForMana {
+        player: PlayerId(0),
+        object: mine,
+    })
+    .unwrap();
+    assert_eq!(
+        game.life(PlayerId(0)),
+        21,
+        "your own Forest pays nothing — \"an opponent controls\" is part of the trigger"
+    );
+}

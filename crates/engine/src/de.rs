@@ -1934,6 +1934,10 @@ enum TriggerTag {
     CreatureEnchantedByYourAuraAttacks,
     YouSacrifice,
     AnyPlayerSacrifices,
+    /// Reuses `AnyPlayerSacrifices`' `filter` sibling for the tapped permanent, plus its own
+    /// `for_mana` bool.
+    PermanentBecomesTapped,
+    EnchantedPermanentBecomesTapped,
     YouDiscard,
     YouDiscardNonland,
     YouPlayALand,
@@ -2125,6 +2129,12 @@ impl<'de> Deserialize<'de> for Ability {
             /// trigger/timing.
             #[serde(default)]
             from_hand: bool,
+            /// Narrows a `permanent_becomes_tapped` trigger to a land tapped *for mana* (CR
+            /// 106.11 — Manabarbs' "whenever a player taps a land for mana"). `false` (the
+            /// default, omitted in TOML) watches every tap there is (Lifetap). Ignored for every
+            /// other trigger/timing.
+            #[serde(default)]
+            for_mana: bool,
             /// The attacker-count threshold for a `you_attack_with_creatures`/
             /// `opponent_attacks_you_with_creatures`/`creature_enchanted_by_your_aura_attacks`
             /// trigger (Firemane Commando/Mangara/Tomik's "two or more creatures" — `2`; Killian,
@@ -2235,6 +2245,13 @@ impl<'de> Deserialize<'de> for Ability {
                 TriggerTag::AnyPlayerSacrifices => Trigger::AnyPlayerSacrifices {
                     filter: flat.filter,
                 },
+                TriggerTag::PermanentBecomesTapped => Trigger::PermanentBecomesTapped {
+                    filter: flat.filter,
+                    for_mana: flat.for_mana,
+                },
+                TriggerTag::EnchantedPermanentBecomesTapped => {
+                    Trigger::EnchantedPermanentBecomesTapped
+                }
                 TriggerTag::YouDiscard => Trigger::YouDiscard,
                 TriggerTag::YouDiscardNonland => Trigger::YouDiscardNonland,
                 TriggerTag::YouPlayALand => Trigger::YouPlayALand,

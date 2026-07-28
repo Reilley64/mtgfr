@@ -1,0 +1,29 @@
+# Whenever a player taps a land for mana, that player adds one mana of any type that land
+# produced.
+name = "Mana Flare"
+otags = ["group-hug", "mana-increaser", "symmetrical", "triggered-ability"]
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "fbb", "lea", "leb", "mb2", "me1", "prm", "sum", "wot"]
+id = "97159138-c34b-416e-b079-5c952383a243"
+default_print = "bf770633-612e-41db-a451-7da802c46e4d"
+oracle = "Whenever a player taps a land for mana, that player adds one mana of any type that land produced."
+
+[cost]
+generic = 2
+red = 1
+
+[kind]
+type = "enchantment"
+
+# Whenever a player taps a land for mana, that player adds one mana of any type that land
+# produced.
+[[abilities]]
+timing = "static"
+
+# Whenever a player taps a land for mana, that player adds one mana of any type that land
+# produced. A mana ability doesn't use the stack (CR 605.3), so this is the inline bonus watch
+# rather than a triggered ability; the bonus lands in the tapping player's own pool.
+[[abilities.effects]]
+type = "static"
+mode = "tapped_for_mana_bonus"
+scope = { any_land = { types = "land" } }
+bonus_color = "produced"
