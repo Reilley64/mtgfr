@@ -2,11 +2,11 @@ import { Effect, Queue, Schema as S, Stream } from "effect";
 import { Submodel } from "foldkit";
 import { type Html, html } from "foldkit/html";
 import * as Mount from "foldkit/mount";
-import { cn } from "../../../domain/cn";
 import type { AppChromeMeta } from "../../../domain/ui/app-version";
 import { button } from "../../../domain/ui/button";
 import { confirmDialog } from "../../../domain/ui/confirmDialog";
 import { input } from "../../../domain/ui/input";
+import { menuItemClass } from "../../../domain/ui/menu";
 import { alertClass, listRowClass } from "../../../domain/ui/surfaces";
 import type { CardArtTick, DeckCardFlipTick, GotAuthMessage, ModalOpened } from "../../../messages";
 import { DeckRoute, NewDeckRoute, PlayRoute, routePath } from "../../../routes";
@@ -36,9 +36,6 @@ export type ViewMessage =
   | typeof ClosedAccountMenu.Type;
 
 const h = html<ViewMessage>();
-
-const MENU_ITEM =
-  "cursor-pointer rounded-control border-none bg-transparent px-md py-xs text-left text-label text-snow hover:bg-white/8 focus-visible:bg-white/8 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-vine";
 
 type ContextMenuMessage = typeof OpenedDeckListMenu.Type | typeof ClosedDeckListMenu.Type;
 
@@ -156,7 +153,7 @@ function contextMenu(model: DeckListSubmodel): Html {
               h.DataAttribute("testid", "deck-list-menu-edit"),
               h.Href(routePath(DeckRoute({ id: String(menu.deckId) }))),
               h.OnClick(ClosedDeckListMenu()),
-              h.Class(cn(MENU_ITEM, "no-underline")),
+              h.Class(menuItemClass("no-underline")),
             ],
             ["Edit"],
           ),
@@ -165,7 +162,7 @@ function contextMenu(model: DeckListSubmodel): Html {
               h.Type("button"),
               h.DataAttribute("testid", "deck-list-menu-delete"),
               h.OnClick(AskedDeckDelete({ id: menu.deckId })),
-              h.Class(MENU_ITEM),
+              h.Class(menuItemClass()),
             ],
             ["Delete"],
           ),

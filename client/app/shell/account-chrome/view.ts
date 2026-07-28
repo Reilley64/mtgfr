@@ -1,15 +1,12 @@
 import type { html as createHtml, Html } from "foldkit/html";
-import { cn } from "../../domain/cn";
 import { button } from "../../domain/ui/button";
+import { menuItemClass } from "../../domain/ui/menu";
 import { seatFace } from "../../domain/ui/seat-face";
 import { GotAuthMessage } from "../../messages";
 import { LeaderboardRoute, routePath } from "../../routes";
 import * as Auth from "../auth";
 import { BindAccountMenuEscape } from "./escape";
 import { ClosedAccountMenu, ToggledAccountMenu } from "./messages";
-
-const MENU_ITEM =
-  "cursor-pointer rounded-control border-none bg-transparent px-md py-xs text-left text-label text-snow hover:bg-white/8 focus-visible:bg-white/8 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-vine";
 
 type HtmlFactory<Msg> = ReturnType<typeof createHtml<Msg>>;
 
@@ -92,7 +89,7 @@ export function accountChrome<Msg>(h: HtmlFactory<Msg>, options: AccountChromeOp
                           h.DataAttribute("testid", "account-gravatar-link"),
                           h.Attribute("target", "_blank"),
                           h.Attribute("rel", "noopener noreferrer"),
-                          h.Class(cn(MENU_ITEM, "no-underline")),
+                          h.Class(menuItemClass("no-underline")),
                         ],
                         ["Change at Gravatar"],
                       ),
@@ -101,7 +98,7 @@ export function accountChrome<Msg>(h: HtmlFactory<Msg>, options: AccountChromeOp
                           h.Type("button"),
                           h.DataAttribute("testid", "account-menu-sign-out"),
                           h.OnClick(GotAuthMessage({ message: Auth.Message.RequestedLogout() }) as never),
-                          h.Class(MENU_ITEM),
+                          h.Class(menuItemClass()),
                         ],
                         ["Sign out"],
                       ),
