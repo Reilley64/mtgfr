@@ -102,6 +102,11 @@
           ],
           "description": "The permanent filter for a `you_sacrifice`/`any_player_sacrifices`/ `permanent_enters` trigger (Smothering Abomination's \"a creature\", Mazirek's \"another permanent\", Ajani's Chosen's \"an enchantment\"). Ignored for every other trigger/timing."
         },
+        "for_mana": {
+          "default": false,
+          "description": "Which tap a `permanent_becomes_tapped` trigger watches — `false` (the default) is every tap there is (Lifetap: an attack, an Icy Manipulator, a mana ability alike), `true` narrows to a land tapped *for mana* (Manabarbs, CR 106.11 — a tap that actually produced mana). Ignored for every other trigger/timing.",
+          "type": "boolean"
+        },
         "from_hand": {
           "default": false,
           "description": "Restricts a `cast_spell` trigger to a spell cast from its controller's hand (CR 601's default cast zone) — Dirgur Focusmage's \"you cast … from your hand\". `false` (the default, omitted in TOML) fires on a cast from any zone (flashback/escape, the command zone, an impulse-play permission). Ignored for every other trigger/timing.",
@@ -149,6 +154,31 @@
         "once_each_turn": {
           "default": false,
           "description": "\"Activate only once each turn\" (CR 602.2b) on an activated ability, or \"this ability triggers only once each turn\" (CR) on a triggered one — one TOML key feeding whichever struct `timing` resolves to (`ActivationCost` or [`Ability`]).",
+          "type": "boolean"
+        },
+        "only_before_attackers": {
+          "default": false,
+          "description": "\"…before attackers are declared\" (CR 602.5b — Nettling Imp): the activation-side twin of `cast_only_before_attackers`. The window runs up to and including the declare-attackers step and shuts the moment the declaration is made.",
+          "type": "boolean"
+        },
+        "only_during_opponents_turn": {
+          "default": false,
+          "description": "\"Activate only during an opponent's turn\" (CR 602.5b — Nettling Imp): someone other than the activating player must be the active player. Composable with the siblings below the same way the `cast_only_*` card restrictions are with each other.",
+          "type": "boolean"
+        },
+        "only_during_your_turn": {
+          "default": false,
+          "description": "\"Activate only during your turn\" (CR 602.5b — Instill Energy) — the mirror of the sibling above. Not the same as `sorcery_speed`, which also demands an empty stack and a main phase; this one only asks whose turn it is, so it activates in combat.",
+          "type": "boolean"
+        },
+        "only_during_your_upkeep": {
+          "default": false,
+          "description": "\"Activate only during your upkeep\" (CR 602.5b — Cyclopean Tomb): a step-and-controller window rather than the phase-shaped ones above. The controller half is what makes it *your* upkeep.",
+          "type": "boolean"
+        },
+        "only_owner_may_activate": {
+          "default": false,
+          "description": "\"Only this creature's owner may activate this ability\" (CR 602.5c — Personal Incarnation): the pool's one activation restriction keyed to ownership rather than control.",
           "type": "boolean"
         },
         "optional": {
@@ -290,6 +320,31 @@
         "once_each_turn": {
           "default": false,
           "description": "An activation restriction: \"Activate only once each turn\" (Beledros Witherbloom's untap ability). CR 602.2b — an unmet activation restriction makes the activation illegal. Keyed by (source object, ability index) in [`Game::once_each_turn_activated`]; `false` for an ability with no such cap.",
+          "type": "boolean"
+        },
+        "only_before_attackers": {
+          "default": false,
+          "description": "\"…before attackers are declared\" (CR 602.5b — Nettling Imp): the activation-side twin of `CardDef::cast_only_before_attackers` (Master Warcraft) and gated identically — the window runs up to and including the declare-attackers step, and shuts the moment the declaration is actually made rather than at the step boundary.",
+          "type": "boolean"
+        },
+        "only_during_opponents_turn": {
+          "default": false,
+          "description": "\"Activate only during an opponent's turn\" (CR 602.5b — Nettling Imp): someone other than the activating player must be the active player. The activation-side member of the same window family as [`CardDef`](crate::CardDef)'s `cast_only_during_combat` / `cast_only_before_attackers` / `cast_only_before_combat_damage` cast restrictions, and composable with the sibling below the same way those are with each other.",
+          "type": "boolean"
+        },
+        "only_during_your_turn": {
+          "default": false,
+          "description": "\"Activate only during your turn\" (CR 602.5b — Instill Energy's free untap): the mirror of the sibling above, and the phase-wide relative of [`only_during_your_upkeep`](Self::only_during_your_upkeep)'s single step. Not the same as [`sorcery_speed`](Self::sorcery_speed), which also demands an empty stack and a main phase — this one only asks whose turn it is, so it activates in combat.",
+          "type": "boolean"
+        },
+        "only_during_your_upkeep": {
+          "default": false,
+          "description": "\"Activate only during your upkeep\" (CR 602.5b — Cyclopean Tomb): a step-and-controller window rather than the phase-shaped ones above, and the tightest the pool asks for. The controller half is what makes it \"your\" upkeep, so this is not just `only_before_attackers` with a different step.",
+          "type": "boolean"
+        },
+        "only_owner_may_activate": {
+          "default": false,
+          "description": "\"Only this creature's owner may activate this ability\" (CR 602.5c — Personal Incarnation): the pool's one activation restriction keyed to ownership rather than control. ponytail: this only ever *narrows* who may activate. The printed line also widens it — an owner who has lost control may still activate — but CR 602.2's controller check runs first here, so a stolen Incarnation is activatable by nobody rather than by its thief.",
           "type": "boolean"
         },
         "pay_life": {
@@ -495,21 +550,27 @@
             "per_creature_on_battlefield",
             "source_power",
             "source_toughness",
+            "source_mana_value",
             "target_power",
             "target_toughness",
             "target_mana_value",
             "per_counter_on_source",
             "opponents_poison_counters",
             "controllers_poison_counters",
+            "your_life_total",
             "life_gained_this_turn",
             "spells_cast_this_turn",
+            "damage_taken_this_turn",
+            "untapped_lands_at_turn_start",
             "cards_in_target_player_hand",
             "cards_in_your_hand",
             "commander_casts_from_command_zone",
             "creatures_died_this_turn",
+            "creatures_died_this_turn_any_controller",
             "nontoken_creatures_entered_this_turn",
             "sacrificed_creature_power",
             "sacrificed_creature_toughness",
+            "dying_enchanted_creature_toughness",
             "commander_color_count",
             "total_power_you_control",
             "greatest_power_among_creatures_you_control",
@@ -517,6 +578,7 @@
             "triggering_spell_mana_value",
             "triggering_spell_mana_spent",
             "spell_sacrifice_count",
+            "spell_sacrificed_mana_value",
             "spell_multikicker_count",
             "revealed_creature_mana_value",
             "permanents_died_this_turn",
@@ -570,7 +632,24 @@
             }
           ]
         },
+        "delta": {
+          "format": "int32",
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
         "else": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Amount"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "half": {
           "anyOf": [
             {
               "$ref": "#/$defs/Amount"
@@ -591,6 +670,16 @@
           ]
         },
         "if_main_phase": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Amount"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "offset": {
           "anyOf": [
             {
               "$ref": "#/$defs/Amount"
@@ -640,6 +729,12 @@
             }
           ]
         },
+        "round_up": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
         "then": {
           "anyOf": [
             {
@@ -674,6 +769,43 @@
       "enum": [
         "battlefield",
         "graveyard"
+      ],
+      "type": "string"
+    },
+    "AttackRider": {
+      "description": "Whether a scheduled destruction asks about the creature's attack this turn (CR 508.1) — the two halves of one question, so one value rather than a pair of bools that must never both be set. Read only when the delayed ability actually fires, never when it is scheduled.",
+      "oneOf": [
+        {
+          "description": "Doesn't ask (Stone Giant's thrown creature, Stinkweed Imp's, Cockatrice's) — destroy.",
+          "enum": [
+            "ignore"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "\"…if it attacked this turn\" (Berserk).",
+          "enum": [
+            "only_if_it_attacked"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "\"…if it didn't attack this turn\" (Nettling Imp).",
+          "enum": [
+            "only_if_it_didnt"
+          ],
+          "type": "string"
+        }
+      ]
+    },
+    "BasicLandType": {
+      "description": "A basic land type (CR 205.3i) — the parameter of [`Keyword::Landwalk`]. Kept as a closed five-variant enum rather than a subtype string so `Keyword` stays `Copy`; nonbasic land types (Desert, Gate, Locus) never appear in a landwalk ability, so there is nothing to widen for.",
+      "enum": [
+        "plains",
+        "island",
+        "swamp",
+        "mountain",
+        "forest"
       ],
       "type": "string"
     },
@@ -1057,9 +1189,34 @@
           "description": "\"Cast this spell only before attackers are declared\" (CR 601.3e — Master Warcraft) — `cast_only_before_attackers = true`; absent (`false`) for every ordinary card.",
           "type": "boolean"
         },
+        "cast_only_before_blockers": {
+          "default": false,
+          "description": "\"Cast this spell only during combat before blockers are declared\" (CR 601.3e — Blaze of Glory) — the declare-blockers half of `cast_only_before_attackers`, open until the first defending player declares. Pair it with `cast_only_during_combat`, which is the other half of Blaze of Glory's printed sentence; alone it leaves the pre-combat main phase open. Absent (`false`) for every ordinary card.",
+          "type": "boolean"
+        },
+        "cast_only_before_combat_damage": {
+          "default": false,
+          "description": "\"Cast this spell only before the combat damage step\" (CR 601.3e — Berserk) — `cast_only_before_combat_damage = true`: legal from untap through declare blockers, and closed for the rest of the turn from the first combat damage step on. Absent (`false`) for every ordinary card.",
+          "type": "boolean"
+        },
         "cast_only_during_combat": {
           "default": false,
           "description": "\"Cast this spell only during combat\" (CR 601.3e) — `cast_only_during_combat = true`; absent (`false`) for every ordinary card.",
+          "type": "boolean"
+        },
+        "cast_only_during_declare_attackers": {
+          "default": false,
+          "description": "\"Cast this spell only during your declare attackers step\" (CR 601.3e — Camouflage) — `cast_only_during_declare_attackers = true`: the attack-side twin of the window above, and narrower still, since it is closed on every other player's turn as well as in every other step. Absent (`false`) for every ordinary card.",
+          "type": "boolean"
+        },
+        "cast_only_during_declare_blockers": {
+          "default": false,
+          "description": "\"Cast this spell only during the declare blockers step\" (CR 601.3e — False Orders) — `cast_only_during_declare_blockers = true`: a single step rather than everything up to one, open before *and* after the declaration (False Orders rearranges a declaration that already happened). Absent (`false`) for every ordinary card.",
+          "type": "boolean"
+        },
+        "cast_only_during_opponents_turn": {
+          "default": false,
+          "description": "\"Cast this spell only during an opponent's turn\" (CR 601.3e — Siren's Call) — `cast_only_during_opponents_turn = true`; the cast-side twin of an activated ability's `only_during_opponents_turn`, composable with `cast_only_before_attackers` (together they are Siren's Call's printed restriction). Absent (`false`) for every ordinary card.",
           "type": "boolean"
         },
         "cast_x_max": {
@@ -1709,6 +1866,28 @@
           "type": "object"
         },
         {
+          "description": "\"if you control no lands whose type line carries any of `subtypes`\" (Sea Serpent's \"when you control no Islands\"). The empty-board mirror of [`ControlsLandsWithSubtype`](Self::ControlsLandsWithSubtype), which only counts *upward* — `count = 0` there would hold vacuously.",
+          "properties": {
+            "subtypes": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "type": {
+              "enum": [
+                "controls_no_lands_with_subtype"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "subtypes",
+            "type"
+          ],
+          "type": "object"
+        },
+        {
           "description": "\"if an opponent controls `count` or more lands whose type line carries any of `subtypes`\" (Massacre's free-cast permission: \"if an opponent controls a Plains\" — `subtypes = [\"Plains\"], count = 1`). The opponent-scoped twin of [`ControlsLandsWithSubtype`](Self::ControlsLandsWithSubtype) — holds when *some* living opponent of the controller meets the threshold individually (not summed across opponents, unlike [`OpponentsControlLands`](Self::OpponentsControlLands)).",
           "properties": {
             "count": {
@@ -2053,6 +2232,21 @@
           "type": "object"
         },
         {
+          "description": "\"if this creature attacked or blocked this combat\" (Clockwork Beast's end-of-combat wind-down). Reads the live [`CombatState`](crate::CombatState) — this is checked as the ability would trigger (CR 603.4), and [`Trigger::EndOfCombat`] is queued from the end-of-combat turn-based action *before* [`Event::CombatCleared`], so the declarations are still there to read.",
+          "properties": {
+            "type": {
+              "enum": [
+                "source_attacked_or_blocked_this_combat"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
           "description": "\"if this permanent has no `kind` counters on it\" (CR 702 counters; mana_bloom's upkeep self-bounce: \"if this enchantment has no charge counters on it, return it to its owner's hand\"). Source-object-based like [`SourceHasCounters`](Self::SourceHasCounters) above. ponytail: only the \"== 0\" inversion this increment's cards need, not a general `at_least`/`at_most` on a named kind; grow a `SourceHasCountersOfKind { kind, at_least }` sibling (mirroring `SourceHasCounters`) if a future card needs \"at least N story/charge counters\" as an intervening-if instead of exactly zero.",
           "properties": {
             "kind": {
@@ -2066,6 +2260,31 @@
             }
           },
           "required": [
+            "kind",
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "\"if this permanent has `at_least` or more `kind` counters on it\" — the positive sibling `SourceHasNoCountersOfKind` above always said to grow. Living Artifact's \"you may remove a vitality counter from this Aura. If you do, you gain 1 life\": as an intervening-if (CR 603.4) the trigger never reaches the stack with nothing to remove, which is what \"if you do\" comes to when the removal can't fail once a counter is there.",
+          "properties": {
+            "at_least": {
+              "format": "uint32",
+              "minimum": 0.0,
+              "type": "integer"
+            },
+            "kind": {
+              "$ref": "#/$defs/CounterKind"
+            },
+            "type": {
+              "enum": [
+                "source_has_counters_of_kind"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "at_least",
             "kind",
             "type"
           ],
@@ -2122,6 +2341,70 @@
             }
           },
           "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "\"if [this permanent] is tapped\" (Mana Vault's draw-step ping) — the exact negation of [`SourceUntapped`](Self::SourceUntapped), spelled as its own variant because an `[abilities.condition]` intervening-if has no negation axis (only a nested [`Effect::Conditional`] carries `negate`). Read at both of CR 603.4's checks the same way its twin is: at trigger placement in [`Game::ability_condition_holds`], and again fresh at resolution.",
+          "properties": {
+            "type": {
+              "enum": [
+                "source_tapped"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "The gate that turns \"at the beginning of **each** upkeep\" into \"at the beginning of the upkeep of **enchanted permanent's controller**\" (the 2ed upkeep-tax Aura cycle — Cursed Land, Feedback, Wanderlust, Warp Artifact): holds only on the upkeep of the player who controls this Aura's host, which need not be the Aura's own controller. Source-object-based like [`SourceUntapped`](Self::SourceUntapped), and it also reads `TriggerContext::active_player`, so it belongs on a [`Trigger::EachUpkeep`] ability — the only trigger that threads one. ponytail: an intervening-if rather than its own trigger variant — a trigger that fires and is filtered out at placement never reaches the stack, so it is indistinguishable from one that never fired. Give it a real variant if a card ever needs to *see* the non-fire.",
+          "properties": {
+            "type": {
+              "enum": [
+                "enchanted_permanents_controllers_upkeep"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "The gate that turns \"at the beginning of **each** upkeep\" into \"at the beginning of the **chosen player's** upkeep\" (Black Vise): holds only on the upkeep of the opponent this permanent's as-enters [`Effect::Choice(ChoiceEffect::ChooseOpponent)`] named. The chosen-opponent twin of [`EnchantedPermanentsControllersUpkeep`](Self::EnchantedPermanentsControllersUpkeep) above — source-object-based, reads `TriggerContext::active_player`, and belongs on a [`Trigger::EachUpkeep`] ability for the same reasons. Never holds before the choice is answered.",
+          "properties": {
+            "type": {
+              "enum": [
+                "chosen_players_upkeep"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "\"if enchanted creature has `keyword`\" (Earthbind's enters trigger: \"if enchanted creature has flying\"). Source-object-based like [`EnchantedPermanentsControllersUpkeep`](Self::EnchantedPermanentsControllersUpkeep) above — it reads the Aura's own attachment — and asks after the host's *effective* keyword set, so a granted flying counts. An Aura with no host (or on a host that has since lost the keyword) never holds.",
+          "properties": {
+            "keyword": {
+              "$ref": "#/$defs/Keyword"
+            },
+            "type": {
+              "enum": [
+                "enchanted_creature_has_keyword"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "keyword",
             "type"
           ],
           "type": "object"
@@ -2268,6 +2551,27 @@
           "type": "object"
         },
         {
+          "description": "\"if this card is in your graveyard with `count` or more creature cards above it\" (Nether Shadow). A *positional* graveyard read: only the cards buried on top of the source count, so a creature card underneath it never digs it out. Source-object-based like [`SourceHasCounters`](Self::SourceHasCounters), so `Game::ability_condition_holds` intercepts it at trigger placement.",
+          "properties": {
+            "count": {
+              "format": "uint32",
+              "minimum": 0.0,
+              "type": "integer"
+            },
+            "type": {
+              "enum": [
+                "creature_cards_above_this_in_graveyard_at_least"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "count",
+            "type"
+          ],
+          "type": "object"
+        },
+        {
           "description": "\"if that creature has power `at_least` or greater\" (Yavimaya Bloomsage's \"Then if that creature has power 7 or greater, this creature becomes prepared\") — reads the *resolving effect's own chosen target's* power, not a `TriggerContext` field like every other arm here. `TriggerContext` carries no target, so (like `SourceHasCounters`/ `ThisPermanentEnteredUntapped` above) this is unreachable through the ordinary `condition_holds` path; the [`Effect::Conditional`] resolve site special-cases it directly against the shared `target` before falling through — see `Game::run`.",
           "properties": {
             "at_least": {
@@ -2389,6 +2693,27 @@
           "type": "object"
         },
         {
+          "description": "\"if it wasn't the first land you played this turn\" (Fastbond — `at_least = 2`): the controller has *played* at least `at_least` lands this turn. Reads `Player::lands_played`, which the [`Event::LandPlayed`](crate::Event) apply already bumped by the time CR 603.4's check runs, so the land being played counts itself. Narrower than [`LandEnteredUnderYourControlThisTurn`](Self::LandEnteredUnderYourControlThisTurn) above — a fetched or token land isn't *played*, and never feeds this.",
+          "properties": {
+            "at_least": {
+              "format": "uint32",
+              "minimum": 0.0,
+              "type": "integer"
+            },
+            "type": {
+              "enum": [
+                "lands_played_this_turn_at_least"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "at_least",
+            "type"
+          ],
+          "type": "object"
+        },
+        {
           "description": "\"if you control a prime number of lands\" (Zimone, All-Questioning). Reads [`Game::lands_controlled`] through a small trial-division primality test.",
           "properties": {
             "type": {
@@ -2409,6 +2734,36 @@
             "type": {
               "enum": [
                 "during_your_turn"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "\"Activate only during your upkeep\" (Rock Hydra) — the narrower sibling of [`DuringYourTurn`](Self::DuringYourTurn): the controller must be the active player *and* the game must be in the upkeep step. Read through the same [`Game::ability_activation_gate`](crate::Game) path as [`DuringCombat`](Self::DuringCombat).",
+          "properties": {
+            "type": {
+              "enum": [
+                "during_your_upkeep"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "\"Activate only during combat\" (Jade Statue — CR 506.1's combat phase, from Beginning of Combat through End of Combat). Holds iff the current step is a combat step, whoever the active player is — the Statue's own text names no seat, so it animates on an opponent's turn to block. The activation-timing sibling of [`DuringYourTurn`](Self::DuringYourTurn), read through the same [`Game::ability_activation_gate`](crate::Game) path a spell's `cast_only_during_combat` field covers on the cast side.",
+          "properties": {
+            "type": {
+              "enum": [
+                "during_combat"
               ],
               "type": "string"
             }
@@ -2559,10 +2914,11 @@
       "type": "object"
     },
     "CopyTargetKind": {
-      "description": "The candidate-object type [`CardDef::enter_as_copy`] may copy (CR 706/707.2): `Creature` (the default — Altered Ego, Cursed Mirror) or `Enchantment` (Copy Enchantment, which includes Auras — CR 303.2). `enter_as_copy = { of = \"enchantment\" }` in TOML; absent means `Creature`.",
+      "description": "The candidate-object type [`CardDef::enter_as_copy`] may copy (CR 706/707.2): `Creature` (the default — Altered Ego, Clone, Cursed Mirror, Vesuvan Doppelganger), `Enchantment` (Copy Enchantment, which includes Auras — CR 303.2), or `Artifact` (Copy Artifact). Each reads the CR 613.4 type layer rather than the printed kind, so an animated land is a creature here and a Copy Artifact wearing an artifact is an artifact for the next one. `enter_as_copy = { of = \"enchantment\" }` in TOML; absent means `Creature`.",
       "enum": [
         "creature",
-        "enchantment"
+        "enchantment",
+        "artifact"
       ],
       "type": "string"
     },
@@ -2664,6 +3020,17 @@
             }
           ],
           "description": "`{X}` pips. `true` means one `{X}`; an integer gives the count of `{X}` symbols."
+        },
+        "x_color": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Color"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A color restriction on the mana spent for `{X}` (CR 601.2g) — Drain Life's \"Spend only black mana on X\" is `x_color = \"black\"`. The chosen value is paid as colored pips of that color instead of as generic. Absent for every other `{X}` cost, where any mana pays."
         }
       },
       "type": "object"
@@ -2759,6 +3126,34 @@
             "storage"
           ],
           "type": "string"
+        },
+        {
+          "description": "A corpse counter (CR 122.1 — Scavenging Ghoul): banked deaths, one per creature that died this turn, spent one at a time to pay the Ghoul's own regeneration. Inert bookkeeping — it changes nothing about the permanent by itself.",
+          "enum": [
+            "corpse"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "A mire counter (CR 122.1 — Cyclopean Tomb): a functional reminder counter marking a land that \"is a Swamp for as long as it has a mire counter on it.\" Like [`Vow`](Self::Vow), the counter *is* the effect — the type change outlives the Tomb, so there is nothing on the battlefield left to read it off, and [`Game::effective_subtypes`](crate::Game) consults this slot directly.",
+          "enum": [
+            "mire"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "A vitality counter (CR 122.1 — Living Artifact): banked damage, one per point dealt to the enchantment's controller, spent one per upkeep for 1 life. Inert bookkeeping like [`Corpse`](Self::Corpse) — it changes nothing about the permanent by itself.",
+          "enum": [
+            "vitality"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "A +1/+0 counter (CR 121.1 — Clockwork Beast): a real P/T counter, not bookkeeping, read out of this map by [`Game::pt_layers`] in layer 7d exactly like [`MinusOneMinusOne`](Self::MinusOneMinusOne) — power only, toughness untouched, which is why it can't ride the scalar `plus_counters` path.",
+          "enum": [
+            "plus_one_plus_zero"
+          ],
+          "type": "string"
         }
       ]
     },
@@ -2813,6 +3208,32 @@
       ],
       "type": "object"
     },
+    "DefiningPtWhen": {
+      "description": "When a [`StaticEffect::BasePowerToughnessFromAmount`] applies. Gaea's Liege prints two of them — \"as long as this creature isn't attacking\" counts your Forests, \"as long as it is attacking\" counts the defending player's — and a creature carrying both gets exactly one answer at any moment. Modelled as two abilities with a combat-state guard rather than one ability with a ternary `Amount`, because that is how the card prints it.",
+      "oneOf": [
+        {
+          "description": "No guard — the count always applies (Nightmare, Keldon Warlord, Plague Rats).",
+          "enum": [
+            "always"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Only while the source is a declared attacker (CR 506.3d).",
+          "enum": [
+            "attacking"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Only while the source is *not* a declared attacker.",
+          "enum": [
+            "not_attacking"
+          ],
+          "type": "string"
+        }
+      ]
+    },
     "DelayController": {
       "description": "Who acts when a [`Effect::Misc(MiscEffect::ScheduleAtNextUpkeep)`] delayed trigger fires (CR 603.7).",
       "oneOf": [
@@ -2832,6 +3253,19 @@
         }
       ]
     },
+    "Division": {
+      "oneOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "enum": [
+            "evenly"
+          ],
+          "type": "string"
+        }
+      ]
+    },
     "EdictScope": {
       "description": "Which players a multi-player fan-out effect affects — a sacrifice edict ([`Effect::Choice(ChoiceEffect::EachPlayerSacrifices)`]) or a player-counter placement ([`Effect::Counters(CountersEffect::PutCountersOnPlayer)`], \"each player/opponent gets a poison counter\").",
       "oneOf": [
@@ -2846,6 +3280,13 @@
           "description": "\"Each opponent\" (Witch of the Moors, Lorehold Charm) — every player other than the controller.",
           "enum": [
             "each_opponent"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "\"You sacrifice…\" (Lich's damage tax) — the effect's own controller alone. A one-seat fan-out rather than a separate effect, so the prompt, the count and the shortfall check are the ones every other edict already uses.",
+          "enum": [
+            "you"
           ],
           "type": "string"
         },
@@ -2989,11 +3430,25 @@
                 "amount": {
                   "$ref": "#/$defs/Amount"
                 },
+                "cant_be_regenerated": {
+                  "default": false,
+                  "description": "Disintegrate's \"If it's a creature, it can't be regenerated this turn\" (CR 701.15d) — a rider on the damaged creature rather than on a destruction, since the damage is what marks it and the state-based action that later kills it carries nothing.",
+                  "type": "boolean"
+                },
                 "count": {
                   "$ref": "#/$defs/TargetCount"
                 },
                 "divided": {
+                  "$ref": "#/$defs/Division"
+                },
+                "exile_instead_of_dying": {
                   "default": false,
+                  "description": "Disintegrate's \"and if it would die this turn, exile it instead\" — the same dies replacement a finality counter applies (CR 614.12), but nameless and turn-scoped.",
+                  "type": "boolean"
+                },
+                "gain_life_equal_to_damage": {
+                  "default": false,
+                  "description": "Drain Life's \"You gain life equal to the damage dealt, but not more life than the player's life total before the damage was dealt, the planeswalker's loyalty before the damage was dealt, or the creature's toughness\" — the controller gains what this effect actually landed, so a prevented or shielded hit feeds nothing.",
                   "type": "boolean"
                 },
                 "mode": {
@@ -3037,6 +3492,63 @@
                     "type": "string"
                   },
                   "type": "array"
+                }
+              },
+              "required": [
+                "amount",
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "Ankh of Mishra's \"deals 2 damage to **that land's** controller\" — the player twin of [`ToEnteringPermanent`](Self::ToEnteringPermanent), filling the same `entering` slot from the same `PermanentEnters` trigger. Distinct from [`ToTargetController`](Self::ToTargetController), which reads an enclosing `Sequence`'s chosen target — a trigger that targets nothing never sets one.",
+              "properties": {
+                "amount": {
+                  "$ref": "#/$defs/Amount"
+                },
+                "mode": {
+                  "enum": [
+                    "to_entering_permanent_controller"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "amount",
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "Copper Tablet's \"at the beginning of each player's upkeep … deals 1 damage to **that player**\" — the player whose step this is, filled from [`TriggerContext::active_player`] at trigger placement. [`EachPlayer`](Self::EachPlayer) would bill the whole table on every upkeep, which is once per seat per round instead of once.",
+              "properties": {
+                "amount": {
+                  "$ref": "#/$defs/Amount"
+                },
+                "mode": {
+                  "enum": [
+                    "to_triggering_player"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "amount",
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "Creature Bond's \"when enchanted creature dies … deals damage equal to that creature's toughness to **the creature's controller**\" — the host's controller, snapshotted from [`TriggerContext::dying_enchanted_creature_stats`] at trigger placement because the host is a graveyard card by resolution and `controller_of` would answer its owner (CR 603.10a). Distinct from [`ToTriggeringPlayer`](Self::ToTriggeringPlayer), which names the player whose step it is.",
+              "properties": {
+                "amount": {
+                  "$ref": "#/$defs/Amount"
+                },
+                "mode": {
+                  "enum": [
+                    "to_dying_enchanted_creatures_controller"
+                  ],
+                  "type": "string"
                 }
               },
               "required": [
@@ -3423,6 +3935,21 @@
               "type": "object"
             },
             {
+              "description": "\"Its owner loses half their life, rounded up\" (Personal Incarnation's dies trigger). The only life loss in the pool billed to the source's *owner* rather than the ability's controller, and the only one that reads a life total to size itself — so both live in the variant rather than in an [`Amount`] and a player selector nothing else would use.",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "source_owner_loses_half_their_life"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
               "properties": {
                 "amount": {
                   "$ref": "#/$defs/Amount"
@@ -3499,6 +4026,17 @@
           "oneOf": [
             {
               "properties": {
+                "at": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/Step"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "`Some(step)` postpones the sweep to a CR 603.7 delayed triggered ability at that step (Siren's Call's \"at the beginning of the next end step, destroy all …\"). Unlike [`DestroyEffect::Target`]'s `at`, nothing is baked in when it is scheduled: the same `filter` re-runs over the battlefield when the delayed ability fires, which is the only way `did_not_attack_this_turn` can read an attack declared after the scheduling."
+                },
                 "cant_be_regenerated": {
                   "default": false,
                   "type": "boolean"
@@ -3521,6 +4059,25 @@
             },
             {
               "properties": {
+                "at": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/Step"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "`Some(step)` postpones the destruction to a CR 603.7 delayed triggered ability at that step, over the object this ability *already* chose (Stone Giant's \"Destroy that creature at the beginning of the next end step\") — the chosen id is baked into a [`DestroyEffect::ThatCreature`] payload at resolution, so nothing is re-targeted when it fires. `None` (default) destroys as this effect resolves. Same schedule-or-do-it-now shape as [`ZoneEffect::FlickerTarget`]'s `return_at`."
+                },
+                "attack_rider": {
+                  "allOf": [
+                    {
+                      "$ref": "#/$defs/AttackRider"
+                    }
+                  ],
+                  "description": "Berserk's \"destroy that creature *if it attacked this turn*\" and Nettling Imp's mirror-image \"*if it didn't attack this turn*\" — carried into the scheduled [`DestroyEffect::ThatCreature`] payload and checked when that fires, never here: the creature can still be declared an attacker after this effect resolves (a main-phase Berserk, an Imp activated before attackers), so a check at scheduling time would read the wrong turn. Only meaningful with `at`; [`AttackRider::Ignore`] (the default) destroys unconditionally."
+                },
                 "cant_be_regenerated": {
                   "default": false,
                   "type": "boolean"
@@ -3545,10 +4102,22 @@
               "type": "object"
             },
             {
+              "description": "\"Destroy *that creature*\" over an id baked in when the ability was placed or scheduled, never a chosen target: the creature a look-back trigger just damaged (Stinkweed Imp), or the one a `Target { at: Some(_) }` activation threw (Stone Giant). `None` means no context ever filled it in — nothing to destroy.",
               "properties": {
+                "at": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/Step"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "\"Destroy that creature **at end of combat**\" (Cockatrice): `Some(step)` postpones once more, re-scheduling this same already-filled payload as a CR 603.7 delayed ability at that step — the id is baked in, so nothing is re-chosen when it fires. `None` (the default, and what the re-scheduled copy carries) destroys as this resolves, which is Stinkweed Imp's shape. Same schedule-or-do-it-now knob as [`Self::Target::at`]."
+                },
                 "mode": {
                   "enum": [
-                    "triggering_damaged_creature"
+                    "that_creature"
                   ],
                   "type": "string"
                 }
@@ -3967,6 +4536,11 @@
                   ],
                   "type": "string"
                 },
+                "release_solely_blocked": {
+                  "default": false,
+                  "description": "\"Creatures it was blocking that had become blocked by only that creature this combat become unblocked\" (False Orders) — the one printed exception to CR 509.1h's sticky blocked-ness. Drops this blocker's pairs from `CombatState::blocked_ever`, so an attacker it was the only blocker of goes back to unblocked and one that a second creature is also blocking does not. `false` (Spurnmage Advocate) leaves 509.1h alone: the creature stops blocking, and everything it blocked stays blocked.",
+                  "type": "boolean"
+                },
                 "target": {
                   "$ref": "#/$defs/TargetSpec"
                 }
@@ -4005,6 +4579,40 @@
               },
               "required": [
                 "filter",
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "\"Tap all lands target player controls\" (Mana Short) — [`TapAll`](Self::TapAll)'s other-seat twin. `TapAll` is a \"you control\" sweep with no target at all; this one taps the chosen player's board and leaves yours alone. A plain tap, not a tap *for mana* (CR 106.11) — nothing is produced and no land-tap watch fires, which is exactly what the card wants, since the next step takes their pool away.",
+              "properties": {
+                "filter": {
+                  "$ref": "#/$defs/PermanentFilter"
+                },
+                "mode": {
+                  "enum": [
+                    "tap_all_target_player_controls"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "filter",
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "\"Tap this creature\" as an *effect* (Demonic Hordes' unpaid-upkeep penalty), not as the `{T}` in an activation cost — the source taps itself on resolution, with nothing chosen and nothing targeted. A permanent that has already left the battlefield taps nothing.",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "tap_source"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
                 "mode"
               ],
               "type": "object"
@@ -4306,6 +4914,16 @@
                     }
                   ]
                 },
+                "max_total": {
+                  "default": null,
+                  "description": "\"This ability can't cause the total number of +1/+0 counters on this creature to be greater than seven\" (Clockwork Beast) — a ceiling on the recipient's *total* of this `kind`, not on the amount placed, so the count is clamped to the room left. `None` (every other card) places the full amount. Named-`kind` arm only; nothing in the pool caps a +1/+1 total.",
+                  "format": "uint8",
+                  "minimum": 0.0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
                 "mode": {
                   "enum": [
                     "put_counters"
@@ -4472,7 +5090,18 @@
               "type": "object"
             },
             {
+              "description": "\"You may remove a +1/+1 counter from it\" (Ingenious Prodigy) / \"you may remove a vitality counter from this Aura\" (Living Artifact) — one counter off the ability's own source, a CR 608.2c effect-internal sub-action rather than an activation cost. `kind` is `None` for +1/+1 (the scalar [`Permanent::plus_counters`](crate::Permanent)) and `Some(kind)` for a named kind; either way a source with none is a no-op, since the callers gate on an intervening-if that already requires one.",
               "properties": {
+                "kind": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/CounterKind"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
                 "mode": {
                   "enum": [
                     "remove_counter_from_self"
@@ -4573,6 +5202,40 @@
                 "track_provenance": {
                   "default": false,
                   "type": "boolean"
+                }
+              },
+              "required": [
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "\"That player loses all unspent mana\" — the 1993 mana-burn era's leavings, still printed on Mana Short, Power Sink, and Drain Power. Empties the enclosing `Sequence`'s shared target player's pool outright, persistent \"until end of turn\" credits included (CR 500.4's exception is about *boundaries*; a card that says \"all\" means all). No target of its own — it always follows a step that already named the player.\n\n`to_you = true` is Drain Power's \"and you add the mana lost this way\": every credit lands in this ability's controller's pool instead of evaporating, kind for kind, so a dual land's either-credit arrives as flexible as it left.",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "lose_all_unspent"
+                  ],
+                  "type": "string"
+                },
+                "to_you": {
+                  "default": false,
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "\"Target player activates a mana ability of each land they control\" (Drain Power). Walks that player's untapped lands and taps each for mana on their behalf — the same [`Game::tap_for_mana`] path their own click would take, so every land-tap watch ([`Effect::Static(StaticEffect::TappedForManaBonus)`], Manabarbs) fires exactly as it would have. A land with no mana ability (Maze of Ith) is skipped, as is one already tapped.\n\nponytail: takes each land's default credit rather than offering a per-land pick, so a land with two competing mana abilities gets the first one. Every land in the 2ed pool has one mana ability, and a dual's either-credit stays undecided in the pool anyway. Raise a per-land pending choice if a card ever makes the pick matter.",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "target_player_taps_lands_for_mana"
+                  ],
+                  "type": "string"
                 }
               },
               "required": [
@@ -4768,6 +5431,11 @@
                   "format": "int32",
                   "type": "integer"
                 },
+                "ends_at_end_of_combat": {
+                  "default": false,
+                  "description": "\"becomes a 3/6 Golem artifact creature **until end of combat**\" (Jade Statue) — the animation is swept at the End of Combat step instead of surviving to cleanup. Strictly shorter than the default until-end-of-turn duration, so it can't be approximated by leaving it off.",
+                  "type": "boolean"
+                },
                 "keywords": {
                   "items": {
                     "$ref": "#/$defs/Keyword"
@@ -4815,6 +5483,28 @@
                 "mode",
                 "power",
                 "toughness"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "\"This Aura gains 'Enchanted creature loses flying'\" (Earthbind's enters trigger, whose intervening-if already checked that the host had it): the host loses `keywords` for as long as this Aura stays attached to it, with no end-of-turn expiry. The indefinite, Aura-bound sibling of [`StripKeywordsFromOpponentsCreatures`](Self::StripKeywordsFromOpponentsCreatures) — see [`Event::AttachedKeywordsLost`](crate::Event). Nothing happens if the Aura has already fallen off (CR 704.5m).",
+              "properties": {
+                "keywords": {
+                  "items": {
+                    "$ref": "#/$defs/Keyword"
+                  },
+                  "type": "array"
+                },
+                "mode": {
+                  "enum": [
+                    "enchanted_creature_loses_keywords"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "keywords",
+                "mode"
               ],
               "type": "object"
             },
@@ -5116,6 +5806,33 @@
               "type": "object"
             },
             {
+              "description": "Vesuvan Doppelganger's upkeep: \"you may have this creature become a copy of target creature, except it doesn't copy that creature's color and it has this ability\" (CR 707.2). The *source* permanent becomes the copy, so `target` names the creature being copied, not the one being rewritten. The two exception flags mirror the [`crate::EnterAsCopy`] fields of the same name and are applied by the same `copy_with_exceptions` synthesizer, so entering as a copy and re-copying later land on exactly the same def. Indefinite (`until_eot: false`) — the printed shapeshifter never comes back.",
+              "properties": {
+                "keeps_own_abilities": {
+                  "default": false,
+                  "type": "boolean"
+                },
+                "keeps_own_color": {
+                  "default": false,
+                  "type": "boolean"
+                },
+                "mode": {
+                  "enum": [
+                    "becomes_copy_of_target"
+                  ],
+                  "type": "string"
+                },
+                "target": {
+                  "$ref": "#/$defs/TargetSpec"
+                }
+              },
+              "required": [
+                "mode",
+                "target"
+              ],
+              "type": "object"
+            },
+            {
               "properties": {
                 "mode": {
                   "enum": [
@@ -5129,6 +5846,55 @@
               },
               "required": [
                 "mode",
+                "target"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "\"Target spell or permanent becomes black.\" (Deathlace and the rest of the lace cycle) — a CR 613.3c layer-5 color SET with no duration printed at all, so it lasts as long as the object does. `color` *replaces* the object's colors rather than unioning with them, which is why a laced spell stops being countered by \"counter target blue spell\". Targets a spell on the stack or a permanent, and writes [`Permanent::set_color`]/[`Spell::set_color`] through [`Event::ColorSet`]. The reminder text (\"its mana symbols remain unchanged\") needs no modelling — colors are read from `colors_of`, never re-derived from the pips.",
+              "properties": {
+                "color": {
+                  "$ref": "#/$defs/Color"
+                },
+                "mode": {
+                  "enum": [
+                    "target_becomes_color"
+                  ],
+                  "type": "string"
+                },
+                "target": {
+                  "$ref": "#/$defs/TargetSpec"
+                }
+              },
+              "required": [
+                "color",
+                "mode",
+                "target"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "\"Target land becomes a Forest until this creature leaves the battlefield\" (Gaea's Liege) — a CR 613.4 type change whose duration is the *source's* stay on the battlefield, the only one the pool prints. `set_subtypes` replaces the whole land-type line (CR 305.7), so a Mountain taps for `{G}` and not `{R}`. Written to the target's `Permanent::subtypes_set_while_source_remains` and read back only while the source is still a permanent; nothing needs to undo it.",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "target_becomes_subtypes_while_source_remains"
+                  ],
+                  "type": "string"
+                },
+                "set_subtypes": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "target": {
+                  "$ref": "#/$defs/TargetSpec"
+                }
+              },
+              "required": [
+                "mode",
+                "set_subtypes",
                 "target"
               ],
               "type": "object"
@@ -6202,6 +6968,17 @@
                     "target_spell"
                   ],
                   "type": "string"
+                },
+                "set_color": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/Color"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Fork's \"except that the copy is red\" — a CR 613.3c layer-5 color SET on the copy alone (see [`Spell::set_color`]). `None` for a plain copy (Twincast)."
                 }
               },
               "required": [
@@ -6653,12 +7430,62 @@
               "properties": {
                 "mode": {
                   "enum": [
+                    "look_at_target_players_hand"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "\"You may have that player shuffle\" (Natural Selection). `owner` is the targeted player, baked in when the yes/no is raised so the answer knows whose library to shuffle.",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "may_shuffle_target_players_library"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "properties": {
+                "mode": {
+                  "enum": [
                     "opponent_splits_exile_piles"
                   ],
                   "type": "string"
                 }
               },
               "required": [
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "\"Look at the top `count` cards of target player's library, then put them back in any order\" (Natural Selection). Unlike a scry there is no bottom pile — every card goes back on top, so the only choice is the order.",
+              "properties": {
+                "count": {
+                  "format": "uint32",
+                  "minimum": 0.0,
+                  "type": "integer"
+                },
+                "mode": {
+                  "enum": [
+                    "rearrange_target_players_top"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "count",
                 "mode"
               ],
               "type": "object"
@@ -6916,6 +7743,44 @@
               "type": "object"
             },
             {
+              "description": "\"Change the text of target spell or permanent by replacing all instances of one `words` with another\" (CR 612.1 — Magical Hack's basic land types, Sleight of Mind's color words). Resolving asks the controller twice through [`PendingChoice::ChooseCreatureType`]'s picker (the word being replaced, then its replacement) and records the answer as a [`TextSwap`] on the target — see that type for how far a swap reaches.",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "change_text"
+                  ],
+                  "type": "string"
+                },
+                "target": {
+                  "$ref": "#/$defs/TargetSpec"
+                },
+                "words": {
+                  "$ref": "#/$defs/TextWords"
+                }
+              },
+              "required": [
+                "mode",
+                "target",
+                "words"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "Phantasmal Terrain's \"as this Aura enters, choose a basic land type.\" The same picker [`Self::ChooseCreatureType`] raises, narrowed to [`BASIC_LAND_TYPES`](crate::BASIC_LAND_TYPES) — the answer lands on the source's own [`Permanent::chosen_subtype`](crate::Permanent), read back by a `set_chosen_land_type` [`StaticEffect::SetAttachedTypes`](crate::StaticEffect).",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "choose_basic_land_type"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
               "properties": {
                 "mode": {
                   "enum": [
@@ -6934,6 +7799,21 @@
                 "mode": {
                   "enum": [
                     "choose_creature_type"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "Black Vise's \"as this artifact enters, choose an opponent.\" Reuses the shared \"an opponent ...\" picker ([`Game::choose_splitting_opponent`](crate::Game)) with a [`SplittingContinuation::RememberAsChosenOpponent`](crate::SplittingContinuation) tail, so a table with one opponent left collapses the pause and a table with more asks. The answer is written to the source's own [`Permanent::chosen_opponent`], read back by a [`Condition::ChosenPlayersUpkeep`] gate on its upkeep trigger.",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "choose_opponent"
                   ],
                   "type": "string"
                 }
@@ -7007,9 +7887,12 @@
             {
               "properties": {
                 "count": {
-                  "format": "uint32",
-                  "minimum": 0.0,
-                  "type": "integer"
+                  "$ref": "#/$defs/Amount"
+                },
+                "damaged_player": {
+                  "default": false,
+                  "description": "\"**That player** discards a card at random\" (Hypnotic Specter) — the discarder is whoever this ability's source just damaged, not its controller. Only meaningful under a damage watch; Looter il-Kor's same-trigger \"draw a card, then discard a card\" leaves it unset, because *its* discard is the controller's.",
+                  "type": "boolean"
                 },
                 "mode": {
                   "enum": [
@@ -7026,6 +7909,11 @@
                       "type": "null"
                     }
                   ]
+                },
+                "random": {
+                  "default": false,
+                  "description": "\"Discards a card **at random**\" (Hypnotic Specter, Mind Twist): nobody chooses, so this discard raises no pause at all — it resolves straight through [`Game::run_misc_choreo`](crate::Game::run_misc_choreo), picking from the discarder's hand with the engine's injected per-op RNG.",
+                  "type": "boolean"
                 },
                 "target_player": {
                   "default": false,
@@ -7118,13 +8006,40 @@
               "type": "object"
             },
             {
-              "description": "Each other player discards a card of their choice (Syphon Mind, \"Each other player discards a card\"). A fan-out over the opponents in APNAP order — a player with an empty hand is skipped — tallying [`ResolutionFrame::cards_discarded_this_way`](crate::resolution::ResolutionFrame) so a following `then`/Sequence step can read it (Syphon Mind's \"You draw a card for each card discarded this way\").",
+              "description": "Timetwister's \"Each player shuffles their hand and graveyard into their library, then draws seven cards.\" The recycling sibling of [`EachPlayerDiscardsHandThenDraws`](Self::EachPlayerDiscardsHandThenDraws): same APNAP fan-out and same redraw, but the old cards are tucked back into the library and shuffled instead of discarded, so no card reaches a graveyard and `you_discard` triggers stay quiet. A separate variant rather than a flag on the discard one — the zones moved, the zone moved *to*, and the triggers fired all differ.",
               "properties": {
+                "count": {
+                  "$ref": "#/$defs/Amount"
+                },
                 "mode": {
                   "enum": [
-                    "each_opponent_discards"
+                    "each_player_shuffles_hand_and_graveyard_then_draws"
                   ],
                   "type": "string"
+                }
+              },
+              "required": [
+                "count",
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "Each player in `scope` discards a card of their choice (Syphon Mind, \"Each other player discards a card\"). A fan-out over those players in APNAP order — a player with an empty hand is skipped — tallying [`ResolutionFrame::cards_discarded_this_way`](crate::resolution::ResolutionFrame) so a following `then`/Sequence step can read it (Syphon Mind's \"You draw a card for each card discarded this way\").",
+              "properties": {
+                "down_to_fewest": {
+                  "default": false,
+                  "description": "Balance's \"Players discard cards … the same way\": instead of one card each, every player discards down to the smallest hand in `scope` — see [`down_to_fewest`](Self::EachPlayerSacrifices::down_to_fewest).",
+                  "type": "boolean"
+                },
+                "mode": {
+                  "enum": [
+                    "each_player_discards"
+                  ],
+                  "type": "string"
+                },
+                "scope": {
+                  "$ref": "#/$defs/EdictScope"
                 }
               },
               "required": [
@@ -7185,6 +8100,11 @@
                   ],
                   "description": "How many creatures each affected player sacrifices (Malfegor's \"a creature … for each card discarded this way\"). Defaults to 1; a player with fewer creatures sacrifices all of them. Not used with `keep_one`."
                 },
+                "down_to_fewest": {
+                  "default": false,
+                  "description": "Balance's \"Each player chooses a number of lands they control equal to the number of lands controlled by the player who controls the fewest, then sacrifices the rest\": the number sacrificed isn't fixed but each player's own excess over the smallest matching battlefield in `scope`, measured once as this effect starts. Overrides `count`; a player already at that floor is skipped entirely, the way an empty-handed seat is skipped by a discard fan-out.",
+                  "type": "boolean"
+                },
                 "filter": {
                   "$ref": "#/$defs/PermanentFilter"
                 },
@@ -7196,6 +8116,11 @@
                   "default": 0,
                   "format": "int32",
                   "type": "integer"
+                },
+                "lose_game_if_short": {
+                  "default": false,
+                  "description": "Lich's \"sacrifice that many nontoken permanents. If you can't, you lose the game\": an affected player who controls fewer than `count` matching permanents is eliminated outright (CR 104.3b) instead of sacrificing what they have. Distinct from every other edict, where a short board just means sacrificing all of it.",
+                  "type": "boolean"
                 },
                 "mode": {
                   "enum": [
@@ -7229,6 +8154,75 @@
               },
               "required": [
                 "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "Kudzu's \"That land's controller may attach this Aura to a land of their choice\" — the Aura moves itself, and the seat that picks its new host is the one the trigger is about rather than the Aura's own controller. Raises the same [`PendingChoice::ChooseAttachHost`] a deployed Aura raises, so the answer handler, the attachment event and the state-based orphan exemption all come from there; only the chooser and the \"may\" differ.\n\nDeclining is a real answer, not a no-op: the Aura is left unattached and CR 704.5m sweeps it to the graveyard on the next check, which is what \"may\" buys you on this card.",
+              "properties": {
+                "filter": {
+                  "allOf": [
+                    {
+                      "$ref": "#/$defs/PermanentFilter"
+                    }
+                  ],
+                  "description": "The hosts on offer (\"a **land** of their choice\"). Evaluated for the chooser, so a `FilterController::You` axis would read as *their* battlefield, not the Aura's controller's — Kudzu's own filter has no controller restriction."
+                },
+                "mode": {
+                  "enum": [
+                    "triggering_player_may_attach_this_aura_to_chosen"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "filter",
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "Power Leak's \"that player may pay any amount of mana. This Aura deals 2 damage to that player. Prevent X of that damage, where X is the amount of mana that player paid this way\" (CR 615). The single-seat twin of [`JoinForcesPayMana`](Self::JoinForcesPayMana): the same unbounded generic payment and the same pause, offered to the one player the trigger is about instead of to the whole table, and cashed out as a prevention shield on that same player rather than as a shared `X` a later step reads.\n\n`prevent_up_to` is the damage the following step deals, and caps the shield: \"prevent X of *that* damage\" can't bank the overpayment against an unrelated hit later in the turn.",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "triggering_player_may_pay_any_amount_to_prevent"
+                  ],
+                  "type": "string"
+                },
+                "prevent_up_to": {
+                  "$ref": "#/$defs/Amount"
+                }
+              },
+              "required": [
+                "mode",
+                "prevent_up_to"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "Paralyze's \"that player may pay {4}. If the player does, untap the creature\" (CR 603.3b). The upside twin of [`PayOrElse`](Self::PayOrElse) — paying *buys* `then` rather than dodging a penalty — and the fixed-cost twin of [`TriggeringPlayerMayPayAnyAmountToPrevent`](Self::TriggeringPlayerMayPayAnyAmountToPrevent), with which it shares its payer: the offer goes to the player the trigger is about, not to the ability's controller, which is the one thing an ability-level `[abilities.cost]` (Mana Vault's \"you may pay {4}\") cannot express.",
+              "properties": {
+                "cost": {
+                  "$ref": "#/$defs/CostToml"
+                },
+                "mode": {
+                  "enum": [
+                    "triggering_player_may_pay"
+                  ],
+                  "type": "string"
+                },
+                "then": {
+                  "items": {
+                    "$ref": "#/$defs/Effect"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "cost",
+                "mode",
+                "then"
               ],
               "type": "object"
             },
@@ -7312,6 +8306,21 @@
                 "mode": {
                   "enum": [
                     "may_put_counter_on_creature"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "\"You may have it block an attacking creature of your choice\" (CR 601.2c — False Orders): the ability's own target, just pulled out of combat by the preceding [`ControlEffect::RemoveFromCombat`](crate::ControlEffect), is offered back to the *spell's* controller as a fresh blocker. Pauses on a [`PendingChoice::ChooseBlockTarget`](crate::PendingChoice) over the attackers that creature could legally have been declared as blocking; declining leaves it out of combat. Fieldless like [`Self::MayPutCounterOnCreature`] above — the creature is the shared target, and the candidate list is read live off combat when the choice is raised.",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "may_block_attacker_of_your_choice"
                   ],
                   "type": "string"
                 }
@@ -7511,6 +8520,11 @@
                     "sacrifice_own"
                   ],
                   "type": "string"
+                },
+                "opponent_chooses": {
+                  "default": false,
+                  "description": "\"…sacrifice a land of **an opponent's choice**\" (Demonic Hordes). The controller still loses the permanent — only the pick moves, which is the one thing CR 701.16a's \"the permanents' controller chooses\" default doesn't allow. ponytail: \"an opponent\" is underspecified at a pod, so the next living seat in turn order answers; see the card's `approximates`.",
+                  "type": "boolean"
                 }
               },
               "required": [
@@ -7521,20 +8535,28 @@
               "type": "object"
             },
             {
+              "description": "\"…unless you pay `cost`\" (CR 701.16's optional-cost shape): the controller is offered the payment, and declining runs `otherwise` instead. Most printings sacrifice the source (Phantasmal Forces, Rupture Spire) but the penalty is whatever the card prints — Force of Nature's is \"this creature deals 8 damage to you\". Always pauses: only the player can answer.",
               "properties": {
                 "cost": {
                   "$ref": "#/$defs/CostToml"
                 },
                 "mode": {
                   "enum": [
-                    "sacrifice_self_unless_pay"
+                    "pay_or_else"
                   ],
                   "type": "string"
+                },
+                "otherwise": {
+                  "items": {
+                    "$ref": "#/$defs/Effect"
+                  },
+                  "type": "array"
                 }
               },
               "required": [
                 "cost",
-                "mode"
+                "mode",
+                "otherwise"
               ],
               "type": "object"
             },
@@ -7567,6 +8589,55 @@
               },
               "required": [
                 "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "\"Each defending player divides all creatures without flying they control into a 'left' pile and a 'right' pile. Then, for each attacking creature you control, choose 'left' or 'right.' That creature can't be blocked this combat except by creatures with flying and creatures in a pile with the chosen label.\" (Raging River.) Two pauses, in that order: every defending player divides ([`PendingChoice::SplitBlockersIntoPiles`]), then the ability's controller labels each of their attacking creatures ([`PendingChoice::ChoosePileForAttacker`]). The payoff is the *unnamed* pile becoming illegal blockers for that one attacker, recorded on [`CombatState::cant_block_this_combat`](crate::CombatState).",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "defenders_split_blockers_into_piles"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "\"This turn, instead of declaring blockers, each defending player chooses any number of creatures they control and divides them into a number of piles equal to the number of attacking creatures for whom that player is the defending player. … Assign each pile to a different one of those attacking creatures at random. Each creature in a pile that can block the creature that pile is assigned to does so.\" (Camouflage.) The defender's own [`PendingChoice::DivideBlockersIntoPiles`] is asked once per pile, and the deal that follows *replaces* their declaration — the blocks are written down here, so the declare-blockers step finds their seat already sealed.",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "defenders_divide_blockers_among_attackers"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "\"Look at target opponent's hand and choose a card from it. You control that player until this spell finishes resolving. The player plays that card if able.\" (CR 720.1 — Word of Command.) One seat answers, another seat's resources are spent: the pause addresses the spell's *controller*, and the card is then played by its own controller, from their hand, paying with their own mana ([`Game::settle_payment`](crate::Game) auto-taps only that player's sources, which is exactly the printed mana restriction). The compelled play ignores priority and timing, so a sorcery can land on your turn in response to nothing. \"If able\" is literal — an unaffordable or otherwise unplayable pick simply does nothing.",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "control_player_to_play_card_from_hand"
+                  ],
+                  "type": "string"
+                },
+                "target": {
+                  "$ref": "#/$defs/TargetSpec"
+                }
+              },
+              "required": [
+                "mode",
+                "target"
               ],
               "type": "object"
             },
@@ -7626,6 +8697,56 @@
         },
         {
           "oneOf": [
+            {
+              "description": "\"All Mountains are Plains\" (Conversion), \"All Swamps are 1/1 black creatures that are still lands\" (Kormus Bell), \"All Forests are 1/1 creatures that are still lands\" (Living Lands) — a CR 613.4 type change and CR 613.3 P/T set applied to every land on the battlefield carrying one of `land_types`, whoever controls it. The one static scoped by a board sweep rather than by a controller ([`Self::Anthem`]) or an attachment ([`Self::SetAttachedTypes`]); [`Game::land_type_statics`](crate::Game) is the sweep, and every characteristic read that can be changed this way consults it.\n\nScoped by land type instead of by a general [`PermanentFilter`](crate::PermanentFilter) on purpose: a filter would have to ask for the candidate's subtypes, which is the very answer this effect changes. Matching names against the subtype line as accumulated so far keeps the CR 613.4 timestamp order honest and the recursion impossible.\n\n`set_subtypes` replaces the whole line as CR 305.7 asks (a Mountain Forest under Conversion is a Plains and nothing else, and taps only for `{W}` — [`Game::land_mana_credit`](crate::Game) derives that). Leave it empty to change only what a land *also* is: Kormus Bell's Swamps stay Swamps.",
+              "properties": {
+                "add_colors": {
+                  "items": {
+                    "$ref": "#/$defs/Color"
+                  },
+                  "type": "array"
+                },
+                "add_types": {
+                  "$ref": "#/$defs/TypeSet"
+                },
+                "base_power": {
+                  "default": 0,
+                  "description": "The base P/T the land takes on, read only when `add_types` makes it a creature — \"1/1 black creatures that are still lands\". Both default to 0 for a change that alters no card type (Conversion), where nothing reads them.",
+                  "format": "int32",
+                  "type": "integer"
+                },
+                "base_toughness": {
+                  "default": 0,
+                  "format": "int32",
+                  "type": "integer"
+                },
+                "land_types": {
+                  "description": "The land types this applies to — a land carrying any of them is caught. Each of the three cards names exactly one.",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "mode": {
+                  "enum": [
+                    "all_lands_of_type_become"
+                  ],
+                  "type": "string"
+                },
+                "set_subtypes": {
+                  "default": [],
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "land_types",
+                "mode"
+              ],
+              "type": "object"
+            },
             {
               "properties": {
                 "all_players": {
@@ -7709,6 +8830,11 @@
                 "toughness": {
                   "$ref": "#/$defs/Amount"
                 },
+                "untapped_only": {
+                  "default": false,
+                  "description": "Castle's \"Untapped creatures you control get +0/+2\" — restricts the anthem to candidates that aren't tapped right now. Live like every other axis here (CR 613.4): the buff falls off the instant a creature taps, so `characteristics_cache.rs` invalidates on [`Event::Tapped`](crate::Event)/`Untapped`.",
+                  "type": "boolean"
+                },
                 "war_choice": {
                   "default": null,
                   "description": "Restricts to creatures controlled by a player who has made a matching per-player choice: `Some(true)`/`Some(false)` reads a two-sided as-enters choice recorded on [`Player`](crate::Player) (Archangel of Strife's \"Creatures controlled by players who chose war/peace\"); `None` (default) applies no such restriction.",
@@ -7744,6 +8870,32 @@
               "type": "object"
             },
             {
+              "description": "A characteristic-defining ability (CR 604.3) setting the source's own base power and toughness to a count — Nightmare's \"power and toughness are each equal to the number of Swamps you control\". Applied in layer 7a by [`Game::pt_base`](crate::Game): it replaces the printed box before every other P/T effect, so a later base-set (Darksteel Mutation) still overrides it and counters and anthems still sum on top. Resolved live on every recompute, which is what makes it *defining* rather than a one-shot write — the creature grows the instant a Swamp arrives.\n\n`when` narrows the ability to one combat state, so a creature printing two of these gets whichever count applies right now (Gaea's Liege).",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "base_power_toughness_from_amount"
+                  ],
+                  "type": "string"
+                },
+                "power": {
+                  "$ref": "#/$defs/Amount"
+                },
+                "toughness": {
+                  "$ref": "#/$defs/Amount"
+                },
+                "when": {
+                  "$ref": "#/$defs/DefiningPtWhen"
+                }
+              },
+              "required": [
+                "mode",
+                "power",
+                "toughness"
+              ],
+              "type": "object"
+            },
+            {
               "description": "\"Each opponent who cast a spell this turn can't attack with creatures\" (Angelic Arbiter): a blanket per-player attack ban, unlike [`StaticEffect::CantBeAttackedBy`]'s defender-scoped filter — the gated player can't declare *any* attacker, not just ones aimed at a specific defender. Checked against `Player::spells_cast_this_turn` in `Game::declare_attackers`, and only against a static controlled by someone other than the declaring player (CR: \"opponent\").",
               "properties": {
                 "mode": {
@@ -7759,6 +8911,25 @@
               "type": "object"
             },
             {
+              "description": "\"This creature can't attack unless defending player controls an Island\" (Sea Serpent, Pirate Ship): a restriction carried by the *attacker*, satisfied when the defending player controls at least one permanent matching `filter`. The mirror image of [`StaticEffect::CantBeAttackedBy`] below, which the defender carries — both are scanned per declared (attacker, defender) pair in `Game::declare_attackers`. Printed for two players; at a pod the same creature can be legal against one seat and illegal against the next, which is why this hangs off the pair rather than off the attacker alone. Also folded into [`Game::can_attack`](crate::Game), so a creature with no open seat is not \"able\" and goad cannot demand an attack the card forbids (CR 509.1a).",
+              "properties": {
+                "filter": {
+                  "$ref": "#/$defs/PermanentFilter"
+                },
+                "mode": {
+                  "enum": [
+                    "cant_attack_unless_defender_controls"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "filter",
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
               "properties": {
                 "filter": {
                   "$ref": "#/$defs/PermanentFilter"
@@ -7766,6 +8937,84 @@
                 "mode": {
                   "enum": [
                     "cant_be_attacked_by"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "filter",
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "Island Sanctuary: \"If you would draw a card during your draw step, instead you may skip that draw. If you do, until your next turn, you can't be attacked except by creatures with flying and/or islandwalk.\" An optional replacement on the draw-step draw (CR 614) that buys a temporary copy of [`CantBeAttackedBy`](Self::CantBeAttackedBy) above.\n\n`filter` is the *banned* set, exactly as that static's is — the printed \"except by\" is inverted when the card is authored, so Island Sanctuary bans creatures lacking both flying and islandwalk rather than exempting creatures having either. `Game::perform_turn_based_actions` offers the skip at the draw step; accepting records `(controller, filter)` in `CombatExtras::repelled_until_next_turn`, which `Game::declare_attackers` reads beside its scan of the static above and that player's own next untap step clears.\n\nponytail: one variant for both halves rather than a nestable \"may skip your draw, then \\<effect\\>\" — no [`Effect`] nests another today, and this is the only card in the pool that pays a draw for a combat shield. Split it the day a second card skips its draw for something else.",
+              "properties": {
+                "filter": {
+                  "$ref": "#/$defs/PermanentFilter"
+                },
+                "mode": {
+                  "enum": [
+                    "may_skip_draw_for_cant_be_attacked_by"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "filter",
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "Two-Headed Giant of Foriys' \"This creature can block an additional creature each combat\" (CR 509.1b): raises this permanent's own block ceiling from the default one attacker to `1 + count`. Read by [`Game::max_blocks`](crate::Game), which is where the ceiling is decided for every blocker, so a creature with no such static is capped at one there.",
+              "properties": {
+                "count": {
+                  "format": "uint8",
+                  "minimum": 0.0,
+                  "type": "integer"
+                },
+                "mode": {
+                  "enum": [
+                    "can_block_additional"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "count",
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "Juggernaut's \"This creature can't be blocked by Walls\" (CR 509.1b): `filter` names the creatures turned away, so a blocker matching it can never be declared against this permanent. Invisibility's \"can't be blocked *except* by Walls\" is the same restriction authored inverted (`exclude_subtypes = [\"Wall\"]`), granted to a host by [`GrantToAttached`](Self::GrantToAttached)'s `cant_be_blocked_by` rather than printed.",
+              "properties": {
+                "filter": {
+                  "$ref": "#/$defs/PermanentFilter"
+                },
+                "mode": {
+                  "enum": [
+                    "cant_be_blocked_by"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "filter",
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "Ironclaw Orcs' \"This creature can't block creatures with power 2 or greater\" (CR 509.1b): the blocker-side restriction that describes the *attacker*. Distinct from [`CantBlockFilter`](Self::CantBlockFilter) just below, which matches the would-be blocker and reaches the whole battlefield — this one is printed on the creature it restrains and reads the attacker it is being declared against.",
+              "properties": {
+                "filter": {
+                  "$ref": "#/$defs/PermanentFilter"
+                },
+                "mode": {
+                  "enum": [
+                    "cant_block_attackers"
                   ],
                   "type": "string"
                 }
@@ -7963,6 +9212,90 @@
               "type": "object"
             },
             {
+              "description": "\"This artifact doesn't untap during your untap step\" (Mana Vault, Basalt Monolith) / \"Creatures with power 3 or greater don't untap during their controllers' untap steps\" (Meekstone) — CR 502.2's untap-step exception. Read by [`Game::doesnt_untap`](crate::Game), which the untap step consults before it untaps anything; nothing else in the game is affected, so a permanent held down here still untaps from an ordinary untap *effect* ({3}: Untap this artifact).\n\n`self_only` is the printed-on-itself form and ignores `filter` entirely — the source is the only permanent held down. Otherwise `filter` is matched against every permanent about to untap, and its default [`FilterController::Any`](crate::FilterController) is what makes Meekstone reach across the table (\"their controllers' untap steps\"), with no `all_players` flag of the sort [`Anthem`](Self::Anthem) needs. Library of Leng's \"If an effect causes you to discard a card, discard it, but you may put it on top of your library instead of into your graveyard\" (CR 701.8c). A replacement the controller's own effect discards consult in [`Game::discard_ids`](crate::Game): the card is still discarded — [`Event::Discarded`](crate::Event::Discarded) still fires for every \"whenever you discard\" watcher — only its destination changes.",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "discard_to_library_top_instead"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "properties": {
+                "filter": {
+                  "$ref": "#/$defs/PermanentFilter"
+                },
+                "mode": {
+                  "enum": [
+                    "doesnt_untap"
+                  ],
+                  "type": "string"
+                },
+                "self_only": {
+                  "default": false,
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "Stasis's \"Players skip their untap steps\" (CR 703.4a). Read by [`Game::players_skip_untap_steps`](crate::Game), which the untap step consults before it phases anything in or untaps anything. Unscoped on purpose — \"players\" is everyone, its own controller included, so there is no `all_players` flag of the sort [`Anthem`](Self::Anthem) needs and no `filter` of the sort [`DoesntUntap`](Self::DoesntUntap) carries.\n\nDistinct from `DoesntUntap`, which holds individual permanents down *within* an untap step that still happens: this one deletes the step's turn-based actions outright, which is why a phased-out permanent stays phased out under Stasis (CR 502.1) where `DoesntUntap` would let it back in.",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "players_skip_untap_steps"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "Smoke's \"Players can't untap more than one creature during their untap steps\" and Winter Orb's land twin (CR 502.2). Read by [`Game::untap_at_most_one_filters`](crate::Game), which the untap step consults while building its untap set: the permanents matching `filter` that were about to untap go into the [`PendingChoice::DeclineUntap`](crate::PendingChoice) pause instead, and only the one the active player leaves out of `keep_tapped` comes back up.\n\nUnscoped like [`PlayersSkipUntapSteps`](Self::PlayersSkipUntapSteps) — \"players\" is everyone, so `filter`'s default [`FilterController::Any`](crate::FilterController) is what makes both cards symmetrical. Winter Orb's \"as long as this artifact is untapped\" rides on the ability's own [`Condition::SourceUntapped`](crate::Condition), read once as the untap step starts — which is why an Orb tapped down in response untaps alongside your lands without stopping any of them.",
+              "properties": {
+                "filter": {
+                  "$ref": "#/$defs/PermanentFilter"
+                },
+                "mode": {
+                  "enum": [
+                    "untap_at_most_one"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "Time Vault's \"If you would begin your turn while this artifact is tapped, you may skip that turn instead. If you do, untap this artifact.\" — a replacement effect on the turn itself (CR 614), and the only thing in the pool that can undo the card's own [`DoesntUntap`](Self::DoesntUntap). Read by [`Game::may_skip_turn_offer`](crate::Game), which [`Game::advance_step`](crate::Game) consults as a new turn's untap step begins and before any of its turn-based actions run: a \"yes\" untaps the source and hands the turn straight on to the next player, a \"no\" runs the untap step the pause stood in front of and takes the turn with the source still tapped.\n\nFieldless: \"your turn\" is the source's controller's and \"this artifact\" is the source, so there is nothing left for a filter to say — unlike [`UntapAtMostOne`](Self::UntapAtMostOne), whose card says \"players\".",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "may_skip_turn_while_tapped"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
               "properties": {
                 "count": {
                   "$ref": "#/$defs/Amount"
@@ -7986,6 +9319,35 @@
               },
               "required": [
                 "count",
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "Zombie Master's \"Other Zombies have '{B}: Regenerate this permanent.'\" — an activated ability granted to every permanent matching `filter`, wherever it is on the battlefield. The filter-scoped twin of [`GrantToAttached`](Self::GrantToAttached)'s own `granted_ability`, which can only reach a host this permanent is attached to, and the non-mana twin of [`GrantManaAbility`](Self::GrantManaAbility). Both grant kinds are read back through [`Game::granted_activated_abilities`](crate::Game), so a granted ability activates at the same indices whichever way it arrived.",
+              "properties": {
+                "filter": {
+                  "$ref": "#/$defs/PermanentFilter"
+                },
+                "granted_ability": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/GrantedAbility"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "mode": {
+                  "enum": [
+                    "grant_activated_ability"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "filter",
                 "mode"
               ],
               "type": "object"
@@ -8053,8 +9415,29 @@
                   "default": false,
                   "type": "boolean"
                 },
+                "cant_be_blocked_by": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/PermanentFilter"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Invisibility's \"Enchanted creature can't be blocked except by Walls\": the granted twin of [`CantBeBlockedBy`](Self::CantBeBlockedBy), authored the same way — the filter names the blockers turned away, so \"except by Walls\" is spelled `exclude_subtypes = [\"Wall\"]`."
+                },
+                "cant_be_enchanted": {
+                  "default": false,
+                  "description": "Consecrate Land's \"can't be enchanted by other Auras\": no *other* Aura may attach to this host — none can be cast targeting it, and one already there falls off (CR 704.5n). See [`Game::host_cant_be_enchanted_by`](crate::Game::host_cant_be_enchanted_by).",
+                  "type": "boolean"
+                },
                 "cant_block": {
                   "default": false,
+                  "type": "boolean"
+                },
+                "doesnt_untap": {
+                  "default": false,
+                  "description": "Paralyze's \"Enchanted creature doesn't untap during its controller's untap step\" — the attachment-scoped form of [`DoesntUntap`](Self::DoesntUntap), which is battlefield-wide and so can't say \"the one this Aura is on\". Folded into [`Game::doesnt_untap`](crate::Game) so the untap step reads one scanner, and like the battlefield-wide form it is consulted *only* there: an untap effect (Paralyze's own pay-{4}) frees the host regardless.",
                   "type": "boolean"
                 },
                 "goad": {
@@ -8081,11 +9464,26 @@
                   "default": false,
                   "type": "boolean"
                 },
+                "may_attack_ignoring_defender": {
+                  "default": false,
+                  "description": "Animate Wall's \"Enchanted Wall can attack as though it didn't have defender\": the host ignores the [`Keyword::Defender`](crate::Keyword) attack restriction while this Aura is on it. The keyword itself stays — only `Game::can_attack`'s check for it is waived — so anything else reading \"has defender\" is unaffected.",
+                  "type": "boolean"
+                },
+                "may_attack_ignoring_summoning_sickness": {
+                  "default": false,
+                  "description": "Instill Energy's \"Enchanted creature can attack as though it had haste\": the host ignores the summoning-sickness attack restriction (CR 302.6) while this Aura is on it. The sibling of `may_attack_ignoring_defender` above, and deliberately narrower than granting [`Keyword::Haste`](crate::Keyword) — real haste would also free the host's `{T}` abilities, which \"as though it had haste\" for attacking does not.",
+                  "type": "boolean"
+                },
                 "mode": {
                   "enum": [
                     "grant_to_attached"
                   ],
                   "type": "string"
+                },
+                "must_be_blocked_by_all": {
+                  "default": false,
+                  "description": "Lure's \"All creatures able to block enchanted creature do so\" (CR 509.1c): a blocking *requirement* rather than a restriction, gathered by `Game::required_blocks` and met as far as the declaration legally can be.",
+                  "type": "boolean"
                 },
                 "power": {
                   "$ref": "#/$defs/Amount"
@@ -8131,6 +9529,36 @@
               "type": "object"
             },
             {
+              "description": "Lich's \"You don't lose the game for having 0 or less life\" — CR 704.5a's exemption, read by the state-based sweep off every permanent its controller controls. Says nothing about the other loss conditions: an empty-library draw, ten poison and lethal commander damage all still eliminate its controller.",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "you_dont_lose_at_zero_life"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "Lich's \"If you would gain life, draw that many cards instead\" — a CR 614 replacement, so the life never arrives at all and nothing that watches life gain sees anything. Applies at the one funnel every life gain passes through, which is what makes it cover lifelink and drains as well as a printed \"you gain N life\".",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "life_gain_becomes_draw"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
               "properties": {
                 "mode": {
                   "enum": [
@@ -8150,12 +9578,17 @@
               "type": "object"
             },
             {
+              "description": "\"Creatures attack each combat if able\": Avatar of Slaughter's board-wide reading by default, or Juggernaut's own \"This creature attacks each combat if able\" with `self_only = true` — the same split [`DoesntUntap`](Self::DoesntUntap) makes.",
               "properties": {
                 "mode": {
                   "enum": [
                     "must_attack_each_combat"
                   ],
                   "type": "string"
+                },
+                "self_only": {
+                  "default": false,
+                  "type": "boolean"
                 }
               },
               "required": [
@@ -8182,6 +9615,21 @@
                 "mode": {
                   "enum": [
                     "opponents_cant_search_libraries"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "Fastbond's \"You may play any number of lands on each of your turns\" (CR 305.2 — the one-land-per-turn rule is an effect-modifiable maximum). Read by [`Game::land_drop_available`](crate::Game), the single gate both the legality check and the playability hint route through. ponytail: fieldless — the pool's only extra-land-play permission is unlimited. Add a `count` when an Exploration/Azusa \"play an additional land\" lands.",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "play_any_number_of_lands"
                   ],
                   "type": "string"
                 }
@@ -8242,6 +9690,21 @@
               "type": "object"
             },
             {
+              "description": "Rock Hydra's \"for each 1 damage that would be dealt to this creature, if it has a +1/+1 counter on it, remove a +1/+1 counter from it and prevent that 1 damage\" (CR 615). Worded *per point* rather than per event, so unlike its two siblings above it covers only as many points as the Hydra has counters and the rest of the hit is dealt for real — which is why it is spent inside the damage choke rather than short-circuiting the whole event.",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "prevent_damage_to_self_removing_counter_per_point"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
               "properties": {
                 "mode": {
                   "enum": [
@@ -8284,6 +9747,21 @@
               "type": "object"
             },
             {
+              "description": "Veteran Bodyguard's \"as long as this creature is untapped, all damage that would be dealt to you by unblocked creatures is dealt to this creature instead\" (CR 615.10). A redirection read live off the permanent — the untapped condition is checked at damage time, not when the creature entered — rather than a one-shot shield like [`MiscEffect::PreventNextDamage`](crate::MiscEffect::PreventNextDamage)'s `redirect_to_controller`, which is armed and spent.\n\nponytail: only *combat* damage from an unblocked attacker is moved — the scan sits in `Game::combat_damage_substep`, which is the one place that knows an attacker went unblocked. The printed line also covers noncombat damage an unblocked creature deals (an activated ability, say); no pool card creates that case, and the upgrade path is a per-turn \"went unblocked\" set the general damage choke could read.",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "redirect_unblocked_damage_to_self"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
               "properties": {
                 "amount": {
                   "$ref": "#/$defs/Amount"
@@ -8310,6 +9788,53 @@
               "type": "object"
             },
             {
+              "description": "Gloom's \"White spells cost {3} more to cast\" (CR 601.2f) — the sign-flipped twin of [`ReduceSpellCost`](Self::ReduceSpellCost) above, and deliberately a separate variant rather than a negative `amount` on that one, because the two differ in *scope*: a reducer only ever discounts its own controller's spells, while a taxer reaches every seat at the table. Folded into the generic cost ahead of the reduction, per CR 601.2f's increases-then-reductions order.",
+              "properties": {
+                "amount": {
+                  "$ref": "#/$defs/Amount"
+                },
+                "filter": {
+                  "$ref": "#/$defs/SpellFilter"
+                },
+                "mode": {
+                  "enum": [
+                    "tax_spell_cost"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "amount",
+                "filter",
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "Gloom's \"Activated abilities of white enchantments cost {3} more to activate\" (CR 602.2b) — the same table-wide tax aimed at the *activation* choke instead of the cast choke, keyed to the ability's source permanent rather than to a spell. `filter` is matched against that source, so \"white enchantments\" is `{ types = \"enchantment\", color = \"white\" }`.",
+              "properties": {
+                "amount": {
+                  "$ref": "#/$defs/Amount"
+                },
+                "filter": {
+                  "$ref": "#/$defs/PermanentFilter"
+                },
+                "mode": {
+                  "enum": [
+                    "tax_activated_ability"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "amount",
+                "filter",
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "The CR 613.4 layer-7b base P/T an Aura forces onto its host (Darksteel Mutation's \"base power and toughness 0/1\"). The amounts resolve with the *host* as source, not the Aura, so Animate Artifact's \"power and toughness each equal to its mana value\" is [`Amount::SourceManaValue`](crate::Amount) reading the enchanted artifact.",
               "properties": {
                 "mode": {
                   "enum": [
@@ -8317,13 +9842,16 @@
                   ],
                   "type": "string"
                 },
+                "noncreature_only": {
+                  "default": false,
+                  "description": "Animate Artifact's \"as long as enchanted artifact **isn't a creature**\": the base set applies only while the host is a noncreature, so enchanting an artifact creature doesn't wipe its printed P/T. Default `false` is Darksteel Mutation's unconditional set.",
+                  "type": "boolean"
+                },
                 "power": {
-                  "format": "int32",
-                  "type": "integer"
+                  "$ref": "#/$defs/Amount"
                 },
                 "toughness": {
-                  "format": "int32",
-                  "type": "integer"
+                  "$ref": "#/$defs/Amount"
                 }
               },
               "required": [
@@ -8355,6 +9883,11 @@
                   ],
                   "type": "string"
                 },
+                "set_chosen_land_type": {
+                  "default": false,
+                  "description": "Phantasmal Terrain's \"enchanted land is the chosen type\": `set_subtypes` is the one basic land type this Aura's controller named as it entered ([`ChoiceEffect::ChooseBasicLandType`](crate::ChoiceEffect)) rather than a printed list. The whole type change is inert until that choice is answered.",
+                  "type": "boolean"
+                },
                 "set_subtypes": {
                   "default": [],
                   "items": {
@@ -8370,6 +9903,29 @@
               },
               "required": [
                 "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "Sunglasses of Urza's \"You may spend white mana as though it were red mana\" (CR 609.4b): while this permanent's controller pays a cost, each of their `from` credits may pay a `to` pip as well as its own. Gathered by [`Game::mana_substitutions`](crate::Game) and applied to the pool by [`ManaPool::substituted`](crate::ManaPool) before the payment planners run.",
+              "properties": {
+                "from": {
+                  "$ref": "#/$defs/Color"
+                },
+                "mode": {
+                  "enum": [
+                    "spend_mana_as_though_another_color"
+                  ],
+                  "type": "string"
+                },
+                "to": {
+                  "$ref": "#/$defs/Color"
+                }
+              },
+              "required": [
+                "from",
+                "mode",
+                "to"
               ],
               "type": "object"
             },
@@ -8520,6 +10076,11 @@
                   ],
                   "type": "string"
                 },
+                "strips_mana_on_decline": {
+                  "default": false,
+                  "description": "Power Sink's \"if that player doesn't, they tap all lands with mana abilities they control and lose all unspent mana\" — a penalty riding on the *declined* half of `unless_pays`, so it can't be an ordinary following step (those run either way). `false` (the default) for every other counter-unless-pays. Ignored without `unless_pays`.",
+                  "type": "boolean"
+                },
                 "unless_pays": {
                   "anyOf": [
                     {
@@ -8634,12 +10195,53 @@
               "type": "object"
             },
             {
+              "description": "\"Creatures the active player controls attack this turn if able\" (CR 508.1a — Siren's Call): [`MustAttackTarget`](Self::MustAttackTarget)'s clause over a board scan instead of one chosen creature, minting the same requirement per match. The set is locked in as this resolves — a creature that arrives afterwards was never named.",
+              "properties": {
+                "filter": {
+                  "$ref": "#/$defs/PermanentFilter"
+                },
+                "mode": {
+                  "enum": [
+                    "must_attack_all"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "filter",
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "\"Target creature attacks this turn if able\" (CR 508.1a). `target` is the spec the choice is made against: `TargetSpec::Creature` by default (Basandra, Battle Seraph's \"target creature\" — anyone's), narrowed by cards that print a qualified clause (Nettling Imp's \"target non-Wall creature the active player has controlled continuously since the beginning of the turn\"). Authorable for the same reason [`ManaEffect::Add`]'s own `target` is: the spec is the card's wording, not the effect's fixed shape.",
               "properties": {
                 "mode": {
                   "enum": [
                     "must_attack_target"
                   ],
                   "type": "string"
+                },
+                "target": {
+                  "$ref": "#/$defs/TargetSpec"
+                }
+              },
+              "required": [
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "Blaze of Glory's \"Target creature defending player controls can block any number of creatures this turn. It blocks each attacking creature this turn if able.\" Both halves of one printed sentence, so one effect: the block ceiling comes off in `CombatExtras::may_block_any_number` and the requirement goes into `CombatExtras::must_block_all`. `Game::declare_blockers` reads both, and both expire at the next Untap step.\n\nponytail: the two halves are stored apart but only ever set together — no card in the pool prints one without the other. Give this a pair of flags the day one does.",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "blocks_each_attacker_if_able"
+                  ],
+                  "type": "string"
+                },
+                "target": {
+                  "$ref": "#/$defs/TargetSpec"
                 }
               },
               "required": [
@@ -8657,6 +10259,108 @@
                 }
               },
               "required": [
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "\"Prevent the next N damage that would be dealt to any target this turn\" (CR 615 — Healing Salve, Samite Healer). Arms a consumable entry on [`Game::damage_prevention_shields`](crate::Game::damage_prevention_shields) worth `amount` points, spent at the two damage chokes against any damage — combat or not — unlike the all-or-nothing, combat-only shields on either side of it here.\n\n`target` left at [`TargetSpec::None`] shields the ability's controller instead of a chosen target: Conservator's \"dealt to you\", which takes no target at all.\n\n`amount` left at `None` is \"prevent *that* damage\" rather than \"the next N\" — the whole of the next qualifying hit, however big (the Circle of Protection cycle, Reverse Damage).",
+              "properties": {
+                "all_but": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/Amount"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "\"Prevent all but 1 of that damage\" (Forcefield, CR 615.4) — the points that get *through*, rather than the points stopped. Set it instead of `amount`, not alongside: a keep-shield is spent outright by the hit it stood in front of."
+                },
+                "amount": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/Amount"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "combat_only": {
+                  "default": false,
+                  "description": "\"Would deal *combat* damage\" (Forcefield): only damage dealt in a combat damage step is stopped. `false` (default) covers combat and noncombat alike.",
+                  "type": "boolean"
+                },
+                "from_color": {
+                  "allOf": [
+                    {
+                      "$ref": "#/$defs/ColorFilter"
+                    }
+                  ],
+                  "description": "\"a **black** source of your choice\" (CR 105.2a) — only damage from a source of this color is prevented. [`ColorFilter::Any`] (the default) is the plain uncolored shield.\n\nponytail: the color, but not the *choice*. A Circle's source is picked when the ability resolves (CR 609.7), which lets its controller hold the shield for the second of two black hits; this arms against whichever black source strikes first. Identical in the ordinary line — the Circle is activated in response to the damage — and the upgrade path is `PendingChoice::ChooseDamageSource`, offering every battlefield and stack object of the color."
+                },
+                "gain_life": {
+                  "default": false,
+                  "description": "\"You gain life equal to the damage prevented this way\" (Reverse Damage): the shield's controller gains whatever this shield actually ate, minted alongside the spend.",
+                  "type": "boolean"
+                },
+                "mode": {
+                  "enum": [
+                    "prevent_next_damage"
+                  ],
+                  "type": "string"
+                },
+                "redirect_to_controller": {
+                  "default": false,
+                  "description": "\"That source deals that damage to **you** instead\" (Jade Monolith, CR 615.10) — the hit is moved onto the ability's controller rather than prevented. Both pool cards that redirect send it to the same player who armed the shield, so there is nothing to name.",
+                  "type": "boolean"
+                },
+                "shield_source": {
+                  "default": false,
+                  "description": "\"Damage that would be dealt to **this creature**\" (Personal Incarnation): the shield covers the permanent that armed it. Not a `target` — the ability targets nothing, and no [`TargetSpec`](crate::TargetSpec) can name an effect's own source.",
+                  "type": "boolean"
+                },
+                "target": {
+                  "$ref": "#/$defs/TargetSpec"
+                },
+                "target_is_source": {
+                  "default": false,
+                  "description": "\"An unblocked creature of your choice would deal combat damage **to you**\" (Forcefield): the chosen `target` is the damage's *source*, and the shield goes up in front of this ability's controller. The ordinary reading — `target` is what the shield protects — is what every other card in the pool prints.",
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "Guardian Angel's second sentence: \"Until end of turn, you may pay {1} any time you could cast an instant. If you do, prevent the next 1 damage that would be dealt to that permanent or player this turn.\" A repeatable, optional, priority-timed *offer* rather than a shield — nothing is prevented until someone pays, and each payment mints its own [`PreventNextDamage`](Self::PreventNextDamage)-shaped shield, so the offer can be milked all turn.\n\nTakes no target of its own: \"that permanent or player\" is whatever the enclosing [`Effect::Sequence`](crate::Effect::Sequence)'s first step targeted, which resolution reads off the shared target. Recorded on [`Game::standing_preventions`](crate::Game::standing_preventions) and offered as a [`MeaningfulAction::PayStandingPrevention`](crate::MeaningfulAction) — the same legal-action list an activated ability rides, so timing (\"any time you could cast an instant\") and the payment plumbing are already covered.",
+              "properties": {
+                "amount": {
+                  "description": "Points each bought shield is worth — Guardian Angel's `1`.",
+                  "format": "int32",
+                  "type": "integer"
+                },
+                "cost": {
+                  "allOf": [
+                    {
+                      "$ref": "#/$defs/CostToml"
+                    }
+                  ],
+                  "description": "What one payment costs — Guardian Angel's `{1}`."
+                },
+                "mode": {
+                  "enum": [
+                    "offer_prevention_top_up"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "amount",
+                "cost",
                 "mode"
               ],
               "type": "object"
@@ -8762,6 +10466,36 @@
                 "mode": {
                   "enum": [
                     "skip_next_untap_opponent_creatures"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "\"Take an extra turn after this one\" (Time Walk; CR 505.6a). Queues one turn for the controller, taken as this turn ends and before the rotation moves on — see [`Game::advance_step`](crate::Game::advance_step).",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "take_extra_turn"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "\"You lose the game\" (CR 104.3b — Lich's dies trigger, and the shortfall arm of its damage tax). The effect's controller is eliminated outright, not taken to 0 life: nothing about the loss is a life total, so no prevention, protection or life-total static can hold it off.",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "you_lose_the_game"
                   ],
                   "type": "string"
                 }
@@ -8902,11 +10636,26 @@
       "additionalProperties": false,
       "description": "The riders on an [`CardDef::enter_as_copy`] replacement (CR 706/707.2). `Copy` — all scalars, no `Vec` — so the nested replacement stays compact. `until_eot` reverts the copy at cleanup (Cursed Mirror, [`Permanent::reverts_to_def_eot`]); `extra_counters` are additional +1/+1 counters the copy enters with (Altered Ego's X); `gains_haste` grants the copy haste (Cursed Mirror's \"except it has haste\"); `of` is the copyable type axis (Copy Enchantment's \"any enchantment\", CR 707.2, vs. the default \"any creature\").",
       "properties": {
+        "also_enchantment": {
+          "default": false,
+          "description": "Copy Artifact's \"except it's an enchantment in addition to its other types\" (CR 707.2 — a copy *exception*, not a separate continuous effect). The copier keeps the enchantment type it was printed with on top of everything the copied artifact brings, which is what keeps Disenchant and every enchantment sweeper live against it. Written to the indefinite [`Permanent::added_types`] slot as the copy lands, so it resets with the object (CR 400.7) rather than at cleanup. `also_enchantment = true` in TOML; the only copy exception in the pool that adds a card type, so it is a bool rather than a type list.",
+          "type": "boolean"
+        },
         "extra_counters": {
           "$ref": "#/$defs/Amount"
         },
         "gains_haste": {
           "default": false,
+          "type": "boolean"
+        },
+        "keeps_own_abilities": {
+          "default": false,
+          "description": "Vesuvan Doppelganger's \"and it has \\\"At the beginning of your upkeep, …\\\"\" — the copy carries the shapeshifter's own re-copy ability on top of the copied creature's. See [`copy_with_exceptions`].",
+          "type": "boolean"
+        },
+        "keeps_own_color": {
+          "default": false,
+          "description": "Vesuvan Doppelganger's \"except it doesn't copy that creature's color\" — the copy keeps the shapeshifter's own colors. See [`copy_with_exceptions`], which bakes both this and `keeps_own_abilities` into the copied def.",
           "type": "boolean"
         },
         "of": {
@@ -8993,12 +10742,26 @@
             "opponent"
           ],
           "type": "string"
+        },
+        {
+          "description": "A permanent the *active player* controls (Siren's Call's \"creatures the active player controls\" and the \"that player\" its end-step sweep refers back to). Deliberately not [`FilterController::Opponent`]: at a four-player table that would reach three opponents' boards, and every card printing this clause names exactly one of them. Reads whoever is active right now, so a delayed sweep scheduled this turn still names the same player when it fires at that turn's end step.",
+          "enum": [
+            "active_player"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "A permanent the player *this filter's own source is attacking* controls (Gaea's Liege's \"the number of Forests defending player controls\"). Read off [`Game::defender_of`](crate::Game) rather than off [`FilterController::Opponent`], which at a four-player table would reach three boards when the card names exactly one. Matches nothing while the source isn't attacking — which is the right answer, since every card printing the clause has a second arm for that case.",
+          "enum": [
+            "defending_player"
+          ],
+          "type": "string"
         }
       ]
     },
     "GrantedAbility": {
       "additionalProperties": false,
-      "description": "An *activated* or *triggered* ability an Aura/Equipment grants its host (Fallen Ideal's \"Sacrifice a creature: This creature gets +2/+1 until end of turn.\", Power Fist's \"Whenever this creature deals combat damage to a player, put that many +1/+1 counters on it.\"), carried by [`Effect::Static(StaticEffect::GrantToAttached)`]. `cost` and `trigger` are mutually exclusive: an activated grant (`cost`, `trigger: None`) is the non-mana twin of [`Effect::Static(StaticEffect::GrantManaAbility)`]'s inline `cost`/`mana`, surfaced by [`Game::granted_attachment_abilities`] and synthesized into an [`Ability`] by [`Game::ability_at`]; a triggered grant (`trigger: Some(_)`, `cost` unused) is surfaced by [`Game::granted_attachment_triggers`] instead and never becomes an activatable index. Neither is ever resolved off the stack itself. Read live off the attachment scan, so it disappears the instant the Aura/Equipment leaves. `effects` resolve against the host as the ability's own source (so `pump_self_until_end_of_turn` pumps the host).",
+      "description": "An *activated* or *triggered* ability an Aura/Equipment grants its host (Fallen Ideal's \"Sacrifice a creature: This creature gets +2/+1 until end of turn.\", Power Fist's \"Whenever this creature deals combat damage to a player, put that many +1/+1 counters on it.\"), carried by [`Effect::Static(StaticEffect::GrantToAttached)`]. `cost` and `trigger` are mutually exclusive: an activated grant (`cost`, `trigger: None`) is the non-mana twin of [`Effect::Static(StaticEffect::GrantManaAbility)`]'s inline `cost`/`mana`, surfaced by [`Game::granted_activated_abilities`] and synthesized into an [`Ability`] by [`Game::ability_at`]; a triggered grant (`trigger: Some(_)`, `cost` unused) is surfaced by [`Game::granted_attachment_triggers`] instead and never becomes an activatable index. Neither is ever resolved off the stack itself. Read live off the attachment scan, so it disappears the instant the Aura/Equipment leaves. `effects` resolve against the host as the ability's own source (so `pump_self_until_end_of_turn` pumps the host).",
       "properties": {
         "cost": {
           "allOf": [
@@ -9015,6 +10778,11 @@
           },
           "type": "array"
         },
+        "optional": {
+          "default": false,
+          "description": "\"You **may** pay {W}{W}. If you do, …\" on a *triggered* grant (Farmstead) — the granted ability's own [`Ability::optional`], which pairs with `cost`'s mana to raise the same pay-or-decline pause an authored optional trigger does. Ignored on an activated grant, where declining is just not activating.",
+          "type": "boolean"
+        },
         "trigger": {
           "anyOf": [
             {
@@ -9030,7 +10798,7 @@
       "type": "object"
     },
     "GrantedTriggerTag": {
-      "description": "The one [`Trigger`] flavor [`GrantedAbility`]'s `trigger` can spell in TOML today (Power Fist's \"Whenever this creature deals combat damage to a player, …\"), externally tagged like a plain Rust enum (`trigger = { deals_combat_damage_to_player = { who = \"this\" } }`) — unlike [`Timing`]'s `TriggerTag`, which pairs a `timing` tag with sibling fields on the *ability's own table* because an [`Ability`] already has a flat `timing` column to piggyback on; a [`GrantedAbility`] has no such column, so its `trigger` nests instead. ponytail: only `DealsCombatDamageToPlayer` is wired — extend this tag (mirroring `TriggerTag`) the moment a second granted-trigger card needs a different flavor.",
+      "description": "The one [`Trigger`] flavor [`GrantedAbility`]'s `trigger` can spell in TOML today (Power Fist's \"Whenever this creature deals combat damage to a player, …\"), externally tagged like a plain Rust enum (`trigger = { deals_combat_damage_to_player = { who = \"this\" } }`) — unlike [`Timing`]'s `TriggerTag`, which pairs a `timing` tag with sibling fields on the *ability's own table* because an [`Ability`] already has a flat `timing` column to piggyback on; a [`GrantedAbility`] has no such column, so its `trigger` nests instead. ponytail: only the flavors below are wired — extend this tag (mirroring `TriggerTag`) the moment a granted-trigger card needs a different one.",
       "oneOf": [
         {
           "additionalProperties": false,
@@ -9046,6 +10814,19 @@
           },
           "required": [
             "deals_combat_damage_to_player"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Farmstead's \"Enchanted land has \\\"At the beginning of your upkeep, …\\\"\" — fieldless, so it is spelled `trigger = { upkeep = {} }`. \"Your\" is the *host's* controller, which is who a granted ability belongs to.",
+          "properties": {
+            "upkeep": {
+              "type": "object"
+            }
+          },
+          "required": [
+            "upkeep"
           ],
           "type": "object"
         }
@@ -9196,6 +10977,19 @@
           "type": "object"
         },
         {
+          "additionalProperties": false,
+          "description": "Landwalk (CR 702.14): can't be blocked as long as the defending player controls a land of that type. The check reads the defender's *printed land subtypes* ([`CardKind::Land`]'s `subtypes`), so a dual land grants passage to both walkers. In TOML, `{ landwalk = \"island\" }`. See [`Game::can_block`].",
+          "properties": {
+            "landwalk": {
+              "$ref": "#/$defs/BasicLandType"
+            }
+          },
+          "required": [
+            "landwalk"
+          ],
+          "type": "object"
+        },
+        {
           "description": "Can't be the target of spells or abilities *opponents* control (CR 702.11). Its own controller can still target it. See the target-legality retain in [`Game::legal_targets_for`].",
           "enum": [
             "hexproof"
@@ -9255,6 +11049,13 @@
           "description": "\"This creature can't block\" (CR 509.1a — Bloodghast is never a legal blocker). Read by [`Game::can_block`].",
           "enum": [
             "cant_block"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Banding (CR 702.22). Only the damage-assignment half is modeled: when a creature with banding is among an attacker's blockers, *its* controller divides that attacker's combat damage rather than the attacking player (CR 702.22e). See [`Game::damage_assigner`]. ponytail: attacking as a band is not modeled — `Intent::DeclareAttackers` carries a flat list of attackers with no grouping, and bands would have to travel through the intent, the projection, the proto, and the client's attack UI. See increment #79.",
+          "enum": [
+            "banding"
           ],
           "type": "string"
         },
@@ -9535,6 +11336,19 @@
             "produced"
           ],
           "type": "string"
+        },
+        {
+          "additionalProperties": false,
+          "description": "\"An additional {G}\" — one named color, whatever the land itself produced (Wild Growth). Strictly narrower than [`AnyColor`](Self::AnyColor) and unrelated to [`Produced`](Self::Produced), so it's credited inline with no pause: there's nothing to choose. `bonus_color = { fixed = \"green\" }` in TOML.",
+          "properties": {
+            "fixed": {
+              "$ref": "#/$defs/Color"
+            }
+          },
+          "required": [
+            "fixed"
+          ],
+          "type": "object"
         }
       ]
     },
@@ -9554,6 +11368,19 @@
             "controller"
           ],
           "type": "string"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Every land on the battlefield matching `filter`, whoever taps it — Mana Flare's \"whenever a player taps a land for mana\" (an unrestricted land filter) and Gauntlet of Might's \"whenever a Mountain is tapped for mana\" (`subtypes = [\"Mountain\"]`, which reads [`Game::effective_subtypes`] so a dual counts too, CR 305.6). The bonus still lands in the *tapping* player's pool, not the watcher's — \"**its controller** adds an additional {R}\". `scope = { any_land = { … } }` in TOML.",
+          "properties": {
+            "any_land": {
+              "$ref": "#/$defs/PermanentFilter"
+            }
+          },
+          "required": [
+            "any_land"
+          ],
+          "type": "object"
         }
       ]
     },
@@ -9662,6 +11489,12 @@
             "null"
           ]
         },
+        "blocking": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
         "color": {
           "anyOf": [
             {
@@ -9670,6 +11503,12 @@
             {
               "type": "null"
             }
+          ]
+        },
+        "controlled_since_turn_start": {
+          "type": [
+            "boolean",
+            "null"
           ]
         },
         "controller": {
@@ -9683,6 +11522,12 @@
           ]
         },
         "creature_or_vehicle": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "did_not_attack_this_turn": {
           "type": [
             "boolean",
             "null"
@@ -9714,6 +11559,21 @@
             {
               "type": "null"
             }
+          ]
+        },
+        "exclude_subtypes": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "has_mana_ability": {
+          "type": [
+            "boolean",
+            "null"
           ]
         },
         "modified": {
@@ -9810,6 +11670,14 @@
             "null"
           ]
         },
+        "power_min": {
+          "format": "uint8",
+          "minimum": 0.0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
         "power_parity": {
           "anyOf": [
             {
@@ -9857,6 +11725,12 @@
             }
           ]
         },
+        "toughness_less_than_source_power": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
         "types": {
           "anyOf": [
             {
@@ -9865,6 +11739,12 @@
             {
               "type": "null"
             }
+          ]
+        },
+        "unblocked": {
+          "type": [
+            "boolean",
+            "null"
           ]
         },
         "with_counter": {
@@ -9887,6 +11767,16 @@
           "type": [
             "boolean",
             "null"
+          ]
+        },
+        "without_keyword": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Keyword"
+            },
+            {
+              "type": "null"
+            }
           ]
         }
       },
@@ -10127,7 +12017,7 @@
       ]
     },
     "SpecialTiming": {
-      "description": "The `timing` tag for a triggered ability. Mirrors [`Trigger`]'s variants one-for-one, but stays fieldless: two of them ([`YouSacrifice`](TriggerTag::YouSacrifice)/ [`AnyPlayerSacrifices`](TriggerTag::AnyPlayerSacrifices)) carry a [`PermanentFilter`] on the real `Trigger`, and a third ([`DealsCombatDamageToPlayer`](TriggerTag::DealsCombatDamageToPlayer)) carries a [`CombatDamageScope`], a fourth ([`CastSpell`](TriggerTag::CastSpell)) carries a [`SpellFilter`]/[`CasterScope`]/`nth_each_turn`, a fifth ([`PlayerDraws`](TriggerTag::PlayerDraws)) carries a [`CasterScope`]/`nth_each_turn` (the draw-side twin of `CastSpell`, no filter), and a sixth and seventh ([`PermanentEnters`](TriggerTag::PermanentEnters)/ [`PermanentEntersIncludingThis`](TriggerTag::PermanentEntersIncludingThis)) carry a [`PermanentFilter`]/[`EnterController`], none of which can come from a bare `timing = \"…\"` string — [`Ability::deserialize`] pairs the tag with sibling fields (`filter`, `who`, `spell_filter`/`caster`/`drawer`/`nth_each_turn`, `controller`) to build those by hand. An eighth pair ([`YouAttackWithCreatures`](TriggerTag::YouAttackWithCreatures)/ [`OpponentAttacksYouWithCreatures`](TriggerTag::OpponentAttacksYouWithCreatures)) carries a sibling `at_least` count the same way, and [`CreatureEnchantedByYourAuraAttacks`](TriggerTag::CreatureEnchantedByYourAuraAttacks) and [`AnotherPlayerAttacksWithCreatures`](TriggerTag::AnotherPlayerAttacksWithCreatures) reuse that same `at_least` sibling. A ninth ([`SpellTargetsThisOnly`](TriggerTag::SpellTargetsThisOnly), `timing = \"spell_targets_this\"`) reuses `CastSpell`'s `spell_filter` sibling. The three timings that aren't a [`Trigger`].",
+      "description": "The `timing` tag for a triggered ability. Mirrors [`Trigger`]'s variants one-for-one, but stays fieldless: two of them ([`YouSacrifice`](TriggerTag::YouSacrifice)/ [`AnyPlayerSacrifices`](TriggerTag::AnyPlayerSacrifices)) carry a [`PermanentFilter`] on the real `Trigger`, and a third ([`DealsCombatDamageToPlayer`](TriggerTag::DealsCombatDamageToPlayer)) carries a [`CombatDamageScope`], a fourth ([`CastSpell`](TriggerTag::CastSpell)) carries a [`SpellFilter`]/[`CasterScope`]/`nth_each_turn`, a fifth ([`PlayerDraws`](TriggerTag::PlayerDraws)) carries a [`CasterScope`]/`nth_each_turn` (the draw-side twin of `CastSpell`, no filter), and a sixth and seventh ([`PermanentEnters`](TriggerTag::PermanentEnters)/ [`PermanentEntersIncludingThis`](TriggerTag::PermanentEntersIncludingThis)) carry a [`PermanentFilter`]/[`EnterController`], none of which can come from a bare `timing = \"…\"` string — [`Ability::deserialize`] pairs the tag with sibling fields (`filter`, `who`, `spell_filter`/`caster`/`drawer`/`nth_each_turn`, `controller`) to build those by hand. An eighth pair ([`YouAttackWithCreatures`](TriggerTag::YouAttackWithCreatures)/ [`OpponentAttacksYouWithCreatures`](TriggerTag::OpponentAttacksYouWithCreatures)) carries a sibling `at_least` count the same way, and [`CreatureEnchantedByYourAuraAttacks`](TriggerTag::CreatureEnchantedByYourAuraAttacks) and [`AnotherPlayerAttacksWithCreatures`](TriggerTag::AnotherPlayerAttacksWithCreatures) reuse that same `at_least` sibling. A ninth ([`SpellTargetsThisOnly`](TriggerTag::SpellTargetsThisOnly), `timing = \"spell_targets_this\"`) reuses `CastSpell`'s `spell_filter` sibling. A tenth ([`BlocksOrBecomesBlockedBy`](TriggerTag::BlocksOrBecomesBlockedBy)) reuses `YouSacrifice`'s `filter` sibling for the creature on the other side of the block. The three timings that aren't a [`Trigger`].",
       "enum": [
         "spell",
         "static",
@@ -10257,6 +12147,13 @@
             "color"
           ],
           "type": "object"
+        },
+        {
+          "description": "A spell whose mana value equals the `{X}` paid for the spell doing the filtering (Spell Blast's \"Counter target spell with mana value X\"). The only X-dependent arm: it is matched inline in [`Game::legal_targets_for`](crate::Game)'s `SpellOnStack` enumeration — the one place that knows the filtering spell's X, and the same place the CR 608.2b resolution re-check reads — so `Game::spell_matches_filter`, which serves trigger and cost-reducer call sites with no X of their own, never matches it. The spell-side twin of [`PermanentFilter::mv_eq_x`].",
+          "enum": [
+            "mana_value_equals_x"
+          ],
+          "type": "string"
         }
       ]
     },
@@ -10570,6 +12467,13 @@
           "type": "string"
         },
         {
+          "description": "A spell on the stack *or* a permanent on the battlefield, unrestricted — the lace cycle's \"target spell or permanent\" (Deathlace). The only spec that spans the two zones; every other spell spec ([`Self::SpellOnStack`]) and permanent spec ([`Self::Permanent`]) picks one. Unfiltered because the five cards that print it are unfiltered.",
+          "enum": [
+            "spell_or_permanent"
+          ],
+          "type": "string"
+        },
+        {
           "description": "A target artifact, enchantment, or planeswalker on the battlefield (Fracture). The noncreature-permanent removal set the pool needs; Auras count as enchantments.",
           "enum": [
             "artifact_enchantment_or_planeswalker"
@@ -10614,6 +12518,25 @@
           "description": "Animate Dead's own ETB reanimation target: the graveyard creature card this Aura was cast targeting (CR 303.4a's \"enchant creature card in a graveyard\"), captured on the permanent as it entered ([`CardDef::enchant_graveyard`], [`Permanent::cast_time_enchant_target`]). No real choice at resolution — the choice already happened at cast — so this resolves straight to the stack like [`ThisPermanent`](Self::ThisPermanent)/ [`EnchantedCreature`](Self::EnchantedCreature) rather than pausing on a fresh target choice; empty (CR 603.3c: the ability is dropped) if the captured card has since left the graveyard. ponytail: named for the one card that needs it — no pool card wants a *second* such look-back, so this isn't generalized into a reusable \"this permanent's own cast target\" concept.",
           "enum": [
             "this_auras_graveyard_target"
+          ],
+          "type": "string"
+        }
+      ]
+    },
+    "TextWords": {
+      "description": "Which enumerated vocabulary a text-changing spell replaces a word from (CR 612.1) — Magical Hack's basic land types, Sleight of Mind's color words. Names the *vocabulary* only; which word becomes which is picked as [`Effect::Choice(ChoiceEffect::ChangeText)`](crate::ChoiceEffect) resolves.",
+      "oneOf": [
+        {
+          "description": "\"…replacing all instances of one basic land type with another\" (Magical Hack).",
+          "enum": [
+            "basic_land_type"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "\"…replacing all instances of one color word with another\" (Sleight of Mind).",
+          "enum": [
+            "color"
           ],
           "type": "string"
         }
@@ -10739,6 +12662,7 @@
             "becomes_monstrous",
             "attacks",
             "blocks_or_becomes_blocked",
+            "blocks_or_becomes_blocked_by",
             "attacks_or_blocks",
             "dies",
             "creature_dies",
@@ -10750,14 +12674,17 @@
             "creature_an_opponent_controls_dies",
             "enchantment_you_control_dies",
             "nonland_permanent_you_control_dies_including_this",
+            "land_put_into_graveyard",
             "upkeep",
             "each_upkeep",
             "first_main_phase",
             "each_player_first_main_phase",
             "begin_combat",
+            "end_of_combat",
             "end_step",
             "each_end_step",
             "each_draw_step",
+            "draw_step",
             "each_other_player_untap_step",
             "you_gain_life",
             "opponent_gains_life",
@@ -10772,10 +12699,13 @@
             "creature_enchanted_by_your_aura_attacks",
             "you_sacrifice",
             "any_player_sacrifices",
+            "enchanted_permanent_becomes_tapped",
             "you_discard",
             "you_discard_nonland",
+            "you_play_a_land",
             "deals_combat_damage_to_player",
             "deals_combat_damage_to_creature",
+            "this_is_dealt_damage",
             "creature_dealt_damage_by_this_dies",
             "deals_damage_to_opponent",
             "cast_spell",
@@ -10810,6 +12740,20 @@
           "description": "Whenever the enchanted host deals damage, combat or noncombat (Armadillo Cloak's \"you gain that much life\"). See [`Trigger::EnchantedCreatureDealsDamage`].",
           "enum": [
             "enchanted_creature_deals_damage"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Whenever this permanent's controller is dealt damage, combat or noncombat (Living Artifact's \"put that many vitality counters\"). See [`Trigger::YouAreDealtDamage`].",
+          "enum": [
+            "you_are_dealt_damage"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Reuses `AnyPlayerSacrifices`' `filter` sibling for the tapped permanent, plus its own `for_mana` bool.",
+          "enum": [
+            "permanent_becomes_tapped"
           ],
           "type": "string"
         }
@@ -10939,9 +12883,34 @@
       "description": "\"Cast this spell only before attackers are declared\" (CR 601.3e — Master Warcraft) — `cast_only_before_attackers = true`; absent (`false`) for every ordinary card.",
       "type": "boolean"
     },
+    "cast_only_before_blockers": {
+      "default": false,
+      "description": "\"Cast this spell only during combat before blockers are declared\" (CR 601.3e — Blaze of Glory) — the declare-blockers half of `cast_only_before_attackers`, open until the first defending player declares. Pair it with `cast_only_during_combat`, which is the other half of Blaze of Glory's printed sentence; alone it leaves the pre-combat main phase open. Absent (`false`) for every ordinary card.",
+      "type": "boolean"
+    },
+    "cast_only_before_combat_damage": {
+      "default": false,
+      "description": "\"Cast this spell only before the combat damage step\" (CR 601.3e — Berserk) — `cast_only_before_combat_damage = true`: legal from untap through declare blockers, and closed for the rest of the turn from the first combat damage step on. Absent (`false`) for every ordinary card.",
+      "type": "boolean"
+    },
     "cast_only_during_combat": {
       "default": false,
       "description": "\"Cast this spell only during combat\" (CR 601.3e) — `cast_only_during_combat = true`; absent (`false`) for every ordinary card.",
+      "type": "boolean"
+    },
+    "cast_only_during_declare_attackers": {
+      "default": false,
+      "description": "\"Cast this spell only during your declare attackers step\" (CR 601.3e — Camouflage) — `cast_only_during_declare_attackers = true`: the attack-side twin of the window above, and narrower still, since it is closed on every other player's turn as well as in every other step. Absent (`false`) for every ordinary card.",
+      "type": "boolean"
+    },
+    "cast_only_during_declare_blockers": {
+      "default": false,
+      "description": "\"Cast this spell only during the declare blockers step\" (CR 601.3e — False Orders) — `cast_only_during_declare_blockers = true`: a single step rather than everything up to one, open before *and* after the declaration (False Orders rearranges a declaration that already happened). Absent (`false`) for every ordinary card.",
+      "type": "boolean"
+    },
+    "cast_only_during_opponents_turn": {
+      "default": false,
+      "description": "\"Cast this spell only during an opponent's turn\" (CR 601.3e — Siren's Call) — `cast_only_during_opponents_turn = true`; the cast-side twin of an activated ability's `only_during_opponents_turn`, composable with `cast_only_before_attackers` (together they are Siren's Call's printed restriction). Absent (`false`) for every ordinary card.",
       "type": "boolean"
     },
     "cast_x_max": {

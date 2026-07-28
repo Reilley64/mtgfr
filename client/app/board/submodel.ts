@@ -2254,6 +2254,7 @@ function trySubmitReadyPendingDraft(
     (pc.kind === "order_triggers" ||
       pc.kind === "scry" ||
       pc.kind === "surveil" ||
+      pc.kind === "reorder_top" ||
       pc.kind === "select_from_top" ||
       pc.kind === "distribute_top" ||
       pc.kind === "partition_revealed")
@@ -2836,7 +2837,10 @@ export function updateBoard(
         return [{ ...synced, promptDraft: { kind: "partition", buckets: { pile_a: nextPileA } } }, []];
       }
 
-      if (synced.promptDraft.kind === "partition" && (pc.kind === "scry" || pc.kind === "surveil")) {
+      if (
+        synced.promptDraft.kind === "partition" &&
+        (pc.kind === "scry" || pc.kind === "surveil" || pc.kind === "reorder_top")
+      ) {
         const top = synced.promptDraft.buckets.top ?? [];
         const bottom = synced.promptDraft.buckets.bottom ?? [];
         if (top.includes(message.id)) {

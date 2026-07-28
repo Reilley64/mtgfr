@@ -192,6 +192,30 @@ test("discard prompt submit disabled until count cards picked", () => {
   );
 });
 
+// Winter Orb's untap pause is a free multi-select, so nothing but the cap stops a player from
+// offering an answer that untaps two lands — which the server rejects.
+test("winter orb untap prompt keeps submit shut until all but one land stays tapped", () => {
+  const s = state({
+    pending_choice: {
+      kind: "decline_untap",
+      player: 0,
+      items: [
+        { id: 20, label: "Forest" },
+        { id: 21, label: "Island" },
+      ],
+      at_most_one: [[20, 21]],
+    },
+  });
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(s)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("prompt-submit")).toBeDisabled(),
+    Scene.click(Scene.testId("prompt-card-20")),
+    Scene.expect(Scene.testId("prompt-submit")).toBeEnabled(),
+  );
+});
+
 test("discard prompt submit emits discard intent", () => {
   const s = state({
     pending_choice: {
@@ -370,6 +394,37 @@ test("surveil bottom lane is labeled Graveyard", () => {
   );
 });
 
+test("reorder_top second lane holds the cards not placed yet, and they still go back on top", () => {
+  const s = state({
+    pending_choice: {
+      kind: "reorder_top",
+      player: 0,
+      items: [
+        { id: 1, label: "Island" },
+        { id: 2, label: "Forest" },
+        { id: 3, label: "Swamp" },
+      ],
+    },
+  });
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(s)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("prompt-arrange-lanes")).toExist(),
+    Scene.expect(Scene.testId("prompt-arrange-bottom-label")).toHaveText("Not yet ordered"),
+  );
+
+  const gf = gameFold(s);
+  const board = updateBoard(initialBoardModel(), PromptCardToggled({ id: 3 }), gf, "T1")[0];
+  const [, commands] = updateBoard(board, PromptSubmitted(), gf, "T1");
+  expect(intentFromCommand(commands[0])).toEqual({
+    kind: "arrange_top",
+    player: 0,
+    top: [3, 1, 2],
+    bottom: [],
+  });
+});
+
 test("scry card click moves from Bottom lane to Top lane", () => {
   const s = state({
     pending_choice: {
@@ -536,6 +591,46 @@ test("partition_revealed uses a center modal with Pile A and Pile B lanes", () =
     Scene.expect(Scene.testId("prompt-partition-b")).toExist(),
     Scene.expect(Scene.testId("prompt-card-1")).toExist(),
     Scene.expect(Scene.testId("prompt-card-2")).toExist(),
+  );
+});
+
+test("partition_revealed relabels itself for Raging River's creature piles", () => {
+  const s = state({
+    pending_choice: {
+      into_piles: true,
+      kind: "partition_revealed",
+      player: 0,
+      source: 9,
+      items: [{ id: 1, label: "Grizzly Bears" }],
+    },
+  });
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(s)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("pending-partition-modal")).toExist(),
+    Scene.expect(Scene.testId("prompt-modal-title")).toHaveText("Choose creatures for this pile"),
+  );
+});
+
+test("choose_pile_for_hand names the attacker being sent left or right", () => {
+  const s = state({
+    pending_choice: {
+      attacker: { id: 5, label: "Shivan Dragon" },
+      kind: "choose_pile_for_hand",
+      pile_a: [{ id: 1, label: "Wall of Stone" }],
+      pile_b: [{ id: 2, label: "Grizzly Bears" }],
+      player: 0,
+      source: 8,
+    },
+  });
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(s)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("prompt-pile-heading")).toHaveText("Send Shivan Dragon left or right"),
+    Scene.expect(Scene.testId("prompt-pile-0")).toHaveText("Left"),
+    Scene.expect(Scene.testId("prompt-pile-1")).toHaveText("Right"),
   );
 });
 
@@ -823,6 +918,26 @@ test("may_exile_discarded_to_play submit emits the chosen discarded card", () =>
   });
 });
 
+test("choose_exiled_dig_to_cast_free swaps to hand-pick wording for Word of Command", () => {
+  const s = state({
+    pending_choice: {
+      kind: "choose_exiled_dig_to_cast_free",
+      player: 0,
+      source: 1,
+      from_opponent_hand: true,
+      items: [{ id: 9, label: "Lightning Bolt" }],
+    },
+  });
+
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(s)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("pick-title")).toHaveText("Choose a card from their hand for them to play"),
+    Scene.expect(Scene.testId("prompt-submit")).toHaveText("Play"),
+  );
+});
+
 test("choose_copy_target swaps to counter wording for the MayPutCounterOnCreature primer", () => {
   const s = state({
     pending_choice: {
@@ -843,6 +958,27 @@ test("choose_copy_target swaps to counter wording for the MayPutCounterOnCreatur
     Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
     Scene.expect(Scene.testId("pick-title")).toHaveText("Choose a creature to get a +1/+1 counter"),
     Scene.expect(Scene.testId("prompt-submit")).toHaveText("Put counter"),
+  );
+});
+
+test("choose_copy_target swaps to block wording for False Orders' re-aim", () => {
+  const s = state({
+    pending_choice: {
+      kind: "choose_copy_target",
+      player: 0,
+      source: 1,
+      choose_block_target: true,
+      items: [{ id: 9, label: "Grizzly Bears" }],
+    },
+  });
+
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(s)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("pending-card-pick-modal")).toExist(),
+    Scene.expect(Scene.testId("pick-title")).toHaveText("Choose an attacking creature to block"),
+    Scene.expect(Scene.testId("prompt-submit")).toHaveText("Block"),
   );
 });
 

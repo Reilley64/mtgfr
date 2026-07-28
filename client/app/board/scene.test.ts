@@ -871,6 +871,7 @@ test("pointer up on on-board sacrifice_edict submits sacrifice intent", () => {
       objects: [bear],
       pending_choice: {
         kind: "sacrifice_edict",
+        count: 1,
         player: 0,
         source: 1,
         items: [{ id: 22, label: "Grizzly Bears" }],

@@ -104,11 +104,20 @@ impl Game {
                 | Event::BasePtSetIndefinite { object, .. }
                 | Event::TypesAddedUntilEndOfTurn { object, .. }
                 | Event::TempBoostsEnded { object }
-                | Event::KeywordsStripped { object, .. } => {
+                | Event::KeywordsStripped { object, .. }
+                // The host named here is the one whose keyword set just shrank; the Aura carrying
+                // the loss has no keywords of its own to recompute.
+                | Event::AttachedKeywordsLost { object, .. } => {
                     cache.invalidate_object(object);
                 }
                 // A Backup grant (CR 702.166) adds the source's keywords to the target — drop its
                 // cached keyword set.
+                // A land turning into a Forest (Gaea's Liege) is not just that land's business —
+                // every "equal to the number of Forests you control" on the board reads the new
+                // count, the Liege's own P/T first among them.
+                Event::SubtypesSetWhileSourceRemains { .. } => {
+                    cache.invalidate_all_battlefield(self);
+                }
                 Event::AbilitiesGranted { target, .. } => cache.invalidate_object(target),
                 // The grants clear at cleanup; every target loses the granted keywords (read the
                 // still-live list before it's emptied by the applying event).
@@ -171,6 +180,16 @@ impl Game {
                 | Event::PutOntoBattlefieldFromHand { .. } => {
                     cache.invalidate_all_battlefield(self);
                 }
+                // A tapped-state anthem axis (Castle's "untapped creatures you control get +0/+2")
+                // reads the candidate's own `tapped`, so only the permanent that turned needs
+                // dropping. Every tap and untap in the engine routes through these three events —
+                // regeneration (CR 701.15b) taps as part of its replacement rather than emitting
+                // its own `Tapped`.
+                Event::Tapped { object }
+                | Event::Untapped { object }
+                | Event::Regenerated { object } => {
+                    cache.invalidate_object(object);
+                }
                 // Turning face up swaps the anonymous 2/2 for the real card's characteristics.
                 Event::TurnedFaceUp { permanent } => cache.invalidate_object(permanent),
                 // Flipping (CR 712) swaps the front face's name/types/P/T/abilities for the back's.
@@ -223,6 +242,24 @@ impl Game {
                 // own static reads its self (`object`), while Flickering Ward's Aura (`object`) grants (CR 702.21, CR 303.4)
                 // the keyword to its enchanted host — invalidate both.
                 Event::ColorChosen { object, .. } => {
+                    cache.invalidate_object(object);
+                    if let Some(host) = self.as_permanent(object).and_then(|p| p.attached_to) {
+                        cache.invalidate_object(host);
+                    }
+                }
+                // A CR 612.1 text change rewrote a printed keyword or ability on `object` (its
+                // landwalk land type, its protection colour) — the same reach as `ColorChosen`,
+                // including the host when the changed object is an Aura whose grant reads it.
+                Event::TextChanged { object, .. } => {
+                    cache.invalidate_object(object);
+                    if let Some(host) = self.as_permanent(object).and_then(|p| p.attached_to) {
+                        cache.invalidate_object(host);
+                    }
+                }
+                // Same reach as `ColorChosen`: a layer-5 recolor (Deathlace, Wild Mongrel) can
+                // flip a colour-scoped anthem or a protection-from-colour grant on the recolored
+                // permanent, and on the host if it is an Aura.
+                Event::ColorSet { object, .. } => {
                     cache.invalidate_object(object);
                     if let Some(host) = self.as_permanent(object).and_then(|p| p.attached_to) {
                         cache.invalidate_object(host);

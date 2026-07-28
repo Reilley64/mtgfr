@@ -1,0 +1,25 @@
+# Target spell or permanent becomes blue. (Mana symbols on that permanent remain unchanged.)
+name = "Thoughtlace"
+otags = ["color-change", "cycle-lea-lace", "interrupt", "single-target-instant-sorcery", "untracked-indefinite-effect"]
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
+id = "6452b6a6-6235-46a3-a712-a26592450438"
+default_print = "b8859cf0-e4c3-4044-9674-d0703646d72e"
+oracle = "Target spell or permanent becomes blue. (Mana symbols on that permanent remain unchanged.)"
+
+[cost]
+blue = 1
+
+[kind]
+type = "instant"
+
+# Target spell or permanent becomes blue. (Mana symbols on that permanent remain unchanged.)
+[[abilities]]
+timing = "spell"
+
+# Target spell or permanent becomes blue. The reminder text is a rules clarification, not an
+# effect — colors are read off the object, never re-derived from its mana symbols.
+[[abilities.effects]]
+type = "pump"
+mode = "target_becomes_color"
+color = "blue"
+target = "spell_or_permanent"

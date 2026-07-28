@@ -1,0 +1,32 @@
+# This spell costs {1} more to cast for each target beyond the first.
+# Fireball deals X damage divided evenly, rounded down, among any number of targets.
+name = "Fireball"
+otags = ["burn-any", "division", "dnd-spell", "multi-removal", "multiple-targets", "single-english-word-name", "single-target-instant-sorcery", "spot-removal", "strive"]
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "arc", "ath", "btd", "c13", "ced", "cei", "clb", "dd2", "dst", "fbb", "ima", "itp", "jvc", "lea", "leb", "m10", "m11", "m12", "me4", "olep", "p05", "parl", "pd2", "plst", "pmei", "prm", "ptc", "rqs", "sum", "wc04"]
+id = "aa7714b0-2bfb-458a-8ebf-37ec2c53383e"
+default_print = "39e05c2d-b4a1-4f59-8743-f1694c803164"
+oracle = "This spell costs {1} more to cast for each target beyond the first.\nFireball deals X damage divided evenly, rounded down, among any number of targets."
+
+[cost]
+x = true
+red = 1
+
+# This spell costs {1} more to cast for each target beyond the first.
+[cost.additional.strive]
+generic = 1
+
+[kind]
+type = "sorcery"
+
+# Fireball deals X damage divided evenly, rounded down, among any number of targets.
+[[abilities]]
+timing = "spell"
+
+# Fireball deals X damage divided evenly, rounded down, among any number of targets.
+[[abilities.effects]]
+type = "damage"
+mode = "target"
+amount = "x"
+target = "any"
+count = { strive_scaled = true }
+divided = "evenly"

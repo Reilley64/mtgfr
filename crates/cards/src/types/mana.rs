@@ -16,6 +16,11 @@ pub struct Cost {
     /// ponytail: `{X}` on a permanent's own characteristics (a CDA, CR 107.3) isn't modeled; grow
     /// that from a real card that needs it.
     pub x: u8,
+    /// A color restriction on the mana spent for `{X}` (CR 601.2g) — Drain Life's "Spend only
+    /// black mana on X." [`Cost::with_x`] folds the chosen value into [`Cost::colored`] for this
+    /// color instead of into [`Cost::generic`], so the ordinary colored-pip planner enforces it.
+    /// `None` for every other `{X}` cost, where any mana pays.
+    pub x_color: Option<Color>,
     /// Hybrid mana pips (CR 107.4e — `{a/b}`), one entry per symbol: each is payable by mana of
     /// color `a` *or* `b`, a dual credit touching either color, or an "any" wildcard — strictly
     /// more flexible than a mono colored pip, so [`ManaPool::spend_plan`] pays these after the
@@ -51,6 +56,7 @@ impl Cost {
         colored: [0; Color::COUNT],
         colorless: 0,
         x: 0,
+        x_color: None,
         hybrid: &[],
         phyrexian: &[],
         additional: AdditionalCost {
@@ -72,13 +78,26 @@ impl Cost {
     /// This cost with a chosen `x` folded into its generic component (CR 601.2b/107.3: paying
     /// `{X}` adds `x` generic mana per `{X}` symbol in the cost — `{X}{X}{X}` pays the chosen
     /// value three times). A no-`{X}` cost ignores `x`, matching "must stay 0."
+    ///
+    /// A cost with an [`x_color`](Cost::x_color) restriction (Drain Life's "Spend only black mana
+    /// on X.") folds the value into that color's pips instead, which is the whole enforcement:
+    /// colored pips are already payable only by their own color.
     pub fn with_x(self, x: u32) -> Cost {
         // Clamp before narrowing so a huge chosen X (or a large multiplier) can never truncate
         // down to a cheap cost (a payment-bypass); a cost that saturates at 255 generic is
         // already unpayable.
         let extra = (self.x as u32).saturating_mul(x).min(u8::MAX as u32) as u8;
+        let Some(color) = self.x_color else {
+            return Cost {
+                generic: self.generic.saturating_add(extra),
+                x: 0,
+                ..self
+            };
+        };
+        let mut colored = self.colored;
+        colored[color.index()] = colored[color.index()].saturating_add(extra);
         Cost {
-            generic: self.generic.saturating_add(extra),
+            colored,
             x: 0,
             ..self
         }
@@ -118,7 +137,7 @@ impl Cost {
     /// colorless pips, WUBRG colored pips, `{a/b}` hybrid pips, then `{a/P}` Phyrexian pips.
     /// Ignores non-mana riders
     /// (`additional`); used wherever a full `Cost` needs to read back as a pip string, e.g.
-    /// [`Effect`](super::Effect)'s `SacrificeSelfUnlessPay` label (Keldon Vandals' `{2}{R}`).
+    /// [`Effect`](super::Effect)'s `PayOrElse` label (Keldon Vandals' `{2}{R}`).
     pub fn mana_label(&self) -> String {
         let mut out = String::new();
         for _ in 0..self.x {
@@ -1067,6 +1086,65 @@ impl ManaPool {
     pub fn can_pay(&self, cost: &Cost, spell: Option<SpellCharacteristics>) -> bool {
         self.spend_plan(cost, spell).is_some()
     }
+
+    /// This pool with every "you may spend `from` as though it were `to`" substitution in `subs`
+    /// (Sunglasses of Urza, CR 609.4b) folded in: each mono `from` credit is *widened* into a
+    /// [`Mana::OfColors`] credit over `from` plus every color it may be spent as. Widening rather
+    /// than recoloring is the "may" — the credit still pays its own color — and the planner
+    /// already knows how to spend a restricted-set credit, so nothing downstream changes.
+    /// [`ManaPool::unsubstitute`] maps a plan made against this back onto real credits.
+    ///
+    /// ponytail: a [`Mana::Restricted`] credit keeps its base color — [`ManaPool::spend_plan`]
+    /// folds those in itself, after this has run. No card in the pool prints both restricted mana
+    /// and a substitution; widen inside `spend_plan` if one ever does.
+    pub fn substituted(&self, subs: &[(Color, Color)]) -> ManaPool {
+        if subs.is_empty() {
+            return *self;
+        }
+        let mut pool = *self;
+        for i in 0..Color::COUNT {
+            let Some(mask) = widened_mask(subs, i) else {
+                continue;
+            };
+            pool.of_colors[mask] += std::mem::take(&mut pool.colored[i]);
+        }
+        pool
+    }
+
+    /// Map a spend planned against [`ManaPool::substituted`] back onto credits this pool really
+    /// holds: whatever the plan spent beyond the real [`Mana::OfColors`] stock of a widened set is
+    /// mono mana of the color it was widened from. Without this the resulting
+    /// [`Event::ManaSpent`](crate::Event) would name mana the pool never had.
+    pub fn unsubstitute(&self, subs: &[(Color, Color)], mut spend: ManaPool) -> ManaPool {
+        if subs.is_empty() {
+            return spend;
+        }
+        for i in 0..Color::COUNT {
+            let Some(mask) = widened_mask(subs, i) else {
+                continue;
+            };
+            // Two colors can widen into the same set (W as R *and* R as W), so cap each by the
+            // mono mana of that color the plan hasn't already claimed.
+            let widened = spend.of_colors[mask]
+                .saturating_sub(self.of_colors[mask])
+                .min(self.colored[i].saturating_sub(spend.colored[i]));
+            spend.of_colors[mask] -= widened;
+            spend.colored[i] += widened;
+        }
+        spend
+    }
+}
+
+/// The [`Mana::OfColors`] set a mono credit of color index `color` widens into under `subs` — its
+/// own color plus every color it may be spent as — or `None` when no substitution touches it.
+fn widened_mask(subs: &[(Color, Color)], color: usize) -> Option<usize> {
+    let mut mask = 1usize << color;
+    for &(from, to) in subs {
+        if from.index() == color {
+            mask |= 1 << to.index();
+        }
+    }
+    (mask.count_ones() > 1).then_some(mask)
 }
 
 /// Move `need` spend-restricted credits of `base` — usable for `spell` — from `pool`'s slots

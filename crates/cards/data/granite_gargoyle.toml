@@ -1,0 +1,33 @@
+# Flying
+# {R}: This creature gets +0/+1 until end of turn.
+name = "Granite Gargoyle"
+otags = ["activated-ability", "alliteration", "armoring", "evasion"]
+sets = ["2ed", "30a", "3ed", "ced", "cei", "fbb", "lea", "leb", "me1", "sum"]
+id = "ef5248d4-4cd1-447c-bdcc-78a09a67d923"
+default_print = "01116585-a8c7-4619-b0a6-fcfe78fdaf3c"
+oracle = "Flying\n{R}: This creature gets +0/+1 until end of turn."
+subtypes = ["Gargoyle"]
+keywords = ["flying"]
+
+[cost]
+generic = 2
+red = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# {R}: This creature gets +0/+1 until end of turn.
+[[abilities]]
+timing = "activated"
+
+[abilities.activation_cost]
+red = 1
+
+# This creature gets +0/+1 until end of turn.
+[[abilities.effects]]
+type = "pump"
+mode = "pump_self_until_end_of_turn"
+power = 0
+toughness = 1

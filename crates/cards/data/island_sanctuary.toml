@@ -1,0 +1,30 @@
+# If you would draw a card during your draw step, instead you may skip that draw. If you do,
+# until your next turn, you can't be attacked except by creatures with flying and/or
+# islandwalk.
+name = "Island Sanctuary"
+otags = ["cycle-lea-slush-art", "prevent-attack", "untracked-effect"]
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "fbb", "lea", "leb", "me4", "sum"]
+id = "7d1769d0-d942-45b3-a31c-2bbe45e68661"
+default_print = "d5726f8d-4467-4ab9-8931-432c0cefcbf4"
+oracle = "If you would draw a card during your draw step, instead you may skip that draw. If you do, until your next turn, you can't be attacked except by creatures with flying and/or islandwalk."
+
+[cost]
+generic = 1
+white = 1
+
+[kind]
+type = "enchantment"
+
+# If you would draw a card during your draw step, instead you may skip that draw. If you do,
+# until your next turn, you can't be attacked except by creatures with flying and/or
+# islandwalk.
+[[abilities]]
+timing = "static"
+
+# If you would draw a card during your draw step, instead you may skip that draw. If you do,
+# until your next turn, you can't be attacked except by creatures with flying and/or
+# islandwalk.
+[[abilities.effects]]
+type = "static"
+mode = "may_skip_draw_for_cant_be_attacked_by"
+filter = { types = "creature", without_flying = true, without_keyword = { landwalk = "island" } }

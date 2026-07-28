@@ -37,6 +37,17 @@ pub(crate) struct CombatExtras {
     /// `must_attack` between cleanup and the next Untap, so it's CR-equivalent to end-of-turn
     /// expiry, the same reasoning `pending_next_cast`'s turn-boundary clear uses. (CR 508.1a, CR 502.1, CR 514.3)
     pub must_attack: Vec<(ObjectId, PlayerId)>,
+    /// "Target creature … can block any number of creatures this turn" (Blaze of Glory): the
+    /// creatures whose CR 509.1b block ceiling is lifted outright, read by
+    /// [`Game::max_blocks`](crate::Game), which returns `None` for anything listed here. Cleared
+    /// at the next turn's Untap step, the same "this turn" boundary `must_attack` uses.
+    pub may_block_any_number: Vec<ObjectId>,
+    /// "It blocks each attacking creature this turn if able" (Blaze of Glory): the requirement
+    /// half of the same spell, enforced in [`Game::declare_blockers`](crate::Game) beside Lure's
+    /// static. Held separately from [`may_block_any_number`](Self::may_block_any_number) because
+    /// the two halves are independent — a card may raise the ceiling without forcing anything —
+    /// and cleared at the same turn boundary.
+    pub must_block_all: Vec<ObjectId>,
     /// "Prevent all combat damage that would be dealt to you this turn" (CR 615 — Inkshield):
     /// each entry is `(the protected player, the token minted per point of combat damage
     /// prevented)`. Consulted at the combat-damage-to-a-player choke
@@ -75,6 +86,16 @@ pub(crate) struct CombatExtras {
     /// declaration is a single submission covering every attacked seat at once, and each blocker's
     /// legality is still checked against its own controller. Cleared at the same turn boundary.
     pub block_declarer: Option<PlayerId>,
+    /// "Until your next turn, you can't be attacked except by creatures with flying and/or
+    /// islandwalk" (Island Sanctuary): each entry is `(the shielded player, the attackers turned
+    /// away)`. The filter is the *banned* set, the same polarity
+    /// [`Effect::Static(StaticEffect::CantBeAttackedBy)`] uses, and
+    /// [`Game::declare_attackers`](crate::Game) reads it beside that static's own scan.
+    ///
+    /// The one entry here that outlives its turn: everything above expires at the next Untap
+    /// whoever's it is, while this one is cleared only at the *shielded* player's own next Untap,
+    /// which is exactly "until your next turn".
+    pub repelled_until_next_turn: Vec<(PlayerId, crate::PermanentFilter)>,
 }
 
 /// Active play and control permissions stored outside `Card`/`Permanent` so they stay `Copy`.
@@ -145,6 +166,15 @@ pub(crate) struct PlayPermissions {
     /// cleanup ([`Event::CastFromExileFreeEnded`](crate::Event::CastFromExileFreeEnded)) — no
     /// `until_next_turn` extension exists for this permission (no card needs one yet).
     pub cast_from_exile_free: Vec<(ObjectId, PlayerId)>,
+    /// Word of Command's "the player plays that card if able" (CR 720.1): `(the card, the player
+    /// being controlled)`, set for exactly the length of the one internal
+    /// [`Game::cast`](crate::Game) call the answer makes and cleared right after — a compelled
+    /// play happens mid-resolution, so it can't wait for priority and it can't respect the card's
+    /// printed timing. Read by [`Game::validate_cast`](crate::Game) and
+    /// [`Game::cast_timing_ok`](crate::Game). Deliberately *not* a cost waiver: the controlled
+    /// player pays, out of their own mana, which is what
+    /// [`Game::settle_payment`](crate::Game)'s owner-scoped auto-tapper already does.
+    pub compelled_play: Option<(ObjectId, PlayerId)>,
     /// Quintorius, Loremaster's replacement rider (CR 614.6): "If that spell would be put into a
     /// graveyard, put it on the bottom of its owner's library instead." Each entry is the
     /// exile-zone id the free-cast permission was granted for — the same id at rest in
@@ -253,16 +283,18 @@ pub(crate) struct BatchTriggerScratch {
     /// [`Game::queue_enchanted_creature_dies_triggers`](crate::Game::queue_enchanted_creature_dies_triggers), cleared wholesale at the end of every
     /// [`Game::enqueue_triggers`](crate::Game::enqueue_triggers) batch.
     pub dying_creature_attachments: Vec<(ObjectId, ObjectId, PlayerId, CardDef)>,
-    /// `(dying creature's pre-move id, power, +1/+1 counters)` — CR 603.10a last-known
-    /// information for a Dies trigger's [`Amount::SourcePower`](crate::Amount::SourcePower) /
+    /// CR 603.10a last-known information about each creature that died this batch — for a Dies
+    /// trigger's [`Amount::SourcePower`](crate::Amount::SourcePower) /
     /// [`Amount::PerCounterOnSource`](crate::Amount::PerCounterOnSource) reads (Lifeblood
     /// Hydra's "gain life and draw cards equal to its power", Hangarback Walker's Thopter
-    /// swarm). Captured at the same choke point and for the same reason as
+    /// swarm), and for an [`Trigger::EnchantedCreatureDies`](crate::Trigger::EnchantedCreatureDies)
+    /// Aura's reads of its *host* (Creature Bond's "damage equal to that creature's toughness to
+    /// the creature's controller"). Captured at the same choke point and for the same reason as
     /// [`dying_creature_attachments`](Self::dying_creature_attachments) — the creature is still
     /// a live permanent the instant its death event applies, before `create_object` tombstones
     /// it. Read (not drained) by `Game::enqueue_triggers`'s `MovedToGraveyard`/
     /// `TokenCeasedToExist` trigger-scan arms, cleared wholesale at the end of every batch.
-    pub dying_creature_stats: Vec<(ObjectId, i32, i32)>,
+    pub dying_creature_stats: Vec<DyingCreatureStats>,
     /// Pre-move ids of objects that were live battlefield [`Object::Permanent`]s the instant
     /// they were put into a graveyard this batch (CR "put into a graveyard from the
     /// battlefield") — the accumulator behind
@@ -307,6 +339,23 @@ pub(crate) struct BatchTriggerScratch {
     /// drained) by `Game::enqueue_triggers`'s `Event::MovedToGraveyard` arm, cleared wholesale at
     /// the end of every batch.
     pub dying_creature_lki: Vec<(ObjectId, CardDef, PlayerId)>,
+}
+
+/// One creature's characteristics the instant before it died — the payload of
+/// [`BatchTriggerScratch::dying_creature_stats`]. Everything here reads 0/owner off the
+/// graveyard card it becomes, so a Dies trigger's payoff has to have been handed these values at
+/// placement (CR 603.10a).
+#[derive(Debug, Clone, Copy)]
+pub struct DyingCreatureStats {
+    /// The creature's pre-move object id — what callers match on.
+    pub id: ObjectId,
+    pub power: i32,
+    pub toughness: i32,
+    pub plus_counters: i32,
+    /// Who controlled it, which is not who owned it once anything has stolen it (Control Magic) —
+    /// a stolen creature dies to its owner's graveyard while the thief is still "the creature's
+    /// controller" for a payoff that names one.
+    pub controller: PlayerId,
 }
 
 /// Once-per-turn activation and trigger caps, reset at each untap step.
@@ -429,4 +478,57 @@ pub(crate) struct ModifierProvenance {
     /// `(host, power, toughness, keywords, source_name)` until end of turn; cleared with
     /// [`Event::TempBoostsEnded`](crate::Event::TempBoostsEnded).
     pub temp_boosts: Vec<(ObjectId, i32, i32, &'static [Keyword], &'static str)>,
+}
+
+/// One consumable "prevent the next … damage" shield (CR 615) on
+/// [`Game::damage_prevention_shields`](crate::Game::damage_prevention_shields). Every field but
+/// `target` is a rider some card in the pool prints; the plain Healing Salve shield is
+/// `{ amount: Some(3), from_color: Any, gain_life: false }`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PreventionShield {
+    /// What the shield stands in front of — a permanent, or a player for the "dealt to you" cards.
+    pub target: crate::Target,
+    /// Points left on it, or `None` for "prevent *that* damage": the whole of the next qualifying
+    /// hit, spending the shield outright however big that hit turns out to be.
+    pub amount: Option<i32>,
+    /// Points that get through rather than points stopped — Forcefield's "prevent all but 1 of
+    /// that damage" (CR 615.4). `None` is every other shield in the pool, which subtracts. A
+    /// keep-shield ignores `amount` and is spent outright by the hit it stood in front of,
+    /// however big, exactly as an `amount: None` shield is.
+    pub keep: Option<i32>,
+    /// Which sources it stops (CR 105.2a — the Circle of Protection cycle's "a black source").
+    /// [`ColorFilter::Any`](crate::ColorFilter) stops every source, which is the plain shield.
+    pub from_color: crate::ColorFilter,
+    /// The one source it stops, when the card names a source rather than a color (Forcefield's
+    /// chosen creature). `None` — every shield but Forcefield's — leaves `from_color` as the only
+    /// gate.
+    pub from_source: Option<crate::ObjectId>,
+    /// "Would deal *combat* damage" (Forcefield): the shield only stands in front of damage dealt
+    /// in a combat damage step. `false` — every other shield — covers combat and noncombat alike.
+    pub combat_only: bool,
+    /// Reverse Damage's "you gain life equal to the damage prevented this way" — paid to the
+    /// shield's own controller as the spend is minted.
+    pub gain_life: bool,
+    /// Jade Monolith's "that source deals that damage to you instead" (CR 615.10): where the hit
+    /// goes rather than nowhere. `None` is the ordinary shield, which simply eats it.
+    pub redirect_to: Option<crate::Target>,
+}
+
+/// One standing "you may pay `cost` any time you could cast an instant. If you do, prevent the
+/// next `amount` damage that would be dealt to `target` this turn" offer (Guardian Angel) on
+/// [`Game::standing_preventions`](crate::Game::standing_preventions). Unlike a
+/// [`PreventionShield`] nothing is prevented until someone pays: the offer is enumerated as a
+/// [`MeaningfulAction::PayStandingPrevention`](crate::MeaningfulAction) and every payment mints a
+/// fresh shield, so one Guardian Angel can be milked all turn.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct StandingPrevention {
+    /// Who may pay — the spell's controller, since the offer is made to "you".
+    pub player: crate::PlayerId,
+    /// The permanent or player the bought shield will stand in front of ("that permanent or
+    /// player" — whatever the spell's first sentence targeted).
+    pub target: crate::Target,
+    /// What one payment costs.
+    pub cost: crate::Cost,
+    /// Points the bought shield is worth.
+    pub amount: i32,
 }

@@ -35,6 +35,11 @@ enum ReplacementEffect {
         /// Bloatfly Swarm's variant: removes *that many* counters (not exactly one) and hands
         /// every player that many rad counters.
         scales: bool,
+        /// Rock Hydra's variant: the prevention is worded **per point** ("for each 1 damage …
+        /// remove a +1/+1 counter … and prevent that 1 damage"), so it covers only as many
+        /// points as there are counters and the rest of the hit is dealt for real. The other two
+        /// prevent the whole event however big it is.
+        per_point: bool,
     },
     PreventCombatDamage {
         object: ObjectId,
@@ -96,12 +101,21 @@ impl ReplacementRegistry {
                         effects.push(ReplacementEffect::PreventDamageToSelfRemovingCounter {
                             object: source,
                             scales: false,
+                            per_point: false,
                         });
                     }
                     Effect::Static(StaticEffect::PreventDamageToSelfRemovingCountersGivingRad) => {
                         effects.push(ReplacementEffect::PreventDamageToSelfRemovingCounter {
                             object: source,
                             scales: true,
+                            per_point: false,
+                        });
+                    }
+                    Effect::Static(StaticEffect::PreventDamageToSelfRemovingCounterPerPoint) => {
+                        effects.push(ReplacementEffect::PreventDamageToSelfRemovingCounter {
+                            object: source,
+                            scales: false,
+                            per_point: true,
                         });
                     }
                     Effect::Static(StaticEffect::PreventCombatDamage { to_self, by_self }) => {
@@ -207,13 +221,22 @@ impl ReplacementRegistry {
         })
     }
 
-    /// Bloatfly Swarm's scaling variant only applies while it has a counter to remove — its
-    /// prevention is worded off the removal, unlike Phantom Centaur's unconditional shield.
+    /// Whether a shield on `target` prevents a whole damage event however big it is — Phantom
+    /// Centaur's and Bloatfly Swarm's. Bloatfly Swarm's only applies while it has a counter to
+    /// remove (its prevention is worded off the removal), where Phantom Centaur's prevents
+    /// unconditionally and just removes nothing.
+    ///
+    /// Rock Hydra's per-point variant is deliberately *not* one of these: it covers a point at a
+    /// time, so it is spent inside
+    /// [`Game::per_point_counter_shield`](crate::Game::per_point_counter_shield) where the
+    /// leftover can go on to be dealt, rather than short-circuiting the event here.
     pub(crate) fn phantom_shield_active(&self, game: &Game, target: ObjectId) -> bool {
         self.effects.iter().any(|effect| match effect {
-            ReplacementEffect::PreventDamageToSelfRemovingCounter { object, scales } => {
-                *object == target && (!scales || game.plus_counters(target) > 0)
-            }
+            ReplacementEffect::PreventDamageToSelfRemovingCounter {
+                object,
+                scales,
+                per_point,
+            } => *object == target && !*per_point && (!*scales || game.plus_counters(target) > 0),
             _ => false,
         })
     }
@@ -226,6 +249,22 @@ impl ReplacementRegistry {
                 ReplacementEffect::PreventDamageToSelfRemovingCounter {
                     object,
                     scales: true,
+                    ..
+                } if *object == target
+            )
+        })
+    }
+
+    /// Whether the shield on `target` is Rock Hydra's per-point variant, which covers only as
+    /// many points as it has counters and lets the rest of the hit through.
+    pub(crate) fn phantom_shield_per_point(&self, target: ObjectId) -> bool {
+        self.effects.iter().any(|effect| {
+            matches!(
+                effect,
+                ReplacementEffect::PreventDamageToSelfRemovingCounter {
+                    object,
+                    per_point: true,
+                    ..
                 } if *object == target
             )
         })
@@ -413,6 +452,18 @@ impl Game {
     }
 
     pub(crate) fn push_apply_effect_event(&mut self, events: &mut Vec<Event>, event: Event) {
+        // Lich's "If you would gain life, draw that many cards instead" (CR 614) — the one
+        // replacement here that swaps the event out entirely rather than adjusting a number on
+        // it, so it short-circuits: no `LifeChanged` is ever applied, and nothing watching life
+        // gain sees anything. Routed through `draw_with_dredge` like any other draw, so the
+        // replacement cards can themselves be dredged.
+        if let Event::LifeChanged { player, amount, .. } = event
+            && amount > 0
+            && self.life_gain_becomes_draw(player)
+        {
+            self.draw_with_dredge(player, amount as u32, false, events);
+            return;
+        }
         let entry = match &event {
             Event::ReanimatedToBattlefield {
                 permanent,

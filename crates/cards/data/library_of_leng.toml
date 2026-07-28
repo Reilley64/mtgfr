@@ -1,0 +1,36 @@
+# You have no maximum hand size.
+# If an effect causes you to discard a card, discard it, but you may put it on top of your library
+# instead of into your graveyard.
+name = "Library of Leng"
+otags = ["alliteration", "discard-matters", "hand-size-increase", "hate-discard", "rules-nightmare", "virtual-legendary"]
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "fbb", "lea", "leb", "me4", "spg", "sum"]
+id = "867def48-4be8-4056-bcf1-d6b00450b9a3"
+default_print = "502d77d6-c5c9-4def-80cb-7905fbbdefcb"
+oracle = "You have no maximum hand size.\nIf an effect causes you to discard a card, discard it, but you may put it on top of your library instead of into your graveyard."
+approximates = "The replacement's \"you may\" is taken as always-yes: an effect discard by this card's controller always goes on top of the library. The engine has no pause it can raise mid-discard — `Game::discard_ids` returns into six callers that keep working — so offering the graveyard needs a resumable discard path first."
+
+[cost]
+generic = 1
+
+[kind]
+type = "artifact"
+
+# You have no maximum hand size.
+[[abilities]]
+timing = "static"
+
+# You have no maximum hand size.
+[[abilities.effects]]
+type = "static"
+mode = "no_maximum_hand_size"
+
+# If an effect causes you to discard a card, discard it, but you may put it on top of your library
+# instead of into your graveyard.
+[[abilities]]
+timing = "static"
+
+# If an effect causes you to discard a card, discard it, but you may put it on top of your library
+# instead of into your graveyard.
+[[abilities.effects]]
+type = "static"
+mode = "discard_to_library_top_instead"

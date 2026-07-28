@@ -1,0 +1,46 @@
+# At the beginning of the end step, if no creatures are on the battlefield, sacrifice this
+# enchantment.
+# {B}: This enchantment deals 1 damage to each creature and each player.
+name = "Pestilence"
+otags = ["activated-ability", "burn-creature", "burn-player-each", "intervening-if-clause", "mana-sink", "pinger", "repeatable-removal", "single-english-word-name", "sweeper"]
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "brb", "ced", "cei", "fbb", "lea", "leb", "plst", "sum", "usg"]
+id = "dafe63ef-f3d6-45e7-877a-573da92ba85e"
+default_print = "2be5a75e-2fef-4205-bdec-5ea0d1dd0733"
+oracle = "At the beginning of the end step, if no creatures are on the battlefield, sacrifice this enchantment.\n{B}: This enchantment deals 1 damage to each creature and each player."
+
+[cost]
+generic = 2
+black = 2
+
+[kind]
+type = "enchantment"
+
+# At the beginning of the end step, if no creatures are on the battlefield, sacrifice this
+# enchantment.
+[[abilities]]
+timing = "each_end_step"
+condition = { type = "no_creatures_on_battlefield" }
+
+# Sacrifice this enchantment.
+[[abilities.effects]]
+type = "sacrifice"
+mode = "source"
+
+# {B}: This enchantment deals 1 damage to each creature and each player.
+[[abilities]]
+timing = "activated"
+
+[abilities.activation_cost]
+black = 1
+
+# ... 1 damage to each creature ...
+[[abilities.effects]]
+type = "damage"
+mode = "each_creature"
+amount = 1
+
+# ... and each player.
+[[abilities.effects]]
+type = "damage"
+mode = "each_player"
+amount = 1

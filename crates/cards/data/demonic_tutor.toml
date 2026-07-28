@@ -1,0 +1,25 @@
+# Search your library for a card, put that card into your hand, then shuffle.
+name = "Demonic Tutor"
+otags = ["tutor-card", "tutor-to-hand"]
+sets = ["2ed", "30a", "3ed", "ced", "cei", "cmm", "ddc", "dvd", "fbb", "g08", "j20", "lea", "leb", "me4", "plst", "prm", "puma", "sld", "sta", "sum", "uma", "vma"]
+id = "82004860-e589-4e38-8d61-8c0210e4ea39"
+default_print = "c8d5d6a5-6807-4a80-9460-7633dc430ee9"
+oracle = "Search your library for a card, put that card into your hand, then shuffle."
+
+[cost]
+generic = 1
+black = 1
+
+[kind]
+type = "sorcery"
+
+# Search your library for a card, put that card into your hand, then shuffle.
+[[abilities]]
+timing = "spell"
+
+# Search your library for a card, put that card into your hand, then shuffle.
+[[abilities.effects]]
+type = "dig"
+mode = "search_library"
+filter = "any_card"
+to_zone = "hand"

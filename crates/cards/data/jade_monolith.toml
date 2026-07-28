@@ -1,0 +1,29 @@
+# {1}: The next time a source of your choice would deal damage to target creature this turn,
+# that source deals that damage to you instead.
+name = "Jade Monolith"
+otags = ["activated-ability", "damage-prevention-creature", "damage-redirection", "delayed-replacement-effect", "repeatable-crime"]
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "ced", "cei", "fbb", "lea", "leb", "me4", "sum"]
+id = "1e105ab7-fb10-4cfd-ac2f-5e11488cf1b0"
+default_print = "88c6101a-09af-423e-881f-09aa1e01d2a2"
+oracle = "{1}: The next time a source of your choice would deal damage to target creature this turn, that source deals that damage to you instead."
+approximates = "the redirection catches whichever source strikes the creature first instead of one picked as the ability resolves"
+
+[cost]
+generic = 4
+
+[kind]
+type = "artifact"
+
+# {1}: The next time a source of your choice would deal damage to target creature this turn,
+# that source deals that damage to you instead.
+[[abilities]]
+timing = "activated"
+activation_cost = { generic = 1 }
+
+# {1}: The next time a source of your choice would deal damage to target creature this turn,
+# that source deals that damage to you instead.
+[[abilities.effects]]
+type = "misc"
+mode = "prevent_next_damage"
+target = "creature"
+redirect_to_controller = true

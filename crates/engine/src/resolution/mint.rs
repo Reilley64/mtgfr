@@ -32,6 +32,8 @@ impl Game {
                 | ControlEffect::RemoveFromCombat { .. }
                 | ControlEffect::RevertAllCreaturesToOwners
                 | ControlEffect::TapAll { .. }
+                | ControlEffect::TapAllTargetPlayerControls { .. }
+                | ControlEffect::TapSource
                 | ControlEffect::TapTarget { .. }
                 | ControlEffect::UntapAll { .. }
                 | ControlEffect::UntapTarget { .. }) => {
@@ -56,7 +58,7 @@ impl Game {
                 | CountersEffect::TopUpCountersOnPlayer { .. }
                 | CountersEffect::RemoveAllButOnePlusOneCounterThenGainLife { .. }
                 | CountersEffect::RemoveAllCountersThenDraw { .. }
-                | CountersEffect::RemoveCounterFromSelf) => {
+                | CountersEffect::RemoveCounterFromSelf { .. }) => {
                     self.mint_counters(c, controller, source, target, x)
                 }
                 CountersEffect::CommanderEntersWithBonusCounters { .. }
@@ -74,6 +76,11 @@ impl Game {
             }
             Effect::Draw(draw) => self.mint_draw(draw, controller, source, target, x),
             Effect::Life(life) => self.mint_life(life, controller, source, target, x),
+            // `TargetPlayerTapsLandsForMana` taps on someone else's behalf through
+            // `Game::tap_for_mana`, which needs `&mut self` — it resolves via `Game::run`.
+            Effect::Mana(ManaEffect::TargetPlayerTapsLandsForMana) => {
+                unreachable!("a pausing/composite effect resolves via Game::run")
+            }
             Effect::Mana(mana) => self.mint_mana(mana, controller, source, target, x),
             Effect::Mill(mill) => self.mint_mill(mill, controller, source, target, x),
             Effect::Misc(misc) => match misc {
@@ -88,15 +95,21 @@ impl Game {
                 | MiscEffect::ScheduleAtNextUpkeep { .. }
                 | MiscEffect::ScheduleColorlessManaForCounteredSpellNextMainPhase
                 | MiscEffect::SkipNextUntapOpponentCreatures
+                | MiscEffect::TakeExtraTurn
+                | MiscEffect::YouLoseTheGame
                 | MiscEffect::ScheduleNextCastTrigger { .. }
                 | MiscEffect::ScheduleThisTurnCombatDamageCopy) => {
                     self.mint_misc(m, controller, source, target, x)
                 }
-                MiscEffect::Fight { .. }
+                MiscEffect::BlocksEachAttackerIfAble { .. }
+                | MiscEffect::Fight { .. }
                 | MiscEffect::MustAttackRandomOpponent
-                | MiscEffect::MustAttackTarget
+                | MiscEffect::MustAttackTarget { .. }
+                | MiscEffect::MustAttackAll { .. }
                 | MiscEffect::PreventCombatDamageToYouCreatingTokens { .. }
                 | MiscEffect::PreventAllCombatDamageThisTurn
+                | MiscEffect::PreventNextDamage { .. }
+                | MiscEffect::OfferPreventionTopUp { .. }
                 | MiscEffect::YouChooseWhichCreaturesAttack
                 | MiscEffect::YouChooseWhichCreaturesBlock => {
                     unreachable!("a pausing/composite effect resolves via Game::run")

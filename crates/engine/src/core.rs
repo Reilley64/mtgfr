@@ -50,6 +50,7 @@ impl Game {
             resume: crate::resolution::ResumeState::default(),
             clash_won: false,
             skip_next_untap: Vec::new(),
+            extra_turns: Vec::new(),
             combat: CombatState::default(),
             combat_extras: state::CombatExtras::default(),
             play_permissions: state::PlayPermissions::default(),
@@ -67,6 +68,9 @@ impl Game {
             batch_trigger_scratch: state::BatchTriggerScratch::default(),
             permanents_died_this_turn: 0,
             damaged_this_turn: Vec::new(),
+            hand_cards_seen: Vec::new(),
+            damage_prevention_shields: Vec::new(),
+            standing_preventions: Vec::new(),
             resolution_frame: crate::resolution::ResolutionFrame::default(),
             characteristics_cache: characteristics_cache::CharacteristicsCacheCell::default(),
             abilities_granted_until_eot: Vec::new(),
@@ -653,6 +657,17 @@ impl Game {
         self.as_permanent(id).map_or(0, |p| p.regeneration_shields)
     }
 
+    /// Whether a regeneration shield on `id` is actually available to replace a destruction
+    /// (CR 701.15b) — it has one, and nothing has marked it "can't be regenerated this turn"
+    /// (CR 701.15d, Disintegrate). Every shield-consuming path asks this rather than reading
+    /// [`regeneration_shields`](Self::regeneration_shields) directly, so the mark reaches the
+    /// lethal-damage state-based action and every `destroy` effect alike. A destruction that
+    /// carries its own `cant_be_regenerated` (Terror) turns the shield off on top of this.
+    pub(crate) fn regeneration_shield_available(&self, id: ObjectId) -> bool {
+        self.as_permanent(id)
+            .is_some_and(|p| p.regeneration_shields > 0 && !p.cant_be_regenerated_this_turn)
+    }
+
     /// Whether the permanent at `id` has any counter on it at all — CR 122.1's unqualified
     /// "counter" (Nev, the Practical Dean's "with counters on them"), covering +1/+1, every
     /// named kind, and the finality counter. `false` if `id` isn't a permanent.
@@ -713,6 +728,13 @@ impl Game {
             Object::Moved { to } => self.is_card_face_down(*to),
             _ => false,
         }
+    }
+
+    /// Whether `viewer` has privately looked at the hand card `card` (CR 701.20 — Glasses of
+    /// Urza) and so may still read it. A card's own owner doesn't need this; the redaction layer
+    /// gates on ownership first.
+    pub fn has_seen_hand_card(&self, viewer: PlayerId, card: ObjectId) -> bool {
+        self.hand_cards_seen.contains(&(viewer, card))
     }
 
     /// What casting the card at `id` targets (its first spell-timed targeting effect).
@@ -834,6 +856,18 @@ impl Game {
     pub fn spell_sacrifice_count(&self, id: ObjectId) -> u8 {
         match &self.objects[id as usize] {
             Object::Spell(s) => s.sacrifice_count,
+            _ => 0,
+        }
+    }
+
+    /// The total mana value of the permanents sacrificed to pay the spell at `id`'s
+    /// [`AdditionalCost::sacrifice`] (CR 601.2f — Sacrifice's "an amount of {B} equal to the
+    /// sacrificed creature's mana value"), 0 if `id` isn't a spell or nothing was sacrificed.
+    /// The seam [`Amount::SpellSacrificedManaValue`] reads, the value sibling of
+    /// [`Self::spell_sacrifice_count`]'s count.
+    pub fn spell_sacrificed_mana_value(&self, id: ObjectId) -> u8 {
+        match &self.objects[id as usize] {
+            Object::Spell(s) => s.sacrificed_mana_value,
             _ => 0,
         }
     }
@@ -967,8 +1001,16 @@ impl Game {
     }
 
     /// Attackers that became blocked this combat (CR 509.1h), including those whose blockers left.
+    /// Derived from `blocked_ever` — one storage path for blocked-ness, since the pair list is
+    /// what False Orders has to prune.
     pub fn blocked_attackers(&self) -> Vec<ObjectId> {
-        self.combat.blocked_attackers.clone()
+        let mut attackers: Vec<ObjectId> = Vec::new();
+        for &(_, attacker) in &self.combat.blocked_ever {
+            if !attackers.contains(&attacker) {
+                attackers.push(attacker);
+            }
+        }
+        attackers
     }
 
     /// Seats that have already finalized their block declaration this combat (including empty).

@@ -3,15 +3,18 @@
 use crate::*;
 
 impl Game {
+    /// `_answering` is the seat that sent the intent; `submit` has already checked it against the
+    /// choice's own `player`, which for Natural Selection is not the library's owner.
     pub(crate) fn arrange_top(
         &mut self,
-        player: PlayerId,
+        _answering: PlayerId,
         top: Vec<ObjectId>,
         bottom: Vec<ObjectId>,
     ) -> Result<Vec<Event>, Reject> {
         let Some(PendingChoice::ArrangeTop {
+            library: player,
             cards,
-            to_graveyard,
+            rest: rest_dest,
             ..
         }) = self.pending_choice.clone()
         else {
@@ -19,6 +22,10 @@ impl Game {
         };
         if !is_partition(&top, &bottom, &cards) {
             return Err(Reject::IllegalChoice); // not a split of exactly the shown cards
+        }
+        if rest_dest == ArrangeRest::Nowhere && !bottom.is_empty() {
+            // "Put them back in any order" — there is nowhere else to put one.
+            return Err(Reject::IllegalChoice);
         }
         self.finish_answer();
 
@@ -28,7 +35,7 @@ impl Game {
         let rest: Vec<ObjectId> = self.players[player.0 as usize].library[count..].to_vec();
 
         let mut events = Vec::new();
-        if to_graveyard {
+        if rest_dest == ArrangeRest::Graveyard {
             // Surveil: the bottom pile is put into the graveyard — the same library→graveyard
             // zone change as a mill (each mints a fresh graveyard-object id in order).
             let base = self.next_object_id();
@@ -48,7 +55,7 @@ impl Game {
         // ponytail: library order isn't event-sourced (neither is `shuffle`) — mutate it directly.
         let mut library = top;
         library.extend(rest);
-        if !to_graveyard {
+        if rest_dest == ArrangeRest::Bottom {
             library.extend(bottom);
         }
         self.players[player.0 as usize].library = library;
@@ -278,13 +285,21 @@ impl Game {
     /// `source`, keeping [`Permanent::chosen_subtype`] a leaked `&'static str` like every other
     /// subtype field. `_player` isn't needed beyond `submit`'s choice-gate actor check — unlike
     /// [`Game::choose_mana_color`], nothing here is scoped by player.
+    ///
+    /// A text-changing spell (CR 612.1 — Magical Hack, Sleight of Mind) borrows this same picker
+    /// for both halves of "replacing all instances of one word with another", carrying its
+    /// [`TextSwapPick`] as the choice's `then` tail: the first answer re-raises the picker for the
+    /// replacement word, and the second writes the swap.
     pub(crate) fn choose_creature_type(
         &mut self,
         _player: PlayerId,
         subtype: String,
     ) -> Result<Vec<Event>, Reject> {
         let Some(PendingChoice::ChooseCreatureType {
-            source, options, ..
+            player,
+            source,
+            options,
+            then,
         }) = self.pending_choice.clone()
         else {
             return Err(Reject::IllegalChoice);
@@ -295,11 +310,48 @@ impl Game {
         self.finish_answer();
 
         let mut events = Vec::new();
+        let Some(pick) = then else {
+            self.push_apply(
+                &mut events,
+                Event::CreatureTypeChosen {
+                    object: source,
+                    subtype: chosen,
+                },
+            );
+            return Ok(events);
+        };
+        // The word being replaced was just picked; ask the same question again for what replaces
+        // it. Nothing happens between the two answers, so no state has to survive but the pick.
+        let Some(from) = pick.from else {
+            pending::raise(
+                self,
+                pending::ChoiceRequest::ChooseCreatureType {
+                    player,
+                    source,
+                    options,
+                    then: Some(TextSwapPick {
+                        from: Some(chosen),
+                        ..pick
+                    }),
+                },
+            );
+            return Ok(events);
+        };
+        // Both words are in. A target that stopped being a spell or permanent has no text left to
+        // change (CR 608.2b), and a word outside the offered vocabulary can't describe a swap.
+        let is_text_bearing = matches!(
+            self.objects[pick.object as usize],
+            Object::Permanent(_) | Object::Spell(_)
+        );
+        let Some(swap) = TextSwap::of_words(pick.words, from, chosen).filter(|_| is_text_bearing)
+        else {
+            return Ok(events);
+        };
         self.push_apply(
             &mut events,
-            Event::CreatureTypeChosen {
-                object: source,
-                subtype: chosen,
+            Event::TextChanged {
+                object: pick.object,
+                swap,
             },
         );
         Ok(events)
@@ -308,7 +360,7 @@ impl Game {
     /// Answer a [`PendingChoice::ChooseColor`] — either an as-enters choice (CR 614.12/700.9-style
     /// — Flickering Ward: stores `color` on `source`'s indefinite [`Permanent::chosen_color`]) or
     /// a resolution-time color-SET (CR 613.3c — Wild Mongrel: stores it on `source`'s
-    /// until-end-of-turn [`Permanent::set_color_eot`] instead, per the pause's `until_end_of_turn`
+    /// until-end-of-turn [`Permanent::set_color`] instead, per the pause's `until_end_of_turn`
     /// flag). Any of the five colors is a legal answer (no game-state legality to violate), so
     /// `color` is taken as given. `_player` isn't needed beyond `submit`'s choice-gate actor check.
     pub(crate) fn choose_color(
@@ -328,9 +380,10 @@ impl Game {
 
         let mut events = Vec::new();
         let event = if until_end_of_turn {
-            Event::ColorSetUntilEndOfTurn {
+            Event::ColorSet {
                 object: source,
                 color,
+                until_end_of_turn: true,
             }
         } else {
             Event::ColorChosen {

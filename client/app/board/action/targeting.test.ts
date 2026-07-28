@@ -409,6 +409,7 @@ describe("pendingTargetingOverlay", () => {
     const overlay = pendingTargetingOverlay(
       {
         kind: "sacrifice_edict",
+        count: 1,
         player: 0,
         source: 1,
         items: [{ id: 7, label: "Bear" }],
@@ -422,6 +423,7 @@ describe("pendingTargetingOverlay", () => {
     expect(
       pendingTargetOneClick({
         kind: "sacrifice_edict",
+        count: 1,
         player: 0,
         source: 1,
         items: [{ id: 7, label: "Bear" }],

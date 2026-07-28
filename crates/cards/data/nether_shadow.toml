@@ -1,0 +1,37 @@
+# Haste
+# At the beginning of your upkeep, if this card is in your graveyard with three or more creature
+# cards above it, you may put this card onto the battlefield.
+name = "Nether Shadow"
+otags = ["intervening-if-clause", "reanimate-self", "trigger-from-graveyard", "type-errata-specific-spirit", "graveyard-order-matters"]
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "fbb", "lea", "leb", "me1", "olep", "sum"]
+id = "c358b9e2-524c-434b-b3fa-74d2aa6d1df7"
+default_print = "18e057ae-8e60-478c-b047-605dab356835"
+oracle = "Haste\nAt the beginning of your upkeep, if this card is in your graveyard with three or more creature cards above it, you may put this card onto the battlefield."
+subtypes = ["Spirit"]
+keywords = ["haste"]
+# CR 603.6e — the upkeep trigger below functions from the graveyard.
+functions_in_graveyard = true
+
+[cost]
+black = 2
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# At the beginning of your upkeep, if this card is in your graveyard with three or more creature
+# cards above it, you may put this card onto the battlefield.
+[[abilities]]
+timing = "upkeep"
+optional = true
+
+# if this card is in your graveyard with three or more creature cards above it
+[abilities.condition]
+type = "creature_cards_above_this_in_graveyard_at_least"
+count = 3
+
+# you may put this card onto the battlefield.
+[[abilities.effects]]
+type = "zone"
+mode = "return_this_from_graveyard_to_battlefield"

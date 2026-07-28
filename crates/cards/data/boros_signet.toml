@@ -1,5 +1,6 @@
 # {1}, {T}: Add {R}{W}.
 name = "Boros Signet"
+otags = ["activated-ability", "cycle-rav-signet", "mana-rock", "refund"]
 sets = ["aa1", "blc", "c15", "c17", "c20", "clu", "cm2", "cma", "cmd", "cmm", "cmr", "gk1", "hop", "mm3", "onc", "prm", "rav", "rvr", "sld", "tdc"]
 oracle = "{1}, {T}: Add {R}{W}."
 id = "41c84665-1f99-40ab-aaca-1188649eb263"

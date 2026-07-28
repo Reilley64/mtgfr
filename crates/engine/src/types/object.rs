@@ -27,18 +27,22 @@ pub(crate) fn fresh_permanent(
         plus_counters: 0,
         kind_counters: [0; CounterKind::COUNT],
         base_pt_set_eot: None,
+        text_swap: None,
+        animation_ends_at_end_of_combat: false,
         base_pt_set_eot_timestamp: 0,
         added_types_eot: TypeSet::NONE,
         added_types_eot_timestamp: 0,
         added_subtypes_eot: &[],
         added_colors_eot: &[],
-        set_color_eot: None,
+        set_color: None,
         temp_lost_keywords: &[],
+        attachment_lost_keywords: &[],
         set_base_pt: None,
         set_base_pt_timestamp: 0,
         added_types: TypeSet::NONE,
         added_types_timestamp: 0,
         added_subtypes: &[],
+        subtypes_set_while_source_remains: None,
         granted_keywords: &[],
         marked_damage: 0,
         deathtouched: false,
@@ -49,11 +53,14 @@ pub(crate) fn fresh_permanent(
         loyalty: starting_loyalty(&printed),
         loyalty_activated: false,
         finality_counter: false,
+        cant_be_regenerated_this_turn: false,
+        exile_instead_of_dying_this_turn: false,
         regeneration_shields: 0,
         prepared: false,
         echo_unpaid: printed.echo.is_some(),
         chosen_subtype: None,
         chosen_color: None,
+        chosen_opponent: None,
         entered_with_x: 0,
         entered_multikicker_count: 0,
         cast_time_enchant_target: None,
@@ -137,6 +144,17 @@ pub(crate) struct Spell {
     /// own slot rather than sharing that one. `None` until the choice is answered, and for every
     /// spell without such a choice.
     pub(crate) chosen_color: Option<Color>,
+    /// A CR 613.3c layer-5 color SET on this spell, granted by the copy effect that minted it
+    /// (Fork's "except that the copy is red"). *Replaces* the copiable color derived from the
+    /// card's pips rather than unioning with it, exactly like the permanent-side
+    /// [`Permanent::set_color`] — see [`Game::colors_of`]. `None` for every cast spell and
+    /// for a copy from an effect that doesn't recolor (Twincast).
+    pub(crate) set_color: Option<Color>,
+    /// A CR 612.1 text change made to this spell while it is on the stack ("change the text of
+    /// target spell or permanent …" — Magical Hack, Sleight of Mind). The permanent-side twin is
+    /// [`Permanent::text_swap`]; a spell isn't a permanent, so it needs its own slot for the same
+    /// reason `chosen_color` above does. `None` for every untouched spell.
+    pub(crate) text_swap: Option<TextSwap>,
     /// A modal spell's chosen modes (CR 700.2), each with its own target. An empty selection for
     /// a non-modal spell (which uses `target` and runs every effect).
     pub(crate) modes: Modes,
@@ -194,6 +212,15 @@ pub(crate) struct Spell {
     /// such cost or the caster declined. Read by a copy-per-sacrifice rider once one exists (no
     /// pool card reads it yet); recorded here the way `x` is, for the same reason.
     pub(crate) sacrifice_count: u8,
+    /// The total mana value of the permanents counted by [`Self::sacrifice_count`] (Sacrifice's
+    /// "Add an amount of {B} equal to the sacrificed creature's mana value"), 0 when nothing was
+    /// sacrificed. Recorded here because the fodder is a graveyard card by the time the spell
+    /// resolves, exactly like [`Self::revealed_creature_mana_value`] below. Read by
+    /// [`Amount::SpellSacrificedManaValue`] via [`Game::spell_sacrificed_mana_value`].
+    /// ponytail: a *total*, because a spell that eats several (Plumb the Forbidden) would
+    /// otherwise need an arbitrary pick; the one card that reads it eats exactly one, so the
+    /// total and "the sacrificed creature's" agree.
+    pub(crate) sacrificed_mana_value: u8,
     /// The mana value of the creature card revealed to pay this spell's
     /// [`AdditionalCost::reveal_creature_from_hand`] (CR 601.2g — Disaster Radius's "reveal a
     /// creature card from your hand"), 0 if the spell has no such cost. Chosen automatically at
@@ -333,6 +360,11 @@ pub(crate) struct Permanent {
     /// counters/pumps/anthems), and cleared at cleanup (see [`Event::TempBoostsEnded`]'s
     /// handler). Not a `CardDef`/TOML surface — P/T is derived.
     pub(crate) base_pt_set_eot: Option<(i32, i32)>,
+    /// Whether the until-end-of-turn animation above is really an *until end of combat* one (Jade
+    /// Statue): set alongside `base_pt_set_eot`, read by the End of Combat sweep in
+    /// [`Game::begin_step`], and cleared with the rest of the temp state at
+    /// [`Event::TempBoostsEnded`].
+    pub(crate) animation_ends_at_end_of_combat: bool,
     /// The CR 613.7 timestamp of [`Permanent::base_pt_set_eot`], so a later 7b set (Darksteel
     /// Mutation after Trench Gorger, Quandrix Charm after Darksteel Mutation) wins the layer.
     pub(crate) base_pt_set_eot_timestamp: u64,
@@ -354,13 +386,29 @@ pub(crate) struct Permanent {
     /// `added_types_eot`/`added_subtypes_eot` at cleanup (see [`Event::TempBoostsEnded`]'s
     /// handler). Not a `CardDef`/TOML surface — runtime bookkeeping like its type-layer siblings.
     pub(crate) added_colors_eot: &'static [Color],
-    /// A CR 613.3c layer-5 color-SET until end of turn (Wild Mongrel's "becomes the color of
-    /// your choice until end of turn" — [`Effect::Choice(ChoiceEffect::SetOwnColorUntilEndOfTurn)`]): while `Some`,
-    /// [`Game::colors_of`] returns exactly this one color, *replacing* the derived/`added_colors_eot`
-    /// colors rather than unioning with them (unlike `added_colors_eot`'s CR 613.3c layer-5 ADD).
-    /// Cleared alongside `added_colors_eot` at cleanup (see [`Event::TempBoostsEnded`]'s handler).
-    /// Not a `CardDef`/TOML surface — the color is a runtime player choice, not printed data.
-    pub(crate) set_color_eot: Option<Color>,
+    /// A CR 613.3c layer-5 color-SET (Wild Mongrel's "becomes the color of your choice until end
+    /// of turn" — [`Effect::Choice(ChoiceEffect::SetOwnColorUntilEndOfTurn)`]; Deathlace's "target
+    /// spell or permanent becomes black" — [`Effect::Pump(PumpEffect::TargetBecomesColor)`]): while
+    /// `Some`, [`Game::colors_of`] returns exactly this one color, *replacing* the
+    /// derived/`added_colors_eot` colors rather than unioning with them (unlike
+    /// `added_colors_eot`'s CR 613.3c layer-5 ADD). The `bool` is the duration: `true` clears at
+    /// cleanup alongside `added_colors_eot` (see [`Event::TempBoostsEnded`]'s handler), `false`
+    /// lasts as long as the object does (the lace cycle prints no duration at all). One slot for
+    /// both, so a second set clobbers the first — which *is* the CR 613.7 answer, since each
+    /// replaces and the later timestamp wins. Not a `CardDef`/TOML surface — a runtime choice or a
+    /// resolving spell's doing, not printed data.
+    pub(crate) set_color: Option<(Color, bool)>,
+    /// A CR 612.1 text change made to this permanent ("change the text of target spell or
+    /// permanent by replacing all instances of one basic land type with another" — Magical Hack;
+    /// the color-word twin — Sleight of Mind). Read back at CR 613.4 layer 3 by
+    /// [`Game::effective_subtypes`](crate::Game::effective_subtypes),
+    /// [`Game::effective_keywords`](crate::Game::effective_keywords) and
+    /// `Game::functional_abilities` — see [`TextSwap`] for what a swap does and does not reach.
+    /// One slot, so a second text change on the same permanent replaces the first rather than
+    /// composing with it.
+    /// ponytail: two text-changers on one object is the composition this drops; no pool card
+    /// makes it likely, and a `Vec` here would cost [`Permanent`] its `Copy`.
+    pub(crate) text_swap: Option<TextSwap>,
     /// Keywords this permanent has lost until end of turn AND can't regain this turn (CR
     /// 702.11e/702.18d-style "lose ... and can't have" — arcane_lighthouse's "creatures your
     /// opponents control lose hexproof and shroud and can't have hexproof or shroud"). Removed
@@ -370,6 +418,13 @@ pub(crate) struct Permanent {
     /// free from the same mechanism as "lose." Cleared at cleanup alongside the registered
     /// until-EOT boosts (see [`Event::TempBoostsEnded`]'s handler).
     pub(crate) temp_lost_keywords: &'static [Keyword],
+    /// Keywords the creature this Aura is attached to loses, indefinitely (Earthbind's "this Aura
+    /// gains 'Enchanted creature loses flying'"). Set on the *Aura*, not on its host (see
+    /// [`Event::AttachedKeywordsLost`]), and read through the Aura's live attachment at the end of
+    /// [`Game::compute_effective_keywords_uncached`] — so it lapses on its own when the Aura leaves
+    /// the battlefield, and follows the Aura if it is moved to a new host. Never cleared at
+    /// cleanup, unlike `temp_lost_keywords` above.
+    pub(crate) attachment_lost_keywords: &'static [Keyword],
     /// An *indefinite* base-P/T SET (CR 611.2c — Excava, the Risen Past's "It's a 1/1 Spirit
     /// creature with flying"): the indefinite twin of `base_pt_set_eot`, `Some((p, t))` while
     /// active, emitted as the same 7b `BasePtSet` layer by [`Game::pt_layers`] (before the 7c
@@ -392,6 +447,13 @@ pub(crate) struct Permanent {
     /// [`Game::effective_subtypes`]. `&'static` — copied straight from the granting ability's
     /// already-leaked `CardDef` data, no runtime leak.
     pub(crate) added_subtypes: &'static [&'static str],
+    /// The land-type line another permanent replaced for as long as *it* stays on the battlefield
+    /// (CR 613.4, CR 305.7 — Gaea's Liege's "target land becomes a Forest until this creature
+    /// leaves the battlefield"): the new subtypes, the source that set them, and the CR 613.7
+    /// timestamp. Read back by [`Game::effective_subtypes`] only while the source is still a
+    /// permanent, which is the whole duration model — nothing clears this, the read just stops
+    /// finding a live source. Resets with the object itself per CR 400.7.
+    pub(crate) subtypes_set_while_source_remains: Option<(&'static [&'static str], ObjectId, u64)>,
     /// Keywords granted indefinitely by the same set (Excava → flying): the indefinite twin of a
     /// registered until-EOT keyword grant, unioned onto the effective keywords by
     /// [`Game::compute_effective_keywords_uncached`], never cleared at cleanup. `&'static`.
@@ -421,6 +483,20 @@ pub(crate) struct Permanent {
     /// a flag rather than a count (unlike `plus_counters`). Set only by a reanimation with
     /// `finality = true` (Excava, the Risen Past); default `false`.
     pub(crate) finality_counter: bool,
+    /// Whether a damage rider has marked this creature "it can't be regenerated this turn"
+    /// (Disintegrate, CR 701.15d). Read by the lethal-damage state-based action alongside
+    /// `regeneration_shields`, and by the same shield check the destroy path runs — the flag is
+    /// the permanent-side twin of [`Effect::Destroy(DestroyEffect::DestroyTarget)::cant_be_regenerated`],
+    /// which is carried by the destruction itself and so needs no marking. Set by
+    /// [`Event::DamageMarked`](crate::Event); cleared at the next Untap step with the other
+    /// "this turn" state.
+    pub(crate) cant_be_regenerated_this_turn: bool,
+    /// Whether a damage rider has marked this creature "if it would die this turn, exile it
+    /// instead" (Disintegrate). Read at the single dies choke `Game::graveyard_or_command`, where
+    /// it does exactly what a `finality_counter` does — the difference is only that this one is a
+    /// nameless turn-scoped mark rather than a real counter, so it shows up in no counter count
+    /// and expires at the next Untap step. Set by [`Event::DamageMarked`](crate::Event).
+    pub(crate) exile_instead_of_dying_this_turn: bool,
     /// How many regeneration shields this permanent currently has (CR 701.15b): each is a
     /// replacement effect that replaces the next "destroy" this turn with a regeneration (tap,
     /// remove from combat, heal all damage). Consumed one at a time by the destroy path unless
@@ -451,6 +527,11 @@ pub(crate) struct Permanent {
     /// enchanted creature. `None` until the choice is answered (see [`Effect::Choice(ChoiceEffect::ChooseColor)`]), and
     /// for every permanent without such a choice.
     pub(crate) chosen_color: Option<Color>,
+    /// The opponent named by an as-enters choice (CR 614.12-style "as this artifact enters, choose
+    /// an opponent" — Black Vise), read back by a [`Condition::ChosenPlayersUpkeep`] gate on this
+    /// permanent's own `each_upkeep` trigger. `None` until the choice is answered (see
+    /// [`Effect::Choice(ChoiceEffect::ChooseOpponent)`]), and for every permanent without one.
+    pub(crate) chosen_opponent: Option<PlayerId>,
     /// The {X} chosen for the spell that became this permanent (CR 601.2b), fixed for the rest
     /// of this permanent's existence — read by [`Game::ability_source_x`] so a later-resolving
     /// ability (an ETB trigger, an `mv_max_x` filter) can still reference "X" once the casting
@@ -658,6 +739,19 @@ pub(crate) struct Player {
     /// Spells this player has cast this turn (turn-scoped; reset each turn at untap). Feeds
     /// [`Amount::SpellsCastThisTurn`].
     pub(crate) spells_cast_this_turn: u32,
+    /// Damage dealt to this player this turn (turn-scoped; reset each turn at untap), combat and
+    /// noncombat alike (CR 120.1). Feeds [`Amount::DamageTakenThisTurn`] — Simulacrum's "the
+    /// damage dealt to you this turn". Damage, not life loss: a drain or a paid life cost only
+    /// ever emits `Event::LifeChanged`, and neither of the two damage markers this counts.
+    pub(crate) damage_taken_this_turn: u32,
+    /// How many untapped lands this player controlled at the beginning of the current turn —
+    /// Power Surge's "the number of untapped lands they controlled at the beginning of this
+    /// turn". Snapshotted for every player when the *upkeep* begins (`Game::apply`'s
+    /// `Event::StepBegan` arm), not at untap: no player receives priority between untapping and
+    /// that point (CR 502.3), so the two moments hold the same count and only the later one runs
+    /// after the untap step's turn-based action. Feeds
+    /// [`Amount::UntappedLandsAtTurnStart`].
+    pub(crate) untapped_lands_at_turn_start: u32,
     /// Spells with {X} in their mana cost this player has cast this turn (turn-scoped; reset
     /// at untap) — the filter-scoped sibling of `spells_cast_this_turn`, for the "first {X}-
     /// spell each turn" gate (Nev, Zimone Infinite Analyst). CR 107.3.

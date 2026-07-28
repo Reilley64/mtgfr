@@ -1,0 +1,26 @@
+# Enchant land
+# Enchanted land is a Swamp.
+name = "Evil Presence"
+otags = ["land-conversion"]
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "fbb", "lea", "leb", "me3", "nph", "sum"]
+id = "3d8ac41c-0566-48b2-a744-39db2f72272c"
+default_print = "19d85c34-2057-4572-a881-29dd35c1ee30"
+oracle = "Enchant land\nEnchanted land is a Swamp."
+subtypes = ["Aura"]
+enchant = { types = "land" }
+
+[cost]
+black = 1
+
+[kind]
+type = "aura"
+
+# Enchanted land is a Swamp.
+[[abilities]]
+timing = "static"
+
+# Enchanted land is a Swamp.
+[[abilities.effects]]
+type = "static"
+mode = "set_attached_types"
+set_subtypes = ["Swamp"]

@@ -57,6 +57,10 @@ pub struct CostToml {
     pub colorless: u8,
     /// `{X}` pips. `true` means one `{X}`; an integer gives the count of `{X}` symbols.
     pub x: XPips,
+    /// A color restriction on the mana spent for `{X}` (CR 601.2g) — Drain Life's "Spend only
+    /// black mana on X" is `x_color = "black"`. The chosen value is paid as colored pips of
+    /// that color instead of as generic. Absent for every other `{X}` cost, where any mana pays.
+    pub x_color: Option<Color>,
     /// Hybrid mana pips (CR 107.4e — `{a/b}`): a list of two-color arrays, one per
     /// hybrid symbol (`hybrid = [["black", "green"]]` for one `{B/G}`).
     pub hybrid: Vec<[Color; 2]>,
@@ -111,6 +115,7 @@ impl From<CostToml> for Cost {
             colored: [cost.white, cost.blue, cost.black, cost.red, cost.green],
             colorless: cost.colorless,
             x: cost.x.into(),
+            x_color: cost.x_color,
             hybrid: intern(hybrid),
             phyrexian: intern(cost.phyrexian),
             additional: cost.additional,

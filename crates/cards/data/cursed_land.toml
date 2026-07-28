@@ -1,0 +1,30 @@
+# Enchant land
+# At the beginning of the upkeep of enchanted land's controller, this Aura deals 1 damage to that
+# player.
+name = "Cursed Land"
+otags = ["burn-player", "parasitic-aura", "pinger", "triggered-ability"]
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "fbb", "itp", "lea", "leb", "rqs", "sum"]
+id = "0d61239f-28e4-4adb-8f6e-b56e9c8699af"
+default_print = "69f37a32-dc03-49fd-b28b-d091563d3690"
+oracle = "Enchant land\nAt the beginning of the upkeep of enchanted land's controller, this Aura deals 1 damage to that player."
+subtypes = ["Aura"]
+enchant = { types = "land" }
+
+[cost]
+generic = 2
+black = 2
+
+[kind]
+type = "aura"
+
+# At the beginning of the upkeep of enchanted land's controller, this Aura deals 1 damage to that
+# player.
+[[abilities]]
+timing = "each_upkeep"
+condition = { type = "enchanted_permanents_controllers_upkeep" }
+
+# this Aura deals 1 damage to that player.
+[[abilities.effects]]
+type = "damage"
+mode = "to_triggering_player"
+amount = 1

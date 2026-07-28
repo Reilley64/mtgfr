@@ -330,6 +330,12 @@ pub fn pending_choice_view_to_pb(choice: PendingChoiceView) -> pb::PendingChoice
             items: choice_items_to_pb(items),
             total,
         }),
+        PendingChoiceView::ReorderTop { player, items } => {
+            Choice::ReorderTop(pb::PendingChoiceViewReorderTop {
+                player: u32::from(player),
+                items: choice_items_to_pb(items),
+            })
+        }
         PendingChoiceView::Scry { player, items } => Choice::Scry(pb::PendingChoiceViewScry {
             player: u32::from(player),
             items: choice_items_to_pb(items),
@@ -385,11 +391,13 @@ pub fn pending_choice_view_to_pb(choice: PendingChoiceView) -> pb::PendingChoice
             player,
             source,
             keep_one,
+            count,
             items,
         } => Choice::SacrificeEdict(pb::PendingChoiceViewSacrificeEdict {
             player: u32::from(player),
             source,
             keep_one,
+            count,
             items: choice_items_to_pb(items),
         }),
         PendingChoiceView::Proliferate {
@@ -575,11 +583,13 @@ pub fn pending_choice_view_to_pb(choice: PendingChoiceView) -> pb::PendingChoice
             source,
             items,
             cast_targets,
+            from_opponent_hand,
         } => Choice::ChooseExiledDigToCastFree(pb::PendingChoiceViewChooseExiledDigToCastFree {
             player: u32::from(player),
             source,
             items: choice_items_to_pb(items),
             cast_targets: choice_items_to_pb(cast_targets),
+            from_opponent_hand,
         }),
         PendingChoiceView::DanceExileMore {
             player,
@@ -692,11 +702,13 @@ pub fn pending_choice_view_to_pb(choice: PendingChoiceView) -> pb::PendingChoice
             source,
             items,
             put_counter_on_creature,
+            choose_block_target,
         } => Choice::ChooseCopyTarget(pb::PendingChoiceViewChooseCopyTarget {
             player: u32::from(player),
             source,
             items: choice_items_to_pb(items),
             put_counter_on_creature,
+            choose_block_target,
         }),
         PendingChoiceView::ChooseAttachHost {
             player,
@@ -718,12 +730,18 @@ pub fn pending_choice_view_to_pb(choice: PendingChoiceView) -> pb::PendingChoice
             name,
             items: choice_items_to_pb(items),
         }),
-        PendingChoiceView::DeclineUntap { player, items } => {
-            Choice::DeclineUntap(pb::PendingChoiceViewDeclineUntap {
-                player: u32::from(player),
-                items: choice_items_to_pb(items),
-            })
-        }
+        PendingChoiceView::DeclineUntap {
+            player,
+            items,
+            at_most_one,
+        } => Choice::DeclineUntap(pb::PendingChoiceViewDeclineUntap {
+            player: u32::from(player),
+            items: choice_items_to_pb(items),
+            at_most_one: at_most_one
+                .into_iter()
+                .map(|ids| pb::ObjectIdList { ids })
+                .collect(),
+        }),
         PendingChoiceView::PayOrControllerDraws {
             player,
             controller,
@@ -789,10 +807,12 @@ pub fn pending_choice_view_to_pb(choice: PendingChoiceView) -> pb::PendingChoice
             player,
             source,
             items,
+            into_piles,
         } => Choice::PartitionRevealed(pb::PendingChoiceViewPartitionRevealed {
             player: u32::from(player),
             source,
             items: choice_items_to_pb(items),
+            into_piles,
         }),
         PendingChoiceView::OpponentChoosesRevealedToGraveyard {
             player,
@@ -810,11 +830,13 @@ pub fn pending_choice_view_to_pb(choice: PendingChoiceView) -> pb::PendingChoice
             source,
             pile_a,
             pile_b,
+            attacker,
         } => Choice::ChoosePileForHand(pb::PendingChoiceViewChoosePileForHand {
             player: u32::from(player),
             source,
             pile_a: choice_items_to_pb(pile_a),
             pile_b: choice_items_to_pb(pile_b),
+            attacker: attacker.map(choice_item_to_pb),
         }),
     };
     pb::PendingChoiceView {
@@ -874,6 +896,9 @@ pub fn visible_event_to_pb(event: VisibleEvent) -> Option<pb::VisibleEvent> {
                 object,
                 color: u32::from(color),
             })
+        }
+        VisibleEvent::TextChanged { object, from, to } => {
+            Event::TextChanged(pb::VisibleEventTextChanged { object, from, to })
         }
         VisibleEvent::Flipped { object } => Event::Flipped(pb::VisibleEventFlipped { object }),
         VisibleEvent::PreparedSpellCast {
@@ -1258,12 +1283,26 @@ pub fn visible_event_to_pb(event: VisibleEvent) -> Option<pb::VisibleEvent> {
                 amount,
             })
         }
+        VisibleEvent::DamagePrevented {
+            object,
+            player,
+            amount,
+        } => Event::DamagePrevented(pb::VisibleEventDamagePrevented {
+            object,
+            player: player.map(u32::from),
+            amount,
+        }),
         VisibleEvent::MovedToCommandZone { card, from } => {
             Event::MovedToCommandZone(pb::VisibleEventMovedToCommandZone { card, from })
         }
         VisibleEvent::ManaEmptied { player } => Event::ManaEmptied(pb::VisibleEventManaEmptied {
             player: u32::from(player),
         }),
+        VisibleEvent::ExtraTurnQueued { player } => {
+            Event::ExtraTurnQueued(pb::VisibleEventExtraTurnQueued {
+                player: u32::from(player),
+            })
+        }
         VisibleEvent::DamageCleared { object } => {
             Event::DamageCleared(pb::VisibleEventDamageCleared { object })
         }
@@ -1432,6 +1471,12 @@ pub fn visible_event_to_pb(event: VisibleEvent) -> Option<pb::VisibleEvent> {
         VisibleEvent::LibraryShuffled { player } => {
             Event::LibraryShuffled(pb::VisibleEventLibraryShuffled {
                 player: u32::from(player),
+            })
+        }
+        VisibleEvent::LookedAtHand { player, target } => {
+            Event::LookedAtHand(pb::VisibleEventLookedAtHand {
+                player: u32::from(player),
+                target: u32::from(target),
             })
         }
         VisibleEvent::RevealedTopOfLibrary { player, card, def } => {

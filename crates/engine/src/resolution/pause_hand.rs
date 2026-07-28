@@ -23,20 +23,16 @@ impl Game {
                 count,
                 target_player,
                 or_one_matching,
+                discarder,
+                ..
             }) => {
-                let discarder = if target_player {
-                    let Some(Target::Player(player)) = target else {
-                        panic!("target-player discard resolves with a chosen player target");
-                    };
-                    player
-                } else {
-                    controller
-                };
+                let player = self.discarding_player(discarder, target_player, controller, target);
+                let count = self.resolve_amount(count, controller, source, target, ctx.x);
                 pending::raise(
                     self,
                     pending::ChoiceRequest::Discard {
-                        player: discarder,
-                        count,
+                        player,
+                        count: count.max(0) as u32,
                         or_one_matching,
                     },
                 )
@@ -91,5 +87,28 @@ impl Game {
             ),
             _ => unreachable!("hand pause family received a non-family effect"),
         }
+    }
+
+    /// Who a [`ChoiceEffect::Discard`] actually empties, in precedence order: the player a
+    /// damage watch named ("**that player** discards a card at random" — Hypnotic Specter), a
+    /// chosen player target (Prismari Command), or the ability's own controller. Shared with the
+    /// random-discard resolve arm in `resolution/resolve_misc`.
+    pub(crate) fn discarding_player(
+        &self,
+        discarder: Option<PlayerId>,
+        target_player: bool,
+        controller: PlayerId,
+        target: Option<Target>,
+    ) -> PlayerId {
+        if let Some(player) = discarder {
+            return player;
+        }
+        if !target_player {
+            return controller;
+        }
+        let Some(Target::Player(player)) = target else {
+            panic!("target-player discard resolves with a chosen player target");
+        };
+        player
     }
 }

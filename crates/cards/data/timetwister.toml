@@ -1,0 +1,25 @@
+# Each player shuffles their hand and graveyard into their library, then draws seven cards.
+# (Then put Timetwister into its owner's graveyard.)
+name = "Timetwister"
+otags = ["burst-draw", "ditch-hand", "force-draw", "power-nine", "restock-all", "wheel-symmetrical", "whirlpool"]
+sets = ["2ed", "30a", "ced", "cei", "lea", "leb", "ovnt", "prm", "vma", "ydmu"]
+id = "c823e687-6311-4c99-974b-fd77d204141a"
+default_print = "01bda3d7-122a-48a0-bab3-676c4a557b74"
+oracle = "Each player shuffles their hand and graveyard into their library, then draws seven cards. (Then put Timetwister into its owner's graveyard.)"
+
+[cost]
+generic = 2
+blue = 1
+
+[kind]
+type = "sorcery"
+
+# Each player shuffles their hand and graveyard into their library, then draws seven cards.
+[[abilities]]
+timing = "spell"
+
+# Each player shuffles their hand and graveyard into their library, then draws seven cards.
+[[abilities.effects]]
+type = "choice"
+mode = "each_player_shuffles_hand_and_graveyard_then_draws"
+count = 7

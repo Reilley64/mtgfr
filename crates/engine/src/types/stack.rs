@@ -784,7 +784,9 @@ impl Intent {
     }
 }
 
-/// What [`PendingChoice::ChooseSplittingOpponent`] resumes into once the opponent is chosen. The
+/// What [`PendingChoice::ChooseSplittingOpponent`] resumes into once the opponent is chosen. Named
+/// for the pile-splitting cards it was built for, but it is the tail of every "an opponent ..." /
+/// "choose an opponent" pause now — clash and Black Vise's as-enters choice split no piles. The
 /// split data (piles/reveal) was already computed before the chooser pause — it doesn't depend on
 /// which opponent answers — so this just carries it across that pause to the next one.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -803,6 +805,11 @@ pub enum SplittingContinuation {
     /// and each takes a keep-on-top-or-bottom scry. Resumed via [`Game::resume_clash`] (which needs
     /// an `events` sink for the reveals), not the eventless [`Game::resume_splitting_opponent`].
     Clash,
+    /// Black Vise's "as this artifact enters, choose an opponent": no follow-up pause at all — the
+    /// answer is written straight to the asking permanent's [`Permanent::chosen_opponent`], the way
+    /// Archangel of Strife's vote lands on [`Player::war_choices`], and the card's upkeep trigger
+    /// reads it back from there.
+    RememberAsChosenOpponent,
 }
 
 /// One thing proliferate may choose (CR 701.27: "Choose any number of permanents and/or
@@ -829,6 +836,16 @@ pub enum MayYesNoResume {
     /// Trade Secrets' repeat gate: "yes" draws two for `player`, then pauses `caster` on the next
     /// `MayDrawUpTo`.
     TradeSecretsRepeat { caster: PlayerId, max: u8 },
+    /// Island Sanctuary's draw-step replacement (CR 614): "yes" skips the draw and arms the
+    /// combat shield, "no" takes the draw the pause interrupted. Either way the answer resumes
+    /// the step loop itself, the way a dredge answer does — unlike [`Self::Default`], nothing
+    /// here ever reaches the stack.
+    SkipDrawStepDraw,
+    /// Time Vault's turn replacement (CR 614): "yes" untaps the source and rolls the turn that was
+    /// beginning away, "no" takes it. Like [`Self::SkipDrawStepDraw`] the answer resumes the turn
+    /// structure itself and nothing reaches the stack — but this pause is raised before the untap
+    /// step's turn-based actions have run, so a "no" still owes them.
+    SkipTurnWhileSourceTapped,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -841,6 +858,18 @@ pub enum MayDrawUpToResume {
         opponent: PlayerId,
         source: ObjectId,
     },
+}
+
+/// Where the cards a [`PendingChoice::ArrangeTop`] answer doesn't keep on top go.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ArrangeRest {
+    /// The bottom of the same library — a scry (CR 701.42).
+    Bottom,
+    /// That library owner's graveyard — a surveil (CR 701.43).
+    Graveyard,
+    /// Nowhere: "put them back in any order" (Natural Selection) returns every card to the top,
+    /// so the only thing the answer decides is the order and a bottom pile is illegal.
+    Nowhere,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -915,6 +944,11 @@ pub enum PendingChoice {
     DeclineUntap {
         player: PlayerId,
         permanents: Vec<ObjectId>,
+        /// Smoke / Winter Orb (CR 502.2): each group is a set of the offered permanents from which
+        /// at most one may untap, and an answer that leaves two of any group out of `keep_tapped`
+        /// is rejected. Empty for a plain Rubinia-style pause, where every offered permanent is a
+        /// free yes/no.
+        at_most_one: Vec<Vec<ObjectId>>,
     },
     /// `player` is about to draw one card of a batch of `remaining` and may instead dredge (CR
     /// 702.52): each entry in `eligible` is one dredger in their own graveyard (its object id and its
@@ -949,6 +983,10 @@ pub enum PendingChoice {
         player: PlayerId,
         cost: Cost,
         spell: ObjectId,
+        /// Power Sink's decline penalty ([`Effect::Misc(MiscEffect::CounterTargetSpell)`]'s
+        /// `strips_mana_on_decline`): declining also taps every land with a mana ability `player`
+        /// controls and empties their pool. `false` for every other counter-unless-pays.
+        strips_mana_on_decline: bool,
     },
     /// `player` (the triggering opponent) may pay `cost` to stop `controller`'s optional draw —
     /// Rhystic Study's "unless that player pays {1}" ([`Effect::Choice(ChoiceEffect::MayDrawUnlessPays)`]). Only raised
@@ -1005,16 +1043,17 @@ pub enum PendingChoice {
         source: ObjectId,
         cost: Cost,
     },
-    /// `player` (`source`'s controller) may pay `cost` to keep `source`, or decline and sacrifice
-    /// it — Rupture Spire's own ETB triggered ability (CR 603.3b), NOT Echo, though it shares
-    /// [`Self::PayEchoOrSacrifice`]'s pay-or-sacrifice polarity and its
-    /// [`Intent::PayOptionalCost`] answer shape. Kept as its own variant (rather than reused)
-    /// because it's a real triggered ability firing once at ETB, not Echo's own upkeep-scoped
-    /// keyword (CR 702.31) — conflating the two would misname what's happening on the stack.
-    SacrificeUnlessPay {
+    /// `player` (`source`'s controller) may pay `cost`, or decline and take `otherwise` — Rupture
+    /// Spire's own ETB triggered ability and Phantasmal Forces' upkeep both sacrifice `source`,
+    /// Force of Nature's upkeep instead deals 8 damage to its controller. NOT Echo, though it
+    /// shares [`Self::PayEchoOrSacrifice`]'s polarity and its [`Intent::PayOptionalCost`] answer
+    /// shape: these are real triggered abilities (CR 603.3b), not Echo's keyword (CR 702.31), and
+    /// their penalty is whatever the card prints rather than a fixed sacrifice.
+    PayOrElse {
         player: PlayerId,
         source: ObjectId,
         cost: Cost,
+        otherwise: &'static [Effect],
     },
     /// `player` (a land card's controller, about to play it) may pay `life` to have it enter
     /// untapped, or decline and have it enter tapped (CR 614.12 — [`CardDef::enters_tapped_unless_you_pay_life`],
@@ -1022,7 +1061,7 @@ pub enum PendingChoice {
     /// tapped."). Raised by [`Game::play_land`] *before* the land's own [`Event::LandPlayed`] is
     /// minted (the land isn't on the battlefield yet — CR 614.12's replacement locks in before
     /// the permanent exists), so `source` is the land *card*, not a permanent. Answered by
-    /// [`Intent::PayOptionalCost`], the land-drop-scoped twin of [`Self::SacrificeUnlessPay`] —
+    /// [`Intent::PayOptionalCost`], the land-drop-scoped twin of [`Self::PayOrElse`] —
     /// same shape, opposite consequence (there, sacrifice; here, tapped).
     PayLifeOrEntersTapped {
         player: PlayerId,
@@ -1031,7 +1070,7 @@ pub enum PendingChoice {
     },
     /// `player` (`source`'s controller) must return one of `candidates` (their own non-Lair
     /// lands) to its owner's hand to keep `source`, or decline and sacrifice it — Treva's Ruins'
-    /// own ETB triggered ability. The land-bounce twin of [`Self::SacrificeUnlessPay`]; answered
+    /// own ETB triggered ability. The land-bounce twin of [`Self::PayOrElse`]; answered
     /// by [`Intent::ReturnLandOrSacrifice`]. `candidates` are public battlefield permanents.
     SacrificeUnlessReturnLand {
         player: PlayerId,
@@ -1082,14 +1121,16 @@ pub enum PendingChoice {
         legal: Vec<ObjectId>,
         cap: i32,
     },
-    /// `player` looks at the top `cards` of their library (a scry/surveil) and must split them
-    /// into a kept pile (back on top, in the answered order) and a bottom pile — put on the
-    /// library bottom (scry) or into the graveyard when `to_graveyard` (surveil). Answered by
+    /// `player` looks at the top `cards` of `library`'s library and must split them into a kept
+    /// pile (back on top, in the answered order) and a rest pile, which goes where `rest` says.
+    /// `library` is `player`'s own for every scry and surveil; Natural Selection is the one card
+    /// that sorts somebody else's, so the two are separate fields. Answered by
     /// [`Intent::ArrangeTop`].
     ArrangeTop {
         player: PlayerId,
+        library: PlayerId,
         cards: Vec<ObjectId>,
-        to_graveyard: bool,
+        rest: ArrangeRest,
     },
     /// `player` looked at the top `cards` of their library ([`Effect::Dig(DigEffect::LookAtTop)`]) and may select
     /// up to `up_to` of them that match `filter` into `dest`; every non-selected card goes to
@@ -1268,6 +1309,9 @@ pub enum PendingChoice {
         /// How many of `options` this player sacrifices (Malfegor's "a creature … for each card
         /// discarded this way"), capped at what they control. 1 for a plain edict.
         count: u32,
+        /// Balance's "down to the fewest" floor, carried so the *next* player in `remaining`
+        /// derives their own `count` from it. `None` for a fixed-count edict.
+        floor: Option<u32>,
         controller: PlayerId,
         source: ObjectId,
         follow_up: &'static [Effect],
@@ -1304,17 +1348,24 @@ pub enum PendingChoice {
         options: Vec<ObjectId>,
         remaining: Vec<PlayerId>,
     },
-    /// `player` must discard one of `options` (a card in their own hand) to a multi-player discard
-    /// fan-out ([`Effect::Choice(ChoiceEffect::EachOpponentDiscards)`] — Syphon Mind). Mandatory
-    /// (exactly one, when they have any). Answered by [`Intent::Discard`]. `remaining` are the
-    /// still-to-choose opponents (APNAP order) after this one; the hand is private, so `options`
-    /// are redacted from other seats. No `follow_up`: the "you draw a card for each card discarded
-    /// this way" payoff rides in the enclosing `Sequence`, resumed once every opponent has answered.
+    /// `player` must discard `count` of `options` (cards in their own hand) to a multi-player
+    /// discard fan-out ([`Effect::Choice(ChoiceEffect::EachPlayerDiscards)`] — Syphon Mind,
+    /// Balance). Mandatory (exactly `count`, when they have that many). Answered by
+    /// [`Intent::Discard`]. `remaining` are the still-to-choose seats (APNAP order) after this one;
+    /// the hand is private, so `options` are redacted from other seats. No `follow_up`: the "you
+    /// draw a card for each card discarded this way" payoff rides in the enclosing `Sequence`,
+    /// resumed once every seat has answered.
     DiscardEdict {
         player: PlayerId,
         source: ObjectId,
         options: Vec<ObjectId>,
         remaining: Vec<PlayerId>,
+        /// How many of `options` this player discards. 1 for a plain fan-out; under Balance's
+        /// `down_to_fewest`, their own excess over `floor`.
+        count: u32,
+        /// Balance's "down to the fewest" floor, carried so the *next* seat in `remaining` derives
+        /// their own `count` from it. `None` for a plain one-card-each fan-out.
+        floor: Option<u32>,
     },
     /// `caster` (Tragic Arrogance's controller) chooses which of `target_player`'s nonland
     /// permanents (`options`) to keep — up to one of each type (artifact, creature, enchantment;
@@ -1358,6 +1409,10 @@ pub enum PendingChoice {
         player: PlayerId,
         source: ObjectId,
         remaining: Vec<PlayerId>,
+        /// Power Leak's single-seat borrowing of this pause: `Some(cap)` arms a prevention shield
+        /// on the payer worth what they paid, capped at `cap` ("prevent X of *that* damage"),
+        /// rather than adding it to a join-forces round's shared `X`.
+        prevent_up_to: Option<u8>,
     },
     CastVote {
         player: PlayerId,
@@ -1426,6 +1481,19 @@ pub enum PendingChoice {
     MayPutCounterOnCreature {
         player: PlayerId,
         source: ObjectId,
+        options: Vec<ObjectId>,
+    },
+    /// `player` (False Orders' controller, *not* `blocker`'s) may have `blocker` — the creature
+    /// the spell just pulled out of combat — block one of `options`, or decline
+    /// ([`Effect::Choice(ChoiceEffect::MayBlockAttackerOfYourChoice)`]). `options` is every
+    /// declared attacker `blocker` could legally have blocked. Answered by
+    /// [`Intent::ChooseCopyTarget`] (reused — the answer is also "one optional chosen object"),
+    /// and projected onto the same generic pick-or-decline client view as
+    /// [`Self::MayPutCounterOnCreature`].
+    ChooseBlockTarget {
+        player: PlayerId,
+        source: ObjectId,
+        blocker: ObjectId,
         options: Vec<ObjectId>,
     },
     /// `player` must discard down to the hand-size limit at cleanup (CR 514.3): choose exactly
@@ -1521,6 +1589,68 @@ pub enum PendingChoice {
         source: ObjectId,
         candidates: Vec<ObjectId>,
         exiled: Vec<ObjectId>,
+    },
+    /// `player` (Word of Command's controller — **not** whose hand this is) must choose one of
+    /// `options`, the cards in `subject`'s hand, for `subject` to play right now (CR 720.1). The
+    /// one pause in the pool where the answering seat and the seat whose resources are spent are
+    /// different players: `player` answers, `subject` pays. Answered by
+    /// [`Intent::ChooseExiledDigToCastFree`], reused for its "one object plus a cast-time target"
+    /// shape — the candidates here are hand cards, private to everyone but the looker, so the
+    /// projection redacts them for every other seat.
+    ChooseCardInHandToPlay {
+        player: PlayerId,
+        source: ObjectId,
+        subject: PlayerId,
+        options: Vec<ObjectId>,
+    },
+    /// `player` (a **defending player**, not the ability's controller) divides all creatures
+    /// without flying they control into a "left" pile and a "right" pile — Raging River's first
+    /// half. The answer names the *left* pile; everything in `options` it leaves out is the right
+    /// pile, and either may be empty. Answered by [`Intent::ChooseSacrifices`], reused for its
+    /// "here is my subset of these permanents" shape (the same reuse
+    /// [`Self::PartitionRevealed`] makes) — nothing is sacrificed.
+    ///
+    /// `left` accumulates the divisions already answered, `defenders` is who still has to divide,
+    /// and `attackers` is the labeling work that follows once every defender has: the whole ritual
+    /// carries its own continuation rather than parking state outside the pause.
+    SplitBlockersIntoPiles {
+        player: PlayerId,
+        source: ObjectId,
+        options: Vec<ObjectId>,
+        left: Vec<(PlayerId, Vec<ObjectId>)>,
+        defenders: Vec<PlayerId>,
+        attackers: Vec<ObjectId>,
+    },
+    /// `player` (a **defending player**) names one of their Camouflage piles: "chooses any number
+    /// of creatures they control and divides them into a number of piles equal to the number of
+    /// attacking creatures for whom that player is the defending player." Asked `needed` times in
+    /// a row, `options` shrinking each time by what the last pile took, and answered by
+    /// [`Intent::ChooseSacrifices`] for its subset shape — nothing is sacrificed, and any pile may
+    /// be empty.
+    ///
+    /// `piles` holds this defender's divisions so far; `defenders` is who still has to divide and
+    /// `attackers` the whole attack, so the ritual carries its own continuation. The last pile's
+    /// answer deals them out at random and writes the blocks — this defender never declares.
+    DivideBlockersIntoPiles {
+        player: PlayerId,
+        source: ObjectId,
+        options: Vec<ObjectId>,
+        piles: Vec<Vec<ObjectId>>,
+        needed: u8,
+        defenders: Vec<PlayerId>,
+        attackers: Vec<ObjectId>,
+    },
+    /// `player` (Raging River's controller) chooses "left" or "right" for one `attacker` they
+    /// control — the second half, asked once per attacking creature. Answered by
+    /// [`Intent::ChooseOpponentPile`] (`0` = left, `1` = right), reused for its bare two-way pick
+    /// the same way Fact or Fiction's [`Self::ChoosePileForHand`] does. The pile *not* named is
+    /// written into [`CombatState::cant_block_this_combat`] against this attacker.
+    ChoosePileForAttacker {
+        player: PlayerId,
+        source: ObjectId,
+        attacker: ObjectId,
+        left: Vec<(PlayerId, Vec<ObjectId>)>,
+        remaining: Vec<ObjectId>,
     },
     /// `player` (an **opponent** of `controller`, not the ability's controller) must choose one of
     /// two exile piles (`pile_a`/`pile_b`, both public — exile-zone) — Abstract Performance's "an
@@ -1628,10 +1758,13 @@ pub enum PendingChoice {
     /// [`Intent::RevealedCardToBattlefieldOrHand`]. `card` was already publicly revealed
     /// ([`Event::RevealedTopOfLibrary`]), so it is public.
     RevealedCardToBattlefieldOrHand { player: PlayerId, card: ObjectId },
-    /// `player` must sacrifice exactly `count` of `options` (their own permanents matching
-    /// `filter`) — a forced sacrifice cost/effect the affected player directs (CR 701.16a: "the
-    /// permanents' controller chooses which ones" — Lotus Field's ETB "sacrifice two lands",
-    /// Smothering Abomination's upkeep "sacrifice a creature"). Unlike
+    /// `player` must name exactly `count` of `options` (permanents matching `filter`) to be
+    /// sacrificed — a forced sacrifice the affected player directs (CR 701.16a: "the permanents'
+    /// controller chooses which ones" — Lotus Field's ETB "sacrifice two lands", Smothering
+    /// Abomination's upkeep "sacrifice a creature"). `options` are usually `player`'s own, but
+    /// Demonic Hordes' "sacrifice a land of an opponent's choice" splits the two: the seat
+    /// answering here isn't the seat losing the land, and each sacrifice is still credited to its
+    /// own controller. Unlike
     /// [`MaySacrifice`](Self::MaySacrifice), this is mandatory — declining isn't legal. Only
     /// raised when `options` outnumbers `count` (a real choice); with `count` or fewer legal
     /// permanents, raising [`crate::pending::ChoiceRequest::ChooseOwnSacrifices`] sacrifices all
@@ -1677,6 +1810,12 @@ pub enum PendingChoice {
         player: PlayerId,
         source: ObjectId,
         options: &'static [&'static str],
+        /// A text-changing spell's two-word pick riding this picker (CR 612.1 — Magical Hack,
+        /// Sleight of Mind): what the answer should do instead of writing `source`'s chosen
+        /// creature type, and which of the two questions this is. Engine-internal — the wire
+        /// prompt is the same "pick one of these words" either way, so nothing about the tail is
+        /// projected. `None` for every as-enters "choose a creature type".
+        then: Option<TextSwapPick>,
     },
     /// `player` must name a color for `source` — either an as-enters choice (CR 614.12/700.9-style
     /// — Flickering Ward's [`Effect::Choice(ChoiceEffect::ChooseColor)`]) or a resolution-time color-SET (CR 613.3c —
@@ -1685,7 +1824,7 @@ pub enum PendingChoice {
     /// carried. Both raise this same picker (same wire prompt — [`Self::ChooseColor`] variant
     /// reused, not a second picker); `until_end_of_turn` tells [`Intent::ChooseColor`]'s handler
     /// which of the two answered: `false` sets `source`'s indefinite [`Permanent::chosen_color`],
-    /// `true` sets its until-end-of-turn [`Permanent::set_color_eot`] instead.
+    /// `true` sets its until-end-of-turn [`Permanent::set_color`] instead.
     ChooseColor {
         player: PlayerId,
         source: ObjectId,
@@ -1724,6 +1863,9 @@ pub enum PendingChoice {
         until_eot: bool,
         extra_counters: Amount,
         gains_haste: bool,
+        also_enchantment: bool,
+        keeps_own_color: bool,
+        keeps_own_abilities: bool,
     },
     /// `player` may choose one of `candidates` — the tokens they control ("you may choose a token
     /// you control" — Brudiclad, Telchor Engineer, [`Effect::Choice(ChoiceEffect::EachOtherTokenBecomesCopyOfChosen)`]).
@@ -1781,31 +1923,42 @@ pub enum PendingChoice {
 
 /// Every creature type printed on a creature card in the pool, offered as the candidate list
 /// for an as-enters "choose a creature type" choice ([`PendingChoice::ChooseCreatureType`]).
+/// Nothing regenerates this list, so the `cards` crate asserts the pool stays inside it — a
+/// creature printing a type that's missing here fails that test rather than silently narrowing
+/// a prompt.
 /// ponytail: the pool's own creature types, not the CR 205.3m full type list (which is much
 /// longer and includes types no pool card uses) — widen this when a card needs a type not yet
 /// printed on anything here.
-pub(crate) const CREATURE_TYPES: &[&str] = &[
+pub const CREATURE_TYPES: &[&str] = &[
     "Advisor",
     "Aetherborn",
     "Ally",
     "Angel",
+    "Archer",
     "Archon",
     "Artificer",
+    "Assassin",
     "Avatar",
+    "Barbarian",
     "Bard",
+    "Basilisk",
     "Bear",
     "Beast",
     "Bird",
     "Boar",
     "Cat",
+    "Centaur",
     "Cleric",
+    "Cockatrice",
     "Construct",
+    "Crab",
     "Demon",
     "Dinosaur",
     "Djinn",
     "Dog",
     "Dragon",
     "Drake",
+    "Drone",
     "Druid",
     "Dryad",
     "Dwarf",
@@ -1820,57 +1973,81 @@ pub(crate) const CREATURE_TYPES: &[&str] = &[
     "Fractal",
     "Frog",
     "Fungus",
+    "Gargoyle",
     "Giant",
     "Goblin",
     "Golem",
     "Griffin",
+    "Hag",
     "Horror",
     "Horse",
     "Human",
     "Hydra",
+    "Illusion",
     "Imp",
     "Incarnation",
     "Inkling",
     "Insect",
     "Jackal",
     "Jellyfish",
+    "Juggernaut",
     "Kavu",
+    "Kithkin",
     "Knight",
     "Kor",
+    "Leviathan",
     "Lizard",
     "Mercenary",
     "Merfolk",
+    "Minotaur",
     "Monk",
     "Monkey",
     "Mutant",
     "Myr",
+    "Nightmare",
+    "Nymph",
+    "Ogre",
     "Ooze",
     "Orc",
     "Otter",
     "Ox",
+    "Pegasus",
     "Pest",
+    "Phelddagrif",
     "Phyrexian",
+    "Pirate",
     "Plant",
+    "Praetor",
     "Rabbit",
+    "Ranger",
     "Rat",
+    "Rebel",
     "Rogue",
     "Scout",
+    "Serpent",
+    "Shade",
     "Shaman",
     "Shapeshifter",
     "Skeleton",
     "Snake",
     "Soldier",
     "Sorcerer",
+    "Specter",
+    "Sphinx",
+    "Spider",
     "Spirit",
     "Treefolk",
     "Troll",
     "Turtle",
+    "Unicorn",
     "Vampire",
     "Vedalken",
+    "Wall",
     "Warlock",
     "Warrior",
     "Wizard",
     "Wolf",
+    "Wraith",
     "Wurm",
     "Zombie",
 ];
@@ -1893,7 +2070,7 @@ impl PendingChoice {
             | PendingChoice::PayEchoOrSacrifice { player, .. }
             | PendingChoice::PayCumulativeUpkeepOrSacrifice { player, .. }
             | PendingChoice::PayRecoverOrExile { player, .. }
-            | PendingChoice::SacrificeUnlessPay { player, .. }
+            | PendingChoice::PayOrElse { player, .. }
             | PendingChoice::PayLifeOrEntersTapped { player, .. }
             | PendingChoice::SacrificeUnlessReturnLand { player, .. }
             | PendingChoice::AssignCombatDamage { player, .. }
@@ -1918,6 +2095,7 @@ impl PendingChoice {
             | PendingChoice::MayExileDiscardedToPlay { player, .. }
             | PendingChoice::MayDiscard { player, .. }
             | PendingChoice::MayPutCounterOnCreature { player, .. }
+            | PendingChoice::ChooseBlockTarget { player, .. }
             | PendingChoice::DiscardToHandSize { player, .. }
             | PendingChoice::DiscardCards { player, .. }
             | PendingChoice::PutFromHandOnTop { player, .. }
@@ -1929,6 +2107,10 @@ impl PendingChoice {
             | PendingChoice::ChooseExiledWithCard { player, .. }
             | PendingChoice::ChooseExiledWithCardToCast { player, .. }
             | PendingChoice::ChooseExiledDigToCastFree { player, .. }
+            | PendingChoice::ChooseCardInHandToPlay { player, .. }
+            | PendingChoice::SplitBlockersIntoPiles { player, .. }
+            | PendingChoice::DivideBlockersIntoPiles { player, .. }
+            | PendingChoice::ChoosePileForAttacker { player, .. }
             | PendingChoice::DanceExileMore { player, .. }
             | PendingChoice::OpponentChoosesPile { player, .. }
             | PendingChoice::OpponentChoosesExiledNonland { player, .. }
@@ -1975,8 +2157,19 @@ pub(crate) struct CombatState {
     pub(crate) attack_targets: Vec<(ObjectId, Defender)>,
     /// (blocker, attacker) pairs.
     pub(crate) blocks: Vec<(ObjectId, ObjectId)>,
-    /// Attackers that became blocked this combat (CR 509.1h). Survives when all blockers leave.
-    pub(crate) blocked_attackers: Vec<ObjectId>,
+    /// Every (blocker, attacker) pair ever declared this combat — [`Self::blocks`] with nothing
+    /// ever taken out of it. CR 509.1h: an attacking creature stays *blocked* even after every
+    /// creature blocking it leaves combat, so blocked-ness is read off this list rather than off
+    /// the live one, which loses a blocker the moment it dies or is removed. False Orders is the
+    /// only thing that prunes it, because its printed text is the one exception to 509.1h.
+    pub(crate) blocked_ever: Vec<(ObjectId, ObjectId)>,
+    /// Every creature declared an attacker *or* a blocker this combat, with nothing ever taken
+    /// out of it. "This creature attacked or blocked this combat" (Clockwork Beast) is a historic
+    /// fact, so it can't be read off [`Self::attackers`]/[`Self::blocks`] — CR 506.4 pulls a
+    /// creature out of both the moment it dies, and a blocker's whole pair leaves with the
+    /// attacker it blocked. Combat-scoped like everything else here: [`Event::CombatCleared`]
+    /// resets it, so a second combat phase starts empty.
+    pub(crate) attacked_or_blocked: Vec<ObjectId>,
     /// Attacker → how its combat damage is divided among its blockers (multi-block only).
     /// Set via [`Event::CombatDamageDivided`].
     pub(crate) damage: Vec<(ObjectId, Vec<(ObjectId, i32)>)>,
@@ -1987,6 +2180,13 @@ pub(crate) struct CombatState {
     pub(crate) attackers_declared: bool,
     /// Attacked players who have already declared their blocks this combat (each declares once).
     pub(crate) blocked_by: Vec<PlayerId>,
+    /// "That creature can't be blocked this combat except by …" as its complement — each entry is
+    /// a `(blocker, attacker)` pair that is now illegal (CR 509.1b). Raging River is the only
+    /// thing that writes it: the defender's two piles minus the label its controller named. Kept
+    /// as the *excluded* pairs rather than the allowed ones so the printed flying exemption needs
+    /// no special case — a flyer is never divided into a pile, so it is never excluded. Lives on
+    /// [`CombatState`] so "this combat" expiry is [`Event::CombatCleared`] and nothing else.
+    pub(crate) cant_block_this_combat: Vec<(ObjectId, ObjectId)>,
 }
 
 /// One group of abilities that triggered simultaneously from a single source.
@@ -2082,6 +2282,9 @@ pub enum Event {
         /// How many permanents were sacrificed to pay [`AdditionalCost::sacrifice`] (0 for a
         /// spell with no such cost, or a decline); see [`Spell::sacrifice_count`].
         sacrifice_count: u8,
+        /// The total mana value of those sacrificed permanents (0 when none were); see
+        /// [`Spell::sacrificed_mana_value`].
+        sacrificed_mana_value: u8,
         /// The mana value of the creature card revealed to pay
         /// [`AdditionalCost::reveal_creature_from_hand`] (0 for a spell with no such cost); see
         /// [`Spell::revealed_creature_mana_value`].
@@ -2132,10 +2335,13 @@ pub enum Event {
     /// A spell on the stack was copied (Twincast): `original` (still on the stack) is copied to a
     /// new spell object `copy` on top of it, controlled by `controller`. The copy has the same
     /// copiable characteristics/`x`/`mode` and (per this engine) the same target as the original.
+    /// `set_color` is the copy effect's own recolor rider (Fork's "except that the copy is
+    /// red") — `None` for a plain copy.
     SpellCopied {
         copy: ObjectId,
         original: ObjectId,
         controller: PlayerId,
+        set_color: Option<Color>,
     },
     /// A spell *copy* finished resolving and ceased to exist (CR 707.10a / CR 111.7) — it leaves
     /// the stack without becoming a graveyard card. Distinct from [`Self::MovedToGraveyard`],
@@ -2173,11 +2379,24 @@ pub enum Event {
     /// An as-enters "choose a color" choice was answered (CR 614.12/700.9-style — Flickering
     /// Ward's [`Effect::Choice(ChoiceEffect::ChooseColor)`]). Sets `object`'s [`Permanent::chosen_color`].
     ColorChosen { object: ObjectId, color: Color },
-    /// A "becomes the color of your choice until end of turn" choice was answered (CR 613.3c
-    /// layer 5 — Wild Mongrel's [`Effect::Choice(ChoiceEffect::SetOwnColorUntilEndOfTurn)`]). Sets `object`'s
-    /// [`Permanent::set_color_eot`]; cleared alongside the other until-EOT boosts by
+    /// A CR 612.1 text change landed on `object` — both words of a
+    /// [`Effect::Choice(ChoiceEffect::ChangeText)`] have been picked (Magical Hack, Sleight of
+    /// Mind). Writes [`Permanent::text_swap`] or, for a spell still on the stack,
+    /// [`Spell::text_swap`]; the change lasts as long as that object does ("this effect lasts
+    /// indefinitely"), so nothing clears it.
+    TextChanged { object: ObjectId, swap: TextSwap },
+    /// A CR 613.3c layer-5 color SET landed on `object` — Wild Mongrel's answered "becomes the
+    /// color of your choice until end of turn"
+    /// ([`Effect::Choice(ChoiceEffect::SetOwnColorUntilEndOfTurn)`], `until_end_of_turn`), or a
+    /// lace resolving on a spell or permanent ([`Effect::Pump(PumpEffect::TargetBecomesColor)`],
+    /// which prints no duration). Writes [`Permanent::set_color`] or, for a spell still on the
+    /// stack, [`Spell::set_color`]; only the until-EOT form is cleared by
     /// [`Self::TempBoostsEnded`].
-    ColorSetUntilEndOfTurn { object: ObjectId, color: Color },
+    ColorSet {
+        object: ObjectId,
+        color: Color,
+        until_end_of_turn: bool,
+    },
     /// A copy of a prepared permanent's back-face spell was put on the stack (soc/sos prepare
     /// DFCs). `source` is the prepared permanent (its [`CardDef::back`] is the spell def);
     /// `spell` is the freshly-minted spell object, controlled by `controller`, targeting `target`.
@@ -2264,7 +2483,13 @@ pub enum Event {
     /// A permanent was removed from combat (CR 506.4 — [`Effect::Control(ControlEffect::RemoveFromCombat)`]; Spurnmage
     /// Advocate). Drops it as attacker and blocker, and any blocks naming it as the attacker —
     /// the same combat-list cleanup [`Self::Regenerated`]'s CR 701.15b removal already applies.
-    RemovedFromCombat { object: ObjectId },
+    RemovedFromCombat {
+        object: ObjectId,
+        /// False Orders' "…become unblocked": also forget that `object` ever blocked anything, so
+        /// CR 509.1h stops holding the attackers it was the only blocker of. `false` everywhere
+        /// else — leaving combat doesn't un-block what you blocked.
+        release_solely_blocked: bool,
+    },
     /// A regeneration shield was granted to a permanent (CR 701.15b — [`Effect::Control(ControlEffect::RegenerateShield)`]).
     /// Increments [`Permanent::regeneration_shields`].
     RegenerationShieldCreated { object: ObjectId },
@@ -2364,6 +2589,10 @@ pub enum Event {
         object: ObjectId,
         power: i32,
         toughness: i32,
+        /// Jade Statue's "until end of combat": the whole animation is swept at the End of Combat
+        /// step instead of at cleanup. Bookkeeping for the sweep only — the client reads the
+        /// permanent's P/T from the snapshot either way, so this isn't projected.
+        ends_at_end_of_combat: bool,
     },
     /// A permanent gained card types + creature subtypes + colors until end of turn (CR 613.4 —
     /// Restless Spire's self-animation adds Creature + Elemental + blue/red to a noncreature land).
@@ -2401,6 +2630,18 @@ pub enum Event {
         object: ObjectId,
         subtypes: &'static [&'static str],
     },
+    /// A permanent's land-type line was replaced for as long as another permanent stays on the
+    /// battlefield (CR 613.4 — Gaea's Liege's "target land becomes a Forest until this creature
+    /// leaves the battlefield"). Written to [`Permanent::subtypes_set_while_source_remains`]; not
+    /// cleared at cleanup and not cleared when `source` leaves either — the read simply stops
+    /// finding a live source, which is what makes the duration free. Public battlefield status,
+    /// like `AddedSubtypes`.
+    SubtypesSetWhileSourceRemains {
+        object: ObjectId,
+        subtypes: &'static [&'static str],
+        /// The permanent whose presence sustains the change.
+        source: ObjectId,
+    },
     /// A permanent's base power and toughness were SET *indefinitely* (CR 613.3(7b) —
     /// Trench Gorger's "this creature has base power and toughness each equal to the number of
     /// cards exiled this way"), added on top of no types/subtypes/keywords and **not** cleared at
@@ -2427,12 +2668,28 @@ pub enum Event {
         object: ObjectId,
         def: CardId,
         until_eot: bool,
+        /// Card types the copy carries *in addition* to the copied def's own (CR 707.2 — Copy
+        /// Artifact's "except it's an enchantment in addition to its other types"). Written to
+        /// the indefinite [`Permanent::added_types`] slot, so it lasts as long as the copy does
+        /// and resets with the object (CR 400.7). [`TypeSet::NONE`] for every other copy.
+        also_types: TypeSet,
     },
     /// A permanent lost `keywords` until end of turn and can't have them, unioned onto
     /// [`Permanent::temp_lost_keywords`] (arcane_lighthouse's strip — see
     /// [`Effect::Pump(PumpEffect::StripKeywordsFromOpponentsCreatures)`]). Cleared alongside `temp_keywords` at
     /// [`Event::TempBoostsEnded`].
     KeywordsStripped {
+        object: ObjectId,
+        keywords: &'static [Keyword],
+    },
+    /// An Aura's own resolving trigger gave it "Enchanted creature loses `keywords`" (Earthbind).
+    /// Recorded on the *Aura* ([`Permanent::attachment_lost_keywords`]) rather than on `object`, so
+    /// the loss ends when the Aura leaves the battlefield and moves with it if it is re-attached —
+    /// the indefinite, Aura-bound counterpart of [`Event::KeywordsStripped`] above. `object` is the
+    /// host at the time, carried for the wire projection and the characteristics cache; the live
+    /// read always goes through the Aura's current attachment. Public battlefield state.
+    AttachedKeywordsLost {
+        source: ObjectId,
         object: ObjectId,
         keywords: &'static [Keyword],
     },
@@ -2549,6 +2806,11 @@ pub enum Event {
     /// or not it was tapped), so it untaps normally on every later untap step. Removes the
     /// [`NextUntapSkipMarked`](Self::NextUntapSkipMarked) entry.
     NextUntapSkipConsumed { object: ObjectId },
+    /// `player` was granted an extra turn to take after the current one (Time Walk; CR 505.6a).
+    /// Pushed onto [`Game::extra_turns`], which [`Game::advance_step`] drains as the current turn
+    /// ends. There is no matching "taken" event: the [`StepBegan`](Self::StepBegan) that opens the
+    /// extra turn already names its `active_player`.
+    ExtraTurnQueued { player: PlayerId },
     /// A CR 603.7 delayed *one-shot* was armed by [`Effect::Misc(MiscEffect::ScheduleNextCastTrigger)`]:
     /// `controller` will perform `then` the next time they cast a spell matching `filter` this
     /// turn. `source` is the arming ability's own source object, reused as the delayed one-shot's
@@ -2723,6 +2985,20 @@ pub enum Event {
     /// combat damage would otherwise have caused. The Inkling mints it drives ride in accompanying
     /// [`Self::TokenCreated`] events. Public — combat damage (and its prevention) is announced.
     CombatDamagePrevented { player: PlayerId, amount: i32 },
+    /// `amount` damage that would have been dealt to `target` was prevented by
+    /// [`damage_prevention_shields`](crate::Game::damage_prevention_shields) entries ("Prevent the
+    /// next N damage that would be dealt to any target this turn", CR 615), spending that many
+    /// points off them. The consumable twin of [`Self::CombatDamagePrevented`], which records an
+    /// all-or-nothing Inkshield shield and spends nothing. Public — like the damage it replaces,
+    /// and the client needs it to explain why a lethal-looking hit left the creature standing.
+    /// `source` is what would have dealt it, kept because a colored shield (the Circle of
+    /// Protection cycle) only pays for sources of its own color and `apply` has to re-find the
+    /// same shields the mint spent.
+    DamagePrevented {
+        target: Target,
+        amount: i32,
+        source: ObjectId,
+    },
     /// `from` left play and became the command-zone card `card` (commander replacement).
     MovedToCommandZone { card: ObjectId, from: ObjectId },
     /// "You get an emblem with …" (CR 114.1): `controller` got the emblem object `emblem`, whose
@@ -2733,13 +3009,18 @@ pub enum Event {
         controller: PlayerId,
         def: CardDef,
     },
-    /// A player's mana pool emptied (a step or phase ended).
+    /// A player's mana pool emptied — a step or phase ended (CR 500.4), or a card took it away
+    /// ("that player loses all unspent mana": Mana Short, Power Sink, Drain Power).
     ManaEmptied {
         player: PlayerId,
-        /// Whether this boundary is the turn actually ending (CR 514.2 cleanup) rather than a
-        /// mid-turn step/phase change — "until end of turn" persistent mana (CR 500.4 exception,
-        /// [`Event::ManaAdded`]'s `persist`) survives every boundary except this one.
+        /// Whether every credit goes, including "until end of turn" persistent mana (CR 500.4
+        /// exception, [`Event::ManaAdded`]'s `persist`). `true` at the turn actually ending (CR
+        /// 514.2 cleanup) and for a card that says "loses **all** unspent mana"; `false` at an
+        /// ordinary mid-turn step/phase boundary, which persistent mana survives.
         end_of_turn: bool,
+        /// Drain Power's "you add the mana lost this way": the player whose pool receives what
+        /// `player` just lost, credit for credit. `None` for a pool that simply drains.
+        to: Option<PlayerId>,
     },
     /// Marked damage was removed from a permanent (the cleanup step).
     DamageCleared { object: ObjectId },
@@ -2797,10 +3078,20 @@ pub enum Event {
     },
     /// Damage was marked on a permanent. `source` is what dealt it (a spell/ability/attacker),
     /// carried for the game log; `None` for engine-internal adjustments.
+    ///
+    /// The two rider flags carry Disintegrate's "if it's a creature, it can't be regenerated this
+    /// turn, and if it would die this turn, exile it instead" — riders on the *damaged creature*,
+    /// not on the damage, so they ride the event that lands the damage and are applied onto
+    /// [`Permanent::cant_be_regenerated_this_turn`]/[`Permanent::exile_instead_of_dying_this_turn`].
+    /// `false` for every ordinary damage. Deliberately not mirrored to `VisibleEvent` — the
+    /// consequences (a creature not regenerating, a creature exiling instead of dying) reach the
+    /// client as the events they already are.
     DamageMarked {
         object: ObjectId,
         amount: i32,
         source: Option<ObjectId>,
+        cant_be_regenerated: bool,
+        exile_instead_of_dying: bool,
     },
     /// `from` was moved to the graveyard (by resolution or an SBA) as the card `card`.
     MovedToGraveyard { card: ObjectId, from: ObjectId },
@@ -2935,6 +3226,10 @@ pub enum Event {
         card: ObjectId,
         def: CardId,
     },
+    /// `player` looked at `target`'s hand (CR 701.20 — Glasses of Urza). *That* it happened is
+    /// public, which is why this event carries no card ids: the cards themselves become known to
+    /// `player` only, through the per-card hand privacy gate the apply step widens.
+    LookedAtHand { player: PlayerId, target: PlayerId },
     /// A card in `player`'s hand was revealed (CR 701.30 — Vineglimmer Snarl's "you may reveal a
     /// Forest or Island card from your hand"). `card` stays in hand; a reveal is not a zone change.
     RevealedFromHand {
@@ -3157,6 +3452,11 @@ pub enum MeaningfulAction {
     /// Cast `card` from hand face down as a 2/2 for {3} (CR 702.37b — morph). Offered only for a
     /// hand card whose [`CardDef::morph`] is `Some` and whose controller can pay the {3}.
     CastFaceDown { card: ObjectId },
+    /// Pay for one of Guardian Angel's standing "you may pay {1} … prevent the next 1 damage that
+    /// would be dealt to that permanent or player" offers — `index` into
+    /// [`Game::standing_preventions`]. The one action that names no object: the spell that made
+    /// the offer left the stack, and what it protects is remembered by the offer itself.
+    PayStandingPrevention { index: usize },
     /// Declare attackers: the player has a creature able to attack this combat.
     DeclareAttackers,
     /// Declare blocks: the player has a creature able to block an attacker this combat.

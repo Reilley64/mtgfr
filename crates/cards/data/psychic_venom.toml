@@ -1,0 +1,29 @@
+# Enchant land
+# Whenever enchanted land becomes tapped, this Aura deals 2 damage to that land's controller.
+name = "Psychic Venom"
+otags = ["burn-player", "hate-tapped", "parasitic-aura", "pinger", "triggered-ability", "uninspired"]
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "ced", "cei", "fbb", "lea", "leb", "me1", "sum"]
+subtypes = ["Aura"]
+id = "a60422e8-f2f4-4c37-a0f4-eedad27eb08c"
+default_print = "b36e0fba-f6a4-4400-b685-3178431c292f"
+oracle = "Enchant land\nWhenever enchanted land becomes tapped, this Aura deals 2 damage to that land's controller."
+
+# Enchant land
+enchant = { types = "land" }
+
+[cost]
+generic = 1
+blue = 1
+
+[kind]
+type = "aura"
+
+# Whenever enchanted land becomes tapped, ... — any tap, mana or not.
+[[abilities]]
+timing = "enchanted_permanent_becomes_tapped"
+
+# ...this Aura deals 2 damage to that land's controller.
+[[abilities.effects]]
+type = "damage"
+mode = "to_triggering_player"
+amount = 2

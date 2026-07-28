@@ -1,0 +1,28 @@
+# Counter target spell unless its controller pays {X}. If that player doesn't, they tap all
+# lands with mana abilities they control and lose all unspent mana.
+name = "Power Sink"
+otags = ["counterspell-soft", "interrupt", "mana-abilities-matter", "single-target-instant-sorcery", "tapper-land"]
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "btd", "ced", "cei", "fbb", "ice", "itp", "lea", "leb", "mir", "plst", "ptc", "rqs", "sum", "tmp", "usg", "vma"]
+id = "39412e6d-2837-4729-abf9-e64a5ba87e40"
+default_print = "f0313c44-d4ca-4021-866a-3d5cf58b0e76"
+oracle = "Counter target spell unless its controller pays {X}. If that player doesn't, they tap all lands with mana abilities they control and lose all unspent mana."
+
+[cost]
+x = true
+blue = 1
+
+[kind]
+type = "instant"
+
+# Counter target spell unless its controller pays {X}. If that player doesn't, they tap all
+# lands with mana abilities they control and lose all unspent mana.
+[[abilities]]
+timing = "spell"
+
+# Counter target spell unless its controller pays {X}. If that player doesn't, they tap all
+# lands with mana abilities they control and lose all unspent mana.
+[[abilities.effects]]
+type = "misc"
+mode = "counter_target_spell"
+unless_pays = "x"
+strips_mana_on_decline = true

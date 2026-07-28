@@ -1,0 +1,46 @@
+# {T}: Destroy target land.
+# At the beginning of your upkeep, unless you pay {B}{B}{B}, tap this creature and sacrifice a
+# land of an opponent's choice.
+name = "Demonic Hordes"
+otags = ["activated-ability", "drawback", "removal-destroy", "removal-land", "repeatable-crime", "repeatable-removal", "spot-removal", "triggered-ability", "upkeep-cost"]
+sets = ["2ed", "30a", "3ed", "ced", "cei", "fbb", "lea", "leb", "me4", "sum"]
+id = "2847c8a0-f6aa-4e4a-a7b8-fc116436a264"
+default_print = "812a0a10-0765-499f-8581-c4d7e0e81299"
+oracle = "{T}: Destroy target land.\nAt the beginning of your upkeep, unless you pay {B}{B}{B}, tap this creature and sacrifice a land of an opponent's choice."
+approximates = "\"A land of an opponent's choice\" names no opponent, which is unambiguous on a two-player card and underspecified at a four-player pod. The next living seat in turn order answers the choice; the printed card would let the table settle it."
+subtypes = ["Demon"]
+
+[cost]
+generic = 3
+black = 3
+
+[kind]
+type = "creature"
+power = 5
+toughness = 5
+
+# {T}: Destroy target land.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Destroy target land.
+[[abilities.effects]]
+type = "destroy"
+mode = "target"
+target = { permanent = { types = "land" } }
+
+# At the beginning of your upkeep, unless you pay {B}{B}{B}, tap this creature and sacrifice a
+# land of an opponent's choice.
+[[abilities]]
+timing = "upkeep"
+
+# unless you pay {B}{B}{B}, tap this creature and sacrifice a land of an opponent's choice
+[[abilities.effects]]
+type = "choice"
+mode = "pay_or_else"
+cost = { black = 3 }
+otherwise = [
+  { type = "control", mode = "tap_source" },
+  { type = "choice", mode = "sacrifice_own", filter = { types = "land" }, count = 1, opponent_chooses = true },
+]

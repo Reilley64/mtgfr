@@ -2,6 +2,7 @@
 # {T}: Put this creature and each creature it's blocking on top of their owners' libraries, then
 # those players shuffle.
 name = "Gomazoa"
+otags = ["activated-ability", "drawback", "evasion", "removal-creature", "removal-tuck", "spot-removal", "synergy-blocker-self", "tuck-self"]
 sets = ["cmd", "zen"]
 id = "0c82ae16-f995-4ac3-adb4-a5cc93a6e6f2"
 default_print = "4d2c0c7e-a486-45c5-92fa-f36087714ad3"

@@ -143,7 +143,10 @@ impl Game {
         let Some(zone) = self.playable_zone(object, player) else {
             return Err(Reject::NotCastable);
         };
-        if !kind.is_enumeration() && player != self.priority {
+        if !kind.is_enumeration()
+            && player != self.priority
+            && !self.is_compelled_play(object, player)
+        {
             return Err(Reject::NotYourPriority);
         }
         if !self.cast_timing_ok(player, object, printed.as_ref().clone(), kind) {
@@ -344,6 +347,40 @@ impl Game {
         {
             return false;
         }
+        // "Cast this spell only during combat before blockers are declared" (CR 601.3e — Blaze of
+        // Glory): the declare-blockers twin of the window above, and read the same way — up to and
+        // including the declare-blockers step, closed early inside it once anyone has declared.
+        if def.cast_only_before_blockers
+            && (self.step > Step::DeclareBlockers || !self.combat.blocked_by.is_empty())
+        {
+            return false;
+        }
+        // "Cast this spell only during an opponent's turn" (CR 601.3e — Siren's Call): the other
+        // half of the same printed sentence as the window above, and independent of it.
+        if def.cast_only_during_opponents_turn && self.active_player == player {
+            return false;
+        }
+        // "Cast this spell only before the combat damage step" (CR 601.3e — Berserk): the third
+        // window of the same family. `Step::FirstStrikeCombatDamage` is the boundary rather than
+        // `CombatDamage` because it is the *first* combat damage step whenever it exists, and the
+        // engine only creates it when a first striker is in combat (CR 510.5).
+        if def.cast_only_before_combat_damage && self.step >= Step::FirstStrikeCombatDamage {
+            return false;
+        }
+        // "Cast this spell only during the declare blockers step" (CR 601.3e — False Orders): one
+        // step, not a window ending at one. Unlike `cast_only_before_blockers` above it stays open
+        // after the declaration is made — rearranging a live declaration is the point.
+        if def.cast_only_during_declare_blockers && self.step != Step::DeclareBlockers {
+            return false;
+        }
+        // "Cast this spell only during your declare attackers step" (CR 601.3e — Camouflage): the
+        // attack-side twin, with the extra "your" the blocker one doesn't print — Camouflage hides
+        // *your* attackers, so someone else's combat is never its window.
+        if def.cast_only_during_declare_attackers
+            && (self.step != Step::DeclareAttackers || self.active_player != player)
+        {
+            return false;
+        }
         // "Players can't cast spells during combat" (CR 601.2i-adjacent — Basandra, Battle
         // Seraph): global and absolute — reaches every player, not just this ability's own
         // controller, and overrides even an instant-speed / flash permission below.
@@ -366,7 +403,9 @@ impl Game {
         // still on the stack).
         let as_instant = def.is_instant_speed()
             || self.players[player.0 as usize].flash_permission_this_turn
-            || self.may_cast_from_exile_free(object, player);
+            || self.may_cast_from_exile_free(object, player)
+            // Word of Command's compelled play is mid-resolution too — same CR 601.3e read.
+            || self.is_compelled_play(object, player);
         if as_instant {
             match kind {
                 CastPlayKind::List => {
@@ -682,6 +721,7 @@ mod tests {
             phyrexian: &[],
             additional: NO_ADD,
             reduce_own_generic: None,
+            x_color: None,
         }
     }
 
@@ -721,7 +761,10 @@ mod tests {
                                 kicked_scaled: false,
                                 main_phase_scaled: false,
                             },
-                            divided: false,
+                            divided: Division::None,
+                            cant_be_regenerated: false,
+                            exile_instead_of_dying: false,
+                            gain_life_equal_to_damage: false,
                         }),
                         optional: false,
                         min_level: 0,
@@ -734,6 +777,7 @@ mod tests {
                         effect: Effect::Destroy(DestroyEffect::All {
                             filter: PermanentFilter::of(TypeSet::ARTIFACT),
                             cant_be_regenerated: false,
+                            at: None,
                         }),
                         optional: false,
                         min_level: 0,
@@ -757,6 +801,11 @@ mod tests {
             alternative_cost: None,
             cast_only_during_combat: false,
             cast_only_before_attackers: false,
+            cast_only_before_blockers: false,
+            cast_only_during_opponents_turn: false,
+            cast_only_before_combat_damage: false,
+            cast_only_during_declare_blockers: false,
+            cast_only_during_declare_attackers: false,
             approximates: None,
             oracle: None,
             sets: empty_slice(),
@@ -953,7 +1002,10 @@ mod tests {
                             amount: Amount::Fixed(3),
                             target: TargetSpec::Creature,
                             count: TargetCount::default(),
-                            divided: false,
+                            divided: Division::None,
+                            cant_be_regenerated: false,
+                            exile_instead_of_dying: false,
+                            gain_life_equal_to_damage: false,
                         }),
                         optional: false,
                         min_level: 0,
@@ -967,6 +1019,8 @@ mod tests {
                             target: TargetSpec::Permanent(PermanentFilter::of(TypeSet::ARTIFACT)),
                             count: TargetCount::default(),
                             cant_be_regenerated: false,
+                            at: None,
+                            attack_rider: AttackRider::default(),
                         }),
                         optional: false,
                         min_level: 0,

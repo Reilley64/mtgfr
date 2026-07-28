@@ -3,6 +3,7 @@
 # any amount of mana. This creature gets +X/+0 until end of turn, where X is the total amount of
 # mana paid this way.
 name = "Mana-Charged Dragon"
+otags = ["attack-trigger", "attacking-matters-self", "block-trigger", "bottomless-mana-sink", "cycle-cmd-join-forces", "evasion", "firebreathing", "multiplayer", "synergy-blocker-self"]
 sets = ["cma", "cmd"]
 id = "87354a7b-01be-419e-b383-4c28e12a2f2b"
 default_print = "0c5a02b2-849e-467b-b8a7-0c9e352cfb99"

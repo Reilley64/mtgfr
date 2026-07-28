@@ -19,11 +19,18 @@ impl Game {
             .collect()
     }
 
-    /// The permanents `player` controls that a sacrifice edict's `filter` can take.
-    pub(crate) fn edict_options(&self, player: PlayerId, filter: PermanentFilter) -> Vec<ObjectId> {
+    /// The permanents `player` controls that a sacrifice edict's `filter` can take. `source` is the
+    /// effect's own object, needed only by `filter.other` — "a creature other than this creature"
+    /// (Lord of the Pit) would otherwise let the Demon eat itself.
+    pub(crate) fn edict_options(
+        &self,
+        player: PlayerId,
+        filter: PermanentFilter,
+        source: Option<ObjectId>,
+    ) -> Vec<ObjectId> {
         self.controlled_battlefield(player)
             .into_iter()
-            .filter(|&id| self.permanent_matches(&filter, id, player, None))
+            .filter(|&id| self.permanent_matches(&filter, id, player, source))
             .collect()
     }
 
@@ -31,13 +38,11 @@ impl Game {
     /// the [`Event::Sacrificed`] marker for each — the shared tail
     /// [`ChoiceRequest::ChooseOwnSacrifices`]'s no-real-choice path and
     /// [`Game::choose_own_sacrifices`]'s answer path both run.
-    pub(crate) fn sacrifice_ids(
-        &mut self,
-        ids: &[ObjectId],
-        by: PlayerId,
-        events: &mut Vec<Event>,
-    ) {
+    pub(crate) fn sacrifice_ids(&mut self, ids: &[ObjectId], events: &mut Vec<Event>) {
         for &id in ids {
+            // Read live, before anything moves: a sacrifice is always made by the permanent's own
+            // controller (CR 701.16a), even when somebody else picked it (Demonic Hordes).
+            let by = self.controller_of(id);
             let def = self.def_id_of(id);
             let event = self.sacrifice_event(id);
             self.push_apply(events, event);
@@ -60,12 +65,8 @@ impl Game {
         _player: PlayerId,
         sacrifices: Vec<ObjectId>,
     ) -> Result<Vec<Event>, Reject> {
-        let Some(PendingChoice::ChooseOwnSacrifices {
-            player,
-            options,
-            count,
-            ..
-        }) = self.pending_choice.clone()
+        let Some(PendingChoice::ChooseOwnSacrifices { options, count, .. }) =
+            self.pending_choice.clone()
         else {
             return Err(Reject::IllegalChoice);
         };
@@ -80,7 +81,7 @@ impl Game {
         self.finish_answer();
 
         let mut events = Vec::new();
-        self.sacrifice_ids(&sacrifices, player, &mut events);
+        self.sacrifice_ids(&sacrifices, &mut events);
         Ok(events)
     }
 
@@ -109,7 +110,7 @@ impl Game {
         self.finish_answer();
 
         let mut events = Vec::new();
-        self.sacrifice_ids(&sacrifices, player, &mut events);
+        self.sacrifice_ids(&sacrifices, &mut events);
         let counters = self.counters_after_replacements(
             player,
             source,
@@ -143,6 +144,9 @@ impl Game {
             until_eot,
             extra_counters,
             gains_haste,
+            also_enchantment,
+            keeps_own_color,
+            keeps_own_abilities,
             ..
         }) = self.pending_choice.clone()
         else {
@@ -162,13 +166,25 @@ impl Game {
         // The counters/haste name their real source (the copier), captured before the def
         // overwrite renames `source` to the copied creature.
         let source_name = self.def_of(source).name;
-        // ponytail: the copyable values are the chosen creature's printed/`CardDef` values (CR
-        // 707.2), not a full read of any copy-layer modifications already on it — exact for this
-        // pool (no card copies something already under a copy effect).
+        // `def_id_of` reads the chosen permanent's *current* def, which for a permanent already
+        // under a copy effect is the form it copied rather than its printed card — which is what
+        // CR 707.2 asks for, so a Clone copying a Clone lands on what that one is wearing.
         // ponytail: `BecameCopy` overwrites `def` *after* `PermanentEntered` fired, so an ETB
-        // trigger of the *copied* creature is missed (the trigger watcher saw the pre-copy def).
-        // Neither Altered Ego nor Cursed Mirror copies a creature with an ETB; revisit when one does.
-        let def = self.def_id_of(chosen);
+        // trigger of the *copied* permanent is missed (the trigger watcher saw the pre-copy def).
+        // Nothing in the pool copies a permanent with an ETB and cares; revisit when one does.
+        let copied = self.def_id_of(chosen);
+        // Vesuvan Doppelganger's "except it doesn't copy that creature's color and it has <this
+        // ability>" — a copy exception is part of the copiable values (CR 707.2), so it is baked
+        // into the def the shapeshifter wears rather than layered on the object.
+        let def = match keeps_own_color || keeps_own_abilities {
+            false => copied,
+            true => intern_card_def(copy_with_exceptions(
+                (*card_def(copied)).clone(),
+                &card_def(self.def_id_of(source)),
+                keeps_own_color,
+                keeps_own_abilities,
+            )),
+        };
         let printed = card_def(def);
         self.push_apply(
             &mut events,
@@ -176,6 +192,10 @@ impl Game {
                 object: source,
                 def,
                 until_eot,
+                also_types: match also_enchantment {
+                    true => TypeSet::ENCHANTMENT,
+                    false => TypeSet::NONE,
+                },
             },
         );
         // Altered Ego's "except it enters with X additional +1/+1 counters" — placed on the copy
@@ -270,6 +290,7 @@ impl Game {
                     object: other,
                     def,
                     until_eot: false,
+                    also_types: TypeSet::NONE,
                 },
             );
             if !copied_rider.is_empty() {
@@ -320,6 +341,7 @@ impl Game {
                 object: source,
                 def: self.def_id_of(chosen),
                 until_eot: true,
+                also_types: TypeSet::NONE,
             },
         );
         Ok(events)
@@ -334,10 +356,25 @@ impl Game {
         player: PlayerId,
         events: &mut Vec<Event>,
     ) {
+        // CR 701.8c: Library of Leng replaces only the *destination*. Every discard below still
+        // emits `Discarded`, so the "whenever you discard" watchers can't tell the two apart.
+        // Cleanup-step trims and discard costs aren't effect discards and so aren't replaced —
+        // neither routes through here (the cleanup trim can't even arise for a Leng controller,
+        // who has no maximum hand size).
+        let to_library_top = self.discards_to_library_top(player);
         for &id in ids {
             let card = self.next_object_id();
             let def = self.def_id_of(id);
-            self.push_apply(events, Event::MovedToGraveyard { card, from: id });
+            let moved = match to_library_top {
+                true => Event::TuckedToLibrary {
+                    card,
+                    from: id,
+                    to_top: true,
+                    second_from_top: false,
+                },
+                false => Event::MovedToGraveyard { card, from: id },
+            };
+            self.push_apply(events, moved);
             self.push_apply(
                 events,
                 Event::Discarded {
@@ -411,6 +448,8 @@ impl Game {
         filter: PermanentFilter,
         life_loss: i32,
         count: u32,
+        down_to_fewest: bool,
+        lose_game_if_short: bool,
         follow_up: &'static [Effect],
         controller: PlayerId,
         source: ObjectId,
@@ -444,8 +483,29 @@ impl Game {
         let affected: Vec<PlayerId> = self
             .apnap_order()
             .into_iter()
-            .filter(|&p| scope != EdictScope::EachOpponent || p != controller)
+            .filter(|&p| match scope {
+                EdictScope::EachOpponent => p != controller,
+                EdictScope::You => p == controller,
+                _ => true,
+            })
             .collect();
+        // Lich's "If you can't, you lose the game": a bill bigger than the board is unpayable, so
+        // its controller is eliminated (CR 104.3b) and the prompt is never raised.
+        // ponytail: CR 608.2 would have them sacrifice as much as they can on the way out. Skipped
+        // — they lose either way, and every permanent they own leaves with them (CR 800.4a). Run
+        // the fan-out first if a card ever cares about the deaths.
+        if lose_game_if_short
+            && affected
+                .iter()
+                .any(|&p| (self.edict_options(p, filter, Some(source)).len() as u32) < count)
+        {
+            for &p in &affected {
+                if (self.edict_options(p, filter, Some(source)).len() as u32) < count {
+                    self.push_apply(events, Event::PlayerLost { player: p });
+                }
+            }
+            return;
+        }
         if life_loss != 0 {
             for &p in &affected {
                 self.push_apply(
@@ -458,8 +518,17 @@ impl Game {
                 );
             }
         }
+        // Balance's "equal to the number … the player who controls the fewest": measured once,
+        // here, before anybody sacrifices — every affected seat is judged against the same floor.
+        let floor = down_to_fewest.then(|| {
+            affected
+                .iter()
+                .map(|&p| self.edict_options(p, filter, Some(source)).len() as u32)
+                .min()
+                .unwrap_or(0)
+        });
         self.prompt_next_sacrifice(
-            affected, keep_one, filter, count, follow_up, controller, source, events,
+            affected, keep_one, filter, count, floor, follow_up, controller, source, events,
         );
     }
 
@@ -510,6 +579,8 @@ impl Game {
             keep_one,
             filter,
             count,
+            // No pool card combines "any number of target players" with "down to the fewest".
+            None,
             then,
             chooser,
             source,
@@ -527,6 +598,7 @@ impl Game {
         keep_one: bool,
         filter: PermanentFilter,
         count: u32,
+        floor: Option<u32>,
         follow_up: &'static [Effect],
         controller: PlayerId,
         source: ObjectId,
@@ -539,6 +611,7 @@ impl Game {
                 keep_one,
                 filter,
                 count,
+                floor,
                 follow_up,
                 controller,
                 source,
@@ -581,6 +654,7 @@ impl Game {
             filter,
             remaining,
             count,
+            floor,
             controller,
             source,
             follow_up,
@@ -621,6 +695,7 @@ impl Game {
             keep_one,
             filter,
             count,
+            floor,
             follow_up,
             controller,
             source,

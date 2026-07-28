@@ -2,6 +2,7 @@
 # When this land enters, return a land you control to its owner's hand.
 # {T}: Add {W}{B}.
 name = "Orzhov Basilica"
+otags = ["activated-ability", "cycle-rav-bounceland", "drawback", "triggered-ability"]
 sets = ["2x2", "afc", "brc", "c13", "c15", "c16", "c17", "c18", "c20", "c21", "clb", "clu", "cma", "cmd", "cmm", "dmc", "drc", "dsc", "gk2", "gpt", "ima", "lcc", "mm2", "plst", "prm"]
 oracle = "This land enters tapped.\nWhen this land enters, return a land you control to its owner's hand.\n{T}: Add {W}{B}."
 id = "aa00ae0b-7c0f-427e-8102-ce0e2a6af5df"
