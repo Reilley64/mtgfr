@@ -1,11 +1,11 @@
-import * as Dialog from "@foldkit/ui/dialog";
-import * as Menu from "@foldkit/ui/menu";
-import { Effect } from "effect";
 /**
  * Shell surface coverage — every auth / decks / lobby / 404 panel must appear here
  * (or in a focused sibling Scene test) with a data-testid or unique-copy assertion.
  * See AGENTS.md: "Client UI: every surface gets a Scene test."
  */
+import * as Dialog from "@foldkit/ui/dialog";
+import * as Menu from "@foldkit/ui/menu";
+import { Effect } from "effect";
 import { Scene } from "foldkit/test";
 import { describe, expect, it } from "vitest";
 import { BindDeckCardFlip, DeckCardFlipTick } from "../deck-card-nav";
