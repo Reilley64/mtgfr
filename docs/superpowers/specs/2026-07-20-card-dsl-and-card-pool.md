@@ -108,6 +108,19 @@ There is no `"token"` `[kind]` tag. Token profiles are separate TOMLs under `dat
 
 Each ability block has a `timing` field and one or more `[[abilities.effects]]` entries. Optional: `condition` (intervening-if clause), `optional` (bool — "you may" trigger), `trigger` (what event fires this — for triggered abilities), `target` (what the whole ability targets, for targeted activated abilities).
 
+### Conditions
+
+A `Condition` is an internally-tagged table (`{ type = "…", … }`) usable as an ability's intervening-if, as a `conditional` effect's gate, and on the `enters_tapped_unless` / `free_cast_if` / `deploy_untapped_if` / `conditional_keywords` fields. Every threshold clause that compares one number to another — "if you control three or more creatures", "if its power is 16 or less", "if that spell's mana value is 5 or greater", "if this enchantment has no charge counters on it" — is written as the generic `compare`, whose `left` and `right` are ordinary `Amount`s and whose `op` is `at_least` (`>=`) or `at_most` (`<=`):
+
+```toml
+condition = { type = "compare", left = "per_creature_you_control", op = "at_least", right = 3 }
+condition = { type = "compare", left = { per_counter_of_kind = "charge" }, op = "at_most", right = 0 }
+```
+
+Magic thresholds are always inclusive, so those two ops cover the pool; an equality test is written as `at_most 0`. Reuse an existing `Amount` rather than adding a bespoke `Condition` variant — the named variants that remain are the ones a scalar comparison genuinely can't express: existentials over players (`an_opponent_has_life_at_most`, `any_player_hand_size_at_most`), two-subject comparisons (`opponent_controls_more_lands`), and board facts that are not counts (`source_untapped`, `won_clash`, `during_your_turn`).
+
+Every condition is evaluated through one `Game::condition_holds` against a `TriggerContext`. The context carries the ability's own `source` object and the resolution's shared `target` where the evaluating site has them, so a `compare` over `source_power` / `per_counter_on_source` / `target_power` reads the same way at trigger placement, at resolution, and in a `conditional_keywords` recompute. A site that genuinely has no source — a land's CR 614.13 `enters_tapped_unless` gate runs before the permanent exists — leaves it `None`, and a comparison whose operand needs one does not hold there.
+
 ### Timing variants
 
 - `"spell"`: the card's own spell effect; fires on resolution.

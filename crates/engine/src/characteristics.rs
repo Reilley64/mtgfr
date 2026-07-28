@@ -1482,21 +1482,18 @@ impl Game {
             if removes_abilities {
                 break;
             }
-            // ponytail: `conditional_keywords` is a static keyword grant (CR 604.3), not a
-            // triggered ability's intervening-if — it has no `TriggerContext` to run through the
-            // general `Game::condition_holds` evaluator, so each source-object-based `Condition`
-            // this axis actually uses gets its own arm here rather than a generic dispatch. Grow
-            // this match (not a fallthrough to `condition_holds`, which is unreachable from here)
-            // when a future card conditions a keyword on something else.
-            let holds = match condition {
-                Condition::SourceHasCounters { at_least } => {
-                    self.source_has_counters(object, at_least)
-                }
-                Condition::SourceAttackedThisTurn => self
-                    .as_permanent(object)
-                    .is_some_and(|p| p.attacked_this_turn),
-                _ => false,
-            };
+            // A static keyword grant (CR 604.3), not a triggered ability's intervening-if, so
+            // there is no triggering event to describe — but the source-object-based conditions
+            // this axis uses (Primordial Hydra's ten-counter trample, Agent Frank Horrigan's
+            // attacked-this-turn indestructible) read `TriggerContext::source`, so a context
+            // naming this object and its controller is all the general evaluator needs.
+            let holds = self.condition_holds(
+                condition,
+                TriggerContext {
+                    source: Some(object),
+                    ..TriggerContext::of(self.controller_of(object))
+                },
+            );
             if holds {
                 keywords.push(keyword);
             }
@@ -1690,7 +1687,7 @@ impl Game {
                 // against the anthem source's own controller, same as its cost/trigger reads
                 // would be.
                 if let Some(cond) = condition
-                    && !self.condition_holds(cond, TriggerContext::of(source_owner))
+                    && !self.ability_condition_holds(cond, source, TriggerContext::of(source_owner))
                 {
                     continue;
                 }

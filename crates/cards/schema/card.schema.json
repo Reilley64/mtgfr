@@ -1627,41 +1627,51 @@
         }
       ]
     },
-    "Condition": {
-      "description": "An intervening-if condition on a triggered ability (CR 603.4): checked once, *when the ability would trigger*. If it doesn't hold, the ability never goes on the stack. ponytail: the CR 603.4 *second* check (re-evaluated as the ability resolves) is skipped — a single placement-time check is all the pool's cards need; add the re-check when one relies on the condition becoming false between trigger and resolution. Kept `Copy` because it is a small authored predicate value.",
+    "CompareOp": {
+      "description": "An intervening-if condition on a triggered ability (CR 603.4): checked once, *when the ability would trigger*. If it doesn't hold, the ability never goes on the stack. How [`Condition::Compare`] relates its two operands. Magic thresholds are always inclusive (\"five or more lands\", \"16 or less\"), so these are `>=` and `<=`; an equality test is written as `at_most 0` where the pool needs it (\"if no creatures are on the battlefield\").",
       "oneOf": [
         {
-          "description": "\"if you control `count` or more creatures\" (Leonin Vanguard). ponytail: counts creatures only — the one object kind the pool needs; add a `kind` discriminator (permanents, artifacts, …) when a real card counts something else.",
+          "description": "\"`count` or more\" — `left >= right`.",
+          "enum": [
+            "at_least"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "\"`count` or fewer\" — `left <= right`.",
+          "enum": [
+            "at_most"
+          ],
+          "type": "string"
+        }
+      ]
+    },
+    "Condition": {
+      "description": "ponytail: the CR 603.4 *second* check (re-evaluated as the ability resolves) is skipped — a single placement-time check is all the pool's cards need; add the re-check when one relies on the condition becoming false between trigger and resolution. Kept `Copy` because it is a small authored predicate value.",
+      "oneOf": [
+        {
+          "description": "A numeric threshold: `left op right`, where both operands are ordinary [`Amount`]s (\"if you control three or more creatures\", \"if its power is 16 or less\", \"if that spell's mana value is 5 or greater\"). [`Amount`] already computes every quantity Magic compares, so this needs no subject vocabulary of its own — and every operand it gains as `Amount` grows is usable as a count anywhere else in the DSL too.\n\nBoth operands are `&'static` (leaked at deserialize, like other card-data references) because [`Amount::IfCondition`] holds a `Condition` *by value*: a `Condition` holding an `Amount` by value would be an infinitely sized cycle. This keeps [`Condition`] `Copy`.\n\nEvaluated wherever the site can supply what [`Game::resolve_amount`] needs. An operand that reads the source object (`source_power`, `per_counter_on_source`) or the resolving effect's target (`target_power`) only holds at a site that has one — the `{ type = \"conditional\", … }` resolve site and [`Game::ability_condition_holds`] both do; a bare `[abilities.condition]` checked with no source in hand does not, and reads such an operand as 0.",
           "properties": {
-            "count": {
-              "format": "uint32",
-              "minimum": 0.0,
-              "type": "integer"
+            "left": {
+              "$ref": "#/$defs/Amount"
+            },
+            "op": {
+              "$ref": "#/$defs/CompareOp"
+            },
+            "right": {
+              "$ref": "#/$defs/Amount"
             },
             "type": {
               "enum": [
-                "you_control_at_least_creatures"
+                "compare"
               ],
               "type": "string"
             }
           },
           "required": [
-            "count",
-            "type"
-          ],
-          "type": "object"
-        },
-        {
-          "description": "\"if no creatures are on the battlefield\" (Pyrohemia's self-sacrifice gate) — board-wide, every controller, unlike [`YouControlAtLeastCreatures`](Self::YouControlAtLeastCreatures) above. Reads [`Game::creatures_on_battlefield`], the same tally [`Amount::PerCreatureOnBattlefield`] uses. Usable both as `[abilities.condition]` (CR 603.4's first check, at trigger placement) and nested in a `{ type = \"conditional\", … }` step (the CR 603.4 *second* check, re-checked fresh at resolution — a creature created in response to the trigger suppresses the sacrifice), same pairing as [`SourceUntapped`](Self::SourceUntapped)/Howling Mine.",
-          "properties": {
-            "type": {
-              "enum": [
-                "no_creatures_on_battlefield"
-              ],
-              "type": "string"
-            }
-          },
-          "required": [
+            "left",
+            "op",
+            "right",
             "type"
           ],
           "type": "object"
@@ -2018,28 +2028,7 @@
           "type": "object"
         },
         {
-          "description": "\"as long as this creature has `at_least` or more +1/+1 counters on it\" (CR 702 counters; Primordial Hydra's trample gate). Source-object-based — reads the object's own `Permanent::plus_counters`, not a `TriggerContext` field.",
-          "properties": {
-            "at_least": {
-              "format": "uint32",
-              "minimum": 0.0,
-              "type": "integer"
-            },
-            "type": {
-              "enum": [
-                "source_has_counters"
-              ],
-              "type": "string"
-            }
-          },
-          "required": [
-            "at_least",
-            "type"
-          ],
-          "type": "object"
-        },
-        {
-          "description": "\"has indestructible as long as it attacked this turn\" (Agent Frank Horrigan). Source-object-based like [`SourceHasCounters`](Self::SourceHasCounters) above, but reads [`Permanent::attacked_this_turn`] — a turn-scoped flag set when the permanent is declared as an attacker and cleared at the next Untap step, *not* [`PermanentFilter::attacking`], which lapses the instant combat ends or the permanent leaves combat. The printed grant persists through end of combat and the rest of the turn.",
+          "description": "\"has indestructible as long as it attacked this turn\" (Agent Frank Horrigan). Source-object-based like [`Compare`](Self::Compare)'s source operands, but reads [`Permanent::attacked_this_turn`] — a turn-scoped flag set when the permanent is declared as an attacker and cleared at the next Untap step, *not* [`PermanentFilter::attacking`], which lapses the instant combat ends or the permanent leaves combat. The printed grant persists through end of combat and the rest of the turn.",
           "properties": {
             "type": {
               "enum": [
@@ -2049,25 +2038,6 @@
             }
           },
           "required": [
-            "type"
-          ],
-          "type": "object"
-        },
-        {
-          "description": "\"if this permanent has no `kind` counters on it\" (CR 702 counters; mana_bloom's upkeep self-bounce: \"if this enchantment has no charge counters on it, return it to its owner's hand\"). Source-object-based like [`SourceHasCounters`](Self::SourceHasCounters) above. ponytail: only the \"== 0\" inversion this increment's cards need, not a general `at_least`/`at_most` on a named kind; grow a `SourceHasCountersOfKind { kind, at_least }` sibling (mirroring `SourceHasCounters`) if a future card needs \"at least N story/charge counters\" as an intervening-if instead of exactly zero.",
-          "properties": {
-            "kind": {
-              "$ref": "#/$defs/CounterKind"
-            },
-            "type": {
-              "enum": [
-                "source_has_no_counters_of_kind"
-              ],
-              "type": "string"
-            }
-          },
-          "required": [
-            "kind",
             "type"
           ],
           "type": "object"
@@ -2098,7 +2068,7 @@
           "type": "object"
         },
         {
-          "description": "\"when this land enters untapped\" (Mystic Sanctuary's ETB intervening-if): whether the permanent that fired this ability is not tapped right now. Reads the object's own `Permanent::tapped`, which is set at creation from `Game::enters_tapped` (CR 614.13's own gate, evaluated before the permanent exists — see that fn), so this reads correctly with no re-derivation. Source-object-based like [`SourceHasCounters`](Self::SourceHasCounters): `TriggerContext` carries no source id, so `Game::queue_trigger_group` special-cases it directly against its own `source` parameter rather than through `condition_holds`.",
+          "description": "\"when this land enters untapped\" (Mystic Sanctuary's ETB intervening-if): whether the permanent that fired this ability is not tapped right now. Reads the object's own `Permanent::tapped`, which is set at creation from `Game::enters_tapped` (CR 614.13's own gate, evaluated before the permanent exists — see that fn), so this reads correctly with no re-derivation. Source-object-based like [`Compare`](Self::Compare)'s source operands: `TriggerContext` carries no source id, so `Game::queue_trigger_group` special-cases it directly against its own `source` parameter rather than through `condition_holds`.",
           "properties": {
             "type": {
               "enum": [
@@ -2113,7 +2083,7 @@
           "type": "object"
         },
         {
-          "description": "\"if [this permanent] is untapped\" (Howling Mine's intervening-if) — whether the ability's own source permanent is untapped *right now*, re-read live rather than snapshotted once like [`ThisPermanentEnteredUntapped`](Self::ThisPermanentEnteredUntapped) (which asks how the permanent entered, not its current state). Source-object-based, same shape as [`SourceHasCounters`](Self::SourceHasCounters): usable both as an `[abilities.condition]` intervening-if (checked at trigger placement, [`Game::ability_condition_holds`]) *and* nested in an [`Effect::Conditional`] (checked fresh at resolution) — CR 603.4 requires *both* checks, and the pool falsifies skipping the second (Magma Opus's instant-speed \"tap two target permanents\" can tap the source in response, after it triggered untapped).",
+          "description": "\"if [this permanent] is untapped\" (Howling Mine's intervening-if) — whether the ability's own source permanent is untapped *right now*, re-read live rather than snapshotted once like [`ThisPermanentEnteredUntapped`](Self::ThisPermanentEnteredUntapped) (which asks how the permanent entered, not its current state). Source-object-based, same shape as [`Compare`](Self::Compare)'s source operands: usable both as an `[abilities.condition]` intervening-if (checked at trigger placement, [`Game::ability_condition_holds`]) *and* nested in an [`Effect::Conditional`] (checked fresh at resolution) — CR 603.4 requires *both* checks, and the pool falsifies skipping the second (Magma Opus's instant-speed \"tap two target permanents\" can tap the source in response, after it triggered untapped).",
           "properties": {
             "type": {
               "enum": [
@@ -2123,27 +2093,6 @@
             }
           },
           "required": [
-            "type"
-          ],
-          "type": "object"
-        },
-        {
-          "description": "\"if that spell's mana value is `at_least` or greater\" (Prismari Pianist's \"if that spell's mana value is 5 or greater, create three of those tokens instead\") — a `Trigger::CastSpell` (magecraft) intervening-if, read off `TriggerContext::cast_mana_value`. [`condition_holds`](Game::condition_holds) gives this an honest live arm, but its only consumer (Prismari Pianist) never reaches it: the DSL always wraps this condition in an [`Effect::Conditional`] baked to its `then`/no-op at trigger placement (CR 603.4 — the triggering spell's mana value is already locked when the trigger goes on the stack), same as [`fill_cast_mana_value`] rewrites `Amount::TriggeringSpellManaValue`.",
-          "properties": {
-            "at_least": {
-              "format": "uint8",
-              "minimum": 0.0,
-              "type": "integer"
-            },
-            "type": {
-              "enum": [
-                "triggering_spell_mana_value_at_least"
-              ],
-              "type": "string"
-            }
-          },
-          "required": [
-            "at_least",
             "type"
           ],
           "type": "object"
@@ -2185,28 +2134,7 @@
           "type": "object"
         },
         {
-          "description": "\"if there are `count` or more instant and/or sorcery cards in your graveyard\" (Animist's Awakening's spell mastery — CR intervening-if, checked fresh as the ability resolves). Counts the same way [`Amount::InstantOrSorceryCardsInYourGraveyard`] does (any [`CardKind::Spell`] card in the controller's graveyard).",
-          "properties": {
-            "count": {
-              "format": "uint32",
-              "minimum": 0.0,
-              "type": "integer"
-            },
-            "type": {
-              "enum": [
-                "instant_or_sorcery_cards_in_your_graveyard_at_least"
-              ],
-              "type": "string"
-            }
-          },
-          "required": [
-            "count",
-            "type"
-          ],
-          "type": "object"
-        },
-        {
-          "description": "\"if there are `count` or more artifact and/or creature cards in your graveyard\" (Lorehold Archivist's prepare trigger). Counts the controller's graveyard cards whose kind is [`CardKind::Artifact`] or [`CardKind::Creature`] — the intervening-if sibling of [`InstantOrSorceryCardsInYourGraveyardAtLeast`](Self::InstantOrSorceryCardsInYourGraveyardAtLeast).",
+          "description": "\"if there are `count` or more artifact and/or creature cards in your graveyard\" (Lorehold Archivist's prepare trigger). Counts the controller's graveyard cards whose kind is [`CardKind::Artifact`] or [`CardKind::Creature`] — the intervening-if sibling of [`Compare`](Self::Compare) over [`Amount::InstantOrSorceryCardsInYourGraveyard`].",
           "properties": {
             "count": {
               "format": "uint32",
@@ -2269,48 +2197,6 @@
           "type": "object"
         },
         {
-          "description": "\"if that creature has power `at_least` or greater\" (Yavimaya Bloomsage's \"Then if that creature has power 7 or greater, this creature becomes prepared\") — reads the *resolving effect's own chosen target's* power, not a `TriggerContext` field like every other arm here. `TriggerContext` carries no target, so (like `SourceHasCounters`/ `ThisPermanentEnteredUntapped` above) this is unreachable through the ordinary `condition_holds` path; the [`Effect::Conditional`] resolve site special-cases it directly against the shared `target` before falling through — see `Game::run`.",
-          "properties": {
-            "at_least": {
-              "format": "uint32",
-              "minimum": 0.0,
-              "type": "integer"
-            },
-            "type": {
-              "enum": [
-                "target_power_at_least"
-              ],
-              "type": "string"
-            }
-          },
-          "required": [
-            "at_least",
-            "type"
-          ],
-          "type": "object"
-        },
-        {
-          "description": "\"if its power is `at_most` or less\" (Lily Bowen, Raging Grandma's upkeep gate) — source-object-based like [`SourceHasCounters`](Self::SourceHasCounters): reads the source's own live [`Game::power`], not a `TriggerContext` field. `TriggerContext` carries no source id, so this is unreachable through the ordinary `condition_holds` path; the [`Effect::Conditional`] resolve site special-cases it directly against its own `source` parameter, mirroring [`SourceEnteredWithXAtLeast`](Self::SourceEnteredWithXAtLeast).",
-          "properties": {
-            "at_most": {
-              "format": "uint32",
-              "minimum": 0.0,
-              "type": "integer"
-            },
-            "type": {
-              "enum": [
-                "source_power_at_most"
-              ],
-              "type": "string"
-            }
-          },
-          "required": [
-            "at_most",
-            "type"
-          ],
-          "type": "object"
-        },
-        {
           "description": "\"as long as an opponent has `at_most` or less life\" (Bloodghast's conditional haste) — an existential over the ability controller's opponents (CR 104.3a): holds when any living opponent's life is `at_most` or lower. Evaluated live, so a life change across the boundary flips a gated anthem on or off ([`Game::condition_holds`]).",
           "properties": {
             "at_most": {
@@ -2332,7 +2218,7 @@
           "type": "object"
         },
         {
-          "description": "\"if X is `at_least` or more\" (CR 601.2b; Kinetic Ooze's \"If X is 5 or more, you draw a card\") — reads the source permanent's *locked cast* `{X}` ([`Game::ability_source_x`], backed by [`Permanent::entered_with_x`]), not any live board state (e.g. counters that happen to equal X at ETB but can change before the ability resolves). Source-object-based like [`SourceHasCounters`](Self::SourceHasCounters): `TriggerContext` carries no source id, so the [`Effect::Conditional`] resolve site special-cases it directly against its own `source` parameter, mirroring [`TargetPowerAtLeast`](Self::TargetPowerAtLeast) above.",
+          "description": "\"if X is `at_least` or more\" (CR 601.2b; Kinetic Ooze's \"If X is 5 or more, you draw a card\") — reads the source permanent's *locked cast* `{X}` ([`Game::ability_source_x`], backed by [`Permanent::entered_with_x`]), not any live board state (e.g. counters that happen to equal X at ETB but can change before the ability resolves). Source-object-based like [`Compare`](Self::Compare)'s source operands: `TriggerContext` carries no source id, so the [`Effect::Conditional`] resolve site special-cases it directly against its own `source` parameter.",
           "properties": {
             "at_least": {
               "format": "uint32",
@@ -2435,7 +2321,7 @@
           "type": "object"
         },
         {
-          "description": "\"Then if there are no cards in that player's graveyard\" (Nezumi Graverobber's flip gate — CR 608.2, evaluated as the ability resolves, after the same ability's exile step already emptied — or didn't — the targeted card's owner's graveyard). Target-based like [`TargetPowerAtLeast`](Self::TargetPowerAtLeast): `TriggerContext` carries no target, so the [`Effect::Conditional`] resolve site special-cases it directly against the shared `target`, reading the owner of that graveyard card (its owner survives the exile — the moved object still records it) and checking that owner's graveyard is now empty. Unreachable through the ordinary [`condition_holds`](Game::condition_holds) path (returns `false` there).",
+          "description": "\"Then if there are no cards in that player's graveyard\" (Nezumi Graverobber's flip gate — CR 608.2, evaluated as the ability resolves, after the same ability's exile step already emptied — or didn't — the targeted card's owner's graveyard). Target-based like [`Compare`](Self::Compare)'s target operands: `TriggerContext` carries no target, so the [`Effect::Conditional`] resolve site special-cases it directly against the shared `target`, reading the owner of that graveyard card (its owner survives the exile — the moved object still records it) and checking that owner's graveyard is now empty. Unreachable through the ordinary [`condition_holds`](Game::condition_holds) path (returns `false` there).",
           "properties": {
             "type": {
               "enum": [

@@ -1350,7 +1350,11 @@ fn the_pool_loads_with_expected_card_shapes() {
     );
     assert_eq!(
         leonin.abilities[0].condition,
-        Some(Condition::YouControlAtLeastCreatures { count: 3 })
+        Some(Condition::Compare {
+            left: &Amount::PerCreatureYouControl,
+            op: CompareOp::AtLeast,
+            right: &Amount::Fixed(3),
+        })
     );
     let Effect::Sequence { steps } = &leonin.abilities[0].effect else {
         panic!("Leonin Vanguard should resolve as pump, then life gain");

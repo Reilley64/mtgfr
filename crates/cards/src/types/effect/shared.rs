@@ -1522,6 +1522,34 @@ pub struct ActivationCost {
 
 /// An intervening-if condition on a triggered ability (CR 603.4): checked once, *when the
 /// ability would trigger*. If it doesn't hold, the ability never goes on the stack.
+/// How [`Condition::Compare`] relates its two operands. Magic thresholds are always inclusive
+/// ("five or more lands", "16 or less"), so these are `>=` and `<=`; an equality test is written
+/// as `at_most 0` where the pool needs it ("if no creatures are on the battlefield").
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "card-dsl",
+    derive(serde::Deserialize),
+    serde(rename_all = "snake_case")
+)]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
+pub enum CompareOp {
+    /// "`count` or more" — `left >= right`.
+    AtLeast,
+    /// "`count` or fewer" — `left <= right`.
+    AtMost,
+}
+
+impl CompareOp {
+    /// Whether `left op right` holds.
+    #[must_use]
+    pub fn holds(self, left: i32, right: i32) -> bool {
+        match self {
+            Self::AtLeast => left >= right,
+            Self::AtMost => left <= right,
+        }
+    }
+}
+
 /// ponytail: the CR 603.4 *second* check (re-evaluated as the ability resolves) is skipped — a
 /// single placement-time check is all the pool's cards need; add the re-check when one relies on
 /// the condition becoming false between trigger and resolution. Kept `Copy` because it is a small
@@ -1534,19 +1562,28 @@ pub struct ActivationCost {
 )]
 #[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 pub enum Condition {
-    /// "if you control `count` or more creatures" (Leonin Vanguard).
-    /// ponytail: counts creatures only — the one object kind the pool needs; add a `kind`
-    /// discriminator (permanents, artifacts, …) when a real card counts something else.
-    YouControlAtLeastCreatures { count: u32 },
-    /// "if no creatures are on the battlefield" (Pyrohemia's self-sacrifice gate) — board-wide,
-    /// every controller, unlike [`YouControlAtLeastCreatures`](Self::YouControlAtLeastCreatures)
-    /// above. Reads [`Game::creatures_on_battlefield`], the same tally
-    /// [`Amount::PerCreatureOnBattlefield`] uses. Usable both as `[abilities.condition]` (CR
-    /// 603.4's first check, at trigger placement) and nested in a `{ type = "conditional", … }`
-    /// step (the CR 603.4 *second* check, re-checked fresh at resolution — a creature created in
-    /// response to the trigger suppresses the sacrifice), same pairing as
-    /// [`SourceUntapped`](Self::SourceUntapped)/Howling Mine.
-    NoCreaturesOnBattlefield,
+    /// A numeric threshold: `left op right`, where both operands are ordinary [`Amount`]s
+    /// ("if you control three or more creatures", "if its power is 16 or less", "if that spell's
+    /// mana value is 5 or greater"). [`Amount`] already computes every quantity Magic compares, so
+    /// this needs no subject vocabulary of its own — and every operand it gains as `Amount` grows
+    /// is usable as a count anywhere else in the DSL too.
+    ///
+    /// Both operands are `&'static` (leaked at deserialize, like other card-data references)
+    /// because [`Amount::IfCondition`] holds a `Condition` *by value*: a `Condition` holding an
+    /// `Amount` by value would be an infinitely sized cycle. This keeps [`Condition`] `Copy`.
+    ///
+    /// Evaluated wherever the site can supply what [`Game::resolve_amount`] needs. An operand that
+    /// reads the source object (`source_power`, `per_counter_on_source`) or the resolving effect's
+    /// target (`target_power`) only holds at a site that has one — the `{ type = "conditional", … }`
+    /// resolve site and [`Game::ability_condition_holds`] both do; a bare `[abilities.condition]`
+    /// checked with no source in hand does not, and reads such an operand as 0.
+    Compare {
+        #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::static_amount"))]
+        left: &'static Amount,
+        op: CompareOp,
+        #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::static_amount"))]
+        right: &'static Amount,
+    },
     /// Breena: "if that opponent has more life than another of your opponents." Reads the
     /// triggering context's attacked opponent; needs the controller to have ≥2 opponents.
     AttackedOpponentHasMoreLifeThanAnotherOpponent,
@@ -1649,25 +1686,13 @@ pub enum Condition {
     /// creatures for `keyword` in their effective set (a granted/temp decayed counts too), not
     /// just a printed subtype string.
     YouControlNoCreatureWithKeyword { keyword: Keyword },
-    /// "as long as this creature has `at_least` or more +1/+1 counters on it" (CR 702 counters;
-    /// Primordial Hydra's trample gate). Source-object-based — reads the object's own
-    /// `Permanent::plus_counters`, not a `TriggerContext` field.
-    SourceHasCounters { at_least: u32 },
     /// "has indestructible as long as it attacked this turn" (Agent Frank Horrigan).
-    /// Source-object-based like [`SourceHasCounters`](Self::SourceHasCounters) above, but reads
+    /// Source-object-based like [`Compare`](Self::Compare)'s source operands, but reads
     /// [`Permanent::attacked_this_turn`] — a turn-scoped flag set when the permanent is declared
     /// as an attacker and cleared at the next Untap step, *not* [`PermanentFilter::attacking`],
     /// which lapses the instant combat ends or the permanent leaves combat. The printed grant
     /// persists through end of combat and the rest of the turn.
     SourceAttackedThisTurn,
-    /// "if this permanent has no `kind` counters on it" (CR 702 counters; mana_bloom's upkeep
-    /// self-bounce: "if this enchantment has no charge counters on it, return it to its owner's
-    /// hand"). Source-object-based like [`SourceHasCounters`](Self::SourceHasCounters) above.
-    /// ponytail: only the "== 0" inversion this increment's cards need, not a general
-    /// `at_least`/`at_most` on a named kind; grow a `SourceHasCountersOfKind { kind, at_least }`
-    /// sibling (mirroring `SourceHasCounters`) if a future card needs "at least N story/charge
-    /// counters" as an intervening-if instead of exactly zero.
-    SourceHasNoCountersOfKind { kind: CounterKind },
     /// "if you control `at_least` or more `color` permanents" (Mistveil Plains's "activate only
     /// if you control two or more white permanents") — an activation restriction, checked in
     /// [`Game::ability_activation_gate`]. Counts the controller's battlefield permanents whose
@@ -1677,7 +1702,7 @@ pub enum Condition {
     /// permanent that fired this ability is not tapped right now. Reads the object's own
     /// `Permanent::tapped`, which is set at creation from `Game::enters_tapped` (CR 614.13's own
     /// gate, evaluated before the permanent exists — see that fn), so this reads correctly with
-    /// no re-derivation. Source-object-based like [`SourceHasCounters`](Self::SourceHasCounters):
+    /// no re-derivation. Source-object-based like [`Compare`](Self::Compare)'s source operands:
     /// `TriggerContext` carries no source id, so `Game::queue_trigger_group` special-cases it
     /// directly against its own `source` parameter rather than through `condition_holds`.
     ThisPermanentEnteredUntapped,
@@ -1685,21 +1710,12 @@ pub enum Condition {
     /// source permanent is untapped *right now*, re-read live rather than snapshotted once like
     /// [`ThisPermanentEnteredUntapped`](Self::ThisPermanentEnteredUntapped) (which asks how the
     /// permanent entered, not its current state). Source-object-based, same shape as
-    /// [`SourceHasCounters`](Self::SourceHasCounters): usable both as an `[abilities.condition]`
+    /// [`Compare`](Self::Compare)'s source operands: usable both as an `[abilities.condition]`
     /// intervening-if (checked at trigger placement, [`Game::ability_condition_holds`]) *and*
     /// nested in an [`Effect::Conditional`] (checked fresh at resolution) — CR 603.4 requires
     /// *both* checks, and the pool falsifies skipping the second (Magma Opus's instant-speed "tap
     /// two target permanents" can tap the source in response, after it triggered untapped).
     SourceUntapped,
-    /// "if that spell's mana value is `at_least` or greater" (Prismari Pianist's "if that
-    /// spell's mana value is 5 or greater, create three of those tokens instead") — a
-    /// `Trigger::CastSpell` (magecraft) intervening-if, read off `TriggerContext::cast_mana_value`.
-    /// [`condition_holds`](Game::condition_holds) gives this an honest live arm, but its only
-    /// consumer (Prismari Pianist) never reaches it: the DSL always wraps this condition in an
-    /// [`Effect::Conditional`] baked to its `then`/no-op at trigger placement (CR 603.4 — the
-    /// triggering spell's mana value is already locked when the trigger goes on the stack), same
-    /// as [`fill_cast_mana_value`] rewrites `Amount::TriggeringSpellManaValue`.
-    TriggeringSpellManaValueAtLeast { at_least: u8 },
     /// "as long as you have the city's blessing" (CR 702.131, Ascend — tendershoot_dryad's
     /// Saproling anthem). Reads the controller's sticky `Player::has_citys_blessing` flag, set
     /// by a state-based action ([`Game::check_state_based_actions`]) once they control ten or
@@ -1710,15 +1726,10 @@ pub enum Condition {
     /// including opponents), not just the controller; holds as soon as one living player's hand
     /// is small enough. The hellbent/hand-size sibling of the board-state conditions above.
     AnyPlayerHandSizeAtMost { at_most: u32 },
-    /// "if there are `count` or more instant and/or sorcery cards in your graveyard" (Animist's
-    /// Awakening's spell mastery — CR intervening-if, checked fresh as the ability resolves).
-    /// Counts the same way [`Amount::InstantOrSorceryCardsInYourGraveyard`] does (any
-    /// [`CardKind::Spell`] card in the controller's graveyard).
-    InstantOrSorceryCardsInYourGraveyardAtLeast { count: u32 },
     /// "if there are `count` or more artifact and/or creature cards in your graveyard" (Lorehold
     /// Archivist's prepare trigger). Counts the controller's graveyard cards whose kind is
     /// [`CardKind::Artifact`] or [`CardKind::Creature`] — the intervening-if sibling of
-    /// [`InstantOrSorceryCardsInYourGraveyardAtLeast`](Self::InstantOrSorceryCardsInYourGraveyardAtLeast).
+    /// [`Compare`](Self::Compare) over [`Amount::InstantOrSorceryCardsInYourGraveyard`].
     ArtifactOrCreatureCardsInYourGraveyardAtLeast { count: u32 },
     /// "if there are `count` or more cards in your graveyard" (Werebear's Threshold ability
     /// word: "gets +3/+3 as long as there are seven or more cards in your graveyard") — every
@@ -1730,21 +1741,6 @@ pub enum Condition {
     /// the controller — the all-graveyards sibling of
     /// [`ArtifactOrCreatureCardsInYourGraveyardAtLeast`](Self::ArtifactOrCreatureCardsInYourGraveyardAtLeast).
     CreatureCardsInAllGraveyardsAtLeast { count: u32 },
-    /// "if that creature has power `at_least` or greater" (Yavimaya Bloomsage's "Then if that
-    /// creature has power 7 or greater, this creature becomes prepared") — reads the *resolving
-    /// effect's own chosen target's* power, not a `TriggerContext` field like every other arm
-    /// here. `TriggerContext` carries no target, so (like `SourceHasCounters`/
-    /// `ThisPermanentEnteredUntapped` above) this is unreachable through the ordinary
-    /// `condition_holds` path; the [`Effect::Conditional`] resolve site special-cases it directly
-    /// against the shared `target` before falling through — see `Game::run`.
-    TargetPowerAtLeast { at_least: u32 },
-    /// "if its power is `at_most` or less" (Lily Bowen, Raging Grandma's upkeep gate) —
-    /// source-object-based like [`SourceHasCounters`](Self::SourceHasCounters): reads the
-    /// source's own live [`Game::power`], not a `TriggerContext` field. `TriggerContext` carries
-    /// no source id, so this is unreachable through the ordinary `condition_holds` path; the
-    /// [`Effect::Conditional`] resolve site special-cases it directly against its own `source`
-    /// parameter, mirroring [`SourceEnteredWithXAtLeast`](Self::SourceEnteredWithXAtLeast).
-    SourcePowerAtMost { at_most: u32 },
     /// "as long as an opponent has `at_most` or less life" (Bloodghast's conditional haste) — an
     /// existential over the ability controller's opponents (CR 104.3a): holds when any living
     /// opponent's life is `at_most` or lower. Evaluated live, so a life change across the
@@ -1754,9 +1750,9 @@ pub enum Condition {
     /// card") — reads the source permanent's *locked cast* `{X}` ([`Game::ability_source_x`],
     /// backed by [`Permanent::entered_with_x`]), not any live board state (e.g. counters that
     /// happen to equal X at ETB but can change before the ability resolves). Source-object-based
-    /// like [`SourceHasCounters`](Self::SourceHasCounters): `TriggerContext` carries no source
-    /// id, so the [`Effect::Conditional`] resolve site special-cases it directly against its own
-    /// `source` parameter, mirroring [`TargetPowerAtLeast`](Self::TargetPowerAtLeast) above.
+    /// like [`Compare`](Self::Compare)'s source operands: `TriggerContext` carries no source id,
+    /// so the [`Effect::Conditional`] resolve site special-cases it directly against its own
+    /// `source` parameter.
     SourceEnteredWithXAtLeast { at_least: u32 },
     /// A composed AND of every arm in `conditions` (CR 603.4 — Zimone, All-Questioning's "if a
     /// land entered the battlefield under your control this turn *and* you control a prime
@@ -1792,7 +1788,7 @@ pub enum Condition {
     /// "Then if there are no cards in that player's graveyard" (Nezumi Graverobber's flip gate —
     /// CR 608.2, evaluated as the ability resolves, after the same ability's exile step already
     /// emptied — or didn't — the targeted card's owner's graveyard). Target-based like
-    /// [`TargetPowerAtLeast`](Self::TargetPowerAtLeast): `TriggerContext` carries no target, so the
+    /// [`Compare`](Self::Compare)'s target operands: `TriggerContext` carries no target, so the
     /// [`Effect::Conditional`] resolve site special-cases it directly against the shared `target`,
     /// reading the owner of that graveyard card (its owner survives the exile — the moved object
     /// still records it) and checking that owner's graveyard is now empty. Unreachable through the
@@ -1930,7 +1926,7 @@ pub fn contextualize_effect(effect: Effect, ctx: TriggerContext) -> Effect {
         None => effect,
     };
     // CR 603.4/202.3: a `CastSpell` (magecraft) trigger's `Amount::TriggeringSpellManaValue`
-    // reads and `Condition::TriggeringSpellManaValueAtLeast` gates both resolve against the
+    // reads and the `Condition::Compare` gates over it both resolve against the
     // triggering spell's mana value, locked in when the trigger goes on the stack — same
     // last-known-information shape as `dying_source_stats` above, one step earlier in this fn.
     let effect = match ctx.cast_mana_value {
@@ -2754,7 +2750,7 @@ fn fill_triggering_damage_dealt(effect: Effect, damage: i32) -> Effect {
 
 /// Rewrite a `CastSpell` (magecraft) trigger's `Amount::TriggeringSpellManaValue` placeholders to
 /// the triggering spell's mana value (Renegade Bull's "+X/+0 … where X is that spell's mana
-/// value"), and resolve its `Condition::TriggeringSpellManaValueAtLeast` gates against the same
+/// value"), and resolve its `Condition::Compare` gates over that amount against the same
 /// value right now (Prismari Pianist's "if that spell's mana value is 5 or greater, create three
 /// of those tokens instead") — CR 603.4: the triggering spell's mana value is locked in when the
 /// trigger goes on the stack, so baking the branch here (rather than leaving it for a live
@@ -2801,12 +2797,17 @@ fn fill_cast_mana_value(effect: Effect, mv: u32) -> Effect {
             must_attack_defender,
         }),
         Effect::Conditional {
-            condition: Condition::TriggeringSpellManaValueAtLeast { at_least },
+            condition:
+                Condition::Compare {
+                    left: &Amount::TriggeringSpellManaValue,
+                    op,
+                    right: &Amount::Fixed(threshold),
+                },
             then,
             negate,
             otherwise,
         } => {
-            if (mv < u32::from(at_least)) != negate {
+            if op.holds(mv as i32, threshold) == negate {
                 let filled_otherwise: Vec<Effect> = otherwise
                     .iter()
                     .map(|step| fill_cast_mana_value(step.clone(), mv))
@@ -2841,8 +2842,8 @@ fn fill_cast_mana_value(effect: Effect, mv: u32) -> Effect {
 /// mana spent to cast that spell," the mana-*spent* sibling of [`fill_cast_mana_value`] above
 /// (which reads mana *value* instead). Reuses the generic [`map_effect_amounts`] walker rather
 /// than duplicating [`fill_cast_mana_value`]'s bespoke match: this placeholder needs no
-/// `Condition`-gate rewrite (unlike `fill_cast_mana_value`'s `TriggeringSpellManaValueAtLeast`
-/// handling), so every effect shape it can appear in is already covered there.
+/// `Condition`-gate rewrite (unlike `fill_cast_mana_value`'s `Compare` handling), so every effect
+/// shape it can appear in is already covered there.
 fn fill_cast_mana_spent(effect: Effect, spent: u32) -> Effect {
     map_effect_amounts(effect, &|amount| match amount {
         Amount::TriggeringSpellManaSpent => Amount::Fixed(spent as i32),
@@ -3043,8 +3044,14 @@ mod tests {
             },
         });
 
+        const GATE: Condition = Condition::Compare {
+            left: &Amount::SourcePower,
+            op: CompareOp::AtMost,
+            right: &Amount::Fixed(16),
+        };
+
         let target_in_otherwise = Effect::Conditional {
-            condition: Condition::SourcePowerAtMost { at_most: 16 },
+            condition: GATE,
             then: arc_slice([GAIN]),
             negate: false,
             otherwise: &[BOUNCE],
@@ -3053,7 +3060,7 @@ mod tests {
 
         // `then` still wins when both branches target — it is announced first.
         let target_in_then = Effect::Conditional {
-            condition: Condition::SourcePowerAtMost { at_most: 16 },
+            condition: GATE,
             then: arc_slice([BOUNCE]),
             negate: false,
             otherwise: &[GAIN],
@@ -3061,7 +3068,7 @@ mod tests {
         assert_eq!(target_in_then.target(), TargetSpec::Creature);
 
         let no_target = Effect::Conditional {
-            condition: Condition::SourcePowerAtMost { at_most: 16 },
+            condition: GATE,
             then: arc_slice([GAIN]),
             negate: false,
             otherwise: &[GAIN],

@@ -49130,7 +49130,11 @@ fn dirgur_test() -> CardDef {
             optional: false,
             min_level: 0,
             once_each_turn: false,
-            condition: Some(Condition::TriggeringSpellManaValueAtLeast { at_least: 5 }),
+            condition: Some(Condition::Compare {
+                left: &Amount::TriggeringSpellManaValue,
+                op: CompareOp::AtLeast,
+                right: &Amount::Fixed(5),
+            }),
             cost: Cost::FREE,
         }]),
         cycling: None,
@@ -51924,6 +51928,24 @@ fn leonin_vanguard_pumps_itself_until_end_of_turn() {
     pass_until_next_turn(&mut g);
     assert_eq!(g.power(vanguard), 1, "the pump wears off at cleanup");
     assert_eq!(g.toughness(vanguard), 1);
+}
+
+#[test]
+fn leonin_vanguard_stays_quiet_below_three_creatures() {
+    // The false side of the same "if you control three or more creatures" intervening-if (CR
+    // 603.4) — two creatures is one short, so the begin-combat ability never goes on the stack.
+    let mut g = TestGame::new();
+    let vanguard = g.spawn_on_battlefield(PlayerId(0), card("Leonin Vanguard"));
+    g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let starting_life = g.life(PlayerId(0));
+
+    advance_until(&mut g, |g| g.current_step() == Step::BeginCombat);
+    assert!(
+        g.stack().is_empty(),
+        "controlling only two creatures leaves the begin-combat ability unfired"
+    );
+    assert_eq!(g.power(vanguard), 1, "no pump");
+    assert_eq!(g.life(PlayerId(0)), starting_life, "no life gain");
 }
 
 #[test]
@@ -101139,7 +101161,7 @@ fn multikicker_count_is_rejected_on_a_spell_without_multikicker() {
     );
 }
 
-// ── Increment #14 `double-counters-or-cull-and-gain`: `Condition::SourcePowerAtMost` and ──
+// ── Increment #14 `double-counters-or-cull-and-gain`: a `Condition::Compare` power gate and ──
 // ── `CountersEffect::RemoveCounters` + `Amount::CountersRemovedThisWay` — Lily Bowen ──
 
 /// A test-only 0/0 creature whose only ability is Lily Bowen's cull-and-gain-life half in
@@ -101473,7 +101495,11 @@ static TEST_BRANCHED_REMOVAL_CREATURE: LazyLock<CardDef> = LazyLock::new(|| Card
             graveyard_exile_target_count: 0,
         }),
         effect: Effect::Conditional {
-            condition: Condition::SourcePowerAtMost { at_most: 2 },
+            condition: Condition::Compare {
+                left: &Amount::SourcePower,
+                op: CompareOp::AtMost,
+                right: &Amount::Fixed(2),
+            },
             negate: true,
             then: Arc::from([Effect::Counters(CountersEffect::RemoveCounters {
                 target: TargetSpec::ThisPermanent,

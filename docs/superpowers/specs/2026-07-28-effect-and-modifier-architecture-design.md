@@ -104,7 +104,7 @@ timing = "upkeep"
 
 [[abilities.effects]]
 type = "conditional"
-condition = { subject = "source_power", op = "at_most", amount = { type = "fixed", count = 16 } }
+condition = { type = "compare", left = "source_power", op = "at_most", right = 16 }
 
 then = [
     # ... double the number of +1/+1 counters on Lily Bowen ...
@@ -121,7 +121,7 @@ otherwise = [
 
 Every verb is generic; nothing is Lily-Bowen-shaped. The `ponytail:` admission at `counters.rs:118` goes away with the variant it describes — and it prescribed exactly this fix: *"grow a `keep`/`gain_life` rider (or a `kind` axis) on `RemoveAllCountersThenDraw` instead of a new sibling."*
 
-Two notes on what this example does **not** change. `double_counters` stays as it is: it is one coherent oracle clause with five consumers, not a fused pair, so there is nothing to decompose. And `put_counters` keeps its existing spelling rather than being renamed to `add` — 65 card files, no behavior gained. The `condition` line above shows Wave 2's `Compare` vocabulary; Wave 1 leaves `source_power_at_most` alone.
+Two notes on what this example does **not** change. `double_counters` stays as it is: it is one coherent oracle clause with five consumers, not a fused pair, so there is nothing to decompose. And `put_counters` keeps its existing spelling rather than being renamed to `add` — 65 card files, no behavior gained. The `condition` line above is Wave 2's `Compare` vocabulary — Wave 1 shipped with the old `source_power_at_most` spelling and Wave 2 migrated it.
 
 ### Half 2 — Modifiers: one registry
 
@@ -159,7 +159,7 @@ Each wave is a separate PR leaving `just check` green.
 | Wave | Deliverable | Specs to update |
 |---|---|---|
 | **1** | `Amount::CountersRemovedThisWay` + its `ResolutionFrame` tally; generic `CountersEffect::RemoveCounters { target, all_kinds, keep }` resolving on the `Game::run` path; delete `RemoveAllCountersThenDraw` and `RemoveAllButOnePlusOneCounterThenGainLife` | `card-dsl-and-card-pool`, `choices-actions-and-resolution` (+ regenerate `DSL_REFERENCE.md` / card schema) |
-| **2** | `Condition::Compare { subject, op, amount }`; migrate the comparison-shaped members of the 47-variant enum; retire the remaining `*ThisWay` amounts and the `ResolutionFrame` fields Wave 1 left behind | `card-dsl-and-card-pool`, **`DSL_REFERENCE.md`** |
+| **2** | `Condition::Compare { left, op, right }` over two `&'static Amount` operands; `TriggerContext::source`/`target` so one `condition_holds` serves trigger placement, resolution, and the conditional-keyword recompute; migrate the scalar-comparison members of the 47-variant enum and delete the bespoke `Effect::Conditional` arms they forced | `card-dsl-and-card-pool`, **`DSL_REFERENCE.md`** |
 | **3** | `Modifier` registry on `Game`. Start with the 13 `Permanent` EOT fields — `TempBoostsEnded` and `Box::leak` both die on the first pass and prove the shape. Then the 6 `Game` fields. **This is program Wave E.** | `engine-core-and-event-model`, `card-inspect` (provenance becomes layer-accurate) |
 | **4** *(optional)* | `ModifierEffect` as `Arc<dyn Fn(&Game, &mut Characteristics) + Send + Sync>` if the enum proves too narrow after Wave 3. Reversible; changes no card file. | `engine-core-and-event-model` |
 

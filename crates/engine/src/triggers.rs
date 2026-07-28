@@ -2147,6 +2147,8 @@ impl Game {
             }
             let ctx = TriggerContext {
                 controller,
+                source: None,
+                target: None,
                 active_player: None,
                 attack: Some((attacking_player, attacked)),
                 discarded: None,
@@ -2253,7 +2255,10 @@ impl Game {
                     }
                     _ => false,
                 })
-                .filter(|a| a.condition.is_none_or(|c| self.condition_holds(c, ctx)))
+                .filter(|a| {
+                    a.condition
+                        .is_none_or(|c| self.ability_condition_holds(c, id, ctx))
+                })
                 .map(|a| Ability {
                     effect: contextualize_effect(a.effect.clone(), ctx),
                     ..*a
@@ -2285,7 +2290,10 @@ impl Game {
                     .functional_abilities(id)
                     .iter()
                     .filter(|a| matches!(a.timing, Timing::Triggered(Trigger::CreatureAttacks)))
-                    .filter(|a| a.condition.is_none_or(|c| self.condition_holds(c, ctx)))
+                    .filter(|a| {
+                        a.condition
+                            .is_none_or(|c| self.ability_condition_holds(c, id, ctx))
+                    })
                     .map(|a| Ability {
                         effect: contextualize_effect(a.effect.clone(), ctx),
                         ..*a
@@ -2365,6 +2373,8 @@ impl Game {
         for aura in self.attachments(attacker_object) {
             let ctx = TriggerContext {
                 controller: self.controller_of(aura),
+                source: None,
+                target: None,
                 active_player: None,
                 attack: Some((host_controller, defender)),
                 discarded: None,
@@ -2605,7 +2615,10 @@ impl Game {
                     }
                     _ => false,
                 })
-                .filter(|a| a.condition.is_none_or(|c| self.condition_holds(c, ctx)))
+                .filter(|a| {
+                    a.condition
+                        .is_none_or(|c| self.ability_condition_holds(c, id, ctx))
+                })
                 .map(|a| Ability {
                     effect: contextualize_effect(a.effect.clone(), ctx),
                     ..*a
@@ -2631,6 +2644,8 @@ impl Game {
     pub(crate) fn queue_discard_triggers(&mut self, player: PlayerId, discarded: ObjectId) {
         let ctx = TriggerContext {
             controller: player,
+            source: None,
+            target: None,
             active_player: None,
             attack: None,
             discarded: Some(discarded),
@@ -2792,7 +2807,10 @@ impl Game {
                     }
                     _ => false,
                 })
-                .filter(|a| a.condition.is_none_or(|c| self.condition_holds(c, ctx)))
+                .filter(|a| {
+                    a.condition
+                        .is_none_or(|c| self.ability_condition_holds(c, id, ctx))
+                })
                 .map(|a| Ability {
                     effect: contextualize_effect(a.effect.clone(), ctx),
                     ..*a
@@ -2837,7 +2855,10 @@ impl Game {
                 }
                 _ => false,
             })
-            .filter(|a| a.condition.is_none_or(|c| self.condition_holds(c, ctx)))
+            .filter(|a| {
+                a.condition
+                    .is_none_or(|c| self.ability_condition_holds(c, entering, ctx))
+            })
             .map(|a| Ability {
                 effect: contextualize_effect(a.effect.clone(), ctx),
                 ..*a
@@ -2911,7 +2932,10 @@ impl Game {
                     },
                     _ => false,
                 })
-                .filter(|a| a.condition.is_none_or(|c| self.condition_holds(c, ctx)))
+                .filter(|a| {
+                    a.condition
+                        .is_none_or(|c| self.ability_condition_holds(c, id, ctx))
+                })
                 .map(|a| Ability {
                     effect: contextualize_effect(a.effect.clone(), ctx),
                     ..*a
@@ -3097,7 +3121,10 @@ impl Game {
                     }
                     _ => false,
                 })
-                .filter(|a| a.condition.is_none_or(|c| self.condition_holds(c, ctx)))
+                .filter(|a| {
+                    a.condition
+                        .is_none_or(|c| self.ability_condition_holds(c, id, ctx))
+                })
                 .map(|a| Ability {
                     effect: contextualize_effect(a.effect.clone(), ctx),
                     ..*a
@@ -3147,7 +3174,10 @@ impl Game {
                     },
                     _ => false,
                 })
-                .filter(|a| a.condition.is_none_or(|c| self.condition_holds(c, ctx)))
+                .filter(|a| {
+                    a.condition
+                        .is_none_or(|c| self.ability_condition_holds(c, id, ctx))
+                })
                 .map(|a| Ability {
                     effect: contextualize_effect(a.effect.clone(), ctx),
                     ..*a
@@ -3473,7 +3503,10 @@ impl Game {
                     }
                     _ => false,
                 })
-                .filter(|a| a.condition.is_none_or(|c| self.condition_holds(c, ctx)))
+                .filter(|a| {
+                    a.condition
+                        .is_none_or(|c| self.ability_condition_holds(c, id, ctx))
+                })
                 .map(|a| Ability {
                     effect: contextualize_effect(a.effect.clone(), ctx),
                     ..*a
@@ -3535,7 +3568,10 @@ impl Game {
             .functional_abilities(source)
             .iter()
             .filter(|a| a.timing == Timing::Triggered(Trigger::BecomesTargeted { who }))
-            .filter(|a| a.condition.is_none_or(|c| self.condition_holds(c, ctx)))
+            .filter(|a| {
+                a.condition
+                    .is_none_or(|c| self.ability_condition_holds(c, source, ctx))
+            })
             .map(|a| Ability {
                 effect: contextualize_effect(a.effect.clone(), ctx),
                 ..*a
@@ -3589,7 +3625,10 @@ impl Game {
                     Zone::Hand,
                 )
             })
-            .filter(|a| a.condition.is_none_or(|c| self.condition_holds(c, ctx)))
+            .filter(|a| {
+                a.condition
+                    .is_none_or(|c| self.ability_condition_holds(c, id, ctx))
+            })
             .map(|a| Ability {
                 effect: contextualize_effect(a.effect.clone(), ctx),
                 ..*a
@@ -3770,53 +3809,65 @@ impl Game {
         }
     }
 
-    /// Whether an intervening-if [`Condition`] holds for a trigger fired by `source`. A thin
-    /// wrapper over [`Self::condition_holds`] that special-cases the source-object-based
-    /// conditions `condition_holds` can't reach on its own (`TriggerContext` carries no source
-    /// id) — [`Condition::ThisPermanentEnteredUntapped`] (Mystic Sanctuary),
-    /// [`Condition::SourceHasNoCountersOfKind`] (mana_bloom's upkeep self-bounce),
-    /// [`Condition::SourceHasCounters`] (Ingenious Prodigy's upkeep may-draw), and
-    /// [`Condition::SourceUntapped`] (Howling Mine's CR 603.4 *first* check — the resolution-time
-    /// second check reuses the same read via [`Effect::Conditional`]'s resolve site, see `Game::run`).
+    /// Whether an intervening-if [`Condition`] holds for a trigger fired by `source` — the
+    /// source-carrying entry point to [`Self::condition_holds`]. Every source-object-based
+    /// condition (Mystic Sanctuary's "enters untapped", Howling Mine's CR 603.4 *first* untapped
+    /// check, a [`Condition::Compare`] over `Amount::SourcePower`, …) reads `ctx.source`, so this
+    /// only has to fill it in.
     pub(crate) fn ability_condition_holds(
         &self,
         condition: Condition,
         source: ObjectId,
         ctx: TriggerContext,
     ) -> bool {
-        match condition {
-            Condition::ThisPermanentEnteredUntapped => {
-                self.as_permanent(source).is_some_and(|p| !p.tapped)
-            }
-            Condition::SourceHasNoCountersOfKind { kind } => {
-                self.counters_of_kind(source, kind) == 0
-            }
-            // Ingenious Prodigy's upkeep: "if this creature has one or more +1/+1 counters on
-            // it" — source-object-based like the two conditions above.
-            Condition::SourceHasCounters { at_least } => self.source_has_counters(source, at_least),
-            // Howling Mine: "if Howling Mine is untapped" — source-object-based like the three
-            // conditions above.
-            Condition::SourceUntapped => self.as_permanent(source).is_some_and(|p| !p.tapped),
-            // Dread Cacodemon/Reiver Demon: "if you cast it from your hand" — source-object-based
-            // like the four conditions above.
-            Condition::CastFromHand => self.as_permanent(source).is_some_and(|p| p.cast_from_hand),
-            // Plumb the Forbidden's reflexive "When you do": the copy trigger happens only if one
-            // or more creatures were sacrificed to the additional cost — source-object-based like
-            // the conditions above, reading the resolving spell's own recorded count (CR 601.2f).
-            Condition::SpellSacrificedToCast => self.spell_sacrifice_count(source) > 0,
-            _ => self.condition_holds(condition, ctx),
+        self.condition_holds(
+            condition,
+            TriggerContext {
+                source: Some(source),
+                ..ctx
+            },
+        )
+    }
+
+    /// One [`Condition::Compare`] operand's value, or `None` when `ctx` can't supply what the
+    /// operand reads — a land's CR 614.13 enters-tapped gate is evaluated before the permanent
+    /// exists, so there is no source object for `Amount::SourcePower` to read. An unresolvable
+    /// operand makes the comparison not hold rather than guessing a number.
+    fn compare_operand(&self, amount: Amount, ctx: TriggerContext) -> Option<i32> {
+        // CR 603.4: the triggering spell's mana value is locked in at trigger placement and rides
+        // `ctx` — `resolve_amount` reads live board state and has only a `0` placeholder for it.
+        if let Amount::TriggeringSpellManaValue = amount {
+            return ctx.cast_mana_value.map(|mv| mv as i32);
         }
+        // A target-reading operand needs a chosen target, and `resolve_amount` panics without one
+        // — the placement-time second-target-clause scan evaluates gates before targets exist
+        // (CR 601.2c), so it has none to offer.
+        if matches!(
+            amount,
+            Amount::TargetPower | Amount::TargetToughness | Amount::TargetManaValue
+        ) && ctx.target.and_then(Target::object_id).is_none()
+        {
+            return None;
+        }
+        Some(self.resolve_amount(amount, ctx.controller, ctx.source?, ctx.target, 0))
     }
 
     /// Whether an intervening-if [`Condition`] holds against the current state and `ctx`.
     pub(crate) fn condition_holds(&self, condition: Condition, ctx: TriggerContext) -> bool {
         match condition {
-            Condition::YouControlAtLeastCreatures { count } => {
-                self.creatures_controlled(ctx.controller) as u32 >= count
+            // "if you control three or more creatures", "if this creature's power is 16 or less",
+            // "if that spell's mana value is 5 or greater" — one generic scalar comparison over
+            // two [`Amount`] operands, which is every threshold clause in the pool that isn't an
+            // existential over players.
+            Condition::Compare { left, op, right } => {
+                let Some(left) = self.compare_operand(*left, ctx) else {
+                    return false;
+                };
+                let Some(right) = self.compare_operand(*right, ctx) else {
+                    return false;
+                };
+                op.holds(left, right)
             }
-            // Pyrohemia: "if no creatures are on the battlefield" — board-wide, every
-            // controller (unlike `YouControlAtLeastCreatures` above).
-            Condition::NoCreaturesOnBattlefield => self.creatures_on_battlefield() == 0,
             // "that opponent has more life than another of your opponents": some other opponent
             // of the controller (not the attacked one) has strictly less life than the attacked.
             Condition::AttackedOpponentHasMoreLifeThanAnotherOpponent => {
@@ -3900,24 +3951,13 @@ impl Game {
             Condition::YouControlNoCreatureWithKeyword { keyword } => {
                 self.controls_no_creature_with_keyword(ctx.controller, keyword)
             }
-            // ponytail: `SourceHasCounters` is source-object-based (a permanent's own +1/+1
-            // count, CR 702), but `TriggerContext` carries no source object — only the ability's
-            // controller. Reachable two ways: directly against the object by
-            // `Game::source_has_counters` (the characteristics recompute's conditional-keyword
-            // gate, Primordial Hydra's trample), or through `Game::ability_condition_holds` (CR 702)
-            // (Ingenious Prodigy's upkeep may-draw), which intercepts it before falling through
-            // here.
-            Condition::SourceHasCounters { .. } => false,
-            // ponytail: source-object-based like `SourceHasCounters` above — reachable only
-            // through `Game::ability_condition_holds` (mana_bloom's upkeep trigger, queued via
-            // `queue_trigger_group`), which intercepts it before falling through here.
-            Condition::SourceHasNoCountersOfKind { .. } => false,
-            // ponytail: source-object-based like `SourceHasCounters` above — `TriggerContext`
-            // carries no source object. Reachable only directly against the object by the
-            // characteristics recompute's conditional-keyword gate (Agent Frank Horrigan's
-            // indestructible grant), which reads `Permanent::attacked_this_turn` itself rather
-            // than through `condition_holds`.
-            Condition::SourceAttackedThisTurn => false,
+            // Agent Frank Horrigan's indestructible grant: "as long as this creature attacked
+            // this turn" — source-object-based, so it holds only where `ctx` carries one (the
+            // characteristics recompute's conditional-keyword gate does).
+            Condition::SourceAttackedThisTurn => ctx
+                .source
+                .and_then(|source| self.as_permanent(source))
+                .is_some_and(|p| p.attacked_this_turn),
             Condition::YouControlColorPermanents { color, at_least } => {
                 self.battlefield()
                     .into_iter()
@@ -3928,42 +3968,27 @@ impl Game {
                     .count() as u32
                     >= at_least
             }
-            // ponytail: source-object-based like `SourceHasCounters` above — `queue_trigger_group`
-            // special-cases it directly against its own `source` parameter (see there) rather than
-            // through `condition_holds`, since `TriggerContext` carries no source id either.
-            // Unreachable through any other `condition_holds` caller (an activation-gate use has no
-            // self-evident "this permanent" to read).
-            Condition::ThisPermanentEnteredUntapped => false,
-            // ponytail: source-object-based like `ThisPermanentEnteredUntapped` above — reachable
-            // through `Game::ability_condition_holds` (Howling Mine's CR 603.4 first check, at
-            // trigger placement) or `Effect::Conditional`'s resolve site (the second check), both
-            // of which intercept it before falling through here.
-            Condition::SourceUntapped => false,
-            // ponytail: target-based like `ThisPermanentEnteredUntapped` above — `TriggerContext`
-            // carries no target either. Reachable only through the `Effect::Conditional` resolve
-            // site (`Game::run`), which intercepts it directly against the shared
-            // `target` before falling through here (Yavimaya Bloomsage's power-7 check).
-            Condition::TargetPowerAtLeast { .. } => false,
-            // Target-based (Nezumi Graverobber's flip gate), same as `TargetPowerAtLeast` above:
-            // `TriggerContext` carries no target, so this is intercepted at the
-            // `Effect::Conditional` resolve site and never reaches here.
-            Condition::TargetCardOwnerGraveyardEmpty => false,
-            Condition::TriggeringSpellManaValueAtLeast { at_least } => ctx
-                .cast_mana_value
-                .is_some_and(|mv| mv >= u32::from(at_least)),
+            // One read, two questions: Mystic Sanctuary's "when this land enters untapped" asks it
+            // once at placement (`Permanent::tapped` is set at creation from `Game::enters_tapped`),
+            // Howling Mine's "if Howling Mine is untapped" asks it again at resolution because
+            // CR 603.4 wants both checks and a response can tap the source in between.
+            Condition::ThisPermanentEnteredUntapped | Condition::SourceUntapped => ctx
+                .source
+                .and_then(|source| self.as_permanent(source))
+                .is_some_and(|p| !p.tapped),
+            // Nezumi Graverobber's flip gate: the just-exiled target's owner (the moved card
+            // object still records it) has an empty graveyard now. No legal target exiled — the
+            // flip clause is a no-op — leaves `ctx.target` `None`, so it doesn't flip.
+            Condition::TargetCardOwnerGraveyardEmpty => ctx
+                .target
+                .and_then(Target::object_id)
+                .is_some_and(|object| self.graveyard_cards(self.owner_of(object)).is_empty()),
             Condition::YouHaveCitysBlessing => {
                 self.players[ctx.controller.0 as usize].has_citys_blessing
             }
             Condition::AnyPlayerHandSizeAtMost { at_most } => self
                 .living_players()
                 .any(|p| self.hand_of(p).len() as u32 <= at_most),
-            Condition::InstantOrSorceryCardsInYourGraveyardAtLeast { count } => {
-                self.graveyard_cards(ctx.controller)
-                    .into_iter()
-                    .filter(|&id| matches!(self.def_of(id).kind, CardKind::Spell { .. }))
-                    .count() as u32
-                    >= count
-            }
             Condition::ArtifactOrCreatureCardsInYourGraveyardAtLeast { count } => {
                 self.graveyard_cards(ctx.controller)
                     .into_iter()
@@ -3995,38 +4020,41 @@ impl Game {
                 p != ctx.controller
                     && self.player_counters(p, PlayerCounterKind::Poison) as u32 >= at_least
             }),
-            // ponytail: source-object-based like `TargetPowerAtLeast` above — `TriggerContext`
-            // carries no source id either. Reachable only through the `Effect::Conditional`
-            // resolve site (`Game::run`), which intercepts it directly against its own `source`
-            // parameter before falling through here (Kinetic Ooze's X-threshold riders).
-            Condition::SourceEnteredWithXAtLeast { .. } => false,
-            // ponytail: source-object-based like `SourceEnteredWithXAtLeast` above —
-            // `TriggerContext` carries no source id either. Reachable only through the
-            // `Effect::Conditional` resolve site (`Game::run`), which intercepts it directly
-            // against its own `source` parameter before falling through here (Lily Bowen,
-            // Raging Grandma's upkeep gate).
-            Condition::SourcePowerAtMost { .. } => false,
-            // ponytail: source-object-based like `SourceEnteredWithXAtLeast` above — `TriggerContext`
-            // carries no source id either. Reachable only through the `Effect::Conditional` resolve
-            // site (`Game::run`), which intercepts it directly against its own `source` parameter
-            // before falling through here (Court Hussar's "unless {W} was spent to cast it").
-            Condition::ColorWasSpentToCastThis { .. } => false,
-            // ponytail: source-object-based like `ColorWasSpentToCastThis` above — `TriggerContext`
-            // carries no source id either. Reachable only through `Game::ability_condition_holds`
-            // (Dread Cacodemon's/Reiver Demon's ETB intervening-if, CR 603.4), which intercepts it
-            // directly against its own `source` parameter before falling through here.
-            Condition::CastFromHand => false,
-            // ponytail: source-object-based like `CastFromHand` above — `TriggerContext` carries
-            // no source id either. Reachable only through `Game::ability_condition_holds` (Plumb
-            // the Forbidden's reflexive "When you do" copy gate, CR 603.4), which intercepts it
-            // directly against its own `source` parameter before falling through here.
-            Condition::SpellSacrificedToCast => false,
-            // ponytail: source-object-based like `SourceEnteredWithXAtLeast` above —
-            // `TriggerContext` carries no source id either. Reachable only through the
-            // `Effect::Conditional` resolve site (`Game::run`), which intercepts it directly
-            // against its own `source` parameter before falling through here (Dragon Whelp's
-            // activation-count check).
-            Condition::SourceActivatedThisTurnAtLeast { .. } => false,
+            // Kinetic Ooze's "If X is 5 or more": the source's *locked cast* `{X}`, not live
+            // board state.
+            Condition::SourceEnteredWithXAtLeast { at_least } => ctx
+                .source
+                .is_some_and(|source| self.ability_source_x(source) >= at_least),
+            // Court Hussar's "unless {W} was spent to cast it" off a resolved permanent;
+            // Firespout's "if {R} was spent to cast this spell" off the still-on-the-stack spell.
+            Condition::ColorWasSpentToCastThis { color } => ctx.source.is_some_and(|source| {
+                self.as_permanent(source)
+                    .map(|p| p.spent_colors[color.index()])
+                    .unwrap_or_else(|| self.spell_spent_colors(source)[color.index()])
+            }),
+            // Dread Cacodemon/Reiver Demon: "if you cast it from your hand".
+            Condition::CastFromHand => ctx
+                .source
+                .and_then(|source| self.as_permanent(source))
+                .is_some_and(|p| p.cast_from_hand),
+            // Plumb the Forbidden's reflexive "When you do": the copy trigger happens only if one
+            // or more creatures were sacrificed to the additional cost (CR 601.2f).
+            Condition::SpellSacrificedToCast => ctx
+                .source
+                .is_some_and(|source| self.spell_sacrifice_count(source) > 0),
+            // Dragon Whelp: "If this ability has been activated four or more times this turn" —
+            // counts this turn's `once_per_turn.activated` entries for the source (every activated
+            // ability records one, not just a `once_each_turn`-capped one).
+            Condition::SourceActivatedThisTurnAtLeast { at_least } => {
+                ctx.source.is_some_and(|source| {
+                    self.once_per_turn
+                        .activated
+                        .iter()
+                        .filter(|&&(object, _)| object == source)
+                        .count() as u32
+                        >= at_least
+                })
+            }
             Condition::All { conditions } => {
                 conditions.iter().all(|&c| self.condition_holds(c, ctx))
             }
@@ -4042,14 +4070,6 @@ impl Game {
             // so the `Effect::Conditional` resolve site reaches it straight through this arm.
             Condition::WonClash => self.clash_won,
         }
-    }
-
-    /// Whether `object` (a permanent) has `at_least` or more +1/+1 counters on it — CR 702's
-    /// counter-count check, read directly off [`Permanent::plus_counters`]. Backs
-    /// `Condition::SourceHasCounters` where the caller already has the object in hand (the
-    /// characteristics recompute's conditional-keyword gate) rather than a [`TriggerContext`].
-    pub(crate) fn source_has_counters(&self, object: ObjectId, at_least: u32) -> bool {
-        self.plus_counters(object) >= at_least as i32
     }
 
     /// Whether `controller` controls no permanent whose printed subtypes intersect `subtypes`
@@ -4777,7 +4797,11 @@ impl Game {
             {
                 // CR 603.4: a gated clause is only a real target clause when its intervening-if
                 // holds as the trigger goes on the stack.
-                if (self.placement_condition_holds(*condition, source, controller) != *negate)
+                if (self.ability_condition_holds(
+                    *condition,
+                    source,
+                    TriggerContext::of(controller),
+                ) != *negate)
                     && let Some(found) = self.second_clause_in(then, source, controller)
                 {
                     return Some(found);
@@ -4789,25 +4813,6 @@ impl Game {
             }
         }
         None
-    }
-
-    /// Whether an intervening-if `condition` holds as a trigger goes on the stack (CR 603.4).
-    /// ponytail: the only multi-clause gate in the pool is Kinetic Ooze's source-X threshold, so
-    /// that's special-cased (`TriggerContext` carries no source id); every other condition falls
-    /// through to the live board-state evaluator. A target-based gate (`TargetPowerAtLeast`) can't
-    /// be judged before targets exist and no card needs one for a second clause.
-    fn placement_condition_holds(
-        &self,
-        condition: Condition,
-        source: ObjectId,
-        controller: PlayerId,
-    ) -> bool {
-        match condition {
-            Condition::SourceEnteredWithXAtLeast { at_least } => {
-                self.ability_source_x(source) >= at_least
-            }
-            _ => self.condition_holds(condition, TriggerContext::of(controller)),
-        }
     }
 
     /// After a triggered ability's first target clause is settled with `first` (its chosen target,

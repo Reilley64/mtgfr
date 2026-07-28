@@ -119,7 +119,12 @@ impl Game {
                 })
                 .count() as i32,
             Amount::IfCondition { condition, then } => {
-                if !self.condition_holds(condition, TriggerContext::of(controller)) {
+                let ctx = TriggerContext {
+                    source: Some(source),
+                    target,
+                    ..TriggerContext::of(controller)
+                };
+                if !self.condition_holds(condition, ctx) {
                     return 0;
                 }
                 self.resolve_amount(*then, controller, source, target, x)

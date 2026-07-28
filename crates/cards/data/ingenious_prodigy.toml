@@ -35,7 +35,7 @@ count = "x"
 [[abilities]]
 timing = "upkeep"
 optional = true
-condition = { type = "source_has_counters", at_least = 1 }
+condition = { type = "compare", left = "per_counter_on_source", op = "at_least", right = 1 }
 
 # you may remove a +1/+1 counter from it.
 [[abilities.effects]]

@@ -81,6 +81,17 @@ where
     Ok(&*Box::leak(Box::new(Effect::deserialize(d)?)))
 }
 
+/// Leak one owned [`Amount`] into the `&'static Amount` a `Copy` field needs (the [`Amount`]
+/// sibling of [`static_effect`]). [`Condition::Compare`](crate::Condition::Compare)'s operands need
+/// it because [`Amount::IfCondition`](crate::Amount::IfCondition) already holds a [`Condition`] by
+/// value, so a `Condition` holding an `Amount` by value would be an infinitely sized cycle.
+pub fn static_amount<'de, D>(d: D) -> Result<&'static Amount, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    Ok(&*Box::leak(Box::new(Amount::deserialize(d)?)))
+}
+
 /// Leak one owned [`Cost`] into the `&'static Cost` a `Copy` field needs (the `Cost` sibling of
 /// [`static_effect`] — [`Suspend::cost`] can't hold a `Cost` by value without bloating a `Copy`
 /// [`CardDef`], since `Cost` embeds an [`AdditionalCost`]).
