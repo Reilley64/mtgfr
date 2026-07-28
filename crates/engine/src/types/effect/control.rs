@@ -62,6 +62,15 @@ pub enum ControlEffect {
         filter: PermanentFilter,
     },
 
+    /// "Tap all lands target player controls" (Mana Short) — [`TapAll`](Self::TapAll)'s
+    /// other-seat twin. `TapAll` is a "you control" sweep with no target at all; this one taps the
+    /// chosen player's board and leaves yours alone. A plain tap, not a tap *for mana* (CR 106.11)
+    /// — nothing is produced and no land-tap watch fires, which is exactly what the card wants,
+    /// since the next step takes their pool away.
+    TapAllTargetPlayerControls {
+        filter: PermanentFilter,
+    },
+
     /// "Tap this creature" as an *effect* (Demonic Hordes' unpaid-upkeep penalty), not as the
     /// `{T}` in an activation cost — the source taps itself on resolution, with nothing chosen and
     /// nothing targeted. A permanent that has already left the battlefield taps nothing.

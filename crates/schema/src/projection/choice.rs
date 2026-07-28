@@ -212,6 +212,10 @@ impl<'a> ChoiceCtx<'a> {
                 player,
                 cost,
                 spell,
+                // Power Sink's decline penalty needs no wire field: the pay/decline prompt is
+                // identical either way, and the tap + drained pool reach the client as ordinary
+                // events on the answer.
+                strips_mana_on_decline: _,
             } => PendingChoiceView::PayOrCounter {
                 player: player.0,
                 spell,
@@ -1012,6 +1016,7 @@ mod coverage_tests {
                     player: PlayerId(0),
                     cost: engine::Cost::default(),
                     spell,
+                    strips_mana_on_decline: false,
                 },
                 |view| matches!(view, PendingChoiceView::PayOrCounter { .. }),
             ),

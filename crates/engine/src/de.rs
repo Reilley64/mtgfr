@@ -1593,6 +1593,7 @@ impl<'de> Deserialize<'de> for TypeSet {
 /// `enchanted_by_you`, `mv_max`, `mv_min`, `mv_eq_x`, `mv_max_x`, `power_max`, `power_min`, `power_parity`,
 /// `noncreature`, `exclude`, `color`, `not_color`, `modified`, `attacking`, `attacking_you`,
 /// `blocking`, `power_less_than_source`, `toughness_less_than_source_power`, `entered_this_turn`,
+/// `has_mana_ability`,
 /// `controlled_since_turn_start`, `did_not_attack_this_turn`,
 /// `nonbasic`, `nonlegendary`, `nonlair`, `exclude_subtypes`,
 /// `without_flying`, `with_flying`, `with_counter`). `noncreature` is sugar for `exclude = "creature"`;
@@ -1663,6 +1664,9 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     mv_max_x: bool,
                     #[serde(default)]
                     tapped: Option<bool>,
+                    /// "Lands with mana abilities they control" (Power Sink).
+                    #[serde(default)]
+                    has_mana_ability: bool,
                     #[serde(default)]
                     power_max: Option<u8>,
                     #[serde(default)]
@@ -1745,6 +1749,7 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     mv_eq_x: t.mv_eq_x,
                     mv_max_x: t.mv_max_x,
                     tapped: t.tapped,
+                    has_mana_ability: t.has_mana_ability,
                     power_max: t.power_max,
                     power_min: t.power_min,
                     power_parity: t.power_parity,

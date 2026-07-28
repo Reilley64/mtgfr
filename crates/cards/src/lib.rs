@@ -170,7 +170,7 @@ mod tests {
         LandTapBonusColor, LandTapScope, LifeEffect, Mana, ManaEffect, MillEffect, MiscEffect,
         PermanentFilter, ProtectionScope, PumpEffect, SacrificeAdditionalCostCount, SacrificeCost,
         SacrificeEffect, SearchDest, SpellFilter, SpellSpeed, StaticEffect, Step, TargetCount,
-        TargetSpec, Timing, TokenEffect, Trigger, TypeSet, ZoneEffect,
+        TargetSpec, Timing, TokenEffect, Trigger, TypeSet, ZoneEffect, arc_slice,
     };
 
     #[test]
@@ -1479,6 +1479,7 @@ token = { name = "Inkling", power = 2, toughness = 1 }
                 unless_pays: None,
                 filter: SpellFilter::ArtifactOrEnchantment,
                 countered_dest: None,
+                ..
             })
         ));
         assert!(matches!(
@@ -3155,6 +3156,7 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                     unless_pays: None,
                     filter: SpellFilter::default(),
                     countered_dest: None,
+                    strips_mana_on_decline: false,
                 }),
             ),
             (
@@ -3198,6 +3200,17 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                 }),
             ),
             (
+                // "Counter target spell unless its controller pays {X}" — the decline penalty
+                // rides on the choice, not on a following step, so it is a flag on the counter.
+                "Power Sink",
+                Effect::Misc(MiscEffect::CounterTargetSpell {
+                    unless_pays: Some(Amount::X),
+                    filter: SpellFilter::default(),
+                    countered_dest: None,
+                    strips_mana_on_decline: true,
+                }),
+            ),
+            (
                 "Timetwister",
                 // Recycles rather than discards — the shuffle-back sibling of the wheel.
                 Effect::Choice(ChoiceEffect::EachPlayerShufflesHandAndGraveyardThenDraws {
@@ -3206,6 +3219,36 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
             ),
         ];
         for (name, effect) in expected {
+            let card = get_by_name(name).unwrap_or_else(|| panic!("{name} is in the pool"));
+            assert_eq!(&card.abilities[0].effect, effect, "{name}'s printed effect");
+        }
+
+        // The two mana-emptying sequences: sweep the named seat's lands, then take the pool.
+        // Both steps share the one chosen player — the drain reads the sequence's target.
+        let sequences: &[(&str, Effect)] = &[
+            (
+                "Mana Short",
+                Effect::Sequence {
+                    steps: arc_slice([
+                        Effect::Control(ControlEffect::TapAllTargetPlayerControls {
+                            filter: PermanentFilter::of(TypeSet::LAND),
+                        }),
+                        Effect::Mana(ManaEffect::LoseAllUnspent { to_you: false }),
+                    ]),
+                },
+            ),
+            (
+                "Drain Power",
+                Effect::Sequence {
+                    steps: arc_slice([
+                        Effect::Mana(ManaEffect::TargetPlayerTapsLandsForMana),
+                        // "and you add the mana lost this way"
+                        Effect::Mana(ManaEffect::LoseAllUnspent { to_you: true }),
+                    ]),
+                },
+            ),
+        ];
+        for (name, effect) in sequences {
             let card = get_by_name(name).unwrap_or_else(|| panic!("{name} is in the pool"));
             assert_eq!(&card.abilities[0].effect, effect, "{name}'s printed effect");
         }

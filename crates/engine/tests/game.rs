@@ -26427,6 +26427,7 @@ static COUNTER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             unless_pays: None,
             filter: SpellFilter::AllSpells,
             countered_dest: None,
+            strips_mana_on_decline: false,
         }),
         optional: false,
         min_level: 0,
@@ -81279,6 +81280,7 @@ static HARD_COUNTER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             unless_pays: None,
             filter: SpellFilter::AllSpells,
             countered_dest: None,
+            strips_mana_on_decline: false,
         },
     ))]),
     ..creature("Test Hard Counter", 0, 0, &[])
@@ -109257,5 +109259,226 @@ fn lifetap_pays_you_only_for_an_opponents_forest() {
         game.life(PlayerId(0)),
         21,
         "your own Forest pays nothing — \"an opponent controls\" is part of the trigger"
+    );
+}
+
+#[test]
+fn mana_short_taps_their_lands_and_takes_their_floating_mana() {
+    // "Tap all lands target player controls and that player loses all unspent mana." The sweep
+    // is a plain tap, not a tap for mana (CR 106.11) — P1 gets nothing for the lands it loses.
+    let mut game = Game::new();
+    let mountain = game.spawn_on_battlefield(PlayerId(1), card("Mountain"));
+    let forest = game.spawn_on_battlefield(PlayerId(1), card("Forest"));
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
+
+    // P1 floats a red before the sweep lands, on P0's turn — a mana ability needs no priority.
+    game.submit(Intent::TapForMana {
+        player: PlayerId(1),
+        object: mountain,
+    })
+    .expect("a Mountain taps for red");
+    assert_eq!(game.mana_in_pool(PlayerId(1), Color::Red), 1);
+
+    let short = game.spawn_in_hand(PlayerId(0), card("Mana Short"));
+    cast_and_resolve(&mut game, short, Some(Target::Player(PlayerId(1))));
+
+    assert!(game.is_tapped(forest), "every land they control is tapped");
+    assert!(!game.is_tapped(bear), "only lands — the bear is untouched");
+    assert_eq!(
+        Color::ALL
+            .iter()
+            .map(|&c| game.mana_in_pool(PlayerId(1), c) as u32)
+            .sum::<u32>(),
+        0,
+        "the floating red is gone and the swept Forest produced no replacement",
+    );
+}
+
+#[test]
+fn drain_power_hands_you_the_mana_it_takes() {
+    // "Target player activates a mana ability of each land they control. Then that player loses
+    // all unspent mana and you add the mana lost this way." P0 pays with its own Islands, so its
+    // pool is empty at resolution and whatever it holds afterwards came off P1's board.
+    let mut game = Game::new();
+    let mountain = game.spawn_on_battlefield(PlayerId(1), card("Mountain"));
+    game.spawn_on_battlefield(PlayerId(1), card("Forest"));
+    // A land with no mana ability is not activated (and so has nothing to contribute).
+    let passage = game.spawn_on_battlefield(PlayerId(1), card("Fabled Passage"));
+
+    for island in [
+        game.spawn_on_battlefield(PlayerId(0), card("Island")),
+        game.spawn_on_battlefield(PlayerId(0), card("Island")),
+    ] {
+        game.submit(Intent::TapForMana {
+            player: PlayerId(0),
+            object: island,
+        })
+        .expect("an Island taps for blue");
+    }
+
+    let drain = game.spawn_in_hand(PlayerId(0), card("Drain Power"));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: drain,
+        target: Some(Target::Player(PlayerId(1))),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        multikicker_count: 0,
+        alternative_cost: false,
+    })
+    .expect("the two Islands pay {U}{U}");
+    resolve_top_of_stack(&mut game);
+
+    assert!(game.is_tapped(mountain), "their lands were tapped for mana");
+    assert!(
+        !game.is_tapped(passage),
+        "a land with no mana ability is skipped"
+    );
+    assert_eq!(
+        Color::ALL
+            .iter()
+            .map(|&c| game.mana_in_pool(PlayerId(1), c) as u32)
+            .sum::<u32>(),
+        0,
+        "they lose every credit they just made",
+    );
+    assert_eq!(
+        (
+            game.mana_in_pool(PlayerId(0), Color::Red),
+            game.mana_in_pool(PlayerId(0), Color::Green),
+            game.mana_in_pool(PlayerId(0), Color::Blue),
+        ),
+        (1, 1, 0),
+        "you add the mana lost this way, kind for kind — the blue went to the spell",
+    );
+}
+
+/// Cast Grizzly Bears for P0, then Power Sink with X=1 for P1 aimed at it, leaving the game
+/// paused on P0's [`PendingChoice::PayOrCounter`]. Returns the bear's stack id.
+fn cast_power_sink_at_a_bear(game: &mut Game) -> ObjectId {
+    game.fund_mana(PlayerId(0));
+    game.fund_mana(PlayerId(1));
+    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
+    let sink = game.spawn_in_hand(PlayerId(1), card("Power Sink"));
+
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: bear,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        multikicker_count: 0,
+        alternative_cost: false,
+    })
+    .expect("Grizzly Bears is castable");
+    let bear_on_stack = top_spell(game);
+    game.submit(Intent::PassPriority {
+        player: PlayerId(0),
+    })
+    .unwrap();
+    game.submit(Intent::Cast {
+        player: PlayerId(1),
+        object: sink,
+        target: Some(Target::Object(bear_on_stack)),
+        x: 1,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        multikicker_count: 0,
+        alternative_cost: false,
+    })
+    .expect("Power Sink can target the bear on the stack");
+    resolve_top_of_stack(game);
+    bear_on_stack
+}
+
+#[test]
+fn power_sink_strips_the_board_only_when_the_payment_is_declined() {
+    // "Counter target spell unless its controller pays {X}. If that player doesn't, they tap all
+    // lands with mana abilities they control and lose all unspent mana." The penalty rides on the
+    // decline, so paying leaves the board and the pool alone.
+    let mut declined = Game::new();
+    let mountain = declined.spawn_on_battlefield(PlayerId(0), card("Mountain"));
+    let passage = declined.spawn_on_battlefield(PlayerId(0), card("Fabled Passage"));
+    let ancestor = declined.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let bear_on_stack = cast_power_sink_at_a_bear(&mut declined);
+
+    declined
+        .submit(Intent::PayOptionalCost {
+            player: PlayerId(0),
+            pay: false,
+            discard_cost: vec![],
+        })
+        .unwrap();
+
+    assert_eq!(
+        declined.zone_of(bear_on_stack),
+        Zone::Graveyard,
+        "declining counters the spell",
+    );
+    assert!(
+        declined.is_tapped(mountain),
+        "a land with a mana ability is tapped"
+    );
+    assert!(
+        !declined.is_tapped(passage),
+        "\"lands with mana abilities\" spares one that makes none",
+    );
+    assert!(!declined.is_tapped(ancestor), "and it is lands only");
+    assert_eq!(
+        Color::ALL
+            .iter()
+            .map(|&c| declined.mana_in_pool(PlayerId(0), c) as u32)
+            .sum::<u32>(),
+        0,
+        "and the pool goes with them",
+    );
+
+    let mut paid = Game::new();
+    let mountain = paid.spawn_on_battlefield(PlayerId(0), card("Mountain"));
+    let bear_on_stack = cast_power_sink_at_a_bear(&mut paid);
+
+    paid.submit(Intent::PayOptionalCost {
+        player: PlayerId(0),
+        pay: true,
+        discard_cost: vec![],
+    })
+    .unwrap();
+
+    assert_ne!(
+        paid.zone_of(bear_on_stack),
+        Zone::Graveyard,
+        "paying the X saves the spell",
+    );
+    assert!(!paid.is_tapped(mountain), "and spares the lands");
+    assert!(
+        Color::ALL
+            .iter()
+            .map(|&c| paid.mana_in_pool(PlayerId(0), c) as u32)
+            .sum::<u32>()
+            > 0,
+        "and the rest of the pool",
     );
 }

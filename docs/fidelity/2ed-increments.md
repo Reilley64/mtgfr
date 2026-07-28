@@ -731,7 +731,7 @@ as an `Amount`; plus a `Timing::PlayerDealtDamage` firing with the amount. Both 
 `deal_damage` is already being touched for #4 — sequence this after that increment.
 *Cards:* lich, living_artifact, simulacrum.
 
-### 23. `mana-emptying` — 3 cards, M
+### 23. `mana-emptying` — 3 cards, M — **done**
 Depends on: nothing.
 "That player loses all unspent mana" — a 1993 artefact of mana burn that survives in the Oracle
 text. The engine's mana pool empties at step boundaries; nothing empties it on demand, and Power
@@ -739,6 +739,43 @@ Sink's "they tap all lands with mana abilities they control" is a filtered mass 
 `tap_all` doesn't filter by ability. *Sketch:* an `Effect::EmptyManaPool { who }` plus a filter on
 `tap_all`. Power Sink is otherwise the standard counter-unless-pays shape.
 *Cards:* drain_power, mana_short, power_sink.
+
+*Landed:* the sketch's `Effect::EmptyManaPool { who }` was one rung too high. `Event::ManaEmptied`
+already existed with exactly the right clearing semantics for the step/phase boundary, so "loses all
+unspent mana" is that same event with one new field — `to: Option<PlayerId>`, Drain Power's "you add
+the mana lost this way" — and a thin `ManaEffect::LoseAllUnspent { to_you }` mint arm. The transfer
+is the existing `ManaPool::merge`, which carries credit kinds over whole, so a dual land's
+either-credit arrives as flexible as it left. `end_of_turn: true` on the card-driven emptying: CR
+500.4's persistent-mana exception is about *boundaries*, and a card that says "all" means all.
+
+Mana Short and Drain Power are two-step `Sequence`s sharing one `TargetSpec::Player` — the first
+step names the seat, the trailing `LoseAllUnspent` sits in `Effect::target()`'s `TargetSpec::None`
+list and reads the enclosing sequence's target back. First pool card to lean on that for a *player*
+target rather than a permanent.
+
+Power Sink's clause cannot be a following step, because a following step runs either way and this
+one only fires on the *decline*. It became `strips_mana_on_decline: bool` threaded
+`CounterTargetSpell` → `ChoiceRequest` → `PendingChoice` → `pay_or_counter`, where the decline
+branch does the tap and the drain inline. Nothing new on the wire: the pay/decline prompt is
+identical either way and the taps and emptied pool reach the client as ordinary events on the answer.
+
+"Lands with mana abilities they control" needed no new predicate either — `Game::taps_for_mana` is
+the one the client's tap-for-mana affordance already reads, so `PermanentFilter::has_mana_ability`
+is a two-line `permanent_matches` check that spares a Fabled Passage and judges a type-changed land
+by what it produces *now*. Mana Short's sweep is `ControlEffect::TapAllTargetPlayerControls`, the
+other-seat twin of `tap_all`; both new sweeps skip already-tapped permanents, since `Event::Tapped`
+is the untapped→tapped change (CR 701.21a) and a redundant one would fire increment 19's
+becomes-tapped watches twice.
+
+Drain Power taps on the target's behalf through `Game::tap_for_mana` itself rather than minting
+credits, so every land-tap watch on the board fires exactly as it would for their own click (CR
+605.3 — a mana ability uses no stack). That closes increment 49's tractable half; only Word of
+Command is left there.
+
+ponytail: Drain Power takes each land's default credit rather than offering a per-land pick, so a
+land with two competing mana abilities gets the first one. Every land in the 2ed pool has one, and a
+dual's either-credit stays undecided in the pool anyway. Raise a per-land pending choice if a card
+ever makes the pick matter.
 
 ### 24. `attack-restrictions-by-defender` — 3 cards, S — **done**
 Depends on: nothing.
@@ -1272,7 +1309,7 @@ until every other increment has landed, and reconsider whether an `approximates`
 answer instead.
 *Cards:* camouflage, raging_river.
 
-### 49. `controlling-another-players-actions` — 2 cards, XL
+### 49. `controlling-another-players-actions` — 1 card, XL
 Depends on: nothing.
 Word of Command ("you control that player until this finishes resolving") and Drain Power ("target
 player activates a mana ability of each land they control"). One player making decisions on
@@ -1282,8 +1319,9 @@ choice model, not an effect. *Sketch:* a `PendingChoice` variant carrying both a
 (who answers) and a `subject_player` (whose resources are spent), with the visibility filter
 widened for the duration. Drain Power is the tractable half — its action set is exactly "tap each
 land for mana", so it can be modelled as a direct effect without a real control handoff. Word of
-Command is the hard half and should be the last thing attempted in this set.
-*Cards:* drain_power, word_of_command.
+Command is the hard half and should be the last thing attempted in this set. Drain Power landed in
+increment 23 as that direct effect, so only Word of Command is left here.
+*Cards:* word_of_command.
 
 ### 50. `deny-unknown-fields-on-effect-tables` — 0 cards, S — **done**
 Depends on: nothing.

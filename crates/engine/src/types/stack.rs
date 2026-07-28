@@ -969,6 +969,10 @@ pub enum PendingChoice {
         player: PlayerId,
         cost: Cost,
         spell: ObjectId,
+        /// Power Sink's decline penalty ([`Effect::Misc(MiscEffect::CounterTargetSpell)`]'s
+        /// `strips_mana_on_decline`): declining also taps every land with a mana ability `player`
+        /// controls and empties their pool. `false` for every other counter-unless-pays.
+        strips_mana_on_decline: bool,
     },
     /// `player` (the triggering opponent) may pay `cost` to stop `controller`'s optional draw —
     /// Rhystic Study's "unless that player pays {1}" ([`Effect::Choice(ChoiceEffect::MayDrawUnlessPays)`]). Only raised
@@ -2857,13 +2861,18 @@ pub enum Event {
         controller: PlayerId,
         def: CardDef,
     },
-    /// A player's mana pool emptied (a step or phase ended).
+    /// A player's mana pool emptied — a step or phase ended (CR 500.4), or a card took it away
+    /// ("that player loses all unspent mana": Mana Short, Power Sink, Drain Power).
     ManaEmptied {
         player: PlayerId,
-        /// Whether this boundary is the turn actually ending (CR 514.2 cleanup) rather than a
-        /// mid-turn step/phase change — "until end of turn" persistent mana (CR 500.4 exception,
-        /// [`Event::ManaAdded`]'s `persist`) survives every boundary except this one.
+        /// Whether every credit goes, including "until end of turn" persistent mana (CR 500.4
+        /// exception, [`Event::ManaAdded`]'s `persist`). `true` at the turn actually ending (CR
+        /// 514.2 cleanup) and for a card that says "loses **all** unspent mana"; `false` at an
+        /// ordinary mid-turn step/phase boundary, which persistent mana survives.
         end_of_turn: bool,
+        /// Drain Power's "you add the mana lost this way": the player whose pool receives what
+        /// `player` just lost, credit for credit. `None` for a pool that simply drains.
+        to: Option<PlayerId>,
     },
     /// Marked damage was removed from a permanent (the cleanup step).
     DamageCleared { object: ObjectId },

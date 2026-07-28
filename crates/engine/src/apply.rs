@@ -1910,7 +1910,15 @@ impl Game {
             Event::ManaEmptied {
                 player,
                 end_of_turn,
+                to,
             } => {
+                // Drain Power: what the pool loses, the drainer gains — read before the clear
+                // below wipes it. Credit kinds carry over whole, so a dual land's either-credit
+                // arrives as an either-credit and stays as flexible as it was.
+                if let Some(to) = to {
+                    let taken = self.players[player.0 as usize].mana_pool;
+                    self.players[to.0 as usize].mana_pool.merge(&taken);
+                }
                 let p = &mut self.players[player.0 as usize];
                 // Provenance is never persistent (no pool card combines `track_provenance` with
                 // `persist_until_end_of_turn`) — always cleared with the pool.

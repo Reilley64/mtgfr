@@ -34,6 +34,7 @@ pub(crate) enum ChoiceRequest {
         player: crate::PlayerId,
         cost: crate::Cost,
         spell: crate::ObjectId,
+        strips_mana_on_decline: bool,
     },
     ChooseCreatureType {
         player: crate::PlayerId,

@@ -758,7 +758,12 @@ impl Effect {
             // "Look at the top three cards of target player's library …" (Natural Selection), and
             // its own "you may have that player shuffle" tail, which reads the same target.
             | Effect::Dig(DigEffect::RearrangeTargetPlayersTop { .. })
-            | Effect::Dig(DigEffect::MayShuffleTargetPlayersLibrary { .. }) => TargetSpec::Player,
+            | Effect::Dig(DigEffect::MayShuffleTargetPlayersLibrary { .. })
+            // "Tap all lands target player controls" (Mana Short) and "target player activates a
+            // mana ability of each land they control" (Drain Power) — both name the seat whose
+            // board is swept, and each is the step its card's `lose_all_unspent` tail reads back.
+            | Effect::Control(ControlEffect::TapAllTargetPlayerControls { .. })
+            | Effect::Mana(ManaEffect::TargetPlayerTapsLandsForMana) => TargetSpec::Player,
             // Equip targets "target creature you control" (CR 702.6e). The activation gate
             // enforces it too; the spec must say so as well, or the enumeration the client
             // highlights from offers opponents' creatures the gate can only bounce.
@@ -970,6 +975,9 @@ impl Effect {
             | Effect::Life(LifeEffect::Lose { .. })
             | Effect::Life(LifeEffect::SourceOwnerLosesHalfTheirLife)
             | Effect::Damage(DamageEffect::ToSelf { .. })
+            // A no-target-of-its-own step: reads the enclosing `Sequence`'s shared target player,
+            // whose lands the preceding step just tapped ("**that player** loses all unspent mana").
+            | Effect::Mana(ManaEffect::LoseAllUnspent { .. })
             // A no-target-of-its-own step: reads the enclosing `Sequence`'s shared target.
             | Effect::Life(LifeEffect::GainTargetController { .. })
             // Reads the enclosing `Sequence`'s shared target creature's controller; no target of

@@ -773,6 +773,12 @@ pub struct PermanentFilter {
     /// `Some(true)` requires the permanent be tapped (Mana Geyser's "tapped land"); `Some(false)`
     /// requires untapped; `None` doesn't care. Ignored in the graveyard zone (cards aren't tapped).
     pub tapped: Option<bool>,
+    /// Requires the permanent make mana when tapped (Power Sink's "lands with mana abilities they
+    /// control" — which spares a Mishra's Factory or a Maze of Ith). Read live off
+    /// [`Game::taps_for_mana`], the same predicate the client's tap-for-mana affordance uses, so a
+    /// land whose type line was changed under it is judged by what it produces *now*. `false`
+    /// (default) imposes no restriction.
+    pub has_mana_ability: bool,
     /// Power ceiling (Silverquill Charm's "creature with power 2 or less"); `None` doesn't gate
     /// on power. Non-creatures have power 0 (see [`Game::power`]), so they always pass a power
     /// gate — no pool card combines `power_max` with a non-creature `types` set.
@@ -945,6 +951,7 @@ impl PermanentFilter {
             mv_eq_x: false,
             mv_max_x: false,
             tapped: None,
+            has_mana_ability: false,
             power_max: None,
             power_min: None,
             power_parity: None,

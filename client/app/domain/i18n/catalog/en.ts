@@ -241,6 +241,8 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     "Target opponent gains control of target permanent you control",
   ),
   "effect.control_tap_all": (params) => `Tap all ${humanize(param(params, "filter", "permanents"))} you control`,
+  "effect.control_tap_all_target_player_controls": (params) =>
+    `Tap all ${humanize(param(params, "filter", "permanents"))} target player controls`,
   "effect.control_untap_all": (params) => `Untap all ${humanize(param(params, "filter", "permanents"))} you control`,
   "effect.control_untap_target": literal("Untap target"),
   "effect.copy_change_target_of_target_spell_or_ability": (params) =>
@@ -397,6 +399,13 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.life_target_player_gains": (params) => `Target player gains ${param(params, "amount")} life`,
   "effect.life_target_player_loses": (params) => `Target player loses ${param(params, "amount")} life`,
   "effect.mana_add": literal("Add mana"),
+  "effect.mana_lose_all_unspent": (params) =>
+    bool(params, "to_you")
+      ? "That player loses all unspent mana and you add the mana lost this way"
+      : "That player loses all unspent mana",
+  "effect.mana_target_player_taps_lands_for_mana": literal(
+    "Target player activates a mana ability of each land they control",
+  ),
   "effect.mill_exile_discarded_with_this": literal("Exile that card from your graveyard with this"),
   "effect.mill_exile_from_graveyard_may_play": literal("Exile that card from your graveyard; play it this turn"),
   "effect.mill_exile_target_from_graveyard_create_token_copy": (params) =>

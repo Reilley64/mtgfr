@@ -31,10 +31,12 @@ pub(super) fn map_identical(request: &ChoiceRequest) -> Option<PendingChoice> {
             player,
             cost,
             spell,
+            strips_mana_on_decline,
         } => Some(PendingChoice::PayOrCounter {
             player: *player,
             cost: *cost,
             spell: *spell,
+            strips_mana_on_decline: *strips_mana_on_decline,
         }),
         ChoiceRequest::ChooseCreatureType {
             player,

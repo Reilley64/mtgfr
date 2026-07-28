@@ -32,6 +32,7 @@ impl Game {
                 | ControlEffect::RemoveFromCombat { .. }
                 | ControlEffect::RevertAllCreaturesToOwners
                 | ControlEffect::TapAll { .. }
+                | ControlEffect::TapAllTargetPlayerControls { .. }
                 | ControlEffect::TapSource
                 | ControlEffect::TapTarget { .. }
                 | ControlEffect::UntapAll { .. }
@@ -75,6 +76,11 @@ impl Game {
             }
             Effect::Draw(draw) => self.mint_draw(draw, controller, source, target, x),
             Effect::Life(life) => self.mint_life(life, controller, source, target, x),
+            // `TargetPlayerTapsLandsForMana` taps on someone else's behalf through
+            // `Game::tap_for_mana`, which needs `&mut self` — it resolves via `Game::run`.
+            Effect::Mana(ManaEffect::TargetPlayerTapsLandsForMana) => {
+                unreachable!("a pausing/composite effect resolves via Game::run")
+            }
             Effect::Mana(mana) => self.mint_mana(mana, controller, source, target, x),
             Effect::Mill(mill) => self.mint_mill(mill, controller, source, target, x),
             Effect::Misc(misc) => match misc {

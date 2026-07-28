@@ -35,4 +35,30 @@ pub enum ManaEffect {
         #[cfg_attr(feature = "card-dsl", serde(skip))]
         recipient: Option<PlayerId>,
     },
+
+    /// "That player loses all unspent mana" — the 1993 mana-burn era's leavings, still printed on
+    /// Mana Short, Power Sink, and Drain Power. Empties the enclosing `Sequence`'s shared target
+    /// player's pool outright, persistent "until end of turn" credits included (CR 500.4's
+    /// exception is about *boundaries*; a card that says "all" means all). No target of its own —
+    /// it always follows a step that already named the player.
+    ///
+    /// `to_you = true` is Drain Power's "and you add the mana lost this way": every credit lands
+    /// in this ability's controller's pool instead of evaporating, kind for kind, so a dual land's
+    /// either-credit arrives as flexible as it left.
+    LoseAllUnspent {
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        to_you: bool,
+    },
+
+    /// "Target player activates a mana ability of each land they control" (Drain Power). Walks
+    /// that player's untapped lands and taps each for mana on their behalf — the same
+    /// [`Game::tap_for_mana`] path their own click would take, so every land-tap watch
+    /// ([`Effect::Static(StaticEffect::TappedForManaBonus)`], Manabarbs) fires exactly as it
+    /// would have. A land with no mana ability (Maze of Ith) is skipped, as is one already tapped.
+    ///
+    /// ponytail: takes each land's default credit rather than offering a per-land pick, so a land
+    /// with two competing mana abilities gets the first one. Every land in the 2ed pool has one
+    /// mana ability, and a dual's either-credit stays undecided in the pool anyway. Raise a
+    /// per-land pending choice if a card ever makes the pick matter.
+    TargetPlayerTapsLandsForMana,
 }

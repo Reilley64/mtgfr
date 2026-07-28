@@ -212,7 +212,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [x] **Disintegrate** {X}{R} · Sorcery — increment 34
 - [x] **Disrupting Scepter** {3} · Artifact — increment 56
 - [x] **Drain Life** {X}{1}{B} · Sorcery — increment 54
-- [ ] **Drain Power** {U}{U} · Sorcery — increment 23, 49
+- [x] **Drain Power** {U}{U} · Sorcery — increment 23
 - [x] **Earthbind** {R} · Enchantment — Aura — increment 44
 - [x] **Evil Presence** {B} · Enchantment — Aura — increment 8a
 - [ ] **False Orders** {R} · Instant — increment 11
@@ -259,7 +259,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Lure** {1}{G}{G} · Enchantment — Aura — increment 11
 - [ ] **Magical Hack** {U} · Instant — increment 16
 - [x] **Mana Flare** {2}{R} · Enchantment — increment 19
-- [ ] **Mana Short** {2}{U} · Instant — increment 23
+- [x] **Mana Short** {2}{U} · Instant — increment 23
 - [x] **Mana Vault** {1} · Artifact — increment 7
 - [x] **Manabarbs** {3}{R} · Enchantment — increment 19
 - [x] **Meekstone** {1} · Artifact — increment 7
@@ -275,7 +275,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [x] **Pirate Ship** {4}{U} · Creature — Human Pirate — increment 24, 77
 - [x] **Plague Rats** {2}{B} · Creature — Rat — increment 2
 - [ ] **Power Leak** {1}{U} · Enchantment — Aura — increment 4
-- [ ] **Power Sink** {X}{U} · Instant — increment 23
+- [x] **Power Sink** {X}{U} · Instant — increment 23
 - [x] **Power Surge** {R}{R} · Enchantment — increment 1
 - [x] **Psychic Venom** {1}{U} · Enchantment — Aura — increment 19
 - [x] **Purelace** {W} · Instant — increment 15

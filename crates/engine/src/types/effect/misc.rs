@@ -23,6 +23,13 @@ pub enum MiscEffect {
         filter: SpellFilter,
         #[cfg_attr(feature = "card-dsl", serde(default))]
         countered_dest: Option<CounteredDest>,
+        /// Power Sink's "if that player doesn't, they tap all lands with mana abilities they
+        /// control and lose all unspent mana" — a penalty riding on the *declined* half of
+        /// `unless_pays`, so it can't be an ordinary following step (those run either way).
+        /// `false` (the default) for every other counter-unless-pays. Ignored without
+        /// `unless_pays`.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        strips_mana_on_decline: bool,
     },
 
     Fight {

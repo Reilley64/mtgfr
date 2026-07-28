@@ -1210,6 +1210,27 @@ impl Game {
             | Effect::Misc(MiscEffect::YouChooseWhichCreaturesBlock) => {
                 self.run_misc_choreo(effect, ctx, events)
             }
+            // Drain Power's "target player activates a mana ability of each land they control":
+            // walk their untapped lands and tap each on their behalf through the one
+            // tap-for-mana path (CR 605.3 — a mana ability uses no stack), so every land-tap
+            // watch on the board fires exactly as it would for their own click. A land with no
+            // mana ability rejects and is skipped.
+            Effect::Mana(ManaEffect::TargetPlayerTapsLandsForMana) => {
+                let Some(Target::Player(player)) = target else {
+                    return;
+                };
+                for land in self.battlefield() {
+                    if self.controller_of(land) != player
+                        || self.is_tapped(land)
+                        || !self.effective_types(land).intersects(TypeSet::LAND)
+                    {
+                        continue;
+                    }
+                    if let Ok(evs) = self.tap_for_mana(player, land) {
+                        events.extend(evs);
+                    }
+                }
+            }
             // Each of these draws may be replaced by dredge (CR 702.52): `draw_with_dredge` draws one
             // card at a time, pausing on `ChooseDredge` before any draw the controller has an eligible
             // dredger for (accepting mills + returns, declining draws). `answer_choose_dredge` re-enters

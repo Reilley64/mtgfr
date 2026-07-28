@@ -78,6 +78,7 @@ message_keys! {
     EFFECT_CONTROL_TAP_TARGET => "effect.control_tap_target",
     EFFECT_CONTROL_TARGET_OPPONENT_GAINS_CONTROL => "effect.control_target_opponent_gains_control",
     EFFECT_CONTROL_TAP_ALL => "effect.control_tap_all",
+    EFFECT_CONTROL_TAP_ALL_TARGET_PLAYER_CONTROLS => "effect.control_tap_all_target_player_controls",
     EFFECT_CONTROL_UNTAP_ALL => "effect.control_untap_all",
     EFFECT_CONTROL_UNTAP_TARGET => "effect.control_untap_target",
     EFFECT_COPY_CHANGE_TARGET_OF_TARGET_SPELL_OR_ABILITY => "effect.copy_change_target_of_target_spell_or_ability",
@@ -219,6 +220,8 @@ message_keys! {
     EFFECT_LIFE_TARGET_PLAYER_GAINS => "effect.life_target_player_gains",
     EFFECT_LIFE_TARGET_PLAYER_LOSES => "effect.life_target_player_loses",
     EFFECT_MANA_ADD => "effect.mana_add",
+    EFFECT_MANA_LOSE_ALL_UNSPENT => "effect.mana_lose_all_unspent",
+    EFFECT_MANA_TARGET_PLAYER_TAPS_LANDS_FOR_MANA => "effect.mana_target_player_taps_lands_for_mana",
     EFFECT_MILL_EXILE_DISCARDED_WITH_THIS => "effect.mill_exile_discarded_with_this",
     EFFECT_MILL_EXILE_FROM_GRAVEYARD_MAY_PLAY => "effect.mill_exile_from_graveyard_may_play",
     EFFECT_MILL_EXILE_TARGET_FROM_GRAVEYARD_CREATE_TOKEN_COPY => "effect.mill_exile_target_from_graveyard_create_token_copy",
@@ -1390,6 +1393,10 @@ impl Effect {
             }
             Effect::Control(TapAll { filter }) => MessageRef::new(MessageKey::EFFECT_CONTROL_TAP_ALL)
                 .with_params(vec![permanent_filter_param("filter", filter)]),
+            Effect::Control(TapAllTargetPlayerControls { filter }) => {
+                MessageRef::new(MessageKey::EFFECT_CONTROL_TAP_ALL_TARGET_PLAYER_CONTROLS)
+                    .with_params(vec![permanent_filter_param("filter", filter)])
+            }
             Effect::Control(TapSource) => MessageRef::new(MessageKey::EFFECT_CONTROL_TAP_SOURCE),
             Effect::Control(UntapAll { filter }) => {
                 MessageRef::new(MessageKey::EFFECT_CONTROL_UNTAP_ALL)
@@ -1441,6 +1448,13 @@ impl Effect {
                 MessageRef::new(MessageKey::EFFECT_COUNTERS_REMOVE_COUNTER_FROM_SELF)
             }
             Effect::Mana(ManaEffect::Add { .. }) => MessageRef::new(MessageKey::EFFECT_MANA_ADD),
+            Effect::Mana(ManaEffect::LoseAllUnspent { to_you }) => {
+                MessageRef::new(MessageKey::EFFECT_MANA_LOSE_ALL_UNSPENT)
+                    .with_params(vec![bool_param("to_you", to_you)])
+            }
+            Effect::Mana(ManaEffect::TargetPlayerTapsLandsForMana) => {
+                MessageRef::new(MessageKey::EFFECT_MANA_TARGET_PLAYER_TAPS_LANDS_FOR_MANA)
+            }
             Effect::Mill(Mill { count, .. }) => MessageRef::new(MessageKey::EFFECT_MILL_MILL)
                 .with_params(vec![amount_param("count", count)]),
             Effect::Mill(MillSelf { count }) => MessageRef::new(MessageKey::EFFECT_MILL_MILL_SELF)
@@ -2288,6 +2302,7 @@ impl Effect {
                 .with_params(vec![bool_param("ally_is_shared_target", ally_is_shared_target)]),
             Effect::Misc(CounterTargetSpell {
                 unless_pays,
+                strips_mana_on_decline: _,
                 filter,
                 countered_dest,
             }) => MessageRef::new(MessageKey::EFFECT_MISC_COUNTER_TARGET_SPELL).with_params(vec![

@@ -1547,6 +1547,10 @@ impl Game {
         {
             return false;
         }
+        // "Lands with mana abilities" (Power Sink) — a land that makes no mana isn't one.
+        if filter.has_mana_ability && !self.taps_for_mana(id) {
+            return false;
+        }
         // Power ceiling (Silverquill Charm's "creature with power 2 or less"). Non-creatures
         // have power 0, so they always pass — fine, since no pool card combines the two.
         if let Some(max) = filter.power_max

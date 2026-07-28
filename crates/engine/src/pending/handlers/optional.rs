@@ -370,15 +370,46 @@ impl Game {
         player: PlayerId,
         pay: bool,
     ) -> Result<Vec<Event>, Reject> {
-        let Some(PendingChoice::PayOrCounter { cost, spell, .. }) = self.pending_choice.clone()
+        let Some(PendingChoice::PayOrCounter {
+            cost,
+            spell,
+            strips_mana_on_decline,
+            ..
+        }) = self.pending_choice.clone()
         else {
             return Err(Reject::IllegalChoice);
         };
 
         if !pay {
             self.finish_answer();
-            let evs = self.counter_spell(spell);
+            let mut evs = self.counter_spell(spell);
             self.apply_all(&evs);
+            // Power Sink's "if that player doesn't, they tap all lands with mana abilities they
+            // control and lose all unspent mana" — the penalty rides on this decline, which is why
+            // it lives here and not as a following resolution step. A plain tap, not a tap for
+            // mana (CR 106.11): nothing is produced, and the pool goes next anyway.
+            if strips_mana_on_decline {
+                let taps: Vec<Event> = self
+                    .battlefield()
+                    .into_iter()
+                    .filter(|&id| {
+                        self.controller_of(id) == player
+                            && !self.is_tapped(id)
+                            && self.taps_for_mana(id)
+                            && self.effective_types(id).intersects(TypeSet::LAND)
+                    })
+                    .map(|object| Event::Tapped { object })
+                    .collect();
+                self.apply_all(&taps);
+                evs.extend(taps);
+                let drain = Event::ManaEmptied {
+                    player,
+                    end_of_turn: true,
+                    to: None,
+                };
+                self.apply(&drain);
+                evs.push(drain);
+            }
             return Ok(evs);
         }
         // Settle the mana (auto-tapping lands for a pool shortfall); unaffordable leaves the

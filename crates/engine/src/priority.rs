@@ -1494,6 +1494,7 @@ impl Game {
                     Event::ManaEmptied {
                         player: PlayerId(i),
                         end_of_turn: leaving_cleanup,
+                        to: None,
                     },
                 );
             }

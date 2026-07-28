@@ -237,6 +237,26 @@ impl Game {
                 .map(|object| Event::Tapped { object })
                 .collect(),
 
+            // Mana Short's "tap all lands target player controls": `TapAll` aimed at the chosen
+            // seat instead of your own. `you` for the filter is still that player — Power Sink's
+            // "lands with mana abilities **they** control" reads from their side of the table.
+            // Already-tapped lands mint nothing; `Event::Tapped` is the untapped→tapped change
+            // (CR 701.21a), and a redundant one would fire a becomes-tapped watch twice.
+            ControlEffect::TapAllTargetPlayerControls { filter } => {
+                let Some(Target::Player(player)) = target else {
+                    return Vec::new();
+                };
+                self.battlefield()
+                    .into_iter()
+                    .filter(|&id| {
+                        self.controller_of(id) == player
+                            && !self.is_tapped(id)
+                            && self.permanent_matches(&filter, id, player, Some(source))
+                    })
+                    .map(|object| Event::Tapped { object })
+                    .collect()
+            }
+
             // Demonic Hordes' "tap this creature": no scan and no filter, just the one permanent
             // the ability came from — gone from the battlefield, it taps nothing (CR 608.2b).
             ControlEffect::TapSource => self
