@@ -275,6 +275,7 @@ const AMOUNT_KEYWORDS: &[&str] = &[
     "cards_discarded_this_way",
     "creatures_sacrificed_this_way",
     "spell_first_target_mana_value",
+    "counters_removed_this_way",
 ];
 
 /// A bare `{}` presence-flag table (an [`Amount`] arm that carries no fields of its own).

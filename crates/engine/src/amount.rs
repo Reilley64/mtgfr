@@ -186,6 +186,12 @@ impl Game {
             Amount::TotalManaValueMilledThisWay => {
                 self.resolution_frame.milled_mana_value_this_way as i32
             }
+            // Reads the tally the preceding `Effect::Counters(CountersEffect::RemoveCounters)`
+            // step recorded (Nexus Mentality's "Draw a card for each counter removed this way",
+            // Lily Bowen's life gain); resolution-scoped, like `TotalManaValueMilledThisWay`.
+            Amount::CountersRemovedThisWay => {
+                self.resolution_frame.counters_removed_this_way as i32
+            }
             // Reads the mana value the preceding `Effect::Dig(DigEffect::ExileTargetGraveyardCardRecordManaValue)`
             // step snapshotted (Surge to Victory's team +X/+0 pump); `0` if unset — unreachable in
             // practice, since a fizzled target drops the whole ability before this reads.

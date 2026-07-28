@@ -362,6 +362,11 @@ pub enum Amount {
     /// "for each creature sacrificed this way") — a resolution-local tally on
     /// [`ResolutionFrame::creatures_sacrificed_this_way`].
     CreaturesSacrificedThisWay,
+    /// How many counters this resolution's [`CountersEffect::RemoveCounters`] step just took off
+    /// (Nexus Mentality's "Draw a card for each counter removed this way"; Lily Bowen's "you gain
+    /// 1 life for each +1/+1 counter removed this way") — a resolution-local tally on
+    /// [`ResolutionFrame::counters_removed_this_way`].
+    CountersRemovedThisWay,
 }
 
 impl Default for Amount {
@@ -518,8 +523,7 @@ impl Effect {
             | Effect::Counters(CountersEffect::DoubleCounters { target })
             | Effect::Counters(CountersEffect::DoubleCountersOnTargetCreatures { target, .. })
             | Effect::Counters(CountersEffect::MoveCounters { target, .. })
-            | Effect::Counters(CountersEffect::RemoveAllCountersThenDraw { target })
-            | Effect::Counters(CountersEffect::RemoveAllButOnePlusOneCounterThenGainLife { target })
+            | Effect::Counters(CountersEffect::RemoveCounters { target, .. })
             | Effect::Exile(ExileEffect::Target { target, .. })
             | Effect::Exile(ExileEffect::UntilSourceLeaves { target })
             | Effect::Exile(ExileEffect::TargetMintingIllusionOnLeave { target })

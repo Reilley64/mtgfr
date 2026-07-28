@@ -43,6 +43,13 @@ pub(crate) struct ResolutionFrame {
     pub(crate) council_present_votes: u32,
     /// Total mana value milled by this resolution's [`Effect::Mill(MillEffect::MillSelf)`](crate::Effect::Mill(MillEffect::MillSelf)).
     pub(crate) milled_mana_value_this_way: u32,
+    /// Counters this resolution's [`Effect::Counters(CountersEffect::RemoveCounters)`](crate::Effect::Counters(CountersEffect::RemoveCounters))
+    /// step removed (Nexus Mentality's "for each counter removed this way", Lily Bowen's life
+    /// gain), read by [`Amount::CountersRemovedThisWay`](crate::Amount). Overwritten each
+    /// RemoveCounters, not accumulated — like [`Self::destroyed_this_way`] — and cleared as each
+    /// stack item begins resolving ([`Game::resolve_top`](crate::Game)), so a branch that never
+    /// removed anything cannot read a previous resolution's count.
+    pub(crate) counters_removed_this_way: u32,
     /// Card id + mana value from [`Effect::Dig(DigEffect::ExileTargetGraveyardCardRecordManaValue)`](crate::Effect::Dig(DigEffect::ExileTargetGraveyardCardRecordManaValue)).
     pub(crate) surge_exiled_card: Option<(ObjectId, u32)>,
     /// The mana value of the **nonland** card this resolution returned from a graveyard to its

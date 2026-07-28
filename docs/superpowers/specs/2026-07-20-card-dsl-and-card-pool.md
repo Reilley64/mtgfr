@@ -136,7 +136,7 @@ Representative modes by family:
 
 **`control`:** `tap_target`, `tap_all`, `gain_control`, `gain_control_while`.
 
-**`counters`:** `put_counters`, `remove_counter`, `move_counters`.
+**`counters`:** `put_counters`, `remove_counter`, `move_counters`, `remove_counters`. `remove_counters` removes counters from its `target` along two axes: `all_kinds` (default `false` — only +1/+1 counters; `true` — every counter kind) and `keep` (default `0` — how many +1/+1 counters stay behind). It records how many it removed in the `counters_removed_this_way` `Amount`, so the "draw a card for each counter removed this way" / "gain 1 life for each +1/+1 counter removed this way" halves are authored as an ordinary following effect step rather than fused into the removal mode (Nexus Mentality mode 1, Lily Bowen's `otherwise` branch).
 
 **`token`:** `create` (references a token profile by id or inline definition), `create_copy`, `create_treasure`.
 
@@ -162,7 +162,7 @@ Representative modes by family:
 
 ### Amount
 
-`Amount` is the polymorphic numeric type used anywhere a count or numeric value appears. Variants include `Fixed(n)`, `X` (the cast's {X} value), `TargetPower`, `LifeGainedThisTurn`, `CreaturesDiedThisTurn`, `SpellsCastThisTurn`, `CommanderColorCount`, `PerPermanentMatching { filter }`, `AurasAttachedToSource`, `NontokenCreaturesEnteredThisTurn`, `TriggeringSpellManaValue`, `CombatDamage`, `SacrificedCreaturePower`, `PermanentsDestroyedThisWay`, and others. `Amount` can appear as `count` on `create_token`, `draw_cards`, `gain_life`, activated cost `pay_life`, etc.
+`Amount` is the polymorphic numeric type used anywhere a count or numeric value appears. Variants include `Fixed(n)`, `X` (the cast's {X} value), `TargetPower`, `LifeGainedThisTurn`, `CreaturesDiedThisTurn`, `SpellsCastThisTurn`, `CommanderColorCount`, `PerPermanentMatching { filter }`, `AurasAttachedToSource`, `NontokenCreaturesEnteredThisTurn`, `TriggeringSpellManaValue`, `CombatDamage`, `SacrificedCreaturePower`, `PermanentsDestroyedThisWay`, `CountersRemovedThisWay`, and others. The `…ThisWay` variants read a tally the *preceding* effect step wrote on the resolution frame (see [choices-actions-and-resolution](2026-07-20-choices-actions-and-resolution.md)); adding one means registering its TOML keyword in the hand-written `Amount` deserializer (`crates/cards/src/de.rs`, both the keyword list and the match) and in `crates/cards/src/toml_surface/dsl_schema.rs` — the enum is not `derive(Deserialize)`. `Amount` can appear as `count` on `create_token`, `draw_cards`, `gain_life`, activated cost `pay_life`, etc.
 
 ### Token profiles
 

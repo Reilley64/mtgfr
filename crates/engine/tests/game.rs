@@ -101140,13 +101140,13 @@ fn multikicker_count_is_rejected_on_a_spell_without_multikicker() {
 }
 
 // ── Increment #14 `double-counters-or-cull-and-gain`: `Condition::SourcePowerAtMost` and ──
-// ── `CountersEffect::RemoveAllButOnePlusOneCounterThenGainLife` — Lily Bowen, Raging Grandma ──
+// ── `CountersEffect::RemoveCounters` + `Amount::CountersRemovedThisWay` — Lily Bowen ──
 
 /// A test-only 0/0 creature whose only ability is Lily Bowen's cull-and-gain-life half in
 /// isolation, with no upkeep gate and no ETB counters: "{T}: Remove all but one +1/+1 counter
-/// from this creature, then you gain 1 life for each +1/+1 counter removed this way." Exercises
-/// `CountersEffect::RemoveAllButOnePlusOneCounterThenGainLife` at its own counter counts, apart
-/// from Lily's `SourcePowerAtMost` gate.
+/// from this creature, then you gain 1 life for each +1/+1 counter removed this way." Both halves
+/// are ordinary steps — `CountersEffect::RemoveCounters` tallies what it took off and the life
+/// gain reads that tally back through `Amount::CountersRemovedThisWay`.
 static TEST_CULL_CREATURE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Activated(ActivationCost {
@@ -101167,9 +101167,18 @@ static TEST_CULL_CREATURE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             exile_self: false,
             graveyard_exile_target_count: 0,
         }),
-        effect: Effect::Counters(CountersEffect::RemoveAllButOnePlusOneCounterThenGainLife {
-            target: TargetSpec::ThisPermanent,
-        }),
+        effect: Effect::Sequence {
+            steps: Arc::from([
+                Effect::Counters(CountersEffect::RemoveCounters {
+                    target: TargetSpec::ThisPermanent,
+                    all_kinds: false,
+                    keep: 1,
+                }),
+                Effect::Life(LifeEffect::Gain {
+                    amount: Amount::CountersRemovedThisWay,
+                }),
+            ]),
+        },
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -101219,6 +101228,107 @@ fn remove_all_but_one_plus_one_counter_gains_one_life_each() {
     );
 }
 
+/// Nexus Mentality's second mode in isolation: "Remove all counters from target nonland permanent
+/// you control. Draw a card for each counter removed this way." Its ability seeds its own charge
+/// counters first, so one fixture covers both counter stores — the `plus_counters` scalar and
+/// `kind_counters` — without a second card on the battlefield.
+static TEST_SWEEP_CREATURE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
+    abilities: arc_slice([Ability {
+        timing: Timing::Activated(ActivationCost {
+            taps_self: true,
+            mana: Cost::FREE,
+            sacrifice: SacrificeCost::None,
+            pay_life: Amount::Fixed(0),
+            self_damage: 0,
+            loyalty: None,
+            once_each_turn: false,
+            sorcery_speed: false,
+            remove_counters: 0,
+            remove_counters_kind: None,
+            remove_counters_x: false,
+            return_self: false,
+            mill_self: 0,
+            discard_cost: 0,
+            exile_self: false,
+            graveyard_exile_target_count: 0,
+        }),
+        effect: Effect::Sequence {
+            steps: Arc::from([
+                Effect::Counters(CountersEffect::PutCounters {
+                    count: Amount::Fixed(3),
+                    target: TargetSpec::ThisPermanent,
+                    targets: TargetCount::default(),
+                    kind: Some(CounterKind::Charge),
+                    divided: false,
+                }),
+                Effect::Counters(CountersEffect::RemoveCounters {
+                    target: TargetSpec::ThisPermanent,
+                    all_kinds: true,
+                    keep: 0,
+                }),
+                Effect::Draw(DrawEffect::Cards {
+                    count: Amount::CountersRemovedThisWay,
+                }),
+            ]),
+        },
+        optional: false,
+        min_level: 0,
+        once_each_turn: false,
+        condition: None,
+        cost: Cost::FREE,
+    }]),
+    ..creature("Test Sweep Creature", 1, 1, &[])
+});
+
+#[test]
+fn remove_counters_all_kinds_draws_for_every_counter_removed() {
+    // Two +1/+1 counters plus the three charge counters the ability places itself: `all_kinds`
+    // takes all five off, and the draw step reads all five back out of the tally.
+    let mut game = TestGame::new();
+    let creature = game.spawn_on_battlefield(PlayerId(0), TEST_SWEEP_CREATURE.clone());
+    put_two_counters(&mut game, PlayerId(0), creature);
+    assert_eq!(game.plus_counters(creature), 2, "one put-two-counters call");
+    game.stack_library(
+        PlayerId(0),
+        &[
+            card("Grizzly Bear"),
+            card("Grizzly Bear"),
+            card("Grizzly Bear"),
+            card("Grizzly Bear"),
+            card("Grizzly Bear"),
+        ],
+    );
+    let hand_before = game.hand(PlayerId(0)).len();
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: creature,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.plus_counters(creature),
+        0,
+        "all +1/+1 counters removed"
+    );
+    assert_eq!(
+        game.counters_of_kind(creature, CounterKind::Charge),
+        0,
+        "all_kinds sweeps kind_counters too"
+    );
+    assert_eq!(
+        game.hand(PlayerId(0)).len() - hand_before,
+        5,
+        "a card drawn for each of the two +1/+1 and three charge counters removed this way"
+    );
+}
+
 #[test]
 fn remove_all_but_one_plus_one_counter_is_a_no_op_with_no_counters() {
     // "All but one" of zero is zero (the effect's own no-op guard) — no counters removed, no
@@ -101242,6 +101352,182 @@ fn remove_all_but_one_plus_one_counter_is_a_no_op_with_no_counters() {
 
     assert_eq!(game.plus_counters(creature), 0, "still zero counters");
     assert_eq!(game.life(PlayerId(0)), life_before, "no life gained");
+}
+
+/// Two removals in one resolution, each with its own reader: the tally is overwritten per
+/// [`CountersEffect::RemoveCounters`], never accumulated, so the second reader sees what the
+/// *second* removal took off — nothing — rather than the first's count.
+static TEST_DOUBLE_REMOVAL_CREATURE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
+    abilities: arc_slice([Ability {
+        timing: Timing::Activated(ActivationCost {
+            taps_self: true,
+            mana: Cost::FREE,
+            sacrifice: SacrificeCost::None,
+            pay_life: Amount::Fixed(0),
+            self_damage: 0,
+            loyalty: None,
+            once_each_turn: false,
+            sorcery_speed: false,
+            remove_counters: 0,
+            remove_counters_kind: None,
+            remove_counters_x: false,
+            return_self: false,
+            mill_self: 0,
+            discard_cost: 0,
+            exile_self: false,
+            graveyard_exile_target_count: 0,
+        }),
+        effect: Effect::Sequence {
+            steps: Arc::from([
+                Effect::Counters(CountersEffect::RemoveCounters {
+                    target: TargetSpec::ThisPermanent,
+                    all_kinds: false,
+                    keep: 0,
+                }),
+                Effect::Draw(DrawEffect::Cards {
+                    count: Amount::CountersRemovedThisWay,
+                }),
+                Effect::Counters(CountersEffect::RemoveCounters {
+                    target: TargetSpec::ThisPermanent,
+                    all_kinds: false,
+                    keep: 0,
+                }),
+                Effect::Life(LifeEffect::Gain {
+                    amount: Amount::CountersRemovedThisWay,
+                }),
+            ]),
+        },
+        optional: false,
+        min_level: 0,
+        once_each_turn: false,
+        condition: None,
+        cost: Cost::FREE,
+    }]),
+    ..creature("Test Double Removal Creature", 1, 1, &[])
+});
+
+#[test]
+fn a_second_removal_that_takes_nothing_reads_zero_rather_than_the_first_count() {
+    // First removal takes four counters and draws four. The second finds none left, so its own
+    // reader gains 0 life — the tally is overwritten, so "removed this way" never means "removed
+    // by some earlier step this way".
+    let mut game = TestGame::new();
+    let creature = game.spawn_on_battlefield(PlayerId(0), TEST_DOUBLE_REMOVAL_CREATURE.clone());
+    put_two_counters(&mut game, PlayerId(0), creature);
+    put_two_counters(&mut game, PlayerId(0), creature);
+    assert_eq!(
+        game.plus_counters(creature),
+        4,
+        "two put-two-counters calls"
+    );
+    game.stack_library(PlayerId(0), &vec![card("Grizzly Bear"); 4]);
+    let hand_before = game.hand(PlayerId(0)).len();
+    let life_before = game.life(PlayerId(0));
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: creature,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.hand(PlayerId(0)).len() - hand_before,
+        4,
+        "four cards for the four counters the first removal took"
+    );
+    assert_eq!(
+        game.life(PlayerId(0)),
+        life_before,
+        "the second removal took nothing, so its reader gains nothing"
+    );
+}
+
+/// A `then` branch that removes counters and an `otherwise` branch that reads the tally, in one
+/// ability, so two activations exercise each branch in turn. `negate` makes `then` the
+/// *above* -2-power branch: it fires while the counters are still on, and `otherwise` fires once
+/// they are gone.
+static TEST_BRANCHED_REMOVAL_CREATURE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
+    abilities: arc_slice([Ability {
+        timing: Timing::Activated(ActivationCost {
+            taps_self: false,
+            mana: Cost::FREE,
+            sacrifice: SacrificeCost::None,
+            pay_life: Amount::Fixed(0),
+            self_damage: 0,
+            loyalty: None,
+            once_each_turn: false,
+            sorcery_speed: false,
+            remove_counters: 0,
+            remove_counters_kind: None,
+            remove_counters_x: false,
+            return_self: false,
+            mill_self: 0,
+            discard_cost: 0,
+            exile_self: false,
+            graveyard_exile_target_count: 0,
+        }),
+        effect: Effect::Conditional {
+            condition: Condition::SourcePowerAtMost { at_most: 2 },
+            negate: true,
+            then: Arc::from([Effect::Counters(CountersEffect::RemoveCounters {
+                target: TargetSpec::ThisPermanent,
+                all_kinds: false,
+                keep: 0,
+            })]),
+            otherwise: &[Effect::Life(LifeEffect::Gain {
+                amount: Amount::CountersRemovedThisWay,
+            })],
+        },
+        optional: false,
+        min_level: 0,
+        once_each_turn: false,
+        condition: None,
+        cost: Cost::FREE,
+    }]),
+    ..creature("Test Branched Removal Creature", 1, 1, &[])
+});
+
+#[test]
+fn a_tally_written_in_the_then_branch_does_not_leak_into_a_later_otherwise() {
+    // Activation one is a 5/5, so `then` removes its four counters and writes 4. Activation two is
+    // back to 1/1, so `otherwise` runs instead — and must gain 0 life, not the 4 the earlier
+    // resolution's `then` branch left behind.
+    let mut game = TestGame::new();
+    let creature = game.spawn_on_battlefield(PlayerId(0), TEST_BRANCHED_REMOVAL_CREATURE.clone());
+    put_two_counters(&mut game, PlayerId(0), creature);
+    put_two_counters(&mut game, PlayerId(0), creature);
+
+    let activate = |game: &mut TestGame| {
+        game.submit(Intent::ActivateAbility {
+            player: PlayerId(0),
+            object: creature,
+            ability_index: 0,
+            target: None,
+            sacrifice: vec![],
+            discard_cost: vec![],
+            x: 0,
+        })
+        .unwrap();
+        resolve_top_of_stack(game);
+    };
+
+    activate(&mut game);
+    assert_eq!(game.plus_counters(creature), 0, "`then` took all four off");
+
+    let life_before = game.life(PlayerId(0));
+    activate(&mut game);
+
+    assert_eq!(
+        game.life(PlayerId(0)),
+        life_before,
+        "`otherwise` reads its own resolution's tally, which is 0"
+    );
 }
 
 #[test]

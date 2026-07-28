@@ -74,6 +74,12 @@ impl Game {
     /// applies incrementally so newly-minted object ids stay in sync with the arena.
     pub(crate) fn resolve_top(&mut self, events: &mut Vec<Event>) {
         let top = self.stack.last().expect("stack is non-empty").clone();
+        // Resolution-scoped scratch: a resolution that never reaches a `RemoveCounters` step — a
+        // `Conditional` taking `otherwise`, a fizzled branch — must read "counters removed this
+        // way" as 0, not as whatever an earlier resolution's removal left behind. Cleared here
+        // rather than in `resolve_spell` because abilities are the consumers, and only on a fresh
+        // stack item, so a paused resolution resuming mid-Sequence keeps its own tally.
+        self.resolution_frame.counters_removed_this_way = 0;
         match top {
             StackItem::Spell(object) => self.resolve_spell(object, events),
             StackItem::Ability {
@@ -1135,6 +1141,10 @@ impl Game {
             Effect::Mill(MillEffect::MillSelf { count }) => {
                 self.resolve_mill_self(count, controller, source, target, x, events)
             }
+            // Same reason: writes `counters_removed_this_way` for the following step to read.
+            Effect::Counters(CountersEffect::RemoveCounters {
+                all_kinds, keep, ..
+            }) => self.resolve_remove_counters(target, all_kinds, keep, events),
             // Rousing Refrain / Spell Crumple / Vengeful Rebirth self-move riders — see
             // `resolution/resolve_misc.rs`.
             Effect::Zone(ZoneEffect::ExileSelfWithTimeCounters { .. })

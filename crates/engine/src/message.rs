@@ -97,14 +97,13 @@ message_keys! {
     EFFECT_COUNTERS_MONSTROSITY => "effect.counters_monstrosity",
     EFFECT_COUNTERS_PUT_COUNTERS_ON_PLAYER => "effect.counters_put_counters_on_player",
     EFFECT_COUNTERS_PUT_LOYALTY_COUNTER_EACH => "effect.counters_put_loyalty_counter_each",
-    EFFECT_COUNTERS_REMOVE_ALL_BUT_ONE_PLUS_ONE_COUNTER_THEN_GAIN_LIFE => "effect.counters_remove_all_but_one_plus_one_counter_then_gain_life",
+    EFFECT_COUNTERS_REMOVE_COUNTERS => "effect.counters_remove_counters",
     EFFECT_COUNTERS_REMOVE_ALL_PLAYER_COUNTERS => "effect.counters_remove_all_player_counters",
     EFFECT_COUNTERS_TOP_UP_COUNTERS_ON_PLAYER => "effect.counters_top_up_counters_on_player",
     EFFECT_COUNTERS_MOVE_COUNTERS => "effect.counters_move_counters",
     EFFECT_COUNTERS_PLACE_VOW_COUNTERS => "effect.counters_place_vow_counters",
     EFFECT_COUNTERS_PUT_COUNTERS => "effect.counters_put_counters",
     EFFECT_COUNTERS_PUT_COUNTERS_EACH => "effect.counters_put_counters_each",
-    EFFECT_COUNTERS_REMOVE_ALL_COUNTERS_THEN_DRAW => "effect.counters_remove_all_counters_then_draw",
     EFFECT_COUNTERS_REMOVE_COUNTER_FROM_SELF => "effect.counters_remove_counter_from_self",
     EFFECT_CHOICE_CAST_CREATURE_FACE_DOWN => "effect.choice_cast_creature_face_down",
     EFFECT_CHOICE_CASTER_KEEPS_ONE_OF_EACH_TYPE_PER_PLAYER => "effect.choice_caster_keeps_one_of_each_type_per_player",
@@ -1066,6 +1065,7 @@ fn amount_token(amount: Amount) -> &'static str {
         Amount::SpellFirstTargetManaValue => "spell_first_target_mana_value",
         Amount::CardsDiscardedThisWay => "cards_discarded_this_way",
         Amount::CreaturesSacrificedThisWay => "creatures_sacrificed_this_way",
+        Amount::CountersRemovedThisWay => "counters_removed_this_way",
         Amount::Scaled { .. } => "scaled",
         Amount::IfSpellCastDuringMainPhase { .. } => "if_spell_cast_during_main_phase",
         Amount::RevealedCreatureManaValue => "revealed_creature_mana_value",
@@ -1335,9 +1335,6 @@ impl EffectMessage for Effect {
             Effect::Counters(MoveCounters { all_kinds, .. }) => {
                 MessageRef::new(MessageKey::EFFECT_COUNTERS_MOVE_COUNTERS)
                     .with_params(vec![bool_param("all_kinds", all_kinds)])
-            }
-            Effect::Counters(RemoveAllCountersThenDraw { .. }) => {
-                MessageRef::new(MessageKey::EFFECT_COUNTERS_REMOVE_ALL_COUNTERS_THEN_DRAW)
             }
             Effect::Counters(DoubleCountersOnTargetCreatures { .. }) => {
                 MessageRef::new(MessageKey::EFFECT_COUNTERS_DOUBLE_COUNTERS_ON_TARGET_CREATURES)
@@ -2166,8 +2163,11 @@ impl EffectMessage for Effect {
                     int_param("to", to),
                 ])
             }
-            Effect::Counters(RemoveAllButOnePlusOneCounterThenGainLife { .. }) => {
-                MessageRef::new(MessageKey::EFFECT_COUNTERS_REMOVE_ALL_BUT_ONE_PLUS_ONE_COUNTER_THEN_GAIN_LIFE)
+            Effect::Counters(RemoveCounters { all_kinds, keep, .. }) => {
+                MessageRef::new(MessageKey::EFFECT_COUNTERS_REMOVE_COUNTERS).with_params(vec![
+                    bool_param("all_kinds", all_kinds),
+                    int_param("keep", keep as i32),
+                ])
             }
             Effect::Counters(PutLoyaltyCounterEach { .. }) => {
                 MessageRef::new(MessageKey::EFFECT_COUNTERS_PUT_LOYALTY_COUNTER_EACH)

@@ -632,6 +632,7 @@ impl<'de> Deserialize<'de> for Amount {
             "cards_discarded_this_way",
             "creatures_sacrificed_this_way",
             "spell_first_target_mana_value",
+            "counters_removed_this_way",
         ];
 
         impl<'de> Visitor<'de> for AmountVisitor {
@@ -715,6 +716,7 @@ impl<'de> Deserialize<'de> for Amount {
                     "cards_discarded_this_way" => Amount::CardsDiscardedThisWay,
                     "creatures_sacrificed_this_way" => Amount::CreaturesSacrificedThisWay,
                     "spell_first_target_mana_value" => Amount::SpellFirstTargetManaValue,
+                    "counters_removed_this_way" => Amount::CountersRemovedThisWay,
                     other => return Err(E::unknown_variant(other, KEYWORDS)),
                 })
             }
