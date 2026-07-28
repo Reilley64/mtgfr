@@ -259,11 +259,45 @@ test("spotlights the winning seat over the mulligan overlay", () => {
     Scene.with(model),
     Scene.Mount.resolveAll([MountPriorityWatch(), PriorityElapsed({ seconds: 0 })]),
     Scene.expect(Scene.testId("first-player-reveal")).toExist(),
-    Scene.expect(Scene.testId("reveal-winner")).toExist(),
+    Scene.expect(Scene.testId("reveal-winner")).toHaveText("Bob goes first"),
     Scene.expect(Scene.testId("reveal-seat-2")).toHaveAttr("data-winner", "true"),
     Scene.expect(Scene.testId("reveal-seat-2")).toHaveAttr("data-lit", "true"),
     Scene.expect(Scene.testId("reveal-seat-0")).toHaveAttr("data-lit", "false"),
     Scene.expect(Scene.testId("mulligan-overlay")).toExist(),
+  );
+});
+
+// CR 103.1 reveal: mid-hop, the spotlight has landed on a seat that isn't the winner yet, so
+// the banner must stay silent about who goes first — only the final hop names the winner.
+test("does not name the winner mid-hop, before the reveal settles", () => {
+  const state = gameState({
+    viewer: 0,
+    players: [player(0), player(1), player(2), player(3)],
+  });
+  const model: OverlayModel = {
+    board: {
+      ...initialBoardModel(),
+      firstPlayerReveal: {
+        winner: 2,
+        steps: [
+          { slot: 0, delayMs: 0 },
+          { slot: 2, delayMs: 0 },
+        ],
+        index: 0,
+      },
+    },
+    fold: gameFold(state),
+    tableId: "T1",
+  };
+  Scene.scene(
+    { update: (m) => [m, []], view: overlayView },
+    Scene.with(model),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("first-player-reveal")).toExist(),
+    Scene.expect(Scene.testId("reveal-winner")).toHaveText(""),
+    Scene.expect(Scene.testId("reveal-seat-0")).toHaveAttr("data-lit", "true"),
+    Scene.expect(Scene.testId("reveal-seat-2")).toHaveAttr("data-winner", "true"),
+    Scene.expect(Scene.testId("reveal-seat-2")).toHaveAttr("data-lit", "false"),
   );
 });
 
