@@ -2,192 +2,166 @@ use std::sync::Arc;
 
 use serde::Deserialize;
 
-use crate::de::{arc_strs, one_u8};
+use crate::de::{TimingName, arc_strs, one_u8};
 use crate::toml_surface::{CostToml, KindToml};
 use crate::{
-    Ability, AlternativeCost, CardDef, CastXMax, Color, Condition, Cost, CumulativeUpkeepCost,
-    EnterAsCopy, EscapeCost, HandActivatedAbility, Keyword, PermanentFilter, SacrificeCost,
-    Suspend, intern_card_def,
+    Ability, AlternativeCost, Amount, BecomesTargetedScope, CardDef, CastXMax, CasterScope, Color,
+    CombatDamageScope, Condition, Cost, CounterKind, CumulativeUpkeepCost, Effect, EnterAsCopy,
+    EnterController, EscapeCost, HandActivatedAbility, Keyword, PermanentFilter, SacrificeCost,
+    SpellFilter, SpendToCastPredicate, Suspend, intern_card_def,
 };
-#[cfg(feature = "card-schema")]
-use crate::{Amount, CounterKind, SpellFilter};
 
-#[cfg(feature = "card-schema")]
-#[allow(dead_code)]
-#[derive(schemars::JsonSchema, Deserialize)]
-#[schemars(rename_all = "snake_case")]
-#[serde(rename_all = "snake_case")]
-enum EffectTypeTomlSchema {
-    #[schemars(description = "Damage effects such as targeted damage and mass creature damage.")]
-    Damage,
-    #[schemars(description = "Card draw effects for one player, target players, or each player.")]
-    Draw,
-    #[schemars(description = "Life gain, life loss, drain, and life-payment riders.")]
-    Life,
-    #[schemars(description = "Destroy effects for targets, filtered groups, and damaged objects.")]
-    Destroy,
-    #[schemars(
-        description = "Exile effects for targets, graveyards, and until-source-leaves zones."
-    )]
-    Exile,
-    #[schemars(description = "Sacrifice effects for the source or other specified permanents.")]
-    Sacrifice,
-    #[schemars(description = "Tap, untap, goad, equip, and control-changing effects.")]
-    Control,
-    #[schemars(description = "Add, remove, move, and count counters.")]
-    Counters,
-    #[schemars(description = "Mana production effects.")]
-    Mana,
-    #[schemars(description = "Mill and impulse-exile-from-library effects.")]
-    Mill,
-    #[schemars(description = "Temporary or base power/toughness modifications.")]
-    Pump,
-    #[schemars(description = "Reveal effects.")]
-    Reveal,
-    #[schemars(description = "Token creation and copy-token effects.")]
-    Token,
-    #[schemars(description = "Move cards or permanents between zones.")]
-    Zone,
-    #[schemars(description = "Copy spells, abilities, or objects.")]
-    Copy,
-    #[schemars(description = "Search, scry, surveil, cascade, clash, and top-library selection.")]
-    Dig,
-    #[schemars(
-        description = "Resolution-time choices such as may-sacrifice, discard, and proliferate."
-    )]
-    Choice,
-    #[schemars(description = "Continuous static effects and replacement effects.")]
-    Static,
-    #[schemars(description = "Specialized effects that do not fit a broader family yet.")]
-    Misc,
-    #[schemars(description = "Run multiple effects in order.")]
-    Sequence,
-    #[schemars(description = "Choose one effect branch during resolution.")]
-    ChooseOne,
-    #[schemars(
-        description = "Run effects only when a condition holds, with optional otherwise steps."
-    )]
-    Conditional,
-}
-
-#[cfg(feature = "card-schema")]
-#[allow(dead_code)]
-#[derive(schemars::JsonSchema, Deserialize)]
-struct EffectTomlSchema {
-    #[schemars(rename = "type")]
-    #[serde(rename = "type")]
-    effect_type: EffectTypeTomlSchema,
-    // WAVE_C: replace this catch-all payload with per-effect TOML surface structs.
-    #[serde(flatten)]
-    payload: serde_json::Value,
-}
-
-#[cfg(feature = "card-schema")]
-#[allow(dead_code)]
-#[derive(schemars::JsonSchema, Deserialize)]
-#[schemars(deny_unknown_fields)]
+/// An `[[abilities]]` table as spelled in TOML — flat: the `timing` string plus every cost
+/// piece, trigger sibling, and the `[[abilities.effects]]` list beside it. [`Ability`]'s
+/// `Deserialize` impl folds this into the nested runtime shape (`Timing::Activated`'s
+/// [`crate::ActivationCost`], the [`crate::Trigger`] a tag names, a one-or-many `effects`
+/// list). Sibling fields are read only by the timings that print them; the rest are ignored.
+#[derive(Deserialize)]
+#[cfg_attr(
+    feature = "card-schema",
+    derive(schemars::JsonSchema),
+    schemars(deny_unknown_fields)
+)]
 #[serde(deny_unknown_fields)]
-struct AbilityTomlSchema {
-    timing: String,
+pub struct AbilityToml {
+    pub(crate) timing: TimingName,
     #[serde(default)]
-    taps_self: bool,
+    pub(crate) taps_self: bool,
     #[serde(default)]
-    activation_cost: CostToml,
+    #[cfg_attr(feature = "card-schema", schemars(with = "CostToml"))]
+    pub(crate) activation_cost: Cost,
     #[serde(default)]
-    sacrifice: SacrificeCost,
+    pub(crate) sacrifice: SacrificeCost,
     #[serde(default)]
-    pay_life: Amount,
+    pub(crate) pay_life: Amount,
+    /// +1/+1 counters removed from the source as part of the activation cost (CR 118
+    /// "remove a counter" cost — Steelbane Hydra's "Remove a +1/+1 counter from this
+    /// creature").
     #[serde(default)]
-    remove_counters: u8,
+    pub(crate) remove_counters: u8,
+    /// Which counter kind `remove_counters` removes; unset (the default) is the +1/+1
+    /// path above (staff_of_the_storyteller's "remove a story counter" sets this).
     #[serde(default)]
-    remove_counters_kind: Option<CounterKind>,
+    pub(crate) remove_counters_kind: Option<CounterKind>,
+    /// "Remove X storage counters from this land" (fungal_reaches.toml) — the removal
+    /// count is a player-declared `{X}` instead of `remove_counters`'s fixed count.
     #[serde(default)]
-    remove_counters_x: bool,
+    pub(crate) remove_counters_x: bool,
     #[serde(default)]
-    self_damage: u8,
+    pub(crate) self_damage: u8,
     #[serde(default)]
-    loyalty: Option<i32>,
+    pub(crate) loyalty: Option<i32>,
+    /// "Activate only once each turn" (CR 602.2b) on an activated ability, or "this
+    /// ability triggers only once each turn" (CR) on a triggered one — one TOML key
+    /// feeding whichever struct `timing` resolves to (`ActivationCost` or [`Ability`]).
     #[serde(default)]
-    once_each_turn: bool,
+    pub(crate) once_each_turn: bool,
+    /// "Activate only as a sorcery" (CR 602.5b): restricts activation to a legal
+    /// sorcery-speed moment (Ozolith, the Shattered Spire's counter ability).
     #[serde(default)]
-    sorcery_speed: bool,
+    pub(crate) sorcery_speed: bool,
+    /// "Return this to its owner's hand" as part of the cost (Rootha, Mercurial
+    /// Artist's "Return Rootha to its owner's hand").
     #[serde(default)]
-    return_self: bool,
+    pub(crate) return_self: bool,
+    /// "Mill a card" as part of the cost (Millikin's "Mill a card").
     #[serde(default)]
-    mill_self: u8,
+    pub(crate) mill_self: u8,
+    /// "Discard a card" as part of the cost (Wild Mongrel's "Discard a card").
     #[serde(default)]
-    discard_cost: u8,
+    pub(crate) discard_cost: u8,
+    /// "Exile this artifact"/"exile this permanent" as part of the cost (Perpetual
+    /// Timepiece's "Exile this artifact").
     #[serde(default)]
-    exile_self: bool,
+    pub(crate) exile_self: bool,
+    /// "Exile N target cards from an opponent's graveyard" as an additional cost
+    /// (Spurnmage Advocate's "Exile two target cards from an opponent's graveyard").
     #[serde(default)]
-    graveyard_exile_target_count: u8,
+    pub(crate) graveyard_exile_target_count: u8,
     #[serde(default)]
-    condition: Option<Condition>,
+    pub(crate) condition: Option<Condition>,
     #[serde(default)]
-    optional: bool,
+    pub(crate) optional: bool,
+    /// The minimum Class level this ability requires to function (CR 717.5 — a Class's
+    /// level-gated abilities). `0` (the default, omitted in TOML) is unconditional.
     #[serde(default)]
-    min_level: u8,
+    pub(crate) min_level: u8,
+    /// The cost to accept an `optional` trigger (CR 603.2c "you may pay …"), e.g. Trudge
+    /// Garden's "you may pay {2}." Ignored for a non-optional ability. Same `[cost]`-table
+    /// shape as a spell's own top-level cost (§2); omitted = a plain free "may".
     #[serde(default)]
-    cost: CostToml,
+    #[cfg_attr(feature = "card-schema", schemars(with = "CostToml"))]
+    pub(crate) cost: Cost,
+    /// The permanent filter for a `you_sacrifice`/`any_player_sacrifices`/
+    /// `permanent_enters` trigger (Smothering Abomination's "a creature", Mazirek's
+    /// "another permanent", Ajani's Chosen's "an enchantment"). Ignored for every other
+    /// trigger/timing.
     #[serde(default)]
-    filter: PermanentFilter,
+    pub(crate) filter: PermanentFilter,
+    /// Whose permanent a `permanent_enters` trigger watches — `you` (default,
+    /// constellation's "an enchantment you control"), `opponent` (Archaeomancer's Map's
+    /// "a land an opponent controls"), or `any_player`. Ignored for every other
+    /// trigger/timing.
     #[serde(default)]
-    controller: String,
+    pub(crate) controller: EnterController,
+    /// Who a `deals_combat_damage_to_player` trigger watches (Leitmotif Composer's
+    /// `this`, Ohran Frostfang's `your_creatures`, Curiosity Crafter's `your_tokens`,
+    /// Contaminant Grafter's batch-once `your_creatures_batch`). Ignored for every other
+    /// trigger/timing.
     #[serde(default)]
-    who: String,
+    pub(crate) who: CombatDamageScope,
+    /// Which permanent a `becomes_targeted` trigger watches — `this` (default, Goldspan
+    /// Dragon) or `creature_you_control` (Venerated Rotpriest). Ignored for every other
+    /// trigger/timing.
     #[serde(default)]
-    targeted: String,
+    pub(crate) targeted: BecomesTargetedScope,
+    /// The spell filter for a `cast_spell` trigger (Monologue Tax's "a spell", Sram
+    /// Senior Edificer's "an Aura, Equipment, or Vehicle spell"). Named distinctly from
+    /// `filter` (a [`PermanentFilter`], taken by the sacrifice triggers above). Ignored
+    /// for every other trigger/timing.
     #[serde(default)]
-    spell_filter: SpellFilter,
+    pub(crate) spell_filter: SpellFilter,
+    /// Whose cast a `cast_spell` trigger watches — `you` (default), `opponent`
+    /// (Monologue Tax, Mangara), or `any_player`. Ignored for every other trigger/timing.
     #[serde(default)]
-    caster: String,
+    pub(crate) caster: CasterScope,
+    /// Whose draw a `player_draws` trigger watches — `you` (default), `opponent`
+    /// (Faerie Mastermind), or `any_player`. Ignored for every other trigger/timing.
     #[serde(default)]
-    drawer: String,
+    pub(crate) drawer: CasterScope,
+    /// Restricts a `cast_spell`/`player_draws` trigger to exactly the watched player's
+    /// Nth spell/draw that turn (Monologue Tax/Mangara's "their second spell each turn",
+    /// Faerie Mastermind's "their second card each turn" — `2`). `None` (the default,
+    /// omitted in TOML) fires on every matching cast/draw. Ignored for every other
+    /// trigger/timing.
     #[serde(default)]
-    nth_each_turn: Option<u8>,
+    pub(crate) nth_each_turn: Option<u8>,
+    /// Restricts a `cast_spell` trigger to a spell cast from its controller's hand (CR
+    /// 601's default cast zone) — Dirgur Focusmage's "you cast … from your hand". `false`
+    /// (the default, omitted in TOML) fires on a cast from any zone (flashback/escape,
+    /// the command zone, an impulse-play permission). Ignored for every other
+    /// trigger/timing.
     #[serde(default)]
-    from_hand: bool,
+    pub(crate) from_hand: bool,
+    /// The attacker-count threshold for a `you_attack_with_creatures`/
+    /// `opponent_attacks_you_with_creatures`/`creature_enchanted_by_your_aura_attacks`
+    /// trigger (Firemane Commando/Mangara/Tomik's "two or more creatures" — `2`; Killian,
+    /// Decisive Mentor's "one or more" — `1`). Ignored for every other trigger/timing.
     #[serde(default)]
-    at_least: u8,
+    pub(crate) at_least: u8,
+    /// Which cast a `spend_mana_to_cast` trigger accepts (Study Hall/Opal Palace's
+    /// `commander`, Path of Ancestry's `creature_sharing_type_with_commander`). Ignored for
+    /// every other trigger/timing; the field is required only when `timing =
+    /// "spend_mana_to_cast"`, defaulting to `commander` otherwise (unread).
+    #[serde(default = "crate::de::default_spend_predicate")]
+    pub(crate) spend_predicate: SpendToCastPredicate,
+    /// The ability's effect(s), always the array-of-tables `[[abilities.effects]]` form
+    /// (even a single-effect ability uses a one-element list). An ordered list runs as one
+    /// resolution, sharing the ability's target/`{X}` (Faithless Looting's "draw two cards,
+    /// then discard two cards"); a one-element list is just that effect (no Sequence
+    /// wrapper).
     #[serde(default)]
-    spend_predicate: String,
-    #[serde(default)]
-    effects: Vec<EffectTomlSchema>,
-}
-
-/// The author-facing shape of a [`crate::AlternativeCost`] — an optional [`Condition`] gate plus
-/// a `rider` effect. The runtime type leaks its `rider` to `&'static Effect`, so its schema is
-/// mirrored here to reference the shared [`EffectTomlSchema`] surface instead.
-#[cfg(feature = "card-schema")]
-#[allow(dead_code)]
-#[derive(schemars::JsonSchema, Deserialize)]
-#[schemars(deny_unknown_fields)]
-#[serde(deny_unknown_fields)]
-struct AlternativeCostTomlSchema {
-    #[serde(default)]
-    condition: Option<Condition>,
-    rider: EffectTomlSchema,
-}
-
-#[cfg(feature = "card-schema")]
-#[allow(dead_code)]
-#[derive(schemars::JsonSchema, Deserialize)]
-#[schemars(deny_unknown_fields)]
-#[serde(deny_unknown_fields)]
-struct SuspendTomlSchema {
-    counters: u32,
-    cost: CostToml,
-}
-
-#[cfg(feature = "card-schema")]
-#[allow(dead_code)]
-#[derive(schemars::JsonSchema, Deserialize)]
-#[schemars(deny_unknown_fields)]
-#[serde(deny_unknown_fields)]
-struct HandActivatedAbilityTomlSchema {
-    cost: CostToml,
-    #[serde(default)]
-    effects: Vec<EffectTomlSchema>,
+    pub(crate) effects: Vec<Effect>,
 }
 
 /// One entry of `CardDef::conditional_keywords` as spelled in TOML — an
@@ -279,7 +253,7 @@ pub struct CardToml {
     #[serde(default)]
     pub conditional_keywords: Vec<ConditionalKeywordToml>,
     #[serde(default)]
-    #[cfg_attr(feature = "card-schema", schemars(with = "Vec<AbilityTomlSchema>"))]
+    #[cfg_attr(feature = "card-schema", schemars(with = "Vec<AbilityToml>"))]
     /// Authored rules text as ability blocks. Each block has a `timing` and one or more
     /// `effects`; multiple effects fold into `Effect::Sequence` in order.
     pub abilities: Vec<Ability>,
@@ -312,10 +286,6 @@ pub struct CardToml {
     /// A printed non-mana alternative cost (CR 601.2f) — `alternative_cost = { condition =
     /// { .. }, rider = { .. } }`; absent for a card without one.
     #[serde(default)]
-    #[cfg_attr(
-        feature = "card-schema",
-        schemars(with = "Option<AlternativeCostTomlSchema>")
-    )]
     pub alternative_cost: Option<AlternativeCost>,
     /// "Cast this spell only during combat" (CR 601.3e) — `cast_only_during_combat = true`;
     /// absent (`false`) for every ordinary card.
@@ -440,7 +410,6 @@ pub struct CardToml {
     /// Suspend N—[cost] (CR 702.62, Rousing Refrain) — a `[suspend]` table whose `cost`
     /// sub-table is leaked to `'static` by the `Suspend` impl. Absent for ordinary cards.
     #[serde(default)]
-    #[cfg_attr(feature = "card-schema", schemars(with = "Option<SuspendTomlSchema>"))]
     pub suspend: Option<Suspend>,
     /// Enter-as-a-copy replacement (CR 706/707.2) — an inline `enter_as_copy = { .. }`
     /// table (`until_eot`/`extra_counters`/`gains_haste`, all optional). Absent for a card
@@ -458,19 +427,11 @@ pub struct CardToml {
     /// each), one per typecycling type (CR 702.29d — Valley Rannet's mountaincycling and
     /// forestcycling). Empty for a card without one.
     #[serde(default)]
-    #[cfg_attr(
-        feature = "card-schema",
-        schemars(with = "Vec<HandActivatedAbilityTomlSchema>")
-    )]
     pub hand_ability: Vec<HandActivatedAbility>,
     /// Forecast (CR 702.57, Skyscribing) — a `[forecast]` table (`[forecast.cost]` +
     /// `[[forecast.effects]]`), the reveal-and-keep sibling of `hand_ability`. Absent for
     /// a card without one.
     #[serde(default)]
-    #[cfg_attr(
-        feature = "card-schema",
-        schemars(with = "Option<HandActivatedAbilityTomlSchema>")
-    )]
     pub forecast: Option<HandActivatedAbility>,
     /// "You may choose not to untap this during your untap step" (CR 502.2 — Rubinia
     /// Soulsinger) — `may_choose_not_to_untap = true`; absent (`false`) for every ordinary

@@ -390,6 +390,7 @@ pub enum AmountZone {
     derive(serde::Deserialize),
     serde(rename_all = "snake_case")
 )]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 pub enum LandTapScope {
     /// Only the land this watcher (an Aura) is attached to — Fertile Ground's "enchanted land".
     #[default]
@@ -406,6 +407,7 @@ pub enum LandTapScope {
     derive(serde::Deserialize),
     serde(rename_all = "snake_case")
 )]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 pub enum LandTapBonusColor {
     /// "One mana of any color" — the controller names it, so the bonus pauses on a
     /// [`PendingChoice::ChooseManaColor`](crate::PendingChoice::ChooseManaColor) (Fertile Ground).
@@ -435,6 +437,7 @@ pub enum LandTapBonusColor {
     derive(serde::Deserialize),
     serde(tag = "type", rename_all = "snake_case")
 )]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 pub enum Effect {
     Damage(DamageEffect),
     Draw(DrawEffect),
@@ -1132,6 +1135,7 @@ impl Effect {
     derive(serde::Deserialize),
     serde(rename_all = "snake_case")
 )]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 pub enum CounteredDest {
     /// "Put that card on the top or bottom of its owner's library" — the countering ability's
     /// controller picks, via a [`PendingChoice::ChooseCounteredSpellDestination`] pause.
@@ -1268,6 +1272,7 @@ impl CounterKind {
     derive(serde::Deserialize),
     serde(rename_all = "snake_case")
 )]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 pub enum PlayerCounterKind {
     /// A poison counter (CR 122.1, CR 704.5c — ten or more loses the game). Placed by infect
     /// damage (CR 702.90), toxic (CR 702.164), and "gets a poison counter" effects.
@@ -1317,6 +1322,7 @@ pub struct CumulativeUpkeepCost {
     derive(serde::Deserialize),
     serde(rename_all = "snake_case")
 )]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 pub enum AbilityRestriction {
     /// Prison Term: "Enchanted creature can't attack or block, and its activated abilities
     /// can't be activated." No activated ability of the host's may be activated, mana or not.
@@ -1346,6 +1352,7 @@ pub enum AbilityRestriction {
     derive(serde::Deserialize),
     serde(deny_unknown_fields, rename_all = "snake_case")
 )]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 pub struct GrantedAbility {
     /// The granted ability's activation cost, spelled as the same flat fields an inline
     /// [`ActivationCost`] uses (Fallen Ideal: `sacrifice = { creature = {} }`, no mana). Unused
@@ -1367,6 +1374,10 @@ pub struct GrantedAbility {
         feature = "card-dsl",
         serde(default, deserialize_with = "de::opt_granted_trigger")
     )]
+    #[cfg_attr(
+        feature = "card-schema",
+        schemars(with = "Option<crate::de::GrantedTriggerTag>")
+    )]
     pub trigger: Option<Trigger>,
 }
 
@@ -1383,6 +1394,7 @@ pub struct GrantedAbility {
     derive(serde::Deserialize),
     serde(deny_unknown_fields, rename_all = "snake_case")
 )]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 pub struct ReanimateBecomes {
     #[cfg_attr(feature = "card-dsl", serde(default))]
     pub add_types: TypeSet,
@@ -1413,6 +1425,7 @@ pub struct ReanimateBecomes {
     derive(serde::Deserialize),
     serde(default, deny_unknown_fields, rename_all = "snake_case")
 )]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 pub struct ActivationCost {
     pub taps_self: bool,
     pub mana: Cost,

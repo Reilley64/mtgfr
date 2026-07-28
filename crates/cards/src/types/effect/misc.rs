@@ -9,6 +9,7 @@ use crate::de;
     derive(serde::Deserialize),
     serde(tag = "mode", rename_all = "snake_case")
 )]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 pub enum MiscEffect {
     ArmCombatDamageWatch,
 
@@ -47,6 +48,7 @@ pub enum MiscEffect {
     /// [`CardKind::Spell`], whose [`TypeSet`] is empty.
     GetEmblem {
         #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::token_profile"))]
+        #[cfg_attr(feature = "card-schema", schemars(with = "String"))]
         emblem: CardDef,
     },
 
@@ -62,6 +64,7 @@ pub enum MiscEffect {
 
     PreventCombatDamageToYouCreatingTokens {
         #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::token_profile"))]
+        #[cfg_attr(feature = "card-schema", schemars(with = "String"))]
         token: CardDef,
     },
 

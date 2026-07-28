@@ -18,13 +18,13 @@ use serde::Deserialize;
 use serde::de::{self, Deserializer, IntoDeserializer, Visitor};
 
 use crate::{
-    Ability, ActivationCost, AdditionalCost, Amount, AmountZone, BecomesTargetedScope, CardDef,
-    CardFilter, CardKind, CasterScope, Color, ColorFilter, CombatDamageScope, Condition, Cost,
-    CounterAxis, CounterKind, EdictScope, Effect, EnterController, FilterController,
-    GrantedAbility, LandProduces, Mana, ManaPool, Parity, PermanentFilter, ProtectionScope,
-    ReanimateBecomes, SacrificeAdditionalCost, SacrificeAdditionalCostCount, SacrificeCost,
-    SpellFilter, SpendToCastPredicate, TargetCount, Timing, TokenFilter, Trigger, TypeSet,
-    toml_surface::{CardToml, CostToml, KindToml},
+    Ability, ActivationCost, AdditionalCost, Amount, AmountZone, CardDef, CardFilter, CardKind,
+    Color, ColorFilter, CombatDamageScope, Condition, Cost, CounterAxis, CounterKind, EdictScope,
+    Effect, FilterController, GrantedAbility, LandProduces, Mana, ManaPool, Parity,
+    PermanentFilter, ProtectionScope, ReanimateBecomes, SacrificeAdditionalCost,
+    SacrificeAdditionalCostCount, SacrificeCost, SpendToCastPredicate, TargetCount, Timing,
+    TokenFilter, Trigger, TypeSet,
+    toml_surface::{AbilityToml, CardToml, CostToml, KindToml},
 };
 
 /// Token profiles loaded from `cards/data/tokens/` before deckable cards deserialize. Keyed by
@@ -111,8 +111,9 @@ where
 /// ponytail: only `DealsCombatDamageToPlayer` is wired — extend this tag (mirroring
 /// `TriggerTag`) the moment a second granted-trigger card needs a different flavor.
 #[derive(Deserialize)]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 #[serde(rename_all = "snake_case")]
-enum GrantedTriggerTag {
+pub enum GrantedTriggerTag {
     DealsCombatDamageToPlayer {
         #[serde(default)]
         who: CombatDamageScope,
@@ -897,6 +898,37 @@ impl<'de> Deserialize<'de> for Amount {
 ///
 /// ponytail: no pool card needs a *fixed* range yet (Aether Gale is exactly six); the table form
 /// is here so "up to N"/"one or two" cards don't need a new deserializer when they land.
+/// The `{ min, max, …scaled }` table form of a [`TargetCount`] (the other form is a bare
+/// integer). Lives at module level so the JSON Schema can point at the same fields the visitor
+/// below reads.
+#[derive(Deserialize)]
+#[cfg_attr(
+    feature = "card-schema",
+    derive(schemars::JsonSchema),
+    schemars(deny_unknown_fields)
+)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct TargetCountToml {
+    #[serde(default)]
+    pub(crate) min: u8,
+    #[serde(default)]
+    pub(crate) max: u8,
+    #[serde(default)]
+    pub(crate) x_scaled: bool,
+    #[serde(default)]
+    pub(crate) sacrifice_scaled: bool,
+    #[serde(default)]
+    pub(crate) strive_scaled: bool,
+    #[serde(default)]
+    pub(crate) total_mv_max: Option<Amount>,
+    #[serde(default)]
+    pub(crate) multikicker_scaled: bool,
+    #[serde(default)]
+    pub(crate) kicked_scaled: bool,
+    #[serde(default)]
+    pub(crate) main_phase_scaled: bool,
+}
+
 impl<'de> Deserialize<'de> for TargetCount {
     fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         struct CountVisitor;
@@ -939,29 +971,7 @@ impl<'de> Deserialize<'de> for TargetCount {
             }
 
             fn visit_map<A: de::MapAccess<'de>>(self, map: A) -> Result<TargetCount, A::Error> {
-                #[derive(Deserialize)]
-                #[serde(deny_unknown_fields)]
-                struct Table {
-                    #[serde(default)]
-                    min: u8,
-                    #[serde(default)]
-                    max: u8,
-                    #[serde(default)]
-                    x_scaled: bool,
-                    #[serde(default)]
-                    sacrifice_scaled: bool,
-                    #[serde(default)]
-                    strive_scaled: bool,
-                    #[serde(default)]
-                    total_mv_max: Option<Amount>,
-                    #[serde(default)]
-                    multikicker_scaled: bool,
-                    #[serde(default)]
-                    kicked_scaled: bool,
-                    #[serde(default)]
-                    main_phase_scaled: bool,
-                }
-                let t = Table::deserialize(de::value::MapAccessDeserializer::new(map))?;
+                let t = TargetCountToml::deserialize(de::value::MapAccessDeserializer::new(map))?;
                 if t.min > t.max {
                     return Err(de::Error::custom("target count min exceeds max"));
                 }
@@ -1351,10 +1361,29 @@ impl<'de> Deserialize<'de> for SacrificeCost {
 /// [`AnotherPlayerAttacksWithCreatures`](TriggerTag::AnotherPlayerAttacksWithCreatures) reuse
 /// that same `at_least` sibling. A ninth ([`SpellTargetsThisOnly`](TriggerTag::SpellTargetsThisOnly),
 /// `timing = "spell_targets_this"`) reuses `CastSpell`'s `spell_filter` sibling.
+/// The three timings that aren't a [`Trigger`].
 #[derive(Deserialize)]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 #[serde(rename_all = "snake_case")]
-enum TriggerTag {
-    #[serde(alias = "etb_triggered")]
+pub(crate) enum SpecialTiming {
+    Spell,
+    Static,
+    Activated,
+}
+
+/// An ability's `timing` string: one of the three non-trigger timings, or a trigger tag.
+#[derive(Deserialize)]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
+#[serde(untagged)]
+pub(crate) enum TimingName {
+    Special(SpecialTiming),
+    Trigger(TriggerTag),
+}
+
+#[derive(Deserialize)]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
+#[serde(rename_all = "snake_case")]
+pub(crate) enum TriggerTag {
     Etb,
     AsEnters,
     TurnedFaceUp,
@@ -1389,13 +1418,11 @@ enum TriggerTag {
     OpponentAttacksYouWithCreatures,
     AnotherPlayerAttacksWithCreatures,
     CreatureAttacks,
-    /// Equipment's own name for the same "whenever the permanent this is attached to attacks"
-    /// firing path (CR 508.1) — Fractal Harness's "whenever equipped creature attacks". The
-    /// underlying [`Trigger::EnchantedCreatureAttacks`] already fires off any attached permanent,
-    /// Aura or Equipment (see [`Game::queue_enchanted_creature_attacks_triggers`], which reads
-    /// [`Game::attachments`] rather than filtering to Auras); this is a card-authoring alias only,
-    /// not a distinct engine trigger.
-    #[serde(alias = "equipped_creature_attacks")]
+    /// "Whenever the permanent this is attached to attacks" (CR 508.1) — an Aura's "whenever
+    /// enchanted creature attacks" *and* an Equipment's "whenever equipped creature attacks"
+    /// (Fractal Harness), which is the same firing path: [`Trigger::EnchantedCreatureAttacks`]
+    /// fires off any attached permanent (see [`Game::queue_enchanted_creature_attacks_triggers`],
+    /// which reads [`Game::attachments`] rather than filtering to Auras).
     EnchantedCreatureAttacks,
     EnchantedCreatureDies,
     /// Whenever the enchanted host deals damage, combat or noncombat (Armadillo Cloak's "you gain
@@ -1419,7 +1446,6 @@ enum TriggerTag {
     CardsLeaveYourGraveyard,
     CardsExiledFromYourLibraryOrGraveyard,
     YouCreateToken,
-    #[serde(alias = "becomes_the_target")]
     BecomesTargeted,
     #[serde(rename = "spell_targets_this")]
     SpellTargetsThisOnly,
@@ -1442,165 +1468,7 @@ enum TriggerTag {
 /// `loyalty`, `once_each_turn`) sit beside it rather than nested inside [`Timing::Activated`].
 impl<'de> Deserialize<'de> for Ability {
     fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        /// The three timings that aren't a [`Trigger`].
-        #[derive(Deserialize)]
-        #[serde(rename_all = "snake_case")]
-        enum SpecialTiming {
-            Spell,
-            Static,
-            Activated,
-        }
-
-        #[derive(Deserialize)]
-        #[serde(untagged)]
-        enum TimingName {
-            Special(SpecialTiming),
-            Trigger(TriggerTag),
-        }
-
-        #[derive(Deserialize)]
-        #[serde(deny_unknown_fields)]
-        struct Flat {
-            timing: TimingName,
-            #[serde(default)]
-            taps_self: bool,
-            #[serde(default)]
-            activation_cost: Cost,
-            #[serde(default)]
-            sacrifice: SacrificeCost,
-            #[serde(default)]
-            pay_life: Amount,
-            /// +1/+1 counters removed from the source as part of the activation cost (CR 118
-            /// "remove a counter" cost — Steelbane Hydra's "Remove a +1/+1 counter from this
-            /// creature").
-            #[serde(default)]
-            remove_counters: u8,
-            /// Which counter kind `remove_counters` removes; unset (the default) is the +1/+1
-            /// path above (staff_of_the_storyteller's "remove a story counter" sets this).
-            #[serde(default)]
-            remove_counters_kind: Option<CounterKind>,
-            /// "Remove X storage counters from this land" (fungal_reaches.toml) — the removal
-            /// count is a player-declared `{X}` instead of `remove_counters`'s fixed count.
-            #[serde(default)]
-            remove_counters_x: bool,
-            #[serde(default)]
-            self_damage: u8,
-            #[serde(default)]
-            loyalty: Option<i32>,
-            /// "Activate only once each turn" (CR 602.2b) on an activated ability, or "this
-            /// ability triggers only once each turn" (CR) on a triggered one — one TOML key
-            /// feeding whichever struct `timing` resolves to below (`ActivationCost` or
-            /// `Ability` itself).
-            #[serde(default)]
-            once_each_turn: bool,
-            /// "Activate only as a sorcery" (CR 602.5b): restricts activation to a legal
-            /// sorcery-speed moment (Ozolith, the Shattered Spire's counter ability).
-            #[serde(default)]
-            sorcery_speed: bool,
-            /// "Return this to its owner's hand" as part of the cost (Rootha, Mercurial
-            /// Artist's "Return Rootha to its owner's hand").
-            #[serde(default)]
-            return_self: bool,
-            /// "Mill a card" as part of the cost (Millikin's "Mill a card").
-            #[serde(default)]
-            mill_self: u8,
-            /// "Discard a card" as part of the cost (Wild Mongrel's "Discard a card").
-            #[serde(default)]
-            discard_cost: u8,
-            /// "Exile this artifact"/"exile this permanent" as part of the cost (Perpetual
-            /// Timepiece's "Exile this artifact").
-            #[serde(default)]
-            exile_self: bool,
-            /// "Exile N target cards from an opponent's graveyard" as an additional cost
-            /// (Spurnmage Advocate's "Exile two target cards from an opponent's graveyard").
-            #[serde(default)]
-            graveyard_exile_target_count: u8,
-            #[serde(default)]
-            condition: Option<Condition>,
-            #[serde(default)]
-            optional: bool,
-            /// The minimum Class level this ability requires to function (CR 717.5 — a Class's
-            /// level-gated abilities). `0` (the default, omitted in TOML) is unconditional.
-            #[serde(default)]
-            min_level: u8,
-            /// The cost to accept an `optional` trigger (CR 603.2c "you may pay …"), e.g. Trudge
-            /// Garden's "you may pay {2}." Ignored for a non-optional ability. Same `[cost]`-table
-            /// shape as a spell's own top-level cost (§2); omitted = a plain free "may".
-            #[serde(default)]
-            cost: Cost,
-            /// The permanent filter for a `you_sacrifice`/`any_player_sacrifices`/
-            /// `permanent_enters` trigger (Smothering Abomination's "a creature", Mazirek's
-            /// "another permanent", Ajani's Chosen's "an enchantment"). Ignored for every other
-            /// trigger/timing.
-            #[serde(default)]
-            filter: PermanentFilter,
-            /// Whose permanent a `permanent_enters` trigger watches — `you` (default,
-            /// constellation's "an enchantment you control"), `opponent` (Archaeomancer's Map's
-            /// "a land an opponent controls"), or `any_player`. Ignored for every other
-            /// trigger/timing.
-            #[serde(default)]
-            controller: EnterController,
-            /// Who a `deals_combat_damage_to_player` trigger watches (Leitmotif Composer's
-            /// `this`, Ohran Frostfang's `your_creatures`, Curiosity Crafter's `your_tokens`,
-            /// Contaminant Grafter's batch-once `your_creatures_batch`). Ignored for every other
-            /// trigger/timing.
-            #[serde(default)]
-            who: CombatDamageScope,
-            /// Which permanent a `becomes_targeted` trigger watches — `this` (default, Goldspan
-            /// Dragon) or `creature_you_control` (Venerated Rotpriest). Ignored for every other
-            /// trigger/timing.
-            #[serde(default)]
-            targeted: BecomesTargetedScope,
-            /// The spell filter for a `cast_spell` trigger (Monologue Tax's "a spell", Sram
-            /// Senior Edificer's "an Aura, Equipment, or Vehicle spell"). Named distinctly from
-            /// `filter` (a [`PermanentFilter`], taken by the sacrifice triggers above). Ignored
-            /// for every other trigger/timing.
-            #[serde(default)]
-            spell_filter: SpellFilter,
-            /// Whose cast a `cast_spell` trigger watches — `you` (default), `opponent`
-            /// (Monologue Tax, Mangara), or `any_player`. Ignored for every other trigger/timing.
-            #[serde(default)]
-            caster: CasterScope,
-            /// Whose draw a `player_draws` trigger watches — `you` (default), `opponent`
-            /// (Faerie Mastermind), or `any_player`. Ignored for every other trigger/timing.
-            #[serde(default)]
-            drawer: CasterScope,
-            /// Restricts a `cast_spell`/`player_draws` trigger to exactly the watched player's
-            /// Nth spell/draw that turn (Monologue Tax/Mangara's "their second spell each turn",
-            /// Faerie Mastermind's "their second card each turn" — `2`). `None` (the default,
-            /// omitted in TOML) fires on every matching cast/draw. Ignored for every other
-            /// trigger/timing.
-            #[serde(default)]
-            nth_each_turn: Option<u8>,
-            /// Restricts a `cast_spell` trigger to a spell cast from its controller's hand (CR
-            /// 601's default cast zone) — Dirgur Focusmage's "you cast … from your hand". `false`
-            /// (the default, omitted in TOML) fires on a cast from any zone (flashback/escape,
-            /// the command zone, an impulse-play permission). Ignored for every other
-            /// trigger/timing.
-            #[serde(default)]
-            from_hand: bool,
-            /// The attacker-count threshold for a `you_attack_with_creatures`/
-            /// `opponent_attacks_you_with_creatures`/`creature_enchanted_by_your_aura_attacks`
-            /// trigger (Firemane Commando/Mangara/Tomik's "two or more creatures" — `2`; Killian,
-            /// Decisive Mentor's "one or more" — `1`). Ignored for every other trigger/timing.
-            #[serde(default)]
-            at_least: u8,
-            /// Which cast a `spend_mana_to_cast` trigger accepts (Study Hall/Opal Palace's
-            /// `commander`, Path of Ancestry's `creature_sharing_type_with_commander`). Ignored for
-            /// every other trigger/timing; the field is required only when `timing =
-            /// "spend_mana_to_cast"`, defaulting to `commander` otherwise (unread).
-            #[serde(default = "default_spend_predicate")]
-            spend_predicate: SpendToCastPredicate,
-            /// The ability's effect(s), always the array-of-tables `[[abilities.effects]]` form
-            /// (even a single-effect ability uses a one-element list). An ordered list runs as one
-            /// resolution, sharing the ability's target/`{X}` (Faithless Looting's "draw two cards,
-            /// then discard two cards"); a one-element list is just that effect (no Sequence
-            /// wrapper).
-            #[serde(default)]
-            effects: Vec<Effect>,
-        }
-
-        let flat = Flat::deserialize(d)?;
+        let flat = AbilityToml::deserialize(d)?;
         let effect = match flat.effects.as_slice() {
             [] => {
                 return Err(de::Error::custom(

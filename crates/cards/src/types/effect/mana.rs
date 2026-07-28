@@ -9,12 +9,14 @@ use crate::de;
     derive(serde::Deserialize),
     serde(tag = "mode", rename_all = "snake_case")
 )]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 pub enum ManaEffect {
     Add {
         #[cfg_attr(
             feature = "card-dsl",
             serde(default, deserialize_with = "de::mana_batch")
         )]
+        #[cfg_attr(feature = "card-schema", schemars(with = "Vec<crate::Mana>"))]
         mana: ManaPool,
         #[cfg_attr(feature = "card-dsl", serde(default))]
         identity: u8,

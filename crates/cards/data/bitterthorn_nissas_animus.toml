@@ -50,7 +50,7 @@ toughness = 1
 # Whenever equipped creature attacks, you may search your library for a basic land card, put it
 # onto the battlefield tapped, then shuffle.
 [[abilities]]
-timing = "equipped_creature_attacks"
+timing = "enchanted_creature_attacks"
 optional = true
 
 # search your library for a basic land card, put it onto the battlefield tapped, then shuffle.

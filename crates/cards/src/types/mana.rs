@@ -382,6 +382,7 @@ pub enum RestrictedManaBase {
     derive(serde::Deserialize),
     serde(rename_all = "snake_case")
 )]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 pub enum SpendRestriction {
     /// "Spend this mana only to cast an instant or sorcery spell" (Galazeth Prismari's granted
     /// artifact ability).

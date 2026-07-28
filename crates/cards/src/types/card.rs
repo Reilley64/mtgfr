@@ -64,6 +64,7 @@ pub enum Zone {
     derive(serde::Deserialize),
     serde(rename_all = "snake_case")
 )]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 pub enum Step {
     Untap,
     /// The default [`Effect::Misc(MiscEffect::ScheduleAtNextUpkeep)`] `fire_at` — CR 603.7's "next upkeep".
@@ -494,6 +495,7 @@ pub struct Ability {
     derive(serde::Deserialize),
     serde(deny_unknown_fields, rename_all = "snake_case")
 )]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 pub struct AlternativeCost {
     /// The board-state gate gating the alternative (Invigorate's "if you control a Forest").
     /// `None` if the alternative is always offered.
@@ -936,6 +938,7 @@ pub struct CardDef {
     derive(serde::Deserialize),
     serde(rename_all = "snake_case")
 )]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 pub enum CastXMax {
     /// "X can't be greater than the number of players in the game" — the count of living seats
     /// (CR 800.4a losers drop out), read from [`Game::living_player_count`].
@@ -992,6 +995,7 @@ pub enum CopyTargetKind {
     derive(serde::Deserialize),
     serde(deny_unknown_fields)
 )]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 pub struct Suspend {
     pub counters: u32,
     #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::leaked_cost"))]
@@ -1009,6 +1013,7 @@ pub struct Suspend {
     derive(serde::Deserialize),
     serde(deny_unknown_fields)
 )]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 pub struct HandActivatedAbility {
     pub cost: Cost,
     #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::arc_slice"))]

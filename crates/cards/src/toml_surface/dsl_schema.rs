@@ -17,8 +17,8 @@ use crate::de::{PERMANENT_FILTER_SHORTHANDS, SACRIFICE_COST_SHORTHANDS, TYPE_NAM
 use crate::toml_surface::CostToml;
 use crate::{
     AdditionalCost, Amount, AmountZone, Color, ColorFilter, Condition, Cost, CounterAxis,
-    CounterKind, FilterController, LandProduces, Parity, PermanentFilter, ProtectionScope,
-    SacrificeCost, TokenFilter, TypeSet,
+    CounterKind, FilterController, LandProduces, Mana, Parity, PermanentFilter, ProtectionScope,
+    SacrificeCost, TargetCount, TokenFilter, TypeSet,
 };
 
 // ── schema-building helpers ─────────────────────────────────────────────────────────
@@ -420,4 +420,46 @@ fn sacrifice_cost_table_schema(generator: &mut SchemaGenerator) -> Schema {
     object.object().additional_properties = Some(Box::new(Schema::Bool(false)));
     object.subschemas().any_of = Some(vec![required_key("creature"), required_key("permanent")]);
     Schema::Object(object)
+}
+
+// ── Mana: a mana-symbol name or a 2-to-4-color choice array ──────────────────────────
+
+impl JsonSchema for Mana {
+    fn schema_name() -> String {
+        "Mana".to_owned()
+    }
+
+    fn json_schema(_gen: &mut SchemaGenerator) -> Schema {
+        one_of(vec![
+            string_enum(&["white", "blue", "black", "red", "green", "colorless", "any"]),
+            color_choice_array(),
+        ])
+    }
+}
+
+// ── TargetCount: a bare count or a `{ min, max, …scaled }` range table ───────────────
+
+impl JsonSchema for TargetCount {
+    fn schema_name() -> String {
+        "TargetCount".to_owned()
+    }
+
+    fn json_schema(generator: &mut SchemaGenerator) -> Schema {
+        one_of(vec![
+            generator.subschema_for::<u8>(),
+            generator.subschema_for::<crate::de::TargetCountToml>(),
+        ])
+    }
+}
+
+// ── `count_or_any`: a fixed count or the `"any"` keyword ─────────────────────────────
+
+/// The TOML shape accepted by [`crate::de`]'s `count_or_any` — a fixed count, or `"any"` for
+/// "any number" (a search that may take every match).
+#[allow(dead_code)]
+#[derive(JsonSchema)]
+#[schemars(untagged)]
+pub enum CountOrAnyToml {
+    Any(String),
+    Fixed(u8),
 }

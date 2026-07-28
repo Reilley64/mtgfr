@@ -9,6 +9,7 @@ use crate::de;
     derive(serde::Deserialize),
     serde(tag = "mode", rename_all = "snake_case")
 )]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 pub enum ChoiceEffect {
     CastCreatureFaceDown,
 
@@ -58,6 +59,7 @@ pub enum ChoiceEffect {
 
     EachPlayerCreatesFractalFromExiledPower {
         #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::token_profile"))]
+        #[cfg_attr(feature = "card-schema", schemars(with = "String"))]
         token: CardDef,
     },
 

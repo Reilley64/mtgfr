@@ -14,9 +14,9 @@ This mirrors the DSL's top-level card shape with owned fields, then folds into t
 
 | Field | Type | Required | Default | Description |
 |---|---|---:|---|---|
-| `abilities` | array<AbilityTomlSchema> | no | - | Authored rules text as ability blocks. Each block has a `timing` and one or more `effects`; multiple effects fold into `Effect::Sequence` in order. |
+| `abilities` | array<AbilityToml> | no | - | Authored rules text as ability blocks. Each block has a `timing` and one or more `effects`; multiple effects fold into `Effect::Sequence` in order. |
 | `adventure` | CardToml \| null | no | - | An adventure card's adventure half (CR 715, soc/sos) — an inline `[adventure]` `CardDef` table (its own `cost`, `kind`, `abilities`), parsed like `back` and interned below. Absent for ordinary cards. |
-| `alternative_cost` | AlternativeCostTomlSchema \| null | no | - | A printed non-mana alternative cost (CR 601.2f) — `alternative_cost = { condition = { .. }, rider = { .. } }`; absent for a card without one. |
+| `alternative_cost` | AlternativeCost \| null | no | - | A printed non-mana alternative cost (CR 601.2f) — `alternative_cost = { condition = { .. }, rider = { .. } }`; absent for a card without one. |
 | `approximates` | string \| null | no | `null` | Machine-readable fidelity note for modeled divergences. Set this whenever a `# ponytail:` comment marks a deliberate simplification; leave absent for faithful cards. |
 | `back` | CardToml \| null | no | - | A "prepare" DFC's back face (soc/sos) — an inline `[back]` `CardDef` table, parsed via `CardDef`'s own impl and interned below. Absent for ordinary cards. |
 | `bestow` | CostToml \| null | no | - | Bestow (CR 702.103) — `[bestow]` with the same `[cost]`-table shape as `[echo]`; absent for a card without bestow. |
@@ -50,12 +50,12 @@ This mirrors the DSL's top-level card shape with owned fields, then folds into t
 | `escape` | EscapeCost \| null | no | - | Escape (CR 702.19) — `[escape]` (an `[escape.cost]` sub-table plus `exile`/ `plus_one_plus_one_counters`); absent for a card without escape. |
 | `evoke` | CostToml \| null | no | - | Evoke (CR 702.74) — `[evoke]` with the same `[cost]`-table shape as `[echo]`; absent for a card without evoke. |
 | `flashback` | CostToml \| null | no | - | Flashback (CR 702.34) — `[flashback]` with the same `[cost]`-table shape (may carry a `[flashback.additional]` rider); absent for a card without flashback. |
-| `forecast` | HandActivatedAbilityTomlSchema \| null | no | - | Forecast (CR 702.57, Skyscribing) — a `[forecast]` table (`[forecast.cost]` + `[[forecast.effects]]`), the reveal-and-keep sibling of `hand_ability`. Absent for a card without one. |
+| `forecast` | HandActivatedAbility \| null | no | - | Forecast (CR 702.57, Skyscribing) — a `[forecast]` table (`[forecast.cost]` + `[[forecast.effects]]`), the reveal-and-keep sibling of `hand_ability`. Absent for a card without one. |
 | `free_cast_if` | Condition \| null | no | - | A printed conditional free-cast permission (CR 118.5) — `free_cast_if = { .. }` with the same `Condition` table shape as `enters_tapped_unless`; absent for a card without one. |
 | `functions_in_graveyard` | boolean | no | `false` | CR 603.6e — this card's triggered abilities fire from its owner's graveyard rather than the battlefield (Squee, Nether Traitor). `false` for every ordinary card. |
 | `graveyard_cast_cost` | CostToml \| null | no | - | Cast-from-graveyard alternative cost for a permanent (CR 118.9) — `[graveyard_cast_cost]` with the same `[cost]`-table shape as `[flashback]`; absent for a card without it. |
 | `half` | array<CardToml> | no | - | A split card's two castable halves (CR 709, Fire // Ice) — `[[half]]` tables, each its own inline `CardDef` (name, oracle, `cost`, `kind`, `abilities`) parsed like `adventure`. Empty for every non-split card. |
-| `hand_ability` | array<HandActivatedAbilityTomlSchema> | no | - | A hand-activated, discard-this-card ability (CR 113.6/602.5e, Magma Opus) — zero or more `[[hand_ability]]` tables (`[hand_ability.cost]` + `[[hand_ability.effects]]` each), one per typecycling type (CR 702.29d — Valley Rannet's mountaincycling and forestcycling). Empty for a card without one. |
+| `hand_ability` | array<HandActivatedAbility> | no | - | A hand-activated, discard-this-card ability (CR 113.6/602.5e, Magma Opus) — zero or more `[[hand_ability]]` tables (`[hand_ability.cost]` + `[[hand_ability.effects]]` each), one per typecycling type (CR 702.29d — Valley Rannet's mountaincycling and forestcycling). Empty for a card without one. |
 | `id` | string | no | `` | Scryfall oracle id — required on top-level pool TOMLs (enforced at registry load). Nested faces/tokens may omit it (`""`). |
 | `identity` | array<Color> | no | - | Extra color-identity pips (CR 903.4) that the simplified model would otherwise drop, such as pips in trimmed activated abilities. Deck-building only. |
 | `keywords` | array<Keyword> | no | - |  |
@@ -72,7 +72,7 @@ This mirrors the DSL's top-level card shape with owned fields, then folds into t
 | `sets` | array<string> | no | `[]` | Every Scryfall set code with a printing of this oracle, used by coverage and catalog search. Pure metadata; gameplay never reads it. |
 | `snow` | boolean | no | `false` | Snow supertype (CR 205.4g) — `snow = true`; absent (`false`) for every ordinary card. |
 | `subtypes` | array<string> | no | `[]` | Printed non-land subtypes, such as creature, artifact, and enchantment subtypes. Land types live under `[kind].subtypes`. |
-| `suspend` | SuspendTomlSchema \| null | no | - | Suspend N—[cost] (CR 702.62, Rousing Refrain) — a `[suspend]` table whose `cost` sub-table is leaked to `'static` by the `Suspend` impl. Absent for ordinary cards. |
+| `suspend` | Suspend \| null | no | - | Suspend N—[cost] (CR 702.62, Rousing Refrain) — a `[suspend]` table whose `cost` sub-table is leaked to `'static` by the `Suspend` impl. Absent for ordinary cards. |
 | `uncounterable` | boolean | no | `false` | "This spell can't be countered" (CR 701.5g) — `uncounterable = true`; absent (`false`) for every ordinary card. |
 | `vanishing` | integer \| null | no | `null` | Vanishing N (CR 702.63) — `vanishing = N` for a vanishing permanent; absent (`None`) for every other card. |
 
@@ -113,7 +113,7 @@ A `[kind]` table spells instants and sorceries as their own `type` tags (`type =
 
 ## Effect `type` enum variants
 
-Each `[[abilities.effects]]` entry has a `type` family tag. Leaf modes and payload fields are still documented by the concrete effect rustdoc as Wave C expands the schema surface.
+Each `[[abilities.effects]]` entry has a `type` family tag. The family's leaf modes and their payload fields are enumerated in `crates/cards/schema/card.schema.json` (validate a card with `just cards-toml-validate <file>`).
 
 | `type` | Description |
 |---|---|

@@ -157,9 +157,11 @@ impl DslReference {
     }
 
     fn render_effect_types(&self, out: &mut String) {
-        let schema = self.definition("EffectTypeTomlSchema");
+        let schema = self.definition("Effect");
         out.push_str("## Effect `type` enum variants\n\n");
-        out.push_str("Each `[[abilities.effects]]` entry has a `type` family tag. Leaf modes and payload fields are still documented by the concrete effect rustdoc as Wave C expands the schema surface.\n\n");
+        out.push_str("Each `[[abilities.effects]]` entry has a `type` family tag. The family's leaf \
+                      modes and their payload fields are enumerated in `crates/cards/schema/card.schema.json` \
+                      (validate a card with `just cards-toml-validate <file>`).\n\n");
         out.push_str("| `type` | Description |\n");
         out.push_str("|---|---|\n");
 
@@ -189,32 +191,23 @@ fn description(schema: &Value) -> Option<&str> {
     schema.get("description").and_then(Value::as_str)
 }
 
-fn enum_values(schema: &Value) -> impl Iterator<Item = &str> {
-    schema
-        .get("enum")
-        .and_then(Value::as_array)
-        .into_iter()
-        .flatten()
-        .filter_map(Value::as_str)
-}
-
+/// Every `type` tag of the internally tagged [`cards::Effect`] enum, paired with the family
+/// blurb below. Each `oneOf` arm carries its family tag under `properties.type.enum` (schemars'
+/// shape for `#[serde(tag = "type")]`); the arm's own `oneOf` holds that family's leaf modes.
 fn effect_variants(schema: &Value) -> Vec<(&str, &str)> {
-    if let Some(one_of) = schema.get("oneOf").and_then(Value::as_array) {
-        let rows: Vec<_> = one_of
-            .iter()
-            .filter_map(|variant| {
-                let value = enum_values(variant).next()?;
-                let description = description(variant).unwrap_or(effect_type_description(value));
-                Some((value, description))
-            })
-            .collect();
-        if !rows.is_empty() {
-            return rows;
-        }
-    }
+    let one_of = schema
+        .get("oneOf")
+        .and_then(Value::as_array)
+        .expect("Effect variants");
 
-    enum_values(schema)
-        .map(|value| (value, effect_type_description(value)))
+    one_of
+        .iter()
+        .filter_map(|variant| {
+            let properties = variant.get("properties").and_then(Value::as_object)?;
+            let value = tag_value(properties)?;
+            let description = description(variant).unwrap_or(effect_type_description(value));
+            Some((value, description))
+        })
         .collect()
 }
 

@@ -9,6 +9,7 @@ use crate::de;
     derive(serde::Deserialize),
     serde(rename_all = "snake_case")
 )]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 pub enum GraveyardScope {
     /// The ability's controller's own graveyard (Raise Dead's "your graveyard").
     Yours,
@@ -28,6 +29,7 @@ pub enum GraveyardScope {
     derive(serde::Deserialize),
     serde(rename_all = "snake_case")
 )]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 pub enum TargetSpec {
     /// Takes no target.
     #[default]
@@ -257,6 +259,7 @@ pub enum SpellFilter {
     derive(serde::Deserialize),
     serde(rename_all = "snake_case")
 )]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 pub enum CardFilter {
     /// A basic land card (fetchlands / basic-land ramp). See [`is_basic_land`].
     BasicLand,
@@ -495,6 +498,7 @@ impl CardFilter {
     derive(serde::Deserialize),
     serde(rename_all = "snake_case")
 )]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 pub enum SearchDest {
     /// Into the searcher's hand (tutors like Diabolic Tutor).
     Hand,
@@ -526,6 +530,7 @@ pub enum SearchDest {
     derive(serde::Deserialize),
     serde(rename_all = "snake_case")
 )]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 pub enum TopDest {
     /// Into the selecting player's hand (Quandrix Apprentice).
     Hand,
@@ -547,6 +552,7 @@ pub enum TopDest {
     derive(serde::Deserialize),
     serde(rename_all = "snake_case")
 )]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 pub enum RestDest {
     /// On the bottom of the selecting player's library (the common case).
     #[default]
@@ -565,6 +571,7 @@ pub enum RestDest {
     derive(serde::Deserialize),
     serde(rename_all = "snake_case")
 )]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 pub enum SearchScope {
     /// The ability's own controller (tutors, ramp, fetchlands).
     #[default]
@@ -890,6 +897,7 @@ impl PermanentFilter {
     derive(serde::Deserialize),
     serde(rename_all = "snake_case")
 )]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 pub enum EdictScope {
     /// "Each player" (Deadly Brew, Promise of Loyalty) — everyone, the edict's controller included.
     AllPlayers,
@@ -919,6 +927,7 @@ pub enum EdictScope {
     derive(serde::Deserialize),
     serde(rename_all = "snake_case")
 )]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 pub enum TokenController {
     /// The ability's own controller (the default — most "create a token" effects).
     #[default]
@@ -964,6 +973,7 @@ pub enum TokenController {
     derive(serde::Deserialize),
     serde(rename_all = "snake_case")
 )]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 pub enum DelayController {
     /// The scheduling ability's own controller (Arcane Denial's "you draw a card").
     #[default]

@@ -40,8 +40,7 @@ use super::*;
 /// (Drumbellower).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Trigger {
-    /// When this permanent enters the battlefield (ETB). Spelled `"etb"` in TOML (`"etb_triggered"`
-    /// is an accepted alias — see `de::TriggerTag`).
+    /// When this permanent enters the battlefield (ETB). Spelled `"etb"` in TOML.
     Etb,
     /// "As this permanent enters, …" (CR 614.12) — a replacement effect, *not* a triggered
     /// ability, so it never uses the stack: [`Game::place_pending_triggers`] runs its effect
@@ -566,6 +565,7 @@ pub enum Trigger {
     derive(serde::Deserialize),
     serde(rename_all = "snake_case")
 )]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 pub enum SpendToCastPredicate {
     /// "…to cast your commander" (Study Hall, Opal Palace) — the cast spell is the controller's
     /// own commander.
@@ -583,6 +583,7 @@ pub enum SpendToCastPredicate {
     derive(serde::Deserialize),
     serde(rename_all = "snake_case")
 )]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 pub enum EnterController {
     /// The ability's own controller (default) — constellation's "an enchantment you control".
     #[default]
@@ -602,6 +603,7 @@ pub enum EnterController {
     derive(serde::Deserialize),
     serde(rename_all = "snake_case")
 )]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 pub enum CasterScope {
     /// The ability's own controller (default).
     #[default]
@@ -620,6 +622,7 @@ pub enum CasterScope {
     derive(serde::Deserialize),
     serde(rename_all = "snake_case")
 )]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 pub enum CombatDamageScope {
     /// Only the ability's own source (default).
     #[default]
@@ -650,6 +653,7 @@ pub enum CombatDamageScope {
     derive(serde::Deserialize),
     serde(rename_all = "snake_case")
 )]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 pub enum BecomesTargetedScope {
     /// "Whenever this permanent becomes the target of a spell" (Goldspan Dragon) — the default.
     #[default]

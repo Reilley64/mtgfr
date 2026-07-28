@@ -17,10 +17,9 @@ type = "damge"
 
     let errors = cards::validate_toml_str(card).expect_err("unknown effect type must fail");
     let rendered = errors.join("\n");
-    assert!(
-        rendered.contains("/abilities/0/effects/0/type"),
-        "{rendered}"
-    );
+    // The tag lives in each `oneOf` arm of the internally tagged `Effect`, so the failure is
+    // reported against the effect table rather than its `type` key.
+    assert!(rendered.contains("/abilities/0/effects/0"), "{rendered}");
     assert!(rendered.contains("damge"), "{rendered}");
 }
 
@@ -211,4 +210,71 @@ produces = "not_mana"
             "{name} errors did not include {pointer}: {errors:?}"
         );
     }
+}
+
+/// An effect's payload is schema-checked per family, not waved through as a free-form object:
+/// `damage` has no `targt` mode, and its `amount` is an [`cards::Amount`], not any string.
+#[test]
+fn rejects_bad_effect_payload() {
+    let card = r#"
+name = "Bad Payload"
+id = "00000000-0000-0000-0000-000000000031"
+default_print = "00000000-0000-0000-0000-000000000032"
+
+[kind]
+type = "instant"
+
+[[abilities]]
+timing = "spell"
+
+[[abilities.effects]]
+type = "damage"
+mode = "targt"
+target = "any"
+amount = 3
+"#;
+
+    let errors = cards::validate_toml_str(card).expect_err("unknown effect mode must fail");
+    assert!(
+        errors.join("\n").contains("/abilities/0/effects/0"),
+        "{errors:?}"
+    );
+
+    let wrong_typed = card
+        .replace("mode = \"targt\"", "mode = \"target\"")
+        .replace("amount = 3", "amount = \"not_an_amount\"");
+    let errors =
+        cards::validate_toml_str(&wrong_typed).expect_err("wrong-typed effect amount must fail");
+    assert!(
+        errors.join("\n").contains("/abilities/0/effects/0"),
+        "{errors:?}"
+    );
+}
+
+/// An `[[abilities]]` sibling key is checked against the real ability surface, so a misspelled
+/// trigger sibling is rejected rather than silently ignored.
+#[test]
+fn rejects_unknown_ability_sibling_key() {
+    let card = r#"
+name = "Bad Sibling"
+id = "00000000-0000-0000-0000-000000000033"
+default_print = "00000000-0000-0000-0000-000000000034"
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+[[abilities]]
+timing = "cast_spell"
+castr = "opponent"
+
+[[abilities.effects]]
+type = "draw"
+mode = "cards"
+count = 1
+"#;
+
+    let errors = cards::validate_toml_str(card).expect_err("unknown ability sibling must fail");
+    assert!(errors.join("\n").contains("/abilities/0"), "{errors:?}");
 }

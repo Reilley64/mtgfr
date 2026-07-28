@@ -9,6 +9,7 @@ use crate::de;
     derive(serde::Deserialize),
     serde(tag = "mode", rename_all = "snake_case")
 )]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 pub enum DigEffect {
     Cascade {
         mana_value: u32,
@@ -97,6 +98,10 @@ pub enum DigEffect {
         #[cfg_attr(
             feature = "card-dsl",
             serde(default = "de::one_u8", deserialize_with = "de::count_or_any")
+        )]
+        #[cfg_attr(
+            feature = "card-schema",
+            schemars(with = "crate::toml_surface::dsl_schema::CountOrAnyToml")
         )]
         count: u8,
         #[cfg_attr(feature = "card-dsl", serde(default))]
