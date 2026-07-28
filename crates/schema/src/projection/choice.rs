@@ -5,7 +5,7 @@ use crate::dto::{ChoiceItem, ModeView, PendingChoiceView};
 use crate::intent::WireTarget;
 use crate::message::{named_message, to_wire_message};
 use crate::projection::privacy::private_items;
-use engine::{Target, TargetSpec};
+use engine::{EffectMessage, Target, TargetSpec};
 
 /// Union of legal cast-time targets across dig candidates that need one (Aura enchant hosts).
 /// Empty when every candidate is untargeted (cascade creature hit, etc.).

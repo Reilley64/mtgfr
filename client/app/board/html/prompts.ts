@@ -769,7 +769,11 @@ function costPickPrompt(
         "pointer-events-auto fixed left-1/2 z-30 flex max-w-[min(100%-2rem,28rem)] -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
       ),
     ],
-    [h.div([h.Class("pointer-events-none text-center font-semibold text-body text-snow")], [title]), body, cancelButton()],
+    [
+      h.div([h.Class("pointer-events-none text-center font-semibold text-body text-snow")], [title]),
+      body,
+      cancelButton(),
+    ],
   );
 }
 
@@ -1721,10 +1725,7 @@ function playerPickPrompt(
     testId: "pending-player-pick-modal",
     title: messageText(pending.label),
     body: [
-      h.div(
-        [h.Class("pointer-events-none text-caption text-mist")],
-        [`${picked.length} / ${pending.max} selected`],
-      ),
+      h.div([h.Class("pointer-events-none text-caption text-mist")], [`${picked.length} / ${pending.max} selected`]),
       h.div(
         [h.Class("flex min-h-0 w-[min(92vw,28rem)] flex-wrap justify-center gap-2")],
         pending.items.flatMap((item, index) => {

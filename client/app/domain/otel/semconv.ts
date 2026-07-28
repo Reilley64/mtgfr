@@ -67,10 +67,7 @@ export function rpcAttrs(input: {
   return attrs;
 }
 
-export function dbAttrs(input: {
-  operation: string;
-  namespace: string;
-}): Record<string, string> {
+export function dbAttrs(input: { operation: string; namespace: string }): Record<string, string> {
   return {
     [DB_SYSTEM]: "postgresql",
     [DB_OPERATION_NAME]: input.operation,

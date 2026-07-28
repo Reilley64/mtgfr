@@ -33,10 +33,7 @@ describe("dragGhostFromHandDrag", () => {
   });
 
   it("preserves command zone for outline paint", () => {
-    const ghost = dragGhostFromHandDrag(
-      { name: "Zimone", print: "z", x: 0, y: 0, zone: "command" },
-      1,
-    );
+    const ghost = dragGhostFromHandDrag({ name: "Zimone", print: "z", x: 0, y: 0, zone: "command" }, 1);
     expect(ghost.zone).toBe("command");
   });
 });

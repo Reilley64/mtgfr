@@ -1,10 +1,5 @@
 import type { ImageCache } from "../../domain/image-cache";
-import {
-  COMMANDER_GOLD,
-  EXILE_OUTLINE,
-  GRAVEYARD_OUTLINE,
-  PLAYABLE_BORDER,
-} from "../chrome";
+import { COMMANDER_GOLD, EXILE_OUTLINE, GRAVEYARD_OUTLINE, PLAYABLE_BORDER } from "../chrome";
 import { CARD_H, CARD_W } from "../geometry/layout";
 import { type ExitFx, exitFxParticles, particleAllowancePerFx } from "../motion/exit-fx";
 import type { CardFlight } from "../motion/flights";

@@ -4,6 +4,9 @@ import { nitro } from "nitro/vite";
 import { defineConfig } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 import { clientBuildSourcemap } from "./app/domain/client-build-options";
+import { hexFallbacks } from "./app/domain/design-tokens.generated";
+
+const metaSurfaceColor = hexFallbacks.forestFloor;
 
 export default defineConfig({
   build: {
@@ -47,8 +50,8 @@ export default defineConfig({
         start_url: "/",
         scope: "/",
         display: "standalone",
-        background_color: "#0B1310",
-        theme_color: "#0B1310",
+        background_color: metaSurfaceColor,
+        theme_color: metaSurfaceColor,
         icons: [
           {
             src: "pwa-192.png",

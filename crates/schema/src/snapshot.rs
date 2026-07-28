@@ -19,6 +19,7 @@ use crate::event::DeltaEnvelope;
 use crate::intent::{WireAttack, WireBlock, WireTarget};
 use crate::message::{child_message, message, named_message, to_wire_message};
 use crate::projection::project_pending_choice;
+use engine::EffectMessage;
 
 fn format_modifier_contribution(contribution: engine::ModifierContribution) -> String {
     use engine::ModifierContribution;

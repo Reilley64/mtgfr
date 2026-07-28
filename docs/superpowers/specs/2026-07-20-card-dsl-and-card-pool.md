@@ -1,7 +1,7 @@
 # Card DSL and Card Pool
 
 **Status:** Current (as of 2026-07-27)
-**Module:** `crates/cards` (`data/*.toml`, `data/tokens/*.toml`), `crates/engine` (`src/de.rs`, `src/types/effect/` — `CardDef`, `Ability`, `Effect`, family enums, `Timing`), `docs/decklists/*.md`
+**Module:** `crates/cards` (`data/*.toml`, `data/tokens/*.toml`; `src/toml_surface/` — `CardToml`, `CostToml`, `KindToml`; `src/de.rs` delegates into these surfaces; `src/types/` — `CardDef`, `Ability`, `Effect`, family enums, `Timing`, filters, mana, triggers), `crates/engine` (the rules logic over that vocabulary; re-exports it from the crate root), `docs/decklists/*.md`
 
 ---
 
@@ -13,9 +13,9 @@ Card behavior in Magic is vast and varied. Encoding it per-card in engine code w
 
 ## Solution
 
-Each card is a TOML file in `crates/cards/data/` that deserializes into a `CardDef` struct in `crates/engine`. `CardDef` is `Clone`, not `Copy`. Printed list-like fields (`abilities`, `keywords`, `conditional_keywords`, `identity_pips`, `colors`, `subtypes`, `otags`, `hand_ability`, `halves`) deserialize into `Arc<[T]>`, while runtime game objects and events intern each printed definition into a `CardId -> Arc<CardDef>` table and carry the small handle instead. Nested `[back]` / `[adventure]` faces are interned during deserialization as stable `CardId`s, so flip/adventure/prepare flows read and restore them without minting new handles at runtime. Card behavior is expressed as `Ability { timing, effect }` pairs; the `Effect` enum is the vocabulary. The DSL grows **only when a real card demands it** (card-dsl-and-card-pool spec). Gaps are flagged via the `approximates` field and `# ponytail:` comments rather than forced approximations. Token profiles live in `data/tokens/` and are referenced by Scryfall oracle id from creating cards.
+Each card is a TOML file in `crates/cards/data/` that loads through the TOML surface (`CardToml`) and folds into a `CardDef`, both owned by `crates/cards`. `CardDef` is `Clone`, not `Copy`. Printed list-like fields (`abilities`, `keywords`, `conditional_keywords`, `identity_pips`, `colors`, `subtypes`, `otags`, `hand_ability`, `halves`) deserialize into `Arc<[T]>`, while runtime game objects and events intern each printed definition into a `CardId -> Arc<CardDef>` table and carry the small handle instead. Nested `[back]` / `[adventure]` faces are interned during deserialization as stable `CardId`s, so flip/adventure/prepare flows read and restore them without minting new handles at runtime. Card behavior is expressed as `Ability { timing, effect }` pairs; the `Effect` enum is the vocabulary. The DSL grows **only when a real card demands it** (card-dsl-and-card-pool spec). Gaps are flagged via the `approximates` field and `# ponytail:` comments rather than forced approximations. Token profiles live in `data/tokens/` and are referenced by Scryfall oracle id from creating cards.
 
-Thirty-nine token profiles and 729 deckable card TOMLs are present as of 2026-07-27. Ten decklists live in `docs/decklists/*.md` (the five Secrets of Strixhaven decks and five additional non-SoC lists). The five Secrets of Strixhaven precons cover every Scryfall `soc` oracle (375), including the three Talismans that were previously missing from the pool; `Final Act` is fully modal. Named SoC cards carry no remaining `approximates` notes — observer cards from other sets (`Llanowar Reborn`, `Port Town`, `Smuggler's Copter`, `Snow-Covered Forest`, `Into the North`) land the filters/choices those residuals needed. Every `# ponytail:` still pairs with an `approximates` field where a gap remains outside SoC.
+Forty-three token profiles and 780 deckable card TOMLs are present as of 2026-07-27. Ten decklists live in `docs/decklists/*.md` (the five Secrets of Strixhaven decks and five additional non-SoC lists). The five Secrets of Strixhaven precons cover every Scryfall `soc` oracle (375), including the three Talismans that were previously missing from the pool; `Final Act` is fully modal. Named SoC cards carry no remaining `approximates` notes — observer cards from other sets (`Llanowar Reborn`, `Port Town`, `Smuggler's Copter`, `Snow-Covered Forest`, `Into the North`) land the filters/choices those residuals needed. Every `# ponytail:` still pairs with an `approximates` field where a gap remains outside SoC.
 
 ---
 
@@ -30,7 +30,7 @@ Thirty-nine token profiles and 729 deckable card TOMLs are present as of 2026-07
 7. As a **deck builder user**, I want oracle tags (`otags`) for thematic search (e.g. "typal-spirit", "ramp") even for cards whose rules aren't implemented as a tag.
 8. As a **test author**, I want to construct `CardDef` values inline in tests without parsing TOML, so unit tests are self-contained.
 9. As a **Commander player**, I want my commander's color identity enforced at deck-build time, so I can't accidentally include off-color cards.
-10. As a **player**, I want the pool's ~724 cards available for deck building, spanning the five SoC Commander precon lists and additional curated cards.
+10. As a **player**, I want the pool's 780 deckable cards available for deck building, spanning the five SoC Commander precon lists and additional curated cards.
 
 ---
 
@@ -64,6 +64,14 @@ amount = 3
 target = "any"
 ```
 
+### Schema and validation recipes
+
+Committed JSON Schemas for the authored TOML surface live in `crates/cards/schema/card.schema.json` and `crates/cards/schema/token.schema.json`. `just cards-schema` regenerates both from `cards::toml_surface::CardToml`; `just cards-schema-check` fails when the committed schemas drift from the generated output. The card authoring field reference at `.agents/skills/card-dsl/DSL_REFERENCE.md` is generated from the same schemars/rustdoc surface by `just cards-dsl-ref`; `just cards-dsl-ref-check` fails when it is stale. `SKILL.md` remains the source of truth for §0 Oracle-comment, `approximates`, and `# ponytail:` process discipline.
+
+`just cards-toml-validate <paths...>` validates deckable card TOMLs structurally against the generated card schema. Token profiles use the same validator with `--token`, for example `just cards-toml-validate --token crates/cards/data/tokens/pest.toml`. `just cards-toml-validate-pool` validates every `crates/cards/data/*.toml` deckable card and every `crates/cards/data/tokens/*.toml` token profile; it is wired into `server-check`, root `check`, and CI's server lint job. The validator reports the file path, JSON Pointer, and schema message for structural failures such as misspelled effect family tags.
+
+Rust deserialization remains the authority for loading cards into the game. Schema validation catches authoring-shape mistakes before load, but it does not encode fidelity judgment, Scryfall freshness, deck legality, or every custom fold that still lives in Rust.
+
 ### Top-level field categories
 
 **Identity:** `name` (registry key), `id` (Scryfall oracle id), `default_print` (Scryfall print UUID for art), `sets` (all Scryfall set codes with a printing of the oracle), `oracle` (verbatim text for catalog hover), `otags` (Scryfall tagger slugs for search).
@@ -93,7 +101,8 @@ Discriminates on `type`:
 - `"enchantment"` / `"artifact"` / `"planeswalker"` / `"battle"`: non-creature permanents. Planeswalker requires `loyalty: i32`; battle requires `defense: i32` (stored in `Permanent::loyalty`).
 - `"aura"`: permanent Aura; the `enchant` top-level field supplies the attach filter.
 - `"land"`: optional `produces` (what mana it taps for), `subtypes` (Forest/Island/Plains/Swamp/Mountain for basic subtypes), `basic: true`.
-- `"token"`: used only in `data/tokens/*.toml` files; not a deckable card type.
+
+There is no `"token"` `[kind]` tag. Token profiles are separate TOMLs under `data/tokens/` (see Token profiles below); they use these ordinary kinds.
 
 ### `[[abilities]]`
 
@@ -111,7 +120,7 @@ Each ability block has a `timing` field and one or more `[[abilities.effects]]` 
 
 ### Effect vocabulary (representative sample)
 
-The `Effect` enum grows only from real cards. Every leaf effect is authored as nested **`type` (family) + `mode` (leaf)**. Structural composers (`sequence`, `conditional`, `choose_one`) are the only effects with no `mode`. Family and mode vocabulary live in `crates/engine/src/types/effect/`; grow it only when a real card demands a new leaf.
+The `Effect` enum grows only from real cards. Every leaf effect is authored as nested **`type` (family) + `mode` (leaf)**. Structural composers (`sequence`, `conditional`, `choose_one`) are the only effects with no `mode`. Family and mode vocabulary live in `crates/cards/src/types/effect/`; grow it only when a real card demands a new leaf.
 
 Top-level families: `damage`, `draw`, `life`, `destroy`, `exile`, `sacrifice`, `control`, `counters`, `mana`, `mill`, `pump`, `reveal`, `token`, `zone`, `copy`, `dig`, `choice`, `static`, `misc`, plus structural `sequence` / `conditional` / `choose_one`.
 
@@ -157,7 +166,7 @@ Representative modes by family:
 
 ### Token profiles
 
-Token profiles live in `data/tokens/*.toml`. They are full `CardDef` instances with `[kind] type = "token"`. They carry `colors`, `subtypes`, and optional abilities (e.g. a Pest token that gains life on death). Creating cards reference them by oracle id: `token = "uuid"`. The `install_token_defs` / `token_def` APIs load and query the registry, and token creation interns the chosen definition into a `CardId` before attaching it to a live object or event. Current tokens: 37 profiles covering Angel, Beast, Cat, Dragon, Elemental, Food, Fractal, Goat, Inkling, Insect, Myr, Pest, Saproling, Snake, Soldier, Spirit, Treasure, Thopter, Zombie, and others.
+Token profiles live in `data/tokens/*.toml` as separate files from deckable cards in `data/`. Each profile is a full `CardDef` authored with the same `[kind]` vocabulary as deckable cards (`creature`, `artifact`, `aura`, `sorcery`, …) — not a dedicated `type = "token"` kind. They carry `colors`, `subtypes`, and optional abilities (e.g. a Pest token that gains life on death). Creating cards reference them by Scryfall oracle id: `token = "uuid"`. The `install_token_defs` / `token_def` APIs load and query the registry, and token creation interns the chosen definition into a `CardId` before attaching it to a live object or event. Current tokens: 43 profiles covering Angel, Beast, Cat, Dragon, Elemental, Food, Fractal, Goat, Inkling, Insect, Myr, Pest, Saproling, Snake, Soldier, Spirit, Treasure, Thopter, Zombie, and others.
 
 ### Fidelity discipline
 
@@ -188,8 +197,14 @@ These are the **first closed fidelity target** (card-dsl-and-card-pool spec): ev
 - **`CardDef` is `Clone`, not `Copy`; runtime uses `CardId`.** Once a card enters a `Game` it is interned via `intern_card_def` and referenced by `CardId` through shared `Arc<CardDef>` lookups. `CardDef`'s own list-like DSL fields now load into shared `Arc<[T]>` storage, while `Effect::Sequence` / `ChooseOne` / `Conditional` payload lists deserialize into `Arc<[Effect]>`, so authored card text and runtime contextualizers both avoid the older plain-slice leaks. Nested back/adventure/split faces are interned as `CardId`s during load.
 - **`Effect` enum grows only from real card demand (card-dsl-and-card-pool spec).** New behavior = new `Effect` variant + `Game::run` arm + `Event::apply` arm + TOML authoring. The DSL never anticipates future cards.
 - **Token profiles are pre-loaded into a `OnceLock<HashMap<&'static str, CardDef>>` before deckable cards.** `install_token_defs` must be called before any card TOML that references a token by id is deserialized. `cards` crate's `load` function handles this ordering, and token creation interns the selected profile before storing it on a live object/event.
-- **The `card-dsl` feature flag gates all DSL deserialization.** The engine can be compiled without TOML parsing (e.g. for pure engine tests that construct `CardDef` inline). The feature adds `serde` derives and `de.rs`.
-- **`de.rs` holds only structurally-divergent deserializers.** Types whose TOML spelling matches their Rust shape use serde derives on the definitions in `types/effect/`. Only when the TOML spelling differs structurally (flat cost table, `instant`/`sorcery` as separate strings, folded `Timing::Activated`) does `de.rs` provide a manual impl.
+- **`cards` defines the vocabulary; `engine` implements the rules over it.** `CardDef`, `Ability`, `Effect` and its family enums, filters, mana, triggers, the TOML surface, `de.rs`, and the `CardId` intern table all live in `crates/cards`. The engine depends on `cards` and re-exports the whole vocabulary from its root, so `engine::Effect` and friends keep resolving for `schema` / `server`. Rules logic — `Game`, `Event`, `Intent`, `PendingChoice`, zone objects — stays in `crates/engine`.
+- **The `card-dsl` feature flag gates all DSL deserialization.** `cards` can be compiled without TOML parsing (e.g. for pure engine tests that construct `CardDef` inline). The feature adds `serde` derives and `de.rs`.
+- **Tests that play games live in `crates/cards/tests/`, not in a `#[cfg(test)]` module.** Proving a card script means running a real `Game`, and Cargo permits `cards` → `engine` only as a dev-dependency. A `#[cfg(test)]` module would link a second, distinct copy of `cards` (the test-cfg one) alongside the copy the engine links, so its `CardDef` would not be the engine's `CardDef`. A separate integration-test crate links the same rlib the engine does.
+- **Structurally-divergent TOML spellings live in `toml_surface`; `de.rs` delegates.** Types whose TOML spelling matches their Rust shape use serde derives on the definitions in `types/effect/`. When the TOML spelling differs structurally, the authored surface is in `crates/cards/src/toml_surface/` — `[kind]` is `KindToml` (`instant`/`sorcery` as separate `type` strings rather than `CardKind::Spell`'s `speed` field), `[cost]` is `CostToml` (flat color-named pips rather than `Cost::colored`), and full cards load via `CardToml`. `de.rs` keeps thin `Deserialize` impls on runtime types (`CardDef`, `CardKind`, `Cost`, …) that deserialize through those surfaces; folded `Timing::Activated` and other effect-family folds remain in `de.rs`.
+- **Generated schemas and DSL reference project the TOML surface, not the runtime memory shape.** `crates/cards/src/bin/gen_card_schema.rs` runs `schemars::schema_for!(cards::toml_surface::CardToml)`, normalizes the result to JSON Schema 2020-12, and writes `crates/cards/schema/card.schema.json`. The token schema reuses that surface and tightens `id` / `default_print` to required non-empty strings. `crates/cards/src/bin/gen_dsl_reference.rs` renders `.agents/skills/card-dsl/DSL_REFERENCE.md` from the same schemars/rustdoc surface for `CardToml`, `CostToml`, `KindToml`, and the Effect `type` family enum. `just cards-schema-check`, `just cards-dsl-ref-check`, and `just cards-toml-validate-pool` are wired into `server-check` and root `check`; CI's `verify-server-lint` runs the same card DSL checks so stale artifacts or structurally invalid pool TOML fail before tests.
+- **Custom-surface leaf types carry hand-written `JsonSchema` mirroring their `de.rs` visitors.** The leaves whose TOML spelling is a bare-string shorthand, a scalar-or-table union, or a fixed keyword vocabulary (`AdditionalCost`, `Amount`, `LandProduces`, `Mana`, `PermanentFilter`, `SacrificeCost`, `TargetCount`, `TypeSet`, `ProtectionScope`, `AmountZone`) have hand-written `JsonSchema` impls in `crates/cards/src/toml_surface/dsl_schema.rs` (compiled only under the `card-schema` feature) so the generated schema accepts exactly what the visitor accepts; the plain externally-/internally-tagged enums (`Condition`, `SpellFilter`, `CounterKind`, `CumulativeUpkeepCost`, `EscapeCost`, `EnterAsCopy`, and the filter axes) derive `JsonSchema` directly.
+- **The schema surface is the real deserialize surface — no hand-written mirrors.** `Effect` and every family enum (`DamageEffect`, `DrawEffect`, …) derive `JsonSchema` themselves, so the generated schema carries each family's leaf modes and payload fields rather than a free-form `payload` object. `[[abilities]]` deserializes through `toml_surface::AbilityToml` — the flat authored table (`timing` plus every cost piece and trigger sibling) that `Ability`'s `Deserialize` folds into `Timing::Activated` / `Trigger` — so its `deny_unknown_fields` rejects a misspelled sibling. Where a field's TOML spelling diverges from the runtime type it holds (a `token_profile` id string standing in for a `CardDef`, a `[cost]` table for a `Cost`), the field carries `schemars(with = ...)` pointing at the authored surface. One consequence: `TriggerTag` has no `serde(alias = ...)` spellings, because schemars cannot express them and a schema that rejects what deserialize accepts is worse than one spelling per trigger.
+- **Schema validation is structural, while `CardDef` deserialize is authoritative.** `crates/cards` includes the committed schemas, converts TOML to JSON, and validates via `jsonschema` for `just cards-toml-validate`. Successful validation means the TOML matches the generated authoring shape; the normal pool load still parses through Rust and performs the authoritative `CardToml -> CardDef` fold.
 - **`otags` and `sets` are pure catalog metadata** — the engine never reads them for gameplay. They exist for deck-builder search (`sets`/`subtypes` + Postgres catalog search, accounts-decks-and-catalog spec), printing-aware coverage, and Scryfall tagger integration. `sets` is backfilled by `tooling/backfill-sets.mjs` from Scryfall printings; `default_print` remains the art/default-printing pointer.
 - **`oracle` is catalog metadata** — the engine never parses it; rules behavior comes from `abilities`/`keywords` only.
 - **`approximates` is surfaced in the card catalog** so the deck builder and audits see the same gap the engine runs. An absent `approximates` field means the card is faithful.
@@ -199,12 +214,17 @@ These are the **first closed fidelity target** (card-dsl-and-card-pool spec): ev
 
 ## Testing Decisions
 
-- **Card TOML tests**: the `cards` crate's tests deserialize a sample of known cards and assert `CardDef` fields match expected values (correct cost pips, correct ability count, correct effect type).
+- **Card TOML tests**: `crates/cards/tests/pool.rs` deserializes known cards, asserts `CardDef` fields match expected values (correct cost pips, correct ability count, correct effect type), and plays out real games to prove the scripts.
+- **Schema smoke tests**: `crates/cards/tests/de.rs` asserts the generated `CostToml`, `KindToml`, and `CardToml` schemas expose expected authoring fields/tags, and parses a fixture through `CardToml -> CardDef`.
+- **Schema drift test**: `crates/cards/tests/gen_card_schema.rs` mutates the committed card/token schema files and asserts generator `--check` mode reports both stale paths without keeping the mutation.
+- **DSL reference drift test**: `crates/cards/tests/gen_dsl_reference.rs` mutates the committed `DSL_REFERENCE.md` and asserts generator `--check` mode reports the stale reference without keeping the mutation.
+- **Full-pool schema validation**: `just cards-toml-validate-pool` validates all deckable card TOMLs and all token profiles; it runs in `server-check`, root `check`, and CI's `verify-server-lint`.
+- **Schema validator tests**: `crates/cards/tests/schema_validate.rs` accepts a known-good pool card and rejects a typo'd effect `type`, asserting the rendered error includes the JSON Pointer and bad value. It also asserts custom leaf surfaces are typed, not open — misspelled permanent-filter shorthands, sacrifice-cost tables without `creature` / `permanent`, wrong-typed `cumulative_upkeep`, unknown keys inside `enter_as_copy`, and invalid `cost.additional` / `reduce_own_generic` / `kind.also` / `kind.produces` values each fail with their JSON Pointer.
 - **Inline `CardDef` in engine tests**: the engine's own unit and integration tests construct `CardDef` values directly (no TOML parsing) using struct literal syntax, keeping tests self-contained and avoiding the `card-dsl` feature.
 - **Fidelity regression tests**: for each card in `docs/decklists/*.md`, a CI test verifies the card TOML is present and parses without error. Presence of `approximates` is tracked but not a failure.
 - **Effect roundtrip test**: for each `Effect` variant, at least one card TOML in the pool should exercise it (verified by the fidelity audit tooling).
 - **Token profile tests**: `install_token_defs` is called with the full token set; `token_def(id)` returns the correct profile for known ids.
-- The `.agents/skills/card-dsl/SKILL.md` and `DSL_REFERENCE.md` are the authoring guide for card authors; the skill specifies the full field reference and non-negotiable discipline.
+- The `.agents/skills/card-dsl/SKILL.md` and generated `DSL_REFERENCE.md` are the authoring guide for card authors; the skill specifies validation commands and non-negotiable discipline (§0 Oracle-comment, `approximates`, `# ponytail:`).
 
 ---
 
@@ -227,5 +247,5 @@ These are the **first closed fidelity target** (card-dsl-and-card-pool spec): ev
 - See `2026-07-20-choices-actions-and-resolution.md` for how effect types map to `PendingChoice` variants.
 - `CONTEXT.md` defines **card**, **effect**, **ability**, **timing**, **keyword**, **populate**, and related terms.
 - Per-deck `docs/fidelity/<slug>-increments.md` files (created by `fidelity-grind`) are the living engine-capability backlogs.
-- `.agents/skills/card-dsl/DSL_REFERENCE.md` is the complete authoring field reference.
+- `.agents/skills/card-dsl/DSL_REFERENCE.md` is the generated authoring field reference; regenerate with `just cards-dsl-ref` and check with `just cards-dsl-ref-check`.
 - The `just engine-cr-index` recipe regenerates `docs/CR_INDEX.md` from CR citations across the engine; check it after adding new rules behaviors.

@@ -51,7 +51,5 @@ export function runWebDb<A, E>(effect: Effect.Effect<A, E, WebDb>, url = webData
   if (cache?.url !== url) {
     cache = { url, runtime: makeRuntime(url) };
   }
-  return cache.runtime.runPromise(
-    effect.pipe(Effect.withSpan("db.mtgfr_web", { attributes: webDbSpanAttrs() })),
-  );
+  return cache.runtime.runPromise(effect.pipe(Effect.withSpan("db.mtgfr_web", { attributes: webDbSpanAttrs() })));
 }

@@ -46,6 +46,24 @@ server-run: server-build-prod
 server-codegen:
     cd client && bun run gen
 
+[group('server')]
+[doc("buf lint on proto/ (full STANDARD; no silenced rules)")]
+proto-lint:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd client && PATH="$PWD/node_modules/.bin:$PATH" bunx --bun buf lint ../proto
+
+[group('server')]
+[doc("buf breaking WIRE vs origin/main (git fetch origin main first)")]
+proto-breaking:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd client && PATH="$PWD/node_modules/.bin:$PATH" bunx --bun buf breaking --against '../.git#branch=origin/main,subdir=proto' ../proto
+
+[group('server')]
+[doc("proto-lint + proto-breaking")]
+proto-check: proto-lint proto-breaking
+
 # ── Client ───────────────────────────────────────────────────────────────────────────
 
 [group('client')]
@@ -120,8 +138,8 @@ test *args:
     @just server-test {{ args }}
     @just client-test
 
-[doc("Server CI check (CR index on committed sources, then fmt --check + clippy + migrate + nextest)")]
-server-check: engine-cr-index-check server-format-check server-lint
+[doc("Server CI check (CR index + card DSL drift + pool validation, then fmt --check + clippy + migrate + nextest)")]
+server-check: engine-cr-index-check cards-schema-check cards-dsl-ref-check cards-toml-validate-pool server-format-check server-lint
     cargo run -p server -- migration apply
     just server-test
 
@@ -129,7 +147,7 @@ server-check: engine-cr-index-check server-format-check server-lint
 client-check: client-tokens-check client-mana-oracle-check server-codegen client-format client-lint client-typecheck client-test
 
 [doc("Run all checks")]
-check: client-tokens-check client-mana-oracle-check engine-cr-index-check server-codegen format lint typecheck test
+check: client-tokens-check client-mana-oracle-check cards-schema-check cards-dsl-ref-check cards-toml-validate-pool engine-cr-index-check server-codegen format lint typecheck test
 
 [doc("Regenerate docs/CR_INDEX.md from engine CR citations")]
 engine-cr-index:
@@ -138,6 +156,31 @@ engine-cr-index:
 [doc("Fail if docs/CR_INDEX.md is stale vs engine CR citations")]
 engine-cr-index-check:
     python3 scripts/gen_cr_index.py --check
+
+[doc("Regenerate committed card TOML JSON Schemas")]
+cards-schema:
+    cargo run -p cards --bin gen_card_schema
+
+[doc("Fail if card TOML JSON Schemas are stale")]
+cards-schema-check:
+    cargo run -p cards --bin gen_card_schema -- --check
+
+[doc("Regenerate generated card DSL Markdown reference")]
+cards-dsl-ref:
+    cargo run -p cards --bin gen_dsl_reference
+
+[doc("Fail if generated card DSL Markdown reference is stale")]
+cards-dsl-ref-check:
+    cargo run -p cards --bin gen_dsl_reference -- --check
+
+[doc("Validate card TOML files against the generated JSON Schema")]
+cards-toml-validate *args:
+    cargo run -p cards --bin validate_card_toml -- {{ args }}
+
+[doc("Validate the full deckable and token TOML pools against generated JSON Schemas")]
+cards-toml-validate-pool:
+    @just cards-toml-validate crates/cards/data/*.toml
+    @just cards-toml-validate --token crates/cards/data/tokens/*.toml
 
 [doc("Scan engine for likely missing CR citations (advisory)")]
 engine-cr-scan:

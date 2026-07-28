@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate docs/CR_INDEX.md from CR citations in crates/engine (src + tests).
+"""Generate docs/CR_INDEX.md from CR citations in crates/engine and crates/cards (src + tests).
 
 Run via: just engine-cr-index
 Check freshness: just engine-cr-index-check
@@ -19,7 +19,8 @@ except ImportError:  # Windows
     fcntl = None  # type: ignore[assignment]
 
 ROOT = Path(__file__).resolve().parents[1]
-ENGINE = ROOT / "crates" / "engine"
+# The rules logic lives in `engine`; the card-DSL vocabulary it operates on lives in `cards`.
+CRATES = [ROOT / "crates" / "engine", ROOT / "crates" / "cards"]
 OUT = ROOT / "docs" / "CR_INDEX.md"
 
 # Matches in-tree spelling: "CR 601.2c", "CR 704", "CR 603.6c/603.10"
@@ -100,7 +101,7 @@ def snippet(line: str) -> str:
 
 def collect() -> dict[str, list[tuple[str, int, str]]]:
     hits: dict[str, list[tuple[str, int, str]]] = defaultdict(list)
-    roots = [ENGINE / "src", ENGINE / "tests"]
+    roots = [crate / sub for crate in CRATES for sub in ("src", "tests")]
     for base in roots:
         if not base.is_dir():
             continue
@@ -143,7 +144,7 @@ def render(hits: dict[str, list[tuple[str, int, str]]]) -> str:
         "",
         "# CR → Engine Index",
         "",
-        "Reverse index of Comprehensive Rules citations in `crates/engine` (source + tests).",
+        "Reverse index of Comprehensive Rules citations in `crates/engine` and `crates/cards` (source + tests).",
         "Regenerate with `just engine-cr-index` after adding `CR …` comments.",
         "Check freshness with `just engine-cr-index-check`.",
         "",

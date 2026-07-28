@@ -76,6 +76,7 @@ These documents are **not superseded** and must stay current alongside the specs
 | [coverage-printing-aware-sets](2026-07-26-coverage-printing-aware-sets-design.md) | Design input: pool `sets` + backfill script; printing-aware faithful/oracle per set; release-date sort; supersedes coverage-by-set metric/sort |
 | [gha-server-verify-sharding](2026-07-26-gha-server-verify-sharding-design.md) | Design input for 3-shard nextest cold `verify-server` wall-clock; update `ci-and-release` at implement time |
 | [ci-rust-protoc-image](2026-07-26-ci-rust-protoc-image-design.md) | Design input for GHCR `mtgfr-ci` toolchain image (PR1 publish; PR2 containerize verify + migrate job); update `ci-and-release` per PR |
+| [buf-proto-lint-breaking](2026-07-27-buf-proto-lint-breaking-design.md) | Shipped design input: full `STANDARD` via service/RPC renames (no lint exceptions) + `verify-wire` / local `buf breaking` (WIRE vs `origin/main`) with major-title / `/v2` hatch |
 | [bff-route-split](2026-07-26-bff-route-split-design.md) | Design input: Nitro one-file-per lobby/meta op, `defineHandler` + h3 web APIs, path-param join/ready/start; update shell/lobby/coverage specs at implement time |
 | [shell-polish-redesign](2026-07-26-shell-polish-redesign-design.md) | Shipped design input (#252/#259/#261/#262): shared `shellFrame`, shell type pair, atmosphere, CSS portrait→landscape rotate, per-surface reflows + Wave 4 consistency/scroll pass |
 | [lobby-entry-redesign](2026-07-27-lobby-entry-redesign-design.md) | Design input: Host/Join entry Layout C (deck + action stack), soft-inline Join, stronger shared ghost Back; update `lobby-entry-ui` at implement time |
@@ -84,6 +85,8 @@ These documents are **not superseded** and must stay current alongside the specs
 | [prompt-primary-bar-takeover](2026-07-27-prompt-primary-bar-takeover-design.md) | Design input: simple prompt actions own the primary-bar slot; rich pickers are center modals; board-aim coaches stay bottom-docked; update prompts + turn-and-priority-chrome at implement time |
 | [unified-screen-motion](2026-07-27-unified-screen-motion-design.md) | Design input: unify hand-drag ghost + flights + ExitFx onto the Mount flight / screen-motion paint layer; update flights + hand-and-zone-bar |
 | [otel-semantic-conventions](2026-07-27-otel-semantic-conventions-design.md) | Design input: OTel Semantic Conventions 1.37.0 for resource/HTTP/RPC/DB/exceptions + `mtgfr.*` extensions across Faro→BFF→API; update observability-ops (+ topology if env/dashboards) at implement time |
+| [dtcg-token-architecture](2026-07-27-dtcg-token-architecture-design.md) | Design input: DTCG 2025.10 typed composites (drop `$type: css`), aliases, primitive→semantic tiers, CSS Color 4 OKLCH; update shell-routes + `DESIGN.md` at implement time |
+| [card-toml-json-schema](2026-07-27-card-toml-json-schema-design.md) | Design input: fully generate card/token JSON Schema + `DSL_REFERENCE.md` from CardDef TOML surface types; update card-dsl-and-card-pool + card-dsl skill at implement time |
 
 ## Authoring conventions
 

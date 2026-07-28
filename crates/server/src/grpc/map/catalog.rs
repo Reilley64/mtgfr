@@ -33,8 +33,26 @@ pub fn deck_summary_to_pb(deck: DeckSummary) -> pb::DeckSummary {
     }
 }
 
-pub fn deck_detail_to_pb(deck: DeckDetail) -> pb::DeckDetail {
-    pb::DeckDetail {
+pub fn create_request_from_pb(req: pb::CreateRequest) -> SaveDeckRequest {
+    SaveDeckRequest {
+        name: req.name,
+        commander: req.commander,
+        commander_print: req.commander_print,
+        cards: req.cards.into_iter().map(deck_card_entry_from_pb).collect(),
+    }
+}
+
+pub fn deck_save_body_from_pb(req: pb::DeckSaveBody) -> SaveDeckRequest {
+    SaveDeckRequest {
+        name: req.name,
+        commander: req.commander,
+        commander_print: req.commander_print,
+        cards: req.cards.into_iter().map(deck_card_entry_from_pb).collect(),
+    }
+}
+
+pub fn deck_detail_to_create_response(deck: DeckDetail) -> pb::CreateResponse {
+    pb::CreateResponse {
         id: deck.id,
         name: deck.name,
         commander: deck.commander,
@@ -43,12 +61,23 @@ pub fn deck_detail_to_pb(deck: DeckDetail) -> pb::DeckDetail {
     }
 }
 
-pub fn save_deck_request_from_pb(req: pb::SaveDeckRequest) -> SaveDeckRequest {
-    SaveDeckRequest {
-        name: req.name,
-        commander: req.commander,
-        commander_print: req.commander_print,
-        cards: req.cards.into_iter().map(deck_card_entry_from_pb).collect(),
+pub fn deck_detail_to_get_response(deck: DeckDetail) -> pb::GetResponse {
+    pb::GetResponse {
+        id: deck.id,
+        name: deck.name,
+        commander: deck.commander,
+        commander_print: deck.commander_print,
+        cards: deck.cards.into_iter().map(deck_card_entry_to_pb).collect(),
+    }
+}
+
+pub fn deck_detail_to_update_response(deck: DeckDetail) -> pb::UpdateResponse {
+    pb::UpdateResponse {
+        id: deck.id,
+        name: deck.name,
+        commander: deck.commander,
+        commander_print: deck.commander_print,
+        cards: deck.cards.into_iter().map(deck_card_entry_to_pb).collect(),
     }
 }
 

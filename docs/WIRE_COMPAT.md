@@ -14,6 +14,13 @@ talk to older pods via BFF `table_routes` → pod DNS on the headless Service.
 So every concurrent instance version must speak a wire protocol the current SPA/BFF can parse —
 **expand-only** across the whole set until grace expires / pods exit.
 
+The automated gate is `verify-wire` in `.github/workflows/verify-jobs.yml`; local equivalents
+are `just proto-lint`, `just proto-breaking`, and `just proto-check`. Proto lint uses Buf
+`STANDARD` with no silenced rules (`except`, `ignore`, or `ignore_only`), and proto breaking
+uses Buf `WIRE` against `origin/main` for ordinary PRs. The `--against` input names
+`subdir=proto`, because `proto/buf.yaml` — and therefore the import root the `.proto`
+files are written against — lives under `proto/`, not the repository root.
+
 ## Transport migration (wire-protocol-and-visibility spec)
 
 The OpenAPI/REST/SSE → Effect RPC + gRPC cutover is a **hard cut**: API and web ship together.
@@ -38,7 +45,20 @@ and the generated Rust/TS bindings:
 - There is no JSON-in-proto escape hatch: game stream frames, intents, decks, cards, and seed
   are all native messages. Expand those trees the same way as any other proto message.
 
-## 3. Lobby vs game
+## 3. Hard breaks / majors
+
+Service renames, gRPC path changes, field removals, field renumbering, and incompatible type
+changes are hard breaks. Prefer a new proto package/path such as `mtgfr/v2` for later intentional
+hard breaks when practical.
+
+An in-place hard break under the current package is allowed only on a semver-major PR: the PR
+body (squash commit body) must include an Angular `BREAKING CHANGE:` footer. That PR skips
+`buf breaking`, cuts a major release through semantic-release, and is a hard cut: no N↔N−1
+wire coexistence is promised for that release. After the merge, `main` is the new breaking
+baseline for subsequent PRs. (`@commitlint/config-angular` forbids `!:` in the subject; do not
+put a bang in the PR title.)
+
+## 4. Lobby vs game
 
 Lobby Effect RPC is owned by the BFF (`mtgfr_web`). Game stream/intent RPCs stay on tonic; the
 BFF dials `{pod_dns}:50051` from `table_routes`.
