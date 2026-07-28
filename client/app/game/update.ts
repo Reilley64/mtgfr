@@ -1,6 +1,11 @@
 import type { Command as FoldkitCommand } from "foldkit";
 import { Command } from "foldkit";
-import { type OutMessage as BoardOutMessage, drainPlayModeIfSingleton, syncBoardWithGame } from "../board/submodel";
+import {
+  type OutMessage as BoardOutMessage,
+  drainPlayModeIfSingleton,
+  dropHeldSeeds,
+  syncBoardWithGame,
+} from "../board/submodel";
 import { type Message as AppMessage, GotBoardMessage, GotGameMessage } from "../messages";
 import type { GameSlice } from "../model";
 import type { RpcClient } from "../resources";
@@ -83,7 +88,8 @@ export function updateGame(
           // Also clear optimistic combat confirm latches — a rejected goad/empty declare
           // must not leave staging disabled for the rest of the step.
           board: {
-            ...game.board,
+            // The play never happened: drop the optimistic flight seed and unhide its hand tile.
+            ...dropHeldSeeds(game.board),
             reject: message.reason,
             promptSubmitInFlight: false,
             promptSubmitSeq: null,

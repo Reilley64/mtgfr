@@ -1628,6 +1628,29 @@ function clearPlayOrigin(model: BoardModel, cardId: number): BoardModel {
   };
 }
 
+/**
+ * Drop optimistic seeds when the intent that would have justified them was rejected. A rejected play
+ * never produces provenance and a reject does not advance `fold.seq`, so nothing else re-examines a
+ * parked hold — it would stay painted (and its hand tile hidden) for the rest of the game.
+ */
+export function dropHeldSeeds(model: BoardModel): BoardModel {
+  const flights = new Map(model.flights);
+  const handHidden = new Set(model.handHidden);
+  for (const [id, flight] of model.flights) {
+    if (flight.hold !== true) continue;
+    flights.delete(id);
+    handHidden.delete(flight.fromCardId ?? id);
+  }
+  if (flights.size === model.flights.size) return model;
+  return {
+    ...model,
+    flights,
+    handHidden,
+    hideCardIds: hiddenCardIds(flights, model.exitFx),
+    ownedIds: new Set(flights.keys()),
+  };
+}
+
 function runAction(
   model: BoardModel,
   fold: GameFoldState,
@@ -1644,7 +1667,13 @@ function runAction(
     return [{ ...model, reject: humanReason(plan.reason) }, []];
   }
   if (plan.kind === "stage") {
-    const seeded = seedDropFromHand(model, plan.card, screenOrigin, "stack", fold.state?.stack.length ?? 0, fold);
+    // A permanent activating an ability doesn't change zones: only its ability goes on the stack.
+    // Seeding a flight here would hide the resting battlefield art, and activated abilities emit no
+    // stack-entrance provenance to hand the seed off to, so it would also leak.
+    const seeded =
+      plan.card.zone === ZONE.Battlefield
+        ? model
+        : seedDropFromHand(model, plan.card, screenOrigin, "stack", fold.state?.stack.length ?? 0, fold);
     return [
       {
         ...seeded,
