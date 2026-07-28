@@ -54,11 +54,19 @@ describe("input", () => {
   });
 
   it("merges an array of call-site classes with the variant", () => {
-    const node = input(h, { id: "coverage-search", class: ["w-full", "mb-sm"] });
+    const node = input(h, { id: "coverage-search", class: ["w-full", "text-chip"] });
 
     expect(classes(node)).toContain("w-full");
-    expect(classes(node)).toContain("mb-sm");
+    expect(classes(node)).toContain("text-chip");
+    expect(classes(node)).not.toContain("text-body");
     expect(classes(node)).toContain("bg-glass");
+  });
+
+  it("sizes a hud field from the call site without losing the prompt chrome", () => {
+    const node = input(h, { id: "pick-card-filter", variant: "hud", class: "w-[min(90vw,320px)]" });
+
+    expect(classes(node)).toContain("w-[min(90vw,320px)]");
+    expect(classes(node)).toEqual(expect.arrayContaining(["rounded-hud", "bg-glass", "shrink-0"]));
   });
 
   it("identifies the field so a label can point at it", () => {
