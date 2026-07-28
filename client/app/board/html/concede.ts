@@ -2,21 +2,21 @@
 // Conceding is a real game action (CR 104.3a), not navigation.
 
 import { type Html, html } from "foldkit/html";
-import { cn } from "~/cn";
-import { buttonClass } from "~/ui/buttonClass";
+import { button } from "~/ui/button";
 import { ConcedeCancelled, ConcedeClicked, ConcedeConfirmed, type Message } from "../messages";
 
 const h = html<Message>();
 
 /** Concede button — fixed top-right, shown while the viewer is still in the game. */
 export function concedeButtonView(): Html {
-  return h.button(
-    [
-      h.Type("button"),
-      h.DataAttribute("testid", "board-concede"),
-      h.OnClick(ConcedeClicked()),
-      h.Class(cn("pointer-events-auto fixed top-md right-md z-45", buttonClass("ghost"))),
-    ],
+  return button(
+    h,
+    {
+      testId: "board-concede",
+      onClick: ConcedeClicked(),
+      variant: "ghost",
+      class: "pointer-events-auto fixed top-md right-md z-45",
+    },
     ["Concede"],
   );
 }
@@ -49,24 +49,8 @@ export function concedeDialogView(open: boolean): Html | null {
           h.div(
             [h.Class("flex justify-end gap-md")],
             [
-              h.button(
-                [
-                  h.Type("button"),
-                  h.DataAttribute("testid", "concede-cancel"),
-                  h.OnClick(ConcedeCancelled()),
-                  h.Class(buttonClass("ghost")),
-                ],
-                ["Cancel"],
-              ),
-              h.button(
-                [
-                  h.Type("button"),
-                  h.DataAttribute("testid", "concede-confirm"),
-                  h.OnClick(ConcedeConfirmed()),
-                  h.Class(buttonClass("danger")),
-                ],
-                ["Concede"],
-              ),
+              button(h, { testId: "concede-cancel", onClick: ConcedeCancelled(), variant: "ghost" }, ["Cancel"]),
+              button(h, { testId: "concede-confirm", onClick: ConcedeConfirmed(), variant: "danger" }, ["Concede"]),
             ],
           ),
         ],

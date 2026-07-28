@@ -9,7 +9,7 @@ import {
   initPromptDraft,
 } from "~/choice";
 import { priorityPrimaryClass } from "~/priorityContextChrome";
-import { gameButtonClass } from "~/ui/buttonClass";
+import { button } from "~/ui/button";
 import type { MessageRef, PendingChoiceView, VisibleState } from "~/wire/types";
 import { costText } from "~/xCost";
 import { formatMessage } from "../../domain/i18n/message";
@@ -86,15 +86,16 @@ function barButton(
   disabled = false,
   pressed: boolean | null = null,
 ): Html {
-  return h.button(
-    [
-      h.Type("button"),
-      h.DataAttribute("testid", testId),
-      h.Disabled(disabled),
-      ...(pressed == null ? [] : [h.AriaPressed(pressed ? "true" : "false")]),
-      h.OnClick(onClick),
-      h.Class(gameButtonClass(primary ? "game" : "game-quiet", primary ? priorityPrimaryClass(true) : null)),
-    ],
+  return button(
+    h,
+    {
+      testId,
+      disabled,
+      onClick,
+      variant: primary ? "game" : "game-quiet",
+      class: primary ? priorityPrimaryClass(true) : null,
+      attrs: pressed == null ? [] : [h.AriaPressed(pressed ? "true" : "false")],
+    },
     [label],
   );
 }
