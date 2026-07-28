@@ -1,0 +1,39 @@
+# Enchant enchantment
+# At the beginning of the upkeep of enchanted enchantment's controller, that player may pay any
+# amount of mana. This Aura deals 2 damage to that player. Prevent X of that damage, where X is
+# the amount of mana that player paid this way.
+name = "Power Leak"
+otags = ["burn-player", "damage-prevention", "damage-prevention-player", "hate-enchantment", "parasitic-aura", "pinger", "triggered-ability"]
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
+id = "dc2f0000-870b-487f-9623-618fc8eb9765"
+default_print = "436fd628-c545-4cbf-8100-4e6aa8475868"
+oracle = "Enchant enchantment\nAt the beginning of the upkeep of enchanted enchantment's controller, that player may pay any amount of mana. This Aura deals 2 damage to that player. Prevent X of that damage, where X is the amount of mana that player paid this way."
+subtypes = ["Aura"]
+enchant = { types = "enchantment" }
+
+[cost]
+generic = 1
+blue = 1
+
+[kind]
+type = "aura"
+
+# At the beginning of the upkeep of enchanted enchantment's controller, that player may pay any
+# amount of mana. This Aura deals 2 damage to that player. Prevent X of that damage, where X is
+# the amount of mana that player paid this way.
+[[abilities]]
+timing = "each_upkeep"
+condition = { type = "enchanted_permanents_controllers_upkeep" }
+
+# that player may pay any amount of mana. … Prevent X of that damage, where X is the amount of
+# mana that player paid this way.
+[[abilities.effects]]
+type = "choice"
+mode = "triggering_player_may_pay_any_amount_to_prevent"
+prevent_up_to = 2
+
+# This Aura deals 2 damage to that player.
+[[abilities.effects]]
+type = "damage"
+mode = "to_triggering_player"
+amount = 2

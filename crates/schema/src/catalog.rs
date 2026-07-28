@@ -93,11 +93,14 @@ pub(crate) fn wire_keyword(keyword: engine::Keyword) -> String {
         Keyword::Intimidate => "intimidate".into(),
         Keyword::LesserPowerCantBlock => "lesser_power_cant_block".into(),
         Keyword::CantBlock => "cant_block".into(),
+        Keyword::Banding => "banding".into(),
         Keyword::CanBlockOnlyFlyers => "can_block_only_flyers".into(),
         Keyword::Decayed => "decayed".into(),
         Keyword::Myriad => "myriad".into(),
         Keyword::Infect => "infect".into(),
         Keyword::Toxic(n) => format!("toxic:{n}"),
+        // The printed keyword names itself after the land: `islandwalk`, `forestwalk`, …
+        Keyword::Landwalk(land) => format!("{}walk", land.as_str().to_lowercase()),
         Keyword::Ward(n) => format!("ward:{n}"),
         Keyword::ProtectionFrom(scope) => {
             let name = match scope {
@@ -141,11 +144,13 @@ pub(crate) fn keyword_label(keyword: engine::Keyword) -> String {
         Keyword::Intimidate => "Intimidate".into(),
         Keyword::LesserPowerCantBlock => "Lesser-power creatures can't block it".into(),
         Keyword::CantBlock => "Can't block".into(),
+        Keyword::Banding => "Banding".into(),
         Keyword::CanBlockOnlyFlyers => "Can block only creatures with flying".into(),
         Keyword::Decayed => "Decayed".into(),
         Keyword::Myriad => "Myriad".into(),
         Keyword::Infect => "Infect".into(),
         Keyword::Toxic(n) => format!("Toxic {n}"),
+        Keyword::Landwalk(land) => format!("{}walk", land.as_str()),
         Keyword::Ward(n) => format!("Ward {{{n}}}"),
         Keyword::ProtectionFrom(scope) => {
             let name = match scope {
@@ -169,6 +174,10 @@ fn keyword_message(keyword: engine::Keyword) -> MessageRef {
     match keyword {
         Keyword::Ward(n) => MessageRef::key("keyword.ward")
             .with_params(vec![MessageParam::int("amount", i64::from(n))]),
+        // One parameterized key, like Ward's — not five near-identical `keyword.islandwalk`
+        // literals in the catalog.
+        Keyword::Landwalk(land) => MessageRef::key("keyword.landwalk")
+            .with_params(vec![MessageParam::string("land", land.as_str())]),
         Keyword::ProtectionFrom(scope) => {
             let scope = match scope {
                 ProtectionScope::Color(Color::White) => "white",

@@ -1,0 +1,29 @@
+# {1}: The next time a green source of your choice would deal damage to you this turn,
+# prevent that damage.
+name = "Circle of Protection: Green"
+otags = ["activated-ability", "cycle-lea-circle-protection", "damage-prevention-you", "hate-green", "mana-sink"]
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "8ed", "ced", "cei", "fbb", "ice", "lea", "leb", "ptc", "sum", "tmp"]
+id = "41b0f347-1398-4778-bf3f-4007d8a77162"
+default_print = "108ce265-1b3a-484a-9b0c-cab1094d1521"
+oracle = "{1}: The next time a green source of your choice would deal damage to you this turn, prevent that damage."
+approximates = "the shield arms against the next source of the named color instead of one source picked as the ability resolves, so it cannot be held for the second of two same-colored hits in a turn"
+
+[cost]
+generic = 1
+white = 1
+
+[kind]
+type = "enchantment"
+
+# {1}: The next time a green source of your choice would deal damage to you this turn,
+# prevent that damage.
+[[abilities]]
+timing = "activated"
+activation_cost = { generic = 1 }
+
+# {1}: The next time a green source of your choice would deal damage to you this turn,
+# prevent that damage.
+[[abilities.effects]]
+type = "misc"
+mode = "prevent_next_damage"
+from_color = "green"

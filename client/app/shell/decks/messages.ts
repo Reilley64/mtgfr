@@ -30,7 +30,6 @@ export {
   ReceivedDeckForBuilder,
   RemovedBuilderCard,
   RequestedBuilderCancel,
-  RequestedNextBuilderPage,
   SetBuilderCommander,
   SubmittedDeckSave,
 } from "./builder/messages";

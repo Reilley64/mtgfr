@@ -3,6 +3,7 @@
 # ponytail: the tax is auto-paid (pool first, then auto-tapped lands) at declare time rather than
 # offered as an explicit pay-or-decline choice — can't-afford makes the declaration illegal.
 name = "Windborn Muse"
+otags = ["cycle-lgn-muse", "evasion", "hatebird", "tax-attack"]
 sets = ["10e", "c16", "c21", "cmd", "dmr", "lgn", "mkc", "onc", "plst", "sld", "voc"]
 id = "75e09ac6-d789-4c4d-9aca-845d68f3899f"
 default_print = "7ae76409-40d7-4a54-ad58-5c67996b1a0c"

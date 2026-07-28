@@ -2,8 +2,8 @@
 //
 // Pending-choice formulators collect answers and route every submission through `choiceIntent`.
 
-import { Option } from "effect";
-import { type Html, html } from "foldkit/html";
+import { Match, Option } from "effect";
+import { childAttributes, type Html, html } from "foldkit/html";
 import {
   cardPickIsSearchable,
   filterChoiceItems,
@@ -29,7 +29,8 @@ import { filterOptionLabels } from "~/optionFilter";
 import { manaFontClass } from "~/oracleText";
 import { isActivePlayer } from "~/spectator";
 import { cardArt } from "~/ui/card-art";
-import { input } from "~/ui/input";
+import { input, inputClass } from "~/ui/input";
+import { menuItemClass, menuPanelClass } from "~/ui/menu";
 import type { ChoiceItem, MessageRef, PendingChoiceView, VisibleState, WireModeChoice, WireTarget } from "~/wire/types";
 import { clampX, costText, costWithChosenX } from "~/xCost";
 import { formatMessage } from "../../domain/i18n/message";
@@ -54,10 +55,12 @@ import {
   stagedPickTargets,
   stagedTargetTitle,
 } from "../action/targeting";
+import { CARD_NAME_COMBOBOX_ID, CardNameCombobox } from "../card-name-combobox";
 import { seatColor, ZONE } from "../geometry/layout";
 import {
   CancelActionClicked,
   DiscardChosen,
+  GotCardNameComboboxMessage,
   GyExileChosen,
   type Message,
   PendingChoiceAnswered,
@@ -72,7 +75,6 @@ import {
   PromptOrderMoved,
   PromptOrderRowClicked,
   PromptPartitionSet,
-  PromptStringSet,
   PromptSubmitted,
   SacrificeChosen,
   TargetChosen,
@@ -262,7 +264,7 @@ function arrangeLaneCard(
 }
 
 function arrangeLanesPrompt(
-  pending: Extract<PendingChoiceView, { kind: "scry" | "surveil" }>,
+  pending: Extract<PendingChoiceView, { kind: "scry" | "surveil" | "reorder_top" }>,
   state: VisibleState,
   board: BoardModel,
 ): Html {
@@ -280,12 +282,29 @@ function arrangeLanesPrompt(
     const item = byId.get(id);
     return item != null ? [item] : [];
   });
-  const title = pending.kind === "scry" ? `Scry ${pending.items.length}` : `Surveil ${pending.items.length}`;
-  const bottomLabel = pending.kind === "surveil" ? "Graveyard" : "Bottom of library";
-  const hint =
-    pending.kind === "surveil"
-      ? "Click a card to move it between Top and Graveyard. Order on Top is left to right."
-      : "Click a card to move it between Top and Bottom. Order in each lane is left to right.";
+  const title = Match.value(pending.kind).pipe(
+    Match.withReturnType<string>(),
+    Match.when("scry", () => `Scry ${pending.items.length}`),
+    Match.when("surveil", () => `Surveil ${pending.items.length}`),
+    Match.orElse(() => `Put back ${pending.items.length}`),
+  );
+  // Natural Selection's cards all go back on top, so its second lane is not a destination —
+  // it holds the ones the player has not placed yet, and they follow the ordered pile up.
+  const bottomLabel = Match.value(pending.kind).pipe(
+    Match.withReturnType<string>(),
+    Match.when("surveil", () => "Graveyard"),
+    Match.when("reorder_top", () => "Not yet ordered"),
+    Match.orElse(() => "Bottom of library"),
+  );
+  const hint = Match.value(pending.kind).pipe(
+    Match.withReturnType<string>(),
+    Match.when("surveil", () => "Click a card to move it between Top and Graveyard. Order on Top is left to right."),
+    Match.when(
+      "reorder_top",
+      () => "Click a card to place it on Top. Order on Top is left to right; anything left follows behind it.",
+    ),
+    Match.orElse(() => "Click a card to move it between Top and Bottom. Order in each lane is left to right."),
+  );
 
   return promptModalFrame({
     testId: "pending-arrange-modal",
@@ -940,7 +959,16 @@ function cardPickConfig(pending: PendingChoiceView): {
     case "choose_activation_cost_targets":
       return { title: "Choose cost targets", submitLabel: "Choose" };
     case "decline_untap":
-      return { title: "Choose permanents to keep tapped", submitLabel: "Keep tapped" };
+      return {
+        title: "Choose permanents to keep tapped",
+        // Smoke / Winter Orb: leaving two of a capped group up is rejected by the server, so say
+        // why Keep tapped is greyed out rather than letting the answer bounce.
+        hint:
+          (pending.at_most_one ?? []).length > 0
+            ? "Only one of the capped permanents may untap — keep the rest tapped."
+            : undefined,
+        submitLabel: "Keep tapped",
+      };
     case "sacrifice_unless_return_land":
       return { title: "Return a land or sacrifice", submitLabel: "Return land" };
     case "scry":
@@ -1027,6 +1055,10 @@ function cardPickConfig(pending: PendingChoiceView): {
     case "choose_exiled_with_card_to_cast":
       return { title: "Choose an exiled card to cast", submitLabel: "Cast", declineLabel };
     case "choose_exiled_dig_to_cast_free":
+      // Word of Command rides this shape with the candidates coming from an opponent's hand.
+      if (pending.from_opponent_hand) {
+        return { title: "Choose a card from their hand for them to play", submitLabel: "Play", declineLabel };
+      }
       return { title: "Choose a card to cast for free", submitLabel: "Cast", declineLabel };
     case "opponent_chooses_exiled_nonland":
       return { title: "Choose an exiled nonland card", submitLabel: "Choose", declineLabel };
@@ -1038,6 +1070,9 @@ function cardPickConfig(pending: PendingChoiceView): {
     case "choose_copy_target":
       if (pending.put_counter_on_creature) {
         return { title: "Choose a creature to get a +1/+1 counter", submitLabel: "Put counter" };
+      }
+      if (pending.choose_block_target) {
+        return { title: "Choose an attacking creature to block", submitLabel: "Block", declineLabel };
       }
       return { title: "Choose a copy target", submitLabel: "Copy" };
     case "choose_attach_host":
@@ -1438,7 +1473,7 @@ function cardPickForKind(
     });
   }
 
-  if (pending.kind === "scry" || pending.kind === "surveil") {
+  if (pending.kind === "scry" || pending.kind === "surveil" || pending.kind === "reorder_top") {
     return arrangeLanesPrompt(pending, state, board);
   }
 
@@ -1872,6 +1907,8 @@ function pilePickPrompt(
   pending: Extract<PendingChoiceView, { kind: "opponent_chooses_pile" | "choose_pile_for_hand" }>,
   _tableId: string | null,
 ): Html {
+  // Raging River names the attacker each pick is about; every other pile choice is A/B.
+  const attacker = pending.kind === "choose_pile_for_hand" ? pending.attacker : undefined;
   const pileBlock = (title: string, items: ReadonlyArray<ChoiceItem>): Html =>
     h.div(
       [h.Class("min-w-[180px] flex-1 rounded-panel bg-glass p-3")],
@@ -1892,10 +1929,19 @@ function pilePickPrompt(
       ),
     ],
     [
-      h.div([h.Class("pointer-events-none text-center font-semibold text-body text-snow")], ["Choose a pile"]),
+      h.div(
+        [
+          h.DataAttribute("testid", "prompt-pile-heading"),
+          h.Class("pointer-events-none text-center font-semibold text-body text-snow"),
+        ],
+        // Raging River labels each attacker in turn, so the pick is about that creature.
+        [attacker == null ? "Choose a pile" : `Send ${attacker.label} left or right`],
+      ),
       h.div(
         [h.Class("flex w-full flex-wrap justify-center gap-3")],
-        [pileBlock("Pile A", pending.pile_a), pileBlock("Pile B", pending.pile_b)],
+        attacker == null
+          ? [pileBlock("Pile A", pending.pile_a), pileBlock("Pile B", pending.pile_b)]
+          : [pileBlock("Left", pending.pile_a), pileBlock("Right", pending.pile_b)],
       ),
     ],
   );
@@ -1920,7 +1966,8 @@ function partitionPrompt(
     const pileBItems = pending.items.filter((it) => !pileAIds.includes(it.id));
     return promptModalFrame({
       testId: "pending-partition-modal",
-      title: "Choose cards for Pile A",
+      // Raging River and Camouflage divide creatures on the battlefield, not revealed cards.
+      title: pending.into_piles === true ? "Choose creatures for this pile" : "Choose cards for Pile A",
       body: [
         h.div(
           [
@@ -2200,47 +2247,42 @@ function stringPickPrompt(
         h.div(
           [h.Class("flex min-h-0 w-[min(92vw,360px)] flex-1 flex-col gap-sm")],
           [
-            input(h, {
-              id: "prompt-name-input",
-              variant: "hud",
-              testId: "prompt-name-input",
-              placeholder: "Card name",
-              autofocus: true,
-              ariaLabel: "Card name",
-              value,
-              onInput: (v) => PromptStringSet({ value: v }),
-              class: "w-full",
-              attrs: [
-                h.OnKeyDownPreventDefault((key) => {
-                  if (key !== "Enter" || !canSubmit) return Option.none();
-                  return Option.some(PromptSubmitted());
-                }),
-              ],
-            }),
-            suggestions.length > 0
-              ? h.div(
-                  [
-                    h.DataAttribute("testid", "prompt-name-suggestions"),
-                    h.Class("flex min-h-0 w-full flex-1 flex-col gap-1 overflow-y-auto"),
-                  ],
-                  suggestions.map((name, index) =>
-                    h.button(
-                      [
-                        h.Type("button"),
-                        h.DataAttribute("testid", `prompt-name-suggestion-${index}`),
-                        h.OnClick(PromptStringSet({ value: name })),
-                        h.Class(
-                          "cursor-pointer rounded-hud bg-glass px-3 py-1 text-left text-body text-snow hover:bg-glass-dim",
-                        ),
-                      ],
-                      [name],
-                    ),
+            // Combobox owns the input text, opens the list as you type, and moves the active row
+            // on arrow keys; Enter commits the highlighted name into the draft. It renders the
+            // panel only when it has items, and anchors and portals it, so `z-50` is what keeps
+            // it over the `z-40` prompt frame.
+            h.submodel({
+              slotId: CARD_NAME_COMBOBOX_ID,
+              model: board.cardNameCombobox,
+              view: CardNameCombobox.view,
+              viewInputs: {
+                items: suggestions,
+                maybeSelectedValue: value === "" ? Option.none() : Option.some(value),
+                restingInputValue: value,
+                itemToValue: (name: string) => name,
+                itemToDisplayText: (name: string) => name,
+                itemToConfig: (name: string, context: { isActive: boolean }) => ({
+                  className: menuItemClass(context.isActive ? "bg-white/8" : undefined, "hud"),
+                  content: h.span(
+                    [h.DataAttribute("testid", `prompt-name-suggestion-${suggestions.indexOf(name)}`)],
+                    [name],
                   ),
-                )
-              : null,
+                }),
+                ariaLabel: "Card name",
+                inputPlaceholder: "Card name",
+                inputClassName: inputClass("w-full", "hud"),
+                inputAttributes: childAttributes([h.DataAttribute("testid", "prompt-name-input"), h.Autofocus(true)]),
+                inputWrapperClassName: "w-full",
+                itemsClassName: menuPanelClass("z-50 max-h-[40vh] w-(--button-width) gap-1", "hud"),
+                itemsAttributes: childAttributes([h.DataAttribute("testid", "prompt-name-suggestions")]),
+                itemsScrollClassName: "min-h-0 overflow-y-auto",
+                anchor: { placement: "bottom-start" as const, gap: 4 },
+              },
+              toParentMessage: (message) => GotCardNameComboboxMessage({ message }),
+            }) as Html,
           ],
         ),
-      ].filter((v): v is Html => v !== null),
+      ],
       actions: [submitButton("Name", !canSubmit)],
     });
   }

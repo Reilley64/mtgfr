@@ -110,10 +110,19 @@ impl Game {
 
     /// Pause on the next opponent with a card to discard (skipping any with an empty hand), or —
     /// when none remain — return, letting the enclosing sequence resume into the draw payoff.
-    pub(crate) fn prompt_next_discard_edict(&mut self, remaining: Vec<PlayerId>, source: ObjectId) {
+    pub(crate) fn prompt_next_discard_edict(
+        &mut self,
+        remaining: Vec<PlayerId>,
+        source: ObjectId,
+        floor: Option<u32>,
+    ) {
         crate::pending::raise(
             self,
-            crate::pending::ChoiceRequest::NextDiscardEdict { remaining, source },
+            crate::pending::ChoiceRequest::NextDiscardEdict {
+                remaining,
+                source,
+                floor,
+            },
         );
     }
 
@@ -130,21 +139,31 @@ impl Game {
             options,
             remaining,
             source,
+            count,
+            floor,
             ..
         }) = self.pending_choice.clone()
         else {
             return Err(Reject::IllegalChoice);
         };
-        // Mandatory: exactly one of the offered cards (declining isn't legal when they have one).
-        if discards.len() != 1 || !options.contains(&discards[0]) {
+        // Mandatory: exactly `count` distinct offered cards (declining isn't legal when they have
+        // them). One for a plain fan-out; under Balance, their whole excess in one answer.
+        let distinct = discards
+            .iter()
+            .enumerate()
+            .all(|(i, id)| !discards[..i].contains(id));
+        if discards.len() as u32 != count
+            || !distinct
+            || discards.iter().any(|id| !options.contains(id))
+        {
             return Err(Reject::IllegalChoice);
         }
         self.finish_answer();
 
         let mut events = Vec::new();
         self.discard_ids(&discards, player, &mut events);
-        self.resolution_frame.cards_discarded_this_way += 1;
-        self.prompt_next_discard_edict(remaining, source);
+        self.resolution_frame.cards_discarded_this_way += discards.len() as u32;
+        self.prompt_next_discard_edict(remaining, source, floor);
         Ok(events)
     }
 
@@ -173,10 +192,15 @@ impl Game {
         &mut self,
         remaining: Vec<PlayerId>,
         source: ObjectId,
+        prevent_up_to: Option<u8>,
     ) {
         crate::pending::raise(
             self,
-            crate::pending::ChoiceRequest::NextJoinForcesPayment { remaining, source },
+            crate::pending::ChoiceRequest::NextJoinForcesPayment {
+                remaining,
+                source,
+                prevent_up_to,
+            },
         );
     }
 
@@ -193,6 +217,7 @@ impl Game {
             player: payer,
             source,
             remaining,
+            prevent_up_to,
         }) = self.pending_choice.clone()
         else {
             return Err(Reject::IllegalChoice);
@@ -216,7 +241,27 @@ impl Game {
         }
         self.finish_answer();
         self.resolution_frame.join_forces_mana += amount;
-        self.prompt_next_join_forces_payment(remaining, source);
+        // Power Leak: "Prevent X of that damage, where X is the amount of mana that player paid
+        // this way" (CR 615). The shield goes up here, between the payment and the damage step
+        // waiting in the enclosing `Sequence`, and is capped at that step's damage so overpaying
+        // banks nothing against an unrelated hit later in the turn.
+        if let Some(cap) = prevent_up_to {
+            let points = amount.min(u32::from(cap)) as i32;
+            if points > 0 {
+                self.damage_prevention_shields
+                    .push(crate::state::PreventionShield {
+                        target: crate::Target::Player(payer),
+                        amount: Some(points),
+                        keep: None,
+                        from_color: crate::ColorFilter::Any,
+                        from_source: None,
+                        combat_only: false,
+                        gain_life: false,
+                        redirect_to: None,
+                    });
+            }
+        }
+        self.prompt_next_join_forces_payment(remaining, source, prevent_up_to);
         Ok(events)
     }
 
@@ -429,6 +474,39 @@ impl Game {
         Ok(events)
     }
 
+    /// Answer a [`PendingChoice::ChooseBlockTarget`]: `choice` is `None` to decline the "you may",
+    /// or one of the choice's `options` (a declared attacker) for the pulled creature to block
+    /// (False Orders, CR 601.2c). The re-aimed block is a real block declaration — the same
+    /// [`Event::BlockerDeclared`] the declare-blockers step emits — so it fires the "blocks" /
+    /// "becomes blocked" watches and makes the attacker blocked for the rest of combat.
+    pub(crate) fn answer_choose_block_target(
+        &mut self,
+        _player: PlayerId,
+        choice: Option<ObjectId>,
+    ) -> Result<Vec<Event>, Reject> {
+        let Some(PendingChoice::ChooseBlockTarget {
+            blocker, options, ..
+        }) = self.pending_choice.clone()
+        else {
+            return Err(Reject::IllegalChoice);
+        };
+        if choice.is_some_and(|id| !options.contains(&id)) {
+            return Err(Reject::IllegalChoice);
+        }
+        self.finish_answer();
+
+        let mut events = Vec::new();
+        let Some(attacker) = choice else {
+            return Ok(events);
+        };
+        self.push_apply(&mut events, Event::BlockerDeclared { blocker, attacker });
+        let blocks = [(blocker, attacker)];
+        self.queue_blocks_or_becomes_blocked_triggers(&blocks);
+        self.queue_blocks_or_becomes_blocked_by_triggers(&blocks);
+        self.queue_attacks_or_blocks_block_triggers(&blocks);
+        Ok(events)
+    }
+
     /// Answer a [`PendingChoice::MayReturnFromGraveyard`]: `choice` is empty to decline, or names
     /// the one graveyard card (one of the choice's `options`) returned to `player`'s hand
     /// ([`Effect::Choice(ChoiceEffect::MayReturnFromGraveyard)`] — Deadly Brew's rider).
@@ -605,12 +683,21 @@ impl Game {
         let Some(PendingChoice::DeclineUntap {
             player: chooser,
             permanents,
+            at_most_one,
         }) = self.pending_choice.clone()
         else {
             return Err(Reject::IllegalChoice);
         };
         // The answer must come from the asked player and only name permanents that were offered.
         if player != chooser || !keep_tapped.iter().all(|id| permanents.contains(id)) {
+            return Err(Reject::IllegalChoice); // invalid — the choice stays pending
+        }
+        // Smoke / Winter Orb (CR 502.2): a cap is a ceiling, not a quota — keeping every member of
+        // a group tapped is a legal answer, letting two of one group up is not.
+        if at_most_one
+            .iter()
+            .any(|group| group.iter().filter(|id| !keep_tapped.contains(id)).count() > 1)
+        {
             return Err(Reject::IllegalChoice); // invalid — the choice stays pending
         }
 

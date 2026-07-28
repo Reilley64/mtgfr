@@ -57,6 +57,9 @@ pub(crate) fn project_event(
             // `x`/`modes` above — no UI reads it yet (it feeds a copy-per-sacrifice rider that
             // doesn't exist). Add it when that UI does.
             sacrifice_count: _,
+            // ponytail: nor their total mana value, same reasoning as `sacrifice_count` above —
+            // the client sees the resulting `ManaAdded` events instead.
+            sacrificed_mana_value: _,
             // ponytail: the revealed creature card's mana value (CR 601.2g) isn't surfaced on the
             // wire either, same reasoning as `sacrifice_count` above — no UI reads it yet (the
             // client sees the resulting damage event instead). Add it when a UI wants to show
@@ -144,7 +147,19 @@ pub(crate) fn project_event(
             object,
             color: color.index() as u8,
         },
-        Event::ColorSetUntilEndOfTurn { object, color } => VisibleEvent::ColorSetUntilEndOfTurn {
+        Event::TextChanged { object, swap } => {
+            let (from, to) = swap.words();
+            VisibleEvent::TextChanged {
+                object,
+                from: from.to_string(),
+                to: to.to_string(),
+            }
+        }
+        // ponytail: both durations project onto the one until-EOT wire event. The client only
+        // re-reads the object's colors from it — nothing renders the duration — and minting a
+        // second proto message for an indefinite twin would buy nothing. Split it if the log ever
+        // spells the duration out.
+        Event::ColorSet { object, color, .. } => VisibleEvent::ColorSetUntilEndOfTurn {
             object,
             color: color.index() as u8,
         },
@@ -220,7 +235,7 @@ pub(crate) fn project_event(
         },
         Event::Tapped { object } => VisibleEvent::Tapped { object },
         Event::Untapped { object } => VisibleEvent::Untapped { object },
-        Event::RemovedFromCombat { object } => VisibleEvent::RemovedFromCombat { object },
+        Event::RemovedFromCombat { object, .. } => VisibleEvent::RemovedFromCombat { object },
         Event::RegenerationShieldCreated { object } => {
             VisibleEvent::RegenerationShieldCreated { object }
         }
@@ -294,10 +309,13 @@ pub(crate) fn project_event(
             power: 0,
             toughness: 0,
         },
+        // `ends_at_end_of_combat` is engine bookkeeping for the End of Combat sweep — the client
+        // reads the animated P/T off the snapshot, so the duration isn't projected.
         Event::BasePtSetUntilEndOfTurn {
             object,
             power,
             toughness,
+            ..
         } => VisibleEvent::BasePtSetUntilEndOfTurn {
             object,
             power,
@@ -322,6 +340,13 @@ pub(crate) fn project_event(
         // `ReanimatedCreatureBecame` above — the client's per-object state comes from a fresh
         // snapshot each delta.
         Event::AddedSubtypes { object, .. } => VisibleEvent::AddedSubtypes { object },
+        // ponytail: projected as `AddedSubtypes` rather than as a wire event of its own. Both say
+        // "this object's subtype line changed, re-read it", which is all the client does with
+        // either — and the sustaining source is already visible as an ordinary battlefield
+        // permanent. Give it its own `VisibleEvent` if the log ever needs to name the source.
+        Event::SubtypesSetWhileSourceRemains { object, .. } => {
+            VisibleEvent::AddedSubtypes { object }
+        }
         // ponytail: the set power/toughness aren't threaded onto the wire event, same rationale as
         // `AddedSubtypes` above — the client's per-object state comes from a fresh snapshot each
         // delta.
@@ -337,6 +362,11 @@ pub(crate) fn project_event(
             object,
             keywords: _,
         } => VisibleEvent::KeywordsStripped { object },
+        // ponytail: an Aura grounding its host is the same "this object's keywords changed, re-read
+        // it" cue as the until-end-of-turn strip above, so it reuses that wire event rather than
+        // adding one — neither the duration nor the Aura that carries it is on the wire, and the
+        // client's per-object keyword state comes from a fresh snapshot each delta anyway.
+        Event::AttachedKeywordsLost { object, .. } => VisibleEvent::KeywordsStripped { object },
         Event::ControlGainedUntilEndOfTurn {
             object,
             controller,
@@ -576,8 +606,20 @@ pub(crate) fn project_event(
             player: player.0,
             amount,
         },
+        Event::DamagePrevented { target, amount, .. } => VisibleEvent::DamagePrevented {
+            object: match target {
+                engine::Target::Object(id) => Some(id),
+                engine::Target::Player(_) => None,
+            },
+            player: match target {
+                engine::Target::Object(_) => None,
+                engine::Target::Player(p) => Some(p.0),
+            },
+            amount,
+        },
         Event::MovedToCommandZone { card, from } => VisibleEvent::MovedToCommandZone { card, from },
         Event::ManaEmptied { player, .. } => VisibleEvent::ManaEmptied { player: player.0 },
+        Event::ExtraTurnQueued { player } => VisibleEvent::ExtraTurnQueued { player: player.0 },
         Event::DamageCleared { object } => VisibleEvent::DamageCleared { object },
         Event::ManaAdded {
             player,
@@ -631,20 +673,27 @@ pub(crate) fn project_event(
             controller: controller.0,
             name: def.name.to_string(),
         },
+        // `set_color` (Fork's recolored copy) stays engine-side: the client reads a spell's
+        // color off the projected object, not off this event.
         Event::SpellCopied {
             copy,
             original,
             controller,
+            ..
         } => VisibleEvent::SpellCopied {
             copy,
             original,
             controller: controller.0,
         },
         Event::SpellCeasedToExist { spell } => VisibleEvent::SpellCeasedToExist { spell },
+        // The event's Disintegrate riders stay engine-side: what the client sees is the
+        // consequence — a creature that doesn't regenerate, a `MovedToExile` where a
+        // `MovedToGraveyard` would have been — as events it already renders.
         Event::DamageMarked {
             object,
             amount,
             source,
+            ..
         } => VisibleEvent::DamageMarked {
             object,
             amount,
@@ -714,6 +763,12 @@ pub(crate) fn project_event(
         Event::LibraryHandSmoothed { player, .. } => {
             VisibleEvent::LibraryShuffled { player: player.0 }
         }
+        // That a look happened is public; what was looked at rides the snapshot's hand gate, not
+        // the log, so no redaction is needed here.
+        Event::LookedAtHand { player, target } => VisibleEvent::LookedAtHand {
+            player: player.0,
+            target: target.0,
+        },
         // A reveal is public (CR 701.30) — every viewer, including a spectator, sees it.
         Event::RevealedTopOfLibrary { player, card, def } => VisibleEvent::RevealedTopOfLibrary {
             player: player.0,

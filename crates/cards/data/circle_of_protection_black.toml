@@ -1,0 +1,29 @@
+# {1}: The next time a black source of your choice would deal damage to you this turn,
+# prevent that damage.
+name = "Circle of Protection: Black"
+otags = ["activated-ability", "cycle-lea-circle-protection", "damage-prevention-you", "hate-black", "mana-sink"]
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "8ed", "9ed", "ced", "cei", "fbb", "ice", "itp", "leb", "ptc", "rqs", "sum", "tmp", "wc00", "wc97"]
+id = "7a5a8414-4da4-4dd0-93ae-210d50f4d6f6"
+default_print = "1eea1199-6b07-430c-b100-c5825a23d8b0"
+oracle = "{1}: The next time a black source of your choice would deal damage to you this turn, prevent that damage."
+approximates = "the shield arms against the next source of the named color instead of one source picked as the ability resolves, so it cannot be held for the second of two same-colored hits in a turn"
+
+[cost]
+generic = 1
+white = 1
+
+[kind]
+type = "enchantment"
+
+# {1}: The next time a black source of your choice would deal damage to you this turn,
+# prevent that damage.
+[[abilities]]
+timing = "activated"
+activation_cost = { generic = 1 }
+
+# {1}: The next time a black source of your choice would deal damage to you this turn,
+# prevent that damage.
+[[abilities.effects]]
+type = "misc"
+mode = "prevent_next_damage"
+from_color = "black"

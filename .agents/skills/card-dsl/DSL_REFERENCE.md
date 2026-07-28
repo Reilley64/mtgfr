@@ -22,7 +22,12 @@ This mirrors the DSL's top-level card shape with owned fields, then folds into t
 | `bestow` | CostToml \| null | no | - | Bestow (CR 702.103) — `[bestow]` with the same `[cost]`-table shape as `[echo]`; absent for a card without bestow. |
 | `cascade` | boolean | no | `false` | Cascade (CR 702.85) — `cascade = true`; absent (`false`) for a card without cascade. |
 | `cast_only_before_attackers` | boolean | no | `false` | "Cast this spell only before attackers are declared" (CR 601.3e — Master Warcraft) — `cast_only_before_attackers = true`; absent (`false`) for every ordinary card. |
+| `cast_only_before_blockers` | boolean | no | `false` | "Cast this spell only during combat before blockers are declared" (CR 601.3e — Blaze of Glory) — the declare-blockers half of `cast_only_before_attackers`, open until the first defending player declares. Pair it with `cast_only_during_combat`, which is the other half of Blaze of Glory's printed sentence; alone it leaves the pre-combat main phase open. Absent (`false`) for every ordinary card. |
+| `cast_only_before_combat_damage` | boolean | no | `false` | "Cast this spell only before the combat damage step" (CR 601.3e — Berserk) — `cast_only_before_combat_damage = true`: legal from untap through declare blockers, and closed for the rest of the turn from the first combat damage step on. Absent (`false`) for every ordinary card. |
 | `cast_only_during_combat` | boolean | no | `false` | "Cast this spell only during combat" (CR 601.3e) — `cast_only_during_combat = true`; absent (`false`) for every ordinary card. |
+| `cast_only_during_declare_attackers` | boolean | no | `false` | "Cast this spell only during your declare attackers step" (CR 601.3e — Camouflage) — `cast_only_during_declare_attackers = true`: the attack-side twin of the window above, and narrower still, since it is closed on every other player's turn as well as in every other step. Absent (`false`) for every ordinary card. |
+| `cast_only_during_declare_blockers` | boolean | no | `false` | "Cast this spell only during the declare blockers step" (CR 601.3e — False Orders) — `cast_only_during_declare_blockers = true`: a single step rather than everything up to one, open before *and* after the declaration (False Orders rearranges a declaration that already happened). Absent (`false`) for every ordinary card. |
+| `cast_only_during_opponents_turn` | boolean | no | `false` | "Cast this spell only during an opponent's turn" (CR 601.3e — Siren's Call) — `cast_only_during_opponents_turn = true`; the cast-side twin of an activated ability's `only_during_opponents_turn`, composable with `cast_only_before_attackers` (together they are Siren's Call's printed restriction). Absent (`false`) for every ordinary card. |
 | `cast_x_max` | string \| null | no | - | A non-mana cast-time cap on {X} (CR 601.2b — Open the Way's player-count bound) — `cast_x_max = "player_count"`; absent (`None`) for every ordinary {X} spell. |
 | `choose` | integer | no | `1` |  |
 | `choose_max` | integer \| null | no | `null` | CR 700.2d "choose one or more" — the max of the range; `None` keeps the count fixed at exactly `modal_choose` (every "choose one"/"choose two" card). |
@@ -94,6 +99,7 @@ A `[cost]` table spells each color by name (`white = 1`) rather than as the [`Co
 | `reduce_own_generic` | Amount \| null | no | - | A spell's own board-derived generic reduction (Blasphemous Act's "costs {1} less ... for each creature on the battlefield"), e.g. `reduce_own_generic = "per_creature_on_battlefield"`. |
 | `white` | integer | no | `0` | White mana pips (`{W}`). |
 | `x` | XPips | no | - | `{X}` pips. `true` means one `{X}`; an integer gives the count of `{X}` symbols. |
+| `x_color` | Color \| null | no | - | A color restriction on the mana spent for `{X}` (CR 601.2g) — Drain Life's "Spend only black mana on X" is `x_color = "black"`. The chosen value is paid as colored pips of that color instead of as generic. Absent for every other `{X}` cost, where any mana pays. |
 
 ## KindToml
 

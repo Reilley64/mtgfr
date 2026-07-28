@@ -1,0 +1,46 @@
+# Each player chooses a number of lands they control equal to the number of lands controlled by
+# the player who controls the fewest, then sacrifices the rest. Players discard cards and
+# sacrifice creatures the same way.
+name = "Balance"
+otags = ["discard", "discard-outlet", "mass-land-denial", "removal-creature", "removal-land", "removal-sacrifice", "single-english-word-name", "sweeper", "symmetrical", "balance"]
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "ced", "cei", "ema", "fbb", "g04", "lea", "leb", "me4", "olep", "plst", "prm", "ptc", "sld", "sum", "v09", "vma"]
+id = "17fa98cd-ed8f-483f-9525-7e989a82ebb2"
+default_print = "8352e8b6-c947-49f3-a653-a6af65d3e9c3"
+oracle = "Each player chooses a number of lands they control equal to the number of lands controlled by the player who controls the fewest, then sacrifices the rest. Players discard cards and sacrifice creatures the same way."
+
+[cost]
+generic = 1
+white = 1
+
+[kind]
+type = "sorcery"
+
+# Each player chooses a number of lands they control equal to the number of lands controlled by
+# the player who controls the fewest, then sacrifices the rest. Players discard cards and
+# sacrifice creatures the same way.
+[[abilities]]
+timing = "spell"
+
+# Each player chooses a number of lands they control equal to the number of lands controlled by
+# the player who controls the fewest, then sacrifices the rest.
+[[abilities.effects]]
+type = "choice"
+mode = "each_player_sacrifices"
+scope = "all_players"
+filter = { types = "land" }
+down_to_fewest = true
+
+# Players discard cards … the same way.
+[[abilities.effects]]
+type = "choice"
+mode = "each_player_discards"
+scope = "all_players"
+down_to_fewest = true
+
+# … and sacrifice creatures the same way.
+[[abilities.effects]]
+type = "choice"
+mode = "each_player_sacrifices"
+scope = "all_players"
+filter = "creature"
+down_to_fewest = true

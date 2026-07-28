@@ -1,0 +1,41 @@
+# {T}: Target creature you control with toughness less than this creature's power gains flying
+# until end of turn. Destroy that creature at the beginning of the next end step.
+name = "Stone Giant"
+otags = ["activated-ability", "delayed-trigger", "gives-flying", "jump", "power-matters-self", "scales-with-power"]
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "ddi", "fbb", "lea", "leb", "m10", "me1", "plst", "sum"]
+id = "0b8e3f9b-a4da-49a3-8545-ce7a265e5856"
+default_print = "64dad66b-403b-4af6-b6eb-c123567e2b86"
+oracle = "{T}: Target creature you control with toughness less than this creature's power gains flying until end of turn. Destroy that creature at the beginning of the next end step."
+subtypes = ["Giant"]
+
+[cost]
+generic = 2
+red = 2
+
+[kind]
+type = "creature"
+power = 3
+toughness = 4
+
+# {T}: Target creature you control with toughness less than this creature's power gains flying
+# until end of turn. Destroy that creature at the beginning of the next end step.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Target creature you control with toughness less than this creature's power gains flying until
+# end of turn.
+[[abilities.effects]]
+type = "pump"
+mode = "pump_until_end_of_turn"
+target = { permanent = { types = "creature", controller = "you", toughness_less_than_source_power = true } }
+power = 0
+toughness = 0
+keywords = ["flying"]
+
+# Destroy that creature at the beginning of the next end step.
+[[abilities.effects]]
+type = "destroy"
+mode = "target"
+target = { permanent = { types = "creature", controller = "you", toughness_less_than_source_power = true } }
+at = "end"

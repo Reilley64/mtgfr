@@ -87,7 +87,7 @@ impl Game {
         let mut actions = Vec::new();
         let sorcery_ok = self.can_take_sorcery_speed_action(player);
         let available = self.available_mana(player);
-        let land_drop_unused = self.players[player.0 as usize].lands_played < 1;
+        let land_drop_unused = self.land_drop_available(player);
 
         for (id, o) in self.objects.iter().enumerate() {
             let id = id as ObjectId;
@@ -193,6 +193,17 @@ impl Game {
             });
         if can_block {
             actions.push(MeaningfulAction::DeclareBlockers);
+        }
+
+        // Guardian Angel's standing "you may pay {1} any time you could cast an instant" offers.
+        // They hang off no object — the spell that made them has long left the stack — so they sit
+        // outside the per-object loop, gated only on priority and affordability.
+        if player == self.priority {
+            for (index, offer) in self.standing_preventions.iter().enumerate() {
+                if offer.player == player && Self::affordable_from(available, offer.cost, None) {
+                    actions.push(MeaningfulAction::PayStandingPrevention { index });
+                }
+            }
         }
 
         actions
@@ -558,7 +569,7 @@ impl Game {
         // abilities — see `Game::ability_at` for the index order. (Granted *mana* abilities are
         // skipped, like own ones, by the `is_mana_ability` guard above's counterpart in the gate.)
         let base = abilities.len() + self.granted_mana_abilities(source).len();
-        for offset in 0..self.granted_attachment_abilities(source).len() {
+        for offset in 0..self.granted_activated_abilities(source).len() {
             let index = base + offset;
             let Ok((_, cost)) = self.ability_activation_gate(player, source, index) else {
                 continue;
@@ -1063,6 +1074,20 @@ impl Game {
                     _ => None,
                 })
                 .filter(|&id| {
+                    // "with mana value X" (Spell Blast) reads the *countering* spell's own chosen
+                    // X, which lives here and not in `spell_matches_filter`'s trigger/cost-reducer
+                    // call sites — the `PermanentFilter::mv_eq_x` arm above does the same inline.
+                    if filter == SpellFilter::ManaValueEqualsX {
+                        return self.def_of(id).mana_value() == x;
+                    }
+                    // Same reason: a spell's *current* colour can differ from its printed pips
+                    // once a lace has resolved on it (Thoughtlace, CR 613.3c), and only a call
+                    // site holding the stack object's id can see that. `spell_matches_filter`
+                    // takes a `CardDef`, so its cast-trigger callers keep reading the pips —
+                    // right for them, since a cast trigger fires before a lace could respond.
+                    if let SpellFilter::Color(color) = filter {
+                        return self.colors_of(id)[color.index()];
+                    }
                     // A counter/target-spell filter never reads the cast-from zone; pass the
                     // plain hand-cast default (see `spell_matches_filter`).
                     self.spell_matches_filter(
@@ -1073,6 +1098,19 @@ impl Game {
                         Zone::Hand,
                     )
                 })
+                .map(Target::Object)
+                .collect(),
+            // "Target spell or permanent" (the lace cycle): every spell on the stack, whoever
+            // cast it, plus every permanent on the battlefield. No filter — the five cards that
+            // print this wording restrict nothing.
+            TargetSpec::SpellOrPermanent => self
+                .stack
+                .iter()
+                .filter_map(|item| match item {
+                    StackItem::Spell(id) => Some(*id),
+                    _ => None,
+                })
+                .chain(self.battlefield())
                 .map(Target::Object)
                 .collect(),
             // A spell on the stack with exactly one target (Willbender's "target spell … with a
@@ -1159,6 +1197,17 @@ impl Game {
             }
             Target::Player(_) => true,
         });
+        // An Aura is cast targeting what it will enchant (CR 303.4a), so a host closed off by
+        // Consecrate Land's "can't be enchanted by other Auras" is never a legal choice. Scoped to
+        // an Aura that isn't a permanent yet — that's this same card's cast enumeration, not a
+        // targeted ability an already-attached Aura might have.
+        if matches!(self.def_of(source).kind, CardKind::Aura) && self.as_permanent(source).is_none()
+        {
+            targets.retain(|t| match *t {
+                Target::Object(id) => !self.host_cant_be_enchanted_by(id, source),
+                Target::Player(_) => true,
+            });
+        }
         targets
     }
 
@@ -1340,6 +1389,26 @@ impl Game {
             .collect()
     }
 
+    /// How many creature cards sit *above* `card` in its owner's graveyard (Nether Shadow's "with
+    /// three or more creature cards above it"). A graveyard is an ordered pile, and its order is
+    /// object-id order: every arrival mints a fresh object through `Game::create_object`, so a
+    /// later id is a later burial. Answers 0 for a card that isn't in a graveyard at all.
+    pub(crate) fn creature_cards_above_in_graveyard(&self, card: ObjectId) -> u32 {
+        if self.zone_of(card) != Zone::Graveyard {
+            return 0;
+        }
+        self.graveyard_cards(self.owner_of(card))
+            .into_iter()
+            .filter(|&id| {
+                id > card
+                    && card_def(self.def_id_of(id))
+                        .kind
+                        .types()
+                        .intersects(TypeSet::CREATURE)
+            })
+            .count() as u32
+    }
+
     /// Ids of every emblem `player` owns (CR 114). An emblem is an ownerless-but-controlled,
     /// unremovable, non-permanent object that exists only in the command zone (CR 114.1) and has
     /// no characteristics other than its abilities (CR 114.5), so it is stored as a command-zone
@@ -1357,11 +1426,19 @@ impl Game {
             .map(|(id, _)| id as ObjectId)
             .collect()
     }
+    /// Whether `object`'s colors (CR 105.2a, read live off [`Game::colors_of`]) satisfy `filter`.
+    /// Shared by the permanent filter's own color axis and by the Circle of Protection cycle's
+    /// colored damage shields, which ask the same question of a damage source that need not be a
+    /// permanent at all (CR 609.7) — so this takes a bare [`ObjectId`], not a battlefield one.
+    pub(crate) fn color_matches(&self, filter: ColorFilter, object: ObjectId) -> bool {
+        filter.matched_by(&self.colors_of(object))
+    }
 
     /// Whether the permanent `id` satisfies `filter`. `you` is the effect's controller (the
     /// "you" the filter's `controller` axis is relative to); `source` is the filter's own source
-    /// permanent, used only by the `other` axis ("another permanent") — pass `None` where there
-    /// is nothing to exclude. A non-permanent id never matches. The single evaluator behind
+    /// permanent, read by the `other` axis ("another permanent") and by
+    /// [`FilterController::DefendingPlayer`] (which asks who the source is attacking) — pass
+    /// `None` where there is neither. A non-permanent id never matches. The single evaluator behind
     /// [`TargetSpec::Permanent`], the mass effects, and sacrifice edicts.
     pub(crate) fn permanent_matches(
         &self,
@@ -1401,12 +1478,34 @@ impl Game {
                 return false;
             }
         }
+        // Excluded subtypes (Keldon Warlord's "non-Wall creatures"): carrying any one is fatal.
+        if !filter.exclude_subtypes.is_empty() {
+            let subtypes = self.effective_subtypes(id);
+            if filter.exclude_subtypes.iter().any(|s| subtypes.contains(s)) {
+                return false;
+            }
+        }
         // Controller, relative to "you".
         let yours = self.controller_of(id) == you;
         match filter.controller {
             FilterController::Any => {}
             FilterController::You if !yours => return false,
             FilterController::Opponent if yours => return false,
+            FilterController::ActivePlayer if self.controller_of(id) != self.active_player => {
+                return false;
+            }
+            // "Defending player controls" — the player the filter's own source is attacking, or,
+            // when the source isn't a creature in combat (Blaze of Glory is a spell), whoever the
+            // current combat is being declared against.
+            FilterController::DefendingPlayer => {
+                let defending = source
+                    .and_then(|source| self.defender_of(source))
+                    .and_then(|defender| self.defender_controller(defender))
+                    .or_else(|| self.sole_defending_player());
+                if defending != Some(self.controller_of(id)) {
+                    return false;
+                }
+            }
             _ => {}
         }
         // Token-ness.
@@ -1460,10 +1559,21 @@ impl Game {
         {
             return false;
         }
+        // "Lands with mana abilities" (Power Sink) — a land that makes no mana isn't one.
+        if filter.has_mana_ability && !self.taps_for_mana(id) {
+            return false;
+        }
         // Power ceiling (Silverquill Charm's "creature with power 2 or less"). Non-creatures
         // have power 0, so they always pass — fine, since no pool card combines the two.
         if let Some(max) = filter.power_max
             && self.power(id) > max as i32
+        {
+            return false;
+        }
+        // Power floor (Meekstone's "creatures with power 3 or greater"), the mirror of the
+        // ceiling above and read just as live — a creature that shrinks below it walks free.
+        if let Some(min) = filter.power_min
+            && self.power(id) < min as i32
         {
             return false;
         }
@@ -1482,38 +1592,25 @@ impl Game {
         if filter.exclude.intersects(printed.kind.types()) {
             return false;
         }
-        // Color-count (Vanishing Verse's "monocolored permanent", CR 105.2a) — a colorless
-        // permanent has zero trues in `colors_of` and correctly fails "exactly one".
-        if filter.color == ColorFilter::Monocolored
-            && self.colors_of(id).iter().filter(|&&c| c).count() != 1
-        {
-            return false;
-        }
-        // Specific color (CR 105.2a — Oran-Rief, the Vastwood's "each green creature").
-        let specific_color = match filter.color {
-            ColorFilter::White => Some(Color::White),
-            ColorFilter::Blue => Some(Color::Blue),
-            ColorFilter::Black => Some(Color::Black),
-            ColorFilter::Red => Some(Color::Red),
-            ColorFilter::Green => Some(Color::Green),
-            ColorFilter::Any | ColorFilter::Monocolored | ColorFilter::NotColor(_) => None,
-        };
-        if let Some(color) = specific_color
-            && !self.colors_of(id)[color.index()]
-        {
-            return false;
-        }
-        // Negated specific color (CR 105.2a's negation — Terror/Shriekmaw's "nonblack
-        // creature"). A colorless permanent has no colors, so it always passes.
-        if let ColorFilter::NotColor(color) = filter.color
-            && self.colors_of(id)[color.index()]
-        {
+        if !self.color_matches(filter.color, id) {
             return false;
         }
         // Entered the battlefield this turn (Oran-Rief, the Vastwood). A permanent in a
         // non-battlefield zone has no `Permanent` at all — `as_permanent` already returned
         // `perm` above, so this only reaches permanents that ARE on the battlefield.
         if filter.entered_this_turn && !perm.entered_this_turn {
+            return false;
+        }
+        // "…has controlled continuously since the beginning of the turn" (CR 302.6 — Nettling
+        // Imp). `summoning_sick` is that same flag, so a creature that entered or changed hands
+        // mid-turn fails while its controller's next untap step is still ahead of it.
+        if filter.controlled_since_turn_start && perm.summoning_sick {
+            return false;
+        }
+        // "…that didn't attack this turn" (CR 508.1 — Siren's Call). Re-read per permanent every
+        // time the filter runs, so a sweep scheduled before the declaration still sees who ended
+        // up attacking.
+        if filter.did_not_attack_this_turn && perm.attacked_this_turn {
             return false;
         }
         // Nonbasic land (CR 205.4a's "Basic" supertype — White Orchid Phantom's "target
@@ -1555,6 +1652,15 @@ impl Game {
         if filter.attacking_you && self.defending_player_of(id) != Some(you) {
             return false;
         }
+        // Currently blocking some attacker (Righteousness — "target blocking creature").
+        if filter.blocking && !self.combat.blocks.iter().any(|&(b, _)| b == id) {
+            return false;
+        }
+        // Nothing is blocking *it* (Forcefield's "an unblocked creature of your choice") — the
+        // mirror image of the line above, read off the same declared-blocks list.
+        if filter.unblocked && self.is_blocked(id) {
+            return false;
+        }
         // Nonlegendary exclusion (CR 205.4a — Muddle, the Ever-Changing's "nonlegendary
         // creature you control"). Reads the current (possibly copied) def.
         if filter.nonlegendary && self.def_of(id).legendary {
@@ -1577,8 +1683,23 @@ impl Game {
         {
             return false;
         }
+        // Light enough for the source to throw (Stone Giant — "toughness less than this creature's
+        // power"). Same no-source no-op as `power_less_than_source` above.
+        if filter.toughness_less_than_source_power
+            && let Some(source) = source
+            && self.toughness(id) >= self.power(source)
+        {
+            return false;
+        }
         // Without flying (Breath of Darigaaz's "each creature without flying").
         if filter.without_flying && self.has_keyword(id, Keyword::Flying) {
+            return false;
+        }
+        // A second keyword exclusion (Island Sanctuary's banned set lacks flying *and*
+        // islandwalk) — the open-ended sibling of the bool just above.
+        if let Some(keyword) = filter.without_keyword
+            && self.has_keyword(id, keyword)
+        {
             return false;
         }
         // With flying (Firespout's "each creature with flying").
@@ -1637,6 +1758,7 @@ mod permanent_filter_tests {
                 phyrexian: &[],
                 additional: AdditionalCost::default(),
                 reduce_own_generic: None,
+                x_color: None,
             },
             kind,
             legendary: false,
@@ -1659,6 +1781,11 @@ mod permanent_filter_tests {
             alternative_cost: None,
             cast_only_during_combat: false,
             cast_only_before_attackers: false,
+            cast_only_before_blockers: false,
+            cast_only_during_opponents_turn: false,
+            cast_only_before_combat_damage: false,
+            cast_only_during_declare_blockers: false,
+            cast_only_during_declare_attackers: false,
             approximates: None,
             oracle: None,
             sets: empty_slice(),

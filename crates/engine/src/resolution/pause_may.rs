@@ -6,7 +6,7 @@
 use crate::*;
 
 impl Game {
-    /// Pause on the matching may-* / SacrificeSelfUnlessPay effect.
+    /// Pause on the matching may-* / PayOrElse effect.
     pub(crate) fn run_may_pause(&mut self, effect: Effect, ctx: ResolveCtx) {
         let ResolveCtx {
             controller,
@@ -61,6 +61,22 @@ impl Game {
                     source,
                 },
             ),
+            // False Orders' "you may have it block an attacking creature of your choice": the
+            // creature the spell just pulled out of combat is this ability's target. A target that
+            // has since left the battlefield (CR 608.2b) leaves nothing to re-aim.
+            Effect::Choice(ChoiceEffect::MayBlockAttackerOfYourChoice) => {
+                let Some(blocker) = target.and_then(Target::object_id) else {
+                    return;
+                };
+                pending::raise(
+                    self,
+                    pending::ChoiceRequest::ChooseBlockTarget {
+                        player: controller,
+                        source,
+                        blocker,
+                    },
+                );
+            }
             // Conspiracy Theorist's batch nonland-discard payoff: "you may exile one of them from
             // your graveyard." Pauses on a MayExileDiscardedToPlay choice over the discarded
             // nonland cards still in the graveyard; declining (or none still there) runs nothing.
@@ -84,6 +100,25 @@ impl Game {
                     then,
                 },
             ),
+            // Natural Selection's tail: "You may have that player shuffle." The caster decides —
+            // they just ordered that library and may throw their own ordering away. The targeted
+            // player is baked into the effect so the answer knows whose library to shuffle.
+            Effect::Dig(DigEffect::MayShuffleTargetPlayersLibrary { .. }) => {
+                let Some(Target::Player(owner)) = target else {
+                    return;
+                };
+                pending::raise(
+                    self,
+                    pending::ChoiceRequest::MayYesNo {
+                        player: controller,
+                        source,
+                        effect: Effect::Dig(DigEffect::MayShuffleTargetPlayersLibrary {
+                            owner: Some(owner),
+                        }),
+                        resume: crate::MayYesNoResume::Default,
+                    },
+                );
+            }
             // Rhystic Study's "you may draw a card unless that player pays {1}": pause the
             // ability's own controller on whether they want to draw at all (the card's ruling —
             // declining is quiet, no pay window is ever offered). Only a "yes" here raises the
@@ -185,17 +220,37 @@ impl Game {
                     },
                 );
             }
-            // Rupture Spire's own ETB trigger: "sacrifice it unless you pay {1}." Pauses on the
-            // same pay-or-sacrifice shape Echo's `PayEchoOrSacrifice` uses, under its own variant
-            // (this is a real triggered ability, not Echo — CR 603.3b, not CR 702.31).
-            Effect::Choice(ChoiceEffect::SacrificeSelfUnlessPay { cost }) => pending::raise(
+            // "…unless you pay {cost}" (Rupture Spire's ETB, Phantasmal Forces' and Force of
+            // Nature's upkeeps). Pauses on the same pay-or-decline shape Echo's
+            // `PayEchoOrSacrifice` uses, under its own variant (these are real triggered
+            // abilities, not Echo — CR 603.3b, not CR 702.31).
+            Effect::Choice(ChoiceEffect::PayOrElse { cost, otherwise }) => pending::raise(
                 self,
-                pending::ChoiceRequest::SacrificeUnlessPay {
+                pending::ChoiceRequest::PayOrElse {
                     player: controller,
                     source,
                     cost,
+                    otherwise,
                 },
             ),
+            // Paralyze: "that player may pay {4}. If the player does, untap the creature."
+            // `PendingChoice::PayCost` is already the pay-to-get-the-effect shape an optional
+            // trigger's `[abilities.cost]` raises — the only difference here is whose offer it is,
+            // and that player was filled in at placement.
+            Effect::Choice(ChoiceEffect::TriggeringPlayerMayPay { cost, then, player }) => {
+                let payer = player.expect("the triggering player is filled in at placement");
+                pending::raise_choice(
+                    self,
+                    PendingChoice::PayCost {
+                        player: payer,
+                        source,
+                        cost,
+                        effect: Effect::Sequence {
+                            steps: std::sync::Arc::from(then.to_vec()),
+                        },
+                    },
+                )
+            }
             _ => unreachable!("may pause family received a non-family effect"),
         }
     }

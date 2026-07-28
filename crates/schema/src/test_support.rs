@@ -32,6 +32,17 @@ pub(crate) fn pass_until_choice(game: &mut Game) {
     }
 }
 
+/// The two-pass [`resolve_top_of_stack`] only clears the stack at a two-player table; past that,
+/// pass until it is actually empty.
+#[cfg(test)]
+pub(crate) fn resolve_top_of_stack_multiplayer(game: &mut Game) {
+    while !game.stack().is_empty() {
+        let player = game.priority_holder();
+        game.submit(engine::Intent::PassPriority { player })
+            .unwrap();
+    }
+}
+
 #[cfg(test)]
 pub(crate) fn resolve_top_of_stack(game: &mut Game) {
     game.submit(engine::Intent::PassPriority {

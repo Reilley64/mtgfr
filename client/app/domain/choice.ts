@@ -51,6 +51,7 @@ export const FORMULATOR_FOR_KIND: { [K in PendingChoiceView["kind"]]: Formulator
   divide_counters: "divideTotal",
   scry: "cardPick",
   surveil: "cardPick",
+  reorder_top: "cardPick",
   search_library: "cardPick",
   select_from_top: "cardPick",
   distribute_top: "partition",
@@ -308,6 +309,7 @@ export function initPromptDraft(pc: PendingChoiceView, state: VisibleState): Pro
       return { kind: "destination", choice: null };
     case "scry":
     case "surveil":
+    case "reorder_top":
       return {
         kind: "partition",
         buckets: {
@@ -437,6 +439,13 @@ export function answerFromDraft(pc: PendingChoiceView, draft: PromptDraft): Answ
         return { kind: "revealed", choice: draft.choice };
       }
       return null;
+    case "reorder_top": {
+      const all = pc.items.map((it) => it.id);
+      const ordered =
+        draft.kind === "partition" ? (draft.buckets.top ?? []) : draft.kind === "card-pick" ? draft.picked : [];
+      const top = ordered.filter((id) => all.includes(id));
+      return { kind: "arrange", top: [...top, ...all.filter((id) => !top.includes(id))], bottom: [] };
+    }
     case "scry":
     case "surveil": {
       if (draft.kind === "partition") {
@@ -625,7 +634,7 @@ export function cardPickRequiredCount(pc: PendingChoiceView): number | null {
     case "choose_own_sacrifices":
       return pc.count;
     case "sacrifice_edict":
-      return pc.keep_one ? Math.max(0, pc.items.length - 1) : 1;
+      return pc.keep_one ? Math.max(0, pc.items.length - 1) : pc.count;
     case "scry":
     case "surveil":
     case "proliferate":
@@ -650,6 +659,13 @@ export function cardPickReady(pc: PendingChoiceView, picked: number[]): boolean 
     if (picked.length > pc.max) return false;
     return picked.length >= pc.min;
   }
+  // Smoke / Winter Orb (CR 502.2): `picked` is what stays tapped, so a group with two members
+  // *unpicked* is two untaps out of a group that allows one. A cap is a ceiling, not a quota —
+  // keeping the whole group tapped is fine.
+  if (pc.kind === "decline_untap") {
+    return (pc.at_most_one ?? []).every((group) => group.filter((id) => !picked.includes(id)).length <= 1);
+  }
+
   // Plargg / Abstract Performance: "you may cast up to N" — empty through N are legal.
   if (pc.kind === "choose_exiled_to_cast_free") {
     return picked.length <= pc.count;

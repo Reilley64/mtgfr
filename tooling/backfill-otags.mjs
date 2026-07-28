@@ -3,11 +3,12 @@
 // Deck-builder search matches thematic queries ("spirit", "tokens", "enchantment engine") via
 // `search_blob`, which indexes these slugs. Pure catalog metadata — the engine never reads them.
 //
-// Join path: TOML name → card-ids.json → scryfall id → oracle-cards bulk oracle_id →
-// oracle-tags bulk taggings.
+// Join path: the TOML's own `id` (a Scryfall oracle_id) → oracle-tags bulk taggings.
 //
 // Idempotent + re-runnable: strips any top-level `otags = [...]` before re-inserting.
 // Run from the repo root:  node tooling/backfill-otags.mjs
+// Pass --only-missing to leave already-tagged cards alone (a freshly authored wave, without
+// re-churning the rest of the pool against whatever Tagger has changed since).
 
 import { readFileSync, writeFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -15,13 +16,11 @@ import { dirname, join } from "node:path";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const DATA_DIR = join(ROOT, "crates/cards/data");
-const ID_MAP = join(ROOT, "client/src/lib/card-ids.json");
 
 const UA = { "User-Agent": "edh.reilley.dev/0.1", Accept: "application/json" };
 const MAX_TAGS = 12;
 const WEIGHT_RANK = { high: 0, median: 1, low: 2 };
-
-const nameToId = JSON.parse(readFileSync(ID_MAP, "utf8"));
+const ONLY_MISSING = process.argv.includes("--only-missing");
 
 async function fetchBulk(type) {
   const meta = await fetch(`https://api.scryfall.com/bulk-data/${type}`, { headers: UA });
@@ -58,13 +57,10 @@ function backfillFile(path, slugs) {
 }
 
 const nameOf = (text) => text.match(/^\s*name\s*=\s*"((?:[^"\\]|\\.)*)"/m)?.[1];
+const oracleIdOf = (text) => text.match(/^\s*id\s*=\s*"([^"]+)"/m)?.[1];
 
-console.log("Fetching Scryfall oracle-cards bulk…");
-const oracleCards = await fetchBulk("oracle-cards");
 console.log("Fetching Scryfall oracle-tags bulk…");
 const oracleTags = await fetchBulk("oracle-tags");
-
-const idToOracle = new Map(oracleCards.map((c) => [c.id, c.oracle_id]));
 
 const oracleToTags = new Map();
 for (const tag of oracleTags) {
@@ -78,35 +74,33 @@ for (const tag of oracleTags) {
   }
 }
 
-const tagsByName = new Map();
-for (const [name, id] of Object.entries(nameToId)) {
-  const oid = idToOracle.get(id);
-  if (!oid) continue;
-  const entries = oracleToTags.get(oid);
-  if (entries?.length) tagsByName.set(name, topSlugs(entries));
-}
-
-console.log(`Resolved otags for ${tagsByName.size} cards.`);
+console.log(`Resolved otags for ${oracleToTags.size} oracle ids.`);
 
 let done = 0;
 let empty = 0;
+let skipped = 0;
 const missed = [];
 for (const file of readdirSync(DATA_DIR).filter((f) => f.endsWith(".toml"))) {
   const path = join(DATA_DIR, file);
-  const name = nameOf(readFileSync(path, "utf8"));
-  if (!name) {
-    missed.push(file);
+  const text = readFileSync(path, "utf8");
+  const oid = oracleIdOf(text);
+  if (!oid) {
+    missed.push(nameOf(text) ?? file);
     continue;
   }
-  const slugs = tagsByName.get(name);
-  if (!slugs) {
-    if (nameToId[name]) empty++;
-    else missed.push(name);
+  if (ONLY_MISSING && /^\s*otags\s*=/m.test(text)) {
+    skipped++;
+    continue;
+  }
+  const entries = oracleToTags.get(oid);
+  if (!entries?.length) {
+    empty++;
     backfillFile(path, []);
     continue;
   }
-  backfillFile(path, slugs);
+  backfillFile(path, topSlugs(entries));
   done++;
 }
 console.log(`Backfilled ${done} files with otags (${empty} cards had no tags).`);
-if (missed.length) console.log(`Skipped ${missed.length} (no name/id match): ${missed.join(", ")}`);
+if (skipped) console.log(`Left ${skipped} already-tagged files alone (--only-missing).`);
+if (missed.length) console.log(`Skipped ${missed.length} (no oracle id): ${missed.join(", ")}`);

@@ -102,6 +102,12 @@ pub enum TargetSpec {
     /// pool card produces that, and Azorius counters exactly one. Give stack abilities real object
     /// identity when a card forces the distinction.
     ActivatedAbilityOnStack,
+    /// A spell on the stack *or* a permanent on the battlefield, unrestricted — the lace cycle's
+    /// "target spell or permanent" (Deathlace). The only spec that spans the two zones; every
+    /// other spell spec ([`Self::SpellOnStack`]) and permanent spec ([`Self::Permanent`]) picks
+    /// one. Unfiltered because the five cards that print it are unfiltered.
+    #[cfg_attr(feature = "card-dsl", serde(rename = "spell_or_permanent"))]
+    SpellOrPermanent,
     /// A target artifact, enchantment, or planeswalker on the battlefield (Fracture). The
     /// noncreature-permanent removal set the pool needs; Auras count as enchantments.
     ArtifactEnchantmentOrPlaneswalker,
@@ -248,6 +254,15 @@ pub enum SpellFilter {
     /// multicolored spell matches any of its colors.
     #[cfg_attr(feature = "card-dsl", serde(rename = "color"))]
     Color(Color),
+    /// A spell whose mana value equals the `{X}` paid for the spell doing the filtering (Spell
+    /// Blast's "Counter target spell with mana value X"). The only X-dependent arm: it is matched
+    /// inline in [`Game::legal_targets_for`](crate::Game)'s `SpellOnStack` enumeration — the one
+    /// place that knows the filtering spell's X, and the same place the CR 608.2b resolution
+    /// re-check reads — so `Game::spell_matches_filter`, which serves trigger and cost-reducer
+    /// call sites with no X of their own, never matches it. The spell-side twin of
+    /// [`PermanentFilter::mv_eq_x`].
+    #[cfg_attr(feature = "card-dsl", serde(rename = "mana_value_equals_x"))]
+    ManaValueEqualsX,
 }
 
 /// Which library cards a [`Effect::Dig(DigEffect::SearchLibrary)`] may find (CR 701.19 — "search for a card").
@@ -603,6 +618,22 @@ pub enum FilterController {
     You,
     /// A permanent an opponent controls.
     Opponent,
+    /// A permanent the *active player* controls (Siren's Call's "creatures the active player
+    /// controls" and the "that player" its end-step sweep refers back to). Deliberately not
+    /// [`FilterController::Opponent`]: at a four-player table that would reach three opponents'
+    /// boards, and every card printing this clause names exactly one of them. Reads whoever is
+    /// active right now, so a delayed sweep scheduled this turn still names the same player when
+    /// it fires at that turn's end step.
+    #[cfg_attr(feature = "card-dsl", serde(rename = "active_player"))]
+    ActivePlayer,
+    /// A permanent the player *this filter's own source is attacking* controls (Gaea's Liege's
+    /// "the number of Forests defending player controls"). Read off
+    /// [`Game::defender_of`](crate::Game) rather than off
+    /// [`FilterController::Opponent`], which at a four-player table would reach three boards when
+    /// the card names exactly one. Matches nothing while the source isn't attacking — which is the
+    /// right answer, since every card printing the clause has a second arm for that case.
+    #[cfg_attr(feature = "card-dsl", serde(rename = "defending_player"))]
+    DefendingPlayer,
 }
 
 /// Whether a [`PermanentFilter`] accepts tokens, nontokens, or both.
@@ -670,6 +701,40 @@ pub enum ColorFilter {
     NotColor(Color),
 }
 
+impl ColorFilter {
+    /// Whether an object with these colors (CR 105.2a — the `[bool; Color::COUNT]`
+    /// [`Game::colors_of`](crate::Game::colors_of) returns) satisfies this filter. Pure, so a
+    /// caller that already holds the colors can ask without re-reading the game.
+    pub fn matched_by(self, colors: &[bool; Color::COUNT]) -> bool {
+        let named = match self {
+            ColorFilter::White => Color::White,
+            ColorFilter::Blue => Color::Blue,
+            ColorFilter::Black => Color::Black,
+            ColorFilter::Red => Color::Red,
+            ColorFilter::Green => Color::Green,
+            // A colorless object has zero trues, so it fails "exactly one".
+            ColorFilter::Monocolored => return colors.iter().filter(|&&c| c).count() == 1,
+            // "Nonblack" (Terror): a colorless object has no colors, so it always passes.
+            ColorFilter::NotColor(color) => return !colors[color.index()],
+            ColorFilter::Any => return true,
+        };
+        colors[named.index()]
+    }
+
+    /// The filter matching exactly `color` — the constructor side of the five color-named
+    /// variants, for a caller holding a [`Color`] rather than authored TOML (a CR 612.1 text
+    /// change rewriting the color an ability names).
+    pub fn of(color: Color) -> Self {
+        match color {
+            Color::White => ColorFilter::White,
+            Color::Blue => ColorFilter::Blue,
+            Color::Black => ColorFilter::Black,
+            Color::Red => ColorFilter::Red,
+            Color::Green => ColorFilter::Green,
+        }
+    }
+}
+
 /// A composable predicate over a battlefield permanent — the one filter behind targeted
 /// removal ([`TargetSpec::Permanent`]), mass effects ([`Effect::Destroy(DestroyEffect::DestroyAll)`] /
 /// [`Effect::Zone(ZoneEffect::ReturnAllToHand)`]), and sacrifice edicts ([`Effect::Choice(ChoiceEffect::EachPlayerSacrifices)`]).
@@ -687,6 +752,9 @@ pub struct PermanentFilter {
     /// control" — `["Treasure"]`, distinguishing a Treasure from any other artifact); empty
     /// matches every subtype. Same shape/rationale as [`Effect::Static(StaticEffect::Anthem)`]'s own `subtypes`
     /// field (a separate axis there since an anthem always targets creatures specifically).
+    /// Matches against [`Game::effective_subtypes`], which reports a land's own type line too
+    /// (CR 305.6), so `{ types = "land", subtypes = ["Plains"] }` is Flashfires' "Destroy all
+    /// Plains" — the basic and every dual sharing the type.
     /// Deserialized by hand alongside the rest of [`PermanentFilter`]'s table form (see `de.rs`)
     /// rather than a derive attribute — `PermanentFilter` has a hand-written `Deserialize` impl
     /// for its bare-string shorthand, so there's no derive for a field attribute to hang off.
@@ -730,10 +798,19 @@ pub struct PermanentFilter {
     /// `Some(true)` requires the permanent be tapped (Mana Geyser's "tapped land"); `Some(false)`
     /// requires untapped; `None` doesn't care. Ignored in the graveyard zone (cards aren't tapped).
     pub tapped: Option<bool>,
+    /// Requires the permanent make mana when tapped (Power Sink's "lands with mana abilities they
+    /// control" — which spares a Mishra's Factory or a Maze of Ith). Read live off
+    /// [`Game::taps_for_mana`], the same predicate the client's tap-for-mana affordance uses, so a
+    /// land whose type line was changed under it is judged by what it produces *now*. `false`
+    /// (default) imposes no restriction.
+    pub has_mana_ability: bool,
     /// Power ceiling (Silverquill Charm's "creature with power 2 or less"); `None` doesn't gate
     /// on power. Non-creatures have power 0 (see [`Game::power`]), so they always pass a power
     /// gate — no pool card combines `power_max` with a non-creature `types` set.
     pub power_max: Option<u8>,
+    /// Power floor (Meekstone's "creatures with power 3 or greater"); `None` doesn't gate on
+    /// power. The mirror of [`power_max`](Self::power_max) and read live like it.
+    pub power_min: Option<u8>,
     /// Power parity gate (Zimone's Hypothesis's "return each creature with power of the chosen
     /// quality"); `None` doesn't gate on parity.
     pub power_parity: Option<Parity>,
@@ -761,16 +838,51 @@ pub struct PermanentFilter {
     /// who its declared defender is. Reads [`Game::defender_of`], the same declared-defender
     /// lookup goad/attack-tax already use. `false` (default) imposes no restriction.
     pub attacking_you: bool,
+    /// Restrict to creatures currently blocking some attacker (Righteousness — "target
+    /// *blocking* creature"). `false` (default) imposes no restriction. Reads
+    /// [`CombatState::blocks`], the same declared-blocks list `anthem_static`'s own
+    /// `blocking_only` axis consults.
+    pub blocking: bool,
+    /// Restrict to attacking creatures no creature is blocking (Forcefield — "an *unblocked*
+    /// creature of your choice"). The complement of [`blocking`](Self::blocking) one step over:
+    /// that one asks whether this creature blocks something, this one whether anything blocks it.
+    /// `false` (default) imposes no restriction. Pair it with [`attacking`](Self::attacking) or
+    /// [`attacking_you`](Self::attacking_you) — on its own it also matches every creature sitting
+    /// at home, which no attacker is blocking either.
+    pub unblocked: bool,
     /// Power strictly less than the filter's own source permanent's power (Mentor, CR 702.121a
     /// "lesser power"). `false` (default) imposes no restriction. Meaningless without a `source`
     /// (see [`Game::permanent_matches`]) — every filter that sets this pairs it with a targeted
     /// ability, which always threads its source.
     pub power_less_than_source: bool,
+    /// Toughness strictly less than the filter's own source permanent's *power* (Stone Giant —
+    /// "target creature you control with toughness less than this creature's power": what the
+    /// Giant can throw is what it can lift). `false` (default) imposes no restriction. Like
+    /// `power_less_than_source` just above, meaningless without a `source` (see
+    /// [`Game::permanent_matches`]) — every filter that sets it pairs it with a targeted ability,
+    /// which always threads its source.
+    pub toughness_less_than_source_power: bool,
     /// Requires the permanent entered the battlefield this turn (CR "entered the battlefield
     /// this turn" — Oran-Rief, the Vastwood's "each green creature that entered this turn").
     /// `false` (default) imposes no restriction. Distinct from checking `summoning_sick`, which
     /// clears one step earlier (see [`Permanent::entered_this_turn`]'s doc).
     pub entered_this_turn: bool,
+    /// Requires that the permanent's controller has controlled it continuously since this turn
+    /// began — CR 302.6's wording, which Nettling Imp's "the active player has controlled
+    /// continuously since the beginning of the turn" repeats. `false` (default) imposes no
+    /// restriction. Reads [`Permanent::summoning_sick`], which *is* that flag: set on entry and on
+    /// a control change, cleared at the controller's own untap step. It therefore only says what
+    /// it means about a permanent whose controller has already untapped this turn — the active
+    /// player's — and every pool card spelling this clause is restricted to the active player's
+    /// turn, so that is always whose permanents it reads.
+    pub controlled_since_turn_start: bool,
+    /// "…that didn't attack this turn" (CR 508.1 — Siren's Call's end-step sweep). `false`
+    /// (default) imposes no restriction. Reads [`Permanent::attacked_this_turn`], which the untap
+    /// step clears, so this only means anything within the turn the attack would have happened in.
+    /// [`DestroyEffect::Target`](crate::DestroyEffect)'s `attack_rider` asks the same question of
+    /// one already-chosen creature; this asks it of a whole board scan, where the answer has to be
+    /// re-read per permanent as the sweep fires.
+    pub did_not_attack_this_turn: bool,
     /// Excludes basic lands (CR 205.4a's "Basic" supertype — White Orchid Phantom's "target
     /// *nonbasic* land"). `false` (default) imposes no restriction. Read against
     /// [`is_basic_land`] in [`Game::permanent_matches`]; meaningful only alongside a `types` set
@@ -813,6 +925,14 @@ pub struct PermanentFilter {
     /// `without_flying` above (not a second exclusion, so it stays its own bool rather than
     /// folding into that field's ponytail note).
     pub with_flying: bool,
+    /// A *second* keyword exclusion, alongside [`without_flying`](Self::without_flying) — Island
+    /// Sanctuary's "can't be attacked except by creatures with flying **and/or islandwalk**"
+    /// inverts to a banned set that has to lack both at once, which one bool can't say. `None`
+    /// (default) imposes no restriction. Reads [`Game::has_keyword`].
+    /// ponytail: two exclusion slots (one bool, one open) cover the pool; a third simultaneous
+    /// keyword exclusion wants a small `ArrayVec<Keyword>` here, which
+    /// [`PermanentFilter`](Self)'s `Copy` still allows.
+    pub without_keyword: Option<Keyword>,
     /// Requires the permanent share at least one card type with the ability's own triggering
     /// dying permanent's last-known card types (CR 603.10a) — a *dynamic* type gate whose type
     /// set isn't known until the ability actually fires (Martyr's Bond's "shares a card type with
@@ -836,6 +956,13 @@ pub struct PermanentFilter {
     /// [`CardFilter::SnowLand`], or a battlefield "snow permanent" scan). `false` (default)
     /// imposes no restriction. Reads [`CardDef::snow`].
     pub snow: bool,
+    /// Excluded subtypes (Keldon Warlord's "non-Wall creatures you control") — a permanent
+    /// carrying *any* of these fails. Empty (default) imposes no restriction. Matched against
+    /// [`Game::effective_subtypes`], the same layered view the positive `subtypes` axis reads, so
+    /// a creature turned into an Insect by Darksteel Mutation is excluded by `["Insect"]` and no
+    /// longer by its printed subtype. Distinct from `nonlair` above, which deliberately reads a
+    /// land's *printed* type line instead.
+    pub exclude_subtypes: &'static [&'static str],
 }
 
 /// TOML `with_counter = "any"` / `with_counter = "plus_one_plus_one"` — the two counter shapes
@@ -872,26 +999,35 @@ impl PermanentFilter {
             mv_eq_x: false,
             mv_max_x: false,
             tapped: None,
+            has_mana_ability: false,
             power_max: None,
+            power_min: None,
             power_parity: None,
             exclude: TypeSet::NONE,
             color: ColorFilter::Any,
             modified: false,
             attacking: false,
             attacking_you: false,
+            blocking: false,
+            unblocked: false,
             power_less_than_source: false,
+            toughness_less_than_source_power: false,
             entered_this_turn: false,
+            controlled_since_turn_start: false,
+            did_not_attack_this_turn: false,
             nonbasic: false,
             basic: false,
             name: None,
             nonlegendary: false,
             nonlair: false,
             without_flying: false,
+            without_keyword: None,
             with_flying: false,
             shares_type_with_dying_permanent: false,
             with_counter: None,
             creature_or_vehicle: false,
             snow: false,
+            exclude_subtypes: &[],
         }
     }
 }
@@ -912,6 +1048,10 @@ pub enum EdictScope {
     /// "Each opponent" (Witch of the Moors, Lorehold Charm) — every player other than the
     /// controller.
     EachOpponent,
+    /// "You sacrifice…" (Lich's damage tax) — the effect's own controller alone. A one-seat
+    /// fan-out rather than a separate effect, so the prompt, the count and the shortfall check
+    /// are the ones every other edict already uses.
+    You,
     /// "Any number of target players" (Priest of Forgotten Gods, CR 601.2c/608.2b: choosing zero
     /// is legal) — the controller's own chosen subset of living players, picked via a
     /// [`PendingChoice::ChooseTargetPlayers`](super::PendingChoice::ChooseTargetPlayers) pause

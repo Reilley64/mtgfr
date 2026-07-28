@@ -160,8 +160,9 @@ kubectl -n observability port-forward svc/grafana 3000:80
 ### RED dashboard
 
 Grafana provisions one operator dashboard from
-`iac/grafana/dashboards/mtgfr-otel-red.json` via the Helm chart's `dashboardProviders` and
-`dashboards` values. The dashboard uses Tempo TraceQL metrics panels rather than Prometheus
+`iac/dashboards/mtgfr-otel-red.json` via the Helm chart's `dashboardProviders` and
+`dashboards` values. The directory is deliberately not named `grafana/` — Helm resolves `chart` as
+a local path before the remote `repository`, so `iac/grafana/` shadows the upstream chart. The dashboard uses Tempo TraceQL metrics panels rather than Prometheus
 spanmetrics because the current Alloy/Tempo topology does not configure a spanmetrics connector or
 Tempo metrics-generator.
 

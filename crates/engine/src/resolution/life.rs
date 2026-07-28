@@ -42,6 +42,16 @@ impl Game {
                 amount: -self.resolve_amount(amount, controller, source, target, x),
                 source: Some(source),
             }],
+            LifeEffect::SourceOwnerLosesHalfTheirLife => {
+                let owner = self.owner_of(source);
+                // Rounded *up*, so an odd life total costs the extra point. A player already at
+                // or below zero has nothing left to halve.
+                vec![Event::LifeChanged {
+                    player: owner,
+                    amount: -(self.life(owner).max(0) + 1) / 2,
+                    source: Some(source),
+                }]
+            }
             // Swords to Plowshares' rider: the *target's* controller (its owner, per the
             // engine's control/ownership conflation) gains life, not this ability's controller.
             LifeEffect::GainTargetController { amount } => {

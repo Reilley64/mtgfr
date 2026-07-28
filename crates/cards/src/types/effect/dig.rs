@@ -68,7 +68,23 @@ pub enum DigEffect {
         mv_budget: Option<u32>,
     },
 
+    LookAtTargetPlayersHand,
+
+    /// "You may have that player shuffle" (Natural Selection). `owner` is the targeted player,
+    /// baked in when the yes/no is raised so the answer knows whose library to shuffle.
+    MayShuffleTargetPlayersLibrary {
+        #[cfg_attr(feature = "card-dsl", serde(skip))]
+        owner: Option<PlayerId>,
+    },
+
     OpponentSplitsExilePiles,
+
+    /// "Look at the top `count` cards of target player's library, then put them back in any
+    /// order" (Natural Selection). Unlike a scry there is no bottom pile — every card goes back
+    /// on top, so the only choice is the order.
+    RearrangeTargetPlayersTop {
+        count: u32,
+    },
 
     RevealTopOpponentPicksOneToGraveyard {
         count: u8,

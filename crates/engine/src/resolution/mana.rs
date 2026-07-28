@@ -16,6 +16,24 @@ impl Game {
     ) -> Vec<Event> {
         let _source_name = self.source_name_of(source);
         match effect {
+            // "That player loses all unspent mana" (Mana Short, Drain Power) — the enclosing
+            // `Sequence`'s shared target player, whose lands the preceding step just tapped.
+            // `to_you` is Drain Power's "and you add the mana lost this way".
+            ManaEffect::LoseAllUnspent { to_you } => {
+                let Some(Target::Player(player)) = target else {
+                    return Vec::new();
+                };
+                vec![Event::ManaEmptied {
+                    player,
+                    // "All" unspent mana, so persistent "until end of turn" credits go too — CR
+                    // 500.4's exception is about step boundaries, not about a card taking the pool.
+                    end_of_turn: true,
+                    to: to_you.then_some(controller),
+                }]
+            }
+            ManaEffect::TargetPlayerTapsLandsForMana => {
+                unreachable!("a pausing/composite effect resolves via Game::run")
+            }
             // Add `repeat` copies of the mana batch — one ManaAdded event per mana kind.
             // ponytail: a pool holds at most 255 of any one mana (u8); a burst this large never
             // arises in the soc pool, so an over-255 repeat saturates rather than widening the type.

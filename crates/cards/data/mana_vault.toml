@@ -1,0 +1,62 @@
+# This artifact doesn't untap during your untap step.
+# At the beginning of your upkeep, you may pay {4}. If you do, untap this artifact.
+# At the beginning of your draw step, if this artifact is tapped, it deals 1 damage to you.
+# {T}: Add {C}{C}{C}.
+name = "Mana Vault"
+otags = ["activated-ability", "adds-multiple-mana", "burn-you", "doesn-t-untap", "drawback", "full-refund", "intervening-if-clause", "mana-rock", "untaps-self"]
+sets = ["2ed", "2x2", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "fbb", "lea", "leb", "me4", "mps", "prm", "puma", "sld", "sum", "uma", "vma"]
+id = "736892cb-a34b-4bb9-b56c-e26e3db207a2"
+default_print = "778d10e6-251b-4ef3-b9b8-bc23a0d74aed"
+oracle = "This artifact doesn't untap during your untap step.\nAt the beginning of your upkeep, you may pay {4}. If you do, untap this artifact.\nAt the beginning of your draw step, if this artifact is tapped, it deals 1 damage to you.\n{T}: Add {C}{C}{C}."
+
+[cost]
+generic = 1
+
+[kind]
+type = "artifact"
+
+# This artifact doesn't untap during your untap step.
+[[abilities]]
+timing = "static"
+
+# This artifact doesn't untap during your untap step.
+[[abilities.effects]]
+type = "static"
+mode = "doesnt_untap"
+self_only = true
+
+# At the beginning of your upkeep, you may pay {4}. If you do, untap this artifact.
+[[abilities]]
+timing = "upkeep"
+optional = true
+
+[abilities.cost]
+generic = 4
+
+# untap this artifact.
+[[abilities.effects]]
+type = "control"
+mode = "untap_target"
+target = "this"
+
+# At the beginning of your draw step, if this artifact is tapped, it deals 1 damage to you.
+[[abilities]]
+timing = "draw_step"
+condition = { type = "source_tapped" }
+
+# if this artifact is tapped, it deals 1 damage to you.
+[[abilities.effects]]
+type = "conditional"
+condition = { type = "source_tapped" }
+then = [{ type = "damage", mode = "to_self", amount = 1 }]
+
+# {T}: Add {C}{C}{C}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Add {C}{C}{C}.
+[[abilities.effects]]
+type = "mana"
+mode = "add"
+mana = ["colorless", "colorless", "colorless"]

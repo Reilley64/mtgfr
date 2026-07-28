@@ -887,6 +887,10 @@
     "family": "dig",
     "mode": "surveil"
   },
+  "take_extra_turn": {
+    "family": "misc",
+    "mode": "take_extra_turn"
+  },
   "tap_target": {
     "family": "control",
     "mode": "tap_target"

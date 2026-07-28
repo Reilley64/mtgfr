@@ -12,7 +12,9 @@
 mod inspect;
 mod object;
 mod stack;
+mod text_change;
 
 pub use inspect::*;
 pub(crate) use object::*;
 pub use stack::*;
+pub use text_change::*;

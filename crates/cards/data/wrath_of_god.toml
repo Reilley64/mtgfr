@@ -1,0 +1,25 @@
+# Destroy all creatures. They can't be regenerated.
+name = "Wrath of God"
+otags = ["hate-regenerate", "removal-creature", "removal-destroy", "symmetrical", "sweeper"]
+sets = ["10e", "2ed", "2xm", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "8ed", "9ed", "akr", "brb", "c13", "ced", "cei", "cmm", "dmr", "ema", "fbb", "lea", "leb", "mp2", "p07", "plst", "pmei", "por", "prm", "ptc", "pz1", "sld", "sum", "v14", "wc00", "wc03", "wc04"]
+id = "34515b16-c9a4-4f98-8c77-416a7a523407"
+default_print = "e57404bc-44ba-4909-87da-f4a71673168d"
+oracle = "Destroy all creatures. They can't be regenerated."
+
+[cost]
+generic = 2
+white = 2
+
+[kind]
+type = "sorcery"
+
+# Destroy all creatures. They can't be regenerated.
+[[abilities]]
+timing = "spell"
+
+# Destroy all creatures. They can't be regenerated.
+[[abilities.effects]]
+type = "destroy"
+mode = "all"
+filter = { types = "creature" }
+cant_be_regenerated = true

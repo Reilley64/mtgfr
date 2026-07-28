@@ -1,0 +1,36 @@
+# You may play any number of lands on each of your turns.
+# Whenever you play a land, if it wasn't the first land you played this turn, this enchantment
+# deals 1 damage to you.
+name = "Fastbond"
+otags = ["burn-you", "intervening-if-clause", "life-payment", "multi-land-ramp", "play-additional-land"]
+sets = ["2ed", "30a", "3ed", "ced", "cei", "fbb", "lea", "leb", "me4", "sum", "vma"]
+id = "e27193b7-1a47-4555-865d-b1fd4c6d597f"
+default_print = "64b52b42-e2af-4040-b7ba-34cc292af7ef"
+oracle = "You may play any number of lands on each of your turns.\nWhenever you play a land, if it wasn't the first land you played this turn, this enchantment deals 1 damage to you."
+
+[cost]
+green = 1
+
+[kind]
+type = "enchantment"
+
+# You may play any number of lands on each of your turns.
+[[abilities]]
+timing = "static"
+
+# You may play any number of lands on each of your turns.
+[[abilities.effects]]
+type = "static"
+mode = "play_any_number_of_lands"
+
+# Whenever you play a land, if it wasn't the first land you played this turn, this enchantment
+# deals 1 damage to you.
+[[abilities]]
+timing = "you_play_a_land"
+condition = { type = "lands_played_this_turn_at_least", at_least = 2 }
+
+# this enchantment deals 1 damage to you.
+[[abilities.effects]]
+type = "damage"
+mode = "to_self"
+amount = 1

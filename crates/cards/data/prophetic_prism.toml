@@ -1,6 +1,7 @@
 # When this artifact enters, draw a card.
 # {1}, {T}: Add one mana of any color.
 name = "Prophetic Prism"
+otags = ["activated-ability", "alliteration", "cantrip", "hand-neutral", "mana-filter", "triggered-ability"]
 sets = ["a25", "brc", "clb", "cmd", "cmm", "cmr", "dmc", "gtc", "hbg", "j25", "jmp", "kld", "klr", "one", "plst", "roe", "woe"]
 id = "134a9877-5cfb-4a2a-a0f0-930dce45f58b"
 default_print = "cd77a4d0-3d5c-48a5-ad91-b0861021ef8a"

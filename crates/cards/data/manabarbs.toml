@@ -1,0 +1,27 @@
+# Whenever a player taps a land for mana, this enchantment deals 1 damage to that player.
+name = "Manabarbs"
+otags = ["burn-player", "group-slug", "pinger", "symmetrical", "triggered-ability"]
+sets = ["10e", "2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "ced", "cei", "fbb", "lea", "leb", "m10", "m12", "sum"]
+id = "0f1afedd-c60f-454f-b84a-c8117aec0128"
+default_print = "3c424086-8122-404d-8c3a-f36d455271a7"
+oracle = "Whenever a player taps a land for mana, this enchantment deals 1 damage to that player."
+
+[cost]
+generic = 3
+red = 1
+
+[kind]
+type = "enchantment"
+
+# Whenever a player taps a land for mana, ... — every seat's lands, and only taps that actually
+# produced mana (CR 106.11), which is what `for_mana` narrows to.
+[[abilities]]
+timing = "permanent_becomes_tapped"
+filter = { types = "land" }
+for_mana = true
+
+# ...this enchantment deals 1 damage to that player.
+[[abilities.effects]]
+type = "damage"
+mode = "to_triggering_player"
+amount = 1

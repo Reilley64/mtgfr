@@ -2,6 +2,7 @@
 # paying its mana cost.
 # All creatures get -2/-2 until end of turn.
 name = "Massacre"
+otags = ["cycle-nem-free-spell", "hate-plains", "manaless-value", "removal-toughness", "single-english-word-name", "sweeper", "synergy-swamp"]
 sets = ["nem", "plst", "sld", "td0"]
 id = "ce1866e9-28de-4bcc-9999-11958e6c13a6"
 default_print = "f05f5d93-50d1-4aa6-af05-383a6808345b"

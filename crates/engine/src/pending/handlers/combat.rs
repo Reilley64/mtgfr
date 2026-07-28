@@ -44,7 +44,7 @@ impl Game {
         // Chain to the next multi-blocked attacker's division, or hand back priority. (CR 117, CR 402.5, CR 508)
         if let Some((next, blks)) = self.next_undivided_multiblock() {
             self.pause_for(PendingChoice::AssignCombatDamage {
-                player: self.active_player,
+                player: self.damage_assigner(&blks),
                 attacker: next,
                 blockers: blks,
             });

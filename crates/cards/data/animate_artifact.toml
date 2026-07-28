@@ -1,0 +1,43 @@
+# Enchant artifact
+# As long as enchanted artifact isn't a creature, it's an artifact creature with power and
+# toughness each equal to its mana value.
+name = "Animate Artifact"
+otags = ["alliteration", "animate-artifact", "scales-with-mana-value"]
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "ced", "cei", "fbb", "lea", "leb", "me4", "sum"]
+id = "2dd7a4dc-902a-4e85-8a3b-c96a898fba86"
+default_print = "caf1ee51-2852-44c0-a5d4-d0e415381738"
+oracle = "Enchant artifact\nAs long as enchanted artifact isn't a creature, it's an artifact creature with power and toughness each equal to its mana value."
+subtypes = ["Aura"]
+enchant = { types = "artifact" }
+
+[cost]
+generic = 3
+blue = 1
+
+[kind]
+type = "aura"
+
+# As long as enchanted artifact isn't a creature, it's an artifact creature with power and
+# toughness each equal to its mana value.
+[[abilities]]
+timing = "static"
+
+# ... power and toughness each equal to its mana value.
+[[abilities.effects]]
+type = "static"
+mode = "set_attached_base_pt"
+power = "source_mana_value"
+toughness = "source_mana_value"
+noncreature_only = true
+
+# The type half carries no `noncreature_only` twin: `add_types` unions onto the host's own types, so
+# on an artifact that already is a creature it changes nothing. Only the base-P/T set needs the gate,
+# or enchanting an artifact creature would wipe its printed numbers.
+[[abilities]]
+timing = "static"
+
+# ... it's an artifact creature ...
+[[abilities.effects]]
+type = "static"
+mode = "set_attached_types"
+add_types = ["artifact", "creature"]

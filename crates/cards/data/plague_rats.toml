@@ -1,0 +1,32 @@
+# Plague Rats's power and toughness are each equal to the number of creatures named Plague Rats
+# on the battlefield.
+name = "Plague Rats"
+otags = ["cda-power", "cda-toughness", "quadratic", "scales-with-multiple"]
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
+id = "16cf1cf9-6900-406c-a5b4-0e5750f530e0"
+default_print = "f2a5bd30-a11f-4218-aca6-3183d82d02b9"
+oracle = "Plague Rats's power and toughness are each equal to the number of creatures named Plague Rats on the battlefield."
+subtypes = ["Rat"]
+
+[cost]
+generic = 2
+black = 1
+
+# The printed box reads */*; the defining ability below supplies both numbers.
+[kind]
+type = "creature"
+power = 0
+toughness = 0
+
+# Plague Rats's power and toughness are each equal to the number of creatures named Plague Rats
+# on the battlefield.
+[[abilities]]
+timing = "static"
+
+# power and toughness are each equal to the number of creatures named Plague Rats on the
+# battlefield
+[[abilities.effects]]
+type = "static"
+mode = "base_power_toughness_from_amount"
+power = { per_permanent = { types = "creature", name = "Plague Rats" } }
+toughness = { per_permanent = { types = "creature", name = "Plague Rats" } }

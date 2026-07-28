@@ -178,6 +178,26 @@ impl Color {
             Color::Green => 'G',
         }
     }
+
+    /// This color's *word* as it appears in printed rules text (CR 105.1) — "protection from
+    /// **black**", "target **green** spell". Capitalized to sit beside
+    /// [`BASIC_LAND_TYPES`](crate::BASIC_LAND_TYPES) in a picker's candidate list; the lowercase
+    /// i18n token that renders an effect is a separate mapping in `message`.
+    pub fn word(self) -> &'static str {
+        match self {
+            Color::White => "White",
+            Color::Blue => "Blue",
+            Color::Black => "Black",
+            Color::Red => "Red",
+            Color::Green => "Green",
+        }
+    }
+
+    /// The color a [`word`](Self::word) names, or `None` for anything else — for reading a picked
+    /// word ([`TextWords::options`](crate::TextWords)) back into the enum.
+    pub fn from_word(word: &str) -> Option<Self> {
+        Color::ALL.into_iter().find(|c| c.word() == word)
+    }
 }
 
 /// When a spell may be cast. Instants cast anytime; sorcery-speed spells only during
@@ -199,6 +219,102 @@ pub enum ProtectionScope {
     Color(Color),
     Creatures,
     Multicolored,
+}
+
+/// A basic land type (CR 205.3i) — the parameter of [`Keyword::Landwalk`]. Kept as a closed
+/// five-variant enum rather than a subtype string so `Keyword` stays `Copy`; nonbasic land types
+/// (Desert, Gate, Locus) never appear in a landwalk ability, so there is nothing to widen for.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "card-dsl",
+    derive(serde::Deserialize),
+    serde(rename_all = "snake_case")
+)]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
+pub enum BasicLandType {
+    Plains,
+    Island,
+    Swamp,
+    Mountain,
+    Forest,
+}
+
+impl BasicLandType {
+    /// The printed land subtype string, as it appears in [`CardKind::Land`]'s `subtypes`.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            BasicLandType::Plains => "Plains",
+            BasicLandType::Island => "Island",
+            BasicLandType::Swamp => "Swamp",
+            BasicLandType::Mountain => "Mountain",
+            BasicLandType::Forest => "Forest",
+        }
+    }
+
+    /// The basic land type a printed subtype string names, or `None` for a nonbasic one
+    /// ("Desert", "Gate", "Wraith"). The inverse of [`as_str`](Self::as_str), for reading a
+    /// picked word ([`TextWords::options`](crate::TextWords)) back into the enum.
+    pub fn from_subtype(subtype: &str) -> Option<Self> {
+        match subtype {
+            "Plains" => Some(BasicLandType::Plains),
+            "Island" => Some(BasicLandType::Island),
+            "Swamp" => Some(BasicLandType::Swamp),
+            "Mountain" => Some(BasicLandType::Mountain),
+            "Forest" => Some(BasicLandType::Forest),
+            _ => None,
+        }
+    }
+}
+
+/// The five color words, in WUBRG order — the vocabulary Sleight of Mind replaces one of, and the
+/// color twin of [`BASIC_LAND_TYPES`](crate::BASIC_LAND_TYPES). Offered through the same picker the
+/// land types are, so both text-changers ask their two questions the same way.
+pub const COLOR_WORDS: &[&str] = &["White", "Blue", "Black", "Red", "Green"];
+
+/// The five basic land types (CR 305.6), in WUBRG order so that index `i` is the type that taps
+/// for [`Color::ALL`]`[i]` — `Game::basic_land_types` relies on that pairing, and so does the
+/// single-element slice a chosen-land-type Aura hands to the CR 613.4 subtype layer. Also the
+/// candidate list for an as-enters "choose a basic land type" choice
+/// ([`ChoiceEffect::ChooseBasicLandType`](crate::ChoiceEffect), Phantasmal Terrain) and for
+/// [`TextWords::BasicLandType`].
+pub const BASIC_LAND_TYPES: &[&str] = &["Plains", "Island", "Swamp", "Mountain", "Forest"];
+
+/// Which enumerated vocabulary a text-changing spell replaces a word from (CR 612.1) — Magical
+/// Hack's basic land types, Sleight of Mind's color words. Names the *vocabulary* only; which word
+/// becomes which is picked as [`Effect::Choice(ChoiceEffect::ChangeText)`](crate::ChoiceEffect)
+/// resolves.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "card-dsl",
+    derive(serde::Deserialize),
+    serde(rename_all = "snake_case")
+)]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
+pub enum TextWords {
+    /// "…replacing all instances of one basic land type with another" (Magical Hack).
+    BasicLandType,
+    /// "…replacing all instances of one color word with another" (Sleight of Mind).
+    Color,
+}
+
+impl TextWords {
+    /// The words this vocabulary offers, in printed order — the picker's candidate list, asked
+    /// once for the word being replaced and once for its replacement.
+    pub fn options(self) -> &'static [&'static str] {
+        match self {
+            TextWords::BasicLandType => BASIC_LAND_TYPES,
+            TextWords::Color => COLOR_WORDS,
+        }
+    }
+
+    /// What this vocabulary is called in the printed sentence — "one **basic land type**", "one
+    /// **color word**" — for rendering the effect.
+    pub fn label(self) -> &'static str {
+        match self {
+            TextWords::BasicLandType => "basic land type",
+            TextWords::Color => "color word",
+        }
+    }
 }
 
 /// The evergreen keywords that change combat/timing math in the Phase 1 pool.
@@ -245,6 +361,12 @@ pub enum Keyword {
     /// blocked/targeted/damaged by a source of that quality. See [`Game::protection_scopes`].
     #[cfg_attr(feature = "card-dsl", serde(rename = "protection"))]
     ProtectionFrom(ProtectionScope),
+    /// Landwalk (CR 702.14): can't be blocked as long as the defending player controls a land of
+    /// that type. The check reads the defender's *printed land subtypes*
+    /// ([`CardKind::Land`]'s `subtypes`), so a dual land grants passage to both walkers. In TOML,
+    /// `{ landwalk = "island" }`. See [`Game::can_block`].
+    #[cfg_attr(feature = "card-dsl", serde(rename = "landwalk"))]
+    Landwalk(BasicLandType),
     /// Can't be the target of spells or abilities *opponents* control (CR 702.11). Its own
     /// controller can still target it. See the target-legality retain in
     /// [`Game::legal_targets_for`].
@@ -277,6 +399,13 @@ pub enum Keyword {
     /// "This creature can't block" (CR 509.1a — Bloodghast is never a legal blocker). Read by
     /// [`Game::can_block`].
     CantBlock,
+    /// Banding (CR 702.22). Only the damage-assignment half is modeled: when a creature with
+    /// banding is among an attacker's blockers, *its* controller divides that attacker's combat
+    /// damage rather than the attacking player (CR 702.22e). See [`Game::damage_assigner`].
+    /// ponytail: attacking as a band is not modeled — `Intent::DeclareAttackers` carries a flat
+    /// list of attackers with no grouping, and bands would have to travel through the intent, the
+    /// projection, the proto, and the client's attack UI. See increment #79.
+    Banding,
     /// Brazen Borrower's printed "can block only creatures with flying" static — MTG names no
     /// keyword for it.
     /// ponytail: modeled as a card-specific keyword-bag arm on the shared block-legality check
@@ -661,6 +790,38 @@ pub struct CardDef {
     /// on top of the ordinary instant-speed gate and is checked in [`Game::cast_timing_ok`].
     /// `cast_only_before_attackers = true` in TOML; `false` for every ordinary card.
     pub cast_only_before_attackers: bool,
+    /// "Cast this spell only during combat before blockers are declared" (CR 601.3e's named-window
+    /// restriction — Blaze of Glory): the declare-blockers half of
+    /// [`Self::cast_only_before_attackers`], open until the first defending player declares. Blaze
+    /// of Glory pairs it with [`Self::cast_only_during_combat`], which is the other half of its
+    /// printed sentence — this field alone would leave the pre-combat main phase open.
+    /// `cast_only_before_blockers = true` in TOML; `false` for every ordinary card.
+    pub cast_only_before_blockers: bool,
+    /// "Cast this spell only during an opponent's turn" (CR 601.3e — Siren's Call): someone other
+    /// than the caster must be the active player. The cast-side member of the same window family,
+    /// and the twin of [`ActivationCost::only_during_opponents_turn`](crate::ActivationCost);
+    /// composable with [`Self::cast_only_before_attackers`], which is the other half of Siren's
+    /// Call's printed restriction.
+    pub cast_only_during_opponents_turn: bool,
+    /// "Cast this spell only before the combat damage step" (CR 601.3e's named-window restriction
+    /// — Berserk): legal from untap through the declare-blockers step, and closed for the rest of
+    /// the turn from the first combat damage step on — [`Step::FirstStrikeCombatDamage`] when a
+    /// first striker is in combat, [`Step::CombatDamage`] otherwise, which is the same boundary
+    /// because the engine only creates the first-strike step when one is needed. Layers on top of
+    /// the ordinary instant-speed gate like its two siblings above, checked in
+    /// [`Game::cast_timing_ok`]. `cast_only_before_combat_damage = true` in TOML.
+    pub cast_only_before_combat_damage: bool,
+    /// "Cast this spell only during the declare blockers step" (CR 601.3e — False Orders): the
+    /// narrowest window of the family above, a single step rather than everything up to one. Open
+    /// for the whole step, before *and* after the declaration — False Orders' whole job is to
+    /// rearrange a declaration that has already happened. `cast_only_during_declare_blockers =
+    /// true` in TOML; `false` for every ordinary card.
+    pub cast_only_during_declare_blockers: bool,
+    /// "Cast this spell only during your declare attackers step" (CR 601.3e — Camouflage): the
+    /// attack-side twin of the window above, and narrower still — *your* declare attackers step,
+    /// so it is closed on every other player's turn as well as in every other step.
+    /// `cast_only_during_declare_attackers = true` in TOML; `false` for every ordinary card.
+    pub cast_only_during_declare_attackers: bool,
     /// A one-line plain-English note on how this card's modeled behavior diverges from its
     /// printed rules text (a dropped clause, a coarsened trigger, a folded-together mechanic) —
     /// the same fact a `# ponytail:` TOML comment records, but as a datum the catalog/deck
@@ -681,7 +842,8 @@ pub struct CardDef {
     /// metadata: [`PermanentFilter::subtypes`] and [`Effect::Static(StaticEffect::Anthem)`]'s `subtypes` axis
     /// both match against this (Goldspan Dragon's "Treasures you control", a tribal anthem). A
     /// *land's* types stay on [`CardKind::Land::subtypes`] (rules use those); `schema::catalog_card`
-    /// unions the two for the wire. `subtypes = […]` in TOML; empty when unrecorded or genuinely
+    /// unions the two for the wire, and so does [`Game::effective_subtypes`], so a `subtypes` axis
+    /// reads both halves without caring which one a card stores its types on. `subtypes = […]` in TOML; empty when unrecorded or genuinely
     /// none — including most token profiles today (grown card by card as tribal payoffs need them).
     pub subtypes: Arc<[&'static str]>,
     /// Scryfall Tagger oracle-tag slugs (catalog metadata for deck-builder search). Pure catalog
@@ -951,7 +1113,7 @@ pub enum CastXMax {
 /// enters with (Altered Ego's X); `gains_haste` grants the copy haste (Cursed Mirror's "except it
 /// has haste"); `of` is the copyable type axis (Copy Enchantment's "any enchantment", CR 707.2,
 /// vs. the default "any creature").
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[cfg_attr(
     feature = "card-dsl",
     derive(serde::Deserialize),
@@ -967,11 +1129,33 @@ pub struct EnterAsCopy {
     pub gains_haste: bool,
     #[cfg_attr(feature = "card-dsl", serde(default))]
     pub of: CopyTargetKind,
+    /// Copy Artifact's "except it's an enchantment in addition to its other types" (CR 707.2 —
+    /// a copy *exception*, not a separate continuous effect). The copier keeps the enchantment
+    /// type it was printed with on top of everything the copied artifact brings, which is what
+    /// keeps Disenchant and every enchantment sweeper live against it. Written to the indefinite
+    /// [`Permanent::added_types`] slot as the copy lands, so it resets with the object (CR 400.7)
+    /// rather than at cleanup. `also_enchantment = true` in TOML; the only copy exception in the
+    /// pool that adds a card type, so it is a bool rather than a type list.
+    #[cfg_attr(feature = "card-dsl", serde(default))]
+    pub also_enchantment: bool,
+    /// Vesuvan Doppelganger's "except it doesn't copy that creature's color" — the copy keeps the
+    /// shapeshifter's own colors. See [`copy_with_exceptions`], which bakes both this and
+    /// `keeps_own_abilities` into the copied def.
+    #[cfg_attr(feature = "card-dsl", serde(default))]
+    pub keeps_own_color: bool,
+    /// Vesuvan Doppelganger's "and it has \"At the beginning of your upkeep, …\"" — the copy
+    /// carries the shapeshifter's own re-copy ability on top of the copied creature's. See
+    /// [`copy_with_exceptions`].
+    #[cfg_attr(feature = "card-dsl", serde(default))]
+    pub keeps_own_abilities: bool,
 }
 
 /// The candidate-object type [`CardDef::enter_as_copy`] may copy (CR 706/707.2): `Creature` (the
-/// default — Altered Ego, Cursed Mirror) or `Enchantment` (Copy Enchantment, which includes Auras
-/// — CR 303.2). `enter_as_copy = { of = "enchantment" }` in TOML; absent means `Creature`.
+/// default — Altered Ego, Clone, Cursed Mirror, Vesuvan Doppelganger), `Enchantment` (Copy
+/// Enchantment, which includes Auras — CR 303.2), or `Artifact` (Copy Artifact). Each reads the
+/// CR 613.4 type layer rather than the printed kind, so an animated land is a creature here and a
+/// Copy Artifact wearing an artifact is an artifact for the next one.
+/// `enter_as_copy = { of = "enchantment" }` in TOML; absent means `Creature`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[cfg_attr(
     feature = "card-dsl",
@@ -983,6 +1167,7 @@ pub enum CopyTargetKind {
     #[default]
     Creature,
     Enchantment,
+    Artifact,
 }
 
 /// Suspend N—[cost] (CR 702.62), carried by [`CardDef::suspend`]. `counters` is the N time
@@ -1021,6 +1206,19 @@ pub struct HandActivatedAbility {
 }
 
 impl CardDef {
+    /// Every subtype printed on this card's type line, both halves joined: [`Self::subtypes`] plus
+    /// a land's own [`CardKind::Land::subtypes`] (CR 305.6 — land types are subtypes, they just
+    /// live on the kind). Every `subtypes` axis reads the line through here (or through
+    /// [`Game::effective_subtypes`](crate::Game::effective_subtypes), which layers on top of it),
+    /// so "destroy X target Mountains" and "Treasures you control" are the same check.
+    pub fn printed_subtypes(&self) -> Vec<&'static str> {
+        let mut subtypes = self.subtypes.to_vec();
+        if let CardKind::Land { subtypes: land, .. } = self.kind {
+            subtypes.extend_from_slice(land);
+        }
+        subtypes
+    }
+
     /// This card's mana value (CR 202.3): the total pips in its mana cost — generic plus every
     /// colored, colorless `{C}`, and hybrid `{A/B}` pip. A `{X}` counts as 0 outside the stack
     /// (CR 202.3b), which is exactly how [`Cost`] stores it (the `x` marker adds nothing to the
@@ -1136,6 +1334,48 @@ pub fn treasure_token() -> CardDef {
 /// untouched too, so `cost` carries the pip-derived colors and the explicit `colors`/`devoid`
 /// overrides ride along for a target that states its color outright (a token, CR 111.4).
 /// `legendary` stays because a supertype is not a card type (CR 205.4).
+/// Apply Vesuvan Doppelganger's copy *exceptions* (CR 707.2) to the def a shapeshifter is about
+/// to wear. `copied` is the chosen creature's def; `keeper` is the shapeshifter's own def — the
+/// printed card on the way in, or whatever it is already wearing when its upkeep ability
+/// re-copies. Because both exceptions are baked into the synthesized def rather than layered on
+/// the object, they are themselves copiable — a Clone copying a Doppelganger gets both, which is
+/// what CR 707.2 asks for.
+///
+/// `keeps_own_color` is "except it doesn't copy that creature's color": `keeper`'s *resolved*
+/// identity is written into the explicit `colors` slot, so it survives being re-copied even
+/// though the copied cost underneath it changes every time.
+///
+/// `keeps_own_abilities` is "and it has this ability". Only the re-copy ability itself rides
+/// along, not everything `keeper` currently has — otherwise the second upkeep would stack the
+/// abilities of the creature it was wearing under the new one's.
+pub fn copy_with_exceptions(
+    copied: CardDef,
+    keeper: &CardDef,
+    keeps_own_color: bool,
+    keeps_own_abilities: bool,
+) -> CardDef {
+    let mut def = copied;
+    if keeps_own_color {
+        let identity = color_identity(keeper);
+        def.colors = Color::ALL
+            .iter()
+            .copied()
+            .filter(|color| identity[color.index()])
+            .collect();
+        def.devoid = keeper.devoid;
+    }
+    if keeps_own_abilities {
+        let this_ability = keeper.abilities.iter().filter(|ability| {
+            matches!(
+                ability.effect,
+                Effect::Pump(PumpEffect::BecomesCopyOfTarget { .. })
+            )
+        });
+        def.abilities = def.abilities.iter().chain(this_ability).cloned().collect();
+    }
+    def
+}
+
 pub fn becomes_treasure(printed: CardDef) -> CardDef {
     CardDef {
         name: printed.name,
@@ -1161,6 +1401,11 @@ fn treasure_token_builtin() -> CardDef {
             loyalty: None,
             once_each_turn: false,
             sorcery_speed: false,
+            only_during_opponents_turn: false,
+            only_during_your_turn: false,
+            only_owner_may_activate: false,
+            only_before_attackers: false,
+            only_during_your_upkeep: false,
             remove_counters: 0,
             remove_counters_kind: None,
             remove_counters_x: false,
@@ -1224,6 +1469,11 @@ fn treasure_token_builtin() -> CardDef {
         alternative_cost: None,
         cast_only_during_combat: false,
         cast_only_before_attackers: false,
+        cast_only_before_blockers: false,
+        cast_only_during_opponents_turn: false,
+        cast_only_before_combat_damage: false,
+        cast_only_during_declare_blockers: false,
+        cast_only_during_declare_attackers: false,
         approximates: None,
         oracle: None,
         sets: empty_slice(),
@@ -1296,6 +1546,11 @@ pub fn rogue_token_stub() -> CardDef {
         alternative_cost: None,
         cast_only_during_combat: false,
         cast_only_before_attackers: false,
+        cast_only_before_blockers: false,
+        cast_only_during_opponents_turn: false,
+        cast_only_before_combat_damage: false,
+        cast_only_during_declare_blockers: false,
+        cast_only_during_declare_attackers: false,
         approximates: None,
         oracle: None,
         sets: empty_slice(),
@@ -1370,6 +1625,11 @@ pub fn illusion_token() -> CardDef {
         alternative_cost: None,
         cast_only_during_combat: false,
         cast_only_before_attackers: false,
+        cast_only_before_blockers: false,
+        cast_only_during_opponents_turn: false,
+        cast_only_before_combat_damage: false,
+        cast_only_during_declare_blockers: false,
+        cast_only_during_declare_attackers: false,
         approximates: None,
         oracle: None,
         sets: empty_slice(),

@@ -1,7 +1,8 @@
+import * as Combobox from "@foldkit/ui/combobox";
 import { expect, test } from "vitest";
 import type { VisibleState } from "~/wire/types";
 import type { GameFoldState } from "../game/fold";
-import { PromptStringSet } from "./messages";
+import { GotCardNameComboboxMessage, PromptStringSet } from "./messages";
 import { initialBoardModel, updateBoard } from "./submodel";
 
 function state(overrides: Partial<VisibleState> = {}): VisibleState {
@@ -51,6 +52,44 @@ function fold(visible: VisibleState = state()): GameFoldState {
     tableFeel: { land: false, stack: false, resolve: false, damage: false, destroy: false, exile: false },
   };
 }
+
+// `@foldkit/ui/combobox` exports UpdatedInputValue as a type only, so the keystroke message is
+// written out; every other combobox message here has a constructor.
+const typedInput = (value: string): Combobox.Message => ({ _tag: "UpdatedInputValue", value });
+
+function namingBoard() {
+  return {
+    ...initialBoardModel(),
+    promptDraft: { kind: "string" as const, value: "" },
+    pendingChoiceKey: "choose_card_name",
+  };
+}
+
+test("typing in the typeahead fills the draft and searches the catalog", () => {
+  const [model, cmds] = updateBoard(
+    namingBoard(),
+    GotCardNameComboboxMessage({ message: typedInput("Sol") }),
+    fold(),
+    "T1",
+  );
+  expect(model.cardNameCombobox.inputValue).toBe("Sol");
+  expect(model.promptDraft).toEqual({ kind: "string", value: "Sol" });
+  expect(cmds.some((c) => (c as { name?: string }).name === "SearchCardNames")).toBe(true);
+});
+
+test("picking a suggestion names that card", () => {
+  const typed = updateBoard(namingBoard(), GotCardNameComboboxMessage({ message: typedInput("Sol") }), fold(), "T1")[0];
+  const [picked] = updateBoard(
+    typed,
+    GotCardNameComboboxMessage({
+      message: Combobox.SelectedItem({ item: "Sol Ring", displayText: "Sol Ring", wasSelected: false }),
+    }),
+    fold(),
+    "T1",
+  );
+  expect(picked.promptDraft).toEqual({ kind: "string", value: "Sol Ring" });
+  expect(picked.cardNameCombobox.isOpen).toBe(false);
+});
 
 test("PromptStringSet searches catalog names once the query is long enough", () => {
   const game = fold();

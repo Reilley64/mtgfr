@@ -1,0 +1,30 @@
+# Enchant enchantment
+# At the beginning of the upkeep of enchanted enchantment's controller, this Aura deals 1 damage
+# to that player.
+name = "Feedback"
+otags = ["burn-player", "color-break", "hate-enchantment", "parasitic-aura", "pinger", "single-english-word-name", "triggered-ability"]
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "fbb", "itp", "lea", "leb", "rqs", "sum"]
+id = "2ff92886-5c17-47a4-a02b-a97432d9203e"
+default_print = "5083317e-8536-41e3-a441-8e6be4d63d50"
+oracle = "Enchant enchantment\nAt the beginning of the upkeep of enchanted enchantment's controller, this Aura deals 1 damage to that player."
+subtypes = ["Aura"]
+enchant = { types = "enchantment" }
+
+[cost]
+generic = 2
+blue = 1
+
+[kind]
+type = "aura"
+
+# At the beginning of the upkeep of enchanted enchantment's controller, this Aura deals 1 damage
+# to that player.
+[[abilities]]
+timing = "each_upkeep"
+condition = { type = "enchanted_permanents_controllers_upkeep" }
+
+# this Aura deals 1 damage to that player.
+[[abilities.effects]]
+type = "damage"
+mode = "to_triggering_player"
+amount = 1

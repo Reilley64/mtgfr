@@ -3,6 +3,7 @@
 # When this creature is turned face up, you may exchange control of target creature you control and target creature an
 # opponent controls.
 name = "Chromeshell Crab"
+otags = ["alliteration", "cheaper-than-mv", "donate", "exchange-control", "multiple-targets", "theft-creature", "turn-face-up-trigger-self", "type-errata", "untracked-indefinite-effect"]
 sets = ["c19", "cmd", "lgn"]
 id = "8cbac2e8-5755-433b-9f42-7fd5c214aab3"
 default_print = "c91cf95f-5007-409c-b891-00e10a3477e0"

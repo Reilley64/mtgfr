@@ -1,0 +1,49 @@
+# Enchant artifact
+# Whenever you're dealt damage, put that many vitality counters on this Aura.
+# At the beginning of your upkeep, you may remove a vitality counter from this Aura. If you do,
+# you gain 1 life.
+name = "Living Artifact"
+otags = ["aesthetic-counter", "counter-fuel-aesthetic", "repeatable-lifegain", "retaliate-to-damage", "synergy-artifact", "triggered-ability", "unique-counter"]
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
+id = "4ff9af56-ac18-4966-9e48-183e1ca1c2d0"
+default_print = "47354179-7048-4329-9c50-ce9d4e714a5b"
+oracle = "Enchant artifact\nWhenever you're dealt damage, put that many vitality counters on this Aura.\nAt the beginning of your upkeep, you may remove a vitality counter from this Aura. If you do, you gain 1 life."
+subtypes = ["Aura"]
+enchant = { types = "artifact" }
+
+[cost]
+green = 1
+
+[kind]
+type = "aura"
+
+# Whenever you're dealt damage, put that many vitality counters on this Aura.
+[[abilities]]
+timing = "you_are_dealt_damage"
+
+# put that many vitality counters on this Aura.
+[[abilities.effects]]
+type = "counters"
+mode = "put_counters"
+count = "triggering_damage_dealt"
+kind = "vitality"
+target = "this"
+
+# At the beginning of your upkeep, you may remove a vitality counter from this Aura. If you do,
+# you gain 1 life.
+[[abilities]]
+timing = "upkeep"
+optional = true
+condition = { type = "compare", left = { per_counter_of_kind = "vitality" }, op = "at_least", right = 1 }
+
+# you may remove a vitality counter from this Aura.
+[[abilities.effects]]
+type = "counters"
+mode = "remove_counter_from_self"
+kind = "vitality"
+
+# If you do, you gain 1 life.
+[[abilities.effects]]
+type = "life"
+mode = "gain"
+amount = 1

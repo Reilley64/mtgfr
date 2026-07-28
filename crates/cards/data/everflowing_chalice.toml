@@ -2,6 +2,7 @@
 # This artifact enters with a charge counter on it for each time it was kicked.
 # {T}: Add {C} for each charge counter on this artifact.
 name = "Everflowing Chalice"
+otags = ["activated-ability", "adds-multiple-mana", "counters-matter", "mana-rock-with-set-s-mechanic", "more-expensive-than-mv", "refund"]
 id = "0a79237e-0811-4a8a-bd4d-db3ca91bff22"
 default_print = "e4ed0052-d6dd-4f69-8313-10863baefac9"
 oracle = "Multikicker {2} (You may pay an additional {2} any number of times as you cast this spell.)\nThis artifact enters with a charge counter on it for each time it was kicked.\n{T}: Add {C} for each charge counter on this artifact."
