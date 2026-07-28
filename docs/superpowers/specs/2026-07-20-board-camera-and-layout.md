@@ -44,7 +44,7 @@ Wheel and pinch gestures are translated by the board camera gesture Mount into `
 
 `layout(state, viewer)` returns a flat `RenderCard[]` for visible objects. Each record carries world-space position and size, zone, owner/controller, seat, tapped rotation state, face status, print/card ids, combat/chrome fields, attachment info, and cluster membership.
 
-Cards use 96 x 134 world units. Seat bands are arranged as a four-seat table from the viewer perspective: viewer at the bottom, opponents around the top and sides, with top seats oriented toward the viewer. Fewer than four seats leave unused bands empty. Zone columns for command, graveyard, exile, and library live at the left edge of each seat band, and battlefield mana anchoring is derived from the same geometry.
+Cards use 96 x 134 world units. Seat bands are arranged as a four-seat table from the viewer perspective: viewer at the bottom, opponents around the top and sides, with top seats oriented toward the viewer. Fewer than four seats leave unused bands empty. `seatSlot(seat, viewer, count)` is the shared viewer-relative slot (viewer = slot 0) behind both `seatCell` and the first-player reveal grid; a viewer that sits at no seat — the spectator sentinel id — anchors on seat 0, so a spectator sees plain seat order across the four quadrants rather than every band folding onto one cell. Zone columns for command, graveyard, exile, and library live at the left edge of each seat band, and battlefield mana anchoring is derived from the same geometry.
 
 Seat avatars use a 40 world-unit radius. Their label gutter is part of `boardBounds`: hand count sits toward the battlefield, while life, username, and commander-damage labels sit on the outer side of the circle. Top-row flipped seats mirror those offsets, so `fitCamera` reserves room on the side where labels actually paint instead of only the circular face.
 
@@ -81,7 +81,7 @@ Attachments remain associated with their host for layout and hover raise. Tapped
 ## Testing Decisions
 
 - Camera tests cover world/screen round trips, pan, zoom-at invariants, and fit behavior.
-- Layout tests cover seat placement, zone columns, tapped rotation fields, attachments, avatar label bounds, and player-count variation.
+- Layout tests cover seat placement, zone columns, tapped rotation fields, attachments, avatar label bounds, player-count variation, and that a spectator viewer still resolves four distinct quadrants.
 - Hit-test tests cover overlapped/tapped cards, topmost resolution, and avatar hits.
 - Density tests cover row packing, cluster fan poses, clamping to seat bands, and hover raise ordering.
 - Interaction tests cover pan-vs-click thresholds and camera user-moved behavior.

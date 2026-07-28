@@ -12,13 +12,6 @@ const LAST_GAP_MS = 200;
 export const REVEAL_HOLD_MS = 600;
 export const REVEAL_HOLD_REDUCED_MS = 1200;
 
-/** Screen slot for a seat, matching the board's viewer-relative 2×2 quadrants. */
-export function revealSlot(seat: number, viewer: number, count: number): number {
-  const seatCount = Math.max(1, count);
-  const anchor = viewer < seatCount ? viewer : 0;
-  return (seat - anchor + seatCount) % seatCount;
-}
-
 /** Hop schedule: laps around the table decelerating onto the winner's slot. */
 export function spotlightSteps(winnerSlot: number, seatCount: number, reducedMotion: boolean): SpotlightStep[] {
   if (reducedMotion) return [{ slot: winnerSlot, delayMs: 0 }];
