@@ -214,6 +214,7 @@ message_keys! {
     EFFECT_LIFE_GAIN_TARGET_CONTROLLER => "effect.life_gain_target_controller",
     EFFECT_LIFE_LOSE => "effect.life_lose",
     EFFECT_LIFE_OPPONENT_GAINS => "effect.life_opponent_gains",
+    EFFECT_LIFE_SOURCE_OWNER_LOSES_HALF_THEIR_LIFE => "effect.life_source_owner_loses_half_their_life",
     EFFECT_LIFE_TARGET_PLAYER_GAINS => "effect.life_target_player_gains",
     EFFECT_LIFE_TARGET_PLAYER_LOSES => "effect.life_target_player_loses",
     EFFECT_MANA_ADD => "effect.mana_add",
@@ -1257,6 +1258,9 @@ impl Effect {
             }
             Effect::Life(Lose { amount }) => MessageRef::new(MessageKey::EFFECT_LIFE_LOSE)
                 .with_params(vec![amount_param("amount", amount)]),
+            Effect::Life(SourceOwnerLosesHalfTheirLife) => MessageRef::new(
+                MessageKey::EFFECT_LIFE_SOURCE_OWNER_LOSES_HALF_THEIR_LIFE,
+            ),
             Effect::Life(GainTargetController { amount }) => {
                 MessageRef::new(MessageKey::EFFECT_LIFE_GAIN_TARGET_CONTROLLER)
                     .with_params(vec![amount_param("amount", amount)])

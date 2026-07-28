@@ -3240,6 +3240,7 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                     opponent: false,
                 }),
                 Effect::Misc(MiscEffect::PreventNextDamage {
+                    shield_source: false,
                     redirect_to_controller: false,
                     amount: Some(Amount::Fixed(3)),
                     from_color: ColorFilter::Any,
@@ -3530,6 +3531,7 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
             (
                 "Samite Healer",
                 Effect::Misc(MiscEffect::PreventNextDamage {
+                    shield_source: false,
                     redirect_to_controller: false,
                     amount: Some(Amount::Fixed(1)),
                     from_color: ColorFilter::Any,
@@ -3542,6 +3544,7 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                 // "…dealt to you" names no target at all, so the shield lands on whoever
                 // activated it.
                 Effect::Misc(MiscEffect::PreventNextDamage {
+                    shield_source: false,
                     redirect_to_controller: false,
                     amount: Some(Amount::Fixed(2)),
                     from_color: ColorFilter::Any,
@@ -4449,6 +4452,7 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
             assert_eq!(
                 ability.effect,
                 Effect::Misc(MiscEffect::PreventNextDamage {
+                    shield_source: false,
                     redirect_to_controller: false,
                     amount: None,
                     target: TargetSpec::None,
@@ -4466,6 +4470,7 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
         assert_eq!(
             spell.effect,
             Effect::Misc(MiscEffect::PreventNextDamage {
+                shield_source: false,
                 redirect_to_controller: false,
                 amount: None,
                 target: TargetSpec::None,
@@ -4493,6 +4498,7 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
         assert_eq!(
             ability.effect,
             Effect::Misc(MiscEffect::PreventNextDamage {
+                shield_source: false,
                 redirect_to_controller: true,
                 amount: None,
                 target: TargetSpec::Creature,
@@ -4517,6 +4523,46 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
             ability.effect,
             Effect::Static(StaticEffect::RedirectUnblockedDamageToSelf),
             "the untapped condition is read at damage time, so it is not on the ability"
+        );
+    }
+
+    /// Personal Incarnation is a liability its owner cannot hand off. Both halves of that are
+    /// only true because of a flag: `only_owner_may_activate` is what stops a thief spending the
+    /// shield, and `SourceOwnerLosesHalfTheirLife` is what sends the bill past whoever was
+    /// controlling it when it died. Drop either and the card still compiles into something that
+    /// works — for the wrong player.
+    #[test]
+    fn unlimited_personal_incarnation_answers_to_its_owner_and_not_its_controller() {
+        let avatar =
+            get_by_name("Personal Incarnation").expect("Personal Incarnation is in the pool");
+        let [shield, dies] = &avatar.abilities[..] else {
+            panic!("an activated shield and a dies trigger");
+        };
+
+        let Timing::Activated(cost) = &shield.timing else {
+            panic!("\"{{0}}:\" is an activated ability");
+        };
+        assert!(
+            cost.only_owner_may_activate,
+            "\"only this creature's owner may activate\""
+        );
+        assert_eq!(
+            shield.effect,
+            Effect::Misc(MiscEffect::PreventNextDamage {
+                amount: Some(Amount::Fixed(1)),
+                target: TargetSpec::None,
+                from_color: ColorFilter::Any,
+                gain_life: false,
+                redirect_to_controller: true,
+                shield_source: true,
+            }),
+            "one point, off itself, onto the player who armed it"
+        );
+
+        assert_eq!(dies.timing, Timing::Triggered(Trigger::Dies));
+        assert_eq!(
+            dies.effect,
+            Effect::Life(LifeEffect::SourceOwnerLosesHalfTheirLife)
         );
     }
 }

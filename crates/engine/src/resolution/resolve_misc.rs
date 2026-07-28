@@ -286,6 +286,7 @@ impl Game {
                 from_color,
                 gain_life,
                 redirect_to_controller,
+                shield_source,
                 ..
             }) => {
                 // No point total is "prevent *that* damage" (the Circles, Reverse Damage) — the
@@ -303,7 +304,13 @@ impl Game {
                 };
                 self.damage_prevention_shields
                     .push(crate::state::PreventionShield {
-                        target: target.unwrap_or(Target::Player(controller)),
+                        // Personal Incarnation's shield sits on the permanent that armed it;
+                        // every other one covers whatever the ability targeted, or its controller.
+                        target: if shield_source {
+                            Target::Object(source)
+                        } else {
+                            target.unwrap_or(Target::Player(controller))
+                        },
                         amount: points,
                         from_color,
                         gain_life,

@@ -377,6 +377,7 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.life_gain_target_controller": (params) => `Target's controller gains ${param(params, "amount")} life`,
   "effect.life_lose": (params) => `Lose ${param(params, "amount")} life`,
   "effect.life_opponent_gains": (params) => `An opponent gains ${param(params, "amount")} life`,
+  "effect.life_source_owner_loses_half_their_life": literal("Its owner loses half their life, rounded up"),
   "effect.life_target_player_gains": (params) => `Target player gains ${param(params, "amount")} life`,
   "effect.life_target_player_loses": (params) => `Target player loses ${param(params, "amount")} life`,
   "effect.mana_add": literal("Add mana"),

@@ -1299,6 +1299,7 @@ fn treasure_token_builtin() -> CardDef {
             once_each_turn: false,
             sorcery_speed: false,
             only_during_opponents_turn: false,
+            only_owner_may_activate: false,
             only_before_attackers: false,
             remove_counters: 0,
             remove_counters_kind: None,

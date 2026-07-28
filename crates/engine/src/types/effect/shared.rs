@@ -958,6 +958,7 @@ impl Effect {
             | Effect::Misc(MiscEffect::YouChooseWhichCreaturesBlock)
             | Effect::Counters(CountersEffect::PlaceVowCounters { .. })
             | Effect::Life(LifeEffect::Lose { .. })
+            | Effect::Life(LifeEffect::SourceOwnerLosesHalfTheirLife)
             | Effect::Damage(DamageEffect::ToSelf { .. })
             // A no-target-of-its-own step: reads the enclosing `Sequence`'s shared target.
             | Effect::Life(LifeEffect::GainTargetController { .. })
@@ -1569,6 +1570,13 @@ pub struct ActivationCost {
     /// runs up to and including the declare-attackers step, and shuts the moment the declaration
     /// is actually made rather than at the step boundary.
     pub only_before_attackers: bool,
+    /// "Only this creature's owner may activate this ability" (CR 602.5c — Personal
+    /// Incarnation): the pool's one activation restriction keyed to ownership rather than
+    /// control.
+    /// ponytail: this only ever *narrows* who may activate. The printed line also widens it —
+    /// an owner who has lost control may still activate — but CR 602.2's controller check runs
+    /// first here, so a stolen Incarnation is activatable by nobody rather than by its thief.
+    pub only_owner_may_activate: bool,
     /// "Return this to its owner's hand" as part of the cost (CR 118 — Rootha, Mercurial
     /// Artist's "{2}, Return Rootha to its owner's hand: …"). Paid on activation as a self-bounce
     /// (a token ceases to exist instead, CR 111.7); the source is always payable since an

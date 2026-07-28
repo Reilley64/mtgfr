@@ -2035,6 +2035,10 @@ impl<'de> Deserialize<'de> for Ability {
             /// twin of `cast_only_before_attackers`.
             #[serde(default)]
             only_before_attackers: bool,
+            /// "Only this creature's owner may activate this ability" (CR 602.5c — Personal
+            /// Incarnation).
+            #[serde(default)]
+            only_owner_may_activate: bool,
             /// "Return this to its owner's hand" as part of the cost (Rootha, Mercurial
             /// Artist's "Return Rootha to its owner's hand").
             #[serde(default)]
@@ -2300,6 +2304,7 @@ impl<'de> Deserialize<'de> for Ability {
                 sorcery_speed: flat.sorcery_speed,
                 only_during_opponents_turn: flat.only_during_opponents_turn,
                 only_before_attackers: flat.only_before_attackers,
+                only_owner_may_activate: flat.only_owner_may_activate,
                 return_self: flat.return_self,
                 mill_self: flat.mill_self,
                 discard_cost: flat.discard_cost,

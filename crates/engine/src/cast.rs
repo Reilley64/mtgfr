@@ -2287,6 +2287,12 @@ impl Game {
         {
             return Err(Reject::WrongTiming);
         }
+        // "Only this creature's owner may activate this ability" (CR 602.5c — Personal
+        // Incarnation). The controller check above has already passed, so this only bites a
+        // permanent whose control has moved away from its owner.
+        if cost.only_owner_may_activate && self.owner_of(source) != player {
+            return Err(Reject::CannotActivate);
+        }
         Ok((ability, cost))
     }
 

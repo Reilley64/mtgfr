@@ -8376,6 +8376,7 @@ fn max_payable_x_for_pay_life_x_returns_life() {
 static X_DRAW_PERMANENT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Activated(ActivationCost {
+            only_owner_may_activate: false,
             taps_self: false,
             mana: Cost { x: 1, ..Cost::FREE },
             sacrifice: SacrificeCost::None,
@@ -8410,6 +8411,7 @@ static X_DRAW_PERMANENT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
 static FIXED_DRAW_PERMANENT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Activated(ActivationCost {
+            only_owner_may_activate: false,
             taps_self: false,
             mana: Cost::FREE,
             sacrifice: SacrificeCost::None,
@@ -11396,6 +11398,7 @@ static LIFELINK_PINGER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: arc_slice([Keyword::Lifelink]),
     abilities: arc_slice([Ability {
         timing: Timing::Activated(ActivationCost {
+            only_owner_may_activate: false,
             taps_self: true,
             mana: Cost::FREE,
             sacrifice: SacrificeCost::None,
@@ -12562,6 +12565,7 @@ fn auto_tap_pays_with_a_free_granted_mana_ability() {
                 ..PermanentFilter::of(TypeSet::ARTIFACT)
             },
             cost: ActivationCost {
+                only_owner_may_activate: false,
                 taps_self: true,
                 mana: Cost::FREE,
                 sacrifice: SacrificeCost::None,
@@ -16349,6 +16353,7 @@ static TEST_COUNTER_SHEDDER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         },
         Ability {
             timing: Timing::Activated(ActivationCost {
+                only_owner_may_activate: false,
                 taps_self: false,
                 mana: Cost::FREE,
                 sacrifice: SacrificeCost::None,
@@ -16519,6 +16524,7 @@ static TEST_SAC_A_FOOD: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
         timing: Timing::Activated(ActivationCost {
+            only_owner_may_activate: false,
             taps_self: false,
             mana: Cost::FREE,
             sacrifice: SacrificeCost::Creature {
@@ -16593,6 +16599,7 @@ static TEST_SAC_A_CREATURE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     name: "Test Sac A Creature",
     abilities: arc_slice([Ability {
         timing: Timing::Activated(ActivationCost {
+            only_owner_may_activate: false,
             taps_self: false,
             mana: Cost::FREE,
             sacrifice: SacrificeCost::Creature {
@@ -16720,6 +16727,7 @@ static TEST_NONTOKEN_COUNTER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     name: "Test Nontoken Counter",
     abilities: arc_slice([Ability {
         timing: Timing::Activated(ActivationCost {
+            only_owner_may_activate: false,
             taps_self: false,
             mana: Cost::FREE,
             sacrifice: SacrificeCost::None,
@@ -20918,6 +20926,7 @@ fn hybrid_filter_land(name: &'static str, a: Color, b: Color) -> CardDef {
     let hybrid: &'static [(Color, Color)] = Box::leak(Box::new([(a, b)]));
     let abilities: &'static [Ability] = Box::leak(Box::new([Ability {
         timing: Timing::Activated(ActivationCost {
+            only_owner_may_activate: false,
             taps_self: true,
             mana: Cost {
                 generic: 0,
@@ -29929,6 +29938,7 @@ static PRO_WHITE_CLOAK: LazyLock<CardDef> = LazyLock::new(|| CardDef {
 /// may sacrifice itself.
 const FALLEN_IDEAL_GRANT: GrantedAbility = GrantedAbility {
     cost: ActivationCost {
+        only_owner_may_activate: false,
         taps_self: false,
         mana: Cost::FREE,
         sacrifice: SacrificeCost::Creature {
@@ -30386,6 +30396,7 @@ static MUTABLE_FLYER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         },
         Ability {
             timing: Timing::Activated(ActivationCost {
+                only_owner_may_activate: false,
                 taps_self: false,
                 mana: Cost::FREE,
                 sacrifice: SacrificeCost::None,
@@ -35881,6 +35892,7 @@ fn wild_mongrel_color_choice_reverts_at_cleanup() {
 static RELIC_SHAPED_TARGET_EXILE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Activated(ActivationCost {
+            only_owner_may_activate: false,
             taps_self: true,
             mana: Cost::FREE,
             sacrifice: SacrificeCost::None,
@@ -43573,6 +43585,7 @@ static RUBINIA: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     may_choose_not_to_untap: true,
     abilities: arc_slice([Ability {
         timing: Timing::Activated(ActivationCost {
+            only_owner_may_activate: false,
             taps_self: true,
             mana: Cost::FREE,
             sacrifice: SacrificeCost::None,
@@ -45112,6 +45125,7 @@ static REVERT_ALL_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     name: "Revert All Creatures To Owners (test)",
     abilities: arc_slice([Ability {
         timing: Timing::Activated(ActivationCost {
+            only_owner_may_activate: false,
             taps_self: true,
             mana: Cost::FREE,
             sacrifice: SacrificeCost::None,
@@ -51246,6 +51260,7 @@ fn firemane_commando_lets_attacker_draw_when_they_dont_attack_you() {
 fn loyalty_ability(loyalty: i32, effect: Effect) -> Ability {
     Ability {
         timing: Timing::Activated(ActivationCost {
+            only_owner_may_activate: false,
             taps_self: false,
             mana: Cost::FREE,
             sacrifice: SacrificeCost::None,
@@ -58229,6 +58244,7 @@ static IMPULSE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
         timing: Timing::Activated(ActivationCost {
+            only_owner_may_activate: false,
             taps_self: false,
             mana: Cost::FREE,
             sacrifice: SacrificeCost::None,
@@ -58451,6 +58467,7 @@ static RANDOM_GRAVEYARD_EXILE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
         timing: Timing::Activated(ActivationCost {
+            only_owner_may_activate: false,
             taps_self: false,
             mana: Cost::FREE,
             sacrifice: SacrificeCost::None,
@@ -65141,6 +65158,7 @@ static TEST_STEELBANE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         },
         Ability {
             timing: Timing::Activated(ActivationCost {
+                only_owner_may_activate: false,
                 taps_self: false,
                 mana: Cost {
                     generic: 2,
@@ -74969,6 +74987,7 @@ fn culling_ritual_adds_mana_per_permanent_destroyed() {
 static SACRIFICE_A_CREATURE_OUTLET: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Activated(ActivationCost {
+            only_owner_may_activate: false,
             taps_self: false,
             mana: Cost::FREE,
             sacrifice: SacrificeCost::Creature {
@@ -79265,6 +79284,7 @@ fn umbral_collar_zealot_cannot_sacrifice_itself() {
 const fn level_up_ability(level: u8) -> Ability {
     Ability {
         timing: Timing::Activated(ActivationCost {
+            only_owner_may_activate: false,
             taps_self: false,
             mana: Cost::FREE,
             sacrifice: SacrificeCost::None,
@@ -79392,6 +79412,7 @@ static TEST_LOSE_1_LIFE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     name: "Test Lose 1 Life",
     abilities: arc_slice([Ability {
         timing: Timing::Activated(ActivationCost {
+            only_owner_may_activate: false,
             taps_self: false,
             mana: Cost::FREE,
             sacrifice: SacrificeCost::None,
@@ -79907,6 +79928,7 @@ static TEST_MODIFIED_DEATH_WATCHER: LazyLock<CardDef> = LazyLock::new(|| CardDef
     name: "Test Modified Death Watcher",
     abilities: arc_slice([Ability {
         timing: Timing::Activated(ActivationCost {
+            only_owner_may_activate: false,
             taps_self: false,
             mana: Cost::FREE,
             sacrifice: SacrificeCost::None,
@@ -84517,6 +84539,7 @@ static OPPONENT_DAMAGE_WATCHER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         },
         Ability {
             timing: Timing::Activated(ActivationCost {
+                only_owner_may_activate: false,
                 taps_self: false,
                 mana: Cost::FREE,
                 sacrifice: SacrificeCost::None,
@@ -88945,6 +88968,7 @@ static TEST_MINUS_ONE_COUNTER_CREATURE: LazyLock<CardDef> = LazyLock::new(|| Car
         },
         Ability {
             timing: Timing::Activated(ActivationCost {
+                only_owner_may_activate: false,
                 taps_self: false,
                 mana: Cost::FREE,
                 sacrifice: SacrificeCost::None,
@@ -90052,6 +90076,7 @@ fn flipper_front() -> CardDef {
     CardDef {
         abilities: arc_slice([Ability {
             timing: Timing::Activated(ActivationCost {
+                only_owner_may_activate: false,
                 mana: Cost::FREE,
                 taps_self: false,
                 sacrifice: SacrificeCost::None,
@@ -101623,6 +101648,7 @@ fn plague_stinger_flies_and_infects() {
 const fn monstrosity_ability(count: u8) -> Ability {
     Ability {
         timing: Timing::Activated(ActivationCost {
+            only_owner_may_activate: false,
             taps_self: false,
             mana: Cost::FREE,
             sacrifice: SacrificeCost::None,
@@ -102304,6 +102330,7 @@ fn multikicker_count_is_rejected_on_a_spell_without_multikicker() {
 static TEST_CULL_CREATURE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Activated(ActivationCost {
+            only_owner_may_activate: false,
             taps_self: true,
             mana: Cost::FREE,
             sacrifice: SacrificeCost::None,
@@ -105294,6 +105321,102 @@ fn jade_monolith_redirects_a_hit_the_creature_could_not_have_survived() {
         game.life(PlayerId(0)),
         start - 8,
         "four from the Earthquake itself, four more moved off the bears"
+    );
+}
+
+// ── A creature its owner pays for either way (fidelity #6c) ────────────────────────────
+
+#[test]
+fn personal_incarnation_moves_a_point_of_its_own_damage_onto_its_owner() {
+    // "{0}: The next 1 damage that would be dealt to this creature this turn is dealt to its
+    // owner instead." One point of the hit moves; the rest still lands where it was aimed.
+    let mut game = TestGame::new();
+    let incarnation = game.spawn_on_battlefield(PlayerId(0), card("Personal Incarnation"));
+    let bolt = game.spawn_in_hand(PlayerId(0), card("Lightning Bolt"));
+    let start = game.life(PlayerId(0));
+
+    shield_with(&mut game, incarnation, None);
+
+    game.cast(bolt).at(Target::Object(incarnation)).resolve();
+    assert_eq!(
+        game.marked_damage(incarnation),
+        2,
+        "one of the three points was dealt somewhere else"
+    );
+    assert_eq!(
+        game.life(PlayerId(0)),
+        start - 1,
+        "and that somewhere is its owner"
+    );
+}
+
+#[test]
+fn personal_incarnation_bills_its_owner_half_their_life_when_it_dies() {
+    // "When this creature dies, its owner loses half their life, rounded up." An odd life total
+    // is what tells rounded-up from rounded-down.
+    let mut game = TestGame::new();
+    let incarnation = game.spawn_on_battlefield(PlayerId(0), card("Personal Incarnation"));
+    let terror = game.spawn_in_hand(PlayerId(0), card("Terror"));
+    game.set_life(PlayerId(0), 15);
+
+    game.cast(terror).at(Target::Object(incarnation)).resolve();
+    assert_eq!(
+        game.zone_of(incarnation),
+        Zone::Graveyard,
+        "Terror destroyed it"
+    );
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        game.life(PlayerId(0)),
+        7,
+        "eight lost — half of fifteen, rounded up"
+    );
+}
+
+#[test]
+fn only_personal_incarnations_owner_may_activate_it() {
+    // "Only this creature's owner may activate this ability." A thief holding the Incarnation
+    // cannot spend it soaking damage they would otherwise have taken.
+    let mut game = Game::new();
+    let incarnation = game.spawn_on_battlefield(PlayerId(1), card("Personal Incarnation"));
+    let aura = game.spawn_in_hand(PlayerId(0), CONTROL_ATTACHED_AURA.clone());
+    cast_and_resolve(&mut game, aura, Some(Target::Object(incarnation)));
+    game.fund_mana(PlayerId(0));
+
+    assert_eq!(
+        game.submit(Intent::ActivateAbility {
+            player: PlayerId(0),
+            object: incarnation,
+            ability_index: 0,
+            target: None,
+            sacrifice: vec![],
+            discard_cost: vec![],
+            x: 0,
+        }),
+        Err(Reject::CannotActivate),
+        "controlling it is not owning it"
+    );
+}
+
+#[test]
+fn a_stolen_personal_incarnation_still_bills_its_owner() {
+    // "its owner loses half their life" — the player who owns it, not whoever happened to be
+    // controlling it when it died.
+    let mut game = Game::new();
+    let incarnation = game.spawn_on_battlefield(PlayerId(1), card("Personal Incarnation"));
+    let aura = game.spawn_in_hand(PlayerId(0), CONTROL_ATTACHED_AURA.clone());
+    cast_and_resolve(&mut game, aura, Some(Target::Object(incarnation)));
+    game.set_life(PlayerId(0), 15);
+    game.set_life(PlayerId(1), 15);
+    let terror = game.spawn_in_hand(PlayerId(0), card("Terror"));
+
+    cast_and_resolve(&mut game, terror, Some(Target::Object(incarnation)));
+    resolve_top_of_stack(&mut game);
+    assert_eq!(game.life(PlayerId(0)), 15, "the thief walks away from it");
+    assert_eq!(
+        game.life(PlayerId(1)),
+        7,
+        "half of fifteen, rounded up, off its owner"
     );
 }
 

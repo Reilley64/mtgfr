@@ -54,6 +54,12 @@ pub enum LifeEffect {
         amount: Amount,
     },
 
+    /// "Its owner loses half their life, rounded up" (Personal Incarnation's dies trigger). The
+    /// only life loss in the pool billed to the source's *owner* rather than the ability's
+    /// controller, and the only one that reads a life total to size itself — so both live in the
+    /// variant rather than in an [`Amount`] and a player selector nothing else would use.
+    SourceOwnerLosesHalfTheirLife,
+
     OpponentGains {
         amount: Amount,
     },

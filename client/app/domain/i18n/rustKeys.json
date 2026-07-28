@@ -188,6 +188,7 @@
   "effect.life_gain_target_controller",
   "effect.life_lose",
   "effect.life_opponent_gains",
+  "effect.life_source_owner_loses_half_their_life",
   "effect.life_target_player_gains",
   "effect.life_target_player_loses",
   "effect.mana_add",

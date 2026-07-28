@@ -210,7 +210,7 @@ rather than in `Game::damage_player`, because that arm is the only place that st
 attacker went unblocked — a blocked attacker's trample leftover reaches the same player through
 `damage_defender` and is correctly left alone.
 
-### 6c. `personal-incarnation` — 1 card, M
+### 6c. `personal-incarnation` — 1 card, M — **done**
 Depends on: #6a.
 Personal Incarnation is #6a's shield pointed the other way — "{0}: The next 1 damage that would
 be dealt to this creature this turn is dealt to its owner instead" — plus two things nothing in
@@ -218,6 +218,20 @@ the pool has yet: an activation gated to the permanent's *owner* rather than its
 a dies trigger for "its owner loses half their life, rounded up", which needs an `Amount` that
 reads a player's life total (there is `HalfX` but nothing that halves a life total).
 *Cards:* personal_incarnation.
+
+*Landed:* three mechanisms, each the smallest thing that carried the card. The shield reuses
+#6a's `PreventionShield` whole — `shield_source` on `MiscEffect::PreventNextDamage` sits it on the
+permanent that armed it, which is what "dealt to **this creature**" needs and what no `TargetSpec`
+can say, since the ability targets nothing. The redirect rider from #6a already sends the bite to
+the player who armed the shield, and the owner-only gate below makes that player the owner, so
+"is dealt to its owner instead" cost nothing new. `ActivationCost::only_owner_may_activate` is
+checked in `Game::activation_ability_and_cost` after CR 602.2's controller check; the dies trigger
+is a fieldless `LifeEffect::SourceOwnerLosesHalfTheirLife` rather than an `Amount` variant plus a
+player selector, because nothing else in the pool reads a life total or bills the source's owner —
+`Amount` gains nothing from a shape one card uses. ponytail: the owner gate only narrows. The
+printed line also widens — an owner who has lost control may still activate — but the controller
+check runs first, so a stolen Incarnation is activatable by nobody rather than by its thief, which
+is the closer wrong answer.
 
 ### 7. `untap-step-restrictions` — 9 cards, M — **7a done, 7b–7d open**
 Depends on: nothing.

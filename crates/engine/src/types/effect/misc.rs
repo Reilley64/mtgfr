@@ -113,6 +113,11 @@ pub enum MiscEffect {
         /// redirect send it to the same player who armed the shield, so there is nothing to name.
         #[cfg_attr(feature = "card-dsl", serde(default))]
         redirect_to_controller: bool,
+        /// "Damage that would be dealt to **this creature**" (Personal Incarnation): the shield
+        /// covers the permanent that armed it. Not a `target` — the ability targets nothing, and
+        /// no [`TargetSpec`](crate::TargetSpec) can name an effect's own source.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        shield_source: bool,
     },
 
     PreventCombatDamageToYouCreatingTokens {
