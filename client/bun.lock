@@ -12,6 +12,7 @@
         "@effect/opentelemetry": "4.0.0-beta.101",
         "@effect/platform-browser": "4.0.0-beta.101",
         "@effect/sql-pg": "4.0.0-beta.101",
+        "@foldkit/ui": "0.132.0",
         "@fontsource/manrope": "5.2.5",
         "@fontsource/space-grotesk": "5.2.6",
         "@grafana/faro-web-sdk": "^2.8.2",
@@ -372,7 +373,15 @@
 
     "@esbuild/win32-x64": ["@esbuild/win32-x64@0.25.12", "", { "os": "win32", "cpu": "x64" }, "sha512-alJC0uCZpTFrSL0CCDjcgleBXPnCrEAhTBILpeAp7M/OFgoqtAetfBzX0xM00MUsVVPpVjlPuMbREqnZCXaTnA=="],
 
+    "@floating-ui/core": ["@floating-ui/core@1.8.0", "", { "dependencies": { "@floating-ui/utils": "^0.2.12" } }, "sha512-0CIZ5itps/8x7BG8dEIhs53BvCUH2PCoogtakwRTut+Arm58sJooJ0AuZhLw2HJYIR5cMLNPBSS728sPho2khQ=="],
+
+    "@floating-ui/dom": ["@floating-ui/dom@1.8.0", "", { "dependencies": { "@floating-ui/core": "^1.8.0", "@floating-ui/utils": "^0.2.12" } }, "sha512-yXSrzeHZBTZadLOlfyhCkJHNeLJnHRnRInwdZ40L7ZiaAtrBwoYlsDrX3v5zB1Utk7CLfzcOVnVVWoXEky7Ceg=="],
+
+    "@floating-ui/utils": ["@floating-ui/utils@0.2.12", "", {}, "sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww=="],
+
     "@foldkit/devtools-mcp": ["@foldkit/devtools-mcp@0.13.4", "", { "dependencies": { "@modelcontextprotocol/sdk": "^1.29.0", "ws": "^8.21.0" }, "peerDependencies": { "effect": "4.0.0-beta.101", "foldkit": "^0" }, "bin": { "foldkit-devtools-mcp": "./dist/server.js" } }, "sha512-kRzmOKYIrmskMn6z5TBf/qWRzBDRgvrQwBevo3T9rV+r6I7jZfKhhlCejxMnifvAceGif7WLdXCAZXuJpLBj3Q=="],
+
+    "@foldkit/ui": ["@foldkit/ui@0.132.0", "", { "dependencies": { "@floating-ui/dom": "^1.7.6" }, "peerDependencies": { "effect": "4.0.0-beta.101", "foldkit": "^0" } }, "sha512-9NkR28Ewxfo5jyWdjXZrhpRLNvPtguA6z5woirHT+aFyjuTxvIXYOynBsoDSNm2jkisvMNUYevCqxl6znPxLCA=="],
 
     "@foldkit/vite-plugin": ["@foldkit/vite-plugin@0.11.1", "", { "dependencies": { "magic-string": "^0.30.21", "ws": "^8.21.0" }, "peerDependencies": { "effect": "4.0.0-beta.101", "foldkit": "^0", "vite": "^7.0.0 || ^8.0.0" } }, "sha512-f1yrSgkYWFpotVmajkvEY+rlXIj7RGIUgD7Cw7+/6sIYIj964aVbh0Lxk7t3ybkuZbEyWeoF12B91nW7pmJNSQ=="],
 
