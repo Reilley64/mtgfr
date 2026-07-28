@@ -156,7 +156,7 @@ Dialog renders **inline** through `h.submodel` on a native `<dialog>` opened wit
 
 ### 4. Implementation waves (for the later plan)
 
-**W1 — Recipe seam + pure-view primitives that have call sites.**
+**W1 — Recipe seam + pure-view primitives that have call sites. Shipped.**
 Add `@foldkit/ui@0.132.0`. Add `recipe.ts` plus `button` and `input` wrappers.
 The other eight pure-view primitives wait for a consumer: `textarea`, `select`,
 `checkbox`, `switch`, `radioGroup`, and `disclosure` have zero call sites today,
@@ -216,13 +216,27 @@ emit exactly one message each, so a self-rechaining command is what stands in fo
 stream. Updates [`ui-component-layer`](2026-07-28-ui-component-layer.md)
 and [`deck-list-and-builder`](2026-07-20-deck-list-and-builder.md).
 
-**W5 — Board blocking modals.**
-`prompt-modal`, `result-overlay`, `mulligan-overlay`, and the concede confirm →
-`dialog`; the card-name typeahead (`game/intents.ts`, `board/messages.ts`, covered by
-`board/card-name-typeahead.test.ts`) → `combobox`, provided it is reached from a
-blocking modal — if the wave plan finds it rendered in non-modal board chrome, it
-stays hand-rolled under the board boundary rule. Non-modal board chrome is otherwise
-explicitly untouched. Updates
+**W5 — Board dismissible modals. Shipped — the last wave.**
+The result overlay and the concede confirm → `dialog`, as a `Dialog` submodel each in
+`board/submodel.ts`; the result one is raised by `raiseResultDialog` on the fold that
+ends the game, and `resultRaised` latches so a dismissed result stays dismissed. The
+card-name typeahead (`game/intents.ts`, `board/messages.ts`, covered by
+`board/card-name-typeahead.test.ts`) → `combobox`: it renders inside
+`pending-card-name-modal`, so it clears the blocking-modal bar. `Combobox` is another
+class-string primitive, so the `domain/ui/` contribution is chrome, not a wrapper — a
+`hud` variant on `menuPanelClass` / `menuItemClass`, which already dress `Menu`'s
+identically-shaped panel and rows, plus `inputClass` for the input the combobox renders
+itself. The typeahead gains arrow-key navigation of its suggestions and loses
+Enter-to-submit: `Combobox` bakes its own keydown handler into the input and snabbdom
+merges attributes by event name, so a second one would overwrite it. Enter now commits
+the highlighted name into the draft and the Name button submits.
+
+`prompt-modal` and `mulligan-overlay` are a **deliberate exclusion**, not a deferral.
+`Dialog` bundles the Escape handler into `render.dialog` and the outside-click handler
+into `render.backdrop` with no way to drop either, so any prompt on that frame can be
+dismissed — and a dismissed pending choice leaves the engine waiting on an answer the
+player can no longer give. They stay hand-rolled under the board boundary rule. Non-modal
+board chrome is otherwise explicitly untouched. Updates
 [`prompts-and-pending-choices`](2026-07-20-prompts-and-pending-choices.md) and
 [`system-overlays`](2026-07-20-system-overlays.md).
 

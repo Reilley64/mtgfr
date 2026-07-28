@@ -1,4 +1,8 @@
+import * as Combobox from "@foldkit/ui/combobox";
+import * as Dialog from "@foldkit/ui/dialog";
+import { Option } from "effect";
 import type { Command as FoldkitCommand } from "foldkit";
+import { Command } from "foldkit";
 import {
   answerFromBoardTarget,
   buildAnswerFromDraft,
@@ -13,6 +17,7 @@ import {
   type PromptDraft,
 } from "~/choice";
 import { mulliganChrome } from "~/mulligan";
+import { outcome } from "~/outcome";
 import type {
   ActionView,
   CatalogCard,
@@ -81,6 +86,7 @@ import {
   sacrificeCostObjectIds,
   stagedPickTargets,
 } from "./action/targeting";
+import { CARD_NAME_COMBOBOX_ID, CardNameCombobox } from "./card-name-combobox";
 import {
   markRevealSeen,
   prefersReducedMotion,
@@ -128,7 +134,16 @@ import { selectedRadialOptions } from "./html/activation-menu";
 import { persistHintDismissed, readHintDismissed } from "./html/discoverability";
 import { HAND_BAR_H, HAND_INSPECT_STICKY_BAND, HAND_PLAY_SLACK_PX } from "./html/hand";
 import { CopyBoardLog } from "./log-commands";
-import { CombatCancelAttacker, CombatCancelBlocker, GyExileChosen, type Message } from "./messages";
+import {
+  CombatCancelAttacker,
+  CombatCancelBlocker,
+  GotCardNameComboboxMessage,
+  GotConcedeDialogMessage,
+  GotResultDialogMessage,
+  GyExileChosen,
+  type Message,
+  PromptStringSet,
+} from "./messages";
 import { type ExitFx, spawnExitFx } from "./motion/exit-fx";
 import {
   type CardFlight,
@@ -235,9 +250,12 @@ export type BoardModel = {
   /** Last board log copy failed; paired with `logCopied` for toolbar feedback. */
   logCopyFailed: boolean;
   // Concede.
-  confirmConcede: boolean;
+  concedeDialog: Dialog.Model;
   // Game result.
-  resultSeen: boolean;
+  resultDialog: Dialog.Model;
+  /** The result overlay has already been raised for this game — it is a one-shot, so dismissing it
+   *  must not let the next fold put it straight back up. */
+  resultRaised: boolean;
   // Discoverability chrome.
   hintDismissed: boolean;
   hintAutoHidden: boolean;
@@ -260,6 +278,8 @@ export type BoardModel = {
   promptSubmitSeq: number | null;
   /** Catalog name suggestions for `choose_card_name` (query must match current draft). */
   cardNameSuggestions: { query: string; names: ReadonlyArray<string> } | null;
+  /** The `choose_card_name` typeahead. Owns the input text; the string draft mirrors it. */
+  cardNameCombobox: Combobox.Model;
   /** Filter query for closed option prompts (creature types). */
   promptOptionFilter: string;
   /** Selected row while click-to-place reordering `order_triggers` (null when idle). */
@@ -271,6 +291,12 @@ export type BoardModel = {
   /** CR 103.1 one-shot starting-player spotlight; null once dismissed or already shown. */
   firstPlayerReveal: FirstPlayerReveal | null;
 };
+
+/** Document-unique id for the concede confirmation. Doubles as its `data-testid`. */
+export const CONCEDE_DIALOG_ID = "concede-dialog";
+
+/** Document-unique id for the game-result overlay. Doubles as its `data-testid`. */
+export const RESULT_DIALOG_ID = "result-overlay";
 
 export function initialBoardModel(): BoardModel {
   return {
@@ -316,8 +342,9 @@ export function initialBoardModel(): BoardModel {
     logExpanded: false,
     logCopied: false,
     logCopyFailed: false,
-    confirmConcede: false,
-    resultSeen: false,
+    concedeDialog: Dialog.init({ id: CONCEDE_DIALOG_ID }),
+    resultDialog: Dialog.init({ id: RESULT_DIALOG_ID }),
+    resultRaised: false,
     hintDismissed: readHintDismissed(),
     hintAutoHidden: false,
     legendOpen: false,
@@ -329,6 +356,7 @@ export function initialBoardModel(): BoardModel {
     promptSubmitInFlight: false,
     promptSubmitSeq: null,
     cardNameSuggestions: null,
+    cardNameCombobox: Combobox.init({ id: CARD_NAME_COMBOBOX_ID }),
     promptOptionFilter: "",
     orderPickPos: null,
     handDrag: null,
@@ -424,6 +452,7 @@ function syncPromptDraft(model: BoardModel, fold: BoardFold): BoardModel {
         promptSubmitInFlight: false,
         promptSubmitSeq: null,
         cardNameSuggestions: null,
+        cardNameCombobox: Combobox.init({ id: CARD_NAME_COMBOBOX_ID }),
         promptOptionFilter: "",
         orderPickPos: null,
       };
@@ -438,6 +467,7 @@ function syncPromptDraft(model: BoardModel, fold: BoardFold): BoardModel {
     promptSubmitInFlight: false,
     promptSubmitSeq: null,
     cardNameSuggestions: null,
+    cardNameCombobox: Combobox.init({ id: CARD_NAME_COMBOBOX_ID }),
     promptOptionFilter: "",
     orderPickPos: null,
     pileExpand: pile != null ? pile : model.gyExilePick != null ? model.pileExpand : null,
@@ -1865,6 +1895,26 @@ function revealTimer(reveal: FirstPlayerReveal): BoardCmd[] {
   return [RevealHoldTimer({ ms: hold }) as unknown as BoardCmd];
 }
 
+const toCardNameComboboxMessage = (message: Combobox.Message): OutMessage => GotCardNameComboboxMessage({ message });
+const toConcedeDialogMessage = (message: Dialog.Message): OutMessage => GotConcedeDialogMessage({ message });
+const toResultDialogMessage = (message: Dialog.Message): OutMessage => GotResultDialogMessage({ message });
+
+/** Dismisses the concede confirmation. */
+function closeConcedeConfirm(model: BoardModel): BoardReturn {
+  const [concedeDialog, commands] = Dialog.close(model.concedeDialog);
+  return [{ ...model, concedeDialog }, Command.mapMessages(commands, toConcedeDialogMessage)];
+}
+
+/** CR 104 — raise the one-shot result overlay on the fold that ends the game for the viewer. */
+export function raiseResultDialog(model: BoardModel, fold: BoardFold): BoardReturn {
+  if (model.resultRaised) return [model, []];
+  const state = fold.state;
+  if (state == null || outcome(state.players, state.viewer).kind === "playing") return [model, []];
+
+  const [resultDialog, commands] = Dialog.open(model.resultDialog);
+  return [{ ...model, resultDialog, resultRaised: true }, Command.mapMessages(commands, toResultDialogMessage)];
+}
+
 /** CR 103.1 — arm the one-shot starting-player spotlight on the first mulligan fold. */
 export function armFirstPlayerReveal(model: BoardModel, fold: BoardFold, tableId: string | null): BoardReturn {
   if (model.firstPlayerReveal != null) return [model, []];
@@ -2051,6 +2101,7 @@ function cancelAll(model: BoardModel): BoardModel {
     promptSubmitInFlight: false,
     promptSubmitSeq: null,
     cardNameSuggestions: null,
+    cardNameCombobox: Combobox.init({ id: CARD_NAME_COMBOBOX_ID }),
     promptOptionFilter: "",
     orderPickPos: null,
     handDrag: null,
@@ -2902,6 +2953,22 @@ export function updateBoard(
       }
       return [next, [SearchCardNames({ query: q }) as unknown as BoardCmd]];
     }
+    // Open/close, arrow keys, active descendant, and blur are the Combobox's. The board only has
+    // to keep the string draft — what the answer is built from — level with the input.
+    case "GotCardNameComboboxMessage": {
+      const [cardNameCombobox, commands, outMessage] = CardNameCombobox.update(model.cardNameCombobox, message.message);
+      const lifted = Command.mapMessages(commands, toCardNameComboboxMessage);
+      // A picked suggestion re-runs the catalog search for a name that is already exact; the
+      // popup is closed by then, so the refreshed list is never seen.
+      const typed = message.message._tag === "UpdatedInputValue" ? message.message.value : null;
+      const picked = Option.isSome(outMessage) && outMessage.value._tag === "Selected" ? outMessage.value.value : null;
+      const value = picked ?? typed;
+      if (value == null) return [{ ...model, cardNameCombobox }, lifted];
+      // Draft first, then seat the input: `PromptStringSet` resyncs the draft, and a resync onto a
+      // different prompt resets the combobox — which would drop the keystroke that got us here.
+      const [drafted, draftCommands] = updateBoard(model, PromptStringSet({ value }), fold, tableId);
+      return [{ ...drafted, cardNameCombobox }, [...lifted, ...draftCommands]];
+    }
     case "CardNameSuggestionsFetched": {
       const draft = model.promptDraft;
       if (draft?.kind !== "string") return [model, []];
@@ -3141,20 +3208,31 @@ export function updateBoard(
       return [{ ...model, pileExpand: null }, []];
     }
     // ── Concede ───────────────────────────────────────────────────────────────
-    case "ConcedeClicked":
-      return [{ ...model, confirmConcede: true }, []];
-    case "ConcedeCancelled":
-      return [{ ...model, confirmConcede: false }, []];
+    case "ConcedeClicked": {
+      const [concedeDialog, commands] = Dialog.open(model.concedeDialog);
+      return [{ ...model, concedeDialog }, Command.mapMessages(commands, toConcedeDialogMessage)];
+    }
     case "ConcedeConfirmed": {
-      if (fold.state == null) return [{ ...model, confirmConcede: false }, []];
+      const [closed, closeCommands] = closeConcedeConfirm(model);
+      if (fold.state == null) return [closed, closeCommands];
       return [
-        { ...model, confirmConcede: false },
-        boardIntentSubmit(tableId, { kind: "concede", player: fold.state.viewer }),
+        closed,
+        [...closeCommands, ...boardIntentSubmit(tableId, { kind: "concede", player: fold.state.viewer })],
       ];
     }
+    // Escape, a backdrop click, and Cancel all close the dialog inside Dialog.update — cancelling a
+    // concede leaves nothing else to undo, so its Closed out-message needs no handling here.
+    case "GotConcedeDialogMessage": {
+      const [concedeDialog, commands] = Dialog.update(model.concedeDialog, message.message);
+      return [{ ...model, concedeDialog }, Command.mapMessages(commands, toConcedeDialogMessage)];
+    }
     // ── Game result ───────────────────────────────────────────────────────────
-    case "ResultSeen":
-      return [{ ...model, resultSeen: true }, []];
+    // "Stay on the board", Escape, and the backdrop all dismiss it the same way. `resultRaised`
+    // already latched when it was raised, so a dismissed result stays dismissed.
+    case "GotResultDialogMessage": {
+      const [resultDialog, commands] = Dialog.update(model.resultDialog, message.message);
+      return [{ ...model, resultDialog }, Command.mapMessages(commands, toResultDialogMessage)];
+    }
     case "HintDismissed":
       persistHintDismissed();
       return [{ ...model, hintDismissed: true }, []];

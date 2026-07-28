@@ -1,6 +1,6 @@
 import { html } from "foldkit/html";
 import { describe, expect, it } from "vitest";
-import { input } from "./input";
+import { input, inputClass } from "./input";
 
 type Msg = { _tag: "typed"; value: string };
 
@@ -115,5 +115,15 @@ describe("input", () => {
 
     expect(classes(node)).not.toContain("null");
     expect(classes(node)).toContain("bg-glass");
+  });
+});
+
+describe("inputClass", () => {
+  it("emits the same chrome the component paints, for primitives that own their input element", () => {
+    expect(inputClass(undefined, "hud").split(" ")).toEqual(classes(input(h, { id: "x", variant: "hud" })));
+  });
+
+  it("lets a call-site width merge in", () => {
+    expect(inputClass("w-full")).toContain("w-full");
   });
 });
