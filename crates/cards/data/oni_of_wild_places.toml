@@ -1,6 +1,7 @@
 # Haste
 # At the beginning of your upkeep, return a red creature you control to its owner's hand.
 name = "Oni of Wild Places"
+otags = ["cycle-sok-upkeep-rescue", "drawback", "repeatable-rescue", "rescue-creature", "synergy-red", "triggered-ability", "upkeep-cost"]
 sets = ["cma", "cmd", "ddn", "sok"]
 id = "f551093d-40b7-43ac-8023-4cfbb6c646da"
 default_print = "ddd1e712-826a-47ee-9578-ca61f2d65221"

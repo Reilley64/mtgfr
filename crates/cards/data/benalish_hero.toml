@@ -1,0 +1,21 @@
+# Banding (Any creatures with banding, and up to one without, can attack in a band. Bands are
+# blocked as a group. If any creatures with banding you control are blocking or being blocked
+# by a creature, you divide that creature's combat damage, not its controller, among any of the
+# creatures it's being blocked by or is blocking.)
+name = "Benalish Hero"
+otags = ["creature-type-hero", "french-vanilla"]
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "fbb", "lea", "leb", "me1", "sum"]
+id = "4c81cfb7-8765-4e28-ae33-4287fa9a86cc"
+default_print = "9404e779-2065-4c4f-95d1-6997c7fea156"
+oracle = "Banding (Any creatures with banding, and up to one without, can attack in a band. Bands are blocked as a group. If any creatures with banding you control are blocking or being blocked by a creature, you divide that creature's combat damage, not its controller, among any of the creatures it's being blocked by or is blocking.)"
+subtypes = ["Human", "Soldier"]
+keywords = ["banding"]
+approximates = "banding only takes over the damage division when this blocks; attacking in a band, and dividing a blocker's damage while attacking, are not modeled"
+
+[cost]
+white = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1

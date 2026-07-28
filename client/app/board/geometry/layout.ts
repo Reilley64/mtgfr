@@ -200,8 +200,17 @@ const CELLS: { col: number; row: number }[] = [
   { col: 1, row: 1 }, // offset 2 — side (beside you)
   { col: 1, row: 0 }, // offset 3 — diagonal
 ];
+/** A seat's screen slot: its offset from the viewer in turn order (viewer = slot 0). A viewer
+ *  that sits at no seat — the spectator sentinel — anchors on seat 0, so spectators get plain
+ *  seat order rather than every seat folding onto one slot. */
+export function seatSlot(seat: number, viewer: number, count: number): number {
+  const seats = Math.max(1, count);
+  const anchor = viewer < seats ? viewer : 0;
+  return (seat - anchor + seats) % seats;
+}
+
 export function seatCell(seat: number, viewer: number, count: number): { col: number; row: number } {
-  return CELLS[(seat - viewer + count) % count] ?? CELLS[0];
+  return CELLS[seatSlot(seat, viewer, count)] ?? CELLS[0];
 }
 
 /** The world-space top-left of a seat's band (its battlefield origin). */

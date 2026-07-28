@@ -14,7 +14,7 @@ import {
 import { lookupCardsByIds } from "../../../domain/deck-builder/lookup-cards";
 import { commanderMenuItems, poolMenuItems, rowMenuItems } from "../../../domain/deck-builder/menu";
 import { commanderPrintForRow, reconcileEntries } from "../../../domain/deck-builder/print";
-import { searchPrints } from "../../../domain/deck-builder/scryfall";
+import { printSearchUrl, searchPrintPage } from "../../../domain/deck-builder/scryfall";
 import {
   type DeckCardEntry,
   SaveDeckRequest,
@@ -29,6 +29,7 @@ import {
   DeckSaved,
   DeckSaveFailed,
   GotDiscardDialogMessage,
+  GotPoolGridMessage,
   GotPrintDialogMessage,
   GotPrintGridMessage,
   HydratedBuilderCards,
@@ -42,6 +43,8 @@ import {
   type DeckBuilderSubmodel,
   initialDeckBuilderSubmodel,
   PRINT_GRID_ID,
+  poolGridColumns,
+  poolGridRowHeightPx,
   printGridRowHeightPx,
   viewportWidthPx,
 } from "./submodel";
@@ -95,14 +98,16 @@ export const HydrateBuilderCards = Command.define(
   }),
 );
 
+/** Fetches one page of printings. The update re-issues this for `nextPage` until there is none,
+ *  so a card with hundreds of printings shows its first 175 while the rest are still arriving. */
 export const SearchBuilderPrints = Command.define(
   "SearchBuilderPrints",
-  { cardId: S.String },
+  { cardId: S.String, url: S.String },
   ReceivedBuilderPrints,
   BuilderPrintSearchFailed,
-)(({ cardId }) =>
-  searchPrints(cardId).pipe(
-    Effect.map((prints) => ReceivedBuilderPrints({ cardId, prints })),
+)(({ cardId, url }) =>
+  searchPrintPage(url).pipe(
+    Effect.map(({ nextPage, prints }) => ReceivedBuilderPrints({ cardId, nextPage, prints, url })),
     Effect.catch(() => Effect.succeed(BuilderPrintSearchFailed({ cardId }))),
   ),
 );
@@ -305,6 +310,12 @@ const toDiscardDialogMessage = (message: Dialog.Message): Message => GotDiscardD
 const toPrintDialogMessage = (message: Dialog.Message): Message => GotPrintDialogMessage({ message });
 const toPrintGridMessage = (message: VirtualList.Message): Message => GotPrintGridMessage({ message });
 
+const toPoolGridMessage = (message: VirtualList.Message): Message => GotPoolGridMessage({ message });
+
+/** Rows of lookahead before the next page is fetched. Wider than VirtualList's own render overscan
+ *  so the request is in flight before the blank rows would show. */
+const POOL_PAGE_OVERSCAN_ROWS = 12;
+
 /** Dismisses the discard confirmation. */
 function closeDiscardConfirm(model: DeckBuilderSubmodel): UpdateReturn {
   const [discardDialog, commands] = Dialog.close(model.discardDialog);
@@ -314,6 +325,7 @@ function closeDiscardConfirm(model: DeckBuilderSubmodel): UpdateReturn {
 /** Opens the print picker on a card and starts its search. Closes the context menu it came from. */
 function openPrintPicker(model: DeckBuilderSubmodel, args: { addOnPick: boolean; cardId: string }): UpdateReturn {
   const [printDialog, commands] = Dialog.open(model.printDialog);
+  const url = printSearchUrl(args.cardId);
   return [
     {
       ...model,
@@ -323,10 +335,29 @@ function openPrintPicker(model: DeckBuilderSubmodel, args: { addOnPick: boolean;
       // is rebuilt each time the picker opens — also resetting it to the top.
       // ponytail: rotating the device with the picker open misaligns rows until it is reopened.
       printGrid: VirtualList.init({ id: PRINT_GRID_ID, rowHeightPx: printGridRowHeightPx(viewportWidthPx()) }),
-      printPicker: { addOnPick: args.addOnPick, cardId: args.cardId, error: false, loading: true, prints: [] },
+      printPicker: { addOnPick: args.addOnPick, cardId: args.cardId, error: false, pendingPage: url, prints: [] },
     },
-    [...Command.mapMessages(commands, toPrintDialogMessage), SearchBuilderPrints({ cardId: args.cardId })],
+    [...Command.mapMessages(commands, toPrintDialogMessage), SearchBuilderPrints({ cardId: args.cardId, url })],
   ];
+}
+
+/** Asks the catalog for the next page, unless one is already in flight or the pool is complete. */
+function nextPoolPage(model: DeckBuilderSubmodel): UpdateReturn {
+  if (model.atEnd || model.searching) return [model, []];
+  const offset = model.offset + PAGE;
+  return [{ ...model, offset, searching: true }, [SearchDeckBuilderCards({ query: model.query, offset })]];
+}
+
+/** True once the windowed grid is rendering rows within an overscan of the end of the loaded pool.
+ *  This is what pages the catalog: the windowed grid renders no sentinel element at the bottom to
+ *  hang an IntersectionObserver on, because the bottom is not in the DOM until you scroll to it. */
+function poolWindowNearEnd(model: DeckBuilderSubmodel): boolean {
+  const columns = poolGridColumns(model.poolWidth);
+  const rowCount = Math.ceil(model.pool.length / columns);
+  return Option.match(VirtualList.visibleWindow(model.poolGrid, rowCount, POOL_PAGE_OVERSCAN_ROWS), {
+    onNone: () => false,
+    onSome: ({ endIndex }) => endIndex >= rowCount,
+  });
 }
 
 /** Dismisses the print picker; the prints it loaded go with it. */
@@ -345,21 +376,24 @@ export const update = (
     >(),
     M.tagsExhaustive({
       ChangedBuilderName: ({ name }) => [{ ...model, dirty: true, name }, []],
-      ChangedBuilderQuery: ({ query }) => [
-        { ...model, atEnd: false, offset: 0, pool: [], query, searching: true },
-        [SearchDeckBuilderCards({ query, offset: 0 })],
-      ],
-      ChangedBuilderRoute: ({ editingId }) => enterBuilder(editingId),
-      RequestedNextBuilderPage: () => {
-        if (model.atEnd || model.searching) return [model, []];
-        const offset = model.offset + PAGE;
-        return [{ ...model, offset, searching: true }, [SearchDeckBuilderCards({ query: model.query, offset })]];
+      ChangedBuilderQuery: ({ query }) => {
+        // New results start at the top. The container element survives the query change, so its
+        // scroll position has to be driven back rather than reset in the model alone.
+        const [poolGrid, scrollCommands] = VirtualList.scrollToIndex(model.poolGrid, 0);
+        return [
+          { ...model, atEnd: false, offset: 0, pool: [], poolGrid, query, searching: true },
+          [SearchDeckBuilderCards({ query, offset: 0 }), ...Command.mapMessages(scrollCommands, toPoolGridMessage)],
+        ];
       },
+      ChangedBuilderRoute: ({ editingId }) => enterBuilder(editingId),
       ReceivedBuilderSearchPage: ({ cards, offset, query }) => {
         if (query !== model.query || offset !== model.offset) return [model, []];
         const seen = new Set(model.pool.map((card) => card.id));
         const pool = [...model.pool, ...cards.filter((card) => !seen.has(card.id))];
-        return [rememberCards({ ...model, atEnd: cards.length < PAGE, pool, searching: false }, cards), []];
+        const loaded = rememberCards({ ...model, atEnd: cards.length < PAGE, pool, searching: false }, cards);
+        // A page that still does not reach past the viewport asks for the next one straight away —
+        // nothing else would, since there is no scroll event to hang the request on.
+        return poolWindowNearEnd(loaded) ? nextPoolPage(loaded) : [loaded, []];
       },
       BuilderSearchFailed: () => [{ ...model, atEnd: true, searching: false }, []],
       ReceivedDeckForBuilder: ({ deck }) => {
@@ -405,19 +439,24 @@ export const update = (
         ];
       },
       OpenedBuilderPrintPicker: ({ addOnPick, cardId }) => openPrintPicker(model, { addOnPick, cardId }),
-      ReceivedBuilderPrints: ({ cardId, prints }) => {
-        if (model.printPicker?.cardId !== cardId) return [model, []];
+      // Pages append, and the next one is asked for only once this one is in the model, so a picker
+      // that was closed and reopened cannot have a stale chain still feeding it.
+      ReceivedBuilderPrints: ({ cardId, nextPage, prints, url }) => {
+        const picker = model.printPicker;
+        if (picker?.cardId !== cardId || picker.pendingPage !== url) return [model, []];
         return [
           {
             ...model,
-            printPicker: { ...model.printPicker, error: false, loading: false, prints: [...prints] },
+            printPicker: { ...picker, error: false, pendingPage: nextPage, prints: [...picker.prints, ...prints] },
           },
-          [],
+          nextPage === null ? [] : [SearchBuilderPrints({ cardId, url: nextPage })],
         ];
       },
+      // Pages that already landed stay on screen — a later page failing should not empty the picker.
+      // ponytail: the picker then shows a short list with no hint that it is short.
       BuilderPrintSearchFailed: ({ cardId }) => {
         if (model.printPicker?.cardId !== cardId) return [model, []];
-        return [{ ...model, printPicker: { ...model.printPicker, error: true, loading: false, prints: [] } }, []];
+        return [{ ...model, printPicker: { ...model.printPicker, error: true, pendingPage: null } }, []];
       },
       PickedBuilderPrint: ({ cardId, print }) => closePrintPicker(pickPrint(model, cardId, print)),
       // Escape, a backdrop click, and Close all reach here as Dialog's Closed out-message.
@@ -433,6 +472,24 @@ export const update = (
       GotPrintGridMessage: ({ message }) => {
         const [printGrid, commands] = VirtualList.update(model.printGrid, message);
         return [{ ...model, printGrid }, Command.mapMessages(commands, toPrintGridMessage)];
+      },
+      GotPoolGridMessage: ({ message }) => {
+        const [poolGrid, commands] = VirtualList.update(model.poolGrid, message);
+        const scrolled = { ...model, poolGrid };
+        const [paged, pageCommands] = poolWindowNearEnd(scrolled) ? nextPoolPage(scrolled) : [scrolled, []];
+        return [paged, [...Command.mapMessages(commands, toPoolGridMessage), ...pageCommands]];
+      },
+      MeasuredPoolGrid: ({ width }) => {
+        if (width === model.poolWidth) return [model, []];
+        // `rowHeightPx` is fixed at init, but it is a plain field: writing it keeps the scroll
+        // position and the container measurement that a re-init would have thrown away.
+        const measured = {
+          ...model,
+          poolGrid: { ...model.poolGrid, rowHeightPx: poolGridRowHeightPx(width) },
+          poolWidth: width,
+        };
+        // A wider pool fits more rows, which can leave the first page no longer filling it.
+        return poolWindowNearEnd(measured) ? nextPoolPage(measured) : [measured, []];
       },
       SubmittedDeckSave: () => {
         if (model.saving) return [model, []];

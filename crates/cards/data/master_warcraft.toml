@@ -2,6 +2,7 @@
 # You choose which creatures attack this turn.
 # You choose which creatures block this turn and how those creatures block.
 name = "Master Warcraft"
+otags = ["combat-arbiter", "control-attacker", "control-blocker", "cycle-block-rav-r-hybrid", "prevent-attack", "prevent-mass-blockers", "pseudo-fog"]
 sets = ["cma", "cmd", "cmr", "gk1", "rav"]
 id = "f9bca7af-29b6-46ba-b847-56715d09d1da"
 default_print = "5060cd9d-55d2-4531-92f9-0e6de8cf8c62"

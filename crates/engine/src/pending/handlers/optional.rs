@@ -19,6 +19,48 @@ impl Game {
             return Err(Reject::IllegalChoice);
         };
         self.finish_answer();
+        // Island Sanctuary's draw-step replacement: "yes" skips the draw and arms the shield,
+        // "no" takes the draw the pause stood in front of (dredge's own replacement included).
+        // Either way this resumes the step loop the pause interrupted, as a dredge answer does.
+        if let MayYesNoResume::SkipDrawStepDraw = resume {
+            let Effect::Static(StaticEffect::MaySkipDrawForCantBeAttackedBy { filter }) = effect
+            else {
+                return Err(Reject::IllegalChoice);
+            };
+            let mut events = Vec::new();
+            if yes {
+                self.combat_extras
+                    .repelled_until_next_turn
+                    .push((player, filter));
+            } else {
+                self.draw_step_draw(player, &mut events);
+            }
+            // A declined skip can land on dredge's own pause, which resumes the step loop itself.
+            if self.pending_choice.is_none() {
+                events.extend(self.advance_step());
+            }
+            return Ok(events);
+        }
+        // Time Vault's turn replacement (CR 614). The pause stands where the new turn's untap step
+        // has just begun and nothing has been done yet: "yes" untaps the vault — the only thing
+        // that ever undoes its own "doesn't untap during your untap step" — and puts the step
+        // marker back on cleanup, so the loop's next pass reads `leaving_cleanup` and hands the
+        // turn to whoever is next (an owed extra turn included). "No" runs the untap step the pause
+        // stood in front of and the turn proceeds.
+        if let MayYesNoResume::SkipTurnWhileSourceTapped = resume {
+            let mut events = Vec::new();
+            if yes {
+                self.push_apply(&mut events, Event::Untapped { object: source });
+                self.step = Step::Cleanup;
+            } else {
+                self.perform_turn_based_actions(Step::Untap, player, &mut events);
+            }
+            // The untap step can raise its own Rubinia/Smoke pause, which resumes the loop itself.
+            if self.pending_choice.is_none() {
+                events.extend(self.advance_step());
+            }
+            return Ok(events);
+        }
         if let MayYesNoResume::TradeSecretsRepeat { caster, max } = resume {
             if !yes {
                 return Ok(Vec::new());
@@ -119,6 +161,15 @@ impl Game {
                         },
                     },
                 );
+            } else if let Effect::Dig(DigEffect::MayShuffleTargetPlayersLibrary { owner }) = effect
+            {
+                // Natural Selection: the caster said yes, so the player whose library they just
+                // sorted shuffles it — order and all.
+                let owner =
+                    owner.expect("the targeted player is baked in when the yes/no is raised");
+                let event = Event::LibraryShuffled { player: owner };
+                self.apply(&event);
+                events.push(event);
             } else if matches!(resume, MayYesNoResume::ResolveInline)
                 && matches!(effect, Effect::Dig(DigEffect::SearchLibrary { .. }))
             {
@@ -361,15 +412,46 @@ impl Game {
         player: PlayerId,
         pay: bool,
     ) -> Result<Vec<Event>, Reject> {
-        let Some(PendingChoice::PayOrCounter { cost, spell, .. }) = self.pending_choice.clone()
+        let Some(PendingChoice::PayOrCounter {
+            cost,
+            spell,
+            strips_mana_on_decline,
+            ..
+        }) = self.pending_choice.clone()
         else {
             return Err(Reject::IllegalChoice);
         };
 
         if !pay {
             self.finish_answer();
-            let evs = self.counter_spell(spell);
+            let mut evs = self.counter_spell(spell);
             self.apply_all(&evs);
+            // Power Sink's "if that player doesn't, they tap all lands with mana abilities they
+            // control and lose all unspent mana" — the penalty rides on this decline, which is why
+            // it lives here and not as a following resolution step. A plain tap, not a tap for
+            // mana (CR 106.11): nothing is produced, and the pool goes next anyway.
+            if strips_mana_on_decline {
+                let taps: Vec<Event> = self
+                    .battlefield()
+                    .into_iter()
+                    .filter(|&id| {
+                        self.controller_of(id) == player
+                            && !self.is_tapped(id)
+                            && self.taps_for_mana(id)
+                            && self.effective_types(id).intersects(TypeSet::LAND)
+                    })
+                    .map(|object| Event::Tapped { object })
+                    .collect();
+                self.apply_all(&taps);
+                evs.extend(taps);
+                let drain = Event::ManaEmptied {
+                    player,
+                    end_of_turn: true,
+                    to: None,
+                };
+                self.apply(&drain);
+                evs.push(drain);
+            }
             return Ok(evs);
         }
         // Settle the mana (auto-tapping lands for a pool shortfall); unaffordable leaves the
@@ -590,8 +672,9 @@ impl Game {
         Ok(events)
     }
 
-    /// Answer a [`PendingChoice::SacrificeUnlessPay`]: pay `cost` to keep `source`, or decline
-    /// and sacrifice it (CR 701.16). Rupture Spire's own-ETB twin of [`Game::pay_echo`] — same
+    /// Answer a [`PendingChoice::PayOrElse`]: pay `cost`, or decline and take the card's printed
+    /// penalty (CR 701.16) — usually sacrificing `source` (Rupture Spire, Phantasmal Forces),
+    /// sometimes not (Force of Nature's 8 damage). The twin of [`Game::pay_echo`] — same
     /// [`Intent::PayOptionalCost`] shape and polarity, kept as its own handler since it isn't
     /// Echo (see the variant's doc). An unaffordable "pay" leaves the choice pending.
     pub(crate) fn pay_sacrifice_unless(
@@ -599,8 +682,12 @@ impl Game {
         player: PlayerId,
         pay: bool,
     ) -> Result<Vec<Event>, Reject> {
-        let Some(PendingChoice::SacrificeUnlessPay { source, cost, .. }) =
-            self.pending_choice.clone()
+        let Some(PendingChoice::PayOrElse {
+            source,
+            cost,
+            otherwise,
+            ..
+        }) = self.pending_choice.clone()
         else {
             return Err(Reject::IllegalChoice);
         };
@@ -608,20 +695,20 @@ impl Game {
         if !pay {
             self.finish_answer();
             let mut events = Vec::new();
-            self.run(
-                Effect::Sacrifice(SacrificeEffect::Object {
-                    object: Some(source),
-                }),
-                ResolveCtx {
-                    controller: player,
-                    source,
-                    target: None,
-                    targets_second: TargetList::default(),
-                    x: 0,
-                    spent_mana: [0; 6],
-                },
-                &mut events,
-            );
+            for effect in otherwise {
+                self.run(
+                    effect.clone(),
+                    ResolveCtx {
+                        controller: player,
+                        source,
+                        target: None,
+                        targets_second: TargetList::default(),
+                        x: 0,
+                        spent_mana: [0; 6],
+                    },
+                    &mut events,
+                );
+            }
             return Ok(events);
         }
         let mut events = Vec::new();

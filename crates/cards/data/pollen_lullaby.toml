@@ -3,6 +3,7 @@
 # (Each clashing player reveals the top card of their library, then puts that card on the top or
 # bottom. A player wins if their card had a higher mana value.)
 name = "Pollen Lullaby"
+otags = ["clash-like", "fog", "freeze-creature", "protects-planeswalker", "scry-like"]
 sets = ["cmd", "lrw"]
 id = "1f64d70d-ea38-4419-be91-8b68aab3401e"
 default_print = "5d033d41-2b64-4b9b-98d2-d32bb21f080f"

@@ -24,6 +24,20 @@ impl Game {
             ..
         } = ctx;
         match effect {
+            // Glasses of Urza's "{T}: Look at target player's hand." Nothing moves and nothing is
+            // chosen — the resolution's whole product is that one seat now knows those cards.
+            Effect::Dig(DigEffect::LookAtTargetPlayersHand) => {
+                let Some(Target::Player(looked_at)) = target else {
+                    return;
+                };
+                self.push_apply(
+                    events,
+                    Event::LookedAtHand {
+                        player: controller,
+                        target: looked_at,
+                    },
+                )
+            }
             // Creative Technique's "Shuffle your library, then reveal…" lead-in step.
             Effect::Dig(DigEffect::ShuffleLibrary) => {
                 self.push_apply(events, Event::LibraryShuffled { player: controller })
@@ -75,6 +89,37 @@ impl Game {
                 for player in self.apnap_order() {
                     let hand = self.hand_of(player);
                     self.discard_ids(&hand, player, events);
+                    for event in self.draw_events(player, n) {
+                        self.push_apply(events, event);
+                    }
+                }
+            }
+            // "Each player shuffles their hand and graveyard into their library, then draws seven
+            // cards." (Timetwister): the same APNAP loop as the wheel above, but each old card is
+            // tucked back into the library (`TuckedToLibrary`, the zone move the graveyard
+            // shuffle-backs already use) and the library shuffled once per player before they
+            // draw. Timetwister itself is still on the stack here, so it isn't swept up (CR
+            // 608.2m puts it into the graveyard only once the effect has finished).
+            Effect::Choice(ChoiceEffect::EachPlayerShufflesHandAndGraveyardThenDraws { count }) => {
+                let n = self.resolve_count(count, controller, source, target, x);
+                for player in self.apnap_order() {
+                    let recycled: Vec<ObjectId> = self
+                        .hand_of(player)
+                        .into_iter()
+                        .chain(self.graveyard_cards(player))
+                        .collect();
+                    for from in recycled {
+                        self.push_apply(
+                            events,
+                            Event::TuckedToLibrary {
+                                card: self.next_object_id(),
+                                from,
+                                to_top: false,
+                                second_from_top: false,
+                            },
+                        );
+                    }
+                    self.push_apply(events, Event::LibraryShuffled { player });
                     for event in self.draw_events(player, n) {
                         self.push_apply(events, event);
                     }
@@ -135,8 +180,37 @@ impl Game {
             // above, but names no specific required opponent — recording the target's own
             // controller as the `defender` is the sentinel `declare_attackers` already reads as
             // "must attack, any legal defender" (its `required_legal` gate short-circuits on
-            // `required == player`, the same escape hatch `must_attack_each_combat_static` uses).
-            Effect::Misc(MiscEffect::MustAttackTarget) => {
+            // `required == player`, the same escape hatch `must_attack_each_combat` uses).
+            // Siren's Call: "Creatures the active player controls attack this turn if able." The
+            // same per-creature requirement the targeted clause below mints, over a board scan —
+            // and with the same own-controller sentinel for "any legal defender", since the card
+            // names no defender either. The set is fixed here, as this resolves.
+            Effect::Misc(MiscEffect::MustAttackAll { filter }) => {
+                for id in self.battlefield() {
+                    if !self.permanent_matches(&filter, id, controller, Some(source)) {
+                        continue;
+                    }
+                    self.push_apply(
+                        events,
+                        Event::MustAttackDeclared {
+                            object: id,
+                            defender: self.controller_of(id),
+                        },
+                    );
+                }
+            }
+            // Blaze of Glory: "Target creature defending player controls can block any number of
+            // creatures this turn. It blocks each attacking creature this turn if able."
+            // Turn-scoped combat bookkeeping, written straight rather than minted as an event —
+            // the same as `prevent_all_combat_damage_this_turn` below; nothing replays a ceiling.
+            Effect::Misc(MiscEffect::BlocksEachAttackerIfAble { .. }) => {
+                let Some(Target::Object(creature)) = target else {
+                    return;
+                };
+                self.combat_extras.may_block_any_number.push(creature);
+                self.combat_extras.must_block_all.push(creature);
+            }
+            Effect::Misc(MiscEffect::MustAttackTarget { .. }) => {
                 let Some(Target::Object(creature)) = target else {
                     return;
                 };
@@ -172,6 +246,31 @@ impl Game {
                 let event = self.reanimate_event(card, controller, false);
                 self.push_apply(events, event);
             }
+            // "Discards a card at random" (Hypnotic Specter) / "discards X cards at random" (Mind
+            // Twist). Unlike every other discard this raises no pause — nobody chooses, so the
+            // cards come off the injected per-op RNG (needs `&mut self`) here rather than from an
+            // answered `ChoiceRequest::Discard`. Discarding fewer than asked when the hand runs
+            // short is ordinary CR 701.8c, not a rejection. The discard itself still routes through
+            // the shared `discard_ids`, so discard watchers, madness and Containment Construct see
+            // a random pitch exactly as they see a chosen one.
+            Effect::Choice(ChoiceEffect::Discard {
+                count,
+                target_player,
+                discarder,
+                ..
+            }) => {
+                let player = self.discarding_player(discarder, target_player, controller, target);
+                let count = self
+                    .resolve_amount(count, controller, source, target, x)
+                    .max(0) as usize;
+                let mut hand = self.hand_of(player);
+                let mut picked = Vec::new();
+                for _ in 0..count.min(hand.len()) {
+                    let idx = self.with_op_rng(player, |rng| rng.gen_index(hand.len()));
+                    picked.push(hand.swap_remove(idx));
+                }
+                self.discard_ids(&picked, player, events);
+            }
             // Inkshield (CR 615): arm a this-turn combat-damage prevention shield protecting the
             // ability's controller ("dealt to *you*"), carrying the Inkling profile minted per
             // point prevented. The tokens are created at the prevention itself (in `damage_player`),
@@ -186,6 +285,83 @@ impl Game {
             // Runtime orchestration state (like Inkshield's shield above), not an event.
             Effect::Misc(MiscEffect::PreventAllCombatDamageThisTurn) => {
                 self.combat_extras.prevent_all_combat_damage_this_turn = true;
+            }
+            // "Prevent the next N damage that would be dealt to any target this turn" (CR 615 —
+            // Healing Salve, Samite Healer, Conservator): arm a consumable shield worth `amount`
+            // points on the chosen target, or on this ability's controller when the card takes no
+            // target ("dealt to you"). Runtime orchestration state like the shields above; only
+            // the *spending* is an event (`Event::DamagePrevented`), because it happens inside the
+            // pure damage mint.
+            Effect::Misc(MiscEffect::PreventNextDamage {
+                amount,
+                from_color,
+                gain_life,
+                redirect_to_controller,
+                shield_source,
+                all_but,
+                target_is_source,
+                combat_only,
+                ..
+            }) => {
+                // No point total is "prevent *that* damage" (the Circles, Reverse Damage) — the
+                // whole of the next hit, so there is nothing to compute and nothing that can
+                // round down to a no-op shield.
+                let points = match amount {
+                    None => None,
+                    Some(amount) => {
+                        let points = self.resolve_amount(amount, controller, source, target, x);
+                        if points <= 0 {
+                            return;
+                        }
+                        Some(points)
+                    }
+                };
+                // Forcefield names a *source* rather than a protectee: the chosen creature is
+                // what the shield stops, and what it stands in front of is this ability's own
+                // controller.
+                let from_source = match (target_is_source, target) {
+                    (true, Some(Target::Object(creature))) => Some(creature),
+                    (true, _) => return,
+                    (false, _) => None,
+                };
+                self.damage_prevention_shields
+                    .push(crate::state::PreventionShield {
+                        // Personal Incarnation's shield sits on the permanent that armed it;
+                        // every other one covers whatever the ability targeted, or its controller.
+                        target: if shield_source {
+                            Target::Object(source)
+                        } else if target_is_source {
+                            Target::Player(controller)
+                        } else {
+                            target.unwrap_or(Target::Player(controller))
+                        },
+                        amount: points,
+                        keep: all_but.map(|keep| {
+                            self.resolve_amount(keep, controller, source, target, x)
+                                .max(0)
+                        }),
+                        from_color,
+                        from_source,
+                        combat_only,
+                        gain_life,
+                        redirect_to: redirect_to_controller.then_some(Target::Player(controller)),
+                    });
+            }
+            // Guardian Angel's "until end of turn, you may pay {1} any time you could cast an
+            // instant. If you do, prevent the next 1 damage that would be dealt to that permanent
+            // or player this turn": record the standing offer rather than a shield — nothing is
+            // prevented until it is paid for. "That permanent or player" is the target the
+            // enclosing `Effect::Sequence` already chose for the first sentence. Runtime
+            // orchestration state like the shields above; the *payment* is what reaches the action
+            // list, and each one mints an ordinary shield.
+            Effect::Misc(MiscEffect::OfferPreventionTopUp { cost, amount }) => {
+                self.standing_preventions
+                    .push(crate::state::StandingPrevention {
+                        player: controller,
+                        target: target.unwrap_or(Target::Player(controller)),
+                        cost,
+                        amount,
+                    });
             }
             // Master Warcraft: hand the attack / block declaration to this spell's controller for
             // the rest of the turn. Runtime orchestration state like the shields above — the

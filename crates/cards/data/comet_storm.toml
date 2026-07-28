@@ -2,6 +2,7 @@
 # Choose any target, then choose another target for each time this spell was kicked. Comet Storm
 # deals X damage to each of them.
 name = "Comet Storm"
+otags = ["burn-any", "burn-with-set-s-mechanic", "more-expensive-than-mv", "multi-removal", "multiple-targets", "single-target-instant-sorcery", "spot-removal", "strive"]
 sets = ["c15", "c17", "c20", "cma", "cmd", "cmr", "mm2", "p10", "prm", "pwwk", "wwk"]
 id = "9c2b262b-53c0-41a1-8f1a-0c336453d4bf"
 default_print = "aca2ba5b-f42e-46bc-8053-caaec5e4de8f"

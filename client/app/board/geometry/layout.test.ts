@@ -11,6 +11,8 @@ import {
   STEP,
   STEP_NAMES,
   seatBand,
+  seatCell,
+  seatSlot,
   ZONE,
 } from "./layout";
 
@@ -69,6 +71,41 @@ function mkState(overrides: Partial<VisibleState> = {}): VisibleState {
     ...overrides,
   };
 }
+
+describe("seatSlot", () => {
+  it("is viewer-relative", () => {
+    expect(seatSlot(2, 2, 4)).toBe(0);
+    expect(seatSlot(3, 2, 4)).toBe(1);
+  });
+
+  it("falls back to seat order for a spectator", () => {
+    expect(seatSlot(2, 255, 4)).toBe(2);
+  });
+
+  it("clamps count to avoid NaN", () => {
+    expect(seatSlot(0, 0, 0)).toBe(0);
+    expect(seatSlot(1, 0, 0)).toBe(0);
+  });
+});
+
+describe("seatCell", () => {
+  it("rotates the table so the viewer sits bottom-left", () => {
+    expect(seatCell(2, 2, 4)).toEqual({ col: 0, row: 1 });
+    expect(seatCell(3, 2, 4)).toEqual({ col: 0, row: 0 });
+  });
+
+  it("gives a spectator four distinct quadrants in seat order", () => {
+    // The spectator sentinel viewer (255) sits at no seat, so seats keep their own order
+    // instead of every band collapsing into the bottom-left cell.
+    const cells = [0, 1, 2, 3].map((seat) => seatCell(seat, 255, 4));
+    expect(cells).toEqual([
+      { col: 0, row: 1 },
+      { col: 0, row: 0 },
+      { col: 1, row: 1 },
+      { col: 1, row: 0 },
+    ]);
+  });
+});
 
 describe("seatBand", () => {
   // 2×2 quadrant: you bottom-left (col 0, row 1 → band y 426); front above you (col 0, row 0 →

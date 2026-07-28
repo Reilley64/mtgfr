@@ -136,6 +136,7 @@ export function extractProvenance(
         "damage_cleared",
         "damage_dealt_to_player",
         "damage_marked",
+        "damage_prevented",
         "deathtouch_marked",
         "delayed_trigger_scheduled",
         "delayed_triggers_fired",
@@ -147,6 +148,7 @@ export function extractProvenance(
         "exiled_until_source_leaves",
         "exiled_until_source_leaves_minting_illusion",
         "exiled_with_source",
+        "extra_turn_queued",
         "flash_permission_granted",
         "flipped",
         "goad_cleared",
@@ -159,6 +161,7 @@ export function extractProvenance(
         "leaves_illusion_minted",
         "library_shuffled",
         "life_changed",
+        "looked_at_hand",
         "lost_summoning_sickness",
         "loyalty_activated",
         "loyalty_changed",
@@ -200,6 +203,7 @@ export function extractProvenance(
         "tapped",
         "temp_boost",
         "temp_boosts_ended",
+        "text_changed",
         "token_ceased_to_exist",
         "token_entered_attacking",
         "triggered_ability_on_stack",
@@ -244,6 +248,12 @@ export function describe(e: VisibleEvent, state: VisibleState): string | null {
         `${name(e.source)}'s ability triggers${e.target != null ? ` → ${t(e.target)}` : ""}`,
       damage_marked: (e) => `${name(e.object)} takes ${e.amount}${e.source != null ? ` from ${name(e.source)}` : ""}`,
       damage_dealt_to_player: (e) => `${name(e.source)} deals ${e.amount} damage to ${p(e.player)}`,
+      // Prevention leaves no other trace: the shield eats the points before any damage_marked or
+      // life_changed would have been minted, so this line is the only thing that says it happened.
+      damage_prevented: (e) => {
+        const to = e.object != null ? name(e.object) : e.player != null ? p(e.player) : null;
+        return to == null ? null : `${e.amount} damage to ${to} is prevented`;
+      },
       life_changed: (e) => `${p(e.player)} ${e.amount < 0 ? "loses" : "gains"} ${Math.abs(e.amount)} life`,
       moved_to_graveyard: (e) => `${name(e.card)} dies`,
       moved_to_command_zone: (e) => `${name(e.card)} returns to the command zone`,
@@ -252,6 +262,7 @@ export function describe(e: VisibleEvent, state: VisibleState): string | null {
       attacker_declared: (e) =>
         `${name(e.object)} attacks ${e.defender_planeswalker != null ? name(e.defender_planeswalker) : p(e.defender)}`,
       blocker_declared: (e) => `${name(e.blocker)} blocks ${name(e.attacker)}`,
+      looked_at_hand: (e) => `${p(e.player)} looks at ${p(e.target)}'s hand`,
       card_drawn: (e) => `${p(e.player)} draws${e.card ? ` ${e.card}` : " a card"}`,
       // Decking out is the one loss with no visible cause on the board — no lethal damage, no
       // commander damage, just a library that ran out. Say it, or the `player_lost` line below
@@ -261,6 +272,7 @@ export function describe(e: VisibleEvent, state: VisibleState): string | null {
       creature_type_chosen: (e) => `${name(e.object)} is chosen as ${e.subtype}`,
       color_chosen: (e) => `${name(e.object)} is chosen as ${colorName(e.color)}`,
       color_set_until_end_of_turn: (e) => `${name(e.object)} becomes ${colorName(e.color)} until end of turn`,
+      text_changed: (e) => `${name(e.object)}: every "${e.from}" becomes "${e.to}"`,
       // A flip card flipped (CR 709.4) — post-apply state already names the flipped half.
       flipped: (e) => `${name(e.object)} flips`,
       // counter_kind is a numeric engine index with no client name table, so the kind stays unnamed.
@@ -282,6 +294,7 @@ export function describe(e: VisibleEvent, state: VisibleState): string | null {
       flickered_to_battlefield: (e) => `${name(e.permanent)} is exiled and returns`,
       token_entered_attacking: (e) => `${name(e.token)} enters attacking`,
       citys_blessing_gained: (e) => `${p(e.player)} gains the city's blessing`,
+      extra_turn_queued: (e) => `${p(e.player)} takes an extra turn after this one`,
       // def is the card name string — a hidden-zone card not in state.objects, so use it directly.
       revealed_top_of_library: (e) => `${p(e.player)} reveals ${e.def}`,
       library_shuffled: (e) => `${p(e.player)} shuffles their library`,

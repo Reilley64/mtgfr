@@ -199,9 +199,25 @@ function chooseTriggerModesBarActions(
 }
 
 function pilePickBarActions(pending: SimplePilePending, tableId: string | null): Html {
+  // Raging River sends each attacker left or right rather than into an unnamed pile A/B.
+  const sided = pending.kind === "choose_pile_for_hand" && pending.attacker != null;
   return barRow([
-    pendingBarButton(pending, "prompt-pile-0", "Pile A", { kind: "opponent_pile", pile: 0 }, true, tableId == null),
-    pendingBarButton(pending, "prompt-pile-1", "Pile B", { kind: "opponent_pile", pile: 1 }, false, tableId == null),
+    pendingBarButton(
+      pending,
+      "prompt-pile-0",
+      sided ? "Left" : "Pile A",
+      { kind: "opponent_pile", pile: 0 },
+      true,
+      tableId == null,
+    ),
+    pendingBarButton(
+      pending,
+      "prompt-pile-1",
+      sided ? "Right" : "Pile B",
+      { kind: "opponent_pile", pile: 1 },
+      false,
+      tableId == null,
+    ),
   ]);
 }
 

@@ -1,0 +1,36 @@
+# {2}: This artifact becomes a 3/6 Golem artifact creature until end of combat. Activate only
+# during combat.
+name = "Jade Statue"
+otags = ["activated-ability", "animate-self", "type-addition-from-none"]
+sets = ["2ed", "30a", "9ed", "ced", "cei", "lea", "leb"]
+id = "96162b22-41e7-4559-aa1b-c18f42abcb52"
+default_print = "a5354edc-03d7-4176-a211-174374a9d912"
+oracle = "{2}: This artifact becomes a 3/6 Golem artifact creature until end of combat. Activate only during combat."
+
+[cost]
+generic = 4
+
+[kind]
+type = "artifact"
+
+# {2}: This artifact becomes a 3/6 Golem artifact creature until end of combat. Activate only
+# during combat.
+[[abilities]]
+timing = "activated"
+
+[abilities.activation_cost]
+generic = 2
+
+# Activate only during combat.
+[abilities.condition]
+type = "during_combat"
+
+# This artifact becomes a 3/6 Golem artifact creature until end of combat.
+[[abilities.effects]]
+type = "pump"
+mode = "animate_self_until_end_of_turn"
+add_types = "creature"
+add_subtypes = ["Golem"]
+base_power = 3
+base_toughness = 6
+ends_at_end_of_combat = true

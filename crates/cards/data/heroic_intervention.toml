@@ -1,5 +1,6 @@
 # Permanents you control gain hexproof and indestructible until end of turn.
 name = "Heroic Intervention"
+otags = ["combat-trick", "gives-hexproof", "gives-indestructible", "protects-all", "protects-artifact", "protects-enchantment", "protects-land", "protects-permanent"]
 id = "24882fa2-3fe9-4c1b-aa3d-0e6488b9db27"
 default_print = "e32c67d1-187f-40df-b3b3-6036f5c92834"
 oracle = "Permanents you control gain hexproof and indestructible until end of turn."

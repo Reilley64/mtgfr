@@ -1,0 +1,26 @@
+# At the beginning of each player's upkeep, this enchantment deals X damage to that player,
+# where X is the number of untapped lands they controlled at the beginning of this turn.
+name = "Power Surge"
+otags = ["burn-player-each", "symmetrical", "triggered-ability"]
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
+id = "156b2228-f7b2-4816-b894-c4953a32c05f"
+default_print = "98ac9e72-603b-43cf-b959-03552c44ae22"
+oracle = "At the beginning of each player's upkeep, this enchantment deals X damage to that player, where X is the number of untapped lands they controlled at the beginning of this turn."
+
+[cost]
+red = 2
+
+[kind]
+type = "enchantment"
+
+# At the beginning of each player's upkeep, this enchantment deals X damage to that player,
+# where X is the number of untapped lands they controlled at the beginning of this turn.
+[[abilities]]
+timing = "each_upkeep"
+
+# this enchantment deals X damage to that player, where X is the number of untapped lands they
+# controlled at the beginning of this turn.
+[[abilities.effects]]
+type = "damage"
+mode = "to_triggering_player"
+amount = "untapped_lands_at_turn_start"

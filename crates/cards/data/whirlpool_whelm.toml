@@ -3,6 +3,7 @@
 # on top of its owner's library. If you win the clash, instead put that creature into its owner's
 # library second from the top.
 name = "Whirlpool Whelm"
+otags = ["alliteration", "clash-like", "removal-bounce", "removal-creature", "removal-tuck", "scry-like", "self-replacement-effect", "single-target-instant-sorcery", "spot-removal"]
 sets = ["cmd", "lrw"]
 id = "7f527852-bf7d-43a3-be0b-784c73ed88aa"
 default_print = "2ae39210-1556-41cc-a362-209fc4c3c032"

@@ -22,6 +22,12 @@ const recipe = cva({
 /** `field` is shell chrome (panels, forms, search bars); `hud` is the board's prompt chrome. */
 export type InputVariant = "field" | "hud";
 
+/** The same chrome as a class string, for `@foldkit/ui` primitives that render their own input
+ * element and take only an `inputClassName` (Combobox). */
+export function inputClass(extra?: ClassValue, variant: InputVariant = "field"): string {
+  return recipe({ variant, class: extra });
+}
+
 export type InputProps<Msg> = {
   /** Labels and the field's own aria-describedby are wired off this, so it is required. */
   id: string;

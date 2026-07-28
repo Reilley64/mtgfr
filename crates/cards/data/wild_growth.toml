@@ -1,0 +1,29 @@
+# Enchant land
+# Whenever enchanted land is tapped for mana, its controller adds an additional {G}.
+name = "Wild Growth"
+otags = ["full-refund", "mana-increaser", "triggered-ability", "uninspired"]
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "afc", "btd", "c18", "ced", "cei", "dmr", "fbb", "ice", "lea", "leb", "mkc", "pip", "plst", "pmei", "sld", "sum"]
+id = "706ae742-1807-44b7-a4fa-f2e26f61519a"
+default_print = "b7425741-5d7c-4016-8d42-ec8b7353116b"
+oracle = "Enchant land\nWhenever enchanted land is tapped for mana, its controller adds an additional {G}."
+subtypes = ["Aura"]
+
+# Enchant land
+enchant = { types = "land" }
+
+[cost]
+green = 1
+
+[kind]
+type = "aura"
+
+# Whenever enchanted land is tapped for mana, its controller adds an additional {G}.
+[[abilities]]
+timing = "static"
+
+# Whenever enchanted land is tapped for mana, its controller adds an additional {G}.
+[[abilities.effects]]
+type = "static"
+mode = "tapped_for_mana_bonus"
+scope = "enchanted_host"
+bonus_color = { fixed = "green" }

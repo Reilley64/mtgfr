@@ -103,41 +103,47 @@ function fetchPrintSearchPage(url: string): Effect.Effect<Response, Error> {
   });
 }
 
-export function searchPrints(oracleId: string): Effect.Effect<ScryfallPrint[], Error> {
+/** One page of printings, plus where the next one lives. */
+export type PrintPage = { readonly prints: ScryfallPrint[]; readonly nextPage: string | null };
+
+/** Where a card's printings start, oldest release first. */
+export function printSearchUrl(oracleId: string): string {
+  const q = encodeURIComponent(`oracleid:${oracleId}`);
+  return `https://api.scryfall.com/cards/search?q=${q}&unique=prints&order=released`;
+}
+
+/** Fetches a single Scryfall search page — 175 printings at most. Callers walk `nextPage`
+ *  themselves so each page can be shown as it lands instead of after the last one. */
+export function searchPrintPage(url: string): Effect.Effect<PrintPage, Error> {
   return Effect.gen(function* () {
-    const q = encodeURIComponent(`oracleid:${oracleId}`);
-    const out: ScryfallPrint[] = [];
-    let url: string | null = `https://api.scryfall.com/cards/search?q=${q}&unique=prints&order=released`;
-    while (url) {
-      const res = yield* fetchPrintSearchPage(url);
-      if (!res.ok) {
-        return yield* Effect.fail(new Error(`Scryfall print search failed (${res.status})`));
-      }
-      const body: unknown = yield* Effect.tryPromise({
-        try: () => res.json(),
-        catch: (cause) => (cause instanceof Error ? cause : new Error(String(cause))),
-      });
-      if (!isRecord(body)) return out;
-
-      const data = Array.isArray(body.data) ? body.data : [];
-      for (const value of data) {
-        if (!isRecord(value)) continue;
-        const id = readString(value, "id");
-        const set = readString(value, "set");
-        const setName = readString(value, "set_name");
-        const collectorNumber = readString(value, "collector_number");
-        if (id == null || set == null || setName == null || collectorNumber == null) continue;
-
-        out.push({
-          collector_number: collectorNumber,
-          id,
-          released_at: readString(value, "released_at") ?? "",
-          set,
-          set_name: setName,
-        });
-      }
-      url = body.has_more === true ? readString(body, "next_page") : null;
+    const res = yield* fetchPrintSearchPage(url);
+    if (!res.ok) {
+      return yield* Effect.fail(new Error(`Scryfall print search failed (${res.status})`));
     }
-    return out;
+    const body: unknown = yield* Effect.tryPromise({
+      try: () => res.json(),
+      catch: (cause) => (cause instanceof Error ? cause : new Error(String(cause))),
+    });
+    if (!isRecord(body)) return { prints: [], nextPage: null };
+
+    const prints: ScryfallPrint[] = [];
+    const data = Array.isArray(body.data) ? body.data : [];
+    for (const value of data) {
+      if (!isRecord(value)) continue;
+      const id = readString(value, "id");
+      const set = readString(value, "set");
+      const setName = readString(value, "set_name");
+      const collectorNumber = readString(value, "collector_number");
+      if (id == null || set == null || setName == null || collectorNumber == null) continue;
+
+      prints.push({
+        collector_number: collectorNumber,
+        id,
+        released_at: readString(value, "released_at") ?? "",
+        set,
+        set_name: setName,
+      });
+    }
+    return { prints, nextPage: body.has_more === true ? readString(body, "next_page") : null };
   });
 }

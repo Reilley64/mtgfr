@@ -15,6 +15,15 @@ impl Game {
     /// below, so an Aura like Confiscate ("Enchant permanent") isn't held to the default
     /// enchant-creature restriction its `enchant` filter doesn't actually impose.
     pub(crate) fn attachment_host_legal(&self, attachment: ObjectId, host: ObjectId) -> bool {
+        // A host another Aura has closed off (Consecrate Land's "can't be enchanted by other
+        // Auras") is illegal for every Aura but that one — so an Aura already sitting there when
+        // the closing Aura arrives goes to the graveyard on the CR 704.5n sweep below. Equipment
+        // is untouched: it attaches, it doesn't enchant.
+        if matches!(self.def_of(attachment).kind, CardKind::Aura)
+            && self.host_cant_be_enchanted_by(host, attachment)
+        {
+            return false;
+        }
         // An enchant-graveyard Aura's printed enchant names a graveyard card, which no
         // battlefield host satisfies; only its own ETB rewrite ("enchant creature put onto the
         // battlefield with this Aura") makes a host legal — exactly the one it reanimated.
@@ -119,7 +128,7 @@ impl Game {
             // 704.5f's 0-toughness death is not a "destroy" and isn't replaceable this way, so the
             // shield only applies when toughness is still positive (i.e. lethal damage or
             // deathtouch is the reason, not 0-or-less toughness).
-            if p.regeneration_shields > 0
+            if self.regeneration_shield_available(id)
                 && matches!(&printed.kind, CardKind::Creature { .. })
                 && self.toughness(id) > 0
             {
@@ -215,10 +224,10 @@ impl Game {
             // CR 704.5c: ten or more poison counters loses the game.
             let lethal_poison =
                 player.kind_counters[PlayerCounterKind::Poison as usize] >= LETHAL_POISON;
-            if player.life <= 0
-                || player.attempted_empty_draw
-                || lethal_poison
-                || lethal_commander_damage
+            // CR 704.5a, with Lich's exemption: only the life-total clause is waived, so the
+            // other three still eliminate a player sitting comfortably at -12.
+            let zero_life = player.life <= 0 && !self.ignores_zero_life(PlayerId(id as u8));
+            if zero_life || player.attempted_empty_draw || lethal_poison || lethal_commander_damage
             {
                 events.push(Event::PlayerLost {
                     player: PlayerId(id as u8),
@@ -532,6 +541,7 @@ impl Game {
                 flashback,
                 escape,
                 sacrifice_count,
+                sacrificed_mana_value,
                 revealed_creature_mana_value,
                 kicked,
                 bought_back,
@@ -585,6 +595,8 @@ impl Game {
                         commander,
                         x,
                         chosen_color: None,
+                        set_color: None,
+                        text_swap: None,
                         modes,
                         copy: false,
                         flashback,
@@ -595,6 +607,7 @@ impl Game {
                         damage_division_players: [None; MAX_TARGETS],
                         counter_division: DamageAssignment::default(),
                         sacrifice_count,
+                        sacrificed_mana_value,
                         revealed_creature_mana_value,
                         kicked,
                         bought_back,
@@ -671,6 +684,8 @@ impl Game {
                         commander,
                         x,
                         chosen_color: None,
+                        set_color: None,
+                        text_swap: None,
                         modes: Modes::default(),
                         copy: false,
                         flashback: false,
@@ -682,6 +697,7 @@ impl Game {
                         damage_division_players: [None; MAX_TARGETS],
                         counter_division: DamageAssignment::default(),
                         sacrifice_count: 0,
+                        sacrificed_mana_value: 0,
                         revealed_creature_mana_value: 0,
                         kicked: false,
                         bought_back: false,
@@ -756,6 +772,8 @@ impl Game {
                         commander,
                         x,
                         chosen_color: None,
+                        set_color: None,
+                        text_swap: None,
                         modes: Modes::default(),
                         copy: false,
                         flashback: false,
@@ -767,6 +785,7 @@ impl Game {
                         damage_division_players: [None; MAX_TARGETS],
                         counter_division: DamageAssignment::default(),
                         sacrifice_count: 0,
+                        sacrificed_mana_value: 0,
                         revealed_creature_mana_value: 0,
                         kicked: false,
                         bought_back: false,
@@ -834,6 +853,7 @@ impl Game {
                 copy,
                 original,
                 controller,
+                set_color,
             } => {
                 // The copy takes the original's copiable characteristics/x/mode/target, but is
                 // controlled by the copier and is a copy (not a commander, never graveyard-bound).
@@ -849,6 +869,9 @@ impl Game {
                             controller,
                             commander: false,
                             copy: true,
+                            // Fork's "except that the copy is red" — the recolor belongs to the
+                            // copy alone, so it overrides whatever the original carried.
+                            set_color,
                             ..src.clone()
                         },
                         _ => Spell {
@@ -859,6 +882,8 @@ impl Game {
                             commander: false,
                             x: 0,
                             chosen_color: None,
+                            set_color,
+                            text_swap: None,
                             modes: Modes::default(),
                             copy: true,
                             flashback: false,
@@ -870,6 +895,7 @@ impl Game {
                             damage_division_players: [None; MAX_TARGETS],
                             counter_division: DamageAssignment::default(),
                             sacrifice_count: 0,
+                            sacrificed_mana_value: 0,
                             revealed_creature_mana_value: 0,
                             kicked: false,
                             bought_back: false,
@@ -931,9 +957,26 @@ impl Game {
                 Object::Spell(s) => s.chosen_color = Some(color),
                 other => panic!("object {object} can't record a chosen color: {other:?}"),
             },
-            Event::ColorSetUntilEndOfTurn { object, color } => {
-                self.permanent_mut(object).set_color_eot = Some(color);
-            }
+            // A CR 612.1 text change (Magical Hack, Sleight of Mind), on a permanent or on a spell
+            // still on the stack — "target spell or permanent", so both slots are real targets.
+            // Indefinite: nothing clears it, and a new object starts without one.
+            Event::TextChanged { object, swap } => match &mut self.objects[object as usize] {
+                Object::Permanent(p) => p.text_swap = Some(swap),
+                Object::Spell(s) => s.text_swap = Some(swap),
+                other => panic!("object {object} can't record a text change: {other:?}"),
+            },
+            // A layer-5 color SET, on a permanent (Wild Mongrel) or on a spell still on the stack
+            // (Deathlace — a lace can recolor the spell itself, which is the whole reason the
+            // cycle was printed). The spell slot has no duration because the spell has none.
+            Event::ColorSet {
+                object,
+                color,
+                until_end_of_turn,
+            } => match &mut self.objects[object as usize] {
+                Object::Permanent(p) => p.set_color = Some((color, until_end_of_turn)),
+                Object::Spell(s) => s.set_color = Some(color),
+                other => panic!("object {object} can't record a color: {other:?}"),
+            },
             Event::PreparedSpellCast {
                 spell,
                 source,
@@ -961,6 +1004,8 @@ impl Game {
                         commander: false,
                         x,
                         chosen_color: None,
+                        set_color: None,
+                        text_swap: None,
                         modes: Modes::default(),
                         // "Cast a **copy**" (CR): it ceases to exist on resolve rather than
                         // becoming a graveyard card (there is no card behind it).
@@ -974,6 +1019,7 @@ impl Game {
                         damage_division_players: [None; MAX_TARGETS],
                         counter_division: DamageAssignment::default(),
                         sacrifice_count: 0,
+                        sacrificed_mana_value: 0,
                         revealed_creature_mana_value: 0,
                         kicked: false,
                         bought_back: false,
@@ -1058,6 +1104,7 @@ impl Game {
                     for player in &mut self.players {
                         player.life_gained_this_turn = 0;
                         player.spells_cast_this_turn = 0;
+                        player.damage_taken_this_turn = 0;
                         player.x_spells_cast_this_turn = 0;
                         player.draws_this_turn = 0;
                         player.life_losses_this_turn = 0;
@@ -1096,6 +1143,11 @@ impl Game {
                     // "Attacks this turn if able" (Furygale Flocking) expires at the turn
                     // boundary, the same "this turn" scope as the tallies above.
                     self.combat_extras.must_attack.clear();
+                    // Blaze of Glory's two halves ("can block any number of creatures this turn",
+                    // "blocks each attacking creature this turn if able") expire at the same turn
+                    // boundary, for the same reason `must_attack` does.
+                    self.combat_extras.may_block_any_number.clear();
+                    self.combat_extras.must_block_all.clear();
                     // ponytail: "Prevent all combat damage … this turn" (Inkshield) shields expire
                     // at the next Untap — combat is always within the turn, so a combat-only shield
                     // cleared here is behavior-exact for "this turn", the same idiom `must_attack`
@@ -1105,6 +1157,15 @@ impl Game {
                     // expires at the next Untap — same behavior-exact turn-boundary idiom as the
                     // per-player Inkshield shield just above.
                     self.combat_extras.prevent_all_combat_damage_this_turn = false;
+                    // "Prevent the next N damage … this turn" (Healing Salve, Samite Healer,
+                    // Conservator) expires here too. Unlike the two combat-only shields above this
+                    // one also covers noncombat damage, so "this turn" has to mean through the
+                    // cleanup step — it does: Untap is the first step of the *next* turn, so
+                    // nothing between the shield's turn ending and this clear can be damaged.
+                    self.damage_prevention_shields.clear();
+                    // Guardian Angel's standing "you may pay {1}" offer is scoped to the same
+                    // "this turn", and expires unpaid at the same boundary.
+                    self.standing_preventions.clear();
                     // "Entered the battlefield this turn" (Oran-Rief, the Vastwood) and "attacked
                     // this turn" (Agent Frank Horrigan's indestructible grant, CR 508.1) both
                     // expire at the same turn boundary — every battlefield permanent's, not just
@@ -1112,6 +1173,13 @@ impl Game {
                     // "You choose which creatures attack/block this turn" (Master Warcraft)
                     // expires at the same turn boundary as the shields above — combat is always
                     // within the turn, so clearing at Untap is behavior-exact for "this turn".
+                    // "Until your next turn" (Island Sanctuary): the shield lasts across the
+                    // other seats' turns and lapses when its own player's turn comes back around,
+                    // so only the active player's entry goes — unlike every "this turn" clear
+                    // above, which is unconditional.
+                    self.combat_extras
+                        .repelled_until_next_turn
+                        .retain(|&(shielded, _)| shielded != active_player);
                     self.combat_extras.attack_declarer = None;
                     self.combat_extras.block_declarer = None;
                     // "Entered the battlefield this turn" (Oran-Rief, the Vastwood) expires at
@@ -1121,6 +1189,30 @@ impl Game {
                         let p = self.permanent_mut(id);
                         p.entered_this_turn = false;
                         p.attacked_this_turn = false;
+                        // Disintegrate's "this turn" riders expire at the same boundary.
+                        p.cant_be_regenerated_this_turn = false;
+                        p.exile_instead_of_dying_this_turn = false;
+                    }
+                } else if step == Step::Upkeep {
+                    // Power Surge reads "the number of untapped lands they controlled at the
+                    // beginning of this turn" when its upkeep trigger resolves, by which time the
+                    // taxed player may have tapped out in response. Snapshot it here, the last
+                    // moment before anyone can act (the untap step grants no priority, CR 502.3),
+                    // rather than in the Untap arm above — that one applies *before* the untap
+                    // turn-based action, so it would count the board as it stood last turn.
+                    let counts: Vec<u32> = (0..self.players.len())
+                        .map(|i| {
+                            self.controlled_battlefield(PlayerId(i as u8))
+                                .into_iter()
+                                .filter(|&id| {
+                                    self.def_of(id).kind.types().intersects(TypeSet::LAND)
+                                        && !self.permanent(id).tapped
+                                })
+                                .count() as u32
+                        })
+                        .collect();
+                    for (player, count) in self.players.iter_mut().zip(counts) {
+                        player.untapped_lands_at_turn_start = count;
                     }
                 } else if step == Step::EndCombat {
                     // CR "this combat": an `ArmCombatDamageWatch` watch that never fired this
@@ -1168,9 +1260,12 @@ impl Game {
                 p.marked_damage = 0;
                 p.deathtouched = false;
                 // Remove the regenerated creature from combat (CR 701.15b).
-                self.remove_from_combat(object);
+                self.remove_from_combat(object, false);
             }
-            Event::RemovedFromCombat { object } => self.remove_from_combat(object),
+            Event::RemovedFromCombat {
+                object,
+                release_solely_blocked,
+            } => self.remove_from_combat(object, release_solely_blocked),
             Event::RegenerationShieldsExpired { object } => {
                 self.permanent_mut(object).regeneration_shields = 0;
             }
@@ -1294,11 +1389,13 @@ impl Game {
                 object,
                 power,
                 toughness,
+                ends_at_end_of_combat,
             } => {
                 let ts = self.stamp_continuous_timestamp();
                 let p = self.permanent_mut(object);
                 p.base_pt_set_eot = Some((power, toughness));
                 p.base_pt_set_eot_timestamp = ts;
+                p.animation_ends_at_end_of_combat = ends_at_end_of_combat;
             }
             Event::TypesAddedUntilEndOfTurn {
                 object,
@@ -1340,6 +1437,18 @@ impl Game {
             Event::AddedSubtypes { object, subtypes } => {
                 self.permanent_mut(object).added_subtypes = subtypes;
             }
+            // Gaea's Liege (CR 613.4/305.7): the target land's whole land-type line, replaced for
+            // as long as `source` stays on the battlefield. Nothing ever clears this — the read
+            // side stops finding a live source, which is the entire duration.
+            Event::SubtypesSetWhileSourceRemains {
+                object,
+                subtypes,
+                source,
+            } => {
+                let timestamp = self.stamp_continuous_timestamp();
+                self.permanent_mut(object).subtypes_set_while_source_remains =
+                    Some((subtypes, source, timestamp));
+            }
             // Trench Gorger (CR 613.3(7b)): the indefinite base-P/T-only sibling of
             // `ReanimatedCreatureBecame` above.
             Event::BasePtSetIndefinite {
@@ -1360,7 +1469,9 @@ impl Game {
                 object,
                 def,
                 until_eot,
+                also_types,
             } => {
+                let added_types_timestamp = self.stamp_continuous_timestamp();
                 let p = self.permanent_mut(object);
                 // An *indefinite* rewrite (CR 400.7) disarms any revert already armed on this
                 // permanent: otherwise `Event::TempBoostsEnded` would restore the pre-copy def at
@@ -1374,6 +1485,13 @@ impl Game {
                     false => None,
                 };
                 p.def = def;
+                // Copy Artifact's "except it's an enchantment in addition to its other types" (CR
+                // 707.2). The indefinite slot, not the until-EOT one: the added type lasts exactly
+                // as long as the copy and resets with the object (CR 400.7). Assigned rather than
+                // unioned, for the same reason `copy_rider_keywords` is cleared just below — a new
+                // copy effect replaces the whole copiable picture, exceptions included.
+                p.added_types = also_types;
+                p.added_types_timestamp = added_types_timestamp;
                 // A new copy effect replaces the object's copiable characteristics wholesale (CR
                 // 707.2), so any "except it has <keywords>" rider from a *prior* copied form is
                 // dropped. This effect's own rider (if any) is re-established by the
@@ -1389,11 +1507,14 @@ impl Game {
                 p.temp_lost_keywords = &[];
                 p.base_pt_set_eot = None;
                 p.base_pt_set_eot_timestamp = 0;
+                p.animation_ends_at_end_of_combat = false;
                 p.added_types_eot = TypeSet::NONE;
                 p.added_types_eot_timestamp = 0;
                 p.added_subtypes_eot = &[];
                 p.added_colors_eot = &[];
-                p.set_color_eot = None;
+                if matches!(p.set_color, Some((_, true))) {
+                    p.set_color = None;
+                }
                 // Revert an until-EOT enter-as-copy to the printed permanent (CR 514.2 — Cursed
                 // Mirror's "become a copy … until end of turn"). The copy's "except it has
                 // haste/myriad" rider ends with the copy, so clear the copiable rider too (an
@@ -1442,6 +1563,14 @@ impl Game {
                     p.temp_lost_keywords = Box::leak(union.into_boxed_slice());
                 }
             }
+            Event::AttachedKeywordsLost {
+                source, keywords, ..
+            } => {
+                // ponytail: clobber, not the union `KeywordsStripped` above does — one Aura gains
+                // one such ability, and the only card that has it can only gain it once (its own
+                // enters trigger). Union here when a second source can stack onto the same Aura.
+                self.permanent_mut(source).attachment_lost_keywords = keywords;
+            }
             Event::ControlGainedUntilEndOfTurn {
                 object,
                 controller,
@@ -1452,7 +1581,7 @@ impl Game {
                     .control_overrides
                     .push((object, controller, source_name, ts));
                 // CR 506.4c: any time a permanent's controller changes, it's removed from combat.
-                self.remove_from_combat(object);
+                self.remove_from_combat(object, false);
             }
             Event::ControlEndedUntilEndOfTurn { object } => self
                 .play_permissions
@@ -1469,7 +1598,7 @@ impl Game {
                     .push((object, controller, ts));
                 // CR 506.4c: any time a permanent's controller changes, it's removed from combat
                 // (Goblin Cadets' reminder text — "(This removes this creature from combat.)").
-                self.remove_from_combat(object);
+                self.remove_from_combat(object, false);
             }
             Event::ConditionedControlGained {
                 object,
@@ -1481,7 +1610,7 @@ impl Game {
                     .conditioned_control_overrides
                     .push((object, controller, condition, ts));
                 // CR 506.4c: any time a permanent's controller changes, it's removed from combat.
-                self.remove_from_combat(object);
+                self.remove_from_combat(object, false);
             }
             Event::ConditionedControlEnded { object } => self
                 .play_permissions
@@ -1500,6 +1629,7 @@ impl Game {
                 // — set here, not in `declare_attackers` (event-sourced state: intents mint events,
                 // events mutate board facts); cleared at the next Untap step below.
                 self.permanent_mut(object).attacked_this_turn = true;
+                self.combat.attacked_or_blocked.push(object);
                 // Angelic Arbiter's "attacked with a creature this turn" tracking (turn-scoped;
                 // reset at Untap alongside the other this-turn tallies above).
                 let controller = self.controller_of(object);
@@ -1561,6 +1691,7 @@ impl Game {
                 // timing fired regardless of whose step it is.
                 !(f == fire_at && (fire_at != Step::Main1 || c == active_player))
             }),
+            Event::ExtraTurnQueued { player } => self.extra_turns.push(player),
             Event::NextUntapSkipMarked { object } => self.skip_next_untap.push(object),
             Event::NextUntapSkipConsumed { object } => {
                 self.skip_next_untap.retain(|&id| id != object)
@@ -1702,9 +1833,8 @@ impl Game {
             Event::Discarded { .. } => {}
             Event::BlockerDeclared { blocker, attacker } => {
                 self.combat.blocks.push((blocker, attacker));
-                if !self.combat.blocked_attackers.contains(&attacker) {
-                    self.combat.blocked_attackers.push(attacker);
-                }
+                self.combat.blocked_ever.push((blocker, attacker));
+                self.combat.attacked_or_blocked.push(blocker);
             }
             Event::CombatDamageDivided {
                 attacker,
@@ -1734,21 +1864,67 @@ impl Game {
                     None => taken.push((key, amount)),
                 }
             }
-            // A marker only — `Game::queue_combat_damage_triggers` reads it off the events batch
-            // in `enqueue_triggers`, but it mutates no state of its own (the life loss it
-            // accompanies already applied via `LifeChanged`).
-            Event::CombatDamageDealtToPlayer { .. } => {}
+            // `Game::queue_combat_damage_triggers` reads this off the events batch in
+            // `enqueue_triggers`; the life loss it accompanies already applied via `LifeChanged`,
+            // so the only state here is the turn-scoped damage-taken tally behind
+            // `Amount::DamageTakenThisTurn` (Simulacrum's "the damage dealt to you this turn").
+            Event::CombatDamageDealtToPlayer { player, amount, .. } => {
+                self.players[player.0 as usize].damage_taken_this_turn += amount.max(0) as u32;
+            }
             // A marker only — `Game::enqueue_triggers`'s `Event::CombatDamageDealtToCreature` arm
             // reads it, but it mutates no state of its own (the marked damage it accompanies
             // already applied via `DamageMarked`).
             Event::CombatDamageDealtToCreature { .. } => {}
-            // A marker only — the noncombat twin of the arm above, read by
-            // `Game::queue_deals_damage_to_opponent_triggers`.
-            Event::DamageDealtToPlayer { .. } => {}
+            // The noncombat twin of the arm above. A marker for trigger purposes, but it also
+            // feeds the turn-scoped tally behind `Amount::DamageTakenThisTurn` (Simulacrum) —
+            // these two arms are the only places damage reaches a player, and life loss that
+            // isn't damage never passes through either.
+            Event::DamageDealtToPlayer { player, amount, .. } => {
+                self.players[player.0 as usize].damage_taken_this_turn += amount.max(0) as u32;
+            }
             // A marker only — the prevented damage's absence (no `LifeChanged`) and the Inkling
             // mints (accompanying `TokenCreated` events) carry all the state; this event mutates
             // nothing itself.
             Event::CombatDamagePrevented { .. } => {}
+            // Unlike the marker above, this one is the whole state change: spend `amount` points
+            // off `target`'s shields, oldest first, dropping each as it empties.
+            // `Game::spend_prevention_shields` minted the event by walking the same list in the
+            // same order, so the two never disagree about what there was to spend.
+            Event::DamagePrevented {
+                target,
+                amount,
+                source,
+            } => {
+                let mut left = amount;
+                let stands: Vec<bool> = self
+                    .damage_prevention_shields
+                    .iter()
+                    .map(|shield| self.shield_stands_between(shield, target, source))
+                    .collect();
+                let mut index = 0;
+                self.damage_prevention_shields.retain_mut(|shield| {
+                    let stood = stands[index];
+                    index += 1;
+                    if left <= 0 || !stood {
+                        return true;
+                    }
+                    // "Prevent that damage" and Forcefield's "prevent all but 1 of that damage"
+                    // are both spent outright by the hit they stood in front of, however big; a
+                    // point shield keeps whatever the hit didn't need.
+                    if shield.keep.is_some() {
+                        left = 0;
+                        return false;
+                    }
+                    let Some(points) = shield.amount.as_mut() else {
+                        left = 0;
+                        return false;
+                    };
+                    let spent = left.min(*points);
+                    left -= spent;
+                    *points -= spent;
+                    *points > 0
+                });
+            }
             Event::MovedToCommandZone { card, from } => {
                 let def = self.def_id_of(from);
                 let owner = self.owner_of(from);
@@ -1794,7 +1970,15 @@ impl Game {
             Event::ManaEmptied {
                 player,
                 end_of_turn,
+                to,
             } => {
+                // Drain Power: what the pool loses, the drainer gains — read before the clear
+                // below wipes it. Credit kinds carry over whole, so a dual land's either-credit
+                // arrives as an either-credit and stays as flexible as it was.
+                if let Some(to) = to {
+                    let taken = self.players[player.0 as usize].mana_pool;
+                    self.players[to.0 as usize].mana_pool.merge(&taken);
+                }
                 let p = &mut self.players[player.0 as usize];
                 // Provenance is never persistent (no pool card combines `track_provenance` with
                 // `persist_until_end_of_turn`) — always cleared with the pool.
@@ -1976,7 +2160,7 @@ impl Game {
                 def,
             } => {
                 // CR 506.4: a token that ceases to exist is removed from combat.
-                self.remove_from_combat(token);
+                self.remove_from_combat(token, false);
                 let printed = card_def(def);
                 // CR 603.6c/704.5m last-known information: capture the Aura(s) attached to this
                 // token *before* it vanishes, so `Trigger::EnchantedCreatureDies` can still find
@@ -1994,11 +2178,15 @@ impl Game {
                         ));
                     }
                     // CR 603.10a last-known information — see `Game::dying_creature_stats`.
-                    self.batch_trigger_scratch.dying_creature_stats.push((
-                        token,
-                        self.power(token),
-                        self.plus_counters(token),
-                    ));
+                    self.batch_trigger_scratch
+                        .dying_creature_stats
+                        .push(DyingCreatureStats {
+                            id: token,
+                            power: self.power(token),
+                            toughness: self.toughness(token),
+                            plus_counters: self.plus_counters(token),
+                            controller: self.controller_of(token),
+                        });
                     // CR 700.4/701.29 last-known information: a token ceasing to exist is a
                     // "died" too — read `is_modified` before `Object::Removed` below erases its
                     // attachments/counters. Feeds `Condition::ModifiedCreatureDiedThisTurn`.
@@ -2023,8 +2211,19 @@ impl Game {
                     owner: controller,
                 };
             }
-            Event::DamageMarked { object, amount, .. } => {
-                self.permanent_mut(object).marked_damage += amount
+            Event::DamageMarked {
+                object,
+                amount,
+                cant_be_regenerated,
+                exile_instead_of_dying,
+                ..
+            } => {
+                let p = self.permanent_mut(object);
+                p.marked_damage += amount;
+                // Disintegrate's riders mark the creature, not the damage — they stay set for the
+                // rest of the turn even when this hit isn't the one that kills it.
+                p.cant_be_regenerated_this_turn |= cant_be_regenerated;
+                p.exile_instead_of_dying_this_turn |= exile_instead_of_dying;
             }
             // A pure signal event for trigger-scanning (`Game::queue_sacrifice_triggers`) — the
             // actual zone change is a separate event (`MovedToGraveyard`/`MovedToCommandZone`/
@@ -2033,7 +2232,7 @@ impl Game {
             Event::MovedToGraveyard { card, from } => {
                 // CR 506.4: a permanent that leaves the battlefield is removed from combat.
                 if matches!(&self.objects[from as usize], Object::Permanent(_)) {
-                    self.remove_from_combat(from);
+                    self.remove_from_combat(from, false);
                 }
                 // Feeds `Amount::PermanentsDiedThisTurn` (Ominous Harvest's Gravestorm): `from`
                 // being a live battlefield `Object::Permanent` (not a hand/exile/stack card
@@ -2086,11 +2285,15 @@ impl Game {
                         ));
                     }
                     // CR 603.10a last-known information — see `Game::dying_creature_stats`.
-                    self.batch_trigger_scratch.dying_creature_stats.push((
-                        from,
-                        self.power(from),
-                        self.plus_counters(from),
-                    ));
+                    self.batch_trigger_scratch
+                        .dying_creature_stats
+                        .push(DyingCreatureStats {
+                            id: from,
+                            power: self.power(from),
+                            toughness: self.toughness(from),
+                            plus_counters: self.plus_counters(from),
+                            controller: self.controller_of(from),
+                        });
                     // CR 800.4a last-known information: def/owner for a death-watch scan that
                     // must still run if `PlayerLost` (later in this same batch) tombstones `from`
                     // out from under it — see `Game::dying_creature_lki`.
@@ -2613,6 +2816,15 @@ impl Game {
             // A reveal is not a zone change (CR 701.30) — the card stays exactly where it is;
             // nothing to mutate here.
             Event::RevealedTopOfLibrary { .. } | Event::RevealedFromHand { .. } => {}
+            // A look is not a zone change either; it only records what one seat now knows. Snapshot
+            // the hand as it stands — later draws are not part of what was looked at.
+            Event::LookedAtHand { player, target } => {
+                for card in self.hand(target) {
+                    if !self.hand_cards_seen.contains(&(player, card)) {
+                        self.hand_cards_seen.push((player, card));
+                    }
+                }
+            }
             Event::PutOnBottomOfLibrary { player, card } => {
                 // Same-zone reorder, not a zone change — no new object, just move it in the vec.
                 let library = &mut self.players[player.0 as usize].library;
@@ -2667,12 +2879,20 @@ impl Game {
     /// ([`Event::ControlGained`]/[`Event::ControlGainedUntilEndOfTurn`]/
     /// [`Event::ConditionedControlGained`] — CR 506.4c, Goblin Cadets' "(This removes this
     /// creature from combat.)").
-    fn remove_from_combat(&mut self, object: ObjectId) {
+    fn remove_from_combat(&mut self, object: ObjectId, release_solely_blocked: bool) {
         self.combat.attackers.retain(|&a| a != object);
         self.combat.attack_targets.retain(|&(a, _)| a != object);
         self.combat
             .blocks
             .retain(|&(b, a)| b != object && a != object);
-        self.combat.blocked_attackers.retain(|&a| a != object);
+        // An attacker that left combat isn't a blocked creature any more either.
+        self.combat.blocked_ever.retain(|&(_, a)| a != object);
+        // CR 509.1h holds every attacker this creature blocked blocked even now that it's gone —
+        // unless the effect is False Orders, whose second sentence is the printed exception.
+        // Dropping only this blocker's pairs is exactly "blocked by only that creature": an
+        // attacker a second creature also blocked still has that pair on the list.
+        if release_solely_blocked {
+            self.combat.blocked_ever.retain(|&(b, _)| b != object);
+        }
     }
 }

@@ -1,5 +1,6 @@
 # Add {B}{B}{B}.
 name = "Dark Ritual"
+otags = ["adds-multiple-mana", "color-break", "cycle-lea-boon", "interrupt", "mana-source-type", "ritual"]
 id = "53f7c868-b03e-4fc2-8dcf-a75bbfa3272b"
 default_print = "11e12a84-e7be-4afc-a230-c2e644743fa8"
 oracle = "Add {B}{B}{B}."

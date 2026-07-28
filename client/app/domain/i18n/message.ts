@@ -12,6 +12,7 @@ const amountTokens: Readonly<Record<string, string>> = {
   per_creature_on_battlefield: "1 per creature on the battlefield",
   per_creature_you_control: "1 per creature you control",
   per_permanent_matching: "1 per matching permanent",
+  source_mana_value: "its mana value",
   source_power: "its power",
   source_toughness: "its toughness",
   target_power: "target's power",

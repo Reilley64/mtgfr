@@ -1,0 +1,33 @@
+# Enchant land
+# Enchanted land has "At the beginning of your upkeep, you may pay {W}{W}. If you do, you gain
+# 1 life."
+name = "Farmstead"
+otags = ["repeatable-lifegain", "single-english-word-name", "triggered-ability"]
+sets = ["2ed", "30a", "3ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
+id = "0d71b157-09a0-4fd4-beb9-103117a784ad"
+default_print = "3d79940b-9384-4009-8b74-3d56a2c5a8a5"
+oracle = "Enchant land\nEnchanted land has \"At the beginning of your upkeep, you may pay {W}{W}. If you do, you gain 1 life.\""
+subtypes = ["Aura"]
+
+# Enchant land
+enchant = { types = "land" }
+
+[cost]
+white = 3
+
+[kind]
+type = "aura"
+
+# Enchanted land has "At the beginning of your upkeep, you may pay {W}{W}. If you do, you gain
+# 1 life."
+[[abilities]]
+timing = "static"
+
+# Enchanted land has "At the beginning of your upkeep, you may pay {W}{W}. If you do, you gain
+# 1 life."
+[[abilities.effects]]
+type = "static"
+mode = "grant_to_attached"
+granted_ability = { trigger = { upkeep = {} }, optional = true, cost = { mana = { white = 2 } }, effects = [
+  { type = "life", mode = "gain", amount = 1 },
+] }

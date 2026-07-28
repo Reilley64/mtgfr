@@ -1,0 +1,28 @@
+# The next time a source of your choice would deal damage to you this turn, prevent that
+# damage. You gain life equal to the damage prevented this way.
+name = "Reverse Damage"
+otags = ["damage-prevention", "damage-prevention-you", "lifegain"]
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "9ed", "ced", "cei", "fbb", "itp", "lea", "leb", "ptc", "rqs", "sum"]
+id = "eaaf7c30-f463-4115-a40e-7dc717063413"
+default_print = "7f83f4fa-9c22-4bcb-8de0-f40f208128d1"
+oracle = "The next time a source of your choice would deal damage to you this turn, prevent that damage. You gain life equal to the damage prevented this way."
+approximates = "the shield arms against the next source of any kind instead of one picked as the spell resolves, so it cannot be held for the second of two hits in a turn"
+
+[cost]
+generic = 1
+white = 2
+
+[kind]
+type = "instant"
+
+# The next time a source of your choice would deal damage to you this turn, prevent that
+# damage. You gain life equal to the damage prevented this way.
+[[abilities]]
+timing = "spell"
+
+# The next time a source of your choice would deal damage to you this turn, prevent that
+# damage. You gain life equal to the damage prevented this way.
+[[abilities.effects]]
+type = "misc"
+mode = "prevent_next_damage"
+gain_life = true

@@ -1,0 +1,31 @@
+# {B}: This creature gets +1/+1 until end of turn.
+name = "Frozen Shade"
+otags = ["activated-ability", "bottomless-mana-sink", "shade-pump"]
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
+id = "f75f9006-217d-4ec8-9c35-ceefe1c5ae4e"
+default_print = "485421e0-ee1c-425b-abe0-ec5a7e2c0042"
+oracle = "{B}: This creature gets +1/+1 until end of turn."
+subtypes = ["Shade"]
+
+[cost]
+generic = 2
+black = 1
+
+[kind]
+type = "creature"
+power = 0
+toughness = 1
+
+# {B}: This creature gets +1/+1 until end of turn.
+[[abilities]]
+timing = "activated"
+
+[abilities.activation_cost]
+black = 1
+
+# This creature gets +1/+1 until end of turn.
+[[abilities.effects]]
+type = "pump"
+mode = "pump_self_until_end_of_turn"
+power = 1
+toughness = 1

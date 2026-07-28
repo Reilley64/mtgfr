@@ -13,12 +13,14 @@ use schemars::schema::{InstanceType, Schema, SchemaObject, SingleOrVec};
 use serde_json::Value as JsonValue;
 use std::num::NonZeroU8;
 
-use crate::de::{PERMANENT_FILTER_SHORTHANDS, SACRIFICE_COST_SHORTHANDS, TYPE_NAMES};
+use crate::de::{
+    AMOUNT_KEYWORDS, PERMANENT_FILTER_SHORTHANDS, SACRIFICE_COST_SHORTHANDS, TYPE_NAMES,
+};
 use crate::toml_surface::CostToml;
 use crate::{
     AdditionalCost, Amount, AmountZone, Color, ColorFilter, Condition, Cost, CounterAxis,
-    CounterKind, FilterController, LandProduces, Mana, Parity, PermanentFilter, ProtectionScope,
-    SacrificeCost, TargetCount, TokenFilter, TypeSet,
+    CounterKind, Division, FilterController, Keyword, LandProduces, Mana, Parity, PermanentFilter,
+    ProtectionScope, SacrificeCost, TargetCount, TokenFilter, TypeSet,
 };
 
 // ── schema-building helpers ─────────────────────────────────────────────────────────
@@ -222,62 +224,6 @@ enum SacrificeAdditionalCostCountMarkerSchema {
 
 // ── Amount: an integer, a derived-value keyword, or a table ──────────────────────────
 
-/// Every derived-amount keyword the [`Amount`] visitor accepts (see [`crate::de`]).
-const AMOUNT_KEYWORDS: &[&str] = &[
-    "x",
-    "half_x",
-    "half_x_rounded_down",
-    "twice_x",
-    "per_creature_you_control",
-    "per_creature_on_battlefield",
-    "source_power",
-    "source_toughness",
-    "target_power",
-    "target_toughness",
-    "target_mana_value",
-    "per_counter_on_source",
-    "opponents_poison_counters",
-    "controllers_poison_counters",
-    "life_gained_this_turn",
-    "spells_cast_this_turn",
-    "cards_in_target_player_hand",
-    "cards_in_your_hand",
-    "commander_casts_from_command_zone",
-    "creatures_died_this_turn",
-    "nontoken_creatures_entered_this_turn",
-    "sacrificed_creature_power",
-    "sacrificed_creature_toughness",
-    "commander_color_count",
-    "total_power_you_control",
-    "greatest_power_among_creatures_you_control",
-    "permanents_you_own_opponents_control",
-    "triggering_spell_mana_value",
-    "triggering_spell_mana_spent",
-    "spell_sacrifice_count",
-    "spell_multikicker_count",
-    "revealed_creature_mana_value",
-    "permanents_died_this_turn",
-    "nonland_cards_exiled_this_way",
-    "cards_exiled_by_search_this_way",
-    "mana_paid_this_way",
-    "past_votes",
-    "present_votes",
-    "total_mana_value_milled_this_way",
-    "exiled_card_mana_value_this_way",
-    "returned_nonland_card_mana_value",
-    "auras_you_controlled_attached_to_dying_creature",
-    "greatest_instant_or_sorcery_mana_value_cast_this_turn",
-    "one_plus_instants_and_sorceries_cast_this_turn",
-    "instant_or_sorcery_cards_in_your_graveyard",
-    "combat_damage_dealt",
-    "triggering_damage_dealt",
-    "spells_cast_before_this_this_turn",
-    "cards_discarded_this_way",
-    "creatures_sacrificed_this_way",
-    "spell_first_target_mana_value",
-    "counters_removed_this_way",
-];
-
 /// A bare `{}` presence-flag table (an [`Amount`] arm that carries no fields of its own).
 #[derive(JsonSchema)]
 #[schemars(deny_unknown_fields)]
@@ -302,6 +248,10 @@ struct AmountTableSchema {
     auras_attached_to_source: Option<EmptyTableSchema>,
     times: Option<i32>,
     per: Option<Amount>,
+    half: Option<Amount>,
+    round_up: Option<bool>,
+    offset: Option<Amount>,
+    delta: Option<i32>,
 }
 
 impl JsonSchema for Amount {
@@ -350,7 +300,9 @@ struct PermanentFilterTableSchema {
     mv_eq_x: Option<bool>,
     mv_max_x: Option<bool>,
     tapped: Option<bool>,
+    has_mana_ability: Option<bool>,
     power_max: Option<u8>,
+    power_min: Option<u8>,
     power_parity: Option<Parity>,
     noncreature: Option<bool>,
     exclude: Option<TypeSet>,
@@ -359,18 +311,25 @@ struct PermanentFilterTableSchema {
     modified: Option<bool>,
     attacking: Option<bool>,
     attacking_you: Option<bool>,
+    blocking: Option<bool>,
+    unblocked: Option<bool>,
     power_less_than_source: Option<bool>,
+    toughness_less_than_source_power: Option<bool>,
     entered_this_turn: Option<bool>,
+    controlled_since_turn_start: Option<bool>,
+    did_not_attack_this_turn: Option<bool>,
     nonbasic: Option<bool>,
     name: Option<String>,
     nonlegendary: Option<bool>,
     nonlair: Option<bool>,
     without_flying: Option<bool>,
+    without_keyword: Option<Keyword>,
     with_flying: Option<bool>,
     shares_type_with_dying_permanent: Option<bool>,
     with_counter: Option<CounterAxis>,
     creature_or_vehicle: Option<bool>,
     snow: Option<bool>,
+    exclude_subtypes: Option<Vec<String>>,
 }
 
 impl JsonSchema for PermanentFilter {
@@ -449,6 +408,23 @@ impl JsonSchema for TargetCount {
         one_of(vec![
             generator.subschema_for::<u8>(),
             generator.subschema_for::<crate::de::TargetCountToml>(),
+        ])
+    }
+}
+
+// ── Division: `divided = true` / `divided = "evenly"` ───────────────────────────────
+
+/// `divided`'s TOML spelling (see [`Division`]'s `Deserialize`): the bool picks between no
+/// division and "divided as you choose", and the one named split is a string.
+impl JsonSchema for Division {
+    fn schema_name() -> String {
+        "Division".to_owned()
+    }
+
+    fn json_schema(generator: &mut SchemaGenerator) -> Schema {
+        one_of(vec![
+            generator.subschema_for::<bool>(),
+            string_enum(&["evenly"]),
         ])
     }
 }

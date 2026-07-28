@@ -1,6 +1,7 @@
 # Whenever this creature blocks or becomes blocked, target opponent gains control of it. (This
 # removes this creature from combat.)
 name = "Goblin Cadets"
+otags = ["block-trigger", "defector", "donate", "drawback"]
 sets = ["cmd", "usg"]
 id = "32dc847a-d8e9-4bc5-aa73-dfe69ff330a2"
 default_print = "78f93873-5053-40c6-b79a-3c54a8005b75"

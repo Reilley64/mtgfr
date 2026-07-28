@@ -40,6 +40,11 @@ pub enum Amount {
     /// (Tanazir Quandrix: base power and toughness "become equal to Tanazir Quandrix's power and
     /// toughness").
     SourceToughness,
+    /// The effect's source permanent's mana value (Animate Artifact: the enchanted artifact's
+    /// "power and toughness each equal to its mana value" — an attachment resolves its amounts
+    /// with the *host* as source, so this reads the artifact, not the Aura). The source-relative
+    /// twin of [`TargetManaValue`](Self::TargetManaValue) below.
+    SourceManaValue,
     /// The targeted permanent's power (Swords to Plowshares: "life equal to its power").
     TargetPower,
     /// The targeted permanent's toughness — the toughness twin of [`TargetPower`](Self::TargetPower)
@@ -59,8 +64,26 @@ pub enum Amount {
     },
     /// How much life the effect's controller has gained this turn (a turn-scoped tally).
     LifeGainedThisTurn,
+    /// The effect's controller's current life total — Lich's "you lose life equal to your life
+    /// total", read live as the effect resolves. A player already at or below 0 resolves to that
+    /// number, so a negative total *gains* life back; no pool card reaches that, and clamping it
+    /// would be inventing a rule the card doesn't print.
+    YourLifeTotal,
     /// How many spells the effect's controller has cast this turn (a turn-scoped tally).
     SpellsCastThisTurn,
+    /// How much damage has been dealt to the effect's controller this turn (a turn-scoped tally,
+    /// [`Player::damage_taken_this_turn`](crate::Player)) — Simulacrum's "the damage dealt to you
+    /// this turn", read twice on one card for its life gain and its damage. Damage, not life
+    /// lost: a drain or a paid life cost never counts.
+    DamageTakenThisTurn,
+    /// How many untapped lands the effect's controller controlled when the current turn began
+    /// (Power Surge's "the number of untapped lands they controlled at the beginning of this
+    /// turn") — a snapshot, not a live count, so tapping out with the trigger on the stack
+    /// changes nothing. Reads [`Player::untapped_lands_at_turn_start`], which is taken as the
+    /// upkeep begins; "they" is the taxed player because
+    /// [`DamageEffect::ToTriggeringPlayer`](crate::DamageEffect::ToTriggeringPlayer) resolves its
+    /// amount against the recipient.
+    UntappedLandsAtTurnStart,
     /// The number of cards in the resolving spell's *chosen player target's* hand (Rousing
     /// Refrain's "Add {R} for each card in target opponent's hand"). Read off the spell's target,
     /// like [`CommanderCastsFromCommandZone`](Self::CommanderCastsFromCommandZone) — the ability
@@ -81,6 +104,13 @@ pub enum Amount {
     /// tally, the death-side sibling of [`SpellsCastThisTurn`](Self::SpellsCastThisTurn)) — Gorma,
     /// the Gullet's "for each creature that died under your control this turn".
     CreaturesDiedThisTurn,
+    /// How many creatures died this turn under *any* player's control — Scavenging Ghoul's "for
+    /// each creature that died this turn", which names no controller. Sums every player's
+    /// [`CreaturesDiedThisTurn`](Self::CreaturesDiedThisTurn) tally rather than carrying a field of
+    /// its own: those tallies all clear together at the same Untap step, so the sum is exactly the
+    /// game-wide count. The creature-only twin of
+    /// [`PermanentsDiedThisTurn`](Self::PermanentsDiedThisTurn), which counts any permanent type.
+    CreaturesDiedThisTurnAnyController,
     /// How many nontoken creatures entered the battlefield under the effect's controller's
     /// control this turn (a turn-scoped tally, the entering-side sibling of
     /// [`CreaturesDiedThisTurn`](Self::CreaturesDiedThisTurn), excluding tokens) — Gyome, Master
@@ -126,6 +156,14 @@ pub enum Amount {
     /// sacrificed creature's toughness at ability placement — resolving this variant directly is
     /// a bug (see [`Game::resolve_amount`]'s panic).
     SacrificedCreatureToughness,
+    /// The toughness the *enchanted* creature last had before it died, on an
+    /// [`Trigger::EnchantedCreatureDies`](crate::Trigger::EnchantedCreatureDies) ability (Creature
+    /// Bond's "damage equal to that creature's toughness"). Same placeholder shape as
+    /// [`SacrificedCreatureToughness`](Self::SacrificedCreatureToughness), filled by
+    /// [`contextualize_effect`] from [`TriggerContext::dying_enchanted_creature_stats`] at trigger
+    /// placement — the host is a graveyard card by resolution and reads 0 there (CR 603.10a), so
+    /// resolving this variant directly is a bug (see [`Game::resolve_amount`]'s panic).
+    DyingEnchantedCreatureToughness,
     /// The number of colors in the effect's controller's commander's color identity (CR 903.4) —
     /// War Room's "pay life equal to the number of colors in your commander's color identity".
     CommanderColorCount,
@@ -151,6 +189,13 @@ pub enum Amount {
     /// way". Reads [`Game::spell_sacrifice_count`] off the effect's `source` (the resolving
     /// spell itself).
     SpellSacrificeCount,
+    /// The total mana value of those same sacrificed permanents — Sacrifice's "add an amount of
+    /// {B} equal to the sacrificed creature's mana value." Reads
+    /// [`Game::spell_sacrificed_mana_value`] off the effect's `source`, the value sibling of
+    /// [`SpellSacrificeCount`](Self::SpellSacrificeCount)'s count. Not a placeholder: the value
+    /// is recorded on the spell at cast time (the fodder is already in the graveyard), so it is
+    /// still there to read at resolution.
+    SpellSacrificedManaValue,
     /// How many times the resolving spell's Multikicker cost (CR 702.33c) was paid — Lightkeeper
     /// of Emeria's "you gain 2 life for each time it was kicked." Reads
     /// [`Game::spell_multikicker_count`] off the effect's `source` (the resolving spell itself),
@@ -354,6 +399,24 @@ pub enum Amount {
         times: i32,
         by: &'static Amount,
     },
+    /// Half of `of`, rounding up or down as the card says (Aspect of Wolf's "+X/+Y, where X is
+    /// half the number of Forests you control, rounded down, and Y is … rounded up"). `of` is
+    /// `&'static` (leaked) for the same reason [`Scaled`](Self::Scaled)'s `by` is. The two
+    /// X-scoped halves above stay separate: they are rewritten to `Fixed` at trigger placement
+    /// by `fill_cast_x`, which reads the variant, not the amount inside it.
+    Half {
+        of: &'static Amount,
+        round_up: bool,
+    },
+    /// `of` plus `delta`, floored at zero (Black Vise's "X is the number of cards in their hand
+    /// minus 4"). `of` is `&'static` (leaked) for the same reason [`Half`](Self::Half)'s is.
+    /// ponytail: always floors at zero — the offsets the pool prints all feed a damage or count
+    ///   slot where a negative result reads as none anyway (CR 120.8). Add a `floor` field if a
+    ///   card ever wants the negative itself.
+    Offset {
+        of: &'static Amount,
+        delta: i32,
+    },
     /// How many cards were discarded during this resolution's edict fan-out (Syphon Mind's "for
     /// each card discarded this way"; Malfegor's discarded hand size) — a resolution-local tally on
     /// [`ResolutionFrame::cards_discarded_this_way`].
@@ -403,6 +466,13 @@ pub enum LandTapScope {
     /// Every land the watcher's controller taps for mana — Mirari's Wake's "whenever you tap a
     /// land for mana".
     Controller,
+    /// Every land on the battlefield matching `filter`, whoever taps it — Mana Flare's "whenever a
+    /// player taps a land for mana" (an unrestricted land filter) and Gauntlet of Might's
+    /// "whenever a Mountain is tapped for mana" (`subtypes = ["Mountain"]`, which reads
+    /// [`Game::effective_subtypes`] so a dual counts too, CR 305.6). The bonus still lands in the
+    /// *tapping* player's pool, not the watcher's — "**its controller** adds an additional {R}".
+    /// `scope = { any_land = { … } }` in TOML.
+    AnyLand(PermanentFilter),
 }
 
 /// What color the bonus mana of an [`Effect::Static(StaticEffect::TappedForManaBonus)`] watch is.
@@ -421,6 +491,11 @@ pub enum LandTapBonusColor {
     /// "One mana of any type that land produced" — copied from the type the tap just produced, no
     /// pause when the tap made a single concrete credit (Mirari's Wake).
     Produced,
+    /// "An additional {G}" — one named color, whatever the land itself produced (Wild Growth).
+    /// Strictly narrower than [`AnyColor`](Self::AnyColor) and unrelated to
+    /// [`Produced`](Self::Produced), so it's credited inline with no pause: there's nothing to
+    /// choose. `bonus_color = { fixed = "green" }` in TOML.
+    Fixed(Color),
 }
 
 /// A single parametrized game action. The enum grows only as the pool demands it.
@@ -518,7 +593,10 @@ impl Effect {
             | Effect::Pump(PumpEffect::GrantChosenColorProtectionUntilEndOfTurn { target })
             | Effect::Pump(PumpEffect::RadianceChosenColorProtectionUntilEndOfTurn { target })
             | Effect::Pump(PumpEffect::SetBasePtTargetUntilEndOfTurn { target, .. })
+            | Effect::Pump(PumpEffect::BecomesCopyOfTarget { target, .. })
             | Effect::Pump(PumpEffect::TargetBecomesTreasure { target })
+            | Effect::Pump(PumpEffect::TargetBecomesSubtypesWhileSourceRemains { target, .. })
+            | Effect::Pump(PumpEffect::TargetBecomesColor { target, .. })
             | Effect::Counters(CountersEffect::PutCounters { target, .. })
             | Effect::Counters(CountersEffect::DoubleCounters { target })
             | Effect::Counters(CountersEffect::DoubleCountersOnTargetCreatures { target, .. })
@@ -534,11 +612,13 @@ impl Effect {
             | Effect::Zone(ZoneEffect::TuckFromGraveyard { target, .. })
             | Effect::Mill(MillEffect::Mill { target, .. })
             | Effect::Choice(ChoiceEffect::TargetPlayerExilesFromGraveyard { target })
+            | Effect::Choice(ChoiceEffect::ControlPlayerToPlayCardFromHand { target })
+            | Effect::Choice(ChoiceEffect::ChangeText { target, .. })
             | Effect::Control(ControlEffect::GoadTarget { target })
             | Effect::Token(TokenEffect::CreateCopy { target, .. })
             | Effect::Control(ControlEffect::TapTarget { target, .. })
             | Effect::Control(ControlEffect::UntapTarget { target, .. })
-            | Effect::Control(ControlEffect::RemoveFromCombat { target })
+            | Effect::Control(ControlEffect::RemoveFromCombat { target, .. })
             | Effect::Control(ControlEffect::GainControlUntilEndOfTurn { target })
             | Effect::Control(ControlEffect::ExchangeAllCreaturesUntilEndOfTurn { target })
             | Effect::Control(ControlEffect::GainControl { target })
@@ -551,7 +631,10 @@ impl Effect {
             | Effect::Zone(ZoneEffect::AttachMintedAuraToTarget { target })
             | Effect::Token(TokenEffect::BecomeCopyOfTargetCreatureGainingMyriad { target })
             | Effect::Copy(CopyEffect::ChangeTargetOfTargetSpellOrAbility { target, .. })
-            | Effect::Destroy(DestroyEffect::Target { target, .. }) => target,
+            | Effect::Destroy(DestroyEffect::Target { target, .. })
+            // Conservator's "dealt to you" leaves this `TargetSpec::None`, which is exactly what
+            // an untargeted effect reports anyway.
+            | Effect::Misc(MiscEffect::PreventNextDamage { target, .. }) => target,
             Effect::Zone(ZoneEffect::ReturnToHand { target, .. }) => target,
             // The first target clause is the ability's own target; the second is chosen separately
             // (see `Game::ability_second_target_clause`) and read off `targets_second`.
@@ -625,7 +708,7 @@ impl Effect {
                     other: false,
                 }
             }
-            Effect::Copy(CopyEffect::TargetSpell) => TargetSpec::InstantOrSorcerySpellOnStack,
+            Effect::Copy(CopyEffect::TargetSpell { .. }) => TargetSpec::InstantOrSorcerySpellOnStack,
             Effect::Misc(MiscEffect::CounterTargetSpell { filter, .. }) => TargetSpec::SpellOnStack(filter),
             Effect::Misc(MiscEffect::CounterTargetActivatedAbility) => TargetSpec::ActivatedAbilityOnStack,
             // The cast-time target is the *opponent's* creature; the controller's own creature
@@ -694,14 +777,28 @@ impl Effect {
                 ..
             })
             // "If target player has fewer than nine poison counters …" (Vraska, Betrayal's Sting).
-            | Effect::Counters(CountersEffect::TopUpCountersOnPlayer { .. }) => TargetSpec::Player,
+            | Effect::Counters(CountersEffect::TopUpCountersOnPlayer { .. })
+            // "Look at target player's hand" (Glasses of Urza).
+            | Effect::Dig(DigEffect::LookAtTargetPlayersHand)
+            // "Look at the top three cards of target player's library …" (Natural Selection), and
+            // its own "you may have that player shuffle" tail, which reads the same target.
+            | Effect::Dig(DigEffect::RearrangeTargetPlayersTop { .. })
+            | Effect::Dig(DigEffect::MayShuffleTargetPlayersLibrary { .. })
+            // "Tap all lands target player controls" (Mana Short) and "target player activates a
+            // mana ability of each land they control" (Drain Power) — both name the seat whose
+            // board is swept, and each is the step its card's `lose_all_unspent` tail reads back.
+            | Effect::Control(ControlEffect::TapAllTargetPlayerControls { .. })
+            | Effect::Mana(ManaEffect::TargetPlayerTapsLandsForMana) => TargetSpec::Player,
             // Equip targets "target creature you control" (CR 702.6e). The activation gate
             // enforces it too; the spec must say so as well, or the enumeration the client
             // highlights from offers opponents' creatures the gate can only bounce.
             Effect::Control(ControlEffect::Equip) => TargetSpec::CreatureYouControl,
-            // Basandra, Battle Seraph's {R} ability: "Target creature attacks this turn if able" —
-            // any creature, not just an opponent's.
-            Effect::Misc(MiscEffect::MustAttackTarget) => TargetSpec::Creature,
+            // "Target creature attacks this turn if able" — the spec is authored, since Basandra,
+            // Battle Seraph's unqualified "target creature" and Nettling Imp's "non-Wall creature
+            // the active player has controlled continuously since the beginning of the turn" are
+            // the same effect over different candidate sets.
+            Effect::Misc(MiscEffect::MustAttackTarget { target }) => target,
+            Effect::Misc(MiscEffect::BlocksEachAttackerIfAble { target }) => target,
             // Breena's counter half: "a creature you control" (the drawing player is context,
             // not a target) — restricted to the ability's controller's own creatures.
             Effect::Counters(CountersEffect::AttackerDrawsControllerCounters { .. }) => TargetSpec::CreatureYouControl,
@@ -732,8 +829,11 @@ impl Effect {
             | Effect::Mill(MillEffect::ExileDiscardedWithThis { .. })
             | Effect::Dig(DigEffect::CashOutExiledWithThis)
             | Effect::Dig(DigEffect::CastExiledWithThisFree)
+            | Effect::Static(StaticEffect::BasePowerToughnessFromAmount { .. })
+            | Effect::Static(StaticEffect::CantAttackUnlessDefenderControls { .. })
             | Effect::Static(StaticEffect::GrantToAttached { .. })
             | Effect::Static(StaticEffect::ProtectionFromChosenColor)
+            | Effect::Static(StaticEffect::RedirectUnblockedDamageToSelf)
             | Effect::Static(StaticEffect::SetAttachedBasePt { .. })
             | Effect::Static(StaticEffect::SetAttachedTypes { .. })
             | Effect::Life(LifeEffect::EachOpponentDrain { .. })
@@ -753,6 +853,9 @@ impl Effect {
             | Effect::Reveal(RevealEffect::TopCards { .. })
             | Effect::Dig(DigEffect::SearchLibrary { .. })
             | Effect::Static(StaticEffect::ReduceSpellCost { .. })
+            | Effect::Static(StaticEffect::TaxSpellCost { .. })
+            | Effect::Static(StaticEffect::TaxActivatedAbility { .. })
+            | Effect::Static(StaticEffect::SpendManaAsThoughAnotherColor { .. })
             | Effect::Static(StaticEffect::CounterReplacement { .. })
             | Effect::Static(StaticEffect::TokenReplacement { .. })
             | Effect::Static(StaticEffect::LifeGainReplacement { .. })
@@ -779,17 +882,21 @@ impl Effect {
             | Effect::Pump(PumpEffect::PumpOtherAttackersAttackingYourOpponents { .. })
             | Effect::Pump(PumpEffect::EnchantedAttackerPumpAttackingOpponentElseControllerLosesLife { .. })
             | Effect::Pump(PumpEffect::StripKeywordsFromOpponentsCreatures { .. })
+            | Effect::Pump(PumpEffect::EnchantedCreatureLosesKeywords { .. })
             | Effect::Pump(PumpEffect::PumpSelfUntilEndOfTurn { .. })
             | Effect::Static(StaticEffect::ControlAttached)
             | Effect::Choice(ChoiceEffect::EachPlayerSacrifices { .. })
             | Effect::Choice(ChoiceEffect::EachPlayerChoosesWarOrPeace)
-            | Effect::Choice(ChoiceEffect::EachOpponentDiscards)
+            | Effect::Choice(ChoiceEffect::EachPlayerDiscards { .. })
             | Effect::Choice(ChoiceEffect::DiscardYourHand)
             | Effect::Choice(ChoiceEffect::EachPlayerExilesFromGraveyard)
             | Effect::Choice(ChoiceEffect::CasterKeepsOneOfEachTypePerPlayer)
             | Effect::Choice(ChoiceEffect::EachPlayerControllerChoosesCounterTarget)
             | Effect::Choice(ChoiceEffect::CouncilsDilemmaVote { .. })
             | Effect::Choice(ChoiceEffect::JoinForcesPayMana)
+            | Effect::Choice(ChoiceEffect::TriggeringPlayerMayPayAnyAmountToPrevent { .. })
+            | Effect::Choice(ChoiceEffect::TriggeringPlayerMayPay { .. })
+            | Effect::Choice(ChoiceEffect::TriggeringPlayerMayAttachThisAuraToChosen { .. })
             | Effect::Choice(ChoiceEffect::EachPlayerNamesCardThenRevealsTop)
             | Effect::Dig(DigEffect::OpponentSplitsExilePiles)
             | Effect::Dig(DigEffect::RevealTopSplitPiles)
@@ -799,11 +906,18 @@ impl Effect {
             | Effect::Choice(ChoiceEffect::EachOtherTokenBecomesCopyOfChosen)
             | Effect::Choice(ChoiceEffect::PutCounterThenMayBecomeCopyOfCardFromList { .. })
             | Effect::Choice(ChoiceEffect::EachPlayerDiscardsHandThenDraws { .. })
+            | Effect::Choice(ChoiceEffect::EachPlayerShufflesHandAndGraveyardThenDraws { .. })
             | Effect::Choice(ChoiceEffect::MaySacrifice { .. })
             | Effect::Choice(ChoiceEffect::MayReturnFromGraveyard { .. })
             | Effect::Choice(ChoiceEffect::MayDiscard { .. })
             | Effect::Choice(ChoiceEffect::MayExileDiscardedNonlandMayPlay { .. })
             | Effect::Choice(ChoiceEffect::MayPutCounterOnCreature)
+            // False Orders' second sentence shares the spell's target — the creature the preceding
+            // `RemoveFromCombat` step pulled out of combat — the same way `MayPutCounterOnCreature`
+            // above does: the `Sequence` arm supplies it, this step declares none of its own.
+            | Effect::Choice(ChoiceEffect::MayBlockAttackerOfYourChoice)
+            | Effect::Choice(ChoiceEffect::DefendersSplitBlockersIntoPiles)
+            | Effect::Choice(ChoiceEffect::DefendersDivideBlockersAmongAttackers)
             | Effect::Choice(ChoiceEffect::MayDrawUnlessPays { .. })
             | Effect::Counters(CountersEffect::PutCountersEach { .. })
             | Effect::Counters(CountersEffect::PutLoyaltyCounterEach { .. })
@@ -835,7 +949,7 @@ impl Effect {
             | Effect::Sacrifice(SacrificeEffect::Object { .. })
             | Effect::Sacrifice(SacrificeEffect::Source)
             | Effect::Sacrifice(SacrificeEffect::EnchantedCreature { .. })
-            | Effect::Destroy(DestroyEffect::TriggeringDamagedCreature { .. })
+            | Effect::Destroy(DestroyEffect::ThatCreature { .. })
             | Effect::Exile(ExileEffect::Object { .. })
             | Effect::Zone(ZoneEffect::ReturnObjectToHand { .. })
             | Effect::Zone(ZoneEffect::ExileGraveyardObjectGainLife { .. })
@@ -844,7 +958,9 @@ impl Effect {
             | Effect::Zone(ZoneEffect::TuckSelfToLibraryBottom)
             | Effect::Zone(ZoneEffect::ExileSelfOnResolve)
             | Effect::Dig(DigEffect::ExileRandomFromGraveyardMayPlay)
+            | Effect::Static(StaticEffect::AllLandsOfTypeBecome { .. })
             | Effect::Static(StaticEffect::Anthem { .. })
+            | Effect::Static(StaticEffect::GrantActivatedAbility { .. })
             | Effect::Static(StaticEffect::KeywordAnthem { .. })
             | Effect::Static(StaticEffect::TappedForManaBonus { .. })
             | Effect::Static(StaticEffect::TriggerDoubling { .. })
@@ -852,6 +968,8 @@ impl Effect {
             | Effect::Misc(MiscEffect::ScheduleAtNextUpkeep { .. })
             | Effect::Misc(MiscEffect::ScheduleColorlessManaForCounteredSpellNextMainPhase)
             | Effect::Misc(MiscEffect::SkipNextUntapOpponentCreatures)
+            | Effect::Misc(MiscEffect::TakeExtraTurn)
+            | Effect::Misc(MiscEffect::YouLoseTheGame)
             | Effect::Misc(MiscEffect::ScheduleNextCastTrigger { .. })
             | Effect::Life(LifeEffect::AttackerLosesYouGain { .. })
             | Effect::Life(LifeEffect::AttackerLosesYouDraw { .. })
@@ -859,6 +977,9 @@ impl Effect {
             | Effect::Choice(ChoiceEffect::DamagingCreatureControllerMayDraw { .. })
             | Effect::Draw(DrawEffect::EachDrawStepPlayer { .. })
             | Effect::Damage(DamageEffect::ToEnteringPermanent { .. })
+            | Effect::Damage(DamageEffect::ToEnteringPermanentController { .. })
+            | Effect::Damage(DamageEffect::ToTriggeringPlayer { .. })
+            | Effect::Damage(DamageEffect::ToDyingEnchantedCreaturesController { .. })
             | Effect::Zone(ZoneEffect::ReanimateDyingEnchantedCreature { .. })
             | Effect::Zone(ZoneEffect::ExileDeadCreatureCreateCopyWithSubtype { .. })
             | Effect::Zone(ZoneEffect::ReturnThisToHand)
@@ -869,7 +990,12 @@ impl Effect {
             | Effect::Static(StaticEffect::AttackTax { .. })
             | Effect::Static(StaticEffect::CounterScaledAttackTax)
             | Effect::Static(StaticEffect::CantBeAttackedBy { .. })
+            | Effect::Static(StaticEffect::MaySkipDrawForCantBeAttackedBy { .. })
             | Effect::Static(StaticEffect::CantBlockFilter { .. })
+            | Effect::Static(StaticEffect::DoesntUntap { .. })
+            | Effect::Static(StaticEffect::PlayersSkipUntapSteps)
+            | Effect::Static(StaticEffect::UntapAtMostOne { .. })
+            | Effect::Static(StaticEffect::MaySkipTurnWhileTapped)
             | Effect::Static(StaticEffect::CantCastDuringCombat)
             // "Each opponent who cast a spell this turn can't attack with creatures" /
             // "...who attacked with a creature this turn can't cast spells" (Angelic Arbiter): a
@@ -879,8 +1005,12 @@ impl Effect {
             | Effect::Static(StaticEffect::CantCastIfAttackedThisTurn)
             // Always names the ability's own source as the required attacker — no chosen target.
             | Effect::Misc(MiscEffect::MustAttackRandomOpponent)
+            | Effect::Misc(MiscEffect::MustAttackAll { .. })
             | Effect::Misc(MiscEffect::PreventCombatDamageToYouCreatingTokens { .. })
             | Effect::Misc(MiscEffect::PreventAllCombatDamageThisTurn)
+            // "That permanent or player" is the enclosing `Effect::Sequence`'s shared target,
+            // chosen for the first sentence — this step takes none of its own.
+            | Effect::Misc(MiscEffect::OfferPreventionTopUp { .. })
             // CR 114.5: an emblem can't be targeted, and getting one targets nothing either.
             | Effect::Misc(MiscEffect::GetEmblem { .. })
             // Names its own controller as the declaring seat (Master Warcraft) — no chosen target.
@@ -888,7 +1018,11 @@ impl Effect {
             | Effect::Misc(MiscEffect::YouChooseWhichCreaturesBlock)
             | Effect::Counters(CountersEffect::PlaceVowCounters { .. })
             | Effect::Life(LifeEffect::Lose { .. })
+            | Effect::Life(LifeEffect::SourceOwnerLosesHalfTheirLife)
             | Effect::Damage(DamageEffect::ToSelf { .. })
+            // A no-target-of-its-own step: reads the enclosing `Sequence`'s shared target player,
+            // whose lands the preceding step just tapped ("**that player** loses all unspent mana").
+            | Effect::Mana(ManaEffect::LoseAllUnspent { .. })
             // A no-target-of-its-own step: reads the enclosing `Sequence`'s shared target.
             | Effect::Life(LifeEffect::GainTargetController { .. })
             // Reads the enclosing `Sequence`'s shared target creature's controller; no target of
@@ -920,12 +1054,16 @@ impl Effect {
             | Effect::Counters(CountersEffect::LevelUp { .. })
             // "Monstrosity N" always affects the ability's own source, never a chosen target.
             | Effect::Counters(CountersEffect::Monstrosity { .. })
-            // The as-enters creature-type/color choices always affect the ability's own source.
+            // The as-enters creature-type/color/opponent choices always affect the ability's own
+            // source. Black Vise's opponent is *chosen*, not targeted (CR 115.10a) — no "target"
+            // on the card, so no shroud/protection check and no target-legality recheck.
+            | Effect::Choice(ChoiceEffect::ChooseBasicLandType)
             | Effect::Choice(ChoiceEffect::ChooseCreatureType)
             | Effect::Choice(ChoiceEffect::ChooseColor)
+            | Effect::Choice(ChoiceEffect::ChooseOpponent)
             | Effect::Choice(ChoiceEffect::SetOwnColorUntilEndOfTurn)
             // Removes a counter from the ability's own source, never a chosen target.
-            | Effect::Counters(CountersEffect::RemoveCounterFromSelf)
+            | Effect::Counters(CountersEffect::RemoveCounterFromSelf { .. })
             // Grants the ability's controller a permission — no chosen target.
             | Effect::Misc(MiscEffect::GrantFlashThisTurn)
             | Effect::Misc(MiscEffect::GrantChannelColorlessManaThisTurn)
@@ -957,17 +1095,34 @@ impl Effect {
             // activation target — same as `ReturnThisAuraAttachedTo` above.
             | Effect::Zone(ZoneEffect::ReturnThisAuraFromGraveyardAttachedToChosenHost)
             | Effect::Zone(ZoneEffect::ScheduleReturnThisAuraFromGraveyardAttachedToChosenHost)
+            | Effect::Static(StaticEffect::DiscardToLibraryTopInstead)
             | Effect::Static(StaticEffect::NoMaximumHandSize)
+            | Effect::Static(StaticEffect::YouDontLoseAtZeroLife)
+            | Effect::Static(StaticEffect::LifeGainBecomesDraw)
+            | Effect::Counters(CountersEffect::PutCountersOnPlayer {
+                scope: EdictScope::You,
+                ..
+            })
+            | Effect::Counters(CountersEffect::RemoveAllPlayerCounters {
+                scope: EdictScope::You,
+            })
             | Effect::Static(StaticEffect::OpponentsCantSearchLibraries)
-            // "All creatures ... attack each combat if able" (Avatar of Slaughter): a global
-            // requirement, not a chosen target — enforced in `Game::declare_attackers`.
-            | Effect::Static(StaticEffect::MustAttackEachCombat)
+            | Effect::Static(StaticEffect::PlayAnyNumberOfLands)
+            // "Creatures attack each combat if able" (Avatar of Slaughter board-wide, Juggernaut
+            // self-only): a requirement, not a chosen target — enforced in `Game::declare_attackers`.
+            | Effect::Static(StaticEffect::MustAttackEachCombat { .. })
+            // The block restrictions and the extra block slot are all read off the battlefield at
+            // declaration time (`Game::can_block`, `Game::max_blocks`), never targeted.
+            | Effect::Static(StaticEffect::CanBlockAdditional { .. })
+            | Effect::Static(StaticEffect::CantBeBlockedBy { .. })
+            | Effect::Static(StaticEffect::CantBlockAttackers { .. })
             // Backup's grant rides the enclosing `Sequence`'s shared target (the counter's
             // creature), never a target of its own — see the variant doc.
             | Effect::Control(ControlEffect::GrantSourceAbilitiesUntilEndOfTurn)
             | Effect::Static(StaticEffect::PlayFromGraveyardOncePerTurn)
             | Effect::Static(StaticEffect::PreventNoncombatDamageToOtherCreaturesYouControl)
             | Effect::Static(StaticEffect::PreventDamageToSelfRemovingCounter)
+            | Effect::Static(StaticEffect::PreventDamageToSelfRemovingCounterPerPoint)
             // Bloatfly Swarm's rad-counter rider is also self-only — no chosen target.
             | Effect::Static(StaticEffect::PreventDamageToSelfRemovingCountersGivingRad)
             | Effect::Static(StaticEffect::PreventCombatDamage { .. })
@@ -984,13 +1139,14 @@ impl Effect {
             // no chosen target (see the variant doc).
             | Effect::Zone(ZoneEffect::ReturnExiledCardToOwnersGraveyard { .. })
             // Both ETB sacrifice-unless arms always act on their own source — no chosen target.
-            | Effect::Choice(ChoiceEffect::SacrificeSelfUnlessPay { .. })
+            | Effect::Choice(ChoiceEffect::PayOrElse { .. })
             | Effect::Choice(ChoiceEffect::SacrificeSelfUnlessReturnLand { .. })
             // Gomazoa enumerates its own blocked creatures internally — no chosen target.
             | Effect::Zone(ZoneEffect::TuckSelfAndBlockedCreatures)
             // Homeward Path enumerates every mismatched creature on the battlefield internally
             // — no chosen target (see the variant doc).
-            | Effect::Control(ControlEffect::RevertAllCreaturesToOwners) => TargetSpec::None,
+            | Effect::Control(ControlEffect::RevertAllCreaturesToOwners)
+            | Effect::Control(ControlEffect::TapSource) => TargetSpec::None,
         }
     }
 
@@ -1119,12 +1275,14 @@ impl Effect {
                 targets,
                 kind,
                 divided,
+                max_total,
             }) => Effect::Counters(CountersEffect::PutCounters {
                 count: Amount::Fixed(count as i32),
                 target,
                 targets,
                 kind,
                 divided,
+                max_total,
             }),
             other => other,
         }
@@ -1236,6 +1394,25 @@ pub enum CounterKind {
     /// mana ..."): banked mana potential, removed later (possibly many at once, unlike the
     /// pool's other remove-a-counter costs) to fund a burst of mana.
     Storage,
+    /// A corpse counter (CR 122.1 — Scavenging Ghoul): banked deaths, one per creature that died
+    /// this turn, spent one at a time to pay the Ghoul's own regeneration. Inert bookkeeping — it
+    /// changes nothing about the permanent by itself.
+    Corpse,
+    /// A mire counter (CR 122.1 — Cyclopean Tomb): a functional reminder counter marking a land
+    /// that "is a Swamp for as long as it has a mire counter on it." Like
+    /// [`Vow`](Self::Vow), the counter *is* the effect — the type change outlives the Tomb, so
+    /// there is nothing on the battlefield left to read it off, and
+    /// [`Game::effective_subtypes`](crate::Game) consults this slot directly.
+    Mire,
+    /// A vitality counter (CR 122.1 — Living Artifact): banked damage, one per point dealt to the
+    /// enchantment's controller, spent one per upkeep for 1 life. Inert bookkeeping like
+    /// [`Corpse`](Self::Corpse) — it changes nothing about the permanent by itself.
+    Vitality,
+    /// A +1/+0 counter (CR 121.1 — Clockwork Beast): a real P/T counter, not bookkeeping, read
+    /// out of this map by [`Game::pt_layers`] in layer 7d exactly like
+    /// [`MinusOneMinusOne`](Self::MinusOneMinusOne) — power only, toughness untouched, which is
+    /// why it can't ride the scalar `plus_counters` path.
+    PlusOnePlusZero,
 }
 
 impl CounterKind {
@@ -1247,7 +1424,7 @@ impl CounterKind {
     /// `&'static [(CounterKind, u8)]` slice if the kind set ever needs to be open-ended. A counter
     /// kind that sits on a *player* (poison, CR 122.1) doesn't belong here at all — it has its own
     /// parallel [`PlayerCounterKind`] and its own store on [`Player::kind_counters`].
-    pub const COUNT: usize = 10;
+    pub const COUNT: usize = 14;
 
     /// Every kind, for enumerating "each kind present" (proliferate, move/remove-all-counters).
     pub const ALL: [CounterKind; Self::COUNT] = [
@@ -1261,6 +1438,10 @@ impl CounterKind {
         CounterKind::Strife,
         CounterKind::Age,
         CounterKind::Storage,
+        CounterKind::Corpse,
+        CounterKind::Mire,
+        CounterKind::Vitality,
+        CounterKind::PlusOnePlusZero,
     ];
 }
 
@@ -1344,7 +1525,7 @@ pub enum AbilityRestriction {
 /// by [`Effect::Static(StaticEffect::GrantToAttached)`]. `cost` and `trigger` are mutually
 /// exclusive: an activated grant (`cost`, `trigger: None`) is the non-mana twin of
 /// [`Effect::Static(StaticEffect::GrantManaAbility)`]'s inline `cost`/`mana`, surfaced by
-/// [`Game::granted_attachment_abilities`] and synthesized into an [`Ability`] by
+/// [`Game::granted_activated_abilities`] and synthesized into an [`Ability`] by
 /// [`Game::ability_at`]; a triggered grant (`trigger: Some(_)`, `cost` unused) is surfaced by
 /// [`Game::granted_attachment_triggers`] instead and never becomes an activatable index. Neither
 /// is ever resolved off the stack itself. Read live off the attachment scan, so it disappears the
@@ -1383,6 +1564,12 @@ pub struct GrantedAbility {
         schemars(with = "Option<crate::de::GrantedTriggerTag>")
     )]
     pub trigger: Option<Trigger>,
+    /// "You **may** pay {W}{W}. If you do, …" on a *triggered* grant (Farmstead) — the granted
+    /// ability's own [`Ability::optional`], which pairs with `cost`'s mana to raise the same
+    /// pay-or-decline pause an authored optional trigger does. Ignored on an activated grant,
+    /// where declining is just not activating.
+    #[cfg_attr(feature = "card-dsl", serde(default))]
+    pub optional: bool,
 }
 
 /// The indefinite characteristics set an [`Effect::Zone(ZoneEffect::ReanimateToBattlefield)`] with a `becomes`
@@ -1483,6 +1670,35 @@ pub struct ActivationCost {
     /// loyalty ability's own built-in sorcery-speed timing ([`loyalty`](Self::loyalty)) — this
     /// flag is for ordinary (non-loyalty) activated abilities.
     pub sorcery_speed: bool,
+    /// "Activate only during an opponent's turn" (CR 602.5b — Nettling Imp): someone other than
+    /// the activating player must be the active player. The activation-side member of the same
+    /// window family as [`CardDef`](crate::CardDef)'s `cast_only_during_combat` /
+    /// `cast_only_before_attackers` / `cast_only_before_combat_damage` cast restrictions, and
+    /// composable with the sibling below the same way those are with each other.
+    pub only_during_opponents_turn: bool,
+    /// "Activate only during your turn" (CR 602.5b — Instill Energy's free untap): the mirror of
+    /// the sibling above, and the phase-wide relative of
+    /// [`only_during_your_upkeep`](Self::only_during_your_upkeep)'s single step. Not the same as
+    /// [`sorcery_speed`](Self::sorcery_speed), which also demands an empty stack and a main phase
+    /// — this one only asks whose turn it is, so it activates in combat.
+    pub only_during_your_turn: bool,
+    /// "…before attackers are declared" (CR 602.5b — Nettling Imp): the activation-side twin of
+    /// `CardDef::cast_only_before_attackers` (Master Warcraft) and gated identically — the window
+    /// runs up to and including the declare-attackers step, and shuts the moment the declaration
+    /// is actually made rather than at the step boundary.
+    pub only_before_attackers: bool,
+    /// "Activate only during your upkeep" (CR 602.5b — Cyclopean Tomb): a step-and-controller
+    /// window rather than the phase-shaped ones above, and the tightest the pool asks for. The
+    /// controller half is what makes it "your" upkeep, so this is not just `only_before_attackers`
+    /// with a different step.
+    pub only_during_your_upkeep: bool,
+    /// "Only this creature's owner may activate this ability" (CR 602.5c — Personal
+    /// Incarnation): the pool's one activation restriction keyed to ownership rather than
+    /// control.
+    /// ponytail: this only ever *narrows* who may activate. The printed line also widens it —
+    /// an owner who has lost control may still activate — but CR 602.2's controller check runs
+    /// first here, so a stolen Incarnation is activatable by nobody rather than by its thief.
+    pub only_owner_may_activate: bool,
     /// "Return this to its owner's hand" as part of the cost (CR 118 — Rootha, Mercurial
     /// Artist's "{2}, Return Rootha to its owner's hand: …"). Paid on activation as a self-bounce
     /// (a token ceases to exist instead, CR 111.7); the source is always payable since an
@@ -1596,6 +1812,14 @@ pub enum Condition {
         subtypes: &'static [&'static str],
         count: u32,
     },
+    /// "if you control no lands whose type line carries any of `subtypes`" (Sea Serpent's
+    /// "when you control no Islands"). The empty-board mirror of
+    /// [`ControlsLandsWithSubtype`](Self::ControlsLandsWithSubtype), which only counts *upward* —
+    /// `count = 0` there would hold vacuously.
+    ControlsNoLandsWithSubtype {
+        #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::static_str_slice"))]
+        subtypes: &'static [&'static str],
+    },
     /// "if an opponent controls `count` or more lands whose type line carries any of
     /// `subtypes`" (Massacre's free-cast permission: "if an opponent controls a Plains" —
     /// `subtypes = ["Plains"], count = 1`). The opponent-scoped twin of
@@ -1693,6 +1917,12 @@ pub enum Condition {
     /// which lapses the instant combat ends or the permanent leaves combat. The printed grant
     /// persists through end of combat and the rest of the turn.
     SourceAttackedThisTurn,
+    /// "if this creature attacked or blocked this combat" (Clockwork Beast's end-of-combat
+    /// wind-down). Reads the live [`CombatState`](crate::CombatState) — this is checked as the
+    /// ability would trigger (CR 603.4), and [`Trigger::EndOfCombat`] is queued from the
+    /// end-of-combat turn-based action *before* [`Event::CombatCleared`], so the declarations
+    /// are still there to read.
+    SourceAttackedOrBlockedThisCombat,
     /// "if you control `at_least` or more `color` permanents" (Mistveil Plains's "activate only
     /// if you control two or more white permanents") — an activation restriction, checked in
     /// [`Game::ability_activation_gate`]. Counts the controller's battlefield permanents whose
@@ -1716,6 +1946,40 @@ pub enum Condition {
     /// *both* checks, and the pool falsifies skipping the second (Magma Opus's instant-speed "tap
     /// two target permanents" can tap the source in response, after it triggered untapped).
     SourceUntapped,
+    /// "if [this permanent] is tapped" (Mana Vault's draw-step ping) — the exact negation of
+    /// [`SourceUntapped`](Self::SourceUntapped), spelled as its own variant because an
+    /// `[abilities.condition]` intervening-if has no negation axis (only a nested
+    /// [`Effect::Conditional`] carries `negate`). Read at both of CR 603.4's checks the same way
+    /// its twin is: at trigger placement in [`Game::ability_condition_holds`], and again fresh at
+    /// resolution.
+    SourceTapped,
+    /// The gate that turns "at the beginning of **each** upkeep" into "at the beginning of the
+    /// upkeep of **enchanted permanent's controller**" (the 2ed upkeep-tax Aura cycle — Cursed
+    /// Land, Feedback, Wanderlust, Warp Artifact): holds only on the upkeep of the player who
+    /// controls this Aura's host, which need not be the Aura's own controller. Source-object-based
+    /// like [`SourceUntapped`](Self::SourceUntapped), and it also reads
+    /// `TriggerContext::active_player`, so it belongs on a [`Trigger::EachUpkeep`] ability — the
+    /// only trigger that threads one.
+    /// ponytail: an intervening-if rather than its own trigger variant — a trigger that fires and
+    ///   is filtered out at placement never reaches the stack, so it is indistinguishable from one
+    ///   that never fired. Give it a real variant if a card ever needs to *see* the non-fire.
+    EnchantedPermanentsControllersUpkeep,
+    /// The gate that turns "at the beginning of **each** upkeep" into "at the beginning of the
+    /// **chosen player's** upkeep" (Black Vise): holds only on the upkeep of the opponent this
+    /// permanent's as-enters [`Effect::Choice(ChoiceEffect::ChooseOpponent)`] named. The
+    /// chosen-opponent twin of
+    /// [`EnchantedPermanentsControllersUpkeep`](Self::EnchantedPermanentsControllersUpkeep) above —
+    /// source-object-based, reads `TriggerContext::active_player`, and belongs on a
+    /// [`Trigger::EachUpkeep`] ability for the same reasons. Never holds before the choice is
+    /// answered.
+    ChosenPlayersUpkeep,
+    /// "if enchanted creature has `keyword`" (Earthbind's enters trigger: "if enchanted creature
+    /// has flying"). Source-object-based like
+    /// [`EnchantedPermanentsControllersUpkeep`](Self::EnchantedPermanentsControllersUpkeep) above —
+    /// it reads the Aura's own attachment — and asks after the host's *effective* keyword set, so a
+    /// granted flying counts. An Aura with no host (or on a host that has since lost the keyword)
+    /// never holds.
+    EnchantedCreatureHasKeyword { keyword: Keyword },
     /// "as long as you have the city's blessing" (CR 702.131, Ascend — tendershoot_dryad's
     /// Saproling anthem). Reads the controller's sticky `Player::has_citys_blessing` flag, set
     /// by a state-based action ([`Game::check_state_based_actions`]) once they control ten or
@@ -1741,6 +2005,11 @@ pub enum Condition {
     /// the controller — the all-graveyards sibling of
     /// [`ArtifactOrCreatureCardsInYourGraveyardAtLeast`](Self::ArtifactOrCreatureCardsInYourGraveyardAtLeast).
     CreatureCardsInAllGraveyardsAtLeast { count: u32 },
+    /// "if this card is in your graveyard with `count` or more creature cards above it" (Nether
+    /// Shadow). A *positional* graveyard read: only the cards buried on top of the source count,
+    /// so a creature card underneath it never digs it out. Source-object-based like
+    /// [`Compare`](Self::Compare)'s source operands, so it reads `TriggerContext::source`.
+    CreatureCardsAboveThisInGraveyardAtLeast { count: u32 },
     /// "as long as an opponent has `at_most` or less life" (Bloodghast's conditional haste) — an
     /// existential over the ability controller's opponents (CR 104.3a): holds when any living
     /// opponent's life is `at_most` or lower. Evaluated live, so a life change across the
@@ -1770,6 +2039,13 @@ pub enum Condition {
     /// Reads the controller's turn-scoped `Player::land_entered_under_your_control_this_turn`
     /// flag, set at the permanent-enters choke and reset each untap.
     LandEnteredUnderYourControlThisTurn,
+    /// "if it wasn't the first land you played this turn" (Fastbond — `at_least = 2`): the
+    /// controller has *played* at least `at_least` lands this turn. Reads `Player::lands_played`,
+    /// which the [`Event::LandPlayed`](crate::Event) apply already bumped by the time CR 603.4's
+    /// check runs, so the land being played counts itself. Narrower than
+    /// [`LandEnteredUnderYourControlThisTurn`](Self::LandEnteredUnderYourControlThisTurn) above —
+    /// a fetched or token land isn't *played*, and never feeds this.
+    LandsPlayedThisTurnAtLeast { at_least: u32 },
     /// "if you control a prime number of lands" (Zimone, All-Questioning). Reads
     /// [`Game::lands_controlled`] through a small trial-division primality test.
     YouControlPrimeNumberOfLands,
@@ -1779,6 +2055,18 @@ pub enum Condition {
     /// `ctx.controller`, re-evaluated live like every other static-anthem gate here — flips off
     /// the instant the turn passes to someone else, not just at cleanup.
     DuringYourTurn,
+    /// "Activate only during your upkeep" (Rock Hydra) — the narrower sibling of
+    /// [`DuringYourTurn`](Self::DuringYourTurn): the controller must be the active player *and*
+    /// the game must be in the upkeep step. Read through the same
+    /// [`Game::ability_activation_gate`](crate::Game) path as [`DuringCombat`](Self::DuringCombat).
+    DuringYourUpkeep,
+    /// "Activate only during combat" (Jade Statue — CR 506.1's combat phase, from Beginning of
+    /// Combat through End of Combat). Holds iff the current step is a combat step, whoever the
+    /// active player is — the Statue's own text names no seat, so it animates on an opponent's
+    /// turn to block. The activation-timing sibling of [`DuringYourTurn`](Self::DuringYourTurn),
+    /// read through the same [`Game::ability_activation_gate`](crate::Game) path a spell's
+    /// `cast_only_during_combat` field covers on the cast side.
+    DuringCombat,
     /// "If you win the clash" (Lash Out — CR 701.22d): reads the resolution-scoped
     /// [`Game::clash_won`](crate::Game) flag a preceding [`Effect::Dig(DigEffect::Clash)`](crate::Effect::Dig(DigEffect::Clash))
     /// step in the same resolution just set. Not a persistent board fact — it lives only for the
@@ -1911,6 +2199,14 @@ pub fn contextualize_effect(effect: Effect, ctx: TriggerContext) -> Effect {
         Some((power, counters)) => fill_dying_source_amounts(effect, power, counters),
         None => effect,
     };
+    // The same snapshot for the Aura watching someone else die: Creature Bond reads its host's
+    // toughness and controller, neither of which survives the host's trip to the graveyard.
+    let effect = match ctx.dying_enchanted_creature_stats {
+        Some((toughness, controller)) => {
+            fill_dying_enchanted_creature_payoff(effect, toughness, controller)
+        }
+        None => effect,
+    };
     // Same CR 603.10a last-known-information shape, one step over: an `AnEnchantedCreatureDies`
     // watch's `Amount::AurasYouControlledAttachedToDyingCreature` reads the pre-move attachment
     // count baked in at placement.
@@ -1964,8 +2260,8 @@ pub fn contextualize_effect(effect: Effect, ctx: TriggerContext) -> Effect {
     // CR 510.2/603.10a: a `DealsCombatDamageToPlayer` trigger's "each other opponent" splash (Hydra
     // Omnivore) excludes whoever took the combat damage, locked in when the trigger goes on the
     // stack — same last-known-information shape as `combat_damage` above.
-    let effect = match ctx.combat_damage_recipient {
-        Some(player) => fill_combat_damage_recipient(effect, player),
+    let effect = match ctx.damage_recipient {
+        Some(player) => fill_damage_recipient(effect, player),
         None => effect,
     };
     // CR 510.2/603.10a: an `Attacks` trigger's reanimation target bound resolves against the
@@ -2010,8 +2306,12 @@ pub fn contextualize_effect(effect: Effect, ctx: TriggerContext) -> Effect {
     // A `DealsCombatDamageToCreature` trigger's destroy payoff needs the damaged creature's id,
     // not the attack tuple below — guarded separately for the same reason as
     // `dying_enchanted_creature` above.
+    let effect = match ctx.blocking_partner {
+        Some(partner) => fill_that_creature(effect, partner),
+        None => effect,
+    };
     let effect = match ctx.damaged_creature {
-        Some(damaged) => fill_damaged_creature(effect, damaged),
+        Some(damaged) => fill_that_creature(effect, damaged),
         None => effect,
     };
     // A `ThisPermanentLeavesBattlefield` trigger's sacrifice payoff needs the host this
@@ -2052,6 +2352,12 @@ pub fn contextualize_effect(effect: Effect, ctx: TriggerContext) -> Effect {
     } else {
         fill_discarded_nonland_cards(effect, ctx.discarded_nonland_cards)
     };
+    // A land-death watch's payoff (Dingus Egg's "that land's controller") needs the dead land's
+    // controller baked in — `controller_of` would answer its owner once it is a graveyard card.
+    let effect = match ctx.triggering_permanent_controller {
+        Some(player) => fill_triggering_permanent_controller(effect, player),
+        None => effect,
+    };
     // A delayed one-shot's copy payoff (Thunderclap Drake) needs the spell that fired the
     // armed watch, not the attack tuple below — guarded separately for the same reason as
     // `entering`/`dying_enchanted_creature` above.
@@ -2085,7 +2391,7 @@ pub fn contextualize_effect(effect: Effect, ctx: TriggerContext) -> Effect {
     // CR "at the beginning of each player's first main phase … that player adds {G}{G}".
     let effect = match ctx.active_player {
         Some(active_player) => fill_add_mana_recipient(
-            fill_each_draw_step_drawer(effect, active_player),
+            fill_active_player_payoff(effect, active_player),
             active_player,
         ),
         None => effect,
@@ -2198,6 +2504,12 @@ fn fill_entering_permanent(effect: Effect, entering: ObjectId) -> Effect {
             then_if_subtype,
             then,
         }),
+        Effect::Damage(DamageEffect::ToEnteringPermanentController { amount, .. }) => {
+            Effect::Damage(DamageEffect::ToEnteringPermanentController {
+                entering: Some(entering),
+                amount,
+            })
+        }
         Effect::Zone(ZoneEffect::AttachTriggeringAuraToMintedToken { .. }) => {
             Effect::Zone(ZoneEffect::AttachTriggeringAuraToMintedToken {
                 entering: Some(entering),
@@ -2261,20 +2573,57 @@ fn fill_dying_enchanted_creature(effect: Effect, dying: ObjectId) -> Effect {
     }
 }
 
-/// Rewrite a [`Trigger::DealsCombatDamageToCreature`] look-back destroy placeholder (Stinkweed
-/// Imp) to the damaged creature's id — mirrors [`fill_dying_enchanted_creature`] above, one
-/// effect variant only (flag-don't-force: no other pool card reads this context field yet).
-fn fill_damaged_creature(effect: Effect, damaged: ObjectId) -> Effect {
+/// Rewrite an `EnchantedCreatureDies` trigger's payoff that reads the *host* rather than the Aura
+/// (Creature Bond's "damage equal to that creature's toughness to the creature's controller") —
+/// both halves come from the same CR 603.10a snapshot, so they fill together.
+fn fill_dying_enchanted_creature_payoff(
+    effect: Effect,
+    toughness: i32,
+    controller: PlayerId,
+) -> Effect {
+    let fill = |amount: Amount| match amount {
+        Amount::DyingEnchantedCreatureToughness => Amount::Fixed(toughness),
+        other => other,
+    };
     match effect {
-        Effect::Destroy(DestroyEffect::TriggeringDamagedCreature { .. }) => {
-            Effect::Destroy(DestroyEffect::TriggeringDamagedCreature {
-                creature: Some(damaged),
+        Effect::Damage(DamageEffect::ToDyingEnchantedCreaturesController { amount, .. }) => {
+            Effect::Damage(DamageEffect::ToDyingEnchantedCreaturesController {
+                player: Some(controller),
+                amount: fill(amount),
             })
         }
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
-                .map(|step| fill_damaged_creature(step.clone(), damaged))
+                .map(|step| {
+                    fill_dying_enchanted_creature_payoff(step.clone(), toughness, controller)
+                })
+                .collect();
+            Effect::Sequence {
+                steps: Arc::from(filled),
+            }
+        }
+        other => other,
+    }
+}
+
+/// Rewrite a look-back destroy placeholder to the creature the trigger's context named — the one
+/// a [`Trigger::DealsCombatDamageToCreature`] source just damaged (Stinkweed Imp), or the one on
+/// the other side of a [`Trigger::BlocksOrBecomesBlockedBy`] block pair (Cockatrice). Mirrors
+/// [`fill_dying_enchanted_creature`] above, one effect variant only.
+fn fill_that_creature(effect: Effect, creature: ObjectId) -> Effect {
+    match effect {
+        Effect::Destroy(DestroyEffect::ThatCreature { at, .. }) => {
+            Effect::Destroy(DestroyEffect::ThatCreature {
+                creature: Some(creature),
+                attack_rider: AttackRider::default(),
+                at,
+            })
+        }
+        Effect::Sequence { steps } => {
+            let filled: Vec<Effect> = steps
+                .iter()
+                .map(|step| fill_that_creature(step.clone(), creature))
                 .collect();
             Effect::Sequence {
                 steps: Arc::from(filled),
@@ -2345,6 +2694,8 @@ fn fill_dying_permanent_types(effect: Effect, types: TypeSet) -> Effect {
             keep_one,
             life_loss,
             count,
+            down_to_fewest,
+            lose_game_if_short,
             then,
         }) if filter.shares_type_with_dying_permanent => Effect::Choice(ChoiceEffect::EachPlayerSacrifices {
             filter: PermanentFilter { types, ..filter },
@@ -2352,6 +2703,8 @@ fn fill_dying_permanent_types(effect: Effect, types: TypeSet) -> Effect {
             keep_one,
             life_loss,
             count,
+            down_to_fewest,
+            lose_game_if_short,
             then,
         }),
         Effect::Sequence { steps } => {
@@ -2537,19 +2890,86 @@ fn fill_combat_damage_source_controller(effect: Effect, player: PlayerId) -> Eff
     }
 }
 
-/// Rewrite a [`TriggerContext::combat_damage_recipient`]-reading effect placeholder to the player
-/// who took the combat damage: [`Effect::Damage(DamageEffect::EachOtherOpponent)`] (Hydra Omnivore's "each *other*
-/// opponent") — mirrors [`fill_combat_damage_source_controller`] above, one field over.
-fn fill_combat_damage_recipient(effect: Effect, player: PlayerId) -> Effect {
+/// Rewrite a [`TriggerContext::damage_recipient`]-reading effect placeholder to the player
+/// who took the damage: [`Effect::Damage(DamageEffect::EachOtherOpponent)`] (Hydra Omnivore's "each *other*
+/// opponent") and [`Effect::Choice(ChoiceEffect::Discard)`] (Hypnotic Specter's "*that player*
+/// discards a card at random") — mirrors [`fill_combat_damage_source_controller`] above, one field over.
+fn fill_damage_recipient(effect: Effect, player: PlayerId) -> Effect {
     match effect {
         Effect::Damage(DamageEffect::EachOtherOpponent { amount, .. }) => Effect::Damage(DamageEffect::EachOtherOpponent {
             amount,
             damaged: Some(player),
         }),
+        Effect::Choice(ChoiceEffect::Discard {
+            count,
+            target_player,
+            or_one_matching,
+            random,
+            damaged_player: true,
+            ..
+        }) => Effect::Choice(ChoiceEffect::Discard {
+            count,
+            target_player,
+            or_one_matching,
+            random,
+            damaged_player: true,
+            discarder: Some(player),
+        }),
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
-                .map(|step| fill_combat_damage_recipient(step.clone(), player))
+                .map(|step| fill_damage_recipient(step.clone(), player))
+                .collect();
+            Effect::Sequence {
+                steps: Arc::from(filled),
+            }
+        }
+        other => other,
+    }
+}
+
+/// Rewrite a [`TriggerContext::triggering_permanent_controller`]-reading effect placeholder to the
+/// player who controlled the permanent the trigger is about:
+/// [`Effect::Damage(DamageEffect::ToTriggeringPlayer)`] (Dingus Egg's "deals 2 damage to that
+/// land's controller", Manabarbs' "deals 1 damage to that player", Psychic Venom's "deals 2 damage
+/// to that land's controller") — the same slot Copper Tablet fills from `active_player`, since
+/// either way it names the one player the trigger is about.
+fn fill_triggering_permanent_controller(effect: Effect, player: PlayerId) -> Effect {
+    match effect {
+        Effect::Damage(DamageEffect::ToTriggeringPlayer { amount, .. }) => Effect::Damage(DamageEffect::ToTriggeringPlayer {
+            player: Some(player),
+            amount,
+        }),
+        // Power Leak's "that player may pay any amount of mana" names the same player its damage
+        // step does, so it fills from the same slot.
+        Effect::Choice(ChoiceEffect::TriggeringPlayerMayPayAnyAmountToPrevent {
+            prevent_up_to,
+            ..
+        }) => Effect::Choice(ChoiceEffect::TriggeringPlayerMayPayAnyAmountToPrevent {
+            prevent_up_to,
+            player: Some(player),
+        }),
+        // Paralyze's "that player may pay {4}" names the enchanted creature's controller, the same
+        // player Cursed Land's damage step names.
+        Effect::Choice(ChoiceEffect::TriggeringPlayerMayPay { cost, then, .. }) => {
+            Effect::Choice(ChoiceEffect::TriggeringPlayerMayPay {
+                cost,
+                then,
+                player: Some(player),
+            })
+        }
+        // Kudzu's "*that land's* controller may attach this Aura" — the same one player the
+        // trigger is about, filled from the same slot Psychic Venom's damage step uses.
+        Effect::Choice(ChoiceEffect::TriggeringPlayerMayAttachThisAuraToChosen { filter, .. }) => {
+            Effect::Choice(ChoiceEffect::TriggeringPlayerMayAttachThisAuraToChosen {
+                filter,
+                player: Some(player),
+            })
+        }
+        Effect::Sequence { steps } => {
+            let filled: Vec<Effect> = steps
+                .iter()
+                .map(|step| fill_triggering_permanent_controller(step.clone(), player))
                 .collect();
             Effect::Sequence {
                 steps: Arc::from(filled),
@@ -2561,7 +2981,7 @@ fn fill_combat_damage_recipient(effect: Effect, player: PlayerId) -> Effect {
 
 /// Rewrite a [`TriggerContext::active_player`]-reading effect placeholder to the player whose
 /// first main phase it is: [`Effect::Mana(ManaEffect::Add)`]'s `recipient` (Magus of the Vineyard's "that
-/// player adds {G}{G}") — mirrors [`fill_each_draw_step_drawer`] below, one field over. Only
+/// player adds {G}{G}") — mirrors [`fill_active_player_payoff`] below, one field over. Only
 /// `Sequence` recurses (no pool `add_mana` sits inside a `Conditional`).
 fn fill_add_mana_recipient(effect: Effect, active_player: PlayerId) -> Effect {
     match effect {
@@ -2601,21 +3021,42 @@ fn fill_add_mana_recipient(effect: Effect, active_player: PlayerId) -> Effect {
     }
 }
 
-/// Rewrite a [`TriggerContext::active_player`]-reading effect placeholder to the player whose
-/// draw step it is: [`Effect::Draw(DrawEffect::EachDrawStepPlayer)`] (Howling Mine's "that player draws an
-/// additional card") — mirrors [`fill_triggering_caster`] above. Recurses into
+/// Rewrite a [`TriggerContext::active_player`]-reading effect placeholder to the player whose step
+/// it is: [`Effect::Draw(DrawEffect::EachDrawStepPlayer)`] (Howling Mine's "that player draws an
+/// additional card") or [`Effect::Damage(DamageEffect::ToTriggeringPlayer)`] (Copper Tablet's "deals
+/// 1 damage to that player") — mirrors [`fill_triggering_caster`] above. Recurses into
 /// [`Effect::Conditional`]'s `then` (not just `Sequence`, unlike its siblings) so Howling Mine's
 /// CR 603.4 resolution-time re-check wrapper still gets its nested draw filled.
-fn fill_each_draw_step_drawer(effect: Effect, active_player: PlayerId) -> Effect {
+fn fill_active_player_payoff(effect: Effect, active_player: PlayerId) -> Effect {
     match effect {
         Effect::Draw(DrawEffect::EachDrawStepPlayer { count, .. }) => Effect::Draw(DrawEffect::EachDrawStepPlayer {
             drawer: Some(active_player),
             count,
         }),
+        Effect::Damage(DamageEffect::ToTriggeringPlayer { amount, .. }) => Effect::Damage(DamageEffect::ToTriggeringPlayer {
+            player: Some(active_player),
+            amount,
+        }),
+        // Power Leak's payment step names the same player its damage step does — the upkeep whose
+        // beginning the Aura watches is that player's, so it fills from here too.
+        Effect::Choice(ChoiceEffect::TriggeringPlayerMayPayAnyAmountToPrevent {
+            prevent_up_to,
+            ..
+        }) => Effect::Choice(ChoiceEffect::TriggeringPlayerMayPayAnyAmountToPrevent {
+            prevent_up_to,
+            player: Some(active_player),
+        }),
+        Effect::Choice(ChoiceEffect::TriggeringPlayerMayPay { cost, then, .. }) => {
+            Effect::Choice(ChoiceEffect::TriggeringPlayerMayPay {
+                cost,
+                then,
+                player: Some(active_player),
+            })
+        }
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
-                .map(|step| fill_each_draw_step_drawer(step.clone(), active_player))
+                .map(|step| fill_active_player_payoff(step.clone(), active_player))
                 .collect();
             Effect::Sequence {
                 steps: Arc::from(filled),
@@ -2629,11 +3070,11 @@ fn fill_each_draw_step_drawer(effect: Effect, active_player: PlayerId) -> Effect
         } => {
             let filled: Vec<Effect> = then
                 .iter()
-                .map(|step| fill_each_draw_step_drawer(step.clone(), active_player))
+                .map(|step| fill_active_player_payoff(step.clone(), active_player))
                 .collect();
             let filled_otherwise: Vec<Effect> = otherwise
                 .iter()
-                .map(|step| fill_each_draw_step_drawer(step.clone(), active_player))
+                .map(|step| fill_active_player_payoff(step.clone(), active_player))
                 .collect();
             Effect::Conditional {
                 condition,
@@ -2660,12 +3101,14 @@ fn map_effect_amounts(effect: Effect, f: &impl Fn(Amount) -> Amount) -> Effect {
             targets,
             kind,
             divided,
+            max_total,
         }) => Effect::Counters(CountersEffect::PutCounters {
             count: f(count),
             target,
             targets,
             kind,
             divided,
+            max_total,
         }),
         Effect::Token(TokenEffect::Create {
             token,
@@ -2696,6 +3139,25 @@ fn map_effect_amounts(effect: Effect, f: &impl Fn(Amount) -> Amount) -> Effect {
             count: f(count),
             target_player,
             tapped,
+        }),
+        Effect::Choice(ChoiceEffect::EachPlayerSacrifices {
+            scope,
+            keep_one,
+            filter,
+            life_loss,
+            count,
+            down_to_fewest,
+            lose_game_if_short,
+            then,
+        }) => Effect::Choice(ChoiceEffect::EachPlayerSacrifices {
+            scope,
+            keep_one,
+            filter,
+            life_loss,
+            count: f(count),
+            down_to_fewest,
+            lose_game_if_short,
+            then,
         }),
         Effect::Damage(DamageEffect::EachOtherOpponent { amount, damaged }) => Effect::Damage(DamageEffect::EachOtherOpponent {
             amount: f(amount),
@@ -2737,10 +3199,10 @@ fn fill_auras_attached_to_dying_creature(effect: Effect, auras: u32) -> Effect {
     })
 }
 
-/// Rewrite an `EnchantedCreatureDealsDamage` watch's `Amount::TriggeringDamageDealt` placeholder to
-/// the enchanted host's just-dealt damage (CR 609.7, Armadillo Cloak's "you gain that much life")
-/// — mirrors [`fill_auras_attached_to_dying_creature`] above, one `Amount` variant only
-/// (flag-don't-force: no other pool card reads this amount).
+/// Rewrite a damage watch's `Amount::TriggeringDamageDealt` placeholder to the damage that just
+/// fired it — the enchanted host's (CR 609.7, Armadillo Cloak's "you gain that much life") or the
+/// watcher's controller's own (Lich's "sacrifice that many nontoken permanents"). Mirrors
+/// [`fill_auras_attached_to_dying_creature`] above, one `Amount` variant only.
 fn fill_triggering_damage_dealt(effect: Effect, damage: i32) -> Effect {
     map_effect_amounts(effect, &|amount| match amount {
         Amount::TriggeringDamageDealt => Amount::Fixed(damage),
@@ -2984,11 +3446,17 @@ pub fn contextualize_sacrifice_effect(effect: Effect, power: i32, toughness: i32
             target,
             count,
             divided,
+            cant_be_regenerated,
+            exile_instead_of_dying,
+            gain_life_equal_to_damage,
         }) => Effect::Damage(DamageEffect::Target {
             amount: fill(amount),
             target,
             count,
             divided,
+            cant_be_regenerated,
+            exile_instead_of_dying,
+            gain_life_equal_to_damage,
         }),
         Effect::Counters(CountersEffect::PutCounters {
             count,
@@ -2996,12 +3464,14 @@ pub fn contextualize_sacrifice_effect(effect: Effect, power: i32, toughness: i32
             targets,
             kind,
             divided,
+            max_total,
         }) => Effect::Counters(CountersEffect::PutCounters {
             count: fill(count),
             target,
             targets,
             kind,
             divided,
+            max_total,
         }),
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps

@@ -2,6 +2,7 @@
 # Whenever Kaalia attacks an opponent, you may put an Angel, Demon, or Dragon creature card from
 # your hand onto the battlefield tapped and attacking that opponent.
 name = "Kaalia of the Vast"
+otags = ["attack-trigger", "attacking-matters-self", "cycle-cmd-face-commander", "evasion", "sneak-creature", "typal-angel", "typal-coupling", "typal-demon", "typal-dragon"]
 sets = ["2x2", "2xm", "cm1", "cma", "cmd", "mh3", "ocmd", "pmei", "prm", "pz1", "sld"]
 id = "cb8d80c9-ed58-4f2d-aa8c-c383370c7f1a"
 default_print = "e71c8c39-3fbb-4a42-9cf6-b3224f5a56fc"

@@ -100,6 +100,14 @@ pub enum VisibleEvent {
         object: ObjectId,
         color: u8,
     },
+    /// A text-changing spell resolved (CR 612.1 — Magical Hack, Sleight of Mind): every instance
+    /// of the word `from` in `object`'s text is now `to`. Public battlefield status, like
+    /// `ColorChosen` — and indefinite, so nothing ends it.
+    TextChanged {
+        object: ObjectId,
+        from: String,
+        to: String,
+    },
     /// A copy of a prepared permanent's back-face spell went on the stack (soc/sos prepare DFCs).
     /// Public — the stack is visible.
     PreparedSpellCast {
@@ -510,11 +518,24 @@ pub enum VisibleEvent {
         player: u8,
         amount: i32,
     },
+    /// `amount` damage that would have been dealt to a creature or a player was prevented by a
+    /// consumable "prevent the next N damage … this turn" shield (CR 615), spending that much of
+    /// it. Exactly one of `object`/`player` is set — what the damage was headed for.
+    DamagePrevented {
+        object: Option<ObjectId>,
+        player: Option<u8>,
+        amount: i32,
+    },
     MovedToCommandZone {
         card: ObjectId,
         from: ObjectId,
     },
     ManaEmptied {
+        player: u8,
+    },
+    /// `player` was granted an extra turn to take after the current one (Time Walk). Public — an
+    /// extra turn is announced on resolution, like any other spell's effect.
+    ExtraTurnQueued {
         player: u8,
     },
     DamageCleared {
@@ -690,6 +711,13 @@ pub enum VisibleEvent {
     /// information — the library is a hidden zone.
     LibraryShuffled {
         player: u8,
+    },
+    /// `player` looked at `target`'s hand (Glasses of Urza). Public that it happened, which is
+    /// why no card ids ride along — the cards themselves reach `player` through the snapshot,
+    /// whose hand gate now itemizes them for that one seat.
+    LookedAtHand {
+        player: u8,
+        target: u8,
     },
     /// The top card of `player`'s library was revealed — public to every player (CR 701.30),
     /// unlike a private look. The card stays on top; a later event moves it if the effect does.

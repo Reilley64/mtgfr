@@ -1,0 +1,35 @@
+# Flying, trample
+# At the beginning of your upkeep, sacrifice a creature other than this creature. If you can't,
+# this creature deals 7 damage to you.
+name = "Lord of the Pit"
+otags = ["burn-you", "evasion", "repeatable-sacrifice-outlet", "sacrifice-outlet-creature", "triggered-ability", "upkeep-cost", "hungry-demon"]
+sets = ["10e", "2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "ddc", "dvd", "fbb", "ima", "lea", "leb", "sld", "sum"]
+id = "ea152809-85a2-4fde-8251-3b1f267e4443"
+default_print = "3ac3a8d8-47a7-4e47-a16c-109aeccd8d1f"
+oracle = "Flying, trample\nAt the beginning of your upkeep, sacrifice a creature other than this creature. If you can't, this creature deals 7 damage to you."
+subtypes = ["Demon"]
+keywords = ["flying", "trample"]
+
+[cost]
+generic = 4
+black = 3
+
+[kind]
+type = "creature"
+power = 7
+toughness = 7
+
+# At the beginning of your upkeep, sacrifice a creature other than this creature. If you can't,
+# this creature deals 7 damage to you.
+# ponytail: "you control another creature" is spelled as "you control at least 2 creatures", which
+# is exact while the Lord itself is on the battlefield — the only time this trigger resolves. Give
+# the condition a real "another matching permanent" spelling if a card ever needs one off-board.
+[[abilities]]
+timing = "upkeep"
+
+# sacrifice a creature other than this creature. If you can't, this creature deals 7 damage to you.
+[[abilities.effects]]
+type = "conditional"
+condition = { type = "compare", left = "per_creature_you_control", op = "at_least", right = 2 }
+then = [{ type = "choice", mode = "sacrifice_own", filter = { types = "creature", other = true }, count = 1 }]
+otherwise = [{ type = "damage", mode = "to_self", amount = 7 }]

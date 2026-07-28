@@ -269,6 +269,7 @@ export type VisibleEvent =
   | { kind: "creature_type_chosen"; object: U32; subtype: string }
   | { color: number; kind: "color_chosen"; object: U32 }
   | { color: number; kind: "color_set_until_end_of_turn"; object: U32 }
+  | { from: string; kind: "text_changed"; object: U32; to: string }
   | { kind: "flipped"; object: U32 }
   | { controller: number; kind: "prepared_spell_cast"; source: U32; spell: U32; target?: null | WireTarget; x: number }
   | { controller: number; kind: "adventure_spell_cast"; source: U32; spell: U32; target?: null | WireTarget; x: number }
@@ -348,8 +349,10 @@ export type VisibleEvent =
   | { amount: number; kind: "combat_damage_dealt_to_creature"; source: U32; target: U32 }
   | { amount: number; kind: "damage_dealt_to_player"; player: number; source: U32 }
   | { amount: number; kind: "combat_damage_prevented"; player: number }
+  | { amount: number; kind: "damage_prevented"; object?: null | number; player?: null | number }
   | { card: U32; from: U32; kind: "moved_to_command_zone" }
   | { kind: "mana_emptied"; player: number }
+  | { kind: "extra_turn_queued"; player: number }
   | { kind: "damage_cleared"; object: U32 }
   | { amount: number; kind: "mana_added"; mana: number; player: number }
   | { kind: "mana_spent"; mana: Array<number>; player: number }
@@ -386,6 +389,7 @@ export type VisibleEvent =
   | { card: U32; from: U32; kind: "returned_to_hand" }
   | { card: U32; from: U32; kind: "tucked_to_library"; to_top: boolean }
   | { kind: "library_shuffled"; player: number }
+  | { kind: "looked_at_hand"; player: number; target: number }
   | { card: U32; def: string; kind: "revealed_top_of_library"; player: number }
   | { card: U32; kind: "put_on_bottom_of_library"; player: number }
   | { card?: string | null; from?: null | U32; kind: "searched_to_hand"; object: U32; player: number }
@@ -457,7 +461,7 @@ export type PendingChoiceView =
       source: U32;
     }
   | { kind: "may_yes_no"; label: MessageRef; player: number; source: U32 }
-  | { items: Array<ChoiceItem>; kind: "decline_untap"; player: number }
+  | { at_most_one?: Array<Array<U32>>; items: Array<ChoiceItem>; kind: "decline_untap"; player: number }
   | {
       can_pay: boolean;
       cost: WireCost;
@@ -482,6 +486,7 @@ export type PendingChoiceView =
   | { items: Array<ChoiceItem>; kind: "divide_counters"; player: number; spell: U32; total: number }
   | { items: Array<ChoiceItem>; kind: "scry"; player: number }
   | { items: Array<ChoiceItem>; kind: "surveil"; player: number }
+  | { items: Array<ChoiceItem>; kind: "reorder_top"; player: number }
   | { items: Array<ChoiceItem>; kind: "search_library"; player: number }
   | { items: Array<ChoiceItem>; kind: "select_from_top"; player: number; up_to: number }
   | {
@@ -500,7 +505,14 @@ export type PendingChoiceView =
       player: number;
       source: U32;
     }
-  | { items: Array<ChoiceItem>; keep_one?: boolean; kind: "sacrifice_edict"; player: number; source: U32 }
+  | {
+      count: number;
+      items: Array<ChoiceItem>;
+      keep_one?: boolean;
+      kind: "sacrifice_edict";
+      player: number;
+      source: U32;
+    }
   | { items: Array<ChoiceItem>; kind: "proliferate"; player: number; source: U32 }
   | { items: Array<ChoiceItem>; kind: "phase_out"; player: number; source: U32 }
   | { count: number; items: Array<ChoiceItem>; kind: "choose_activation_cost_targets"; player: number; source: U32 }
@@ -528,6 +540,7 @@ export type PendingChoiceView =
   | { items: Array<ChoiceItem>; kind: "choose_exiled_with_card_to_cast"; player: number; source: U32 }
   | {
       cast_targets?: Array<ChoiceItem>;
+      from_opponent_hand?: boolean;
       items: Array<ChoiceItem>;
       kind: "choose_exiled_dig_to_cast_free";
       player: number;
@@ -550,8 +563,15 @@ export type PendingChoiceView =
       player: number;
       source: U32;
     }
-  | { items: Array<ChoiceItem>; kind: "partition_revealed"; player: number; source: U32 }
-  | { kind: "choose_pile_for_hand"; pile_a: Array<ChoiceItem>; pile_b: Array<ChoiceItem>; player: number; source: U32 }
+  | { into_piles?: boolean; items: Array<ChoiceItem>; kind: "partition_revealed"; player: number; source: U32 }
+  | {
+      attacker?: ChoiceItem;
+      kind: "choose_pile_for_hand";
+      pile_a: Array<ChoiceItem>;
+      pile_b: Array<ChoiceItem>;
+      player: number;
+      source: U32;
+    }
   | { count: number; items: Array<ChoiceItem>; kind: "choose_exiled_to_cast_free"; player: number; source: U32 }
   | { item: ChoiceItem; kind: "revealed_card_to_battlefield_or_hand"; player: number }
   | { kind: "choose_mode"; labels: Array<MessageRef>; player: number; source: U32 }
@@ -568,6 +588,7 @@ export type PendingChoiceView =
   | { kind: "choose_color"; player: number; source: U32 }
   | {
       items: Array<ChoiceItem>;
+      choose_block_target?: boolean;
       kind: "choose_copy_target";
       player: number;
       put_counter_on_creature?: boolean;

@@ -1,0 +1,13 @@
+# Token: Wasp
+# Sources: the_hive.toml
+name = "Wasp"
+id = "e0a4cf18-57ca-47e5-b7b0-c26975601660"
+default_print = "c75b81b5-5c84-45d4-832a-20c038372bc6"
+subtypes = ["Insect"]
+keywords = ["flying"]
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+also = ["artifact"]

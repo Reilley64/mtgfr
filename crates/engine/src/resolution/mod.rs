@@ -149,8 +149,9 @@ impl Game {
                 self,
                 crate::pending::ChoiceRequest::ArrangeTop {
                     player: opponent,
+                    library: opponent,
                     count: 1,
-                    to_graveyard: false,
+                    rest: crate::ArrangeRest::Bottom,
                 },
             );
             if self.resolution_is_paused() {
@@ -207,6 +208,11 @@ mod tests {
         alternative_cost: None,
         cast_only_during_combat: false,
         cast_only_before_attackers: false,
+        cast_only_before_blockers: false,
+        cast_only_during_opponents_turn: false,
+        cast_only_before_combat_damage: false,
+        cast_only_during_declare_blockers: false,
+        cast_only_during_declare_attackers: false,
         approximates: None,
         oracle: None,
         sets: empty_slice(),

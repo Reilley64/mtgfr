@@ -6,6 +6,7 @@
 # If you would put one or more counters on a permanent or player, put twice that many of each of
 # those kinds of counters on that permanent or player instead.
 name = "Innkeeper's Talent"
+otags = ["activated-ability", "counter-doubler", "counters-matter", "cycle-blb-r-talent", "energy-increaser", "gives-pp-counters", "gives-ward", "repeatable-pp-counters", "rhystic", "triggered-ability"]
 id = "915b75d1-b5e3-4aca-a54c-beaccef0a2e4"
 default_print = "941b0afc-0e8f-45f2-ae7f-07595e164611"
 oracle = "(Gain the next level as a sorcery to add its ability.)\nAt the beginning of combat on your turn, put a +1/+1 counter on target creature you control.\n{G}: Level 2\nPermanents you control with counters on them have ward {1}.\n{3}{G}: Level 3\nIf you would put one or more counters on a permanent or player, put twice that many of each of those kinds of counters on that permanent or player instead."

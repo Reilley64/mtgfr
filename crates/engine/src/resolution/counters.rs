@@ -22,10 +22,20 @@ impl Game {
             CountersEffect::PutCounters {
                 count,
                 kind: Some(kind),
+                max_total,
                 ..
             } => {
                 let object = expect_object_target(target, "a kind-counter effect");
                 let count = self.resolve_count(count, controller, source, target, x) as i32;
+                // "This ability can't cause the total number of +1/+0 counters on this creature
+                // to be greater than seven" (Clockwork Beast, CR 121.1): the ceiling is on the
+                // recipient's total, so what lands is the room left, not the announced amount.
+                let count = match max_total {
+                    Some(cap) => {
+                        count.min(i32::from(cap) - i32::from(self.counters_of_kind(object, kind)))
+                    }
+                    None => count,
+                };
                 let count = self.kind_counters_after_replacements(controller, object, count);
                 if count <= 0 {
                     return Vec::new();
@@ -178,8 +188,8 @@ impl Game {
                         // players, and the DSL surface for this mode documents only
                         // all_players/each_opponent/target_opponent. Give this a real arm when
                         // one does.
-                        EdictScope::TargetedPlayers => unreachable!(
-                            "player counters have no targeted-players spelling in the card pool"
+                        EdictScope::TargetedPlayers | EdictScope::You => unreachable!(
+                            "player counters have no targeted-players or you spelling in the card pool"
                         ),
                         EdictScope::TargetedOpponent => unreachable!("handled above"),
                     })
@@ -212,8 +222,8 @@ impl Game {
                             EdictScope::EachOpponent => player != controller,
                             // ponytail: same residual as `PutCountersOnPlayer` above — no pool
                             // card spells a chosen-subset "remove all counters" mode.
-                            EdictScope::TargetedPlayers => unreachable!(
-                                "player counters have no targeted-players spelling in the card pool"
+                            EdictScope::TargetedPlayers | EdictScope::You => unreachable!(
+                                "player counters have no targeted-players or you spelling in the card pool"
                             ),
                             EdictScope::TargetedOpponent => unreachable!("handled above"),
                         })
@@ -311,7 +321,7 @@ impl Game {
             // `CountersPlaced`, mirroring `Game::remove_counters_events`; guarded so
             // a source with none doesn't go negative (unreachable in practice — the enclosing
             // ability's `SourceHasCounters` intervening-if already requires at least one).
-            CountersEffect::RemoveCounterFromSelf => {
+            CountersEffect::RemoveCounterFromSelf { kind: None } => {
                 if self.plus_counters(source) <= 0 {
                     return vec![];
                 }
@@ -319,6 +329,18 @@ impl Game {
                     object: source,
                     count: -1,
                     source_name,
+                }]
+            }
+            // Living Artifact: "you may remove a vitality counter from this Aura." The named-kind
+            // twin of the arm above, down the `KindCountersPlaced` path a named kind lives on.
+            CountersEffect::RemoveCounterFromSelf { kind: Some(kind) } => {
+                if self.counters_of_kind(source, kind) == 0 {
+                    return vec![];
+                }
+                vec![Event::KindCountersPlaced {
+                    object: source,
+                    kind,
+                    count: -1,
                 }]
             }
             _ => unreachable!("counters family mint received a non-family effect"),

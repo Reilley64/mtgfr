@@ -295,6 +295,7 @@ message PendingChoiceView {
     PendingChoiceViewChooseLegendaryKeep choose_legendary_keep = 68;
     PendingChoiceViewMayExileDiscardedToPlay may_exile_discarded_to_play = 69;
     PendingChoiceViewPayLifeOrEntersTapped pay_life_or_enters_tapped = 70;
+    PendingChoiceViewReorderTop reorder_top = 71;
   }
 }
 
@@ -441,6 +442,13 @@ message PendingChoiceViewScry {
   repeated ChoiceItem items = 2;
 }
 
+// The looked-at cards, top of a library the player may reorder but not split (Natural
+// Selection). Private to that player; every card goes back on top, so there is no second pile.
+message PendingChoiceViewReorderTop {
+  uint32 player = 1;
+  repeated ChoiceItem items = 2;
+}
+
 // The looked-at cards, top of library. Private to the surveilling player.
 message PendingChoiceViewSurveil {
   uint32 player = 1;
@@ -488,6 +496,8 @@ message PendingChoiceViewSacrificeEdict {
   // When true, the player keeps one permanent and sacrifices all others.
   bool keep_one = 3;
   repeated ChoiceItem items = 4;
+  // How many of `items` to choose (ignored when `keep_one`).
+  uint32 count = 5;
 }
 
 // Every counter-bearing permanent on the battlefield; this player may choose any number
@@ -667,6 +677,10 @@ message PendingChoiceViewChooseExiledDigToCastFree {
   uint32 source = 2;
   repeated ChoiceItem items = 3;
   repeated ChoiceItem cast_targets = 4;
+  // Word of Command reuses this view: `player` chooses one of `items` out of *target opponent's
+  // hand* and that opponent plays it immediately. Same answer shape, different wording — and
+  // `items` is empty for every seat but `player`, since a hand is private.
+  bool from_opponent_hand = 5;
 }
 
 // This player (the caster) may exile another top-of-library card or stop (Dance with
@@ -776,12 +790,15 @@ message PendingChoiceViewChooseCardName {
 // `items` (every other creature on the battlefield, public — CR 706/707.2, Altered Ego, Cursed
 // Mirror). Answered with the chosen creature, or a decline (the "you may"). Some non-copy choices
 // reuse the same "pick one object or decline" wire shape; `put_counter_on_creature` tells the
-// client to render "put a +1/+1 counter on a creature" copy instead of copy-entry wording.
+// client to render "put a +1/+1 counter on a creature" copy instead of copy-entry wording, and
+// `choose_block_target` to render False Orders' "have it block an attacking creature of your
+// choice" re-aim.
 message PendingChoiceViewChooseCopyTarget {
   uint32 player = 1;
   uint32 source = 2;
   repeated ChoiceItem items = 3;
   bool put_counter_on_creature = 4;
+  bool choose_block_target = 5;
 }
 
 // This player (the deployed attachment's controller) must choose a host among `items` (the
@@ -811,6 +828,10 @@ message PendingChoiceViewChooseLegendaryKeep {
 message PendingChoiceViewDeclineUntap {
   uint32 player = 1;
   repeated ChoiceItem items = 2;
+  // Smoke / Winter Orb (CR 502.2): each group is a set of `items` from which at most one may
+  // untap, so an answer that leaves two of a group untapped is rejected. Empty for a plain
+  // Rubinia-style pause, where every item is a free yes/no.
+  repeated ObjectIdList at_most_one = 3;
 }
 
 // The triggering opponent (`player`) may pay `cost` to stop `controller`'s optional draw —
@@ -880,6 +901,8 @@ message PendingChoiceViewPartitionRevealed {
   uint32 player = 1;
   uint32 source = 2;
   repeated ChoiceItem items = 3;
+  // Raging River rides this view to divide creatures into a "left" and a "right" pile.
+  bool into_piles = 4;
 }
 
 // This player (an **opponent** of the controller) must choose one of `items` (Murmurs from
@@ -899,6 +922,9 @@ message PendingChoiceViewChoosePileForHand {
   uint32 source = 2;
   repeated ChoiceItem pile_a = 3;
   repeated ChoiceItem pile_b = 4;
+  // Raging River: the attacking creature this left-or-right pick is for; unset for Fact or
+  // Fiction, whose pile pick is about no attacker at all.
+  optional ChoiceItem attacker = 5;
 }
 
 // The complete view one player is allowed to see: turn state, per-player facts, and the
@@ -1072,6 +1098,10 @@ message VisibleEvent {
     VisibleEventPlayerCountersPlaced player_counters_placed = 133;
     VisibleEventBecameMonstrous became_monstrous = 134;
     VisibleEventEmblemCreated emblem_created = 135;
+    VisibleEventDamagePrevented damage_prevented = 136;
+    VisibleEventLookedAtHand looked_at_hand = 137;
+    VisibleEventExtraTurnQueued extra_turn_queued = 138;
+    VisibleEventTextChanged text_changed = 139;
   }
   // 132 was VisibleEventPlayerPoisonChanged, superseded by the general player-counter
   // subsystem (`player_counters_placed`). Burned, not reused (docs/WIRE_COMPAT.md).
@@ -1137,6 +1167,15 @@ message VisibleEventCreatureTypeChosen {
 message VisibleEventColorChosen {
   uint32 object = 1;
   uint32 color = 2;
+}
+
+// A text-changing spell resolved (CR 612.1 — Magical Hack, Sleight of Mind): every instance of
+// the word `from` in `object`'s text is now `to`. Public battlefield status, like `ColorChosen`
+// — and indefinite, so nothing ends it.
+message VisibleEventTextChanged {
+  uint32 object = 1;
+  string from = 2;
+  string to = 3;
 }
 
 // A permanent flipped (CR 712 — a Kamigawa flip card): it now uses its back face's
@@ -1601,12 +1640,27 @@ message VisibleEventCombatDamagePrevented {
   int32 amount = 2;
 }
 
+// `amount` damage that would have been dealt to a creature or a player was prevented by a
+// consumable "prevent the next N damage … this turn" shield (Healing Salve, Samite Healer,
+// Conservator; CR 615), spending that much of it. Exactly one of `object`/`player` is set — what
+// the damage was headed for.
+message VisibleEventDamagePrevented {
+  optional uint32 object = 1;
+  optional uint32 player = 2;
+  int32 amount = 3;
+}
+
 message VisibleEventMovedToCommandZone {
   uint32 card = 1;
   uint32 from = 2;
 }
 
 message VisibleEventManaEmptied {
+  uint32 player = 1;
+}
+
+// `player` was granted an extra turn to take after the current one (Time Walk).
+message VisibleEventExtraTurnQueued {
   uint32 player = 1;
 }
 
@@ -1800,6 +1854,13 @@ message VisibleEventTuckedToLibrary {
 // information — the library is a hidden zone.
 message VisibleEventLibraryShuffled {
   uint32 player = 1;
+}
+
+// `player` looked at `target`'s hand (Glasses of Urza). Public that it happened; the cards
+// themselves reach `player` through the snapshot's hand gate, not through this event.
+message VisibleEventLookedAtHand {
+  uint32 player = 1;
+  uint32 target = 2;
 }
 
 // The top card of `player`'s library was revealed — public to every player (CR 701.30), unlike

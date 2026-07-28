@@ -177,6 +177,7 @@ impl Game {
 
         for attachment in self.attachments(object) {
             let name = self.def_of(attachment).name;
+            let aura_controller = self.controller_of(attachment);
             for ability in self.def_of(attachment).abilities.iter().cloned() {
                 match (ability.timing, ability.effect.clone()) {
                     (
@@ -211,11 +212,27 @@ impl Game {
                     }
                     (
                         Timing::Static,
-                        Effect::Static(StaticEffect::SetAttachedBasePt { power, toughness }),
+                        Effect::Static(StaticEffect::SetAttachedBasePt {
+                            power,
+                            toughness,
+                            noncreature_only,
+                        }),
                     ) => {
+                        if noncreature_only && self.host_is_printed_creature(object) {
+                            continue;
+                        }
                         push(
                             name,
-                            ModifierContribution::SetBasePowerToughness { power, toughness },
+                            ModifierContribution::SetBasePowerToughness {
+                                power: self.resolve_amount(power, aura_controller, object, None, 0),
+                                toughness: self.resolve_amount(
+                                    toughness,
+                                    aura_controller,
+                                    object,
+                                    None,
+                                    0,
+                                ),
+                            },
                         );
                     }
                     (Timing::Static, Effect::Static(StaticEffect::ControlAttached)) => {
@@ -245,6 +262,7 @@ impl Game {
                             colors,
                             exclude_source,
                             attacking_only,
+                            untapped_only,
                             all_players,
                             ..
                         }),
@@ -270,6 +288,9 @@ impl Game {
                         continue;
                     }
                     if attacking_only && !self.combat.attackers.contains(&object) {
+                        continue;
+                    }
+                    if untapped_only && self.as_permanent(object).is_some_and(|p| p.tapped) {
                         continue;
                     }
                     let name = def.name;
@@ -418,12 +439,17 @@ impl Game {
     /// permanent (a "red" source has a red pip) and by color-scoped anthems ([`Game::colors_of`]
     /// callers).
     ///
-    /// A CR 613.3c layer-5 color-SET ([`Permanent::set_color_eot`] — Wild Mongrel's "becomes the
-    /// color of your choice until end of turn") wins ahead of the derived/added colors below: it
-    /// *replaces* them rather than unioning, so a green Mongrel that becomes black reads as black
-    /// only, never green-and-black.
+    /// A CR 613.3c layer-5 color-SET ([`Permanent::set_color`] — Wild Mongrel's "becomes the
+    /// color of your choice until end of turn", Deathlace's "becomes black"; [`Spell::set_color`] — Fork's "except that the
+    /// copy is red") wins ahead of the derived/added colors below: it *replaces* them rather than
+    /// unioning, so a green Mongrel that becomes black reads as black only, never green-and-black.
     pub fn colors_of(&self, object: ObjectId) -> [bool; Color::COUNT] {
-        if let Some(color) = self.as_permanent(object).and_then(|p| p.set_color_eot) {
+        let set_color = match &self.objects[object as usize] {
+            Object::Permanent(p) => p.set_color.map(|(color, _)| color),
+            Object::Spell(s) => s.set_color,
+            _ => None,
+        };
+        if let Some(color) = set_color {
             let mut colors = [false; Color::COUNT];
             colors[color.index()] = true;
             return colors;
@@ -431,6 +457,16 @@ impl Game {
         let mut colors = color_identity(&self.def_of(object));
         if let Some(p) = self.as_permanent(object) {
             for color in p.added_colors_eot {
+                colors[color.index()] = true;
+            }
+        }
+        // Kormus Bell's "All Swamps are 1/1 **black** creatures" — a layer-5 add like a manland's,
+        // just scoped to a land type rather than to the permanent itself.
+        for (_, _, effect) in self.land_type_statics_on(object) {
+            let StaticEffect::AllLandsOfTypeBecome { add_colors, .. } = effect else {
+                continue;
+            };
+            for color in add_colors {
                 colors[color.index()] = true;
             }
         }
@@ -471,6 +507,17 @@ impl Game {
         }
     }
 
+    /// The CR 612.1 text change riding `object`, wherever it's stored: a permanent
+    /// ([`Permanent::text_swap`]) or a spell still on the stack ([`Spell::text_swap`] — Magical
+    /// Hack targets "spell or permanent"). `None` if `object` is neither, or was never changed.
+    pub(crate) fn text_swap_of(&self, object: ObjectId) -> Option<TextSwap> {
+        match &self.objects[object as usize] {
+            Object::Permanent(p) => p.text_swap,
+            Object::Spell(s) => s.text_swap,
+            _ => None,
+        }
+    }
+
     /// `player`'s commander color identity (CR 903.4) — the [`color_identity`] of their
     /// commander card, wherever it currently is (command zone or battlefield). All-`false` if
     /// `player` has no object flagged as a commander (a bare test setup with no designated
@@ -489,8 +536,14 @@ impl Game {
     /// Devastator are all WUR), or `None` for a colorless identity (no commander designated, or a
     /// colorless commander — CR 106.6 has no mana of no color).
     pub(crate) fn commander_identity_credit(&self, player: PlayerId) -> Option<Mana> {
-        let identity = self.commander_identity_of(player);
-        let mut colors = Color::ALL.iter().copied().filter(|c| identity[c.index()]);
+        Self::mana_credit_for_colors(self.commander_identity_of(player))
+    }
+
+    /// The cheapest single-mana credit that covers exactly `present`: nothing for no color, a
+    /// plain [`Mana::Color`] for one, [`Mana::Either`] for two, a [`Mana::OfColors`] restricted
+    /// set for three or more.
+    fn mana_credit_for_colors(present: [bool; Color::COUNT]) -> Option<Mana> {
+        let mut colors = Color::ALL.iter().copied().filter(|c| present[c.index()]);
         match (colors.next(), colors.next(), colors.next()) {
             (None, ..) => None,
             (Some(c), None, _) => Some(Mana::Color(c)),
@@ -498,12 +551,51 @@ impl Game {
             (Some(_), Some(_), Some(_)) => {
                 let mut mask = 0u8;
                 for c in Color::ALL {
-                    if identity[c.index()] {
+                    if present[c.index()] {
                         mask |= 1 << c.index();
                     }
                 }
                 Some(Mana::OfColors(mask))
             }
+        }
+    }
+
+    /// Which basic land types (CR 305.6) a type line carries, as the colors they tap for —
+    /// [`BASIC_LAND_TYPES`] is in WUBRG order, so its index *is* the color's.
+    fn basic_land_types(subtypes: &[&str]) -> [bool; Color::COUNT] {
+        let mut colors = [false; Color::COUNT];
+        for (color, basic) in colors.iter_mut().zip(BASIC_LAND_TYPES) {
+            *color = subtypes.contains(basic);
+        }
+        colors
+    }
+
+    /// The one mana a land's free base tap produces for `player` — the printed `produces` sugar,
+    /// resolved for the two credits that depend on the board (Command Tower, Exotic Orchard).
+    ///
+    /// A land whose basic land types have been *changed* (Evil Presence, CR 305.7) taps for those
+    /// types instead: it lost its old ones and the mana ability they granted along with them, and
+    /// gained the ones its new types grant. Every read of `produces` outside deserialization goes
+    /// through here so that holds at the tap intent and in the auto-tap planner alike.
+    pub(crate) fn land_mana_credit(&self, land: ObjectId, player: PlayerId) -> Option<Mana> {
+        let CardKind::Land {
+            produces, subtypes, ..
+        } = self.def_of(land).kind
+        else {
+            return None;
+        };
+        // CR 708.2: a face-down land has no subtypes, which is an absence rather than a
+        // type-changing effect. Its callers already refuse to tap it at all.
+        if !self.is_face_down(land) {
+            let effective = Self::basic_land_types(&self.effective_subtypes(land));
+            if effective != Self::basic_land_types(subtypes) {
+                return Self::mana_credit_for_colors(effective);
+            }
+        }
+        match produces? {
+            LandProduces::Mana(m) => Some(m),
+            LandProduces::CommanderIdentity => self.commander_identity_credit(player),
+            LandProduces::OpponentColors => self.opponent_producible_colors_credit(player),
         }
     }
 
@@ -519,6 +611,16 @@ impl Game {
     fn land_producible_colors(&self, land: ObjectId) -> [bool; Color::COUNT] {
         let mut colors = [false; Color::COUNT];
         let def = self.def_of(land);
+        // CR 305.7: a land whose basic types were changed produces what those types produce, and
+        // nothing its printed rules text used to say.
+        if let CardKind::Land { subtypes, .. } = def.kind
+            && !self.is_face_down(land)
+        {
+            let effective = Self::basic_land_types(&self.effective_subtypes(land));
+            if effective != Self::basic_land_types(subtypes) {
+                return effective;
+            }
+        }
         if let CardKind::Land {
             produces: Some(produces),
             ..
@@ -716,11 +818,26 @@ impl Game {
                         set_types,
                         add_subtypes,
                         set_subtypes,
+                        set_chosen_land_type,
                         lose_all_abilities,
                     }),
                 ) = (ability.timing, ability.effect.clone())
                 else {
                     continue;
+                };
+                // Phantasmal Terrain names its one type as it enters instead of printing it.
+                // `BASIC_LAND_TYPES` doubles as the static home for that single-element slice, so
+                // the answer needs no allocation; an unanswered choice changes nothing at all.
+                let set_subtypes = if set_chosen_land_type {
+                    let chosen = self.as_permanent(id).and_then(|p| p.chosen_subtype);
+                    let Some(i) =
+                        chosen.and_then(|c| BASIC_LAND_TYPES.iter().position(|&t| t == c))
+                    else {
+                        continue;
+                    };
+                    &BASIC_LAND_TYPES[i..=i]
+                } else {
+                    set_subtypes
                 };
                 effects.push(ContinuousEffect {
                     source: id,
@@ -789,12 +906,29 @@ impl Game {
                     }
                     (
                         Timing::Static,
-                        Effect::Static(StaticEffect::SetAttachedBasePt { power, toughness }),
-                    ) => effects.push(ContinuousEffect {
-                        source: id,
-                        timestamp,
-                        kind: ContinuousEffectKind::BasePtSet { power, toughness },
-                    }),
+                        Effect::Static(StaticEffect::SetAttachedBasePt {
+                            power,
+                            toughness,
+                            noncreature_only,
+                        }),
+                    ) => {
+                        if noncreature_only && self.host_is_printed_creature(host) {
+                            continue;
+                        }
+                        // Resolved against the *host*, not the Aura: Animate Artifact's "equal to
+                        // its mana value" is the enchanted artifact's mana value. Every other
+                        // attachment amount here (`GrantToAttached` above) reads the Aura, because
+                        // "gets +1/+1 for each Forest you control" is the Aura's own count.
+                        effects.push(ContinuousEffect {
+                            source: id,
+                            timestamp,
+                            kind: ContinuousEffectKind::BasePtSet {
+                                power: self.resolve_amount(power, controller, host, None, 0),
+                                toughness: self
+                                    .resolve_amount(toughness, controller, host, None, 0),
+                            },
+                        });
+                    }
                     (Timing::Static, Effect::Static(StaticEffect::SetAttachedTypes { .. })) => {}
                     _ => {}
                 }
@@ -834,6 +968,23 @@ impl Game {
                 kind: ContinuousEffectKind::BasePtSet { power, toughness },
             });
         }
+        // "Until this creature leaves the battlefield" (Gaea's Liege): the duration is a live
+        // lookup, not a scheduled cleanup — the moment `source` is no longer a permanent this
+        // entry stops being produced and the land's printed line is back.
+        if let Some((subtypes, source, timestamp)) = p.subtypes_set_while_source_remains
+            && self.as_permanent(source).is_some()
+        {
+            effects.push(ContinuousEffect {
+                source,
+                timestamp,
+                kind: ContinuousEffectKind::SetTypes {
+                    add_types: TypeSet::NONE,
+                    set_types: false,
+                    set_subtypes: Some(subtypes),
+                    add_subtypes: &[],
+                },
+            });
+        }
         if p.added_types != TypeSet::NONE || !p.added_subtypes.is_empty() {
             effects.push(ContinuousEffect {
                 source: object,
@@ -864,6 +1015,19 @@ impl Game {
                 kind: ContinuousEffectKind::PtDelta {
                     power: -minus_counters,
                     toughness: -minus_counters,
+                },
+            });
+        }
+        // Clockwork Beast's +1/+0 counters (CR 121.1): power only, so this can't fold into the
+        // scalar `plus_counters` above — it is its own layer-7d delta, like the -1/-1 read.
+        let plus_one_plus_zero = p.kind_counters[CounterKind::PlusOnePlusZero as usize] as i32;
+        if plus_one_plus_zero != 0 {
+            effects.push(ContinuousEffect {
+                source: object,
+                timestamp: self.static_continuous_timestamp(object),
+                kind: ContinuousEffectKind::PtDelta {
+                    power: plus_one_plus_zero,
+                    toughness: 0,
                 },
             });
         }
@@ -1060,6 +1224,51 @@ impl Game {
         })
     }
 
+    /// Whether a live Aura attached to `host` waives the [`Keyword::Defender`] attack
+    /// restriction — Animate Wall's "Enchanted Wall can attack as though it didn't have defender."
+    /// The host keeps the keyword; only `Game::can_attack`'s check for it is skipped, so this is
+    /// "as though", not a keyword loss. The mirror image of [`Self::host_cant_attack`], read off
+    /// the same attachment scan, so it ends the instant the Aura leaves.
+    pub(crate) fn host_may_attack_ignoring_defender(&self, host: ObjectId) -> bool {
+        self.attachments(host).into_iter().any(|id| {
+            !self.is_phased_out(id)
+                && self.def_of(id).abilities.iter().any(|a| {
+                    matches!(
+                        (a.timing, a.effect.clone()),
+                        (
+                            Timing::Static,
+                            Effect::Static(StaticEffect::GrantToAttached {
+                                may_attack_ignoring_defender: true,
+                                ..
+                            })
+                        )
+                    )
+                })
+        })
+    }
+
+    /// Whether a live Aura attached to `host` waives the summoning-sickness attack restriction
+    /// (CR 302.6) — Instill Energy's "Enchanted creature can attack as though it had haste."
+    /// Read only by `Game::can_attack`, so the host stays sick for everything else: its `{T}`
+    /// abilities are as locked as they were, which is the difference between this and haste.
+    pub(crate) fn host_may_attack_ignoring_summoning_sickness(&self, host: ObjectId) -> bool {
+        self.attachments(host).into_iter().any(|id| {
+            !self.is_phased_out(id)
+                && self.def_of(id).abilities.iter().any(|a| {
+                    matches!(
+                        (a.timing, a.effect.clone()),
+                        (
+                            Timing::Static,
+                            Effect::Static(StaticEffect::GrantToAttached {
+                                may_attack_ignoring_summoning_sickness: true,
+                                ..
+                            })
+                        )
+                    )
+                })
+        })
+    }
+
     /// Whether a live Aura attached to `host` carries a static [`Effect::Static(StaticEffect::GrantToAttached)`] with
     /// `cant_attack_controller = true` *and* is controlled by `defender` (the Vow cycle's
     /// "Enchanted creature can't attack you" — scoped to this Aura's own controller, unlike
@@ -1104,6 +1313,191 @@ impl Game {
         })
     }
 
+    /// The "can't be blocked by \[filter\]" restrictions live attached Auras grant `host`
+    /// (Invisibility), the granted twin of the printed
+    /// [`Effect::Static(StaticEffect::CantBeBlockedBy)`] and read alongside it by
+    /// [`Game::can_block`]. Several Auras may each contribute one, so this yields rather than
+    /// answering yes/no the way its `cant_block` sibling above does.
+    pub(crate) fn host_cant_be_blocked_by(&self, host: ObjectId) -> Vec<PermanentFilter> {
+        self.attachments(host)
+            .into_iter()
+            .filter(|&id| !self.is_phased_out(id))
+            .flat_map(|id| {
+                self.def_of(id)
+                    .abilities
+                    .iter()
+                    .filter_map(|a| match (a.timing, a.effect.clone()) {
+                        (
+                            Timing::Static,
+                            Effect::Static(StaticEffect::GrantToAttached {
+                                cant_be_blocked_by,
+                                ..
+                            }),
+                        ) => cant_be_blocked_by,
+                        _ => None,
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect()
+    }
+
+    /// Whether a live attached Aura makes `host` a creature that "all creatures able to block …
+    /// do so" (CR 509.1c — Lure). The requirement twin of [`Self::host_cant_be_blocked_by`]: that
+    /// one says who may not block, this one says who must.
+    pub(crate) fn host_must_be_blocked_by_all(&self, host: ObjectId) -> bool {
+        self.attachments(host).into_iter().any(|id| {
+            !self.is_phased_out(id)
+                && self.def_of(id).abilities.iter().any(|a| {
+                    matches!(
+                        (a.timing, a.effect.clone()),
+                        (
+                            Timing::Static,
+                            Effect::Static(StaticEffect::GrantToAttached {
+                                must_be_blocked_by_all: true,
+                                ..
+                            })
+                        )
+                    )
+                })
+        })
+    }
+
+    /// Whether any permanent on the battlefield holds `id` down with a live
+    /// [`Effect::Static(StaticEffect::DoesntUntap)`] (CR 502.2 — Mana Vault's own
+    /// `self_only` printing, Meekstone's power-3 filter over the whole table). Consulted by the
+    /// untap step's turn-based action and nowhere else: an untap *effect* ({3}: Untap this
+    /// artifact) ignores this entirely, which is exactly how those cards get free again.
+    /// Battlefield-wide like `Game::cant_block_filter`, not controller-scoped — Meekstone reads
+    /// "their controllers' untap steps", so who controls the Meekstone never enters into it.
+    pub(crate) fn doesnt_untap(&self, id: ObjectId) -> bool {
+        // Paralyze's attachment-scoped form. Folded in here rather than given its own scanner so
+        // the untap step keeps reading exactly one, and so "doesn't untap" means the same thing
+        // whether the source is an Aura on the permanent or a Meekstone across the table.
+        if self.attachments(id).into_iter().any(|aura| {
+            !self.is_phased_out(aura)
+                && self.def_of(aura).abilities.iter().any(|a| {
+                    matches!(
+                        (a.timing, a.effect.clone()),
+                        (
+                            Timing::Static,
+                            Effect::Static(StaticEffect::GrantToAttached {
+                                doesnt_untap: true,
+                                ..
+                            })
+                        )
+                    )
+                })
+        }) {
+            return true;
+        }
+        self.battlefield().into_iter().any(|source| {
+            self.functional_abilities(source)
+                .iter()
+                .any(|a| match (a.timing, a.effect.clone()) {
+                    (
+                        Timing::Static,
+                        Effect::Static(StaticEffect::DoesntUntap { self_only, filter }),
+                    ) => {
+                        if self_only {
+                            return source == id;
+                        }
+                        self.permanent_matches(
+                            &filter,
+                            id,
+                            self.controller_of(source),
+                            Some(source),
+                        )
+                    }
+                    _ => false,
+                })
+        })
+    }
+
+    /// Every live cap on how many permanents of a class may untap in one untap step (CR 502.2 —
+    /// Smoke's "no more than one creature", Winter Orb's "no more than one land"), as the
+    /// (source, filter) pairs the untap step matches its candidates against.
+    ///
+    /// Battlefield-wide and unscoped like [`Game::players_skip_untap_steps`] — both cards say
+    /// "players", so who controls them never enters into it. Unlike `doesnt_untap` this one honors
+    /// the ability's own `condition`, because Winter Orb's cap is gated on the Orb being untapped;
+    /// the read happens once as the untap step starts, so an Orb that untaps in that same step
+    /// (having been tapped down in response) never gets to stop the lands untapping beside it.
+    pub(crate) fn untap_at_most_one_filters(&self) -> Vec<(ObjectId, PermanentFilter)> {
+        let mut caps = Vec::new();
+        for source in self.battlefield() {
+            for ability in self.functional_abilities(source).iter() {
+                let Effect::Static(StaticEffect::UntapAtMostOne { filter }) = &ability.effect
+                else {
+                    continue;
+                };
+                if ability.timing != Timing::Static {
+                    continue;
+                }
+                if !ability.condition.is_none_or(|condition| {
+                    self.ability_condition_holds(
+                        condition,
+                        source,
+                        TriggerContext::of(self.controller_of(source)),
+                    )
+                }) {
+                    continue;
+                }
+                caps.push((source, *filter));
+            }
+        }
+        caps
+    }
+
+    /// Whether anything on the battlefield is telling the table to skip its untap steps
+    /// (CR 703.4a — Stasis's "Players skip their untap steps"). Battlefield-wide and unscoped:
+    /// "players" is everyone, the Stasis controller included, so who controls it never enters
+    /// into it.
+    ///
+    /// Consulted by the untap step's two real turn-based actions — phasing in (CR 502.1) and
+    /// untapping (CR 502.2) — and by nothing else. Losing summoning sickness and freeing a
+    /// planeswalker's loyalty are per-*turn* durations that this engine merely bookkeeps in the
+    /// same arm; they are not untap-step actions, so they survive the skip and a creature cast
+    /// under Stasis can still attack on its controller's next turn.
+    pub(crate) fn players_skip_untap_steps(&self) -> bool {
+        self.battlefield().into_iter().any(|source| {
+            self.functional_abilities(source).iter().any(|a| {
+                matches!(
+                    (a.timing, &a.effect),
+                    (
+                        Timing::Static,
+                        Effect::Static(StaticEffect::PlayersSkipUntapSteps)
+                    )
+                )
+            })
+        })
+    }
+
+    /// Whether a live Aura attached to `host` *other than* `aura` carries a static
+    /// [`Effect::Static(StaticEffect::GrantToAttached)`] with `cant_be_enchanted = true`
+    /// (Consecrate Land — "Enchanted land … can't be enchanted by other Auras"). Skipping `aura`
+    /// itself is what makes the restriction apply to *other* Auras: the one granting it never
+    /// closes the door on itself. Read by [`Game::attachment_host_legal`] (so an Aura already
+    /// there falls off, CR 704.5n) and by the Aura-spell target enumeration in
+    /// [`Game::legal_targets_for`] (so one can't be cast there in the first place, CR 303.4a).
+    pub(crate) fn host_cant_be_enchanted_by(&self, host: ObjectId, aura: ObjectId) -> bool {
+        self.attachments(host).into_iter().any(|id| {
+            id != aura
+                && !self.is_phased_out(id)
+                && self.def_of(id).abilities.iter().any(|a| {
+                    matches!(
+                        (a.timing, a.effect.clone()),
+                        (
+                            Timing::Static,
+                            Effect::Static(StaticEffect::GrantToAttached {
+                                cant_be_enchanted: true,
+                                ..
+                            })
+                        )
+                    )
+                })
+        })
+    }
+
     /// The strictest [`AbilityRestriction`] a live attached Aura's [`Effect::Static(StaticEffect::GrantToAttached)`]
     /// imposes on `host`'s own activated abilities (Faith's Fetters' `mana_only` carve-out vs
     /// Prison Term's unqualified `none`), or `None` if no attached Aura restricts them.
@@ -1131,6 +1525,19 @@ impl Game {
                     _ => None,
                 })
         })
+    }
+
+    /// Whether `host` is a creature for a `noncreature_only` attachment gate (Animate Artifact's
+    /// "as long as enchanted artifact isn't a creature").
+    ///
+    /// ponytail: reads *printed* types, not [`Game::effective_types`]. The gate has to ignore the
+    /// gating Aura's own creature-adding layer, and asking for effective types from inside the
+    /// attachment scan that feeds those layers would recurse. Printed types answer the case the
+    /// pool has — enchanting a printed artifact creature — and miss an artifact animated by
+    /// something else (a Karn, another Aura). The upgrade path is an `effective_types` variant that
+    /// takes a source to exclude.
+    fn host_is_printed_creature(&self, host: ObjectId) -> bool {
+        self.def_of(host).kind.types().intersects(TypeSet::CREATURE)
     }
 
     /// The latest attached [`Effect::Static(StaticEffect::SetAttachedBasePt)`] continuous-effect
@@ -1220,7 +1627,16 @@ impl Game {
         if self.host_loses_all_abilities(id) {
             return empty_slice();
         }
-        self.def_of(id).abilities.clone()
+        let printed = self.def_of(id).abilities.clone();
+        // CR 612.1 layer 3: a text change rewrites the words this object's own printed abilities
+        // name before every later read of them — see [`TextSwap::ability`] for how far that goes.
+        let Some(swap) = self.text_swap_of(id) else {
+            return printed;
+        };
+        printed
+            .iter()
+            .map(|ability| swap.ability(ability))
+            .collect()
     }
 
     /// Whether `id` is a bestowed permanent (CR 702.103) currently attached to a host: while so it
@@ -1232,8 +1648,66 @@ impl Game {
             .is_some_and(|p| p.bestowed && p.attached_to.is_some())
     }
 
+    /// Every live [`StaticEffect::AllLandsOfTypeBecome`] on the battlefield ("All Mountains are
+    /// Plains"), oldest source first. Whole-battlefield like [`Game::matching_anthems`] and for
+    /// the same reason — these say "All Mountains", not "Mountains you control" — and recomputed
+    /// per query rather than cached, the same as every other continuous-effect scan here.
+    ///
+    /// The order is CR 613.4's timestamp order, which is why the payloads come back as a list
+    /// rather than a merged answer: callers apply them in turn, so a second conversion acts on
+    /// what the first one left behind. Each entry keeps its `(timestamp, source)` for the one
+    /// caller that has to hand them on — a base-P/T set is a layer-7b entry like any other.
+    fn land_type_statics(&self) -> Vec<(u64, ObjectId, StaticEffect)> {
+        let mut statics = Vec::new();
+        for (index, object) in self.objects.iter().enumerate() {
+            let source = index as ObjectId;
+            if !matches!(object, Object::Permanent(_)) || self.is_phased_out(source) {
+                continue;
+            }
+            for ability in self.functional_abilities(source).iter() {
+                let (
+                    Timing::Static,
+                    Effect::Static(effect @ StaticEffect::AllLandsOfTypeBecome { .. }),
+                ) = (ability.timing, &ability.effect)
+                else {
+                    continue;
+                };
+                statics.push((self.static_continuous_timestamp(source), source, *effect));
+            }
+        }
+        statics.sort_by_key(|&(timestamp, source, _)| (timestamp, source));
+        statics
+    }
+
+    /// The live "all lands of a type are …" statics that apply to `id` right now, oldest first —
+    /// the handle for every characteristic these change *except* the subtype line itself, which
+    /// is mid-computation when it asks and so does its own matching against the line it is
+    /// building ([`Game::effective_subtypes`]).
+    fn land_type_statics_on(&self, id: ObjectId) -> Vec<(u64, ObjectId, StaticEffect)> {
+        // ponytail: a full battlefield sweep per characteristic read, so the empty-board case —
+        // every game with none of these three cards in it — has to cost nothing. Upgrade path if
+        // a board with one ever gets slow is a `Game`-level count maintained as permanents enter
+        // and leave, which buys nothing until then.
+        let statics = self.land_type_statics();
+        if statics.is_empty() {
+            return statics;
+        }
+        let subtypes = self.effective_subtypes(id);
+        statics
+            .into_iter()
+            .filter(|(_, _, effect)| {
+                let StaticEffect::AllLandsOfTypeBecome { land_types, .. } = effect else {
+                    return false;
+                };
+                land_types.iter().any(|ty| subtypes.contains(ty))
+            })
+            .collect()
+    }
+
     /// A battlefield permanent's card types after the CR 613.4 type layer: its printed types plus
-    /// any added by an attached [`Effect::Static(StaticEffect::SetAttachedTypes)`] Aura (Darksteel Mutation → +Artifact).
+    /// any added by an attached [`Effect::Static(StaticEffect::SetAttachedTypes)`] Aura (Darksteel Mutation → +Artifact),
+    /// plus the card types a global land-type change grants every land of a type (Kormus Bell's
+    /// "All Swamps are 1/1 black creatures that are still lands").
     /// Reads printed types for a non-permanent (CR 613 applies only to the permanent).
     pub fn effective_types(&self, id: ObjectId) -> TypeSet {
         // CR 708.2: a face-down permanent (a manifest) is a creature and nothing else — its real
@@ -1269,6 +1743,14 @@ impl Game {
             };
             types = types.union(add_types);
         }
+        // "All Swamps are 1/1 black creatures that are **still lands**" — always additive, so
+        // there is no set-types global to order against the layer above.
+        for (_, _, effect) in self.land_type_statics_on(id) {
+            let StaticEffect::AllLandsOfTypeBecome { add_types, .. } = effect else {
+                continue;
+            };
+            types = types.union(add_types);
+        }
         types
     }
 
@@ -1286,14 +1768,27 @@ impl Game {
         if self.is_bestowed_and_attached(id) {
             return vec!["Aura"];
         }
-        let printed = self.def_of(id).subtypes;
+        let def = self.def_of(id);
+        // CR 305.6: a land's types are printed on its type line like any other subtype, but they
+        // live under [`CardKind::Land`]'s own `subtypes` (see [`CardDef::subtypes`]). Union them in
+        // here, the one read every subtype check routes through, so "Destroy all Plains"
+        // (Flashfires) catches the basic and every dual that shares the type. A `set_subtypes`
+        // layer below still replaces the whole line, land types included (CR 613.4).
+        let printed = def.printed_subtypes();
+        // CR 612.1 layer 3, and the reason a Hacked Swamp taps for {W}: `land_mana_credit`
+        // re-derives a land's mana from its *effective* basic land types, so rewriting the word
+        // here moves the mana with it.
+        let printed = match self.text_swap_of(id) {
+            Some(swap) => printed.into_iter().map(|s| swap.subtype(s)).collect(),
+            None => printed,
+        };
         if self.as_permanent(id).is_none() {
-            return printed.to_vec();
+            return printed;
         }
         let (_, _, set, added) = self.attached_type_layer(id);
         let mut subtypes = match set {
             Some(set) => set.to_vec(),
-            None => printed.to_vec(),
+            None => printed,
         };
         subtypes.extend_from_slice(added);
         let mut runtime_effects: Vec<_> = self
@@ -1315,6 +1810,42 @@ impl Game {
                 subtypes = set_subtypes.to_vec();
             }
             subtypes.extend_from_slice(add_subtypes);
+        }
+        // "All Mountains are Plains" (Conversion) matches on the line built so far rather than
+        // through `land_type_statics_on`, which would ask this function for the answer it is
+        // still computing. Matching here is also what makes CR 613.4 timestamp order mean
+        // something: a second conversion sees the type the first one left.
+        //
+        // Nothing but a basic land type is ever matched, so a line without one — every creature,
+        // every artifact, every spell — skips the battlefield sweep entirely.
+        if subtypes.iter().any(|s| BASIC_LAND_TYPES.contains(s)) {
+            for (_, _, effect) in self.land_type_statics() {
+                let StaticEffect::AllLandsOfTypeBecome {
+                    land_types,
+                    set_subtypes,
+                    ..
+                } = effect
+                else {
+                    continue;
+                };
+                // CR 305.7: taking on a basic land type costs a land every land type it had, so
+                // this replaces the line rather than extending it. An empty `set_subtypes` is a
+                // global that changes something other than the type (Kormus Bell).
+                if set_subtypes.is_empty() || !land_types.iter().any(|ty| subtypes.contains(ty)) {
+                    continue;
+                }
+                subtypes = set_subtypes.to_vec();
+            }
+        }
+        // "That land is a Swamp for as long as it has a mire counter on it" (Cyclopean Tomb,
+        // CR 305.7 — a type *set*, so the land keeps nothing else). Read off the counter rather
+        // than off a continuous effect on purpose: the Tomb can be long gone and the land is a
+        // Swamp still, so the counter is the only thing left holding the effect.
+        // ponytail: applied last, after any global conversion, instead of by CR 613.4 timestamp —
+        // the counter carries no timestamp to sort by. Give `Permanent` a mire timestamp if a
+        // board ever has both a mired land and a Conversion on it.
+        if self.counters_of_kind(id, CounterKind::Mire) > 0 {
+            subtypes = vec!["Swamp"];
         }
         subtypes
     }
@@ -1389,9 +1920,42 @@ impl Game {
         match self.def_of(object).kind {
             CardKind::Creature {
                 power, toughness, ..
-            } => Some((power, toughness)),
+            } => Some(self.defined_base_pt(object).unwrap_or((power, toughness))),
             _ => Some((0, 0)),
         }
+    }
+
+    /// The CR 604.3 layer-7a base P/T `object`'s own printed characteristic-defining ability
+    /// declares (Nightmare's "power and toughness are each equal to the number of Swamps you
+    /// control"), or `None` when it has no such ability. Both counts are resolved against today's
+    /// board on every recompute, so the creature tracks the count live; because this feeds
+    /// [`Game::pt_base`] rather than [`Game::pt_layers`], everything else — a base-set Aura, a
+    /// counter, an anthem — still applies on top in its own layer.
+    fn defined_base_pt(&self, object: ObjectId) -> Option<(i32, i32)> {
+        let controller = self.controller_of(object);
+        self.def_of(object).abilities.iter().find_map(|ability| {
+            let Effect::Static(StaticEffect::BasePowerToughnessFromAmount {
+                power,
+                toughness,
+                when,
+            }) = &ability.effect
+            else {
+                return None;
+            };
+            // A creature printing two of these (Gaea's Liege) keeps only the one whose combat
+            // state holds right now; the `find_map` then stops at it.
+            let attacking = self.combat.attackers.contains(&object);
+            match when {
+                DefiningPtWhen::Always => {}
+                DefiningPtWhen::Attacking if !attacking => return None,
+                DefiningPtWhen::NotAttacking if attacking => return None,
+                _ => {}
+            }
+            Some((
+                self.resolve_amount(*power, controller, object, None, 0),
+                self.resolve_amount(*toughness, controller, object, None, 0),
+            ))
+        })
     }
 
     /// Every CR 613 P/T continuous-effect entry currently affecting `object`: base-set 7b entries
@@ -1402,6 +1966,32 @@ impl Game {
         let mut effects = Vec::new();
         if let Some(effect) = self.set_base_pt(object) {
             effects.push(effect);
+        }
+        // Kormus Bell's "All Swamps are 1/1 …" — a layer-7b base set like any other, timestamped
+        // to the Bell so a later base set on the land itself still wins.
+        for (timestamp, source, effect) in self.land_type_statics_on(object) {
+            let StaticEffect::AllLandsOfTypeBecome {
+                add_types,
+                base_power,
+                base_toughness,
+                ..
+            } = effect
+            else {
+                continue;
+            };
+            // "All Mountains are Plains" sets no P/T; only the globals that make a land a
+            // creature print one.
+            if !add_types.intersects(TypeSet::CREATURE) {
+                continue;
+            }
+            effects.push(ContinuousEffect {
+                source,
+                timestamp,
+                kind: ContinuousEffectKind::BasePtSet {
+                    power: base_power,
+                    toughness: base_toughness,
+                },
+            });
         }
         effects.extend(
             self.attachment_continuous_effects(object)
@@ -1498,6 +2088,15 @@ impl Game {
                 keywords.push(keyword);
             }
         }
+        // CR 612.1 layer 3: "you may change 'swampwalk' to 'plainswalk'" is Magical Hack's own
+        // reminder text, and protection's colour is what Sleight of Mind is played for. Only this
+        // object's *printed* keywords move — a keyword granted below is the granting object's
+        // text, not this one's.
+        if let Some(swap) = self.text_swap_of(object) {
+            for keyword in &mut keywords {
+                *keyword = swap.keyword(*keyword);
+            }
+        }
         for effect in self
             .attachment_continuous_effects(object)
             .into_iter()
@@ -1542,6 +2141,18 @@ impl Game {
         // applied *after* the strip landed this turn — is filtered right back out.
         if let Some(p) = self.as_permanent(object) {
             keywords.retain(|k| !p.temp_lost_keywords.contains(k));
+        }
+        // "Enchanted creature loses flying" (Earthbind), an ability the Aura gained rather than one
+        // printed on it: stripped last for the same reason as the losses above — it beats every
+        // grant regardless of source — but indefinitely, and only for as long as the Aura is still
+        // attached here, since the loss lives on the Aura.
+        // ponytail: no CR 613 timestamp ordering against the grants it undoes; no pool card wants a
+        // grant applied later to win.
+        for aura in self.attachments(object) {
+            let Some(lost) = self.as_permanent(aura).map(|p| p.attachment_lost_keywords) else {
+                continue;
+            };
+            keywords.retain(|k| !lost.contains(k));
         }
         keywords
     }
@@ -1600,6 +2211,7 @@ impl Game {
                         chosen_subtype,
                         attacking_only,
                         blocking_only,
+                        untapped_only,
                         commander_only,
                         self_only,
                         exclude_source,
@@ -1664,6 +2276,9 @@ impl Game {
                         .iter()
                         .any(|&(blocker, _)| blocker == candidate)
                 {
+                    continue;
+                }
+                if untapped_only && self.as_permanent(candidate).is_some_and(|p| p.tapped) {
                     continue;
                 }
                 if commander_only && !self.is_commander(candidate) {
@@ -1739,6 +2354,32 @@ impl Game {
     pub(crate) fn combat_damage_prevented_by_source(&self, source: ObjectId) -> bool {
         self.replacement_registry()
             .combat_damage_prevented_by_source(source)
+    }
+
+    /// Rock Hydra's per-point shield (CR 615): "for each 1 damage that would be dealt to this
+    /// creature, if it has a +1/+1 counter on it, remove a +1/+1 counter from it and prevent that
+    /// 1 damage." Unlike the two whole-event shields below it covers only as many points as the
+    /// Hydra has counters — the returned `i32` is the rest of the hit, which is dealt for real.
+    pub(crate) fn per_point_counter_shield(
+        &self,
+        target: ObjectId,
+        amount: i32,
+    ) -> (Vec<Event>, i32) {
+        if amount <= 0 || !self.replacement_registry().phantom_shield_per_point(target) {
+            return (Vec::new(), amount);
+        }
+        let paid = amount.min(self.plus_counters(target).max(0));
+        if paid <= 0 {
+            return (Vec::new(), amount);
+        }
+        (
+            vec![Event::CountersPlaced {
+                object: target,
+                count: -paid,
+                source_name: self.def_of(target).name,
+            }],
+            amount - paid,
+        )
     }
 
     /// The events Phantom Centaur's shield or Bloatfly Swarm's scaling variant fire alongside
@@ -1834,18 +2475,22 @@ impl Game {
         grants
     }
 
-    /// Every *activated* (non-mana) ability granted to `host` by a live
-    /// [`Effect::Static(StaticEffect::GrantToAttached)`] on an Aura attached to it (Fallen Ideal's "Sacrifice a
-    /// creature: This creature gets +2/+1 until end of turn."), as `(cost, effects)`. The
-    /// non-mana twin of [`Game::granted_mana_abilities`], sourced from the attachment scan
-    /// ([`Game::attachment_grants`]'s shape) rather than an owner-wide filter. Recomputed live —
-    /// the grant disappears the instant the Aura leaves. Read by [`Game::ability_at`], which
-    /// addresses these past `host`'s own abilities and its granted mana abilities.
-    pub(crate) fn granted_attachment_abilities(
+    /// Every *activated* (non-mana) ability granted to `host`, as `(cost, effects)` — the
+    /// non-mana twin of [`Game::granted_mana_abilities`]. Two grant kinds land here: an
+    /// [`Effect::Static(StaticEffect::GrantToAttached)`] on an Aura attached to `host` (Fallen
+    /// Ideal's "Sacrifice a creature: This creature gets +2/+1 until end of turn.") and an
+    /// [`Effect::Static(StaticEffect::GrantActivatedAbility)`] anywhere on the battlefield whose
+    /// filter `host` matches (Zombie Master's "Other Zombies have '{B}: Regenerate this
+    /// permanent.'"). Attachment grants come first so an existing grant keeps its index when a
+    /// lord arrives. Recomputed live off the board — a grant disappears the instant its source
+    /// leaves. Read by [`Game::ability_at`], which addresses these past `host`'s own abilities
+    /// and its granted mana abilities.
+    pub(crate) fn granted_activated_abilities(
         &self,
         host: ObjectId,
     ) -> Vec<(ActivationCost, &'static [Effect])> {
-        self.attachments(host)
+        let mut grants: Vec<(ActivationCost, &'static [Effect])> = self
+            .attachments(host)
             .into_iter()
             // A phased-out Aura grants nothing (CR 702.26e), mirroring `attachment_grants`.
             .filter(|&id| !self.is_phased_out(id))
@@ -1865,19 +2510,44 @@ impl Game {
                     })
                     .collect::<Vec<_>>()
             })
-            .collect()
+            .collect();
+        for (source, object) in self.objects.iter().enumerate() {
+            let Object::Permanent(p) = object else {
+                continue;
+            };
+            let source = source as ObjectId;
+            for ability in self.functional_abilities(source).iter().cloned() {
+                let (
+                    Timing::Static,
+                    Effect::Static(StaticEffect::GrantActivatedAbility {
+                        filter,
+                        granted_ability: Some(g),
+                    }),
+                ) = (ability.timing, ability.effect.clone())
+                else {
+                    continue;
+                };
+                // `you` is the *granting* permanent's controller, so a `controller = "you"` filter
+                // reads off the lord (as its printed text does), not off the candidate.
+                if !self.permanent_matches(&filter, host, p.owner, Some(source)) {
+                    continue;
+                }
+                grants.push((g.cost, g.effects));
+            }
+        }
+        grants
     }
 
     /// Every *triggered* ability granted to `host` by a live
     /// [`Effect::Static(StaticEffect::GrantToAttached)`] Aura/Equipment attached to it (Power
     /// Fist's "Whenever this creature deals combat damage to a player, put that many +1/+1
     /// counters on it."), synthesized directly as an [`Ability`] — unlike the activated twin
-    /// ([`Game::granted_attachment_abilities`]), there is no `ability_at` index to address, since
+    /// ([`Game::granted_activated_abilities`]), there is no `ability_at` index to address, since
     /// a triggered ability isn't activated. Recomputed live off the same attachment scan, so it
     /// disappears the instant the Aura/Equipment leaves (CR 702.26e for a phased-out one).
-    /// ponytail: only the combat-damage-to-a-player scanner consults granted triggered abilities —
-    /// the pool's one consumer (Power Fist). Move this onto a shared owned-abilities accessor the
-    /// moment a second granted trigger flavor lands.
+    /// Read by [`Game::queue_trigger_group`], the shared choke most trigger flavors route
+    /// through, and separately by the combat-damage-to-a-player scanner, which is bespoke and
+    /// doesn't route through it.
     pub(crate) fn granted_attachment_triggers(&self, host: ObjectId) -> Vec<Ability> {
         self.attachments(host)
             .into_iter()
@@ -1904,9 +2574,14 @@ impl Game {
                             Ability {
                                 timing: Timing::Triggered(trigger),
                                 effect,
-                                optional: false,
+                                optional: g.optional,
                                 min_level: 0,
-                                cost: Cost::FREE,
+                                // Only the mana half of the grant's `cost` is a *triggered*
+                                // ability's cost (Farmstead's "you may pay {W}{W}") — an
+                                // `Ability::cost` is a `Cost`, and the rest of an
+                                // `ActivationCost` (tapping, sacrificing) has no meaning for
+                                // something that was never activated.
+                                cost: g.cost.mana,
                                 condition: None,
                                 once_each_turn: false,
                             }
@@ -1922,15 +2597,21 @@ impl Game {
     /// (`index < def.abilities.len()`), then those granted by a live static
     /// [`Effect::Static(StaticEffect::GrantManaAbility)`] elsewhere on the battlefield
     /// ([`Game::granted_mana_abilities`]), then those granted by an
-    /// [`Effect::Static(StaticEffect::GrantToAttached)`] on an Aura attached to it
-    /// ([`Game::granted_attachment_abilities`]). Each grant block occupies contiguous indices
+    /// [`Effect::Static(StaticEffect::GrantToAttached)`] on an Aura attached to it or by a
+    /// filter-scoped [`Effect::Static(StaticEffect::GrantActivatedAbility)`]
+    /// ([`Game::granted_activated_abilities`]). Each grant block occupies contiguous indices
     /// immediately past the prior. The one seam [`Game::ability_activation_gate`] and
     /// [`Game::legal_targets`] read so every granted ability activates exactly like an own one.
     /// `None` for an out-of-range index.
     pub fn ability_at(&self, object: ObjectId, index: usize) -> Option<Ability> {
         let def = self.def_of(object);
         if let Some(ability) = def.abilities.get(index) {
-            return Some(ability.clone());
+            // CR 612.1 layer 3: activating reads this object's text, not its card's — a Circle of
+            // Protection: Red that Sleight of Mind rewrote arms against the colour it says now.
+            let Some(swap) = self.text_swap_of(object) else {
+                return Some(ability.clone());
+            };
+            return Some(swap.ability(ability));
         }
         let granted_index = index - def.abilities.len();
         let mana_grants = self.granted_mana_abilities(object);
@@ -1959,7 +2640,7 @@ impl Game {
             });
         }
         let (cost, effects) = self
-            .granted_attachment_abilities(object)
+            .granted_activated_abilities(object)
             .into_iter()
             .nth(granted_index - mana_grants.len())?;
         // A one-effect grant is used directly; multiple run as a `Sequence` (the same shape a
@@ -1997,6 +2678,106 @@ impl Game {
                         == (
                             Timing::Static,
                             Effect::Static(StaticEffect::NoMaximumHandSize),
+                        )
+                })
+        })
+    }
+
+    /// Whether any permanent `player` controls carries `wanted` as a live static ability — the
+    /// shared scan behind the two fieldless player-scoped statics Lich prints.
+    fn controls_static(&self, player: PlayerId, wanted: StaticEffect) -> bool {
+        self.battlefield().into_iter().any(|id| {
+            let Some(permanent) = self.as_permanent(id) else {
+                return false;
+            };
+            permanent.owner == player
+                && card_def(permanent.def).abilities.iter().any(|a| {
+                    (a.timing, a.effect.clone()) == (Timing::Static, Effect::Static(wanted))
+                })
+        })
+    }
+
+    /// Whether `player` survives 0 or less life (Lich's "You don't lose the game for having 0 or
+    /// less life") — the CR 704.5a exemption, read live by the state-based sweep, so the turn the
+    /// Lich leaves the battlefield is the turn its controller's negative life total catches up
+    /// with them.
+    pub(crate) fn ignores_zero_life(&self, player: PlayerId) -> bool {
+        self.controls_static(player, StaticEffect::YouDontLoseAtZeroLife)
+    }
+
+    /// Whether life `player` would gain becomes that many cards instead (Lich's "If you would
+    /// gain life, draw that many cards instead") — a CR 614 replacement read at the single
+    /// life-gain funnel, so lifelink, drains and plain "you gain N" all route through it.
+    pub(crate) fn life_gain_becomes_draw(&self, player: PlayerId) -> bool {
+        self.controls_static(player, StaticEffect::LifeGainBecomesDraw)
+    }
+
+    /// The permanent standing between `player` and an unblocked attacker (Veteran Bodyguard,
+    /// CR 615.10): the first untapped permanent they control with a live
+    /// [`Effect::Static(StaticEffect::RedirectUnblockedDamageToSelf)`]. Both halves are read here
+    /// and not cached, because the untapped condition is a live one — a bodyguard tapped after
+    /// blockers were declared protects nothing by the time damage is dealt.
+    pub(crate) fn unblocked_damage_bodyguard(&self, player: PlayerId) -> Option<ObjectId> {
+        self.battlefield().into_iter().find(|&id| {
+            let Some(permanent) = self.as_permanent(id) else {
+                return false;
+            };
+            permanent.owner == player
+                && !self.is_tapped(id)
+                && card_def(permanent.def).abilities.iter().any(|a| {
+                    (a.timing, a.effect.clone())
+                        == (
+                            Timing::Static,
+                            Effect::Static(StaticEffect::RedirectUnblockedDamageToSelf),
+                        )
+                })
+        })
+    }
+
+    /// Whether an *effect* discard by `player` lands on top of their library instead of in their
+    /// graveyard (CR 701.8c — Library of Leng): true if any permanent they control has a live
+    /// [`Effect::Static(StaticEffect::DiscardToLibraryTopInstead)`] static. Read by
+    /// [`Game::discard_ids`], the shared tail every effect discard routes through.
+    /// ponytail: the printed "you *may*" is taken as always-yes — the engine has no pause it can
+    ///   raise mid-discard, since `discard_ids` returns into six callers that keep working. Take
+    ///   the choice when a resumable discard path exists (see the 2ed increments backlog).
+    pub(crate) fn discards_to_library_top(&self, player: PlayerId) -> bool {
+        self.objects.iter().any(|object| {
+            let Object::Permanent(p) = object else {
+                return false;
+            };
+            let def = card_def(p.def);
+            p.owner == player
+                && def.abilities.iter().any(|a| {
+                    (a.timing, a.effect.clone())
+                        == (
+                            Timing::Static,
+                            Effect::Static(StaticEffect::DiscardToLibraryTopInstead),
+                        )
+                })
+        })
+    }
+
+    /// Whether `player` may still play a land this turn (CR 305.2): one per turn, unless a
+    /// permanent they control lifts the cap with a live
+    /// [`Effect::Static(StaticEffect::PlayAnyNumberOfLands)`] (Fastbond). The single gate both the
+    /// legality check in [`Game::play_land`] and the playability hint in `Game::land_actions`
+    /// route through, so an offered land play is always a legal one.
+    pub(crate) fn land_drop_available(&self, player: PlayerId) -> bool {
+        if self.players[player.0 as usize].lands_played < 1 {
+            return true;
+        }
+        self.objects.iter().enumerate().any(|(id, object)| {
+            let Object::Permanent(p) = object else {
+                return false;
+            };
+            // Controller, not owner: a stolen Fastbond gives its permission to the thief.
+            self.controller_of(id as ObjectId) == player
+                && card_def(p.def).abilities.iter().any(|a| {
+                    (a.timing, a.effect.clone())
+                        == (
+                            Timing::Static,
+                            Effect::Static(StaticEffect::PlayAnyNumberOfLands),
                         )
                 })
         })
@@ -2044,6 +2825,35 @@ impl Game {
                         )
                 })
         })
+    }
+
+    /// Every "you may spend `from` mana as though it were `to` mana" substitution `player`
+    /// controls (Sunglasses of Urza, CR 609.4b), as `(from, to)` color pairs. The payment path
+    /// hands these to [`ManaPool::substituted`] before planning — [`Game::plan_payment`] and
+    /// [`Game::plan_auto_taps`] (so a cost can actually be paid and auto-tapped that way) and
+    /// [`Game::available_mana`] (so the playability/`{X}`-ceiling estimate agrees with them).
+    /// Empty — and so free — for every board without one.
+    pub(crate) fn mana_substitutions(&self, player: PlayerId) -> Vec<(Color, Color)> {
+        let mut subs = Vec::new();
+        for (id, object) in self.objects.iter().enumerate() {
+            let Object::Permanent(p) = object else {
+                continue;
+            };
+            if self.controller_of(id as ObjectId) != player {
+                continue;
+            }
+            for ability in card_def(p.def).abilities.iter() {
+                let (
+                    Timing::Static,
+                    Effect::Static(StaticEffect::SpendManaAsThoughAnotherColor { from, to }),
+                ) = (ability.timing, ability.effect.clone())
+                else {
+                    continue;
+                };
+                subs.push((from, to));
+            }
+        }
+        subs
     }
 
     /// Total generic cost reduction `player`'s static [`Effect::Static(StaticEffect::ReduceSpellCost)`] abilities grant
@@ -2102,6 +2912,83 @@ impl Game {
         total
     }
 
+    /// Total generic mana a spell `player` is casting (`def`, aimed at `target`) owes to the
+    /// [`Effect::Static(StaticEffect::TaxSpellCost)`] statics on the battlefield (CR 601.2f —
+    /// Gloom's "White spells cost {3} more to cast"). Unlike [`Game::cost_reduction`] above this
+    /// scan is *not* scoped to `player`: a taxer reaches every seat, which is the whole reason the
+    /// tax is its own variant rather than a negative reduction.
+    pub(crate) fn cost_increase(
+        &self,
+        player: PlayerId,
+        def: CardDef,
+        target: Option<Target>,
+        from_zone: Zone,
+    ) -> u8 {
+        let mut total: u8 = 0;
+        for (id, object) in self.objects.iter().enumerate() {
+            let Object::Permanent(p) = object else {
+                continue;
+            };
+            for ability in card_def(p.def).abilities.iter().cloned() {
+                let (Timing::Static, Effect::Static(StaticEffect::TaxSpellCost { amount, filter })) =
+                    (ability.timing, ability.effect.clone())
+                else {
+                    continue;
+                };
+                if ability.min_level > p.level {
+                    continue;
+                }
+                if !self.spell_matches_filter(filter, def.clone(), target, player, from_zone) {
+                    continue;
+                }
+                // The taxer's own controller resolves the amount — it is their ability, even
+                // though the spell being taxed is somebody else's.
+                let resolved = self.resolve_amount(
+                    amount,
+                    self.controller_of(id as ObjectId),
+                    id as ObjectId,
+                    None,
+                    0,
+                );
+                total = total.saturating_add(resolved.max(0) as u8);
+            }
+        }
+        total
+    }
+
+    /// Total generic mana an activated ability of `source` owes to the
+    /// [`Effect::Static(StaticEffect::TaxActivatedAbility)`] statics on the battlefield (CR 602.2b
+    /// — Gloom's "Activated abilities of white enchantments cost {3} more to activate"). The
+    /// activation-choke twin of [`Game::cost_increase`], and table-wide for the same reason;
+    /// `filter` is matched against `source` itself.
+    pub(crate) fn activation_tax(&self, source: ObjectId) -> u8 {
+        let mut total: u8 = 0;
+        for (id, object) in self.objects.iter().enumerate() {
+            let Object::Permanent(p) = object else {
+                continue;
+            };
+            for ability in card_def(p.def).abilities.iter().cloned() {
+                let (
+                    Timing::Static,
+                    Effect::Static(StaticEffect::TaxActivatedAbility { amount, filter }),
+                ) = (ability.timing, ability.effect.clone())
+                else {
+                    continue;
+                };
+                if ability.min_level > p.level {
+                    continue;
+                }
+                let taxer = self.controller_of(id as ObjectId);
+                if !self.permanent_matches(&filter, source, taxer, Some(id as ObjectId)) {
+                    continue;
+                }
+                let resolved = self.resolve_amount(amount, taxer, id as ObjectId, None, 0);
+                total = total.saturating_add(resolved.max(0) as u8);
+            }
+        }
+        total
+    }
+
     /// Whether the spell `def` (aimed at `target`, cast by `caster` from `from_zone`) matches a
     /// [`SpellFilter`]. `caster` is only read by
     /// [`SpellFilter::AuraTargetsModifiedPermanentYouControl`] and `from_zone` only by
@@ -2153,6 +3040,10 @@ impl Game {
             // Advanced Reconstruction's level 3: "Spells you cast from anywhere other than your
             // hand …" — the only arm that reads the cast-from zone (CR 601).
             SpellFilter::CastFromNonHandZone => from_zone != Zone::Hand,
+            // Spell Blast's "with mana value X" is matched inline in `legal_targets_for`, the
+            // only choke that knows the filtering spell's own X. Never true here: this function's
+            // trigger and cost-reducer callers have no X to compare against.
+            SpellFilter::ManaValueEqualsX => false,
             // Balefire Liege's "cast a red spell" / "cast a white spell" — CR 105.1/202.2, the
             // spell's own colors (a multicolored spell matches every one of its colors).
             SpellFilter::Color(color) => color_identity(&def)[color.index()],
@@ -2356,6 +3247,7 @@ mod cache_tests {
             multikicker: None,
         },
         reduce_own_generic: None,
+        x_color: None,
     };
 
     fn creature(power: i32, toughness: i32) -> CardDef {
@@ -2389,6 +3281,11 @@ mod cache_tests {
             alternative_cost: None,
             cast_only_during_combat: false,
             cast_only_before_attackers: false,
+            cast_only_before_blockers: false,
+            cast_only_during_opponents_turn: false,
+            cast_only_before_combat_damage: false,
+            cast_only_during_declare_blockers: false,
+            cast_only_during_declare_attackers: false,
             approximates: None,
             oracle: None,
             sets: empty_slice(),
@@ -2443,6 +3340,7 @@ mod cache_tests {
                 chosen_subtype: false,
                 attacking_only: false,
                 blocking_only: false,
+                untapped_only: false,
                 commander_only: false,
                 has_counters: false,
                 condition: None,
@@ -2482,6 +3380,11 @@ mod cache_tests {
             alternative_cost: None,
             cast_only_during_combat: false,
             cast_only_before_attackers: false,
+            cast_only_before_blockers: false,
+            cast_only_during_opponents_turn: false,
+            cast_only_before_combat_damage: false,
+            cast_only_during_declare_blockers: false,
+            cast_only_during_declare_attackers: false,
             approximates: None,
             oracle: None,
             sets: empty_slice(),
@@ -2573,6 +3476,8 @@ mod cache_tests {
                 commander: false,
                 x: 0,
                 chosen_color: None,
+                set_color: None,
+                text_swap: None,
                 modes: Modes::default(),
                 copy: false,
                 flashback: false,
@@ -2583,6 +3488,7 @@ mod cache_tests {
                 damage_division_players: [None; MAX_TARGETS],
                 counter_division: DamageAssignment::default(),
                 sacrifice_count: 0,
+                sacrificed_mana_value: 0,
                 revealed_creature_mana_value: 0,
                 kicked: false,
                 bought_back: false,
@@ -2664,6 +3570,11 @@ mod cache_tests {
             alternative_cost: None,
             cast_only_during_combat: false,
             cast_only_before_attackers: false,
+            cast_only_before_blockers: false,
+            cast_only_during_opponents_turn: false,
+            cast_only_before_combat_damage: false,
+            cast_only_during_declare_blockers: false,
+            cast_only_during_declare_attackers: false,
             approximates: None,
             oracle: None,
             sets: empty_slice(),
@@ -2782,6 +3693,7 @@ mod characteristic_query_tests {
             multikicker: None,
         },
         reduce_own_generic: None,
+        x_color: None,
     };
 
     fn creature_with(keywords: &'static [Keyword]) -> CardDef {
@@ -2817,6 +3729,11 @@ mod characteristic_query_tests {
             alternative_cost: None,
             cast_only_during_combat: false,
             cast_only_before_attackers: false,
+            cast_only_before_blockers: false,
+            cast_only_during_opponents_turn: false,
+            cast_only_before_combat_damage: false,
+            cast_only_during_declare_blockers: false,
+            cast_only_during_declare_attackers: false,
             approximates: None,
             oracle: None,
             sets: empty_slice(),
@@ -2887,6 +3804,11 @@ mod characteristic_query_tests {
             alternative_cost: None,
             cast_only_during_combat: false,
             cast_only_before_attackers: false,
+            cast_only_before_blockers: false,
+            cast_only_during_opponents_turn: false,
+            cast_only_before_combat_damage: false,
+            cast_only_during_declare_blockers: false,
+            cast_only_during_declare_attackers: false,
             approximates: None,
             oracle: None,
             sets: empty_slice(),
@@ -2988,6 +3910,11 @@ mod characteristic_query_tests {
                 alternative_cost: None,
                 cast_only_during_combat: false,
                 cast_only_before_attackers: false,
+                cast_only_before_blockers: false,
+                cast_only_during_opponents_turn: false,
+                cast_only_before_combat_damage: false,
+                cast_only_during_declare_blockers: false,
+                cast_only_during_declare_attackers: false,
                 approximates: None,
                 oracle: None,
                 sets: empty_slice(),
@@ -3077,6 +4004,11 @@ mod characteristic_query_tests {
                 alternative_cost: None,
                 cast_only_during_combat: false,
                 cast_only_before_attackers: false,
+                cast_only_before_blockers: false,
+                cast_only_during_opponents_turn: false,
+                cast_only_before_combat_damage: false,
+                cast_only_during_declare_blockers: false,
+                cast_only_during_declare_attackers: false,
                 approximates: None,
                 oracle: None,
                 sets: empty_slice(),
@@ -3164,6 +4096,11 @@ mod characteristic_query_tests {
                 alternative_cost: None,
                 cast_only_during_combat: false,
                 cast_only_before_attackers: false,
+                cast_only_before_blockers: false,
+                cast_only_during_opponents_turn: false,
+                cast_only_before_combat_damage: false,
+                cast_only_during_declare_blockers: false,
+                cast_only_during_declare_attackers: false,
                 approximates: None,
                 oracle: None,
                 sets: empty_slice(),

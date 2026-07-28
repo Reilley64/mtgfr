@@ -1,5 +1,6 @@
 # {W}, Sacrifice this enchantment: Exile target creature that's attacking you or a planeswalker you control.
 name = "Soul Snare"
+otags = ["activated-ability", "alliteration", "hate-attacker", "removal-creature", "removal-exile", "sacrifice-self", "spot-removal", "synergy-planeswalker"]
 sets = ["c18", "c21", "cma", "cmd", "mh2", "mkc", "scd"]
 id = "52bd4331-67b6-4eb8-9566-e00359889fc6"
 default_print = "18f3a850-b2e1-4970-9971-5f662fb3df31"

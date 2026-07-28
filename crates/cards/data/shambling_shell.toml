@@ -2,6 +2,7 @@
 # Dredge 3 (If you would draw a card, you may mill three cards instead. If you do, return this card from your
 # graveyard to your hand.)
 name = "Shambling Shell"
+otags = ["activated-ability", "alliteration", "gives-pp-counters", "manaless-value", "martyr", "mill-self", "regrowth-self", "repeatable-pp-counters"]
 sets = ["ddj", "gk1", "plst", "rav", "rvr", "td0"]
 id = "9c50f6b1-8850-4b08-a994-3ccc17f25b83"
 default_print = "807557f3-5265-448f-9dbe-3f6688657284"

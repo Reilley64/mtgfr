@@ -202,6 +202,7 @@ impl Game {
                         object,
                         power,
                         toughness,
+                        ends_at_end_of_combat: false,
                     })
                     .collect()
             }
@@ -215,6 +216,7 @@ impl Game {
                     object,
                     power: self.resolve_amount(power, controller, source, target, x),
                     toughness: self.resolve_amount(toughness, controller, source, target, x),
+                    ends_at_end_of_combat: false,
                 }]
             }
             // Indefinite self base-P/T SET (Trench Gorger's "this creature has base power and
@@ -242,6 +244,7 @@ impl Game {
                 base_toughness,
                 keywords,
                 add_colors,
+                ends_at_end_of_combat,
             } => {
                 if self.as_permanent(source).is_none() {
                     return Vec::new();
@@ -257,6 +260,7 @@ impl Game {
                         object: source,
                         power: base_power,
                         toughness: base_toughness,
+                        ends_at_end_of_combat,
                     },
                 ];
                 if !keywords.is_empty() {
@@ -325,6 +329,20 @@ impl Game {
                     source: Some(source),
                 }]
             }
+            // Earthbind: "this Aura gains 'Enchanted creature loses flying.'" The gained ability
+            // is modelled as the loss itself, recorded on the Aura — see
+            // `Event::AttachedKeywordsLost`. An Aura whose host left in response has nothing to
+            // ground (CR 704.5m).
+            PumpEffect::EnchantedCreatureLosesKeywords { keywords } => {
+                let Some(host) = self.attached_to(source) else {
+                    return Vec::new();
+                };
+                vec![Event::AttachedKeywordsLost {
+                    source,
+                    object: host,
+                    keywords,
+                }]
+            }
             // Mass keyword strip: every creature an opponent of the controller controls loses
             // `keywords` and can't have them until end of turn (arcane_lighthouse).
             PumpEffect::StripKeywordsFromOpponentsCreatures { keywords } => self
@@ -335,6 +353,34 @@ impl Game {
                 })
                 .map(|object| Event::KeywordsStripped { object, keywords })
                 .collect(),
+            // Vesuvan Doppelganger's upkeep: "you may have this creature become a copy of target
+            // creature, except it doesn't copy that creature's color and it has this ability."
+            // The *source* is what gets rewritten, so a target that has left the battlefield since
+            // (CR 608.2b) — or a shapeshifter that has itself left — is simply no re-copy.
+            PumpEffect::BecomesCopyOfTarget {
+                keeps_own_color,
+                keeps_own_abilities,
+                ..
+            } => {
+                let object = expect_object_target(target, "becomes a copy");
+                let (Some(keeper), Some(copied)) = (
+                    self.as_permanent(source).map(|p| p.def),
+                    self.as_permanent(object).map(|p| p.def),
+                ) else {
+                    return Vec::new();
+                };
+                vec![Event::BecameCopy {
+                    object: source,
+                    def: intern_card_def(copy_with_exceptions(
+                        (*card_def(copied)).clone(),
+                        &card_def(keeper),
+                        keeps_own_color,
+                        keeps_own_abilities,
+                    )),
+                    until_eot: false,
+                    also_types: TypeSet::NONE,
+                }]
+            }
             // Vraska, Betrayal's Sting's −2: the target creature becomes a Treasure artifact and
             // loses all other card types and abilities (CR 613.1d/613.1f) — an indefinite def
             // overwrite, so `BecameCopy`'s `until_eot: false` never restores it. A target that has
@@ -348,6 +394,40 @@ impl Game {
                     object,
                     def: intern_card_def(becomes_treasure((*card_def(current)).clone())),
                     until_eot: false,
+                    also_types: TypeSet::NONE,
+                }]
+            }
+            // "Target spell or permanent becomes black" (the lace cycle): a layer-5 SET with no
+            // printed duration, so it rides the object. `until_end_of_turn: false` — cleanup must
+            // not take it back. Nothing to do if the target already left the stack or the
+            // battlefield (CR 608.2b; `target_still_legal` normally fizzles this first).
+            PumpEffect::TargetBecomesColor { color, .. } => {
+                let object = expect_object_target(target, "becomes a color");
+                if !matches!(
+                    self.objects[object as usize],
+                    Object::Permanent(_) | Object::Spell(_)
+                ) {
+                    return Vec::new();
+                }
+                vec![Event::ColorSet {
+                    object,
+                    color,
+                    until_end_of_turn: false,
+                }]
+            }
+            // "Target land becomes a Forest until this creature leaves the battlefield" (Gaea's
+            // Liege): the whole land-type line is replaced (CR 305.7), and the entry names the
+            // source so the read side can check it is still there. A target that has left the
+            // battlefield since is skipped (CR 608.2b).
+            PumpEffect::TargetBecomesSubtypesWhileSourceRemains { set_subtypes, .. } => {
+                let object = expect_object_target(target, "becomes a land type");
+                if self.as_permanent(object).is_none() {
+                    return Vec::new();
+                }
+                vec![Event::SubtypesSetWhileSourceRemains {
+                    object,
+                    subtypes: set_subtypes,
+                    source,
                 }]
             }
             // Mass weaken: every creature gets -power/-toughness until end of turn (a negative

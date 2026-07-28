@@ -200,6 +200,148 @@ describe("fromProtoWire", () => {
     });
   });
 
+  it("decodes choose_exiled_dig_to_cast_free hand-pick wording from proto choice payloads", () => {
+    const frame = fromProtoWire<{
+      state: {
+        pending_choice: {
+          kind: string;
+          from_opponent_hand?: boolean;
+          items: Array<{ id: number; label: string }>;
+        };
+      };
+    }>({
+      state: {
+        pendingChoice: {
+          choice: {
+            case: "chooseExiledDigToCastFree",
+            value: {
+              player: 0,
+              source: 7,
+              fromOpponentHand: true,
+              items: [{ id: 11, label: "Lightning Bolt" }],
+            },
+          },
+        },
+      },
+    });
+
+    expect(frame.state.pending_choice).toEqual({
+      kind: "choose_exiled_dig_to_cast_free",
+      player: 0,
+      source: 7,
+      from_opponent_hand: true,
+      items: [{ id: 11, label: "Lightning Bolt" }],
+    });
+  });
+
+  // The untap caps ride nested `ObjectIdList`s, which the walk flattens by shape rather than by
+  // field name — a list of lists is the one place that heuristic has to hold twice over.
+  it("flattens Winter Orb's nested untap caps into plain id groups", () => {
+    const untap = fromProtoWire<{
+      state: { pending_choice: { kind: string; at_most_one?: Array<Array<number>> } };
+    }>({
+      state: {
+        pendingChoice: {
+          choice: {
+            case: "declineUntap",
+            value: {
+              player: 0,
+              items: [
+                { id: 20, label: "Forest" },
+                { id: 21, label: "Island" },
+              ],
+              atMostOne: [{ ids: [20, 21] }],
+            },
+          },
+        },
+      },
+    });
+    expect(untap.state.pending_choice.at_most_one).toEqual([[20, 21]]);
+  });
+
+  it("decodes the Raging River pile discriminators from proto choice payloads", () => {
+    const partition = fromProtoWire<{
+      state: { pending_choice: { kind: string; into_piles?: boolean } };
+    }>({
+      state: {
+        pendingChoice: {
+          choice: {
+            case: "partitionRevealed",
+            value: { player: 1, source: 7, intoPiles: true, items: [{ id: 11, label: "Grizzly Bears" }] },
+          },
+        },
+      },
+    });
+    expect(partition.state.pending_choice).toEqual({
+      kind: "partition_revealed",
+      player: 1,
+      source: 7,
+      into_piles: true,
+      items: [{ id: 11, label: "Grizzly Bears" }],
+    });
+
+    const pilePick = fromProtoWire<{
+      state: { pending_choice: { kind: string; attacker?: { id: number; label: string } } };
+    }>({
+      state: {
+        pendingChoice: {
+          choice: {
+            case: "choosePileForHand",
+            value: {
+              player: 0,
+              source: 7,
+              pileA: [{ id: 11, label: "Wall of Stone" }],
+              pileB: [],
+              attacker: { id: 12, label: "Shivan Dragon" },
+            },
+          },
+        },
+      },
+    });
+    expect(pilePick.state.pending_choice).toEqual({
+      kind: "choose_pile_for_hand",
+      player: 0,
+      source: 7,
+      pile_a: [{ id: 11, label: "Wall of Stone" }],
+      pile_b: [],
+      attacker: { id: 12, label: "Shivan Dragon" },
+    });
+  });
+
+  it("decodes choose_copy_target block-re-aim wording from proto choice payloads", () => {
+    const frame = fromProtoWire<{
+      state: {
+        pending_choice: {
+          kind: string;
+          choose_block_target?: boolean;
+          items: Array<{ id: number; label: string }>;
+        };
+      };
+    }>({
+      state: {
+        pendingChoice: {
+          choice: {
+            case: "chooseCopyTarget",
+            value: {
+              player: 0,
+              source: 7,
+              chooseBlockTarget: true,
+              items: [{ id: 11, label: "Grizzly Bears" }],
+            },
+          },
+        },
+      },
+    });
+
+    expect(frame.state.pending_choice).toEqual({
+      kind: "choose_copy_target",
+      player: 0,
+      source: 7,
+      choose_block_target: true,
+      items: [{ id: 11, label: "Grizzly Bears" }],
+    });
+  });
+
   it("decodes may_exile_discarded_to_play from proto choice payloads", () => {
     const frame = fromProtoWire<{
       state: {

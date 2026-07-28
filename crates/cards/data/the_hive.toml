@@ -1,0 +1,28 @@
+# {5}, {T}: Create a 1/1 colorless Insect artifact creature token with flying named Wasp. (It
+# can't be blocked except by creatures with flying or reach.)
+name = "The Hive"
+otags = ["activated-ability", "evasion", "mana-sink", "repeatable-artifact-tokens", "repeatable-creature-tokens", "token-errata"]
+sets = ["10e", "2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
+id = "87a77482-f286-4fb1-b179-85b2095bb768"
+default_print = "af5534f0-485e-41f2-bcfa-d65c1a9b86bd"
+oracle = "{5}, {T}: Create a 1/1 colorless Insect artifact creature token with flying named Wasp. (It can't be blocked except by creatures with flying or reach.)"
+
+[cost]
+generic = 5
+
+[kind]
+type = "artifact"
+
+# {5}, {T}: Create a 1/1 colorless Insect artifact creature token with flying named Wasp.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+[abilities.activation_cost]
+generic = 5
+
+# Create a 1/1 colorless Insect artifact creature token with flying named Wasp.
+[[abilities.effects]]
+type = "token"
+mode = "create"
+token = "e0a4cf18-57ca-47e5-b7b0-c26975601660"

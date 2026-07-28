@@ -1,0 +1,32 @@
+# Enchant creature
+# Enchanted creature can attack as though it had haste.
+# {0}: Untap enchanted creature. Activate only during your turn and only once each turn.
+name = "Instill Energy"
+otags = ["activated-ability", "attacking-matters", "gives-haste", "untapper-creature"]
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "fbb", "lea", "leb", "me4", "sum"]
+id = "8695c3c1-fb4b-4429-ae33-ec186f68796b"
+default_print = "1ba27e77-00b8-4d6c-acbd-462273212fc2"
+oracle = "Enchant creature\nEnchanted creature can attack as though it had haste.\n{0}: Untap enchanted creature. Activate only during your turn and only once each turn."
+subtypes = ["Aura"]
+enchant = { types = "creature" }
+
+[cost]
+green = 1
+
+[kind]
+type = "aura"
+
+# Enchanted creature can attack as though it had haste.
+# {0}: Untap enchanted creature. Activate only during your turn and only once each turn.
+[[abilities]]
+timing = "static"
+
+# Enchanted creature can attack as though it had haste.
+# {0}: Untap enchanted creature. Activate only during your turn and only once each turn.
+[[abilities.effects]]
+type = "static"
+mode = "grant_to_attached"
+may_attack_ignoring_summoning_sickness = true
+granted_ability = { cost = { once_each_turn = true, only_during_your_turn = true }, effects = [
+  { type = "control", mode = "untap_target", target = "this" },
+] }
