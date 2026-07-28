@@ -401,6 +401,26 @@ pub enum StaticEffect {
         first_x_spell_each_turn: bool,
     },
 
+    /// Gloom's "White spells cost {3} more to cast" (CR 601.2f) — the sign-flipped twin of
+    /// [`ReduceSpellCost`](Self::ReduceSpellCost) above, and deliberately a separate variant
+    /// rather than a negative `amount` on that one, because the two differ in *scope*: a reducer
+    /// only ever discounts its own controller's spells, while a taxer reaches every seat at the
+    /// table. Folded into the generic cost ahead of the reduction, per CR 601.2f's
+    /// increases-then-reductions order.
+    TaxSpellCost {
+        amount: Amount,
+        filter: SpellFilter,
+    },
+
+    /// Gloom's "Activated abilities of white enchantments cost {3} more to activate" (CR 602.2b) —
+    /// the same table-wide tax aimed at the *activation* choke instead of the cast choke, keyed to
+    /// the ability's source permanent rather than to a spell. `filter` is matched against that
+    /// source, so "white enchantments" is `{ types = "enchantment", color = "white" }`.
+    TaxActivatedAbility {
+        amount: Amount,
+        filter: PermanentFilter,
+    },
+
     /// The CR 613.4 layer-7b base P/T an Aura forces onto its host (Darksteel Mutation's "base
     /// power and toughness 0/1"). The amounts resolve with the *host* as source, not the Aura, so
     /// Animate Artifact's "power and toughness each equal to its mana value" is

@@ -83,6 +83,32 @@ describe("formatMessage", () => {
     ).toBe("Attached permanent has base power and toughness each equal to its mana value");
   });
 
+  // Both taxes render their filter through the same generic token humanizer every other
+  // catalog key uses — "color_white" reads back as "color white", the way `reduce_spell_cost`
+  // has always rendered Balefire Liege.
+  it("reads Gloom's two taxes back as cast and activation costs", () => {
+    expect(
+      formatMessage({
+        key: "effect.static_tax_spell_cost",
+        params: [
+          { name: "amount", int_value: 3 },
+          { name: "filter", string_value: "color_white" },
+        ],
+        children: [],
+      }),
+    ).toBe("color white cost {3} more to cast");
+    expect(
+      formatMessage({
+        key: "effect.static_tax_activated_ability",
+        params: [
+          { name: "amount", int_value: 3 },
+          { name: "filter", string_value: "permanent_enchantment_white" },
+        ],
+        children: [],
+      }),
+    ).toBe("Activated abilities of permanent enchantment white cost {3} more to activate");
+  });
+
   it("formats catalog keyword summaries", () => {
     expect(formatMessage({ key: "keyword.flying", params: [], children: [] })).toBe("Flying");
     expect(

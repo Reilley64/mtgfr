@@ -1723,7 +1723,7 @@ ability too; and `filter.other` reads against the *granting* permanent, which is
 Master regenerating itself. A granted `target = "this"` names the host, not the lord — the
 activation's source is the permanent whose index was addressed.
 
-### 67. `spells-and-abilities-cost-more` — 1 card, M
+### 67. `spells-and-abilities-cost-more` — 1 card, M — **done**
 Depends on: nothing.
 Split out of #9, which turned out to be pure authoring. Gloom is the one 2ed card that taxes
 rather than discounts: "White spells cost {3} more to cast" and "Activated abilities of white
@@ -1738,6 +1738,22 @@ untouched. The second clause needs a genuinely new hook: an activation-cost tax 
 `ActivationCost::mana` is spent from. The spell half alone is worth landing first; the ability
 half is what makes this M rather than S.
 *Cards:* gloom.
+*Landed:* two new statics, `tax_spell_cost` and `tax_activated_ability`, not the sketch's signed
+delta. The sketch assumed the only difference between a tax and a discount was the sign; it isn't.
+`Game::cost_reduction` skips every permanent whose owner isn't the caster — a reducer discounts
+*your* spells — while Gloom taxes everybody's white spells, so a negative amount threaded through
+that same scan would have been silently seat-scoped, and deriving "who does this reach" from the
+sign of a number is the kind of cleverness nobody wants to decode at 3am. The two taxes get their
+own table-wide scans instead (`Game::cost_increase`, `Game::activation_tax`), and the cast choke
+now reads increase-then-reduction in CR 601.2f order — folding the tax in *after* the reduction
+would have let a reducer floor the generic at 0 and eat the {3} on the way past.
+The activation half turned out cheaper than "M" priced it. `Game::ability_activation_gate` is
+already the single funnel every read of an activation cost goes through — the activation itself,
+the three priority scans, the playability previews — so taxing `cost.mana.generic` at its
+`Timing::Activated` destructure covers all of them at once, with no second place left quoting a
+printed cost back untaxed. `SpellFilter::Color` and `PermanentFilter::color` both already existed
+(Balefire Liege and Razorjaw Oni got there first), so neither filter needed a new arm; the whole
+card is `{ color = "white" }` and `{ types = "enchantment", color = "white" }`.
 
 ### 68. `prevention-shield-top-up` — 1 card, M
 Depends on: #4.

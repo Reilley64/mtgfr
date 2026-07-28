@@ -587,6 +587,10 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   ),
   "effect.static_reduce_spell_cost": (params) =>
     `${bool(params, "first_x_spell_each_turn") ? "The first spell you cast with {X} in its mana cost each turn" : humanize(param(params, "filter", "Spells you cast"))} cost {${param(params, "amount")}} less`,
+  "effect.static_tax_spell_cost": (params) =>
+    `${humanize(param(params, "filter", "Spells"))} cost {${param(params, "amount")}} more to cast`,
+  "effect.static_tax_activated_ability": (params) =>
+    `Activated abilities of ${humanize(param(params, "filter", "permanents"))} cost {${param(params, "amount")}} more to activate`,
   "effect.static_set_attached_base_pt": (params) => {
     const power = param(params, "power");
     const toughness = param(params, "toughness");

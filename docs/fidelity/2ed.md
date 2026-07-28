@@ -228,7 +228,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [x] **Gaea's Liege** {3}{G}{G}{G} · Creature — Avatar — increment 74, 8e
 - [x] **Gauntlet of Might** {4} · Artifact — increment 19
 - [x] **Glasses of Urza** {1} · Artifact — increment 31
-- [ ] **Gloom** {2}{B} · Enchantment — increment 67
+- [x] **Gloom** {2}{B} · Enchantment
 - [x] **Goblin King** {1}{R}{R} · Creature — Goblin — increment 3
 - [ ] **Guardian Angel** {X}{W} · Instant — increment 4
 - [x] **Healing Salve** {W} · Instant — increment 4

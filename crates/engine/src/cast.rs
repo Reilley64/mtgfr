@@ -266,6 +266,11 @@ impl Game {
         if from_command {
             cost.generic += self.commander_tax(player);
         }
+        // CR 601.2f: cost *increases* are applied before reductions, so Gloom's {3} can't be
+        // shaved off by a reducer that would otherwise have floored the generic at 0 first.
+        cost.generic =
+            cost.generic
+                .saturating_add(self.cost_increase(player, def.clone(), target, zone));
         cost.generic =
             cost.generic
                 .saturating_sub(self.cost_reduction(player, def.clone(), target, zone));
@@ -2169,9 +2174,17 @@ impl Game {
         let Some(ability) = self.ability_at(source, index) else {
             return Err(Reject::CannotActivate);
         };
-        let Timing::Activated(cost) = ability.timing else {
+        let Timing::Activated(mut cost) = ability.timing else {
             return Err(Reject::CannotActivate);
         };
+        // Gloom's "Activated abilities of white enchantments cost {3} more to activate"
+        // (CR 602.2b). Folded in here, at the single gate every read of an activation cost routes
+        // through — the activation itself, the priority scans, the playability previews — so no
+        // caller sees the printed cost and quotes it back untaxed.
+        cost.mana.generic = cost
+            .mana
+            .generic
+            .saturating_add(self.activation_tax(source));
         // A Pacifism-family Aura's "activated abilities can't be activated[, unless they're mana
         // abilities]" restriction (Faith's Fetters, Prison Term; CR 605.3a exempts mana abilities
         // under the `mana_only` axis, nothing exempts under `none`).

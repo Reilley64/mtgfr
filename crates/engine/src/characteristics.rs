@@ -2682,6 +2682,83 @@ impl Game {
         total
     }
 
+    /// Total generic mana a spell `player` is casting (`def`, aimed at `target`) owes to the
+    /// [`Effect::Static(StaticEffect::TaxSpellCost)`] statics on the battlefield (CR 601.2f —
+    /// Gloom's "White spells cost {3} more to cast"). Unlike [`Game::cost_reduction`] above this
+    /// scan is *not* scoped to `player`: a taxer reaches every seat, which is the whole reason the
+    /// tax is its own variant rather than a negative reduction.
+    pub(crate) fn cost_increase(
+        &self,
+        player: PlayerId,
+        def: CardDef,
+        target: Option<Target>,
+        from_zone: Zone,
+    ) -> u8 {
+        let mut total: u8 = 0;
+        for (id, object) in self.objects.iter().enumerate() {
+            let Object::Permanent(p) = object else {
+                continue;
+            };
+            for ability in card_def(p.def).abilities.iter().cloned() {
+                let (Timing::Static, Effect::Static(StaticEffect::TaxSpellCost { amount, filter })) =
+                    (ability.timing, ability.effect.clone())
+                else {
+                    continue;
+                };
+                if ability.min_level > p.level {
+                    continue;
+                }
+                if !self.spell_matches_filter(filter, def.clone(), target, player, from_zone) {
+                    continue;
+                }
+                // The taxer's own controller resolves the amount — it is their ability, even
+                // though the spell being taxed is somebody else's.
+                let resolved = self.resolve_amount(
+                    amount,
+                    self.controller_of(id as ObjectId),
+                    id as ObjectId,
+                    None,
+                    0,
+                );
+                total = total.saturating_add(resolved.max(0) as u8);
+            }
+        }
+        total
+    }
+
+    /// Total generic mana an activated ability of `source` owes to the
+    /// [`Effect::Static(StaticEffect::TaxActivatedAbility)`] statics on the battlefield (CR 602.2b
+    /// — Gloom's "Activated abilities of white enchantments cost {3} more to activate"). The
+    /// activation-choke twin of [`Game::cost_increase`], and table-wide for the same reason;
+    /// `filter` is matched against `source` itself.
+    pub(crate) fn activation_tax(&self, source: ObjectId) -> u8 {
+        let mut total: u8 = 0;
+        for (id, object) in self.objects.iter().enumerate() {
+            let Object::Permanent(p) = object else {
+                continue;
+            };
+            for ability in card_def(p.def).abilities.iter().cloned() {
+                let (
+                    Timing::Static,
+                    Effect::Static(StaticEffect::TaxActivatedAbility { amount, filter }),
+                ) = (ability.timing, ability.effect.clone())
+                else {
+                    continue;
+                };
+                if ability.min_level > p.level {
+                    continue;
+                }
+                let taxer = self.controller_of(id as ObjectId);
+                if !self.permanent_matches(&filter, source, taxer, Some(id as ObjectId)) {
+                    continue;
+                }
+                let resolved = self.resolve_amount(amount, taxer, id as ObjectId, None, 0);
+                total = total.saturating_add(resolved.max(0) as u8);
+            }
+        }
+        total
+    }
+
     /// Whether the spell `def` (aimed at `target`, cast by `caster` from `from_zone`) matches a
     /// [`SpellFilter`]. `caster` is only read by
     /// [`SpellFilter::AuraTargetsModifiedPermanentYouControl`] and `from_zone` only by

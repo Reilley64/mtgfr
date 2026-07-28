@@ -290,6 +290,8 @@
   "effect.static_prevent_noncombat_damage_to_other_creatures_you_control",
   "effect.static_redirect_unblocked_damage_to_self",
   "effect.static_reduce_spell_cost",
+  "effect.static_tax_spell_cost",
+  "effect.static_tax_activated_ability",
   "effect.static_set_attached_base_pt",
   "effect.static_set_attached_types",
   "effect.static_spend_mana_as_though_another_color",

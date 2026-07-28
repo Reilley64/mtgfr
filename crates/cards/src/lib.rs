@@ -2671,6 +2671,36 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
         ));
     }
 
+    /// Gloom's two taxes have to keep their two different filter kinds straight: the cast half
+    /// reads the *spell's* colour, the activation half reads the *source permanent's* type and
+    /// colour. Swapping "white enchantment" for a bare "white" on the second clause would tax a
+    /// Samite Healer's `{T}` ability.
+    #[test]
+    fn unlimited_gloom_taxes_white_spells_and_white_enchantments_abilities() {
+        let gloom = get_by_name("Gloom").expect("Gloom is in the pool");
+        assert_eq!(
+            gloom.abilities[0].effect,
+            Effect::Static(StaticEffect::TaxSpellCost {
+                amount: Amount::Fixed(3),
+                filter: SpellFilter::Color(Color::White),
+            }),
+            "White spells cost 3 more to cast"
+        );
+        let Effect::Static(StaticEffect::TaxActivatedAbility { amount, filter }) =
+            &gloom.abilities[1].effect
+        else {
+            panic!("the second clause taxes activated abilities");
+        };
+        assert_eq!(*amount, Amount::Fixed(3));
+        assert_eq!(filter.types, TypeSet::ENCHANTMENT);
+        assert_eq!(filter.color, ColorFilter::White);
+        assert_eq!(
+            filter.controller,
+            FilterController::Any,
+            "every seat's white enchantments, not just Gloom's controller's"
+        );
+    }
+
     /// Animate Artifact's two clauses: a base-P/T set gated on the host being a noncreature and
     /// reading the host's own mana value, plus an *additive* type change — additive because on an
     /// artifact that is already a creature the whole ability is meant to do nothing.

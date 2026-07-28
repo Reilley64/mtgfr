@@ -109749,3 +109749,107 @@ fn animate_artifact_leaves_an_artifact_creatures_printed_size_alone() {
         "an artifact that is already a creature keeps its printed 4/6"
     );
 }
+
+// ── Cost increases (CR 601.2f) ──────────────────────────────────────────────────
+
+/// Gloom's "White spells cost {3} more to cast." The tax is not scoped to Gloom's controller the
+/// way a cost *reducer* is — it reaches every seat — so an opponent's {1}{W} Circle of Protection
+/// needs five mana, not two.
+#[test]
+fn gloom_taxes_a_white_spell_for_every_seat() {
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(1), card("Gloom"));
+    let circle = game.spawn_in_hand(PlayerId(0), card("Circle of Protection: Red")); // {1}{W}
+    for _ in 0..2 {
+        let plains = game.spawn_on_battlefield(PlayerId(0), card("Plains"));
+        tap(&mut game, PlayerId(0), plains);
+    }
+    assert_eq!(
+        game.submit(cast_intent(PlayerId(0), circle, None)),
+        Err(Reject::CannotPayCost),
+        "the printed two mana no longer covers a white spell taxed 3 more",
+    );
+
+    for _ in 0..3 {
+        let plains = game.spawn_on_battlefield(PlayerId(0), card("Plains"));
+        tap(&mut game, PlayerId(0), plains);
+    }
+    game.submit(cast_intent(PlayerId(0), circle, None))
+        .expect("five mana pays a printed 1W plus Gloom's 3");
+}
+
+/// The other half of the same scan: Gloom taxes *white* spells, so a Dark Ritual still casts off
+/// the one black mana it prints.
+#[test]
+fn gloom_leaves_a_nonwhite_spell_alone() {
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(1), card("Gloom"));
+    let ritual = game.spawn_in_hand(PlayerId(0), card("Dark Ritual")); // {B}
+    let swamp = game.spawn_on_battlefield(PlayerId(0), card("Swamp"));
+    tap(&mut game, PlayerId(0), swamp);
+    game.submit(cast_intent(PlayerId(0), ritual, None))
+        .expect("a black spell is untaxed");
+}
+
+/// Gloom's second clause: "Activated abilities of white enchantments cost {3} more to activate."
+/// Circle of Protection: Red's `{1}` becomes `{4}` — a tax on the *activation* choke, which no
+/// cost-changing effect had reached before.
+#[test]
+fn gloom_taxes_a_white_enchantments_activated_ability() {
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(1), card("Gloom"));
+    let circle = game.spawn_on_battlefield(PlayerId(0), card("Circle of Protection: Red"));
+    let plains = game.spawn_on_battlefield(PlayerId(0), card("Plains"));
+    tap(&mut game, PlayerId(0), plains);
+    assert_eq!(
+        game.submit(Intent::ActivateAbility {
+            player: PlayerId(0),
+            object: circle,
+            ability_index: 0,
+            target: None,
+            sacrifice: vec![],
+            discard_cost: vec![],
+            x: 0,
+        }),
+        // An unpayable activation cost rejects as `CannotActivate` — `settle_payment`'s
+        // failure is mapped there, not to the cast path's `CannotPayCost`.
+        Err(Reject::CannotActivate),
+        "one mana no longer covers a white enchantment's ability taxed 3 more",
+    );
+
+    for _ in 0..3 {
+        let plains = game.spawn_on_battlefield(PlayerId(0), card("Plains"));
+        tap(&mut game, PlayerId(0), plains);
+    }
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: circle,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .expect("four mana pays a printed 1 plus Gloom's 3");
+}
+
+/// A *black* enchantment's ability is untouched — Gloom's second clause reads the source
+/// permanent's own color, so Pestilence still activates off the one black mana it prints.
+#[test]
+fn gloom_leaves_a_nonwhite_enchantments_ability_alone() {
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(1), card("Gloom"));
+    let pestilence = game.spawn_on_battlefield(PlayerId(0), card("Pestilence"));
+    let swamp = game.spawn_on_battlefield(PlayerId(0), card("Swamp"));
+    tap(&mut game, PlayerId(0), swamp);
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: pestilence,
+        ability_index: 1, // [0] is the end-step sacrifice trigger.
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .expect("a black enchantment's ability is untaxed");
+}

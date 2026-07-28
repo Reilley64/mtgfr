@@ -316,6 +316,8 @@ message_keys! {
     EFFECT_STATIC_PREVENT_NONCOMBAT_DAMAGE_TO_OTHER_CREATURES_YOU_CONTROL => "effect.static_prevent_noncombat_damage_to_other_creatures_you_control",
     EFFECT_STATIC_REDIRECT_UNBLOCKED_DAMAGE_TO_SELF => "effect.static_redirect_unblocked_damage_to_self",
     EFFECT_STATIC_REDUCE_SPELL_COST => "effect.static_reduce_spell_cost",
+    EFFECT_STATIC_TAX_SPELL_COST => "effect.static_tax_spell_cost",
+    EFFECT_STATIC_TAX_ACTIVATED_ABILITY => "effect.static_tax_activated_ability",
     EFFECT_STATIC_SET_ATTACHED_BASE_PT => "effect.static_set_attached_base_pt",
     EFFECT_STATIC_SET_ATTACHED_TYPES => "effect.static_set_attached_types",
     EFFECT_STATIC_SPEND_MANA_AS_THOUGH_ANOTHER_COLOR => "effect.static_spend_mana_as_though_another_color",
@@ -2167,6 +2169,18 @@ impl Effect {
                 spell_filter_param("filter", filter),
                 bool_param("first_x_spell_each_turn", first_x_spell_each_turn),
             ]),
+            Effect::Static(TaxSpellCost { amount, filter }) => {
+                MessageRef::new(MessageKey::EFFECT_STATIC_TAX_SPELL_COST).with_params(vec![
+                    amount_param("amount", amount),
+                    spell_filter_param("filter", filter),
+                ])
+            }
+            Effect::Static(TaxActivatedAbility { amount, filter }) => {
+                MessageRef::new(MessageKey::EFFECT_STATIC_TAX_ACTIVATED_ABILITY).with_params(vec![
+                    amount_param("amount", amount),
+                    permanent_filter_param("filter", filter),
+                ])
+            }
             Effect::Static(AttackTax { amount }) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_ATTACK_TAX)
                     .with_params(vec![int_param("amount", amount)])
