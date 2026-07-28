@@ -2,7 +2,7 @@
 // The recipe is private on purpose — a styled thing that is not a button should not be reachable.
 
 import * as Button from "@foldkit/ui/button";
-import type { Attribute, html as createHtml, Html } from "foldkit/html";
+import type { Attribute, ChildAttribute, html as createHtml, Html } from "foldkit/html";
 import type { ClassValue } from "../cn";
 import { cva } from "./recipe";
 
@@ -40,7 +40,9 @@ type SharedProps<Msg> = {
   testId?: string;
   ariaLabel?: string;
   class?: ClassValue;
-  attrs?: ReadonlyArray<Attribute<Msg>>;
+  // ChildAttribute is what a submodel's RenderInfo carries (Dialog's closeButton / initialFocus,
+  // for one). foldkit's own element functions accept the union, so this does too.
+  attrs?: ReadonlyArray<Attribute<Msg> | ChildAttribute>;
 };
 
 // `as: "a"` and `as: "button"` (or omitted) are mutually exclusive shapes, not one shape with
@@ -53,9 +55,9 @@ type SharedProps<Msg> = {
 export type ButtonProps<Msg> = SharedProps<Msg> &
   ({ as?: "button"; type?: "button" | "submit" | "reset"; disabled?: boolean } | { as: "a"; href: string });
 
-function shared<Msg>(h: HtmlFactory<Msg>, props: ButtonProps<Msg>): Array<Attribute<Msg>> {
+function shared<Msg>(h: HtmlFactory<Msg>, props: ButtonProps<Msg>): Array<Attribute<Msg> | ChildAttribute> {
   const className = recipe({ variant: props.variant, class: props.class });
-  const out: Array<Attribute<Msg>> = [h.Class(className)];
+  const out: Array<Attribute<Msg> | ChildAttribute> = [h.Class(className)];
   if (props.testId != null) out.push(h.DataAttribute("testid", props.testId));
   if (props.ariaLabel != null) out.push(h.AriaLabel(props.ariaLabel));
   return [...out, ...(props.attrs ?? [])];

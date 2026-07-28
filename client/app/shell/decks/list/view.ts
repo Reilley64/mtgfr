@@ -1,24 +1,25 @@
+import type * as Menu from "@foldkit/ui/menu";
 import { Effect, Queue, Schema as S, Stream } from "effect";
 import { Submodel } from "foldkit";
 import { type Html, html } from "foldkit/html";
 import * as Mount from "foldkit/mount";
-import { cn } from "../../../domain/cn";
 import type { AppChromeMeta } from "../../../domain/ui/app-version";
 import { button } from "../../../domain/ui/button";
 import { confirmDialog } from "../../../domain/ui/confirmDialog";
 import { input } from "../../../domain/ui/input";
+import { menuItemClass, menuPanelClass } from "../../../domain/ui/menu";
 import { alertClass, listRowClass } from "../../../domain/ui/surfaces";
-import type { CardArtTick, DeckCardFlipTick, GotAuthMessage, ModalOpened } from "../../../messages";
+import type { CardArtTick, DeckCardFlipTick, GotAuthMessage } from "../../../messages";
 import { DeckRoute, NewDeckRoute, PlayRoute, routePath } from "../../../routes";
-import type { ClosedAccountMenu, ToggledAccountMenu } from "../../account-chrome/messages";
+import { GotAccountMenuMessage } from "../../account-chrome/messages";
 import { accountChrome } from "../../account-chrome/view";
 import { shellFrame } from "../../frame/shell-frame";
 import { type DeckCardModel, renderDeckCard } from "../deck-card";
 import {
   AskedDeckDelete,
-  CancelledDeckDelete,
   ChangedDeckListSearch,
   ClosedDeckListMenu,
+  GotConfirmDialogMessage,
   type Message,
   OpenedDeckListMenu,
   RequestedDeckDelete,
@@ -28,17 +29,12 @@ import { deckListContextMenuAllowed, visibleDecks } from "./visible";
 
 export type ViewMessage =
   | Message
-  | typeof ModalOpened.Type
   | typeof CardArtTick.Type
   | typeof DeckCardFlipTick.Type
   | typeof GotAuthMessage.Type
-  | typeof ToggledAccountMenu.Type
-  | typeof ClosedAccountMenu.Type;
+  | typeof GotAccountMenuMessage.Type;
 
 const h = html<ViewMessage>();
-
-const MENU_ITEM =
-  "cursor-pointer rounded-control border-none bg-transparent px-md py-xs text-left text-label text-snow hover:bg-white/8 focus-visible:bg-white/8 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-vine";
 
 type ContextMenuMessage = typeof OpenedDeckListMenu.Type | typeof ClosedDeckListMenu.Type;
 
@@ -145,9 +141,7 @@ function contextMenu(model: DeckListSubmodel): Html {
       h.div(
         [
           h.DataAttribute("testid", "deck-list-context-menu"),
-          h.Class(
-            "fixed top-(--y) left-(--x) z-41 flex min-w-[160px] flex-col rounded-hud border border-vine bg-forest-surface p-xs shadow-table",
-          ),
+          h.Class(menuPanelClass("fixed top-(--y) left-(--x) z-41 min-w-[160px]")),
           h.Style({ "--x": `${x}px`, "--y": `${y}px` }),
         ],
         [
@@ -156,7 +150,7 @@ function contextMenu(model: DeckListSubmodel): Html {
               h.DataAttribute("testid", "deck-list-menu-edit"),
               h.Href(routePath(DeckRoute({ id: String(menu.deckId) }))),
               h.OnClick(ClosedDeckListMenu()),
-              h.Class(cn(MENU_ITEM, "no-underline")),
+              h.Class(menuItemClass("no-underline")),
             ],
             ["Edit"],
           ),
@@ -165,7 +159,7 @@ function contextMenu(model: DeckListSubmodel): Html {
               h.Type("button"),
               h.DataAttribute("testid", "deck-list-menu-delete"),
               h.OnClick(AskedDeckDelete({ id: menu.deckId })),
-              h.Class(MENU_ITEM),
+              h.Class(menuItemClass()),
             ],
             ["Delete"],
           ),
@@ -179,6 +173,7 @@ export type ViewInputs = {
   readonly username: string;
   readonly meGravatarHash: string | null;
   readonly chrome: AppChromeMeta;
+  readonly accountMenu: Menu.Model;
 };
 
 export const view = Submodel.defineView<DeckListSubmodel, ViewMessage, ViewInputs>((model, viewInputs) => {
@@ -191,7 +186,8 @@ export const view = Submodel.defineView<DeckListSubmodel, ViewMessage, ViewInput
     trailing: accountChrome(h, {
       username: viewInputs.username,
       gravatarHash: viewInputs.meGravatarHash,
-      menuOpen: model.accountMenuOpen,
+      menu: viewInputs.accountMenu,
+      toMenuMessage: (message) => GotAccountMenuMessage({ message }),
       showLeaderboardLink: true,
     }),
     stage: h.div(
@@ -201,17 +197,18 @@ export const view = Submodel.defineView<DeckListSubmodel, ViewMessage, ViewInput
         h.OnMount(BindDeckListContextMenuEscape()),
       ],
       [
-        model.confirmingDeleteId != null
-          ? confirmDialog(h, {
-              title: `Delete "${model.decks.find((d) => d.id === model.confirmingDeleteId)?.name ?? ""}"?`,
-              body: "This deck and its card list are gone for good.",
-              confirmLabel: "Delete deck",
-              danger: true,
-              onConfirm: RequestedDeckDelete({ id: model.confirmingDeleteId }),
-              onCancel: CancelledDeckDelete(),
-              testId: "confirm-delete-dialog",
-            })
-          : null,
+        // Always rendered: Dialog opens and closes the <dialog> element itself, so it has to stay
+        // in the tree. `model.confirmDialog.isOpen` is what makes the prompt visible.
+        confirmDialog(h, {
+          model: model.confirmDialog,
+          toDialogMessage: (message) => GotConfirmDialogMessage({ message }),
+          title: `Delete "${model.decks.find((d) => d.id === model.confirmingDeleteId)?.name ?? ""}"?`,
+          body: "This deck and its card list are gone for good.",
+          confirmLabel: "Delete deck",
+          danger: true,
+          onConfirm: RequestedDeckDelete(),
+          testId: "confirm-delete-dialog",
+        }),
         h.section(
           [h.Class("mx-auto w-full")],
           [

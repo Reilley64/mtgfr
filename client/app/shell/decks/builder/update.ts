@@ -1,4 +1,5 @@
-import { Effect, Match as M, Schema as S } from "effect";
+import * as Dialog from "@foldkit/ui/dialog";
+import { Effect, Match as M, Option, Schema as S } from "effect";
 import type { Command as FoldkitCommand } from "foldkit";
 import { Command, Navigation } from "foldkit";
 import {
@@ -26,6 +27,7 @@ import {
   DeckBuilderLoadFailed,
   DeckSaved,
   DeckSaveFailed,
+  GotDiscardDialogMessage,
   HydratedBuilderCards,
   type Message,
   NavigatedAwayFromBuilder,
@@ -301,6 +303,16 @@ function runMenuAction(
   }
 }
 
+type UpdateReturn = readonly [DeckBuilderSubmodel, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>];
+
+const toDiscardDialogMessage = (message: Dialog.Message): Message => GotDiscardDialogMessage({ message });
+
+/** Dismisses the discard confirmation. */
+function closeDiscardConfirm(model: DeckBuilderSubmodel): UpdateReturn {
+  const [discardDialog, commands] = Dialog.close(model.discardDialog);
+  return [{ ...model, discardDialog }, Command.mapMessages(commands, toDiscardDialogMessage)];
+}
+
 export const update = (
   model: DeckBuilderSubmodel,
   message: Message,
@@ -424,11 +436,24 @@ export const update = (
         return [{ ...model, commander: { id: "", print: "" }, dirty: true }, []];
       },
       RequestedBuilderCancel: () => {
-        if (model.dirty) return [{ ...model, confirmingDiscard: true }, []];
-        return [model, [NavigateHome()]];
+        if (!model.dirty) return [model, [NavigateHome()]];
+        const [discardDialog, commands] = Dialog.open(model.discardDialog);
+        return [{ ...model, discardDialog }, Command.mapMessages(commands, toDiscardDialogMessage)];
       },
-      ConfirmedBuilderDiscard: () => [{ ...model, confirmingDiscard: false }, [NavigateHome()]],
-      CancelledBuilderDiscard: () => [{ ...model, confirmingDiscard: false }, []],
+      ConfirmedBuilderDiscard: () => {
+        const [closed, commands] = closeDiscardConfirm(model);
+        return [closed, [...commands, NavigateHome()]];
+      },
+      // Escape, a backdrop click, and Cancel all reach here as Dialog's Closed out-message.
+      GotDiscardDialogMessage: ({ message }) => {
+        const [discardDialog, commands, outMessage] = Dialog.update(model.discardDialog, message);
+        const withDialog = { ...model, discardDialog };
+        const mapped = Command.mapMessages(commands, toDiscardDialogMessage);
+        if (Option.isNone(outMessage) || outMessage.value._tag !== "Closed") return [withDialog, mapped];
+
+        const [cancelled, cancelCommands] = closeDiscardConfirm(withDialog);
+        return [cancelled, [...mapped, ...cancelCommands]];
+      },
       NavigatedAwayFromBuilder: () => [model, []],
     }),
   );

@@ -75,12 +75,10 @@ function shell(model: Model, title: string, body: string) {
 
 function toParentDeckListMessage(message: DeckList.ViewMessage): Message {
   switch (message._tag) {
-    case "ModalOpened":
     case "CardArtTick":
     case "DeckCardFlipTick":
     case "GotAuthMessage":
-    case "ToggledAccountMenu":
-    case "ClosedAccountMenu":
+    case "GotAccountMenuMessage":
       return message;
     default:
       return GotDeckListMessage({ message });
@@ -89,11 +87,10 @@ function toParentDeckListMessage(message: DeckList.ViewMessage): Message {
 
 function toParentDeckBuilderMessage(message: DeckBuilder.ViewMessage): Message {
   switch (message._tag) {
-    case "ClosedAccountMenu":
+    case "GotAccountMenuMessage":
     case "GotAuthMessage":
     case "ModalOpened":
     case "CardArtTick":
-    case "ToggledAccountMenu":
       return message;
     default:
       return GotDeckBuilderMessage({ message });
@@ -103,10 +100,9 @@ function toParentDeckBuilderMessage(message: DeckBuilder.ViewMessage): Message {
 function toParentLobbyMessage(message: Lobby.ViewMessage): Message {
   switch (message._tag) {
     case "CardArtTick":
-    case "ClosedAccountMenu":
     case "DeckCardFlipTick":
+    case "GotAccountMenuMessage":
     case "GotAuthMessage":
-    case "ToggledAccountMenu":
       return message;
     default:
       return GotLobbyMessage({ message });
@@ -124,9 +120,8 @@ function toParentBoardMessage(message: BoardViewMessage): Message {
 
 function toParentLeaderboardMessage(message: Leaderboard.ViewMessage): Message {
   switch (message._tag) {
-    case "ClosedAccountMenu":
+    case "GotAccountMenuMessage":
     case "GotAuthMessage":
-    case "ToggledAccountMenu":
       return message;
     default:
       return GotLeaderboardMessage({ message });
@@ -135,9 +130,8 @@ function toParentLeaderboardMessage(message: Leaderboard.ViewMessage): Message {
 
 function toParentCoverageMessage(message: Coverage.ViewMessage): Message {
   switch (message._tag) {
-    case "ClosedAccountMenu":
+    case "GotAccountMenuMessage":
     case "GotAuthMessage":
-    case "ToggledAccountMenu":
       return message;
     default:
       return GotCoverageMessage({ message });
@@ -195,6 +189,7 @@ function routeBody(model: Model) {
             username: model.session.me?.username ?? "",
             meGravatarHash: model.session.meGravatarHash,
             chrome: chromeMeta(model),
+            accountMenu: model.accountMenu,
           },
           toParentMessage: toParentDeckListMessage,
         });
@@ -215,6 +210,7 @@ function routeBody(model: Model) {
             username: model.session.me?.username ?? "",
             meGravatarHash: model.session.meGravatarHash,
             chrome: chromeMeta(model),
+            accountMenu: model.accountMenu,
           },
           toParentMessage: toParentLeaderboardMessage,
         });
@@ -227,6 +223,7 @@ function routeBody(model: Model) {
             username: model.session.me?.username ?? "",
             meGravatarHash: model.session.meGravatarHash,
             chrome: chromeMeta(model),
+            accountMenu: model.accountMenu,
           },
           toParentMessage: toParentCoverageMessage,
         });
@@ -239,7 +236,7 @@ function routeBody(model: Model) {
             chrome: chromeMeta(model),
             username: model.session.me?.username ?? "",
             meGravatarHash: model.session.meGravatarHash,
-            accountMenuOpen: model.decks.list.accountMenuOpen,
+            accountMenu: model.accountMenu,
           },
           toParentMessage: toParentDeckBuilderMessage,
         });
@@ -252,7 +249,7 @@ function routeBody(model: Model) {
             chrome: chromeMeta(model),
             username: model.session.me?.username ?? "",
             meGravatarHash: model.session.meGravatarHash,
-            accountMenuOpen: model.decks.list.accountMenuOpen,
+            accountMenu: model.accountMenu,
           },
           toParentMessage: toParentDeckBuilderMessage,
         });
@@ -273,7 +270,7 @@ function routeBody(model: Model) {
             surface: "entry",
             username: model.session.me?.username ?? "",
             meGravatarHash: model.session.meGravatarHash,
-            accountMenuOpen: model.decks.list.accountMenuOpen,
+            accountMenu: model.accountMenu,
           },
           toParentMessage: toParentLobbyMessage,
         });
@@ -295,7 +292,7 @@ function routeBody(model: Model) {
             surface: "table",
             username: model.session.me?.username ?? "",
             meGravatarHash: model.session.meGravatarHash,
-            accountMenuOpen: model.decks.list.accountMenuOpen,
+            accountMenu: model.accountMenu,
           },
           toParentMessage: toParentLobbyMessage,
         });
@@ -314,7 +311,7 @@ function routeBody(model: Model) {
             surface: "table",
             username: model.session.me?.username ?? "",
             meGravatarHash: model.session.meGravatarHash,
-            accountMenuOpen: model.decks.list.accountMenuOpen,
+            accountMenu: model.accountMenu,
           },
           toParentMessage: toParentLobbyMessage,
         });

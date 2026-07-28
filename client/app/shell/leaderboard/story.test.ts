@@ -19,7 +19,6 @@ test("GotLeaderboardMessage updates the leaderboard through the parent update", 
       ...model,
       leaderboard: {
         ...model.leaderboard,
-        accountMenuOpen: true,
         entries: [{ rank: 2, rating: 1188, user_id: 2, username: "bob" }],
         error: "Could not load the leaderboard.",
         status: "error",
@@ -29,7 +28,6 @@ test("GotLeaderboardMessage updates the leaderboard through the parent update", 
     Story.message(GotLeaderboardMessage({ message: RequestedLeaderboardRefresh() })),
     Story.Command.expectExact(load),
     Story.model((next) => {
-      expect(next.leaderboard.accountMenuOpen).toBe(false);
       expect(next.leaderboard.entries).toEqual([]);
       expect(next.leaderboard.error).toBeNull();
       expect(next.leaderboard.status).toBe("loading");

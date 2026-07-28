@@ -1,6 +1,6 @@
 # UI Component Layer
 **Status:** Current (as of 2026-07-28)
-**Module:** `client/app/domain/ui/recipe.ts`, `client/app/domain/ui/button.ts`, `client/app/domain/ui/input.ts`, `client/app/domain/ui/surfaces.ts`, `client/app/domain/cn.ts`
+**Module:** `client/app/domain/ui/recipe.ts`, `client/app/domain/ui/button.ts`, `client/app/domain/ui/input.ts`, `client/app/domain/ui/confirmDialog.ts`, `client/app/domain/ui/menu.ts`, `client/app/domain/ui/surfaces.ts`, `client/app/domain/ui/native-dialog.ts`, `client/app/domain/cn.ts`
 
 ## Problem Statement
 
@@ -22,6 +22,7 @@ Buttons and text fields appear on every shell route and in most board HTML overl
 ### Wrapper-vs-class-helper rule
 
 - A styled element **with variants** is a component: a function in `client/app/domain/ui/` that wraps the matching headless `@foldkit/ui` primitive and applies a module-private cva recipe. `button` and `input` are the components.
+- A styled element a headless primitive renders *for* you — it takes class **strings**, not markup — is a class-string helper next to the surface it dresses: `menu.ts`'s `menuPanelClass` / `menuItemClass`. This is the one place views legitimately receive an assembled class string, because `@foldkit/ui`'s `Menu` emits its own trigger, container, and rows and accepts only `buttonClassName` / `itemsClassName` / `ItemConfig.className`.
 - A styled element **with no variants** is a class helper on `cn` in `surfaces.ts` — `panelClass`, `modalClass`, `listRowClass`, `alertClass`, `appVersionClass`. `cva({ base: X })({ class: extra })` emits exactly what `cn(X, ...extra)` already emits, so the helper form carries the same behavior with less ceremony. A helper becomes a component the day it grows its first variant.
 - Components are exported; their recipes are not. There is no way to reach a variant string and paint button chrome onto a `div`.
 
@@ -42,6 +43,28 @@ Buttons and text fields appear on every shell route and in most board HTML overl
 - `Button.view` marks a disabled button only with `aria-disabled` and `data-disabled`. `button.ts` additionally sets the native `disabled` DOM property, which is what makes the browser block focus, click, and form submission, and what the variants' `disabled:` and `hover:enabled:` Tailwind selectors key off. `Button.view` also drops `onClick` from a disabled button rather than relying on the browser alone.
 - `Button.view` sets `tabIndex` to `0` on every rendered button. A `<button>` is already in the tab order and a natively disabled one is out of it regardless of `tabindex`, so focus behavior is unchanged; the attribute is visible in the DOM and in attribute-level assertions.
 
+### `confirmDialog`
+
+`confirmDialog(h, props)`.
+
+- Behavior — open/close, focus trap, Escape, scroll lock, backdrop click — comes from `@foldkit/ui`'s `Dialog`. Markup, chrome, and the two buttons come from here.
+- `Dialog` is a **submodel**, not a pure view. The owner holds a `Dialog.Model`, delegates to `Dialog.update`, and maps its `Closed` OutMessage to its own cancel message. Escape, a backdrop click, and Cancel all arrive on that one path, so there is no `onCancel` prop — only `onConfirm` carries a parent message.
+- Props: `model`, `toDialogMessage`, `title`, optional `body`, `confirmLabel`, optional `danger` (picks the `danger` button variant), `onConfirm`, and optional `testId` (defaults to `confirm-dialog`, and doubles as the submodel slot id).
+- Cancel spreads `render.closeButton` and `render.initialFocus`, so a destructive confirm is never one Enter away and a plain dismiss needs no parent message.
+- `render.isVisible` gates the backdrop and panel. A closed dialog still renders an empty `<dialog>` element, which has to stay in the DOM for `Dialog` to open and close it.
+- It stays a wrapper function rather than a `Submodel.defineView` because `onConfirm` is the *parent's* message: `h.submodel` auto-wraps top-level `viewInputs` functions to the parent's boundary, so building the panel inside `toView` is what lets a parent message dispatch unwrapped.
+
+### `menu.ts` chrome
+
+- `menuPanelClass(extra?)` is the shared dropdown panel: rounded HUD border, `bg-forest-surface`, `shadow-table`. Positioning (`absolute` / `fixed`, z-index, min-width) differs per site and is passed as `extra`.
+- `menuItemClass(extra?)` is a single row: transparent, borderless, with hover and `focus-visible` highlight plus a `ring-vine` focus ring.
+- Both back module-private cva recipes, so they merge through the same `cn` seam as the components.
+
+### `native-dialog.ts`
+
+- `ModalOpened` and the `OpenDialogAsModal` Mount open an `HTMLDialogElement` with `showModal()` and close it on unmount, letting the browser supply the focus trap, top-layer stacking, and Escape-to-cancel.
+- The deck builder's print picker is the only remaining surface on it. Confirm prompts moved to `confirmDialog`; the picker follows the day it needs animation, scroll lock, or a managed close.
+
 ### `input`
 
 `input(h, props)`.
@@ -54,7 +77,9 @@ Buttons and text fields appear on every shell route and in most board HTML overl
 ### Call sites
 
 - Every text field in the shell routes and the board HTML overlays renders through `input`, and standard button chrome renders through `button`. View files pass props; they do not compose variant class strings.
-- Controls whose chrome is not button chrome stay hand-written `h.button` elements with their own classes: the prompt HUD rows and submit/cancel in `prompts.ts`, the radial scrim and wedge rows in `activation-menu.ts`, the turn-yield rocker in `priority-bar.ts`, selectable pile cards in `pile-overlay.ts`, and the tile and menu-item chrome in the deck, account-chrome, and app-shell views.
+- `confirmDialog` renders the deck-list delete prompt and the deck-builder discard prompt — see [deck-list-and-builder](2026-07-20-deck-list-and-builder.md).
+- `menuPanelClass` / `menuItemClass` dress both dropdowns: the account chrome's `Menu` panel and rows (see [shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md)) and the hand-rolled deck-list right-click context menu, which supplies its own pointer positioning as `extra` (see [deck-list-and-builder](2026-07-20-deck-list-and-builder.md)).
+- Controls whose chrome is not button chrome stay hand-written `h.button` elements with their own classes: the prompt HUD rows and submit/cancel in `prompts.ts`, the radial scrim and wedge rows in `activation-menu.ts`, the turn-yield rocker in `priority-bar.ts`, selectable pile cards in `pile-overlay.ts`, and the tile chrome in the deck and app-shell views.
 - Canvas and Mount board surfaces are unaffected — they paint pixels rather than emitting DOM.
 
 ## Implementation Decisions
@@ -73,16 +98,20 @@ Buttons and text fields appear on every shell route and in most board HTML overl
 - `client/app/domain/ui/button.test.ts` asserts each variant's chrome tokens, call-site override, array and null `class` values, the `type="button"` default, the native `disabled` property, `testId` / `ariaLabel`, `attrs` pass-through on both the button and anchor branches, anchor `href`, and click dispatch on both branches.
 - `client/app/domain/ui/input.test.ts` asserts both variants' chrome, call-site override with `hud` sizing preserved, array and null `class` values, the `id` a label points at, `value` / `placeholder` / `type` / `autofocus` bindings, keystroke dispatch, `testId` / `ariaLabel`, and `attrs` pass-through.
 - Component tests read snabbdom's `data.class`, `data.attrs`, `data.props`, and `data.on` maps directly, so a native property (`disabled`, `value`) is distinguished from an attribute rather than conflated.
+- `client/app/domain/ui/confirmDialog.test.ts` is a Scene suite over a stand-in host: it asserts the closed dialog renders an empty `<dialog>`, that opening paints backdrop / title / body / both buttons, that Cancel and a backdrop click both reach the owner as `Closed`, that Cancel carries the initial-focus marker, that `danger` picks the danger variant, and that `onConfirm` dispatches the parent's message unwrapped.
+- `client/app/domain/ui/menu.test.ts` asserts each helper's chrome tokens and that a call-site class merges last — the panel's positioning `extra` and a row's `no-underline`.
 - Surface-level coverage of the rendered controls stays in `client/app/shell/surfaces.test.ts` and `client/app/board/html/surfaces.test.ts`; the component suites do not duplicate it.
+- Scene suites that open a `Menu` must resolve its `FocusItems` command and its `PortalMenuBackdrop` / `AnchorMenu` Mounts, and acknowledge those Mounts with `expectEnded` once a row commits. `Menu.update` builds its `InertOthers` command eagerly, whose factory calls `CSS.escape`, so `client/vitest-setup.ts` shims `CSS.escape` for the repo's `environment: "node"` config.
 
 ## Out of Scope
 
-- Wrappers for every `@foldkit/ui` entry point other than `button` and `input`, none of which has a call site in `client/app/` — including `textarea`, `select`, `checkbox`, `switch`, `radioGroup`, `disclosure`, `dialog`, `menu`, `popover`, and `tooltip`.
+- Wrappers for `@foldkit/ui` entry points with no call site in `client/app/` — `textarea`, `select`, `checkbox`, `switch`, `radioGroup`, `disclosure`, `tabs`, `popover`, and `tooltip`. The only tooltip-shaped code in the client is the native `title=` attribute on a few board buttons and the builder's print badge, which needs no component.
+- A component function around `@foldkit/ui`'s `Menu`. It renders its own trigger `<button>`, items container, and rows and takes class strings, so there is no markup left for a wrapper to own; `menu.ts` supplies the classes instead.
 - Converting the `surfaces.ts` class helpers to cva while they have no variants.
 - Canvas-drawn board chrome, which has no DOM element to wrap.
 - Rendering `@foldkit/ui`'s label and description slots; components emit the control only, and call sites own their own labels.
 - A component-token tier in `design.tokens.json`.
-- The other `client/app/domain/ui/` modules, which are not primitive wrappers: `confirmDialog.ts` delegates to the native `<dialog>`, and `card-art.ts`, `seat-face.ts`, and `app-version.ts` belong to the specs for the surfaces that render them.
+- The other `client/app/domain/ui/` modules, which are not primitive wrappers: `card-art.ts`, `seat-face.ts`, and `app-version.ts` belong to the specs for the surfaces that render them.
 
 ## Further Notes
 

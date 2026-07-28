@@ -1,3 +1,4 @@
+import type * as Menu from "@foldkit/ui/menu";
 import { Effect, Option, Queue, Schema as S, Stream } from "effect";
 import { Submodel } from "foldkit";
 import { type Html, html } from "foldkit/html";
@@ -10,27 +11,22 @@ import type { ScryfallPrint } from "../../../domain/deck-builder/scryfall";
 import type { AppChromeMeta } from "../../../domain/ui/app-version";
 import { button } from "../../../domain/ui/button";
 import { cardArt } from "../../../domain/ui/card-art";
-import { confirmDialog, OpenDialogAsModal } from "../../../domain/ui/confirmDialog";
+import { confirmDialog } from "../../../domain/ui/confirmDialog";
 import { input } from "../../../domain/ui/input";
+import { OpenDialogAsModal } from "../../../domain/ui/native-dialog";
 import { alertClass } from "../../../domain/ui/surfaces";
-import type {
-  CardArtTick,
-  ClosedAccountMenu,
-  GotAuthMessage,
-  ModalOpened,
-  ToggledAccountMenu,
-} from "../../../messages";
+import { type CardArtTick, GotAccountMenuMessage, type GotAuthMessage, type ModalOpened } from "../../../messages";
 import { accountChrome } from "../../account-chrome/view";
 import { shellFrame } from "../../frame/shell-frame";
 import {
   ActivatedBuilderTarget,
-  CancelledBuilderDiscard,
   ChangedBuilderName,
   ChangedBuilderQuery,
   ClearedBuilderHover,
   ClosedBuilderMenu,
   ClosedBuilderPrintPicker,
   ConfirmedBuilderDiscard,
+  GotDiscardDialogMessage,
   type Message,
   MovedBuilderHover,
   OpenedBuilderMenu,
@@ -46,9 +42,8 @@ export type ViewMessage =
   | Message
   | typeof ModalOpened.Type
   | typeof CardArtTick.Type
-  | typeof ClosedAccountMenu.Type
-  | typeof GotAuthMessage.Type
-  | typeof ToggledAccountMenu.Type;
+  | typeof GotAccountMenuMessage.Type
+  | typeof GotAuthMessage.Type;
 
 const h = html<ViewMessage>();
 
@@ -406,7 +401,7 @@ export type ViewInputs = {
   readonly chrome: AppChromeMeta;
   readonly username: string;
   readonly meGravatarHash: string | null;
-  readonly accountMenuOpen: boolean;
+  readonly accountMenu: Menu.Model;
 };
 
 export const view = Submodel.defineView<DeckBuilderSubmodel, ViewMessage, ViewInputs>((model, viewInputs) => {
@@ -437,7 +432,8 @@ export const view = Submodel.defineView<DeckBuilderSubmodel, ViewMessage, ViewIn
         accountChrome(h, {
           username: viewInputs.username,
           gravatarHash: viewInputs.meGravatarHash,
-          menuOpen: viewInputs.accountMenuOpen,
+          menu: viewInputs.accountMenu,
+          toMenuMessage: (message) => GotAccountMenuMessage({ message }),
           showLeaderboardLink: true,
         }),
       ],
@@ -586,17 +582,18 @@ export const view = Submodel.defineView<DeckBuilderSubmodel, ViewMessage, ViewIn
                 ),
               ],
             ),
-            model.confirmingDiscard
-              ? confirmDialog(h, {
-                  title: "Discard changes?",
-                  body: "Everything you've edited since the deck loaded will be lost.",
-                  confirmLabel: "Discard",
-                  danger: true,
-                  onConfirm: ConfirmedBuilderDiscard(),
-                  onCancel: CancelledBuilderDiscard(),
-                  testId: "builder-discard-confirm",
-                })
-              : null,
+            // Always rendered: Dialog opens and closes the <dialog> element itself, so it has to
+            // stay in the tree. `model.discardDialog.isOpen` is what makes the prompt visible.
+            confirmDialog(h, {
+              model: model.discardDialog,
+              toDialogMessage: (message) => GotDiscardDialogMessage({ message }),
+              title: "Discard changes?",
+              body: "Everything you've edited since the deck loaded will be lost.",
+              confirmLabel: "Discard",
+              danger: true,
+              onConfirm: ConfirmedBuilderDiscard(),
+              testId: "builder-discard-confirm",
+            }),
             model.problems.length === 0
               ? null
               : h.div(

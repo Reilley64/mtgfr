@@ -1,7 +1,11 @@
+import * as Dialog from "@foldkit/ui/dialog";
 import { Schema as S } from "effect";
 import { CatalogCardSchema } from "../../../domain/deck-builder/cards";
 import { ScryfallPrintSchema } from "../../../domain/deck-builder/scryfall";
 import { BuilderMenuItemSchema } from "./messages";
+
+/** Document-unique id for the discard confirmation. Dialog keys its element, ARIA, and cleanup on it. */
+export const DISCARD_DIALOG_ID = "builder-discard-confirm";
 
 export const DeckEntry = S.Struct({
   count: S.Number,
@@ -43,7 +47,7 @@ export type BuilderContextMenu = typeof BuilderContextMenu.Type;
 export const DeckBuilderSubmodel = S.Struct({
   atEnd: S.Boolean,
   commander: BuilderCommander,
-  confirmingDiscard: S.Boolean,
+  discardDialog: Dialog.Model,
   dirty: S.Boolean,
   editingId: S.NullOr(S.String),
   entries: S.Record(S.String, DeckEntry),
@@ -67,7 +71,7 @@ export function initialDeckBuilderSubmodel(editingId: string | null = null): Dec
   return {
     atEnd: false,
     commander: { id: "", print: "" },
-    confirmingDiscard: false,
+    discardDialog: Dialog.init({ id: DISCARD_DIALOG_ID }),
     dirty: false,
     editingId,
     entries: {},
