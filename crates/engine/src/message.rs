@@ -302,6 +302,7 @@ message_keys! {
     EFFECT_STATIC_DISCARD_TO_LIBRARY_TOP_INSTEAD => "effect.static_discard_to_library_top_instead",
     EFFECT_STATIC_DOESNT_UNTAP => "effect.static_doesnt_untap",
     EFFECT_STATIC_PLAYERS_SKIP_UNTAP_STEPS => "effect.static_players_skip_untap_steps",
+    EFFECT_STATIC_UNTAP_AT_MOST_ONE => "effect.static_untap_at_most_one",
     EFFECT_CHOICE_TRIGGERING_PLAYER_MAY_PAY => "effect.choice_triggering_player_may_pay",
     EFFECT_STATIC_MUST_ATTACK_EACH_COMBAT => "effect.static_must_attack_each_combat",
     EFFECT_STATIC_OPPONENTS_CANT_SEARCH_LIBRARIES => "effect.static_opponents_cant_search_libraries",
@@ -2262,6 +2263,10 @@ impl Effect {
             }
             Effect::Static(PlayersSkipUntapSteps) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_PLAYERS_SKIP_UNTAP_STEPS)
+            }
+            Effect::Static(UntapAtMostOne { filter }) => {
+                MessageRef::new(MessageKey::EFFECT_STATIC_UNTAP_AT_MOST_ONE)
+                    .with_params(vec![permanent_filter_param("filter", filter)])
             }
             Effect::Static(CantAttackUnlessDefenderControls { filter }) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_CANT_ATTACK_UNLESS_DEFENDER_CONTROLS)

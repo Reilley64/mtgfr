@@ -940,6 +940,11 @@ pub enum PendingChoice {
     DeclineUntap {
         player: PlayerId,
         permanents: Vec<ObjectId>,
+        /// Smoke / Winter Orb (CR 502.2): each group is a set of the offered permanents from which
+        /// at most one may untap, and an answer that leaves two of any group out of `keep_tapped`
+        /// is rejected. Empty for a plain Rubinia-style pause, where every offered permanent is a
+        /// free yes/no.
+        at_most_one: Vec<Vec<ObjectId>>,
     },
     /// `player` is about to draw one card of a batch of `remaining` and may instead dredge (CR
     /// 702.52): each entry in `eligible` is one dredger in their own graveyard (its object id and its

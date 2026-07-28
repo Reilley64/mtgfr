@@ -1402,6 +1402,41 @@ impl Game {
         })
     }
 
+    /// Every live cap on how many permanents of a class may untap in one untap step (CR 502.2 —
+    /// Smoke's "no more than one creature", Winter Orb's "no more than one land"), as the
+    /// (source, filter) pairs the untap step matches its candidates against.
+    ///
+    /// Battlefield-wide and unscoped like [`Game::players_skip_untap_steps`] — both cards say
+    /// "players", so who controls them never enters into it. Unlike `doesnt_untap` this one honors
+    /// the ability's own `condition`, because Winter Orb's cap is gated on the Orb being untapped;
+    /// the read happens once as the untap step starts, so an Orb that untaps in that same step
+    /// (having been tapped down in response) never gets to stop the lands untapping beside it.
+    pub(crate) fn untap_at_most_one_filters(&self) -> Vec<(ObjectId, PermanentFilter)> {
+        let mut caps = Vec::new();
+        for source in self.battlefield() {
+            for ability in self.functional_abilities(source).iter() {
+                let Effect::Static(StaticEffect::UntapAtMostOne { filter }) = &ability.effect
+                else {
+                    continue;
+                };
+                if ability.timing != Timing::Static {
+                    continue;
+                }
+                if !ability.condition.is_none_or(|condition| {
+                    self.ability_condition_holds(
+                        condition,
+                        source,
+                        TriggerContext::of(self.controller_of(source)),
+                    )
+                }) {
+                    continue;
+                }
+                caps.push((source, *filter));
+            }
+        }
+        caps
+    }
+
     /// Whether anything on the battlefield is telling the table to skip its untap steps
     /// (CR 703.4a — Stasis's "Players skip their untap steps"). Battlefield-wide and unscoped:
     /// "players" is everyone, the Stasis controller included, so who controls it never enters

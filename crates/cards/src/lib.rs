@@ -4463,6 +4463,39 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
         );
     }
 
+    /// The untap cap is symmetrical on both cards ("players"), so neither filter may be scoped to
+    /// its own controller. Winter Orb's is the conditional one: its cap only speaks while the Orb
+    /// is untapped, and that gate rides on the ability rather than on the filter — Smoke, which
+    /// has no such clause, must carry no condition at all.
+    #[test]
+    fn unlimited_untap_caps_are_symmetrical_and_only_the_orb_is_conditional() {
+        let smoke = get_by_name("Smoke").expect("Smoke is in the pool");
+        let Effect::Static(StaticEffect::UntapAtMostOne { filter }) = &smoke.abilities[0].effect
+        else {
+            panic!("Smoke's only ability is the static");
+        };
+        assert_eq!(filter.types, TypeSet::CREATURE);
+        assert_eq!(
+            filter.controller,
+            FilterController::Any,
+            "their untap steps — every seat, not just Smoke's"
+        );
+        assert_eq!(smoke.abilities[0].condition, None, "no as-long-as clause");
+
+        let orb = get_by_name("Winter Orb").expect("Winter Orb is in the pool");
+        let Effect::Static(StaticEffect::UntapAtMostOne { filter }) = &orb.abilities[0].effect
+        else {
+            panic!("Winter Orb's only ability is the static");
+        };
+        assert_eq!(filter.types, TypeSet::LAND);
+        assert_eq!(filter.controller, FilterController::Any);
+        assert_eq!(
+            orb.abilities[0].condition,
+            Some(Condition::SourceUntapped),
+            "as long as this artifact is untapped"
+        );
+    }
+
     /// Paralyze is the attachment-scoped half of "doesn't untap", and the reason it can't be
     /// written with the battlefield-wide `DoesntUntap`: that one's filter names a class of
     /// permanents, not "the one this Aura is on". Its upkeep offer is the other axis — the {4}

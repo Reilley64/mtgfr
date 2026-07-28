@@ -1639,6 +1639,36 @@ impl Game {
                 // permanent carrying the flag isn't untapped here; instead it's offered below in a
                 // yes/no pause, and only untapped once the active player declines to keep it tapped.
                 let mut optional_untap: Vec<ObjectId> = Vec::new();
+                // Smoke / Winter Orb (CR 502.2): a cap on how many permanents of a class may
+                // untap. Resolved to concrete groups *before* anything untaps, so the state each
+                // cap reads is the one the step started in. A group of one isn't a choice — the
+                // lone candidate untaps as it always would — so only groups the cap actually bites
+                // are kept, and their members go into the pause below instead of untapping here.
+                let capped: Vec<Vec<ObjectId>> = match untap_step_happens {
+                    false => Vec::new(),
+                    true => self
+                        .untap_at_most_one_filters()
+                        .into_iter()
+                        .map(|(source, filter)| {
+                            let controller = self.controller_of(source);
+                            self.controlled_battlefield(active)
+                                .into_iter()
+                                .filter(|&id| {
+                                    self.permanent(id).tapped
+                                        && !self.skip_next_untap.contains(&id)
+                                        && !self.doesnt_untap(id)
+                                        && self.permanent_matches(
+                                            &filter,
+                                            id,
+                                            controller,
+                                            Some(source),
+                                        )
+                                })
+                                .collect::<Vec<ObjectId>>()
+                        })
+                        .filter(|group| group.len() > 1)
+                        .collect(),
+                };
                 for id in self.controlled_battlefield(active) {
                     // Pollen Lullaby's win rider (CR): a permanent marked to skip its controller's
                     // next untap step doesn't untap now — the mark is consumed here (whether or not
@@ -1649,7 +1679,9 @@ impl Game {
                     } else if self.skip_next_untap.contains(&id) {
                         self.push_apply(events, Event::NextUntapSkipConsumed { object: id });
                     } else if self.permanent(id).tapped && !self.doesnt_untap(id) {
-                        if self.def_of(id).may_choose_not_to_untap {
+                        if self.def_of(id).may_choose_not_to_untap
+                            || capped.iter().any(|group| group.contains(&id))
+                        {
                             optional_untap.push(id);
                         } else {
                             self.push_apply(events, Event::Untapped { object: id });
@@ -1678,6 +1710,7 @@ impl Game {
                         PendingChoice::DeclineUntap {
                             player: active,
                             permanents: optional_untap,
+                            at_most_one: capped,
                         },
                     );
                 }

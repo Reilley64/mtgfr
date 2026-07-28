@@ -560,6 +560,8 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
       ? "This permanent doesn't untap during your untap step"
       : `${humanize(param(params, "filter", "Permanents"))} don't untap during their controllers' untap steps`,
   "effect.static_players_skip_untap_steps": literal("Players skip their untap steps"),
+  "effect.static_untap_at_most_one": (params) =>
+    `Players can't untap more than one ${humanize(param(params, "filter", "permanent"))} during their untap steps`,
   "effect.static_must_attack_each_combat": (params) =>
     bool(params, "self_only")
       ? "This creature attacks each combat if able"

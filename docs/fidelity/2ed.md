@@ -292,7 +292,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [x] **Simulacrum** {1}{B} · Instant — increment 22
 - [x] **Siren's Call** {U} · Instant
 - [ ] **Sleight of Mind** {U} · Instant — increment 16
-- [ ] **Smoke** {R}{R} · Enchantment — increment 7
+- [x] **Smoke** {R}{R} · Enchantment — increment 7
 - [x] **Soul Net** {1} · Artifact — increment 10
 - [x] **Spell Blast** {X}{U} · Instant — increment 30
 - [x] **Stasis** {1}{U} · Enchantment — increment 7
@@ -313,7 +313,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [x] **Wanderlust** {2}{G} · Enchantment — Aura — increment 61
 - [x] **Warp Artifact** {B}{B} · Enchantment — Aura — increment 61
 - [x] **Wild Growth** {G} · Enchantment — Aura — increment 64
-- [ ] **Winter Orb** {2} · Artifact — increment 7
+- [x] **Winter Orb** {2} · Artifact — increment 7
 - [x] **Wooden Sphere** {1} · Artifact — increment 10
 - [ ] **Word of Command** {B}{B} · Instant — increment 49
 - [x] **Zombie Master** {1}{B}{B} · Creature — Zombie — increment 66

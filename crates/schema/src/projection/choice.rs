@@ -608,7 +608,13 @@ impl<'a> ChoiceCtx<'a> {
                 count: count as u32,
                 items: private_items(player, self.viewer, hand, |ids| self.label_items(ids)),
             },
-            engine::PendingChoice::DeclineUntap { player, permanents } => {
+            // ponytail: the Smoke/Winter Orb `at_most_one` groups aren't projected, so the client
+            // offers the pause as a free yes/no and a two-of-a-group answer is rejected by the
+            // server rather than blocked in the UI. Needs a wire field; see the 2ed increments
+            // backlog.
+            engine::PendingChoice::DeclineUntap {
+                player, permanents, ..
+            } => {
                 PendingChoiceView::DeclineUntap {
                     player: player.0,
                     items: self.label_items(permanents),

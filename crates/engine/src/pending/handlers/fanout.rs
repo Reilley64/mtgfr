@@ -631,12 +631,21 @@ impl Game {
         let Some(PendingChoice::DeclineUntap {
             player: chooser,
             permanents,
+            at_most_one,
         }) = self.pending_choice.clone()
         else {
             return Err(Reject::IllegalChoice);
         };
         // The answer must come from the asked player and only name permanents that were offered.
         if player != chooser || !keep_tapped.iter().all(|id| permanents.contains(id)) {
+            return Err(Reject::IllegalChoice); // invalid — the choice stays pending
+        }
+        // Smoke / Winter Orb (CR 502.2): a cap is a ceiling, not a quota — keeping every member of
+        // a group tapped is a legal answer, letting two of one group up is not.
+        if at_most_one
+            .iter()
+            .any(|group| group.iter().filter(|id| !keep_tapped.contains(id)).count() > 1)
+        {
             return Err(Reject::IllegalChoice); // invalid — the choice stays pending
         }
 

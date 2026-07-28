@@ -301,6 +301,24 @@ pub enum StaticEffect {
     /// would let it back in.
     PlayersSkipUntapSteps,
 
+    /// Smoke's "Players can't untap more than one creature during their untap steps" and Winter
+    /// Orb's land twin (CR 502.2). Read by
+    /// [`Game::untap_at_most_one_filters`](crate::Game), which the untap step consults while
+    /// building its untap set: the permanents matching `filter` that were about to untap go into
+    /// the [`PendingChoice::DeclineUntap`](crate::PendingChoice) pause instead, and only the one
+    /// the active player leaves out of `keep_tapped` comes back up.
+    ///
+    /// Unscoped like [`PlayersSkipUntapSteps`](Self::PlayersSkipUntapSteps) — "players" is
+    /// everyone, so `filter`'s default [`FilterController::Any`](crate::FilterController) is what
+    /// makes both cards symmetrical. Winter Orb's "as long as this artifact is untapped" rides on
+    /// the ability's own [`Condition::SourceUntapped`](crate::Condition), read once as the untap
+    /// step starts — which is why an Orb tapped down in response untaps alongside your lands
+    /// without stopping any of them.
+    UntapAtMostOne {
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        filter: PermanentFilter,
+    },
+
     EntersWithCounters {
         #[cfg_attr(feature = "card-dsl", serde(rename = "count"))]
         amount: Amount,

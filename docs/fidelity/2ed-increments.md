@@ -233,7 +233,7 @@ printed line also widens — an owner who has lost control may still activate �
 check runs first, so a stolen Incarnation is activatable by nobody rather than by its thief, which
 is the closer wrong answer.
 
-### 7. `untap-step-restrictions` — 9 cards, M — **7a, 7b, 7c-i, 7d done; 7c-ii open**
+### 7. `untap-step-restrictions` — 9 cards, M — **done**
 Depends on: nothing.
 "Doesn't untap during your untap step" / "players skip their untap steps" / "can't untap more
 than one." The untap step currently untaps everything a player controls unconditionally.
@@ -309,6 +309,30 @@ scanner — the untap step keeps reading exactly one thing, and "doesn't untap" 
 the source is an Aura on the permanent or a Meekstone across the table. Like the battlefield-wide
 form it is read *only* by the untap step, which is what lets Paralyze's own pay-{4} untap the host
 it is still sitting on.
+
+*Landed (7c-ii — smoke, winter_orb):* the sketch wanted a `PendingChoice::ChooseUntapSet`, and the
+pause it describes is the one the untap step already raises. "Which of these come up?" and Rubinia's
+"which of these stay down?" are the same question asked from opposite ends, so `DeclineUntap` grew a
+`at_most_one: Vec<Vec<ObjectId>>` — each group a set of the offered permanents from which at most one
+may untap — and the whole intent, dispatch and answer path came free. Validation is one line and
+deliberately a *ceiling, not a quota*: letting two of a group up is rejected, keeping every one of
+them tapped is legal. `StaticEffect::UntapAtMostOne { filter }` is the rest of it, unscoped like
+`PlayersSkipUntapSteps` because both cards say "players".
+
+The one thing that needed care is *when* each cap is read. The groups are resolved into concrete ids
+before anything untaps, off the state the step started in, and a group of one is dropped outright — a
+lone candidate untaps as it always would, so no existing test acquired a pause. That ordering is also
+exactly the famous Winter Orb ruling: an Orb tapped down in response untaps in the same turn-based
+action as your lands, and because its "as long as this artifact is untapped" was read while it was
+still tapped, it stops none of them. That ruling is a test, not a comment. The gate itself rides on
+the ability's own `Condition::SourceUntapped` rather than on the filter — the first static scanner to
+honor `ability_condition_holds`, which is why Smoke, with no such clause, must carry no condition at
+all.
+
+ponytail: the groups aren't projected to the client, so the board offers the pause as a free yes/no
+and a two-of-a-group answer bounces off the server instead of being blocked in the UI. It needs a
+wire field on `PendingChoiceViewDeclineUntap` and a client-side group check; billed to the client
+catch-up phase rather than to this increment.
 
 *Landed (7c-i — stasis):* the sketch bundled Stasis with Smoke and Winter Orb because all three
 sound like untap-step restrictions, but they share no machinery: those two cap *how many* permanents

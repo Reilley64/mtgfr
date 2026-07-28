@@ -47,13 +47,23 @@ fn deal_opening(game: &mut Game, deck_size: usize) {
 fn advance_until(game: &mut Game, predicate: impl Fn(&Game) -> bool) {
     let mut guard = 0;
     while !predicate(game) {
-        if let Some(PendingChoice::DeclineUntap { player, .. }) = game.pending_choice() {
-            // Neutral default: untap everything (Rubinia Soulsinger's optional-untap pause). A test
-            // that wants to keep a permanent tapped stops on this choice via its predicate and
-            // answers it itself before advancing further.
+        if let Some(PendingChoice::DeclineUntap {
+            player,
+            at_most_one,
+            ..
+        }) = game.pending_choice()
+        {
+            // Neutral default: untap everything (Rubinia Soulsinger's optional-untap pause), minus
+            // whatever a Smoke/Winter Orb cap forbids — the first of each capped group comes up and
+            // the rest stay tapped. A test that wants a different answer stops on this choice via
+            // its predicate and answers it itself before advancing further.
+            let keep_tapped = at_most_one
+                .iter()
+                .flat_map(|group| group.iter().skip(1).copied())
+                .collect();
             game.submit(Intent::DeclineUntap {
                 player,
-                keep_tapped: vec![],
+                keep_tapped,
             })
             .unwrap();
         } else if game.current_step() == Step::DeclareAttackers && !game.attackers_declared() {
@@ -44192,6 +44202,145 @@ fn rubinia_steals_creature_while_tapped() {
         game.controller_of(creature),
         PlayerId(0),
         "Rubinia's controller now controls the creature (CR 611.2b)"
+    );
+}
+
+/// Tap `count` copies of `def` down for P0 and hand back their ids, so an untap-step cap has a
+/// group to bite.
+fn tapped_for_p0(game: &mut Game, def: CardDef, count: usize) -> Vec<ObjectId> {
+    (0..count)
+        .map(|_| {
+            let id = game.spawn_on_battlefield(PlayerId(0), def.clone());
+            game.tap(id);
+            id
+        })
+        .collect()
+}
+
+#[test]
+fn smoke_lets_only_one_creature_untap() {
+    let mut game = Game::new();
+    stock_libraries(&mut game);
+    // "Players" — the Smoke sits across the table from the creatures it holds down.
+    game.spawn_on_battlefield(PlayerId(1), card("Smoke"));
+    let bears = tapped_for_p0(&mut game, VANILLA.clone(), 3);
+    let land = tapped_for_p0(&mut game, card("Forest"), 1)[0];
+
+    advance_until(&mut game, |g| {
+        matches!(g.pending_choice(), Some(PendingChoice::DeclineUntap { .. }))
+    });
+    let Some(PendingChoice::DeclineUntap {
+        permanents,
+        at_most_one,
+        ..
+    }) = game.pending_choice()
+    else {
+        panic!("the cap pauses P0's untap step so P0 picks which creature comes up");
+    };
+    assert_eq!(
+        at_most_one,
+        vec![bears.clone()],
+        "Smoke caps the creatures and says nothing about the land"
+    );
+    assert_eq!(
+        permanents, bears,
+        "only the capped creatures are offered — the land untaps on its own"
+    );
+
+    game.submit(Intent::DeclineUntap {
+        player: PlayerId(0),
+        keep_tapped: vec![bears[1], bears[2]],
+    })
+    .expect("one of the three coming up is the most the cap allows");
+
+    assert!(!game.is_tapped(bears[0]), "the chosen creature untaps");
+    assert!(
+        game.is_tapped(bears[1]) && game.is_tapped(bears[2]),
+        "the other two stay tapped (CR 502.2)"
+    );
+    assert!(!game.is_tapped(land), "Smoke caps creatures, not lands");
+}
+
+#[test]
+fn smoke_rejects_two_creatures_coming_up_but_allows_none() {
+    let mut game = Game::new();
+    stock_libraries(&mut game);
+    game.spawn_on_battlefield(PlayerId(1), card("Smoke"));
+    let bears = tapped_for_p0(&mut game, VANILLA.clone(), 3);
+
+    advance_until(&mut game, |g| {
+        matches!(g.pending_choice(), Some(PendingChoice::DeclineUntap { .. }))
+    });
+    assert!(
+        matches!(
+            game.submit(Intent::DeclineUntap {
+                player: PlayerId(0),
+                keep_tapped: vec![bears[2]],
+            }),
+            Err(Reject::IllegalChoice)
+        ),
+        "letting two creatures up breaks the cap"
+    );
+    // A ceiling, not a quota — keeping every one of them tapped is a legal answer.
+    game.submit(Intent::DeclineUntap {
+        player: PlayerId(0),
+        keep_tapped: bears.clone(),
+    })
+    .expect("untapping none of them is under the cap");
+    assert!(bears.iter().all(|&id| game.is_tapped(id)));
+}
+
+#[test]
+fn winter_orb_lets_only_one_land_untap() {
+    let mut game = Game::new();
+    stock_libraries(&mut game);
+    game.spawn_on_battlefield(PlayerId(1), card("Winter Orb"));
+    let lands = tapped_for_p0(&mut game, card("Forest"), 3);
+    let bear = tapped_for_p0(&mut game, VANILLA.clone(), 1)[0];
+
+    advance_until(&mut game, |g| {
+        matches!(g.pending_choice(), Some(PendingChoice::DeclineUntap { .. }))
+    });
+    let Some(PendingChoice::DeclineUntap { at_most_one, .. }) = game.pending_choice() else {
+        panic!("the cap pauses P0's untap step so P0 picks which land comes up");
+    };
+    assert_eq!(at_most_one, vec![lands.clone()], "the Orb caps lands only");
+
+    game.submit(Intent::DeclineUntap {
+        player: PlayerId(0),
+        keep_tapped: vec![lands[0], lands[1]],
+    })
+    .expect("one of the three lands coming up is the most the cap allows");
+    assert!(!game.is_tapped(lands[2]), "the chosen land untaps");
+    assert!(game.is_tapped(lands[0]) && game.is_tapped(lands[1]));
+    assert!(
+        !game.is_tapped(bear),
+        "the Orb says nothing about creatures"
+    );
+}
+
+#[test]
+fn a_winter_orb_that_untaps_this_step_stops_nothing() {
+    let mut game = Game::new();
+    stock_libraries(&mut game);
+    // The Orb tapped down in response, on its controller's own side so it untaps in the very step
+    // it would otherwise cap: "as long as this artifact is untapped" is read as the step starts,
+    // when it is still tapped, so every land comes up beside it.
+    let orb = game.spawn_on_battlefield(PlayerId(0), card("Winter Orb"));
+    game.tap(orb);
+    let lands = tapped_for_p0(&mut game, card("Forest"), 3);
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Draw
+    });
+
+    assert!(
+        !game.is_tapped(orb),
+        "the Orb untapped with everything else"
+    );
+    assert!(
+        lands.iter().all(|&id| !game.is_tapped(id)),
+        "no cap applied, so all three lands untapped (CR 502.2)"
     );
 }
 
