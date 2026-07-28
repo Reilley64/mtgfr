@@ -5,6 +5,7 @@
  * (or in a focused sibling Scene test) with a data-testid assertion.
  * See AGENTS.md: "Client UI: every surface gets a Scene test."
  */
+import * as Combobox from "@foldkit/ui/combobox";
 import * as Dialog from "@foldkit/ui/dialog";
 import { Submodel } from "foldkit";
 import { html } from "foldkit/html";
@@ -15,12 +16,18 @@ import { fromProtoWire } from "~/wire/protoMap";
 import type { ActionView, ObjectView, VisibleState, WireCost } from "~/wire/types";
 import type { GameFoldState, LogLine } from "../../game/fold";
 import { emptyCostPicks, type ModalCast, type PlayModePick, type XPromptState } from "../action/execution";
+import { CARD_NAME_COMBOBOX_ID, CardNameCombobox } from "../card-name-combobox";
 import { ZONE } from "../geometry/layout";
 import type { Message } from "../messages";
 import { type BoardModel, CONCEDE_DIALOG_ID, initialBoardModel, RESULT_DIALOG_ID } from "../submodel";
 import { type BoardViewModel, view as boardView } from "../view";
 import { boardOverlays } from "./overlays";
-import { resolveBoardCardArtMounts, resolveBoardOverlayMounts, resolveLiveBoardMounts } from "./scene-helpers";
+import {
+  resolveBoardCardArtMounts,
+  resolveBoardOverlayMounts,
+  resolveCardNameComboboxMounts,
+  resolveLiveBoardMounts,
+} from "./scene-helpers";
 
 /** Preorder `data-testid` walk — later siblings paint above earlier ones under `board-mount`. */
 function collectTestIds(node: unknown, out: string[] = []): string[] {
@@ -1906,6 +1913,8 @@ test("choose_card_name center modal lists matching catalog suggestions", () => {
         ...initialBoardModel(),
         promptDraft: { kind: "string", value: "Sol" },
         cardNameSuggestions: { query: "Sol", names: ["Sol Ring", "Sol Talisman"] },
+        // Typing is what opens the popup; opening it directly is the Scene stand-in for that.
+        cardNameCombobox: CardNameCombobox.open(Combobox.init({ id: CARD_NAME_COMBOBOX_ID }))[0],
       },
       gameState({
         pending_choice: {
@@ -1919,6 +1928,7 @@ test("choose_card_name center modal lists matching catalog suggestions", () => {
     Scene.expect(Scene.testId("pending-card-name-aim")).toBeAbsent(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
     Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
+    resolveCardNameComboboxMounts(),
     Scene.expect(Scene.testId("prompt-name-suggestions")).toExist(),
     Scene.expect(Scene.testId("prompt-name-suggestion-0")).toHaveText("Sol Ring"),
     Scene.expect(Scene.testId("prompt-name-suggestion-1")).toHaveText("Sol Talisman"),

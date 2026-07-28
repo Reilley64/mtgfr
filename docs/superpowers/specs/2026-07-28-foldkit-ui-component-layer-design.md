@@ -222,7 +222,14 @@ The result overlay and the concede confirm → `dialog`, as a `Dialog` submodel 
 ends the game, and `resultRaised` latches so a dismissed result stays dismissed. The
 card-name typeahead (`game/intents.ts`, `board/messages.ts`, covered by
 `board/card-name-typeahead.test.ts`) → `combobox`: it renders inside
-`pending-card-name-modal`, so it clears the blocking-modal bar.
+`pending-card-name-modal`, so it clears the blocking-modal bar. `Combobox` is another
+class-string primitive, so the `domain/ui/` contribution is chrome, not a wrapper — a
+`hud` variant on `menuPanelClass` / `menuItemClass`, which already dress `Menu`'s
+identically-shaped panel and rows, plus `inputClass` for the input the combobox renders
+itself. The typeahead gains arrow-key navigation of its suggestions and loses
+Enter-to-submit: `Combobox` bakes its own keydown handler into the input and snabbdom
+merges attributes by event name, so a second one would overwrite it. Enter now commits
+the highlighted name into the draft and the Name button submits.
 
 `prompt-modal` and `mulligan-overlay` are a **deliberate exclusion**, not a deferral.
 `Dialog` bundles the Escape handler into `render.dialog` and the outside-click handler
