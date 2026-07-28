@@ -2035,6 +2035,10 @@ impl<'de> Deserialize<'de> for Ability {
             /// twin of `cast_only_before_attackers`.
             #[serde(default)]
             only_before_attackers: bool,
+            /// "Activate only during your upkeep" (Cyclopean Tomb) — `only_during_your_upkeep =
+            /// true`; absent (`false`) for every ordinary ability.
+            #[serde(default)]
+            only_during_your_upkeep: bool,
             /// "Only this creature's owner may activate this ability" (CR 602.5c — Personal
             /// Incarnation).
             #[serde(default)]
@@ -2304,6 +2308,7 @@ impl<'de> Deserialize<'de> for Ability {
                 sorcery_speed: flat.sorcery_speed,
                 only_during_opponents_turn: flat.only_during_opponents_turn,
                 only_before_attackers: flat.only_before_attackers,
+                only_during_your_upkeep: flat.only_during_your_upkeep,
                 only_owner_may_activate: flat.only_owner_may_activate,
                 return_self: flat.return_self,
                 mill_self: flat.mill_self,

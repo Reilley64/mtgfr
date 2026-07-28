@@ -346,11 +346,48 @@ ponytail: the sweep runs per characteristic read rather than off a cached count,
 but a land can be caught. Upgrade path if a board with one of these ever gets slow is a
 `Game`-level count maintained as permanents enter and leave.
 
-### 8d. `counter-keyed-type-change-and-an-unbounded-upkeep-series` — 1 card, L
+### 8d. `counter-keyed-type-change-and-an-unbounded-upkeep-series` — 1 card, L — **done** (split)
 Depends on: 8c.
 Cyclopean Tomb's mire counters key the change to a counter rather than to an Aura or a filter, and
 its leaves-the-battlefield clause schedules an unbounded series of upkeep triggers — model that as
 a delayed trigger that re-registers itself until no mire counters it placed remain.
+*Cards:* cyclopean_tomb.
+
+*Landed:* the counter-keyed half only; the leaves-the-battlefield series is now **#8f**, since it
+is a different engine capability (a delayed trigger that re-registers itself) rather than more of
+this one. Cyclopean Tomb ships with an `approximates` line saying so — a mired land stays a Swamp
+for the rest of the game.
+
+`CounterKind::Mire` is a functional reminder counter on the `Vow` model: the counter *is* the
+effect, so `Game::effective_subtypes` reads the slot directly rather than looking for a continuous
+effect to read it off. That is not a shortcut — the Tomb can be in a graveyard while the land is
+still a Swamp, so there is nothing else left holding it. `ActivationCost::only_during_your_upkeep`
+is new (28 struct literals, all mechanical) and enforces both halves of "your upkeep."
+
+Two things the sketch got wrong. The oracle is "{2}, {T}", not a free tap, and the mire counter
+goes on a **non-Swamp** land — which `PermanentFilter::exclude_subtypes` already expressed, and
+which reads `effective_subtypes`, so the Tomb's own earlier work takes a land off its list for
+free. No new filter axis was needed.
+
+ponytail: the mire read applies last, after any global land-type change, instead of by CR 613.4
+timestamp — a counter carries no timestamp to sort by. Give `Permanent` a mire timestamp if a board
+ever holds both a mired land and a Conversion. Separately, this engine validates an activated
+ability's target at resolution rather than at activation (CR 608.2b instead of CR 602.2b, a
+documented posture — see `cast.rs`'s `activate_ability`), so pointing the Tomb at a Swamp costs the
+{2} and fizzles instead of being refused. Left alone: changing it touches every targeted activated
+ability in the pool.
+
+### 8f. `leaves-the-battlefield-unbounded-upkeep-series` — 1 card, L
+Depends on: 8d.
+Cyclopean Tomb's second clause: "When this artifact is put into a graveyard from the battlefield,
+at the beginning of each of your upkeeps for the rest of the game, remove all mire counters from a
+land that a mire counter was put onto with this artifact but that a mire counter has not been
+removed from with this artifact." Two new pieces. A `repeat` rider on
+`MiscEffect::ScheduleAtNextUpkeep` so `fire_delayed_triggers` re-arms instead of draining the entry
+(and scopes the upkeep to the delayed trigger's own controller, which today only `Main1` does), and
+a counter-removal effect targeting a land with a mire counter. The per-Tomb bookkeeping ("put onto
+with **this** artifact") is worth skipping while one Tomb per game is the realistic case — flag it
+as an `approximates` rather than tracking placement provenance.
 *Cards:* cyclopean_tomb.
 
 ### 8e. `land-type-change-until-end-of-turn` — 1 card, M

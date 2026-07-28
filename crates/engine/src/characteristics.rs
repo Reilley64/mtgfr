@@ -1586,6 +1586,16 @@ impl Game {
                 subtypes = set_subtypes.to_vec();
             }
         }
+        // "That land is a Swamp for as long as it has a mire counter on it" (Cyclopean Tomb,
+        // CR 305.7 — a type *set*, so the land keeps nothing else). Read off the counter rather
+        // than off a continuous effect on purpose: the Tomb can be long gone and the land is a
+        // Swamp still, so the counter is the only thing left holding the effect.
+        // ponytail: applied last, after any global conversion, instead of by CR 613.4 timestamp —
+        // the counter carries no timestamp to sort by. Give `Permanent` a mire timestamp if a
+        // board ever has both a mired land and a Conversion on it.
+        if self.counters_of_kind(id, CounterKind::Mire) > 0 {
+            subtypes = vec!["Swamp"];
+        }
         subtypes
     }
 

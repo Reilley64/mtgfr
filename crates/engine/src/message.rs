@@ -648,6 +648,7 @@ fn counter_kind_token(kind: CounterKind) -> &'static str {
         CounterKind::Age => "age",
         CounterKind::Storage => "storage",
         CounterKind::Corpse => "corpse",
+        CounterKind::Mire => "mire",
     }
 }
 

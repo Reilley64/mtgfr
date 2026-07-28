@@ -164,13 +164,13 @@ mod tests {
     use super::*;
     use engine::{
         Amount, AttackRider, BasicLandType, CardFilter, CardKind, CasterScope, ChoiceEffect, Color,
-        ColorFilter, Condition, ControlEffect, CopyEffect, Cost, CountersEffect, DamageEffect,
-        DestroyEffect, DigEffect, Division, DrawEffect, Effect, EnterController, ExileEffect,
-        FilterController, GraveyardScope, Keyword, LandProduces, LandTapBonusColor, LandTapScope,
-        LifeEffect, Mana, ManaEffect, MillEffect, MiscEffect, PermanentFilter, ProtectionScope,
-        PumpEffect, SacrificeAdditionalCostCount, SacrificeCost, SacrificeEffect, SearchDest,
-        SpellFilter, SpellSpeed, StaticEffect, Step, TargetCount, TargetSpec, Timing, TokenEffect,
-        Trigger, TypeSet, ZoneEffect,
+        ColorFilter, Condition, ControlEffect, CopyEffect, Cost, CounterKind, CountersEffect,
+        DamageEffect, DestroyEffect, DigEffect, Division, DrawEffect, Effect, EnterController,
+        ExileEffect, FilterController, GraveyardScope, Keyword, LandProduces, LandTapBonusColor,
+        LandTapScope, LifeEffect, Mana, ManaEffect, MillEffect, MiscEffect, PermanentFilter,
+        ProtectionScope, PumpEffect, SacrificeAdditionalCostCount, SacrificeCost, SacrificeEffect,
+        SearchDest, SpellFilter, SpellSpeed, StaticEffect, Step, TargetCount, TargetSpec, Timing,
+        TokenEffect, Trigger, TypeSet, ZoneEffect,
     };
 
     #[test]
@@ -4722,6 +4722,39 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                 add_colors: &[],
             }),
             "no color clause — the Forests animate colorless"
+        );
+    }
+
+    /// The Tomb's restriction and its counter kind are the whole card: a mire counter is what
+    /// makes the land a Swamp, and "only during your upkeep" is what keeps the Tomb from
+    /// converting a board in one turn.
+    #[test]
+    fn unlimited_cyclopean_tomb_mires_one_land_per_upkeep() {
+        let tomb = get_by_name("Cyclopean Tomb").expect("Cyclopean Tomb is in the pool");
+        let [mire] = &tomb.abilities[..] else {
+            panic!("one activated ability");
+        };
+        let Timing::Activated(cost) = mire.timing else {
+            panic!("activated");
+        };
+        assert!(cost.taps_self);
+        assert_eq!(cost.mana.generic, 2);
+        assert!(cost.only_during_your_upkeep);
+        let Effect::Counters(CountersEffect::PutCounters {
+            count,
+            kind,
+            target: TargetSpec::Permanent(filter),
+            ..
+        }) = mire.effect
+        else {
+            panic!("a kind-counter placement on a targeted permanent");
+        };
+        assert_eq!((count, kind), (Amount::Fixed(1), Some(CounterKind::Mire)));
+        assert_eq!(filter.types, TypeSet::LAND);
+        assert_eq!(
+            filter.exclude_subtypes,
+            &["Swamp"],
+            "\"target non-Swamp land\" — including a land the Tomb itself already mired"
         );
     }
 }

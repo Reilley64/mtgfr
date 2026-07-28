@@ -1318,6 +1318,12 @@ pub enum CounterKind {
     /// this turn, spent one at a time to pay the Ghoul's own regeneration. Inert bookkeeping — it
     /// changes nothing about the permanent by itself.
     Corpse,
+    /// A mire counter (CR 122.1 — Cyclopean Tomb): a functional reminder counter marking a land
+    /// that "is a Swamp for as long as it has a mire counter on it." Like
+    /// [`Vow`](Self::Vow), the counter *is* the effect — the type change outlives the Tomb, so
+    /// there is nothing on the battlefield left to read it off, and
+    /// [`Game::effective_subtypes`](crate::Game) consults this slot directly.
+    Mire,
 }
 
 impl CounterKind {
@@ -1329,7 +1335,7 @@ impl CounterKind {
     /// `&'static [(CounterKind, u8)]` slice if the kind set ever needs to be open-ended. A counter
     /// kind that sits on a *player* (poison, CR 122.1) doesn't belong here at all — it has its own
     /// parallel [`PlayerCounterKind`] and its own store on [`Player::kind_counters`].
-    pub(crate) const COUNT: usize = 11;
+    pub(crate) const COUNT: usize = 12;
 
     /// Every kind, for enumerating "each kind present" (proliferate, move/remove-all-counters).
     pub(crate) const ALL: [CounterKind; Self::COUNT] = [
@@ -1344,6 +1350,7 @@ impl CounterKind {
         CounterKind::Age,
         CounterKind::Storage,
         CounterKind::Corpse,
+        CounterKind::Mire,
     ];
 }
 
@@ -1573,6 +1580,11 @@ pub struct ActivationCost {
     /// runs up to and including the declare-attackers step, and shuts the moment the declaration
     /// is actually made rather than at the step boundary.
     pub only_before_attackers: bool,
+    /// "Activate only during your upkeep" (CR 602.5b — Cyclopean Tomb): a step-and-controller
+    /// window rather than the phase-shaped ones above, and the tightest the pool asks for. The
+    /// controller half is what makes it "your" upkeep, so this is not just `only_before_attackers`
+    /// with a different step.
+    pub only_during_your_upkeep: bool,
     /// "Only this creature's owner may activate this ability" (CR 602.5c — Personal
     /// Incarnation): the pool's one activation restriction keyed to ownership rather than
     /// control.

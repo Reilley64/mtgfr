@@ -2287,6 +2287,13 @@ impl Game {
         {
             return Err(Reject::WrongTiming);
         }
+        // "Activate only during your upkeep" (CR 602.5b — Cyclopean Tomb): both halves, since the
+        // upkeep that comes around every turn is somebody else's half the time.
+        if cost.only_during_your_upkeep
+            && (self.step != Step::Upkeep || self.active_player != player)
+        {
+            return Err(Reject::WrongTiming);
+        }
         // "Only this creature's owner may activate this ability" (CR 602.5c — Personal
         // Incarnation). The controller check above has already passed, so this only bites a
         // permanent whose control has moved away from its owner.

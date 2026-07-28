@@ -8387,6 +8387,7 @@ static X_DRAW_PERMANENT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             sorcery_speed: false,
             only_during_opponents_turn: false,
             only_before_attackers: false,
+            only_during_your_upkeep: false,
             remove_counters: 0,
             remove_counters_kind: None,
             remove_counters_x: false,
@@ -8422,6 +8423,7 @@ static FIXED_DRAW_PERMANENT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             sorcery_speed: false,
             only_during_opponents_turn: false,
             only_before_attackers: false,
+            only_during_your_upkeep: false,
             remove_counters: 0,
             remove_counters_kind: None,
             remove_counters_x: false,
@@ -11409,6 +11411,7 @@ static LIFELINK_PINGER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             sorcery_speed: false,
             only_during_opponents_turn: false,
             only_before_attackers: false,
+            only_during_your_upkeep: false,
             remove_counters: 0,
             remove_counters_kind: None,
             remove_counters_x: false,
@@ -12576,6 +12579,7 @@ fn auto_tap_pays_with_a_free_granted_mana_ability() {
                 sorcery_speed: false,
                 only_during_opponents_turn: false,
                 only_before_attackers: false,
+                only_during_your_upkeep: false,
                 remove_counters: 0,
                 remove_counters_kind: None,
                 remove_counters_x: false,
@@ -16364,6 +16368,7 @@ static TEST_COUNTER_SHEDDER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
                 sorcery_speed: false,
                 only_during_opponents_turn: false,
                 only_before_attackers: false,
+                only_during_your_upkeep: false,
                 remove_counters: 2,
                 remove_counters_kind: None,
                 remove_counters_x: false,
@@ -16541,6 +16546,7 @@ static TEST_SAC_A_FOOD: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             sorcery_speed: false,
             only_during_opponents_turn: false,
             only_before_attackers: false,
+            only_during_your_upkeep: false,
             remove_counters: 0,
             remove_counters_kind: None,
             remove_counters_x: false,
@@ -16613,6 +16619,7 @@ static TEST_SAC_A_CREATURE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             sorcery_speed: false,
             only_during_opponents_turn: false,
             only_before_attackers: false,
+            only_during_your_upkeep: false,
             remove_counters: 0,
             remove_counters_kind: None,
             remove_counters_x: false,
@@ -16738,6 +16745,7 @@ static TEST_NONTOKEN_COUNTER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             sorcery_speed: false,
             only_during_opponents_turn: false,
             only_before_attackers: false,
+            only_during_your_upkeep: false,
             remove_counters: 0,
             remove_counters_kind: None,
             remove_counters_x: false,
@@ -20959,6 +20967,7 @@ fn hybrid_filter_land(name: &'static str, a: Color, b: Color) -> CardDef {
             sorcery_speed: false,
             only_during_opponents_turn: false,
             only_before_attackers: false,
+            only_during_your_upkeep: false,
             remove_counters: 0,
             remove_counters_kind: None,
             remove_counters_x: false,
@@ -29952,6 +29961,7 @@ const FALLEN_IDEAL_GRANT: GrantedAbility = GrantedAbility {
         sorcery_speed: false,
         only_during_opponents_turn: false,
         only_before_attackers: false,
+        only_during_your_upkeep: false,
         remove_counters: 0,
         remove_counters_kind: None,
         remove_counters_x: false,
@@ -30407,6 +30417,7 @@ static MUTABLE_FLYER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
                 sorcery_speed: false,
                 only_during_opponents_turn: false,
                 only_before_attackers: false,
+                only_during_your_upkeep: false,
                 remove_counters: 0,
                 remove_counters_kind: None,
                 remove_counters_x: false,
@@ -35903,6 +35914,7 @@ static RELIC_SHAPED_TARGET_EXILE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             sorcery_speed: false,
             only_during_opponents_turn: false,
             only_before_attackers: false,
+            only_during_your_upkeep: false,
             remove_counters: 0,
             remove_counters_kind: None,
             remove_counters_x: false,
@@ -43596,6 +43608,7 @@ static RUBINIA: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             sorcery_speed: false,
             only_during_opponents_turn: false,
             only_before_attackers: false,
+            only_during_your_upkeep: false,
             remove_counters: 0,
             remove_counters_kind: None,
             remove_counters_x: false,
@@ -45136,6 +45149,7 @@ static REVERT_ALL_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             sorcery_speed: false,
             only_during_opponents_turn: false,
             only_before_attackers: false,
+            only_during_your_upkeep: false,
             remove_counters: 0,
             remove_counters_kind: None,
             remove_counters_x: false,
@@ -51271,6 +51285,7 @@ fn loyalty_ability(loyalty: i32, effect: Effect) -> Ability {
             sorcery_speed: false,
             only_during_opponents_turn: false,
             only_before_attackers: false,
+            only_during_your_upkeep: false,
             remove_counters: 0,
             remove_counters_kind: None,
             remove_counters_x: false,
@@ -58255,6 +58270,7 @@ static IMPULSE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             sorcery_speed: false,
             only_during_opponents_turn: false,
             only_before_attackers: false,
+            only_during_your_upkeep: false,
             remove_counters: 0,
             remove_counters_kind: None,
             remove_counters_x: false,
@@ -58478,6 +58494,7 @@ static RANDOM_GRAVEYARD_EXILE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             sorcery_speed: false,
             only_during_opponents_turn: false,
             only_before_attackers: false,
+            only_during_your_upkeep: false,
             remove_counters: 0,
             remove_counters_kind: None,
             remove_counters_x: false,
@@ -65191,6 +65208,7 @@ static TEST_STEELBANE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
                 sorcery_speed: false,
                 only_during_opponents_turn: false,
                 only_before_attackers: false,
+                only_during_your_upkeep: false,
                 remove_counters: 1,
                 remove_counters_kind: None,
                 remove_counters_x: false,
@@ -75001,6 +75019,7 @@ static SACRIFICE_A_CREATURE_OUTLET: LazyLock<CardDef> = LazyLock::new(|| CardDef
             sorcery_speed: false,
             only_during_opponents_turn: false,
             only_before_attackers: false,
+            only_during_your_upkeep: false,
             remove_counters: 0,
             remove_counters_kind: None,
             remove_counters_x: false,
@@ -79295,6 +79314,7 @@ const fn level_up_ability(level: u8) -> Ability {
             sorcery_speed: true,
             only_during_opponents_turn: false,
             only_before_attackers: false,
+            only_during_your_upkeep: false,
             remove_counters: 0,
             remove_counters_kind: None,
             remove_counters_x: false,
@@ -79423,6 +79443,7 @@ static TEST_LOSE_1_LIFE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             sorcery_speed: false,
             only_during_opponents_turn: false,
             only_before_attackers: false,
+            only_during_your_upkeep: false,
             remove_counters: 0,
             remove_counters_kind: None,
             remove_counters_x: false,
@@ -79939,6 +79960,7 @@ static TEST_MODIFIED_DEATH_WATCHER: LazyLock<CardDef> = LazyLock::new(|| CardDef
             sorcery_speed: false,
             only_during_opponents_turn: false,
             only_before_attackers: false,
+            only_during_your_upkeep: false,
             remove_counters: 0,
             remove_counters_kind: None,
             remove_counters_x: false,
@@ -84649,6 +84671,7 @@ static OPPONENT_DAMAGE_WATCHER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
                 sorcery_speed: false,
                 only_during_opponents_turn: false,
                 only_before_attackers: false,
+                only_during_your_upkeep: false,
                 remove_counters: 0,
                 remove_counters_kind: None,
                 remove_counters_x: false,
@@ -89078,6 +89101,7 @@ static TEST_MINUS_ONE_COUNTER_CREATURE: LazyLock<CardDef> = LazyLock::new(|| Car
                 sorcery_speed: false,
                 only_during_opponents_turn: false,
                 only_before_attackers: false,
+                only_during_your_upkeep: false,
                 remove_counters: 1,
                 remove_counters_kind: Some(CounterKind::MinusOneMinusOne),
                 remove_counters_x: false,
@@ -90186,6 +90210,7 @@ fn flipper_front() -> CardDef {
                 sorcery_speed: false,
                 only_during_opponents_turn: false,
                 only_before_attackers: false,
+                only_during_your_upkeep: false,
                 remove_counters: 0,
                 remove_counters_kind: None,
                 remove_counters_x: false,
@@ -101758,6 +101783,7 @@ const fn monstrosity_ability(count: u8) -> Ability {
             sorcery_speed: false,
             only_during_opponents_turn: false,
             only_before_attackers: false,
+            only_during_your_upkeep: false,
             remove_counters: 0,
             remove_counters_kind: None,
             remove_counters_x: false,
@@ -102440,6 +102466,7 @@ static TEST_CULL_CREATURE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             sorcery_speed: false,
             only_during_opponents_turn: false,
             only_before_attackers: false,
+            only_during_your_upkeep: false,
             remove_counters: 0,
             remove_counters_kind: None,
             remove_counters_x: false,
@@ -108707,5 +108734,120 @@ fn living_lands_animates_forests_without_coloring_them() {
     assert!(
         !game.effective_types(plains).intersects(TypeSet::CREATURE),
         "a Plains is not a Forest"
+    );
+}
+
+// ── A land at a time, keyed to a counter (fidelity #8d) ──
+
+/// A board with the Tomb, a Mountain, and enough library that two players can take turns without
+/// decking. Returns `(game, tomb, mountain)`.
+fn cyclopean_tomb_board() -> (Game, ObjectId, ObjectId) {
+    let mut game = Game::new();
+    let tomb = game.spawn_on_battlefield(PlayerId(0), card("Cyclopean Tomb"));
+    let mountain = game.spawn_on_battlefield(PlayerId(0), card("Mountain"));
+    for player in [PlayerId(0), PlayerId(1)] {
+        for _ in 0..10 {
+            game.spawn_in_library(player, card("Mountain"));
+        }
+    }
+    (game, tomb, mountain)
+}
+
+/// The Tomb's own ability, spelled once so the timing test can try it in three different windows.
+fn mire_target(game: &mut Game, tomb: ObjectId, land: ObjectId) -> Result<Vec<Event>, Reject> {
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: tomb,
+        ability_index: 0,
+        target: Some(Target::Object(land)),
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+}
+
+#[test]
+fn cyclopean_tomb_turns_a_mire_countered_land_into_a_swamp() {
+    // "That land is a Swamp for as long as it has a mire counter on it" — a type *set* (CR 305.7),
+    // so the Mountain stops being a Mountain and its {R} goes with it.
+    let (mut game, tomb, mountain) = cyclopean_tomb_board();
+    advance_to_next_upkeep(&mut game, PlayerId(0));
+
+    mire_target(&mut game, tomb, mountain).unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(game.effective_subtypes(mountain), vec!["Swamp"]);
+    let before = (
+        game.mana_in_pool(PlayerId(0), Color::Black),
+        game.mana_in_pool(PlayerId(0), Color::Red),
+    );
+    game.submit(Intent::TapForMana {
+        player: PlayerId(0),
+        object: mountain,
+    })
+    .unwrap();
+    assert_eq!(
+        (
+            game.mana_in_pool(PlayerId(0), Color::Black),
+            game.mana_in_pool(PlayerId(0), Color::Red),
+        ),
+        (before.0 + 1, before.1),
+        "a Swamp taps for {{B}}"
+    );
+}
+
+#[test]
+fn cyclopean_tomb_activates_only_during_your_own_upkeep() {
+    let (mut game, tomb, mountain) = cyclopean_tomb_board();
+
+    advance_until(&mut game, |g| {
+        g.current_step() == Step::Main1 && g.active_player() == PlayerId(0)
+    });
+    assert!(
+        mire_target(&mut game, tomb, mountain).is_err(),
+        "your main phase is not your upkeep"
+    );
+
+    advance_to_next_upkeep(&mut game, PlayerId(1));
+    assert!(
+        mire_target(&mut game, tomb, mountain).is_err(),
+        "an opponent's upkeep is not yours"
+    );
+
+    advance_to_next_upkeep(&mut game, PlayerId(0));
+    assert!(mire_target(&mut game, tomb, mountain).is_ok());
+}
+
+#[test]
+fn cyclopean_tomb_passes_over_lands_that_are_already_swamps() {
+    // "target non-Swamp land" reads the *effective* type line, so the Tomb's own earlier work
+    // takes a land off its list just as a printed Swamp never was on it. An illegal target is
+    // caught at resolution (CR 608.2b), this engine's posture for every activated ability, so
+    // what is asserted is that no counter lands — not that the activation is refused.
+    let (mut game, tomb, mountain) = cyclopean_tomb_board();
+    let swamp = game.spawn_on_battlefield(PlayerId(1), card("Swamp"));
+    advance_to_next_upkeep(&mut game, PlayerId(0));
+
+    mire_target(&mut game, tomb, swamp).unwrap();
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        game.counters_of_kind(swamp, CounterKind::Mire),
+        0,
+        "a printed Swamp was never a legal target"
+    );
+
+    advance_to_next_upkeep(&mut game, PlayerId(0));
+    mire_target(&mut game, tomb, mountain).unwrap();
+    resolve_top_of_stack(&mut game);
+    assert_eq!(game.counters_of_kind(mountain, CounterKind::Mire), 1);
+
+    advance_to_next_upkeep(&mut game, PlayerId(0));
+    mire_target(&mut game, tomb, mountain).unwrap();
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        game.counters_of_kind(mountain, CounterKind::Mire),
+        1,
+        "a land the Tomb already mired is a Swamp now, so the second try does nothing"
     );
 }

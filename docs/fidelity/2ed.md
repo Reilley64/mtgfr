@@ -204,7 +204,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [x] **Creature Bond** {1}{U} · Enchantment — Aura — increment 62
 - [x] **Crystal Rod** {1} · Artifact — increment 10
 - [x] **Cursed Land** {2}{B}{B} · Enchantment — Aura — increment 61
-- [ ] **Cyclopean Tomb** {4} · Artifact — increment 8d, 28
+- [x] **Cyclopean Tomb** {4} · Artifact — increment 8d, 28
 - [x] **Deathgrip** {B}{B} · Enchantment — increment 9
 - [ ] **Deathlace** {B} · Instant — increment 15
 - [x] **Demonic Hordes** {3}{B}{B}{B} · Creature — Demon — increment 41
