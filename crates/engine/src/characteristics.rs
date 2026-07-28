@@ -1228,7 +1228,6 @@ impl Game {
                             Timing::Static,
                             Effect::Static(StaticEffect::GrantToAttached {
                                 may_attack_ignoring_defender: true,
-                                may_attack_ignoring_summoning_sickness: false,
                                 ..
                             })
                         )
@@ -1360,6 +1359,26 @@ impl Game {
     /// Battlefield-wide like `Game::cant_block_filter`, not controller-scoped — Meekstone reads
     /// "their controllers' untap steps", so who controls the Meekstone never enters into it.
     pub(crate) fn doesnt_untap(&self, id: ObjectId) -> bool {
+        // Paralyze's attachment-scoped form. Folded in here rather than given its own scanner so
+        // the untap step keeps reading exactly one, and so "doesn't untap" means the same thing
+        // whether the source is an Aura on the permanent or a Meekstone across the table.
+        if self.attachments(id).into_iter().any(|aura| {
+            !self.is_phased_out(aura)
+                && self.def_of(aura).abilities.iter().any(|a| {
+                    matches!(
+                        (a.timing, a.effect.clone()),
+                        (
+                            Timing::Static,
+                            Effect::Static(StaticEffect::GrantToAttached {
+                                doesnt_untap: true,
+                                ..
+                            })
+                        )
+                    )
+                })
+        }) {
+            return true;
+        }
         self.battlefield().into_iter().any(|source| {
             self.functional_abilities(source)
                 .iter()

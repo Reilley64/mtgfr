@@ -233,7 +233,7 @@ printed line also widens — an owner who has lost control may still activate �
 check runs first, so a stolen Incarnation is activatable by nobody rather than by its thief, which
 is the closer wrong answer.
 
-### 7. `untap-step-restrictions` — 9 cards, M — **7a, 7c-i, 7d done; 7b, 7c-ii open**
+### 7. `untap-step-restrictions` — 9 cards, M — **7a, 7b, 7c-i, 7d done; 7c-ii open**
 Depends on: nothing.
 "Doesn't untap during your untap step" / "players skip their untap steps" / "can't untap more
 than one." The untap step currently untaps everything a player controls unconditionally.
@@ -290,6 +290,25 @@ Energy's untap is meant to straighten an attacker back up mid-combat, which a so
 would forbid.
 
 Time Vault stays with #18 — its untap clause is tangled with the extra turn, not with this static.
+
+*Landed (7b — paralyze):* the payer axis the deferral wanted turned out to be already built. Power
+Leak — the other 2ed Aura that bills its own upkeep offer to the host's controller — already carries
+a `#[serde(skip)] player: Option<PlayerId>` that trigger placement fills from the enchanted
+permanent's controller, and `PendingChoice::PayCost` is already the pay-to-*get*-the-effect pause an
+optional trigger raises. So `ChoiceEffect::TriggeringPlayerMayPay` is those two joined: Power Leak's
+payer with `PayOrElse`'s fixed cost, paying to buy `then` rather than to dodge a penalty. The one
+thing an ability-level `[abilities.cost]` can never express is exactly this — Mana Vault's "you may
+pay {4}" always bills the *ability's* controller — and the test says so directly: the Aura's
+controller submitting the answer is rejected outright, and the {4} comes out of the host
+controller's pool.
+
+`GrantToAttached { doesnt_untap }` was the genuinely new half, and it is one bool. The
+battlefield-wide `DoesntUntap`'s filter names a *class* of permanents and so can't say "the one this
+Aura is on", so the attachment scan is folded into `Game::doesnt_untap` rather than given its own
+scanner — the untap step keeps reading exactly one thing, and "doesn't untap" means the same whether
+the source is an Aura on the permanent or a Meekstone across the table. Like the battlefield-wide
+form it is read *only* by the untap step, which is what lets Paralyze's own pay-{4} untap the host
+it is still sitting on.
 
 *Landed (7c-i — stasis):* the sketch bundled Stasis with Smoke and Winter Orb because all three
 sound like untap-step restrictions, but they share no machinery: those two cap *how many* permanents

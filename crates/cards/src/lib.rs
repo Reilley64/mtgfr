@@ -2668,6 +2668,7 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
             Effect::Static(StaticEffect::GrantToAttached {
                 may_attack_ignoring_defender: true,
                 may_attack_ignoring_summoning_sickness: false,
+                doesnt_untap: false,
                 ..
             })
         ));
@@ -4459,6 +4460,58 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
             filter.controller,
             FilterController::Any,
             "their controllers' untap steps — every seat, not just Meekstone's"
+        );
+    }
+
+    /// Paralyze is the attachment-scoped half of "doesn't untap", and the reason it can't be
+    /// written with the battlefield-wide `DoesntUntap`: that one's filter names a class of
+    /// permanents, not "the one this Aura is on". Its upkeep offer is the other axis — the {4}
+    /// is billed to the *host's* controller, which an ability-level `[abilities.cost]` (Mana
+    /// Vault's "you may pay {4}") always bills to the ability's own controller instead.
+    #[test]
+    fn unlimited_paralyze_scopes_both_the_lock_and_its_key_to_the_enchanted_creature() {
+        let paralyze = get_by_name("Paralyze").expect("Paralyze is in the pool");
+        let [tap, lock, key] = &paralyze.abilities[..] else {
+            panic!("the entry tap, the untap lock, and the upkeep key");
+        };
+
+        assert_eq!(tap.timing, Timing::Triggered(Trigger::Etb));
+        assert_eq!(
+            tap.effect,
+            Effect::Control(ControlEffect::TapTarget {
+                target: TargetSpec::EnchantedCreature,
+                count: TargetCount::default(),
+            }),
+            "when this Aura enters, tap enchanted creature",
+        );
+
+        assert_eq!(lock.timing, Timing::Static);
+        let Effect::Static(StaticEffect::GrantToAttached { doesnt_untap, .. }) = &lock.effect
+        else {
+            panic!("enchanted creature doesn't untap during its controller's untap step");
+        };
+        assert!(doesnt_untap, "scoped to the host, not to a filter");
+
+        assert_eq!(key.timing, Timing::Triggered(Trigger::EachUpkeep));
+        assert_eq!(
+            key.condition,
+            Some(Condition::EnchantedPermanentsControllersUpkeep),
+            "at the beginning of the upkeep of enchanted creature's controller",
+        );
+        let Effect::Choice(ChoiceEffect::TriggeringPlayerMayPay { cost, then, player }) =
+            &key.effect
+        else {
+            panic!("that player may pay 4");
+        };
+        assert_eq!(cost.generic, 4);
+        assert_eq!(*player, None, "the payer is filled in at trigger placement");
+        assert_eq!(
+            then[..],
+            [Effect::Control(ControlEffect::UntapTarget {
+                target: TargetSpec::EnchantedCreature,
+                count: TargetCount::default(),
+            })],
+            "if the player does, untap the creature",
         );
     }
 

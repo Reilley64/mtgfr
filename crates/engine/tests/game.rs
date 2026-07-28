@@ -29969,6 +29969,7 @@ static FLIGHT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             cant_attack_controller: false,
             may_attack_ignoring_defender: false,
             may_attack_ignoring_summoning_sickness: false,
+            doesnt_untap: false,
             cant_be_enchanted: false,
             activated_abilities: None,
             legendary_only: false,
@@ -30066,6 +30067,7 @@ static PRO_WHITE_CLOAK: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             cant_attack_controller: false,
             may_attack_ignoring_defender: false,
             may_attack_ignoring_summoning_sickness: false,
+            doesnt_untap: false,
             cant_be_enchanted: false,
             activated_abilities: None,
             legendary_only: false,
@@ -30168,6 +30170,7 @@ static FALLEN_IDEAL_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             cant_attack_controller: false,
             may_attack_ignoring_defender: false,
             may_attack_ignoring_summoning_sickness: false,
+            doesnt_untap: false,
             cant_be_enchanted: false,
             activated_abilities: None,
             legendary_only: false,
@@ -30201,6 +30204,7 @@ static VOW_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             cant_attack_controller: true,
             may_attack_ignoring_defender: false,
             may_attack_ignoring_summoning_sickness: false,
+            doesnt_untap: false,
             cant_be_enchanted: false,
             activated_abilities: None,
             legendary_only: false,
@@ -102966,6 +102970,7 @@ static TOXIC_AURA_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             cant_attack_controller: false,
             may_attack_ignoring_defender: false,
             may_attack_ignoring_summoning_sickness: false,
+            doesnt_untap: false,
             cant_be_enchanted: false,
             activated_abilities: None,
             legendary_only: false,
@@ -108674,6 +108679,90 @@ fn meekstone_holds_down_the_big_creatures_and_lets_the_small_ones_up() {
     advance_to_next_upkeep(&mut game, PlayerId(0));
     assert!(game.is_tapped(big), "power 4 is held down");
     assert!(!game.is_tapped(small), "power 2 untaps as usual");
+}
+
+#[test]
+fn paralyze_taps_its_host_and_pins_it_down_through_its_controllers_untap_step() {
+    // Paralyze: "When this Aura enters, tap enchanted creature. / Enchanted creature doesn't untap
+    // during its controller's untap step." The host belongs to the *other* player, so the Aura has
+    // to reach across the table for both halves.
+    let mut game = Game::new();
+    stock_libraries(&mut game);
+    let ox = game.spawn_on_battlefield(PlayerId(1), creature("Groggy Ox", 2, 2, &[]));
+    let paralyze = game.spawn_in_hand(PlayerId(0), card("Paralyze"));
+    cast_and_resolve(&mut game, paralyze, Some(Target::Object(ox)));
+    resolve_top_of_stack(&mut game);
+    assert!(game.is_tapped(ox), "the Aura tapped it on the way in");
+
+    // Its controller's own untap step comes and goes; decline the {4} and it stays down.
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(1) && g.current_step() == Step::Upkeep
+    });
+    assert!(game.is_tapped(ox), "held down through the untap step");
+    resolve_top_of_stack(&mut game);
+    game.submit(Intent::PayOptionalCost {
+        player: PlayerId(1),
+        pay: false,
+        discard_cost: vec![],
+    })
+    .expect("declining is legal");
+    assert!(game.is_tapped(ox), "unpaid, still paralyzed");
+
+    // Killing the Aura frees the host at the next untap step it sees.
+    let disenchant = game.spawn_in_hand(PlayerId(0), card("Disenchant"));
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Main1
+    });
+    game.fund_mana(PlayerId(0));
+    let aura = game.current_id(paralyze);
+    cast_and_resolve(&mut game, disenchant, Some(Target::Object(aura)));
+    assert_eq!(
+        game.zone_of(game.current_id(aura)),
+        Zone::Graveyard,
+        "the Aura is gone",
+    );
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(1) && g.current_step() == Step::Draw
+    });
+    assert!(
+        !game.is_tapped(ox),
+        "the Aura gone, the untap step works again"
+    );
+}
+
+#[test]
+fn paralyzes_upkeep_four_is_billed_to_the_host_controller_not_the_aura_controller() {
+    // "At the beginning of the upkeep of enchanted creature's controller, that player may pay {4}.
+    // If the player does, untap the creature." The offer goes to the seat that owns the creature —
+    // which is the whole reason this isn't Mana Vault's ability-level `[abilities.cost]`.
+    let mut game = Game::new();
+    stock_libraries(&mut game);
+    let ox = game.spawn_on_battlefield(PlayerId(1), creature("Groggy Ox", 2, 2, &[]));
+    let paralyze = game.spawn_in_hand(PlayerId(0), card("Paralyze"));
+    cast_and_resolve(&mut game, paralyze, Some(Target::Object(ox)));
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(1) && g.current_step() == Step::Upkeep
+    });
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        game.submit(Intent::PayOptionalCost {
+            player: PlayerId(0),
+            pay: true,
+            discard_cost: vec![],
+        }),
+        Err(Reject::ChoicePending),
+        "the Aura's controller doesn't get to answer for them",
+    );
+    game.fund_mana(PlayerId(1));
+    game.submit(Intent::PayOptionalCost {
+        player: PlayerId(1),
+        pay: true,
+        discard_cost: vec![],
+    })
+    .expect("the host's controller buys it back");
+    resolve_top_of_stack(&mut game);
+    assert!(!game.is_tapped(ox), "an untap effect ignores the static");
 }
 
 #[test]

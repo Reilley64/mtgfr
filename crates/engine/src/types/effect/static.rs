@@ -390,6 +390,14 @@ pub enum StaticEffect {
         /// `{T}` abilities, which "as though it had haste" for attacking does not.
         #[cfg_attr(feature = "card-dsl", serde(default))]
         may_attack_ignoring_summoning_sickness: bool,
+        /// Paralyze's "Enchanted creature doesn't untap during its controller's untap step" — the
+        /// attachment-scoped form of [`DoesntUntap`](Self::DoesntUntap), which is battlefield-wide
+        /// and so can't say "the one this Aura is on". Folded into
+        /// [`Game::doesnt_untap`](crate::Game) so the untap step reads one scanner, and like the
+        /// battlefield-wide form it is consulted *only* there: an untap effect (Paralyze's own
+        /// pay-{4}) frees the host regardless.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        doesnt_untap: bool,
         /// Consecrate Land's "can't be enchanted by other Auras": no *other* Aura may attach to
         /// this host — none can be cast targeting it, and one already there falls off (CR
         /// 704.5n). See [`Game::host_cant_be_enchanted_by`](crate::Game::host_cant_be_enchanted_by).

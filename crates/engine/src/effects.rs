@@ -931,6 +931,7 @@ impl Game {
             | Effect::Choice(ChoiceEffect::MayDrawUpToThenOpponentMayRepeat { .. })
             | Effect::Choice(ChoiceEffect::MayPutCounterOnCreature)
             | Effect::Choice(ChoiceEffect::PayOrElse { .. })
+            | Effect::Choice(ChoiceEffect::TriggeringPlayerMayPay { .. })
             | Effect::Dig(DigEffect::MayShuffleTargetPlayersLibrary { .. }) => {
                 self.run_may_pause(effect, ctx)
             }

@@ -880,6 +880,7 @@ impl Effect {
             | Effect::Choice(ChoiceEffect::CouncilsDilemmaVote { .. })
             | Effect::Choice(ChoiceEffect::JoinForcesPayMana)
             | Effect::Choice(ChoiceEffect::TriggeringPlayerMayPayAnyAmountToPrevent { .. })
+            | Effect::Choice(ChoiceEffect::TriggeringPlayerMayPay { .. })
             | Effect::Choice(ChoiceEffect::TriggeringPlayerMayAttachThisAuraToChosen { .. })
             | Effect::Choice(ChoiceEffect::EachPlayerNamesCardThenRevealsTop)
             | Effect::Dig(DigEffect::OpponentSplitsExilePiles)
@@ -2906,6 +2907,15 @@ fn fill_triggering_permanent_controller(effect: Effect, player: PlayerId) -> Eff
             prevent_up_to,
             player: Some(player),
         }),
+        // Paralyze's "that player may pay {4}" names the enchanted creature's controller, the same
+        // player Cursed Land's damage step names.
+        Effect::Choice(ChoiceEffect::TriggeringPlayerMayPay { cost, then, .. }) => {
+            Effect::Choice(ChoiceEffect::TriggeringPlayerMayPay {
+                cost,
+                then,
+                player: Some(player),
+            })
+        }
         // Kudzu's "*that land's* controller may attach this Aura" — the same one player the
         // trigger is about, filled from the same slot Psychic Venom's damage step uses.
         Effect::Choice(ChoiceEffect::TriggeringPlayerMayAttachThisAuraToChosen { filter, .. }) => {
@@ -2994,6 +3004,13 @@ fn fill_active_player_payoff(effect: Effect, active_player: PlayerId) -> Effect 
             prevent_up_to,
             player: Some(active_player),
         }),
+        Effect::Choice(ChoiceEffect::TriggeringPlayerMayPay { cost, then, .. }) => {
+            Effect::Choice(ChoiceEffect::TriggeringPlayerMayPay {
+                cost,
+                then,
+                player: Some(active_player),
+            })
+        }
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()

@@ -194,6 +194,23 @@ pub enum ChoiceEffect {
         player: Option<PlayerId>,
     },
 
+    /// Paralyze's "that player may pay {4}. If the player does, untap the creature" (CR 603.3b).
+    /// The upside twin of [`PayOrElse`](Self::PayOrElse) — paying *buys* `then` rather than
+    /// dodging a penalty — and the fixed-cost twin of
+    /// [`TriggeringPlayerMayPayAnyAmountToPrevent`](Self::TriggeringPlayerMayPayAnyAmountToPrevent),
+    /// with which it shares its payer: the offer goes to the player the trigger is about, not to
+    /// the ability's controller, which is the one thing an ability-level `[abilities.cost]` (Mana
+    /// Vault's "you may pay {4}") cannot express.
+    TriggeringPlayerMayPay {
+        cost: Cost,
+        #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::static_slice"))]
+        then: &'static [Effect],
+        /// Filled in at trigger placement from the enchanted permanent's controller, the same slot
+        /// [`Effect::Damage(DamageEffect::ToTriggeringPlayer)`](crate::DamageEffect) fills.
+        #[cfg_attr(feature = "card-dsl", serde(skip))]
+        player: Option<PlayerId>,
+    },
+
     MayDiscard {
         #[cfg_attr(
             feature = "card-dsl",

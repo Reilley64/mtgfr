@@ -217,6 +217,24 @@ impl Game {
                     otherwise,
                 },
             ),
+            // Paralyze: "that player may pay {4}. If the player does, untap the creature."
+            // `PendingChoice::PayCost` is already the pay-to-get-the-effect shape an optional
+            // trigger's `[abilities.cost]` raises — the only difference here is whose offer it is,
+            // and that player was filled in at placement.
+            Effect::Choice(ChoiceEffect::TriggeringPlayerMayPay { cost, then, player }) => {
+                let payer = player.expect("the triggering player is filled in at placement");
+                pending::raise_choice(
+                    self,
+                    PendingChoice::PayCost {
+                        player: payer,
+                        source,
+                        cost,
+                        effect: Effect::Sequence {
+                            steps: std::sync::Arc::from(then.to_vec()),
+                        },
+                    },
+                )
+            }
             _ => unreachable!("may pause family received a non-family effect"),
         }
     }
