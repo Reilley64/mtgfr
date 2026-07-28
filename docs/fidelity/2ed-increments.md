@@ -332,7 +332,7 @@ all.
 ponytail: the groups aren't projected to the client, so the board offers the pause as a free yes/no
 and a two-of-a-group answer bounces off the server instead of being blocked in the UI. It needs a
 wire field on `PendingChoiceViewDeclineUntap` and a client-side group check; billed to the client
-catch-up phase rather than to this increment.
+catch-up phase rather than to this increment. **Closed** — see *Client catch-up* at the end.
 
 *Landed (7c-i — stasis):* the sketch bundled Stasis with Smoke and Winter Orb because all three
 sound like untap-step restrictions, but they share no machinery: those two cap *how many* permanents
@@ -391,7 +391,7 @@ string→color match for a zip over the two lists.
 ponytail: `effect.static_set_attached_types` still reads "Attached creature is a …" and pulls a
 `subtypes` param the engine never sends — wrong for a land Aura and empty for every host. It was
 already wrong before either of these cards; folded into the client catch-up pass rather than
-fixed here.
+fixed here. **Closed** — see *Client catch-up* at the end.
 *Cards:* phantasmal_terrain.
 
 ### 8c. `all-lands-of-a-type-become-another` — 3 cards, M — **done**
@@ -1288,7 +1288,8 @@ the set never needs clearing and can't re-expose anything. The pairs are recorde
 `Event::LookedAtHand { player, target }` that carries no card ids at all — *that* a look happened is
 public at a table, what was in the hand is not, so the log stays honest for every seat with no
 redaction arm to get wrong. No pending choice and no DTO: the cards simply appear in the looker's
-next snapshot.
+next snapshot — which is exactly nowhere on the board until the client catch-up pass gave them a
+surface.
 *Cards:* glasses_of_urza.
 
 ### 32. `spend-mana-as-another-color` — 1 card, S — **done**
@@ -2497,3 +2498,42 @@ the ceiling. It has to ignore this very Aura's own creature-adding layer, and as
 types answer the pool's case — enchanting a printed artifact creature — and miss an artifact
 animated by something else; the upgrade path is an `effective_types` variant taking a source to
 exclude.
+
+## Client catch-up
+
+The grind ran engine-first, and three increments landed server behavior the board could not show or
+could not honor. This pass closed all three. Nothing here is a card change; the card pool is
+unchanged from #48.
+
+**Type-changing Auras read their own flags.** `effect.static_set_attached_types` sent only
+`set_subtypes` / `add_subtypes` while `en.ts` asked for a `subtypes` param that never existed, so
+every one of the five Auras using the effect rendered the same wrong sentence. The fix is on the
+Rust side first: the message now carries all six of the effect's fields, including a
+`card_type_words` rendering of `add_types` — `type_set_token`'s conjunctive twin, because a granted
+type line reads "artifact creature" where a filter reads "artifact or creature". The formatter
+composes from those flags, which is what makes Evil Presence ("is a swamp") distinguishable from
+Angelic Destiny ("is an angel in addition to its other types") and Darksteel Mutation ("is an insect
+artifact creature and has no abilities") — one string never could have been. An empty
+`string_list_param` arrives as the literal `"none"`, absorbed in the formatter rather than by
+widening the Rust param helpers.
+
+**Winter Orb's untap caps reach the board.** `PendingChoice::DeclineUntap` carried its
+`at_most_one` groups only inside the engine. They now ride the DTO, the projection, the proto
+(reusing the existing `ObjectIdList`, not a new message), the gRPC map, and `types.ts`, and
+`cardPickReady` — the single choke point that enables the prompt's submit button — holds it shut
+while any group would leave two members untapped. A cap is a ceiling, not a quota, so keeping a
+whole group tapped stays legal, and an empty `at_most_one` is still the plain Rubinia-style free
+yes/no. The prompt gained a hint so a greyed-out button explains itself instead of an answer
+bouncing off the server.
+
+**Looked-at hands leave something behind.** Glasses of Urza itemizes an opponent's hand to the
+looker alone, but every other read of an opponent's hand on this board is `hand_count`, so a look
+left nothing but a log line. `seen-hands.ts` counts hand objects the snapshot itemized for seats
+other than the viewer and renders a chip per seat, opening that hand in the existing pile overlay
+via the already-generic `PileExpanded { zone, owner }`. No new overlay, no new wire field — the
+cards were already arriving. The server-side gate is untouched: `has_seen_hand_card` still decides
+per card what the looker gets, so a seat that never looked still sees no chip.
+
+Both affected surface specs were updated in the same change
+([system-overlays](../superpowers/specs/2026-07-20-system-overlays.md),
+[prompts-and-pending-choices](../superpowers/specs/2026-07-20-prompts-and-pending-choices.md)).

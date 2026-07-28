@@ -226,6 +226,31 @@ describe("fromProtoWire", () => {
     });
   });
 
+  // The untap caps ride nested `ObjectIdList`s, which the walk flattens by shape rather than by
+  // field name — a list of lists is the one place that heuristic has to hold twice over.
+  it("flattens Winter Orb's nested untap caps into plain id groups", () => {
+    const untap = fromProtoWire<{
+      state: { pending_choice: { kind: string; at_most_one?: Array<Array<number>> } };
+    }>({
+      state: {
+        pendingChoice: {
+          choice: {
+            case: "declineUntap",
+            value: {
+              player: 0,
+              items: [
+                { id: 20, label: "Forest" },
+                { id: 21, label: "Island" },
+              ],
+              atMostOne: [{ ids: [20, 21] }],
+            },
+          },
+        },
+      },
+    });
+    expect(untap.state.pending_choice.at_most_one).toEqual([[20, 21]]);
+  });
+
   it("decodes the Raging River pile discriminators from proto choice payloads", () => {
     const partition = fromProtoWire<{
       state: { pending_choice: { kind: string; into_piles?: boolean } };

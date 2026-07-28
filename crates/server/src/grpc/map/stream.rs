@@ -729,12 +729,18 @@ pub fn pending_choice_view_to_pb(choice: PendingChoiceView) -> pb::PendingChoice
             name,
             items: choice_items_to_pb(items),
         }),
-        PendingChoiceView::DeclineUntap { player, items } => {
-            Choice::DeclineUntap(pb::PendingChoiceViewDeclineUntap {
-                player: u32::from(player),
-                items: choice_items_to_pb(items),
-            })
-        }
+        PendingChoiceView::DeclineUntap {
+            player,
+            items,
+            at_most_one,
+        } => Choice::DeclineUntap(pb::PendingChoiceViewDeclineUntap {
+            player: u32::from(player),
+            items: choice_items_to_pb(items),
+            at_most_one: at_most_one
+                .into_iter()
+                .map(|ids| pb::ObjectIdList { ids })
+                .collect(),
+        }),
         PendingChoiceView::PayOrControllerDraws {
             player,
             controller,

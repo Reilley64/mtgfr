@@ -461,7 +461,7 @@ export type PendingChoiceView =
       source: U32;
     }
   | { kind: "may_yes_no"; label: MessageRef; player: number; source: U32 }
-  | { items: Array<ChoiceItem>; kind: "decline_untap"; player: number }
+  | { at_most_one?: Array<Array<U32>>; items: Array<ChoiceItem>; kind: "decline_untap"; player: number }
   | {
       can_pay: boolean;
       cost: WireCost;

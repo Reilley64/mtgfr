@@ -26,6 +26,7 @@ import { pileOverlayView } from "./pile-overlay";
 import { priorityBarView } from "./priority-bar";
 import { promptsView } from "./prompts";
 import { resultOverlayView } from "./result-overlay";
+import { seenHandsView } from "./seen-hands";
 import { soundToggleView } from "./sound-chrome";
 import { stackView } from "./stack";
 import { turnChromeView } from "./turn-chrome";
@@ -73,7 +74,9 @@ export function boardOverlays(
     pendingChoiceWaitingView(state),
     h.div(
       [h.Class("pointer-events-none fixed top-md left-md z-25 flex items-center gap-xs")],
-      [discoverabilityView(board, state), soundToggleView(board)].filter((v): v is Html => v !== null),
+      [discoverabilityView(board, state), soundToggleView(board), seenHandsView(state)].filter(
+        (v): v is Html => v !== null,
+      ),
     ),
     // Battlefield mana tray is composed in view.ts between vector canvas and bitmap
     // (DOM order under resting permanents) — not here inside overlays.

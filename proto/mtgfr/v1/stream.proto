@@ -826,6 +826,10 @@ message PendingChoiceViewChooseLegendaryKeep {
 message PendingChoiceViewDeclineUntap {
   uint32 player = 1;
   repeated ChoiceItem items = 2;
+  // Smoke / Winter Orb (CR 502.2): each group is a set of `items` from which at most one may
+  // untap, so an answer that leaves two of a group untapped is rejected. Empty for a plain
+  // Rubinia-style pause, where every item is a free yes/no.
+  repeated ObjectIdList at_most_one = 3;
 }
 
 // The triggering opponent (`player`) may pay `cost` to stop `controller`'s optional draw —

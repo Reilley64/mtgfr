@@ -83,6 +83,41 @@ describe("formatMessage", () => {
     ).toBe("Attached permanent has base power and toughness each equal to its mana value");
   });
 
+  // One Rust effect covers every type-changing Aura in the pool, and which clause a card wants is
+  // carried entirely in its flags — a reader that ignores them says the same thing about Evil
+  // Presence turning a land into a Swamp and Darksteel Mutation shutting a creature off.
+  it("reads each type-changing Aura back as the clause its flags actually describe", () => {
+    const read = (params: Array<{ name: string; bool_value?: boolean; string_value?: string }>): string =>
+      formatMessage({ key: "effect.static_set_attached_types", params, children: [] });
+
+    // Angelic Destiny — additive subtype, nothing replaced. Rust sends every empty list as "none",
+    // which has to read as no clause rather than as a type called "none".
+    expect(
+      read([
+        { name: "types", string_value: "" },
+        { name: "set_subtypes", string_value: "none" },
+        { name: "add_subtypes", string_value: "angel" },
+      ]),
+    ).toBe("Attached permanent is an angel in addition to its other types");
+    // Evil Presence — the land's type is replaced, so there is no "in addition".
+    expect(read([{ name: "set_subtypes", string_value: "swamp" }])).toBe("Attached permanent is a swamp");
+    // Animate Artifact — card types print conjunctively ("artifact creature"), not "artifact or creature".
+    expect(read([{ name: "types", string_value: "artifact_creature" }])).toBe(
+      "Attached permanent is an artifact creature in addition to its other types",
+    );
+    // Darksteel Mutation — replaces both halves and takes the abilities with it.
+    expect(
+      read([
+        { name: "types", string_value: "artifact_creature" },
+        { name: "set_types", bool_value: true },
+        { name: "set_subtypes", string_value: "insect" },
+        { name: "lose_all_abilities", bool_value: true },
+      ]),
+    ).toBe("Attached permanent is an insect artifact creature and has no abilities");
+    // Phantasmal Terrain — the type isn't known until its controller names one.
+    expect(read([{ name: "set_chosen_land_type", bool_value: true }])).toBe("Attached permanent is the chosen type");
+  });
+
   // "Can't be blocked by Walls" and "can't be blocked except by Walls" share one Rust filter,
   // so the reader has to say which side of it a card landed on — the inverted authoring is
   // invisible in the key alone.

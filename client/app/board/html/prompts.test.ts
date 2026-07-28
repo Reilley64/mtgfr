@@ -192,6 +192,30 @@ test("discard prompt submit disabled until count cards picked", () => {
   );
 });
 
+// Winter Orb's untap pause is a free multi-select, so nothing but the cap stops a player from
+// offering an answer that untaps two lands — which the server rejects.
+test("winter orb untap prompt keeps submit shut until all but one land stays tapped", () => {
+  const s = state({
+    pending_choice: {
+      kind: "decline_untap",
+      player: 0,
+      items: [
+        { id: 20, label: "Forest" },
+        { id: 21, label: "Island" },
+      ],
+      at_most_one: [[20, 21]],
+    },
+  });
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(s)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("prompt-submit")).toBeDisabled(),
+    Scene.click(Scene.testId("prompt-card-20")),
+    Scene.expect(Scene.testId("prompt-submit")).toBeEnabled(),
+  );
+});
+
 test("discard prompt submit emits discard intent", () => {
   const s = state({
     pending_choice: {

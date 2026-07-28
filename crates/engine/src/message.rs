@@ -834,6 +834,27 @@ fn type_set_token(types: TypeSet) -> String {
     join_tokens(parts)
 }
 
+/// The card types an Aura *grants*, joined the way a type line prints them ("artifact creature")
+/// rather than the way a filter reads them ("artifact or creature") — [`type_set_token`]'s
+/// conjunctive twin, for [`StaticEffect::SetAttachedTypes`]. Empty is the empty string, so the
+/// renderer can drop the clause rather than print "any".
+fn card_type_words(types: TypeSet) -> String {
+    let mut parts = Vec::new();
+    for (bit, word) in [
+        (TypeSet::ARTIFACT, "artifact"),
+        (TypeSet::BATTLE, "battle"),
+        (TypeSet::CREATURE, "creature"),
+        (TypeSet::ENCHANTMENT, "enchantment"),
+        (TypeSet::LAND, "land"),
+        (TypeSet::PLANESWALKER, "planeswalker"),
+    ] {
+        if types.intersects(bit) {
+            parts.push(word);
+        }
+    }
+    parts.join("_")
+}
+
 fn parity_token(parity: Parity) -> &'static str {
     match parity {
         Parity::Even => "even",
@@ -2386,12 +2407,19 @@ impl Effect {
                     .with_params(vec![amount_param("power", power), amount_param("toughness", toughness)])
             }
             Effect::Static(SetAttachedTypes {
+                add_types,
+                set_types,
                 set_subtypes,
                 add_subtypes,
-                ..
+                set_chosen_land_type,
+                lose_all_abilities,
             }) => MessageRef::new(MessageKey::EFFECT_STATIC_SET_ATTACHED_TYPES).with_params(vec![
+                owned_str_param("types", card_type_words(add_types)),
+                bool_param("set_types", set_types),
                 string_list_param("set_subtypes", set_subtypes),
                 string_list_param("add_subtypes", add_subtypes),
+                bool_param("set_chosen_land_type", set_chosen_land_type),
+                bool_param("lose_all_abilities", lose_all_abilities),
             ]),
             Effect::Static(ControlAttached) => MessageRef::new(MessageKey::EFFECT_STATIC_CONTROL_ATTACHED),
             Effect::Misc(ScheduleColorlessManaForCounteredSpellNextMainPhase) => {

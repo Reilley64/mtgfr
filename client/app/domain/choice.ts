@@ -657,6 +657,12 @@ export function cardPickReady(pc: PendingChoiceView, picked: number[]): boolean 
     if (picked.length > pc.max) return false;
     return picked.length >= pc.min;
   }
+  // Smoke / Winter Orb (CR 502.2): `picked` is what stays tapped, so a group with two members
+  // *unpicked* is two untaps out of a group that allows one. A cap is a ceiling, not a quota —
+  // keeping the whole group tapped is fine.
+  if (pc.kind === "decline_untap") {
+    return (pc.at_most_one ?? []).every((group) => group.filter((id) => !picked.includes(id)).length <= 1);
+  }
   const required = cardPickRequiredCount(pc);
   if (required != null) return picked.length === required;
   if (pc.kind === "select_from_top") return picked.length <= pc.up_to;

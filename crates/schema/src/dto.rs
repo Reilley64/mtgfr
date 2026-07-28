@@ -599,7 +599,15 @@ pub enum PendingChoiceView {
     /// — the permanents they control that "may choose not to untap" (CR 502.2 — Rubinia
     /// Soulsinger). `items` are public battlefield permanents. Answering keeps the chosen subset
     /// tapped and untaps the rest.
-    DeclineUntap { player: u8, items: Vec<ChoiceItem> },
+    DeclineUntap {
+        player: u8,
+        items: Vec<ChoiceItem>,
+        /// Smoke / Winter Orb (CR 502.2): each group is a set of `items` from which at most one may
+        /// untap, so an answer that leaves two of a group out of the kept-tapped subset is
+        /// rejected. Empty for a plain Rubinia-style pause, where every item is a free yes/no.
+        #[serde(default)]
+        at_most_one: Vec<Vec<ObjectId>>,
+    },
     /// This player is about to draw and may dredge instead (CR 702.52): `items` are the eligible
     /// dredgers in their own graveyard (public to them). Answering picks one to mill-and-return, or
     /// declines (`dredger: null`) to draw normally. Client chrome: Draw normally decline + single pick.

@@ -1016,7 +1016,16 @@ function cardPickConfig(pending: PendingChoiceView): {
     case "choose_activation_cost_targets":
       return { title: "Choose cost targets", submitLabel: "Choose" };
     case "decline_untap":
-      return { title: "Choose permanents to keep tapped", submitLabel: "Keep tapped" };
+      return {
+        title: "Choose permanents to keep tapped",
+        // Smoke / Winter Orb: leaving two of a capped group up is rejected by the server, so say
+        // why Keep tapped is greyed out rather than letting the answer bounce.
+        hint:
+          (pending.at_most_one ?? []).length > 0
+            ? "Only one of the capped permanents may untap — keep the rest tapped."
+            : undefined,
+        submitLabel: "Keep tapped",
+      };
     case "sacrifice_unless_return_land":
       return { title: "Return a land or sacrifice", submitLabel: "Return land" };
     case "scry":

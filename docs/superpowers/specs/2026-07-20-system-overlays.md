@@ -1,6 +1,6 @@
 # System Overlays
 **Status:** Current (as of 2026-07-26)
-**Module:** `client/app/board/html/overlays.ts`, `client/app/board/html/result-overlay.ts`, `client/app/board/html/concede.ts`, `client/app/board/html/pile-overlay.ts`, `client/app/board/view.ts`
+**Module:** `client/app/board/html/overlays.ts`, `client/app/board/html/result-overlay.ts`, `client/app/board/html/concede.ts`, `client/app/board/html/pile-overlay.ts`, `client/app/board/html/seen-hands.ts`, `client/app/board/view.ts`
 
 ## Problem Statement
 
@@ -15,6 +15,7 @@ Compose system overlays in `boardOverlays` as DOM layers above the board surface
 - As an eliminated player, I can acknowledge the result and keep watching.
 - As a player, I must confirm before conceding.
 - As a player, I can expand graveyard or exile piles to inspect their cards.
+- As a player who looked at an opponent's hand, I can reopen what I saw.
 - As a player on a disconnected stream, I see reconnect status.
 
 ## Behavior
@@ -23,7 +24,8 @@ Compose system overlays in `boardOverlays` as DOM layers above the board surface
 - Result actions are Watch/Stay on the board and Back to your decks.
 - Concede is a top-right button for active seated players.
 - Concede confirmation submits a real `concede` intent only after confirmation.
-- `PileOverlay` opens for non-battlefield zone piles, shows an art grid, and closes by backdrop, Close, or Escape.
+- `PileOverlay` opens for non-battlefield zone piles, shows an art grid, and closes by backdrop, Close, or Escape. Its heading names the zone and count (`pile-overlay-title`).
+- `seenHandsView` renders one `seen-hand-<seat>` chip per opponent whose hand cards this viewer's snapshot itemized — the looked-at hands of Glasses of Urza (CR 701.20), which are otherwise invisible because every other read of an opponent's hand is `hand_count`. Each chip reads `<name>'s hand (<count>)` and opens that hand in `PileOverlay`. The strip is absent when nothing has been looked at.
 - Reconnect banner appears fixed top-center when the stream is disconnected. A transient disconnect says `Connection lost — reconnecting…`. Terminal stream failures use specific copy: 401 says the session expired and asks the player to sign in again; 404 says the table is no longer available. The banner keeps `data-testid="board-reconnecting"` for all reconnect states.
 - Inspect renders above result, concede, pile, HUD, and prompts.
 
@@ -36,7 +38,7 @@ Compose system overlays in `boardOverlays` as DOM layers above the board surface
 
 ## Testing Decisions
 
-- Scene tests cover result overlay actions, concede confirm/cancel, pile overlay contents/close, and reconnect banner copy for transient and terminal stream states.
+- Scene tests cover result overlay actions, concede confirm/cancel, pile overlay contents/close, the looked-at-hand chip and its pile heading (present and absent), and reconnect banner copy for transient and terminal stream states.
 - Board update tests cover `ConcedeConfirmed` submitting a `concede` intent.
 - Layer tests should preserve inspect above all system overlays.
 

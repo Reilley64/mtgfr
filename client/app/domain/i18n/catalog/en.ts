@@ -656,7 +656,22 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
       ? `Attached permanent has base power and toughness each equal to ${power}`
       : `Attached permanent has base power and toughness ${power}/${toughness}`;
   },
-  "effect.static_set_attached_types": (params) => `Attached creature is a ${humanize(param(params, "subtypes"))}`,
+  "effect.static_set_attached_types": (params) => {
+    // An empty `string_list_param` arrives as "none"; every one of these four lists is optional.
+    const words = (name: string): string => {
+      const value = param(params, name);
+      return value === "" || value === "none" ? "" : humanize(value);
+    };
+    if (bool(params, "set_chosen_land_type")) return "Attached permanent is the chosen type";
+    const replaced = words("set_subtypes");
+    const descriptor = [replaced || words("add_subtypes"), words("types")].filter(Boolean).join(" ");
+    // Nothing was replaced, so the grant only piles on — Angelic Destiny's "in addition to its
+    // other types", as against Evil Presence turning a land into a Swamp and nothing else.
+    const addition = !bool(params, "set_types") && replaced === "" ? " in addition to its other types" : "";
+    const abilities = bool(params, "lose_all_abilities") ? " and has no abilities" : "";
+    const article = /^[aeiou]/i.test(descriptor) ? "an" : "a";
+    return `Attached permanent is ${article} ${descriptor}${addition}${abilities}`;
+  },
   "effect.static_spend_mana_as_though_another_color": (params) =>
     `You may spend ${param(params, "from")} mana as though it were ${param(params, "to")} mana`,
   "effect.static_tapped_for_mana_bonus": (params) => {
