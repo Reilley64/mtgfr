@@ -100,7 +100,8 @@ impl Game {
                 | MiscEffect::ScheduleThisTurnCombatDamageCopy) => {
                     self.mint_misc(m, controller, source, target, x)
                 }
-                MiscEffect::Fight { .. }
+                MiscEffect::BlocksEachAttackerIfAble { .. }
+                | MiscEffect::Fight { .. }
                 | MiscEffect::MustAttackRandomOpponent
                 | MiscEffect::MustAttackTarget { .. }
                 | MiscEffect::MustAttackAll { .. }

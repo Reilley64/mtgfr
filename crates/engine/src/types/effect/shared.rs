@@ -783,6 +783,7 @@ impl Effect {
             // the active player has controlled continuously since the beginning of the turn" are
             // the same effect over different candidate sets.
             Effect::Misc(MiscEffect::MustAttackTarget { target }) => target,
+            Effect::Misc(MiscEffect::BlocksEachAttackerIfAble { target }) => target,
             // Breena's counter half: "a creature you control" (the drawing player is context,
             // not a target) — restricted to the ability's controller's own creatures.
             Effect::Counters(CountersEffect::AttackerDrawsControllerCounters { .. }) => TargetSpec::CreatureYouControl,
@@ -1069,9 +1070,14 @@ impl Effect {
             | Effect::Static(StaticEffect::NoMaximumHandSize)
             | Effect::Static(StaticEffect::OpponentsCantSearchLibraries)
             | Effect::Static(StaticEffect::PlayAnyNumberOfLands)
-            // "All creatures ... attack each combat if able" (Avatar of Slaughter): a global
-            // requirement, not a chosen target — enforced in `Game::declare_attackers`.
-            | Effect::Static(StaticEffect::MustAttackEachCombat)
+            // "Creatures attack each combat if able" (Avatar of Slaughter board-wide, Juggernaut
+            // self-only): a requirement, not a chosen target — enforced in `Game::declare_attackers`.
+            | Effect::Static(StaticEffect::MustAttackEachCombat { .. })
+            // The block restrictions and the extra block slot are all read off the battlefield at
+            // declaration time (`Game::can_block`, `Game::max_blocks`), never targeted.
+            | Effect::Static(StaticEffect::CanBlockAdditional { .. })
+            | Effect::Static(StaticEffect::CantBeBlockedBy { .. })
+            | Effect::Static(StaticEffect::CantBlockAttackers { .. })
             // Backup's grant rides the enclosing `Sequence`'s shared target (the counter's
             // creature), never a target of its own — see the variant doc.
             | Effect::Control(ControlEffect::GrantSourceAbilitiesUntilEndOfTurn)

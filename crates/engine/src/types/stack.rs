@@ -1895,6 +1895,7 @@ pub const CREATURE_TYPES: &[&str] = &[
     "Insect",
     "Jackal",
     "Jellyfish",
+    "Juggernaut",
     "Kavu",
     "Kithkin",
     "Knight",

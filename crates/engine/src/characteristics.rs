@@ -1267,6 +1267,55 @@ impl Game {
         })
     }
 
+    /// The "can't be blocked by \[filter\]" restrictions live attached Auras grant `host`
+    /// (Invisibility), the granted twin of the printed
+    /// [`Effect::Static(StaticEffect::CantBeBlockedBy)`] and read alongside it by
+    /// [`Game::can_block`]. Several Auras may each contribute one, so this yields rather than
+    /// answering yes/no the way its `cant_block` sibling above does.
+    pub(crate) fn host_cant_be_blocked_by(&self, host: ObjectId) -> Vec<PermanentFilter> {
+        self.attachments(host)
+            .into_iter()
+            .filter(|&id| !self.is_phased_out(id))
+            .flat_map(|id| {
+                self.def_of(id)
+                    .abilities
+                    .iter()
+                    .filter_map(|a| match (a.timing, a.effect.clone()) {
+                        (
+                            Timing::Static,
+                            Effect::Static(StaticEffect::GrantToAttached {
+                                cant_be_blocked_by,
+                                ..
+                            }),
+                        ) => cant_be_blocked_by,
+                        _ => None,
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect()
+    }
+
+    /// Whether a live attached Aura makes `host` a creature that "all creatures able to block …
+    /// do so" (CR 509.1c — Lure). The requirement twin of [`Self::host_cant_be_blocked_by`]: that
+    /// one says who may not block, this one says who must.
+    pub(crate) fn host_must_be_blocked_by_all(&self, host: ObjectId) -> bool {
+        self.attachments(host).into_iter().any(|id| {
+            !self.is_phased_out(id)
+                && self.def_of(id).abilities.iter().any(|a| {
+                    matches!(
+                        (a.timing, a.effect.clone()),
+                        (
+                            Timing::Static,
+                            Effect::Static(StaticEffect::GrantToAttached {
+                                must_be_blocked_by_all: true,
+                                ..
+                            })
+                        )
+                    )
+                })
+        })
+    }
+
     /// Whether any permanent on the battlefield holds `id` down with a live
     /// [`Effect::Static(StaticEffect::DoesntUntap)`] (CR 502.2 — Mana Vault's own
     /// `self_only` printing, Meekstone's power-3 filter over the whole table). Consulted by the
@@ -3051,6 +3100,7 @@ mod cache_tests {
             alternative_cost: None,
             cast_only_during_combat: false,
             cast_only_before_attackers: false,
+            cast_only_before_blockers: false,
             cast_only_during_opponents_turn: false,
             cast_only_before_combat_damage: false,
             approximates: None,
@@ -3147,6 +3197,7 @@ mod cache_tests {
             alternative_cost: None,
             cast_only_during_combat: false,
             cast_only_before_attackers: false,
+            cast_only_before_blockers: false,
             cast_only_during_opponents_turn: false,
             cast_only_before_combat_damage: false,
             approximates: None,
@@ -3333,6 +3384,7 @@ mod cache_tests {
             alternative_cost: None,
             cast_only_during_combat: false,
             cast_only_before_attackers: false,
+            cast_only_before_blockers: false,
             cast_only_during_opponents_turn: false,
             cast_only_before_combat_damage: false,
             approximates: None,
@@ -3489,6 +3541,7 @@ mod characteristic_query_tests {
             alternative_cost: None,
             cast_only_during_combat: false,
             cast_only_before_attackers: false,
+            cast_only_before_blockers: false,
             cast_only_during_opponents_turn: false,
             cast_only_before_combat_damage: false,
             approximates: None,
@@ -3561,6 +3614,7 @@ mod characteristic_query_tests {
             alternative_cost: None,
             cast_only_during_combat: false,
             cast_only_before_attackers: false,
+            cast_only_before_blockers: false,
             cast_only_during_opponents_turn: false,
             cast_only_before_combat_damage: false,
             approximates: None,
@@ -3664,6 +3718,7 @@ mod characteristic_query_tests {
                 alternative_cost: None,
                 cast_only_during_combat: false,
                 cast_only_before_attackers: false,
+                cast_only_before_blockers: false,
                 cast_only_during_opponents_turn: false,
                 cast_only_before_combat_damage: false,
                 approximates: None,
@@ -3755,6 +3810,7 @@ mod characteristic_query_tests {
                 alternative_cost: None,
                 cast_only_during_combat: false,
                 cast_only_before_attackers: false,
+                cast_only_before_blockers: false,
                 cast_only_during_opponents_turn: false,
                 cast_only_before_combat_damage: false,
                 approximates: None,
@@ -3844,6 +3900,7 @@ mod characteristic_query_tests {
                 alternative_cost: None,
                 cast_only_during_combat: false,
                 cast_only_before_attackers: false,
+                cast_only_before_blockers: false,
                 cast_only_during_opponents_turn: false,
                 cast_only_before_combat_damage: false,
                 approximates: None,

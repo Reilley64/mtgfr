@@ -181,7 +181,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Benalish Hero** {W} · Creature — Human Soldier — increment 14
 - [x] **Berserk** {G} · Instant — increment 45
 - [x] **Black Vise** {1} · Artifact — increment 25
-- [ ] **Blaze of Glory** {W} · Instant — increment 11
+- [x] **Blaze of Glory** {W} · Instant — increment 11
 - [x] **Blue Elemental Blast** {U} · Instant — increment 9
 - [x] **Bog Wraith** {3}{B} · Creature — Wraith — increment 3
 - [x] **Burrowing** {R} · Enchantment — Aura — increment 3
@@ -215,7 +215,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [x] **Drain Power** {U}{U} · Sorcery — increment 23
 - [x] **Earthbind** {R} · Enchantment — Aura — increment 44
 - [x] **Evil Presence** {B} · Enchantment — Aura — increment 8a
-- [ ] **False Orders** {R} · Instant — increment 11
+- [ ] **False Orders** {R} · Instant — increment 78
 - [x] **Farmstead** {W}{W}{W} · Enchantment — Aura — increment 36
 - [x] **Fastbond** {G} · Enchantment — increment 29
 - [x] **Feedback** {2}{U} · Enchantment — Aura — increment 61
@@ -235,14 +235,14 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Helm of Chatzuk** {1} · Artifact — increment 14
 - [x] **Hypnotic Specter** {1}{B}{B} · Creature — Specter — increment 17
 - [ ] **Instill Energy** {G} · Enchantment — Aura — increment 7
-- [ ] **Invisibility** {U}{U} · Enchantment — Aura — increment 11
+- [x] **Invisibility** {U}{U} · Enchantment — Aura — increment 11
 - [x] **Iron Star** {1} · Artifact — increment 10
-- [ ] **Ironclaw Orcs** {1}{R} · Creature — Orc — increment 11
+- [x] **Ironclaw Orcs** {1}{R} · Creature — Orc — increment 11
 - [x] **Island Sanctuary** {1}{W} · Enchantment — increment 65
 - [x] **Ivory Cup** {1} · Artifact — increment 10
 - [x] **Jade Monolith** {4} · Artifact — increment 6a
 - [x] **Jade Statue** {4} · Artifact — increment 57
-- [ ] **Juggernaut** {4} · Artifact Creature — Juggernaut — increment 11
+- [x] **Juggernaut** {4} · Artifact Creature — Juggernaut — increment 11
 - [x] **Karma** {2}{W}{W} · Enchantment — increment 1
 - [x] **Keldon Warlord** {2}{R}{R} · Creature — Human Barbarian — increment 2
 - [x] **Kormus Bell** {4} · Artifact — increment 8c
@@ -256,7 +256,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [x] **Living Lands** {3}{G} · Enchantment — increment 8c
 - [x] **Lord of Atlantis** {U}{U} · Creature — Merfolk — increment 3
 - [x] **Lord of the Pit** {4}{B}{B}{B} · Creature — Demon — increment 72
-- [ ] **Lure** {1}{G}{G} · Enchantment — Aura — increment 11
+- [x] **Lure** {1}{G}{G} · Enchantment — Aura — increment 11
 - [ ] **Magical Hack** {U} · Instant — increment 16
 - [x] **Mana Flare** {2}{R} · Enchantment — increment 19
 - [x] **Mana Short** {2}{U} · Instant — increment 23
@@ -306,7 +306,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [x] **Time Walk** {1}{U} · Sorcery — increment 18
 - [x] **Timetwister** {2}{U} · Sorcery — increment 38
 - [x] **Tsunami** {3}{G} · Sorcery — increment 51
-- [ ] **Two-Headed Giant of Foriys** {4}{R} · Creature — Giant — increment 11
+- [x] **Two-Headed Giant of Foriys** {4}{R} · Creature — Giant — increment 11
 - [ ] **Vesuvan Doppelganger** {3}{U}{U} · Creature — Shapeshifter — increment 12
 - [x] **Veteran Bodyguard** {3}{W}{W} · Creature — Human — increment 6b
 - [x] **Volcanic Eruption** {X}{U}{U}{U} · Sorcery — increment 73

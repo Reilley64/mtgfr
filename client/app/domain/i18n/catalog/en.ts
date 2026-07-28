@@ -442,6 +442,9 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   ),
   "effect.misc_grant_flash_this_turn": literal("You may cast spells this turn as though they had flash"),
   "effect.misc_must_attack_all": literal("Creatures the active player controls attack this turn if able"),
+  "effect.misc_blocks_each_attacker_if_able": literal(
+    "Target creature defending player controls can block any number of creatures this turn. It blocks each attacking creature this turn if able",
+  ),
   "effect.misc_must_attack_target": literal("Target creature attacks this turn if able"),
   "effect.misc_you_choose_which_creatures_attack": literal("You choose which creatures attack this turn"),
   "effect.misc_you_choose_which_creatures_block": literal(
@@ -533,6 +536,12 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.static_cant_be_attacked_by": (params) => `${humanize(param(params, "filter", "Creatures"))} can't attack you`,
   "effect.static_may_skip_draw_for_cant_be_attacked_by": (params) =>
     `You may skip your draw-step draw; if you do, ${humanize(param(params, "filter", "creatures"))} can't attack you until your next turn`,
+  "effect.static_can_block_additional": (params) =>
+    `This creature can block ${param(params, "count", "1")} additional creature(s) each combat`,
+  "effect.static_cant_be_blocked_by": (params) =>
+    `This creature can't be blocked by ${humanize(param(params, "filter", "creatures"))}`,
+  "effect.static_cant_block_attackers": (params) =>
+    `This creature can't block ${humanize(param(params, "filter", "creatures"))}`,
   "effect.static_cant_block_filter": (params) => `${humanize(param(params, "filter", "Creatures"))} can't block`,
   "effect.static_cant_cast_during_combat": literal("Players can't cast spells during combat"),
   "effect.static_cant_cast_if_attacked_this_turn": literal(
@@ -545,7 +554,10 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     bool(params, "self_only")
       ? "This permanent doesn't untap during your untap step"
       : `${humanize(param(params, "filter", "Permanents"))} don't untap during their controllers' untap steps`,
-  "effect.static_must_attack_each_combat": literal("All creatures attack each combat if able"),
+  "effect.static_must_attack_each_combat": (params) =>
+    bool(params, "self_only")
+      ? "This creature attacks each combat if able"
+      : "All creatures attack each combat if able",
   "effect.static_opponents_cant_search_libraries": literal("Your opponents can't search libraries"),
   "effect.static_protection_from_chosen_color": literal("This creature has protection from the chosen color"),
   "effect.static_cast_x_replacement": (params) => `value of X: X x ${param(params, "times")}`,

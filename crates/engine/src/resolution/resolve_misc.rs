@@ -180,7 +180,7 @@ impl Game {
             // above, but names no specific required opponent — recording the target's own
             // controller as the `defender` is the sentinel `declare_attackers` already reads as
             // "must attack, any legal defender" (its `required_legal` gate short-circuits on
-            // `required == player`, the same escape hatch `must_attack_each_combat_static` uses).
+            // `required == player`, the same escape hatch `must_attack_each_combat` uses).
             // Siren's Call: "Creatures the active player controls attack this turn if able." The
             // same per-creature requirement the targeted clause below mints, over a board scan —
             // and with the same own-controller sentinel for "any legal defender", since the card
@@ -198,6 +198,17 @@ impl Game {
                         },
                     );
                 }
+            }
+            // Blaze of Glory: "Target creature defending player controls can block any number of
+            // creatures this turn. It blocks each attacking creature this turn if able."
+            // Turn-scoped combat bookkeeping, written straight rather than minted as an event —
+            // the same as `prevent_all_combat_damage_this_turn` below; nothing replays a ceiling.
+            Effect::Misc(MiscEffect::BlocksEachAttackerIfAble { .. }) => {
+                let Some(Target::Object(creature)) = target else {
+                    return;
+                };
+                self.combat_extras.may_block_any_number.push(creature);
+                self.combat_extras.must_block_all.push(creature);
             }
             Effect::Misc(MiscEffect::MustAttackTarget { .. }) => {
                 let Some(Target::Object(creature)) = target else {

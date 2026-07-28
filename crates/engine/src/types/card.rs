@@ -693,6 +693,13 @@ pub struct CardDef {
     /// on top of the ordinary instant-speed gate and is checked in [`Game::cast_timing_ok`].
     /// `cast_only_before_attackers = true` in TOML; `false` for every ordinary card.
     pub cast_only_before_attackers: bool,
+    /// "Cast this spell only during combat before blockers are declared" (CR 601.3e's named-window
+    /// restriction — Blaze of Glory): the declare-blockers half of
+    /// [`Self::cast_only_before_attackers`], open until the first defending player declares. Blaze
+    /// of Glory pairs it with [`Self::cast_only_during_combat`], which is the other half of its
+    /// printed sentence — this field alone would leave the pre-combat main phase open.
+    /// `cast_only_before_blockers = true` in TOML; `false` for every ordinary card.
+    pub cast_only_before_blockers: bool,
     /// "Cast this spell only during an opponent's turn" (CR 601.3e — Siren's Call): someone other
     /// than the caster must be the active player. The cast-side member of the same window family,
     /// and the twin of [`ActivationCost::only_during_opponents_turn`](crate::ActivationCost);
@@ -1379,6 +1386,7 @@ fn treasure_token_builtin() -> CardDef {
         alternative_cost: None,
         cast_only_during_combat: false,
         cast_only_before_attackers: false,
+        cast_only_before_blockers: false,
         cast_only_during_opponents_turn: false,
         cast_only_before_combat_damage: false,
         approximates: None,
@@ -1453,6 +1461,7 @@ pub(crate) fn rogue_token_stub() -> CardDef {
         alternative_cost: None,
         cast_only_during_combat: false,
         cast_only_before_attackers: false,
+        cast_only_before_blockers: false,
         cast_only_during_opponents_turn: false,
         cast_only_before_combat_damage: false,
         approximates: None,
@@ -1529,6 +1538,7 @@ pub(crate) fn illusion_token() -> CardDef {
         alternative_cost: None,
         cast_only_during_combat: false,
         cast_only_before_attackers: false,
+        cast_only_before_blockers: false,
         cast_only_during_opponents_turn: false,
         cast_only_before_combat_damage: false,
         approximates: None,

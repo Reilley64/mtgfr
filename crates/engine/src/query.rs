@@ -1483,13 +1483,14 @@ impl Game {
             FilterController::ActivePlayer if self.controller_of(id) != self.active_player => {
                 return false;
             }
-            // "Defending player controls" — the player the filter's own source is attacking. A
-            // source that isn't attacking (or a filter with no source) has no defending player, so
-            // nothing matches.
+            // "Defending player controls" — the player the filter's own source is attacking, or,
+            // when the source isn't a creature in combat (Blaze of Glory is a spell), whoever the
+            // current combat is being declared against.
             FilterController::DefendingPlayer => {
                 let defending = source
                     .and_then(|source| self.defender_of(source))
-                    .and_then(|defender| self.defender_controller(defender));
+                    .and_then(|defender| self.defender_controller(defender))
+                    .or_else(|| self.sole_defending_player());
                 if defending != Some(self.controller_of(id)) {
                     return false;
                 }
@@ -1765,6 +1766,7 @@ mod permanent_filter_tests {
             alternative_cost: None,
             cast_only_during_combat: false,
             cast_only_before_attackers: false,
+            cast_only_before_blockers: false,
             cast_only_during_opponents_turn: false,
             cast_only_before_combat_damage: false,
             approximates: None,

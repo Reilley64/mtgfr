@@ -1130,6 +1130,11 @@ impl Game {
                     // "Attacks this turn if able" (Furygale Flocking) expires at the turn
                     // boundary, the same "this turn" scope as the tallies above.
                     self.combat_extras.must_attack.clear();
+                    // Blaze of Glory's two halves ("can block any number of creatures this turn",
+                    // "blocks each attacking creature this turn if able") expire at the same turn
+                    // boundary, for the same reason `must_attack` does.
+                    self.combat_extras.may_block_any_number.clear();
+                    self.combat_extras.must_block_all.clear();
                     // ponytail: "Prevent all combat damage … this turn" (Inkshield) shields expire
                     // at the next Untap — combat is always within the turn, so a combat-only shield
                     // cleared here is behavior-exact for "this turn", the same idiom `must_attack`

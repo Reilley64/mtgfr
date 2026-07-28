@@ -242,6 +242,7 @@ message_keys! {
     EFFECT_MISC_GRANT_FLASH_THIS_TURN => "effect.misc_grant_flash_this_turn",
     EFFECT_MISC_MUST_ATTACK_ALL => "effect.misc_must_attack_all",
     EFFECT_MISC_MUST_ATTACK_RANDOM_OPPONENT => "effect.misc_must_attack_random_opponent",
+    EFFECT_MISC_BLOCKS_EACH_ATTACKER_IF_ABLE => "effect.misc_blocks_each_attacker_if_able",
     EFFECT_MISC_MUST_ATTACK_TARGET => "effect.misc_must_attack_target",
     EFFECT_MISC_PREVENT_ALL_COMBAT_DAMAGE_THIS_TURN => "effect.misc_prevent_all_combat_damage_this_turn",
     EFFECT_MISC_PREVENT_NEXT_DAMAGE => "effect.misc_prevent_next_damage",
@@ -291,6 +292,9 @@ message_keys! {
     EFFECT_STATIC_CANT_BE_ATTACKED_BY => "effect.static_cant_be_attacked_by",
     EFFECT_STATIC_MAY_SKIP_DRAW_FOR_CANT_BE_ATTACKED_BY => "effect.static_may_skip_draw_for_cant_be_attacked_by",
     EFFECT_STATIC_CANT_BLOCK_FILTER => "effect.static_cant_block_filter",
+    EFFECT_STATIC_CANT_BE_BLOCKED_BY => "effect.static_cant_be_blocked_by",
+    EFFECT_STATIC_CANT_BLOCK_ATTACKERS => "effect.static_cant_block_attackers",
+    EFFECT_STATIC_CAN_BLOCK_ADDITIONAL => "effect.static_can_block_additional",
     EFFECT_STATIC_CANT_CAST_DURING_COMBAT => "effect.static_cant_cast_during_combat",
     EFFECT_STATIC_CANT_CAST_IF_ATTACKED_THIS_TURN => "effect.static_cant_cast_if_attacked_this_turn",
     EFFECT_STATIC_DISCARD_TO_LIBRARY_TOP_INSTEAD => "effect.static_discard_to_library_top_instead",
@@ -2218,8 +2222,9 @@ impl Effect {
             Effect::Static(CantCastIfAttackedThisTurn) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_CANT_CAST_IF_ATTACKED_THIS_TURN)
             }
-            Effect::Static(MustAttackEachCombat) => {
+            Effect::Static(MustAttackEachCombat { self_only }) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_MUST_ATTACK_EACH_COMBAT)
+                    .with_params(vec![bool_param("self_only", self_only)])
             }
             Effect::Static(OpponentsCantSearchLibraries) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_OPPONENTS_CANT_SEARCH_LIBRARIES)
@@ -2232,6 +2237,12 @@ impl Effect {
             }
             Effect::Static(CantBlockFilter { filter }) => MessageRef::new(MessageKey::EFFECT_STATIC_CANT_BLOCK_FILTER)
                 .with_params(vec![permanent_filter_param("filter", filter)]),
+            Effect::Static(CantBeBlockedBy { filter }) => MessageRef::new(MessageKey::EFFECT_STATIC_CANT_BE_BLOCKED_BY)
+                .with_params(vec![permanent_filter_param("filter", filter)]),
+            Effect::Static(CantBlockAttackers { filter }) => MessageRef::new(MessageKey::EFFECT_STATIC_CANT_BLOCK_ATTACKERS)
+                .with_params(vec![permanent_filter_param("filter", filter)]),
+            Effect::Static(CanBlockAdditional { count }) => MessageRef::new(MessageKey::EFFECT_STATIC_CAN_BLOCK_ADDITIONAL)
+                .with_params(vec![int_param("count", count as i32)]),
             Effect::Static(DoesntUntap { self_only, filter }) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_DOESNT_UNTAP).with_params(vec![
                     bool_param("self_only", self_only),
@@ -2319,6 +2330,9 @@ impl Effect {
                 MessageRef::new(MessageKey::EFFECT_MISC_SKIP_NEXT_UNTAP_OPPONENT_CREATURES)
             }
             Effect::Misc(TakeExtraTurn) => MessageRef::new(MessageKey::EFFECT_MISC_TAKE_EXTRA_TURN),
+            Effect::Misc(BlocksEachAttackerIfAble { .. }) => {
+                MessageRef::new(MessageKey::EFFECT_MISC_BLOCKS_EACH_ATTACKER_IF_ABLE)
+            }
             Effect::Misc(MustAttackTarget { .. }) => MessageRef::new(MessageKey::EFFECT_MISC_MUST_ATTACK_TARGET),
             Effect::Misc(MustAttackAll { .. }) => {
                 MessageRef::new(MessageKey::EFFECT_MISC_MUST_ATTACK_ALL)

@@ -397,6 +397,10 @@ impl<'de> Deserialize<'de> for CardDef {
             /// — `cast_only_before_attackers = true`; absent (`false`) for every ordinary card.
             #[serde(default)]
             cast_only_before_attackers: bool,
+            /// "Cast this spell only during combat before blockers are declared" (CR 601.3e)
+            /// — `cast_only_before_blockers = true`; absent (`false`) for every ordinary card.
+            #[serde(default)]
+            cast_only_before_blockers: bool,
             /// "Cast this spell only during an opponent's turn" (CR 601.3e — Siren's Call)
             /// — `cast_only_during_opponents_turn = true`; absent (`false`) for every ordinary card.
             #[serde(default)]
@@ -572,6 +576,7 @@ impl<'de> Deserialize<'de> for CardDef {
             alternative_cost: card.alternative_cost,
             cast_only_during_combat: card.cast_only_during_combat,
             cast_only_before_attackers: card.cast_only_before_attackers,
+            cast_only_before_blockers: card.cast_only_before_blockers,
             cast_only_during_opponents_turn: card.cast_only_during_opponents_turn,
             cast_only_before_combat_damage: card.cast_only_before_combat_damage,
             approximates: card.approximates.map(|s| &*Box::leak(s.into_boxed_str())),

@@ -82,6 +82,20 @@ pub enum MiscEffect {
         target: TargetSpec,
     },
 
+    /// Blaze of Glory's "Target creature defending player controls can block any number of
+    /// creatures this turn. It blocks each attacking creature this turn if able." Both halves of
+    /// one printed sentence, so one effect: the block ceiling comes off in
+    /// `CombatExtras::may_block_any_number` and the requirement goes into
+    /// `CombatExtras::must_block_all`. `Game::declare_blockers` reads both, and both expire at the
+    /// next Untap step.
+    ///
+    /// ponytail: the two halves are stored apart but only ever set together — no card in the pool
+    /// prints one without the other. Give this a pair of flags the day one does.
+    BlocksEachAttackerIfAble {
+        #[cfg_attr(feature = "card-dsl", serde(default = "de::target_creature"))]
+        target: TargetSpec,
+    },
+
     PreventAllCombatDamageThisTurn,
 
     /// "Prevent the next N damage that would be dealt to any target this turn" (CR 615 — Healing

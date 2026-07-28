@@ -1215,6 +1215,10 @@ impl Game {
             | Effect::Misc(MiscEffect::PreventNextDamage { .. }) => {
                 self.run_misc_choreo(effect, ctx, events)
             }
+            // Blaze of Glory — see `resolution/resolve_misc.rs`.
+            Effect::Misc(MiscEffect::BlocksEachAttackerIfAble { .. }) => {
+                self.run_misc_choreo(effect, ctx, events)
+            }
             // Master Warcraft — see `resolution/resolve_misc.rs`.
             Effect::Misc(MiscEffect::YouChooseWhichCreaturesAttack)
             | Effect::Misc(MiscEffect::YouChooseWhichCreaturesBlock) => {

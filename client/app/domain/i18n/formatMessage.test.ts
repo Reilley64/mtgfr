@@ -83,6 +83,61 @@ describe("formatMessage", () => {
     ).toBe("Attached permanent has base power and toughness each equal to its mana value");
   });
 
+  // "Can't be blocked by Walls" and "can't be blocked except by Walls" share one Rust filter,
+  // so the reader has to say which side of it a card landed on — the inverted authoring is
+  // invisible in the key alone.
+  it("reads the two wall clauses back as the opposite restrictions they are", () => {
+    expect(
+      formatMessage({
+        key: "effect.static_cant_be_blocked_by",
+        params: [{ name: "filter", string_value: "wall_creatures" }],
+        children: [],
+      }),
+    ).toBe("This creature can't be blocked by wall creatures");
+    expect(
+      formatMessage({
+        key: "effect.static_cant_be_blocked_by",
+        params: [{ name: "filter", string_value: "non_wall_creatures" }],
+        children: [],
+      }),
+    ).toBe("This creature can't be blocked by non wall creatures");
+  });
+
+  it("reads Ironclaw Orcs' and Two-Headed Giant's block clauses back", () => {
+    expect(
+      formatMessage({
+        key: "effect.static_cant_block_attackers",
+        params: [{ name: "filter", string_value: "creatures_with_power_2_or_greater" }],
+        children: [],
+      }),
+    ).toBe("This creature can't block creatures with power 2 or greater");
+    expect(
+      formatMessage({
+        key: "effect.static_can_block_additional",
+        params: [{ name: "count", int_value: 1 }],
+        children: [],
+      }),
+    ).toBe("This creature can block 1 additional creature(s) each combat");
+  });
+
+  // Juggernaut compels only itself; Avatar of Slaughter compels the board. One key, one flag.
+  it("splits must-attack between the self-only and board-wide readings", () => {
+    expect(
+      formatMessage({
+        key: "effect.static_must_attack_each_combat",
+        params: [{ name: "self_only", bool_value: true }],
+        children: [],
+      }),
+    ).toBe("This creature attacks each combat if able");
+    expect(
+      formatMessage({
+        key: "effect.static_must_attack_each_combat",
+        params: [{ name: "self_only", bool_value: false }],
+        children: [],
+      }),
+    ).toBe("All creatures attack each combat if able");
+  });
+
   // Both taxes render their filter through the same generic token humanizer every other
   // catalog key uses — "color_white" reads back as "color white", the way `reduce_spell_cost`
   // has always rendered Balefire Liege.

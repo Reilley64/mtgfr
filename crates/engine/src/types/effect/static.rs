@@ -175,6 +175,32 @@ pub enum StaticEffect {
         filter: PermanentFilter,
     },
 
+    /// Two-Headed Giant of Foriys' "This creature can block an additional creature each combat"
+    /// (CR 509.1b): raises this permanent's own block ceiling from the default one attacker to
+    /// `1 + count`. Read by [`Game::max_blocks`](crate::Game), which is where the ceiling is
+    /// decided for every blocker, so a creature with no such static is capped at one there.
+    CanBlockAdditional {
+        count: u8,
+    },
+
+    /// Juggernaut's "This creature can't be blocked by Walls" (CR 509.1b): `filter` names the
+    /// creatures turned away, so a blocker matching it can never be declared against this
+    /// permanent. Invisibility's "can't be blocked *except* by Walls" is the same restriction
+    /// authored inverted (`exclude_subtypes = ["Wall"]`), granted to a host by
+    /// [`GrantToAttached`](Self::GrantToAttached)'s `cant_be_blocked_by` rather than printed.
+    CantBeBlockedBy {
+        filter: PermanentFilter,
+    },
+
+    /// Ironclaw Orcs' "This creature can't block creatures with power 2 or greater" (CR 509.1b):
+    /// the blocker-side restriction that describes the *attacker*. Distinct from
+    /// [`CantBlockFilter`](Self::CantBlockFilter) just below, which matches the would-be blocker
+    /// and reaches the whole battlefield — this one is printed on the creature it restrains and
+    /// reads the attacker it is being declared against.
+    CantBlockAttackers {
+        filter: PermanentFilter,
+    },
+
     CantBlockFilter {
         filter: PermanentFilter,
     },
@@ -326,6 +352,16 @@ pub enum StaticEffect {
         cant_attack: bool,
         #[cfg_attr(feature = "card-dsl", serde(default))]
         cant_block: bool,
+        /// Invisibility's "Enchanted creature can't be blocked except by Walls": the granted twin
+        /// of [`CantBeBlockedBy`](Self::CantBeBlockedBy), authored the same way — the filter names
+        /// the blockers turned away, so "except by Walls" is spelled `exclude_subtypes = ["Wall"]`.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        cant_be_blocked_by: Option<PermanentFilter>,
+        /// Lure's "All creatures able to block enchanted creature do so" (CR 509.1c): a blocking
+        /// *requirement* rather than a restriction, gathered by `Game::required_blocks` and met as
+        /// far as the declaration legally can be.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        must_be_blocked_by_all: bool,
         #[cfg_attr(feature = "card-dsl", serde(default))]
         cant_attack_controller: bool,
         /// Animate Wall's "Enchanted Wall can attack as though it didn't have defender": the host
@@ -362,7 +398,13 @@ pub enum StaticEffect {
         plus: i32,
     },
 
-    MustAttackEachCombat,
+    /// "Creatures attack each combat if able": Avatar of Slaughter's board-wide reading by
+    /// default, or Juggernaut's own "This creature attacks each combat if able" with
+    /// `self_only = true` — the same split [`DoesntUntap`](Self::DoesntUntap) makes.
+    MustAttackEachCombat {
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        self_only: bool,
+    },
 
     NoMaximumHandSize,
 

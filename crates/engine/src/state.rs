@@ -37,6 +37,17 @@ pub(crate) struct CombatExtras {
     /// `must_attack` between cleanup and the next Untap, so it's CR-equivalent to end-of-turn
     /// expiry, the same reasoning `pending_next_cast`'s turn-boundary clear uses. (CR 508.1a, CR 502.1, CR 514.3)
     pub must_attack: Vec<(ObjectId, PlayerId)>,
+    /// "Target creature … can block any number of creatures this turn" (Blaze of Glory): the
+    /// creatures whose CR 509.1b block ceiling is lifted outright, read by
+    /// [`Game::max_blocks`](crate::Game), which returns `None` for anything listed here. Cleared
+    /// at the next turn's Untap step, the same "this turn" boundary `must_attack` uses.
+    pub may_block_any_number: Vec<ObjectId>,
+    /// "It blocks each attacking creature this turn if able" (Blaze of Glory): the requirement
+    /// half of the same spell, enforced in [`Game::declare_blockers`](crate::Game) beside Lure's
+    /// static. Held separately from [`may_block_any_number`](Self::may_block_any_number) because
+    /// the two halves are independent — a card may raise the ceiling without forcing anything —
+    /// and cleared at the same turn boundary.
+    pub must_block_all: Vec<ObjectId>,
     /// "Prevent all combat damage that would be dealt to you this turn" (CR 615 — Inkshield):
     /// each entry is `(the protected player, the token minted per point of combat damage
     /// prevented)`. Consulted at the combat-damage-to-a-player choke

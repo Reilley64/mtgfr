@@ -445,7 +445,7 @@ and `CasterScope::AnyPlayer` for "whenever *a player* casts", so the five artifa
 nothing either. All six are pure authoring.
 *Cards:* crystal_rod, iron_star, ivory_cup, soul_net, throne_of_bone, wooden_sphere.
 
-### 11. `block-restrictions-and-requirements` — 7 cards, L
+### 11. `block-restrictions-and-requirements` — 6 cards, L — **done**
 Depends on: nothing.
 1993 combat is full of "can't be blocked except by X", "all creatures able to block it do so",
 and "can block an additional creature." The engine's blocking legality check knows keywords
@@ -459,8 +459,64 @@ of requirements without violating any restriction. A per-creature `max_blocks` (
 of Foriys, Blaze of Glory's "any number") rides along. False Orders is the odd one — removing a
 blocker mid-combat and re-declaring it — and `remove_from_combat` already exists for the first
 half. This is the prerequisite most likely to grow: #14 (banding) sits on the same pass.
-*Cards:* blaze_of_glory, false_orders, invisibility, ironclaw_orcs, juggernaut, lure,
-two_headed_giant_of_foriys.
+*Cards:* blaze_of_glory, invisibility, ironclaw_orcs, juggernaut, lure,
+two_headed_giant_of_foriys. False Orders split out — see #78.
+
+*Landed:* the sketch's two passes, and one latent gap it didn't name. `declare_blockers` now runs
+`block_restrictions_ok` (the per-pair legality loop, menace, and a new per-blocker ceiling) and
+then a requirement pass. The ceiling is the gap: before this, a creature could block *every*
+attacker, because CR 509.1b's default of one was nowhere in the engine. `Game::max_blocks` is where
+it lives now — `1 + can_block_additional`, or no ceiling at all for a creature Blaze of Glory has
+touched.
+
+Three restrictions, one filter axis. "Can't be blocked by Walls" (Juggernaut, printed) and "can't
+be blocked except by Walls" (Invisibility, granted) are the same clause from opposite sides, and
+the second is authored inverted — `exclude_subtypes = ["Wall"]` — the way `cant_be_attacked_by`
+already is. That took `exclude_subtypes` and `power_min`, both of which `PermanentFilter` already
+had, so no new filter axis and no `de.rs` work. Ironclaw Orcs is the mirror axis rather than the
+same one: `cant_block_attackers` is printed on the blocker but reads the *attacker*, where
+`cant_block_filter` matches the would-be blocker and reaches the whole battlefield.
+
+The requirement pass is the sketch's "maximum possible number of requirements" with a `ponytail:`
+on it. Rather than searching for a set-wide maximum, each unmet requirement is tested on its own:
+rebuild the declaration that *would* have met it — that blocker's unrequired blocks dropped — and
+if that candidate passes the restriction pass, the submitted one was illegal. That is what stops a
+creature dodging Lure by blocking something else. Every card in the pool forces a single creature
+or a single attacker, so the per-requirement answer and CR 509.1c's maximum agree; a card forcing
+two interacting groups would want the real search.
+
+Blaze of Glory needed the rest of its text more than its effect. `cast_only_before_blockers` joins
+the `cast_only_before_attackers` window family (the card pairs it with `cast_only_during_combat` —
+alone it would leave the pre-combat main phase open), and `FilterController::DefendingPlayer`
+learned a fallback for a source that isn't an attacking creature, since a *spell* has no declared
+defender to read. Its two halves are one `MiscEffect` writing two `CombatExtras` lists straight,
+no `Event` — the `prevent_all_combat_damage_this_turn` precedent. And `MustAttackEachCombat` grew
+`self_only` for Juggernaut, which meant teaching `required_attacks` about it too, or every
+roll-the-turn test helper would have submitted an illegal declaration.
+
+The missing ceiling had already been used. `gomazoa_tucks_itself_and_each_creature_it_is_blocking`
+had a plain Wall blocking two attackers to exercise "each creature it's blocking" — illegal Magic
+that only passed because nothing enforced CR 509.1b. It now casts Blaze of Glory on the Gomazoa to
+earn the plural legitimately, which is the same card doing the lifting in the engine and in the
+test.
+
+### 78. `remove-from-combat-and-re-block` — 1 card, XL
+Depends on: #11 (done).
+Split out of #11. False Orders: "Cast this spell only during the declare blockers step. Remove
+target creature defending player controls from combat. Creatures it was blocking that had become
+blocked by only that creature this combat become unblocked. You may have it block an attacking
+creature of your choice." Three things #11 does not have. Removing a blocker mid-combat is the
+easy half — `remove_from_combat` exists — but "had become blocked by only that creature this
+combat" is a *history* question the engine doesn't record: CR 509.1h's blocked-ness is sticky, so
+un-blocking an attacker means knowing it was never blocked by anyone else, not merely that it
+isn't now. And the third sentence is a new `PendingChoice`: the spell's controller — the
+*attacking* player — picks which attacker the removed creature re-blocks, which is a declaration
+made by the wrong seat, outside the declare-blockers step, after blocks are sealed. *Sketch:* a
+per-combat `blocked_by_ever` list beside `CombatState::blocks` answers the history question for a
+few bytes; the choice is a `ChooseBlockTarget { player, blocker, candidates }` resolved through
+the same `declare_blockers` restriction pass so the re-block is still legal. The `PendingChoice`
+is what makes this XL — schema, proto, server, and client all spell every variant.
+*Cards:* false_orders.
 
 ### 12. `copy-a-permanent` — 3 cards, L
 Depends on: nothing.

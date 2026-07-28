@@ -344,6 +344,14 @@ impl Game {
         {
             return false;
         }
+        // "Cast this spell only during combat before blockers are declared" (CR 601.3e — Blaze of
+        // Glory): the declare-blockers twin of the window above, and read the same way — up to and
+        // including the declare-blockers step, closed early inside it once anyone has declared.
+        if def.cast_only_before_blockers
+            && (self.step > Step::DeclareBlockers || !self.combat.blocked_by.is_empty())
+        {
+            return false;
+        }
         // "Cast this spell only during an opponent's turn" (CR 601.3e — Siren's Call): the other
         // half of the same printed sentence as the window above, and independent of it.
         if def.cast_only_during_opponents_turn && self.active_player == player {
@@ -774,6 +782,7 @@ mod tests {
             alternative_cost: None,
             cast_only_during_combat: false,
             cast_only_before_attackers: false,
+            cast_only_before_blockers: false,
             cast_only_during_opponents_turn: false,
             cast_only_before_combat_damage: false,
             approximates: None,

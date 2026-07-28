@@ -4883,6 +4883,77 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
         );
     }
 
+    /// Juggernaut and Invisibility print the same restriction from opposite sides — "can't be
+    /// blocked by Walls" and "can't be blocked except by Walls" — and the DSL has one axis for
+    /// both. The inverted authoring is the whole trick, so it is the thing worth pinning: get the
+    /// exclusion backwards and Invisibility silently reads as Juggernaut.
+    #[test]
+    fn unlimited_the_two_wall_clauses_are_one_filter_authored_from_opposite_sides() {
+        let jugg = get_by_name("Juggernaut").expect("Juggernaut is in the pool");
+        let [attacks, walls] = &jugg.abilities[..] else {
+            panic!("a must-attack static and a can't-be-blocked static");
+        };
+        assert_eq!(
+            attacks.effect,
+            Effect::Static(StaticEffect::MustAttackEachCombat { self_only: true }),
+            "Juggernaut compels itself, not the board",
+        );
+        let Effect::Static(StaticEffect::CantBeBlockedBy { filter }) = &walls.effect else {
+            panic!("a can't-be-blocked-by filter");
+        };
+        assert_eq!(filter.subtypes, ["Wall"], "Walls are turned away");
+        assert!(
+            filter.exclude_subtypes.is_empty(),
+            "the printed clause names the blockers directly",
+        );
+
+        let invis = get_by_name("Invisibility").expect("Invisibility is in the pool");
+        let [granted] = &invis.abilities[..] else {
+            panic!("one granting static");
+        };
+        let Effect::Static(StaticEffect::GrantToAttached {
+            cant_be_blocked_by: Some(filter),
+            ..
+        }) = &granted.effect
+        else {
+            panic!("the restriction rides the host, not the Aura");
+        };
+        assert_eq!(
+            filter.exclude_subtypes,
+            ["Wall"],
+            "\"except by Walls\" is the same axis inverted — everything that is not a Wall",
+        );
+        assert!(
+            filter.subtypes.is_empty(),
+            "spelling it as a positive Wall filter would turn Walls away instead of admitting them",
+        );
+    }
+
+    /// Blaze of Glory's two halves are one printed sentence and have to arrive together: the
+    /// lifted block ceiling is the only reason the requirement is satisfiable at all.
+    #[test]
+    fn unlimited_blaze_of_glory_is_one_effect_holding_both_halves_of_its_sentence() {
+        let blaze = get_by_name("Blaze of Glory").expect("Blaze of Glory is in the pool");
+        assert!(
+            blaze.cast_only_during_combat && blaze.cast_only_before_blockers,
+            "\"only during combat before blockers are declared\" is both windows at once",
+        );
+        let [ability] = &blaze.abilities[..] else {
+            panic!("one spell ability");
+        };
+        let Effect::Misc(MiscEffect::BlocksEachAttackerIfAble {
+            target: TargetSpec::Permanent(filter),
+        }) = &ability.effect
+        else {
+            panic!("one targeted misc effect, not a pair");
+        };
+        assert_eq!(
+            filter.controller,
+            FilterController::DefendingPlayer,
+            "the target is the defender's creature — casting it on your own blocker does nothing",
+        );
+    }
+
     /// Personal Incarnation is a liability its owner cannot hand off. Both halves of that are
     /// only true because of a flag: `only_owner_may_activate` is what stops a thief spending the
     /// shield, and `SourceOwnerLosesHalfTheirLife` is what sends the bill past whoever was

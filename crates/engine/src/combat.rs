@@ -75,6 +75,17 @@ impl Game {
         if self.has_keyword(attacker, Keyword::Unblockable) {
             return false;
         }
+        // "Can't be blocked by Walls" (Juggernaut, printed) and "can't be blocked except by Walls"
+        // (Invisibility, granted by an Aura and authored inverted): both name the blockers turned
+        // away, so one check reads them the same way (CR 509.1b).
+        if self.cant_be_blocked_by(attacker, blocker, player) {
+            return false;
+        }
+        // "This creature can't block creatures with power 2 or greater" (Ironclaw Orcs): the
+        // blocker-side restriction that describes the attacker, the mirror of the one above.
+        if self.cant_block_attacker(blocker, attacker) {
+            return false;
+        }
         // Skulk (CR 702.72a): can't be blocked by creatures with greater power.
         if self.has_keyword(attacker, Keyword::Skulk) && self.power(blocker) > self.power(attacker)
         {
@@ -137,6 +148,27 @@ impl Game {
             .iter()
             .find(|(a, _)| *a == attacker)
             .map(|(_, d)| *d)
+    }
+
+    /// The one player the current combat is aimed at, for effects that say "defending player"
+    /// without an attacking source of their own to read it off (Blaze of Glory, a spell). `None`
+    /// outside combat, and `None` when the attack is split across two players — with nobody to
+    /// choose between them the phrase has no referent (CR 506.2).
+    ///
+    /// ponytail: a real multiplayer answer would ask the caster which combat they mean; no card in
+    /// the pool needs that yet, and the two-headed-attack case is rare enough to simply not match.
+    pub(crate) fn sole_defending_player(&self) -> Option<PlayerId> {
+        let mut found: Option<PlayerId> = None;
+        for &attacker in &self.combat.attackers {
+            let player = self
+                .defender_of(attacker)
+                .and_then(|defender| self.defender_controller(defender))?;
+            match found {
+                Some(seen) if seen != player => return None,
+                _ => found = Some(player),
+            }
+        }
+        found
     }
 
     /// The player defending against `defender` — itself for a player, the controller for a
@@ -354,6 +386,21 @@ impl Game {
             }
             out.push((id, Defender::Player(required)));
         }
+        // "Attacks each combat if able" (Juggernaut, Avatar of Slaughter): forced, but naming no
+        // defender, so any living opponent discharges it and the first one is as good a seed as
+        // any — the player may still retarget before submitting.
+        for id in self.controlled_battlefield(player) {
+            if !self.must_attack_each_combat(id) || !self.can_attack(id) {
+                continue;
+            }
+            if out.iter().any(|&(a, _)| a == id) {
+                continue;
+            }
+            let Some(defender) = self.living_players().find(|&d| d != player) else {
+                continue;
+            };
+            out.push((id, Defender::Player(defender)));
+        }
         out
     }
 
@@ -471,20 +518,23 @@ impl Game {
         legal.then_some(player)
     }
 
-    /// Whether any permanent on the battlefield carries a live
-    /// [`Effect::Static(StaticEffect::MustAttackEachCombat)`] static (Avatar of Slaughter's "All
-    /// creatures ... attack each combat if able"): unlike [`Game::matching_anthems`]'s per-source
-    /// controller gate, this is a plain existence check — the static reaches every creature
-    /// regardless of who controls its source, so only whether one is live anywhere matters.
-    fn must_attack_each_combat_static(&self) -> bool {
+    /// Whether `creature` must attack this combat if able (CR 508.1a), by a live
+    /// [`Effect::Static(StaticEffect::MustAttackEachCombat)`] static — Avatar of Slaughter's "All
+    /// creatures ... attack each combat if able" board-wide, or Juggernaut's own `self_only`
+    /// printing. The board-wide reading skips [`Game::matching_anthems`]'s per-source controller
+    /// gate on purpose: it reaches every creature regardless of who controls its source, so only
+    /// whether one is live anywhere matters.
+    fn must_attack_each_combat(&self, creature: ObjectId) -> bool {
         self.battlefield().into_iter().any(|source| {
-            self.functional_abilities(source).iter().any(|a| {
-                (a.timing, a.effect.clone())
-                    == (
+            self.functional_abilities(source)
+                .iter()
+                .any(|a| match (a.timing, a.effect.clone()) {
+                    (
                         Timing::Static,
-                        Effect::Static(StaticEffect::MustAttackEachCombat),
-                    )
-            })
+                        Effect::Static(StaticEffect::MustAttackEachCombat { self_only }),
+                    ) => !self_only || source == creature,
+                    _ => false,
+                })
         })
     }
 
@@ -509,6 +559,76 @@ impl Game {
                     _ => false,
                 })
         })
+    }
+
+    /// Whether `blocker` is turned away from `attacker` by a live "can't be blocked by \[filter\]"
+    /// restriction on the attacker (CR 509.1b) — Juggernaut's printed static or Invisibility's
+    /// Aura-granted twin. Both spell the *banned* blockers, so "except by Walls" is authored as a
+    /// filter excluding Walls and read here exactly like "by Walls".
+    ///
+    /// `defender` is the player declaring these blocks, passed on to
+    /// [`Game::permanent_matches`] as the filter's point of view — the same seat
+    /// [`Game::can_block`] validates against.
+    fn cant_be_blocked_by(
+        &self,
+        attacker: ObjectId,
+        blocker: ObjectId,
+        defender: PlayerId,
+    ) -> bool {
+        let printed = self
+            .functional_abilities(attacker)
+            .iter()
+            .filter_map(|a| match (a.timing, a.effect.clone()) {
+                (Timing::Static, Effect::Static(StaticEffect::CantBeBlockedBy { filter })) => {
+                    Some(filter)
+                }
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        printed
+            .into_iter()
+            .chain(self.host_cant_be_blocked_by(attacker))
+            .any(|filter| self.permanent_matches(&filter, blocker, defender, Some(attacker)))
+    }
+
+    /// Whether `blocker` carries a live "this creature can't block \[filter\]" restriction that
+    /// `attacker` matches (CR 509.1b — Ironclaw Orcs). Self-only and attacker-facing, which is
+    /// what separates it from [`Game::cant_block_filter`] just below.
+    fn cant_block_attacker(&self, blocker: ObjectId, attacker: ObjectId) -> bool {
+        self.functional_abilities(blocker)
+            .iter()
+            .any(|a| match (a.timing, a.effect.clone()) {
+                (Timing::Static, Effect::Static(StaticEffect::CantBlockAttackers { filter })) => {
+                    self.permanent_matches(
+                        &filter,
+                        attacker,
+                        self.controller_of(blocker),
+                        Some(blocker),
+                    )
+                }
+                _ => false,
+            })
+    }
+
+    /// How many attackers `blocker` may be declared against this combat (CR 509.1b): one, plus
+    /// whatever [`Effect::Static(StaticEffect::CanBlockAdditional)`] statics it carries
+    /// (Two-Headed Giant of Foriys). `None` means no ceiling at all — Blaze of Glory's "can block
+    /// any number of creatures this turn", recorded per-turn rather than printed.
+    pub(crate) fn max_blocks(&self, blocker: ObjectId) -> Option<u32> {
+        if self.combat_extras.may_block_any_number.contains(&blocker) {
+            return None;
+        }
+        let additional: u32 = self
+            .functional_abilities(blocker)
+            .iter()
+            .filter_map(|a| match (a.timing, a.effect.clone()) {
+                (Timing::Static, Effect::Static(StaticEffect::CanBlockAdditional { count })) => {
+                    Some(count as u32)
+                }
+                _ => None,
+            })
+            .sum();
+        Some(1 + additional)
     }
 
     /// Whether `player` is locked out of declaring any attacker by a live
@@ -712,14 +832,12 @@ impl Game {
         // attack discharges it. Only the active player's own creatures can ever be checked here
         // (declaring attackers is a turn-based action for the active player alone), so the
         // static's reach into an opponent's creatures is inert until that opponent's own combat.
-        if self.must_attack_each_combat_static() {
-            for id in self.controlled_battlefield(player) {
-                if !self.can_attack(id) {
-                    continue;
-                }
-                if !attackers.iter().any(|&(a, _)| a == id) {
-                    return Err(Reject::IllegalDeclaration); // must attack if able
-                }
+        for id in self.controlled_battlefield(player) {
+            if !self.must_attack_each_combat(id) || !self.can_attack(id) {
+                continue;
+            }
+            if !attackers.iter().any(|&(a, _)| a == id) {
+                return Err(Reject::IllegalDeclaration); // must attack if able
             }
         }
 
@@ -803,21 +921,29 @@ impl Game {
         if self.step != Step::DeclareBlockers || seats.is_empty() {
             return Err(Reject::IllegalDeclaration);
         }
-        for &(blocker, attacker) in blocks {
-            // `as_permanent` first: it is safe on any object id, and once it holds `blocker` is a
-            // live permanent, so `controller_of` can't panic on untrusted input.
-            if self.as_permanent(blocker).is_none() {
-                return Err(Reject::IllegalDeclaration);
-            }
-            let defender = self.controller_of(blocker);
-            if !seats.contains(&defender) || !self.can_block(defender, blocker, attacker) {
-                return Err(Reject::IllegalDeclaration);
-            }
+        if !self.block_restrictions_ok(&seats, blocks) {
+            return Err(Reject::IllegalDeclaration);
         }
-        // Menace (CR 509.1b): an attacker with menace must be blocked by two or more creatures.
-        for &attacker in &self.combat.attackers {
-            let n = blocks.iter().filter(|&&(_, a)| a == attacker).count();
-            if n == 1 && self.has_keyword(attacker, Keyword::Menace) {
+        // Blocking requirements (CR 509.1c): the declaration has to meet as many as it legally
+        // can. Each unmet one is tested by asking whether the declaration that *would* have met it
+        // is itself legal — that blocker's own unrequired blocks dropped, so a creature can't dodge
+        // Lure by blocking something else instead.
+        // ponytail: one requirement at a time rather than a search for the set-wide maximum. Every
+        // card in the pool forces a single creature or a single attacker, so the per-requirement
+        // answer and the CR 509.1c maximum agree; a card forcing two interacting groups would want
+        // the real search here.
+        let required = self.required_blocks(&seats);
+        for &(blocker, attacker) in &required {
+            if blocks.contains(&(blocker, attacker)) {
+                continue;
+            }
+            let mut candidate: Vec<(ObjectId, ObjectId)> = blocks
+                .iter()
+                .copied()
+                .filter(|&(b, a)| b != blocker || required.contains(&(b, a)))
+                .collect();
+            candidate.push((blocker, attacker));
+            if self.block_restrictions_ok(&seats, &candidate) {
                 return Err(Reject::IllegalDeclaration);
             }
         }
@@ -851,6 +977,66 @@ impl Game {
         self.consecutive_passes = 0;
         self.priority = self.active_player;
         Ok(events)
+    }
+
+    /// Whether `blocks` breaks no blocking *restriction* (CR 509.1b): every pair legal on its own
+    /// ([`Game::can_block`]), menace's two-or-more rule, and each blocker's [`Game::max_blocks`]
+    /// ceiling. Split out of [`Game::declare_blockers`] because that runs it twice — once on what
+    /// was submitted, and once per unmet requirement on the declaration that would have met it.
+    fn block_restrictions_ok(&self, seats: &[PlayerId], blocks: &[(ObjectId, ObjectId)]) -> bool {
+        for &(blocker, attacker) in blocks {
+            // `as_permanent` first: it is safe on any object id, and once it holds `blocker` is a
+            // live permanent, so `controller_of` can't panic on untrusted input.
+            if self.as_permanent(blocker).is_none() {
+                return false;
+            }
+            let defender = self.controller_of(blocker);
+            if !seats.contains(&defender) || !self.can_block(defender, blocker, attacker) {
+                return false;
+            }
+        }
+        // Menace (CR 509.1b): an attacker with menace must be blocked by two or more creatures.
+        for &attacker in &self.combat.attackers {
+            let n = blocks.iter().filter(|&&(_, a)| a == attacker).count();
+            if n == 1 && self.has_keyword(attacker, Keyword::Menace) {
+                return false;
+            }
+        }
+        // One creature blocks one attacker unless something says otherwise (CR 509.1b) — a
+        // whole-declaration rule like menace's, since a single pair can't see the count.
+        for &(blocker, _) in blocks {
+            let Some(ceiling) = self.max_blocks(blocker) else {
+                continue; // "can block any number of creatures" — no ceiling to exceed
+            };
+            if blocks.iter().filter(|&&(b, _)| b == blocker).count() as u32 > ceiling {
+                return false;
+            }
+        }
+        true
+    }
+
+    /// Every (blocker, attacker) pair some effect *requires* this combat (CR 509.1c): Lure's "all
+    /// creatures able to block enchanted creature do so", read off the attacker, and Blaze of
+    /// Glory's "it blocks each attacking creature this turn if able", read off the blocker. Only
+    /// pairs that are legal on their own are listed — "if able" means an illegal block was never
+    /// required to begin with.
+    fn required_blocks(&self, seats: &[PlayerId]) -> Vec<(ObjectId, ObjectId)> {
+        let mut out = Vec::new();
+        for &attacker in &self.combat.attackers {
+            let lured = self.host_must_be_blocked_by_all(attacker);
+            for &seat in seats {
+                for blocker in self.controlled_battlefield(seat) {
+                    let forced = lured || self.combat_extras.must_block_all.contains(&blocker);
+                    if !forced || !self.can_block(seat, blocker, attacker) {
+                        continue;
+                    }
+                    if !out.contains(&(blocker, attacker)) {
+                        out.push((blocker, attacker));
+                    }
+                }
+            }
+        }
+        out
     }
 
     /// The defending seats whose block declaration `declarer` is the one to make right now — every
