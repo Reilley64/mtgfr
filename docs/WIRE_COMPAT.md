@@ -17,7 +17,9 @@ So every concurrent instance version must speak a wire protocol the current SPA/
 The automated gate is `verify-wire` in `.github/workflows/verify-jobs.yml`; local equivalents
 are `just proto-lint`, `just proto-breaking`, and `just proto-check`. Proto lint uses Buf
 `STANDARD` with no silenced rules (`except`, `ignore`, or `ignore_only`), and proto breaking
-uses Buf `WIRE` against `origin/main` for ordinary PRs.
+uses Buf `WIRE` against `origin/main` for ordinary PRs. The `--against` input names
+`subdir=proto`, because `proto/buf.yaml` — and therefore the import root the `.proto`
+files are written against — lives under `proto/`, not the repository root.
 
 ## Transport migration (wire-protocol-and-visibility spec)
 

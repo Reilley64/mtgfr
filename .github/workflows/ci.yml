@@ -8,6 +8,9 @@ on:
     branches:
       - main
       - master
+    # `edited` so retitling a PR re-runs the commitlint job that reads the title —
+    # without it a rejected title stays red until some unrelated push.
+    types: [opened, synchronize, reopened, edited]
 
 concurrency:
   group: ci-${{ github.ref }}

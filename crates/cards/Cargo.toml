@@ -5,5 +5,28 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
-engine = { workspace = true, features = ["card-dsl"] }
+jsonschema = { version = "0.49.1", default-features = false }
+schemars = { version = "0.8", optional = true }
+serde = { version = "1", features = ["derive"], optional = true }
+serde_json = "1"
 toml = "0.8"
+
+[features]
+default = ["card-dsl", "card-schema"]
+# Deserialize card definitions from the TOML card DSL. Pure data-in — no I/O or
+# nondeterminism — so the engine's purity rule still holds for the vocabulary it
+# re-exports. Named for what it gates (DSL-shaped, Deserialize-only impls) so a future
+# wire-protocol `serde` feature can mean plain round-trippable serde support.
+card-dsl = ["dep:serde"]
+# `JsonSchema` on the TOML surface, for the schema / DSL-reference generators.
+card-schema = ["card-dsl", "dep:schemars"]
+
+# Pool tests play out real games to prove a card's script; the engine depends on this crate,
+# so Cargo permits the cycle only through dev-dependencies.
+[dev-dependencies]
+engine = { workspace = true }
+
+[[test]]
+name = "de"
+path = "tests/de.rs"
+required-features = ["card-schema"]

@@ -85,6 +85,7 @@ These documents are **not superseded** and must stay current alongside the specs
 | [prompt-primary-bar-takeover](2026-07-27-prompt-primary-bar-takeover-design.md) | Design input: simple prompt actions own the primary-bar slot; rich pickers are center modals; board-aim coaches stay bottom-docked; update prompts + turn-and-priority-chrome at implement time |
 | [unified-screen-motion](2026-07-27-unified-screen-motion-design.md) | Design input: unify hand-drag ghost + flights + ExitFx onto the Mount flight / screen-motion paint layer; update flights + hand-and-zone-bar |
 | [dtcg-token-architecture](2026-07-27-dtcg-token-architecture-design.md) | Design input: DTCG 2025.10 typed composites (drop `$type: css`), aliases, primitive→semantic tiers, CSS Color 4 OKLCH; update shell-routes + `DESIGN.md` at implement time |
+| [card-toml-json-schema](2026-07-27-card-toml-json-schema-design.md) | Design input: fully generate card/token JSON Schema + `DSL_REFERENCE.md` from CardDef TOML surface types; update card-dsl-and-card-pool + card-dsl skill at implement time |
 
 ## Authoring conventions
 

@@ -64,25 +64,28 @@ branch commit range.
 - `verify-server`: pass-marker gate + parallel lint / nextest / migrate + mark +
   aggregator. Pass marker `verify-server-v3-*` hashes `crates/**`, `proto/**`,
   Cargo/Toasty lockfiles, `toasty/**`, `.config/nextest.toml`, `justfile`, this
-  workflow, `docs/CR_INDEX.md`, and `scripts/gen_cr_index.py`. Key is computed
+  workflow, `docs/CR_INDEX.md`, `scripts/gen_cr_index.py`, and
+  `.agents/skills/card-dsl/DSL_REFERENCE.md`. Key is computed
   on a clean checkout at restore and again at save (identical inputs; do not
   re-`hashFiles` after mutating the tree).
-  - `verify-server-gate`: `actions/cache/restore@v5` on `.ci-pass`; emits
+  - `verify-server-gate`: `actions/cache/restore@v6` on `.ci-pass`; emits
     `cache-hit`.
   - On miss: `verify-server-lint`, `verify-server-test` (matrix partitions
     `1`/`2`/`3`), and `verify-server-migrate` run in parallel inside
     `ghcr.io/reilley64/mtgfr-ci:latest` (`container.options: --user root` so the
     GHA workspace mount is writable). Each uses `Swatinem/rust-cache`
     `shared-key: verify-server`.
-    - Lint: CR index + fmt + clippy (tools from the image; no host rustup/protoc
-      installs).
+    - Lint: CR index + card JSON Schema drift (`cards-schema-check`) + DSL
+      reference drift (`cards-dsl-ref-check`) + full card/token pool schema
+      validation (`cards-toml-validate-pool`) + fmt + clippy (tools from the
+      image; no host rustup/protoc installs).
     - Test shards: `cargo nextest run --profile ci --partition count:i/3` only —
       **no** Postgres service (tests use in-memory SQLite). Per-shard JUnit
       upload + test summary.
     - Migrate: Postgres 16 service + `just migrate` only;
       `DATABASE_URL=postgresql://mtgfr:mtgfr@postgres:5432/mtgfr` (service
       hostname, not `localhost`).
-  - `verify-server-mark`: `actions/cache/save@v5` only when gate miss and lint +
+  - `verify-server-mark`: `actions/cache/save@v6` only when gate miss and lint +
     all test shards + migrate succeeded.
   - Aggregator job `Verify (server)`: green on cache hit, or on miss when lint +
     tests + migrate + mark succeeded.
@@ -183,7 +186,8 @@ Not published to npm. `@semantic-release/npm` bumps `package.json` version only 
 - Wire compatibility is machine-checked by `verify-wire`: `buf lint` always and
   `buf breaking` on non-major PRs against `origin/main`.
 - Local equivalents: `just server-check`, `just client-check`, `just proto-check`,
-  `just check`.
+  `just check`; server and root checks include full deckable-card and token TOML schema
+  validation via `just cards-toml-validate-pool`.
 
 ---
 
