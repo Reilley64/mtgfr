@@ -4463,6 +4463,35 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
         );
     }
 
+    /// Time Vault's untap clause and its turn-skip clause are separate sentences and must stay
+    /// separate abilities: the skip is the *only* thing that undoes the "doesn't untap", so folding
+    /// them together would hand the card its untap for free. The tap for an extra turn is the third
+    /// and last, which is the index the engine tests activate.
+    #[test]
+    fn time_vault_pays_for_its_own_untap_with_a_skipped_turn() {
+        let vault = get_by_name("Time Vault").expect("Time Vault is in the pool");
+        assert!(vault.enters_tapped, "this artifact enters tapped");
+        assert!(matches!(
+            vault.abilities[0].effect,
+            Effect::Static(StaticEffect::DoesntUntap {
+                self_only: true,
+                ..
+            })
+        ));
+        assert!(matches!(
+            vault.abilities[1].effect,
+            Effect::Static(StaticEffect::MaySkipTurnWhileTapped)
+        ));
+        let Timing::Activated(cost) = vault.abilities[2].timing else {
+            panic!("the extra turn is activated");
+        };
+        assert!(cost.taps_self, "{{T}}: take an extra turn");
+        assert!(matches!(
+            vault.abilities[2].effect,
+            Effect::Misc(MiscEffect::TakeExtraTurn)
+        ));
+    }
+
     /// The untap cap is symmetrical on both cards ("players"), so neither filter may be scoped to
     /// its own controller. Winter Orb's is the conditional one: its cap only speaks while the Orb
     /// is untapped, and that gate rides on the ability rather than on the filter — Smoke, which

@@ -111112,6 +111112,125 @@ fn kudzu_with_no_land_left_to_move_to_is_swept_with_its_host() {
     assert_eq!(game.zone_of(kudzu), Zone::Graveyard);
 }
 
+// ── Time Vault: buying an extra turn by skipping one ──────────────────────────────────
+
+/// Roll to the next turn `player` would begin and answer Time Vault's skip offer.
+fn answer_time_vault(game: &mut Game, player: PlayerId, yes: bool) {
+    advance_until(game, |g| g.pending_choice().is_some());
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::MayYesNo { player: asked, .. }) if asked == player
+        ),
+        "the vault's own controller is offered the skip, got {:?}",
+        game.pending_choice(),
+    );
+    game.submit(Intent::AnswerMay { player, yes }).unwrap();
+}
+
+#[test]
+fn a_tapped_time_vault_skips_its_controllers_turn_to_untap() {
+    // "If you would begin your turn while this artifact is tapped, you may skip that turn instead.
+    // If you do, untap this artifact." (CR 614)
+    let mut game = Game::new();
+    stock_libraries(&mut game);
+    // "This artifact enters tapped", which is the case the offer speaks to.
+    let vault = game.spawn_on_battlefield(PlayerId(0), card("Time Vault"));
+
+    // The offer waits for the next turn P0 would *begin*, so P1's whole turn passes first.
+    answer_time_vault(&mut game, PlayerId(0), true);
+
+    assert!(!game.is_tapped(vault), "the skipped turn untaps the vault");
+    assert_eq!(
+        game.active_player(),
+        PlayerId(1),
+        "P0's turn never happened, so the rotation hands straight back to P1",
+    );
+}
+
+#[test]
+fn a_declined_time_vault_takes_the_turn_and_stays_tapped() {
+    let mut game = Game::new();
+    stock_libraries(&mut game);
+    let vault = game.spawn_on_battlefield(PlayerId(0), card("Time Vault"));
+    game.tap(vault);
+    let land = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
+    game.tap(land);
+
+    answer_time_vault(&mut game, PlayerId(0), false);
+
+    assert_eq!(
+        game.active_player(),
+        PlayerId(0),
+        "declining takes the turn the pause stood in front of",
+    );
+    assert!(
+        game.is_tapped(vault),
+        "nothing untapped it: it doesn't untap during your untap step",
+    );
+    assert!(
+        !game.is_tapped(land),
+        "that untap step still ran, so everything else came up",
+    );
+}
+
+#[test]
+fn an_untapped_time_vault_offers_nothing() {
+    let mut game = Game::new();
+    stock_libraries(&mut game);
+    let vault = game.spawn_on_battlefield(PlayerId(0), card("Time Vault"));
+    // "This artifact enters tapped" — untap it, because the offer is the tapped case.
+    game.untap(vault);
+
+    // Two whole turns without a pause — `advance_until` unwraps its passes, so a stray offer
+    // would fail this outright.
+    pass_until_next_turn(&mut game);
+    pass_until_next_turn(&mut game);
+
+    assert_eq!(game.active_player(), PlayerId(0));
+    assert!(game.pending_choice().is_none());
+}
+
+#[test]
+fn time_vault_taps_for_an_extra_turn_and_buys_the_untap_back_with_a_later_one() {
+    let mut game = Game::new();
+    stock_libraries(&mut game);
+    let vault = game.spawn_on_battlefield(PlayerId(0), card("Time Vault"));
+    // "This artifact enters tapped", and a tapped vault can't pay its own tap cost.
+    game.untap(vault);
+
+    // "{T}: Take an extra turn after this one."
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: vault,
+        ability_index: 2,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .expect("an untapped vault can pay its own tap cost");
+    resolve_top_of_stack(&mut game);
+
+    // The bought turn begins while the vault is tapped, so the offer stands in front of it —
+    // declining is how you actually take the turn you just paid for.
+    answer_time_vault(&mut game, PlayerId(0), false);
+    assert_eq!(
+        game.active_player(),
+        PlayerId(0),
+        "the extra turn is the vault controller's (CR 505.6a)",
+    );
+    assert!(game.is_tapped(vault), "the tap cost stands");
+
+    // The turn after that comes back around to P0, and skipping *that* one is what untaps it.
+    pass_until_next_turn(&mut game);
+    answer_time_vault(&mut game, PlayerId(0), true);
+    assert!(
+        !game.is_tapped(vault),
+        "the skipped turn pays for the untap"
+    );
+}
+
 // ── Island Sanctuary: paying a draw for a temporary attack shield ─────────────────────
 
 /// Roll to the sanctuary controller's (P1's) draw step and answer the skip offer. P0 holds the

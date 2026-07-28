@@ -842,6 +842,11 @@ pub enum MayYesNoResume {
     /// the step loop itself, the way a dredge answer does — unlike [`Self::Default`], nothing
     /// here ever reaches the stack.
     SkipDrawStepDraw,
+    /// Time Vault's turn replacement (CR 614): "yes" untaps the source and rolls the turn that was
+    /// beginning away, "no" takes it. Like [`Self::SkipDrawStepDraw`] the answer resumes the turn
+    /// structure itself and nothing reaches the stack — but this pause is raised before the untap
+    /// step's turn-based actions have run, so a "no" still owes them.
+    SkipTurnWhileSourceTapped,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

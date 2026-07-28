@@ -277,6 +277,7 @@
   "effect.static_doesnt_untap",
   "effect.static_players_skip_untap_steps",
   "effect.static_untap_at_most_one",
+  "effect.static_may_skip_turn_while_tapped",
   "effect.choice_triggering_player_may_pay",
   "effect.static_must_attack_each_combat",
   "effect.static_opponents_cant_search_libraries",

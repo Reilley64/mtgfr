@@ -302,7 +302,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [x] **Thoughtlace** {U} · Instant — increment 15
 - [x] **Throne of Bone** {1} · Artifact — increment 10
 - [x] **Timber Wolves** {G} · Creature — Wolf — increment 14 (approximated: banding's blocking half only — see increment 79)
-- [ ] **Time Vault** {2} · Artifact — increment 7, 18
+- [x] **Time Vault** {2} · Artifact — increment 7, 18
 - [x] **Time Walk** {1}{U} · Sorcery — increment 18
 - [x] **Timetwister** {2}{U} · Sorcery — increment 38
 - [x] **Tsunami** {3}{G} · Sorcery — increment 51

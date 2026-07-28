@@ -1515,6 +1515,31 @@ impl Game {
                     active_player: next_active,
                 },
             );
+            // Time Vault (CR 614): "if you would begin your turn while this artifact is tapped,
+            // you may skip that turn instead". The pause stands here, after the `StepBegan` that
+            // names the new active player but before a single turn-based action has run — so a
+            // skipped turn untaps nothing, draws nothing and never opens a priority window.
+            // `answer_may` resumes from exactly this point either way.
+            // ponytail: the skipped turn's `StepBegan` is emitted before the offer is answered, so
+            // a replay sees an untap step for a turn that CR says never happened. Nothing observes
+            // it — the per-turn tallies it resets are reset again by the turn that does happen, and
+            // no trigger or priority window sits in an untap step — so the alternative (raising the
+            // pause before `StepBegan` and re-pushing the whole step preamble in the "no" handler)
+            // buys nothing.
+            if next == Step::Untap
+                && let Some(source) = self.may_skip_turn_offer(next_active)
+            {
+                crate::pending::raise_choice(
+                    self,
+                    PendingChoice::MayYesNo {
+                        player: next_active,
+                        source,
+                        effect: Effect::Static(StaticEffect::MaySkipTurnWhileTapped),
+                        resume: MayYesNoResume::SkipTurnWhileSourceTapped,
+                    },
+                );
+                return events;
+            }
             self.perform_turn_based_actions(next, next_active, &mut events);
 
             // A turn-based action may raise a choice (cleanup's discard-to-hand-size). Stop the
@@ -1530,6 +1555,26 @@ impl Game {
                 return events;
             }
         }
+    }
+
+    /// The *tapped* battlefield permanent `player` controls that offers Time Vault's
+    /// [`StaticEffect::MaySkipTurnWhileTapped`] turn replacement. `None` when they control none or
+    /// when every one they control is untapped — the ordinary case, which takes the turn as usual,
+    /// since the offer only exists "while this artifact is tapped".
+    /// ponytail: first offer wins if a player somehow controls two tapped ones; the pool has a
+    /// single such card, and a skipped turn untaps only the one that bought it, so a second would
+    /// just re-offer next turn.
+    fn may_skip_turn_offer(&self, player: PlayerId) -> Option<ObjectId> {
+        self.controlled_battlefield(player).into_iter().find(|&id| {
+            self.permanent(id).tapped
+                && self.functional_abilities(id).iter().any(|ability| {
+                    ability.timing == Timing::Static
+                        && matches!(
+                            ability.effect,
+                            Effect::Static(StaticEffect::MaySkipTurnWhileTapped)
+                        )
+                })
+        })
     }
 
     /// The battlefield permanent `player` controls that offers Island Sanctuary's

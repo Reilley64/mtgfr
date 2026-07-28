@@ -787,7 +787,7 @@ source just damaged — for Hypnotic Specter, filled at trigger placement out of
 Looter il-Kor shares the same trigger and *its* discard is still the controller's.
 *Cards:* hypnotic_specter, mind_twist.
 
-### 18. `extra-turns` — 2 cards, M — **18a done, 18b open**
+### 18. `extra-turns` — 2 cards, M — **done**
 Depends on: #7 (Time Vault only).
 "Take an extra turn after this one" (CR 505.6a). The turn structure advances through a fixed
 player rotation with no concept of an inserted turn. *Sketch:* a `Vec<PlayerId>` extra-turn queue
@@ -805,13 +805,31 @@ Only one new event, `ExtraTurnQueued` — the pop deliberately isn't event-sourc
 lands on the same turn order either way (the same bookkeeping shape as
 `skip_starting_players_first_draw`). The effect side is a bare `MiscEffect::TakeExtraTurn` with no
 target and no fields, which makes Time Walk a card with nothing else on it.
-*Deferred:* **18b Time Vault** — its "this artifact doesn't untap during your untap step" is #7's
-`StaticEffect::DoesntUntap` and already expressible, but "if you would begin your turn while this
-is tapped, you may skip that turn instead: if you do, untap this artifact" is a turn-*skipping*
-replacement effect with an optional payer choice at a point where no player holds priority. That
-needs a pause the turn-advance path can raise, which nothing in `advance_step` can do today —
-`perform_turn_based_actions` can set a `pending_choice`, but the untap step is the wrong step and
-the choice arrives before the turn it would skip exists.
+*Landed (18b — time_vault):* the deferral said `advance_step` had nowhere to raise a pause. It
+does: between the `StepBegan` that names the new turn's active player and the
+`perform_turn_based_actions` call that would run the untap step. Standing there is what makes the
+whole card work — the offer is made after the engine knows whose turn is beginning and before a
+single turn-based action has run, so a skipped turn untaps nothing, draws nothing and never opens a
+priority window. `StaticEffect::MaySkipTurnWhileTapped` is fieldless (both "your turn" and "this
+artifact" resolve off the source) and `MayYesNoResume::SkipTurnWhileSourceTapped` is the whole
+answer path: "yes" emits the `Untapped` and sets the step marker back to `Cleanup`, so the loop's
+very next pass reads `leaving_cleanup` and hands the turn on — no `EndTheTurn` machinery, no second
+skip flag, and an owed extra turn is still popped ahead of the rotation because that pass is the
+ordinary one. "No" runs the untap step the pause stood in front of and carries on, which is what
+`a_declined_time_vault_takes_the_turn_and_stays_tapped` pins by watching a Forest come up while the
+vault does not.
+
+The two clauses stay two abilities, and that is the card: `doesnt_untap` with `self_only` is the
+only thing keeping it down, and the skip is the only thing in the pool that undoes a `doesnt_untap`
+on its own card. `time_vault_taps_for_an_extra_turn_and_buys_the_untap_back_with_a_later_one` walks
+the actual loop — tap for the extra turn, decline the offer that stands in front of the turn you
+just bought, then spend a later turn to get the vault back up.
+
+ponytail: the skipped turn's `StepBegan` is emitted before the offer is answered, so an event replay
+sees an untap step for a turn CR 614 says never happened. Nothing observes it — the per-turn tallies
+it resets are reset again by the turn that does happen, and no trigger or priority window lives in
+an untap step — so raising the pause *before* `StepBegan` and re-pushing the step preamble in the
+"no" handler would buy nothing but a longer diff.
 
 ### 19. `land-tap-triggers-and-bonuses` — 5 cards, M — **done**
 Depends on: nothing.

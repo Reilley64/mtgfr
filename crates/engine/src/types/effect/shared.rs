@@ -974,6 +974,7 @@ impl Effect {
             | Effect::Static(StaticEffect::DoesntUntap { .. })
             | Effect::Static(StaticEffect::PlayersSkipUntapSteps)
             | Effect::Static(StaticEffect::UntapAtMostOne { .. })
+            | Effect::Static(StaticEffect::MaySkipTurnWhileTapped)
             | Effect::Static(StaticEffect::CantCastDuringCombat)
             // "Each opponent who cast a spell this turn can't attack with creatures" /
             // "...who attacked with a creature this turn can't cast spells" (Angelic Arbiter): a

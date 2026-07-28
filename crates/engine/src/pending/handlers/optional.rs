@@ -41,6 +41,26 @@ impl Game {
             }
             return Ok(events);
         }
+        // Time Vault's turn replacement (CR 614). The pause stands where the new turn's untap step
+        // has just begun and nothing has been done yet: "yes" untaps the vault — the only thing
+        // that ever undoes its own "doesn't untap during your untap step" — and puts the step
+        // marker back on cleanup, so the loop's next pass reads `leaving_cleanup` and hands the
+        // turn to whoever is next (an owed extra turn included). "No" runs the untap step the pause
+        // stood in front of and the turn proceeds.
+        if let MayYesNoResume::SkipTurnWhileSourceTapped = resume {
+            let mut events = Vec::new();
+            if yes {
+                self.push_apply(&mut events, Event::Untapped { object: source });
+                self.step = Step::Cleanup;
+            } else {
+                self.perform_turn_based_actions(Step::Untap, player, &mut events);
+            }
+            // The untap step can raise its own Rubinia/Smoke pause, which resumes the loop itself.
+            if self.pending_choice.is_none() {
+                events.extend(self.advance_step());
+            }
+            return Ok(events);
+        }
         if let MayYesNoResume::TradeSecretsRepeat { caster, max } = resume {
             if !yes {
                 return Ok(Vec::new());

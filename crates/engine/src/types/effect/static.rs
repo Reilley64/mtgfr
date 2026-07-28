@@ -319,6 +319,21 @@ pub enum StaticEffect {
         filter: PermanentFilter,
     },
 
+    /// Time Vault's "If you would begin your turn while this artifact is tapped, you may skip that
+    /// turn instead. If you do, untap this artifact." — a replacement effect on the turn itself
+    /// (CR 614), and the only thing in the pool that can undo the card's own
+    /// [`DoesntUntap`](Self::DoesntUntap). Read by
+    /// [`Game::may_skip_turn_offer`](crate::Game), which
+    /// [`Game::advance_step`](crate::Game) consults as a new turn's untap step begins and before
+    /// any of its turn-based actions run: a "yes" untaps the source and hands the turn straight on
+    /// to the next player, a "no" runs the untap step the pause stood in front of and takes the
+    /// turn with the source still tapped.
+    ///
+    /// Fieldless: "your turn" is the source's controller's and "this artifact" is the source, so
+    /// there is nothing left for a filter to say — unlike
+    /// [`UntapAtMostOne`](Self::UntapAtMostOne), whose card says "players".
+    MaySkipTurnWhileTapped,
+
     EntersWithCounters {
         #[cfg_attr(feature = "card-dsl", serde(rename = "count"))]
         amount: Amount,
