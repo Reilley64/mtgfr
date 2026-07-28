@@ -443,6 +443,16 @@ impl Game {
                 colors[color.index()] = true;
             }
         }
+        // Kormus Bell's "All Swamps are 1/1 **black** creatures" — a layer-5 add like a manland's,
+        // just scoped to a land type rather than to the permanent itself.
+        for (_, _, effect) in self.land_type_statics_on(object) {
+            let StaticEffect::AllLandsOfTypeBecome { add_colors, .. } = effect else {
+                continue;
+            };
+            for color in add_colors {
+                colors[color.index()] = true;
+            }
+        }
         colors
     }
 
@@ -1391,8 +1401,66 @@ impl Game {
             .is_some_and(|p| p.bestowed && p.attached_to.is_some())
     }
 
+    /// Every live [`StaticEffect::AllLandsOfTypeBecome`] on the battlefield ("All Mountains are
+    /// Plains"), oldest source first. Whole-battlefield like [`Game::matching_anthems`] and for
+    /// the same reason — these say "All Mountains", not "Mountains you control" — and recomputed
+    /// per query rather than cached, the same as every other continuous-effect scan here.
+    ///
+    /// The order is CR 613.4's timestamp order, which is why the payloads come back as a list
+    /// rather than a merged answer: callers apply them in turn, so a second conversion acts on
+    /// what the first one left behind. Each entry keeps its `(timestamp, source)` for the one
+    /// caller that has to hand them on — a base-P/T set is a layer-7b entry like any other.
+    fn land_type_statics(&self) -> Vec<(u64, ObjectId, StaticEffect)> {
+        let mut statics = Vec::new();
+        for (index, object) in self.objects.iter().enumerate() {
+            let source = index as ObjectId;
+            if !matches!(object, Object::Permanent(_)) || self.is_phased_out(source) {
+                continue;
+            }
+            for ability in self.functional_abilities(source).iter() {
+                let (
+                    Timing::Static,
+                    Effect::Static(effect @ StaticEffect::AllLandsOfTypeBecome { .. }),
+                ) = (ability.timing, &ability.effect)
+                else {
+                    continue;
+                };
+                statics.push((self.static_continuous_timestamp(source), source, *effect));
+            }
+        }
+        statics.sort_by_key(|&(timestamp, source, _)| (timestamp, source));
+        statics
+    }
+
+    /// The live "all lands of a type are …" statics that apply to `id` right now, oldest first —
+    /// the handle for every characteristic these change *except* the subtype line itself, which
+    /// is mid-computation when it asks and so does its own matching against the line it is
+    /// building ([`Game::effective_subtypes`]).
+    fn land_type_statics_on(&self, id: ObjectId) -> Vec<(u64, ObjectId, StaticEffect)> {
+        // ponytail: a full battlefield sweep per characteristic read, so the empty-board case —
+        // every game with none of these three cards in it — has to cost nothing. Upgrade path if
+        // a board with one ever gets slow is a `Game`-level count maintained as permanents enter
+        // and leave, which buys nothing until then.
+        let statics = self.land_type_statics();
+        if statics.is_empty() {
+            return statics;
+        }
+        let subtypes = self.effective_subtypes(id);
+        statics
+            .into_iter()
+            .filter(|(_, _, effect)| {
+                let StaticEffect::AllLandsOfTypeBecome { land_types, .. } = effect else {
+                    return false;
+                };
+                land_types.iter().any(|ty| subtypes.contains(ty))
+            })
+            .collect()
+    }
+
     /// A battlefield permanent's card types after the CR 613.4 type layer: its printed types plus
-    /// any added by an attached [`Effect::Static(StaticEffect::SetAttachedTypes)`] Aura (Darksteel Mutation → +Artifact).
+    /// any added by an attached [`Effect::Static(StaticEffect::SetAttachedTypes)`] Aura (Darksteel Mutation → +Artifact),
+    /// plus the card types a global land-type change grants every land of a type (Kormus Bell's
+    /// "All Swamps are 1/1 black creatures that are still lands").
     /// Reads printed types for a non-permanent (CR 613 applies only to the permanent).
     pub fn effective_types(&self, id: ObjectId) -> TypeSet {
         // CR 708.2: a face-down permanent (a manifest) is a creature and nothing else — its real
@@ -1424,6 +1492,14 @@ impl Game {
         runtime_effects.sort_by_key(|effect| (effect.layer(), effect.timestamp, effect.source));
         for effect in runtime_effects {
             let ContinuousEffectKind::SetTypes { add_types, .. } = effect.kind else {
+                continue;
+            };
+            types = types.union(add_types);
+        }
+        // "All Swamps are 1/1 black creatures that are **still lands**" — always additive, so
+        // there is no set-types global to order against the layer above.
+        for (_, _, effect) in self.land_type_statics_on(id) {
+            let StaticEffect::AllLandsOfTypeBecome { add_types, .. } = effect else {
                 continue;
             };
             types = types.union(add_types);
@@ -1483,6 +1559,32 @@ impl Game {
                 subtypes = set_subtypes.to_vec();
             }
             subtypes.extend_from_slice(add_subtypes);
+        }
+        // "All Mountains are Plains" (Conversion) matches on the line built so far rather than
+        // through `land_type_statics_on`, which would ask this function for the answer it is
+        // still computing. Matching here is also what makes CR 613.4 timestamp order mean
+        // something: a second conversion sees the type the first one left.
+        //
+        // Nothing but a basic land type is ever matched, so a line without one — every creature,
+        // every artifact, every spell — skips the battlefield sweep entirely.
+        if subtypes.iter().any(|s| BASIC_LAND_TYPES.contains(s)) {
+            for (_, _, effect) in self.land_type_statics() {
+                let StaticEffect::AllLandsOfTypeBecome {
+                    land_types,
+                    set_subtypes,
+                    ..
+                } = effect
+                else {
+                    continue;
+                };
+                // CR 305.7: taking on a basic land type costs a land every land type it had, so
+                // this replaces the line rather than extending it. An empty `set_subtypes` is a
+                // global that changes something other than the type (Kormus Bell).
+                if set_subtypes.is_empty() || !land_types.iter().any(|ty| subtypes.contains(ty)) {
+                    continue;
+                }
+                subtypes = set_subtypes.to_vec();
+            }
         }
         subtypes
     }
@@ -1591,6 +1693,32 @@ impl Game {
         let mut effects = Vec::new();
         if let Some(effect) = self.set_base_pt(object) {
             effects.push(effect);
+        }
+        // Kormus Bell's "All Swamps are 1/1 …" — a layer-7b base set like any other, timestamped
+        // to the Bell so a later base set on the land itself still wins.
+        for (timestamp, source, effect) in self.land_type_statics_on(object) {
+            let StaticEffect::AllLandsOfTypeBecome {
+                add_types,
+                base_power,
+                base_toughness,
+                ..
+            } = effect
+            else {
+                continue;
+            };
+            // "All Mountains are Plains" sets no P/T; only the globals that make a land a
+            // creature print one.
+            if !add_types.intersects(TypeSet::CREATURE) {
+                continue;
+            }
+            effects.push(ContinuousEffect {
+                source,
+                timestamp,
+                kind: ContinuousEffectKind::BasePtSet {
+                    power: base_power,
+                    toughness: base_toughness,
+                },
+            });
         }
         effects.extend(
             self.attachment_continuous_effects(object)

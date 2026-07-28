@@ -313,7 +313,7 @@ already wrong before either of these cards; folded into the client catch-up pass
 fixed here.
 *Cards:* phantasmal_terrain.
 
-### 8c. `all-lands-of-a-type-become-another` — 3 cards, M
+### 8c. `all-lands-of-a-type-become-another` — 3 cards, M — **done**
 Depends on: 8a.
 "All Mountains are Plains" (Conversion) / "All Swamps are 1/1 black Shade creatures that are still
 lands" (Kormus Bell) / the same for Forests (Living Lands). 8a's derivation carries the mana half
@@ -323,6 +323,28 @@ permanent matching a `PermanentFilter`, not just for the host of an attachment. 
 Living Lands then add the creature type and a base P/T on top, which is #2's static in its
 non-CDA fixed form.
 *Cards:* conversion, kormus_bell, living_lands.
+
+*Landed:* one `StaticEffect::AllLandsOfTypeBecome` for all three — they are literally the same
+sentence with different riders. It is scoped by `land_types` rather than the `PermanentFilter` the
+sketch above wanted, and that turned out to be the whole design: a filter has to ask for the
+candidate's subtypes, which is the answer this effect changes, so a filter-scoped version recurses
+through `effective_subtypes` forever. Matching names against the subtype line *as it is being
+built* is both non-recursive and closer to CR 613.4 — a second conversion sees what the first one
+left. `Game::land_type_statics` is the battlefield sweep (modelled on `matching_anthems`, and like
+it unscoped by controller, because "All Mountains" means everyone's); `land_type_statics_on` is the
+per-permanent handle the other three reads use. Four read sites in all — `effective_subtypes` for
+the type swap, `effective_types` for "still lands", `pt_layers` for the 1/1, `colors_of` for Kormus
+Bell's black — and 8a's `land_mana_credit` carried the mana consequence with no extra work, so a
+Badlands under Conversion is a Plains that taps only for `{W}`.
+
+Kormus Bell prints no Shade subtype (the sketch above said it did); the oracle text is "1/1 black
+creatures," full stop. Conversion's upkeep half needed nothing new — the existing `pay_or_else`
+choice already says "sacrifice this unless you pay {W}{W}."
+
+ponytail: the sweep runs per characteristic read rather than off a cached count, so
+`effective_subtypes` skips it entirely unless the line already carries a basic land type — nothing
+but a land can be caught. Upgrade path if a board with one of these ever gets slow is a
+`Game`-level count maintained as permanents enter and leave.
 
 ### 8d. `counter-keyed-type-change-and-an-unbounded-upkeep-series` — 1 card, L
 Depends on: 8c.

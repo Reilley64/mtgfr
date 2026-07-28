@@ -10,6 +10,49 @@ use crate::de;
     serde(tag = "mode", rename_all = "snake_case", deny_unknown_fields)
 )]
 pub enum StaticEffect {
+    /// "All Mountains are Plains" (Conversion), "All Swamps are 1/1 black creatures that are
+    /// still lands" (Kormus Bell), "All Forests are 1/1 creatures that are still lands" (Living
+    /// Lands) — a CR 613.4 type change and CR 613.3 P/T set applied to every land on the
+    /// battlefield carrying one of `land_types`, whoever controls it. The one static scoped by a board
+    /// sweep rather than by a controller ([`Self::Anthem`]) or an attachment
+    /// ([`Self::SetAttachedTypes`]); [`Game::land_type_statics`](crate::Game) is the sweep, and
+    /// every characteristic read that can be changed this way consults it.
+    ///
+    /// Scoped by land type instead of by a general [`PermanentFilter`](crate::PermanentFilter) on
+    /// purpose: a filter would have to ask for the candidate's subtypes, which is the very answer
+    /// this effect changes. Matching names against the subtype line as accumulated so far keeps
+    /// the CR 613.4 timestamp order honest and the recursion impossible.
+    ///
+    /// `set_subtypes` replaces the whole line as CR 305.7 asks (a Mountain Forest under
+    /// Conversion is a Plains and nothing else, and taps only for `{W}` —
+    /// [`Game::land_mana_credit`](crate::Game) derives that). Leave it empty to change only what
+    /// a land *also* is: Kormus Bell's Swamps stay Swamps.
+    AllLandsOfTypeBecome {
+        /// The land types this applies to — a land carrying any of them is caught. Each of the
+        /// three cards names exactly one.
+        #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::static_str_slice"))]
+        land_types: &'static [&'static str],
+        #[cfg_attr(
+            feature = "card-dsl",
+            serde(default, deserialize_with = "de::static_str_slice")
+        )]
+        set_subtypes: &'static [&'static str],
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        add_types: TypeSet,
+        /// The base P/T the land takes on, read only when `add_types` makes it a creature —
+        /// "1/1 black creatures that are still lands". Both default to 0 for a change that
+        /// alters no card type (Conversion), where nothing reads them.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        base_power: i32,
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        base_toughness: i32,
+        #[cfg_attr(
+            feature = "card-dsl",
+            serde(default, deserialize_with = "de::static_slice")
+        )]
+        add_colors: &'static [Color],
+    },
+
     Anthem {
         #[cfg_attr(feature = "card-dsl", serde(default))]
         power: Amount,

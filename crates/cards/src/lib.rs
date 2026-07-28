@@ -4667,6 +4667,63 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
             "the chosen type, not a printed one"
         );
     }
+
+    /// The three global land-type changes are the same sentence with different riders, so what is
+    /// worth pinning is which rider each one carries: Conversion replaces the type and does
+    /// nothing else, the other two leave the type alone and animate.
+    #[test]
+    fn unlimited_global_land_type_changes_carry_only_the_rider_they_print() {
+        let conversion = get_by_name("Conversion").expect("Conversion is in the pool");
+        let [_upkeep, types] = &conversion.abilities[..] else {
+            panic!("the upkeep tax, then the type change");
+        };
+        assert_eq!(
+            types.effect,
+            Effect::Static(StaticEffect::AllLandsOfTypeBecome {
+                land_types: &["Mountain"],
+                set_subtypes: &["Plains"],
+                add_types: TypeSet::NONE,
+                base_power: 0,
+                base_toughness: 0,
+                add_colors: &[],
+            }),
+            "a type swap with no P/T and no color"
+        );
+
+        let bell = get_by_name("Kormus Bell").expect("Kormus Bell is in the pool");
+        let [types] = &bell.abilities[..] else {
+            panic!("one static ability");
+        };
+        assert_eq!(
+            types.effect,
+            Effect::Static(StaticEffect::AllLandsOfTypeBecome {
+                land_types: &["Swamp"],
+                set_subtypes: &[],
+                add_types: TypeSet::CREATURE,
+                base_power: 1,
+                base_toughness: 1,
+                add_colors: &[Color::Black],
+            }),
+            "\"still lands\" — the Swamps keep the type they have and gain a card type"
+        );
+
+        let living = get_by_name("Living Lands").expect("Living Lands is in the pool");
+        let [types] = &living.abilities[..] else {
+            panic!("one static ability");
+        };
+        assert_eq!(
+            types.effect,
+            Effect::Static(StaticEffect::AllLandsOfTypeBecome {
+                land_types: &["Forest"],
+                set_subtypes: &[],
+                add_types: TypeSet::CREATURE,
+                base_power: 1,
+                base_toughness: 1,
+                add_colors: &[],
+            }),
+            "no color clause — the Forests animate colorless"
+        );
+    }
 }
 
 #[cfg(test)]

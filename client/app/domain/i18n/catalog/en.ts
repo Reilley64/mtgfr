@@ -82,6 +82,15 @@ function preventCombatDamageLabel(params: MessageParams): string {
   return "Prevent no combat damage";
 }
 
+function staticAllLandsOfTypeBecome(params: MessageParams): string {
+  const all = `All ${humanize(param(params, "land_types"))}s are`;
+  if (!bool(params, "creature")) return `${all} ${humanize(param(params, "set_subtypes"))}`;
+  const colors = humanize(param(params, "add_colors"));
+  const color = colors === "" ? "" : `${colors} `;
+  const pt = `${param(params, "base_power")}/${param(params, "base_toughness")}`;
+  return `${all} ${pt} ${color}creatures that are still lands`;
+}
+
 function staticAnthem(params: MessageParams): string {
   const scope = bool(params, "self_only")
     ? "This creature"
@@ -485,6 +494,7 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.sacrifice_source": literal("Sacrifice it"),
   "effect.scry": (params) => `Scry ${param(params, "count")}`,
   "effect.sequence": (_params, children) => children.join(", then "),
+  "effect.static_all_lands_of_type_become": (params) => staticAllLandsOfTypeBecome(params),
   "effect.static_anthem": (params) => staticAnthem(params),
   "effect.static_attack_tax": (params) =>
     `Creatures can't attack you unless their controller pays {${param(params, "amount")}} for each creature they control that's attacking you`,

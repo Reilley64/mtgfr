@@ -198,7 +198,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [x] **Cockatrice** {3}{G}{G} · Creature — Cockatrice — increment 21
 - [x] **Consecrate Land** {W} · Enchantment — Aura — increment 35
 - [x] **Conservator** {4} · Artifact — increment 4
-- [ ] **Conversion** {2}{W}{W} · Enchantment — increment 8c
+- [x] **Conversion** {2}{W}{W} · Enchantment — increment 8c
 - [x] **Copper Tablet** {2} · Artifact — increment 60
 - [ ] **Copy Artifact** {1}{U} · Enchantment — increment 12
 - [x] **Creature Bond** {1}{U} · Enchantment — Aura — increment 62
@@ -245,7 +245,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Juggernaut** {4} · Artifact Creature — Juggernaut — increment 11
 - [x] **Karma** {2}{W}{W} · Enchantment — increment 1
 - [x] **Keldon Warlord** {2}{R}{R} · Creature — Human Barbarian — increment 2
-- [ ] **Kormus Bell** {4} · Artifact — increment 8c
+- [x] **Kormus Bell** {4} · Artifact — increment 8c
 - [ ] **Kudzu** {1}{G}{G} · Enchantment — Aura — increment 37
 - [x] **Library of Leng** {1} · Artifact — increment 33
 - [ ] **Lich** {B}{B}{B}{B} · Enchantment — increment 22, 47
@@ -253,7 +253,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Lifelace** {G} · Instant — increment 15
 - [ ] **Lifetap** {U}{U} · Enchantment — increment 19
 - [ ] **Living Artifact** {G} · Enchantment — Aura — increment 22, 28
-- [ ] **Living Lands** {3}{G} · Enchantment — increment 8c
+- [x] **Living Lands** {3}{G} · Enchantment — increment 8c
 - [x] **Lord of Atlantis** {U}{U} · Creature — Merfolk — increment 3
 - [x] **Lord of the Pit** {4}{B}{B}{B} · Creature — Demon — increment 72
 - [ ] **Lure** {1}{G}{G} · Enchantment — Aura — increment 11

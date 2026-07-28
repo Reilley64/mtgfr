@@ -275,6 +275,7 @@ message_keys! {
     EFFECT_SACRIFICE_SOURCE => "effect.sacrifice_source",
     EFFECT_SCRY => "effect.scry",
     EFFECT_SEQUENCE => "effect.sequence",
+    EFFECT_STATIC_ALL_LANDS_OF_TYPE_BECOME => "effect.static_all_lands_of_type_become",
     EFFECT_STATIC_ANTHEM => "effect.static_anthem",
     EFFECT_STATIC_ATTACK_TAX => "effect.static_attack_tax",
     EFFECT_STATIC_BASE_POWER_TOUGHNESS_FROM_AMOUNT => "effect.static_base_power_toughness_from_amount",
@@ -2025,6 +2026,23 @@ impl Effect {
                 permanent_filter_param("filter", filter),
                 bool_param("all_players", all_players),
             ]),
+            Effect::Static(AllLandsOfTypeBecome {
+                land_types,
+                set_subtypes,
+                add_types,
+                base_power,
+                base_toughness,
+                add_colors,
+            }) => MessageRef::new(MessageKey::EFFECT_STATIC_ALL_LANDS_OF_TYPE_BECOME).with_params(
+                vec![
+                    string_list_param("land_types", land_types),
+                    string_list_param("set_subtypes", set_subtypes),
+                    bool_param("creature", add_types.intersects(TypeSet::CREATURE)),
+                    int_param("base_power", base_power),
+                    int_param("base_toughness", base_toughness),
+                    color_list_param("add_colors", add_colors),
+                ],
+            ),
             Effect::Static(Anthem {
                 power,
                 toughness,

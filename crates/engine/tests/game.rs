@@ -108588,3 +108588,124 @@ fn phantasmal_terrain_refuses_a_creature_type() {
         Err(Reject::IllegalChoice)
     );
 }
+
+// ── Lands a type at a time (fidelity #8c) ──
+
+#[test]
+fn conversion_turns_every_mountain_into_a_plains() {
+    // "All Mountains are Plains" — everyone's, not just its controller's, and the {R} goes with
+    // the type (CR 305.7) the same way an Aura's does.
+    let mut game = Game::new();
+    let mine = game.spawn_on_battlefield(PlayerId(0), card("Mountain"));
+    let theirs = game.spawn_on_battlefield(PlayerId(1), card("Mountain"));
+    let conversion = game.spawn_in_hand(PlayerId(0), card("Conversion"));
+    cast_and_resolve(&mut game, conversion, None);
+
+    assert_eq!(game.effective_subtypes(mine), vec!["Plains"]);
+    assert_eq!(
+        game.effective_subtypes(theirs),
+        vec!["Plains"],
+        "\"All Mountains\" is not \"Mountains you control\""
+    );
+
+    let before = (
+        game.mana_in_pool(PlayerId(0), Color::White),
+        game.mana_in_pool(PlayerId(0), Color::Red),
+    );
+    game.submit(Intent::TapForMana {
+        player: PlayerId(0),
+        object: mine,
+    })
+    .unwrap();
+    assert_eq!(
+        (
+            game.mana_in_pool(PlayerId(0), Color::White),
+            game.mana_in_pool(PlayerId(0), Color::Red),
+        ),
+        (before.0 + 1, before.1),
+        "a Plains taps for {{W}}"
+    );
+}
+
+#[test]
+fn conversion_costs_a_dual_the_half_it_did_not_name() {
+    // CR 305.7: taking on a basic land type costs the land every land type it had, so Badlands
+    // stops being a Swamp too and its {B} goes with it.
+    let mut game = Game::new();
+    let badlands = game.spawn_on_battlefield(PlayerId(0), card("Badlands"));
+    let conversion = game.spawn_in_hand(PlayerId(0), card("Conversion"));
+    cast_and_resolve(&mut game, conversion, None);
+
+    assert_eq!(game.effective_subtypes(badlands), vec!["Plains"]);
+    let before = (
+        game.mana_in_pool(PlayerId(0), Color::White),
+        game.mana_in_pool(PlayerId(0), Color::Black),
+    );
+    game.submit(Intent::TapForMana {
+        player: PlayerId(0),
+        object: badlands,
+    })
+    .unwrap();
+    assert_eq!(
+        (
+            game.mana_in_pool(PlayerId(0), Color::White),
+            game.mana_in_pool(PlayerId(0), Color::Black),
+        ),
+        (before.0 + 1, before.1),
+    );
+}
+
+#[test]
+fn kormus_bell_makes_swamps_black_creatures_that_are_still_lands() {
+    let mut game = Game::new();
+    let swamp = game.spawn_on_battlefield(PlayerId(1), card("Swamp"));
+    let bell = game.spawn_in_hand(PlayerId(0), card("Kormus Bell"));
+    cast_and_resolve(&mut game, bell, None);
+
+    let types = game.effective_types(swamp);
+    assert!(types.intersects(TypeSet::CREATURE), "a creature");
+    assert!(types.intersects(TypeSet::LAND), "that is still a land");
+    assert_eq!((game.power(swamp), game.toughness(swamp)), (1, 1));
+    assert!(game.colors_of(swamp)[Color::Black.index()], "black");
+    assert_eq!(
+        game.effective_subtypes(swamp),
+        vec!["Swamp"],
+        "the Bell changes what a Swamp is, not that it is one"
+    );
+
+    let before = game.mana_in_pool(PlayerId(1), Color::Black);
+    game.submit(Intent::TapForMana {
+        player: PlayerId(1),
+        object: swamp,
+    })
+    .unwrap();
+    assert_eq!(
+        game.mana_in_pool(PlayerId(1), Color::Black),
+        before + 1,
+        "still taps for {{B}}"
+    );
+}
+
+#[test]
+fn living_lands_animates_forests_without_coloring_them() {
+    // "1/1 creatures" with no color clause — a Forest has no colored pips of its own, so it
+    // animates colorless.
+    let mut game = Game::new();
+    let forest = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
+    let plains = game.spawn_on_battlefield(PlayerId(0), card("Plains"));
+    let living = game.spawn_in_hand(PlayerId(0), card("Living Lands"));
+    cast_and_resolve(&mut game, living, None);
+
+    assert!(game.effective_types(forest).intersects(TypeSet::CREATURE));
+    assert_eq!((game.power(forest), game.toughness(forest)), (1, 1));
+    assert!(
+        Color::ALL
+            .iter()
+            .all(|c| !game.colors_of(forest)[c.index()]),
+        "colorless"
+    );
+    assert!(
+        !game.effective_types(plains).intersects(TypeSet::CREATURE),
+        "a Plains is not a Forest"
+    );
+}

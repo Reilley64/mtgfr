@@ -907,6 +907,7 @@ impl Effect {
             | Effect::Zone(ZoneEffect::TuckSelfToLibraryBottom)
             | Effect::Zone(ZoneEffect::ExileSelfOnResolve)
             | Effect::Dig(DigEffect::ExileRandomFromGraveyardMayPlay)
+            | Effect::Static(StaticEffect::AllLandsOfTypeBecome { .. })
             | Effect::Static(StaticEffect::Anthem { .. })
             | Effect::Static(StaticEffect::GrantActivatedAbility { .. })
             | Effect::Static(StaticEffect::KeywordAnthem { .. })
