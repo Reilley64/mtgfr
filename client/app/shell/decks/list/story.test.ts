@@ -1,4 +1,5 @@
 import * as Dialog from "@foldkit/ui/dialog";
+import * as Menu from "@foldkit/ui/menu";
 import { Story, Submodel } from "foldkit";
 import { Scene } from "foldkit/test";
 import { expect, test } from "vitest";
@@ -21,9 +22,10 @@ import { DeleteDeck, FetchDecks, LookupDeckListCommanders, update } from "./upda
 import { BindDeckListContextMenu, BindDeckListContextMenuEscape, view } from "./view";
 
 const emptyChrome = { version: null, faithfulCount: null, oracleTotal: null, coverageHref: null };
+const accountMenu = Menu.init({ id: "account-menu" });
 
 const listView = Submodel.defineView<ReturnType<typeof initialDeckListSubmodel>, DeckListMessage>((model) =>
-  view(model, { username: "alice", meGravatarHash: null, chrome: emptyChrome }),
+  view(model, { username: "alice", meGravatarHash: null, chrome: emptyChrome, accountMenu }),
 );
 type SceneListMessage = DeckListMessage | { readonly _tag?: string } | undefined;
 

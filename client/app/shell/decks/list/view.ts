@@ -1,3 +1,4 @@
+import type * as Menu from "@foldkit/ui/menu";
 import { Effect, Queue, Schema as S, Stream } from "effect";
 import { Submodel } from "foldkit";
 import { type Html, html } from "foldkit/html";
@@ -10,7 +11,7 @@ import { menuItemClass } from "../../../domain/ui/menu";
 import { alertClass, listRowClass } from "../../../domain/ui/surfaces";
 import type { CardArtTick, DeckCardFlipTick, GotAuthMessage } from "../../../messages";
 import { DeckRoute, NewDeckRoute, PlayRoute, routePath } from "../../../routes";
-import type { ClosedAccountMenu, ToggledAccountMenu } from "../../account-chrome/messages";
+import { GotAccountMenuMessage } from "../../account-chrome/messages";
 import { accountChrome } from "../../account-chrome/view";
 import { shellFrame } from "../../frame/shell-frame";
 import { type DeckCardModel, renderDeckCard } from "../deck-card";
@@ -31,8 +32,7 @@ export type ViewMessage =
   | typeof CardArtTick.Type
   | typeof DeckCardFlipTick.Type
   | typeof GotAuthMessage.Type
-  | typeof ToggledAccountMenu.Type
-  | typeof ClosedAccountMenu.Type;
+  | typeof GotAccountMenuMessage.Type;
 
 const h = html<ViewMessage>();
 
@@ -175,6 +175,7 @@ export type ViewInputs = {
   readonly username: string;
   readonly meGravatarHash: string | null;
   readonly chrome: AppChromeMeta;
+  readonly accountMenu: Menu.Model;
 };
 
 export const view = Submodel.defineView<DeckListSubmodel, ViewMessage, ViewInputs>((model, viewInputs) => {
@@ -187,7 +188,8 @@ export const view = Submodel.defineView<DeckListSubmodel, ViewMessage, ViewInput
     trailing: accountChrome(h, {
       username: viewInputs.username,
       gravatarHash: viewInputs.meGravatarHash,
-      menuOpen: model.accountMenuOpen,
+      menu: viewInputs.accountMenu,
+      toMenuMessage: (message) => GotAccountMenuMessage({ message }),
       showLeaderboardLink: true,
     }),
     stage: h.div(

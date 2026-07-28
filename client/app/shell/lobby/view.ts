@@ -1,3 +1,4 @@
+import type * as Menu from "@foldkit/ui/menu";
 import { Submodel } from "foldkit";
 import { type Html, html } from "foldkit/html";
 import type { DeckCardFlipTick } from "../../deck-card-nav";
@@ -9,7 +10,7 @@ import { input } from "../../domain/ui/input";
 import { seatFace } from "../../domain/ui/seat-face";
 import { alertClass, panelClass } from "../../domain/ui/surfaces";
 import type { DeckSummary } from "../../domain/wire/types";
-import type { ClosedAccountMenu, GotAuthMessage, ToggledAccountMenu } from "../../messages";
+import { GotAccountMenuMessage, type GotAuthMessage } from "../../messages";
 import { HomeRoute, routePath } from "../../routes";
 import { accountChrome } from "../account-chrome/view";
 import { type DeckCardModel, renderDeckCard } from "../decks/deck-card";
@@ -30,9 +31,8 @@ export type ViewMessage =
   | LobbyMessage
   | typeof CardArtTick.Type
   | typeof DeckCardFlipTick.Type
-  | typeof ClosedAccountMenu.Type
-  | typeof GotAuthMessage.Type
-  | typeof ToggledAccountMenu.Type;
+  | typeof GotAccountMenuMessage.Type
+  | typeof GotAuthMessage.Type;
 export type LobbySurface = "entry" | "table";
 
 export type ViewInputs = {
@@ -43,7 +43,7 @@ export type ViewInputs = {
   surface: LobbySurface;
   username: string;
   meGravatarHash: string | null;
-  accountMenuOpen: boolean;
+  accountMenu: Menu.Model;
 };
 
 const h = html<ViewMessage>();
@@ -400,8 +400,7 @@ function tableLobby(
 }
 
 export const view = Submodel.defineView<LobbySlice, ViewMessage, ViewInputs>((model, viewInputs): Html => {
-  const { accountMenuOpen, chrome, decks, decksLoading, knownCommanders, meGravatarHash, surface, username } =
-    viewInputs;
+  const { accountMenu, chrome, decks, decksLoading, knownCommanders, meGravatarHash, surface, username } = viewInputs;
   // PlayRoute always paints entry — even after Host sets tableId and queues
   // Redirect — so we do not flash claim-seat / table chrome before navigation.
   const body =
@@ -444,7 +443,8 @@ export const view = Submodel.defineView<LobbySlice, ViewMessage, ViewInputs>((mo
     trailing: accountChrome(h, {
       username,
       gravatarHash: meGravatarHash,
-      menuOpen: accountMenuOpen,
+      menu: accountMenu,
+      toMenuMessage: (message) => GotAccountMenuMessage({ message }),
       showLeaderboardLink: true,
     }),
     stage,

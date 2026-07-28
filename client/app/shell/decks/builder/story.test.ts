@@ -1,4 +1,5 @@
 import * as Dialog from "@foldkit/ui/dialog";
+import * as Menu from "@foldkit/ui/menu";
 import { Effect, Option } from "effect";
 import { Story } from "foldkit";
 import { Scene } from "foldkit/test";
@@ -43,7 +44,7 @@ const emptyViewInputs = {
   chrome: emptyChrome,
   username: me.username,
   meGravatarHash: null,
-  accountMenuOpen: false,
+  accountMenu: Menu.init({ id: "account-menu" }),
 };
 
 const url = (pathname: string, search = "") => ({

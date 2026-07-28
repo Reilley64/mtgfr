@@ -1,3 +1,4 @@
+import type * as Menu from "@foldkit/ui/menu";
 import { Effect, Option, Queue, Schema as S, Stream } from "effect";
 import { Submodel } from "foldkit";
 import { type Html, html } from "foldkit/html";
@@ -14,13 +15,7 @@ import { confirmDialog } from "../../../domain/ui/confirmDialog";
 import { input } from "../../../domain/ui/input";
 import { OpenDialogAsModal } from "../../../domain/ui/native-dialog";
 import { alertClass } from "../../../domain/ui/surfaces";
-import type {
-  CardArtTick,
-  ClosedAccountMenu,
-  GotAuthMessage,
-  ModalOpened,
-  ToggledAccountMenu,
-} from "../../../messages";
+import { type CardArtTick, GotAccountMenuMessage, type GotAuthMessage, type ModalOpened } from "../../../messages";
 import { accountChrome } from "../../account-chrome/view";
 import { shellFrame } from "../../frame/shell-frame";
 import {
@@ -47,9 +42,8 @@ export type ViewMessage =
   | Message
   | typeof ModalOpened.Type
   | typeof CardArtTick.Type
-  | typeof ClosedAccountMenu.Type
-  | typeof GotAuthMessage.Type
-  | typeof ToggledAccountMenu.Type;
+  | typeof GotAccountMenuMessage.Type
+  | typeof GotAuthMessage.Type;
 
 const h = html<ViewMessage>();
 
@@ -407,7 +401,7 @@ export type ViewInputs = {
   readonly chrome: AppChromeMeta;
   readonly username: string;
   readonly meGravatarHash: string | null;
-  readonly accountMenuOpen: boolean;
+  readonly accountMenu: Menu.Model;
 };
 
 export const view = Submodel.defineView<DeckBuilderSubmodel, ViewMessage, ViewInputs>((model, viewInputs) => {
@@ -438,7 +432,8 @@ export const view = Submodel.defineView<DeckBuilderSubmodel, ViewMessage, ViewIn
         accountChrome(h, {
           username: viewInputs.username,
           gravatarHash: viewInputs.meGravatarHash,
-          menuOpen: viewInputs.accountMenuOpen,
+          menu: viewInputs.accountMenu,
+          toMenuMessage: (message) => GotAccountMenuMessage({ message }),
           showLeaderboardLink: true,
         }),
       ],

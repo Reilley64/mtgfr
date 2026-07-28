@@ -1,26 +1,24 @@
+import type * as Menu from "@foldkit/ui/menu";
 import { Submodel } from "foldkit";
 import { type Html, html } from "foldkit/html";
 import { type AppChromeMeta, formatFaithfulPercent } from "../../domain/ui/app-version";
 import { button } from "../../domain/ui/button";
 import { input } from "../../domain/ui/input";
 import { alertClass, listRowClass } from "../../domain/ui/surfaces";
-import type { ClosedAccountMenu, GotAuthMessage, ToggledAccountMenu } from "../../messages";
+import { GotAccountMenuMessage, type GotAuthMessage } from "../../messages";
 import { HomeRoute, routePath } from "../../routes";
 import { accountChrome } from "../account-chrome/view";
 import { shellFrame } from "../frame/shell-frame";
 import { ChangedCoverageQuery, type Message as CoverageMessage, RequestedCoverageRefresh } from "./messages";
 import type { CoverageSetRow, CoverageStatus, CoverageSubmodel } from "./submodel";
 
-export type ViewMessage =
-  | CoverageMessage
-  | typeof ClosedAccountMenu.Type
-  | typeof GotAuthMessage.Type
-  | typeof ToggledAccountMenu.Type;
+export type ViewMessage = CoverageMessage | typeof GotAccountMenuMessage.Type | typeof GotAuthMessage.Type;
 
 export type ViewInputs = {
   username: string;
   meGravatarHash: string | null;
   chrome: AppChromeMeta;
+  accountMenu: Menu.Model;
 };
 
 const h = html<ViewMessage>();
@@ -118,7 +116,8 @@ export const view = Submodel.defineView<CoverageSubmodel, ViewMessage, ViewInput
     trailing: accountChrome(h, {
       username,
       gravatarHash: meGravatarHash,
-      menuOpen: model.accountMenuOpen,
+      menu: viewInputs.accountMenu,
+      toMenuMessage: (message) => GotAccountMenuMessage({ message }),
       showLeaderboardLink: true,
     }),
     stage: h.div(

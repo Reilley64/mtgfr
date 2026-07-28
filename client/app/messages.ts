@@ -74,10 +74,7 @@ export {
   StreamStatus,
   StreamTerminalError,
 } from "./game/messages";
-export {
-  ClosedAccountMenu,
-  ToggledAccountMenu,
-} from "./shell/account-chrome/messages";
+export { GotAccountMenuMessage } from "./shell/account-chrome/messages";
 export {
   LeaderboardLoadFailed,
   ReceivedLeaderboardPage,

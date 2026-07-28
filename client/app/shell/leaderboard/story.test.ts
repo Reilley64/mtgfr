@@ -29,7 +29,6 @@ test("GotLeaderboardMessage updates the leaderboard through the parent update", 
     Story.message(GotLeaderboardMessage({ message: RequestedLeaderboardRefresh() })),
     Story.Command.expectExact(load),
     Story.model((next) => {
-      expect(next.leaderboard.accountMenuOpen).toBe(false);
       expect(next.leaderboard.entries).toEqual([]);
       expect(next.leaderboard.error).toBeNull();
       expect(next.leaderboard.status).toBe("loading");
