@@ -52,8 +52,13 @@ export function modalDialog<Msg>(
       toView: (render) =>
         h.dialog(
           // Dialog styles the element itself as a full-viewport transparent layer, so this only
-          // adds centring and the test hook.
-          [...render.dialog, h.DataAttribute("testid", testId), h.Class("flex items-center justify-center")],
+          // adds centring and the test hook. `pointer-events-auto` is for owners whose root is
+          // `pointer-events-none` (the board overlays); a modal is always meant to take clicks.
+          [
+            ...render.dialog,
+            h.DataAttribute("testid", testId),
+            h.Class("pointer-events-auto flex items-center justify-center"),
+          ],
           render.isVisible
             ? [
                 h.div(

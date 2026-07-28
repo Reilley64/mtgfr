@@ -1,3 +1,4 @@
+import * as Dialog from "@foldkit/ui/dialog";
 import { Schema as S } from "effect";
 import { m } from "foldkit/message";
 import type {
@@ -236,14 +237,16 @@ export const PileOverlayClosed = m("PileOverlayClosed");
 // ── Concede ───────────────────────────────────────────────────────────────────
 /** Concede button pressed: open confirmation dialog. */
 export const ConcedeClicked = m("ConcedeClicked");
-/** Concede cancelled: dismiss confirmation dialog. */
-export const ConcedeCancelled = m("ConcedeCancelled");
 /** Concede confirmed: submit concede intent + dismiss dialog. */
 export const ConcedeConfirmed = m("ConcedeConfirmed");
+/** Delegation envelope for the concede confirmation's Dialog submodel. Escape, a backdrop click,
+ *  and Cancel all arrive as its `Closed` out-message, so there is no separate cancel message. */
+export const GotConcedeDialogMessage = m("GotConcedeDialogMessage", { message: Dialog.Message });
 
 // ── Game result ───────────────────────────────────────────────────────────────
-/** Result overlay "Watch / Stay" button: dismiss the result banner and stay on board. */
-export const ResultSeen = m("ResultSeen");
+/** Delegation envelope for the result overlay's Dialog submodel. "Stay on the board" dismisses it
+ *  through the same `Closed` path as Escape and the backdrop. */
+export const GotResultDialogMessage = m("GotResultDialogMessage", { message: Dialog.Message });
 /** Result overlay "Back to your decks" button: navigate home. */
 export const LeaveGame = m("LeaveGame");
 
@@ -344,9 +347,9 @@ export const Message = S.Union([
   PileCardClicked,
   PileOverlayClosed,
   ConcedeClicked,
-  ConcedeCancelled,
   ConcedeConfirmed,
-  ResultSeen,
+  GotConcedeDialogMessage,
+  GotResultDialogMessage,
   LeaveGame,
   KeyboardSpacePressed,
   KeyboardEnterPressed,

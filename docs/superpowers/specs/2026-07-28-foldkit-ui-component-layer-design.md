@@ -216,13 +216,20 @@ emit exactly one message each, so a self-rechaining command is what stands in fo
 stream. Updates [`ui-component-layer`](2026-07-28-ui-component-layer.md)
 and [`deck-list-and-builder`](2026-07-20-deck-list-and-builder.md).
 
-**W5 — Board blocking modals.**
-`prompt-modal`, `result-overlay`, `mulligan-overlay`, and the concede confirm →
-`dialog`; the card-name typeahead (`game/intents.ts`, `board/messages.ts`, covered by
-`board/card-name-typeahead.test.ts`) → `combobox`, provided it is reached from a
-blocking modal — if the wave plan finds it rendered in non-modal board chrome, it
-stays hand-rolled under the board boundary rule. Non-modal board chrome is otherwise
-explicitly untouched. Updates
+**W5 — Board dismissible modals.**
+The result overlay and the concede confirm → `dialog`, as a `Dialog` submodel each in
+`board/submodel.ts`; the result one is raised by `raiseResultDialog` on the fold that
+ends the game, and `resultRaised` latches so a dismissed result stays dismissed. The
+card-name typeahead (`game/intents.ts`, `board/messages.ts`, covered by
+`board/card-name-typeahead.test.ts`) → `combobox`: it renders inside
+`pending-card-name-modal`, so it clears the blocking-modal bar.
+
+`prompt-modal` and `mulligan-overlay` are a **deliberate exclusion**, not a deferral.
+`Dialog` bundles the Escape handler into `render.dialog` and the outside-click handler
+into `render.backdrop` with no way to drop either, so any prompt on that frame can be
+dismissed — and a dismissed pending choice leaves the engine waiting on an answer the
+player can no longer give. They stay hand-rolled under the board boundary rule. Non-modal
+board chrome is otherwise explicitly untouched. Updates
 [`prompts-and-pending-choices`](2026-07-20-prompts-and-pending-choices.md) and
 [`system-overlays`](2026-07-20-system-overlays.md).
 
