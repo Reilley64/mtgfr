@@ -1491,8 +1491,15 @@ impl Game {
                 continue;
             }
 
+            // Whoever is owed an extra turn takes it before the rotation moves on (CR 505.6a).
+            // Popped straight off the queue rather than through an event: the `StepBegan` below
+            // already carries the new active player, so a pure event replay lands on the same
+            // turn order either way (same bookkeeping shape as `skip_starting_players_first_draw`).
             let next_active = if leaving_cleanup {
-                self.next_player(self.active_player)
+                match self.extra_turns.pop() {
+                    Some(owed) if !self.has_lost(owed) => owed,
+                    _ => self.next_player(self.active_player),
+                }
             } else {
                 self.active_player
             };

@@ -104983,6 +104983,81 @@ fn cockatrice_destroys_the_creature_it_blocked_at_end_of_combat() {
     );
 }
 
+// ── An extra turn after this one (fidelity #18) ──────────────────────────────────────────────
+
+/// Roll forward to whoever's upkeep comes next — the first step of a turn that grants priority,
+/// so it's where "whose turn is it now" can be read. Unlike [`pass_until_next_turn`] (and unlike
+/// `advance_to_next_upkeep`, which waits for a named player) this names no player, because an
+/// extra turn is precisely a new turn without a new active player.
+fn advance_to_whoevers_upkeep_is_next(game: &mut Game) {
+    advance_until(game, |g| g.current_step() == Step::Main1);
+    advance_until(game, |g| g.current_step() == Step::Upkeep);
+}
+
+#[test]
+fn time_walk_hands_its_caster_the_very_next_turn() {
+    // "Take an extra turn after this one" (CR 505.6a): the caster's turn ends and the caster's
+    // turn begins again, and only then does the rotation resume with the other player.
+    let mut game = Game::new();
+    for seat in [PlayerId(0), PlayerId(1)] {
+        game.stack_library(seat, &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    }
+    let walk = game.spawn_in_hand(PlayerId(0), card("Time Walk"));
+
+    fund_cast_resolve(&mut game, PlayerId(0), walk, None);
+
+    advance_to_whoevers_upkeep_is_next(&mut game);
+    assert_eq!(
+        game.active_player(),
+        PlayerId(0),
+        "the extra turn is the caster's"
+    );
+    advance_to_whoevers_upkeep_is_next(&mut game);
+    assert_eq!(
+        game.active_player(),
+        PlayerId(1),
+        "the rotation resumes after the extra turn"
+    );
+}
+
+#[test]
+fn two_time_walks_in_one_turn_stack_up_two_extra_turns() {
+    // CR 500.7: extra turns are taken one after another before the rotation moves on — and the
+    // most recently created one is taken first, which two identical turns can't tell apart, so
+    // this only pins that both are actually taken.
+    let mut game = Game::new();
+    for seat in [PlayerId(0), PlayerId(1)] {
+        game.stack_library(
+            seat,
+            &[
+                card("Grizzly Bears"),
+                card("Grizzly Bears"),
+                card("Grizzly Bears"),
+            ],
+        );
+    }
+    let first = game.spawn_in_hand(PlayerId(0), card("Time Walk"));
+    let second = game.spawn_in_hand(PlayerId(0), card("Time Walk"));
+
+    fund_cast_resolve(&mut game, PlayerId(0), first, None);
+    fund_cast_resolve(&mut game, PlayerId(0), second, None);
+
+    for extra in 1..=2 {
+        advance_to_whoevers_upkeep_is_next(&mut game);
+        assert_eq!(
+            game.active_player(),
+            PlayerId(0),
+            "extra turn {extra} is still the caster's"
+        );
+    }
+    advance_to_whoevers_upkeep_is_next(&mut game);
+    assert_eq!(
+        game.active_player(),
+        PlayerId(1),
+        "both extra turns are spent before the rotation moves on"
+    );
+}
+
 // ── Damage split evenly, priced per target (fidelity #53) ────────────────────────────────────
 
 /// [`Intent::Cast`] declaring `strive_count` targets and a chosen `x`.

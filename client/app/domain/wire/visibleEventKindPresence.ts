@@ -58,6 +58,7 @@ export const VISIBLE_EVENT_KIND_PRESENCE = {
   exiled_until_source_leaves: true,
   exiled_until_source_leaves_minting_illusion: true,
   exiled_with_source: true,
+  extra_turn_queued: true,
   flash_permission_granted: true,
   flickered_to_battlefield: true,
   flipped: true,

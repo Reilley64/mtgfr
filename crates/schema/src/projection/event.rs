@@ -600,6 +600,7 @@ pub(crate) fn project_event(
         },
         Event::MovedToCommandZone { card, from } => VisibleEvent::MovedToCommandZone { card, from },
         Event::ManaEmptied { player, .. } => VisibleEvent::ManaEmptied { player: player.0 },
+        Event::ExtraTurnQueued { player } => VisibleEvent::ExtraTurnQueued { player: player.0 },
         Event::DamageCleared { object } => VisibleEvent::DamageCleared { object },
         Event::ManaAdded {
             player,

@@ -1278,6 +1278,11 @@ pub fn visible_event_to_pb(event: VisibleEvent) -> Option<pb::VisibleEvent> {
         VisibleEvent::ManaEmptied { player } => Event::ManaEmptied(pb::VisibleEventManaEmptied {
             player: u32::from(player),
         }),
+        VisibleEvent::ExtraTurnQueued { player } => {
+            Event::ExtraTurnQueued(pb::VisibleEventExtraTurnQueued {
+                player: u32::from(player),
+            })
+        }
         VisibleEvent::DamageCleared { object } => {
             Event::DamageCleared(pb::VisibleEventDamageCleared { object })
         }

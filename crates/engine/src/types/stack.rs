@@ -2627,6 +2627,11 @@ pub enum Event {
     /// or not it was tapped), so it untaps normally on every later untap step. Removes the
     /// [`NextUntapSkipMarked`](Self::NextUntapSkipMarked) entry.
     NextUntapSkipConsumed { object: ObjectId },
+    /// `player` was granted an extra turn to take after the current one (Time Walk; CR 505.6a).
+    /// Pushed onto [`Game::extra_turns`], which [`Game::advance_step`] drains as the current turn
+    /// ends. There is no matching "taken" event: the [`StepBegan`](Self::StepBegan) that opens the
+    /// extra turn already names its `active_player`.
+    ExtraTurnQueued { player: PlayerId },
     /// A CR 603.7 delayed *one-shot* was armed by [`Effect::Misc(MiscEffect::ScheduleNextCastTrigger)`]:
     /// `controller` will perform `then` the next time they cast a spell matching `filter` this
     /// turn. `source` is the arming ability's own source object, reused as the delayed one-shot's

@@ -217,6 +217,7 @@
   "effect.misc_schedule_next_cast_trigger",
   "effect.misc_schedule_this_turn_combat_damage_copy",
   "effect.misc_skip_next_untap_opponent_creatures",
+  "effect.misc_take_extra_turn",
   "effect.misc_you_choose_which_creatures_attack",
   "effect.misc_you_choose_which_creatures_block",
   "effect.pump_animate_self_until_end_of_turn",

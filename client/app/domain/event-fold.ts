@@ -148,6 +148,7 @@ export function extractProvenance(
         "exiled_until_source_leaves",
         "exiled_until_source_leaves_minting_illusion",
         "exiled_with_source",
+        "extra_turn_queued",
         "flash_permission_granted",
         "flipped",
         "goad_cleared",
@@ -291,6 +292,7 @@ export function describe(e: VisibleEvent, state: VisibleState): string | null {
       flickered_to_battlefield: (e) => `${name(e.permanent)} is exiled and returns`,
       token_entered_attacking: (e) => `${name(e.token)} enters attacking`,
       citys_blessing_gained: (e) => `${p(e.player)} gains the city's blessing`,
+      extra_turn_queued: (e) => `${p(e.player)} takes an extra turn after this one`,
       // def is the card name string — a hidden-zone card not in state.objects, so use it directly.
       revealed_top_of_library: (e) => `${p(e.player)} reveals ${e.def}`,
       library_shuffled: (e) => `${p(e.player)} shuffles their library`,

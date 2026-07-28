@@ -303,7 +303,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [x] **Throne of Bone** {1} · Artifact — increment 10
 - [ ] **Timber Wolves** {G} · Creature — Wolf — increment 14
 - [ ] **Time Vault** {2} · Artifact — increment 7, 18
-- [ ] **Time Walk** {1}{U} · Sorcery — increment 18
+- [x] **Time Walk** {1}{U} · Sorcery — increment 18
 - [x] **Timetwister** {2}{U} · Sorcery — increment 38
 - [x] **Tsunami** {3}{G} · Sorcery — increment 51
 - [ ] **Two-Headed Giant of Foriys** {4}{R} · Creature — Giant — increment 11

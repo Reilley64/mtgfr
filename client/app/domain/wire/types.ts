@@ -351,6 +351,7 @@ export type VisibleEvent =
   | { amount: number; kind: "damage_prevented"; object?: null | number; player?: null | number }
   | { card: U32; from: U32; kind: "moved_to_command_zone" }
   | { kind: "mana_emptied"; player: number }
+  | { kind: "extra_turn_queued"; player: number }
   | { kind: "damage_cleared"; object: U32 }
   | { amount: number; kind: "mana_added"; mana: number; player: number }
   | { kind: "mana_spent"; mana: Array<number>; player: number }

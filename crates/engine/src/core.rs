@@ -49,6 +49,7 @@ impl Game {
             resume: crate::resolution::ResumeState::default(),
             clash_won: false,
             skip_next_untap: Vec::new(),
+            extra_turns: Vec::new(),
             combat: CombatState::default(),
             combat_extras: state::CombatExtras::default(),
             play_permissions: state::PlayPermissions::default(),

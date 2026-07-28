@@ -128,6 +128,9 @@ impl Game {
             // controls so it skips that controller's next untap step (CR "creatures your opponents
             // control don't untap during their controllers' next untap steps"). Each mark is
             // consumed at that permanent's controller's next untap step (see `Game::advance_step`).
+            // Time Walk: queue one extra turn for this ability's controller. Taken as the
+            // current turn ends (see `Game::advance_step`), so nothing about *this* turn changes.
+            MiscEffect::TakeExtraTurn => vec![Event::ExtraTurnQueued { player: controller }],
             MiscEffect::SkipNextUntapOpponentCreatures => self
                 .battlefield()
                 .into_iter()

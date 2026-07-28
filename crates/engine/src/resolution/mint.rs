@@ -89,6 +89,7 @@ impl Game {
                 | MiscEffect::ScheduleAtNextUpkeep { .. }
                 | MiscEffect::ScheduleColorlessManaForCounteredSpellNextMainPhase
                 | MiscEffect::SkipNextUntapOpponentCreatures
+                | MiscEffect::TakeExtraTurn
                 | MiscEffect::ScheduleNextCastTrigger { .. }
                 | MiscEffect::ScheduleThisTurnCombatDamageCopy) => {
                     self.mint_misc(m, controller, source, target, x)

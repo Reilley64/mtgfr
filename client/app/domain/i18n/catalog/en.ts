@@ -433,6 +433,7 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.misc_skip_next_untap_opponent_creatures": literal(
     "Creatures your opponents control do not untap during their next untap steps",
   ),
+  "effect.misc_take_extra_turn": literal("Take an extra turn after this one"),
   "effect.pump_animate_self_until_end_of_turn": (params) =>
     `Becomes a ${param(params, "base_power")}/${param(params, "base_toughness")} creature until end of turn`,
   "effect.pump_enchanted_attacker_pump_attacking_opponent_else_controller_loses_life": (params) =>

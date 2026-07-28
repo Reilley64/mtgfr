@@ -99,6 +99,11 @@ pub enum MiscEffect {
 
     SkipNextUntapOpponentCreatures,
 
+    /// "Take an extra turn after this one" (Time Walk; CR 505.6a). Queues one turn for the
+    /// controller, taken as this turn ends and before the rotation moves on — see
+    /// [`Game::advance_step`](crate::Game::advance_step).
+    TakeExtraTurn,
+
     YouChooseWhichCreaturesAttack,
 
     YouChooseWhichCreaturesBlock,

@@ -360,7 +360,7 @@ source just damaged — for Hypnotic Specter, filled at trigger placement out of
 Looter il-Kor shares the same trigger and *its* discard is still the controller's.
 *Cards:* hypnotic_specter, mind_twist.
 
-### 18. `extra-turns` — 2 cards, M
+### 18. `extra-turns` — 2 cards, M — **18a done, 18b open**
 Depends on: #7 (Time Vault only).
 "Take an extra turn after this one" (CR 505.6a). The turn structure advances through a fixed
 player rotation with no concept of an inserted turn. *Sketch:* a `Vec<PlayerId>` extra-turn queue
@@ -368,6 +368,23 @@ on `Game`, consumed by the turn-advance path before consulting the normal rotati
 extra turns stack in the right order (last created, first taken). Time Vault additionally needs
 its skip-your-turn replacement, which is the other half of #7's untap-step work.
 *Cards:* time_vault, time_walk.
+*Landed (18a — time_walk):* the sketch's `Vec<PlayerId>` queue is the whole mechanism, and it is
+smaller than billed. `Game::advance_step` already computed the next active player in one place, so
+extra turns are a two-line `match self.extra_turns.pop()` there: a queued turn belonging to a
+player who has since lost is skipped rather than handed out, and an empty queue falls through to
+the ordinary rotation. Popping the *last* entry gives CR 500.7's most-recent-first order for free.
+Only one new event, `ExtraTurnQueued` — the pop deliberately isn't event-sourced, because the
+`StepBegan` that opens the extra turn already names its `active_player`, so a replay from events
+lands on the same turn order either way (the same bookkeeping shape as
+`skip_starting_players_first_draw`). The effect side is a bare `MiscEffect::TakeExtraTurn` with no
+target and no fields, which makes Time Walk a card with nothing else on it.
+*Deferred:* **18b Time Vault** — its "this artifact doesn't untap during your untap step" is #7's
+`StaticEffect::DoesntUntap` and already expressible, but "if you would begin your turn while this
+is tapped, you may skip that turn instead: if you do, untap this artifact" is a turn-*skipping*
+replacement effect with an optional payer choice at a point where no player holds priority. That
+needs a pause the turn-advance path can raise, which nothing in `advance_step` can do today —
+`perform_turn_based_actions` can set a `pending_choice`, but the untap step is the wrong step and
+the choice arrives before the turn it would skip exists.
 
 ### 19. `land-tap-triggers-and-bonuses` — 5 cards, M
 Depends on: nothing.

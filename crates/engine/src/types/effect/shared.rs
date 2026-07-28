@@ -913,6 +913,7 @@ impl Effect {
             | Effect::Misc(MiscEffect::ScheduleAtNextUpkeep { .. })
             | Effect::Misc(MiscEffect::ScheduleColorlessManaForCounteredSpellNextMainPhase)
             | Effect::Misc(MiscEffect::SkipNextUntapOpponentCreatures)
+            | Effect::Misc(MiscEffect::TakeExtraTurn)
             | Effect::Misc(MiscEffect::ScheduleNextCastTrigger { .. })
             | Effect::Life(LifeEffect::AttackerLosesYouGain { .. })
             | Effect::Life(LifeEffect::AttackerLosesYouDraw { .. })

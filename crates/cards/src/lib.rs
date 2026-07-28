@@ -4128,6 +4128,17 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
         );
     }
 
+    /// Time Walk is the whole of its increment: one no-target misc effect on a plain sorcery.
+    #[test]
+    fn time_walk_is_a_bare_extra_turn() {
+        let walk = get_by_name("Time Walk").expect("Time Walk is in the pool");
+        let [take] = &walk.abilities[..] else {
+            panic!("Time Walk has exactly one ability");
+        };
+        assert_eq!(take.timing, Timing::Spell);
+        assert_eq!(take.effect, Effect::Misc(MiscEffect::TakeExtraTurn));
+    }
+
     /// Both petrifiers carry the same one ability, and both halves of it earn their keep: the
     /// trigger has to exclude Walls (a Wall that blocks a Basilisk lives), and the destroy has to
     /// carry `at` — a blocker destroyed as the trigger resolved would never deal its combat damage.

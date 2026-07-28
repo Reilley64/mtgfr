@@ -130,6 +130,11 @@ pub struct Game {
     /// permanent's controller reaches their untap step (see [`Game::advance_step`]'s `Untap` arm),
     /// whether or not it was tapped.
     pub(crate) skip_next_untap: Vec<ObjectId>,
+    /// Extra turns owed, oldest first (Time Walk — [`Effect::Misc(MiscEffect::TakeExtraTurn)`]).
+    /// [`Game::advance_step`] pops the *last* entry as a turn ends, so of several extra turns
+    /// created in one turn the most recent is taken first (CR 500.7), and only an empty queue
+    /// hands the turn to the next player in the rotation.
+    pub(crate) extra_turns: Vec<PlayerId>,
     /// The current combat's attackers, blocks, and orderings (empty outside combat).
     pub(crate) combat: CombatState,
     /// Goad and other combat-adjacent state lifted off `Permanent` so it stays `Copy`.

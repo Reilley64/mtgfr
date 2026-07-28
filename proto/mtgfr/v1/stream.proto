@@ -1080,6 +1080,7 @@ message VisibleEvent {
     VisibleEventEmblemCreated emblem_created = 135;
     VisibleEventDamagePrevented damage_prevented = 136;
     VisibleEventLookedAtHand looked_at_hand = 137;
+    VisibleEventExtraTurnQueued extra_turn_queued = 138;
   }
   // 132 was VisibleEventPlayerPoisonChanged, superseded by the general player-counter
   // subsystem (`player_counters_placed`). Burned, not reused (docs/WIRE_COMPAT.md).
@@ -1625,6 +1626,11 @@ message VisibleEventMovedToCommandZone {
 }
 
 message VisibleEventManaEmptied {
+  uint32 player = 1;
+}
+
+// `player` was granted an extra turn to take after the current one (Time Walk).
+message VisibleEventExtraTurnQueued {
   uint32 player = 1;
 }
 

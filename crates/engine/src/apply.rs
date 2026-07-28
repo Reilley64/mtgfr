@@ -1626,6 +1626,7 @@ impl Game {
                 // timing fired regardless of whose step it is.
                 !(f == fire_at && (fire_at != Step::Main1 || c == active_player))
             }),
+            Event::ExtraTurnQueued { player } => self.extra_turns.push(player),
             Event::NextUntapSkipMarked { object } => self.skip_next_untap.push(object),
             Event::NextUntapSkipConsumed { object } => {
                 self.skip_next_untap.retain(|&id| id != object)

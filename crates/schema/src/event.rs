@@ -525,6 +525,11 @@ pub enum VisibleEvent {
     ManaEmptied {
         player: u8,
     },
+    /// `player` was granted an extra turn to take after the current one (Time Walk). Public — an
+    /// extra turn is announced on resolution, like any other spell's effect.
+    ExtraTurnQueued {
+        player: u8,
+    },
     DamageCleared {
         object: ObjectId,
     },
