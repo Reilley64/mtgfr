@@ -40,6 +40,9 @@ export type WindowedGridProps<Item, Msg> = {
   itemToView: (item: Item) => Html;
   /** Classes on the row: the grid columns and the column gap. */
   rowClass: string;
+  /** Inline styles on the row, for what classes cannot express — a `columns` that is measured at
+   *  runtime has no `grid-cols-*` class Tailwind could have generated ahead of time. */
+  rowStyle?: Readonly<Record<string, string>>;
   /** Classes on the scroll container — max height, width, overscroll. */
   containerClass?: string;
   /** Emitted as the container's `data-testid`; also the submodel slot id. */
@@ -60,7 +63,8 @@ function toRows<Item>(items: ReadonlyArray<Item>, columns: number): ReadonlyArra
 
 /** Renders `items` as a windowed grid of `columns`-wide rows. */
 export function windowedGrid<Item, Msg>(h: HtmlFactory<Msg>, props: WindowedGridProps<Item, Msg>): Html {
-  const { model, toGridMessage, items, columns, itemToKey, itemToView, rowClass, containerClass, testId } = props;
+  const { model, toGridMessage, items, columns, itemToKey, itemToView, rowClass, rowStyle, containerClass, testId } =
+    props;
   const rows = toRows(items, columns);
 
   return h.submodel({
@@ -76,7 +80,7 @@ export function windowedGrid<Item, Msg>(h: HtmlFactory<Msg>, props: WindowedGrid
         h.div(
           // `content-start` keeps tiles at the top of the row, so the leftover height inside the
           // fixed-height `<li>` reads as the gap between rows.
-          [h.Class(cn("grid content-start", rowClass))],
+          [h.Class(cn("grid content-start", rowClass)), ...(rowStyle ? [h.Style(rowStyle)] : [])],
           row.map((item) => itemToView(item)),
         ) as Html,
       containerClassName: cn("overscroll-contain", containerClass),
