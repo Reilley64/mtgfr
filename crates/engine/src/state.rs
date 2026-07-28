@@ -465,4 +465,7 @@ pub struct PreventionShield {
     /// Reverse Damage's "you gain life equal to the damage prevented this way" — paid to the
     /// shield's own controller as the spend is minted.
     pub gain_life: bool,
+    /// Jade Monolith's "that source deals that damage to you instead" (CR 615.10): where the hit
+    /// goes rather than nowhere. `None` is the ordinary shield, which simply eats it.
+    pub redirect_to: Option<crate::Target>,
 }

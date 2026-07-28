@@ -105161,6 +105161,86 @@ fn reverse_damage_pays_the_prevented_damage_back_as_life() {
     );
 }
 
+// ── Shields that move a hit instead of eating it (fidelity #6) ─────────────────────────
+
+#[test]
+fn jade_monolith_takes_a_creatures_hit_onto_its_controller() {
+    // "{1}: The next time a source of your choice would deal damage to target creature this turn,
+    // that source deals that damage to you instead." The creature is untouched — the damage was
+    // never dealt to it — and the whole of it lands on the Monolith's controller, however big.
+    let mut game = TestGame::new();
+    let monolith = game.spawn_on_battlefield(PlayerId(0), card("Jade Monolith"));
+    let bears = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let bolt = game.spawn_in_hand(PlayerId(0), card("Lightning Bolt"));
+    let start = game.life(PlayerId(0));
+
+    shield_with(&mut game, monolith, Some(Target::Object(bears)));
+
+    game.cast(bolt).at(Target::Object(bears)).resolve();
+    assert_eq!(
+        game.marked_damage(bears),
+        0,
+        "the bears never took the hit — it was dealt somewhere else"
+    );
+    assert_eq!(
+        game.life(PlayerId(0)),
+        start - 3,
+        "\"that source deals that damage to you instead\" — all three points of it"
+    );
+}
+
+#[test]
+fn jade_monolith_only_moves_the_first_hit() {
+    // "The *next* time" — the redirection is one-shot, same as any other shield. The second bolt
+    // finds nothing standing in front of the creature.
+    let mut game = TestGame::new();
+    let monolith = game.spawn_on_battlefield(PlayerId(0), card("Jade Monolith"));
+    let bears = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let first = game.spawn_in_hand(PlayerId(0), card("Lightning Bolt"));
+    let second = game.spawn_in_hand(PlayerId(0), card("Lightning Bolt"));
+    let start = game.life(PlayerId(0));
+
+    shield_with(&mut game, monolith, Some(Target::Object(bears)));
+    game.cast(first).at(Target::Object(bears)).resolve();
+    game.cast(second).at(Target::Object(bears)).resolve();
+
+    assert_eq!(
+        game.zone_of(bears),
+        Zone::Graveyard,
+        "the second hit lands on the creature it was aimed at, and a 2/2 does not survive it"
+    );
+    assert_eq!(
+        game.life(PlayerId(0)),
+        start - 3,
+        "and the controller only paid for the first"
+    );
+}
+
+#[test]
+fn jade_monolith_redirects_a_hit_the_creature_could_not_have_survived() {
+    // Redirection is a replacement, not a prevention: the creature was never dealt lethal damage,
+    // so no state-based action collects it.
+    let mut game = TestGame::new();
+    let monolith = game.spawn_on_battlefield(PlayerId(0), card("Jade Monolith"));
+    let bears = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let quake = game.spawn_in_hand(PlayerId(0), card("Earthquake"));
+    let start = game.life(PlayerId(0));
+
+    shield_with(&mut game, monolith, Some(Target::Object(bears)));
+
+    game.cast(quake).x(4).resolve();
+    assert_eq!(
+        game.zone_of(bears),
+        Zone::Battlefield,
+        "a 2/2 walks away from a four-point Earthquake it was never dealt"
+    );
+    assert_eq!(
+        game.life(PlayerId(0)),
+        start - 8,
+        "four from the Earthquake itself, four more moved off the bears"
+    );
+}
+
 #[test]
 fn mind_twist_takes_x_cards_from_the_targeted_players_hand_without_asking_them() {
     // "Target player discards X cards at random." At random means *nobody* chooses — the

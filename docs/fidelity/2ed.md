@@ -240,7 +240,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Ironclaw Orcs** {1}{R} · Creature — Orc — increment 11
 - [ ] **Island Sanctuary** {1}{W} · Enchantment — increment 65
 - [x] **Ivory Cup** {1} · Artifact — increment 10
-- [ ] **Jade Monolith** {4} · Artifact — increment 6
+- [x] **Jade Monolith** {4} · Artifact — increment 6a
 - [x] **Jade Statue** {4} · Artifact — increment 57
 - [ ] **Juggernaut** {4} · Artifact Creature — Juggernaut — increment 11
 - [x] **Karma** {2}{W}{W} · Enchantment — increment 1
@@ -270,7 +270,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [x] **Nettling Imp** {2}{B} · Creature — Imp
 - [x] **Nightmare** {5}{B} · Creature — Nightmare Horse — increment 2
 - [ ] **Paralyze** {B} · Enchantment — Aura — increment 7
-- [ ] **Personal Incarnation** {3}{W}{W}{W} · Creature — Avatar Incarnation — increment 6
+- [ ] **Personal Incarnation** {3}{W}{W}{W} · Creature — Avatar Incarnation — increment 6c
 - [ ] **Phantasmal Terrain** {U}{U} · Enchantment — Aura — increment 8
 - [x] **Pirate Ship** {4}{U} · Creature — Human Pirate — increment 24, 77
 - [x] **Plague Rats** {2}{B} · Creature — Rat — increment 2
@@ -308,7 +308,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [x] **Tsunami** {3}{G} · Sorcery — increment 51
 - [ ] **Two-Headed Giant of Foriys** {4}{R} · Creature — Giant — increment 11
 - [ ] **Vesuvan Doppelganger** {3}{U}{U} · Creature — Shapeshifter — increment 12
-- [ ] **Veteran Bodyguard** {3}{W}{W} · Creature — Human — increment 6
+- [ ] **Veteran Bodyguard** {3}{W}{W} · Creature — Human — increment 6b
 - [ ] **Volcanic Eruption** {X}{U}{U}{U} · Sorcery — increment 73
 - [x] **Wanderlust** {2}{G} · Enchantment — Aura — increment 61
 - [x] **Warp Artifact** {B}{B} · Enchantment — Aura — increment 61

@@ -285,6 +285,7 @@ impl Game {
                 amount,
                 from_color,
                 gain_life,
+                redirect_to_controller,
                 ..
             }) => {
                 // No point total is "prevent *that* damage" (the Circles, Reverse Damage) — the
@@ -306,6 +307,7 @@ impl Game {
                         amount: points,
                         from_color,
                         gain_life,
+                        redirect_to: redirect_to_controller.then_some(Target::Player(controller)),
                     });
             }
             // Master Warcraft: hand the attack / block declaration to this spell's controller for

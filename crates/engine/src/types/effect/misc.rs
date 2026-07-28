@@ -108,6 +108,11 @@ pub enum MiscEffect {
         /// controller gains whatever this shield actually ate, minted alongside the spend.
         #[cfg_attr(feature = "card-dsl", serde(default))]
         gain_life: bool,
+        /// "That source deals that damage to **you** instead" (Jade Monolith, CR 615.10) — the
+        /// hit is moved onto the ability's controller rather than prevented. Both pool cards that
+        /// redirect send it to the same player who armed the shield, so there is nothing to name.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        redirect_to_controller: bool,
     },
 
     PreventCombatDamageToYouCreatingTokens {

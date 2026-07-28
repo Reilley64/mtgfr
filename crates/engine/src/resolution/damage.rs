@@ -53,12 +53,20 @@ impl Game {
         target: Target,
         source: ObjectId,
         amount: i32,
+        allow_redirect: bool,
     ) -> (Vec<Event>, i32) {
         let mut prevented = 0;
         let mut life_gained = 0;
+        let mut redirects: Vec<(Target, i32)> = Vec::new();
         for shield in self.shields_against(target, source) {
             if prevented >= amount {
                 break;
+            }
+            // A redirection is a replacement, not a prevention (CR 615.10) — it still spends the
+            // shield, but the damage goes on to be dealt somewhere else. Damage that arrived here
+            // by an earlier redirect passes them by rather than bouncing again (CR 616.1).
+            if shield.redirect_to.is_some() && !allow_redirect {
+                continue;
             }
             // "Prevent that damage" (no point total) eats everything still coming; a point
             // shield eats what it has left.
@@ -70,10 +78,17 @@ impl Game {
             if shield.gain_life {
                 life_gained += bite;
             }
+            if let Some(to) = shield.redirect_to {
+                redirects.push((to, bite));
+            }
         }
         if prevented <= 0 {
             return (Vec::new(), amount);
         }
+        // ponytail: a redirected bite is recorded as `DamagePrevented` at the original target
+        // plus ordinary damage at the new one, so the log reads "prevented … and then dealt"
+        // where the card reads "dealt … instead". The board lands in the right place either way;
+        // upgrade path is an `Event::DamageRedirected { from, to, .. }` carrying both ends.
         let mut events = vec![Event::DamagePrevented {
             target,
             amount: prevented,
@@ -90,7 +105,26 @@ impl Game {
                 source: Some(source),
             });
         }
+        for (to, moved) in redirects {
+            events.extend(self.redirected_damage_events(source, to, moved));
+        }
         (events, amount - prevented)
+    }
+
+    /// "That source deals that damage to `to` instead" (Jade Monolith, CR 615.10). The moved
+    /// damage is dealt for real at its new home — the recipient's own shields still get their
+    /// bite — but it cannot be moved a second time.
+    fn redirected_damage_events(&self, source: ObjectId, to: Target, amount: i32) -> Vec<Event> {
+        match to {
+            Target::Player(player) => {
+                self.player_damage_events_inner(source, player, amount, false)
+                    .0
+            }
+            Target::Object(object) => {
+                self.creature_damage_events_inner(source, object, amount, false, false, false)
+                    .0
+            }
+        }
     }
 
     /// The shields standing between `source` and `target`, oldest first — the one order both the
@@ -124,8 +158,30 @@ impl Game {
         cant_be_regenerated: bool,
         exile_instead_of_dying: bool,
     ) -> (Vec<Event>, i32) {
+        self.creature_damage_events_inner(
+            source,
+            object,
+            amount,
+            cant_be_regenerated,
+            exile_instead_of_dying,
+            true,
+        )
+    }
+
+    /// [`creature_damage_events_with_riders`](Self::creature_damage_events_with_riders) plus the
+    /// one-bounce guard: `allow_redirect` is false for damage that a redirection already moved
+    /// here, so it can be prevented but not moved on (CR 616.1).
+    fn creature_damage_events_inner(
+        &self,
+        source: ObjectId,
+        object: ObjectId,
+        amount: i32,
+        cant_be_regenerated: bool,
+        exile_instead_of_dying: bool,
+        allow_redirect: bool,
+    ) -> (Vec<Event>, i32) {
         let (mut events, amount) =
-            self.spend_prevention_shields(Target::Object(object), source, amount);
+            self.spend_prevention_shields(Target::Object(object), source, amount, allow_redirect);
         // CR 615: damage a shield ate entirely was never dealt, so it marks nothing and feeds no
         // damage watch. (An *unshielded* 0 still emits its `DamageMarked`, as it always has —
         // callers guard 0 amounts themselves where it matters.)
@@ -171,8 +227,20 @@ impl Game {
         player: PlayerId,
         amount: i32,
     ) -> (Vec<Event>, i32) {
+        self.player_damage_events_inner(source, player, amount, true)
+    }
+
+    /// [`player_damage_events`](Self::player_damage_events) plus the one-bounce guard — see the
+    /// creature twin.
+    fn player_damage_events_inner(
+        &self,
+        source: ObjectId,
+        player: PlayerId,
+        amount: i32,
+        allow_redirect: bool,
+    ) -> (Vec<Event>, i32) {
         let (mut events, amount) =
-            self.spend_prevention_shields(Target::Player(player), source, amount);
+            self.spend_prevention_shields(Target::Player(player), source, amount, allow_redirect);
         // CR 615: damage a shield ate entirely was never dealt — no life loss, and the caller's
         // `amount > 0` guard drops the `DamageDealtToPlayer` marker and lifelink with it.
         if !events.is_empty() && amount <= 0 {

@@ -3240,6 +3240,7 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                     opponent: false,
                 }),
                 Effect::Misc(MiscEffect::PreventNextDamage {
+                    redirect_to_controller: false,
                     amount: Some(Amount::Fixed(3)),
                     from_color: ColorFilter::Any,
                     gain_life: false,
@@ -3529,6 +3530,7 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
             (
                 "Samite Healer",
                 Effect::Misc(MiscEffect::PreventNextDamage {
+                    redirect_to_controller: false,
                     amount: Some(Amount::Fixed(1)),
                     from_color: ColorFilter::Any,
                     gain_life: false,
@@ -3540,6 +3542,7 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                 // "…dealt to you" names no target at all, so the shield lands on whoever
                 // activated it.
                 Effect::Misc(MiscEffect::PreventNextDamage {
+                    redirect_to_controller: false,
                     amount: Some(Amount::Fixed(2)),
                     from_color: ColorFilter::Any,
                     gain_life: false,
@@ -4446,6 +4449,7 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
             assert_eq!(
                 ability.effect,
                 Effect::Misc(MiscEffect::PreventNextDamage {
+                    redirect_to_controller: false,
                     amount: None,
                     target: TargetSpec::None,
                     from_color: color,
@@ -4462,12 +4466,40 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
         assert_eq!(
             spell.effect,
             Effect::Misc(MiscEffect::PreventNextDamage {
+                redirect_to_controller: false,
                 amount: None,
                 target: TargetSpec::None,
                 from_color: ColorFilter::Any,
                 gain_life: true,
             }),
             "no color gate, and what the shield eats comes back as life"
+        );
+    }
+
+    /// Jade Monolith wears the shield the Circles wear, but the hit it stops does not vanish —
+    /// `redirect_to_controller` is the whole difference between "prevent that damage" and "that
+    /// source deals that damage to you instead", and the shield keeps its target axis besides:
+    /// the creature is what stands behind it, its controller is where the damage goes.
+    #[test]
+    fn unlimited_jade_monolith_shields_a_creature_by_standing_in_front_of_it() {
+        let monolith = get_by_name("Jade Monolith").expect("Jade Monolith is in the pool");
+        let [ability] = &monolith.abilities[..] else {
+            panic!("one activated ability");
+        };
+        assert!(
+            matches!(ability.timing, Timing::Activated(_)),
+            "\"{{1}}:\", and no tap in the cost"
+        );
+        assert_eq!(
+            ability.effect,
+            Effect::Misc(MiscEffect::PreventNextDamage {
+                redirect_to_controller: true,
+                amount: None,
+                target: TargetSpec::Creature,
+                from_color: ColorFilter::Any,
+                gain_life: false,
+            }),
+            "the whole of the next hit on target creature, moved rather than eaten"
         );
     }
 }

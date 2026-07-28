@@ -174,16 +174,41 @@ approximation it removes only bites when two sources of the named color would hi
 in one turn, which the ordinary line (activate the Circle in response to the damage) never
 reaches.
 
-### 6. `damage-redirection` — 3 cards, M
-Depends on: #4.
-"That source deals that damage to you instead" (CR 615.10). A redirection is a replacement, not a
-prevention, but it hangs off the same hook in `deal_damage` and must not loop. *Sketch:* the
-shield record gains a `redirect_to: Option<Target>`; on consumption the damage event is re-issued
-against the new target with a recursion guard (one redirect per damage event, CR 616.1). Veteran
-Bodyguard is the static form — "all damage that would be dealt to you by unblocked creatures is
-dealt to this creature instead", conditioned on the bodyguard being untapped, so it is a
-`StaticEffect` scanned at damage time rather than an activated shield.
-*Cards:* jade_monolith, personal_incarnation, veteran_bodyguard.
+### 6a. `shield-redirection` — 1 card, M — **done**
+Depends on: #4, #5a.
+Jade Monolith. "That source deals that damage to you instead" (CR 615.10) on the same one-shot
+shield record #5a built: a redirection is a replacement, not a prevention, but it arms and is
+consumed identically.
+*Cards:* jade_monolith.
+
+*Landed:* `PreventionShield` gained `redirect_to: Option<Target>` and both damage chokes grew a
+private `_inner` twin taking `allow_redirect`. That flag is the recursion guard: the moved damage
+is dealt for real at its new home — the recipient's own shields still take their bite, which is
+what CR 615.10 asks for — but a redirect shield standing there is passed over rather than
+bouncing the hit again (CR 616.1). The public `creature_damage_events_with_riders` /
+`player_damage_events` signatures did not move, so no caller outside this module noticed.
+The DSL field is a bare `redirect_to_controller` bool rather than a named recipient, because both
+pool cards that redirect send the damage to the same player who armed the shield. What the
+redirect proves that prevention could not: a 2/2 walks away from a four-point Earthquake, since
+the damage was never dealt to it and no state-based action has anything to collect.
+
+### 6b. `static-damage-redirection` — 1 card, M
+Depends on: #6a.
+Veteran Bodyguard — "as long as this creature is untapped, all damage that would be dealt to you
+by unblocked creatures is dealt to this creature instead." Not a shield: a permanent static with
+two live conditions (the bodyguard untapped, the source an *unblocked attacking creature*), so
+`Game::player_damage_events` has to scan the damaged player's battlefield rather than a shield
+list, and combat has to be able to answer "was this attacker blocked" at damage time.
+*Cards:* veteran_bodyguard.
+
+### 6c. `personal-incarnation` — 1 card, M
+Depends on: #6a.
+Personal Incarnation is #6a's shield pointed the other way — "{0}: The next 1 damage that would
+be dealt to this creature this turn is dealt to its owner instead" — plus two things nothing in
+the pool has yet: an activation gated to the permanent's *owner* rather than its controller, and
+a dies trigger for "its owner loses half their life, rounded up", which needs an `Amount` that
+reads a player's life total (there is `HalfX` but nothing that halves a life total).
+*Cards:* personal_incarnation.
 
 ### 7. `untap-step-restrictions` — 9 cards, M — **7a done, 7b–7d open**
 Depends on: nothing.
