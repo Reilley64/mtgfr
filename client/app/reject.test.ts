@@ -3,6 +3,7 @@
 
 import { describe, expect, it } from "vitest";
 import type { VisibleState } from "~/wire/types";
+import { spawnFlight } from "./board/motion/flights";
 import { IntentAcked, IntentRejected } from "./game/messages";
 import { init } from "./init";
 import { GotGameMessage } from "./messages";
@@ -70,6 +71,36 @@ describe("intent reject wiring", () => {
     const [next] = update(seeded, GotGameMessage({ message: IntentRejected({ reason: "Illegal declaration." }) }));
     expect(next.game?.board.attackersConfirmed).toBe(false);
     expect(next.game?.board.blockersConfirmed).toBe(false);
+  });
+
+  it("IntentRejected drops the optimistic seed so the card returns to hand instead of ghosting", () => {
+    const seeded = modelWithGame();
+    const game = seeded.game;
+    if (game == null) throw new Error("test setup: game is null");
+    const held = spawnFlight({
+      id: 7,
+      print: "forest-print",
+      name: "Forest",
+      x: 500,
+      y: 400,
+      scale: 0.5,
+      targetX: 600,
+      targetY: 300,
+      targetScale: 1,
+      kind: "battlefield",
+      fromCardId: 7,
+      hold: true,
+    });
+    seeded.game = {
+      ...game,
+      board: { ...game.board, flights: new Map([[7, held]]), handHidden: new Set([7]), hideCardIds: new Set([7]) },
+    };
+
+    const [next] = update(seeded, GotGameMessage({ message: IntentRejected({ reason: "Not your turn." }) }));
+
+    expect([...(next.game?.board.flights.keys() ?? [])]).toEqual([]);
+    expect([...(next.game?.board.handHidden ?? [])]).toEqual([]);
+    expect([...(next.game?.board.hideCardIds ?? [])]).toEqual([]);
   });
 
   it("IntentAcked clears board.reject", () => {
