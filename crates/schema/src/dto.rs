@@ -916,6 +916,11 @@ pub enum PendingChoiceView {
         player: u8,
         source: ObjectId,
         items: Vec<ChoiceItem>,
+        /// Word of Command reuses this view for "choose a card from target opponent's hand and
+        /// they play it": same one-card-plus-cast-target answer, different wording, and `items`
+        /// is redacted for every seat but the one looking.
+        #[serde(default)]
+        from_opponent_hand: bool,
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
         cast_targets: Vec<ChoiceItem>,
     },

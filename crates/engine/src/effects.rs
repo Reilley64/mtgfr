@@ -884,6 +884,7 @@ impl Game {
             | Effect::Choice(ChoiceEffect::EachPlayerDiscards { .. })
             | Effect::Choice(ChoiceEffect::EachPlayerExilesFromGraveyard)
             | Effect::Choice(ChoiceEffect::TargetPlayerExilesFromGraveyard { .. })
+            | Effect::Choice(ChoiceEffect::ControlPlayerToPlayCardFromHand { .. })
             | Effect::Choice(ChoiceEffect::CasterKeepsOneOfEachTypePerPlayer)
             | Effect::Choice(ChoiceEffect::EachPlayerControllerChoosesCounterTarget)
             | Effect::Choice(ChoiceEffect::CouncilsDilemmaVote { .. })

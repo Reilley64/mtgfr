@@ -1591,6 +1591,19 @@ pub enum PendingChoice {
         candidates: Vec<ObjectId>,
         exiled: Vec<ObjectId>,
     },
+    /// `player` (Word of Command's controller — **not** whose hand this is) must choose one of
+    /// `options`, the cards in `subject`'s hand, for `subject` to play right now (CR 720.1). The
+    /// one pause in the pool where the answering seat and the seat whose resources are spent are
+    /// different players: `player` answers, `subject` pays. Answered by
+    /// [`Intent::ChooseExiledDigToCastFree`], reused for its "one object plus a cast-time target"
+    /// shape — the candidates here are hand cards, private to everyone but the looker, so the
+    /// projection redacts them for every other seat.
+    ChooseCardInHandToPlay {
+        player: PlayerId,
+        source: ObjectId,
+        subject: PlayerId,
+        options: Vec<ObjectId>,
+    },
     /// `player` (an **opponent** of `controller`, not the ability's controller) must choose one of
     /// two exile piles (`pile_a`/`pile_b`, both public — exile-zone) — Abstract Performance's "an
     /// opponent chooses one of those piles". Answered by [`Intent::ChooseOpponentPile`]. The chosen
@@ -2054,6 +2067,7 @@ impl PendingChoice {
             | PendingChoice::ChooseExiledWithCard { player, .. }
             | PendingChoice::ChooseExiledWithCardToCast { player, .. }
             | PendingChoice::ChooseExiledDigToCastFree { player, .. }
+            | PendingChoice::ChooseCardInHandToPlay { player, .. }
             | PendingChoice::DanceExileMore { player, .. }
             | PendingChoice::OpponentChoosesPile { player, .. }
             | PendingChoice::OpponentChoosesExiledNonland { player, .. }

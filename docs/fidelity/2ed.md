@@ -315,7 +315,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [x] **Wild Growth** {G} · Enchantment — Aura — increment 64
 - [x] **Winter Orb** {2} · Artifact — increment 7
 - [x] **Wooden Sphere** {1} · Artifact — increment 10
-- [ ] **Word of Command** {B}{B} · Instant — increment 49
+- [x] **Word of Command** {B}{B} · Instant
 - [x] **Zombie Master** {1}{B}{B} · Creature — Zombie — increment 66
 
 ## Out of scope

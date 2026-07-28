@@ -695,6 +695,26 @@ impl<'a> ChoiceCtx<'a> {
                     source,
                     items: self.label_items(candidates),
                     cast_targets: self.label_targets(cast_targets),
+                    from_opponent_hand: false,
+                }
+            }
+            // Word of Command: same "pick one card, name its cast-time target, then it's played
+            // right now" answer as the dig above, so it rides the same view — but the candidates
+            // are cards in someone else's *hand*, so only the seat doing the looking gets to see
+            // them, and the wording flips.
+            engine::PendingChoice::ChooseCardInHandToPlay {
+                player,
+                source,
+                options,
+                ..
+            } => {
+                let cast_targets = dig_cast_targets(self.game, &options);
+                PendingChoiceView::ChooseExiledDigToCastFree {
+                    player: player.0,
+                    source,
+                    items: private_items(player, self.viewer, options, |ids| self.label_items(ids)),
+                    cast_targets: self.label_targets(cast_targets),
+                    from_opponent_hand: true,
                 }
             }
             engine::PendingChoice::DanceExileMore {

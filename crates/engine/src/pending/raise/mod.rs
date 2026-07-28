@@ -342,6 +342,12 @@ pub(crate) enum ChoiceRequest {
         candidates: Vec<crate::ObjectId>,
         exiled: Vec<crate::ObjectId>,
     },
+    /// Word of Command — `player` picks from `subject`'s hand; an empty hand → `None`.
+    ChooseCardInHandToPlay {
+        player: crate::PlayerId,
+        source: crate::ObjectId,
+        subject: crate::PlayerId,
+    },
     /// Dance with Calamity push-your-luck — always pauses when raised.
     DanceExileMore {
         player: crate::PlayerId,
@@ -614,6 +620,11 @@ pub(super) fn choice_from_request(game: &Game, request: ChoiceRequest) -> Option
             candidates,
             exiled,
         } => dig::choose_exiled_dig_to_cast_free(player, source, candidates, exiled),
+        ChoiceRequest::ChooseCardInHandToPlay {
+            player,
+            source,
+            subject,
+        } => dig::choose_card_in_hand_to_play(game, player, source, subject),
         ChoiceRequest::ChooseExiledToCastFree {
             player,
             source,

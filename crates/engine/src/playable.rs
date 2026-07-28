@@ -143,7 +143,10 @@ impl Game {
         let Some(zone) = self.playable_zone(object, player) else {
             return Err(Reject::NotCastable);
         };
-        if !kind.is_enumeration() && player != self.priority {
+        if !kind.is_enumeration()
+            && player != self.priority
+            && !self.is_compelled_play(object, player)
+        {
             return Err(Reject::NotYourPriority);
         }
         if !self.cast_timing_ok(player, object, printed.as_ref().clone(), kind) {
@@ -392,7 +395,9 @@ impl Game {
         // still on the stack).
         let as_instant = def.is_instant_speed()
             || self.players[player.0 as usize].flash_permission_this_turn
-            || self.may_cast_from_exile_free(object, player);
+            || self.may_cast_from_exile_free(object, player)
+            // Word of Command's compelled play is mid-resolution too — same CR 601.3e read.
+            || self.is_compelled_play(object, player);
         if as_instant {
             match kind {
                 CastPlayKind::List => {

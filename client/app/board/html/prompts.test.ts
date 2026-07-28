@@ -850,6 +850,26 @@ test("may_exile_discarded_to_play submit emits the chosen discarded card", () =>
   });
 });
 
+test("choose_exiled_dig_to_cast_free swaps to hand-pick wording for Word of Command", () => {
+  const s = state({
+    pending_choice: {
+      kind: "choose_exiled_dig_to_cast_free",
+      player: 0,
+      source: 1,
+      from_opponent_hand: true,
+      items: [{ id: 9, label: "Lightning Bolt" }],
+    },
+  });
+
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(s)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("pick-title")).toHaveText("Choose a card from their hand for them to play"),
+    Scene.expect(Scene.testId("prompt-submit")).toHaveText("Play"),
+  );
+});
+
 test("choose_copy_target swaps to counter wording for the MayPutCounterOnCreature primer", () => {
   const s = state({
     pending_choice: {

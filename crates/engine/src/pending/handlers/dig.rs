@@ -142,6 +142,60 @@ impl Game {
         }
     }
 
+    /// Answer a [`PendingChoice::ChooseCardInHandToPlay`]: Word of Command's controller has
+    /// picked a card out of the subject's hand, and the subject plays it now (CR 720.1). Two
+    /// things make this unlike every other mid-resolution cast in the pool: the seat that answers
+    /// (`player`) is not the seat that plays, and the play is *compelled* rather than permitted —
+    /// so the subject casts it out of their own hand, paying with their own mana, while the
+    /// `PlayPermissions::compelled_play` window lifts the priority and printed-timing
+    /// gates for that one call.
+    ///
+    /// "Plays that card **if able**" is literal: a pick the subject can't afford (or can't
+    /// legally cast for any other reason) simply does nothing, so the cast's `Err` is swallowed
+    /// rather than returned — the answer itself was legal.
+    pub(crate) fn choose_card_in_hand_to_play(
+        &mut self,
+        player: PlayerId,
+        choice: Option<ObjectId>,
+        target: Option<Target>,
+    ) -> Result<Vec<Event>, Reject> {
+        let Some(PendingChoice::ChooseCardInHandToPlay {
+            options, subject, ..
+        }) = self.pending_choice.clone()
+        else {
+            return Err(Reject::IllegalChoice);
+        };
+        let _ = player;
+        if choice.is_some_and(|c| !options.contains(&c)) {
+            return Err(Reject::IllegalChoice);
+        }
+        self.finish_answer();
+
+        let Some(card) = choice else {
+            return Ok(Vec::new());
+        };
+        self.play_permissions.compelled_play = Some((card, subject));
+        let cast = self.cast(
+            subject,
+            card,
+            target,
+            0,
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            false,
+            false,
+            false,
+            0,
+            0,
+            0,
+            false,
+        );
+        self.play_permissions.compelled_play = None;
+        Ok(cast.unwrap_or_default())
+    }
+
     /// Answer a [`PendingChoice::ChooseExiledDigToCastFree`]: cast the chosen card without
     /// paying its mana cost **now** as part of this dig's resolution (CR 608.2g / cascade-style
     /// mid-resolution cast — Herald of Amity, Cascade), or decline (`choice = None`). Either way,

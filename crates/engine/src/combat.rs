@@ -252,6 +252,12 @@ impl Game {
 
     /// Whether `player` has an active free-cast permission (CR 118.5, "without paying its mana
     /// cost") for the exiled card `object` — Quintorius, Loremaster's activated ability.
+    /// Whether `player` is being made to play `object` right now by a resolving Word of Command —
+    /// the window in which their own priority and the card's printed timing both stop applying.
+    pub(crate) fn is_compelled_play(&self, object: ObjectId, player: PlayerId) -> bool {
+        self.play_permissions.compelled_play == Some((object, player))
+    }
+
     pub(crate) fn may_cast_from_exile_free(&self, object: ObjectId, player: PlayerId) -> bool {
         self.play_permissions
             .cast_from_exile_free

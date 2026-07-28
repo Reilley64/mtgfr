@@ -1689,7 +1689,7 @@ until every other increment has landed, and reconsider whether an `approximates`
 answer instead.
 *Cards:* camouflage, raging_river.
 
-### 49. `controlling-another-players-actions` — 1 card, XL
+### 49. `controlling-another-players-actions` — 1 card, XL — **done**
 Depends on: nothing.
 Word of Command ("you control that player until this finishes resolving") and Drain Power ("target
 player activates a mana ability of each land they control"). One player making decisions on
@@ -1702,6 +1702,37 @@ land for mana", so it can be modelled as a direct effect without a real control 
 Command is the hard half and should be the last thing attempted in this set. Drain Power landed in
 increment 23 as that direct effect, so only Word of Command is left here.
 *Cards:* word_of_command.
+
+*Landed:* the sketch's structural worry didn't survive contact. Nothing about the choice model
+needed to change: `PendingChoice::ChooseCardInHandToPlay { player, source, subject, options }`
+just names two seats instead of one — `player` answers, `subject` plays — and the existing
+`player()` accessor (which is what routes and validates a submit) still returns the answering
+seat, so the submit path never learns there are two. The play itself is one ordinary internal
+`Game::cast(subject, …)`, which means the printed mana restriction ("only lands that player
+controls, only spent on that card") came for free: `settle_payment` auto-taps through
+`auto_tap_candidates`, which only ever considers sources the paying player owns. Two gates did
+have to move, both mid-resolution reads the engine already has a shape for — `validate_cast`'s
+`player != self.priority` and `cast_timing_ok`'s instant-speed bypass — now both consult a new
+`PlayPermissions::compelled_play: Option<(ObjectId, PlayerId)>` that is set for exactly the length
+of that one `cast` call and cleared right after. It is deliberately *not* a cost waiver: the
+existing free-cast-from-exile permission would have been the smaller diff and the wrong card, since
+it zeroes the cost. "Plays that card **if able**" is the `Err` being swallowed: an unaffordable pick
+is a legal answer that does nothing.
+
+Reused rather than minted: the answer is `Intent::ChooseExiledDigToCastFree` (same "one object plus
+a cast-time target, or decline" shape) and the view is `PendingChoiceView::ChooseExiledDigToCastFree`
+behind an additive `from_opponent_hand` bool — same precedent as #78's `choose_block_target`. The
+one thing the view could *not* reuse was `label_items`: these candidates are cards in someone
+else's hand, so they go through `private_items(player, viewer, …)` and are redacted for every seat
+but the looker. `Event::LookedAtHand` is pushed before the pause, so you keep knowing the whole hand
+afterwards, not just the card you took.
+
+Two gaps are annotated on the card rather than papered over. The compelled play asks its cast-time
+questions of the controlled player, not of you — a modal card's mode, and any target past the
+first, pause on their seat. And "you control the player while that spell is resolving" isn't
+modelled at all: a resolution-time choice on the chosen spell goes back to its own controller. Both
+want the same thing (a controller override that spans a resolution, not a single call), and neither
+is reachable from a 2ed card — the set has no modal spells and no divvy.
 
 ### 50. `deny-unknown-fields-on-effect-tables` — 0 cards, S — **done**
 Depends on: nothing.

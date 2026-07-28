@@ -325,6 +325,14 @@ pub(crate) fn answer(game: &mut Game, intent: Intent) -> Result<Vec<Event>, Reje
             } => game.choose_exiled_dig_to_cast_free(player, choice, target),
             _ => Err(Reject::IllegalChoice),
         },
+        PendingChoice::ChooseCardInHandToPlay { .. } => match intent {
+            Intent::ChooseExiledDigToCastFree {
+                player,
+                choice,
+                target,
+            } => game.choose_card_in_hand_to_play(player, choice, target),
+            _ => Err(Reject::IllegalChoice),
+        },
         PendingChoice::OpponentChoosesPile { .. } => match intent {
             Intent::ChooseOpponentPile { player, pile } => game.choose_opponent_pile(player, pile),
             _ => Err(Reject::IllegalChoice),
@@ -541,6 +549,7 @@ pub(crate) fn forced(game: &Game) -> Option<Intent> {
         | PendingChoice::ChooseExiledWithCard { .. }
         | PendingChoice::ChooseExiledWithCardToCast { .. }
         | PendingChoice::ChooseExiledDigToCastFree { .. }
+        | PendingChoice::ChooseCardInHandToPlay { .. }
         | PendingChoice::OpponentChoosesPile { .. }
         | PendingChoice::OpponentChoosesExiledNonland { .. }
         | PendingChoice::ChooseSplittingOpponent { .. }

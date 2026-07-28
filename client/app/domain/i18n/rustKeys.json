@@ -91,6 +91,7 @@
   "effect.choice_choose_color",
   "effect.choice_choose_creature_type",
   "effect.choice_choose_opponent",
+  "effect.choice_control_player_to_play_card_from_hand",
   "effect.choice_councils_dilemma_vote",
   "effect.choice_damaging_creature_controller_may_draw",
   "effect.choice_defending_player_sacrifices",

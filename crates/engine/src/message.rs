@@ -117,6 +117,7 @@ message_keys! {
     EFFECT_CHOICE_CHOOSE_COLOR => "effect.choice_choose_color",
     EFFECT_CHOICE_CHOOSE_CREATURE_TYPE => "effect.choice_choose_creature_type",
     EFFECT_CHOICE_CHOOSE_OPPONENT => "effect.choice_choose_opponent",
+    EFFECT_CHOICE_CONTROL_PLAYER_TO_PLAY_CARD_FROM_HAND => "effect.choice_control_player_to_play_card_from_hand",
     EFFECT_CHOICE_COUNCILS_DILEMMA_VOTE => "effect.choice_councils_dilemma_vote",
     EFFECT_CHOICE_DAMAGING_CREATURE_CONTROLLER_MAY_DRAW => "effect.choice_damaging_creature_controller_may_draw",
     EFFECT_CHOICE_DEFENDING_PLAYER_SACRIFICES => "effect.choice_defending_player_sacrifices",
@@ -2015,6 +2016,10 @@ impl Effect {
             ]),
             Effect::Choice(EachPlayerExilesFromGraveyard) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_EACH_PLAYER_EXILES_FROM_GRAVEYARD)
+            }
+            Effect::Choice(ControlPlayerToPlayCardFromHand { target }) => {
+                MessageRef::new(MessageKey::EFFECT_CHOICE_CONTROL_PLAYER_TO_PLAY_CARD_FROM_HAND)
+                    .with_params(vec![target_spec_param("target", target)])
             }
             Effect::Choice(TargetPlayerExilesFromGraveyard { target }) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_TARGET_PLAYER_EXILES_FROM_GRAVEYARD)

@@ -675,6 +675,10 @@ message PendingChoiceViewChooseExiledDigToCastFree {
   uint32 source = 2;
   repeated ChoiceItem items = 3;
   repeated ChoiceItem cast_targets = 4;
+  // Word of Command reuses this view: `player` chooses one of `items` out of *target opponent's
+  // hand* and that opponent plays it immediately. Same answer shape, different wording — and
+  // `items` is empty for every seat but `player`, since a hand is private.
+  bool from_opponent_hand = 5;
 }
 
 // This player (the caster) may exile another top-of-library card or stop (Dance with

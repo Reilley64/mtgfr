@@ -112790,3 +112790,154 @@ fn false_orders_is_locked_out_of_every_step_but_declare_blockers() {
         "a main-phase False Orders has no blocks to reshuffle"
     );
 }
+
+// ── Word of Command: you pick from their hand, they play it with their mana (fidelity #49) ──
+
+#[test]
+fn word_of_command_makes_the_opponent_play_the_card_you_pick() {
+    // "Look at target opponent's hand and choose a card from it. … The player plays that card if
+    // able." The Bolt is cast by its own controller — so it's their Mountain that pays, and the
+    // creature it kills is yours only because *you* aimed it.
+    let mut game = TestGame::new();
+    stock_libraries(&mut game);
+    let word = game.spawn_in_hand(PlayerId(0), card("Word of Command"));
+    let bolt = game.spawn_in_hand(PlayerId(1), card("Lightning Bolt"));
+    let mountain = game.spawn_on_battlefield(PlayerId(1), card("Mountain"));
+    let victim = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
+
+    game.cast(word).at(Target::Player(PlayerId(1))).resolve();
+
+    let Some(PendingChoice::ChooseCardInHandToPlay {
+        player, options, ..
+    }) = game.pending_choice()
+    else {
+        panic!(
+            "expected the choose-from-their-hand pause, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_eq!(
+        (player, options),
+        (PlayerId(0), vec![bolt]),
+        "you do the choosing, over their whole hand",
+    );
+
+    game.submit(Intent::ChooseExiledDigToCastFree {
+        player: PlayerId(0),
+        choice: Some(bolt),
+        target: Some(Target::Object(victim)),
+    })
+    .expect("the compelled cast goes on the stack during Word of Command's own resolution");
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        (game.zone_of(victim), game.is_tapped(mountain)),
+        (Zone::Graveyard, true),
+        "their Bolt, their Mountain, your aim",
+    );
+}
+
+#[test]
+fn word_of_command_leaves_your_own_mana_alone() {
+    // "…the player can activate mana abilities only if they're from lands that player controls."
+    // The compelled cast is paid by the compelled player, so your lands are never a source for it.
+    let mut game = TestGame::new();
+    stock_libraries(&mut game);
+    let word = game.spawn_in_hand(PlayerId(0), card("Word of Command"));
+    let bolt = game.spawn_in_hand(PlayerId(1), card("Lightning Bolt"));
+    game.spawn_on_battlefield(PlayerId(1), card("Mountain"));
+    let mine = game.spawn_on_battlefield(PlayerId(0), card("Mountain"));
+
+    game.cast(word).at(Target::Player(PlayerId(1))).resolve();
+    game.submit(Intent::ChooseExiledDigToCastFree {
+        player: PlayerId(0),
+        choice: Some(bolt),
+        target: Some(Target::Player(PlayerId(0))),
+    })
+    .expect("the compelled cast goes on the stack");
+
+    assert!(
+        !game.is_tapped(mine),
+        "your Mountain is not a legal source for their spell",
+    );
+}
+
+#[test]
+fn word_of_command_does_nothing_when_they_cannot_pay_for_the_card_you_pick() {
+    // "The player plays that card **if able**." No lands, no cast — and the card stays in hand
+    // rather than being discarded or exiled by the failed attempt.
+    let mut game = TestGame::new();
+    stock_libraries(&mut game);
+    let word = game.spawn_in_hand(PlayerId(0), card("Word of Command"));
+    let bolt = game.spawn_in_hand(PlayerId(1), card("Lightning Bolt"));
+    let victim = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
+
+    game.cast(word).at(Target::Player(PlayerId(1))).resolve();
+    game.submit(Intent::ChooseExiledDigToCastFree {
+        player: PlayerId(0),
+        choice: Some(bolt),
+        target: Some(Target::Object(victim)),
+    })
+    .expect("an unpayable pick is a legal answer that simply does nothing");
+
+    assert_eq!(
+        (game.zone_of(bolt), game.zone_of(victim)),
+        (Zone::Hand, Zone::Battlefield),
+        "\"if able\" — an unaffordable card is not played and nothing else happens",
+    );
+}
+
+#[test]
+fn word_of_command_ignores_the_timing_the_chosen_card_is_printed_with() {
+    // "You control that player until Word of Command finishes resolving" (CR 720.1): the
+    // compelled play happens mid-resolution, so a sorcery goes on the stack in a window its own
+    // controller could never have cast it in — not their turn, not an empty stack.
+    let mut game = TestGame::new();
+    stock_libraries(&mut game);
+    let word = game.spawn_in_hand(PlayerId(0), card("Word of Command"));
+    let wrath = game.spawn_in_hand(PlayerId(1), card("Wrath of God"));
+    for _ in 0..4 {
+        game.spawn_on_battlefield(PlayerId(1), card("Plains"));
+    }
+    let theirs = game.spawn_on_battlefield(PlayerId(1), VANILLA.clone());
+    let mine = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
+
+    game.cast(word).at(Target::Player(PlayerId(1))).resolve();
+    game.submit(Intent::ChooseExiledDigToCastFree {
+        player: PlayerId(0),
+        choice: Some(wrath),
+        target: None,
+    })
+    .expect("sorcery timing does not apply to a compelled play");
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        (game.zone_of(theirs), game.zone_of(mine)),
+        (Zone::Graveyard, Zone::Graveyard),
+        "they wrathed the board on your turn, in response to nothing",
+    );
+}
+
+#[test]
+fn word_of_command_cannot_be_answered_with_a_card_that_is_not_in_their_hand() {
+    // The choice is "a card from *it*" — your own hand is not on offer, and neither is anything
+    // else that happens to be an object id.
+    let mut game = TestGame::new();
+    stock_libraries(&mut game);
+    let word = game.spawn_in_hand(PlayerId(0), card("Word of Command"));
+    game.spawn_in_hand(PlayerId(1), card("Lightning Bolt"));
+    game.spawn_on_battlefield(PlayerId(1), card("Mountain"));
+    let ours = game.spawn_in_hand(PlayerId(0), card("Lightning Bolt"));
+
+    game.cast(word).at(Target::Player(PlayerId(1))).resolve();
+
+    assert!(
+        game.submit(Intent::ChooseExiledDigToCastFree {
+            player: PlayerId(0),
+            choice: Some(ours),
+            target: Some(Target::Player(PlayerId(1))),
+        })
+        .is_err(),
+        "you may only compel a card you actually looked at",
+    );
+}

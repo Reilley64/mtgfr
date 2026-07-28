@@ -166,6 +166,15 @@ pub(crate) struct PlayPermissions {
     /// cleanup ([`Event::CastFromExileFreeEnded`](crate::Event::CastFromExileFreeEnded)) — no
     /// `until_next_turn` extension exists for this permission (no card needs one yet).
     pub cast_from_exile_free: Vec<(ObjectId, PlayerId)>,
+    /// Word of Command's "the player plays that card if able" (CR 720.1): `(the card, the player
+    /// being controlled)`, set for exactly the length of the one internal
+    /// [`Game::cast`](crate::Game) call the answer makes and cleared right after — a compelled
+    /// play happens mid-resolution, so it can't wait for priority and it can't respect the card's
+    /// printed timing. Read by [`Game::validate_cast`](crate::Game) and
+    /// [`Game::cast_timing_ok`](crate::Game). Deliberately *not* a cost waiver: the controlled
+    /// player pays, out of their own mana, which is what
+    /// [`Game::settle_payment`](crate::Game)'s owner-scoped auto-tapper already does.
+    pub compelled_play: Option<(ObjectId, PlayerId)>,
     /// Quintorius, Loremaster's replacement rider (CR 614.6): "If that spell would be put into a
     /// graveyard, put it on the bottom of its owner's library instead." Each entry is the
     /// exile-zone id the free-cast permission was granted for — the same id at rest in

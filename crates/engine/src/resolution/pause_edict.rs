@@ -109,6 +109,29 @@ impl Game {
                     },
                 )
             }
+            // Word of Command: "Look at target opponent's hand and choose a card from it." The
+            // look is recorded first — you get to keep knowing the whole hand, not just the card
+            // you picked — and then the pick pauses on *your* seat, over *their* cards.
+            Effect::Choice(ChoiceEffect::ControlPlayerToPlayCardFromHand { .. }) => {
+                let Some(Target::Player(subject)) = target else {
+                    panic!("word of command resolves with a chosen opponent target");
+                };
+                self.push_apply(
+                    events,
+                    Event::LookedAtHand {
+                        player: controller,
+                        target: subject,
+                    },
+                );
+                pending::raise(
+                    self,
+                    pending::ChoiceRequest::ChooseCardInHandToPlay {
+                        player: controller,
+                        source,
+                        subject,
+                    },
+                )
+            }
             // The caster-directed keep-one-of-each-type sweep (Tragic Arrogance): for each player,
             // the caster picks up to one nonland permanent of each type to keep; the rest are
             // sacrificed. Pauses per player on a CasterKeepPermanents choice answered by the caster.

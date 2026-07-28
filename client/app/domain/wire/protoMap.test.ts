@@ -192,6 +192,40 @@ describe("fromProtoWire", () => {
     });
   });
 
+  it("decodes choose_exiled_dig_to_cast_free hand-pick wording from proto choice payloads", () => {
+    const frame = fromProtoWire<{
+      state: {
+        pending_choice: {
+          kind: string;
+          from_opponent_hand?: boolean;
+          items: Array<{ id: number; label: string }>;
+        };
+      };
+    }>({
+      state: {
+        pendingChoice: {
+          choice: {
+            case: "chooseExiledDigToCastFree",
+            value: {
+              player: 0,
+              source: 7,
+              fromOpponentHand: true,
+              items: [{ id: 11, label: "Lightning Bolt" }],
+            },
+          },
+        },
+      },
+    });
+
+    expect(frame.state.pending_choice).toEqual({
+      kind: "choose_exiled_dig_to_cast_free",
+      player: 0,
+      source: 7,
+      from_opponent_hand: true,
+      items: [{ id: 11, label: "Lightning Bolt" }],
+    });
+  });
+
   it("decodes choose_copy_target block-re-aim wording from proto choice payloads", () => {
     const frame = fromProtoWire<{
       state: {

@@ -19,6 +19,27 @@ pub(super) fn choose_exiled_dig_to_cast_free(
     })
 }
 
+/// Word of Command's "choose a card from it": every card in `subject`'s hand is on offer — the
+/// printed text puts no filter on the pick, and "plays that card if able" is what sorts out the
+/// unplayable ones at the answer. An empty hand leaves nothing to choose.
+pub(super) fn choose_card_in_hand_to_play(
+    game: &Game,
+    player: PlayerId,
+    source: ObjectId,
+    subject: PlayerId,
+) -> Option<PendingChoice> {
+    let options = game.hand_of(subject);
+    if options.is_empty() {
+        return None;
+    }
+    Some(PendingChoice::ChooseCardInHandToPlay {
+        player,
+        source,
+        subject,
+        options,
+    })
+}
+
 pub(super) fn choose_exiled_to_cast_free(
     game: &Game,
     player: PlayerId,

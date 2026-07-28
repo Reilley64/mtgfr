@@ -605,6 +605,7 @@ impl Effect {
             | Effect::Zone(ZoneEffect::TuckFromGraveyard { target, .. })
             | Effect::Mill(MillEffect::Mill { target, .. })
             | Effect::Choice(ChoiceEffect::TargetPlayerExilesFromGraveyard { target })
+            | Effect::Choice(ChoiceEffect::ControlPlayerToPlayCardFromHand { target })
             | Effect::Choice(ChoiceEffect::ChangeText { target, .. })
             | Effect::Control(ControlEffect::GoadTarget { target })
             | Effect::Token(TokenEffect::CreateCopy { target, .. })

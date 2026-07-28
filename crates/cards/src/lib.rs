@@ -5319,6 +5319,27 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
         );
     }
 
+    /// Word of Command's whole card is the seat split: the spell targets an *opponent*, and the
+    /// pick that follows is made by you over their hand. Point it at a player you can already see
+    /// and pay for and it's a worse Peek — `opponent` is the clause doing the work.
+    #[test]
+    fn unlimited_word_of_command_reaches_into_an_opponents_hand() {
+        let word = get_by_name("Word of Command").expect("Word of Command is in the pool");
+        let [ability] = &word.abilities[..] else {
+            panic!("one spell ability");
+        };
+        let Effect::Choice(ChoiceEffect::ControlPlayerToPlayCardFromHand { target }) =
+            &ability.effect
+        else {
+            panic!("look-and-compel, aimed at a player");
+        };
+        assert_eq!(
+            *target,
+            TargetSpec::OpponentPlayer,
+            "\"target opponent's hand\" — you cannot Word of Command yourself",
+        );
+    }
+
     /// Personal Incarnation is a liability its owner cannot hand off. Both halves of that are
     /// only true because of a flag: `only_owner_may_activate` is what stops a thief spending the
     /// shield, and `SourceOwnerLosesHalfTheirLife` is what sends the bill past whoever was

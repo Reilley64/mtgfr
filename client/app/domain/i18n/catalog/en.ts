@@ -142,6 +142,8 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.choice_choose_color": literal("Choose a color"),
   "effect.choice_choose_creature_type": literal("Choose a creature type"),
   "effect.choice_choose_opponent": literal("Choose an opponent"),
+  "effect.choice_control_player_to_play_card_from_hand": (params) =>
+    `Look at ${param(params, "target")}'s hand and choose a card from it. That player plays that card if able`,
   "effect.choice_councils_dilemma_vote": (params) =>
     `Starting with you, each player votes for ${humanize(param(params, "options"))}`,
   "effect.choice_damaging_creature_controller_may_draw": (params) =>

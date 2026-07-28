@@ -1103,6 +1103,10 @@ function cardPickConfig(pending: PendingChoiceView): {
     case "choose_exiled_with_card_to_cast":
       return { title: "Choose an exiled card to cast", submitLabel: "Cast", declineLabel };
     case "choose_exiled_dig_to_cast_free":
+      // Word of Command rides this shape with the candidates coming from an opponent's hand.
+      if (pending.from_opponent_hand) {
+        return { title: "Choose a card from their hand for them to play", submitLabel: "Play", declineLabel };
+      }
       return { title: "Choose a card to cast for free", submitLabel: "Cast", declineLabel };
     case "opponent_chooses_exiled_nonland":
       return { title: "Choose an exiled nonland card", submitLabel: "Choose", declineLabel };

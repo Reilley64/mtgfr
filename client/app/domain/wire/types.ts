@@ -540,6 +540,7 @@ export type PendingChoiceView =
   | { items: Array<ChoiceItem>; kind: "choose_exiled_with_card_to_cast"; player: number; source: U32 }
   | {
       cast_targets?: Array<ChoiceItem>;
+      from_opponent_hand?: boolean;
       items: Array<ChoiceItem>;
       kind: "choose_exiled_dig_to_cast_free";
       player: number;

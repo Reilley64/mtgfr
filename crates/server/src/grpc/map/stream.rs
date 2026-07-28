@@ -582,11 +582,13 @@ pub fn pending_choice_view_to_pb(choice: PendingChoiceView) -> pb::PendingChoice
             source,
             items,
             cast_targets,
+            from_opponent_hand,
         } => Choice::ChooseExiledDigToCastFree(pb::PendingChoiceViewChooseExiledDigToCastFree {
             player: u32::from(player),
             source,
             items: choice_items_to_pb(items),
             cast_targets: choice_items_to_pb(cast_targets),
+            from_opponent_hand,
         }),
         PendingChoiceView::DanceExileMore {
             player,

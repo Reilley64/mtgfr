@@ -385,6 +385,18 @@ pub enum ChoiceEffect {
 
     SetOwnColorUntilEndOfTurn,
 
+    /// "Look at target opponent's hand and choose a card from it. You control that player until
+    /// this spell finishes resolving. The player plays that card if able." (CR 720.1 — Word of
+    /// Command.) One seat answers, another seat's resources are spent: the pause addresses the
+    /// spell's *controller*, and the card is then played by its own controller, from their hand,
+    /// paying with their own mana ([`Game::settle_payment`](crate::Game) auto-taps only that
+    /// player's sources, which is exactly the printed mana restriction). The compelled play
+    /// ignores priority and timing, so a sorcery can land on your turn in response to nothing.
+    /// "If able" is literal — an unaffordable or otherwise unplayable pick simply does nothing.
+    ControlPlayerToPlayCardFromHand {
+        target: TargetSpec,
+    },
+
     TargetPlayerExilesFromGraveyard {
         target: TargetSpec,
     },
