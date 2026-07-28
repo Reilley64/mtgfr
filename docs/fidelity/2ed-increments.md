@@ -233,7 +233,7 @@ printed line also widens — an owner who has lost control may still activate �
 check runs first, so a stolen Incarnation is activatable by nobody rather than by its thief, which
 is the closer wrong answer.
 
-### 7. `untap-step-restrictions` — 9 cards, M — **7a done, 7b–7d open**
+### 7. `untap-step-restrictions` — 9 cards, M — **7a, 7d done; 7b–7c open**
 Depends on: nothing.
 "Doesn't untap during your untap step" / "players skip their untap steps" / "can't untap more
 than one." The untap step currently untaps everything a player controls unconditionally.
@@ -273,6 +273,22 @@ optional-trigger `PendingChoice::PayCost` has a payer axis; it would also want
 many permanents may untap, the latter needing the `PendingChoice::ChooseUntapSet` the sketch names.
 **7d Instill Energy / Time Vault** — "can attack as though it had haste" plus a once-each-turn
 untap, and an extra turn that belongs to #18.
+
+*Landed (7d — instill_energy):* two bools and no new machinery, once the pairing was seen.
+`GrantToAttached { may_attack_ignoring_summoning_sickness }` is `may_attack_ignoring_defender` with
+a different check waived — `Game::can_attack` skips `is_sick_without_haste` for the host, off the
+same attachment scan, and nothing else reads it. That is the whole difference between this and
+granting `Keyword::Haste`: the host's own `{T}` abilities stay as locked as they were, which is what
+"as though it had haste" for *attacking* means.
+
+The `{0}` untap needed nothing new at all. `GrantedAbility` already carries a full `ActivationCost`,
+and `once_each_turn` already lives there and is already gated per (source, ability index) — so the
+granted ability's ration came free. Only "during your turn" was missing, and it is one more flag
+beside `only_during_opponents_turn`, checked the same way. It is *not* `sorcery_speed`: Instill
+Energy's untap is meant to straighten an attacker back up mid-combat, which a sorcery-speed gate
+would forbid.
+
+Time Vault stays with #18 — its untap clause is tangled with the extra turn, not with this static.
 
 ### 8a. `basic-land-type-changing` — 1 card, S — **done**
 Depends on: nothing.

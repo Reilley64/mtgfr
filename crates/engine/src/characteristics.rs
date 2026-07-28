@@ -1228,6 +1228,29 @@ impl Game {
                             Timing::Static,
                             Effect::Static(StaticEffect::GrantToAttached {
                                 may_attack_ignoring_defender: true,
+                                may_attack_ignoring_summoning_sickness: false,
+                                ..
+                            })
+                        )
+                    )
+                })
+        })
+    }
+
+    /// Whether a live Aura attached to `host` waives the summoning-sickness attack restriction
+    /// (CR 302.6) — Instill Energy's "Enchanted creature can attack as though it had haste."
+    /// Read only by `Game::can_attack`, so the host stays sick for everything else: its `{T}`
+    /// abilities are as locked as they were, which is the difference between this and haste.
+    pub(crate) fn host_may_attack_ignoring_summoning_sickness(&self, host: ObjectId) -> bool {
+        self.attachments(host).into_iter().any(|id| {
+            !self.is_phased_out(id)
+                && self.def_of(id).abilities.iter().any(|a| {
+                    matches!(
+                        (a.timing, a.effect.clone()),
+                        (
+                            Timing::Static,
+                            Effect::Static(StaticEffect::GrantToAttached {
+                                may_attack_ignoring_summoning_sickness: true,
                                 ..
                             })
                         )

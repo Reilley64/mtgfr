@@ -163,14 +163,15 @@ fn load_from_data_dir() -> Pool {
 mod tests {
     use super::*;
     use engine::{
-        Amount, AttackRider, BasicLandType, CardFilter, CardKind, CasterScope, ChoiceEffect, Color,
-        ColorFilter, Condition, ControlEffect, CopyEffect, Cost, CounterKind, CountersEffect,
-        DamageEffect, DefiningPtWhen, DestroyEffect, DigEffect, Division, DrawEffect, Effect,
-        EnterController, ExileEffect, FilterController, GraveyardScope, Keyword, LandProduces,
-        LandTapBonusColor, LandTapScope, LifeEffect, Mana, ManaEffect, MillEffect, MiscEffect,
-        PermanentFilter, ProtectionScope, PumpEffect, SacrificeAdditionalCostCount, SacrificeCost,
-        SacrificeEffect, SearchDest, SpellFilter, SpellSpeed, StaticEffect, Step, TargetCount,
-        TargetSpec, Timing, TokenEffect, Trigger, TypeSet, ZoneEffect, arc_slice,
+        ActivationCost, Amount, AttackRider, BasicLandType, CardFilter, CardKind, CasterScope,
+        ChoiceEffect, Color, ColorFilter, Condition, ControlEffect, CopyEffect, Cost, CounterKind,
+        CountersEffect, DamageEffect, DefiningPtWhen, DestroyEffect, DigEffect, Division,
+        DrawEffect, Effect, EnterController, ExileEffect, FilterController, GraveyardScope,
+        Keyword, LandProduces, LandTapBonusColor, LandTapScope, LifeEffect, Mana, ManaEffect,
+        MillEffect, MiscEffect, PermanentFilter, ProtectionScope, PumpEffect,
+        SacrificeAdditionalCostCount, SacrificeCost, SacrificeEffect, SearchDest, SpellFilter,
+        SpellSpeed, StaticEffect, Step, TargetCount, TargetSpec, Timing, TokenEffect, Trigger,
+        TypeSet, ZoneEffect, arc_slice,
     };
 
     #[test]
@@ -2666,9 +2667,52 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
             aura.abilities[0].effect,
             Effect::Static(StaticEffect::GrantToAttached {
                 may_attack_ignoring_defender: true,
+                may_attack_ignoring_summoning_sickness: false,
                 ..
             })
         ));
+    }
+
+    /// Instill Energy's two clauses are both restrictions wearing a permission's clothes, and both
+    /// are riders rather than effects of their own. Drop the summoning-sickness waiver and the
+    /// Aura does nothing on the turn it matters; drop either half of the granted ability's window
+    /// and a {0} untap becomes an infinite one, or one the host's opponent can fire.
+    #[test]
+    fn unlimited_instill_energy_waives_sickness_for_attacks_only_and_rations_its_untap() {
+        let aura = get_by_name("Instill Energy").expect("Instill Energy is in the pool");
+        let [grant] = &aura.abilities[..] else {
+            panic!("one static, carrying both clauses");
+        };
+        let Effect::Static(StaticEffect::GrantToAttached {
+            may_attack_ignoring_summoning_sickness,
+            keywords,
+            granted_ability,
+            ..
+        }) = &grant.effect
+        else {
+            panic!("the static grants to its host");
+        };
+        assert!(may_attack_ignoring_summoning_sickness);
+        assert!(
+            keywords.is_empty(),
+            "as though it had haste, not haste — the host's tap abilities stay locked"
+        );
+        let granted = granted_ability.expect("the {0} untap rides along as a granted ability");
+        assert_eq!(
+            granted.cost,
+            ActivationCost {
+                once_each_turn: true,
+                only_during_your_turn: true,
+                ..ActivationCost::default()
+            }
+        );
+        assert_eq!(
+            granted.effects,
+            [Effect::Control(ControlEffect::UntapTarget {
+                target: TargetSpec::ThisPermanent,
+                count: TargetCount::default(),
+            })]
+        );
     }
 
     /// Gloom's two taxes have to keep their two different filter kinds straight: the cast half

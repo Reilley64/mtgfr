@@ -2295,6 +2295,11 @@ impl Game {
         if cost.only_during_opponents_turn && self.active_player == player {
             return Err(Reject::WrongTiming);
         }
+        // "Activate only during your turn" (CR 602.5b — Instill Energy): the mirror of the line
+        // above. Not folded into `sorcery_speed`, which would also shut the ability off in combat.
+        if cost.only_during_your_turn && self.active_player != player {
+            return Err(Reject::WrongTiming);
+        }
         if cost.only_before_attackers
             && (self.step > Step::DeclareAttackers || self.combat.attackers_declared)
         {

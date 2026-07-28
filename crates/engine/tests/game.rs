@@ -3277,6 +3277,86 @@ fn animate_wall_lets_the_wall_it_enchants_attack() {
     assert_eq!(game.life(PlayerId(1)), 17, "the 3/5 connected");
 }
 
+#[test]
+fn instill_energy_lets_the_creature_it_enchants_attack_the_turn_it_arrived() {
+    // "Enchanted creature can attack as though it had haste." The creature stays summoning sick —
+    // as with Animate Wall's defender, only the attack check is waived, and only for its host.
+    let mut game = Game::with_players(2, 0);
+    let ox = game.spawn_in_hand(PlayerId(0), creature("Groggy Ox", 2, 2, &[]));
+    let recruit = game.spawn_in_hand(PlayerId(0), creature("Fresh Recruit", 1, 1, &[]));
+    cast_and_resolve(&mut game, ox, None);
+    cast_and_resolve(&mut game, recruit, None);
+    let ox = battlefield_named(&game, PlayerId(0), "Groggy Ox")[0];
+    let recruit = battlefield_named(&game, PlayerId(0), "Fresh Recruit")[0];
+    let instill = game.spawn_in_hand(PlayerId(0), card("Instill Energy"));
+    cast_and_resolve(&mut game, instill, Some(Target::Object(ox)));
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+
+    assert_eq!(
+        game.submit(Intent::DeclareAttackers {
+            player: PlayerId(0),
+            attackers: vec![
+                (ox, Defender::Player(PlayerId(1))),
+                (recruit, Defender::Player(PlayerId(1))),
+            ],
+        }),
+        Err(Reject::IllegalDeclaration),
+        "the recruit arrived this turn too and nothing enchanted it",
+    );
+    game.submit(Intent::DeclareAttackers {
+        player: PlayerId(0),
+        attackers: vec![(ox, Defender::Player(PlayerId(1)))],
+    })
+    .expect("the enchanted creature attacks as though it had haste");
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+    assert_eq!(game.life(PlayerId(1)), 18, "the 2/2 connected");
+}
+
+#[test]
+fn instill_energys_free_untap_is_once_a_turn_and_only_on_your_own() {
+    // "{0}: Untap enchanted creature. Activate only during your turn and only once each turn." The
+    // ability is granted onto the host, so it activates at the host's first free index.
+    let mut game = Game::with_players(2, 0);
+    stock_libraries(&mut game);
+    let ox = game.spawn_on_battlefield(PlayerId(0), creature("Groggy Ox", 2, 2, &[]));
+    let instill = game.spawn_in_hand(PlayerId(0), card("Instill Energy"));
+    cast_and_resolve(&mut game, instill, Some(Target::Object(ox)));
+    let straighten = |game: &mut Game| {
+        game.submit(Intent::ActivateAbility {
+            player: PlayerId(0),
+            object: ox,
+            ability_index: 0,
+            target: None,
+            sacrifice: vec![],
+            discard_cost: vec![],
+            x: 0,
+        })
+    };
+
+    attack_with(&mut game, vec![ox]);
+    assert!(game.is_tapped(ox), "attacking tapped it");
+    straighten(&mut game).expect("the granted ability costs nothing");
+    resolve_top_of_stack(&mut game);
+    assert!(
+        !game.is_tapped(ox),
+        "it untapped mid-combat, still attacking"
+    );
+    assert_eq!(
+        straighten(&mut game),
+        Err(Reject::CannotActivate),
+        "only once each turn"
+    );
+
+    pass_until_next_turn(&mut game);
+    assert_eq!(
+        straighten(&mut game),
+        Err(Reject::WrongTiming),
+        "only during your turn"
+    );
+    pass_until_next_turn(&mut game);
+    straighten(&mut game).expect("its own next turn lifts the once-each-turn cap");
+}
+
 // ── Attack tax / pillow-fort statics (CR 508.1g declare-attackers costs, Ghostly Prison) ──
 
 /// Float `n` generic-worth of mana into `player`'s pool by tapping `n` Forests.
@@ -8418,6 +8498,7 @@ static X_DRAW_PERMANENT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             once_each_turn: false,
             sorcery_speed: false,
             only_during_opponents_turn: false,
+            only_during_your_turn: false,
             only_before_attackers: false,
             only_during_your_upkeep: false,
             remove_counters: 0,
@@ -8454,6 +8535,7 @@ static FIXED_DRAW_PERMANENT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             once_each_turn: false,
             sorcery_speed: false,
             only_during_opponents_turn: false,
+            only_during_your_turn: false,
             only_before_attackers: false,
             only_during_your_upkeep: false,
             remove_counters: 0,
@@ -11445,6 +11527,7 @@ static LIFELINK_PINGER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             once_each_turn: false,
             sorcery_speed: false,
             only_during_opponents_turn: false,
+            only_during_your_turn: false,
             only_before_attackers: false,
             only_during_your_upkeep: false,
             remove_counters: 0,
@@ -12613,6 +12696,7 @@ fn auto_tap_pays_with_a_free_granted_mana_ability() {
                 once_each_turn: false,
                 sorcery_speed: false,
                 only_during_opponents_turn: false,
+                only_during_your_turn: false,
                 only_before_attackers: false,
                 only_during_your_upkeep: false,
                 remove_counters: 0,
@@ -16408,6 +16492,7 @@ static TEST_COUNTER_SHEDDER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
                 once_each_turn: false,
                 sorcery_speed: false,
                 only_during_opponents_turn: false,
+                only_during_your_turn: false,
                 only_before_attackers: false,
                 only_during_your_upkeep: false,
                 remove_counters: 2,
@@ -16588,6 +16673,7 @@ static TEST_SAC_A_FOOD: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             once_each_turn: false,
             sorcery_speed: false,
             only_during_opponents_turn: false,
+            only_during_your_turn: false,
             only_before_attackers: false,
             only_during_your_upkeep: false,
             remove_counters: 0,
@@ -16661,6 +16747,7 @@ static TEST_SAC_A_CREATURE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             once_each_turn: false,
             sorcery_speed: false,
             only_during_opponents_turn: false,
+            only_during_your_turn: false,
             only_before_attackers: false,
             only_during_your_upkeep: false,
             remove_counters: 0,
@@ -16787,6 +16874,7 @@ static TEST_NONTOKEN_COUNTER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             once_each_turn: false,
             sorcery_speed: false,
             only_during_opponents_turn: false,
+            only_during_your_turn: false,
             only_before_attackers: false,
             only_during_your_upkeep: false,
             remove_counters: 0,
@@ -21012,6 +21100,7 @@ fn hybrid_filter_land(name: &'static str, a: Color, b: Color) -> CardDef {
             once_each_turn: false,
             sorcery_speed: false,
             only_during_opponents_turn: false,
+            only_during_your_turn: false,
             only_before_attackers: false,
             only_during_your_upkeep: false,
             remove_counters: 0,
@@ -29879,6 +29968,7 @@ static FLIGHT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             must_be_blocked_by_all: false,
             cant_attack_controller: false,
             may_attack_ignoring_defender: false,
+            may_attack_ignoring_summoning_sickness: false,
             cant_be_enchanted: false,
             activated_abilities: None,
             legendary_only: false,
@@ -29975,6 +30065,7 @@ static PRO_WHITE_CLOAK: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             must_be_blocked_by_all: false,
             cant_attack_controller: false,
             may_attack_ignoring_defender: false,
+            may_attack_ignoring_summoning_sickness: false,
             cant_be_enchanted: false,
             activated_abilities: None,
             legendary_only: false,
@@ -30036,6 +30127,7 @@ const FALLEN_IDEAL_GRANT: GrantedAbility = GrantedAbility {
         once_each_turn: false,
         sorcery_speed: false,
         only_during_opponents_turn: false,
+        only_during_your_turn: false,
         only_before_attackers: false,
         only_during_your_upkeep: false,
         remove_counters: 0,
@@ -30075,6 +30167,7 @@ static FALLEN_IDEAL_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             must_be_blocked_by_all: false,
             cant_attack_controller: false,
             may_attack_ignoring_defender: false,
+            may_attack_ignoring_summoning_sickness: false,
             cant_be_enchanted: false,
             activated_abilities: None,
             legendary_only: false,
@@ -30107,6 +30200,7 @@ static VOW_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             must_be_blocked_by_all: false,
             cant_attack_controller: true,
             may_attack_ignoring_defender: false,
+            may_attack_ignoring_summoning_sickness: false,
             cant_be_enchanted: false,
             activated_abilities: None,
             legendary_only: false,
@@ -30499,6 +30593,7 @@ static MUTABLE_FLYER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
                 once_each_turn: false,
                 sorcery_speed: false,
                 only_during_opponents_turn: false,
+                only_during_your_turn: false,
                 only_before_attackers: false,
                 only_during_your_upkeep: false,
                 remove_counters: 0,
@@ -36000,6 +36095,7 @@ static RELIC_SHAPED_TARGET_EXILE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             once_each_turn: false,
             sorcery_speed: false,
             only_during_opponents_turn: false,
+            only_during_your_turn: false,
             only_before_attackers: false,
             only_during_your_upkeep: false,
             remove_counters: 0,
@@ -43701,6 +43797,7 @@ static RUBINIA: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             once_each_turn: false,
             sorcery_speed: false,
             only_during_opponents_turn: false,
+            only_during_your_turn: false,
             only_before_attackers: false,
             only_during_your_upkeep: false,
             remove_counters: 0,
@@ -45243,6 +45340,7 @@ static REVERT_ALL_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             once_each_turn: false,
             sorcery_speed: false,
             only_during_opponents_turn: false,
+            only_during_your_turn: false,
             only_before_attackers: false,
             only_during_your_upkeep: false,
             remove_counters: 0,
@@ -51394,6 +51492,7 @@ fn loyalty_ability(loyalty: i32, effect: Effect) -> Ability {
             once_each_turn: false,
             sorcery_speed: false,
             only_during_opponents_turn: false,
+            only_during_your_turn: false,
             only_before_attackers: false,
             only_during_your_upkeep: false,
             remove_counters: 0,
@@ -58394,6 +58493,7 @@ static IMPULSE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             once_each_turn: false,
             sorcery_speed: false,
             only_during_opponents_turn: false,
+            only_during_your_turn: false,
             only_before_attackers: false,
             only_during_your_upkeep: false,
             remove_counters: 0,
@@ -58619,6 +58719,7 @@ static RANDOM_GRAVEYARD_EXILE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             once_each_turn: false,
             sorcery_speed: false,
             only_during_opponents_turn: false,
+            only_during_your_turn: false,
             only_before_attackers: false,
             only_during_your_upkeep: false,
             remove_counters: 0,
@@ -65339,6 +65440,7 @@ static TEST_STEELBANE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
                 once_each_turn: false,
                 sorcery_speed: false,
                 only_during_opponents_turn: false,
+                only_during_your_turn: false,
                 only_before_attackers: false,
                 only_during_your_upkeep: false,
                 remove_counters: 1,
@@ -75165,6 +75267,7 @@ static SACRIFICE_A_CREATURE_OUTLET: LazyLock<CardDef> = LazyLock::new(|| CardDef
             once_each_turn: false,
             sorcery_speed: false,
             only_during_opponents_turn: false,
+            only_during_your_turn: false,
             only_before_attackers: false,
             only_during_your_upkeep: false,
             remove_counters: 0,
@@ -79461,6 +79564,7 @@ const fn level_up_ability(level: u8) -> Ability {
             once_each_turn: false,
             sorcery_speed: true,
             only_during_opponents_turn: false,
+            only_during_your_turn: false,
             only_before_attackers: false,
             only_during_your_upkeep: false,
             remove_counters: 0,
@@ -79591,6 +79695,7 @@ static TEST_LOSE_1_LIFE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             once_each_turn: false,
             sorcery_speed: false,
             only_during_opponents_turn: false,
+            only_during_your_turn: false,
             only_before_attackers: false,
             only_during_your_upkeep: false,
             remove_counters: 0,
@@ -80108,6 +80213,7 @@ static TEST_MODIFIED_DEATH_WATCHER: LazyLock<CardDef> = LazyLock::new(|| CardDef
             once_each_turn: false,
             sorcery_speed: false,
             only_during_opponents_turn: false,
+            only_during_your_turn: false,
             only_before_attackers: false,
             only_during_your_upkeep: false,
             remove_counters: 0,
@@ -84821,6 +84927,7 @@ static OPPONENT_DAMAGE_WATCHER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
                 once_each_turn: false,
                 sorcery_speed: false,
                 only_during_opponents_turn: false,
+                only_during_your_turn: false,
                 only_before_attackers: false,
                 only_during_your_upkeep: false,
                 remove_counters: 0,
@@ -89252,6 +89359,7 @@ static TEST_MINUS_ONE_COUNTER_CREATURE: LazyLock<CardDef> = LazyLock::new(|| Car
                 once_each_turn: false,
                 sorcery_speed: false,
                 only_during_opponents_turn: false,
+                only_during_your_turn: false,
                 only_before_attackers: false,
                 only_during_your_upkeep: false,
                 remove_counters: 1,
@@ -90365,6 +90473,7 @@ fn flipper_front() -> CardDef {
                 once_each_turn: false,
                 sorcery_speed: false,
                 only_during_opponents_turn: false,
+                only_during_your_turn: false,
                 only_before_attackers: false,
                 only_during_your_upkeep: false,
                 remove_counters: 0,
@@ -101945,6 +102054,7 @@ const fn monstrosity_ability(count: u8) -> Ability {
             once_each_turn: false,
             sorcery_speed: false,
             only_during_opponents_turn: false,
+            only_during_your_turn: false,
             only_before_attackers: false,
             only_during_your_upkeep: false,
             remove_counters: 0,
@@ -102628,6 +102738,7 @@ static TEST_CULL_CREATURE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             once_each_turn: false,
             sorcery_speed: false,
             only_during_opponents_turn: false,
+            only_during_your_turn: false,
             only_before_attackers: false,
             only_during_your_upkeep: false,
             remove_counters: 0,
@@ -102854,6 +102965,7 @@ static TOXIC_AURA_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             must_be_blocked_by_all: false,
             cant_attack_controller: false,
             may_attack_ignoring_defender: false,
+            may_attack_ignoring_summoning_sickness: false,
             cant_be_enchanted: false,
             activated_abilities: None,
             legendary_only: false,

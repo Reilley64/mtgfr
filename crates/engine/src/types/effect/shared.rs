@@ -1626,6 +1626,12 @@ pub struct ActivationCost {
     /// `cast_only_before_attackers` / `cast_only_before_combat_damage` cast restrictions, and
     /// composable with the sibling below the same way those are with each other.
     pub only_during_opponents_turn: bool,
+    /// "Activate only during your turn" (CR 602.5b — Instill Energy's free untap): the mirror of
+    /// the sibling above, and the phase-wide relative of
+    /// [`only_during_your_upkeep`](Self::only_during_your_upkeep)'s single step. Not the same as
+    /// [`sorcery_speed`](Self::sorcery_speed), which also demands an empty stack and a main phase
+    /// — this one only asks whose turn it is, so it activates in combat.
+    pub only_during_your_turn: bool,
     /// "…before attackers are declared" (CR 602.5b — Nettling Imp): the activation-side twin of
     /// `CardDef::cast_only_before_attackers` (Master Warcraft) and gated identically — the window
     /// runs up to and including the declare-attackers step, and shuts the moment the declaration

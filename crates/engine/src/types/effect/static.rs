@@ -370,6 +370,13 @@ pub enum StaticEffect {
         /// anything else reading "has defender" is unaffected.
         #[cfg_attr(feature = "card-dsl", serde(default))]
         may_attack_ignoring_defender: bool,
+        /// Instill Energy's "Enchanted creature can attack as though it had haste": the host
+        /// ignores the summoning-sickness attack restriction (CR 302.6) while this Aura is on it.
+        /// The sibling of `may_attack_ignoring_defender` above, and deliberately narrower than
+        /// granting [`Keyword::Haste`](crate::Keyword) — real haste would also free the host's
+        /// `{T}` abilities, which "as though it had haste" for attacking does not.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        may_attack_ignoring_summoning_sickness: bool,
         /// Consecrate Land's "can't be enchanted by other Auras": no *other* Aura may attach to
         /// this host — none can be cast targeting it, and one already there falls off (CR
         /// 704.5n). See [`Game::host_cant_be_enchanted_by`](crate::Game::host_cant_be_enchanted_by).

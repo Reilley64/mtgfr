@@ -234,7 +234,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [x] **Healing Salve** {W} · Instant — increment 4
 - [x] **Helm of Chatzuk** {1} · Artifact — increment 14 (approximated: banding's blocking half only — see increment 79)
 - [x] **Hypnotic Specter** {1}{B}{B} · Creature — Specter — increment 17
-- [ ] **Instill Energy** {G} · Enchantment — Aura — increment 7
+- [x] **Instill Energy** {G} · Enchantment — Aura — increment 7
 - [x] **Invisibility** {U}{U} · Enchantment — Aura — increment 11
 - [x] **Iron Star** {1} · Artifact — increment 10
 - [x] **Ironclaw Orcs** {1}{R} · Creature — Orc — increment 11

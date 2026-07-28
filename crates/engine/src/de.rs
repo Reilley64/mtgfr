@@ -2061,6 +2061,9 @@ impl<'de> Deserialize<'de> for Ability {
             /// "Activate only during an opponent's turn" (CR 602.5b — Nettling Imp).
             #[serde(default)]
             only_during_opponents_turn: bool,
+            /// "Activate only during your turn" (CR 602.5b — Instill Energy).
+            #[serde(default)]
+            only_during_your_turn: bool,
             /// "…before attackers are declared" (CR 602.5b — Nettling Imp), the activated-ability
             /// twin of `cast_only_before_attackers`.
             #[serde(default)]
@@ -2352,6 +2355,7 @@ impl<'de> Deserialize<'de> for Ability {
                 once_each_turn: flat.once_each_turn,
                 sorcery_speed: flat.sorcery_speed,
                 only_during_opponents_turn: flat.only_during_opponents_turn,
+                only_during_your_turn: flat.only_during_your_turn,
                 only_before_attackers: flat.only_before_attackers,
                 only_during_your_upkeep: flat.only_during_your_upkeep,
                 only_owner_may_activate: flat.only_owner_may_activate,

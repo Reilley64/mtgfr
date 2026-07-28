@@ -271,7 +271,10 @@ impl Game {
         // manland (Restless Spire) can attack.
         self.is_creature_on_battlefield(creature)
             && !p.tapped
-            && !self.is_sick_without_haste(creature)
+            // Instill Energy's "can attack as though it had haste" waives this one check; the
+            // host stays summoning sick for its own `{T}` abilities.
+            && (!self.is_sick_without_haste(creature)
+                || self.host_may_attack_ignoring_summoning_sickness(creature))
             // Animate Wall's "can attack as though it didn't have defender" waives this one
             // check without touching the keyword itself.
             && (!self.has_keyword(creature, Keyword::Defender)
