@@ -2,7 +2,10 @@ import { html } from "foldkit/html";
 import { describe, expect, it } from "vitest";
 import { button } from "./button";
 
-const h = html<never>();
+type Msg = { _tag: "clicked" };
+
+const h = html<Msg>();
+const clicked: Msg = { _tag: "clicked" };
 
 /** snabbdom stores classes as a truth-map under data.class. */
 function classes(node: unknown): string[] {
@@ -18,6 +21,12 @@ function attrs(node: unknown): Record<string, string> {
 function props(node: unknown): Record<string, unknown> {
   const n = node as { data?: { props?: Record<string, unknown> } };
   return n.data?.props ?? {};
+}
+
+/** snabbdom stores event listeners under data.on, separate from data.props/data.attrs. */
+function on(node: unknown): Record<string, unknown> {
+  const n = node as { data?: { on?: Record<string, unknown> } };
+  return n.data?.on ?? {};
 }
 
 describe("button", () => {
@@ -83,5 +92,49 @@ describe("button", () => {
     expect(props(node).href).toBe("/decks");
     expect(classes(node)).toContain("border-vine");
     expect(props(node).type).toBeUndefined();
+  });
+
+  it("dispatches the given message when a button is clicked", () => {
+    const node = button(h, { onClick: clicked }, ["x"]);
+
+    expect(typeof on(node).click).toBe("function");
+  });
+
+  it("dispatches the given message when an anchor is clicked", () => {
+    const node = button(h, { as: "a", href: "/decks", onClick: clicked }, ["Play"]);
+
+    expect(typeof on(node).click).toBe("function");
+  });
+
+  it("passes extra attrs through to a rendered button", () => {
+    const node = button(h, { attrs: [h.AriaExpanded(true), h.DataAttribute("ui", "menu-trigger")] }, ["x"]);
+
+    expect(attrs(node)["aria-expanded"]).toBe("true");
+    expect(attrs(node)["data-ui"]).toBe("menu-trigger");
+  });
+
+  it("passes extra attrs through to a rendered anchor", () => {
+    const node = button(
+      h,
+      { as: "a", href: "/decks", attrs: [h.AriaExpanded(true), h.DataAttribute("ui", "menu-trigger")] },
+      ["Play"],
+    );
+
+    expect(attrs(node)["aria-expanded"]).toBe("true");
+    expect(attrs(node)["data-ui"]).toBe("menu-trigger");
+  });
+
+  it("drops a null class instead of rendering it as a literal class name", () => {
+    const node = button(h, { variant: "ghost", class: null }, ["Leave"]);
+
+    expect(classes(node)).toContain("border-vine");
+  });
+
+  it("merges an array of call-site classes with the variant", () => {
+    const node = button(h, { variant: "ghost", class: ["text-burn-red", "uppercase"] }, ["Leave"]);
+
+    expect(classes(node)).toContain("text-burn-red");
+    expect(classes(node)).toContain("uppercase");
+    expect(classes(node)).not.toContain("text-snow-mint");
   });
 });

@@ -34,18 +34,21 @@ const recipe = cva({
 
 export type ButtonVariant = "primary" | "ghost" | "danger" | "link" | "game" | "game-quiet" | "game-yielded";
 
-export type ButtonProps<Msg> = {
+type SharedProps<Msg> = {
   variant?: ButtonVariant;
   onClick?: Msg;
-  type?: "button" | "submit" | "reset";
-  disabled?: boolean;
   testId?: string;
   ariaLabel?: string;
   class?: ClassValue;
   attrs?: ReadonlyArray<Attribute<Msg>>;
-  as?: "button" | "a";
-  href?: string;
 };
+
+// `as: "a"` and `as: "button"` (or omitted) are mutually exclusive shapes, not one shape with
+// optional fields — an anchor has no `disabled`/`type` and a button has no `href`. Modelling this
+// as a union makes `{ as: "a", disabled: true }` and a missing `href` on an anchor unrepresentable
+// instead of bugs caught (or missed) at render time.
+export type ButtonProps<Msg> = SharedProps<Msg> &
+  ({ as?: "button"; type?: "button" | "submit" | "reset"; disabled?: boolean } | { as: "a"; href: string });
 
 function shared<Msg>(h: HtmlFactory<Msg>, props: ButtonProps<Msg>): Array<Attribute<Msg>> {
   const className = recipe({ variant: props.variant, class: props.class });
@@ -59,7 +62,10 @@ export function button<Msg>(h: HtmlFactory<Msg>, props: ButtonProps<Msg>, childr
   // An anchor is not a button: @foldkit/ui's button emits `type`/`disabled`, which are invalid on
   // <a>. Link-styled navigation therefore renders directly instead of through Button.view.
   if (props.as === "a") {
-    return h.a([h.Href(props.href ?? ""), ...shared(h, props)], children);
+    // Button.view wires onClick for the button branch; an anchor bypasses Button.view entirely
+    // (see above), so onClick has to be attached here or it silently does nothing.
+    const onClick = props.onClick != null ? [h.OnClick(props.onClick)] : [];
+    return h.a([h.Href(props.href), ...onClick, ...shared(h, props)], children);
   }
 
   return Button.view<Msg>({
