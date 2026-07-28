@@ -4,7 +4,7 @@
 import { type Html, html } from "foldkit/html";
 import { outcome } from "~/outcome";
 import { playerLabel } from "~/players";
-import { buttonClass } from "~/ui/buttonClass";
+import { button } from "~/ui/button";
 import type { VisibleState } from "~/wire/types";
 import { LeaveGame, type Message, ResultSeen } from "../messages";
 
@@ -69,24 +69,8 @@ export function resultOverlayView(state: VisibleState, resultSeen: boolean): Htm
           h.div(
             [h.Class("flex gap-md")],
             [
-              h.button(
-                [
-                  h.Type("button"),
-                  h.DataAttribute("testid", "result-watch"),
-                  h.OnClick(ResultSeen()),
-                  h.Class(buttonClass("ghost")),
-                ],
-                [watchLabel(state)],
-              ),
-              h.button(
-                [
-                  h.Type("button"),
-                  h.DataAttribute("testid", "result-leave"),
-                  h.OnClick(LeaveGame()),
-                  h.Class(buttonClass("primary")),
-                ],
-                ["Back to your decks"],
-              ),
+              button(h, { testId: "result-watch", onClick: ResultSeen(), variant: "ghost" }, [watchLabel(state)]),
+              button(h, { testId: "result-leave", onClick: LeaveGame(), variant: "primary" }, ["Back to your decks"]),
             ],
           ),
         ],

@@ -1,7 +1,7 @@
 // Top-left sound toggle — visible for everyone on the stream (Solid board.tsx).
 
 import { type Html, html } from "foldkit/html";
-import { buttonClass } from "~/ui/buttonClass";
+import { button } from "~/ui/button";
 import { type Message, SoundToggled } from "../messages";
 import type { BoardModel } from "../submodel";
 
@@ -9,15 +9,16 @@ const h = html<Message>();
 
 export function soundToggleView(board: BoardModel): Html {
   const on = board.soundOn;
-  return h.button(
-    [
-      h.Type("button"),
-      h.DataAttribute("testid", "board-sound-toggle"),
-      h.Attribute("aria-label", on ? "Mute sound" : "Unmute sound"),
-      h.Attribute("aria-pressed", on ? "true" : "false"),
-      h.OnClick(SoundToggled()),
-      h.Class(buttonClass("ghost", "pointer-events-auto px-md py-xs text-caption")),
-    ],
+  return button(
+    h,
+    {
+      testId: "board-sound-toggle",
+      ariaLabel: on ? "Mute sound" : "Unmute sound",
+      onClick: SoundToggled(),
+      variant: "ghost",
+      class: "pointer-events-auto px-md py-xs text-caption",
+      attrs: [h.Attribute("aria-pressed", on ? "true" : "false")],
+    },
     [on ? "Sound" : "Muted"],
   );
 }

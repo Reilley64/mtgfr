@@ -5,7 +5,7 @@ import { cn } from "~/cn";
 import { combatCoachFromState } from "~/combatCoach";
 import { colors } from "~/design-tokens.generated";
 import { isActivePlayer } from "~/spectator";
-import { buttonClass } from "~/ui/buttonClass";
+import { button } from "~/ui/button";
 import type { VisibleState } from "~/wire/types";
 import { EXILE_OUTLINE, GRAVEYARD_OUTLINE, PLAYABLE_BORDER } from "../chrome";
 import { HintDismissed, LegendToggled, type Message } from "../messages";
@@ -68,13 +68,14 @@ function hintStripView(): Html {
     ],
     [
       h.span([], ["Drag to play · Click to activate · Alt inspect · Space pass"]),
-      h.button(
-        [
-          h.Type("button"),
-          h.Attribute("aria-label", "Dismiss hint"),
-          h.OnClick(HintDismissed()),
-          h.Class(buttonClass("ghost", "hit-quiet border-none p-0 text-lichen")),
-        ],
+      button(
+        h,
+        {
+          ariaLabel: "Dismiss hint",
+          onClick: HintDismissed(),
+          variant: "ghost",
+          class: "hit-quiet border-none p-0 text-lichen",
+        },
         ["✕"],
       ),
     ],
@@ -104,13 +105,14 @@ function legendPanelView(): Html {
         [h.Class("mb-sm flex items-center justify-between gap-sm")],
         [
           h.span([h.Class("font-bold text-label text-seafoam")], ["Board legend"]),
-          h.button(
-            [
-              h.Type("button"),
-              h.Attribute("aria-label", "Close legend"),
-              h.OnClick(LegendToggled()),
-              h.Class(buttonClass("ghost", "hit-quiet border-none p-0 text-lichen")),
-            ],
+          button(
+            h,
+            {
+              ariaLabel: "Close legend",
+              onClick: LegendToggled(),
+              variant: "ghost",
+              class: "hit-quiet border-none p-0 text-lichen",
+            },
             ["✕"],
           ),
         ],
@@ -132,15 +134,16 @@ function legendPanelView(): Html {
 }
 
 function legendToggleButton(expanded: boolean): Html {
-  return h.button(
-    [
-      h.Type("button"),
-      h.DataAttribute("testid", "board-legend-toggle"),
-      h.Attribute("aria-label", "Board legend"),
-      h.Attribute("aria-expanded", expanded ? "true" : "false"),
-      h.OnClick(LegendToggled()),
-      h.Class(buttonClass("ghost", "pointer-events-auto px-md py-xs")),
-    ],
+  return button(
+    h,
+    {
+      testId: "board-legend-toggle",
+      ariaLabel: "Board legend",
+      onClick: LegendToggled(),
+      variant: "ghost",
+      class: "pointer-events-auto px-md py-xs",
+      attrs: [h.Attribute("aria-expanded", expanded ? "true" : "false")],
+    },
     ["?"],
   );
 }

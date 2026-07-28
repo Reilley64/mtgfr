@@ -6,7 +6,7 @@
 import { type Html, html } from "foldkit/html";
 import { cardHoverPreviewView } from "~/deck-builder/card-hover-preview";
 import { commanderDamageBreakdown, type InspectFace, type InspectPin, shownName } from "~/inspect";
-import { buttonClass } from "~/ui/buttonClass";
+import { button } from "~/ui/button";
 import type { CatalogCard, ObjectView, PlayerView } from "~/wire/types";
 import { InspectDismissed, InspectFlipFace, type Message } from "../messages";
 
@@ -143,13 +143,9 @@ export function inspectView(
 
   // Dismiss via backdrop / Esc / Alt-up — no Close control (Solid parity).
   const flipButton: Html | null = hasBack
-    ? h.button(
-        [
-          h.Type("button"),
-          h.OnClick(InspectFlipFace()),
-          h.Class(buttonClass("game-quiet")),
-          h.Attribute("title", "Flip card face"),
-        ],
+    ? button(
+        h,
+        { onClick: InspectFlipFace(), variant: "game-quiet", attrs: [h.Attribute("title", "Flip card face")] },
         ["Flip"],
       )
     : null;

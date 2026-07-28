@@ -2,7 +2,7 @@
 // Mirrors Solid board-overlays.tsx PileOverlay.
 
 import { type Html, html } from "foldkit/html";
-import { buttonClass } from "~/ui/buttonClass";
+import { button } from "~/ui/button";
 import { cardArt } from "~/ui/card-art";
 import type { ObjectView, VisibleState } from "~/wire/types";
 import { ZONE } from "../geometry/layout";
@@ -98,17 +98,7 @@ export function pileOverlayView(
       h.div([h.Class("flex flex-wrap gap-xs")], cardList),
       h.div(
         [h.Class("mt-sm flex justify-end")],
-        [
-          h.button(
-            [
-              h.Type("button"),
-              h.DataAttribute("testid", "pile-overlay-close"),
-              h.OnClick(PileOverlayClosed()),
-              h.Class(buttonClass("ghost")),
-            ],
-            ["Close"],
-          ),
-        ],
+        [button(h, { testId: "pile-overlay-close", onClick: PileOverlayClosed(), variant: "ghost" }, ["Close"])],
       ),
     ],
   );
