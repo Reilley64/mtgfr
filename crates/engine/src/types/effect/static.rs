@@ -376,6 +376,12 @@ pub enum StaticEffect {
             serde(default, deserialize_with = "de::static_str_slice")
         )]
         set_subtypes: &'static [&'static str],
+        /// Phantasmal Terrain's "enchanted land is the chosen type": `set_subtypes` is the one
+        /// basic land type this Aura's controller named as it entered
+        /// ([`ChoiceEffect::ChooseBasicLandType`](crate::ChoiceEffect)) rather than a printed
+        /// list. The whole type change is inert until that choice is answered.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        set_chosen_land_type: bool,
         #[cfg_attr(feature = "card-dsl", serde(default))]
         lose_all_abilities: bool,
     },

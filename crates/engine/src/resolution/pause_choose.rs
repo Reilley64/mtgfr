@@ -27,6 +27,16 @@ impl Game {
                     options: CREATURE_TYPES,
                 },
             ),
+            // Phantasmal Terrain's "As this Aura enters, choose a basic land type": the same
+            // picker, narrowed to the five basic land types.
+            Effect::Choice(ChoiceEffect::ChooseBasicLandType) => pending::raise(
+                self,
+                pending::ChoiceRequest::ChooseCreatureType {
+                    player: controller,
+                    source,
+                    options: BASIC_LAND_TYPES,
+                },
+            ),
             // Flickering Ward's "As this Aura enters, choose a color": pause on a ChooseColor for (CR 702.21, CR 303.4)
             // the controller over the fixed five colors.
             Effect::Choice(ChoiceEffect::ChooseColor) => pending::raise(

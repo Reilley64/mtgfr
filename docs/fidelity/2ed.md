@@ -271,7 +271,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [x] **Nightmare** {5}{B} · Creature — Nightmare Horse — increment 2
 - [ ] **Paralyze** {B} · Enchantment — Aura — increment 7
 - [x] **Personal Incarnation** {3}{W}{W}{W} · Creature — Avatar Incarnation — increment 6c
-- [ ] **Phantasmal Terrain** {U}{U} · Enchantment — Aura — increment 8b
+- [x] **Phantasmal Terrain** {U}{U} · Enchantment — Aura — increment 8b
 - [x] **Pirate Ship** {4}{U} · Creature — Human Pirate — increment 24, 77
 - [x] **Plague Rats** {2}{B} · Creature — Rat — increment 2
 - [ ] **Power Leak** {1}{U} · Enchantment — Aura — increment 4

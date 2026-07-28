@@ -110,6 +110,7 @@ message_keys! {
     EFFECT_COUNTERS_REMOVE_COUNTER_FROM_SELF => "effect.counters_remove_counter_from_self",
     EFFECT_CHOICE_CAST_CREATURE_FACE_DOWN => "effect.choice_cast_creature_face_down",
     EFFECT_CHOICE_CASTER_KEEPS_ONE_OF_EACH_TYPE_PER_PLAYER => "effect.choice_caster_keeps_one_of_each_type_per_player",
+    EFFECT_CHOICE_CHOOSE_BASIC_LAND_TYPE => "effect.choice_choose_basic_land_type",
     EFFECT_CHOICE_CHOOSE_COLOR => "effect.choice_choose_color",
     EFFECT_CHOICE_CHOOSE_CREATURE_TYPE => "effect.choice_choose_creature_type",
     EFFECT_CHOICE_CHOOSE_OPPONENT => "effect.choice_choose_opponent",
@@ -1988,6 +1989,9 @@ impl Effect {
             }
             Effect::Choice(ChooseCreatureType) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_CHOOSE_CREATURE_TYPE)
+            }
+            Effect::Choice(ChooseBasicLandType) => {
+                MessageRef::new(MessageKey::EFFECT_CHOICE_CHOOSE_BASIC_LAND_TYPE)
             }
             Effect::Choice(ChooseColor) => MessageRef::new(MessageKey::EFFECT_CHOICE_CHOOSE_COLOR),
             Effect::Choice(ChooseOpponent) => {

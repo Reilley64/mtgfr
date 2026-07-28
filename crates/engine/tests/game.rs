@@ -108514,3 +108514,77 @@ fn the_mana_planner_spends_a_swamped_mountain_as_black() {
         "and no longer pays {{R}}"
     );
 }
+
+// ── A land that is whichever type you named (fidelity #8b) ─────────────────────────────────
+
+#[test]
+fn phantasmal_terrain_makes_a_land_the_type_you_name() {
+    // "As this Aura enters, choose a basic land type. Enchanted land is the chosen type."
+    // 8a's CR 305.7 derivation carries the mana half; what is new is that the type is answered
+    // rather than printed.
+    let mut game = Game::new();
+    let forest = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
+    let terrain = game.spawn_in_hand(PlayerId(0), card("Phantasmal Terrain"));
+    cast_and_resolve(&mut game, terrain, Some(Target::Object(forest)));
+
+    let Some(PendingChoice::ChooseCreatureType {
+        player, options, ..
+    }) = game.pending_choice()
+    else {
+        panic!("the Aura pauses as it enters for its controller to name a type");
+    };
+    assert_eq!(player, PlayerId(0));
+    assert_eq!(
+        options,
+        &["Plains", "Island", "Swamp", "Mountain", "Forest"],
+        "a basic land type, not a creature type"
+    );
+    assert_eq!(
+        game.effective_subtypes(forest),
+        vec!["Forest"],
+        "still a Forest while the choice is unanswered"
+    );
+
+    game.submit(Intent::ChooseCreatureType {
+        player: PlayerId(0),
+        subtype: "Island".to_string(),
+    })
+    .unwrap();
+
+    assert_eq!(game.effective_subtypes(forest), vec!["Island"]);
+    let before = (
+        game.mana_in_pool(PlayerId(0), Color::Blue),
+        game.mana_in_pool(PlayerId(0), Color::Green),
+    );
+    game.submit(Intent::TapForMana {
+        player: PlayerId(0),
+        object: forest,
+    })
+    .unwrap();
+    assert_eq!(
+        (
+            game.mana_in_pool(PlayerId(0), Color::Blue),
+            game.mana_in_pool(PlayerId(0), Color::Green),
+        ),
+        (before.0 + 1, before.1),
+        "the named Island's {{U}}, not the Forest's {{G}}"
+    );
+}
+
+#[test]
+fn phantasmal_terrain_refuses_a_creature_type() {
+    // The picker is the same one Patchwork Banner raises, narrowed by its `options` — naming
+    // something off that list is not a legal answer.
+    let mut game = Game::new();
+    let forest = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
+    let terrain = game.spawn_in_hand(PlayerId(0), card("Phantasmal Terrain"));
+    cast_and_resolve(&mut game, terrain, Some(Target::Object(forest)));
+
+    assert_eq!(
+        game.submit(Intent::ChooseCreatureType {
+            player: PlayerId(0),
+            subtype: "Goblin".to_string(),
+        }),
+        Err(Reject::IllegalChoice)
+    );
+}

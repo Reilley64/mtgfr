@@ -522,19 +522,12 @@ impl Game {
         }
     }
 
-    /// Which basic land types (CR 305.6) a type line carries, as the colors they tap for.
+    /// Which basic land types (CR 305.6) a type line carries, as the colors they tap for —
+    /// [`BASIC_LAND_TYPES`] is in WUBRG order, so its index *is* the color's.
     fn basic_land_types(subtypes: &[&str]) -> [bool; Color::COUNT] {
         let mut colors = [false; Color::COUNT];
-        for subtype in subtypes {
-            let color = match *subtype {
-                "Plains" => Color::White,
-                "Island" => Color::Blue,
-                "Swamp" => Color::Black,
-                "Mountain" => Color::Red,
-                "Forest" => Color::Green,
-                _ => continue,
-            };
-            colors[color.index()] = true;
+        for (color, basic) in colors.iter_mut().zip(BASIC_LAND_TYPES) {
+            *color = subtypes.contains(basic);
         }
         colors
     }
@@ -787,11 +780,26 @@ impl Game {
                         set_types,
                         add_subtypes,
                         set_subtypes,
+                        set_chosen_land_type,
                         lose_all_abilities,
                     }),
                 ) = (ability.timing, ability.effect.clone())
                 else {
                     continue;
+                };
+                // Phantasmal Terrain names its one type as it enters instead of printing it.
+                // `BASIC_LAND_TYPES` doubles as the static home for that single-element slice, so
+                // the answer needs no allocation; an unanswered choice changes nothing at all.
+                let set_subtypes = if set_chosen_land_type {
+                    let chosen = self.as_permanent(id).and_then(|p| p.chosen_subtype);
+                    let Some(i) =
+                        chosen.and_then(|c| BASIC_LAND_TYPES.iter().position(|&t| t == c))
+                    else {
+                        continue;
+                    };
+                    &BASIC_LAND_TYPES[i..=i]
+                } else {
+                    set_subtypes
                 };
                 effects.push(ContinuousEffect {
                     source: id,

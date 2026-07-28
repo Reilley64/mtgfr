@@ -994,6 +994,7 @@ impl Effect {
             // The as-enters creature-type/color/opponent choices always affect the ability's own
             // source. Black Vise's opponent is *chosen*, not targeted (CR 115.10a) — no "target"
             // on the card, so no shroud/protection check and no target-legality recheck.
+            | Effect::Choice(ChoiceEffect::ChooseBasicLandType)
             | Effect::Choice(ChoiceEffect::ChooseCreatureType)
             | Effect::Choice(ChoiceEffect::ChooseColor)
             | Effect::Choice(ChoiceEffect::ChooseOpponent)

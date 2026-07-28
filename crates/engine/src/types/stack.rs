@@ -1805,6 +1805,14 @@ pub enum PendingChoice {
     },
 }
 
+/// The five basic land types (CR 305.6), in WUBRG order so that index `i` is the type that taps
+/// for [`Color::ALL`]`[i]` — [`Game::basic_land_types`](crate::Game) relies on that pairing, and
+/// so does the single-element slice a chosen-land-type Aura hands to the CR 613.4 subtype layer.
+/// Offered as the candidate list for an as-enters "choose a basic land type" choice
+/// ([`Effect::Choice(ChoiceEffect::ChooseBasicLandType)`], Phantasmal Terrain), which reuses
+/// [`PendingChoice::ChooseCreatureType`]'s picker narrowed to these.
+pub const BASIC_LAND_TYPES: &[&str] = &["Plains", "Island", "Swamp", "Mountain", "Forest"];
+
 /// Every creature type printed on a creature card in the pool, offered as the candidate list
 /// for an as-enters "choose a creature type" choice ([`PendingChoice::ChooseCreatureType`]).
 /// Nothing regenerates this list, so the `cards` crate asserts the pool stays inside it — a

@@ -291,13 +291,26 @@ derivation needed, so it came out as `mana_credit_for_colors` and both callers s
 loses the half that went with the type it no longer has, which is what the Badlands test pins.
 *Cards:* evil_presence.
 
-### 8b. `chosen-basic-land-type` — 1 card, M
+### 8b. `chosen-basic-land-type` — 1 card, M — **done**
 Depends on: 8a.
-Phantasmal Terrain — "As this Aura enters, choose a basic land type. Enchanted land is the chosen
-type." Same mechanism as 8a with the subtypes chosen instead of printed, so it needs an as-enters
-`PendingChoice` over the five basic land types and a `set_subtypes` that reads the choice back
-rather than a `&'static` list. The DSL has no "choose a basic land type" prompt; the closest
-existing shape is the choose-a-creature-type prompt backed by `CREATURE_TYPES`.
+*Landed:* no new picker and no allocation. `PendingChoice::ChooseCreatureType` already carries its
+own `options` slice, so `ChoiceEffect::ChooseBasicLandType` raises that same pause narrowed to a
+new `BASIC_LAND_TYPES` constant — naming a creature type is `Reject::IllegalChoice` for free,
+because the handler already validates the answer against the offered list. The answer lands on the
+Aura's own `Permanent::chosen_subtype` exactly as Patchwork Banner's does.
+Reading it back was the one real question: `ContinuousEffectKind::SetTypes` wants a
+`&'static [&'static str]` and a chosen type is a single `&'static str`, which would mean leaking a
+one-element slice on every read of the subtype layer. `BASIC_LAND_TYPES` is that static storage —
+`&BASIC_LAND_TYPES[i..=i]` is the slice, so `set_attached_types { set_chosen_land_type = true }`
+substitutes it for the printed `set_subtypes` in `attachment_type_continuous_effects` and 8a's
+CR 305.7 mana derivation carries the rest unchanged. An unanswered choice contributes no
+continuous effect at all, so the land is untouched until its controller names something.
+`BASIC_LAND_TYPES` is stored in WUBRG order, which lets `Game::basic_land_types` drop its
+string→color match for a zip over the two lists.
+ponytail: `effect.static_set_attached_types` still reads "Attached creature is a …" and pulls a
+`subtypes` param the engine never sends — wrong for a land Aura and empty for every host. It was
+already wrong before either of these cards; folded into the client catch-up pass rather than
+fixed here.
 *Cards:* phantasmal_terrain.
 
 ### 8c. `all-lands-of-a-type-become-another` — 3 cards, M

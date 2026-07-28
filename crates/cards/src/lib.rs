@@ -4631,9 +4631,40 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                 set_types: false,
                 add_subtypes: &[],
                 set_subtypes: &["Swamp"],
+                set_chosen_land_type: false,
                 lose_all_abilities: false,
             }),
             "still a land, and a Swamp instead of whatever it was"
+        );
+    }
+
+    /// Phantasmal Terrain is Evil Presence with the type answered instead of printed, and the
+    /// two halves have to agree: the as-enters choice writes `chosen_subtype`, and only a
+    /// `set_chosen_land_type` type change reads it back. Print a `set_subtypes` list here
+    /// instead and the Aura silently does nothing whatever the controller names.
+    #[test]
+    fn unlimited_phantasmal_terrain_reads_back_the_type_its_controller_named() {
+        let terrain = get_by_name("Phantasmal Terrain").expect("Phantasmal Terrain is in the pool");
+        let [choice, types] = &terrain.abilities[..] else {
+            panic!("the as-enters choice, then the type change that reads it");
+        };
+
+        assert_eq!(choice.timing, Timing::Triggered(Trigger::AsEnters));
+        assert_eq!(
+            choice.effect,
+            Effect::Choice(ChoiceEffect::ChooseBasicLandType)
+        );
+        assert_eq!(
+            types.effect,
+            Effect::Static(StaticEffect::SetAttachedTypes {
+                add_types: TypeSet::NONE,
+                set_types: false,
+                add_subtypes: &[],
+                set_subtypes: &[],
+                set_chosen_land_type: true,
+                lose_all_abilities: false,
+            }),
+            "the chosen type, not a printed one"
         );
     }
 }

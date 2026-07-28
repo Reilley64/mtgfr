@@ -14,6 +14,13 @@ pub enum ChoiceEffect {
 
     CasterKeepsOneOfEachTypePerPlayer,
 
+    /// Phantasmal Terrain's "as this Aura enters, choose a basic land type." The same picker
+    /// [`Self::ChooseCreatureType`] raises, narrowed to [`BASIC_LAND_TYPES`](crate::BASIC_LAND_TYPES)
+    /// — the answer lands on the source's own [`Permanent::chosen_subtype`](crate::Permanent),
+    /// read back by a `set_chosen_land_type`
+    /// [`StaticEffect::SetAttachedTypes`](crate::StaticEffect).
+    ChooseBasicLandType,
+
     ChooseColor,
 
     ChooseCreatureType,
