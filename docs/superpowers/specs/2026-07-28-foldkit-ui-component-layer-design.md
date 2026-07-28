@@ -182,12 +182,24 @@ tooltip-shaped code is the native `title=` attribute — so none were adopted. U
 [`shell-routes-and-auth`](2026-07-20-shell-routes-and-auth.md) and
 [`deck-list-and-builder`](2026-07-20-deck-list-and-builder.md).
 
-**W3 — Shell listbox / combobox / virtualList.**
-Deck-builder card lists and shell pickers. `toast` is adopted only if the wave plan
-finds an existing transient-notification surface to replace; it is not introduced as
-a new UI affordance. Introduces `@floating-ui/dom` anchoring in earnest. Updates
-[`deck-list-and-builder`](2026-07-20-deck-list-and-builder.md) and
-[`lobby-entry-ui`](2026-07-20-lobby-entry-ui.md).
+**W3 — One modal chrome. Shipped.**
+The planned W3 primitives had no shell surface to adopt. `listbox` / `combobox` are
+anchored trigger+popup submodels, but the shell's three searches — deck-list, card
+pool, coverage — are plain inputs whose results render **inline** in the page, so
+adopting either would move results into a floating panel: a restyle, which the
+Non-goals forbid. `virtualList` windows fixed-height rows; the card pool is a
+responsive auto-fill grid paged by an IntersectionObserver sentinel — fetch paging,
+not render windowing. `toast` found zero transient-notification surfaces (errors are
+inline `alertClass` panels), so it was not introduced. `@floating-ui/dom` anchoring
+therefore stays unexercised beyond W2's `Menu`.
+
+W3 shipped the remaining `dialog` adoption instead. `domain/ui/dialog.ts` factors the
+modal frame — `<dialog>`, backdrop, panel — out of `confirmDialog` into `modalDialog`,
+and the deck builder's print picker moves onto it, gaining a focus trap, focus restore,
+Escape, and a managed close. That emptied the hand-rolled `native-dialog.ts`, so it and
+its `ModalOpened` / `OpenDialogAsModal` plumbing are gone and every modal in the client
+is one chrome. Updates [`ui-component-layer`](2026-07-28-ui-component-layer.md) and
+[`deck-list-and-builder`](2026-07-20-deck-list-and-builder.md).
 
 **W4 — Board blocking modals.**
 `prompt-modal`, `result-overlay`, `mulligan-overlay`, and the concede confirm →
