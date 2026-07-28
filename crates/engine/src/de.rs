@@ -1043,7 +1043,7 @@ impl<'de> Deserialize<'de> for ProtectionScope {
 
 /// A numeric quantity in TOML: a plain number (`amount = 3`), a keyword string for a derived
 /// value (`"x"`, `"half_x"`, `"half_x_rounded_down"`, `"twice_x"`, `"per_creature_you_control"`, `"source_power"`,
-/// `"source_toughness"`, `"source_mana_value"`, `"target_power"`, `"target_mana_value"`, `"per_counter_on_source"`, `"life_gained_this_turn"`,
+/// `"source_toughness"`, `"source_mana_value"`, `"target_power"`, `"target_mana_value"`, `"per_counter_on_source"`, `"your_life_total"`, `"life_gained_this_turn"`,
 /// `"spells_cast_this_turn"`, `"damage_taken_this_turn"`, `"untapped_lands_at_turn_start"`,
 /// `"commander_casts_from_command_zone"`, `"creatures_died_this_turn"`,
 /// `"creatures_died_this_turn_any_controller"`,
@@ -1084,6 +1084,7 @@ impl<'de> Deserialize<'de> for Amount {
             "target_toughness",
             "target_mana_value",
             "per_counter_on_source",
+            "your_life_total",
             "life_gained_this_turn",
             "spells_cast_this_turn",
             "damage_taken_this_turn",
@@ -1159,6 +1160,7 @@ impl<'de> Deserialize<'de> for Amount {
                     "per_counter_on_source" => Amount::PerCounterOnSource,
                     "opponents_poison_counters" => Amount::OpponentsPoisonCounters,
                     "controllers_poison_counters" => Amount::ControllersPoisonCounters,
+                    "your_life_total" => Amount::YourLifeTotal,
                     "life_gained_this_turn" => Amount::LifeGainedThisTurn,
                     "spells_cast_this_turn" => Amount::SpellsCastThisTurn,
                     "damage_taken_this_turn" => Amount::DamageTakenThisTurn,

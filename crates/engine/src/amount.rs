@@ -49,6 +49,7 @@ impl Game {
                 .mana_value() as i32,
             Amount::PerCounterOnSource => self.plus_counters(source),
             Amount::PerCounterOfKindOnSource { kind } => self.counters_of_kind(source, kind) as i32,
+            Amount::YourLifeTotal => self.players[controller.0 as usize].life,
             Amount::LifeGainedThisTurn => {
                 self.players[controller.0 as usize].life_gained_this_turn as i32
             }

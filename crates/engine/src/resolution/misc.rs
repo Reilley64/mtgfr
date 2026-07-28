@@ -131,6 +131,9 @@ impl Game {
             // Time Walk: queue one extra turn for this ability's controller. Taken as the
             // current turn ends (see `Game::advance_step`), so nothing about *this* turn changes.
             MiscEffect::TakeExtraTurn => vec![Event::ExtraTurnQueued { player: controller }],
+            // CR 104.3b: a "you lose the game" effect eliminates its controller directly, not via
+            // a life total, so it mints the same event a state-based sweep would.
+            MiscEffect::YouLoseTheGame => vec![Event::PlayerLost { player: controller }],
             MiscEffect::SkipNextUntapOpponentCreatures => self
                 .battlefield()
                 .into_iter()

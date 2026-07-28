@@ -64,6 +64,11 @@ pub enum Amount {
     },
     /// How much life the effect's controller has gained this turn (a turn-scoped tally).
     LifeGainedThisTurn,
+    /// The effect's controller's current life total — Lich's "you lose life equal to your life
+    /// total", read live as the effect resolves. A player already at or below 0 resolves to that
+    /// number, so a negative total *gains* life back; no pool card reaches that, and clamping it
+    /// would be inventing a rule the card doesn't print.
+    YourLifeTotal,
     /// How many spells the effect's controller has cast this turn (a turn-scoped tally).
     SpellsCastThisTurn,
     /// How much damage has been dealt to the effect's controller this turn (a turn-scoped tally,
@@ -950,6 +955,7 @@ impl Effect {
             | Effect::Misc(MiscEffect::ScheduleColorlessManaForCounteredSpellNextMainPhase)
             | Effect::Misc(MiscEffect::SkipNextUntapOpponentCreatures)
             | Effect::Misc(MiscEffect::TakeExtraTurn)
+            | Effect::Misc(MiscEffect::YouLoseTheGame)
             | Effect::Misc(MiscEffect::ScheduleNextCastTrigger { .. })
             | Effect::Life(LifeEffect::AttackerLosesYouGain { .. })
             | Effect::Life(LifeEffect::AttackerLosesYouDraw { .. })
@@ -1077,6 +1083,15 @@ impl Effect {
             | Effect::Zone(ZoneEffect::ScheduleReturnThisAuraFromGraveyardAttachedToChosenHost)
             | Effect::Static(StaticEffect::DiscardToLibraryTopInstead)
             | Effect::Static(StaticEffect::NoMaximumHandSize)
+            | Effect::Static(StaticEffect::YouDontLoseAtZeroLife)
+            | Effect::Static(StaticEffect::LifeGainBecomesDraw)
+            | Effect::Counters(CountersEffect::PutCountersOnPlayer {
+                scope: EdictScope::You,
+                ..
+            })
+            | Effect::Counters(CountersEffect::RemoveAllPlayerCounters {
+                scope: EdictScope::You,
+            })
             | Effect::Static(StaticEffect::OpponentsCantSearchLibraries)
             | Effect::Static(StaticEffect::PlayAnyNumberOfLands)
             // "Creatures attack each combat if able" (Avatar of Slaughter board-wide, Juggernaut
@@ -2664,6 +2679,7 @@ fn fill_dying_permanent_types(effect: Effect, types: TypeSet) -> Effect {
             life_loss,
             count,
             down_to_fewest,
+            lose_game_if_short,
             then,
         }) if filter.shares_type_with_dying_permanent => Effect::Choice(ChoiceEffect::EachPlayerSacrifices {
             filter: PermanentFilter { types, ..filter },
@@ -2672,6 +2688,7 @@ fn fill_dying_permanent_types(effect: Effect, types: TypeSet) -> Effect {
             life_loss,
             count,
             down_to_fewest,
+            lose_game_if_short,
             then,
         }),
         Effect::Sequence { steps } => {
@@ -3107,6 +3124,25 @@ fn map_effect_amounts(effect: Effect, f: &impl Fn(Amount) -> Amount) -> Effect {
             target_player,
             tapped,
         }),
+        Effect::Choice(ChoiceEffect::EachPlayerSacrifices {
+            scope,
+            keep_one,
+            filter,
+            life_loss,
+            count,
+            down_to_fewest,
+            lose_game_if_short,
+            then,
+        }) => Effect::Choice(ChoiceEffect::EachPlayerSacrifices {
+            scope,
+            keep_one,
+            filter,
+            life_loss,
+            count: f(count),
+            down_to_fewest,
+            lose_game_if_short,
+            then,
+        }),
         Effect::Damage(DamageEffect::EachOtherOpponent { amount, damaged }) => Effect::Damage(DamageEffect::EachOtherOpponent {
             amount: f(amount),
             damaged,
@@ -3147,10 +3183,10 @@ fn fill_auras_attached_to_dying_creature(effect: Effect, auras: u32) -> Effect {
     })
 }
 
-/// Rewrite an `EnchantedCreatureDealsDamage` watch's `Amount::TriggeringDamageDealt` placeholder to
-/// the enchanted host's just-dealt damage (CR 609.7, Armadillo Cloak's "you gain that much life")
-/// — mirrors [`fill_auras_attached_to_dying_creature`] above, one `Amount` variant only
-/// (flag-don't-force: no other pool card reads this amount).
+/// Rewrite a damage watch's `Amount::TriggeringDamageDealt` placeholder to the damage that just
+/// fired it — the enchanted host's (CR 609.7, Armadillo Cloak's "you gain that much life") or the
+/// watcher's controller's own (Lich's "sacrifice that many nontoken permanents"). Mirrors
+/// [`fill_auras_attached_to_dying_creature`] above, one `Amount` variant only.
 fn fill_triggering_damage_dealt(effect: Effect, damage: i32) -> Effect {
     map_effect_amounts(effect, &|amount| match amount {
         Amount::TriggeringDamageDealt => Amount::Fixed(damage),

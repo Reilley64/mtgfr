@@ -1612,7 +1612,7 @@ seam — `Spell::sacrifice_count` and `Spell::revealed_creature_mana_value` alre
 `spell_*` sibling, *not* a `sacrificed_creature_*` one, because the two families use different
 mechanisms and mixing them up is a silent wrong answer.
 
-### 47. `lich-life-replacement` — 1 card, L
+### 47. `lich-life-replacement` — 1 card, L — **done**
 Depends on: #22 (landed — the damage-taken trigger is already there).
 Lich. Four interlocking replacements: you don't lose at 0 or less life, life gain becomes card
 draw, damage taken becomes a sacrifice of that many permanents, and losing the enchantment loses
@@ -1622,6 +1622,36 @@ state-based-action check for 0 life is unconditional. *Sketch:* a per-player
 Worth landing last — it touches the loss condition, which every other test in the suite implicitly
 depends on.
 *Cards:* lich.
+
+*Landed:* four replacements turned out to be two statics, one flag and one plain effect — no
+per-player flags, no new choice family. `you_dont_lose_at_zero_life` and `life_gain_becomes_draw`
+are fieldless `StaticEffect`s read off the battlefield by a shared `controls_static` scan, so they
+last exactly as long as the permanent printing them and need no cleanup when it leaves. The
+zero-life clause is one `&& !self.ignores_zero_life(...)` on the SBA's life arm — the other three
+elimination conditions in that same `if` are untouched, which is what the card says. The life-gain
+clause went in at the head of `push_apply_effect_event`, the designated replacement hook every
+`Effect::Life` already routes through: it swaps the `LifeChanged` out entirely for a
+`draw_with_dredge`, so nothing that watches life gain sees anything. Combat lifelink was the one
+caller reaching `push_apply` directly and now routes through the hook too, which is what makes the
+replacement cover lifelink and drains rather than only a printed "you gain N life".
+
+The damage tax reused the edict machinery rather than growing a mode of its own: a new
+`EdictScope::You` makes it a one-seat fan-out, and `lose_game_if_short` on `EachPlayerSacrifices`
+turns a board shorter than the bill into an elimination (CR 104.3b) instead of the discount every
+other edict gives. The prompt, the derived count and the client's `sacrifice_edict` view — which
+carries `count` since #43 — all came free. `Amount::TriggeringDamageDealt` needed an
+`EachPlayerSacrifices` arm in `map_effect_amounts` to reach the edict's `count`; without it the
+bill resolved to 0. ponytail: CR 608.2 would have an unpayable seat sacrifice what they can on the
+way out — skipped, since they lose either way and every permanent they own leaves with them (CR
+800.4a); run the fan-out first if a card ever cares about those deaths.
+
+Two fidelity bugs fell out on the way. `Trigger::Dies` was gated behind `CardKind::Creature`, but
+CR 700.4's "dies" is any permanent put into a graveyard from the battlefield — Lich's own dies
+trigger sits on an enchantment. Hoisted above the gate; the watch-*others* triggers stayed inside
+it, because their printed wordings all say "creature", and no pool card had a dies trigger on a
+noncreature before this one. And `Amount::YourLifeTotal` is deliberately unclamped: a controller
+already below 0 resolves to a negative, which on a `lose_life` gains the difference back. No pool
+card reaches that, and clamping would be inventing a rule none of them print.
 
 ### 48. `pile-based-block-assignment` — 2 cards, XL
 Depends on: #11.

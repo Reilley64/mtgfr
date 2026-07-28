@@ -1625,7 +1625,7 @@ impl Game {
             return;
         }
         let player = self.controller_of(source);
-        self.push_apply(
+        self.push_apply_effect_event(
             events,
             Event::LifeChanged {
                 player,

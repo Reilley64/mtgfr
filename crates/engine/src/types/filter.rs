@@ -1026,6 +1026,10 @@ pub enum EdictScope {
     /// "Each opponent" (Witch of the Moors, Lorehold Charm) — every player other than the
     /// controller.
     EachOpponent,
+    /// "You sacrifice…" (Lich's damage tax) — the effect's own controller alone. A one-seat
+    /// fan-out rather than a separate effect, so the prompt, the count and the shortfall check
+    /// are the ones every other edict already uses.
+    You,
     /// "Any number of target players" (Priest of Forgotten Gods, CR 601.2c/608.2b: choosing zero
     /// is legal) — the controller's own chosen subset of living players, picked via a
     /// [`PendingChoice::ChooseTargetPlayers`](super::PendingChoice::ChooseTargetPlayers) pause

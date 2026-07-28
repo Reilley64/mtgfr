@@ -452,6 +452,18 @@ impl Game {
     }
 
     pub(crate) fn push_apply_effect_event(&mut self, events: &mut Vec<Event>, event: Event) {
+        // Lich's "If you would gain life, draw that many cards instead" (CR 614) — the one
+        // replacement here that swaps the event out entirely rather than adjusting a number on
+        // it, so it short-circuits: no `LifeChanged` is ever applied, and nothing watching life
+        // gain sees anything. Routed through `draw_with_dredge` like any other draw, so the
+        // replacement cards can themselves be dredged.
+        if let Event::LifeChanged { player, amount, .. } = event
+            && amount > 0
+            && self.life_gain_becomes_draw(player)
+        {
+            self.draw_with_dredge(player, amount as u32, false, events);
+            return;
+        }
         let entry = match &event {
             Event::ReanimatedToBattlefield {
                 permanent,

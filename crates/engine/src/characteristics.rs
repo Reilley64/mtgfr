@@ -2686,6 +2686,35 @@ impl Game {
         })
     }
 
+    /// Whether any permanent `player` controls carries `wanted` as a live static ability — the
+    /// shared scan behind the two fieldless player-scoped statics Lich prints.
+    fn controls_static(&self, player: PlayerId, wanted: StaticEffect) -> bool {
+        self.battlefield().into_iter().any(|id| {
+            let Some(permanent) = self.as_permanent(id) else {
+                return false;
+            };
+            permanent.owner == player
+                && card_def(permanent.def).abilities.iter().any(|a| {
+                    (a.timing, a.effect.clone()) == (Timing::Static, Effect::Static(wanted))
+                })
+        })
+    }
+
+    /// Whether `player` survives 0 or less life (Lich's "You don't lose the game for having 0 or
+    /// less life") — the CR 704.5a exemption, read live by the state-based sweep, so the turn the
+    /// Lich leaves the battlefield is the turn its controller's negative life total catches up
+    /// with them.
+    pub(crate) fn ignores_zero_life(&self, player: PlayerId) -> bool {
+        self.controls_static(player, StaticEffect::YouDontLoseAtZeroLife)
+    }
+
+    /// Whether life `player` would gain becomes that many cards instead (Lich's "If you would
+    /// gain life, draw that many cards instead") — a CR 614 replacement read at the single
+    /// life-gain funnel, so lifelink, drains and plain "you gain N" all route through it.
+    pub(crate) fn life_gain_becomes_draw(&self, player: PlayerId) -> bool {
+        self.controls_static(player, StaticEffect::LifeGainBecomesDraw)
+    }
+
     /// The permanent standing between `player` and an unblocked attacker (Veteran Bodyguard,
     /// CR 615.10): the first untapped permanent they control with a live
     /// [`Effect::Static(StaticEffect::RedirectUnblockedDamageToSelf)`]. Both halves are read here

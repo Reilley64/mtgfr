@@ -174,6 +174,12 @@ pub enum ChoiceEffect {
         /// discard fan-out.
         #[cfg_attr(feature = "card-dsl", serde(default))]
         down_to_fewest: bool,
+        /// Lich's "sacrifice that many nontoken permanents. If you can't, you lose the game": an
+        /// affected player who controls fewer than `count` matching permanents is eliminated
+        /// outright (CR 104.3b) instead of sacrificing what they have. Distinct from every other
+        /// edict, where a short board just means sacrificing all of it.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        lose_game_if_short: bool,
         #[cfg_attr(
             feature = "card-dsl",
             serde(default, deserialize_with = "de::static_slice")

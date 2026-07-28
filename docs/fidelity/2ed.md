@@ -248,7 +248,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [x] **Kormus Bell** {4} · Artifact — increment 8c
 - [x] **Kudzu** {1}{G}{G} · Enchantment — Aura
 - [x] **Library of Leng** {1} · Artifact — increment 33
-- [ ] **Lich** {B}{B}{B}{B} · Enchantment — increment 47
+- [x] **Lich** {B}{B}{B}{B} · Enchantment — increment 47
 - [x] **Lifeforce** {G}{G} · Enchantment — increment 9
 - [x] **Lifelace** {G} · Instant — increment 15
 - [x] **Lifetap** {U}{U} · Enchantment — increment 19

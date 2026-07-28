@@ -87,8 +87,8 @@ pub enum Trigger {
     /// side only, deduped like [`Game::queue_blocks_or_becomes_blocked_triggers`] so a creature
     /// blocking multiple attackers still fires once.
     AttacksOrBlocks,
-    /// When this creature dies (moves from the battlefield to the graveyard, or — for a
-    /// token — ceases to exist).
+    /// When this permanent dies — CR 700.4's "put into a graveyard from the battlefield", for any
+    /// permanent type (Lich's enchantment), or — for a token — ceases to exist.
     Dies,
     /// Whenever *another* creature dies (a watch-others trigger, self-excluded).
     CreatureDies,

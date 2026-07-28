@@ -29,6 +29,7 @@ impl Game {
                 life_loss,
                 count,
                 down_to_fewest,
+                lose_game_if_short,
                 then,
             }) => {
                 let count = self.resolve_count(count, controller, source, target, ctx.x);
@@ -39,6 +40,7 @@ impl Game {
                     life_loss,
                     count,
                     down_to_fewest,
+                    lose_game_if_short,
                     then,
                     controller,
                     source,

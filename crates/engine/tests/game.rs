@@ -112316,3 +112316,136 @@ fn balance_runs_its_three_sweeps_in_printed_order() {
     assert_eq!(game.zone_of(in_hand), Zone::Graveyard);
     assert_eq!(game.zone_of(creature), Zone::Graveyard);
 }
+
+// ── Lich: your life total, spent once and never again (fidelity #47) ──────────────────
+
+/// Deal `amount` damage to `player` with a Bolt-shaped spell, resolving the "whenever you're
+/// dealt damage" trigger it wakes.
+fn bolt_yourself(game: &mut TestGame, player: PlayerId) {
+    let bolt = game.spawn_in_hand(player, card("Lightning Bolt"));
+    cast_and_resolve(game, bolt, Some(Target::Player(player)));
+}
+
+#[test]
+fn lich_enters_by_spending_your_whole_life_total_without_killing_you() {
+    // "As this enchantment enters, you lose life equal to your life total." plus "You don't lose
+    // the game for having 0 or less life" — the two halves have to land in that order, or the
+    // state-based sweep after the entry eliminates the player who just paid.
+    let mut g = TestGame::new();
+    let lich = g.spawn_in_hand(PlayerId(0), card("Lich"));
+    cast_and_resolve(&mut g, lich, None);
+
+    assert_eq!(
+        g.life(PlayerId(0)),
+        0,
+        "the whole life total, paid on entry"
+    );
+    assert!(
+        !g.has_lost(PlayerId(0)),
+        "0 life is survivable while the Lich is out"
+    );
+}
+
+#[test]
+fn lich_turns_life_gain_into_that_many_cards() {
+    // "If you would gain life, draw that many cards instead." The life never arrives — a
+    // replacement, not a rider — and three points buy exactly three cards.
+    let mut g = TestGame::new();
+    g.stack_library(
+        PlayerId(0),
+        &[
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
+        ],
+    );
+    let lich = g.spawn_in_hand(PlayerId(0), card("Lich"));
+    cast_and_resolve(&mut g, lich, None);
+    let before = g.hand(PlayerId(0)).len();
+    let stream = g.spawn_in_hand(PlayerId(0), card("Stream of Life"));
+    g.cast(stream)
+        .x(3)
+        .at(Target::Player(PlayerId(0)))
+        .resolve();
+
+    assert_eq!(
+        (g.life(PlayerId(0)), g.hand(PlayerId(0)).len() - before),
+        (0, 3),
+        "no life gained; three cards drawn instead (net of the Stream that left hand)"
+    );
+}
+
+#[test]
+fn lich_pays_for_every_point_of_damage_with_a_permanent() {
+    // "Whenever you're dealt damage, sacrifice that many nontoken permanents." Three from a Bolt
+    // is one prompt for three permanents — not three prompts, and not one permanent.
+    let mut g = TestGame::new();
+    let lich = g.spawn_in_hand(PlayerId(0), card("Lich"));
+    cast_and_resolve(&mut g, lich, None);
+    for _ in 0..3 {
+        g.spawn_on_battlefield(PlayerId(0), card("Black Lotus"));
+    }
+    bolt_yourself(&mut g, PlayerId(0));
+    resolve_top_of_stack(&mut g); // the "whenever you're dealt damage" trigger.
+
+    let Some(PendingChoice::SacrificeEdict {
+        player,
+        count,
+        options,
+        ..
+    }) = g.pending_choice()
+    else {
+        panic!("the Bolt's three points are a three-permanent bill");
+    };
+    assert_eq!(
+        (player, count, options.len()),
+        (PlayerId(0), 3, 4),
+        "three of the four nontoken permanents — the Lich itself is on the block too"
+    );
+}
+
+#[test]
+fn lich_loses_the_game_when_the_damage_outruns_your_permanents() {
+    // "If you can't, you lose the game." Three damage against a board of two nontoken permanents
+    // (the Lich and one Lotus) is a bill that can't be paid.
+    let mut g = TestGame::new();
+    let lich = g.spawn_in_hand(PlayerId(0), card("Lich"));
+    cast_and_resolve(&mut g, lich, None);
+    g.spawn_on_battlefield(PlayerId(0), card("Black Lotus"));
+
+    bolt_yourself(&mut g, PlayerId(0));
+    resolve_top_of_stack(&mut g);
+
+    assert!(
+        g.has_lost(PlayerId(0)),
+        "two permanents don't cover three damage"
+    );
+}
+
+#[test]
+fn lich_leaving_the_battlefield_loses_the_game() {
+    // "When this enchantment is put into a graveyard from the battlefield, you lose the game."
+    // A dies trigger on a noncreature permanent — CR 700.4's "dies" is not creature-only.
+    let mut g = TestGame::new();
+    let lich = g.spawn_in_hand(PlayerId(0), card("Lich"));
+    cast_and_resolve(&mut g, lich, None);
+    let deployed = g.current_id(lich);
+
+    g.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    advance_until(&mut g, |g| {
+        g.active_player() == PlayerId(1) && g.current_step() == Step::Main1
+    });
+    let disenchant = g.spawn_in_hand(PlayerId(1), card("Disenchant"));
+    fund_cast_resolve(
+        &mut g,
+        PlayerId(1),
+        disenchant,
+        Some(Target::Object(deployed)),
+    );
+    resolve_top_of_stack(&mut g); // the dies trigger.
+
+    assert!(
+        g.has_lost(PlayerId(0)),
+        "the Lich was the only thing keeping its controller in the game"
+    );
+}

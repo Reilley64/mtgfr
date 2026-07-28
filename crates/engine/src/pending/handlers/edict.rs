@@ -449,6 +449,7 @@ impl Game {
         life_loss: i32,
         count: u32,
         down_to_fewest: bool,
+        lose_game_if_short: bool,
         follow_up: &'static [Effect],
         controller: PlayerId,
         source: ObjectId,
@@ -482,8 +483,29 @@ impl Game {
         let affected: Vec<PlayerId> = self
             .apnap_order()
             .into_iter()
-            .filter(|&p| scope != EdictScope::EachOpponent || p != controller)
+            .filter(|&p| match scope {
+                EdictScope::EachOpponent => p != controller,
+                EdictScope::You => p == controller,
+                _ => true,
+            })
             .collect();
+        // Lich's "If you can't, you lose the game": a bill bigger than the board is unpayable, so
+        // its controller is eliminated (CR 104.3b) and the prompt is never raised.
+        // ponytail: CR 608.2 would have them sacrifice as much as they can on the way out. Skipped
+        // — they lose either way, and every permanent they own leaves with them (CR 800.4a). Run
+        // the fan-out first if a card ever cares about the deaths.
+        if lose_game_if_short
+            && affected
+                .iter()
+                .any(|&p| (self.edict_options(p, filter, Some(source)).len() as u32) < count)
+        {
+            for &p in &affected {
+                if (self.edict_options(p, filter, Some(source)).len() as u32) < count {
+                    self.push_apply(events, Event::PlayerLost { player: p });
+                }
+            }
+            return;
+        }
         if life_loss != 0 {
             for &p in &affected {
                 self.push_apply(

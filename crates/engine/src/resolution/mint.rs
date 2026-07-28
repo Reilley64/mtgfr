@@ -96,6 +96,7 @@ impl Game {
                 | MiscEffect::ScheduleColorlessManaForCounteredSpellNextMainPhase
                 | MiscEffect::SkipNextUntapOpponentCreatures
                 | MiscEffect::TakeExtraTurn
+                | MiscEffect::YouLoseTheGame
                 | MiscEffect::ScheduleNextCastTrigger { .. }
                 | MiscEffect::ScheduleThisTurnCombatDamageCopy) => {
                     self.mint_misc(m, controller, source, target, x)

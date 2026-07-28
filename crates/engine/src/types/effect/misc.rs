@@ -207,6 +207,12 @@ pub enum MiscEffect {
     /// [`Game::advance_step`](crate::Game::advance_step).
     TakeExtraTurn,
 
+    /// "You lose the game" (CR 104.3b — Lich's dies trigger, and the shortfall arm of its damage
+    /// tax). The effect's controller is eliminated outright, not taken to 0 life: nothing about
+    /// the loss is a life total, so no prevention, protection or life-total static can hold it
+    /// off.
+    YouLoseTheGame,
+
     YouChooseWhichCreaturesAttack,
 
     YouChooseWhichCreaturesBlock,

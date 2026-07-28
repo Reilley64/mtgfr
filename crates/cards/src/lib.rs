@@ -5501,6 +5501,7 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                 life_loss: 0,
                 count: Amount::Fixed(1),
                 down_to_fewest: true,
+                lose_game_if_short: false,
                 then: &[],
             })
         };
@@ -5546,6 +5547,55 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
             }),
             "the chosen type, not a printed one"
         );
+    }
+
+    /// Lich's five clauses are load-bearing on each other: the entry cost is only survivable
+    /// because the 0-life exemption is already on the battlefield beside it, and the damage tax is
+    /// only a tax because `lose_game_if_short` turns a short board into an elimination rather than
+    /// a discount. Pin the order and those two flags — drop either and the card reads as a free
+    /// enchantment that empties your life total.
+    #[test]
+    fn unlimited_lich_spends_your_life_total_and_bills_you_for_every_point_after() {
+        let lich = get_by_name("Lich").expect("Lich is in the pool");
+        let [entry, zero_life, gain, damage, dies] = &lich.abilities[..] else {
+            panic!("the entry cost, the two statics, the damage tax, the dies trigger");
+        };
+
+        assert_eq!(entry.timing, Timing::Triggered(Trigger::AsEnters));
+        assert_eq!(
+            entry.effect,
+            Effect::Life(LifeEffect::Lose {
+                amount: Amount::YourLifeTotal
+            }),
+            "the whole life total, read live as the enchantment enters"
+        );
+        assert_eq!(
+            (&zero_life.effect, &gain.effect),
+            (
+                &Effect::Static(StaticEffect::YouDontLoseAtZeroLife),
+                &Effect::Static(StaticEffect::LifeGainBecomesDraw)
+            )
+        );
+        assert_eq!(damage.timing, Timing::Triggered(Trigger::YouAreDealtDamage));
+        assert_eq!(
+            damage.effect,
+            Effect::Choice(ChoiceEffect::EachPlayerSacrifices {
+                scope: engine::EdictScope::You,
+                keep_one: false,
+                filter: PermanentFilter {
+                    token: engine::TokenFilter::Nontoken,
+                    ..PermanentFilter::of(TypeSet::NONE)
+                },
+                life_loss: 0,
+                count: Amount::TriggeringDamageDealt,
+                down_to_fewest: false,
+                lose_game_if_short: true,
+                then: &[],
+            }),
+            "one permanent per point, and an unpayable bill is a loss rather than a discount"
+        );
+        assert_eq!(dies.timing, Timing::Triggered(Trigger::Dies));
+        assert_eq!(dies.effect, Effect::Misc(MiscEffect::YouLoseTheGame));
     }
 
     /// The three global land-type changes are the same sentence with different riders, so what is

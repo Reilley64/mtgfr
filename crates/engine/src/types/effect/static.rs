@@ -454,6 +454,18 @@ pub enum StaticEffect {
         all_players: bool,
     },
 
+    /// Lich's "You don't lose the game for having 0 or less life" — CR 704.5a's exemption, read
+    /// by the state-based sweep off every permanent its controller controls. Says nothing about
+    /// the other loss conditions: an empty-library draw, ten poison and lethal commander damage
+    /// all still eliminate its controller.
+    YouDontLoseAtZeroLife,
+
+    /// Lich's "If you would gain life, draw that many cards instead" — a CR 614 replacement, so
+    /// the life never arrives at all and nothing that watches life gain sees anything. Applies at
+    /// the one funnel every life gain passes through, which is what makes it cover lifelink and
+    /// drains as well as a printed "you gain N life".
+    LifeGainBecomesDraw,
+
     LifeGainReplacement {
         #[cfg_attr(feature = "card-dsl", serde(default))]
         plus: i32,

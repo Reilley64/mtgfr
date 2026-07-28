@@ -224,10 +224,10 @@ impl Game {
             // CR 704.5c: ten or more poison counters loses the game.
             let lethal_poison =
                 player.kind_counters[PlayerCounterKind::Poison as usize] >= LETHAL_POISON;
-            if player.life <= 0
-                || player.attempted_empty_draw
-                || lethal_poison
-                || lethal_commander_damage
+            // CR 704.5a, with Lich's exemption: only the life-total clause is waived, so the
+            // other three still eliminate a player sitting comfortably at -12.
+            let zero_life = player.life <= 0 && !self.ignores_zero_life(PlayerId(id as u8));
+            if zero_life || player.attempted_empty_draw || lethal_poison || lethal_commander_damage
             {
                 events.push(Event::PlayerLost {
                     player: PlayerId(id as u8),

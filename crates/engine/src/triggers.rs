@@ -610,12 +610,18 @@ impl Game {
                     // Safe to call unconditionally — a no-op for a non-battlefield `from`, since
                     // `permanents_left_battlefield` is populated by the same battlefield-only gate.
                     self.queue_leaves_battlefield_triggers(from, self.owner_of(from), &def.clone());
-                    if from_battlefield && matches!(def.kind, CardKind::Creature { .. }) {
+                    // CR 700.4: "dies" is *any* permanent put into a graveyard from the
+                    // battlefield — Lich's own dies trigger sits on an enchantment. The
+                    // watch-others triggers below stay creature-scoped, because their printed
+                    // wordings all say "creature".
+                    if from_battlefield {
                         let ctx = TriggerContext {
                             dying_source_stats: self.dying_source_stats(from),
                             ..TriggerContext::of(self.owner_of(from))
                         };
                         self.queue_trigger_group(ctx, from, def.clone(), Trigger::Dies);
+                    }
+                    if from_battlefield && matches!(def.kind, CardKind::Creature { .. }) {
                         self.queue_watch_death_triggers(
                             self.owner_of(from),
                             from,

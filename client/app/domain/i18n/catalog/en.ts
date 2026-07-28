@@ -31,6 +31,7 @@ function nameOnly(params: MessageParams): string {
 
 function edictWho(scope: MessageValue): string {
   if (scope === "each_opponent") return "Each opponent";
+  if (scope === "you") return "You";
   if (scope === "targeted_players") return "Any number of target players";
   if (scope === "targeted_opponent") return "Target opponent";
   return "Each player";
@@ -488,6 +489,7 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     "Creatures your opponents control do not untap during their next untap steps",
   ),
   "effect.misc_take_extra_turn": literal("Take an extra turn after this one"),
+  "effect.misc_you_lose_the_game": literal("You lose the game"),
   "effect.pump_animate_self_until_end_of_turn": (params) =>
     `Becomes a ${param(params, "base_power")}/${param(params, "base_toughness")} creature until end of turn`,
   "effect.pump_enchanted_attacker_pump_attacking_opponent_else_controller_loses_life": (params) =>
@@ -608,6 +610,7 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.static_keyword_anthem": (params) =>
     `${bool(params, "all_players") ? "All permanents" : "Permanents you control"} have ${humanize(param(params, "keywords"))}`,
   "effect.static_life_gain_replacement": (params) => `life gained: n + ${param(params, "plus")}`,
+  "effect.static_life_gain_becomes_draw": literal("If you would gain life, draw that many cards instead"),
   "effect.static_no_maximum_hand_size": literal("You have no maximum hand size"),
   "effect.static_play_any_number_of_lands": literal("You may play any number of lands on each of your turns"),
   "effect.static_play_from_graveyard_once_per_turn": literal(
@@ -666,6 +669,7 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   },
   "effect.static_token_replacement": (params) => `tokens created: n x ${param(params, "times")}`,
   "effect.static_trigger_doubling": literal("That triggered ability triggers an additional time"),
+  "effect.static_you_dont_lose_at_zero_life": literal("You don't lose the game for having 0 or less life"),
   "effect.token_become_copy_of_target_creature_gaining_myriad": literal(
     "This creature becomes a copy of up to one target nonlegendary creature you control until end of turn, except it has myriad",
   ),

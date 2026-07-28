@@ -256,6 +256,7 @@ message_keys! {
     EFFECT_MISC_SCHEDULE_THIS_TURN_COMBAT_DAMAGE_COPY => "effect.misc_schedule_this_turn_combat_damage_copy",
     EFFECT_MISC_SKIP_NEXT_UNTAP_OPPONENT_CREATURES => "effect.misc_skip_next_untap_opponent_creatures",
     EFFECT_MISC_TAKE_EXTRA_TURN => "effect.misc_take_extra_turn",
+    EFFECT_MISC_YOU_LOSE_THE_GAME => "effect.misc_you_lose_the_game",
     EFFECT_MISC_YOU_CHOOSE_WHICH_CREATURES_ATTACK => "effect.misc_you_choose_which_creatures_attack",
     EFFECT_MISC_YOU_CHOOSE_WHICH_CREATURES_BLOCK => "effect.misc_you_choose_which_creatures_block",
     EFFECT_PUMP_ANIMATE_SELF_UNTIL_END_OF_TURN => "effect.pump_animate_self_until_end_of_turn",
@@ -321,6 +322,7 @@ message_keys! {
     EFFECT_STATIC_GRANT_TO_ATTACHED => "effect.static_grant_to_attached",
     EFFECT_STATIC_KEYWORD_ANTHEM => "effect.static_keyword_anthem",
     EFFECT_STATIC_LIFE_GAIN_REPLACEMENT => "effect.static_life_gain_replacement",
+    EFFECT_STATIC_LIFE_GAIN_BECOMES_DRAW => "effect.static_life_gain_becomes_draw",
     EFFECT_STATIC_NO_MAXIMUM_HAND_SIZE => "effect.static_no_maximum_hand_size",
     EFFECT_STATIC_PLAY_ANY_NUMBER_OF_LANDS => "effect.static_play_any_number_of_lands",
     EFFECT_STATIC_PLAY_FROM_GRAVEYARD_ONCE_PER_TURN => "effect.static_play_from_graveyard_once_per_turn",
@@ -339,6 +341,7 @@ message_keys! {
     EFFECT_STATIC_TAPPED_FOR_MANA_BONUS => "effect.static_tapped_for_mana_bonus",
     EFFECT_STATIC_TOKEN_REPLACEMENT => "effect.static_token_replacement",
     EFFECT_STATIC_TRIGGER_DOUBLING => "effect.static_trigger_doubling",
+    EFFECT_STATIC_YOU_DONT_LOSE_AT_ZERO_LIFE => "effect.static_you_dont_lose_at_zero_life",
     EFFECT_TOKEN_BECOME_COPY_OF_TARGET_CREATURE_GAINING_MYRIAD => "effect.token_become_copy_of_target_creature_gaining_myriad",
     EFFECT_TOKEN_COPY_EACH_ENTERED_THIS_TURN_TOKEN_TAPPED_ATTACKING => "effect.token_copy_each_entered_this_turn_token_tapped_attacking",
     EFFECT_TOKEN_CREATE => "effect.token_create",
@@ -755,6 +758,7 @@ fn edict_scope_token(scope: EdictScope) -> &'static str {
     match scope {
         EdictScope::AllPlayers => "all_players",
         EdictScope::EachOpponent => "each_opponent",
+        EdictScope::You => "you",
         EdictScope::TargetedPlayers => "targeted_players",
         EdictScope::TargetedOpponent => "targeted_opponent",
     }
@@ -1141,6 +1145,7 @@ fn amount_token(amount: Amount) -> &'static str {
         Amount::TargetManaValue => "target_mana_value",
         Amount::PerCounterOnSource => "per_counter_on_source",
         Amount::PerCounterOfKindOnSource { .. } => "per_counter_of_kind_on_source",
+        Amount::YourLifeTotal => "your_life_total",
         Amount::LifeGainedThisTurn => "life_gained_this_turn",
         Amount::DamageTakenThisTurn => "damage_taken_this_turn",
         Amount::SpellsCastThisTurn => "spells_cast_this_turn",
@@ -2212,6 +2217,12 @@ impl Effect {
                 MessageRef::new(MessageKey::EFFECT_STATIC_DISCARD_TO_LIBRARY_TOP_INSTEAD)
             }
             Effect::Static(NoMaximumHandSize) => MessageRef::new(MessageKey::EFFECT_STATIC_NO_MAXIMUM_HAND_SIZE),
+            Effect::Static(YouDontLoseAtZeroLife) => {
+                MessageRef::new(MessageKey::EFFECT_STATIC_YOU_DONT_LOSE_AT_ZERO_LIFE)
+            }
+            Effect::Static(LifeGainBecomesDraw) => {
+                MessageRef::new(MessageKey::EFFECT_STATIC_LIFE_GAIN_BECOMES_DRAW)
+            }
             Effect::Static(PlayAnyNumberOfLands) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_PLAY_ANY_NUMBER_OF_LANDS)
             }
@@ -2373,6 +2384,9 @@ impl Effect {
                 MessageRef::new(MessageKey::EFFECT_MISC_SKIP_NEXT_UNTAP_OPPONENT_CREATURES)
             }
             Effect::Misc(TakeExtraTurn) => MessageRef::new(MessageKey::EFFECT_MISC_TAKE_EXTRA_TURN),
+            Effect::Misc(YouLoseTheGame) => {
+                MessageRef::new(MessageKey::EFFECT_MISC_YOU_LOSE_THE_GAME)
+            }
             Effect::Misc(BlocksEachAttackerIfAble { .. }) => {
                 MessageRef::new(MessageKey::EFFECT_MISC_BLOCKS_EACH_ATTACKER_IF_ABLE)
             }

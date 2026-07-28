@@ -188,8 +188,8 @@ impl Game {
                         // players, and the DSL surface for this mode documents only
                         // all_players/each_opponent/target_opponent. Give this a real arm when
                         // one does.
-                        EdictScope::TargetedPlayers => unreachable!(
-                            "player counters have no targeted-players spelling in the card pool"
+                        EdictScope::TargetedPlayers | EdictScope::You => unreachable!(
+                            "player counters have no targeted-players or you spelling in the card pool"
                         ),
                         EdictScope::TargetedOpponent => unreachable!("handled above"),
                     })
@@ -222,8 +222,8 @@ impl Game {
                             EdictScope::EachOpponent => player != controller,
                             // ponytail: same residual as `PutCountersOnPlayer` above — no pool
                             // card spells a chosen-subset "remove all counters" mode.
-                            EdictScope::TargetedPlayers => unreachable!(
-                                "player counters have no targeted-players spelling in the card pool"
+                            EdictScope::TargetedPlayers | EdictScope::You => unreachable!(
+                                "player counters have no targeted-players or you spelling in the card pool"
                             ),
                             EdictScope::TargetedOpponent => unreachable!("handled above"),
                         })
