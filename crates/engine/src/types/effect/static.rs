@@ -401,9 +401,18 @@ pub enum StaticEffect {
         first_x_spell_each_turn: bool,
     },
 
+    /// The CR 613.4 layer-7b base P/T an Aura forces onto its host (Darksteel Mutation's "base
+    /// power and toughness 0/1"). The amounts resolve with the *host* as source, not the Aura, so
+    /// Animate Artifact's "power and toughness each equal to its mana value" is
+    /// [`Amount::SourceManaValue`](crate::Amount) reading the enchanted artifact.
     SetAttachedBasePt {
-        power: i32,
-        toughness: i32,
+        power: Amount,
+        toughness: Amount,
+        /// Animate Artifact's "as long as enchanted artifact **isn't a creature**": the base set
+        /// applies only while the host is a noncreature, so enchanting an artifact creature
+        /// doesn't wipe its printed P/T. Default `false` is Darksteel Mutation's unconditional set.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        noncreature_only: bool,
     },
 
     SetAttachedTypes {

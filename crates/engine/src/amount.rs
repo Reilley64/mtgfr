@@ -43,6 +43,7 @@ impl Game {
             Amount::TargetToughness => {
                 self.toughness(expect_object_target(target, "a toughness-derived amount"))
             }
+            Amount::SourceManaValue => self.def_of(source).mana_value() as i32,
             Amount::TargetManaValue => self
                 .def_of(expect_object_target(target, "a mana-value amount"))
                 .mana_value() as i32,

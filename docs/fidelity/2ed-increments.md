@@ -1945,7 +1945,7 @@ walk inside a wrapper for no card's benefit. They stay.
 The authoring key is answered ahead of the amount table's exactly-one-of match rather than joining
 it, since a twelfth slot in that tuple buys nothing when the key is unambiguous on its own.
 
-### 76. `defining-power-toughness-on-an-enchanted-host` — 1 card, M
+### 76. `defining-power-toughness-on-an-enchanted-host` — 1 card, M — **done**
 Depends on: #2 (done).
 Split out of #2. Animate Artifact: "As long as enchanted artifact isn't a creature, it's an
 artifact creature with power and toughness each equal to its mana value." Three separate gaps.
@@ -1958,3 +1958,26 @@ creature", which — unlike #74's attacking switch — is a condition on the *ho
 half (`set_attached_types` adding creature) has to be gated too or the Aura would make an already-
 animated artifact stop being what it was.
 *Cards:* animate_artifact.
+
+*Landed:* two of the three gaps closed as sketched; the third turned out not to be one.
+`SetAttachedBasePt`'s `power`/`toughness` widened from `i32` to `Amount`, and
+`Amount::SourceManaValue` joined `SourcePower`/`SourceToughness` — one arm reading
+`def_of(source).mana_value()`. The host-relative part is where the Aura's amounts are *resolved*,
+not a new axis on the amount: `attachment_continuous_effects` now calls `resolve_amount(.., host,
+..)` instead of pushing the literals through, so "its mana value" is the enchanted artifact's. Every
+other attachment amount keeps resolving against the Aura, because `grant_to_attached`'s "+1/+1 for
+each Aura you control" really is the Aura's own count.
+
+The type half needed no gate after all. `set_attached_types`'s `add_types` is a *union*, so adding
+`creature` to an artifact that already is one changes nothing — the sketch's worry only applies to
+`set_types = true` (Darksteel Mutation's replace), which Animate Artifact doesn't use. That leaves
+one gate, `noncreature_only` on the base-P/T set, in the shape `GrantToAttached::legendary_only`
+already established for a host-property condition. Without it, enchanting Obsianus Golem would
+flatten its printed 4/6 into a 6/6.
+
+The gate reads the host's *printed* types, with a `ponytail:` on `host_is_printed_creature` naming
+the ceiling. It has to ignore this very Aura's own creature-adding layer, and asking
+`effective_types` from inside the attachment scan that feeds those layers would recurse. Printed
+types answer the pool's case — enchanting a printed artifact creature — and miss an artifact
+animated by something else; the upgrade path is an `effective_types` variant taking a source to
+exclude.

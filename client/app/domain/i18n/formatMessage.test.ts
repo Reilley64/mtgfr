@@ -60,6 +60,29 @@ describe("formatMessage", () => {
     ).toBe("Each player loses 3");
   });
 
+  it("reads a base-P/T-setting Aura back as fixed numbers or as one shared count", () => {
+    expect(
+      formatMessage({
+        key: "effect.static_set_attached_base_pt",
+        params: [
+          { name: "power", int_value: 0 },
+          { name: "toughness", int_value: 1 },
+        ],
+        children: [],
+      }),
+    ).toBe("Attached permanent has base power and toughness 0/1");
+    expect(
+      formatMessage({
+        key: "effect.static_set_attached_base_pt",
+        params: [
+          { name: "power", amount_token: "source_mana_value" },
+          { name: "toughness", amount_token: "source_mana_value" },
+        ],
+        children: [],
+      }),
+    ).toBe("Attached permanent has base power and toughness each equal to its mana value");
+  });
+
   it("formats catalog keyword summaries", () => {
     expect(formatMessage({ key: "keyword.flying", params: [], children: [] })).toBe("Flying");
     expect(

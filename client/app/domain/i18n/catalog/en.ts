@@ -587,8 +587,15 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   ),
   "effect.static_reduce_spell_cost": (params) =>
     `${bool(params, "first_x_spell_each_turn") ? "The first spell you cast with {X} in its mana cost each turn" : humanize(param(params, "filter", "Spells you cast"))} cost {${param(params, "amount")}} less`,
-  "effect.static_set_attached_base_pt": (params) =>
-    `Attached creature has base power and toughness ${param(params, "power")}/${param(params, "toughness")}`,
+  "effect.static_set_attached_base_pt": (params) => {
+    const power = param(params, "power");
+    const toughness = param(params, "toughness");
+    // Animate Artifact sets both halves from one count ("each equal to its mana value"); reading
+    // that back as "its mana value/its mana value" is noise.
+    return power === toughness && typeof power !== "number"
+      ? `Attached permanent has base power and toughness each equal to ${power}`
+      : `Attached permanent has base power and toughness ${power}/${toughness}`;
+  },
   "effect.static_set_attached_types": (params) => `Attached creature is a ${humanize(param(params, "subtypes"))}`,
   "effect.static_spend_mana_as_though_another_color": (params) =>
     `You may spend ${param(params, "from")} mana as though it were ${param(params, "to")} mana`,

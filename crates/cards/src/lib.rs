@@ -2671,6 +2671,40 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
         ));
     }
 
+    /// Animate Artifact's two clauses: a base-P/T set gated on the host being a noncreature and
+    /// reading the host's own mana value, plus an *additive* type change — additive because on an
+    /// artifact that is already a creature the whole ability is meant to do nothing.
+    #[test]
+    fn unlimited_animate_artifact_sizes_its_host_by_the_hosts_mana_value() {
+        let aura = get_by_name("Animate Artifact").expect("Animate Artifact is in the pool");
+        assert_eq!(
+            aura.enchant.expect("it enchants an artifact").types,
+            TypeSet::ARTIFACT
+        );
+        assert_eq!(
+            aura.abilities[0].effect,
+            Effect::Static(StaticEffect::SetAttachedBasePt {
+                power: Amount::SourceManaValue,
+                toughness: Amount::SourceManaValue,
+                noncreature_only: true,
+            }),
+            "power and toughness each equal to its mana value, only while it isn't a creature"
+        );
+        let Effect::Static(StaticEffect::SetAttachedTypes {
+            add_types,
+            set_types,
+            ..
+        }) = aura.abilities[1].effect
+        else {
+            panic!("the second clause makes the host an artifact creature");
+        };
+        assert_eq!(add_types, TypeSet::ARTIFACT.union(TypeSet::CREATURE));
+        assert!(
+            !set_types,
+            "it adds creature rather than replacing the line"
+        );
+    }
+
     /// "Power and toughness are each equal to …": both halves read the same count, and the
     /// printed box stays 0/0 so the defining ability is the only thing supplying numbers.
     #[test]

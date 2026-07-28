@@ -1110,6 +1110,7 @@ fn amount_token(amount: Amount) -> &'static str {
         Amount::PerPermanentMatching { .. } => "per_permanent_matching",
         Amount::SourcePower => "source_power",
         Amount::SourceToughness => "source_toughness",
+        Amount::SourceManaValue => "source_mana_value",
         Amount::TargetPower => "target_power",
         Amount::TargetToughness => "target_toughness",
         Amount::TargetManaValue => "target_mana_value",
@@ -2259,9 +2260,9 @@ impl Effect {
                         defining_pt_when_param("when", when),
                     ])
             }
-            Effect::Static(SetAttachedBasePt { power, toughness }) => {
+            Effect::Static(SetAttachedBasePt { power, toughness, .. }) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_SET_ATTACHED_BASE_PT)
-                    .with_params(vec![int_param("power", power), int_param("toughness", toughness)])
+                    .with_params(vec![amount_param("power", power), amount_param("toughness", toughness)])
             }
             Effect::Static(SetAttachedTypes {
                 set_subtypes,

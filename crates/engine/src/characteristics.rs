@@ -177,6 +177,7 @@ impl Game {
 
         for attachment in self.attachments(object) {
             let name = self.def_of(attachment).name;
+            let aura_controller = self.controller_of(attachment);
             for ability in self.def_of(attachment).abilities.iter().cloned() {
                 match (ability.timing, ability.effect.clone()) {
                     (
@@ -211,11 +212,27 @@ impl Game {
                     }
                     (
                         Timing::Static,
-                        Effect::Static(StaticEffect::SetAttachedBasePt { power, toughness }),
+                        Effect::Static(StaticEffect::SetAttachedBasePt {
+                            power,
+                            toughness,
+                            noncreature_only,
+                        }),
                     ) => {
+                        if noncreature_only && self.host_is_printed_creature(object) {
+                            continue;
+                        }
                         push(
                             name,
-                            ModifierContribution::SetBasePowerToughness { power, toughness },
+                            ModifierContribution::SetBasePowerToughness {
+                                power: self.resolve_amount(power, aura_controller, object, None, 0),
+                                toughness: self.resolve_amount(
+                                    toughness,
+                                    aura_controller,
+                                    object,
+                                    None,
+                                    0,
+                                ),
+                            },
                         );
                     }
                     (Timing::Static, Effect::Static(StaticEffect::ControlAttached)) => {
@@ -878,12 +895,29 @@ impl Game {
                     }
                     (
                         Timing::Static,
-                        Effect::Static(StaticEffect::SetAttachedBasePt { power, toughness }),
-                    ) => effects.push(ContinuousEffect {
-                        source: id,
-                        timestamp,
-                        kind: ContinuousEffectKind::BasePtSet { power, toughness },
-                    }),
+                        Effect::Static(StaticEffect::SetAttachedBasePt {
+                            power,
+                            toughness,
+                            noncreature_only,
+                        }),
+                    ) => {
+                        if noncreature_only && self.host_is_printed_creature(host) {
+                            continue;
+                        }
+                        // Resolved against the *host*, not the Aura: Animate Artifact's "equal to
+                        // its mana value" is the enchanted artifact's mana value. Every other
+                        // attachment amount here (`GrantToAttached` above) reads the Aura, because
+                        // "gets +1/+1 for each Forest you control" is the Aura's own count.
+                        effects.push(ContinuousEffect {
+                            source: id,
+                            timestamp,
+                            kind: ContinuousEffectKind::BasePtSet {
+                                power: self.resolve_amount(power, controller, host, None, 0),
+                                toughness: self
+                                    .resolve_amount(toughness, controller, host, None, 0),
+                            },
+                        });
+                    }
                     (Timing::Static, Effect::Static(StaticEffect::SetAttachedTypes { .. })) => {}
                     _ => {}
                 }
@@ -1317,6 +1351,19 @@ impl Game {
                     _ => None,
                 })
         })
+    }
+
+    /// Whether `host` is a creature for a `noncreature_only` attachment gate (Animate Artifact's
+    /// "as long as enchanted artifact isn't a creature").
+    ///
+    /// ponytail: reads *printed* types, not [`Game::effective_types`]. The gate has to ignore the
+    /// gating Aura's own creature-adding layer, and asking for effective types from inside the
+    /// attachment scan that feeds those layers would recurse. Printed types answer the case the
+    /// pool has — enchanting a printed artifact creature — and miss an artifact animated by
+    /// something else (a Karn, another Aura). The upgrade path is an `effective_types` variant that
+    /// takes a source to exclude.
+    fn host_is_printed_creature(&self, host: ObjectId) -> bool {
+        self.def_of(host).kind.types().intersects(TypeSet::CREATURE)
     }
 
     /// The latest attached [`Effect::Static(StaticEffect::SetAttachedBasePt)`] continuous-effect

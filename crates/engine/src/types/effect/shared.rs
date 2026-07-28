@@ -40,6 +40,11 @@ pub enum Amount {
     /// (Tanazir Quandrix: base power and toughness "become equal to Tanazir Quandrix's power and
     /// toughness").
     SourceToughness,
+    /// The effect's source permanent's mana value (Animate Artifact: the enchanted artifact's
+    /// "power and toughness each equal to its mana value" — an attachment resolves its amounts
+    /// with the *host* as source, so this reads the artifact, not the Aura). The source-relative
+    /// twin of [`TargetManaValue`](Self::TargetManaValue) below.
+    SourceManaValue,
     /// The targeted permanent's power (Swords to Plowshares: "life equal to its power").
     TargetPower,
     /// The targeted permanent's toughness — the toughness twin of [`TargetPower`](Self::TargetPower)

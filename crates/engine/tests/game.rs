@@ -30077,8 +30077,9 @@ static MUTATION: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Static,
         effect: Effect::Static(StaticEffect::SetAttachedBasePt {
-            power: 0,
-            toughness: 1,
+            power: Amount::Fixed(0),
+            toughness: Amount::Fixed(1),
+            noncreature_only: false,
         }),
         optional: false,
         min_level: 0,
@@ -109705,4 +109706,46 @@ fn volcanic_eruption_counts_the_mountains_it_hit_not_the_x_it_asked_for() {
     );
     assert_eq!(game.life(PlayerId(0)), 18, "two Mountains, two damage");
     assert_eq!(game.life(PlayerId(1)), 18, "two Mountains, two damage");
+}
+
+/// Animate Artifact: "As long as enchanted artifact isn't a creature, it's an artifact creature
+/// with power and toughness each equal to its mana value." The base-P/T set is an `Amount` read off
+/// the *host*, so a {4} Jayemdae Tome animates as a 4/4 — not as the Aura's own mana value.
+#[test]
+fn animate_artifact_makes_the_tome_as_big_as_its_mana_value() {
+    let mut game = Game::new();
+    let tome = game.spawn_on_battlefield(PlayerId(0), card("Jayemdae Tome")); // {4}, no P/T printed
+    let aura = game.spawn_in_hand(PlayerId(0), card("Animate Artifact"));
+    cast_and_resolve(&mut game, aura, Some(Target::Object(tome)));
+
+    assert!(
+        game.effective_types(tome).intersects(TypeSet::CREATURE),
+        "the enchanted artifact is an artifact creature"
+    );
+    assert!(
+        game.effective_types(tome).intersects(TypeSet::ARTIFACT),
+        "it is still an artifact"
+    );
+    assert_eq!(
+        (game.power(tome), game.toughness(tome)),
+        (4, 4),
+        "power and toughness each equal to its mana value, not the Aura's"
+    );
+}
+
+/// The "as long as enchanted artifact isn't a creature" gate: on an artifact that already is a
+/// creature the whole ability does nothing, so Obsianus Golem stays the 4/6 it printed instead of
+/// being flattened to a 6/6 by its own mana value.
+#[test]
+fn animate_artifact_leaves_an_artifact_creatures_printed_size_alone() {
+    let mut game = Game::new();
+    let golem = game.spawn_on_battlefield(PlayerId(0), card("Obsianus Golem")); // {6} 4/6
+    let aura = game.spawn_in_hand(PlayerId(0), card("Animate Artifact"));
+    cast_and_resolve(&mut game, aura, Some(Target::Object(golem)));
+
+    assert_eq!(
+        (game.power(golem), game.toughness(golem)),
+        (4, 6),
+        "an artifact that is already a creature keeps its printed 4/6"
+    );
 }
