@@ -58,7 +58,7 @@ proto-lint:
 proto-breaking:
     #!/usr/bin/env bash
     set -euo pipefail
-    cd client && PATH="$PWD/node_modules/.bin:$PATH" bunx --bun buf breaking --against '../.git#branch=origin/main' ../proto
+    cd client && PATH="$PWD/node_modules/.bin:$PATH" bunx --bun buf breaking --against '../.git#branch=origin/main,subdir=proto' ../proto
 
 [group('server')]
 [doc("proto-lint + proto-breaking")]
