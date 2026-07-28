@@ -1522,6 +1522,50 @@ impl Game {
         }
     }
 
+    /// The battlefield permanent `player` controls that offers Island Sanctuary's
+    /// [`StaticEffect::MaySkipDrawForCantBeAttackedBy`] draw-step replacement, with the shield it
+    /// buys. `None` when they control none — the ordinary case, which draws as usual.
+    /// ponytail: first offer wins if a player somehow controls two; the pool has one such card,
+    /// and stacking them buys nothing a single one doesn't (CR 614.5 lets the player order
+    /// replacements, but both orders end at the same shield).
+    fn may_skip_draw_offer(&self, player: PlayerId) -> Option<(ObjectId, PermanentFilter)> {
+        self.controlled_battlefield(player)
+            .into_iter()
+            .find_map(|id| {
+                self.def_of(id).abilities.iter().find_map(|ability| {
+                    match (ability.timing, ability.effect.clone()) {
+                        (
+                            Timing::Static,
+                            Effect::Static(StaticEffect::MaySkipDrawForCantBeAttackedBy { filter }),
+                        ) => Some((id, filter)),
+                        _ => None,
+                    }
+                })
+            })
+    }
+
+    /// The draw step's own draw, dredge replacement and all (CR 702.52). Returns after raising
+    /// [`PendingChoice::ChooseDredge`] when a dredger is eligible — `answer_choose_dredge` then
+    /// performs the draw or the mill+return and resumes the step loop. Shared with
+    /// [`Game::answer_may`], which lands here when Island Sanctuary's skip is declined.
+    pub(crate) fn draw_step_draw(&mut self, player: PlayerId, events: &mut Vec<Event>) {
+        let dredgers = self.dredge_options(player);
+        if !dredgers.is_empty() {
+            crate::pending::raise_choice(
+                self,
+                PendingChoice::ChooseDredge {
+                    player,
+                    eligible: dredgers,
+                    remaining: 1,
+                    from_draw_step: true,
+                },
+            );
+            return;
+        }
+        let drawn = self.draw_card(player);
+        events.extend(drawn);
+    }
+
     /// The automatic actions performed as a step begins (untap, draw, cleanup).
     pub(crate) fn perform_turn_based_actions(
         &mut self,
@@ -1716,24 +1760,24 @@ impl Game {
                 if std::mem::take(&mut self.skip_starting_players_first_draw) {
                     return;
                 }
-                // Dredge (CR 702.52): if a dredger is eligible, pause on the replacement choice
-                // instead of drawing. `advance_step` returns on the pause; `answer_choose_dredge`
-                // performs the draw (decline) or the mill+return (accept) and resumes the step loop.
-                let dredgers = self.dredge_options(active);
-                if !dredgers.is_empty() {
+                // Island Sanctuary (CR 614): "you may skip that draw" is offered before dredge's
+                // own replacement, and declining falls through to it — so a player holding both
+                // still gets the dredge choice.
+                if let Some((source, filter)) = self.may_skip_draw_offer(active) {
                     crate::pending::raise_choice(
                         self,
-                        PendingChoice::ChooseDredge {
+                        PendingChoice::MayYesNo {
                             player: active,
-                            eligible: dredgers,
-                            remaining: 1,
-                            from_draw_step: true,
+                            source,
+                            effect: Effect::Static(StaticEffect::MaySkipDrawForCantBeAttackedBy {
+                                filter,
+                            }),
+                            resume: MayYesNoResume::SkipDrawStepDraw,
                         },
                     );
                     return;
                 }
-                let drawn = self.draw_card(active);
-                events.extend(drawn);
+                self.draw_step_draw(active, events);
             }
             // Rad counters (CR 122.1, Fallout): "At the beginning of each player's precombat main
             // phase, if that player has any rad counters, they mill that many cards. For each

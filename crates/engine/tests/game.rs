@@ -110164,3 +110164,131 @@ fn kudzu_with_no_land_left_to_move_to_is_swept_with_its_host() {
     assert!(game.pending_choice().is_none(), "no land to offer");
     assert_eq!(game.zone_of(kudzu), Zone::Graveyard);
 }
+
+// ── Island Sanctuary: paying a draw for a temporary attack shield ─────────────────────
+
+/// Roll to the sanctuary controller's (P1's) draw step and answer the skip offer. P0 holds the
+/// first turn, whose draw is skipped outright (CR 103.8a), so the first pause of the game is this
+/// one.
+fn answer_island_sanctuary(game: &mut Game, yes: bool) {
+    advance_until(game, |g| g.pending_choice().is_some());
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::MayYesNo { player, .. }) if player == PlayerId(1)
+        ),
+        "the sanctuary's own controller is offered the skip, got {:?}",
+        game.pending_choice(),
+    );
+    game.submit(Intent::AnswerMay {
+        player: PlayerId(1),
+        yes,
+    })
+    .unwrap();
+}
+
+/// Advance to P0's declare-attackers step and try to send `attacker` at P1.
+fn try_attack(game: &mut Game, attacker: ObjectId) -> Result<Vec<Event>, Reject> {
+    advance_until(game, |g| g.current_step() == Step::DeclareAttackers);
+    game.submit(Intent::DeclareAttackers {
+        player: PlayerId(0),
+        attackers: vec![(attacker, Defender::Player(PlayerId(1)))],
+    })
+}
+
+#[test]
+fn island_sanctuary_skips_the_draw_and_turns_away_a_ground_attacker() {
+    let mut game = Game::new();
+    stock_libraries(&mut game);
+    game.spawn_on_battlefield(PlayerId(1), card("Island Sanctuary"));
+    let ground = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
+
+    let before = hand_ids(&game, PlayerId(1)).len();
+    answer_island_sanctuary(&mut game, true);
+    assert_eq!(
+        hand_ids(&game, PlayerId(1)).len(),
+        before,
+        "the skip replaces the draw, so no card arrives",
+    );
+
+    pass_until_next_turn(&mut game);
+    assert_eq!(
+        try_attack(&mut game, ground),
+        Err(Reject::IllegalDeclaration),
+        "a creature with neither flying nor islandwalk can't attack through the shield",
+    );
+}
+
+#[test]
+fn island_sanctuary_lets_flying_and_islandwalk_through() {
+    let mut game = Game::new();
+    stock_libraries(&mut game);
+    game.spawn_on_battlefield(PlayerId(1), card("Island Sanctuary"));
+    let flier = game.spawn_on_battlefield(PlayerId(0), FLYER.clone());
+    let walker = game.spawn_on_battlefield(
+        PlayerId(0),
+        creature(
+            "Islandwalker",
+            2,
+            2,
+            &[Keyword::Landwalk(BasicLandType::Island)],
+        ),
+    );
+
+    answer_island_sanctuary(&mut game, true);
+    pass_until_next_turn(&mut game);
+
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+    game.submit(Intent::DeclareAttackers {
+        player: PlayerId(0),
+        attackers: vec![
+            (flier, Defender::Player(PlayerId(1))),
+            (walker, Defender::Player(PlayerId(1))),
+        ],
+    })
+    .expect("both exempt keywords ignore the shield");
+}
+
+#[test]
+fn island_sanctuary_declined_draws_and_leaves_the_way_open() {
+    let mut game = Game::new();
+    stock_libraries(&mut game);
+    game.spawn_on_battlefield(PlayerId(1), card("Island Sanctuary"));
+    let ground = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
+
+    let before = hand_ids(&game, PlayerId(1)).len();
+    answer_island_sanctuary(&mut game, false);
+    assert_eq!(
+        hand_ids(&game, PlayerId(1)).len(),
+        before + 1,
+        "declining takes the draw the pause stood in front of",
+    );
+
+    pass_until_next_turn(&mut game);
+    assert!(try_attack(&mut game, ground).is_ok(), "no skip, no shield",);
+}
+
+#[test]
+fn island_sanctuary_shield_lapses_when_its_controllers_turn_comes_back_around() {
+    // "Until your next turn" — one turn of protection, then it is gone unless bought again.
+    let mut game = Game::new();
+    stock_libraries(&mut game);
+    game.spawn_on_battlefield(PlayerId(1), card("Island Sanctuary"));
+    let ground = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
+
+    answer_island_sanctuary(&mut game, true);
+    pass_until_next_turn(&mut game);
+    assert_eq!(
+        try_attack(&mut game, ground),
+        Err(Reject::IllegalDeclaration),
+        "the turn the shield covers",
+    );
+
+    pass_until_next_turn(&mut game);
+    answer_island_sanctuary(&mut game, false);
+    pass_until_next_turn(&mut game);
+    assert!(
+        try_attack(&mut game, ground).is_ok(),
+        "P1's own untap step lapsed the shield they bought last round",
+    );
+}

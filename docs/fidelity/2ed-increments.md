@@ -1689,7 +1689,7 @@ the client string for this whole watch was a `literal` reading "any type that la
 wrong for Fertile Ground already, and wrong for every scope. It reads its `scope`/`bonus_color`
 params now.
 
-### 65. `skip-your-draw-step-for-an-attack-shield` — 1 card, M
+### 65. `skip-your-draw-step-for-an-attack-shield` — 1 card, M — **done**
 Depends on: #3 (landwalk), which supplies half the exemption.
 Island Sanctuary — "If you would draw a card during your draw step, instead you may skip that
 draw. If you do, until your next turn, you can't be attacked except by creatures with flying
@@ -1705,6 +1705,20 @@ per-player shield with an expiry of the controller's next upkeep and read it in
 `PermanentFilter` is the reusable part — Island Sanctuary is the first card to need one, but
 "creatures with flying can't …" is a common template.
 *Cards:* island_sanctuary.
+
+*Landed:* two of the three "things the engine lacks" turned out to be already sitting there. The
+optional replacement is `PendingChoice::MayYesNo` — the draw step already pauses on a replacement
+choice for dredge, so a new `MayYesNoResume::SkipDrawStepDraw` gets the offer and the resume for
+free; "yes" arms the shield, "no" falls through to the dredge check and then the draw, so a player
+holding both replacements still gets both choices. And `StaticEffect::CantBeAttackedBy` already
+expresses the restriction — it just wanted a duration, which is one
+`CombatExtras::repelled_until_next_turn` entry read in `declare_attackers` beside that static's own
+scan. Only the keyword axis was genuinely new: `PermanentFilter::without_keyword`, a second
+exclusion slot beside `without_flying`, because "flying and/or islandwalk" inverts to a banned set
+that has to lack both at once and one bool can't say that. The card is authored inverted for the
+same reason `cant_be_attacked_by` is. The shield is the one entry in `CombatExtras` that outlives
+its turn: everything else there clears at the next untap whoever's it is, this one only at the
+shielded player's own, which is exactly "until your next turn".
 
 ### 66. `grant-an-activated-ability-to-a-filter` — 1 card, M — **done**
 Depends on: nothing.

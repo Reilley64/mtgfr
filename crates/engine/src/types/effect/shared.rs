@@ -966,6 +966,7 @@ impl Effect {
             | Effect::Static(StaticEffect::AttackTax { .. })
             | Effect::Static(StaticEffect::CounterScaledAttackTax)
             | Effect::Static(StaticEffect::CantBeAttackedBy { .. })
+            | Effect::Static(StaticEffect::MaySkipDrawForCantBeAttackedBy { .. })
             | Effect::Static(StaticEffect::CantBlockFilter { .. })
             | Effect::Static(StaticEffect::DoesntUntap { .. })
             | Effect::Static(StaticEffect::CantCastDuringCombat)

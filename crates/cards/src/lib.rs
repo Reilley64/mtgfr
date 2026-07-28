@@ -2701,6 +2701,29 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
         );
     }
 
+    /// Island Sanctuary's printed "except by" is authored inverted: the filter names the
+    /// creatures turned away, so it has to lack *both* of the keywords the card exempts.
+    #[test]
+    fn unlimited_island_sanctuary_turns_away_creatures_lacking_both_exempt_keywords() {
+        let sanctuary = get_by_name("Island Sanctuary").expect("Island Sanctuary is in the pool");
+        let [ability] = &sanctuary.abilities[..] else {
+            panic!("one static ability");
+        };
+        assert_eq!(ability.timing, Timing::Static);
+        let Effect::Static(StaticEffect::MaySkipDrawForCantBeAttackedBy { filter }) =
+            ability.effect
+        else {
+            panic!("the draw-step skip that buys the shield");
+        };
+        assert_eq!(filter.types, TypeSet::CREATURE);
+        assert!(filter.without_flying, "flying attacks through the shield");
+        assert_eq!(
+            filter.without_keyword,
+            Some(Keyword::Landwalk(BasicLandType::Island)),
+            "islandwalk attacks through it too",
+        );
+    }
+
     /// Kudzu destroys its own host and then survives it — the re-attachment step is what keeps it
     /// off the CR 704.5m orphan sweep, and the chooser is the host's controller, not Kudzu's.
     #[test]

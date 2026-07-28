@@ -109,6 +109,18 @@ describe("formatMessage", () => {
     ).toBe("Activated abilities of permanent enchantment white cost {3} more to activate");
   });
 
+  it("reads Island Sanctuary's skipped draw back with the attackers it turns away", () => {
+    expect(
+      formatMessage({
+        key: "effect.static_may_skip_draw_for_cant_be_attacked_by",
+        params: [{ name: "filter", string_value: "permanent_creature_without_flying_without_islandwalk" }],
+        children: [],
+      }),
+    ).toBe(
+      "You may skip your draw-step draw; if you do, permanent creature without flying without islandwalk can't attack you until your next turn",
+    );
+  });
+
   it("reads Kudzu's re-attachment offer back with the hosts on offer", () => {
     expect(
       formatMessage({

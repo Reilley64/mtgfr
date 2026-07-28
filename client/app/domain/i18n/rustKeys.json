@@ -263,6 +263,7 @@
   "effect.static_cant_attack_if_cast_this_turn",
   "effect.static_cant_attack_unless_defender_controls",
   "effect.static_cant_be_attacked_by",
+  "effect.static_may_skip_draw_for_cant_be_attacked_by",
   "effect.static_cant_block_filter",
   "effect.static_cant_cast_during_combat",
   "effect.static_cant_cast_if_attacked_this_turn",

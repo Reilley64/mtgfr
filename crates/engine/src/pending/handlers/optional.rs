@@ -19,6 +19,28 @@ impl Game {
             return Err(Reject::IllegalChoice);
         };
         self.finish_answer();
+        // Island Sanctuary's draw-step replacement: "yes" skips the draw and arms the shield,
+        // "no" takes the draw the pause stood in front of (dredge's own replacement included).
+        // Either way this resumes the step loop the pause interrupted, as a dredge answer does.
+        if let MayYesNoResume::SkipDrawStepDraw = resume {
+            let Effect::Static(StaticEffect::MaySkipDrawForCantBeAttackedBy { filter }) = effect
+            else {
+                return Err(Reject::IllegalChoice);
+            };
+            let mut events = Vec::new();
+            if yes {
+                self.combat_extras
+                    .repelled_until_next_turn
+                    .push((player, filter));
+            } else {
+                self.draw_step_draw(player, &mut events);
+            }
+            // A declined skip can land on dredge's own pause, which resumes the step loop itself.
+            if self.pending_choice.is_none() {
+                events.extend(self.advance_step());
+            }
+            return Ok(events);
+        }
         if let MayYesNoResume::TradeSecretsRepeat { caster, max } = resume {
             if !yes {
                 return Ok(Vec::new());

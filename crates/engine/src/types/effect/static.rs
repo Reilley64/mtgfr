@@ -155,6 +155,26 @@ pub enum StaticEffect {
         filter: PermanentFilter,
     },
 
+    /// Island Sanctuary: "If you would draw a card during your draw step, instead you may skip
+    /// that draw. If you do, until your next turn, you can't be attacked except by creatures with
+    /// flying and/or islandwalk." An optional replacement on the draw-step draw (CR 614) that
+    /// buys a temporary copy of [`CantBeAttackedBy`](Self::CantBeAttackedBy) above.
+    ///
+    /// `filter` is the *banned* set, exactly as that static's is — the printed "except by" is
+    /// inverted when the card is authored, so Island Sanctuary bans creatures lacking both flying
+    /// and islandwalk rather than exempting creatures having either. `Game::perform_turn_based_actions`
+    /// offers the skip at the draw step; accepting records `(controller, filter)` in
+    /// `CombatExtras::repelled_until_next_turn`, which `Game::declare_attackers` reads beside its
+    /// scan of the static above and that player's own next untap step clears.
+    ///
+    /// ponytail: one variant for both halves rather than a nestable "may skip your draw, then
+    /// \<effect\>" — no [`Effect`] nests another today, and this is the only card in the pool that
+    /// pays a draw for a combat shield. Split it the day a second card skips its draw for
+    /// something else.
+    MaySkipDrawForCantBeAttackedBy {
+        filter: PermanentFilter,
+    },
+
     CantBlockFilter {
         filter: PermanentFilter,
     },

@@ -1679,6 +1679,13 @@ impl Game {
         if filter.without_flying && self.has_keyword(id, Keyword::Flying) {
             return false;
         }
+        // A second keyword exclusion (Island Sanctuary's banned set lacks flying *and*
+        // islandwalk) — the open-ended sibling of the bool just above.
+        if let Some(keyword) = filter.without_keyword
+            && self.has_keyword(id, keyword)
+        {
+            return false;
+        }
         // With flying (Firespout's "each creature with flying").
         if filter.with_flying && !self.has_keyword(id, Keyword::Flying) {
             return false;

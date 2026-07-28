@@ -1600,7 +1600,7 @@ impl<'de> Deserialize<'de> for TypeSet {
 /// `has_mana_ability`,
 /// `controlled_since_turn_start`, `did_not_attack_this_turn`,
 /// `nonbasic`, `nonlegendary`, `nonlair`, `exclude_subtypes`,
-/// `without_flying`, `with_flying`, `with_counter`). `noncreature` is sugar for `exclude = "creature"`;
+/// `without_flying`, `without_keyword`, `with_flying`, `with_counter`). `noncreature` is sugar for `exclude = "creature"`;
 /// `not_color` is sugar for `color`'s negated-color arm — both fold into the same
 /// [`PermanentFilter`] fields as their general spelling (see below).
 impl<'de> Deserialize<'de> for PermanentFilter {
@@ -1721,6 +1721,10 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     nonlair: bool,
                     #[serde(default)]
                     without_flying: bool,
+                    /// Island Sanctuary's second keyword exclusion — `{ landwalk = "island" }`,
+                    /// the same spelling a printed keyword takes.
+                    #[serde(default)]
+                    without_keyword: Option<Keyword>,
                     #[serde(default)]
                     with_flying: bool,
                     /// Martyr's Bond's dynamic "shares a card type with it" edict gate — see the
@@ -1783,6 +1787,7 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     nonlegendary: t.nonlegendary,
                     nonlair: t.nonlair,
                     without_flying: t.without_flying,
+                    without_keyword: t.without_keyword,
                     with_flying: t.with_flying,
                     shares_type_with_dying_permanent: t.shares_type_with_dying_permanent,
                     with_counter: t.with_counter,

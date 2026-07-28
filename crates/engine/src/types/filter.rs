@@ -893,6 +893,14 @@ pub struct PermanentFilter {
     /// `without_flying` above (not a second exclusion, so it stays its own bool rather than
     /// folding into that field's ponytail note).
     pub with_flying: bool,
+    /// A *second* keyword exclusion, alongside [`without_flying`](Self::without_flying) — Island
+    /// Sanctuary's "can't be attacked except by creatures with flying **and/or islandwalk**"
+    /// inverts to a banned set that has to lack both at once, which one bool can't say. `None`
+    /// (default) imposes no restriction. Reads [`Game::has_keyword`].
+    /// ponytail: two exclusion slots (one bool, one open) cover the pool; a third simultaneous
+    /// keyword exclusion wants a small `ArrayVec<Keyword>` here, which
+    /// [`PermanentFilter`](Self)'s `Copy` still allows.
+    pub without_keyword: Option<Keyword>,
     /// Requires the permanent share at least one card type with the ability's own triggering
     /// dying permanent's last-known card types (CR 603.10a) — a *dynamic* type gate whose type
     /// set isn't known until the ability actually fires (Martyr's Bond's "shares a card type with
@@ -979,6 +987,7 @@ impl PermanentFilter {
             nonlegendary: false,
             nonlair: false,
             without_flying: false,
+            without_keyword: None,
             with_flying: false,
             shares_type_with_dying_permanent: false,
             with_counter: None,

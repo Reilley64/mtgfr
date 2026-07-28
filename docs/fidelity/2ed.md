@@ -238,7 +238,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Invisibility** {U}{U} · Enchantment — Aura — increment 11
 - [x] **Iron Star** {1} · Artifact — increment 10
 - [ ] **Ironclaw Orcs** {1}{R} · Creature — Orc — increment 11
-- [ ] **Island Sanctuary** {1}{W} · Enchantment — increment 65
+- [x] **Island Sanctuary** {1}{W} · Enchantment — increment 65
 - [x] **Ivory Cup** {1} · Artifact — increment 10
 - [x] **Jade Monolith** {4} · Artifact — increment 6a
 - [x] **Jade Statue** {4} · Artifact — increment 57

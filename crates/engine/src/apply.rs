@@ -1152,6 +1152,13 @@ impl Game {
                     // "You choose which creatures attack/block this turn" (Master Warcraft)
                     // expires at the same turn boundary as the shields above — combat is always
                     // within the turn, so clearing at Untap is behavior-exact for "this turn".
+                    // "Until your next turn" (Island Sanctuary): the shield lasts across the
+                    // other seats' turns and lapses when its own player's turn comes back around,
+                    // so only the active player's entry goes — unlike every "this turn" clear
+                    // above, which is unconditional.
+                    self.combat_extras
+                        .repelled_until_next_turn
+                        .retain(|&(shielded, _)| shielded != active_player);
                     self.combat_extras.attack_declarer = None;
                     self.combat_extras.block_declarer = None;
                     // "Entered the battlefield this turn" (Oran-Rief, the Vastwood) expires at

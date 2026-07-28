@@ -75,6 +75,16 @@ pub(crate) struct CombatExtras {
     /// declaration is a single submission covering every attacked seat at once, and each blocker's
     /// legality is still checked against its own controller. Cleared at the same turn boundary.
     pub block_declarer: Option<PlayerId>,
+    /// "Until your next turn, you can't be attacked except by creatures with flying and/or
+    /// islandwalk" (Island Sanctuary): each entry is `(the shielded player, the attackers turned
+    /// away)`. The filter is the *banned* set, the same polarity
+    /// [`Effect::Static(StaticEffect::CantBeAttackedBy)`] uses, and
+    /// [`Game::declare_attackers`](crate::Game) reads it beside that static's own scan.
+    ///
+    /// The one entry here that outlives its turn: everything above expires at the next Untap
+    /// whoever's it is, while this one is cleared only at the *shielded* player's own next Untap,
+    /// which is exactly "until your next turn".
+    pub repelled_until_next_turn: Vec<(PlayerId, crate::PermanentFilter)>,
 }
 
 /// Active play and control permissions stored outside `Card`/`Permanent` so they stay `Copy`.

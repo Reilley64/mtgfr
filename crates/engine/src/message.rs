@@ -289,6 +289,7 @@ message_keys! {
     EFFECT_STATIC_CANT_ATTACK_IF_CAST_THIS_TURN => "effect.static_cant_attack_if_cast_this_turn",
     EFFECT_STATIC_CANT_ATTACK_UNLESS_DEFENDER_CONTROLS => "effect.static_cant_attack_unless_defender_controls",
     EFFECT_STATIC_CANT_BE_ATTACKED_BY => "effect.static_cant_be_attacked_by",
+    EFFECT_STATIC_MAY_SKIP_DRAW_FOR_CANT_BE_ATTACKED_BY => "effect.static_may_skip_draw_for_cant_be_attacked_by",
     EFFECT_STATIC_CANT_BLOCK_FILTER => "effect.static_cant_block_filter",
     EFFECT_STATIC_CANT_CAST_DURING_COMBAT => "effect.static_cant_cast_during_combat",
     EFFECT_STATIC_CANT_CAST_IF_ATTACKED_THIS_TURN => "effect.static_cant_cast_if_attacked_this_turn",
@@ -936,6 +937,9 @@ fn permanent_filter_token(filter: PermanentFilter) -> String {
     }
     if filter.without_flying {
         parts.push("without_flying".to_string());
+    }
+    if let Some(keyword) = filter.without_keyword {
+        parts.push(format!("without_{}", keyword_token(keyword)));
     }
     if filter.with_flying {
         parts.push("with_flying".to_string());
@@ -2240,6 +2244,10 @@ impl Effect {
             }
             Effect::Static(CantBeAttackedBy { filter }) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_CANT_BE_ATTACKED_BY)
+                    .with_params(vec![permanent_filter_param("filter", filter)])
+            }
+            Effect::Static(MaySkipDrawForCantBeAttackedBy { filter }) => {
+                MessageRef::new(MessageKey::EFFECT_STATIC_MAY_SKIP_DRAW_FOR_CANT_BE_ATTACKED_BY)
                     .with_params(vec![permanent_filter_param("filter", filter)])
             }
             Effect::Static(PreventCombatDamage { to_self, by_self }) => {

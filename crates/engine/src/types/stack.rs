@@ -837,6 +837,11 @@ pub enum MayYesNoResume {
     /// Trade Secrets' repeat gate: "yes" draws two for `player`, then pauses `caster` on the next
     /// `MayDrawUpTo`.
     TradeSecretsRepeat { caster: PlayerId, max: u8 },
+    /// Island Sanctuary's draw-step replacement (CR 614): "yes" skips the draw and arms the
+    /// combat shield, "no" takes the draw the pause interrupted. Either way the answer resumes
+    /// the step loop itself, the way a dredge answer does — unlike [`Self::Default`], nothing
+    /// here ever reaches the stack.
+    SkipDrawStepDraw,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

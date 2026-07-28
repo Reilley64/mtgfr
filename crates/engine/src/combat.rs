@@ -601,6 +601,24 @@ impl Game {
             }
         }
 
+        // Island Sanctuary's "until your next turn, you can't be attacked except by creatures
+        // with flying and/or islandwalk": the same banned-set filter as the static just above,
+        // but held per-player for a duration rather than read off a permanent's ability, since
+        // the card only grants it when its controller paid a draw for it this round.
+        for &(attacker, defender) in &resolved {
+            let repelled =
+                self.combat_extras
+                    .repelled_until_next_turn
+                    .iter()
+                    .any(|&(shielded, filter)| {
+                        shielded == defender
+                            && self.permanent_matches(&filter, attacker, defender, None)
+                    });
+            if repelled {
+                return Err(Reject::IllegalDeclaration);
+            }
+        }
+
         // Vow counters (CR 122.1 — Promise of Loyalty): a creature marked with a vow counter
         // "can't attack" the player recorded on it, for as long as it has the counter. Read live
         // off `kind_counters[Vow]` + `vow_protected`, so removing the counter lifts the restriction.
