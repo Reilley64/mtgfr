@@ -1,3 +1,4 @@
+import * as Combobox from "@foldkit/ui/combobox";
 import * as Dialog from "@foldkit/ui/dialog";
 import { Schema as S } from "effect";
 import { m } from "foldkit/message";
@@ -154,6 +155,9 @@ export const PromptOrderDragEnded = m("PromptOrderDragEnded");
 export const PromptDamageSet = m("PromptDamageSet", { id: S.Number, amount: S.Number });
 /** Type into a free-text prompt (naming a card). */
 export const PromptStringSet = m("PromptStringSet", { value: S.String });
+/** Delegation envelope for the card-name typeahead's Combobox submodel. Typing and picking a
+ *  suggestion both land in the string draft, which is what the answer is built from. */
+export const GotCardNameComboboxMessage = m("GotCardNameComboboxMessage", { message: Combobox.Message });
 /** Filter searchable card-pick prompts (library search) by name. */
 export const PromptCardFilterSet = m("PromptCardFilterSet", { query: S.String });
 /** Filter closed option lists (creature types) by name. */
@@ -319,6 +323,7 @@ export const Message = S.Union([
   PromptOrderDragEnded,
   PromptDamageSet,
   PromptStringSet,
+  GotCardNameComboboxMessage,
   PromptCardFilterSet,
   PromptOptionFilterSet,
   PromptNumberSet,

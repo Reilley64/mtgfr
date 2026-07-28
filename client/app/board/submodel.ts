@@ -1,4 +1,6 @@
+import * as Combobox from "@foldkit/ui/combobox";
 import * as Dialog from "@foldkit/ui/dialog";
+import { Option } from "effect";
 import type { Command as FoldkitCommand } from "foldkit";
 import { Command } from "foldkit";
 import {
@@ -84,6 +86,7 @@ import {
   sacrificeCostObjectIds,
   stagedPickTargets,
 } from "./action/targeting";
+import { CARD_NAME_COMBOBOX_ID, CardNameCombobox } from "./card-name-combobox";
 import {
   markRevealSeen,
   prefersReducedMotion,
@@ -134,10 +137,12 @@ import { CopyBoardLog } from "./log-commands";
 import {
   CombatCancelAttacker,
   CombatCancelBlocker,
+  GotCardNameComboboxMessage,
   GotConcedeDialogMessage,
   GotResultDialogMessage,
   GyExileChosen,
   type Message,
+  PromptStringSet,
 } from "./messages";
 import { type ExitFx, spawnExitFx } from "./motion/exit-fx";
 import {
@@ -273,6 +278,8 @@ export type BoardModel = {
   promptSubmitSeq: number | null;
   /** Catalog name suggestions for `choose_card_name` (query must match current draft). */
   cardNameSuggestions: { query: string; names: ReadonlyArray<string> } | null;
+  /** The `choose_card_name` typeahead. Owns the input text; the string draft mirrors it. */
+  cardNameCombobox: Combobox.Model;
   /** Filter query for closed option prompts (creature types). */
   promptOptionFilter: string;
   /** Selected row while click-to-place reordering `order_triggers` (null when idle). */
@@ -349,6 +356,7 @@ export function initialBoardModel(): BoardModel {
     promptSubmitInFlight: false,
     promptSubmitSeq: null,
     cardNameSuggestions: null,
+    cardNameCombobox: Combobox.init({ id: CARD_NAME_COMBOBOX_ID }),
     promptOptionFilter: "",
     orderPickPos: null,
     handDrag: null,
@@ -444,6 +452,7 @@ function syncPromptDraft(model: BoardModel, fold: BoardFold): BoardModel {
         promptSubmitInFlight: false,
         promptSubmitSeq: null,
         cardNameSuggestions: null,
+        cardNameCombobox: Combobox.init({ id: CARD_NAME_COMBOBOX_ID }),
         promptOptionFilter: "",
         orderPickPos: null,
       };
@@ -458,6 +467,7 @@ function syncPromptDraft(model: BoardModel, fold: BoardFold): BoardModel {
     promptSubmitInFlight: false,
     promptSubmitSeq: null,
     cardNameSuggestions: null,
+    cardNameCombobox: Combobox.init({ id: CARD_NAME_COMBOBOX_ID }),
     promptOptionFilter: "",
     orderPickPos: null,
     pileExpand: pile != null ? pile : model.gyExilePick != null ? model.pileExpand : null,
@@ -1885,6 +1895,7 @@ function revealTimer(reveal: FirstPlayerReveal): BoardCmd[] {
   return [RevealHoldTimer({ ms: hold }) as unknown as BoardCmd];
 }
 
+const toCardNameComboboxMessage = (message: Combobox.Message): OutMessage => GotCardNameComboboxMessage({ message });
 const toConcedeDialogMessage = (message: Dialog.Message): OutMessage => GotConcedeDialogMessage({ message });
 const toResultDialogMessage = (message: Dialog.Message): OutMessage => GotResultDialogMessage({ message });
 
@@ -2090,6 +2101,7 @@ function cancelAll(model: BoardModel): BoardModel {
     promptSubmitInFlight: false,
     promptSubmitSeq: null,
     cardNameSuggestions: null,
+    cardNameCombobox: Combobox.init({ id: CARD_NAME_COMBOBOX_ID }),
     promptOptionFilter: "",
     orderPickPos: null,
     handDrag: null,
@@ -2940,6 +2952,22 @@ export function updateBoard(
         return [{ ...next, cardNameSuggestions: null }, []];
       }
       return [next, [SearchCardNames({ query: q }) as unknown as BoardCmd]];
+    }
+    // Open/close, arrow keys, active descendant, and blur are the Combobox's. The board only has
+    // to keep the string draft — what the answer is built from — level with the input.
+    case "GotCardNameComboboxMessage": {
+      const [cardNameCombobox, commands, outMessage] = CardNameCombobox.update(model.cardNameCombobox, message.message);
+      const lifted = Command.mapMessages(commands, toCardNameComboboxMessage);
+      // A picked suggestion re-runs the catalog search for a name that is already exact; the
+      // popup is closed by then, so the refreshed list is never seen.
+      const typed = message.message._tag === "UpdatedInputValue" ? message.message.value : null;
+      const picked = Option.isSome(outMessage) && outMessage.value._tag === "Selected" ? outMessage.value.value : null;
+      const value = picked ?? typed;
+      if (value == null) return [{ ...model, cardNameCombobox }, lifted];
+      // Draft first, then seat the input: `PromptStringSet` resyncs the draft, and a resync onto a
+      // different prompt resets the combobox — which would drop the keystroke that got us here.
+      const [drafted, draftCommands] = updateBoard(model, PromptStringSet({ value }), fold, tableId);
+      return [{ ...drafted, cardNameCombobox }, [...lifted, ...draftCommands]];
     }
     case "CardNameSuggestionsFetched": {
       const draft = model.promptDraft;

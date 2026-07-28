@@ -3,7 +3,7 @@
 // Pending-choice formulators collect answers and route every submission through `choiceIntent`.
 
 import { Option } from "effect";
-import { type Html, html } from "foldkit/html";
+import { childAttributes, type Html, html } from "foldkit/html";
 import {
   cardPickIsSearchable,
   filterChoiceItems,
@@ -29,7 +29,8 @@ import { filterOptionLabels } from "~/optionFilter";
 import { manaFontClass } from "~/oracleText";
 import { isActivePlayer } from "~/spectator";
 import { cardArt } from "~/ui/card-art";
-import { input } from "~/ui/input";
+import { input, inputClass } from "~/ui/input";
+import { menuItemClass, menuPanelClass } from "~/ui/menu";
 import type { ChoiceItem, MessageRef, PendingChoiceView, VisibleState, WireModeChoice, WireTarget } from "~/wire/types";
 import { clampX, costText, costWithChosenX } from "~/xCost";
 import { formatMessage } from "../../domain/i18n/message";
@@ -54,10 +55,12 @@ import {
   stagedPickTargets,
   stagedTargetTitle,
 } from "../action/targeting";
+import { CARD_NAME_COMBOBOX_ID, CardNameCombobox } from "../card-name-combobox";
 import { seatColor, ZONE } from "../geometry/layout";
 import {
   CancelActionClicked,
   DiscardChosen,
+  GotCardNameComboboxMessage,
   GyExileChosen,
   type Message,
   PendingChoiceAnswered,
@@ -72,7 +75,6 @@ import {
   PromptOrderMoved,
   PromptOrderRowClicked,
   PromptPartitionSet,
-  PromptStringSet,
   PromptSubmitted,
   SacrificeChosen,
   TargetChosen,
@@ -2200,47 +2202,42 @@ function stringPickPrompt(
         h.div(
           [h.Class("flex min-h-0 w-[min(92vw,360px)] flex-1 flex-col gap-sm")],
           [
-            input(h, {
-              id: "prompt-name-input",
-              variant: "hud",
-              testId: "prompt-name-input",
-              placeholder: "Card name",
-              autofocus: true,
-              ariaLabel: "Card name",
-              value,
-              onInput: (v) => PromptStringSet({ value: v }),
-              class: "w-full",
-              attrs: [
-                h.OnKeyDownPreventDefault((key) => {
-                  if (key !== "Enter" || !canSubmit) return Option.none();
-                  return Option.some(PromptSubmitted());
-                }),
-              ],
-            }),
-            suggestions.length > 0
-              ? h.div(
-                  [
-                    h.DataAttribute("testid", "prompt-name-suggestions"),
-                    h.Class("flex min-h-0 w-full flex-1 flex-col gap-1 overflow-y-auto"),
-                  ],
-                  suggestions.map((name, index) =>
-                    h.button(
-                      [
-                        h.Type("button"),
-                        h.DataAttribute("testid", `prompt-name-suggestion-${index}`),
-                        h.OnClick(PromptStringSet({ value: name })),
-                        h.Class(
-                          "cursor-pointer rounded-hud bg-glass px-3 py-1 text-left text-body text-snow hover:bg-glass-dim",
-                        ),
-                      ],
-                      [name],
-                    ),
+            // Combobox owns the input text, opens the list as you type, and moves the active row
+            // on arrow keys; Enter commits the highlighted name into the draft. It renders the
+            // panel only when it has items, and anchors and portals it, so `z-50` is what keeps
+            // it over the `z-40` prompt frame.
+            h.submodel({
+              slotId: CARD_NAME_COMBOBOX_ID,
+              model: board.cardNameCombobox,
+              view: CardNameCombobox.view,
+              viewInputs: {
+                items: suggestions,
+                maybeSelectedValue: value === "" ? Option.none() : Option.some(value),
+                restingInputValue: value,
+                itemToValue: (name: string) => name,
+                itemToDisplayText: (name: string) => name,
+                itemToConfig: (name: string, context: { isActive: boolean }) => ({
+                  className: menuItemClass(context.isActive ? "bg-white/8" : undefined, "hud"),
+                  content: h.span(
+                    [h.DataAttribute("testid", `prompt-name-suggestion-${suggestions.indexOf(name)}`)],
+                    [name],
                   ),
-                )
-              : null,
+                }),
+                ariaLabel: "Card name",
+                inputPlaceholder: "Card name",
+                inputClassName: inputClass("w-full", "hud"),
+                inputAttributes: childAttributes([h.DataAttribute("testid", "prompt-name-input"), h.Autofocus(true)]),
+                inputWrapperClassName: "w-full",
+                itemsClassName: menuPanelClass("z-50 max-h-[40vh] w-(--button-width) gap-1", "hud"),
+                itemsAttributes: childAttributes([h.DataAttribute("testid", "prompt-name-suggestions")]),
+                itemsScrollClassName: "min-h-0 overflow-y-auto",
+                anchor: { placement: "bottom-start" as const, gap: 4 },
+              },
+              toParentMessage: (message) => GotCardNameComboboxMessage({ message }),
+            }) as Html,
           ],
         ),
-      ].filter((v): v is Html => v !== null),
+      ],
       actions: [submitButton("Name", !canSubmit)],
     });
   }
