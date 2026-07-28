@@ -14,6 +14,7 @@ mod filter;
 mod inspect;
 mod mana;
 mod stack;
+mod text_change;
 mod trigger;
 
 pub use card::*;
@@ -22,4 +23,5 @@ pub use filter::*;
 pub use inspect::*;
 pub use mana::*;
 pub use stack::*;
+pub use text_change::*;
 pub use trigger::*;

@@ -40,6 +40,10 @@ pub(crate) enum ChoiceRequest {
         player: crate::PlayerId,
         source: crate::ObjectId,
         options: &'static [&'static str],
+        /// Magical Hack / Sleight of Mind's second question (CR 612.1): what an answer to this
+        /// pick should do next, rather than write a chosen creature type. `None` for every
+        /// ordinary as-enters "choose a creature type".
+        then: Option<crate::TextSwapPick>,
     },
     ChooseColor {
         player: crate::PlayerId,

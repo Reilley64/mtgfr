@@ -285,13 +285,21 @@ impl Game {
     /// `source`, keeping [`Permanent::chosen_subtype`] a leaked `&'static str` like every other
     /// subtype field. `_player` isn't needed beyond `submit`'s choice-gate actor check — unlike
     /// [`Game::choose_mana_color`], nothing here is scoped by player.
+    ///
+    /// A text-changing spell (CR 612.1 — Magical Hack, Sleight of Mind) borrows this same picker
+    /// for both halves of "replacing all instances of one word with another", carrying its
+    /// [`TextSwapPick`] as the choice's `then` tail: the first answer re-raises the picker for the
+    /// replacement word, and the second writes the swap.
     pub(crate) fn choose_creature_type(
         &mut self,
         _player: PlayerId,
         subtype: String,
     ) -> Result<Vec<Event>, Reject> {
         let Some(PendingChoice::ChooseCreatureType {
-            source, options, ..
+            player,
+            source,
+            options,
+            then,
         }) = self.pending_choice.clone()
         else {
             return Err(Reject::IllegalChoice);
@@ -302,11 +310,47 @@ impl Game {
         self.finish_answer();
 
         let mut events = Vec::new();
+        let Some(pick) = then else {
+            self.push_apply(
+                &mut events,
+                Event::CreatureTypeChosen {
+                    object: source,
+                    subtype: chosen,
+                },
+            );
+            return Ok(events);
+        };
+        // The word being replaced was just picked; ask the same question again for what replaces
+        // it. Nothing happens between the two answers, so no state has to survive but the pick.
+        let Some(from) = pick.from else {
+            pending::raise(
+                self,
+                pending::ChoiceRequest::ChooseCreatureType {
+                    player,
+                    source,
+                    options,
+                    then: Some(TextSwapPick {
+                        from: Some(chosen),
+                        ..pick
+                    }),
+                },
+            );
+            return Ok(events);
+        };
+        // Both words are in. A target that stopped being a spell or permanent has no text left to
+        // change (CR 608.2b), and a word outside the offered vocabulary can't describe a swap.
+        let is_text_bearing = matches!(
+            self.objects[pick.object as usize],
+            Object::Permanent(_) | Object::Spell(_)
+        );
+        let Some(swap) = pick.words.swap(from, chosen).filter(|_| is_text_bearing) else {
+            return Ok(events);
+        };
         self.push_apply(
             &mut events,
-            Event::CreatureTypeChosen {
-                object: source,
-                subtype: chosen,
+            Event::TextChanged {
+                object: pick.object,
+                swap,
             },
         );
         Ok(events)

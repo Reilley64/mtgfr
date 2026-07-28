@@ -86,6 +86,7 @@
   "effect.counters_remove_counter_from_self",
   "effect.choice_cast_creature_face_down",
   "effect.choice_caster_keeps_one_of_each_type_per_player",
+  "effect.choice_change_text",
   "effect.choice_choose_basic_land_type",
   "effect.choice_choose_color",
   "effect.choice_choose_creature_type",

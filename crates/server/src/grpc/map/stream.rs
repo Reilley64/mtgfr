@@ -880,6 +880,9 @@ pub fn visible_event_to_pb(event: VisibleEvent) -> Option<pb::VisibleEvent> {
                 color: u32::from(color),
             })
         }
+        VisibleEvent::TextChanged { object, from, to } => {
+            Event::TextChanged(pb::VisibleEventTextChanged { object, from, to })
+        }
         VisibleEvent::Flipped { object } => Event::Flipped(pb::VisibleEventFlipped { object }),
         VisibleEvent::PreparedSpellCast {
             spell,

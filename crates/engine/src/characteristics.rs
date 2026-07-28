@@ -507,6 +507,17 @@ impl Game {
         }
     }
 
+    /// The CR 612.1 text change riding `object`, wherever it's stored: a permanent
+    /// ([`Permanent::text_swap`]) or a spell still on the stack ([`Spell::text_swap`] — Magical
+    /// Hack targets "spell or permanent"). `None` if `object` is neither, or was never changed.
+    pub(crate) fn text_swap_of(&self, object: ObjectId) -> Option<TextSwap> {
+        match &self.objects[object as usize] {
+            Object::Permanent(p) => p.text_swap,
+            Object::Spell(s) => s.text_swap,
+            _ => None,
+        }
+    }
+
     /// `player`'s commander color identity (CR 903.4) — the [`color_identity`] of their
     /// commander card, wherever it currently is (command zone or battlefield). All-`false` if
     /// `player` has no object flagged as a commander (a bare test setup with no designated
@@ -1616,7 +1627,16 @@ impl Game {
         if self.host_loses_all_abilities(id) {
             return empty_slice();
         }
-        self.def_of(id).abilities.clone()
+        let printed = self.def_of(id).abilities.clone();
+        // CR 612.1 layer 3: a text change rewrites the words this object's own printed abilities
+        // name before every later read of them — see [`TextSwap::ability`] for how far that goes.
+        let Some(swap) = self.text_swap_of(id) else {
+            return printed;
+        };
+        printed
+            .iter()
+            .map(|ability| swap.ability(ability))
+            .collect()
     }
 
     /// Whether `id` is a bestowed permanent (CR 702.103) currently attached to a host: while so it
@@ -1755,6 +1775,13 @@ impl Game {
         // (Flashfires) catches the basic and every dual that shares the type. A `set_subtypes`
         // layer below still replaces the whole line, land types included (CR 613.4).
         let printed = def.printed_subtypes();
+        // CR 612.1 layer 3, and the reason a Hacked Swamp taps for {W}: `land_mana_credit`
+        // re-derives a land's mana from its *effective* basic land types, so rewriting the word
+        // here moves the mana with it.
+        let printed = match self.text_swap_of(id) {
+            Some(swap) => printed.into_iter().map(|s| swap.subtype(s)).collect(),
+            None => printed,
+        };
         if self.as_permanent(id).is_none() {
             return printed;
         }
@@ -2062,6 +2089,15 @@ impl Game {
             };
             if holds {
                 keywords.push(keyword);
+            }
+        }
+        // CR 612.1 layer 3: "you may change 'swampwalk' to 'plainswalk'" is Magical Hack's own
+        // reminder text, and protection's colour is what Sleight of Mind is played for. Only this
+        // object's *printed* keywords move — a keyword granted below is the granting object's
+        // text, not this one's.
+        if let Some(swap) = self.text_swap_of(object) {
+            for keyword in &mut keywords {
+                *keyword = swap.keyword(*keyword);
             }
         }
         for effect in self
@@ -2573,7 +2609,12 @@ impl Game {
     pub fn ability_at(&self, object: ObjectId, index: usize) -> Option<Ability> {
         let def = self.def_of(object);
         if let Some(ability) = def.abilities.get(index) {
-            return Some(ability.clone());
+            // CR 612.1 layer 3: activating reads this object's text, not its card's — a Circle of
+            // Protection: Red that Sleight of Mind rewrote arms against the colour it says now.
+            let Some(swap) = self.text_swap_of(object) else {
+                return Some(ability.clone());
+            };
+            return Some(swap.ability(ability));
         }
         let granted_index = index - def.abilities.len();
         let mana_grants = self.granted_mana_abilities(object);
@@ -3406,6 +3447,7 @@ mod cache_tests {
                 x: 0,
                 chosen_color: None,
                 set_color: None,
+                text_swap: None,
                 modes: Modes::default(),
                 copy: false,
                 flashback: false,

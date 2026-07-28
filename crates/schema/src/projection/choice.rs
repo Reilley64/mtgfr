@@ -828,10 +828,13 @@ impl<'a> ChoiceCtx<'a> {
                 source,
                 amount,
             },
+            // The `then` tail (a text-changer's second word — CR 612.1) is engine-internal: the
+            // wire prompt is the same "pick one of these words" either way.
             engine::PendingChoice::ChooseCreatureType {
                 player,
                 source,
                 options,
+                ..
             } => PendingChoiceView::ChooseCreatureType {
                 player: player.0,
                 source,

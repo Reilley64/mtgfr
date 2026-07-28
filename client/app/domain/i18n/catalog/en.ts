@@ -135,6 +135,8 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.choice_caster_keeps_one_of_each_type_per_player": literal(
     "For each player, you choose an artifact, a creature, an enchantment, and a planeswalker they control; each player sacrifices their other nonland permanents",
   ),
+  "effect.choice_change_text": (params) =>
+    `Change the text of ${humanize(param(params, "target"))} by replacing all instances of one ${humanize(param(params, "words"))} with another`,
   "effect.choice_choose_basic_land_type": literal("Choose a basic land type"),
   "effect.choice_choose_color": literal("Choose a color"),
   "effect.choice_choose_creature_type": literal("Choose a creature type"),

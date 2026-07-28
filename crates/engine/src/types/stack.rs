@@ -1726,6 +1726,12 @@ pub enum PendingChoice {
         player: PlayerId,
         source: ObjectId,
         options: &'static [&'static str],
+        /// A text-changing spell's two-word pick riding this picker (CR 612.1 — Magical Hack,
+        /// Sleight of Mind): what the answer should do instead of writing `source`'s chosen
+        /// creature type, and which of the two questions this is. Engine-internal — the wire
+        /// prompt is the same "pick one of these words" either way, so nothing about the tail is
+        /// projected. `None` for every as-enters "choose a creature type".
+        then: Option<TextSwapPick>,
     },
     /// `player` must name a color for `source` — either an as-enters choice (CR 614.12/700.9-style
     /// — Flickering Ward's [`Effect::Choice(ChoiceEffect::ChooseColor)`]) or a resolution-time color-SET (CR 613.3c —
@@ -2272,6 +2278,12 @@ pub enum Event {
     /// An as-enters "choose a color" choice was answered (CR 614.12/700.9-style — Flickering
     /// Ward's [`Effect::Choice(ChoiceEffect::ChooseColor)`]). Sets `object`'s [`Permanent::chosen_color`].
     ColorChosen { object: ObjectId, color: Color },
+    /// A CR 612.1 text change landed on `object` — both words of a
+    /// [`Effect::Choice(ChoiceEffect::ChangeText)`] have been picked (Magical Hack, Sleight of
+    /// Mind). Writes [`Permanent::text_swap`] or, for a spell still on the stack,
+    /// [`Spell::text_swap`]; the change lasts as long as that object does ("this effect lasts
+    /// indefinitely"), so nothing clears it.
+    TextChanged { object: ObjectId, swap: TextSwap },
     /// A CR 613.3c layer-5 color SET landed on `object` — Wild Mongrel's answered "becomes the
     /// color of your choice until end of turn"
     /// ([`Effect::Choice(ChoiceEffect::SetOwnColorUntilEndOfTurn)`], `until_end_of_turn`), or a

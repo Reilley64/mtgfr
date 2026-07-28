@@ -4554,13 +4554,14 @@ impl Game {
             .into_iter()
             .filter(|&id| {
                 self.controller_of(id) == controller
-                    && match self.def_of(id).kind {
-                        CardKind::Land {
-                            subtypes: land_subtypes,
-                            ..
-                        } => land_subtypes.iter().copied().any(|s| subtypes.contains(&s)),
-                        _ => false,
-                    }
+                    && self.effective_types(id).intersects(TypeSet::LAND)
+                    // Effective, not printed: the land type a swampwalk looks for is the one the
+                    // land has *now* — after an Evil Presence, a Phantasmal Terrain, or a Magical
+                    // Hack rewrote it (CR 305.7, CR 612.1).
+                    && self
+                        .effective_subtypes(id)
+                        .iter()
+                        .any(|s| subtypes.contains(s))
             })
             .count()
     }

@@ -111981,3 +111981,190 @@ fn winding_the_beast_back_up_stops_at_seven_and_only_in_your_upkeep() {
     );
     assert_eq!(game.power(beast), 7, "a 7/4 again");
 }
+
+// ── One word, replaced everywhere it is stored (fidelity #16) ──────────────────────────────
+
+/// Answer the picker a text-changing spell holds open — once for the word being replaced, once
+/// for what replaces it.
+fn pick_word(game: &mut TestGame, word: &str) {
+    game.submit(Intent::ChooseCreatureType {
+        player: PlayerId(0),
+        subtype: word.to_string(),
+    })
+    .expect("the word is on the offered list");
+}
+
+/// Resolve `hack` targeting `object` and answer both of its questions.
+fn change_text(game: &mut TestGame, hack: ObjectId, object: ObjectId, from: &str, to: &str) {
+    game.cast(hack).at(Target::Object(object)).resolve();
+    pick_word(game, from);
+    pick_word(game, to);
+}
+
+#[test]
+fn magical_hack_moves_a_wraiths_walk_to_another_land_type() {
+    // "…replacing all instances of one basic land type with another. (For example, you may change
+    // 'swampwalk' to 'plainswalk.')" — the reminder text is a landwalk, so that is the first
+    // instance the swap has to find.
+    let mut game = TestGame::new();
+    let wraith = game.spawn_on_battlefield(PlayerId(1), card("Bog Wraith"));
+    let hack = game.spawn_in_hand(PlayerId(0), card("Magical Hack"));
+    assert!(
+        game.effective_keywords(wraith)
+            .contains(&Keyword::Landwalk(BasicLandType::Swamp)),
+        "printed swampwalk"
+    );
+
+    change_text(&mut game, hack, wraith, "Swamp", "Island");
+
+    let keywords = game.effective_keywords(wraith);
+    assert!(
+        keywords.contains(&Keyword::Landwalk(BasicLandType::Island)),
+        "islandwalk now: {keywords:?}"
+    );
+    assert!(
+        !keywords.contains(&Keyword::Landwalk(BasicLandType::Swamp)),
+        "and the word it replaced is gone: {keywords:?}"
+    );
+}
+
+#[test]
+fn magical_hack_makes_a_swamp_tap_for_its_new_type() {
+    // A basic's type line is text too: change "Swamp" to "Plains" and CR 305.6's intrinsic mana
+    // ability comes with it, because a land's mana is derived from its effective land types.
+    let mut game = TestGame::new();
+    let swamp = game.spawn_on_battlefield(PlayerId(0), card("Swamp"));
+    let hack = game.spawn_in_hand(PlayerId(0), card("Magical Hack"));
+
+    change_text(&mut game, hack, swamp, "Swamp", "Plains");
+    assert_eq!(game.effective_subtypes(swamp), vec!["Plains"]);
+
+    // Casting the Hack funded the pool, so measure the tap as a delta rather than a total.
+    let before = (
+        game.mana_in_pool(PlayerId(0), Color::White),
+        game.mana_in_pool(PlayerId(0), Color::Black),
+    );
+    game.submit(Intent::TapForMana {
+        player: PlayerId(0),
+        object: swamp,
+    })
+    .unwrap();
+    assert_eq!(
+        (
+            game.mana_in_pool(PlayerId(0), Color::White),
+            game.mana_in_pool(PlayerId(0), Color::Black),
+        ),
+        (before.0 + 1, before.1),
+        "the Plains' {{W}}, not the Swamp's {{B}}"
+    );
+}
+
+#[test]
+fn a_hacked_land_that_leaves_comes_back_printed() {
+    // "This effect lasts indefinitely" is bounded by the object it changed: a card that changes
+    // zones is a new object (CR 400.7), and a new object was never hacked.
+    let mut game = TestGame::new();
+    let swamp = game.spawn_on_battlefield(PlayerId(0), card("Swamp"));
+    let hack = game.spawn_in_hand(PlayerId(0), card("Magical Hack"));
+    let stone_rain = game.spawn_in_hand(PlayerId(0), card("Stone Rain"));
+
+    change_text(&mut game, hack, swamp, "Swamp", "Plains");
+    game.cast(stone_rain).at(Target::Object(swamp)).resolve();
+
+    let returned = game.spawn_on_battlefield(PlayerId(0), card("Swamp"));
+    assert_eq!(
+        game.effective_subtypes(returned),
+        vec!["Swamp"],
+        "the swap rode the destroyed object, not the card"
+    );
+}
+
+#[test]
+fn sleight_of_mind_moves_a_knights_protection_to_another_color() {
+    // "…replacing all instances of one color word with another": a printed "protection from
+    // black" is the plainest instance there is.
+    let mut game = TestGame::new();
+    let knight = game.spawn_on_battlefield(PlayerId(0), card("White Knight"));
+    let sleight = game.spawn_in_hand(PlayerId(0), card("Sleight of Mind"));
+
+    change_text(&mut game, sleight, knight, "Black", "Red");
+
+    let keywords = game.effective_keywords(knight);
+    assert!(
+        keywords.contains(&Keyword::ProtectionFrom(ProtectionScope::Color(Color::Red))),
+        "protection from red now: {keywords:?}"
+    );
+    assert!(
+        !keywords.contains(&Keyword::ProtectionFrom(ProtectionScope::Color(
+            Color::Black
+        ))),
+        "and black walks right up to it: {keywords:?}"
+    );
+    assert!(
+        keywords.contains(&Keyword::FirstStrike),
+        "first strike names no color word, so it is untouched: {keywords:?}"
+    );
+}
+
+#[test]
+fn sleight_of_mind_rearms_a_circle_of_protection_against_a_new_color() {
+    // The interaction the card was printed for: a Circle of Protection: Red that says "blue
+    // source" now stops the blue burn spell it could not have touched, and the activation reads
+    // the changed text because the ability is read through the object, not the printed card.
+    let mut game = TestGame::new();
+    let circle = game.spawn_on_battlefield(PlayerId(0), card("Circle of Protection: Red"));
+    let sleight = game.spawn_in_hand(PlayerId(0), card("Sleight of Mind"));
+    let blast = game.spawn_in_hand(PlayerId(0), card("Psionic Blast"));
+
+    change_text(&mut game, sleight, circle, "Red", "Blue");
+    shield_with(&mut game, circle, None);
+
+    let start = game.life(PlayerId(0));
+    game.cast(blast).at(Target::Player(PlayerId(0))).resolve();
+    assert_eq!(
+        game.life(PlayerId(0)),
+        start - 2,
+        "the four was prevented; the Blast's own 2 to you is a second hit off a spent shield"
+    );
+}
+
+#[test]
+fn sleight_of_mind_leaves_a_circle_open_to_the_color_it_used_to_stop() {
+    // "Replacing" is not "adding": the word the Circle was printed with is gone, so the red
+    // source it was built to stop now walks through.
+    let mut game = TestGame::new();
+    let circle = game.spawn_on_battlefield(PlayerId(0), card("Circle of Protection: Red"));
+    let sleight = game.spawn_in_hand(PlayerId(0), card("Sleight of Mind"));
+    let bolt = game.spawn_in_hand(PlayerId(0), card("Lightning Bolt"));
+
+    change_text(&mut game, sleight, circle, "Red", "Blue");
+    shield_with(&mut game, circle, None);
+
+    let start = game.life(PlayerId(0));
+    game.cast(bolt).at(Target::Player(PlayerId(0))).resolve();
+    assert_eq!(
+        game.life(PlayerId(0)),
+        start - 3,
+        "the Circle no longer says red"
+    );
+}
+
+#[test]
+fn landwalk_reads_the_land_type_a_land_has_now() {
+    // CR 702.14 asks whether the defending player controls a land *with that type* — the type it
+    // has after CR 305.7 / CR 612.1, not the one printed on it. A Magical Hack that makes the
+    // defender's Island a Swamp lets a Bog Wraith through it.
+    let mut game = TestGame::new();
+    let wraith = game.spawn_on_battlefield(PlayerId(0), card("Bog Wraith"));
+    let island = game.spawn_on_battlefield(PlayerId(1), card("Island"));
+    let blocker = game.spawn_on_battlefield(PlayerId(1), VANILLA.clone());
+    let hack = game.spawn_in_hand(PlayerId(0), card("Magical Hack"));
+
+    change_text(&mut game, hack, island, "Island", "Swamp");
+
+    attack_with(&mut game, vec![wraith]);
+    assert!(
+        block_with(&mut game, vec![(blocker, wraith)]).is_err(),
+        "the defender controls a Swamp now, whatever it was printed as"
+    );
+}

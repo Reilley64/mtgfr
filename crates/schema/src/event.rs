@@ -100,6 +100,14 @@ pub enum VisibleEvent {
         object: ObjectId,
         color: u8,
     },
+    /// A text-changing spell resolved (CR 612.1 — Magical Hack, Sleight of Mind): every instance
+    /// of the word `from` in `object`'s text is now `to`. Public battlefield status, like
+    /// `ColorChosen` — and indefinite, so nothing ends it.
+    TextChanged {
+        object: ObjectId,
+        from: String,
+        to: String,
+    },
     /// A copy of a prepared permanent's back-face spell went on the stack (soc/sos prepare DFCs).
     /// Public — the stack is visible.
     PreparedSpellCast {

@@ -937,7 +937,8 @@ impl Game {
             }
             // ChooseCreatureType / ChooseColor / SetOwnColorUntilEndOfTurn / ChooseOne /
             // Demonstrate / Proliferate / PhaseOut — choose pause peel (`resolution/pause_choose`).
-            Effect::Choice(ChoiceEffect::ChooseBasicLandType)
+            Effect::Choice(ChoiceEffect::ChangeText { .. })
+            | Effect::Choice(ChoiceEffect::ChooseBasicLandType)
             | Effect::Choice(ChoiceEffect::ChooseCreatureType)
             | Effect::Choice(ChoiceEffect::ChooseColor)
             | Effect::Choice(ChoiceEffect::ChooseOpponent)

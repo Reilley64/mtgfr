@@ -24,6 +24,7 @@ export const VISIBLE_EVENT_KIND_PRESENCE = {
   citys_blessing_gained: true,
   color_chosen: true,
   color_set_until_end_of_turn: true,
+  text_changed: true,
   combat_cleared: true,
   combat_damage_copy_armed: true,
   combat_damage_dealt_to_creature: true,

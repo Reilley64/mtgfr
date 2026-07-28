@@ -14,6 +14,16 @@ pub enum ChoiceEffect {
 
     CasterKeepsOneOfEachTypePerPlayer,
 
+    /// "Change the text of target spell or permanent by replacing all instances of one `words`
+    /// with another" (CR 612.1 — Magical Hack's basic land types, Sleight of Mind's color words).
+    /// Resolving asks the controller twice through [`PendingChoice::ChooseCreatureType`]'s picker
+    /// (the word being replaced, then its replacement) and records the answer as a [`TextSwap`] on
+    /// the target — see that type for how far a swap reaches.
+    ChangeText {
+        words: TextWords,
+        target: TargetSpec,
+    },
+
     /// Phantasmal Terrain's "as this Aura enters, choose a basic land type." The same picker
     /// [`Self::ChooseCreatureType`] raises, narrowed to [`BASIC_LAND_TYPES`](crate::BASIC_LAND_TYPES)
     /// — the answer lands on the source's own [`Permanent::chosen_subtype`](crate::Permanent),

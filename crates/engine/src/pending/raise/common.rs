@@ -42,10 +42,12 @@ pub(super) fn map_identical(request: &ChoiceRequest) -> Option<PendingChoice> {
             player,
             source,
             options,
+            then,
         } => Some(PendingChoice::ChooseCreatureType {
             player: *player,
             source: *source,
             options,
+            then: *then,
         }),
         ChoiceRequest::ChooseColor {
             player,

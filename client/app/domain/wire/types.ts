@@ -269,6 +269,7 @@ export type VisibleEvent =
   | { kind: "creature_type_chosen"; object: U32; subtype: string }
   | { color: number; kind: "color_chosen"; object: U32 }
   | { color: number; kind: "color_set_until_end_of_turn"; object: U32 }
+  | { from: string; kind: "text_changed"; object: U32; to: string }
   | { kind: "flipped"; object: U32 }
   | { controller: number; kind: "prepared_spell_cast"; source: U32; spell: U32; target?: null | WireTarget; x: number }
   | { controller: number; kind: "adventure_spell_cast"; source: U32; spell: U32; target?: null | WireTarget; x: number }

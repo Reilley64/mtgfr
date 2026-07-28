@@ -176,6 +176,26 @@ impl Color {
             Color::Green => 'G',
         }
     }
+
+    /// This color's *word* as it appears in printed rules text (CR 105.1) — "protection from
+    /// **black**", "target **green** spell". Capitalized to sit beside
+    /// [`BASIC_LAND_TYPES`](crate::BASIC_LAND_TYPES) in a picker's candidate list; the lowercase
+    /// i18n token that renders an effect is a separate mapping in `message`.
+    pub fn word(self) -> &'static str {
+        match self {
+            Color::White => "White",
+            Color::Blue => "Blue",
+            Color::Black => "Black",
+            Color::Red => "Red",
+            Color::Green => "Green",
+        }
+    }
+
+    /// The color a [`word`](Self::word) names, or `None` for anything else — for reading a picked
+    /// word ([`TextWords::options`](crate::TextWords)) back into the enum.
+    pub fn from_word(word: &str) -> Option<Self> {
+        Color::ALL.into_iter().find(|c| c.word() == word)
+    }
 }
 
 /// When a spell may be cast. Instants cast anytime; sorcery-speed spells only during
@@ -225,6 +245,20 @@ impl BasicLandType {
             BasicLandType::Swamp => "Swamp",
             BasicLandType::Mountain => "Mountain",
             BasicLandType::Forest => "Forest",
+        }
+    }
+
+    /// The basic land type a printed subtype string names, or `None` for a nonbasic one
+    /// ("Desert", "Gate", "Wraith"). The inverse of [`as_str`](Self::as_str), for reading a
+    /// picked word ([`TextWords::options`](crate::TextWords)) back into the enum.
+    pub fn from_subtype(subtype: &str) -> Option<Self> {
+        match subtype {
+            "Plains" => Some(BasicLandType::Plains),
+            "Island" => Some(BasicLandType::Island),
+            "Swamp" => Some(BasicLandType::Swamp),
+            "Mountain" => Some(BasicLandType::Mountain),
+            "Forest" => Some(BasicLandType::Forest),
+            _ => None,
         }
     }
 }
@@ -1225,6 +1259,7 @@ pub(crate) fn fresh_permanent(
         temp_power: 0,
         temp_toughness: 0,
         base_pt_set_eot: None,
+        text_swap: None,
         animation_ends_at_end_of_combat: false,
         base_pt_set_eot_timestamp: 0,
         added_types_eot: TypeSet::NONE,
@@ -1704,6 +1739,11 @@ pub(crate) struct Spell {
     /// [`Permanent::set_color`] — see [`Game::colors_of`]. `None` for every cast spell and
     /// for a copy from an effect that doesn't recolor (Twincast).
     pub(crate) set_color: Option<Color>,
+    /// A CR 612.1 text change made to this spell while it is on the stack ("change the text of
+    /// target spell or permanent …" — Magical Hack, Sleight of Mind). The permanent-side twin is
+    /// [`Permanent::text_swap`]; a spell isn't a permanent, so it needs its own slot for the same
+    /// reason `chosen_color` above does. `None` for every untouched spell.
+    pub(crate) text_swap: Option<TextSwap>,
     /// A modal spell's chosen modes (CR 700.2), each with its own target. An empty selection for
     /// a non-modal spell (which uses `target` and runs every effect).
     pub(crate) modes: Modes,
@@ -1950,6 +1990,17 @@ pub(crate) struct Permanent {
     /// replaces and the later timestamp wins. Not a `CardDef`/TOML surface — a runtime choice or a
     /// resolving spell's doing, not printed data.
     pub(crate) set_color: Option<(Color, bool)>,
+    /// A CR 612.1 text change made to this permanent ("change the text of target spell or
+    /// permanent by replacing all instances of one basic land type with another" — Magical Hack;
+    /// the color-word twin — Sleight of Mind). Read back at CR 613.4 layer 3 by
+    /// [`Game::effective_subtypes`](crate::Game::effective_subtypes),
+    /// [`Game::effective_keywords`](crate::Game::effective_keywords) and
+    /// `Game::functional_abilities` — see [`TextSwap`] for what a swap does and does not reach.
+    /// One slot, so a second text change on the same permanent replaces the first rather than
+    /// composing with it.
+    /// ponytail: two text-changers on one object is the composition this drops; no pool card
+    /// makes it likely, and a `Vec` here would cost [`Permanent`] its `Copy`.
+    pub(crate) text_swap: Option<TextSwap>,
     /// Keywords granted until end of turn (a [`Effect::Pump(PumpEffect::PumpUntilEndOfTurn)`]/
     /// [`Effect::Pump(PumpEffect::PumpCreaturesYouControlUntilEndOfTurn)`] grant), cleared at cleanup alongside
     /// the temp P/T. `&'static` because it's usually copied straight from the granting

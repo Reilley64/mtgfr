@@ -708,6 +708,19 @@ impl ColorFilter {
         };
         colors[named.index()]
     }
+
+    /// The filter matching exactly `color` — the constructor side of the five color-named
+    /// variants, for a caller holding a [`Color`] rather than authored TOML (a CR 612.1 text
+    /// change rewriting the color an ability names).
+    pub fn of(color: Color) -> Self {
+        match color {
+            Color::White => ColorFilter::White,
+            Color::Blue => ColorFilter::Blue,
+            Color::Black => ColorFilter::Black,
+            Color::Red => ColorFilter::Red,
+            Color::Green => ColorFilter::Green,
+        }
+    }
 }
 
 /// A composable predicate over a battlefield permanent — the one filter behind targeted

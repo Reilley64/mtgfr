@@ -203,6 +203,7 @@ export function extractProvenance(
         "tapped",
         "temp_boost",
         "temp_boosts_ended",
+        "text_changed",
         "token_ceased_to_exist",
         "token_entered_attacking",
         "triggered_ability_on_stack",
@@ -271,6 +272,7 @@ export function describe(e: VisibleEvent, state: VisibleState): string | null {
       creature_type_chosen: (e) => `${name(e.object)} is chosen as ${e.subtype}`,
       color_chosen: (e) => `${name(e.object)} is chosen as ${colorName(e.color)}`,
       color_set_until_end_of_turn: (e) => `${name(e.object)} becomes ${colorName(e.color)} until end of turn`,
+      text_changed: (e) => `${name(e.object)}: every "${e.from}" becomes "${e.to}"`,
       // A flip card flipped (CR 709.4) — post-apply state already names the flipped half.
       flipped: (e) => `${name(e.object)} flips`,
       // counter_kind is a numeric engine index with no client name table, so the kind stays unnamed.

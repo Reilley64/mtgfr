@@ -596,6 +596,7 @@ impl Game {
                         x,
                         chosen_color: None,
                         set_color: None,
+                        text_swap: None,
                         modes,
                         copy: false,
                         flashback,
@@ -684,6 +685,7 @@ impl Game {
                         x,
                         chosen_color: None,
                         set_color: None,
+                        text_swap: None,
                         modes: Modes::default(),
                         copy: false,
                         flashback: false,
@@ -771,6 +773,7 @@ impl Game {
                         x,
                         chosen_color: None,
                         set_color: None,
+                        text_swap: None,
                         modes: Modes::default(),
                         copy: false,
                         flashback: false,
@@ -880,6 +883,7 @@ impl Game {
                             x: 0,
                             chosen_color: None,
                             set_color,
+                            text_swap: None,
                             modes: Modes::default(),
                             copy: true,
                             flashback: false,
@@ -953,6 +957,14 @@ impl Game {
                 Object::Spell(s) => s.chosen_color = Some(color),
                 other => panic!("object {object} can't record a chosen color: {other:?}"),
             },
+            // A CR 612.1 text change (Magical Hack, Sleight of Mind), on a permanent or on a spell
+            // still on the stack — "target spell or permanent", so both slots are real targets.
+            // Indefinite: nothing clears it, and a new object starts without one.
+            Event::TextChanged { object, swap } => match &mut self.objects[object as usize] {
+                Object::Permanent(p) => p.text_swap = Some(swap),
+                Object::Spell(s) => s.text_swap = Some(swap),
+                other => panic!("object {object} can't record a text change: {other:?}"),
+            },
             // A layer-5 color SET, on a permanent (Wild Mongrel) or on a spell still on the stack
             // (Deathlace — a lace can recolor the spell itself, which is the whole reason the
             // cycle was printed). The spell slot has no duration because the spell has none.
@@ -993,6 +1005,7 @@ impl Game {
                         x,
                         chosen_color: None,
                         set_color: None,
+                        text_swap: None,
                         modes: Modes::default(),
                         // "Cast a **copy**" (CR): it ceases to exist on resolve rather than
                         // becoming a graveyard card (there is no card behind it).

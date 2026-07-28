@@ -107,8 +107,8 @@ defending player controls a land with that type (read from `CardKind::Land::subt
 rules-relevant list, not `CardDef::subtypes`). Grants come free: Goblin King, Lord of Atlantis,
 and Zombie Master use the existing `keyword_anthem` static, Burrowing uses `grant_to_attached`.
 *Landed:* `Keyword::Landwalk(BasicLandType)`, one arm in `Game::can_block` reading the
-*defending* player's printed land subtypes through the existing
-`Game::lands_with_subtype_controlled`. Printed, Aura-granted, and lord-granted landwalk all fell
+*defending* player's land subtypes through the existing `Game::lands_with_subtype_controlled`
+(which reads *effective* subtypes, so a land whose type was changed counts — see #16). Printed, Aura-granted, and lord-granted landwalk all fell
 out of shapes that already existed. Two of the seven cards did not fit after all and moved to
 their own increments: Island Sanctuary (#65) and Zombie Master (#66).
 *Cards:* bog_wraith, burrowing, goblin_king, lord_of_atlantis, shanodin_dryads.
@@ -756,7 +756,7 @@ ponytail: both durations project onto the one existing `VisibleEvent::ColorSetUn
 client only re-reads the object's colours from it; nothing renders the duration. Split it if the log
 ever spells the duration out.
 
-### 16. `text-changing-effects` — 2 cards, L
+### 16. `text-changing-effects` — 2 cards, L — **done**
 Depends on: #3, #15.
 Magical Hack and Sleight of Mind — layer 3, rewriting a word in the printed text. This is only
 tractable because the engine's card model is structured, not textual: the two cards each rewrite
@@ -767,6 +767,30 @@ abilities before later layers read them. Nothing textual is parsed. The scope is
 narrow and its ceiling is the printed cards: it will not rewrite a word the card model doesn't
 already store as an enum.
 *Cards:* magical_hack, sleight_of_mind.
+
+*Landed:* the substitution rides the object rather than a side table — `Permanent::text_swap` /
+`Spell::text_swap`, one `Option<TextSwap>` slot each, which is what gives "this effect lasts
+indefinitely" its right duration for nothing: a card that changes zones is a new object (CR 400.7)
+and a new object was never hacked. `TextSwap` is read back at CR 613.4 layer 3 in four places —
+`effective_subtypes` (and so `land_mana_credit`, which is why a Hacked Swamp taps for {W}),
+`compute_effective_keywords_uncached` (landwalk's land type, protection's color),
+`functional_abilities` and `ability_at` (the printed ability an activation reads, which is how a
+Sleighted Circle of Protection arms against its new color). Both words are picked through the
+existing `PendingChoice::ChooseCreatureType` picker, raised twice with a `TextSwapPick` tail
+carrying the target, the vocabulary and the first word — so the two-question prompt cost no new
+wire message and no client work beyond the `text_changed` log line.
+
+*Ceilings.* `TextSwap::ability` rewrites `MiscEffect::PreventNextDamage`'s `from_color` and
+recurses through `Effect::Sequence`; every other enumerated color or land type buried in an
+`Effect` passes through unchanged. `Effect` is a wide tree whose leaves are mostly `&'static`
+slices, so rewriting it wholesale would mean leaking a fresh slice on every uncached read of a
+swapped object's abilities — `StaticEffect::GrantToAttached { keywords }` (Black Ward's granted
+protection) is the shape that most wants it. Grow the match from a card that asks. One swap per
+object, too: a second text change replaces the first rather than composing, because `Permanent`
+has to stay `Copy`. `Game::lands_with_subtype_controlled` — the landwalk block check — was reading
+*printed* land subtypes, which would have left a Hacked land failing to turn a swampwalk on; it
+now reads `effective_subtypes`, which fixes the same pre-existing gap for Evil Presence and
+Phantasmal Terrain (#3, #8a, #8b) as well.
 
 ### 17. `random-discard` — 2 cards, S — **done**
 Depends on: nothing.

@@ -257,7 +257,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [x] **Lord of Atlantis** {U}{U} · Creature — Merfolk — increment 3
 - [x] **Lord of the Pit** {4}{B}{B}{B} · Creature — Demon — increment 72
 - [x] **Lure** {1}{G}{G} · Enchantment — Aura — increment 11
-- [ ] **Magical Hack** {U} · Instant — increment 16
+- [x] **Magical Hack** {U} · Instant — increment 16
 - [x] **Mana Flare** {2}{R} · Enchantment — increment 19
 - [x] **Mana Short** {2}{U} · Instant — increment 23
 - [x] **Mana Vault** {1} · Artifact — increment 7
@@ -291,7 +291,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [x] **Shanodin Dryads** {G} · Creature — Nymph Dryad — increment 3
 - [x] **Simulacrum** {1}{B} · Instant — increment 22
 - [x] **Siren's Call** {U} · Instant
-- [ ] **Sleight of Mind** {U} · Instant — increment 16
+- [x] **Sleight of Mind** {U} · Instant — increment 16
 - [x] **Smoke** {R}{R} · Enchantment — increment 7
 - [x] **Soul Net** {1} · Artifact — increment 10
 - [x] **Spell Blast** {X}{U} · Instant — increment 30

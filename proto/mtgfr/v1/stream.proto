@@ -1081,6 +1081,7 @@ message VisibleEvent {
     VisibleEventDamagePrevented damage_prevented = 136;
     VisibleEventLookedAtHand looked_at_hand = 137;
     VisibleEventExtraTurnQueued extra_turn_queued = 138;
+    VisibleEventTextChanged text_changed = 139;
   }
   // 132 was VisibleEventPlayerPoisonChanged, superseded by the general player-counter
   // subsystem (`player_counters_placed`). Burned, not reused (docs/WIRE_COMPAT.md).
@@ -1146,6 +1147,15 @@ message VisibleEventCreatureTypeChosen {
 message VisibleEventColorChosen {
   uint32 object = 1;
   uint32 color = 2;
+}
+
+// A text-changing spell resolved (CR 612.1 — Magical Hack, Sleight of Mind): every instance of
+// the word `from` in `object`'s text is now `to`. Public battlefield status, like `ColorChosen`
+// — and indefinite, so nothing ends it.
+message VisibleEventTextChanged {
+  uint32 object = 1;
+  string from = 2;
+  string to = 3;
 }
 
 // A permanent flipped (CR 712 — a Kamigawa flip card): it now uses its back face's

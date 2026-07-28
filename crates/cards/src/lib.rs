@@ -5454,6 +5454,31 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
         );
     }
 
+    /// The two text-changers differ by exactly one word — which vocabulary they replace from —
+    /// and both target "spell or permanent", not a permanent. Narrow either target and the
+    /// interaction each was printed for (hacking a spell on the stack) stops being reachable.
+    #[test]
+    fn unlimited_text_changers_differ_only_in_the_vocabulary_they_replace_from() {
+        for (name, words) in [
+            ("Magical Hack", engine::TextWords::BasicLandType),
+            ("Sleight of Mind", engine::TextWords::Color),
+        ] {
+            let card = get_by_name(name).unwrap_or_else(|| panic!("{name} is in the pool"));
+            let [spell] = &card.abilities[..] else {
+                panic!("{name} is one spell ability");
+            };
+            assert_eq!(spell.timing, Timing::Spell);
+            assert_eq!(
+                spell.effect,
+                Effect::Choice(ChoiceEffect::ChangeText {
+                    words,
+                    target: TargetSpec::SpellOrPermanent,
+                }),
+                "{name}"
+            );
+        }
+    }
+
     /// Phantasmal Terrain is Evil Presence with the type answered instead of printed, and the
     /// two halves have to agree: the as-enters choice writes `chosen_subtype`, and only a
     /// `set_chosen_land_type` type change reads it back. Print a `set_subtypes` list here

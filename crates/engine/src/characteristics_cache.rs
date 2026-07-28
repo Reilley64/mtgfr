@@ -247,6 +247,15 @@ impl Game {
                         cache.invalidate_object(host);
                     }
                 }
+                // A CR 612.1 text change rewrote a printed keyword or ability on `object` (its
+                // landwalk land type, its protection colour) — the same reach as `ColorChosen`,
+                // including the host when the changed object is an Aura whose grant reads it.
+                Event::TextChanged { object, .. } => {
+                    cache.invalidate_object(object);
+                    if let Some(host) = self.as_permanent(object).and_then(|p| p.attached_to) {
+                        cache.invalidate_object(host);
+                    }
+                }
                 // Same reach as `ColorChosen`: a layer-5 recolor (Deathlace, Wild Mongrel) can
                 // flip a colour-scoped anthem or a protection-from-colour grant on the recolored
                 // permanent, and on the host if it is an Aura.

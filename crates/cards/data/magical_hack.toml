@@ -1,0 +1,29 @@
+# Change the text of target spell or permanent by replacing all instances of one basic land type
+# with another. (For example, you may change "swampwalk" to "plainswalk." This effect lasts
+# indefinitely.)
+name = "Magical Hack"
+otags = ["interrupt", "land-conversion", "single-target-instant-sorcery", "text-change", "untracked-indefinite-effect"]
+approximates = "the swap reaches a land type the card model stores as an enum — a permanent's own land subtypes (and so its mana) and its printed landwalk — but not one buried in an ability's filter or a land-type count"
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "fbb", "lea", "leb", "sld", "sum"]
+id = "cba229fa-9035-405b-b091-3798898a37ee"
+default_print = "7abc2b06-3613-4e42-bf51-d340d1e70a78"
+oracle = "Change the text of target spell or permanent by replacing all instances of one basic land type with another. (For example, you may change \"swampwalk\" to \"plainswalk.\" This effect lasts indefinitely.)"
+
+[cost]
+blue = 1
+
+[kind]
+type = "instant"
+
+# Change the text of target spell or permanent by replacing all instances of one basic land type
+# with another.
+[[abilities]]
+timing = "spell"
+
+# Change the text of target spell or permanent by replacing all instances of one basic land type
+# with another.
+[[abilities.effects]]
+type = "choice"
+mode = "change_text"
+words = "basic_land_type"
+target = "spell_or_permanent"
