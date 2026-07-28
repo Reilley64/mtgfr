@@ -1,8 +1,9 @@
 import { Submodel } from "foldkit";
 import { html } from "foldkit/html";
 import type { AppChromeMeta } from "../../domain/ui/app-version";
-import { buttonClass } from "../../domain/ui/buttonClass";
-import { alertClass, fieldClass, panelClass } from "../../domain/ui/surfaces";
+import { button } from "../../domain/ui/button";
+import { input } from "../../domain/ui/input";
+import { alertClass, panelClass } from "../../domain/ui/surfaces";
 import { shellFrame } from "../frame/shell-frame";
 import {
   ChangedAuthEmail,
@@ -38,46 +39,37 @@ export const view = Submodel.defineView<AuthSubmodel, Message, AppChromeMeta>((m
               [h.Class("contents"), h.DataAttribute("testid", "auth-form"), h.OnSubmit(SubmittedAuth())],
               [
                 h.label([h.Class("text-label text-lichen"), h.For("email")], ["Email"]),
-                h.input([
-                  h.Id("email"),
-                  h.DataAttribute("testid", "auth-email"),
-                  h.Type("email"),
-                  h.Autocomplete("email"),
-                  h.Value(model.email),
-                  h.OnInput((email) => ChangedAuthEmail({ email })),
-                  h.Class(fieldClass()),
-                ]),
+                input(h, {
+                  id: "email",
+                  testId: "auth-email",
+                  type: "email",
+                  value: model.email,
+                  onInput: (email) => ChangedAuthEmail({ email }),
+                  attrs: [h.Autocomplete("email")],
+                }),
                 isLogin ? null : h.label([h.Class("text-label text-lichen"), h.For("username")], ["Username"]),
                 isLogin
                   ? null
-                  : h.input([
-                      h.Id("username"),
-                      h.DataAttribute("testid", "auth-username"),
-                      h.Type("text"),
-                      h.Autocomplete("username"),
-                      h.Value(model.username),
-                      h.OnInput((username) => ChangedAuthUsername({ username })),
-                      h.Class(fieldClass()),
-                    ]),
+                  : input(h, {
+                      id: "username",
+                      testId: "auth-username",
+                      type: "text",
+                      value: model.username,
+                      onInput: (username) => ChangedAuthUsername({ username }),
+                      attrs: [h.Autocomplete("username")],
+                    }),
                 h.label([h.Class("text-label text-lichen"), h.For("password")], ["Password"]),
-                h.input([
-                  h.Id("password"),
-                  h.DataAttribute("testid", "auth-password"),
-                  h.Type("password"),
-                  h.Autocomplete(isLogin ? "current-password" : "new-password"),
-                  h.Value(model.password),
-                  h.OnInput((password) => ChangedAuthPassword({ password })),
-                  h.Class(fieldClass()),
+                input(h, {
+                  id: "password",
+                  testId: "auth-password",
+                  type: "password",
+                  value: model.password,
+                  onInput: (password) => ChangedAuthPassword({ password }),
+                  attrs: [h.Autocomplete(isLogin ? "current-password" : "new-password")],
+                }),
+                button(h, { type: "submit", testId: "auth-submit", disabled: model.submitting, variant: "primary" }, [
+                  isLogin ? "Sign in" : "Sign up",
                 ]),
-                h.button(
-                  [
-                    h.Type("submit"),
-                    h.DataAttribute("testid", "auth-submit"),
-                    h.Disabled(model.submitting),
-                    h.Class(buttonClass("primary")),
-                  ],
-                  [isLogin ? "Sign in" : "Sign up"],
-                ),
                 model.error == null
                   ? null
                   : h.div(
@@ -88,14 +80,14 @@ export const view = Submodel.defineView<AuthSubmodel, Message, AppChromeMeta>((m
                   [h.Class("text-label text-lichen")],
                   [
                     isLogin ? "No account? " : "Have an account? ",
-                    h.button(
-                      [
-                        h.Type("button"),
-                        h.DataAttribute("ui", "link"),
-                        h.Class(buttonClass("link")),
-                        h.DataAttribute("testid", "auth-toggle-mode"),
-                        h.OnClick(modeToggle),
-                      ],
+                    button(
+                      h,
+                      {
+                        testId: "auth-toggle-mode",
+                        onClick: modeToggle,
+                        variant: "link",
+                        attrs: [h.DataAttribute("ui", "link")],
+                      },
                       [isLogin ? "Create one" : "Sign in"],
                     ),
                   ],

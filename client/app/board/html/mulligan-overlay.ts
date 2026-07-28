@@ -1,6 +1,6 @@
 import { type Html, html } from "foldkit/html";
 import { mulliganChrome } from "~/mulligan";
-import { gameButtonClass } from "~/ui/buttonClass";
+import { button } from "~/ui/button";
 import { cardArt } from "~/ui/card-art";
 import type { VisibleState } from "~/wire/types";
 import { ZONE } from "../geometry/layout";
@@ -67,23 +67,15 @@ export function mulliganOverlayView(state: VisibleState): Html | null {
           h.div(
             [h.Class("flex flex-wrap justify-center gap-sm")],
             [
-              h.button(
-                [
-                  h.Type("button"),
-                  h.DataAttribute("testid", "mulligan-keep"),
-                  h.OnClick(KeepHandClicked()),
-                  h.Class(gameButtonClass("game")),
-                ],
-                [chrome.keepLabel],
-              ),
-              h.button(
-                [
-                  h.Type("button"),
-                  h.DataAttribute("testid", "mulligan-take"),
-                  h.Disabled(!chrome.canMulligan),
-                  h.OnClick(MulliganClicked()),
-                  h.Class(gameButtonClass("game-quiet")),
-                ],
+              button(h, { testId: "mulligan-keep", onClick: KeepHandClicked(), variant: "game" }, [chrome.keepLabel]),
+              button(
+                h,
+                {
+                  testId: "mulligan-take",
+                  disabled: !chrome.canMulligan,
+                  onClick: MulliganClicked(),
+                  variant: "game-quiet",
+                },
                 [chrome.mulliganLabel],
               ),
             ],

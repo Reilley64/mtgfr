@@ -29,6 +29,7 @@ import { filterOptionLabels } from "~/optionFilter";
 import { manaFontClass } from "~/oracleText";
 import { isActivePlayer } from "~/spectator";
 import { cardArt } from "~/ui/card-art";
+import { input } from "~/ui/input";
 import type { ChoiceItem, MessageRef, PendingChoiceView, VisibleState, WireModeChoice, WireTarget } from "~/wire/types";
 import { clampX, costText, costWithChosenX } from "~/xCost";
 import { formatMessage } from "../../domain/i18n/message";
@@ -367,16 +368,18 @@ function cardPickPrompt(
 
   const hintEl = config.hint != null ? h.div([h.Class("shrink-0 text-caption text-mist")], [config.hint]) : null;
   const filterEl = searchable
-    ? h.input([
-        h.DataAttribute("testid", "pick-card-filter"),
-        h.Type("search"),
-        h.Placeholder("Filter by name…"),
-        h.Autofocus(true),
-        h.AriaLabel("Filter cards by name"),
-        h.Value(filter),
-        h.OnInput((v) => PromptCardFilterSet({ query: v })),
-        h.Class("w-[min(90vw,320px)] shrink-0 rounded-hud bg-glass px-3 py-1 text-body text-snow"),
-      ])
+    ? input(h, {
+        id: "pick-card-filter",
+        variant: "hud",
+        testId: "pick-card-filter",
+        type: "search",
+        placeholder: "Filter by name…",
+        autofocus: true,
+        ariaLabel: "Filter cards by name",
+        value: filter,
+        onInput: (v) => PromptCardFilterSet({ query: v }),
+        class: "w-[min(90vw,320px)]",
+      })
     : null;
   const emptyEl =
     searchable && filter.trim() !== "" && shown.length === 0
@@ -2197,19 +2200,23 @@ function stringPickPrompt(
         h.div(
           [h.Class("flex min-h-0 w-[min(92vw,360px)] flex-1 flex-col gap-sm")],
           [
-            h.input([
-              h.DataAttribute("testid", "prompt-name-input"),
-              h.Placeholder("Card name"),
-              h.Autofocus(true),
-              h.AriaLabel("Card name"),
-              h.Value(value),
-              h.OnInput((v) => PromptStringSet({ value: v })),
-              h.OnKeyDownPreventDefault((key) => {
-                if (key !== "Enter" || !canSubmit) return Option.none();
-                return Option.some(PromptSubmitted());
-              }),
-              h.Class("w-full shrink-0 rounded-hud bg-glass px-3 py-1 text-body text-snow"),
-            ]),
+            input(h, {
+              id: "prompt-name-input",
+              variant: "hud",
+              testId: "prompt-name-input",
+              placeholder: "Card name",
+              autofocus: true,
+              ariaLabel: "Card name",
+              value,
+              onInput: (v) => PromptStringSet({ value: v }),
+              class: "w-full",
+              attrs: [
+                h.OnKeyDownPreventDefault((key) => {
+                  if (key !== "Enter" || !canSubmit) return Option.none();
+                  return Option.some(PromptSubmitted());
+                }),
+              ],
+            }),
             suggestions.length > 0
               ? h.div(
                   [
@@ -2244,16 +2251,18 @@ function stringPickPrompt(
       h.div(
         [h.Class("flex min-h-0 w-[min(92vw,360px)] flex-1 flex-col gap-sm")],
         [
-          h.input([
-            h.DataAttribute("testid", "prompt-type-filter"),
-            h.Type("search"),
-            h.Placeholder("Filter types…"),
-            h.Autofocus(true),
-            h.AriaLabel("Filter creature types"),
-            h.Value(board.promptOptionFilter),
-            h.OnInput((v) => PromptOptionFilterSet({ query: v })),
-            h.Class("w-full shrink-0 rounded-hud bg-glass px-3 py-1 text-body text-snow"),
-          ]),
+          input(h, {
+            id: "prompt-type-filter",
+            variant: "hud",
+            testId: "prompt-type-filter",
+            type: "search",
+            placeholder: "Filter types…",
+            autofocus: true,
+            ariaLabel: "Filter creature types",
+            value: board.promptOptionFilter,
+            onInput: (v) => PromptOptionFilterSet({ query: v }),
+            class: "w-full",
+          }),
           h.div(
             [
               h.DataAttribute("testid", "prompt-type-scroll"),

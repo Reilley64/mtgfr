@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { alertClass, fieldClass, listRowClass, modalClass, panelClass } from "./surfaces";
+import { alertClass, listRowClass, modalClass, panelClass } from "./surfaces";
 
 describe("surface classes", () => {
   it("panel is forest-surface with vine border and table shadow", () => {
@@ -23,13 +23,6 @@ describe("surface classes", () => {
     expect(c).toContain("rounded-modal");
     expect(c).toContain("bg-forest-surface");
     expect(c).toContain("shadow-table");
-  });
-
-  it("field is glass + vine control", () => {
-    const c = fieldClass();
-    expect(c).toContain("border-vine");
-    expect(c).toContain("bg-glass");
-    expect(c).toContain("rounded-control");
   });
 
   it("alert is a readable reconnect-rust stack", () => {

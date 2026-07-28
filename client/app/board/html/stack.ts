@@ -6,7 +6,7 @@
 // share an ability's source permanent id.
 
 import { type Attribute, type Html, html } from "foldkit/html";
-import { buttonClass } from "~/ui/buttonClass";
+import { button } from "~/ui/button";
 import { cardArt } from "~/ui/card-art";
 import type { VisibleState } from "~/wire/types";
 import { formatMessage } from "../../domain/i18n/message";
@@ -303,19 +303,15 @@ function pileView(
       [
         ...faces,
         showMagnifier
-          ? h.button(
-              [
-                h.Type("button"),
-                h.DataAttribute("testid", "stack-expand"),
-                h.OnClick(StackExpandClicked()),
-                h.Class(
-                  buttonClass(
-                    "ghost",
-                    "absolute -top-9 right-0 flex items-center gap-1 px-2 py-1 text-chip text-seafoam",
-                  ),
-                ),
-                h.Attribute("aria-label", `Expand stack (${items.length} objects)`),
-              ],
+          ? button(
+              h,
+              {
+                testId: "stack-expand",
+                onClick: StackExpandClicked(),
+                variant: "ghost",
+                class: "absolute -top-9 right-0 flex items-center gap-1 px-2 py-1 text-chip text-seafoam",
+                ariaLabel: `Expand stack (${items.length} objects)`,
+              },
               [`Expand · ${items.length}`],
             )
           : null,
@@ -397,14 +393,15 @@ function stripView(
       [h.Class("flex w-full items-center justify-between gap-sm")],
       [
         h.span([h.Class("text-chip text-seafoam")], [`Stack · ${n}${mode === "full" ? " · full" : ""}`]),
-        h.button(
-          [
-            h.Type("button"),
-            h.DataAttribute("testid", "stack-collapse"),
-            h.OnClick(StackCollapseClicked()),
-            h.Class(buttonClass("ghost", "hit-quiet px-2 py-1 text-chip")),
-            h.Attribute("aria-label", "Collapse stack"),
-          ],
+        button(
+          h,
+          {
+            testId: "stack-collapse",
+            onClick: StackCollapseClicked(),
+            variant: "ghost",
+            class: "hit-quiet px-2 py-1 text-chip",
+            ariaLabel: "Collapse stack",
+          },
           ["✕"],
         ),
       ],

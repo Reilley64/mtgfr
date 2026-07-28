@@ -31,3 +31,21 @@ test("auth panel exposes data-testid", () => {
     Scene.expect(Scene.selector('[data-testid="auth-panel"]')).toExist(),
   );
 });
+
+test("disables the submit button while signing in", () => {
+  const [model] = init();
+  Scene.scene(
+    { update, view },
+    Scene.with({ ...model, route: LoginRoute(), auth: { ...model.auth, submitting: true } }),
+    Scene.expect(Scene.selector('[data-testid="auth-submit"]')).toBeDisabled(),
+  );
+});
+
+test("enables the submit button when not signing in", () => {
+  const [model] = init();
+  Scene.scene(
+    { update, view },
+    Scene.with({ ...model, route: LoginRoute(), auth: { ...model.auth, submitting: false } }),
+    Scene.expect(Scene.selector('[data-testid="auth-submit"]')).not.toBeDisabled(),
+  );
+});

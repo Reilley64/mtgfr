@@ -60,6 +60,7 @@ These documents are **not superseded** and must stay current alongside the specs
 | [table-audio](2026-07-20-table-audio.md) | Synthesized table cues, browser unlock, sound toggle |
 | [turn-and-priority-chrome](2026-07-20-turn-and-priority-chrome.md) | Phase, priority, pass/yield, hints, playable chrome, mulligan overlay |
 | [turn-priority-and-stack](2026-07-20-turn-priority-and-stack.md) | Engine turn structure, priority, stack, auto-pass, yields |
+| [ui-component-layer](2026-07-28-ui-component-layer.md) | `client/app/domain/ui/` component functions over `@foldkit/ui` primitives with private cva recipes; wrapper-vs-class-helper rule |
 | [wire-protocol-and-visibility](2026-07-20-wire-protocol-and-visibility.md) | Proto contract, redaction, snapshot/delta stream |
 
 ## Process / policy (not a product surface)
@@ -87,6 +88,7 @@ These documents are **not superseded** and must stay current alongside the specs
 | [otel-semantic-conventions](2026-07-27-otel-semantic-conventions-design.md) | Design input: OTel Semantic Conventions 1.37.0 for resource/HTTP/RPC/DB/exceptions + `mtgfr.*` extensions across Faro→BFF→API; update observability-ops (+ topology if env/dashboards) at implement time |
 | [dtcg-token-architecture](2026-07-27-dtcg-token-architecture-design.md) | Design input: DTCG 2025.10 typed composites (drop `$type: css`), aliases, primitive→semantic tiers, CSS Color 4 OKLCH; update shell-routes + `DESIGN.md` at implement time |
 | [card-toml-json-schema](2026-07-27-card-toml-json-schema-design.md) | Design input: fully generate card/token JSON Schema + `DSL_REFERENCE.md` from CardDef TOML surface types; update card-dsl-and-card-pool + card-dsl skill at implement time |
+| [foldkit-ui-component-layer](2026-07-28-foldkit-ui-component-layer-design.md) | Design input: `domain/ui/` component functions wrapping `@foldkit/ui` headless primitives with module-private cva recipes; W1 pure-view button/input, W2 shell dialog/menu, W3 combobox/listbox, W4 board blocking modals; shipped surface documented in [ui-component-layer](2026-07-28-ui-component-layer.md) |
 
 ## Authoring conventions
 

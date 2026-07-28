@@ -18,11 +18,6 @@ export function listRowClass(...extra: Array<string | false | null | undefined>)
   return cn("border border-vine-dim bg-glass-dim text-snow hover:bg-white/8", ...extra);
 }
 
-/** Glass + vine input field chrome. */
-export function fieldClass(...extra: Array<string | false | null | undefined>): string {
-  return cn("rounded-control border border-vine bg-glass px-md py-sm text-body text-snow", ...extra);
-}
-
 /** Inline shell alert / legality stack. Call sites still set `role="alert"`. */
 export function alertClass(...extra: Array<string | false | null | undefined>): string {
   return cn("flex flex-col gap-[3px] text-label text-reconnect-rust", ...extra);

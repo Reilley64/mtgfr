@@ -6,7 +6,7 @@
 import { type Html, html } from "foldkit/html";
 import { priorityPrimaryClass } from "~/priorityContextChrome";
 import { turnYieldRockerClass, turnYieldThumbClass, turnYieldTrackClass } from "~/turnYieldChrome";
-import { gameButtonClass } from "~/ui/buttonClass";
+import { button } from "~/ui/button";
 import type { VisibleState } from "~/wire/types";
 import { formatMessage } from "../../domain/i18n/message";
 import { canArmEndTurn, stagedAttackersForDisplay } from "../geometry/combat-staging";
@@ -103,62 +103,43 @@ export function priorityBarView(board: BoardModel, state: VisibleState, tableId:
 
   const showPrimary = !(stackLen > 0 && primary.kind === "pass");
   const primaryBtn: Html | null = showPrimary
-    ? h.button(
-        [
-          h.Type("button"),
-          h.DataAttribute("testid", "board-primary"),
-          h.Disabled(!yours),
-          h.OnClick(PrimaryClicked()),
-          h.Class(gameButtonClass("game", priorityPrimaryClass(yours))),
-        ],
+    ? button(
+        h,
+        {
+          testId: "board-primary",
+          disabled: !yours,
+          onClick: PrimaryClicked(),
+          variant: "game",
+          class: priorityPrimaryClass(yours),
+        },
         [primary.label],
       )
     : null;
 
   const passBtn: Html | null = canResolveCard(state)
-    ? h.button(
-        [
-          h.Type("button"),
-          h.DataAttribute("testid", "board-pass"),
-          h.OnClick(PassClicked()),
-          h.Class(gameButtonClass("game", "shadow-glow")),
-        ],
-        ["Resolve card"],
-      )
+    ? button(h, { testId: "board-pass", onClick: PassClicked(), variant: "game", class: "shadow-glow" }, [
+        "Resolve card",
+      ])
     : null;
 
   const stackYieldBtn: Html | null = canArmStackYield(state, yielded)
-    ? h.button(
-        [
-          h.Type("button"),
-          h.DataAttribute("testid", "board-stack-yield"),
-          h.OnClick(StackYieldArmed()),
-          h.Class(gameButtonClass("game-quiet")),
-        ],
-        ["Resolve stack"],
-      )
+    ? button(h, { testId: "board-stack-yield", onClick: StackYieldArmed(), variant: "game-quiet" }, ["Resolve stack"])
     : yielded && stackLen > 0
-      ? h.button(
-          [
-            h.Type("button"),
-            h.DataAttribute("testid", "board-stack-yield-armed"),
-            h.Disabled(true),
-            h.Class(gameButtonClass("game-yielded")),
-          ],
-          ["Resolve stack"],
-        )
+      ? button(h, { testId: "board-stack-yield-armed", disabled: true, variant: "game-yielded" }, ["Resolve stack"])
       : null;
 
   const endTurnBtn: Html | null = showEndTurn(state, pendingAttackers)
-    ? h.button(
-        [
-          h.Type("button"),
-          h.DataAttribute("testid", "board-end-turn"),
-          h.Attribute("aria-pressed", turnYielded ? "true" : "false"),
-          h.Attribute("title", turnYielded ? "Cancel end turn" : "End turn (Enter)"),
-          h.OnClick(TurnYieldToggled({ enabled: !turnYielded })),
-          h.Class(gameButtonClass(turnYielded ? "game-yielded" : "game-quiet")),
-        ],
+    ? button(
+        h,
+        {
+          testId: "board-end-turn",
+          onClick: TurnYieldToggled({ enabled: !turnYielded }),
+          variant: turnYielded ? "game-yielded" : "game-quiet",
+          attrs: [
+            h.Attribute("aria-pressed", turnYielded ? "true" : "false"),
+            h.Attribute("title", turnYielded ? "Cancel end turn" : "End turn (Enter)"),
+          ],
+        },
         [turnYielded ? "Ending turn…" : "End Turn"],
       )
     : null;
@@ -193,15 +174,7 @@ export function priorityBarView(board: BoardModel, state: VisibleState, tableId:
     board.discardPick != null ||
     board.gyExilePick != null;
   const cancelBtn: Html | null = hasStaged
-    ? h.button(
-        [
-          h.Type("button"),
-          h.DataAttribute("testid", "board-cancel-target"),
-          h.OnClick(CancelActionClicked()),
-          h.Class(gameButtonClass("game-quiet")),
-        ],
-        ["Cancel"],
-      )
+    ? button(h, { testId: "board-cancel-target", onClick: CancelActionClicked(), variant: "game-quiet" }, ["Cancel"])
     : null;
 
   const companions = [endTurnBtn, passBtn, stackYieldBtn, turnYieldBtn, cancelBtn].filter((v): v is Html => v !== null);
