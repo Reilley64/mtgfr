@@ -90,3 +90,12 @@ describe("extractProvenance battlefieldExits", () => {
     expect(p.battlefieldExits.get(20)).toBe("graveyard");
   });
 });
+
+// Both of these are events with no other trace on the board: the shield eats the points before a
+// damage or life line would be minted, and looking at a hand moves nothing at all.
+test("prevention and hand-peeking lines name their target", () => {
+  expect(describeEvent({ kind: "damage_prevented", amount: 3, player: 1 }, state())).toBe(
+    "3 damage to Bob is prevented",
+  );
+  expect(describeEvent({ kind: "looked_at_hand", player: 0, target: 1 }, state())).toBe("Alice looks at Bob's hand");
+});

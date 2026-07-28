@@ -2,6 +2,7 @@
 # Flying
 # Prevent all combat damage that would be dealt to and dealt by this creature.
 name = "Fog Bank"
+otags = ["damage-prevention", "damage-prevention-self", "drawback", "evasion"]
 sets = ["bbd", "c13", "c14", "cmd", "cmm", "fdn", "gn3", "ima", "m13", "m3c", "plst", "usg"]
 id = "3a2bb47d-228d-499e-a34b-9e10d99e9b2c"
 default_print = "18748b1d-4161-482c-a726-8762b4c1819c"

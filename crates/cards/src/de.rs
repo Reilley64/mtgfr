@@ -108,8 +108,8 @@ where
 /// [`Timing`]'s `TriggerTag`, which pairs a `timing` tag with sibling fields on the *ability's own
 /// table* because an [`Ability`] already has a flat `timing` column to piggyback on; a
 /// [`GrantedAbility`] has no such column, so its `trigger` nests instead.
-/// ponytail: only `DealsCombatDamageToPlayer` is wired — extend this tag (mirroring
-/// `TriggerTag`) the moment a second granted-trigger card needs a different flavor.
+/// ponytail: only the flavors below are wired — extend this tag (mirroring `TriggerTag`) the
+/// moment a granted-trigger card needs a different one.
 #[derive(Deserialize)]
 #[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 #[serde(rename_all = "snake_case")]
@@ -118,6 +118,10 @@ pub enum GrantedTriggerTag {
         #[serde(default)]
         who: CombatDamageScope,
     },
+    /// Farmstead's "Enchanted land has \"At the beginning of your upkeep, …\"" — fieldless, so
+    /// it is spelled `trigger = { upkeep = {} }`. "Your" is the *host's* controller, which is
+    /// who a granted ability belongs to.
+    Upkeep {},
 }
 
 /// `deserialize_with` for [`GrantedAbility`]'s `trigger`. Only called when the key is present (a
@@ -130,6 +134,7 @@ where
         GrantedTriggerTag::DealsCombatDamageToPlayer { who } => {
             Trigger::DealsCombatDamageToPlayer { who }
         }
+        GrantedTriggerTag::Upkeep {} => Trigger::Upkeep,
     }))
 }
 
@@ -265,6 +270,12 @@ pub fn mana_batch<'de, D: Deserializer<'de>>(d: D) -> Result<ManaPool, D::Error>
 /// The default `repeat`/`count` for an amount-bearing field that omits one — a single copy.
 pub fn one_amount() -> Amount {
     Amount::Fixed(1)
+}
+
+/// The default target of a `must_attack_target` effect — Basandra, Battle Seraph's unqualified
+/// "target creature", which every card printing this clause narrows rather than replaces.
+pub(crate) fn target_creature() -> crate::TargetSpec {
+    crate::TargetSpec::Creature
 }
 
 /// The default for an amount-bearing field that omits one and means "none" rather than "one" —
@@ -558,12 +569,15 @@ impl<'de> Deserialize<'de> for ProtectionScope {
 
 /// A numeric quantity in TOML: a plain number (`amount = 3`), a keyword string for a derived
 /// value (`"x"`, `"half_x"`, `"half_x_rounded_down"`, `"twice_x"`, `"per_creature_you_control"`, `"source_power"`,
-/// `"source_toughness"`, `"target_power"`, `"target_mana_value"`, `"per_counter_on_source"`, `"life_gained_this_turn"`,
-/// `"spells_cast_this_turn"`, `"commander_casts_from_command_zone"`, `"creatures_died_this_turn"`,
+/// `"source_toughness"`, `"source_mana_value"`, `"target_power"`, `"target_mana_value"`, `"per_counter_on_source"`, `"your_life_total"`, `"life_gained_this_turn"`,
+/// `"spells_cast_this_turn"`, `"damage_taken_this_turn"`, `"untapped_lands_at_turn_start"`,
+/// `"commander_casts_from_command_zone"`, `"creatures_died_this_turn"`,
+/// `"creatures_died_this_turn_any_controller"`,
 /// `"nontoken_creatures_entered_this_turn"`,
 /// `"sacrificed_creature_power"`, `"commander_color_count"`, `"total_power_you_control"`,
 /// `"greatest_power_among_creatures_you_control"`,
-/// `"triggering_spell_mana_value"`, `"spell_sacrifice_count"`, `"spell_multikicker_count"`,
+/// `"triggering_spell_mana_value"`, `"spell_sacrifice_count"`, `"spell_sacrificed_mana_value"`,
+/// `"spell_multikicker_count"`,
 /// `"revealed_creature_mana_value"`,
 /// `"permanents_died_this_turn"`,
 /// `"mana_paid_this_way"`, `"past_votes"`, `"present_votes"`, `"total_mana_value_milled_this_way"`,
@@ -582,58 +596,7 @@ impl<'de> Deserialize<'de> for Amount {
     fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         struct AmountVisitor;
 
-        const KEYWORDS: &[&str] = &[
-            "x",
-            "half_x",
-            "half_x_rounded_down",
-            "twice_x",
-            "per_creature_you_control",
-            "per_creature_on_battlefield",
-            "source_power",
-            "source_toughness",
-            "target_power",
-            "target_toughness",
-            "target_mana_value",
-            "per_counter_on_source",
-            "life_gained_this_turn",
-            "spells_cast_this_turn",
-            "cards_in_target_player_hand",
-            "cards_in_your_hand",
-            "commander_casts_from_command_zone",
-            "creatures_died_this_turn",
-            "nontoken_creatures_entered_this_turn",
-            "sacrificed_creature_power",
-            "sacrificed_creature_toughness",
-            "commander_color_count",
-            "total_power_you_control",
-            "greatest_power_among_creatures_you_control",
-            "permanents_you_own_opponents_control",
-            "triggering_spell_mana_value",
-            "triggering_spell_mana_spent",
-            "spell_sacrifice_count",
-            "spell_multikicker_count",
-            "revealed_creature_mana_value",
-            "permanents_died_this_turn",
-            "nonland_cards_exiled_this_way",
-            "cards_exiled_by_search_this_way",
-            "mana_paid_this_way",
-            "past_votes",
-            "present_votes",
-            "total_mana_value_milled_this_way",
-            "exiled_card_mana_value_this_way",
-            "returned_nonland_card_mana_value",
-            "auras_you_controlled_attached_to_dying_creature",
-            "greatest_instant_or_sorcery_mana_value_cast_this_turn",
-            "one_plus_instants_and_sorceries_cast_this_turn",
-            "instant_or_sorcery_cards_in_your_graveyard",
-            "combat_damage_dealt",
-            "triggering_damage_dealt",
-            "spells_cast_before_this_this_turn",
-            "cards_discarded_this_way",
-            "creatures_sacrificed_this_way",
-            "spell_first_target_mana_value",
-            "counters_removed_this_way",
-        ];
+        const KEYWORDS: &[&str] = AMOUNT_KEYWORDS;
 
         impl<'de> Visitor<'de> for AmountVisitor {
             type Value = Amount;
@@ -659,23 +622,31 @@ impl<'de> Deserialize<'de> for Amount {
                     "per_creature_on_battlefield" => Amount::PerCreatureOnBattlefield,
                     "source_power" => Amount::SourcePower,
                     "source_toughness" => Amount::SourceToughness,
+                    "source_mana_value" => Amount::SourceManaValue,
                     "target_power" => Amount::TargetPower,
                     "target_toughness" => Amount::TargetToughness,
                     "target_mana_value" => Amount::TargetManaValue,
                     "per_counter_on_source" => Amount::PerCounterOnSource,
                     "opponents_poison_counters" => Amount::OpponentsPoisonCounters,
                     "controllers_poison_counters" => Amount::ControllersPoisonCounters,
+                    "your_life_total" => Amount::YourLifeTotal,
                     "life_gained_this_turn" => Amount::LifeGainedThisTurn,
                     "spells_cast_this_turn" => Amount::SpellsCastThisTurn,
+                    "damage_taken_this_turn" => Amount::DamageTakenThisTurn,
+                    "untapped_lands_at_turn_start" => Amount::UntappedLandsAtTurnStart,
                     "cards_in_target_player_hand" => Amount::CardsInTargetPlayerHand,
                     "cards_in_your_hand" => Amount::CardsInYourHand,
                     "commander_casts_from_command_zone" => Amount::CommanderCastsFromCommandZone,
                     "creatures_died_this_turn" => Amount::CreaturesDiedThisTurn,
+                    "creatures_died_this_turn_any_controller" => {
+                        Amount::CreaturesDiedThisTurnAnyController
+                    }
                     "nontoken_creatures_entered_this_turn" => {
                         Amount::NontokenCreaturesEnteredThisTurn
                     }
                     "sacrificed_creature_power" => Amount::SacrificedCreaturePower,
                     "sacrificed_creature_toughness" => Amount::SacrificedCreatureToughness,
+                    "dying_enchanted_creature_toughness" => Amount::DyingEnchantedCreatureToughness,
                     "commander_color_count" => Amount::CommanderColorCount,
                     "total_power_you_control" => Amount::TotalPowerYouControl,
                     "greatest_power_among_creatures_you_control" => {
@@ -687,6 +658,7 @@ impl<'de> Deserialize<'de> for Amount {
                     "triggering_spell_mana_value" => Amount::TriggeringSpellManaValue,
                     "triggering_spell_mana_spent" => Amount::TriggeringSpellManaSpent,
                     "spell_sacrifice_count" => Amount::SpellSacrificeCount,
+                    "spell_sacrificed_mana_value" => Amount::SpellSacrificedManaValue,
                     "spell_multikicker_count" => Amount::SpellMultikickerCount,
                     "revealed_creature_mana_value" => Amount::RevealedCreatureManaValue,
                     "permanents_died_this_turn" => Amount::PermanentsDiedThisTurn,
@@ -760,8 +732,36 @@ impl<'de> Deserialize<'de> for Amount {
                     times: Option<i32>,
                     #[serde(default)]
                     per: Option<Amount>,
+                    /// `{ half = "per_creature_you_control", round_up = true }` —
+                    /// [`Amount::Half`]. `round_up` defaults to false: a card that halves a count
+                    /// says which way it rounds, and Aspect of Wolf prints both.
+                    #[serde(default)]
+                    half: Option<Amount>,
+                    #[serde(default)]
+                    round_up: bool,
+                    /// `{ offset = "cards_in_your_hand", delta = -4 }` — [`Amount::Offset`]
+                    /// (Black Vise's "the number of cards in their hand minus 4").
+                    #[serde(default)]
+                    offset: Option<Amount>,
+                    #[serde(default)]
+                    delta: i32,
                 }
                 let t = Table::deserialize(de::value::MapAccessDeserializer::new(map))?;
+                // `half` wraps another amount rather than naming a count of its own, so it is
+                // answered here instead of joining the exactly-one-of table below.
+                if let Some(of) = t.half {
+                    return Ok(Amount::Half {
+                        of: &*Box::leak(Box::new(of)),
+                        round_up: t.round_up,
+                    });
+                }
+                // `offset` wraps another amount too, so it is answered alongside `half`.
+                if let Some(of) = t.offset {
+                    return Ok(Amount::Offset {
+                        of: &*Box::leak(Box::new(of)),
+                        delta: t.delta,
+                    });
+                }
                 match (
                     t.per_permanent,
                     t.per_counter_of_kind,
@@ -858,7 +858,7 @@ impl<'de> Deserialize<'de> for Amount {
                         "an amount table needs exactly one of `per_permanent`, `per_counter_of_kind`, \
                          `condition`+`then`, `if_kicked`+`else`, `if_main_phase`+`else`, \
                          `permanents_destroyed_this_way`, \
-                         `auras_attached_to_source`, or `times`+`per`",
+                         `auras_attached_to_source`, `times`+`per`, or `half`",
                     )),
                 }
             }
@@ -1044,6 +1044,70 @@ pub const TYPE_NAMES: &[&str] = &[
     "artifact_or_creature",
 ];
 
+/// Every bare-string [`Amount`] keyword the visitor below accepts — also the candidate list
+/// the generated JSON Schema offers, so the two can't drift.
+pub const AMOUNT_KEYWORDS: &[&str] = &[
+    "x",
+    "half_x",
+    "half_x_rounded_down",
+    "twice_x",
+    "per_creature_you_control",
+    "per_creature_on_battlefield",
+    "source_power",
+    "source_toughness",
+    "source_mana_value",
+    "target_power",
+    "target_toughness",
+    "target_mana_value",
+    "per_counter_on_source",
+    "opponents_poison_counters",
+    "controllers_poison_counters",
+    "your_life_total",
+    "life_gained_this_turn",
+    "spells_cast_this_turn",
+    "damage_taken_this_turn",
+    "untapped_lands_at_turn_start",
+    "cards_in_target_player_hand",
+    "cards_in_your_hand",
+    "commander_casts_from_command_zone",
+    "creatures_died_this_turn",
+    "creatures_died_this_turn_any_controller",
+    "nontoken_creatures_entered_this_turn",
+    "sacrificed_creature_power",
+    "sacrificed_creature_toughness",
+    "dying_enchanted_creature_toughness",
+    "commander_color_count",
+    "total_power_you_control",
+    "greatest_power_among_creatures_you_control",
+    "permanents_you_own_opponents_control",
+    "triggering_spell_mana_value",
+    "triggering_spell_mana_spent",
+    "spell_sacrifice_count",
+    "spell_sacrificed_mana_value",
+    "spell_multikicker_count",
+    "revealed_creature_mana_value",
+    "permanents_died_this_turn",
+    "nonland_cards_exiled_this_way",
+    "cards_exiled_by_search_this_way",
+    "mana_paid_this_way",
+    "past_votes",
+    "present_votes",
+    "total_mana_value_milled_this_way",
+    "exiled_card_mana_value_this_way",
+    "returned_nonland_card_mana_value",
+    "auras_you_controlled_attached_to_dying_creature",
+    "greatest_instant_or_sorcery_mana_value_cast_this_turn",
+    "one_plus_instants_and_sorceries_cast_this_turn",
+    "instant_or_sorcery_cards_in_your_graveyard",
+    "combat_damage_dealt",
+    "triggering_damage_dealt",
+    "spells_cast_before_this_this_turn",
+    "cards_discarded_this_way",
+    "creatures_sacrificed_this_way",
+    "spell_first_target_mana_value",
+    "counters_removed_this_way",
+];
+
 pub const PERMANENT_FILTER_SHORTHANDS: &[&str] = &[
     "shares_type_with_dying_permanent",
     "creatures",
@@ -1099,10 +1163,13 @@ impl<'de> Deserialize<'de> for TypeSet {
 /// (`"creatures"`, `"nonland"`, `"artifact"`, `"creature_or_planeswalker"`, …) — which keeps
 /// the old `destroy_all`/edict spellings working — or a full `{ … }` table with any of the
 /// composable axes (`types`, `controller`, `token`, `other`, `enchanted`, `attached_to_creature`,
-/// `enchanted_by_you`, `mv_max`, `mv_min`, `mv_eq_x`, `mv_max_x`, `power_max`, `power_parity`,
+/// `enchanted_by_you`, `mv_max`, `mv_min`, `mv_eq_x`, `mv_max_x`, `power_max`, `power_min`, `power_parity`,
 /// `noncreature`, `exclude`, `color`, `not_color`, `modified`, `attacking`, `attacking_you`,
-/// `power_less_than_source`, `entered_this_turn`, `nonbasic`, `nonlegendary`, `nonlair`,
-/// `without_flying`, `with_flying`, `with_counter`). `noncreature` is sugar for `exclude = "creature"`;
+/// `blocking`, `unblocked`, `power_less_than_source`, `toughness_less_than_source_power`, `entered_this_turn`,
+/// `has_mana_ability`,
+/// `controlled_since_turn_start`, `did_not_attack_this_turn`,
+/// `nonbasic`, `nonlegendary`, `nonlair`, `exclude_subtypes`,
+/// `without_flying`, `without_keyword`, `with_flying`, `with_counter`). `noncreature` is sugar for `exclude = "creature"`;
 /// `not_color` is sugar for `color`'s negated-color arm — both fold into the same
 /// [`PermanentFilter`] fields as their general spelling (see below).
 impl<'de> Deserialize<'de> for PermanentFilter {
@@ -1170,8 +1237,13 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     mv_max_x: bool,
                     #[serde(default)]
                     tapped: Option<bool>,
+                    /// "Lands with mana abilities they control" (Power Sink).
+                    #[serde(default)]
+                    has_mana_ability: bool,
                     #[serde(default)]
                     power_max: Option<u8>,
+                    #[serde(default)]
+                    power_min: Option<u8>,
                     #[serde(default)]
                     power_parity: Option<Parity>,
                     /// Sugar for `exclude = "creature"` (kept for the pool's existing spelling).
@@ -1193,9 +1265,19 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     #[serde(default)]
                     attacking_you: bool,
                     #[serde(default)]
+                    blocking: bool,
+                    #[serde(default)]
+                    unblocked: bool,
+                    #[serde(default)]
                     power_less_than_source: bool,
                     #[serde(default)]
+                    toughness_less_than_source_power: bool,
+                    #[serde(default)]
                     entered_this_turn: bool,
+                    #[serde(default)]
+                    controlled_since_turn_start: bool,
+                    #[serde(default)]
+                    did_not_attack_this_turn: bool,
                     #[serde(default)]
                     nonbasic: bool,
                     /// Printed-name restriction (Leitmotif Composer's "creatures named Leitmotif
@@ -1208,6 +1290,10 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     nonlair: bool,
                     #[serde(default)]
                     without_flying: bool,
+                    /// Island Sanctuary's second keyword exclusion — `{ landwalk = "island" }`,
+                    /// the same spelling a printed keyword takes.
+                    #[serde(default)]
+                    without_keyword: Option<crate::Keyword>,
                     #[serde(default)]
                     with_flying: bool,
                     /// Martyr's Bond's dynamic "shares a card type with it" edict gate — see the
@@ -1222,6 +1308,9 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     /// Snow permanents (CR 205.4g).
                     #[serde(default)]
                     snow: bool,
+                    /// Subtype exclusion (Keldon Warlord's "non-Wall creatures you control").
+                    #[serde(default)]
+                    exclude_subtypes: Vec<String>,
                 }
 
                 let t = Table::deserialize(de::value::MapAccessDeserializer::new(map))?;
@@ -1239,7 +1328,9 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     mv_eq_x: t.mv_eq_x,
                     mv_max_x: t.mv_max_x,
                     tapped: t.tapped,
+                    has_mana_ability: t.has_mana_ability,
                     power_max: t.power_max,
+                    power_min: t.power_min,
                     power_parity: t.power_parity,
                     exclude: t.exclude.union(if t.noncreature {
                         TypeSet::CREATURE
@@ -1253,18 +1344,25 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     modified: t.modified,
                     attacking: t.attacking,
                     attacking_you: t.attacking_you,
+                    blocking: t.blocking,
+                    unblocked: t.unblocked,
                     power_less_than_source: t.power_less_than_source,
+                    toughness_less_than_source_power: t.toughness_less_than_source_power,
                     entered_this_turn: t.entered_this_turn,
+                    controlled_since_turn_start: t.controlled_since_turn_start,
+                    did_not_attack_this_turn: t.did_not_attack_this_turn,
                     nonbasic: t.nonbasic,
                     name: t.name.map(|s| &*Box::leak(s.into_boxed_str())),
                     nonlegendary: t.nonlegendary,
                     nonlair: t.nonlair,
                     without_flying: t.without_flying,
+                    without_keyword: t.without_keyword,
                     with_flying: t.with_flying,
                     shares_type_with_dying_permanent: t.shares_type_with_dying_permanent,
                     with_counter: t.with_counter,
                     creature_or_vehicle: t.creature_or_vehicle,
                     snow: t.snow,
+                    exclude_subtypes: intern_strs(t.exclude_subtypes),
                 })
             }
         }
@@ -1362,7 +1460,9 @@ impl<'de> Deserialize<'de> for SacrificeCost {
 /// [`CreatureEnchantedByYourAuraAttacks`](TriggerTag::CreatureEnchantedByYourAuraAttacks) and
 /// [`AnotherPlayerAttacksWithCreatures`](TriggerTag::AnotherPlayerAttacksWithCreatures) reuse
 /// that same `at_least` sibling. A ninth ([`SpellTargetsThisOnly`](TriggerTag::SpellTargetsThisOnly),
-/// `timing = "spell_targets_this"`) reuses `CastSpell`'s `spell_filter` sibling.
+/// `timing = "spell_targets_this"`) reuses `CastSpell`'s `spell_filter` sibling. A tenth
+/// ([`BlocksOrBecomesBlockedBy`](TriggerTag::BlocksOrBecomesBlockedBy)) reuses `YouSacrifice`'s
+/// `filter` sibling for the creature on the other side of the block.
 /// The three timings that aren't a [`Trigger`].
 #[derive(Deserialize)]
 #[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
@@ -1392,6 +1492,7 @@ pub(crate) enum TriggerTag {
     BecomesMonstrous,
     Attacks,
     BlocksOrBecomesBlocked,
+    BlocksOrBecomesBlockedBy,
     AttacksOrBlocks,
     Dies,
     CreatureDies,
@@ -1403,14 +1504,17 @@ pub(crate) enum TriggerTag {
     CreatureAnOpponentControlsDies,
     EnchantmentYouControlDies,
     NonlandPermanentYouControlDiesIncludingThis,
+    LandPutIntoGraveyard,
     Upkeep,
     EachUpkeep,
     FirstMainPhase,
     EachPlayerFirstMainPhase,
     BeginCombat,
+    EndOfCombat,
     EndStep,
     EachEndStep,
     EachDrawStep,
+    DrawStep,
     EachOtherPlayerUntapStep,
     YouGainLife,
     OpponentGainsLife,
@@ -1430,14 +1534,23 @@ pub(crate) enum TriggerTag {
     /// Whenever the enchanted host deals damage, combat or noncombat (Armadillo Cloak's "you gain
     /// that much life"). See [`Trigger::EnchantedCreatureDealsDamage`].
     EnchantedCreatureDealsDamage,
+    /// Whenever this permanent's controller is dealt damage, combat or noncombat (Living
+    /// Artifact's "put that many vitality counters"). See [`Trigger::YouAreDealtDamage`].
+    YouAreDealtDamage,
     AnEnchantedCreatureDies,
     CreatureEnchantedByYourAuraAttacks,
     YouSacrifice,
     AnyPlayerSacrifices,
+    /// Reuses `AnyPlayerSacrifices`' `filter` sibling for the tapped permanent, plus its own
+    /// `for_mana` bool.
+    PermanentBecomesTapped,
+    EnchantedPermanentBecomesTapped,
     YouDiscard,
     YouDiscardNonland,
+    YouPlayALand,
     DealsCombatDamageToPlayer,
     DealsCombatDamageToCreature,
+    ThisIsDealtDamage,
     CreatureDealtDamageByThisDies,
     DealsDamageToOpponent,
     CastSpell,
@@ -1491,6 +1604,9 @@ impl<'de> Deserialize<'de> for Ability {
                 TriggerTag::BecomesMonstrous => Trigger::BecomesMonstrous,
                 TriggerTag::Attacks => Trigger::Attacks,
                 TriggerTag::BlocksOrBecomesBlocked => Trigger::BlocksOrBecomesBlocked,
+                TriggerTag::BlocksOrBecomesBlockedBy => Trigger::BlocksOrBecomesBlockedBy {
+                    filter: flat.filter,
+                },
                 TriggerTag::AttacksOrBlocks => Trigger::AttacksOrBlocks,
                 TriggerTag::Dies => Trigger::Dies,
                 TriggerTag::CreatureDies => Trigger::CreatureDies,
@@ -1509,6 +1625,7 @@ impl<'de> Deserialize<'de> for Ability {
                     Trigger::CreatureAnOpponentControlsDies
                 }
                 TriggerTag::EnchantmentYouControlDies => Trigger::EnchantmentYouControlDies,
+                TriggerTag::LandPutIntoGraveyard => Trigger::LandPutIntoGraveyard,
                 TriggerTag::NonlandPermanentYouControlDiesIncludingThis => {
                     Trigger::NonlandPermanentYouControlDiesIncludingThis
                 }
@@ -1517,9 +1634,11 @@ impl<'de> Deserialize<'de> for Ability {
                 TriggerTag::FirstMainPhase => Trigger::FirstMainPhase,
                 TriggerTag::EachPlayerFirstMainPhase => Trigger::EachPlayerFirstMainPhase,
                 TriggerTag::BeginCombat => Trigger::BeginCombat,
+                TriggerTag::EndOfCombat => Trigger::EndOfCombat,
                 TriggerTag::EndStep => Trigger::EndStep,
                 TriggerTag::EachEndStep => Trigger::EachEndStep,
                 TriggerTag::EachDrawStep => Trigger::EachDrawStep,
+                TriggerTag::DrawStep => Trigger::DrawStep,
                 TriggerTag::EachOtherPlayerUntapStep => Trigger::EachOtherPlayerUntapStep,
                 TriggerTag::YouGainLife => Trigger::YouGainLife,
                 TriggerTag::OpponentGainsLife => Trigger::OpponentGainsLife,
@@ -1542,6 +1661,7 @@ impl<'de> Deserialize<'de> for Ability {
                 TriggerTag::EnchantedCreatureAttacks => Trigger::EnchantedCreatureAttacks,
                 TriggerTag::EnchantedCreatureDies => Trigger::EnchantedCreatureDies,
                 TriggerTag::EnchantedCreatureDealsDamage => Trigger::EnchantedCreatureDealsDamage,
+                TriggerTag::YouAreDealtDamage => Trigger::YouAreDealtDamage,
                 TriggerTag::AnEnchantedCreatureDies => Trigger::AnEnchantedCreatureDies,
                 TriggerTag::CreatureEnchantedByYourAuraAttacks => {
                     Trigger::CreatureEnchantedByYourAuraAttacks {
@@ -1554,12 +1674,21 @@ impl<'de> Deserialize<'de> for Ability {
                 TriggerTag::AnyPlayerSacrifices => Trigger::AnyPlayerSacrifices {
                     filter: flat.filter,
                 },
+                TriggerTag::PermanentBecomesTapped => Trigger::PermanentBecomesTapped {
+                    filter: flat.filter,
+                    for_mana: flat.for_mana,
+                },
+                TriggerTag::EnchantedPermanentBecomesTapped => {
+                    Trigger::EnchantedPermanentBecomesTapped
+                }
                 TriggerTag::YouDiscard => Trigger::YouDiscard,
                 TriggerTag::YouDiscardNonland => Trigger::YouDiscardNonland,
+                TriggerTag::YouPlayALand => Trigger::YouPlayALand,
                 TriggerTag::DealsCombatDamageToPlayer => {
                     Trigger::DealsCombatDamageToPlayer { who: flat.who }
                 }
                 TriggerTag::DealsCombatDamageToCreature => Trigger::DealsCombatDamageToCreature,
+                TriggerTag::ThisIsDealtDamage => Trigger::ThisIsDealtDamage,
                 TriggerTag::CreatureDealtDamageByThisDies => Trigger::CreatureDealtDamageByThisDies,
                 TriggerTag::DealsDamageToOpponent => Trigger::DealsDamageToOpponent,
                 TriggerTag::CastSpell => Trigger::CastSpell {
@@ -1623,6 +1752,11 @@ impl<'de> Deserialize<'de> for Ability {
                 loyalty: flat.loyalty,
                 once_each_turn: flat.once_each_turn,
                 sorcery_speed: flat.sorcery_speed,
+                only_during_opponents_turn: flat.only_during_opponents_turn,
+                only_during_your_turn: flat.only_during_your_turn,
+                only_before_attackers: flat.only_before_attackers,
+                only_during_your_upkeep: flat.only_during_your_upkeep,
+                only_owner_may_activate: flat.only_owner_may_activate,
                 return_self: flat.return_self,
                 mill_self: flat.mill_self,
                 discard_cost: flat.discard_cost,

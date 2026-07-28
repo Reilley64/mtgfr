@@ -31,19 +31,23 @@ pub(super) fn map_identical(request: &ChoiceRequest) -> Option<PendingChoice> {
             player,
             cost,
             spell,
+            strips_mana_on_decline,
         } => Some(PendingChoice::PayOrCounter {
             player: *player,
             cost: *cost,
             spell: *spell,
+            strips_mana_on_decline: *strips_mana_on_decline,
         }),
         ChoiceRequest::ChooseCreatureType {
             player,
             source,
             options,
+            then,
         } => Some(PendingChoice::ChooseCreatureType {
             player: *player,
             source: *source,
             options,
+            then: *then,
         }),
         ChoiceRequest::ChooseColor {
             player,
@@ -113,14 +117,16 @@ pub(super) fn map_identical(request: &ChoiceRequest) -> Option<PendingChoice> {
             source: *source,
             amount: *amount,
         }),
-        ChoiceRequest::SacrificeUnlessPay {
+        ChoiceRequest::PayOrElse {
             player,
             source,
             cost,
-        } => Some(PendingChoice::SacrificeUnlessPay {
+            otherwise,
+        } => Some(PendingChoice::PayOrElse {
             player: *player,
             source: *source,
             cost: *cost,
+            otherwise,
         }),
         ChoiceRequest::ChooseTargetPlayers {
             player,

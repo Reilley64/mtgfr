@@ -212,6 +212,10 @@ impl<'a> ChoiceCtx<'a> {
                 player,
                 cost,
                 spell,
+                // Power Sink's decline penalty needs no wire field: the pay/decline prompt is
+                // identical either way, and the tap + drained pool reach the client as ordinary
+                // events on the answer.
+                strips_mana_on_decline: _,
             } => PendingChoiceView::PayOrCounter {
                 player: player.0,
                 spell,
@@ -261,10 +265,14 @@ impl<'a> ChoiceCtx<'a> {
                 items: self.label_items(options),
                 count,
             },
-            engine::PendingChoice::SacrificeUnlessPay {
+            // The view still spells the sacrifice case because its proto field is wire-locked
+            // (docs/WIRE_COMPAT.md is expand-only — no renames); the engine variant it maps from
+            // has since grown a general `otherwise` penalty, which the client doesn't read.
+            engine::PendingChoice::PayOrElse {
                 player,
                 source,
                 cost,
+                ..
             } => PendingChoiceView::SacrificeUnlessPay {
                 player: player.0,
                 source,
@@ -335,21 +343,14 @@ impl<'a> ChoiceCtx<'a> {
                 total: cap,
             },
             engine::PendingChoice::ArrangeTop {
-                player,
-                cards,
-                to_graveyard,
+                player, cards, rest, ..
             } => {
                 let items = private_items(player, self.viewer, cards, |ids| self.label_items(ids));
-                if to_graveyard {
-                    PendingChoiceView::Surveil {
-                        player: player.0,
-                        items,
-                    }
-                } else {
-                    PendingChoiceView::Scry {
-                        player: player.0,
-                        items,
-                    }
+                let player = player.0;
+                match rest {
+                    engine::ArrangeRest::Bottom => PendingChoiceView::Scry { player, items },
+                    engine::ArrangeRest::Graveyard => PendingChoiceView::Surveil { player, items },
+                    engine::ArrangeRest::Nowhere => PendingChoiceView::ReorderTop { player, items },
                 }
             }
             engine::PendingChoice::SearchLibrary {
@@ -399,11 +400,13 @@ impl<'a> ChoiceCtx<'a> {
                 options,
                 source,
                 keep_one,
+                count,
                 ..
             } => PendingChoiceView::SacrificeEdict {
                 player: player.0,
                 source,
                 keep_one,
+                count,
                 items: self.label_items(options),
             },
             engine::PendingChoice::Proliferate {
@@ -548,6 +551,22 @@ impl<'a> ChoiceCtx<'a> {
                 source,
                 items: self.label_items(options),
                 put_counter_on_creature: true,
+                choose_block_target: false,
+            },
+            // False Orders' "you may have it block an attacking creature of your choice" is the
+            // same "pick one public object or decline" answer, so it rides `ChooseCopyTarget` too,
+            // with its own discriminator for the wording.
+            engine::PendingChoice::ChooseBlockTarget {
+                player,
+                source,
+                options,
+                ..
+            } => PendingChoiceView::ChooseCopyTarget {
+                player: player.0,
+                source,
+                items: self.label_items(options),
+                put_counter_on_creature: false,
+                choose_block_target: true,
             },
             engine::PendingChoice::ChooseOwnSacrifices {
                 player,
@@ -587,17 +606,18 @@ impl<'a> ChoiceCtx<'a> {
                 count: count as u32,
                 items: private_items(player, self.viewer, hand, |ids| self.label_items(ids)),
             },
-            // Syphon Mind's per-opponent discard: exactly one card from a private hand — the same
-            // wire shape as a `DiscardCards` of one, with the options redacted from other viewers.
-            engine::PendingChoice::DiscardEdict { player, options, .. } => {
-                PendingChoiceView::Discard {
-                    player: player.0,
-                    count: 1,
-                    items: private_items(player, self.viewer, options, |ids| {
-                        self.label_items(ids)
-                    }),
-                }
-            }
+            // Syphon Mind's per-seat discard: `count` cards from a private hand — the same wire
+            // shape as a `DiscardCards`, with the options redacted from other viewers.
+            engine::PendingChoice::DiscardEdict {
+                player,
+                options,
+                count,
+                ..
+            } => PendingChoiceView::Discard {
+                player: player.0,
+                count,
+                items: private_items(player, self.viewer, options, |ids| self.label_items(ids)),
+            },
             engine::PendingChoice::PutFromHandOnTop {
                 player,
                 hand,
@@ -607,12 +627,15 @@ impl<'a> ChoiceCtx<'a> {
                 count: count as u32,
                 items: private_items(player, self.viewer, hand, |ids| self.label_items(ids)),
             },
-            engine::PendingChoice::DeclineUntap { player, permanents } => {
-                PendingChoiceView::DeclineUntap {
-                    player: player.0,
-                    items: self.label_items(permanents),
-                }
-            }
+            engine::PendingChoice::DeclineUntap {
+                player,
+                permanents,
+                at_most_one,
+            } => PendingChoiceView::DeclineUntap {
+                player: player.0,
+                items: self.label_items(permanents),
+                at_most_one,
+            },
             engine::PendingChoice::ChooseDredge {
                 player, eligible, ..
             } => PendingChoiceView::ChooseDredge {
@@ -669,6 +692,26 @@ impl<'a> ChoiceCtx<'a> {
                     source,
                     items: self.label_items(candidates),
                     cast_targets: self.label_targets(cast_targets),
+                    from_opponent_hand: false,
+                }
+            }
+            // Word of Command: same "pick one card, name its cast-time target, then it's played
+            // right now" answer as the dig above, so it rides the same view — but the candidates
+            // are cards in someone else's *hand*, so only the seat doing the looking gets to see
+            // them, and the wording flips.
+            engine::PendingChoice::ChooseCardInHandToPlay {
+                player,
+                source,
+                options,
+                ..
+            } => {
+                let cast_targets = dig_cast_targets(self.game, &options);
+                PendingChoiceView::ChooseExiledDigToCastFree {
+                    player: player.0,
+                    source,
+                    items: private_items(player, self.viewer, options, |ids| self.label_items(ids)),
+                    cast_targets: self.label_targets(cast_targets),
+                    from_opponent_hand: true,
                 }
             }
             engine::PendingChoice::DanceExileMore {
@@ -726,6 +769,29 @@ impl<'a> ChoiceCtx<'a> {
                 player: player.0,
                 source,
                 items: self.label_items(revealed),
+                into_piles: false,
+            },
+            engine::PendingChoice::DivideBlockersIntoPiles {
+                player,
+                source,
+                options,
+                ..
+            } => PendingChoiceView::PartitionRevealed {
+                player: player.0,
+                source,
+                items: self.label_items(options),
+                into_piles: true,
+            },
+            engine::PendingChoice::SplitBlockersIntoPiles {
+                player,
+                source,
+                options,
+                ..
+            } => PendingChoiceView::PartitionRevealed {
+                player: player.0,
+                source,
+                items: self.label_items(options),
+                into_piles: true,
             },
             engine::PendingChoice::OpponentChoosesRevealedToGraveyard {
                 player,
@@ -747,7 +813,24 @@ impl<'a> ChoiceCtx<'a> {
                 source,
                 pile_a: self.label_items(pile_a),
                 pile_b: self.label_items(pile_b),
+                attacker: None,
             },
+            engine::PendingChoice::ChoosePileForAttacker {
+                player,
+                source,
+                attacker,
+                ref left,
+                ..
+            } => {
+                let (named, other) = self.game.river_piles(attacker, left);
+                PendingChoiceView::ChoosePileForHand {
+                    player: player.0,
+                    source,
+                    pile_a: self.label_items(named),
+                    pile_b: self.label_items(other),
+                    attacker: self.label_items(vec![attacker]).pop(),
+                }
+            }
             engine::PendingChoice::ChooseExiledToCastFree {
                 player,
                 source,
@@ -821,10 +904,13 @@ impl<'a> ChoiceCtx<'a> {
                 source,
                 amount,
             },
+            // The `then` tail (a text-changer's second word — CR 612.1) is engine-internal: the
+            // wire prompt is the same "pick one of these words" either way.
             engine::PendingChoice::ChooseCreatureType {
                 player,
                 source,
                 options,
+                ..
             } => PendingChoiceView::ChooseCreatureType {
                 player: player.0,
                 source,
@@ -893,6 +979,7 @@ impl<'a> ChoiceCtx<'a> {
                 source,
                 items: self.label_items(candidates),
                 put_counter_on_creature: false,
+                choose_block_target: false,
             },
         }
     }
@@ -912,7 +999,9 @@ mod coverage_tests {
     use super::project_pending_choice;
     use crate::dto::PendingChoiceView;
     use crate::test_support::def;
-    use engine::{Amount, DrawEffect, Effect, Game, LifeEffect, PendingChoice, PlayerId, Target};
+    use engine::{
+        Amount, ArrangeRest, DrawEffect, Effect, Game, LifeEffect, PendingChoice, PlayerId, Target,
+    };
 
     const CHOOSE_ONE_MODES: &[Effect] = &[
         Effect::Draw(DrawEffect::Cards {
@@ -932,9 +1021,9 @@ mod coverage_tests {
     #[test]
     fn pending_choice_projection_covers_each_variant() {
         let mut game = Game::new();
-        let source = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bear"));
+        let source = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bears"));
         let spell = game.spawn_in_hand(PlayerId(0), def("Shock"));
-        let blocker = game.spawn_on_battlefield(PlayerId(1), def("Grizzly Bear"));
+        let blocker = game.spawn_on_battlefield(PlayerId(1), def("Grizzly Bears"));
         let hand_card = game.spawn_in_hand(PlayerId(0), def("Forest"));
 
         type Case = (PendingChoice, fn(PendingChoiceView) -> bool);
@@ -1013,6 +1102,7 @@ mod coverage_tests {
                     player: PlayerId(0),
                     cost: engine::Cost::default(),
                     spell,
+                    strips_mana_on_decline: false,
                 },
                 |view| matches!(view, PendingChoiceView::PayOrCounter { .. }),
             ),
@@ -1039,16 +1129,18 @@ mod coverage_tests {
             (
                 PendingChoice::ArrangeTop {
                     player: PlayerId(0),
+                    library: PlayerId(0),
                     cards: vec![hand_card],
-                    to_graveyard: false,
+                    rest: ArrangeRest::Bottom,
                 },
                 |view| matches!(view, PendingChoiceView::Scry { .. }),
             ),
             (
                 PendingChoice::ArrangeTop {
                     player: PlayerId(0),
+                    library: PlayerId(0),
                     cards: vec![hand_card],
-                    to_graveyard: true,
+                    rest: ArrangeRest::Graveyard,
                 },
                 |view| matches!(view, PendingChoiceView::Surveil { .. }),
             ),
@@ -1083,6 +1175,7 @@ mod coverage_tests {
                     options: vec![source],
                     keep_one: true,
                     count: 1,
+                    floor: None,
                     filter: engine::PermanentFilter::default(),
                     remaining: vec![],
                     controller: PlayerId(0),
@@ -1179,7 +1272,7 @@ mod coverage_tests {
     #[test]
     fn cast_creature_face_down_candidates_are_redacted_for_non_owner() {
         let mut game = Game::new();
-        let hand_card = game.spawn_in_hand(PlayerId(0), def("Grizzly Bear"));
+        let hand_card = game.spawn_in_hand(PlayerId(0), def("Grizzly Bears"));
         let choice = PendingChoice::CastCreatureFaceDown {
             player: PlayerId(0),
             candidates: vec![hand_card],
@@ -1257,7 +1350,7 @@ mod coverage_tests {
     fn may_put_counter_on_creature_marks_the_reused_copy_target_view() {
         let mut game = Game::new();
         let source = game.spawn_on_battlefield(PlayerId(0), def("Zimone's Hypothesis"));
-        let creature = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bear"));
+        let creature = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bears"));
         let view = project_pending_choice(
             &game,
             Some(PlayerId(0)),
@@ -1294,7 +1387,7 @@ mod coverage_tests {
     #[test]
     fn choose_exiled_dig_to_cast_free_projects_cast_targets_for_aura() {
         let mut game = Game::new();
-        let host = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bear"));
+        let host = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bears"));
         let aura = game.spawn_in_hand(PlayerId(0), def("Spirit Mantle"));
         let source = game.spawn_on_battlefield(PlayerId(0), def("Herald of Amity"));
         let view = project_pending_choice(
@@ -1328,8 +1421,8 @@ mod coverage_tests {
     #[test]
     fn choose_exiled_dig_to_cast_free_omits_cast_targets_for_untargeted() {
         let mut game = Game::new();
-        let _host = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bear"));
-        let bear = game.spawn_in_hand(PlayerId(0), def("Grizzly Bear"));
+        let _host = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bears"));
+        let bear = game.spawn_in_hand(PlayerId(0), def("Grizzly Bears"));
         let source = game.spawn_on_battlefield(PlayerId(0), def("Herald of Amity"));
         let view = project_pending_choice(
             &game,

@@ -25,6 +25,40 @@ impl Game {
                     player: controller,
                     source,
                     options: CREATURE_TYPES,
+                    then: None,
+                },
+            ),
+            // "Change the text of target spell or permanent by replacing all instances of one
+            // basic land type with another" (Magical Hack; Sleight of Mind's color words): two
+            // picks through the one picker, the second raised by the first's answer. A target
+            // that has already left (CR 608.2b) leaves nothing to ask about.
+            Effect::Choice(ChoiceEffect::ChangeText { words, .. }) => {
+                let Some(object) = target.and_then(Target::object_id) else {
+                    return;
+                };
+                pending::raise(
+                    self,
+                    pending::ChoiceRequest::ChooseCreatureType {
+                        player: controller,
+                        source,
+                        options: words.options(),
+                        then: Some(TextSwapPick {
+                            object,
+                            words,
+                            from: None,
+                        }),
+                    },
+                );
+            }
+            // Phantasmal Terrain's "As this Aura enters, choose a basic land type": the same
+            // picker, narrowed to the five basic land types.
+            Effect::Choice(ChoiceEffect::ChooseBasicLandType) => pending::raise(
+                self,
+                pending::ChoiceRequest::ChooseCreatureType {
+                    player: controller,
+                    source,
+                    options: BASIC_LAND_TYPES,
+                    then: None,
                 },
             ),
             // Flickering Ward's "As this Aura enters, choose a color": pause on a ChooseColor for (CR 702.21, CR 303.4)
@@ -36,6 +70,13 @@ impl Game {
                     source,
                     until_end_of_turn: false,
                 },
+            ),
+            // Black Vise's "As this artifact enters, choose an opponent": the shared "an opponent
+            // ..." picker, which collapses on its own when only one opponent is alive.
+            Effect::Choice(ChoiceEffect::ChooseOpponent) => self.choose_splitting_opponent(
+                controller,
+                source,
+                SplittingContinuation::RememberAsChosenOpponent,
             ),
             // Wild Mongrel's "...and becomes the color of your choice until end of turn": the same (CR 613.3c)
             // ChooseColor picker as `ChooseColor` above, but the answer sets an until-end-of-turn

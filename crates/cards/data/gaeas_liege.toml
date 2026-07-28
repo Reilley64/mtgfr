@@ -1,0 +1,60 @@
+# As long as Gaea's Liege isn't attacking, its power and toughness are each equal to the number
+# of Forests you control.
+# As long as Gaea's Liege is attacking, its power and toughness are each equal to the number of
+# Forests defending player controls.
+# {T}: Target land becomes a Forest until this creature leaves the battlefield.
+name = "Gaea's Liege"
+otags = ["activated-ability", "blood-moon-effect", "hate-forest", "land-conversion", "maro-sorcerer", "namesake-spell", "repeatable-crime", "synergy-forest", "type-errata-name-self", "untracked-indefinite-effect", "virtual-legendary"]
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "ced", "cei", "fbb", "lea", "leb", "pw24", "sum", "tsb"]
+id = "8d134a60-e1e5-4163-8bdc-36af91567185"
+default_print = "5eb712ea-c9f5-4831-9e1e-22bf5a75d426"
+oracle = "As long as Gaea's Liege isn't attacking, its power and toughness are each equal to the number of Forests you control. As long as Gaea's Liege is attacking, its power and toughness are each equal to the number of Forests defending player controls.\n{T}: Target land becomes a Forest until this creature leaves the battlefield."
+subtypes = ["Avatar"]
+
+[cost]
+generic = 3
+green = 3
+
+# The printed box reads */*; a defining ability supplies both numbers.
+[kind]
+type = "creature"
+power = 0
+toughness = 0
+
+# As long as Gaea's Liege isn't attacking, its power and toughness are each equal to the number
+# of Forests you control.
+[[abilities]]
+timing = "static"
+
+# Its power and toughness are each equal to the number of Forests you control.
+[[abilities.effects]]
+type = "static"
+mode = "base_power_toughness_from_amount"
+when = "not_attacking"
+power = { per_permanent = { types = "land", subtypes = ["Forest"], controller = "you" } }
+toughness = { per_permanent = { types = "land", subtypes = ["Forest"], controller = "you" } }
+
+# As long as Gaea's Liege is attacking, its power and toughness are each equal to the number of
+# Forests defending player controls.
+[[abilities]]
+timing = "static"
+
+# Its power and toughness are each equal to the number of Forests defending player controls.
+[[abilities.effects]]
+type = "static"
+mode = "base_power_toughness_from_amount"
+when = "attacking"
+power = { per_permanent = { types = "land", subtypes = ["Forest"], controller = "defending_player" } }
+toughness = { per_permanent = { types = "land", subtypes = ["Forest"], controller = "defending_player" } }
+
+# {T}: Target land becomes a Forest until this creature leaves the battlefield.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Target land becomes a Forest until this creature leaves the battlefield.
+[[abilities.effects]]
+type = "pump"
+mode = "target_becomes_subtypes_while_source_remains"
+set_subtypes = ["Forest"]
+target = { permanent = { types = "land" } }

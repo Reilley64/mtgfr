@@ -1,0 +1,29 @@
+# Tap all lands target player controls and that player loses all unspent mana.
+name = "Mana Short"
+otags = ["single-target-instant-sorcery", "tapper-land"]
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "6ed", "7ed", "ced", "cei", "fbb", "lea", "leb", "mb2", "sum", "wc02"]
+id = "48207d1c-448a-4e1b-974a-642dfea75933"
+default_print = "743e0f1e-55ab-429a-b9f1-769b008ad06a"
+oracle = "Tap all lands target player controls and that player loses all unspent mana."
+
+[cost]
+generic = 2
+blue = 1
+
+[kind]
+type = "instant"
+
+# Tap all lands target player controls and that player loses all unspent mana.
+[[abilities]]
+timing = "spell"
+
+# Tap all lands target player controls
+[[abilities.effects]]
+type = "control"
+mode = "tap_all_target_player_controls"
+filter = { types = "land" }
+
+# and that player loses all unspent mana.
+[[abilities.effects]]
+type = "mana"
+mode = "lose_all_unspent"

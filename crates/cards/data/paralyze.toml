@@ -1,0 +1,52 @@
+# Enchant creature
+# When this Aura enters, tap enchanted creature.
+# Enchanted creature doesn't untap during its controller's untap step.
+# At the beginning of the upkeep of enchanted creature's controller, that player may pay {4}.
+# If the player does, untap the creature.
+name = "Paralyze"
+otags = ["lockdown-creature", "removal-creature", "single-english-word-name", "tapper-creature", "triggered-ability"]
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "fbb", "lea", "leb", "me1", "sum", "vma"]
+id = "e9b4e857-39e5-4a06-89ad-3dd94b3f252a"
+default_print = "e21b04cd-2d43-4d64-a1c2-46a9f02508d6"
+oracle = "Enchant creature\nWhen this Aura enters, tap enchanted creature.\nEnchanted creature doesn't untap during its controller's untap step.\nAt the beginning of the upkeep of enchanted creature's controller, that player may pay {4}. If the player does, untap the creature."
+subtypes = ["Aura"]
+enchant = { types = "creature" }
+
+[cost]
+black = 1
+
+[kind]
+type = "aura"
+
+# When this Aura enters, tap enchanted creature.
+[[abilities]]
+timing = "etb"
+
+# tap enchanted creature.
+[[abilities.effects]]
+type = "control"
+mode = "tap_target"
+target = "enchanted_creature"
+
+# Enchanted creature doesn't untap during its controller's untap step.
+[[abilities]]
+timing = "static"
+
+# Enchanted creature doesn't untap during its controller's untap step.
+[[abilities.effects]]
+type = "static"
+mode = "grant_to_attached"
+doesnt_untap = true
+
+# At the beginning of the upkeep of enchanted creature's controller, that player may pay {4}.
+# If the player does, untap the creature.
+[[abilities]]
+timing = "each_upkeep"
+condition = { type = "enchanted_permanents_controllers_upkeep" }
+
+# that player may pay {4}. If the player does, untap the creature.
+[[abilities.effects]]
+type = "choice"
+mode = "triggering_player_may_pay"
+cost = { generic = 4 }
+then = [{ type = "control", mode = "untap_target", target = "enchanted_creature" }]

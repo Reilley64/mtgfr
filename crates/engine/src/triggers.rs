@@ -37,6 +37,9 @@ enum TriggerWatchContextKind {
     ActivePlayer,
     Attack,
     DamagedCreature,
+    /// How much damage the event dealt, onto `TriggerContext::triggering_damage_dealt` — Living
+    /// Artifact's "put **that many** vitality counters".
+    DamageAmount,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -74,6 +77,19 @@ impl TriggerWatch {
             zone: TriggerWatchZone::Battlefield,
             scope: TriggerWatchScope::ControlledPlayer,
             context: TriggerWatchContextKind::Controller,
+            skip_graveyard_functional_on_battlefield: true,
+        }
+    }
+
+    const fn battlefield_controller_ctx(
+        trigger: Trigger,
+        context: TriggerWatchContextKind,
+    ) -> Self {
+        Self {
+            kind: TriggerWatchKind::Exact(trigger),
+            zone: TriggerWatchZone::Battlefield,
+            scope: TriggerWatchScope::ControlledPlayer,
+            context,
             skip_graveyard_functional_on_battlefield: true,
         }
     }
@@ -161,7 +177,7 @@ struct TriggerWatchEvent {
     cast_from_hand: Option<bool>,
     mana_spent: Option<u32>,
     damaged_creature: Option<ObjectId>,
-    combat_damage: Option<i32>,
+    damage_amount: Option<i32>,
     exclude: Option<ObjectId>,
 }
 
@@ -178,7 +194,7 @@ impl TriggerWatchEvent {
             cast_from_hand: None,
             mana_spent: None,
             damaged_creature: None,
-            combat_damage: None,
+            damage_amount: None,
             exclude: None,
         }
     }
@@ -195,7 +211,7 @@ impl TriggerWatchEvent {
             cast_from_hand: None,
             mana_spent: None,
             damaged_creature: None,
-            combat_damage: None,
+            damage_amount: None,
             exclude: None,
         }
     }
@@ -212,7 +228,7 @@ impl TriggerWatchEvent {
             cast_from_hand: None,
             mana_spent: None,
             damaged_creature: None,
-            combat_damage: None,
+            damage_amount: None,
             exclude: None,
         }
     }
@@ -229,7 +245,7 @@ impl TriggerWatchEvent {
             cast_from_hand: None,
             mana_spent: None,
             damaged_creature: None,
-            combat_damage: None,
+            damage_amount: None,
             exclude: None,
         }
     }
@@ -253,7 +269,7 @@ impl TriggerWatchEvent {
             cast_from_hand: Some(cast_from_hand),
             mana_spent: Some(mana_spent),
             damaged_creature: None,
-            combat_damage: None,
+            damage_amount: None,
             exclude: None,
         }
     }
@@ -270,12 +286,12 @@ impl TriggerWatchEvent {
             cast_from_hand: None,
             mana_spent: None,
             damaged_creature: None,
-            combat_damage: Some(amount),
+            damage_amount: Some(amount),
             exclude: None,
         }
     }
 
-    const fn for_damage_to_player(source: ObjectId, player: PlayerId) -> Self {
+    const fn for_damage_to_player(source: ObjectId, player: PlayerId, amount: i32) -> Self {
         Self {
             source: Some(source),
             player: Some(player),
@@ -287,7 +303,7 @@ impl TriggerWatchEvent {
             cast_from_hand: None,
             mana_spent: None,
             damaged_creature: None,
-            combat_damage: None,
+            damage_amount: Some(amount),
             exclude: None,
         }
     }
@@ -304,7 +320,7 @@ impl TriggerWatchEvent {
             cast_from_hand: None,
             mana_spent: None,
             damaged_creature: Some(target),
-            combat_damage: None,
+            damage_amount: None,
             exclude: None,
         }
     }
@@ -334,12 +350,15 @@ const ATTACK_TRIGGER_WATCHES: &[TriggerWatch] = &[
 const UPKEEP_TRIGGER_WATCHES: &[TriggerWatch] = &[
     TriggerWatch::battlefield_controller(Trigger::Upkeep),
     TriggerWatch::graveyard_controller(Trigger::Upkeep),
-    TriggerWatch::battlefield_all(Trigger::EachUpkeep),
+    TriggerWatch::battlefield_all_with_active_player(Trigger::EachUpkeep),
 ];
-const DRAW_STEP_TRIGGER_WATCHES: &[TriggerWatch] =
-    &[TriggerWatch::battlefield_all_with_active_player(
-        Trigger::EachDrawStep,
-    )];
+const DRAW_STEP_TRIGGER_WATCHES: &[TriggerWatch] = &[
+    TriggerWatch::battlefield_all_with_active_player(Trigger::EachDrawStep),
+    // Mana Vault's "at the beginning of your draw step": the controller-scoped half of the same
+    // table, riding the same event — `TriggerWatchEvent::for_active_player` sets `player`, which
+    // is what a `ControlledPlayer` watch reads, so "your" and "each player's" resolve off one queue.
+    TriggerWatch::battlefield_controller(Trigger::DrawStep),
+];
 const UNTAP_STEP_TRIGGER_WATCHES: &[TriggerWatch] = &[TriggerWatch::battlefield_all_except_player(
     Trigger::EachOtherPlayerUntapStep,
 )];
@@ -347,19 +366,36 @@ const SPELL_CAST_TRIGGER_WATCHES: &[TriggerWatch] = &[
     TriggerWatch::battlefield_controller_dynamic(TriggerWatchKind::Magecraft),
     TriggerWatch::battlefield_all_dynamic(TriggerWatchKind::CastSpell),
 ];
+// The receiving-end watch ("whenever you're dealt damage", Living Artifact) sits on both tables:
+// combat and noncombat damage alike is damage dealt to you (CR 120.1), and only these two arms
+// reach a player. Controller-scoped on the *damaged* player, so it is the victim's own permanents
+// that watch — the dealer's don't.
 const COMBAT_DAMAGE_TO_PLAYER_TRIGGER_WATCHES: &[TriggerWatch] = &[
     TriggerWatch::battlefield_all_dynamic(TriggerWatchKind::DealsCombatDamageToPlayer),
     TriggerWatch::battlefield_self_dynamic(TriggerWatchKind::DealsDamageToOpponent),
+    TriggerWatch::battlefield_controller_ctx(
+        Trigger::YouAreDealtDamage,
+        TriggerWatchContextKind::DamageAmount,
+    ),
 ];
-const DAMAGE_TO_PLAYER_TRIGGER_WATCHES: &[TriggerWatch] =
-    &[TriggerWatch::battlefield_self_dynamic(
-        TriggerWatchKind::DealsDamageToOpponent,
-    )];
+const DAMAGE_TO_PLAYER_TRIGGER_WATCHES: &[TriggerWatch] = &[
+    TriggerWatch::battlefield_self_dynamic(TriggerWatchKind::DealsDamageToOpponent),
+    TriggerWatch::battlefield_controller_ctx(
+        Trigger::YouAreDealtDamage,
+        TriggerWatchContextKind::DamageAmount,
+    ),
+];
 const COMBAT_DAMAGE_TO_CREATURE_TRIGGER_WATCHES: &[TriggerWatch] =
     &[TriggerWatch::battlefield_self(
         Trigger::DealsCombatDamageToCreature,
         TriggerWatchContextKind::DamagedCreature,
     )];
+// Fungusaur's "whenever this creature is dealt damage": self-scoped on the *damaged* permanent,
+// so the watch event's `source` is the victim rather than the dealer.
+const DAMAGE_MARKED_TRIGGER_WATCHES: &[TriggerWatch] = &[TriggerWatch::battlefield_self(
+    Trigger::ThisIsDealtDamage,
+    TriggerWatchContextKind::Controller,
+)];
 
 impl Game {
     /// Scan just-produced events and queue the triggered abilities they fire. Two flavors:
@@ -378,6 +414,7 @@ impl Game {
         let batch_deaths = self.batch_creature_deaths(events);
         self.queue_enchantment_death_watchers(events);
         self.queue_nonland_permanent_death_watchers(events);
+        self.queue_land_death_watchers(events);
         for (idx, event) in events.iter().enumerate() {
             match event.clone() {
                 // Self-referential: the source is the object the event is about. A land enters via
@@ -573,12 +610,18 @@ impl Game {
                     // Safe to call unconditionally — a no-op for a non-battlefield `from`, since
                     // `permanents_left_battlefield` is populated by the same battlefield-only gate.
                     self.queue_leaves_battlefield_triggers(from, self.owner_of(from), &def.clone());
-                    if from_battlefield && matches!(def.kind, CardKind::Creature { .. }) {
+                    // CR 700.4: "dies" is *any* permanent put into a graveyard from the
+                    // battlefield — Lich's own dies trigger sits on an enchantment. The
+                    // watch-others triggers below stay creature-scoped, because their printed
+                    // wordings all say "creature".
+                    if from_battlefield {
                         let ctx = TriggerContext {
                             dying_source_stats: self.dying_source_stats(from),
                             ..TriggerContext::of(self.owner_of(from))
                         };
                         self.queue_trigger_group(ctx, from, def.clone(), Trigger::Dies);
+                    }
+                    if from_battlefield && matches!(def.kind, CardKind::Creature { .. }) {
                         self.queue_watch_death_triggers(
                             self.owner_of(from),
                             from,
@@ -670,7 +713,7 @@ impl Game {
                 } => {
                     self.queue_controller_triggers(active_player, Trigger::Upkeep, None);
                     self.queue_graveyard_controller_triggers(active_player, Trigger::Upkeep);
-                    self.queue_each_upkeep_triggers();
+                    self.queue_each_upkeep_triggers(active_player);
                     self.queue_echo_triggers(active_player);
                     self.queue_cumulative_upkeep_triggers(active_player);
                 }
@@ -958,10 +1001,14 @@ impl Game {
                 // Noncombat damage dealt to a player (CR 120.1) — the marker
                 // `Effect::Damage(DamageEffect::Target)`'s player arm pushes alongside its `LifeChanged`, never a
                 // non-damage life loss (drain, pay-life), which only emits `LifeChanged`.
-                Event::DamageDealtToPlayer { source, player, .. } => {
+                Event::DamageDealtToPlayer {
+                    source,
+                    player,
+                    amount,
+                } => {
                     self.queue_trigger_watch_table(
                         DAMAGE_TO_PLAYER_TRIGGER_WATCHES,
-                        TriggerWatchEvent::for_damage_to_player(source, player),
+                        TriggerWatchEvent::for_damage_to_player(source, player, amount),
                     );
                 }
                 // Damage marked on a creature (CR 120.3/506) — `Game::deal_creature_damage` is the
@@ -969,10 +1016,20 @@ impl Game {
                 // creature damage (fight, CR 701.12), so this one event arm covers both for
                 // Armadillo Cloak's attached-host damage watch.
                 Event::DamageMarked {
-                    source: Some(source),
+                    source,
                     object,
                     amount,
+                    ..
                 } => {
+                    // Fungusaur's receiving-end watch fires for *any* damage, including the
+                    // sourceless kind, so it sits ahead of the two source-keyed tallies below.
+                    self.queue_trigger_watch_table(
+                        DAMAGE_MARKED_TRIGGER_WATCHES,
+                        TriggerWatchEvent::for_source(object),
+                    );
+                    let Some(source) = source else {
+                        continue;
+                    };
                     self.queue_enchanted_creature_deals_damage_triggers(source, amount);
                     // Vampiric Dragon's turn-scoped "a creature dealt damage by this creature
                     // this turn dies" tally (fidelity increment #194) — every creature-damage choke
@@ -981,6 +1038,27 @@ impl Game {
                 }
                 _ => {}
             }
+        }
+        // Fastbond's "whenever you play a land" (CR 305.1 — the special action itself, not the
+        // landfall "enters"): controller-scoped, off the same `LandPlayed` event the ETB family
+        // above watches self-referentially. Fastbond's "if it wasn't the first land you played
+        // this turn" is the ability's own intervening-if, so nothing here counts.
+        for event in events {
+            let Event::LandPlayed { player, .. } = event else {
+                continue;
+            };
+            self.queue_controller_triggers(*player, Trigger::YouPlayALand, None);
+        }
+        // Lifetap's "whenever a Forest an opponent controls becomes tapped" and Psychic Venom's
+        // "whenever enchanted land becomes tapped": every tap counts — an attack, an Icy
+        // Manipulator, a mana ability alike — so the plain tap event is the choke. The
+        // for-mana-only watches (Manabarbs) are skipped here and fire from
+        // `Game::land_tapped_for_mana`, which is the only place that knows a tap made mana.
+        for event in events {
+            let Event::Tapped { object } = event else {
+                continue;
+            };
+            self.queue_becomes_tapped_triggers(*object, false);
         }
         // CR "one or more cards leave your graveyard" (Quintorius Field Historian / Lorehold): the
         // whole batch, not each card, is the trigger event — a board-wipe-then-reanimate or a
@@ -1153,6 +1231,10 @@ impl Game {
                 damaged_creature: event.damaged_creature,
                 ..TriggerContext::of(controller)
             },
+            TriggerWatchContextKind::DamageAmount => TriggerContext {
+                triggering_damage_dealt: event.damage_amount,
+                ..TriggerContext::of(controller)
+            },
         }
     }
 
@@ -1286,7 +1368,7 @@ impl Game {
                     .player
                     .expect("combat-damage watch dispatch requires the damaged player");
                 let amount = event
-                    .combat_damage
+                    .damage_amount
                     .expect("combat-damage watch dispatch requires the damage amount");
                 self.queue_combat_damage_triggers(source, player, amount);
             }
@@ -1795,6 +1877,62 @@ impl Game {
         }
     }
 
+    /// Queue [`Trigger::LandPutIntoGraveyard`] watch triggers for this event batch (Dingus Egg):
+    /// for each land put into a graveyard from the battlefield (or a land token that ceased to
+    /// exist), fire the ability on every battlefield permanent — any controller, since the printed
+    /// text scopes to no seat — with the dead land's controller on
+    /// [`TriggerContext::triggering_permanent_controller`] for the "that land's controller" payoff. The
+    /// land twin of [`queue_enchantment_death_watchers`](Self::queue_enchantment_death_watchers)
+    /// and [`queue_nonland_permanent_death_watchers`](Self::queue_nonland_permanent_death_watchers)
+    /// above; lands are the one permanent type both of those exclude.
+    /// ponytail: three near-identical batch death scanners now, differing only in a type filter and
+    ///   a controller scope — worth folding into one filter+scope scanner when a fourth lands.
+    ///   Owner-based controller-at-death like its siblings (a land stolen with Confiscate bills its
+    ///   owner, not the thief), and no CR 603.6c simultaneous-death look-back: an Egg dying in the
+    ///   same sweep as the land won't fire.
+    fn queue_land_death_watchers(&mut self, events: &[Event]) {
+        for event in events {
+            let (owner, def) = match event.clone() {
+                Event::MovedToGraveyard { from, .. } => {
+                    // Owner left the game in this same sweep: no death to watch (matches the
+                    // guard in `enqueue_triggers`/`batch_creature_deaths`).
+                    if matches!(
+                        &self.objects[self.current_id(from) as usize],
+                        Object::Removed { .. }
+                    ) {
+                        continue;
+                    }
+                    // CR 700.4 "put into a graveyard from the battlefield" — a discard/mill of a
+                    // land card is not a land leaving the battlefield.
+                    if !self
+                        .batch_trigger_scratch
+                        .permanents_put_into_graveyard_from_battlefield
+                        .contains(&from)
+                    {
+                        continue;
+                    }
+                    (self.owner_of(from), self.def_of(from))
+                }
+                Event::TokenCeasedToExist {
+                    token: _,
+                    controller,
+                    def,
+                } => (controller, card_def(def).as_ref().clone()),
+                _ => continue,
+            };
+            if !def.kind.types().intersects(TypeSet::LAND) {
+                continue;
+            }
+            for id in self.battlefield() {
+                let ctx = TriggerContext {
+                    triggering_permanent_controller: Some(owner),
+                    ..TriggerContext::of(self.controller_of(id))
+                };
+                self.queue_trigger_group(ctx, id, self.def_of(id), Trigger::LandPutIntoGraveyard);
+            }
+        }
+    }
+
     /// Queue a controller-scoped trigger: every permanent `player` controls whose ability
     /// matches `trigger` fires. `exclude` skips one source (used to break a life-gain self-loop).
     pub(crate) fn queue_controller_triggers(
@@ -1919,14 +2057,16 @@ impl Game {
     /// *any* player's upkeep (CR "at the beginning of each upkeep") — unlike
     /// [`queue_controller_triggers`](Self::queue_controller_triggers), this doesn't gate on
     /// whose upkeep it is, only on the ability's own controller for the resulting effect.
-    /// ponytail: doesn't thread [`TriggerContext::active_player`] — the pool's each-upkeep
-    ///   abilities (a Pest, a Saproling, a Snake) don't need to know whose upkeep triggered them,
-    ///   unlike [`queue_each_draw_step_triggers`](Self::queue_each_draw_step_triggers) (Howling
-    ///   Mine). Wire it here too if a future each-upkeep effect needs it.
-    pub(crate) fn queue_each_upkeep_triggers(&mut self) {
+    /// `active_player` rides along on [`TriggerContext::active_player`] for the payoffs that do
+    /// name whose upkeep it is (Copper Tablet's "deals 1 damage to **that player**"), exactly as
+    /// [`queue_each_draw_step_triggers`](Self::queue_each_draw_step_triggers) threads it for
+    /// Howling Mine; the ones that don't (a Pest, a Saproling, a Snake) simply ignore it.
+    pub(crate) fn queue_each_upkeep_triggers(&mut self, active_player: PlayerId) {
         self.queue_trigger_watch_table(
-            &[TriggerWatch::battlefield_all(Trigger::EachUpkeep)],
-            TriggerWatchEvent::default(),
+            &[TriggerWatch::battlefield_all_with_active_player(
+                Trigger::EachUpkeep,
+            )],
+            TriggerWatchEvent::for_active_player(active_player),
         );
     }
 
@@ -1940,6 +2080,18 @@ impl Game {
     pub(crate) fn queue_each_end_step_triggers(&mut self) {
         self.queue_trigger_watch_table(
             &[TriggerWatch::battlefield_all(Trigger::EachEndStep)],
+            TriggerWatchEvent::default(),
+        );
+    }
+
+    /// Queue every battlefield permanent's [`Trigger::EndOfCombat`] ability as the end-of-combat
+    /// step's turn-based actions run (CR 511.1) — battlefield-wide, not active-player-scoped,
+    /// because a creature blocks on somebody else's turn. Called from
+    /// [`Game::perform_turn_based_actions`] ahead of [`Event::CombatCleared`], so an ability's
+    /// intervening-if can still see who attacked and who blocked.
+    pub(crate) fn queue_end_of_combat_triggers(&mut self) {
+        self.queue_trigger_watch_table(
+            &[TriggerWatch::battlefield_all(Trigger::EndOfCombat)],
             TriggerWatchEvent::default(),
         );
     }
@@ -2158,20 +2310,23 @@ impl Game {
                 cast_x: None,
                 auras_you_controlled_attached_to_dying_creature: None,
                 combat_damage: None,
-                combat_damage_recipient: None,
+                damage_recipient: None,
                 combat_damage_source_controller: None,
                 triggering_damage_dealt: None,
                 dying_enchanted_creature: None,
+                dying_enchanted_creature_stats: None,
                 damaged_creature: None,
                 triggering_spell: None,
                 spells_cast_before_this: None,
                 source_power: None,
                 dead_creature: None,
                 dying_permanent_types: None,
+                triggering_permanent_controller: None,
                 cards_left_graveyard: &[],
                 left_battlefield_host: None,
                 triggering_ability: None,
                 triggering_caster: None,
+                blocking_partner: None,
             };
             self.queue_trigger_group(ctx, id, self.def_of(id), Trigger::PlayerAttacksYourOpponent);
         }
@@ -2327,6 +2482,54 @@ impl Game {
         }
     }
 
+    /// Queue [`Trigger::BlocksOrBecomesBlockedBy`] (Cockatrice, Thicket Basilisk, CR 509.1a): the
+    /// payoff names the *other* creature, so unlike
+    /// [`queue_blocks_or_becomes_blocked_triggers`](Self::queue_blocks_or_becomes_blocked_triggers)
+    /// above this walks every (blocker, attacker) pair with no dedup — two creatures blocking one
+    /// Basilisk each get destroyed, and each fire carries its own partner in
+    /// [`TriggerContext::blocking_partner`]. Bespoke-queued like
+    /// [`queue_batch_attack_triggers`](Self::queue_batch_attack_triggers) rather than watch-tabled,
+    /// since the partner has to be baked into the ability before it goes on the stack. Called
+    /// directly from [`Game::declare_blockers`].
+    pub(crate) fn queue_blocks_or_becomes_blocked_by_triggers(
+        &mut self,
+        blocks: &[(ObjectId, ObjectId)],
+    ) {
+        for &(blocker, attacker) in blocks {
+            for (watcher, partner) in [(blocker, attacker), (attacker, blocker)] {
+                let controller = self.owner_of(watcher);
+                let ctx = TriggerContext {
+                    blocking_partner: Some(partner),
+                    ..TriggerContext::of(controller)
+                };
+                let abilities: Vec<Ability> = self
+                    .functional_abilities(watcher)
+                    .iter()
+                    .filter(|a| match a.timing {
+                        Timing::Triggered(Trigger::BlocksOrBecomesBlockedBy { filter }) => {
+                            self.permanent_matches(&filter, partner, controller, Some(watcher))
+                        }
+                        _ => false,
+                    })
+                    .filter(|a| a.condition.is_none_or(|c| self.condition_holds(c, ctx)))
+                    .map(|a| Ability {
+                        effect: contextualize_effect(a.effect.clone(), ctx),
+                        ..*a
+                    })
+                    .collect();
+                if abilities.is_empty() {
+                    continue;
+                }
+                self.pending_trigger_groups.push(TriggerGroup {
+                    expanded: false,
+                    controller,
+                    source: watcher,
+                    abilities,
+                });
+            }
+        }
+    }
+
     /// Queue [`Trigger::AttacksOrBlocks`]'s block half (Mana-Charged Dragon, CR 509.3a): unlike
     /// [`queue_blocks_or_becomes_blocked_triggers`](Self::queue_blocks_or_becomes_blocked_triggers)
     /// above, only the *blocker* side of each pair fires — a blocked attacker doesn't "block".
@@ -2344,6 +2547,83 @@ impl Game {
             }
             fired.push(blocker);
             self.queue_self_trigger(blocker, Trigger::AttacksOrBlocks);
+        }
+    }
+
+    /// Queue becomes-tapped watch triggers for the permanent `tapped` (CR 701.21a — "becomes
+    /// tapped" is the change from untapped to tapped, so a second tap of an already-tapped
+    /// permanent mints no [`Event::Tapped`] and fires nothing here). Two families, both
+    /// table-wide rather than controller-scoped because both cards watch every seat:
+    /// [`Trigger::PermanentBecomesTapped`] on any battlefield permanent whose `filter` matches
+    /// `tapped` (Lifetap's "a Forest an opponent controls", Manabarbs' "a land"), and
+    /// [`Trigger::EnchantedPermanentBecomesTapped`] on `tapped`'s own attachments (Psychic
+    /// Venom), controlled by *that Aura's own controller* like
+    /// [`queue_enchanted_creature_attacks_triggers`](Self::queue_enchanted_creature_attacks_triggers)
+    /// below. `for_mana` says which choke is calling: `false` from
+    /// [`Game::enqueue_triggers`]'s [`Event::Tapped`] scan (every tap there is), `true` from
+    /// [`Game::land_tapped_for_mana`] (a land that actually produced mana, CR 106.11). The two
+    /// partition the filter watches by their own `for_mana` field, and the attachment watches —
+    /// which print no such restriction — run only on the `false` pass, so nothing double-fires
+    /// when a land is tapped for mana and both chokes run. Either way the tapped permanent's
+    /// controller rides on [`TriggerContext::triggering_permanent_controller`] for a "that
+    /// player" / "that land's controller" payoff.
+    pub(crate) fn queue_becomes_tapped_triggers(&mut self, tapped: ObjectId, for_mana: bool) {
+        // The tapper may have sacrificed its own source to pay the cost (a Treasure), and a spell
+        // or graveyard card has no controller to bill.
+        if self.as_permanent(tapped).is_none() {
+            return;
+        }
+        let tapped_controller = self.controller_of(tapped);
+        for id in self.battlefield() {
+            let controller = self.controller_of(id);
+            let ctx = TriggerContext {
+                triggering_permanent_controller: Some(tapped_controller),
+                ..TriggerContext::of(controller)
+            };
+            let abilities: Vec<Ability> = self
+                .functional_abilities(id)
+                .iter()
+                .filter(|a| match a.timing {
+                    Timing::Triggered(Trigger::PermanentBecomesTapped {
+                        filter,
+                        for_mana: wants_mana,
+                    }) => {
+                        wants_mana == for_mana
+                            && self.permanent_matches(&filter, tapped, controller, Some(id))
+                    }
+                    _ => false,
+                })
+                .filter(|a| a.condition.is_none_or(|c| self.condition_holds(c, ctx)))
+                .map(|a| Ability {
+                    effect: contextualize_effect(a.effect.clone(), ctx),
+                    ..*a
+                })
+                .collect();
+            if !abilities.is_empty() {
+                self.pending_trigger_groups.push(TriggerGroup {
+                    expanded: false,
+                    controller,
+                    source: id,
+                    abilities,
+                });
+            }
+        }
+        // Psychic Venom prints no "for mana" restriction, so its watch belongs entirely to the
+        // every-tap pass — running it on the mana pass too would bite twice for one tap.
+        if for_mana {
+            return;
+        }
+        for aura in self.attachments(tapped) {
+            let ctx = TriggerContext {
+                triggering_permanent_controller: Some(tapped_controller),
+                ..TriggerContext::of(self.controller_of(aura))
+            };
+            self.queue_trigger_group(
+                ctx,
+                aura,
+                self.def_of(aura),
+                Trigger::EnchantedPermanentBecomesTapped,
+            );
         }
     }
 
@@ -2376,20 +2656,23 @@ impl Game {
                 cast_x: None,
                 auras_you_controlled_attached_to_dying_creature: None,
                 combat_damage: None,
-                combat_damage_recipient: None,
+                damage_recipient: None,
                 combat_damage_source_controller: None,
                 triggering_damage_dealt: None,
                 dying_enchanted_creature: None,
+                dying_enchanted_creature_stats: None,
                 damaged_creature: None,
                 triggering_spell: None,
                 spells_cast_before_this: None,
                 source_power: None,
                 dead_creature: None,
                 dying_permanent_types: None,
+                triggering_permanent_controller: None,
                 cards_left_graveyard: &[],
                 left_battlefield_host: None,
                 triggering_ability: None,
                 triggering_caster: None,
+                blocking_partner: None,
             };
             self.queue_trigger_group(
                 ctx,
@@ -2455,7 +2738,12 @@ impl Game {
             return;
         }
         self.queue_trigger_group(
-            TriggerContext::of(controller),
+            // "…**that player** discards a card at random" (Hypnotic Specter) needs the damaged
+            // opponent's identity, not the watching ability's controller.
+            TriggerContext {
+                damage_recipient: Some(player),
+                ..TriggerContext::of(controller)
+            },
             source,
             self.def_of(source),
             Trigger::DealsDamageToOpponent,
@@ -2484,12 +2772,19 @@ impl Game {
             .filter(|&&(host, ..)| host == dying)
             .map(|&(_, aura, controller, ref def)| (aura, controller, def.clone()))
             .collect();
+        // CR 603.10a: what the host last was, for the payoffs that read it rather than the Aura
+        // (Creature Bond). A creature always has a row here by the time this runs — the same
+        // `Game::apply` arm that captured the attachments above captured this.
+        let host_stats = self
+            .dying_creature_stats(dying)
+            .map(|stats| (stats.toughness, stats.controller));
         for (aura, controller, def) in auras {
             if self.players[controller.0 as usize].lost {
                 continue;
             }
             let ctx = TriggerContext {
                 dying_enchanted_creature: Some(dying),
+                dying_enchanted_creature_stats: host_stats,
                 ..TriggerContext::of(controller)
             };
             self.queue_trigger_group(ctx, aura, def, Trigger::EnchantedCreatureDies);
@@ -2642,20 +2937,23 @@ impl Game {
             cast_x: None,
             auras_you_controlled_attached_to_dying_creature: None,
             combat_damage: None,
-            combat_damage_recipient: None,
+            damage_recipient: None,
             combat_damage_source_controller: None,
             triggering_damage_dealt: None,
             dying_enchanted_creature: None,
+            dying_enchanted_creature_stats: None,
             damaged_creature: None,
             triggering_spell: None,
             spells_cast_before_this: None,
             source_power: None,
             dead_creature: None,
             dying_permanent_types: None,
+            triggering_permanent_controller: None,
             cards_left_graveyard: &[],
             left_battlefield_host: None,
             triggering_ability: None,
             triggering_caster: None,
+            blocking_partner: None,
         };
         for id in self.battlefield() {
             if self.owner_of(id) != player {
@@ -2882,13 +3180,12 @@ impl Game {
             let controller = self.owner_of(id);
             let ctx = TriggerContext {
                 combat_damage: (id == source).then_some(amount),
-                combat_damage_recipient: Some(player),
+                damage_recipient: Some(player),
                 combat_damage_source_controller: Some(source_controller),
                 ..TriggerContext::of(controller)
             };
-            // ponytail: only this scanner consults granted triggered abilities — the pool's one
-            // consumer (Power Fist). Move onto a shared owned-abilities accessor the moment a
-            // second granted trigger flavor lands (see `Game::granted_attachment_triggers`).
+            // This scanner is bespoke — it doesn't route through `queue_trigger_group`, where
+            // every other flavor picks attachment grants up — so it consults them itself.
             let granted_triggers = self.granted_attachment_triggers(id);
             let abilities: Vec<Ability> = self
                 .functional_abilities(id)
@@ -3688,11 +3985,19 @@ impl Game {
     /// `source` the instant before it died, for a `Dies` trigger's `TriggerContext` — `None` if
     /// `source` didn't die this batch (every non-death trigger).
     fn dying_source_stats(&self, source: ObjectId) -> Option<(i32, i32)> {
+        self.dying_creature_stats(source)
+            .map(|stats| (stats.power, stats.plus_counters))
+    }
+
+    /// This batch's whole `Game::dying_creature_stats` entry for `id` — `None` if `id` didn't die
+    /// this batch. The narrower [`dying_source_stats`](Self::dying_source_stats) above is the
+    /// self-watch view of the same row; an `EnchantedCreatureDies` Aura reads it for its *host*.
+    fn dying_creature_stats(&self, id: ObjectId) -> Option<DyingCreatureStats> {
         self.batch_trigger_scratch
             .dying_creature_stats
             .iter()
-            .find(|&&(id, ..)| id == source)
-            .map(|&(_, power, counters)| (power, counters))
+            .copied()
+            .find(|stats| stats.id == id)
     }
 
     /// Queue `def`'s abilities matching `trigger` (and whose intervening-if condition, if any,
@@ -3744,11 +4049,17 @@ impl Game {
         // A Backup grant (CR 702.166) makes `source` gain another permanent's abilities until end
         // of turn — so scan those too, alongside its own def's, addressing them as `source`'s.
         let granted = self.granted_source_abilities(source);
+        // An Aura/Equipment attached to `source` can grant it a triggered ability too (Farmstead's
+        // "Enchanted land has \"At the beginning of your upkeep, …\""). Scanned here, at the shared
+        // choke, so every trigger flavor routed through `queue_trigger_group` picks a grant up
+        // without its own scanner learning about attachments.
+        let attached = self.granted_attachment_triggers(source);
         let abilities: Vec<Ability> = def
             .abilities
             .iter()
             .cloned()
             .chain(granted)
+            .chain(attached)
             .filter(|a| {
                 a.timing == Timing::Triggered(trigger)
                     && a.min_level <= source_level
@@ -3791,15 +4102,53 @@ impl Game {
             Condition::SourceHasNoCountersOfKind { kind } => {
                 self.counters_of_kind(source, kind) == 0
             }
+            // Living Artifact's upkeep: "you may remove a vitality counter from this Aura" — the
+            // positive sibling of the condition above, read the same way.
+            Condition::SourceHasCountersOfKind { kind, at_least } => {
+                u32::from(self.counters_of_kind(source, kind)) >= at_least
+            }
             // Ingenious Prodigy's upkeep: "if this creature has one or more +1/+1 counters on
             // it" — source-object-based like the two conditions above.
             Condition::SourceHasCounters { at_least } => self.source_has_counters(source, at_least),
             // Howling Mine: "if Howling Mine is untapped" — source-object-based like the three
             // conditions above.
             Condition::SourceUntapped => self.as_permanent(source).is_some_and(|p| !p.tapped),
+            // Mana Vault: "if this artifact is tapped" — the same live read as Howling Mine's
+            // above, the other way round.
+            Condition::SourceTapped => self.as_permanent(source).is_some_and(|p| p.tapped),
+            // Nether Shadow: "if this card is in your graveyard with three or more creature cards
+            // above it" — source-object-based like the conditions above, and positional besides.
+            Condition::CreatureCardsAboveThisInGraveyardAtLeast { count } => {
+                self.creature_cards_above_in_graveyard(source) >= count
+            }
+            // The 2ed upkeep-tax Aura cycle: "at the beginning of the upkeep of enchanted land's
+            // controller" — an `EachUpkeep` watch narrowed to the one upkeep that belongs to this
+            // Aura's host's controller. Unattached (the host left in response, CR 704.5m), it
+            // never holds.
+            Condition::EnchantedPermanentsControllersUpkeep => self
+                .attached_to(source)
+                .is_some_and(|host| Some(self.controller_of(host)) == ctx.active_player),
+            // Black Vise: "at the beginning of the chosen player's upkeep" — the same `EachUpkeep`
+            // narrowing as the Aura cycle above, reading the opponent this permanent named as it
+            // entered rather than a host's controller.
+            Condition::ChosenPlayersUpkeep => self
+                .as_permanent(source)
+                .and_then(|p| p.chosen_opponent)
+                .is_some_and(|chosen| Some(chosen) == ctx.active_player),
+            // Earthbind: "if enchanted creature has flying" — source-object-based like the
+            // upkeep gate above, reading this Aura's host rather than its controller.
+            Condition::EnchantedCreatureHasKeyword { keyword } => self
+                .attached_to(source)
+                .is_some_and(|host| self.has_keyword(host, keyword)),
             // Dread Cacodemon/Reiver Demon: "if you cast it from your hand" — source-object-based
             // like the four conditions above.
             Condition::CastFromHand => self.as_permanent(source).is_some_and(|p| p.cast_from_hand),
+            // Clockwork Beast's "if this creature attacked or blocked this combat" — the historic
+            // declaration list, still populated because `queue_end_of_combat_triggers` runs ahead
+            // of `Event::CombatCleared` in the same turn-based action.
+            Condition::SourceAttackedOrBlockedThisCombat => {
+                self.combat.attacked_or_blocked.contains(&source)
+            }
             // Plumb the Forbidden's reflexive "When you do": the copy trigger happens only if one
             // or more creatures were sacrificed to the additional cost — source-object-based like
             // the conditions above, reading the resolving spell's own recorded count (CR 601.2f).
@@ -3829,6 +4178,11 @@ impl Game {
             }
             Condition::ControlsLandsWithSubtype { subtypes, count } => {
                 self.lands_with_subtype_controlled(ctx.controller, subtypes) as u32 >= count
+            }
+            // Sea Serpent: "when you control no Islands" — the same land-type scan as above,
+            // read for emptiness rather than a threshold.
+            Condition::ControlsNoLandsWithSubtype { subtypes } => {
+                self.lands_with_subtype_controlled(ctx.controller, subtypes) == 0
             }
             // "an opponent controls ... a Plains": holds when *some* living opponent
             // individually meets the threshold (unlike `OpponentsControlLands`, which sums).
@@ -3912,12 +4266,19 @@ impl Game {
             // through `Game::ability_condition_holds` (mana_bloom's upkeep trigger, queued via
             // `queue_trigger_group`), which intercepts it before falling through here.
             Condition::SourceHasNoCountersOfKind { .. } => false,
+            // ponytail: the positive sibling of the condition above, intercepted the same way
+            // (Living Artifact's upkeep counter-removal).
+            Condition::SourceHasCountersOfKind { .. } => false,
             // ponytail: source-object-based like `SourceHasCounters` above — `TriggerContext`
             // carries no source object. Reachable only directly against the object by the
             // characteristics recompute's conditional-keyword gate (Agent Frank Horrigan's
             // indestructible grant), which reads `Permanent::attacked_this_turn` itself rather
             // than through `condition_holds`.
             Condition::SourceAttackedThisTurn => false,
+            // ponytail: source-object-based like `SourceAttackedThisTurn` above — reachable only
+            // through `Game::ability_condition_holds` (Clockwork Beast's end-of-combat
+            // wind-down), which intercepts it before falling through here.
+            Condition::SourceAttackedOrBlockedThisCombat => false,
             Condition::YouControlColorPermanents { color, at_least } => {
                 self.battlefield()
                     .into_iter()
@@ -3938,7 +4299,26 @@ impl Game {
             // through `Game::ability_condition_holds` (Howling Mine's CR 603.4 first check, at
             // trigger placement) or `Effect::Conditional`'s resolve site (the second check), both
             // of which intercept it before falling through here.
-            Condition::SourceUntapped => false,
+            Condition::SourceUntapped | Condition::SourceTapped => false,
+            // ponytail: source-object-based like `SourceUntapped` above — Nether Shadow's gate
+            // needs the source card's own place in the graveyard pile, so
+            // `Game::ability_condition_holds` intercepts it at trigger placement (the only site
+            // that has a source id) before falling through here.
+            Condition::CreatureCardsAboveThisInGraveyardAtLeast { .. } => false,
+            // ponytail: source-object-based like `SourceUntapped` above — the 2ed upkeep-tax Aura
+            // cycle's gate needs the Aura's host, so `Game::ability_condition_holds` intercepts it
+            // at trigger placement (the only site that has a source id) before falling through
+            // here.
+            Condition::EnchantedPermanentsControllersUpkeep => false,
+            // ponytail: source-object-based like `EnchantedPermanentsControllersUpkeep` above —
+            // Black Vise's gate needs the permanent's own chosen opponent, so
+            // `Game::ability_condition_holds` intercepts it at trigger placement before it can
+            // fall through here.
+            Condition::ChosenPlayersUpkeep => false,
+            // ponytail: source-object-based like `EnchantedPermanentsControllersUpkeep` above —
+            // Earthbind's gate needs the Aura's host, so `Game::ability_condition_holds` intercepts
+            // it at trigger placement before it can fall through here.
+            Condition::EnchantedCreatureHasKeyword { .. } => false,
             // ponytail: target-based like `ThisPermanentEnteredUntapped` above — `TriggerContext`
             // carries no target either. Reachable only through the `Effect::Conditional` resolve
             // site (`Game::run`), which intercepts it directly against the shared
@@ -4033,10 +4413,20 @@ impl Game {
             Condition::LandEnteredUnderYourControlThisTurn => {
                 self.players[ctx.controller.0 as usize].land_entered_under_your_control_this_turn
             }
+            // Fastbond's "if it wasn't the first land you played this turn": the play's own
+            // `Player::lands_played` bump has already landed by the time this runs, so the second
+            // land of the turn reads 2.
+            Condition::LandsPlayedThisTurnAtLeast { at_least } => {
+                u32::from(self.players[ctx.controller.0 as usize].lands_played) >= at_least
+            }
             Condition::YouControlPrimeNumberOfLands => {
                 is_prime(self.lands_controlled(ctx.controller))
             }
             Condition::DuringYourTurn => self.active_player == ctx.controller,
+            Condition::DuringYourUpkeep => {
+                self.active_player == ctx.controller && self.step == Step::Upkeep
+            }
+            Condition::DuringCombat => self.step.is_combat(),
             // Lash Out (CR 701.22d): the resolution-scoped won-the-clash flag a preceding
             // `Effect::Dig(DigEffect::Clash)` step in this same resolution set. Context-free (a plain `Game` field),
             // so the `Effect::Conditional` resolve site reaches it straight through this arm.
@@ -4169,13 +4559,14 @@ impl Game {
             .into_iter()
             .filter(|&id| {
                 self.controller_of(id) == controller
-                    && match self.def_of(id).kind {
-                        CardKind::Land {
-                            subtypes: land_subtypes,
-                            ..
-                        } => land_subtypes.iter().copied().any(|s| subtypes.contains(&s)),
-                        _ => false,
-                    }
+                    && self.effective_types(id).intersects(TypeSet::LAND)
+                    // Effective, not printed: the land type a swampwalk looks for is the one the
+                    // land has *now* — after an Evil Presence, a Phantasmal Terrain, or a Magical
+                    // Hack rewrote it (CR 305.7, CR 612.1).
+                    && self
+                        .effective_subtypes(id)
+                        .iter()
+                        .any(|s| subtypes.contains(s))
             })
             .count()
     }
@@ -5076,6 +5467,11 @@ mod tests {
             alternative_cost: None,
             cast_only_during_combat: false,
             cast_only_before_attackers: false,
+            cast_only_before_blockers: false,
+            cast_only_during_opponents_turn: false,
+            cast_only_before_combat_damage: false,
+            cast_only_during_declare_blockers: false,
+            cast_only_during_declare_attackers: false,
             approximates: None,
             oracle: None,
             sets: empty_slice(),
@@ -5158,6 +5554,11 @@ mod tests {
             alternative_cost: None,
             cast_only_during_combat: false,
             cast_only_before_attackers: false,
+            cast_only_before_blockers: false,
+            cast_only_during_opponents_turn: false,
+            cast_only_before_combat_damage: false,
+            cast_only_during_declare_blockers: false,
+            cast_only_during_declare_attackers: false,
             approximates: None,
             oracle: None,
             sets: empty_slice(),

@@ -1,0 +1,22 @@
+# Flying; banding (Any creatures with banding, and up to one without, can attack in a band.
+# Bands are blocked as a group. If any creatures with banding you control are blocking or being
+# blocked by a creature, you divide that creature's combat damage, not its controller, among
+# any of the creatures it's being blocked by or is blocking.)
+name = "Mesa Pegasus"
+otags = ["evasion", "french-vanilla"]
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "fbb", "itp", "lea", "leb", "me1", "rqs", "sum"]
+id = "8161f5b8-6aab-4133-ba2c-2e7b5774153e"
+default_print = "7ff95a24-86e9-4302-bd90-89ca96164032"
+oracle = "Flying; banding (Any creatures with banding, and up to one without, can attack in a band. Bands are blocked as a group. If any creatures with banding you control are blocking or being blocked by a creature, you divide that creature's combat damage, not its controller, among any of the creatures it's being blocked by or is blocking.)"
+subtypes = ["Pegasus"]
+keywords = ["flying", "banding"]
+approximates = "banding only takes over the damage division when this blocks; attacking in a band, and dividing a blocker's damage while attacking, are not modeled"
+
+[cost]
+generic = 1
+white = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1

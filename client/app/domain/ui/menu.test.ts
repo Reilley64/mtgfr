@@ -48,3 +48,20 @@ describe("menuPanelClass", () => {
     expect(c).not.toContain("p-xs");
   });
 });
+
+describe("the hud variant", () => {
+  it("dresses the panel in the board's translucent prompt chrome", () => {
+    const c = menuPanelClass(undefined, "hud");
+
+    expect(c).toContain("bg-forest-hud");
+    expect(c).toContain("shadow-hud");
+    expect(c).not.toContain("bg-forest-surface");
+  });
+
+  it("sizes rows for the board rather than the shell", () => {
+    const c = menuItemClass(undefined, "hud");
+
+    expect(c).toContain("text-body");
+    expect(c).not.toContain("text-label");
+  });
+});

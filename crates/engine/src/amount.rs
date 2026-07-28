@@ -43,16 +43,25 @@ impl Game {
             Amount::TargetToughness => {
                 self.toughness(expect_object_target(target, "a toughness-derived amount"))
             }
+            Amount::SourceManaValue => self.def_of(source).mana_value() as i32,
             Amount::TargetManaValue => self
                 .def_of(expect_object_target(target, "a mana-value amount"))
                 .mana_value() as i32,
             Amount::PerCounterOnSource => self.plus_counters(source),
             Amount::PerCounterOfKindOnSource { kind } => self.counters_of_kind(source, kind) as i32,
+            Amount::YourLifeTotal => self.players[controller.0 as usize].life,
             Amount::LifeGainedThisTurn => {
                 self.players[controller.0 as usize].life_gained_this_turn as i32
             }
             Amount::SpellsCastThisTurn => {
                 self.players[controller.0 as usize].spells_cast_this_turn as i32
+            }
+            Amount::DamageTakenThisTurn => {
+                self.players[controller.0 as usize].damage_taken_this_turn as i32
+            }
+            // A snapshot taken as the upkeep began, not a live scan — see the field's own doc.
+            Amount::UntappedLandsAtTurnStart => {
+                self.players[controller.0 as usize].untapped_lands_at_turn_start as i32
             }
             // Reads the resolving spell's chosen player target's hand size (Rousing Refrain's
             // "for each card in target opponent's hand"), off the target like
@@ -84,6 +93,11 @@ impl Game {
             Amount::CreaturesDiedThisTurn => {
                 self.players[controller.0 as usize].creatures_died_this_turn as i32
             }
+            Amount::CreaturesDiedThisTurnAnyController => self
+                .players
+                .iter()
+                .map(|player| player.creatures_died_this_turn as i32)
+                .sum(),
             Amount::NontokenCreaturesEnteredThisTurn => {
                 self.players[controller.0 as usize].nontoken_creatures_entered_this_turn as i32
             }
@@ -134,6 +148,11 @@ impl Game {
             Amount::SacrificedCreatureToughness => panic!(
                 "Amount::SacrificedCreatureToughness must be contextualized to Fixed before resolving"
             ),
+            // A placeholder [`contextualize_effect`] must have already rewritten to `Fixed` at
+            // trigger placement — see the variant's own doc comment.
+            Amount::DyingEnchantedCreatureToughness => panic!(
+                "Amount::DyingEnchantedCreatureToughness must be contextualized to Fixed before resolving"
+            ),
             Amount::CommanderColorCount => self
                 .commander_identity_of(controller)
                 .iter()
@@ -148,6 +167,7 @@ impl Game {
             // `fill_cast_mana_spent` rewrites it to `Fixed` before the ability reaches the stack.
             Amount::TriggeringSpellManaSpent => 0,
             Amount::SpellSacrificeCount => self.spell_sacrifice_count(source) as i32,
+            Amount::SpellSacrificedManaValue => self.spell_sacrificed_mana_value(source) as i32,
             Amount::SpellMultikickerCount => self.spell_multikicker_count(source) as i32,
             Amount::RevealedCreatureManaValue => self.revealed_creature_mana_value(source) as i32,
             Amount::PermanentsDiedThisTurn => self.permanents_died_this_turn as i32,
@@ -286,6 +306,13 @@ impl Game {
             Amount::Scaled { times, by } => {
                 times * self.resolve_amount(*by, controller, source, target, x)
             }
+            Amount::Half { of, round_up } => {
+                let n = self.resolve_amount(*of, controller, source, target, x);
+                if round_up { (n + 1) / 2 } else { n / 2 }
+            }
+            Amount::Offset { of, delta } => {
+                (self.resolve_amount(*of, controller, source, target, x) + delta).max(0)
+            }
             Amount::CardsDiscardedThisWay => self.resolution_frame.cards_discarded_this_way as i32,
             Amount::CreaturesSacrificedThisWay => {
                 self.resolution_frame.creatures_sacrificed_this_way as i32
@@ -395,8 +422,8 @@ fn destroyed_this_way_matches(
     if !filter.types.is_empty() && !filter.types.intersects(printed.kind.types()) {
         return false;
     }
-    if !filter.subtypes.is_empty() && !filter.subtypes.iter().any(|s| printed.subtypes.contains(s))
-    {
+    let subtypes = printed.printed_subtypes();
+    if !filter.subtypes.is_empty() && !filter.subtypes.iter().any(|s| subtypes.contains(s)) {
         return false;
     }
     match filter.controller {

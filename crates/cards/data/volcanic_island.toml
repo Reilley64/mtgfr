@@ -1,0 +1,12 @@
+# ({T}: Add {U} or {R}.)
+name = "Volcanic Island"
+otags = ["activated-ability", "cycle-abu-dual-land", "nonbasic-basic-land-type"]
+sets = ["2ed", "30a", "3ed", "ced", "cei", "fbb", "leb", "me3", "me4", "olgc", "prm", "sum", "vma"]
+id = "c718911c-c955-4eb9-9e16-be4bd49a4e4e"
+default_print = "9dc7ab05-a5f5-4a02-87e7-3c47be35b5cb"
+oracle = "({T}: Add {U} or {R}.)"
+
+[kind]
+type = "land"
+subtypes = ["Island", "Mountain"]
+produces = ["blue", "red"]

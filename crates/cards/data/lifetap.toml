@@ -1,0 +1,25 @@
+# Whenever a Forest an opponent controls becomes tapped, you gain 1 life.
+name = "Lifetap"
+otags = ["hate-forest", "hate-tapped", "repeatable-lifegain", "triggered-ability", "uninspired"]
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "fbb", "lea", "leb", "mb2", "sum"]
+id = "52ac09af-2aa7-4d80-be26-3e6a6efd5c23"
+default_print = "64641b90-c72e-4eab-9b99-330786739ab9"
+oracle = "Whenever a Forest an opponent controls becomes tapped, you gain 1 life."
+
+[cost]
+blue = 2
+
+[kind]
+type = "enchantment"
+
+# Whenever a Forest an opponent controls becomes tapped, ... — any tap, not just one for mana, so
+# an attack or an Icy Manipulator pays out too.
+[[abilities]]
+timing = "permanent_becomes_tapped"
+filter = { types = "land", subtypes = ["Forest"], controller = "opponent" }
+
+# ...you gain 1 life.
+[[abilities.effects]]
+type = "life"
+mode = "gain"
+amount = 1

@@ -37,6 +37,7 @@ const ALL_PENDING_CHOICE_KINDS = [
   "divide_counters",
   "scry",
   "surveil",
+  "reorder_top",
   "search_library",
   "select_from_top",
   "distribute_top",
@@ -913,6 +914,40 @@ describe("answerFromDraft builds accepted intents", () => {
       { kind: "card-pick", picked: [1] },
       { kind: "decline_untap", keep_tapped: [1], player: 0 },
     );
+  });
+
+  // Winter Orb caps the untap, and the pause is a free multi-select — without the cap on the
+  // wire the client would happily offer an answer the server has to bounce.
+  test("only lets one of a capped untap group stay untapped", () => {
+    const pc = {
+      kind: "decline_untap",
+      items: [
+        { id: 1, label: "Forest" },
+        { id: 2, label: "Island" },
+        { id: 3, label: "Ornithopter" },
+      ],
+      at_most_one: [[1, 2]],
+      player: 0,
+    } as const satisfies PendingChoiceView;
+
+    expect(cardPickReady(pc, [])).toBe(false); // both lands would untap
+    expect(cardPickReady(pc, [1])).toBe(true); // only the Island untaps
+    expect(cardPickReady(pc, [1, 2])).toBe(true); // a cap is a ceiling, not a quota
+    expect(cardPickReady(pc, [3])).toBe(false); // the uncapped Ornithopter doesn't help
+  });
+
+  test("leaves an uncapped untap pause a free yes/no", () => {
+    const pc = {
+      kind: "decline_untap",
+      items: [
+        { id: 1, label: "Rubinia Soulsinger" },
+        { id: 2, label: "Icy Manipulator" },
+      ],
+      player: 0,
+    } as const satisfies PendingChoiceView;
+
+    expect(cardPickReady(pc, [])).toBe(true);
+    expect(cardPickReady(pc, [1, 2])).toBe(true);
   });
 
   test("builds return land answers", () => {

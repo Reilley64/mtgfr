@@ -1,0 +1,34 @@
+# You gain life equal to the damage dealt to you this turn. Simulacrum deals damage to target
+# creature you control equal to the damage dealt to you this turn.
+name = "Simulacrum"
+otags = ["damage-redirection", "lifegain", "single-english-word-name", "single-target-instant-sorcery", "unnoted-tracked-information"]
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
+id = "20d69989-7250-40c7-a064-8ed78ccbe556"
+default_print = "a80e1e4c-4b53-41d2-b038-2f9135d8455d"
+oracle = "You gain life equal to the damage dealt to you this turn. Simulacrum deals damage to target creature you control equal to the damage dealt to you this turn."
+
+[cost]
+generic = 1
+black = 1
+
+[kind]
+type = "instant"
+
+# You gain life equal to the damage dealt to you this turn. Simulacrum deals damage to target
+# creature you control equal to the damage dealt to you this turn.
+[[abilities]]
+timing = "spell"
+
+# You gain life equal to the damage dealt to you this turn.
+[[abilities.effects]]
+type = "life"
+mode = "gain"
+amount = "damage_taken_this_turn"
+
+# Simulacrum deals damage to target creature you control equal to the damage dealt to you this
+# turn.
+[[abilities.effects]]
+type = "damage"
+mode = "target"
+amount = "damage_taken_this_turn"
+target = { permanent = { types = "creature", controller = "you" } }

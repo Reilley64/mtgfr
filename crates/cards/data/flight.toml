@@ -1,0 +1,25 @@
+# Enchant creature
+# Enchanted creature has flying.
+name = "Flight"
+otags = ["french-vanilla-aura", "gives-flying", "single-english-word-name"]
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "8ed", "9ed", "ced", "cei", "fbb", "lea", "leb", "m12", "sum"]
+id = "6a4068b0-fb4f-429c-a94e-47849f3eb7ef"
+default_print = "5460051e-07fc-4818-82fd-7c424334b7bf"
+oracle = "Enchant creature\nEnchanted creature has flying."
+subtypes = ["Aura"]
+
+[cost]
+blue = 1
+
+[kind]
+type = "aura"
+
+# Enchanted creature has flying.
+[[abilities]]
+timing = "static"
+
+# Enchanted creature has flying.
+[[abilities.effects]]
+type = "static"
+mode = "grant_to_attached"
+keywords = ["flying"]

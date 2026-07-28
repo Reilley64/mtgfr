@@ -1,0 +1,12 @@
+# ({T}: Add {G} or {U}.)
+name = "Tropical Island"
+otags = ["activated-ability", "cycle-abu-dual-land", "nonbasic-basic-land-type"]
+sets = ["2ed", "30a", "3ed", "ced", "cei", "fbb", "j21", "lea", "leb", "me3", "me4", "olgc", "prm", "sum", "vma"]
+id = "74b7fe23-5d3a-4092-8d78-7c0eba8f6f73"
+default_print = "856bf0ba-e5a5-47eb-9a6a-111935088c31"
+oracle = "({T}: Add {G} or {U}.)"
+
+[kind]
+type = "land"
+subtypes = ["Forest", "Island"]
+produces = ["green", "blue"]

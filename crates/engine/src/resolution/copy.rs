@@ -27,7 +27,7 @@ impl Game {
             // `choose_spell_targets` machinery a multi-target spell uses at cast (auto-fills a
             // single legal target, else pauses on `ChooseTarget`), just run here because
             // the copy doesn't exist until this event applies.
-            Effect::Copy(CopyEffect::TargetSpell) => {
+            Effect::Copy(CopyEffect::TargetSpell { set_color }) => {
                 let original = expect_object_target(target, "a spell copy");
                 // CR 707.10: if the target spell has left the stack (countered/resolved), the copy
                 // effect does nothing.
@@ -42,6 +42,7 @@ impl Game {
                         copy,
                         original,
                         controller,
+                        set_color,
                     },
                 );
                 // The copy's target spec/count come from the original's own primary spell effect
@@ -268,6 +269,7 @@ impl Game {
                             copy,
                             original,
                             controller,
+                            set_color: None,
                         },
                     );
                 }
@@ -324,6 +326,7 @@ impl Game {
                             copy,
                             original,
                             controller: spell_controller,
+                            set_color: None,
                         },
                     );
                     // "Each copy targets a different one of those creatures": the creatures are
@@ -446,6 +449,7 @@ impl Game {
                         copy,
                         original: source,
                         controller,
+                        set_color: None,
                     },
                 );
                 Effect::Copy(CopyEffect::RetargetSpellCopy { copy })

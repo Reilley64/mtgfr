@@ -633,6 +633,33 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             taps_self: false,
             declare_for: Vec::new(),
         },
+        // Guardian Angel's standing "you may pay {1}" offer: no object to hang it on, so it rides
+        // the action bar on its own like the combat declarations do.
+        MeaningfulAction::PayStandingPrevention { .. } => ActionView {
+            id: action.id,
+            kind: "pay_standing_prevention".to_string(),
+            object: None,
+            ability_index: None,
+            section: "battlefield".to_string(),
+            label: message("action.pay_standing_prevention"),
+            needs_target: false,
+            targets: Vec::new(),
+            modal: None,
+            sacrifice_choices: None,
+            discard_choices: None,
+            discard_count: 0,
+            graveyard_exile_choices: None,
+            graveyard_exile_min: 0,
+            graveyard_exile_max: 0,
+            has_x: false,
+            min_x: 0,
+            max_x: 0,
+            x_cost: None,
+            auto_tap: Vec::new(),
+            required_attacks: Vec::new(),
+            taps_self: false,
+            declare_for: Vec::new(),
+        },
         MeaningfulAction::CastPrepared { source } => {
             let back = game
                 .def_of(source)
@@ -832,10 +859,14 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
         .iter()
         .copied()
         .filter(|&id| {
-            // A hand card is private to its owner; libraries are never itemized.
+            // A hand card is private to its owner, plus whoever has looked at it (CR 701.20 —
+            // Glasses of Urza); libraries are never itemized.
             match game.zone_of(id) {
                 Zone::Library => false,
-                Zone::Hand => viewer == Some(game.owner_of(id)),
+                Zone::Hand => {
+                    viewer == Some(game.owner_of(id))
+                        || viewer.is_some_and(|v| game.has_seen_hand_card(v, id))
+                }
                 _ => true,
             }
         })
@@ -1059,6 +1090,7 @@ mod tests {
     use crate::intent::{WireAttack, WireTarget};
     use crate::test_support::{
         card_id, def, pass_until_choice, refresh_via_mana_tap, resolve_top_of_stack,
+        resolve_top_of_stack_multiplayer,
     };
     use engine::{Defender, Effect, Game, ObjectId, PlayerId, TokenEffect};
 
@@ -1088,7 +1120,7 @@ mod tests {
         let mut game = Game::new();
         let p0 = PlayerId(0);
         game.fund_mana(p0);
-        game.spawn_on_battlefield(PlayerId(1), def("Grizzly Bear"));
+        game.spawn_on_battlefield(PlayerId(1), def("Grizzly Bears"));
         let split = game.spawn_in_hand(p0, def("Fire // Ice"));
         let tapland = game.spawn_on_battlefield(p0, def("Island"));
         refresh_via_mana_tap(&mut game, tapland);
@@ -1299,7 +1331,7 @@ mod tests {
         let mut game = Game::new();
         let p0 = PlayerId(0);
         game.fund_mana(p0);
-        game.stack_library(p0, &[def("Forest"), def("Grizzly Bear"), def("Island")]);
+        game.stack_library(p0, &[def("Forest"), def("Grizzly Bears"), def("Island")]);
         let tutor = game.spawn_in_hand(p0, def("Diabolic Tutor"));
         game.submit(engine::Intent::Cast {
             player: p0,
@@ -1353,8 +1385,8 @@ mod tests {
         let p0 = PlayerId(0);
         let p1 = PlayerId(1);
         let mine = game.spawn_in_hand(p0, def("Shock"));
-        let theirs = game.spawn_in_hand(p1, def("Grizzly Bear"));
-        let bear = game.spawn_on_battlefield(p0, def("Grizzly Bear"));
+        let theirs = game.spawn_in_hand(p1, def("Grizzly Bears"));
+        let bear = game.spawn_on_battlefield(p0, def("Grizzly Bears"));
         game.stack_library(p1, &[def("Forest"), def("Forest"), def("Forest")]);
 
         let snap = snapshot(&game, p0);
@@ -1385,6 +1417,52 @@ mod tests {
     }
 
     #[test]
+    fn a_look_at_a_hand_itemizes_it_to_the_looker_alone() {
+        // Glasses of Urza: the hand privacy gate is per-card, so the one seat that looked sees
+        // exactly the cards it saw, by name, and every other seat still sees a count.
+        let mut game = Game::with_players(3, 0);
+        let p0 = PlayerId(0);
+        let p1 = PlayerId(1);
+        let glasses = game.spawn_on_battlefield(p0, def("Glasses of Urza"));
+        let theirs = game.spawn_in_hand(p1, def("Grizzly Bears"));
+
+        game.submit(engine::Intent::ActivateAbility {
+            player: p0,
+            object: glasses,
+            ability_index: 0,
+            target: Some(engine::Target::Player(p1)),
+            sacrifice: vec![],
+            discard_cost: vec![],
+            x: 0,
+        })
+        .expect("looking at a hand is legal");
+        resolve_top_of_stack_multiplayer(&mut game);
+
+        let looker = snapshot(&game, p0);
+        assert!(
+            looker
+                .objects
+                .iter()
+                .any(|o| o.id == theirs && o.name == "Grizzly Bears"),
+            "the looker reads the card it looked at",
+        );
+        assert_eq!(looker.players[1].hand_count, 1);
+
+        let bystander = snapshot(&game, PlayerId(2));
+        assert!(
+            !bystander.objects.iter().any(|o| o.id == theirs),
+            "a seat that did not look still sees only a count",
+        );
+        assert!(
+            !spectator_snapshot(&game)
+                .objects
+                .iter()
+                .any(|o| o.id == theirs),
+            "and a spectator never sees a hand at all",
+        );
+    }
+
+    #[test]
     fn a_spectator_snapshot_hides_every_hand_and_library() {
         // 6.3 hard rule: a spectator (no seat) sees the public board but *no* player's hand or
         // library — not even one card id. The projection must be provably hand-private.
@@ -1392,8 +1470,8 @@ mod tests {
         let p0 = PlayerId(0);
         let p1 = PlayerId(1);
         let mine = game.spawn_in_hand(p0, def("Shock"));
-        let theirs = game.spawn_in_hand(p1, def("Grizzly Bear"));
-        let bear = game.spawn_on_battlefield(p0, def("Grizzly Bear"));
+        let theirs = game.spawn_in_hand(p1, def("Grizzly Bears"));
+        let bear = game.spawn_on_battlefield(p0, def("Grizzly Bears"));
         game.stack_library(p1, &[def("Forest"), def("Forest")]);
 
         let spec = spectator_snapshot(&game);
@@ -1438,7 +1516,7 @@ mod tests {
     fn a_snapshot_carries_card_kind_and_target_need() {
         let mut game = Game::new();
         let shock = game.spawn_in_hand(PlayerId(0), def("Shock"));
-        let bear = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bear"));
+        let bear = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bears"));
 
         let snap = snapshot(&game, PlayerId(0));
         let shock_view = snap.objects.iter().find(|o| o.id == shock).unwrap();
@@ -1466,7 +1544,7 @@ mod tests {
         let mut game = Game::new();
         game.fund_mana(PlayerId(0));
         let shock = game.spawn_in_hand(PlayerId(0), def("Shock"));
-        let bear = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bear"));
+        let bear = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bears"));
         let tapland = game.spawn_on_battlefield(PlayerId(0), def("Mountain"));
         refresh_via_mana_tap(&mut game, tapland);
 
@@ -1498,8 +1576,8 @@ mod tests {
     #[test]
     fn a_snapshot_carries_commander_damage_taken() {
         let mut game = Game::new();
-        let bear = game.spawn_on_battlefield(PlayerId(1), def("Grizzly Bear"));
-        game.designate_commander(PlayerId(1), def("Grizzly Bear"));
+        let bear = game.spawn_on_battlefield(PlayerId(1), def("Grizzly Bears"));
+        game.designate_commander(PlayerId(1), def("Grizzly Bears"));
 
         let snap = snapshot(&game, PlayerId(0));
         let me = snap.players.iter().find(|p| p.player == 0).unwrap();
@@ -1553,7 +1631,7 @@ mod tests {
     fn a_modal_cast_action_carries_its_modes() {
         let mut game = Game::new();
         game.fund_mana(PlayerId(0));
-        let bear = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bear"));
+        let bear = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bears"));
         let command = game.spawn_in_hand(PlayerId(0), def("Prismari Command"));
         let tapland = game.spawn_on_battlefield(PlayerId(0), def("Mountain"));
         refresh_via_mana_tap(&mut game, tapland);
@@ -1606,7 +1684,7 @@ mod tests {
     fn an_activate_action_carries_its_sacrifice_candidates() {
         let mut game = Game::new();
         let seer = game.spawn_on_battlefield(PlayerId(0), def("Viscera Seer"));
-        let bear = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bear"));
+        let bear = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bears"));
         let tapland = game.spawn_on_battlefield(PlayerId(0), def("Forest"));
         refresh_via_mana_tap(&mut game, tapland);
 
@@ -1632,7 +1710,7 @@ mod tests {
         let mut game = Game::new();
         game.fund_mana(PlayerId(0));
         let shock = game.spawn_in_hand(PlayerId(0), def("Shock"));
-        game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bear"));
+        game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bears"));
         let tapland = game.spawn_on_battlefield(PlayerId(0), def("Mountain"));
         refresh_via_mana_tap(&mut game, tapland);
 
@@ -1670,7 +1748,7 @@ mod tests {
     fn a_seated_viewers_snapshot_lists_only_their_own_actions() {
         let mut game = Game::new();
         game.fund_mana(PlayerId(0));
-        let commander = game.designate_commander(PlayerId(0), def("Grizzly Bear"));
+        let commander = game.designate_commander(PlayerId(0), def("Grizzly Bears"));
         let hand_land = game.spawn_in_hand(PlayerId(0), def("Forest"));
         let tapland = game.spawn_on_battlefield(PlayerId(0), def("Forest"));
         refresh_via_mana_tap(&mut game, tapland);
@@ -1691,7 +1769,7 @@ mod tests {
                 && a.object == Some(commander)
                 && a.section == "command"
                 && a.label.key == "action.card_name"
-                && message_name(&a.label) == Some("Grizzly Bear")
+                && message_name(&a.label) == Some("Grizzly Bears")
                 && !a.needs_target),
             "the castable commander is a cast action from the command section; got {:?}",
             mine.actions,
@@ -1739,7 +1817,7 @@ mod tests {
     #[test]
     fn a_cast_action_lists_auto_tap_permanents() {
         let mut game = Game::new();
-        let spell = game.spawn_in_hand(PlayerId(0), def("Grizzly Bear")); // {1}{G}
+        let spell = game.spawn_in_hand(PlayerId(0), def("Grizzly Bears")); // {1}{G}
         let f1 = game.spawn_on_battlefield(PlayerId(0), def("Forest"));
         let f2 = game.spawn_on_battlefield(PlayerId(0), def("Forest"));
         let f3 = game.spawn_on_battlefield(PlayerId(0), def("Forest"));
@@ -1752,7 +1830,7 @@ mod tests {
             .actions
             .iter()
             .find(|a| a.kind == "cast" && a.object == Some(spell))
-            .expect("Grizzly Bear is a listed cast");
+            .expect("Grizzly Bears is a listed cast");
         assert_eq!(
             action.auto_tap.len(),
             1,
@@ -1977,7 +2055,7 @@ mod tests {
         game.stack_library(PlayerId(0), &[def("Forest"), def("Forest")]);
         let kirol = game.spawn_on_battlefield(PlayerId(0), def("Kirol, History Buff"));
         // Reanimate a bear out of the GY to fire Kirol's prepare trigger.
-        let corpse = game.spawn_in_graveyard(PlayerId(0), def("Grizzly Bear"));
+        let corpse = game.spawn_in_graveyard(PlayerId(0), def("Grizzly Bears"));
         let reanimate = game.spawn_in_hand(PlayerId(0), def("Reanimate"));
         game.submit(engine::Intent::Cast {
             player: PlayerId(0),
@@ -2033,7 +2111,7 @@ mod tests {
         let mut game = Game::new();
         game.fund_mana(PlayerId(0));
         let equipment = game.spawn_on_battlefield(PlayerId(0), def("Bonesplitter"));
-        game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bear"));
+        game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bears"));
         let tapland = game.spawn_on_battlefield(PlayerId(0), def("Forest"));
         refresh_via_mana_tap(&mut game, tapland);
 
@@ -2059,7 +2137,7 @@ mod tests {
         let mut game = Game::new();
         game.fund_mana(PlayerId(0));
         let nin = game.spawn_on_battlefield(PlayerId(0), def("Nin, the Pain Artist"));
-        game.spawn_on_battlefield(PlayerId(1), def("Grizzly Bear"));
+        game.spawn_on_battlefield(PlayerId(1), def("Grizzly Bears"));
         let tapland = game.spawn_on_battlefield(PlayerId(0), def("Forest"));
         refresh_via_mana_tap(&mut game, tapland);
 
@@ -2125,6 +2203,11 @@ mod tests {
             alternative_cost: None,
             cast_only_during_combat: false,
             cast_only_before_attackers: false,
+            cast_only_before_blockers: false,
+            cast_only_during_opponents_turn: false,
+            cast_only_before_combat_damage: false,
+            cast_only_during_declare_blockers: false,
+            cast_only_during_declare_attackers: false,
             approximates: None,
             oracle: None,
             sets: empty_slice(),
@@ -2176,7 +2259,7 @@ mod tests {
         let mut game = Game::new();
         game.fund_mana(PlayerId(0));
         game.spawn_on_battlefield(PlayerId(0), two_simultaneous_death_triggers());
-        let victim = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bear"));
+        let victim = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bears"));
         let shock = game.spawn_in_hand(PlayerId(0), def("Shock"));
 
         game.submit(engine::Intent::Cast {
@@ -2223,11 +2306,11 @@ mod tests {
 
     #[test]
     fn a_snapshot_carries_haste_so_the_client_can_let_it_attack_while_sick() {
-        // Goblin Guide has haste; Grizzly Bear does not. The client combines has_haste with
+        // Goblin Guide has haste; Grizzly Bears does not. The client combines has_haste with
         // summoning_sick to decide what can attack (it can't infer haste otherwise).
         let mut game = Game::new();
         let hasty = game.spawn_on_battlefield(PlayerId(0), def("Goblin Guide"));
-        let vanilla = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bear"));
+        let vanilla = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bears"));
 
         let snap = snapshot(&game, PlayerId(0));
         assert!(
@@ -2245,7 +2328,7 @@ mod tests {
                 .find(|o| o.id == vanilla)
                 .unwrap()
                 .has_haste,
-            "Grizzly Bear has no haste",
+            "Grizzly Bears has no haste",
         );
     }
 
@@ -2291,7 +2374,7 @@ mod tests {
         // on ObjectView so the canvas can paint Arena-style ability badges without a catalog lookup.
         let mut game = Game::new();
         let angel = game.spawn_on_battlefield(PlayerId(0), def("Serra Angel"));
-        let bear = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bear"));
+        let bear = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bears"));
         let greaves = game.spawn_on_battlefield(PlayerId(0), def("Lightning Greaves"));
         game.submit(engine::Intent::ActivateAbility {
             player: PlayerId(0),
@@ -2372,7 +2455,7 @@ mod tests {
     fn a_snapshot_carries_goaded_for_arena_style_badges() {
         // Martial Impetus's continuous goad lands on the host so the canvas can paint a goad chip.
         let mut game = Game::new();
-        let bear = game.spawn_on_battlefield(PlayerId(1), def("Grizzly Bear"));
+        let bear = game.spawn_on_battlefield(PlayerId(1), def("Grizzly Bears"));
         game.fund_mana(PlayerId(0));
         let aura = game.spawn_in_hand(PlayerId(0), def("Martial Impetus"));
         game.submit(engine::Intent::Cast {
@@ -2401,7 +2484,7 @@ mod tests {
             bear_view.goaded,
             "enchanted Bear reports goaded on the wire"
         );
-        let vanilla = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bear"));
+        let vanilla = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bears"));
         let snap2 = snapshot(&game, PlayerId(0));
         assert!(
             !snap2
@@ -2419,7 +2502,7 @@ mod tests {
         // WireKind carries starting loyalty; ObjectView.loyalty is the live total the badge paints.
         let mut game = Game::new();
         let walker = game.spawn_on_battlefield(PlayerId(0), def("Quintorius, History Chaser"));
-        let bear = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bear"));
+        let bear = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bears"));
 
         let snap = snapshot(&game, PlayerId(0));
         let walker_view = snap.objects.iter().find(|o| o.id == walker).unwrap();
@@ -2467,7 +2550,7 @@ mod tests {
     fn a_snapshot_carries_attached_to_so_the_client_can_stack_on_the_host() {
         // Lightning Greaves: Equip {0} — free attach so the snapshot field is easy to assert.
         let mut game = Game::new();
-        let bear = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bear"));
+        let bear = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bears"));
         let greaves = game.spawn_on_battlefield(PlayerId(0), def("Lightning Greaves"));
         game.submit(engine::Intent::ActivateAbility {
             player: PlayerId(0),
@@ -2498,7 +2581,7 @@ mod tests {
     #[test]
     fn a_snapshot_carries_modifiers_grouped_by_source_card_def() {
         let mut game = Game::new();
-        let bear = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bear"));
+        let bear = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bears"));
         let greaves = game.spawn_on_battlefield(PlayerId(0), def("Lightning Greaves"));
         game.submit(engine::Intent::ActivateAbility {
             player: PlayerId(0),
@@ -2579,7 +2662,7 @@ mod tests {
         // carries the required (attacker, defender) pairs so staging can seed them.
         use engine::{Intent, Step};
         let mut game = Game::with_players(3, 0);
-        let c = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bear"));
+        let c = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bears"));
         game.goad(c, PlayerId(1));
         while game.current_step() != Step::DeclareAttackers {
             game.submit(Intent::PassPriority {
@@ -2608,7 +2691,7 @@ mod tests {
     fn an_empty_block_declaration_lists_the_defender_in_blockers_declared() {
         use engine::{Intent, Step};
         let mut game = Game::new();
-        let bear = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bear"));
+        let bear = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bears"));
         while game.current_step() != Step::DeclareAttackers {
             game.submit(Intent::PassPriority {
                 player: game.priority_holder(),
@@ -2644,8 +2727,8 @@ mod tests {
     fn combat_view_lists_blocked_attackers_after_declare() {
         use engine::{Intent, Step};
         let mut game = Game::new();
-        let attacker = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bear"));
-        let blocker = game.spawn_on_battlefield(PlayerId(1), def("Grizzly Bear"));
+        let attacker = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bears"));
+        let blocker = game.spawn_on_battlefield(PlayerId(1), def("Grizzly Bears"));
         while game.current_step() != Step::DeclareAttackers {
             game.submit(Intent::PassPriority {
                 player: game.priority_holder(),
@@ -2680,7 +2763,7 @@ mod tests {
     fn a_snapshot_lists_the_stack_with_labels_and_targets() {
         let mut game = Game::new();
         game.fund_mana(PlayerId(0));
-        let bear = game.spawn_on_battlefield(PlayerId(1), def("Grizzly Bear"));
+        let bear = game.spawn_on_battlefield(PlayerId(1), def("Grizzly Bears"));
         let shock = game.spawn_in_hand(PlayerId(0), def("Shock"));
         game.submit(engine::Intent::Cast {
             player: PlayerId(0),
@@ -2714,7 +2797,7 @@ mod tests {
     fn a_snapshot_lists_all_targets_for_a_multi_target_spell() {
         let mut game = Game::new();
         game.fund_mana(PlayerId(0));
-        let bear = game.spawn_on_battlefield(PlayerId(1), def("Grizzly Bear"));
+        let bear = game.spawn_on_battlefield(PlayerId(1), def("Grizzly Bears"));
         let elf = game.spawn_on_battlefield(PlayerId(1), def("Llanowar Elves"));
         let bolt = game.spawn_in_hand(PlayerId(0), def("Electrolyze"));
         game.submit(engine::Intent::Cast {
@@ -2757,7 +2840,7 @@ mod tests {
     fn a_snapshot_lists_modal_spell_targets_from_chosen_modes() {
         let mut game = Game::new();
         game.fund_mana(PlayerId(0));
-        let bear = game.spawn_on_battlefield(PlayerId(1), def("Grizzly Bear"));
+        let bear = game.spawn_on_battlefield(PlayerId(1), def("Grizzly Bears"));
         let abrade = game.spawn_in_hand(PlayerId(0), def("Abrade"));
         game.submit(engine::Intent::Cast {
             player: PlayerId(0),
@@ -2852,7 +2935,7 @@ mod tests {
         let p0 = PlayerId(0);
         let p1 = PlayerId(1);
         game.fund_mana(p0);
-        game.stack_library(p0, &[def("Forest"), def("Grizzly Bear"), def("Island")]);
+        game.stack_library(p0, &[def("Forest"), def("Grizzly Bears"), def("Island")]);
         let tutor = game.spawn_in_hand(p0, def("Diabolic Tutor"));
 
         game.submit(engine::Intent::Cast {
@@ -2915,7 +2998,7 @@ mod tests {
         let p0 = PlayerId(0);
         let p1 = PlayerId(1);
         for _ in 0..9 {
-            game.spawn_in_hand(p0, def("Grizzly Bear"));
+            game.spawn_in_hand(p0, def("Grizzly Bears"));
         }
 
         pass_until_choice(&mut game);
@@ -2959,7 +3042,7 @@ mod tests {
                 def("Forest"),
                 def("Forest"),
                 def("Forest"),
-                def("Grizzly Bear"),
+                def("Grizzly Bears"),
                 def("Forest"),
                 def("Forest"),
                 def("Forest"),
@@ -3088,7 +3171,7 @@ mod tests {
         let p0 = PlayerId(0);
         let p1 = PlayerId(1);
         let nezumi = game.spawn_on_battlefield(p0, def("Nezumi Graverobber"));
-        let only_card = game.spawn_in_graveyard(p1, def("Grizzly Bear"));
+        let only_card = game.spawn_in_graveyard(p1, def("Grizzly Bears"));
         game.fund_mana(p0);
 
         let before = snapshot(&game, p0);
@@ -3182,7 +3265,7 @@ mod tests {
     fn a_moved_declare_attackers_action_names_the_active_player_and_their_required_attacks() {
         use engine::{Intent, Step};
         let mut game = Game::with_players(3, 0);
-        let bear = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bear"));
+        let bear = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bears"));
         game.goad(bear, PlayerId(1));
         cast_master_warcraft(&mut game, PlayerId(1));
 
@@ -3228,12 +3311,12 @@ mod tests {
     fn a_moved_declare_blockers_action_names_every_attacked_seat() {
         use engine::{Intent, Step};
         let mut game = Game::with_players(4, 0);
-        let one = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bear"));
-        let two = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bear"));
+        let one = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bears"));
+        let two = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bears"));
         // Each defender needs a creature of their own: a seat with nothing to block with is
         // offered no declaration, moved or not.
-        game.spawn_on_battlefield(PlayerId(1), def("Grizzly Bear"));
-        game.spawn_on_battlefield(PlayerId(2), def("Grizzly Bear"));
+        game.spawn_on_battlefield(PlayerId(1), def("Grizzly Bears"));
+        game.spawn_on_battlefield(PlayerId(2), def("Grizzly Bears"));
         cast_master_warcraft(&mut game, PlayerId(3));
 
         while game.current_step() != Step::DeclareAttackers {
@@ -3280,8 +3363,8 @@ mod tests {
     fn an_ordinary_declare_blockers_action_names_just_that_defender() {
         use engine::{Intent, Step};
         let mut game = Game::new();
-        let bear = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bear"));
-        game.spawn_on_battlefield(PlayerId(1), def("Grizzly Bear"));
+        let bear = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bears"));
+        game.spawn_on_battlefield(PlayerId(1), def("Grizzly Bears"));
         while game.current_step() != Step::DeclareAttackers {
             game.submit(Intent::PassPriority {
                 player: game.priority_holder(),

@@ -12,7 +12,14 @@ When a live drive fails mysteriously, use **`systematic-debugging`** before patc
 ## Handles
 
 - **Dev loop is usually already running**: `just dev` = `bacon server` (auto-rebuilds+restarts `target/debug/server serve` — health on :8080, gRPC on :50051 — on source change) + vite on :5173. Check `lsof -nP -i :8080` — if `server`'s parent is `bacon server`, the running binary already has your changes (bacon restarted it after your last build). Don't start a second server; listen addrs come from `Settings` (`config/mtgfr.toml` / env).
-- Cold start: `DATABASE_URL="sqlite::memory:" cargo run -p server` + `cd client && bun run dev`.
+- Cold start: `DATABASE_URL="sqlite::memory:" cargo run -p server` + `cd client && bun run dev`. If
+  the build has no sqlite feature (`unsupported feature: sqlite feature not enabled`), give the
+  smoke run its own two Postgres DBs instead of touching the dev ones: `createdb mtgfr_smoke_api` +
+  `server migration apply`, and `createdb mtgfr_smoke` + `WEB_DATABASE_URL=… just client-migrate`
+  (the recipe does not default that variable). A fresh Drizzle DB is also the cheapest way past
+  "migrations in the database that do not match any local migration" when the worktree's migration
+  dir is behind the one the dev DB was migrated with. Vite prints the port it actually took —
+  in a worktree alongside a running dev loop that is `:3001`, not `:5173`.
 - Confirm the API is up: `curl -s localhost:8080/health/live`. Every game/auth/decks/cards route is gRPC now (wire-protocol-and-visibility spec) — there's no `/openapi.json` or REST path to curl directly; drive it through the BFF's `/api/rpc` (below) or a gRPC client against `:50051`.
 - **An isolated stack may pick its own HTTP, Vite and Postgres ports — never its own gRPC port.**
   Routed table calls ignore `GRPC_UPSTREAM`: the BFF maps a table's `pod_dns` through
@@ -31,6 +38,12 @@ names/shapes, or use a gRPC client (e.g. `grpcurl`) straight against `:50051` wi
 `x-session-token` metadata (see `crates/server/src/grpc/auth_ctx.rs`).
 
 1. Sign up per player, `POST /api/rpc/auth/signup` (fresh throwaway emails — the dev DB persists).
+1a. Building a deck instead of using a precon (`POST /api/rpc/decks`): submit the whole candidate
+   pool once and read the 422 `problems` — `validate` names *every* off-identity card in one
+   response, so the color-identity filter costs one round trip instead of reimplementing CR 903.4.
+   Then keep ~64 spells and pad to 99 with basics: **a landless 99 drives nothing.** With an empty
+   board `has_meaningful_action` is false for every seat, so `auto_advance` passes whole turns and
+   the drive logs a keep_hand and nothing else — that is correct engine behavior, not a wedge.
 2. Precons have negative ids (`crates/server/src/precons.rs`: -1 Silverquill … -5 Quandrix,
    -6 Enchantress Rubinia, -7 Deathdancer Xira, -8 Political Puppets, -9 Mirror Mastery,
    -10 Heavenly Inferno); usable by anyone, no deck building.
@@ -49,6 +62,16 @@ names/shapes, or use a gRPC client (e.g. `grpcurl`) straight against `:50051` wi
   action; guessing from the battlefield turns one legal cast into dozens of
   `reject.illegal_target` acks (6083 of them in one heavenly-inferno drive, 330 accepted).
   Guess only when `targets` is empty and `needs_target` is true (modal casts carry targets per mode).
+- **Answer a modal cast with `modes`.** An `ActionView` carrying `modal {choose, modes}` is
+  `reject.illegal_mode` without a `modes: [{index, target?}]` list on the intent — one pick per
+  `choose`, skipping any mode whose own `targets` is empty. Blue Elemental Blast ate 40 identical
+  rejects in the 2ed drive before the driver read the block the snapshot had already handed it.
+- **Park a rejected action id instead of re-picking it.** Keep a `blocked` set keyed on action id
+  and report it at the end; otherwise one wedged card starves the rest of the drive of ticks.
+- **Submit only when the snapshot still says it's your priority** (`state.priority == viewer`) —
+  each seat reads its own SSE snapshot, so the loser of that race collects
+  `reject.not_your_priority`. Exempt `keep_hand` / `mulligan`: all four seats decide those before
+  anyone holds priority, and guarding them stalls the game before turn one.
 - **Pay the cost the action names.** An `ActionView` carries its own cost picks —
   `sacrifice_choices` (Fallen Angel's "Sacrifice a creature"), `discard_choices`/`discard_count`,
   `graveyard_exile_choices`, `has_x`/`min_x`. Omitting one is `reject.cannot_activate` /
@@ -64,6 +87,9 @@ names/shapes, or use a gRPC client (e.g. `grpcurl`) straight against `:50051` wi
   row: seq, player, intent, accepted, reject reason, step/active/priority/pending after it, and the
   full event list. Diagnose a wedge from that trace before touching engine code.
 - `scratchpad/drive.py` pattern from past runs: loop { answer pending_choice (discard/scry), play a land if offered, else pass } until the state you want. Precon games hit real choices (cleanup discards, scry lands) — handle or the loop wedges. Mirror `client/app/domain/choice.ts` for the answer shapes, and keep a fallback chain per choice (decline the cost, answer "no", try each single target, then empty) — the first answer the UI would send is not always payable.
+- Tally every action kind the snapshots *offered*, not just the ones submitted. The gap is the
+  honest coverage report: the 2ed drive was offered `declare_blockers` zero times across 70 turns
+  because a seat that attacks with everything has nothing untapped left to block with.
 - Per-stack yield: `Game.SetYield` `{table_id, enabled}`.
 
 ## Watching in the browser

@@ -58,7 +58,7 @@ pub(crate) use resolution::ResolveCtx;
 /// All-players search fan-out continuation state (Veteran Explorer) — see
 /// [`resolution::SearchFanout`].
 pub(crate) use resolution::SearchFanout;
-pub use state::ControlCondition;
+pub use state::{ControlCondition, DyingCreatureStats};
 pub use types::*;
 
 /// Keyword-trigger obligations queued outside ordinary triggered abilities and drained when the
@@ -127,6 +127,11 @@ pub struct Game {
     /// permanent's controller reaches their untap step (see [`Game::advance_step`]'s `Untap` arm),
     /// whether or not it was tapped.
     pub(crate) skip_next_untap: Vec<ObjectId>,
+    /// Extra turns owed, oldest first (Time Walk — [`Effect::Misc(MiscEffect::TakeExtraTurn)`]).
+    /// [`Game::advance_step`] pops the *last* entry as a turn ends, so of several extra turns
+    /// created in one turn the most recent is taken first (CR 500.7), and only an empty queue
+    /// hands the turn to the next player in the rotation.
+    pub(crate) extra_turns: Vec<PlayerId>,
     /// The current combat's attackers, blocks, and orderings (empty outside combat).
     pub(crate) combat: CombatState,
     /// Goad and other combat-adjacent state lifted off `Permanent` so it stays `Copy`.
@@ -181,6 +186,37 @@ pub struct Game {
     /// new object (CR 400.7) and rightly won't match. Reset alongside
     /// [`permanents_died_this_turn`](Self::permanents_died_this_turn) at every Untap step.
     pub(crate) damaged_this_turn: Vec<(ObjectId, ObjectId)>,
+    /// `(looker, card)` pairs for every hand card a player has privately looked at (CR 701.20 —
+    /// Glasses of Urza). Read only by the wire redaction layer, which itemizes a hand card to its
+    /// owner and to anyone holding a pair for it. Never cleared: a card that leaves the hand is a
+    /// new object when it comes back (CR 400.7), so a stale pair can't re-expose it, and cards
+    /// drawn after the look were never in it — which is exactly what "look at" means, as against a
+    /// standing window onto the hand.
+    pub(crate) hand_cards_seen: Vec<(PlayerId, ObjectId)>,
+    /// "Prevent the next N damage that would be dealt to `target` this turn" (CR 615 — Healing
+    /// Salve, Samite Healer, Conservator): each entry is a *consumable* shield, `(what it
+    /// protects, how many points are left on it)`. Spent at the two damage chokes
+    /// ([`Game::creature_damage_events`] and [`Game::player_damage_events`]) by
+    /// [`Game::spend_prevention_shields`], which is the only reader; the spend rides
+    /// [`Event::DamagePrevented`] so the decrement happens in `apply` like every other state
+    /// change. Cleared at the next Untap step, the same "this turn" boundary as
+    /// [`CombatExtras::combat_damage_prevention_shields`](state::CombatExtras::combat_damage_prevention_shields)
+    /// — that shield's uncountable "prevent all combat damage" twin.
+    ///
+    /// ponytail: several shields on one target are spent in the order they were created, not in
+    /// the order their controller chooses (CR 615.8). Same total prevented either way unless a
+    /// card reads *which* shield paid, and none in the pool does.
+    pub(crate) damage_prevention_shields: Vec<state::PreventionShield>,
+    /// "Until end of turn, you may pay {1} any time you could cast an instant. If you do, prevent
+    /// the next 1 damage that would be dealt to that permanent or player this turn" (Guardian
+    /// Angel): a standing *offer* rather than a shield — nothing is prevented until someone pays.
+    /// Enumerated by [`Game::legal_actions`] as a
+    /// [`MeaningfulAction::PayStandingPrevention`](crate::MeaningfulAction) and taken through
+    /// [`Intent::TakeAction`](crate::Intent), so the offer reaches the client on the same action
+    /// list every ability does; paying pushes an ordinary entry onto
+    /// [`damage_prevention_shields`](Self::damage_prevention_shields) above. Runtime orchestration
+    /// state like the shields, cleared at the same next-Untap "this turn" boundary.
+    pub(crate) standing_preventions: Vec<state::StandingPrevention>,
     /// Resolution-local "this way" scratch (DestroyAll / ExileAll / mill / council / edict riders).
     /// Not turn-scoped — see [`resolution::ResolutionFrame`].
     pub(crate) resolution_frame: resolution::ResolutionFrame,
@@ -507,6 +543,9 @@ impl Game {
                 self.cast_split_half(player, card, half, target, x)
             }
             MeaningfulAction::CastFaceDown { card } => self.cast_face_down(player, card),
+            MeaningfulAction::PayStandingPrevention { index } => {
+                self.pay_standing_prevention(player, index)
+            }
             MeaningfulAction::DeclareAttackers => self.declare_attackers(player, &attackers),
             MeaningfulAction::DeclareBlockers => self.declare_blockers(player, &blocks),
         }
@@ -739,6 +778,7 @@ mod forced_action_tests {
             options: vec![3],
             keep_one: false,
             count: 1,
+            floor: None,
             filter: PermanentFilter::of(TypeSet::CREATURE),
             remaining: vec![],
             controller: P0,
@@ -762,6 +802,7 @@ mod forced_action_tests {
             options: vec![3],
             keep_one: true,
             count: 1,
+            floor: None,
             filter: PermanentFilter::of(TypeSet::CREATURE),
             remaining: vec![],
             controller: P0,
@@ -779,6 +820,7 @@ mod forced_action_tests {
             options: vec![3, 4],
             keep_one: false,
             count: 1,
+            floor: None,
             filter: PermanentFilter::of(TypeSet::CREATURE),
             remaining: vec![],
             controller: P0,
@@ -828,6 +870,11 @@ mod refresh_actions_tests {
             alternative_cost: None,
             cast_only_during_combat: false,
             cast_only_before_attackers: false,
+            cast_only_before_blockers: false,
+            cast_only_during_opponents_turn: false,
+            cast_only_before_combat_damage: false,
+            cast_only_during_declare_blockers: false,
+            cast_only_during_declare_attackers: false,
             approximates: None,
             oracle: None,
             sets: empty_slice(),
@@ -944,6 +991,11 @@ mod refresh_actions_tests {
                 alternative_cost: None,
                 cast_only_during_combat: false,
                 cast_only_before_attackers: false,
+                cast_only_before_blockers: false,
+                cast_only_during_opponents_turn: false,
+                cast_only_before_combat_damage: false,
+                cast_only_during_declare_blockers: false,
+                cast_only_during_declare_attackers: false,
                 approximates: None,
                 oracle: None,
                 sets: empty_slice(),

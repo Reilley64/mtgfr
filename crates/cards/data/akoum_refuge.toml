@@ -2,6 +2,7 @@
 # When this land enters, you gain 1 life.
 # {T}: Add {B} or {R}.
 name = "Akoum Refuge"
+otags = ["activated-ability", "cycle-zen-refugeland", "triggered-ability"]
 sets = ["c13", "c17", "c18", "c19", "cma", "cmd", "ddk", "ddp", "plst", "scd", "zen"]
 oracle = "This land enters tapped.\nWhen this land enters, you gain 1 life.\n{T}: Add {B} or {R}."
 id = "354fecd1-2371-49e3-81c6-7e47728dbb1f"

@@ -1,0 +1,29 @@
+# {T}: This creature deals 1 damage to any target.
+name = "Prodigal Sorcerer"
+otags = ["activated-ability", "burn-any", "color-break", "pinger", "repeatable-crime", "repeatable-removal", "spot-removal", "type-addition-human", "type-addition-sorcerer", "virtual-legendary"]
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "brb", "ced", "cei", "ema", "fbb", "fnm", "lea", "leb", "me4", "plst", "prm", "sld", "sum", "tsb", "wc01"]
+id = "5e961d15-5972-4e4b-9385-1cd7cd7c6bbe"
+default_print = "4cfb5638-4502-44ed-b54c-27276d45d1ad"
+oracle = "{T}: This creature deals 1 damage to any target."
+subtypes = ["Human", "Wizard", "Sorcerer"]
+
+[cost]
+generic = 2
+blue = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# {T}: This creature deals 1 damage to any target.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# This creature deals 1 damage to any target.
+[[abilities.effects]]
+type = "damage"
+mode = "target"
+amount = 1
+target = "any"

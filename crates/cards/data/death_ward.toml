@@ -1,0 +1,23 @@
+# Regenerate target creature.
+name = "Death Ward"
+otags = ["combat-trick", "protects-creature", "regenerates-other", "single-target-instant-sorcery"]
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "fbb", "ice", "lea", "leb", "me1", "sum"]
+id = "0544b707-ec67-43e3-a25d-fd7005ab673d"
+default_print = "d7604388-752a-463d-95cd-486752a4bd04"
+oracle = "Regenerate target creature."
+
+[cost]
+white = 1
+
+[kind]
+type = "instant"
+
+# Regenerate target creature.
+[[abilities]]
+timing = "spell"
+
+# Regenerate target creature.
+[[abilities.effects]]
+type = "control"
+mode = "regenerate_shield"
+target = "creature"

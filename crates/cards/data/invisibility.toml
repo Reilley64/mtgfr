@@ -1,0 +1,29 @@
+# Enchant creature
+# Enchanted creature can't be blocked except by Walls.
+name = "Invisibility"
+otags = ["gives-unblockable", "hate-typal-non-wall", "single-english-word-name"]
+sets = ["2ed", "30a", "8ed", "ced", "cei", "lea", "leb", "m15", "plst"]
+id = "de26b0c6-dfb7-45a8-9d7f-f8d45522d675"
+default_print = "de833d23-2abd-42c3-a38f-f16813aaee4e"
+oracle = "Enchant creature\nEnchanted creature can't be blocked except by Walls."
+subtypes = ["Aura"]
+
+# Enchant creature
+enchant = { types = "creature" }
+
+[cost]
+blue = 2
+
+[kind]
+type = "aura"
+
+# Enchanted creature can't be blocked except by Walls.
+[[abilities]]
+timing = "static"
+
+# Enchanted creature can't be blocked except by Walls. (Authored inverted, as every "can't be
+# blocked by" restriction is: the filter names the creatures turned away.)
+[[abilities.effects]]
+type = "static"
+mode = "grant_to_attached"
+cant_be_blocked_by = { types = "creature", exclude_subtypes = ["Wall"] }

@@ -55,6 +55,14 @@ pub enum ControlEffect {
 
     RemoveFromCombat {
         target: TargetSpec,
+        /// "Creatures it was blocking that had become blocked by only that creature this combat
+        /// become unblocked" (False Orders) — the one printed exception to CR 509.1h's sticky
+        /// blocked-ness. Drops this blocker's pairs from `CombatState::blocked_ever`, so an
+        /// attacker it was the only blocker of goes back to unblocked and one that a second
+        /// creature is also blocking does not. `false` (Spurnmage Advocate) leaves 509.1h alone:
+        /// the creature stops blocking, and everything it blocked stays blocked.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        release_solely_blocked: bool,
     },
 
     RevertAllCreaturesToOwners,
@@ -62,6 +70,20 @@ pub enum ControlEffect {
     TapAll {
         filter: PermanentFilter,
     },
+
+    /// "Tap all lands target player controls" (Mana Short) — [`TapAll`](Self::TapAll)'s
+    /// other-seat twin. `TapAll` is a "you control" sweep with no target at all; this one taps the
+    /// chosen player's board and leaves yours alone. A plain tap, not a tap *for mana* (CR 106.11)
+    /// — nothing is produced and no land-tap watch fires, which is exactly what the card wants,
+    /// since the next step takes their pool away.
+    TapAllTargetPlayerControls {
+        filter: PermanentFilter,
+    },
+
+    /// "Tap this creature" as an *effect* (Demonic Hordes' unpaid-upkeep penalty), not as the
+    /// `{T}` in an activation cost — the source taps itself on resolution, with nothing chosen and
+    /// nothing targeted. A permanent that has already left the battlefield taps nothing.
+    TapSource,
 
     TapTarget {
         target: TargetSpec,

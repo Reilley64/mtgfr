@@ -1,6 +1,7 @@
 # Flying
 # Sacrifice a creature: This creature gets +2/+1 until end of turn.
 name = "Fallen Angel"
+otags = ["activated-ability", "evasion", "free-sacrifice-outlet", "sacrifice-outlet-creature", "shade-pump"]
 sets = ["5ed", "6ed", "7ed", "8ed", "a25", "bchr", "btd", "chr", "cma", "cmd", "ddc", "dvd", "leg", "olep", "plst", "psal"]
 id = "1869a326-8b48-4331-b969-5ce83cf4ff8a"
 default_print = "d3baa621-1b50-4a7f-9ed4-4ae0e0e9e4e7"

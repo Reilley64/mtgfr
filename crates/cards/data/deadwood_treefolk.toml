@@ -3,6 +3,7 @@
 # When this creature enters or leaves the battlefield, return another target creature card from your graveyard to your
 # hand.
 name = "Deadwood Treefolk"
+otags = ["cycle-plc-u-vanishing-creature", "enters-and-leaves-trigger-self", "hand-positive", "intervening-if-clause", "regrowth-creature"]
 sets = ["c13", "cmd", "dmr", "plc"]
 id = "b7efcb42-aa52-4d13-8c7c-b2db2dd51afd"
 default_print = "90614b59-5d3e-4f78-8e40-c25209103f44"

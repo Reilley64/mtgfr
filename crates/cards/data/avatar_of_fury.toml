@@ -2,6 +2,7 @@
 # Flying
 # {R}: This creature gets +1/+0 until end of turn.
 name = "Avatar of Fury"
+otags = ["activated-ability", "bottomless-mana-sink", "cycle-pcy-avatar", "discount-self", "evasion", "firebreathing"]
 sets = ["cmd", "e01", "pcy"]
 id = "4854f836-2247-43c3-adbc-1d1ee5eaf120"
 default_print = "f9badf70-5e86-4d43-b457-5cbf821d97df"

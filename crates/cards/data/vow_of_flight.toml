@@ -1,6 +1,7 @@
 # Enchant creature
 # Enchanted creature gets +2/+2, has flying, and can't attack you or planeswalkers you control.
 name = "Vow of Flight"
+otags = ["cycle-cmd-vow", "cycle-cmr-vow", "gives-flying", "multiplayer", "prevent-attack", "removal-creature", "synergy-planeswalker"]
 sets = ["c18", "cm2", "cmd", "cmr", "e02", "gn3", "pz1"]
 id = "81fe554a-5257-446c-ad53-ee45bf5edb40"
 default_print = "c9887121-6206-44bb-a1b4-520f28a61a17"

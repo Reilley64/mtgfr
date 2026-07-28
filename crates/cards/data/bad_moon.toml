@@ -1,0 +1,27 @@
+# Black creatures get +1/+1.
+name = "Bad Moon"
+otags = ["anthem", "inscryption-achievement", "power-boost-to-all", "symmetrical", "synergy-black", "toughness-boost-to-all"]
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "c14", "ced", "cei", "ddd", "fbb", "gvl", "lea", "leb", "plst", "sum", "tsb"]
+id = "fc5d3341-cbce-49e5-93cc-8add92479dca"
+default_print = "882fe528-1a84-4d34-bd15-330963b684ff"
+oracle = "Black creatures get +1/+1."
+
+[cost]
+generic = 1
+black = 1
+
+[kind]
+type = "enchantment"
+
+# Black creatures get +1/+1.
+[[abilities]]
+timing = "static"
+
+# Black creatures get +1/+1.
+[[abilities.effects]]
+type = "static"
+mode = "anthem"
+colors = ["black"]
+all_players = true
+power = 1
+toughness = 1

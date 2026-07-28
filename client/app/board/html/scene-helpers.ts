@@ -1,3 +1,4 @@
+import * as Combobox from "@foldkit/ui/combobox";
 import { Scene } from "foldkit/test";
 import { BindCardArt, CardArtTick } from "~/ui/card-art";
 import { MountBitmapLayer, MountFlightLayer } from "../bitmap/mount";
@@ -12,6 +13,15 @@ export function resolveBoardOverlayMounts() {
   return Scene.Mount.resolveAll(
     [MountPriorityWatch(), PriorityElapsed({ seconds: 0 })],
     [MountHandBarDrag(), HandActionHovered({ actionId: null })],
+  );
+}
+
+/** Resolve the anchoring and backdrop-portal hosts Combobox renders on its open suggestion
+ * panel. */
+export function resolveCardNameComboboxMounts() {
+  return Scene.Mount.resolveAll(
+    [Combobox.AnchorCombobox, Combobox.CompletedAnchorCombobox()],
+    [Combobox.PortalComboboxBackdrop, Combobox.CompletedPortalComboboxBackdrop()],
   );
 }
 
