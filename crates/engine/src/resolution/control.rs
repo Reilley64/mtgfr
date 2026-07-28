@@ -62,9 +62,15 @@ impl Game {
                 let object = expect_object_target(target, "untap");
                 vec![Event::Untapped { object }]
             }
-            ControlEffect::RemoveFromCombat { .. } => {
+            ControlEffect::RemoveFromCombat {
+                release_solely_blocked,
+                ..
+            } => {
                 let object = expect_object_target(target, "remove from combat");
-                vec![Event::RemovedFromCombat { object }]
+                vec![Event::RemovedFromCombat {
+                    object,
+                    release_solely_blocked,
+                }]
             }
             ControlEffect::GainControlUntilEndOfTurn { .. } => {
                 let object = expect_object_target(target, "a steal");

@@ -755,6 +755,12 @@ pub struct CardDef {
     /// the ordinary instant-speed gate like its two siblings above, checked in
     /// [`Game::cast_timing_ok`]. `cast_only_before_combat_damage = true` in TOML.
     pub cast_only_before_combat_damage: bool,
+    /// "Cast this spell only during the declare blockers step" (CR 601.3e — False Orders): the
+    /// narrowest window of the family above, a single step rather than everything up to one. Open
+    /// for the whole step, before *and* after the declaration — False Orders' whole job is to
+    /// rearrange a declaration that has already happened. `cast_only_during_declare_blockers =
+    /// true` in TOML; `false` for every ordinary card.
+    pub cast_only_during_declare_blockers: bool,
     /// A one-line plain-English note on how this card's modeled behavior diverges from its
     /// printed rules text (a dropped clause, a coarsened trigger, a folded-together mechanic) —
     /// the same fact a `# ponytail:` TOML comment records, but as a datum the catalog/deck
@@ -1497,6 +1503,7 @@ fn treasure_token_builtin() -> CardDef {
         cast_only_before_blockers: false,
         cast_only_during_opponents_turn: false,
         cast_only_before_combat_damage: false,
+        cast_only_during_declare_blockers: false,
         approximates: None,
         oracle: None,
         sets: empty_slice(),
@@ -1572,6 +1579,7 @@ pub(crate) fn rogue_token_stub() -> CardDef {
         cast_only_before_blockers: false,
         cast_only_during_opponents_turn: false,
         cast_only_before_combat_damage: false,
+        cast_only_during_declare_blockers: false,
         approximates: None,
         oracle: None,
         sets: empty_slice(),
@@ -1649,6 +1657,7 @@ pub(crate) fn illusion_token() -> CardDef {
         cast_only_before_blockers: false,
         cast_only_during_opponents_turn: false,
         cast_only_before_combat_damage: false,
+        cast_only_during_declare_blockers: false,
         approximates: None,
         oracle: None,
         sets: empty_slice(),

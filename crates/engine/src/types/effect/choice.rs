@@ -274,6 +274,16 @@ pub enum ChoiceEffect {
     /// was placed, not "if you do". Non-targeted: nothing is advertised on the stack at cast.
     MayPutCounterOnCreature,
 
+    /// "You may have it block an attacking creature of your choice" (CR 601.2c — False Orders):
+    /// the ability's own target, just pulled out of combat by the preceding
+    /// [`ControlEffect::RemoveFromCombat`](crate::ControlEffect), is offered back to the *spell's*
+    /// controller as a fresh blocker. Pauses on a
+    /// [`PendingChoice::ChooseBlockTarget`](crate::PendingChoice) over the attackers that creature
+    /// could legally have been declared as blocking; declining leaves it out of combat. Fieldless
+    /// like [`Self::MayPutCounterOnCreature`] above — the creature is the shared target, and the
+    /// candidate list is read live off combat when the choice is raised.
+    MayBlockAttackerOfYourChoice,
+
     /// A batch nonland-discard payoff (CR 701.8 — Conspiracy Theorist's "you may exile one of
     /// them from your graveyard. If you do, you may cast it this turn"): pauses the controller on
     /// a [`PendingChoice::MayExileDiscardedToPlay`](crate::PendingChoice) over `cards` (the nonland

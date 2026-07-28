@@ -409,6 +409,10 @@ impl<'de> Deserialize<'de> for CardDef {
             /// — `cast_only_before_combat_damage = true`; absent (`false`) for every ordinary card.
             #[serde(default)]
             cast_only_before_combat_damage: bool,
+            /// "Cast this spell only during the declare blockers step" (CR 601.3e — False Orders)
+            /// — `cast_only_during_declare_blockers = true`; absent (`false`) for every ordinary card.
+            #[serde(default)]
+            cast_only_during_declare_blockers: bool,
             #[serde(default)]
             approximates: Option<String>,
             #[serde(default)]
@@ -579,6 +583,7 @@ impl<'de> Deserialize<'de> for CardDef {
             cast_only_before_blockers: card.cast_only_before_blockers,
             cast_only_during_opponents_turn: card.cast_only_during_opponents_turn,
             cast_only_before_combat_damage: card.cast_only_before_combat_damage,
+            cast_only_during_declare_blockers: card.cast_only_during_declare_blockers,
             approximates: card.approximates.map(|s| &*Box::leak(s.into_boxed_str())),
             oracle: card.oracle.map(|s| &*Box::leak(s.into_boxed_str())),
             sets: arc_strs(card.sets),

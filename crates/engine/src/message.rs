@@ -135,6 +135,7 @@ message_keys! {
     EFFECT_CHOICE_JOIN_FORCES_PAY_MANA => "effect.choice_join_forces_pay_mana",
     EFFECT_CHOICE_TRIGGERING_PLAYER_MAY_ATTACH_THIS_AURA_TO_CHOSEN => "effect.choice_triggering_player_may_attach_this_aura_to_chosen",
     EFFECT_CHOICE_TRIGGERING_PLAYER_MAY_PAY_ANY_AMOUNT_TO_PREVENT => "effect.choice_triggering_player_may_pay_any_amount_to_prevent",
+    EFFECT_CHOICE_MAY_BLOCK_ATTACKER_OF_YOUR_CHOICE => "effect.choice_may_block_attacker_of_your_choice",
     EFFECT_CHOICE_MAY_DISCARD => "effect.choice_may_discard",
     EFFECT_CHOICE_MAY_REVEAL_LAND_FROM_HAND => "effect.choice_may_reveal_land_from_hand",
     EFFECT_CHOICE_MAY_DRAW_UNLESS_PAYS => "effect.choice_may_draw_unless_pays",
@@ -2081,6 +2082,9 @@ impl Effect {
             Effect::Choice(MayDiscard { .. }) => MessageRef::new(MessageKey::EFFECT_CHOICE_MAY_DISCARD),
             Effect::Choice(MayPutCounterOnCreature) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_MAY_PUT_COUNTER_ON_CREATURE)
+            }
+            Effect::Choice(MayBlockAttackerOfYourChoice) => {
+                MessageRef::new(MessageKey::EFFECT_CHOICE_MAY_BLOCK_ATTACKER_OF_YOUR_CHOICE)
             }
             Effect::Choice(MayDrawUnlessPays { cost, .. }) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_MAY_DRAW_UNLESS_PAYS)

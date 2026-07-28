@@ -699,11 +699,13 @@ pub fn pending_choice_view_to_pb(choice: PendingChoiceView) -> pb::PendingChoice
             source,
             items,
             put_counter_on_creature,
+            choose_block_target,
         } => Choice::ChooseCopyTarget(pb::PendingChoiceViewChooseCopyTarget {
             player: u32::from(player),
             source,
             items: choice_items_to_pb(items),
             put_counter_on_creature,
+            choose_block_target,
         }),
         PendingChoiceView::ChooseAttachHost {
             player,

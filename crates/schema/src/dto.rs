@@ -1042,13 +1042,16 @@ pub enum PendingChoiceView {
     /// This player (an entering permanent's controller) may have `source` enter as a copy of one
     /// of `items` (every other creature on the battlefield, public — CR 706/707.2, Altered Ego,
     /// Cursed Mirror). Answered with the chosen creature, or a decline (the "you may").
-    /// `put_counter_on_creature` marks the reused "put a +1/+1 counter on a creature" primer so
-    /// clients can swap the copy wording without needing a separate answer shape.
+    /// `put_counter_on_creature` marks the reused "put a +1/+1 counter on a creature" primer, and
+    /// `choose_block_target` the reused "have this creature block an attacking creature of your
+    /// choice" re-aim (False Orders), so clients can swap the copy wording without needing a
+    /// separate answer shape.
     ChooseCopyTarget {
         player: u8,
         source: ObjectId,
         items: Vec<ChoiceItem>,
         put_counter_on_creature: bool,
+        choose_block_target: bool,
     },
     /// This player (the deployed attachment's controller) must choose a host among `items` (the
     /// eligible battlefield creatures, public) for the Aura or Equipment it just put onto the

@@ -5286,6 +5286,39 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
         );
     }
 
+    /// False Orders is three printed clauses that only work as one sequence: pull the blocker,
+    /// release what it solely blocked, offer it back as a blocker. Drop `release_solely_blocked`
+    /// and CR 509.1h keeps the attacker blocked — the card does nothing but tempo.
+    #[test]
+    fn unlimited_false_orders_releases_what_it_solely_blocked_then_re_aims_the_blocker() {
+        let orders = get_by_name("False Orders").expect("False Orders is in the pool");
+        assert!(
+            orders.cast_only_during_declare_blockers,
+            "the printed window is one step, not everything up to it",
+        );
+        let [ability] = &orders.abilities[..] else {
+            panic!("one spell ability");
+        };
+        let Effect::Sequence { steps } = &ability.effect else {
+            panic!("pull-then-re-aim is a sequence sharing one target");
+        };
+        let [
+            Effect::Control(ControlEffect::RemoveFromCombat {
+                target: TargetSpec::Permanent(filter),
+                release_solely_blocked: true,
+            }),
+            Effect::Choice(ChoiceEffect::MayBlockAttackerOfYourChoice),
+        ] = &steps[..]
+        else {
+            panic!("remove-from-combat releasing its solely-blocked attackers, then the re-aim");
+        };
+        assert_eq!(
+            filter.controller,
+            FilterController::DefendingPlayer,
+            "you steal the defender's blocker — pointing it at your own creature does nothing",
+        );
+    }
+
     /// Personal Incarnation is a liability its owner cannot hand off. Both halves of that are
     /// only true because of a flag: `only_owner_may_activate` is what stops a thief spending the
     /// shield, and `SourceOwnerLosesHalfTheirLife` is what sends the bill past whoever was

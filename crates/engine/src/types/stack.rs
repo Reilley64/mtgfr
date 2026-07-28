@@ -1484,6 +1484,19 @@ pub enum PendingChoice {
         source: ObjectId,
         options: Vec<ObjectId>,
     },
+    /// `player` (False Orders' controller, *not* `blocker`'s) may have `blocker` — the creature
+    /// the spell just pulled out of combat — block one of `options`, or decline
+    /// ([`Effect::Choice(ChoiceEffect::MayBlockAttackerOfYourChoice)`]). `options` is every
+    /// declared attacker `blocker` could legally have blocked. Answered by
+    /// [`Intent::ChooseCopyTarget`] (reused — the answer is also "one optional chosen object"),
+    /// and projected onto the same generic pick-or-decline client view as
+    /// [`Self::MayPutCounterOnCreature`].
+    ChooseBlockTarget {
+        player: PlayerId,
+        source: ObjectId,
+        blocker: ObjectId,
+        options: Vec<ObjectId>,
+    },
     /// `player` must discard down to the hand-size limit at cleanup (CR 514.3): choose exactly
     /// `count` of `hand` (their whole hand, kept for stable display/validation) to discard.
     /// Answered by [`Intent::Discard`].
@@ -2029,6 +2042,7 @@ impl PendingChoice {
             | PendingChoice::MayExileDiscardedToPlay { player, .. }
             | PendingChoice::MayDiscard { player, .. }
             | PendingChoice::MayPutCounterOnCreature { player, .. }
+            | PendingChoice::ChooseBlockTarget { player, .. }
             | PendingChoice::DiscardToHandSize { player, .. }
             | PendingChoice::DiscardCards { player, .. }
             | PendingChoice::PutFromHandOnTop { player, .. }
@@ -2086,6 +2100,12 @@ pub(crate) struct CombatState {
     pub(crate) attack_targets: Vec<(ObjectId, Defender)>,
     /// (blocker, attacker) pairs.
     pub(crate) blocks: Vec<(ObjectId, ObjectId)>,
+    /// Every (blocker, attacker) pair ever declared this combat — [`Self::blocks`] with nothing
+    /// ever taken out of it. CR 509.1h: an attacking creature stays *blocked* even after every
+    /// creature blocking it leaves combat, so blocked-ness is read off this list rather than off
+    /// the live one, which loses a blocker the moment it dies or is removed. False Orders is the
+    /// only thing that prunes it, because its printed text is the one exception to 509.1h.
+    pub(crate) blocked_ever: Vec<(ObjectId, ObjectId)>,
     /// Attacker → how its combat damage is divided among its blockers (multi-block only).
     /// Set via [`Event::CombatDamageDivided`].
     pub(crate) damage: Vec<(ObjectId, Vec<(ObjectId, i32)>)>,
@@ -2392,7 +2412,13 @@ pub enum Event {
     /// A permanent was removed from combat (CR 506.4 — [`Effect::Control(ControlEffect::RemoveFromCombat)`]; Spurnmage
     /// Advocate). Drops it as attacker and blocker, and any blocks naming it as the attacker —
     /// the same combat-list cleanup [`Self::Regenerated`]'s CR 701.15b removal already applies.
-    RemovedFromCombat { object: ObjectId },
+    RemovedFromCombat {
+        object: ObjectId,
+        /// False Orders' "…become unblocked": also forget that `object` ever blocked anything, so
+        /// CR 509.1h stops holding the attackers it was the only blocker of. `false` everywhere
+        /// else — leaving combat doesn't un-block what you blocked.
+        release_solely_blocked: bool,
+    },
     /// A regeneration shield was granted to a permanent (CR 701.15b — [`Effect::Control(ControlEffect::RegenerateShield)`]).
     /// Increments [`Permanent::regeneration_shields`].
     RegenerationShieldCreated { object: ObjectId },

@@ -1106,6 +1106,14 @@ impl Game {
             .collect()
     }
 
+    /// Whether `attacker` is a blocked creature (CR 509.1h) — blocked once, blocked for the rest
+    /// of combat, even after every creature blocking it has died or been removed from combat. The
+    /// history read that [`Self::blockers_of`] deliberately isn't: that one answers "who is still
+    /// there to be dealt damage", this one answers "does its damage reach the player at all".
+    pub(crate) fn is_blocked(&self, attacker: ObjectId) -> bool {
+        self.combat.blocked_ever.iter().any(|&(_, a)| a == attacker)
+    }
+
     /// Whether any attacking or blocking creature has first or double strike as the combat
     /// damage step begins (CR 510.5) — the condition for creating a separate first-strike
     /// combat damage step. When false, that step is skipped and only the normal one occurs.
@@ -1145,14 +1153,15 @@ impl Game {
             let blockers = self.blockers_of(attacker);
 
             if self.deals_this_batch(attacker, first_strike_batch) {
-                match (blockers.is_empty(), defender) {
-                    (true, Some(defender)) => {
+                // CR 509.1h: a blocked attacker whose blockers are all gone assigns its damage to
+                // nothing (or, with trample, all of it to the defender — CR 702.19b), so the test
+                // is "was it ever blocked", not "is anything blocking it now".
+                match (self.is_blocked(attacker), defender) {
+                    (false, Some(defender)) => {
                         self.damage_unblocked_defender(attacker, defender, events)
                     }
-                    (true, None) => {}
-                    (false, _) => {
-                        self.assign_attacker_damage(attacker, &blockers, defender, events)
-                    }
+                    (false, None) => {}
+                    (true, _) => self.assign_attacker_damage(attacker, &blockers, defender, events),
                 }
             }
             for blocker in blockers {
@@ -1208,7 +1217,13 @@ impl Game {
             .find(|(a, _)| *a == attacker)
             .map(|(_, split)| split.clone())
         {
-            Some(split) => split,
+            // CR 510.1a reads the division against the creatures blocking *now*: a blocker that
+            // left combat after the order was chosen (False Orders) takes none of it, and its
+            // share is simply not assigned rather than sliding onto someone else.
+            Some(split) => split
+                .into_iter()
+                .filter(|(b, _)| blockers.contains(b))
+                .collect(),
             None => {
                 let mut remaining = power;
                 let mut split = Vec::new();

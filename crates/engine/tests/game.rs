@@ -566,6 +566,7 @@ static FLASHBACK_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -640,6 +641,7 @@ static COMBAT_ONLY_INSTANT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -2017,6 +2019,7 @@ static TWO_ETB: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -2114,6 +2117,7 @@ static PINGER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -2212,6 +2216,7 @@ static MAY_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -2294,6 +2299,7 @@ static MAY_PAY_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -2400,6 +2406,7 @@ static LOOK_DIG: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -2491,6 +2498,7 @@ static LOOK_DIG_MANDATORY_TWO: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -2583,6 +2591,7 @@ static LOOK_DIG_TO_BATTLEFIELD: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -2718,6 +2727,7 @@ fn creature(
         cast_only_before_blockers: false,
         cast_only_during_opponents_turn: false,
         cast_only_before_combat_damage: false,
+        cast_only_during_declare_blockers: false,
         approximates: None,
         oracle: None,
         sets: empty_slice(),
@@ -5620,6 +5630,7 @@ static PUMP_POWER_PLUS_2: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -5705,6 +5716,7 @@ static GRANT_FLYING: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -5788,6 +5800,7 @@ static GRANT_INDESTRUCTIBLE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -5872,6 +5885,7 @@ static DESTROY: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -5967,6 +5981,7 @@ static DESTROY_NONARTIFACT_NONBLACK: LazyLock<CardDef> = LazyLock::new(|| CardDe
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -6066,6 +6081,7 @@ static DESTROY_ANY_PERMANENT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -6161,6 +6177,7 @@ static DESTROY_NONBASIC_LAND: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -6259,6 +6276,7 @@ static EXILE_FROM_ANY_GRAVEYARD: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -6352,6 +6370,7 @@ static EXILE_ANY_CARD_FROM_ANY_GRAVEYARD: LazyLock<CardDef> = LazyLock::new(|| C
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -6448,6 +6467,7 @@ static EXILE_NONCREATURE_ARTIFACT_OR_ENCHANTMENT: LazyLock<CardDef> = LazyLock::
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -6543,6 +6563,7 @@ static EXILE_SMALL_CREATURE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -6638,6 +6659,7 @@ static EXILE_ENCHANTMENT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -6730,6 +6752,7 @@ static EXILE_ARTIFACT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -6824,6 +6847,7 @@ static SHROUD_CREATURE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -6897,6 +6921,7 @@ static HEXPROOF_CREATURE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -6969,6 +6994,7 @@ static MASS_INDESTRUCTIBLE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -7053,6 +7079,7 @@ static MASS_FLYING_PER_CREATURE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -7138,6 +7165,7 @@ static GRANT_UNBLOCKABLE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -7742,6 +7770,7 @@ static GROWTH: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -7876,6 +7905,7 @@ static INKLING: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -7946,6 +7976,7 @@ static MAKE_INKLINGS: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -9644,6 +9675,7 @@ static PEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -9724,6 +9756,7 @@ static MAKE_PEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -10158,6 +10191,7 @@ static HERALD: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -12765,6 +12799,7 @@ fn auto_tap_pays_with_a_free_granted_mana_ability() {
         cast_only_before_blockers: false,
         cast_only_during_opponents_turn: false,
         cast_only_before_combat_damage: false,
+        cast_only_during_declare_blockers: false,
         approximates: None,
         oracle: None,
         sets: empty_slice(),
@@ -12831,6 +12866,7 @@ fn auto_tap_pays_with_a_free_granted_mana_ability() {
         cast_only_before_blockers: false,
         cast_only_during_opponents_turn: false,
         cast_only_before_combat_damage: false,
+        cast_only_during_declare_blockers: false,
         approximates: None,
         oracle: None,
         sets: empty_slice(),
@@ -14260,6 +14296,7 @@ static TARGET_OPPONENT_DRAWS_THREE: LazyLock<CardDef> = LazyLock::new(|| CardDef
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -15633,6 +15670,7 @@ static ANTHEM_LORD: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -16308,6 +16346,7 @@ fn hofri_ghostforge_no_return_if_exiled_card_already_moved() {
             cast_only_before_blockers: false,
             cast_only_during_opponents_turn: false,
             cast_only_before_combat_damage: false,
+            cast_only_during_declare_blockers: false,
             approximates: None,
             oracle: None,
             sets: empty_slice(),
@@ -16470,6 +16509,7 @@ static TEST_COUNTER_SHEDDER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -16585,6 +16625,7 @@ static TEST_FOOD: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -16658,6 +16699,7 @@ static TEST_SAC_A_FOOD: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -20419,6 +20461,7 @@ static COLORLESS_ROCK: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -21066,6 +21109,7 @@ fn dual_land(name: &'static str, a: Color, b: Color) -> CardDef {
         cast_only_before_blockers: false,
         cast_only_during_opponents_turn: false,
         cast_only_before_combat_damage: false,
+        cast_only_during_declare_blockers: false,
         approximates: None,
         oracle: None,
         sets: empty_slice(),
@@ -21162,6 +21206,7 @@ fn vanilla(name: &'static str, generic: u8, colored: [u8; 5]) -> CardDef {
         cast_only_before_blockers: false,
         cast_only_during_opponents_turn: false,
         cast_only_before_combat_damage: false,
+        cast_only_during_declare_blockers: false,
         approximates: None,
         oracle: None,
         sets: empty_slice(),
@@ -21499,6 +21544,7 @@ fn hybrid_filter_land(name: &'static str, a: Color, b: Color) -> CardDef {
         cast_only_before_blockers: false,
         cast_only_during_opponents_turn: false,
         cast_only_before_combat_damage: false,
+        cast_only_during_declare_blockers: false,
         approximates: None,
         oracle: None,
         sets: empty_slice(),
@@ -21766,6 +21812,7 @@ static DIES_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -22489,6 +22536,7 @@ static WATCHES_CREATURE_DIES: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -22615,6 +22663,7 @@ static WATCHES_CREATURE_DIES_ONCE_EACH_TURN: LazyLock<CardDef> = LazyLock::new(|
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -22776,6 +22825,7 @@ static CREATURE_MV3: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -22902,6 +22952,7 @@ static WATCHES_ANY_SACRIFICE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -23509,6 +23560,7 @@ static UPKEEP_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -23616,6 +23668,7 @@ static GRAVEYARD_UPKEEP_RETURN: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -24193,6 +24246,7 @@ static EACH_UPKEEP_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -24319,6 +24373,7 @@ static END_STEP_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -24417,6 +24472,7 @@ static BEGIN_COMBAT_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -24547,6 +24603,7 @@ static GAIN_LIFE_ETB: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -24626,6 +24683,7 @@ static LIFE_GAIN_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -24818,6 +24876,7 @@ static MAGECRAFT_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -25338,6 +25397,7 @@ static INSTANT_FILLER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -25423,6 +25483,7 @@ static BECOMES_TARGETED_TREASURE_MAKER: LazyLock<CardDef> = LazyLock::new(|| Car
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -25543,6 +25604,7 @@ static AURA_CAST_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -25674,6 +25736,7 @@ static X_INSTANT_FILLER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -25753,6 +25816,7 @@ static HISTORIC_TEST_ARTIFACT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -26215,6 +26279,7 @@ static DRAW_ONE_TARGET: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -26910,6 +26975,7 @@ static COUNTER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -28040,6 +28106,7 @@ static X_EXILE_SELF_ON_RESOLVE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -30285,6 +30352,7 @@ static FLIGHT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -30381,6 +30449,7 @@ static PRO_WHITE_CLOAK: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -30584,6 +30653,7 @@ static MUTATION: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -30905,6 +30975,7 @@ static MUTABLE_FLYER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -32732,6 +32803,7 @@ static WATCHES_HOST_DIES_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -32925,6 +32997,7 @@ static PLAIN_AURA: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -34340,6 +34413,7 @@ static CONTROL_ATTACHED_AURA: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -35158,6 +35232,7 @@ static EACH_EXILE_GRAVEYARD: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -38686,6 +38761,7 @@ static NONCREATURE_PERMANENT_MV2: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -39335,6 +39411,7 @@ static RETURN_LAND_FROM_GRAVEYARD: LazyLock<CardDef> = LazyLock::new(|| CardDef 
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -39476,6 +39553,7 @@ static RETURN_SORCERY_FROM_GRAVEYARD: LazyLock<CardDef> = LazyLock::new(|| CardD
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -39749,6 +39827,7 @@ static EXILE_CARD_FROM_OPPONENTS_GRAVEYARD: LazyLock<CardDef> = LazyLock::new(||
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -39961,6 +40040,7 @@ static REPLENISH: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -40101,6 +40181,7 @@ static MASS_RETURN_ALL_CREATURES: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -44020,6 +44101,7 @@ static STEAL_UNTIL_EOT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -44535,6 +44617,7 @@ static MELODY: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -46530,6 +46613,7 @@ static CHOOSE_TWO: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -46979,6 +47063,7 @@ static CHOOSE_ONE_OR_MORE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -47386,6 +47471,7 @@ static FIGHT_SPELL: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -48833,6 +48919,7 @@ static GRAVEYARD_EXIT_WATCHER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -49191,6 +49278,7 @@ fn pack_a_punch() -> CardDef {
         cast_only_before_blockers: false,
         cast_only_during_opponents_turn: false,
         cast_only_before_combat_damage: false,
+        cast_only_during_declare_blockers: false,
         approximates: None,
         oracle: None,
         sets: empty_slice(),
@@ -49309,6 +49397,7 @@ fn kirol() -> CardDef {
         cast_only_before_blockers: false,
         cast_only_during_opponents_turn: false,
         cast_only_before_combat_damage: false,
+        cast_only_during_declare_blockers: false,
         approximates: None,
         oracle: None,
         sets: empty_slice(),
@@ -49657,6 +49746,7 @@ static PETTY_THEFT_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -49759,6 +49849,7 @@ fn brazen_borrower_test() -> CardDef {
         cast_only_before_blockers: false,
         cast_only_during_opponents_turn: false,
         cast_only_before_combat_damage: false,
+        cast_only_during_declare_blockers: false,
         approximates: None,
         oracle: None,
         sets: empty_slice(),
@@ -49837,6 +49928,7 @@ static GROVES_BOUNTY_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -49942,6 +50034,7 @@ fn elusive_otter_test() -> CardDef {
         cast_only_before_blockers: false,
         cast_only_during_opponents_turn: false,
         cast_only_before_combat_damage: false,
+        cast_only_during_declare_blockers: false,
         approximates: None,
         oracle: None,
         sets: empty_slice(),
@@ -50575,6 +50668,7 @@ static BRAINGEYSER_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -50661,6 +50755,7 @@ fn dirgur_test() -> CardDef {
         cast_only_before_blockers: false,
         cast_only_during_opponents_turn: false,
         cast_only_before_combat_damage: false,
+        cast_only_during_declare_blockers: false,
         approximates: None,
         oracle: None,
         sets: empty_slice(),
@@ -51095,6 +51190,7 @@ fn unfiltered_cast_trigger_still_fires_from_any_zone() {
         cast_only_before_blockers: false,
         cast_only_during_opponents_turn: false,
         cast_only_before_combat_damage: false,
+        cast_only_during_declare_blockers: false,
         approximates: None,
         oracle: None,
         sets: empty_slice(),
@@ -52037,6 +52133,7 @@ fn test_planeswalker(name: &'static str, loyalty: i32) -> CardDef {
         cast_only_before_blockers: false,
         cast_only_during_opponents_turn: false,
         cast_only_before_combat_damage: false,
+        cast_only_during_declare_blockers: false,
         approximates: None,
         oracle: None,
         sets: empty_slice(),
@@ -53553,6 +53650,7 @@ static CREATURE_TUTOR: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -56287,6 +56385,7 @@ static MASS_SHOCK: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -56371,6 +56470,7 @@ static MASS_BOUNCE_CREATURES: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -56535,6 +56635,7 @@ static POPULATE_AT_END_STEP: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -57332,6 +57433,7 @@ static MAKE_TREASURES: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -57578,6 +57680,7 @@ fn instant_with_mana_value(generic: u8) -> CardDef {
         cast_only_before_blockers: false,
         cast_only_during_opponents_turn: false,
         cast_only_before_combat_damage: false,
+        cast_only_during_declare_blockers: false,
         approximates: None,
         oracle: None,
         sets: empty_slice(),
@@ -57657,6 +57760,7 @@ fn instant_with_generic_and_x(generic: u8) -> CardDef {
         cast_only_before_blockers: false,
         cast_only_during_opponents_turn: false,
         cast_only_before_combat_damage: false,
+        cast_only_during_declare_blockers: false,
         approximates: None,
         oracle: None,
         sets: empty_slice(),
@@ -57795,6 +57899,7 @@ static DEEKAH_MAGECRAFT_FRACTAL: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -58010,6 +58115,7 @@ static MANAFORM_DRAGON_TOKEN: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -58085,6 +58191,7 @@ static MANAFORM_HELLKITE_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -58407,6 +58514,7 @@ static ROOTHA_ELEMENTAL_TOKEN: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -58482,6 +58590,7 @@ static ROOTHA_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -58691,6 +58800,7 @@ static RIONYA_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -58956,6 +59066,7 @@ static IMPULSE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -59182,6 +59293,7 @@ static RANDOM_GRAVEYARD_EXILE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -59477,6 +59589,7 @@ fn modal_dragon() -> CardDef {
         cast_only_before_blockers: false,
         cast_only_during_opponents_turn: false,
         cast_only_before_combat_damage: false,
+        cast_only_during_declare_blockers: false,
         approximates: None,
         oracle: None,
         sets: empty_slice(),
@@ -61326,6 +61439,7 @@ static NO_MAX_HAND_SIZE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -61437,6 +61551,7 @@ macro_rules! amount_spell {
             cast_only_before_blockers: false,
             cast_only_during_opponents_turn: false,
             cast_only_before_combat_damage: false,
+            cast_only_during_declare_blockers: false,
             approximates: None,
             oracle: None,
             sets: empty_slice(),
@@ -61614,6 +61729,7 @@ macro_rules! hydra_with_etb {
             cast_only_before_blockers: false,
             cast_only_during_opponents_turn: false,
             cast_only_before_combat_damage: false,
+            cast_only_during_declare_blockers: false,
             approximates: None,
             oracle: None,
             sets: empty_slice(),
@@ -62731,6 +62847,7 @@ fn sorcery(name: &'static str, abilities: &'static [Ability]) -> CardDef {
         cast_only_before_blockers: false,
         cast_only_during_opponents_turn: false,
         cast_only_before_combat_damage: false,
+        cast_only_during_declare_blockers: false,
         approximates: None,
         oracle: None,
         sets: empty_slice(),
@@ -65868,6 +65985,7 @@ static TEST_STEELBANE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -66269,6 +66387,7 @@ static TEST_ENCHANTMENT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -66340,6 +66459,7 @@ static WATCHES_ENCHANTMENTS_ENTER: LazyLock<CardDef> = LazyLock::new(|| CardDef 
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -66383,6 +66503,7 @@ static WATCHES_ENCHANTMENTS_ENTER: LazyLock<CardDef> = LazyLock::new(|| CardDef 
                 cast_only_before_blockers: false,
                 cast_only_during_opponents_turn: false,
                 cast_only_before_combat_damage: false,
+                cast_only_during_declare_blockers: false,
                 approximates: None,
                 oracle: None,
                 sets: empty_slice(),
@@ -66505,6 +66626,7 @@ static WATCHES_OPPONENT_LANDFALL: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -66683,6 +66805,7 @@ fn ajanis_chosen_cannot_snap_an_enchant_land_aura_onto_its_cat_token() {
         cast_only_before_blockers: false,
         cast_only_during_opponents_turn: false,
         cast_only_before_combat_damage: false,
+        cast_only_during_declare_blockers: false,
         approximates: None,
         oracle: None,
         sets: empty_slice(),
@@ -67436,6 +67559,7 @@ fn of_colors_land(name: &'static str, mask: u8) -> CardDef {
         cast_only_before_blockers: false,
         cast_only_during_opponents_turn: false,
         cast_only_before_combat_damage: false,
+        cast_only_during_declare_blockers: false,
         approximates: None,
         oracle: None,
         sets: empty_slice(),
@@ -67932,6 +68056,7 @@ static FIVE_MANA_VALUE_SORCERY: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -69562,6 +69687,7 @@ static SAPROLING_ANTHEM: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -69693,6 +69819,7 @@ static TAP_TWO_PERMANENTS: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -69786,6 +69913,7 @@ static COUNTER_EACH_UP_TO_TWO: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -70821,6 +70949,7 @@ static MASS_HEXPROOF_TO_MODIFIED: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -72709,6 +72838,7 @@ static TEST_STUDY_COUNTER_SOURCE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -74471,6 +74601,7 @@ fn songbirds_blessing_no_legal_host_sweeps_aura_to_graveyard() {
         cast_only_before_blockers: false,
         cast_only_during_opponents_turn: false,
         cast_only_before_combat_damage: false,
+        cast_only_during_declare_blockers: false,
         approximates: None,
         oracle: None,
         sets: empty_slice(),
@@ -75458,6 +75589,7 @@ static GRANT_HEXPROOF_ANY_TARGET: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -76087,6 +76219,7 @@ static ZERO_POWER_WITH_COUNTER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -80095,6 +80228,7 @@ static TEST_CLASS: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -81317,6 +81451,7 @@ static SCREAM_EXILE_RETURN_CREATURES: LazyLock<CardDef> = LazyLock::new(|| CardD
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -89051,6 +89186,7 @@ static MAY_DRAW_UPKEEP: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -90068,6 +90204,7 @@ static DRAW_ONE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -90141,6 +90278,7 @@ static DRAW_THREE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -90213,6 +90351,7 @@ static DREDGER_3: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -90286,6 +90425,7 @@ static DIES_FODDER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -93944,6 +94084,7 @@ static TEST_LAND_WITH_CHARGE_COUNTERS: LazyLock<CardDef> = LazyLock::new(|| Card
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -100831,6 +100972,7 @@ static RAMPAGING_YAO_GUAI_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cast_only_before_blockers: false,
     cast_only_during_opponents_turn: false,
     cast_only_before_combat_damage: false,
+    cast_only_during_declare_blockers: false,
     approximates: None,
     oracle: None,
     sets: empty_slice(),
@@ -112447,5 +112589,204 @@ fn lich_leaving_the_battlefield_loses_the_game() {
     assert!(
         g.has_lost(PlayerId(0)),
         "the Lich was the only thing keeping its controller in the game"
+    );
+}
+
+// ── False Orders: pull a blocker, unblock what it solely blocked, re-block (fidelity #78) ──
+
+/// CR 509.1h: "an attacking creature remains blocked even if all creatures blocking it are removed
+/// from combat." Blocked-ness used to be read off the live block list, so killing the only blocker
+/// after blocks were declared let the attacker through — this pins the sticky reading.
+#[test]
+fn an_attacker_stays_blocked_after_its_only_blocker_dies() {
+    let mut game = Game::new();
+    stock_libraries(&mut game);
+    let attacker = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
+    let blocker = game.spawn_on_battlefield(PlayerId(1), VANILLA.clone());
+    let bolt = game.spawn_in_hand(PlayerId(0), card("Lightning Bolt"));
+    let before = game.life(PlayerId(1));
+
+    attack_with(&mut game, vec![attacker]);
+    block_with(&mut game, vec![(blocker, attacker)]).unwrap();
+    fund_cast_resolve(&mut game, PlayerId(0), bolt, Some(Target::Object(blocker)));
+
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+    assert_eq!(
+        (game.life(PlayerId(1)), game.zone_of(blocker)),
+        (before, Zone::Graveyard),
+        "the attacker is still a blocked creature, so none of its damage reaches the player"
+    );
+}
+
+/// "Remove target creature defending player controls from combat. Creatures it was blocking that
+/// had become blocked by only that creature this combat become unblocked."
+#[test]
+fn false_orders_lets_a_solely_blocked_attacker_through() {
+    let mut game = Game::new();
+    stock_libraries(&mut game);
+    let attacker = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
+    let blocker = game.spawn_on_battlefield(PlayerId(1), VANILLA.clone());
+    let orders = game.spawn_in_hand(PlayerId(0), card("False Orders"));
+    let before = game.life(PlayerId(1));
+
+    attack_with(&mut game, vec![attacker]);
+    block_with(&mut game, vec![(blocker, attacker)]).unwrap();
+    fund_cast_resolve(
+        &mut game,
+        PlayerId(0),
+        orders,
+        Some(Target::Object(blocker)),
+    );
+    game.submit(Intent::ChooseCopyTarget {
+        player: PlayerId(0),
+        copy: None, // decline the "you may have it block"
+    })
+    .unwrap();
+
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+    assert_eq!(
+        (
+            game.life(PlayerId(1)),
+            game.zone_of(blocker),
+            game.marked_damage(blocker)
+        ),
+        (before - 2, Zone::Battlefield, 0),
+        "the attacker connected and the pulled blocker walked away untouched"
+    );
+}
+
+/// The "blocked by only that creature" qualifier: an attacker a second creature is also blocking
+/// stays blocked when one of the two walks away (CR 509.1h again). The 5 damage the attacker's
+/// controller had already divided onto the pulled blocker is simply lost — it is no longer a
+/// creature blocking this attacker when damage is assigned (CR 510.1a).
+#[test]
+fn false_orders_leaves_a_double_blocked_attacker_blocked() {
+    let mut game = Game::new();
+    stock_libraries(&mut game);
+    let attacker = game.spawn_on_battlefield(PlayerId(0), creature("Big", 5, 5, &[]));
+    let pulled = game.spawn_on_battlefield(PlayerId(1), VANILLA.clone());
+    let stays = game.spawn_on_battlefield(PlayerId(1), VANILLA.clone());
+    let orders = game.spawn_in_hand(PlayerId(0), card("False Orders"));
+    let before = game.life(PlayerId(1));
+
+    attack_with(&mut game, vec![attacker]);
+    block_with(&mut game, vec![(pulled, attacker), (stays, attacker)]).unwrap();
+    game.submit(Intent::AssignDamage {
+        player: PlayerId(0),
+        assignment: vec![(pulled, 5), (stays, 0)],
+    })
+    .unwrap();
+    fund_cast_resolve(&mut game, PlayerId(0), orders, Some(Target::Object(pulled)));
+    game.submit(Intent::ChooseCopyTarget {
+        player: PlayerId(0),
+        copy: None,
+    })
+    .unwrap();
+
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+    assert_eq!(
+        (game.life(PlayerId(1)), game.zone_of(stays)),
+        (before, Zone::Battlefield),
+        "the second blocker is still on it, so the attacker stays blocked and hits nothing"
+    );
+}
+
+/// "You may have it block an attacking creature of your choice." The whole point of the card: the
+/// attacker the defender chose to block gets through, and the blocker trades with the one it never
+/// chose.
+#[test]
+fn false_orders_re_aims_the_blocker_at_an_attacker_of_your_choice() {
+    let mut game = Game::new();
+    stock_libraries(&mut game);
+    let freed = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
+    let other = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
+    let blocker = game.spawn_on_battlefield(PlayerId(1), VANILLA.clone());
+    let orders = game.spawn_in_hand(PlayerId(0), card("False Orders"));
+    let before = game.life(PlayerId(1));
+
+    attack_with(&mut game, vec![freed, other]);
+    block_with(&mut game, vec![(blocker, freed)]).unwrap();
+    fund_cast_resolve(
+        &mut game,
+        PlayerId(0),
+        orders,
+        Some(Target::Object(blocker)),
+    );
+    game.submit(Intent::ChooseCopyTarget {
+        player: PlayerId(0),
+        copy: Some(other),
+    })
+    .unwrap();
+
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+    assert_eq!(
+        (
+            game.life(PlayerId(1)),
+            game.zone_of(blocker),
+            game.zone_of(other)
+        ),
+        (before - 2, Zone::Graveyard, Zone::Graveyard),
+        "the abandoned attacker connected; the re-aimed block traded with the other one"
+    );
+}
+
+/// The re-block still has to be a block that creature could make: an attacker aimed at somebody
+/// else's seat is not "an attacking creature of your choice" for this blocker (CR 509.1a).
+#[test]
+fn false_orders_cannot_re_aim_a_blocker_at_an_attacker_it_could_not_block() {
+    let mut game = Game::new();
+    stock_libraries(&mut game);
+    let ground = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
+    let flyer = game.spawn_on_battlefield(PlayerId(0), FLYER.clone());
+    let blocker = game.spawn_on_battlefield(PlayerId(1), VANILLA.clone());
+    let orders = game.spawn_in_hand(PlayerId(0), card("False Orders"));
+
+    attack_with(&mut game, vec![ground, flyer]);
+    block_with(&mut game, vec![(blocker, ground)]).unwrap();
+    fund_cast_resolve(
+        &mut game,
+        PlayerId(0),
+        orders,
+        Some(Target::Object(blocker)),
+    );
+    assert!(
+        game.submit(Intent::ChooseCopyTarget {
+            player: PlayerId(0),
+            copy: Some(flyer),
+        })
+        .is_err(),
+        "a groundling still can't be pointed at a flyer"
+    );
+}
+
+/// "Cast this spell only during the declare blockers step." (CR 601.3e)
+#[test]
+fn false_orders_is_locked_out_of_every_step_but_declare_blockers() {
+    let mut game = Game::new();
+    stock_libraries(&mut game);
+    let blocker = game.spawn_on_battlefield(PlayerId(1), VANILLA.clone());
+    let orders = game.spawn_in_hand(PlayerId(0), card("False Orders"));
+    game.fund_mana(PlayerId(0));
+
+    assert!(
+        game.submit(Intent::Cast {
+            player: PlayerId(0),
+            object: orders,
+            target: Some(Target::Object(blocker)),
+            x: 0,
+            modes: vec![],
+            discard_cost: vec![],
+            graveyard_exile: vec![],
+            sacrifice_cost: vec![],
+            kicked: false,
+            bought_back: false,
+            evoked: false,
+            strive_count: 0,
+            replicate_count: 0,
+            multikicker_count: 0,
+            alternative_cost: false,
+        })
+        .is_err(),
+        "a main-phase False Orders has no blocks to reshuffle"
     );
 }

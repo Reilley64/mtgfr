@@ -580,6 +580,7 @@ export type PendingChoiceView =
   | { kind: "choose_color"; player: number; source: U32 }
   | {
       items: Array<ChoiceItem>;
+      choose_block_target?: boolean;
       kind: "choose_copy_target";
       player: number;
       put_counter_on_creature?: boolean;

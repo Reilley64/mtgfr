@@ -610,7 +610,7 @@ impl Effect {
             | Effect::Token(TokenEffect::CreateCopy { target, .. })
             | Effect::Control(ControlEffect::TapTarget { target, .. })
             | Effect::Control(ControlEffect::UntapTarget { target, .. })
-            | Effect::Control(ControlEffect::RemoveFromCombat { target })
+            | Effect::Control(ControlEffect::RemoveFromCombat { target, .. })
             | Effect::Control(ControlEffect::GainControlUntilEndOfTurn { target })
             | Effect::Control(ControlEffect::ExchangeAllCreaturesUntilEndOfTurn { target })
             | Effect::Control(ControlEffect::GainControl { target })
@@ -904,6 +904,10 @@ impl Effect {
             | Effect::Choice(ChoiceEffect::MayDiscard { .. })
             | Effect::Choice(ChoiceEffect::MayExileDiscardedNonlandMayPlay { .. })
             | Effect::Choice(ChoiceEffect::MayPutCounterOnCreature)
+            // False Orders' second sentence shares the spell's target — the creature the preceding
+            // `RemoveFromCombat` step pulled out of combat — the same way `MayPutCounterOnCreature`
+            // above does: the `Sequence` arm supplies it, this step declares none of its own.
+            | Effect::Choice(ChoiceEffect::MayBlockAttackerOfYourChoice)
             | Effect::Choice(ChoiceEffect::MayDrawUnlessPays { .. })
             | Effect::Counters(CountersEffect::PutCountersEach { .. })
             | Effect::Counters(CountersEffect::PutLoyaltyCounterEach { .. })

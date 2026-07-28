@@ -1115,6 +1115,9 @@ function cardPickConfig(pending: PendingChoiceView): {
       if (pending.put_counter_on_creature) {
         return { title: "Choose a creature to get a +1/+1 counter", submitLabel: "Put counter" };
       }
+      if (pending.choose_block_target) {
+        return { title: "Choose an attacking creature to block", submitLabel: "Block", declineLabel };
+      }
       return { title: "Choose a copy target", submitLabel: "Copy" };
     case "choose_attach_host":
       return { title: "Choose what to attach to", submitLabel: "Attach", declineLabel };

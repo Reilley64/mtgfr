@@ -109,6 +109,7 @@
   "effect.choice_join_forces_pay_mana",
   "effect.choice_triggering_player_may_attach_this_aura_to_chosen",
   "effect.choice_triggering_player_may_pay_any_amount_to_prevent",
+  "effect.choice_may_block_attacker_of_your_choice",
   "effect.choice_may_discard",
   "effect.choice_may_reveal_land_from_hand",
   "effect.choice_may_draw_unless_pays",

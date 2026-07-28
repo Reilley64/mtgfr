@@ -1260,9 +1260,12 @@ impl Game {
                 p.marked_damage = 0;
                 p.deathtouched = false;
                 // Remove the regenerated creature from combat (CR 701.15b).
-                self.remove_from_combat(object);
+                self.remove_from_combat(object, false);
             }
-            Event::RemovedFromCombat { object } => self.remove_from_combat(object),
+            Event::RemovedFromCombat {
+                object,
+                release_solely_blocked,
+            } => self.remove_from_combat(object, release_solely_blocked),
             Event::RegenerationShieldsExpired { object } => {
                 self.permanent_mut(object).regeneration_shields = 0;
             }
@@ -1578,7 +1581,7 @@ impl Game {
                     .control_overrides
                     .push((object, controller, source_name, ts));
                 // CR 506.4c: any time a permanent's controller changes, it's removed from combat.
-                self.remove_from_combat(object);
+                self.remove_from_combat(object, false);
             }
             Event::ControlEndedUntilEndOfTurn { object } => self
                 .play_permissions
@@ -1595,7 +1598,7 @@ impl Game {
                     .push((object, controller, ts));
                 // CR 506.4c: any time a permanent's controller changes, it's removed from combat
                 // (Goblin Cadets' reminder text — "(This removes this creature from combat.)").
-                self.remove_from_combat(object);
+                self.remove_from_combat(object, false);
             }
             Event::ConditionedControlGained {
                 object,
@@ -1607,7 +1610,7 @@ impl Game {
                     .conditioned_control_overrides
                     .push((object, controller, condition, ts));
                 // CR 506.4c: any time a permanent's controller changes, it's removed from combat.
-                self.remove_from_combat(object);
+                self.remove_from_combat(object, false);
             }
             Event::ConditionedControlEnded { object } => self
                 .play_permissions
@@ -1828,7 +1831,8 @@ impl Game {
             // site.
             Event::Discarded { .. } => {}
             Event::BlockerDeclared { blocker, attacker } => {
-                self.combat.blocks.push((blocker, attacker))
+                self.combat.blocks.push((blocker, attacker));
+                self.combat.blocked_ever.push((blocker, attacker));
             }
             Event::CombatDamageDivided {
                 attacker,
@@ -2867,11 +2871,20 @@ impl Game {
     /// ([`Event::ControlGained`]/[`Event::ControlGainedUntilEndOfTurn`]/
     /// [`Event::ConditionedControlGained`] — CR 506.4c, Goblin Cadets' "(This removes this
     /// creature from combat.)").
-    fn remove_from_combat(&mut self, object: ObjectId) {
+    fn remove_from_combat(&mut self, object: ObjectId, release_solely_blocked: bool) {
         self.combat.attackers.retain(|&a| a != object);
         self.combat.attack_targets.retain(|&(a, _)| a != object);
         self.combat
             .blocks
             .retain(|&(b, a)| b != object && a != object);
+        // An attacker that left combat isn't a blocked creature any more either.
+        self.combat.blocked_ever.retain(|&(_, a)| a != object);
+        // CR 509.1h holds every attacker this creature blocked blocked even now that it's gone —
+        // unless the effect is False Orders, whose second sentence is the printed exception.
+        // Dropping only this blocker's pairs is exactly "blocked by only that creature": an
+        // attacker a second creature also blocked still has that pair on the list.
+        if release_solely_blocked {
+            self.combat.blocked_ever.retain(|&(b, _)| b != object);
+        }
     }
 }

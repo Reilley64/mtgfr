@@ -136,6 +136,13 @@ pub(crate) enum ChoiceRequest {
         player: crate::PlayerId,
         source: crate::ObjectId,
     },
+    /// [`Effect::Choice(ChoiceEffect::MayBlockAttackerOfYourChoice)`] — no attacker `blocker`
+    /// could legally block skips.
+    ChooseBlockTarget {
+        player: crate::PlayerId,
+        source: crate::ObjectId,
+        blocker: crate::ObjectId,
+    },
     /// [`Effect::Choice(ChoiceEffect::Discard)`] — empty (or zero-count) hand skips.
     Discard {
         player: crate::PlayerId,
@@ -452,6 +459,11 @@ pub(super) fn choice_from_request(game: &Game, request: ChoiceRequest) -> Option
         ChoiceRequest::MayPutCounterOnCreature { player, source } => {
             optional::may_put_counter_on_creature(game, player, source)
         }
+        ChoiceRequest::ChooseBlockTarget {
+            player,
+            source,
+            blocker,
+        } => optional::choose_block_target(game, player, source, blocker),
         ChoiceRequest::Discard {
             player,
             count,

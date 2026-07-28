@@ -930,6 +930,7 @@ impl Game {
             | Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
             | Effect::Choice(ChoiceEffect::MayDrawUpToThenOpponentMayRepeat { .. })
             | Effect::Choice(ChoiceEffect::MayPutCounterOnCreature)
+            | Effect::Choice(ChoiceEffect::MayBlockAttackerOfYourChoice)
             | Effect::Choice(ChoiceEffect::PayOrElse { .. })
             | Effect::Choice(ChoiceEffect::TriggeringPlayerMayPay { .. })
             | Effect::Dig(DigEffect::MayShuffleTargetPlayersLibrary { .. }) => {

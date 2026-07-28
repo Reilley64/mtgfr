@@ -271,6 +271,12 @@ pub(crate) fn answer(game: &mut Game, intent: Intent) -> Result<Vec<Event>, Reje
             }
             _ => Err(Reject::IllegalChoice),
         },
+        PendingChoice::ChooseBlockTarget { .. } => match intent {
+            Intent::ChooseCopyTarget { player, copy } => {
+                game.answer_choose_block_target(player, copy)
+            }
+            _ => Err(Reject::IllegalChoice),
+        },
         PendingChoice::DiscardToHandSize { .. } | PendingChoice::DiscardCards { .. } => {
             match intent {
                 Intent::Discard { player, cards } => game.answer_discard(player, cards),
@@ -527,6 +533,7 @@ pub(crate) fn forced(game: &Game) -> Option<Intent> {
         | PendingChoice::MayExileDiscardedToPlay { .. }
         | PendingChoice::MayDiscard { .. }
         | PendingChoice::MayPutCounterOnCreature { .. }
+        | PendingChoice::ChooseBlockTarget { .. }
         | PendingChoice::PutFromHandOnTop { .. }
         | PendingChoice::PutLandFromHand { .. }
         | PendingChoice::PutCreatureFromHand { .. }

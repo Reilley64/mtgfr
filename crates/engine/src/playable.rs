@@ -364,6 +364,12 @@ impl Game {
         if def.cast_only_before_combat_damage && self.step >= Step::FirstStrikeCombatDamage {
             return false;
         }
+        // "Cast this spell only during the declare blockers step" (CR 601.3e — False Orders): one
+        // step, not a window ending at one. Unlike `cast_only_before_blockers` above it stays open
+        // after the declaration is made — rearranging a live declaration is the point.
+        if def.cast_only_during_declare_blockers && self.step != Step::DeclareBlockers {
+            return false;
+        }
         // "Players can't cast spells during combat" (CR 601.2i-adjacent — Basandra, Battle
         // Seraph): global and absolute — reaches every player, not just this ability's own
         // controller, and overrides even an instant-speed / flash permission below.
@@ -785,6 +791,7 @@ mod tests {
             cast_only_before_blockers: false,
             cast_only_during_opponents_turn: false,
             cast_only_before_combat_damage: false,
+            cast_only_during_declare_blockers: false,
             approximates: None,
             oracle: None,
             sets: empty_slice(),

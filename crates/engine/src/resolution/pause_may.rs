@@ -61,6 +61,22 @@ impl Game {
                     source,
                 },
             ),
+            // False Orders' "you may have it block an attacking creature of your choice": the
+            // creature the spell just pulled out of combat is this ability's target. A target that
+            // has since left the battlefield (CR 608.2b) leaves nothing to re-aim.
+            Effect::Choice(ChoiceEffect::MayBlockAttackerOfYourChoice) => {
+                let Some(blocker) = target.and_then(Target::object_id) else {
+                    return;
+                };
+                pending::raise(
+                    self,
+                    pending::ChoiceRequest::ChooseBlockTarget {
+                        player: controller,
+                        source,
+                        blocker,
+                    },
+                );
+            }
             // Conspiracy Theorist's batch nonland-discard payoff: "you may exile one of them from
             // your graveyard." Pauses on a MayExileDiscardedToPlay choice over the discarded
             // nonland cards still in the graveyard; declining (or none still there) runs nothing.

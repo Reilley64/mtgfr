@@ -192,6 +192,35 @@ pub(super) fn may_put_counter_on_creature(
     })
 }
 
+/// False Orders' "you may have it block an attacking creature of your choice": every declared
+/// attacker `blocker` could legally have been declared as blocking (CR 509.1a — its own
+/// controller's legality, not the spell controller's), so the re-aim can't launder a block that
+/// was never available. No such attacker skips the pause.
+pub(super) fn choose_block_target(
+    game: &Game,
+    player: PlayerId,
+    source: ObjectId,
+    blocker: ObjectId,
+) -> Option<PendingChoice> {
+    let defender = game
+        .as_permanent(blocker)
+        .map(|_| game.controller_of(blocker))?;
+    let options: Vec<ObjectId> = game
+        .attackers()
+        .into_iter()
+        .filter(|&attacker| game.can_block(defender, blocker, attacker))
+        .collect();
+    if options.is_empty() {
+        return None;
+    }
+    Some(PendingChoice::ChooseBlockTarget {
+        player,
+        source,
+        blocker,
+        options,
+    })
+}
+
 pub(super) fn discard(
     game: &Game,
     player: PlayerId,

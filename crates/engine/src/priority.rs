@@ -2166,6 +2166,7 @@ mod tests {
             cast_only_before_blockers: false,
             cast_only_during_opponents_turn: false,
             cast_only_before_combat_damage: false,
+            cast_only_during_declare_blockers: false,
             approximates: None,
             oracle: None,
             sets: empty_slice(),

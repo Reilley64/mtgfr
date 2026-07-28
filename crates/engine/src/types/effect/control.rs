@@ -54,6 +54,14 @@ pub enum ControlEffect {
 
     RemoveFromCombat {
         target: TargetSpec,
+        /// "Creatures it was blocking that had become blocked by only that creature this combat
+        /// become unblocked" (False Orders) — the one printed exception to CR 509.1h's sticky
+        /// blocked-ness. Drops this blocker's pairs from `CombatState::blocked_ever`, so an
+        /// attacker it was the only blocker of goes back to unblocked and one that a second
+        /// creature is also blocking does not. `false` (Spurnmage Advocate) leaves 509.1h alone:
+        /// the creature stops blocking, and everything it blocked stays blocked.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        release_solely_blocked: bool,
     },
 
     RevertAllCreaturesToOwners,

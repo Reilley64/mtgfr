@@ -235,7 +235,7 @@ pub(crate) fn project_event(
         },
         Event::Tapped { object } => VisibleEvent::Tapped { object },
         Event::Untapped { object } => VisibleEvent::Untapped { object },
-        Event::RemovedFromCombat { object } => VisibleEvent::RemovedFromCombat { object },
+        Event::RemovedFromCombat { object, .. } => VisibleEvent::RemovedFromCombat { object },
         Event::RegenerationShieldCreated { object } => {
             VisibleEvent::RegenerationShieldCreated { object }
         }

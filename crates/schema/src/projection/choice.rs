@@ -551,6 +551,22 @@ impl<'a> ChoiceCtx<'a> {
                 source,
                 items: self.label_items(options),
                 put_counter_on_creature: true,
+                choose_block_target: false,
+            },
+            // False Orders' "you may have it block an attacking creature of your choice" is the
+            // same "pick one public object or decline" answer, so it rides `ChooseCopyTarget` too,
+            // with its own discriminator for the wording.
+            engine::PendingChoice::ChooseBlockTarget {
+                player,
+                source,
+                options,
+                ..
+            } => PendingChoiceView::ChooseCopyTarget {
+                player: player.0,
+                source,
+                items: self.label_items(options),
+                put_counter_on_creature: false,
+                choose_block_target: true,
             },
             engine::PendingChoice::ChooseOwnSacrifices {
                 player,
@@ -906,6 +922,7 @@ impl<'a> ChoiceCtx<'a> {
                 source,
                 items: self.label_items(candidates),
                 put_counter_on_creature: false,
+                choose_block_target: false,
             },
         }
     }

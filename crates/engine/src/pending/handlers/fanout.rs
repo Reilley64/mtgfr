@@ -474,6 +474,39 @@ impl Game {
         Ok(events)
     }
 
+    /// Answer a [`PendingChoice::ChooseBlockTarget`]: `choice` is `None` to decline the "you may",
+    /// or one of the choice's `options` (a declared attacker) for the pulled creature to block
+    /// (False Orders, CR 601.2c). The re-aimed block is a real block declaration — the same
+    /// [`Event::BlockerDeclared`] the declare-blockers step emits — so it fires the "blocks" /
+    /// "becomes blocked" watches and makes the attacker blocked for the rest of combat.
+    pub(crate) fn answer_choose_block_target(
+        &mut self,
+        _player: PlayerId,
+        choice: Option<ObjectId>,
+    ) -> Result<Vec<Event>, Reject> {
+        let Some(PendingChoice::ChooseBlockTarget {
+            blocker, options, ..
+        }) = self.pending_choice.clone()
+        else {
+            return Err(Reject::IllegalChoice);
+        };
+        if choice.is_some_and(|id| !options.contains(&id)) {
+            return Err(Reject::IllegalChoice);
+        }
+        self.finish_answer();
+
+        let mut events = Vec::new();
+        let Some(attacker) = choice else {
+            return Ok(events);
+        };
+        self.push_apply(&mut events, Event::BlockerDeclared { blocker, attacker });
+        let blocks = [(blocker, attacker)];
+        self.queue_blocks_or_becomes_blocked_triggers(&blocks);
+        self.queue_blocks_or_becomes_blocked_by_triggers(&blocks);
+        self.queue_attacks_or_blocks_block_triggers(&blocks);
+        Ok(events)
+    }
+
     /// Answer a [`PendingChoice::MayReturnFromGraveyard`]: `choice` is empty to decline, or names
     /// the one graveyard card (one of the choice's `options`) returned to `player`'s hand
     /// ([`Effect::Choice(ChoiceEffect::MayReturnFromGraveyard)`] — Deadly Brew's rider).

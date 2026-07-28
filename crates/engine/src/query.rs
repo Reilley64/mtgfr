@@ -1654,7 +1654,7 @@ impl Game {
         }
         // Nothing is blocking *it* (Forcefield's "an unblocked creature of your choice") — the
         // mirror image of the line above, read off the same declared-blocks list.
-        if filter.unblocked && self.combat.blocks.iter().any(|&(_, a)| a == id) {
+        if filter.unblocked && self.is_blocked(id) {
             return false;
         }
         // Nonlegendary exclusion (CR 205.4a — Muddle, the Ever-Changing's "nonlegendary
@@ -1780,6 +1780,7 @@ mod permanent_filter_tests {
             cast_only_before_blockers: false,
             cast_only_during_opponents_turn: false,
             cast_only_before_combat_damage: false,
+            cast_only_during_declare_blockers: false,
             approximates: None,
             oracle: None,
             sets: empty_slice(),

@@ -192,6 +192,40 @@ describe("fromProtoWire", () => {
     });
   });
 
+  it("decodes choose_copy_target block-re-aim wording from proto choice payloads", () => {
+    const frame = fromProtoWire<{
+      state: {
+        pending_choice: {
+          kind: string;
+          choose_block_target?: boolean;
+          items: Array<{ id: number; label: string }>;
+        };
+      };
+    }>({
+      state: {
+        pendingChoice: {
+          choice: {
+            case: "chooseCopyTarget",
+            value: {
+              player: 0,
+              source: 7,
+              chooseBlockTarget: true,
+              items: [{ id: 11, label: "Grizzly Bears" }],
+            },
+          },
+        },
+      },
+    });
+
+    expect(frame.state.pending_choice).toEqual({
+      kind: "choose_copy_target",
+      player: 0,
+      source: 7,
+      choose_block_target: true,
+      items: [{ id: 11, label: "Grizzly Bears" }],
+    });
+  });
+
   it("decodes may_exile_discarded_to_play from proto choice payloads", () => {
     const frame = fromProtoWire<{
       state: {

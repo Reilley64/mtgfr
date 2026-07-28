@@ -215,7 +215,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [x] **Drain Power** {U}{U} · Sorcery — increment 23
 - [x] **Earthbind** {R} · Enchantment — Aura — increment 44
 - [x] **Evil Presence** {B} · Enchantment — Aura — increment 8a
-- [ ] **False Orders** {R} · Instant — increment 78
+- [x] **False Orders** {R} · Instant — increment 78
 - [x] **Farmstead** {W}{W}{W} · Enchantment — Aura — increment 36
 - [x] **Fastbond** {G} · Enchantment — increment 29
 - [x] **Feedback** {2}{U} · Enchantment — Aura — increment 61

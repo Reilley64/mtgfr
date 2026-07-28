@@ -581,7 +581,7 @@ that only passed because nothing enforced CR 509.1b. It now casts Blaze of Glory
 earn the plural legitimately, which is the same card doing the lifting in the engine and in the
 test.
 
-### 78. `remove-from-combat-and-re-block` — 1 card, XL
+### 78. `remove-from-combat-and-re-block` — 1 card, XL — **done**
 Depends on: #11 (done).
 Split out of #11. False Orders: "Cast this spell only during the declare blockers step. Remove
 target creature defending player controls from combat. Creatures it was blocking that had become
@@ -598,6 +598,32 @@ few bytes; the choice is a `ChooseBlockTarget { player, blocker, candidates }` r
 the same `declare_blockers` restriction pass so the re-block is still legal. The `PendingChoice`
 is what makes this XL — schema, proto, server, and client all spell every variant.
 *Cards:* false_orders.
+
+*Landed:* the history question was a real pre-existing bug, not just False Orders' price. The
+engine read blocked-ness off the live block list, so **killing an attacker's only blocker after
+blocks were declared let its damage through to the player** — CR 509.1h says it stays blocked.
+`CombatState::blocked_ever` (appended on every `Event::BlockerDeclared`, never pruned by ordinary
+removal, cleared with the rest of combat) plus `Game::is_blocked` fixes that at the root, and both
+the combat-damage branch and `filter.unblocked` (Forcefield) now read it.
+`an_attacker_stays_blocked_after_its_only_blocker_dies` is the regression test. A companion leak
+went with it: a stored multi-block damage division could still name a blocker that had left
+combat, so the division is now filtered to the creatures still blocking (CR 510.1a) — a removed
+blocker's share is simply not assigned rather than sliding onto someone else.
+
+False Orders' own three clauses cost less than the sketch feared. The cast window is a real
+`cast_only_during_declare_blockers` flag rather than an approximation with the existing pair —
+`cast_only_during_combat` + `cast_only_before_blockers` would wrongly allow a *pre*-blockers cast,
+and this card's whole job is to rearrange a declaration that already happened. The un-blocking is
+`release_solely_blocked` on `remove_from_combat`, which drops just this blocker's pairs from
+`blocked_ever`: that is exactly "blocked by only that creature", since an attacker a second
+creature also blocked still has that second pair on the list. And the re-aim needed no new wire
+family — `PendingChoice::ChooseBlockTarget` reuses `Intent::ChooseCopyTarget` and projects onto
+the `ChooseCopyTarget` view behind a `choose_block_target` discriminator, the same trick
+`MayPutCounterOnCreature` already plays, so the XL price was one additive proto bool. The
+candidate list is filtered through `can_block` judged against the blocker's *own* controller, so
+the re-aim can't launder a block that was never legal (a ground creature still can't be pointed
+at a flyer). No new `FilterController` was needed either: `DefendingPlayer` already falls back to
+`sole_defending_player()` for non-creature sources — Blaze of Glory's precedent.
 
 ### 12. `copy-a-permanent` — 3 cards, L — **done**
 Depends on: nothing.

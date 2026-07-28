@@ -871,6 +871,27 @@ test("choose_copy_target swaps to counter wording for the MayPutCounterOnCreatur
   );
 });
 
+test("choose_copy_target swaps to block wording for False Orders' re-aim", () => {
+  const s = state({
+    pending_choice: {
+      kind: "choose_copy_target",
+      player: 0,
+      source: 1,
+      choose_block_target: true,
+      items: [{ id: 9, label: "Grizzly Bears" }],
+    },
+  });
+
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(s)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("pending-card-pick-aim")).toExist(),
+    Scene.expect(Scene.testId("pick-title")).toHaveText("Choose an attacking creature to block"),
+    Scene.expect(Scene.testId("prompt-submit")).toHaveText("Block"),
+  );
+});
+
 test("choose_copy_target keeps copy wording for real copy prompts", () => {
   const s = state({
     pending_choice: {

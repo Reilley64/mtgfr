@@ -187,6 +187,9 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     `That permanent's controller may attach this Aura to a ${humanize(param(params, "filter"))} of their choice`,
   "effect.choice_triggering_player_may_pay_any_amount_to_prevent": (params) =>
     `That player may pay any amount of mana; prevent that much of the next ${param(params, "amount")} damage dealt to them`,
+  "effect.choice_may_block_attacker_of_your_choice": literal(
+    "You may have it block an attacking creature of your choice",
+  ),
   "effect.choice_may_discard": literal("You may discard a card"),
   "effect.choice_may_reveal_land_from_hand": literal("You may reveal a matching land card from your hand"),
   "effect.choice_may_draw_unless_pays": (params) =>
