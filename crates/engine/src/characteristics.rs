@@ -923,6 +923,23 @@ impl Game {
                 kind: ContinuousEffectKind::BasePtSet { power, toughness },
             });
         }
+        // "Until this creature leaves the battlefield" (Gaea's Liege): the duration is a live
+        // lookup, not a scheduled cleanup — the moment `source` is no longer a permanent this
+        // entry stops being produced and the land's printed line is back.
+        if let Some((subtypes, source, timestamp)) = p.subtypes_set_while_source_remains
+            && self.as_permanent(source).is_some()
+        {
+            effects.push(ContinuousEffect {
+                source,
+                timestamp,
+                kind: ContinuousEffectKind::SetTypes {
+                    add_types: TypeSet::NONE,
+                    set_types: false,
+                    set_subtypes: Some(subtypes),
+                    add_subtypes: &[],
+                },
+            });
+        }
         if p.added_types != TypeSet::NONE || !p.added_subtypes.is_empty() {
             effects.push(ContinuousEffect {
                 source: object,
@@ -1683,11 +1700,23 @@ impl Game {
     fn defined_base_pt(&self, object: ObjectId) -> Option<(i32, i32)> {
         let controller = self.controller_of(object);
         self.def_of(object).abilities.iter().find_map(|ability| {
-            let Effect::Static(StaticEffect::BasePowerToughnessFromAmount { power, toughness }) =
-                &ability.effect
+            let Effect::Static(StaticEffect::BasePowerToughnessFromAmount {
+                power,
+                toughness,
+                when,
+            }) = &ability.effect
             else {
                 return None;
             };
+            // A creature printing two of these (Gaea's Liege) keeps only the one whose combat
+            // state holds right now; the `find_map` then stops at it.
+            let attacking = self.combat.attackers.contains(&object);
+            match when {
+                DefiningPtWhen::Always => {}
+                DefiningPtWhen::Attacking if !attacking => return None,
+                DefiningPtWhen::NotAttacking if attacking => return None,
+                _ => {}
+            }
             Some((
                 self.resolve_amount(*power, controller, object, None, 0),
                 self.resolve_amount(*toughness, controller, object, None, 0),

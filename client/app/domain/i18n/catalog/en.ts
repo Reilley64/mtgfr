@@ -36,6 +36,12 @@ function edictWho(scope: MessageValue): string {
   return "Each player";
 }
 
+function definingPtLead(when: MessageValue): string {
+  if (when === "attacking") return "As long as this creature is attacking, its";
+  if (when === "not_attacking") return "As long as this creature isn't attacking, its";
+  return "This creature's";
+}
+
 function searchDest(dest: MessageValue): string {
   if (dest === "battlefield") return "onto the battlefield";
   if (dest === "library_top") return "on top of your library";
@@ -475,6 +481,8 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     `This creature has base power and toughness each equal to ${param(params, "amount")}`,
   "effect.pump_strip_keywords_from_opponents_creatures": (params) =>
     `Creatures your opponents control lose ${humanize(param(params, "keywords"))} until end of turn and can't have ${humanize(param(params, "keywords"))} this turn`,
+  "effect.pump_target_becomes_subtypes_while_source_remains": (params) =>
+    `Target land becomes a ${humanize(param(params, "set_subtypes"))} until this permanent leaves the battlefield`,
   "effect.pump_target_becomes_treasure": literal(
     'Target creature becomes a Treasure artifact with "{T}, Sacrifice this artifact: Add one mana of any color" and loses all other card types and abilities',
   ),
@@ -499,7 +507,7 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.static_attack_tax": (params) =>
     `Creatures can't attack you unless their controller pays {${param(params, "amount")}} for each creature they control that's attacking you`,
   "effect.static_base_power_toughness_from_amount": (params) =>
-    `This creature's power and toughness are each equal to ${param(params, "power")}`,
+    `${definingPtLead(param(params, "when"))} power and toughness are each equal to ${param(params, "power")}`,
   "effect.static_cant_attack_if_cast_this_turn": literal(
     "Each opponent who cast a spell this turn can't attack with creatures",
   ),

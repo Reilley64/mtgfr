@@ -225,7 +225,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Forcefield** {3} · Artifact — increment 4
 - [x] **Fork** {R}{R} · Instant — increment 13
 - [x] **Fungusaur** {3}{G} · Creature — Fungus Dinosaur — increment 63
-- [ ] **Gaea's Liege** {3}{G}{G}{G} · Creature — Avatar — increment 74, 8e
+- [x] **Gaea's Liege** {3}{G}{G}{G} · Creature — Avatar — increment 74, 8e
 - [ ] **Gauntlet of Might** {4} · Artifact — increment 19
 - [x] **Glasses of Urza** {1} · Artifact — increment 31
 - [ ] **Gloom** {2}{B} · Enchantment — increment 67

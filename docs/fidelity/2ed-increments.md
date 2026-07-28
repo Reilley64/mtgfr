@@ -390,13 +390,34 @@ with **this** artifact") is worth skipping while one Tomb per game is the realis
 as an `approximates` rather than tracking placement provenance.
 *Cards:* cyclopean_tomb.
 
-### 8e. `land-type-change-until-end-of-turn` — 1 card, M
+### 8e. `land-type-change-until-its-source-leaves` — 1 card, M — **done**
 Depends on: 8a.
 Gaea's Liege — a *temporary* type change from an activated ability ("{T}: Target land becomes a
 Forest until end of turn"), so it needs the runtime `ContinuousEffectKind::SetTypes` path with a
 cleanup expiry rather than a static read off an attachment, plus the timing restriction ("only
 during your turn, before attackers are declared") and a defining power/toughness counting Forests.
-*Cards:* gaea_s_liege.
+*Cards:* gaeas_liege.
+
+*Landed:* the sketch had the card wrong twice. The oracle duration is "until **this creature leaves
+the battlefield**", not until end of turn, and there is no timing restriction at all — `{T}` and
+nothing else. Both corrections came from `tooling/scaffold_card_frame.py`, which reads Scryfall.
+
+That real duration is cheaper than the sketched one, because it needs no expiry. The target
+permanent stores `subtypes_set_while_source_remains: Option<(&[&str], ObjectId, u64)>` and
+`runtime_continuous_effects` emits the `ContinuousEffectKind::SetTypes` entry only while
+`self.as_permanent(source).is_some()`. Nothing schedules a cleanup and nothing clears the field —
+when the Liege dies the entry simply stops being produced and the land is its printed self again.
+A Liege that returns is a new `ObjectId` and correctly does not revive the old change (CR 400.7).
+
+`PumpEffect::TargetBecomesSubtypesWhileSourceRemains` sets `set_subtypes`, replacing the whole
+land-type line per CR 305.7 — so a converted Mountain taps for `{G}` and not `{R}`, which the test
+asserts as a mana delta.
+
+ponytail: `Event::SubtypesSetWhileSourceRemains` projects onto the existing
+`VisibleEvent::AddedSubtypes { object }` rather than minting a wire event, a proto message and a
+codegen round-trip. Both mean "re-read this object's subtype line", which is all the client does
+with either, and the sustaining source is already an ordinary visible permanent. Give it its own
+`VisibleEvent` if the log ever needs to name the source.
 
 ### 9. `color-filters-on-spells` — 4 cards, S — **done**
 Depends on: nothing.
@@ -1710,7 +1731,7 @@ until a card needs the *immediacy*: the two ships only differ from their approxi
 of one turn, and no 2ed card punishes that window.
 *Cards:* pirate_ship, sea_serpent.
 
-### 74. `defining-count-that-switches-on-attacking` — 1 card, M
+### 74. `defining-count-that-switches-on-attacking` — 1 card, M — **done**
 Depends on: #2 (done).
 Split out of #2. Gaea's Liege: "As long as Gaea's Liege isn't attacking, its power and toughness
 are each equal to the number of Forests you control. As long as Gaea's Liege is attacking, its
@@ -1725,8 +1746,25 @@ opponents at a Commander table the defending player is a specific one, read from
 than bolting a ternary onto `Amount`, and add `FilterController::DefendingPlayer` resolved against
 the source's declared defender. Note the card is also blocked on #8 for its second ability
 ("{T}: Target land becomes a Forest until this creature leaves the battlefield"), which is a
-land-subtype change with an unusual duration.
-*Cards:* gaea_s_liege.
+land-subtype change with an unusual duration. (That blocker is resolved — see 8e.)
+*Cards:* gaeas_liege.
+
+*Landed:* not a `Condition` and not a second arm. `BasePowerToughnessFromAmount` gained a
+`when: DefiningPtWhen` (`Always` by default, `Attacking`, `NotAttacking`) that `defined_base_pt`
+checks against `combat.attackers` before its existing `find_map` accepts the ability. So the card is
+authored as two `[[abilities]]` mirroring its two printed sentences, exactly one of which answers at
+any moment — no ternary `Amount`, and every other defining creature in the pool is untouched by the
+`#[serde(default)]`.
+
+`FilterController::DefendingPlayer` is the sketched one, resolved in `permanent_matches` through
+`defender_of(source)` then `defender_controller`. It reads the filter's *own source*, so it matches
+nothing while that source isn't attacking — the right answer, since every card printing the clause
+prints a second arm for the other case, and `Opponent` would have reached three boards at a
+four-player table when the card names one.
+
+The cache bit is worth remembering: a land changing type is board-wide news. Invalidating only the
+changed land left the Liege's own cached toughness stale (`left: (2, 1)`), because its P/T reads a
+count of Forests. `Event::SubtypesSetWhileSourceRemains` calls `invalidate_all_battlefield`.
 
 ### 75. `half-of-a-count-amounts` — 1 card, S — **done**
 Depends on: nothing.

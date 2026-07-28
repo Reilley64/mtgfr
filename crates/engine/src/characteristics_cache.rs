@@ -112,6 +112,12 @@ impl Game {
                 }
                 // A Backup grant (CR 702.166) adds the source's keywords to the target — drop its
                 // cached keyword set.
+                // A land turning into a Forest (Gaea's Liege) is not just that land's business —
+                // every "equal to the number of Forests you control" on the board reads the new
+                // count, the Liege's own P/T first among them.
+                Event::SubtypesSetWhileSourceRemains { .. } => {
+                    cache.invalidate_all_battlefield(self);
+                }
                 Event::AbilitiesGranted { target, .. } => cache.invalidate_object(target),
                 // The grants clear at cleanup; every target loses the granted keywords (read the
                 // still-live list before it's emptied by the applying event).

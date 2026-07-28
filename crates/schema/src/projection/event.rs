@@ -328,6 +328,13 @@ pub(crate) fn project_event(
         // `ReanimatedCreatureBecame` above — the client's per-object state comes from a fresh
         // snapshot each delta.
         Event::AddedSubtypes { object, .. } => VisibleEvent::AddedSubtypes { object },
+        // ponytail: projected as `AddedSubtypes` rather than as a wire event of its own. Both say
+        // "this object's subtype line changed, re-read it", which is all the client does with
+        // either — and the sustaining source is already visible as an ordinary battlefield
+        // permanent. Give it its own `VisibleEvent` if the log ever needs to name the source.
+        Event::SubtypesSetWhileSourceRemains { object, .. } => {
+            VisibleEvent::AddedSubtypes { object }
+        }
         // ponytail: the set power/toughness aren't threaded onto the wire event, same rationale as
         // `AddedSubtypes` above — the client's per-object state comes from a fresh snapshot each
         // delta.

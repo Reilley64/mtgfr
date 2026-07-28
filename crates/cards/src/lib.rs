@@ -165,12 +165,12 @@ mod tests {
     use engine::{
         Amount, AttackRider, BasicLandType, CardFilter, CardKind, CasterScope, ChoiceEffect, Color,
         ColorFilter, Condition, ControlEffect, CopyEffect, Cost, CounterKind, CountersEffect,
-        DamageEffect, DestroyEffect, DigEffect, Division, DrawEffect, Effect, EnterController,
-        ExileEffect, FilterController, GraveyardScope, Keyword, LandProduces, LandTapBonusColor,
-        LandTapScope, LifeEffect, Mana, ManaEffect, MillEffect, MiscEffect, PermanentFilter,
-        ProtectionScope, PumpEffect, SacrificeAdditionalCostCount, SacrificeCost, SacrificeEffect,
-        SearchDest, SpellFilter, SpellSpeed, StaticEffect, Step, TargetCount, TargetSpec, Timing,
-        TokenEffect, Trigger, TypeSet, ZoneEffect,
+        DamageEffect, DefiningPtWhen, DestroyEffect, DigEffect, Division, DrawEffect, Effect,
+        EnterController, ExileEffect, FilterController, GraveyardScope, Keyword, LandProduces,
+        LandTapBonusColor, LandTapScope, LifeEffect, Mana, ManaEffect, MillEffect, MiscEffect,
+        PermanentFilter, ProtectionScope, PumpEffect, SacrificeAdditionalCostCount, SacrificeCost,
+        SacrificeEffect, SearchDest, SpellFilter, SpellSpeed, StaticEffect, Step, TargetCount,
+        TargetSpec, Timing, TokenEffect, Trigger, TypeSet, ZoneEffect,
     };
 
     #[test]
@@ -2687,8 +2687,9 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                 ),
                 "{name} prints */*, so its frame carries no numbers"
             );
-            let Effect::Static(StaticEffect::BasePowerToughnessFromAmount { power, toughness }) =
-                &def.abilities[0].effect
+            let Effect::Static(StaticEffect::BasePowerToughnessFromAmount {
+                power, toughness, ..
+            }) = &def.abilities[0].effect
             else {
                 panic!("{name} should define its own base power and toughness");
             };
@@ -4756,6 +4757,59 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
             &["Swamp"],
             "\"target non-Swamp land\" — including a land the Tomb itself already mired"
         );
+    }
+
+    /// Gaea's Liege prints three abilities and every one of them is unusual: two defining counts
+    /// that switch on whether it is attacking, and a type change that lasts exactly as long as the
+    /// Liege itself does.
+    #[test]
+    fn unlimited_gaeas_liege_switches_which_forests_it_counts() {
+        let liege = get_by_name("Gaea's Liege").expect("Gaea's Liege is in the pool");
+        let [idle, attacking, forest] = &liege.abilities[..] else {
+            panic!("two defining statics and one activated ability");
+        };
+
+        for (ability, when, controller) in [
+            (idle, DefiningPtWhen::NotAttacking, FilterController::You),
+            (
+                attacking,
+                DefiningPtWhen::Attacking,
+                FilterController::DefendingPlayer,
+            ),
+        ] {
+            let Effect::Static(StaticEffect::BasePowerToughnessFromAmount {
+                power,
+                toughness,
+                when: printed,
+            }) = ability.effect
+            else {
+                panic!("a defining power/toughness count");
+            };
+            assert_eq!(printed, when);
+            assert_eq!(power, toughness, "both halves read one count");
+            let Amount::PerPermanentMatching { filter, .. } = power else {
+                panic!("a count of Forests on the battlefield");
+            };
+            assert_eq!(
+                (filter.types, filter.subtypes),
+                (TypeSet::LAND, &["Forest"][..])
+            );
+            assert_eq!(filter.controller, controller);
+        }
+
+        let Effect::Pump(PumpEffect::TargetBecomesSubtypesWhileSourceRemains {
+            set_subtypes,
+            target: TargetSpec::Permanent(filter),
+        }) = forest.effect
+        else {
+            panic!("a land-type change tied to the source's stay on the battlefield");
+        };
+        assert_eq!(
+            set_subtypes,
+            &["Forest"],
+            "\"becomes a Forest\" — CR 305.7 replaces the whole land-type line"
+        );
+        assert_eq!(filter.types, TypeSet::LAND);
     }
 }
 

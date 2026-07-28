@@ -611,6 +611,14 @@ pub enum FilterController {
     /// it fires at that turn's end step.
     #[cfg_attr(feature = "card-dsl", serde(rename = "active_player"))]
     ActivePlayer,
+    /// A permanent the player *this filter's own source is attacking* controls (Gaea's Liege's
+    /// "the number of Forests defending player controls"). Read off
+    /// [`Game::defender_of`](crate::Game) rather than off
+    /// [`FilterController::Opponent`], which at a four-player table would reach three boards when
+    /// the card names exactly one. Matches nothing while the source isn't attacking — which is the
+    /// right answer, since every card printing the clause has a second arm for that case.
+    #[cfg_attr(feature = "card-dsl", serde(rename = "defending_player"))]
+    DefendingPlayer,
 }
 
 /// Whether a [`PermanentFilter`] accepts tokens, nontokens, or both.

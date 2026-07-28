@@ -108851,3 +108851,94 @@ fn cyclopean_tomb_passes_over_lands_that_are_already_swamps() {
         "a land the Tomb already mired is a Swamp now, so the second try does nothing"
     );
 }
+
+// ── A land for as long as its source stays, and a count that switches on attacking
+// (fidelity #8e, #74) ──
+
+/// The Liege, a stocked library on both sides so combat can be reached, and `forests` Forests for
+/// player 0.
+fn gaeas_liege_board(forests: usize) -> (Game, ObjectId) {
+    let mut game = Game::new();
+    let liege = game.spawn_on_battlefield(PlayerId(0), card("Gaea's Liege"));
+    for _ in 0..forests {
+        game.spawn_on_battlefield(PlayerId(0), card("Forest"));
+    }
+    for player in [PlayerId(0), PlayerId(1)] {
+        for _ in 0..10 {
+            game.spawn_in_library(player, card("Mountain"));
+        }
+    }
+    (game, liege)
+}
+
+/// The Liege's third ability — the two statics are abilities 0 and 1.
+fn forest_target(game: &mut Game, liege: ObjectId, land: ObjectId) -> Result<Vec<Event>, Reject> {
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: liege,
+        ability_index: 2,
+        target: Some(Target::Object(land)),
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+}
+
+#[test]
+fn gaeas_liege_turns_a_land_into_a_forest_until_it_leaves_the_battlefield() {
+    // CR 305.7: taking on a basic land type replaces the whole line, so the Mountain's {R} goes
+    // with it. The duration is the Liege's own stay on the battlefield — nothing schedules a
+    // cleanup, the read just stops finding a live source.
+    let (mut game, liege) = gaeas_liege_board(1);
+    let mountain = game.spawn_on_battlefield(PlayerId(0), card("Mountain"));
+
+    forest_target(&mut game, liege, mountain).unwrap();
+    resolve_top_of_stack(&mut game);
+    assert_eq!(game.effective_subtypes(mountain), vec!["Forest"]);
+
+    let before = (
+        game.mana_in_pool(PlayerId(0), Color::Green),
+        game.mana_in_pool(PlayerId(0), Color::Red),
+    );
+    game.submit(Intent::TapForMana {
+        player: PlayerId(0),
+        object: mountain,
+    })
+    .unwrap();
+    assert_eq!(
+        (
+            game.mana_in_pool(PlayerId(0), Color::Green),
+            game.mana_in_pool(PlayerId(0), Color::Red),
+        ),
+        (before.0 + 1, before.1),
+        "a Forest taps for {{G}}"
+    );
+
+    // Two Forests make the Liege a 2/2, so a Bolt is lethal.
+    assert_eq!((game.power(liege), game.toughness(liege)), (2, 2));
+    let bolt = game.spawn_in_hand(PlayerId(0), card("Lightning Bolt"));
+    cast_and_resolve(&mut game, bolt, Some(Target::Object(liege)));
+    assert_eq!(
+        game.effective_subtypes(mountain),
+        vec!["Mountain"],
+        "the Liege is gone, so the land is what it was printed as"
+    );
+}
+
+#[test]
+fn gaeas_liege_counts_the_defending_players_forests_while_it_attacks() {
+    // Two defining abilities, one combat state each. Off the attack it reads its own controller's
+    // Forests; declared as an attacker it reads whoever it is attacking (CR 506.3d), which at a
+    // multiplayer table is one named player rather than "an opponent".
+    let (mut game, liege) = gaeas_liege_board(3);
+    game.spawn_on_battlefield(PlayerId(1), card("Forest"));
+    assert_eq!((game.power(liege), game.toughness(liege)), (3, 3));
+
+    attack_with(&mut game, vec![liege]);
+    assert_eq!(
+        (game.power(liege), game.toughness(liege)),
+        (1, 1),
+        "attacking, it counts the defending player's one Forest, not its controller's three"
+    );
+}

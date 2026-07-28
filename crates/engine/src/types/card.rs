@@ -1190,6 +1190,7 @@ pub(crate) fn fresh_permanent(
         added_types: TypeSet::NONE,
         added_types_timestamp: 0,
         added_subtypes: &[],
+        subtypes_set_while_source_remains: None,
         granted_keywords: &[],
         marked_damage: 0,
         deathtouched: false,
@@ -1894,6 +1895,13 @@ pub(crate) struct Permanent {
     /// [`Game::effective_subtypes`]. `&'static` — copied straight from the granting ability's
     /// already-leaked `CardDef` data, no runtime leak.
     pub(crate) added_subtypes: &'static [&'static str],
+    /// The land-type line another permanent replaced for as long as *it* stays on the battlefield
+    /// (CR 613.4, CR 305.7 — Gaea's Liege's "target land becomes a Forest until this creature
+    /// leaves the battlefield"): the new subtypes, the source that set them, and the CR 613.7
+    /// timestamp. Read back by [`Game::effective_subtypes`] only while the source is still a
+    /// permanent, which is the whole duration model — nothing clears this, the read just stops
+    /// finding a live source. Resets with the object itself per CR 400.7.
+    pub(crate) subtypes_set_while_source_remains: Option<(&'static [&'static str], ObjectId, u64)>,
     /// Keywords granted indefinitely by the same set (Excava → flying): the indefinite twin of
     /// `temp_keywords`, unioned onto the effective keywords by
     /// [`Game::compute_effective_keywords_uncached`], never cleared at cleanup. `&'static`.

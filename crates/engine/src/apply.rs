@@ -1396,6 +1396,18 @@ impl Game {
             Event::AddedSubtypes { object, subtypes } => {
                 self.permanent_mut(object).added_subtypes = subtypes;
             }
+            // Gaea's Liege (CR 613.4/305.7): the target land's whole land-type line, replaced for
+            // as long as `source` stays on the battlefield. Nothing ever clears this — the read
+            // side stops finding a live source, which is the entire duration.
+            Event::SubtypesSetWhileSourceRemains {
+                object,
+                subtypes,
+                source,
+            } => {
+                let timestamp = self.stamp_continuous_timestamp();
+                self.permanent_mut(object).subtypes_set_while_source_remains =
+                    Some((subtypes, source, timestamp));
+            }
             // Trench Gorger (CR 613.3(7b)): the indefinite base-P/T-only sibling of
             // `ReanimatedCreatureBecame` above.
             Event::BasePtSetIndefinite {

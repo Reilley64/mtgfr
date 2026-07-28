@@ -120,9 +120,14 @@ pub enum StaticEffect {
     /// overrides it and counters and anthems still sum on top. Resolved live on every recompute,
     /// which is what makes it *defining* rather than a one-shot write — the creature grows the
     /// instant a Swamp arrives.
+    ///
+    /// `when` narrows the ability to one combat state, so a creature printing two of these gets
+    /// whichever count applies right now (Gaea's Liege).
     BasePowerToughnessFromAmount {
         power: Amount,
         toughness: Amount,
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        when: DefiningPtWhen,
     },
 
     /// "Each opponent who cast a spell this turn can't attack with creatures" (Angelic Arbiter):
@@ -461,6 +466,27 @@ pub enum StaticEffect {
         #[cfg_attr(feature = "card-dsl", serde(default))]
         caused_by_instant_or_sorcery_cast: bool,
     },
+}
+
+/// When a [`StaticEffect::BasePowerToughnessFromAmount`] applies. Gaea's Liege prints two of
+/// them — "as long as this creature isn't attacking" counts your Forests, "as long as it is
+/// attacking" counts the defending player's — and a creature carrying both gets exactly one
+/// answer at any moment. Modelled as two abilities with a combat-state guard rather than one
+/// ability with a ternary `Amount`, because that is how the card prints it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(
+    feature = "card-dsl",
+    derive(serde::Deserialize),
+    serde(rename_all = "snake_case")
+)]
+pub enum DefiningPtWhen {
+    /// No guard — the count always applies (Nightmare, Keldon Warlord, Plague Rats).
+    #[default]
+    Always,
+    /// Only while the source is a declared attacker (CR 506.3d).
+    Attacking,
+    /// Only while the source is *not* a declared attacker.
+    NotAttacking,
 }
 
 /// Which recipients a [`StaticEffect::CounterReplacement`] reaches. Counters sit on permanents and

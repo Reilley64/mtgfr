@@ -368,6 +368,21 @@ impl Game {
                     until_eot: false,
                 }]
             }
+            // "Target land becomes a Forest until this creature leaves the battlefield" (Gaea's
+            // Liege): the whole land-type line is replaced (CR 305.7), and the entry names the
+            // source so the read side can check it is still there. A target that has left the
+            // battlefield since is skipped (CR 608.2b).
+            PumpEffect::TargetBecomesSubtypesWhileSourceRemains { set_subtypes, .. } => {
+                let object = expect_object_target(target, "becomes a land type");
+                if self.as_permanent(object).is_none() {
+                    return Vec::new();
+                }
+                vec![Event::SubtypesSetWhileSourceRemains {
+                    object,
+                    subtypes: set_subtypes,
+                    source,
+                }]
+            }
             // Mass weaken: every creature gets -power/-toughness until end of turn (a negative
             // TempBoost, cleared at cleanup). A 0-or-less-toughness creature dies to the next SBA. (CR 704, CR 514)
             PumpEffect::WeakenEachCreature {

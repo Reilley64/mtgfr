@@ -162,6 +162,18 @@ pub enum PumpEffect {
         target: TargetSpec,
     },
 
+    /// "Target land becomes a Forest until this creature leaves the battlefield" (Gaea's Liege) —
+    /// a CR 613.4 type change whose duration is the *source's* stay on the battlefield, the only
+    /// one the pool prints. `set_subtypes` replaces the whole land-type line (CR 305.7), so a
+    /// Mountain taps for `{G}` and not `{R}`. Written to the target's
+    /// `Permanent::subtypes_set_while_source_remains` and read back only while the source is still
+    /// a permanent; nothing needs to undo it.
+    TargetBecomesSubtypesWhileSourceRemains {
+        target: TargetSpec,
+        #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::static_str_slice"))]
+        set_subtypes: &'static [&'static str],
+    },
+
     WeakenEachCreature {
         power: Amount,
         toughness: Amount,

@@ -264,6 +264,7 @@ message_keys! {
     EFFECT_PUMP_SET_BASE_PT_TARGET_UNTIL_END_OF_TURN => "effect.pump_set_base_pt_target_until_end_of_turn",
     EFFECT_PUMP_SET_OWN_BASE_PT_FROM_AMOUNT => "effect.pump_set_own_base_pt_from_amount",
     EFFECT_PUMP_STRIP_KEYWORDS_FROM_OPPONENTS_CREATURES => "effect.pump_strip_keywords_from_opponents_creatures",
+    EFFECT_PUMP_TARGET_BECOMES_SUBTYPES_WHILE_SOURCE_REMAINS => "effect.pump_target_becomes_subtypes_while_source_remains",
     EFFECT_PUMP_TARGET_BECOMES_TREASURE => "effect.pump_target_becomes_treasure",
     EFFECT_PUMP_WEAKEN_EACH_CREATURE => "effect.pump_weaken_each_creature",
     EFFECT_REVEAL_TOP_AND_DRAIN_MUTUAL => "effect.reveal_top_and_drain_mutual",
@@ -635,6 +636,18 @@ fn keyword_list_param(name: &'static str, values: &[Keyword]) -> MessageParam {
     owned_str_param(name, join_tokens(values.iter().copied().map(keyword_token)))
 }
 
+/// Which combat state a defining P/T count is gated on, for the log line's "As long as …" lead.
+fn defining_pt_when_param(name: &'static str, when: DefiningPtWhen) -> MessageParam {
+    str_param(
+        name,
+        match when {
+            DefiningPtWhen::Always => "always",
+            DefiningPtWhen::Attacking => "attacking",
+            DefiningPtWhen::NotAttacking => "not_attacking",
+        },
+    )
+}
+
 fn counter_kind_token(kind: CounterKind) -> &'static str {
     match kind {
         CounterKind::Charge => "charge",
@@ -822,6 +835,7 @@ fn permanent_filter_token(filter: PermanentFilter) -> String {
         FilterController::You => parts.push("you_control".to_string()),
         FilterController::Opponent => parts.push("opponent_controlled".to_string()),
         FilterController::ActivePlayer => parts.push("active_player_controlled".to_string()),
+        FilterController::DefendingPlayer => parts.push("defending_player_controlled".to_string()),
     }
     if let Some(token) = token_filter_token(filter.token) {
         parts.push(token.to_string());
@@ -2208,9 +2222,13 @@ impl Effect {
                 power, toughness, ..
             }) => MessageRef::new(MessageKey::EFFECT_STATIC_GRANT_TO_ATTACHED)
                 .with_params(vec![amount_param("power", power), amount_param("toughness", toughness)]),
-            Effect::Static(BasePowerToughnessFromAmount { power, toughness }) => {
+            Effect::Static(BasePowerToughnessFromAmount { power, toughness, when }) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_BASE_POWER_TOUGHNESS_FROM_AMOUNT)
-                    .with_params(vec![amount_param("power", power), amount_param("toughness", toughness)])
+                    .with_params(vec![
+                        amount_param("power", power),
+                        amount_param("toughness", toughness),
+                        defining_pt_when_param("when", when),
+                    ])
             }
             Effect::Static(SetAttachedBasePt { power, toughness }) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_SET_ATTACHED_BASE_PT)
@@ -2332,6 +2350,10 @@ impl Effect {
                 MessageRef::new(MessageKey::EFFECT_COUNTERS_PUT_LOYALTY_COUNTER_EACH)
             }
             Effect::Misc(GetEmblem { .. }) => MessageRef::new(MessageKey::EFFECT_MISC_GET_EMBLEM),
+            Effect::Pump(TargetBecomesSubtypesWhileSourceRemains { set_subtypes, .. }) => {
+                MessageRef::new(MessageKey::EFFECT_PUMP_TARGET_BECOMES_SUBTYPES_WHILE_SOURCE_REMAINS)
+                    .with_params(vec![string_list_param("set_subtypes", set_subtypes)])
+            }
             Effect::Pump(TargetBecomesTreasure { .. }) => {
                 MessageRef::new(MessageKey::EFFECT_PUMP_TARGET_BECOMES_TREASURE)
             }

@@ -2476,6 +2476,18 @@ pub enum Event {
         object: ObjectId,
         subtypes: &'static [&'static str],
     },
+    /// A permanent's land-type line was replaced for as long as another permanent stays on the
+    /// battlefield (CR 613.4 — Gaea's Liege's "target land becomes a Forest until this creature
+    /// leaves the battlefield"). Written to [`Permanent::subtypes_set_while_source_remains`]; not
+    /// cleared at cleanup and not cleared when `source` leaves either — the read simply stops
+    /// finding a live source, which is what makes the duration free. Public battlefield status,
+    /// like `AddedSubtypes`.
+    SubtypesSetWhileSourceRemains {
+        object: ObjectId,
+        subtypes: &'static [&'static str],
+        /// The permanent whose presence sustains the change.
+        source: ObjectId,
+    },
     /// A permanent's base power and toughness were SET *indefinitely* (CR 613.3(7b) —
     /// Trench Gorger's "this creature has base power and toughness each equal to the number of
     /// cards exiled this way"), added on top of no types/subtypes/keywords and **not** cleared at

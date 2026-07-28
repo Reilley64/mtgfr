@@ -1404,8 +1404,9 @@ impl Game {
 
     /// Whether the permanent `id` satisfies `filter`. `you` is the effect's controller (the
     /// "you" the filter's `controller` axis is relative to); `source` is the filter's own source
-    /// permanent, used only by the `other` axis ("another permanent") — pass `None` where there
-    /// is nothing to exclude. A non-permanent id never matches. The single evaluator behind
+    /// permanent, read by the `other` axis ("another permanent") and by
+    /// [`FilterController::DefendingPlayer`] (which asks who the source is attacking) — pass
+    /// `None` where there is neither. A non-permanent id never matches. The single evaluator behind
     /// [`TargetSpec::Permanent`], the mass effects, and sacrifice edicts.
     pub(crate) fn permanent_matches(
         &self,
@@ -1460,6 +1461,17 @@ impl Game {
             FilterController::Opponent if yours => return false,
             FilterController::ActivePlayer if self.controller_of(id) != self.active_player => {
                 return false;
+            }
+            // "Defending player controls" — the player the filter's own source is attacking. A
+            // source that isn't attacking (or a filter with no source) has no defending player, so
+            // nothing matches.
+            FilterController::DefendingPlayer => {
+                let defending = source
+                    .and_then(|source| self.defender_of(source))
+                    .and_then(|defender| self.defender_controller(defender));
+                if defending != Some(self.controller_of(id)) {
+                    return false;
+                }
             }
             _ => {}
         }
