@@ -895,6 +895,8 @@ message PendingChoiceViewPartitionRevealed {
   uint32 player = 1;
   uint32 source = 2;
   repeated ChoiceItem items = 3;
+  // Raging River rides this view to divide creatures into a "left" and a "right" pile.
+  bool into_piles = 4;
 }
 
 // This player (an **opponent** of the controller) must choose one of `items` (Murmurs from
@@ -914,6 +916,9 @@ message PendingChoiceViewChoosePileForHand {
   uint32 source = 2;
   repeated ChoiceItem pile_a = 3;
   repeated ChoiceItem pile_b = 4;
+  // Raging River: the attacking creature this left-or-right pick is for; unset for Fact or
+  // Fiction, whose pile pick is about no attacker at all.
+  optional ChoiceItem attacker = 5;
 }
 
 // The complete view one player is allowed to see: turn state, per-player facts, and the

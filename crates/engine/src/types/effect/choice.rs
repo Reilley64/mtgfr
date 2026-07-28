@@ -385,6 +385,25 @@ pub enum ChoiceEffect {
 
     SetOwnColorUntilEndOfTurn,
 
+    /// "Each defending player divides all creatures without flying they control into a 'left'
+    /// pile and a 'right' pile. Then, for each attacking creature you control, choose 'left' or
+    /// 'right.' That creature can't be blocked this combat except by creatures with flying and
+    /// creatures in a pile with the chosen label." (Raging River.) Two pauses, in that order:
+    /// every defending player divides ([`PendingChoice::SplitBlockersIntoPiles`]), then the
+    /// ability's controller labels each of their attacking creatures
+    /// ([`PendingChoice::ChoosePileForAttacker`]). The payoff is the *unnamed* pile becoming
+    /// illegal blockers for that one attacker, recorded on
+    /// [`CombatState::cant_block_this_combat`](crate::CombatState).
+    DefendersSplitBlockersIntoPiles,
+    /// "This turn, instead of declaring blockers, each defending player chooses any number of
+    /// creatures they control and divides them into a number of piles equal to the number of
+    /// attacking creatures for whom that player is the defending player. … Assign each pile to a
+    /// different one of those attacking creatures at random. Each creature in a pile that can
+    /// block the creature that pile is assigned to does so." (Camouflage.) The defender's own
+    /// [`PendingChoice::DivideBlockersIntoPiles`] is asked once per pile, and the deal that
+    /// follows *replaces* their declaration — the blocks are written down here, so the
+    /// declare-blockers step finds their seat already sealed.
+    DefendersDivideBlockersAmongAttackers,
     /// "Look at target opponent's hand and choose a card from it. You control that player until
     /// this spell finishes resolving. The player plays that card if able." (CR 720.1 — Word of
     /// Command.) One seat answers, another seat's resources are spent: the pause addresses the

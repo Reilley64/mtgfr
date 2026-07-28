@@ -5340,6 +5340,45 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
         );
     }
 
+    /// Raging River's trigger is the whole timing of the card: "whenever one or more creatures
+    /// you control attack" fires once per combat, after the attack declaration, so the piles are
+    /// divided knowing exactly what is coming. Hang the effect off anything else and the defender
+    /// is dividing blind or too late.
+    #[test]
+    fn unlimited_raging_river_divides_once_the_attack_is_declared() {
+        let river = get_by_name("Raging River").expect("Raging River is in the pool");
+        let [ability] = &river.abilities[..] else {
+            panic!("one attack trigger");
+        };
+        assert_eq!(
+            (&ability.timing, &ability.effect),
+            (
+                &Timing::Triggered(Trigger::YouAttackWithCreatures { at_least: 1 }),
+                &Effect::Choice(ChoiceEffect::DefendersSplitBlockersIntoPiles),
+            ),
+            "\"whenever one or more creatures you control attack\" — one division per combat",
+        );
+    }
+
+    /// Camouflage's cast window *is* the card: "only during your declare attackers step" is what
+    /// puts it after the attack declaration and before blockers, the one instant in which piles
+    /// dealt at random can replace a declaration that hasn't happened yet.
+    #[test]
+    fn unlimited_camouflage_is_castable_only_while_your_attack_hangs_undefended() {
+        let camo = get_by_name("Camouflage").expect("Camouflage is in the pool");
+        let [ability] = &camo.abilities[..] else {
+            panic!("one spell ability");
+        };
+        assert_eq!(
+            (camo.cast_only_during_declare_attackers, &ability.effect,),
+            (
+                true,
+                &Effect::Choice(ChoiceEffect::DefendersDivideBlockersAmongAttackers),
+            ),
+            "the window and the pile ritual are one clause each, and neither works alone",
+        );
+    }
+
     /// Personal Incarnation is a liability its owner cannot hand off. Both halves of that are
     /// only true because of a flag: `only_owner_may_activate` is what stops a thief spending the
     /// shield, and `SourceOwnerLosesHalfTheirLife` is what sends the bill past whoever was

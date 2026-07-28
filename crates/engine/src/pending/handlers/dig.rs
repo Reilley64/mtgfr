@@ -142,6 +142,188 @@ impl Game {
         }
     }
 
+    /// Answer a [`PendingChoice::SplitBlockersIntoPiles`]: `left` names the "left" pile, and
+    /// everything in `options` it leaves out is the "right" pile. Either may be empty — dividing
+    /// into two piles doesn't require both to hold something. Rolls straight on to the next
+    /// defender, or to the labeling.
+    pub(crate) fn split_blockers_into_piles(
+        &mut self,
+        _player: PlayerId,
+        chosen: Vec<ObjectId>,
+    ) -> Result<Vec<Event>, Reject> {
+        let Some(PendingChoice::SplitBlockersIntoPiles {
+            player,
+            source,
+            options,
+            mut left,
+            defenders,
+            attackers,
+        }) = self.pending_choice.clone()
+        else {
+            return Err(Reject::IllegalChoice);
+        };
+        for (i, id) in chosen.iter().enumerate() {
+            if !options.contains(id) || chosen[..i].contains(id) {
+                return Err(Reject::IllegalChoice);
+            }
+        }
+        self.finish_answer();
+        left.push((player, chosen));
+        pending::raise(
+            self,
+            pending::ChoiceRequest::SplitBlockersIntoPiles {
+                source,
+                left,
+                defenders,
+                attackers,
+            },
+        );
+        Ok(Vec::new())
+    }
+
+    /// Answer a [`PendingChoice::DivideBlockersIntoPiles`]: `chosen` is this pile's contents,
+    /// drawn from what earlier piles left. The last pile deals them all out at random and writes
+    /// the blocks — Camouflage's "instead of declaring blockers" means this seat's declaration is
+    /// finished the moment their division is.
+    pub(crate) fn divide_blockers_into_piles(
+        &mut self,
+        _player: PlayerId,
+        chosen: Vec<ObjectId>,
+    ) -> Result<Vec<Event>, Reject> {
+        let Some(PendingChoice::DivideBlockersIntoPiles {
+            player,
+            source,
+            options,
+            mut piles,
+            needed,
+            defenders,
+            attackers,
+        }) = self.pending_choice.clone()
+        else {
+            return Err(Reject::IllegalChoice);
+        };
+        for (i, id) in chosen.iter().enumerate() {
+            if !options.contains(id) || chosen[..i].contains(id) {
+                return Err(Reject::IllegalChoice);
+            }
+        }
+        self.finish_answer();
+        let left_over: Vec<ObjectId> = options
+            .into_iter()
+            .filter(|c| !chosen.contains(c))
+            .collect();
+        piles.push(chosen);
+
+        let mut events = Vec::new();
+        let partial = if piles.len() < needed as usize {
+            Some((player, left_over, piles))
+        } else {
+            events = self.deal_piles_to_attackers(player, piles, &attackers);
+            None
+        };
+        pending::raise(
+            self,
+            pending::ChoiceRequest::DivideBlockersIntoPiles {
+                source,
+                partial,
+                defenders,
+                attackers,
+            },
+        );
+        // Every defender is done and no one is left to divide, so the blocks are final: the
+        // multi-block damage division `declare_blockers` would have asked for is asked here.
+        if self.pending_choice.is_none()
+            && let Some((attacker, blockers)) = self.next_undivided_multiblock()
+        {
+            crate::pending::raise_choice(
+                self,
+                PendingChoice::AssignCombatDamage {
+                    player: self.damage_assigner(&blockers),
+                    attacker,
+                    blockers,
+                },
+            );
+        }
+        Ok(events)
+    }
+
+    /// "Assign each pile to a different one of those attacking creatures at random. Each creature
+    /// in a pile that can block the creature that pile is assigned to does so." The shuffle rides
+    /// [`Game::with_op_rng`] so a replayed game deals the same way, and a creature whose pile
+    /// landed on something it can't legally block just doesn't block (CR 509.1a).
+    fn deal_piles_to_attackers(
+        &mut self,
+        defender: PlayerId,
+        piles: Vec<Vec<ObjectId>>,
+        attackers: &[ObjectId],
+    ) -> Vec<Event> {
+        let mine: Vec<ObjectId> = attackers
+            .iter()
+            .copied()
+            .filter(|&a| self.defending_player_of(a) == Some(defender))
+            .collect();
+        let mut order: Vec<usize> = (0..piles.len()).collect();
+        for i in (1..order.len()).rev() {
+            let j = self.with_op_rng(defender, |rng| rng.gen_index(i + 1));
+            order.swap(i, j);
+        }
+        let mut blocks = Vec::new();
+        for (slot, &pile) in order.iter().enumerate() {
+            let Some(&attacker) = mine.get(slot) else {
+                continue;
+            };
+            for &blocker in &piles[pile] {
+                if self.can_block(defender, blocker, attacker) {
+                    blocks.push((blocker, attacker));
+                }
+            }
+        }
+        self.seal_blocks(&blocks, &[defender])
+    }
+
+    /// Answer a [`PendingChoice::ChoosePileForAttacker`]: `pile` is `0` for "left" and `1` for
+    /// "right". The pile *not* named is what gets written down — every creature in it can't block
+    /// this attacker for the rest of combat (CR 509.1b).
+    pub(crate) fn choose_pile_for_attacker(
+        &mut self,
+        _player: PlayerId,
+        pile: u8,
+    ) -> Result<Vec<Event>, Reject> {
+        let Some(PendingChoice::ChoosePileForAttacker {
+            source,
+            attacker,
+            left,
+            remaining,
+            ..
+        }) = self.pending_choice.clone()
+        else {
+            return Err(Reject::IllegalChoice);
+        };
+        if pile > 1 {
+            return Err(Reject::IllegalChoice);
+        }
+        self.finish_answer();
+
+        // Only this attacker's own defending player divided anything that binds it — another
+        // seat's piles are about their own blockers, who could never have blocked here anyway.
+        let (named, other) = self.river_piles(attacker, &left);
+        let shut_out = if pile == 0 { other } else { named };
+        for blocker in shut_out {
+            self.combat.cant_block_this_combat.push((blocker, attacker));
+        }
+
+        pending::raise(
+            self,
+            pending::ChoiceRequest::SplitBlockersIntoPiles {
+                source,
+                left,
+                defenders: Vec::new(),
+                attackers: remaining,
+            },
+        );
+        Ok(Vec::new())
+    }
+
     /// Answer a [`PendingChoice::ChooseCardInHandToPlay`]: Word of Command's controller has
     /// picked a card out of the subject's hand, and the subject plays it now (CR 720.1). Two
     /// things make this unlike every other mid-resolution cast in the pool: the seat that answers

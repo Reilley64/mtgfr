@@ -909,6 +909,8 @@ impl Effect {
             // `RemoveFromCombat` step pulled out of combat — the same way `MayPutCounterOnCreature`
             // above does: the `Sequence` arm supplies it, this step declares none of its own.
             | Effect::Choice(ChoiceEffect::MayBlockAttackerOfYourChoice)
+            | Effect::Choice(ChoiceEffect::DefendersSplitBlockersIntoPiles)
+            | Effect::Choice(ChoiceEffect::DefendersDivideBlockersAmongAttackers)
             | Effect::Choice(ChoiceEffect::MayDrawUnlessPays { .. })
             | Effect::Counters(CountersEffect::PutCountersEach { .. })
             | Effect::Counters(CountersEffect::PutLoyaltyCounterEach { .. })

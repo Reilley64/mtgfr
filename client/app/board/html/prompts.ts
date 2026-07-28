@@ -2177,6 +2177,7 @@ function pilePickPrompt(
   pending: Extract<PendingChoiceView, { kind: "opponent_chooses_pile" | "choose_pile_for_hand" }>,
   tableId: string | null,
 ): Html {
+  const attacker = pending.kind === "choose_pile_for_hand" ? pending.attacker : undefined;
   const pileBlock = (title: string, items: ReadonlyArray<ChoiceItem>, pile: 0 | 1): Html =>
     h.div(
       [h.Class("min-w-[180px] flex-1 rounded-panel bg-glass p-3")],
@@ -2205,10 +2206,19 @@ function pilePickPrompt(
       ),
     ],
     [
-      h.div([h.Class("pointer-events-none text-center font-semibold text-body text-snow")], ["Choose a pile"]),
+      h.div(
+        [
+          h.DataAttribute("testid", "prompt-pile-heading"),
+          h.Class("pointer-events-none text-center font-semibold text-body text-snow"),
+        ],
+        // Raging River labels each attacker in turn, so the pick is about that creature.
+        [attacker == null ? "Choose a pile" : `Send ${attacker.label} left or right`],
+      ),
       h.div(
         [h.Class("flex w-full flex-wrap justify-center gap-3")],
-        [pileBlock("Pile A", pending.pile_a, 0), pileBlock("Pile B", pending.pile_b, 1)],
+        attacker == null
+          ? [pileBlock("Pile A", pending.pile_a, 0), pileBlock("Pile B", pending.pile_b, 1)]
+          : [pileBlock("Left", pending.pile_a, 0), pileBlock("Right", pending.pile_b, 1)],
       ),
     ],
   );
@@ -2240,7 +2250,11 @@ function partitionPrompt(
         ),
       ],
       [
-        h.div([h.Class("shrink-0 font-semibold text-body")], ["Choose cards for Pile A"]),
+        h.div(
+          [h.DataAttribute("testid", "prompt-partition-heading"), h.Class("shrink-0 font-semibold text-body")],
+          // Raging River and Camouflage divide creatures on the battlefield, not revealed cards.
+          [pending.into_piles === true ? "Choose creatures for this pile" : "Choose cards for Pile A"],
+        ),
         h.div(
           [
             h.DataAttribute("testid", "prompt-partition-lanes"),

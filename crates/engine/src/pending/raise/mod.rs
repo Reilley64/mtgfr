@@ -342,6 +342,28 @@ pub(crate) enum ChoiceRequest {
         candidates: Vec<crate::ObjectId>,
         exiled: Vec<crate::ObjectId>,
     },
+    /// Raging River — the next defender in `defenders` divides their non-flying creatures. With
+    /// `defenders` exhausted this rolls straight on to labeling `attackers`, and with nothing left
+    /// to label either it yields `None`.
+    SplitBlockersIntoPiles {
+        source: crate::ObjectId,
+        left: Vec<(crate::PlayerId, Vec<crate::ObjectId>)>,
+        defenders: Vec<crate::PlayerId>,
+        attackers: Vec<crate::ObjectId>,
+    },
+    /// Camouflage — `partial` is the defender midway through their division (what they have left
+    /// to divide, and the piles they have named); `None` starts the next of `defenders` from the
+    /// top. With `defenders` exhausted there is nothing left to ask, and this yields `None`.
+    DivideBlockersIntoPiles {
+        source: crate::ObjectId,
+        partial: Option<(
+            crate::PlayerId,
+            Vec<crate::ObjectId>,
+            Vec<Vec<crate::ObjectId>>,
+        )>,
+        defenders: Vec<crate::PlayerId>,
+        attackers: Vec<crate::ObjectId>,
+    },
     /// Word of Command — `player` picks from `subject`'s hand; an empty hand → `None`.
     ChooseCardInHandToPlay {
         player: crate::PlayerId,
@@ -625,6 +647,18 @@ pub(super) fn choice_from_request(game: &Game, request: ChoiceRequest) -> Option
             source,
             subject,
         } => dig::choose_card_in_hand_to_play(game, player, source, subject),
+        ChoiceRequest::SplitBlockersIntoPiles {
+            source,
+            left,
+            defenders,
+            attackers,
+        } => dig::split_blockers_into_piles(game, source, left, defenders, attackers),
+        ChoiceRequest::DivideBlockersIntoPiles {
+            source,
+            partial,
+            defenders,
+            attackers,
+        } => dig::divide_blockers_into_piles(game, source, partial, defenders, attackers),
         ChoiceRequest::ChooseExiledToCastFree {
             player,
             source,

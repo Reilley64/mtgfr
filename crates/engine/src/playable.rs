@@ -373,6 +373,14 @@ impl Game {
         if def.cast_only_during_declare_blockers && self.step != Step::DeclareBlockers {
             return false;
         }
+        // "Cast this spell only during your declare attackers step" (CR 601.3e — Camouflage): the
+        // attack-side twin, with the extra "your" the blocker one doesn't print — Camouflage hides
+        // *your* attackers, so someone else's combat is never its window.
+        if def.cast_only_during_declare_attackers
+            && (self.step != Step::DeclareAttackers || self.active_player != player)
+        {
+            return false;
+        }
         // "Players can't cast spells during combat" (CR 601.2i-adjacent — Basandra, Battle
         // Seraph): global and absolute — reaches every player, not just this ability's own
         // controller, and overrides even an instant-speed / flash permission below.
@@ -797,6 +805,7 @@ mod tests {
             cast_only_during_opponents_turn: false,
             cast_only_before_combat_damage: false,
             cast_only_during_declare_blockers: false,
+            cast_only_during_declare_attackers: false,
             approximates: None,
             oracle: None,
             sets: empty_slice(),

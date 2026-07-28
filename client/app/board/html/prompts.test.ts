@@ -566,6 +566,45 @@ test("partition_revealed shows docked Pile A and Pile B lanes", () => {
   );
 });
 
+test("partition_revealed relabels itself for Raging River's creature piles", () => {
+  const s = state({
+    pending_choice: {
+      into_piles: true,
+      kind: "partition_revealed",
+      player: 0,
+      source: 9,
+      items: [{ id: 1, label: "Grizzly Bears" }],
+    },
+  });
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(s)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("prompt-partition-heading")).toHaveText("Choose creatures for this pile"),
+  );
+});
+
+test("choose_pile_for_hand names the attacker being sent left or right", () => {
+  const s = state({
+    pending_choice: {
+      attacker: { id: 5, label: "Shivan Dragon" },
+      kind: "choose_pile_for_hand",
+      pile_a: [{ id: 1, label: "Wall of Stone" }],
+      pile_b: [{ id: 2, label: "Grizzly Bears" }],
+      player: 0,
+      source: 8,
+    },
+  });
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(s)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("prompt-pile-heading")).toHaveText("Send Shivan Dragon left or right"),
+    Scene.expect(Scene.testId("prompt-pile-0")).toHaveText("Left"),
+    Scene.expect(Scene.testId("prompt-pile-1")).toHaveText("Right"),
+  );
+});
+
 test("partition_revealed card click moves into Pile A", () => {
   const gf = gameFold(
     state({

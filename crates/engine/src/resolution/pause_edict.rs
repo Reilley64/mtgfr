@@ -109,6 +109,66 @@ impl Game {
                     },
                 )
             }
+            // Raging River: the attack trigger opens the division. Every player being attacked by
+            // one of `controller`'s creatures divides, in turn order; the labeling of the attackers
+            // follows once the last of them has.
+            Effect::Choice(ChoiceEffect::DefendersSplitBlockersIntoPiles) => {
+                let attackers: Vec<ObjectId> = self
+                    .combat
+                    .attackers
+                    .iter()
+                    .copied()
+                    .filter(|&a| self.controller_of(a) == controller)
+                    .collect();
+                let defenders: Vec<PlayerId> = self
+                    .apnap_order()
+                    .into_iter()
+                    .filter(|&p| {
+                        attackers
+                            .iter()
+                            .any(|&a| self.defending_player_of(a) == Some(p))
+                    })
+                    .collect();
+                pending::raise(
+                    self,
+                    pending::ChoiceRequest::SplitBlockersIntoPiles {
+                        source,
+                        left: Vec::new(),
+                        defenders,
+                        attackers,
+                    },
+                )
+            }
+            // Camouflage: the attackers are already declared (the spell's own cast window is that
+            // step), so the piles are divided now and the blocks written — the declare-blockers
+            // step will find every attacked seat already sealed.
+            Effect::Choice(ChoiceEffect::DefendersDivideBlockersAmongAttackers) => {
+                let attackers: Vec<ObjectId> = self
+                    .combat
+                    .attackers
+                    .iter()
+                    .copied()
+                    .filter(|&a| self.controller_of(a) == controller)
+                    .collect();
+                let defenders: Vec<PlayerId> = self
+                    .apnap_order()
+                    .into_iter()
+                    .filter(|&p| {
+                        attackers
+                            .iter()
+                            .any(|&a| self.defending_player_of(a) == Some(p))
+                    })
+                    .collect();
+                pending::raise(
+                    self,
+                    pending::ChoiceRequest::DivideBlockersIntoPiles {
+                        source,
+                        partial: None,
+                        defenders,
+                        attackers,
+                    },
+                )
+            }
             // Word of Command: "Look at target opponent's hand and choose a card from it." The
             // look is recorded first — you get to keep knowing the whole hand, not just the card
             // you picked — and then the pick pauses on *your* seat, over *their* cards.

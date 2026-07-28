@@ -81,6 +81,16 @@ impl Game {
         if self.cant_be_blocked_by(attacker, blocker, player) {
             return false;
         }
+        // Raging River (CR 509.1b): the pile whose label this attacker's controller did *not*
+        // name is shut out of blocking it for the rest of combat. Flyers were never divided into
+        // a pile, so they are never listed here — the printed exemption needs no case of its own.
+        if self
+            .combat
+            .cant_block_this_combat
+            .contains(&(blocker, attacker))
+        {
+            return false;
+        }
         // "This creature can't block creatures with power 2 or greater" (Ironclaw Orcs): the
         // blocker-side restriction that describes the attacker, the mirror of the one above.
         if self.cant_block_attacker(blocker, attacker) {
@@ -252,6 +262,35 @@ impl Game {
 
     /// Whether `player` has an active free-cast permission (CR 118.5, "without paying its mana
     /// cost") for the exiled card `object` — Quintorius, Loremaster's activated ability.
+    /// Raging River's two piles as they stand for one attacking creature: `(left, right)`, where
+    /// `left` is what that attacker's defending player named and `right` is every other non-flying
+    /// creature they control. Shared by the answer (which shuts one pile out) and the projection
+    /// (which shows both), so the two can't drift on what "the pile you didn't pick" means.
+    pub fn river_piles(
+        &self,
+        attacker: ObjectId,
+        divisions: &[(PlayerId, Vec<ObjectId>)],
+    ) -> (Vec<ObjectId>, Vec<ObjectId>) {
+        let Some(defender) = self.defending_player_of(attacker) else {
+            return (Vec::new(), Vec::new());
+        };
+        let left: Vec<ObjectId> = divisions
+            .iter()
+            .find(|(p, _)| *p == defender)
+            .map(|(_, pile)| pile.clone())
+            .unwrap_or_default();
+        let right: Vec<ObjectId> = self
+            .controlled_battlefield(defender)
+            .into_iter()
+            .filter(|c| {
+                !left.contains(c)
+                    && self.is_creature_on_battlefield(*c)
+                    && !self.has_keyword(*c, Keyword::Flying)
+            })
+            .collect();
+        (left, right)
+    }
+
     /// Whether `player` is being made to play `object` right now by a resolving Word of Command —
     /// the window in which their own priority and the card's printed timing both stop applying.
     pub(crate) fn is_compelled_play(&self, object: ObjectId, player: PlayerId) -> bool {
@@ -957,21 +996,7 @@ impl Game {
             }
         }
 
-        let mut events = Vec::new();
-        for &(blocker, attacker) in blocks {
-            self.push_apply(&mut events, Event::BlockerDeclared { blocker, attacker });
-        }
-        // Goblin Cadets' "whenever this creature blocks or becomes blocked" (CR 509): scan the
-        // whole declaration once, not per `BlockerDeclared` event — a multiply-blocked attacker's
-        // "becomes blocked" fires only once, same reasoning as the batch attack-count scan below.
-        self.queue_blocks_or_becomes_blocked_triggers(blocks);
-        // Cockatrice's "whenever this creature blocks or becomes blocked by a non-Wall creature"
-        // — the same declaration, walked per pair, since its payoff names the other creature.
-        self.queue_blocks_or_becomes_blocked_by_triggers(blocks);
-        // Mana-Charged Dragon's "whenever this creature attacks or blocks" — the block half
-        // (blocker side only; a blocked attacker "becomes blocked", it doesn't "block").
-        self.queue_attacks_or_blocks_block_triggers(blocks);
-        self.combat.blocked_by.extend(&seats); // these defenders' block declarations are final
+        let events = self.seal_blocks(blocks, &seats);
         // If an attacker is blocked by several creatures, its controller orders them.
         if let Some((attacker, blockers)) = self.next_undivided_multiblock() {
             crate::pending::raise_choice(
@@ -986,6 +1011,33 @@ impl Game {
         self.consecutive_passes = 0;
         self.priority = self.active_player;
         Ok(events)
+    }
+
+    /// Write a finished set of blocks down: the [`Event::BlockerDeclared`]s, the three "blocks or
+    /// becomes blocked" trigger scans, and `seats`' declarations sealed. Split out of
+    /// [`Game::declare_blockers`] because Camouflage produces a declaration nobody declared — "this
+    /// turn, instead of declaring blockers" — and everything downstream has to see it as one.
+    pub(crate) fn seal_blocks(
+        &mut self,
+        blocks: &[(ObjectId, ObjectId)],
+        seats: &[PlayerId],
+    ) -> Vec<Event> {
+        let mut events = Vec::new();
+        for &(blocker, attacker) in blocks {
+            self.push_apply(&mut events, Event::BlockerDeclared { blocker, attacker });
+        }
+        // Goblin Cadets' "whenever this creature blocks or becomes blocked" (CR 509): scan the
+        // whole declaration once, not per `BlockerDeclared` event — a multiply-blocked attacker's
+        // "becomes blocked" fires only once, same reasoning as the batch attack-count scan below.
+        self.queue_blocks_or_becomes_blocked_triggers(blocks);
+        // Cockatrice's "whenever this creature blocks or becomes blocked by a non-Wall creature"
+        // — the same declaration, walked per pair, since its payoff names the other creature.
+        self.queue_blocks_or_becomes_blocked_by_triggers(blocks);
+        // Mana-Charged Dragon's "whenever this creature attacks or blocks" — the block half
+        // (blocker side only; a blocked attacker "becomes blocked", it doesn't "block").
+        self.queue_attacks_or_blocks_block_triggers(blocks);
+        self.combat.blocked_by.extend(seats); // these defenders' block declarations are final
+        events
     }
 
     /// Whether `blocks` breaks no blocking *restriction* (CR 509.1b): every pair legal on its own

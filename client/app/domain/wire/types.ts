@@ -563,8 +563,15 @@ export type PendingChoiceView =
       player: number;
       source: U32;
     }
-  | { items: Array<ChoiceItem>; kind: "partition_revealed"; player: number; source: U32 }
-  | { kind: "choose_pile_for_hand"; pile_a: Array<ChoiceItem>; pile_b: Array<ChoiceItem>; player: number; source: U32 }
+  | { into_piles?: boolean; items: Array<ChoiceItem>; kind: "partition_revealed"; player: number; source: U32 }
+  | {
+      attacker?: ChoiceItem;
+      kind: "choose_pile_for_hand";
+      pile_a: Array<ChoiceItem>;
+      pile_b: Array<ChoiceItem>;
+      player: number;
+      source: U32;
+    }
   | { count: number; items: Array<ChoiceItem>; kind: "choose_exiled_to_cast_free"; player: number; source: U32 }
   | { item: ChoiceItem; kind: "revealed_card_to_battlefield_or_hand"; player: number }
   | { kind: "choose_mode"; labels: Array<MessageRef>; player: number; source: U32 }

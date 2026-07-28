@@ -185,7 +185,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [x] **Blue Elemental Blast** {U} · Instant — increment 9
 - [x] **Bog Wraith** {3}{B} · Creature — Wraith — increment 3
 - [x] **Burrowing** {R} · Enchantment — Aura — increment 3
-- [ ] **Camouflage** {G} · Instant — increment 48
+- [x] **Camouflage** {G} · Instant — increment 48
 - [x] **Castle** {3}{W} · Enchantment — increment 40
 - [x] **Chaoslace** {R} · Instant — increment 15
 - [x] **Circle of Protection: Black** {1}{W} · Enchantment — increment 4, 5a
@@ -279,7 +279,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [x] **Power Surge** {R}{R} · Enchantment — increment 1
 - [x] **Psychic Venom** {1}{U} · Enchantment — Aura — increment 19
 - [x] **Purelace** {W} · Instant — increment 15
-- [ ] **Raging River** {R}{R} · Enchantment — increment 48
+- [x] **Raging River** {R}{R} · Enchantment — increment 48
 - [x] **Red Elemental Blast** {R} · Instant — increment 9
 - [x] **Reverse Damage** {1}{W}{W} · Instant — increment 4, 5a
 - [x] **Righteousness** {W} · Instant — increment 52

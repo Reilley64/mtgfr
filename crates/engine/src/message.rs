@@ -120,6 +120,8 @@ message_keys! {
     EFFECT_CHOICE_CONTROL_PLAYER_TO_PLAY_CARD_FROM_HAND => "effect.choice_control_player_to_play_card_from_hand",
     EFFECT_CHOICE_COUNCILS_DILEMMA_VOTE => "effect.choice_councils_dilemma_vote",
     EFFECT_CHOICE_DAMAGING_CREATURE_CONTROLLER_MAY_DRAW => "effect.choice_damaging_creature_controller_may_draw",
+    EFFECT_CHOICE_DEFENDERS_DIVIDE_BLOCKERS_AMONG_ATTACKERS => "effect.choice_defenders_divide_blockers_among_attackers",
+    EFFECT_CHOICE_DEFENDERS_SPLIT_BLOCKERS_INTO_PILES => "effect.choice_defenders_split_blockers_into_piles",
     EFFECT_CHOICE_DEFENDING_PLAYER_SACRIFICES => "effect.choice_defending_player_sacrifices",
     EFFECT_CHOICE_DISCARD => "effect.choice_discard",
     EFFECT_CHOICE_DISCARD_YOUR_HAND => "effect.choice_discard_your_hand",
@@ -2016,6 +2018,12 @@ impl Effect {
             ]),
             Effect::Choice(EachPlayerExilesFromGraveyard) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_EACH_PLAYER_EXILES_FROM_GRAVEYARD)
+            }
+            Effect::Choice(DefendersDivideBlockersAmongAttackers) => {
+                MessageRef::new(MessageKey::EFFECT_CHOICE_DEFENDERS_DIVIDE_BLOCKERS_AMONG_ATTACKERS)
+            }
+            Effect::Choice(DefendersSplitBlockersIntoPiles) => {
+                MessageRef::new(MessageKey::EFFECT_CHOICE_DEFENDERS_SPLIT_BLOCKERS_INTO_PILES)
             }
             Effect::Choice(ControlPlayerToPlayCardFromHand { target }) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_CONTROL_PLAYER_TO_PLAY_CARD_FROM_HAND)

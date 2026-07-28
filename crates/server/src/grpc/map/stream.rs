@@ -800,10 +800,12 @@ pub fn pending_choice_view_to_pb(choice: PendingChoiceView) -> pb::PendingChoice
             player,
             source,
             items,
+            into_piles,
         } => Choice::PartitionRevealed(pb::PendingChoiceViewPartitionRevealed {
             player: u32::from(player),
             source,
             items: choice_items_to_pb(items),
+            into_piles,
         }),
         PendingChoiceView::OpponentChoosesRevealedToGraveyard {
             player,
@@ -821,11 +823,13 @@ pub fn pending_choice_view_to_pb(choice: PendingChoiceView) -> pb::PendingChoice
             source,
             pile_a,
             pile_b,
+            attacker,
         } => Choice::ChoosePileForHand(pb::PendingChoiceViewChoosePileForHand {
             player: u32::from(player),
             source,
             pile_a: choice_items_to_pb(pile_a),
             pile_b: choice_items_to_pb(pile_b),
+            attacker: attacker.map(choice_item_to_pb),
         }),
     };
     pb::PendingChoiceView {

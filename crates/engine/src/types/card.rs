@@ -761,6 +761,11 @@ pub struct CardDef {
     /// rearrange a declaration that has already happened. `cast_only_during_declare_blockers =
     /// true` in TOML; `false` for every ordinary card.
     pub cast_only_during_declare_blockers: bool,
+    /// "Cast this spell only during your declare attackers step" (CR 601.3e — Camouflage): the
+    /// attack-side twin of the window above, and narrower still — *your* declare attackers step,
+    /// so it is closed on every other player's turn as well as in every other step.
+    /// `cast_only_during_declare_attackers = true` in TOML; `false` for every ordinary card.
+    pub cast_only_during_declare_attackers: bool,
     /// A one-line plain-English note on how this card's modeled behavior diverges from its
     /// printed rules text (a dropped clause, a coarsened trigger, a folded-together mechanic) —
     /// the same fact a `# ponytail:` TOML comment records, but as a datum the catalog/deck
@@ -1504,6 +1509,7 @@ fn treasure_token_builtin() -> CardDef {
         cast_only_during_opponents_turn: false,
         cast_only_before_combat_damage: false,
         cast_only_during_declare_blockers: false,
+        cast_only_during_declare_attackers: false,
         approximates: None,
         oracle: None,
         sets: empty_slice(),
@@ -1580,6 +1586,7 @@ pub(crate) fn rogue_token_stub() -> CardDef {
         cast_only_during_opponents_turn: false,
         cast_only_before_combat_damage: false,
         cast_only_during_declare_blockers: false,
+        cast_only_during_declare_attackers: false,
         approximates: None,
         oracle: None,
         sets: empty_slice(),
@@ -1658,6 +1665,7 @@ pub(crate) fn illusion_token() -> CardDef {
         cast_only_during_opponents_turn: false,
         cast_only_before_combat_damage: false,
         cast_only_during_declare_blockers: false,
+        cast_only_during_declare_attackers: false,
         approximates: None,
         oracle: None,
         sets: empty_slice(),

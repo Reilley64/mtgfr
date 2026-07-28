@@ -333,6 +333,24 @@ pub(crate) fn answer(game: &mut Game, intent: Intent) -> Result<Vec<Event>, Reje
             } => game.choose_card_in_hand_to_play(player, choice, target),
             _ => Err(Reject::IllegalChoice),
         },
+        PendingChoice::DivideBlockersIntoPiles { .. } => match intent {
+            Intent::ChooseSacrifices { player, sacrifices } => {
+                game.divide_blockers_into_piles(player, sacrifices)
+            }
+            _ => Err(Reject::IllegalChoice),
+        },
+        PendingChoice::SplitBlockersIntoPiles { .. } => match intent {
+            Intent::ChooseSacrifices { player, sacrifices } => {
+                game.split_blockers_into_piles(player, sacrifices)
+            }
+            _ => Err(Reject::IllegalChoice),
+        },
+        PendingChoice::ChoosePileForAttacker { .. } => match intent {
+            Intent::ChooseOpponentPile { player, pile } => {
+                game.choose_pile_for_attacker(player, pile)
+            }
+            _ => Err(Reject::IllegalChoice),
+        },
         PendingChoice::OpponentChoosesPile { .. } => match intent {
             Intent::ChooseOpponentPile { player, pile } => game.choose_opponent_pile(player, pile),
             _ => Err(Reject::IllegalChoice),
@@ -550,6 +568,9 @@ pub(crate) fn forced(game: &Game) -> Option<Intent> {
         | PendingChoice::ChooseExiledWithCardToCast { .. }
         | PendingChoice::ChooseExiledDigToCastFree { .. }
         | PendingChoice::ChooseCardInHandToPlay { .. }
+        | PendingChoice::SplitBlockersIntoPiles { .. }
+        | PendingChoice::DivideBlockersIntoPiles { .. }
+        | PendingChoice::ChoosePileForAttacker { .. }
         | PendingChoice::OpponentChoosesPile { .. }
         | PendingChoice::OpponentChoosesExiledNonland { .. }
         | PendingChoice::ChooseSplittingOpponent { .. }

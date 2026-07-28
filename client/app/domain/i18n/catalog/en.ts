@@ -148,6 +148,10 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     `Starting with you, each player votes for ${humanize(param(params, "options"))}`,
   "effect.choice_damaging_creature_controller_may_draw": (params) =>
     `That creature's controller may draw ${param(params, "count")}`,
+  "effect.choice_defenders_divide_blockers_among_attackers": () =>
+    "Instead of declaring blockers, each defending player divides their creatures into one pile per attacking creature, and the piles are assigned to those attackers at random",
+  "effect.choice_defenders_split_blockers_into_piles": () =>
+    'Each defending player divides their creatures without flying into a "left" pile and a "right" pile, then you choose "left" or "right" for each attacking creature you control',
   "effect.choice_defending_player_sacrifices": (params) =>
     `Defending player sacrifices ${param(params, "count")} permanents of their choice`,
   "effect.choice_discard": (params) => {

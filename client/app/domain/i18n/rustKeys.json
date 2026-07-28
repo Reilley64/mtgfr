@@ -94,6 +94,8 @@
   "effect.choice_control_player_to_play_card_from_hand",
   "effect.choice_councils_dilemma_vote",
   "effect.choice_damaging_creature_controller_may_draw",
+  "effect.choice_defenders_divide_blockers_among_attackers",
+  "effect.choice_defenders_split_blockers_into_piles",
   "effect.choice_defending_player_sacrifices",
   "effect.choice_discard",
   "effect.choice_discard_your_hand",

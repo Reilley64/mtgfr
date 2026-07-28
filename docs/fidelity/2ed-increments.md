@@ -1679,7 +1679,7 @@ noncreature before this one. And `Amount::YourLifeTotal` is deliberately unclamp
 already below 0 resolves to a negative, which on a `lose_life` gains the difference back. No pool
 card reaches that, and clamping would be inventing a rule none of them print.
 
-### 48. `pile-based-block-assignment` — 2 cards, XL
+### 48. `pile-based-block-assignment` — 2 cards, XL — **done**
 Depends on: #11.
 Camouflage and Raging River — both replace declare-blockers with a pile-division ritual, and
 Camouflage assigns piles to attackers *at random*. This is the least valuable work in the file
@@ -1688,6 +1688,36 @@ the declare-blockers step rather than constraining it). *Sketch:* deferred — d
 until every other increment has landed, and reconsider whether an `approximates` is the honest
 answer instead.
 *Cards:* camouflage, raging_river.
+
+*Landed:* both, and the sketch's fear turned out to be misplaced — the declare-blockers step never
+had to be replaced, only pre-empted. `Game::can_block` is a single choke point every legality read
+already goes through, so Raging River is a list of the `(blocker, attacker)` pairs its labeling
+made illegal: `CombatState::cant_block_this_combat`, stored as the *excluded* pairs rather than the
+allowed ones so the printed flying exemption falls out for free — a flyer is never divided into a
+pile, so it is never on the list. `combat.blocked_by` turned out to be the other half: it is
+already the "this seat's declaration is final" set that both the auto-seal and `block_seats_for`
+read, so Camouflage's "instead of declaring blockers" is just writing the blocks down and adding
+the seat to it. The declaration tail of `Game::declare_blockers` — the events, the three
+"blocks or becomes blocked" trigger scans, the seal — came out as `Game::seal_blocks` so both
+paths produce the same thing.
+
+The two rituals share the subset-answer idiom (`Intent::ChooseSacrifices` over a pause carrying
+its own continuation) but not their shape. Raging River asks each defending player once
+(`PendingChoice::SplitBlockersIntoPiles`, left pile named, right pile inferred) and then asks the
+attacker's controller once per attacking creature (`PendingChoice::ChoosePileForAttacker`,
+`Intent::ChooseOpponentPile` for the bare left/right). Camouflage asks each defending player once
+*per attacker aimed at them* (`PendingChoice::DivideBlockersIntoPiles`, each pile drawn from what
+the last one left), then deals the piles out over `Game::with_op_rng` — the same derive-per-op
+stream shuffles and Amulet of Quoz already use, so the deal replays identically. Both views ride
+`PendingChoiceView::PartitionRevealed` / `ChoosePileForHand` behind two additive discriminators
+(`into_piles`, `attacker`) rather than new prompt shapes.
+
+Camouflage needed one new cast window, `cast_only_during_declare_attackers` — the attack-side twin
+of False Orders' flag, plus the "your" that one doesn't print. Two clauses are approximated and say
+so on the card: "creatures … that can block additional creatures may likewise be put into
+additional piles" is dropped (each creature goes in at most one pile, so a Two-Headed Giant of
+Foriys is dealt to one attacker), and "this turn" is read as this combat, since the piles are
+divided as the spell resolves and a second combat phase gets an ordinary declare-blockers step.
 
 ### 49. `controlling-another-players-actions` — 1 card, XL — **done**
 Depends on: nothing.

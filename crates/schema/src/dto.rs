@@ -970,6 +970,11 @@ pub enum PendingChoiceView {
         player: u8,
         source: ObjectId,
         items: Vec<ChoiceItem>,
+        /// Raging River rides this view for "divide all creatures without flying you control into
+        /// a 'left' pile and a 'right' pile": same name-a-subset-of-public-objects answer, except
+        /// the items are the defender's own battlefield and the two piles are labelled.
+        #[serde(default)]
+        into_piles: bool,
     },
     /// This player (an **opponent** of the controller) must choose one of `items` (Murmurs from
     /// Beyond's three revealed cards, public); the chosen card goes to the controller's
@@ -987,6 +992,11 @@ pub enum PendingChoiceView {
         source: ObjectId,
         pile_a: Vec<ChoiceItem>,
         pile_b: Vec<ChoiceItem>,
+        /// Raging River again: the attacking creature this left-or-right pick is being made for,
+        /// `None` for Fact or Fiction's pile pick. The pile *not* named is shut out of blocking
+        /// this one attacker.
+        #[serde(default)]
+        attacker: Option<ChoiceItem>,
     },
     /// This player (the controller) may choose up to `count` of `items` (public — exile-zone) to
     /// grant the free-cast permission (CR 118.5); the rest go to hand or stay exiled per the card

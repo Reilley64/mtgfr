@@ -772,6 +772,29 @@ impl<'a> ChoiceCtx<'a> {
                 player: player.0,
                 source,
                 items: self.label_items(revealed),
+                into_piles: false,
+            },
+            engine::PendingChoice::DivideBlockersIntoPiles {
+                player,
+                source,
+                options,
+                ..
+            } => PendingChoiceView::PartitionRevealed {
+                player: player.0,
+                source,
+                items: self.label_items(options),
+                into_piles: true,
+            },
+            engine::PendingChoice::SplitBlockersIntoPiles {
+                player,
+                source,
+                options,
+                ..
+            } => PendingChoiceView::PartitionRevealed {
+                player: player.0,
+                source,
+                items: self.label_items(options),
+                into_piles: true,
             },
             engine::PendingChoice::OpponentChoosesRevealedToGraveyard {
                 player,
@@ -793,7 +816,24 @@ impl<'a> ChoiceCtx<'a> {
                 source,
                 pile_a: self.label_items(pile_a),
                 pile_b: self.label_items(pile_b),
+                attacker: None,
             },
+            engine::PendingChoice::ChoosePileForAttacker {
+                player,
+                source,
+                attacker,
+                ref left,
+                ..
+            } => {
+                let (named, other) = self.game.river_piles(attacker, left);
+                PendingChoiceView::ChoosePileForHand {
+                    player: player.0,
+                    source,
+                    pile_a: self.label_items(named),
+                    pile_b: self.label_items(other),
+                    attacker: self.label_items(vec![attacker]).pop(),
+                }
+            }
             engine::PendingChoice::ChooseExiledToCastFree {
                 player,
                 source,

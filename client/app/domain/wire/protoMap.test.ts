@@ -226,6 +226,55 @@ describe("fromProtoWire", () => {
     });
   });
 
+  it("decodes the Raging River pile discriminators from proto choice payloads", () => {
+    const partition = fromProtoWire<{
+      state: { pending_choice: { kind: string; into_piles?: boolean } };
+    }>({
+      state: {
+        pendingChoice: {
+          choice: {
+            case: "partitionRevealed",
+            value: { player: 1, source: 7, intoPiles: true, items: [{ id: 11, label: "Grizzly Bears" }] },
+          },
+        },
+      },
+    });
+    expect(partition.state.pending_choice).toEqual({
+      kind: "partition_revealed",
+      player: 1,
+      source: 7,
+      into_piles: true,
+      items: [{ id: 11, label: "Grizzly Bears" }],
+    });
+
+    const pilePick = fromProtoWire<{
+      state: { pending_choice: { kind: string; attacker?: { id: number; label: string } } };
+    }>({
+      state: {
+        pendingChoice: {
+          choice: {
+            case: "choosePileForHand",
+            value: {
+              player: 0,
+              source: 7,
+              pileA: [{ id: 11, label: "Wall of Stone" }],
+              pileB: [],
+              attacker: { id: 12, label: "Shivan Dragon" },
+            },
+          },
+        },
+      },
+    });
+    expect(pilePick.state.pending_choice).toEqual({
+      kind: "choose_pile_for_hand",
+      player: 0,
+      source: 7,
+      pile_a: [{ id: 11, label: "Wall of Stone" }],
+      pile_b: [],
+      attacker: { id: 12, label: "Shivan Dragon" },
+    });
+  });
+
   it("decodes choose_copy_target block-re-aim wording from proto choice payloads", () => {
     const frame = fromProtoWire<{
       state: {

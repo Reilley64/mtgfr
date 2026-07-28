@@ -1604,6 +1604,55 @@ pub enum PendingChoice {
         subject: PlayerId,
         options: Vec<ObjectId>,
     },
+    /// `player` (a **defending player**, not the ability's controller) divides all creatures
+    /// without flying they control into a "left" pile and a "right" pile — Raging River's first
+    /// half. The answer names the *left* pile; everything in `options` it leaves out is the right
+    /// pile, and either may be empty. Answered by [`Intent::ChooseSacrifices`], reused for its
+    /// "here is my subset of these permanents" shape (the same reuse
+    /// [`Self::PartitionRevealed`] makes) — nothing is sacrificed.
+    ///
+    /// `left` accumulates the divisions already answered, `defenders` is who still has to divide,
+    /// and `attackers` is the labeling work that follows once every defender has: the whole ritual
+    /// carries its own continuation rather than parking state outside the pause.
+    SplitBlockersIntoPiles {
+        player: PlayerId,
+        source: ObjectId,
+        options: Vec<ObjectId>,
+        left: Vec<(PlayerId, Vec<ObjectId>)>,
+        defenders: Vec<PlayerId>,
+        attackers: Vec<ObjectId>,
+    },
+    /// `player` (a **defending player**) names one of their Camouflage piles: "chooses any number
+    /// of creatures they control and divides them into a number of piles equal to the number of
+    /// attacking creatures for whom that player is the defending player." Asked `needed` times in
+    /// a row, `options` shrinking each time by what the last pile took, and answered by
+    /// [`Intent::ChooseSacrifices`] for its subset shape — nothing is sacrificed, and any pile may
+    /// be empty.
+    ///
+    /// `piles` holds this defender's divisions so far; `defenders` is who still has to divide and
+    /// `attackers` the whole attack, so the ritual carries its own continuation. The last pile's
+    /// answer deals them out at random and writes the blocks — this defender never declares.
+    DivideBlockersIntoPiles {
+        player: PlayerId,
+        source: ObjectId,
+        options: Vec<ObjectId>,
+        piles: Vec<Vec<ObjectId>>,
+        needed: u8,
+        defenders: Vec<PlayerId>,
+        attackers: Vec<ObjectId>,
+    },
+    /// `player` (Raging River's controller) chooses "left" or "right" for one `attacker` they
+    /// control — the second half, asked once per attacking creature. Answered by
+    /// [`Intent::ChooseOpponentPile`] (`0` = left, `1` = right), reused for its bare two-way pick
+    /// the same way Fact or Fiction's [`Self::ChoosePileForHand`] does. The pile *not* named is
+    /// written into [`CombatState::cant_block_this_combat`] against this attacker.
+    ChoosePileForAttacker {
+        player: PlayerId,
+        source: ObjectId,
+        attacker: ObjectId,
+        left: Vec<(PlayerId, Vec<ObjectId>)>,
+        remaining: Vec<ObjectId>,
+    },
     /// `player` (an **opponent** of `controller`, not the ability's controller) must choose one of
     /// two exile piles (`pile_a`/`pile_b`, both public — exile-zone) — Abstract Performance's "an
     /// opponent chooses one of those piles". Answered by [`Intent::ChooseOpponentPile`]. The chosen
@@ -2068,6 +2117,9 @@ impl PendingChoice {
             | PendingChoice::ChooseExiledWithCardToCast { player, .. }
             | PendingChoice::ChooseExiledDigToCastFree { player, .. }
             | PendingChoice::ChooseCardInHandToPlay { player, .. }
+            | PendingChoice::SplitBlockersIntoPiles { player, .. }
+            | PendingChoice::DivideBlockersIntoPiles { player, .. }
+            | PendingChoice::ChoosePileForAttacker { player, .. }
             | PendingChoice::DanceExileMore { player, .. }
             | PendingChoice::OpponentChoosesPile { player, .. }
             | PendingChoice::OpponentChoosesExiledNonland { player, .. }
@@ -2130,6 +2182,13 @@ pub(crate) struct CombatState {
     pub(crate) attackers_declared: bool,
     /// Attacked players who have already declared their blocks this combat (each declares once).
     pub(crate) blocked_by: Vec<PlayerId>,
+    /// "That creature can't be blocked this combat except by …" as its complement — each entry is
+    /// a `(blocker, attacker)` pair that is now illegal (CR 509.1b). Raging River is the only
+    /// thing that writes it: the defender's two piles minus the label its controller named. Kept
+    /// as the *excluded* pairs rather than the allowed ones so the printed flying exemption needs
+    /// no special case — a flyer is never divided into a pile, so it is never excluded. Lives on
+    /// [`CombatState`] so "this combat" expiry is [`Event::CombatCleared`] and nothing else.
+    pub(crate) cant_block_this_combat: Vec<(ObjectId, ObjectId)>,
 }
 
 /// One group of abilities that triggered simultaneously from a single source.

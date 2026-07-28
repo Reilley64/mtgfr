@@ -413,6 +413,10 @@ impl<'de> Deserialize<'de> for CardDef {
             /// — `cast_only_during_declare_blockers = true`; absent (`false`) for every ordinary card.
             #[serde(default)]
             cast_only_during_declare_blockers: bool,
+            /// "Cast this spell only during your declare attackers step" (CR 601.3e — Camouflage)
+            /// — `cast_only_during_declare_attackers = true`; absent (`false`) for every ordinary card.
+            #[serde(default)]
+            cast_only_during_declare_attackers: bool,
             #[serde(default)]
             approximates: Option<String>,
             #[serde(default)]
@@ -584,6 +588,7 @@ impl<'de> Deserialize<'de> for CardDef {
             cast_only_during_opponents_turn: card.cast_only_during_opponents_turn,
             cast_only_before_combat_damage: card.cast_only_before_combat_damage,
             cast_only_during_declare_blockers: card.cast_only_during_declare_blockers,
+            cast_only_during_declare_attackers: card.cast_only_during_declare_attackers,
             approximates: card.approximates.map(|s| &*Box::leak(s.into_boxed_str())),
             oracle: card.oracle.map(|s| &*Box::leak(s.into_boxed_str())),
             sets: arc_strs(card.sets),
