@@ -192,7 +192,7 @@ pool cards that redirect send the damage to the same player who armed the shield
 redirect proves that prevention could not: a 2/2 walks away from a four-point Earthquake, since
 the damage was never dealt to it and no state-based action has anything to collect.
 
-### 6b. `static-damage-redirection` — 1 card, M
+### 6b. `static-damage-redirection` — 1 card, M — **done**
 Depends on: #6a.
 Veteran Bodyguard — "as long as this creature is untapped, all damage that would be dealt to you
 by unblocked creatures is dealt to this creature instead." Not a shield: a permanent static with
@@ -200,6 +200,15 @@ two live conditions (the bodyguard untapped, the source an *unblocked attacking 
 `Game::player_damage_events` has to scan the damaged player's battlefield rather than a shield
 list, and combat has to be able to answer "was this attacker blocked" at damage time.
 *Cards:* veteran_bodyguard.
+
+*Landed:* nothing of #6a was reusable, which is why this was its own increment — the bodyguard
+arms no shield and spends none, so `StaticEffect::RedirectUnblockedDamageToSelf` is read live off
+the permanent every time damage is dealt. Both halves of "as long as this creature is untapped"
+are therefore evaluated at damage time rather than cached: a bodyguard tapped after blockers were
+declared protects nothing. The redirect sits in `Game::combat_damage_substep`'s unblocked arm
+rather than in `Game::damage_player`, because that arm is the only place that still knows the
+attacker went unblocked — a blocked attacker's trample leftover reaches the same player through
+`damage_defender` and is correctly left alone.
 
 ### 6c. `personal-incarnation` — 1 card, M
 Depends on: #6a.

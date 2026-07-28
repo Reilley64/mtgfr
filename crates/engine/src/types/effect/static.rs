@@ -325,6 +325,20 @@ pub enum StaticEffect {
 
     ProtectionFromChosenColor,
 
+    /// Veteran Bodyguard's "as long as this creature is untapped, all damage that would be dealt
+    /// to you by unblocked creatures is dealt to this creature instead" (CR 615.10). A redirection
+    /// read live off the permanent — the untapped condition is checked at damage time, not when
+    /// the creature entered — rather than a one-shot shield like
+    /// [`MiscEffect::PreventNextDamage`](crate::MiscEffect::PreventNextDamage)'s
+    /// `redirect_to_controller`, which is armed and spent.
+    ///
+    /// ponytail: only *combat* damage from an unblocked attacker is moved — the scan sits in
+    /// `Game::combat_damage_substep`, which is the one place that knows an attacker went
+    /// unblocked. The printed line also covers noncombat damage an unblocked creature deals
+    /// (an activated ability, say); no pool card creates that case, and the upgrade path is a
+    /// per-turn "went unblocked" set the general damage choke could read.
+    RedirectUnblockedDamageToSelf,
+
     ReduceSpellCost {
         amount: Amount,
         filter: SpellFilter,

@@ -279,6 +279,7 @@
   "effect.static_prevent_damage_to_self_removing_counter",
   "effect.static_prevent_damage_to_self_removing_counters_giving_rad",
   "effect.static_prevent_noncombat_damage_to_other_creatures_you_control",
+  "effect.static_redirect_unblocked_damage_to_self",
   "effect.static_reduce_spell_cost",
   "effect.static_set_attached_base_pt",
   "effect.static_set_attached_types",

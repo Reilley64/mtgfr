@@ -305,6 +305,7 @@ message_keys! {
     EFFECT_STATIC_PREVENT_DAMAGE_TO_SELF_REMOVING_COUNTER => "effect.static_prevent_damage_to_self_removing_counter",
     EFFECT_STATIC_PREVENT_DAMAGE_TO_SELF_REMOVING_COUNTERS_GIVING_RAD => "effect.static_prevent_damage_to_self_removing_counters_giving_rad",
     EFFECT_STATIC_PREVENT_NONCOMBAT_DAMAGE_TO_OTHER_CREATURES_YOU_CONTROL => "effect.static_prevent_noncombat_damage_to_other_creatures_you_control",
+    EFFECT_STATIC_REDIRECT_UNBLOCKED_DAMAGE_TO_SELF => "effect.static_redirect_unblocked_damage_to_self",
     EFFECT_STATIC_REDUCE_SPELL_COST => "effect.static_reduce_spell_cost",
     EFFECT_STATIC_SET_ATTACHED_BASE_PT => "effect.static_set_attached_base_pt",
     EFFECT_STATIC_SET_ATTACHED_TYPES => "effect.static_set_attached_types",
@@ -2112,6 +2113,9 @@ impl Effect {
             }
             Effect::Static(OpponentsCantSearchLibraries) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_OPPONENTS_CANT_SEARCH_LIBRARIES)
+            }
+            Effect::Static(RedirectUnblockedDamageToSelf) => {
+                MessageRef::new(MessageKey::EFFECT_STATIC_REDIRECT_UNBLOCKED_DAMAGE_TO_SELF)
             }
             Effect::Static(ProtectionFromChosenColor) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_PROTECTION_FROM_CHOSEN_COLOR)

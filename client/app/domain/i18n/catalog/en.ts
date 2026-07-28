@@ -546,6 +546,9 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.static_prevent_noncombat_damage_to_other_creatures_you_control": literal(
     "Prevent all noncombat damage that would be dealt to other creatures you control",
   ),
+  "effect.static_redirect_unblocked_damage_to_self": literal(
+    "As long as this creature is untapped, all damage that would be dealt to you by unblocked creatures is dealt to this creature instead",
+  ),
   "effect.static_reduce_spell_cost": (params) =>
     `${bool(params, "first_x_spell_each_turn") ? "The first spell you cast with {X} in its mana cost each turn" : humanize(param(params, "filter", "Spells you cast"))} cost {${param(params, "amount")}} less`,
   "effect.static_set_attached_base_pt": (params) =>

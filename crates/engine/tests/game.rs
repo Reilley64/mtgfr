@@ -105216,6 +105216,62 @@ fn jade_monolith_only_moves_the_first_hit() {
     );
 }
 
+// ── A creature standing in front of its controller (fidelity #6b) ─────────────────────
+
+#[test]
+fn veteran_bodyguard_takes_an_unblocked_attackers_damage_itself() {
+    // "As long as this creature is untapped, all damage that would be dealt to you by unblocked
+    // creatures is dealt to this creature instead." It is not blocking — it never left home — so
+    // the attacker stays unblocked and the bodyguard takes the hit anyway.
+    let mut game = Game::new();
+    let attacker = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
+    let bodyguard = game.spawn_on_battlefield(PlayerId(1), card("Veteran Bodyguard"));
+
+    attack_with(&mut game, vec![attacker]);
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+
+    assert_eq!(game.life(PlayerId(1)), 20, "the damage never reached them");
+    assert_eq!(
+        game.marked_damage(bodyguard),
+        2,
+        "it was dealt to this creature instead"
+    );
+}
+
+#[test]
+fn a_tapped_veteran_bodyguard_stands_in_front_of_nobody() {
+    // "As long as this creature is **untapped**" — the condition is read live at damage time, so
+    // a bodyguard that spent itself earlier in the turn protects nothing.
+    let mut game = Game::new();
+    let attacker = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
+    let bodyguard = game.spawn_on_battlefield(PlayerId(1), card("Veteran Bodyguard"));
+    game.tap(bodyguard);
+
+    attack_with(&mut game, vec![attacker]);
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+
+    assert_eq!(
+        game.life(PlayerId(1)),
+        18,
+        "took the 2 combat damage itself"
+    );
+    assert_eq!(game.marked_damage(bodyguard), 0, "it was tapped out");
+}
+
+#[test]
+fn veteran_bodyguard_does_not_stand_in_front_of_a_lightning_bolt() {
+    // "damage that would be dealt to you by unblocked **creatures**" — a burn spell is not a
+    // creature, so nothing about it is the bodyguard's business.
+    let mut game = TestGame::new();
+    let bodyguard = game.spawn_on_battlefield(PlayerId(0), card("Veteran Bodyguard"));
+    let bolt = game.spawn_in_hand(PlayerId(0), card("Lightning Bolt"));
+    let start = game.life(PlayerId(0));
+
+    game.cast(bolt).at(Target::Player(PlayerId(0))).resolve();
+    assert_eq!(game.life(PlayerId(0)), start - 3, "the bolt lands on them");
+    assert_eq!(game.marked_damage(bodyguard), 0, "not a creature's damage");
+}
+
 #[test]
 fn jade_monolith_redirects_a_hit_the_creature_could_not_have_survived() {
     // Redirection is a replacement, not a prevention: the creature was never dealt lethal damage,

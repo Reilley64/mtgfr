@@ -2175,6 +2175,28 @@ impl Game {
         })
     }
 
+    /// The permanent standing between `player` and an unblocked attacker (Veteran Bodyguard,
+    /// CR 615.10): the first untapped permanent they control with a live
+    /// [`Effect::Static(StaticEffect::RedirectUnblockedDamageToSelf)`]. Both halves are read here
+    /// and not cached, because the untapped condition is a live one — a bodyguard tapped after
+    /// blockers were declared protects nothing by the time damage is dealt.
+    pub(crate) fn unblocked_damage_bodyguard(&self, player: PlayerId) -> Option<ObjectId> {
+        self.battlefield().into_iter().find(|&id| {
+            let Some(permanent) = self.as_permanent(id) else {
+                return false;
+            };
+            permanent.owner == player
+                && !self.is_tapped(id)
+                && card_def(permanent.def).abilities.iter().any(|a| {
+                    (a.timing, a.effect.clone())
+                        == (
+                            Timing::Static,
+                            Effect::Static(StaticEffect::RedirectUnblockedDamageToSelf),
+                        )
+                })
+        })
+    }
+
     /// Whether an *effect* discard by `player` lands on top of their library instead of in their
     /// graveyard (CR 701.8c — Library of Leng): true if any permanent they control has a live
     /// [`Effect::Static(StaticEffect::DiscardToLibraryTopInstead)`] static. Read by

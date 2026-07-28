@@ -793,6 +793,7 @@ impl Effect {
             | Effect::Static(StaticEffect::CantAttackUnlessDefenderControls { .. })
             | Effect::Static(StaticEffect::GrantToAttached { .. })
             | Effect::Static(StaticEffect::ProtectionFromChosenColor)
+            | Effect::Static(StaticEffect::RedirectUnblockedDamageToSelf)
             | Effect::Static(StaticEffect::SetAttachedBasePt { .. })
             | Effect::Static(StaticEffect::SetAttachedTypes { .. })
             | Effect::Life(LifeEffect::EachOpponentDrain { .. })

@@ -928,7 +928,7 @@ impl Game {
             if self.deals_this_batch(attacker, first_strike_batch) {
                 match (blockers.is_empty(), defender) {
                     (true, Some(defender)) => {
-                        self.damage_defender(attacker, defender, self.power(attacker), events)
+                        self.damage_unblocked_defender(attacker, defender, events)
                     }
                     (true, None) => {}
                     (false, _) => {
@@ -1079,6 +1079,26 @@ impl Game {
 
     /// Deal `amount` combat damage from `source` to whatever it's attacking (CR 508.1a): the
     /// defending player's life, or the attacked planeswalker's loyalty.
+    /// An unblocked attacker's damage to the defender it attacked — the one place that knows the
+    /// attacker went unblocked, and so the only place Veteran Bodyguard's
+    /// [`StaticEffect::RedirectUnblockedDamageToSelf`] can apply (CR 615.10). A blocked
+    /// attacker's trample leftover reaches [`Self::damage_defender`] directly and is not moved.
+    fn damage_unblocked_defender(
+        &mut self,
+        attacker: ObjectId,
+        defender: Defender,
+        events: &mut Vec<Event>,
+    ) {
+        let amount = self.power(attacker);
+        if let Defender::Player(player) = defender
+            && let Some(bodyguard) = self.unblocked_damage_bodyguard(player)
+        {
+            self.deal_creature_damage(attacker, bodyguard, amount, true, events);
+            return;
+        }
+        self.damage_defender(attacker, defender, amount, events);
+    }
+
     fn damage_defender(
         &mut self,
         source: ObjectId,

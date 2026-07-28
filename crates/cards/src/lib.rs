@@ -4502,6 +4502,23 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
             "the whole of the next hit on target creature, moved rather than eaten"
         );
     }
+
+    /// Veteran Bodyguard redirects like Jade Monolith but is nothing like it in shape: a static
+    /// read live off the permanent, never armed and never spent. Authoring it as an activated or
+    /// triggered ability would give its controller a shield they have to remember to raise.
+    #[test]
+    fn unlimited_veteran_bodyguard_redirects_from_a_static_not_a_shield() {
+        let guard = get_by_name("Veteran Bodyguard").expect("Veteran Bodyguard is in the pool");
+        let [ability] = &guard.abilities[..] else {
+            panic!("one static ability");
+        };
+        assert_eq!(ability.timing, Timing::Static);
+        assert_eq!(
+            ability.effect,
+            Effect::Static(StaticEffect::RedirectUnblockedDamageToSelf),
+            "the untapped condition is read at damage time, so it is not on the ability"
+        );
+    }
 }
 
 #[cfg(test)]
