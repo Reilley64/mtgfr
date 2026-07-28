@@ -1069,6 +1069,14 @@ impl Game {
                     if filter == SpellFilter::ManaValueEqualsX {
                         return self.def_of(id).mana_value() == x;
                     }
+                    // Same reason: a spell's *current* colour can differ from its printed pips
+                    // once a lace has resolved on it (Thoughtlace, CR 613.3c), and only a call
+                    // site holding the stack object's id can see that. `spell_matches_filter`
+                    // takes a `CardDef`, so its cast-trigger callers keep reading the pips —
+                    // right for them, since a cast trigger fires before a lace could respond.
+                    if let SpellFilter::Color(color) = filter {
+                        return self.colors_of(id)[color.index()];
+                    }
                     // A counter/target-spell filter never reads the cast-from zone; pass the
                     // plain hand-cast default (see `spell_matches_filter`).
                     self.spell_matches_filter(
@@ -1079,6 +1087,19 @@ impl Game {
                         Zone::Hand,
                     )
                 })
+                .map(Target::Object)
+                .collect(),
+            // "Target spell or permanent" (the lace cycle): every spell on the stack, whoever
+            // cast it, plus every permanent on the battlefield. No filter — the five cards that
+            // print this wording restrict nothing.
+            TargetSpec::SpellOrPermanent => self
+                .stack
+                .iter()
+                .filter_map(|item| match item {
+                    StackItem::Spell(id) => Some(*id),
+                    _ => None,
+                })
+                .chain(self.battlefield())
                 .map(Target::Object)
                 .collect(),
             // A spell on the stack with exactly one target (Willbender's "target spell … with a

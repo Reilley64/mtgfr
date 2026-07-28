@@ -147,7 +147,11 @@ pub(crate) fn project_event(
             object,
             color: color.index() as u8,
         },
-        Event::ColorSetUntilEndOfTurn { object, color } => VisibleEvent::ColorSetUntilEndOfTurn {
+        // ponytail: both durations project onto the one until-EOT wire event. The client only
+        // re-reads the object's colors from it — nothing renders the duration — and minting a
+        // second proto message for an indefinite twin would buy nothing. Split it if the log ever
+        // spells the duration out.
+        Event::ColorSet { object, color, .. } => VisibleEvent::ColorSetUntilEndOfTurn {
             object,
             color: color.index() as u8,
         },

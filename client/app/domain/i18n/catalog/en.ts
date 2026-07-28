@@ -481,6 +481,7 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     `This creature has base power and toughness each equal to ${param(params, "amount")}`,
   "effect.pump_strip_keywords_from_opponents_creatures": (params) =>
     `Creatures your opponents control lose ${humanize(param(params, "keywords"))} until end of turn and can't have ${humanize(param(params, "keywords"))} this turn`,
+  "effect.pump_target_becomes_color": (params) => `Target spell or permanent becomes ${param(params, "color")}`,
   "effect.pump_target_becomes_subtypes_while_source_remains": (params) =>
     `Target land becomes a ${humanize(param(params, "set_subtypes"))} until this permanent leaves the battlefield`,
   "effect.pump_target_becomes_treasure": literal(

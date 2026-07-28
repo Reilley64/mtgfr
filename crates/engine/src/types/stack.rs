@@ -1711,7 +1711,7 @@ pub enum PendingChoice {
     /// carried. Both raise this same picker (same wire prompt — [`Self::ChooseColor`] variant
     /// reused, not a second picker); `until_end_of_turn` tells [`Intent::ChooseColor`]'s handler
     /// which of the two answered: `false` sets `source`'s indefinite [`Permanent::chosen_color`],
-    /// `true` sets its until-end-of-turn [`Permanent::set_color_eot`] instead.
+    /// `true` sets its until-end-of-turn [`Permanent::set_color`] instead.
     ChooseColor {
         player: PlayerId,
         source: ObjectId,
@@ -2244,11 +2244,18 @@ pub enum Event {
     /// An as-enters "choose a color" choice was answered (CR 614.12/700.9-style — Flickering
     /// Ward's [`Effect::Choice(ChoiceEffect::ChooseColor)`]). Sets `object`'s [`Permanent::chosen_color`].
     ColorChosen { object: ObjectId, color: Color },
-    /// A "becomes the color of your choice until end of turn" choice was answered (CR 613.3c
-    /// layer 5 — Wild Mongrel's [`Effect::Choice(ChoiceEffect::SetOwnColorUntilEndOfTurn)`]). Sets `object`'s
-    /// [`Permanent::set_color_eot`]; cleared alongside the other until-EOT boosts by
+    /// A CR 613.3c layer-5 color SET landed on `object` — Wild Mongrel's answered "becomes the
+    /// color of your choice until end of turn"
+    /// ([`Effect::Choice(ChoiceEffect::SetOwnColorUntilEndOfTurn)`], `until_end_of_turn`), or a
+    /// lace resolving on a spell or permanent ([`Effect::Pump(PumpEffect::TargetBecomesColor)`],
+    /// which prints no duration). Writes [`Permanent::set_color`] or, for a spell still on the
+    /// stack, [`Spell::set_color`]; only the until-EOT form is cleared by
     /// [`Self::TempBoostsEnded`].
-    ColorSetUntilEndOfTurn { object: ObjectId, color: Color },
+    ColorSet {
+        object: ObjectId,
+        color: Color,
+        until_end_of_turn: bool,
+    },
     /// A copy of a prepared permanent's back-face spell was put on the stack (soc/sos prepare
     /// DFCs). `source` is the prepared permanent (its [`CardDef::back`] is the spell def);
     /// `spell` is the freshly-minted spell object, controlled by `controller`, targeting `target`.

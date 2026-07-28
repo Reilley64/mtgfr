@@ -265,6 +265,7 @@ message_keys! {
     EFFECT_PUMP_SET_OWN_BASE_PT_FROM_AMOUNT => "effect.pump_set_own_base_pt_from_amount",
     EFFECT_PUMP_STRIP_KEYWORDS_FROM_OPPONENTS_CREATURES => "effect.pump_strip_keywords_from_opponents_creatures",
     EFFECT_PUMP_TARGET_BECOMES_SUBTYPES_WHILE_SOURCE_REMAINS => "effect.pump_target_becomes_subtypes_while_source_remains",
+    EFFECT_PUMP_TARGET_BECOMES_COLOR => "effect.pump_target_becomes_color",
     EFFECT_PUMP_TARGET_BECOMES_TREASURE => "effect.pump_target_becomes_treasure",
     EFFECT_PUMP_WEAKEN_EACH_CREATURE => "effect.pump_weaken_each_creature",
     EFFECT_REVEAL_TOP_AND_DRAIN_MUTUAL => "effect.reveal_top_and_drain_mutual",
@@ -1076,6 +1077,7 @@ fn target_spec_token(target: TargetSpec) -> String {
         }
         TargetSpec::SingleTargetSpellOnStack => "single_target_spell_on_stack".to_string(),
         TargetSpec::ActivatedAbilityOnStack => "activated_ability_on_stack".to_string(),
+        TargetSpec::SpellOrPermanent => "spell_or_permanent".to_string(),
         TargetSpec::ArtifactEnchantmentOrPlaneswalker => {
             "artifact_enchantment_or_planeswalker".to_string()
         }
@@ -2353,6 +2355,10 @@ impl Effect {
             Effect::Pump(TargetBecomesSubtypesWhileSourceRemains { set_subtypes, .. }) => {
                 MessageRef::new(MessageKey::EFFECT_PUMP_TARGET_BECOMES_SUBTYPES_WHILE_SOURCE_REMAINS)
                     .with_params(vec![string_list_param("set_subtypes", set_subtypes)])
+            }
+            Effect::Pump(TargetBecomesColor { color, .. }) => {
+                MessageRef::new(MessageKey::EFFECT_PUMP_TARGET_BECOMES_COLOR)
+                    .with_params(vec![str_param("color", color_token(color))])
             }
             Effect::Pump(TargetBecomesTreasure { .. }) => {
                 MessageRef::new(MessageKey::EFFECT_PUMP_TARGET_BECOMES_TREASURE)

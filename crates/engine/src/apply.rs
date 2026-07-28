@@ -953,9 +953,18 @@ impl Game {
                 Object::Spell(s) => s.chosen_color = Some(color),
                 other => panic!("object {object} can't record a chosen color: {other:?}"),
             },
-            Event::ColorSetUntilEndOfTurn { object, color } => {
-                self.permanent_mut(object).set_color_eot = Some(color);
-            }
+            // A layer-5 color SET, on a permanent (Wild Mongrel) or on a spell still on the stack
+            // (Deathlace — a lace can recolor the spell itself, which is the whole reason the
+            // cycle was printed). The spell slot has no duration because the spell has none.
+            Event::ColorSet {
+                object,
+                color,
+                until_end_of_turn,
+            } => match &mut self.objects[object as usize] {
+                Object::Permanent(p) => p.set_color = Some((color, until_end_of_turn)),
+                Object::Spell(s) => s.set_color = Some(color),
+                other => panic!("object {object} can't record a color: {other:?}"),
+            },
             Event::PreparedSpellCast {
                 spell,
                 source,
@@ -1462,7 +1471,9 @@ impl Game {
                 p.added_types_eot_timestamp = 0;
                 p.added_subtypes_eot = &[];
                 p.added_colors_eot = &[];
-                p.set_color_eot = None;
+                if matches!(p.set_color, Some((_, true))) {
+                    p.set_color = None;
+                }
                 // Revert an until-EOT enter-as-copy to the printed permanent (CR 514.2 — Cursed
                 // Mirror's "become a copy … until end of turn"). The copy's "except it has
                 // haste/myriad" rider ends with the copy, so clear the copiable rider too (an

@@ -4811,6 +4811,31 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
         );
         assert_eq!(filter.types, TypeSet::LAND);
     }
+
+    /// The lace cycle is five copies of one card with the colour swapped, so the shape test is a
+    /// table: each names its own colour, each targets a spell *or* a permanent (the only spec in
+    /// the pool that spans both zones), and none of them prints a duration.
+    #[test]
+    fn unlimited_laces_recolor_a_spell_or_a_permanent() {
+        for (name, expected) in [
+            ("Chaoslace", Color::Red),
+            ("Deathlace", Color::Black),
+            ("Lifelace", Color::Green),
+            ("Purelace", Color::White),
+            ("Thoughtlace", Color::Blue),
+        ] {
+            let def = get_by_name(name).unwrap_or_else(|| panic!("{name} is in the pool"));
+            let [ability] = &def.abilities[..] else {
+                panic!("{name} prints one line");
+            };
+            let Effect::Pump(PumpEffect::TargetBecomesColor { color, target }) = ability.effect
+            else {
+                panic!("{name} sets a colour");
+            };
+            assert_eq!(color, expected);
+            assert_eq!(target, TargetSpec::SpellOrPermanent);
+        }
+    }
 }
 
 #[cfg(test)]

@@ -1770,7 +1770,7 @@ impl Game {
                             || p.base_pt_set_eot.is_some()
                             || p.added_types_eot != TypeSet::NONE
                             || !p.added_subtypes_eot.is_empty()
-                            || p.set_color_eot.is_some()
+                            || matches!(p.set_color, Some((_, true)))
                             || !p.temp_keywords.is_empty()
                             || !p.temp_lost_keywords.is_empty()
                             || p.reverts_to_def_eot.is_some()

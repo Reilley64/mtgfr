@@ -422,13 +422,13 @@ impl Game {
     /// permanent (a "red" source has a red pip) and by color-scoped anthems ([`Game::colors_of`]
     /// callers).
     ///
-    /// A CR 613.3c layer-5 color-SET ([`Permanent::set_color_eot`] — Wild Mongrel's "becomes the
-    /// color of your choice until end of turn"; [`Spell::set_color`] — Fork's "except that the
+    /// A CR 613.3c layer-5 color-SET ([`Permanent::set_color`] — Wild Mongrel's "becomes the
+    /// color of your choice until end of turn", Deathlace's "becomes black"; [`Spell::set_color`] — Fork's "except that the
     /// copy is red") wins ahead of the derived/added colors below: it *replaces* them rather than
     /// unioning, so a green Mongrel that becomes black reads as black only, never green-and-black.
     pub fn colors_of(&self, object: ObjectId) -> [bool; Color::COUNT] {
         let set_color = match &self.objects[object as usize] {
-            Object::Permanent(p) => p.set_color_eot,
+            Object::Permanent(p) => p.set_color.map(|(color, _)| color),
             Object::Spell(s) => s.set_color,
             _ => None,
         };

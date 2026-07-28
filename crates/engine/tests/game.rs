@@ -108942,3 +108942,131 @@ fn gaeas_liege_counts_the_defending_players_forests_while_it_attacks() {
         "attacking, it counts the defending player's one Forest, not its controller's three"
     );
 }
+
+// ── The lace cycle: a colour that replaces, on either side of the stack (fidelity #15) ──
+
+/// The colours `object` currently has, WUBRG order, as words — a readable `assert_eq!` left side.
+fn color_names(game: &Game, object: ObjectId) -> Vec<&'static str> {
+    let colors = game.colors_of(object);
+    ["white", "blue", "black", "red", "green"]
+        .into_iter()
+        .enumerate()
+        .filter(|&(i, _)| colors[i])
+        .map(|(_, name)| name)
+        .collect()
+}
+
+/// Cast `object` from `player`'s hand at `target` and leave it on the stack.
+fn cast_leaving_on_stack(game: &mut Game, player: PlayerId, object: ObjectId, target: Target) {
+    game.fund_mana(player);
+    game.submit(Intent::Cast {
+        player,
+        object,
+        target: Some(target),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        multikicker_count: 0,
+        alternative_cost: false,
+    })
+    .expect("the spell is castable");
+}
+
+#[test]
+fn deathlace_replaces_a_creatures_colors_and_never_gives_them_back() {
+    let mut game = Game::new();
+    for player in [PlayerId(0), PlayerId(1)] {
+        for _ in 0..10 {
+            game.spawn_in_library(player, card("Mountain"));
+        }
+    }
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let deathlace = game.spawn_in_hand(PlayerId(0), card("Deathlace"));
+    assert_eq!(color_names(&game, bear), vec!["green"]);
+
+    cast_and_resolve(&mut game, deathlace, Some(Target::Object(bear)));
+
+    assert_eq!(
+        color_names(&game, bear),
+        vec!["black"],
+        "\"becomes black\" replaces the printed colour rather than adding to it (CR 613.3c)"
+    );
+
+    pass_until_next_turn(&mut game);
+
+    assert_eq!(
+        color_names(&game, bear),
+        vec!["black"],
+        "the lace prints no duration, so cleanup must not take the colour back"
+    );
+}
+
+#[test]
+fn thoughtlace_makes_a_red_spell_counterable_by_red_elemental_blast() {
+    let mut game = Game::new();
+    let bolt = game.spawn_in_hand(PlayerId(0), card("Lightning Bolt"));
+    let thoughtlace = game.spawn_in_hand(PlayerId(1), card("Thoughtlace"));
+    let blast = game.spawn_in_hand(PlayerId(1), card("Red Elemental Blast"));
+
+    cast_leaving_on_stack(&mut game, PlayerId(0), bolt, Target::Player(PlayerId(1)));
+    let bolt_spell = top_spell(&game);
+    assert_eq!(color_names(&game, bolt_spell), vec!["red"]);
+    game.submit(Intent::PassPriority {
+        player: PlayerId(0),
+    })
+    .unwrap();
+
+    cast_leaving_on_stack(
+        &mut game,
+        PlayerId(1),
+        thoughtlace,
+        Target::Object(bolt_spell),
+    );
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        color_names(&game, bolt_spell),
+        vec!["blue"],
+        "a spell on the stack is a legal lace target, and the set replaces red with blue"
+    );
+
+    // "Counter target blue spell" — legal only because the Bolt is blue now. The Thoughtlace
+    // resolving handed priority back to the active player, so pass once to reach P1 again.
+    game.submit(Intent::PassPriority {
+        player: PlayerId(0),
+    })
+    .unwrap();
+    game.fund_mana(PlayerId(1));
+    game.submit(Intent::Cast {
+        player: PlayerId(1),
+        object: blast,
+        target: None,
+        x: 0,
+        modes: vec![(0, Some(Target::Object(bolt_spell)))],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        multikicker_count: 0,
+        alternative_cost: false,
+    })
+    .expect("Red Elemental Blast can counter the laced Bolt");
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.life(PlayerId(1)),
+        20,
+        "the Bolt was countered, so its 3 damage never happened"
+    );
+}

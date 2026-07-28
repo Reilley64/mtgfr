@@ -162,6 +162,18 @@ pub enum PumpEffect {
         target: TargetSpec,
     },
 
+    /// "Target spell or permanent becomes black." (Deathlace and the rest of the lace cycle) — a
+    /// CR 613.3c layer-5 color SET with no duration printed at all, so it lasts as long as the
+    /// object does. `color` *replaces* the object's colors rather than unioning with them, which
+    /// is why a laced spell stops being countered by "counter target blue spell". Targets a spell
+    /// on the stack or a permanent, and writes [`Permanent::set_color`]/[`Spell::set_color`]
+    /// through [`Event::ColorSet`]. The reminder text ("its mana symbols remain unchanged") needs
+    /// no modelling — colors are read from `colors_of`, never re-derived from the pips.
+    TargetBecomesColor {
+        target: TargetSpec,
+        color: Color,
+    },
+
     /// "Target land becomes a Forest until this creature leaves the battlefield" (Gaea's Liege) —
     /// a CR 613.4 type change whose duration is the *source's* stay on the battlefield, the only
     /// one the pool prints. `set_subtypes` replaces the whole land-type line (CR 305.7), so a

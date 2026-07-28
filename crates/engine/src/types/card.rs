@@ -1181,7 +1181,7 @@ pub(crate) fn fresh_permanent(
         added_types_eot_timestamp: 0,
         added_subtypes_eot: &[],
         added_colors_eot: &[],
-        set_color_eot: None,
+        set_color: None,
         temp_keywords: &[],
         temp_lost_keywords: &[],
         attachment_lost_keywords: &[],
@@ -1605,7 +1605,7 @@ pub(crate) struct Spell {
     /// A CR 613.3c layer-5 color SET on this spell, granted by the copy effect that minted it
     /// (Fork's "except that the copy is red"). *Replaces* the copiable color derived from the
     /// card's pips rather than unioning with it, exactly like the permanent-side
-    /// [`Permanent::set_color_eot`] — see [`Game::colors_of`]. `None` for every cast spell and
+    /// [`Permanent::set_color`] — see [`Game::colors_of`]. `None` for every cast spell and
     /// for a copy from an effect that doesn't recolor (Twincast).
     pub(crate) set_color: Option<Color>,
     /// A modal spell's chosen modes (CR 700.2), each with its own target. An empty selection for
@@ -1842,13 +1842,18 @@ pub(crate) struct Permanent {
     /// `added_types_eot`/`added_subtypes_eot` at cleanup (see [`Event::TempBoostsEnded`]'s
     /// handler). Not a `CardDef`/TOML surface — runtime bookkeeping like its type-layer siblings.
     pub(crate) added_colors_eot: &'static [Color],
-    /// A CR 613.3c layer-5 color-SET until end of turn (Wild Mongrel's "becomes the color of
-    /// your choice until end of turn" — [`Effect::Choice(ChoiceEffect::SetOwnColorUntilEndOfTurn)`]): while `Some`,
-    /// [`Game::colors_of`] returns exactly this one color, *replacing* the derived/`added_colors_eot`
-    /// colors rather than unioning with them (unlike `added_colors_eot`'s CR 613.3c layer-5 ADD).
-    /// Cleared alongside `added_colors_eot` at cleanup (see [`Event::TempBoostsEnded`]'s handler).
-    /// Not a `CardDef`/TOML surface — the color is a runtime player choice, not printed data.
-    pub(crate) set_color_eot: Option<Color>,
+    /// A CR 613.3c layer-5 color-SET (Wild Mongrel's "becomes the color of your choice until end
+    /// of turn" — [`Effect::Choice(ChoiceEffect::SetOwnColorUntilEndOfTurn)`]; Deathlace's "target
+    /// spell or permanent becomes black" — [`Effect::Pump(PumpEffect::TargetBecomesColor)`]): while
+    /// `Some`, [`Game::colors_of`] returns exactly this one color, *replacing* the
+    /// derived/`added_colors_eot` colors rather than unioning with them (unlike
+    /// `added_colors_eot`'s CR 613.3c layer-5 ADD). The `bool` is the duration: `true` clears at
+    /// cleanup alongside `added_colors_eot` (see [`Event::TempBoostsEnded`]'s handler), `false`
+    /// lasts as long as the object does (the lace cycle prints no duration at all). One slot for
+    /// both, so a second set clobbers the first — which *is* the CR 613.7 answer, since each
+    /// replaces and the later timestamp wins. Not a `CardDef`/TOML surface — a runtime choice or a
+    /// resolving spell's doing, not printed data.
+    pub(crate) set_color: Option<(Color, bool)>,
     /// Keywords granted until end of turn (a [`Effect::Pump(PumpEffect::PumpUntilEndOfTurn)`]/
     /// [`Effect::Pump(PumpEffect::PumpCreaturesYouControlUntilEndOfTurn)`] grant), cleared at cleanup alongside
     /// the temp P/T. `&'static` because it's usually copied straight from the granting

@@ -565,6 +565,7 @@ impl Effect {
             | Effect::Pump(PumpEffect::SetBasePtTargetUntilEndOfTurn { target, .. })
             | Effect::Pump(PumpEffect::TargetBecomesTreasure { target })
             | Effect::Pump(PumpEffect::TargetBecomesSubtypesWhileSourceRemains { target, .. })
+            | Effect::Pump(PumpEffect::TargetBecomesColor { target, .. })
             | Effect::Counters(CountersEffect::PutCounters { target, .. })
             | Effect::Counters(CountersEffect::DoubleCounters { target })
             | Effect::Counters(CountersEffect::DoubleCountersOnTargetCreatures { target, .. })

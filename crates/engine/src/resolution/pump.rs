@@ -368,6 +368,24 @@ impl Game {
                     until_eot: false,
                 }]
             }
+            // "Target spell or permanent becomes black" (the lace cycle): a layer-5 SET with no
+            // printed duration, so it rides the object. `until_end_of_turn: false` — cleanup must
+            // not take it back. Nothing to do if the target already left the stack or the
+            // battlefield (CR 608.2b; `target_still_legal` normally fizzles this first).
+            PumpEffect::TargetBecomesColor { color, .. } => {
+                let object = expect_object_target(target, "becomes a color");
+                if !matches!(
+                    self.objects[object as usize],
+                    Object::Permanent(_) | Object::Spell(_)
+                ) {
+                    return Vec::new();
+                }
+                vec![Event::ColorSet {
+                    object,
+                    color,
+                    until_end_of_turn: false,
+                }]
+            }
             // "Target land becomes a Forest until this creature leaves the battlefield" (Gaea's
             // Liege): the whole land-type line is replaced (CR 305.7), and the entry names the
             // source so the read side can check it is still there. A target that has left the

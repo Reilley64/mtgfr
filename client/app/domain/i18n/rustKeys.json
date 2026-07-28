@@ -239,6 +239,7 @@
   "effect.pump_set_own_base_pt_from_amount",
   "effect.pump_strip_keywords_from_opponents_creatures",
   "effect.pump_target_becomes_subtypes_while_source_remains",
+  "effect.pump_target_becomes_color",
   "effect.pump_target_becomes_treasure",
   "effect.pump_weaken_each_creature",
   "effect.reveal_top_and_drain_mutual",

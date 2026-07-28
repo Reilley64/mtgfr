@@ -520,7 +520,7 @@ a *different* player. Helm of Chatzuk grants it until end of turn, so it must be
 `Keyword`, not a card flag.
 *Cards:* benalish_hero, helm_of_chatzuk, mesa_pegasus, timber_wolves.
 
-### 15. `color-changing-effects` — 5 cards, M
+### 15. `color-changing-effects` — 5 cards, M — **done**
 Depends on: nothing.
 The lace cycle. `set_own_color_until_end_of_turn` exists but is self-scoped and turn-scoped;
 these target a spell *or* permanent and last indefinitely (layer 5, no duration). *Sketch:* an
@@ -529,6 +529,34 @@ stack-object-level color override that `characteristics.rs` applies in layer 5, 
 hook. The target spec needs a "spell or permanent" variant — the pool has
 `single_target_spell_on_stack` and permanent targets, but nothing that accepts either.
 *Cards:* chaoslace, deathlace, lifelace, purelace, thoughtlace.
+
+*Landed:* the sketch called for a new permanent-level and stack-object-level override. Both already
+existed — `Permanent::set_color_eot` (Wild Mongrel) and `Spell::set_color` (Fork's "except that the
+copy is red"), both already read by `colors_of`, both already replacing rather than unioning. The
+only thing missing was a duration that isn't end of turn, so `set_color_eot` became
+`set_color: Option<(Color, bool)>`: one slot carrying its own duration, cleared at cleanup only when
+the flag says so. One slot, not two, is also the CR 613.7 answer — each set replaces, so a later one
+clobbering an earlier one is exactly right.
+
+`Event::ColorSetUntilEndOfTurn` became `Event::ColorSet { object, color, until_end_of_turn }`, and
+its apply dispatches on the object: a permanent gets the pair, a spell still on the stack gets
+`Spell::set_color`. `PumpEffect::TargetBecomesColor` passes `false`; Wild Mongrel's answered choice
+passes `true`.
+
+`TargetSpec::SpellOrPermanent` is new and unfiltered — the one spec spanning the stack and the
+battlefield. The five cards that print the wording restrict nothing, so neither does it.
+
+The bug this turned up is the interesting part. `SpellFilter::Color` was matched against
+`color_identity(&def)` — the printed pips — so Red Elemental Blast still saw a Thoughtlaced Bolt as
+red and refused to counter it, which is the entire point of the cycle. Fixed at the call site that
+has the stack object's id: `legal_targets_for`'s `SpellOnStack` arm now reads `colors_of(id)`, the
+same carve-out `SpellFilter::ManaValueEqualsX` already takes there. `spell_matches_filter` still
+reads the pips for its cast-trigger callers, which is right for them — a cast trigger fires before a
+lace could respond.
+
+ponytail: both durations project onto the one existing `VisibleEvent::ColorSetUntilEndOfTurn`. The
+client only re-reads the object's colours from it; nothing renders the duration. Split it if the log
+ever spells the duration out.
 
 ### 16. `text-changing-effects` — 2 cards, L
 Depends on: #3, #15.

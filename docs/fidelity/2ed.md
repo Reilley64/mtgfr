@@ -187,7 +187,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [x] **Burrowing** {R} · Enchantment — Aura — increment 3
 - [ ] **Camouflage** {G} · Instant — increment 48
 - [x] **Castle** {3}{W} · Enchantment — increment 40
-- [ ] **Chaoslace** {R} · Instant — increment 15
+- [x] **Chaoslace** {R} · Instant — increment 15
 - [x] **Circle of Protection: Black** {1}{W} · Enchantment — increment 4, 5a
 - [x] **Circle of Protection: Blue** {1}{W} · Enchantment — increment 4, 5a
 - [x] **Circle of Protection: Green** {1}{W} · Enchantment — increment 4, 5a
@@ -206,7 +206,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [x] **Cursed Land** {2}{B}{B} · Enchantment — Aura — increment 61
 - [x] **Cyclopean Tomb** {4} · Artifact — increment 8d, 28
 - [x] **Deathgrip** {B}{B} · Enchantment — increment 9
-- [ ] **Deathlace** {B} · Instant — increment 15
+- [x] **Deathlace** {B} · Instant — increment 15
 - [x] **Demonic Hordes** {3}{B}{B}{B} · Creature — Demon — increment 41
 - [x] **Dingus Egg** {4} · Artifact — increment 59
 - [x] **Disintegrate** {X}{R} · Sorcery — increment 34
@@ -250,7 +250,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [x] **Library of Leng** {1} · Artifact — increment 33
 - [ ] **Lich** {B}{B}{B}{B} · Enchantment — increment 22, 47
 - [x] **Lifeforce** {G}{G} · Enchantment — increment 9
-- [ ] **Lifelace** {G} · Instant — increment 15
+- [x] **Lifelace** {G} · Instant — increment 15
 - [ ] **Lifetap** {U}{U} · Enchantment — increment 19
 - [ ] **Living Artifact** {G} · Enchantment — Aura — increment 22, 28
 - [x] **Living Lands** {3}{G} · Enchantment — increment 8c
@@ -278,7 +278,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Power Sink** {X}{U} · Instant — increment 23
 - [x] **Power Surge** {R}{R} · Enchantment — increment 1
 - [ ] **Psychic Venom** {1}{U} · Enchantment — Aura — increment 19
-- [ ] **Purelace** {W} · Instant — increment 15
+- [x] **Purelace** {W} · Instant — increment 15
 - [ ] **Raging River** {R}{R} · Enchantment — increment 48
 - [x] **Red Elemental Blast** {R} · Instant — increment 9
 - [x] **Reverse Damage** {1}{W}{W} · Instant — increment 4, 5a
@@ -299,7 +299,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [x] **Stone Giant** {2}{R}{R} · Creature — Giant — increment 42
 - [x] **Sunglasses of Urza** {3} · Artifact — increment 32
 - [x] **Thicket Basilisk** {3}{G}{G} · Creature — Basilisk — increment 21
-- [ ] **Thoughtlace** {U} · Instant — increment 15
+- [x] **Thoughtlace** {U} · Instant — increment 15
 - [x] **Throne of Bone** {1} · Artifact — increment 10
 - [ ] **Timber Wolves** {G} · Creature — Wolf — increment 14
 - [ ] **Time Vault** {2} · Artifact — increment 7, 18

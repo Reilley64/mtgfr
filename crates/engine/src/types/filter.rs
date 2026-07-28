@@ -100,6 +100,12 @@ pub enum TargetSpec {
     /// pool card produces that, and Azorius counters exactly one. Give stack abilities real object
     /// identity when a card forces the distinction.
     ActivatedAbilityOnStack,
+    /// A spell on the stack *or* a permanent on the battlefield, unrestricted — the lace cycle's
+    /// "target spell or permanent" (Deathlace). The only spec that spans the two zones; every
+    /// other spell spec ([`Self::SpellOnStack`]) and permanent spec ([`Self::Permanent`]) picks
+    /// one. Unfiltered because the five cards that print it are unfiltered.
+    #[cfg_attr(feature = "card-dsl", serde(rename = "spell_or_permanent"))]
+    SpellOrPermanent,
     /// A target artifact, enchantment, or planeswalker on the battlefield (Fracture). The
     /// noncreature-permanent removal set the pool needs; Auras count as enchantments.
     ArtifactEnchantmentOrPlaneswalker,

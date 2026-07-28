@@ -247,6 +247,15 @@ impl Game {
                         cache.invalidate_object(host);
                     }
                 }
+                // Same reach as `ColorChosen`: a layer-5 recolor (Deathlace, Wild Mongrel) can
+                // flip a colour-scoped anthem or a protection-from-colour grant on the recolored
+                // permanent, and on the host if it is an Aura.
+                Event::ColorSet { object, .. } => {
+                    cache.invalidate_object(object);
+                    if let Some(host) = self.as_permanent(object).and_then(|p| p.attached_to) {
+                        cache.invalidate_object(host);
+                    }
+                }
                 // The city's-blessing-gated anthem's condition just flipped for every creature this
                 // player owns, same scope as `CreatureTypeChosen` above.
                 Event::CitysBlessingGained { player } => {
