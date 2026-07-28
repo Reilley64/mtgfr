@@ -1,8 +1,7 @@
 // CR 103.1 reveal: a one-shot spotlight hopping the seat quadrants onto the rolled starter.
 import { type Html, html } from "foldkit/html";
 import type { VisibleState } from "~/wire/types";
-import { revealSlot } from "../first-player-reveal";
-import { seatCell, seatColor } from "../geometry/layout";
+import { seatCell, seatColor, seatSlot } from "../geometry/layout";
 import type { Message } from "../messages";
 import type { FirstPlayerReveal } from "../submodel";
 
@@ -17,7 +16,7 @@ export function firstPlayerRevealView(reveal: FirstPlayerReveal | null, state: V
 
   const count = Math.max(1, state.players.length);
   const litSlot = reveal.steps[reveal.index]?.slot ?? 0;
-  const winnerSlot = revealSlot(reveal.winner, state.viewer, count);
+  const winnerSlot = seatSlot(reveal.winner, state.viewer, count);
   const settled = reveal.index === reveal.steps.length - 1;
 
   return h.div(
@@ -32,8 +31,8 @@ export function firstPlayerRevealView(reveal: FirstPlayerReveal | null, state: V
       h.div(
         [h.Class("grid w-[min(70vw,420px)] grid-cols-2 grid-rows-2 gap-sm")],
         state.players.map((player) => {
-          const slot = revealSlot(player.player, state.viewer, count);
-          const cell = seatCell(player.player, state.viewer < count ? state.viewer : 0, count);
+          const slot = seatSlot(player.player, state.viewer, count);
+          const cell = seatCell(player.player, state.viewer, count);
           const lit = slot === litSlot;
           return h.div(
             [

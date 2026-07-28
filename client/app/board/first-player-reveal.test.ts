@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import type { VisibleState } from "~/wire/types";
 import { emptyGameFold, type GameFoldState } from "../game/fold";
-import { markRevealSeen, revealSeen, revealSlot, spotlightSteps } from "./first-player-reveal";
+import { markRevealSeen, revealSeen, spotlightSteps } from "./first-player-reveal";
 import { FirstPlayerRevealFinished, FirstPlayerRevealStepped } from "./messages";
 import { armFirstPlayerReveal, initialBoardModel, updateBoard } from "./submodel";
 
@@ -26,22 +26,6 @@ describe("spotlightSteps", () => {
 
   it("survives a one-seat table", () => {
     expect(spotlightSteps(0, 1, false).at(-1)?.slot).toBe(0);
-  });
-});
-
-describe("revealSlot", () => {
-  it("is viewer-relative", () => {
-    expect(revealSlot(2, 2, 4)).toBe(0);
-    expect(revealSlot(3, 2, 4)).toBe(1);
-  });
-
-  it("falls back to seat order for a spectator", () => {
-    expect(revealSlot(2, 255, 4)).toBe(2);
-  });
-
-  it("clamps count to avoid NaN", () => {
-    expect(revealSlot(0, 0, 0)).toBe(0);
-    expect(revealSlot(1, 0, 0)).toBe(0);
   });
 });
 

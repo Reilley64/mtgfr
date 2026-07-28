@@ -89,7 +89,6 @@ import {
   RevealHoldTimer,
   RevealStepTimer,
   revealSeen,
-  revealSlot,
   type SpotlightStep,
   spotlightSteps,
 } from "./first-player-reveal";
@@ -114,7 +113,7 @@ import {
   primaryActionFor,
   resolveClick,
 } from "./geometry/interaction";
-import { avatarPos, CARD_H, CARD_W, landRowCenter, layout, type RenderCard, ZONE } from "./geometry/layout";
+import { avatarPos, CARD_H, CARD_W, landRowCenter, layout, type RenderCard, seatSlot, ZONE } from "./geometry/layout";
 import { type RadialPress, radialPressDown, radialPressUp } from "./geometry/radial";
 import {
   STACK_HOLD_MAX_MS,
@@ -1875,7 +1874,7 @@ export function armFirstPlayerReveal(model: BoardModel, fold: BoardFold, tableId
 
   markRevealSeen(tableId);
   const count = Math.max(1, state.players.length);
-  const slot = revealSlot(state.active_player, state.viewer, count);
+  const slot = seatSlot(state.active_player, state.viewer, count);
   const reveal: FirstPlayerReveal = {
     winner: state.active_player,
     steps: spotlightSteps(slot, count, prefersReducedMotion()),
