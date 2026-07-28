@@ -108426,3 +108426,91 @@ fn paying_mana_vaults_upkeep_four_untaps_it_and_spares_the_ping() {
         "an untapped Vault never triggers at all — the intervening-if fails at placement"
     );
 }
+
+// ── A land that is a Swamp now (fidelity #8a) ──────────────────────────────────────────────
+
+#[test]
+fn evil_presence_makes_an_enchanted_mountain_a_swamp() {
+    // "Enchanted land is a Swamp." CR 305.7: the land loses its old basic land types, and with
+    // them the mana ability that came with them.
+    let mut game = Game::new();
+    let mountain = game.spawn_on_battlefield(PlayerId(0), card("Mountain"));
+    let presence = game.spawn_in_hand(PlayerId(0), card("Evil Presence"));
+    cast_and_resolve(&mut game, presence, Some(Target::Object(mountain)));
+
+    let subtypes = game.effective_subtypes(mountain);
+    assert!(subtypes.contains(&"Swamp"), "it is a Swamp: {subtypes:?}");
+    assert!(
+        !subtypes.contains(&"Mountain"),
+        "and nothing else: {subtypes:?}"
+    );
+
+    // Casting the Aura funded the pool, so measure the tap as a delta rather than a total.
+    let before = (
+        game.mana_in_pool(PlayerId(0), Color::Black),
+        game.mana_in_pool(PlayerId(0), Color::Red),
+    );
+    game.submit(Intent::TapForMana {
+        player: PlayerId(0),
+        object: mountain,
+    })
+    .unwrap();
+    assert_eq!(
+        (
+            game.mana_in_pool(PlayerId(0), Color::Black),
+            game.mana_in_pool(PlayerId(0), Color::Red),
+        ),
+        (before.0 + 1, before.1),
+        "the Swamp's {{B}}, not the Mountain's {{R}}"
+    );
+}
+
+#[test]
+fn evil_presence_strips_the_other_half_of_a_dual() {
+    // CR 305.7 *replaces* a land's basic types rather than adding to them: an enchanted Badlands
+    // is a Swamp and only a Swamp, so the red half of its "{T}: Add {B} or {R}" goes too.
+    let mut game = Game::new();
+    let badlands = game.spawn_on_battlefield(PlayerId(0), card("Badlands"));
+    let presence = game.spawn_in_hand(PlayerId(0), card("Evil Presence"));
+    cast_and_resolve(&mut game, presence, Some(Target::Object(badlands)));
+
+    assert_eq!(game.effective_subtypes(badlands), vec!["Swamp"]);
+
+    let before = game.mana_in_pool(PlayerId(0), Color::Black);
+    game.submit(Intent::TapForMana {
+        player: PlayerId(0),
+        object: badlands,
+    })
+    .unwrap();
+    assert_eq!(
+        game.mana_in_pool(PlayerId(0), Color::Black),
+        before + 1,
+        "one black, with no choice left to make"
+    );
+}
+
+#[test]
+fn the_mana_planner_spends_a_swamped_mountain_as_black() {
+    // The tap intent is one of five places that read a land's `produces`; the other four are the
+    // auto-tap planner behind `can_pay_cost`, which is what tells a client the spell is castable.
+    let mut game = Game::new();
+    let mountain = game.spawn_on_battlefield(PlayerId(0), card("Mountain"));
+    let presence = game.spawn_in_hand(PlayerId(0), card("Evil Presence"));
+    cast_and_resolve(&mut game, presence, Some(Target::Object(mountain)));
+    // Drain the pool the cast funded (CR 500.4) so the planner has to find the mana on board.
+    advance_until(&mut game, |g| g.current_step() == Step::Main2);
+
+    let one = |color: Color| {
+        let mut cost = Cost::FREE;
+        cost.colored[color.index()] = 1;
+        cost
+    };
+    assert!(
+        game.can_pay_cost(PlayerId(0), one(Color::Black)),
+        "the enchanted Mountain pays {{B}}"
+    );
+    assert!(
+        !game.can_pay_cost(PlayerId(0), one(Color::Red)),
+        "and no longer pays {{R}}"
+    );
+}

@@ -274,21 +274,57 @@ many permanents may untap, the latter needing the `PendingChoice::ChooseUntapSet
 **7d Instill Energy / Time Vault** — "can attack as though it had haste" plus a once-each-turn
 untap, and an extra turn that belongs to #18.
 
-### 8. `basic-land-type-changing` — 7 cards, M
+### 8a. `basic-land-type-changing` — 1 card, S — **done**
 Depends on: nothing.
-"Enchanted land is a Swamp" / "All Mountains are Plains" / "All Forests are 1/1 creatures that
-are still lands." Layer 4 (type-changing) with a layer-7b rider in two cases. `set_attached_types`
-exists (Darksteel Mutation) but overwrites the whole type line and doesn't touch land subtypes or
-the mana abilities they imply. *Sketch:* a `StaticEffect::SetLandSubtypes { scope, subtypes,
-replace: bool }` applied in `characteristics.rs` before mana-ability derivation, so a land that
-becomes a Swamp taps for {B} and *loses* its old intrinsic ability (CR 305.7 — changing a land's
-subtype replaces its mana abilities). Kormus Bell and Living Lands add the creature type and a
-base P/T on top, which is #2's static in its non-CDA fixed form. Cyclopean Tomb's mire counters
-key the change to a counter rather than an Aura, and its leaves-the-battlefield clause schedules
-an unbounded series of upkeep triggers — model that as a delayed trigger that re-registers itself
-until no mire counters it placed remain.
-*Cards:* conversion, cyclopean_tomb, evil_presence, gaea_s_liege, kormus_bell, living_lands,
-phantasmal_terrain.
+*Landed:* CR 305.7 for the price of one accessor, and no new effect at all. The premise was half
+stale: `set_attached_types`'s `set_subtypes` *does* already reach a land's types, because
+`Game::effective_subtypes` unions `CardKind::Land`'s own `subtypes` into the printed line before
+the CR 613.4 layer replaces it. So Evil Presence is `set_subtypes = ["Swamp"]` and nothing else.
+What was actually missing is the consequence: mana does not derive from subtypes here, it is read
+off `CardKind::Land { produces }` at five sites — the tap intent, three arms of the auto-tap
+planner, and `land_producible_colors`. Each repeated the same three-arm credit match, so the fix
+is one `Game::land_mana_credit(land, player)` they all call: it compares the land's *effective*
+basic land types against its printed ones and, when they differ, derives the credit from the new
+types instead of the printed `produces` — which also drops the old mana ability, as CR 305.7 wants.
+`commander_identity_credit`'s colors→cheapest-`Mana`-shape collapse was already exactly the
+derivation needed, so it came out as `mana_credit_for_colors` and both callers share it. A dual
+loses the half that went with the type it no longer has, which is what the Badlands test pins.
+*Cards:* evil_presence.
+
+### 8b. `chosen-basic-land-type` — 1 card, M
+Depends on: 8a.
+Phantasmal Terrain — "As this Aura enters, choose a basic land type. Enchanted land is the chosen
+type." Same mechanism as 8a with the subtypes chosen instead of printed, so it needs an as-enters
+`PendingChoice` over the five basic land types and a `set_subtypes` that reads the choice back
+rather than a `&'static` list. The DSL has no "choose a basic land type" prompt; the closest
+existing shape is the choose-a-creature-type prompt backed by `CREATURE_TYPES`.
+*Cards:* phantasmal_terrain.
+
+### 8c. `all-lands-of-a-type-become-another` — 3 cards, M
+Depends on: 8a.
+"All Mountains are Plains" (Conversion) / "All Swamps are 1/1 black Shade creatures that are still
+lands" (Kormus Bell) / the same for Forests (Living Lands). 8a's derivation carries the mana half
+once the subtype answer is right; what's new is the *scope* — a filter-matched global static rather
+than an attached Aura, so it wants a `StaticEffect` read by `effective_subtypes` for every
+permanent matching a `PermanentFilter`, not just for the host of an attachment. Kormus Bell and
+Living Lands then add the creature type and a base P/T on top, which is #2's static in its
+non-CDA fixed form.
+*Cards:* conversion, kormus_bell, living_lands.
+
+### 8d. `counter-keyed-type-change-and-an-unbounded-upkeep-series` — 1 card, L
+Depends on: 8c.
+Cyclopean Tomb's mire counters key the change to a counter rather than to an Aura or a filter, and
+its leaves-the-battlefield clause schedules an unbounded series of upkeep triggers — model that as
+a delayed trigger that re-registers itself until no mire counters it placed remain.
+*Cards:* cyclopean_tomb.
+
+### 8e. `land-type-change-until-end-of-turn` — 1 card, M
+Depends on: 8a.
+Gaea's Liege — a *temporary* type change from an activated ability ("{T}: Target land becomes a
+Forest until end of turn"), so it needs the runtime `ContinuousEffectKind::SetTypes` path with a
+cleanup expiry rather than a static read off an attachment, plus the timing restriction ("only
+during your turn, before attackers are declared") and a defining power/toughness counting Forests.
+*Cards:* gaea_s_liege.
 
 ### 9. `color-filters-on-spells` — 4 cards, S — **done**
 Depends on: nothing.

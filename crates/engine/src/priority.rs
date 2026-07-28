@@ -148,8 +148,7 @@ impl Game {
         // land's *non*-mana ability (which finds none, and rejects below). Delegate so the one (CR 605, CR 113)
         // activation path enforces summoning sickness and the rest of the gate.
         let CardKind::Land {
-            produces: Some(produces),
-            ..
+            produces: Some(_), ..
         } = &printed.kind
         else {
             let Some(index) = self.free_tap_mana_ability(object) else {
@@ -166,11 +165,7 @@ impl Game {
         // "One mana of any color in your commander's color identity" (CR 903.4, Command Tower)
         // and "any color that a land an opponent controls could produce" (Exotic Orchard) both
         // resolve to a real credit here — an empty identity/producible set taps for nothing.
-        let mana = match produces {
-            LandProduces::Mana(m) => Some(*m),
-            LandProduces::CommanderIdentity => self.commander_identity_credit(player),
-            LandProduces::OpponentColors => self.opponent_producible_colors_credit(player),
-        };
+        let mana = self.land_mana_credit(object, player);
 
         let mut events = vec![Event::Tapped { object }];
         if let Some(mana) = mana {
@@ -472,19 +467,12 @@ impl Game {
             let mut contributed_free = false;
             if !has_paid_mana
                 && let CardKind::Land {
-                    produces: Some(produces),
-                    ..
+                    produces: Some(_), ..
                 } = &printed.kind
+                && let Some(credit) = self.land_mana_credit(id, player)
             {
-                let credit = match produces {
-                    LandProduces::Mana(m) => Some(*m),
-                    LandProduces::CommanderIdentity => self.commander_identity_credit(player),
-                    LandProduces::OpponentColors => self.opponent_producible_colors_credit(player),
-                };
-                if let Some(credit) = credit {
-                    mana.add(credit, 1);
-                    contributed_free = true;
-                }
+                mana.add(credit, 1);
+                contributed_free = true;
             }
             for (i, a) in printed.abilities.iter().enumerate() {
                 let Timing::Activated(cost) = a.timing else {
@@ -631,20 +619,13 @@ impl Game {
             }
             let printed = card_def(p.def);
             if let CardKind::Land {
-                produces: Some(produces),
-                ..
+                produces: Some(_), ..
             } = &printed.kind
+                && let Some(credit) = self.land_mana_credit(idx as ObjectId, player)
             {
-                let credit = match produces {
-                    LandProduces::Mana(m) => Some(*m),
-                    LandProduces::CommanderIdentity => self.commander_identity_credit(player),
-                    LandProduces::OpponentColors => self.opponent_producible_colors_credit(player),
-                };
-                if let Some(credit) = credit {
-                    mana.add(credit, 1);
-                    used[idx] = true;
-                    continue;
-                }
+                mana.add(credit, 1);
+                used[idx] = true;
+                continue;
             }
             for a in printed.abilities.iter().cloned() {
                 let Timing::Activated(cost) = a.timing else {
@@ -1129,26 +1110,16 @@ impl Game {
             }
             let printed = card_def(p.def);
             let nonland = !matches!(&printed.kind, CardKind::Land { .. });
-            if let CardKind::Land { produces, .. } = &printed.kind {
-                let base_credit = match produces {
-                    Some(LandProduces::Mana(m)) => Some(*m),
-                    Some(LandProduces::CommanderIdentity) => self.commander_identity_credit(player),
-                    Some(LandProduces::OpponentColors) => {
-                        self.opponent_producible_colors_credit(player)
-                    }
-                    None => None,
-                };
-                if let Some(m) = base_credit {
-                    let mut credit = ManaPool::default();
-                    credit.add(m, 1);
-                    free.push(FreeTapCandidate {
-                        tap: PlannedTap::Base(id),
-                        breadth: mana_breadth(&credit),
-                        credit,
-                        nonland: false,
-                        pain: false,
-                    });
-                }
+            if let Some(m) = self.land_mana_credit(id, player) {
+                let mut credit = ManaPool::default();
+                credit.add(m, 1);
+                free.push(FreeTapCandidate {
+                    tap: PlannedTap::Base(id),
+                    breadth: mana_breadth(&credit),
+                    credit,
+                    nonland: false,
+                    pain: false,
+                });
             }
             for (i, a) in printed.abilities.iter().enumerate() {
                 let Timing::Activated(acost) = a.timing else {

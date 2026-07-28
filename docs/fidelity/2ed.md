@@ -198,13 +198,13 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [x] **Cockatrice** {3}{G}{G} · Creature — Cockatrice — increment 21
 - [x] **Consecrate Land** {W} · Enchantment — Aura — increment 35
 - [x] **Conservator** {4} · Artifact — increment 4
-- [ ] **Conversion** {2}{W}{W} · Enchantment — increment 8
+- [ ] **Conversion** {2}{W}{W} · Enchantment — increment 8c
 - [x] **Copper Tablet** {2} · Artifact — increment 60
 - [ ] **Copy Artifact** {1}{U} · Enchantment — increment 12
 - [x] **Creature Bond** {1}{U} · Enchantment — Aura — increment 62
 - [x] **Crystal Rod** {1} · Artifact — increment 10
 - [x] **Cursed Land** {2}{B}{B} · Enchantment — Aura — increment 61
-- [ ] **Cyclopean Tomb** {4} · Artifact — increment 8, 28
+- [ ] **Cyclopean Tomb** {4} · Artifact — increment 8d, 28
 - [x] **Deathgrip** {B}{B} · Enchantment — increment 9
 - [ ] **Deathlace** {B} · Instant — increment 15
 - [x] **Demonic Hordes** {3}{B}{B}{B} · Creature — Demon — increment 41
@@ -214,7 +214,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [x] **Drain Life** {X}{1}{B} · Sorcery — increment 54
 - [ ] **Drain Power** {U}{U} · Sorcery — increment 23, 49
 - [x] **Earthbind** {R} · Enchantment — Aura — increment 44
-- [ ] **Evil Presence** {B} · Enchantment — Aura — increment 8
+- [x] **Evil Presence** {B} · Enchantment — Aura — increment 8a
 - [ ] **False Orders** {R} · Instant — increment 11
 - [x] **Farmstead** {W}{W}{W} · Enchantment — Aura — increment 36
 - [x] **Fastbond** {G} · Enchantment — increment 29
@@ -225,7 +225,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Forcefield** {3} · Artifact — increment 4
 - [x] **Fork** {R}{R} · Instant — increment 13
 - [x] **Fungusaur** {3}{G} · Creature — Fungus Dinosaur — increment 63
-- [ ] **Gaea's Liege** {3}{G}{G}{G} · Creature — Avatar — increment 74, 8
+- [ ] **Gaea's Liege** {3}{G}{G}{G} · Creature — Avatar — increment 74, 8e
 - [ ] **Gauntlet of Might** {4} · Artifact — increment 19
 - [x] **Glasses of Urza** {1} · Artifact — increment 31
 - [ ] **Gloom** {2}{B} · Enchantment — increment 67
@@ -245,7 +245,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Juggernaut** {4} · Artifact Creature — Juggernaut — increment 11
 - [x] **Karma** {2}{W}{W} · Enchantment — increment 1
 - [x] **Keldon Warlord** {2}{R}{R} · Creature — Human Barbarian — increment 2
-- [ ] **Kormus Bell** {4} · Artifact — increment 8
+- [ ] **Kormus Bell** {4} · Artifact — increment 8c
 - [ ] **Kudzu** {1}{G}{G} · Enchantment — Aura — increment 37
 - [x] **Library of Leng** {1} · Artifact — increment 33
 - [ ] **Lich** {B}{B}{B}{B} · Enchantment — increment 22, 47
@@ -253,7 +253,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Lifelace** {G} · Instant — increment 15
 - [ ] **Lifetap** {U}{U} · Enchantment — increment 19
 - [ ] **Living Artifact** {G} · Enchantment — Aura — increment 22, 28
-- [ ] **Living Lands** {3}{G} · Enchantment — increment 8
+- [ ] **Living Lands** {3}{G} · Enchantment — increment 8c
 - [x] **Lord of Atlantis** {U}{U} · Creature — Merfolk — increment 3
 - [x] **Lord of the Pit** {4}{B}{B}{B} · Creature — Demon — increment 72
 - [ ] **Lure** {1}{G}{G} · Enchantment — Aura — increment 11
@@ -271,7 +271,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [x] **Nightmare** {5}{B} · Creature — Nightmare Horse — increment 2
 - [ ] **Paralyze** {B} · Enchantment — Aura — increment 7
 - [x] **Personal Incarnation** {3}{W}{W}{W} · Creature — Avatar Incarnation — increment 6c
-- [ ] **Phantasmal Terrain** {U}{U} · Enchantment — Aura — increment 8
+- [ ] **Phantasmal Terrain** {U}{U} · Enchantment — Aura — increment 8b
 - [x] **Pirate Ship** {4}{U} · Creature — Human Pirate — increment 24, 77
 - [x] **Plague Rats** {2}{B} · Creature — Rat — increment 2
 - [ ] **Power Leak** {1}{U} · Enchantment — Aura — increment 4

@@ -498,8 +498,14 @@ impl Game {
     /// Devastator are all WUR), or `None` for a colorless identity (no commander designated, or a
     /// colorless commander — CR 106.6 has no mana of no color).
     pub(crate) fn commander_identity_credit(&self, player: PlayerId) -> Option<Mana> {
-        let identity = self.commander_identity_of(player);
-        let mut colors = Color::ALL.iter().copied().filter(|c| identity[c.index()]);
+        Self::mana_credit_for_colors(self.commander_identity_of(player))
+    }
+
+    /// The cheapest single-mana credit that covers exactly `present`: nothing for no color, a
+    /// plain [`Mana::Color`] for one, [`Mana::Either`] for two, a [`Mana::OfColors`] restricted
+    /// set for three or more.
+    fn mana_credit_for_colors(present: [bool; Color::COUNT]) -> Option<Mana> {
+        let mut colors = Color::ALL.iter().copied().filter(|c| present[c.index()]);
         match (colors.next(), colors.next(), colors.next()) {
             (None, ..) => None,
             (Some(c), None, _) => Some(Mana::Color(c)),
@@ -507,12 +513,58 @@ impl Game {
             (Some(_), Some(_), Some(_)) => {
                 let mut mask = 0u8;
                 for c in Color::ALL {
-                    if identity[c.index()] {
+                    if present[c.index()] {
                         mask |= 1 << c.index();
                     }
                 }
                 Some(Mana::OfColors(mask))
             }
+        }
+    }
+
+    /// Which basic land types (CR 305.6) a type line carries, as the colors they tap for.
+    fn basic_land_types(subtypes: &[&str]) -> [bool; Color::COUNT] {
+        let mut colors = [false; Color::COUNT];
+        for subtype in subtypes {
+            let color = match *subtype {
+                "Plains" => Color::White,
+                "Island" => Color::Blue,
+                "Swamp" => Color::Black,
+                "Mountain" => Color::Red,
+                "Forest" => Color::Green,
+                _ => continue,
+            };
+            colors[color.index()] = true;
+        }
+        colors
+    }
+
+    /// The one mana a land's free base tap produces for `player` — the printed `produces` sugar,
+    /// resolved for the two credits that depend on the board (Command Tower, Exotic Orchard).
+    ///
+    /// A land whose basic land types have been *changed* (Evil Presence, CR 305.7) taps for those
+    /// types instead: it lost its old ones and the mana ability they granted along with them, and
+    /// gained the ones its new types grant. Every read of `produces` outside deserialization goes
+    /// through here so that holds at the tap intent and in the auto-tap planner alike.
+    pub(crate) fn land_mana_credit(&self, land: ObjectId, player: PlayerId) -> Option<Mana> {
+        let CardKind::Land {
+            produces, subtypes, ..
+        } = self.def_of(land).kind
+        else {
+            return None;
+        };
+        // CR 708.2: a face-down land has no subtypes, which is an absence rather than a
+        // type-changing effect. Its callers already refuse to tap it at all.
+        if !self.is_face_down(land) {
+            let effective = Self::basic_land_types(&self.effective_subtypes(land));
+            if effective != Self::basic_land_types(subtypes) {
+                return Self::mana_credit_for_colors(effective);
+            }
+        }
+        match produces? {
+            LandProduces::Mana(m) => Some(m),
+            LandProduces::CommanderIdentity => self.commander_identity_credit(player),
+            LandProduces::OpponentColors => self.opponent_producible_colors_credit(player),
         }
     }
 
@@ -528,6 +580,16 @@ impl Game {
     fn land_producible_colors(&self, land: ObjectId) -> [bool; Color::COUNT] {
         let mut colors = [false; Color::COUNT];
         let def = self.def_of(land);
+        // CR 305.7: a land whose basic types were changed produces what those types produce, and
+        // nothing its printed rules text used to say.
+        if let CardKind::Land { subtypes, .. } = def.kind
+            && !self.is_face_down(land)
+        {
+            let effective = Self::basic_land_types(&self.effective_subtypes(land));
+            if effective != Self::basic_land_types(subtypes) {
+                return effective;
+            }
+        }
         if let CardKind::Land {
             produces: Some(produces),
             ..

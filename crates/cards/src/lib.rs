@@ -4608,6 +4608,34 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
             "\"Activate only during your upkeep\""
         );
     }
+
+    /// Evil Presence is the pool's first type-changing Aura on a *land*, and the whole card is
+    /// which knob it turns: `set_subtypes` replaces the type line (CR 305.7 — the Mountain stops
+    /// being a Mountain and taps for {B}), where `add_subtypes` would leave it a Mountain that is
+    /// also a Swamp and taps for both.
+    #[test]
+    fn unlimited_evil_presence_replaces_a_lands_types_rather_than_adding_to_them() {
+        let presence = get_by_name("Evil Presence").expect("Evil Presence is in the pool");
+        assert_eq!(
+            presence.enchant.map(|filter| filter.types),
+            Some(TypeSet::LAND),
+            "\"Enchant land\" — the default is enchant creature"
+        );
+        let [types] = &presence.abilities[..] else {
+            panic!("one static ability");
+        };
+        assert_eq!(
+            types.effect,
+            Effect::Static(StaticEffect::SetAttachedTypes {
+                add_types: TypeSet::NONE,
+                set_types: false,
+                add_subtypes: &[],
+                set_subtypes: &["Swamp"],
+                lose_all_abilities: false,
+            }),
+            "still a land, and a Swamp instead of whatever it was"
+        );
+    }
 }
 
 #[cfg(test)]
