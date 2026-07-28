@@ -115,11 +115,17 @@ A `Condition` is an internally-tagged table (`{ type = "…", … }`) usable as 
 ```toml
 condition = { type = "compare", left = "per_creature_you_control", op = "at_least", right = 3 }
 condition = { type = "compare", left = { per_counter_of_kind = "charge" }, op = "at_most", right = 0 }
+condition = { type = "compare", left = { per_permanent = { basic = true, controller = "you" } }, op = "at_least", right = 2 }
 ```
 
-Magic thresholds are always inclusive, so those two ops cover the pool; an equality test is written as `at_most 0`. Reuse an existing `Amount` rather than adding a bespoke `Condition` variant — the named variants that remain are the ones a scalar comparison genuinely can't express: existentials over players (`an_opponent_has_life_at_most`, `any_player_hand_size_at_most`), two-subject comparisons (`opponent_controls_more_lands`), and board facts that are not counts (`source_untapped`, `won_clash`, `during_your_turn`).
+Magic thresholds are always inclusive, so those two ops cover the pool; an equality test is written as `at_most 0`. Reuse an existing `Amount` rather than adding a bespoke `Condition` variant — a board count is `per_permanent` with an ordinary `PermanentFilter`, so "you control five or more lands", "opponents control eight or more lands, combined" (`controller = "opponent"`, which sums across them), "you control two or more basic lands" (`basic = true`), and "you control two or more white permanents" (`color = "white"`) are all the same shape. The named variants that remain are the ones a scalar comparison genuinely can't express:
 
-Every condition is evaluated through one `Game::condition_holds` against a `TriggerContext`. The context carries the ability's own `source` object and the resolution's shared `target` where the evaluating site has them, so a `compare` over `source_power` / `per_counter_on_source` / `target_power` reads the same way at trigger placement, at resolution, and in a `conditional_keywords` recompute. A site that genuinely has no source — a land's CR 614.13 `enters_tapped_unless` gate runs before the permanent exists — leaves it `None`, and a comparison whose operand needs one does not hold there.
+- **existentials over players** — `an_opponent_controls_lands`, `opponent_controls_lands_with_subtype`, `an_opponent_has_life_at_most`, `any_player_hand_size_at_most`: "*an* opponent controls seven lands" is not a sum, and a `compare` has one number per side.
+- **two-subject comparisons** — `opponent_controls_more_lands`.
+- **board facts that are not counts** — `source_untapped`, `won_clash`, `during_your_turn`.
+- **land-subtype counts** — `controls_lands_with_subtype` (Clifftop Retreat's "a Mountain or a Plains"). Shaped like a board count, but a land's types live on `CardKind::Land::subtypes` while a filter's `subtypes` axis reads `CardDef::subtypes`; the two lists are unified only at the wire edge, so a filter cannot see that a Clifftop Retreat is a Mountain.
+
+Every condition is evaluated through one `Game::condition_holds` against a `TriggerContext`. The context carries the ability's own `source` object and the resolution's shared `target` where the evaluating site has them, so a `compare` over `source_power` / `per_counter_on_source` / `target_power` reads the same way at trigger placement, at resolution, at an activation-restriction check, and in a `conditional_keywords` recompute. A site that genuinely has no source — a land's CR 614.13 `enters_tapped_unless` gate runs before the permanent exists — leaves it `None`; there only a constant or a `per_permanent` board count can answer (a filter's source-relative axes impose no restriction with nothing to compare against), and a comparison over any other operand does not hold.
 
 ### Timing variants
 

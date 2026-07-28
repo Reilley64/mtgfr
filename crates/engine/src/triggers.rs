@@ -3849,7 +3849,22 @@ impl Game {
         {
             return None;
         }
-        Some(self.resolve_amount(amount, ctx.controller, ctx.source?, ctx.target, 0))
+        // Without a source object — a land's CR 614.13 enters-tapped gate runs before the
+        // permanent exists — only the operands that read no source can answer. A constant needs
+        // nothing, and a board count's source-relative filter axes (`other`,
+        // `power_less_than_source`, `mv_max_x`) simply impose no restriction with nothing to
+        // compare against, which is what [`Game::permanent_matches`] already does for a `None`
+        // source. Every other operand reads the source, so the comparison doesn't hold.
+        let Some(source) = ctx.source else {
+            return match amount {
+                Amount::Fixed(n) => Some(n),
+                Amount::PerPermanentMatching { filter, zone } => {
+                    Some(self.count_matching(&filter, zone, ctx.controller, None) as i32)
+                }
+                _ => None,
+            };
+        };
+        Some(self.resolve_amount(amount, ctx.controller, source, ctx.target, 0))
     }
 
     /// Whether an intervening-if [`Condition`] holds against the current state and `ctx`.
@@ -3882,19 +3897,15 @@ impl Game {
                 self.lands_with_subtype_controlled(ctx.controller, subtypes) as u32 >= count
             }
             // "an opponent controls ... a Plains": holds when *some* living opponent
-            // individually meets the threshold (unlike `OpponentsControlLands`, which sums).
+            // individually meets the threshold, unlike a `Compare` over an opponent-controlled
+            // board count, which sums across them.
             Condition::OpponentControlsLandsWithSubtype { subtypes, count } => self
                 .living_players()
                 .filter(|&p| p != ctx.controller)
                 .any(|p| self.lands_with_subtype_controlled(p, subtypes) as u32 >= count),
-            Condition::ControlsBasicLands { count } => {
-                self.basic_lands_controlled(ctx.controller) as u32 >= count
-            }
-            Condition::OpponentsControlLands { count } => {
-                self.lands_controlled_by_others(ctx.controller) as u32 >= count
-            }
             // "an opponent controls seven or more lands": holds when *some* living opponent
-            // individually meets the threshold (unlike `OpponentsControlLands`, which sums).
+            // individually meets the threshold, unlike a `Compare` over an opponent-controlled
+            // board count, which sums across them.
             Condition::AnOpponentControlsLands { at_least } => self
                 .living_players()
                 .filter(|&p| p != ctx.controller)
@@ -3925,12 +3936,6 @@ impl Game {
                         .any(|p| p != ctx.controller && self.lands_controlled(p) > mine),
                 }
             }
-            Condition::YouControlLands { at_least } => {
-                self.lands_controlled(ctx.controller) as u32 >= at_least
-            }
-            Condition::YouControlLandsAtMost { at_most } => {
-                self.lands_controlled(ctx.controller) as u32 <= at_most
-            }
             Condition::YouGainedLifeThisTurn => {
                 self.players[ctx.controller.0 as usize].life_gained_this_turn > 0
             }
@@ -3958,16 +3963,6 @@ impl Game {
                 .source
                 .and_then(|source| self.as_permanent(source))
                 .is_some_and(|p| p.attacked_this_turn),
-            Condition::YouControlColorPermanents { color, at_least } => {
-                self.battlefield()
-                    .into_iter()
-                    .filter(|&id| {
-                        self.controller_of(id) == ctx.controller
-                            && self.colors_of(id)[color.index()]
-                    })
-                    .count() as u32
-                    >= at_least
-            }
             // One read, two questions: Mystic Sanctuary's "when this land enters untapped" asks it
             // once at placement (`Permanent::tapped` is set at creation from `Game::enters_tapped`),
             // Howling Mine's "if Howling Mine is untapped" asks it again at resolution because
@@ -4196,26 +4191,6 @@ impl Game {
                         } => land_subtypes.iter().copied().any(|s| subtypes.contains(&s)),
                         _ => false,
                     }
-            })
-            .count()
-    }
-
-    /// How many basic lands `controller` controls (Eclipsed Steppe's "two or more basic lands").
-    pub(crate) fn basic_lands_controlled(&self, controller: PlayerId) -> usize {
-        self.battlefield()
-            .into_iter()
-            .filter(|&id| self.controller_of(id) == controller && is_basic_land(&self.def_of(id)))
-            .count()
-    }
-
-    /// How many lands every player *other than* `controller` controls, combined (the
-    /// turbulent_* cycle's "unless opponents control eight or more lands").
-    pub(crate) fn lands_controlled_by_others(&self, controller: PlayerId) -> usize {
-        self.battlefield()
-            .into_iter()
-            .filter(|&id| {
-                self.controller_of(id) != controller
-                    && matches!(self.def_of(id).kind, CardKind::Land { .. })
             })
             .count()
     }

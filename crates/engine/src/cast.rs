@@ -228,7 +228,7 @@ impl Game {
         // takes it once the gate holds, same "no reason to decline a strictly-better cost"
         // modeling as the exile permission above.
         if let Some(condition) = def.free_cast_if
-            && self.condition_holds(condition, TriggerContext::of(player))
+            && self.ability_condition_holds(condition, object, TriggerContext::of(player))
         {
             return Cost::FREE;
         }
@@ -2174,7 +2174,7 @@ impl Game {
         // or more lands" — Temple of the False God). CR 602.5b: an unmet restriction makes the
         // activation illegal. Reuses the intervening-if evaluator the triggers share.
         if let Some(condition) = ability.condition
-            && !self.condition_holds(condition, TriggerContext::of(player))
+            && !self.ability_condition_holds(condition, source, TriggerContext::of(player))
         {
             return Err(Reject::CannotActivate);
         }

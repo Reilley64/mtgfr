@@ -1112,7 +1112,7 @@ impl<'de> Deserialize<'de> for TypeSet {
 /// composable axes (`types`, `controller`, `token`, `other`, `enchanted`, `attached_to_creature`,
 /// `enchanted_by_you`, `mv_max`, `mv_min`, `mv_eq_x`, `mv_max_x`, `power_max`, `power_parity`,
 /// `noncreature`, `exclude`, `color`, `not_color`, `modified`, `attacking`, `attacking_you`,
-/// `power_less_than_source`, `entered_this_turn`, `nonbasic`, `nonlegendary`, `nonlair`,
+/// `power_less_than_source`, `entered_this_turn`, `nonbasic`, `basic`, `nonlegendary`, `nonlair`,
 /// `without_flying`, `with_flying`, `with_counter`). `noncreature` is sugar for `exclude = "creature"`;
 /// `not_color` is sugar for `color`'s negated-color arm — both fold into the same
 /// [`PermanentFilter`] fields as their general spelling (see below).
@@ -1209,6 +1209,8 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     entered_this_turn: bool,
                     #[serde(default)]
                     nonbasic: bool,
+                    #[serde(default)]
+                    basic: bool,
                     /// Printed-name restriction (Leitmotif Composer's "creatures named Leitmotif
                     /// Composer").
                     #[serde(default)]
@@ -1267,6 +1269,7 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     power_less_than_source: t.power_less_than_source,
                     entered_this_turn: t.entered_this_turn,
                     nonbasic: t.nonbasic,
+                    basic: t.basic,
                     name: t.name.map(|s| &*Box::leak(s.into_boxed_str())),
                     nonlegendary: t.nonlegendary,
                     nonlair: t.nonlair,

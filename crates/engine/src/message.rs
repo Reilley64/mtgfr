@@ -850,6 +850,9 @@ fn permanent_filter_token(filter: PermanentFilter) -> String {
     if filter.nonbasic {
         parts.push("nonbasic".to_string());
     }
+    if filter.basic {
+        parts.push("basic".to_string());
+    }
     if let Some(name) = filter.name {
         parts.push(format!("named_{}", snake_text(name)));
     }

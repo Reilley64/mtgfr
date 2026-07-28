@@ -33,7 +33,7 @@ impl Game {
             Amount::PerCreatureYouControl => self.creatures_controlled(controller) as i32,
             Amount::PerCreatureOnBattlefield => self.creatures_on_battlefield() as i32,
             Amount::PerPermanentMatching { filter, zone } => {
-                self.count_matching(&filter, zone, controller, source) as i32
+                self.count_matching(&filter, zone, controller, Some(source)) as i32
             }
             Amount::SourcePower => self.power(source),
             Amount::SourceToughness => self.toughness(source),
@@ -320,13 +320,13 @@ impl Game {
         filter: &PermanentFilter,
         zone: AmountZone,
         controller: PlayerId,
-        source: ObjectId,
+        source: Option<ObjectId>,
     ) -> usize {
         match zone {
             AmountZone::Battlefield => self
                 .battlefield()
                 .into_iter()
-                .filter(|&id| self.permanent_matches(filter, id, controller, Some(source)))
+                .filter(|&id| self.permanent_matches(filter, id, controller, source))
                 .count(),
             AmountZone::Graveyard => self
                 .objects

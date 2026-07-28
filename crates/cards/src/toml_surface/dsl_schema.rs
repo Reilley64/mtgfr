@@ -362,6 +362,7 @@ struct PermanentFilterTableSchema {
     power_less_than_source: Option<bool>,
     entered_this_turn: Option<bool>,
     nonbasic: Option<bool>,
+    basic: Option<bool>,
     name: Option<String>,
     nonlegendary: Option<bool>,
     nonlair: Option<bool>,

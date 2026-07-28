@@ -1692,7 +1692,7 @@
           "type": "object"
         },
         {
-          "description": "\"if you control `count` or more lands whose type line carries any of `subtypes`\" (Clifftop Retreat: a Mountain or a Plains, `count = 1`; Mystic Sanctuary: three or more *other* Islands, `count = 3` — the land being checked hasn't entered the battlefield yet when this runs, so \"other\" falls out for free; Emeria: seven or more Plains, `count = 7`).",
+          "description": "\"if you control `count` or more lands whose type line carries any of `subtypes`\" (Clifftop Retreat: a Mountain or a Plains, `count = 1`; Mystic Sanctuary: three or more *other* Islands, `count = 3` — the land being checked hasn't entered the battlefield yet when this runs, so \"other\" falls out for free; Emeria: seven or more Plains, `count = 7`).\n\nShaped like a [`Compare`](Self::Compare) over a board count but not written as one: a land's types live on [`CardKind::Land::subtypes`], while [`PermanentFilter::subtypes`] reads [`CardDef::subtypes`] (the \"—\" line's creature/artifact types). Until those two lists are one, a filter cannot see that a Clifftop Retreat is a Mountain.",
           "properties": {
             "count": {
               "format": "uint32",
@@ -1720,7 +1720,7 @@
           "type": "object"
         },
         {
-          "description": "\"if an opponent controls `count` or more lands whose type line carries any of `subtypes`\" (Massacre's free-cast permission: \"if an opponent controls a Plains\" — `subtypes = [\"Plains\"], count = 1`). The opponent-scoped twin of [`ControlsLandsWithSubtype`](Self::ControlsLandsWithSubtype) — holds when *some* living opponent of the controller meets the threshold individually (not summed across opponents, unlike [`OpponentsControlLands`](Self::OpponentsControlLands)).",
+          "description": "\"if an opponent controls `count` or more lands whose type line carries any of `subtypes`\" (Massacre's free-cast permission: \"if an opponent controls a Plains\" — `subtypes = [\"Plains\"], count = 1`). The opponent-scoped twin of [`ControlsLandsWithSubtype`](Self::ControlsLandsWithSubtype) — holds when *some* living opponent of the controller meets the threshold individually. That existential is why it isn't a [`Compare`](Self::Compare) over an opponent-controlled board count: such a count sums across every opponent.",
           "properties": {
             "count": {
               "format": "uint32",
@@ -1748,49 +1748,7 @@
           "type": "object"
         },
         {
-          "description": "\"if you control `count` or more basic lands\" (Eclipsed Steppe and its tango-land cousins).",
-          "properties": {
-            "count": {
-              "format": "uint32",
-              "minimum": 0.0,
-              "type": "integer"
-            },
-            "type": {
-              "enum": [
-                "controls_basic_lands"
-              ],
-              "type": "string"
-            }
-          },
-          "required": [
-            "count",
-            "type"
-          ],
-          "type": "object"
-        },
-        {
-          "description": "\"if your opponents control `count` or more lands, combined\" (the turbulent_* slowland cycle).",
-          "properties": {
-            "count": {
-              "format": "uint32",
-              "minimum": 0.0,
-              "type": "integer"
-            },
-            "type": {
-              "enum": [
-                "opponents_control_lands"
-              ],
-              "type": "string"
-            }
-          },
-          "required": [
-            "count",
-            "type"
-          ],
-          "type": "object"
-        },
-        {
-          "description": "\"if an opponent controls `at_least` or more lands\" (Avatar of Fury's cost-reduction condition: \"If an opponent controls seven or more lands, this spell costs {6} less to cast.\"). The opponent-scoped, land-count twin of [`OpponentControlsLandsWithSubtype`](Self::OpponentControlsLandsWithSubtype) — holds when *some* living opponent individually meets the threshold (not summed across opponents, unlike [`OpponentsControlLands`](Self::OpponentsControlLands)).",
+          "description": "\"if an opponent controls `at_least` or more lands\" (Avatar of Fury's cost-reduction condition: \"If an opponent controls seven or more lands, this spell costs {6} less to cast.\"). The opponent-scoped, land-count twin of [`OpponentControlsLandsWithSubtype`](Self::OpponentControlsLandsWithSubtype) — holds when *some* living opponent individually meets the threshold, the same existential reading (and the same reason it isn't a [`Compare`](Self::Compare)).",
           "properties": {
             "at_least": {
               "format": "uint32",
@@ -1864,48 +1822,6 @@
             }
           },
           "required": [
-            "type"
-          ],
-          "type": "object"
-        },
-        {
-          "description": "\"if you control `at_least` or more lands\" — both an intervening-if and an *activation* restriction (Temple of the False God: \"Activate only if you control five or more lands\"; checked in [`Game::ability_activation_gate`]).",
-          "properties": {
-            "at_least": {
-              "format": "uint32",
-              "minimum": 0.0,
-              "type": "integer"
-            },
-            "type": {
-              "enum": [
-                "you_control_lands"
-              ],
-              "type": "string"
-            }
-          },
-          "required": [
-            "at_least",
-            "type"
-          ],
-          "type": "object"
-        },
-        {
-          "description": "\"if you control `at_most` or fewer lands\" (Edge of Autumn's \"If you control four or fewer lands, search your library for a basic land card…\") — the `at_most` twin of [`YouControlLands`](Self::YouControlLands), only reachable inside `{ type = \"conditional\", … }` (a spell's own resolve-time check, CR 608.2h) since no pool card needs it as an intervening-if or activation restriction yet.",
-          "properties": {
-            "at_most": {
-              "format": "uint32",
-              "minimum": 0.0,
-              "type": "integer"
-            },
-            "type": {
-              "enum": [
-                "you_control_lands_at_most"
-              ],
-              "type": "string"
-            }
-          },
-          "required": [
-            "at_most",
             "type"
           ],
           "type": "object"
@@ -2043,32 +1959,7 @@
           "type": "object"
         },
         {
-          "description": "\"if you control `at_least` or more `color` permanents\" (Mistveil Plains's \"activate only if you control two or more white permanents\") — an activation restriction, checked in [`Game::ability_activation_gate`]. Counts the controller's battlefield permanents whose [`Game::colors_of`] includes `color`.",
-          "properties": {
-            "at_least": {
-              "format": "uint32",
-              "minimum": 0.0,
-              "type": "integer"
-            },
-            "color": {
-              "$ref": "#/$defs/Color"
-            },
-            "type": {
-              "enum": [
-                "you_control_color_permanents"
-              ],
-              "type": "string"
-            }
-          },
-          "required": [
-            "at_least",
-            "color",
-            "type"
-          ],
-          "type": "object"
-        },
-        {
-          "description": "\"when this land enters untapped\" (Mystic Sanctuary's ETB intervening-if): whether the permanent that fired this ability is not tapped right now. Reads the object's own `Permanent::tapped`, which is set at creation from `Game::enters_tapped` (CR 614.13's own gate, evaluated before the permanent exists — see that fn), so this reads correctly with no re-derivation. Source-object-based like [`Compare`](Self::Compare)'s source operands: `TriggerContext` carries no source id, so `Game::queue_trigger_group` special-cases it directly against its own `source` parameter rather than through `condition_holds`.",
+          "description": "\"when this land enters untapped\" (Mystic Sanctuary's ETB intervening-if): whether the permanent that fired this ability is not tapped right now. Reads the object's own `Permanent::tapped`, which is set at creation from `Game::enters_tapped` (CR 614.13's own gate, evaluated before the permanent exists — see that fn), so this reads correctly with no re-derivation. Source-object-based like [`Compare`](Self::Compare)'s source operands, so it reads [`TriggerContext::source`] and holds nowhere that has no source object.",
           "properties": {
             "type": {
               "enum": [
@@ -9536,6 +9427,12 @@
           ]
         },
         "attacking_you": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "basic": {
           "type": [
             "boolean",
             "null"

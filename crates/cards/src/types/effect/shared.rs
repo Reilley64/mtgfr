@@ -1591,6 +1591,11 @@ pub enum Condition {
     /// (Clifftop Retreat: a Mountain or a Plains, `count = 1`; Mystic Sanctuary: three or more
     /// *other* Islands, `count = 3` — the land being checked hasn't entered the battlefield yet
     /// when this runs, so "other" falls out for free; Emeria: seven or more Plains, `count = 7`).
+    ///
+    /// Shaped like a [`Compare`](Self::Compare) over a board count but not written as one: a
+    /// land's types live on [`CardKind::Land::subtypes`], while [`PermanentFilter::subtypes`]
+    /// reads [`CardDef::subtypes`] (the "—" line's creature/artifact types). Until those two
+    /// lists are one, a filter cannot see that a Clifftop Retreat is a Mountain.
     ControlsLandsWithSubtype {
         #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::static_str_slice"))]
         subtypes: &'static [&'static str],
@@ -1600,24 +1605,20 @@ pub enum Condition {
     /// `subtypes`" (Massacre's free-cast permission: "if an opponent controls a Plains" —
     /// `subtypes = ["Plains"], count = 1`). The opponent-scoped twin of
     /// [`ControlsLandsWithSubtype`](Self::ControlsLandsWithSubtype) — holds when *some* living
-    /// opponent of the controller meets the threshold individually (not summed across
-    /// opponents, unlike [`OpponentsControlLands`](Self::OpponentsControlLands)).
+    /// opponent of the controller meets the threshold individually. That existential is why it
+    /// isn't a [`Compare`](Self::Compare) over an opponent-controlled board count: such a count
+    /// sums across every opponent.
     OpponentControlsLandsWithSubtype {
         #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::static_str_slice"))]
         subtypes: &'static [&'static str],
         count: u32,
     },
-    /// "if you control `count` or more basic lands" (Eclipsed Steppe and its tango-land cousins).
-    ControlsBasicLands { count: u32 },
-    /// "if your opponents control `count` or more lands, combined" (the turbulent_* slowland
-    /// cycle).
-    OpponentsControlLands { count: u32 },
     /// "if an opponent controls `at_least` or more lands" (Avatar of Fury's cost-reduction
     /// condition: "If an opponent controls seven or more lands, this spell costs {6} less to
     /// cast."). The opponent-scoped, land-count twin of
     /// [`OpponentControlsLandsWithSubtype`](Self::OpponentControlsLandsWithSubtype) — holds when
-    /// *some* living opponent individually meets the threshold (not summed across opponents,
-    /// unlike [`OpponentsControlLands`](Self::OpponentsControlLands)).
+    /// *some* living opponent individually meets the threshold, the same existential reading (and
+    /// the same reason it isn't a [`Compare`](Self::Compare)).
     AnOpponentControlsLands { at_least: u32 },
     /// "if you have `at_least` or more opponents" (Undergrowth Stadium: "This land enters tapped
     /// unless you have two or more opponents", `at_least = 2`). Every other player at the table
@@ -1641,16 +1642,6 @@ pub enum Condition {
     /// narrows to that permanent's controller specifically, rather than scanning every opponent
     /// (see [`Game::condition_holds`]).
     OpponentControlsMoreLands,
-    /// "if you control `at_least` or more lands" — both an intervening-if and an *activation*
-    /// restriction (Temple of the False God: "Activate only if you control five or more lands";
-    /// checked in [`Game::ability_activation_gate`]).
-    YouControlLands { at_least: u32 },
-    /// "if you control `at_most` or fewer lands" (Edge of Autumn's "If you control four or fewer
-    /// lands, search your library for a basic land card…") — the `at_most` twin of
-    /// [`YouControlLands`](Self::YouControlLands), only reachable inside `{ type = "conditional",
-    /// … }` (a spell's own resolve-time check, CR 608.2h) since no pool card needs it as an
-    /// intervening-if or activation restriction yet.
-    YouControlLandsAtMost { at_most: u32 },
     /// "if you gained life this turn" (Witch of the Moors). Reads the controller's turn-scoped
     /// life-gain tally (`Player::life_gained_this_turn`).
     YouGainedLifeThisTurn,
@@ -1693,18 +1684,12 @@ pub enum Condition {
     /// which lapses the instant combat ends or the permanent leaves combat. The printed grant
     /// persists through end of combat and the rest of the turn.
     SourceAttackedThisTurn,
-    /// "if you control `at_least` or more `color` permanents" (Mistveil Plains's "activate only
-    /// if you control two or more white permanents") — an activation restriction, checked in
-    /// [`Game::ability_activation_gate`]. Counts the controller's battlefield permanents whose
-    /// [`Game::colors_of`] includes `color`.
-    YouControlColorPermanents { color: Color, at_least: u32 },
     /// "when this land enters untapped" (Mystic Sanctuary's ETB intervening-if): whether the
     /// permanent that fired this ability is not tapped right now. Reads the object's own
     /// `Permanent::tapped`, which is set at creation from `Game::enters_tapped` (CR 614.13's own
     /// gate, evaluated before the permanent exists — see that fn), so this reads correctly with
-    /// no re-derivation. Source-object-based like [`Compare`](Self::Compare)'s source operands:
-    /// `TriggerContext` carries no source id, so `Game::queue_trigger_group` special-cases it
-    /// directly against its own `source` parameter rather than through `condition_holds`.
+    /// no re-derivation. Source-object-based like [`Compare`](Self::Compare)'s source operands,
+    /// so it reads [`TriggerContext::source`] and holds nowhere that has no source object.
     ThisPermanentEnteredUntapped,
     /// "if [this permanent] is untapped" (Howling Mine's intervening-if) — whether the ability's own
     /// source permanent is untapped *right now*, re-read live rather than snapshotted once like
