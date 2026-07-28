@@ -5,4 +5,4 @@
 import { defineConfig } from "cva";
 import { cn } from "../cn";
 
-export const { cva, cx, compose } = defineConfig({ hooks: { onComplete: (className) => cn(className) } });
+export const { cva } = defineConfig({ hooks: { onComplete: (className) => cn(className) } });

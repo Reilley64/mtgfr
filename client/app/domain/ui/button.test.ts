@@ -96,8 +96,12 @@ describe("button", () => {
     expect(props(button(h, { type: "submit" }, ["x"])).type).toBe("submit");
   });
 
-  it("marks a disabled button disabled", () => {
-    expect(props(button(h, { disabled: true }, ["x"])).disabled).toBe(true);
+  it("marks a disabled button disabled and gives it no click handler", () => {
+    const node = button(h, { disabled: true, onClick: clicked }, ["x"]);
+
+    expect(props(node).disabled).toBe(true);
+    expect(on(node).click).toBeUndefined();
+    expect(props(button(h, { onClick: clicked }, ["x"])).disabled).toBe(false);
   });
 
   it("renders an anchor with href when asked to look like a button", () => {

@@ -27,7 +27,7 @@ Buttons and text fields appear on every shell route and in most board HTML overl
 
 ### Recipe seam (`recipe.ts`)
 
-- `recipe.ts` is the only module under `client/app/` that imports from `cva`. It calls `defineConfig({ hooks: { onComplete } })` with `cn` as the hook, and re-exports `cva`, `cx`, and `compose`.
+- `recipe.ts` is the only module under `client/app/` that imports from `cva`. It calls `defineConfig({ hooks: { onComplete } })` with `cn` as the hook and re-exports the configured `cva`.
 - Every recipe's output therefore passes through `clsx` plus the `THEME_SCALES`-extended tailwind-merge in `cn.ts`: a variant utility overrides a base utility for the same CSS property, and this project's `text-*`, `rounded-*`, and spacing scales are classified correctly instead of collapsing into stock tailwind-merge's colour group.
 - Recipes take `class` last, so a call-site utility wins over the variant it conflicts with.
 
@@ -39,7 +39,8 @@ Buttons and text fields appear on every shell route and in most board HTML overl
 - Shared props: `onClick`, `testId` (emitted as `data-testid`), `ariaLabel`, `class` (any `ClassValue`), and `attrs` — extra Foldkit attributes appended after the component's own.
 - The element-specific props are a discriminated union rather than optional fields on one shape: `{ as?: "button"; type?; disabled? }` or `{ as: "a"; href }`. `type` defaults to `"button"`, so a button inside a form cannot submit it by accident.
 - `as: "a"` renders `h.a` directly and bypasses `@foldkit/ui`'s `Button.view` entirely, because that primitive emits `type`, which is invalid on an anchor. The anchor branch attaches `onClick` itself, since `Button.view` is what wires it on the button branch.
-- `Button.view` marks a disabled button only with `aria-disabled` and `data-disabled`. `button.ts` additionally sets the native `disabled` DOM property, which is what makes the browser block focus, click, and form submission, and what the variants' `disabled:` and `hover:enabled:` Tailwind selectors key off.
+- `Button.view` marks a disabled button only with `aria-disabled` and `data-disabled`. `button.ts` additionally sets the native `disabled` DOM property, which is what makes the browser block focus, click, and form submission, and what the variants' `disabled:` and `hover:enabled:` Tailwind selectors key off. `Button.view` also drops `onClick` from a disabled button rather than relying on the browser alone.
+- `Button.view` sets `tabIndex` to `0` on every rendered button. A `<button>` is already in the tab order and a natively disabled one is out of it regardless of `tabindex`, so focus behavior is unchanged; the attribute is visible in the DOM and in attribute-level assertions.
 
 ### `input`
 
@@ -76,7 +77,7 @@ Buttons and text fields appear on every shell route and in most board HTML overl
 
 ## Out of Scope
 
-- Wrappers for `@foldkit/ui` primitives that have no call site in `client/app/` — `textarea`, `select`, `checkbox`, `switch`, `radioGroup`, `disclosure`.
+- Wrappers for every `@foldkit/ui` entry point other than `button` and `input`, none of which has a call site in `client/app/` — including `textarea`, `select`, `checkbox`, `switch`, `radioGroup`, `disclosure`, `dialog`, `menu`, `popover`, and `tooltip`.
 - Converting the `surfaces.ts` class helpers to cva while they have no variants.
 - Canvas-drawn board chrome, which has no DOM element to wrap.
 - Rendering `@foldkit/ui`'s label and description slots; components emit the control only, and call sites own their own labels.
