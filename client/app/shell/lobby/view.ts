@@ -3,7 +3,7 @@ import { type Html, html } from "foldkit/html";
 import type { DeckCardFlipTick } from "../../deck-card-nav";
 import type { BuilderCatalogCard } from "../../domain/deck-builder/cards";
 import type { AppChromeMeta } from "../../domain/ui/app-version";
-import { buttonClass } from "../../domain/ui/buttonClass";
+import { button } from "../../domain/ui/button";
 import type { CardArtTick } from "../../domain/ui/card-art";
 import { seatFace } from "../../domain/ui/seat-face";
 import { alertClass, fieldClass, panelClass } from "../../domain/ui/surfaces";
@@ -103,10 +103,7 @@ function deckCardAndBack(
     [h.Class("flex flex-col gap-sm")],
     [
       h.div([h.Class("max-w-[240px]"), h.DataAttribute("testid", "lobby-deck-card")], [card]),
-      h.a(
-        [h.Href(routePath(HomeRoute())), h.DataAttribute("testid", "lobby-back"), h.Class(buttonClass("ghost"))],
-        ["Back"],
-      ),
+      button(h, { as: "a", href: routePath(HomeRoute()), testId: "lobby-back", variant: "ghost" }, ["Back"]),
     ],
   );
 }
@@ -156,14 +153,15 @@ function entrySurface(
               h.div([h.Class("text-label text-lichen")], ["Host a fresh Commander table with this deck."]),
             ],
           ),
-          h.button(
-            [
-              h.Type("button"),
-              h.DataAttribute("testid", "lobby-host"),
-              h.Disabled(model.submitting),
-              h.OnClick(RequestedLobbyHost()),
-              h.Class(buttonClass("primary", "w-fit")),
-            ],
+          button(
+            h,
+            {
+              testId: "lobby-host",
+              disabled: model.submitting,
+              onClick: RequestedLobbyHost(),
+              variant: "primary",
+              class: "w-fit",
+            },
             ["Host a table"],
           ),
           h.div(
@@ -184,28 +182,23 @@ function entrySurface(
                     h.Spellcheck(false),
                     h.Class(fieldClass("min-w-[10rem] flex-1")),
                   ]),
-                  h.button(
-                    [
-                      h.Type("button"),
-                      h.DataAttribute("testid", "lobby-join"),
-                      h.Disabled(model.submitting),
-                      h.OnClick(RequestedLobbyJoin()),
-                      h.Class(buttonClass("ghost")),
-                    ],
+                  button(
+                    h,
+                    {
+                      testId: "lobby-join",
+                      disabled: model.submitting,
+                      onClick: RequestedLobbyJoin(),
+                      variant: "ghost",
+                    },
                     ["Join table"],
                   ),
                 ],
               ),
             ],
           ),
-          h.a(
-            [
-              h.Href(routePath(HomeRoute())),
-              h.DataAttribute("testid", "lobby-back"),
-              h.Class(buttonClass("ghost", "w-fit")),
-            ],
-            ["Back"],
-          ),
+          button(h, { as: "a", href: routePath(HomeRoute()), testId: "lobby-back", variant: "ghost", class: "w-fit" }, [
+            "Back",
+          ]),
         ],
       ),
     ],
@@ -301,14 +294,9 @@ function claimSeat(
       [h.Class("flex flex-col gap-md")],
       [
         deckCardAndBack(model, decks, decksLoading, knownCommanders),
-        h.button(
-          [
-            h.Type("button"),
-            h.DataAttribute("testid", "lobby-claim"),
-            h.Disabled(model.submitting),
-            h.OnClick(RequestedLobbyJoin()),
-            h.Class(buttonClass("primary")),
-          ],
+        button(
+          h,
+          { testId: "lobby-claim", disabled: model.submitting, onClick: RequestedLobbyJoin(), variant: "primary" },
           ["Claim a seat"],
         ),
       ],
@@ -349,15 +337,9 @@ function tableLobby(
             ],
             [model.tableId ?? ""],
           ),
-          h.button(
-            [
-              h.Type("button"),
-              h.DataAttribute("testid", "lobby-copy-code"),
-              h.OnClick(RequestedLobbyCopy()),
-              h.Class(buttonClass("ghost")),
-            ],
-            [model.copied ? "Copied" : "Copy code"],
-          ),
+          button(h, { testId: "lobby-copy-code", onClick: RequestedLobbyCopy(), variant: "ghost" }, [
+            model.copied ? "Copied" : "Copy code",
+          ]),
         ],
       ),
       model.clipboardFallback
@@ -382,25 +364,25 @@ function tableLobby(
         ? h.div(
             [h.Class("flex flex-wrap items-center gap-sm")],
             [
-              h.button(
-                [
-                  h.Type("button"),
-                  h.DataAttribute("testid", "lobby-ready"),
-                  h.Disabled(model.submitting),
-                  h.OnClick(RequestedLobbyReady({ ready: !lobbyReady(model) })),
-                  h.Class(buttonClass("primary")),
-                ],
+              button(
+                h,
+                {
+                  testId: "lobby-ready",
+                  disabled: model.submitting,
+                  onClick: RequestedLobbyReady({ ready: !lobbyReady(model) }),
+                  variant: "primary",
+                },
                 [lobbyReady(model) ? "Unready" : "Ready up"],
               ),
               lobbyHost(model)
-                ? h.button(
-                    [
-                      h.Type("button"),
-                      h.DataAttribute("testid", "lobby-start"),
-                      h.Disabled(startError !== null || model.submitting),
-                      h.OnClick(RequestedLobbyStart()),
-                      h.Class(buttonClass("primary")),
-                    ],
+                ? button(
+                    h,
+                    {
+                      testId: "lobby-start",
+                      disabled: startError !== null || model.submitting,
+                      onClick: RequestedLobbyStart(),
+                      variant: "primary",
+                    },
                     ["Start game"],
                   )
                 : null,

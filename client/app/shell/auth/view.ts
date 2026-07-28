@@ -1,7 +1,7 @@
 import { Submodel } from "foldkit";
 import { html } from "foldkit/html";
 import type { AppChromeMeta } from "../../domain/ui/app-version";
-import { buttonClass } from "../../domain/ui/buttonClass";
+import { button } from "../../domain/ui/button";
 import { alertClass, fieldClass, panelClass } from "../../domain/ui/surfaces";
 import { shellFrame } from "../frame/shell-frame";
 import {
@@ -69,15 +69,9 @@ export const view = Submodel.defineView<AuthSubmodel, Message, AppChromeMeta>((m
                   h.OnInput((password) => ChangedAuthPassword({ password })),
                   h.Class(fieldClass()),
                 ]),
-                h.button(
-                  [
-                    h.Type("submit"),
-                    h.DataAttribute("testid", "auth-submit"),
-                    h.Disabled(model.submitting),
-                    h.Class(buttonClass("primary")),
-                  ],
-                  [isLogin ? "Sign in" : "Sign up"],
-                ),
+                button(h, { type: "submit", testId: "auth-submit", disabled: model.submitting, variant: "primary" }, [
+                  isLogin ? "Sign in" : "Sign up",
+                ]),
                 model.error == null
                   ? null
                   : h.div(
@@ -88,14 +82,14 @@ export const view = Submodel.defineView<AuthSubmodel, Message, AppChromeMeta>((m
                   [h.Class("text-label text-lichen")],
                   [
                     isLogin ? "No account? " : "Have an account? ",
-                    h.button(
-                      [
-                        h.Type("button"),
-                        h.DataAttribute("ui", "link"),
-                        h.Class(buttonClass("link")),
-                        h.DataAttribute("testid", "auth-toggle-mode"),
-                        h.OnClick(modeToggle),
-                      ],
+                    button(
+                      h,
+                      {
+                        testId: "auth-toggle-mode",
+                        onClick: modeToggle,
+                        variant: "link",
+                        attrs: [h.DataAttribute("ui", "link")],
+                      },
                       [isLogin ? "Create one" : "Sign in"],
                     ),
                   ],

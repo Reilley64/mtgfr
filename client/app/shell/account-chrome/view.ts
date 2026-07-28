@@ -1,6 +1,6 @@
 import type { html as createHtml, Html } from "foldkit/html";
 import { cn } from "../../domain/cn";
-import { buttonClass } from "../../domain/ui/buttonClass";
+import { button } from "../../domain/ui/button";
 import { seatFace } from "../../domain/ui/seat-face";
 import { GotAuthMessage } from "../../messages";
 import { LeaderboardRoute, routePath } from "../../routes";
@@ -25,12 +25,9 @@ export function accountChrome<Msg>(h: HtmlFactory<Msg>, options: AccountChromeOp
     [h.Class("flex flex-wrap items-center gap-md")],
     [
       options.showLeaderboardLink
-        ? h.a(
-            [
-              h.Href(routePath(LeaderboardRoute())),
-              h.DataAttribute("testid", "header-leaderboard-link"),
-              h.Class(buttonClass("ghost")),
-            ],
+        ? button(
+            h,
+            { as: "a", href: routePath(LeaderboardRoute()), testId: "header-leaderboard-link", variant: "ghost" },
             ["Leaderboard"],
           )
         : null,
@@ -42,16 +39,16 @@ export function accountChrome<Msg>(h: HtmlFactory<Msg>, options: AccountChromeOp
             : []),
         ],
         [
-          h.button(
-            [
-              h.Type("button"),
-              h.DataAttribute("testid", "account-menu-trigger"),
-              h.AriaLabel("Account"),
-              h.Attribute("aria-expanded", String(options.menuOpen)),
-              h.Attribute("aria-haspopup", "menu"),
-              h.OnClick(ToggledAccountMenu() as never),
-              h.Class(buttonClass("ghost", "rounded-full p-0")),
-            ],
+          button(
+            h,
+            {
+              testId: "account-menu-trigger",
+              ariaLabel: "Account",
+              onClick: ToggledAccountMenu() as never,
+              variant: "ghost",
+              class: "rounded-full p-0",
+              attrs: [h.Attribute("aria-expanded", String(options.menuOpen)), h.Attribute("aria-haspopup", "menu")],
+            },
             [
               seatFace(h, {
                 seat: 0,
