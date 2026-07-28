@@ -123,18 +123,23 @@ describe("lobby-http", () => {
   });
 
   it("annotates exception.type on traced failures without message bodies", async () => {
-    const annotateSpy = vi.spyOn(Effect, "annotateCurrentSpan");
+    let attributes: ReadonlyMap<string, unknown> = new Map();
+    mocks.runTracedRequest.mockImplementationOnce((_traceparent, spanName: string, body: Effect.Effect<unknown>) =>
+      Effect.runPromise(
+        Effect.gen(function* () {
+          const result = yield* body;
+          attributes = (yield* Effect.currentSpan).attributes;
+          return result;
+        }).pipe(Effect.withSpan(spanName)),
+      ),
+    );
     const message = "secret db payload";
 
     await withLobbyAuth(authEvent(), "api test", () => Effect.fail(new Error(message)));
 
-    const failureCall = annotateSpy.mock.calls.find(
-      (call) => (call[0] as Record<string, unknown>)[EXCEPTION_TYPE] === "LobbyDbError",
-    );
-    expect(failureCall?.[0]).toMatchObject({ [EXCEPTION_TYPE]: "LobbyDbError" });
-    expect(failureCall?.[0]).not.toHaveProperty("exception.message");
-    expect(Object.values(failureCall?.[0] ?? {})).not.toContain(message);
-    annotateSpy.mockRestore();
+    expect(attributes.get(EXCEPTION_TYPE)).toBe("LobbyDbError");
+    expect(attributes.has("exception.message")).toBe(false);
+    expect([...attributes.values()]).not.toContain(message);
   });
 
   it("runMetaGet executes Effect response bodies", async () => {
