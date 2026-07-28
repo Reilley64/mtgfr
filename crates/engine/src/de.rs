@@ -1039,7 +1039,7 @@ impl<'de> Deserialize<'de> for ProtectionScope {
 /// A numeric quantity in TOML: a plain number (`amount = 3`), a keyword string for a derived
 /// value (`"x"`, `"half_x"`, `"half_x_rounded_down"`, `"twice_x"`, `"per_creature_you_control"`, `"source_power"`,
 /// `"source_toughness"`, `"target_power"`, `"target_mana_value"`, `"per_counter_on_source"`, `"life_gained_this_turn"`,
-/// `"spells_cast_this_turn"`, `"untapped_lands_at_turn_start"`,
+/// `"spells_cast_this_turn"`, `"damage_taken_this_turn"`, `"untapped_lands_at_turn_start"`,
 /// `"commander_casts_from_command_zone"`, `"creatures_died_this_turn"`,
 /// `"creatures_died_this_turn_any_controller"`,
 /// `"nontoken_creatures_entered_this_turn"`,
@@ -1080,6 +1080,7 @@ impl<'de> Deserialize<'de> for Amount {
             "per_counter_on_source",
             "life_gained_this_turn",
             "spells_cast_this_turn",
+            "damage_taken_this_turn",
             "untapped_lands_at_turn_start",
             "cards_in_target_player_hand",
             "cards_in_your_hand",
@@ -1153,6 +1154,7 @@ impl<'de> Deserialize<'de> for Amount {
                     "controllers_poison_counters" => Amount::ControllersPoisonCounters,
                     "life_gained_this_turn" => Amount::LifeGainedThisTurn,
                     "spells_cast_this_turn" => Amount::SpellsCastThisTurn,
+                    "damage_taken_this_turn" => Amount::DamageTakenThisTurn,
                     "untapped_lands_at_turn_start" => Amount::UntappedLandsAtTurnStart,
                     "cards_in_target_player_hand" => Amount::CardsInTargetPlayerHand,
                     "cards_in_your_hand" => Amount::CardsInYourHand,
@@ -1935,6 +1937,9 @@ enum TriggerTag {
     /// Whenever the enchanted host deals damage, combat or noncombat (Armadillo Cloak's "you gain
     /// that much life"). See [`Trigger::EnchantedCreatureDealsDamage`].
     EnchantedCreatureDealsDamage,
+    /// Whenever this permanent's controller is dealt damage, combat or noncombat (Living
+    /// Artifact's "put that many vitality counters"). See [`Trigger::YouAreDealtDamage`].
+    YouAreDealtDamage,
     AnEnchantedCreatureDies,
     CreatureEnchantedByYourAuraAttacks,
     YouSacrifice,
@@ -2238,6 +2243,7 @@ impl<'de> Deserialize<'de> for Ability {
                 TriggerTag::EnchantedCreatureAttacks => Trigger::EnchantedCreatureAttacks,
                 TriggerTag::EnchantedCreatureDies => Trigger::EnchantedCreatureDies,
                 TriggerTag::EnchantedCreatureDealsDamage => Trigger::EnchantedCreatureDealsDamage,
+                TriggerTag::YouAreDealtDamage => Trigger::YouAreDealtDamage,
                 TriggerTag::AnEnchantedCreatureDies => Trigger::AnEnchantedCreatureDies,
                 TriggerTag::CreatureEnchantedByYourAuraAttacks => {
                     Trigger::CreatureEnchantedByYourAuraAttacks {

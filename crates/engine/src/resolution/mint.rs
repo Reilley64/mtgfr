@@ -58,7 +58,7 @@ impl Game {
                 | CountersEffect::TopUpCountersOnPlayer { .. }
                 | CountersEffect::RemoveAllButOnePlusOneCounterThenGainLife { .. }
                 | CountersEffect::RemoveAllCountersThenDraw { .. }
-                | CountersEffect::RemoveCounterFromSelf) => {
+                | CountersEffect::RemoveCounterFromSelf { .. }) => {
                     self.mint_counters(c, controller, source, target, x)
                 }
                 CountersEffect::CommanderEntersWithBonusCounters { .. }

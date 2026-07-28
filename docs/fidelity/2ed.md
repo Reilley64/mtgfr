@@ -248,11 +248,11 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [x] **Kormus Bell** {4} · Artifact — increment 8c
 - [ ] **Kudzu** {1}{G}{G} · Enchantment — Aura — increment 37
 - [x] **Library of Leng** {1} · Artifact — increment 33
-- [ ] **Lich** {B}{B}{B}{B} · Enchantment — increment 22, 47
+- [ ] **Lich** {B}{B}{B}{B} · Enchantment — increment 47
 - [x] **Lifeforce** {G}{G} · Enchantment — increment 9
 - [x] **Lifelace** {G} · Instant — increment 15
 - [x] **Lifetap** {U}{U} · Enchantment — increment 19
-- [ ] **Living Artifact** {G} · Enchantment — Aura — increment 22, 28
+- [x] **Living Artifact** {G} · Enchantment — Aura — increment 22
 - [x] **Living Lands** {3}{G} · Enchantment — increment 8c
 - [x] **Lord of Atlantis** {U}{U} · Creature — Merfolk — increment 3
 - [x] **Lord of the Pit** {4}{B}{B}{B} · Creature — Demon — increment 72
@@ -289,7 +289,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [x] **Scavenging Ghoul** {3}{B} · Creature — Zombie — increment 28
 - [x] **Sea Serpent** {5}{U} · Creature — Serpent — increment 24, 77
 - [x] **Shanodin Dryads** {G} · Creature — Nymph Dryad — increment 3
-- [ ] **Simulacrum** {1}{B} · Instant — increment 22
+- [x] **Simulacrum** {1}{B} · Instant — increment 22
 - [x] **Siren's Call** {U} · Instant
 - [ ] **Sleight of Mind** {U} · Instant — increment 16
 - [ ] **Smoke** {R}{R} · Enchantment — increment 7

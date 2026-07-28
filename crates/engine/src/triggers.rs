@@ -37,6 +37,9 @@ enum TriggerWatchContextKind {
     ActivePlayer,
     Attack,
     DamagedCreature,
+    /// How much damage the event dealt, onto `TriggerContext::triggering_damage_dealt` — Living
+    /// Artifact's "put **that many** vitality counters".
+    DamageAmount,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -74,6 +77,19 @@ impl TriggerWatch {
             zone: TriggerWatchZone::Battlefield,
             scope: TriggerWatchScope::ControlledPlayer,
             context: TriggerWatchContextKind::Controller,
+            skip_graveyard_functional_on_battlefield: true,
+        }
+    }
+
+    const fn battlefield_controller_ctx(
+        trigger: Trigger,
+        context: TriggerWatchContextKind,
+    ) -> Self {
+        Self {
+            kind: TriggerWatchKind::Exact(trigger),
+            zone: TriggerWatchZone::Battlefield,
+            scope: TriggerWatchScope::ControlledPlayer,
+            context,
             skip_graveyard_functional_on_battlefield: true,
         }
     }
@@ -161,7 +177,7 @@ struct TriggerWatchEvent {
     cast_from_hand: Option<bool>,
     mana_spent: Option<u32>,
     damaged_creature: Option<ObjectId>,
-    combat_damage: Option<i32>,
+    damage_amount: Option<i32>,
     exclude: Option<ObjectId>,
 }
 
@@ -178,7 +194,7 @@ impl TriggerWatchEvent {
             cast_from_hand: None,
             mana_spent: None,
             damaged_creature: None,
-            combat_damage: None,
+            damage_amount: None,
             exclude: None,
         }
     }
@@ -195,7 +211,7 @@ impl TriggerWatchEvent {
             cast_from_hand: None,
             mana_spent: None,
             damaged_creature: None,
-            combat_damage: None,
+            damage_amount: None,
             exclude: None,
         }
     }
@@ -212,7 +228,7 @@ impl TriggerWatchEvent {
             cast_from_hand: None,
             mana_spent: None,
             damaged_creature: None,
-            combat_damage: None,
+            damage_amount: None,
             exclude: None,
         }
     }
@@ -229,7 +245,7 @@ impl TriggerWatchEvent {
             cast_from_hand: None,
             mana_spent: None,
             damaged_creature: None,
-            combat_damage: None,
+            damage_amount: None,
             exclude: None,
         }
     }
@@ -253,7 +269,7 @@ impl TriggerWatchEvent {
             cast_from_hand: Some(cast_from_hand),
             mana_spent: Some(mana_spent),
             damaged_creature: None,
-            combat_damage: None,
+            damage_amount: None,
             exclude: None,
         }
     }
@@ -270,12 +286,12 @@ impl TriggerWatchEvent {
             cast_from_hand: None,
             mana_spent: None,
             damaged_creature: None,
-            combat_damage: Some(amount),
+            damage_amount: Some(amount),
             exclude: None,
         }
     }
 
-    const fn for_damage_to_player(source: ObjectId, player: PlayerId) -> Self {
+    const fn for_damage_to_player(source: ObjectId, player: PlayerId, amount: i32) -> Self {
         Self {
             source: Some(source),
             player: Some(player),
@@ -287,7 +303,7 @@ impl TriggerWatchEvent {
             cast_from_hand: None,
             mana_spent: None,
             damaged_creature: None,
-            combat_damage: None,
+            damage_amount: Some(amount),
             exclude: None,
         }
     }
@@ -304,7 +320,7 @@ impl TriggerWatchEvent {
             cast_from_hand: None,
             mana_spent: None,
             damaged_creature: Some(target),
-            combat_damage: None,
+            damage_amount: None,
             exclude: None,
         }
     }
@@ -350,14 +366,25 @@ const SPELL_CAST_TRIGGER_WATCHES: &[TriggerWatch] = &[
     TriggerWatch::battlefield_controller_dynamic(TriggerWatchKind::Magecraft),
     TriggerWatch::battlefield_all_dynamic(TriggerWatchKind::CastSpell),
 ];
+// The receiving-end watch ("whenever you're dealt damage", Living Artifact) sits on both tables:
+// combat and noncombat damage alike is damage dealt to you (CR 120.1), and only these two arms
+// reach a player. Controller-scoped on the *damaged* player, so it is the victim's own permanents
+// that watch — the dealer's don't.
 const COMBAT_DAMAGE_TO_PLAYER_TRIGGER_WATCHES: &[TriggerWatch] = &[
     TriggerWatch::battlefield_all_dynamic(TriggerWatchKind::DealsCombatDamageToPlayer),
     TriggerWatch::battlefield_self_dynamic(TriggerWatchKind::DealsDamageToOpponent),
+    TriggerWatch::battlefield_controller_ctx(
+        Trigger::YouAreDealtDamage,
+        TriggerWatchContextKind::DamageAmount,
+    ),
 ];
-const DAMAGE_TO_PLAYER_TRIGGER_WATCHES: &[TriggerWatch] =
-    &[TriggerWatch::battlefield_self_dynamic(
-        TriggerWatchKind::DealsDamageToOpponent,
-    )];
+const DAMAGE_TO_PLAYER_TRIGGER_WATCHES: &[TriggerWatch] = &[
+    TriggerWatch::battlefield_self_dynamic(TriggerWatchKind::DealsDamageToOpponent),
+    TriggerWatch::battlefield_controller_ctx(
+        Trigger::YouAreDealtDamage,
+        TriggerWatchContextKind::DamageAmount,
+    ),
+];
 const COMBAT_DAMAGE_TO_CREATURE_TRIGGER_WATCHES: &[TriggerWatch] =
     &[TriggerWatch::battlefield_self(
         Trigger::DealsCombatDamageToCreature,
@@ -968,10 +995,14 @@ impl Game {
                 // Noncombat damage dealt to a player (CR 120.1) — the marker
                 // `Effect::Damage(DamageEffect::Target)`'s player arm pushes alongside its `LifeChanged`, never a
                 // non-damage life loss (drain, pay-life), which only emits `LifeChanged`.
-                Event::DamageDealtToPlayer { source, player, .. } => {
+                Event::DamageDealtToPlayer {
+                    source,
+                    player,
+                    amount,
+                } => {
                     self.queue_trigger_watch_table(
                         DAMAGE_TO_PLAYER_TRIGGER_WATCHES,
-                        TriggerWatchEvent::for_damage_to_player(source, player),
+                        TriggerWatchEvent::for_damage_to_player(source, player, amount),
                     );
                 }
                 // Damage marked on a creature (CR 120.3/506) — `Game::deal_creature_damage` is the
@@ -1194,6 +1225,10 @@ impl Game {
                 damaged_creature: event.damaged_creature,
                 ..TriggerContext::of(controller)
             },
+            TriggerWatchContextKind::DamageAmount => TriggerContext {
+                triggering_damage_dealt: event.damage_amount,
+                ..TriggerContext::of(controller)
+            },
         }
     }
 
@@ -1327,7 +1362,7 @@ impl Game {
                     .player
                     .expect("combat-damage watch dispatch requires the damaged player");
                 let amount = event
-                    .combat_damage
+                    .damage_amount
                     .expect("combat-damage watch dispatch requires the damage amount");
                 self.queue_combat_damage_triggers(source, player, amount);
             }
@@ -4049,6 +4084,11 @@ impl Game {
             Condition::SourceHasNoCountersOfKind { kind } => {
                 self.counters_of_kind(source, kind) == 0
             }
+            // Living Artifact's upkeep: "you may remove a vitality counter from this Aura" — the
+            // positive sibling of the condition above, read the same way.
+            Condition::SourceHasCountersOfKind { kind, at_least } => {
+                u32::from(self.counters_of_kind(source, kind)) >= at_least
+            }
             // Ingenious Prodigy's upkeep: "if this creature has one or more +1/+1 counters on
             // it" — source-object-based like the two conditions above.
             Condition::SourceHasCounters { at_least } => self.source_has_counters(source, at_least),
@@ -4202,6 +4242,9 @@ impl Game {
             // through `Game::ability_condition_holds` (mana_bloom's upkeep trigger, queued via
             // `queue_trigger_group`), which intercepts it before falling through here.
             Condition::SourceHasNoCountersOfKind { .. } => false,
+            // ponytail: the positive sibling of the condition above, intercepted the same way
+            // (Living Artifact's upkeep counter-removal).
+            Condition::SourceHasCountersOfKind { .. } => false,
             // ponytail: source-object-based like `SourceHasCounters` above — `TriggerContext`
             // carries no source object. Reachable only directly against the object by the
             // characteristics recompute's conditional-keyword gate (Agent Frank Horrigan's

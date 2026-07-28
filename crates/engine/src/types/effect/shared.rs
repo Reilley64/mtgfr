@@ -61,6 +61,11 @@ pub enum Amount {
     LifeGainedThisTurn,
     /// How many spells the effect's controller has cast this turn (a turn-scoped tally).
     SpellsCastThisTurn,
+    /// How much damage has been dealt to the effect's controller this turn (a turn-scoped tally,
+    /// [`Player::damage_taken_this_turn`](crate::Player)) — Simulacrum's "the damage dealt to you
+    /// this turn", read twice on one card for its life gain and its damage. Damage, not life
+    /// lost: a drain or a paid life cost never counts.
+    DamageTakenThisTurn,
     /// How many untapped lands the effect's controller controlled when the current turn began
     /// (Power Surge's "the number of untapped lands they controlled at the beginning of this
     /// turn") — a snapshot, not a live count, so tapping out with the trigger on the stack
@@ -1018,7 +1023,7 @@ impl Effect {
             | Effect::Choice(ChoiceEffect::ChooseOpponent)
             | Effect::Choice(ChoiceEffect::SetOwnColorUntilEndOfTurn)
             // Removes a counter from the ability's own source, never a chosen target.
-            | Effect::Counters(CountersEffect::RemoveCounterFromSelf)
+            | Effect::Counters(CountersEffect::RemoveCounterFromSelf { .. })
             // Grants the ability's controller a permission — no chosen target.
             | Effect::Misc(MiscEffect::GrantFlashThisTurn)
             | Effect::Misc(MiscEffect::GrantChannelColorlessManaThisTurn)
@@ -1341,6 +1346,10 @@ pub enum CounterKind {
     /// there is nothing on the battlefield left to read it off, and
     /// [`Game::effective_subtypes`](crate::Game) consults this slot directly.
     Mire,
+    /// A vitality counter (CR 122.1 — Living Artifact): banked damage, one per point dealt to the
+    /// enchantment's controller, spent one per upkeep for 1 life. Inert bookkeeping like
+    /// [`Corpse`](Self::Corpse) — it changes nothing about the permanent by itself.
+    Vitality,
 }
 
 impl CounterKind {
@@ -1352,7 +1361,7 @@ impl CounterKind {
     /// `&'static [(CounterKind, u8)]` slice if the kind set ever needs to be open-ended. A counter
     /// kind that sits on a *player* (poison, CR 122.1) doesn't belong here at all — it has its own
     /// parallel [`PlayerCounterKind`] and its own store on [`Player::kind_counters`].
-    pub(crate) const COUNT: usize = 12;
+    pub(crate) const COUNT: usize = 13;
 
     /// Every kind, for enumerating "each kind present" (proliferate, move/remove-all-counters).
     pub(crate) const ALL: [CounterKind; Self::COUNT] = [
@@ -1368,6 +1377,7 @@ impl CounterKind {
         CounterKind::Storage,
         CounterKind::Corpse,
         CounterKind::Mire,
+        CounterKind::Vitality,
     ];
 }
 
@@ -1801,6 +1811,12 @@ pub enum Condition {
     /// sibling (mirroring `SourceHasCounters`) if a future card needs "at least N story/charge
     /// counters" as an intervening-if instead of exactly zero.
     SourceHasNoCountersOfKind { kind: CounterKind },
+    /// "if this permanent has `at_least` or more `kind` counters on it" — the positive sibling
+    /// `SourceHasNoCountersOfKind` above always said to grow. Living Artifact's "you may remove a
+    /// vitality counter from this Aura. If you do, you gain 1 life": as an intervening-if (CR
+    /// 603.4) the trigger never reaches the stack with nothing to remove, which is what "if you
+    /// do" comes to when the removal can't fail once a counter is there.
+    SourceHasCountersOfKind { kind: CounterKind, at_least: u32 },
     /// "if you control `at_least` or more `color` permanents" (Mistveil Plains's "activate only
     /// if you control two or more white permanents") — an activation restriction, checked in
     /// [`Game::ability_activation_gate`]. Counts the controller's battlefield permanents whose

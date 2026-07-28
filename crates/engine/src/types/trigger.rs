@@ -403,6 +403,15 @@ pub enum Trigger {
     /// `source`); every player other than the controller is an opponent (CR 102.3). See
     /// [`Game::queue_deals_damage_to_opponent_triggers`].
     DealsDamageToOpponent,
+    /// Whenever this permanent's controller is dealt damage, combat or noncombat alike (CR 120.1
+    /// — Living Artifact's "Whenever you're dealt damage, put that many vitality counters on this
+    /// Aura", Lich's "sacrifice that many nontoken permanents"). Controller-scoped on the
+    /// *damaged* player, the receiving-end twin of
+    /// [`DealsDamageToOpponent`](Self::DealsDamageToOpponent): the victim's own permanents watch,
+    /// the dealer's don't. The amount rides in `TriggerContext::triggering_damage_dealt`, so
+    /// `Amount::TriggeringDamageDealt` reads "that many". One trigger per damage event, so a
+    /// creature and a spell hitting the same player fire it twice — which is what CR 603.3 says.
+    YouAreDealtDamage,
     /// Whenever a player casts a spell matching `filter` (CR: the general form behind
     /// [`Magecraft`](Self::Magecraft) and its kin) — a data-driven cast-watch. `caster` scopes
     /// whose cast counts, relative to the ability's own controller ([`CasterScope::You`] default,

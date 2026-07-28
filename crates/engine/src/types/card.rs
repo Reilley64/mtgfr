@@ -2192,6 +2192,11 @@ pub(crate) struct Player {
     /// Spells this player has cast this turn (turn-scoped; reset each turn at untap). Feeds
     /// [`Amount::SpellsCastThisTurn`].
     pub(crate) spells_cast_this_turn: u32,
+    /// Damage dealt to this player this turn (turn-scoped; reset each turn at untap), combat and
+    /// noncombat alike (CR 120.1). Feeds [`Amount::DamageTakenThisTurn`] — Simulacrum's "the
+    /// damage dealt to you this turn". Damage, not life loss: a drain or a paid life cost only
+    /// ever emits `Event::LifeChanged`, and neither of the two damage markers this counts.
+    pub(crate) damage_taken_this_turn: u32,
     /// How many untapped lands this player controlled at the beginning of the current turn —
     /// Power Surge's "the number of untapped lands they controlled at the beginning of this
     /// turn". Snapshotted for every player when the *upkeep* begins (`Game::apply`'s

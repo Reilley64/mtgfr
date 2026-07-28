@@ -3253,6 +3253,69 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
             assert_eq!(&card.abilities[0].effect, effect, "{name}'s printed effect");
         }
 
+        // Simulacrum reads one turn-scoped tally twice — the life it gains and the damage it
+        // hands to its own creature are the same number, so both sentences take the same Amount.
+        let simulacrum = get_by_name("Simulacrum").expect("Simulacrum is in the pool");
+        let Effect::Sequence { steps } = &simulacrum.abilities[0].effect else {
+            panic!("Simulacrum's two sentences resolve in order");
+        };
+        assert_eq!(
+            steps[0],
+            Effect::Life(LifeEffect::Gain {
+                amount: Amount::DamageTakenThisTurn,
+            }),
+            "life equal to the damage dealt to you this turn"
+        );
+        let Effect::Damage(DamageEffect::Target { amount, target, .. }) = steps[1] else {
+            panic!("Simulacrum deals its damage to a target");
+        };
+        assert_eq!(
+            (amount, target),
+            (
+                Amount::DamageTakenThisTurn,
+                TargetSpec::Permanent(PermanentFilter {
+                    controller: FilterController::You,
+                    ..PermanentFilter::of(TypeSet::CREATURE)
+                })
+            ),
+            "that same tally, at a creature you control"
+        );
+
+        // Living Artifact banks the damage its controller takes as counters and spends them one
+        // per upkeep. The intervening-if is what "If you do" comes to: with no counter on it the
+        // upkeep trigger never reaches the stack (CR 603.4).
+        let artifact = get_by_name("Living Artifact").expect("Living Artifact is in the pool");
+        assert_eq!(
+            artifact.abilities[0].timing,
+            Timing::Triggered(Trigger::YouAreDealtDamage),
+            "whenever you're dealt damage"
+        );
+        assert_eq!(
+            artifact.abilities[0].effect,
+            Effect::Counters(CountersEffect::PutCounters {
+                count: Amount::TriggeringDamageDealt,
+                target: TargetSpec::ThisPermanent,
+                targets: TargetCount::default(),
+                kind: Some(CounterKind::Vitality),
+                divided: false,
+            }),
+            "that many vitality counters, on the Aura itself"
+        );
+        assert_eq!(
+            (
+                artifact.abilities[1].optional,
+                artifact.abilities[1].condition
+            ),
+            (
+                true,
+                Some(Condition::SourceHasCountersOfKind {
+                    kind: CounterKind::Vitality,
+                    at_least: 1,
+                })
+            ),
+            "a may, and only with a counter there to remove"
+        );
+
         // Demonic Tutor's unrestricted search: any card, straight to hand.
         let tutor = get_by_name("Demonic Tutor").expect("Demonic Tutor is in the pool");
         let Effect::Dig(DigEffect::SearchLibrary {

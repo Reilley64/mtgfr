@@ -343,7 +343,7 @@ impl Game {
             // `CountersPlaced`, mirroring `RemoveAllCountersThenDraw`'s removal above; guarded so
             // a source with none doesn't go negative (unreachable in practice — the enclosing
             // ability's `SourceHasCounters` intervening-if already requires at least one).
-            CountersEffect::RemoveCounterFromSelf => {
+            CountersEffect::RemoveCounterFromSelf { kind: None } => {
                 if self.plus_counters(source) <= 0 {
                     return vec![];
                 }
@@ -351,6 +351,18 @@ impl Game {
                     object: source,
                     count: -1,
                     source_name,
+                }]
+            }
+            // Living Artifact: "you may remove a vitality counter from this Aura." The named-kind
+            // twin of the arm above, down the `KindCountersPlaced` path a named kind lives on.
+            CountersEffect::RemoveCounterFromSelf { kind: Some(kind) } => {
+                if self.counters_of_kind(source, kind) == 0 {
+                    return vec![];
+                }
+                vec![Event::KindCountersPlaced {
+                    object: source,
+                    kind,
+                    count: -1,
                 }]
             }
             _ => unreachable!("counters family mint received a non-family effect"),

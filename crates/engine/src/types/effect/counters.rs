@@ -124,7 +124,16 @@ pub enum CountersEffect {
         target: TargetSpec,
     },
 
-    RemoveCounterFromSelf,
+    /// "You may remove a +1/+1 counter from it" (Ingenious Prodigy) / "you may remove a vitality
+    /// counter from this Aura" (Living Artifact) — one counter off the ability's own source, a CR
+    /// 608.2c effect-internal sub-action rather than an activation cost. `kind` is `None` for
+    /// +1/+1 (the scalar [`Permanent::plus_counters`](crate::Permanent)) and `Some(kind)` for a
+    /// named kind; either way a source with none is a no-op, since the callers gate on an
+    /// intervening-if that already requires one.
+    RemoveCounterFromSelf {
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        kind: Option<CounterKind>,
+    },
 
     /// "Put a loyalty counter on each Garruk you control" (the Wolf token minted by Garruk,
     /// Cursed Huntsman's `0`) — a permanent-type filter walk, same shape as

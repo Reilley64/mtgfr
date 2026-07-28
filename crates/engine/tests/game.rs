@@ -109482,3 +109482,132 @@ fn power_sink_strips_the_board_only_when_the_payment_is_declined() {
         "and the rest of the pool",
     );
 }
+
+#[test]
+fn simulacrum_hands_back_the_damage_you_took_this_turn() {
+    // Simulacrum (2ed): "You gain life equal to the damage dealt to you this turn. Simulacrum
+    // deals damage to target creature you control equal to the damage dealt to you this turn."
+    // A bolt to the face first, so the turn-scoped tally is 3 when the instant reads it twice.
+    let mut game = Game::new();
+    stock_libraries(&mut game);
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let bolt = game.spawn_in_hand(PlayerId(0), card("Lightning Bolt"));
+    cast_and_resolve(&mut game, bolt, Some(Target::Player(PlayerId(0))));
+    assert_eq!(game.life(PlayerId(0)), 17, "the bolt took 3");
+
+    let simulacrum = game.spawn_in_hand(PlayerId(0), card("Simulacrum"));
+    cast_and_resolve(&mut game, simulacrum, Some(Target::Object(bear)));
+
+    assert_eq!(
+        game.life(PlayerId(0)),
+        20,
+        "gained back the 3 the bolt dealt this turn"
+    );
+    assert_eq!(
+        game.zone_of(game.current_id(bear)),
+        Zone::Graveyard,
+        "and handed that same 3 to its own 2/2"
+    );
+}
+
+#[test]
+fn simulacrum_reads_nothing_on_a_turn_you_took_no_damage() {
+    // The tally is turn-scoped (CR 120.1 damage, not life loss): a fresh turn zeroes it, so
+    // Simulacrum gains nothing and its own creature survives.
+    let mut game = Game::new();
+    stock_libraries(&mut game);
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let bolt = game.spawn_in_hand(PlayerId(0), card("Lightning Bolt"));
+    cast_and_resolve(&mut game, bolt, Some(Target::Player(PlayerId(0))));
+
+    pass_until_next_turn(&mut game); // to P1's turn.
+    pass_until_next_turn(&mut game); // back to P0, tally cleared at untap.
+
+    let simulacrum = game.spawn_in_hand(PlayerId(0), card("Simulacrum"));
+    cast_and_resolve(&mut game, simulacrum, Some(Target::Object(bear)));
+
+    assert_eq!(
+        game.life(PlayerId(0)),
+        17,
+        "last turn's damage is not this turn's tally"
+    );
+    assert_eq!(
+        game.zone_of(game.current_id(bear)),
+        Zone::Battlefield,
+        "0 damage leaves the bear alone"
+    );
+}
+
+#[test]
+fn living_artifact_banks_the_damage_you_take_and_spends_it_an_upkeep_at_a_time() {
+    // Living Artifact (2ed): "Whenever you're dealt damage, put that many vitality counters on
+    // this Aura. At the beginning of your upkeep, you may remove a vitality counter from this
+    // Aura. If you do, you gain 1 life."
+    let mut g = TestGame::new();
+    g.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    g.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    let lotus = g.spawn_on_battlefield(PlayerId(0), card("Black Lotus"));
+    let aura_card = g.spawn_in_hand(PlayerId(0), card("Living Artifact"));
+    cast_and_resolve(&mut g, aura_card, Some(Target::Object(lotus)));
+    let aura = g.current_id(aura_card);
+
+    let bolt = g.spawn_in_hand(PlayerId(0), card("Lightning Bolt"));
+    cast_and_resolve(&mut g, bolt, Some(Target::Player(PlayerId(0))));
+    resolve_top_of_stack(&mut g); // the "whenever you're dealt damage" trigger.
+
+    assert_eq!(
+        g.counters_of_kind(aura, CounterKind::Vitality),
+        3,
+        "three damage banked as three vitality counters"
+    );
+    assert_eq!(
+        g.life(PlayerId(0)),
+        17,
+        "the counters are not the life back"
+    );
+
+    advance_until(&mut g, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
+    });
+    assert!(
+        matches!(g.pending_choice(), Some(PendingChoice::MayYesNo { .. })),
+        "a counter is there to remove, so the may-trigger fired"
+    );
+    g.submit(Intent::AnswerMay {
+        player: PlayerId(0),
+        yes: true,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut g);
+
+    assert_eq!(
+        (
+            g.counters_of_kind(aura, CounterKind::Vitality),
+            g.life(PlayerId(0))
+        ),
+        (2, 18),
+        "one counter spent for one life"
+    );
+}
+
+#[test]
+fn living_artifact_stays_quiet_on_an_upkeep_with_no_counters() {
+    // The "If you do" is an intervening-if (CR 603.4): with nothing banked the upkeep trigger
+    // never reaches the stack at all, so there is no may to answer.
+    let mut g = TestGame::new();
+    g.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    g.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    let lotus = g.spawn_on_battlefield(PlayerId(0), card("Black Lotus"));
+    let aura_card = g.spawn_in_hand(PlayerId(0), card("Living Artifact"));
+    cast_and_resolve(&mut g, aura_card, Some(Target::Object(lotus)));
+
+    pass_until_next_turn(&mut g); // to P1's turn.
+    pass_until_next_turn(&mut g); // back to P0's upkeep.
+
+    assert_eq!(g.current_step(), Step::Upkeep);
+    assert!(
+        g.pending_choice().is_none(),
+        "no vitality counters, so no trigger and no prompt"
+    );
+    assert_eq!(g.life(PlayerId(0)), 20, "and no life gained");
+}

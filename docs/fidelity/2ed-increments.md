@@ -720,7 +720,7 @@ reaches the payload through the existing funnel — Stinkweed Imp's `fill_damage
 `fill_that_creature` and given a second caller. The `at` matters for more than flavor: a blocker
 destroyed as the trigger resolved would never deal its combat damage.
 
-### 22. `damage-taken-history` — 3 cards, M
+### 22. `damage-taken-history` — 2 cards, M — **done**
 Depends on: nothing.
 "You gain life equal to the damage dealt to you this turn" / "whenever you're dealt damage, put
 that many vitality counters." `triggering_damage_dealt` exists as an amount but only inside the
@@ -729,7 +729,35 @@ triggering ability; nothing accumulates per-player damage across a turn, and the
 per player on `Game`, incremented in the single `deal_damage` path and cleared at cleanup, exposed
 as an `Amount`; plus a `Timing::PlayerDealtDamage` firing with the amount. Both are cheap once
 `deal_damage` is already being touched for #4 — sequence this after that increment.
-*Cards:* lich, living_artifact, simulacrum.
+*Cards:* living_artifact, simulacrum. Lich needs the life-gain replacement first, so it ships with
+#47 — this increment only hands it the damage-taken trigger it also wants.
+
+*Landed:* no new damage path. `Event::CombatDamageDealtToPlayer` and `Event::DamageDealtToPlayer`
+are the only two arms that reach a player and both were pure markers, so each grew one line adding
+to a turn-scoped `Player::damage_taken_this_turn`, cleared in the same Untap loop as
+`life_gained_this_turn` and `spells_cast_this_turn`. `Amount::DamageTakenThisTurn` reads it.
+Damage, not life loss — a drain or a paid life cost only ever emits `Event::LifeChanged`, so
+neither of those two arms sees it, which is what CR 120.1 says.
+
+`Trigger::YouAreDealtDamage` needed no new context field: `TriggerContext::triggering_damage_dealt`
+already existed for Armadillo Cloak, and `TriggerWatchScope::ControlledPlayer` already means
+"permanents controlled by the event's player", so the victim-scoped watch is the existing scope
+plus a new `TriggerWatchContextKind::DamageAmount`. The watch sits on *both* damage-to-player
+tables (combat and noncombat alike is damage dealt to you), and `TriggerWatchEvent`'s
+`combat_damage` field was renamed `damage_amount` since it now carries both.
+
+Living Artifact's "If you do, you gain 1 life" is an intervening-if, not a conditional step: with
+no counter on it the upkeep trigger never reaches the stack (CR 603.4), and once a counter is there
+the removal can't fail. `Condition::SourceHasNoCountersOfKind`'s doc comment already prescribed
+`SourceHasCountersOfKind { kind, at_least }` as its growth path, so that is exactly what it got.
+`CountersEffect::RemoveCounterFromSelf` was +1/+1-only and fieldless; it took a
+`kind: Option<CounterKind>` (`None` = +1/+1, so Ingenious Prodigy's TOML is untouched), the
+`Some(kind)` arm going down the `Event::KindCountersPlaced` path a named kind lives on.
+
+`CounterKind::Vitality` is inert bookkeeping like `Corpse` — banked damage that changes nothing
+about the permanent by itself. Simulacrum reads the one tally twice, as the life it gains and as
+the damage it hands its own creature, which is the whole reason the tally is an `Amount` rather
+than a trigger payload.
 
 ### 23. `mana-emptying` — 3 cards, M — **done**
 Depends on: nothing.
@@ -895,7 +923,7 @@ Basilisk, Cockatrice, Juggernaut, Nightmare, Pegasus, Pirate, Serpent — arrive
 and that test is what will demand them.
 *Cards:* none directly — every "choose a creature type" card in the pool gains the options.
 
-### 28. `counter-kinds` — 5 cards, S — **corpse landed, 3 kinds left**
+### 28. `counter-kinds` — 5 cards, S — **corpse and vitality landed, 2 kinds left**
 Depends on: nothing.
 Falsifies the fixed counter-slot array in `types/effect/shared.rs`. 2ed needs four kinds it
 doesn't have: +1/+0 (Clockwork Beast), corpse (Scavenging Ghoul), mire (Cyclopean Tomb), vitality
@@ -903,7 +931,8 @@ doesn't have: +1/+0 (Clockwork Beast), corpse (Scavenging Ghoul), mire (Cyclopea
 `characteristics.rs` must apply in layer 7d beside +1/+1.
 
 `CounterKind::Corpse` landed (`COUNT` 10 → 11, one `ALL` entry, one `message.rs` name) and
-Scavenging Ghoul ships. The only other engine gap it needed was game-wide death counting:
+Scavenging Ghoul ships. `CounterKind::Vitality` landed the same way with #22, and Living Artifact
+ships. The only other engine gap it needed was game-wide death counting:
 `Amount::CreaturesDiedThisTurn` is per-controller, and the Ghoul's "for each creature that died
 this turn" names no controller, so `Amount::CreaturesDiedThisTurnAnyController` sums every
 player's tally (they all clear at the same Untap step, so the sum is exact — no new field).
@@ -911,11 +940,10 @@ Everything else the card needs already existed: `"each_end_step"`, `put_counters
 `kind`, and `remove_counters` / `remove_counters_kind` as an activation cost paying
 `regenerate_shield { target = "this" }`.
 
-The other four cards each need something *besides* a counter kind, which is why the slot-array
+The other three cards each need something *besides* a counter kind, which is why the slot-array
 work alone doesn't finish this increment:
 - **Cyclopean Tomb** — mire counters are the easy half; it also needs #8 (changing a land's type)
   and a rest-of-game delayed trigger that unwinds them when the Tomb leaves.
-- **Living Artifact** — vitality counters need a "whenever you're dealt damage" watcher.
 - **Clockwork Beast** — +1/+0 is a real P/T counter (layer 7d, beside +1/+1); it also caps its own
   activation ("can't cause the total to be greater than seven", a bound on the effect's amount)
   and needs an end-of-combat conditional removal.
@@ -1289,7 +1317,7 @@ seam — `Spell::sacrifice_count` and `Spell::revealed_creature_mana_value` alre
 mechanisms and mixing them up is a silent wrong answer.
 
 ### 47. `lich-life-replacement` — 1 card, L
-Depends on: #22.
+Depends on: #22 (landed — the damage-taken trigger is already there).
 Lich. Four interlocking replacements: you don't lose at 0 or less life, life gain becomes card
 draw, damage taken becomes a sacrifice of that many permanents, and losing the enchantment loses
 the game. `life_gain_replacement` exists (Pest Rescuer); the loss-prevention does not, and the

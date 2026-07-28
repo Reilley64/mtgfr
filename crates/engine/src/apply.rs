@@ -1091,6 +1091,7 @@ impl Game {
                     for player in &mut self.players {
                         player.life_gained_this_turn = 0;
                         player.spells_cast_this_turn = 0;
+                        player.damage_taken_this_turn = 0;
                         player.x_spells_cast_this_turn = 0;
                         player.draws_this_turn = 0;
                         player.life_losses_this_turn = 0;
@@ -1820,17 +1821,24 @@ impl Game {
                     None => taken.push((key, amount)),
                 }
             }
-            // A marker only — `Game::queue_combat_damage_triggers` reads it off the events batch
-            // in `enqueue_triggers`, but it mutates no state of its own (the life loss it
-            // accompanies already applied via `LifeChanged`).
-            Event::CombatDamageDealtToPlayer { .. } => {}
+            // `Game::queue_combat_damage_triggers` reads this off the events batch in
+            // `enqueue_triggers`; the life loss it accompanies already applied via `LifeChanged`,
+            // so the only state here is the turn-scoped damage-taken tally behind
+            // `Amount::DamageTakenThisTurn` (Simulacrum's "the damage dealt to you this turn").
+            Event::CombatDamageDealtToPlayer { player, amount, .. } => {
+                self.players[player.0 as usize].damage_taken_this_turn += amount.max(0) as u32;
+            }
             // A marker only — `Game::enqueue_triggers`'s `Event::CombatDamageDealtToCreature` arm
             // reads it, but it mutates no state of its own (the marked damage it accompanies
             // already applied via `DamageMarked`).
             Event::CombatDamageDealtToCreature { .. } => {}
-            // A marker only — the noncombat twin of the arm above, read by
-            // `Game::queue_deals_damage_to_opponent_triggers`.
-            Event::DamageDealtToPlayer { .. } => {}
+            // The noncombat twin of the arm above. A marker for trigger purposes, but it also
+            // feeds the turn-scoped tally behind `Amount::DamageTakenThisTurn` (Simulacrum) —
+            // these two arms are the only places damage reaches a player, and life loss that
+            // isn't damage never passes through either.
+            Event::DamageDealtToPlayer { player, amount, .. } => {
+                self.players[player.0 as usize].damage_taken_this_turn += amount.max(0) as u32;
+            }
             // A marker only — the prevented damage's absence (no `LifeChanged`) and the Inkling
             // mints (accompanying `TokenCreated` events) carry all the state; this event mutates
             // nothing itself.

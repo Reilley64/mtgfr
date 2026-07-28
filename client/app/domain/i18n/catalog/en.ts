@@ -294,7 +294,10 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
       : `Put ${param(params, "count")} ${humanize(param(params, "kind"))} counters`,
   "effect.counters_put_counters_each": (params) => `Put ${param(params, "count")} +1/+1 counters on each`,
   "effect.counters_remove_all_counters_then_draw": literal("Remove all counters, draw a card for each removed"),
-  "effect.counters_remove_counter_from_self": literal("Remove a +1/+1 counter from it"),
+  "effect.counters_remove_counter_from_self": (params) =>
+    params.kind === "plus_one_plus_one"
+      ? "Remove a +1/+1 counter from it"
+      : `Remove a ${humanize(param(params, "kind"))} counter from it`,
   "effect.damage_each_creature": (params) =>
     `Deal ${param(params, "amount")} damage to ${damageEachCreatureSubject(params)}`,
   "effect.damage_each_opponent": (params) => `Deal ${param(params, "amount")} damage to each opponent`,

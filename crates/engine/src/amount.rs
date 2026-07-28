@@ -54,6 +54,9 @@ impl Game {
             Amount::SpellsCastThisTurn => {
                 self.players[controller.0 as usize].spells_cast_this_turn as i32
             }
+            Amount::DamageTakenThisTurn => {
+                self.players[controller.0 as usize].damage_taken_this_turn as i32
+            }
             // A snapshot taken as the upkeep began, not a live scan — see the field's own doc.
             Amount::UntappedLandsAtTurnStart => {
                 self.players[controller.0 as usize].untapped_lands_at_turn_start as i32

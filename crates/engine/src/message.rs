@@ -665,6 +665,7 @@ fn counter_kind_token(kind: CounterKind) -> &'static str {
         CounterKind::Age => "age",
         CounterKind::Storage => "storage",
         CounterKind::Corpse => "corpse",
+        CounterKind::Vitality => "vitality",
         CounterKind::Mire => "mire",
     }
 }
@@ -1115,6 +1116,7 @@ fn amount_token(amount: Amount) -> &'static str {
         Amount::PerCounterOnSource => "per_counter_on_source",
         Amount::PerCounterOfKindOnSource { .. } => "per_counter_of_kind_on_source",
         Amount::LifeGainedThisTurn => "life_gained_this_turn",
+        Amount::DamageTakenThisTurn => "damage_taken_this_turn",
         Amount::SpellsCastThisTurn => "spells_cast_this_turn",
         Amount::UntappedLandsAtTurnStart => "untapped_lands_at_turn_start",
         Amount::CardsInTargetPlayerHand => "cards_in_target_player_hand",
@@ -1444,8 +1446,12 @@ impl Effect {
                 MessageRef::new(MessageKey::EFFECT_COUNTERS_LEVEL_UP)
                     .with_params(vec![int_param("level", level)])
             }
-            Effect::Counters(RemoveCounterFromSelf) => {
+            Effect::Counters(RemoveCounterFromSelf { kind }) => {
                 MessageRef::new(MessageKey::EFFECT_COUNTERS_REMOVE_COUNTER_FROM_SELF)
+                    .with_params(vec![str_param(
+                        "kind",
+                        kind.map_or("plus_one_plus_one", counter_kind_token),
+                    )])
             }
             Effect::Mana(ManaEffect::Add { .. }) => MessageRef::new(MessageKey::EFFECT_MANA_ADD),
             Effect::Mana(ManaEffect::LoseAllUnspent { to_you }) => {
