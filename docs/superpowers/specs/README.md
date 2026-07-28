@@ -87,6 +87,7 @@ These documents are **not superseded** and must stay current alongside the specs
 | [otel-semantic-conventions](2026-07-27-otel-semantic-conventions-design.md) | Design input: OTel Semantic Conventions 1.37.0 for resource/HTTP/RPC/DB/exceptions + `mtgfr.*` extensions across Faro→BFF→API; update observability-ops (+ topology if env/dashboards) at implement time |
 | [dtcg-token-architecture](2026-07-27-dtcg-token-architecture-design.md) | Design input: DTCG 2025.10 typed composites (drop `$type: css`), aliases, primitive→semantic tiers, CSS Color 4 OKLCH; update shell-routes + `DESIGN.md` at implement time |
 | [card-toml-json-schema](2026-07-27-card-toml-json-schema-design.md) | Design input: fully generate card/token JSON Schema + `DSL_REFERENCE.md` from CardDef TOML surface types; update card-dsl-and-card-pool + card-dsl skill at implement time |
+| [foldkit-ui-component-layer](2026-07-28-foldkit-ui-component-layer-design.md) | Design input: `domain/ui/` component functions wrapping `@foldkit/ui` headless primitives with module-private cva recipes; W1 pure-view + delete `buttonClass`, W2 shell dialog/menu, W3 combobox/listbox, W4 board blocking modals; new `domain/ui` surface spec at W1 |
 
 ## Authoring conventions
 
