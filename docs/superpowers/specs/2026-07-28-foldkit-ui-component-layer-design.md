@@ -26,7 +26,7 @@ and gets its own indexed surface spec when W1 lands. Related living docs:
   chrome is a 3–7 site edit.
 - **Styling is decoupled from behavior.** A recipe returns a `string`; every call
   site re-assembles `h.button([h.Type("button"), h.OnClick(…), h.Disabled(…),
-  h.Class(buttonClass(…))], …)` by hand across ~30 sites. Nothing enforces that a
+  h.Class(buttonClass(…))], …)` by hand across 47 sites. Nothing enforces that a
   thing styled as a button *is* one.
 - **No accessibility layer exists.** `client/app/` contains zero `role="dialog"` and
   zero `aria-modal`. Overlays (`confirmDialog`, `prompt-modal`, `result-overlay`,
@@ -156,10 +156,13 @@ Dialog renders **inline** through `h.submodel` on a native `<dialog>` opened wit
 
 ### 4. Implementation waves (for the later plan)
 
-**W1 — Recipe seam + pure-view primitives.**
-Add `@foldkit/ui@0.132.0`. Add `recipe.ts` and wrappers for the 10 pure-view
-primitives. Convert `surfaces.ts` helpers to cva internally (API unchanged).
-Migrate ~30 `buttonClass` sites and the 11 `h.input` sites
+**W1 — Recipe seam + pure-view primitives that have call sites.**
+Add `@foldkit/ui@0.132.0`. Add `recipe.ts` plus `button` and `input` wrappers.
+The other eight pure-view primitives wait for a consumer: `textarea`, `select`,
+`checkbox`, `switch`, `radioGroup`, and `disclosure` have zero call sites today,
+and `nav` / `fieldset` have one each. Convert `surfaces.ts` helpers to cva
+internally (API unchanged). Migrate 47 `buttonClass` / `gameButtonClass` sites
+across 19 files and the 12 `h.input` sites
 (`shell/auth/view.ts`, `shell/decks/builder/view.ts`, `board/html/prompts.ts`).
 Delete `buttonClass` / `gameButtonClass`. New indexed surface spec for
 `client/app/domain/ui/`; update `DESIGN.md` components prose.
