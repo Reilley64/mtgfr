@@ -412,7 +412,6 @@ export const update = (
         if (model.session.me?.email !== email) return [model, []];
         return [{ ...model, session: { ...model.session, meGravatarHash: hash } }, []];
       },
-      ModalOpened: () => [model, []],
       CardArtTick: () => [model, []],
       DeckCardFlipTick: () => [model, []],
       GotBoardMessage: ({ message }) => foldBoard(model, message),
