@@ -1,6 +1,11 @@
 import type { Command as FoldkitCommand } from "foldkit";
 import { Command } from "foldkit";
-import { type OutMessage as BoardOutMessage, drainPlayModeIfSingleton, syncBoardWithGame } from "../board/submodel";
+import {
+  armFirstPlayerReveal,
+  type OutMessage as BoardOutMessage,
+  drainPlayModeIfSingleton,
+  syncBoardWithGame,
+} from "../board/submodel";
 import { type Message as AppMessage, GotBoardMessage, GotGameMessage } from "../messages";
 import type { GameSlice } from "../model";
 import type { RpcClient } from "../resources";
@@ -19,8 +24,9 @@ function mergeGameFold(
 ): readonly [GameSlice, ReadonlyArray<FoldkitCommand.Command<BoardOutMessage, never, RpcClient>>] {
   const next = { ...game, ...folded };
   const synced = { ...next, board: syncBoardWithGame(next.board, next) };
-  const [board, commands] = drainPlayModeIfSingleton(synced.board, synced, synced.tableId);
-  return [{ ...synced, board }, commands];
+  const [armed, revealCmds] = armFirstPlayerReveal(synced.board, synced, synced.tableId);
+  const [board, commands] = drainPlayModeIfSingleton(armed, synced, synced.tableId);
+  return [{ ...synced, board }, [...revealCmds, ...commands]];
 }
 
 function deltaEnvelope(message: Extract<Message, { _tag: "ReceivedDelta" }>): DeltaEnvelope {

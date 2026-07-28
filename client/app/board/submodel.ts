@@ -81,6 +81,18 @@ import {
   sacrificeCostObjectIds,
   stagedPickTargets,
 } from "./action/targeting";
+import {
+  markRevealSeen,
+  prefersReducedMotion,
+  REVEAL_HOLD_MS,
+  REVEAL_HOLD_REDUCED_MS,
+  RevealHoldTimer,
+  RevealStepTimer,
+  revealSeen,
+  revealSlot,
+  type SpotlightStep,
+  spotlightSteps,
+} from "./first-player-reveal";
 import type { Camera, Vec2 } from "./geometry/camera";
 import { panBy, screenToWorld, worldToScreen, zoomAt } from "./geometry/camera";
 import {
@@ -156,6 +168,9 @@ type BattlefieldPose = {
   print: string;
   name: string;
 };
+
+/** CR 103.1 spotlight: which seat won, the hop schedule, and where the spotlight sits. */
+export type FirstPlayerReveal = { winner: number; steps: SpotlightStep[]; index: number };
 
 export type BoardModel = {
   camera: Camera;
@@ -254,6 +269,8 @@ export type BoardModel = {
   handDrag: HandDragState | null;
   /** Hovered hand/radial action id — resolves `auto_tap` from the live action list. */
   hoverActionId: number | null;
+  /** CR 103.1 one-shot starting-player spotlight; null once dismissed or already shown. */
+  firstPlayerReveal: FirstPlayerReveal | null;
 };
 
 export function initialBoardModel(): BoardModel {
@@ -317,6 +334,7 @@ export function initialBoardModel(): BoardModel {
     orderPickPos: null,
     handDrag: null,
     hoverActionId: null,
+    firstPlayerReveal: null,
   };
 }
 
@@ -1812,6 +1830,31 @@ export function drainPlayModeIfSingleton(model: BoardModel, fold: GameFoldState,
   return [next, commands];
 }
 
+function revealTimer(reveal: FirstPlayerReveal): BoardCmd[] {
+  const next = reveal.steps[reveal.index + 1];
+  if (next != null) return [RevealStepTimer({ ms: next.delayMs }) as unknown as BoardCmd];
+  const hold = reveal.steps.length === 1 ? REVEAL_HOLD_REDUCED_MS : REVEAL_HOLD_MS;
+  return [RevealHoldTimer({ ms: hold }) as unknown as BoardCmd];
+}
+
+/** CR 103.1 — arm the one-shot starting-player spotlight on the first mulligan fold. */
+export function armFirstPlayerReveal(model: BoardModel, fold: BoardFold, tableId: string | null): BoardReturn {
+  if (model.firstPlayerReveal != null) return [model, []];
+  const state = fold.state;
+  if (state == null || !state.mulliganing) return [model, []];
+  if (tableId == null || revealSeen(tableId)) return [model, []];
+
+  markRevealSeen(tableId);
+  const count = Math.max(1, state.players.length);
+  const slot = revealSlot(state.active_player, state.viewer, count);
+  const reveal: FirstPlayerReveal = {
+    winner: state.active_player,
+    steps: spotlightSteps(slot, count, prefersReducedMotion()),
+    index: 0,
+  };
+  return [{ ...model, firstPlayerReveal: reveal }, revealTimer(reveal)];
+}
+
 function hideHintOnHandUse(model: BoardModel): BoardModel {
   if (model.hintAutoHidden) return model;
   return { ...model, hintAutoHidden: true };
@@ -3160,11 +3203,14 @@ export function updateBoard(
       }
       return [cancelAll(model), []];
     }
-    // ponytail: no-op stubs so the switch stays exhaustive — Task 4 fills in the reveal
-    // animation state (spec: first-player-reveal).
-    case "FirstPlayerRevealStepped":
+    case "FirstPlayerRevealStepped": {
+      const reveal = model.firstPlayerReveal;
+      if (reveal == null) return [model, []];
+      const next = { ...reveal, index: Math.min(reveal.index + 1, reveal.steps.length - 1) };
+      return [{ ...model, firstPlayerReveal: next }, revealTimer(next)];
+    }
     case "FirstPlayerRevealFinished":
-      return [model, []];
+      return [{ ...model, firstPlayerReveal: null }, []];
     default: {
       const _exhaustive: never = message;
       return [model, []];
