@@ -49,6 +49,7 @@ Real games enter a simultaneous pre-game mulligan phase after libraries are stac
 ### Game construction and zones
 
 - `Game::with_players(n: u8, seed: u64)` creates a deterministic compatibility seed by expanding the `u64` into the first eight bytes of a 32-byte master seed. `Game::with_master_seed(n: u8, master_seed: [u8; 32])` is the production constructor. Both create `n` seats (2–4), each starting at 40 life (Commander default), empty zones, and player 0 as the starting active player holding priority; the game is parked in their first main phase with beginning steps un-run.
+- `Game::choose_starting_player()` rolls a random seat via `with_op_rng(PlayerId(0), …)` and sets both `active_player` and `priority` to it (CR 103.1). The production seeding path (`seed_game`) calls it immediately after construction, before stacking any library or dealing any hand, so the roll is always the game's first random operation and precedes library shuffling (CR 103.2) and opening hands (CR 103.4). Direct-API tests built via the raw constructors above skip this call and stay parked at seat 0.
 - Real setup stacks each library, runs 2-sample BO1 land smoothing for seven cards via `Game::deal_smoothed_hand`, then calls `Game::begin_mulligans()`. During this simultaneous mulligan phase, any undecided living seat may `KeepHand` or `Mulligan`; ordinary game actions are blocked until all living seats keep.
 - `Game::begin_first_turn()` must be called after setup and mulligans: it runs Untap → Upkeep → Draw for the starting player, feeding the post-intent pipeline so upkeep triggers reach the stack. The seeded-game path calls it automatically when the final player keeps.
 - In a two-player game the starting player skips their first draw step (CR 103.8a). In three- or four-player games, no player skips (CR 103.8c).
@@ -139,6 +140,7 @@ Implemented SBAs (CR 704):
 - Each player has a monotonic `op_iteration: u64`. `Game::with_op_rng(player, f)` derives `BLAKE3(master_seed || player_index:u8 || op_iteration:u64-le)`, increments that player's iteration once, and gives `f` a short-lived splitmix64 `OpRng`.
 - `OpRng::gen_index(upper)` uses rejection sampling to avoid modulo bias. `Game::shuffle` uses Fisher-Yates over that unbiased index helper.
 - One mid-game library shuffle, one random graveyard pick, one random opponent pick, or one random-order bottoming is one logical operation and bumps exactly one player's counter. `Game::deal_smoothed_hand` and mulligan redraws run two shuffle samples and bump the seat's counter twice when the library has at least two cards. Controller-scoped card effects attribute random operations to that effect's controller.
+- The CR 103.1 starting-player roll is a game-level operation carried on seat 0's counter: `choose_starting_player` spends seat 0's iteration 0 before any seat's library or hand operations run, so from that point on seat 0's op-iteration stream is offset by one relative to the other seats'.
 - Seeding is injected at construction (`with_master_seed(n, master_seed)`); `with_players(n, seed)` remains a deterministic `u64` test convenience.
 
 ---

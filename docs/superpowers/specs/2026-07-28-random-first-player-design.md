@@ -94,12 +94,15 @@ spectators included — no `seatedViewer` gate.
   `(seat - viewer + count) % count`, the `seatCell` rule in
   `client/app/board/geometry/layout.ts` — so the spotlight lands where that
   player actually sits. Chip tint from `seatColor`.
-- **Motion.** A pure `spotlightSteps(winnerSlot, seatCount)` in
+- **Motion.** A pure `spotlightSteps(winnerSlot, seatCount, reducedMotion)` in
   `client/app/board/first-player-reveal.ts` returns the hop schedule (≈3
-  decelerating laps, ~1.8s, final step on the winner). The view hands each chip
-  its `animation-delay` from that schedule; CSS keyframes do the flashing and the
-  winner's chip holds lit. No rAF, so `bitmapFrameNeedsRaf` — which today spins
-  the canvas clock only while flights or exit FX exist — is untouched.
+  decelerating laps, ~1.8s, final step on the winner; `reducedMotion` collapses
+  it to the single winning step). Motion is message-driven, not CSS
+  `animation-delay`: a `Command.define` sleep fires per hop, each dispatching
+  `FirstPlayerRevealStepped` to advance to the schedule's next step, so the lit
+  chip is board-model state the view reads rather than a CSS end-state. No rAF,
+  so `bitmapFrameNeedsRaf` — which today spins the canvas clock only while
+  flights or exit FX exist — is untouched.
 - **Hooks.** `data-testid="first-player-reveal"`, per-chip
   `data-testid="reveal-seat-<n>"` with `data-winner="true|false"`, and
   `data-testid="reveal-winner"` on the "<username> goes first" banner.
@@ -139,19 +142,25 @@ than pinning to 0; it consumes exactly one op on seat 0 and leaves the other
 seats' shuffle streams untouched. Regression: the two-player first-draw skip
 (CR 103.8a) follows a rolled non-zero starter.
 
-**Server.** `seed_game` starts the game on the rolled seat. Existing
-`PlayerId(0)` assertions (`crates/server/src/decks.rs:132`,
-`crates/server/src/session.rs:1452`, `:1512`) get their seed constant pinned to
-one that rolls seat 0, so those tests keep testing what they were written to
-test. `seed_game_smoothed_opening_burns_two_ops_per_seat`
-(`crates/server/src/decks.rs:136`) expects seat 0's extra op.
+**Server.** `seed_game` starts the game on the rolled seat.
+`crates/server/src/session.rs:1452` and `:1512` build their `Game` via
+`engine::Game::new()`, not `seed_game`, so they never call
+`choose_starting_player` and are unaffected. The ~9 two-player `seed_game` call
+sites elsewhere in `session.rs`'s test module get their seed constant repinned
+from `master_from_u64(0)` to the new `master_seed_rolling(0, 2)` helper, so
+those tests keep testing what they were written to test rather than whatever
+seat that constant happens to roll. `seed_game_does_not_start_turns_until_keeps`
+(`crates/server/src/decks.rs`) drops its now-incidental `PlayerId(0)` assertion
+— its subject is "no turn has begun", not the starting seat.
+`seed_game_smoothed_opening_burns_two_ops_per_seat`
+(`crates/server/src/decks.rs`) expects seat 0's extra op.
 
 **Client unit.** `spotlightSteps` — delays monotonic, lap count, final step is
 the winner, reduced-motion schedule has no hop. One-shot arming — arms once,
 skips when the sessionStorage key is present, survives a throwing
 `sessionStorage`.
 
-**Client Scene** (`client/app/board/html/surfaces.test.ts`, per the every-surface
+**Client Scene** (`client/app/board/html/chrome.test.ts`, per the every-surface
 rule): the reveal renders with `data-winner="true"` on the winner's screen slot
 while `mulligan-overlay` sits underneath unreachable; after
 `FirstPlayerRevealFinished` the reveal is gone and mulligan controls are live.
