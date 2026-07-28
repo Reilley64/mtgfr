@@ -1,22 +1,23 @@
+import * as Dialog from "@foldkit/ui/dialog";
 import { Story, Submodel } from "foldkit";
 import { Scene } from "foldkit/test";
 import { expect, test } from "vitest";
 import { BindDeckCardFlip, DeckCardFlipTick } from "../../../deck-card-nav";
 import { BindCardArt, CardArtTick } from "../../../domain/ui/card-art";
-import { ModalOpened, OpenDialogAsModal } from "../../../domain/ui/confirmDialog";
 import type { CatalogCard } from "../../../domain/wire/types";
 import { update as appUpdate, init } from "../../../main-exports";
 import { GotDeckListMessage } from "../../../messages";
 import {
   ClosedDeckListMenu,
+  DeckDeleted,
   type Message as DeckListMessage,
   OpenedDeckListMenu,
   ReceivedDeckListCommanders,
   ReceivedDecks,
   RequestedDecksRefresh,
 } from "./messages";
-import { initialDeckListSubmodel } from "./submodel";
-import { FetchDecks, LookupDeckListCommanders, update } from "./update";
+import { DELETE_DIALOG_ID, initialDeckListSubmodel } from "./submodel";
+import { DeleteDeck, FetchDecks, LookupDeckListCommanders, update } from "./update";
 import { BindDeckListContextMenu, BindDeckListContextMenuEscape, view } from "./view";
 
 const emptyChrome = { version: null, faithfulCount: null, oracleTotal: null, coverageHref: null };
@@ -24,7 +25,7 @@ const emptyChrome = { version: null, faithfulCount: null, oracleTotal: null, cov
 const listView = Submodel.defineView<ReturnType<typeof initialDeckListSubmodel>, DeckListMessage>((model) =>
   view(model, { username: "alice", meGravatarHash: null, chrome: emptyChrome }),
 );
-type SceneListMessage = DeckListMessage | typeof ModalOpened.Type | { readonly _tag?: string } | undefined;
+type SceneListMessage = DeckListMessage | { readonly _tag?: string } | undefined;
 
 function isDeckListMessage(message: SceneListMessage): message is DeckListMessage {
   switch (message?._tag) {
@@ -38,6 +39,7 @@ function isDeckListMessage(message: SceneListMessage): message is DeckListMessag
     case "AskedDeckDelete":
     case "CancelledDeckDelete":
     case "RequestedDeckDelete":
+    case "GotConfirmDialogMessage":
     case "DeckDeleted":
     case "DeckDeleteFailed":
       return true;
@@ -252,9 +254,9 @@ test("menu Delete opens the confirm dialog", () => {
     Scene.Mount.resolve(BindDeckCardFlip({ deckId: 1 }), DeckCardFlipTick()),
     Scene.Mount.resolve(BindCardArt, CardArtTick()),
     Scene.click(Scene.selector('[data-testid="deck-list-menu-delete"]')),
+    Scene.Command.resolve(Dialog.ShowDialog, Dialog.CompletedShowDialog()),
     Scene.expect(Scene.selector('[data-testid="confirm-delete-dialog"]')).toExist(),
     Scene.expect(Scene.selector('[data-testid="deck-list-context-menu"]')).not.toExist(),
-    Scene.Mount.resolve(OpenDialogAsModal(), ModalOpened()),
   );
 });
 
@@ -273,5 +275,66 @@ test("Escape closes the context menu", () => {
     Scene.expect(Scene.selector('[data-testid="deck-list-context-menu"]')).not.toExist(),
     Scene.Mount.resolve(BindDeckCardFlip({ deckId: 1 }), DeckCardFlipTick()),
     Scene.Mount.resolve(BindCardArt, CardArtTick()),
+  );
+});
+
+/** One deck, with its delete prompt already up — what `AskedDeckDelete` leaves behind. */
+const askingToDelete = {
+  ...initialDeckListSubmodel(),
+  confirmDialog: Dialog.init({ id: DELETE_DIALOG_ID, isOpen: true }),
+  confirmingDeleteId: 1,
+  decks: [{ id: 1, name: "Superfriends", commander: "atraxa", commander_print: "atraxa-print" }],
+  knownCommanders: { atraxa: card({ id: "atraxa", name: "Atraxa, Praetors' Voice" }) },
+};
+
+/** Mounts the one deck tile plus the list-level Escape binding put in the tree on every render. */
+const resolveDeckListMounts = (times: number) =>
+  Array.from({ length: times }, () => [
+    Scene.Mount.resolve(BindDeckListContextMenuEscape(), ClosedDeckListMenu()),
+    Scene.Mount.resolve(BindDeckListContextMenu({ deckId: 1 }), ClosedDeckListMenu()),
+    Scene.Mount.resolve(BindDeckCardFlip({ deckId: 1 }), DeckCardFlipTick()),
+    Scene.Mount.resolve(BindCardArt, CardArtTick()),
+  ]).flat();
+
+test("backing out of the delete prompt leaves the deck where it was", () => {
+  Scene.scene(
+    listProgram,
+    Scene.with(askingToDelete),
+    ...resolveDeckListMounts(1),
+    Scene.click(Scene.selector('[data-testid="confirm-cancel"]')),
+    Scene.Command.resolve(Dialog.CloseDialog, Dialog.CompletedCloseDialog()),
+    Scene.expect(Scene.selector('[data-testid="confirm-title"]')).not.toExist(),
+    Scene.expect(Scene.selector('[data-testid="deck-tile-1"]')).toExist(),
+  );
+});
+
+test("clicking the dimmed page behind the prompt cancels the delete", () => {
+  Scene.scene(
+    listProgram,
+    Scene.with(askingToDelete),
+    ...resolveDeckListMounts(1),
+    Scene.click(Scene.selector('[data-testid="confirm-backdrop"]')),
+    Scene.Command.resolve(Dialog.CloseDialog, Dialog.CompletedCloseDialog()),
+    Scene.expect(Scene.selector('[data-testid="confirm-title"]')).not.toExist(),
+    Scene.expect(Scene.selector('[data-testid="deck-tile-1"]')).toExist(),
+  );
+});
+
+test("confirming the prompt deletes the deck and the tile is gone on reload", () => {
+  Scene.scene(
+    listProgram,
+    Scene.with(askingToDelete),
+    ...resolveDeckListMounts(1),
+    Scene.click(Scene.selector('[data-testid="confirm-ok"]')),
+    Scene.Command.resolve(Dialog.CloseDialog, Dialog.CompletedCloseDialog()),
+    Scene.Command.resolve(DeleteDeck({ id: 1 }), DeckDeleted()),
+    Scene.Command.resolve(FetchDecks, ReceivedDecks({ decks: [] })),
+    Scene.Command.resolve(LookupDeckListCommanders({ ids: [] }), ReceivedDeckListCommanders({ cards: [] })),
+    Scene.expect(Scene.selector('[data-testid="deck-tile-1"]')).not.toExist(),
+    Scene.expect(Scene.selector('[data-testid="deck-list-empty"]')).toExist(),
+    // The tile's own mounts go away with it.
+    Scene.Mount.expectEnded(BindDeckListContextMenu),
+    Scene.Mount.expectEnded(BindDeckCardFlip),
+    Scene.Mount.expectEnded(BindCardArt),
   );
 });

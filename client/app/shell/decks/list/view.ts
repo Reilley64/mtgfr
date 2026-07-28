@@ -8,7 +8,7 @@ import { confirmDialog } from "../../../domain/ui/confirmDialog";
 import { input } from "../../../domain/ui/input";
 import { menuItemClass } from "../../../domain/ui/menu";
 import { alertClass, listRowClass } from "../../../domain/ui/surfaces";
-import type { CardArtTick, DeckCardFlipTick, GotAuthMessage, ModalOpened } from "../../../messages";
+import type { CardArtTick, DeckCardFlipTick, GotAuthMessage } from "../../../messages";
 import { DeckRoute, NewDeckRoute, PlayRoute, routePath } from "../../../routes";
 import type { ClosedAccountMenu, ToggledAccountMenu } from "../../account-chrome/messages";
 import { accountChrome } from "../../account-chrome/view";
@@ -16,9 +16,9 @@ import { shellFrame } from "../../frame/shell-frame";
 import { type DeckCardModel, renderDeckCard } from "../deck-card";
 import {
   AskedDeckDelete,
-  CancelledDeckDelete,
   ChangedDeckListSearch,
   ClosedDeckListMenu,
+  GotConfirmDialogMessage,
   type Message,
   OpenedDeckListMenu,
   RequestedDeckDelete,
@@ -28,7 +28,6 @@ import { deckListContextMenuAllowed, visibleDecks } from "./visible";
 
 export type ViewMessage =
   | Message
-  | typeof ModalOpened.Type
   | typeof CardArtTick.Type
   | typeof DeckCardFlipTick.Type
   | typeof GotAuthMessage.Type
@@ -198,17 +197,18 @@ export const view = Submodel.defineView<DeckListSubmodel, ViewMessage, ViewInput
         h.OnMount(BindDeckListContextMenuEscape()),
       ],
       [
-        model.confirmingDeleteId != null
-          ? confirmDialog(h, {
-              title: `Delete "${model.decks.find((d) => d.id === model.confirmingDeleteId)?.name ?? ""}"?`,
-              body: "This deck and its card list are gone for good.",
-              confirmLabel: "Delete deck",
-              danger: true,
-              onConfirm: RequestedDeckDelete({ id: model.confirmingDeleteId }),
-              onCancel: CancelledDeckDelete(),
-              testId: "confirm-delete-dialog",
-            })
-          : null,
+        // Always rendered: Dialog opens and closes the <dialog> element itself, so it has to stay
+        // in the tree. `model.confirmDialog.isOpen` is what makes the prompt visible.
+        confirmDialog(h, {
+          model: model.confirmDialog,
+          toDialogMessage: (message) => GotConfirmDialogMessage({ message }),
+          title: `Delete "${model.decks.find((d) => d.id === model.confirmingDeleteId)?.name ?? ""}"?`,
+          body: "This deck and its card list are gone for good.",
+          confirmLabel: "Delete deck",
+          danger: true,
+          onConfirm: RequestedDeckDelete(),
+          testId: "confirm-delete-dialog",
+        }),
         h.section(
           [h.Class("mx-auto w-full")],
           [

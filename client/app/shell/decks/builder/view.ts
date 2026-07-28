@@ -10,8 +10,9 @@ import type { ScryfallPrint } from "../../../domain/deck-builder/scryfall";
 import type { AppChromeMeta } from "../../../domain/ui/app-version";
 import { button } from "../../../domain/ui/button";
 import { cardArt } from "../../../domain/ui/card-art";
-import { confirmDialog, OpenDialogAsModal } from "../../../domain/ui/confirmDialog";
+import { confirmDialog } from "../../../domain/ui/confirmDialog";
 import { input } from "../../../domain/ui/input";
+import { OpenDialogAsModal } from "../../../domain/ui/native-dialog";
 import { alertClass } from "../../../domain/ui/surfaces";
 import type {
   CardArtTick,
@@ -24,13 +25,13 @@ import { accountChrome } from "../../account-chrome/view";
 import { shellFrame } from "../../frame/shell-frame";
 import {
   ActivatedBuilderTarget,
-  CancelledBuilderDiscard,
   ChangedBuilderName,
   ChangedBuilderQuery,
   ClearedBuilderHover,
   ClosedBuilderMenu,
   ClosedBuilderPrintPicker,
   ConfirmedBuilderDiscard,
+  GotDiscardDialogMessage,
   type Message,
   MovedBuilderHover,
   OpenedBuilderMenu,
@@ -586,17 +587,18 @@ export const view = Submodel.defineView<DeckBuilderSubmodel, ViewMessage, ViewIn
                 ),
               ],
             ),
-            model.confirmingDiscard
-              ? confirmDialog(h, {
-                  title: "Discard changes?",
-                  body: "Everything you've edited since the deck loaded will be lost.",
-                  confirmLabel: "Discard",
-                  danger: true,
-                  onConfirm: ConfirmedBuilderDiscard(),
-                  onCancel: CancelledBuilderDiscard(),
-                  testId: "builder-discard-confirm",
-                })
-              : null,
+            // Always rendered: Dialog opens and closes the <dialog> element itself, so it has to
+            // stay in the tree. `model.discardDialog.isOpen` is what makes the prompt visible.
+            confirmDialog(h, {
+              model: model.discardDialog,
+              toDialogMessage: (message) => GotDiscardDialogMessage({ message }),
+              title: "Discard changes?",
+              body: "Everything you've edited since the deck loaded will be lost.",
+              confirmLabel: "Discard",
+              danger: true,
+              onConfirm: ConfirmedBuilderDiscard(),
+              testId: "builder-discard-confirm",
+            }),
             model.problems.length === 0
               ? null
               : h.div(

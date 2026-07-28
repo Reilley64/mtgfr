@@ -1,3 +1,4 @@
+import * as Dialog from "@foldkit/ui/dialog";
 import { Schema as S } from "effect";
 import { m } from "foldkit/message";
 import { CatalogCardSchema } from "../../../domain/deck-builder/cards";
@@ -56,6 +57,8 @@ export const RequestedBuilderCancel = m("RequestedBuilderCancel");
 export const ConfirmedBuilderDiscard = m("ConfirmedBuilderDiscard");
 /** Player dismissed the discard confirmation without discarding. */
 export const CancelledBuilderDiscard = m("CancelledBuilderDiscard");
+/** Delegation envelope for the discard confirmation's Dialog submodel. */
+export const GotDiscardDialogMessage = m("GotDiscardDialogMessage", { message: Dialog.Message });
 /** Navigation away from the builder completed — handled as a no-op. */
 export const NavigatedAwayFromBuilder = m("NavigatedAwayFromBuilder");
 
@@ -113,6 +116,7 @@ export const Message = S.Union([
   RequestedBuilderCancel,
   ConfirmedBuilderDiscard,
   CancelledBuilderDiscard,
+  GotDiscardDialogMessage,
   NavigatedAwayFromBuilder,
 ]);
 export type Message = typeof Message.Type;

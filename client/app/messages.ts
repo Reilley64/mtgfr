@@ -5,7 +5,7 @@ import { Url } from "foldkit/url";
 import { Message as BoardMessage } from "./board/messages";
 import { DeckCardFlipTick } from "./deck-card-nav";
 import { CardArtTick } from "./domain/ui/card-art";
-import { ModalOpened } from "./domain/ui/confirmDialog";
+import { ModalOpened } from "./domain/ui/native-dialog";
 import { Message as GameMessage } from "./game/messages";
 import { Message as AccountChromeMessage } from "./shell/account-chrome/messages";
 import { Message as AuthMessage } from "./shell/auth/messages";

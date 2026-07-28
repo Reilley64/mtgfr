@@ -1,3 +1,4 @@
+import * as Dialog from "@foldkit/ui/dialog";
 /**
  * Shell surface coverage — every auth / decks / lobby / 404 panel must appear here
  * (or in a focused sibling Scene test) with a data-testid or unique-copy assertion.
@@ -7,7 +8,6 @@ import { Scene } from "foldkit/test";
 import { describe, expect, it } from "vitest";
 import { BindDeckCardFlip, DeckCardFlipTick } from "../deck-card-nav";
 import { BindCardArt, CardArtTick } from "../domain/ui/card-art";
-import { ModalOpened, OpenDialogAsModal } from "../domain/ui/confirmDialog";
 import type { CatalogCard } from "../domain/wire/types";
 import { init, update } from "../main-exports";
 import type { Model as AppModel } from "../model";
@@ -28,9 +28,10 @@ import { view } from "../view";
 import { BindAccountMenuEscape } from "./account-chrome/escape";
 import { ClosedAccountMenu } from "./account-chrome/messages";
 import { ClearedBuilderHover } from "./decks/builder/messages";
-import { initialDeckBuilderSubmodel } from "./decks/builder/submodel";
+import { DISCARD_DIALOG_ID, initialDeckBuilderSubmodel } from "./decks/builder/submodel";
 import { BindBuilderCardPointer } from "./decks/builder/view";
 import { ClosedDeckListMenu } from "./decks/list/messages";
+import { DELETE_DIALOG_ID } from "./decks/list/submodel";
 import { BindDeckListContextMenu, BindDeckListContextMenuEscape } from "./decks/list/view";
 import { initialLobbySlice } from "./lobby/submodel";
 
@@ -299,6 +300,7 @@ describe("shell surface scenes", () => {
             ...init()[0].decks,
             list: {
               ...init()[0].decks.list,
+              confirmDialog: Dialog.init({ id: DELETE_DIALOG_ID, isOpen: true }),
               confirmingDeleteId: 1,
               decks: [deck],
               knownCommanders: { atraxa },
@@ -309,7 +311,6 @@ describe("shell surface scenes", () => {
       ),
       Scene.expect(Scene.selector('[data-testid="confirm-delete-dialog"]')).toExist(),
       Scene.expect(Scene.text('Delete "Superfriends"?')).toExist(),
-      Scene.Mount.resolve(OpenDialogAsModal(), ModalOpened()),
       Scene.Mount.resolve(BindDeckListContextMenu({ deckId: 1 }), ClosedDeckListMenu()),
       Scene.Mount.resolve(BindDeckCardFlip({ deckId: 1 }), DeckCardFlipTick()),
       Scene.Mount.resolve(BindCardArt, CardArtTick()),
@@ -616,7 +617,7 @@ describe("shell surface scenes", () => {
             builder: {
               ...initialDeckBuilderSubmodel(),
               atEnd: true,
-              confirmingDiscard: true,
+              discardDialog: Dialog.init({ id: DISCARD_DIALOG_ID, isOpen: true }),
               known: { "sol-ring": solRing },
               pool: [solRing],
               preferredPrint: { "sol-ring": "sol-ring-print" },
@@ -643,7 +644,6 @@ describe("shell surface scenes", () => {
         expect(ids.indexOf("shell-header-trailing")).toBeLessThan(ids.indexOf("deck-name"));
       }),
       Scene.Mount.resolve(BindBuilderCardPointer({ cardId: "sol-ring", kind: "pool" }), ClearedBuilderHover()),
-      Scene.Mount.resolve(OpenDialogAsModal(), ModalOpened()),
       Scene.Mount.resolve(BindCardArt, CardArtTick()),
     );
   });

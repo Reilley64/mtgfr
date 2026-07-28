@@ -75,7 +75,6 @@ function shell(model: Model, title: string, body: string) {
 
 function toParentDeckListMessage(message: DeckList.ViewMessage): Message {
   switch (message._tag) {
-    case "ModalOpened":
     case "CardArtTick":
     case "DeckCardFlipTick":
     case "GotAuthMessage":
