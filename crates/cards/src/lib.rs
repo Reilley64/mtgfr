@@ -4462,6 +4462,34 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
         );
     }
 
+    /// Stasis is the other half of the untap-step vocabulary, and it must not be written as a
+    /// table-wide `DoesntUntap`: that one holds permanents down *inside* a step that still runs,
+    /// which would phase everyone's phased-out permanents back in and burn a Pollen Lullaby mark.
+    /// The upkeep half is the ordinary pay-or-else, so an unpaid Stasis frees the table itself.
+    #[test]
+    fn unlimited_stasis_skips_the_step_rather_than_holding_permanents_down() {
+        let stasis = get_by_name("Stasis").expect("Stasis is in the pool");
+        let [skip, upkeep] = &stasis.abilities[..] else {
+            panic!("the static and its upkeep tax");
+        };
+        assert_eq!(skip.timing, Timing::Static);
+        assert_eq!(
+            skip.effect,
+            Effect::Static(StaticEffect::PlayersSkipUntapSteps),
+            "players skip their untap steps — not \"permanents don't untap\""
+        );
+        assert_eq!(upkeep.timing, Timing::Triggered(Trigger::Upkeep));
+        let Effect::Choice(ChoiceEffect::PayOrElse { cost, otherwise }) = &upkeep.effect else {
+            panic!("sacrifice this enchantment unless you pay 1 blue");
+        };
+        assert_eq!(cost.colored[Color::Blue as usize], 1);
+        assert_eq!(
+            otherwise[..],
+            [Effect::Sacrifice(SacrificeEffect::Source)],
+            "the lock has its own key: unpaid, it frees the table"
+        );
+    }
+
     /// Mana Vault's ping is at the *draw* step, not the upkeep its pay-{4} clause lives in, and
     /// the intervening-if has to be on the ability as well as inside it: CR 603.4 checks the
     /// condition when the trigger would go on the stack, and an untapped Vault must not trigger

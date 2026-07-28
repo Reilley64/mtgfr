@@ -274,6 +274,7 @@
   "effect.static_cant_cast_if_attacked_this_turn",
   "effect.static_discard_to_library_top_instead",
   "effect.static_doesnt_untap",
+  "effect.static_players_skip_untap_steps",
   "effect.static_must_attack_each_combat",
   "effect.static_opponents_cant_search_libraries",
   "effect.static_protection_from_chosen_color",

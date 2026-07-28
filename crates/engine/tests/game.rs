@@ -108677,6 +108677,112 @@ fn meekstone_holds_down_the_big_creatures_and_lets_the_small_ones_up() {
 }
 
 #[test]
+fn stasis_skips_the_untap_step_on_both_sides_of_the_table() {
+    // Stasis: "Players skip their untap steps." Not "your" untap step — the opponent's tapped land
+    // is as stuck as the attacker who tapped to swing, and both thaw the moment Stasis is gone.
+    let mut game = Game::new();
+    stock_libraries(&mut game);
+    let stasis = game.spawn_on_battlefield(PlayerId(0), card("Stasis"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
+    let island = game.spawn_on_battlefield(PlayerId(1), card("Island"));
+
+    attack_with(&mut game, vec![bear]);
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(1) && g.current_step() == Step::Main1
+    });
+    tap(&mut game, PlayerId(1), island);
+    assert!(
+        game.is_tapped(bear) && game.is_tapped(island),
+        "both are down"
+    );
+
+    // The Stasis controller's own untap step is skipped too; pay the {U} to keep it around.
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
+    });
+    assert!(
+        game.is_tapped(bear),
+        "its controller untapped nothing either"
+    );
+    resolve_top_of_stack(&mut game);
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::PayOptionalCost {
+        player: PlayerId(0),
+        pay: true,
+        discard_cost: vec![],
+    })
+    .expect("paying {U} keeps it");
+    assert_eq!(game.zone_of(stasis), Zone::Battlefield);
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(1) && g.current_step() == Step::Draw
+    });
+    assert!(
+        game.is_tapped(island),
+        "the opponent's untap step is skipped"
+    );
+
+    // Decline the {U} and Stasis is sacrificed — but that happens in the upkeep, after this turn's
+    // untap step has already gone by, so the thaw waits for the next one.
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
+    });
+    resolve_top_of_stack(&mut game);
+    game.submit(Intent::PayOptionalCost {
+        player: PlayerId(0),
+        pay: false,
+        discard_cost: vec![],
+    })
+    .expect("declining is legal");
+    assert_eq!(game.zone_of(stasis), Zone::Graveyard, "unpaid, sacrificed");
+    assert!(
+        game.is_tapped(bear),
+        "the sacrifice came after the untap step"
+    );
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(1) && g.current_step() == Step::Draw
+    });
+    assert!(!game.is_tapped(island), "the thaw");
+}
+
+#[test]
+fn stasis_does_not_freeze_summoning_sickness_in_place() {
+    // Losing summoning sickness is a continuous check on how long you have controlled the creature
+    // (CR 302.6), not one of the untap step's turn-based actions — so a creature cast under Stasis
+    // can attack on its controller's next turn even though nothing untapped on the way there.
+    let mut game = Game::new();
+    stock_libraries(&mut game);
+    game.spawn_on_battlefield(PlayerId(1), card("Stasis"));
+    let ox = game.spawn_in_hand(PlayerId(0), creature("Groggy Ox", 2, 2, &[]));
+    cast_and_resolve(&mut game, ox, None);
+    let ox = battlefield_named(&game, PlayerId(0), "Groggy Ox")[0];
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(1) && g.current_step() == Step::Upkeep
+    });
+    resolve_top_of_stack(&mut game);
+    game.fund_mana(PlayerId(1));
+    game.submit(Intent::PayOptionalCost {
+        player: PlayerId(1),
+        pay: true,
+        discard_cost: vec![],
+    })
+    .expect("the Stasis controller keeps it up");
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::DeclareAttackers
+    });
+    game.submit(Intent::DeclareAttackers {
+        player: PlayerId(0),
+        attackers: vec![(ox, Defender::Player(PlayerId(1)))],
+    })
+    .expect("summoning sickness wore off even though no untap step ran");
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+    assert_eq!(game.life(PlayerId(1)), 18, "the 2/2 connected");
+}
+
+#[test]
 fn a_tapped_mana_vault_pings_its_controller_at_their_draw_step() {
     // Mana Vault: "At the beginning of your upkeep, you may pay {4}. If you do, untap this
     // artifact. At the beginning of your draw step, if this artifact is tapped, it deals 1 damage

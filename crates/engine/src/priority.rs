@@ -1606,6 +1606,11 @@ impl Game {
                 for card in to_arm {
                     self.push_apply(events, Event::PlayFromExilePermissionArmed { card });
                 }
+                // Stasis's "Players skip their untap steps" (CR 703.4a): the step's two turn-based
+                // actions — phasing in and untapping — simply don't happen. Everything else this
+                // arm does is a per-*turn* duration that merely gets bookkept here (goad expiry,
+                // summoning sickness, loyalty), so it runs whether or not the step is skipped.
+                let untap_step_happens = !self.players_skip_untap_steps();
                 // Phase in the active player's phased-out permanents (CR 702.26f) — as a turn-based
                 // action at the start of the untap step, *before* untapping. Emit one `PhasedIn`
                 // per directly-phased permanent (`attached_to.is_none()`); its handler cascades to
@@ -1615,7 +1620,7 @@ impl Game {
                 // control changed while phased is an unmodeled edge no pool card reaches.
                 let to_phase_in: Vec<ObjectId> = self
                     .permanent_ids(|p| p.phased_out && p.attached_to.is_none())
-                    .filter(|&id| self.controller_of(id) == active)
+                    .filter(|&id| untap_step_happens && self.controller_of(id) == active)
                     .collect();
                 for id in to_phase_in {
                     self.push_apply(events, Event::PhasedIn { object: id });
@@ -1628,7 +1633,10 @@ impl Game {
                     // Pollen Lullaby's win rider (CR): a permanent marked to skip its controller's
                     // next untap step doesn't untap now — the mark is consumed here (whether or not
                     // it was tapped), so it untaps normally on every later untap step.
-                    if self.skip_next_untap.contains(&id) {
+                    if !untap_step_happens {
+                        // A skipped step consumes nothing: a permanent marked to miss its
+                        // controller's next untap step is still owed that miss once Stasis goes.
+                    } else if self.skip_next_untap.contains(&id) {
                         self.push_apply(events, Event::NextUntapSkipConsumed { object: id });
                     } else if self.permanent(id).tapped && !self.doesnt_untap(id) {
                         if self.def_of(id).may_choose_not_to_untap {

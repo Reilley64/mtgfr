@@ -1383,6 +1383,30 @@ impl Game {
         })
     }
 
+    /// Whether anything on the battlefield is telling the table to skip its untap steps
+    /// (CR 703.4a — Stasis's "Players skip their untap steps"). Battlefield-wide and unscoped:
+    /// "players" is everyone, the Stasis controller included, so who controls it never enters
+    /// into it.
+    ///
+    /// Consulted by the untap step's two real turn-based actions — phasing in (CR 502.1) and
+    /// untapping (CR 502.2) — and by nothing else. Losing summoning sickness and freeing a
+    /// planeswalker's loyalty are per-*turn* durations that this engine merely bookkeeps in the
+    /// same arm; they are not untap-step actions, so they survive the skip and a creature cast
+    /// under Stasis can still attack on its controller's next turn.
+    pub(crate) fn players_skip_untap_steps(&self) -> bool {
+        self.battlefield().into_iter().any(|source| {
+            self.functional_abilities(source).iter().any(|a| {
+                matches!(
+                    (a.timing, &a.effect),
+                    (
+                        Timing::Static,
+                        Effect::Static(StaticEffect::PlayersSkipUntapSteps)
+                    )
+                )
+            })
+        })
+    }
+
     /// Whether a live Aura attached to `host` *other than* `aura` carries a static
     /// [`Effect::Static(StaticEffect::GrantToAttached)`] with `cant_be_enchanted = true`
     /// (Consecrate Land — "Enchanted land … can't be enchanted by other Auras"). Skipping `aura`

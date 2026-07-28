@@ -233,7 +233,7 @@ printed line also widens — an owner who has lost control may still activate �
 check runs first, so a stolen Incarnation is activatable by nobody rather than by its thief, which
 is the closer wrong answer.
 
-### 7. `untap-step-restrictions` — 9 cards, M — **7a, 7d done; 7b–7c open**
+### 7. `untap-step-restrictions` — 9 cards, M — **7a, 7c-i, 7d done; 7b, 7c-ii open**
 Depends on: nothing.
 "Doesn't untap during your untap step" / "players skip their untap steps" / "can't untap more
 than one." The untap step currently untaps everything a player controls unconditionally.
@@ -271,6 +271,7 @@ optional-trigger `PendingChoice::PayCost` has a payer axis; it would also want
 `GrantToAttached { doesnt_untap: true }`, since `GrantedAbility` carries no static timing.
 **7c Stasis / Smoke / Winter Orb** — a per-player skipped untap step and a per-player cap on how
 many permanents may untap, the latter needing the `PendingChoice::ChooseUntapSet` the sketch names.
+(Split when it was reached: Stasis shares nothing with the other two and shipped as **7c-i**.)
 **7d Instill Energy / Time Vault** — "can attack as though it had haste" plus a once-each-turn
 untap, and an extra turn that belongs to #18.
 
@@ -289,6 +290,27 @@ Energy's untap is meant to straighten an attacker back up mid-combat, which a so
 would forbid.
 
 Time Vault stays with #18 — its untap clause is tangled with the extra turn, not with this static.
+
+*Landed (7c-i — stasis):* the sketch bundled Stasis with Smoke and Winter Orb because all three
+sound like untap-step restrictions, but they share no machinery: those two cap *how many* permanents
+untap and need a subset choice, while Stasis deletes the step. Split, and Stasis is one fieldless
+`StaticEffect::PlayersSkipUntapSteps` plus its upkeep tax, which is Conversion's landed
+`pay_or_else` verbatim. Unscoped on purpose — "players" is everyone including the Stasis controller,
+so there is no `all_players` flag and no filter.
+
+The choice worth recording is *where* the skip is read. Writing it as a table-wide `DoesntUntap`
+would have been one line less and wrong twice over: that static holds individual permanents down
+*inside* a step that still runs, so phased-out permanents would phase back in (CR 502.1) and a
+Pollen Lullaby "skip your next untap step" mark would be burned on a step that never happened.
+`Game::players_skip_untap_steps` instead gates the untap step's two real turn-based actions —
+phasing in and untapping — and leaves the rest of that arm alone. Losing summoning sickness (CR
+302.6), goad expiry, and a planeswalker's loyalty refresh are per-*turn* durations this engine
+merely bookkeeps in the same place; skipping them would stop creatures cast under Stasis from ever
+attacking, which is not what the card does. Both halves are pinned by tests.
+
+The upkeep tax means Stasis holds its own key, so the freeze test can prove the thaw as well: pay
+the {U} once to watch both seats stay tapped, decline it the next turn, and the sacrifice lands in
+the upkeep — after that turn's untap step has already gone by, so the board waits one more.
 
 ### 8a. `basic-land-type-changing` — 1 card, S — **done**
 Depends on: nothing.

@@ -300,6 +300,7 @@ message_keys! {
     EFFECT_STATIC_CANT_CAST_IF_ATTACKED_THIS_TURN => "effect.static_cant_cast_if_attacked_this_turn",
     EFFECT_STATIC_DISCARD_TO_LIBRARY_TOP_INSTEAD => "effect.static_discard_to_library_top_instead",
     EFFECT_STATIC_DOESNT_UNTAP => "effect.static_doesnt_untap",
+    EFFECT_STATIC_PLAYERS_SKIP_UNTAP_STEPS => "effect.static_players_skip_untap_steps",
     EFFECT_STATIC_MUST_ATTACK_EACH_COMBAT => "effect.static_must_attack_each_combat",
     EFFECT_STATIC_OPPONENTS_CANT_SEARCH_LIBRARIES => "effect.static_opponents_cant_search_libraries",
     EFFECT_STATIC_PROTECTION_FROM_CHOSEN_COLOR => "effect.static_protection_from_chosen_color",
@@ -2251,6 +2252,9 @@ impl Effect {
                     bool_param("self_only", self_only),
                     permanent_filter_param("filter", filter),
                 ])
+            }
+            Effect::Static(PlayersSkipUntapSteps) => {
+                MessageRef::new(MessageKey::EFFECT_STATIC_PLAYERS_SKIP_UNTAP_STEPS)
             }
             Effect::Static(CantAttackUnlessDefenderControls { filter }) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_CANT_ATTACK_UNLESS_DEFENDER_CONTROLS)

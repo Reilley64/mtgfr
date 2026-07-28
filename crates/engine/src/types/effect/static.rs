@@ -288,6 +288,19 @@ pub enum StaticEffect {
         filter: PermanentFilter,
     },
 
+    /// Stasis's "Players skip their untap steps" (CR 703.4a). Read by
+    /// [`Game::players_skip_untap_steps`](crate::Game), which the untap step consults before it
+    /// phases anything in or untaps anything. Unscoped on purpose — "players" is everyone, its
+    /// own controller included, so there is no `all_players` flag of the sort
+    /// [`Anthem`](Self::Anthem) needs and no `filter` of the sort
+    /// [`DoesntUntap`](Self::DoesntUntap) carries.
+    ///
+    /// Distinct from `DoesntUntap`, which holds individual permanents down *within* an untap
+    /// step that still happens: this one deletes the step's turn-based actions outright, which is
+    /// why a phased-out permanent stays phased out under Stasis (CR 502.1) where `DoesntUntap`
+    /// would let it back in.
+    PlayersSkipUntapSteps,
+
     EntersWithCounters {
         #[cfg_attr(feature = "card-dsl", serde(rename = "count"))]
         amount: Amount,
