@@ -27,7 +27,6 @@ export type BuilderMenuItemSchema = typeof BuilderMenuItemSchema.Type;
 export const ChangedBuilderName = m("ChangedBuilderName", { name: S.String });
 export const ChangedBuilderQuery = m("ChangedBuilderQuery", { query: S.String });
 export const ChangedBuilderRoute = m("ChangedBuilderRoute", { editingId: S.NullOr(S.String) });
-export const RequestedNextBuilderPage = m("RequestedNextBuilderPage");
 export const ReceivedBuilderSearchPage = m("ReceivedBuilderSearchPage", {
   cards: S.Array(CatalogCardSchema),
   offset: S.Number,
@@ -53,6 +52,12 @@ export const GotPrintDialogMessage = m("GotPrintDialogMessage", { message: Dialo
 /** Delegation envelope for the print grid's VirtualList submodel. Scroll position and container
  *  height arrive from its Subscription, not from the view. */
 export const GotPrintGridMessage = m("GotPrintGridMessage", { message: VirtualList.Message });
+/** Delegation envelope for the card pool's VirtualList submodel. Also where paging is decided:
+ *  scrolling near the end of the loaded pool is what asks for the next page. */
+export const GotPoolGridMessage = m("GotPoolGridMessage", { message: VirtualList.Message });
+/** Width of the pool column, from its own ResizeObserver. VirtualList measures only height, and the
+ *  pool's column count and row height both follow from the width. */
+export const MeasuredPoolGrid = m("MeasuredPoolGrid", { width: S.Number });
 export const SubmittedDeckSave = m("SubmittedDeckSave");
 export const DeckSaved = m("DeckSaved");
 export const DeckSaveFailed = m("DeckSaveFailed", { problems: S.Array(S.String) });
@@ -94,7 +99,6 @@ export const Message = S.Union([
   ChangedBuilderName,
   ChangedBuilderQuery,
   ChangedBuilderRoute,
-  RequestedNextBuilderPage,
   ReceivedBuilderSearchPage,
   BuilderSearchFailed,
   ReceivedDeckForBuilder,
@@ -109,6 +113,8 @@ export const Message = S.Union([
   PickedBuilderPrint,
   GotPrintDialogMessage,
   GotPrintGridMessage,
+  GotPoolGridMessage,
+  MeasuredPoolGrid,
   SubmittedDeckSave,
   DeckSaved,
   DeckSaveFailed,
