@@ -164,11 +164,11 @@ mod tests {
     use super::*;
     use engine::{
         ActivationCost, Amount, AttackRider, BasicLandType, CardFilter, CardKind, CasterScope,
-        ChoiceEffect, Color, ColorFilter, Condition, ControlEffect, CopyEffect, Cost, CounterKind,
-        CountersEffect, DamageEffect, DefiningPtWhen, DestroyEffect, DigEffect, Division,
-        DrawEffect, Effect, EnterController, ExileEffect, FilterController, GraveyardScope,
-        Keyword, LandProduces, LandTapBonusColor, LandTapScope, LifeEffect, Mana, ManaEffect,
-        MillEffect, MiscEffect, PermanentFilter, ProtectionScope, PumpEffect,
+        ChoiceEffect, Color, ColorFilter, Condition, ControlEffect, CopyEffect, CopyTargetKind,
+        Cost, CounterKind, CountersEffect, DamageEffect, DefiningPtWhen, DestroyEffect, DigEffect,
+        Division, DrawEffect, Effect, EnterAsCopy, EnterController, ExileEffect, FilterController,
+        GraveyardScope, Keyword, LandProduces, LandTapBonusColor, LandTapScope, LifeEffect, Mana,
+        ManaEffect, MillEffect, MiscEffect, PermanentFilter, ProtectionScope, PumpEffect,
         SacrificeAdditionalCostCount, SacrificeCost, SacrificeEffect, SearchDest, SpellFilter,
         SpellSpeed, StaticEffect, Step, TargetCount, TargetSpec, Timing, TokenEffect, Trigger,
         TypeSet, ZoneEffect, arc_slice,
@@ -4512,6 +4512,64 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                 count: TargetCount::default(),
             })],
             "if the player does, untap the creature",
+        );
+    }
+
+    /// The three Unlimited copy-a-permanent cards are all one `enter_as_copy` keyword, and the
+    /// differences between them are entirely copy *exceptions* (CR 707.2). Clone has none; Copy
+    /// Artifact adds a card type; Vesuvan Doppelganger keeps its own colour and hands itself the
+    /// ability that lets it do the whole thing again next upkeep.
+    #[test]
+    fn unlimited_copy_permanents_differ_only_in_their_copy_exceptions() {
+        let clone = get_by_name("Clone").expect("Clone is in the pool");
+        assert_eq!(
+            clone.enter_as_copy,
+            Some(EnterAsCopy {
+                of: CopyTargetKind::Creature,
+                ..EnterAsCopy::default()
+            }),
+            "a copy of any creature on the battlefield, no exceptions",
+        );
+        assert!(clone.abilities.is_empty(), "the keyword is the whole card");
+
+        let copy_artifact = get_by_name("Copy Artifact").expect("Copy Artifact is in the pool");
+        assert_eq!(
+            copy_artifact.enter_as_copy,
+            Some(EnterAsCopy {
+                of: CopyTargetKind::Artifact,
+                also_enchantment: true,
+                ..EnterAsCopy::default()
+            }),
+            "any artifact, except it's an enchantment in addition to its other types",
+        );
+
+        let vesuvan =
+            get_by_name("Vesuvan Doppelganger").expect("Vesuvan Doppelganger is in the pool");
+        assert_eq!(
+            vesuvan.enter_as_copy,
+            Some(EnterAsCopy {
+                keeps_own_color: true,
+                keeps_own_abilities: true,
+                ..EnterAsCopy::default()
+            }),
+            "except it doesn't copy that creature's color and it has <this ability>",
+        );
+        let [recopy] = &vesuvan.abilities[..] else {
+            panic!("the upkeep re-copy is its only printed ability");
+        };
+        assert_eq!(recopy.timing, Timing::Triggered(Trigger::Upkeep));
+        assert!(
+            recopy.optional,
+            "you *may* have this creature become a copy"
+        );
+        assert_eq!(
+            recopy.effect,
+            Effect::Pump(PumpEffect::BecomesCopyOfTarget {
+                target: TargetSpec::Creature,
+                keeps_own_color: true,
+                keeps_own_abilities: true,
+            }),
+            "become a copy of target creature, with the same two exceptions",
         );
     }
 

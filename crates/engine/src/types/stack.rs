@@ -1763,6 +1763,9 @@ pub enum PendingChoice {
         until_eot: bool,
         extra_counters: Amount,
         gains_haste: bool,
+        also_enchantment: bool,
+        keeps_own_color: bool,
+        keeps_own_abilities: bool,
     },
     /// `player` may choose one of `candidates` — the tokens they control ("you may choose a token
     /// you control" — Brudiclad, Telchor Engineer, [`Effect::Choice(ChoiceEffect::EachOtherTokenBecomesCopyOfChosen)`]).
@@ -2536,6 +2539,11 @@ pub enum Event {
         object: ObjectId,
         def: CardId,
         until_eot: bool,
+        /// Card types the copy carries *in addition* to the copied def's own (CR 707.2 — Copy
+        /// Artifact's "except it's an enchantment in addition to its other types"). Written to
+        /// the indefinite [`Permanent::added_types`] slot, so it lasts as long as the copy does
+        /// and resets with the object (CR 400.7). [`TypeSet::NONE`] for every other copy.
+        also_types: TypeSet,
     },
     /// A permanent lost `keywords` until end of turn and can't have them, unioned onto
     /// [`Permanent::temp_lost_keywords`] (arcane_lighthouse's strip — see

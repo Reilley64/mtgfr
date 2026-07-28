@@ -144,6 +144,9 @@ impl Game {
             until_eot,
             extra_counters,
             gains_haste,
+            also_enchantment,
+            keeps_own_color,
+            keeps_own_abilities,
             ..
         }) = self.pending_choice.clone()
         else {
@@ -163,13 +166,25 @@ impl Game {
         // The counters/haste name their real source (the copier), captured before the def
         // overwrite renames `source` to the copied creature.
         let source_name = self.def_of(source).name;
-        // ponytail: the copyable values are the chosen creature's printed/`CardDef` values (CR
-        // 707.2), not a full read of any copy-layer modifications already on it — exact for this
-        // pool (no card copies something already under a copy effect).
+        // `def_id_of` reads the chosen permanent's *current* def, which for a permanent already
+        // under a copy effect is the form it copied rather than its printed card — which is what
+        // CR 707.2 asks for, so a Clone copying a Clone lands on what that one is wearing.
         // ponytail: `BecameCopy` overwrites `def` *after* `PermanentEntered` fired, so an ETB
-        // trigger of the *copied* creature is missed (the trigger watcher saw the pre-copy def).
-        // Neither Altered Ego nor Cursed Mirror copies a creature with an ETB; revisit when one does.
-        let def = self.def_id_of(chosen);
+        // trigger of the *copied* permanent is missed (the trigger watcher saw the pre-copy def).
+        // Nothing in the pool copies a permanent with an ETB and cares; revisit when one does.
+        let copied = self.def_id_of(chosen);
+        // Vesuvan Doppelganger's "except it doesn't copy that creature's color and it has <this
+        // ability>" — a copy exception is part of the copiable values (CR 707.2), so it is baked
+        // into the def the shapeshifter wears rather than layered on the object.
+        let def = match keeps_own_color || keeps_own_abilities {
+            false => copied,
+            true => intern_card_def(copy_with_exceptions(
+                (*card_def(copied)).clone(),
+                &card_def(self.def_id_of(source)),
+                keeps_own_color,
+                keeps_own_abilities,
+            )),
+        };
         let printed = card_def(def);
         self.push_apply(
             &mut events,
@@ -177,6 +192,10 @@ impl Game {
                 object: source,
                 def,
                 until_eot,
+                also_types: match also_enchantment {
+                    true => TypeSet::ENCHANTMENT,
+                    false => TypeSet::NONE,
+                },
             },
         );
         // Altered Ego's "except it enters with X additional +1/+1 counters" — placed on the copy
@@ -271,6 +290,7 @@ impl Game {
                     object: other,
                     def,
                     until_eot: false,
+                    also_types: TypeSet::NONE,
                 },
             );
             if !copied_rider.is_empty() {
@@ -321,6 +341,7 @@ impl Game {
                 object: source,
                 def: self.def_id_of(chosen),
                 until_eot: true,
+                also_types: TypeSet::NONE,
             },
         );
         Ok(events)

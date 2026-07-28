@@ -257,6 +257,7 @@ message_keys! {
     EFFECT_MISC_YOU_CHOOSE_WHICH_CREATURES_ATTACK => "effect.misc_you_choose_which_creatures_attack",
     EFFECT_MISC_YOU_CHOOSE_WHICH_CREATURES_BLOCK => "effect.misc_you_choose_which_creatures_block",
     EFFECT_PUMP_ANIMATE_SELF_UNTIL_END_OF_TURN => "effect.pump_animate_self_until_end_of_turn",
+    EFFECT_PUMP_BECOMES_COPY_OF_TARGET => "effect.pump_becomes_copy_of_target",
     EFFECT_PUMP_ENCHANTED_ATTACKER_PUMP_ATTACKING_OPPONENT_ELSE_CONTROLLER_LOSES_LIFE => "effect.pump_enchanted_attacker_pump_attacking_opponent_else_controller_loses_life",
     EFFECT_PUMP_ENCHANTED_CREATURE_LOSES_KEYWORDS => "effect.pump_enchanted_creature_loses_keywords",
     EFFECT_PUMP_GRANT_CHOSEN_COLOR_PROTECTION_UNTIL_END_OF_TURN => "effect.pump_grant_chosen_color_protection_until_end_of_turn",
@@ -2454,6 +2455,9 @@ impl Effect {
             Effect::Pump(TargetBecomesColor { color, .. }) => {
                 MessageRef::new(MessageKey::EFFECT_PUMP_TARGET_BECOMES_COLOR)
                     .with_params(vec![str_param("color", color_token(color))])
+            }
+            Effect::Pump(BecomesCopyOfTarget { .. }) => {
+                MessageRef::new(MessageKey::EFFECT_PUMP_BECOMES_COPY_OF_TARGET)
             }
             Effect::Pump(TargetBecomesTreasure { .. }) => {
                 MessageRef::new(MessageKey::EFFECT_PUMP_TARGET_BECOMES_TREASURE)

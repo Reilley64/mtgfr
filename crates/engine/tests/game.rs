@@ -19184,6 +19184,335 @@ static COPY_BEAR: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     ..creature("Craw Wurm Bear", 3, 3, &[Keyword::Trample])
 });
 
+/// Cast Clone, resolving until it pauses on the enter-as-copy choice. Returns the entered
+/// permanent's id. Panics if it never pauses.
+fn cast_clone(game: &mut Game) -> ObjectId {
+    game.fund_mana(PlayerId(0));
+    let clone = game.spawn_in_hand(PlayerId(0), card("Clone"));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: clone,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        multikicker_count: 0,
+        alternative_cost: false,
+    })
+    .unwrap();
+    resolve_top_of_stack(game); // Clone resolves and enters; pauses on the copy choice.
+    match game.pending_choice() {
+        Some(PendingChoice::ChooseCopyTarget { source, .. }) => source,
+        other => panic!("expected the enter-as-copy pause, got {other:?}"),
+    }
+}
+
+#[test]
+fn clone_enters_as_a_copy_of_any_creature_on_the_battlefield() {
+    // Clone: "You may have this creature enter as a copy of any creature on the battlefield."
+    // The whole card — no rider on the copy, and "any creature" reaches across the table.
+    let mut game = Game::new();
+    let bear = game.spawn_on_battlefield(PlayerId(1), COPY_BEAR.clone());
+    let clone = cast_clone(&mut game);
+
+    game.submit(Intent::ChooseCopyTarget {
+        player: PlayerId(0),
+        copy: Some(bear),
+    })
+    .unwrap();
+
+    assert_eq!(game.def_of(clone).name, "Craw Wurm Bear");
+    assert_eq!((game.power(clone), game.toughness(clone)), (3, 3));
+    assert!(game.has_keyword(clone, Keyword::Trample));
+    assert!(!game.effective_subtypes(clone).contains(&"Shapeshifter"));
+    assert_eq!(
+        game.controller_of(clone),
+        PlayerId(0),
+        "copying an opponent's creature doesn't hand it over — control isn't copiable (CR 707.2)",
+    );
+}
+
+#[test]
+fn a_declined_clone_is_a_zero_zero_that_dies_on_the_spot() {
+    // "You *may*" — declining is legal, and the printed Clone is a 0/0, so the state-based action
+    // that checks toughness puts it straight into the graveyard (CR 704.5a). This is why the
+    // choice matters even when there is something worth copying.
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(1), COPY_BEAR.clone());
+    let clone = cast_clone(&mut game);
+
+    game.submit(Intent::ChooseCopyTarget {
+        player: PlayerId(0),
+        copy: None,
+    })
+    .unwrap();
+
+    assert_eq!(
+        game.zone_of(game.current_id(clone)),
+        Zone::Graveyard,
+        "a 0/0 that copied nothing",
+    );
+}
+
+#[test]
+fn a_clone_copying_a_clone_takes_what_that_one_copied() {
+    // CR 707.2: a copy effect reads the *copiable* values of the chosen permanent, which for a
+    // permanent already under a copy effect are the values it copied — not the printed card. So
+    // the second Clone lands on the Bear, never on a 0/0 Shapeshifter.
+    let mut game = Game::new();
+    let bear = game.spawn_on_battlefield(PlayerId(1), COPY_BEAR.clone());
+
+    let first = cast_clone(&mut game);
+    game.submit(Intent::ChooseCopyTarget {
+        player: PlayerId(0),
+        copy: Some(bear),
+    })
+    .unwrap();
+
+    let second = cast_clone(&mut game);
+    game.submit(Intent::ChooseCopyTarget {
+        player: PlayerId(0),
+        copy: Some(first),
+    })
+    .unwrap();
+
+    assert_eq!(game.def_of(second).name, "Craw Wurm Bear");
+    assert_eq!((game.power(second), game.toughness(second)), (3, 3));
+    assert_ne!(
+        game.zone_of(game.current_id(second)),
+        Zone::Graveyard,
+        "not a 0/0 — it copied the Bear the first Clone is wearing",
+    );
+}
+
+/// Cast Vesuvan Doppelganger, resolving until it pauses on the enter-as-copy choice. Returns the
+/// entered permanent's id. Panics if it never pauses.
+fn cast_doppelganger(game: &mut Game) -> ObjectId {
+    game.fund_mana(PlayerId(0));
+    let doppelganger = game.spawn_in_hand(PlayerId(0), card("Vesuvan Doppelganger"));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: doppelganger,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        multikicker_count: 0,
+        alternative_cost: false,
+    })
+    .expect("Vesuvan Doppelganger is castable");
+    resolve_top_of_stack(game);
+    match game.pending_choice() {
+        Some(PendingChoice::ChooseCopyTarget { source, .. }) => source,
+        other => panic!("expected the enter-as-copy pause, got {other:?}"),
+    }
+}
+
+/// A red 4/4 to copy — a color the Doppelganger must *not* pick up.
+fn red_ogre() -> CardDef {
+    CardDef {
+        cost: Cost {
+            colored: {
+                let mut pips = [0; Color::COUNT];
+                pips[Color::Red.index()] = 2;
+                pips
+            },
+            generic: 2,
+            ..Cost::FREE
+        },
+        ..creature("Rumbling Ogre", 4, 4, &[])
+    }
+}
+
+#[test]
+fn vesuvan_doppelganger_wears_the_body_but_keeps_its_own_color() {
+    // "except it doesn't copy that creature's color" — the copy is the red Ogre in every way a
+    // copy effect reaches (CR 707.2) *but* colour, where the printed {3}{U}{U} still rules.
+    let mut game = Game::new();
+    let ogre = game.spawn_on_battlefield(PlayerId(1), red_ogre());
+
+    let doppelganger = cast_doppelganger(&mut game);
+    game.submit(Intent::ChooseCopyTarget {
+        player: PlayerId(0),
+        copy: Some(ogre),
+    })
+    .expect("copying a creature is legal");
+
+    let worn = game.current_id(doppelganger);
+    assert_eq!(game.def_of(worn).name, "Rumbling Ogre");
+    assert_eq!((game.power(worn), game.toughness(worn)), (4, 4));
+    let colors = game.colors_of(worn);
+    assert!(
+        colors[Color::Blue.index()],
+        "it doesn't copy that creature's color"
+    );
+    assert!(!colors[Color::Red.index()], "so the Ogre's red never lands");
+}
+
+/// Walk to `player`'s upkeep and take the Doppelganger's optional re-copy trigger, pointing it at
+/// `victim`. Returns the permanent id the shapeshifter is wearing afterwards.
+fn recopy_at_upkeep(game: &mut Game, player: PlayerId, victim: ObjectId) -> ObjectId {
+    advance_until(game, |g| {
+        g.active_player() == player && g.current_step() == Step::Upkeep
+    });
+    game.submit(Intent::AnswerMay { player, yes: true })
+        .expect("the trigger is optional and we want it");
+    game.submit(Intent::ChooseTargets {
+        player,
+        targets: vec![Target::Object(game.current_id(victim))],
+    })
+    .expect("target creature");
+    resolve_top_of_stack(game);
+    // Step off the upkeep so the next call walks to the *next* one rather than sitting here.
+    advance_until(game, |g| g.current_step() == Step::Draw);
+    game.current_id(victim)
+}
+
+#[test]
+fn vesuvan_doppelgangers_upkeep_recopy_hands_itself_the_ability_to_do_it_again() {
+    // "and it has this ability" — the granted ability has to survive each def overwrite, or the
+    // Doppelganger would be a one-shot Clone. Two upkeeps in a row prove it re-grants itself.
+    let mut game = Game::new();
+    stock_libraries(&mut game);
+    let bear = game.spawn_on_battlefield(PlayerId(1), COPY_BEAR.clone());
+    let ogre = game.spawn_on_battlefield(PlayerId(1), red_ogre());
+
+    let doppelganger = cast_doppelganger(&mut game);
+    game.submit(Intent::ChooseCopyTarget {
+        player: PlayerId(0),
+        copy: Some(bear),
+    })
+    .unwrap();
+
+    recopy_at_upkeep(&mut game, PlayerId(0), ogre);
+    let worn = game.current_id(doppelganger);
+    assert_eq!(game.def_of(worn).name, "Rumbling Ogre");
+    assert!(
+        !game.colors_of(worn)[Color::Red.index()],
+        "the re-copy carries the same colour exception",
+    );
+
+    recopy_at_upkeep(&mut game, PlayerId(0), bear);
+    let worn = game.current_id(doppelganger);
+    assert_eq!(
+        game.def_of(worn).name,
+        "Craw Wurm Bear",
+        "the second upkeep only works because the first left the ability behind",
+    );
+    assert_eq!(
+        game.def_of(worn)
+            .abilities
+            .iter()
+            .filter(|ability| matches!(ability.timing, Timing::Triggered(Trigger::Upkeep)))
+            .count(),
+        1,
+        "one copy of the ability, not one per creature it has worn",
+    );
+}
+
+/// Cast Copy Artifact, resolving until it pauses on the enter-as-copy choice. Returns the
+/// entered permanent's id. Panics if it never pauses.
+fn cast_copy_artifact(game: &mut Game) -> ObjectId {
+    game.fund_mana(PlayerId(0));
+    let copy_artifact = game.spawn_in_hand(PlayerId(0), card("Copy Artifact"));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: copy_artifact,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        multikicker_count: 0,
+        alternative_cost: false,
+    })
+    .expect("Copy Artifact is castable");
+    resolve_top_of_stack(game);
+    match game.pending_choice() {
+        Some(PendingChoice::ChooseCopyTarget { source, .. }) => source,
+        other => panic!("expected the enter-as-copy pause, got {other:?}"),
+    }
+}
+
+#[test]
+fn copy_artifact_wears_an_artifact_while_staying_an_enchantment() {
+    // "You may have this enchantment enter as a copy of any artifact on the battlefield, except
+    // it's an enchantment in addition to its other types." The exception is why it can't be
+    // written as a plain enter-as-copy: the copy has to keep the printed enchantment type on top
+    // of everything the artifact brings, so both Disenchant halves answer it.
+    let mut game = Game::new();
+    let tome = game.spawn_on_battlefield(PlayerId(1), artifact("Brass Ledger", 4));
+
+    let copy = cast_copy_artifact(&mut game);
+    game.submit(Intent::ChooseCopyTarget {
+        player: PlayerId(0),
+        copy: Some(tome),
+    })
+    .expect("choosing an artifact is legal");
+
+    assert_eq!(game.def_of(copy).name, "Brass Ledger");
+    let types = game.effective_types(game.current_id(copy));
+    assert!(types.intersects(TypeSet::ARTIFACT), "it copied an artifact");
+    assert!(
+        types.intersects(TypeSet::ENCHANTMENT),
+        "except it's an enchantment in addition to its other types",
+    );
+}
+
+#[test]
+fn copy_artifact_only_offers_artifacts_and_dies_to_disenchant_as_an_enchantment() {
+    // The candidate list reads the CR 613.4 type layer, so a creature across the table is not on
+    // it. And the copy answers Disenchant's enchantment half — the whole point of the exception.
+    let mut game = Game::new();
+    stock_libraries(&mut game);
+    game.spawn_on_battlefield(PlayerId(1), COPY_BEAR.clone());
+    let vault = game.spawn_on_battlefield(PlayerId(1), artifact("Brass Ledger", 4));
+
+    let copy = cast_copy_artifact(&mut game);
+    let Some(PendingChoice::ChooseCopyTarget { candidates, .. }) = game.pending_choice() else {
+        panic!("paused on the copy choice");
+    };
+    assert_eq!(candidates, vec![vault], "any artifact — and only artifacts");
+    game.submit(Intent::ChooseCopyTarget {
+        player: PlayerId(0),
+        copy: Some(vault),
+    })
+    .unwrap();
+
+    let disenchant = game.spawn_in_hand(PlayerId(0), card("Disenchant"));
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Main1
+    });
+    game.fund_mana(PlayerId(0));
+    let worn = game.current_id(copy);
+    cast_and_resolve(&mut game, disenchant, Some(Target::Object(worn)));
+    assert_eq!(
+        game.zone_of(game.current_id(worn)),
+        Zone::Graveyard,
+        "still an enchantment, whatever else it is wearing",
+    );
+}
+
 /// Cast Altered Ego with the given `x`, resolving until it pauses on the enter-as-copy choice.
 /// Returns the entered permanent's id. Panics if it never pauses.
 fn cast_altered_ego(game: &mut Game, x: u32) -> ObjectId {

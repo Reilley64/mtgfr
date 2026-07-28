@@ -1011,7 +1011,7 @@ pub enum CastXMax {
 /// enters with (Altered Ego's X); `gains_haste` grants the copy haste (Cursed Mirror's "except it
 /// has haste"); `of` is the copyable type axis (Copy Enchantment's "any enchantment", CR 707.2,
 /// vs. the default "any creature").
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[cfg_attr(
     feature = "card-dsl",
     derive(serde::Deserialize),
@@ -1026,11 +1026,33 @@ pub struct EnterAsCopy {
     pub gains_haste: bool,
     #[cfg_attr(feature = "card-dsl", serde(default))]
     pub of: CopyTargetKind,
+    /// Copy Artifact's "except it's an enchantment in addition to its other types" (CR 707.2 —
+    /// a copy *exception*, not a separate continuous effect). The copier keeps the enchantment
+    /// type it was printed with on top of everything the copied artifact brings, which is what
+    /// keeps Disenchant and every enchantment sweeper live against it. Written to the indefinite
+    /// [`Permanent::added_types`] slot as the copy lands, so it resets with the object (CR 400.7)
+    /// rather than at cleanup. `also_enchantment = true` in TOML; the only copy exception in the
+    /// pool that adds a card type, so it is a bool rather than a type list.
+    #[cfg_attr(feature = "card-dsl", serde(default))]
+    pub also_enchantment: bool,
+    /// Vesuvan Doppelganger's "except it doesn't copy that creature's color" — the copy keeps the
+    /// shapeshifter's own colors. See [`copy_with_exceptions`], which bakes both this and
+    /// `keeps_own_abilities` into the copied def.
+    #[cfg_attr(feature = "card-dsl", serde(default))]
+    pub keeps_own_color: bool,
+    /// Vesuvan Doppelganger's "and it has \"At the beginning of your upkeep, …\"" — the copy
+    /// carries the shapeshifter's own re-copy ability on top of the copied creature's. See
+    /// [`copy_with_exceptions`].
+    #[cfg_attr(feature = "card-dsl", serde(default))]
+    pub keeps_own_abilities: bool,
 }
 
 /// The candidate-object type [`CardDef::enter_as_copy`] may copy (CR 706/707.2): `Creature` (the
-/// default — Altered Ego, Cursed Mirror) or `Enchantment` (Copy Enchantment, which includes Auras
-/// — CR 303.2). `enter_as_copy = { of = "enchantment" }` in TOML; absent means `Creature`.
+/// default — Altered Ego, Clone, Cursed Mirror, Vesuvan Doppelganger), `Enchantment` (Copy
+/// Enchantment, which includes Auras — CR 303.2), or `Artifact` (Copy Artifact). Each reads the
+/// CR 613.4 type layer rather than the printed kind, so an animated land is a creature here and a
+/// Copy Artifact wearing an artifact is an artifact for the next one.
+/// `enter_as_copy = { of = "enchantment" }` in TOML; absent means `Creature`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[cfg_attr(
     feature = "card-dsl",
@@ -1041,6 +1063,7 @@ pub enum CopyTargetKind {
     #[default]
     Creature,
     Enchantment,
+    Artifact,
 }
 
 /// Suspend N—[cost] (CR 702.62), carried by [`CardDef::suspend`]. `counters` is the N time
@@ -1301,6 +1324,48 @@ pub fn treasure_token() -> CardDef {
 /// untouched too, so `cost` carries the pip-derived colors and the explicit `colors`/`devoid`
 /// overrides ride along for a target that states its color outright (a token, CR 111.4).
 /// `legendary` stays because a supertype is not a card type (CR 205.4).
+/// Apply Vesuvan Doppelganger's copy *exceptions* (CR 707.2) to the def a shapeshifter is about
+/// to wear. `copied` is the chosen creature's def; `keeper` is the shapeshifter's own def — the
+/// printed card on the way in, or whatever it is already wearing when its upkeep ability
+/// re-copies. Because both exceptions are baked into the synthesized def rather than layered on
+/// the object, they are themselves copiable — a Clone copying a Doppelganger gets both, which is
+/// what CR 707.2 asks for.
+///
+/// `keeps_own_color` is "except it doesn't copy that creature's color": `keeper`'s *resolved*
+/// identity is written into the explicit `colors` slot, so it survives being re-copied even
+/// though the copied cost underneath it changes every time.
+///
+/// `keeps_own_abilities` is "and it has this ability". Only the re-copy ability itself rides
+/// along, not everything `keeper` currently has — otherwise the second upkeep would stack the
+/// abilities of the creature it was wearing under the new one's.
+pub(crate) fn copy_with_exceptions(
+    copied: CardDef,
+    keeper: &CardDef,
+    keeps_own_color: bool,
+    keeps_own_abilities: bool,
+) -> CardDef {
+    let mut def = copied;
+    if keeps_own_color {
+        let identity = color_identity(keeper);
+        def.colors = Color::ALL
+            .iter()
+            .copied()
+            .filter(|color| identity[color.index()])
+            .collect();
+        def.devoid = keeper.devoid;
+    }
+    if keeps_own_abilities {
+        let this_ability = keeper.abilities.iter().filter(|ability| {
+            matches!(
+                ability.effect,
+                Effect::Pump(PumpEffect::BecomesCopyOfTarget { .. })
+            )
+        });
+        def.abilities = def.abilities.iter().chain(this_ability).cloned().collect();
+    }
+    def
+}
+
 pub(crate) fn becomes_treasure(printed: CardDef) -> CardDef {
     CardDef {
         name: printed.name,

@@ -231,6 +231,7 @@
   "effect.misc_you_choose_which_creatures_attack",
   "effect.misc_you_choose_which_creatures_block",
   "effect.pump_animate_self_until_end_of_turn",
+  "effect.pump_becomes_copy_of_target",
   "effect.pump_enchanted_attacker_pump_attacking_opponent_else_controller_loses_life",
   "effect.pump_enchanted_creature_loses_keywords",
   "effect.pump_grant_chosen_color_protection_until_end_of_turn",

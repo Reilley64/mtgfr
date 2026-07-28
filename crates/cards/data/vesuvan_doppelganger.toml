@@ -1,0 +1,39 @@
+# You may have this creature enter as a copy of any creature on the battlefield, except it
+# doesn't copy that creature's color and it has "At the beginning of your upkeep, you may have
+# this creature become a copy of target creature, except it doesn't copy that creature's color
+# and it has this ability."
+name = "Vesuvan Doppelganger"
+otags = ["clone", "copy-creature", "faux-targeting", "repeatable-crime", "triggered-ability", "type-errata"]
+sets = ["2ed", "30a", "3ed", "ced", "cei", "fbb", "lea", "leb", "me1", "olep", "sum"]
+id = "aeaccab9-3e2c-4a40-a483-52c4972b2014"
+default_print = "408ec348-183b-43de-abac-7ae9e3843c10"
+oracle = "You may have this creature enter as a copy of any creature on the battlefield, except it doesn't copy that creature's color and it has \"At the beginning of your upkeep, you may have this creature become a copy of target creature, except it doesn't copy that creature's color and it has this ability.\""
+subtypes = ["Shapeshifter"]
+
+# You may have this creature enter as a copy of any creature on the battlefield, except it
+# doesn't copy that creature's color and it has "…".
+enter_as_copy = { keeps_own_color = true, keeps_own_abilities = true }
+
+[cost]
+generic = 3
+blue = 2
+
+[kind]
+type = "creature"
+power = 0
+toughness = 0
+
+# At the beginning of your upkeep, you may have this creature become a copy of target creature,
+# except it doesn't copy that creature's color and it has this ability.
+[[abilities]]
+timing = "upkeep"
+optional = true
+
+# you may have this creature become a copy of target creature, except it doesn't copy that
+# creature's color and it has this ability.
+[[abilities.effects]]
+type = "pump"
+mode = "becomes_copy_of_target"
+target = "creature"
+keeps_own_color = true
+keeps_own_abilities = true

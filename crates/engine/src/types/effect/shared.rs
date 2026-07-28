@@ -580,6 +580,7 @@ impl Effect {
             | Effect::Pump(PumpEffect::GrantChosenColorProtectionUntilEndOfTurn { target })
             | Effect::Pump(PumpEffect::RadianceChosenColorProtectionUntilEndOfTurn { target })
             | Effect::Pump(PumpEffect::SetBasePtTargetUntilEndOfTurn { target, .. })
+            | Effect::Pump(PumpEffect::BecomesCopyOfTarget { target, .. })
             | Effect::Pump(PumpEffect::TargetBecomesTreasure { target })
             | Effect::Pump(PumpEffect::TargetBecomesSubtypesWhileSourceRemains { target, .. })
             | Effect::Pump(PumpEffect::TargetBecomesColor { target, .. })

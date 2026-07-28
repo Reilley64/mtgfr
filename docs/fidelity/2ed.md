@@ -194,13 +194,13 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [x] **Circle of Protection: Red** {1}{W} · Enchantment — increment 4, 5a
 - [x] **Circle of Protection: White** {1}{W} · Enchantment — increment 4, 5a
 - [x] **Clockwork Beast** {6} · Artifact Creature — Beast — increment 28
-- [ ] **Clone** {3}{U} · Creature — Shapeshifter — increment 12
+- [x] **Clone** {3}{U} · Creature — Shapeshifter — increment 12
 - [x] **Cockatrice** {3}{G}{G} · Creature — Cockatrice — increment 21
 - [x] **Consecrate Land** {W} · Enchantment — Aura — increment 35
 - [x] **Conservator** {4} · Artifact — increment 4
 - [x] **Conversion** {2}{W}{W} · Enchantment — increment 8c
 - [x] **Copper Tablet** {2} · Artifact — increment 60
-- [ ] **Copy Artifact** {1}{U} · Enchantment — increment 12
+- [x] **Copy Artifact** {1}{U} · Enchantment — increment 12
 - [x] **Creature Bond** {1}{U} · Enchantment — Aura — increment 62
 - [x] **Crystal Rod** {1} · Artifact — increment 10
 - [x] **Cursed Land** {2}{B}{B} · Enchantment — Aura — increment 61
@@ -307,7 +307,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [x] **Timetwister** {2}{U} · Sorcery — increment 38
 - [x] **Tsunami** {3}{G} · Sorcery — increment 51
 - [x] **Two-Headed Giant of Foriys** {4}{R} · Creature — Giant — increment 11
-- [ ] **Vesuvan Doppelganger** {3}{U}{U} · Creature — Shapeshifter — increment 12
+- [x] **Vesuvan Doppelganger** {3}{U}{U} · Creature — Shapeshifter — increment 12
 - [x] **Veteran Bodyguard** {3}{W}{W} · Creature — Human — increment 6b
 - [x] **Volcanic Eruption** {X}{U}{U}{U} · Sorcery — increment 73
 - [x] **Wanderlust** {2}{G} · Enchantment — Aura — increment 61

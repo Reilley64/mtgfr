@@ -505,6 +505,9 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.pump_target_becomes_color": (params) => `Target spell or permanent becomes ${param(params, "color")}`,
   "effect.pump_target_becomes_subtypes_while_source_remains": (params) =>
     `Target land becomes a ${humanize(param(params, "set_subtypes"))} until this permanent leaves the battlefield`,
+  "effect.pump_becomes_copy_of_target": literal(
+    "This creature becomes a copy of target creature, except it doesn't copy that creature's color and it has this ability",
+  ),
   "effect.pump_target_becomes_treasure": literal(
     'Target creature becomes a Treasure artifact with "{T}, Sacrifice this artifact: Add one mana of any color" and loses all other card types and abilities',
   ),

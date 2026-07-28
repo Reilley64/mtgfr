@@ -575,7 +575,7 @@ the same `declare_blockers` restriction pass so the re-block is still legal. The
 is what makes this XL — schema, proto, server, and client all spell every variant.
 *Cards:* false_orders.
 
-### 12. `copy-a-permanent` — 3 cards, L
+### 12. `copy-a-permanent` — 3 cards, L — **done**
 Depends on: nothing.
 "You may have this creature enter as a copy of any creature on the battlefield" (CR 707).
 Falsifies the `PermanentFilter::name` ponytail — a copy changes the permanent's name, so
@@ -589,6 +589,33 @@ reads from that snapshot when present instead of the `CardDef`. Vesuvan Doppelga
 exceptions on top (doesn't copy color; keeps its own upkeep ability) plus an upkeep re-copy;
 Copy Artifact adds "it's an enchantment in addition to its other types."
 *Cards:* clone, copy_artifact, vesuvan_doppelganger.
+
+*Landed:* the sketch priced this as if the engine had no as-enters copy. It has had one since
+#127: `CardDef::enter_as_copy` + `PendingChoice::ChooseCopyTarget` + `Event::BecameCopy`, built
+for Altered Ego and Cursed Mirror. **Clone is `enter_as_copy = {}` and needed no engine change at
+all** — and `a_clone_copying_a_clone_takes_what_that_one_copied` passes, which retires the
+`edict.rs` ponytail claiming the copy reads the chosen permanent's *printed* values: `def_id_of`
+already returns whatever def the permanent is currently wearing, which is exactly CR 707.2's
+copiable values. No `CopyableValues` snapshot was needed; the def swap already is one.
+
+Copy Artifact is one new `CopyTargetKind::Artifact` (a `Game::is_artifact_on_battlefield` twin of
+the creature/enchantment candidate scanners, reading the CR 613.4 type layer) plus an
+`also_enchantment` exception carried through `Event::BecameCopy { also_types }` into the
+indefinite `Permanent::added_types` slot `Game::effective_types` already unions in. The event
+field is a `TypeSet` while the DSL surface is a bool: the durable log stays general, the card
+surface stays honest to the one card in the pool that adds a type.
+
+Vesuvan Doppelganger's two exceptions both turned out to be *def* facts rather than object facts,
+which is what kept it small. `copy_with_exceptions` synthesizes the def the shapeshifter wears —
+the copied creature's, with the copier's resolved colours written into the explicit `colors` slot
+("doesn't copy that creature's color") and its own re-copy ability appended ("and it has this
+ability") — and interns it, the same runtime-synthesis path Vraska's `becomes_treasure` already
+uses. Baking the exceptions into the def rather than layering them on the permanent is what makes
+them *copiable*, per CR 707.2, and what makes the upkeep repeat: the re-grant matches the ability
+by its own effect shape, so it re-grants exactly itself and never accumulates the abilities of the
+creature it was wearing. The upkeep half is `PumpEffect::BecomesCopyOfTarget` with `optional =
+true` on the ability — the same two flags, the same synthesizer, so entering as a copy and
+re-copying at upkeep land on identical defs.
 
 ### 13. `copy-target-spell` — 1 card, S — **done**
 Depends on: nothing.

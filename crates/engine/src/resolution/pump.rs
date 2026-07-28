@@ -353,6 +353,34 @@ impl Game {
                 })
                 .map(|object| Event::KeywordsStripped { object, keywords })
                 .collect(),
+            // Vesuvan Doppelganger's upkeep: "you may have this creature become a copy of target
+            // creature, except it doesn't copy that creature's color and it has this ability."
+            // The *source* is what gets rewritten, so a target that has left the battlefield since
+            // (CR 608.2b) — or a shapeshifter that has itself left — is simply no re-copy.
+            PumpEffect::BecomesCopyOfTarget {
+                keeps_own_color,
+                keeps_own_abilities,
+                ..
+            } => {
+                let object = expect_object_target(target, "becomes a copy");
+                let (Some(keeper), Some(copied)) = (
+                    self.as_permanent(source).map(|p| p.def),
+                    self.as_permanent(object).map(|p| p.def),
+                ) else {
+                    return Vec::new();
+                };
+                vec![Event::BecameCopy {
+                    object: source,
+                    def: intern_card_def(copy_with_exceptions(
+                        (*card_def(copied)).clone(),
+                        &card_def(keeper),
+                        keeps_own_color,
+                        keeps_own_abilities,
+                    )),
+                    until_eot: false,
+                    also_types: TypeSet::NONE,
+                }]
+            }
             // Vraska, Betrayal's Sting's −2: the target creature becomes a Treasure artifact and
             // loses all other card types and abilities (CR 613.1d/613.1f) — an indefinite def
             // overwrite, so `BecameCopy`'s `until_eot: false` never restores it. A target that has
@@ -366,6 +394,7 @@ impl Game {
                     object,
                     def: intern_card_def(becomes_treasure((*card_def(current)).clone())),
                     until_eot: false,
+                    also_types: TypeSet::NONE,
                 }]
             }
             // "Target spell or permanent becomes black" (the lace cycle): a layer-5 SET with no

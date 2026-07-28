@@ -1450,7 +1450,9 @@ impl Game {
                 object,
                 def,
                 until_eot,
+                also_types,
             } => {
+                let added_types_timestamp = self.stamp_continuous_timestamp();
                 let p = self.permanent_mut(object);
                 // An *indefinite* rewrite (CR 400.7) disarms any revert already armed on this
                 // permanent: otherwise `Event::TempBoostsEnded` would restore the pre-copy def at
@@ -1464,6 +1466,13 @@ impl Game {
                     false => None,
                 };
                 p.def = def;
+                // Copy Artifact's "except it's an enchantment in addition to its other types" (CR
+                // 707.2). The indefinite slot, not the until-EOT one: the added type lasts exactly
+                // as long as the copy and resets with the object (CR 400.7). Assigned rather than
+                // unioned, for the same reason `copy_rider_keywords` is cleared just below — a new
+                // copy effect replaces the whole copiable picture, exceptions included.
+                p.added_types = also_types;
+                p.added_types_timestamp = added_types_timestamp;
                 // A new copy effect replaces the object's copiable characteristics wholesale (CR
                 // 707.2), so any "except it has <keywords>" rider from a *prior* copied form is
                 // dropped. This effect's own rider (if any) is re-established by the

@@ -158,6 +158,22 @@ pub enum PumpEffect {
         keywords: &'static [Keyword],
     },
 
+    /// Vesuvan Doppelganger's upkeep: "you may have this creature become a copy of target
+    /// creature, except it doesn't copy that creature's color and it has this ability" (CR
+    /// 707.2). The *source* permanent becomes the copy, so `target` names the creature being
+    /// copied, not the one being rewritten. The two exception flags mirror the
+    /// [`crate::EnterAsCopy`] fields of the same name and are applied by the same
+    /// `copy_with_exceptions` synthesizer, so entering as a copy and re-copying later land on
+    /// exactly the same def. Indefinite (`until_eot: false`) — the printed shapeshifter never
+    /// comes back.
+    BecomesCopyOfTarget {
+        target: TargetSpec,
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        keeps_own_color: bool,
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        keeps_own_abilities: bool,
+    },
+
     TargetBecomesTreasure {
         target: TargetSpec,
     },

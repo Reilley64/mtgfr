@@ -61,6 +61,7 @@ pub(super) fn enter_as_copy(
                 && match marker.of {
                     crate::CopyTargetKind::Creature => game.is_creature_on_battlefield(id),
                     crate::CopyTargetKind::Enchantment => game.is_enchantment_on_battlefield(id),
+                    crate::CopyTargetKind::Artifact => game.is_artifact_on_battlefield(id),
                 }
         })
         .collect();
@@ -74,6 +75,9 @@ pub(super) fn enter_as_copy(
         until_eot: marker.until_eot,
         extra_counters: marker.extra_counters,
         gains_haste: marker.gains_haste,
+        also_enchantment: marker.also_enchantment,
+        keeps_own_color: marker.keeps_own_color,
+        keeps_own_abilities: marker.keeps_own_abilities,
     })
 }
 

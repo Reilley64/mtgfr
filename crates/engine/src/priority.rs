@@ -430,6 +430,16 @@ impl Game {
                 .intersects(TypeSet::ENCHANTMENT)
     }
 
+    /// Whether `object` is an artifact currently on the battlefield (CR 301). A phased-out
+    /// permanent doesn't count, mirroring [`Self::is_creature_on_battlefield`]. Used by Copy
+    /// Artifact's `enter_as_copy` (`of = "artifact"`, CR 706/707.2) to enumerate its candidates.
+    pub(crate) fn is_artifact_on_battlefield(&self, object: ObjectId) -> bool {
+        let Some(p) = self.as_permanent(object) else {
+            return false;
+        };
+        !p.phased_out && self.effective_types(object).intersects(TypeSet::ARTIFACT)
+    }
+
     /// The mana `player` could produce right now: their pool plus free taps, then a fixed-point
     /// over paid tap-for-mana abilities (filter lands, karoos, signets) — each unused permanent's
     /// paid ability is included only when the running estimate can pay its activation cost, via
