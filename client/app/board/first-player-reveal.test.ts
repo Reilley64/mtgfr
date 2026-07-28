@@ -34,6 +34,11 @@ describe("revealSlot", () => {
   it("falls back to seat order for a spectator", () => {
     expect(revealSlot(2, 255, 4)).toBe(2);
   });
+
+  it("clamps count to avoid NaN", () => {
+    expect(revealSlot(0, 0, 0)).toBe(0);
+    expect(revealSlot(1, 0, 0)).toBe(0);
+  });
 });
 
 describe("one-shot storage", () => {

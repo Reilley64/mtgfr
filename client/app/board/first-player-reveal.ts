@@ -14,8 +14,9 @@ export const REVEAL_HOLD_REDUCED_MS = 1200;
 
 /** Screen slot for a seat, matching the board's viewer-relative 2×2 quadrants. */
 export function revealSlot(seat: number, viewer: number, count: number): number {
-  const anchor = viewer < count ? viewer : 0;
-  return (seat - anchor + count) % count;
+  const seatCount = Math.max(1, count);
+  const anchor = viewer < seatCount ? viewer : 0;
+  return (seat - anchor + seatCount) % seatCount;
 }
 
 /** Hop schedule: laps around the table decelerating onto the winner's slot. */
