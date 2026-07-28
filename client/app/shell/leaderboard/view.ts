@@ -1,7 +1,7 @@
 import { Submodel } from "foldkit";
 import { type Html, html } from "foldkit/html";
 import type { AppChromeMeta } from "../../domain/ui/app-version";
-import { buttonClass } from "../../domain/ui/buttonClass";
+import { button } from "../../domain/ui/button";
 import { alertClass, listRowClass } from "../../domain/ui/surfaces";
 import type { ClosedAccountMenu, GotAuthMessage, ToggledAccountMenu } from "../../messages";
 import { HomeRoute, routePath } from "../../routes";
@@ -68,7 +68,7 @@ export const view = Submodel.defineView<LeaderboardSubmodel, ViewMessage, ViewIn
     atmosphere: "shell",
     title: "Leaderboard",
     chrome,
-    leading: h.a([h.Href(routePath(HomeRoute())), h.Class(buttonClass("ghost"))], ["Play"]),
+    leading: button(h, { as: "a", href: routePath(HomeRoute()), variant: "ghost" }, ["Play"]),
     trailing: accountChrome(h, {
       username,
       gravatarHash: meGravatarHash,
@@ -91,25 +91,27 @@ export const view = Submodel.defineView<LeaderboardSubmodel, ViewMessage, ViewIn
               : null,
             ...model.entries.map(row),
             canLoadMore
-              ? h.button(
-                  [
-                    h.Type("button"),
-                    h.DataAttribute("testid", "leaderboard-load-more"),
-                    h.OnClick(RequestedLeaderboardNextPage()),
-                    h.Class(buttonClass("ghost", "mt-md self-start")),
-                    h.Disabled(model.status === "loading"),
-                  ],
+              ? button(
+                  h,
+                  {
+                    testId: "leaderboard-load-more",
+                    onClick: RequestedLeaderboardNextPage(),
+                    variant: "ghost",
+                    class: "mt-md self-start",
+                    disabled: model.status === "loading",
+                  },
                   [model.status === "loading" ? "Loading..." : "Load more"],
                 )
               : null,
             model.status === "error"
-              ? h.button(
-                  [
-                    h.Type("button"),
-                    h.DataAttribute("testid", "leaderboard-try-again"),
-                    h.OnClick(RequestedLeaderboardRefresh()),
-                    h.Class(buttonClass("ghost", "mt-md self-start")),
-                  ],
+              ? button(
+                  h,
+                  {
+                    testId: "leaderboard-try-again",
+                    onClick: RequestedLeaderboardRefresh(),
+                    variant: "ghost",
+                    class: "mt-md self-start",
+                  },
                   ["Try again"],
                 )
               : null,

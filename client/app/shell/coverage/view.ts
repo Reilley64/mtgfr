@@ -1,7 +1,7 @@
 import { Submodel } from "foldkit";
 import { type Html, html } from "foldkit/html";
 import { type AppChromeMeta, formatFaithfulPercent } from "../../domain/ui/app-version";
-import { buttonClass } from "../../domain/ui/buttonClass";
+import { button } from "../../domain/ui/button";
 import { alertClass, fieldClass, listRowClass } from "../../domain/ui/surfaces";
 import type { ClosedAccountMenu, GotAuthMessage, ToggledAccountMenu } from "../../messages";
 import { HomeRoute, routePath } from "../../routes";
@@ -113,7 +113,7 @@ export const view = Submodel.defineView<CoverageSubmodel, ViewMessage, ViewInput
     ),
     chrome,
     lockStageScroll: true,
-    leading: h.a([h.Href(routePath(HomeRoute())), h.Class(buttonClass("ghost"))], ["Play"]),
+    leading: button(h, { as: "a", href: routePath(HomeRoute()), variant: "ghost" }, ["Play"]),
     trailing: accountChrome(h, {
       username,
       gravatarHash: meGravatarHash,
@@ -174,13 +174,14 @@ export const view = Submodel.defineView<CoverageSubmodel, ViewMessage, ViewInput
               ? h.div([h.Class("text-label text-lichen"), h.DataAttribute("testid", "coverage-empty")], [emptyCopy])
               : null,
             model.status === "error"
-              ? h.button(
-                  [
-                    h.Type("button"),
-                    h.DataAttribute("testid", "coverage-try-again"),
-                    h.OnClick(RequestedCoverageRefresh()),
-                    h.Class(buttonClass("ghost", "mt-md self-start")),
-                  ],
+              ? button(
+                  h,
+                  {
+                    testId: "coverage-try-again",
+                    onClick: RequestedCoverageRefresh(),
+                    variant: "ghost",
+                    class: "mt-md self-start",
+                  },
                   ["Try again"],
                 )
               : null,

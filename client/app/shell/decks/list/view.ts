@@ -4,7 +4,7 @@ import { type Html, html } from "foldkit/html";
 import * as Mount from "foldkit/mount";
 import { cn } from "../../../domain/cn";
 import type { AppChromeMeta } from "../../../domain/ui/app-version";
-import { buttonClass } from "../../../domain/ui/buttonClass";
+import { button } from "../../../domain/ui/button";
 import { confirmDialog } from "../../../domain/ui/confirmDialog";
 import { alertClass, fieldClass, listRowClass } from "../../../domain/ui/surfaces";
 import type { CardArtTick, DeckCardFlipTick, GotAuthMessage, ModalOpened } from "../../../messages";
@@ -252,8 +252,9 @@ export const view = Submodel.defineView<DeckListSubmodel, ViewMessage, ViewInput
                       [h.Class("m-0 max-w-[34rem] text-label text-lichen")],
                       ["Create a deck, choose a commander, then use it to host or join a table."],
                     ),
-                    h.a(
-                      [h.Href(routePath(NewDeckRoute())), h.Class(buttonClass("primary", "mt-xs no-underline"))],
+                    button(
+                      h,
+                      { as: "a", href: routePath(NewDeckRoute()), variant: "primary", class: "mt-xs no-underline" },
                       ["Create a deck"],
                     ),
                   ],
