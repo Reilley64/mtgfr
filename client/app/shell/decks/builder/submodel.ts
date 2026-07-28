@@ -86,7 +86,10 @@ export const BuilderPrintPicker = S.Struct({
   addOnPick: S.Boolean,
   cardId: S.String,
   error: S.Boolean,
-  loading: S.Boolean,
+  /** URL of the printings page in flight, or null when every page has landed. Prints arrive a page
+   *  at a time and append, so this doubles as the "still loading" flag and as the token that tells
+   *  this picker's pages apart from a previous picker's still-in-flight chain. */
+  pendingPage: S.NullOr(S.String),
   prints: S.Array(ScryfallPrintSchema),
 });
 export type BuilderPrintPicker = typeof BuilderPrintPicker.Type;

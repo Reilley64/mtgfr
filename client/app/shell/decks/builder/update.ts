@@ -14,7 +14,7 @@ import {
 import { lookupCardsByIds } from "../../../domain/deck-builder/lookup-cards";
 import { commanderMenuItems, poolMenuItems, rowMenuItems } from "../../../domain/deck-builder/menu";
 import { commanderPrintForRow, reconcileEntries } from "../../../domain/deck-builder/print";
-import { searchPrints } from "../../../domain/deck-builder/scryfall";
+import { printSearchUrl, searchPrintPage } from "../../../domain/deck-builder/scryfall";
 import {
   type DeckCardEntry,
   SaveDeckRequest,
@@ -98,14 +98,16 @@ export const HydrateBuilderCards = Command.define(
   }),
 );
 
+/** Fetches one page of printings. The update re-issues this for `nextPage` until there is none,
+ *  so a card with hundreds of printings shows its first 175 while the rest are still arriving. */
 export const SearchBuilderPrints = Command.define(
   "SearchBuilderPrints",
-  { cardId: S.String },
+  { cardId: S.String, url: S.String },
   ReceivedBuilderPrints,
   BuilderPrintSearchFailed,
-)(({ cardId }) =>
-  searchPrints(cardId).pipe(
-    Effect.map((prints) => ReceivedBuilderPrints({ cardId, prints })),
+)(({ cardId, url }) =>
+  searchPrintPage(url).pipe(
+    Effect.map(({ nextPage, prints }) => ReceivedBuilderPrints({ cardId, nextPage, prints, url })),
     Effect.catch(() => Effect.succeed(BuilderPrintSearchFailed({ cardId }))),
   ),
 );
@@ -323,6 +325,7 @@ function closeDiscardConfirm(model: DeckBuilderSubmodel): UpdateReturn {
 /** Opens the print picker on a card and starts its search. Closes the context menu it came from. */
 function openPrintPicker(model: DeckBuilderSubmodel, args: { addOnPick: boolean; cardId: string }): UpdateReturn {
   const [printDialog, commands] = Dialog.open(model.printDialog);
+  const url = printSearchUrl(args.cardId);
   return [
     {
       ...model,
@@ -332,9 +335,9 @@ function openPrintPicker(model: DeckBuilderSubmodel, args: { addOnPick: boolean;
       // is rebuilt each time the picker opens — also resetting it to the top.
       // ponytail: rotating the device with the picker open misaligns rows until it is reopened.
       printGrid: VirtualList.init({ id: PRINT_GRID_ID, rowHeightPx: printGridRowHeightPx(viewportWidthPx()) }),
-      printPicker: { addOnPick: args.addOnPick, cardId: args.cardId, error: false, loading: true, prints: [] },
+      printPicker: { addOnPick: args.addOnPick, cardId: args.cardId, error: false, pendingPage: url, prints: [] },
     },
-    [...Command.mapMessages(commands, toPrintDialogMessage), SearchBuilderPrints({ cardId: args.cardId })],
+    [...Command.mapMessages(commands, toPrintDialogMessage), SearchBuilderPrints({ cardId: args.cardId, url })],
   ];
 }
 
@@ -436,19 +439,24 @@ export const update = (
         ];
       },
       OpenedBuilderPrintPicker: ({ addOnPick, cardId }) => openPrintPicker(model, { addOnPick, cardId }),
-      ReceivedBuilderPrints: ({ cardId, prints }) => {
-        if (model.printPicker?.cardId !== cardId) return [model, []];
+      // Pages append, and the next one is asked for only once this one is in the model, so a picker
+      // that was closed and reopened cannot have a stale chain still feeding it.
+      ReceivedBuilderPrints: ({ cardId, nextPage, prints, url }) => {
+        const picker = model.printPicker;
+        if (picker?.cardId !== cardId || picker.pendingPage !== url) return [model, []];
         return [
           {
             ...model,
-            printPicker: { ...model.printPicker, error: false, loading: false, prints: [...prints] },
+            printPicker: { ...picker, error: false, pendingPage: nextPage, prints: [...picker.prints, ...prints] },
           },
-          [],
+          nextPage === null ? [] : [SearchBuilderPrints({ cardId, url: nextPage })],
         ];
       },
+      // Pages that already landed stay on screen — a later page failing should not empty the picker.
+      // ponytail: the picker then shows a short list with no hint that it is short.
       BuilderPrintSearchFailed: ({ cardId }) => {
         if (model.printPicker?.cardId !== cardId) return [model, []];
-        return [{ ...model, printPicker: { ...model.printPicker, error: true, loading: false, prints: [] } }, []];
+        return [{ ...model, printPicker: { ...model.printPicker, error: true, pendingPage: null } }, []];
       },
       PickedBuilderPrint: ({ cardId, print }) => closePrintPicker(pickPrint(model, cardId, print)),
       // Escape, a backdrop click, and Close all reach here as Dialog's Closed out-message.

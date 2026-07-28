@@ -6,7 +6,7 @@ import { Story } from "foldkit";
 import { Scene } from "foldkit/test";
 import { expect, test } from "vitest";
 import { PAGE } from "../../../domain/deck-builder/cards";
-import type { ScryfallPrint } from "../../../domain/deck-builder/scryfall";
+import { printSearchUrl, type ScryfallPrint } from "../../../domain/deck-builder/scryfall";
 import { client } from "../../../domain/rpc-client";
 import { BindCardArt } from "../../../domain/ui/card-art";
 import { type CatalogCard, CreateDeck422, type SaveDeckRequest } from "../../../domain/wire/types";
@@ -18,6 +18,7 @@ import {
   ActivatedBuilderTarget,
   AddedBuilderCard,
   type Message as BuilderMessage,
+  BuilderPrintSearchFailed,
   ChangedBuilderName,
   ClearedBuilderHover,
   ConfirmedBuilderDiscard,
@@ -127,6 +128,12 @@ function print(overrides: Partial<ScryfallPrint> = {}): ScryfallPrint {
   };
 }
 
+/** A printings page answering the picker's first request — `url` has to match what the picker is
+ *  waiting on, or it treats the page as a leftover from a picker that has already closed. */
+function printsPage(cardId: string, prints: ScryfallPrint[], nextPage: string | null = null) {
+  return ReceivedBuilderPrints({ cardId, nextPage, prints, url: printSearchUrl(cardId) });
+}
+
 test("GotDeckBuilderMessage updates the builder through the parent update", () => {
   const [model] = init();
 
@@ -169,7 +176,7 @@ test("UrlChanged to DeckRoute resets stale builder state through the parent rout
           offset: 50,
           pool: [staleCard],
           preferredPrint: { [staleCard.id]: staleCard.default_print },
-          printPicker: { addOnPick: false, cardId: staleCard.id, error: false, loading: false, prints: [] },
+          printPicker: { addOnPick: false, cardId: staleCard.id, error: false, pendingPage: null, prints: [] },
           problems: ["Could not save the deck."],
           query: "mana",
           saving: true,
@@ -240,10 +247,7 @@ test("picking a print for a commander-only card updates commander art", () => {
     Story.message(appMessage(SetBuilderCommander({ card: commander }))),
     Story.message(appMessage(OpenedBuilderPrintPicker({ addOnPick: false, cardId: "commander" }))),
     Story.Command.resolve(Dialog.ShowDialog, Dialog.CompletedShowDialog()),
-    Story.Command.resolve(
-      SearchBuilderPrints,
-      ReceivedBuilderPrints({ cardId: "commander", prints: [alternatePrint] }),
-    ),
+    Story.Command.resolve(SearchBuilderPrints, printsPage("commander", [alternatePrint])),
     Story.message(appMessage(PickedBuilderPrint({ cardId: "commander", print: alternatePrint.id }))),
     Story.Command.resolve(Dialog.CloseDialog, Dialog.CompletedCloseDialog()),
     Story.model((m) => {
@@ -267,7 +271,7 @@ test("picking a print for a deck row updates preferredPrint and the entry print"
     Story.message(appMessage(AddedBuilderCard({ card: solRing }))),
     Story.message(appMessage(OpenedBuilderPrintPicker({ addOnPick: false, cardId: "sol-ring" }))),
     Story.Command.resolve(Dialog.ShowDialog, Dialog.CompletedShowDialog()),
-    Story.Command.resolve(SearchBuilderPrints, ReceivedBuilderPrints({ cardId: "sol-ring", prints: [alternatePrint] })),
+    Story.Command.resolve(SearchBuilderPrints, printsPage("sol-ring", [alternatePrint])),
     Story.message(appMessage(PickedBuilderPrint({ cardId: "sol-ring", print: alternatePrint.id }))),
     Story.Command.resolve(Dialog.CloseDialog, Dialog.CompletedCloseDialog()),
     Story.model((m) => {
@@ -334,7 +338,7 @@ test("print picker freezes catalog and decklist scroll while print grid stays sc
     preferredPrint: { "sol-ring": solRing.default_print },
     printDialog: Dialog.init({ id: PRINT_DIALOG_ID, isOpen: true }),
     printGrid: measuredPrintGrid(),
-    printPicker: { addOnPick: false, cardId: "sol-ring", error: false, loading: false, prints: [alternatePrint] },
+    printPicker: { addOnPick: false, cardId: "sol-ring", error: false, pendingPage: null, prints: [alternatePrint] },
   };
 
   Scene.scene(
@@ -373,7 +377,7 @@ test("clicking the dimmed page behind the print picker dismisses it and unfreeze
     preferredPrint: { "sol-ring": solRing.default_print },
     printDialog: Dialog.init({ id: PRINT_DIALOG_ID, isOpen: true }),
     printGrid: measuredPrintGrid(),
-    printPicker: { addOnPick: false, cardId: "sol-ring", error: false, loading: false, prints: [alternatePrint] },
+    printPicker: { addOnPick: false, cardId: "sol-ring", error: false, pendingPage: null, prints: [alternatePrint] },
   };
 
   Scene.scene(
@@ -408,7 +412,7 @@ test("the print picker's Close button dismisses it", () => {
     preferredPrint: { "sol-ring": solRing.default_print },
     printDialog: Dialog.init({ id: PRINT_DIALOG_ID, isOpen: true }),
     printGrid: measuredPrintGrid(),
-    printPicker: { addOnPick: false, cardId: "sol-ring", error: false, loading: false, prints: [alternatePrint] },
+    printPicker: { addOnPick: false, cardId: "sol-ring", error: false, pendingPage: null, prints: [alternatePrint] },
   };
 
   Scene.scene(
@@ -439,7 +443,7 @@ test("print selection renders a Scryfall tile picker instead of a UUID input", (
     preferredPrint: { "sol-ring": solRing.default_print },
     printDialog: Dialog.init({ id: PRINT_DIALOG_ID, isOpen: true }),
     printGrid: measuredPrintGrid(),
-    printPicker: { addOnPick: false, cardId: "sol-ring", error: false, loading: false, prints: [alternatePrint] },
+    printPicker: { addOnPick: false, cardId: "sol-ring", error: false, pendingPage: null, prints: [alternatePrint] },
   };
 
   Scene.scene(
@@ -475,7 +479,7 @@ test("a card with hundreds of printings paints a screenful of tiles, not all of 
     atEnd: true,
     printDialog: Dialog.init({ id: PRINT_DIALOG_ID, isOpen: true }),
     printGrid: measuredPrintGrid(),
-    printPicker: { addOnPick: false, cardId: "island", error: false, loading: false, prints },
+    printPicker: { addOnPick: false, cardId: "island", error: false, pendingPage: null, prints },
   };
 
   Scene.scene(
@@ -490,6 +494,130 @@ test("a card with hundreds of printings paints a screenful of tiles, not all of 
     Scene.expectAll(Scene.all.selector('[data-testid^="print-tile-"]')).toHaveCount(16),
     Scene.expect(Scene.selector('[data-testid="print-tile-p-0"]')).toExist(),
     Scene.expect(Scene.selector('[data-testid="print-tile-p-399"]')).not.toExist(),
+  );
+});
+
+test("the first page of printings lands and the next one is fetched after it", () => {
+  const firstPage = [print({ id: "island-a" })];
+  const [next, commands] = builderUpdate(
+    {
+      ...initialDeckBuilderSubmodel(),
+      printPicker: {
+        addOnPick: false,
+        cardId: "island",
+        error: false,
+        pendingPage: printSearchUrl("island"),
+        prints: [],
+      },
+    },
+    printsPage("island", firstPage, "https://api.scryfall.com/page-2"),
+  );
+
+  expect(next.printPicker?.prints).toEqual(firstPage);
+  expect(next.printPicker?.pendingPage).toBe("https://api.scryfall.com/page-2");
+  expect(commands).toMatchObject([
+    { name: "SearchBuilderPrints", args: { cardId: "island", url: "https://api.scryfall.com/page-2" } },
+  ]);
+});
+
+test("printings show as soon as the first page lands, while later pages are still in flight", () => {
+  const model = {
+    ...initialDeckBuilderSubmodel(),
+    atEnd: true,
+    printDialog: Dialog.init({ id: PRINT_DIALOG_ID, isOpen: true }),
+    printGrid: measuredPrintGrid(),
+    printPicker: {
+      addOnPick: false,
+      cardId: "island",
+      error: false,
+      pendingPage: "https://api.scryfall.com/page-2",
+      prints: [print({ id: "island-a" })],
+    },
+  };
+
+  Scene.scene(
+    { update: builderUpdate, view: (model) => builderView(model, emptyViewInputs) },
+    Scene.with(model),
+    observePoolWidth,
+    Scene.Mount.resolve(BindCardArt, ClearedBuilderHover() as never),
+    Scene.expect(Scene.selector('[data-testid="print-tile-island-a"]')).toExist(),
+    Scene.expect(Scene.selector('[data-testid="print-skeleton"]')).not.toExist(),
+  );
+});
+
+test("later pages of printings append to the ones already shown", () => {
+  const [model] = init();
+  const island = card({ id: "island", kind: { kind: "land", colors: [1] }, name: "Island" });
+  const secondPage = ReceivedBuilderPrints({
+    cardId: "island",
+    nextPage: null,
+    prints: [print({ id: "island-b" })],
+    url: "https://api.scryfall.com/page-2",
+  });
+
+  Story.story(
+    appUpdate,
+    Story.with(model),
+    Story.message(appMessage(ReceivedBuilderSearchPage({ cards: [island], offset: 0, query: "" }))),
+    Story.message(appMessage(OpenedBuilderPrintPicker({ addOnPick: false, cardId: "island" }))),
+    Story.Command.resolve(Dialog.ShowDialog, Dialog.CompletedShowDialog()),
+    Story.Command.resolve(
+      SearchBuilderPrints,
+      printsPage("island", [print({ id: "island-a" })], "https://api.scryfall.com/page-2"),
+    ),
+    Story.Command.resolve(SearchBuilderPrints, secondPage),
+    Story.model((m) => {
+      expect(m.decks.builder.printPicker?.prints.map((p) => p.id)).toEqual(["island-a", "island-b"]);
+      expect(m.decks.builder.printPicker?.pendingPage).toBeNull();
+    }),
+  );
+});
+
+test("a page left over from a picker that was closed and reopened is dropped", () => {
+  const [next, commands] = builderUpdate(
+    {
+      ...initialDeckBuilderSubmodel(),
+      printPicker: {
+        addOnPick: false,
+        cardId: "island",
+        error: false,
+        pendingPage: printSearchUrl("island"),
+        prints: [],
+      },
+    },
+    // Page 2 of the run before the reopen: the picker is back on page 1 and is not waiting for it.
+    ReceivedBuilderPrints({
+      cardId: "island",
+      nextPage: null,
+      prints: [print({ id: "stale" })],
+      url: "https://api.scryfall.com/page-2",
+    }),
+  );
+
+  expect(next.printPicker?.prints).toEqual([]);
+  expect(next.printPicker?.pendingPage).toBe(printSearchUrl("island"));
+  expect(commands).toEqual([]);
+});
+
+test("a failed page leaves the printings that already arrived on screen", () => {
+  const [model] = init();
+  const island = card({ id: "island", kind: { kind: "land", colors: [1] }, name: "Island" });
+
+  Story.story(
+    appUpdate,
+    Story.with(model),
+    Story.message(appMessage(ReceivedBuilderSearchPage({ cards: [island], offset: 0, query: "" }))),
+    Story.message(appMessage(OpenedBuilderPrintPicker({ addOnPick: false, cardId: "island" }))),
+    Story.Command.resolve(Dialog.ShowDialog, Dialog.CompletedShowDialog()),
+    Story.Command.resolve(
+      SearchBuilderPrints,
+      printsPage("island", [print({ id: "island-a" })], "https://api.scryfall.com/page-2"),
+    ),
+    Story.Command.resolve(SearchBuilderPrints, BuilderPrintSearchFailed({ cardId: "island" })),
+    Story.model((m) => {
+      expect(m.decks.builder.printPicker?.prints.map((p) => p.id)).toEqual(["island-a"]);
+      expect(m.decks.builder.printPicker?.pendingPage).toBeNull();
+    }),
   );
 });
 
@@ -689,14 +817,14 @@ test("choose-print menu action opens the print picker without adding a copy", ()
       ),
     ),
     Story.Command.resolve(Dialog.ShowDialog, Dialog.CompletedShowDialog()),
-    Story.Command.resolve(SearchBuilderPrints, ReceivedBuilderPrints({ cardId: "sol-ring", prints: [] })),
+    Story.Command.resolve(SearchBuilderPrints, printsPage("sol-ring", [])),
     Story.model((m) => {
       expect(m.decks.builder.menu).toBeNull();
       expect(m.decks.builder.printPicker).toEqual({
         addOnPick: false,
         cardId: "sol-ring",
         error: false,
-        loading: false,
+        pendingPage: null,
         prints: [],
       });
       expect(m.decks.builder.entries["sol-ring"]?.count).toBe(1);
