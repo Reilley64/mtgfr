@@ -77,8 +77,8 @@ and applies its cva recipe automatically.
 - **Wrapper vs class helper.** If `@foldkit/ui` provides a primitive, `domain/ui/`
   exports a **component function** and its recipe is module-private. If it does not —
   `panelClass`, `listRowClass`, `alertClass`, `appVersionClass` style plain
-  containers with no interactive behavior — it stays a **class helper**, converted to
-  cva internally. One answer per question, not per file.
+  containers with no interactive behavior — it stays a **class helper** on `cn`, and
+  reaches for cva only once it grows a variant. One answer per question, not per file.
 - **`buttonClass` / `gameButtonClass` are deleted** in W1, not deprecated, so call
   sites cannot drift back. Anchors that borrow button chrome
   (`shell/coverage/view.ts:116`, `shell/leaderboard/view.ts:71`) use an `as: "a"`
@@ -160,8 +160,9 @@ Dialog renders **inline** through `h.submodel` on a native `<dialog>` opened wit
 Add `@foldkit/ui@0.132.0`. Add `recipe.ts` plus `button` and `input` wrappers.
 The other eight pure-view primitives wait for a consumer: `textarea`, `select`,
 `checkbox`, `switch`, `radioGroup`, and `disclosure` have zero call sites today,
-and `nav` / `fieldset` have one each. Convert `surfaces.ts` helpers to cva
-internally (API unchanged). Migrate 47 `buttonClass` / `gameButtonClass` sites
+and `nav` / `fieldset` have one each. `surfaces.ts` stays on `cn`: its helpers
+have no variants, so a cva wrapper would produce exactly what `cn` already
+produces. Migrate 47 `buttonClass` / `gameButtonClass` sites
 across 19 files and the 12 `h.input` sites
 (`shell/auth/view.ts`, `shell/decks/builder/view.ts`, `board/html/prompts.ts`).
 Delete `buttonClass` / `gameButtonClass`. New indexed surface spec for
