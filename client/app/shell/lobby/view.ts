@@ -5,8 +5,9 @@ import type { BuilderCatalogCard } from "../../domain/deck-builder/cards";
 import type { AppChromeMeta } from "../../domain/ui/app-version";
 import { button } from "../../domain/ui/button";
 import type { CardArtTick } from "../../domain/ui/card-art";
+import { input } from "../../domain/ui/input";
 import { seatFace } from "../../domain/ui/seat-face";
-import { alertClass, fieldClass, panelClass } from "../../domain/ui/surfaces";
+import { alertClass, panelClass } from "../../domain/ui/surfaces";
 import type { DeckSummary } from "../../domain/wire/types";
 import type { ClosedAccountMenu, GotAuthMessage, ToggledAccountMenu } from "../../messages";
 import { HomeRoute, routePath } from "../../routes";
@@ -172,16 +173,15 @@ function entrySurface(
               h.div(
                 [h.Class("flex flex-wrap items-center gap-sm")],
                 [
-                  h.input([
-                    h.Id("table-code"),
-                    h.DataAttribute("testid", "lobby-join-code"),
-                    h.Placeholder("Table code"),
-                    h.Value(model.code),
-                    h.OnInput((code) => ChangedLobbyCode({ code })),
-                    h.Autocomplete("off"),
-                    h.Spellcheck(false),
-                    h.Class(fieldClass("min-w-[10rem] flex-1")),
-                  ]),
+                  input(h, {
+                    id: "table-code",
+                    testId: "lobby-join-code",
+                    placeholder: "Table code",
+                    value: model.code,
+                    onInput: (code) => ChangedLobbyCode({ code }),
+                    class: "min-w-[10rem] flex-1",
+                    attrs: [h.Autocomplete("off"), h.Spellcheck(false)],
+                  }),
                   button(
                     h,
                     {
@@ -343,12 +343,12 @@ function tableLobby(
         ],
       ),
       model.clipboardFallback
-        ? h.input([
-            h.Id("share-code"),
-            h.Readonly(true),
-            h.Value(model.tableId ?? ""),
-            h.Class(fieldClass("w-[120px] text-chip tracking-[0.06em]")),
-          ])
+        ? input(h, {
+            id: "share-code",
+            value: model.tableId ?? "",
+            class: "w-[120px] text-chip tracking-[0.06em]",
+            attrs: [h.Readonly(true)],
+          })
         : null,
       seats(model),
       !joined && model.view != null && !model.view.started

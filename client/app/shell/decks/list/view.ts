@@ -6,7 +6,8 @@ import { cn } from "../../../domain/cn";
 import type { AppChromeMeta } from "../../../domain/ui/app-version";
 import { button } from "../../../domain/ui/button";
 import { confirmDialog } from "../../../domain/ui/confirmDialog";
-import { alertClass, fieldClass, listRowClass } from "../../../domain/ui/surfaces";
+import { input } from "../../../domain/ui/input";
+import { alertClass, listRowClass } from "../../../domain/ui/surfaces";
 import type { CardArtTick, DeckCardFlipTick, GotAuthMessage, ModalOpened } from "../../../messages";
 import { DeckRoute, NewDeckRoute, PlayRoute, routePath } from "../../../routes";
 import type { ClosedAccountMenu, ToggledAccountMenu } from "../../account-chrome/messages";
@@ -217,15 +218,16 @@ export const view = Submodel.defineView<DeckListSubmodel, ViewMessage, ViewInput
             model.error == null ? null : h.div([h.Role("alert"), h.Class(alertClass())], [model.error]),
             model.loading ? h.div([h.Class("text-label text-lichen")], ["Loading decks…"]) : null,
             !model.loading && model.decks.length > 0
-              ? h.input([
-                  h.Type("search"),
-                  h.DataAttribute("testid", "deck-list-search"),
-                  h.AriaLabel("Search decks"),
-                  h.Placeholder("Search decks…"),
-                  h.Value(model.searchQuery),
-                  h.OnInput((value) => ChangedDeckListSearch({ query: value })),
-                  h.Class(fieldClass("mb-md w-full")),
-                ])
+              ? input(h, {
+                  id: "deck-list-search",
+                  type: "search",
+                  testId: "deck-list-search",
+                  ariaLabel: "Search decks",
+                  placeholder: "Search decks…",
+                  value: model.searchQuery,
+                  onInput: (value) => ChangedDeckListSearch({ query: value }),
+                  class: "mb-md w-full",
+                })
               : null,
             !model.loading && model.decks.length > 0 && visible.length === 0
               ? h.div(

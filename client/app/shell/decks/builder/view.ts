@@ -11,7 +11,8 @@ import type { AppChromeMeta } from "../../../domain/ui/app-version";
 import { button } from "../../../domain/ui/button";
 import { cardArt } from "../../../domain/ui/card-art";
 import { confirmDialog, OpenDialogAsModal } from "../../../domain/ui/confirmDialog";
-import { alertClass, fieldClass } from "../../../domain/ui/surfaces";
+import { input } from "../../../domain/ui/input";
+import { alertClass } from "../../../domain/ui/surfaces";
 import type {
   CardArtTick,
   ClosedAccountMenu,
@@ -459,14 +460,14 @@ export const view = Submodel.defineView<DeckBuilderSubmodel, ViewMessage, ViewIn
               ["Click to add. Right-click or long-press for print and other options. Only basics may exceed one copy."],
             ),
             h.label([h.Class("sr-only"), h.For("pool-search")], ["Search card pool"]),
-            h.input([
-              h.Id("pool-search"),
-              h.Type("search"),
-              h.Value(model.query),
-              h.Placeholder("Search name, type, subtype, color, set, tag…"),
-              h.OnInput((query) => ChangedBuilderQuery({ query })),
-              h.Class(fieldClass("mt-2 w-full")),
-            ]),
+            input(h, {
+              id: "pool-search",
+              type: "search",
+              value: model.query,
+              placeholder: "Search name, type, subtype, color, set, tag…",
+              onInput: (query) => ChangedBuilderQuery({ query }),
+              class: "mt-2 w-full",
+            }),
             h.div(
               [
                 h.Class(
@@ -501,13 +502,13 @@ export const view = Submodel.defineView<DeckBuilderSubmodel, ViewMessage, ViewIn
           [h.Class("flex min-h-0 min-w-0 flex-col gap-3")],
           [
             h.label([h.Class("sr-only"), h.For("deck-name")], ["Deck name"]),
-            h.input([
-              h.Id("deck-name"),
-              h.DataAttribute("testid", "deck-name"),
-              h.Value(model.name),
-              h.OnInput((name) => ChangedBuilderName({ name })),
-              h.Class(fieldClass("w-full")),
-            ]),
+            input(h, {
+              id: "deck-name",
+              testId: "deck-name",
+              value: model.name,
+              onInput: (name) => ChangedBuilderName({ name }),
+              class: "w-full",
+            }),
             h.div([h.Class("text-label text-lichen")], ["Commander"]),
             model.commander.id === ""
               ? h.div(
