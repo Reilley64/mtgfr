@@ -101,16 +101,34 @@ function gameState(overrides: Partial<VisibleState> = {}): VisibleState {
 }
 
 describe("first player reveal (submodel)", () => {
+  // Four seats, so a winner on seat 2 is a real quadrant rather than collapsing onto slot 0.
+  const seat = (player: number, username: string) => ({
+    commander_tax: 0,
+    hand_count: 7,
+    library_count: 80,
+    life: 40,
+    lost: false,
+    mana_pool: { any: 0, colored: [0, 0, 0, 0, 0], colorless: 0 },
+    player,
+    username,
+  });
+
   const mulliganFold = (winner: number): GameFoldState => ({
     ...emptyGameFold(),
     seq: 1,
-    state: gameState({ active_player: winner, mulliganing: true, viewer: 0 }),
+    state: gameState({
+      active_player: winner,
+      mulliganing: true,
+      viewer: 0,
+      players: [seat(0, "Alice"), seat(1, "Bob"), seat(2, "Cara"), seat(3, "Dev")],
+    }),
   });
 
   it("arms once per table and steps to the winner", () => {
     sessionStorage.clear();
     const [armed, cmds] = armFirstPlayerReveal(initialBoardModel(), mulliganFold(2), "t-arm");
     expect(armed.firstPlayerReveal?.winner).toBe(2);
+    expect(armed.firstPlayerReveal?.steps.at(-1)?.slot).toBe(2);
     expect(cmds).toHaveLength(1);
 
     const [again, noCmds] = armFirstPlayerReveal(initialBoardModel(), mulliganFold(2), "t-arm");

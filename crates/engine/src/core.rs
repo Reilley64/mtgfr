@@ -1015,11 +1015,13 @@ mod tests {
 
     #[test]
     fn choose_starting_player_is_deterministic_for_a_seed() {
-        let mut a = Game::with_master_seed(4, master(7));
-        let mut b = Game::with_master_seed(4, master(7));
+        let mut a = Game::with_master_seed(4, master(11));
+        let mut b = Game::with_master_seed(4, master(11));
         a.choose_starting_player();
         b.choose_starting_player();
         assert_eq!(a.active_player, b.active_player);
+        // Pinned so the assertion above can't pass by both sides parking at seat 0.
+        assert_eq!(a.active_player, PlayerId(2));
     }
 
     #[test]

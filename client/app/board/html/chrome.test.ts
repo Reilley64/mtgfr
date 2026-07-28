@@ -18,8 +18,15 @@ import { view as appView } from "../../view";
 import { MountBitmapLayer, MountFlightLayer } from "../bitmap/mount";
 import { ZONE } from "../geometry/layout";
 import type { Message } from "../messages";
-import { AltDown, ArtLoaded, BoardCameraZoomed, HintAutoHidden, PriorityElapsed } from "../messages";
-import { type BoardModel, initialBoardModel } from "../submodel";
+import {
+  AltDown,
+  ArtLoaded,
+  BoardCameraZoomed,
+  FirstPlayerRevealFinished,
+  HintAutoHidden,
+  PriorityElapsed,
+} from "../messages";
+import { type BoardModel, initialBoardModel, updateBoard } from "../submodel";
 import { type BoardViewModel, view as boardView } from "../view";
 import { MountBoardAudio, MountHintAutoHide, MountPriorityWatch } from "./audio-mount";
 import { MountBoardCameraGesture } from "./camera-gesture-mount";
@@ -121,6 +128,12 @@ const overlayView = Submodel.defineView<OverlayModel, Message>((model) => {
   if (model.fold.state == null) return h.div([], []);
   return boardOverlays(model.board, model.fold.state, model.tableId, model.fold.log);
 });
+
+/** Real board `update` for scenes that assert what a message does, not just how a model renders. */
+function overlayUpdate(model: OverlayModel, message: Message): [OverlayModel, []] {
+  const [board] = updateBoard(model.board, message, model.fold, model.tableId);
+  return [{ ...model, board }, []];
+}
 
 const fullBoardView = Submodel.defineView<BoardViewModel, Message>(boardView);
 
@@ -303,7 +316,7 @@ test("does not name the winner mid-hop, before the reveal settles", () => {
 
 test("clears the spotlight once the reveal finishes", () => {
   const state = gameState({
-    active_player: 2,
+    active_player: 1,
     mulliganing: true,
     viewer: 0,
     players: [
@@ -311,10 +324,21 @@ test("clears the spotlight once the reveal finishes", () => {
       { ...player(1), hand_kept: false, can_mulligan: true, mulligans_taken: 0 },
     ],
   });
+  const model: OverlayModel = {
+    board: {
+      ...initialBoardModel(),
+      firstPlayerReveal: { winner: 1, steps: [{ slot: 1, delayMs: 0 }], index: 0 },
+    },
+    fold: gameFold(state),
+    tableId: "T1",
+  };
   Scene.scene(
-    { update: (m) => [m, []], view: overlayView },
-    Scene.with({ board: initialBoardModel(), fold: gameFold(state), tableId: "T1" }),
-    Scene.Mount.resolveAll([MountPriorityWatch(), PriorityElapsed({ seconds: 0 })]),
+    { update: overlayUpdate, view: overlayView },
+    Scene.with(model),
+    Scene.expect(Scene.testId("first-player-reveal")).toExist(),
+    // Any pending Mount will do as the courier; the subject is what `FirstPlayerRevealFinished`
+    // does to the board model, not which surface raised it.
+    Scene.Mount.resolveAll([MountPriorityWatch(), FirstPlayerRevealFinished()]),
     Scene.expect(Scene.testId("first-player-reveal")).not.toExist(),
     Scene.expect(Scene.testId("mulligan-keep")).toExist(),
   );
