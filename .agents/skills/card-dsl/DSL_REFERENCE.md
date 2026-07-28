@@ -1650,14 +1650,23 @@ Write one of:
   `PermanentFilter` axis can select it — this reads the card's `CardKind::Spell` directly instead.
 - `{ permanents_destroyed_this_way = <filter (below), default matches all> }` — a "destroyed this
   way" rider count (CR): how many permanents *this same resolution's own* preceding `destroy/all`
-  step destroyed, restricted to `filter` (Ceaseless Conflict's "for each nontoken creature you
-  controlled that was destroyed this way" is `{ permanents_destroyed_this_way = { types =
-  "creature", controller = "you", token = "nontoken" } }`; Culling Ritual's unfiltered "for each
-  permanent destroyed this way" is `{ permanents_destroyed_this_way = {} }`). Resolution-scoped,
-  not a turn tally like `"permanents_died_this_turn"` above — pair with the `destroy/all` step in
-  the same `effects = [...]` sequence (§"effect-sequencing"). Only the `types`/`subtypes`/
-  `controller`/`token` filter axes apply (the destroyed permanents are already off the
-  battlefield by the time this reads them — no live tapped/mv/power context).
+  or `destroy/target` step actually put into a graveyard, restricted to `filter` (Ceaseless
+  Conflict's "for each nontoken creature you controlled that was destroyed this way" is
+  `{ permanents_destroyed_this_way = { types = "creature", controller = "you", token =
+  "nontoken" } }`; Culling Ritual's unfiltered "for each permanent destroyed this way" is
+  `{ permanents_destroyed_this_way = {} }`). Counts what was *buried*, not what was aimed at: an
+  indestructible or regenerated permanent never reaches a graveyard and never counts (Volcanic
+  Eruption's "the number of Mountains put into a graveyard this way").
+  Resolution-scoped, not a turn tally like `"permanents_died_this_turn"` above — pair it with the
+  destroy step somewhere in the same resolution. For `destroy/all` that is the same
+  `effects = [...]` sequence (§"effect-sequencing"); for an `x_scaled` `destroy/target` the payoff
+  must be a **separate `[[abilities]]` block** (Volcanic Eruption, Pest Infestation), because a
+  multi-target ability is expanded into one whole-ability step per chosen target and a shared
+  sequence would re-run the payoff once per target. The count accumulates across those per-target
+  steps. Only the `types`/`subtypes`/`controller`/`token` filter axes apply (the destroyed
+  permanents are already off the battlefield by the time this reads them — no live
+  tapped/mv/power context). `subtypes` reads a land's types too, so
+  `{ subtypes = ["Mountain"] }` matches a destroyed basic Mountain (CR 305.6).
 - `"nonland_cards_exiled_this_way"` — how many *nonland* cards *this same resolution's own*
   preceding `each_player_exiles_from_graveyard` step exiled across every player (Augusta, Order
   Returned's "put that many +1/+1 counters"). Resolution-scoped like `permanents_destroyed_this_way`

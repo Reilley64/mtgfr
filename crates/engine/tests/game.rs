@@ -109611,3 +109611,98 @@ fn living_artifact_stays_quiet_on_an_upkeep_with_no_counters() {
     );
     assert_eq!(g.life(PlayerId(0)), 20, "and no life gained");
 }
+
+/// Volcanic Eruption (2ed): "Destroy X target Mountains. Volcanic Eruption deals damage to each
+/// creature and each player equal to the number of Mountains put into a graveyard this way." The
+/// destroy half is `x_scaled` like Curse of the Swine's; the payoff reads
+/// `Amount::PermanentsDestroyedThisWay`, which now accumulates across the per-target destroy steps
+/// the multi-target expansion produces.
+#[test]
+fn volcanic_eruption_deals_the_mountains_it_buried_to_everything() {
+    let mut game = TestGame::new();
+    // Four on the battlefield, three targeted: with exactly X legal Mountains the choice would be
+    // forced and auto-filled at cast, and this test wants the explicit `ChooseTargets`.
+    let mountains: Vec<ObjectId> = (0..4)
+        .map(|_| game.spawn_on_battlefield(PlayerId(0), card("Mountain")))
+        .collect();
+    let bear = game.spawn_on_battlefield(PlayerId(1), creature("Grizzly Bears", 2, 2, &[]));
+    let eruption = game.spawn_in_hand(PlayerId(0), card("Volcanic Eruption"));
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: eruption,
+        target: None,
+        x: 3,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        multikicker_count: 0,
+        alternative_cost: false,
+    })
+    .expect("castable at X=3 with an empty stack");
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: mountains[..3].iter().map(|&m| Target::Object(m)).collect(),
+    })
+    .expect("three distinct Mountains, exactly X=3");
+
+    resolve_top_of_stack(&mut game);
+
+    for &m in &mountains[..3] {
+        assert_eq!(
+            game.zone_of(m),
+            Zone::Graveyard,
+            "every targeted Mountain is destroyed"
+        );
+    }
+    assert_eq!(
+        game.zone_of(mountains[3]),
+        Zone::Battlefield,
+        "the untargeted Mountain stays"
+    );
+    assert_eq!(
+        game.zone_of(bear),
+        Zone::Graveyard,
+        "3 damage to each creature kills a 2/2"
+    );
+    assert_eq!(
+        game.life(PlayerId(0)),
+        17,
+        "3 damage to its own controller too"
+    );
+    assert_eq!(game.life(PlayerId(1)), 17, "and to each other player");
+}
+
+/// The payoff counts what actually hit a graveyard, not X: with two legal Mountains a cast at X=3
+/// auto-fills the forced pair (CR 601.2c) and deals 2, not 3.
+#[test]
+fn volcanic_eruption_counts_the_mountains_it_hit_not_the_x_it_asked_for() {
+    let mut game = TestGame::new();
+    let mountains: Vec<ObjectId> = (0..2)
+        .map(|_| game.spawn_on_battlefield(PlayerId(0), card("Mountain")))
+        .collect();
+    let bear = game.spawn_on_battlefield(PlayerId(1), creature("Bear Cavalry", 3, 3, &[]));
+    let eruption = game.spawn_in_hand(PlayerId(0), card("Volcanic Eruption"));
+    game.cast(eruption).x(3).resolve();
+
+    for &m in &mountains {
+        assert_eq!(
+            game.zone_of(m),
+            Zone::Graveyard,
+            "both Mountains are destroyed"
+        );
+    }
+    assert_eq!(
+        game.zone_of(bear),
+        Zone::Battlefield,
+        "2 damage doesn't finish a 3/3 — the count is the two Mountains, not X=3"
+    );
+    assert_eq!(game.life(PlayerId(0)), 18, "two Mountains, two damage");
+    assert_eq!(game.life(PlayerId(1)), 18, "two Mountains, two damage");
+}

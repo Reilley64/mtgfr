@@ -348,7 +348,39 @@ impl Game {
         debug_assert!(matches!(effect, DestroyEffect::All { .. }));
         let evs = self.execute_effect(Effect::Destroy(effect), controller, source, target, x);
         self.resolution_frame.destroyed_this_way.clear();
-        for e in &evs {
+        self.record_destroyed_this_way(&evs);
+        self.apply_all(&evs);
+        events.extend(evs);
+    }
+
+    /// Volcanic Eruption: "Destroy X target Mountains. … damage equal to the number of Mountains
+    /// put into a graveyard this way." The targeted twin of [`Game::resolve_destroy_all`] — same
+    /// snapshot, but *accumulating*, because the multi-target expansion in
+    /// [`Game::resolve_spell`] runs one of these steps per chosen target and the payoff clause
+    /// counts all of them. [`Game::resolve_top`] clears the list once per resolution so the
+    /// accumulation starts empty.
+    pub(crate) fn resolve_destroy_target(
+        &mut self,
+        effect: DestroyEffect,
+        controller: PlayerId,
+        source: ObjectId,
+        target: Option<Target>,
+        x: u32,
+        events: &mut Vec<Event>,
+    ) {
+        debug_assert!(matches!(effect, DestroyEffect::Target { .. }));
+        let evs = self.execute_effect(Effect::Destroy(effect), controller, source, target, x);
+        self.record_destroyed_this_way(&evs);
+        self.apply_effect_events_with_replacements(evs, events);
+    }
+
+    /// Snapshot every permanent `evs` actually buried into
+    /// [`ResolutionFrame::destroyed_this_way`](crate::resolution::ResolutionFrame), for
+    /// [`Amount::PermanentsDestroyedThisWay`] to count once the destroy step(s) are done. Read off
+    /// the minted events rather than the effect's targets, so a regenerated or indestructible
+    /// permanent — which mints nothing — is correctly not "put into a graveyard this way".
+    fn record_destroyed_this_way(&mut self, evs: &[Event]) {
+        for e in evs {
             match e.clone() {
                 Event::TokenCeasedToExist {
                     controller: died_controller,
@@ -377,8 +409,6 @@ impl Game {
                 _ => {}
             }
         }
-        self.apply_all(&evs);
-        events.extend(evs);
     }
 
     pub(crate) fn resolve_exile_all(

@@ -414,8 +414,8 @@ fn destroyed_this_way_matches(
     if !filter.types.is_empty() && !filter.types.intersects(printed.kind.types()) {
         return false;
     }
-    if !filter.subtypes.is_empty() && !filter.subtypes.iter().any(|s| printed.subtypes.contains(s))
-    {
+    let subtypes = printed.printed_subtypes();
+    if !filter.subtypes.is_empty() && !filter.subtypes.iter().any(|s| subtypes.contains(s)) {
         return false;
     }
     match filter.controller {

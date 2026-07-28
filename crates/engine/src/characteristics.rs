@@ -1544,10 +1544,7 @@ impl Game {
         // here, the one read every subtype check routes through, so "Destroy all Plains"
         // (Flashfires) catches the basic and every dual that shares the type. A `set_subtypes`
         // layer below still replaces the whole line, land types included (CR 613.4).
-        let mut printed = def.subtypes.to_vec();
-        if let CardKind::Land { subtypes, .. } = def.kind {
-            printed.extend_from_slice(subtypes);
-        }
+        let printed = def.printed_subtypes();
         if self.as_permanent(id).is_none() {
             return printed;
         }

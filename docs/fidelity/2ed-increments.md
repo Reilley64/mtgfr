@@ -1833,7 +1833,7 @@ spelled `you_control_at_least_creatures { count = 2 }`, exact while the Lord is 
 (the only time the trigger resolves) and recorded as a `ponytail:` comment on the card.
 *Cards:* lord_of_the_pit.
 
-### 73. `destroyed-this-way-count-from-targets` — 1 card, M
+### 73. `destroyed-this-way-count-from-targets` — 1 card, M — **done**
 Depends on: nothing.
 Split out of #1, which it never belonged to. Volcanic Eruption: "Destroy X target Mountains. This
 spell deals damage equal to the number of Mountains destroyed this way to each creature and each
@@ -1848,6 +1848,28 @@ response, gained shroud, or regenerated (CR 701.15 — regeneration replaces the
 was not destroyed) makes the two diverge, and this card's whole point is the symmetry between what
 it destroys and what it burns.
 *Cards:* volcanic_eruption.
+
+*Landed:* the sketch held, and cost less than it reads. `resolve_destroy_all` already minted →
+snapshotted → applied; the targeted path was the same three steps minus the snapshot, so the
+snapshot loop moved into `Game::record_destroyed_this_way` and a `Game::resolve_destroy_target`
+twin calls it. The one real difference is *accumulating* rather than clearing: the multi-target
+expansion in `resolve_spell` runs one whole-ability step per chosen target, so X destroys are X
+separate `run` calls and only the resolution boundary knows where the count starts over —
+`resolve_top` clears the list once per stack item, next to where `resolve_spell` already clears
+`returned_nonland_card_mana_value` for the same reason.
+
+Reading the count off the *minted events* rather than the effect's targets is what makes "put into
+a graveyard this way" honest for free: `mint_destroy`'s Target arm returns nothing for an
+indestructible permanent and a `Regenerated` event for a shielded one, so neither reaches the
+`MovedToGraveyard` arm the recorder matches on. No regeneration wiring was needed for that; it
+falls out of where the recording sits.
+
+The card is two `[[abilities]]`, not one Sequence, for Pest Infestation's reason — a shared
+sequence would repeat the damage clause once per Mountain. Its `permanents_destroyed_this_way`
+filter exposed a real gap: `destroyed_this_way_matches` read `CardDef::subtypes`, which never holds
+a *land's* types (those live on `CardKind::Land`, CR 305.6), so a `subtypes = ["Mountain"]` filter
+matched nothing. `Game::effective_subtypes` had already unioned the two halves inline; that union
+became `CardDef::printed_subtypes` and both readers now share it.
 
 ### 77. `state-triggers` — 2 cards, M
 Depends on: nothing.

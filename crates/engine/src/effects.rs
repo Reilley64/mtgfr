@@ -74,6 +74,11 @@ impl Game {
     /// applies incrementally so newly-minted object ids stay in sync with the arena.
     pub(crate) fn resolve_top(&mut self, events: &mut Vec<Event>) {
         let top = self.stack.last().expect("stack is non-empty").clone();
+        // Resolution-scoped scratch, cleared here rather than at each destroy step: a *targeted*
+        // destroy accumulates across the one step per chosen target that `resolve_spell`'s
+        // multi-target expansion produces (Volcanic Eruption), so only the resolution boundary
+        // knows where the count starts over.
+        self.resolution_frame.destroyed_this_way.clear();
         match top {
             StackItem::Spell(object) => self.resolve_spell(object, events),
             StackItem::Ability {
@@ -1144,6 +1149,9 @@ impl Game {
             // (`resolve_destroy_all` / `resolve_exile_all` / `resolve_mill_self`).
             Effect::Destroy(destroy @ DestroyEffect::All { .. }) => {
                 self.resolve_destroy_all(destroy, controller, source, target, x, events)
+            }
+            Effect::Destroy(destroy @ DestroyEffect::Target { .. }) => {
+                self.resolve_destroy_target(destroy, controller, source, target, x, events)
             }
             Effect::Exile(exile @ ExileEffect::All { .. }) => {
                 self.resolve_exile_all(exile, controller, source, target, x, events)

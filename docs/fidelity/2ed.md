@@ -309,7 +309,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Two-Headed Giant of Foriys** {4}{R} · Creature — Giant — increment 11
 - [ ] **Vesuvan Doppelganger** {3}{U}{U} · Creature — Shapeshifter — increment 12
 - [x] **Veteran Bodyguard** {3}{W}{W} · Creature — Human — increment 6b
-- [ ] **Volcanic Eruption** {X}{U}{U}{U} · Sorcery — increment 73
+- [x] **Volcanic Eruption** {X}{U}{U}{U} · Sorcery — increment 73
 - [x] **Wanderlust** {2}{G} · Enchantment — Aura — increment 61
 - [x] **Warp Artifact** {B}{B} · Enchantment — Aura — increment 61
 - [x] **Wild Growth** {G} · Enchantment — Aura — increment 64

@@ -1063,6 +1063,19 @@ pub struct HandActivatedAbility {
 }
 
 impl CardDef {
+    /// Every subtype printed on this card's type line, both halves joined: [`Self::subtypes`] plus
+    /// a land's own [`CardKind::Land::subtypes`] (CR 305.6 — land types are subtypes, they just
+    /// live on the kind). Every `subtypes` axis reads the line through here (or through
+    /// [`Game::effective_subtypes`](crate::Game::effective_subtypes), which layers on top of it),
+    /// so "destroy X target Mountains" and "Treasures you control" are the same check.
+    pub fn printed_subtypes(&self) -> Vec<&'static str> {
+        let mut subtypes = self.subtypes.to_vec();
+        if let CardKind::Land { subtypes: land, .. } = self.kind {
+            subtypes.extend_from_slice(land);
+        }
+        subtypes
+    }
+
     /// This card's mana value (CR 202.3): the total pips in its mana cost — generic plus every
     /// colored, colorless `{C}`, and hybrid `{A/B}` pip. A `{X}` counts as 0 outside the stack
     /// (CR 202.3b), which is exactly how [`Cost`] stores it (the `x` marker adds nothing to the

@@ -3316,6 +3316,55 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
             "a may, and only with a counter there to remove"
         );
 
+        // Volcanic Eruption's two clauses: the destroy half is one `x_scaled` targeted ability,
+        // the damage half a separate one, so the payoff resolves once rather than once per
+        // Mountain.
+        let eruption = get_by_name("Volcanic Eruption").expect("Volcanic Eruption is in the pool");
+        assert_eq!(
+            eruption.abilities[0].effect,
+            Effect::Destroy(DestroyEffect::Target {
+                target: TargetSpec::Permanent(PermanentFilter {
+                    subtypes: &["Mountain"],
+                    ..PermanentFilter::of(TypeSet::NONE)
+                }),
+                count: TargetCount {
+                    min: 1,
+                    max: 1,
+                    x_scaled: true,
+                    ..TargetCount::default()
+                },
+                cant_be_regenerated: false,
+                at: None,
+                attack_rider: AttackRider::Ignore,
+            }),
+            "destroy exactly X target Mountains"
+        );
+        let mountains_destroyed = Amount::PermanentsDestroyedThisWay {
+            filter: PermanentFilter {
+                subtypes: &["Mountain"],
+                ..PermanentFilter::of(TypeSet::NONE)
+            },
+        };
+        assert_eq!(
+            eruption.abilities[1].effect,
+            Effect::Sequence {
+                steps: [
+                    Effect::Damage(DamageEffect::EachCreature {
+                        amount: mountains_destroyed,
+                        opponents_only: false,
+                        filter: None,
+                        include_planeswalkers: false,
+                    }),
+                    Effect::Damage(DamageEffect::EachPlayer {
+                        amount: mountains_destroyed,
+                    }),
+                ]
+                .as_slice()
+                .into(),
+            },
+            "the damage half counts the Mountains actually buried, and hits creatures and players alike"
+        );
+
         // Demonic Tutor's unrestricted search: any card, straight to hand.
         let tutor = get_by_name("Demonic Tutor").expect("Demonic Tutor is in the pool");
         let Effect::Dig(DigEffect::SearchLibrary {

@@ -1,0 +1,45 @@
+# Destroy X target Mountains. Volcanic Eruption deals damage to each creature and each player
+# equal to the number of Mountains put into a graveyard this way.
+name = "Volcanic Eruption"
+otags = ["burn-creature", "burn-player-each", "hate-mountain", "multi-removal", "multiple-targets", "removal-land", "single-target-instant-sorcery", "strive", "sweeper"]
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
+id = "4c15889e-3172-413b-b805-a2b7ad05f636"
+default_print = "6d7c78a4-e3db-42bf-8365-d7a08c26f4a9"
+oracle = "Destroy X target Mountains. Volcanic Eruption deals damage to each creature and each player equal to the number of Mountains put into a graveyard this way."
+
+[cost]
+x = true
+blue = 3
+
+[kind]
+type = "sorcery"
+
+# Destroy X target Mountains.
+[[abilities]]
+timing = "spell"
+
+# Destroy X target Mountains.
+[[abilities.effects]]
+type = "destroy"
+mode = "target"
+target = { permanent = { subtypes = ["Mountain"] } }
+count = { min = 1, max = 1, x_scaled = true }
+
+# The damage half is a second `[[abilities]]` rather than a following step of the destroy ability,
+# for Pest Infestation's reason: a multi-target ability is expanded into one whole-ability step per
+# chosen target, so a shared sequence would deal the damage once per Mountain instead of once.
+[[abilities]]
+timing = "spell"
+
+# Volcanic Eruption deals damage to each creature ... equal to the number of Mountains put into a
+# graveyard this way.
+[[abilities.effects]]
+type = "damage"
+mode = "each_creature"
+amount = { permanents_destroyed_this_way = { subtypes = ["Mountain"] } }
+
+# ... and each player ...
+[[abilities.effects]]
+type = "damage"
+mode = "each_player"
+amount = { permanents_destroyed_this_way = { subtypes = ["Mountain"] } }
