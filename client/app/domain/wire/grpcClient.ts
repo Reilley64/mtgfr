@@ -11,6 +11,7 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as ManagedRuntime from "effect/ManagedRuntime";
 import * as Stream from "effect/Stream";
+import { EXCEPTION_TYPE, RPC_GRPC_STATUS_CODE, rpcAttrs } from "../otel/semconv";
 import {
   AuthServiceClient,
   AuthServiceClientLayer,
@@ -62,6 +63,13 @@ import type {
 
 export const SESSION_METADATA_KEY = "x-session-token";
 export const TRACEPARENT_METADATA_KEY = "traceparent";
+
+const AUTH_SERVICE = "mtgfr.v1.Auth";
+const DECKS_SERVICE = "mtgfr.v1.Decks";
+const RATINGS_SERVICE = "mtgfr.v1.Ratings";
+const CARDS_SERVICE = "mtgfr.v1.Cards";
+const GAME_SERVICE = "mtgfr.v1.Game";
+const TABLES_SERVICE = "mtgfr.v1.Tables";
 
 /**
  * Per-request bag for every BFF → API gRPC call.
@@ -115,6 +123,49 @@ export function toCallError(err: unknown): GrpcCallError {
   return new GrpcCallError("unknown", err instanceof Error ? err.message : String(err));
 }
 
+export function grpcSpanName(service: string, method: string): string {
+  return `${service}/${method}`;
+}
+
+function rpcFailureAttrs(err: unknown): Record<string, string> {
+  const attrs: Record<string, string> = {
+    [EXCEPTION_TYPE]: err instanceof Error && err.name ? err.name : "Error",
+  };
+  if (err instanceof GrpcStatusError.GrpcStatusError) {
+    attrs[RPC_GRPC_STATUS_CODE] = err.code;
+  }
+  return attrs;
+}
+
+function annotateRpcFailure(err: unknown): Effect.Effect<void, never, never> {
+  return Effect.annotateCurrentSpan(rpcFailureAttrs(err));
+}
+
+export function withRpcSpan<A, E, R>(
+  service: string,
+  method: string,
+  operation: Effect.Effect<A, E, R>,
+): Effect.Effect<A, E, R>;
+export function withRpcSpan<A, E, R>(
+  service: string,
+  method: string,
+  operation: Stream.Stream<A, E, R>,
+): Stream.Stream<A, E, R>;
+export function withRpcSpan(
+  service: string,
+  method: string,
+  operation: Effect.Effect<unknown, unknown, unknown> | Stream.Stream<unknown, unknown, unknown>,
+): Effect.Effect<unknown, unknown, unknown> | Stream.Stream<unknown, unknown, unknown> {
+  const name = grpcSpanName(service, method);
+  const attributes = rpcAttrs({ service, method });
+
+  if (Effect.isEffect(operation)) {
+    return operation.pipe(Effect.tapError(annotateRpcFailure), Effect.withSpan(name, { attributes }));
+  }
+
+  return operation.pipe(Stream.tapError(annotateRpcFailure), Stream.withSpan(name, { attributes }));
+}
+
 /** Normalize `host:port` or `http(s)://…` to the `http://host:port` baseUrl effect-grpc expects. */
 export function grpcBaseUrl(address: string): string {
   if (address.startsWith("http://") || address.startsWith("https://")) {
@@ -158,17 +209,29 @@ function runtimeFor(address: string): GrpcRuntime {
   return runtime;
 }
 
-function run<A>(address: string, effect: Effect.Effect<A, unknown, Clients>): Effect.Effect<A, GrpcCallError> {
+function run<A>(
+  address: string,
+  service: string,
+  method: string,
+  effect: Effect.Effect<A, unknown, Clients>,
+): Effect.Effect<A, GrpcCallError> {
   return runtimeFor(address).contextEffect.pipe(
-    Effect.flatMap((context) => Effect.provideContext(effect, context)),
+    Effect.flatMap((context) => withRpcSpan(service, method, Effect.provideContext(effect, context))),
     Effect.mapError(toCallError),
   );
 }
 
-function runStream<A>(address: string, stream: Stream.Stream<A, unknown, Clients>): Stream.Stream<A, GrpcCallError> {
+function runStream<A>(
+  address: string,
+  service: string,
+  method: string,
+  stream: Stream.Stream<A, unknown, Clients>,
+): Stream.Stream<A, GrpcCallError> {
   return Stream.unwrap(
     runtimeFor(address).contextEffect.pipe(
-      Effect.map((context) => stream.pipe(Stream.provideContext(context), Stream.mapError(toCallError))),
+      Effect.map((context) =>
+        withRpcSpan(service, method, stream.pipe(Stream.provideContext(context))).pipe(Stream.mapError(toCallError)),
+      ),
     ),
   );
 }
@@ -251,6 +314,8 @@ export function grpcClient(address: string, outboundTraceparent: string | null =
       signup: (req, sessionToken) =>
         run(
           key,
+          AUTH_SERVICE,
+          "Signup",
           Effect.gen(function* () {
             const auth = yield* AuthServiceClient;
             const res = yield* auth.signup(signupRequestToProto(req), opts(sessionToken));
@@ -261,6 +326,8 @@ export function grpcClient(address: string, outboundTraceparent: string | null =
       login: (req, sessionToken) =>
         run(
           key,
+          AUTH_SERVICE,
+          "Login",
           Effect.gen(function* () {
             const auth = yield* AuthServiceClient;
             const res = yield* auth.login(loginRequestToProto(req), opts(sessionToken));
@@ -271,6 +338,8 @@ export function grpcClient(address: string, outboundTraceparent: string | null =
       logout: (sessionToken) =>
         run(
           key,
+          AUTH_SERVICE,
+          "Logout",
           Effect.gen(function* () {
             const auth = yield* AuthServiceClient;
             yield* auth.logout({}, opts(sessionToken));
@@ -279,6 +348,8 @@ export function grpcClient(address: string, outboundTraceparent: string | null =
       getMe: (sessionToken) =>
         run(
           key,
+          AUTH_SERVICE,
+          "GetMe",
           Effect.gen(function* () {
             const auth = yield* AuthServiceClient;
             return meFromProto(yield* auth.getMe({}, opts(sessionToken)));
@@ -289,6 +360,8 @@ export function grpcClient(address: string, outboundTraceparent: string | null =
       create: (req, sessionToken) =>
         run(
           key,
+          DECKS_SERVICE,
+          "Create",
           Effect.gen(function* () {
             const decks = yield* DecksServiceClient;
             const deck = yield* decks.create(createDeckToProto(req), opts(sessionToken));
@@ -298,6 +371,8 @@ export function grpcClient(address: string, outboundTraceparent: string | null =
       list: (sessionToken) =>
         run(
           key,
+          DECKS_SERVICE,
+          "List",
           Effect.gen(function* () {
             const decks = yield* DecksServiceClient;
             const res = yield* decks.list({}, opts(sessionToken));
@@ -307,6 +382,8 @@ export function grpcClient(address: string, outboundTraceparent: string | null =
       get: (id, sessionToken) =>
         run(
           key,
+          DECKS_SERVICE,
+          "Get",
           Effect.gen(function* () {
             const decks = yield* DecksServiceClient;
             const deck = yield* decks.get({ id: BigInt(id) }, opts(sessionToken));
@@ -316,6 +393,8 @@ export function grpcClient(address: string, outboundTraceparent: string | null =
       update: (id, req, sessionToken) =>
         run(
           key,
+          DECKS_SERVICE,
+          "Update",
           Effect.gen(function* () {
             const decks = yield* DecksServiceClient;
             const deck = yield* decks.update(updateDeckToProto(id, req), opts(sessionToken));
@@ -325,6 +404,8 @@ export function grpcClient(address: string, outboundTraceparent: string | null =
       delete: (id, sessionToken) =>
         run(
           key,
+          DECKS_SERVICE,
+          "Delete",
           Effect.gen(function* () {
             const decks = yield* DecksServiceClient;
             yield* decks.delete({ id: BigInt(id) }, opts(sessionToken));
@@ -335,6 +416,8 @@ export function grpcClient(address: string, outboundTraceparent: string | null =
       getLeaderboard: (req, sessionToken) =>
         run(
           key,
+          RATINGS_SERVICE,
+          "GetLeaderboard",
           Effect.gen(function* () {
             const ratings = yield* RatingsServiceClient;
             const leaderboard = yield* ratings.getLeaderboard(req, opts(sessionToken));
@@ -346,6 +429,8 @@ export function grpcClient(address: string, outboundTraceparent: string | null =
       catalog: () =>
         run(
           key,
+          CARDS_SERVICE,
+          "Catalog",
           Effect.gen(function* () {
             const cards = yield* CardsServiceClient;
             const res = yield* cards.catalog({}, opts(null));
@@ -355,6 +440,8 @@ export function grpcClient(address: string, outboundTraceparent: string | null =
       search: (q, limit, offset) =>
         run(
           key,
+          CARDS_SERVICE,
+          "Search",
           Effect.gen(function* () {
             const cards = yield* CardsServiceClient;
             const res = yield* cards.search({ q, limit, offset }, opts(null));
@@ -364,6 +451,8 @@ export function grpcClient(address: string, outboundTraceparent: string | null =
       lookup: (ids) =>
         run(
           key,
+          CARDS_SERVICE,
+          "Lookup",
           Effect.gen(function* () {
             const cards = yield* CardsServiceClient;
             const res = yield* cards.lookup({ ids }, opts(null));
@@ -375,6 +464,8 @@ export function grpcClient(address: string, outboundTraceparent: string | null =
       submitIntent: (tableId, envelope, sessionToken) =>
         run(
           key,
+          GAME_SERVICE,
+          "SubmitIntent",
           Effect.gen(function* () {
             const game = yield* GameServiceClient;
             const ack = yield* game.submitIntent(
@@ -387,6 +478,8 @@ export function grpcClient(address: string, outboundTraceparent: string | null =
       setYield: (tableId, enabled, sessionToken) =>
         run(
           key,
+          GAME_SERVICE,
+          "SetYield",
           Effect.gen(function* () {
             const game = yield* GameServiceClient;
             const ack = yield* game.setYield({ tableId, enabled }, opts(sessionToken));
@@ -396,6 +489,8 @@ export function grpcClient(address: string, outboundTraceparent: string | null =
       setTurnYield: (tableId, enabled, sessionToken) =>
         run(
           key,
+          GAME_SERVICE,
+          "SetTurnYield",
           Effect.gen(function* () {
             const game = yield* GameServiceClient;
             const ack = yield* game.setTurnYield({ tableId, enabled }, opts(sessionToken));
@@ -405,6 +500,8 @@ export function grpcClient(address: string, outboundTraceparent: string | null =
       setStackDwell: (tableId, dwelling, sessionToken) =>
         run(
           key,
+          GAME_SERVICE,
+          "SetStackDwell",
           Effect.gen(function* () {
             const game = yield* GameServiceClient;
             const ack = yield* game.setStackDwell({ tableId, dwelling }, opts(sessionToken));
@@ -415,6 +512,8 @@ export function grpcClient(address: string, outboundTraceparent: string | null =
         const capturedOpts = opts(sessionToken);
         return runStream(
           key,
+          GAME_SERVICE,
+          "Stream",
           Stream.unwrap(
             Effect.gen(function* () {
               const game = yield* GameServiceClient;
@@ -428,6 +527,8 @@ export function grpcClient(address: string, outboundTraceparent: string | null =
       seed: (req, sessionToken) =>
         run(
           key,
+          TABLES_SERVICE,
+          "Seed",
           Effect.gen(function* () {
             const tables = yield* TablesServiceClient;
             const response = yield* tables.seed(seedRequestToProto(req), opts(sessionToken));

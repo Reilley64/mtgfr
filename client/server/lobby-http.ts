@@ -3,10 +3,63 @@ import { getCookie, type H3Event } from "nitro/h3";
 import { fetchMe, type Me } from "../app/domain/api-upstream-auth";
 import { type LobbySnapshot, sweepWebDb } from "../app/domain/lobby-store";
 import { grpcRequestEnv, runTracedRequest } from "../app/domain/otel";
+import { EXCEPTION_TYPE, HTTP_RESPONSE_STATUS_CODE, httpServerAttrs } from "../app/domain/otel/semconv";
 import type { GrpcRequestEnv } from "../app/domain/wire/grpcClient";
 import { type WebDb, WebDbLive } from "./db/client";
 
 export const SESSION_COOKIE = "session";
+
+export class LobbyDbError extends Error {
+  readonly source: unknown;
+
+  constructor(source: unknown) {
+    super("LobbyDb");
+    this.name = "LobbyDbError";
+    this.source = source;
+  }
+}
+
+export function httpFailureAttrs(err: unknown): Record<string, string> {
+  return {
+    [EXCEPTION_TYPE]: err instanceof Error && err.name ? err.name : "Error",
+  };
+}
+
+function lobbyDbErrorMessage(err: unknown): string {
+  const source = err instanceof LobbyDbError ? err.source : err;
+  if (source instanceof Error) {
+    return (source.message || String(source)).slice(0, 300);
+  }
+  return String(source).slice(0, 300);
+}
+
+function normalizeLobbyFailure(err: unknown): LobbyDbError {
+  return err instanceof LobbyDbError ? err : new LobbyDbError(err);
+}
+
+function annotateHttpFailure(err: unknown): Effect.Effect<void> {
+  return Effect.annotateCurrentSpan(httpFailureAttrs(err));
+}
+
+function lobbyDbResponse(err: LobbyDbError): Response {
+  return json({ error: "LobbyDb", message: lobbyDbErrorMessage(err) }, 500);
+}
+
+function recoverLobbyFailure(err: unknown): Effect.Effect<Response> {
+  const dbErr = normalizeLobbyFailure(err);
+  return Effect.gen(function* () {
+    const response = lobbyDbResponse(dbErr);
+    yield* annotateHttpStatus(response);
+    return response;
+  });
+}
+
+function tracedLobbyBody<A, E, R>(body: Effect.Effect<A, E, R>): Effect.Effect<A, never, R> {
+  return body.pipe(
+    Effect.tapError((err) => annotateHttpFailure(normalizeLobbyFailure(err))),
+    Effect.catch(recoverLobbyFailure),
+  ) as Effect.Effect<A, never, R>;
+}
 
 export function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
@@ -36,9 +89,10 @@ export function unknownLobby(tableId: string): LobbySnapshot {
   return { tableId, hostUserId: 0, startedAt: null, seats: [] };
 }
 
-function lobbyDbErrorMessage(err: unknown): string {
-  if (err instanceof Error) return err.message.slice(0, 300);
-  return String(err).slice(0, 300);
+function annotateHttpStatus(response: Response): Effect.Effect<void> {
+  return Effect.annotateCurrentSpan({
+    [HTTP_RESPONSE_STATUS_CODE]: response.status,
+  });
 }
 
 type LobbyAuthCtx = {
@@ -53,25 +107,26 @@ export async function withLobbyAuth<E>(
 ): Promise<Response> {
   const sessionToken = getCookie(event, SESSION_COOKIE) ?? null;
   const traceparent = event.req.headers.get("traceparent");
-  try {
-    return await runTracedRequest(
-      traceparent,
-      spanName,
+  return runTracedRequest(
+    traceparent,
+    spanName,
+    tracedLobbyBody(
       Effect.gen(function* () {
-        yield* Effect.annotateCurrentSpan({
-          "http.method": event.req.method,
-          "http.route": spanName,
-        });
+        yield* Effect.annotateCurrentSpan(httpServerAttrs({ method: event.req.method, route: spanName }));
         const env = yield* grpcRequestEnv(sessionToken);
         const me = yield* fetchMe(env);
-        if (!me) return new Response("Unauthorized", { status: 401 });
+        if (!me) {
+          const response = new Response("Unauthorized", { status: 401 });
+          yield* annotateHttpStatus(response);
+          return response;
+        }
         yield* sweepWebDb();
-        return yield* body({ me, env });
+        const response = yield* body({ me, env });
+        yield* annotateHttpStatus(response);
+        return response;
       }).pipe(Effect.provide(WebDbLive)),
-    );
-  } catch (err) {
-    return json({ error: "LobbyDb", message: lobbyDbErrorMessage(err) }, 500);
-  }
+    ),
+  );
 }
 
 export async function runMetaGet<E>(
@@ -84,11 +139,10 @@ export async function runMetaGet<E>(
     traceparent,
     spanName,
     Effect.gen(function* () {
-      yield* Effect.annotateCurrentSpan({
-        "http.method": event.req.method,
-        "http.route": spanName,
-      });
-      return yield* body();
+      yield* Effect.annotateCurrentSpan(httpServerAttrs({ method: event.req.method, route: spanName }));
+      const response = yield* body();
+      yield* annotateHttpStatus(response);
+      return response;
     }),
   );
 }

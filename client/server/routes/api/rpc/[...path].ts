@@ -14,6 +14,7 @@ import { grpcUpstreamFromPodDns } from "../../../../app/domain/api-upstream";
 import { grpcUpstream } from "../../../../app/domain/api-upstream-auth";
 import { lookupTableRoute } from "../../../../app/domain/lobby-store";
 import { grpcRequestEnv, runTracedRequest } from "../../../../app/domain/otel";
+import { HTTP_RESPONSE_STATUS_CODE, httpServerAttrs } from "../../../../app/domain/otel/semconv";
 import { GrpcCallError, httpStatusOf } from "../../../../app/domain/wire/grpcClient";
 import { dispatchRpc, type RpcOutcome } from "../../../../app/domain/wire/rpcServer";
 import type { StreamFrame } from "../../../../app/domain/wire/types";
@@ -108,6 +109,20 @@ function outcomeToResponse(outcome: RpcOutcome): Response | Promise<Response> {
   }
 }
 
+function outcomeHttpStatus(outcome: RpcOutcome): number | null {
+  switch (outcome.kind) {
+    case "json":
+    case "empty":
+      return outcome.status;
+    case "stream":
+      return null;
+    default: {
+      const exhaustive: never = outcome;
+      return exhaustive;
+    }
+  }
+}
+
 type RpcDispatchArgs = {
   segments: string[];
   method: string;
@@ -123,16 +138,20 @@ type RpcDispatchArgs = {
  */
 const dispatchRpcTraced = Effect.fn(function* (args: RpcDispatchArgs) {
   const path = args.segments.join("/");
-  yield* Effect.annotateCurrentSpan({
-    "http.method": args.method,
-    "rpc.path": path,
-  });
+  yield* Effect.annotateCurrentSpan(httpServerAttrs({ method: args.method, route: `rpc ${path || "root"}` }));
   const env = yield* grpcRequestEnv(args.sessionToken);
-  return yield* dispatchRpc(args.segments, args.method, args.body, args.searchParams, {
+  const outcome = yield* dispatchRpc(args.segments, args.method, args.body, args.searchParams, {
     ...env,
     defaultAddress: grpcUpstream(),
     resolveTableAddress,
   });
+  const status = outcomeHttpStatus(outcome);
+  if (status !== null) {
+    yield* Effect.annotateCurrentSpan({
+      [HTTP_RESPONSE_STATUS_CODE]: status,
+    });
+  }
+  return outcome;
 });
 
 function routeSegments(event: H3Event): string[] {

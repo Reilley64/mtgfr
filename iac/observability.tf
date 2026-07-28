@@ -346,6 +346,29 @@ resource "helm_release" "grafana" {
           ]
         }
       }
+      dashboardProviders = {
+        "dashboardproviders.yaml" = {
+          apiVersion = 1
+          providers = [{
+            name            = "mtgfr"
+            orgId           = 1
+            folder          = "mtgfr"
+            type            = "file"
+            disableDeletion = false
+            editable        = true
+            options = {
+              path = "/var/lib/grafana/dashboards/mtgfr"
+            }
+          }]
+        }
+      }
+      dashboards = {
+        mtgfr = {
+          "mtgfr-otel-red" = {
+            json = file("${path.module}/grafana/dashboards/mtgfr-otel-red.json")
+          }
+        }
+      }
     })
   ]
 

@@ -111,9 +111,9 @@ pub(crate) async fn submit_intent_core(
 ) -> Ack {
     let span = tracing::info_span!(
         "submit_intent_core",
-        table_id = %table_id,
-        user_id = user_id,
-        accepted = tracing::field::Empty,
+        mtgfr.table.id = %table_id,
+        mtgfr.user.id = user_id,
+        mtgfr.intent.accepted = tracing::field::Empty,
     );
 
     let ack = with_seated_drive(state, user_id, table_id, |table, seat| {
@@ -135,7 +135,7 @@ pub(crate) async fn submit_intent_core(
     })
     .instrument(span.clone())
     .await;
-    span.record("accepted", ack.accepted);
+    span.record(crate::otel_semconv::MTGFR_INTENT_ACCEPTED, ack.accepted);
     ack
 }
 
