@@ -4264,6 +4264,9 @@ impl Game {
                 is_prime(self.lands_controlled(ctx.controller))
             }
             Condition::DuringYourTurn => self.active_player == ctx.controller,
+            Condition::DuringYourUpkeep => {
+                self.active_player == ctx.controller && self.step == Step::Upkeep
+            }
             Condition::DuringCombat => self.step.is_combat(),
             // Lash Out (CR 701.22d): the resolution-scoped won-the-clash flag a preceding
             // `Effect::Dig(DigEffect::Clash)` step in this same resolution set. Context-free (a plain `Game` field),

@@ -304,6 +304,7 @@ message_keys! {
     EFFECT_STATIC_PLAY_FROM_GRAVEYARD_ONCE_PER_TURN => "effect.static_play_from_graveyard_once_per_turn",
     EFFECT_STATIC_PREVENT_COMBAT_DAMAGE => "effect.static_prevent_combat_damage",
     EFFECT_STATIC_PREVENT_DAMAGE_TO_SELF_REMOVING_COUNTER => "effect.static_prevent_damage_to_self_removing_counter",
+    EFFECT_STATIC_PREVENT_DAMAGE_TO_SELF_REMOVING_COUNTER_PER_POINT => "effect.static_prevent_damage_to_self_removing_counter_per_point",
     EFFECT_STATIC_PREVENT_DAMAGE_TO_SELF_REMOVING_COUNTERS_GIVING_RAD => "effect.static_prevent_damage_to_self_removing_counters_giving_rad",
     EFFECT_STATIC_PREVENT_NONCOMBAT_DAMAGE_TO_OTHER_CREATURES_YOU_CONTROL => "effect.static_prevent_noncombat_damage_to_other_creatures_you_control",
     EFFECT_STATIC_REDIRECT_UNBLOCKED_DAMAGE_TO_SELF => "effect.static_redirect_unblocked_damage_to_self",
@@ -2076,6 +2077,9 @@ impl Effect {
             }
             Effect::Static(PreventDamageToSelfRemovingCounter) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_PREVENT_DAMAGE_TO_SELF_REMOVING_COUNTER)
+            }
+            Effect::Static(PreventDamageToSelfRemovingCounterPerPoint) => {
+                MessageRef::new(MessageKey::EFFECT_STATIC_PREVENT_DAMAGE_TO_SELF_REMOVING_COUNTER_PER_POINT)
             }
             Effect::Static(DiscardToLibraryTopInstead) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_DISCARD_TO_LIBRARY_TOP_INSTEAD)

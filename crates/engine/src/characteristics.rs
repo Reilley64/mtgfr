@@ -1879,6 +1879,32 @@ impl Game {
             .combat_damage_prevented_by_source(source)
     }
 
+    /// Rock Hydra's per-point shield (CR 615): "for each 1 damage that would be dealt to this
+    /// creature, if it has a +1/+1 counter on it, remove a +1/+1 counter from it and prevent that
+    /// 1 damage." Unlike the two whole-event shields below it covers only as many points as the
+    /// Hydra has counters — the returned `i32` is the rest of the hit, which is dealt for real.
+    pub(crate) fn per_point_counter_shield(
+        &self,
+        target: ObjectId,
+        amount: i32,
+    ) -> (Vec<Event>, i32) {
+        if amount <= 0 || !self.replacement_registry().phantom_shield_per_point(target) {
+            return (Vec::new(), amount);
+        }
+        let paid = amount.min(self.plus_counters(target).max(0));
+        if paid <= 0 {
+            return (Vec::new(), amount);
+        }
+        (
+            vec![Event::CountersPlaced {
+                object: target,
+                count: -paid,
+                source_name: self.def_of(target).name,
+            }],
+            amount - paid,
+        )
+    }
+
     /// The events Phantom Centaur's shield or Bloatfly Swarm's scaling variant fire alongside
     /// each prevented damage-dealing event (both CR 615): a `CountersPlaced` removing the
     /// counters taken, plus — for Bloatfly Swarm's rad-counter rider only — one

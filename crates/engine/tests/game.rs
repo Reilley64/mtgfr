@@ -83249,6 +83249,105 @@ fn phantom_centaur_prevents_noncombat_damage_and_removes_a_counter() {
     );
 }
 
+// ── A shield paid for one point at a time (fidelity #70) ───────────────────────────────
+
+#[test]
+fn rock_hydra_spends_one_counter_per_point_of_damage() {
+    // "For each 1 damage that would be dealt to this creature, if it has a +1/+1 counter on it,
+    // remove a +1/+1 counter from it and prevent that 1 damage." Phantom Centaur pays one counter
+    // for a whole hit; the Hydra pays per point, so three damage costs three counters.
+    let mut game = TestGame::new();
+    let hydra = game.spawn_on_battlefield(PlayerId(0), card("Rock Hydra"));
+    for _ in 0..5 {
+        game.add_plus_counter(hydra);
+    }
+    let bolt = game.spawn_in_hand(PlayerId(0), card("Lightning Bolt"));
+
+    game.cast(bolt).at(Target::Object(hydra)).resolve();
+    assert_eq!(
+        game.marked_damage(hydra),
+        0,
+        "all three points were prevented"
+    );
+    assert_eq!(game.plus_counters(hydra), 2, "and each cost a counter");
+}
+
+#[test]
+fn rock_hydra_takes_the_damage_its_counters_cannot_cover() {
+    // "if it has a +1/+1 counter on it" — the prevention runs out with the counters, and the rest
+    // of the hit is dealt for real. Giant Growth keeps the Hydra alive to be measured.
+    let mut game = TestGame::new();
+    let hydra = game.spawn_on_battlefield(PlayerId(0), card("Rock Hydra"));
+    game.add_plus_counter(hydra);
+    let growth = game.spawn_in_hand(PlayerId(0), card("Giant Growth"));
+    let bolt = game.spawn_in_hand(PlayerId(0), card("Lightning Bolt"));
+
+    game.cast(growth).at(Target::Object(hydra)).resolve();
+    game.cast(bolt).at(Target::Object(hydra)).resolve();
+    assert_eq!(
+        game.plus_counters(hydra),
+        0,
+        "the one counter it had went to the first point"
+    );
+    assert_eq!(game.marked_damage(hydra), 2, "the other two were dealt");
+    assert_eq!(
+        game.zone_of(hydra),
+        Zone::Battlefield,
+        "a 4/4 survives them"
+    );
+}
+
+#[test]
+fn rock_hydra_only_grows_during_its_controllers_upkeep() {
+    // "{R}{R}{R}: Put a +1/+1 counter on this creature. Activate only during your upkeep."
+    let mut game = Game::new();
+    game.stack_library(PlayerId(0), &[VANILLA.clone(), VANILLA.clone()]);
+    game.stack_library(PlayerId(1), &[VANILLA.clone(), VANILLA.clone()]);
+    let hydra = game.spawn_on_battlefield(PlayerId(0), card("Rock Hydra"));
+    // A Hydra spawned straight onto the battlefield skips its own enters-with-X, and a 0/0 is
+    // collected by the toughness SBA the moment the turn advances.
+    game.add_plus_counter(hydra);
+    let grow = |game: &mut Game| {
+        game.fund_mana(PlayerId(0));
+        game.submit(Intent::ActivateAbility {
+            player: PlayerId(0),
+            object: hydra,
+            ability_index: 3,
+            target: None,
+            sacrifice: vec![],
+            discard_cost: vec![],
+            x: 0,
+        })
+    };
+
+    advance_until(&mut game, |g| g.current_step() == Step::Main1);
+    assert_eq!(
+        grow(&mut game),
+        Err(Reject::CannotActivate),
+        "its own upkeep has passed"
+    );
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(1) && g.current_step() == Step::Upkeep
+    });
+    assert_eq!(
+        grow(&mut game),
+        Err(Reject::CannotActivate),
+        "an upkeep, but not its controller's"
+    );
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
+    });
+    assert!(grow(&mut game).is_ok(), "its controller's own upkeep");
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        game.plus_counters(hydra),
+        2,
+        "the counter landed on the one it had"
+    );
+}
+
 #[test]
 fn phantom_centaur_prevents_at_zero_counters_removing_nothing() {
     // At zero +1/+1 counters Phantom Centaur is a 0/0, but CR 615 says the shield still

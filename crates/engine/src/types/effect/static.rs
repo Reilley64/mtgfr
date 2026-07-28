@@ -319,6 +319,13 @@ pub enum StaticEffect {
 
     PreventDamageToSelfRemovingCounter,
 
+    /// Rock Hydra's "for each 1 damage that would be dealt to this creature, if it has a +1/+1
+    /// counter on it, remove a +1/+1 counter from it and prevent that 1 damage" (CR 615). Worded
+    /// *per point* rather than per event, so unlike its two siblings above it covers only as many
+    /// points as the Hydra has counters and the rest of the hit is dealt for real — which is why
+    /// it is spent inside the damage choke rather than short-circuiting the whole event.
+    PreventDamageToSelfRemovingCounterPerPoint,
+
     PreventDamageToSelfRemovingCountersGivingRad,
 
     PreventNoncombatDamageToOtherCreaturesYouControl,

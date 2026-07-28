@@ -1506,7 +1506,7 @@ rather than adding a parallel list, and key it to the source with whatever #5 la
 "unblocked creature" filter is readable from combat state at the choke.
 *Cards:* forcefield.
 
-### 70. `damage-replaced-by-counter-removal` — 1 card, M
+### 70. `damage-replaced-by-counter-removal` — 1 card, M — **done**
 Depends on: #4.
 Split out of #4. Rock Hydra's third ability ("{R}: Prevent the next 1 damage that would be dealt
 to this creature this turn") is plain #4 work with a self target. Its second is a *replacement*
@@ -1519,6 +1519,27 @@ Centaur) is the nearest existing shape, but that one removes a counter per *even
 the same choke #4 spends shields at, with the counter removals riding the same event that records
 the prevention. Rock Hydra's `enters with X +1/+1 counters` is already expressible.
 *Cards:* rock_hydra.
+
+*Landed:* a third counter-removal shield rather than a generalisation of the first two.
+`StaticEffect::PreventDamageToSelfRemovingCounterPerPoint` registers the same
+`ReplacementEffect::PreventDamageToSelfRemovingCounter` its siblings do, flagged `per_point`. The
+flag's whole job is to keep it *out* of `phantom_shield_active` — that predicate means "prevents a
+whole damage event," which is exactly what the Hydra doesn't do, and six damage chokes early-return
+on it. Instead `Game::per_point_counter_shield` is spent inside `creature_damage_events_inner`,
+ahead of the ordinary `prevent_next_damage` shields: it removes `min(damage, counters)` counters and
+hands the remainder on to be dealt. All five chokes that route through that shared path get it for
+free, and the leftover needed no new plumbing because the choke already returns `(events, dealt)`.
+
+"Activate only during your upkeep" is `Condition::DuringYourUpkeep` on the existing
+`[abilities.condition]` activation-restriction surface — the narrower sibling of `during_your_turn`
+rather than a step axis crossed with it, since nothing else in the pool restricts an activation to
+one step. The `{R}` shield is #6c's `shield_source` unchanged, and `enters with X +1/+1 counters`
+was already expressible.
+
+ponytail: the Radiance sweep in `resolution/damage.rs` hand-rolls its `DamageMarked` and so skips
+the per-point shield — but it already skips every ordinary prevention shield too, so this is that
+pre-existing gap, not a new one. The upgrade path is routing Radiance through
+`creature_damage_events` like every other sweep.
 
 ### 71. `pay-any-amount-of-mana` — 1 card, M
 Depends on: #4.

@@ -180,8 +180,13 @@ impl Game {
         exile_instead_of_dying: bool,
         allow_redirect: bool,
     ) -> (Vec<Event>, i32) {
-        let (mut events, amount) =
+        // Rock Hydra's per-point shield (CR 615) is spent first and only covers as many points as
+        // it has counters; whatever it can't pay for falls through to the ordinary shields below
+        // and is dealt for real.
+        let (mut events, amount) = self.per_point_counter_shield(object, amount);
+        let (shield_events, amount) =
             self.spend_prevention_shields(Target::Object(object), source, amount, allow_redirect);
+        events.extend(shield_events);
         // CR 615: damage a shield ate entirely was never dealt, so it marks nothing and feeds no
         // damage watch. (An *unshielded* 0 still emits its `DamageMarked`, as it always has —
         // callers guard 0 amounts themselves where it matters.)

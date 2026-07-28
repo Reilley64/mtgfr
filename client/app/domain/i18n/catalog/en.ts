@@ -541,6 +541,9 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.static_prevent_damage_to_self_removing_counter": literal(
     "If damage would be dealt to this creature, prevent that damage. Remove a +1/+1 counter from this creature",
   ),
+  "effect.static_prevent_damage_to_self_removing_counter_per_point": literal(
+    "For each 1 damage that would be dealt to this creature, if it has a +1/+1 counter on it, remove a +1/+1 counter from it and prevent that 1 damage",
+  ),
   "effect.static_prevent_damage_to_self_removing_counters_giving_rad": literal(
     "If damage would be dealt to this creature while it has a +1/+1 counter on it, prevent that damage, remove that many +1/+1 counters from it, then give each player a rad counter for each +1/+1 counter removed this way",
   ),

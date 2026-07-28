@@ -278,6 +278,7 @@
   "effect.static_play_from_graveyard_once_per_turn",
   "effect.static_prevent_combat_damage",
   "effect.static_prevent_damage_to_self_removing_counter",
+  "effect.static_prevent_damage_to_self_removing_counter_per_point",
   "effect.static_prevent_damage_to_self_removing_counters_giving_rad",
   "effect.static_prevent_noncombat_damage_to_other_creatures_you_control",
   "effect.static_redirect_unblocked_damage_to_self",

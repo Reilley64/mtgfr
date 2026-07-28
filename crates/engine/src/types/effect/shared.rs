@@ -1044,6 +1044,7 @@ impl Effect {
             | Effect::Static(StaticEffect::PlayFromGraveyardOncePerTurn)
             | Effect::Static(StaticEffect::PreventNoncombatDamageToOtherCreaturesYouControl)
             | Effect::Static(StaticEffect::PreventDamageToSelfRemovingCounter)
+            | Effect::Static(StaticEffect::PreventDamageToSelfRemovingCounterPerPoint)
             // Bloatfly Swarm's rad-counter rider is also self-only — no chosen target.
             | Effect::Static(StaticEffect::PreventDamageToSelfRemovingCountersGivingRad)
             | Effect::Static(StaticEffect::PreventCombatDamage { .. })
@@ -1931,6 +1932,11 @@ pub enum Condition {
     /// `ctx.controller`, re-evaluated live like every other static-anthem gate here — flips off
     /// the instant the turn passes to someone else, not just at cleanup.
     DuringYourTurn,
+    /// "Activate only during your upkeep" (Rock Hydra) — the narrower sibling of
+    /// [`DuringYourTurn`](Self::DuringYourTurn): the controller must be the active player *and*
+    /// the game must be in the upkeep step. Read through the same
+    /// [`Game::ability_activation_gate`](crate::Game) path as [`DuringCombat`](Self::DuringCombat).
+    DuringYourUpkeep,
     /// "Activate only during combat" (Jade Statue — CR 506.1's combat phase, from Beginning of
     /// Combat through End of Combat). Holds iff the current step is a combat step, whoever the
     /// active player is — the Statue's own text names no seat, so it animates on an opponent's

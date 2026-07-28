@@ -4565,6 +4565,49 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
             Effect::Life(LifeEffect::SourceOwnerLosesHalfTheirLife)
         );
     }
+
+    /// Rock Hydra's four abilities are easy to mis-order, and the grow ability's index is what a
+    /// client hands back on activation. The shield in the middle is the per-point variant, not
+    /// either of the two whole-event ones it reads like — swap it and a Bolt costs the Hydra one
+    /// counter instead of three.
+    #[test]
+    fn unlimited_rock_hydra_pays_a_counter_a_point_and_grows_only_in_upkeep() {
+        let hydra = get_by_name("Rock Hydra").expect("Rock Hydra is in the pool");
+        let [enters, shield, prevent, grow] = &hydra.abilities[..] else {
+            panic!("enters-with, the per-point shield, the {{R}} shield, and the grow ability");
+        };
+
+        assert_eq!(
+            enters.effect,
+            Effect::Static(StaticEffect::EntersWithCounters {
+                amount: Amount::X,
+                kind: None,
+            }),
+            "X +1/+1 counters — an unnamed kind is +1/+1"
+        );
+        assert_eq!(
+            shield.effect,
+            Effect::Static(StaticEffect::PreventDamageToSelfRemovingCounterPerPoint),
+            "per point, not per event"
+        );
+        assert!(matches!(
+            prevent.effect,
+            Effect::Misc(MiscEffect::PreventNextDamage {
+                shield_source: true,
+                ..
+            })
+        ));
+
+        let Timing::Activated(cost) = &grow.timing else {
+            panic!("\"{{R}}{{R}}{{R}}:\" is an activated ability");
+        };
+        assert_eq!(cost.mana.colored[Color::Red.index()], 3);
+        assert_eq!(
+            grow.condition,
+            Some(Condition::DuringYourUpkeep),
+            "\"Activate only during your upkeep\""
+        );
+    }
 }
 
 #[cfg(test)]
