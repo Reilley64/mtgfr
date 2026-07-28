@@ -5027,6 +5027,47 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
     /// to stop. Reverse Damage is the same shield with the gate open and a life rider, so the six
     /// belong in one assertion: `from_color` here is exactly what the damage choke rechecks, and
     /// a missing `amount` is what makes the shield eat the whole hit rather than one point of it.
+    /// Guardian Angel's two sentences are one ability with two steps on purpose: the standing
+    /// offer protects "that permanent or player", which is the *first* step's target, and a
+    /// `Sequence` shares its target across steps. Split into two abilities the offer would have
+    /// nothing to point at.
+    #[test]
+    fn guardian_angel_hangs_its_standing_offer_off_the_targeted_shield() {
+        let angel = get_by_name("Guardian Angel").expect("Guardian Angel is in the pool");
+        let [spell] = &angel.abilities[..] else {
+            panic!("one spell ability holding both sentences");
+        };
+        let Effect::Sequence { ref steps } = spell.effect else {
+            panic!("two steps sharing one target");
+        };
+        assert_eq!(
+            steps[0],
+            Effect::Misc(MiscEffect::PreventNextDamage {
+                shield_source: false,
+                all_but: None,
+                target_is_source: false,
+                combat_only: false,
+                redirect_to_controller: false,
+                amount: Some(Amount::X),
+                target: TargetSpec::AnyTarget,
+                from_color: ColorFilter::Any,
+                gain_life: false,
+            }),
+            "prevent the next {{X}} damage that would be dealt to any target"
+        );
+        assert_eq!(
+            steps[1],
+            Effect::Misc(MiscEffect::OfferPreventionTopUp {
+                cost: Cost {
+                    generic: 1,
+                    ..Cost::FREE
+                },
+                amount: 1,
+            }),
+            "you may pay {{1}} … prevent the next 1 damage"
+        );
+    }
+
     #[test]
     fn unlimited_the_protection_circles_gate_their_shield_on_their_own_color() {
         for (name, color) in [

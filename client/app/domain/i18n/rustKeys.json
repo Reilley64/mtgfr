@@ -221,6 +221,7 @@
   "effect.misc_must_attack_target",
   "effect.misc_prevent_all_combat_damage_this_turn",
   "effect.misc_prevent_next_damage",
+  "effect.misc_offer_prevention_top_up",
   "effect.misc_prevent_combat_damage_to_you_creating_tokens",
   "effect.misc_schedule_at_next_upkeep",
   "effect.misc_schedule_colorless_mana_for_countered_spell_next_main_phase",

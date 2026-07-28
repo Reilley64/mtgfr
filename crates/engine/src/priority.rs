@@ -1385,12 +1385,62 @@ impl Game {
                 };
                 (cost.mana, cost.taps_self.then_some(source), None)
             }
+            // A standing prevention offer's cost is written on the offer itself (Guardian Angel's
+            // {1}) — there is no object to read it off.
+            MeaningfulAction::PayStandingPrevention { index } => {
+                let Some(offer) = self.standing_preventions.get(index) else {
+                    return Vec::new();
+                };
+                (offer.cost, None, None)
+            }
         };
         self.plan_auto_taps(player, cost, exclude, spell)
             .map(object_ids)
             .unwrap_or_default()
     }
 
+    /// Take one of Guardian Angel's standing "you may pay {1} … prevent the next 1 damage that
+    /// would be dealt to that permanent or player" offers (CR 615): pay the cost and arm an
+    /// ordinary shield on the offer's remembered target. The offer itself survives the payment —
+    /// the card says "any time you could cast an instant", not "once" — so it can be bought again
+    /// until the turn ends and [`Game::standing_preventions`] is cleared.
+    ///
+    /// Shaped like [`Game::turn_face_up`]: no stack, no priority pass, an unpayable cost rejects
+    /// with nothing tapped.
+    pub(crate) fn pay_standing_prevention(
+        &mut self,
+        player: PlayerId,
+        index: usize,
+    ) -> Result<Vec<Event>, Reject> {
+        if player != self.priority {
+            return Err(Reject::NotYourPriority);
+        }
+        let Some(&offer) = self.standing_preventions.get(index) else {
+            return Err(Reject::UnknownAction);
+        };
+        if offer.player != player {
+            return Err(Reject::CannotActivate);
+        }
+        let mut events = Vec::new();
+        self.settle_payment(player, offer.cost, None, None, &mut events)
+            .map_err(|_| Reject::CannotPayCost)?;
+        self.damage_prevention_shields
+            .push(crate::state::PreventionShield {
+                target: offer.target,
+                amount: Some(offer.amount),
+                keep: None,
+                from_color: crate::ColorFilter::Any,
+                from_source: None,
+                combat_only: false,
+                gain_life: false,
+                redirect_to: None,
+            });
+        // Paying is a game action taken with priority, not a pass — the payer keeps priority
+        // (CR 117.3c), exactly as a special action does.
+        self.consecutive_passes = 0;
+        self.priority = player;
+        Ok(events)
+    }
     /// Pay `cost` for `player` — from the pool, auto-tapping mana sources for any shortfall
     /// (free taps first, then paid tap-for-mana abilities via a feed-first plan) — appending the
     /// tap events and the [`Event::ManaSpent`]. Call only after the action is otherwise fully

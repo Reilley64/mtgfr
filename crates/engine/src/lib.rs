@@ -210,6 +210,16 @@ pub struct Game {
     /// the order their controller chooses (CR 615.8). Same total prevented either way unless a
     /// card reads *which* shield paid, and none in the pool does.
     pub(crate) damage_prevention_shields: Vec<state::PreventionShield>,
+    /// "Until end of turn, you may pay {1} any time you could cast an instant. If you do, prevent
+    /// the next 1 damage that would be dealt to that permanent or player this turn" (Guardian
+    /// Angel): a standing *offer* rather than a shield — nothing is prevented until someone pays.
+    /// Enumerated by [`Game::legal_actions`] as a
+    /// [`MeaningfulAction::PayStandingPrevention`](crate::MeaningfulAction) and taken through
+    /// [`Intent::TakeAction`](crate::Intent), so the offer reaches the client on the same action
+    /// list every ability does; paying pushes an ordinary entry onto
+    /// [`damage_prevention_shields`](Self::damage_prevention_shields) above. Runtime orchestration
+    /// state like the shields, cleared at the same next-Untap "this turn" boundary.
+    pub(crate) standing_preventions: Vec<state::StandingPrevention>,
     /// Resolution-local "this way" scratch (DestroyAll / ExileAll / mill / council / edict riders).
     /// Not turn-scoped — see [`resolution::ResolutionFrame`].
     pub(crate) resolution_frame: resolution::ResolutionFrame,
@@ -536,6 +546,9 @@ impl Game {
                 self.cast_split_half(player, card, half, target, x)
             }
             MeaningfulAction::CastFaceDown { card } => self.cast_face_down(player, card),
+            MeaningfulAction::PayStandingPrevention { index } => {
+                self.pay_standing_prevention(player, index)
+            }
             MeaningfulAction::DeclareAttackers => self.declare_attackers(player, &attackers),
             MeaningfulAction::DeclareBlockers => self.declare_blockers(player, &blocks),
         }

@@ -3333,6 +3333,11 @@ pub enum MeaningfulAction {
     /// Cast `card` from hand face down as a 2/2 for {3} (CR 702.37b — morph). Offered only for a
     /// hand card whose [`CardDef::morph`] is `Some` and whose controller can pay the {3}.
     CastFaceDown { card: ObjectId },
+    /// Pay for one of Guardian Angel's standing "you may pay {1} … prevent the next 1 damage that
+    /// would be dealt to that permanent or player" offers — `index` into
+    /// [`Game::standing_preventions`]. The one action that names no object: the spell that made
+    /// the offer left the stack, and what it protects is remembered by the offer itself.
+    PayStandingPrevention { index: usize },
     /// Declare attackers: the player has a creature able to attack this combat.
     DeclareAttackers,
     /// Declare blocks: the player has a creature able to block an attacker this combat.

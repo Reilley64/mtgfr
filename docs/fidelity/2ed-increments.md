@@ -2024,7 +2024,7 @@ printed cost back untaxed. `SpellFilter::Color` and `PermanentFilter::color` bot
 (Balefire Liege and Razorjaw Oni got there first), so neither filter needed a new arm; the whole
 card is `{ color = "white" }` and `{ types = "enchantment", color = "white" }`.
 
-### 68. `prevention-shield-top-up` — 1 card, M
+### 68. `prevention-shield-top-up` — 1 card, M — **done**
 Depends on: #4.
 Split out of #4. Guardian Angel's first sentence is plain #4 work; its second is not: "Until end
 of turn, you may pay {1} any time you could cast an instant. If you do, prevent the next 1 damage
@@ -2040,6 +2040,32 @@ onto `damage_prevention_shields` for the same target. Worth checking whether the
 express other "any time you could cast an instant, you may pay" riders before shaping it around
 this one card.
 *Cards:* guardian_angel.
+
+*Landed (68 — guardian_angel):* the sketch held, and the answer to "is there anywhere to hang a
+standing offer?" was the legal-action list. `Game::standing_preventions` is a turn-scoped
+`Vec<StandingPrevention>` beside `damage_prevention_shields` — runtime orchestration state, cleared
+at the same next-untap boundary, so "until end of turn" needs no separate expiry. The new
+`MiscEffect::OfferPreventionTopUp { cost, amount }` records one on resolution and prevents nothing;
+`Game::meaningful_actions` enumerates each affordable offer as a
+`MeaningfulAction::PayStandingPrevention { index }` after its per-object loop (the one action that
+names no object — the spell that made the offer has long left the stack), and
+`Game::pay_standing_prevention` is shaped like `Game::turn_face_up`: priority check, `settle_payment`
+with auto-tap, push an ordinary `PreventionShield`, keep priority. So "any time you could cast an
+instant", affordability, auto-tap and the client's action bar all come free, and because the offer
+is not consumed by being taken it can be bought as often as its controller can pay.
+
+"That permanent or player" is the enclosing effects array's shared target: the two sentences are one
+spell ability with two `[[abilities.effects]]` steps, and a `Sequence` runs its steps against one
+`ctx`, so the offer reads the target the `prevent_next_damage` step in front of it already chose.
+That is why the mode takes no `target` of its own, and the cards-crate shape test pins the two
+steps together for exactly that reason. `ActionView.kind` is a plain `String`, so the wire needed
+no `.proto` change — only the new `"pay_standing_prevention"` arm and its label.
+
+*ponytail:* the offer stands even after its target has left the battlefield — paying then arms a
+shield on a dead object that can never fire, so the {1} is simply wasted. Real play would never
+buy it, and gating enumeration on a live target would mean re-resolving `Target::Object` liveness
+on every action refresh for the one card in the pool that prints this; add the check when a second
+card makes it matter.
 
 ### 69. `prevent-all-but-n` — 1 card, M — **done**
 Depends on: #4, #5.

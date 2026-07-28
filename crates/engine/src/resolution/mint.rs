@@ -108,6 +108,7 @@ impl Game {
                 | MiscEffect::PreventCombatDamageToYouCreatingTokens { .. }
                 | MiscEffect::PreventAllCombatDamageThisTurn
                 | MiscEffect::PreventNextDamage { .. }
+                | MiscEffect::OfferPreventionTopUp { .. }
                 | MiscEffect::YouChooseWhichCreaturesAttack
                 | MiscEffect::YouChooseWhichCreaturesBlock => {
                     unreachable!("a pausing/composite effect resolves via Game::run")

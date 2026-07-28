@@ -987,6 +987,9 @@ impl Effect {
             | Effect::Misc(MiscEffect::MustAttackAll { .. })
             | Effect::Misc(MiscEffect::PreventCombatDamageToYouCreatingTokens { .. })
             | Effect::Misc(MiscEffect::PreventAllCombatDamageThisTurn)
+            // "That permanent or player" is the enclosing `Effect::Sequence`'s shared target,
+            // chosen for the first sentence — this step takes none of its own.
+            | Effect::Misc(MiscEffect::OfferPreventionTopUp { .. })
             // CR 114.5: an emblem can't be targeted, and getting one targets nothing either.
             | Effect::Misc(MiscEffect::GetEmblem { .. })
             // Names its own controller as the declaring seat (Master Warcraft) — no chosen target.

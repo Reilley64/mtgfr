@@ -230,7 +230,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [x] **Glasses of Urza** {1} · Artifact — increment 31
 - [x] **Gloom** {2}{B} · Enchantment
 - [x] **Goblin King** {1}{R}{R} · Creature — Goblin — increment 3
-- [ ] **Guardian Angel** {X}{W} · Instant — increment 4
+- [x] **Guardian Angel** {X}{W} · Instant — increment 4
 - [x] **Healing Salve** {W} · Instant — increment 4
 - [x] **Helm of Chatzuk** {1} · Artifact — increment 14 (approximated: banding's blocking half only — see increment 79)
 - [x] **Hypnotic Specter** {1}{B}{B} · Creature — Specter — increment 17

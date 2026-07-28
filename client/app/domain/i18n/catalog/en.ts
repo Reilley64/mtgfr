@@ -121,6 +121,7 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "action.keep_hand": literal("Keep hand"),
   "action.mulligan": literal("Mulligan"),
   "action.suspend": (params) => `Suspend ${param(params, "name")}`,
+  "action.pay_standing_prevention": literal("Pay to prevent 1 more damage"),
   "action.turn_face_up": literal("Turn face up"),
   "auto.automatic": literal("Automatic action."),
   "auto.discarded": literal("Discarded automatically."),
@@ -456,6 +457,9 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     "Choose an opponent at random. This attacks that player this combat if able",
   ),
   "effect.misc_prevent_all_combat_damage_this_turn": literal("Prevent all combat damage that would be dealt this turn"),
+  "effect.misc_offer_prevention_top_up": literal(
+    "Until end of turn, you may pay this cost any time you could cast an instant. If you do, prevent the next damage that would be dealt to that permanent or player this turn",
+  ),
   "effect.misc_prevent_next_damage": literal("Prevent the next N damage that would be dealt to any target this turn"),
   "effect.misc_prevent_combat_damage_to_you_creating_tokens": literal(
     "Prevent all combat damage that would be dealt to you this turn, creating a token per point prevented",

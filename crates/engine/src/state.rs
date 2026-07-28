@@ -502,3 +502,22 @@ pub struct PreventionShield {
     /// goes rather than nowhere. `None` is the ordinary shield, which simply eats it.
     pub redirect_to: Option<crate::Target>,
 }
+
+/// One standing "you may pay `cost` any time you could cast an instant. If you do, prevent the
+/// next `amount` damage that would be dealt to `target` this turn" offer (Guardian Angel) on
+/// [`Game::standing_preventions`](crate::Game::standing_preventions). Unlike a
+/// [`PreventionShield`] nothing is prevented until someone pays: the offer is enumerated as a
+/// [`MeaningfulAction::PayStandingPrevention`](crate::MeaningfulAction) and every payment mints a
+/// fresh shield, so one Guardian Angel can be milked all turn.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct StandingPrevention {
+    /// Who may pay — the spell's controller, since the offer is made to "you".
+    pub player: crate::PlayerId,
+    /// The permanent or player the bought shield will stand in front of ("that permanent or
+    /// player" — whatever the spell's first sentence targeted).
+    pub target: crate::Target,
+    /// What one payment costs.
+    pub cost: crate::Cost,
+    /// Points the bought shield is worth.
+    pub amount: i32,
+}

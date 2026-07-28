@@ -1213,7 +1213,8 @@ impl Game {
             // Inkshield / Moment's Peace / Healing Salve — see `resolution/resolve_misc.rs`.
             Effect::Misc(MiscEffect::PreventCombatDamageToYouCreatingTokens { .. })
             | Effect::Misc(MiscEffect::PreventAllCombatDamageThisTurn)
-            | Effect::Misc(MiscEffect::PreventNextDamage { .. }) => {
+            | Effect::Misc(MiscEffect::PreventNextDamage { .. })
+            | Effect::Misc(MiscEffect::OfferPreventionTopUp { .. }) => {
                 self.run_misc_choreo(effect, ctx, events)
             }
             // Blaze of Glory — see `resolution/resolve_misc.rs`.

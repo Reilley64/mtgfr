@@ -632,6 +632,33 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             taps_self: false,
             declare_for: Vec::new(),
         },
+        // Guardian Angel's standing "you may pay {1}" offer: no object to hang it on, so it rides
+        // the action bar on its own like the combat declarations do.
+        MeaningfulAction::PayStandingPrevention { .. } => ActionView {
+            id: action.id,
+            kind: "pay_standing_prevention".to_string(),
+            object: None,
+            ability_index: None,
+            section: "battlefield".to_string(),
+            label: message("action.pay_standing_prevention"),
+            needs_target: false,
+            targets: Vec::new(),
+            modal: None,
+            sacrifice_choices: None,
+            discard_choices: None,
+            discard_count: 0,
+            graveyard_exile_choices: None,
+            graveyard_exile_min: 0,
+            graveyard_exile_max: 0,
+            has_x: false,
+            min_x: 0,
+            max_x: 0,
+            x_cost: None,
+            auto_tap: Vec::new(),
+            required_attacks: Vec::new(),
+            taps_self: false,
+            declare_for: Vec::new(),
+        },
         MeaningfulAction::CastPrepared { source } => {
             let back = game
                 .def_of(source)

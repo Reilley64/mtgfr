@@ -156,6 +156,27 @@ pub enum MiscEffect {
         combat_only: bool,
     },
 
+    /// Guardian Angel's second sentence: "Until end of turn, you may pay {1} any time you could
+    /// cast an instant. If you do, prevent the next 1 damage that would be dealt to that permanent
+    /// or player this turn." A repeatable, optional, priority-timed *offer* rather than a shield —
+    /// nothing is prevented until someone pays, and each payment mints its own
+    /// [`PreventNextDamage`](Self::PreventNextDamage)-shaped shield, so the offer can be milked all
+    /// turn.
+    ///
+    /// Takes no target of its own: "that permanent or player" is whatever the enclosing
+    /// [`Effect::Sequence`](crate::Effect::Sequence)'s first step targeted, which resolution reads
+    /// off the shared target. Recorded on
+    /// [`Game::standing_preventions`](crate::Game::standing_preventions) and offered as a
+    /// [`MeaningfulAction::PayStandingPrevention`](crate::MeaningfulAction) — the same legal-action
+    /// list an activated ability rides, so timing ("any time you could cast an instant") and the
+    /// payment plumbing are already covered.
+    OfferPreventionTopUp {
+        /// What one payment costs — Guardian Angel's `{1}`.
+        cost: Cost,
+        /// Points each bought shield is worth — Guardian Angel's `1`.
+        amount: i32,
+    },
+
     PreventCombatDamageToYouCreatingTokens {
         #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::token_profile"))]
         token: CardDef,

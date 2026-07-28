@@ -195,6 +195,17 @@ impl Game {
             actions.push(MeaningfulAction::DeclareBlockers);
         }
 
+        // Guardian Angel's standing "you may pay {1} any time you could cast an instant" offers.
+        // They hang off no object — the spell that made them has long left the stack — so they sit
+        // outside the per-object loop, gated only on priority and affordability.
+        if player == self.priority {
+            for (index, offer) in self.standing_preventions.iter().enumerate() {
+                if offer.player == player && Self::affordable_from(available, offer.cost, None) {
+                    actions.push(MeaningfulAction::PayStandingPrevention { index });
+                }
+            }
+        }
+
         actions
     }
 

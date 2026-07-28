@@ -1150,6 +1150,9 @@ impl Game {
                     // cleanup step — it does: Untap is the first step of the *next* turn, so
                     // nothing between the shield's turn ending and this clear can be damaged.
                     self.damage_prevention_shields.clear();
+                    // Guardian Angel's standing "you may pay {1}" offer is scoped to the same
+                    // "this turn", and expires unpaid at the same boundary.
+                    self.standing_preventions.clear();
                     // "Entered the battlefield this turn" (Oran-Rief, the Vastwood) and "attacked
                     // this turn" (Agent Frank Horrigan's indestructible grant, CR 508.1) both
                     // expire at the same turn boundary — every battlefield permanent's, not just

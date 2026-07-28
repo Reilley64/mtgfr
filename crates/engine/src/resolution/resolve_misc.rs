@@ -347,6 +347,22 @@ impl Game {
                         redirect_to: redirect_to_controller.then_some(Target::Player(controller)),
                     });
             }
+            // Guardian Angel's "until end of turn, you may pay {1} any time you could cast an
+            // instant. If you do, prevent the next 1 damage that would be dealt to that permanent
+            // or player this turn": record the standing offer rather than a shield — nothing is
+            // prevented until it is paid for. "That permanent or player" is the target the
+            // enclosing `Effect::Sequence` already chose for the first sentence. Runtime
+            // orchestration state like the shields above; the *payment* is what reaches the action
+            // list, and each one mints an ordinary shield.
+            Effect::Misc(MiscEffect::OfferPreventionTopUp { cost, amount }) => {
+                self.standing_preventions
+                    .push(crate::state::StandingPrevention {
+                        player: controller,
+                        target: target.unwrap_or(Target::Player(controller)),
+                        cost,
+                        amount,
+                    });
+            }
             // Master Warcraft: hand the attack / block declaration to this spell's controller for
             // the rest of the turn. Runtime orchestration state like the shields above — the
             // declarations themselves stay ordinary, only the seat that makes them moves.

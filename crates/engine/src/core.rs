@@ -69,6 +69,7 @@ impl Game {
             damaged_this_turn: Vec::new(),
             hand_cards_seen: Vec::new(),
             damage_prevention_shields: Vec::new(),
+            standing_preventions: Vec::new(),
             resolution_frame: crate::resolution::ResolutionFrame::default(),
             characteristics_cache: characteristics_cache::CharacteristicsCacheCell::default(),
             abilities_granted_until_eot: Vec::new(),

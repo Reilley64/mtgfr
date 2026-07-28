@@ -105977,6 +105977,108 @@ fn a_prevention_shield_expires_at_the_turn_boundary() {
     );
 }
 
+// ── Guardian Angel: a shield you can keep topping up all turn (fidelity #68) ──────────
+
+/// Whether `player` is currently being offered a standing "you may pay {1}" prevention top-up.
+fn offered_a_top_up(game: &TestGame, player: PlayerId) -> bool {
+    game.legal_actions().iter().any(|a| {
+        a.player == player && matches!(a.kind, MeaningfulAction::PayStandingPrevention { .. })
+    })
+}
+
+/// Take the standing top-up offer `player` is being made.
+fn buy_a_top_up(game: &mut TestGame, player: PlayerId) {
+    let id = game
+        .legal_actions()
+        .iter()
+        .find(|a| {
+            a.player == player && matches!(a.kind, MeaningfulAction::PayStandingPrevention { .. })
+        })
+        .expect("the standing offer is on the action list")
+        .id;
+    game.submit(take(player, id, None))
+        .expect("the {1} is affordable");
+}
+
+#[test]
+fn guardian_angels_bought_point_finishes_the_hit_its_x_could_not() {
+    // "Prevent the next X damage … Until end of turn, you may pay {1} any time you could cast an
+    // instant. If you do, prevent the next 1 damage that would be dealt to that permanent or
+    // player this turn." X of 2 leaves a Bolt one point short; the {1} buys exactly that point.
+    let mut game = TestGame::new();
+    let angel = game.spawn_in_hand(PlayerId(0), card("Guardian Angel"));
+    let big = game.spawn_on_battlefield(PlayerId(0), BIG.clone());
+    game.spawn_on_battlefield(PlayerId(0), card("Plains"));
+    let bolt = game.spawn_in_hand(PlayerId(0), card("Lightning Bolt"));
+
+    game.cast(angel).x(2).at(Target::Object(big)).resolve();
+    // The offer rides the ordinary action list, so the untapped Plains that can pay for it is
+    // what puts it there — and auto-tap is what spends it.
+    buy_a_top_up(&mut game, PlayerId(0));
+
+    game.cast(bolt).at(Target::Object(big)).submit();
+    let events = resolve_top_of_stack_events(&mut game);
+    assert!(
+        !events
+            .iter()
+            .any(|e| matches!(e, Event::DamageMarked { object, .. } if *object == big)),
+        "2 from the X plus the 1 bought covers all three points, so none was dealt"
+    );
+}
+
+#[test]
+fn guardian_angels_offer_is_sold_a_point_at_a_time_and_stays_open() {
+    // "…any time you could cast an instant" is not "once": the offer survives being taken, and
+    // each payment is worth its one point and no more.
+    let mut game = TestGame::new();
+    let angel = game.spawn_in_hand(PlayerId(0), card("Guardian Angel"));
+    let big = game.spawn_on_battlefield(PlayerId(0), BIG.clone());
+    game.spawn_on_battlefield(PlayerId(0), card("Plains"));
+    game.spawn_on_battlefield(PlayerId(0), card("Plains"));
+    let bolt = game.spawn_in_hand(PlayerId(0), card("Lightning Bolt"));
+
+    game.cast(angel).x(1).at(Target::Object(big)).resolve();
+    buy_a_top_up(&mut game, PlayerId(0));
+    assert!(
+        offered_a_top_up(&game, PlayerId(0)),
+        "the offer is still standing — it was taken, not spent"
+    );
+    buy_a_top_up(&mut game, PlayerId(0));
+
+    game.cast(bolt).at(Target::Object(big)).submit();
+    let events = resolve_top_of_stack_events(&mut game);
+    assert!(
+        !events
+            .iter()
+            .any(|e| matches!(e, Event::DamageMarked { object, .. } if *object == big)),
+        "1 from the X plus two bought points is the whole Bolt"
+    );
+}
+
+#[test]
+fn guardian_angels_offer_closes_with_the_turn_that_made_it() {
+    // "Until end of turn": the standing offer expires unpaid at the same boundary an unspent
+    // shield does, so a land untapped on the next turn buys nothing.
+    let mut game = TestGame::new();
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    let angel = game.spawn_in_hand(PlayerId(0), card("Guardian Angel"));
+    let big = game.spawn_on_battlefield(PlayerId(0), BIG.clone());
+    let plains = game.spawn_on_battlefield(PlayerId(0), card("Plains"));
+
+    game.cast(angel).x(1).at(Target::Object(big)).resolve();
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(1)
+            && g.current_step() == Step::Main1
+            && g.priority_holder() == PlayerId(0)
+    });
+    refresh_via_mana_tap(&mut game, plains);
+
+    assert!(
+        !offered_a_top_up(&game, PlayerId(0)),
+        "the offer died with the turn that made it"
+    );
+}
+
 // ── Shields that only stop one color (fidelity #5) ────────────────────────────────────
 
 #[test]
