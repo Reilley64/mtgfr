@@ -7,6 +7,9 @@ import { BuilderMenuItemSchema } from "./messages";
 /** Document-unique id for the discard confirmation. Dialog keys its element, ARIA, and cleanup on it. */
 export const DISCARD_DIALOG_ID = "builder-discard-confirm";
 
+/** Document-unique id for the print picker. Doubles as its `data-testid`. */
+export const PRINT_DIALOG_ID = "builder-print-picker";
+
 export const DeckEntry = S.Struct({
   count: S.Number,
   print: S.String,
@@ -59,6 +62,7 @@ export const DeckBuilderSubmodel = S.Struct({
   offset: S.Number,
   pool: S.Array(CatalogCardSchema),
   preferredPrint: S.Record(S.String, S.String),
+  printDialog: Dialog.Model,
   printPicker: S.NullOr(BuilderPrintPicker),
   problems: S.Array(S.String),
   query: S.String,
@@ -83,6 +87,7 @@ export function initialDeckBuilderSubmodel(editingId: string | null = null): Dec
     offset: 0,
     pool: [],
     preferredPrint: {},
+    printDialog: Dialog.init({ id: PRINT_DIALOG_ID }),
     printPicker: null,
     problems: [],
     query: "",

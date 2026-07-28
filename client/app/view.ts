@@ -89,7 +89,6 @@ function toParentDeckBuilderMessage(message: DeckBuilder.ViewMessage): Message {
   switch (message._tag) {
     case "GotAccountMenuMessage":
     case "GotAuthMessage":
-    case "ModalOpened":
     case "CardArtTick":
       return message;
     default:

@@ -7,7 +7,6 @@ import { expect, test } from "vitest";
 import type { ScryfallPrint } from "../../../domain/deck-builder/scryfall";
 import { client } from "../../../domain/rpc-client";
 import { BindCardArt } from "../../../domain/ui/card-art";
-import { OpenDialogAsModal } from "../../../domain/ui/native-dialog";
 import { type CatalogCard, CreateDeck422, type SaveDeckRequest } from "../../../domain/wire/types";
 import { update as appUpdate, init } from "../../../main-exports";
 import { GotDeckBuilderMessage, UrlChanged } from "../../../messages";
@@ -34,7 +33,7 @@ import {
   RequestedBuilderCancel,
   SetBuilderCommander,
 } from "./messages";
-import { DISCARD_DIALOG_ID, initialDeckBuilderSubmodel } from "./submodel";
+import { DISCARD_DIALOG_ID, initialDeckBuilderSubmodel, PRINT_DIALOG_ID } from "./submodel";
 import { update as builderUpdate, NavigateHome, SaveDeck, SearchBuilderPrints } from "./update";
 import { BindBuilderCardPointer, view as builderView } from "./view";
 
@@ -202,11 +201,13 @@ test("picking a print for a commander-only card updates commander art", () => {
     Story.message(appMessage(ReceivedBuilderSearchPage({ cards: [commander], offset: 0, query: "" }))),
     Story.message(appMessage(SetBuilderCommander({ card: commander }))),
     Story.message(appMessage(OpenedBuilderPrintPicker({ addOnPick: false, cardId: "commander" }))),
+    Story.Command.resolve(Dialog.ShowDialog, Dialog.CompletedShowDialog()),
     Story.Command.resolve(
       SearchBuilderPrints,
       ReceivedBuilderPrints({ cardId: "commander", prints: [alternatePrint] }),
     ),
     Story.message(appMessage(PickedBuilderPrint({ cardId: "commander", print: alternatePrint.id }))),
+    Story.Command.resolve(Dialog.CloseDialog, Dialog.CompletedCloseDialog()),
     Story.model((m) => {
       expect(m.decks.builder.commander.print).toBe(alternatePrint.id);
       expect(m.decks.builder.entries.commander).toBeUndefined();
@@ -227,8 +228,10 @@ test("picking a print for a deck row updates preferredPrint and the entry print"
     Story.message(appMessage(ReceivedBuilderSearchPage({ cards: [solRing], offset: 0, query: "" }))),
     Story.message(appMessage(AddedBuilderCard({ card: solRing }))),
     Story.message(appMessage(OpenedBuilderPrintPicker({ addOnPick: false, cardId: "sol-ring" }))),
+    Story.Command.resolve(Dialog.ShowDialog, Dialog.CompletedShowDialog()),
     Story.Command.resolve(SearchBuilderPrints, ReceivedBuilderPrints({ cardId: "sol-ring", prints: [alternatePrint] })),
     Story.message(appMessage(PickedBuilderPrint({ cardId: "sol-ring", print: alternatePrint.id }))),
+    Story.Command.resolve(Dialog.CloseDialog, Dialog.CompletedCloseDialog()),
     Story.model((m) => {
       expect(m.decks.builder.entries["sol-ring"]?.print).toBe(alternatePrint.id);
       expect(m.decks.builder.entries["sol-ring"]?.count).toBe(1);
@@ -266,7 +269,9 @@ test("catalog and decklist are independent overscroll-contained scroll hosts", (
     Scene.expect(Scene.selector('[data-testid="builder-pool-scroll"]')).toHaveClass("overscroll-contain"),
     Scene.expect(Scene.selector('[data-testid="builder-decklist-scroll"]')).toHaveClass("overflow-y-auto"),
     Scene.expect(Scene.selector('[data-testid="builder-decklist-scroll"]')).toHaveClass("overscroll-contain"),
-    Scene.expect(Scene.selector('[data-testid="builder-print-picker"]')).not.toExist(),
+    // The <dialog> element stays mounted so Dialog can open it; a closed picker paints nothing.
+    Scene.expect(Scene.selector('[data-testid="builder-print-picker-backdrop"]')).not.toExist(),
+    Scene.expect(Scene.selector('[data-testid="builder-print-picker-scroll"]')).not.toExist(),
   );
 });
 
@@ -279,6 +284,7 @@ test("print picker freezes catalog and decklist scroll while print grid stays sc
     entries: { "sol-ring": { count: 1, print: solRing.default_print } },
     known: { "sol-ring": solRing },
     preferredPrint: { "sol-ring": solRing.default_print },
+    printDialog: Dialog.init({ id: PRINT_DIALOG_ID, isOpen: true }),
     printPicker: { addOnPick: false, cardId: "sol-ring", error: false, loading: false, prints: [alternatePrint] },
   };
 
@@ -286,7 +292,6 @@ test("print picker freezes catalog and decklist scroll while print grid stays sc
     { update: builderUpdate, view: (model) => builderView(model, emptyViewInputs) },
     Scene.with(model),
     Scene.Mount.resolve(BindBuilderCardPointer({ cardId: "sol-ring", kind: "deck" }), ClearedBuilderHover()),
-    Scene.Mount.resolve(OpenDialogAsModal(), ClearedBuilderHover()),
     Scene.Mount.resolveAll(
       [BindCardArt, ClearedBuilderHover() as never],
       [BindCardArt, ClearedBuilderHover() as never],
@@ -301,6 +306,66 @@ test("print picker freezes catalog and decklist scroll while print grid stays sc
   );
 });
 
+test("clicking the dimmed page behind the print picker dismisses it and unfreezes the builder", () => {
+  const solRing = card({ id: "sol-ring", name: "Sol Ring" });
+  const alternatePrint = print({ collector_number: "42", id: "sol-ring-alt-print", set: "rex", set_name: "Rex" });
+  const model = {
+    ...initialDeckBuilderSubmodel(),
+    atEnd: true,
+    entries: { "sol-ring": { count: 1, print: solRing.default_print } },
+    known: { "sol-ring": solRing },
+    preferredPrint: { "sol-ring": solRing.default_print },
+    printDialog: Dialog.init({ id: PRINT_DIALOG_ID, isOpen: true }),
+    printPicker: { addOnPick: false, cardId: "sol-ring", error: false, loading: false, prints: [alternatePrint] },
+  };
+
+  Scene.scene(
+    { update: builderUpdate, view: (model) => builderView(model, emptyViewInputs) },
+    Scene.with(model),
+    Scene.Mount.resolve(BindBuilderCardPointer({ cardId: "sol-ring", kind: "deck" }), ClearedBuilderHover()),
+    Scene.Mount.resolveAll(
+      [BindCardArt, ClearedBuilderHover() as never],
+      [BindCardArt, ClearedBuilderHover() as never],
+    ),
+    Scene.click(Scene.testId("builder-print-picker-backdrop")),
+    Scene.Command.resolve(Dialog.CloseDialog, Dialog.CompletedCloseDialog()),
+    Scene.expect(Scene.selector('[data-testid="print-tile-sol-ring-alt-print"]')).not.toExist(),
+    Scene.expect(Scene.selector('[data-testid="builder-pool-scroll"]')).toHaveClass("overflow-y-auto"),
+    Scene.expect(Scene.selector('[data-testid="builder-decklist-scroll"]')).toHaveClass("overflow-y-auto"),
+    // The print tiles' art mounts end with the picker.
+    Scene.Mount.expectEnded(BindCardArt),
+  );
+});
+
+test("the print picker's Close button dismisses it", () => {
+  const solRing = card({ id: "sol-ring", name: "Sol Ring" });
+  const alternatePrint = print({ collector_number: "42", id: "sol-ring-alt-print", set: "rex", set_name: "Rex" });
+  const model = {
+    ...initialDeckBuilderSubmodel(),
+    atEnd: true,
+    entries: { "sol-ring": { count: 1, print: solRing.default_print } },
+    known: { "sol-ring": solRing },
+    preferredPrint: { "sol-ring": solRing.default_print },
+    printDialog: Dialog.init({ id: PRINT_DIALOG_ID, isOpen: true }),
+    printPicker: { addOnPick: false, cardId: "sol-ring", error: false, loading: false, prints: [alternatePrint] },
+  };
+
+  Scene.scene(
+    { update: builderUpdate, view: (model) => builderView(model, emptyViewInputs) },
+    Scene.with(model),
+    Scene.Mount.resolve(BindBuilderCardPointer({ cardId: "sol-ring", kind: "deck" }), ClearedBuilderHover()),
+    Scene.Mount.resolveAll(
+      [BindCardArt, ClearedBuilderHover() as never],
+      [BindCardArt, ClearedBuilderHover() as never],
+    ),
+    Scene.click(Scene.testId("close-print-picker")),
+    Scene.Command.resolve(Dialog.CloseDialog, Dialog.CompletedCloseDialog()),
+    Scene.expect(Scene.text("Choose printing")).not.toExist(),
+    // The print tiles' art mounts end with the picker.
+    Scene.Mount.expectEnded(BindCardArt),
+  );
+});
+
 test("print selection renders a Scryfall tile picker instead of a UUID input", () => {
   const solRing = card({ id: "sol-ring", name: "Sol Ring" });
   const alternatePrint = print({ collector_number: "42", id: "sol-ring-alt-print", set: "rex", set_name: "Rex" });
@@ -310,6 +375,7 @@ test("print selection renders a Scryfall tile picker instead of a UUID input", (
     entries: { "sol-ring": { count: 1, print: solRing.default_print } },
     known: { "sol-ring": solRing },
     preferredPrint: { "sol-ring": solRing.default_print },
+    printDialog: Dialog.init({ id: PRINT_DIALOG_ID, isOpen: true }),
     printPicker: { addOnPick: false, cardId: "sol-ring", error: false, loading: false, prints: [alternatePrint] },
   };
 
@@ -317,7 +383,6 @@ test("print selection renders a Scryfall tile picker instead of a UUID input", (
     { update: builderUpdate, view: (model) => builderView(model, emptyViewInputs) },
     Scene.with(model),
     Scene.Mount.resolve(BindBuilderCardPointer({ cardId: "sol-ring", kind: "deck" }), ClearedBuilderHover()),
-    Scene.Mount.resolve(OpenDialogAsModal(), ClearedBuilderHover()),
     Scene.Mount.resolveAll(
       [BindCardArt, ClearedBuilderHover() as never],
       [BindCardArt, ClearedBuilderHover() as never],
@@ -443,6 +508,7 @@ test("choose-print menu action opens the print picker without adding a copy", ()
         }),
       ),
     ),
+    Story.Command.resolve(Dialog.ShowDialog, Dialog.CompletedShowDialog()),
     Story.Command.resolve(SearchBuilderPrints, ReceivedBuilderPrints({ cardId: "sol-ring", prints: [] })),
     Story.model((m) => {
       expect(m.decks.builder.menu).toBeNull();

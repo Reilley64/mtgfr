@@ -14,7 +14,6 @@ export {
   ChangedBuilderQuery,
   ClearedBuilderHover,
   ClosedBuilderMenu,
-  ClosedBuilderPrintPicker,
   ConfirmedBuilderDiscard,
   DeckBuilderLoadFailed,
   DeckSaved,

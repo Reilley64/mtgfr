@@ -12,10 +12,10 @@ import type { AppChromeMeta } from "../../../domain/ui/app-version";
 import { button } from "../../../domain/ui/button";
 import { cardArt } from "../../../domain/ui/card-art";
 import { confirmDialog } from "../../../domain/ui/confirmDialog";
+import { modalDialog } from "../../../domain/ui/dialog";
 import { input } from "../../../domain/ui/input";
-import { OpenDialogAsModal } from "../../../domain/ui/native-dialog";
 import { alertClass } from "../../../domain/ui/surfaces";
-import { type CardArtTick, GotAccountMenuMessage, type GotAuthMessage, type ModalOpened } from "../../../messages";
+import { type CardArtTick, GotAccountMenuMessage, type GotAuthMessage } from "../../../messages";
 import { accountChrome } from "../../account-chrome/view";
 import { shellFrame } from "../../frame/shell-frame";
 import {
@@ -24,9 +24,9 @@ import {
   ChangedBuilderQuery,
   ClearedBuilderHover,
   ClosedBuilderMenu,
-  ClosedBuilderPrintPicker,
   ConfirmedBuilderDiscard,
   GotDiscardDialogMessage,
+  GotPrintDialogMessage,
   type Message,
   MovedBuilderHover,
   OpenedBuilderMenu,
@@ -36,11 +36,10 @@ import {
   RequestedNextBuilderPage,
   SubmittedDeckSave,
 } from "./messages";
-import type { DeckBuilderSubmodel } from "./submodel";
+import { type DeckBuilderSubmodel, PRINT_DIALOG_ID } from "./submodel";
 
 export type ViewMessage =
   | Message
-  | typeof ModalOpened.Type
   | typeof CardArtTick.Type
   | typeof GotAccountMenuMessage.Type
   | typeof GotAuthMessage.Type;
@@ -312,53 +311,49 @@ function skeletonPrintTile(): Html {
 
 function printPicker(model: DeckBuilderSubmodel): Html {
   const picker = model.printPicker;
-  if (picker == null) return null;
 
-  return h.dialog(
-    [
-      h.DataAttribute("testid", "builder-print-picker"),
-      h.Class(
-        "m-auto w-fit max-w-[90vw] rounded-modal border border-vine bg-forest-surface p-xl text-body text-snow shadow-table backdrop:bg-black/60",
-      ),
-      h.OnMount(OpenDialogAsModal()),
-      h.OnCancel(ClosedBuilderPrintPicker()),
-    ],
-    [
-      h.div(
-        [h.Class("flex w-fit max-w-full flex-col gap-md")],
-        [
-          h.div(
-            [h.Class("flex items-center justify-between gap-lg")],
-            [
-              h.div([h.Class("font-semibold text-body")], ["Choose printing"]),
-              button(h, { testId: "close-print-picker", onClick: ClosedBuilderPrintPicker(), variant: "ghost" }, [
-                "Close",
-              ]),
-            ],
-          ),
-          h.div(
-            [
-              h.Class(cn(PRINT_PICKER_GRID, "max-h-[min(60vh,720px)] overflow-y-auto overscroll-contain")),
-              h.DataAttribute("testid", "builder-print-picker-scroll"),
-            ],
-            [
-              !picker.loading && picker.error
-                ? h.div(
-                    [h.Class("col-span-2 text-burn-red text-label")],
-                    ["Could not load printings. Close and try again."],
-                  )
-                : null,
-              !picker.loading && !picker.error && picker.prints.length === 0
-                ? h.div([h.Class("col-span-2 text-label text-lichen")], ["No printings found."])
-                : null,
-              ...(picker.loading
-                ? Array.from({ length: 4 }, () => skeletonPrintTile())
-                : picker.prints.map((p) => printTile(picker.cardId, p))),
-            ],
-          ),
-        ],
-      ),
-    ],
+  return modalDialog(
+    h,
+    {
+      model: model.printDialog,
+      toDialogMessage: (message) => GotPrintDialogMessage({ message }),
+      panel: "w-fit max-w-[90vw]",
+      testId: PRINT_DIALOG_ID,
+    },
+    (render) =>
+      picker == null
+        ? []
+        : [
+            h.div(
+              [h.Class("flex items-center justify-between gap-lg")],
+              [
+                h.div([...render.title, h.Class("font-semibold text-body")], ["Choose printing"]),
+                button(h, { testId: "close-print-picker", variant: "ghost", attrs: [...render.closeButton] }, [
+                  "Close",
+                ]),
+              ],
+            ),
+            h.div(
+              [
+                h.Class(cn(PRINT_PICKER_GRID, "max-h-[min(60vh,720px)] overflow-y-auto overscroll-contain")),
+                h.DataAttribute("testid", "builder-print-picker-scroll"),
+              ],
+              [
+                !picker.loading && picker.error
+                  ? h.div(
+                      [h.Class("col-span-2 text-burn-red text-label")],
+                      ["Could not load printings. Close and try again."],
+                    )
+                  : null,
+                !picker.loading && !picker.error && picker.prints.length === 0
+                  ? h.div([h.Class("col-span-2 text-label text-lichen")], ["No printings found."])
+                  : null,
+                ...(picker.loading
+                  ? Array.from({ length: 4 }, () => skeletonPrintTile())
+                  : picker.prints.map((p) => printTile(picker.cardId, p))),
+              ],
+            ),
+          ],
   );
 }
 

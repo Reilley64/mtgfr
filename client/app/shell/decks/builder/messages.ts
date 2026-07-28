@@ -46,7 +46,9 @@ export const ReceivedBuilderPrints = m("ReceivedBuilderPrints", {
 });
 export const BuilderPrintSearchFailed = m("BuilderPrintSearchFailed", { cardId: S.String });
 export const PickedBuilderPrint = m("PickedBuilderPrint", { cardId: S.String, print: S.String });
-export const ClosedBuilderPrintPicker = m("ClosedBuilderPrintPicker");
+/** Delegation envelope for the print picker's Dialog submodel. Escape, a backdrop click, and
+ *  Close all arrive as its `Closed` out-message, so there is no separate dismiss message. */
+export const GotPrintDialogMessage = m("GotPrintDialogMessage", { message: Dialog.Message });
 export const SubmittedDeckSave = m("SubmittedDeckSave");
 export const DeckSaved = m("DeckSaved");
 export const DeckSaveFailed = m("DeckSaveFailed", { problems: S.Array(S.String) });
@@ -101,7 +103,7 @@ export const Message = S.Union([
   ReceivedBuilderPrints,
   BuilderPrintSearchFailed,
   PickedBuilderPrint,
-  ClosedBuilderPrintPicker,
+  GotPrintDialogMessage,
   SubmittedDeckSave,
   DeckSaved,
   DeckSaveFailed,
