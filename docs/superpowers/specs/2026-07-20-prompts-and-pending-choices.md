@@ -1,5 +1,5 @@
 # Prompts and Pending Choices
-**Status:** Current (as of 2026-07-27)
+**Status:** Current (as of 2026-07-28)
 **Module:** `client/app/board/html/prompts.ts`, `client/app/board/html/prompt-bar-actions.ts`, `client/app/board/html/pending-choice-waiting.ts`, `client/app/domain/choice.ts`, `client/app/domain/choiceWaiting.ts`, `client/app/domain/cardPickSearch.ts`, `client/app/domain/optionFilter.ts`, `client/app/domain/xCost.ts`, `client/app/board/action/execution.ts`, `client/app/domain/ui/card-art.ts`, `client/app/domain/wire/types.ts`
 
 ## Problem Statement
@@ -127,6 +127,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - Prompt text from the engine stays as `MessageRef` until the view edge; formulators use formatted text for titles but submit only structured answers.
 - `promptPresentation(board, state)` is the single presentation classifier for prompt chrome; it returns `none`, `simple`, or `modal`, tags whether a `simple` prompt is board-aim, and defaults uncategorized engine kinds to `modal`.
 - `promptsView` renders content only: bottom-docked coach strips for `simple` flows and centered `promptModalFrame` shells for `modal` flows, including the dimmed backdrop and in-modal action rows.
+- `promptModalFrame` stays hand-rolled rather than moving to the shared `Dialog` frame (`modalDialog`). `Dialog` bundles Escape and backdrop-click close into the frame with no way to drop either, and a pending choice that can be dismissed leaves the player with no way to answer it — the game waits on an answer the UI has thrown away. The same reasoning keeps the mulligan overlay hand-rolled. The dismissible board modals (result, concede) do use the shared frame; see [ui-component-layer](2026-07-28-ui-component-layer.md) and [system-overlays](2026-07-20-system-overlays.md).
 - Interactive pick chrome prefers `data-selected` (and named `group/…` where hover-linked) over JS class ternaries — card-pick faces, order rows, trigger-mode / player-pick buttons, and pile overlay thumbs follow the AGENTS.md Tailwind data-attr pattern.
 
 ## Testing Decisions

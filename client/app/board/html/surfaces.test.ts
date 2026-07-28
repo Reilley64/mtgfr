@@ -5,6 +5,7 @@
  * (or in a focused sibling Scene test) with a data-testid assertion.
  * See AGENTS.md: "Client UI: every surface gets a Scene test."
  */
+import * as Dialog from "@foldkit/ui/dialog";
 import { Submodel } from "foldkit";
 import { html } from "foldkit/html";
 import { Scene } from "foldkit/test";
@@ -16,7 +17,7 @@ import type { GameFoldState, LogLine } from "../../game/fold";
 import { emptyCostPicks, type ModalCast, type PlayModePick, type XPromptState } from "../action/execution";
 import { ZONE } from "../geometry/layout";
 import type { Message } from "../messages";
-import { type BoardModel, initialBoardModel } from "../submodel";
+import { type BoardModel, CONCEDE_DIALOG_ID, initialBoardModel, RESULT_DIALOG_ID } from "../submodel";
 import { type BoardViewModel, view as boardView } from "../view";
 import { boardOverlays } from "./overlays";
 import { resolveBoardCardArtMounts, resolveBoardOverlayMounts, resolveLiveBoardMounts } from "./scene-helpers";
@@ -701,22 +702,22 @@ test("pile overlay renders with its close control", () => {
 
 test("concede confirmation dialog renders both actions", () => {
   overlayScene(
-    overlayModel({ ...initialBoardModel(), confirmConcede: true }),
-    Scene.expect(Scene.testId("concede-dialog")).toExist(),
-    Scene.expect(Scene.testId("concede-cancel")).toExist(),
-    Scene.expect(Scene.testId("concede-confirm")).toExist(),
+    overlayModel({ ...initialBoardModel(), concedeDialog: Dialog.init({ id: CONCEDE_DIALOG_ID, isOpen: true }) }),
+    Scene.expect(Scene.testId(CONCEDE_DIALOG_ID)).toExist(),
+    Scene.expect(Scene.testId("confirm-cancel")).toExist(),
+    Scene.expect(Scene.testId("confirm-ok")).toExist(),
   );
 });
 
 test("result overlay renders watch and leave actions", () => {
   overlaySceneWithoutMounts(
     overlayModel(
-      initialBoardModel(),
+      { ...initialBoardModel(), resultDialog: Dialog.init({ id: RESULT_DIALOG_ID, isOpen: true }) },
       gameState({
         players: [player(0, { lost: true }), player(1)],
       }),
     ),
-    Scene.expect(Scene.testId("result-overlay")).toExist(),
+    Scene.expect(Scene.testId(RESULT_DIALOG_ID)).toExist(),
     Scene.expect(Scene.testId("result-watch")).toExist(),
     Scene.expect(Scene.testId("result-leave")).toExist(),
   );
@@ -726,12 +727,12 @@ test("result overlay renders watch and leave actions", () => {
 test("result overlay Stay/Leave controls are clickable under the overlays root", () => {
   overlaySceneWithoutMounts(
     overlayModel(
-      initialBoardModel(),
+      { ...initialBoardModel(), resultDialog: Dialog.init({ id: RESULT_DIALOG_ID, isOpen: true }) },
       gameState({
         players: [player(0, { lost: true }), player(1)],
       }),
     ),
-    Scene.expect(Scene.testId("result-overlay")).toHaveClass("pointer-events-auto"),
+    Scene.expect(Scene.testId(RESULT_DIALOG_ID)).toHaveClass("pointer-events-auto"),
   );
 });
 
