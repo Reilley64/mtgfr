@@ -216,7 +216,7 @@ Vite production builds set `build.sourcemap: true` (via `clientBuildSourcemap`) 
 - `client/app/game/*.test.ts` — game fold, stream subscription.
 - `client/app/domain/rpc-client.test.ts` — Effect HTTP client (stubbed fetch).
 - `client/app/domain/wire/*.test.ts` — BFF gRPC / RPC method gate.
-- `client/app/domain/ui/*.test.ts`, `client/app/domain/cn.test.ts` — Foldkit UI helpers (`buttonClass`, surfaces).
+- `client/app/domain/ui/*.test.ts`, `client/app/domain/cn.test.ts` — Foldkit UI components and surface class helpers ([ui-component-layer](2026-07-28-ui-component-layer.md)).
 - `client/app/domain/build-meta.test.ts` — version/commit env var reading.
 - `client/app/domain/client-build-options.test.ts` — production `build.sourcemap` stays `true` and wired in `vite.config.ts`.
 - `client/app/pwa-html.test.ts`, `client/app/sw.network.test.ts` — HTML install metadata plus source guards that keep the worker/config network-only; production `bun run build` emits the manifest and custom worker.
