@@ -74,6 +74,11 @@ impl Game {
     /// applies incrementally so newly-minted object ids stay in sync with the arena.
     pub(crate) fn resolve_top(&mut self, events: &mut Vec<Event>) {
         let top = self.stack.last().expect("stack is non-empty").clone();
+        // Resolution-scoped scratch, cleared here rather than at each destroy step: a *targeted*
+        // destroy accumulates across the one step per chosen target that `resolve_spell`'s
+        // multi-target expansion produces (Volcanic Eruption), so only the resolution boundary
+        // knows where the count starts over.
+        self.resolution_frame.destroyed_this_way.clear();
         match top {
             StackItem::Spell(object) => self.resolve_spell(object, events),
             StackItem::Ability {
@@ -826,8 +831,11 @@ impl Game {
             return;
         }
         match effect {
-            // Scry/surveil — ArrangeTop pause peel (`resolution/pause_arrange`).
-            Effect::Dig(DigEffect::Scry { .. }) | Effect::Dig(DigEffect::Surveil { .. }) => {
+            // Scry/surveil/reorder-a-target's-top — ArrangeTop pause peel
+            // (`resolution/pause_arrange`).
+            Effect::Dig(DigEffect::Scry { .. })
+            | Effect::Dig(DigEffect::Surveil { .. })
+            | Effect::Dig(DigEffect::RearrangeTargetPlayersTop { .. }) => {
                 self.run_arrange_top(effect, controller, source, target, x)
             }
             // Clash (CR 701.22): pick an opponent, both reveal + scry-1 their top, score the clash.
@@ -853,8 +861,11 @@ impl Game {
             Effect::Dig(DigEffect::RevealUntilExileCastFree { filter }) => {
                 self.reveal_until_exile_cast_free(controller, source, filter, events)
             }
-            // ShuffleLibrary — see `resolution/resolve_misc.rs`.
-            Effect::Dig(DigEffect::ShuffleLibrary) => self.run_misc_choreo(effect, ctx, events),
+            // ShuffleLibrary / LookAtTargetPlayersHand — see `resolution/resolve_misc.rs`.
+            Effect::Dig(DigEffect::ShuffleLibrary)
+            | Effect::Dig(DigEffect::LookAtTargetPlayersHand) => {
+                self.run_misc_choreo(effect, ctx, events)
+            }
             // Dance with Calamity: the player-driven exile-until-stop loop, then a free cast of any
             // number of the exiled cards if the tally stayed under budget. Pauses on a
             // DanceExileMore choice.
@@ -870,13 +881,18 @@ impl Game {
             // Edict / fan-out pauses — edict pause peel (`resolution/pause_edict`).
             Effect::Choice(ChoiceEffect::EachPlayerSacrifices { .. })
             | Effect::Choice(ChoiceEffect::EachPlayerChoosesWarOrPeace)
-            | Effect::Choice(ChoiceEffect::EachOpponentDiscards)
+            | Effect::Choice(ChoiceEffect::EachPlayerDiscards { .. })
             | Effect::Choice(ChoiceEffect::EachPlayerExilesFromGraveyard)
             | Effect::Choice(ChoiceEffect::TargetPlayerExilesFromGraveyard { .. })
+            | Effect::Choice(ChoiceEffect::ControlPlayerToPlayCardFromHand { .. })
+            | Effect::Choice(ChoiceEffect::DefendersSplitBlockersIntoPiles)
+            | Effect::Choice(ChoiceEffect::DefendersDivideBlockersAmongAttackers)
             | Effect::Choice(ChoiceEffect::CasterKeepsOneOfEachTypePerPlayer)
             | Effect::Choice(ChoiceEffect::EachPlayerControllerChoosesCounterTarget)
             | Effect::Choice(ChoiceEffect::CouncilsDilemmaVote { .. })
             | Effect::Choice(ChoiceEffect::JoinForcesPayMana)
+            | Effect::Choice(ChoiceEffect::TriggeringPlayerMayPayAnyAmountToPrevent { .. })
+            | Effect::Choice(ChoiceEffect::TriggeringPlayerMayAttachThisAuraToChosen { .. })
             | Effect::Choice(ChoiceEffect::EachPlayerNamesCardThenRevealsTop)
             | Effect::Choice(ChoiceEffect::EachOtherTokenBecomesCopyOfChosen)
             | Effect::Choice(ChoiceEffect::PutCounterThenMayBecomeCopyOfCardFromList { .. })
@@ -906,7 +922,7 @@ impl Game {
                 self.each_player_exiles_until_nonland(controller, source, events)
             }
             // MaySacrifice / MayReturnFromGraveyard / MayDiscard / MayDraw* /
-            // SacrificeSelfUnlessPay — may pause peel (`resolution/pause_may`).
+            // PayOrElse — may pause peel (`resolution/pause_may`).
             Effect::Choice(ChoiceEffect::MaySacrifice { .. })
             | Effect::Choice(ChoiceEffect::MayReturnFromGraveyard { .. })
             | Effect::Choice(ChoiceEffect::MayExileDiscardedNonlandMayPlay { .. })
@@ -917,13 +933,19 @@ impl Game {
             | Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
             | Effect::Choice(ChoiceEffect::MayDrawUpToThenOpponentMayRepeat { .. })
             | Effect::Choice(ChoiceEffect::MayPutCounterOnCreature)
-            | Effect::Choice(ChoiceEffect::SacrificeSelfUnlessPay { .. }) => {
+            | Effect::Choice(ChoiceEffect::MayBlockAttackerOfYourChoice)
+            | Effect::Choice(ChoiceEffect::PayOrElse { .. })
+            | Effect::Choice(ChoiceEffect::TriggeringPlayerMayPay { .. })
+            | Effect::Dig(DigEffect::MayShuffleTargetPlayersLibrary { .. }) => {
                 self.run_may_pause(effect, ctx)
             }
             // ChooseCreatureType / ChooseColor / SetOwnColorUntilEndOfTurn / ChooseOne /
             // Demonstrate / Proliferate / PhaseOut — choose pause peel (`resolution/pause_choose`).
-            Effect::Choice(ChoiceEffect::ChooseCreatureType)
+            Effect::Choice(ChoiceEffect::ChangeText { .. })
+            | Effect::Choice(ChoiceEffect::ChooseBasicLandType)
+            | Effect::Choice(ChoiceEffect::ChooseCreatureType)
             | Effect::Choice(ChoiceEffect::ChooseColor)
+            | Effect::Choice(ChoiceEffect::ChooseOpponent)
             | Effect::Choice(ChoiceEffect::SetOwnColorUntilEndOfTurn)
             | Effect::ChooseOne { .. }
             | Effect::Copy(CopyEffect::Demonstrate { .. })
@@ -967,7 +989,7 @@ impl Game {
                 self.run_fight_pause(effect, ctx)
             }
             // Copy-family choreography — see `resolution/copy.rs::run_copy`.
-            Effect::Copy(CopyEffect::TargetSpell)
+            Effect::Copy(CopyEffect::TargetSpell { .. })
             | Effect::Copy(CopyEffect::ThisSpell { .. })
             | Effect::Copy(CopyEffect::RetargetSpellCopy { .. })
             | Effect::Copy(CopyEffect::MayPayToCopyThis { .. })
@@ -989,6 +1011,10 @@ impl Game {
             // Surge to Victory's mint-free-copy step — see `resolution/copy.rs::run_copy`.
             Effect::Copy(CopyEffect::MintFreeCopyOfExiledCard { .. }) => {
                 self.run_copy(effect, ctx, events)
+            }
+            // A discard *at random* picks for itself — no pause, straight to the misc choreo.
+            Effect::Choice(ChoiceEffect::Discard { random: true, .. }) => {
+                self.run_misc_choreo(effect, ctx, events)
             }
             // Discard / PutFromHand* / CastCreatureFaceDown — hand pause peel (`resolution/pause_hand`).
             Effect::Choice(ChoiceEffect::Discard { .. })
@@ -1059,6 +1085,9 @@ impl Game {
                     Condition::SourceUntapped => {
                         self.as_permanent(source).is_some_and(|p| !p.tapped)
                     }
+                    // Mana Vault's draw-step ping re-reads the same state at CR 603.4's second
+                    // check, the other way round from Howling Mine above.
+                    Condition::SourceTapped => self.as_permanent(source).is_some_and(|p| p.tapped),
                     // Dragon Whelp: "If this ability has been activated four or more times this
                     // turn" — counts this turn's `once_per_turn.activated` entries for `source`
                     // (every activated-ability activation records one, not just a
@@ -1129,6 +1158,9 @@ impl Game {
             Effect::Destroy(destroy @ DestroyEffect::All { .. }) => {
                 self.resolve_destroy_all(destroy, controller, source, target, x, events)
             }
+            Effect::Destroy(destroy @ DestroyEffect::Target { .. }) => {
+                self.resolve_destroy_target(destroy, controller, source, target, x, events)
+            }
             Effect::Exile(exile @ ExileEffect::All { .. }) => {
                 self.resolve_exile_all(exile, controller, source, target, x, events)
             }
@@ -1150,6 +1182,10 @@ impl Game {
             Effect::Choice(ChoiceEffect::EachPlayerDiscardsHandThenDraws { .. }) => {
                 self.run_misc_choreo(effect, ctx, events)
             }
+            // Timetwister — see `resolution/resolve_misc.rs`.
+            Effect::Choice(ChoiceEffect::EachPlayerShufflesHandAndGraveyardThenDraws {
+                ..
+            }) => self.run_misc_choreo(effect, ctx, events),
             // Malfegor's "discard your hand" — see `resolution/resolve_misc.rs`.
             Effect::Choice(ChoiceEffect::DiscardYourHand) => {
                 self.run_misc_choreo(effect, ctx, events)
@@ -1168,20 +1204,53 @@ impl Game {
                 self.run_misc_choreo(effect, ctx, events)
             }
             // Basandra, Battle Seraph's {R} ability — see `resolution/resolve_misc.rs`.
-            Effect::Misc(MiscEffect::MustAttackTarget) => self.run_misc_choreo(effect, ctx, events),
+            Effect::Misc(MiscEffect::MustAttackTarget { .. }) => {
+                self.run_misc_choreo(effect, ctx, events)
+            }
+            // Siren's Call — see `resolution/resolve_misc.rs`.
+            Effect::Misc(MiscEffect::MustAttackAll { .. }) => {
+                self.run_misc_choreo(effect, ctx, events)
+            }
             // Tariel, Reckoner of Souls — see `resolution/resolve_misc.rs`.
             Effect::Zone(ZoneEffect::ReanimateRandomFromTargetOpponentGraveyard { .. }) => {
                 self.run_misc_choreo(effect, ctx, events)
             }
-            // Inkshield / Moment's Peace — see `resolution/resolve_misc.rs`.
+            // Inkshield / Moment's Peace / Healing Salve — see `resolution/resolve_misc.rs`.
             Effect::Misc(MiscEffect::PreventCombatDamageToYouCreatingTokens { .. })
-            | Effect::Misc(MiscEffect::PreventAllCombatDamageThisTurn) => {
+            | Effect::Misc(MiscEffect::PreventAllCombatDamageThisTurn)
+            | Effect::Misc(MiscEffect::PreventNextDamage { .. })
+            | Effect::Misc(MiscEffect::OfferPreventionTopUp { .. }) => {
+                self.run_misc_choreo(effect, ctx, events)
+            }
+            // Blaze of Glory — see `resolution/resolve_misc.rs`.
+            Effect::Misc(MiscEffect::BlocksEachAttackerIfAble { .. }) => {
                 self.run_misc_choreo(effect, ctx, events)
             }
             // Master Warcraft — see `resolution/resolve_misc.rs`.
             Effect::Misc(MiscEffect::YouChooseWhichCreaturesAttack)
             | Effect::Misc(MiscEffect::YouChooseWhichCreaturesBlock) => {
                 self.run_misc_choreo(effect, ctx, events)
+            }
+            // Drain Power's "target player activates a mana ability of each land they control":
+            // walk their untapped lands and tap each on their behalf through the one
+            // tap-for-mana path (CR 605.3 — a mana ability uses no stack), so every land-tap
+            // watch on the board fires exactly as it would for their own click. A land with no
+            // mana ability rejects and is skipped.
+            Effect::Mana(ManaEffect::TargetPlayerTapsLandsForMana) => {
+                let Some(Target::Player(player)) = target else {
+                    return;
+                };
+                for land in self.battlefield() {
+                    if self.controller_of(land) != player
+                        || self.is_tapped(land)
+                        || !self.effective_types(land).intersects(TypeSet::LAND)
+                    {
+                        continue;
+                    }
+                    if let Ok(evs) = self.tap_for_mana(player, land) {
+                        events.extend(evs);
+                    }
+                }
             }
             // Each of these draws may be replaced by dredge (CR 702.52): `draw_with_dredge` draws one
             // card at a time, pausing on `ChooseDredge` before any draw the controller has an eligible

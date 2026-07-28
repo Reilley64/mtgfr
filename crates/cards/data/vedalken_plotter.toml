@@ -1,5 +1,6 @@
 # When this creature enters, exchange control of target land you control and target land an opponent controls.
 name = "Vedalken Plotter"
+otags = ["exchange-control", "multiple-targets", "theft-land", "triggered-ability", "untracked-indefinite-effect", "virtual-vanilla"]
 sets = ["cmd", "gpt"]
 id = "3f85b92d-7212-4fc7-a5e8-6350e1acfdd3"
 default_print = "85bba39e-73bd-48e5-97ce-4b4661bab71b"

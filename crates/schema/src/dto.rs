@@ -602,7 +602,15 @@ pub enum PendingChoiceView {
     /// — the permanents they control that "may choose not to untap" (CR 502.2 — Rubinia
     /// Soulsinger). `items` are public battlefield permanents. Answering keeps the chosen subset
     /// tapped and untaps the rest.
-    DeclineUntap { player: u8, items: Vec<ChoiceItem> },
+    DeclineUntap {
+        player: u8,
+        items: Vec<ChoiceItem>,
+        /// Smoke / Winter Orb (CR 502.2): each group is a set of `items` from which at most one may
+        /// untap, so an answer that leaves two of a group out of the kept-tapped subset is
+        /// rejected. Empty for a plain Rubinia-style pause, where every item is a free yes/no.
+        #[serde(default)]
+        at_most_one: Vec<Vec<ObjectId>>,
+    },
     /// This player is about to draw and may dredge instead (CR 702.52): `items` are the eligible
     /// dredgers in their own graveyard (public to them). Answering picks one to mill-and-return, or
     /// declines (`dredger: null`) to draw normally. Client chrome: Draw normally decline + single pick.
@@ -722,6 +730,10 @@ pub enum PendingChoiceView {
     Scry { player: u8, items: Vec<ChoiceItem> },
     /// The looked-at cards, top of library. Private to the surveilling player.
     Surveil { player: u8, items: Vec<ChoiceItem> },
+    /// The looked-at cards, top of a library the player may reorder but not split (Natural
+    /// Selection). Private to that player; every card goes back on top, so unlike
+    /// [`Self::Scry`] there is no second pile to answer with.
+    ReorderTop { player: u8, items: Vec<ChoiceItem> },
     /// The matching library cards found. Private to the searching player.
     SearchLibrary { player: u8, items: Vec<ChoiceItem> },
     /// The looked-at top cards; the player may select up to `up_to` into a zone. Private to them.
@@ -757,6 +769,9 @@ pub enum PendingChoiceView {
         /// When true, the player keeps one permanent and sacrifices all others.
         #[serde(default)]
         keep_one: bool,
+        /// How many of `items` to choose (ignored when `keep_one`): 1 for a plain edict, more for
+        /// Malfegor's "for each card discarded this way" or Balance's "down to the fewest".
+        count: u32,
         items: Vec<ChoiceItem>,
     },
     /// Every counter-bearing permanent on the battlefield; this player may choose any number
@@ -791,9 +806,10 @@ pub enum PendingChoiceView {
         source: ObjectId,
         items: Vec<ChoiceItem>,
     },
-    /// This player must choose exactly `count` of `items` (their own permanents) to sacrifice —
-    /// a forced sacrifice they direct (CR 701.16a — Lotus Field's ETB, Smothering Abomination's
-    /// upkeep). Unlike [`MaySacrifice`], declining isn't legal.
+    /// This player must choose exactly `count` of `items` to sacrifice — a forced sacrifice they
+    /// direct (CR 701.16a — Lotus Field's ETB, Smothering Abomination's upkeep). Usually their own
+    /// permanents; Demonic Hordes' "a land of an opponent's choice" points this seat at somebody
+    /// else's board. Unlike [`MaySacrifice`], declining isn't legal.
     ChooseOwnSacrifices {
         player: u8,
         source: ObjectId,
@@ -911,6 +927,11 @@ pub enum PendingChoiceView {
         player: u8,
         source: ObjectId,
         items: Vec<ChoiceItem>,
+        /// Word of Command reuses this view for "choose a card from target opponent's hand and
+        /// they play it": same one-card-plus-cast-target answer, different wording, and `items`
+        /// is redacted for every seat but the one looking.
+        #[serde(default)]
+        from_opponent_hand: bool,
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
         cast_targets: Vec<ChoiceItem>,
     },
@@ -960,6 +981,11 @@ pub enum PendingChoiceView {
         player: u8,
         source: ObjectId,
         items: Vec<ChoiceItem>,
+        /// Raging River rides this view for "divide all creatures without flying you control into
+        /// a 'left' pile and a 'right' pile": same name-a-subset-of-public-objects answer, except
+        /// the items are the defender's own battlefield and the two piles are labelled.
+        #[serde(default)]
+        into_piles: bool,
     },
     /// This player (an **opponent** of the controller) must choose one of `items` (Murmurs from
     /// Beyond's three revealed cards, public); the chosen card goes to the controller's
@@ -977,6 +1003,11 @@ pub enum PendingChoiceView {
         source: ObjectId,
         pile_a: Vec<ChoiceItem>,
         pile_b: Vec<ChoiceItem>,
+        /// Raging River again: the attacking creature this left-or-right pick is being made for,
+        /// `None` for Fact or Fiction's pile pick. The pile *not* named is shut out of blocking
+        /// this one attacker.
+        #[serde(default)]
+        attacker: Option<ChoiceItem>,
     },
     /// This player (the controller) may choose up to `count` of `items` (public — exile-zone) to
     /// grant the free-cast permission (CR 118.5); the rest go to hand or stay exiled per the card
@@ -1037,13 +1068,16 @@ pub enum PendingChoiceView {
     /// This player (an entering permanent's controller) may have `source` enter as a copy of one
     /// of `items` (every other creature on the battlefield, public — CR 706/707.2, Altered Ego,
     /// Cursed Mirror). Answered with the chosen creature, or a decline (the "you may").
-    /// `put_counter_on_creature` marks the reused "put a +1/+1 counter on a creature" primer so
-    /// clients can swap the copy wording without needing a separate answer shape.
+    /// `put_counter_on_creature` marks the reused "put a +1/+1 counter on a creature" primer, and
+    /// `choose_block_target` the reused "have this creature block an attacking creature of your
+    /// choice" re-aim (False Orders), so clients can swap the copy wording without needing a
+    /// separate answer shape.
     ChooseCopyTarget {
         player: u8,
         source: ObjectId,
         items: Vec<ChoiceItem>,
         put_counter_on_creature: bool,
+        choose_block_target: bool,
     },
     /// This player (the deployed attachment's controller) must choose a host among `items` (the
     /// eligible battlefield creatures, public) for the Aura or Equipment it just put onto the
@@ -1078,6 +1112,7 @@ impl PendingChoiceView {
             | Self::DivideCounters { items, .. }
             | Self::Scry { items, .. }
             | Self::Surveil { items, .. }
+            | Self::ReorderTop { items, .. }
             | Self::SearchLibrary { items, .. }
             | Self::SelectFromTop { items, .. }
             | Self::DistributeTop { items, .. }
@@ -1564,10 +1599,11 @@ mod tests {
                 player: 0,
                 source: 9,
                 keep_one: false,
+                count: 1,
                 items: Vec::new(),
             })
             .unwrap(),
-            serde_json::json!({"kind": "sacrifice_edict", "player": 0, "source": 9, "keep_one": false, "items": []}),
+            serde_json::json!({"kind": "sacrifice_edict", "player": 0, "source": 9, "keep_one": false, "count": 1, "items": []}),
         );
         assert_eq!(
             serde_json::to_value(PendingChoiceView::Discard {

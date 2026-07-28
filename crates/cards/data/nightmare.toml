@@ -1,0 +1,31 @@
+# Flying (This creature can't be blocked except by creatures with flying or reach.)
+# Nightmare's power and toughness are each equal to the number of Swamps you control.
+name = "Nightmare"
+otags = ["cda-power", "cda-toughness", "creature-type-name", "cycle-w16-r", "cycle-w17-r-creature", "evasion", "maro-sorcerer", "punny-name", "single-english-word-name", "synergy-swamp", "type-errata-name-self"]
+sets = ["10e", "2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "8ed", "9ed", "anb", "ced", "cei", "fbb", "lea", "leb", "m10", "m14", "m15", "ori", "plst", "sum", "w16", "w17"]
+id = "375932e6-1b3e-48dc-8154-9b664c3add34"
+default_print = "747d4c99-0287-4138-af13-6244f33d2e57"
+oracle = "Flying (This creature can't be blocked except by creatures with flying or reach.)\nNightmare's power and toughness are each equal to the number of Swamps you control."
+subtypes = ["Nightmare", "Horse"]
+keywords = ["flying"]
+
+[cost]
+generic = 5
+black = 1
+
+# The printed box reads */*; the defining ability below supplies both numbers.
+[kind]
+type = "creature"
+power = 0
+toughness = 0
+
+# Nightmare's power and toughness are each equal to the number of Swamps you control.
+[[abilities]]
+timing = "static"
+
+# power and toughness are each equal to the number of Swamps you control
+[[abilities.effects]]
+type = "static"
+mode = "base_power_toughness_from_amount"
+power = { per_permanent = { types = "land", subtypes = ["Swamp"], controller = "you" } }
+toughness = { per_permanent = { types = "land", subtypes = ["Swamp"], controller = "you" } }

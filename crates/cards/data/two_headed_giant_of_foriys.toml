@@ -1,0 +1,29 @@
+# Trample
+# This creature can block an additional creature each combat.
+name = "Two-Headed Giant of Foriys"
+otags = ["block-additional", "synergy-blocker-self"]
+sets = ["2ed", "30a", "ced", "cei", "lea", "leb", "me4", "prm"]
+id = "38aa31bd-7145-43b9-9409-463d9ad6cd69"
+default_print = "67299451-5302-4639-a4bc-6109521a2c0c"
+oracle = "Trample\nThis creature can block an additional creature each combat."
+subtypes = ["Giant"]
+keywords = ["trample"]
+
+[cost]
+generic = 4
+red = 1
+
+[kind]
+type = "creature"
+power = 4
+toughness = 4
+
+# This creature can block an additional creature each combat.
+[[abilities]]
+timing = "static"
+
+# This creature can block an additional creature each combat.
+[[abilities.effects]]
+type = "static"
+mode = "can_block_additional"
+count = 1

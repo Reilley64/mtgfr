@@ -1,0 +1,29 @@
+# {1}: The next time a white source of your choice would deal damage to you this turn,
+# prevent that damage.
+name = "Circle of Protection: White"
+otags = ["activated-ability", "cycle-lea-circle-protection", "damage-prevention-you", "hate-white", "mana-sink"]
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "8ed", "ced", "cei", "fbb", "ice", "lea", "leb", "sum", "tmp"]
+id = "5f46f86a-9779-4ed3-99cb-76a03d380598"
+default_print = "98a1c689-cd8b-4a80-ad6d-e4ff5933f5e7"
+oracle = "{1}: The next time a white source of your choice would deal damage to you this turn, prevent that damage."
+approximates = "the shield arms against the next source of the named color instead of one source picked as the ability resolves, so it cannot be held for the second of two same-colored hits in a turn"
+
+[cost]
+generic = 1
+white = 1
+
+[kind]
+type = "enchantment"
+
+# {1}: The next time a white source of your choice would deal damage to you this turn,
+# prevent that damage.
+[[abilities]]
+timing = "activated"
+activation_cost = { generic = 1 }
+
+# {1}: The next time a white source of your choice would deal damage to you this turn,
+# prevent that damage.
+[[abilities.effects]]
+type = "misc"
+mode = "prevent_next_damage"
+from_color = "white"

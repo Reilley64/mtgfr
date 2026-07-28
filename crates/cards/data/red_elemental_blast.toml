@@ -1,0 +1,36 @@
+# Choose one —
+# • Counter target blue spell.
+# • Destroy target blue permanent.
+name = "Red Elemental Blast"
+otags = ["color-break", "counterspell", "hate-blue", "interrupt", "modal", "removal-destroy", "removal-nonland", "single-target-instant-sorcery", "spot-removal"]
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "a25", "ced", "cei", "fbb", "lea", "leb", "me4", "prm", "ptc", "sum"]
+id = "bb329a5c-b9f9-4973-a53f-090024146325"
+default_print = "1c69e1c9-e8ed-4497-8098-0d412a09c0f9"
+oracle = "Choose one —\n• Counter target blue spell.\n• Destroy target blue permanent."
+modal = true
+
+[cost]
+red = 1
+
+[kind]
+type = "instant"
+
+# Mode 0 — "Counter target blue spell."
+[[abilities]]
+timing = "spell"
+
+# Counter target blue spell.
+[[abilities.effects]]
+type = "misc"
+mode = "counter_target_spell"
+filter = { color = "blue" }
+
+# Mode 1 — "Destroy target blue permanent."
+[[abilities]]
+timing = "spell"
+
+# Destroy target blue permanent.
+[[abilities.effects]]
+type = "destroy"
+mode = "target"
+target = { permanent = { color = "blue" } }

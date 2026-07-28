@@ -17,7 +17,8 @@ export function pileCards(state: VisibleState, zone: number, owner: number): Obj
 
 /** Pile zone display name for the heading. */
 function zoneName(zone: number, count: number): string {
-  const base = zone === ZONE.Graveyard ? "Graveyard" : zone === ZONE.Exile ? "Exile" : "Pile";
+  const base =
+    zone === ZONE.Graveyard ? "Graveyard" : zone === ZONE.Exile ? "Exile" : zone === ZONE.Hand ? "Hand" : "Pile";
   return `${base} (${count})`;
 }
 
@@ -94,7 +95,10 @@ export function pileOverlayView(
       h.Attribute("data-pile-modal", "true"),
     ],
     [
-      h.div([h.Class("mb-sm font-semibold text-body text-snow")], [title]),
+      h.div(
+        [h.DataAttribute("testid", "pile-overlay-title"), h.Class("mb-sm font-semibold text-body text-snow")],
+        [title],
+      ),
       h.div([h.Class("flex flex-wrap gap-xs")], cardList),
       h.div(
         [h.Class("mt-sm flex justify-end")],

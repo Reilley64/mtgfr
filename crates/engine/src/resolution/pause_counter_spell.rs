@@ -26,6 +26,7 @@ impl Game {
             // outright. `unless_pays: None` falls through to the catch-all's unconditional counter.
             Effect::Misc(MiscEffect::CounterTargetSpell {
                 unless_pays: Some(amount),
+                strips_mana_on_decline,
                 ..
             }) => {
                 let original = expect_object_target(target, "a spell to counter");
@@ -44,6 +45,7 @@ impl Game {
                             ..Cost::FREE
                         },
                         spell: original,
+                        strips_mana_on_decline,
                     },
                 );
             }

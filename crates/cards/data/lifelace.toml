@@ -1,0 +1,25 @@
+# Target spell or permanent becomes green. (Mana symbols on that permanent remain unchanged.)
+name = "Lifelace"
+otags = ["color-change", "cycle-lea-lace", "interrupt", "single-target-instant-sorcery", "untracked-indefinite-effect"]
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
+id = "eec1de80-4b3d-481d-a235-c299e0381830"
+default_print = "446558ba-2396-4b9e-b56a-cf2014e7a13c"
+oracle = "Target spell or permanent becomes green. (Mana symbols on that permanent remain unchanged.)"
+
+[cost]
+green = 1
+
+[kind]
+type = "instant"
+
+# Target spell or permanent becomes green. (Mana symbols on that permanent remain unchanged.)
+[[abilities]]
+timing = "spell"
+
+# Target spell or permanent becomes green. The reminder text is a rules clarification, not an
+# effect — colors are read off the object, never re-derived from its mana symbols.
+[[abilities.effects]]
+type = "pump"
+mode = "target_becomes_color"
+color = "green"
+target = "spell_or_permanent"

@@ -68,6 +68,16 @@ pub enum Trigger {
     /// [`Game::declare_blockers`] (batch-deduped, like [`Trigger::YouAttackWithCreatures`]'s
     /// [`Game::queue_batch_attack_triggers`]), not [`Game::enqueue_triggers`]'s per-event scan.
     BlocksOrBecomesBlocked,
+    /// Whenever this creature blocks or becomes blocked by a creature matching `filter`
+    /// (Cockatrice, Thicket Basilisk — "…by a non-Wall creature"; CR 509.1a/509.1h). Unlike
+    /// [`BlocksOrBecomesBlocked`](Self::BlocksOrBecomesBlocked) above this fires once per
+    /// (blocker, attacker) *pair* and isn't deduped, because the payoff names the *other*
+    /// creature: two creatures blocking one Basilisk each turn to stone. That partner rides in
+    /// [`TriggerContext::blocking_partner`], which fills the payoff's
+    /// [`DestroyEffect::ThatCreature`](crate::DestroyEffect::ThatCreature). Batch-scanned from
+    /// [`Game::declare_blockers`] like the variant above, not [`Game::enqueue_triggers`]'s
+    /// per-event pass. Spelled `"blocks_or_becomes_blocked_by"` in TOML, with a sibling `filter`.
+    BlocksOrBecomesBlockedBy { filter: PermanentFilter },
     /// Whenever this creature attacks or blocks (Mana-Charged Dragon, CR 508.1a / CR 509.3a) —
     /// unlike [`BlocksOrBecomesBlocked`](Self::BlocksOrBecomesBlocked), the *attacker* half of a
     /// block declaration doesn't fire this (an attacker "becomes blocked", it doesn't "block").
@@ -76,8 +86,8 @@ pub enum Trigger {
     /// side only, deduped like [`Game::queue_blocks_or_becomes_blocked_triggers`] so a creature
     /// blocking multiple attackers still fires once.
     AttacksOrBlocks,
-    /// When this creature dies (moves from the battlefield to the graveyard, or — for a
-    /// token — ceases to exist).
+    /// When this permanent dies — CR 700.4's "put into a graveyard from the battlefield", for any
+    /// permanent type (Lich's enchantment), or — for a token — ceases to exist.
     Dies,
     /// Whenever *another* creature dies (a watch-others trigger, self-excluded).
     CreatureDies,
@@ -127,6 +137,37 @@ pub enum Trigger {
     /// with it" (`Effect::Choice(ChoiceEffect::EachPlayerSacrifices)`'s `shares_type_with_dying_permanent` filter axis).
     /// See [`Game::queue_nonland_permanent_death_watchers`].
     NonlandPermanentYouControlDiesIncludingThis,
+    /// Whenever a *land* — any player's — is put into a graveyard from the battlefield (Dingus
+    /// Egg). Lands are the one permanent type the watches above deliberately exclude, and this is
+    /// also the one that isn't controller-scoped: the Egg fires on every land that dies anywhere.
+    /// The dead land's controller-at-death rides along on
+    /// [`TriggerContext::triggering_permanent_controller`] for the "that land's controller" payoff.
+    /// See [`Game::queue_land_death_watchers`].
+    LandPutIntoGraveyard,
+    /// Whenever a permanent matching `filter` — any player's — becomes tapped. `for_mana` picks
+    /// which tap: `false` is every tap there is (Lifetap's "whenever a Forest an opponent controls
+    /// becomes tapped" — an attack, an Icy Manipulator, a mana ability alike), `true` narrows to a
+    /// land tapped *for mana* (Manabarbs, CR 106.11 — a tap that actually produced mana). The two
+    /// fire from different chokes and never overlap: `false` off [`Event::Tapped`] in
+    /// [`Game::enqueue_triggers`], `true` off [`Game::land_tapped_for_mana`], the same choke the
+    /// [`Effect::Static(StaticEffect::TappedForManaBonus)`] watches read. Not controller-scoped —
+    /// both cards watch the whole table — so the tapped permanent's controller rides on
+    /// [`TriggerContext::triggering_permanent_controller`] for a "that player" payoff. Spelled
+    /// `"permanent_becomes_tapped"` in TOML, with sibling `filter` and `for_mana` fields. See
+    /// [`Game::queue_becomes_tapped_triggers`].
+    PermanentBecomesTapped {
+        filter: PermanentFilter,
+        for_mana: bool,
+    },
+    /// Whenever the permanent this Aura is attached to becomes tapped (Psychic Venom's "whenever
+    /// enchanted land becomes tapped") — the tap twin of
+    /// [`EnchantedCreatureAttacks`](Self::EnchantedCreatureAttacks), and fieldless for the same
+    /// reason: the host is whatever this attachment is on, which no [`PermanentFilter`] can say.
+    /// Fires off [`Event::Tapped`] for *every* tap, mana or not. The host's controller rides on
+    /// [`TriggerContext::triggering_permanent_controller`] for the "that land's controller"
+    /// payoff. Spelled `"enchanted_permanent_becomes_tapped"` in TOML. See
+    /// [`Game::queue_becomes_tapped_triggers`].
+    EnchantedPermanentBecomesTapped,
     /// At the beginning of the controller's upkeep step.
     Upkeep,
     /// At the beginning of *every* player's upkeep, not just the controller's — CR "at the
@@ -147,6 +188,11 @@ pub enum Trigger {
     /// is, not just who controls the permanent, so [`Game::queue_each_draw_step_triggers`] threads
     /// the active player into [`TriggerContext::active_player`].
     EachDrawStep,
+    /// At the beginning of the controller's own draw step (Mana Vault's "At the beginning of your
+    /// draw step, if this artifact is tapped, …") — the your-turn twin of
+    /// [`EachDrawStep`](Self::EachDrawStep) above, scoped to the active player's own permanents
+    /// exactly like [`Upkeep`](Self::Upkeep) is. Spelled `"draw_step"` in TOML.
+    DrawStep,
     /// At the beginning of every *other* player's untap step — CR "during each other player's
     /// untap step" (Drumbellower). Fires under the ability's own controller, excluding the
     /// controller's own untap step (contrast [`EachUpkeep`](Self::EachUpkeep)/
@@ -171,6 +217,16 @@ pub enum Trigger {
     /// active player's own permanents only — an "each player" variant (Combat Celebrant-style)
     /// is a distinct, unlanded trigger.
     BeginCombat,
+    /// At end of combat (CR 511.1 — Clockwork Beast's "At end of combat, if this creature
+    /// attacked or blocked this combat, …"). Fires under the ability's own controller in *any*
+    /// player's combat, not just the controller's, because a creature blocks on someone else's
+    /// turn — a battlefield-wide watch like [`EachEndStep`](Self::EachEndStep), not an
+    /// active-player one like [`BeginCombat`](Self::BeginCombat) above. Queued straight from the
+    /// end-of-combat turn-based action ([`Game::queue_end_of_combat_triggers`]) rather than off
+    /// the `StepBegan` event scan, so that the combat declarations
+    /// [`Condition::SourceAttackedOrBlockedThisCombat`](crate::Condition) reads are still there:
+    /// the same step clears them. Spelled `"end_of_combat"` in TOML.
+    EndOfCombat,
     /// At the beginning of the controller's end step.
     EndStep,
     /// Whenever the controller gains life.
@@ -294,6 +350,14 @@ pub enum Trigger {
     /// the [`TriggerContext`]'s `discarded` field so the effect can act on "that card"; see
     /// [`Game::queue_discard_triggers`].
     YouDiscard,
+    /// Whenever this permanent's controller *plays* a land (CR 305.1 — the special action, not
+    /// the landfall "enters"): Fastbond's "whenever you play a land". Fieldless and
+    /// controller-scoped like [`YouDiscard`](Self::YouDiscard) above; fires off
+    /// [`Event::LandPlayed`](crate::Event), so a fetched, reanimated, or token land doesn't
+    /// qualify. Fastbond's "if it wasn't the first land you played this turn" is the ability's own
+    /// intervening-if ([`Condition::LandsPlayedThisTurnAtLeast`](crate::Condition)), not part of
+    /// the trigger.
+    YouPlayALand,
     /// Whenever a creature deals combat damage to a player (CR 510.2), scoped by `who`:
     /// [`CombatDamageScope::This`] (Leitmotif Composer — only this permanent's own damage),
     /// [`CombatDamageScope::YourCreatures`] (Ohran Frostfang, Defiling Daemogoth — any creature
@@ -313,10 +377,18 @@ pub enum Trigger {
     /// (CR 701.12) or other noncombat creature damage only emits that, not this marker. The
     /// damaged creature's id rides in [`TriggerContext::damaged_creature`] (CR 603.10a
     /// last-known information) so
-    /// [`Effect::Destroy(DestroyEffect::DestroyTriggeringDamagedCreature)`](crate::Effect::Destroy(DestroyEffect::DestroyTriggeringDamagedCreature))
+    /// [`Effect::Destroy(DestroyEffect::ThatCreature)`](crate::Effect::Destroy(DestroyEffect::ThatCreature))
     /// can act on "that creature". See the `Event::CombatDamageDealtToCreature` arm of
     /// [`Game::enqueue_triggers`].
     DealsCombatDamageToCreature,
+    /// Whenever this permanent is dealt damage (CR 119.3, Fungusaur: "Whenever this creature is
+    /// dealt damage, put a +1/+1 counter on it") — the *receiving* end, the mirror of every other
+    /// damage trigger here. Self-scoped and fieldless: it fires once per damage event off
+    /// [`Event::DamageMarked`], the shared choke behind combat damage, fight damage, and a plain
+    /// ping alike, so source and combat-ness are both invisible to it.
+    /// ponytail: the amount isn't threaded onto [`TriggerContext`] — the pool's only consumer
+    ///   ignores it. Add a context slot when a card scales with the damage taken.
+    ThisIsDealtDamage,
     /// Whenever a creature dealt damage by this permanent *this turn* dies (CR 603.10a
     /// last-known information, Vampiric Dragon: "Whenever a creature dealt damage by this
     /// creature this turn dies, put a +1/+1 counter on this creature."). Self-scoped and
@@ -340,6 +412,15 @@ pub enum Trigger {
     /// `source`); every player other than the controller is an opponent (CR 102.3). See
     /// [`Game::queue_deals_damage_to_opponent_triggers`].
     DealsDamageToOpponent,
+    /// Whenever this permanent's controller is dealt damage, combat or noncombat alike (CR 120.1
+    /// — Living Artifact's "Whenever you're dealt damage, put that many vitality counters on this
+    /// Aura", Lich's "sacrifice that many nontoken permanents"). Controller-scoped on the
+    /// *damaged* player, the receiving-end twin of
+    /// [`DealsDamageToOpponent`](Self::DealsDamageToOpponent): the victim's own permanents watch,
+    /// the dealer's don't. The amount rides in `TriggerContext::triggering_damage_dealt`, so
+    /// `Amount::TriggeringDamageDealt` reads "that many". One trigger per damage event, so a
+    /// creature and a spell hitting the same player fire it twice — which is what CR 603.3 says.
+    YouAreDealtDamage,
     /// Whenever a player casts a spell matching `filter` (CR: the general form behind
     /// [`Magecraft`](Self::Magecraft) and its kin) — a data-driven cast-watch. `caster` scopes
     /// whose cast counts, relative to the ability's own controller ([`CasterScope::You`] default,
@@ -746,17 +827,20 @@ pub struct TriggerContext {
     /// other trigger, same shape as `dying_source_stats` above. See
     /// [`Game::queue_combat_damage_triggers`] for where this is captured.
     pub combat_damage: Option<i32>,
-    /// CR 510.2/603.10a last-known information: the player the source just dealt combat damage
-    /// to, for a [`Trigger::DealsCombatDamageToPlayer`] watch whose payoff excludes them (Hydra
-    /// Omnivore: "it deals that much damage to each **other** opponent"). `None` for every other
-    /// trigger, same shape as `combat_damage` above. See
-    /// [`Game::queue_combat_damage_triggers`] for where this is captured.
-    pub combat_damage_recipient: Option<PlayerId>,
+    /// CR 510.2/603.10a last-known information: the player the source just dealt damage to, for a
+    /// watch whose payoff names *that* player rather than the ability's controller — a
+    /// [`Trigger::DealsCombatDamageToPlayer`] payoff that excludes them (Hydra Omnivore: "it deals
+    /// that much damage to each **other** opponent"), or a [`Trigger::DealsDamageToOpponent`]
+    /// payoff that lands on them (Hypnotic Specter: "**that player** discards a card at random").
+    /// `None` for every other trigger, same shape as `combat_damage` above. See
+    /// [`Game::queue_combat_damage_triggers`] / [`Game::queue_deals_damage_to_opponent_triggers`]
+    /// for where this is captured.
+    pub damage_recipient: Option<PlayerId>,
     /// CR 510.2/603.10a last-known information: who controlled the creature that just dealt the
     /// combat damage, for a [`Trigger::DealsCombatDamageToPlayer`] watch whose payoff belongs to
     /// that player rather than the watcher's controller (Edric, Spymaster of Trest: "**its
     /// controller** may draw a card"). `None` for every other trigger, same shape as
-    /// `combat_damage_recipient` above.
+    /// `damage_recipient` above.
     pub combat_damage_source_controller: Option<PlayerId>,
     /// CR 609.7/603.10a last-known information: the amount of damage the enchanted host just
     /// dealt (combat or noncombat alike), for a [`Trigger::EnchantedCreatureDealsDamage`] watch's
@@ -774,11 +858,18 @@ pub struct TriggerContext {
     /// follow the object's `Moved` lineage into its new graveyard card, and on into wherever it
     /// moves next).
     pub dying_enchanted_creature: Option<ObjectId>,
+    /// `(toughness, controller)` that same dying creature last had on the battlefield, for a
+    /// [`Trigger::EnchantedCreatureDies`] ability that reads its *host* rather than itself
+    /// (Creature Bond's "damage equal to that creature's toughness to the creature's
+    /// controller") — CR 603.10a last-known information, the host-facing twin of
+    /// `dying_source_stats` above. `None` for every other trigger. See
+    /// [`Game::queue_enchanted_creature_dies_triggers`] for where this is captured.
+    pub dying_enchanted_creature_stats: Option<(i32, PlayerId)>,
     /// CR 510.2/603.10a last-known information: the creature a [`Trigger::DealsCombatDamageToCreature`]
     /// watch's source just dealt combat damage to (Stinkweed Imp's "destroy that creature"),
     /// named separately from `dying_enchanted_creature`/`dead_creature` above since the damaged
     /// creature need not be dead or even still on the battlefield. `None` for every other
-    /// trigger. Feeds [`Effect::Destroy(DestroyEffect::DestroyTriggeringDamagedCreature)`] via `contextualize_effect`;
+    /// trigger. Feeds [`Effect::Destroy(DestroyEffect::ThatCreature)`] via `contextualize_effect`;
     /// `def_of`/`owner_of`/`zone_of` all still resolve it whether it's still a live permanent or
     /// has since left. See the `Event::CombatDamageDealtToCreature` arm of
     /// [`Game::enqueue_triggers`] for where this is captured. Named so a future "all damage this
@@ -821,6 +912,17 @@ pub struct TriggerContext {
     /// `shares_type_with_dying_permanent`-marked filter via `contextualize_effect`; see
     /// [`Game::queue_nonland_permanent_death_watchers`] for where this is captured.
     pub dying_permanent_types: Option<TypeSet>,
+    /// The player who controlled the permanent the trigger is *about* — not the ability's own
+    /// controller — for a payoff that names them: [`Trigger::LandPutIntoGraveyard`]'s "that land's
+    /// controller" (Dingus Egg), [`Trigger::PermanentBecomesTapped`]'s "that player" (Manabarbs),
+    /// [`Trigger::EnchantedPermanentBecomesTapped`]'s "that land's controller" (Psychic Venom).
+    /// `None` for every other trigger. Baked in at trigger placement — CR 603.10a last-known
+    /// information for the death watch, where the land is a graveyard card by resolution and
+    /// `controller_of` would answer its owner; the tap watches merely follow suit. Feeds
+    /// [`Effect::Damage(DamageEffect::ToTriggeringPlayer)`] via `contextualize_effect`'s
+    /// `fill_triggering_permanent_controller`; see [`Game::queue_land_death_watchers`] and
+    /// [`Game::queue_becomes_tapped_triggers`].
+    pub triggering_permanent_controller: Option<PlayerId>,
     /// CR 603.10a last-known information: the graveyard-object ids of the cards that left this
     /// batch, for a [`Trigger::CardsLeaveYourGraveyard`] payoff that becomes a copy of one of them
     /// (Spirit of Resilience's "become a copy of an artifact or creature card from among those
@@ -851,6 +953,12 @@ pub struct TriggerContext {
     /// — `controller` alone can't name the payer for those scopes. `None` for every other
     /// trigger. See [`Game::queue_cast_spell_triggers`] for where this is captured.
     pub triggering_caster: Option<PlayerId>,
+    /// The creature on the other side of a [`Trigger::BlocksOrBecomesBlockedBy`] block pair
+    /// (Cockatrice's "that creature") — the attacker for the blocker's fire, the blocker for the
+    /// attacker's. `None` for every other trigger. Feeds
+    /// [`Effect::Destroy(DestroyEffect::ThatCreature)`] through the same `fill_that_creature`
+    /// filler `damaged_creature` above uses; see [`Game::queue_blocks_or_becomes_blocked_by_triggers`].
+    pub blocking_partner: Option<ObjectId>,
 }
 
 impl TriggerContext {
@@ -869,20 +977,23 @@ impl TriggerContext {
             cast_x: None,
             auras_you_controlled_attached_to_dying_creature: None,
             combat_damage: None,
-            combat_damage_recipient: None,
+            damage_recipient: None,
             combat_damage_source_controller: None,
             triggering_damage_dealt: None,
             dying_enchanted_creature: None,
+            dying_enchanted_creature_stats: None,
             damaged_creature: None,
             triggering_spell: None,
             spells_cast_before_this: None,
             source_power: None,
             dead_creature: None,
             dying_permanent_types: None,
+            triggering_permanent_controller: None,
             cards_left_graveyard: &[],
             left_battlefield_host: None,
             triggering_ability: None,
             triggering_caster: None,
+            blocking_partner: None,
         }
     }
 }

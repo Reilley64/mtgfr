@@ -1,0 +1,24 @@
+# Destroy all Islands.
+name = "Tsunami"
+otags = ["hate-island", "mass-land-denial", "removal-destroy", "removal-land", "single-english-word-name", "sweeper"]
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "fbb", "lea", "leb", "me4", "sum"]
+id = "ef2b1565-7b02-4cab-9031-beb1701ee929"
+default_print = "b8328ddc-d2d9-47d3-a98b-1a7c7b0c75a3"
+oracle = "Destroy all Islands."
+
+[cost]
+generic = 3
+green = 1
+
+[kind]
+type = "sorcery"
+
+# Destroy all Islands.
+[[abilities]]
+timing = "spell"
+
+# Destroy all Islands.
+[[abilities.effects]]
+type = "destroy"
+mode = "all"
+filter = { types = "land", subtypes = ["Island"] }

@@ -1,0 +1,31 @@
+# Choose one —
+# • Target player gains 3 life.
+# • Prevent the next 3 damage that would be dealt to any target this turn.
+name = "Healing Salve"
+otags = ["cycle-lea-boon", "damage-prevention", "lifegain", "modal", "single-target-instant-sorcery", "usg-storyline-in-cards"]
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "8ed", "brb", "ced", "cei", "ddc", "dvd", "fbb", "itp", "lea", "leb", "me4", "mir", "rqs", "sum", "usg"]
+id = "8da8644c-75a1-4fe9-8e94-900d948d631c"
+default_print = "a38b2f1c-a69b-467a-a749-d7fbc1fb6dbb"
+oracle = "Choose one —\n• Target player gains 3 life.\n• Prevent the next 3 damage that would be dealt to any target this turn."
+
+[cost]
+white = 1
+
+[kind]
+type = "instant"
+
+# Choose one —
+# • Target player gains 3 life.
+# • Prevent the next 3 damage that would be dealt to any target this turn.
+[[abilities]]
+timing = "spell"
+
+# Choose one —
+# • Target player gains 3 life.
+# • Prevent the next 3 damage that would be dealt to any target this turn.
+[[abilities.effects]]
+type = "choose_one"
+options = [
+    { type = "life", mode = "target_player_gains", amount = 3 },
+    { type = "misc", mode = "prevent_next_damage", amount = 3, target = "any" },
+]

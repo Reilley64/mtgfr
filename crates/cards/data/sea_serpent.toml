@@ -1,0 +1,43 @@
+# This creature can't attack unless defending player controls an Island.
+# When you control no Islands, sacrifice this creature.
+name = "Sea Serpent"
+otags = ["alliteration", "landhome", "restricted-attacker", "state-trigger"]
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "fbb", "lea", "leb", "me4", "sum"]
+id = "c16495fc-784d-4bac-9a68-ed437008df73"
+default_print = "af430730-2ce8-45c3-b1da-9745fc792d71"
+oracle = "This creature can't attack unless defending player controls an Island.\nWhen you control no Islands, sacrifice this creature."
+approximates = "\"When you control no Islands, sacrifice this creature\" is a state trigger (CR 603.8) — it fires the moment the last Island leaves. The engine has no state-trigger shape, so it is authored as an end-step trigger with the same intervening-if: the Serpent survives until the end step of the turn its controller ran out, instead of dying immediately."
+subtypes = ["Serpent"]
+
+[cost]
+generic = 5
+blue = 1
+
+[kind]
+type = "creature"
+power = 5
+toughness = 5
+
+# This creature can't attack unless defending player controls an Island.
+[[abilities]]
+timing = "static"
+
+# can't attack unless defending player controls an Island
+[[abilities.effects]]
+type = "static"
+mode = "cant_attack_unless_defender_controls"
+filter = { types = "land", subtypes = ["Island"] }
+
+# When you control no Islands, sacrifice this creature.
+[[abilities]]
+timing = "each_end_step"
+
+[abilities.condition]
+type = "controls_no_lands_with_subtype"
+subtypes = ["Island"]
+
+# sacrifice this creature
+[[abilities.effects]]
+type = "conditional"
+condition = { type = "controls_no_lands_with_subtype", subtypes = ["Island"] }
+then = [{ type = "sacrifice", mode = "source" }]

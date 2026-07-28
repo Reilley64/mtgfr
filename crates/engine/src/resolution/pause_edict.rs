@@ -28,28 +28,52 @@ impl Game {
                 filter,
                 life_loss,
                 count,
+                down_to_fewest,
+                lose_game_if_short,
                 then,
             }) => {
                 let count = self.resolve_count(count, controller, source, target, ctx.x);
                 self.sacrifice_edict(
-                    scope, keep_one, filter, life_loss, count, then, controller, source, events,
+                    scope,
+                    keep_one,
+                    filter,
+                    life_loss,
+                    count,
+                    down_to_fewest,
+                    lose_game_if_short,
+                    then,
+                    controller,
+                    source,
+                    events,
                 )
             }
-            // Syphon Mind's "Each other player discards a card." A fan-out over the opponents in
-            // APNAP order (empty-hand seats skipped), tallying `cards_discarded_this_way` so the
-            // enclosing `Sequence`'s draw step reads it.
-            Effect::Choice(ChoiceEffect::EachOpponentDiscards) => {
+            // Syphon Mind's "Each other player discards a card." A fan-out over the scoped seats
+            // in APNAP order (empty hands skipped), tallying `cards_discarded_this_way` so the
+            // enclosing `Sequence`'s draw step reads it. Balance's `down_to_fewest` measures the
+            // smallest hand among those seats first, and each of them pitches its own excess.
+            Effect::Choice(ChoiceEffect::EachPlayerDiscards {
+                scope,
+                down_to_fewest,
+            }) => {
                 self.resolution_frame.cards_discarded_this_way = 0;
-                let opponents: Vec<PlayerId> = self
+                let affected: Vec<PlayerId> = self
                     .apnap_order()
                     .into_iter()
-                    .filter(|&p| p != controller)
+                    .filter(|&p| scope != EdictScope::EachOpponent || p != controller)
                     .collect();
+                let floor = down_to_fewest.then(|| {
+                    affected
+                        .iter()
+                        .map(|&p| self.hand_of(p).len() as u32)
+                        .min()
+                        .unwrap_or(0)
+                });
                 pending::raise(
                     self,
                     pending::ChoiceRequest::NextDiscardEdict {
-                        remaining: opponents,
+                        remaining: affected,
                         source,
+                        floor,
                     },
                 )
             }
@@ -82,6 +106,89 @@ impl Game {
                     pending::ChoiceRequest::NextGraveyardExile {
                         remaining: vec![player],
                         source,
+                    },
+                )
+            }
+            // Raging River: the attack trigger opens the division. Every player being attacked by
+            // one of `controller`'s creatures divides, in turn order; the labeling of the attackers
+            // follows once the last of them has.
+            Effect::Choice(ChoiceEffect::DefendersSplitBlockersIntoPiles) => {
+                let attackers: Vec<ObjectId> = self
+                    .combat
+                    .attackers
+                    .iter()
+                    .copied()
+                    .filter(|&a| self.controller_of(a) == controller)
+                    .collect();
+                let defenders: Vec<PlayerId> = self
+                    .apnap_order()
+                    .into_iter()
+                    .filter(|&p| {
+                        attackers
+                            .iter()
+                            .any(|&a| self.defending_player_of(a) == Some(p))
+                    })
+                    .collect();
+                pending::raise(
+                    self,
+                    pending::ChoiceRequest::SplitBlockersIntoPiles {
+                        source,
+                        left: Vec::new(),
+                        defenders,
+                        attackers,
+                    },
+                )
+            }
+            // Camouflage: the attackers are already declared (the spell's own cast window is that
+            // step), so the piles are divided now and the blocks written — the declare-blockers
+            // step will find every attacked seat already sealed.
+            Effect::Choice(ChoiceEffect::DefendersDivideBlockersAmongAttackers) => {
+                let attackers: Vec<ObjectId> = self
+                    .combat
+                    .attackers
+                    .iter()
+                    .copied()
+                    .filter(|&a| self.controller_of(a) == controller)
+                    .collect();
+                let defenders: Vec<PlayerId> = self
+                    .apnap_order()
+                    .into_iter()
+                    .filter(|&p| {
+                        attackers
+                            .iter()
+                            .any(|&a| self.defending_player_of(a) == Some(p))
+                    })
+                    .collect();
+                pending::raise(
+                    self,
+                    pending::ChoiceRequest::DivideBlockersIntoPiles {
+                        source,
+                        partial: None,
+                        defenders,
+                        attackers,
+                    },
+                )
+            }
+            // Word of Command: "Look at target opponent's hand and choose a card from it." The
+            // look is recorded first — you get to keep knowing the whole hand, not just the card
+            // you picked — and then the pick pauses on *your* seat, over *their* cards.
+            Effect::Choice(ChoiceEffect::ControlPlayerToPlayCardFromHand { .. }) => {
+                let Some(Target::Player(subject)) = target else {
+                    panic!("word of command resolves with a chosen opponent target");
+                };
+                self.push_apply(
+                    events,
+                    Event::LookedAtHand {
+                        player: controller,
+                        target: subject,
+                    },
+                );
+                pending::raise(
+                    self,
+                    pending::ChoiceRequest::ChooseCardInHandToPlay {
+                        player: controller,
+                        source,
+                        subject,
                     },
                 )
             }
@@ -118,6 +225,52 @@ impl Game {
                     pending::ChoiceRequest::NextJoinForcesPayment {
                         remaining: self.turn_order_from(controller),
                         source,
+                        prevent_up_to: None,
+                    },
+                )
+            }
+            // Kudzu: "That land's controller may attach this Aura to a land of their choice."
+            // The same choose-host pause a deployed Aura raises, with two differences the card
+            // spells out — the chooser is the triggering permanent's controller, not this Aura's,
+            // and the "may" makes declining legal (an unattached Aura is then swept by CR 704.5m).
+            // No legal land means no pause at all, and the same sweep takes it.
+            Effect::Choice(ChoiceEffect::TriggeringPlayerMayAttachThisAuraToChosen {
+                filter,
+                player,
+            }) => {
+                let chooser = player.expect("the triggering player is filled in at placement");
+                let candidates: Vec<ObjectId> = self
+                    .battlefield()
+                    .into_iter()
+                    .filter(|&id| self.permanent_matches(&filter, id, chooser, Some(source)))
+                    .collect();
+                pending::raise(
+                    self,
+                    pending::ChoiceRequest::ChooseAttachHost {
+                        player: chooser,
+                        attachment: source,
+                        candidates,
+                        optional: true,
+                    },
+                )
+            }
+            // Power Leak: "that player may pay any amount of mana … Prevent X of that damage."
+            // The same payment pause as join forces with a one-seat guest list, and a cap that
+            // turns the payment into a prevention shield on the payer instead of a shared X.
+            Effect::Choice(ChoiceEffect::TriggeringPlayerMayPayAnyAmountToPrevent {
+                prevent_up_to,
+                player,
+            }) => {
+                let payer = player.expect("the triggering player is filled in at placement");
+                let cap = self
+                    .resolve_amount(prevent_up_to, payer, source, None, 0)
+                    .clamp(0, i32::from(u8::MAX)) as u8;
+                pending::raise(
+                    self,
+                    pending::ChoiceRequest::NextJoinForcesPayment {
+                        remaining: vec![payer],
+                        source,
+                        prevent_up_to: Some(cap),
                     },
                 )
             }
@@ -200,19 +353,31 @@ impl Game {
             // lands", Smothering Abomination's upkeep "sacrifice a creature") pauses on a
             // ChooseOwnSacrifices choice; with count-or-fewer legal permanents it resolves
             // immediately instead (CR 700.2's "as many as possible").
-            Effect::Choice(ChoiceEffect::SacrificeOwn { filter, count }) => {
+            Effect::Choice(ChoiceEffect::SacrificeOwn {
+                filter,
+                count,
+                opponent_chooses,
+            }) => {
+                // Demonic Hordes hands the pick to the next living seat in turn order; every other
+                // card leaves it with the player losing the permanents (CR 701.16a).
+                let chooser = if opponent_chooses {
+                    self.next_player(controller)
+                } else {
+                    controller
+                };
                 pending::raise(
                     self,
                     pending::ChoiceRequest::ChooseOwnSacrifices {
-                        player: controller,
+                        player: chooser,
+                        owner: controller,
                         source,
                         filter,
                         count,
                     },
                 );
                 if !self.resolution_is_paused() {
-                    let options = self.edict_options(controller, filter);
-                    self.sacrifice_ids(&options, controller, events);
+                    let options = self.edict_options(controller, filter, Some(source));
+                    self.sacrifice_ids(&options, events);
                 }
             }
             // Annihilator N (Eldrazi Conscription): the defending player, not the controller,
@@ -224,14 +389,15 @@ impl Game {
                     self,
                     pending::ChoiceRequest::ChooseOwnSacrifices {
                         player: defender,
+                        owner: defender,
                         source,
                         filter,
                         count: count as u32,
                     },
                 );
                 if !self.resolution_is_paused() {
-                    let options = self.edict_options(defender, filter);
-                    self.sacrifice_ids(&options, defender, events);
+                    let options = self.edict_options(defender, filter, Some(source));
+                    self.sacrifice_ids(&options, events);
                 }
             }
             // Treva's Ruins' own ETB trigger: "sacrifice it unless you return a non-Lair land you

@@ -298,6 +298,7 @@ impl Game {
                         object: source,
                         def,
                         until_eot: true,
+                        also_types: TypeSet::NONE,
                     },
                     // "…except it has myriad" is a copiable value (CR 707.2): a copy of Muddle's
                     // copied form keeps myriad — a `CopyRiderKeywordsGranted` rider, not a

@@ -91,7 +91,7 @@ pub(crate) fn answer(game: &mut Game, intent: Intent) -> Result<Vec<Event>, Reje
             Intent::PayOptionalCost { player, pay, .. } => game.pay_recover(player, pay),
             _ => Err(Reject::IllegalChoice),
         },
-        PendingChoice::SacrificeUnlessPay { .. } => match intent {
+        PendingChoice::PayOrElse { .. } => match intent {
             Intent::PayOptionalCost { player, pay, .. } => game.pay_sacrifice_unless(player, pay),
             _ => Err(Reject::IllegalChoice),
         },
@@ -271,6 +271,12 @@ pub(crate) fn answer(game: &mut Game, intent: Intent) -> Result<Vec<Event>, Reje
             }
             _ => Err(Reject::IllegalChoice),
         },
+        PendingChoice::ChooseBlockTarget { .. } => match intent {
+            Intent::ChooseCopyTarget { player, copy } => {
+                game.answer_choose_block_target(player, copy)
+            }
+            _ => Err(Reject::IllegalChoice),
+        },
         PendingChoice::DiscardToHandSize { .. } | PendingChoice::DiscardCards { .. } => {
             match intent {
                 Intent::Discard { player, cards } => game.answer_discard(player, cards),
@@ -317,6 +323,32 @@ pub(crate) fn answer(game: &mut Game, intent: Intent) -> Result<Vec<Event>, Reje
                 choice,
                 target,
             } => game.choose_exiled_dig_to_cast_free(player, choice, target),
+            _ => Err(Reject::IllegalChoice),
+        },
+        PendingChoice::ChooseCardInHandToPlay { .. } => match intent {
+            Intent::ChooseExiledDigToCastFree {
+                player,
+                choice,
+                target,
+            } => game.choose_card_in_hand_to_play(player, choice, target),
+            _ => Err(Reject::IllegalChoice),
+        },
+        PendingChoice::DivideBlockersIntoPiles { .. } => match intent {
+            Intent::ChooseSacrifices { player, sacrifices } => {
+                game.divide_blockers_into_piles(player, sacrifices)
+            }
+            _ => Err(Reject::IllegalChoice),
+        },
+        PendingChoice::SplitBlockersIntoPiles { .. } => match intent {
+            Intent::ChooseSacrifices { player, sacrifices } => {
+                game.split_blockers_into_piles(player, sacrifices)
+            }
+            _ => Err(Reject::IllegalChoice),
+        },
+        PendingChoice::ChoosePileForAttacker { .. } => match intent {
+            Intent::ChooseOpponentPile { player, pile } => {
+                game.choose_pile_for_attacker(player, pile)
+            }
             _ => Err(Reject::IllegalChoice),
         },
         PendingChoice::OpponentChoosesPile { .. } => match intent {
@@ -498,7 +530,7 @@ pub(crate) fn forced(game: &Game) -> Option<Intent> {
         | PendingChoice::PayEchoOrSacrifice { .. }
         | PendingChoice::PayCumulativeUpkeepOrSacrifice { .. }
         | PendingChoice::PayRecoverOrExile { .. }
-        | PendingChoice::SacrificeUnlessPay { .. }
+        | PendingChoice::PayOrElse { .. }
         | PendingChoice::PayLifeOrEntersTapped { .. }
         | PendingChoice::SacrificeUnlessReturnLand { .. }
         | PendingChoice::AssignCombatDamage { .. }
@@ -527,6 +559,7 @@ pub(crate) fn forced(game: &Game) -> Option<Intent> {
         | PendingChoice::MayExileDiscardedToPlay { .. }
         | PendingChoice::MayDiscard { .. }
         | PendingChoice::MayPutCounterOnCreature { .. }
+        | PendingChoice::ChooseBlockTarget { .. }
         | PendingChoice::PutFromHandOnTop { .. }
         | PendingChoice::PutLandFromHand { .. }
         | PendingChoice::PutCreatureFromHand { .. }
@@ -534,6 +567,10 @@ pub(crate) fn forced(game: &Game) -> Option<Intent> {
         | PendingChoice::ChooseExiledWithCard { .. }
         | PendingChoice::ChooseExiledWithCardToCast { .. }
         | PendingChoice::ChooseExiledDigToCastFree { .. }
+        | PendingChoice::ChooseCardInHandToPlay { .. }
+        | PendingChoice::SplitBlockersIntoPiles { .. }
+        | PendingChoice::DivideBlockersIntoPiles { .. }
+        | PendingChoice::ChoosePileForAttacker { .. }
         | PendingChoice::OpponentChoosesPile { .. }
         | PendingChoice::OpponentChoosesExiledNonland { .. }
         | PendingChoice::ChooseSplittingOpponent { .. }

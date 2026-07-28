@@ -1,0 +1,56 @@
+# This creature can't attack unless defending player controls an Island.
+# {T}: This creature deals 1 damage to any target.
+# When you control no Islands, sacrifice this creature.
+name = "Pirate Ship"
+otags = ["activated-ability", "burn-any", "creature-type-ship", "landhome", "pinger", "repeatable-crime", "repeatable-removal", "restricted-attacker", "spot-removal", "state-trigger"]
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "fbb", "lea", "leb", "sum", "tsb"]
+id = "c6b3f924-806d-47d3-b044-72b48470196c"
+default_print = "d6119988-4797-4993-a75f-e7015c2c6354"
+oracle = "This creature can't attack unless defending player controls an Island.\n{T}: This creature deals 1 damage to any target.\nWhen you control no Islands, sacrifice this creature."
+approximates = "\"When you control no Islands, sacrifice this creature\" is a state trigger (CR 603.8) — it fires the moment the last Island leaves. The engine has no state-trigger shape, so it is authored as an end-step trigger with the same intervening-if: the Ship survives until the end step of the turn its controller ran out, instead of dying immediately."
+subtypes = ["Human", "Pirate"]
+
+[cost]
+generic = 4
+blue = 1
+
+[kind]
+type = "creature"
+power = 4
+toughness = 3
+
+# This creature can't attack unless defending player controls an Island.
+[[abilities]]
+timing = "static"
+
+# can't attack unless defending player controls an Island
+[[abilities.effects]]
+type = "static"
+mode = "cant_attack_unless_defender_controls"
+filter = { types = "land", subtypes = ["Island"] }
+
+# {T}: This creature deals 1 damage to any target.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# This creature deals 1 damage to any target.
+[[abilities.effects]]
+type = "damage"
+mode = "target"
+amount = 1
+target = "any"
+
+# When you control no Islands, sacrifice this creature.
+[[abilities]]
+timing = "each_end_step"
+
+[abilities.condition]
+type = "controls_no_lands_with_subtype"
+subtypes = ["Island"]
+
+# sacrifice this creature
+[[abilities.effects]]
+type = "conditional"
+condition = { type = "controls_no_lands_with_subtype", subtypes = ["Island"] }
+then = [{ type = "sacrifice", mode = "source" }]

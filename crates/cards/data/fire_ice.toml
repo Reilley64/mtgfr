@@ -4,6 +4,7 @@
 # Tap target permanent.
 # Draw a card.
 name = "Fire // Ice"
+otags = ["burn-any", "burn-with-set-s-mechanic", "cantrip", "cheaper-than-mv", "cycle-apc-split-card", "hand-neutral", "multiple-targets", "punny-name", "single-target-instant-sorcery", "spot-removal", "tapper-permanent", "three-letter-name"]
 sets = ["apc", "cmd", "ddj", "dmr", "f06", "mh2", "plst", "prm", "uma", "wc01", "wc02"]
 id = "ae92942b-919c-4ea9-b693-85fcef765d5a"
 default_print = "230e65b2-a908-4418-8ef9-ecc475ff0b27"

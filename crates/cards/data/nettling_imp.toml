@@ -1,0 +1,50 @@
+# {T}: Choose target non-Wall creature the active player has controlled continuously since the
+# beginning of the turn. That creature attacks this turn if able. Destroy it at the beginning
+# of the next end step if it didn't attack this turn. Activate only during an opponent's turn,
+# before attackers are declared.
+name = "Nettling Imp"
+otags = ["activated-ability", "delayed-trigger", "force-attacker", "hate-typal-non-wall", "notorious-templating", "removal-creature", "removal-destroy", "repeatable-crime", "repeatable-removal", "spot-removal"]
+sets = ["2ed", "30a", "3ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
+id = "c58dfcbf-49e6-4ef0-bd31-ebd81b0cfa41"
+default_print = "96706002-176d-41f7-9788-3d0f7962ea03"
+oracle = "{T}: Choose target non-Wall creature the active player has controlled continuously since the beginning of the turn. That creature attacks this turn if able. Destroy it at the beginning of the next end step if it didn't attack this turn. Activate only during an opponent's turn, before attackers are declared."
+subtypes = ["Imp"]
+
+[cost]
+generic = 2
+black = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# {T}: Choose target non-Wall creature the active player has controlled continuously since the
+# beginning of the turn. That creature attacks this turn if able. Destroy it at the beginning of
+# the next end step if it didn't attack this turn. Activate only during an opponent's turn, before
+# attackers are declared.
+[[abilities]]
+timing = "activated"
+taps_self = true
+# Activate only during an opponent's turn, before attackers are declared.
+only_during_opponents_turn = true
+only_before_attackers = true
+
+# Choose target non-Wall creature the active player has controlled continuously since the beginning
+# of the turn. That creature attacks this turn if able.
+[[abilities.effects]]
+type = "misc"
+mode = "must_attack_target"
+target = { permanent = { types = "creature", controller = "opponent", exclude_subtypes = [
+  "Wall",
+], controlled_since_turn_start = true } }
+
+# Destroy it at the beginning of the next end step if it didn't attack this turn.
+[[abilities.effects]]
+type = "destroy"
+mode = "target"
+at = "end"
+attack_rider = "only_if_it_didnt"
+target = { permanent = { types = "creature", controller = "opponent", exclude_subtypes = [
+  "Wall",
+], controlled_since_turn_start = true } }

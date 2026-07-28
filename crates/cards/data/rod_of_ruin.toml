@@ -1,0 +1,28 @@
+# {3}, {T}: This artifact deals 1 damage to any target.
+name = "Rod of Ruin"
+otags = ["activated-ability", "alliteration", "burn-any", "pinger", "repeatable-crime", "repeatable-removal", "spot-removal"]
+sets = ["10e", "2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "8ed", "9ed", "ced", "cei", "fbb", "itp", "lea", "leb", "m10", "m14", "rqs", "sum"]
+id = "c29a04ab-4e14-45d8-a993-3fffd0e2f6eb"
+default_print = "0f047f5b-af97-4662-ab06-698a5f6f5a57"
+oracle = "{3}, {T}: This artifact deals 1 damage to any target."
+
+[cost]
+generic = 4
+
+[kind]
+type = "artifact"
+
+# {3}, {T}: This artifact deals 1 damage to any target.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+[abilities.activation_cost]
+generic = 3
+
+# This artifact deals 1 damage to any target.
+[[abilities.effects]]
+type = "damage"
+mode = "target"
+amount = 1
+target = "any"

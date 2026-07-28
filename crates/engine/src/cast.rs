@@ -266,6 +266,11 @@ impl Game {
         if from_command {
             cost.generic += self.commander_tax(player);
         }
+        // CR 601.2f: cost *increases* are applied before reductions, so Gloom's {3} can't be
+        // shaved off by a reducer that would otherwise have floored the generic at 0 first.
+        cost.generic =
+            cost.generic
+                .saturating_add(self.cost_increase(player, def.clone(), target, zone));
         cost.generic =
             cost.generic
                 .saturating_sub(self.cost_reduction(player, def.clone(), target, zone));
@@ -544,6 +549,14 @@ impl Game {
         // An optional additional sacrifice cost (CR 601.2f — Plumb the Forbidden's "you may
         // sacrifice one or more creatures"), paid pre-stack like the discard loop above. Routes
         // through the normal death events so "when this/a creature dies" watchers fire off it.
+        // The fodder's mana value is read here, before it moves, for Sacrifice's "add an amount
+        // of {B} equal to the sacrificed creature's mana value" — it's a graveyard card by
+        // resolution.
+        let sacrificed_mana_value = sacrifice_cost
+            .iter()
+            .map(|&id| self.def_of(id).mana_value())
+            .sum::<u32>()
+            .min(u8::MAX as u32) as u8;
         for &id in sacrifice_cost {
             let def = self.def_id_of(id);
             let event = self.sacrifice_event(id);
@@ -594,6 +607,7 @@ impl Game {
                 flashback: cast_via_flashback,
                 escape: cast_via_escape,
                 sacrifice_count: sacrifice_cost.len() as u8,
+                sacrificed_mana_value,
                 revealed_creature_mana_value,
                 kicked,
                 bought_back,
@@ -947,11 +961,12 @@ impl Game {
     }
 
     /// After a multi-target spell's targets are finalized (CR 601.2c), also settle CR 601.2d's
-    /// division for a `divided: true` `Effect::Damage(DamageEffect::Target)` on that spell (Magma Opus's "4 damage
+    /// division for a divided `Effect::Damage(DamageEffect::Target)` on that spell (Magma Opus's "4 damage
     /// divided as you choose among any number of targets"). A no-op for a spell with no divided
     /// effect, or whose divided effect has no chosen targets (a legal "any number... including
     /// none" of zero). A single chosen target needs no choice — the whole amount is auto-assigned
-    /// to it, mirroring `next_undivided_multiblock`'s single-blocker skip for combat damage.
+    /// to it, mirroring `next_undivided_multiblock`'s single-blocker skip for combat damage. Nor
+    /// does [`Division::Evenly`] (Fireball), whose split is computed rather than chosen.
     /// Called from both `choose_spell_targets`'s forced-autofill branch above and
     /// `Game::choose_spell_targets_answer`'s player-chosen branch.
     pub(crate) fn maybe_begin_damage_division(&mut self, spell: ObjectId, events: &mut Vec<Event>) {
@@ -963,12 +978,18 @@ impl Game {
             matches!(a.timing, Timing::Spell)
                 && matches!(
                     a.effect,
-                    Effect::Damage(DamageEffect::Target { divided: true, .. })
+                    Effect::Damage(DamageEffect::Target {
+                        divided: Division::AsYouChoose | Division::Evenly,
+                        ..
+                    })
                 )
         }) else {
             return;
         };
-        let Effect::Damage(DamageEffect::Target { amount, .. }) = ability.effect else {
+        let Effect::Damage(DamageEffect::Target {
+            amount, divided, ..
+        }) = ability.effect
+        else {
             unreachable!("guarded by the divided-DealDamage find above")
         };
         // "Any number of targets" (CR 601.2d) admits creatures *and* players — collect both.
@@ -979,6 +1000,14 @@ impl Game {
         let total = self.resolve_amount(amount, controller, spell, None, x);
         if let [only] = targets[..] {
             self.push_apply(events, spell_damage_divided(spell, &[(only, total)]));
+            return;
+        }
+        // "divided evenly, rounded down" (Fireball) is computed, so it skips the pause entirely —
+        // the remainder is simply never dealt.
+        if divided == Division::Evenly {
+            let each = total / targets.len() as i32;
+            let shares: Vec<(Target, i32)> = targets.into_iter().map(|t| (t, each)).collect();
+            self.push_apply(events, spell_damage_divided(spell, &shares));
             return;
         }
         pending::raise(
@@ -1072,9 +1101,7 @@ impl Game {
         {
             return Err(Reject::NotCastable);
         }
-        if !self.can_take_sorcery_speed_action(player)
-            || self.players[player.0 as usize].lands_played >= 1
-        {
+        if !self.can_take_sorcery_speed_action(player) || !self.land_drop_available(player) {
             return Err(Reject::WrongTiming);
         }
 
@@ -1989,6 +2016,7 @@ impl Game {
                 flashback: false,
                 escape: false,
                 sacrifice_count: 0,
+                sacrificed_mana_value: 0,
                 revealed_creature_mana_value: 0,
                 kicked: false,
                 bought_back: false,
@@ -2084,6 +2112,7 @@ impl Game {
                 flashback: false,
                 escape: false,
                 sacrifice_count: 0,
+                sacrificed_mana_value: 0,
                 revealed_creature_mana_value: 0,
                 kicked: false,
                 bought_back: false,
@@ -2145,9 +2174,17 @@ impl Game {
         let Some(ability) = self.ability_at(source, index) else {
             return Err(Reject::CannotActivate);
         };
-        let Timing::Activated(cost) = ability.timing else {
+        let Timing::Activated(mut cost) = ability.timing else {
             return Err(Reject::CannotActivate);
         };
+        // Gloom's "Activated abilities of white enchantments cost {3} more to activate"
+        // (CR 602.2b). Folded in here, at the single gate every read of an activation cost routes
+        // through — the activation itself, the priority scans, the playability previews — so no
+        // caller sees the printed cost and quotes it back untaxed.
+        cost.mana.generic = cost
+            .mana
+            .generic
+            .saturating_add(self.activation_tax(source));
         // A Pacifism-family Aura's "activated abilities can't be activated[, unless they're mana
         // abilities]" restriction (Faith's Fetters, Prison Term; CR 605.3a exempts mana abilities
         // under the `mana_only` axis, nothing exempts under `none`).
@@ -2249,6 +2286,36 @@ impl Game {
         // ponytail: reuses the sorcery-cast timing predicate; no separate "only during your main
         // phase" variant exists because every pool card spelling this restriction means CR 602.5b.
         if cost.sorcery_speed && !self.can_take_sorcery_speed_action(player) {
+            return Err(Reject::CannotActivate);
+        }
+        // "Activate only during an opponent's turn, before attackers are declared" (CR 602.5b —
+        // Nettling Imp): two independent halves of one printed sentence. The second reuses the
+        // exact window `cast_only_before_attackers` (Master Warcraft) opens for a spell, closing
+        // inside the declare-attackers step the moment the declaration lands.
+        if cost.only_during_opponents_turn && self.active_player == player {
+            return Err(Reject::WrongTiming);
+        }
+        // "Activate only during your turn" (CR 602.5b — Instill Energy): the mirror of the line
+        // above. Not folded into `sorcery_speed`, which would also shut the ability off in combat.
+        if cost.only_during_your_turn && self.active_player != player {
+            return Err(Reject::WrongTiming);
+        }
+        if cost.only_before_attackers
+            && (self.step > Step::DeclareAttackers || self.combat.attackers_declared)
+        {
+            return Err(Reject::WrongTiming);
+        }
+        // "Activate only during your upkeep" (CR 602.5b — Cyclopean Tomb): both halves, since the
+        // upkeep that comes around every turn is somebody else's half the time.
+        if cost.only_during_your_upkeep
+            && (self.step != Step::Upkeep || self.active_player != player)
+        {
+            return Err(Reject::WrongTiming);
+        }
+        // "Only this creature's owner may activate this ability" (CR 602.5c — Personal
+        // Incarnation). The controller check above has already passed, so this only bites a
+        // permanent whose control has moved away from its owner.
+        if cost.only_owner_may_activate && self.owner_of(source) != player {
             return Err(Reject::CannotActivate);
         }
         Ok((ability, cost))

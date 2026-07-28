@@ -1,0 +1,29 @@
+# As an additional cost to cast this spell, sacrifice a creature.
+# Add an amount of {B} equal to the sacrificed creature's mana value.
+name = "Sacrifice"
+otags = ["adds-multiple-mana", "interrupt", "ritual", "sacrifice-outlet-creature", "scales-with-mana-value", "shares-name-with-a-mechanic", "single-english-word-name"]
+sets = ["2ed", "30a", "3ed", "ced", "cei", "fbb", "lea", "leb", "spg", "sum"]
+id = "068b3692-411b-44d4-a7e9-005262760cfc"
+default_print = "288323c1-13f1-481e-940e-5e4ecebb404e"
+oracle = "As an additional cost to cast this spell, sacrifice a creature.\nAdd an amount of {B} equal to the sacrificed creature's mana value."
+
+[cost]
+black = 1
+
+# As an additional cost to cast this spell, sacrifice a creature.
+[cost.additional]
+sacrifice = { count = 1, filter = "creature" }
+
+[kind]
+type = "instant"
+
+# Add an amount of {B} equal to the sacrificed creature's mana value.
+[[abilities]]
+timing = "spell"
+
+# Add an amount of {B} equal to the sacrificed creature's mana value.
+[[abilities.effects]]
+type = "mana"
+mode = "add"
+mana = ["black"]
+repeat = "spell_sacrificed_mana_value"

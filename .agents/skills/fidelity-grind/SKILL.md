@@ -55,7 +55,13 @@ the wrap-up report as its body.
 
 ## Phase 1 — Deck intake
 
-- Intake source can be either an Archidekt deck JSON or a frozen local decklist.
+- Intake source can be an Archidekt deck JSON, a frozen local decklist, or a **set code**.
+- For a set code (`2ed`), the "deck" is the whole set: fetch the Scryfall set list
+  (`https://api.scryfall.com/cards/search?q=set:<code>&unique=prints`, paginate on `has_more`) and
+  diff it against `grep -h '^name = ' crates/cards/data/*.toml`. The diff is two-sided — names
+  missing from the pool, *and* pool cards already scripted from a later printing whose `sets` array
+  is missing `<code>`. Everything downstream (report, increments file, waves) works unchanged with
+  `<slug>` = the set code.
 - For Archidekt, fetch `https://archidekt.com/api/decks/<id>/` (public JSON). Each entry:
   `card.oracleCard.name`, quantity, categories. Ignore basic-land quantities; dedupe by name.
 - For a frozen local decklist (for example the SoC Wizards lists committed under
@@ -90,7 +96,9 @@ notes saying "no pool card does X", "unobservable", "dead variant". Grep every
 `approximates` and `ponytail:` in `crates/cards/data/` and `crates/engine/src/` for such
 claims and re-test each against the incoming deck. Any claim the new cards falsify moves
 that residual into section B/D as real work. (Example: "damage to planeswalkers is a dead
-variant" died the moment a planeswalker entered the pool.)
+variant" died the moment a planeswalker entered the pool.) A set older than every subsystem the
+residuals name falsifies little — the 2ed audit moved zero residuals — but it is a grep, so run it
+and record the zero rather than skipping the step.
 
 ## Phase 3 — Pure authoring pass
 
@@ -232,7 +240,11 @@ pool that supports it. After client catch-up (the wire is settled by then):
 2. **Live smoke game (do not skip):** follow **`verification-before-completion`**, then drive
    the project **`verify`** skill — boot the real server + client from the worktree (own
    ports — never kill or reuse another session's dev servers) and drive a multiplayer game
-   with the actual decklist over the HTTP/SSE surface. Saving the deck exercises deck
+   with the actual decklist over the HTTP/SSE surface. **A set grind has no decklist and may have
+   no commander** — pre-Legends sets contain no legendary creature at all. Seat four out-of-set
+   commanders whose color identities *union* to WUBRG (2ed used Kaalia WBR / Riku URG / Rubinia
+   WUG / Xira BRG) and fill each 99 with in-identity cards from the set, so every colour of the
+   grind's own work gets played. Saving the deck exercises deck
    legality (itself a frame gate — this is what exposed the hallucinated frames); the drive
    loop should answer every pending-choice kind it meets and log which new kinds fired live.
    **Bias the driver toward this grind's new surfaces and report coverage honestly** — a
@@ -243,12 +255,16 @@ pool that supports it. After client catch-up (the wire is settled by then):
    the live drive *did* catch was invisible to every unit test: a mandatory two-target prompt
    the client could only ever answer with one id, wedging all four seats forever.
    Fix what it finds with regression tests at the lowest layer (`test-driven-development`).
-   **Three traps produced four false wedges in the heavenly-inferno grind — the `verify` skill
-   now carries all three:** the smoke stack may take its own HTTP/Vite/Postgres ports but *not*
-   its own gRPC port (routed tables are pinned to `:50051`); a rejected intent acks HTTP 200, so
-   the driver must branch on `Ack.accepted`; and an action's legal targets already ride on
-   `ActionView.targets`, so guessing from the battlefield buries the drive under thousands of
-   `reject.illegal_target` acks. Read `logs/actions.<TABLE>.toon` (every intent, its accepted
+   **Six traps have produced false wedges across the grinds so far — the `verify` skill carries
+   every one:** the smoke stack may take its own HTTP/Vite/Postgres ports but *not* its own gRPC
+   port (routed tables are pinned to `:50051`); a rejected intent acks HTTP 200, so the driver must
+   branch on `Ack.accepted`; an action's legal targets already ride on `ActionView.targets`, so
+   guessing from the battlefield buries the drive under thousands of `reject.illegal_target` acks;
+   a modal cast needs the `modes` its own `modal` block describes (`reject.illegal_mode`); a seat
+   must submit only while its snapshot still says it holds priority, *except* for the mulligan
+   decision every seat makes at once; and a 99 with no lands is not a wedge at all — nothing is a
+   meaningful action on an empty board, so the server correctly auto-passes entire turns.
+   Read `logs/actions.<TABLE>.toon` (every intent, its accepted
    flag, reject reason, post-state and events) before blaming the engine.
    **Then read the surviving rejects per card — that is where the real bugs are.** Two clusters
    outlived the traps here: one was the driver skipping a cost the action itself carried

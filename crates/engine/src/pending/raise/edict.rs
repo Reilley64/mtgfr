@@ -5,11 +5,12 @@ use crate::{Game, ObjectId, PendingChoice, PermanentFilter, PlayerId};
 pub(super) fn choose_own_sacrifices(
     game: &Game,
     player: PlayerId,
+    owner: PlayerId,
     source: ObjectId,
     filter: PermanentFilter,
     count: u32,
 ) -> Option<PendingChoice> {
-    let options = game.edict_options(player, filter);
+    let options = game.edict_options(owner, filter, Some(source));
     if options.len() <= count as usize {
         return None;
     }

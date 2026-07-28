@@ -1,0 +1,31 @@
+# {R}: This creature gains flying until end of turn.
+name = "Goblin Balloon Brigade"
+otags = ["activated-ability", "alliteration", "jump", "type-errata", "gains-flying"]
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "9ed", "ath", "ced", "cei", "cn2", "fbb", "lea", "leb", "m11", "plst", "sum"]
+id = "10bc98b0-3fdc-46d1-8d3b-6d160e9dd62f"
+default_print = "26cbb4d5-bb1b-4b1c-b94d-58e45ba497ca"
+oracle = "{R}: This creature gains flying until end of turn."
+subtypes = ["Goblin", "Warrior"]
+
+[cost]
+red = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# {R}: This creature gains flying until end of turn.
+[[abilities]]
+timing = "activated"
+
+[abilities.activation_cost]
+red = 1
+
+# This creature gains flying until end of turn.
+[[abilities.effects]]
+type = "pump"
+mode = "pump_self_until_end_of_turn"
+power = 0
+toughness = 0
+keywords = ["flying"]

@@ -148,8 +148,7 @@ impl Game {
         // land's *non*-mana ability (which finds none, and rejects below). Delegate so the one (CR 605, CR 113)
         // activation path enforces summoning sickness and the rest of the gate.
         let CardKind::Land {
-            produces: Some(produces),
-            ..
+            produces: Some(_), ..
         } = &printed.kind
         else {
             let Some(index) = self.free_tap_mana_ability(object) else {
@@ -166,11 +165,7 @@ impl Game {
         // "One mana of any color in your commander's color identity" (CR 903.4, Command Tower)
         // and "any color that a land an opponent controls could produce" (Exotic Orchard) both
         // resolve to a real credit here — an empty identity/producible set taps for nothing.
-        let mana = match produces {
-            LandProduces::Mana(m) => Some(*m),
-            LandProduces::CommanderIdentity => self.commander_identity_credit(player),
-            LandProduces::OpponentColors => self.opponent_producible_colors_credit(player),
-        };
+        let mana = self.land_mana_credit(object, player);
 
         let mut events = vec![Event::Tapped { object }];
         if let Some(mana) = mana {
@@ -228,6 +223,7 @@ impl Game {
         // says what mana it adds (a `Produced` credit inline, or an `AnyColor` credit the
         // controller names via a pause).
         let mut produced_bonuses = 0usize;
+        let mut fixed_bonuses: Vec<Color> = Vec::new();
         let mut any_color_source: Option<ObjectId> = None;
         for id in self.battlefield() {
             for ability in self.def_of(id).abilities.iter().cloned() {
@@ -241,12 +237,21 @@ impl Game {
                 let watches = match scope {
                     LandTapScope::Controller => self.controller_of(id) == player,
                     LandTapScope::EnchantedHost => self.attached_to(id) == Some(land),
+                    // "Whenever a player taps a land for mana" / "whenever a Mountain is tapped
+                    // for mana" — the tapped land itself is what's filtered, not the tapper, so
+                    // `you` is the watcher's own controller and goes unread by both filters.
+                    LandTapScope::AnyLand(filter) => {
+                        self.permanent_matches(&filter, land, self.controller_of(id), Some(id))
+                    }
                 };
                 if !watches {
                     continue;
                 }
                 match bonus_color {
                     LandTapBonusColor::Produced => produced_bonuses += 1,
+                    // A named color (Wild Growth's "an additional {G}") is nothing to choose and
+                    // nothing to copy — credit it straight away.
+                    LandTapBonusColor::Fixed(color) => fixed_bonuses.push(color),
                     // ponytail: only the FIRST any-color watch raises its pause — a second on the
                     // same tap is dropped (the `ChooseManaColor` answer path doesn't re-enter this
                     // watch to queue another). No pool board stacks two. Queue them if one ever does.
@@ -268,6 +273,17 @@ impl Game {
                 },
             );
         }
+        for color in fixed_bonuses {
+            self.push_apply(
+                events,
+                Event::ManaAdded {
+                    player,
+                    mana: Mana::Color(color),
+                    amount: 1,
+                    persist: false,
+                },
+            );
+        }
         if let Some(source) = any_color_source {
             pending::raise(
                 self,
@@ -278,6 +294,11 @@ impl Game {
                 },
             );
         }
+        // Manabarbs' "whenever a player taps a land for mana" is a real triggered ability, not an
+        // inline bonus — it uses the stack. It hangs here rather than off `Event::Tapped` because
+        // this is the only choke that knows the tap produced mana (CR 106.11); the every-tap
+        // watches fire from that event instead, so the two never double-fire.
+        self.queue_becomes_tapped_triggers(land, true);
     }
 
     /// Pay 1 life to add {C} under Yavimaya Bloomsage's Channel grant (a CR 605 mana ability —
@@ -409,6 +430,16 @@ impl Game {
                 .intersects(TypeSet::ENCHANTMENT)
     }
 
+    /// Whether `object` is an artifact currently on the battlefield (CR 301). A phased-out
+    /// permanent doesn't count, mirroring [`Self::is_creature_on_battlefield`]. Used by Copy
+    /// Artifact's `enter_as_copy` (`of = "artifact"`, CR 706/707.2) to enumerate its candidates.
+    pub(crate) fn is_artifact_on_battlefield(&self, object: ObjectId) -> bool {
+        let Some(p) = self.as_permanent(object) else {
+            return false;
+        };
+        !p.phased_out && self.effective_types(object).intersects(TypeSet::ARTIFACT)
+    }
+
     /// The mana `player` could produce right now: their pool plus free taps, then a fixed-point
     /// over paid tap-for-mana abilities (filter lands, karoos, signets) — each unused permanent's
     /// paid ability is included only when the running estimate can pay its activation cost, via
@@ -457,19 +488,12 @@ impl Game {
             let mut contributed_free = false;
             if !has_paid_mana
                 && let CardKind::Land {
-                    produces: Some(produces),
-                    ..
+                    produces: Some(_), ..
                 } = &printed.kind
+                && let Some(credit) = self.land_mana_credit(id, player)
             {
-                let credit = match produces {
-                    LandProduces::Mana(m) => Some(*m),
-                    LandProduces::CommanderIdentity => self.commander_identity_credit(player),
-                    LandProduces::OpponentColors => self.opponent_producible_colors_credit(player),
-                };
-                if let Some(credit) = credit {
-                    mana.add(credit, 1);
-                    contributed_free = true;
-                }
+                mana.add(credit, 1);
+                contributed_free = true;
             }
             for (i, a) in printed.abilities.iter().enumerate() {
                 let Timing::Activated(cost) = a.timing else {
@@ -616,20 +640,13 @@ impl Game {
             }
             let printed = card_def(p.def);
             if let CardKind::Land {
-                produces: Some(produces),
-                ..
+                produces: Some(_), ..
             } = &printed.kind
+                && let Some(credit) = self.land_mana_credit(idx as ObjectId, player)
             {
-                let credit = match produces {
-                    LandProduces::Mana(m) => Some(*m),
-                    LandProduces::CommanderIdentity => self.commander_identity_credit(player),
-                    LandProduces::OpponentColors => self.opponent_producible_colors_credit(player),
-                };
-                if let Some(credit) = credit {
-                    mana.add(credit, 1);
-                    used[idx] = true;
-                    continue;
-                }
+                mana.add(credit, 1);
+                used[idx] = true;
+                continue;
             }
             for a in printed.abilities.iter().cloned() {
                 let Timing::Activated(cost) = a.timing else {
@@ -668,7 +685,9 @@ impl Game {
                 used[idx] = true;
             }
         }
-        mana
+        // Widen last, so the estimate offers the same colors the payment planners will accept
+        // (Sunglasses of Urza) — the merges above compare colors and want the printed ones.
+        mana.substituted(&self.mana_substitutions(player))
     }
 
     /// Whether `cost` can be paid from `available` mana — `spell` is the spell being cast
@@ -760,9 +779,10 @@ impl Game {
         cost: Cost,
         spell: Option<SpellCharacteristics>,
     ) -> Option<ManaPool> {
-        self.players[player.0 as usize]
-            .mana_pool
-            .spend_plan(&cost, spell)
+        let subs = self.mana_substitutions(player);
+        let pool = self.players[player.0 as usize].mana_pool;
+        let spend = pool.substituted(&subs).spend_plan(&cost, spell)?;
+        Some(pool.unsubstitute(&subs, spend))
     }
 
     /// Can `player` still pay `cost`? The same planner [`Game::settle_payment`] runs, so a `false`
@@ -795,12 +815,23 @@ impl Game {
         exclude: Option<ObjectId>,
         spell: Option<SpellCharacteristics>,
     ) -> Option<Vec<PlannedTap>> {
-        let mut pool = self.players[player.0 as usize].mana_pool;
+        // Every credit — floating and yet to be tapped for — is widened by whatever "spend {W} as
+        // though it were {R}" statics the player controls, so the whole greedy search plans in
+        // that widened space; the plan is a list of taps, and the real spend is re-planned (and
+        // mapped back to real credits) by [`Game::plan_payment`].
+        let subs = self.mana_substitutions(player);
+        let mut pool = self.players[player.0 as usize].mana_pool.substituted(&subs);
         if pool.can_pay(&cost, spell) {
             return Some(Vec::new());
         }
 
         let (mut free, mut paid) = self.auto_tap_candidates(player, exclude);
+        for candidate in &mut free {
+            candidate.credit = candidate.credit.substituted(&subs);
+        }
+        for candidate in &mut paid {
+            candidate.credit = candidate.credit.substituted(&subs);
+        }
         let mut taps = Vec::new();
 
         while !pool.can_pay(&cost, spell) {
@@ -1100,26 +1131,16 @@ impl Game {
             }
             let printed = card_def(p.def);
             let nonland = !matches!(&printed.kind, CardKind::Land { .. });
-            if let CardKind::Land { produces, .. } = &printed.kind {
-                let base_credit = match produces {
-                    Some(LandProduces::Mana(m)) => Some(*m),
-                    Some(LandProduces::CommanderIdentity) => self.commander_identity_credit(player),
-                    Some(LandProduces::OpponentColors) => {
-                        self.opponent_producible_colors_credit(player)
-                    }
-                    None => None,
-                };
-                if let Some(m) = base_credit {
-                    let mut credit = ManaPool::default();
-                    credit.add(m, 1);
-                    free.push(FreeTapCandidate {
-                        tap: PlannedTap::Base(id),
-                        breadth: mana_breadth(&credit),
-                        credit,
-                        nonland: false,
-                        pain: false,
-                    });
-                }
+            if let Some(m) = self.land_mana_credit(id, player) {
+                let mut credit = ManaPool::default();
+                credit.add(m, 1);
+                free.push(FreeTapCandidate {
+                    tap: PlannedTap::Base(id),
+                    breadth: mana_breadth(&credit),
+                    credit,
+                    nonland: false,
+                    pain: false,
+                });
             }
             for (i, a) in printed.abilities.iter().enumerate() {
                 let Timing::Activated(acost) = a.timing else {
@@ -1364,12 +1385,62 @@ impl Game {
                 };
                 (cost.mana, cost.taps_self.then_some(source), None)
             }
+            // A standing prevention offer's cost is written on the offer itself (Guardian Angel's
+            // {1}) — there is no object to read it off.
+            MeaningfulAction::PayStandingPrevention { index } => {
+                let Some(offer) = self.standing_preventions.get(index) else {
+                    return Vec::new();
+                };
+                (offer.cost, None, None)
+            }
         };
         self.plan_auto_taps(player, cost, exclude, spell)
             .map(object_ids)
             .unwrap_or_default()
     }
 
+    /// Take one of Guardian Angel's standing "you may pay {1} … prevent the next 1 damage that
+    /// would be dealt to that permanent or player" offers (CR 615): pay the cost and arm an
+    /// ordinary shield on the offer's remembered target. The offer itself survives the payment —
+    /// the card says "any time you could cast an instant", not "once" — so it can be bought again
+    /// until the turn ends and [`Game::standing_preventions`] is cleared.
+    ///
+    /// Shaped like [`Game::turn_face_up`]: no stack, no priority pass, an unpayable cost rejects
+    /// with nothing tapped.
+    pub(crate) fn pay_standing_prevention(
+        &mut self,
+        player: PlayerId,
+        index: usize,
+    ) -> Result<Vec<Event>, Reject> {
+        if player != self.priority {
+            return Err(Reject::NotYourPriority);
+        }
+        let Some(&offer) = self.standing_preventions.get(index) else {
+            return Err(Reject::UnknownAction);
+        };
+        if offer.player != player {
+            return Err(Reject::CannotActivate);
+        }
+        let mut events = Vec::new();
+        self.settle_payment(player, offer.cost, None, None, &mut events)
+            .map_err(|_| Reject::CannotPayCost)?;
+        self.damage_prevention_shields
+            .push(crate::state::PreventionShield {
+                target: offer.target,
+                amount: Some(offer.amount),
+                keep: None,
+                from_color: crate::ColorFilter::Any,
+                from_source: None,
+                combat_only: false,
+                gain_life: false,
+                redirect_to: None,
+            });
+        // Paying is a game action taken with priority, not a pass — the payer keeps priority
+        // (CR 117.3c), exactly as a special action does.
+        self.consecutive_passes = 0;
+        self.priority = player;
+        Ok(events)
+    }
     /// Pay `cost` for `player` — from the pool, auto-tapping mana sources for any shortfall
     /// (free taps first, then paid tap-for-mana abilities via a feed-first plan) — appending the
     /// tap events and the [`Event::ManaSpent`]. Call only after the action is otherwise fully
@@ -1462,8 +1533,15 @@ impl Game {
                 continue;
             }
 
+            // Whoever is owed an extra turn takes it before the rotation moves on (CR 505.6a).
+            // Popped straight off the queue rather than through an event: the `StepBegan` below
+            // already carries the new active player, so a pure event replay lands on the same
+            // turn order either way (same bookkeeping shape as `skip_starting_players_first_draw`).
             let next_active = if leaving_cleanup {
-                self.next_player(self.active_player)
+                match self.extra_turns.pop() {
+                    Some(owed) if !self.has_lost(owed) => owed,
+                    _ => self.next_player(self.active_player),
+                }
             } else {
                 self.active_player
             };
@@ -1476,6 +1554,7 @@ impl Game {
                     Event::ManaEmptied {
                         player: PlayerId(i),
                         end_of_turn: leaving_cleanup,
+                        to: None,
                     },
                 );
             }
@@ -1486,6 +1565,31 @@ impl Game {
                     active_player: next_active,
                 },
             );
+            // Time Vault (CR 614): "if you would begin your turn while this artifact is tapped,
+            // you may skip that turn instead". The pause stands here, after the `StepBegan` that
+            // names the new active player but before a single turn-based action has run — so a
+            // skipped turn untaps nothing, draws nothing and never opens a priority window.
+            // `answer_may` resumes from exactly this point either way.
+            // ponytail: the skipped turn's `StepBegan` is emitted before the offer is answered, so
+            // a replay sees an untap step for a turn that CR says never happened. Nothing observes
+            // it — the per-turn tallies it resets are reset again by the turn that does happen, and
+            // no trigger or priority window sits in an untap step — so the alternative (raising the
+            // pause before `StepBegan` and re-pushing the whole step preamble in the "no" handler)
+            // buys nothing.
+            if next == Step::Untap
+                && let Some(source) = self.may_skip_turn_offer(next_active)
+            {
+                crate::pending::raise_choice(
+                    self,
+                    PendingChoice::MayYesNo {
+                        player: next_active,
+                        source,
+                        effect: Effect::Static(StaticEffect::MaySkipTurnWhileTapped),
+                        resume: MayYesNoResume::SkipTurnWhileSourceTapped,
+                    },
+                );
+                return events;
+            }
             self.perform_turn_based_actions(next, next_active, &mut events);
 
             // A turn-based action may raise a choice (cleanup's discard-to-hand-size). Stop the
@@ -1501,6 +1605,70 @@ impl Game {
                 return events;
             }
         }
+    }
+
+    /// The *tapped* battlefield permanent `player` controls that offers Time Vault's
+    /// [`StaticEffect::MaySkipTurnWhileTapped`] turn replacement. `None` when they control none or
+    /// when every one they control is untapped — the ordinary case, which takes the turn as usual,
+    /// since the offer only exists "while this artifact is tapped".
+    /// ponytail: first offer wins if a player somehow controls two tapped ones; the pool has a
+    /// single such card, and a skipped turn untaps only the one that bought it, so a second would
+    /// just re-offer next turn.
+    fn may_skip_turn_offer(&self, player: PlayerId) -> Option<ObjectId> {
+        self.controlled_battlefield(player).into_iter().find(|&id| {
+            self.permanent(id).tapped
+                && self.functional_abilities(id).iter().any(|ability| {
+                    ability.timing == Timing::Static
+                        && matches!(
+                            ability.effect,
+                            Effect::Static(StaticEffect::MaySkipTurnWhileTapped)
+                        )
+                })
+        })
+    }
+
+    /// The battlefield permanent `player` controls that offers Island Sanctuary's
+    /// [`StaticEffect::MaySkipDrawForCantBeAttackedBy`] draw-step replacement, with the shield it
+    /// buys. `None` when they control none — the ordinary case, which draws as usual.
+    /// ponytail: first offer wins if a player somehow controls two; the pool has one such card,
+    /// and stacking them buys nothing a single one doesn't (CR 614.5 lets the player order
+    /// replacements, but both orders end at the same shield).
+    fn may_skip_draw_offer(&self, player: PlayerId) -> Option<(ObjectId, PermanentFilter)> {
+        self.controlled_battlefield(player)
+            .into_iter()
+            .find_map(|id| {
+                self.def_of(id).abilities.iter().find_map(|ability| {
+                    match (ability.timing, ability.effect.clone()) {
+                        (
+                            Timing::Static,
+                            Effect::Static(StaticEffect::MaySkipDrawForCantBeAttackedBy { filter }),
+                        ) => Some((id, filter)),
+                        _ => None,
+                    }
+                })
+            })
+    }
+
+    /// The draw step's own draw, dredge replacement and all (CR 702.52). Returns after raising
+    /// [`PendingChoice::ChooseDredge`] when a dredger is eligible — `answer_choose_dredge` then
+    /// performs the draw or the mill+return and resumes the step loop. Shared with
+    /// [`Game::answer_may`], which lands here when Island Sanctuary's skip is declined.
+    pub(crate) fn draw_step_draw(&mut self, player: PlayerId, events: &mut Vec<Event>) {
+        let dredgers = self.dredge_options(player);
+        if !dredgers.is_empty() {
+            crate::pending::raise_choice(
+                self,
+                PendingChoice::ChooseDredge {
+                    player,
+                    eligible: dredgers,
+                    remaining: 1,
+                    from_draw_step: true,
+                },
+            );
+            return;
+        }
+        let drawn = self.draw_card(player);
+        events.extend(drawn);
     }
 
     /// The automatic actions performed as a step begins (untap, draw, cleanup).
@@ -1543,6 +1711,11 @@ impl Game {
                 for card in to_arm {
                     self.push_apply(events, Event::PlayFromExilePermissionArmed { card });
                 }
+                // Stasis's "Players skip their untap steps" (CR 703.4a): the step's two turn-based
+                // actions — phasing in and untapping — simply don't happen. Everything else this
+                // arm does is a per-*turn* duration that merely gets bookkept here (goad expiry,
+                // summoning sickness, loyalty), so it runs whether or not the step is skipped.
+                let untap_step_happens = !self.players_skip_untap_steps();
                 // Phase in the active player's phased-out permanents (CR 702.26f) — as a turn-based
                 // action at the start of the untap step, *before* untapping. Emit one `PhasedIn`
                 // per directly-phased permanent (`attached_to.is_none()`); its handler cascades to
@@ -1552,7 +1725,7 @@ impl Game {
                 // control changed while phased is an unmodeled edge no pool card reaches.
                 let to_phase_in: Vec<ObjectId> = self
                     .permanent_ids(|p| p.phased_out && p.attached_to.is_none())
-                    .filter(|&id| self.controller_of(id) == active)
+                    .filter(|&id| untap_step_happens && self.controller_of(id) == active)
                     .collect();
                 for id in to_phase_in {
                     self.push_apply(events, Event::PhasedIn { object: id });
@@ -1561,14 +1734,49 @@ impl Game {
                 // permanent carrying the flag isn't untapped here; instead it's offered below in a
                 // yes/no pause, and only untapped once the active player declines to keep it tapped.
                 let mut optional_untap: Vec<ObjectId> = Vec::new();
+                // Smoke / Winter Orb (CR 502.2): a cap on how many permanents of a class may
+                // untap. Resolved to concrete groups *before* anything untaps, so the state each
+                // cap reads is the one the step started in. A group of one isn't a choice — the
+                // lone candidate untaps as it always would — so only groups the cap actually bites
+                // are kept, and their members go into the pause below instead of untapping here.
+                let capped: Vec<Vec<ObjectId>> = match untap_step_happens {
+                    false => Vec::new(),
+                    true => self
+                        .untap_at_most_one_filters()
+                        .into_iter()
+                        .map(|(source, filter)| {
+                            let controller = self.controller_of(source);
+                            self.controlled_battlefield(active)
+                                .into_iter()
+                                .filter(|&id| {
+                                    self.permanent(id).tapped
+                                        && !self.skip_next_untap.contains(&id)
+                                        && !self.doesnt_untap(id)
+                                        && self.permanent_matches(
+                                            &filter,
+                                            id,
+                                            controller,
+                                            Some(source),
+                                        )
+                                })
+                                .collect::<Vec<ObjectId>>()
+                        })
+                        .filter(|group| group.len() > 1)
+                        .collect(),
+                };
                 for id in self.controlled_battlefield(active) {
                     // Pollen Lullaby's win rider (CR): a permanent marked to skip its controller's
                     // next untap step doesn't untap now — the mark is consumed here (whether or not
                     // it was tapped), so it untaps normally on every later untap step.
-                    if self.skip_next_untap.contains(&id) {
+                    if !untap_step_happens {
+                        // A skipped step consumes nothing: a permanent marked to miss its
+                        // controller's next untap step is still owed that miss once Stasis goes.
+                    } else if self.skip_next_untap.contains(&id) {
                         self.push_apply(events, Event::NextUntapSkipConsumed { object: id });
-                    } else if self.permanent(id).tapped {
-                        if self.def_of(id).may_choose_not_to_untap {
+                    } else if self.permanent(id).tapped && !self.doesnt_untap(id) {
+                        if self.def_of(id).may_choose_not_to_untap
+                            || capped.iter().any(|group| group.contains(&id))
+                        {
                             optional_untap.push(id);
                         } else {
                             self.push_apply(events, Event::Untapped { object: id });
@@ -1597,6 +1805,7 @@ impl Game {
                         PendingChoice::DeclineUntap {
                             player: active,
                             permanents: optional_untap,
+                            at_most_one: capped,
                         },
                     );
                 }
@@ -1697,24 +1906,24 @@ impl Game {
                 if std::mem::take(&mut self.skip_starting_players_first_draw) {
                     return;
                 }
-                // Dredge (CR 702.52): if a dredger is eligible, pause on the replacement choice
-                // instead of drawing. `advance_step` returns on the pause; `answer_choose_dredge`
-                // performs the draw (decline) or the mill+return (accept) and resumes the step loop.
-                let dredgers = self.dredge_options(active);
-                if !dredgers.is_empty() {
+                // Island Sanctuary (CR 614): "you may skip that draw" is offered before dredge's
+                // own replacement, and declining falls through to it — so a player holding both
+                // still gets the dredge choice.
+                if let Some((source, filter)) = self.may_skip_draw_offer(active) {
                     crate::pending::raise_choice(
                         self,
-                        PendingChoice::ChooseDredge {
+                        PendingChoice::MayYesNo {
                             player: active,
-                            eligible: dredgers,
-                            remaining: 1,
-                            from_draw_step: true,
+                            source,
+                            effect: Effect::Static(StaticEffect::MaySkipDrawForCantBeAttackedBy {
+                                filter,
+                            }),
+                            resume: MayYesNoResume::SkipDrawStepDraw,
                         },
                     );
                     return;
                 }
-                let drawn = self.draw_card(active);
-                events.extend(drawn);
+                self.draw_step_draw(active, events);
             }
             // Rad counters (CR 122.1, Fallout): "At the beginning of each player's precombat main
             // phase, if that player has any rad counters, they mill that many cards. For each
@@ -1730,10 +1939,25 @@ impl Game {
             Step::FirstStrikeCombatDamage => self.combat_damage_substep(true, events),
             Step::CombatDamage => self.combat_damage_substep(false, events),
             Step::EndCombat => {
+                // Clockwork Beast's "At end of combat, if this creature attacked or blocked this
+                // combat" (CR 511.1) — queued *before* the clear below, which is what the
+                // intervening-if reads.
+                self.queue_end_of_combat_triggers();
                 // Clear combat if attackers were declared this turn (so the declared-flags reset,
                 // even after a zero-attacker declaration). No attackers ⇒ nothing to clear.
                 if self.combat.attackers_declared {
                     self.push_apply(events, Event::CombatCleared);
+                }
+                // Jade Statue's "becomes a 3/6 Golem artifact creature until end of combat" — the
+                // only duration in the pool shorter than a turn, swept here instead of at cleanup.
+                // ponytail: `TempBoostsEnded` ends *every* until-EOT effect on the Statue, so a
+                // pump cast on it mid-combat ends early too. Narrow enough to live with; split the
+                // event if a second end-of-combat card ever lands.
+                let animated: Vec<ObjectId> = self
+                    .permanent_ids(|p| p.animation_ends_at_end_of_combat)
+                    .collect();
+                for id in animated {
+                    self.push_apply(events, Event::TempBoostsEnded { object: id });
                 }
             }
             Step::Cleanup => {
@@ -1752,7 +1976,7 @@ impl Game {
                             || p.base_pt_set_eot.is_some()
                             || p.added_types_eot != TypeSet::NONE
                             || !p.added_subtypes_eot.is_empty()
-                            || p.set_color_eot.is_some()
+                            || matches!(p.set_color, Some((_, true)))
                             || !p.temp_keywords.is_empty()
                             || !p.temp_lost_keywords.is_empty()
                             || p.reverts_to_def_eot.is_some()
@@ -1939,6 +2163,11 @@ mod tests {
             alternative_cost: None,
             cast_only_during_combat: false,
             cast_only_before_attackers: false,
+            cast_only_before_blockers: false,
+            cast_only_during_opponents_turn: false,
+            cast_only_before_combat_damage: false,
+            cast_only_during_declare_blockers: false,
+            cast_only_during_declare_attackers: false,
             approximates: None,
             oracle: None,
             sets: empty_slice(),

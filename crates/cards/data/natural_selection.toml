@@ -1,0 +1,30 @@
+# Look at the top three cards of target player's library, then put them back in any order. You
+# may have that player shuffle.
+name = "Natural Selection"
+otags = ["just-shuffle", "single-target-instant-sorcery", "soothsaying"]
+sets = ["2ed", "30a", "ced", "cei", "lea", "leb"]
+id = "57f90b30-bcb0-447e-8788-5c5ded187207"
+default_print = "315a6bfb-5417-465f-97d9-e157f5c3cf79"
+oracle = "Look at the top three cards of target player's library, then put them back in any order. You may have that player shuffle."
+
+[cost]
+green = 1
+
+[kind]
+type = "instant"
+
+# Look at the top three cards of target player's library, then put them back in any order. You
+# may have that player shuffle.
+[[abilities]]
+timing = "spell"
+
+# Look at the top three cards of target player's library, then put them back in any order.
+[[abilities.effects]]
+type = "dig"
+mode = "rearrange_target_players_top"
+count = 3
+
+# You may have that player shuffle.
+[[abilities.effects]]
+type = "dig"
+mode = "may_shuffle_target_players_library"

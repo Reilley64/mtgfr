@@ -1,0 +1,31 @@
+# Psionic Blast deals 4 damage to any target and 2 damage to you.
+name = "Psionic Blast"
+otags = ["burn-any", "burn-you", "drawback", "single-target-instant-sorcery", "spot-removal", "color-break"]
+sets = ["2ed", "30a", "ced", "cei", "lea", "leb", "p07", "prm", "tsb"]
+id = "7f221ad6-7ec4-483d-a6b5-1456c95c1cad"
+default_print = "8a1dff82-de5c-4b1d-b87f-6ddb4551f820"
+oracle = "Psionic Blast deals 4 damage to any target and 2 damage to you."
+
+[cost]
+generic = 2
+blue = 1
+
+[kind]
+type = "instant"
+
+# Psionic Blast deals 4 damage to any target and 2 damage to you.
+[[abilities]]
+timing = "spell"
+
+# Psionic Blast deals 4 damage to any target ...
+[[abilities.effects]]
+type = "damage"
+mode = "target"
+amount = 4
+target = "any"
+
+# ... and 2 damage to you.
+[[abilities.effects]]
+type = "damage"
+mode = "to_self"
+amount = 2

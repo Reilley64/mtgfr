@@ -1,0 +1,31 @@
+# Enchant creature (Target a creature as you cast this. This card enters attached to that
+# creature.)
+# {G}: Regenerate enchanted creature. (The next time that creature would be destroyed this
+# turn, instead tap it, remove it from combat, and heal all damage on it.)
+name = "Regeneration"
+otags = ["activated-ability", "regenerates-other", "single-english-word-name"]
+sets = ["10e", "2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "8ed", "9ed", "ced", "cei", "fbb", "ice", "lea", "leb", "mir", "sum"]
+id = "89390a33-b289-4edd-a114-6616e49a49c2"
+default_print = "b523f013-3dbd-4b5c-9433-cdec7dc737ba"
+oracle = "Enchant creature (Target a creature as you cast this. This card enters attached to that creature.)\n{G}: Regenerate enchanted creature. (The next time that creature would be destroyed this turn, instead tap it, remove it from combat, and heal all damage on it.)"
+subtypes = ["Aura"]
+
+[cost]
+generic = 1
+green = 1
+
+[kind]
+type = "aura"
+
+# {G}: Regenerate enchanted creature.
+[[abilities]]
+timing = "activated"
+
+[abilities.activation_cost]
+green = 1
+
+# Regenerate enchanted creature.
+[[abilities.effects]]
+type = "control"
+mode = "regenerate_shield"
+target = "enchanted_creature"

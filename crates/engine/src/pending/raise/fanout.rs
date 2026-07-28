@@ -29,6 +29,7 @@ pub(super) fn next_discard_edict(
     game: &Game,
     mut remaining: Vec<PlayerId>,
     source: ObjectId,
+    floor: Option<u32>,
 ) -> Option<PendingChoice> {
     while !remaining.is_empty() {
         let player = remaining.remove(0);
@@ -36,11 +37,20 @@ pub(super) fn next_discard_edict(
         if options.is_empty() {
             continue;
         }
+        let count = match floor {
+            // Balance: a seat already at the smallest hand pitches nothing, so it is skipped
+            // outright rather than asked for zero cards.
+            Some(floor) if options.len() as u32 <= floor => continue,
+            Some(floor) => options.len() as u32 - floor,
+            None => 1,
+        };
         return Some(PendingChoice::DiscardEdict {
             player,
             source,
             options,
             remaining,
+            count,
+            floor,
         });
     }
     None
@@ -54,8 +64,11 @@ pub(super) fn next_caster_keep(
 ) -> Option<PendingChoice> {
     while !remaining.is_empty() {
         let target_player = remaining.remove(0);
-        let options =
-            game.edict_options(target_player, PermanentFilter::of(crate::TypeSet::NONLAND));
+        let options = game.edict_options(
+            target_player,
+            PermanentFilter::of(crate::TypeSet::NONLAND),
+            None,
+        );
         if options.is_empty() {
             continue;
         }
@@ -102,6 +115,7 @@ pub(super) fn next_counter_target(
 pub(super) fn next_join_forces_payment(
     mut remaining: Vec<PlayerId>,
     source: ObjectId,
+    prevent_up_to: Option<u8>,
 ) -> Option<PendingChoice> {
     if remaining.is_empty() {
         return None;
@@ -111,6 +125,7 @@ pub(super) fn next_join_forces_payment(
         player,
         source,
         remaining,
+        prevent_up_to,
     })
 }
 
@@ -155,16 +170,24 @@ pub(super) fn next_sacrifice_edict(
     keep_one: bool,
     filter: PermanentFilter,
     count: u32,
+    floor: Option<u32>,
     follow_up: &'static [Effect],
     controller: PlayerId,
     source: ObjectId,
 ) -> Option<PendingChoice> {
     while !remaining.is_empty() {
         let player = remaining.remove(0);
-        let options = game.edict_options(player, filter);
+        let options = game.edict_options(player, filter, Some(source));
         if options.is_empty() || (keep_one && options.len() == 1) {
             continue;
         }
+        let count = match floor {
+            // Balance: a seat already at the fewest gives up nothing, so it is skipped outright
+            // rather than asked for zero permanents.
+            Some(floor) if options.len() as u32 <= floor => continue,
+            Some(floor) => options.len() as u32 - floor,
+            None => count,
+        };
         return Some(PendingChoice::SacrificeEdict {
             player,
             options,
@@ -172,6 +195,7 @@ pub(super) fn next_sacrifice_edict(
             filter,
             remaining,
             count,
+            floor,
             controller,
             source,
             follow_up,

@@ -1,0 +1,33 @@
+# Defender (This creature can't attack.)
+# {R}: This creature gets +1/+0 until end of turn.
+name = "Wall of Fire"
+otags = ["activated-ability", "cycle-m15-wall", "drawback", "firebreathing", "mana-sink"]
+sets = ["10e", "2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "ced", "cei", "fbb", "lea", "leb", "m10", "m13", "m15", "plst", "sum"]
+id = "f38c8b47-e8e0-4d2f-b1da-d8d986805a48"
+default_print = "74841ee8-2af0-4019-898d-d0ce72fc62c3"
+oracle = "Defender (This creature can't attack.)\n{R}: This creature gets +1/+0 until end of turn."
+subtypes = ["Wall"]
+keywords = ["defender"]
+
+[cost]
+generic = 1
+red = 2
+
+[kind]
+type = "creature"
+power = 0
+toughness = 5
+
+# {R}: This creature gets +1/+0 until end of turn.
+[[abilities]]
+timing = "activated"
+
+[abilities.activation_cost]
+red = 1
+
+# This creature gets +1/+0 until end of turn.
+[[abilities.effects]]
+type = "pump"
+mode = "pump_self_until_end_of_turn"
+power = 1
+toughness = 0

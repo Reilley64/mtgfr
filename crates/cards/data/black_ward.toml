@@ -1,0 +1,25 @@
+# Enchant creature
+# Enchanted creature has protection from black. This effect doesn't remove this Aura.
+name = "Black Ward"
+otags = ["cycle-lea-ward", "french-vanilla-aura", "gives-protection", "hate-black", "protects-creature"]
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
+id = "7861ac9b-3024-4935-804c-2ca4c5a46bf4"
+default_print = "f0cd79e9-1b61-4ad3-8f6d-cb5d3f60ef8e"
+oracle = "Enchant creature\nEnchanted creature has protection from black. This effect doesn't remove this Aura."
+subtypes = ["Aura"]
+
+[cost]
+white = 1
+
+[kind]
+type = "aura"
+
+# Enchanted creature has protection from black. This effect doesn't remove this Aura.
+[[abilities]]
+timing = "static"
+
+# Enchanted creature has protection from black.
+[[abilities.effects]]
+type = "static"
+mode = "grant_to_attached"
+keywords = [{ protection = "black" }]

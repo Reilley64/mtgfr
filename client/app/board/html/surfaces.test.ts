@@ -707,6 +707,31 @@ test("pile overlay renders with its close control", () => {
   );
 });
 
+// Glasses of Urza is the only way an opponent's hand card reaches this viewer's snapshot, and
+// every other read of an opponent's hand on this board is `hand_count` — without the chip the
+// look leaves nothing behind but a log line.
+test("a looked-at opponent hand gets a chip that opens it in the pile overlay", () => {
+  const seen = card(70, { owner: 1, controller: 1, zone: ZONE.Hand, name: "Shivan Dragon" });
+  overlayScene(
+    overlayModel(initialBoardModel(), gameState({ objects: [seen] })),
+    Scene.expect(Scene.testId("seen-hands")).toExist(),
+    Scene.expect(Scene.testId("seen-hand-1")).toHaveText("Bob's hand (1)"),
+  );
+
+  overlayScene(
+    overlayModel({ ...initialBoardModel(), pileExpand: { zone: ZONE.Hand, owner: 1 } }, gameState({ objects: [seen] })),
+    Scene.expect(Scene.testId("pile-overlay-title")).toHaveText("Hand (1)"),
+    Scene.expect(Scene.testId("pile-card-70")).toBeAbsent(), // nothing to pick — read-only
+  );
+});
+
+test("no chip when this viewer has looked at nobody's hand", () => {
+  overlayScene(
+    overlayModel(initialBoardModel(), gameState({ objects: [card(71, { owner: 0, zone: ZONE.Hand })] })),
+    Scene.expect(Scene.testId("seen-hands")).toBeAbsent(),
+  );
+});
+
 test("concede confirmation dialog renders both actions", () => {
   overlayScene(
     overlayModel({ ...initialBoardModel(), concedeDialog: Dialog.init({ id: CONCEDE_DIALOG_ID, isOpen: true }) }),
@@ -1252,6 +1277,7 @@ test("on-board sacrifice_edict shows aim chrome instead of card grid", () => {
         objects: [bear],
         pending_choice: {
           kind: "sacrifice_edict",
+          count: 1,
           player: 0,
           source: 1,
           items: [{ id: 7, label: "Bear" }],

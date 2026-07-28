@@ -1,0 +1,16 @@
+# (no rules text — vanilla creature)
+name = "Obsianus Golem"
+otags = ["type-addition-from-none"]
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "6ed", "ced", "cei", "fbb", "lea", "leb", "me4", "sum"]
+id = "ac41171e-c454-49e9-9004-c082ae099630"
+default_print = "9646da70-329f-41a2-9453-4ec6a9c9e7e4"
+subtypes = ["Golem"]
+
+[cost]
+generic = 6
+
+[kind]
+type = "creature"
+power = 4
+toughness = 6
+also = ["artifact"]

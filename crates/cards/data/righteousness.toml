@@ -1,0 +1,25 @@
+# Target blocking creature gets +7/+7 until end of turn.
+name = "Righteousness"
+otags = ["enlarge", "giant-growth", "single-english-word-name", "single-target-instant-sorcery", "synergy-blocker"]
+sets = ["10e", "2ed", "30a", "3ed", "4bb", "4ed", "5ed", "9ed", "ced", "cei", "ddl", "eld", "fbb", "j22", "lea", "leb", "m10", "sum"]
+id = "3f6b2f76-0364-415e-a6a2-e9e5bf31b745"
+default_print = "ddb92543-e601-4575-8e17-84ec0b1edd66"
+oracle = "Target blocking creature gets +7/+7 until end of turn."
+
+[cost]
+white = 1
+
+[kind]
+type = "instant"
+
+# Target blocking creature gets +7/+7 until end of turn.
+[[abilities]]
+timing = "spell"
+
+# Target blocking creature gets +7/+7 until end of turn.
+[[abilities.effects]]
+type = "pump"
+mode = "pump_until_end_of_turn"
+target = { permanent = { types = "creature", blocking = true } }
+power = 7
+toughness = 7

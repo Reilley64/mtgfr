@@ -34,11 +34,16 @@ pub(crate) enum ChoiceRequest {
         player: crate::PlayerId,
         cost: crate::Cost,
         spell: crate::ObjectId,
+        strips_mana_on_decline: bool,
     },
     ChooseCreatureType {
         player: crate::PlayerId,
         source: crate::ObjectId,
         options: &'static [&'static str],
+        /// Magical Hack / Sleight of Mind's second question (CR 612.1): what an answer to this
+        /// pick should do next, rather than write a chosen creature type. `None` for every
+        /// ordinary as-enters "choose a creature type".
+        then: Option<crate::TextSwapPick>,
     },
     ChooseColor {
         player: crate::PlayerId,
@@ -131,6 +136,13 @@ pub(crate) enum ChoiceRequest {
         player: crate::PlayerId,
         source: crate::ObjectId,
     },
+    /// [`Effect::Choice(ChoiceEffect::MayBlockAttackerOfYourChoice)`] — no attacker `blocker`
+    /// could legally block skips.
+    ChooseBlockTarget {
+        player: crate::PlayerId,
+        source: crate::ObjectId,
+        blocker: crate::ObjectId,
+    },
     /// [`Effect::Choice(ChoiceEffect::Discard)`] — empty (or zero-count) hand skips.
     Discard {
         player: crate::PlayerId,
@@ -139,11 +151,12 @@ pub(crate) enum ChoiceRequest {
     },
     /// [`Effect::Choice(ChoiceEffect::PutFromHandOnTop)`] — empty (or zero-count) hand skips.
     PutFromHandOnTop { player: crate::PlayerId, count: u32 },
-    /// [`Effect::Choice(ChoiceEffect::SacrificeSelfUnlessPay)`] — always pauses.
-    SacrificeUnlessPay {
+    /// [`Effect::Choice(ChoiceEffect::PayOrElse)`] — always pauses.
+    PayOrElse {
         player: crate::PlayerId,
         source: crate::ObjectId,
         cost: crate::Cost,
+        otherwise: &'static [crate::Effect],
     },
     /// [`Effect::Choice(ChoiceEffect::SacrificeSelfUnlessReturnLand)`] — no candidates → `None` (caller sacrifices).
     SacrificeUnlessReturnLand {
@@ -151,11 +164,13 @@ pub(crate) enum ChoiceRequest {
         source: crate::ObjectId,
         filter: crate::PermanentFilter,
     },
-    /// [`Effect::Dig(DigEffect::Scry)`] / [`Effect::Dig(DigEffect::Surveil)`] — empty library skips.
+    /// [`Effect::Dig(DigEffect::Scry)`] / [`Effect::Dig(DigEffect::Surveil)`] /
+    /// [`Effect::Dig(DigEffect::RearrangeTargetPlayersTop)`] — empty library skips.
     ArrangeTop {
         player: crate::PlayerId,
+        library: crate::PlayerId,
         count: u32,
-        to_graveyard: bool,
+        rest: crate::ArrangeRest,
     },
     /// [`Effect::Dig(DigEffect::LookAtTop)`] — empty library skips.
     SelectFromTop {
@@ -239,9 +254,11 @@ pub(crate) enum ChoiceRequest {
         cards: &'static [crate::ObjectId],
     },
     /// [`Effect::Choice(ChoiceEffect::SacrificeOwn)`] / annihilator — `options.len() <= count` → `None` (caller
-    /// sacrifices all).
+    /// sacrifices all). `player` answers; `owner` is whose battlefield the options come off, the
+    /// same seat everywhere but Demonic Hordes' "a land of an opponent's choice".
     ChooseOwnSacrifices {
         player: crate::PlayerId,
+        owner: crate::PlayerId,
         source: crate::ObjectId,
         filter: crate::PermanentFilter,
         count: u32,
@@ -253,6 +270,9 @@ pub(crate) enum ChoiceRequest {
     },
     /// Next opponent in a discard fan-out (Syphon Mind) — empty-hand seats skipped.
     NextDiscardEdict {
+        /// Balance's "down to the fewest": each seat discards its own excess over this hand size.
+        /// `None` is the plain one-card-each fan-out (Syphon Mind).
+        floor: Option<u32>,
         remaining: Vec<crate::PlayerId>,
         source: crate::ObjectId,
     },
@@ -268,10 +288,13 @@ pub(crate) enum ChoiceRequest {
         chooser: crate::PlayerId,
         source: crate::ObjectId,
     },
-    /// Next seat in a join-forces payment round — empty remaining skips.
+    /// Next seat in a join-forces payment round — empty remaining skips. `prevent_up_to` is
+    /// Power Leak's single-seat variant: `Some(cap)` turns what the seat pays into a prevention
+    /// shield on that seat worth at most `cap`, instead of into the round's shared `X`.
     NextJoinForcesPayment {
         remaining: Vec<crate::PlayerId>,
         source: crate::ObjectId,
+        prevent_up_to: Option<u8>,
     },
     /// Next seat in a council's-dilemma vote — empty remaining skips.
     NextVote {
@@ -292,6 +315,9 @@ pub(crate) enum ChoiceRequest {
         keep_one: bool,
         filter: crate::PermanentFilter,
         count: u32,
+        /// Balance's "down to the fewest": each seat sacrifices its own excess over this many
+        /// matching permanents, overriding `count`. `None` is the ordinary fixed-count edict.
+        floor: Option<u32>,
         follow_up: &'static [crate::Effect],
         controller: crate::PlayerId,
         source: crate::ObjectId,
@@ -315,6 +341,34 @@ pub(crate) enum ChoiceRequest {
         source: crate::ObjectId,
         candidates: Vec<crate::ObjectId>,
         exiled: Vec<crate::ObjectId>,
+    },
+    /// Raging River — the next defender in `defenders` divides their non-flying creatures. With
+    /// `defenders` exhausted this rolls straight on to labeling `attackers`, and with nothing left
+    /// to label either it yields `None`.
+    SplitBlockersIntoPiles {
+        source: crate::ObjectId,
+        left: Vec<(crate::PlayerId, Vec<crate::ObjectId>)>,
+        defenders: Vec<crate::PlayerId>,
+        attackers: Vec<crate::ObjectId>,
+    },
+    /// Camouflage — `partial` is the defender midway through their division (what they have left
+    /// to divide, and the piles they have named); `None` starts the next of `defenders` from the
+    /// top. With `defenders` exhausted there is nothing left to ask, and this yields `None`.
+    DivideBlockersIntoPiles {
+        source: crate::ObjectId,
+        partial: Option<(
+            crate::PlayerId,
+            Vec<crate::ObjectId>,
+            Vec<Vec<crate::ObjectId>>,
+        )>,
+        defenders: Vec<crate::PlayerId>,
+        attackers: Vec<crate::ObjectId>,
+    },
+    /// Word of Command — `player` picks from `subject`'s hand; an empty hand → `None`.
+    ChooseCardInHandToPlay {
+        player: crate::PlayerId,
+        source: crate::ObjectId,
+        subject: crate::PlayerId,
     },
     /// Dance with Calamity push-your-luck — always pauses when raised.
     DanceExileMore {
@@ -433,6 +487,11 @@ pub(super) fn choice_from_request(game: &Game, request: ChoiceRequest) -> Option
         ChoiceRequest::MayPutCounterOnCreature { player, source } => {
             optional::may_put_counter_on_creature(game, player, source)
         }
+        ChoiceRequest::ChooseBlockTarget {
+            player,
+            source,
+            blocker,
+        } => optional::choose_block_target(game, player, source, blocker),
         ChoiceRequest::Discard {
             player,
             count,
@@ -448,9 +507,10 @@ pub(super) fn choice_from_request(game: &Game, request: ChoiceRequest) -> Option
         } => optional::sacrifice_unless_return_land(game, player, source, filter),
         ChoiceRequest::ArrangeTop {
             player,
+            library,
             count,
-            to_graveyard,
-        } => library::arrange_top(game, player, count, to_graveyard),
+            rest,
+        } => library::arrange_top(game, player, library, count, rest),
         ChoiceRequest::SelectFromTop {
             player,
             count,
@@ -528,16 +588,19 @@ pub(super) fn choice_from_request(game: &Game, request: ChoiceRequest) -> Option
         } => copy::choose_copy_card_from_list(game, player, source, cards),
         ChoiceRequest::ChooseOwnSacrifices {
             player,
+            owner,
             source,
             filter,
             count,
-        } => edict::choose_own_sacrifices(game, player, source, filter, count),
+        } => edict::choose_own_sacrifices(game, player, owner, source, filter, count),
         ChoiceRequest::NextGraveyardExile { remaining, source } => {
             fanout::next_graveyard_exile(game, remaining, source)
         }
-        ChoiceRequest::NextDiscardEdict { remaining, source } => {
-            fanout::next_discard_edict(game, remaining, source)
-        }
+        ChoiceRequest::NextDiscardEdict {
+            remaining,
+            source,
+            floor,
+        } => fanout::next_discard_edict(game, remaining, source, floor),
         ChoiceRequest::NextCasterKeep {
             remaining,
             caster,
@@ -548,9 +611,11 @@ pub(super) fn choice_from_request(game: &Game, request: ChoiceRequest) -> Option
             chooser,
             source,
         } => fanout::next_counter_target(game, remaining, chooser, source),
-        ChoiceRequest::NextJoinForcesPayment { remaining, source } => {
-            fanout::next_join_forces_payment(remaining, source)
-        }
+        ChoiceRequest::NextJoinForcesPayment {
+            remaining,
+            source,
+            prevent_up_to,
+        } => fanout::next_join_forces_payment(remaining, source, prevent_up_to),
         ChoiceRequest::NextVote {
             remaining,
             source,
@@ -564,11 +629,12 @@ pub(super) fn choice_from_request(game: &Game, request: ChoiceRequest) -> Option
             keep_one,
             filter,
             count,
+            floor,
             follow_up,
             controller,
             source,
         } => fanout::next_sacrifice_edict(
-            game, remaining, keep_one, filter, count, follow_up, controller, source,
+            game, remaining, keep_one, filter, count, floor, follow_up, controller, source,
         ),
         ChoiceRequest::ChooseExiledDigToCastFree {
             player,
@@ -576,6 +642,23 @@ pub(super) fn choice_from_request(game: &Game, request: ChoiceRequest) -> Option
             candidates,
             exiled,
         } => dig::choose_exiled_dig_to_cast_free(player, source, candidates, exiled),
+        ChoiceRequest::ChooseCardInHandToPlay {
+            player,
+            source,
+            subject,
+        } => dig::choose_card_in_hand_to_play(game, player, source, subject),
+        ChoiceRequest::SplitBlockersIntoPiles {
+            source,
+            left,
+            defenders,
+            attackers,
+        } => dig::split_blockers_into_piles(game, source, left, defenders, attackers),
+        ChoiceRequest::DivideBlockersIntoPiles {
+            source,
+            partial,
+            defenders,
+            attackers,
+        } => dig::divide_blockers_into_piles(game, source, partial, defenders, attackers),
         ChoiceRequest::ChooseExiledToCastFree {
             player,
             source,
@@ -612,7 +695,7 @@ pub(super) fn choice_from_request(game: &Game, request: ChoiceRequest) -> Option
         | ChoiceRequest::DivideSpellDamage { .. }
         | ChoiceRequest::DivideCounters { .. }
         | ChoiceRequest::ChooseManaColor { .. }
-        | ChoiceRequest::SacrificeUnlessPay { .. }
+        | ChoiceRequest::PayOrElse { .. }
         | ChoiceRequest::ChooseTargetPlayers { .. }
         | ChoiceRequest::DanceExileMore { .. }
         | ChoiceRequest::OpponentChoosesPile { .. }

@@ -1,0 +1,26 @@
+# Target creature gains flying until end of turn.
+name = "Jump"
+otags = ["gives-flying", "single-english-word-name", "single-target-instant-sorcery", "jump"]
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "ced", "cei", "fbb", "lea", "leb", "m10", "plst", "sum"]
+id = "f7518456-45ed-41d4-bd3c-5aacea28eb35"
+default_print = "24b4c4c9-84c1-484c-9f67-1f460585d45c"
+oracle = "Target creature gains flying until end of turn."
+
+[cost]
+blue = 1
+
+[kind]
+type = "instant"
+
+# Target creature gains flying until end of turn.
+[[abilities]]
+timing = "spell"
+
+# Target creature gains flying until end of turn.
+[[abilities.effects]]
+type = "pump"
+mode = "pump_until_end_of_turn"
+target = "creature"
+power = 0
+toughness = 0
+keywords = ["flying"]

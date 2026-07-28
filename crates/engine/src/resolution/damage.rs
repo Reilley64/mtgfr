@@ -11,8 +11,13 @@ impl Game {
     /// once. An infect source's damage is dealt in the form of that many -1/-1 counters instead of
     /// being marked; everything else marks damage as usual (CR 120.3/506).
     ///
-    /// Prevention and protection are the caller's job and stay ahead of this call — a prevented
-    /// hit never reaches here, so it places no counters either.
+    /// Returns `(the events, the damage actually dealt)` — the second half is what's left of
+    /// `amount` after this creature's [`spend_prevention_shields`](Self::spend_prevention_shields)
+    /// took its bite (CR 615), so a caller that also mints damage *markers* (the combat-damage
+    /// watch, lifelink, deathtouch) sizes them off damage that was really dealt.
+    ///
+    /// All-or-nothing prevention and protection stay the caller's job and run ahead of this call —
+    /// a fully prevented hit never reaches here, so it places no counters either.
     ///
     /// ponytail: an infect hit emits no [`Event::DamageMarked`], so the two watchers that ride
     /// that event alone — Armadillo Cloak's enchanted-host damage trigger and Vampiric Dragon's
@@ -25,23 +30,224 @@ impl Game {
         source: ObjectId,
         object: ObjectId,
         amount: i32,
-    ) -> Vec<Event> {
+    ) -> (Vec<Event>, i32) {
+        self.creature_damage_events_with_riders(source, object, amount, false, false)
+    }
+
+    /// Spend the "prevent the next N damage that would be dealt to `target` this turn" shields
+    /// (CR 615) standing between `amount` damage and `target`, returning `(the event recording the
+    /// spend, the damage left to deal)`. Both damage chokes call this, so every damage path in the
+    /// game — combat, burn, fight, mass sweeps — is covered by construction.
+    ///
+    /// The shields themselves are only decremented when [`Event::DamagePrevented`] is applied.
+    /// That's fine for a batch minted from one pre-apply snapshot as long as no two damage events
+    /// in it share a target — the mass-damage sweeps deal to each creature or player once.
+    ///
+    /// ponytail: two *sources* hitting one shielded target in a single batch (several blockers
+    /// dealing combat damage to the same shielded creature) would each see the full shield and
+    /// double-spend it. Combat's own path applies each event as it pushes it (`push_apply`), so
+    /// the case that actually arises today is already correct; the general fix is a spend ledger
+    /// threaded through the mint, which no pool card yet needs.
+    fn spend_prevention_shields(
+        &self,
+        target: Target,
+        source: ObjectId,
+        amount: i32,
+        allow_redirect: bool,
+    ) -> (Vec<Event>, i32) {
+        let mut prevented = 0;
+        let mut life_gained = 0;
+        let mut redirects: Vec<(Target, i32)> = Vec::new();
+        for shield in self.shields_against(target, source) {
+            if prevented >= amount {
+                break;
+            }
+            // A redirection is a replacement, not a prevention (CR 615.10) — it still spends the
+            // shield, but the damage goes on to be dealt somewhere else. Damage that arrived here
+            // by an earlier redirect passes them by rather than bouncing again (CR 616.1).
+            if shield.redirect_to.is_some() && !allow_redirect {
+                continue;
+            }
+            // "Prevent all but 1 of that damage" (Forcefield) subtracts from the other end:
+            // everything still coming *except* the points it lets through. "Prevent that damage"
+            // (no point total) eats everything still coming; a point shield eats what it has left.
+            let bite = match (shield.keep, shield.amount) {
+                (Some(keep), _) => (amount - prevented - keep).max(0),
+                (None, None) => amount - prevented,
+                (None, Some(points)) => points.min(amount - prevented),
+            };
+            prevented += bite;
+            if shield.gain_life {
+                life_gained += bite;
+            }
+            if let Some(to) = shield.redirect_to {
+                redirects.push((to, bite));
+            }
+        }
+        if prevented <= 0 {
+            return (Vec::new(), amount);
+        }
+        // ponytail: a redirected bite is recorded as `DamagePrevented` at the original target
+        // plus ordinary damage at the new one, so the log reads "prevented … and then dealt"
+        // where the card reads "dealt … instead". The board lands in the right place either way;
+        // upgrade path is an `Event::DamageRedirected { from, to, .. }` carrying both ends.
+        let mut events = vec![Event::DamagePrevented {
+            target,
+            amount: prevented,
+            source,
+        }];
+        // Reverse Damage's "you gain life equal to the damage prevented this way" — paid to the
+        // shielded player, who is the only thing any pool card with this rider protects.
+        if life_gained > 0
+            && let Target::Player(player) = target
+        {
+            events.push(Event::LifeChanged {
+                player,
+                amount: life_gained,
+                source: Some(source),
+            });
+        }
+        for (to, moved) in redirects {
+            events.extend(self.redirected_damage_events(source, to, moved));
+        }
+        (events, amount - prevented)
+    }
+
+    /// "That source deals that damage to `to` instead" (Jade Monolith, CR 615.10). The moved
+    /// damage is dealt for real at its new home — the recipient's own shields still get their
+    /// bite — but it cannot be moved a second time.
+    fn redirected_damage_events(&self, source: ObjectId, to: Target, amount: i32) -> Vec<Event> {
+        match to {
+            Target::Player(player) => {
+                self.player_damage_events_inner(source, player, amount, false)
+                    .0
+            }
+            Target::Object(object) => {
+                self.creature_damage_events_inner(source, object, amount, false, false, false)
+                    .0
+            }
+        }
+    }
+
+    /// The shields standing between `source` and `target`, oldest first — the one order both the
+    /// mint above and [`Game::apply`]'s [`Event::DamagePrevented`] arm walk, so the two never
+    /// disagree about which shields paid.
+    pub(crate) fn shields_against(
+        &self,
+        target: Target,
+        source: ObjectId,
+    ) -> impl Iterator<Item = &crate::state::PreventionShield> {
+        self.damage_prevention_shields
+            .iter()
+            .filter(move |shield| self.shield_stands_between(shield, target, source))
+    }
+
+    /// Whether `shield` stands between `source` and `target` at this moment — the one predicate
+    /// the mint above and [`Game::apply`]'s [`Event::DamagePrevented`] arm both ask, so the two
+    /// can't drift about which shields paid.
+    pub(crate) fn shield_stands_between(
+        &self,
+        shield: &crate::state::PreventionShield,
+        target: Target,
+        source: ObjectId,
+    ) -> bool {
+        if shield.target != target {
+            return false;
+        }
+        // A named source (Forcefield's chosen creature) replaces the colour gate rather than
+        // joining it — the card names the one thing it stops, not a class of them.
+        if let Some(named) = shield.from_source {
+            return named == source && (!shield.combat_only || self.in_combat_damage_step());
+        }
+        if shield.combat_only && !self.in_combat_damage_step() {
+            return false;
+        }
+        self.color_matches(shield.from_color, source)
+    }
+
+    /// Whether damage being dealt right now is combat damage — read off the step rather than
+    /// carried on the event, since combat damage is the only damage either combat damage step
+    /// deals (CR 510.2).
+    fn in_combat_damage_step(&self) -> bool {
+        matches!(
+            self.current_step(),
+            crate::Step::FirstStrikeCombatDamage | crate::Step::CombatDamage
+        )
+    }
+
+    /// [`creature_damage_events`](Self::creature_damage_events) plus Disintegrate's two riders on
+    /// the damaged creature — "it can't be regenerated this turn, and if it would die this turn,
+    /// exile it instead." Only [`Effect::Damage(DamageEffect::Target)`] carries them; every other
+    /// damage path takes the three-argument form above.
+    ///
+    /// ponytail: the riders travel on the damage event, so a hit that never marks damage never
+    /// marks the creature either — an infect Disintegrate (counters instead of damage), or one
+    /// whose damage is prevented outright. CR reads "if it's a creature" off the *target*, not off
+    /// the damage actually landing. No pool card creates either case; the upgrade path is a
+    /// separate marking event emitted alongside the guards in the `Target` arm.
+    pub(crate) fn creature_damage_events_with_riders(
+        &self,
+        source: ObjectId,
+        object: ObjectId,
+        amount: i32,
+        cant_be_regenerated: bool,
+        exile_instead_of_dying: bool,
+    ) -> (Vec<Event>, i32) {
+        self.creature_damage_events_inner(
+            source,
+            object,
+            amount,
+            cant_be_regenerated,
+            exile_instead_of_dying,
+            true,
+        )
+    }
+
+    /// [`creature_damage_events_with_riders`](Self::creature_damage_events_with_riders) plus the
+    /// one-bounce guard: `allow_redirect` is false for damage that a redirection already moved
+    /// here, so it can be prevented but not moved on (CR 616.1).
+    fn creature_damage_events_inner(
+        &self,
+        source: ObjectId,
+        object: ObjectId,
+        amount: i32,
+        cant_be_regenerated: bool,
+        exile_instead_of_dying: bool,
+        allow_redirect: bool,
+    ) -> (Vec<Event>, i32) {
+        // Rock Hydra's per-point shield (CR 615) is spent first and only covers as many points as
+        // it has counters; whatever it can't pay for falls through to the ordinary shields below
+        // and is dealt for real.
+        let (mut events, amount) = self.per_point_counter_shield(object, amount);
+        let (shield_events, amount) =
+            self.spend_prevention_shields(Target::Object(object), source, amount, allow_redirect);
+        events.extend(shield_events);
+        // CR 615: damage a shield ate entirely was never dealt, so it marks nothing and feeds no
+        // damage watch. (An *unshielded* 0 still emits its `DamageMarked`, as it always has —
+        // callers guard 0 amounts themselves where it matters.)
+        if !events.is_empty() && amount <= 0 {
+            return (events, 0);
+        }
         if !self.has_keyword(source, Keyword::Infect) {
-            return vec![Event::DamageMarked {
+            events.push(Event::DamageMarked {
                 object,
                 amount,
                 source: Some(source),
-            }];
+                cant_be_regenerated,
+                exile_instead_of_dying,
+            });
+            return (events, amount);
         }
         // 0 or less damage is never dealt (CR 120.8) — and never placed as counters.
         if amount <= 0 {
-            return Vec::new();
+            return (events, amount);
         }
-        vec![Event::KindCountersPlaced {
+        events.push(Event::KindCountersPlaced {
             object,
             kind: CounterKind::MinusOneMinusOne,
             count: amount,
-        }]
+        });
+        (events, amount)
     }
 
     /// The event that lands `amount` damage from `source` on `player` — the player twin of
@@ -52,28 +258,150 @@ impl Game {
     /// [`Event::CombatDamageDealtToPlayer`] marker, commander-damage tally and lifelink gain all
     /// still fire off the original amount, because infect changes the form of the damage, not the
     /// fact that it was dealt (CR 120.3).
+    ///
+    /// Returns `(the events, the damage actually dealt)`, the second half reduced by this player's
+    /// [`spend_prevention_shields`](Self::spend_prevention_shields) bite — see the creature twin.
     pub(crate) fn player_damage_events(
         &self,
         source: ObjectId,
         player: PlayerId,
         amount: i32,
-    ) -> Vec<Event> {
+    ) -> (Vec<Event>, i32) {
+        self.player_damage_events_inner(source, player, amount, true)
+    }
+
+    /// [`player_damage_events`](Self::player_damage_events) plus the one-bounce guard — see the
+    /// creature twin.
+    fn player_damage_events_inner(
+        &self,
+        source: ObjectId,
+        player: PlayerId,
+        amount: i32,
+        allow_redirect: bool,
+    ) -> (Vec<Event>, i32) {
+        let (mut events, amount) =
+            self.spend_prevention_shields(Target::Player(player), source, amount, allow_redirect);
+        // CR 615: damage a shield ate entirely was never dealt — no life loss, and the caller's
+        // `amount > 0` guard drops the `DamageDealtToPlayer` marker and lifelink with it.
+        if !events.is_empty() && amount <= 0 {
+            return (events, 0);
+        }
         if !self.has_keyword(source, Keyword::Infect) {
-            return vec![Event::LifeChanged {
+            events.push(Event::LifeChanged {
                 player,
                 amount: -amount,
                 source: Some(source),
-            }];
+            });
+            return (events, amount);
         }
         // 0 or less damage is never dealt (CR 120.8) — and never placed as counters.
         if amount <= 0 {
-            return Vec::new();
+            return (events, amount);
         }
-        vec![Event::PlayerCountersPlaced {
+        events.push(Event::PlayerCountersPlaced {
             player,
             kind: PlayerCounterKind::Poison,
             count: amount,
-        }]
+        });
+        (events, amount)
+    }
+
+    /// The events for one targeted damage effect landing on `chosen`, plus the damage actually
+    /// dealt (0 when a shield, protection, or a prevention effect ate it) — the second half is
+    /// what Drain Life's "equal to the damage dealt" reads.
+    fn single_target_damage_events(
+        &self,
+        source: ObjectId,
+        chosen: Target,
+        amount: i32,
+        cant_be_regenerated: bool,
+        exile_instead_of_dying: bool,
+    ) -> (Vec<Event>, i32) {
+        match chosen {
+            // Damage to a creature is marked (an SBA later checks it against toughness), (CR 704, CR 120.3)
+            // unless protection from the source's color prevents it (CR 702.16d).
+            Target::Object(object) => {
+                if self.damage_prevented_by_protection(object, Some(source)) {
+                    return (Vec::new(), 0);
+                }
+                // Phantom Centaur's self-shield (or Bloatfly Swarm's scaling variant)
+                // prevents this damage outright and removes +1/+1 counters instead (CR 615).
+                if self.phantom_shield_active(object) {
+                    return (self.phantom_shield_counter_removal(object, amount), 0);
+                }
+                // Damage to a planeswalker removes that many loyalty counters instead of
+                // being marked (CR 120.3c/306.9) — checked ahead of Tajic's creature-only
+                // prevention below, since a planeswalker is never "another creature".
+                if matches!(self.def_of(object).kind, CardKind::Planeswalker { .. }) {
+                    return (
+                        vec![Event::LoyaltyChanged {
+                            object,
+                            amount: -amount,
+                        }],
+                        amount,
+                    );
+                }
+                // Tajic prevents noncombat damage to its controller's other creatures (CR 615).
+                if self.noncombat_damage_prevented_to_creature(object) {
+                    return (Vec::new(), 0);
+                }
+                self.creature_damage_events_with_riders(
+                    source,
+                    object,
+                    amount,
+                    cant_be_regenerated,
+                    exile_instead_of_dying,
+                )
+            }
+            // Damage to a player is life loss. ponytail: the commander-damage tally is
+            // combat-only (CR 903.10a), so a burn spell never adds to it.
+            Target::Player(player) => {
+                let (mut events, amount) = self.player_damage_events(source, player, amount);
+                // 0 damage is never dealt (CR 120.8) — no marker, no trigger.
+                if amount > 0 {
+                    events.push(Event::DamageDealtToPlayer {
+                        source,
+                        player,
+                        amount,
+                    });
+                    // Lifelink (CR 702.15/119.3) triggers on ANY damage the source
+                    // deals, not just combat damage (Brion Stoutarm's fling ability).
+                    events.extend(self.lifelink_gain(source, amount));
+                }
+                (events, amount)
+            }
+        }
+    }
+
+    /// Drain Life's "You gain life equal to the damage dealt, but not more life than the player's
+    /// life total before the damage was dealt, the planeswalker's loyalty before the damage was
+    /// dealt, or the creature's toughness." The cap is the target's own capacity to absorb damage,
+    /// read before any of it lands (nothing in this module has mutated the board yet).
+    fn drain_gain(
+        &self,
+        controller: PlayerId,
+        source: ObjectId,
+        chosen: Target,
+        dealt: i32,
+    ) -> Option<Event> {
+        let capacity = match chosen {
+            Target::Player(player) => self.life(player),
+            Target::Object(object)
+                if matches!(self.def_of(object).kind, CardKind::Planeswalker { .. }) =>
+            {
+                self.loyalty(object)
+            }
+            Target::Object(object) => self.toughness(object),
+        };
+        let gain = dealt.min(capacity);
+        if gain <= 0 {
+            return None;
+        }
+        Some(Event::LifeChanged {
+            player: controller,
+            amount: self.life_gain_after_replacements(controller, gain),
+            source: Some(source),
+        })
     }
 
     pub(crate) fn mint_damage(
@@ -87,7 +415,12 @@ impl Game {
         let _source_name = self.source_name_of(source);
         match effect {
             DamageEffect::Target {
-                amount, divided, ..
+                amount,
+                divided,
+                cant_be_regenerated,
+                exile_instead_of_dying,
+                gain_life_equal_to_damage,
+                ..
             } => {
                 let chosen = target.expect("a targeted effect resolves with a chosen target");
                 // A divided spell's per-target amount was already settled (CR 601.2d) right
@@ -95,7 +428,7 @@ impl Game {
                 // recorded on the resolving spell (`source` is that spell's own object id;
                 // `divided` only appears on `Timing::Spell` effects, so this always resolves
                 // through the spell path, never a triggered/activated ability's). (CR 602, CR 601, CR 603)
-                let amount = if divided {
+                let amount = if divided != Division::None {
                     // A divided target's share was recorded on the spell: object shares on
                     // `damage_division`, player shares on `damage_division_players` (CR 601.2d).
                     match chosen {
@@ -117,51 +450,17 @@ impl Game {
                 } else {
                     self.resolve_amount(amount, controller, source, target, x)
                 };
-                match chosen {
-                    // Damage to a creature is marked (an SBA later checks it against toughness), (CR 704, CR 120.3)
-                    // unless protection from the source's color prevents it (CR 702.16d).
-                    Target::Object(object) => {
-                        if self.damage_prevented_by_protection(object, Some(source)) {
-                            return Vec::new();
-                        }
-                        // Phantom Centaur's self-shield (or Bloatfly Swarm's scaling variant)
-                        // prevents this damage outright and removes +1/+1 counters instead (CR 615).
-                        if self.phantom_shield_active(object) {
-                            return self.phantom_shield_counter_removal(object, amount);
-                        }
-                        // Damage to a planeswalker removes that many loyalty counters instead of
-                        // being marked (CR 120.3c/306.9) — checked ahead of Tajic's creature-only
-                        // prevention below, since a planeswalker is never "another creature".
-                        if matches!(self.def_of(object).kind, CardKind::Planeswalker { .. }) {
-                            return vec![Event::LoyaltyChanged {
-                                object,
-                                amount: -amount,
-                            }];
-                        }
-                        // Tajic prevents noncombat damage to its controller's other creatures (CR 615).
-                        if self.noncombat_damage_prevented_to_creature(object) {
-                            return Vec::new();
-                        }
-                        self.creature_damage_events(source, object, amount)
-                    }
-                    // Damage to a player is life loss. ponytail: the commander-damage tally is
-                    // combat-only (CR 903.10a), so a burn spell never adds to it.
-                    Target::Player(player) => {
-                        let mut events = self.player_damage_events(source, player, amount);
-                        // 0 damage is never dealt (CR 120.8) — no marker, no trigger.
-                        if amount > 0 {
-                            events.push(Event::DamageDealtToPlayer {
-                                source,
-                                player,
-                                amount,
-                            });
-                            // Lifelink (CR 702.15/119.3) triggers on ANY damage the source
-                            // deals, not just combat damage (Brion Stoutarm's fling ability).
-                            events.extend(self.lifelink_gain(source, amount));
-                        }
-                        events
-                    }
+                let (mut events, dealt) = self.single_target_damage_events(
+                    source,
+                    chosen,
+                    amount,
+                    cant_be_regenerated,
+                    exile_instead_of_dying,
+                );
+                if gain_life_equal_to_damage {
+                    events.extend(self.drain_gain(controller, source, chosen, dealt));
                 }
+                events
             }
             // Mass damage: mark `amount` on every creature; the SBA sweep clears the dead. (CR 704, CR 120.3)
             // `amount` is resolved *per creature*, with that creature substituted in as the
@@ -262,7 +561,7 @@ impl Game {
                         if self.phantom_shield_active(object) {
                             return self.phantom_shield_counter_removal(object, object_amount);
                         }
-                        self.creature_damage_events(source, object, object_amount)
+                        self.creature_damage_events(source, object, object_amount).0
                     })
                     .collect()
             }
@@ -292,6 +591,8 @@ impl Game {
                             object,
                             amount,
                             source: Some(source),
+                            cant_be_regenerated: false,
+                            exile_instead_of_dying: false,
                         }]
                     })
                     .collect()
@@ -307,7 +608,8 @@ impl Game {
                 let amount = self.resolve_amount(amount, controller, source, target, x);
                 self.living_players()
                     .flat_map(|player| {
-                        let mut events = self.player_damage_events(source, player, amount);
+                        let (mut events, amount) =
+                            self.player_damage_events(source, player, amount);
                         // 0 damage is never dealt (CR 120.8) — no marker, no trigger.
                         if amount > 0 {
                             events.push(Event::DamageDealtToPlayer {
@@ -331,11 +633,8 @@ impl Game {
                 self.living_players()
                     .filter(|&player| player != controller)
                     .flat_map(|player| {
-                        let mut events = vec![Event::LifeChanged {
-                            player,
-                            amount: -amount,
-                            source: Some(source),
-                        }];
+                        let (mut events, amount) =
+                            self.player_damage_events(source, player, amount);
                         // 0 damage is never dealt (CR 120.8) — no marker, no trigger.
                         if amount > 0 {
                             events.push(Event::DamageDealtToPlayer {
@@ -360,7 +659,8 @@ impl Game {
                 self.living_players()
                     .filter(|&player| player != controller && player != damaged)
                     .flat_map(|player| {
-                        let mut events = self.player_damage_events(source, player, amount);
+                        let (mut events, amount) =
+                            self.player_damage_events(source, player, amount);
                         // 0 damage is never dealt (CR 120.8) — no marker, no trigger.
                         if amount > 0 {
                             events.push(Event::DamageDealtToPlayer {
@@ -395,14 +695,82 @@ impl Game {
                 if self.noncombat_damage_prevented_to_creature(object) {
                     return Vec::new();
                 }
-                self.creature_damage_events(source, object, amount)
+                self.creature_damage_events(source, object, amount).0
+            }
+
+            // Ankh of Mishra: 2 damage to the controller of the land that just entered — the
+            // player twin of `ToEnteringPermanent` above, off the same context slot. `controller_of`
+            // (not `owner_of`) is the printed word, so a land under a Confiscate bills the thief.
+            DamageEffect::ToEnteringPermanentController { entering, amount } => {
+                let object = entering.expect("the entering permanent is filled in at placement");
+                let recipient = self.controller_of(object);
+                let amount = self.resolve_amount(amount, controller, source, target, x);
+                let (mut events, amount) = self.player_damage_events(source, recipient, amount);
+                // 0 damage is never dealt (CR 120.8) — no marker, no trigger.
+                if amount > 0 {
+                    events.push(Event::DamageDealtToPlayer {
+                        source,
+                        player: recipient,
+                        amount,
+                    });
+                    // Lifelink (CR 702.15/119.3) triggers on ANY damage the source deals.
+                    events.extend(self.lifelink_gain(source, amount));
+                }
+                events
+            }
+
+            // Copper Tablet: 1 damage to the player whose upkeep this is, baked in at trigger
+            // placement off `TriggerContext::active_player` — same shape as the arm above, with
+            // the recipient arriving as a player rather than as a permanent to ask.
+            DamageEffect::ToTriggeringPlayer { player, amount } => {
+                let recipient = player.expect("the triggering player is filled in at placement");
+                // Karma's "damage to that player equal to the number of Swamps *they* control" and
+                // Power Surge's "lands *they* controlled": a player-relative amount on this effect
+                // reads the recipient, not the source's controller.
+                // ponytail: no `who` axis on `Amount` — every "deals damage to that player equal
+                // to …" the pool prints counts that same player's things. Add one if a card ever
+                // bills the triggering player for something *you* control.
+                let amount = self.resolve_amount(amount, recipient, source, target, x);
+                let (mut events, amount) = self.player_damage_events(source, recipient, amount);
+                // 0 damage is never dealt (CR 120.8) — no marker, no trigger.
+                if amount > 0 {
+                    events.push(Event::DamageDealtToPlayer {
+                        source,
+                        player: recipient,
+                        amount,
+                    });
+                    // Lifelink (CR 702.15/119.3) triggers on ANY damage the source deals.
+                    events.extend(self.lifelink_gain(source, amount));
+                }
+                events
+            }
+
+            // Creature Bond: damage to whoever controlled the Aura's host when it died, both the
+            // recipient and (via `Amount::DyingEnchantedCreatureToughness`) the amount baked in at
+            // trigger placement — same shape as the arm above.
+            DamageEffect::ToDyingEnchantedCreaturesController { player, amount } => {
+                let recipient =
+                    player.expect("the dying host's controller is filled in at placement");
+                let amount = self.resolve_amount(amount, controller, source, target, x);
+                let (mut events, amount) = self.player_damage_events(source, recipient, amount);
+                // 0 damage is never dealt (CR 120.8) — no marker, no trigger.
+                if amount > 0 {
+                    events.push(Event::DamageDealtToPlayer {
+                        source,
+                        player: recipient,
+                        amount,
+                    });
+                    // Lifelink (CR 702.15/119.3) triggers on ANY damage the source deals.
+                    events.extend(self.lifelink_gain(source, amount));
+                }
+                events
             }
 
             // Real damage to the ability's own controller — mirrors `DealDamage`'s
             // `Target::Player` arm, substituting `controller` for the chosen target.
             DamageEffect::ToSelf { amount } => {
                 let amount = self.resolve_amount(amount, controller, source, target, x);
-                let mut events = self.player_damage_events(source, controller, amount);
+                let (mut events, amount) = self.player_damage_events(source, controller, amount);
                 // 0 damage is never dealt (CR 120.8) — no marker, no trigger.
                 if amount > 0 {
                     events.push(Event::DamageDealtToPlayer {
@@ -424,7 +792,7 @@ impl Game {
                 let creature = expect_object_target(target, "deal damage to target's controller");
                 let recipient = self.controller_of(creature);
                 let amount = self.resolve_amount(amount, controller, source, target, x);
-                let mut events = self.player_damage_events(source, recipient, amount);
+                let (mut events, amount) = self.player_damage_events(source, recipient, amount);
                 // 0 damage is never dealt (CR 120.8) — no marker, no trigger.
                 if amount > 0 {
                     events.push(Event::DamageDealtToPlayer {

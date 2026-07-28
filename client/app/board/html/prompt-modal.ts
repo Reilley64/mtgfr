@@ -17,7 +17,10 @@ export function promptModalFrame(options: { testId: string; title: string; body:
           ),
         ],
         [
-          h.div([h.Class("shrink-0 text-center font-semibold text-body")], [options.title]),
+          h.div(
+            [h.DataAttribute("testid", "prompt-modal-title"), h.Class("shrink-0 text-center font-semibold text-body")],
+            [options.title],
+          ),
           h.div([h.Class("flex min-h-0 flex-1 flex-col gap-2")], options.body),
           options.actions.length === 0
             ? null

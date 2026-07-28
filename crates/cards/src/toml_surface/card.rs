@@ -60,6 +60,31 @@ pub struct AbilityToml {
     /// sorcery-speed moment (Ozolith, the Shattered Spire's counter ability).
     #[serde(default)]
     pub(crate) sorcery_speed: bool,
+    /// "Activate only during an opponent's turn" (CR 602.5b — Nettling Imp): someone other
+    /// than the activating player must be the active player. Composable with the siblings
+    /// below the same way the `cast_only_*` card restrictions are with each other.
+    #[serde(default)]
+    pub(crate) only_during_opponents_turn: bool,
+    /// "Activate only during your turn" (CR 602.5b — Instill Energy) — the mirror of the
+    /// sibling above. Not the same as `sorcery_speed`, which also demands an empty stack and
+    /// a main phase; this one only asks whose turn it is, so it activates in combat.
+    #[serde(default)]
+    pub(crate) only_during_your_turn: bool,
+    /// "…before attackers are declared" (CR 602.5b — Nettling Imp): the activation-side twin
+    /// of `cast_only_before_attackers`. The window runs up to and including the
+    /// declare-attackers step and shuts the moment the declaration is made.
+    #[serde(default)]
+    pub(crate) only_before_attackers: bool,
+    /// "Activate only during your upkeep" (CR 602.5b — Cyclopean Tomb): a step-and-controller
+    /// window rather than the phase-shaped ones above. The controller half is what makes it
+    /// *your* upkeep.
+    #[serde(default)]
+    pub(crate) only_during_your_upkeep: bool,
+    /// "Only this creature's owner may activate this ability" (CR 602.5c — Personal
+    /// Incarnation): the pool's one activation restriction keyed to ownership rather than
+    /// control.
+    #[serde(default)]
+    pub(crate) only_owner_may_activate: bool,
     /// "Return this to its owner's hand" as part of the cost (Rootha, Mercurial
     /// Artist's "Return Rootha to its owner's hand").
     #[serde(default)]
@@ -98,6 +123,12 @@ pub struct AbilityToml {
     /// trigger/timing.
     #[serde(default)]
     pub(crate) filter: PermanentFilter,
+    /// Which tap a `permanent_becomes_tapped` trigger watches — `false` (the default) is
+    /// every tap there is (Lifetap: an attack, an Icy Manipulator, a mana ability alike),
+    /// `true` narrows to a land tapped *for mana* (Manabarbs, CR 106.11 — a tap that actually
+    /// produced mana). Ignored for every other trigger/timing.
+    #[serde(default)]
+    pub(crate) for_mana: bool,
     /// Whose permanent a `permanent_enters` trigger watches — `you` (default,
     /// constellation's "an enchantment you control"), `opponent` (Archaeomancer's Map's
     /// "a land an opponent controls"), or `any_player`. Ignored for every other
@@ -295,6 +326,37 @@ pub struct CardToml {
     /// — `cast_only_before_attackers = true`; absent (`false`) for every ordinary card.
     #[serde(default)]
     pub cast_only_before_attackers: bool,
+    /// "Cast this spell only during combat before blockers are declared" (CR 601.3e — Blaze
+    /// of Glory) — the declare-blockers half of `cast_only_before_attackers`, open until the
+    /// first defending player declares. Pair it with `cast_only_during_combat`, which is the
+    /// other half of Blaze of Glory's printed sentence; alone it leaves the pre-combat main
+    /// phase open. Absent (`false`) for every ordinary card.
+    #[serde(default)]
+    pub cast_only_before_blockers: bool,
+    /// "Cast this spell only during an opponent's turn" (CR 601.3e — Siren's Call) —
+    /// `cast_only_during_opponents_turn = true`; the cast-side twin of an activated ability's
+    /// `only_during_opponents_turn`, composable with `cast_only_before_attackers` (together
+    /// they are Siren's Call's printed restriction). Absent (`false`) for every ordinary card.
+    #[serde(default)]
+    pub cast_only_during_opponents_turn: bool,
+    /// "Cast this spell only before the combat damage step" (CR 601.3e — Berserk) —
+    /// `cast_only_before_combat_damage = true`: legal from untap through declare blockers, and
+    /// closed for the rest of the turn from the first combat damage step on. Absent (`false`)
+    /// for every ordinary card.
+    #[serde(default)]
+    pub cast_only_before_combat_damage: bool,
+    /// "Cast this spell only during the declare blockers step" (CR 601.3e — False Orders) —
+    /// `cast_only_during_declare_blockers = true`: a single step rather than everything up to
+    /// one, open before *and* after the declaration (False Orders rearranges a declaration
+    /// that already happened). Absent (`false`) for every ordinary card.
+    #[serde(default)]
+    pub cast_only_during_declare_blockers: bool,
+    /// "Cast this spell only during your declare attackers step" (CR 601.3e — Camouflage) —
+    /// `cast_only_during_declare_attackers = true`: the attack-side twin of the window above,
+    /// and narrower still, since it is closed on every other player's turn as well as in every
+    /// other step. Absent (`false`) for every ordinary card.
+    #[serde(default)]
+    pub cast_only_during_declare_attackers: bool,
     #[serde(default)]
     /// Machine-readable fidelity note for modeled divergences. Set this whenever a
     /// `# ponytail:` comment marks a deliberate simplification; leave absent for faithful
@@ -487,6 +549,11 @@ impl From<CardToml> for CardDef {
             alternative_cost: card.alternative_cost,
             cast_only_during_combat: card.cast_only_during_combat,
             cast_only_before_attackers: card.cast_only_before_attackers,
+            cast_only_before_blockers: card.cast_only_before_blockers,
+            cast_only_during_opponents_turn: card.cast_only_during_opponents_turn,
+            cast_only_before_combat_damage: card.cast_only_before_combat_damage,
+            cast_only_during_declare_blockers: card.cast_only_during_declare_blockers,
+            cast_only_during_declare_attackers: card.cast_only_during_declare_attackers,
             approximates: card.approximates.map(|s| &*Box::leak(s.into_boxed_str())),
             oracle: card.oracle.map(|s| &*Box::leak(s.into_boxed_str())),
             sets: arc_strs(card.sets),

@@ -1,6 +1,7 @@
 # Radiance — Cleansing Beam deals 2 damage to target creature and each other creature that
 # shares a color with it.
 name = "Cleansing Beam"
+otags = ["burn-creature", "burn-with-set-s-mechanic", "hate-color-share", "multi-removal", "single-target-instant-sorcery", "spot-removal"]
 sets = ["cma", "cmd", "rav"]
 id = "5c208258-f987-4d41-8eee-62e188d47ffb"
 default_print = "8ad0c91e-2765-4516-ae7a-3500f856eb31"

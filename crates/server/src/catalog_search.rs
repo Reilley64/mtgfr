@@ -253,26 +253,21 @@ mod tests {
     #[tokio::test]
     async fn otag_slugs_are_searchable() {
         let mut db = projected().await;
-        for q in [
-            "typal-spirit",
-            "spirit",
-            "cost-reducer-enchantment",
-            "enchantment",
+        // Both spellings of a slug reach the card that carries it: the hyphenated slug itself,
+        // and the de-hyphenated words `search_blob` also pushes. Every query here names words
+        // that only the otag supplies — a bare "spirit" or "enchantment" would match subtypes
+        // and card types too, so it would pass without the otag ever being indexed (and, being
+        // one broad token against a name-ordered page, it would fall off the first page as the
+        // pool grows).
+        for (q, want) in [
+            ("typal-spirit", "Vanguard of the Restless"),
+            ("typal spirit", "Vanguard of the Restless"),
+            ("cost-reducer-enchantment", "Starfield Mystic"),
+            ("cost reducer", "Starfield Mystic"),
         ] {
             let hits = search(&mut db, q, 100, 0).await.expect("search");
-            assert!(
-                names(&hits).contains(&"Vanguard of the Restless")
-                    || names(&hits).contains(&"Starfield Mystic"),
-                "{q:?} should find a tagged card"
-            );
+            assert!(names(&hits).contains(&want), "{q:?} should find {want}");
         }
-        let spirit_hits = search(&mut db, "typal-spirit", 100, 0)
-            .await
-            .expect("search");
-        assert!(
-            names(&spirit_hits).contains(&"Vanguard of the Restless"),
-            "typal-spirit slug should find Vanguard of the Restless"
-        );
     }
 
     #[tokio::test]

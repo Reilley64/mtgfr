@@ -1,0 +1,16 @@
+# (no rules text — vanilla creature)
+name = "Earth Elemental"
+otags = ["alliteration"]
+sets = ["10e", "2ed", "30a", "3ed", "4bb", "4ed", "bbd", "ced", "cei", "dpa", "fbb", "ima", "lea", "leb", "plst", "ps11", "s99", "sum"]
+id = "3c97c311-7ad5-47ec-b421-f6c3bfbda9fb"
+default_print = "659eeb25-b79b-4229-9d84-e28f6a636958"
+subtypes = ["Elemental"]
+
+[cost]
+generic = 3
+red = 2
+
+[kind]
+type = "creature"
+power = 4
+toughness = 5

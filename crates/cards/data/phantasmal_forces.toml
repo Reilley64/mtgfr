@@ -1,0 +1,30 @@
+# Flying
+# At the beginning of your upkeep, sacrifice this creature unless you pay {U}.
+name = "Phantasmal Forces"
+otags = ["creature-type-phantasm", "drawback", "evasion", "triggered-ability", "type-errata", "upkeep-cost"]
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "fbb", "lea", "leb", "me4", "sum"]
+id = "06a158c6-7e36-49f8-a8e0-a7b7df5fd7ed"
+default_print = "e8244a80-3d9a-4392-ac62-739b3e330638"
+oracle = "Flying\nAt the beginning of your upkeep, sacrifice this creature unless you pay {U}."
+subtypes = ["Illusion"]
+keywords = ["flying"]
+
+[cost]
+generic = 3
+blue = 1
+
+[kind]
+type = "creature"
+power = 4
+toughness = 1
+
+# At the beginning of your upkeep, sacrifice this creature unless you pay {U}.
+[[abilities]]
+timing = "upkeep"
+
+# Sacrifice this creature unless you pay {U}.
+[[abilities.effects]]
+type = "choice"
+mode = "pay_or_else"
+cost = { blue = 1 }
+otherwise = [{ type = "sacrifice", mode = "source" }]

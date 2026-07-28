@@ -19,8 +19,9 @@ timing = "etb"
 # sacrifice it unless you pay {1}.
 [[abilities.effects]]
 type = "choice"
-mode = "sacrifice_self_unless_pay"
+mode = "pay_or_else"
 cost = { generic = 1 }
+otherwise = [{ type = "sacrifice", mode = "source" }]
 
 # {T}: Add one mana of any color.
 [[abilities]]
