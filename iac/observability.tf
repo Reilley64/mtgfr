@@ -126,7 +126,7 @@ resource "helm_release" "loki" {
   name       = "loki"
   repository = "https://grafana.github.io/helm-charts"
   chart      = "loki"
-  version    = "6.55.0"
+  version    = "7.1.0"
   namespace  = local.observability_namespace
 
   wait    = true
@@ -231,7 +231,7 @@ resource "helm_release" "prometheus" {
   name       = "prometheus"
   repository = "https://prometheus-community.github.io/helm-charts"
   chart      = "prometheus"
-  version    = "29.17.0"
+  version    = "29.19.0"
   namespace  = local.observability_namespace
 
   wait    = true
@@ -389,7 +389,7 @@ resource "helm_release" "alloy" {
   name       = "alloy"
   repository = "https://grafana.github.io/helm-charts"
   chart      = "alloy"
-  version    = "1.10.1"
+  version    = "1.11.0"
   namespace  = local.observability_namespace
 
   wait    = true
