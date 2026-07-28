@@ -156,7 +156,7 @@ Dialog renders **inline** through `h.submodel` on a native `<dialog>` opened wit
 
 ### 4. Implementation waves (for the later plan)
 
-**W1 — Recipe seam + pure-view primitives that have call sites.**
+**W1 — Recipe seam + pure-view primitives that have call sites. Shipped.**
 Add `@foldkit/ui@0.132.0`. Add `recipe.ts` plus `button` and `input` wrappers.
 The other eight pure-view primitives wait for a consumer: `textarea`, `select`,
 `checkbox`, `switch`, `radioGroup`, and `disclosure` have zero call sites today,
@@ -216,7 +216,7 @@ emit exactly one message each, so a self-rechaining command is what stands in fo
 stream. Updates [`ui-component-layer`](2026-07-28-ui-component-layer.md)
 and [`deck-list-and-builder`](2026-07-20-deck-list-and-builder.md).
 
-**W5 — Board dismissible modals.**
+**W5 — Board dismissible modals. Shipped — the last wave.**
 The result overlay and the concede confirm → `dialog`, as a `Dialog` submodel each in
 `board/submodel.ts`; the result one is raised by `raiseResultDialog` on the fold that
 ends the game, and `resultRaised` latches so a dismissed result stays dismissed. The
