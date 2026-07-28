@@ -1567,6 +1567,12 @@ impl Game {
         if filter.entered_this_turn && !perm.entered_this_turn {
             return false;
         }
+        // "…has controlled continuously since the beginning of the turn" (CR 302.6 — Nettling
+        // Imp). `summoning_sick` is that same flag, so a creature that entered or changed hands
+        // mid-turn fails while its controller's next untap step is still ahead of it.
+        if filter.controlled_since_turn_start && perm.summoning_sick {
+            return false;
+        }
         // Nonbasic land (CR 205.4a's "Basic" supertype — White Orchid Phantom's "target
         // nonbasic land"). Basic-ness reads the def's supertype flag, not subtype strings (a
         // nonbasic dual can share a basic's type line without being basic).

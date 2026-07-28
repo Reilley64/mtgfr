@@ -163,14 +163,14 @@ fn load_from_data_dir() -> Pool {
 mod tests {
     use super::*;
     use engine::{
-        Amount, BasicLandType, CardFilter, CardKind, CasterScope, ChoiceEffect, Color, ColorFilter,
-        Condition, ControlEffect, CopyEffect, Cost, CountersEffect, DamageEffect, DestroyEffect,
-        DigEffect, Division, DrawEffect, Effect, EnterController, ExileEffect, FilterController,
-        GraveyardScope, Keyword, LandProduces, LandTapBonusColor, LandTapScope, LifeEffect, Mana,
-        ManaEffect, MillEffect, MiscEffect, PermanentFilter, ProtectionScope, PumpEffect,
-        SacrificeAdditionalCostCount, SacrificeCost, SacrificeEffect, SearchDest, SpellFilter,
-        SpellSpeed, StaticEffect, Step, TargetCount, TargetSpec, Timing, TokenEffect, Trigger,
-        TypeSet, ZoneEffect,
+        Amount, AttackRider, BasicLandType, CardFilter, CardKind, CasterScope, ChoiceEffect, Color,
+        ColorFilter, Condition, ControlEffect, CopyEffect, Cost, CountersEffect, DamageEffect,
+        DestroyEffect, DigEffect, Division, DrawEffect, Effect, EnterController, ExileEffect,
+        FilterController, GraveyardScope, Keyword, LandProduces, LandTapBonusColor, LandTapScope,
+        LifeEffect, Mana, ManaEffect, MillEffect, MiscEffect, PermanentFilter, ProtectionScope,
+        PumpEffect, SacrificeAdditionalCostCount, SacrificeCost, SacrificeEffect, SearchDest,
+        SpellFilter, SpellSpeed, StaticEffect, Step, TargetCount, TargetSpec, Timing, TokenEffect,
+        Trigger, TypeSet, ZoneEffect,
     };
 
     #[test]
@@ -2521,7 +2521,7 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                 steps[1],
                 Effect::Destroy(DestroyEffect::Target {
                     at: Some(engine::Step::End),
-                    only_if_it_attacked: true,
+                    attack_rider: AttackRider::OnlyIfItAttacked,
                     ..
                 })
             ),
@@ -3008,7 +3008,7 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                     count: TargetCount::default(),
                     cant_be_regenerated: *cant_be_regenerated,
                     at: None,
-                    only_if_it_attacked: false,
+                    attack_rider: AttackRider::Ignore,
                 }),
                 "{name} destroys what it names"
             );
@@ -3482,7 +3482,7 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                     count: TargetCount::default(),
                     cant_be_regenerated: false,
                     at: None,
-                    only_if_it_attacked: false,
+                    attack_rider: AttackRider::Ignore,
                 }),
             ),
             (
@@ -3495,7 +3495,7 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                     count: TargetCount::default(),
                     cant_be_regenerated: false,
                     at: None,
-                    only_if_it_attacked: false,
+                    attack_rider: AttackRider::Ignore,
                 }),
             ),
             (
@@ -3509,7 +3509,7 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                     count: TargetCount::default(),
                     cant_be_regenerated: false,
                     at: None,
-                    only_if_it_attacked: false,
+                    attack_rider: AttackRider::Ignore,
                 }),
             ),
             (
@@ -3613,7 +3613,7 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                     count: TargetCount::default(),
                     cant_be_regenerated: false,
                     at: Some(engine::Step::End),
-                    only_if_it_attacked: false,
+                    attack_rider: AttackRider::Ignore,
                 }),
             ],
             "flying now, destroyed at the beginning of the next end step"
@@ -4167,12 +4167,59 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                 block.effect,
                 Effect::Destroy(DestroyEffect::ThatCreature {
                     creature: None,
-                    only_if_it_attacked: false,
+                    attack_rider: AttackRider::Ignore,
                     at: Some(Step::EndCombat),
                 }),
                 "{name} postpones the destroy to end of combat"
             );
         }
+    }
+
+    /// Nettling Imp's one printed sentence is four separate knobs, and dropping any of them makes
+    /// the card either free money or unplayable: the window flags shut it outside the attack
+    /// declaration on someone else's turn, and the same narrowed target spec has to appear on both
+    /// steps so the end-step destroy asks about the creature the must-attack actually named.
+    #[test]
+    fn unlimited_nettling_imp_forces_an_attack_it_can_punish() {
+        let imp = get_by_name("Nettling Imp").expect("Nettling Imp is in the pool");
+        let [goad] = &imp.abilities[..] else {
+            panic!("one activated ability");
+        };
+        let Timing::Activated(cost) = goad.timing else {
+            panic!("an activated ability");
+        };
+        assert!(cost.taps_self, "{{T}}");
+        assert!(
+            cost.only_during_opponents_turn && cost.only_before_attackers,
+            "activate only during an opponent's turn, before attackers are declared"
+        );
+        let victim = TargetSpec::Permanent(PermanentFilter {
+            types: TypeSet::CREATURE,
+            controller: FilterController::Opponent,
+            exclude_subtypes: &["Wall"],
+            controlled_since_turn_start: true,
+            ..PermanentFilter::of(TypeSet::CREATURE)
+        });
+        let Effect::Sequence { steps } = &goad.effect else {
+            panic!("a must-attack and a scheduled destroy");
+        };
+        assert_eq!(
+            steps[0],
+            Effect::Misc(MiscEffect::MustAttackTarget { target: victim }),
+            "non-Wall, the active player's, and theirs since the turn began"
+        );
+        assert!(
+            matches!(
+                steps[1],
+                Effect::Destroy(DestroyEffect::Target {
+                    at: Some(Step::End),
+                    attack_rider: AttackRider::OnlyIfItDidnt,
+                    target,
+                    ..
+                }) if target == victim
+            ),
+            "the end-step destroy collects only from the creature that stayed home"
+        );
     }
 
     /// Fireball prints Strive without the keyword's name: "costs {1} more to cast for each target

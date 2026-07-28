@@ -2195,7 +2195,7 @@ impl Effect {
                 MessageRef::new(MessageKey::EFFECT_MISC_SKIP_NEXT_UNTAP_OPPONENT_CREATURES)
             }
             Effect::Misc(TakeExtraTurn) => MessageRef::new(MessageKey::EFFECT_MISC_TAKE_EXTRA_TURN),
-            Effect::Misc(MustAttackTarget) => MessageRef::new(MessageKey::EFFECT_MISC_MUST_ATTACK_TARGET),
+            Effect::Misc(MustAttackTarget { .. }) => MessageRef::new(MessageKey::EFFECT_MISC_MUST_ATTACK_TARGET),
             Effect::Misc(YouChooseWhichCreaturesAttack) => {
                 MessageRef::new(MessageKey::EFFECT_MISC_YOU_CHOOSE_WHICH_CREATURES_ATTACK)
             }

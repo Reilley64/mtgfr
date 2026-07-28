@@ -5778,7 +5778,7 @@ static DESTROY: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             },
             cant_be_regenerated: false,
             at: None,
-            only_if_it_attacked: false,
+            attack_rider: AttackRider::Ignore,
         }),
         optional: false,
         min_level: 0,
@@ -5875,7 +5875,7 @@ static DESTROY_NONARTIFACT_NONBLACK: LazyLock<CardDef> = LazyLock::new(|| CardDe
             },
             cant_be_regenerated: false,
             at: None,
-            only_if_it_attacked: false,
+            attack_rider: AttackRider::Ignore,
         }),
         optional: false,
         min_level: 0,
@@ -5968,7 +5968,7 @@ static DESTROY_ANY_PERMANENT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             },
             cant_be_regenerated: false,
             at: None,
-            only_if_it_attacked: false,
+            attack_rider: AttackRider::Ignore,
         }),
         optional: false,
         min_level: 0,
@@ -6064,7 +6064,7 @@ static DESTROY_NONBASIC_LAND: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             },
             cant_be_regenerated: false,
             at: None,
-            only_if_it_attacked: false,
+            attack_rider: AttackRider::Ignore,
         }),
         optional: false,
         min_level: 0,
@@ -8353,6 +8353,8 @@ static X_DRAW_PERMANENT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             loyalty: None,
             once_each_turn: false,
             sorcery_speed: false,
+            only_during_opponents_turn: false,
+            only_before_attackers: false,
             remove_counters: 0,
             remove_counters_kind: None,
             remove_counters_x: false,
@@ -8385,6 +8387,8 @@ static FIXED_DRAW_PERMANENT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             loyalty: None,
             once_each_turn: false,
             sorcery_speed: false,
+            only_during_opponents_turn: false,
+            only_before_attackers: false,
             remove_counters: 0,
             remove_counters_kind: None,
             remove_counters_x: false,
@@ -11366,6 +11370,8 @@ static LIFELINK_PINGER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             loyalty: None,
             once_each_turn: false,
             sorcery_speed: false,
+            only_during_opponents_turn: false,
+            only_before_attackers: false,
             remove_counters: 0,
             remove_counters_kind: None,
             remove_counters_x: false,
@@ -12530,6 +12536,8 @@ fn auto_tap_pays_with_a_free_granted_mana_ability() {
                 loyalty: None,
                 once_each_turn: false,
                 sorcery_speed: false,
+                only_during_opponents_turn: false,
+                only_before_attackers: false,
                 remove_counters: 0,
                 remove_counters_kind: None,
                 remove_counters_x: false,
@@ -16309,6 +16317,8 @@ static TEST_COUNTER_SHEDDER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
                 loyalty: None,
                 once_each_turn: false,
                 sorcery_speed: false,
+                only_during_opponents_turn: false,
+                only_before_attackers: false,
                 remove_counters: 2,
                 remove_counters_kind: None,
                 remove_counters_x: false,
@@ -16481,6 +16491,8 @@ static TEST_SAC_A_FOOD: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             loyalty: None,
             once_each_turn: false,
             sorcery_speed: false,
+            only_during_opponents_turn: false,
+            only_before_attackers: false,
             remove_counters: 0,
             remove_counters_kind: None,
             remove_counters_x: false,
@@ -16550,6 +16562,8 @@ static TEST_SAC_A_CREATURE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             loyalty: None,
             once_each_turn: false,
             sorcery_speed: false,
+            only_during_opponents_turn: false,
+            only_before_attackers: false,
             remove_counters: 0,
             remove_counters_kind: None,
             remove_counters_x: false,
@@ -16672,6 +16686,8 @@ static TEST_NONTOKEN_COUNTER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             loyalty: None,
             once_each_turn: false,
             sorcery_speed: false,
+            only_during_opponents_turn: false,
+            only_before_attackers: false,
             remove_counters: 0,
             remove_counters_kind: None,
             remove_counters_x: false,
@@ -17091,7 +17107,7 @@ static DESTROY_ENCHANTMENT_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             },
             cant_be_regenerated: false,
             at: None,
-            only_if_it_attacked: false,
+            attack_rider: AttackRider::Ignore,
         }),
         optional: false,
         min_level: 0,
@@ -20887,6 +20903,8 @@ fn hybrid_filter_land(name: &'static str, a: Color, b: Color) -> CardDef {
             loyalty: None,
             once_each_turn: false,
             sorcery_speed: false,
+            only_during_opponents_turn: false,
+            only_before_attackers: false,
             remove_counters: 0,
             remove_counters_kind: None,
             remove_counters_x: false,
@@ -29853,6 +29871,8 @@ const FALLEN_IDEAL_GRANT: GrantedAbility = GrantedAbility {
         loyalty: None,
         once_each_turn: false,
         sorcery_speed: false,
+        only_during_opponents_turn: false,
+        only_before_attackers: false,
         remove_counters: 0,
         remove_counters_kind: None,
         remove_counters_x: false,
@@ -30303,6 +30323,8 @@ static MUTABLE_FLYER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
                 loyalty: None,
                 once_each_turn: false,
                 sorcery_speed: false,
+                only_during_opponents_turn: false,
+                only_before_attackers: false,
                 remove_counters: 0,
                 remove_counters_kind: None,
                 remove_counters_x: false,
@@ -35792,6 +35814,8 @@ static RELIC_SHAPED_TARGET_EXILE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             loyalty: None,
             once_each_turn: false,
             sorcery_speed: false,
+            only_during_opponents_turn: false,
+            only_before_attackers: false,
             remove_counters: 0,
             remove_counters_kind: None,
             remove_counters_x: false,
@@ -43475,6 +43499,8 @@ static RUBINIA: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             loyalty: None,
             once_each_turn: false,
             sorcery_speed: false,
+            only_during_opponents_turn: false,
+            only_before_attackers: false,
             remove_counters: 0,
             remove_counters_kind: None,
             remove_counters_x: false,
@@ -45011,6 +45037,8 @@ static REVERT_ALL_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             loyalty: None,
             once_each_turn: false,
             sorcery_speed: false,
+            only_during_opponents_turn: false,
+            only_before_attackers: false,
             remove_counters: 0,
             remove_counters_kind: None,
             remove_counters_x: false,
@@ -51130,6 +51158,8 @@ fn loyalty_ability(loyalty: i32, effect: Effect) -> Ability {
             loyalty: Some(loyalty),
             once_each_turn: false,
             sorcery_speed: false,
+            only_during_opponents_turn: false,
+            only_before_attackers: false,
             remove_counters: 0,
             remove_counters_kind: None,
             remove_counters_x: false,
@@ -58096,6 +58126,8 @@ static IMPULSE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             loyalty: None,
             once_each_turn: false,
             sorcery_speed: false,
+            only_during_opponents_turn: false,
+            only_before_attackers: false,
             remove_counters: 0,
             remove_counters_kind: None,
             remove_counters_x: false,
@@ -58315,6 +58347,8 @@ static RANDOM_GRAVEYARD_EXILE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             loyalty: None,
             once_each_turn: false,
             sorcery_speed: false,
+            only_during_opponents_turn: false,
+            only_before_attackers: false,
             remove_counters: 0,
             remove_counters_kind: None,
             remove_counters_x: false,
@@ -65019,6 +65053,8 @@ static TEST_STEELBANE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
                 loyalty: None,
                 once_each_turn: false,
                 sorcery_speed: false,
+                only_during_opponents_turn: false,
+                only_before_attackers: false,
                 remove_counters: 1,
                 remove_counters_kind: None,
                 remove_counters_x: false,
@@ -65043,7 +65079,7 @@ static TEST_STEELBANE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
                 },
                 cant_be_regenerated: false,
                 at: None,
-                only_if_it_attacked: false,
+                attack_rider: AttackRider::Ignore,
             }),
             optional: false,
             min_level: 0,
@@ -74812,6 +74848,8 @@ static SACRIFICE_A_CREATURE_OUTLET: LazyLock<CardDef> = LazyLock::new(|| CardDef
             loyalty: None,
             once_each_turn: false,
             sorcery_speed: false,
+            only_during_opponents_turn: false,
+            only_before_attackers: false,
             remove_counters: 0,
             remove_counters_kind: None,
             remove_counters_x: false,
@@ -79102,6 +79140,8 @@ const fn level_up_ability(level: u8) -> Ability {
             loyalty: None,
             once_each_turn: false,
             sorcery_speed: true,
+            only_during_opponents_turn: false,
+            only_before_attackers: false,
             remove_counters: 0,
             remove_counters_kind: None,
             remove_counters_x: false,
@@ -79226,6 +79266,8 @@ static TEST_LOSE_1_LIFE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             loyalty: None,
             once_each_turn: false,
             sorcery_speed: false,
+            only_during_opponents_turn: false,
+            only_before_attackers: false,
             remove_counters: 0,
             remove_counters_kind: None,
             remove_counters_x: false,
@@ -79739,6 +79781,8 @@ static TEST_MODIFIED_DEATH_WATCHER: LazyLock<CardDef> = LazyLock::new(|| CardDef
             loyalty: None,
             once_each_turn: false,
             sorcery_speed: false,
+            only_during_opponents_turn: false,
+            only_before_attackers: false,
             remove_counters: 0,
             remove_counters_kind: None,
             remove_counters_x: false,
@@ -84346,6 +84390,8 @@ static OPPONENT_DAMAGE_WATCHER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
                 loyalty: None,
                 once_each_turn: false,
                 sorcery_speed: false,
+                only_during_opponents_turn: false,
+                only_before_attackers: false,
                 remove_counters: 0,
                 remove_counters_kind: None,
                 remove_counters_x: false,
@@ -88771,6 +88817,8 @@ static TEST_MINUS_ONE_COUNTER_CREATURE: LazyLock<CardDef> = LazyLock::new(|| Car
                 loyalty: None,
                 once_each_turn: false,
                 sorcery_speed: false,
+                only_during_opponents_turn: false,
+                only_before_attackers: false,
                 remove_counters: 1,
                 remove_counters_kind: Some(CounterKind::MinusOneMinusOne),
                 remove_counters_x: false,
@@ -88797,7 +88845,7 @@ static TEST_MINUS_ONE_COUNTER_CREATURE: LazyLock<CardDef> = LazyLock::new(|| Car
                 },
                 cant_be_regenerated: false,
                 at: None,
-                only_if_it_attacked: false,
+                attack_rider: AttackRider::Ignore,
             }),
             optional: false,
             min_level: 0,
@@ -89872,6 +89920,8 @@ fn flipper_front() -> CardDef {
                 loyalty: None,
                 once_each_turn: false,
                 sorcery_speed: false,
+                only_during_opponents_turn: false,
+                only_before_attackers: false,
                 remove_counters: 0,
                 remove_counters_kind: None,
                 remove_counters_x: false,
@@ -99776,7 +99826,7 @@ static RAMPAGING_YAO_GUAI_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
                 },
                 cant_be_regenerated: false,
                 at: None,
-                only_if_it_attacked: false,
+                attack_rider: AttackRider::Ignore,
             }),
             optional: false,
             min_level: 0,
@@ -101437,6 +101487,8 @@ const fn monstrosity_ability(count: u8) -> Ability {
             loyalty: None,
             once_each_turn: false,
             sorcery_speed: false,
+            only_during_opponents_turn: false,
+            only_before_attackers: false,
             remove_counters: 0,
             remove_counters_kind: None,
             remove_counters_x: false,
@@ -102116,6 +102168,8 @@ static TEST_CULL_CREATURE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             loyalty: None,
             once_each_turn: false,
             sorcery_speed: false,
+            only_during_opponents_turn: false,
+            only_before_attackers: false,
             remove_counters: 0,
             remove_counters_kind: None,
             remove_counters_x: false,
@@ -107247,6 +107301,233 @@ fn berserk_cant_be_cast_once_the_combat_damage_step_has_passed() {
             .try_submit()
             .is_err(),
         "the same cast that was legal in the first main phase is closed after combat damage"
+    );
+}
+
+// ── Forcing an attack, and burying what stayed home (fidelity #26) ────────────────────
+
+/// Nettling Imp's sole ability aimed at `victim`, as the raw `Result` so a rejection is
+/// assertable. Player 0 always holds the Imp, and `victim` is always the *other* player's
+/// creature — the ability only opens on their turn, which makes them the active player.
+fn activate_nettling_imp(
+    game: &mut Game,
+    imp: ObjectId,
+    victim: ObjectId,
+) -> Result<Vec<Event>, Reject> {
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: imp,
+        ability_index: 0,
+        target: Some(Target::Object(victim)),
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+}
+
+/// Roll to `player`'s begin-combat step — the window Nettling Imp names, with the attack
+/// declaration still ahead. Both libraries are stocked first so nobody decks out on the way.
+fn advance_to_begin_combat_of(game: &mut Game, player: PlayerId) {
+    advance_until(game, |g| {
+        g.active_player() == player && g.current_step() == Step::BeginCombat
+    });
+}
+
+/// Give both seats cards to draw, since reaching the *opponent's* turn means walking through
+/// draw steps that an empty library would lose on the spot.
+fn stock_both_libraries(game: &mut Game) {
+    for seat in [PlayerId(0), PlayerId(1)] {
+        game.stack_library(
+            seat,
+            &[
+                card("Grizzly Bears"),
+                card("Grizzly Bears"),
+                card("Grizzly Bears"),
+            ],
+        );
+    }
+}
+
+#[test]
+fn nettling_imp_makes_the_active_players_creature_attack() {
+    // "That creature attacks this turn if able" (CR 508.1a): leaving it home is no longer a legal
+    // declaration, and a creature that does attack walks away from the end-step rider untouched.
+    let mut game = Game::new();
+    stock_both_libraries(&mut game);
+    let imp = game.spawn_on_battlefield(PlayerId(0), card("Nettling Imp"));
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
+
+    advance_to_begin_combat_of(&mut game, PlayerId(1));
+    activate_nettling_imp(&mut game, imp, bear).expect("an opponent's turn, before attackers");
+    resolve_top_of_stack(&mut game);
+
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+    assert!(
+        game.submit(Intent::DeclareAttackers {
+            player: PlayerId(1),
+            attackers: vec![],
+        })
+        .is_err(),
+        "sitting the forced creature out is an illegal declaration"
+    );
+    game.submit(Intent::DeclareAttackers {
+        player: PlayerId(1),
+        attackers: vec![(bear, Defender::Player(PlayerId(0)))],
+    })
+    .expect("attacking with it satisfies the requirement");
+
+    advance_until(&mut game, |g| g.current_step() == Step::End);
+    resolve_top_of_stack(&mut game); // the delayed destroy fires and finds an attacker
+    assert_eq!(
+        game.zone_of(bear),
+        Zone::Battlefield,
+        "it attacked, so the punishment half passes it over"
+    );
+}
+
+#[test]
+fn nettling_imp_buries_a_creature_that_was_never_able_to_attack() {
+    // "Destroy it at the beginning of the next end step if it didn't attack this turn." The
+    // requirement only binds a creature that *can* attack (CR 508.1a), so tapping the victim in
+    // response is exactly how the punishment half gets to collect.
+    let mut game = Game::new();
+    stock_both_libraries(&mut game);
+    let imp = game.spawn_on_battlefield(PlayerId(0), card("Nettling Imp"));
+    let icy = game.spawn_on_battlefield(PlayerId(0), card("Icy Manipulator"));
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
+
+    advance_to_begin_combat_of(&mut game, PlayerId(1));
+    activate_nettling_imp(&mut game, imp, bear).expect("an opponent's turn, before attackers");
+    resolve_top_of_stack(&mut game);
+
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: icy,
+        ability_index: 0,
+        target: Some(Target::Object(bear)),
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .expect("{1}, {T}: tap target creature");
+    resolve_top_of_stack(&mut game);
+    assert!(
+        game.is_tapped(bear),
+        "the victim is tapped down before attackers"
+    );
+
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+    game.submit(Intent::DeclareAttackers {
+        player: PlayerId(1),
+        attackers: vec![],
+    })
+    .expect("a tapped creature is not able to attack, so the requirement is satisfied");
+
+    advance_until(&mut game, |g| g.current_step() == Step::End);
+    resolve_top_of_stack(&mut game); // the delayed destroy fires and finds no attack
+    assert_eq!(
+        game.zone_of(bear),
+        Zone::Graveyard,
+        "it stayed home, so the end step buries it"
+    );
+}
+
+#[test]
+fn nettling_imp_is_shut_on_its_own_controllers_turn() {
+    // "Activate only during an opponent's turn" (CR 602.5b) — the Imp's controller being the
+    // active player closes it outright.
+    let mut game = Game::new();
+    stock_both_libraries(&mut game);
+    let imp = game.spawn_on_battlefield(PlayerId(0), card("Nettling Imp"));
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
+
+    advance_until(&mut game, |g| g.current_step() == Step::Main1);
+    assert!(
+        activate_nettling_imp(&mut game, imp, bear).is_err(),
+        "it is player 0's own turn, so there is nobody to force an attack out of"
+    );
+}
+
+#[test]
+fn nettling_imp_is_shut_once_attackers_are_declared() {
+    // "…before attackers are declared": the same window Master Warcraft's cast restriction uses,
+    // and it closes *inside* the declare-attackers step the moment the declaration is made.
+    let mut game = Game::new();
+    stock_both_libraries(&mut game);
+    let imp = game.spawn_on_battlefield(PlayerId(0), card("Nettling Imp"));
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(1) && g.current_step() == Step::DeclareAttackers
+    });
+    game.submit(Intent::DeclareAttackers {
+        player: PlayerId(1),
+        attackers: vec![(bear, Defender::Player(PlayerId(0)))],
+    })
+    .expect("the active player declares first");
+
+    assert!(
+        activate_nettling_imp(&mut game, imp, bear).is_err(),
+        "the window shuts on the declaration, not on the step boundary"
+    );
+}
+
+/// Aim the Imp at a creature the clause doesn't reach and walk the turn out. An illegal target
+/// fizzles at resolution rather than rejecting the activation (CR 608.2b — this engine's posture,
+/// see `activate_ability`), so the tell is the end step: the punishment half never scheduled, and
+/// a creature that stayed home is still standing.
+fn nettling_imp_fizzles_against(spawn: impl Fn(&mut Game) -> ObjectId) -> Zone {
+    let mut game = Game::new();
+    stock_both_libraries(&mut game);
+    let imp = game.spawn_on_battlefield(PlayerId(0), card("Nettling Imp"));
+    let victim = spawn(&mut game);
+
+    advance_to_begin_combat_of(&mut game, PlayerId(1));
+    activate_nettling_imp(&mut game, imp, victim).expect("an opponent's turn, before attackers");
+    resolve_top_of_stack(&mut game);
+
+    advance_until(&mut game, |g| g.current_step() == Step::End);
+    resolve_top_of_stack(&mut game);
+    game.zone_of(victim)
+}
+
+#[test]
+fn nettling_imp_passes_over_a_creature_that_arrived_this_turn() {
+    // "…the active player has controlled continuously since the beginning of the turn": a creature
+    // cast this turn was not, so nothing sticks to it.
+    assert_eq!(
+        nettling_imp_fizzles_against(|game| {
+            let bear_card = game.spawn_in_hand(PlayerId(1), card("Grizzly Bears"));
+            advance_until(game, |g| {
+                g.active_player() == PlayerId(1) && g.current_step() == Step::Main1
+            });
+            fund_cast_resolve(game, PlayerId(1), bear_card, None);
+            game.current_id(bear_card)
+        }),
+        Zone::Battlefield,
+        "it arrived mid-turn, so it was never the ability's to force or to bury"
+    );
+}
+
+#[test]
+fn nettling_imp_reaches_neither_its_own_side_nor_a_wall() {
+    // "Choose target non-Wall creature the active player has controlled…" — two narrowings on one
+    // clause, and each one alone is enough to put a creature out of reach. Both of these sat out
+    // the combat, so an ability that had latched on would have buried them.
+    assert_eq!(
+        nettling_imp_fizzles_against(
+            |game| game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"))
+        ),
+        Zone::Battlefield,
+        "the clause reads the active player's creatures, not the Imp controller's"
+    );
+    assert_eq!(
+        nettling_imp_fizzles_against(
+            |game| game.spawn_on_battlefield(PlayerId(1), card("Wall of Stone"))
+        ),
+        Zone::Battlefield,
+        "and a Wall is exempt however long its controller has had it"
     );
 }
 

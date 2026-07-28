@@ -282,6 +282,12 @@ pub(crate) fn one_amount() -> Amount {
     Amount::Fixed(1)
 }
 
+/// The default target of a `must_attack_target` effect — Basandra, Battle Seraph's unqualified
+/// "target creature", which every card printing this clause narrows rather than replaces.
+pub(crate) fn target_creature() -> crate::TargetSpec {
+    crate::TargetSpec::Creature
+}
+
 /// The default for an amount-bearing field that omits one and means "none" rather than "one" —
 /// `create_token`'s `enters_with` (no counters unless a card says otherwise).
 pub(crate) fn zero_amount() -> Amount {
@@ -1582,6 +1588,7 @@ impl<'de> Deserialize<'de> for TypeSet {
 /// `enchanted_by_you`, `mv_max`, `mv_min`, `mv_eq_x`, `mv_max_x`, `power_max`, `power_min`, `power_parity`,
 /// `noncreature`, `exclude`, `color`, `not_color`, `modified`, `attacking`, `attacking_you`,
 /// `blocking`, `power_less_than_source`, `toughness_less_than_source_power`, `entered_this_turn`,
+/// `controlled_since_turn_start`,
 /// `nonbasic`, `nonlegendary`, `nonlair`, `exclude_subtypes`,
 /// `without_flying`, `with_flying`, `with_counter`). `noncreature` is sugar for `exclude = "creature"`;
 /// `not_color` is sugar for `color`'s negated-color arm — both fold into the same
@@ -1684,6 +1691,8 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     #[serde(default)]
                     entered_this_turn: bool,
                     #[serde(default)]
+                    controlled_since_turn_start: bool,
+                    #[serde(default)]
                     nonbasic: bool,
                     /// Printed-name restriction (Leitmotif Composer's "creatures named Leitmotif
                     /// Composer").
@@ -1748,6 +1757,7 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     power_less_than_source: t.power_less_than_source,
                     toughness_less_than_source_power: t.toughness_less_than_source_power,
                     entered_this_turn: t.entered_this_turn,
+                    controlled_since_turn_start: t.controlled_since_turn_start,
                     nonbasic: t.nonbasic,
                     name: t.name.map(|s| &*Box::leak(s.into_boxed_str())),
                     nonlegendary: t.nonlegendary,
@@ -2010,6 +2020,13 @@ impl<'de> Deserialize<'de> for Ability {
             /// sorcery-speed moment (Ozolith, the Shattered Spire's counter ability).
             #[serde(default)]
             sorcery_speed: bool,
+            /// "Activate only during an opponent's turn" (CR 602.5b — Nettling Imp).
+            #[serde(default)]
+            only_during_opponents_turn: bool,
+            /// "…before attackers are declared" (CR 602.5b — Nettling Imp), the activated-ability
+            /// twin of `cast_only_before_attackers`.
+            #[serde(default)]
+            only_before_attackers: bool,
             /// "Return this to its owner's hand" as part of the cost (Rootha, Mercurial
             /// Artist's "Return Rootha to its owner's hand").
             #[serde(default)]
@@ -2273,6 +2290,8 @@ impl<'de> Deserialize<'de> for Ability {
                 loyalty: flat.loyalty,
                 once_each_turn: flat.once_each_turn,
                 sorcery_speed: flat.sorcery_speed,
+                only_during_opponents_turn: flat.only_during_opponents_turn,
+                only_before_attackers: flat.only_before_attackers,
                 return_self: flat.return_self,
                 mill_self: flat.mill_self,
                 discard_cost: flat.discard_cost,

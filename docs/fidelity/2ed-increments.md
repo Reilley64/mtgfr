@@ -515,16 +515,50 @@ addressing is increment 60's `damage/to_triggering_player`, which resolves its a
 added. A two-player table never sees the choice at all: the picker collapses on a single legal
 opponent.
 
-### 26. `forced-attack-with-delayed-punishment` — 2 cards, M
+### 26a. `forced-attack-with-delayed-punishment` — 1 card, M — **done**
 Depends on: #21 (subtype exclusion).
 "That creature attacks this turn if able. Destroy it at the beginning of the next end step if it
 didn't attack." `must_attack_target` (Basandra) and `must_attack_each_combat` exist; the
 punishment half does not, and neither does the "has controlled continuously since the beginning of
-the turn" qualifier that both cards use to exempt freshly-arrived creatures. *Sketch:* a
-`controlled_since_turn_start` flag on `Permanent` (set at untap, cleared on control change or
-entry) as a filter axis, plus a delayed end-step trigger that checks the existing
-`attacked_this_turn` flag — which #1's neighbourhood already maintains.
-*Cards:* nettling_imp, siren_s_call.
+the turn" qualifier that both cards use to exempt freshly-arrived creatures.
+*Cards:* nettling_imp.
+
+*Landed:* three of the four pieces were already in the engine wearing other names. The proposed new
+`Permanent` flag was unnecessary — `summoning_sick` **is** "controlled continuously since the
+beginning of the turn": set on entry and on a control-granting Aura, cleared at the controller's
+own untap step. It only says what it means about a permanent whose controller has already untapped
+this turn, but every card printing this clause is restricted to the active player's turn, so that
+is always whose permanents it reads. A `controlled_since_turn_start` filter axis over that flag was
+the whole qualifier. `CardDef::cast_only_before_attackers` already existed for Master Warcraft, and
+its gate (`step > DeclareAttackers || combat.attackers_declared` — the declaration shuts the window
+mid-step, not the step boundary) copies verbatim onto the activated-ability side as
+`ActivationCost::only_before_attackers`, alongside a plain `only_during_opponents_turn`.
+
+The punishment half was the *negation* of Berserk's existing rider, so `only_if_it_attacked: bool`
+became a three-state `AttackRider` — two mutually-exclusive bools is the classic 3am hazard.
+`MustAttackTarget` grew an authorable `target: TargetSpec` (defaulting to Basandra's unqualified
+"target creature") the same way `ManaEffect::Add` carries its own: the spec is the card's wording,
+not the effect's fixed shape. That let the card author as Berserk's exact two-step sequence, where
+the destroy shares the target the must-attack chose.
+
+The tests had to bend to the engine's posture, not the other way around: an illegal chosen target
+fizzles at resolution (CR 608.2b) rather than rejecting the activation, so "this creature is out of
+reach" is asserted at the end step — a creature the ability never latched onto is still standing
+even though it sat the combat out. And the must-attack requirement makes "didn't attack" unreachable
+for an *able* creature, so the punishment half is only exercised by tapping the victim down with an
+Icy Manipulator before attackers are declared.
+
+### 26b. `mass-forced-attack-with-delayed-punishment` — 1 card, M
+Depends on: #26a.
+Siren's Call is the sweeper twin of Nettling Imp and reuses none of #26a's plumbing directly.
+"Creatures the active player controls attack this turn if able" is a mass `must_attack`, and
+"destroy all non-Wall creatures that player controls that didn't attack this turn" needs
+`DestroyEffect::All` to grow the `at:` knob `Target`/`ThatCreature` already carry plus a filter axis
+for "didn't attack this turn" (the rider is per-creature here, not per-effect, because the sweep
+re-reads the battlefield when it fires). Its timing restriction is a *cast* restriction, so it also
+needs `CardDef::cast_only_during_opponents_turn` — the twin of `cast_only_before_attackers`, and
+about twenty exhaustive `CardDef` struct literals to touch.
+*Cards:* siren_s_call.
 
 ### 27. `widen-creature-types` — 0 cards, S — **done**
 Depends on: nothing.

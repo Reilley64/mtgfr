@@ -786,6 +786,15 @@ pub struct PermanentFilter {
     /// `false` (default) imposes no restriction. Distinct from checking `summoning_sick`, which
     /// clears one step earlier (see [`Permanent::entered_this_turn`]'s doc).
     pub entered_this_turn: bool,
+    /// Requires that the permanent's controller has controlled it continuously since this turn
+    /// began — CR 302.6's wording, which Nettling Imp's "the active player has controlled
+    /// continuously since the beginning of the turn" repeats. `false` (default) imposes no
+    /// restriction. Reads [`Permanent::summoning_sick`], which *is* that flag: set on entry and on
+    /// a control change, cleared at the controller's own untap step. It therefore only says what
+    /// it means about a permanent whose controller has already untapped this turn — the active
+    /// player's — and every pool card spelling this clause is restricted to the active player's
+    /// turn, so that is always whose permanents it reads.
+    pub controlled_since_turn_start: bool,
     /// Excludes basic lands (CR 205.4a's "Basic" supertype — White Orchid Phantom's "target
     /// *nonbasic* land"). `false` (default) imposes no restriction. Read against
     /// [`is_basic_land`] in [`Game::permanent_matches`]; meaningful only alongside a `types` set
@@ -898,6 +907,7 @@ impl PermanentFilter {
             power_less_than_source: false,
             toughness_less_than_source_power: false,
             entered_this_turn: false,
+            controlled_since_turn_start: false,
             nonbasic: false,
             name: None,
             nonlegendary: false,

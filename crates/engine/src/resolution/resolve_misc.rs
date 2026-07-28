@@ -181,7 +181,7 @@ impl Game {
             // controller as the `defender` is the sentinel `declare_attackers` already reads as
             // "must attack, any legal defender" (its `required_legal` gate short-circuits on
             // `required == player`, the same escape hatch `must_attack_each_combat_static` uses).
-            Effect::Misc(MiscEffect::MustAttackTarget) => {
+            Effect::Misc(MiscEffect::MustAttackTarget { .. }) => {
                 let Some(Target::Object(creature)) = target else {
                     return;
                 };

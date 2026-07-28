@@ -1187,7 +1187,9 @@ impl Game {
                 self.run_misc_choreo(effect, ctx, events)
             }
             // Basandra, Battle Seraph's {R} ability — see `resolution/resolve_misc.rs`.
-            Effect::Misc(MiscEffect::MustAttackTarget) => self.run_misc_choreo(effect, ctx, events),
+            Effect::Misc(MiscEffect::MustAttackTarget { .. }) => {
+                self.run_misc_choreo(effect, ctx, events)
+            }
             // Tariel, Reckoner of Souls — see `resolution/resolve_misc.rs`.
             Effect::Zone(ZoneEffect::ReanimateRandomFromTargetOpponentGraveyard { .. }) => {
                 self.run_misc_choreo(effect, ctx, events)

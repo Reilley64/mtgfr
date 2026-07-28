@@ -754,9 +754,11 @@ impl Effect {
             // enforces it too; the spec must say so as well, or the enumeration the client
             // highlights from offers opponents' creatures the gate can only bounce.
             Effect::Control(ControlEffect::Equip) => TargetSpec::CreatureYouControl,
-            // Basandra, Battle Seraph's {R} ability: "Target creature attacks this turn if able" —
-            // any creature, not just an opponent's.
-            Effect::Misc(MiscEffect::MustAttackTarget) => TargetSpec::Creature,
+            // "Target creature attacks this turn if able" — the spec is authored, since Basandra,
+            // Battle Seraph's unqualified "target creature" and Nettling Imp's "non-Wall creature
+            // the active player has controlled continuously since the beginning of the turn" are
+            // the same effect over different candidate sets.
+            Effect::Misc(MiscEffect::MustAttackTarget { target }) => target,
             // Breena's counter half: "a creature you control" (the drawing player is context,
             // not a target) — restricted to the ability's controller's own creatures.
             Effect::Counters(CountersEffect::AttackerDrawsControllerCounters { .. }) => TargetSpec::CreatureYouControl,
@@ -1554,6 +1556,17 @@ pub struct ActivationCost {
     /// loyalty ability's own built-in sorcery-speed timing ([`loyalty`](Self::loyalty)) — this
     /// flag is for ordinary (non-loyalty) activated abilities.
     pub sorcery_speed: bool,
+    /// "Activate only during an opponent's turn" (CR 602.5b — Nettling Imp): someone other than
+    /// the activating player must be the active player. The activation-side member of the same
+    /// window family as [`CardDef`](crate::CardDef)'s `cast_only_during_combat` /
+    /// `cast_only_before_attackers` / `cast_only_before_combat_damage` cast restrictions, and
+    /// composable with the sibling below the same way those are with each other.
+    pub only_during_opponents_turn: bool,
+    /// "…before attackers are declared" (CR 602.5b — Nettling Imp): the activation-side twin of
+    /// `CardDef::cast_only_before_attackers` (Master Warcraft) and gated identically — the window
+    /// runs up to and including the declare-attackers step, and shuts the moment the declaration
+    /// is actually made rather than at the step boundary.
+    pub only_before_attackers: bool,
     /// "Return this to its owner's hand" as part of the cost (CR 118 — Rootha, Mercurial
     /// Artist's "{2}, Return Rootha to its owner's hand: …"). Paid on activation as a self-bounce
     /// (a token ceases to exist instead, CR 111.7); the source is always payable since an
@@ -2464,7 +2477,7 @@ fn fill_that_creature(effect: Effect, creature: ObjectId) -> Effect {
         Effect::Destroy(DestroyEffect::ThatCreature { at, .. }) => {
             Effect::Destroy(DestroyEffect::ThatCreature {
                 creature: Some(creature),
-                only_if_it_attacked: false,
+                attack_rider: AttackRider::default(),
                 at,
             })
         }

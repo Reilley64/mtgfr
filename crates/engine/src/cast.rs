@@ -2275,6 +2275,18 @@ impl Game {
         if cost.sorcery_speed && !self.can_take_sorcery_speed_action(player) {
             return Err(Reject::CannotActivate);
         }
+        // "Activate only during an opponent's turn, before attackers are declared" (CR 602.5b —
+        // Nettling Imp): two independent halves of one printed sentence. The second reuses the
+        // exact window `cast_only_before_attackers` (Master Warcraft) opens for a spell, closing
+        // inside the declare-attackers step the moment the declaration lands.
+        if cost.only_during_opponents_turn && self.active_player == player {
+            return Err(Reject::WrongTiming);
+        }
+        if cost.only_before_attackers
+            && (self.step > Step::DeclareAttackers || self.combat.attackers_declared)
+        {
+            return Err(Reject::WrongTiming);
+        }
         Ok((ability, cost))
     }
 

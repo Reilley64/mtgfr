@@ -36,5 +36,5 @@ target = { permanent = { types = "creature" } }
 type = "destroy"
 mode = "target"
 at = "end"
-only_if_it_attacked = true
+attack_rider = "only_if_it_attacked"
 target = { permanent = { types = "creature" } }

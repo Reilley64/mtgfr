@@ -20,7 +20,7 @@ impl Game {
             DestroyEffect::Target {
                 cant_be_regenerated,
                 at,
-                only_if_it_attacked,
+                attack_rider,
                 ..
             } => {
                 let object = expect_object_target(target, "destroy");
@@ -34,7 +34,7 @@ impl Game {
                         fire_at,
                         effect: Effect::Destroy(DestroyEffect::ThatCreature {
                             creature: Some(object),
-                            only_if_it_attacked,
+                            attack_rider,
                             at: None,
                         }),
                     }];
@@ -88,7 +88,7 @@ impl Game {
             }
             DestroyEffect::ThatCreature {
                 creature,
-                only_if_it_attacked,
+                attack_rider,
                 at,
             } => {
                 let Some(id) = creature else {
@@ -103,17 +103,22 @@ impl Game {
                         fire_at,
                         effect: Effect::Destroy(DestroyEffect::ThatCreature {
                             creature,
-                            only_if_it_attacked,
+                            attack_rider,
                             at: None,
                         }),
                     }];
                 }
-                // Berserk: the rider only collects on a creature that was declared an attacker
-                // this turn (CR 508.1), which is why the check waits until the delayed ability
-                // fires rather than happening when it was scheduled.
-                if only_if_it_attacked
-                    && !self.as_permanent(id).is_some_and(|p| p.attacked_this_turn)
-                {
+                // Berserk collects only on a creature that *was* declared an attacker this turn
+                // (CR 508.1); Nettling Imp collects only on one that wasn't. Either way the check
+                // waits until the delayed ability fires rather than happening when it was
+                // scheduled — the declaration can still be ahead of the scheduling.
+                let attacked = self.as_permanent(id).is_some_and(|p| p.attacked_this_turn);
+                let collects = match attack_rider {
+                    AttackRider::Ignore => true,
+                    AttackRider::OnlyIfItAttacked => attacked,
+                    AttackRider::OnlyIfItDidnt => !attacked,
+                };
+                if !collects {
                     return Vec::new();
                 }
                 if self.zone_of(id) != Zone::Battlefield {

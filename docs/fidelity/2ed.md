@@ -267,7 +267,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [x] **Mind Twist** {X}{B} · Sorcery — increment 17
 - [x] **Natural Selection** {G} · Instant — increment 55
 - [x] **Nether Shadow** {B}{B} · Creature — Spirit — increment 39
-- [ ] **Nettling Imp** {2}{B} · Creature — Imp — increment 26
+- [x] **Nettling Imp** {2}{B} · Creature — Imp
 - [x] **Nightmare** {5}{B} · Creature — Nightmare Horse — increment 2
 - [ ] **Paralyze** {B} · Enchantment — Aura — increment 7
 - [ ] **Personal Incarnation** {3}{W}{W}{W} · Creature — Avatar Incarnation — increment 6
@@ -290,7 +290,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [x] **Sea Serpent** {5}{U} · Creature — Serpent — increment 24, 77
 - [x] **Shanodin Dryads** {G} · Creature — Nymph Dryad — increment 3
 - [ ] **Simulacrum** {1}{B} · Instant — increment 22
-- [ ] **Siren's Call** {U} · Instant — increment 26
+- [ ] **Siren's Call** {U} · Instant — increment 26b
 - [ ] **Sleight of Mind** {U} · Instant — increment 16
 - [ ] **Smoke** {R}{R} · Enchantment — increment 7
 - [x] **Soul Net** {1} · Artifact — increment 10

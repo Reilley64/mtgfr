@@ -56,7 +56,16 @@ pub enum MiscEffect {
 
     MustAttackRandomOpponent,
 
-    MustAttackTarget,
+    /// "Target creature attacks this turn if able" (CR 508.1a). `target` is the spec the
+    /// choice is made against: `TargetSpec::Creature` by default (Basandra, Battle Seraph's
+    /// "target creature" — anyone's), narrowed by cards that print a qualified clause (Nettling
+    /// Imp's "target non-Wall creature the active player has controlled continuously since the
+    /// beginning of the turn"). Authorable for the same reason [`ManaEffect::Add`]'s own `target`
+    /// is: the spec is the card's wording, not the effect's fixed shape.
+    MustAttackTarget {
+        #[cfg_attr(feature = "card-dsl", serde(default = "de::target_creature"))]
+        target: TargetSpec,
+    },
 
     PreventAllCombatDamageThisTurn,
 

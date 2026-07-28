@@ -28,13 +28,15 @@ pub enum DestroyEffect {
         /// shape as [`ZoneEffect::FlickerTarget`]'s `return_at`.
         #[cfg_attr(feature = "card-dsl", serde(default))]
         at: Option<Step>,
-        /// Berserk's "destroy that creature *if it attacked this turn*" — carried into the
-        /// scheduled [`DestroyEffect::ThatCreature`] payload and checked when that fires, never
-        /// here: the creature can still be declared an attacker after this effect resolves (a
-        /// main-phase Berserk), so a check at scheduling time would read the wrong turn. Only
-        /// meaningful with `at`; `false` (the default) destroys unconditionally.
+        /// Berserk's "destroy that creature *if it attacked this turn*" and Nettling Imp's
+        /// mirror-image "*if it didn't attack this turn*" — carried into the scheduled
+        /// [`DestroyEffect::ThatCreature`] payload and checked when that fires, never here: the
+        /// creature can still be declared an attacker after this effect resolves (a main-phase
+        /// Berserk, an Imp activated before attackers), so a check at scheduling time would read
+        /// the wrong turn. Only meaningful with `at`; [`AttackRider::Ignore`] (the default)
+        /// destroys unconditionally.
         #[cfg_attr(feature = "card-dsl", serde(default))]
-        only_if_it_attacked: bool,
+        attack_rider: AttackRider,
     },
 
     /// "Destroy *that creature*" over an id baked in when the ability was placed or scheduled,
@@ -44,11 +46,12 @@ pub enum DestroyEffect {
     ThatCreature {
         #[cfg_attr(feature = "card-dsl", serde(skip))]
         creature: Option<ObjectId>,
-        /// Berserk's rider, carried down from [`DestroyEffect::Target::only_if_it_attacked`] when
-        /// the delayed ability was scheduled: destroy only if `creature` was declared an attacker
-        /// this turn ([`Permanent::attacked_this_turn`]). `false` for every other filler.
+        /// The did-it-attack rider, carried down from [`DestroyEffect::Target`]'s own
+        /// `attack_rider` when the delayed ability was scheduled: it reads
+        /// [`Permanent::attacked_this_turn`] as this fires. [`AttackRider::Ignore`] for every
+        /// other filler.
         #[cfg_attr(feature = "card-dsl", serde(skip))]
-        only_if_it_attacked: bool,
+        attack_rider: AttackRider,
         /// "Destroy that creature **at end of combat**" (Cockatrice): `Some(step)` postpones once
         /// more, re-scheduling this same already-filled payload as a CR 603.7 delayed ability at
         /// that step — the id is baked in, so nothing is re-chosen when it fires. `None` (the
@@ -57,4 +60,23 @@ pub enum DestroyEffect {
         #[cfg_attr(feature = "card-dsl", serde(default))]
         at: Option<Step>,
     },
+}
+
+/// Whether a scheduled destruction asks about the creature's attack this turn (CR 508.1) — the
+/// two halves of one question, so one value rather than a pair of bools that must never both be
+/// set. Read only when the delayed ability actually fires, never when it is scheduled.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(
+    feature = "card-dsl",
+    derive(serde::Deserialize),
+    serde(rename_all = "snake_case")
+)]
+pub enum AttackRider {
+    /// Doesn't ask (Stone Giant's thrown creature, Stinkweed Imp's, Cockatrice's) — destroy.
+    #[default]
+    Ignore,
+    /// "…if it attacked this turn" (Berserk).
+    OnlyIfItAttacked,
+    /// "…if it didn't attack this turn" (Nettling Imp).
+    OnlyIfItDidnt,
 }

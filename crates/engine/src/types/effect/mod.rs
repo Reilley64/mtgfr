@@ -23,7 +23,7 @@ pub use control::ControlEffect;
 pub use copy::CopyEffect;
 pub use counters::CountersEffect;
 pub use damage::{DamageEffect, Division};
-pub use destroy::DestroyEffect;
+pub use destroy::{AttackRider, DestroyEffect};
 pub use dig::DigEffect;
 pub use draw::DrawEffect;
 pub use exile::ExileEffect;

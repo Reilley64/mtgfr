@@ -96,7 +96,7 @@ impl Game {
                 }
                 MiscEffect::Fight { .. }
                 | MiscEffect::MustAttackRandomOpponent
-                | MiscEffect::MustAttackTarget
+                | MiscEffect::MustAttackTarget { .. }
                 | MiscEffect::PreventCombatDamageToYouCreatingTokens { .. }
                 | MiscEffect::PreventAllCombatDamageThisTurn
                 | MiscEffect::PreventNextDamage { .. }

@@ -983,7 +983,7 @@ mod tests {
                             count: TargetCount::default(),
                             cant_be_regenerated: false,
                             at: None,
-                            only_if_it_attacked: false,
+                            attack_rider: AttackRider::default(),
                         }),
                         optional: false,
                         min_level: 0,
