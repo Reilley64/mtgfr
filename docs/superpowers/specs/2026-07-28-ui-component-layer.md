@@ -101,7 +101,7 @@ Buttons and text fields appear on every shell route and in most board HTML overl
 - `client/app/domain/ui/confirmDialog.test.ts` is a Scene suite over a stand-in host: it asserts the closed dialog renders an empty `<dialog>`, that opening paints backdrop / title / body / both buttons, that Cancel and a backdrop click both reach the owner as `Closed`, that Cancel carries the initial-focus marker, that `danger` picks the danger variant, and that `onConfirm` dispatches the parent's message unwrapped.
 - `client/app/domain/ui/menu.test.ts` asserts each helper's chrome tokens and that a call-site class merges last — the panel's positioning `extra` and a row's `no-underline`.
 - Surface-level coverage of the rendered controls stays in `client/app/shell/surfaces.test.ts` and `client/app/board/html/surfaces.test.ts`; the component suites do not duplicate it.
-- Scene suites that open a `Menu` must resolve its `FocusItems` command and its `PortalMenuBackdrop` / `AnchorMenu` Mounts, and acknowledge those Mounts with `expectEnded` once a row commits. `Menu.update` builds its `InertOthers` command eagerly, whose factory calls `CSS.escape`, so `client/vitest.setup.ts` shims `CSS.escape` for the repo's `environment: "node"` config.
+- Scene suites that open a `Menu` must resolve its `FocusItems` command and its `PortalMenuBackdrop` / `AnchorMenu` Mounts, and acknowledge those Mounts with `expectEnded` once a row commits. `Menu.update` builds its `InertOthers` command eagerly, whose factory calls `CSS.escape`, so `client/vitest-setup.ts` shims `CSS.escape` for the repo's `environment: "node"` config.
 
 ## Out of Scope
 

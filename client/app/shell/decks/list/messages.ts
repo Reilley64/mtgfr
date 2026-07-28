@@ -18,8 +18,6 @@ export const OpenedDeckListMenu = m("OpenedDeckListMenu", {
 export const ClosedDeckListMenu = m("ClosedDeckListMenu");
 /** Player clicked Delete on a deck row — open the confirmation dialog. */
 export const AskedDeckDelete = m("AskedDeckDelete", { id: S.Number });
-/** Player dismissed the confirmation dialog without deleting. */
-export const CancelledDeckDelete = m("CancelledDeckDelete");
 /** Delegation envelope for the delete confirmation's Dialog submodel. */
 export const GotConfirmDialogMessage = m("GotConfirmDialogMessage", { message: Dialog.Message });
 /** Player confirmed the deletion — fires the DeleteDeck command for `confirmingDeleteId`. */
@@ -37,7 +35,6 @@ export const Message = S.Union([
   OpenedDeckListMenu,
   ClosedDeckListMenu,
   AskedDeckDelete,
-  CancelledDeckDelete,
   GotConfirmDialogMessage,
   RequestedDeckDelete,
   DeckDeleted,

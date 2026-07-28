@@ -10,7 +10,6 @@ export {
   AddedBuilderCard,
   BuilderPrintSearchFailed,
   BuilderSearchFailed,
-  CancelledBuilderDiscard,
   ChangedBuilderName,
   ChangedBuilderQuery,
   ClearedBuilderHover,
@@ -38,7 +37,6 @@ export {
 } from "./builder/messages";
 export {
   AskedDeckDelete,
-  CancelledDeckDelete,
   ChangedDeckListSearch,
   ClosedDeckListMenu,
   DeckDeleted,

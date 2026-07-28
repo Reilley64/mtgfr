@@ -39,7 +39,6 @@ function isDeckListMessage(message: SceneListMessage): message is DeckListMessag
     case "OpenedDeckListMenu":
     case "ClosedDeckListMenu":
     case "AskedDeckDelete":
-    case "CancelledDeckDelete":
     case "RequestedDeckDelete":
     case "GotConfirmDialogMessage":
     case "DeckDeleted":

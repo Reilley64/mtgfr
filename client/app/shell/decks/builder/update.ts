@@ -444,7 +444,6 @@ export const update = (
         const [closed, commands] = closeDiscardConfirm(model);
         return [closed, [...commands, NavigateHome()]];
       },
-      CancelledBuilderDiscard: () => closeDiscardConfirm(model),
       // Escape, a backdrop click, and Cancel all reach here as Dialog's Closed out-message.
       GotDiscardDialogMessage: ({ message }) => {
         const [discardDialog, commands, outMessage] = Dialog.update(model.discardDialog, message);

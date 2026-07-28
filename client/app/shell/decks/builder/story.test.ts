@@ -17,11 +17,11 @@ import {
   ActivatedBuilderTarget,
   AddedBuilderCard,
   type Message as BuilderMessage,
-  CancelledBuilderDiscard,
   ChangedBuilderName,
   ClearedBuilderHover,
   ConfirmedBuilderDiscard,
   DeckSaveFailed,
+  GotDiscardDialogMessage,
   MovedBuilderHover,
   NavigatedAwayFromBuilder,
   OpenedBuilderMenu,
@@ -562,7 +562,7 @@ test("Cancel on a dirty builder opens the discard confirm", () => {
   );
 });
 
-test("CancelledBuilderDiscard closes the discard confirm without navigating", () => {
+test("dismissing the discard confirm keeps the edits and stays in the builder", () => {
   const [model] = init();
   const solRing = card({ id: "sol-ring", name: "Sol Ring" });
 
@@ -573,7 +573,7 @@ test("CancelledBuilderDiscard closes the discard confirm without navigating", ()
     Story.message(appMessage(AddedBuilderCard({ card: solRing }))),
     Story.message(appMessage(RequestedBuilderCancel())),
     Story.Command.resolve(Dialog.ShowDialog, Dialog.CompletedShowDialog()),
-    Story.message(appMessage(CancelledBuilderDiscard())),
+    Story.message(appMessage(GotDiscardDialogMessage({ message: Dialog.RequestedClose() }))),
     Story.Command.resolve(Dialog.CloseDialog, Dialog.CompletedCloseDialog()),
     Story.model((m) => {
       expect(m.decks.builder.discardDialog.isOpen).toBe(false);

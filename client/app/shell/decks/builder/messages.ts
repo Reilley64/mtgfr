@@ -55,8 +55,6 @@ export const DeckSaveFailed = m("DeckSaveFailed", { problems: S.Array(S.String) 
 export const RequestedBuilderCancel = m("RequestedBuilderCancel");
 /** Player confirmed discarding unsaved changes. */
 export const ConfirmedBuilderDiscard = m("ConfirmedBuilderDiscard");
-/** Player dismissed the discard confirmation without discarding. */
-export const CancelledBuilderDiscard = m("CancelledBuilderDiscard");
 /** Delegation envelope for the discard confirmation's Dialog submodel. */
 export const GotDiscardDialogMessage = m("GotDiscardDialogMessage", { message: Dialog.Message });
 /** Navigation away from the builder completed — handled as a no-op. */
@@ -115,7 +113,6 @@ export const Message = S.Union([
   ActivatedBuilderTarget,
   RequestedBuilderCancel,
   ConfirmedBuilderDiscard,
-  CancelledBuilderDiscard,
   GotDiscardDialogMessage,
   NavigatedAwayFromBuilder,
 ]);

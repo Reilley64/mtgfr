@@ -120,7 +120,6 @@ export const update = (
           Command.mapMessages(commands, toConfirmDialogMessage),
         ];
       },
-      CancelledDeckDelete: () => closeDeleteConfirm(model),
       RequestedDeckDelete: () => {
         const id = model.confirmingDeleteId;
         const [closed, commands] = closeDeleteConfirm(model);
