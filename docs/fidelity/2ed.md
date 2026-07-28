@@ -219,7 +219,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [x] **Farmstead** {W}{W}{W} · Enchantment — Aura — increment 36
 - [x] **Fastbond** {G} · Enchantment — increment 29
 - [x] **Feedback** {2}{U} · Enchantment — Aura — increment 61
-- [ ] **Fireball** {X}{R} · Sorcery — increment 53
+- [x] **Fireball** {X}{R} · Sorcery — increment 53
 - [x] **Flashfires** {3}{R} · Sorcery — increment 51
 - [x] **Force of Nature** {2}{G}{G}{G}{G} · Creature — Elemental — increment 20
 - [ ] **Forcefield** {3} · Artifact — increment 4

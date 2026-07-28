@@ -280,7 +280,7 @@ impl Game {
                 // recorded on the resolving spell (`source` is that spell's own object id;
                 // `divided` only appears on `Timing::Spell` effects, so this always resolves
                 // through the spell path, never a triggered/activated ability's). (CR 602, CR 601, CR 603)
-                let amount = if divided {
+                let amount = if divided != Division::None {
                     // A divided target's share was recorded on the spell: object shares on
                     // `damage_division`, player shares on `damage_division_players` (CR 601.2d).
                     match chosen {

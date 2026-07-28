@@ -165,7 +165,7 @@ mod tests {
     use engine::{
         Amount, BasicLandType, CardFilter, CardKind, CasterScope, ChoiceEffect, Color, ColorFilter,
         Condition, ControlEffect, CopyEffect, Cost, CountersEffect, DamageEffect, DestroyEffect,
-        DigEffect, DrawEffect, Effect, EnterController, ExileEffect, FilterController,
+        DigEffect, Division, DrawEffect, Effect, EnterController, ExileEffect, FilterController,
         GraveyardScope, Keyword, LandProduces, LandTapBonusColor, LandTapScope, LifeEffect, Mana,
         ManaEffect, MillEffect, MiscEffect, PermanentFilter, ProtectionScope, PumpEffect,
         SacrificeAdditionalCostCount, SacrificeCost, SacrificeEffect, SearchDest, SpellFilter,
@@ -3082,7 +3082,7 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                     amount: Amount::Fixed(4),
                     target: TargetSpec::AnyTarget,
                     count: TargetCount::default(),
-                    divided: false,
+                    divided: Division::None,
                     cant_be_regenerated: false,
                     exile_instead_of_dying: false,
                     gain_life_equal_to_damage: false,
@@ -3447,7 +3447,7 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                     amount: Amount::Fixed(1),
                     target: TargetSpec::AnyTarget,
                     count: TargetCount::default(),
-                    divided: false,
+                    divided: Division::None,
                     cant_be_regenerated: false,
                     exile_instead_of_dying: false,
                     gain_life_equal_to_damage: false,
@@ -3459,7 +3459,7 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                     amount: Amount::Fixed(1),
                     target: TargetSpec::AnyTarget,
                     count: TargetCount::default(),
-                    divided: false,
+                    divided: Division::None,
                     cant_be_regenerated: false,
                     exile_instead_of_dying: false,
                     gain_life_equal_to_damage: false,
@@ -3575,7 +3575,7 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                     amount: Amount::Fixed(2),
                     target: TargetSpec::AnyTarget,
                     count: TargetCount::default(),
-                    divided: false,
+                    divided: Division::None,
                     cant_be_regenerated: false,
                     exile_instead_of_dying: false,
                     gain_life_equal_to_damage: false,
@@ -4128,6 +4128,28 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
         );
     }
 
+    /// Fireball prints Strive without the keyword's name: "costs {1} more to cast for each target
+    /// beyond the first" is `[cost.additional.strive]`, and the target count it buys is what the
+    /// damage divides evenly among.
+    #[test]
+    fn unlimited_fireball_prices_its_targets_and_divides_evenly_among_them() {
+        let fireball = get_by_name("Fireball").expect("Fireball is in the pool");
+        assert_eq!(
+            fireball.cost.additional.strive,
+            Some(&Cost {
+                generic: 1,
+                ..Cost::FREE
+            })
+        );
+        let Effect::Damage(DamageEffect::Target { divided, count, .. }) =
+            fireball.abilities[0].effect
+        else {
+            panic!("Fireball is one divided damage effect");
+        };
+        assert_eq!(divided, Division::Evenly);
+        assert!(count.strive_scaled);
+    }
+
     /// Drain Life's two riders live on different tables: the "spend only black mana on X"
     /// restriction is part of the cost, the life gain is part of the damage.
     #[test]
@@ -4141,7 +4163,7 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                 amount: Amount::X,
                 target: TargetSpec::AnyTarget,
                 count: TargetCount::default(),
-                divided: false,
+                divided: Division::None,
                 cant_be_regenerated: false,
                 exile_instead_of_dying: false,
                 gain_life_equal_to_damage: true,

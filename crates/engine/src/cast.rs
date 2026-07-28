@@ -956,11 +956,12 @@ impl Game {
     }
 
     /// After a multi-target spell's targets are finalized (CR 601.2c), also settle CR 601.2d's
-    /// division for a `divided: true` `Effect::Damage(DamageEffect::Target)` on that spell (Magma Opus's "4 damage
+    /// division for a divided `Effect::Damage(DamageEffect::Target)` on that spell (Magma Opus's "4 damage
     /// divided as you choose among any number of targets"). A no-op for a spell with no divided
     /// effect, or whose divided effect has no chosen targets (a legal "any number... including
     /// none" of zero). A single chosen target needs no choice — the whole amount is auto-assigned
-    /// to it, mirroring `next_undivided_multiblock`'s single-blocker skip for combat damage.
+    /// to it, mirroring `next_undivided_multiblock`'s single-blocker skip for combat damage. Nor
+    /// does [`Division::Evenly`] (Fireball), whose split is computed rather than chosen.
     /// Called from both `choose_spell_targets`'s forced-autofill branch above and
     /// `Game::choose_spell_targets_answer`'s player-chosen branch.
     pub(crate) fn maybe_begin_damage_division(&mut self, spell: ObjectId, events: &mut Vec<Event>) {
@@ -972,12 +973,18 @@ impl Game {
             matches!(a.timing, Timing::Spell)
                 && matches!(
                     a.effect,
-                    Effect::Damage(DamageEffect::Target { divided: true, .. })
+                    Effect::Damage(DamageEffect::Target {
+                        divided: Division::AsYouChoose | Division::Evenly,
+                        ..
+                    })
                 )
         }) else {
             return;
         };
-        let Effect::Damage(DamageEffect::Target { amount, .. }) = ability.effect else {
+        let Effect::Damage(DamageEffect::Target {
+            amount, divided, ..
+        }) = ability.effect
+        else {
             unreachable!("guarded by the divided-DealDamage find above")
         };
         // "Any number of targets" (CR 601.2d) admits creatures *and* players — collect both.
@@ -988,6 +995,14 @@ impl Game {
         let total = self.resolve_amount(amount, controller, spell, None, x);
         if let [only] = targets[..] {
             self.push_apply(events, spell_damage_divided(spell, &[(only, total)]));
+            return;
+        }
+        // "divided evenly, rounded down" (Fireball) is computed, so it skips the pause entirely —
+        // the remainder is simply never dealt.
+        if divided == Division::Evenly {
+            let each = total / targets.len() as i32;
+            let shares: Vec<(Target, i32)> = targets.into_iter().map(|t| (t, each)).collect();
+            self.push_apply(events, spell_damage_divided(spell, &shares));
             return;
         }
         pending::raise(

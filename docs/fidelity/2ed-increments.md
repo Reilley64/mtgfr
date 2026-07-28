@@ -979,7 +979,7 @@ second half didn't happen: `anthem_static` carries its own inline filter fields 
 converting that whole effect to take a filter — a refactor no card is asking for.
 *Cards:* righteousness.
 
-### 53. `evenly-divided-damage-and-per-target-cost` — 1 card, M
+### 53. `evenly-divided-damage-and-per-target-cost` — 1 card, M — **done**
 Depends on: nothing.
 Fireball needs two things the DSL lacks. `DamageEffect::Target`'s `divided` splits an amount
 **as the caster chooses**; Fireball divides it *evenly, rounded down*, which is a computed split
@@ -989,6 +989,19 @@ hook that late. *Sketch:* a `divided = "evenly"` arm on the damage effect (an en
 is now), plus a `cost_per_extra_target` field on `CardDef` consulted after targets are declared
 in the cast path.
 *Cards:* fireball.
+
+*Landed:* half of this increment didn't exist. "This spell costs {1} more to cast for each target
+beyond the first" *is* Strive (CR 702.42), printed without the keyword's name — Twinflame's
+`[cost.additional.strive]` plus `count = { strive_scaled = true }` is the same mechanic at a
+different price, right down to the caster declaring the target count pre-stack because this engine
+stacks the spell before it pauses to choose targets. No `cost_per_extra_target` on `CardDef`, no
+cast-path hook: Fireball is a TOML-only card on that axis.
+
+The even split is the whole engine change, and it's an enum where the bool was: `Division::None` /
+`AsYouChoose` / `Evenly`, deserialized from `false` / `true` / `"evenly"`. `Evenly` returns from
+`maybe_begin_damage_division` without raising the division pause at all — it pushes `total / n` to
+each target itself, which is what "rounded down" means and why a Fireball for 2 among 3 targets
+deals nothing to any of them.
 
 ### 54. `damage-then-gain-that-much-life` — 1 card, M — **done**
 Depends on: nothing.

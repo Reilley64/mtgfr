@@ -22,7 +22,7 @@ pub use choice::ChoiceEffect;
 pub use control::ControlEffect;
 pub use copy::CopyEffect;
 pub use counters::CountersEffect;
-pub use damage::DamageEffect;
+pub use damage::{DamageEffect, Division};
 pub use destroy::DestroyEffect;
 pub use dig::DigEffect;
 pub use draw::DrawEffect;

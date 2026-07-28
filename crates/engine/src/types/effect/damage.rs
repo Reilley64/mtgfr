@@ -2,6 +2,45 @@ use super::*;
 #[cfg(feature = "card-dsl")]
 use crate::de;
 
+/// How a damage effect's total is split among its chosen targets (CR 601.2d).
+///
+/// Spelled in TOML as `divided`: absent or `false` for [`Self::None`], `true` for
+/// [`Self::AsYouChoose`], `"evenly"` for [`Self::Evenly`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Division {
+    /// Not divided — every chosen target takes the full amount (the overwhelming majority).
+    #[default]
+    None,
+    /// "divided as you choose" (Magma Opus) — the caster assigns the split, at least 1 each,
+    /// right after targets are chosen.
+    AsYouChoose,
+    /// "divided evenly, rounded down" (Fireball) — a computed split with no choice at all, so a
+    /// remainder simply isn't dealt (7 among 3 is 2 apiece) and 2 among 3 is nothing at all.
+    Evenly,
+}
+
+#[cfg(feature = "card-dsl")]
+impl<'de> serde::Deserialize<'de> for Division {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        /// Untagged so TOML's own scalar type picks the arm, like `[cost]`'s `x` key.
+        #[derive(serde::Deserialize)]
+        #[serde(untagged)]
+        enum Spelling {
+            Chosen(bool),
+            Named(String),
+        }
+
+        match Spelling::deserialize(d)? {
+            Spelling::Chosen(false) => Ok(Division::None),
+            Spelling::Chosen(true) => Ok(Division::AsYouChoose),
+            Spelling::Named(name) if name == "evenly" => Ok(Division::Evenly),
+            Spelling::Named(name) => Err(serde::de::Error::custom(format!(
+                "unknown division {name:?} (expected true, false, or \"evenly\")"
+            ))),
+        }
+    }
+}
+
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(
@@ -52,7 +91,7 @@ pub enum DamageEffect {
         #[cfg_attr(feature = "card-dsl", serde(default))]
         count: TargetCount,
         #[cfg_attr(feature = "card-dsl", serde(default))]
-        divided: bool,
+        divided: Division,
         /// Disintegrate's "If it's a creature, it can't be regenerated this turn" (CR 701.15d) —
         /// a rider on the damaged creature rather than on a destruction, since the damage is what
         /// marks it and the state-based action that later kills it carries nothing.

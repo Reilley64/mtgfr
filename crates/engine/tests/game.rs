@@ -2119,7 +2119,7 @@ static PINGER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
                 kicked_scaled: false,
                 main_phase_scaled: false,
             },
-            divided: false,
+            divided: Division::None,
             cant_be_regenerated: false,
             exile_instead_of_dying: false,
             gain_life_equal_to_damage: false,
@@ -11389,7 +11389,7 @@ static LIFELINK_PINGER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
                 kicked_scaled: false,
                 main_phase_scaled: false,
             },
-            divided: false,
+            divided: Division::None,
             cant_be_regenerated: false,
             exile_instead_of_dying: false,
             gain_life_equal_to_damage: false,
@@ -45738,7 +45738,7 @@ static CHOOSE_TWO: LazyLock<CardDef> = LazyLock::new(|| CardDef {
                     kicked_scaled: false,
                     main_phase_scaled: false,
                 },
-                divided: false,
+                divided: Division::None,
                 cant_be_regenerated: false,
                 exile_instead_of_dying: false,
                 gain_life_equal_to_damage: false,
@@ -46185,7 +46185,7 @@ static CHOOSE_ONE_OR_MORE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
                     kicked_scaled: false,
                     main_phase_scaled: false,
                 },
-                divided: false,
+                divided: Division::None,
                 cant_be_regenerated: false,
                 exile_instead_of_dying: false,
                 gain_life_equal_to_damage: false,
@@ -60840,7 +60840,7 @@ static BURN_CREATURE_OR_PW: LazyLock<CardDef> = LazyLock::new(|| {
                 kicked_scaled: false,
                 main_phase_scaled: false,
             },
-            divided: false,
+            divided: Division::None,
             cant_be_regenerated: false,
             exile_instead_of_dying: false,
             gain_life_equal_to_damage: false,
@@ -60866,7 +60866,7 @@ static BURN_TARGET_POWER: LazyLock<CardDef> = LazyLock::new(|| {
                 kicked_scaled: false,
                 main_phase_scaled: false,
             },
-            divided: false,
+            divided: Division::None,
             cant_be_regenerated: false,
             exile_instead_of_dying: false,
             gain_life_equal_to_damage: false,
@@ -60892,7 +60892,7 @@ static BURN_TARGET_MV: LazyLock<CardDef> = LazyLock::new(|| {
                 kicked_scaled: false,
                 main_phase_scaled: false,
             },
-            divided: false,
+            divided: Division::None,
             cant_be_regenerated: false,
             exile_instead_of_dying: false,
             gain_life_equal_to_damage: false,
@@ -77985,7 +77985,7 @@ static DEAL_ONE: LazyLock<CardDef> = LazyLock::new(|| {
                 kicked_scaled: false,
                 main_phase_scaled: false,
             },
-            divided: false,
+            divided: Division::None,
             cant_be_regenerated: false,
             exile_instead_of_dying: false,
             gain_life_equal_to_damage: false,
@@ -81037,7 +81037,7 @@ static CREATURE_BOLT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             kicked_scaled: false,
             main_phase_scaled: false,
         },
-        divided: false,
+        divided: Division::None,
         cant_be_regenerated: false,
         exile_instead_of_dying: false,
         gain_life_equal_to_damage: false,
@@ -81325,7 +81325,7 @@ static MULTI_BOLT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
                 kicked_scaled: false,
                 main_phase_scaled: false,
             },
-            divided: false,
+            divided: Division::None,
             cant_be_regenerated: false,
             exile_instead_of_dying: false,
             gain_life_equal_to_damage: false,
@@ -82849,7 +82849,7 @@ static BURN_FIXED_2: LazyLock<CardDef> = LazyLock::new(|| {
                 kicked_scaled: false,
                 main_phase_scaled: false,
             },
-            divided: false,
+            divided: Division::None,
             cant_be_regenerated: false,
             exile_instead_of_dying: false,
             gain_life_equal_to_damage: false,
@@ -84369,7 +84369,7 @@ static OPPONENT_DAMAGE_WATCHER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
                     kicked_scaled: false,
                     main_phase_scaled: false,
                 },
-                divided: false,
+                divided: Division::None,
                 cant_be_regenerated: false,
                 exile_instead_of_dying: false,
                 gain_life_equal_to_damage: false,
@@ -95144,7 +95144,7 @@ static BLACK_BOLT: LazyLock<CardDef> = LazyLock::new(|| {
                 kicked_scaled: false,
                 main_phase_scaled: false,
             },
-            divided: false,
+            divided: Division::None,
             cant_be_regenerated: false,
             exile_instead_of_dying: false,
             gain_life_equal_to_damage: false,
@@ -102371,7 +102371,7 @@ static TOXIC_PINGER_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
                 kicked_scaled: false,
                 main_phase_scaled: false,
             },
-            divided: false,
+            divided: Division::None,
             cant_be_regenerated: false,
             exile_instead_of_dying: false,
             gain_life_equal_to_damage: false,
@@ -103735,7 +103735,7 @@ static BURN_FIXED_3: LazyLock<CardDef> = LazyLock::new(|| {
                 kicked_scaled: false,
                 main_phase_scaled: false,
             },
-            divided: false,
+            divided: Division::None,
             cant_be_regenerated: false,
             exile_instead_of_dying: false,
             gain_life_equal_to_damage: false,
@@ -103763,7 +103763,7 @@ static BURN_FIXED_5: LazyLock<CardDef> = LazyLock::new(|| {
                 kicked_scaled: false,
                 main_phase_scaled: false,
             },
-            divided: false,
+            divided: Division::None,
             cant_be_regenerated: false,
             exile_instead_of_dying: false,
             gain_life_equal_to_damage: false,
@@ -103791,7 +103791,7 @@ static BURN_FIXED_9: LazyLock<CardDef> = LazyLock::new(|| {
                 kicked_scaled: false,
                 main_phase_scaled: false,
             },
-            divided: false,
+            divided: Division::None,
             cant_be_regenerated: false,
             exile_instead_of_dying: false,
             gain_life_equal_to_damage: false,
@@ -104905,6 +104905,129 @@ fn mind_twist_for_more_than_the_hand_holds_just_empties_it() {
         .resolve();
 
     assert!(hand_ids(&game, PlayerId(1)).is_empty(), "the hand is empty");
+}
+
+// ── Damage split evenly, priced per target (fidelity #53) ────────────────────────────────────
+
+/// [`Intent::Cast`] declaring `strive_count` targets and a chosen `x`.
+fn cast_intent_strive(player: PlayerId, object: ObjectId, x: u32, strive_count: u8) -> Intent {
+    let mut intent = cast_intent_x(player, object, None, x);
+    if let Intent::Cast {
+        strive_count: slot, ..
+    } = &mut intent
+    {
+        *slot = strive_count;
+    }
+    intent
+}
+
+#[test]
+fn fireball_splits_its_damage_evenly_among_its_targets_rounding_down() {
+    let mut game = Game::new();
+    let wall = creature("Wall (test)", 0, 10, &[]);
+    let t1 = game.spawn_on_battlefield(PlayerId(1), wall.clone());
+    let t2 = game.spawn_on_battlefield(PlayerId(1), wall.clone());
+    let t3 = game.spawn_on_battlefield(PlayerId(1), wall);
+    game.fund_mana(PlayerId(0));
+    let fireball = game.spawn_in_hand(PlayerId(0), card("Fireball"));
+
+    game.submit(cast_intent_strive(PlayerId(0), fireball, 7, 3))
+        .expect("Fireball for X = 7 across 3 targets is castable");
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(t1), Target::Object(t2), Target::Object(t3)],
+    })
+    .expect("three legal targets, exactly the declared count");
+
+    // "divided evenly, rounded down" is computed, not chosen — no division pause is raised.
+    assert!(
+        game.pending_choice().is_none(),
+        "Fireball's caster never divides its damage"
+    );
+    resolve_top_of_stack(&mut game);
+
+    for target in [t1, t2, t3] {
+        assert_eq!(game.marked_damage(target), 2, "7 among 3, rounded down");
+    }
+}
+
+#[test]
+fn fireball_deals_all_of_its_damage_to_a_lone_target() {
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let fireball = game.spawn_in_hand(PlayerId(0), card("Fireball"));
+
+    game.submit(cast_intent_strive(PlayerId(0), fireball, 7, 1))
+        .expect("Fireball for X = 7 at one target is castable");
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Player(PlayerId(1))],
+    })
+    .expect("a player is a legal target");
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(game.life(PlayerId(1)), 13, "7 among 1 is 7");
+}
+
+#[test]
+fn fireball_costs_one_more_for_each_target_beyond_the_first() {
+    let mut game = Game::new();
+    let wall = creature("Wall (test)", 0, 10, &[]);
+    let t1 = game.spawn_on_battlefield(PlayerId(1), wall.clone());
+    let t2 = game.spawn_on_battlefield(PlayerId(1), wall.clone());
+    let t3 = game.spawn_on_battlefield(PlayerId(1), wall);
+
+    // {2}{R} for X = 2 at one target, and {1} more for each of the other two: 5 pips.
+    for _ in 0..4 {
+        let mountain = game.spawn_on_battlefield(PlayerId(0), card("Mountain"));
+        game.submit(Intent::TapForMana {
+            player: PlayerId(0),
+            object: mountain,
+        })
+        .unwrap();
+    }
+    let fireball = game.spawn_in_hand(PlayerId(0), card("Fireball"));
+
+    assert_eq!(
+        game.submit(cast_intent_strive(PlayerId(0), fireball, 2, 3)),
+        Err(Reject::CannotPayCost),
+        "four mana pays {{2}}{{R}} plus one extra target, not two"
+    );
+
+    let mountain = game.spawn_on_battlefield(PlayerId(0), card("Mountain"));
+    game.submit(Intent::TapForMana {
+        player: PlayerId(0),
+        object: mountain,
+    })
+    .unwrap();
+    let events = game
+        .submit(cast_intent_strive(PlayerId(0), fireball, 2, 3))
+        .expect("the fifth mana covers the third target");
+    let spent = events
+        .iter()
+        .find_map(|e| match e {
+            Event::ManaSpent {
+                player: PlayerId(0),
+                mana,
+            } => Some(mana_pool_pips(mana)),
+            _ => None,
+        })
+        .expect("casting Fireball spends mana");
+    assert_eq!(
+        spent, 5,
+        "{{2}}{{R}} plus {{1}} for each of 2 extra targets"
+    );
+
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(t1), Target::Object(t2), Target::Object(t3)],
+    })
+    .expect("three legal targets, exactly the declared count");
+    resolve_top_of_stack(&mut game);
+
+    for target in [t1, t2, t3] {
+        assert_eq!(game.marked_damage(target), 0, "2 among 3 rounds down to 0");
+    }
 }
 
 // ── Damage that feeds the caster, paid for in one color (fidelity #54) ───────────────────────

@@ -636,7 +636,9 @@ mod tests {
     use crate::db;
     use crate::decks::{keep_all_hands, master_from_u64, seed_game};
     use crate::test_support::{as_user, seat_deck, user_with_deck};
-    use engine::{DamageEffect, Defender, PlayerId, SacrificeCost, arc_slice, empty_slice};
+    use engine::{
+        DamageEffect, Defender, Division, PlayerId, SacrificeCost, arc_slice, empty_slice,
+    };
     use schema::{IntentEnvelope, WireIntent, to_intent};
     use std::sync::LazyLock;
 
@@ -846,7 +848,7 @@ mod tests {
                     kicked_scaled: false,
                     main_phase_scaled: false,
                 },
-                divided: false,
+                divided: Division::None,
                 cant_be_regenerated: false,
                 exile_instead_of_dying: false,
                 gain_life_equal_to_damage: false,
