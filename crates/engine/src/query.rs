@@ -1451,6 +1451,9 @@ impl Game {
             FilterController::Any => {}
             FilterController::You if !yours => return false,
             FilterController::Opponent if yours => return false,
+            FilterController::ActivePlayer if self.controller_of(id) != self.active_player => {
+                return false;
+            }
             _ => {}
         }
         // Token-ness.
@@ -1571,6 +1574,12 @@ impl Game {
         // Imp). `summoning_sick` is that same flag, so a creature that entered or changed hands
         // mid-turn fails while its controller's next untap step is still ahead of it.
         if filter.controlled_since_turn_start && perm.summoning_sick {
+            return false;
+        }
+        // "…that didn't attack this turn" (CR 508.1 — Siren's Call). Re-read per permanent every
+        // time the filter runs, so a sweep scheduled before the declaration still sees who ended
+        // up attacking.
+        if filter.did_not_attack_this_turn && perm.attacked_this_turn {
             return false;
         }
         // Nonbasic land (CR 205.4a's "Basic" supertype — White Orchid Phantom's "target
@@ -1725,6 +1734,7 @@ mod permanent_filter_tests {
             alternative_cost: None,
             cast_only_during_combat: false,
             cast_only_before_attackers: false,
+            cast_only_during_opponents_turn: false,
             cast_only_before_combat_damage: false,
             approximates: None,
             oracle: None,

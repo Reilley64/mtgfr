@@ -207,6 +207,7 @@
   "effect.misc_get_emblem",
   "effect.misc_grant_channel_colorless_mana_this_turn",
   "effect.misc_grant_flash_this_turn",
+  "effect.misc_must_attack_all",
   "effect.misc_must_attack_random_opponent",
   "effect.misc_must_attack_target",
   "effect.misc_prevent_all_combat_damage_this_turn",

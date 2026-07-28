@@ -181,6 +181,24 @@ impl Game {
             // controller as the `defender` is the sentinel `declare_attackers` already reads as
             // "must attack, any legal defender" (its `required_legal` gate short-circuits on
             // `required == player`, the same escape hatch `must_attack_each_combat_static` uses).
+            // Siren's Call: "Creatures the active player controls attack this turn if able." The
+            // same per-creature requirement the targeted clause below mints, over a board scan —
+            // and with the same own-controller sentinel for "any legal defender", since the card
+            // names no defender either. The set is fixed here, as this resolves.
+            Effect::Misc(MiscEffect::MustAttackAll { filter }) => {
+                for id in self.battlefield() {
+                    if !self.permanent_matches(&filter, id, controller, Some(source)) {
+                        continue;
+                    }
+                    self.push_apply(
+                        events,
+                        Event::MustAttackDeclared {
+                            object: id,
+                            defender: self.controller_of(id),
+                        },
+                    );
+                }
+            }
             Effect::Misc(MiscEffect::MustAttackTarget { .. }) => {
                 let Some(Target::Object(creature)) = target else {
                     return;

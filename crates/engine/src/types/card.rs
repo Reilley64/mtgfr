@@ -693,6 +693,12 @@ pub struct CardDef {
     /// on top of the ordinary instant-speed gate and is checked in [`Game::cast_timing_ok`].
     /// `cast_only_before_attackers = true` in TOML; `false` for every ordinary card.
     pub cast_only_before_attackers: bool,
+    /// "Cast this spell only during an opponent's turn" (CR 601.3e — Siren's Call): someone other
+    /// than the caster must be the active player. The cast-side member of the same window family,
+    /// and the twin of [`ActivationCost::only_during_opponents_turn`](crate::ActivationCost);
+    /// composable with [`Self::cast_only_before_attackers`], which is the other half of Siren's
+    /// Call's printed restriction.
+    pub cast_only_during_opponents_turn: bool,
     /// "Cast this spell only before the combat damage step" (CR 601.3e's named-window restriction
     /// — Berserk): legal from untap through the declare-blockers step, and closed for the rest of
     /// the turn from the first combat damage step on — [`Step::FirstStrikeCombatDamage`] when a
@@ -1357,6 +1363,7 @@ fn treasure_token_builtin() -> CardDef {
         alternative_cost: None,
         cast_only_during_combat: false,
         cast_only_before_attackers: false,
+        cast_only_during_opponents_turn: false,
         cast_only_before_combat_damage: false,
         approximates: None,
         oracle: None,
@@ -1430,6 +1437,7 @@ pub(crate) fn rogue_token_stub() -> CardDef {
         alternative_cost: None,
         cast_only_during_combat: false,
         cast_only_before_attackers: false,
+        cast_only_during_opponents_turn: false,
         cast_only_before_combat_damage: false,
         approximates: None,
         oracle: None,
@@ -1505,6 +1513,7 @@ pub(crate) fn illusion_token() -> CardDef {
         alternative_cost: None,
         cast_only_during_combat: false,
         cast_only_before_attackers: false,
+        cast_only_during_opponents_turn: false,
         cast_only_before_combat_damage: false,
         approximates: None,
         oracle: None,

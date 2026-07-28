@@ -408,6 +408,7 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     "Until end of turn, any time you could activate a mana ability, you may pay 1 life. If you do, add {C}",
   ),
   "effect.misc_grant_flash_this_turn": literal("You may cast spells this turn as though they had flash"),
+  "effect.misc_must_attack_all": literal("Creatures the active player controls attack this turn if able"),
   "effect.misc_must_attack_target": literal("Target creature attacks this turn if able"),
   "effect.misc_you_choose_which_creatures_attack": literal("You choose which creatures attack this turn"),
   "effect.misc_you_choose_which_creatures_block": literal(

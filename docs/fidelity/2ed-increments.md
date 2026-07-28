@@ -548,7 +548,7 @@ even though it sat the combat out. And the must-attack requirement makes "didn't
 for an *able* creature, so the punishment half is only exercised by tapping the victim down with an
 Icy Manipulator before attackers are declared.
 
-### 26b. `mass-forced-attack-with-delayed-punishment` — 1 card, M
+### 26b. `mass-forced-attack-with-delayed-punishment` — 1 card, M — **done**
 Depends on: #26a.
 Siren's Call is the sweeper twin of Nettling Imp and reuses none of #26a's plumbing directly.
 "Creatures the active player controls attack this turn if able" is a mass `must_attack`, and
@@ -558,7 +558,21 @@ for "didn't attack this turn" (the rider is per-creature here, not per-effect, b
 re-reads the battlefield when it fires). Its timing restriction is a *cast* restriction, so it also
 needs `CardDef::cast_only_during_opponents_turn` — the twin of `cast_only_before_attackers`, and
 about twenty exhaustive `CardDef` struct literals to touch.
-*Cards:* siren_s_call.
+*Cards:* sirens_call.
+*Landed:* the sketch held, with one thing it got wrong and one it didn't see. Wrong: the sweep's
+"that player" is not `FilterController::Opponent`, which at a four-player table reaches three
+boards — it needed a new `FilterController::ActivePlayer`, absolute rather than relative to the
+effect's controller, re-read each time the filter runs so the delayed sweep still names the same
+player at the end step. Unseen: `DestroyEffect::All`'s new `at` is *not* the same knob as
+`Target`'s. `Target`'s `at` bakes the chosen id into a `that_creature` payload when it schedules;
+`All`'s re-runs the whole filter when the delayed ability fires, which is the only way
+`did_not_attack_this_turn` can read an attack that gets declared after the scheduling. The two
+halves also can't share a filter: the call goes out to every creature the active player controls,
+Walls included, while the sweep spares Walls and anything that changed hands mid-turn — one filter
+would either exempt a Wall from attacking or bury a creature that was never the active player's to
+send. `cast_only_during_opponents_turn` came in as sketched (~155 exhaustive `CardDef` literals,
+not twenty). Same Icy Manipulator trick as #26a to make a creature unable to attack, since the
+requirement leaves nothing for the sweep to collect otherwise.
 
 ### 27. `widen-creature-types` — 0 cards, S — **done**
 Depends on: nothing.

@@ -603,6 +603,14 @@ pub enum FilterController {
     You,
     /// A permanent an opponent controls.
     Opponent,
+    /// A permanent the *active player* controls (Siren's Call's "creatures the active player
+    /// controls" and the "that player" its end-step sweep refers back to). Deliberately not
+    /// [`FilterController::Opponent`]: at a four-player table that would reach three opponents'
+    /// boards, and every card printing this clause names exactly one of them. Reads whoever is
+    /// active right now, so a delayed sweep scheduled this turn still names the same player when
+    /// it fires at that turn's end step.
+    #[cfg_attr(feature = "card-dsl", serde(rename = "active_player"))]
+    ActivePlayer,
 }
 
 /// Whether a [`PermanentFilter`] accepts tokens, nontokens, or both.
@@ -795,6 +803,13 @@ pub struct PermanentFilter {
     /// player's — and every pool card spelling this clause is restricted to the active player's
     /// turn, so that is always whose permanents it reads.
     pub controlled_since_turn_start: bool,
+    /// "…that didn't attack this turn" (CR 508.1 — Siren's Call's end-step sweep). `false`
+    /// (default) imposes no restriction. Reads [`Permanent::attacked_this_turn`], which the untap
+    /// step clears, so this only means anything within the turn the attack would have happened in.
+    /// [`DestroyEffect::Target`](crate::DestroyEffect)'s `attack_rider` asks the same question of
+    /// one already-chosen creature; this asks it of a whole board scan, where the answer has to be
+    /// re-read per permanent as the sweep fires.
+    pub did_not_attack_this_turn: bool,
     /// Excludes basic lands (CR 205.4a's "Basic" supertype — White Orchid Phantom's "target
     /// *nonbasic* land"). `false` (default) imposes no restriction. Read against
     /// [`is_basic_land`] in [`Game::permanent_matches`]; meaningful only alongside a `types` set
@@ -908,6 +923,7 @@ impl PermanentFilter {
             toughness_less_than_source_power: false,
             entered_this_turn: false,
             controlled_since_turn_start: false,
+            did_not_attack_this_turn: false,
             nonbasic: false,
             name: None,
             nonlegendary: false,

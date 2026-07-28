@@ -12,6 +12,13 @@ pub enum DestroyEffect {
         filter: PermanentFilter,
         #[cfg_attr(feature = "card-dsl", serde(default))]
         cant_be_regenerated: bool,
+        /// `Some(step)` postpones the sweep to a CR 603.7 delayed triggered ability at that step
+        /// (Siren's Call's "at the beginning of the next end step, destroy all …"). Unlike
+        /// [`DestroyEffect::Target`]'s `at`, nothing is baked in when it is scheduled: the same
+        /// `filter` re-runs over the battlefield when the delayed ability fires, which is the only
+        /// way `did_not_attack_this_turn` can read an attack declared after the scheduling.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        at: Option<Step>,
     },
 
     Target {

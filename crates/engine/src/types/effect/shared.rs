@@ -947,6 +947,7 @@ impl Effect {
             | Effect::Static(StaticEffect::CantCastIfAttackedThisTurn)
             // Always names the ability's own source as the required attacker — no chosen target.
             | Effect::Misc(MiscEffect::MustAttackRandomOpponent)
+            | Effect::Misc(MiscEffect::MustAttackAll { .. })
             | Effect::Misc(MiscEffect::PreventCombatDamageToYouCreatingTokens { .. })
             | Effect::Misc(MiscEffect::PreventAllCombatDamageThisTurn)
             // CR 114.5: an emblem can't be targeted, and getting one targets nothing either.

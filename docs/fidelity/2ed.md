@@ -290,7 +290,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [x] **Sea Serpent** {5}{U} · Creature — Serpent — increment 24, 77
 - [x] **Shanodin Dryads** {G} · Creature — Nymph Dryad — increment 3
 - [ ] **Simulacrum** {1}{B} · Instant — increment 22
-- [ ] **Siren's Call** {U} · Instant — increment 26b
+- [x] **Siren's Call** {U} · Instant
 - [ ] **Sleight of Mind** {U} · Instant — increment 16
 - [ ] **Smoke** {R}{R} · Enchantment — increment 7
 - [x] **Soul Net** {1} · Artifact — increment 10

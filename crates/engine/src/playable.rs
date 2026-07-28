@@ -344,6 +344,11 @@ impl Game {
         {
             return false;
         }
+        // "Cast this spell only during an opponent's turn" (CR 601.3e — Siren's Call): the other
+        // half of the same printed sentence as the window above, and independent of it.
+        if def.cast_only_during_opponents_turn && self.active_player == player {
+            return false;
+        }
         // "Cast this spell only before the combat damage step" (CR 601.3e — Berserk): the third
         // window of the same family. `Step::FirstStrikeCombatDamage` is the boundary rather than
         // `CombatDamage` because it is the *first* combat damage step whenever it exists, and the
@@ -745,6 +750,7 @@ mod tests {
                         effect: Effect::Destroy(DestroyEffect::All {
                             filter: PermanentFilter::of(TypeSet::ARTIFACT),
                             cant_be_regenerated: false,
+                            at: None,
                         }),
                         optional: false,
                         min_level: 0,
@@ -768,6 +774,7 @@ mod tests {
             alternative_cost: None,
             cast_only_during_combat: false,
             cast_only_before_attackers: false,
+            cast_only_during_opponents_turn: false,
             cast_only_before_combat_damage: false,
             approximates: None,
             oracle: None,

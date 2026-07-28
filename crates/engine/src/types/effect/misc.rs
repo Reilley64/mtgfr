@@ -56,6 +56,14 @@ pub enum MiscEffect {
 
     MustAttackRandomOpponent,
 
+    /// "Creatures the active player controls attack this turn if able" (CR 508.1a — Siren's
+    /// Call): [`MustAttackTarget`](Self::MustAttackTarget)'s clause over a board scan instead of
+    /// one chosen creature, minting the same requirement per match. The set is locked in as this
+    /// resolves — a creature that arrives afterwards was never named.
+    MustAttackAll {
+        filter: PermanentFilter,
+    },
+
     /// "Target creature attacks this turn if able" (CR 508.1a). `target` is the spec the
     /// choice is made against: `TargetSpec::Creature` by default (Basandra, Battle Seraph's
     /// "target creature" — anyone's), narrowed by cards that print a qualified clause (Nettling

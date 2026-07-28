@@ -1190,6 +1190,10 @@ impl Game {
             Effect::Misc(MiscEffect::MustAttackTarget { .. }) => {
                 self.run_misc_choreo(effect, ctx, events)
             }
+            // Siren's Call — see `resolution/resolve_misc.rs`.
+            Effect::Misc(MiscEffect::MustAttackAll { .. }) => {
+                self.run_misc_choreo(effect, ctx, events)
+            }
             // Tariel, Reckoner of Souls — see `resolution/resolve_misc.rs`.
             Effect::Zone(ZoneEffect::ReanimateRandomFromTargetOpponentGraveyard { .. }) => {
                 self.run_misc_choreo(effect, ctx, events)

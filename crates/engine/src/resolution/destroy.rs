@@ -53,7 +53,24 @@ impl Game {
             DestroyEffect::All {
                 filter,
                 cant_be_regenerated,
+                at,
             } => {
+                // "At the beginning of the next end step, destroy all …" (Siren's Call): the
+                // filter travels into the delayed ability untouched and is re-run when that fires,
+                // so the board it sweeps is the one that exists then, not the one that existed
+                // here.
+                if let Some(fire_at) = at {
+                    return vec![Event::DelayedTriggerScheduled {
+                        controller,
+                        source,
+                        fire_at,
+                        effect: Effect::Destroy(DestroyEffect::All {
+                            filter,
+                            cant_be_regenerated,
+                            at: None,
+                        }),
+                    }];
+                }
                 let mut next = self.next_object_id();
                 let mut events = Vec::new();
                 for id in self.battlefield() {

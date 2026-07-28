@@ -1829,6 +1829,7 @@ token = { name = "Inkling", power = 2, toughness = 1 }
                     ..
                 },
                 cant_be_regenerated: true,
+                at: None,
             })
         ));
 
@@ -3029,6 +3030,7 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                         ..PermanentFilter::default()
                     },
                     cant_be_regenerated: *cant_be_regenerated,
+                    at: None,
                 }),
                 "{name} sweeps what it names"
             );
@@ -3635,6 +3637,7 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                     ..PermanentFilter::default()
                 },
                 cant_be_regenerated: false,
+                at: None,
             }),
             "the Disk sweeps artifacts, creatures and enchantments — itself included"
         );
@@ -4219,6 +4222,53 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                 }) if target == victim
             ),
             "the end-step destroy collects only from the creature that stayed home"
+        );
+    }
+
+    /// Siren's Call is Nettling Imp's sentence aimed at a whole board, and the two halves have to
+    /// disagree about one thing: the call goes out to every creature the active player controls,
+    /// while the sweep spares Walls and anything that changed hands mid-turn. Sharing one filter
+    /// between them would either exempt a Wall from attacking or bury a creature it was never the
+    /// active player's to send.
+    #[test]
+    fn unlimited_sirens_call_summons_the_board_and_sweeps_the_holdouts() {
+        let call = get_by_name("Siren's Call").expect("Siren's Call is in the pool");
+        assert!(
+            call.cast_only_during_opponents_turn && call.cast_only_before_attackers,
+            "cast this spell only during an opponent's turn, before attackers are declared"
+        );
+        let [spell] = &call.abilities[..] else {
+            panic!("one spell ability");
+        };
+        let Effect::Sequence { steps } = &spell.effect else {
+            panic!("a mass must-attack and a scheduled sweep");
+        };
+        assert_eq!(
+            steps[0],
+            Effect::Misc(MiscEffect::MustAttackAll {
+                filter: PermanentFilter {
+                    types: TypeSet::CREATURE,
+                    controller: FilterController::ActivePlayer,
+                    ..PermanentFilter::of(TypeSet::CREATURE)
+                }
+            }),
+            "every creature the active player controls is called out, Walls included"
+        );
+        assert_eq!(
+            steps[1],
+            Effect::Destroy(DestroyEffect::All {
+                filter: PermanentFilter {
+                    types: TypeSet::CREATURE,
+                    controller: FilterController::ActivePlayer,
+                    exclude_subtypes: &["Wall"],
+                    did_not_attack_this_turn: true,
+                    controlled_since_turn_start: true,
+                    ..PermanentFilter::of(TypeSet::CREATURE)
+                },
+                cant_be_regenerated: false,
+                at: Some(Step::End),
+            }),
+            "but the end step only collects the holdouts it was allowed to name"
         );
     }
 

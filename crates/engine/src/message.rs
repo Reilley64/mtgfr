@@ -233,6 +233,7 @@ message_keys! {
     EFFECT_MISC_GET_EMBLEM => "effect.misc_get_emblem",
     EFFECT_MISC_GRANT_CHANNEL_COLORLESS_MANA_THIS_TURN => "effect.misc_grant_channel_colorless_mana_this_turn",
     EFFECT_MISC_GRANT_FLASH_THIS_TURN => "effect.misc_grant_flash_this_turn",
+    EFFECT_MISC_MUST_ATTACK_ALL => "effect.misc_must_attack_all",
     EFFECT_MISC_MUST_ATTACK_RANDOM_OPPONENT => "effect.misc_must_attack_random_opponent",
     EFFECT_MISC_MUST_ATTACK_TARGET => "effect.misc_must_attack_target",
     EFFECT_MISC_PREVENT_ALL_COMBAT_DAMAGE_THIS_TURN => "effect.misc_prevent_all_combat_damage_this_turn",
@@ -814,6 +815,7 @@ fn permanent_filter_token(filter: PermanentFilter) -> String {
         FilterController::Any => {}
         FilterController::You => parts.push("you_control".to_string()),
         FilterController::Opponent => parts.push("opponent_controlled".to_string()),
+        FilterController::ActivePlayer => parts.push("active_player_controlled".to_string()),
     }
     if let Some(token) = token_filter_token(filter.token) {
         parts.push(token.to_string());
@@ -2196,6 +2198,9 @@ impl Effect {
             }
             Effect::Misc(TakeExtraTurn) => MessageRef::new(MessageKey::EFFECT_MISC_TAKE_EXTRA_TURN),
             Effect::Misc(MustAttackTarget { .. }) => MessageRef::new(MessageKey::EFFECT_MISC_MUST_ATTACK_TARGET),
+            Effect::Misc(MustAttackAll { .. }) => {
+                MessageRef::new(MessageKey::EFFECT_MISC_MUST_ATTACK_ALL)
+            }
             Effect::Misc(YouChooseWhichCreaturesAttack) => {
                 MessageRef::new(MessageKey::EFFECT_MISC_YOU_CHOOSE_WHICH_CREATURES_ATTACK)
             }

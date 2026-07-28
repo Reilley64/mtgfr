@@ -397,6 +397,10 @@ impl<'de> Deserialize<'de> for CardDef {
             /// — `cast_only_before_attackers = true`; absent (`false`) for every ordinary card.
             #[serde(default)]
             cast_only_before_attackers: bool,
+            /// "Cast this spell only during an opponent's turn" (CR 601.3e — Siren's Call)
+            /// — `cast_only_during_opponents_turn = true`; absent (`false`) for every ordinary card.
+            #[serde(default)]
+            cast_only_during_opponents_turn: bool,
             /// "Cast this spell only before the combat damage step" (CR 601.3e — Berserk)
             /// — `cast_only_before_combat_damage = true`; absent (`false`) for every ordinary card.
             #[serde(default)]
@@ -568,6 +572,7 @@ impl<'de> Deserialize<'de> for CardDef {
             alternative_cost: card.alternative_cost,
             cast_only_during_combat: card.cast_only_during_combat,
             cast_only_before_attackers: card.cast_only_before_attackers,
+            cast_only_during_opponents_turn: card.cast_only_during_opponents_turn,
             cast_only_before_combat_damage: card.cast_only_before_combat_damage,
             approximates: card.approximates.map(|s| &*Box::leak(s.into_boxed_str())),
             oracle: card.oracle.map(|s| &*Box::leak(s.into_boxed_str())),
@@ -1588,7 +1593,7 @@ impl<'de> Deserialize<'de> for TypeSet {
 /// `enchanted_by_you`, `mv_max`, `mv_min`, `mv_eq_x`, `mv_max_x`, `power_max`, `power_min`, `power_parity`,
 /// `noncreature`, `exclude`, `color`, `not_color`, `modified`, `attacking`, `attacking_you`,
 /// `blocking`, `power_less_than_source`, `toughness_less_than_source_power`, `entered_this_turn`,
-/// `controlled_since_turn_start`,
+/// `controlled_since_turn_start`, `did_not_attack_this_turn`,
 /// `nonbasic`, `nonlegendary`, `nonlair`, `exclude_subtypes`,
 /// `without_flying`, `with_flying`, `with_counter`). `noncreature` is sugar for `exclude = "creature"`;
 /// `not_color` is sugar for `color`'s negated-color arm — both fold into the same
@@ -1693,6 +1698,8 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     #[serde(default)]
                     controlled_since_turn_start: bool,
                     #[serde(default)]
+                    did_not_attack_this_turn: bool,
+                    #[serde(default)]
                     nonbasic: bool,
                     /// Printed-name restriction (Leitmotif Composer's "creatures named Leitmotif
                     /// Composer").
@@ -1758,6 +1765,7 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     toughness_less_than_source_power: t.toughness_less_than_source_power,
                     entered_this_turn: t.entered_this_turn,
                     controlled_since_turn_start: t.controlled_since_turn_start,
+                    did_not_attack_this_turn: t.did_not_attack_this_turn,
                     nonbasic: t.nonbasic,
                     name: t.name.map(|s| &*Box::leak(s.into_boxed_str())),
                     nonlegendary: t.nonlegendary,
