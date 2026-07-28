@@ -105,6 +105,7 @@ pub(super) fn next_counter_target(
 pub(super) fn next_join_forces_payment(
     mut remaining: Vec<PlayerId>,
     source: ObjectId,
+    prevent_up_to: Option<u8>,
 ) -> Option<PendingChoice> {
     if remaining.is_empty() {
         return None;
@@ -114,6 +115,7 @@ pub(super) fn next_join_forces_payment(
         player,
         source,
         remaining,
+        prevent_up_to,
     })
 }
 

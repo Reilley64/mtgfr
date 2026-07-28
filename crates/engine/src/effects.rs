@@ -888,6 +888,7 @@ impl Game {
             | Effect::Choice(ChoiceEffect::EachPlayerControllerChoosesCounterTarget)
             | Effect::Choice(ChoiceEffect::CouncilsDilemmaVote { .. })
             | Effect::Choice(ChoiceEffect::JoinForcesPayMana)
+            | Effect::Choice(ChoiceEffect::TriggeringPlayerMayPayAnyAmountToPrevent { .. })
             | Effect::Choice(ChoiceEffect::EachPlayerNamesCardThenRevealsTop)
             | Effect::Choice(ChoiceEffect::EachOtherTokenBecomesCopyOfChosen)
             | Effect::Choice(ChoiceEffect::PutCounterThenMayBecomeCopyOfCardFromList { .. })

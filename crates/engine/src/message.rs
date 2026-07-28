@@ -131,6 +131,7 @@ message_keys! {
     EFFECT_CHOICE_EACH_PLAYER_SACRIFICES => "effect.choice_each_player_sacrifices",
     EFFECT_CHOICE_EACH_PLAYER_SHUFFLES_HAND_AND_GRAVEYARD_THEN_DRAWS => "effect.choice_each_player_shuffles_hand_and_graveyard_then_draws",
     EFFECT_CHOICE_JOIN_FORCES_PAY_MANA => "effect.choice_join_forces_pay_mana",
+    EFFECT_CHOICE_TRIGGERING_PLAYER_MAY_PAY_ANY_AMOUNT_TO_PREVENT => "effect.choice_triggering_player_may_pay_any_amount_to_prevent",
     EFFECT_CHOICE_MAY_DISCARD => "effect.choice_may_discard",
     EFFECT_CHOICE_MAY_REVEAL_LAND_FROM_HAND => "effect.choice_may_reveal_land_from_hand",
     EFFECT_CHOICE_MAY_DRAW_UNLESS_PAYS => "effect.choice_may_draw_unless_pays",
@@ -1982,6 +1983,12 @@ impl Effect {
             }
             Effect::Choice(JoinForcesPayMana) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_JOIN_FORCES_PAY_MANA)
+            }
+            Effect::Choice(TriggeringPlayerMayPayAnyAmountToPrevent { prevent_up_to, .. }) => {
+                MessageRef::new(
+                    MessageKey::EFFECT_CHOICE_TRIGGERING_PLAYER_MAY_PAY_ANY_AMOUNT_TO_PREVENT,
+                )
+                .with_params(vec![amount_param("amount", prevent_up_to)])
             }
             Effect::Choice(CouncilsDilemmaVote { options }) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_COUNCILS_DILEMMA_VOTE)

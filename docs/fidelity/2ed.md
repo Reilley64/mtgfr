@@ -274,7 +274,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [x] **Phantasmal Terrain** {U}{U} · Enchantment — Aura — increment 8b
 - [x] **Pirate Ship** {4}{U} · Creature — Human Pirate — increment 24, 77
 - [x] **Plague Rats** {2}{B} · Creature — Rat — increment 2
-- [ ] **Power Leak** {1}{U} · Enchantment — Aura — increment 4
+- [x] **Power Leak** {1}{U} · Enchantment — Aura
 - [x] **Power Sink** {X}{U} · Instant — increment 23
 - [x] **Power Surge** {R}{R} · Enchantment — increment 1
 - [x] **Psychic Venom** {1}{U} · Enchantment — Aura — increment 19

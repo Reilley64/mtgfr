@@ -173,10 +173,15 @@ impl Game {
         &mut self,
         remaining: Vec<PlayerId>,
         source: ObjectId,
+        prevent_up_to: Option<u8>,
     ) {
         crate::pending::raise(
             self,
-            crate::pending::ChoiceRequest::NextJoinForcesPayment { remaining, source },
+            crate::pending::ChoiceRequest::NextJoinForcesPayment {
+                remaining,
+                source,
+                prevent_up_to,
+            },
         );
     }
 
@@ -193,6 +198,7 @@ impl Game {
             player: payer,
             source,
             remaining,
+            prevent_up_to,
         }) = self.pending_choice.clone()
         else {
             return Err(Reject::IllegalChoice);
@@ -216,7 +222,24 @@ impl Game {
         }
         self.finish_answer();
         self.resolution_frame.join_forces_mana += amount;
-        self.prompt_next_join_forces_payment(remaining, source);
+        // Power Leak: "Prevent X of that damage, where X is the amount of mana that player paid
+        // this way" (CR 615). The shield goes up here, between the payment and the damage step
+        // waiting in the enclosing `Sequence`, and is capped at that step's damage so overpaying
+        // banks nothing against an unrelated hit later in the turn.
+        if let Some(cap) = prevent_up_to {
+            let points = amount.min(u32::from(cap)) as i32;
+            if points > 0 {
+                self.damage_prevention_shields
+                    .push(crate::state::PreventionShield {
+                        target: crate::Target::Player(payer),
+                        amount: Some(points),
+                        from_color: crate::ColorFilter::Any,
+                        gain_life: false,
+                        redirect_to: None,
+                    });
+            }
+        }
+        self.prompt_next_join_forces_payment(remaining, source, prevent_up_to);
         Ok(events)
     }
 

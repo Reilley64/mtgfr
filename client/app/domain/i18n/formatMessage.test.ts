@@ -109,6 +109,16 @@ describe("formatMessage", () => {
     ).toBe("Activated abilities of permanent enchantment white cost {3} more to activate");
   });
 
+  it("reads Power Leak's payment pause back with the damage it shields against", () => {
+    expect(
+      formatMessage({
+        key: "effect.choice_triggering_player_may_pay_any_amount_to_prevent",
+        params: [{ name: "amount", int_value: 2 }],
+        children: [],
+      }),
+    ).toBe("That player may pay any amount of mana; prevent that much of the next 2 damage dealt to them");
+  });
+
   it("formats catalog keyword summaries", () => {
     expect(formatMessage({ key: "keyword.flying", params: [], children: [] })).toBe("Flying");
     expect(

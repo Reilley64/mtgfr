@@ -274,10 +274,13 @@ pub(crate) enum ChoiceRequest {
         chooser: crate::PlayerId,
         source: crate::ObjectId,
     },
-    /// Next seat in a join-forces payment round — empty remaining skips.
+    /// Next seat in a join-forces payment round — empty remaining skips. `prevent_up_to` is
+    /// Power Leak's single-seat variant: `Some(cap)` turns what the seat pays into a prevention
+    /// shield on that seat worth at most `cap`, instead of into the round's shared `X`.
     NextJoinForcesPayment {
         remaining: Vec<crate::PlayerId>,
         source: crate::ObjectId,
+        prevent_up_to: Option<u8>,
     },
     /// Next seat in a council's-dilemma vote — empty remaining skips.
     NextVote {
@@ -556,9 +559,11 @@ pub(super) fn choice_from_request(game: &Game, request: ChoiceRequest) -> Option
             chooser,
             source,
         } => fanout::next_counter_target(game, remaining, chooser, source),
-        ChoiceRequest::NextJoinForcesPayment { remaining, source } => {
-            fanout::next_join_forces_payment(remaining, source)
-        }
+        ChoiceRequest::NextJoinForcesPayment {
+            remaining,
+            source,
+            prevent_up_to,
+        } => fanout::next_join_forces_payment(remaining, source, prevent_up_to),
         ChoiceRequest::NextVote {
             remaining,
             source,

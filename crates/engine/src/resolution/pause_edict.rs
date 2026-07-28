@@ -118,6 +118,27 @@ impl Game {
                     pending::ChoiceRequest::NextJoinForcesPayment {
                         remaining: self.turn_order_from(controller),
                         source,
+                        prevent_up_to: None,
+                    },
+                )
+            }
+            // Power Leak: "that player may pay any amount of mana … Prevent X of that damage."
+            // The same payment pause as join forces with a one-seat guest list, and a cap that
+            // turns the payment into a prevention shield on the payer instead of a shared X.
+            Effect::Choice(ChoiceEffect::TriggeringPlayerMayPayAnyAmountToPrevent {
+                prevent_up_to,
+                player,
+            }) => {
+                let payer = player.expect("the triggering player is filled in at placement");
+                let cap = self
+                    .resolve_amount(prevent_up_to, payer, source, None, 0)
+                    .clamp(0, i32::from(u8::MAX)) as u8;
+                pending::raise(
+                    self,
+                    pending::ChoiceRequest::NextJoinForcesPayment {
+                        remaining: vec![payer],
+                        source,
+                        prevent_up_to: Some(cap),
                     },
                 )
             }

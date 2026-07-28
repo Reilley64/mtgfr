@@ -2701,6 +2701,32 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
         );
     }
 
+    /// Power Leak's payment step has to be capped at the damage the step after it deals: without
+    /// `prevent_up_to`, "prevent X of *that* damage" would leave an overpayment sitting on the
+    /// player as a shield for the rest of the turn.
+    #[test]
+    fn unlimited_power_leak_caps_its_prevention_at_the_damage_it_deals() {
+        let leak = get_by_name("Power Leak").expect("Power Leak is in the pool");
+        let Effect::Sequence { steps } = &leak.abilities[0].effect else {
+            panic!("the upkeep trigger pays first, then damages");
+        };
+        assert_eq!(
+            steps[0],
+            Effect::Choice(ChoiceEffect::TriggeringPlayerMayPayAnyAmountToPrevent {
+                prevent_up_to: Amount::Fixed(2),
+                player: None,
+            }),
+            "the cap matches the 2 the following step deals",
+        );
+        assert_eq!(
+            steps[1],
+            Effect::Damage(DamageEffect::ToTriggeringPlayer {
+                player: None,
+                amount: Amount::Fixed(2),
+            }),
+        );
+    }
+
     /// Animate Artifact's two clauses: a base-P/T set gated on the host being a noncreature and
     /// reading the host's own mana value, plus an *additive* type change — additive because on an
     /// artifact that is already a creature the whole ability is meant to do nothing.

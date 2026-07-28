@@ -1820,7 +1820,7 @@ the per-point shield — but it already skips every ordinary prevention shield t
 pre-existing gap, not a new one. The upgrade path is routing Radiance through
 `creature_damage_events` like every other sweep.
 
-### 71. `pay-any-amount-of-mana` — 1 card, M
+### 71. `pay-any-amount-of-mana` — 1 card, M — **done**
 Depends on: #4.
 Split out of #4. Power Leak: "that player may pay any amount of mana. This Aura deals 2 damage to
 that player. Prevent X of that damage, where X is the amount of mana that player paid this way."
@@ -1831,6 +1831,30 @@ the trigger to carry it forward as an `Amount` into a prevention sized by it.
 payment path, whose answer is bound as the resolving ability's `x` — at which point the prevention
 half is a #4 shield of `Amount::X` armed on the same player immediately before the damage.
 *Cards:* power_leak.
+
+*Landed:* the sketch priced a new `PendingChoice::PayAnyAmount` from scratch, and there was already
+one on the shelf. Collective Voyage's join forces — "Starting with you, each player may pay any
+amount of mana" — is exactly this pause, generic-funded and answered by `Intent::PayOptionalCostX`;
+the only difference is the guest list. So `triggering_player_may_pay_any_amount_to_prevent` raises
+`PendingChoice::JoinForcesPayment` with a one-seat `remaining`, and the whole answer handler,
+payment settlement and Sequence-resumption came for free. The trigger half was free too: the
+sketch's "upkeep of the enchanted permanent's controller" is `each_upkeep` plus
+`condition = { type = "enchanted_permanents_controllers_upkeep" }`, the frame Cursed Land, Feedback,
+Wanderlust and Warp Artifact already share, and the damage half is their `to_triggering_player` with
+a 2 on it.
+
+Two things the sketch got wrong. It bound the payment to the resolving ability's `x` and then armed
+an `Amount::X` shield in a following step — but `PreventNextDamage` puts its shield on the
+*ability's* controller (or its target), and Power Leak's Aura is not controlled by the player being
+shot. Arming it in the answer handler instead, where the payer is already in hand, skips the whole
+question. And "prevent X of *that* damage" is capped: an unbounded shield sized by the payment would
+let someone pay 4 into a 2-damage trigger and walk away with 2 points of prevention banked against a
+Lightning Bolt later that turn, since shields don't expire until the next untap step. `prevent_up_to`
+carries the following step's damage down into the pause so the shield is `min(paid, cap)`.
+
+The pending choice is still named `JoinForcesPayment`, which Power Leak is not. Renaming it costs
+more than the confusion is worth today; if a third pay-any-amount card lands that is neither, that
+is the moment to call it `PayAnyAmount` and let join forces be one caller of it.
 
 ### 72. `mandatory-sacrifice-or-inability-penalty` — 1 card, S — **done**
 Depends on: nothing.

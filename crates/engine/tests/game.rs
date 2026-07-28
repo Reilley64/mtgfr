@@ -109853,3 +109853,108 @@ fn gloom_leaves_a_nonwhite_enchantments_ability_alone() {
     })
     .expect("a black enchantment's ability is untaxed");
 }
+
+// Power Leak: "At the beginning of the upkeep of enchanted enchantment's controller, that player
+// may pay any amount of mana. This Aura deals 2 damage to that player. Prevent X of that damage,
+// where X is the amount of mana that player paid this way." The unbounded payment is join forces'
+// pause with a one-seat guest list; what it buys is a prevention shield on the payer, not a
+// shared X.
+
+/// Put a Power Leak on P1's enchantment, then roll to the payment pause in P1's upkeep.
+fn power_leak_to_payment(game: &mut Game) {
+    let host = game.spawn_on_battlefield(PlayerId(1), card("Bad Moon"));
+    let leak = game.spawn_in_hand(PlayerId(0), card("Power Leak"));
+    cast_and_resolve(game, leak, Some(Target::Object(host)));
+    for player in 0..2u8 {
+        game.stack_library(PlayerId(player), &vec![card("Plains"); 6]);
+    }
+    pass_until_next_turn(game);
+    advance_until(game, |g| g.pending_choice().is_some());
+    let Some(PendingChoice::JoinForcesPayment { player, .. }) = game.pending_choice() else {
+        panic!("expected the enchanted enchantment's controller to be asked for mana");
+    };
+    assert_eq!(
+        player,
+        PlayerId(1),
+        "the host's controller pays, not the Aura's",
+    );
+    game.fund_mana(PlayerId(1));
+}
+
+#[test]
+fn power_leak_deals_its_full_two_when_nothing_is_paid() {
+    let mut game = Game::new();
+    power_leak_to_payment(&mut game);
+    game.submit(Intent::PayOptionalCostX {
+        player: PlayerId(1),
+        pay: false,
+        x: 0,
+    })
+    .expect("paying nothing is always a legal answer");
+
+    advance_until(&mut game, |g| g.current_step() == Step::Main1);
+    assert_eq!(game.life(PlayerId(1)), 18);
+    assert_eq!(
+        game.life(PlayerId(0)),
+        20,
+        "the Aura's controller is not hit"
+    );
+}
+
+#[test]
+fn power_leak_prevents_exactly_what_was_paid() {
+    let mut game = Game::new();
+    power_leak_to_payment(&mut game);
+    game.submit(Intent::PayOptionalCostX {
+        player: PlayerId(1),
+        pay: true,
+        x: 1,
+    })
+    .expect("one mana is a legal answer");
+
+    advance_until(&mut game, |g| g.current_step() == Step::Main1);
+    assert_eq!(game.life(PlayerId(1)), 19, "one paid prevents one of the 2");
+}
+
+#[test]
+fn power_leak_deals_nothing_when_the_whole_two_is_paid_for() {
+    let mut game = Game::new();
+    power_leak_to_payment(&mut game);
+    game.submit(Intent::PayOptionalCostX {
+        player: PlayerId(1),
+        pay: true,
+        x: 2,
+    })
+    .expect("two mana is a legal answer");
+
+    advance_until(&mut game, |g| g.current_step() == Step::Main1);
+    assert_eq!(game.life(PlayerId(1)), 20);
+}
+
+/// "Prevent X of *that* damage" — overpaying buys nothing beyond the 2 the Aura deals, so the
+/// leftover cannot sit on the player as a shield an unrelated Lightning Bolt walks into later in
+/// the same turn.
+#[test]
+fn power_leak_overpayment_does_not_bank_prevention_for_a_later_hit() {
+    let mut game = Game::new();
+    power_leak_to_payment(&mut game);
+    game.submit(Intent::PayOptionalCostX {
+        player: PlayerId(1),
+        pay: true,
+        x: 4,
+    })
+    .expect("any amount is a legal answer, including a wasteful one");
+
+    advance_until(&mut game, |g| {
+        g.current_step() == Step::Main1 && g.priority_holder() == PlayerId(0)
+    });
+    assert_eq!(game.life(PlayerId(1)), 20, "all 2 prevented");
+
+    let bolt = game.spawn_in_hand(PlayerId(0), card("Lightning Bolt"));
+    cast_and_resolve(&mut game, bolt, Some(Target::Player(PlayerId(1))));
+    assert_eq!(
+        game.life(PlayerId(1)),
+        17,
+        "the two mana over the cap were spent, not banked",
+    );
+}

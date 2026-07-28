@@ -878,6 +878,7 @@ impl Effect {
             | Effect::Choice(ChoiceEffect::EachPlayerControllerChoosesCounterTarget)
             | Effect::Choice(ChoiceEffect::CouncilsDilemmaVote { .. })
             | Effect::Choice(ChoiceEffect::JoinForcesPayMana)
+            | Effect::Choice(ChoiceEffect::TriggeringPlayerMayPayAnyAmountToPrevent { .. })
             | Effect::Choice(ChoiceEffect::EachPlayerNamesCardThenRevealsTop)
             | Effect::Dig(DigEffect::OpponentSplitsExilePiles)
             | Effect::Dig(DigEffect::RevealTopSplitPiles)
@@ -2867,6 +2868,15 @@ fn fill_triggering_permanent_controller(effect: Effect, player: PlayerId) -> Eff
             player: Some(player),
             amount,
         }),
+        // Power Leak's "that player may pay any amount of mana" names the same player its damage
+        // step does, so it fills from the same slot.
+        Effect::Choice(ChoiceEffect::TriggeringPlayerMayPayAnyAmountToPrevent {
+            prevent_up_to,
+            ..
+        }) => Effect::Choice(ChoiceEffect::TriggeringPlayerMayPayAnyAmountToPrevent {
+            prevent_up_to,
+            player: Some(player),
+        }),
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
@@ -2937,6 +2947,15 @@ fn fill_active_player_payoff(effect: Effect, active_player: PlayerId) -> Effect 
         Effect::Damage(DamageEffect::ToTriggeringPlayer { amount, .. }) => Effect::Damage(DamageEffect::ToTriggeringPlayer {
             player: Some(active_player),
             amount,
+        }),
+        // Power Leak's payment step names the same player its damage step does — the upkeep whose
+        // beginning the Aura watches is that player's, so it fills from here too.
+        Effect::Choice(ChoiceEffect::TriggeringPlayerMayPayAnyAmountToPrevent {
+            prevent_up_to,
+            ..
+        }) => Effect::Choice(ChoiceEffect::TriggeringPlayerMayPayAnyAmountToPrevent {
+            prevent_up_to,
+            player: Some(active_player),
         }),
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps

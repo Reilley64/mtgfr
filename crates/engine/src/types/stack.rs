@@ -1385,6 +1385,10 @@ pub enum PendingChoice {
         player: PlayerId,
         source: ObjectId,
         remaining: Vec<PlayerId>,
+        /// Power Leak's single-seat borrowing of this pause: `Some(cap)` arms a prevention shield
+        /// on the payer worth what they paid, capped at `cap` ("prevent X of *that* damage"),
+        /// rather than adding it to a join-forces round's shared `X`.
+        prevent_up_to: Option<u8>,
     },
     CastVote {
         player: PlayerId,

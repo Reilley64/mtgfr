@@ -157,6 +157,23 @@ pub enum ChoiceEffect {
 
     JoinForcesPayMana,
 
+    /// Power Leak's "that player may pay any amount of mana. This Aura deals 2 damage to that
+    /// player. Prevent X of that damage, where X is the amount of mana that player paid this way"
+    /// (CR 615). The single-seat twin of [`JoinForcesPayMana`](Self::JoinForcesPayMana): the same
+    /// unbounded generic payment and the same pause, offered to the one player the trigger is
+    /// about instead of to the whole table, and cashed out as a prevention shield on that same
+    /// player rather than as a shared `X` a later step reads.
+    ///
+    /// `prevent_up_to` is the damage the following step deals, and caps the shield: "prevent X of
+    /// *that* damage" can't bank the overpayment against an unrelated hit later in the turn.
+    TriggeringPlayerMayPayAnyAmountToPrevent {
+        prevent_up_to: Amount,
+        /// Filled in at trigger placement from the enchanted permanent's controller, the same slot
+        /// [`Effect::Damage(DamageEffect::ToTriggeringPlayer)`](crate::DamageEffect) fills.
+        #[cfg_attr(feature = "card-dsl", serde(skip))]
+        player: Option<PlayerId>,
+    },
+
     MayDiscard {
         #[cfg_attr(
             feature = "card-dsl",
