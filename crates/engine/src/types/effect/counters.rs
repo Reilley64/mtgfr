@@ -68,6 +68,13 @@ pub enum CountersEffect {
         kind: Option<CounterKind>,
         #[cfg_attr(feature = "card-dsl", serde(default))]
         divided: bool,
+        /// "This ability can't cause the total number of +1/+0 counters on this creature to be
+        /// greater than seven" (Clockwork Beast) — a ceiling on the recipient's *total* of this
+        /// `kind`, not on the amount placed, so the count is clamped to the room left. `None`
+        /// (every other card) places the full amount. Named-`kind` arm only; nothing in the pool
+        /// caps a +1/+1 total.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        max_total: Option<u8>,
     },
 
     PutCountersEach {

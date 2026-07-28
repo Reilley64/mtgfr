@@ -672,6 +672,7 @@ fn counter_kind_token(kind: CounterKind) -> &'static str {
         CounterKind::Time => "time",
         CounterKind::Scream => "scream",
         CounterKind::MinusOneMinusOne => "minus_one_minus_one",
+        CounterKind::PlusOnePlusZero => "plus_one_plus_zero",
         CounterKind::Strife => "strife",
         CounterKind::Age => "age",
         CounterKind::Storage => "storage",

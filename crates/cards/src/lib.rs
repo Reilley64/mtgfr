@@ -3477,6 +3477,7 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
             artifact.abilities[0].effect,
             Effect::Counters(CountersEffect::PutCounters {
                 count: Amount::TriggeringDamageDealt,
+                max_total: None,
                 target: TargetSpec::ThisPermanent,
                 targets: TargetCount::default(),
                 kind: Some(CounterKind::Vitality),
@@ -4084,6 +4085,7 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
             vampire.abilities[0].effect,
             Effect::Counters(CountersEffect::PutCounters {
                 count: Amount::Fixed(1),
+                max_total: None,
                 target: TargetSpec::ThisPermanent,
                 targets: TargetCount::default(),
                 kind: None,
@@ -5039,6 +5041,59 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
             dies.effect,
             Effect::Life(LifeEffect::SourceOwnerLosesHalfTheirLife)
         );
+    }
+
+    /// The Beast's cap and its unwind clause pull in opposite directions, and both are authored
+    /// as riders rather than as their own effects — `max_total` on the wind-up and an
+    /// intervening-if on the trigger. Drop either and the card still parses, still activates, and
+    /// is quietly wrong: an uncapped Beast grows forever, and an unconditional trigger unwinds it
+    /// in combats it sat out.
+    #[test]
+    fn unlimited_clockwork_beast_is_capped_going_up_and_conditional_coming_down() {
+        let beast = get_by_name("Clockwork Beast").expect("Clockwork Beast is in the pool");
+        let [enters, unwind, wind] = &beast.abilities[..] else {
+            panic!("enters-with, the end-of-combat unwind, and the upkeep wind-up");
+        };
+
+        assert_eq!(
+            enters.effect,
+            Effect::Static(StaticEffect::EntersWithCounters {
+                amount: Amount::Fixed(7),
+                kind: Some(CounterKind::PlusOnePlusZero),
+            }),
+            "a named kind, not the +1/+1 default"
+        );
+
+        assert_eq!(unwind.timing, Timing::Triggered(Trigger::EndOfCombat));
+        assert_eq!(
+            unwind.condition,
+            Some(Condition::SourceAttackedOrBlockedThisCombat),
+            "without the intervening-if it unwinds in every combat"
+        );
+        assert_eq!(
+            unwind.effect,
+            Effect::Counters(CountersEffect::RemoveCounterFromSelf {
+                kind: Some(CounterKind::PlusOnePlusZero),
+            })
+        );
+
+        assert_eq!(
+            wind.condition,
+            Some(Condition::DuringYourUpkeep),
+            "activate only during your upkeep"
+        );
+        let Effect::Counters(CountersEffect::PutCounters {
+            count,
+            kind,
+            max_total,
+            ..
+        }) = &wind.effect
+        else {
+            panic!("the wind-up puts counters");
+        };
+        assert_eq!(*count, Amount::X, "up to X");
+        assert_eq!(*kind, Some(CounterKind::PlusOnePlusZero));
+        assert_eq!(*max_total, Some(7), "the total, not the amount placed");
     }
 
     /// Rock Hydra's four abilities are easy to mis-order, and the grow ability's index is what a

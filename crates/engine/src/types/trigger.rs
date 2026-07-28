@@ -218,6 +218,16 @@ pub enum Trigger {
     /// active player's own permanents only — an "each player" variant (Combat Celebrant-style)
     /// is a distinct, unlanded trigger.
     BeginCombat,
+    /// At end of combat (CR 511.1 — Clockwork Beast's "At end of combat, if this creature
+    /// attacked or blocked this combat, …"). Fires under the ability's own controller in *any*
+    /// player's combat, not just the controller's, because a creature blocks on someone else's
+    /// turn — a battlefield-wide watch like [`EachEndStep`](Self::EachEndStep), not an
+    /// active-player one like [`BeginCombat`](Self::BeginCombat) above. Queued straight from the
+    /// end-of-combat turn-based action ([`Game::queue_end_of_combat_triggers`]) rather than off
+    /// the `StepBegan` event scan, so that the combat declarations
+    /// [`Condition::SourceAttackedOrBlockedThisCombat`](crate::Condition) reads are still there:
+    /// the same step clears them. Spelled `"end_of_combat"` in TOML.
+    EndOfCombat,
     /// At the beginning of the controller's end step.
     EndStep,
     /// Whenever the controller gains life.

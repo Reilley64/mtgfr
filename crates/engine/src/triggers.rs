@@ -2078,6 +2078,18 @@ impl Game {
         );
     }
 
+    /// Queue every battlefield permanent's [`Trigger::EndOfCombat`] ability as the end-of-combat
+    /// step's turn-based actions run (CR 511.1) — battlefield-wide, not active-player-scoped,
+    /// because a creature blocks on somebody else's turn. Called from
+    /// [`Game::perform_turn_based_actions`] ahead of [`Event::CombatCleared`], so an ability's
+    /// intervening-if can still see who attacked and who blocked.
+    pub(crate) fn queue_end_of_combat_triggers(&mut self) {
+        self.queue_trigger_watch_table(
+            &[TriggerWatch::battlefield_all(Trigger::EndOfCombat)],
+            TriggerWatchEvent::default(),
+        );
+    }
+
     /// Queue every battlefield permanent's [`Trigger::EachDrawStep`] ability at the beginning of
     /// *any* player's draw step (CR "at the beginning of each player's draw step") — the draw-step
     /// twin of [`queue_each_upkeep_triggers`](Self::queue_each_upkeep_triggers)/
@@ -4125,6 +4137,13 @@ impl Game {
             // Dread Cacodemon/Reiver Demon: "if you cast it from your hand" — source-object-based
             // like the four conditions above.
             Condition::CastFromHand => self.as_permanent(source).is_some_and(|p| p.cast_from_hand),
+            // Clockwork Beast's "if this creature attacked or blocked this combat" — the live
+            // combat declarations, still populated because `queue_end_of_combat_triggers` runs
+            // ahead of `Event::CombatCleared` in the same turn-based action.
+            Condition::SourceAttackedOrBlockedThisCombat => {
+                self.combat.attackers.contains(&source)
+                    || self.combat.blocks.iter().any(|&(b, _)| b == source)
+            }
             // Plumb the Forbidden's reflexive "When you do": the copy trigger happens only if one
             // or more creatures were sacrificed to the additional cost — source-object-based like
             // the conditions above, reading the resolving spell's own recorded count (CR 601.2f).
@@ -4251,6 +4270,10 @@ impl Game {
             // indestructible grant), which reads `Permanent::attacked_this_turn` itself rather
             // than through `condition_holds`.
             Condition::SourceAttackedThisTurn => false,
+            // ponytail: source-object-based like `SourceAttackedThisTurn` above — reachable only
+            // through `Game::ability_condition_holds` (Clockwork Beast's end-of-combat
+            // wind-down), which intercepts it before falling through here.
+            Condition::SourceAttackedOrBlockedThisCombat => false,
             Condition::YouControlColorPermanents { color, at_least } => {
                 self.battlefield()
                     .into_iter()

@@ -1013,7 +1013,7 @@ Basilisk, Cockatrice, Juggernaut, Nightmare, Pegasus, Pirate, Serpent — arrive
 and that test is what will demand them.
 *Cards:* none directly — every "choose a creature type" card in the pool gains the options.
 
-### 28. `counter-kinds` — 5 cards, S — **corpse and vitality landed, 2 kinds left**
+### 28. `counter-kinds` — 5 cards, S — **done**
 Depends on: nothing.
 Falsifies the fixed counter-slot array in `types/effect/shared.rs`. 2ed needs four kinds it
 doesn't have: +1/+0 (Clockwork Beast), corpse (Scavenging Ghoul), mire (Cyclopean Tomb), vitality
@@ -1030,14 +1030,36 @@ Everything else the card needs already existed: `"each_end_step"`, `put_counters
 `kind`, and `remove_counters` / `remove_counters_kind` as an activation cost paying
 `regenerate_shield { target = "this" }`.
 
-The other three cards each need something *besides* a counter kind, which is why the slot-array
-work alone doesn't finish this increment:
-- **Cyclopean Tomb** — mire counters are the easy half; it also needs #8 (changing a land's type)
-  and a rest-of-game delayed trigger that unwinds them when the Tomb leaves.
-- **Clockwork Beast** — +1/+0 is a real P/T counter (layer 7d, beside +1/+1); it also caps its own
-  activation ("can't cause the total to be greater than seven", a bound on the effect's amount)
-  and needs an end-of-combat conditional removal.
-- **Rock Hydra** — blocked on #4 (damage prevention).
+`CounterKind::Mire` landed with #8 and Cyclopean Tomb ships approximated — the counter *is* the
+type change (`Game::effective_subtypes` reads it straight off the land, so it outlives the Tomb),
+and the rest-of-game unwind when the Tomb leaves is flagged there rather than built here.
+`CounterKind::Age` and Rock Hydra landed with #4, which is done; the "blocked on #4" note above was
+stale by the time this increment came up.
+
+*Landed:* Clockwork Beast, the last card and the only one that needed a *real* P/T counter.
+`CounterKind::PlusOnePlusZero` is a fourteenth slot in the fixed array, but unlike corpse/mire/
+vitality it is not bookkeeping: `characteristics.rs` reads it in layer 7d as its own `PtDelta`,
+power only, exactly mirroring the `MinusOneMinusOne` block a few lines up. It can't ride the scalar
+`plus_counters` path at all — that field emits a symmetric `{ power: n, toughness: n }`, and the
+Beast is a 0/4 that stays a 0/4 on the bottom.
+
+The cap is a `max_total: Option<u8>` field on `PutCounters` rather than a new `Amount` variant:
+"can't cause the total number of +1/+0 counters on this creature to be greater than seven" is a
+property of the *ability's cap clause*, not of the amount, and `de.rs`'s `Amount` deserializer is an
+exhaustive tuple match that every struct-shaped variant perturbs. `mint_counters`' named-kind arm
+clamps the resolved count to the room left, so a wind-up announcing four on a Beast with five
+counters places two. `"up to X"` is taken as X (then clamped) rather than a resolution-time choice —
+a `ponytail:` on the card says to prompt if a card ever makes a smaller pile the better one.
+
+The trigger was the actual work. `Trigger::EndOfCombat` cannot be queued off the `StepBegan` scan,
+because the same step's turn-based action pushes `Event::CombatCleared` before the post-batch trigger
+scan runs, and the intervening-if would read an emptied `CombatState`. It is queued directly from
+`priority.rs`'s `Step::EndCombat` arm ahead of the clear — the idiom `declare_blockers` already uses
+for its own blocks triggers — and `queue_trigger_group` evaluates the condition at queue time
+(CR 603.4's first check), which is exactly when the declarations are still live. The watch is
+`battlefield_all`, not controller-scoped: the "or blocked" half only ever happens on an opponent's
+turn.
+
 *Cards:* clockwork_beast, cyclopean_tomb, living_artifact, rock_hydra, scavenging_ghoul.
 
 ### 29. `extra-land-plays-and-land-play-trigger` — 1 card, S — **done**

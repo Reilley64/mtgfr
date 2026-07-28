@@ -1237,12 +1237,14 @@ impl Effect {
                 targets,
                 kind,
                 divided,
+                max_total,
             }) => Effect::Counters(CountersEffect::PutCounters {
                 count: Amount::Fixed(count as i32),
                 target,
                 targets,
                 kind,
                 divided,
+                max_total,
             }),
             other => other,
         }
@@ -1366,6 +1368,11 @@ pub enum CounterKind {
     /// enchantment's controller, spent one per upkeep for 1 life. Inert bookkeeping like
     /// [`Corpse`](Self::Corpse) — it changes nothing about the permanent by itself.
     Vitality,
+    /// A +1/+0 counter (CR 121.1 — Clockwork Beast): a real P/T counter, not bookkeeping, read
+    /// out of this map by [`Game::pt_layers`] in layer 7d exactly like
+    /// [`MinusOneMinusOne`](Self::MinusOneMinusOne) — power only, toughness untouched, which is
+    /// why it can't ride the scalar `plus_counters` path.
+    PlusOnePlusZero,
 }
 
 impl CounterKind {
@@ -1377,7 +1384,7 @@ impl CounterKind {
     /// `&'static [(CounterKind, u8)]` slice if the kind set ever needs to be open-ended. A counter
     /// kind that sits on a *player* (poison, CR 122.1) doesn't belong here at all — it has its own
     /// parallel [`PlayerCounterKind`] and its own store on [`Player::kind_counters`].
-    pub(crate) const COUNT: usize = 13;
+    pub(crate) const COUNT: usize = 14;
 
     /// Every kind, for enumerating "each kind present" (proliferate, move/remove-all-counters).
     pub(crate) const ALL: [CounterKind; Self::COUNT] = [
@@ -1394,6 +1401,7 @@ impl CounterKind {
         CounterKind::Corpse,
         CounterKind::Mire,
         CounterKind::Vitality,
+        CounterKind::PlusOnePlusZero,
     ];
 }
 
@@ -1819,6 +1827,12 @@ pub enum Condition {
     /// which lapses the instant combat ends or the permanent leaves combat. The printed grant
     /// persists through end of combat and the rest of the turn.
     SourceAttackedThisTurn,
+    /// "if this creature attacked or blocked this combat" (Clockwork Beast's end-of-combat
+    /// wind-down). Reads the live [`CombatState`](crate::CombatState) — this is checked as the
+    /// ability would trigger (CR 603.4), and [`Trigger::EndOfCombat`] is queued from the
+    /// end-of-combat turn-based action *before* [`Event::CombatCleared`], so the declarations
+    /// are still there to read.
+    SourceAttackedOrBlockedThisCombat,
     /// "if this permanent has no `kind` counters on it" (CR 702 counters; mana_bloom's upkeep
     /// self-bounce: "if this enchantment has no charge counters on it, return it to its owner's
     /// hand"). Source-object-based like [`SourceHasCounters`](Self::SourceHasCounters) above.
@@ -3021,12 +3035,14 @@ fn map_effect_amounts(effect: Effect, f: &impl Fn(Amount) -> Amount) -> Effect {
             targets,
             kind,
             divided,
+            max_total,
         }) => Effect::Counters(CountersEffect::PutCounters {
             count: f(count),
             target,
             targets,
             kind,
             divided,
+            max_total,
         }),
         Effect::Token(TokenEffect::Create {
             token,
@@ -3358,12 +3374,14 @@ pub(crate) fn contextualize_sacrifice_effect(effect: Effect, power: i32, toughne
             targets,
             kind,
             divided,
+            max_total,
         }) => Effect::Counters(CountersEffect::PutCounters {
             count: fill(count),
             target,
             targets,
             kind,
             divided,
+            max_total,
         }),
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps

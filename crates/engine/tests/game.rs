@@ -7663,6 +7663,7 @@ static GROWTH: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         timing: Timing::Spell,
         effect: Effect::Counters(CountersEffect::PutCounters {
             count: Amount::Fixed(2),
+            max_total: None,
             target: TargetSpec::Creature,
             targets: TargetCount {
                 min: 1,
@@ -22489,6 +22490,7 @@ static WATCHES_ANY_SACRIFICE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         }),
         effect: Effect::Counters(CountersEffect::PutCounters {
             count: Amount::Fixed(1),
+            max_total: None,
             target: TargetSpec::Creature,
             targets: TargetCount {
                 min: 1,
@@ -48625,6 +48627,7 @@ fn pack_a_punch() -> CardDef {
                     }),
                     Effect::Counters(CountersEffect::PutCounters {
                         count: Amount::Fixed(2),
+                        max_total: None,
                         target: TargetSpec::Creature,
                         targets: TargetCount {
                             min: 1,
@@ -49265,6 +49268,7 @@ static GROVES_BOUNTY_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         timing: Timing::Spell,
         effect: Effect::Counters(CountersEffect::PutCounters {
             count: Amount::X,
+            max_total: None,
             target: TargetSpec::Permanent(PermanentFilter {
                 controller: FilterController::You,
                 ..PermanentFilter::of(TypeSet::CREATURE)
@@ -69209,6 +69213,7 @@ static COUNTER_EACH_UP_TO_TWO: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         timing: Timing::Spell,
         effect: Effect::Counters(CountersEffect::PutCounters {
             count: Amount::Fixed(1),
+            max_total: None,
             target: TargetSpec::Creature,
             targets: TargetCount {
                 min: 0,
@@ -110829,4 +110834,144 @@ fn helm_of_chatzuk_hands_the_division_over_for_the_turn() {
         PlayerId(1),
         "a granted banding moves the division just like a printed one",
     );
+}
+
+// ── Clockwork Beast: +1/+0 counters, wound and unwound (fidelity #28) ──────────────────
+
+#[test]
+fn clockwork_beast_enters_fully_wound_and_gains_no_toughness_for_it() {
+    // "This creature enters with seven +1/+0 counters on it." A +1/+0 counter is a real P/T
+    // counter, but only on the left of the slash — the printed 0/4 becomes a 7/4, not a 7/11.
+    let mut game = TestGame::new();
+    let beast = game.spawn_in_hand(PlayerId(0), card("Clockwork Beast"));
+
+    game.cast(beast).resolve();
+    // The resolved permanent is a new object (CR 111.7) — the spell's id is not it.
+    let entered = game
+        .live_object_ids()
+        .into_iter()
+        .find(|&id| {
+            game.zone_of(id) == Zone::Battlefield && game.def_of(id).name == "Clockwork Beast"
+        })
+        .expect("the Beast resolved onto the battlefield");
+    assert_eq!(
+        game.counters_of_kind(entered, CounterKind::PlusOnePlusZero),
+        7,
+        "seven counters, not seven +1/+1s"
+    );
+    assert_eq!(
+        (game.power(entered), game.toughness(entered)),
+        (7, 4),
+        "power only",
+    );
+}
+
+#[test]
+fn the_beast_unwinds_only_in_a_combat_it_fought_in() {
+    // "At end of combat, if this creature attacked or blocked this combat, remove a +1/+0
+    // counter from it." The intervening-if is the whole ability — a combat it sat out is free.
+    let mut game = Game::new();
+    stock_libraries(&mut game);
+    let beast = game.spawn_on_battlefield(PlayerId(0), card("Clockwork Beast"));
+    for _ in 0..7 {
+        game.add_kind_counter(beast, CounterKind::PlusOnePlusZero);
+    }
+
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+    assert_eq!(
+        game.counters_of_kind(beast, CounterKind::PlusOnePlusZero),
+        7,
+        "it declared no attack, so the trigger never reached the stack"
+    );
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Main1
+    });
+    attack_with(&mut game, vec![beast]);
+    advance_until(&mut game, |g| g.current_step() == Step::End);
+    assert_eq!(
+        game.counters_of_kind(beast, CounterKind::PlusOnePlusZero),
+        6,
+        "a combat it attacked in costs it one"
+    );
+    assert_eq!(game.power(beast), 6, "and one point of power with it");
+}
+
+#[test]
+fn a_blocking_beast_unwinds_on_someone_elses_turn() {
+    // "attacked *or blocked* this combat" — the trigger is a battlefield-wide watch, not an
+    // active-player one, because the half that reads "blocked" only ever happens on an
+    // opponent's turn.
+    let mut game = Game::new();
+    stock_libraries(&mut game);
+    let beast = game.spawn_on_battlefield(PlayerId(0), card("Clockwork Beast"));
+    for _ in 0..7 {
+        game.add_kind_counter(beast, CounterKind::PlusOnePlusZero);
+    }
+    let attacker = game.spawn_on_battlefield(PlayerId(1), VANILLA.clone());
+
+    advance_until(&mut game, |g| g.active_player() == PlayerId(1));
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+    game.submit(Intent::DeclareAttackers {
+        player: PlayerId(1),
+        attackers: vec![(attacker, Defender::Player(PlayerId(0)))],
+    })
+    .unwrap();
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareBlockers);
+    game.submit(Intent::DeclareBlockers {
+        player: PlayerId(0),
+        blocks: vec![(beast, attacker)],
+    })
+    .unwrap();
+
+    advance_until(&mut game, |g| g.current_step() == Step::End);
+    assert_eq!(
+        game.counters_of_kind(beast, CounterKind::PlusOnePlusZero),
+        6,
+        "blocking winds it down on the attacker's turn"
+    );
+}
+
+#[test]
+fn winding_the_beast_back_up_stops_at_seven_and_only_in_your_upkeep() {
+    // "{X}, {T}: Put up to X +1/+0 counters on this creature. This ability can't cause the total
+    // number of +1/+0 counters on this creature to be greater than seven. Activate only during
+    // your upkeep." X = 4 onto five counters puts two, not four — the cap is on the total.
+    let mut game = Game::new();
+    stock_libraries(&mut game);
+    let beast = game.spawn_on_battlefield(PlayerId(0), card("Clockwork Beast"));
+    for _ in 0..5 {
+        game.add_kind_counter(beast, CounterKind::PlusOnePlusZero);
+    }
+    let wind = |game: &mut Game| {
+        game.fund_mana(PlayerId(0));
+        game.submit(Intent::ActivateAbility {
+            player: PlayerId(0),
+            object: beast,
+            ability_index: 2,
+            target: None,
+            sacrifice: vec![],
+            discard_cost: vec![],
+            x: 4,
+        })
+    };
+
+    advance_until(&mut game, |g| g.current_step() == Step::Main1);
+    assert_eq!(
+        wind(&mut game),
+        Err(Reject::CannotActivate),
+        "its own upkeep has passed"
+    );
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
+    });
+    assert!(wind(&mut game).is_ok(), "its controller's own upkeep");
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        game.counters_of_kind(beast, CounterKind::PlusOnePlusZero),
+        7,
+        "four announced, two of room"
+    );
+    assert_eq!(game.power(beast), 7, "a 7/4 again");
 }

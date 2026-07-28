@@ -193,7 +193,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [x] **Circle of Protection: Green** {1}{W} · Enchantment — increment 4, 5a
 - [x] **Circle of Protection: Red** {1}{W} · Enchantment — increment 4, 5a
 - [x] **Circle of Protection: White** {1}{W} · Enchantment — increment 4, 5a
-- [ ] **Clockwork Beast** {6} · Artifact Creature — Beast — increment 28
+- [x] **Clockwork Beast** {6} · Artifact Creature — Beast — increment 28
 - [ ] **Clone** {3}{U} · Creature — Shapeshifter — increment 12
 - [x] **Cockatrice** {3}{G}{G} · Creature — Cockatrice — increment 21
 - [x] **Consecrate Land** {W} · Enchantment — Aura — increment 35

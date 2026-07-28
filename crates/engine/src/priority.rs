@@ -1793,6 +1793,10 @@ impl Game {
             Step::FirstStrikeCombatDamage => self.combat_damage_substep(true, events),
             Step::CombatDamage => self.combat_damage_substep(false, events),
             Step::EndCombat => {
+                // Clockwork Beast's "At end of combat, if this creature attacked or blocked this
+                // combat" (CR 511.1) — queued *before* the clear below, which is what the
+                // intervening-if reads.
+                self.queue_end_of_combat_triggers();
                 // Clear combat if attackers were declared this turn (so the declared-flags reset,
                 // even after a zero-attacker declaration). No attackers ⇒ nothing to clear.
                 if self.combat.attackers_declared {

@@ -1007,6 +1007,19 @@ impl Game {
                 },
             });
         }
+        // Clockwork Beast's +1/+0 counters (CR 121.1): power only, so this can't fold into the
+        // scalar `plus_counters` above — it is its own layer-7d delta, like the -1/-1 read.
+        let plus_one_plus_zero = p.kind_counters[CounterKind::PlusOnePlusZero as usize] as i32;
+        if plus_one_plus_zero != 0 {
+            effects.push(ContinuousEffect {
+                source: object,
+                timestamp: self.static_continuous_timestamp(object),
+                kind: ContinuousEffectKind::PtDelta {
+                    power: plus_one_plus_zero,
+                    toughness: 0,
+                },
+            });
+        }
         if p.temp_power != 0 || p.temp_toughness != 0 {
             effects.push(ContinuousEffect {
                 source: object,
