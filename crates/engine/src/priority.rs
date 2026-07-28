@@ -5,6 +5,7 @@
 //! Deferred / gaps: per-deck increments under `docs/fidelity/` (fidelity-grind skill).
 
 use crate::*;
+use std::collections::BTreeSet;
 
 /// One planned mana-source tap toward a payment ([`Game::plan_auto_taps`]): a land's free
 /// base `produces` tap, or a permanent's tap-for-mana ability (free or paid filter/karoo) at the
@@ -1745,18 +1746,25 @@ impl Game {
                     self.push_apply(events, Event::DamageCleared { object: id });
                 }
 
-                let boosted: Vec<ObjectId> = self
+                // Pumps and keyword grants live in the modifier registry, the rest still on the
+                // permanent — so the sweep is the union of both. `BTreeSet` because a permanent
+                // pumped twice appears twice among the boosts, and event order has to be
+                // deterministic.
+                let boosted: BTreeSet<ObjectId> = self
                     .permanent_ids(|p| {
-                        p.temp_power != 0
-                            || p.temp_toughness != 0
-                            || p.base_pt_set_eot.is_some()
+                        p.base_pt_set_eot.is_some()
                             || p.added_types_eot != TypeSet::NONE
                             || !p.added_subtypes_eot.is_empty()
                             || p.set_color_eot.is_some()
-                            || !p.temp_keywords.is_empty()
                             || !p.temp_lost_keywords.is_empty()
                             || p.reverts_to_def_eot.is_some()
                     })
+                    .chain(
+                        self.modifier_provenance
+                            .temp_boosts
+                            .iter()
+                            .map(|&(host, ..)| host),
+                    )
                     .collect();
                 for id in boosted {
                     self.push_apply(events, Event::TempBoostsEnded { object: id });

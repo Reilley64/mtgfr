@@ -26,8 +26,6 @@ pub(crate) fn fresh_permanent(
         monstrous: false,
         plus_counters: 0,
         kind_counters: [0; CounterKind::COUNT],
-        temp_power: 0,
-        temp_toughness: 0,
         base_pt_set_eot: None,
         base_pt_set_eot_timestamp: 0,
         added_types_eot: TypeSet::NONE,
@@ -35,7 +33,6 @@ pub(crate) fn fresh_permanent(
         added_subtypes_eot: &[],
         added_colors_eot: &[],
         set_color_eot: None,
-        temp_keywords: &[],
         temp_lost_keywords: &[],
         set_base_pt: None,
         set_base_pt_timestamp: 0,
@@ -330,14 +327,11 @@ pub(crate) struct Permanent {
     /// `usize`; `0` = none of that kind. Kept separate from `plus_counters` above — no
     /// replacement effect (Hardened Scales, a doubler) reads or grows this map.
     pub(crate) kind_counters: [u8; CounterKind::COUNT],
-    /// Until-end-of-turn power/toughness boosts (pumps), cleared at cleanup.
-    pub(crate) temp_power: i32,
-    pub(crate) temp_toughness: i32,
     /// An until-end-of-turn base-P/T SET (CR 613.3(7b) — Biomass Mutation, Quandrix Charm's
     /// "has base power and toughness X/X until end of turn"): runtime bookkeeping, `Some((p, t))`
     /// while active, emitted as a `BasePtSet` layer by [`Game::pt_layers`] (applied before the 7c
-    /// counters/pumps/anthems), and cleared alongside `temp_power`/`temp_toughness` at cleanup
-    /// (see [`Event::TempBoostsEnded`]'s handler). Not a `CardDef`/TOML surface — P/T is derived.
+    /// counters/pumps/anthems), and cleared at cleanup (see [`Event::TempBoostsEnded`]'s
+    /// handler). Not a `CardDef`/TOML surface — P/T is derived.
     pub(crate) base_pt_set_eot: Option<(i32, i32)>,
     /// The CR 613.7 timestamp of [`Permanent::base_pt_set_eot`], so a later 7b set (Darksteel
     /// Mutation after Trench Gorger, Quandrix Charm after Darksteel Mutation) wins the layer.
@@ -367,22 +361,14 @@ pub(crate) struct Permanent {
     /// Cleared alongside `added_colors_eot` at cleanup (see [`Event::TempBoostsEnded`]'s handler).
     /// Not a `CardDef`/TOML surface — the color is a runtime player choice, not printed data.
     pub(crate) set_color_eot: Option<Color>,
-    /// Keywords granted until end of turn (a [`Effect::Pump(PumpEffect::PumpUntilEndOfTurn)`]/
-    /// [`Effect::Pump(PumpEffect::PumpCreaturesYouControlUntilEndOfTurn)`] grant), cleared at cleanup alongside
-    /// the temp P/T. `&'static` because it's usually copied straight from the granting
-    /// ability's already-leaked `CardDef` data (see the `de` module) — no runtime leak. When a
-    /// second non-empty grant lands on the same permanent the same turn (e.g. Selfless Spirit +
-    /// Moonshaker Cavalry), [`Event::TempBoost`]'s handler unions the two into a freshly leaked
-    /// slice instead of clobbering the first.
-    pub(crate) temp_keywords: &'static [Keyword],
     /// Keywords this permanent has lost until end of turn AND can't regain this turn (CR
     /// 702.11e/702.18d-style "lose ... and can't have" — arcane_lighthouse's "creatures your
     /// opponents control lose hexproof and shroud and can't have hexproof or shroud"). Removed
     /// from the final unioned set at the end of [`Game::compute_effective_keywords_uncached`]
     /// rather than blocked at each granting source, so a keyword granted *after* this lands
     /// (Tyvar's Stand, an Equipment) is filtered right back out the same turn — "can't have" for
-    /// free from the same mechanism as "lose." Cleared at cleanup alongside `temp_keywords`
-    /// above (see [`Event::TempBoostsEnded`]'s handler).
+    /// free from the same mechanism as "lose." Cleared at cleanup alongside the registered
+    /// until-EOT boosts (see [`Event::TempBoostsEnded`]'s handler).
     pub(crate) temp_lost_keywords: &'static [Keyword],
     /// An *indefinite* base-P/T SET (CR 611.2c — Excava, the Risen Past's "It's a 1/1 Spirit
     /// creature with flying"): the indefinite twin of `base_pt_set_eot`, `Some((p, t))` while
@@ -406,8 +392,8 @@ pub(crate) struct Permanent {
     /// [`Game::effective_subtypes`]. `&'static` — copied straight from the granting ability's
     /// already-leaked `CardDef` data, no runtime leak.
     pub(crate) added_subtypes: &'static [&'static str],
-    /// Keywords granted indefinitely by the same set (Excava → flying): the indefinite twin of
-    /// `temp_keywords`, unioned onto the effective keywords by
+    /// Keywords granted indefinitely by the same set (Excava → flying): the indefinite twin of a
+    /// registered until-EOT keyword grant, unioned onto the effective keywords by
     /// [`Game::compute_effective_keywords_uncached`], never cleared at cleanup. `&'static`.
     pub(crate) granted_keywords: &'static [Keyword],
     /// Damage marked this turn (compared against toughness by a state-based action).

@@ -456,18 +456,17 @@ impl Game {
             .retain(|&(o, ..)| o != object);
         if let Object::Permanent(p) = &mut self.objects[object as usize] {
             p.plus_counters = 0;
-            p.temp_power = 0;
-            p.temp_toughness = 0;
             p.base_pt_set_eot = None;
             p.added_types_eot = TypeSet::NONE;
             p.added_subtypes_eot = &[];
-            p.temp_keywords = &[];
         }
     }
 
-    /// Recompute `plus_counters` / `temp_*` on the permanent from provenance batches — batches are
-    /// the write path; aggregates stay a derived cache for hot characteristic / cleanup scans.
-    pub(crate) fn resync_modifier_aggregates(&mut self, object: ObjectId) {
+    /// Recompute `plus_counters` on the permanent from its provenance batches — batches are the
+    /// write path; the aggregate stays a derived cache for hot characteristic / cleanup scans.
+    /// Until-EOT boosts need no such cache: [`Game::runtime_continuous_effects`] reads their
+    /// batches straight out of the registry, one CR 613 layer entry each.
+    pub(crate) fn resync_counter_aggregate(&mut self, object: ObjectId) {
         let counters: i32 = self
             .modifier_provenance
             .counter_batches
@@ -475,41 +474,10 @@ impl Game {
             .filter(|&&(o, _, _)| o == object)
             .map(|&(_, c, _)| c)
             .sum();
-        let boosts: Vec<_> = self
-            .modifier_provenance
-            .temp_boosts
-            .iter()
-            .copied()
-            .filter(|&(o, ..)| o == object)
-            .collect();
-        let temp_power: i32 = boosts.iter().map(|&(_, p, _, _, _)| p).sum();
-        let temp_toughness: i32 = boosts.iter().map(|&(_, _, t, _, _)| t).sum();
-        let temp_keywords: &'static [Keyword] = match boosts.as_slice() {
-            [] => &[],
-            [(_, _, _, keywords, _)] => keywords,
-            many => {
-                let mut union: Vec<Keyword> = Vec::new();
-                for &(_, _, _, keywords, _) in many {
-                    for &k in keywords {
-                        if !union.contains(&k) {
-                            union.push(k);
-                        }
-                    }
-                }
-                if union.is_empty() {
-                    &[]
-                } else {
-                    Box::leak(union.into_boxed_slice())
-                }
-            }
-        };
         let Object::Permanent(p) = &mut self.objects[object as usize] else {
             return;
         };
         p.plus_counters = counters;
-        p.temp_power = temp_power;
-        p.temp_toughness = temp_toughness;
-        p.temp_keywords = temp_keywords;
     }
 
     /// Apply one event's effect on game *facts* (objects, the stack, mana). A zone change
@@ -1201,7 +1169,7 @@ impl Game {
                         }
                     }
                 }
-                self.resync_modifier_aggregates(object);
+                self.resync_counter_aggregate(object);
             }
             Event::KindCountersPlaced {
                 object,
@@ -1288,7 +1256,6 @@ impl Game {
                     keywords,
                     source_name,
                 ));
-                self.resync_modifier_aggregates(object);
             }
             Event::BasePtSetUntilEndOfTurn {
                 object,
@@ -1384,7 +1351,6 @@ impl Game {
                 self.modifier_provenance
                     .temp_boosts
                     .retain(|&(o, ..)| o != object);
-                self.resync_modifier_aggregates(object);
                 let p = self.permanent_mut(object);
                 p.temp_lost_keywords = &[];
                 p.base_pt_set_eot = None;
@@ -2522,6 +2488,15 @@ impl Game {
                     StackItem::Ability { source, .. } => !removed(*source),
                 });
                 self.combat.attackers.retain(|&a| !removed(a));
+                // Counter and boost batches leave with the object they describe — an object that
+                // has left the game has no ledger entry to explain, and the cleanup sweep reads
+                // boost hosts straight off this registry.
+                self.modifier_provenance
+                    .counter_batches
+                    .retain(|&(o, ..)| !removed(o));
+                self.modifier_provenance
+                    .temp_boosts
+                    .retain(|&(o, ..)| !removed(o));
                 self.combat.attack_targets.retain(|&(a, d)| {
                     !removed(a)
                         && d != Defender::Player(player)

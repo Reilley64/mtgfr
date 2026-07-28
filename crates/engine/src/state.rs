@@ -418,8 +418,10 @@ pub(crate) struct PowerExiledThisWay {
 }
 
 /// Sourced batches for inspect-ledger provenance, lifted off `Permanent` so it stays `Copy`.
-/// Batches are the write path for counters / EOT boosts; `plus_counters` / `temp_*` on the
-/// permanent are a derived cache refreshed by [`Game::resync_modifier_aggregates`](crate::Game::resync_modifier_aggregates).
+/// Batches are the write path for counters and until-end-of-turn boosts. Boosts are read
+/// straight from here — one CR 613 layer entry per batch — while `Permanent::plus_counters`
+/// stays a derived cache refreshed by
+/// [`Game::resync_counter_aggregate`](crate::Game::resync_counter_aggregate).
 #[derive(Clone, Default)]
 pub(crate) struct ModifierProvenance {
     /// `(host, count, source_name)` — positive placements; removals shrink batches LIFO.

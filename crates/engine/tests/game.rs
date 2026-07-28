@@ -12545,6 +12545,49 @@ fn conceding_needs_no_priority() {
     assert!(game.has_lost(other));
 }
 
+/// A creature with an until-end-of-turn pump on it whose owner leaves the game (CR 800.4a) is
+/// tombstoned where it stands — but its boost is still on the books. The cleanup sweep reads
+/// boost hosts off the modifier registry, so the departing player's batches have to leave with
+/// their objects rather than aiming an end-of-turn reset at a permanent that no longer exists.
+#[test]
+fn a_pumped_creature_leaves_no_boost_behind_when_its_owner_concedes() {
+    let mut game = Game::with_players(4, 0);
+    let bear = game.spawn_on_battlefield(PlayerId(1), VANILLA.clone()); // 2/2
+    let pump = game.spawn_in_hand(PlayerId(0), PUMP_POWER_PLUS_2.clone());
+    game.begin_first_turn();
+
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: pump,
+        target: Some(Target::Object(bear)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        multikicker_count: 0,
+        alternative_cost: false,
+    })
+    .unwrap();
+    resolve_top_of_stack_multiplayer(&mut game);
+    assert_eq!(game.power(bear), 4, "pumped while its owner is still here");
+
+    game.submit(Intent::Concede {
+        player: PlayerId(1),
+    })
+    .unwrap();
+
+    // Crossing cleanup is the whole assertion: an orphaned boost row would send
+    // `TempBoostsEnded` at the tombstone.
+    advance_until(&mut game, |g| g.active_player() == PlayerId(2));
+    assert!(game.has_lost(PlayerId(1)));
+}
+
 /// Conceding twice is a no-op, not a panic or a second elimination event.
 #[test]
 fn conceding_twice_is_idempotent() {

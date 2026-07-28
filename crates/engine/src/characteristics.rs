@@ -867,24 +867,30 @@ impl Game {
                 },
             });
         }
-        if p.temp_power != 0 || p.temp_toughness != 0 {
-            effects.push(ContinuousEffect {
-                source: object,
-                timestamp: self.static_continuous_timestamp(object),
-                kind: ContinuousEffectKind::PtDelta {
-                    power: p.temp_power,
-                    toughness: p.temp_toughness,
-                },
-            });
-        }
-        if !p.temp_keywords.is_empty() {
-            effects.push(ContinuousEffect {
-                source: object,
-                timestamp: self.static_continuous_timestamp(object),
-                kind: ContinuousEffectKind::GrantKeywords {
-                    keywords: p.temp_keywords,
-                },
-            });
+        // Until-end-of-turn pumps and keyword grants, read straight off the registry each one
+        // was pushed onto — one layer entry per registered boost rather than one pre-summed
+        // aggregate. Layer 7c and the keyword layer are both additive, so N entries and one
+        // summed entry agree, and nothing has to union keyword slices into a leaked `&'static`
+        // just to fit a single field.
+        for &(host, power, toughness, keywords, _) in &self.modifier_provenance.temp_boosts {
+            if host != object {
+                continue;
+            }
+            let timestamp = self.static_continuous_timestamp(object);
+            if power != 0 || toughness != 0 {
+                effects.push(ContinuousEffect {
+                    source: object,
+                    timestamp,
+                    kind: ContinuousEffectKind::PtDelta { power, toughness },
+                });
+            }
+            if !keywords.is_empty() {
+                effects.push(ContinuousEffect {
+                    source: object,
+                    timestamp,
+                    kind: ContinuousEffectKind::GrantKeywords { keywords },
+                });
+            }
         }
         if !p.granted_keywords.is_empty() {
             effects.push(ContinuousEffect {
