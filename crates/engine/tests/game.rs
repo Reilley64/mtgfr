@@ -59002,7 +59002,11 @@ static RIONYA_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
                 other: true,
                 ..PermanentFilter::of(TypeSet::CREATURE)
             }),
-            count: Amount::OnePlusInstantsAndSorceriesCastThisTurn,
+            count: Amount::Combine {
+                left: &Amount::Fixed(1),
+                op: ArithOp::Add,
+                right: &Amount::InstantsAndSorceriesCastThisTurn,
+            },
             targets: TargetCount {
                 min: 1,
                 max: 1,
@@ -61850,6 +61854,76 @@ fn half_x_treasures_round_up() {
 #[test]
 fn twice_x_treasures() {
     assert_eq!(treasures_from(TWICE_X_TREASURES.clone(), 3), 6);
+}
+
+/// `(X × 3) − 2` — a shape no single `Amount` variant names, spelled as one combine nested inside
+/// another. Both sides of a combine are full amounts, which is the whole point: a card that
+/// prints "twice the number of Forests, minus one" needs no new variant.
+static NESTED_ARITHMETIC_TREASURES: LazyLock<CardDef> = LazyLock::new(|| {
+    amount_spell!(
+        "Nested Arithmetic Treasures (test)",
+        SpellSpeed::Sorcery,
+        X_COST,
+        Effect::Token(TokenEffect::CreateTreasure {
+            count: Amount::Combine {
+                left: &Amount::Combine {
+                    left: &Amount::X,
+                    op: ArithOp::Multiply,
+                    right: &Amount::Fixed(3),
+                },
+                op: ArithOp::Subtract,
+                right: &Amount::Fixed(2),
+            },
+            target_player: false,
+            tapped: false,
+        })
+    )
+});
+
+#[test]
+fn a_combine_nests_inside_another_combine() {
+    assert_eq!(
+        treasures_from(NESTED_ARITHMETIC_TREASURES.clone(), 4),
+        10,
+        "four times three is twelve, less two"
+    );
+}
+
+#[test]
+fn a_subtraction_that_would_go_negative_is_none_at_all() {
+    assert_eq!(
+        treasures_from(NESTED_ARITHMETIC_TREASURES.clone(), 0),
+        0,
+        "zero minus two is no tokens, not a debt (CR 107.1b)"
+    );
+}
+
+/// The same odd count divided both ways — the two rounding ops are the only thing separating
+/// Aspect of Wolf's power from its toughness, so a test that only ever divides an even number
+/// would pass with them swapped.
+fn division_treasures(name: &'static str, op: ArithOp) -> CardDef {
+    amount_spell!(
+        name,
+        SpellSpeed::Sorcery,
+        X_COST,
+        Effect::Token(TokenEffect::CreateTreasure {
+            count: Amount::Combine {
+                left: &Amount::X,
+                op,
+                right: &Amount::Fixed(2),
+            },
+            target_player: false,
+            tapped: false,
+        })
+    )
+}
+
+#[test]
+fn division_rounds_the_way_the_op_names() {
+    let down = division_treasures("Halve Down Treasures (test)", ArithOp::DivideRoundingDown);
+    let up = division_treasures("Halve Up Treasures (test)", ArithOp::DivideRoundingUp);
+    assert_eq!(treasures_from(down, 5), 2, "five halves down to two");
+    assert_eq!(treasures_from(up, 5), 3, "five halves up to three");
 }
 
 static PER_CREATURE_TREASURES: LazyLock<CardDef> = LazyLock::new(|| {
@@ -100035,7 +100109,7 @@ fn a_post_cast_clause_spell_advertises_no_cast_target() {
     );
 }
 
-// ── Sulfurous Blast: main-phase-conditional damage amount (#8, if_main_phase) ─────────
+// ── Sulfurous Blast: main-phase-conditional damage amount (#8, SpellCastDuringMainPhase) ──
 
 /// "Sulfurous Blast deals 2 damage to each creature and each player. If you cast this spell
 /// during your main phase, Sulfurous Blast deals 3 damage to each creature and each player

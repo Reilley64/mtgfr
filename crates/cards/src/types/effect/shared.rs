@@ -134,12 +134,18 @@ pub enum Amount {
     /// owner-is-you-but-controller-isn't is exactly "an opponent controls it," counted once
     /// regardless of how many opponents there are.
     PermanentsYouOwnOpponentsControl,
-    /// `then` if `condition` holds for the effect's controller, else 0 (Mortality Spear's
-    /// "costs {2} less to cast if you gained life this turn" — a conditional cost reduction).
-    /// `then` is `&'static` (leaked, like other card-data slices) to keep [`Amount`] `Copy`.
+    /// `then` if `condition` holds, else `else_` — the DSL's only branch on an amount. Mortality
+    /// Spear's "costs {2} less to cast if you gained life this turn" is `then = 2, else_ = 0`;
+    /// Rite of Replication's "If this spell was kicked, create five of those tokens instead" is
+    /// [`Condition::SpellWasKicked`] with `then = 5, else_ = 1`. Resolved through
+    /// [`Game::ability_condition_holds`] against the effect's own `source`, so a source-object
+    /// condition (kicked, cast-timing, tapped, counters) reads the right object. Both arms are
+    /// `&'static` (leaked, like other card-data slices) to keep [`Amount`] a fixed-size,
+    /// non-recursive `Copy` type.
     IfCondition {
         condition: Condition,
         then: &'static Amount,
+        else_: &'static Amount,
     },
     /// The power of the creature just paid as this ability's sacrifice cost (Dina, Soul
     /// Steeper's "+X/+0"; Dina, Essence Brewer's "gain X life and put X counters"), where X is
@@ -291,26 +297,6 @@ pub enum Amount {
     /// 603.10a last-known information) — resolving this variant directly never happens (see
     /// [`Game::resolve_amount`]'s fallback).
     AurasYouControlledAttachedToDyingCreature,
-    /// `then` if the resolving spell was kicked (CR 702.33d), else `else_` — Rite of
-    /// Replication's "If this spell was kicked, create five of those tokens instead." Reads
-    /// [`Game::spell_was_kicked`] off the effect's `source` (the resolving spell itself), the
-    /// kicked-flag sibling of [`SpellSacrificeCount`](Self::SpellSacrificeCount)'s
-    /// sacrifice-count read. Both arms are `&'static` (leaked, like `IfCondition::then`) to keep
-    /// [`Amount`] a fixed-size, non-recursive `Copy` type.
-    IfSpellKicked {
-        then: &'static Amount,
-        else_: &'static Amount,
-    },
-    /// `then` if the resolving spell was cast during its controller's main phase, else `else_` —
-    /// Sulfurous Blast's "Sulfurous Blast deals 2 damage to each creature and each player. If you
-    /// cast this spell during your main phase, Sulfurous Blast deals 3 damage ... instead." Reads
-    /// [`Game::spell_cast_during_main_phase`] off the effect's `source` (the resolving spell
-    /// itself), the cast-timing sibling of [`IfSpellKicked`](Self::IfSpellKicked)'s kicked-flag
-    /// read. Both arms are `&'static` (leaked, like `IfSpellKicked`'s) to keep [`Amount`] `Copy`.
-    IfSpellCastDuringMainPhase {
-        then: &'static Amount,
-        else_: &'static Amount,
-    },
     /// The mana value of the resolving spell's own *first* (clause 0) chosen target — Orim's
     /// Thunder's "If this spell was kicked, it deals damage equal to that permanent's mana value
     /// to target creature," where "that permanent" is the artifact or enchantment its own destroy
@@ -329,17 +315,14 @@ pub enum Amount {
     /// [`Player::greatest_instant_or_sorcery_mana_value_cast_this_turn`] is already current by
     /// the time a `Trigger::BeginCombat` ability resolves.
     GreatestInstantOrSorceryManaValueCastThisTurn,
-    /// One plus the number of instant and sorcery spells the effect's controller has cast this
-    /// turn (turn-scoped) — Rionya, Fire Dancer's "X is one plus the number of instant and
-    /// sorcery spells you've cast this turn." A live read, like
+    /// The number of instant and sorcery spells the effect's controller has cast this turn
+    /// (turn-scoped) — the tally under Rionya, Fire Dancer's "X is one plus the number of instant
+    /// and sorcery spells you've cast this turn", whose printed "one plus" is a
+    /// [`Combine`](Self::Combine) rather than a variant of its own. A live read, like
     /// [`GreatestInstantOrSorceryManaValueCastThisTurn`](Self::GreatestInstantOrSorceryManaValueCastThisTurn):
     /// [`Player::instants_and_sorceries_cast_this_turn`] is already current by the time a
     /// `Trigger::BeginCombat` ability resolves.
-    /// ponytail: bakes the printed "one plus" into the variant itself — Rionya is the pool's
-    /// only "one plus a tally" card. If a second card needs the raw tally or a different offset,
-    /// split this into a raw `InstantsAndSorceriesCastThisTurn` count plus a generic successor
-    /// combinator instead of adding another baked-offset variant.
-    OnePlusInstantsAndSorceriesCastThisTurn,
+    InstantsAndSorceriesCastThisTurn,
     /// The number of Auras (any controller) currently attached to the effect's source (CR 303.4)
     /// — Kor Spiritdancer's "gets +2/+2 for each Aura attached to it". A live read, unlike
     /// [`AurasYouControlledAttachedToDyingCreature`](Self::AurasYouControlledAttachedToDyingCreature)'s
@@ -392,30 +375,21 @@ pub enum Amount {
     /// [`Game::resolve_amount`]'s `controller` argument, which a mass effect resolving
     /// per-permanent passes as the affected permanent's controller, not the spell's controller.
     ControllersPoisonCounters,
-    /// `times` × the value of `by` (Congregate's "2 life for each creature on the battlefield" =
-    /// `Scaled { times: 2, by: PerCreatureOnBattlefield }`). `by` is `&'static` (leaked, like other
-    /// nested amounts) to keep [`Amount`] `Copy`.
-    Scaled {
-        times: i32,
-        by: &'static Amount,
-    },
-    /// Half of `of`, rounding up or down as the card says (Aspect of Wolf's "+X/+Y, where X is
-    /// half the number of Forests you control, rounded down, and Y is … rounded up"). `of` is
-    /// `&'static` (leaked) for the same reason [`Scaled`](Self::Scaled)'s `by` is. The two
-    /// X-scoped halves above stay separate: they are rewritten to `Fixed` at trigger placement
-    /// by `fill_cast_x`, which reads the variant, not the amount inside it.
-    Half {
-        of: &'static Amount,
-        round_up: bool,
-    },
-    /// `of` plus `delta`, floored at zero (Black Vise's "X is the number of cards in their hand
-    /// minus 4"). `of` is `&'static` (leaked) for the same reason [`Half`](Self::Half)'s is.
-    /// ponytail: always floors at zero — the offsets the pool prints all feed a damage or count
-    ///   slot where a negative result reads as none anyway (CR 120.8). Add a `floor` field if a
-    ///   card ever wants the negative itself.
-    Offset {
-        of: &'static Amount,
-        delta: i32,
+    /// `left` `op` `right` — the DSL's only arithmetic on amounts, so every "twice", "half",
+    /// "one plus", and "minus 4" a card prints is a composition rather than a variant of its own:
+    /// Congregate's "2 life for each creature on the battlefield" is `2 × PerCreatureOnBattlefield`,
+    /// Aspect of Wolf's "half the number of Forests you control, rounded down" is
+    /// `PerPermanentMatching ÷ 2`, Black Vise's "the number of cards in their hand minus 4" is
+    /// `CardsInYourHand − 4`, and Rionya's "one plus the number of instant and sorcery spells
+    /// you've cast this turn" is `1 + InstantsAndSorceriesCastThisTurn`. Nests freely (both sides
+    /// are full amounts). Both sides are `&'static` (leaked, like other nested amounts) to keep
+    /// [`Amount`] a fixed-size, non-recursive `Copy` type. The two X-scoped halves above stay
+    /// separate: they are rewritten to `Fixed` at trigger placement by `fill_cast_x`, which reads
+    /// the variant, not the amount inside it.
+    Combine {
+        left: &'static Amount,
+        op: ArithOp,
+        right: &'static Amount,
     },
     /// How many cards were discarded during this resolution's edict fan-out (Syphon Mind's "for
     /// each card discarded this way"; Malfegor's discarded hand size) — a resolution-local tally on
@@ -433,6 +407,29 @@ impl Default for Amount {
     fn default() -> Self {
         Amount::Fixed(0)
     }
+}
+
+/// How an [`Amount::Combine`] joins its two operands. Division names its rounding rather than
+/// carrying a flag, because a card that halves a count always prints which way it rounds (Aspect
+/// of Wolf prints both).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "card-dsl",
+    derive(serde::Deserialize),
+    serde(rename_all = "snake_case")
+)]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
+pub enum ArithOp {
+    Add,
+    /// Difference, floored at zero (Black Vise's "the number of cards in their hand minus 4" is no
+    /// damage at all below five cards).
+    /// ponytail: always floors — every subtraction the pool prints feeds a damage or count slot
+    ///   where a negative reads as none anyway (CR 120.8/CR 107.1b). Give the op a `floor` field
+    ///   if a card ever wants the negative itself.
+    Subtract,
+    Multiply,
+    DivideRoundingDown,
+    DivideRoundingUp,
 }
 
 /// Which zone a [`Amount::PerPermanentMatching`] counts over.
@@ -2120,6 +2117,16 @@ pub enum Condition {
     /// parameter, reading [`Game::spell_sacrifice_count`]. Unreachable through the ordinary
     /// [`condition_holds`](Game::condition_holds) path (returns `false` there).
     SpellSacrificedToCast,
+    /// "If this spell was kicked" (CR 702.33d — Rite of Replication's "create five of those tokens
+    /// instead", Breath of Darigaaz's kicked damage, Dismantling Blow's kicked draw). Reads
+    /// [`Game::spell_was_kicked`] off the resolving spell; source-object-based like
+    /// [`SpellSacrificedToCast`](Self::SpellSacrificedToCast) just above, and unreachable through
+    /// the ordinary [`condition_holds`](Game::condition_holds) path (returns `false` there).
+    SpellWasKicked,
+    /// "If you cast this spell during your main phase" (CR 505.1a/505.1b — Sulfurous Blast's
+    /// "deals 3 damage … instead"). Reads [`Game::spell_cast_during_main_phase`] off the resolving
+    /// spell, the cast-timing sibling of [`SpellWasKicked`](Self::SpellWasKicked) just above.
+    SpellCastDuringMainPhase,
     /// "if this ability has been activated `at_least` or more times this turn" (CR 602.2b —
     /// Dragon Whelp's "If this ability has been activated four or more times this turn,
     /// sacrifice this creature at the beginning of the next end step"). Source-object-based like

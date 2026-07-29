@@ -34,4 +34,4 @@ condition = { type = "chosen_players_upkeep" }
 [[abilities.effects]]
 type = "damage"
 mode = "to_triggering_player"
-amount = { offset = "cards_in_your_hand", delta = -4 }
+amount = { left = "cards_in_your_hand", op = "subtract", right = 4 }

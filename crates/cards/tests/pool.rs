@@ -1439,7 +1439,11 @@ fn the_pool_loads_with_expected_card_shapes() {
     assert!(matches!(
         rite.abilities[0].effect,
         Effect::Token(TokenEffect::CreateCopy {
-            count: Amount::IfSpellKicked { then, else_ },
+            count: Amount::IfCondition {
+                condition: Condition::SpellWasKicked,
+                then,
+                else_,
+            },
             target: TargetSpec::Creature,
             sacrifice_at_next_end_step: false,
             exile_at_next_end_step: false,
@@ -2355,9 +2359,10 @@ fn unlimited_black_vise_taxes_only_the_upkeep_of_the_opponent_it_chose() {
     };
     assert_eq!(
         amount,
-        Amount::Offset {
-            of: &Amount::CardsInYourHand,
-            delta: -4,
+        Amount::Combine {
+            left: &Amount::CardsInYourHand,
+            op: ArithOp::Subtract,
+            right: &Amount::Fixed(4),
         },
         "the hand it counts is the taxed player's own, four cards free"
     );
@@ -2378,13 +2383,15 @@ fn unlimited_aspect_of_wolf_rounds_its_power_down_and_its_toughness_up() {
         panic!("it pumps the creature it enchants");
     };
     let (
-        Amount::Half {
-            of: forests,
-            round_up: false,
+        Amount::Combine {
+            left: forests,
+            op: ArithOp::DivideRoundingDown,
+            right: &Amount::Fixed(2),
         },
-        Amount::Half {
-            of: same,
-            round_up: true,
+        Amount::Combine {
+            left: same,
+            op: ArithOp::DivideRoundingUp,
+            right: &Amount::Fixed(2),
         },
     ) = (power, toughness)
     else {

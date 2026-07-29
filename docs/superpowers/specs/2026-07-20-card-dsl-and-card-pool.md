@@ -164,6 +164,13 @@ Representative modes by family:
 
 `Amount` is the polymorphic numeric type used anywhere a count or numeric value appears. Variants include `Fixed(n)`, `X` (the cast's {X} value), `TargetPower`, `LifeGainedThisTurn`, `CreaturesDiedThisTurn`, `SpellsCastThisTurn`, `CommanderColorCount`, `PerPermanentMatching { filter }`, `AurasAttachedToSource`, `NontokenCreaturesEnteredThisTurn`, `TriggeringSpellManaValue`, `CombatDamage`, `SacrificedCreaturePower`, `PermanentsDestroyedThisWay`, and others. `Amount` can appear as `count` on `create_token`, `draw_cards`, `gain_life`, activated cost `pay_life`, etc.
 
+Two variants compose rather than name a count of their own, so every "twice", "half", "one plus", "minus 4", and "if … instead" a card prints is a composition instead of a variant:
+
+- **`Combine { left, op, right }`** (`{ left = 2, op = "multiply", right = "per_creature_on_battlefield" }`) — the DSL's only arithmetic. `ArithOp` is `add`, `subtract` (floored at zero — CR 120.8/CR 107.1b, so Black Vise's "cards in their hand minus 4" is no damage below five cards), `multiply`, `divide_rounding_down`, `divide_rounding_up` (division names its rounding rather than carrying a flag; Aspect of Wolf prints both).
+- **`IfCondition { condition, then, else_ }`** (`{ condition = { type = "spell_was_kicked" }, then = 5, else = 1 }`) — the DSL's only branch. Both arms default to `Fixed(0)`. Resolved through `Game::ability_condition_holds` against the effect's own source, so a source-object condition (`spell_was_kicked` — CR 702.33d, `spell_cast_during_main_phase` — CR 505.1a/b, tapped, counters) reads the right object.
+
+Both sides of each are full `Amount`s, so they nest freely: `(X × 3) − 2` is one `Combine` inside another.
+
 ### Token profiles
 
 Token profiles live in `data/tokens/*.toml` as separate files from deckable cards in `data/`. Each profile is a full `CardDef` authored with the same `[kind]` vocabulary as deckable cards (`creature`, `artifact`, `aura`, `sorcery`, …) — not a dedicated `type = "token"` kind. They carry `colors`, `subtypes`, and optional abilities (e.g. a Pest token that gains life on death). Creating cards reference them by Scryfall oracle id: `token = "uuid"`. The `install_token_defs` / `token_def` APIs load and query the registry, and token creation interns the chosen definition into a `CardId` before attaching it to a live object or event. Current tokens: 43 profiles covering Angel, Beast, Cat, Dragon, Elemental, Food, Fractal, Goat, Inkling, Insect, Myr, Pest, Saproling, Snake, Soldier, Spirit, Treasure, Thopter, Zombie, and others.

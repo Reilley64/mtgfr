@@ -33,4 +33,4 @@ target = { permanent = { types = "artifact_or_enchantment" } }
 [[abilities.effects]]
 type = "draw"
 mode = "cards"
-count = { if_kicked = 2, else = 0 }
+count = { condition = { type = "spell_was_kicked" }, then = 2 }

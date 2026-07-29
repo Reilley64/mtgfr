@@ -26,8 +26,8 @@ timing = "static"
 type = "static"
 mode = "anthem"
 self_only = true
-power = { times = 2, per = { auras_attached_to_source = {} } }
-toughness = { times = 2, per = { auras_attached_to_source = {} } }
+power = { left = 2, op = "multiply", right = { auras_attached_to_source = {} } }
+toughness = { left = 2, op = "multiply", right = { auras_attached_to_source = {} } }
 
 # Whenever you cast an Aura spell, you may draw a card.
 [[abilities]]

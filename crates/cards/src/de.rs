@@ -18,9 +18,9 @@ use serde::Deserialize;
 use serde::de::{self, Deserializer, IntoDeserializer, Visitor};
 
 use crate::{
-    Ability, ActivationCost, AdditionalCost, Amount, AmountZone, CardDef, CardFilter, CardKind,
-    Color, ColorFilter, CombatDamageScope, Condition, Cost, CounterAxis, CounterKind, EdictScope,
-    Effect, FilterController, GrantedAbility, LandProduces, Mana, ManaPool, Parity,
+    Ability, ActivationCost, AdditionalCost, Amount, AmountZone, ArithOp, CardDef, CardFilter,
+    CardKind, Color, ColorFilter, CombatDamageScope, Condition, Cost, CounterAxis, CounterKind,
+    EdictScope, Effect, FilterController, GrantedAbility, LandProduces, Mana, ManaPool, Parity,
     PermanentFilter, ProtectionScope, ReanimateBecomes, SacrificeAdditionalCost,
     SacrificeAdditionalCostCount, SacrificeCost, SpendToCastPredicate, TargetCount, Timing,
     TokenFilter, Trigger, TypeSet,
@@ -585,10 +585,10 @@ impl<'de> Deserialize<'de> for ProtectionScope {
 /// or a table for a filtered count
 /// (`{ per_permanent = <filter>, zone = "graveyard" }`), a per-kind counter count
 /// (`{ per_counter_of_kind = "charge" }`), a conditional amount
-/// (`{ condition = <Condition>, then = <Amount> }` — 0 when `condition` doesn't hold), a
-/// kicked-branch amount (`{ if_kicked = <Amount>, else = <Amount> }` — CR 702.33d), a
-/// main-phase-branch amount (`{ if_main_phase = <Amount>, else = <Amount> }`, true when the
-/// resolving spell was cast during its controller's main phase), or a
+/// (`{ condition = <Condition>, then = <Amount>, else = <Amount> }` — both arms default to 0, and
+/// `condition = { type = "spell_was_kicked" }` is CR 702.33d's kicked branch), an arithmetic
+/// amount (`{ left = <Amount>, op = "multiply", right = <Amount> }` — see [`ArithOp`]; both sides
+/// are full amounts, so these nest), a
 /// "destroyed this way" count (`{ permanents_destroyed_this_way = <filter> }`, filter optional
 /// — defaults to matching every destroyed permanent), or a count of Auras attached to the
 /// effect's source (`{ auras_attached_to_source = {} }`).
@@ -676,8 +676,8 @@ impl<'de> Deserialize<'de> for Amount {
                     "greatest_instant_or_sorcery_mana_value_cast_this_turn" => {
                         Amount::GreatestInstantOrSorceryManaValueCastThisTurn
                     }
-                    "one_plus_instants_and_sorceries_cast_this_turn" => {
-                        Amount::OnePlusInstantsAndSorceriesCastThisTurn
+                    "instants_and_sorceries_cast_this_turn" => {
+                        Amount::InstantsAndSorceriesCastThisTurn
                     }
                     "instant_or_sorcery_cards_in_your_graveyard" => {
                         Amount::InstantOrSorceryCardsInYourGraveyard
@@ -706,13 +706,8 @@ impl<'de> Deserialize<'de> for Amount {
                     condition: Option<Condition>,
                     #[serde(default)]
                     then: Option<Amount>,
-                    /// `{ if_kicked = 5, else = 1 }` — [`Amount::IfSpellKicked`] (CR 702.33d).
-                    #[serde(default)]
-                    if_kicked: Option<Amount>,
-                    /// `{ if_main_phase = 3, else = 2 }` — [`Amount::IfSpellCastDuringMainPhase`]
-                    /// (Sulfurous Blast's "cast during your main phase" bonus).
-                    #[serde(default)]
-                    if_main_phase: Option<Amount>,
+                    /// `else` defaults to 0 — a conditional cost reduction that doesn't apply
+                    /// reduces nothing (Mortality Spear).
                     #[serde(default, rename = "else")]
                     otherwise: Option<Amount>,
                     /// `{ permanents_destroyed_this_way = <filter> }` — [`Amount::PermanentsDestroyedThisWay`].
@@ -725,139 +720,59 @@ impl<'de> Deserialize<'de> for Amount {
                     /// `permanents_destroyed_this_way` table-vs-nullary-keyword split.
                     #[serde(default)]
                     auras_attached_to_source: Option<de::IgnoredAny>,
-                    /// `{ times = 2, per = "per_creature_on_battlefield" }` — [`Amount::Scaled`]
-                    /// (Congregate's "2 life for each creature on the battlefield").
+                    /// `{ left = 2, op = "multiply", right = "per_creature_on_battlefield" }` —
+                    /// [`Amount::Combine`] (Congregate's "2 life for each creature on the
+                    /// battlefield"). All three keys go together; both sides are full amounts, so
+                    /// combines nest.
                     #[serde(default)]
-                    times: Option<i32>,
+                    left: Option<Amount>,
                     #[serde(default)]
-                    per: Option<Amount>,
-                    /// `{ half = "per_creature_you_control", round_up = true }` —
-                    /// [`Amount::Half`]. `round_up` defaults to false: a card that halves a count
-                    /// says which way it rounds, and Aspect of Wolf prints both.
+                    op: Option<ArithOp>,
                     #[serde(default)]
-                    half: Option<Amount>,
-                    #[serde(default)]
-                    round_up: bool,
-                    /// `{ offset = "cards_in_your_hand", delta = -4 }` — [`Amount::Offset`]
-                    /// (Black Vise's "the number of cards in their hand minus 4").
-                    #[serde(default)]
-                    offset: Option<Amount>,
-                    #[serde(default)]
-                    delta: i32,
+                    right: Option<Amount>,
                 }
                 let t = Table::deserialize(de::value::MapAccessDeserializer::new(map))?;
-                // `half` wraps another amount rather than naming a count of its own, so it is
-                // answered here instead of joining the exactly-one-of table below.
-                if let Some(of) = t.half {
-                    return Ok(Amount::Half {
-                        of: &*Box::leak(Box::new(of)),
-                        round_up: t.round_up,
-                    });
-                }
-                // `offset` wraps another amount too, so it is answered alongside `half`.
-                if let Some(of) = t.offset {
-                    return Ok(Amount::Offset {
-                        of: &*Box::leak(Box::new(of)),
-                        delta: t.delta,
+                // `left`/`op`/`right` wrap other amounts rather than naming a count of their own,
+                // so they are answered here instead of joining the exactly-one-of table below.
+                if t.left.is_some() || t.op.is_some() || t.right.is_some() {
+                    let (Some(left), Some(op), Some(right)) = (t.left, t.op, t.right) else {
+                        return Err(de::Error::custom(
+                            "an arithmetic amount needs all three of `left`, `op`, and `right`",
+                        ));
+                    };
+                    return Ok(Amount::Combine {
+                        left: &*Box::leak(Box::new(left)),
+                        op,
+                        right: &*Box::leak(Box::new(right)),
                     });
                 }
                 match (
                     t.per_permanent,
                     t.per_counter_of_kind,
                     t.condition,
-                    t.then,
-                    t.if_kicked,
-                    t.if_main_phase,
-                    t.otherwise,
                     t.permanents_destroyed_this_way,
                     t.auras_attached_to_source,
-                    t.times,
-                    t.per,
                 ) {
-                    (Some(filter), None, None, None, None, None, None, None, None, None, None) => {
-                        Ok(Amount::PerPermanentMatching {
-                            filter,
-                            zone: t.zone,
-                        })
-                    }
-                    (None, Some(kind), None, None, None, None, None, None, None, None, None) => {
+                    (Some(filter), None, None, None, None) => Ok(Amount::PerPermanentMatching {
+                        filter,
+                        zone: t.zone,
+                    }),
+                    (None, Some(kind), None, None, None) => {
                         Ok(Amount::PerCounterOfKindOnSource { kind })
                     }
-                    (
-                        None,
-                        None,
-                        Some(condition),
-                        Some(then),
-                        None,
-                        None,
-                        None,
-                        None,
-                        None,
-                        None,
-                        None,
-                    ) => Ok(Amount::IfCondition {
+                    (None, None, Some(condition), None, None) => Ok(Amount::IfCondition {
                         condition,
-                        then: &*Box::leak(Box::new(then)),
+                        then: &*Box::leak(Box::new(t.then.unwrap_or(Amount::Fixed(0)))),
+                        else_: &*Box::leak(Box::new(t.otherwise.unwrap_or(Amount::Fixed(0)))),
                     }),
-                    (
-                        None,
-                        None,
-                        None,
-                        None,
-                        Some(if_kicked),
-                        None,
-                        Some(otherwise),
-                        None,
-                        None,
-                        None,
-                        None,
-                    ) => Ok(Amount::IfSpellKicked {
-                        then: &*Box::leak(Box::new(if_kicked)),
-                        else_: &*Box::leak(Box::new(otherwise)),
-                    }),
-                    (
-                        None,
-                        None,
-                        None,
-                        None,
-                        None,
-                        Some(if_main_phase),
-                        Some(otherwise),
-                        None,
-                        None,
-                        None,
-                        None,
-                    ) => Ok(Amount::IfSpellCastDuringMainPhase {
-                        then: &*Box::leak(Box::new(if_main_phase)),
-                        else_: &*Box::leak(Box::new(otherwise)),
-                    }),
-                    (None, None, None, None, None, None, None, Some(filter), None, None, None) => {
+                    (None, None, None, Some(filter), None) => {
                         Ok(Amount::PermanentsDestroyedThisWay { filter })
                     }
-                    (None, None, None, None, None, None, None, None, Some(_), None, None) => {
-                        Ok(Amount::AurasAttachedToSource)
-                    }
-                    (
-                        None,
-                        None,
-                        None,
-                        None,
-                        None,
-                        None,
-                        None,
-                        None,
-                        None,
-                        Some(times),
-                        Some(per),
-                    ) => Ok(Amount::Scaled {
-                        times,
-                        by: &*Box::leak(Box::new(per)),
-                    }),
+                    (None, None, None, None, Some(_)) => Ok(Amount::AurasAttachedToSource),
                     _ => Err(de::Error::custom(
                         "an amount table needs exactly one of `per_permanent`, `per_counter_of_kind`, \
-                         `condition`+`then`, `if_kicked`+`else`, `if_main_phase`+`else`, \
-                         `permanents_destroyed_this_way`, \
-                         `auras_attached_to_source`, `times`+`per`, or `half`",
+                         `condition` (with `then`/`else`), `permanents_destroyed_this_way`, \
+                         `auras_attached_to_source`, or `left`+`op`+`right`",
                     )),
                 }
             }
@@ -1096,7 +1011,7 @@ pub const AMOUNT_KEYWORDS: &[&str] = &[
     "returned_nonland_card_mana_value",
     "auras_you_controlled_attached_to_dying_creature",
     "greatest_instant_or_sorcery_mana_value_cast_this_turn",
-    "one_plus_instants_and_sorceries_cast_this_turn",
+    "instants_and_sorceries_cast_this_turn",
     "instant_or_sorcery_cards_in_your_graveyard",
     "combat_damage_dealt",
     "triggering_damage_dealt",

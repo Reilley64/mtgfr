@@ -23,10 +23,10 @@ timing = "spell"
 [[abilities.effects]]
 type = "damage"
 mode = "each_creature"
-amount = { if_main_phase = 3, else = 2 }
+amount = { condition = { type = "spell_cast_during_main_phase" }, then = 3, else = 2 }
 
 # ... and each player.
 [[abilities.effects]]
 type = "damage"
 mode = "each_player"
-amount = { if_main_phase = 3, else = 2 }
+amount = { condition = { type = "spell_cast_during_main_phase" }, then = 3, else = 2 }

@@ -1196,10 +1196,7 @@ fn amount_token(amount: Amount) -> &'static str {
         Amount::SpellFirstTargetManaValue => "spell_first_target_mana_value",
         Amount::CardsDiscardedThisWay => "cards_discarded_this_way",
         Amount::CreaturesSacrificedThisWay => "creatures_sacrificed_this_way",
-        Amount::Scaled { .. } => "scaled",
-        Amount::Half { .. } => "half",
-        Amount::Offset { .. } => "offset",
-        Amount::IfSpellCastDuringMainPhase { .. } => "if_spell_cast_during_main_phase",
+        Amount::Combine { .. } => "combine",
         Amount::RevealedCreatureManaValue => "revealed_creature_mana_value",
         Amount::PermanentsDiedThisTurn => "permanents_died_this_turn",
         Amount::PermanentsDestroyedThisWay { .. } => "permanents_destroyed_this_way",
@@ -1214,13 +1211,10 @@ fn amount_token(amount: Amount) -> &'static str {
         Amount::AurasYouControlledAttachedToDyingCreature => {
             "auras_you_controlled_attached_to_dying_creature"
         }
-        Amount::IfSpellKicked { .. } => "if_spell_kicked",
         Amount::GreatestInstantOrSorceryManaValueCastThisTurn => {
             "greatest_instant_or_sorcery_mana_value_cast_this_turn"
         }
-        Amount::OnePlusInstantsAndSorceriesCastThisTurn => {
-            "one_plus_instants_and_sorceries_cast_this_turn"
-        }
+        Amount::InstantsAndSorceriesCastThisTurn => "instants_and_sorceries_cast_this_turn",
         Amount::AurasAttachedToSource => "auras_attached_to_source",
         Amount::InstantOrSorceryCardsInYourGraveyard => {
             "instant_or_sorcery_cards_in_your_graveyard"

@@ -21,4 +21,4 @@ timing = "spell"
 [[abilities.effects]]
 type = "life"
 mode = "target_player_gains"
-amount = { times = 2, per = "per_creature_on_battlefield" }
+amount = { left = 2, op = "multiply", right = "per_creature_on_battlefield" }

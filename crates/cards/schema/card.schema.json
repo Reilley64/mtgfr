@@ -592,7 +592,7 @@
             "returned_nonland_card_mana_value",
             "auras_you_controlled_attached_to_dying_creature",
             "greatest_instant_or_sorcery_mana_value_cast_this_turn",
-            "one_plus_instants_and_sorceries_cast_this_turn",
+            "instants_and_sorceries_cast_this_turn",
             "instant_or_sorcery_cards_in_your_graveyard",
             "combat_damage_dealt",
             "triggering_damage_dealt",
@@ -632,13 +632,6 @@
             }
           ]
         },
-        "delta": {
-          "format": "int32",
-          "type": [
-            "integer",
-            "null"
-          ]
-        },
         "else": {
           "anyOf": [
             {
@@ -649,7 +642,7 @@
             }
           ]
         },
-        "half": {
+        "left": {
           "anyOf": [
             {
               "$ref": "#/$defs/Amount"
@@ -659,40 +652,10 @@
             }
           ]
         },
-        "if_kicked": {
+        "op": {
           "anyOf": [
             {
-              "$ref": "#/$defs/Amount"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "if_main_phase": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Amount"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "offset": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Amount"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "per": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Amount"
+              "$ref": "#/$defs/ArithOp"
             },
             {
               "type": "null"
@@ -729,10 +692,14 @@
             }
           ]
         },
-        "round_up": {
-          "type": [
-            "boolean",
-            "null"
+        "right": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Amount"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "then": {
@@ -743,13 +710,6 @@
             {
               "type": "null"
             }
-          ]
-        },
-        "times": {
-          "format": "int32",
-          "type": [
-            "integer",
-            "null"
           ]
         },
         "zone": {
@@ -771,6 +731,27 @@
         "graveyard"
       ],
       "type": "string"
+    },
+    "ArithOp": {
+      "description": "How an [`Amount::Combine`] joins its two operands. Division names its rounding rather than carrying a flag, because a card that halves a count always prints which way it rounds (Aspect of Wolf prints both).",
+      "oneOf": [
+        {
+          "enum": [
+            "add",
+            "multiply",
+            "divide_rounding_down",
+            "divide_rounding_up"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Difference, floored at zero (Black Vise's \"the number of cards in their hand minus 4\" is no damage at all below five cards). ponytail: always floors — every subtraction the pool prints feeds a damage or count slot where a negative reads as none anyway (CR 120.8/CR 107.1b). Give the op a `floor` field if a card ever wants the negative itself.",
+          "enum": [
+            "subtract"
+          ],
+          "type": "string"
+        }
+      ]
     },
     "AttackRider": {
       "description": "Whether a scheduled destruction asks about the creature's attack this turn (CR 508.1) — the two halves of one question, so one value rather than a pair of bools that must never both be set. Read only when the delayed ability actually fires, never when it is scheduled.",
@@ -2864,6 +2845,36 @@
             "type": {
               "enum": [
                 "spell_sacrificed_to_cast"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "\"If this spell was kicked\" (CR 702.33d — Rite of Replication's \"create five of those tokens instead\", Breath of Darigaaz's kicked damage, Dismantling Blow's kicked draw). Reads [`Game::spell_was_kicked`] off the resolving spell; source-object-based like [`SpellSacrificedToCast`](Self::SpellSacrificedToCast) just above, and unreachable through the ordinary [`condition_holds`](Game::condition_holds) path (returns `false` there).",
+          "properties": {
+            "type": {
+              "enum": [
+                "spell_was_kicked"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "\"If you cast this spell during your main phase\" (CR 505.1a/505.1b — Sulfurous Blast's \"deals 3 damage … instead\"). Reads [`Game::spell_cast_during_main_phase`] off the resolving spell, the cast-timing sibling of [`SpellWasKicked`](Self::SpellWasKicked) just above.",
+          "properties": {
+            "type": {
+              "enum": [
+                "spell_cast_during_main_phase"
               ],
               "type": "string"
             }

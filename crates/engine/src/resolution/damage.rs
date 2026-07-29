@@ -479,37 +479,29 @@ impl Game {
                 filter,
                 include_planeswalkers,
             } => {
-                // `Amount::IfSpellKicked` (CR 702.33d) reads the resolving *spell's* own kicked
-                // flag, not any one creature's — pick the kicked/unkicked branch once here
-                // against the ability's true `source`, before the per-creature substitution
-                // below stands a creature in for `source` (needed for `Amount::SourcePower`,
-                // Wave of Reckoning's "equal to its power") and `spell_was_kicked` on a creature
-                // id would silently read false (Breath of Darigaaz, kicked, would otherwise
-                // always resolve its "else" branch). Every other `Amount` variant is unaffected.
+                // An `Amount::IfCondition` here reads the resolving *spell's* own record — its
+                // kicked flag (CR 702.33d, Breath of Darigaaz) or its cast timing (Sulfurous
+                // Blast) — not any one creature's, so the branch is picked once here against the
+                // ability's true `source`, before the per-creature substitution below stands a
+                // creature in for `source` (needed for `Amount::SourcePower`, Wave of Reckoning's
+                // "equal to its power") and the condition would silently read false. The chosen
+                // arm still resolves per creature, so `Fixed` and `SourcePower` inside it behave
+                // as they would anywhere else.
                 let amount = match amount {
-                    Amount::IfSpellKicked { then, else_ } => {
-                        if self.spell_was_kicked(source) {
-                            *then
-                        } else {
-                            *else_
-                        }
-                    }
-                    // Sulfurous Blast's "If you cast this spell during your main phase... instead"
-                    // reads the resolving *spell's* own cast-timing flag, not any one creature's —
-                    // same "pick it once against the true source" reasoning as `IfSpellKicked`
-                    // above.
-                    Amount::IfSpellCastDuringMainPhase { then, else_ } => {
-                        if self.spell_cast_during_main_phase(source) {
-                            *then
-                        } else {
-                            *else_
+                    Amount::IfCondition {
+                        condition,
+                        then,
+                        else_,
+                    } => {
+                        let ctx = TriggerContext::of(self.controller_of(source));
+                        match self.ability_condition_holds(condition, source, ctx) {
+                            true => *then,
+                            false => *else_,
                         }
                     }
                     // Disaster Radius's "X is the revealed card's mana value" (CR 601.2g) reads
                     // the resolving *spell's* own reveal-cost record, not any one creature's —
-                    // same "pick it once against the true source" reasoning as `IfSpellKicked`
-                    // above, before the per-creature substitution below stands a creature in for
-                    // `source`.
+                    // same "pick it once against the true source" reasoning as the branch above.
                     Amount::RevealedCreatureManaValue => {
                         Amount::Fixed(self.revealed_creature_mana_value(source) as i32)
                     }

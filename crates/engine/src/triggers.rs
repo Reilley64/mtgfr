@@ -4153,6 +4153,12 @@ impl Game {
             // or more creatures were sacrificed to the additional cost — source-object-based like
             // the conditions above, reading the resolving spell's own recorded count (CR 601.2f).
             Condition::SpellSacrificedToCast => self.spell_sacrifice_count(source) > 0,
+            // Rite of Replication's "If this spell was kicked" (CR 702.33d) and Sulfurous Blast's
+            // "If you cast this spell during your main phase" — both read the resolving spell's
+            // own cast record off `source`, like the conditions above. Their one caller today is
+            // an `Amount::IfCondition` inside the spell's own effect.
+            Condition::SpellWasKicked => self.spell_was_kicked(source),
+            Condition::SpellCastDuringMainPhase => self.spell_cast_during_main_phase(source),
             _ => self.condition_holds(condition, ctx),
         }
     }
@@ -4401,6 +4407,12 @@ impl Game {
             // the Forbidden's reflexive "When you do" copy gate, CR 603.4), which intercepts it
             // directly against its own `source` parameter before falling through here.
             Condition::SpellSacrificedToCast => false,
+            // ponytail: source-object-based like `SpellSacrificedToCast` above — `TriggerContext`
+            // carries no source id either. Reachable only through `Game::ability_condition_holds`
+            // (an `Amount::IfCondition` inside the spell's own effect — Rite of Replication,
+            // Sulfurous Blast), which intercepts both directly against its own `source` parameter
+            // before falling through here.
+            Condition::SpellWasKicked | Condition::SpellCastDuringMainPhase => false,
             // ponytail: source-object-based like `SourceEnteredWithXAtLeast` above —
             // `TriggerContext` carries no source id either. Reachable only through the
             // `Effect::Conditional` resolve site (`Game::run`), which intercepts it directly
