@@ -304,9 +304,10 @@ pub struct ObjectView {
     #[serde(default)]
     pub goaded: bool,
     /// Whether tapping this permanent produces mana — a `produces` land, or anything with a
-    /// free-tap mana ability (Sol Ring, Arcane Signet, a mana dork). Mana abilities never reach
-    /// the action list (`meaningful_actions` skips them), so this is what tells the board where to
-    /// offer the tap-for-mana click instead of guessing at an ability index.
+    /// free-tap mana ability (Sol Ring, Arcane Signet, a mana dork). Free-tap mana abilities have
+    /// no `ActionView` of their own, so this is what tells the board where to offer the
+    /// tap-for-mana click instead of guessing at an ability index. A *paid* mana ability does get
+    /// an `ActionView`, flagged `mana_only`.
     #[serde(default)]
     pub taps_for_mana: bool,
     /// Whether this permanent is prepared (soc/sos prepare DFCs). False for non-permanents and
@@ -487,6 +488,13 @@ pub struct ActionView {
     /// than re-deriving whose declaration it is. Empty for every other action kind.
     #[serde(default)]
     pub declare_for: Vec<u8>,
+    /// Whether this action only produces mana — a paid tap-for-mana mode (Viridescent Bog's
+    /// `{1}, {T}: Add {B}{G}`, filter lands, karoos, signets). Those are listed so the activation
+    /// menu can render their row and cost chip, but they are not halt-worthy and must not paint
+    /// the playable border. False for every other action, including free tap-for-mana sources,
+    /// which have no `ActionView` at all.
+    #[serde(default)]
+    pub mana_only: bool,
 }
 
 /// A modal spell's printed modes and how many of them the caster picks (CR 700.2).
