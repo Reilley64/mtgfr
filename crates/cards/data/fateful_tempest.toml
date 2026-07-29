@@ -38,7 +38,8 @@ count = "past_votes"
 # this way.
 [[abilities.effects]]
 type = "damage"
-mode = "each_opponent"
+mode = "to_players"
+who = "each_opponent"
 amount = "total_mana_value_milled_this_way"
 
 # Exile the top card of your library for each present vote. Until the end of your next turn, you

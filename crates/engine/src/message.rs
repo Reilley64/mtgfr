@@ -162,17 +162,10 @@ message_keys! {
     EFFECT_CHOICE_TARGET_PLAYER_EXILES_FROM_GRAVEYARD => "effect.choice_target_player_exiles_from_graveyard",
     EFFECT_CHOICE_TARGET_PLAYER_MAY_DRAW => "effect.choice_target_player_may_draw",
     EFFECT_DAMAGE_EACH_CREATURE => "effect.damage_each_creature",
-    EFFECT_DAMAGE_EACH_OPPONENT => "effect.damage_each_opponent",
-    EFFECT_DAMAGE_EACH_OTHER_OPPONENT => "effect.damage_each_other_opponent",
-    EFFECT_DAMAGE_EACH_PLAYER => "effect.damage_each_player",
     EFFECT_DAMAGE_RADIANCE => "effect.damage_radiance",
     EFFECT_DAMAGE_TARGET => "effect.damage_target",
-    EFFECT_DAMAGE_TO_DYING_ENCHANTED_CREATURES_CONTROLLER => "effect.damage_to_dying_enchanted_creatures_controller",
     EFFECT_DAMAGE_TO_ENTERING_PERMANENT => "effect.damage_to_entering_permanent",
-    EFFECT_DAMAGE_TO_ENTERING_PERMANENT_CONTROLLER => "effect.damage_to_entering_permanent_controller",
-    EFFECT_DAMAGE_TO_SELF => "effect.damage_to_self",
-    EFFECT_DAMAGE_TO_TARGET_CONTROLLER => "effect.damage_to_target_controller",
-    EFFECT_DAMAGE_TO_TRIGGERING_PLAYER => "effect.damage_to_triggering_player",
+    EFFECT_DAMAGE_TO_PLAYERS => "effect.damage_to_players",
     EFFECT_DESTROY_ALL => "effect.destroy_all",
     EFFECT_DESTROY_TARGET => "effect.destroy_target",
     EFFECT_DESTROY_TRIGGERING_DAMAGED_CREATURE => "effect.destroy_triggering_damaged_creature",
@@ -493,7 +486,12 @@ fn who_param(who: PlayerSet) -> MessageParam {
             PlayerSet::EachOpponent => "each_opponent",
             PlayerSet::EachPlayer => "each_player",
             PlayerSet::AttackingPlayer { .. } => "attacking_player",
-            PlayerSet::ActivePlayer { .. } => "active_player",
+            PlayerSet::TriggeringPlayer { .. } => "triggering_player",
+            PlayerSet::EachOtherOpponent { .. } => "each_other_opponent",
+            PlayerSet::EnteringPermanentsController { .. } => "entering_permanents_controller",
+            PlayerSet::DyingEnchantedCreaturesController { .. } => {
+                "dying_enchanted_creatures_controller"
+            }
             PlayerSet::AnOpponent => "an_opponent",
         },
     )
@@ -1265,12 +1263,6 @@ impl EffectMessage for Effect {
         match self {
             Effect::Damage(DamageEffect::Target { amount, .. }) => MessageRef::new(MessageKey::EFFECT_DAMAGE_TARGET)
                 .with_params(vec![amount_param("amount", amount)]),
-            Effect::Damage(ToSelf { amount }) => MessageRef::new(MessageKey::EFFECT_DAMAGE_TO_SELF)
-                .with_params(vec![amount_param("amount", amount)]),
-            Effect::Damage(ToTargetController { amount }) => {
-                MessageRef::new(MessageKey::EFFECT_DAMAGE_TO_TARGET_CONTROLLER)
-                    .with_params(vec![amount_param("amount", amount)])
-            }
             Effect::Damage(EachCreature {
                 amount,
                 opponents_only,
@@ -1284,33 +1276,13 @@ impl EffectMessage for Effect {
             ]),
             Effect::Damage(Radiance { amount, .. }) => MessageRef::new(MessageKey::EFFECT_DAMAGE_RADIANCE)
                 .with_params(vec![amount_param("amount", amount)]),
-            Effect::Damage(DamageEffect::EachPlayer { amount }) => {
-                MessageRef::new(MessageKey::EFFECT_DAMAGE_EACH_PLAYER)
-                    .with_params(vec![amount_param("amount", amount)])
-            }
-            Effect::Damage(EachOpponent { amount }) => {
-                MessageRef::new(MessageKey::EFFECT_DAMAGE_EACH_OPPONENT)
-                    .with_params(vec![amount_param("amount", amount)])
-            }
-            Effect::Damage(EachOtherOpponent { amount, .. }) => {
-                MessageRef::new(MessageKey::EFFECT_DAMAGE_EACH_OTHER_OPPONENT)
-                    .with_params(vec![amount_param("amount", amount)])
-            }
             Effect::Damage(ToEnteringPermanent { amount, .. }) => {
                 MessageRef::new(MessageKey::EFFECT_DAMAGE_TO_ENTERING_PERMANENT)
                     .with_params(vec![int_param("amount", amount)])
             }
-            Effect::Damage(ToEnteringPermanentController { amount, .. }) => {
-                MessageRef::new(MessageKey::EFFECT_DAMAGE_TO_ENTERING_PERMANENT_CONTROLLER)
-                    .with_params(vec![amount_param("amount", amount)])
-            }
-            Effect::Damage(ToTriggeringPlayer { amount, .. }) => {
-                MessageRef::new(MessageKey::EFFECT_DAMAGE_TO_TRIGGERING_PLAYER)
-                    .with_params(vec![amount_param("amount", amount)])
-            }
-            Effect::Damage(ToDyingEnchantedCreaturesController { amount, .. }) => {
-                MessageRef::new(MessageKey::EFFECT_DAMAGE_TO_DYING_ENCHANTED_CREATURES_CONTROLLER)
-                    .with_params(vec![amount_param("amount", amount)])
+            Effect::Damage(ToPlayers { who, amount }) => {
+                MessageRef::new(MessageKey::EFFECT_DAMAGE_TO_PLAYERS)
+                    .with_params(vec![who_param(who), amount_param("amount", amount)])
             }
             Effect::Draw(Cards { who, count }) => MessageRef::new(MessageKey::EFFECT_DRAW_CARDS)
                 .with_params(vec![who_param(who), amount_param("count", count)]),

@@ -22,6 +22,26 @@ describe("formatMessage", () => {
     ).toBe("Target's owner draws 2");
   });
 
+  it("names the recipient of damage from its player set", () => {
+    expect(
+      formatMessage({
+        key: "effect.damage_to_players",
+        params: [{ name: "amount", int_value: 2 }],
+        children: [],
+      }),
+    ).toBe("Deal 2 damage to you");
+    expect(
+      formatMessage({
+        key: "effect.damage_to_players",
+        params: [
+          { name: "who", string_value: "each_other_opponent" },
+          { name: "amount", int_value: 2 },
+        ],
+        children: [],
+      }),
+    ).toBe("Deal 2 damage to each other opponent");
+  });
+
   it("joins sequence children with then", () => {
     expect(
       formatMessage({

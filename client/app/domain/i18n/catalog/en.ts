@@ -37,20 +37,31 @@ function edictWho(scope: MessageValue): string {
   return "Each player";
 }
 
-/** A player set's subject phrase, with a regular verb conjugated to match — "You gain", "Each opponent draws". */
-function playerClause(params: MessageParams, verb: "gain" | "lose" | "draw" | "mill"): string {
+/** A player set as an object phrase — "you", "each opponent", "that permanent's controller". */
+function playerPhrase(params: MessageParams): string {
   const who = param(params, "who");
-  if (who === "target_player") return `Target player ${verb}s`;
-  if (who === "target_opponent") return `Target opponent ${verb}s`;
-  if (who === "targets_controller") return `Target's controller ${verb}s`;
-  if (who === "targets_owner") return `Target's owner ${verb}s`;
-  if (who === "each_opponent") return `Each opponent ${verb}s`;
-  if (who === "each_player") return `Each player ${verb}s`;
-  if (who === "attacking_player") return `The attacking player ${verb}s`;
-  if (who === "active_player") return `That player ${verb}s`;
-  if (who === "an_opponent") return `An opponent ${verb}s`;
+  if (who === "target_player") return "target player";
+  if (who === "target_opponent") return "target opponent";
+  if (who === "targets_controller") return "target's controller";
+  if (who === "targets_owner") return "target's owner";
+  if (who === "each_opponent") return "each opponent";
+  if (who === "each_player") return "each player";
+  if (who === "each_other_opponent") return "each other opponent";
+  if (who === "attacking_player") return "the attacking player";
+  if (who === "triggering_player") return "that player";
+  if (who === "entering_permanents_controller") return "that permanent's controller";
+  if (who === "dying_enchanted_creatures_controller") return "that creature's controller";
+  if (who === "an_opponent") return "an opponent";
   // `PlayerSet::You` is the unwritten default, so an absent `who` reads as the controller.
-  return `You ${verb}`;
+  return "you";
+}
+
+/** The same set as a sentence subject, with a regular verb conjugated to match — "You gain", "Each opponent draws". */
+function playerClause(params: MessageParams, verb: "gain" | "lose" | "draw" | "mill"): string {
+  const phrase = playerPhrase(params);
+  const subject = `${phrase[0].toUpperCase()}${phrase.slice(1)}`;
+  // "You" is the only set that takes a bare verb; every other phrase is third-person singular.
+  return phrase === "you" ? `${subject} ${verb}` : `${subject} ${verb}s`;
 }
 
 function definingPtLead(when: MessageValue): string {
@@ -344,22 +355,12 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
       : `Remove a ${humanize(param(params, "kind"))} counter from it`,
   "effect.damage_each_creature": (params) =>
     `Deal ${param(params, "amount")} damage to ${damageEachCreatureSubject(params)}`,
-  "effect.damage_each_opponent": (params) => `Deal ${param(params, "amount")} damage to each opponent`,
-  "effect.damage_each_other_opponent": (params) => `Deal ${param(params, "amount")} damage to each other opponent`,
-  "effect.damage_each_player": (params) => `Deal ${param(params, "amount")} damage to each player`,
   "effect.damage_radiance": (params) =>
     `Deal ${param(params, "amount")} damage to target creature and each other creature that shares a color with it`,
   "effect.damage_target": (params) => `Deal ${param(params, "amount")} damage`,
-  "effect.damage_to_dying_enchanted_creatures_controller": (params) =>
-    `Deals ${param(params, "amount")} damage to that creature's controller`,
   "effect.damage_to_entering_permanent": (params) =>
     `Deal ${param(params, "amount")} damage to the permanent that entered`,
-  "effect.damage_to_entering_permanent_controller": (params) =>
-    `Deals ${param(params, "amount")} damage to that permanent's controller`,
-  "effect.damage_to_self": (params) => `Deals ${param(params, "amount")} damage to you`,
-  "effect.damage_to_target_controller": (params) =>
-    `Deals ${param(params, "amount")} damage to that creature's controller`,
-  "effect.damage_to_triggering_player": (params) => `Deals ${param(params, "amount")} damage to that player`,
+  "effect.damage_to_players": (params) => `Deal ${param(params, "amount")} damage to ${playerPhrase(params)}`,
   "effect.destroy_all": (params) => `Destroy all ${humanize(param(params, "filter", "permanents"))}`,
   "effect.destroy_target": literal("Destroy target"),
   "effect.destroy_triggering_damaged_creature": literal("Destroy that creature"),

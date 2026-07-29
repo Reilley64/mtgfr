@@ -51,10 +51,34 @@ pub enum PlayerSet {
         #[cfg_attr(feature = "card-dsl", serde(skip))]
         player: Option<PlayerId>,
     },
-    /// The player whose turn or step it is, baked in when the trigger is placed — Howling Mine's
-    /// "at the beginning of each player's draw step, **that player** draws an additional card".
-    /// [`PlayerSet::EachPlayer`] would bill the whole table on every seat's step instead of once.
-    ActivePlayer {
+    /// The one player the trigger is about, baked in when it is placed (CR 603.10a) — Howling
+    /// Mine's "at the beginning of each player's draw step, **that player** draws an additional
+    /// card", Copper Tablet's "each player's upkeep … 1 damage to **that player**", Dingus Egg's
+    /// "**that land's** controller". [`PlayerSet::EachPlayer`] would bill the whole table on every
+    /// seat's step instead of once.
+    TriggeringPlayer {
+        #[cfg_attr(feature = "card-dsl", serde(skip))]
+        player: Option<PlayerId>,
+    },
+    /// Every opponent *except* the one the trigger is about — Hydra Omnivore's "whenever this
+    /// creature deals combat damage to a player, it deals that much damage to **each other
+    /// opponent**", where the damaged seat rides in from the trigger's snapshot.
+    EachOtherOpponent {
+        #[cfg_attr(feature = "card-dsl", serde(skip))]
+        damaged: Option<PlayerId>,
+    },
+    /// The controller of the permanent that just entered (Ankh of Mishra's "deals 2 damage to
+    /// **that land's** controller") — the permanent itself rides in from the `PermanentEnters`
+    /// trigger and the controller is read live, since it is still on the battlefield.
+    EnteringPermanentsController {
+        #[cfg_attr(feature = "card-dsl", serde(skip))]
+        permanent: Option<ObjectId>,
+    },
+    /// The controller of the enchanted creature that just died (Creature Bond's "deals damage
+    /// equal to that creature's toughness to **the creature's controller**") — snapshotted at
+    /// trigger placement, because by resolution the host is a graveyard card whose `controller_of`
+    /// answers its owner (CR 603.10a).
+    DyingEnchantedCreaturesController {
         #[cfg_attr(feature = "card-dsl", serde(skip))]
         player: Option<PlayerId>,
     },
@@ -84,7 +108,10 @@ enum PlayerSetName {
     EachOpponent,
     EachPlayer,
     AttackingPlayer,
-    ActivePlayer,
+    TriggeringPlayer,
+    EachOtherOpponent,
+    EnteringPermanentsController,
+    DyingEnchantedCreaturesController,
     AnOpponent,
 }
 
@@ -100,7 +127,14 @@ impl From<PlayerSetName> for PlayerSet {
             PlayerSetName::EachOpponent => PlayerSet::EachOpponent,
             PlayerSetName::EachPlayer => PlayerSet::EachPlayer,
             PlayerSetName::AttackingPlayer => PlayerSet::AttackingPlayer { player: None },
-            PlayerSetName::ActivePlayer => PlayerSet::ActivePlayer { player: None },
+            PlayerSetName::TriggeringPlayer => PlayerSet::TriggeringPlayer { player: None },
+            PlayerSetName::EachOtherOpponent => PlayerSet::EachOtherOpponent { damaged: None },
+            PlayerSetName::EnteringPermanentsController => {
+                PlayerSet::EnteringPermanentsController { permanent: None }
+            }
+            PlayerSetName::DyingEnchantedCreaturesController => {
+                PlayerSet::DyingEnchantedCreaturesController { player: None }
+            }
             PlayerSetName::AnOpponent => PlayerSet::AnOpponent,
         }
     }

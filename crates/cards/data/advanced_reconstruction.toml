@@ -59,7 +59,8 @@ min_level = 2
 # this Class deals 2 damage to each opponent.
 [[abilities.effects]]
 type = "damage"
-mode = "each_opponent"
+mode = "to_players"
+who = "each_opponent"
 amount = 2
 
 # {1}{R}: Level 3

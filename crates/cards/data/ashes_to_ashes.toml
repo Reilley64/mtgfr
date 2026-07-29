@@ -31,5 +31,5 @@ timing = "spell"
 # Ashes to Ashes deals 5 damage to you.
 [[abilities.effects]]
 type = "damage"
-mode = "to_self"
+mode = "to_players"
 amount = 5

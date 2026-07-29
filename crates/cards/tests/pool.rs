@@ -2233,8 +2233,8 @@ fn unlimited_copper_tablet_bills_the_upkeeps_own_player() {
     );
     assert_eq!(
         ability.effect,
-        Effect::Damage(DamageEffect::ToTriggeringPlayer {
-            player: None,
+        Effect::Damage(DamageEffect::ToPlayers {
+            who: PlayerSet::TriggeringPlayer { player: None },
             amount: Amount::Fixed(1),
         }),
         "deals 1 damage to that player"
@@ -2256,8 +2256,8 @@ fn unlimited_creature_bond_bills_the_dying_host() {
     );
     assert_eq!(
         ability.effect,
-        Effect::Damage(DamageEffect::ToDyingEnchantedCreaturesController {
-            player: None,
+        Effect::Damage(DamageEffect::ToPlayers {
+            who: PlayerSet::DyingEnchantedCreaturesController { player: None },
             amount: Amount::DyingEnchantedCreatureToughness,
         }),
         "damage equal to that creature's toughness to the creature's controller"
@@ -2293,8 +2293,8 @@ fn unlimited_upkeep_tax_auras_bill_the_host_permanents_controller() {
         );
         assert_eq!(
             ability.effect,
-            Effect::Damage(DamageEffect::ToTriggeringPlayer {
-                player: None,
+            Effect::Damage(DamageEffect::ToPlayers {
+                who: PlayerSet::TriggeringPlayer { player: None },
                 amount: Amount::Fixed(1),
             }),
             "{name} deals 1 damage to that player"
@@ -2368,7 +2368,7 @@ fn unlimited_black_vise_taxes_only_the_upkeep_of_the_opponent_it_chose() {
     };
     assert_eq!(enters.effect, Effect::Choice(ChoiceEffect::ChooseOpponent));
     assert_eq!(upkeep.condition, Some(Condition::ChosenPlayersUpkeep));
-    let Effect::Damage(DamageEffect::ToTriggeringPlayer { amount, .. }) = upkeep.effect else {
+    let Effect::Damage(DamageEffect::ToPlayers { amount, .. }) = upkeep.effect else {
         panic!("it damages the player whose upkeep it is");
     };
     assert_eq!(
@@ -2684,8 +2684,8 @@ fn unlimited_power_leak_caps_its_prevention_at_the_damage_it_deals() {
     );
     assert_eq!(
         steps[1],
-        Effect::Damage(DamageEffect::ToTriggeringPlayer {
-            player: None,
+        Effect::Damage(DamageEffect::ToPlayers {
+            who: PlayerSet::TriggeringPlayer { player: None },
             amount: Amount::Fixed(2),
         }),
     );
@@ -2783,7 +2783,7 @@ fn unlimited_karma_counts_the_taxed_players_swamps() {
         ability.timing,
         Timing::Triggered(Trigger::EachUpkeep)
     ));
-    let Effect::Damage(DamageEffect::ToTriggeringPlayer { amount, .. }) = &ability.effect else {
+    let Effect::Damage(DamageEffect::ToPlayers { amount, .. }) = &ability.effect else {
         panic!("expected the upkeep tax to bill the player whose upkeep it is");
     };
     let Amount::PerPermanentMatching { filter, .. } = amount else {
@@ -2800,9 +2800,9 @@ fn unlimited_power_surge_bills_a_turn_start_snapshot() {
     let surge = get_by_name("Power Surge").expect("Power Surge is in the pool");
     assert!(matches!(
         surge.abilities[0].effect,
-        Effect::Damage(DamageEffect::ToTriggeringPlayer {
+        Effect::Damage(DamageEffect::ToPlayers {
             amount: Amount::UntappedLandsAtTurnStart,
-            ..
+            who: PlayerSet::TriggeringPlayer { .. },
         })
     ));
 }
@@ -2865,8 +2865,8 @@ fn unlimited_ankh_of_mishra_bills_the_lands_controller() {
     );
     assert_eq!(
         ability.effect,
-        Effect::Damage(DamageEffect::ToEnteringPermanentController {
-            entering: None,
+        Effect::Damage(DamageEffect::ToPlayers {
+            who: PlayerSet::EnteringPermanentsController { permanent: None },
             amount: Amount::Fixed(2),
         }),
         "deals 2 damage to that land's controller"
@@ -3145,7 +3145,8 @@ fn unlimited_burn_spells_deal_their_printed_damage() {
             }),
             // The 2 to its own caster is damage, not life loss — Psionic Blast can be
             // prevented, redirected, or seen by a damage watcher like any other 2 damage.
-            Effect::Damage(DamageEffect::ToSelf {
+            Effect::Damage(DamageEffect::ToPlayers {
+                who: PlayerSet::You,
                 amount: Amount::Fixed(2)
             }),
         ],
@@ -3168,7 +3169,10 @@ fn unlimited_burn_spells_deal_their_printed_damage() {
                 }),
                 include_planeswalkers: false,
             }),
-            Effect::Damage(DamageEffect::EachPlayer { amount: Amount::X }),
+            Effect::Damage(DamageEffect::ToPlayers {
+                who: PlayerSet::EachPlayer,
+                amount: Amount::X
+            }),
         ],
         "X to each flier and X to each player — the caster included"
     );
@@ -3409,7 +3413,8 @@ fn unlimited_utility_spells_carry_their_printed_effects() {
                     filter: None,
                     include_planeswalkers: false,
                 }),
-                Effect::Damage(DamageEffect::EachPlayer {
+                Effect::Damage(DamageEffect::ToPlayers {
+                    who: PlayerSet::EachPlayer,
                     amount: mountains_destroyed,
                 }),
             ]
@@ -3814,7 +3819,8 @@ fn unlimited_tap_abilities_carry_their_printed_effects() {
                 exile_instead_of_dying: false,
                 gain_life_equal_to_damage: false,
             }),
-            Effect::Damage(DamageEffect::ToSelf {
+            Effect::Damage(DamageEffect::ToPlayers {
+                who: PlayerSet::You,
                 amount: Amount::Fixed(3)
             }),
         ],
@@ -4014,7 +4020,8 @@ fn unlimited_triggers_fire_off_the_event_their_oracle_names() {
     );
     assert_eq!(
         otherwise,
-        &[Effect::Damage(DamageEffect::ToSelf {
+        &[Effect::Damage(DamageEffect::ToPlayers {
+            who: PlayerSet::You,
             amount: Amount::Fixed(8)
         })],
         "the unpaid Force stays on the battlefield and mauls you for 8"
@@ -4039,7 +4046,8 @@ fn unlimited_triggers_fire_off_the_event_their_oracle_names() {
     assert!(filter.other, "'other than this creature' — never itself");
     assert_eq!(
         otherwise,
-        &[Effect::Damage(DamageEffect::ToSelf {
+        &[Effect::Damage(DamageEffect::ToPlayers {
+            who: PlayerSet::You,
             amount: Amount::Fixed(7)
         })],
         "a starving Lord bites its controller for 7"
@@ -4092,7 +4100,8 @@ fn pestilence_sacrifices_itself_only_once_no_creatures_remain() {
                 filter: None,
                 include_planeswalkers: false,
             }),
-            Effect::Damage(DamageEffect::EachPlayer {
+            Effect::Damage(DamageEffect::ToPlayers {
+                who: PlayerSet::EachPlayer,
                 amount: Amount::Fixed(1)
             }),
         ],
@@ -4520,8 +4529,10 @@ fn unlimited_dingus_egg_watches_lands_dying_and_bills_their_controller() {
         egg.abilities[0].timing,
         Timing::Triggered(Trigger::LandPutIntoGraveyard)
     );
-    let Effect::Damage(DamageEffect::ToTriggeringPlayer { amount, player }) =
-        egg.abilities[0].effect
+    let Effect::Damage(DamageEffect::ToPlayers {
+        amount,
+        who: PlayerSet::TriggeringPlayer { player },
+    }) = egg.abilities[0].effect
     else {
         panic!("damage aimed at the player the trigger names");
     };

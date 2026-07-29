@@ -11786,7 +11786,8 @@ static LIFELINK_BLAST_EACH_PLAYER: LazyLock<CardDef> = LazyLock::new(|| CardDef 
         "Lifelink Blast Each Player (test)",
         &[Ability {
             timing: Timing::Spell,
-            effect: Effect::Damage(DamageEffect::EachPlayer {
+            effect: Effect::Damage(DamageEffect::ToPlayers {
+                who: PlayerSet::EachPlayer,
                 amount: Amount::Fixed(2),
             }),
             optional: false,
@@ -63069,6 +63070,55 @@ fn a_mill_can_hit_every_opponent_at_once() {
     assert_eq!(
         game.library_size(PlayerId(0)),
         0,
+        "the caster is not an opponent of themselves"
+    );
+}
+
+/// A test sorcery that bills each opponent for the cards in *their* hand — the per-recipient shape
+/// a `who`-carrying damage effect unlocks, printed by Black Vise and Karma one seat at a time.
+fn damage_each_opponent_for_their_hand_sorcery() -> CardDef {
+    static CARD: LazyLock<CardDef> = LazyLock::new(|| {
+        sorcery(
+            "Bill Each Opponent (test)",
+            Box::leak(Box::new([spell_ability(Effect::Damage(
+                DamageEffect::ToPlayers {
+                    who: PlayerSet::EachOpponent,
+                    amount: Amount::CardsInYourHand,
+                },
+            ))])),
+        )
+    });
+    CARD.clone()
+}
+
+#[test]
+fn a_player_relative_damage_amount_counts_each_recipients_own_cards() {
+    // "Deals damage equal to the number of cards in their hand" reads the seat being damaged, not
+    // the ability's controller — so a fan-out resolves the amount once per recipient and bills
+    // three opponents three different numbers off one effect.
+    let mut game = TestGame::with_players(4);
+    let opponents = [PlayerId(1), PlayerId(2), PlayerId(3)];
+    for (held, &opponent) in (1..).zip(&opponents) {
+        for _ in 0..held {
+            game.spawn_in_hand(opponent, card("Forest"));
+        }
+    }
+    let life_before: Vec<i32> = opponents.iter().map(|&p| game.life(p)).collect();
+    let caster_life = game.life(PlayerId(0));
+
+    let spell = game.spawn_in_hand(PlayerId(0), damage_each_opponent_for_their_hand_sorcery());
+    game.cast(spell).resolve();
+
+    for (held, (&opponent, before)) in (1..).zip(opponents.iter().zip(life_before)) {
+        assert_eq!(
+            game.life(opponent),
+            before - held,
+            "opponent {opponent:?} pays for their own {held} cards"
+        );
+    }
+    assert_eq!(
+        game.life(PlayerId(0)),
+        caster_life,
         "the caster is not an opponent of themselves"
     );
 }

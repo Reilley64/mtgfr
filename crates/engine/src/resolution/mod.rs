@@ -120,8 +120,23 @@ impl Game {
             PlayerSet::AttackingPlayer { player } => {
                 vec![player.expect("the attacking player is filled in at placement")]
             }
-            PlayerSet::ActivePlayer { player } => {
-                vec![player.expect("the active player is filled in at placement")]
+            PlayerSet::TriggeringPlayer { player } => {
+                vec![player.expect("the triggering player is filled in at placement")]
+            }
+            PlayerSet::DyingEnchantedCreaturesController { player } => {
+                vec![player.expect("the dying host's controller is filled in at placement")]
+            }
+            // The entering permanent is still on the battlefield, so its controller reads live —
+            // only the id needs baking in at placement.
+            PlayerSet::EnteringPermanentsController { permanent } => {
+                let entering = permanent.expect("the entering permanent is filled in at placement");
+                vec![self.controller_of(entering)]
+            }
+            PlayerSet::EachOtherOpponent { damaged } => {
+                let damaged = damaged.expect("the damaged opponent is filled in at placement");
+                self.living_players()
+                    .filter(|&p| p != controller && p != damaged)
+                    .collect()
             }
         }
     }

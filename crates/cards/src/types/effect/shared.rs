@@ -795,7 +795,8 @@ Effect::Choice(ChoiceEffect::TargetPlayerMayDraw { opponent: false, .. })
                 | LifeEffect::Drain { who, .. },
             )
             | Effect::Draw(DrawEffect::Cards { who, .. })
-            | Effect::Mill(MillEffect::Mill { who, .. }) => player_set_target_spec(who),
+            | Effect::Mill(MillEffect::Mill { who, .. })
+            | Effect::Damage(DamageEffect::ToPlayers { who, .. }) => player_set_target_spec(who),
             Effect::Life(
                 LifeEffect::EachPlayerBecomesHighest | LifeEffect::SourceOwnerLosesHalfTheirLife,
             ) => TargetSpec::None,
@@ -859,9 +860,6 @@ Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
                 ..
             })
             | Effect::Damage(DamageEffect::EachCreature { .. })
-            | Effect::Damage(DamageEffect::EachPlayer { .. })
-            | Effect::Damage(DamageEffect::EachOpponent { .. })
-            | Effect::Damage(DamageEffect::EachOtherOpponent { .. })
             | Effect::Pump(PumpEffect::WeakenEachCreature { .. })
             | Effect::Pump(PumpEffect::PumpCreaturesYouControlUntilEndOfTurn { .. })
             | Effect::Pump(PumpEffect::PumpEachCreatureUntilEndOfTurn { .. })
@@ -958,9 +956,6 @@ Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
             | Effect::Misc(MiscEffect::ScheduleNextCastTrigger { .. })
             | Effect::Choice(ChoiceEffect::DamagingCreatureControllerMayDraw { .. })
             | Effect::Damage(DamageEffect::ToEnteringPermanent { .. })
-            | Effect::Damage(DamageEffect::ToEnteringPermanentController { .. })
-            | Effect::Damage(DamageEffect::ToTriggeringPlayer { .. })
-            | Effect::Damage(DamageEffect::ToDyingEnchantedCreaturesController { .. })
             | Effect::Zone(ZoneEffect::ReanimateDyingEnchantedCreature { .. })
             | Effect::Zone(ZoneEffect::ExileDeadCreatureCreateCopyWithSubtype { .. })
             | Effect::Zone(ZoneEffect::ReturnThisToHand)
@@ -998,13 +993,9 @@ Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
             | Effect::Misc(MiscEffect::YouChooseWhichCreaturesAttack)
             | Effect::Misc(MiscEffect::YouChooseWhichCreaturesBlock)
             | Effect::Counters(CountersEffect::PlaceVowCounters { .. })
-            | Effect::Damage(DamageEffect::ToSelf { .. })
             // A no-target-of-its-own step: reads the enclosing `Sequence`'s shared target player,
             // whose lands the preceding step just tapped ("**that player** loses all unspent mana").
             | Effect::Mana(ManaEffect::LoseAllUnspent { .. })
-            // Reads the enclosing `Sequence`'s shared target creature's controller; no target of
-            // its own (Lash Out's win rider).
-            | Effect::Damage(DamageEffect::ToTargetController { .. })
             // Clash picks its opponent at resolution (CR 701.22), not via a cast/activation target.
             | Effect::Dig(DigEffect::Clash)
             // A no-target-of-its-own step: manifests the enclosing `Sequence`'s shared target's
@@ -2507,10 +2498,16 @@ fn fill_entering_permanent(effect: Effect, entering: ObjectId) -> Effect {
             then_if_subtype,
             then,
         }),
-        Effect::Damage(DamageEffect::ToEnteringPermanentController { amount, .. }) => {
-            Effect::Damage(DamageEffect::ToEnteringPermanentController {
-                entering: Some(entering),
-                amount,
+        // Ankh of Mishra's "that land's controller" names the same permanent the arm above damages,
+        // spelled as a player set rather than an effect-local slot.
+        effect @ Effect::Damage(DamageEffect::ToPlayers { .. }) => {
+            fill_player(effect, &|who| match who {
+                PlayerSet::EnteringPermanentsController { .. } => {
+                    PlayerSet::EnteringPermanentsController {
+                        permanent: Some(entering),
+                    }
+                }
+                other => other,
             })
         }
         Effect::Zone(ZoneEffect::AttachTriggeringAuraToMintedToken { .. }) => {
@@ -2589,9 +2586,18 @@ fn fill_dying_enchanted_creature_payoff(
         other => other,
     };
     match effect {
-        Effect::Damage(DamageEffect::ToDyingEnchantedCreaturesController { amount, .. }) => {
-            Effect::Damage(DamageEffect::ToDyingEnchantedCreaturesController {
-                player: Some(controller),
+        // Creature Bond names the host's controller and reads the host's toughness, so this arm
+        // fills both halves of the snapshot at once.
+        Effect::Damage(DamageEffect::ToPlayers { who, amount }) => {
+            Effect::Damage(DamageEffect::ToPlayers {
+                who: match who {
+                    PlayerSet::DyingEnchantedCreaturesController { .. } => {
+                        PlayerSet::DyingEnchantedCreaturesController {
+                            player: Some(controller),
+                        }
+                    }
+                    other => other,
+                },
                 amount: fill(amount),
             })
         }
@@ -2899,9 +2905,11 @@ fn fill_combat_damage_source_controller(effect: Effect, player: PlayerId) -> Eff
 /// discards a card at random") — mirrors [`fill_combat_damage_source_controller`] above, one field over.
 fn fill_damage_recipient(effect: Effect, player: PlayerId) -> Effect {
     match effect {
-        Effect::Damage(DamageEffect::EachOtherOpponent { amount, .. }) => Effect::Damage(DamageEffect::EachOtherOpponent {
-            amount,
-            damaged: Some(player),
+        effect @ Effect::Damage(DamageEffect::ToPlayers { .. }) => fill_player(effect, &|who| match who {
+            PlayerSet::EachOtherOpponent { .. } => PlayerSet::EachOtherOpponent {
+                damaged: Some(player),
+            },
+            other => other,
         }),
         Effect::Choice(ChoiceEffect::Discard {
             count,
@@ -2939,9 +2947,11 @@ fn fill_damage_recipient(effect: Effect, player: PlayerId) -> Effect {
 /// either way it names the one player the trigger is about.
 fn fill_triggering_permanent_controller(effect: Effect, player: PlayerId) -> Effect {
     match effect {
-        Effect::Damage(DamageEffect::ToTriggeringPlayer { amount, .. }) => Effect::Damage(DamageEffect::ToTriggeringPlayer {
-            player: Some(player),
-            amount,
+        effect @ Effect::Damage(DamageEffect::ToPlayers { .. }) => fill_player(effect, &|who| match who {
+            PlayerSet::TriggeringPlayer { .. } => PlayerSet::TriggeringPlayer {
+                player: Some(player),
+            },
+            other => other,
         }),
         // Power Leak's "that player may pay any amount of mana" names the same player its damage
         // step does, so it fills from the same slot.
@@ -3032,10 +3042,6 @@ fn fill_add_mana_recipient(effect: Effect, active_player: PlayerId) -> Effect {
 /// CR 603.4 resolution-time re-check wrapper still gets its nested draw filled.
 fn fill_active_player_payoff(effect: Effect, active_player: PlayerId) -> Effect {
     match effect {
-        Effect::Damage(DamageEffect::ToTriggeringPlayer { amount, .. }) => Effect::Damage(DamageEffect::ToTriggeringPlayer {
-            player: Some(active_player),
-            amount,
-        }),
         // Power Leak's payment step names the same player its damage step does — the upkeep whose
         // beginning the Aura watches is that player's, so it fills from here too.
         Effect::Choice(ChoiceEffect::TriggeringPlayerMayPayAnyAmountToPrevent {
@@ -3052,10 +3058,11 @@ fn fill_active_player_payoff(effect: Effect, active_player: PlayerId) -> Effect 
                 player: Some(active_player),
             })
         }
-        // Howling Mine's "that player draws an additional card" names the same seat the damage arm
-        // above does, spelled as a player set rather than an effect-local slot.
-        effect @ (Effect::Life(_) | Effect::Draw(_)) => fill_player(effect, &|who| match who {
-            PlayerSet::ActivePlayer { .. } => PlayerSet::ActivePlayer {
+        // Howling Mine's "that player draws an additional card" and Copper Tablet's "deals 1
+        // damage to that player" name the same seat the payment steps above do, spelled as a
+        // player set rather than an effect-local slot.
+        effect @ (Effect::Life(_) | Effect::Draw(_) | Effect::Damage(_)) => fill_player(effect, &|who| match who {
+            PlayerSet::TriggeringPlayer { .. } => PlayerSet::TriggeringPlayer {
                 player: Some(active_player),
             },
             other => other,
@@ -3173,6 +3180,12 @@ fn fill_player(effect: Effect, f: &impl Fn(PlayerSet) -> PlayerSet) -> Effect {
             who: f(who),
             count,
         }),
+        Effect::Damage(DamageEffect::ToPlayers { who, amount }) => {
+            Effect::Damage(DamageEffect::ToPlayers {
+                who: f(who),
+                amount,
+            })
+        }
         Effect::Sequence { steps } => Effect::Sequence {
             steps: steps.iter().map(|step| fill_player(step.clone(), f)).collect(),
         },
@@ -3272,9 +3285,9 @@ fn map_effect_amount_slots(effect: Effect, f: &impl Fn(Amount) -> Amount) -> Eff
             lose_game_if_short,
             then,
         }),
-        Effect::Damage(DamageEffect::EachOtherOpponent { amount, damaged }) => Effect::Damage(DamageEffect::EachOtherOpponent {
+        Effect::Damage(DamageEffect::ToPlayers { who, amount }) => Effect::Damage(DamageEffect::ToPlayers {
+            who,
             amount: f(amount),
-            damaged,
         }),
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps

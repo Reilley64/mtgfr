@@ -3356,15 +3356,19 @@
               "type": "object"
             },
             {
+              "description": "\"deals `amount` damage to `who`\" — every damage the pool aims at seats rather than at permanents, from Psionic Blast's \"2 damage to you\" to Pestilence's \"each player\" to Ankh of Mishra's \"that land's controller\". Who takes it and how much are independent axes ([`PlayerSet`] and [`Amount`]), so no variant names a recipient.\n\nA player-relative `amount` counts the seat being damaged, not the ability's controller — Karma's \"damage equal to the number of Swamps **they** control\", Black Vise's \"cards in **their** hand\". Resolved once per recipient, so a fan-out bills each seat for its own things.",
               "properties": {
                 "amount": {
                   "$ref": "#/$defs/Amount"
                 },
                 "mode": {
                   "enum": [
-                    "each_other_opponent"
+                    "to_players"
                   ],
                   "type": "string"
+                },
+                "who": {
+                  "$ref": "#/$defs/PlayerSet"
                 }
               },
               "required": [
@@ -3393,43 +3397,6 @@
                 "amount",
                 "mode",
                 "target"
-              ],
-              "type": "object"
-            },
-            {
-              "properties": {
-                "amount": {
-                  "$ref": "#/$defs/Amount"
-                },
-                "mode": {
-                  "enum": [
-                    "each_player"
-                  ],
-                  "type": "string"
-                }
-              },
-              "required": [
-                "amount",
-                "mode"
-              ],
-              "type": "object"
-            },
-            {
-              "description": "Damage to each living opponent of the ability's controller (CR 102.3) — Advanced Reconstruction / Fateful Tempest. Same per-player events as [`Self::EachPlayer`], but the controller is carved out.",
-              "properties": {
-                "amount": {
-                  "$ref": "#/$defs/Amount"
-                },
-                "mode": {
-                  "enum": [
-                    "each_opponent"
-                  ],
-                  "type": "string"
-                }
-              },
-              "required": [
-                "amount",
-                "mode"
               ],
               "type": "object"
             },
@@ -3500,99 +3467,6 @@
                     "type": "string"
                   },
                   "type": "array"
-                }
-              },
-              "required": [
-                "amount",
-                "mode"
-              ],
-              "type": "object"
-            },
-            {
-              "description": "Ankh of Mishra's \"deals 2 damage to **that land's** controller\" — the player twin of [`ToEnteringPermanent`](Self::ToEnteringPermanent), filling the same `entering` slot from the same `PermanentEnters` trigger. Distinct from [`ToTargetController`](Self::ToTargetController), which reads an enclosing `Sequence`'s chosen target — a trigger that targets nothing never sets one.",
-              "properties": {
-                "amount": {
-                  "$ref": "#/$defs/Amount"
-                },
-                "mode": {
-                  "enum": [
-                    "to_entering_permanent_controller"
-                  ],
-                  "type": "string"
-                }
-              },
-              "required": [
-                "amount",
-                "mode"
-              ],
-              "type": "object"
-            },
-            {
-              "description": "Copper Tablet's \"at the beginning of each player's upkeep … deals 1 damage to **that player**\" — the player whose step this is, filled from [`TriggerContext::active_player`] at trigger placement. [`EachPlayer`](Self::EachPlayer) would bill the whole table on every upkeep, which is once per seat per round instead of once.",
-              "properties": {
-                "amount": {
-                  "$ref": "#/$defs/Amount"
-                },
-                "mode": {
-                  "enum": [
-                    "to_triggering_player"
-                  ],
-                  "type": "string"
-                }
-              },
-              "required": [
-                "amount",
-                "mode"
-              ],
-              "type": "object"
-            },
-            {
-              "description": "Creature Bond's \"when enchanted creature dies … deals damage equal to that creature's toughness to **the creature's controller**\" — the host's controller, snapshotted from [`TriggerContext::dying_enchanted_creature_stats`] at trigger placement because the host is a graveyard card by resolution and `controller_of` would answer its owner (CR 603.10a). Distinct from [`ToTriggeringPlayer`](Self::ToTriggeringPlayer), which names the player whose step it is.",
-              "properties": {
-                "amount": {
-                  "$ref": "#/$defs/Amount"
-                },
-                "mode": {
-                  "enum": [
-                    "to_dying_enchanted_creatures_controller"
-                  ],
-                  "type": "string"
-                }
-              },
-              "required": [
-                "amount",
-                "mode"
-              ],
-              "type": "object"
-            },
-            {
-              "properties": {
-                "amount": {
-                  "$ref": "#/$defs/Amount"
-                },
-                "mode": {
-                  "enum": [
-                    "to_self"
-                  ],
-                  "type": "string"
-                }
-              },
-              "required": [
-                "amount",
-                "mode"
-              ],
-              "type": "object"
-            },
-            {
-              "properties": {
-                "amount": {
-                  "$ref": "#/$defs/Amount"
-                },
-                "mode": {
-                  "enum": [
-                    "to_target_controller"
-                  ],
-                  "type": "string"
                 }
               },
               "required": [
@@ -11598,14 +11472,53 @@
         },
         {
           "additionalProperties": false,
-          "description": "The player whose turn or step it is, baked in when the trigger is placed — Howling Mine's \"at the beginning of each player's draw step, **that player** draws an additional card\". [`PlayerSet::EachPlayer`] would bill the whole table on every seat's step instead of once.",
+          "description": "The one player the trigger is about, baked in when it is placed (CR 603.10a) — Howling Mine's \"at the beginning of each player's draw step, **that player** draws an additional card\", Copper Tablet's \"each player's upkeep … 1 damage to **that player**\", Dingus Egg's \"**that land's** controller\". [`PlayerSet::EachPlayer`] would bill the whole table on every seat's step instead of once.",
           "properties": {
-            "active_player": {
+            "triggering_player": {
               "type": "object"
             }
           },
           "required": [
-            "active_player"
+            "triggering_player"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Every opponent *except* the one the trigger is about — Hydra Omnivore's \"whenever this creature deals combat damage to a player, it deals that much damage to **each other opponent**\", where the damaged seat rides in from the trigger's snapshot.",
+          "properties": {
+            "each_other_opponent": {
+              "type": "object"
+            }
+          },
+          "required": [
+            "each_other_opponent"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "The controller of the permanent that just entered (Ankh of Mishra's \"deals 2 damage to **that land's** controller\") — the permanent itself rides in from the `PermanentEnters` trigger and the controller is read live, since it is still on the battlefield.",
+          "properties": {
+            "entering_permanents_controller": {
+              "type": "object"
+            }
+          },
+          "required": [
+            "entering_permanents_controller"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "The controller of the enchanted creature that just died (Creature Bond's \"deals damage equal to that creature's toughness to **the creature's controller**\") — snapshotted at trigger placement, because by resolution the host is a graveyard card whose `controller_of` answers its owner (CR 603.10a).",
+          "properties": {
+            "dying_enchanted_creatures_controller": {
+              "type": "object"
+            }
+          },
+          "required": [
+            "dying_enchanted_creatures_controller"
           ],
           "type": "object"
         },
