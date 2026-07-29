@@ -53939,7 +53939,7 @@ static CREATURE_TUTOR: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             filter: CardFilter::Creature,
             to_zone: SearchDest::Hand,
             tapped: false,
-            searcher: SearchScope::You,
+            who: PlayerSet::You,
             count: 1,
             count_amount: None,
             overflow: None,

@@ -7181,15 +7181,20 @@
                     }
                   ]
                 },
-                "searcher": {
-                  "$ref": "#/$defs/SearchScope"
-                },
                 "tapped": {
                   "default": false,
                   "type": "boolean"
                 },
                 "to_zone": {
                   "$ref": "#/$defs/SearchDest"
+                },
+                "who": {
+                  "allOf": [
+                    {
+                      "$ref": "#/$defs/PlayerSet"
+                    }
+                  ],
+                  "description": "Whose library is searched (CR 701.19 — \"search their library\"): the ability's own controller by default (tutors, ramp, fetchlands), `targets_controller` for the compensation ramp riders (Path to Exile, Assassin's Trophy), `each_player` for Veteran Explorer's \"each player may search their library\". A multi-seat set searches one library at a time in APNAP order (CR 101.4), each shuffling before the next begins (CR 701.19f)."
                 }
               },
               "required": [
@@ -11363,7 +11368,7 @@
       ]
     },
     "PlayerSet": {
-      "description": "Which seat or seats an effect's payload lands on — \"you\", \"target player\", \"each opponent\".\n\nMagic prints the same payload against a handful of recipients (\"you gain 3 life\", \"target player gains 3 life\", \"each opponent loses 2 life\"), so the recipient is a parameter rather than part of the effect's name. Resolved once by `Game::players_in`, which returns the seats in turn order — CR 118.9's simultaneous life change touches them as one event batch.\n\nDistinct from [`EdictScope`], which looks similar but is a fan-out *plan*: its [`EdictScope::TargetedPlayers`] is a subset the controller picks during resolution, so it can't answer \"which seats\" up front the way this can.",
+      "description": "Which seat or seats an effect's payload lands on — \"you\", \"target player\", \"each opponent\".\n\nMagic prints the same payload against a handful of recipients (\"you gain 3 life\", \"target player gains 3 life\", \"each opponent loses 2 life\"), so the recipient is a parameter rather than part of the effect's name. Resolved once by `Game::players_in`, which returns the seats in turn order — CR 118.9's simultaneous life change touches them as one event batch.\n\nA seat a player *picks* as an effect resolves is not a member of this enum — Priest of Forgotten Gods' \"any number of target players\" is `chosen_by_controller` on the edict itself, since no resolver can name those seats before someone answers.",
       "oneOf": [
         {
           "description": "The ability's controller — the unwritten default on a card that names no one (\"you gain 3 life\", and the bare \"gain 3 life\" reminder shorthand).",
@@ -11705,32 +11710,6 @@
           "description": "Into exile (Trench Gorger: \"exile them\"), routed through the same [`Event::MovedToExile`] choke a graveyard-to-exile move uses.",
           "enum": [
             "exile"
-          ],
-          "type": "string"
-        }
-      ]
-    },
-    "SearchScope": {
-      "description": "Whose library a [`Effect::Dig(DigEffect::SearchLibrary)`] searches (CR 701.19 — \"search their library\"). Most search effects are self-tutors/ramp; a few (Path to Exile, Assassin's Trophy) hand the search to the *affected permanent's* controller as compensation.",
-      "oneOf": [
-        {
-          "description": "The ability's own controller (tutors, ramp, fetchlands).",
-          "enum": [
-            "you"
-          ],
-          "type": "string"
-        },
-        {
-          "description": "The ability's shared target's controller (Path to Exile's/Assassin's Trophy's ramp rider — read via [`Game::controller_of`], which follows the owner chain even after the target has left the battlefield).",
-          "enum": [
-            "target_controller"
-          ],
-          "type": "string"
-        },
-        {
-          "description": "Every living player, each searching their own library in turn (Veteran Explorer's \"each player may search their library…\") — one search per player, chained in APNAP order (CR 101.4) starting with the active player; each shuffles their own library once (CR 701.19f) before the next player's search begins.",
-          "enum": [
-            "all_players"
           ],
           "type": "string"
         }

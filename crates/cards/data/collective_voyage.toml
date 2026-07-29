@@ -33,5 +33,5 @@ mode = "search_library"
 filter = "basic_land"
 to_zone = "battlefield"
 tapped = true
-searcher = "all_players"
+who = "each_player"
 count_amount = "mana_paid_this_way"

@@ -577,31 +577,6 @@ pub enum RestDest {
     Hand,
 }
 
-/// Whose library a [`Effect::Dig(DigEffect::SearchLibrary)`] searches (CR 701.19 — "search their library").
-/// Most search effects are self-tutors/ramp; a few (Path to Exile, Assassin's Trophy) hand the
-/// search to the *affected permanent's* controller as compensation.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-#[cfg_attr(
-    feature = "card-dsl",
-    derive(serde::Deserialize),
-    serde(rename_all = "snake_case")
-)]
-#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
-pub enum SearchScope {
-    /// The ability's own controller (tutors, ramp, fetchlands).
-    #[default]
-    You,
-    /// The ability's shared target's controller (Path to Exile's/Assassin's Trophy's ramp
-    /// rider — read via [`Game::controller_of`], which follows the owner chain even after the
-    /// target has left the battlefield).
-    TargetController,
-    /// Every living player, each searching their own library in turn (Veteran Explorer's "each
-    /// player may search their library…") — one search per player, chained in APNAP order (CR
-    /// 101.4) starting with the active player; each shuffles their own library once (CR 701.19f)
-    /// before the next player's search begins.
-    AllPlayers,
-}
-
 /// Which controller a [`PermanentFilter`] accepts, relative to the effect's controller ("you").
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[cfg_attr(

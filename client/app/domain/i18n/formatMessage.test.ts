@@ -132,6 +132,26 @@ describe("formatMessage", () => {
     ).toBe("Any number of target players sacrifice a permanent");
   });
 
+  it("names whose library a search reads", () => {
+    const search = (params: Array<{ name: string; string_value?: string }>): string =>
+      formatMessage({ key: "effect.dig_search_library", params, children: [] });
+
+    expect(
+      search([
+        { name: "filter", string_value: "basic_land" },
+        { name: "to_zone", string_value: "hand" },
+      ]),
+    ).toBe("You search your library for basic land and put it into your hand");
+    // Veteran Explorer's "each player may search their library".
+    expect(
+      search([
+        { name: "filter", string_value: "basic_land" },
+        { name: "to_zone", string_value: "battlefield" },
+        { name: "who", string_value: "each_player" },
+      ]),
+    ).toBe("Each player searches their library for basic land and puts it onto the battlefield");
+  });
+
   it("joins sequence children with then", () => {
     expect(
       formatMessage({

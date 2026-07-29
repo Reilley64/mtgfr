@@ -36,7 +36,7 @@ function nameOnly(params: MessageParams): string {
  */
 function edictSubject(params: MessageParams): [subject: string, verbSuffix: string] {
   if (bool(params, "chosen_by_controller")) return ["Any number of target players", ""];
-  return [playerSubject(params), playerPhrase(params) === "you" ? "" : "s"];
+  return [playerSubject(params), playerVerbSuffix(params)];
 }
 
 /** A player set as an object phrase — "you", "each opponent", "that permanent's controller". */
@@ -72,13 +72,17 @@ function playerPossessive(params: MessageParams): string {
   return playerPhrase(params) === "you" ? "your" : "their";
 }
 
+/** "" when the subject is "You", "s" otherwise — "You" is the only set that takes a bare verb. */
+function playerVerbSuffix(params: MessageParams): string {
+  return playerPhrase(params) === "you" ? "" : "s";
+}
+
 /** The same set as a sentence subject, with a regular verb conjugated to match — "You gain", "Each opponent draws". */
 function playerClause(
   params: MessageParams,
   verb: "gain" | "lose" | "draw" | "mill" | "discard" | "shuffle" | "create" | "get",
 ): string {
-  // "You" is the only set that takes a bare verb; every other phrase is third-person singular.
-  return playerPhrase(params) === "you" ? `${playerSubject(params)} ${verb}` : `${playerSubject(params)} ${verb}s`;
+  return `${playerSubject(params)} ${verb}${playerVerbSuffix(params)}`;
 }
 
 function definingPtLead(when: MessageValue): string {
@@ -87,12 +91,12 @@ function definingPtLead(when: MessageValue): string {
   return "This creature's";
 }
 
-function searchDest(dest: MessageValue): string {
+function searchDest(dest: MessageValue, possessive = "your"): string {
   if (dest === "battlefield") return "onto the battlefield";
-  if (dest === "library_top") return "on top of your library";
-  if (dest === "graveyard") return "into your graveyard";
+  if (dest === "library_top") return `on top of ${possessive} library`;
+  if (dest === "graveyard") return `into ${possessive} graveyard`;
   if (dest === "exile") return "into exile";
-  return "into your hand";
+  return `into ${possessive} hand`;
 }
 
 function topDest(params: MessageParams): string {
@@ -419,8 +423,16 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     `Reveal cards from the top of your library until you reveal ${humanize(param(params, "filter", "a card"))}. Exile that card and put the rest on the bottom of your library. You may cast the exiled card without paying its mana cost`,
   "effect.dig_reveal_until_may_deploy": (params) =>
     `Reveal cards from the top of your library until you reveal ${humanize(param(params, "filter", "a card"))}. You may put that card onto the battlefield. If you do not, put it into your hand. Put the rest on the bottom of your library`,
-  "effect.dig_search_library": (params) =>
-    `Search your library for ${humanize(param(params, "filter", "a card"))}, put it ${searchDest(param(params, "to_zone"))}`,
+  "effect.dig_search_library": (params) => {
+    // Veteran Explorer hands the search to every seat, so the subject, the possessive and both
+    // verbs follow `who` rather than always reading as a self-tutor.
+    const s = playerVerbSuffix(params);
+    const possessive = playerPossessive(params);
+    // "search" takes "-es", not the bare "-s" every other verb here does.
+    return `${playerSubject(params)} search${s ? "es" : ""} ${possessive} library for ${humanize(
+      param(params, "filter", "a card"),
+    )} and put${s} it ${searchDest(param(params, "to_zone"), possessive)}`;
+  },
   "effect.dig_shuffle_library": literal("Shuffle your library"),
   "effect.dig_shuffle_target_cards_from_graveyard_into_library": (params) =>
     `${playerClause(params, "shuffle")} ${shuffleCount(params)} target cards from ${playerPossessive(params)} graveyard into ${playerPossessive(params)} library`,

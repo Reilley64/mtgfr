@@ -109,8 +109,14 @@ pub enum DigEffect {
         to_zone: SearchDest,
         #[cfg_attr(feature = "card-dsl", serde(default))]
         tapped: bool,
+        /// Whose library is searched (CR 701.19 — "search their library"): the ability's own
+        /// controller by default (tutors, ramp, fetchlands), `targets_controller` for the
+        /// compensation ramp riders (Path to Exile, Assassin's Trophy), `each_player` for
+        /// Veteran Explorer's "each player may search their library". A multi-seat set searches
+        /// one library at a time in APNAP order (CR 101.4), each shuffling before the next
+        /// begins (CR 701.19f).
         #[cfg_attr(feature = "card-dsl", serde(default))]
-        searcher: SearchScope,
+        who: PlayerSet,
         #[cfg_attr(
             feature = "card-dsl",
             serde(default = "de::one_u8", deserialize_with = "de::count_or_any")

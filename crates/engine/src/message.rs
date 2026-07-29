@@ -1854,9 +1854,12 @@ impl EffectMessage for Effect {
                 int_param("to_exile_may_play", to_exile_may_play),
             ]),
             Effect::Dig(SearchLibrary {
-                filter, to_zone, ..
-            }) => MessageRef::new(MessageKey::EFFECT_DIG_SEARCH_LIBRARY)
-                .with_params(vec![card_filter_param("filter", filter), search_dest_param("to_zone", to_zone)]),
+                filter, to_zone, who, ..
+            }) => MessageRef::new(MessageKey::EFFECT_DIG_SEARCH_LIBRARY).with_params(vec![
+                card_filter_param("filter", filter),
+                search_dest_param("to_zone", to_zone),
+                who_param(who),
+            ]),
             Effect::Dig(ShuffleTargetCardsFromGraveyardIntoLibrary { max, who }) => {
                 MessageRef::new(MessageKey::EFFECT_DIG_SHUFFLE_TARGET_CARDS_FROM_GRAVEYARD_INTO_LIBRARY)
                     .with_params(vec![int_param("max", max), who_param(who)])
@@ -2571,7 +2574,7 @@ mod tests {
             filter: CardFilter::BasicLand,
             to_zone: SearchDest::LibraryTop,
             tapped: false,
-            searcher: SearchScope::You,
+            who: PlayerSet::You,
             count: 1,
             overflow: None,
             count_amount: None,

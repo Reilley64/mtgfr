@@ -7,9 +7,9 @@ use super::*;
 /// than part of the effect's name. Resolved once by `Game::players_in`, which returns the seats in
 /// turn order — CR 118.9's simultaneous life change touches them as one event batch.
 ///
-/// Distinct from [`EdictScope`], which looks similar but is a fan-out *plan*: its
-/// [`EdictScope::TargetedPlayers`] is a subset the controller picks during resolution, so it
-/// can't answer "which seats" up front the way this can.
+/// A seat a player *picks* as an effect resolves is not a member of this enum — Priest of
+/// Forgotten Gods' "any number of target players" is `chosen_by_controller` on the edict itself,
+/// since no resolver can name those seats before someone answers.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[cfg_attr(
     feature = "card-dsl",
