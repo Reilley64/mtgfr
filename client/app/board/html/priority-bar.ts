@@ -82,8 +82,8 @@ export function priorityBarView(board: BoardModel, state: VisibleState, tableId:
       [
         h.DataAttribute("testid", "priority-context-bar"),
         // Above pile (z-29) and prompt-modal (z-40) backdrops so Choose / Confirm stay clickable.
-        h.Class("pointer-events-auto fixed right-md z-45 flex flex-col items-end gap-sm"),
-        h.Style({ bottom: `${HAND_BAR_H + 10}px` }),
+        h.Class("pointer-events-auto fixed bottom-(--b) right-md z-45 flex flex-col items-end gap-sm"),
+        h.Style({ "--b": `${HAND_BAR_H + 10}px` }),
       ],
       [
         simpleActions,
@@ -154,12 +154,12 @@ export function priorityBarView(board: BoardModel, state: VisibleState, tableId:
           h.Attribute("aria-label", "Auto-pass until my turn"),
           h.Attribute("title", "Auto-pass until my turn"),
           h.OnClick(TurnYieldToggled({ enabled: !turnYielded })),
-          h.Class(turnYieldRockerClass(turnYielded)),
+          h.Class(turnYieldRockerClass()),
         ],
         [
           h.span(
-            [h.Class(turnYieldTrackClass(turnYielded))],
-            [h.span([h.Class(turnYieldThumbClass(turnYielded)), h.Attribute("aria-hidden", "true")], ["≫"])],
+            [h.Class(turnYieldTrackClass())],
+            [h.span([h.Class(turnYieldThumbClass()), h.Attribute("aria-hidden", "true")], ["≫"])],
           ),
         ],
       )
@@ -182,8 +182,8 @@ export function priorityBarView(board: BoardModel, state: VisibleState, tableId:
   return h.div(
     [
       h.DataAttribute("testid", "priority-context-bar"),
-      h.Class("pointer-events-auto fixed right-md z-25 flex flex-col items-end gap-sm"),
-      h.Style({ bottom: `${HAND_BAR_H + 10}px` }),
+      h.Class("pointer-events-auto fixed bottom-(--b) right-md z-25 flex flex-col items-end gap-sm"),
+      h.Style({ "--b": `${HAND_BAR_H + 10}px` }),
     ],
     [
       h.div(

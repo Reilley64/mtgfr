@@ -320,6 +320,200 @@ test("while Alt held, moving above the hand sticky band releases hand inspect to
   expect(model.inspectPin).toEqual(expect.objectContaining({ name: "Board Bolt", objectId: 7 }));
 });
 
+test("leaving the hand peek before Alt keeps the hover latched inside the sticky band", () => {
+  // Reported repro: hover a hand card, the enter/leave storm settles on a peek-strip leave
+  // while the cursor sits over pointer-events-none face art, THEN the user presses Alt.
+  // AltDown must still find the card the user is looking at.
+  let model: BoardModel = initialBoardModel();
+  const fold = gameFold();
+
+  // Park the cursor inside the hand sticky band (over the raised face art).
+  [model] = updateBoard(model, BoardPointerMove({ x: 400, y: 800 }), fold, "table-1");
+  [model] = updateBoard(
+    model,
+    InspectAuxHovered({
+      source: "hand",
+      card: { name: "Hand Shock", cardId: "shock-id", print: "shock-print" },
+    }),
+    fold,
+    "table-1",
+  );
+  // Peek-strip leave with Alt still up — the latch is position-based, not Alt-based.
+  [model] = updateBoard(model, InspectAuxHovered({ source: "hand", card: null }), fold, "table-1");
+  expect(model.handInspectHover).toEqual({
+    name: "Hand Shock",
+    cardId: "shock-id",
+    print: "shock-print",
+  });
+
+  const [pinned] = updateBoard(model, AltDown(), fold, "table-1");
+  expect(pinned.inspectPin).toEqual({
+    name: "Hand Shock",
+    prepared: false,
+    cardId: "shock-id",
+    print: "shock-print",
+  });
+});
+
+test("moving out of the hand sticky band before Alt clears the latched hover", () => {
+  const creature = battlefieldCreature(7, "Board Bolt");
+  const fold = gameFold({ objects: [creature] });
+  const screen = screenCenterForCard(fold, 7);
+
+  let model: BoardModel = initialBoardModel();
+  [model] = updateBoard(model, BoardPointerMove({ x: 400, y: 800 }), fold, "table-1");
+  [model] = updateBoard(
+    model,
+    InspectAuxHovered({
+      source: "hand",
+      card: { name: "Hand Shock", cardId: "shock-id", print: "shock-print" },
+    }),
+    fold,
+    "table-1",
+  );
+  [model] = updateBoard(model, InspectAuxHovered({ source: "hand", card: null }), fold, "table-1");
+  expect(model.handInspectHover).not.toBeNull();
+
+  // Cursor leaves the band: the latch releases even though Alt was never held.
+  [model] = updateBoard(model, BoardPointerMove({ x: 400, y: 200 }), fold, "table-1");
+  expect(model.handInspectHover).toBeNull();
+
+  // AltDown over the battlefield then pins the board card, not the stale hand hover.
+  [model] = updateBoard(model, BoardPointerMove({ x: screen.x, y: screen.y }), fold, "table-1");
+  const [pinned] = updateBoard(model, AltDown(), fold, "table-1");
+  expect(pinned.inspectPin).toEqual(expect.objectContaining({ name: "Board Bolt", objectId: 7 }));
+});
+
+test("hand leave storm with a stale cursor outside the band keeps the hover for AltDown", () => {
+  // Reported repro: the hand bar is an HTML overlay, so BoardPointerMove never fires while the
+  // pointer is over it — model.cursor stays stale mid-screen (here (0, 0)), outside the sticky
+  // band. The fan's enter/leave storm (pointer-events-none raised face art) must not clear the
+  // latch, and the AltDown that follows must still pin the hovered card.
+  let model: BoardModel = initialBoardModel();
+  const fold = gameFold();
+
+  [model] = updateBoard(
+    model,
+    InspectAuxHovered({
+      source: "hand",
+      card: { name: "Hand Shock", cardId: "shock-id", print: "shock-print" },
+    }),
+    fold,
+    "table-1",
+  );
+  [model] = updateBoard(model, InspectAuxHovered({ source: "hand", card: null }), fold, "table-1");
+  [model] = updateBoard(
+    model,
+    InspectAuxHovered({
+      source: "hand",
+      card: { name: "Hand Shock", cardId: "shock-id", print: "shock-print" },
+    }),
+    fold,
+    "table-1",
+  );
+  [model] = updateBoard(model, InspectAuxHovered({ source: "hand", card: null }), fold, "table-1");
+
+  expect(model.cursor).toEqual({ x: 0, y: 0 });
+  expect(model.handInspectHover).toEqual({
+    name: "Hand Shock",
+    cardId: "shock-id",
+    print: "shock-print",
+  });
+
+  const [pinned] = updateBoard(model, AltDown(), fold, "table-1");
+  expect(pinned.inspectPin).toEqual({
+    name: "Hand Shock",
+    prepared: false,
+    cardId: "shock-id",
+    print: "shock-print",
+  });
+});
+
+test("a board move back over the canvas releases a latch kept through the leave storm", () => {
+  // The release signal is a fresh-cursor BoardPointerMove outside the sticky band (the pointer
+  // is back over the canvas) — not the aux leave itself.
+  let model: BoardModel = initialBoardModel();
+  const fold = gameFold();
+
+  [model] = updateBoard(
+    model,
+    InspectAuxHovered({
+      source: "hand",
+      card: { name: "Hand Shock", cardId: "shock-id", print: "shock-print" },
+    }),
+    fold,
+    "table-1",
+  );
+  [model] = updateBoard(model, InspectAuxHovered({ source: "hand", card: null }), fold, "table-1");
+  expect(model.handInspectHover).not.toBeNull();
+
+  [model] = updateBoard(model, BoardPointerMove({ x: 400, y: 200 }), fold, "table-1");
+  expect(model.handInspectHover).toBeNull();
+});
+
+test("with Alt held, the first board move off the hand bar still pins the latched card", () => {
+  // Moving off the hand bar onto empty canvas must not flick the pin away: nothing pinnable is
+  // under the fresh cursor, so the hand pin survives while the fresh cursor releases the latch.
+  let model: BoardModel = { ...initialBoardModel(), altDown: true };
+  const fold = gameFold();
+
+  [model] = updateBoard(
+    model,
+    InspectAuxHovered({
+      source: "hand",
+      card: { name: "Hand Shock", cardId: "shock-id", print: "shock-print" },
+    }),
+    fold,
+    "table-1",
+  );
+  [model] = updateBoard(model, InspectAuxHovered({ source: "hand", card: null }), fold, "table-1");
+
+  [model] = updateBoard(model, BoardPointerMove({ x: 700, y: 300 }), fold, "table-1");
+  expect(model.inspectPin).toEqual(
+    expect.objectContaining({ name: "Hand Shock", cardId: "shock-id", print: "shock-print" }),
+  );
+  expect(model.handInspectHover).toBeNull();
+});
+
+test("a stack aux enter supersedes a latched hand hover", () => {
+  // The cursor moved from the hand fan to a stack card; AltDown must pin the stack card,
+  // not the hand card latched while the cursor was still in the sticky band.
+  let model: BoardModel = initialBoardModel();
+  const fold = gameFold();
+
+  [model] = updateBoard(model, BoardPointerMove({ x: 400, y: 800 }), fold, "table-1");
+  [model] = updateBoard(
+    model,
+    InspectAuxHovered({
+      source: "hand",
+      card: { name: "Hand Shock", cardId: "shock-id", print: "shock-print" },
+    }),
+    fold,
+    "table-1",
+  );
+  [model] = updateBoard(model, InspectAuxHovered({ source: "hand", card: null }), fold, "table-1");
+  expect(model.handInspectHover).not.toBeNull();
+
+  [model] = updateBoard(
+    model,
+    InspectAuxHovered({
+      source: "stack",
+      card: { name: "Stack Bolt", cardId: "bolt-id", print: "bolt-print" },
+    }),
+    fold,
+    "table-1",
+  );
+  expect(model.handInspectHover).toBeNull();
+
+  const [pinned] = updateBoard(model, AltDown(), fold, "table-1");
+  expect(pinned.inspectPin).toEqual({
+    name: "Stack Bolt",
+    prepared: false,
+    cardId: "bolt-id",
+    print: "bolt-print",
+  });
+});
+
 test("aux hover pins hand and stack cards while Alt is already held", () => {
   const fold = gameFold();
   let model: BoardModel = { ...initialBoardModel(), altDown: true };
@@ -342,6 +536,7 @@ test("aux hover pins hand and stack cards while Alt is already held", () => {
   });
   expect((cmds[0] as { name?: string } | undefined)?.name).toBe("FetchInspectCard");
 
+  // Moving to a stack card supersedes the hand hover, so the pin follows the cursor.
   [model, cmds] = updateBoard(
     model,
     InspectAuxHovered({
@@ -352,13 +547,14 @@ test("aux hover pins hand and stack cards while Alt is already held", () => {
     "table-1",
   );
   expect(model.inspectPin).toEqual({
-    name: "Hand Shock",
+    name: "Stack Bolt",
     prepared: false,
-    cardId: "shock-id",
-    print: "shock-print",
+    cardId: "bolt-id",
+    print: "bolt-print",
   });
-  expect(cmds).toEqual([]);
+  expect((cmds[0] as { name?: string } | undefined)?.name).toBe("FetchInspectCard");
 
+  // The stale hand leave afterwards is a no-op: the hand latch is already gone.
   [model, cmds] = updateBoard(model, InspectAuxHovered({ source: "hand", card: null }), fold, "table-1");
   expect(model.inspectPin).toEqual({
     name: "Stack Bolt",
@@ -366,7 +562,7 @@ test("aux hover pins hand and stack cards while Alt is already held", () => {
     cardId: "bolt-id",
     print: "bolt-print",
   });
-  expect((cmds[0] as { name?: string } | undefined)?.name).toBe("FetchInspectCard");
+  expect(cmds).toEqual([]);
 });
 
 test("AltUp clears altDown and dismisses the inspect pin", () => {
