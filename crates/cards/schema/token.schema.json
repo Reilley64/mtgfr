@@ -3242,25 +3242,6 @@
         }
       ]
     },
-    "DelayController": {
-      "description": "Who acts when a [`Effect::Misc(MiscEffect::ScheduleAtNextUpkeep)`] delayed trigger fires (CR 603.7).",
-      "oneOf": [
-        {
-          "description": "The scheduling ability's own controller (Arcane Denial's \"you draw a card\").",
-          "enum": [
-            "you"
-          ],
-          "type": "string"
-        },
-        {
-          "description": "The controller of the scheduling ability's shared target spell (Arcane Denial's \"its controller may draw up to two cards\" — the just-countered spell's controller, read via [`Game::controller_of`], which resolves through the [`Object::Moved`] chain even after the spell has left the stack for the graveyard).",
-          "enum": [
-            "target_spell_controller"
-          ],
-          "type": "string"
-        }
-      ]
-    },
     "Division": {
       "oneOf": [
         {
@@ -5703,9 +5684,6 @@
             },
             {
               "properties": {
-                "controller": {
-                  "$ref": "#/$defs/TokenController"
-                },
                 "count": {
                   "$ref": "#/$defs/Amount"
                 },
@@ -5730,6 +5708,11 @@
                   "default": false,
                   "type": "boolean"
                 },
+                "per_opponent": {
+                  "default": false,
+                  "description": "\"**For each opponent**, you create …\" (Eccentric Pestfinder, Furygale Flocking): the batch repeats once per opponent while `who` still names the recipient, so this is a repeat count rather than a recipient — spelling it as `who = \"each_opponent\"` would hand the tokens to the opponents instead. With `must_attack_defender`, each repeat's tokens are bound to *that* opponent rather than to the one flattened defender.",
+                  "type": "boolean"
+                },
                 "set_base_pt": {
                   "anyOf": [
                     {
@@ -5742,6 +5725,14 @@
                 },
                 "token": {
                   "type": "string"
+                },
+                "who": {
+                  "allOf": [
+                    {
+                      "$ref": "#/$defs/PlayerSet"
+                    }
+                  ],
+                  "description": "Who the tokens enter under (CR 111.4) — the ability's controller by default, `targets_controller` for Beast Within's \"its controller creates a 3/3 Beast\", `target_player` / `target_opponent` for a chosen seat, `each_other_player` for Death by Dragons. A multi-seat set mints the whole `count` under *each* named seat."
                 }
               },
               "required": [
@@ -9989,13 +9980,17 @@
                   "$ref": "#/$defs/Effect"
                 },
                 "who": {
-                  "$ref": "#/$defs/DelayController"
+                  "allOf": [
+                    {
+                      "$ref": "#/$defs/PlayerSet"
+                    }
+                  ],
+                  "description": "Who the delayed trigger belongs to, resolved to a concrete seat now and stored on the scheduled trigger — the ability's controller by default (Dragon Whelp's \"sacrifice this creature\"), `targets_controller` for the shared target spell's controller (Arcane Denial's \"**its controller** may draw up to two cards\"). One seat: a delayed trigger has one controller, so a multi-seat set is rejected at resolution."
                 }
               },
               "required": [
                 "mode",
-                "then",
-                "who"
+                "then"
               ],
               "type": "object"
             },
@@ -11445,6 +11440,13 @@
           "type": "string"
         },
         {
+          "description": "Every living player *except* the chosen player target — Death by Dragons' \"each player other than target player creates a 5/5 red Dragon\". The target names the one seat left out, not the recipients, so this carries [`TargetSpec::Player`] like any targeted set.",
+          "enum": [
+            "each_other_player"
+          ],
+          "type": "string"
+        },
+        {
           "additionalProperties": false,
           "description": "The attacking player, baked in when the attack trigger is placed (CR 603.10a) — Parasitic Impetus' \"whenever enchanted creature attacks, its controller loses 2 life\". `None` only in an unplaced card template, which never reaches resolution.",
           "properties": {
@@ -12295,60 +12297,6 @@
         }
       ],
       "description": "An ability's `timing` string: one of the three non-trigger timings, or a trigger tag."
-    },
-    "TokenController": {
-      "description": "Who controls a token minted by [`Effect::Token(TokenEffect::Create)`] (CR 111.4's \"under its controller's control\" default is the ability's own controller; some effects hand the token to a different player instead).",
-      "oneOf": [
-        {
-          "description": "The ability's own controller (the default — most \"create a token\" effects).",
-          "enum": [
-            "you"
-          ],
-          "type": "string"
-        },
-        {
-          "description": "The controller of this effect's target (Beast Within's \"its controller creates a 3/3 Beast\" — the destroyed/exiled permanent's controller, read via [`Game::controller_of`] even after the target has left the battlefield, since a moved object's controller chain still resolves back to its owner).",
-          "enum": [
-            "target_controller"
-          ],
-          "type": "string"
-        },
-        {
-          "description": "One token minted per opponent of the ability's controller, each under that opponent (Eccentric Pestfinder's \"for each opponent, you create a...\").",
-          "enum": [
-            "each_opponent"
-          ],
-          "type": "string"
-        },
-        {
-          "description": "One token minted per opponent of the ability's controller, each under the ability's own controller (Eccentric Pestfinder's Turn Stones back face, \"For each opponent, you create a...\"). Distinct from [`TokenController::EachOpponent`], which mints one per opponent under *each opponent*. CR 111.4.",
-          "enum": [
-            "one_per_opponent"
-          ],
-          "type": "string"
-        },
-        {
-          "description": "The ability's own chosen Player target (Shadrix Silverquill's begin-combat \"Target player creates a 2/1 ... Inkling ... token\" — CR 111.4). Makes [`Effect::target`](super::Effect::target) report [`TargetSpec::Player`](super::TargetSpec::Player) for this `CreateToken`, unlike every other `TokenController` variant (which take their recipient from context, not a target of their own).",
-          "enum": [
-            "target_player"
-          ],
-          "type": "string"
-        },
-        {
-          "description": "The ability's own chosen Player target, restricted to an opponent (CR \"target opponent\" — Questing Phelddagrif's \"Target opponent creates a 1/1 ... Hippo ... token\", CR 111.4). The opponent-restricted twin of [`TargetPlayer`](Self::TargetPlayer): same [`Target::Player`] resolution, narrower [`TargetSpec::OpponentPlayer`](super::TargetSpec::OpponentPlayer) legal-target set.",
-          "enum": [
-            "target_opponent"
-          ],
-          "type": "string"
-        },
-        {
-          "description": "Every player *other than* the ability's chosen Player target — the ability's own controller included, the target excluded (Death by Dragons: \"Each player other than target player creates a 5/5 red Dragon creature token with flying.\" — CR 111.4). Same [`Target::Player`] resolution and [`TargetSpec::Player`](super::TargetSpec::Player) report as [`TargetPlayer`](Self::TargetPlayer), but the target is the one player who does *not* get a token, not the recipient.",
-          "enum": [
-            "each_other_player"
-          ],
-          "type": "string"
-        }
-      ]
     },
     "TokenFilter": {
       "description": "Whether a [`PermanentFilter`] accepts tokens, nontokens, or both.",

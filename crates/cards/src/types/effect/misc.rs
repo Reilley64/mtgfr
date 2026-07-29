@@ -186,7 +186,13 @@ pub enum MiscEffect {
     },
 
     ScheduleAtNextUpkeep {
-        who: DelayController,
+        /// Who the delayed trigger belongs to, resolved to a concrete seat now and stored on the
+        /// scheduled trigger — the ability's controller by default (Dragon Whelp's "sacrifice
+        /// this creature"), `targets_controller` for the shared target spell's controller
+        /// (Arcane Denial's "**its controller** may draw up to two cards"). One seat: a delayed
+        /// trigger has one controller, so a multi-seat set is rejected at resolution.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        who: PlayerSet,
         #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::static_effect"))]
         then: &'static Effect,
         #[cfg_attr(feature = "card-dsl", serde(default))]

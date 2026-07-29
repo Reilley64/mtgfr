@@ -8033,7 +8033,8 @@ static MAKE_INKLINGS: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         effect: Effect::Token(TokenEffect::Create {
             token: INKLING.clone(),
             count: Amount::Fixed(2),
-            controller: TokenController::You,
+            who: PlayerSet::You,
+            per_opponent: false,
             enters_with: Amount::Fixed(0),
             set_base_pt: None,
             exile_at_next_end_step: false,
@@ -9354,7 +9355,8 @@ fn make_squirrel_per_opponent() -> CardDef {
                 TokenEffect::Create {
                     token: creature("Squirrel", 1, 1, &[]),
                     count: Amount::Fixed(1),
-                    controller: TokenController::EachOpponent,
+                    who: PlayerSet::EachOpponent,
+                    per_opponent: false,
                     enters_with: Amount::Fixed(0),
                     set_base_pt: None,
                     exile_at_next_end_step: false,
@@ -9423,7 +9425,7 @@ fn an_each_opponent_token_effect_gives_one_token_to_every_opponent() {
 
 /// A test-only sorcery "For each opponent, you create a 1/1 Pest token with 'When this token
 /// dies, you gain 1 life.'" — Turn Stones' own text, isolated (`controller =
-/// "one_per_opponent"`): one token per opponent, but every token belongs to the caster, not the
+/// `per_opponent`): one token per opponent, but every token belongs to the caster, not the
 /// opponents (CR 111.4).
 fn make_pest_per_opponent() -> CardDef {
     static CARD: LazyLock<CardDef> = LazyLock::new(|| {
@@ -9433,7 +9435,8 @@ fn make_pest_per_opponent() -> CardDef {
                 TokenEffect::Create {
                     token: PEST.clone(),
                     count: Amount::Fixed(1),
-                    controller: TokenController::OnePerOpponent,
+                    who: PlayerSet::You,
+                    per_opponent: true,
                     enters_with: Amount::Fixed(0),
                     set_base_pt: None,
                     exile_at_next_end_step: false,
@@ -9449,7 +9452,7 @@ fn make_pest_per_opponent() -> CardDef {
 
 /// Turn Stones (Eccentric Pestfinder's back face): "For each opponent, you create a 1/1 ...
 /// Pest ..." mints one token per opponent, but every token is under the caster's own control —
-/// distinct from `TokenController::EachOpponent`, which hands a token to each opponent.
+/// distinct from `PlayerSet::EachOpponent`, which hands a token to each opponent.
 #[test]
 fn eccentric_pestfinder_mints_one_pest_per_opponent_under_you() {
     let mut game = Game::with_players(4, 0);
@@ -9561,7 +9564,7 @@ fn eccentric_pestfinders_pest_death_trigger_gains_the_caster_life_not_an_opponen
 }
 
 /// Death by Dragons: "Each player other than target player creates a 5/5 red Dragon creature
-/// token with flying." — `TokenController::EachOtherPlayer`: the chosen Player target is the one
+/// token with flying." — `PlayerSet::EachOtherPlayer`: the chosen Player target is the one
 /// player who does NOT get a Dragon; every other living player (the caster included) does.
 #[test]
 fn death_by_dragons_each_other_player_gets_dragons_except_the_target() {
@@ -9862,7 +9865,8 @@ static MAKE_PEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         effect: Effect::Token(TokenEffect::Create {
             token: PEST.clone(),
             count: Amount::Fixed(1),
-            controller: TokenController::You,
+            who: PlayerSet::You,
+            per_opponent: false,
             enters_with: Amount::Fixed(0),
             set_base_pt: None,
             exile_at_next_end_step: false,
@@ -17146,7 +17150,8 @@ fn make_a_bear_token() -> CardDef {
                 TokenEffect::Create {
                     token: creature("Bear Token", 2, 2, &[]),
                     count: Amount::Fixed(1),
-                    controller: TokenController::You,
+                    who: PlayerSet::You,
+                    per_opponent: false,
                     enters_with: Amount::Fixed(0),
                     set_base_pt: None,
                     exile_at_next_end_step: false,
@@ -20151,7 +20156,8 @@ fn brudiclad() -> CardDef {
                 Effect::Token(TokenEffect::Create {
                     token: creature("Myr", 2, 1, &[]),
                     count: Amount::Fixed(1),
-                    controller: TokenController::You,
+                    who: PlayerSet::You,
+                    per_opponent: false,
                     enters_with: Amount::Fixed(0),
                     set_base_pt: None,
                     exile_at_next_end_step: false,
@@ -29219,7 +29225,7 @@ fn schedule_draw_one() -> CardDef {
             "Schedule Draw One (test)",
             Box::leak(Box::new([spell_ability(Effect::Misc(
                 MiscEffect::ScheduleAtNextUpkeep {
-                    who: DelayController::You,
+                    who: PlayerSet::You,
                     then: &Effect::Draw(DrawEffect::Cards {
                         who: PlayerSet::You,
                         count: Amount::Fixed(1),
@@ -29487,7 +29493,7 @@ fn schedule_may_draw_up_to_two() -> CardDef {
             "Schedule May Draw Up To Two (test)",
             Box::leak(Box::new([spell_ability(Effect::Misc(
                 MiscEffect::ScheduleAtNextUpkeep {
-                    who: DelayController::You,
+                    who: PlayerSet::You,
                     then: &Effect::Choice(ChoiceEffect::MayDrawUpTo {
                         count: Amount::Fixed(2),
                     }),
@@ -43278,8 +43284,8 @@ fn an_ordinary_token_imposes_no_must_attack_requirement() {
     .expect("an ordinary token isn't forced to attack");
 }
 
-/// A test-only sorcery combining `must_attack_defender` with `TokenController::You` (not
-/// `one_per_opponent`) — the still-flattened path every non-Furygale must-attack token takes.
+/// A test-only sorcery combining `must_attack_defender` with `PlayerSet::You` (not
+/// `per_opponent`) — the still-flattened path every non-Furygale must-attack token takes.
 fn make_forced_token_you() -> CardDef {
     static CARD: LazyLock<CardDef> = LazyLock::new(|| {
         sorcery(
@@ -43288,7 +43294,8 @@ fn make_forced_token_you() -> CardDef {
                 TokenEffect::Create {
                     token: creature("Forced Token", 2, 2, &[Keyword::Haste]),
                     count: Amount::Fixed(1),
-                    controller: TokenController::You,
+                    who: PlayerSet::You,
+                    per_opponent: false,
                     enters_with: Amount::Fixed(0),
                     set_base_pt: None,
                     exile_at_next_end_step: false,
@@ -43304,7 +43311,7 @@ fn make_forced_token_you() -> CardDef {
 
 #[test]
 fn a_must_attack_token_under_token_controller_you_still_binds_to_the_single_flattened_opponent() {
-    // Regression: only `one_per_opponent` threads a per-opponent defender (Furygale Flocking).
+    // Regression: only `per_opponent` threads a per-opponent defender (Furygale Flocking).
     // Every other `controller` value keeps today's flattened behavior — the required defender is
     // *an* opponent of the controller, not scoped per-recipient.
     let mut game = Game::with_players(3, 0);
@@ -43348,7 +43355,7 @@ fn a_must_attack_token_under_token_controller_you_still_binds_to_the_single_flat
 }
 
 /// A test-only sorcery: "For each opponent, create two 2/2 hasty tokens that attack that
-/// opponent this turn if able" — `must_attack_defender` combined with `one_per_opponent`
+/// opponent this turn if able" — `must_attack_defender` combined with `per_opponent`
 /// (Furygale Flocking): each opponent's own pair is bound to that specific opponent, not a
 /// single flattened one.
 fn make_forced_tokens_per_opponent() -> CardDef {
@@ -43359,7 +43366,8 @@ fn make_forced_tokens_per_opponent() -> CardDef {
                 TokenEffect::Create {
                     token: creature("Forced Token", 2, 2, &[Keyword::Haste]),
                     count: Amount::Fixed(2),
-                    controller: TokenController::OnePerOpponent,
+                    who: PlayerSet::You,
+                    per_opponent: true,
                     enters_with: Amount::Fixed(0),
                     set_base_pt: None,
                     exile_at_next_end_step: false,
@@ -49183,7 +49191,8 @@ static GRAVEYARD_EXIT_WATCHER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         effect: Effect::Token(TokenEffect::Create {
             token: INKLING.clone(),
             count: Amount::Fixed(1),
-            controller: TokenController::You,
+            who: PlayerSet::You,
+            per_opponent: false,
             enters_with: Amount::Fixed(0),
             set_base_pt: None,
             exile_at_next_end_step: false,
@@ -58186,7 +58195,8 @@ static DEEKAH_MAGECRAFT_FRACTAL: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         effect: Effect::Token(TokenEffect::Create {
             token: creature("Fractal", 0, 0, &[]),
             count: Amount::Fixed(1),
-            controller: TokenController::You,
+            who: PlayerSet::You,
+            per_opponent: false,
             enters_with: Amount::TriggeringSpellManaValue,
             set_base_pt: None,
             exile_at_next_end_step: false,
@@ -58485,7 +58495,8 @@ static MANAFORM_HELLKITE_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         effect: Effect::Token(TokenEffect::Create {
             token: MANAFORM_DRAGON_TOKEN.clone(),
             count: Amount::Fixed(1),
-            controller: TokenController::You,
+            who: PlayerSet::You,
+            per_opponent: false,
             enters_with: Amount::Fixed(0),
             set_base_pt: Some(Amount::TriggeringSpellManaSpent),
             exile_at_next_end_step: true,
@@ -58881,7 +58892,8 @@ static ROOTHA_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         effect: Effect::Token(TokenEffect::Create {
             token: ROOTHA_ELEMENTAL_TOKEN.clone(),
             count: Amount::Fixed(1),
-            controller: TokenController::You,
+            who: PlayerSet::You,
+            per_opponent: false,
             enters_with: Amount::Fixed(0),
             set_base_pt: Some(Amount::GreatestInstantOrSorceryManaValueCastThisTurn),
             exile_at_next_end_step: false,
@@ -62458,7 +62470,8 @@ fn make_token_squirrel() -> CardDef {
                 TokenEffect::Create {
                     token: creature("Squirrel", 1, 1, &[]),
                     count: Amount::Fixed(1),
-                    controller: TokenController::You,
+                    who: PlayerSet::You,
+                    per_opponent: false,
                     enters_with: Amount::Fixed(0),
                     set_base_pt: None,
                     exile_at_next_end_step: false,
@@ -67068,7 +67081,8 @@ static WATCHES_ENCHANTMENTS_ENTER: LazyLock<CardDef> = LazyLock::new(|| CardDef 
                 dredge: None,
             },
             count: Amount::Fixed(1),
-            controller: TokenController::You,
+            who: PlayerSet::You,
+            per_opponent: false,
             enters_with: Amount::Fixed(0),
             set_base_pt: None,
             exile_at_next_end_step: false,
@@ -77666,7 +77680,8 @@ fn demonstrate_token_maker() -> CardDef {
                 TokenEffect::Create {
                     token: creature("Squirrel", 1, 1, &[]),
                     count: Amount::Fixed(1),
-                    controller: TokenController::You,
+                    who: PlayerSet::You,
+                    per_opponent: false,
                     enters_with: Amount::Fixed(0),
                     set_base_pt: None,
                     exile_at_next_end_step: false,
@@ -88119,7 +88134,7 @@ fn armadillo_cloak_gains_life_on_noncombat_damage() {
 /// Questing Phelddagrif (tsb): "{G}: This creature gets +1/+1 until end of turn. Target opponent
 /// creates a 1/1 green Hippo creature token." The self-pump and the opponent's compensation both
 /// land off one activation — `Effect::Pump(PumpEffect::PumpSelfUntilEndOfTurn)` (no target of its own) shares the
-/// ability's one chosen target with `create_token`'s opponent-restricted `TokenController::TargetOpponent`.
+/// ability's one chosen target with `create_token`'s opponent-restricted `PlayerSet::TargetOpponent`.
 #[test]
 fn questing_phelddagrif_green_gives_opponent_hippo() {
     let mut game = Game::new();
@@ -95565,7 +95580,8 @@ static MAKE_TEST_TOKEN: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         effect: Effect::Token(TokenEffect::Create {
             token: creature("Squirrel", 1, 1, &[]),
             count: Amount::Fixed(1),
-            controller: TokenController::You,
+            who: PlayerSet::You,
+            per_opponent: false,
             enters_with: Amount::Fixed(0),
             set_base_pt: None,
             exile_at_next_end_step: false,

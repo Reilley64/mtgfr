@@ -26,8 +26,19 @@ pub enum TokenEffect {
         token: CardDef,
         #[cfg_attr(feature = "card-dsl", serde(default = "de::one_amount"))]
         count: Amount,
+        /// Who the tokens enter under (CR 111.4) — the ability's controller by default,
+        /// `targets_controller` for Beast Within's "its controller creates a 3/3 Beast",
+        /// `target_player` / `target_opponent` for a chosen seat, `each_other_player` for Death
+        /// by Dragons. A multi-seat set mints the whole `count` under *each* named seat.
         #[cfg_attr(feature = "card-dsl", serde(default))]
-        controller: TokenController,
+        who: PlayerSet,
+        /// "**For each opponent**, you create …" (Eccentric Pestfinder, Furygale Flocking): the
+        /// batch repeats once per opponent while `who` still names the recipient, so this is a
+        /// repeat count rather than a recipient — spelling it as `who = "each_opponent"` would
+        /// hand the tokens to the opponents instead. With `must_attack_defender`, each repeat's
+        /// tokens are bound to *that* opponent rather than to the one flattened defender.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        per_opponent: bool,
         #[cfg_attr(feature = "card-dsl", serde(default = "de::zero_amount"))]
         enters_with: Amount,
         #[cfg_attr(feature = "card-dsl", serde(default))]

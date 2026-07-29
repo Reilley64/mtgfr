@@ -89,6 +89,33 @@ describe("formatMessage", () => {
     ).toBe("Target player creates 1 Treasure token(s)");
   });
 
+  it("names the token recipient and the per-opponent repeat", () => {
+    expect(
+      formatMessage({
+        key: "effect.token_create",
+        params: [
+          { name: "count", int_value: 1 },
+          { name: "token", string_value: "dragon" },
+          { name: "who", string_value: "each_other_player" },
+          { name: "per_opponent", bool_value: false },
+        ],
+        children: [],
+      }),
+    ).toBe("Each player other than target player creates 1 dragon token(s)");
+
+    expect(
+      formatMessage({
+        key: "effect.token_create",
+        params: [
+          { name: "count", int_value: 2 },
+          { name: "token", string_value: "bird" },
+          { name: "per_opponent", bool_value: true },
+        ],
+        children: [],
+      }),
+    ).toBe("You create 2 bird token(s) for each opponent");
+  });
+
   it("joins sequence children with then", () => {
     expect(
       formatMessage({

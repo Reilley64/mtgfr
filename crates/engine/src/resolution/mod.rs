@@ -95,6 +95,17 @@ impl Game {
             PlayerSet::You => vec![controller],
             PlayerSet::EachPlayer => self.living_players().collect(),
             PlayerSet::EachOpponent => self.living_players().filter(|&p| p != controller).collect(),
+            // Death by Dragons names the one seat left *out*; a lost target excludes nobody, so
+            // an unresolved target means the whole table (CR 608.2b fizzles the spell upstream).
+            PlayerSet::EachOtherPlayer => {
+                let excluded = match target {
+                    Some(Target::Player(player)) => Some(player),
+                    _ => None,
+                };
+                self.living_players()
+                    .filter(|&p| Some(p) != excluded)
+                    .collect()
+            }
             // CR 601.2f's alternative-cost rider names no target, so there is nothing to read back
             // — see the variant's ponytail note on the deterministic pick.
             PlayerSet::AnOpponent => self

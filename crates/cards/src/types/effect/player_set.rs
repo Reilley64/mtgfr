@@ -44,6 +44,10 @@ pub enum PlayerSet {
     EachOpponent,
     /// Every living player, the controller included (Vandal's Edit's "each player loses 2 life").
     EachPlayer,
+    /// Every living player *except* the chosen player target — Death by Dragons' "each player
+    /// other than target player creates a 5/5 red Dragon". The target names the one seat left
+    /// out, not the recipients, so this carries [`TargetSpec::Player`] like any targeted set.
+    EachOtherPlayer,
     /// The attacking player, baked in when the attack trigger is placed (CR 603.10a) — Parasitic
     /// Impetus' "whenever enchanted creature attacks, its controller loses 2 life". `None` only in
     /// an unplaced card template, which never reaches resolution.
@@ -123,6 +127,7 @@ enum PlayerSetName {
     TargetsOwner,
     EachOpponent,
     EachPlayer,
+    EachOtherPlayer,
     AttackingPlayer,
     TriggeringPlayer,
     EachOtherOpponent,
@@ -144,6 +149,7 @@ impl From<PlayerSetName> for PlayerSet {
             PlayerSetName::TargetsOwner => PlayerSet::TargetsOwner,
             PlayerSetName::EachOpponent => PlayerSet::EachOpponent,
             PlayerSetName::EachPlayer => PlayerSet::EachPlayer,
+            PlayerSetName::EachOtherPlayer => PlayerSet::EachOtherPlayer,
             PlayerSetName::AttackingPlayer => PlayerSet::AttackingPlayer { player: None },
             PlayerSetName::TriggeringPlayer => PlayerSet::TriggeringPlayer { player: None },
             PlayerSetName::EachOtherOpponent => PlayerSet::EachOtherOpponent { damaged: None },

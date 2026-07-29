@@ -724,20 +724,10 @@ impl Effect {
                 ..
             })
             | Effect::Reveal(RevealEffect::TopAndDrainMutual)
-            | Effect::Choice(ChoiceEffect::MayDrawUpToThenOpponentMayRepeat { .. })
-            | Effect::Token(TokenEffect::Create {
-                controller: TokenController::TargetOpponent,
-                ..
-            }) => TargetSpec::OpponentPlayer,
+            | Effect::Choice(ChoiceEffect::MayDrawUpToThenOpponentMayRepeat { .. }) => {
+                TargetSpec::OpponentPlayer
+            }
 Effect::Exile(ExileEffect::Graveyard)
-            | Effect::Token(TokenEffect::Create {
-                controller: TokenController::TargetPlayer,
-                ..
-            })
-            | Effect::Token(TokenEffect::Create {
-                controller: TokenController::EachOtherPlayer,
-                ..
-            })
             | Effect::Counters(CountersEffect::PutCountersEach {
                 target_player: true,
                 ..
@@ -786,14 +776,15 @@ Effect::Exile(ExileEffect::Graveyard)
             | Effect::Choice(ChoiceEffect::Discard { who, .. })
             | Effect::Choice(ChoiceEffect::MayDraw { who, .. })
             | Effect::Token(TokenEffect::CreateTreasure { who, .. })
-            | Effect::Dig(DigEffect::ShuffleTargetCardsFromGraveyardIntoLibrary { who, .. }) => {
+            | Effect::Dig(DigEffect::ShuffleTargetCardsFromGraveyardIntoLibrary { who, .. })
+            | Effect::Misc(MiscEffect::ScheduleAtNextUpkeep { who, .. })
+            | Effect::Token(TokenEffect::Create { who, .. }) => {
                 player_set_target_spec(who)
             }
             Effect::Life(
                 LifeEffect::EachPlayerBecomesHighest | LifeEffect::SourceOwnerLosesHalfTheirLife,
             ) => TargetSpec::None,
 Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
-            | Effect::Token(TokenEffect::Create { .. })
             | Effect::Copy(CopyEffect::ThisSpell { .. })
             | Effect::Copy(CopyEffect::RetargetSpellCopy { .. })
             | Effect::Copy(CopyEffect::MayPayToCopyThis { .. })
@@ -928,7 +919,6 @@ Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
             | Effect::Static(StaticEffect::TappedForManaBonus { .. })
             | Effect::Static(StaticEffect::TriggerDoubling { .. })
             | Effect::Static(StaticEffect::GrantManaAbility { .. })
-            | Effect::Misc(MiscEffect::ScheduleAtNextUpkeep { .. })
             | Effect::Misc(MiscEffect::ScheduleColorlessManaForCounteredSpellNextMainPhase)
             | Effect::Misc(MiscEffect::SkipNextUntapOpponentCreatures)
             | Effect::Misc(MiscEffect::TakeExtraTurn)
@@ -2426,7 +2416,8 @@ fn fill_attack_context(effect: Effect, attack: Option<(PlayerId, PlayerId)>) -> 
             Effect::Token(TokenEffect::Create {
                 token,
                 count,
-                controller,
+                who,
+                per_opponent,
                 enters_with,
                 set_base_pt,
                 exile_at_next_end_step,
@@ -2438,7 +2429,8 @@ fn fill_attack_context(effect: Effect, attack: Option<(PlayerId, PlayerId)>) -> 
         ) => Effect::Token(TokenEffect::Create {
             token,
             count,
-            controller,
+            who,
+            per_opponent,
             enters_with,
             set_base_pt,
             exile_at_next_end_step,
@@ -3151,6 +3143,10 @@ fn fill_player(effect: Effect, f: &impl Fn(PlayerSet) -> PlayerSet) -> Effect {
         Effect::Dig(DigEffect::ShuffleTargetCardsFromGraveyardIntoLibrary { max, who }) => {
             Effect::Dig(DigEffect::ShuffleTargetCardsFromGraveyardIntoLibrary { max, who: f(who) })
         }
+        // Only the outer `who` fills: `then` is `&'static`, so a fill inside it would leak.
+        Effect::Misc(MiscEffect::ScheduleAtNextUpkeep { who, then, fire_at }) => {
+            Effect::Misc(MiscEffect::ScheduleAtNextUpkeep { who: f(who), then, fire_at })
+        }
         Effect::Sequence { steps } => Effect::Sequence {
             steps: steps.iter().map(|step| fill_player(step.clone(), f)).collect(),
         },
@@ -3176,7 +3172,8 @@ fn fill_player(effect: Effect, f: &impl Fn(PlayerSet) -> PlayerSet) -> Effect {
 /// its seats without one — "each opponent" and "its controller" take no target of their own.
 fn player_set_target_spec(who: PlayerSet) -> TargetSpec {
     match who {
-        PlayerSet::TargetPlayer => TargetSpec::Player,
+        // `EachOtherPlayer` targets a seat too — the one it leaves *out* (Death by Dragons).
+        PlayerSet::TargetPlayer | PlayerSet::EachOtherPlayer => TargetSpec::Player,
         PlayerSet::TargetOpponent => TargetSpec::OpponentPlayer,
         _ => TargetSpec::None,
     }
@@ -3204,7 +3201,8 @@ fn map_effect_amount_slots(effect: Effect, f: &impl Fn(Amount) -> Amount) -> Eff
         Effect::Token(TokenEffect::Create {
             token,
             count,
-            controller,
+            who,
+            per_opponent,
             enters_with,
             set_base_pt,
             exile_at_next_end_step,
@@ -3214,7 +3212,8 @@ fn map_effect_amount_slots(effect: Effect, f: &impl Fn(Amount) -> Amount) -> Eff
         }) => Effect::Token(TokenEffect::Create {
             token,
             count: f(count),
-            controller,
+            who,
+            per_opponent,
             enters_with: f(enters_with),
             set_base_pt: set_base_pt.map(f),
             exile_at_next_end_step,
@@ -3332,7 +3331,8 @@ fn fill_cast_mana_value(effect: Effect, mv: u32) -> Effect {
         Effect::Token(TokenEffect::Create {
             token,
             count,
-            controller,
+            who,
+            per_opponent,
             enters_with,
             set_base_pt,
             exile_at_next_end_step,
@@ -3342,7 +3342,8 @@ fn fill_cast_mana_value(effect: Effect, mv: u32) -> Effect {
         }) => Effect::Token(TokenEffect::Create {
             token,
             count: fill(count),
-            controller,
+            who,
+            per_opponent,
             enters_with: fill(enters_with),
             set_base_pt: set_base_pt.map(fill),
             exile_at_next_end_step,

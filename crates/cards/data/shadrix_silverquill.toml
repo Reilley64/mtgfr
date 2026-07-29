@@ -36,7 +36,7 @@ optional = true
 type = "token"
 mode = "create"
 token = "fbdbff76-c1ea-47ea-bfcc-7c64c23dad70"
-controller = "target_player"
+who = "target_player"
 
 [[abilities]]
 timing = "begin_combat"

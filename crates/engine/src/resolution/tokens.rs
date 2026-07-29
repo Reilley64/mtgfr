@@ -18,7 +18,8 @@ impl Game {
             TokenEffect::Create {
                 token,
                 count,
-                controller: token_controller,
+                who,
+                per_opponent,
                 // `enters_with` needs the just-minted token already in game state to route
                 // through `counters_after_replacements` (it reads the token's controller), so it
                 // can't be placed here — `execute_effect` is pure (`&self`). `Game::run`
@@ -35,68 +36,34 @@ impl Game {
                 // Mint sequential ids matching the order `apply` will push them (CR 111.1).
                 let count = self.resolve_count(count, controller, source, target, x);
                 // "…tokens … that attack that opponent this turn if able" (Furygale Flocking):
-                // the flattened single-opponent defender every `controller` value but
-                // `one_per_opponent` binds its tokens to (the one legal defending player in a
+                // the flattened single-opponent defender every non-`per_opponent` batch
+                // binds its tokens to (the one legal defending player in a
                 // 1v1 game; with more opponents, still just the first one found — CR 508.1a).
                 let flattened_defender = must_attack_defender
                     .then(|| self.living_players().find(|&p| p != controller))
                     .flatten();
                 // Who receives the token(s), paired with the must-attack defender (if any) that
-                // recipient's batch is bound to: the ability's own controller by default, the
-                // shared target's controller (Beast Within's "its controller creates..."), one
-                // copy per opponent under that opponent (a hostile edict), or one copy per
-                // opponent under the ability's own controller (Eccentric Pestfinder's "for each
-                // opponent, you create..." — Furygale Flocking's "for each opponent, create
-                // two ... tokens ... that attack that opponent" additionally binds each
-                // opponent's own batch to *that* opponent, not the flattened one). Combat
-                // Calligrapher's tapped-and-attacking rider overrides all of that (CR 111.4): the
-                // token is minted under the *attacking* player from `attacking_context`, not the
-                // ability's controller.
-                let batches: Vec<(PlayerId, Option<PlayerId>)> = match attacking_context {
-                    Some((attacker, _defender)) => vec![(attacker, None)],
-                    None => match token_controller {
-                        TokenController::You => vec![(controller, flattened_defender)],
-                        TokenController::TargetController => {
-                            let object =
-                                expect_object_target(target, "a token's target-controller");
-                            vec![(self.controller_of(object), flattened_defender)]
-                        }
-                        TokenController::EachOpponent => self
-                            .living_players()
-                            .filter(|&p| p != controller)
-                            .map(|p| (p, flattened_defender))
-                            .collect(),
-                        TokenController::OnePerOpponent => self
+                // batch is bound to. `per_opponent` repeats the batch once per opponent without
+                // moving the recipient (Eccentric Pestfinder's "for each opponent, *you*
+                // create..." — Furygale Flocking's "for each opponent, create two ... tokens ...
+                // that attack that opponent" additionally binds each repeat to *that* opponent
+                // rather than to the one flattened defender). Combat Calligrapher's
+                // tapped-and-attacking rider overrides `who` entirely (CR 111.4): the token is
+                // minted under the *attacking* player from `attacking_context`.
+                let batches: Vec<(PlayerId, Option<PlayerId>)> =
+                    match (attacking_context, per_opponent) {
+                        (Some((attacker, _defender)), _) => vec![(attacker, None)],
+                        (None, true) => self
                             .living_players()
                             .filter(|&p| p != controller)
                             .map(|opponent| (controller, must_attack_defender.then_some(opponent)))
                             .collect(),
-                        // Questing Phelddagrif's green rider: "Target opponent creates a 1/1 ...
-                        // Hippo ... token" — same `Target::Player` resolution as `TargetPlayer`
-                        // above, just narrowed to an opponent by `Effect::target`'s `TargetSpec`.
-                        TokenController::TargetPlayer | TokenController::TargetOpponent => {
-                            let Some(Target::Player(player)) = target else {
-                                panic!(
-                                    "a token's target-player recipient resolves with a chosen player target"
-                                );
-                            };
-                            vec![(player, flattened_defender)]
-                        }
-                        // Death by Dragons: "Each player other than target player creates a..." —
-                        // the chosen Player target is the one player excluded, not the recipient.
-                        TokenController::EachOtherPlayer => {
-                            let Some(Target::Player(excluded)) = target else {
-                                panic!(
-                                    "a token's each-other-player recipient set resolves with a chosen player target"
-                                );
-                            };
-                            self.living_players()
-                                .filter(|&p| p != excluded)
-                                .map(|p| (p, flattened_defender))
-                                .collect()
-                        }
-                    },
-                };
+                        (None, false) => self
+                            .players_in(who, controller, target)
+                            .into_iter()
+                            .map(|player| (player, flattened_defender))
+                            .collect(),
+                    };
                 // "…create an X/X … token …, where X is …" (Manaform Hellkite): bake the
                 // resolved base power/toughness straight into the minted def before any copies
                 // are minted — a genuine base-P/T set, not `enters_with`'s counters. Resolving

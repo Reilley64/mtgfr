@@ -484,6 +484,7 @@ fn who_param(who: PlayerSet) -> MessageParam {
             PlayerSet::TargetsOwner => "targets_owner",
             PlayerSet::EachOpponent => "each_opponent",
             PlayerSet::EachPlayer => "each_player",
+            PlayerSet::EachOtherPlayer => "each_other_player",
             PlayerSet::AttackingPlayer { .. } => "attacking_player",
             PlayerSet::TriggeringPlayer { .. } => "triggering_player",
             PlayerSet::EachOtherOpponent { .. } => "each_other_opponent",
@@ -1603,9 +1604,13 @@ impl EffectMessage for Effect {
                 amount_param("count", count),
                 search_dest_param("matched_dest", matched_dest),
             ]),
-            Effect::Token(Create { token, count, .. }) => {
-                MessageRef::new(MessageKey::EFFECT_TOKEN_CREATE)
-                    .with_params(vec![amount_param("count", count), name_param("token", token.name)])
+            Effect::Token(Create { token, count, who, per_opponent, .. }) => {
+                MessageRef::new(MessageKey::EFFECT_TOKEN_CREATE).with_params(vec![
+                    amount_param("count", count),
+                    name_param("token", token.name),
+                    who_param(who),
+                    bool_param("per_opponent", per_opponent),
+                ])
             }
             Effect::Token(CreateTreasure { count, who, .. }) => {
                 MessageRef::new(MessageKey::EFFECT_TOKEN_CREATE_TREASURE)

@@ -46,6 +46,7 @@ function playerPhrase(params: MessageParams): string {
   if (who === "targets_owner") return "target's owner";
   if (who === "each_opponent") return "each opponent";
   if (who === "each_player") return "each player";
+  if (who === "each_other_player") return "each player other than target player";
   if (who === "each_other_opponent") return "each other opponent";
   if (who === "attacking_player") return "the attacking player";
   if (who === "triggering_player") return "that player";
@@ -710,7 +711,7 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     "For each creature token you control that entered this turn, create a tapped and attacking copy of it; sacrifice those tokens at the beginning of the next end step",
   ),
   "effect.token_create": (params) =>
-    `Create ${param(params, "count", 1)} ${humanize(param(params, "token", "token"))} token(s)`,
+    `${playerClause(params, "create")} ${param(params, "count", 1)} ${humanize(param(params, "token", "token"))} token(s)${bool(params, "per_opponent") ? " for each opponent" : ""}`,
   "effect.token_create_copy": (params) =>
     `Create ${param(params, "count", 1)} token copy/copies of ${bool(params, "entering") ? "that creature" : "target creature"}${bool(params, "sacrifice_at_next_end_step") ? "; sacrifice it at the beginning of the next end step" : ""}${bool(params, "exile_at_next_end_step") ? "; exile it at the beginning of the next end step" : ""}`,
   "effect.token_create_treasure": (params) =>

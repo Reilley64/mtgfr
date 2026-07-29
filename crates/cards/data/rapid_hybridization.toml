@@ -29,5 +29,5 @@ cant_be_regenerated = true
 [[abilities.effects]]
 type = "token"
 mode = "create"
-controller = "target_controller"
+who = "targets_controller"
 token = "8653c69b-99a9-4881-a14c-68ba928c34d5"
