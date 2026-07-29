@@ -360,7 +360,7 @@ impl Game {
     /// Answer a [`PendingChoice::ChooseColor`] — either an as-enters choice (CR 614.12/700.9-style
     /// — Flickering Ward: stores `color` on `source`'s indefinite [`Permanent::chosen_color`]) or
     /// a resolution-time color-SET (CR 613.3c — Wild Mongrel: stores it on `source`'s
-    /// until-end-of-turn [`Permanent::set_color`] instead, per the pause's `until_end_of_turn`
+    /// as an until-end-of-turn registered color SET instead, per the pause's `until_end_of_turn`
     /// flag). Any of the five colors is a legal answer (no game-state legality to violate), so
     /// `color` is taken as given. `_player` isn't needed beyond `submit`'s choice-gate actor check.
     pub(crate) fn choose_color(

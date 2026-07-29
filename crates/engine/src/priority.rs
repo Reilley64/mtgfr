@@ -5,6 +5,7 @@
 //! Deferred / gaps: per-deck increments under `docs/fidelity/` (fidelity-grind skill).
 
 use crate::*;
+use std::collections::BTreeSet;
 
 /// One planned mana-source tap toward a payment ([`Game::plan_auto_taps`]): a land's free
 /// base `produces` tap, or a permanent's tap-for-mana ability (free or paid filter/karoo) at the
@@ -1953,8 +1954,12 @@ impl Game {
                 // ponytail: `TempBoostsEnded` ends *every* until-EOT effect on the Statue, so a
                 // pump cast on it mid-combat ends early too. Narrow enough to live with; split the
                 // event if a second end-of-combat card ever lands.
-                let animated: Vec<ObjectId> = self
-                    .permanent_ids(|p| p.animation_ends_at_end_of_combat)
+                let animated: BTreeSet<ObjectId> = self
+                    .modifier_provenance
+                    .modifiers
+                    .iter()
+                    .filter(|m| m.duration == ModifierDuration::EndOfCombat)
+                    .map(|m| m.host)
                     .collect();
                 for id in animated {
                     self.push_apply(events, Event::TempBoostsEnded { object: id });
@@ -1969,18 +1974,15 @@ impl Game {
                     self.push_apply(events, Event::DamageCleared { object: id });
                 }
 
-                let boosted: Vec<ObjectId> = self
-                    .permanent_ids(|p| {
-                        p.temp_power != 0
-                            || p.temp_toughness != 0
-                            || p.base_pt_set_eot.is_some()
-                            || p.added_types_eot != TypeSet::NONE
-                            || !p.added_subtypes_eot.is_empty()
-                            || matches!(p.set_color, Some((_, true)))
-                            || !p.temp_keywords.is_empty()
-                            || !p.temp_lost_keywords.is_empty()
-                            || p.reverts_to_def_eot.is_some()
-                    })
+                // Every duration-scoped continuous effect lives in the modifier registry, so the
+                // sweep is one scan of it. `BTreeSet` because a permanent pumped twice has two
+                // entries, and event order has to be deterministic.
+                let boosted: BTreeSet<ObjectId> = self
+                    .modifier_provenance
+                    .modifiers
+                    .iter()
+                    .filter(|m| m.duration != ModifierDuration::Indefinite)
+                    .map(|m| m.host)
                     .collect();
                 for id in boosted {
                     self.push_apply(events, Event::TempBoostsEnded { object: id });

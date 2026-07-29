@@ -1824,7 +1824,7 @@ pub enum PendingChoice {
     /// carried. Both raise this same picker (same wire prompt — [`Self::ChooseColor`] variant
     /// reused, not a second picker); `until_end_of_turn` tells [`Intent::ChooseColor`]'s handler
     /// which of the two answered: `false` sets `source`'s indefinite [`Permanent::chosen_color`],
-    /// `true` sets its until-end-of-turn [`Permanent::set_color`] instead.
+    /// `true` registers an until-end-of-turn `ModifierKind::SetColor` instead.
     ChooseColor {
         player: PlayerId,
         source: ObjectId,
@@ -2389,9 +2389,10 @@ pub enum Event {
     /// color of your choice until end of turn"
     /// ([`Effect::Choice(ChoiceEffect::SetOwnColorUntilEndOfTurn)`], `until_end_of_turn`), or a
     /// lace resolving on a spell or permanent ([`Effect::Pump(PumpEffect::TargetBecomesColor)`],
-    /// which prints no duration). Writes [`Permanent::set_color`] or, for a spell still on the
-    /// stack, [`Spell::set_color`]; only the until-EOT form is cleared by
-    /// [`Self::TempBoostsEnded`].
+    /// which prints no duration). Registers a `ModifierKind::SetColor` on a permanent — with the
+    /// duration the card prints, so only the until-EOT form is swept by [`Self::TempBoostsEnded`] —
+    /// or writes [`Spell::set_color`] for a spell still on the stack, which has no duration to
+    /// sweep because it ceases to exist as it resolves.
     ColorSet {
         object: ObjectId,
         color: Color,
@@ -2583,8 +2584,8 @@ pub enum Event {
     },
     /// A permanent's base power/toughness was SET until end of turn (CR 613.3(7b) — Biomass
     /// Mutation, Quandrix Charm's "has base power and toughness X/X until end of turn"), stored on
-    /// [`Permanent::base_pt_set_eot`] and cleared alongside the temp boosts at
-    /// [`Event::TempBoostsEnded`].
+    /// the modifier registry as a `ModifierKind::BasePtSet` and swept with every other
+    /// duration-scoped modifier at [`Event::TempBoostsEnded`].
     BasePtSetUntilEndOfTurn {
         object: ObjectId,
         power: i32,
@@ -2596,8 +2597,8 @@ pub enum Event {
     },
     /// A permanent gained card types + creature subtypes + colors until end of turn (CR 613.4 —
     /// Restless Spire's self-animation adds Creature + Elemental + blue/red to a noncreature land).
-    /// Stored on [`Permanent::added_types_eot`]/[`Permanent::added_subtypes_eot`]/
-    /// [`Permanent::added_colors_eot`], cleared alongside the base P/T set at
+    /// Registered as one `ModifierKind::Became` — the layer-4 type add and the layer-5 color add
+    /// one clause makes together — and swept alongside the base P/T set at
     /// [`Event::TempBoostsEnded`]. Public battlefield status, like `BasePtSetUntilEndOfTurn`.
     TypesAddedUntilEndOfTurn {
         object: ObjectId,
@@ -2657,7 +2658,7 @@ pub enum Event {
     },
     /// `object` became a copy of another creature as it entered (CR 706/707.2 — Altered Ego,
     /// Cursed Mirror): its `def` is overwritten with the copied creature's copyable `def`. When
-    /// `until_eot`, the original `def` is stashed on [`Permanent::reverts_to_def_eot`] first and
+    /// `until_eot`, the original `def` is registered as a `ModifierKind::RevertsToDef` first and
     /// restored at cleanup ([`Event::TempBoostsEnded`], CR 514.2); otherwise the copy is
     /// indefinite (resets only when the object leaves the battlefield, CR 400.7). A copy is public
     /// battlefield status — the projected object's name/types change accordingly. Also carries a
@@ -2674,10 +2675,10 @@ pub enum Event {
         /// and resets with the object (CR 400.7). [`TypeSet::NONE`] for every other copy.
         also_types: TypeSet,
     },
-    /// A permanent lost `keywords` until end of turn and can't have them, unioned onto
-    /// [`Permanent::temp_lost_keywords`] (arcane_lighthouse's strip — see
-    /// [`Effect::Pump(PumpEffect::StripKeywordsFromOpponentsCreatures)`]). Cleared alongside `temp_keywords` at
-    /// [`Event::TempBoostsEnded`].
+    /// A permanent lost `keywords` until end of turn and can't have them, registered as a
+    /// `ModifierKind::LoseKeywords` (arcane_lighthouse's strip — see
+    /// [`Effect::Pump(PumpEffect::StripKeywordsFromOpponentsCreatures)`]). Swept with every other
+    /// duration-scoped modifier at [`Event::TempBoostsEnded`].
     KeywordsStripped {
         object: ObjectId,
         keywords: &'static [Keyword],
