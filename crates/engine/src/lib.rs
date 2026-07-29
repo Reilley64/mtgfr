@@ -574,11 +574,15 @@ impl Game {
             if self.players[seat as usize].lost {
                 continue;
             }
-            for kind in self
+            let meaningful = self
                 .meaningful_actions(player)
                 .into_iter()
-                .chain(self.paid_mana_activates(player))
-            {
+                .map(|k| (k, false));
+            let mana_only = self
+                .paid_mana_activates(player)
+                .into_iter()
+                .map(|k| (k, true));
+            for (kind, mana_only) in meaningful.chain(mana_only) {
                 let id = match previous
                     .iter()
                     .find(|a| a.player == player && a.kind == kind)
@@ -590,7 +594,12 @@ impl Game {
                         id
                     }
                 };
-                self.actions.push(LegalAction { id, player, kind });
+                self.actions.push(LegalAction {
+                    id,
+                    player,
+                    kind,
+                    mana_only,
+                });
             }
         }
     }
