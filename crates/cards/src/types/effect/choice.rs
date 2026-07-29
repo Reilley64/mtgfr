@@ -110,16 +110,19 @@ pub enum ChoiceEffect {
         count: Amount,
     },
 
-    /// Each player in `scope` discards a card of their choice (Syphon Mind, "Each other player
+    /// Each player in `who` discards a card of their choice (Syphon Mind, "Each other player
     /// discards a card"). A fan-out over those players in APNAP order — a player with an empty
     /// hand is skipped — tallying [`ResolutionFrame::cards_discarded_this_way`](crate::resolution::ResolutionFrame)
     /// so a following `then`/Sequence step can read it (Syphon Mind's "You draw a card for each
     /// card discarded this way").
     EachPlayerDiscards {
-        #[cfg_attr(feature = "card-dsl", serde(default = "de::all_players"))]
-        scope: EdictScope,
+        /// Whose hands the fan-out visits — `each_player` (Balance) or `each_opponent` (Syphon
+        /// Mind's "each other player"). Resolved in APNAP order (CR 101.4) rather than seat
+        /// order, since each seat's discard is a choice made in sequence.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        who: PlayerSet,
         /// Balance's "Players discard cards … the same way": instead of one card each, every
-        /// player discards down to the smallest hand in `scope` — see
+        /// player discards down to the smallest hand in `who` — see
         /// [`down_to_fewest`](Self::EachPlayerSacrifices::down_to_fewest).
         #[cfg_attr(feature = "card-dsl", serde(default))]
         down_to_fewest: bool,
@@ -143,8 +146,20 @@ pub enum ChoiceEffect {
     EachPlayerNamesCardThenRevealsTop,
 
     EachPlayerSacrifices {
-        #[cfg_attr(feature = "card-dsl", serde(default = "de::all_players"))]
-        scope: EdictScope,
+        /// Who pays the edict — `each_player` (Promise of Loyalty), `each_opponent` (Martyr's
+        /// Bond), or `you` alone (Lich's damage tax, a one-seat fan-out so the prompt, the count
+        /// and the shortfall check stay the ones every other edict uses). Resolved in APNAP order
+        /// (CR 101.4), since the sacrifices are chosen one seat at a time.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        who: PlayerSet,
+        /// Priest of Forgotten Gods' "any number of target players": `who` names the legal pool
+        /// and the controller picks its subset as the effect resolves, via a
+        /// [`PendingChoice::ChooseTargetPlayers`](crate::PendingChoice::ChooseTargetPlayers) pause
+        /// before the fan-out begins (CR 601.2c/608.2b — choosing zero is legal). A modifier
+        /// rather than a member of [`PlayerSet`]: the seats aren't derivable until a player
+        /// answers, so no seat resolver can name them up front.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        chosen_by_controller: bool,
         #[cfg_attr(feature = "card-dsl", serde(default))]
         keep_one: bool,
         #[cfg_attr(feature = "card-dsl", serde(default = "de::creature_edict"))]
@@ -159,7 +174,7 @@ pub enum ChoiceEffect {
         /// Balance's "Each player chooses a number of lands they control equal to the number of
         /// lands controlled by the player who controls the fewest, then sacrifices the rest": the
         /// number sacrificed isn't fixed but each player's own excess over the smallest matching
-        /// battlefield in `scope`, measured once as this effect starts. Overrides `count`; a player
+        /// battlefield in `who`, measured once as this effect starts. Overrides `count`; a player
         /// already at that floor is skipped entirely, the way an empty-handed seat is skipped by a
         /// discard fan-out.
         #[cfg_attr(feature = "card-dsl", serde(default))]

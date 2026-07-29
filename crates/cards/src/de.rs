@@ -20,7 +20,7 @@ use serde::de::{self, Deserializer, IntoDeserializer, Visitor};
 use crate::{
     Ability, ActivationCost, AdditionalCost, Amount, AmountZone, ArithOp, CardDef, CardFilter,
     CardKind, Color, ColorFilter, CombatDamageScope, Condition, Cost, CounterAxis, CounterKind,
-    EdictScope, Effect, FilterController, GrantedAbility, LandProduces, Mana, ManaPool, Parity,
+    Effect, FilterController, GrantedAbility, LandProduces, Mana, ManaPool, Parity,
     PermanentFilter, ProtectionScope, ReanimateBecomes, SacrificeAdditionalCost,
     SacrificeAdditionalCostCount, SacrificeCost, SpendToCastPredicate, TargetCount, Timing,
     TokenFilter, Trigger, TypeSet,
@@ -223,11 +223,6 @@ pub fn one_u32() -> u32 {
 /// serde default for [`Effect::Dig(DigEffect::LookAtTop)`]'s `filter`: a filterless look sees any card.
 pub fn any_card_filter() -> CardFilter {
     CardFilter::AnyCard
-}
-
-/// serde default for an edict's `scope`: "each player" is the common wording.
-pub fn all_players() -> EdictScope {
-    EdictScope::AllPlayers
 }
 
 /// serde default for an edict's `filter`: a creature is the common sacrifice.

@@ -29,12 +29,14 @@ function nameOnly(params: MessageParams): string {
   return String(param(params, "name"));
 }
 
-function edictWho(scope: MessageValue): string {
-  if (scope === "each_opponent") return "Each opponent";
-  if (scope === "you") return "You";
-  if (scope === "targeted_players") return "Any number of target players";
-  if (scope === "targeted_opponent") return "Target opponent";
-  return "Each player";
+/**
+ * An edict's subject and the verb suffix that agrees with it. Priest of Forgotten Gods' "any
+ * number of target players" is a resolution-time pick rather than a player set, so it names its
+ * own plural subject instead of reading `who`.
+ */
+function edictSubject(params: MessageParams): [subject: string, verbSuffix: string] {
+  if (bool(params, "chosen_by_controller")) return ["Any number of target players", ""];
+  return [playerSubject(params), playerPhrase(params) === "you" ? "" : "s"];
 }
 
 /** A player set as an object phrase — "you", "each opponent", "that permanent's controller". */
@@ -73,7 +75,7 @@ function playerPossessive(params: MessageParams): string {
 /** The same set as a sentence subject, with a regular verb conjugated to match — "You gain", "Each opponent draws". */
 function playerClause(
   params: MessageParams,
-  verb: "gain" | "lose" | "draw" | "mill" | "discard" | "shuffle" | "create",
+  verb: "gain" | "lose" | "draw" | "mill" | "discard" | "shuffle" | "create" | "get",
 ): string {
   // "You" is the only set that takes a bare verb; every other phrase is third-person singular.
   return playerPhrase(params) === "you" ? `${playerSubject(params)} ${verb}` : `${playerSubject(params)} ${verb}s`;
@@ -214,18 +216,18 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.choice_each_player_names_card_then_reveals_top": literal(
     "Each player chooses a card name. Then each player reveals the top card of their library. If the card a player revealed has the name they chose, that player puts it into their hand. If it does not, that player puts it on the bottom of their library",
   ),
-  "effect.choice_each_player_discards": (params) =>
-    `${edictWho(param(params, "scope"))} ${
-      bool(params, "down_to_fewest") ? "discards down to the fewest cards in hand" : "discards a card"
-    }`,
-  "effect.choice_each_player_sacrifices": (params) =>
-    `${edictWho(param(params, "scope"))} ${
-      bool(params, "keep_one")
-        ? "keeps one creature and sacrifices the rest"
-        : bool(params, "down_to_fewest")
-          ? `sacrifices ${humanize(param(params, "filter"))} down to the fewest anyone controls`
-          : "sacrifices a permanent"
-    }`,
+  "effect.choice_each_player_discards": (params) => {
+    const [subject, s] = edictSubject(params);
+    return `${subject} discard${s} ${bool(params, "down_to_fewest") ? "down to the fewest cards in hand" : "a card"}`;
+  },
+  "effect.choice_each_player_sacrifices": (params) => {
+    const [subject, s] = edictSubject(params);
+    if (bool(params, "keep_one")) return `${subject} keep${s} one creature and sacrifice${s} the rest`;
+    if (bool(params, "down_to_fewest")) {
+      return `${subject} sacrifice${s} ${humanize(param(params, "filter"))} down to the fewest anyone controls`;
+    }
+    return `${subject} sacrifice${s} a permanent`;
+  },
   "effect.choice_each_player_shuffles_hand_and_graveyard_then_draws": (params) =>
     `Each player shuffles their hand and graveyard into their library, then draws ${param(params, "count")}`,
   "effect.choice_join_forces_pay_mana": literal("Starting with you, each player may pay any amount of mana"),
@@ -343,12 +345,12 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.counters_level_up": (params) => `Level ${param(params, "level")}`,
   "effect.counters_monstrosity": (params) => `Monstrosity ${param(params, "count")}`,
   "effect.counters_put_counters_on_player": (params) =>
-    `${edictWho(param(params, "scope"))} gets ${param(params, "count")} ${humanize(param(params, "kind"))} counters`,
+    `${playerClause(params, "get")} ${param(params, "count")} ${humanize(param(params, "kind"))} counters`,
   "effect.counters_put_loyalty_counter_each": literal("Put a loyalty counter on each"),
   "effect.counters_remove_all_but_one_plus_one_counter_then_gain_life": literal(
     "Remove all but one +1/+1 counter, gain 1 life for each removed",
   ),
-  "effect.counters_remove_all_player_counters": (params) => `${edictWho(param(params, "scope"))} loses all counters`,
+  "effect.counters_remove_all_player_counters": (params) => `${playerClause(params, "lose")} all counters`,
   "effect.counters_top_up_counters_on_player": (params) =>
     `Give target player ${humanize(param(params, "kind"))} counters up to ${param(params, "to")}`,
   "effect.counters_move_counters": (params) =>

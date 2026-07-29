@@ -714,15 +714,6 @@ impl Effect {
                 ally_is_shared_target: true,
                 ..
             }) => TargetSpec::None,
-            // "Target opponent gets a poison counter" (Venerated Rotpriest).
-            | Effect::Counters(CountersEffect::PutCountersOnPlayer {
-                scope: EdictScope::TargetedOpponent,
-                ..
-            })
-            | Effect::Counters(CountersEffect::RemoveAllPlayerCounters {
-                scope: EdictScope::TargetedOpponent,
-                ..
-            })
             | Effect::Reveal(RevealEffect::TopAndDrainMutual)
             | Effect::Choice(ChoiceEffect::MayDrawUpToThenOpponentMayRepeat { .. }) => {
                 TargetSpec::OpponentPlayer
@@ -778,7 +769,9 @@ Effect::Exile(ExileEffect::Graveyard)
             | Effect::Token(TokenEffect::CreateTreasure { who, .. })
             | Effect::Dig(DigEffect::ShuffleTargetCardsFromGraveyardIntoLibrary { who, .. })
             | Effect::Misc(MiscEffect::ScheduleAtNextUpkeep { who, .. })
-            | Effect::Token(TokenEffect::Create { who, .. }) => {
+            | Effect::Token(TokenEffect::Create { who, .. })
+            | Effect::Counters(CountersEffect::PutCountersOnPlayer { who, .. })
+            | Effect::Counters(CountersEffect::RemoveAllPlayerCounters { who }) => {
                 player_set_target_spec(who)
             }
             Effect::Life(
@@ -881,16 +874,6 @@ Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
             | Effect::Choice(ChoiceEffect::MayDrawUnlessPays { .. })
             | Effect::Counters(CountersEffect::PutCountersEach { .. })
             | Effect::Counters(CountersEffect::PutLoyaltyCounterEach { .. })
-            // "Each player/opponent gets a poison counter" names its players by scope, not by target.
-            | Effect::Counters(CountersEffect::PutCountersOnPlayer {
-                scope: EdictScope::AllPlayers | EdictScope::EachOpponent | EdictScope::TargetedPlayers,
-                ..
-            })
-            // "Each opponent loses all counters" (Final Act) names its players by scope too.
-            | Effect::Counters(CountersEffect::RemoveAllPlayerCounters {
-                scope: EdictScope::AllPlayers | EdictScope::EachOpponent | EdictScope::TargetedPlayers,
-                ..
-            })
             | Effect::Choice(ChoiceEffect::Proliferate { .. })
             | Effect::Choice(ChoiceEffect::PutLandFromHand { .. })
             | Effect::Choice(ChoiceEffect::PutCreatureFromHand { .. })
@@ -1033,13 +1016,6 @@ Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
             | Effect::Static(StaticEffect::NoMaximumHandSize)
             | Effect::Static(StaticEffect::YouDontLoseAtZeroLife)
             | Effect::Static(StaticEffect::LifeGainBecomesDraw)
-            | Effect::Counters(CountersEffect::PutCountersOnPlayer {
-                scope: EdictScope::You,
-                ..
-            })
-            | Effect::Counters(CountersEffect::RemoveAllPlayerCounters {
-                scope: EdictScope::You,
-            })
             | Effect::Static(StaticEffect::OpponentsCantSearchLibraries)
             | Effect::Static(StaticEffect::PlayAnyNumberOfLands)
             // "Creatures attack each combat if able" (Avatar of Slaughter board-wide, Juggernaut
@@ -2670,7 +2646,8 @@ fn fill_dying_permanent_types(effect: Effect, types: TypeSet) -> Effect {
     match effect {
         Effect::Choice(ChoiceEffect::EachPlayerSacrifices {
             filter,
-            scope,
+            who,
+            chosen_by_controller,
             keep_one,
             life_loss,
             count,
@@ -2679,7 +2656,8 @@ fn fill_dying_permanent_types(effect: Effect, types: TypeSet) -> Effect {
             then,
         }) if filter.shares_type_with_dying_permanent => Effect::Choice(ChoiceEffect::EachPlayerSacrifices {
             filter: PermanentFilter { types, ..filter },
-            scope,
+            who,
+            chosen_by_controller,
             keep_one,
             life_loss,
             count,
@@ -3229,7 +3207,8 @@ fn map_effect_amount_slots(effect: Effect, f: &impl Fn(Amount) -> Amount) -> Eff
             })
         }
         Effect::Choice(ChoiceEffect::EachPlayerSacrifices {
-            scope,
+            who,
+            chosen_by_controller,
             keep_one,
             filter,
             life_loss,
@@ -3238,7 +3217,8 @@ fn map_effect_amount_slots(effect: Effect, f: &impl Fn(Amount) -> Amount) -> Eff
             lose_game_if_short,
             then,
         }) => Effect::Choice(ChoiceEffect::EachPlayerSacrifices {
-            scope,
+            who,
+            chosen_by_controller,
             keep_one,
             filter,
             life_loss,

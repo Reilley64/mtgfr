@@ -3255,46 +3255,6 @@
         }
       ]
     },
-    "EdictScope": {
-      "description": "Which players a multi-player fan-out effect affects — a sacrifice edict ([`Effect::Choice(ChoiceEffect::EachPlayerSacrifices)`]) or a player-counter placement ([`Effect::Counters(CountersEffect::PutCountersOnPlayer)`], \"each player/opponent gets a poison counter\").",
-      "oneOf": [
-        {
-          "description": "\"Each player\" (Deadly Brew, Promise of Loyalty) — everyone, the edict's controller included.",
-          "enum": [
-            "all_players"
-          ],
-          "type": "string"
-        },
-        {
-          "description": "\"Each opponent\" (Witch of the Moors, Lorehold Charm) — every player other than the controller.",
-          "enum": [
-            "each_opponent"
-          ],
-          "type": "string"
-        },
-        {
-          "description": "\"You sacrifice…\" (Lich's damage tax) — the effect's own controller alone. A one-seat fan-out rather than a separate effect, so the prompt, the count and the shortfall check are the ones every other edict already uses.",
-          "enum": [
-            "you"
-          ],
-          "type": "string"
-        },
-        {
-          "description": "\"Any number of target players\" (Priest of Forgotten Gods, CR 601.2c/608.2b: choosing zero is legal) — the controller's own chosen subset of living players, picked via a [`PendingChoice::ChooseTargetPlayers`](super::PendingChoice::ChooseTargetPlayers) pause before the edict's per-player sacrifice fan-out begins.",
-          "enum": [
-            "targeted_players"
-          ],
-          "type": "string"
-        },
-        {
-          "description": "\"Target opponent\" (Venerated Rotpriest's \"target opponent gets a poison counter\") — exactly one opponent, chosen as an ordinary target when the ability goes on the stack (CR 601.2c), not a subset picked during resolution like [`TargetedPlayers`](Self::TargetedPlayers). The effect carrying it reports [`TargetSpec::OpponentPlayer`](super::TargetSpec::OpponentPlayer), so the shared targeting machinery picks and legality-checks the player; resolution just reads the chosen target.",
-          "enum": [
-            "targeted_opponent"
-          ],
-          "type": "string"
-        }
-      ]
-    },
     "Effect": {
       "description": "A single parametrized game action. The enum grows only as the pool demands it.\n\nIn TOML an effect is a table tagged by `type = \"<snake_case variant>\"` — adding a variant here is all the DSL needs (no parallel deserialization arm; see the `de` module).\n\n`Effect` is `Clone`, so sequence-like effect payloads may use `Arc<[Effect]>` rather than leaked `&'static [Effect]`. In a TOML-parsed variant, reach for `#[cfg_attr(feature = \"card-dsl\", serde(deserialize_with = \"de::arc_slice\"))]` for owned effect lists, and keep `de::static_slice` only for the still-`'static` payloads that have not moved to shared owned storage yet.",
       "oneOf": [
@@ -4585,7 +4545,7 @@
               "type": "object"
             },
             {
-              "description": "\"Each opponent gets a poison counter\" (Infectious Inquiry, Vraska's Fall) / \"each player gets a poison counter\" (Ichor Rats) — CR 122.1. Places `count` counters of `kind` on every living player in `scope`. Targets nothing except under [`EdictScope::TargetedOpponent`] (\"target opponent gets a poison counter\", Venerated Rotpriest), which names exactly one chosen opponent.",
+              "description": "\"Each opponent gets a poison counter\" (Infectious Inquiry, Vraska's Fall) / \"each player gets a poison counter\" (Ichor Rats) — CR 122.1. Places `count` counters of `kind` on every living player in `who`. Targets nothing except under [`PlayerSet::TargetOpponent`] (\"target opponent gets a poison counter\", Venerated Rotpriest), which names exactly one chosen opponent.",
               "properties": {
                 "count": {
                   "$ref": "#/$defs/Amount"
@@ -4599,20 +4559,20 @@
                   ],
                   "type": "string"
                 },
-                "scope": {
-                  "$ref": "#/$defs/EdictScope"
+                "who": {
+                  "$ref": "#/$defs/PlayerSet"
                 }
               },
               "required": [
                 "count",
                 "kind",
                 "mode",
-                "scope"
+                "who"
               ],
               "type": "object"
             },
             {
-              "description": "\"Each opponent loses all counters\" (Final Act) — CR 122.1/121.2: every counter of every kind on each player in `scope` is removed, not just poison.",
+              "description": "\"Each opponent loses all counters\" (Final Act) — CR 122.1/121.2: every counter of every kind on each player in `who` is removed, not just poison.",
               "properties": {
                 "mode": {
                   "enum": [
@@ -4620,13 +4580,13 @@
                   ],
                   "type": "string"
                 },
-                "scope": {
-                  "$ref": "#/$defs/EdictScope"
+                "who": {
+                  "$ref": "#/$defs/PlayerSet"
                 }
               },
               "required": [
                 "mode",
-                "scope"
+                "who"
               ],
               "type": "object"
             },
@@ -7607,11 +7567,11 @@
               "type": "object"
             },
             {
-              "description": "Each player in `scope` discards a card of their choice (Syphon Mind, \"Each other player discards a card\"). A fan-out over those players in APNAP order — a player with an empty hand is skipped — tallying [`ResolutionFrame::cards_discarded_this_way`](crate::resolution::ResolutionFrame) so a following `then`/Sequence step can read it (Syphon Mind's \"You draw a card for each card discarded this way\").",
+              "description": "Each player in `who` discards a card of their choice (Syphon Mind, \"Each other player discards a card\"). A fan-out over those players in APNAP order — a player with an empty hand is skipped — tallying [`ResolutionFrame::cards_discarded_this_way`](crate::resolution::ResolutionFrame) so a following `then`/Sequence step can read it (Syphon Mind's \"You draw a card for each card discarded this way\").",
               "properties": {
                 "down_to_fewest": {
                   "default": false,
-                  "description": "Balance's \"Players discard cards … the same way\": instead of one card each, every player discards down to the smallest hand in `scope` — see [`down_to_fewest`](Self::EachPlayerSacrifices::down_to_fewest).",
+                  "description": "Balance's \"Players discard cards … the same way\": instead of one card each, every player discards down to the smallest hand in `who` — see [`down_to_fewest`](Self::EachPlayerSacrifices::down_to_fewest).",
                   "type": "boolean"
                 },
                 "mode": {
@@ -7620,8 +7580,13 @@
                   ],
                   "type": "string"
                 },
-                "scope": {
-                  "$ref": "#/$defs/EdictScope"
+                "who": {
+                  "allOf": [
+                    {
+                      "$ref": "#/$defs/PlayerSet"
+                    }
+                  ],
+                  "description": "Whose hands the fan-out visits — `each_player` (Balance) or `each_opponent` (Syphon Mind's \"each other player\"). Resolved in APNAP order (CR 101.4) rather than seat order, since each seat's discard is a choice made in sequence."
                 }
               },
               "required": [
@@ -7674,6 +7639,11 @@
             },
             {
               "properties": {
+                "chosen_by_controller": {
+                  "default": false,
+                  "description": "Priest of Forgotten Gods' \"any number of target players\": `who` names the legal pool and the controller picks its subset as the effect resolves, via a [`PendingChoice::ChooseTargetPlayers`](crate::PendingChoice::ChooseTargetPlayers) pause before the fan-out begins (CR 601.2c/608.2b — choosing zero is legal). A modifier rather than a member of [`PlayerSet`]: the seats aren't derivable until a player answers, so no seat resolver can name them up front.",
+                  "type": "boolean"
+                },
                 "count": {
                   "allOf": [
                     {
@@ -7684,7 +7654,7 @@
                 },
                 "down_to_fewest": {
                   "default": false,
-                  "description": "Balance's \"Each player chooses a number of lands they control equal to the number of lands controlled by the player who controls the fewest, then sacrifices the rest\": the number sacrificed isn't fixed but each player's own excess over the smallest matching battlefield in `scope`, measured once as this effect starts. Overrides `count`; a player already at that floor is skipped entirely, the way an empty-handed seat is skipped by a discard fan-out.",
+                  "description": "Balance's \"Each player chooses a number of lands they control equal to the number of lands controlled by the player who controls the fewest, then sacrifices the rest\": the number sacrificed isn't fixed but each player's own excess over the smallest matching battlefield in `who`, measured once as this effect starts. Overrides `count`; a player already at that floor is skipped entirely, the way an empty-handed seat is skipped by a discard fan-out.",
                   "type": "boolean"
                 },
                 "filter": {
@@ -7710,14 +7680,19 @@
                   ],
                   "type": "string"
                 },
-                "scope": {
-                  "$ref": "#/$defs/EdictScope"
-                },
                 "then": {
                   "items": {
                     "$ref": "#/$defs/Effect"
                   },
                   "type": "array"
+                },
+                "who": {
+                  "allOf": [
+                    {
+                      "$ref": "#/$defs/PlayerSet"
+                    }
+                  ],
+                  "description": "Who pays the edict — `each_player` (Promise of Loyalty), `each_opponent` (Martyr's Bond), or `you` alone (Lich's damage tax, a one-seat fan-out so the prompt, the count and the shortfall check stay the ones every other edict uses). Resolved in APNAP order (CR 101.4), since the sacrifices are chosen one seat at a time."
                 }
               },
               "required": [

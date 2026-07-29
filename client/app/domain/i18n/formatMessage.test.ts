@@ -116,6 +116,22 @@ describe("formatMessage", () => {
     ).toBe("You create 2 bird token(s) for each opponent");
   });
 
+  it("agrees an edict's verb with the seats it names", () => {
+    const sacrifices = (params: Array<{ name: string; string_value?: string; bool_value?: boolean }>): string =>
+      formatMessage({ key: "effect.choice_each_player_sacrifices", params, children: [] });
+
+    expect(sacrifices([{ name: "who", string_value: "each_opponent" }])).toBe("Each opponent sacrifices a permanent");
+    // Lich bills only its own controller, so the verb drops its third-person "s".
+    expect(sacrifices([{ name: "who", string_value: "you" }])).toBe("You sacrifice a permanent");
+    // Priest of Forgotten Gods picks its seats as it resolves, so `who` is not the subject.
+    expect(
+      sacrifices([
+        { name: "who", string_value: "each_player" },
+        { name: "chosen_by_controller", bool_value: true },
+      ]),
+    ).toBe("Any number of target players sacrifice a permanent");
+  });
+
   it("joins sequence children with then", () => {
     expect(
       formatMessage({

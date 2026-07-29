@@ -114,9 +114,12 @@ impl Game {
                 .into_iter()
                 .collect(),
             // The targeting machinery already picked and legality-checked the seat; a resolution
-            // that finds no player target has lost it (CR 608.2b) and touches no one.
+            // that finds no player target has lost it (CR 608.2b) and touches no one. A seat that
+            // has left the game since targeting is no longer a legal target either (CR 104.2a).
             PlayerSet::TargetPlayer | PlayerSet::TargetOpponent => match target {
-                Some(Target::Player(player)) => vec![player],
+                Some(Target::Player(player)) if self.living_players().any(|p| p == player) => {
+                    vec![player]
+                }
                 _ => Vec::new(),
             },
             // Swords to Plowshares' "its controller" / Oblation's "its owner" — the *target's*

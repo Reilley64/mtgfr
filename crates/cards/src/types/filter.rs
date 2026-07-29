@@ -1024,40 +1024,6 @@ impl PermanentFilter {
     }
 }
 
-/// Which players a multi-player fan-out effect affects — a sacrifice edict
-/// ([`Effect::Choice(ChoiceEffect::EachPlayerSacrifices)`]) or a player-counter placement
-/// ([`Effect::Counters(CountersEffect::PutCountersOnPlayer)`], "each player/opponent gets a poison counter").
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(
-    feature = "card-dsl",
-    derive(serde::Deserialize),
-    serde(rename_all = "snake_case")
-)]
-#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
-pub enum EdictScope {
-    /// "Each player" (Deadly Brew, Promise of Loyalty) — everyone, the edict's controller included.
-    AllPlayers,
-    /// "Each opponent" (Witch of the Moors, Lorehold Charm) — every player other than the
-    /// controller.
-    EachOpponent,
-    /// "You sacrifice…" (Lich's damage tax) — the effect's own controller alone. A one-seat
-    /// fan-out rather than a separate effect, so the prompt, the count and the shortfall check
-    /// are the ones every other edict already uses.
-    You,
-    /// "Any number of target players" (Priest of Forgotten Gods, CR 601.2c/608.2b: choosing zero
-    /// is legal) — the controller's own chosen subset of living players, picked via a
-    /// [`PendingChoice::ChooseTargetPlayers`](super::PendingChoice::ChooseTargetPlayers) pause
-    /// before the edict's per-player sacrifice fan-out begins.
-    TargetedPlayers,
-    /// "Target opponent" (Venerated Rotpriest's "target opponent gets a poison counter") —
-    /// exactly one opponent, chosen as an ordinary target when the ability goes on the stack (CR
-    /// 601.2c), not a subset picked during resolution like
-    /// [`TargetedPlayers`](Self::TargetedPlayers). The effect carrying it reports
-    /// [`TargetSpec::OpponentPlayer`](super::TargetSpec::OpponentPlayer), so the shared targeting
-    /// machinery picks and legality-checks the player; resolution just reads the chosen target.
-    TargetedOpponent,
-}
-
 /// How many distinct targets an effect chooses (CR 601.2c): between `min` and `max`, inclusive.
 /// The default `{1, 1}` is the ubiquitous single mandatory target, so every existing effect is
 /// untouched. `count = N` in TOML is sugar for `{N, N}` (an exact "N target"); an explicit

@@ -763,25 +763,11 @@ fn step_param(name: &'static str, step: Step) -> MessageParam {
     str_param(name, step_token(step))
 }
 
-fn edict_scope_token(scope: EdictScope) -> &'static str {
-    match scope {
-        EdictScope::AllPlayers => "all_players",
-        EdictScope::EachOpponent => "each_opponent",
-        EdictScope::You => "you",
-        EdictScope::TargetedPlayers => "targeted_players",
-        EdictScope::TargetedOpponent => "targeted_opponent",
-    }
-}
-
 fn player_counter_kind_token(kind: PlayerCounterKind) -> &'static str {
     match kind {
         PlayerCounterKind::Poison => "poison",
         PlayerCounterKind::Rad => "rad",
     }
-}
-
-fn edict_scope_param(name: &'static str, scope: EdictScope) -> MessageParam {
-    str_param(name, edict_scope_token(scope))
 }
 
 fn land_tap_scope_token(scope: LandTapScope) -> &'static str {
@@ -1916,13 +1902,12 @@ impl EffectMessage for Effect {
             Effect::Choice(PutCreatureFromHand { .. }) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_PUT_CREATURE_FROM_HAND)
             }
-            Effect::Choice(EachPlayerDiscards {
-                scope,
-                down_to_fewest,
-            }) => MessageRef::new(MessageKey::EFFECT_CHOICE_EACH_PLAYER_DISCARDS).with_params(vec![
-                edict_scope_param("scope", scope),
+            Effect::Choice(EachPlayerDiscards { who, down_to_fewest }) => {
+                MessageRef::new(MessageKey::EFFECT_CHOICE_EACH_PLAYER_DISCARDS).with_params(vec![
+                who_param(who),
                 bool_param("down_to_fewest", down_to_fewest),
-            ]),
+            ])
+            }
             Effect::Choice(EachPlayerChoosesWarOrPeace) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_EACH_PLAYER_CHOOSES_WAR_OR_PEACE)
             }
@@ -1946,13 +1931,15 @@ impl EffectMessage for Effect {
             }
             Effect::Choice(PhaseOut) => MessageRef::new(MessageKey::EFFECT_CHOICE_PHASE_OUT),
             Effect::Choice(EachPlayerSacrifices {
-                scope,
+                who,
+                chosen_by_controller,
                 keep_one,
                 filter,
                 down_to_fewest,
                 ..
             }) => MessageRef::new(MessageKey::EFFECT_CHOICE_EACH_PLAYER_SACRIFICES).with_params(vec![
-                edict_scope_param("scope", scope),
+                who_param(who),
+                bool_param("chosen_by_controller", chosen_by_controller),
                 bool_param("keep_one", keep_one),
                 bool_param("down_to_fewest", down_to_fewest),
                 permanent_filter_param("filter", filter),
@@ -2435,16 +2422,16 @@ impl EffectMessage for Effect {
                 MessageRef::new(MessageKey::EFFECT_COUNTERS_MONSTROSITY)
                     .with_params(vec![int_param("count", count)])
             }
-            Effect::Counters(PutCountersOnPlayer { kind, count, scope }) => {
+            Effect::Counters(PutCountersOnPlayer { kind, count, who }) => {
                 MessageRef::new(MessageKey::EFFECT_COUNTERS_PUT_COUNTERS_ON_PLAYER).with_params(vec![
                     str_param("kind", player_counter_kind_token(kind)),
                     amount_param("count", count),
-                    edict_scope_param("scope", scope),
+                    who_param(who),
                 ])
             }
-            Effect::Counters(RemoveAllPlayerCounters { scope }) => {
+            Effect::Counters(RemoveAllPlayerCounters { who }) => {
                 MessageRef::new(MessageKey::EFFECT_COUNTERS_REMOVE_ALL_PLAYER_COUNTERS)
-                    .with_params(vec![edict_scope_param("scope", scope)])
+                    .with_params(vec![who_param(who)])
             }
             Effect::Counters(TopUpCountersOnPlayer { kind, to }) => {
                 MessageRef::new(MessageKey::EFFECT_COUNTERS_TOP_UP_COUNTERS_ON_PLAYER).with_params(vec![

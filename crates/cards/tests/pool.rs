@@ -5394,7 +5394,8 @@ fn unlimited_balance_levels_lands_then_hands_then_creatures() {
     };
     let sacrifices = |filter| {
         Effect::Choice(ChoiceEffect::EachPlayerSacrifices {
-            scope: engine::EdictScope::AllPlayers,
+            who: engine::PlayerSet::EachPlayer,
+            chosen_by_controller: false,
             keep_one: false,
             filter,
             life_loss: 0,
@@ -5409,7 +5410,7 @@ fn unlimited_balance_levels_lands_then_hands_then_creatures() {
         [
             sacrifices(PermanentFilter::of(TypeSet::LAND)),
             Effect::Choice(ChoiceEffect::EachPlayerDiscards {
-                scope: engine::EdictScope::AllPlayers,
+                who: engine::PlayerSet::EachPlayer,
                 down_to_fewest: true,
             }),
             sacrifices(PermanentFilter::of(TypeSet::CREATURE)),
@@ -5480,7 +5481,8 @@ fn unlimited_lich_spends_your_life_total_and_bills_you_for_every_point_after() {
     assert_eq!(
         damage.effect,
         Effect::Choice(ChoiceEffect::EachPlayerSacrifices {
-            scope: engine::EdictScope::You,
+            who: engine::PlayerSet::You,
+            chosen_by_controller: false,
             keep_one: false,
             filter: PermanentFilter {
                 token: engine::TokenFilter::Nontoken,
