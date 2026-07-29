@@ -418,6 +418,10 @@ test("watchers are told to stay on the table link for spectator view", () => {
       "Stay on this table link: if you don't claim a seat before the host starts, you'll enter spectator view.",
     ),
     Scene.expect(Scene.testId("lobby-claim")).toExist(),
+    // Claimed-seat chrome is attribute-driven off the seat root's data-claimed.
+    Scene.expect(Scene.testId("lobby-seat-0")).toHaveAttr("data-claimed", "1"),
+    Scene.expect(Scene.testId("lobby-seat-0")).toHaveClass("group/lobby-seat"),
+    Scene.expect(Scene.testId("lobby-seat-0-name")).toHaveClass("group-data-[claimed=1]/lobby-seat:font-semibold"),
     Scene.Mount.resolve(BindDeckCardFlip({ deckId: 7 }), DeckCardFlipTick()),
   );
 });
