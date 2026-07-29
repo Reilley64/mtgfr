@@ -49,6 +49,8 @@ A single Foldkit event-reactor owns routing: `client/app/routes.ts` maps paths t
 
 Required identifiers live in path params ([wire-protocol-and-visibility](2026-07-20-wire-protocol-and-visibility.md) routing rule). Query params are optional: `?next=` is the post-login redirect target.
 
+Each route body is wrapped in a keyed, `display: contents` element whose key is the **surface** — the submodel slot (`deck-list`, `auth`, `leaderboard`, `coverage`, `deck-builder`, `lobby-entry`, `lobby-table`, `board`) or `session-gate` / `shell` for the gate and the not-found page. The key is the surface rather than the route tag because one route tag can render two surfaces: `/play/:deckId` shows the lobby before the game activates and the board after.
+
 ### BFF lobby and meta HTTP (`client/server/routes/api/**`, `client/server/lobby-http.ts`)
 
 Lobby and meta HTTP are one Nitro route file per operation. Each handler exports `defineHandler` from `nitro/h3` inline; shared auth, tracing, and JSON helpers live in `client/server/lobby-http.ts`.
@@ -200,6 +202,7 @@ Vite production builds set `build.sourcemap: true` (via `clientBuildSourcemap`) 
 ## Implementation Decisions
 
 - **Foldkit `update` is the state boundary.** UI state changes only through messages handled by `client/app/update.ts` and shell child updates. Async work returns messages through Foldkit commands and subscriptions, which gives consistent error folding, runtime resource injection, and automatic stream teardown.
+- **Route surfaces are keyed so a navigation remounts rather than patches.** Every shell route roots at the same `shellFrame` `<main>`, so an unkeyed patch reuses the outgoing surface's elements for the incoming one. `h.OnMount` starts on snabbdom's `insert` hook — element creation — so reused elements never start the incoming surface's mounts, and window/observer bindings silently never attach.
 - **Shell children lift through wrappers, not raw parent tags.** Auth, deck list, deck builder, coverage, leaderboard, and lobby commands/subscriptions map back through `Got*Message`, and route entry uses per-surface `informRouteChanged` helpers instead of mutating child slices directly from the parent. Parent-owned redirects and game activation still happen after the lifted child fold.
 - **`FetchMe` folds all failures to `null`.** Any 401, decode error, or transport failure during `client.me()` is "not signed in" — mirrors the guard's semantics. Route entry refreshes session state for protected routes to avoid stale login redirects.
 - **`safeNext` is checked both in-browser and server-side.** Open-redirect mitigations are layered: the client validates before navigation; the server validates before the session redirect.
