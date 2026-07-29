@@ -549,7 +549,7 @@ impl Game {
     }
 
     /// After a searching player's own search fully ends (library shuffled), continue an
-    /// all-players fan-out ([`SearchScope::AllPlayers`], Veteran Explorer) to the next queued
+    /// all-players fan-out (a multi-seat `who`, Veteran Explorer) to the next queued
     /// player — a fresh [`PendingChoice::SearchLibrary`] over their own library, same
     /// filter/destination/count. A no-op (single-searcher search, or the fan-out's last player
     /// just finished) when [`ResolutionFrame::search_fanout`](crate::resolution::ResolutionFrame::search_fanout)

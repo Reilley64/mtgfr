@@ -20,7 +20,7 @@ use serde::de::{self, Deserializer, IntoDeserializer, Visitor};
 use crate::{
     Ability, ActivationCost, AdditionalCost, Amount, AmountZone, ArithOp, CardDef, CardFilter,
     CardKind, Color, ColorFilter, CombatDamageScope, Condition, Cost, CounterAxis, CounterKind,
-    EdictScope, Effect, FilterController, GrantedAbility, LandProduces, Mana, ManaPool, Parity,
+    Effect, FilterController, GrantedAbility, LandProduces, Mana, ManaPool, Parity,
     PermanentFilter, ProtectionScope, ReanimateBecomes, SacrificeAdditionalCost,
     SacrificeAdditionalCostCount, SacrificeCost, SpendToCastPredicate, TargetCount, Timing,
     TokenFilter, Trigger, TypeSet,
@@ -223,11 +223,6 @@ pub fn one_u32() -> u32 {
 /// serde default for [`Effect::Dig(DigEffect::LookAtTop)`]'s `filter`: a filterless look sees any card.
 pub fn any_card_filter() -> CardFilter {
     CardFilter::AnyCard
-}
-
-/// serde default for an edict's `scope`: "each player" is the common wording.
-pub fn all_players() -> EdictScope {
-    EdictScope::AllPlayers
 }
 
 /// serde default for an edict's `filter`: a creature is the common sacrifice.
@@ -568,7 +563,7 @@ impl<'de> Deserialize<'de> for ProtectionScope {
 }
 
 /// A numeric quantity in TOML: a plain number (`amount = 3`), a keyword string for a derived
-/// value (`"x"`, `"half_x"`, `"half_x_rounded_down"`, `"twice_x"`, `"per_creature_you_control"`, `"source_power"`,
+/// value (`"x"`, `"per_creature_you_control"`, `"source_power"`,
 /// `"source_toughness"`, `"source_mana_value"`, `"target_power"`, `"target_mana_value"`, `"per_counter_on_source"`, `"your_life_total"`, `"life_gained_this_turn"`,
 /// `"spells_cast_this_turn"`, `"damage_taken_this_turn"`, `"untapped_lands_at_turn_start"`,
 /// `"commander_casts_from_command_zone"`, `"creatures_died_this_turn"`,
@@ -615,9 +610,6 @@ impl<'de> Deserialize<'de> for Amount {
             fn visit_str<E: de::Error>(self, s: &str) -> Result<Amount, E> {
                 Ok(match s {
                     "x" => Amount::X,
-                    "half_x" => Amount::HalfX,
-                    "half_x_rounded_down" => Amount::HalfXRoundedDown,
-                    "twice_x" => Amount::TwiceX,
                     "per_creature_you_control" => Amount::PerCreatureYouControl,
                     "per_creature_on_battlefield" => Amount::PerCreatureOnBattlefield,
                     "source_power" => Amount::SourcePower,
@@ -962,9 +954,6 @@ pub const TYPE_NAMES: &[&str] = &[
 /// the generated JSON Schema offers, so the two can't drift.
 pub const AMOUNT_KEYWORDS: &[&str] = &[
     "x",
-    "half_x",
-    "half_x_rounded_down",
-    "twice_x",
     "per_creature_you_control",
     "per_creature_on_battlefield",
     "source_power",
@@ -1359,11 +1348,11 @@ impl<'de> Deserialize<'de> for SacrificeCost {
 /// [`AnyPlayerSacrifices`](TriggerTag::AnyPlayerSacrifices)) carry a [`PermanentFilter`] on the
 /// real `Trigger`, and a third ([`DealsCombatDamageToPlayer`](TriggerTag::DealsCombatDamageToPlayer))
 /// carries a [`CombatDamageScope`], a fourth ([`CastSpell`](TriggerTag::CastSpell)) carries a
-/// [`SpellFilter`]/[`CasterScope`]/`nth_each_turn`, a fifth ([`PlayerDraws`](TriggerTag::PlayerDraws))
-/// carries a [`CasterScope`]/`nth_each_turn` (the draw-side twin of `CastSpell`, no filter), and a
+/// [`SpellFilter`]/[`WatchedPlayer`]/`nth_each_turn`, a fifth ([`PlayerDraws`](TriggerTag::PlayerDraws))
+/// carries a [`WatchedPlayer`]/`nth_each_turn` (the draw-side twin of `CastSpell`, no filter), and a
 /// sixth and seventh ([`PermanentEnters`](TriggerTag::PermanentEnters)/
 /// [`PermanentEntersIncludingThis`](TriggerTag::PermanentEntersIncludingThis)) carry a
-/// [`PermanentFilter`]/[`EnterController`], none of which can come from a bare `timing = "…"`
+/// [`PermanentFilter`]/[`WatchedPlayer`], none of which can come from a bare `timing = "…"`
 /// string —
 /// [`Ability::deserialize`] pairs the tag with sibling fields (`filter`, `who`,
 /// `spell_filter`/`caster`/`drawer`/`nth_each_turn`, `controller`) to build those by hand. An

@@ -30,5 +30,5 @@ target = { permanent = { types = ["artifact", "creature"] } }
 [[abilities.effects]]
 type = "token"
 mode = "create"
-controller = "target_controller"
+who = "targets_controller"
 token = "f81c047d-de36-4aed-806b-f14a290771a4"

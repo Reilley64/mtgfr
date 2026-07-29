@@ -21,12 +21,13 @@ impl Game {
             // pitch): the ability's controller, or a chosen target player (Prismari Command).
             Effect::Choice(ChoiceEffect::Discard {
                 count,
-                target_player,
+                who,
                 or_one_matching,
-                discarder,
                 ..
             }) => {
-                let player = self.discarding_player(discarder, target_player, controller, target);
+                let Some(player) = self.sole_player_in(who, controller, target) else {
+                    return;
+                };
                 let count = self.resolve_amount(count, controller, source, target, ctx.x);
                 pending::raise(
                     self,
@@ -87,28 +88,5 @@ impl Game {
             ),
             _ => unreachable!("hand pause family received a non-family effect"),
         }
-    }
-
-    /// Who a [`ChoiceEffect::Discard`] actually empties, in precedence order: the player a
-    /// damage watch named ("**that player** discards a card at random" — Hypnotic Specter), a
-    /// chosen player target (Prismari Command), or the ability's own controller. Shared with the
-    /// random-discard resolve arm in `resolution/resolve_misc`.
-    pub(crate) fn discarding_player(
-        &self,
-        discarder: Option<PlayerId>,
-        target_player: bool,
-        controller: PlayerId,
-        target: Option<Target>,
-    ) -> PlayerId {
-        if let Some(player) = discarder {
-            return player;
-        }
-        if !target_player {
-            return controller;
-        }
-        let Some(Target::Player(player)) = target else {
-            panic!("target-player discard resolves with a chosen player target");
-        };
-        player
     }
 }

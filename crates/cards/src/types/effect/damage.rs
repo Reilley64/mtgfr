@@ -60,31 +60,26 @@ pub enum DamageEffect {
         include_planeswalkers: bool,
     },
 
-    EachOtherOpponent {
+    /// "deals `amount` damage to `who`" — every damage the pool aims at seats rather than at
+    /// permanents, from Psionic Blast's "2 damage to you" to Pestilence's "each player" to Ankh of
+    /// Mishra's "that land's controller". Who takes it and how much are independent axes
+    /// ([`PlayerSet`] and [`Amount`]), so no variant names a recipient.
+    ///
+    /// A player-relative `amount` counts the seat being damaged, not the ability's controller —
+    /// Karma's "damage equal to the number of Swamps **they** control", Black Vise's "cards in
+    /// **their** hand". Resolved once per recipient, so a fan-out bills each seat for its own
+    /// things.
+    ToPlayers {
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        who: PlayerSet,
         amount: Amount,
-        #[cfg_attr(feature = "card-dsl", serde(skip))]
-        damaged: Option<PlayerId>,
     },
 
     /// The old "Radiance" keyword action (Cleansing Beam): "deals `amount` damage to target
     /// creature and each other creature that shares a color with it." One real target (`target`,
     /// a single creature — CR 608.2b legality/protection/hexproof gate only that choice); the
     /// rest of the batch is [`Game::radiance_batch`], swept in untargeted at resolution.
-    Radiance {
-        amount: Amount,
-        target: TargetSpec,
-    },
-
-    EachPlayer {
-        amount: Amount,
-    },
-
-    /// Damage to each living opponent of the ability's controller (CR 102.3) — Advanced
-    /// Reconstruction / Fateful Tempest. Same per-player events as [`Self::EachPlayer`], but
-    /// the controller is carved out.
-    EachOpponent {
-        amount: Amount,
-    },
+    Radiance { amount: Amount, target: TargetSpec },
 
     Target {
         amount: Amount,
@@ -124,46 +119,5 @@ pub enum DamageEffect {
             serde(default, deserialize_with = "de::static_slice")
         )]
         then: &'static [Effect],
-    },
-
-    /// Ankh of Mishra's "deals 2 damage to **that land's** controller" — the player twin of
-    /// [`ToEnteringPermanent`](Self::ToEnteringPermanent), filling the same `entering` slot from
-    /// the same `PermanentEnters` trigger. Distinct from
-    /// [`ToTargetController`](Self::ToTargetController), which reads an enclosing `Sequence`'s
-    /// chosen target — a trigger that targets nothing never sets one.
-    ToEnteringPermanentController {
-        #[cfg_attr(feature = "card-dsl", serde(skip))]
-        entering: Option<ObjectId>,
-        amount: Amount,
-    },
-
-    /// Copper Tablet's "at the beginning of each player's upkeep … deals 1 damage to **that
-    /// player**" — the player whose step this is, filled from [`TriggerContext::active_player`] at
-    /// trigger placement. [`EachPlayer`](Self::EachPlayer) would bill the whole table on every
-    /// upkeep, which is once per seat per round instead of once.
-    ToTriggeringPlayer {
-        #[cfg_attr(feature = "card-dsl", serde(skip))]
-        player: Option<PlayerId>,
-        amount: Amount,
-    },
-
-    /// Creature Bond's "when enchanted creature dies … deals damage equal to that creature's
-    /// toughness to **the creature's controller**" — the host's controller, snapshotted from
-    /// [`TriggerContext::dying_enchanted_creature_stats`] at trigger placement because the host is
-    /// a graveyard card by resolution and `controller_of` would answer its owner (CR 603.10a).
-    /// Distinct from [`ToTriggeringPlayer`](Self::ToTriggeringPlayer), which names the player whose
-    /// step it is.
-    ToDyingEnchantedCreaturesController {
-        #[cfg_attr(feature = "card-dsl", serde(skip))]
-        player: Option<PlayerId>,
-        amount: Amount,
-    },
-
-    ToSelf {
-        amount: Amount,
-    },
-
-    ToTargetController {
-        amount: Amount,
     },
 }

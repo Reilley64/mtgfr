@@ -29,4 +29,4 @@ type = "during_your_turn"
 type = "choice"
 mode = "discard"
 count = 1
-target_player = true
+who = "target_player"

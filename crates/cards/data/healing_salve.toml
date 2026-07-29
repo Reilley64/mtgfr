@@ -26,6 +26,6 @@ timing = "spell"
 [[abilities.effects]]
 type = "choose_one"
 options = [
-    { type = "life", mode = "target_player_gains", amount = 3 },
+    { type = "life", mode = "gain", who = "target_player", amount = 3 },
     { type = "misc", mode = "prevent_next_damage", amount = 3, target = "any" },
 ]

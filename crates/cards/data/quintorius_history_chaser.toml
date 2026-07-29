@@ -35,7 +35,7 @@ count = 2
 # then mill a card.
 [[abilities.effects.then]]
 type = "mill"
-mode = "mill_self"
+mode = "mill"
 count = 1
 
 # −4: Spirits you control gain double strike and vigilance until end of turn.

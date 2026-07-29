@@ -126,7 +126,7 @@ Top-level families: `damage`, `draw`, `life`, `destroy`, `exile`, `sacrifice`, `
 
 Representative modes by family:
 
-**`damage`:** `target` (to creature/player/planeswalker), `each_creature` (mass damage), `to_self`.
+**`damage`:** `target` (to creature/player/planeswalker), `each_creature` (mass damage), `to_entering_permanent`, `radiance`, and `to_players` — the one mode for damage aimed at seats, taking a `who` [player set](#player-set) (default `"you"`) and an `amount` `Amount`, so Psionic Blast's "2 damage to you", Pestilence's "each player", and Ankh of Mishra's "that land's controller" are one mode with three `who` values. A player-relative `amount` counts the seat being damaged rather than the ability's controller (Karma's "Swamps *they* control"), so a fan-out resolves the amount once per recipient.
 
 **`destroy`:** `target`, `all`, `triggering_damaged_creature`.
 
@@ -136,15 +136,15 @@ Representative modes by family:
 
 **`control`:** `tap_target`, `tap_all`, `gain_control`, `gain_control_while`.
 
-**`counters`:** `put_counters`, `remove_counter`, `move_counters`.
+**`counters`:** `put_counters`, `remove_counter`, `move_counters`, `put_counters_on_player` / `remove_all_player_counters` (both take a `who`, CR 122.1).
 
-**`token`:** `create` (references a token profile by id or inline definition), `create_copy`, `create_treasure`.
+**`token`:** `create` (references a token profile by id or inline definition; `who` names the seat the tokens enter under, CR 111.4, and `per_opponent = true` repeats the batch once per opponent without moving the recipient — Eccentric Pestfinder's "for each opponent, **you** create …"), `create_copy`, `create_treasure`.
 
-**`draw`:** `cards`, `target_player`, `each_player`; **`mill`:** `cards`.
+**`draw`:** `cards` — its only mode, taking a `who` [player set](#player-set) naming the drawer (default `"you"`) and a `count` `Amount`. **`mill`:** `mill` takes the same `who` / `count` pair; the rest of the family (`exile_top_may_play`, `exile_discarded_with_this`, …) are graveyard/exile riders, not mills.
 
-**`dig`:** `search_library`, `scry`, `surveil`, `look_at_top`, `distribute_top`, `cascade`, `clash`.
+**`dig`:** `search_library` (takes a `who` [player set](#player-set) naming whose library is searched, CR 701.19 — the ability's own controller by default, `targets_controller` for the compensation-ramp riders, `each_player` for Veteran Explorer), `scry`, `surveil`, `look_at_top`, `distribute_top`, `cascade`, `clash`.
 
-**`life`:** `gain`, `lose`, `each_opponent_drain`, `gain_target_controller`.
+**`life`:** `gain`, `lose`, `drain`, `each_player_becomes_highest`, `source_owner_loses_half_their_life`. The first three take a `who` [player set](#player-set) naming the recipient (default `"you"`) and an `amount` `Amount`; `drain` additionally takes `sum_gain` (default `false`), which makes the caster's gain the *total* lost across `who` rather than each victim's share (Exsanguinate, versus Zulaport Cutthroat's flat gain).
 
 **`mana`:** `add` (one or more `Mana` values; optional `repeat: Amount` for scaled production).
 
@@ -154,11 +154,21 @@ Representative modes by family:
 
 **`zone`:** `reanimate_to_battlefield`, `return_to_hand`, `flicker_target`, `exile_dead_creature_create_copy_with_subtype`.
 
-**`choice`:** `may_sacrifice`, `may_draw_up_to`, `discard`, `proliferate`, `may_return_from_graveyard` (return a matching card from your graveyard to your hand), `may_put_counter_on_creature`. `may_return_from_graveyard` takes an optional `mandatory` bool (default `false`): the optional "you may return" consumers (Deadly Brew, Witch of the Moors) leave it `false` and the choice is declinable, while a mandatory "you return" (Witherbloom Command mode 0) sets `mandatory = true` so declining is rejected when a legal card exists — with no legal card the effect simply does nothing (no pause) either way. `may_put_counter_on_creature` (fieldless) is a resolution-time optional "you may put a +1/+1 counter on a creature" chosen during resolution over any battlefield creature and never advertised as a stack target (Zimone's Hypothesis' primer); it carries no `then`, so its follow-up runs as the next `Sequence` step regardless, and it is answered by `Intent::ChooseCopyTarget` (one object or none), projected onto the `ChooseCopyTarget` view with a dedicated `put_counter_on_creature` prompt discriminator so clients show counter wording instead of copy wording.
+**`choice`:** `may_sacrifice`, `may_draw` ("`who` may draw `count` cards" — the *drawer* answers, so Questing Phelddagrif's "target opponent may draw a card" and Edric's "that creature's controller may draw a card" are one mode with two `who` values), `may_draw_up_to`, `discard` (takes a `who` too, so Looter il-Kor's own discard, Prismari Command's `target_player`, and Hypnotic Specter's `damaged_player` share a mode), `proliferate`, `may_return_from_graveyard` (return a matching card from your graveyard to your hand), `may_put_counter_on_creature`. `may_return_from_graveyard` takes an optional `mandatory` bool (default `false`): the optional "you may return" consumers (Deadly Brew, Witch of the Moors) leave it `false` and the choice is declinable, while a mandatory "you return" (Witherbloom Command mode 0) sets `mandatory = true` so declining is rejected when a legal card exists — with no legal card the effect simply does nothing (no pause) either way. `may_put_counter_on_creature` (fieldless) is a resolution-time optional "you may put a +1/+1 counter on a creature" chosen during resolution over any battlefield creature and never advertised as a stack target (Zimone's Hypothesis' primer); it carries no `then`, so its follow-up runs as the next `Sequence` step regardless, and it is answered by `Intent::ChooseCopyTarget` (one object or none), projected onto the `ChooseCopyTarget` view with a dedicated `put_counter_on_creature` prompt discriminator so clients show counter wording instead of copy wording.
 
-**`misc`:** `fight`, `counter_target_spell`, `schedule_at_next_upkeep`.
+**`misc`:** `fight`, `counter_target_spell`, `schedule_at_next_upkeep` (`who` is the delayed trigger's controller, resolved to a concrete seat at schedule time — Arcane Denial's "**its controller** may draw up to two cards").
 
 **Structural:** `sequence` (run multiple effects in order), `conditional` (if condition then effects else effects), `choose_one` (modal dispatch).
+
+### Player set
+
+`PlayerSet` names *which seat or seats* an effect's payload lands on, so a family spells the recipient as a parameter instead of once per payload — `mode = "lose", who = "each_opponent"` rather than an `each_opponent_loses` mode, and `draw` collapses to a single `cards` mode. Every set is a bare string: `you` (the default when `who` is absent), `target_player`, `target_opponent`, `targets_controller` (the *current* controller of the object target — Swords to Plowshares' rider, CR 109.4, so a stolen creature pays its thief), `targets_owner` (Oblation's "its owner"), `each_opponent`, `each_player`, `each_other_player` (Death by Dragons' "each player other than target player" — the target names the one seat left *out*), `attacking_player` (Parasitic Impetus), `triggering_player` (Howling Mine's "that player", the one seat a trigger is about), `each_other_opponent` (Hydra Omnivore's "each other opponent", every seat but the damaged one), `entering_permanents_controller` (Ankh of Mishra's "that land's controller"), `dying_enchanted_creatures_controller` (Creature Bond's "the creature's controller"), `damaged_player` (Hypnotic Specter's "that player", the seat the source just damaged), `damaging_permanents_controller` (Edric's "that creature's controller"), and `an_opponent`. `life`, `draw`, `mill`, `damage`, `choice`'s `discard` / `may_draw`, `token`'s `create` / `create_treasure`, `misc`'s `schedule_at_next_upkeep`, `counters`' `put_counters_on_player` / `remove_all_player_counters`, `choice`'s `each_player_sacrifices` / `each_player_discards`, and `dig`'s `search_library` / `shuffle_target_cards_from_graveyard_into_library` all take it.
+
+`target_player`, `target_opponent`, and `each_other_player` carry the effect's `TargetSpec`, so the shared targeting machinery picks and legality-checks the seat; every other set resolves without a target. `attacking_player`, `triggering_player`, `each_other_opponent`, `entering_permanents_controller`, `dying_enchanted_creatures_controller`, `damaged_player`, and `damaging_permanents_controller` carry a slot the trigger-placement filler writes into (CR 603.10a) — `fill_player` walks a placed effect and rewrites every `who` it carries, recursing through `Sequence` and `Conditional`, so each family that adopts `who` gets its context fills for free. `Game::players_in` is the single resolver, returning the seats in turn order so a multi-seat change lands as one simultaneous batch (CR 118.9). Effects that address exactly one seat — a discard pause, a may-draw, a Treasure recipient — go through `Game::sole_player_in` instead, which resolves nothing (CR 608.2b, a lost target) rather than panicking on an empty set and panics on a multi-seat set, since there is no such thing as pausing half a table.
+
+Edicts (`each_player_sacrifices`, `each_player_discards`) read *which* seats from `players_in` but visit them in APNAP order (CR 101.4), because each seat's sacrifice or discard is a choice made in sequence rather than a simultaneous change. Priest of Forgotten Gods' "any number of target players" is not a player set at all: `chosen_by_controller = true` makes `who` the *legal pool* and pauses for the controller to pick any subset of it, zero included (CR 601.2c/608.2b), before the fan-out starts.
+
+`search_library` fans out the same way: a multi-seat `who` searches one library at a time in APNAP order (CR 101.4), each seat shuffling before the next begins (CR 701.19f), and a ramp rider whose target has left names nobody and searches nothing (CR 608.2b).
 
 ### Amount
 
@@ -169,7 +179,7 @@ Two variants compose rather than name a count of their own, so every "twice", "h
 - **`Combine { left, op, right }`** (`{ left = 2, op = "multiply", right = "per_creature_on_battlefield" }`) — the DSL's only arithmetic. `ArithOp` is `add`, `subtract` (floored at zero — CR 120.8/CR 107.1b, so Black Vise's "cards in their hand minus 4" is no damage below five cards), `multiply`, `divide_rounding_down`, `divide_rounding_up` (division names its rounding rather than carrying a flag; Aspect of Wolf prints both).
 - **`IfCondition { condition, then, else_ }`** (`{ condition = { type = "spell_was_kicked" }, then = 5, else = 1 }`) — the DSL's only branch. Both arms default to `Fixed(0)`. Resolved through `Game::ability_condition_holds` against the effect's own source, so a source-object condition (`spell_was_kicked` — CR 702.33d, `spell_cast_during_main_phase` — CR 505.1a/b, tapped, counters) reads the right object.
 
-Both sides of each are full `Amount`s, so they nest freely: `(X × 3) − 2` is one `Combine` inside another.
+Both sides of each are full `Amount`s, so they nest freely: `(X × 3) − 2` is one `Combine` inside another. `X` is an ordinary operand — The Goose Mother's "half X, rounded up" is `X ÷ 2` rounding up, Pest Infestation's "twice X" is `X × 2`. The trigger-placement fillers (`fill_cast_x`, `fill_cast_mana_value`, `fill_combat_damage`, …) recurse into both sides and both arms, so a placeholder locked in at placement (CR 603.10a last-known information) is filled just as readily nested as bare.
 
 ### Token profiles
 

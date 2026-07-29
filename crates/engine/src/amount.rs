@@ -22,14 +22,6 @@ impl Game {
         match amount {
             Amount::Fixed(n) => n,
             Amount::X => x as i32,
-            // "half X, rounded up" (CR: the round-up default).
-            Amount::HalfX => x.div_ceil(2) as i32,
-            // ponytail: a live read (`x = 0` for every non-spell resolution, see `Amount`'s own
-            // doc) never actually reaches here for `Trigger::YouCastThis` — `fill_cast_x` rewrites
-            // this to `Fixed` at trigger placement (CR 603.4). The arm exists only so this match
-            // stays exhaustive, mirroring `TriggeringSpellManaValue` below.
-            Amount::HalfXRoundedDown => (x / 2) as i32,
-            Amount::TwiceX => 2 * x as i32,
             Amount::PerCreatureYouControl => self.creatures_controlled(controller) as i32,
             Amount::PerCreatureOnBattlefield => self.creatures_on_battlefield() as i32,
             Amount::PerPermanentMatching { filter, zone } => {

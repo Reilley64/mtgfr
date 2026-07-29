@@ -30,7 +30,7 @@ timing = "static"
 [[abilities.effects]]
 type = "static"
 mode = "enters_with_counters"
-count = "twice_x"
+count = { left = "x", op = "multiply", right = 2 }
 
 # Whenever one or more creatures you control with base power 0 deal combat damage to a player,
 # create a 0/0 green and blue Fractal creature token. Put a number of +1/+1 counters on it equal

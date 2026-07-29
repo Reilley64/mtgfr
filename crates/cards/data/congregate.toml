@@ -20,5 +20,6 @@ timing = "spell"
 # Target player gains 2 life for each creature on the battlefield.
 [[abilities.effects]]
 type = "life"
-mode = "target_player_gains"
+mode = "gain"
+who = "target_player"
 amount = { left = 2, op = "multiply", right = "per_creature_on_battlefield" }

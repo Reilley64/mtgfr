@@ -465,7 +465,7 @@ test("staged targeting shows cancel affordance and staged hint", () => {
       gameState({ objects: [target] }),
     ),
     Scene.expect(Scene.testId("board-cancel-target")).toExist(),
-    Scene.expect(Scene.testId("board-staged-hint")).toHaveText("Gain 1 life: click a highlighted card"),
+    Scene.expect(Scene.testId("board-staged-hint")).toHaveText("You gain 1 life: click a highlighted card"),
   );
 });
 
