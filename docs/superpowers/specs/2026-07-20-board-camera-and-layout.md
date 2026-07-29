@@ -36,9 +36,19 @@ screen = world * zoom + pan
 
 Wheel and pinch gestures are translated by the board camera gesture Mount into `BoardCameraZoomed({ x, y, factor })`, where `x` and `y` are board-internal screen coordinates in the same space as canvas pointer handlers. The mount prevents native wheel/touch zoom only while the gesture starts over the live board rectangle.
 
+### Board viewport
+
+`board.viewport` is the size of the board in CSS pixels. The board is `fixed inset-0`, so it is the window's inner size: `initialBoardModel` measures the window on entry (falling back to 1440 x 900 where there is no window), and a persistent `resize` subscription feeds `BoardViewportResized({ width, height })` back into the board.
+
+Every canvas layer sizes its backing store from this value while CSS stretches the element to fill the window, so a viewport that does not track the window renders the whole board through a scaled bitmap — blurry, aspect-distorted, and magnified relative to the HTML hand bar and overlays, which are laid out in real CSS pixels.
+
+`board.dpr` is `window.devicePixelRatio` clamped to 3, measured alongside the viewport and refreshed by the same resize message. All three canvas layers multiply their backing store by it: the Mount bitmap and flight layers set `ctx.setTransform(dpr, …)` in `prepareLayerCtx`, and the Foldkit scene canvas wraps `sceneShapes` in a `Canvas.Group({ scale: { x: dpr, y: dpr } })` and divides its pointer coordinates back by the DPR, since Foldkit hands pointer events back in backing-store space. Without this the felt, seat bands, avatars, and arrows paint at 1x and are visibly soft on any retina display.
+
+The bitmap and flight canvases are painted imperatively but their `width`/`height` attributes still come from the view, so both must state the same device-pixel size: the view multiplies the viewport by `board.dpr`, and `prepareLayerCtx` reads the DPR off the published frame rather than re-reading `window.devicePixelRatio`. If the two disagree, the vdom patch resizes the backing store out from under the Mount and the layer drops to 1x until something repaints it. The DPR is part of the resting paint snapshot, so changing it forces a repaint of the cleared canvas.
+
 ### fitCamera
 
-`fitCamera(viewport, playerCount, reservedBottom)` frames the table for the active player count and available viewport. It accounts for HUD and hand space and caps zoom so the table starts readable rather than over-magnified. The board re-fits on cold load and relevant viewport/player-count changes until the user pans or zooms.
+`fitCamera(viewport, playerCount, reservedBottom)` frames the table for the active player count and available viewport; `reservedBottom` is the live `handMetrics(viewport).barH`, so the framing follows the bar as it rescales. It accounts for HUD and hand space and caps zoom so the table starts readable rather than over-magnified. The board re-fits on cold load, on player-count change, and on viewport resize, until the user pans or zooms. A resize re-fit remaps in-flight cards for the zoom change the same way a player-count re-fit does.
 
 ### RenderCard layout
 
@@ -87,6 +97,8 @@ Attachments remain associated with their host for layout and hover raise. Tapped
 - Interaction tests cover pan-vs-click thresholds and camera user-moved behavior.
 - Gesture mount tests cover wheel factors, pinch factors, and client-to-board coordinate conversion.
 - Board sync tests cover that a user-panned or user-zoomed camera is preserved across later game syncs (actions/deltas must not re-fit).
+- Viewport tests cover that the board starts at the measured window size, that a resize updates the viewport so the canvas backing store matches its CSS box, that a resize re-fits the camera, and that a camera the player moved survives a resize.
+- A board Scene test locks that the scene canvas backing store is the viewport multiplied by the DPR.
 
 ## Out of Scope
 

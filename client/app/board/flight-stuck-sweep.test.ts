@@ -96,6 +96,7 @@ function frameOf(model: BoardModel, fold: GameFoldState): BitmapFrame {
   return {
     width: model.viewport.width,
     height: model.viewport.height,
+    dpr: model.dpr,
     camera: model.camera,
     cards: layout(visible, visible.viewer),
     viewer: visible.viewer,

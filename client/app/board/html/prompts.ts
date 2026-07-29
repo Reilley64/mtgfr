@@ -80,7 +80,6 @@ import {
   XSubmitted,
 } from "../messages";
 import type { BoardModel } from "../submodel";
-import { HAND_BAR_H } from "./hand";
 import { pipChip } from "./pip-chip";
 import { promptCardFace } from "./prompt-card-face";
 import { promptModalFrame } from "./prompt-modal";
@@ -567,7 +566,7 @@ function damageAssignPrompt(
   return h.div(
     [
       h.DataAttribute("testid", "pending-damage-aim"),
-      h.Style({ "--b": `${HAND_BAR_H + 12}px` }),
+      h.Style({ "--b": `calc(var(--hand-bar-h) + 12px)` }),
       h.Class(
         [
           "fixed bottom-(--b) left-1/2 z-30 flex max-w-[min(100%-2rem,28rem)] -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
@@ -736,7 +735,7 @@ function costPickPrompt(
   return h.div(
     [
       h.DataAttribute("testid", `${testId}-aim`),
-      h.Style({ "--b": `${HAND_BAR_H + 12}px` }),
+      h.Style({ "--b": `calc(var(--hand-bar-h) + 12px)` }),
       h.Class(
         "pointer-events-auto fixed bottom-(--b) left-1/2 z-30 flex max-w-[min(100%-2rem,28rem)] -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
       ),
@@ -755,7 +754,7 @@ function modalPrompt(mc: NonNullable<BoardModel["modalCast"]>): Html {
     return h.div(
       [
         h.DataAttribute("testid", "modal-mode-aim"),
-        h.Style({ "--b": `${HAND_BAR_H + 12}px` }),
+        h.Style({ "--b": `calc(var(--hand-bar-h) + 12px)` }),
         h.Class(
           "pointer-events-auto fixed bottom-(--b) left-1/2 z-30 flex max-w-[min(100%-2rem,28rem)] -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
         ),
@@ -766,7 +765,7 @@ function modalPrompt(mc: NonNullable<BoardModel["modalCast"]>): Html {
   return h.div(
     [
       h.DataAttribute("testid", "modal-waiting-aim"),
-      h.Style({ "--b": `${HAND_BAR_H + 12}px` }),
+      h.Style({ "--b": `calc(var(--hand-bar-h) + 12px)` }),
       h.Class(
         "pointer-events-none fixed bottom-(--b) left-1/2 z-30 flex max-w-[min(100%-2rem,28rem)] -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
       ),
@@ -784,7 +783,7 @@ function playModePrompt(_pick: NonNullable<BoardModel["playModePick"]>): Html {
   return h.div(
     [
       h.DataAttribute("testid", "play-mode-aim"),
-      h.Style({ "--b": `${HAND_BAR_H + 12}px` }),
+      h.Style({ "--b": `calc(var(--hand-bar-h) + 12px)` }),
       h.Class(
         "pointer-events-auto fixed bottom-(--b) left-1/2 z-30 flex max-w-[min(100%-2rem,28rem)] -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
       ),
@@ -1176,7 +1175,7 @@ function revealedToGraveyardAim(
   return h.div(
     [
       h.DataAttribute("testid", "pending-revealed-aim"),
-      h.Style({ "--b": `${HAND_BAR_H + 12}px` }),
+      h.Style({ "--b": `calc(var(--hand-bar-h) + 12px)` }),
       h.Class(
         "pointer-events-auto fixed bottom-(--b) left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
       ),
@@ -1232,7 +1231,7 @@ function cardPickForKind(
     return h.div(
       [
         h.DataAttribute("testid", "pending-gy-aim"),
-        h.Style({ "--b": `${HAND_BAR_H + 12}px` }),
+        h.Style({ "--b": `calc(var(--hand-bar-h) + 12px)` }),
         h.Class(
           "pointer-events-none fixed bottom-(--b) left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-xs rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
         ),
@@ -1273,7 +1272,7 @@ function cardPickForKind(
       return h.div(
         [
           h.DataAttribute("testid", "pending-exile-aim"),
-          h.Style({ "--b": `${HAND_BAR_H + 12}px` }),
+          h.Style({ "--b": `calc(var(--hand-bar-h) + 12px)` }),
           h.Class(
             "pointer-events-none fixed bottom-(--b) left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-xs rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
           ),
@@ -1315,7 +1314,7 @@ function cardPickForKind(
     return h.div(
       [
         h.DataAttribute("testid", discardKind ? "pending-discard-aim" : "pending-hand-aim"),
-        h.Style({ "--b": `${HAND_BAR_H + 12}px` }),
+        h.Style({ "--b": `calc(var(--hand-bar-h) + 12px)` }),
         h.Class(
           "pointer-events-none fixed bottom-(--b) left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-xs rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
         ),
@@ -1359,7 +1358,7 @@ function cardPickForKind(
     return h.div(
       [
         h.DataAttribute("testid", "pending-target-aim"),
-        h.Style({ "--b": `${HAND_BAR_H + 12}px` }),
+        h.Style({ "--b": `calc(var(--hand-bar-h) + 12px)` }),
         h.Class(
           "pointer-events-none fixed bottom-(--b) left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-xs rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
         ),
@@ -1490,7 +1489,7 @@ function yesNoPrompt(pending: Extract<PendingChoiceView, { kind: "may_yes_no" | 
   return h.div(
     [
       h.DataAttribute("testid", "pending-yes-no-aim"),
-      h.Style({ "--b": `${HAND_BAR_H + 12}px` }),
+      h.Style({ "--b": `calc(var(--hand-bar-h) + 12px)` }),
       h.Class(
         "pointer-events-auto fixed bottom-(--b) left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
       ),
@@ -1544,7 +1543,7 @@ function payCostPrompt(
   return h.div(
     [
       h.DataAttribute("testid", "pending-pay-cost-aim"),
-      h.Style({ "--b": `${HAND_BAR_H + 12}px` }),
+      h.Style({ "--b": `calc(var(--hand-bar-h) + 12px)` }),
       h.Class(
         "pointer-events-auto fixed bottom-(--b) left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
       ),
@@ -1565,7 +1564,7 @@ function modeListPrompt(
     return h.div(
       [
         h.DataAttribute("testid", "pending-mode-aim"),
-        h.Style({ "--b": `${HAND_BAR_H + 12}px` }),
+        h.Style({ "--b": `calc(var(--hand-bar-h) + 12px)` }),
         h.Class(
           "pointer-events-auto fixed bottom-(--b) left-1/2 z-30 flex max-w-[min(100%-2rem,28rem)] -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
         ),
@@ -1588,7 +1587,7 @@ function modeListPrompt(
   return h.div(
     [
       h.DataAttribute("testid", "pending-trigger-modes-aim"),
-      h.Style({ "--b": `${HAND_BAR_H + 12}px` }),
+      h.Style({ "--b": `calc(var(--hand-bar-h) + 12px)` }),
       h.Class(
         "pointer-events-auto fixed bottom-(--b) left-1/2 z-30 flex max-w-[min(100%-2rem,28rem)] -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
       ),
@@ -1648,7 +1647,7 @@ function playerPickPrompt(
     return h.div(
       [
         h.DataAttribute("testid", "pending-player-aim"),
-        h.Style({ "--b": `${HAND_BAR_H + 12}px` }),
+        h.Style({ "--b": `calc(var(--hand-bar-h) + 12px)` }),
         h.Class(
           "pointer-events-none fixed bottom-(--b) left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-xs rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
         ),
@@ -1752,7 +1751,7 @@ function divideTotalPrompt(
     return h.div(
       [
         h.DataAttribute("testid", "pending-divide-aim"),
-        h.Style({ "--b": `${HAND_BAR_H + 12}px` }),
+        h.Style({ "--b": `calc(var(--hand-bar-h) + 12px)` }),
         h.Class(
           [
             "fixed bottom-(--b) left-1/2 z-30 flex max-w-[min(100%-2rem,28rem)] -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
@@ -1801,7 +1800,7 @@ function divideTotalPrompt(
   return h.div(
     [
       h.DataAttribute("testid", "pending-divide-counters-aim"),
-      h.Style({ "--b": `${HAND_BAR_H + 12}px` }),
+      h.Style({ "--b": `calc(var(--hand-bar-h) + 12px)` }),
       h.Class(
         [
           "fixed bottom-(--b) left-1/2 z-30 flex max-w-[min(100%-2rem,28rem)] -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
@@ -1853,7 +1852,7 @@ function pilePickPrompt(
   return h.div(
     [
       h.DataAttribute("testid", "pending-pile-aim"),
-      h.Style({ "--b": `${HAND_BAR_H + 12}px` }),
+      h.Style({ "--b": `calc(var(--hand-bar-h) + 12px)` }),
       h.Class(
         "pointer-events-auto fixed bottom-(--b) left-1/2 z-30 flex max-w-[min(100%-2rem,40rem)] -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
       ),
@@ -2323,7 +2322,7 @@ function destinationPickPrompt(
     return h.div(
       [
         h.DataAttribute("testid", "pending-destination-aim"),
-        h.Style({ "--b": `${HAND_BAR_H + 12}px` }),
+        h.Style({ "--b": `calc(var(--hand-bar-h) + 12px)` }),
         h.Class(
           "pointer-events-auto fixed bottom-(--b) left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
         ),
@@ -2341,7 +2340,7 @@ function destinationPickPrompt(
   return h.div(
     [
       h.DataAttribute("testid", "pending-revealed-destination-aim"),
-      h.Style({ "--b": `${HAND_BAR_H + 12}px` }),
+      h.Style({ "--b": `calc(var(--hand-bar-h) + 12px)` }),
       h.Class(
         "pointer-events-auto fixed bottom-(--b) left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
       ),
@@ -2462,7 +2461,7 @@ export function promptsView(board: BoardModel, state: VisibleState, tableId: str
       return h.div(
         [
           h.DataAttribute("testid", "sacrifice-cost-aim"),
-          h.Style({ "--b": `${HAND_BAR_H + 12}px` }),
+          h.Style({ "--b": `calc(var(--hand-bar-h) + 12px)` }),
           h.Class(
             "pointer-events-none fixed bottom-(--b) left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-xs rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
           ),
@@ -2490,7 +2489,7 @@ export function promptsView(board: BoardModel, state: VisibleState, tableId: str
       return h.div(
         [
           h.DataAttribute("testid", "discard-cost-aim"),
-          h.Style({ "--b": `${HAND_BAR_H + 12}px` }),
+          h.Style({ "--b": `calc(var(--hand-bar-h) + 12px)` }),
           h.Class(
             "pointer-events-none fixed bottom-(--b) left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-xs rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
           ),
@@ -2529,7 +2528,7 @@ export function promptsView(board: BoardModel, state: VisibleState, tableId: str
       return h.div(
         [
           h.DataAttribute("testid", "gy-exile-cost-aim"),
-          h.Style({ "--b": `${HAND_BAR_H + 12}px` }),
+          h.Style({ "--b": `calc(var(--hand-bar-h) + 12px)` }),
           h.Class(
             "pointer-events-none fixed bottom-(--b) left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-xs rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
           ),

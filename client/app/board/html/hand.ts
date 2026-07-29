@@ -23,22 +23,72 @@ import { pipChip } from "./pip-chip";
 
 const h = html<Message>();
 
-export const HAND_CARD_W = HAND_FACE_W;
 export const HAND_CARD_PEEK = HAND_BAR_PEEK;
-export const HAND_CARD_OVERLAP = HAND_CARD_W - HAND_CARD_PEEK;
-export const HAND_CARD_H = Math.round(HAND_CARD_W / 0.716);
 export const HAND_VISIBLE_H = 178;
 /** Room above each face for cast-cost pips (reserved band outside the card). */
 const HAND_PIP_ROW_H = 24;
-/** Height of the bottom action bar — tuck + pip row + padding. */
-export const HAND_BAR_H = HAND_VISIBLE_H + HAND_PIP_ROW_H + 16;
+/** Window the bar constants above were drawn against. */
+export const HAND_DESIGN_VIEWPORT = { width: 1440, height: 900 } as const;
+
 /**
- * From the viewport bottom: band where sticky Alt-inspect hand hover stays latched after leaving
- * the peek hit strip (raised faces extend above `HAND_BAR_H` into the board).
+ * The bar is a constant fraction of the window, not a fixed pixel size. A 208px face that reads
+ * well on a 1440x900 laptop is a thumbnail on a 27" 2560x1440 desktop viewed from arm's length,
+ * and it swallows a small laptop. Clamped so neither extreme distorts the layout.
  */
-export const HAND_INSPECT_STICKY_BAND = HAND_BAR_H - HAND_VISIBLE_H + HAND_CARD_H;
-/** How far into the hand bar a release may still count as play (px). */
-export const HAND_PLAY_SLACK_PX = 96;
+export function handUiScale(viewport: { width: number; height: number }): number {
+  const raw = Math.min(viewport.width / HAND_DESIGN_VIEWPORT.width, viewport.height / HAND_DESIGN_VIEWPORT.height);
+  if (!(raw > 0)) return 1;
+  return Math.max(0.75, Math.min(1.5, raw));
+}
+
+export type HandMetrics = {
+  scale: number;
+  cardW: number;
+  cardH: number;
+  peek: number;
+  overlap: number;
+  visibleH: number;
+  pipRowH: number;
+  pipSize: number;
+  /** Height of the bottom action bar — tuck + pip row + padding. */
+  barH: number;
+  /**
+   * From the viewport bottom: band where sticky Alt-inspect hand hover stays latched after leaving
+   * the peek hit strip (raised faces extend above `barH` into the board).
+   */
+  stickyBand: number;
+  /** How far into the hand bar a release may still count as play (px). */
+  playSlack: number;
+};
+
+/** Every hand-bar length in CSS px for this window. Rounded so inline styles stay on whole pixels. */
+export function handMetrics(viewport: { width: number; height: number }): HandMetrics {
+  const scale = handUiScale(viewport);
+  const cardW = Math.round(HAND_FACE_W * scale);
+  const cardH = Math.round(cardW / 0.716);
+  const peek = Math.round(HAND_CARD_PEEK * scale);
+  const visibleH = Math.round(HAND_VISIBLE_H * scale);
+  const pipRowH = Math.round(HAND_PIP_ROW_H * scale);
+  const barH = visibleH + pipRowH + Math.round(16 * scale);
+  return {
+    scale,
+    cardW,
+    cardH,
+    peek,
+    overlap: cardW - peek,
+    visibleH,
+    pipRowH,
+    pipSize: Math.round(14 * scale),
+    barH,
+    stickyBand: barH - visibleH + cardH,
+    playSlack: Math.round(96 * scale),
+  };
+}
+
+/** The bar at its design size — for callers with no window to measure (tests, SSR). */
+export const HAND_BASE_METRICS = handMetrics(HAND_DESIGN_VIEWPORT);
+/** Bar height at the design window. Live boards must use `handMetrics(viewport).barH`. */
+export const HAND_BAR_H = HAND_BASE_METRICS.barH;
 
 const emptyCost = (): WireCost => ({ generic: 0, colored: [0, 0, 0, 0, 0] });
 
@@ -62,6 +112,7 @@ function costPipView(ms: string, code: string, sizePx: number): Html {
 }
 
 function tile(args: {
+  metrics: HandMetrics;
   name: string;
   print: string;
   cardId?: string;
@@ -80,6 +131,7 @@ function tile(args: {
   discardSelected?: boolean;
 }): Html {
   const {
+    metrics,
     name,
     print,
     cardId,
@@ -98,10 +150,10 @@ function tile(args: {
   } = args;
   const playable = (action != null || discardSelectable) && !slotInert;
   const testId = objectId != null ? `hand-card-${objectId}` : undefined;
-  const hitW = handBarHitWidth(index, count, HAND_CARD_PEEK, HAND_CARD_W);
-  const restHitH = handBarHitHeight(false, HAND_VISIBLE_H, HAND_CARD_H);
-  const raisedHitH = handBarHitHeight(true, HAND_VISIBLE_H, HAND_CARD_H);
-  const raiseY = handBarRaiseTranslateY(true, HAND_VISIBLE_H, HAND_CARD_H);
+  const hitW = handBarHitWidth(index, count, metrics.peek, metrics.cardW);
+  const restHitH = handBarHitHeight(false, metrics.visibleH, metrics.cardH);
+  const raisedHitH = handBarHitHeight(true, metrics.visibleH, metrics.cardH);
+  const raiseY = handBarRaiseTranslateY(true, metrics.visibleH, metrics.cardH);
   const pips = costPips(manaCost, { showZero: objectKind != null && objectKind !== "land" });
   // Raise on hover or when the group carries data-selected=true (discard / hand-put picks).
   const faceClass =
@@ -139,7 +191,7 @@ function tile(args: {
     h.Style({
       width: `${hitW}px`,
       height: `${restHitH}px`,
-      right: `${HAND_CARD_W - hitW}px`,
+      right: `${metrics.cardW - hitW}px`,
       "--hit-raised-h": `${raisedHitH}px`,
     }),
   ];
@@ -202,16 +254,16 @@ function tile(args: {
           [
             h.DataAttribute("testid", "hand-cost-pips"),
             h.Class("absolute right-0 left-0 z-20 flex items-end justify-end gap-px pb-0.5"),
-            h.Style({ top: `-${HAND_PIP_ROW_H}px`, height: `${HAND_PIP_ROW_H}px` }),
+            h.Style({ top: `-${metrics.pipRowH}px`, height: `${metrics.pipRowH}px` }),
             h.Attribute("aria-hidden", "true"),
           ],
-          pips.map((pip: CostPip) => costPipView(pip.ms, pip.code, 14)),
+          pips.map((pip: CostPip) => costPipView(pip.ms, pip.code, metrics.pipSize)),
         )
       : null;
 
   const cardBoxStyle = {
-    width: `${HAND_CARD_W}px`,
-    height: `${HAND_CARD_H}px`,
+    width: `${metrics.cardW}px`,
+    height: `${metrics.cardH}px`,
   };
   const cardFaceAttrs: Attribute<Message>[] = [h.Class(faceChromeClass), h.Style(cardBoxStyle)];
   if (objectId != null) {
@@ -240,8 +292,8 @@ function tile(args: {
       "group/hand-tile pointer-events-none relative shrink-0 origin-bottom overflow-visible [z-index:var(--hand-z)] hover:[z-index:50]",
     ),
     h.Style({
-      width: `${HAND_CARD_PEEK}px`,
-      height: `${HAND_VISIBLE_H}px`,
+      width: `${metrics.peek}px`,
+      height: `${metrics.visibleH}px`,
       transform: fanTransform(index, count),
       "--raise-y": `${raiseY}px`,
       "--hand-z": String(index + 1),
@@ -260,7 +312,7 @@ function tile(args: {
 
   return h.div(tileAttrs, [
     h.div(
-      [h.Class(faceClass), h.Style({ width: `${HAND_CARD_W}px` })],
+      [h.Class(faceClass), h.Style({ width: `${metrics.cardW}px` })],
       [
         pipRow,
         h.div(
@@ -285,12 +337,12 @@ function tile(args: {
   ]);
 }
 
-function section(name: string, tiles: ReadonlyArray<Html>): Html | null {
+function section(name: string, overlap: number, tiles: ReadonlyArray<Html>): Html | null {
   if (tiles.length === 0) return null;
   return h.fieldset(
     [
       h.Class("m-0 flex min-w-0 items-end overflow-visible border-none p-0"),
-      h.Style({ paddingLeft: `${HAND_CARD_OVERLAP}px` }),
+      h.Style({ paddingLeft: `${overlap}px` }),
       h.Attribute("aria-label", name),
     ],
     tiles,
@@ -298,6 +350,8 @@ function section(name: string, tiles: ReadonlyArray<Html>): Html | null {
 }
 
 export type HandViewInputs = {
+  /** Board viewport in CSS px — the bar scales with it. */
+  viewport: { width: number; height: number };
   state: VisibleState;
   hiddenId: number | null;
   flyingIds: ReadonlySet<number>;
@@ -312,7 +366,17 @@ export type HandViewInputs = {
 };
 
 export function handView(inputs: HandViewInputs): Html {
-  const { state, hiddenId, flyingIds, hiddenIds, handDrag, discardCostIds = null, discardSelectedIds = null } = inputs;
+  const {
+    viewport,
+    state,
+    hiddenId,
+    flyingIds,
+    hiddenIds,
+    handDrag,
+    discardCostIds = null,
+    discardSelectedIds = null,
+  } = inputs;
+  const metrics = handMetrics(viewport);
   const viewer = state.viewer;
   const grouped = bySection(state.actions);
   const commandActionByObject = byObject(grouped.command);
@@ -343,6 +407,7 @@ export function handView(inputs: HandViewInputs): Html {
 
   const commandTiles = commandVisible.map((c, index) =>
     tile({
+      metrics,
       name: c.name,
       print: c.print ?? "",
       cardId: c.card_id,
@@ -393,6 +458,7 @@ export function handView(inputs: HandViewInputs): Html {
   }
   const handTiles = handSlots.map((slot, index) =>
     tile({
+      metrics,
       ...slot,
       zone: "hand",
       draggingActionId,
@@ -408,6 +474,7 @@ export function handView(inputs: HandViewInputs): Html {
       const meta = metaFor(a.object);
       const id = a.object ?? undefined;
       return tile({
+        metrics,
         name: formatMessage(a.label),
         print: meta.print,
         cardId: meta.cardId,
@@ -434,13 +501,13 @@ export function handView(inputs: HandViewInputs): Html {
           h.Class(
             "pointer-events-none fixed right-0 bottom-0 left-0 z-20 flex items-end justify-center gap-xl overflow-visible px-md",
           ),
-          h.Style({ height: `${HAND_BAR_H}px` }),
+          h.Style({ height: `${metrics.barH}px` }),
         ],
         [
-          section("Command", commandTiles),
-          section("Hand", handTiles),
-          section("Graveyard", zoneTiles("graveyard", grouped.graveyard)),
-          section("Exile", zoneTiles("exile", grouped.exile)),
+          section("Command", metrics.overlap, commandTiles),
+          section("Hand", metrics.overlap, handTiles),
+          section("Graveyard", metrics.overlap, zoneTiles("graveyard", grouped.graveyard)),
+          section("Exile", metrics.overlap, zoneTiles("exile", grouped.exile)),
         ].filter((child): child is Html => child !== null),
       ),
     ].filter((child): child is Html => child !== null),

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ActionView, ObjectView, VisibleState, WireCost } from "~/wire/types";
 import { ZONE } from "../geometry/layout";
-import { handView } from "./hand";
+import { HAND_DESIGN_VIEWPORT, handView } from "./hand";
 
 function cost(overrides: Partial<WireCost> = {}): WireCost {
   return {
@@ -76,6 +76,7 @@ function state(overrides: Partial<VisibleState> = {}): VisibleState {
 
 function renderHand(visible: VisibleState): unknown {
   return handView({
+    viewport: HAND_DESIGN_VIEWPORT,
     state: visible,
     hiddenId: null,
     flyingIds: new Set(),
@@ -174,6 +175,7 @@ describe("handView unplayable brightness", () => {
     const castable = object(42, { name: "Lightning Bolt" });
     const cast = action(7, { object: 42 });
     const tree = handView({
+      viewport: HAND_DESIGN_VIEWPORT,
       state: state({ objects: [castable], actions: [cast] }),
       hiddenId: null,
       flyingIds: new Set(),
@@ -199,6 +201,7 @@ describe("handView discard pick accessibility", () => {
   it("names discard-selectable hit targets for assistive tech", () => {
     const a = object(42, { name: "Lightning Bolt" });
     const tree = handView({
+      viewport: HAND_DESIGN_VIEWPORT,
       state: state({ objects: [a], actions: [] }),
       hiddenId: null,
       flyingIds: new Set(),
@@ -314,6 +317,7 @@ describe("handView drag chrome", () => {
     const castable = object(42, { name: "Lightning Bolt" });
     const cast = action(7, { object: 42 });
     const tree = handView({
+      viewport: HAND_DESIGN_VIEWPORT,
       state: state({ objects: [castable], actions: [cast] }),
       hiddenId: null,
       flyingIds: new Set(),
@@ -338,6 +342,7 @@ describe("handView drag chrome", () => {
     const castable = object(42, { name: "Lightning Bolt", print: "" });
     const cast = action(7, { object: 42 });
     const tree = handView({
+      viewport: HAND_DESIGN_VIEWPORT,
       state: state({ objects: [castable], actions: [cast] }),
       hiddenId: null,
       flyingIds: new Set(),
@@ -363,6 +368,7 @@ describe("handView drag chrome", () => {
     });
     const cast = action(9, { object: 9, section: "command", kind: "cast" });
     const tree = handView({
+      viewport: HAND_DESIGN_VIEWPORT,
       state: state({ objects: [commander], actions: [cast] }),
       hiddenId: null,
       flyingIds: new Set(),
@@ -456,6 +462,7 @@ describe("handView hover stacking", () => {
   it("does not elevate z for discard-selected without hover; hover still brings to front", () => {
     const a = object(42, { name: "Lightning Bolt" });
     const tree = handView({
+      viewport: HAND_DESIGN_VIEWPORT,
       state: state({ objects: [a], actions: [] }),
       hiddenId: null,
       flyingIds: new Set(),

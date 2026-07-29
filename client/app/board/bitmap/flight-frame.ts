@@ -88,6 +88,8 @@ export function restingPaintSnapshot(
   const payload = {
     width: frame.width,
     height: frame.height,
+    // A DPR change resizes the backing store, which clears it — that has to force a repaint.
+    dpr: frame.dpr,
     camera: frame.camera,
     viewer: frame.viewer,
     priority: frame.priority,

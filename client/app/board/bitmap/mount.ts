@@ -31,6 +31,8 @@ import { paintScreenMotion } from "./paint-screen-motion";
 export type BitmapFrame = {
   width: number;
   height: number;
+  /** Device pixels per CSS pixel. The backing store is this multiple of `width`/`height`. */
+  dpr: number;
   camera: Camera;
   cards: readonly RenderCard[];
   viewer: number;
@@ -288,7 +290,9 @@ export function bitmapFrameNeedsRaf(frame: Pick<BitmapFrame, "flights" | "exitFx
 
 /** Size the backing store to the DPR, reset the transform, and clear. Returns the 2D context. */
 function prepareLayerCtx(canvas: HTMLCanvasElement, frame: BitmapFrame): CanvasRenderingContext2D | null {
-  const dpr = window.devicePixelRatio || 1;
+  // The frame's DPR, not `window.devicePixelRatio`: the vdom sizes these canvases from the same
+  // model value, and a second reading would fight it every time the two disagree.
+  const dpr = frame.dpr > 0 ? frame.dpr : 1;
   const targetWidth = Math.max(1, Math.floor(frame.width * dpr));
   const targetHeight = Math.max(1, Math.floor(frame.height * dpr));
   if (canvas.width !== targetWidth) canvas.width = targetWidth;

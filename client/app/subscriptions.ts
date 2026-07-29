@@ -1,8 +1,15 @@
 import * as VirtualList from "@foldkit/ui/virtualList";
 import { Subscription } from "foldkit";
+import { BoardViewportResized } from "./board/messages";
 import { subscriptions as gameSubscriptions } from "./game";
 import type { Message } from "./messages";
-import { GotDeckBuilderMessage, GotGameMessage, GotLobbyMessage, LandscapeRotateChanged } from "./messages";
+import {
+  GotBoardMessage,
+  GotDeckBuilderMessage,
+  GotGameMessage,
+  GotLobbyMessage,
+  LandscapeRotateChanged,
+} from "./messages";
 import type { Model } from "./model";
 import { GotPoolGridMessage, GotPrintGridMessage } from "./shell/decks/builder/messages";
 import { subscriptions as lobbySubscriptions } from "./shell/lobby/subscriptions";
@@ -21,6 +28,22 @@ const appSubscriptions = Subscription.make<Model, Message>()(() => ({
       target: () => (typeof window.matchMedia === "function" ? window.matchMedia(PORTRAIT_QUERY) : window),
       type: "change",
       toMessage: () => LandscapeRotateChanged({ active: isPortraitPhone() }),
+    }),
+  ),
+  // The board canvases size their backing store from `board.viewport`; without this they stay at
+  // the size the game started at and the browser stretches (blurs) them to fill the window.
+  boardViewport: Subscription.persistent(
+    Subscription.fromEvent<Event, Message>({
+      target: () => window,
+      type: "resize",
+      toMessage: () =>
+        GotBoardMessage({
+          message: BoardViewportResized({
+            width: window.innerWidth,
+            height: window.innerHeight,
+            dpr: window.devicePixelRatio || 1,
+          }),
+        }),
     }),
   ),
 }));

@@ -19,13 +19,13 @@ export type HandDragPose = {
   zone?: DragGhostZone;
 };
 
-export function dragGhostFromHandDrag(drag: HandDragPose, zoom: number): DragGhost {
+export function dragGhostFromHandDrag(drag: HandDragPose, zoom: number, faceW?: number): DragGhost {
   return {
     print: drag.print,
     name: drag.name,
     x: drag.x,
     y: drag.y,
-    scale: handFlightScale(zoom),
+    scale: handFlightScale(zoom, faceW),
     zone: drag.zone ?? "hand",
   };
 }
