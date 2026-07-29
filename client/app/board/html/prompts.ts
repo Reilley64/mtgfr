@@ -99,18 +99,14 @@ function itemButton(label: string, testId: string, onClick: Message, disabled = 
       h.OnClick(onClick),
       h.Disabled(disabled),
       h.Class(
-        disabled
-          ? "group relative cursor-not-allowed rounded-hud border-0 bg-transparent p-0 opacity-40"
-          : "group relative cursor-pointer rounded-hud border-0 bg-transparent p-0",
+        "group relative cursor-pointer rounded-hud border-0 bg-transparent p-0 disabled:cursor-not-allowed disabled:opacity-40",
       ),
     ],
     [
       h.span(
         [
           h.Class(
-            disabled
-              ? "block rounded-hud bg-glass px-3 py-1 text-body text-mist"
-              : "block rounded-hud bg-glass px-3 py-1 text-body text-snow transition-transform duration-150 ease-out group-hover:-translate-y-1 hover:bg-glass-dim",
+            "block rounded-hud bg-glass px-3 py-1 text-body text-snow transition-transform duration-150 ease-out group-hover:not-disabled:-translate-y-1 group-hover:not-disabled:bg-glass-dim group-disabled:text-mist",
           ),
         ],
         [label],
@@ -127,9 +123,7 @@ function submitButton(label: string, disabled: boolean): Html {
       h.OnClick(PromptSubmitted()),
       h.Disabled(disabled),
       h.Class(
-        disabled
-          ? "cursor-not-allowed rounded-hud bg-glass px-3 py-1 text-body text-mist"
-          : "cursor-pointer rounded-hud bg-llanowar px-3 py-1 text-body text-snow hover:bg-llanowar/90",
+        "cursor-pointer rounded-hud bg-llanowar px-3 py-1 text-body text-snow hover:bg-llanowar/90 disabled:cursor-not-allowed disabled:bg-glass disabled:text-mist",
       ),
     ],
     [label],
@@ -865,18 +859,14 @@ function answerButton(
       h.DataAttribute("testid", testId),
       h.Disabled(disabled),
       h.OnClick(PendingChoiceAnswered({ intent: choiceIntent(pending, answer) })),
+      h.DataAttribute("primary", String(primary)),
       h.Class("group relative rounded-hud border-0 bg-transparent p-0 disabled:cursor-not-allowed disabled:opacity-50"),
     ],
     [
       h.span(
         [
           h.Class(
-            [
-              "block transition-transform duration-150 ease-out group-hover:-translate-y-1",
-              primary
-                ? "rounded-hud bg-llanowar px-3 py-1 text-body text-snow"
-                : "rounded-hud bg-glass px-3 py-1 text-body text-lichen",
-            ].join(" "),
+            "block rounded-hud px-3 py-1 text-body transition-transform duration-150 ease-out group-hover:-translate-y-1 group-data-[primary=true]:bg-llanowar group-data-[primary=true]:text-snow group-data-[primary=false]:bg-glass group-data-[primary=false]:text-lichen",
           ),
         ],
         [label],

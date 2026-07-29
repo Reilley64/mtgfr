@@ -30,7 +30,7 @@ Compose a fixed DOM log panel above the hand bar (left column) from `GameFoldSta
 - `GameFoldState.log` keeps at most the last 200 lines (`applyDeltaPure` slices `-200` when appending).
 - Lines with `auto: true` show an **AUTO** chip (`bg-auto-moss`) plus the line text in snow-mint caption styling.
 - Ordinary lines use mist caption text with no chip.
-- Panel geometry: fixed bottom-left above the hand bar (`--b: HAND_BAR_H + 10px`), scrollable, `rounded-hud` / `bg-forest-hud` / `shadow-hud`. Collapsed height is `max-h-[150px]`; expanded height is `max-h-[min(40vh,420px)]`.
+- Panel geometry: fixed bottom-left above the hand bar (`--b: HAND_BAR_H + 10px`), scrollable, `rounded-hud` / `bg-forest-hud` / `shadow-hud`. Collapsed height is `max-h-[150px]`; expanded height is `max-h-[min(40vh,420px)]`. The panel carries `data-expanded` and the cap flips via a `data-[expanded=true]:…` variant rather than a JS-swapped class string.
 - Composition: `boardOverlays` includes `logPanelView(board, log)` with other HUD overlays (below inspect; see `docs/client-canvas-map.md`).
 
 ### Log line sources (`client/app/game/fold.ts`)
@@ -52,7 +52,7 @@ Compose a fixed DOM log panel above the hand bar (left column) from `GameFoldSta
 
 - Scene tests assert `board-log` presence with an AUTO chip and ordinary line text when the fold log is non-empty.
 - Scene tests assert collapsed mode omits the 31st-oldest line while keeping the newest line.
-- Scene tests click `board-log-expand` and assert an older retained fold line becomes visible.
+- Scene tests click `board-log-expand` and assert an older retained fold line becomes visible, and that `data-expanded` flips with the expanded max-height variant present.
 - Scene tests assert `board-log-copy` and `board-log-toolbar` render when the log is non-empty.
 - Board update tests assert `LogCopyRequested` emits `CopyBoardLog` with every retained line joined by newline.
 - Scene tests assert `board-log`, toolbar, and copy controls are absent when the log is empty.

@@ -69,6 +69,7 @@ Helpers also live in `client/app/domain/lobby/client.ts` for table URL / code pa
 - **Table-only routes clear deck choice.** `ChangedLobbyRoute` treats an explicit `selectedDeckId: null` as authoritative, so `/play/:table` wipes any prior deck-picked lobby state instead of preserving it.
 - **Route-keyed lobby paint** prevents Host create→redirect from flashing seated/claim chrome on `/play/:deckId` while `tableId` may already be set in memory.
 - **Seat faces share `seatFace`.** Claimed and open lobby seats use the same Gravatar/monogram helper as account chrome, keyed by public `gravatar_hash` rather than email.
+- **Seat row chrome is attribute-driven.** The seat root is `group/lobby-seat` and carries `data-claimed` (`1`/`0`); the name (`lobby-seat-{player}-name`) and deck spans take their claimed/open weight and ink from `group-data-[claimed=…]/lobby-seat:` variants, not JS class ternaries.
 - **Clipboard denial is non-throwing.** Failed `navigator.clipboard.writeText` reveals a manual-copy input rather than surfacing an uncaught error.
 - **Ready unlocks audio.** `unlockTableAudio()` on Ready-up is the required user-gesture unlock for the shared `AudioContext` ([table-audio](2026-07-20-table-audio.md)).
 - **Lobby HTTP uses `LobbyClient` for commands.** Foldkit subscriptions in this app have an empty resource environment, so `lobbyPoll` uses the app lobby HTTP singleton while command effects read the injected `LobbyClient`.

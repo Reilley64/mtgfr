@@ -237,6 +237,9 @@ The engine/schema event model includes `MulliganTaken { player, mulligans_taken,
 - **Effect RPC dispatch boundary**: `/api/rpc/[...path]` performs request body/cookie plumbing in
   Nitro, then runs a single traced Effect dispatch. `dispatchRpc` routes to the generated gRPC
   clients as Effects and converts dispatch-time gRPC errors to HTTP-shaped `RpcOutcome` values.
+  Every POST/PUT must carry a JSON body: the route `JSON.parse`s the raw body and answers
+  `400 BadJson` when it cannot, so bodiless-intent calls (logout today) post `{}` from
+  `client/app/domain/rpc-client.ts` — the same convention the table routes document.
 - **Snapshot-then-deltas** (lobby-table-routing-and-live-game spec): a `tokio::broadcast` channel per table fans events to
   all subscribers; the subscribe edge redacts per viewer. Reconnect re-snapshots by opening a
   new `GameService.Stream` — the initial frame is always a `SnapshotFrame`.

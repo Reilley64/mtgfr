@@ -108,14 +108,10 @@ function tile(args: {
     "pointer-events-none absolute top-0 right-0 transition-transform duration-[120ms] ease-state group-hover/hand-tile:[transform:translateY(var(--raise-y))] group-data-[selected=true]/hand-tile:[transform:translateY(var(--raise-y))]";
 
   // The drag source fades so the canvas DragGhost carries the face; inert slots stay non-interactive.
+  // Art chrome is attribute-driven off the tile root (data-drag-source / data-playable).
   const dragSource = playable && action != null && draggingActionId != null && action.id === draggingActionId;
-  const artClass = [
-    "pointer-events-none block touch-none rounded-game object-cover shadow-hand transition-[filter,opacity] duration-[80ms] ease-state",
-    dragSource ? "opacity-25" : "",
-    playable && !dragSource ? "group-hover/hand-tile:brightness-110" : "",
-  ]
-    .filter((v) => v !== "")
-    .join(" ");
+  const artClass =
+    "pointer-events-none block touch-none rounded-game object-cover shadow-hand transition-[filter,opacity] duration-[80ms] ease-state group-data-[drag-source=true]/hand-tile:opacity-25 group-hover/hand-tile:group-data-[playable=true]/hand-tile:brightness-110";
   const pickChrome = discardSelectable || discardSelected;
   const faceChromeClass = [
     "relative origin-bottom rounded-game",
@@ -231,13 +227,7 @@ function tile(args: {
     : h.div(
         [
           h.Class(
-            [
-              "flex items-center justify-center rounded-game bg-forest-shadow p-1 text-center text-caption text-snow shadow-hand transition-[filter,opacity] duration-[80ms] ease-state",
-              dragSource ? "opacity-25" : "",
-              playable && !dragSource ? "group-hover/hand-tile:brightness-110" : "",
-            ]
-              .filter((v) => v !== "")
-              .join(" "),
+            "flex items-center justify-center rounded-game bg-forest-shadow p-1 text-center text-caption text-snow shadow-hand transition-[filter,opacity] duration-[80ms] ease-state group-data-[drag-source=true]/hand-tile:opacity-25 group-hover/hand-tile:group-data-[playable=true]/hand-tile:brightness-110",
           ),
           h.Style(cardBoxStyle),
         ],
@@ -256,6 +246,8 @@ function tile(args: {
       "--hand-z": String(index + 1),
     }),
     h.DataAttribute("hand-index", String(index)),
+    h.DataAttribute("playable", String(playable)),
+    h.DataAttribute("drag-source", String(dragSource)),
   ];
   if (objectId != null) {
     tileAttrs.push(h.DataAttribute("testid", `hand-tile-${objectId}`));

@@ -1800,6 +1800,26 @@ test("selected permanent with tap-for-mana shows activation menu row", () => {
   );
 });
 
+test("hovering an activation row marks it active for the gold variant", () => {
+  const land = creature(5, 0, {
+    name: "Forest",
+    kind: { kind: "land", colors: [1, 0, 0, 0, 0] },
+    taps_for_mana: true,
+    power: 0,
+    toughness: 0,
+  });
+  const base = viewModel(fold(state({ objects: [land], can_act: true })));
+  const selected: ViewModel = { ...base, board: { ...base.board, selectedId: 5 } };
+  const row = Scene.testId("activation-menu-row-tap_for_mana");
+  overlayScene(
+    selected,
+    Scene.expect(row).toHaveAttr("data-active", "false"),
+    Scene.expect(row).toHaveClass("data-[active=true]:border-priority-gold"),
+    Scene.hover(row),
+    Scene.expect(row).toHaveAttr("data-active", "true"),
+  );
+});
+
 test("selected tapped mana source keeps its disabled tap-for-mana row visible", () => {
   const land = creature(5, 0, {
     name: "Forest",
@@ -3128,8 +3148,11 @@ test("log panel expands to show older fold-buffer lines", () => {
   overlayScene(
     model,
     Scene.expect(Scene.testId("board-log")).not.toContainText("entry-001"),
+    Scene.expect(Scene.testId("board-log")).toHaveAttr("data-expanded", "false"),
     Scene.click(Scene.testId("board-log-expand")),
     Scene.expect(Scene.testId("board-log")).toContainText("entry-001"),
+    Scene.expect(Scene.testId("board-log")).toHaveAttr("data-expanded", "true"),
+    Scene.expect(Scene.testId("board-log")).toHaveClass("data-[expanded=true]:max-h-[min(40vh,420px)]"),
   );
 });
 

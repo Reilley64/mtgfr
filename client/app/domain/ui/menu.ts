@@ -15,7 +15,11 @@ const panelRecipe = cva({
   base: "flex flex-col rounded-hud border p-xs",
   variants: {
     variant: {
-      shell: "border-vine bg-forest-surface shadow-table",
+      // z-41 is the shell overlay convention (backdrop z-40, panel z-41). It is not optional:
+      // Menu/Combobox portal the panel into a root prepended before the app root, and the
+      // shell frame is fixed + opaque, so a z-auto panel opens in the DOM but paints
+      // underneath the page. A call-site z passed as `extra` still wins through `cn`.
+      shell: "z-41 border-vine bg-forest-surface shadow-table",
       hud: "border-vine/50 bg-forest-hud shadow-hud",
     },
   },
@@ -30,8 +34,9 @@ const itemRecipe = cva({
   defaultVariants: { variant: "shell" },
 });
 
-/** Shared dropdown panel chrome. Positioning (absolute/fixed, z-index, min-width) differs per
- * site — pass it as `extra`. */
+/** Shared dropdown panel chrome. The shell variant bakes the shell overlay z (`z-41`) because a
+ * portaled panel without it paints under the fixed shell frame; positioning (absolute/fixed,
+ * min-width) still differs per site — pass it as `extra`. */
 export function menuPanelClass(extra?: ClassValue, variant: DropdownVariant = "shell"): string {
   return panelRecipe({ variant, class: extra });
 }

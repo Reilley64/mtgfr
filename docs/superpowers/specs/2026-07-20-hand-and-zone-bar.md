@@ -38,7 +38,7 @@ Render a fixed DOM hand bar at the bottom of the board. It groups tiles in Arena
 ## Implementation Decisions
 
 - The bar is DOM, not canvas, so real buttons, keyboard activation, and drag data attributes stay available.
-- Hand-pick selection chrome is Tailwind-first: the tile root is `group/hand-tile` and carries `data-selected` / `data-selectable`; raise, hit height, and Llanowar / Island rings are `group-hover` / `group-data-*` utilities rather than JS class ternaries.
+- Hand-pick selection chrome is Tailwind-first: the tile root is `group/hand-tile` and carries `data-selected` / `data-selectable`; raise, hit height, and Llanowar / Island rings are `group-hover` / `group-data-*` utilities rather than JS class ternaries. Art chrome is attribute-driven the same way: the tile root always carries `data-playable` and `data-drag-source`, and hover-brighten (`group-hover/hand-tile:group-data-[playable=true]/hand-tile:brightness-110`) plus drag-source fade (`group-data-[drag-source=true]/hand-tile:opacity-25`) are variant tokens on the face — never bare classes a ternary swaps in.
 - `slotInert` is reserved for staged/in-flight cards; it is not a visual dimming signal for unplayable cards.
 - `cardArt(h, opts)` is used for DOM faces and accepts optional `style` for precise tile sizing.
 - Alt-inspect hover metadata is attached to every face-up bar tile, playable or not.
@@ -52,7 +52,7 @@ Render a fixed DOM hand bar at the bottom of the board. It groups tiles in Arena
 - Interaction checks should drag above and below the play threshold and assert commit versus cancel outcomes.
 - Scene tests cover multi-mode hand activation entering `playModePick`, local-session exclusivity, `PlayModeChosen` continuation, the single-mode auto path, stale legality prune/cancel behavior, stale `PlayModeChosen` without intent, and Cancel restoring the parked hand card.
 - Geometry lock in `handBarHit.test.ts` asserts face/peek/visible/`HAND_BAR_H` targets so a silent regress to the old dense values fails.
-- `hand.test.ts` locks hover elevate on `hand-tile-{id}`, asserts discard-selected does not add selection z elevate (`hover:[z-index:50]` remains for hover+selected), and locks `data-selected` / `group-data-[selected=true]/hand-tile:ring-llanowar` pick chrome.
+- `hand.test.ts` locks hover elevate on `hand-tile-{id}`, asserts discard-selected does not add selection z elevate (`hover:[z-index:50]` remains for hover+selected), and locks `data-selected` / `group-data-[selected=true]/hand-tile:ring-llanowar` pick chrome. It also locks the art chrome contract: `data-playable` / `data-drag-source` on the tile root, the hover-brighten and drag-fade variant tokens on the face, and no bare ternary `opacity-25`.
 
 ## Out of Scope
 
