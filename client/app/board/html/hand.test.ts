@@ -187,9 +187,11 @@ describe("handView unplayable brightness", () => {
         y: 10,
       },
     });
+    const root = findTestId(tree, "hand-tile-42");
+    expect(attr(root, "data-drag-source")).toBe("true");
     const face = findTestId(tree, "hand-card-face-42");
     expect(face).not.toBeNull();
-    expect(treeHasClass(face, "opacity-25")).toBe(true);
+    expect(treeHasClass(face, "group-data-[drag-source=true]/hand-tile:opacity-25")).toBe(true);
   });
 });
 
@@ -310,7 +312,7 @@ describe("handView drag chrome", () => {
     });
     const source = findTestId(tree, "hand-card-face-42");
     expect(className(source)).not.toContain("ring-playable-border");
-    expect(treeHasClass(source, "opacity-25")).toBe(true);
+    expect(treeHasClass(source, "group-data-[drag-source=true]/hand-tile:opacity-25")).toBe(true);
     expect(findTestId(tree, "hand-drag-ghost")).toBeNull();
   });
 
@@ -360,7 +362,7 @@ describe("handView drag chrome", () => {
     expect(findTestId(tree, "hand-drag-ghost")).toBeNull();
     const source = findTestId(tree, "hand-card-face-9");
     expect(className(source)).not.toContain("ring-playable-border");
-    expect(treeHasClass(source, "opacity-25")).toBe(true);
+    expect(treeHasClass(source, "group-data-[drag-source=true]/hand-tile:opacity-25")).toBe(true);
   });
 
   it("uses not-allowed on unplayable and grab on playable hit strips", () => {
@@ -458,5 +460,29 @@ describe("handView hover stacking", () => {
     expect(attr(root, "data-selected")).toBe("true");
     expect(attr(root, "data-selectable")).toBe("true");
     expect(treeHasClass(findTestId(tree, "hand-tile-42"), "z-30")).toBe(false);
+  });
+});
+
+describe("hand tile art chrome attributes", () => {
+  it("drives hover-brighten and drag-fade from tile data attributes", () => {
+    const castable = object(42, { name: "Lightning Bolt" });
+    const tree = renderHand(state({ objects: [castable], actions: [action(7, { object: 42 })] }));
+
+    const root = findTestId(tree, "hand-tile-42");
+    expect(attr(root, "data-playable")).toBe("true");
+    expect(attr(root, "data-drag-source")).toBe("false");
+
+    const face = findTestId(tree, "hand-card-face-42");
+    expect(treeHasClass(face, "group-hover/hand-tile:group-data-[playable=true]/hand-tile:brightness-110")).toBe(true);
+    expect(treeHasClass(face, "group-data-[drag-source=true]/hand-tile:opacity-25")).toBe(true);
+    // No ternary leftovers: the fade must arrive as a variant, never as bare opacity-25.
+    expect(className(face)).not.toContain("opacity-25");
+  });
+
+  it("marks unplayable tiles data-playable=false so hover does not brighten", () => {
+    const uncastable = object(43, { name: "Cancel" });
+    const tree = renderHand(state({ objects: [uncastable], actions: [] }));
+
+    expect(attr(findTestId(tree, "hand-tile-43"), "data-playable")).toBe("false");
   });
 });
