@@ -605,6 +605,9 @@ describe("shell surface scenes", () => {
       Scene.click(Scene.testId("account-menu-trigger")),
       Scene.expect(Scene.selector('[data-testid="account-menu"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="account-menu-sign-out"]')).toExist(),
+      // The panel is portaled *before* the app root, so without an explicit z the opaque
+      // fixed shell frame paints over it — the menu opens in the DOM but stays invisible.
+      Scene.expect(Scene.selector('[data-testid="account-menu"]')).toHaveClass("z-41"),
       ...resolveAccountMenuMounts(),
     );
   });
