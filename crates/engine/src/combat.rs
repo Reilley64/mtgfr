@@ -1036,6 +1036,9 @@ impl Game {
         // Mana-Charged Dragon's "whenever this creature attacks or blocks" — the block half
         // (blocker side only; a blocked attacker "becomes blocked", it doesn't "block").
         self.queue_attacks_or_blocks_block_triggers(blocks);
+        // Rampage N (CR 702.23) — the keyword *is* the trigger, so it's synthesized, not scanned
+        // for; the attacker side only, and once per attacker however many creatures blocked it.
+        self.queue_rampage_triggers(blocks);
         self.combat.blocked_by.extend(seats); // these defenders' block declarations are final
         events
     }

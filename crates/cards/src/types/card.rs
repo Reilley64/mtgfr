@@ -440,6 +440,13 @@ pub enum Keyword {
     /// Combat damage only: applied at [`Game::damage_player`](crate::Game::damage_player), after
     /// that choke's prevention guards, so fully prevented combat damage places no counters.
     Toxic(u8),
+    /// Rampage N (CR 702.23): "Whenever this creature becomes blocked, it gets +N/+N until end of
+    /// turn for each creature blocking it beyond the first." The keyword *is* the triggered
+    /// ability — [`Game::queue_rampage_triggers`](crate::Game::queue_rampage_triggers) fabricates
+    /// it at declare blockers rather than each card authoring the trigger by hand. Multiple
+    /// instances trigger separately (CR 702.23c), and the count is read when the trigger resolves,
+    /// not continuously (CR 702.23b).
+    Rampage(u8),
 }
 
 /// A small set of the permanent card types a card carries, as a bitset (creature, artifact,
@@ -688,13 +695,18 @@ pub struct CardDef {
     /// type mirroring `enchant` if a second graveyard-enchanting Aura needs a narrower one.
     pub enchant_graveyard: bool,
     /// Whether the card is legendary — the only cards that may be a deck's commander.
-    /// ponytail: a bare bool, not a full CR 205.4a supertype set; snow is the only other
-    /// supertype the pool tracks today ([`Self::snow`]).
+    /// ponytail: a bare bool, not a full CR 205.4a supertype set; snow and world are the only
+    /// other supertypes the pool tracks today ([`Self::snow`], [`Self::world`]).
     pub legendary: bool,
     /// Whether the card is snow (CR 205.4g — Snow-Covered Forest, Ohran Frostfang). Read by
     /// snow-matters filters ([`crate::CardFilter::SnowLand`], [`crate::PermanentFilter::snow`]).
     /// `false` (default) for every ordinary card. `snow = true` in TOML.
     pub snow: bool,
+    /// Whether the card is world (CR 205.4a — Concordant Crossroads and the rest of Legends'
+    /// World Enchantments). Read by the world rule (CR 704.5k): all but the most recently
+    /// entered World permanent are put into their owners' graveyards as a state-based action.
+    /// `false` (default) for every ordinary card. `world = true` in TOML.
+    pub world: bool,
     /// "This spell can't be countered" (CR 701.5g, e.g. Altered Ego). Checked in
     /// [`Game::counter_spell`], the shared choke for both the unconditional
     /// [`Effect::Misc(MiscEffect::CounterTargetSpell)`] arm and a declined `PayOrCounter` — the counter fizzles,
@@ -1393,6 +1405,7 @@ pub fn becomes_treasure(printed: CardDef) -> CardDef {
         default_print: printed.default_print,
         cost: printed.cost,
         legendary: printed.legendary,
+        world: printed.world,
         colors: printed.colors,
         devoid: printed.devoid,
         ..treasure_token()
@@ -1461,6 +1474,7 @@ fn treasure_token_builtin() -> CardDef {
         kind: CardKind::Artifact,
         legendary: false,
         snow: false,
+        world: false,
         uncounterable: false,
         modal: false,
         modal_choose: 1,
@@ -1538,6 +1552,7 @@ pub fn rogue_token_stub() -> CardDef {
         },
         legendary: false,
         snow: false,
+        world: false,
         uncounterable: false,
         modal: false,
         modal_choose: 1,
@@ -1617,6 +1632,7 @@ pub fn illusion_token() -> CardDef {
         },
         legendary: false,
         snow: false,
+        world: false,
         uncounterable: false,
         modal: false,
         modal_choose: 1,

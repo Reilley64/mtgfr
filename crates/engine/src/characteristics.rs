@@ -425,6 +425,18 @@ impl Game {
             .sum()
     }
 
+    /// Every instance of Rampage N `object` currently has, as its N (CR 702.23). Multiple
+    /// instances trigger separately (CR 702.23c), so this yields one entry per instance rather
+    /// than a sum.
+    pub(crate) fn rampage_amounts(&self, object: ObjectId) -> impl Iterator<Item = u8> {
+        self.effective_keywords(object)
+            .into_iter()
+            .filter_map(|keyword| match keyword {
+                Keyword::Rampage(n) => Some(n),
+                _ => None,
+            })
+    }
+
     /// The [`ProtectionScope`]s `object` currently has (CR 702.16), collected from its
     /// effective keywords.
     pub(crate) fn protection_scopes(
@@ -3300,6 +3312,7 @@ mod cache_tests {
             },
             legendary: false,
             snow: false,
+            world: false,
             uncounterable: false,
             modal: false,
             modal_choose: 0,
@@ -3399,6 +3412,7 @@ mod cache_tests {
             kind: CardKind::Enchantment,
             legendary: false,
             snow: false,
+            world: false,
             uncounterable: false,
             modal: false,
             modal_choose: 0,
@@ -3587,6 +3601,7 @@ mod cache_tests {
             },
             legendary: false,
             snow: false,
+            world: false,
             uncounterable: false,
             enchant: None,
             enchant_graveyard: false,
@@ -3746,6 +3761,7 @@ mod characteristic_query_tests {
             },
             legendary: false,
             snow: false,
+            world: false,
             uncounterable: false,
             enchant: None,
             enchant_graveyard: false,
@@ -3821,6 +3837,7 @@ mod characteristic_query_tests {
             },
             legendary: false,
             snow: false,
+            world: false,
             uncounterable: false,
             enchant: None,
             enchant_graveyard: false,
@@ -3927,6 +3944,7 @@ mod characteristic_query_tests {
                 },
                 legendary: false,
                 snow: false,
+                world: false,
                 uncounterable: false,
                 enchant: None,
                 enchant_graveyard: false,
@@ -4021,6 +4039,7 @@ mod characteristic_query_tests {
                 },
                 legendary: false,
                 snow: false,
+                world: false,
                 uncounterable: false,
                 enchant: None,
                 enchant_graveyard: false,
@@ -4113,6 +4132,7 @@ mod characteristic_query_tests {
                 },
                 legendary: true,
                 snow: false,
+                world: false,
                 uncounterable: false,
                 enchant: None,
                 enchant_graveyard: false,

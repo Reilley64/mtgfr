@@ -99,6 +99,7 @@ pub(crate) fn wire_keyword(keyword: engine::Keyword) -> String {
         Keyword::Myriad => "myriad".into(),
         Keyword::Infect => "infect".into(),
         Keyword::Toxic(n) => format!("toxic:{n}"),
+        Keyword::Rampage(n) => format!("rampage:{n}"),
         // The printed keyword names itself after the land: `islandwalk`, `forestwalk`, …
         Keyword::Landwalk(land) => format!("{}walk", land.as_str().to_lowercase()),
         Keyword::Ward(n) => format!("ward:{n}"),
@@ -150,6 +151,7 @@ pub(crate) fn keyword_label(keyword: engine::Keyword) -> String {
         Keyword::Myriad => "Myriad".into(),
         Keyword::Infect => "Infect".into(),
         Keyword::Toxic(n) => format!("Toxic {n}"),
+        Keyword::Rampage(n) => format!("Rampage {n}"),
         Keyword::Landwalk(land) => format!("{}walk", land.as_str()),
         Keyword::Ward(n) => format!("Ward {{{n}}}"),
         Keyword::ProtectionFrom(scope) => {

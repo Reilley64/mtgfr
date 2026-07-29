@@ -2491,6 +2491,50 @@ impl Game {
         }
     }
 
+    /// Queue Rampage N (CR 702.23): every attacker in `blocks` that has the keyword becomes
+    /// blocked, so it gets "+N/+N until end of turn for each creature blocking it beyond the
+    /// first". The whole ability *is* the keyword (CR 702.23a) — there's no printed
+    /// `[[abilities]]` to scan for, so it's synthesized here the way
+    /// [`queue_myriad_triggers`](Self::queue_myriad_triggers) synthesizes Myriad's. Each attacker
+    /// fires once however many creatures blocked it (CR 509.1h), and once *per instance* of the
+    /// keyword (CR 702.23c). The blocker count is not baked in here: it rides along as
+    /// [`Amount::BlockersBeyondFirst`], which reads the living blockers when the ability resolves
+    /// — CR 702.23b's "calculated only once per combat, when the triggered ability resolves".
+    pub(crate) fn queue_rampage_triggers(&mut self, blocks: &[(ObjectId, ObjectId)]) {
+        let mut fired: Vec<ObjectId> = Vec::new();
+        for &(_, attacker) in blocks {
+            if fired.contains(&attacker) {
+                continue;
+            }
+            fired.push(attacker);
+            let abilities: Vec<Ability> = self
+                .rampage_amounts(attacker)
+                .map(|n| Ability {
+                    timing: Timing::Triggered(Trigger::BlocksOrBecomesBlocked),
+                    effect: Effect::Pump(PumpEffect::PumpSelfUntilEndOfTurn {
+                        power: Amount::BlockersBeyondFirst { per: i32::from(n) },
+                        toughness: Amount::BlockersBeyondFirst { per: i32::from(n) },
+                        keywords: &[],
+                    }),
+                    optional: false,
+                    min_level: 0,
+                    cost: Cost::FREE,
+                    condition: None,
+                    once_each_turn: false,
+                })
+                .collect();
+            if abilities.is_empty() {
+                continue;
+            }
+            self.pending_trigger_groups.push(TriggerGroup {
+                expanded: false,
+                controller: self.controller_of(attacker),
+                source: attacker,
+                abilities,
+            });
+        }
+    }
+
     /// Queue [`Trigger::BlocksOrBecomesBlockedBy`] (Cockatrice, Thicket Basilisk, CR 509.1a): the
     /// payoff names the *other* creature, so unlike
     /// [`queue_blocks_or_becomes_blocked_triggers`](Self::queue_blocks_or_becomes_blocked_triggers)
@@ -4322,6 +4366,11 @@ impl Game {
                 .target
                 .and_then(Target::object_id)
                 .is_some_and(|object| self.graveyard_cards(self.owner_of(object)).is_empty()),
+            // Rapid Fire's "If it doesn't have rampage" — any N counts (CR 702.23).
+            Condition::TargetHasRampage => ctx
+                .target
+                .and_then(Target::object_id)
+                .is_some_and(|object| self.rampage_amounts(object).next().is_some()),
             Condition::YouHaveCitysBlessing => {
                 self.players[ctx.controller.0 as usize].has_citys_blessing
             }
@@ -5400,6 +5449,7 @@ mod tests {
             },
             legendary: false,
             snow: false,
+            world: false,
             uncounterable: false,
             enchant: None,
             enchant_graveyard: false,
@@ -5488,6 +5538,7 @@ mod tests {
             },
             legendary: false,
             snow: false,
+            world: false,
             uncounterable: false,
             enchant: None,
             enchant_graveyard: false,

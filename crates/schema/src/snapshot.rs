@@ -2250,6 +2250,7 @@ mod tests {
             may_choose_not_to_untap: false,
             dredge: None,
             snow: false,
+            world: false,
         }
     }
 

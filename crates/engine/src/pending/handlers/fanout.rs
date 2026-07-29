@@ -504,6 +504,7 @@ impl Game {
         self.queue_blocks_or_becomes_blocked_triggers(&blocks);
         self.queue_blocks_or_becomes_blocked_by_triggers(&blocks);
         self.queue_attacks_or_blocks_block_triggers(&blocks);
+        self.queue_rampage_triggers(&blocks);
         Ok(events)
     }
 

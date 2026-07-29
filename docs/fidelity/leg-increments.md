@@ -50,24 +50,41 @@ Everything else held.
 Depends on: nothing.
 Rampage N (CR 702.23) is a triggered ability that fires on *becoming blocked* and scales with the
 number of blockers beyond the first. The engine has a `blocks_or_becomes_blocked_by` trigger but
-nothing that reads the blocker *count* for one attacker. *Sketch:* a `Keyword::Rampage(u32)`
-carrying its N, expanded at ability-construction time into a `becomes_blocked` trigger whose
-pump amount is a new `Amount::BlockersBeyondFirst` resolved against the triggering combat
-assignment. The count is fixed as the trigger resolves (CR 702.23b — additional blockers added
-later do not retrigger), so it reads the blocker set at resolution, not continuously.
-Rapid Fire grants rampage 2 *conditionally* ("if it doesn't have rampage"), so the grant path
-needs a has-keyword guard; Gabriel Angelfire grants it from a modal upkeep choice (#39).
+nothing that reads the blocker *count* for one attacker.
+*Landed:* `Keyword::Rampage(u8)` (`{ rampage = N }` in TOML, matching `Ward`/`Toxic`'s width)
+carrying its N. Like Myriad and Prowess the keyword *is* the ability, so there is no printed
+`[[abilities]]` block: `Game::queue_rampage_triggers` synthesizes one `BlocksOrBecomesBlocked`
+trigger per attacker per instance of the keyword (CR 702.23c) from `Game::seal_blocks` and
+`answer_choose_block_target`, the two places a block declaration is sealed. The pump rides a new
+`Amount::BlockersBeyondFirst { per }` that counts the *living* blockers when the ability resolves,
+which is CR 702.23b's "calculated only once per combat, when the triggered ability resolves" — a
+blocker killed in response shrinks the bonus, one killed afterwards does not.
+Rapid Fire's conditional grant is `Condition::TargetHasRampage` under `negate = true` (an exact
+`target_has_keyword` can't express "any N"). Gabriel Angelfire stays blocked on #39 — its rampage
+3 comes from a modal upkeep choice, which this increment does not touch.
+*Residual:* the pump lands on the characteristic but never on the damage. The engine locks the
+combat damage division at declare blockers against the *unpumped* power, so the bonus is assigned
+to nobody — see **#119**, which all 8 cards carry an `approximates` against. Rampage is correct as
+a P/T modification and inert as damage until that lands.
 
 ### 2. `world-supertype` — 11 cards, M
 Depends on: nothing.
 CR 704.5k: if two or more permanents have the World supertype, all but the most recently
-gained one are put into their owners' graveyards as a state-based action. The engine has the
-supertype on `Concordant Crossroads` but never enforces it, and 2ed had nothing to collide with.
-*Sketch:* a `Supertype::World` check in the SBA sweep alongside the existing legend rule,
-ordered by the same timestamp the legend rule already tracks; ties (simultaneous entry) put all
-of them into graveyards. Drop the `approximates` from `concordant_crossroads.toml` in the same
-change. Each of the 11 World cards also needs its own body increment — this one only makes the
-supertype mean something.
+gained one are put into their owners' graveyards as a state-based action. The intake sketch had
+two wrong premises, corrected here: there was **no** World supertype anywhere — `CardDef` carried
+only the `legendary` and `snow` supertype bools, and `concordant_crossroads.toml` was authored as
+a plain enchantment — and the existing legend rule (CR 704.5j) tracks **no timestamp**; it is a
+`PendingChoice::ChooseLegendaryKeep` raised after the SBA sweep settles.
+*Landed:* a `world` bool on `CardDef` / `CardToml` (the `legendary`/`snow` pattern) and a CR
+704.5k sweep in `Game::check_state_based_actions` that keeps the World permanent with the highest
+object id — ids are minted in entry order — and puts the rest into their owners' graveyards, with
+no choice and no grouping by controller or name. `concordant_crossroads.toml` carries
+`world = true` and lost its `approximates`.
+*Residual:* CR 704.5k's tie clause (simultaneous entry → all go) is unreachable, since object ids
+are minted one at a time even when one effect puts several permanents onto the battlefield; it
+needs a batch-scoped entry epoch, and no pool card can produce a tie yet. Each of the 11 World
+cards still needs its own body increment (16, 23, 25, 35, 44, 48, 75, 80) — this one only makes
+the supertype mean something.
 
 ### 3. `bands-with-other` — 8 cards, XL
 Depends on: the 2ed banding increment (#14 there) — "bands with other" is banding plus a filter,
@@ -1107,3 +1124,20 @@ early-returns when the damaged player is the source's controller. The oracle say
 not "an opponent", so damage the Scorpion deals to its own controller — redirection, or a
 control swap mid-damage — poisons no one. Needs a `deals_damage_to_player` tag that watches
 every seat, with `deals_damage_to_opponent` kept for the cards that really do print "opponent".
+
+### 119. `divide-combat-damage-in-the-damage-step` — 8 cards, L
+Depends on: nothing. Raised by wave 1 (#1); blocks every post-declaration pump, not just rampage.
+*Sketch:* the engine raises `PendingChoice::AssignCombatDamage` from `Game::declare_blockers`,
+immediately after `seal_blocks`, and `Game::assign_damage` validates the total against
+`self.power(attacker)` **at that moment** — before any block trigger has resolved. CR 509.2 does
+choose the damage *assignment order* at declare blockers, but CR 510.1a divides the actual amounts
+in the combat damage step, reading the attacker's power *then*. So a rampage bonus, a Giant Growth
+cast in response to blockers, or any other post-declaration pump can never be assigned to the
+blockers: the locked division still totals the unpumped power. Only trample rescues it, because
+`Game::assign_attacker_damage` computes overflow as current `power` minus *assigned*.
+Split the choice in two: an order at declare blockers, amounts at the damage step. This changes
+when the choice is raised for every multi-block in the engine, so the existing `game.rs` suite is
+the real cost — hence L, not M.
+Proven by `rampage_bonus_cannot_be_divided_because_the_division_is_locked_before_the_trigger_resolves`
+in `crates/engine/tests/leg_rampage.rs`, which asserts today's behavior; this increment makes the
+pumped total legal. All 8 of #1's cards carry an `approximates` until it lands.

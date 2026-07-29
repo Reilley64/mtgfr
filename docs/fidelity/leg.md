@@ -5,8 +5,8 @@ Engine backlog for section D: [`leg-increments.md`](leg-increments.md).
 
 | Section | Meaning | Count |
 | --- | --- | ---: |
-| A | In the pool, faithful | 6 |
-| B | In the pool, approximated | 1 |
+| A | In the pool, faithful | 7 |
+| B | In the pool, approximated | 0 |
 | C | New, expressible with today's DSL | 102 |
 | D | New, needs engine work | 198 |
 | — | Out of scope (flag-don't-force) | 3 |
@@ -20,6 +20,7 @@ Already scripted with no `approximates` field. Re-frame-audited as part of this 
 
 - [ ] **All Hallow's Eve** {2}{B}{B} · Sorcery
 - [ ] **Chain Lightning** {R} · Sorcery
+- [x] **Concordant Crossroads** {G} · World Enchantment — faithful as of increment 2
 - [ ] **Fallen Angel** {3}{B}{B} · Creature — Angel
 - [ ] **Land Tax** {W} · Enchantment
 - [ ] **Rubinia Soulsinger** {2}{G}{W}{U} · Legendary Creature — Faerie
@@ -27,7 +28,7 @@ Already scripted with no `approximates` field. Re-frame-audited as part of this 
 
 ## B. In the pool, approximated
 
-- [ ] **Concordant Crossroads** {G} · World Enchantment — see the observability re-audit below; the residual is now live work (increment 2)
+None. Concordant Crossroads was the only entry and is faithful as of increment 2.
 
 ### Observability re-audit
 
@@ -170,7 +171,7 @@ the record shows what unblocked it.
 
 - [ ] **Abomination** {3}{B}{B} · Creature — Horror — increment 105
 - [ ] **Adventurers' Guildhouse** — · Land — increment 3
-- [ ] **Aerathi Berserker** {2}{R}{R}{R} · Creature — Human Berserker — increment 1
+- [x] **Aerathi Berserker** {2}{R}{R}{R} · Creature — Human Berserker — increment 1; residual — increment 119
 - [ ] **Aisling Leprechaun** {G} · Creature — Faerie — increment 14
 - [ ] **Akron Legionnaire** {6}{W}{W} · Creature — Giant Soldier — increment 10
 - [ ] **Al-abara's Carpet** {5} · Artifact — increment 12
@@ -197,11 +198,11 @@ the record shows what unblocked it.
 - [ ] **Cathedral of Serra** — · Land — increment 3
 - [ ] **Caverns of Despair** {2}{R}{R} · World Enchantment — increment 2, 23
 - [ ] **Chains of Mephistopheles** {1}{B} · Enchantment — increment 24
-- [ ] **Chromium** {2}{W}{W}{U}{U}{B}{B} · Legendary Creature — Elder Dragon — increment 1
+- [x] **Chromium** {2}{W}{W}{U}{U}{B}{B} · Legendary Creature — Elder Dragon — increment 1; residual — increment 119
 - [ ] **Clergy of the Holy Nimbus** {W} · Creature — Human Cleric — increment 25
 - [ ] **Cocoon** {G} · Enchantment — Aura — increment 26
 - [x] **Cosmic Horror** {3}{B}{B}{B} · Creature — Horror — increment 98
-- [ ] **Craw Giant** {3}{G}{G}{G}{G} · Creature — Giant — increment 1
+- [x] **Craw Giant** {3}{G}{G}{G}{G} · Creature — Giant — increment 1; residual — increment 119
 - [ ] **Crevasse** {2}{R} · Enchantment — increment 4
 - [ ] **Crimson Manticore** {2}{R}{R} · Creature — Manticore — increment 8
 - [ ] **Cyclopean Mummy** {1}{B} · Creature — Zombie — increment 109
@@ -226,7 +227,7 @@ the record shows what unblocked it.
 - [ ] **Flash Counter** {1}{U} · Instant — increment 105
 - [ ] **Floral Spuzzem** {3}{G} · Creature — Elemental — increment 37
 - [ ] **Forethought Amulet** {5} · Artifact — increment 38
-- [ ] **Frost Giant** {3}{R}{R}{R} · Creature — Giant — increment 1
+- [x] **Frost Giant** {3}{R}{R}{R} · Creature — Giant — increment 1; residual — increment 119
 - [ ] **Gabriel Angelfire** {3}{G}{G}{W}{W} · Legendary Creature — Angel — increment 1, 39
 - [ ] **Gaseous Form** {2}{U} · Enchantment — Aura — increment 95
 - [ ] **Gauntlets of Chaos** {5} · Artifact — increment 40
@@ -248,7 +249,7 @@ the record shows what unblocked it.
 - [ ] **Heaven's Gate** {W} · Instant — increment 96
 - [ ] **Hellfire** {2}{B}{B}{B} · Sorcery — increment 46
 - [ ] **Horn of Deafening** {4} · Artifact — increment 94
-- [ ] **Hunding Gjornersen** {3}{W}{U}{U} · Legendary Creature — Human Warrior — increment 1
+- [x] **Hunding Gjornersen** {3}{W}{U}{U} · Legendary Creature — Human Warrior — increment 1; residual — increment 119
 - [ ] **Ichneumon Druid** {1}{G}{G} · Creature — Human Druid — increment 101
 - [ ] **Imprison** {B} · Enchantment — Aura — increment 47
 - [ ] **In the Eye of Chaos** {2}{U} · World Enchantment — increment 2, 48
@@ -274,7 +275,7 @@ the record shows what unblocked it.
 - [ ] **Lord Magnus** {3}{G}{W}{W} · Legendary Creature — Human Druid — increment 4
 - [ ] **Mana Matrix** {6} · Artifact — increment 105
 - [ ] **Marble Priest** {5} · Artifact Creature — Cleric — increment 12, 56
-- [ ] **Marhault Elsdragon** {3}{R}{R}{G} · Legendary Creature — Elf Warrior — increment 1
+- [x] **Marhault Elsdragon** {3}{R}{R}{G} · Legendary Creature — Elf Warrior — increment 1; residual — increment 119
 - [ ] **Master of the Hunt** {2}{G}{G} · Creature — Human — increment 3
 - [ ] **Mirror Universe** {6} · Artifact — increment 57
 - [ ] **Moat** {2}{W}{W} · Enchantment — increment 107
@@ -299,7 +300,7 @@ the record shows what unblocked it.
 - [ ] **Quarum Trench Gnomes** {3}{R} · Creature — Gnome — increment 66
 - [ ] **Rabid Wombat** {2}{G}{G} · Creature — Wombat — increment 67
 - [ ] **Radjan Spirit** {3}{G} · Creature — Spirit — increment 5
-- [ ] **Rapid Fire** {3}{W} · Instant — increment 1
+- [x] **Rapid Fire** {3}{W} · Instant — increment 1; residual — increment 119
 - [ ] **Rasputin Dreamweaver** {4}{W}{U} · Legendary Creature — Human Wizard — increment 68
 - [ ] **Recall** {X}{X}{U} · Sorcery — increment 69
 - [ ] **Red Mana Battery** {4} · Artifact — increment 11
@@ -364,7 +365,7 @@ the record shows what unblocked it.
 - [ ] **Willow Satyr** {2}{G}{G} · Creature — Satyr — increment 6
 - [ ] **Winds of Change** {R} · Sorcery — increment 91
 - [ ] **Winter Blast** {X}{G} · Sorcery — increment 61, 92
-- [ ] **Wolverine Pack** {2}{G}{G} · Creature — Wolverine — increment 1
+- [x] **Wolverine Pack** {2}{G}{G} · Creature — Wolverine — increment 1; residual — increment 119
 - [ ] **Wood Elemental** {3}{G} · Creature — Elemental — increment 93
 
 ## Out of scope

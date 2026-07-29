@@ -257,6 +257,10 @@ pub struct CardToml {
     /// Snow supertype (CR 205.4g) — `snow = true`; absent (`false`) for every ordinary card.
     #[serde(default)]
     pub snow: bool,
+    /// World supertype (CR 205.4a) — `world = true`; absent (`false`) for every ordinary card.
+    /// Enforced by the world rule (CR 704.5k).
+    #[serde(default)]
+    pub world: bool,
     /// "This spell can't be countered" (CR 701.5g) — `uncounterable = true`; absent
     /// (`false`) for every ordinary card.
     #[serde(default)]
@@ -528,6 +532,7 @@ impl From<CardToml> for CardDef {
             enchant_graveyard: card.enchant_graveyard,
             legendary: card.legendary,
             snow: card.snow,
+            world: card.world,
             uncounterable: card.uncounterable,
             modal: card.modal,
             modal_choose: card.modal_choose,

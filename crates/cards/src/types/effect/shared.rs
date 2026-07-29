@@ -399,6 +399,13 @@ pub enum Amount {
     /// 1 life for each +1/+1 counter removed this way") — a resolution-local tally on
     /// [`ResolutionFrame::counters_removed_this_way`].
     CountersRemovedThisWay,
+    /// `per` times the number of creatures blocking the source beyond the first — rampage N's
+    /// "+N/+N until end of turn for each creature blocking it beyond the first" (CR 702.23a).
+    /// Resolved against the *living* blockers at the moment the ability resolves, which is exactly
+    /// CR 702.23b's "calculated only once per combat, when the triggered ability resolves". Only
+    /// [`Game::queue_rampage_triggers`](crate::Game::queue_rampage_triggers) mints it, so `per`
+    /// carries the keyword's N; a card TOML never writes this amount.
+    BlockersBeyondFirst { per: i32 },
 }
 
 impl Default for Amount {
@@ -2039,6 +2046,13 @@ pub enum Condition {
     // let one ability's activations satisfy the other's count. Thread the index through
     // `Effect::Conditional` when such a card arrives.
     SourceActivatedThisTurnAtLeast { at_least: u32 },
+    /// The target creature has rampage, whatever its N (Rapid Fire's "If it doesn't have rampage,
+    /// that creature gains rampage 2 until end of turn") — `{ type = "target_has_rampage" }`,
+    /// normally under `negate = true`.
+    // ponytail: rampage is the only parametrized keyword anything asks about by kind rather than by
+    // exact value, and an exact-match `target_has_keyword` can't express "any N". Generalize to a
+    // keyword-kind match when a second such guard turns up.
+    TargetHasRampage,
 }
 
 /// Whether `sacrifices` is a legal answer to a sacrifice edict over `options`: every id a

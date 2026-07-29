@@ -1611,6 +1611,11 @@
             "integer",
             "null"
           ]
+        },
+        "world": {
+          "default": false,
+          "description": "World supertype (CR 205.4a) — `world = true`; absent (`false`) for every ordinary card. Enforced by the world rule (CR 704.5k).",
+          "type": "boolean"
         }
       },
       "required": [
@@ -2625,6 +2630,21 @@
           },
           "required": [
             "at_least",
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "The target creature has rampage, whatever its N (Rapid Fire's \"If it doesn't have rampage, that creature gains rampage 2 until end of turn\") — `{ type = \"target_has_rampage\" }`, normally under `negate = true`.",
+          "properties": {
+            "type": {
+              "enum": [
+                "target_has_rampage"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
             "type"
           ],
           "type": "object"
@@ -10360,6 +10380,21 @@
             "toxic"
           ],
           "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Rampage N (CR 702.23): \"Whenever this creature becomes blocked, it gets +N/+N until end of turn for each creature blocking it beyond the first.\" The keyword *is* the triggered ability — [`Game::queue_rampage_triggers`](crate::Game::queue_rampage_triggers) fabricates it at declare blockers rather than each card authoring the trigger by hand. Multiple instances trigger separately (CR 702.23c), and the count is read when the trigger resolves, not continuously (CR 702.23b).",
+          "properties": {
+            "rampage": {
+              "format": "uint8",
+              "minimum": 0.0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "rampage"
+          ],
+          "type": "object"
         }
       ]
     },
@@ -12654,6 +12689,11 @@
         "integer",
         "null"
       ]
+    },
+    "world": {
+      "default": false,
+      "description": "World supertype (CR 205.4a) — `world = true`; absent (`false`) for every ordinary card. Enforced by the world rule (CR 704.5k).",
+      "type": "boolean"
     }
   },
   "required": [

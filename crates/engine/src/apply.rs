@@ -151,6 +151,48 @@ impl Game {
             next += 1;
         }
 
+        // CR 704.5k (the world rule): if two or more permanents have the World supertype, all but
+        // the one that has had it for the shortest amount of time are put into their owners'
+        // graveyards. Unlike the legend rule (CR 704.5j) it is global — it groups by neither
+        // controller nor name — and no one chooses: the newest simply wins. `battlefield()` yields
+        // ascending object ids and every permanent entering the battlefield mints a fresh, higher
+        // id, so the last World permanent in that order is the newest one.
+        // ponytail: CR 704.5k's tie clause ("in the event of a tie for the shortest amount of
+        // time, all are put into their owners' graveyards") is unreachable — ids are minted one at
+        // a time even when a single effect puts several permanents onto the battlefield, so there
+        // is always exactly one newest. Stamp a batch-scoped entry epoch on each permanent if a
+        // card ever puts two World permanents onto the battlefield simultaneously.
+        let worlds: Vec<ObjectId> = self
+            .battlefield()
+            .into_iter()
+            .filter(|&id| {
+                matches!(&self.objects[id as usize], Object::Permanent(p) if card_def(p.def).world)
+            })
+            .collect();
+        // Everything but the last (newest) — empty for zero or one World permanent.
+        let doomed = worlds
+            .split_last()
+            .map(|(_, older)| older)
+            .unwrap_or_default();
+        for &id in doomed {
+            let Object::Permanent(ref p) = self.objects[id as usize] else {
+                continue;
+            };
+            leaving.push(id);
+            // A token ceases to exist rather than becoming a graveyard card (CR 111.7), same as
+            // the death and Aura sweeps above.
+            if p.token {
+                events.push(Event::TokenCeasedToExist {
+                    token: id,
+                    controller: p.owner,
+                    def: p.def,
+                });
+                continue;
+            }
+            events.push(self.graveyard_or_command(id, next));
+            next += 1;
+        }
+
         // CR 704.5m/n: an Aura attached to nothing/an illegal object is put into the graveyard;
         // an Equipment attached to an illegal object simply becomes unattached (no death). A
         // deployed Aura mid-[`PendingChoice::ChooseAttachHost`] is exempted — it's unattached

@@ -80,6 +80,7 @@ This mirrors the DSL's top-level card shape with owned fields, then folds into t
 | `suspend` | Suspend \| null | no | - | Suspend N—[cost] (CR 702.62, Rousing Refrain) — a `[suspend]` table whose `cost` sub-table is leaked to `'static` by the `Suspend` impl. Absent for ordinary cards. |
 | `uncounterable` | boolean | no | `false` | "This spell can't be countered" (CR 701.5g) — `uncounterable = true`; absent (`false`) for every ordinary card. |
 | `vanishing` | integer \| null | no | `null` | Vanishing N (CR 702.63) — `vanishing = N` for a vanishing permanent; absent (`None`) for every other card. |
+| `world` | boolean | no | `false` | World supertype (CR 205.4a) — `world = true`; absent (`false`) for every ordinary card. Enforced by the world rule (CR 704.5k). |
 
 ## CostToml
 

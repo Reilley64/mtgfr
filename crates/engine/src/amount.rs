@@ -216,6 +216,13 @@ impl Game {
             Amount::CountersRemovedThisWay => {
                 self.resolution_frame.counters_removed_this_way as i32
             }
+            // Rampage N (CR 702.23a): `per` for each creature blocking the source beyond the first.
+            // Read here, as the trigger resolves, which is CR 702.23b's "calculated only once per
+            // combat" — `blockers_of` sees only the blockers still on the battlefield, and nothing
+            // re-reads it afterwards.
+            Amount::BlockersBeyondFirst { per } => {
+                per * self.blockers_of(source).len().saturating_sub(1) as i32
+            }
             // Reads the mana value the preceding `Effect::Dig(DigEffect::ExileTargetGraveyardCardRecordManaValue)`
             // step snapshotted (Surge to Victory's team +X/+0 pump); `0` if unset — unreachable in
             // practice, since a fizzled target drops the whole ability before this reads.

@@ -750,6 +750,7 @@ mod tests {
             },
             legendary: false,
             snow: false,
+            world: false,
             uncounterable: false,
             modal,
             modal_choose: 1,

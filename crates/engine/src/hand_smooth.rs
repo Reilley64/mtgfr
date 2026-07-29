@@ -107,6 +107,7 @@ mod game_tests {
             kind,
             legendary: false,
             snow: false,
+            world: false,
             uncounterable: false,
             modal: false,
             modal_choose: 1,
