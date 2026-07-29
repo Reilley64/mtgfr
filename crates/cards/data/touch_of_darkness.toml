@@ -1,0 +1,12 @@
+# One or more target creatures become black until end of turn.
+name = "Touch of Darkness"
+sets = ["leg"]
+id = "73648693-c67f-454b-83e2-1d1787437a2a"
+default_print = "eda7177f-1354-4008-aaaa-2c8b823ed5e9"
+oracle = "One or more target creatures become black until end of turn."
+
+[cost]
+black = 1
+
+[kind]
+type = "instant"

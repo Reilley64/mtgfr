@@ -1,0 +1,17 @@
+# First strike
+name = "Hornet Cobra"
+sets = ["leg"]
+id = "4958baf3-2f5a-4087-bc14-ffee9887db1d"
+default_print = "27180bad-9bbc-462b-8832-626dc403a3fd"
+oracle = "First strike"
+subtypes = ["Snake"]
+keywords = ["first_strike"]
+
+[cost]
+generic = 1
+green = 2
+
+[kind]
+type = "creature"
+power = 2
+toughness = 1

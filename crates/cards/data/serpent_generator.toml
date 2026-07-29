@@ -1,0 +1,14 @@
+# {4}, {T}: Create a 1/1 colorless Snake artifact creature token. It has "Whenever this
+# creature deals damage to a player, that player gets a poison counter." (A player with ten or
+# more poison counters loses the game.)
+name = "Serpent Generator"
+sets = ["5ed", "bchr", "chr", "leg", "me1"]
+id = "0e3a11f4-c880-4932-bc7e-7aea8a9472bc"
+default_print = "5e2ee41c-5592-42bd-8db2-92b3233b1d61"
+oracle = "{4}, {T}: Create a 1/1 colorless Snake artifact creature token. It has \"Whenever this creature deals damage to a player, that player gets a poison counter.\" (A player with ten or more poison counters loses the game.)"
+
+[cost]
+generic = 6
+
+[kind]
+type = "artifact"

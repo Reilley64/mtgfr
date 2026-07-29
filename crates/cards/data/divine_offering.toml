@@ -1,0 +1,13 @@
+# Destroy target artifact. You gain life equal to its mana value.
+name = "Divine Offering"
+sets = ["5ed", "bchr", "chr", "leg", "mbs", "me4", "mir", "ptc"]
+id = "231f8edb-4ea1-44be-8794-b76a31462dfc"
+default_print = "fe7c7a65-5a96-4986-877b-b34583092bb6"
+oracle = "Destroy target artifact. You gain life equal to its mana value."
+
+[cost]
+generic = 1
+white = 1
+
+[kind]
+type = "instant"

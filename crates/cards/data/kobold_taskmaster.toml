@@ -1,0 +1,16 @@
+# Other Kobold creatures you control get +1/+0.
+name = "Kobold Taskmaster"
+sets = ["leg", "me3", "tsb"]
+id = "372f2534-25dc-4ff3-9891-31ee42b33345"
+default_print = "8619e6be-ae9c-4045-aa19-419be35ab6f6"
+oracle = "Other Kobold creatures you control get +1/+0."
+subtypes = ["Kobold"]
+
+[cost]
+generic = 1
+red = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 2

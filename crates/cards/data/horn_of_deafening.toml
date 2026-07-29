@@ -1,0 +1,12 @@
+# {2}, {T}: Prevent all combat damage that would be dealt by target creature this turn.
+name = "Horn of Deafening"
+sets = ["bchr", "chr", "leg", "me4"]
+id = "50a1c14a-003f-424b-bb8e-2e2d51465a90"
+default_print = "bfbd36dd-3e6f-40c7-a166-0e8ecaabe7fa"
+oracle = "{2}, {T}: Prevent all combat damage that would be dealt by target creature this turn."
+
+[cost]
+generic = 4
+
+[kind]
+type = "artifact"

@@ -1,0 +1,16 @@
+# {T}: Target creature gets -1/-0 until end of turn.
+name = "Ghosts of the Damned"
+sets = ["leg", "me3"]
+id = "1b3bbd3c-f5ef-4940-82a2-d36f4d148b9a"
+default_print = "d15e5505-74ad-4540-8b23-ab5e5add9227"
+oracle = "{T}: Target creature gets -1/-0 until end of turn."
+subtypes = ["Spirit"]
+
+[cost]
+generic = 1
+black = 2
+
+[kind]
+type = "creature"
+power = 0
+toughness = 2

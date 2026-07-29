@@ -1,0 +1,18 @@
+# {W}{B}, {T}: Prevent all combat damage that would be dealt by target creature this turn.
+name = "Lady Evangela"
+sets = ["leg", "me3"]
+id = "8800d672-424b-4a7b-886f-7eb9d7a56cfe"
+default_print = "a01adcbd-0ebd-4f18-9942-4638fa0de358"
+oracle = "{W}{B}, {T}: Prevent all combat damage that would be dealt by target creature this turn."
+legendary = true
+subtypes = ["Human", "Cleric"]
+
+[cost]
+white = 1
+blue = 1
+black = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 2

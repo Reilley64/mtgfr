@@ -1,0 +1,16 @@
+# {1}{G}, {T}: Target creature gets -2/-0 until end of turn.
+name = "Pradesh Gypsies"
+sets = ["4bb", "4ed", "5ed", "6ed", "leg", "ren"]
+id = "37c49483-bef6-47c6-9354-ead8560d48da"
+default_print = "a4c9b18c-4993-4ce1-b2bd-ab14c9f3aad7"
+oracle = "{1}{G}, {T}: Target creature gets -2/-0 until end of turn."
+subtypes = ["Human", "Nomad"]
+
+[cost]
+generic = 2
+green = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1

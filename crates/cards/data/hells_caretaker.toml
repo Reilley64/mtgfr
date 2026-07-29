@@ -1,0 +1,17 @@
+# {T}, Sacrifice a creature: Return target creature card from your graveyard to the
+# battlefield. Activate only during your upkeep.
+name = "Hell's Caretaker"
+sets = ["9ed", "a25", "bchr", "chr", "leg", "plst"]
+id = "2f0d797e-d897-453d-92b6-a90e1a548dc5"
+default_print = "84a65ccf-37b6-48a3-9873-7a4cafef27cb"
+oracle = "{T}, Sacrifice a creature: Return target creature card from your graveyard to the battlefield. Activate only during your upkeep."
+subtypes = ["Horror"]
+
+[cost]
+generic = 3
+black = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1

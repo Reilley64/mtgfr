@@ -1,0 +1,24 @@
+# Flying
+# At the beginning of your upkeep, sacrifice Vaevictis Asmadi unless you pay {B}{R}{G}.
+# {B}: Vaevictis Asmadi gets +1/+0 until end of turn.
+# {R}: Vaevictis Asmadi gets +1/+0 until end of turn.
+# {G}: Vaevictis Asmadi gets +1/+0 until end of turn.
+name = "Vaevictis Asmadi"
+sets = ["bchr", "chr", "leg", "me3", "sld"]
+id = "4d2cc2a8-e08a-420a-8922-c63e39129e23"
+default_print = "df01b548-9738-4c84-beb6-9a375f41d496"
+oracle = "Flying\nAt the beginning of your upkeep, sacrifice Vaevictis Asmadi unless you pay {B}{R}{G}.\n{B}: Vaevictis Asmadi gets +1/+0 until end of turn.\n{R}: Vaevictis Asmadi gets +1/+0 until end of turn.\n{G}: Vaevictis Asmadi gets +1/+0 until end of turn."
+legendary = true
+subtypes = ["Elder", "Dragon"]
+keywords = ["flying"]
+
+[cost]
+generic = 2
+black = 2
+red = 2
+green = 2
+
+[kind]
+type = "creature"
+power = 7
+toughness = 7

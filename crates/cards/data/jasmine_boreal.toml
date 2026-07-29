@@ -1,0 +1,17 @@
+# (no rules text — vanilla creature)
+name = "Jasmine Boreal"
+sets = ["leg", "tsb"]
+id = "942407bf-862a-4a0b-b19d-b9f8ee833026"
+default_print = "004af467-815a-47c0-a974-1ae49ca3a1a8"
+legendary = true
+subtypes = ["Human"]
+
+[cost]
+generic = 3
+white = 1
+green = 1
+
+[kind]
+type = "creature"
+power = 4
+toughness = 5

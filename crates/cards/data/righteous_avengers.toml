@@ -1,0 +1,16 @@
+# Plainswalk (This creature can't be blocked as long as defending player controls a Plains.)
+name = "Righteous Avengers"
+sets = ["leg", "me1"]
+id = "e7c07e41-3654-47da-afe3-88aae4c034b6"
+default_print = "3d5e7afd-57b9-4052-a1b9-45d324955d72"
+oracle = "Plainswalk (This creature can't be blocked as long as defending player controls a Plains.)"
+subtypes = ["Human", "Soldier"]
+
+[cost]
+generic = 4
+white = 1
+
+[kind]
+type = "creature"
+power = 3
+toughness = 1

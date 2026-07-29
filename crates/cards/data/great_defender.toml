@@ -1,0 +1,12 @@
+# Target creature gets +0/+X until end of turn, where X is its mana value.
+name = "Great Defender"
+sets = ["leg"]
+id = "c84496bc-6421-4930-a118-b0f9ee7e13f6"
+default_print = "879a8653-1538-4f78-a3d3-a900a4d9499b"
+oracle = "Target creature gets +0/+X until end of turn, where X is its mana value."
+
+[cost]
+white = 1
+
+[kind]
+type = "instant"

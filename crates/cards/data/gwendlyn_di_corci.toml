@@ -1,0 +1,18 @@
+# {T}: Target player discards a card at random. Activate only during your turn.
+name = "Gwendlyn Di Corci"
+sets = ["leg", "me3"]
+id = "de44e7c8-01f9-44f9-9716-9e8a5b82b1ff"
+default_print = "a496823b-c864-4591-b395-5493383d11a7"
+oracle = "{T}: Target player discards a card at random. Activate only during your turn."
+legendary = true
+subtypes = ["Human", "Rogue"]
+
+[cost]
+blue = 1
+black = 2
+red = 1
+
+[kind]
+type = "creature"
+power = 3
+toughness = 5

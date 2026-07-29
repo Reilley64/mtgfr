@@ -1,0 +1,13 @@
+# Pyrotechnics deals 4 damage divided as you choose among any number of targets.
+name = "Pyrotechnics"
+sets = ["4bb", "4ed", "5ed", "6ed", "7ed", "8ed", "ath", "frf", "hop", "itp", "leg", "plst", "ren", "rqs"]
+id = "794b9ddf-1660-441f-9cc2-a0f5d4d0cf22"
+default_print = "51893dd5-e70f-44bb-85d4-e31480ba84d6"
+oracle = "Pyrotechnics deals 4 damage divided as you choose among any number of targets."
+
+[cost]
+generic = 4
+red = 1
+
+[kind]
+type = "sorcery"

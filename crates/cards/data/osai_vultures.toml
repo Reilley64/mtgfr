@@ -1,0 +1,20 @@
+# Flying
+# At the beginning of each end step, if a creature died this turn, put a carrion counter on
+# this creature.
+# Remove two carrion counters from this creature: This creature gets +1/+1 until end of turn.
+name = "Osai Vultures"
+sets = ["4bb", "4ed", "leg", "me4", "ren"]
+id = "65b7a7ca-0e39-4612-9bcd-743bf903544a"
+default_print = "2c665c02-4010-4bc6-85f0-bc03bef38ce9"
+oracle = "Flying\nAt the beginning of each end step, if a creature died this turn, put a carrion counter on this creature.\nRemove two carrion counters from this creature: This creature gets +1/+1 until end of turn."
+subtypes = ["Bird"]
+keywords = ["flying"]
+
+[cost]
+generic = 1
+white = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1

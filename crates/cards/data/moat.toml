@@ -1,0 +1,13 @@
+# Creatures without flying can't attack.
+name = "Moat"
+sets = ["leg", "me1", "prm"]
+id = "42208fea-8c24-451f-861d-6d70c0a7a502"
+default_print = "e2dffeb3-c858-4b8c-ae1f-109721f7d2da"
+oracle = "Creatures without flying can't attack."
+
+[cost]
+generic = 2
+white = 2
+
+[kind]
+type = "enchantment"

@@ -1,0 +1,12 @@
+# One or more target creatures become blue until end of turn.
+name = "Sea Kings' Blessing"
+sets = ["leg"]
+id = "e6ea475e-61ba-487b-b7e9-683845a90b73"
+default_print = "11d1f02d-533e-4b77-a72a-ff5f91ae0626"
+oracle = "One or more target creatures become blue until end of turn."
+
+[cost]
+blue = 1
+
+[kind]
+type = "instant"

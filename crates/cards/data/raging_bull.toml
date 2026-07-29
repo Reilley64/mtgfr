@@ -1,0 +1,15 @@
+# (no rules text — vanilla creature)
+name = "Raging Bull"
+sets = ["leg"]
+id = "341680e2-12a8-484f-be09-24dae9dbfaea"
+default_print = "ec10a51c-d2c3-4d14-9a71-9e59155bf980"
+subtypes = ["Ox"]
+
+[cost]
+generic = 2
+red = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2

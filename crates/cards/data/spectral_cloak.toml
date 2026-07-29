@@ -1,0 +1,15 @@
+# Enchant creature
+# Enchanted creature has shroud as long as it's untapped. (It can't be the target of spells or
+# abilities.)
+name = "Spectral Cloak"
+sets = ["leg"]
+id = "fadfa9f9-d096-4083-8630-1c18928133ff"
+default_print = "7524fd0d-a675-41d6-bc99-bd3ba336893b"
+oracle = "Enchant creature\nEnchanted creature has shroud as long as it's untapped. (It can't be the target of spells or abilities.)"
+subtypes = ["Aura"]
+
+[cost]
+blue = 2
+
+[kind]
+type = "aura"

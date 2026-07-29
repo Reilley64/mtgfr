@@ -1,0 +1,12 @@
+# Counter target activated ability from an artifact source. (Mana abilities can't be targeted.)
+name = "Rust"
+sets = ["leg"]
+id = "597ca66c-6bb1-4661-8ed9-8236f546e536"
+default_print = "ad4974c8-34c5-4290-b325-7586a67f6d56"
+oracle = "Counter target activated ability from an artifact source. (Mana abilities can't be targeted.)"
+
+[cost]
+green = 1
+
+[kind]
+type = "instant"

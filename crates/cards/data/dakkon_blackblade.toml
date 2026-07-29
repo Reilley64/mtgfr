@@ -1,0 +1,20 @@
+# Dakkon Blackblade's power and toughness are each equal to the number of lands you control.
+name = "Dakkon Blackblade"
+sets = ["bchr", "chr", "leg", "me1", "sld"]
+id = "1aa78e3b-bf7e-4645-9521-4b3537c93f46"
+default_print = "235bbf86-02ad-497b-b698-e60930bbde9c"
+oracle = "Dakkon Blackblade's power and toughness are each equal to the number of lands you control."
+legendary = true
+subtypes = ["Human", "Warrior"]
+
+[cost]
+generic = 2
+white = 1
+blue = 2
+black = 1
+
+# The printed box reads */*; a defining ability supplies both numbers.
+[kind]
+type = "creature"
+power = 0
+toughness = 0

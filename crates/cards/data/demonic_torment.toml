@@ -1,0 +1,16 @@
+# Enchant creature
+# Enchanted creature can't attack.
+# Prevent all combat damage that would be dealt by enchanted creature.
+name = "Demonic Torment"
+sets = ["leg", "me3"]
+id = "2172b724-9004-488e-88d3-a5fc48c50e41"
+default_print = "ac439803-71cc-4139-9314-2c0fff2ef876"
+oracle = "Enchant creature\nEnchanted creature can't attack.\nPrevent all combat damage that would be dealt by enchanted creature."
+subtypes = ["Aura"]
+
+[cost]
+generic = 2
+black = 1
+
+[kind]
+type = "aura"

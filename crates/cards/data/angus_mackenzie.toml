@@ -1,0 +1,19 @@
+# {G}{W}{U}, {T}: Prevent all combat damage that would be dealt this turn. Activate only before
+# the combat damage step.
+name = "Angus Mackenzie"
+sets = ["leg", "me3"]
+id = "d5e6ac6b-5786-4d98-8037-0867e365fc93"
+default_print = "bb3920ac-7d61-494e-b7dd-bd37d4dee143"
+oracle = "{G}{W}{U}, {T}: Prevent all combat damage that would be dealt this turn. Activate only before the combat damage step."
+legendary = true
+subtypes = ["Human", "Cleric"]
+
+[cost]
+white = 1
+blue = 1
+green = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2

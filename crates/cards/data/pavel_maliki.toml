@@ -1,0 +1,18 @@
+# {B}{R}: Pavel Maliki gets +1/+0 until end of turn.
+name = "Pavel Maliki"
+sets = ["leg", "me3"]
+id = "41026872-3c7b-40c7-8d0b-9d2f9b6c3e91"
+default_print = "c6627e4c-dc84-4ea0-8f69-dea92f55c943"
+oracle = "{B}{R}: Pavel Maliki gets +1/+0 until end of turn."
+legendary = true
+subtypes = ["Human"]
+
+[cost]
+generic = 4
+black = 1
+red = 1
+
+[kind]
+type = "creature"
+power = 5
+toughness = 3

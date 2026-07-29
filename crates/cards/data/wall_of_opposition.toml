@@ -1,0 +1,18 @@
+# Defender (This creature can't attack.)
+# {1}: This creature gets +1/+0 until end of turn.
+name = "Wall of Opposition"
+sets = ["bchr", "chr", "leg"]
+id = "30254aa2-2307-4f42-926a-54a416f55f87"
+default_print = "23243752-25c5-407e-9ce4-4bc1f02d01c1"
+oracle = "Defender (This creature can't attack.)\n{1}: This creature gets +1/+0 until end of turn."
+subtypes = ["Wall"]
+keywords = ["defender"]
+
+[cost]
+generic = 3
+red = 2
+
+[kind]
+type = "creature"
+power = 0
+toughness = 6

@@ -1,0 +1,14 @@
+# Enchant creature
+# Enchanted creature gets +2/+2.
+name = "Giant Strength"
+sets = ["4bb", "4ed", "5ed", "6ed", "leg", "ren", "tmp", "vma"]
+id = "db85ba13-f00d-4cdd-99e1-22a4d39c8837"
+default_print = "eaa8fde3-d887-4b52-85ec-0100e7ccdb03"
+oracle = "Enchant creature\nEnchanted creature gets +2/+2."
+subtypes = ["Aura"]
+
+[cost]
+red = 2
+
+[kind]
+type = "aura"

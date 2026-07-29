@@ -1,0 +1,15 @@
+# This creature can't be blocked by creatures with power 3 or greater.
+name = "Amrou Kithkin"
+sets = ["4bb", "4ed", "leg", "me3", "ren"]
+id = "79644192-8f99-4d04-b151-6f74a4dbda0a"
+default_print = "278d86b4-8d62-4932-a66d-062971295631"
+oracle = "This creature can't be blocked by creatures with power 3 or greater."
+subtypes = ["Kithkin"]
+
+[cost]
+white = 2
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1

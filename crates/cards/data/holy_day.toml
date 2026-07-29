@@ -1,0 +1,12 @@
+# Prevent all combat damage that would be dealt this turn.
+name = "Holy Day"
+sets = ["10e", "8ed", "9ed", "inv", "leg", "ps11"]
+id = "98423a34-f044-4811-b288-56981d604b6e"
+default_print = "f3895c0c-0db8-4962-b386-57887fb60701"
+oracle = "Prevent all combat damage that would be dealt this turn."
+
+[cost]
+white = 1
+
+[kind]
+type = "instant"

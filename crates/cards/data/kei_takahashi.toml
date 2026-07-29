@@ -1,0 +1,18 @@
+# {T}: Prevent the next 2 damage that would be dealt to target creature this turn.
+name = "Kei Takahashi"
+sets = ["bchr", "chr", "leg", "me3"]
+id = "f3229980-994e-4492-be98-267b781614c1"
+default_print = "82703d7c-0759-46ac-b41e-12deeffa10e0"
+oracle = "{T}: Prevent the next 2 damage that would be dealt to target creature this turn."
+legendary = true
+subtypes = ["Human", "Cleric"]
+
+[cost]
+generic = 2
+white = 1
+green = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2

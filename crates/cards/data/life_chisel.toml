@@ -1,0 +1,13 @@
+# Sacrifice a creature: You gain life equal to the sacrificed creature's toughness. Activate
+# only during your upkeep.
+name = "Life Chisel"
+sets = ["leg", "me3"]
+id = "2493fe65-2ecb-418f-8e4e-797f83475c73"
+default_print = "6d06edbe-2278-4818-b476-75bc02958418"
+oracle = "Sacrifice a creature: You gain life equal to the sacrificed creature's toughness. Activate only during your upkeep."
+
+[cost]
+generic = 4
+
+[kind]
+type = "artifact"

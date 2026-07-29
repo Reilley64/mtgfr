@@ -1,0 +1,12 @@
+# One or more target creatures become white until end of turn.
+name = "Heaven's Gate"
+sets = ["leg"]
+id = "fafdba94-51cd-413c-82f3-eb294825c6ca"
+default_print = "461d7c11-3a7d-42c2-bb6b-0a43779e6842"
+oracle = "One or more target creatures become white until end of turn."
+
+[cost]
+white = 1
+
+[kind]
+type = "instant"

@@ -1,0 +1,17 @@
+# (no rules text — vanilla creature)
+name = "Tobias Andrion"
+sets = ["bchr", "chr", "leg", "me3"]
+id = "55dfe722-7487-4d25-b90c-e6ad2c82a671"
+default_print = "9469a9b3-430c-43b1-bede-80e6949fd895"
+legendary = true
+subtypes = ["Human", "Advisor"]
+
+[cost]
+generic = 3
+white = 1
+blue = 1
+
+[kind]
+type = "creature"
+power = 4
+toughness = 4

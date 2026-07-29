@@ -1,0 +1,14 @@
+# Sacrifice a Swamp: Regenerate target black creature. (The next time that creature would be
+# destroyed this turn, instead tap it, remove it from combat, and heal all damage on it.)
+name = "Horror of Horrors"
+sets = ["9ed", "leg", "psal"]
+id = "b2e1a1c4-9147-4dfc-b202-c3d3f9c2d3dc"
+default_print = "fcae6a15-733d-44ae-ab23-a202ed071f28"
+oracle = "Sacrifice a Swamp: Regenerate target black creature. (The next time that creature would be destroyed this turn, instead tap it, remove it from combat, and heal all damage on it.)"
+
+[cost]
+generic = 3
+black = 2
+
+[kind]
+type = "enchantment"

@@ -1,0 +1,13 @@
+# {2}, {T}: Target permanent you control becomes the color of your choice. (This effect lasts
+# indefinitely.)
+name = "Alchor's Tomb"
+sets = ["leg", "me4"]
+id = "61473d8e-45f1-4753-918d-04918a466031"
+default_print = "e10ad2c6-b401-4a4e-bdce-705e2b87f492"
+oracle = "{2}, {T}: Target permanent you control becomes the color of your choice. (This effect lasts indefinitely.)"
+
+[cost]
+generic = 4
+
+[kind]
+type = "artifact"

@@ -1,0 +1,12 @@
+# Instant and enchantment spells you cast cost {2} less to cast.
+name = "Mana Matrix"
+sets = ["leg", "me4"]
+id = "256cea34-4691-4367-a789-17d15460f664"
+default_print = "0c69b20a-34f8-4c61-babe-1d3221c28a07"
+oracle = "Instant and enchantment spells you cast cost {2} less to cast."
+
+[cost]
+generic = 6
+
+[kind]
+type = "artifact"

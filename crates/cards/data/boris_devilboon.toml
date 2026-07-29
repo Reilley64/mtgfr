@@ -1,0 +1,18 @@
+# {2}{B}{R}, {T}: Create a 1/1 black and red Demon creature token named Minor Demon.
+name = "Boris Devilboon"
+sets = ["leg", "me3"]
+id = "913aed6d-60c3-4d08-baf8-359e2c41a797"
+default_print = "b61e5753-d11d-4ef5-ae0e-510c4d5809a9"
+oracle = "{2}{B}{R}, {T}: Create a 1/1 black and red Demon creature token named Minor Demon."
+legendary = true
+subtypes = ["Zombie", "Wizard"]
+
+[cost]
+generic = 3
+black = 1
+red = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2

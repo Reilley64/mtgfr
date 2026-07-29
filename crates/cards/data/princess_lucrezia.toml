@@ -1,0 +1,18 @@
+# {T}: Add {U}.
+name = "Princess Lucrezia"
+sets = ["leg", "me3"]
+id = "dd1d21f5-f5cd-43e4-8155-3cca85da80a9"
+default_print = "be8f707d-58a6-4e18-a45a-fcfdd1336a64"
+oracle = "{T}: Add {U}."
+legendary = true
+subtypes = ["Human", "Wizard"]
+
+[cost]
+generic = 3
+blue = 2
+black = 1
+
+[kind]
+type = "creature"
+power = 5
+toughness = 4

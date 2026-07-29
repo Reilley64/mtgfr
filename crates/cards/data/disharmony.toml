@@ -1,0 +1,15 @@
+# Cast this spell only during combat before blockers are declared.
+# Untap target attacking creature and remove it from combat. Gain control of that creature
+# until end of turn.
+name = "Disharmony"
+sets = ["leg", "me3"]
+id = "fc4f1aa1-e252-4454-9ad9-d41682dff13b"
+default_print = "37fd8d07-0eed-4b41-9468-b524439cd204"
+oracle = "Cast this spell only during combat before blockers are declared.\nUntap target attacking creature and remove it from combat. Gain control of that creature until end of turn."
+
+[cost]
+generic = 2
+red = 1
+
+[kind]
+type = "instant"

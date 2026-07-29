@@ -1,0 +1,17 @@
+# (no rules text — vanilla creature)
+name = "Sir Shandlar of Eberyn"
+sets = ["leg", "me3"]
+id = "7a9942cd-32ac-4cc9-8840-3fe6b092d0b8"
+default_print = "2a92c419-8f1e-4604-824d-28b086b54216"
+legendary = true
+subtypes = ["Human", "Knight"]
+
+[cost]
+generic = 4
+white = 1
+green = 1
+
+[kind]
+type = "creature"
+power = 4
+toughness = 7

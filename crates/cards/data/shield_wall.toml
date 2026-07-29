@@ -1,0 +1,13 @@
+# Creatures you control get +0/+2 until end of turn.
+name = "Shield Wall"
+sets = ["5ed", "7ed", "bchr", "chr", "leg", "pmei"]
+id = "8148eaa4-6fde-41f2-9b87-ccfc4d8e822f"
+default_print = "d4b70c30-dbc9-4d30-81d8-b0bde9b626df"
+oracle = "Creatures you control get +0/+2 until end of turn."
+
+[cost]
+generic = 1
+white = 1
+
+[kind]
+type = "instant"

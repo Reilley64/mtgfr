@@ -1,0 +1,14 @@
+# Storm Seeker deals damage to target player equal to the number of cards in that player's
+# hand.
+name = "Storm Seeker"
+sets = ["bchr", "chr", "leg", "me1"]
+id = "e694bf97-9deb-44f1-9d26-264b57596346"
+default_print = "456a2fdf-e91f-4d6d-840e-562fe7f5acd3"
+oracle = "Storm Seeker deals damage to target player equal to the number of cards in that player's hand."
+
+[cost]
+generic = 3
+green = 1
+
+[kind]
+type = "instant"
