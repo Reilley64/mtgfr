@@ -3,17 +3,18 @@ import { Submodel } from "foldkit";
 import { type Html, html } from "foldkit/html";
 import type { AppChromeMeta } from "../../domain/ui/app-version";
 import { button } from "../../domain/ui/button";
-import { alertClass, listRowClass } from "../../domain/ui/surfaces";
+import { listRowClass } from "../../domain/ui/surfaces";
 import { GotAccountMenuMessage, type GotAuthMessage } from "../../messages";
 import { HomeRoute, routePath } from "../../routes";
 import { accountChrome } from "../account-chrome/view";
 import { shellFrame } from "../frame/shell-frame";
+import { shellStatusChrome } from "../frame/shell-status";
 import {
   type Message as LeaderboardMessage,
   RequestedLeaderboardNextPage,
   RequestedLeaderboardRefresh,
 } from "./messages";
-import type { LeaderboardStatus, LeaderboardSubmodel } from "./submodel";
+import type { LeaderboardSubmodel } from "./submodel";
 
 export type ViewMessage = LeaderboardMessage | typeof GotAccountMenuMessage.Type | typeof GotAuthMessage.Type;
 
@@ -25,23 +26,6 @@ export type ViewInputs = {
 };
 
 const h = html<ViewMessage>();
-
-function statusCopy(status: LeaderboardStatus): string | null {
-  switch (status) {
-    case "idle":
-      return "Leaderboard has not loaded yet.";
-    case "loading":
-      return "Loading leaderboard...";
-    case "ready":
-      return null;
-    case "error":
-      return null;
-    default: {
-      const exhaustive: never = status;
-      return exhaustive;
-    }
-  }
-}
 
 function row(entry: LeaderboardSubmodel["entries"][number]): Html {
   return h.div(
@@ -59,7 +43,6 @@ function row(entry: LeaderboardSubmodel["entries"][number]): Html {
 
 export const view = Submodel.defineView<LeaderboardSubmodel, ViewMessage, ViewInputs>((model, viewInputs): Html => {
   const { accountMenu, chrome, meGravatarHash, username } = viewInputs;
-  const status = statusCopy(model.status);
   const canLoadMore = model.status !== "error" && model.entries.length < model.total;
 
   return shellFrame(h, {
@@ -80,8 +63,12 @@ export const view = Submodel.defineView<LeaderboardSubmodel, ViewMessage, ViewIn
         h.section(
           [h.Class("mx-auto flex max-w-[720px] flex-col gap-sm")],
           [
-            model.error == null ? null : h.div([h.Role("alert"), h.Class(alertClass())], [model.error]),
-            status == null ? null : h.div([h.Class("text-label text-lichen")], [status]),
+            ...shellStatusChrome(h, {
+              noun: "Leaderboard",
+              status: model.status,
+              error: model.error,
+              retry: { testId: "leaderboard-try-again", onClick: RequestedLeaderboardRefresh() },
+            }),
             model.status === "ready" && model.entries.length === 0
               ? h.div(
                   [h.Class("text-label text-lichen"), h.DataAttribute("testid", "leaderboard-empty")],
@@ -102,19 +89,7 @@ export const view = Submodel.defineView<LeaderboardSubmodel, ViewMessage, ViewIn
                   [model.status === "loading" ? "Loading..." : "Load more"],
                 )
               : null,
-            model.status === "error"
-              ? button(
-                  h,
-                  {
-                    testId: "leaderboard-try-again",
-                    onClick: RequestedLeaderboardRefresh(),
-                    variant: "ghost",
-                    class: "mt-md self-start",
-                  },
-                  ["Try again"],
-                )
-              : null,
-          ],
+          ].filter((v): v is Html => v !== null),
         ),
       ],
     ),
