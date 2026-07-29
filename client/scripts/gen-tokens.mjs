@@ -185,21 +185,6 @@ function publicCssVarName(path) {
 
 /** Allowlisted animate recipes (keyframe names live in global.css). */
 const ANIMATE_RECIPES = {
-  "stack-in": {
-    keyframe: "stack-in",
-    durationPath: ["semantic", "duration", "stack-in"],
-    easing: "ease-out",
-  },
-  "stack-return": {
-    keyframe: "stack-return",
-    durationPath: ["semantic", "duration", "stack-return"],
-    easing: "ease-in",
-  },
-  "stack-resolve": {
-    keyframe: "stack-resolve",
-    durationPath: ["semantic", "duration", "stack-resolve"],
-    easing: "ease-out",
-  },
   breathe: {
     keyframe: "breathe",
     durationPath: ["semantic", "duration", "breathe"],

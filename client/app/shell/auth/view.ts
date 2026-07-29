@@ -28,7 +28,7 @@ export const view = Submodel.defineView<AuthSubmodel, Message, AppChromeMeta>((m
       [h.Class("flex flex-col items-center justify-center gap-md py-xxl text-center")],
       [
         h.div(
-          [h.DataAttribute("testid", "auth-brand"), h.Class("m-0 font-display text-display tracking-[-0.02em]")],
+          [h.DataAttribute("testid", "auth-brand"), h.Class("m-0 font-display text-display tracking-display")],
           ["edh.reilley.dev"],
         ),
         h.h1([h.Class("m-0 font-display text-lichen text-title")], [isLogin ? "Sign in" : "Create account"]),

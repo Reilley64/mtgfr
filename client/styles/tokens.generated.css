@@ -86,10 +86,10 @@
   --spacing-shell-gutter: 24px;
   --spacing-shell-header-y: 14px;
   --size-shell-stage-max: 1100px;
+  --size-shell-content-max: 960px;
+  --tracking-display: -0.02em;
+  --tracking-chip: 0.06em;
   --ease-state: cubic-bezier(0.22, 1, 0.36, 1);
-  --duration-stack-in: 0.25s;
-  --duration-stack-return: 0.22s;
-  --duration-stack-resolve: 0.22s;
   --duration-breathe: 1.8s;
   --duration-skeleton: 1.2s;
   --duration-shell-enter: 0.2s;
@@ -101,9 +101,6 @@
   --shadow-glow: inset 0 1px 0 rgb(255 255 255 / 0.18), 0 0 0 2px rgb(90 200 140 / 0.55), 0 6px 20px rgb(47 140 90 / 0.45);
   --shadow-pick: 0 0 0 3px rgb(34 204 68), 0 10px 24px rgb(0 0 0 / 0.6);
   --drop-shadow-drag: 0 16px 36px rgb(0 0 0 / 0.72);
-  --animate-stack-in: stack-in 0.25s ease-out;
-  --animate-stack-return: stack-return 0.22s ease-in;
-  --animate-stack-resolve: stack-resolve 0.22s ease-out;
   --animate-breathe: breathe 1.8s ease-in-out infinite;
   --animate-skeleton: breathe 1.2s ease-in-out infinite;
   --animate-shell-enter: shell-enter 0.2s var(--ease-state);
