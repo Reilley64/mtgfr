@@ -7,8 +7,10 @@ import { cn } from "./cn";
  *
  * State is attribute-driven: the rocker button already carries `role="switch"` +
  * `aria-checked`, so the chrome keys off ARIA (`aria-checked:` on the rocker,
- * `group-aria-checked:` inside the `group/yield`) instead of a parallel JS class
- * ternary — the accessible state and the visual state cannot drift apart.
+ * `group-aria-checked/yield:` on track/thumb inside the named `group/yield`) instead of
+ * a parallel JS class ternary — the accessible state and the visual state cannot drift
+ * apart. The variant must name the group: bare `group-aria-checked:` compiles to
+ * `:where(.group)[aria-checked] *`, which a `group/yield` parent never matches.
  */
 export function turnYieldRockerClass(): string {
   return cn(
@@ -21,7 +23,7 @@ export function turnYieldRockerClass(): string {
 export function turnYieldTrackClass(): string {
   return cn(
     "relative h-[20px] w-[36px] shrink-0 rounded-full bg-tapped-out transition-colors duration-150 ease-state",
-    "group-aria-checked:bg-yielded",
+    "group-aria-checked/yield:bg-yielded",
   );
 }
 
@@ -30,6 +32,6 @@ export function turnYieldThumbClass(): string {
     "absolute top-[2px] left-[2px] flex size-[16px] items-center justify-center rounded-full",
     "bg-snow font-bold text-forest-floor text-micro leading-none shadow-press",
     "transition-transform duration-150 ease-state",
-    "group-aria-checked:translate-x-[16px] group-aria-checked:bg-forest-floor group-aria-checked:text-yielded-ink",
+    "group-aria-checked/yield:translate-x-[16px] group-aria-checked/yield:bg-forest-floor group-aria-checked/yield:text-yielded-ink",
   );
 }
