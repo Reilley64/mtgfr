@@ -611,6 +611,15 @@ export const view = Submodel.defineView<DeckBuilderSubmodel, ViewMessage, ViewIn
                     h.DataAttribute("testid", "builder-decklist-scroll"),
                   ],
                   [
+                    rows.length === 0
+                      ? h.div(
+                          [
+                            h.DataAttribute("testid", "builder-decklist-empty"),
+                            h.Class("flex flex-1 items-center justify-center p-md text-center text-label text-lichen"),
+                          ],
+                          ["Cards you add appear here. Click a pool card to add it."],
+                        )
+                      : null,
                     ...rows.map((row) =>
                       h.button(
                         [
