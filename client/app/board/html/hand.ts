@@ -8,7 +8,7 @@
 
 import { Option } from "effect";
 import { type Attribute, type Html, html } from "foldkit/html";
-import { type CostPip, costPipPlate, costPips } from "~/costPips";
+import { type CostPip, costPips } from "~/costPips";
 import { cardArt } from "~/ui/card-art";
 import type { ActionView, ObjectView, VisibleState, WireCost } from "~/wire/types";
 import { formatMessage } from "../../domain/i18n/message";
@@ -19,6 +19,7 @@ import { HAND_FACE_W } from "../motion/flights";
 import type { HandDragState } from "../submodel";
 import { barZoneAura, byObject, bySection, handTileCaption, modesForObject } from "./actions";
 import { MountHandBarDrag } from "./hand-drag-mount";
+import { pipChip } from "./pip-chip";
 
 const h = html<Message>();
 
@@ -57,19 +58,7 @@ function actionCaption(kind: string): string | undefined {
 }
 
 function costPipView(ms: string, code: string, sizePx: number): Html {
-  return h.span(
-    [
-      h.Class("inline-flex shrink-0 items-center justify-center rounded-full shadow-[0_1px_2px_rgb(0_0_0/0.9)]"),
-      h.Style({
-        width: `${sizePx}px`,
-        height: `${sizePx}px`,
-        "background-color": costPipPlate(code),
-        color: "#111",
-        "font-size": `${Math.round(sizePx * 0.82)}px`,
-      }),
-    ],
-    [h.i([h.Class(`ms ms-${ms}`)], [])],
-  );
+  return pipChip(h, { ms, code, sizePx });
 }
 
 function tile(args: {
