@@ -68,7 +68,7 @@ Buttons and text fields appear on every shell route and in most board HTML overl
 
 - `menuPanelClass(extra?, variant?)` is the shared dropdown panel; `menuItemClass(extra?, variant?)` is a single row: transparent, borderless, with hover and `focus-visible` highlight plus a `ring-vine` focus ring.
 - `variant` is `shell` (page chrome: `bg-forest-surface`, `shadow-table`, `text-label` rows) | `hud` (the board's translucent prompt chrome: `bg-forest-hud`, `shadow-hud`, `text-body` rows), defaulting to `shell`.
-- Positioning (`absolute` / `fixed`, z-index, min-width) differs per site and is passed as `extra`.
+- The `shell` variant bakes the shell overlay z (`z-41`: backdrop `z-40`, panel `z-41`): `Menu`/`Combobox` portal the panel into a root prepended before the app root, so a z-auto panel opens in the DOM but paints under the opaque `fixed` shell frame — the account menu shipped exactly that until the z moved into the recipe. A call-site z passed as `extra` still wins through `cn` (the `hud` combobox list keeps its `z-50` over the prompt frame). Remaining positioning (`absolute` / `fixed`, min-width) differs per site and is passed as `extra`.
 - Both back module-private cva recipes, so they merge through the same `cn` seam as the components. They dress `Menu` and `Combobox` alike — both primitives render the same panel-and-rows shape.
 
 ### `input`
