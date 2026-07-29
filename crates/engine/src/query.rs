@@ -795,7 +795,17 @@ impl Game {
         (0..MAX_MODES)
             .map_while(|m| nth_mode(&def, m))
             .map(|a| {
-                let spec = a.effect.target();
+                // A mode whose targets are deferred to the post-cast clause chain (Hull Breach
+                // mode 2's artifact-and-enchantment, Decisive Denial mode 0's ally-then-enemy
+                // fight, Prismari Charm mode 1's "one or two targets") takes no per-mode target —
+                // the same gate `Game::validate_modes` rejects one with, so the two can't disagree.
+                let deferred = !a.effect.clone().target_count().is_single()
+                    || crate::ability_target_clauses(&a).len() > 1;
+                let spec = if deferred {
+                    TargetSpec::None
+                } else {
+                    a.effect.target()
+                };
                 ModeInfo {
                     label: a.effect.message(),
                     needs_target: spec != TargetSpec::None,
