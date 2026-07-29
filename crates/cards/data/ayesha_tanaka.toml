@@ -5,6 +5,7 @@
 # {T}: Counter target activated ability from an artifact source unless that ability's
 # controller pays {W}. (Mana abilities can't be targeted.)
 name = "Ayesha Tanaka"
+otags = ["activated-ability", "counterspell-ability", "counterspell-reusable", "counterspell-soft", "deprecated-legend-type", "hate-artifact", "repeatable-crime"]
 sets = ["bchr", "chr", "leg"]
 id = "35e4ed0e-8ce2-4729-a009-0d6be8f47663"
 default_print = "8ce912d9-406b-4eba-97be-3bf1d425ee05"

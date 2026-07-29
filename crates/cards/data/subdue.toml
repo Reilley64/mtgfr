@@ -1,6 +1,7 @@
 # Prevent all combat damage that would be dealt by target creature this turn. That creature
 # gets +0/+X until end of turn, where X is its mana value.
 name = "Subdue"
+otags = ["combat-trick", "damage-prevention", "scales-with-mana-value", "single-english-word-name", "single-target-instant-sorcery"]
 sets = ["leg"]
 id = "81bac4b8-277b-415a-9064-a80a68fd7051"
 default_print = "123d6097-8021-46cd-a8c3-01013245e347"

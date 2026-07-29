@@ -1,5 +1,6 @@
 # When this creature dies, exile it.
 name = "Cyclopean Mummy"
+otags = ["death-trigger-self", "exile-self", "type-errata-specific-zombie"]
 sets = ["4bb", "4ed", "leg", "me4", "ren"]
 id = "f5f2c98c-dd89-4b60-83e5-07f5fdc699ef"
 default_print = "8de50323-7ce8-4ca6-a90b-b4be9d639752"

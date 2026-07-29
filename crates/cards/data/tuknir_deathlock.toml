@@ -1,6 +1,7 @@
 # Flying
 # {R}{G}, {T}: Target creature gets +2/+2 until end of turn.
 name = "Tuknir Deathlock"
+otags = ["activated-ability", "deprecated-legend-type", "evasion", "repeatable-crime"]
 sets = ["leg", "me3"]
 id = "0b6fa658-a344-4202-866b-e19997e32ff2"
 default_print = "5ab10b32-00b6-40b7-ad5e-ff2fd35951ef"
@@ -17,3 +18,20 @@ green = 2
 type = "creature"
 power = 2
 toughness = 2
+
+# {R}{G}, {T}: Target creature gets +2/+2 until end of turn.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+[abilities.activation_cost]
+red = 1
+green = 1
+
+# Target creature gets +2/+2 until end of turn.
+[[abilities.effects]]
+type = "pump"
+mode = "pump_until_end_of_turn"
+power = 2
+toughness = 2
+target = "creature"

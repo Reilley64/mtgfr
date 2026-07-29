@@ -2,6 +2,7 @@
 # Enchanted creature gets +1/+0.
 # {R}{R}{R}: Regenerate enchanted creature.
 name = "The Brute"
+otags = ["activated-ability", "protects-creature", "regenerates-other", "virtual-legendary"]
 sets = ["4bb", "4ed", "5ed", "leg", "ren"]
 id = "99587b7a-cbd0-4ade-b517-50aaf0635fb1"
 default_print = "d3ded8fa-facf-4196-8964-56ebc6424be1"
@@ -14,3 +15,25 @@ red = 1
 
 [kind]
 type = "aura"
+
+# Enchanted creature gets +1/+0.
+[[abilities]]
+timing = "static"
+
+# Enchanted creature gets +1/+0.
+[[abilities.effects]]
+type = "static"
+mode = "grant_to_attached"
+power = 1
+toughness = 0
+
+# {R}{R}{R}: Regenerate enchanted creature.
+[[abilities]]
+timing = "activated"
+activation_cost = { red = 3 }
+
+# Regenerate enchanted creature.
+[[abilities.effects]]
+type = "control"
+mode = "regenerate_shield"
+target = "enchanted_creature"

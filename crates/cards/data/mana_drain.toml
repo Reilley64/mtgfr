@@ -1,13 +1,33 @@
 # Counter target spell. At the beginning of your next main phase, add an amount of {C} equal to
 # that spell's mana value.
 name = "Mana Drain"
+otags = ["adds-multiple-mana", "aikido", "counterspell", "delayed-trigger", "hate-high-mv", "interrupt", "ritual", "scales-with-mana-value", "single-target-instant-sorcery"]
 sets = ["2x2", "cmr", "ima", "j16", "leg", "me3", "otp", "prm", "vma"]
 id = "74d3277a-38e5-4732-afed-084a56148f20"
 default_print = "3c429c40-2389-41e5-8681-4bb274e25eba"
 oracle = "Counter target spell. At the beginning of your next main phase, add an amount of {C} equal to that spell's mana value."
+approximates = "The delayed mana is scheduled for the controller's next precombat main phase only; cast during your own precombat main phase, the {C} arrives next turn instead of in this turn's postcombat main phase."
 
 [cost]
 blue = 2
 
 [kind]
 type = "instant"
+
+# Counter target spell. At the beginning of your next main phase, add an amount of {C} equal to
+# that spell's mana value.
+[[abilities]]
+timing = "spell"
+
+# Counter target spell.
+[[abilities.effects]]
+type = "misc"
+mode = "counter_target_spell"
+
+# At the beginning of your next main phase, add an amount of {C} equal to that spell's mana value.
+# ponytail: the delayed one-shot is scheduled for the controller's next precombat main phase, so a
+# Mana Drain cast during your own precombat main phase pays out next turn rather than in this
+# turn's postcombat main phase.
+[[abilities.effects]]
+type = "misc"
+mode = "schedule_colorless_mana_for_countered_spell_next_main_phase"

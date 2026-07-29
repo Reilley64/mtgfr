@@ -3,6 +3,7 @@
 # this creature.
 # Remove two carrion counters from this creature: This creature gets +1/+1 until end of turn.
 name = "Osai Vultures"
+otags = ["activated-ability", "aesthetic-counter", "counter-fuel-aesthetic", "evasion", "intervening-if-clause", "morbid", "shade-pump", "type-errata-vulture", "unique-counter"]
 sets = ["4bb", "4ed", "leg", "me4", "ren"]
 id = "65b7a7ca-0e39-4612-9bcd-743bf903544a"
 default_print = "2c665c02-4010-4bc6-85f0-bc03bef38ce9"

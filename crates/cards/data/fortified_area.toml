@@ -4,6 +4,7 @@
 # combat damage, not its controller, among any of the creatures it's being blocked by or is
 # blocking.)
 name = "Fortified Area"
+otags = ["anthem", "gives-banding", "keyword-anthem", "power-boost-to-all", "typal-wall"]
 sets = ["4bb", "4ed", "leg", "ren"]
 id = "cef37acf-ee97-48bf-a605-b17efcce5ce8"
 default_print = "8f89968f-0182-4639-96fd-0dc94b6ad926"
@@ -15,3 +16,16 @@ white = 2
 
 [kind]
 type = "enchantment"
+
+# Wall creatures you control get +1/+0 and have banding.
+[[abilities]]
+timing = "static"
+
+# Wall creatures you control get +1/+0 and have banding.
+[[abilities.effects]]
+type = "static"
+mode = "anthem"
+subtypes = ["Wall"]
+power = 1
+toughness = 0
+keywords = ["banding"]

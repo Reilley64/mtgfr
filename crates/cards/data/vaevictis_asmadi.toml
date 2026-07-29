@@ -4,6 +4,7 @@
 # {R}: Vaevictis Asmadi gets +1/+0 until end of turn.
 # {G}: Vaevictis Asmadi gets +1/+0 until end of turn.
 name = "Vaevictis Asmadi"
+otags = ["activated-ability", "bottomless-mana-sink", "cycle-leg-elder-dragon", "deprecated-legend-type", "drawback", "evasion", "firebreathing", "triggered-ability", "unique-mana-cost", "upkeep-cost"]
 sets = ["bchr", "chr", "leg", "me3", "sld"]
 id = "4d2cc2a8-e08a-420a-8922-c63e39129e23"
 default_print = "df01b548-9738-4c84-beb6-9a375f41d496"
@@ -22,3 +23,50 @@ green = 2
 type = "creature"
 power = 7
 toughness = 7
+
+# At the beginning of your upkeep, sacrifice Vaevictis Asmadi unless you pay {B}{R}{G}.
+[[abilities]]
+timing = "upkeep"
+
+# sacrifice Vaevictis Asmadi unless you pay {B}{R}{G}.
+[[abilities.effects]]
+type = "choice"
+mode = "pay_or_else"
+cost = { black = 1, red = 1, green = 1 }
+otherwise = [{ type = "sacrifice", mode = "source" }]
+
+# {B}: Vaevictis Asmadi gets +1/+0 until end of turn.
+[[abilities]]
+timing = "activated"
+activation_cost = { black = 1 }
+
+# Vaevictis Asmadi gets +1/+0 until end of turn.
+[[abilities.effects]]
+type = "pump"
+mode = "pump_self_until_end_of_turn"
+power = 1
+toughness = 0
+
+# {R}: Vaevictis Asmadi gets +1/+0 until end of turn.
+[[abilities]]
+timing = "activated"
+activation_cost = { red = 1 }
+
+# Vaevictis Asmadi gets +1/+0 until end of turn.
+[[abilities.effects]]
+type = "pump"
+mode = "pump_self_until_end_of_turn"
+power = 1
+toughness = 0
+
+# {G}: Vaevictis Asmadi gets +1/+0 until end of turn.
+[[abilities]]
+timing = "activated"
+activation_cost = { green = 1 }
+
+# Vaevictis Asmadi gets +1/+0 until end of turn.
+[[abilities.effects]]
+type = "pump"
+mode = "pump_self_until_end_of_turn"
+power = 1
+toughness = 0

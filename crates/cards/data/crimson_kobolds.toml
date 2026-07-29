@@ -1,5 +1,6 @@
 # (no rules text — vanilla creature)
 name = "Crimson Kobolds"
+otags = ["manaless-value"]
 sets = ["leg", "me3"]
 id = "93fdcc49-e3c8-4f8c-a3bc-064c6392b4ca"
 default_print = "889f4908-42c0-46e2-a83f-394d9fcd58ba"

@@ -1,10 +1,12 @@
 # Islandwalk (This creature can't be blocked as long as defending player controls an Island.)
 name = "Segovian Leviathan"
+otags = ["french-vanilla-walker", "meme", "rhyming-name", "type-errata"]
 sets = ["4bb", "4ed", "5ed", "6ed", "leg", "ren"]
 id = "853b02e1-fc0a-413b-8381-88596624440f"
 default_print = "8f796dd2-9ecf-490a-86c0-acb46130518b"
 oracle = "Islandwalk (This creature can't be blocked as long as defending player controls an Island.)"
 subtypes = ["Leviathan"]
+keywords = [{ landwalk = "island" }]
 
 [cost]
 generic = 4

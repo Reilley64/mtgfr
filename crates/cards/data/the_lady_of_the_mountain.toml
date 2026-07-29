@@ -1,5 +1,6 @@
 # (no rules text — vanilla creature)
 name = "The Lady of the Mountain"
+otags = ["deprecated-legend-type"]
 sets = ["leg", "me3"]
 id = "3ef03975-0f46-43aa-b461-bd3b6f5d4613"
 default_print = "70802e74-c292-446f-aa9a-dd32454a4b3d"

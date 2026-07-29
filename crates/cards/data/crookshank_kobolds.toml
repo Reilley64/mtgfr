@@ -1,5 +1,6 @@
 # (no rules text — vanilla creature)
 name = "Crookshank Kobolds"
+otags = ["manaless-value"]
 sets = ["leg", "me1"]
 id = "61023b48-0433-4993-9534-308c08cef07e"
 default_print = "f51d9dde-536b-4314-8de1-2c05a9bf3dbc"

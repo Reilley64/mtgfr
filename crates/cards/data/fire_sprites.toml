@@ -1,6 +1,7 @@
 # Flying
 # {G}, {T}: Add {R}.
 name = "Fire Sprites"
+otags = ["activated-ability", "evasion", "mana-filter", "offcolor-mana-generation"]
 sets = ["leg", "me3"]
 id = "fc5e42b5-4da2-4777-828b-138c0a5d234f"
 default_print = "7e001344-4c5a-47de-b788-384765fc1fcd"
@@ -16,3 +17,17 @@ green = 1
 type = "creature"
 power = 1
 toughness = 1
+
+# {G}, {T}: Add {R}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+[abilities.activation_cost]
+green = 1
+
+# Add {R}.
+[[abilities.effects]]
+type = "mana"
+mode = "add"
+mana = ["red"]

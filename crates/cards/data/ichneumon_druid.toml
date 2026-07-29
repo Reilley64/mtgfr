@@ -1,6 +1,7 @@
 # Whenever an opponent casts an instant spell other than the first instant spell that player
 # casts each turn, this creature deals 4 damage to that player.
 name = "Ichneumon Druid"
+otags = ["burn-player", "cast-trigger-other", "hate-instant", "type-addition-human"]
 sets = ["leg"]
 id = "6aba2a04-0117-429e-a5df-6ba4645129d8"
 default_print = "cf2313bb-6f9b-49d6-b069-9f3b77b6e107"

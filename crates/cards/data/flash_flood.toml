@@ -2,13 +2,35 @@
 # • Destroy target red permanent.
 # • Return target Mountain to its owner's hand.
 name = "Flash Flood"
+otags = ["alliteration", "hate-mountain", "hate-red", "modal", "removal-bounce", "removal-destroy", "removal-land", "removal-nonland", "single-target-instant-sorcery", "spot-removal"]
 sets = ["bchr", "chr", "leg", "me3"]
 id = "c2b5d847-f52a-43e3-a5d2-d53cae3d8936"
 default_print = "1d0aa638-6e51-4fd0-90e3-685db31b2c7a"
 oracle = "Choose one —\n• Destroy target red permanent.\n• Return target Mountain to its owner's hand."
+modal = true
 
 [cost]
 blue = 1
 
 [kind]
 type = "instant"
+
+# Mode 0 — "Destroy target red permanent."
+[[abilities]]
+timing = "spell"
+
+# Destroy target red permanent.
+[[abilities.effects]]
+type = "destroy"
+mode = "target"
+target = { permanent = { color = "red" } }
+
+# Mode 1 — "Return target Mountain to its owner's hand."
+[[abilities]]
+timing = "spell"
+
+# Return target Mountain to its owner's hand.
+[[abilities.effects]]
+type = "zone"
+mode = "return_to_hand"
+target = { permanent = { types = "land", subtypes = ["Mountain"] } }

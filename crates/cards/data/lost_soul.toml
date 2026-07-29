@@ -1,10 +1,12 @@
 # Swampwalk (This creature can't be blocked as long as defending player controls a Swamp.)
 name = "Lost Soul"
+otags = ["french-vanilla-walker", "type-errata-name-self"]
 sets = ["4bb", "4ed", "5ed", "6ed", "itp", "leg", "ren", "rqs"]
 id = "1c68e877-ee47-42bf-a867-3f7f479eae1c"
 default_print = "401896ac-6234-468a-a9af-cf11c7a11cd0"
 oracle = "Swampwalk (This creature can't be blocked as long as defending player controls a Swamp.)"
 subtypes = ["Spirit", "Minion"]
+keywords = [{ landwalk = "swamp" }]
 
 [cost]
 generic = 1

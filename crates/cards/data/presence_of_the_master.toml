@@ -1,5 +1,6 @@
 # Whenever a player casts an enchantment spell, counter it.
 name = "Presence of the Master"
+otags = ["cast-trigger", "counterspell-automatic", "counterspell-enchantment", "counterspell-reusable", "hate-enchantment", "symmetrical"]
 sets = ["leg", "usg"]
 id = "e1aad679-93ec-420e-881b-35ebc99763a2"
 default_print = "849adb29-61ad-4307-98b9-61e33aec6500"

@@ -1,6 +1,7 @@
 # {G}{W}{U}, {T}: Prevent all combat damage that would be dealt this turn. Activate only before
 # the combat damage step.
 name = "Angus Mackenzie"
+otags = ["activated-ability", "deprecated-legend-type", "fog", "protects-planeswalker", "symmetrical"]
 sets = ["leg", "me3"]
 id = "d5e6ac6b-5786-4d98-8037-0867e365fc93"
 default_print = "bb3920ac-7d61-494e-b7dd-bd37d4dee143"

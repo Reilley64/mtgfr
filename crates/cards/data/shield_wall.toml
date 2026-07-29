@@ -1,5 +1,6 @@
 # Creatures you control get +0/+2 until end of turn.
 name = "Shield Wall"
+otags = ["combat-trick", "misnomer", "toughness-boost-to-all"]
 sets = ["5ed", "7ed", "bchr", "chr", "leg", "pmei"]
 id = "8148eaa4-6fde-41f2-9b87-ccfc4d8e822f"
 default_print = "d4b70c30-dbc9-4d30-81d8-b0bde9b626df"
@@ -11,3 +12,14 @@ white = 1
 
 [kind]
 type = "instant"
+
+# Creatures you control get +0/+2 until end of turn.
+[[abilities]]
+timing = "spell"
+
+# Creatures you control get +0/+2 until end of turn.
+[[abilities.effects]]
+type = "pump"
+mode = "pump_creatures_you_control_until_end_of_turn"
+power = 0
+toughness = 2

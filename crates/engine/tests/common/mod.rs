@@ -102,6 +102,41 @@ pub fn pool_total(game: &Game, player: PlayerId) -> u32 {
     colored + game.colorless_in_pool(player) as u32
 }
 
+/// Resolve the top of the stack by having every seat pass in succession (CR 117.4).
+pub fn resolve_top_of_stack(game: &mut Game) {
+    for _ in 0..game.player_count() {
+        game.submit(Intent::PassPriority {
+            player: game.priority_holder(),
+        })
+        .unwrap();
+    }
+}
+
+/// Advance to declare attackers and swing with player 0's `attackers` at player 1.
+pub fn attack_with(game: &mut Game, attackers: Vec<ObjectId>) {
+    advance_until(game, |g| g.current_step() == Step::DeclareAttackers);
+    game.submit(Intent::DeclareAttackers {
+        player: PlayerId(0),
+        attackers: attackers
+            .into_iter()
+            .map(|a| (a, Defender::Player(PlayerId(1))))
+            .collect(),
+    })
+    .unwrap();
+}
+
+/// Advance to declare blockers and declare `blocks` for player 1.
+pub fn block_with(
+    game: &mut Game,
+    blocks: Vec<(ObjectId, ObjectId)>,
+) -> Result<Vec<Event>, Reject> {
+    advance_until(game, |g| g.current_step() == Step::DeclareBlockers);
+    game.submit(Intent::DeclareBlockers {
+        player: PlayerId(1),
+        blocks,
+    })
+}
+
 /// Tap `count` freshly-spawned basic lands of `name` for player 0, leaving `count` mana in the pool.
 pub fn tap_basics(game: &mut Game, name: &str, count: usize) {
     for _ in 0..count {

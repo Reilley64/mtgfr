@@ -2,6 +2,7 @@
 # At the beginning of your upkeep, destroy this creature unless you pay {3}{B}{B}{B}. If this
 # creature is destroyed this way, it deals 7 damage to you.
 name = "Cosmic Horror"
+otags = ["burn-you", "drawback", "triggered-ability", "upkeep-cost"]
 sets = ["4bb", "4ed", "leg", "me3", "ren"]
 id = "d73df13d-942a-4104-ac9d-de7c100c086f"
 default_print = "64288873-d3bf-49f6-b0e4-a1e712f8ba58"

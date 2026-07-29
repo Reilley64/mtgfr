@@ -1,5 +1,6 @@
 # Creatures without flying can't attack.
 name = "Moat"
+otags = ["prevent-attack", "single-english-word-name", "symmetrical", "synergy-flying"]
 sets = ["leg", "me1", "prm"]
 id = "42208fea-8c24-451f-861d-6d70c0a7a502"
 default_print = "e2dffeb3-c858-4b8c-ae1f-109721f7d2da"

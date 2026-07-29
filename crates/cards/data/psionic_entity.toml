@@ -1,5 +1,6 @@
 # {T}: This creature deals 2 damage to any target and 3 damage to itself.
 name = "Psionic Entity"
+otags = ["activated-ability", "burn-any", "pinger", "spot-removal", "type-errata"]
 sets = ["4bb", "4ed", "leg", "ren"]
 id = "37aae6d1-1de0-47d1-85dd-d4a6d9635c05"
 default_print = "6641a587-c066-4f0a-a951-b91d3f749eb2"

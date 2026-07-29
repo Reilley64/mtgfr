@@ -1,5 +1,6 @@
 # At the beginning of each player's upkeep, if that player controls a Plains, they gain 1 life.
 name = "Spiritual Sanctuary"
+otags = ["alliteration", "intervening-if-clause", "repeatable-lifegain", "symmetrical", "synergy-plains"]
 sets = ["leg"]
 id = "91edef61-2487-405c-a3ec-67a814dfeff2"
 default_print = "654dd1e0-a91d-44ee-af20-c025bf360c3f"

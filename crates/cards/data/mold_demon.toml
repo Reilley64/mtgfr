@@ -1,5 +1,6 @@
 # When this creature enters, sacrifice it unless you sacrifice two Swamps.
 name = "Mold Demon"
+otags = ["sacrifice-outlet-land", "synergy-swamp", "triggered-ability", "type-errata-name-self", "unique-type-line", "virtual-vanilla"]
 sets = ["leg"]
 id = "7ce9513e-50f3-4d36-889b-b180a8a16252"
 default_print = "649a33aa-7eac-4161-ae1a-fcbc758abccf"
