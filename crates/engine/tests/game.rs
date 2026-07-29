@@ -13162,6 +13162,49 @@ fn conceding_needs_no_priority() {
     assert!(game.has_lost(other));
 }
 
+/// A creature with an until-end-of-turn pump on it whose owner leaves the game (CR 800.4a) is
+/// tombstoned where it stands — but its boost is still on the books. The cleanup sweep reads
+/// boost hosts off the modifier registry, so the departing player's batches have to leave with
+/// their objects rather than aiming an end-of-turn reset at a permanent that no longer exists.
+#[test]
+fn a_pumped_creature_leaves_no_boost_behind_when_its_owner_concedes() {
+    let mut game = Game::with_players(4, 0);
+    let bear = game.spawn_on_battlefield(PlayerId(1), VANILLA.clone()); // 2/2
+    let pump = game.spawn_in_hand(PlayerId(0), PUMP_POWER_PLUS_2.clone());
+    game.begin_first_turn();
+
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: pump,
+        target: Some(Target::Object(bear)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        multikicker_count: 0,
+        alternative_cost: false,
+    })
+    .unwrap();
+    resolve_top_of_stack_multiplayer(&mut game);
+    assert_eq!(game.power(bear), 4, "pumped while its owner is still here");
+
+    game.submit(Intent::Concede {
+        player: PlayerId(1),
+    })
+    .unwrap();
+
+    // Crossing cleanup is the whole assertion: an orphaned boost row would send
+    // `TempBoostsEnded` at the tombstone.
+    advance_until(&mut game, |g| g.active_player() == PlayerId(2));
+    assert!(game.has_lost(PlayerId(1)));
+}
+
 /// Conceding twice is a no-op, not a panic or a second elimination event.
 #[test]
 fn conceding_twice_is_idempotent() {
@@ -111110,6 +111153,39 @@ fn deathlace_replaces_a_creatures_colors_and_never_gives_them_back() {
         color_names(&game, bear),
         vec!["black"],
         "the lace prints no duration, so cleanup must not take the colour back"
+    );
+}
+
+/// CR 613.3c/613.7: layer 5 applies colour-setting and colour-adding effects in timestamp order,
+/// so a set does not swallow an add that lands *after* it. Deathlace makes Restless Spire black;
+/// animating the Spire afterwards adds blue and red on top of that black, rather than the earlier
+/// set silently suppressing the animated form's own colours.
+#[test]
+fn a_color_set_does_not_swallow_colors_added_after_it() {
+    let mut game = Game::new();
+    let spire = game.spawn_on_battlefield(PlayerId(0), card("Restless Spire"));
+    let deathlace = game.spawn_in_hand(PlayerId(0), card("Deathlace"));
+
+    cast_and_resolve(&mut game, deathlace, Some(Target::Object(spire)));
+    assert_eq!(color_names(&game, spire), vec!["black"]);
+
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: spire,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        color_names(&game, spire),
+        vec!["blue", "black", "red"],
+        "the animation's added colours join the lace's black instead of being swallowed by it"
     );
 }
 

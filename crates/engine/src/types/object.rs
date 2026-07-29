@@ -26,19 +26,7 @@ pub(crate) fn fresh_permanent(
         monstrous: false,
         plus_counters: 0,
         kind_counters: [0; CounterKind::COUNT],
-        temp_power: 0,
-        temp_toughness: 0,
-        base_pt_set_eot: None,
         text_swap: None,
-        animation_ends_at_end_of_combat: false,
-        base_pt_set_eot_timestamp: 0,
-        added_types_eot: TypeSet::NONE,
-        added_types_eot_timestamp: 0,
-        added_subtypes_eot: &[],
-        added_colors_eot: &[],
-        set_color: None,
-        temp_keywords: &[],
-        temp_lost_keywords: &[],
         attachment_lost_keywords: &[],
         set_base_pt: None,
         set_base_pt_timestamp: 0,
@@ -76,7 +64,6 @@ pub(crate) fn fresh_permanent(
         flipped: false,
         masked: false,
         evoked: false,
-        reverts_to_def_eot: None,
         spent_colors: [false; Color::COUNT],
         cast_from_hand: false,
         copy_rider_keywords: &[],
@@ -149,8 +136,8 @@ pub(crate) struct Spell {
     pub(crate) chosen_color: Option<Color>,
     /// A CR 613.3c layer-5 color SET on this spell, granted by the copy effect that minted it
     /// (Fork's "except that the copy is red"). *Replaces* the copiable color derived from the
-    /// card's pips rather than unioning with it, exactly like the permanent-side
-    /// [`Permanent::set_color`] — see [`Game::colors_of`]. `None` for every cast spell and
+    /// card's pips rather than unioning with it, exactly like the permanent-side registered
+    /// `ModifierKind::SetColor` — see [`Game::colors_of`]. `None` for every cast spell and
     /// for a copy from an effect that doesn't recolor (Twincast).
     pub(crate) set_color: Option<Color>,
     /// A CR 612.1 text change made to this spell while it is on the stack ("change the text of
@@ -357,53 +344,6 @@ pub(crate) struct Permanent {
     /// `usize`; `0` = none of that kind. Kept separate from `plus_counters` above — no
     /// replacement effect (Hardened Scales, a doubler) reads or grows this map.
     pub(crate) kind_counters: [u8; CounterKind::COUNT],
-    /// Until-end-of-turn power/toughness boosts (pumps), cleared at cleanup.
-    pub(crate) temp_power: i32,
-    pub(crate) temp_toughness: i32,
-    /// An until-end-of-turn base-P/T SET (CR 613.3(7b) — Biomass Mutation, Quandrix Charm's
-    /// "has base power and toughness X/X until end of turn"): runtime bookkeeping, `Some((p, t))`
-    /// while active, emitted as a `BasePtSet` layer by [`Game::pt_layers`] (applied before the 7c
-    /// counters/pumps/anthems), and cleared alongside `temp_power`/`temp_toughness` at cleanup
-    /// (see [`Event::TempBoostsEnded`]'s handler). Not a `CardDef`/TOML surface — P/T is derived.
-    pub(crate) base_pt_set_eot: Option<(i32, i32)>,
-    /// Whether the until-end-of-turn animation above is really an *until end of combat* one (Jade
-    /// Statue): set alongside `base_pt_set_eot`, read by the End of Combat sweep in
-    /// [`Game::begin_step`], and cleared with the rest of the temp state at
-    /// [`Event::TempBoostsEnded`].
-    pub(crate) animation_ends_at_end_of_combat: bool,
-    /// The CR 613.7 timestamp of [`Permanent::base_pt_set_eot`], so a later 7b set (Darksteel
-    /// Mutation after Trench Gorger, Quandrix Charm after Darksteel Mutation) wins the layer.
-    pub(crate) base_pt_set_eot_timestamp: u64,
-    /// Card types added until end of turn by a self-animation (CR 613.4 — Restless Spire's "this
-    /// land becomes a … creature … It's still a land"): `TypeSet::CREATURE` while a manland is
-    /// animated, unioned onto its printed types by [`Game::effective_types`], and cleared alongside
-    /// `base_pt_set_eot` at cleanup (see [`Event::TempBoostsEnded`]'s handler). The twin of
-    /// `base_pt_set_eot` for the type layer — runtime bookkeeping, never a `CardDef`/TOML surface.
-    pub(crate) added_types_eot: TypeSet,
-    /// The CR 613.7 timestamp of [`Permanent::added_types_eot`] / [`Permanent::added_subtypes_eot`].
-    pub(crate) added_types_eot_timestamp: u64,
-    /// Creature subtypes added until end of turn by the same self-animation (Restless Spire →
-    /// "Elemental"): unioned onto the printed subtypes by [`Game::effective_subtypes`], cleared with
-    /// `added_types_eot`. `&'static` because it's copied straight from the granting ability's
-    /// already-leaked `CardDef` data — no runtime leak.
-    pub(crate) added_subtypes_eot: &'static [&'static str],
-    /// Colors added until end of turn by the same self-animation (Restless Spire → blue, red):
-    /// unioned onto [`color_identity`] by [`Game::colors_of`], cleared alongside
-    /// `added_types_eot`/`added_subtypes_eot` at cleanup (see [`Event::TempBoostsEnded`]'s
-    /// handler). Not a `CardDef`/TOML surface — runtime bookkeeping like its type-layer siblings.
-    pub(crate) added_colors_eot: &'static [Color],
-    /// A CR 613.3c layer-5 color-SET (Wild Mongrel's "becomes the color of your choice until end
-    /// of turn" — [`Effect::Choice(ChoiceEffect::SetOwnColorUntilEndOfTurn)`]; Deathlace's "target
-    /// spell or permanent becomes black" — [`Effect::Pump(PumpEffect::TargetBecomesColor)`]): while
-    /// `Some`, [`Game::colors_of`] returns exactly this one color, *replacing* the
-    /// derived/`added_colors_eot` colors rather than unioning with them (unlike
-    /// `added_colors_eot`'s CR 613.3c layer-5 ADD). The `bool` is the duration: `true` clears at
-    /// cleanup alongside `added_colors_eot` (see [`Event::TempBoostsEnded`]'s handler), `false`
-    /// lasts as long as the object does (the lace cycle prints no duration at all). One slot for
-    /// both, so a second set clobbers the first — which *is* the CR 613.7 answer, since each
-    /// replaces and the later timestamp wins. Not a `CardDef`/TOML surface — a runtime choice or a
-    /// resolving spell's doing, not printed data.
-    pub(crate) set_color: Option<(Color, bool)>,
     /// A CR 612.1 text change made to this permanent ("change the text of target spell or
     /// permanent by replacing all instances of one basic land type with another" — Magical Hack;
     /// the color-word twin — Sleight of Mind). Read back at CR 613.4 layer 3 by
@@ -415,32 +355,15 @@ pub(crate) struct Permanent {
     /// ponytail: two text-changers on one object is the composition this drops; no pool card
     /// makes it likely, and a `Vec` here would cost [`Permanent`] its `Copy`.
     pub(crate) text_swap: Option<TextSwap>,
-    /// Keywords granted until end of turn (a [`Effect::Pump(PumpEffect::PumpUntilEndOfTurn)`]/
-    /// [`Effect::Pump(PumpEffect::PumpCreaturesYouControlUntilEndOfTurn)`] grant), cleared at cleanup alongside
-    /// the temp P/T. `&'static` because it's usually copied straight from the granting
-    /// ability's already-leaked `CardDef` data (see the `de` module) — no runtime leak. When a
-    /// second non-empty grant lands on the same permanent the same turn (e.g. Selfless Spirit +
-    /// Moonshaker Cavalry), [`Event::TempBoost`]'s handler unions the two into a freshly leaked
-    /// slice instead of clobbering the first.
-    pub(crate) temp_keywords: &'static [Keyword],
-    /// Keywords this permanent has lost until end of turn AND can't regain this turn (CR
-    /// 702.11e/702.18d-style "lose ... and can't have" — arcane_lighthouse's "creatures your
-    /// opponents control lose hexproof and shroud and can't have hexproof or shroud"). Removed
-    /// from the final unioned set at the end of [`Game::compute_effective_keywords_uncached`]
-    /// rather than blocked at each granting source, so a keyword granted *after* this lands
-    /// (Tyvar's Stand, an Equipment) is filtered right back out the same turn — "can't have" for
-    /// free from the same mechanism as "lose." Cleared at cleanup alongside `temp_keywords`
-    /// above (see [`Event::TempBoostsEnded`]'s handler).
-    pub(crate) temp_lost_keywords: &'static [Keyword],
     /// Keywords the creature this Aura is attached to loses, indefinitely (Earthbind's "this Aura
     /// gains 'Enchanted creature loses flying'"). Set on the *Aura*, not on its host (see
     /// [`Event::AttachedKeywordsLost`]), and read through the Aura's live attachment at the end of
     /// [`Game::compute_effective_keywords_uncached`] — so it lapses on its own when the Aura leaves
     /// the battlefield, and follows the Aura if it is moved to a new host. Never cleared at
-    /// cleanup, unlike `temp_lost_keywords` above.
+    /// cleanup, unlike the registered `ModifierKind::LoseKeywords` an until-EOT strip makes.
     pub(crate) attachment_lost_keywords: &'static [Keyword],
     /// An *indefinite* base-P/T SET (CR 611.2c — Excava, the Risen Past's "It's a 1/1 Spirit
-    /// creature with flying"): the indefinite twin of `base_pt_set_eot`, `Some((p, t))` while
+    /// creature with flying"): the indefinite twin of `ModifierKind::BasePtSet`, `Some((p, t))` while
     /// active, emitted as the same 7b `BasePtSet` layer by [`Game::pt_layers`] (before the 7c
     /// counters/pumps). Written once as the reanimated permanent enters (see
     /// [`Event::ReanimatedCreatureBecame`]) and **never cleared at cleanup** — it naturally resets
@@ -451,13 +374,13 @@ pub(crate) struct Permanent {
     pub(crate) set_base_pt_timestamp: u64,
     /// Card types added indefinitely (CR 611.2c — Excava's "It's a … creature … in addition to its
     /// other types", turning a reanimated noncreature into a creature): the indefinite twin of
-    /// `added_types_eot`, unioned onto the printed types by [`Game::effective_types`], never
+    /// `ModifierKind::Became`, unioned onto the printed types by [`Game::effective_types`], never
     /// cleared at cleanup (resets with the object per CR 400.7).
     pub(crate) added_types: TypeSet,
     /// The CR 613.7 timestamp of [`Permanent::added_types`] / [`Permanent::added_subtypes`].
     pub(crate) added_types_timestamp: u64,
     /// Creature subtypes added indefinitely by the same set (Excava → "Spirit"): the indefinite
-    /// twin of `added_subtypes_eot`, unioned onto the printed subtypes by
+    /// twin of `ModifierKind::Became`'s subtypes, unioned onto the printed subtypes by
     /// [`Game::effective_subtypes`]. `&'static` — copied straight from the granting ability's
     /// already-leaked `CardDef` data, no runtime leak.
     pub(crate) added_subtypes: &'static [&'static str],
@@ -468,8 +391,8 @@ pub(crate) struct Permanent {
     /// permanent, which is the whole duration model — nothing clears this, the read just stops
     /// finding a live source. Resets with the object itself per CR 400.7.
     pub(crate) subtypes_set_while_source_remains: Option<(&'static [&'static str], ObjectId, u64)>,
-    /// Keywords granted indefinitely by the same set (Excava → flying): the indefinite twin of
-    /// `temp_keywords`, unioned onto the effective keywords by
+    /// Keywords granted indefinitely by the same set (Excava → flying): the indefinite twin of a
+    /// registered until-EOT keyword grant, unioned onto the effective keywords by
     /// [`Game::compute_effective_keywords_uncached`], never cleared at cleanup. `&'static`.
     pub(crate) granted_keywords: &'static [Keyword],
     /// Damage marked this turn (compared against toughness by a state-based action).
@@ -648,15 +571,6 @@ pub(crate) struct Permanent {
     /// casting [`Spell::evoked`]; runtime state, not TOML-authored, defaulted `false` like
     /// `bestowed`.
     pub(crate) evoked: bool,
-    /// The `def` to restore at cleanup for an *until-end-of-turn* enter-as-copy (Cursed Mirror,
-    /// CR 706/613 — "become a copy … until end of turn"): when the copy is established, the
-    /// permanent's original printed `def` is stashed here and `def` is overwritten with the copied
-    /// creature's; at cleanup ([`Event::TempBoostsEnded`]) `def` is restored from this and it is
-    /// cleared back to `None` (CR 514.2). `None` for an ordinary permanent or a *permanent* copy
-    /// (Altered Ego leaves the overwritten `def` in place). Runtime state, not TOML-authored — a
-    /// [`CardId`] so the copied shape shares the same interned definition model as every other
-    /// object, without leaking a second `CardDef`.
-    pub(crate) reverts_to_def_eot: Option<CardId>,
     /// The colors of mana spent to cast the spell that became this permanent (CR 106.9), fixed
     /// for the rest of this permanent's existence — copied from [`Spell::spent_colors`] as it
     /// enters, the same "read the spell's own info before it's gone" idiom as `entered_with_x`.

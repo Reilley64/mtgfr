@@ -5115,7 +5115,7 @@
               "type": "object"
             },
             {
-              "description": "\"Target spell or permanent becomes black.\" (Deathlace and the rest of the lace cycle) — a CR 613.3c layer-5 color SET with no duration printed at all, so it lasts as long as the object does. `color` *replaces* the object's colors rather than unioning with them, which is why a laced spell stops being countered by \"counter target blue spell\". Targets a spell on the stack or a permanent, and writes [`Permanent::set_color`]/[`Spell::set_color`] through [`Event::ColorSet`]. The reminder text (\"its mana symbols remain unchanged\") needs no modelling — colors are read from `colors_of`, never re-derived from the pips.",
+              "description": "\"Target spell or permanent becomes black.\" (Deathlace and the rest of the lace cycle) — a CR 613.3c layer-5 color SET with no duration printed at all, so it lasts as long as the object does. `color` *replaces* the object's colors rather than unioning with them, which is why a laced spell stops being countered by \"counter target blue spell\". Targets a spell on the stack or a permanent, and registers the layer-5 SET / writes [`Spell::set_color`] through [`Event::ColorSet`]. The reminder text (\"its mana symbols remain unchanged\") needs no modelling — colors are read from `colors_of`, never re-derived from the pips.",
               "properties": {
                 "color": {
                   "$ref": "#/$defs/Color"
@@ -9919,7 +9919,7 @@
     },
     "EnterAsCopy": {
       "additionalProperties": false,
-      "description": "The riders on an [`CardDef::enter_as_copy`] replacement (CR 706/707.2). `Copy` — all scalars, no `Vec` — so the nested replacement stays compact. `until_eot` reverts the copy at cleanup (Cursed Mirror, [`Permanent::reverts_to_def_eot`]); `extra_counters` are additional +1/+1 counters the copy enters with (Altered Ego's X); `gains_haste` grants the copy haste (Cursed Mirror's \"except it has haste\"); `of` is the copyable type axis (Copy Enchantment's \"any enchantment\", CR 707.2, vs. the default \"any creature\").",
+      "description": "The riders on an [`CardDef::enter_as_copy`] replacement (CR 706/707.2). `Copy` — all scalars, no `Vec` — so the nested replacement stays compact. `until_eot` reverts the copy at cleanup (Cursed Mirror); `extra_counters` are additional +1/+1 counters the copy enters with (Altered Ego's X); `gains_haste` grants the copy haste (Cursed Mirror's \"except it has haste\"); `of` is the copyable type axis (Copy Enchantment's \"any enchantment\", CR 707.2, vs. the default \"any creature\").",
       "properties": {
         "also_enchantment": {
           "default": false,
