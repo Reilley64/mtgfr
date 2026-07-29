@@ -23,7 +23,8 @@ impl Game {
             // A multi-player sacrifice edict (Deadly Brew, Promise of Loyalty) pauses per
             // affected player.
             Effect::Choice(ChoiceEffect::EachPlayerSacrifices {
-                scope,
+                who,
+                chosen_by_controller,
                 keep_one,
                 filter,
                 life_loss,
@@ -34,7 +35,8 @@ impl Game {
             }) => {
                 let count = self.resolve_count(count, controller, source, target, ctx.x);
                 self.sacrifice_edict(
-                    scope,
+                    who,
+                    chosen_by_controller,
                     keep_one,
                     filter,
                     life_loss,
@@ -52,14 +54,17 @@ impl Game {
             // enclosing `Sequence`'s draw step reads it. Balance's `down_to_fewest` measures the
             // smallest hand among those seats first, and each of them pitches its own excess.
             Effect::Choice(ChoiceEffect::EachPlayerDiscards {
-                scope,
+                who,
                 down_to_fewest,
             }) => {
                 self.resolution_frame.cards_discarded_this_way = 0;
+                // `players_in` answers *which* seats; the order is APNAP (CR 101.4) rather than
+                // seat order, since each seat picks its discard in sequence.
+                let scoped = self.players_in(who, controller, target);
                 let affected: Vec<PlayerId> = self
                     .apnap_order()
                     .into_iter()
-                    .filter(|&p| scope != EdictScope::EachOpponent || p != controller)
+                    .filter(|p| scoped.contains(p))
                     .collect();
                 let floor = down_to_fewest.then(|| {
                     affected

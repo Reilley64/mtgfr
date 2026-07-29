@@ -21,5 +21,6 @@ controller = "any_player"
 # this artifact deals 2 damage to that land's controller.
 [[abilities.effects]]
 type = "damage"
-mode = "to_entering_permanent_controller"
+mode = "to_players"
+who = "entering_permanents_controller"
 amount = 2

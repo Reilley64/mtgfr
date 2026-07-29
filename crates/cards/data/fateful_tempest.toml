@@ -31,14 +31,15 @@ options = ["past", "present"]
 # You mill a card for each past vote,
 [[abilities.effects]]
 type = "mill"
-mode = "mill_self"
+mode = "mill"
 count = "past_votes"
 
 # then Fateful Tempest deals damage to each opponent equal to the total mana value of cards milled
 # this way.
 [[abilities.effects]]
 type = "damage"
-mode = "each_opponent"
+mode = "to_players"
+who = "each_opponent"
 amount = "total_mana_value_milled_this_way"
 
 # Exile the top card of your library for each present vote. Until the end of your next turn, you

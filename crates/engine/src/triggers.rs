@@ -3079,13 +3079,7 @@ impl Game {
                             controller: scope,
                         },
                     ) => {
-                        let entering_controller = self.controller_of(entering);
-                        let scope_matches = match scope {
-                            EnterController::You => entering_controller == controller,
-                            EnterController::Opponent => entering_controller != controller,
-                            EnterController::AnyPlayer => true,
-                        };
-                        scope_matches
+                        scope.accepts(self.controller_of(entering), controller)
                             && self.permanent_matches(&filter, entering, controller, Some(id))
                     }
                     _ => false,
@@ -3126,11 +3120,9 @@ impl Game {
                     filter,
                     controller: scope,
                 }) => {
-                    let scope_matches = match scope {
-                        EnterController::You | EnterController::AnyPlayer => true,
-                        EnterController::Opponent => false,
-                    };
-                    scope_matches
+                    // The self-fire's actor *is* the watcher, so an `opponent`-scoped
+                    // constellation never sees its own entry.
+                    scope.accepts(controller, controller)
                         && self.permanent_matches(&filter, entering, controller, Some(entering))
                 }
                 _ => false,
@@ -3365,11 +3357,7 @@ impl Game {
                         nth_each_turn,
                         from_hand,
                     }) => {
-                        let caster_matches = match caster {
-                            CasterScope::You => spell_controller == controller,
-                            CasterScope::Opponent => spell_controller != controller,
-                            CasterScope::AnyPlayer => true,
-                        };
+                        let caster_matches = caster.accepts(spell_controller, controller);
                         // ponytail: only `SpellFilter::HasXInCost` gets its own tally
                         //   (`x_spells_cast_this_turn`) — every other filter still falls back to
                         //   the whole-turn `spells_cast_this_turn`, which is correct for the
@@ -3437,11 +3425,9 @@ impl Game {
                 .functional_abilities(id)
                 .iter()
                 .filter(|a| match a.timing {
-                    Timing::Triggered(Trigger::ActivateAbility { caster }) => match caster {
-                        CasterScope::You => activator == controller,
-                        CasterScope::Opponent => activator != controller,
-                        CasterScope::AnyPlayer => true,
-                    },
+                    Timing::Triggered(Trigger::ActivateAbility { caster }) => {
+                        caster.accepts(activator, controller)
+                    }
                     _ => false,
                 })
                 .filter(|a| a.condition.is_none_or(|c| self.condition_holds(c, ctx)))
@@ -3607,7 +3593,7 @@ impl Game {
                     abilities: vec![Ability {
                         timing: Timing::Triggered(Trigger::CastSpell {
                             filter,
-                            caster: CasterScope::You,
+                            caster: WatchedPlayer::You,
                             nth_each_turn: None,
                             from_hand: false,
                         }),
@@ -3761,12 +3747,8 @@ impl Game {
                         drawer: scope,
                         nth_each_turn,
                     }) => {
-                        let drawer_matches = match scope {
-                            CasterScope::You => drawer == controller,
-                            CasterScope::Opponent => drawer != controller,
-                            CasterScope::AnyPlayer => true,
-                        };
-                        drawer_matches && nth_each_turn.is_none_or(|n| nth == u32::from(n))
+                        scope.accepts(drawer, controller)
+                            && nth_each_turn.is_none_or(|n| nth == u32::from(n))
                     }
                     _ => false,
                 })
@@ -5525,6 +5507,7 @@ mod tests {
         Ability {
             timing: Timing::Triggered(trigger),
             effect: Effect::Draw(DrawEffect::Cards {
+                who: PlayerSet::You,
                 count: Amount::Fixed(1),
             }),
             optional: false,
@@ -5670,7 +5653,7 @@ mod tests {
                 "Your Cast Source",
                 leak_abilities(vec![test_trigger_ability(Trigger::CastSpell {
                     filter: SpellFilter::AllSpells,
-                    caster: CasterScope::You,
+                    caster: WatchedPlayer::You,
                     nth_each_turn: None,
                     from_hand: false,
                 })]),
@@ -5683,7 +5666,7 @@ mod tests {
                 "Opponent Cast Source",
                 leak_abilities(vec![test_trigger_ability(Trigger::CastSpell {
                     filter: SpellFilter::AllSpells,
-                    caster: CasterScope::Opponent,
+                    caster: WatchedPlayer::Opponent,
                     nth_each_turn: None,
                     from_hand: false,
                 })]),

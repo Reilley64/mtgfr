@@ -32,7 +32,7 @@ mode = "counter_target_spell"
 [[abilities.effects]]
 type = "misc"
 mode = "schedule_at_next_upkeep"
-who = "target_spell_controller"
+who = "targets_controller"
 then = { type = "choice", mode = "may_draw_up_to", count = 2 }
 
 # You draw a card at the beginning of the next turn's upkeep.

@@ -34,5 +34,6 @@ filter = { without_flying = true }
 # ... and each player. If this spell was kicked, it deals 4 damage ... and each player instead.
 [[abilities.effects]]
 type = "damage"
-mode = "each_player"
+mode = "to_players"
+who = "each_player"
 amount = { condition = { type = "spell_was_kicked" }, then = 4, else = 1 }

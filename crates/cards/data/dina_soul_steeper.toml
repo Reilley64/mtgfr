@@ -27,7 +27,8 @@ timing = "you_gain_life"
 # each opponent loses 1 life
 [[abilities.effects]]
 type = "life"
-mode = "each_opponent_loses"
+mode = "lose"
+who = "each_opponent"
 amount = 1
 
 # {1}, Sacrifice another creature: Dina gets +X/+0 until end of turn, where X is the sacrificed

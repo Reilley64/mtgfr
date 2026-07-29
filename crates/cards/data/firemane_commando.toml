@@ -38,5 +38,6 @@ at_least = 2
 # they draw a card if none of those creatures attacked you.
 [[abilities.effects]]
 type = "draw"
-mode = "attacking_player"
+mode = "cards"
+who = "attacking_player"
 count = 1

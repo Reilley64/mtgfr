@@ -26,5 +26,6 @@ condition = { type = "enchanted_permanents_controllers_upkeep" }
 # this Aura deals 1 damage to that player.
 [[abilities.effects]]
 type = "damage"
-mode = "to_triggering_player"
+mode = "to_players"
+who = "triggering_player"
 amount = 1

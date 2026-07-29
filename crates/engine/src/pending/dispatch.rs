@@ -595,7 +595,7 @@ pub(crate) fn forced(game: &Game) -> Option<Intent> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{DrawEffect, Effect, PlayerId};
+    use crate::{DrawEffect, Effect, PlayerId, PlayerSet};
 
     #[test]
     fn answer_rejects_wrong_intent_for_the_pending_discriminant() {
@@ -604,6 +604,7 @@ mod tests {
             player: PlayerId(0),
             source: 0,
             effect: Effect::Draw(DrawEffect::Cards {
+                who: PlayerSet::You,
                 count: crate::Amount::Fixed(1),
             }),
             resume: crate::MayYesNoResume::Default,
@@ -630,6 +631,7 @@ mod tests {
             player: PlayerId(0),
             source: 0,
             effect: Effect::Draw(DrawEffect::Cards {
+                who: PlayerSet::You,
                 count: crate::Amount::Fixed(1),
             }),
             resume: crate::MayYesNoResume::Default,
@@ -644,6 +646,7 @@ mod tests {
             player: PlayerId(0),
             source: 0,
             effects: vec![Effect::Draw(DrawEffect::Cards {
+                who: PlayerSet::You,
                 count: crate::Amount::Fixed(1),
             })],
         });

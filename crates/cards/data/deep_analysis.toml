@@ -31,5 +31,6 @@ timing = "spell"
 # Target player draws two cards.
 [[abilities.effects]]
 type = "draw"
-mode = "target_player"
+mode = "cards"
+who = "target_player"
 count = 2

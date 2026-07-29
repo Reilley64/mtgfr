@@ -156,9 +156,11 @@ mod tests {
                 source,
                 effects: vec![
                     Effect::Draw(DrawEffect::Cards {
+                        who: PlayerSet::You,
                         count: Amount::Fixed(1),
                     }),
                     Effect::Draw(DrawEffect::Cards {
+                        who: PlayerSet::You,
                         count: Amount::Fixed(2),
                     }),
                 ],
@@ -184,6 +186,7 @@ mod tests {
                 player: P0,
                 source,
                 effects: vec![Effect::Draw(DrawEffect::Cards {
+                    who: PlayerSet::You,
                     count: Amount::Fixed(1),
                 })],
             },
@@ -201,9 +204,11 @@ mod tests {
         let source = source_creature(&mut game);
         let effects = [
             Effect::Draw(DrawEffect::Cards {
+                who: PlayerSet::You,
                 count: Amount::Fixed(1),
             }),
             Effect::Draw(DrawEffect::Cards {
+                who: PlayerSet::You,
                 count: Amount::Fixed(2),
             }),
         ];
@@ -244,6 +249,7 @@ mod tests {
                     controller: P0,
                     source,
                     effect: Effect::Draw(DrawEffect::Cards {
+                        who: PlayerSet::You,
                         count: Amount::Fixed(2)
                     }),
                     target: None,
@@ -252,6 +258,7 @@ mod tests {
                     controller: P0,
                     source,
                     effect: Effect::Draw(DrawEffect::Cards {
+                        who: PlayerSet::You,
                         count: Amount::Fixed(1)
                     }),
                     target: None,

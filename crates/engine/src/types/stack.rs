@@ -1316,8 +1316,8 @@ pub enum PendingChoice {
         source: ObjectId,
         follow_up: &'static [Effect],
     },
-    /// `player` (a [`EdictScope::TargetedPlayers`](super::EdictScope::TargetedPlayers) edict's
-    /// controller, e.g. Priest of Forgotten Gods) chooses "any number of target players" (CR
+    /// `player` (a `chosen_by_controller` edict's controller, e.g. Priest of Forgotten Gods)
+    /// chooses "any number of target players" (CR
     /// 601.2c/608.2b — zero is legal) from `legal` (every living player): between `min` (0) and
     /// `max` (`legal.len()`). Answered by [`Intent::ChooseTargetPlayers`]. The chosen set becomes
     /// the edict's affected players — `keep_one`/`filter`/`life_loss`/`then` are the edict's own

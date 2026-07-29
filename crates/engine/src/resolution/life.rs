@@ -14,170 +14,48 @@ impl Game {
         target: Option<Target>,
         x: u32,
     ) -> Vec<Event> {
-        let _source_name = self.source_name_of(source);
         match effect {
-            LifeEffect::Gain { amount } => {
+            LifeEffect::Gain { who, amount } => {
                 let amount = self.resolve_amount(amount, controller, source, target, x);
-                vec![Event::LifeChanged {
-                    player: controller,
-                    amount: self.life_gain_after_replacements(controller, amount),
-                    source: Some(source),
-                }]
-            }
-            // Invigorate's alternative-cost rider (CR 601.2f — see `LifeEffect::OpponentGains`'s
-            // own doc for the deterministic-opponent-pick ponytail note).
-            LifeEffect::OpponentGains { amount } => {
-                let Some(opponent) = self.living_players().find(|&p| p != controller) else {
-                    return Vec::new();
-                };
-                let amount = self.resolve_amount(amount, controller, source, target, x);
-                vec![Event::LifeChanged {
-                    player: opponent,
-                    amount: self.life_gain_after_replacements(opponent, amount),
-                    source: Some(source),
-                }]
-            }
-            LifeEffect::Lose { amount } => vec![Event::LifeChanged {
-                player: controller,
-                amount: -self.resolve_amount(amount, controller, source, target, x),
-                source: Some(source),
-            }],
-            LifeEffect::SourceOwnerLosesHalfTheirLife => {
-                let owner = self.owner_of(source);
-                // Rounded *up*, so an odd life total costs the extra point. A player already at
-                // or below zero has nothing left to halve.
-                vec![Event::LifeChanged {
-                    player: owner,
-                    amount: -(self.life(owner).max(0) + 1) / 2,
-                    source: Some(source),
-                }]
-            }
-            // Swords to Plowshares' rider: the *target's* controller (its owner, per the
-            // engine's control/ownership conflation) gains life, not this ability's controller.
-            LifeEffect::GainTargetController { amount } => {
-                let object = expect_object_target(target, "a controller-gains-life amount");
-                let gainer = self.owner_of(object);
-                let amount = self.resolve_amount(amount, controller, source, target, x);
-                vec![Event::LifeChanged {
-                    player: gainer,
-                    amount: self.life_gain_after_replacements(gainer, amount),
-                    source: Some(source),
-                }]
-            }
-            // Parasitic Impetus: the enchanted creature's controller (context) loses `amount`
-            // life; this ability's controller (the Aura's controller) gains the same.
-            LifeEffect::AttackerLosesYouGain { attacker, amount } => {
-                let loser = attacker.expect("the attacking player is filled in at placement");
-                let amount = amount as i32;
-                vec![
-                    Event::LifeChanged {
-                        player: loser,
-                        amount: -amount,
-                        source: Some(source),
-                    },
-                    Event::LifeChanged {
-                        player: controller,
-                        amount: self.life_gain_after_replacements(controller, amount),
-                        source: Some(source),
-                    },
-                ]
-            }
-            // Tomik: the attacking opponent (context) loses `life_loss` life; this ability's
-            // controller draws a card.
-            LifeEffect::AttackerLosesYouDraw {
-                attacker,
-                life_loss,
-            } => {
-                let loser = attacker.expect("the attacking player is filled in at placement");
-                let mut events = vec![Event::LifeChanged {
-                    player: loser,
-                    amount: -(life_loss as i32),
-                    source: Some(source),
-                }];
-                events.extend(self.draw_events(controller, 1));
-                events
-            }
-            // Blood Artist: the target player loses life, the controller gains the same.
-            LifeEffect::DrainTarget { amount, .. } => {
-                let Some(Target::Player(loser)) = target else {
-                    panic!("a targeted drain resolves with a chosen player target");
-                };
-                vec![
-                    Event::LifeChanged {
-                        player: loser,
-                        amount: -amount,
-                        source: Some(source),
-                    },
-                    Event::LifeChanged {
-                        player: controller,
-                        amount: self.life_gain_after_replacements(controller, amount),
-                        source: Some(source),
-                    },
-                ]
-            }
-            // Questing Phelddagrif: the target player gains life, with no matching loss.
-            LifeEffect::TargetPlayerGains { amount, .. } => {
-                let Some(Target::Player(gainer)) = target else {
-                    panic!("target-player-gains-life resolves with a chosen player target");
-                };
-                let amount = self.resolve_amount(amount, controller, source, target, x);
-                vec![Event::LifeChanged {
-                    player: gainer,
-                    amount: self.life_gain_after_replacements(gainer, amount),
-                    source: Some(source),
-                }]
-            }
-            // Zulaport Cutthroat: each opponent loses life; the controller gains a flat
-            // `amount` — or, for Exsanguinate's "life lost this way", the summed total.
-            LifeEffect::EachOpponentDrain { amount, sum_gain } => {
-                let amount = self.resolve_amount(amount, controller, source, target, x);
-                let opponents: Vec<PlayerId> =
-                    self.living_players().filter(|&p| p != controller).collect();
-                let mut events: Vec<Event> = opponents
-                    .iter()
-                    .map(|&opponent| Event::LifeChanged {
-                        player: opponent,
-                        amount: -amount,
-                        source: Some(source),
-                    })
-                    .collect();
-                let gain = if sum_gain {
-                    amount * opponents.len() as i32
-                } else {
-                    amount
-                };
-                events.push(Event::LifeChanged {
-                    player: controller,
-                    amount: self.life_gain_after_replacements(controller, gain),
-                    source: Some(source),
-                });
-                events
-            }
-            // Dina, Soul Steeper: each opponent loses life, with no lifegain half (a gain would
-            // re-trigger her "whenever you gain life" ability into a loop).
-            LifeEffect::EachOpponentLoses { amount } => {
-                let amount = self.resolve_amount(amount, controller, source, target, x);
-                self.living_players()
-                    .filter(|&p| p != controller)
-                    .map(|opponent| Event::LifeChanged {
-                        player: opponent,
-                        amount: -amount,
-                        source: Some(source),
-                    })
+                self.players_in(who, controller, target)
+                    .into_iter()
+                    .map(|player| self.life_gain(player, amount, source))
                     .collect()
             }
-            // Vandal's Edit: "Each player loses 2 life" — one simultaneous loss (CR 118.9)
-            // touching every living player, the ability's controller included, in seat order.
-            // Distinct from `EachOpponentLoses`, which carves the controller out.
-            LifeEffect::EachPlayerLoses { amount } => {
+            LifeEffect::Lose { who, amount } => {
                 let amount = self.resolve_amount(amount, controller, source, target, x);
-                self.living_players()
+                self.players_in(who, controller, target)
+                    .into_iter()
                     .map(|player| Event::LifeChanged {
                         player,
                         amount: -amount,
                         source: Some(source),
                     })
                     .collect()
+            }
+            LifeEffect::Drain {
+                who,
+                amount,
+                sum_gain,
+            } => {
+                let amount = self.resolve_amount(amount, controller, source, target, x);
+                let losers = self.players_in(who, controller, target);
+                // Exsanguinate gains the total lost across every victim; Zulaport Cutthroat gains
+                // the flat printed amount however many seats it drained.
+                let gain = match sum_gain {
+                    true => amount * losers.len() as i32,
+                    false => amount,
+                };
+                let mut events: Vec<Event> = losers
+                    .into_iter()
+                    .map(|player| Event::LifeChanged {
+                        player,
+                        amount: -amount,
+                        source: Some(source),
+                    })
+                    .collect();
+                events.push(self.life_gain(controller, gain, source));
+                events
             }
             // Arbiter of Knollridge: each player's life total becomes the highest life total
             // among all players (CR 118.5 — a set is a gain/loss of the difference). A player
@@ -194,11 +72,9 @@ impl Game {
                         let delta = highest - self.life(player);
                         match delta.cmp(&0) {
                             std::cmp::Ordering::Equal => None,
-                            std::cmp::Ordering::Greater => Some(Event::LifeChanged {
-                                player,
-                                amount: self.life_gain_after_replacements(player, delta),
-                                source: Some(source),
-                            }),
+                            std::cmp::Ordering::Greater => {
+                                Some(self.life_gain(player, delta, source))
+                            }
                             std::cmp::Ordering::Less => Some(Event::LifeChanged {
                                 player,
                                 amount: delta,
@@ -208,17 +84,27 @@ impl Game {
                     })
                     .collect()
             }
-            // Ominous Harvest: the target player loses life, with no matching gain.
-            LifeEffect::TargetPlayerLoses { amount } => {
-                let Some(Target::Player(player)) = target else {
-                    panic!("target-player-loses-life resolves with a chosen player target");
-                };
+            LifeEffect::SourceOwnerLosesHalfTheirLife => {
+                let owner = self.owner_of(source);
+                // Rounded *up*, so an odd life total costs the extra point. A player already at
+                // or below zero has nothing left to halve.
                 vec![Event::LifeChanged {
-                    player,
-                    amount: -amount,
+                    player: owner,
+                    amount: -(self.life(owner).max(0) + 1) / 2,
                     source: Some(source),
                 }]
             }
+        }
+    }
+
+    /// A life *gain* event, sized after the recipient's own gain replacements (CR 614) — the
+    /// choke every gain in this family goes through, so none of them can skip a Rest for the
+    /// Weary-style rider.
+    fn life_gain(&self, player: PlayerId, amount: i32, source: ObjectId) -> Event {
+        Event::LifeChanged {
+            player,
+            amount: self.life_gain_after_replacements(player, amount),
+            source: Some(source),
         }
     }
 }

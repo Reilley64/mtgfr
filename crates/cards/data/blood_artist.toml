@@ -26,5 +26,6 @@ timing = "creature_dies_including_this"
 # target player loses 1 life and you gain 1 life
 [[abilities.effects]]
 type = "life"
-mode = "drain_target"
+mode = "drain"
+who = "target_player"
 amount = 1

@@ -25,6 +25,6 @@ type = "token"
 mode = "create"
 token = "ed8ed87e-7c33-4201-81a6-1331b21a93bf"
 count = 2
-controller = "one_per_opponent"
+per_opponent = true
 must_attack_defender = true
 

@@ -38,5 +38,6 @@ timing = "end_step"
 # each opponent loses X life, where X is the amount of life you gained this turn
 [[abilities.effects]]
 type = "life"
-mode = "each_opponent_loses"
+mode = "lose"
+who = "each_opponent"
 amount = "life_gained_this_turn"

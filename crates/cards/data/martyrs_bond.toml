@@ -24,5 +24,5 @@ timing = "nonland_permanent_you_control_dies_including_this"
 [[abilities.effects]]
 type = "choice"
 mode = "each_player_sacrifices"
-scope = "each_opponent"
+who = "each_opponent"
 filter = "shares_type_with_dying_permanent"

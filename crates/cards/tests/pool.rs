@@ -321,6 +321,7 @@ token = "{pest_id}"
     assert!(matches!(
         token.abilities[0].effect,
         Effect::Life(LifeEffect::Gain {
+            who: PlayerSet::You,
             amount: Amount::Fixed(1)
         })
     ));
@@ -795,9 +796,9 @@ fn the_pool_loads_with_expected_card_shapes() {
     let recall = get_by_name("Ancestral Recall").expect("Ancestral Recall is in the pool");
     assert!(matches!(
         recall.abilities[0].effect,
-        Effect::Draw(DrawEffect::TargetPlayer {
+        Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::TargetPlayer,
             count: Amount::Fixed(3),
-            opponent: false,
         })
     ));
 
@@ -845,7 +846,8 @@ fn the_pool_loads_with_expected_card_shapes() {
     };
     assert!(matches!(
         steps[0],
-        Effect::Life(LifeEffect::GainTargetController {
+        Effect::Life(LifeEffect::Gain {
+            who: PlayerSet::TargetsController,
             amount: Amount::TargetPower
         })
     ));
@@ -872,8 +874,8 @@ fn the_pool_loads_with_expected_card_shapes() {
     assert!(matches!(
         tome.abilities[0].effect,
         Effect::Mill(MillEffect::Mill {
+            who: PlayerSet::TargetPlayer,
             count: Amount::Fixed(5),
-            target: TargetSpec::Player
         })
     ));
 
@@ -886,9 +888,10 @@ fn the_pool_loads_with_expected_card_shapes() {
     );
     assert!(matches!(
         blood_artist.abilities[0].effect,
-        Effect::Life(LifeEffect::DrainTarget {
-            amount: 1,
-            opponent: false,
+        Effect::Life(LifeEffect::Drain {
+            who: PlayerSet::TargetPlayer,
+            amount: Amount::Fixed(1),
+            sum_gain: false,
         })
     ));
 
@@ -901,7 +904,8 @@ fn the_pool_loads_with_expected_card_shapes() {
     );
     assert!(matches!(
         zulaport.abilities[0].effect,
-        Effect::Life(LifeEffect::EachOpponentDrain {
+        Effect::Life(LifeEffect::Drain {
+            who: PlayerSet::EachOpponent,
             amount: Amount::Fixed(1),
             sum_gain: false
         })
@@ -921,6 +925,7 @@ fn the_pool_loads_with_expected_card_shapes() {
     assert!(matches!(
         high_market.abilities[1].effect,
         Effect::Life(LifeEffect::Gain {
+            who: PlayerSet::You,
             amount: Amount::Fixed(1)
         })
     ));
@@ -983,6 +988,7 @@ fn the_pool_loads_with_expected_card_shapes() {
     assert!(matches!(
         steps[1],
         Effect::Life(LifeEffect::Lose {
+            who: PlayerSet::You,
             amount: Amount::TargetManaValue
         })
     ));
@@ -994,9 +1000,9 @@ fn the_pool_loads_with_expected_card_shapes() {
     assert_eq!(stroke.cost.colored[Color::Blue.index()], 1);
     assert!(matches!(
         stroke.abilities[0].effect,
-        Effect::Draw(DrawEffect::TargetPlayer {
+        Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::TargetPlayer,
             count: Amount::X,
-            opponent: false,
         })
     ));
 
@@ -1136,7 +1142,8 @@ fn the_pool_loads_with_expected_card_shapes() {
     // Mode 2: each opponent loses 3 / you gain 3 — no target.
     assert!(matches!(
         charm.abilities[2].effect,
-        Effect::Life(LifeEffect::EachOpponentDrain {
+        Effect::Life(LifeEffect::Drain {
+            who: PlayerSet::EachOpponent,
             amount: Amount::Fixed(3),
             sum_gain: false
         })
@@ -1190,17 +1197,15 @@ fn the_pool_loads_with_expected_card_shapes() {
         &prismari.abilities[1].effect,
         &Effect::Sequence {
             steps: std::sync::Arc::from([
-                Effect::Draw(DrawEffect::TargetPlayer {
+                Effect::Draw(DrawEffect::Cards {
+                    who: PlayerSet::TargetPlayer,
                     count: Amount::Fixed(2),
-                    opponent: false,
                 }),
                 Effect::Choice(ChoiceEffect::Discard {
+                    who: PlayerSet::TargetPlayer,
                     count: Amount::Fixed(2),
-                    target_player: true,
                     or_one_matching: None,
                     random: false,
-                    damaged_player: false,
-                    discarder: None,
                 }),
             ]),
         }
@@ -1209,7 +1214,7 @@ fn the_pool_loads_with_expected_card_shapes() {
         prismari.abilities[2].effect,
         Effect::Token(TokenEffect::CreateTreasure {
             count: Amount::Fixed(1),
-            target_player: true,
+            who: PlayerSet::TargetPlayer,
             ..
         })
     ));
@@ -1235,8 +1240,8 @@ fn the_pool_loads_with_expected_card_shapes() {
     assert!(matches!(
         &steps[0],
         Effect::Mill(MillEffect::Mill {
+            who: PlayerSet::TargetPlayer,
             count: Amount::Fixed(3),
-            target: TargetSpec::Player,
         })
     ));
     assert!(matches!(
@@ -1269,9 +1274,10 @@ fn the_pool_loads_with_expected_card_shapes() {
     ));
     assert!(matches!(
         wither.abilities[3].effect,
-        Effect::Life(LifeEffect::DrainTarget {
-            amount: 2,
-            opponent: true,
+        Effect::Life(LifeEffect::Drain {
+            who: PlayerSet::TargetOpponent,
+            amount: Amount::Fixed(2),
+            sum_gain: false,
         })
     ));
 
@@ -1309,7 +1315,7 @@ fn the_pool_loads_with_expected_card_shapes() {
         quandrix.abilities[3].effect,
         Effect::Dig(DigEffect::ShuffleTargetCardsFromGraveyardIntoLibrary {
             max: 3,
-            target_player: true,
+            who: PlayerSet::TargetPlayer,
         })
     ));
 
@@ -1324,7 +1330,7 @@ fn the_pool_loads_with_expected_card_shapes() {
                 types: TypeSet::ENCHANTMENT,
                 ..
             },
-            controller: EnterController::You,
+            controller: WatchedPlayer::You,
         })
     ));
     let Effect::Sequence { steps } = &killian.abilities[0].effect else {
@@ -1371,6 +1377,7 @@ fn the_pool_loads_with_expected_card_shapes() {
     assert!(matches!(
         &steps[1],
         Effect::Life(LifeEffect::Gain {
+            who: PlayerSet::You,
             amount: Amount::Fixed(1)
         })
     ));
@@ -1420,12 +1427,14 @@ fn the_pool_loads_with_expected_card_shapes() {
     assert!(matches!(
         then[0],
         Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::You,
             count: Amount::Fixed(2)
         })
     ));
     assert!(matches!(
         then[1],
-        Effect::Mill(MillEffect::MillSelf {
+        Effect::Mill(MillEffect::Mill {
+            who: PlayerSet::You,
             count: Amount::Fixed(1)
         })
     ));
@@ -1709,7 +1718,7 @@ fn the_pool_loads_with_expected_card_shapes() {
         storm_kiln.abilities[1].effect,
         Effect::Token(TokenEffect::CreateTreasure {
             count: Amount::Fixed(1),
-            target_player: false,
+            who: PlayerSet::You,
             ..
         })
     ));
@@ -1726,6 +1735,7 @@ fn the_pool_loads_with_expected_card_shapes() {
     assert!(matches!(
         big_score.abilities[0].effect,
         Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::You,
             count: Amount::Fixed(2)
         })
     ));
@@ -1733,7 +1743,7 @@ fn the_pool_loads_with_expected_card_shapes() {
         big_score.abilities[1].effect,
         Effect::Token(TokenEffect::CreateTreasure {
             count: Amount::Fixed(2),
-            target_player: false,
+            who: PlayerSet::You,
             ..
         })
     ));
@@ -1785,6 +1795,7 @@ fn the_pool_loads_with_expected_card_shapes() {
     assert!(matches!(
         pest.abilities[0].effect,
         Effect::Life(LifeEffect::Gain {
+            who: PlayerSet::You,
             amount: Amount::Fixed(1)
         })
     ));
@@ -1859,15 +1870,14 @@ fn an_effects_list_parses_into_an_ordered_sequence() {
         steps.as_ref(),
         &[
             Effect::Draw(DrawEffect::Cards {
+                who: PlayerSet::You,
                 count: Amount::Fixed(2)
             }),
             Effect::Choice(ChoiceEffect::Discard {
+                who: PlayerSet::You,
                 count: Amount::Fixed(2),
-                target_player: false,
                 or_one_matching: None,
                 random: false,
-                damaged_player: false,
-                discarder: None,
             }),
         ],
         "draw two, then discard two — in order"
@@ -2219,8 +2229,8 @@ fn unlimited_copper_tablet_bills_the_upkeeps_own_player() {
     );
     assert_eq!(
         ability.effect,
-        Effect::Damage(DamageEffect::ToTriggeringPlayer {
-            player: None,
+        Effect::Damage(DamageEffect::ToPlayers {
+            who: PlayerSet::TriggeringPlayer { player: None },
             amount: Amount::Fixed(1),
         }),
         "deals 1 damage to that player"
@@ -2242,8 +2252,8 @@ fn unlimited_creature_bond_bills_the_dying_host() {
     );
     assert_eq!(
         ability.effect,
-        Effect::Damage(DamageEffect::ToDyingEnchantedCreaturesController {
-            player: None,
+        Effect::Damage(DamageEffect::ToPlayers {
+            who: PlayerSet::DyingEnchantedCreaturesController { player: None },
             amount: Amount::DyingEnchantedCreatureToughness,
         }),
         "damage equal to that creature's toughness to the creature's controller"
@@ -2279,8 +2289,8 @@ fn unlimited_upkeep_tax_auras_bill_the_host_permanents_controller() {
         );
         assert_eq!(
             ability.effect,
-            Effect::Damage(DamageEffect::ToTriggeringPlayer {
-                player: None,
+            Effect::Damage(DamageEffect::ToPlayers {
+                who: PlayerSet::TriggeringPlayer { player: None },
                 amount: Amount::Fixed(1),
             }),
             "{name} deals 1 damage to that player"
@@ -2354,7 +2364,7 @@ fn unlimited_black_vise_taxes_only_the_upkeep_of_the_opponent_it_chose() {
     };
     assert_eq!(enters.effect, Effect::Choice(ChoiceEffect::ChooseOpponent));
     assert_eq!(upkeep.condition, Some(Condition::ChosenPlayersUpkeep));
-    let Effect::Damage(DamageEffect::ToTriggeringPlayer { amount, .. }) = upkeep.effect else {
+    let Effect::Damage(DamageEffect::ToPlayers { amount, .. }) = upkeep.effect else {
         panic!("it damages the player whose upkeep it is");
     };
     assert_eq!(
@@ -2670,8 +2680,8 @@ fn unlimited_power_leak_caps_its_prevention_at_the_damage_it_deals() {
     );
     assert_eq!(
         steps[1],
-        Effect::Damage(DamageEffect::ToTriggeringPlayer {
-            player: None,
+        Effect::Damage(DamageEffect::ToPlayers {
+            who: PlayerSet::TriggeringPlayer { player: None },
             amount: Amount::Fixed(2),
         }),
     );
@@ -2769,7 +2779,7 @@ fn unlimited_karma_counts_the_taxed_players_swamps() {
         ability.timing,
         Timing::Triggered(Trigger::EachUpkeep)
     ));
-    let Effect::Damage(DamageEffect::ToTriggeringPlayer { amount, .. }) = &ability.effect else {
+    let Effect::Damage(DamageEffect::ToPlayers { amount, .. }) = &ability.effect else {
         panic!("expected the upkeep tax to bill the player whose upkeep it is");
     };
     let Amount::PerPermanentMatching { filter, .. } = amount else {
@@ -2786,9 +2796,9 @@ fn unlimited_power_surge_bills_a_turn_start_snapshot() {
     let surge = get_by_name("Power Surge").expect("Power Surge is in the pool");
     assert!(matches!(
         surge.abilities[0].effect,
-        Effect::Damage(DamageEffect::ToTriggeringPlayer {
+        Effect::Damage(DamageEffect::ToPlayers {
             amount: Amount::UntappedLandsAtTurnStart,
-            ..
+            who: PlayerSet::TriggeringPlayer { .. },
         })
     ));
 }
@@ -2844,15 +2854,15 @@ fn unlimited_ankh_of_mishra_bills_the_lands_controller() {
                     types: TypeSet::LAND,
                     ..
                 },
-                controller: EnterController::AnyPlayer,
+                controller: WatchedPlayer::AnyPlayer,
             })
         ),
         "whenever a land — any player's — enters"
     );
     assert_eq!(
         ability.effect,
-        Effect::Damage(DamageEffect::ToEnteringPermanentController {
-            entering: None,
+        Effect::Damage(DamageEffect::ToPlayers {
+            who: PlayerSet::EnteringPermanentsController { permanent: None },
             amount: Amount::Fixed(2),
         }),
         "deals 2 damage to that land's controller"
@@ -3131,7 +3141,8 @@ fn unlimited_burn_spells_deal_their_printed_damage() {
             }),
             // The 2 to its own caster is damage, not life loss — Psionic Blast can be
             // prevented, redirected, or seen by a damage watcher like any other 2 damage.
-            Effect::Damage(DamageEffect::ToSelf {
+            Effect::Damage(DamageEffect::ToPlayers {
+                who: PlayerSet::You,
                 amount: Amount::Fixed(2)
             }),
         ],
@@ -3154,7 +3165,10 @@ fn unlimited_burn_spells_deal_their_printed_damage() {
                 }),
                 include_planeswalkers: false,
             }),
-            Effect::Damage(DamageEffect::EachPlayer { amount: Amount::X }),
+            Effect::Damage(DamageEffect::ToPlayers {
+                who: PlayerSet::EachPlayer,
+                amount: Amount::X
+            }),
         ],
         "X to each flier and X to each player — the caster included"
     );
@@ -3201,12 +3215,10 @@ fn unlimited_utility_spells_carry_their_printed_effects() {
             "Mind Twist",
             // "discards X cards at random" — X off the cast, and no one chooses.
             Effect::Choice(ChoiceEffect::Discard {
+                who: PlayerSet::TargetPlayer,
                 count: Amount::X,
-                target_player: true,
                 or_one_matching: None,
                 random: true,
-                damaged_player: false,
-                discarder: None,
             }),
         ),
         (
@@ -3232,9 +3244,9 @@ fn unlimited_utility_spells_carry_their_printed_effects() {
         ),
         (
             "Stream of Life",
-            Effect::Life(LifeEffect::TargetPlayerGains {
+            Effect::Life(LifeEffect::Gain {
+                who: PlayerSet::TargetPlayer,
                 amount: Amount::X,
-                opponent: false,
             }),
         ),
         (
@@ -3300,6 +3312,7 @@ fn unlimited_utility_spells_carry_their_printed_effects() {
     assert_eq!(
         steps[0],
         Effect::Life(LifeEffect::Gain {
+            who: PlayerSet::You,
             amount: Amount::DamageTakenThisTurn,
         }),
         "life equal to the damage dealt to you this turn"
@@ -3394,7 +3407,8 @@ fn unlimited_utility_spells_carry_their_printed_effects() {
                     filter: None,
                     include_planeswalkers: false,
                 }),
-                Effect::Damage(DamageEffect::EachPlayer {
+                Effect::Damage(DamageEffect::ToPlayers {
+                    who: PlayerSet::EachPlayer,
                     amount: mountains_destroyed,
                 }),
             ]
@@ -3430,9 +3444,9 @@ fn unlimited_utility_spells_carry_their_printed_effects() {
     assert_eq!(
         options.as_ref(),
         &[
-            Effect::Life(LifeEffect::TargetPlayerGains {
+            Effect::Life(LifeEffect::Gain {
+                who: PlayerSet::TargetPlayer,
                 amount: Amount::Fixed(3),
-                opponent: false,
             }),
             Effect::Misc(MiscEffect::PreventNextDamage {
                 shield_source: false,
@@ -3630,12 +3644,10 @@ fn unlimited_disrupting_scepter_is_turn_restricted_not_sorcery_speed() {
     assert_eq!(
         ability.effect,
         Effect::Choice(ChoiceEffect::Discard {
+            who: PlayerSet::TargetPlayer,
             count: Amount::Fixed(1),
-            target_player: true,
             or_one_matching: None,
             random: false,
-            damaged_player: false,
-            discarder: None,
         }),
         "target player discards a card"
     );
@@ -3672,6 +3684,7 @@ fn unlimited_tap_abilities_carry_their_printed_effects() {
         (
             "Jayemdae Tome",
             Effect::Draw(DrawEffect::Cards {
+                who: PlayerSet::You,
                 count: Amount::Fixed(1),
             }),
         ),
@@ -3798,7 +3811,8 @@ fn unlimited_tap_abilities_carry_their_printed_effects() {
                 exile_instead_of_dying: false,
                 gain_life_equal_to_damage: false,
             }),
-            Effect::Damage(DamageEffect::ToSelf {
+            Effect::Damage(DamageEffect::ToPlayers {
+                who: PlayerSet::You,
                 amount: Amount::Fixed(3)
             }),
         ],
@@ -3950,12 +3964,10 @@ fn unlimited_triggers_fire_off_the_event_their_oracle_names() {
     assert_eq!(
         specter.abilities[0].effect,
         Effect::Choice(ChoiceEffect::Discard {
+            who: PlayerSet::DamagedPlayer { player: None },
             count: Amount::Fixed(1),
-            target_player: false,
             or_one_matching: None,
             random: true,
-            damaged_player: true,
-            discarder: None,
         })
     );
 
@@ -3998,7 +4010,8 @@ fn unlimited_triggers_fire_off_the_event_their_oracle_names() {
     );
     assert_eq!(
         otherwise,
-        &[Effect::Damage(DamageEffect::ToSelf {
+        &[Effect::Damage(DamageEffect::ToPlayers {
+            who: PlayerSet::You,
             amount: Amount::Fixed(8)
         })],
         "the unpaid Force stays on the battlefield and mauls you for 8"
@@ -4023,7 +4036,8 @@ fn unlimited_triggers_fire_off_the_event_their_oracle_names() {
     assert!(filter.other, "'other than this creature' — never itself");
     assert_eq!(
         otherwise,
-        &[Effect::Damage(DamageEffect::ToSelf {
+        &[Effect::Damage(DamageEffect::ToPlayers {
+            who: PlayerSet::You,
             amount: Amount::Fixed(7)
         })],
         "a starving Lord bites its controller for 7"
@@ -4036,7 +4050,7 @@ fn unlimited_triggers_fire_off_the_event_their_oracle_names() {
         enchantress.abilities[0].timing,
         Timing::Triggered(Trigger::CastSpell {
             filter: SpellFilter::Enchantment,
-            caster: CasterScope::You,
+            caster: WatchedPlayer::You,
             nth_each_turn: None,
             from_hand: false,
         })
@@ -4076,7 +4090,8 @@ fn pestilence_sacrifices_itself_only_once_no_creatures_remain() {
                 filter: None,
                 include_planeswalkers: false,
             }),
-            Effect::Damage(DamageEffect::EachPlayer {
+            Effect::Damage(DamageEffect::ToPlayers {
+                who: PlayerSet::EachPlayer,
                 amount: Amount::Fixed(1)
             }),
         ],
@@ -4504,8 +4519,10 @@ fn unlimited_dingus_egg_watches_lands_dying_and_bills_their_controller() {
         egg.abilities[0].timing,
         Timing::Triggered(Trigger::LandPutIntoGraveyard)
     );
-    let Effect::Damage(DamageEffect::ToTriggeringPlayer { amount, player }) =
-        egg.abilities[0].effect
+    let Effect::Damage(DamageEffect::ToPlayers {
+        amount,
+        who: PlayerSet::TriggeringPlayer { player },
+    }) = egg.abilities[0].effect
     else {
         panic!("damage aimed at the player the trigger names");
     };
@@ -5377,7 +5394,8 @@ fn unlimited_balance_levels_lands_then_hands_then_creatures() {
     };
     let sacrifices = |filter| {
         Effect::Choice(ChoiceEffect::EachPlayerSacrifices {
-            scope: engine::EdictScope::AllPlayers,
+            who: engine::PlayerSet::EachPlayer,
+            chosen_by_controller: false,
             keep_one: false,
             filter,
             life_loss: 0,
@@ -5392,7 +5410,7 @@ fn unlimited_balance_levels_lands_then_hands_then_creatures() {
         [
             sacrifices(PermanentFilter::of(TypeSet::LAND)),
             Effect::Choice(ChoiceEffect::EachPlayerDiscards {
-                scope: engine::EdictScope::AllPlayers,
+                who: engine::PlayerSet::EachPlayer,
                 down_to_fewest: true,
             }),
             sacrifices(PermanentFilter::of(TypeSet::CREATURE)),
@@ -5447,6 +5465,7 @@ fn unlimited_lich_spends_your_life_total_and_bills_you_for_every_point_after() {
     assert_eq!(
         entry.effect,
         Effect::Life(LifeEffect::Lose {
+            who: PlayerSet::You,
             amount: Amount::YourLifeTotal
         }),
         "the whole life total, read live as the enchantment enters"
@@ -5462,7 +5481,8 @@ fn unlimited_lich_spends_your_life_total_and_bills_you_for_every_point_after() {
     assert_eq!(
         damage.effect,
         Effect::Choice(ChoiceEffect::EachPlayerSacrifices {
-            scope: engine::EdictScope::You,
+            who: engine::PlayerSet::You,
+            chosen_by_controller: false,
             keep_one: false,
             filter: PermanentFilter {
                 token: engine::TokenFilter::Nontoken,
