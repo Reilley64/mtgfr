@@ -702,15 +702,13 @@ impl Effect {
             Effect::Copy(CopyEffect::TargetSpell { .. }) => TargetSpec::InstantOrSorcerySpellOnStack,
             Effect::Misc(MiscEffect::CounterTargetSpell { filter, .. }) => TargetSpec::SpellOnStack(filter),
             Effect::Misc(MiscEffect::CounterTargetActivatedAbility) => TargetSpec::ActivatedAbilityOnStack,
-            // The cast-time target is the *opponent's* creature; the controller's own creature
-            // is chosen at resolution (see `Effect::Misc(MiscEffect::Fight)`'s doc comment).
+            // Printed order (CR 601.2c): "target creature you control fights target creature you
+            // don't control" names the ally first, so it is this effect's own clause — the enemy
+            // is the second clause, [`Effect::second_target`] below.
             Effect::Misc(MiscEffect::Fight {
                 ally_is_shared_target: false,
                 ..
-            }) => TargetSpec::Permanent(PermanentFilter {
-                controller: FilterController::Opponent,
-                ..PermanentFilter::of(TypeSet::CREATURE)
-            }),
+            }) => TargetSpec::CreatureYouControl,
             // Primal Might's mirror shape: the ally is a *preceding* Sequence step's target
             // (the pump); this step defers to it, same rule as the no-target-of-its-own steps
             // above.
@@ -1131,6 +1129,25 @@ Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
                 .unwrap_or_default(),
             _ => TargetCount::default(),
         }
+    }
+
+    /// This effect's *second* independent target clause, chosen right after its own at
+    /// announcement (CR 601.2c) — Infectious Bite / Decisive Denial mode 0's "… to target creature
+    /// you don't control", the enemy half of the ally named by [`Effect::target`]. `None` for
+    /// everything else, including Primal Might's shape, whose enemy is an optional
+    /// resolution-time choice instead.
+    pub fn second_target(&self) -> Option<TargetSpec> {
+        let Effect::Misc(MiscEffect::Fight {
+            ally_is_shared_target: false,
+            ..
+        }) = self
+        else {
+            return None;
+        };
+        Some(TargetSpec::Permanent(PermanentFilter {
+            controller: FilterController::Opponent,
+            ..PermanentFilter::of(TypeSet::CREATURE)
+        }))
     }
 
     /// Whether this effect reads a triggered ability's *second* independent target clause
