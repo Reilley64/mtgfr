@@ -138,7 +138,34 @@ impl Game {
                     .filter(|&p| p != controller && p != damaged)
                     .collect()
             }
+            PlayerSet::DamagedPlayer { player } => {
+                vec![player.expect("the damaged player is filled in at placement")]
+            }
+            PlayerSet::DamagingPermanentsController { player } => {
+                vec![player.expect("the damaging permanent's controller is filled in at placement")]
+            }
         }
+    }
+
+    /// The single seat a [`PlayerSet`] names, for the effects that address exactly one player —
+    /// a discard pause asks *someone*, and there is no such thing as pausing half a table.
+    ///
+    /// `None` when the set is empty: a targeted seat whose target was lost (CR 608.2b), which
+    /// resolves as doing nothing rather than as a panic. A set naming several seats is an
+    /// authoring error on a one-seat effect and panics — the card wants a fan-out mode instead.
+    pub(crate) fn sole_player_in(
+        &self,
+        who: PlayerSet,
+        controller: PlayerId,
+        target: Option<Target>,
+    ) -> Option<PlayerId> {
+        let players = self.players_in(who, controller, target);
+        assert!(
+            players.len() <= 1,
+            "{who:?} names {} seats on an effect that addresses one",
+            players.len()
+        );
+        players.first().copied()
     }
 
     /// The owner (or controller, if `to_controller`) of a [`Sequence`](Effect::Sequence)'s shared

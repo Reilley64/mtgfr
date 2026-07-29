@@ -5802,9 +5802,13 @@
                   "default": false,
                   "type": "boolean"
                 },
-                "target_player": {
-                  "default": false,
-                  "type": "boolean"
+                "who": {
+                  "allOf": [
+                    {
+                      "$ref": "#/$defs/PlayerSet"
+                    }
+                  ],
+                  "description": "Who the Treasures land under — the ability's controller by default, `target_player` for the chosen seat (Prismari Command's \"target player creates a Treasure token\")."
                 }
               },
               "required": [
@@ -7272,9 +7276,13 @@
                   ],
                   "type": "string"
                 },
-                "target_player": {
-                  "default": false,
-                  "type": "boolean"
+                "who": {
+                  "allOf": [
+                    {
+                      "$ref": "#/$defs/PlayerSet"
+                    }
+                  ],
+                  "description": "Whose graveyard is shuffled back — the ability's controller by default (Perpetual Timepiece), `target_player` for the chosen seat. One seat, so a multi-seat set is rejected at resolution."
                 }
               },
               "required": [
@@ -7451,26 +7459,6 @@
             {
               "properties": {
                 "count": {
-                  "format": "uint32",
-                  "minimum": 0.0,
-                  "type": "integer"
-                },
-                "mode": {
-                  "enum": [
-                    "damaging_creature_controller_may_draw"
-                  ],
-                  "type": "string"
-                }
-              },
-              "required": [
-                "count",
-                "mode"
-              ],
-              "type": "object"
-            },
-            {
-              "properties": {
-                "count": {
                   "format": "uint8",
                   "minimum": 0.0,
                   "type": "integer"
@@ -7493,11 +7481,6 @@
                 "count": {
                   "$ref": "#/$defs/Amount"
                 },
-                "damaged_player": {
-                  "default": false,
-                  "description": "\"**That player** discards a card at random\" (Hypnotic Specter) — the discarder is whoever this ability's source just damaged, not its controller. Only meaningful under a damage watch; Looter il-Kor's same-trigger \"draw a card, then discard a card\" leaves it unset, because *its* discard is the controller's.",
-                  "type": "boolean"
-                },
                 "mode": {
                   "enum": [
                     "discard"
@@ -7519,9 +7502,13 @@
                   "description": "\"Discards a card **at random**\" (Hypnotic Specter, Mind Twist): nobody chooses, so this discard raises no pause at all — it resolves straight through [`Game::run_misc_choreo`](crate::Game::run_misc_choreo), picking from the discarder's hand with the engine's injected per-op RNG.",
                   "type": "boolean"
                 },
-                "target_player": {
-                  "default": false,
-                  "type": "boolean"
+                "who": {
+                  "allOf": [
+                    {
+                      "$ref": "#/$defs/PlayerSet"
+                    }
+                  ],
+                  "description": "Who discards: the ability's controller by default (Looter il-Kor's \"draw a card, then discard a card\"), `target_player` for the chosen seat (Prismari Command), or `damaged_player` for whoever this ability's source just damaged (Hypnotic Specter's \"*that player* discards a card at random\"). A one-seat pause, so a multi-seat set is rejected at resolution — \"each player discards\" is [`EachPlayerDiscards`](Self::EachPlayerDiscards), which fans out and tallies."
                 }
               },
               "required": [
@@ -7864,6 +7851,28 @@
               },
               "required": [
                 "cost",
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "\"`who` may draw `count` cards\" — Questing Phelddagrif's \"target opponent may draw a card\", Edric's \"that creature's controller may draw a card\". The *drawer* answers, not the ability's controller (that is [`MayDrawUnlessPays`](Self::MayDrawUnlessPays)), so `who` names one seat and a multi-seat set is rejected at resolution.\n\nDistinct from [`MayDrawUpTo`](Self::MayDrawUpTo), which asks for a *number* rather than yes/no.",
+              "properties": {
+                "count": {
+                  "$ref": "#/$defs/Amount"
+                },
+                "mode": {
+                  "enum": [
+                    "may_draw"
+                  ],
+                  "type": "string"
+                },
+                "who": {
+                  "$ref": "#/$defs/PlayerSet"
+                }
+              },
+              "required": [
+                "count",
                 "mode"
               ],
               "type": "object"
@@ -8260,28 +8269,6 @@
               "required": [
                 "mode",
                 "target"
-              ],
-              "type": "object"
-            },
-            {
-              "properties": {
-                "count": {
-                  "$ref": "#/$defs/Amount"
-                },
-                "mode": {
-                  "enum": [
-                    "target_player_may_draw"
-                  ],
-                  "type": "string"
-                },
-                "opponent": {
-                  "default": false,
-                  "type": "boolean"
-                }
-              },
-              "required": [
-                "count",
-                "mode"
               ],
               "type": "object"
             }
@@ -11519,6 +11506,32 @@
           },
           "required": [
             "dying_enchanted_creatures_controller"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "The player the source just damaged (Hypnotic Specter's \"whenever this creature deals damage to an opponent, **that player** discards a card at random\") — the same trigger snapshot [`PlayerSet::EachOtherOpponent`] reads, naming the damaged seat itself rather than everyone else.",
+          "properties": {
+            "damaged_player": {
+              "type": "object"
+            }
+          },
+          "required": [
+            "damaged_player"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "The controller of the permanent that dealt the damage (Edric's \"whenever a creature you control deals combat damage to a player, **that creature's controller** may draw a card\") — snapshotted at trigger placement, since Edric's own controller and the damaging creature's part ways the moment the creature is stolen.",
+          "properties": {
+            "damaging_permanents_controller": {
+              "type": "object"
+            }
+          },
+          "required": [
+            "damaging_permanents_controller"
           ],
           "type": "object"
         },

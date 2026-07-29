@@ -60,8 +60,10 @@ pub enum TokenEffect {
     CreateTreasure {
         #[cfg_attr(feature = "card-dsl", serde(default = "de::one_amount"))]
         count: Amount,
+        /// Who the Treasures land under — the ability's controller by default, `target_player` for
+        /// the chosen seat (Prismari Command's "target player creates a Treasure token").
         #[cfg_attr(feature = "card-dsl", serde(default))]
-        target_player: bool,
+        who: PlayerSet,
         #[cfg_attr(feature = "card-dsl", serde(default))]
         tapped: bool,
     },

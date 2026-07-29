@@ -51,17 +51,31 @@ function playerPhrase(params: MessageParams): string {
   if (who === "triggering_player") return "that player";
   if (who === "entering_permanents_controller") return "that permanent's controller";
   if (who === "dying_enchanted_creatures_controller") return "that creature's controller";
+  if (who === "damaged_player") return "that player";
+  if (who === "damaging_permanents_controller") return "that creature's controller";
   if (who === "an_opponent") return "an opponent";
   // `PlayerSet::You` is the unwritten default, so an absent `who` reads as the controller.
   return "you";
 }
 
-/** The same set as a sentence subject, with a regular verb conjugated to match — "You gain", "Each opponent draws". */
-function playerClause(params: MessageParams, verb: "gain" | "lose" | "draw" | "mill"): string {
+/** The same set as a capitalized sentence subject — "You", "Target player", "That creature's controller". */
+function playerSubject(params: MessageParams): string {
   const phrase = playerPhrase(params);
-  const subject = `${phrase[0].toUpperCase()}${phrase.slice(1)}`;
+  return `${phrase[0].toUpperCase()}${phrase.slice(1)}`;
+}
+
+/** The possessive to match that subject — "your graveyard" vs "their graveyard". */
+function playerPossessive(params: MessageParams): string {
+  return playerPhrase(params) === "you" ? "your" : "their";
+}
+
+/** The same set as a sentence subject, with a regular verb conjugated to match — "You gain", "Each opponent draws". */
+function playerClause(
+  params: MessageParams,
+  verb: "gain" | "lose" | "draw" | "mill" | "discard" | "shuffle" | "create",
+): string {
   // "You" is the only set that takes a bare verb; every other phrase is third-person singular.
-  return phrase === "you" ? `${subject} ${verb}` : `${subject} ${verb}s`;
+  return playerPhrase(params) === "you" ? `${playerSubject(params)} ${verb}` : `${playerSubject(params)} ${verb}s`;
 }
 
 function definingPtLead(when: MessageValue): string {
@@ -173,8 +187,6 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     `Look at ${param(params, "target")}'s hand and choose a card from it. That player plays that card if able`,
   "effect.choice_councils_dilemma_vote": (params) =>
     `Starting with you, each player votes for ${humanize(param(params, "options"))}`,
-  "effect.choice_damaging_creature_controller_may_draw": (params) =>
-    `That creature's controller may draw ${param(params, "count")}`,
   "effect.choice_defenders_divide_blockers_among_attackers": () =>
     "Instead of declaring blockers, each defending player divides their creatures into one pile per attacking creature, and the piles are assigned to those attackers at random",
   "effect.choice_defenders_split_blockers_into_piles": () =>
@@ -183,9 +195,9 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     `Defending player sacrifices ${param(params, "count")} permanents of their choice`,
   "effect.choice_discard": (params) => {
     const suffix = bool(params, "random") ? " at random" : "";
-    return bool(params, "target_player")
-      ? `Target player discards ${param(params, "count")}${suffix}${bool(params, "or_one_matching") ? " unless they discard a land card" : ""}`
-      : `Discard ${param(params, "count")}${suffix}${bool(params, "or_one_matching") ? " unless you discard a land card" : ""}`;
+    const pronoun = playerPhrase(params) === "you" ? "you" : "they";
+    const unless = bool(params, "or_one_matching") ? ` unless ${pronoun} discard a land card` : "";
+    return `${playerClause(params, "discard")} ${param(params, "count")}${suffix}${unless}`;
   },
   "effect.choice_each_other_token_becomes_copy_of_chosen": literal(
     "You may choose a token you control; if you do, each other token you control becomes a copy of that token",
@@ -225,6 +237,7 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   ),
   "effect.choice_may_discard": literal("You may discard a card"),
   "effect.choice_may_reveal_land_from_hand": literal("You may reveal a matching land card from your hand"),
+  "effect.choice_may_draw": (params) => `${playerSubject(params)} may draw ${param(params, "count")}`,
   "effect.choice_may_draw_unless_pays": (params) =>
     `You may draw a card unless that player pays ${param(params, "cost")}`,
   "effect.choice_may_draw_up_to": (params) => `You may draw up to ${param(params, "count")}`,
@@ -264,7 +277,6 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   ),
   "effect.choice_set_own_color_until_end_of_turn": literal("Become the color of your choice until end of turn"),
   "effect.choice_target_player_exiles_from_graveyard": literal("Target player exiles a card from their graveyard"),
-  "effect.choice_target_player_may_draw": (params) => `Target player may draw ${param(params, "count")}`,
   "effect.choose_one": (_params, children) => `Choose one -- ${children.join(" • ")}`,
   "effect.conditional": (_params, children) => children.join(", then "),
   "effect.control_attach_self_to_entering": literal("Attach this to that creature"),
@@ -408,7 +420,7 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     `Search your library for ${humanize(param(params, "filter", "a card"))}, put it ${searchDest(param(params, "to_zone"))}`,
   "effect.dig_shuffle_library": literal("Shuffle your library"),
   "effect.dig_shuffle_target_cards_from_graveyard_into_library": (params) =>
-    `${bool(params, "target_player") ? "Target player shuffles" : "Shuffle"} ${shuffleCount(params)} target cards from ${bool(params, "target_player") ? "their" : "your"} graveyard into ${bool(params, "target_player") ? "their" : "your"} library`,
+    `${playerClause(params, "shuffle")} ${shuffleCount(params)} target cards from ${playerPossessive(params)} graveyard into ${playerPossessive(params)} library`,
   "effect.dig_surveil": (params) => `Surveil ${param(params, "count")}`,
   "effect.discard": (params) => `Discard ${param(params, "count")}`,
   "effect.draw_cards": (params) => `${playerClause(params, "draw")} ${param(params, "count")}`,
@@ -702,7 +714,7 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.token_create_copy": (params) =>
     `Create ${param(params, "count", 1)} token copy/copies of ${bool(params, "entering") ? "that creature" : "target creature"}${bool(params, "sacrifice_at_next_end_step") ? "; sacrifice it at the beginning of the next end step" : ""}${bool(params, "exile_at_next_end_step") ? "; exile it at the beginning of the next end step" : ""}`,
   "effect.token_create_treasure": (params) =>
-    `${bool(params, "target_player") ? "Target player creates" : "Create"} ${param(params, "count", 1)} Treasure token(s)`,
+    `${playerClause(params, "create")} ${param(params, "count", 1)} Treasure token(s)`,
   "effect.token_myriad_token_copies": literal(
     "For each opponent other than the defending player, create a token copy that's tapped and attacking that opponent; exile the tokens at the end of combat",
   ),

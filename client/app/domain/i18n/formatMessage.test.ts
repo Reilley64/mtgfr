@@ -42,6 +42,53 @@ describe("formatMessage", () => {
     ).toBe("Deal 2 damage to each other opponent");
   });
 
+  it("names the discarder of a discard from its player set", () => {
+    expect(
+      formatMessage({
+        key: "effect.choice_discard",
+        params: [{ name: "count", int_value: 1 }],
+        children: [],
+      }),
+    ).toBe("You discard 1");
+    expect(
+      formatMessage({
+        key: "effect.choice_discard",
+        params: [
+          { name: "count", int_value: 1 },
+          { name: "who", string_value: "damaged_player" },
+          { name: "random", bool_value: true },
+        ],
+        children: [],
+      }),
+    ).toBe("That player discards 1 at random");
+  });
+
+  it("names the drawer of a may-draw from its player set", () => {
+    expect(
+      formatMessage({
+        key: "effect.choice_may_draw",
+        params: [
+          { name: "who", string_value: "damaging_permanents_controller" },
+          { name: "count", int_value: 1 },
+        ],
+        children: [],
+      }),
+    ).toBe("That creature's controller may draw 1");
+  });
+
+  it("names the Treasure recipient from its player set", () => {
+    expect(
+      formatMessage({
+        key: "effect.token_create_treasure",
+        params: [
+          { name: "count", int_value: 1 },
+          { name: "who", string_value: "target_player" },
+        ],
+        children: [],
+      }),
+    ).toBe("Target player creates 1 Treasure token(s)");
+  });
+
   it("joins sequence children with then", () => {
     expect(
       formatMessage({

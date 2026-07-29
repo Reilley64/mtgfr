@@ -119,7 +119,6 @@ message_keys! {
     EFFECT_CHOICE_CHOOSE_OPPONENT => "effect.choice_choose_opponent",
     EFFECT_CHOICE_CONTROL_PLAYER_TO_PLAY_CARD_FROM_HAND => "effect.choice_control_player_to_play_card_from_hand",
     EFFECT_CHOICE_COUNCILS_DILEMMA_VOTE => "effect.choice_councils_dilemma_vote",
-    EFFECT_CHOICE_DAMAGING_CREATURE_CONTROLLER_MAY_DRAW => "effect.choice_damaging_creature_controller_may_draw",
     EFFECT_CHOICE_DEFENDERS_DIVIDE_BLOCKERS_AMONG_ATTACKERS => "effect.choice_defenders_divide_blockers_among_attackers",
     EFFECT_CHOICE_DEFENDERS_SPLIT_BLOCKERS_INTO_PILES => "effect.choice_defenders_split_blockers_into_piles",
     EFFECT_CHOICE_DEFENDING_PLAYER_SACRIFICES => "effect.choice_defending_player_sacrifices",
@@ -142,6 +141,7 @@ message_keys! {
     EFFECT_CHOICE_MAY_DISCARD => "effect.choice_may_discard",
     EFFECT_CHOICE_MAY_REVEAL_LAND_FROM_HAND => "effect.choice_may_reveal_land_from_hand",
     EFFECT_CHOICE_MAY_DRAW_UNLESS_PAYS => "effect.choice_may_draw_unless_pays",
+    EFFECT_CHOICE_MAY_DRAW => "effect.choice_may_draw",
     EFFECT_CHOICE_MAY_DRAW_UP_TO => "effect.choice_may_draw_up_to",
     EFFECT_CHOICE_MAY_DRAW_UP_TO_THEN_OPPONENT_MAY_REPEAT => "effect.choice_may_draw_up_to_then_opponent_may_repeat",
     EFFECT_CHOICE_MAY_EXILE_DISCARDED_NONLAND_MAY_PLAY => "effect.choice_may_exile_discarded_nonland_may_play",
@@ -160,7 +160,6 @@ message_keys! {
     EFFECT_CHOICE_SACRIFICE_SELF_UNLESS_RETURN_LAND => "effect.choice_sacrifice_self_unless_return_land",
     EFFECT_CHOICE_SET_OWN_COLOR_UNTIL_END_OF_TURN => "effect.choice_set_own_color_until_end_of_turn",
     EFFECT_CHOICE_TARGET_PLAYER_EXILES_FROM_GRAVEYARD => "effect.choice_target_player_exiles_from_graveyard",
-    EFFECT_CHOICE_TARGET_PLAYER_MAY_DRAW => "effect.choice_target_player_may_draw",
     EFFECT_DAMAGE_EACH_CREATURE => "effect.damage_each_creature",
     EFFECT_DAMAGE_RADIANCE => "effect.damage_radiance",
     EFFECT_DAMAGE_TARGET => "effect.damage_target",
@@ -492,6 +491,8 @@ fn who_param(who: PlayerSet) -> MessageParam {
             PlayerSet::DyingEnchantedCreaturesController { .. } => {
                 "dying_enchanted_creatures_controller"
             }
+            PlayerSet::DamagedPlayer { .. } => "damaged_player",
+            PlayerSet::DamagingPermanentsController { .. } => "damaging_permanents_controller",
             PlayerSet::AnOpponent => "an_opponent",
         },
     )
@@ -1606,12 +1607,10 @@ impl EffectMessage for Effect {
                 MessageRef::new(MessageKey::EFFECT_TOKEN_CREATE)
                     .with_params(vec![amount_param("count", count), name_param("token", token.name)])
             }
-            Effect::Token(CreateTreasure {
-                count,
-                target_player,
-                ..
-            }) => MessageRef::new(MessageKey::EFFECT_TOKEN_CREATE_TREASURE)
-                .with_params(vec![amount_param("count", count), bool_param("target_player", target_player)]),
+            Effect::Token(CreateTreasure { count, who, .. }) => {
+                MessageRef::new(MessageKey::EFFECT_TOKEN_CREATE_TREASURE)
+                    .with_params(vec![amount_param("count", count), who_param(who)])
+            }
             Effect::Token(CreateCopy {
                 count,
                 sacrifice_at_next_end_step,
@@ -1867,19 +1866,18 @@ impl EffectMessage for Effect {
                 filter, to_zone, ..
             }) => MessageRef::new(MessageKey::EFFECT_DIG_SEARCH_LIBRARY)
                 .with_params(vec![card_filter_param("filter", filter), search_dest_param("to_zone", to_zone)]),
-            Effect::Dig(ShuffleTargetCardsFromGraveyardIntoLibrary { max, target_player }) => {
+            Effect::Dig(ShuffleTargetCardsFromGraveyardIntoLibrary { max, who }) => {
                 MessageRef::new(MessageKey::EFFECT_DIG_SHUFFLE_TARGET_CARDS_FROM_GRAVEYARD_INTO_LIBRARY)
-                    .with_params(vec![int_param("max", max), bool_param("target_player", target_player)])
+                    .with_params(vec![int_param("max", max), who_param(who)])
             }
             Effect::Choice(Discard {
                 count,
-                target_player,
+                who,
                 or_one_matching,
                 random,
-                ..
             }) => MessageRef::new(MessageKey::EFFECT_CHOICE_DISCARD).with_params(vec![
                 amount_param("count", count),
-                bool_param("target_player", target_player),
+                who_param(who),
                 bool_param("or_one_matching", or_one_matching.is_some()),
                 bool_param("random", random),
             ]),
@@ -1887,9 +1885,9 @@ impl EffectMessage for Effect {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_PROLIFERATE)
                     .with_params(vec![amount_param("times", times)])
             }
-            Effect::Choice(TargetPlayerMayDraw { count, opponent }) => {
-                MessageRef::new(MessageKey::EFFECT_CHOICE_TARGET_PLAYER_MAY_DRAW)
-                    .with_params(vec![amount_param("count", count), bool_param("opponent", opponent)])
+            Effect::Choice(MayDraw { who, count }) => {
+                MessageRef::new(MessageKey::EFFECT_CHOICE_MAY_DRAW)
+                    .with_params(vec![who_param(who), amount_param("count", count)])
             }
             Effect::Choice(MayDrawUpTo { count }) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_MAY_DRAW_UP_TO)
@@ -1942,10 +1940,6 @@ impl EffectMessage for Effect {
                     .with_params(vec![permanent_filter_param("filter", filter)])
             }
             Effect::Choice(PhaseOut) => MessageRef::new(MessageKey::EFFECT_CHOICE_PHASE_OUT),
-            Effect::Choice(DamagingCreatureControllerMayDraw { count, .. }) => {
-                MessageRef::new(MessageKey::EFFECT_CHOICE_DAMAGING_CREATURE_CONTROLLER_MAY_DRAW)
-                    .with_params(vec![int_param("count", count)])
-            }
             Effect::Choice(EachPlayerSacrifices {
                 scope,
                 keep_one,
@@ -2543,11 +2537,9 @@ mod tests {
                 }),
                 Effect::Choice(ChoiceEffect::Discard {
                     count: Amount::Fixed(2),
-                    target_player: false,
+                    who: PlayerSet::You,
                     or_one_matching: None,
                     random: false,
-                    damaged_player: false,
-                    discarder: None,
                 }),
             ]),
         }

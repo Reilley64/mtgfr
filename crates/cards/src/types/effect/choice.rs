@@ -50,12 +50,6 @@ pub enum ChoiceEffect {
         options: &'static [&'static str],
     },
 
-    DamagingCreatureControllerMayDraw {
-        #[cfg_attr(feature = "card-dsl", serde(skip))]
-        drawer: Option<PlayerId>,
-        count: u32,
-    },
-
     DefendingPlayerSacrifices {
         count: u8,
         #[cfg_attr(feature = "card-dsl", serde(skip))]
@@ -64,8 +58,14 @@ pub enum ChoiceEffect {
 
     Discard {
         count: Amount,
+        /// Who discards: the ability's controller by default (Looter il-Kor's "draw a card, then
+        /// discard a card"), `target_player` for the chosen seat (Prismari Command), or
+        /// `damaged_player` for whoever this ability's source just damaged (Hypnotic Specter's
+        /// "*that player* discards a card at random"). A one-seat pause, so a multi-seat set is
+        /// rejected at resolution — "each player discards" is
+        /// [`EachPlayerDiscards`](Self::EachPlayerDiscards), which fans out and tallies.
         #[cfg_attr(feature = "card-dsl", serde(default))]
-        target_player: bool,
+        who: PlayerSet,
         #[cfg_attr(feature = "card-dsl", serde(default))]
         or_one_matching: Option<CardFilter>,
         /// "Discards a card **at random**" (Hypnotic Specter, Mind Twist): nobody chooses, so
@@ -74,18 +74,6 @@ pub enum ChoiceEffect {
         /// hand with the engine's injected per-op RNG.
         #[cfg_attr(feature = "card-dsl", serde(default))]
         random: bool,
-        /// "**That player** discards a card at random" (Hypnotic Specter) — the discarder is
-        /// whoever this ability's source just damaged, not its controller. Only meaningful under
-        /// a damage watch; Looter il-Kor's same-trigger "draw a card, then discard a card" leaves
-        /// it unset, because *its* discard is the controller's.
-        #[cfg_attr(feature = "card-dsl", serde(default))]
-        damaged_player: bool,
-        /// The player [`damaged_player`](Self::Discard::damaged_player) resolved to, baked in when
-        /// the watch fired from
-        /// [`TriggerContext::damage_recipient`](crate::types::trigger::TriggerContext). `None`
-        /// everywhere else.
-        #[cfg_attr(feature = "card-dsl", serde(skip))]
-        discarder: Option<PlayerId>,
     },
 
     EachOtherTokenBecomesCopyOfChosen,
@@ -259,6 +247,19 @@ pub enum ChoiceEffect {
         caster: Option<PlayerId>,
     },
 
+    /// "`who` may draw `count` cards" — Questing Phelddagrif's "target opponent may draw a card",
+    /// Edric's "that creature's controller may draw a card". The *drawer* answers, not the
+    /// ability's controller (that is [`MayDrawUnlessPays`](Self::MayDrawUnlessPays)), so `who`
+    /// names one seat and a multi-seat set is rejected at resolution.
+    ///
+    /// Distinct from [`MayDrawUpTo`](Self::MayDrawUpTo), which asks for a *number* rather than
+    /// yes/no.
+    MayDraw {
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        who: PlayerSet,
+        count: Amount,
+    },
+
     MayDrawUpTo {
         count: Amount,
     },
@@ -420,11 +421,5 @@ pub enum ChoiceEffect {
 
     TargetPlayerExilesFromGraveyard {
         target: TargetSpec,
-    },
-
-    TargetPlayerMayDraw {
-        count: Amount,
-        #[cfg_attr(feature = "card-dsl", serde(default))]
-        opponent: bool,
     },
 }

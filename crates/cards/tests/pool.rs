@@ -1202,12 +1202,10 @@ fn the_pool_loads_with_expected_card_shapes() {
                     count: Amount::Fixed(2),
                 }),
                 Effect::Choice(ChoiceEffect::Discard {
+                    who: PlayerSet::TargetPlayer,
                     count: Amount::Fixed(2),
-                    target_player: true,
                     or_one_matching: None,
                     random: false,
-                    damaged_player: false,
-                    discarder: None,
                 }),
             ]),
         }
@@ -1216,7 +1214,7 @@ fn the_pool_loads_with_expected_card_shapes() {
         prismari.abilities[2].effect,
         Effect::Token(TokenEffect::CreateTreasure {
             count: Amount::Fixed(1),
-            target_player: true,
+            who: PlayerSet::TargetPlayer,
             ..
         })
     ));
@@ -1317,7 +1315,7 @@ fn the_pool_loads_with_expected_card_shapes() {
         quandrix.abilities[3].effect,
         Effect::Dig(DigEffect::ShuffleTargetCardsFromGraveyardIntoLibrary {
             max: 3,
-            target_player: true,
+            who: PlayerSet::TargetPlayer,
         })
     ));
 
@@ -1720,7 +1718,7 @@ fn the_pool_loads_with_expected_card_shapes() {
         storm_kiln.abilities[1].effect,
         Effect::Token(TokenEffect::CreateTreasure {
             count: Amount::Fixed(1),
-            target_player: false,
+            who: PlayerSet::You,
             ..
         })
     ));
@@ -1745,7 +1743,7 @@ fn the_pool_loads_with_expected_card_shapes() {
         big_score.abilities[1].effect,
         Effect::Token(TokenEffect::CreateTreasure {
             count: Amount::Fixed(2),
-            target_player: false,
+            who: PlayerSet::You,
             ..
         })
     ));
@@ -1876,12 +1874,10 @@ fn an_effects_list_parses_into_an_ordered_sequence() {
                 count: Amount::Fixed(2)
             }),
             Effect::Choice(ChoiceEffect::Discard {
+                who: PlayerSet::You,
                 count: Amount::Fixed(2),
-                target_player: false,
                 or_one_matching: None,
                 random: false,
-                damaged_player: false,
-                discarder: None,
             }),
         ],
         "draw two, then discard two — in order"
@@ -3219,12 +3215,10 @@ fn unlimited_utility_spells_carry_their_printed_effects() {
             "Mind Twist",
             // "discards X cards at random" — X off the cast, and no one chooses.
             Effect::Choice(ChoiceEffect::Discard {
+                who: PlayerSet::TargetPlayer,
                 count: Amount::X,
-                target_player: true,
                 or_one_matching: None,
                 random: true,
-                damaged_player: false,
-                discarder: None,
             }),
         ),
         (
@@ -3650,12 +3644,10 @@ fn unlimited_disrupting_scepter_is_turn_restricted_not_sorcery_speed() {
     assert_eq!(
         ability.effect,
         Effect::Choice(ChoiceEffect::Discard {
+            who: PlayerSet::TargetPlayer,
             count: Amount::Fixed(1),
-            target_player: true,
             or_one_matching: None,
             random: false,
-            damaged_player: false,
-            discarder: None,
         }),
         "target player discards a card"
     );
@@ -3972,12 +3964,10 @@ fn unlimited_triggers_fire_off_the_event_their_oracle_names() {
     assert_eq!(
         specter.abilities[0].effect,
         Effect::Choice(ChoiceEffect::Discard {
+            who: PlayerSet::DamagedPlayer { player: None },
             count: Amount::Fixed(1),
-            target_player: false,
             or_one_matching: None,
             random: true,
-            damaged_player: true,
-            discarder: None,
         })
     );
 

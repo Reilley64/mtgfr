@@ -63,4 +63,4 @@ timing = "spell"
 type = "dig"
 mode = "shuffle_target_cards_from_graveyard_into_library"
 max = 3
-target_player = true
+who = "target_player"

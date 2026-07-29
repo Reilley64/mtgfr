@@ -82,6 +82,22 @@ pub enum PlayerSet {
         #[cfg_attr(feature = "card-dsl", serde(skip))]
         player: Option<PlayerId>,
     },
+    /// The player the source just damaged (Hypnotic Specter's "whenever this creature deals damage
+    /// to an opponent, **that player** discards a card at random") — the same trigger snapshot
+    /// [`PlayerSet::EachOtherOpponent`] reads, naming the damaged seat itself rather than everyone
+    /// else.
+    DamagedPlayer {
+        #[cfg_attr(feature = "card-dsl", serde(skip))]
+        player: Option<PlayerId>,
+    },
+    /// The controller of the permanent that dealt the damage (Edric's "whenever a creature you
+    /// control deals combat damage to a player, **that creature's controller** may draw a card") —
+    /// snapshotted at trigger placement, since Edric's own controller and the damaging creature's
+    /// part ways the moment the creature is stolen.
+    DamagingPermanentsController {
+        #[cfg_attr(feature = "card-dsl", serde(skip))]
+        player: Option<PlayerId>,
+    },
     /// One opponent (Invigorate's "an opponent gains 3 life" — CR 601.2f's alternative-cost
     /// rider names no target, so the choice is the caster's).
     ///
@@ -112,6 +128,8 @@ enum PlayerSetName {
     EachOtherOpponent,
     EnteringPermanentsController,
     DyingEnchantedCreaturesController,
+    DamagedPlayer,
+    DamagingPermanentsController,
     AnOpponent,
 }
 
@@ -134,6 +152,10 @@ impl From<PlayerSetName> for PlayerSet {
             }
             PlayerSetName::DyingEnchantedCreaturesController => {
                 PlayerSet::DyingEnchantedCreaturesController { player: None }
+            }
+            PlayerSetName::DamagedPlayer => PlayerSet::DamagedPlayer { player: None },
+            PlayerSetName::DamagingPermanentsController => {
+                PlayerSet::DamagingPermanentsController { player: None }
             }
             PlayerSetName::AnOpponent => PlayerSet::AnOpponent,
         }

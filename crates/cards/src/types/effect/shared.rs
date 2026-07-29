@@ -724,22 +724,12 @@ impl Effect {
                 ..
             })
             | Effect::Reveal(RevealEffect::TopAndDrainMutual)
-            | Effect::Choice(ChoiceEffect::TargetPlayerMayDraw { opponent: true, .. })
             | Effect::Choice(ChoiceEffect::MayDrawUpToThenOpponentMayRepeat { .. })
             | Effect::Token(TokenEffect::Create {
                 controller: TokenController::TargetOpponent,
                 ..
             }) => TargetSpec::OpponentPlayer,
-Effect::Choice(ChoiceEffect::TargetPlayerMayDraw { opponent: false, .. })
-            | Effect::Exile(ExileEffect::Graveyard)
-            | Effect::Choice(ChoiceEffect::Discard {
-                target_player: true,
-                ..
-            })
-            | Effect::Token(TokenEffect::CreateTreasure {
-                target_player: true,
-                ..
-            })
+Effect::Exile(ExileEffect::Graveyard)
             | Effect::Token(TokenEffect::Create {
                 controller: TokenController::TargetPlayer,
                 ..
@@ -749,10 +739,6 @@ Effect::Choice(ChoiceEffect::TargetPlayerMayDraw { opponent: false, .. })
                 ..
             })
             | Effect::Counters(CountersEffect::PutCountersEach {
-                target_player: true,
-                ..
-            })
-            | Effect::Dig(DigEffect::ShuffleTargetCardsFromGraveyardIntoLibrary {
                 target_player: true,
                 ..
             })
@@ -796,16 +782,18 @@ Effect::Choice(ChoiceEffect::TargetPlayerMayDraw { opponent: false, .. })
             )
             | Effect::Draw(DrawEffect::Cards { who, .. })
             | Effect::Mill(MillEffect::Mill { who, .. })
-            | Effect::Damage(DamageEffect::ToPlayers { who, .. }) => player_set_target_spec(who),
+            | Effect::Damage(DamageEffect::ToPlayers { who, .. })
+            | Effect::Choice(ChoiceEffect::Discard { who, .. })
+            | Effect::Choice(ChoiceEffect::MayDraw { who, .. })
+            | Effect::Token(TokenEffect::CreateTreasure { who, .. })
+            | Effect::Dig(DigEffect::ShuffleTargetCardsFromGraveyardIntoLibrary { who, .. }) => {
+                player_set_target_spec(who)
+            }
             Effect::Life(
                 LifeEffect::EachPlayerBecomesHighest | LifeEffect::SourceOwnerLosesHalfTheirLife,
             ) => TargetSpec::None,
 Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
             | Effect::Token(TokenEffect::Create { .. })
-            | Effect::Token(TokenEffect::CreateTreasure {
-                target_player: false,
-                ..
-            })
             | Effect::Copy(CopyEffect::ThisSpell { .. })
             | Effect::Copy(CopyEffect::RetargetSpellCopy { .. })
             | Effect::Copy(CopyEffect::MayPayToCopyThis { .. })
@@ -855,10 +843,6 @@ Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
             | Effect::Exile(ExileEffect::AllGraveyards)
             | Effect::Zone(ZoneEffect::ReturnAllToHand { .. })
             | Effect::Zone(ZoneEffect::MassReturnFromGraveyard { .. })
-            | Effect::Dig(DigEffect::ShuffleTargetCardsFromGraveyardIntoLibrary {
-                target_player: false,
-                ..
-            })
             | Effect::Damage(DamageEffect::EachCreature { .. })
             | Effect::Pump(PumpEffect::WeakenEachCreature { .. })
             | Effect::Pump(PumpEffect::PumpCreaturesYouControlUntilEndOfTurn { .. })
@@ -917,10 +901,6 @@ Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
                 ..
             })
             | Effect::Choice(ChoiceEffect::Proliferate { .. })
-            | Effect::Choice(ChoiceEffect::Discard {
-                target_player: false,
-                ..
-            })
             | Effect::Choice(ChoiceEffect::PutLandFromHand { .. })
             | Effect::Choice(ChoiceEffect::PutCreatureFromHand { .. })
             | Effect::Choice(ChoiceEffect::PutFromHandOnTop { .. })
@@ -954,7 +934,6 @@ Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
             | Effect::Misc(MiscEffect::TakeExtraTurn)
             | Effect::Misc(MiscEffect::YouLoseTheGame)
             | Effect::Misc(MiscEffect::ScheduleNextCastTrigger { .. })
-            | Effect::Choice(ChoiceEffect::DamagingCreatureControllerMayDraw { .. })
             | Effect::Damage(DamageEffect::ToEnteringPermanent { .. })
             | Effect::Zone(ZoneEffect::ReanimateDyingEnchantedCreature { .. })
             | Effect::Zone(ZoneEffect::ExileDeadCreatureCreateCopyWithSubtype { .. })
@@ -2875,68 +2854,30 @@ fn fill_triggering_caster(effect: Effect, caster: PlayerId) -> Effect {
 }
 
 /// Rewrite a [`TriggerContext::combat_damage_source_controller`]-reading effect placeholder to the
-/// player who controlled the creature that dealt the combat damage:
-/// [`Effect::Choice(ChoiceEffect::DamagingCreatureControllerMayDraw)`] (Edric's "its controller may draw a card") —
-/// mirrors [`fill_triggering_caster`] above, one field over.
+/// player who controlled the creature that dealt the combat damage — Edric's "that creature's
+/// controller may draw a card".
 fn fill_combat_damage_source_controller(effect: Effect, player: PlayerId) -> Effect {
-    match effect {
-        Effect::Choice(ChoiceEffect::DamagingCreatureControllerMayDraw { count, .. }) => {
-            Effect::Choice(ChoiceEffect::DamagingCreatureControllerMayDraw {
-                drawer: Some(player),
-                count,
-            })
-        }
-        Effect::Sequence { steps } => {
-            let filled: Vec<Effect> = steps
-                .iter()
-                .map(|step| fill_combat_damage_source_controller(step.clone(), player))
-                .collect();
-            Effect::Sequence {
-                steps: Arc::from(filled),
-            }
-        }
+    fill_player(effect, &|who| match who {
+        PlayerSet::DamagingPermanentsController { .. } => PlayerSet::DamagingPermanentsController {
+            player: Some(player),
+        },
         other => other,
-    }
+    })
 }
 
-/// Rewrite a [`TriggerContext::damage_recipient`]-reading effect placeholder to the player
-/// who took the damage: [`Effect::Damage(DamageEffect::EachOtherOpponent)`] (Hydra Omnivore's "each *other*
-/// opponent") and [`Effect::Choice(ChoiceEffect::Discard)`] (Hypnotic Specter's "*that player*
-/// discards a card at random") — mirrors [`fill_combat_damage_source_controller`] above, one field over.
+/// Rewrite a [`TriggerContext::damage_recipient`]-reading effect placeholder to the player who took
+/// the damage — Hypnotic Specter's "*that player* discards a card at random" names the seat itself,
+/// Hydra Omnivore's "each *other* opponent" names everyone else off the same snapshot.
 fn fill_damage_recipient(effect: Effect, player: PlayerId) -> Effect {
-    match effect {
-        effect @ Effect::Damage(DamageEffect::ToPlayers { .. }) => fill_player(effect, &|who| match who {
-            PlayerSet::EachOtherOpponent { .. } => PlayerSet::EachOtherOpponent {
-                damaged: Some(player),
-            },
-            other => other,
-        }),
-        Effect::Choice(ChoiceEffect::Discard {
-            count,
-            target_player,
-            or_one_matching,
-            random,
-            damaged_player: true,
-            ..
-        }) => Effect::Choice(ChoiceEffect::Discard {
-            count,
-            target_player,
-            or_one_matching,
-            random,
-            damaged_player: true,
-            discarder: Some(player),
-        }),
-        Effect::Sequence { steps } => {
-            let filled: Vec<Effect> = steps
-                .iter()
-                .map(|step| fill_damage_recipient(step.clone(), player))
-                .collect();
-            Effect::Sequence {
-                steps: Arc::from(filled),
-            }
-        }
+    fill_player(effect, &|who| match who {
+        PlayerSet::DamagedPlayer { .. } => PlayerSet::DamagedPlayer {
+            player: Some(player),
+        },
+        PlayerSet::EachOtherOpponent { .. } => PlayerSet::EachOtherOpponent {
+            damaged: Some(player),
+        },
         other => other,
-    }
+    })
 }
 
 /// Rewrite a [`TriggerContext::triggering_permanent_controller`]-reading effect placeholder to the
@@ -3186,6 +3127,30 @@ fn fill_player(effect: Effect, f: &impl Fn(PlayerSet) -> PlayerSet) -> Effect {
                 amount,
             })
         }
+        Effect::Choice(ChoiceEffect::Discard {
+            count,
+            who,
+            or_one_matching,
+            random,
+        }) => Effect::Choice(ChoiceEffect::Discard {
+            count,
+            who: f(who),
+            or_one_matching,
+            random,
+        }),
+        Effect::Choice(ChoiceEffect::MayDraw { who, count }) => {
+            Effect::Choice(ChoiceEffect::MayDraw { who: f(who), count })
+        }
+        Effect::Token(TokenEffect::CreateTreasure { count, who, tapped }) => {
+            Effect::Token(TokenEffect::CreateTreasure {
+                count,
+                who: f(who),
+                tapped,
+            })
+        }
+        Effect::Dig(DigEffect::ShuffleTargetCardsFromGraveyardIntoLibrary { max, who }) => {
+            Effect::Dig(DigEffect::ShuffleTargetCardsFromGraveyardIntoLibrary { max, who: f(who) })
+        }
         Effect::Sequence { steps } => Effect::Sequence {
             steps: steps.iter().map(|step| fill_player(step.clone(), f)).collect(),
         },
@@ -3257,15 +3222,13 @@ fn map_effect_amount_slots(effect: Effect, f: &impl Fn(Amount) -> Amount) -> Eff
             attacking_context,
             must_attack_defender,
         }),
-        Effect::Token(TokenEffect::CreateTreasure {
-            count,
-            target_player,
-            tapped,
-        }) => Effect::Token(TokenEffect::CreateTreasure {
-            count: f(count),
-            target_player,
-            tapped,
-        }),
+        Effect::Token(TokenEffect::CreateTreasure { count, who, tapped }) => {
+            Effect::Token(TokenEffect::CreateTreasure {
+                count: f(count),
+                who,
+                tapped,
+            })
+        }
         Effect::Choice(ChoiceEffect::EachPlayerSacrifices {
             scope,
             keep_one,
@@ -3663,5 +3626,43 @@ mod tests {
             otherwise: &[GAIN],
         };
         assert_eq!(no_target.target(), TargetSpec::None);
+    }
+
+    /// A trigger's context fills reach every effect the trigger can actually run, including the
+    /// branch of a `Conditional` — a "that player discards" rider gated behind an
+    /// intervening-if is still the damaged player's discard, and an unfilled `who` panics at
+    /// resolution.
+    #[test]
+    fn a_conditional_branch_gets_the_triggers_damaged_player() {
+        let discard = Effect::Choice(ChoiceEffect::Discard {
+            count: Amount::Fixed(1),
+            who: PlayerSet::DamagedPlayer { player: None },
+            or_one_matching: None,
+            random: true,
+        });
+        let gated = Effect::Conditional {
+            condition: Condition::SourcePowerAtMost { at_most: 16 },
+            then: arc_slice([discard]),
+            negate: false,
+            otherwise: &[],
+        };
+
+        let mut ctx = TriggerContext::of(PlayerId(0));
+        ctx.damage_recipient = Some(PlayerId(2));
+
+        let Effect::Conditional { then, .. } = contextualize_effect(gated, ctx) else {
+            panic!("contextualizing a conditional keeps it a conditional");
+        };
+        assert_eq!(
+            then.as_ref(),
+            [Effect::Choice(ChoiceEffect::Discard {
+                count: Amount::Fixed(1),
+                who: PlayerSet::DamagedPlayer {
+                    player: Some(PlayerId(2))
+                },
+                or_one_matching: None,
+                random: true,
+            })]
+        );
     }
 }

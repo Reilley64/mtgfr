@@ -31,5 +31,5 @@ count = 3
 type = "choice"
 mode = "discard"
 count = 2
-target_player = true
+who = "target_player"
 or_one_matching = "land"

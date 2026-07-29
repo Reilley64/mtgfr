@@ -253,13 +253,10 @@ impl Game {
             // short is ordinary CR 701.8c, not a rejection. The discard itself still routes through
             // the shared `discard_ids`, so discard watchers, madness and Containment Construct see
             // a random pitch exactly as they see a chosen one.
-            Effect::Choice(ChoiceEffect::Discard {
-                count,
-                target_player,
-                discarder,
-                ..
-            }) => {
-                let player = self.discarding_player(discarder, target_player, controller, target);
+            Effect::Choice(ChoiceEffect::Discard { count, who, .. }) => {
+                let Some(player) = self.sole_player_in(who, controller, target) else {
+                    return;
+                };
                 let count = self
                     .resolve_amount(count, controller, source, target, x)
                     .max(0) as usize;

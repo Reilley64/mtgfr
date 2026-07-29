@@ -25712,7 +25712,7 @@ static BECOMES_TARGETED_TREASURE_MAKER: LazyLock<CardDef> = LazyLock::new(|| Car
         }),
         effect: Effect::Token(TokenEffect::CreateTreasure {
             count: Amount::Fixed(1),
-            target_player: false,
+            who: PlayerSet::You,
             tapped: false,
         }),
         optional: false,
@@ -46898,7 +46898,7 @@ static CHOOSE_TWO: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             timing: Timing::Spell,
             effect: Effect::Token(TokenEffect::CreateTreasure {
                 count: Amount::Fixed(1),
-                target_player: false,
+                who: PlayerSet::You,
                 tapped: false,
             }),
             optional: false,
@@ -57715,7 +57715,7 @@ static MAKE_TREASURES: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         timing: Timing::Spell,
         effect: Effect::Token(TokenEffect::CreateTreasure {
             count: Amount::Fixed(3),
-            target_player: false,
+            who: PlayerSet::You,
             tapped: false,
         }),
         optional: false,
@@ -59895,7 +59895,7 @@ fn modal_dragon() -> CardDef {
                     }),
                     Effect::Token(TokenEffect::CreateTreasure {
                         count: Amount::Fixed(3),
-                        target_player: false,
+                        who: PlayerSet::You,
                         tapped: false,
                     }),
                 ]),
@@ -60154,12 +60154,10 @@ fn discard_one_spell() -> CardDef {
             "Discard One",
             Box::leak(Box::new([spell_ability(Effect::Choice(
                 ChoiceEffect::Discard {
+                    who: PlayerSet::You,
                     count: Amount::Fixed(1),
-                    target_player: false,
                     or_one_matching: None,
                     random: false,
-                    damaged_player: false,
-                    discarder: None,
                 },
             ))])),
         )
@@ -60203,12 +60201,10 @@ fn discard_n_spell(count: u32) -> CardDef {
         "Discard N",
         Box::leak(Box::new([spell_ability(Effect::Choice(
             ChoiceEffect::Discard {
+                who: PlayerSet::You,
                 count: Amount::Fixed(count as i32),
-                target_player: false,
                 or_one_matching: None,
                 random: false,
-                damaged_player: false,
-                discarder: None,
             },
         ))])),
     )
@@ -61916,7 +61912,7 @@ static HALF_X_TREASURES: LazyLock<CardDef> = LazyLock::new(|| {
                 op: ArithOp::DivideRoundingUp,
                 right: &Amount::Fixed(2),
             },
-            target_player: false,
+            who: PlayerSet::You,
             tapped: false,
         })
     )
@@ -61932,7 +61928,7 @@ static TWICE_X_TREASURES: LazyLock<CardDef> = LazyLock::new(|| {
                 op: ArithOp::Multiply,
                 right: &Amount::Fixed(2),
             },
-            target_player: false,
+            who: PlayerSet::You,
             tapped: false,
         })
     )
@@ -61975,7 +61971,7 @@ static NESTED_ARITHMETIC_TREASURES: LazyLock<CardDef> = LazyLock::new(|| {
                 op: ArithOp::Subtract,
                 right: &Amount::Fixed(2),
             },
-            target_player: false,
+            who: PlayerSet::You,
             tapped: false,
         })
     )
@@ -62013,7 +62009,7 @@ fn division_treasures(name: &'static str, op: ArithOp) -> CardDef {
                 op,
                 right: &Amount::Fixed(2),
             },
-            target_player: false,
+            who: PlayerSet::You,
             tapped: false,
         })
     )
@@ -62040,7 +62036,7 @@ static PER_CREATURE_TREASURES: LazyLock<CardDef> = LazyLock::new(|| {
                 },
                 zone: AmountZone::Battlefield,
             },
-            target_player: false,
+            who: PlayerSet::You,
             tapped: false,
         })
     )
@@ -62121,7 +62117,7 @@ macro_rules! hydra_with_etb {
                     timing: Timing::Triggered(Trigger::Etb),
                     effect: Effect::Token(TokenEffect::CreateTreasure {
                         count: $count,
-                        target_player: false,
+                        who: PlayerSet::You,
                         tapped: false,
                     }),
                     optional: false,
@@ -62376,7 +62372,7 @@ static LIFE_GAINED_PAYOFF: LazyLock<CardDef> = LazyLock::new(|| {
         Cost::FREE,
         Effect::Token(TokenEffect::CreateTreasure {
             count: Amount::LifeGainedThisTurn,
-            target_player: false,
+            who: PlayerSet::You,
             tapped: false,
         })
     )
@@ -62388,7 +62384,7 @@ static SPELLS_CAST_PAYOFF: LazyLock<CardDef> = LazyLock::new(|| {
         Cost::FREE,
         Effect::Token(TokenEffect::CreateTreasure {
             count: Amount::SpellsCastThisTurn,
-            target_player: false,
+            who: PlayerSet::You,
             tapped: false,
         })
     )
@@ -63445,12 +63441,10 @@ fn loot() -> CardDef {
                     count: Amount::Fixed(2),
                 }),
                 Effect::Choice(ChoiceEffect::Discard {
+                    who: PlayerSet::You,
                     count: Amount::Fixed(2),
-                    target_player: false,
                     or_one_matching: None,
                     random: false,
-                    damaged_player: false,
-                    discarder: None,
                 }),
             ]),
         })])),
@@ -73053,7 +73047,7 @@ fn staff_of_the_storyteller_does_not_accrue_from_a_noncreature_token() {
         Box::leak(Box::new([spell_ability(Effect::Token(
             TokenEffect::CreateTreasure {
                 count: Amount::Fixed(1),
-                target_player: false,
+                who: PlayerSet::You,
                 tapped: false,
             },
         ))])),
@@ -102216,7 +102210,7 @@ static TEST_MINUS_ONE_EACH_TARGET_PLAYER: LazyLock<CardDef> = LazyLock::new(|| C
 
 #[test]
 fn minus_one_minus_one_counters_on_each_creature_target_player_controls() {
-    // `PutCountersEach { kind: Some(MinusOneMinusOne), target_player: true, .. }`: the -1/-1
+    // `PutCountersEach { kind: Some(MinusOneMinusOne), who: PlayerSet::TargetPlayer, .. }`: the -1/-1
     // kind lands on each of the *targeted player's* creatures, not the ability's controller's,
     // and not on that player's noncreature permanents.
     let mut game = TestGame::new();

@@ -138,8 +138,11 @@ pub enum DigEffect {
     ShuffleTargetCardsFromGraveyardIntoLibrary {
         #[cfg_attr(feature = "card-dsl", serde(default))]
         max: u32,
+        /// Whose graveyard is shuffled back — the ability's controller by default (Perpetual
+        /// Timepiece), `target_player` for the chosen seat. One seat, so a multi-seat set is
+        /// rejected at resolution.
         #[cfg_attr(feature = "card-dsl", serde(default))]
-        target_player: bool,
+        who: PlayerSet,
     },
 
     Surveil {

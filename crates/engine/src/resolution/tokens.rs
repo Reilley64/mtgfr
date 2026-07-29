@@ -165,20 +165,9 @@ impl Game {
             }
             // Treasures reuse the token machinery with the shared `treasure_token` def, entering
             // under the ability's controller or a chosen target player (Prismari Command).
-            TokenEffect::CreateTreasure {
-                count,
-                target_player,
-                tapped,
-            } => {
-                let recipient = if target_player {
-                    let Some(Target::Player(player)) = target else {
-                        panic!(
-                            "target-player create-treasure resolves with a chosen player target"
-                        );
-                    };
-                    player
-                } else {
-                    controller
+            TokenEffect::CreateTreasure { count, who, tapped } => {
+                let Some(recipient) = self.sole_player_in(who, controller, target) else {
+                    return Vec::new();
                 };
                 let count = self.resolve_count(count, controller, source, target, x);
                 // Doubling Season doubles Treasures too — they are tokens (CR 614).

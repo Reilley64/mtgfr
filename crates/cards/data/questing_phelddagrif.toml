@@ -77,6 +77,6 @@ keywords = ["flying"]
 # Target opponent may draw a card.
 [[abilities.effects]]
 type = "choice"
-mode = "target_player_may_draw"
+mode = "may_draw"
+who = "target_opponent"
 count = 1
-opponent = true
