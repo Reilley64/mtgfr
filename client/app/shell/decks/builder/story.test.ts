@@ -325,6 +325,18 @@ test("catalog and decklist are independent overscroll-contained scroll hosts", (
   );
 });
 
+test("a fresh deck tells the player how to add the first card", () => {
+  const model = { ...initialDeckBuilderSubmodel(), ...measuredPool() };
+
+  Scene.scene(
+    { update: builderUpdate, view: (model) => builderView(model, emptyViewInputs) },
+    Scene.with(model),
+    observePoolWidth,
+    Scene.expect(Scene.testId("builder-decklist-empty")).toExist(),
+    Scene.expect(Scene.testId("builder-decklist-empty")).toContainText("Click a pool card to add it"),
+  );
+});
+
 test("edit route shows a deck-loading state until the deck lands", () => {
   const model = { ...initialDeckBuilderSubmodel("abc"), ...measuredPool() };
 

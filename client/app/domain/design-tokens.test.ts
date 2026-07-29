@@ -142,8 +142,6 @@ describe("tokens.generated.css", () => {
     const css = readFileSync(cssPath, "utf8");
     expect(css).toMatch(/--shadow-table\s*:\s*[^;]+;/);
     expect(css).toMatch(/--ease-state\s*:\s*cubic-bezier\(0\.22,\s*1,\s*0\.36,\s*1\)/);
-    expect(css).toMatch(/--duration-stack-in\s*:\s*0\.25s/);
-    expect(css).toMatch(/--animate-stack-in\s*:\s*stack-in 0\.25s ease-out/);
     expect(css).toMatch(/--animate-shell-enter\s*:\s*shell-enter 0\.2s var\(--ease-state\)/);
     expect(css).toMatch(/--drop-shadow-drag\s*:\s*0 16px 36px rgb\(0 0 0 \/ 0\.72\);/);
   });

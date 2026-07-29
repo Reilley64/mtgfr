@@ -244,7 +244,7 @@ export const view = Submodel.defineView<DeckListSubmodel, ViewMessage, ViewInput
                   ],
                   [
                     h.h2(
-                      [h.Class("m-0 font-display text-title tracking-[-0.02em] text-snow")],
+                      [h.Class("m-0 font-display text-title tracking-display text-snow")],
                       ["Build your first Commander deck"],
                     ),
                     h.p(
