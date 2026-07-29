@@ -373,12 +373,26 @@ impl Game {
         if def.cast_only_during_declare_blockers && self.step != Step::DeclareBlockers {
             return false;
         }
-        // "Cast this spell only during your declare attackers step" (CR 601.3e — Camouflage): the
-        // attack-side twin, with the extra "your" the blocker one doesn't print — Camouflage hides
-        // *your* attackers, so someone else's combat is never its window.
-        if def.cast_only_during_declare_attackers
-            && (self.step != Step::DeclareAttackers || self.active_player != player)
-        {
+        // "Cast this spell only during the declare attackers step" (CR 601.3e — Teleport): the
+        // attack-side twin of the window above, read the same way. The step belongs to the active
+        // player's turn but priority inside it goes around the table (CR 506.3), and the printed
+        // restriction names the step rather than *your* step — so every player's declare attackers
+        // step is a window.
+        if def.cast_only_during_declare_attackers && self.step != Step::DeclareAttackers {
+            return false;
+        }
+        // A `condition` on a *spell* ability is a cast restriction (CR 601.3e), not the
+        // intervening-if (CR 603.4) it is on a triggered one: a spell ability never triggers, so
+        // cast time is the only moment it can be read. It composes with the card-level windows
+        // above — Camouflage prints "only during *your* declare attackers step", whose step half is
+        // the flag above and whose seat half is `during_your_turn` here.
+        // ponytail: only `during_your_turn` is wired. Route this through `condition_holds` when a
+        // card prints a board-state cast condition ("Cast this spell only if …").
+        let cast_only_during_your_turn = def
+            .abilities
+            .iter()
+            .any(|a| a.timing == Timing::Spell && a.condition == Some(Condition::DuringYourTurn));
+        if cast_only_during_your_turn && self.active_player != player {
             return false;
         }
         // "Players can't cast spells during combat" (CR 601.2i-adjacent — Basandra, Battle

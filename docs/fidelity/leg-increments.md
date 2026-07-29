@@ -907,8 +907,12 @@ convention for pre-token-era tokens. Serpent Generator additionally needs its to
 ability — "Whenever this creature deals damage to a player, that player gets a poison counter" —
 which is #99's trigger on a token profile, so it lands after that.
 
-### 98. `nested-effects-lose-their-source` — 1 card, S — **bug**
+### 98. `nested-effects-lose-their-source` — 1 card, S — **bug** — **LANDED** (wave 1)
 Depends on: nothing.
+*Landed:* fixed at the root in `Game::run` rather than at the reported call site, so every
+nested-effect path is covered at once — `run_sequence`, both `Conditional` branches,
+`pay_sacrifice_unless`, and `answer_choose_mode`'s mid-resolution modal branch. Cosmic Horror is
+faithful. Tests: `crates/engine/tests/leg_nested_source.rs`.
 Cosmic Horror: "At the beginning of your upkeep, destroy this creature unless you pay
 {3}{B}{B}{B}. If this creature is destroyed this way, it deals 7 damage to you."
 *Sketch:* not a missing capability — a defect. A `target = "this"` effect nested inside a
@@ -918,8 +922,11 @@ the source only at ability placement, never for nested effects, so the nested ef
 Resolve `ThisPermanent` for nested effects too. Regression test first, per the repo's bug-fix
 rule: an unpaid Cosmic Horror upkeep must destroy it, and today it does nothing at all.
 
-### 99. `fill-player-for-counters-on-player` — 1 card, S
+### 99. `fill-player-for-counters-on-player` — 1 card, S — **LANDED** (wave 1)
 Depends on: nothing.
+*Landed:* the arm is in. Pit Scorpion keeps a narrower residual — its trigger tag is
+opponent-scoped where the oracle says "a player" — carried forward as **#118**.
+Tests: `crates/engine/tests/leg_poison_trigger.rs`.
 Pit Scorpion: "Whenever this creature deals damage to a player, that player gets a poison counter."
 *Sketch:* one missing match arm. `cards::fill_player` does not rewrite
 `CountersEffect::PutCountersOnPlayer`'s `who`, so a `deals_damage_to_opponent` trigger cannot
@@ -1000,9 +1007,11 @@ globally over the battlefield rather than per defender.
 Depends on: nothing.
 Presence of the Master: "Whenever a player casts an enchantment spell, counter it."
 *Sketch:* `MiscEffect::CounterTargetSpell` requires a chosen `Target`, and no `TargetSpec` names
-the spell that fired a `CastSpell` trigger. Needs the trigger to thread its spell into
-`TriggerContext` and a `TargetSpec::TriggeringSpell` that reads it — the same shape as #115's
-threading problem, one object kind over.
+the spell that fired a `CastSpell` trigger.
+*Re-rated after wave 1 (cheaper than written):* the threading half is already done —
+`queue_cast_spell_triggers` sets both `triggering_spell: Some(spell)` and
+`triggering_caster: Some(spell_controller)` (`crates/engine/src/triggers.rs:3370`). All this
+needs is a `TargetSpec::TriggeringSpell` that reads the existing field. Closer to **S** than M.
 
 ### 109. `exile-the-source-from-the-graveyard` — 1 card, M
 Depends on: nothing.
@@ -1037,6 +1046,9 @@ damaged-player hand-size variant; `Amount::CardsInTargetPlayerHand` needs a `Tar
 untargeted trigger never sets; `DiscardYourHand` is controller-scoped. Needs `who` on a
 whole-hand discard, filled from the trigger the way #99 fills the counter recipient. Bolas's
 other two lines are expressible today.
+*Re-rated after wave 1:* #99 landed the exact pattern — `damage_recipient` is already in
+`TriggerContext` and `fill_player` already rewrites a `damaged_player` placeholder. This is now
+`who` on `DiscardYourHand` plus one more `fill_player` arm. Closer to **S** than M.
 
 ### 113. `gain-life-equal-to-mass-damage-dealt` — 1 card, S
 Depends on: nothing.
@@ -1047,16 +1059,23 @@ dealt this way."
 the rider to the mass form, summing what was actually dealt (prevention and redirection change
 the total, so it must read the result rather than the intent).
 
-### 114. `cast-during-any-players-declare-attackers` — 1 card, S
+### 114. `cast-during-any-players-declare-attackers` — 1 card, S — **LANDED** (wave 1)
 Depends on: nothing.
+*Landed:* the flag now means the printed thing (any player's step, CR 506.3). Camouflage — the
+pool's only other user, and the one card that does print "your" — carries the seat half as
+`condition = { type = "during_your_turn" }` on its spell ability, which `cast_timing_ok` now
+reads as a CR 601.3e cast restriction. Teleport is faithful; Camouflage keeps its pre-existing
+pile-splitting residual. Tests: `crates/engine/tests/leg_declare_attackers_window.rs`.
 Teleport: "Cast this spell only during the declare attackers step."
 *Sketch:* `playable.rs` gates `cast_only_during_declare_attackers` on
 `active_player == caster`, which reads the restriction as "during *your* declare attackers".
 Teleport's window is any player's. Split the flag, or drop the active-player clause and let the
 existing `only_during_your_turn` express the narrower case.
 
-### 115. `player-draws-trigger-context` — 1 card, S
+### 115. `player-draws-trigger-context` — 1 card, S — **LANDED** (wave 1)
 Depends on: nothing.
+*Landed:* `TriggerContext::drawing_player` threaded from `queue_player_draws_triggers`.
+Underworld Dreams is faithful. Tests: `crates/engine/tests/leg_player_draws.rs`.
 Underworld Dreams: "Whenever an opponent draws a card, this enchantment deals 1 damage to that
 player."
 *Sketch:* `queue_player_draws_triggers` builds `TriggerContext::of(controller)` and never
@@ -1078,3 +1097,13 @@ Spectral Cloak: "Enchanted creature has shroud as long as it's untapped."
 `attachment_continuous_effects` ignores `ability.condition`, so a grant cannot be gated on the
 host's state. Needs the condition evaluated against the *attached* permanent, re-checked
 continuously rather than latched at attach time.
+
+### 118. `damage-to-any-player-trigger` — 1 card, S
+Depends on: nothing. Raised by wave 1 (#99).
+Pit Scorpion: "Whenever this creature deals damage to a player, that player gets a poison
+counter."
+*Sketch:* the only damage-to-a-player trigger tag is `deals_damage_to_opponent`, which
+early-returns when the damaged player is the source's controller. The oracle says "a player",
+not "an opponent", so damage the Scorpion deals to its own controller — redirection, or a
+control swap mid-damage — poisons no one. Needs a `deals_damage_to_player` tag that watches
+every seat, with `deals_damage_to_opponent` kept for the cards that really do print "opponent".

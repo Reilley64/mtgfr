@@ -22,6 +22,7 @@ green = 1
 [kind]
 type = "instant"
 
+# Cast this spell only during your declare attackers step.
 # This turn, instead of declaring blockers, each defending player chooses any number of creatures
 # they control and divides them into a number of piles equal to the number of attacking creatures
 # for whom that player is the defending player. Assign each pile to a different one of those
@@ -29,6 +30,7 @@ type = "instant"
 # assigned to does so. (Piles can be empty.)
 [[abilities]]
 timing = "spell"
+condition = { type = "during_your_turn" }
 
 # This turn, instead of declaring blockers, each defending player chooses any number of creatures
 # they control and divides them into a number of piles equal to the number of attacking creatures

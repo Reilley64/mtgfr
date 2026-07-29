@@ -814,7 +814,37 @@ impl Game {
     /// ponytail: a pausing effect is assumed self-contained — a spell that scries *then*
     /// does more (Preordain's "then draw a card") would need the remaining effects
     /// deferred to the choice's answer. No such multi-effect card is in the pool.
-    pub(crate) fn run(&mut self, effect: Effect, ctx: ResolveCtx, events: &mut Vec<Event>) {
+    pub(crate) fn run(&mut self, effect: Effect, mut ctx: ResolveCtx, events: &mut Vec<Event>) {
+        // A fixed-reference spec (CR 115: the source itself, its Aura's host, or Animate Dead's
+        // cast-time graveyard card) is settled from `source`, never chosen.
+        // `Game::place_targeted_ability` settles it for the ability's *top-level* effect — but a
+        // *nested* effect (a `PayOrElse` `otherwise` arm, a `Conditional` branch, a `Sequence`
+        // step whose parent reported `TargetSpec::None`) never went through placement and arrives
+        // here with no target, so settle it here too: without this, Cosmic Horror's "destroy this
+        // creature unless you pay {3}{B}{B}{B}" silently no-ops on the guard below. An empty
+        // result (the source has since left the battlefield) leaves it `None` and the guard drops
+        // the step, matching placement's `Placement::NoLegalTarget`.
+        if ctx.target.is_none()
+            && matches!(
+                effect.target(),
+                TargetSpec::ThisPermanent
+                    | TargetSpec::EnchantedCreature
+                    | TargetSpec::ThisAurasGraveyardTarget
+            )
+        {
+            // Shroud/hexproof/protection never filter these specs (`Game::legal_targets_for`
+            // returns before the untargetable pass), so the source colors it wants are moot.
+            ctx.target = self
+                .legal_targets_for(
+                    effect.target(),
+                    ctx.source,
+                    ctx.controller,
+                    [false; Color::COUNT],
+                    ctx.x,
+                )
+                .first()
+                .copied();
+        }
         let ResolveCtx {
             controller,
             source,

@@ -600,6 +600,13 @@ pub struct Ability {
     pub cost: Cost,
     /// An intervening-if condition (CR 603.4): the trigger only goes on the stack when this
     /// holds when it would trigger. `None` for an unconditional trigger.
+    ///
+    /// On a [`Timing::Spell`] ability there is nothing to intervene on, so the same field reads as
+    /// a cast restriction instead (CR 601.3e — the "Cast this spell only …" clause), checked in
+    /// [`Game::cast_timing_ok`] alongside the card-level `cast_only_*` windows it composes with:
+    /// Camouflage's "only during *your* declare attackers step" is
+    /// [`CardDef::cast_only_during_declare_attackers`] for the step plus
+    /// [`Condition::DuringYourTurn`] here for the seat.
     pub condition: Option<Condition>,
     /// "This ability triggers only once each turn" (Morbid Opportunist, Tocasia's Welcome, Dina
     /// Essence Brewer's draw ability): caps a *triggered* ability at its first placement per
@@ -817,10 +824,13 @@ pub struct CardDef {
     /// rearrange a declaration that has already happened. `cast_only_during_declare_blockers =
     /// true` in TOML; `false` for every ordinary card.
     pub cast_only_during_declare_blockers: bool,
-    /// "Cast this spell only during your declare attackers step" (CR 601.3e — Camouflage): the
-    /// attack-side twin of the window above, and narrower still — *your* declare attackers step,
-    /// so it is closed on every other player's turn as well as in every other step.
-    /// `cast_only_during_declare_attackers = true` in TOML; `false` for every ordinary card.
+    /// "Cast this spell only during the declare attackers step" (CR 601.3e — Teleport): the
+    /// attack-side twin of the window above, and like it any player's step — the step belongs to
+    /// the active player's turn, but priority inside it goes around the table (CR 506.3), and the
+    /// printed restriction names the step rather than *your* step. Camouflage, which does print
+    /// "your", pairs this with [`Condition::DuringYourTurn`] on its spell ability (see
+    /// [`Ability::condition`]) for the seat half. `cast_only_during_declare_attackers = true` in
+    /// TOML; `false` for every ordinary card.
     pub cast_only_during_declare_attackers: bool,
     /// A one-line plain-English note on how this card's modeled behavior diverges from its
     /// printed rules text (a dropped clause, a coarsened trigger, a folded-together mechanic) —

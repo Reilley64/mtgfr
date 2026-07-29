@@ -18,3 +18,21 @@ black = 3
 type = "creature"
 power = 7
 toughness = 7
+
+# At the beginning of your upkeep, destroy this creature unless you pay {3}{B}{B}{B}. If this
+# creature is destroyed this way, it deals 7 damage to you.
+[[abilities]]
+timing = "upkeep"
+
+# destroy this creature unless you pay {3}{B}{B}{B}. If this creature is destroyed this way, it
+# deals 7 damage to you.
+[[abilities.effects]]
+type = "choice"
+mode = "pay_or_else"
+cost = { generic = 3, black = 3 }
+otherwise = [
+  # destroy this creature
+  { type = "destroy", mode = "target", target = "this" },
+  # If this creature is destroyed this way, it deals 7 damage to you.
+  { type = "conditional", condition = { type = "compare", left = { permanents_destroyed_this_way = {} }, op = "at_least", right = 1 }, then = [{ type = "damage", mode = "to_players", amount = 7 }] },
+]

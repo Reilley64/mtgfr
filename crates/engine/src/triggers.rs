@@ -2328,6 +2328,7 @@ impl Game {
                 left_battlefield_host: None,
                 triggering_ability: None,
                 triggering_caster: None,
+                drawing_player: None,
                 blocking_partner: None,
             };
             self.queue_trigger_group(ctx, id, self.def_of(id), Trigger::PlayerAttacksYourOpponent);
@@ -2682,6 +2683,7 @@ impl Game {
                 left_battlefield_host: None,
                 triggering_ability: None,
                 triggering_caster: None,
+                drawing_player: None,
                 blocking_partner: None,
             };
             self.queue_trigger_group(
@@ -2968,6 +2970,7 @@ impl Game {
             left_battlefield_host: None,
             triggering_ability: None,
             triggering_caster: None,
+            drawing_player: None,
             blocking_partner: None,
         };
         for id in self.battlefield() {
@@ -3768,7 +3771,12 @@ impl Game {
             // Controller-scoped (CR 603.3d): a stolen/reanimated draw-watcher (Pearl-Ear) fires
             // for its current controller, and its `You`/`Opponent` drawer scope keys on that.
             let controller = self.controller_of(id);
-            let ctx = TriggerContext::of(controller);
+            // CR 603.10a: "that player" is the one who drew (Underworld Dreams), which parts ways
+            // with the watcher's controller on every `Opponent`/`AnyPlayer` drawer scope.
+            let ctx = TriggerContext {
+                drawing_player: Some(drawer),
+                ..TriggerContext::of(controller)
+            };
             let abilities: Vec<Ability> = self
                 .functional_abilities(id)
                 .iter()

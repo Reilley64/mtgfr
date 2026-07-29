@@ -164,7 +164,9 @@ next turn rather than in this turn's postcombat main phase.
 
 ## D. New, needs engine work
 
-Blocked on the numbered increments in [`leg-increments.md`](leg-increments.md).
+Blocked on the numbered increments in [`leg-increments.md`](leg-increments.md). A checked box
+means the blocking increment has landed and the card is scripted; the increment number stays so
+the record shows what unblocked it.
 
 - [ ] **Abomination** {3}{B}{B} · Creature — Horror — increment 105
 - [ ] **Adventurers' Guildhouse** — · Land — increment 3
@@ -198,7 +200,7 @@ Blocked on the numbered increments in [`leg-increments.md`](leg-increments.md).
 - [ ] **Chromium** {2}{W}{W}{U}{U}{B}{B} · Legendary Creature — Elder Dragon — increment 1
 - [ ] **Clergy of the Holy Nimbus** {W} · Creature — Human Cleric — increment 25
 - [ ] **Cocoon** {G} · Enchantment — Aura — increment 26
-- [ ] **Cosmic Horror** {3}{B}{B}{B} · Creature — Horror — increment 98
+- [x] **Cosmic Horror** {3}{B}{B}{B} · Creature — Horror — increment 98
 - [ ] **Craw Giant** {3}{G}{G}{G}{G} · Creature — Giant — increment 1
 - [ ] **Crevasse** {2}{R} · Enchantment — increment 4
 - [ ] **Crimson Manticore** {2}{R}{R} · Creature — Manticore — increment 8
@@ -287,7 +289,7 @@ Blocked on the numbered increments in [`leg-increments.md`](leg-increments.md).
 - [ ] **Part Water** {X}{X}{U} · Sorcery — increment 61
 - [ ] **Pendelhaven** — · Legendary Land — increment 62
 - [ ] **Petra Sphinx** {2}{W}{W}{W} · Creature — Sphinx — increment 58
-- [ ] **Pit Scorpion** {2}{B} · Creature — Scorpion — increment 99
+- [x] **Pit Scorpion** {2}{B} · Creature — Scorpion — increment 99; residual carried to increment 118
 - [ ] **Presence of the Master** {3}{W} · Enchantment — increment 108
 - [ ] **Primordial Ooze** {R} · Creature — Ooze — increment 63
 - [ ] **Psionic Entity** {4}{U} · Creature — Illusion — increment 110
@@ -330,7 +332,7 @@ Blocked on the numbered increments in [`leg-increments.md`](leg-increments.md).
 - [ ] **Syphon Soul** {2}{B} · Sorcery — increment 113
 - [ ] **Takklemaggot** {2}{B}{B} · Enchantment — Aura — increment 78
 - [ ] **Telekinesis** {U}{U} · Instant — increment 79
-- [ ] **Teleport** {U}{U}{U} · Instant — increment 114
+- [x] **Teleport** {U}{U}{U} · Instant — increment 114
 - [ ] **Tetsuo Umezawa** {U}{B}{R} · Legendary Creature — Human Archer — increment 8, 15
 - [ ] **The Abyss** {3}{B} · World Enchantment — increment 2, 80
 - [ ] **The Tabernacle at Pendrell Vale** — · Legendary Land — increment 81
@@ -342,7 +344,7 @@ Blocked on the numbered increments in [`leg-increments.md`](leg-increments.md).
 - [ ] **Transmutation** {1}{B} · Instant — increment 22
 - [ ] **Triassic Egg** {4} · Artifact — increment 83
 - [ ] **Undertow** {2}{U} · Enchantment — increment 4
-- [ ] **Underworld Dreams** {B}{B}{B} · Enchantment — increment 115
+- [x] **Underworld Dreams** {B}{B}{B} · Enchantment — increment 115
 - [ ] **Unholy Citadel** — · Land — increment 3
 - [ ] **Ur-Drago** {3}{U}{U}{B}{B} · Legendary Creature — Elemental — increment 4
 - [ ] **Urborg** — · Legendary Land — increment 5

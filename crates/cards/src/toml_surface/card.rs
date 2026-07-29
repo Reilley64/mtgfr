@@ -351,10 +351,12 @@ pub struct CardToml {
     /// that already happened). Absent (`false`) for every ordinary card.
     #[serde(default)]
     pub cast_only_during_declare_blockers: bool,
-    /// "Cast this spell only during your declare attackers step" (CR 601.3e — Camouflage) —
-    /// `cast_only_during_declare_attackers = true`: the attack-side twin of the window above,
-    /// and narrower still, since it is closed on every other player's turn as well as in every
-    /// other step. Absent (`false`) for every ordinary card.
+    /// "Cast this spell only during the declare attackers step" (CR 601.3e — Teleport) —
+    /// `cast_only_during_declare_attackers = true`: the attack-side twin of the window above, and
+    /// like it any player's step, since the printed restriction names the step rather than *your*
+    /// step. A card that does print "your" (Camouflage) adds the seat half as
+    /// `condition = { type = "during_your_turn" }` on its spell ability. Absent (`false`) for every
+    /// ordinary card.
     #[serde(default)]
     pub cast_only_during_declare_attackers: bool,
     #[serde(default)]

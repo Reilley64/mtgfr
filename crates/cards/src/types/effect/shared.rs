@@ -2295,6 +2295,13 @@ pub fn contextualize_effect(effect: Effect, ctx: TriggerContext) -> Effect {
         Some(caster) => fill_triggering_caster(effect, caster),
         None => effect,
     };
+    // Underworld Dreams' "deals 1 damage to that player" names whoever drew the card, baked in
+    // when the `PlayerDraws` watch fires — same last-known-information shape as
+    // `triggering_caster` above, one field over.
+    let effect = match ctx.drawing_player {
+        Some(drawer) => fill_drawing_player(effect, drawer),
+        None => effect,
+    };
     // Howling Mine: `EachDrawStepPlayerDraws`'s drawer is the active player whose draw step this
     // is (context), not this ability's controller — CR "that player draws an additional card".
     // Magus of the Vineyard: `AddMana`'s recipient is that same active player, one step over —
@@ -2801,6 +2808,20 @@ fn fill_triggering_caster(effect: Effect, caster: PlayerId) -> Effect {
     }
 }
 
+/// Rewrite a [`TriggerContext::drawing_player`]-reading effect placeholder to the player who just
+/// drew the card the watch fired on — Underworld Dreams' "deals 1 damage to **that player**", the
+/// same [`PlayerSet::TriggeringPlayer`] slot Copper Tablet fills from `active_player` and Dingus
+/// Egg from `triggering_permanent_controller`, since either way it names the one player the
+/// trigger is about.
+fn fill_drawing_player(effect: Effect, drawer: PlayerId) -> Effect {
+    fill_player(effect, &|who| match who {
+        PlayerSet::TriggeringPlayer { .. } => PlayerSet::TriggeringPlayer {
+            player: Some(drawer),
+        },
+        other => other,
+    })
+}
+
 /// Rewrite a [`TriggerContext::combat_damage_source_controller`]-reading effect placeholder to the
 /// player who controlled the creature that dealt the combat damage — Edric's "that creature's
 /// controller may draw a card".
@@ -3088,6 +3109,15 @@ fn fill_player(effect: Effect, f: &impl Fn(PlayerSet) -> PlayerSet) -> Effect {
         }),
         Effect::Choice(ChoiceEffect::MayDraw { who, count }) => {
             Effect::Choice(ChoiceEffect::MayDraw { who: f(who), count })
+        }
+        // Pit Scorpion's "that player gets a poison counter" names the seat its trigger just
+        // damaged, the same slot Hypnotic Specter's discard reads.
+        Effect::Counters(CountersEffect::PutCountersOnPlayer { kind, count, who }) => {
+            Effect::Counters(CountersEffect::PutCountersOnPlayer {
+                kind,
+                count,
+                who: f(who),
+            })
         }
         Effect::Token(TokenEffect::CreateTreasure { count, who, tapped }) => {
             Effect::Token(TokenEffect::CreateTreasure {

@@ -966,6 +966,13 @@ pub struct TriggerContext {
     /// — `controller` alone can't name the payer for those scopes. `None` for every other
     /// trigger. See [`Game::queue_cast_spell_triggers`] for where this is captured.
     pub triggering_caster: Option<PlayerId>,
+    /// The player who drew the card, for a [`Trigger::PlayerDraws`] watch whose payoff names
+    /// *that* player rather than the watcher's controller (Underworld Dreams' "deals 1 damage to
+    /// that player") — the draw-side twin of `triggering_caster` above, and distinct from
+    /// `TriggerContext::controller` precisely when `drawer: WatchedPlayer::Opponent`/`AnyPlayer`.
+    /// `None` for every other trigger. See [`Game::queue_player_draws_triggers`] for where this
+    /// is captured.
+    pub drawing_player: Option<PlayerId>,
     /// The creature on the other side of a [`Trigger::BlocksOrBecomesBlockedBy`] block pair
     /// (Cockatrice's "that creature") — the attacker for the blocker's fire, the blocker for the
     /// attacker's. `None` for every other trigger. Feeds
@@ -1008,6 +1015,7 @@ impl TriggerContext {
             left_battlefield_host: None,
             triggering_ability: None,
             triggering_caster: None,
+            drawing_player: None,
             blocking_partner: None,
         }
     }

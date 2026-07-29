@@ -11,3 +11,15 @@ black = 3
 
 [kind]
 type = "enchantment"
+
+# Whenever an opponent draws a card, ...
+[[abilities]]
+timing = "player_draws"
+drawer = "opponent"
+
+# ...this enchantment deals 1 damage to that player.
+[[abilities.effects]]
+type = "damage"
+mode = "to_players"
+who = "triggering_player"
+amount = 1

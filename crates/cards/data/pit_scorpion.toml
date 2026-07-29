@@ -7,6 +7,7 @@ id = "4804fc42-588c-487a-8ff7-bcc16749fc1f"
 default_print = "fe106ff1-cdc6-44cc-adb7-131203a05292"
 oracle = "Whenever this creature deals damage to a player, that player gets a poison counter. (A player with ten or more poison counters loses the game.)"
 subtypes = ["Scorpion"]
+approximates = "the watch is opponent-scoped, so damage the Scorpion deals to its own controller (a redirection or a control swap mid-damage) poisons no one"
 
 [cost]
 generic = 2
@@ -16,3 +17,15 @@ black = 1
 type = "creature"
 power = 1
 toughness = 1
+
+# Whenever this creature deals damage to a player, that player gets a poison counter.
+[[abilities]]
+timing = "deals_damage_to_opponent"
+
+# that player gets a poison counter.
+[[abilities.effects]]
+type = "counters"
+mode = "put_counters_on_player"
+kind = "poison"
+count = 1
+who = "damaged_player"
