@@ -6,7 +6,9 @@ import { BindCardArt } from "./domain/ui/card-art";
 import { init, Model, update } from "./main-exports";
 import { CardArtTick } from "./messages";
 import type { Model as AppModel } from "./model";
-import { HomeRoute, PlayRoute } from "./routes";
+import { HomeRoute, NewDeckRoute, PlayRoute } from "./routes";
+import { MeasuredPoolGrid } from "./shell/decks/builder/messages";
+import { ObservePoolWidth } from "./shell/decks/builder/view";
 import { ClosedDeckListMenu } from "./shell/decks/list/messages";
 import { BindDeckListContextMenu, BindDeckListContextMenuEscape } from "./shell/decks/list/view";
 import { view } from "./view";
@@ -56,6 +58,11 @@ function homeWithDecks(): AppModel {
       },
     },
   };
+}
+
+/** The key snabbdom uses to decide whether a route change reuses the previous surface's DOM. */
+function surfaceKeyOf(html: unknown): unknown {
+  return (html as { children?: ReadonlyArray<{ key?: unknown }> }).children?.[0]?.key;
 }
 
 describe("foldkit scaffold", () => {
@@ -114,6 +121,38 @@ describe("foldkit scaffold", () => {
       Scene.Mount.resolve(BindCardArt, CardArtTick()),
       Scene.Mount.resolve(BindDeckListContextMenuEscape(), ClosedDeckListMenu()),
     );
+  });
+
+  // Regression: every shell route roots at the same unkeyed `<main>`, so a route change patched the
+  // outgoing surface's elements into the incoming one. `h.OnMount` runs on element creation, so the
+  // reused elements never started their mounts — after a client-side navigation the deck builder's
+  // pool grid was never measured and collapsed to one column. Distinct keys force a real remount.
+  it("gives the deck list and the deck builder different surface keys, so navigating remounts", () => {
+    const list: { key?: unknown } = {};
+    const builder: { key?: unknown } = {};
+
+    Scene.scene(
+      { update, view },
+      Scene.with(homeWithDecks()),
+      Scene.tap((simulation) => {
+        list.key = surfaceKeyOf(simulation.html);
+      }),
+      Scene.Mount.resolve(BindDeckListContextMenu({ deckId: 1 }), ClosedDeckListMenu()),
+      Scene.Mount.resolve(BindDeckCardFlip({ deckId: 1 }), DeckCardFlipTick()),
+      Scene.Mount.resolve(BindCardArt, CardArtTick()),
+      Scene.Mount.resolve(BindDeckListContextMenuEscape(), ClosedDeckListMenu()),
+    );
+    Scene.scene(
+      { update, view },
+      Scene.with({ ...homeWithDecks(), route: NewDeckRoute() }),
+      Scene.tap((simulation) => {
+        builder.key = surfaceKeyOf(simulation.html);
+      }),
+      Scene.Mount.resolve(ObservePoolWidth(), MeasuredPoolGrid({ width: 800 })),
+    );
+
+    expect(list.key).toBe("deck-list");
+    expect(builder.key).toBe("deck-builder");
   });
 
   it("applies landscape rotate class instead of a portrait dialog", () => {

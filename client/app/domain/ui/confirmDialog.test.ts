@@ -66,6 +66,21 @@ test("a closed prompt keeps its dialog element but shows nothing", () => {
   );
 });
 
+// Regression: a closed `<dialog>` is hidden only by the UA rule `dialog:not([open]) { display: none }`.
+// `flex` overrode it, so every closed modal stayed a full-viewport `pointer-events-auto` layer and ate
+// clicks on the page behind it — the deck list's "New deck" tile stopped responding entirely.
+test("a closed prompt does not lay itself out, so it cannot cover the page", () => {
+  Scene.scene(
+    program,
+    Scene.with(hostModel({ dialog: Dialog.init({ id: "delete-deck" }) })),
+    Scene.expect(Scene.testId("delete-dialog")).not.toHaveClass("flex"),
+  );
+});
+
+test("an open prompt centres itself over the page", () => {
+  Scene.scene(program, Scene.with(hostModel()), Scene.expect(Scene.testId("delete-dialog")).toHaveClass("flex"));
+});
+
 test("an open prompt shows its question, its detail, and both choices", () => {
   Scene.scene(
     program,

@@ -54,10 +54,15 @@ export function modalDialog<Msg>(
           // Dialog styles the element itself as a full-viewport transparent layer, so this only
           // adds centring and the test hook. `pointer-events-auto` is for owners whose root is
           // `pointer-events-none` (the board overlays); a modal is always meant to take clicks.
+          //
+          // Centring is gated on `isVisible`: a closed `<dialog>` is hidden only by the UA rule
+          // `dialog:not([open]) { display: none }`, and `flex` overrides it. Left on, every closed
+          // modal stays a full-viewport `pointer-events-auto` layer that swallows clicks on the
+          // page behind it.
           [
             ...render.dialog,
             h.DataAttribute("testid", testId),
-            h.Class("pointer-events-auto flex items-center justify-center"),
+            h.Class(render.isVisible ? "pointer-events-auto flex items-center justify-center" : "pointer-events-auto"),
           ],
           render.isVisible
             ? [
