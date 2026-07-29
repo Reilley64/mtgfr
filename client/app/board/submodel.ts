@@ -819,10 +819,30 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
 
   // After provenance folds, held seeds may still be easing. Hand off when parked; while far,
   // refresh aim without clearing hold (avoids the post-retarget short second ease).
+  // From `state.objects`, not `cards` — the hand is HTML, so `layout` never emits hand faces.
+  const handIds = new Set(state.objects.filter((object) => object.zone === ZONE.Hand).map((object) => object.id));
   for (const [id, flight] of [...flights.entries()]) {
     if (!flight.hold) continue;
+    // Unclaimed seed whose card already left hand: the provenance that would have rebound it is
+    // gone (snapshot clears provenance; a delta carries only its own). No later sync can release
+    // it and a settled hold gets no more clock ticks — it would stay painted for the rest of the
+    // game. Cut to the authoritative face instead.
+    if (!authorityOwnsFlightDestination(fold, { ...flight, id })) {
+      if (handIds.has(flight.fromCardId ?? id)) continue;
+      traceFlightSync({
+        op: "synced-drop",
+        zone: flight.kind,
+        id,
+        hold: true,
+        phase: flight.phase,
+        remainingPx: Math.hypot(flight.targetX - flight.x, flight.targetY - flight.y),
+        note: "stale-seed",
+      });
+      flights.delete(id);
+      handHidden.delete(flight.fromCardId ?? id);
+      continue;
+    }
     if (flight.kind === "stack") {
-      if (!state.stack.some((entry) => entry.source === id)) continue;
       const aim = stackFlightAimForSource(model, state.stack, id);
       if (poseAtTarget(flight, aim) || poseNearHandoff(flight, aim)) {
         flights.delete(id);
@@ -2077,12 +2097,13 @@ function handActivated(
 }
 
 function cancelAll(model: BoardModel): BoardModel {
-  let clearedOrigin = model.staged != null ? clearPlayOrigin(model, model.staged.card.id) : model;
-  if (clearedOrigin.playModePick != null) {
-    clearedOrigin = clearPlayOrigin(clearedOrigin, clearedOrigin.playModePick.card.id);
-  }
+  // Cancel closes every action session below, so no held seed outlives it: an X prompt / modal /
+  // sacrifice / discard / gy-exile seed left behind gets no session, no provenance and no clock
+  // tick, and stays painted over a hidden hand tile for the rest of the game. Dropping all held
+  // seeds (rather than the ids of the sessions we happen to remember) keeps that true when a new
+  // session kind is added. An already-submitted seed re-flies from provenance when its delta lands.
   return {
-    ...clearedOrigin,
+    ...dropHeldSeeds(model),
     staged: null,
     playModePick: null,
     xPrompt: null,
