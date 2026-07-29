@@ -509,7 +509,7 @@ export const view = Submodel.defineView<DeckBuilderSubmodel, ViewMessage, ViewIn
         h.section(
           [h.Class("flex min-h-0 min-w-0 flex-col")],
           [
-            h.h2([h.Class("m-0 font-display text-title tracking-[-0.02em]")], ["Card pool"]),
+            h.h2([h.Class("m-0 font-display text-title tracking-display")], ["Card pool"]),
             h.div(
               [h.Class("text-label text-lichen"), h.DataAttribute("testid", "builder-pool-hint")],
               ["Click to add. Right-click or long-press for print and other options. Only basics may exceed one copy."],
@@ -611,6 +611,15 @@ export const view = Submodel.defineView<DeckBuilderSubmodel, ViewMessage, ViewIn
                     h.DataAttribute("testid", "builder-decklist-scroll"),
                   ],
                   [
+                    rows.length === 0
+                      ? h.div(
+                          [
+                            h.DataAttribute("testid", "builder-decklist-empty"),
+                            h.Class("flex flex-1 items-center justify-center p-md text-center text-label text-lichen"),
+                          ],
+                          ["Cards you add appear here. Click a pool card to add it."],
+                        )
+                      : null,
                     ...rows.map((row) =>
                       h.button(
                         [
