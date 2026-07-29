@@ -35,7 +35,7 @@ Compose system overlays in `boardOverlays` as DOM layers above the board surface
 - System overlays remain DOM, not canvas.
 - Concede is game action chrome, not navigation.
 - Prompt modals and the mulligan overlay stay hand-rolled rather than moving to `Dialog`. `Dialog` bundles Escape and backdrop-click close into the frame with no way to drop them, and a pending choice that can be dismissed leaves the player unable to answer it. See [prompts-and-pending-choices](2026-07-20-prompts-and-pending-choices.md).
-- Pile overlay uses `cardArt(h, opts)` for card thumbnails and falls back to card names when art is unavailable. Selectable thumbs follow the AGENTS.md `data-selected` / `data-selectable` Tailwind pattern.
+- Pile overlay uses `cardArt(h, opts)` for card thumbnails and falls back to card names when art is unavailable. Selectable thumbs follow the AGENTS.md `data-selected` / `data-selectable` Tailwind pattern. Thumb sizing is class-side (`w-[90px]`, fallback `h-[126px]`), never static inline styles.
 - Escape priority dismisses inspect, the activation menu, stack expansion, and then local action/pile state.
 
 ## Testing Decisions
