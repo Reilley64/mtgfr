@@ -1,5 +1,5 @@
 # Card Inspect
-**Status:** Current (as of 2026-07-26)
+**Status:** Current (as of 2026-07-29)
 **Module:** `client/app/board/html/inspect.ts`, `client/app/domain/deck-builder/card-hover-preview.ts`, `client/app/domain/inspect.ts`, `client/app/board/html/keyboard-mount.ts`, `client/app/board/submodel.ts`
 
 ## Problem Statement
@@ -22,6 +22,7 @@ Alt/Option pins a card into a shared preview `dock` mode. The dock has a full-bo
 ## Behavior
 
 - `AltDown` pins the card under the cursor, preferring hand/stack auxiliary hover over battlefield hit; when no card hit, a life-orb avatar hit pins that seat.
+- The hand aux hover latch is position-based: a peek-strip leave while the cursor is still inside the hand sticky band (raised face art is `pointer-events-none`) keeps the last hand hover latched whether or not Alt is held, so hover-first-Alt-second pins the card under the cursor. Moving the cursor out of the band releases the latch; a new hand or stack aux enter replaces it.
 - `AltUp` dismisses the dock and clears fetched card data.
 - Prepared DFC pins default to the back face until catalog data arrives.
 - The Flip button appears for cards with a back face.
