@@ -209,6 +209,9 @@ message ActionView {
   // `declare_blockers` (CR 509.1a — ordinarily just the viewer, but a live Master Warcraft
   // moves the choice). Empty for every other action kind.
   repeated uint32 declare_for = 24;
+  // True when this action only produces mana (a paid tap-for-mana mode). Listed so the activation
+  // menu can render it; never paints the playable border.
+  bool mana_only = 25;
 }
 
 // The current combat state a client renders: who's attacking and the declared blocks.

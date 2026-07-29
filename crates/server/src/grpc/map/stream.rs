@@ -170,6 +170,7 @@ pub fn action_view_to_pb(action: ActionView) -> pb::ActionView {
             .collect(),
         taps_self: action.taps_self,
         declare_for: action.declare_for.into_iter().map(u32::from).collect(),
+        mana_only: action.mana_only,
     }
 }
 
@@ -1822,6 +1823,7 @@ mod tests {
                 required_attacks: vec![],
                 taps_self: false,
                 declare_for: Vec::new(),
+                mana_only: false,
             }],
         }
     }
