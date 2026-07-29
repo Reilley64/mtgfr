@@ -110722,6 +110722,47 @@ fn psychic_venom_bites_the_land_it_poisons() {
 }
 
 #[test]
+fn tapping_an_already_tapped_land_is_not_a_second_becomes_tapped() {
+    // CR 701.21a: "becomes tapped" is the change from untapped to tapped, so an Icy Manipulator
+    // aimed at a land that is already tapped does nothing at all — and Psychic Venom, watching
+    // that land, must not bite a second time for it.
+    let mut game = Game::new();
+    stock_libraries(&mut game);
+    let theirs = game.spawn_on_battlefield(PlayerId(1), card("Mountain"));
+    let venom = game.spawn_in_hand(PlayerId(0), card("Psychic Venom"));
+    let icy = game.spawn_on_battlefield(PlayerId(0), card("Icy Manipulator"));
+
+    advance_until(&mut game, |g| g.current_step() == Step::Main1);
+    fund_cast_resolve(&mut game, PlayerId(0), venom, Some(Target::Object(theirs)));
+
+    game.submit(Intent::TapForMana {
+        player: PlayerId(1),
+        object: theirs,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    assert_eq!(game.life(PlayerId(1)), 18, "the first tap bites for 2");
+
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: icy,
+        ability_index: 0,
+        target: Some(Target::Object(theirs)),
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .expect("a tapped land is still a legal target — tapping it is just a no-op");
+    resolve_top_of_stack(&mut game);
+    assert!(game.is_tapped(theirs), "it was tapped and it stays tapped");
+    assert!(
+        game.stack().is_empty(),
+        "tapping what is already tapped changes nothing, so no becomes-tapped trigger is queued"
+    );
+}
+
+#[test]
 fn lifetap_pays_you_only_for_an_opponents_forest() {
     // Lifetap: "Whenever a Forest an opponent controls becomes tapped, you gain 1 life."
     let mut game = Game::new();
