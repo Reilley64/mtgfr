@@ -183,7 +183,7 @@ pub enum PumpEffect {
     /// CR 613.3c layer-5 color SET with no duration printed at all, so it lasts as long as the
     /// object does. `color` *replaces* the object's colors rather than unioning with them, which
     /// is why a laced spell stops being countered by "counter target blue spell". Targets a spell
-    /// on the stack or a permanent, and writes [`Permanent::set_color`]/[`Spell::set_color`]
+    /// on the stack or a permanent, and registers the layer-5 SET / writes [`Spell::set_color`]
     /// through [`Event::ColorSet`]. The reminder text ("its mana symbols remain unchanged") needs
     /// no modelling — colors are read from `colors_of`, never re-derived from the pips.
     TargetBecomesColor {

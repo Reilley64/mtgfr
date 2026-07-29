@@ -461,14 +461,31 @@ impl Game {
             .counter_batches
             .retain(|&(o, ..)| o != object);
         self.modifier_provenance
-            .temp_boosts
-            .retain(|&(o, ..)| o != object);
+            .modifiers
+            .retain(|m| m.host != object);
         if let Object::Permanent(p) = &mut self.objects[object as usize] {
             p.plus_counters = 0;
-            p.base_pt_set_eot = None;
-            p.added_types_eot = TypeSet::NONE;
-            p.added_subtypes_eot = &[];
         }
+    }
+
+    /// Register one continuous modification of `host`, stamping it with the CR 613.7 timestamp it
+    /// takes effect at. Entries are appended in stamp order, which is what lets every reader walk
+    /// the registry in place rather than sorting a copy of it.
+    pub(crate) fn register_modifier(
+        &mut self,
+        host: ObjectId,
+        source_name: &'static str,
+        duration: ModifierDuration,
+        kind: ModifierKind,
+    ) {
+        let timestamp = self.stamp_continuous_timestamp();
+        self.modifier_provenance.modifiers.push(Modifier {
+            host,
+            source_name,
+            timestamp,
+            duration,
+            kind,
+        });
     }
 
     /// Recompute `plus_counters` on the permanent from its provenance batches — batches are the
@@ -935,16 +952,30 @@ impl Game {
             },
             // A layer-5 color SET, on a permanent (Wild Mongrel) or on a spell still on the stack
             // (Deathlace — a lace can recolor the spell itself, which is the whole reason the
-            // cycle was printed). The spell slot has no duration because the spell has none.
+            // cycle was printed). The spell slot is a plain field, not a registered modifier: a
+            // spell has no duration to sweep and ceases to exist as it resolves.
             Event::ColorSet {
                 object,
                 color,
                 until_end_of_turn,
-            } => match &mut self.objects[object as usize] {
-                Object::Permanent(p) => p.set_color = Some((color, until_end_of_turn)),
-                Object::Spell(s) => s.set_color = Some(color),
-                other => panic!("object {object} can't record a color: {other:?}"),
-            },
+            } => {
+                let on_spell = match &mut self.objects[object as usize] {
+                    Object::Spell(s) => {
+                        s.set_color = Some(color);
+                        true
+                    }
+                    Object::Permanent(_) => false,
+                    other => panic!("object {object} can't record a color: {other:?}"),
+                };
+                if !on_spell {
+                    let duration = match until_end_of_turn {
+                        true => ModifierDuration::EndOfTurn,
+                        // The lace cycle prints no duration at all (CR 400.7).
+                        false => ModifierDuration::Indefinite,
+                    };
+                    self.register_modifier(object, "", duration, ModifierKind::SetColor(color));
+                }
+            }
             Event::PreparedSpellCast {
                 spell,
                 source,
@@ -1344,13 +1375,16 @@ impl Game {
                 keywords,
                 source_name,
             } => {
-                self.modifier_provenance.temp_boosts.push((
+                self.register_modifier(
                     object,
-                    power,
-                    toughness,
-                    keywords,
                     source_name,
-                ));
+                    ModifierDuration::EndOfTurn,
+                    ModifierKind::Boost {
+                        power,
+                        toughness,
+                        keywords,
+                    },
+                );
             }
             Event::BasePtSetUntilEndOfTurn {
                 object,
@@ -1358,11 +1392,16 @@ impl Game {
                 toughness,
                 ends_at_end_of_combat,
             } => {
-                let ts = self.stamp_continuous_timestamp();
-                let p = self.permanent_mut(object);
-                p.base_pt_set_eot = Some((power, toughness));
-                p.base_pt_set_eot_timestamp = ts;
-                p.animation_ends_at_end_of_combat = ends_at_end_of_combat;
+                let duration = match ends_at_end_of_combat {
+                    true => ModifierDuration::EndOfCombat,
+                    false => ModifierDuration::EndOfTurn,
+                };
+                self.register_modifier(
+                    object,
+                    "",
+                    duration,
+                    ModifierKind::BasePtSet { power, toughness },
+                );
             }
             Event::TypesAddedUntilEndOfTurn {
                 object,
@@ -1370,12 +1409,16 @@ impl Game {
                 subtypes,
                 colors,
             } => {
-                let ts = self.stamp_continuous_timestamp();
-                let p = self.permanent_mut(object);
-                p.added_types_eot = types;
-                p.added_types_eot_timestamp = ts;
-                p.added_subtypes_eot = subtypes;
-                p.added_colors_eot = colors;
+                self.register_modifier(
+                    object,
+                    "",
+                    ModifierDuration::EndOfTurn,
+                    ModifierKind::Became {
+                        types,
+                        subtypes,
+                        colors,
+                    },
+                );
             }
             // Excava, the Risen Past (CR 611.2c): the reanimated permanent's indefinite set, written
             // as it enters and never cleared at cleanup (resets with the object per CR 400.7).
@@ -1439,18 +1482,28 @@ impl Game {
                 also_types,
             } => {
                 let added_types_timestamp = self.stamp_continuous_timestamp();
-                let p = self.permanent_mut(object);
                 // An *indefinite* rewrite (CR 400.7) disarms any revert already armed on this
                 // permanent: otherwise `Event::TempBoostsEnded` would restore the pre-copy def at
                 // cleanup and undo a later-timestamped, durationless effect (Vraska, Betrayal's
-                // Sting's −2 on a Cursed Mirror that is currently copying a creature).
+                // Sting's −2 on a Cursed Mirror that is currently copying a creature). An
+                // until-EOT rewrite re-arms with whatever def is live *now*, so a copy stacked on
+                // a copy reverts one step, exactly as the single slot this replaced did.
                 // ponytail: that rewrite snapshots whatever def is live now, so it inherits the
                 // copy's name/cost rather than the printed card's — a CR 613 layered
                 // recomputation would keep the printed copiable values under the layer-4/6 set.
-                p.reverts_to_def_eot = match until_eot {
-                    true => Some(p.def),
-                    false => None,
-                };
+                let printed = self.permanent_mut(object).def;
+                self.modifier_provenance.modifiers.retain(|m| {
+                    m.host != object || !matches!(m.kind, ModifierKind::RevertsToDef(_))
+                });
+                if until_eot {
+                    self.register_modifier(
+                        object,
+                        "",
+                        ModifierDuration::EndOfTurn,
+                        ModifierKind::RevertsToDef(printed),
+                    );
+                }
+                let p = self.permanent_mut(object);
                 p.def = def;
                 // Copy Artifact's "except it's an enchantment in addition to its other types" (CR
                 // 707.2). The indefinite slot, not the until-EOT one: the added type lasts exactly
@@ -1466,26 +1519,25 @@ impl Game {
                 p.copy_rider_keywords = &[];
             }
             Event::TempBoostsEnded { object } => {
-                self.modifier_provenance
-                    .temp_boosts
-                    .retain(|&(o, ..)| o != object);
-                let p = self.permanent_mut(object);
-                p.temp_lost_keywords = &[];
-                p.base_pt_set_eot = None;
-                p.base_pt_set_eot_timestamp = 0;
-                p.animation_ends_at_end_of_combat = false;
-                p.added_types_eot = TypeSet::NONE;
-                p.added_types_eot_timestamp = 0;
-                p.added_subtypes_eot = &[];
-                p.added_colors_eot = &[];
-                if matches!(p.set_color, Some((_, true))) {
-                    p.set_color = None;
-                }
+                // Every modifier on `object` that has a duration ends together (CR 514.2 /
+                // 511.3); the durationless ones (a lace's "becomes black") survive, since nothing
+                // but the object itself changing zones clears those.
+                let mut reverts_to = None;
+                self.modifier_provenance.modifiers.retain(|m| {
+                    if m.host != object || m.duration == ModifierDuration::Indefinite {
+                        return true;
+                    }
+                    if let ModifierKind::RevertsToDef(printed) = m.kind {
+                        reverts_to = Some(printed);
+                    }
+                    false
+                });
                 // Revert an until-EOT enter-as-copy to the printed permanent (CR 514.2 — Cursed
                 // Mirror's "become a copy … until end of turn"). The copy's "except it has
                 // haste/myriad" rider ends with the copy, so clear the copiable rider too (an
                 // indefinite copy or a token leaves it in place — it resets with the object).
-                if let Some(printed) = p.reverts_to_def_eot.take() {
+                if let Some(printed) = reverts_to {
+                    let p = self.permanent_mut(object);
                     p.def = printed;
                     p.copy_rider_keywords = &[];
                 }
@@ -1511,23 +1563,16 @@ impl Game {
                     p.copy_rider_keywords = Box::leak(union.into_boxed_slice());
                 }
             }
+            // A second strip landing on the same permanent the same turn is just a second
+            // registered modifier — both are subtracted from the unioned keyword set, so nothing
+            // has to leak a merged `&'static` slice to fit a single field.
             Event::KeywordsStripped { object, keywords } => {
-                let p = self.permanent_mut(object);
-                if p.temp_lost_keywords.is_empty() {
-                    p.temp_lost_keywords = keywords;
-                } else {
-                    // Same union-not-clobber shape as `TempBoost` above, for a second strip
-                    // landing on the same permanent the same turn.
-                    // ponytail: leaks a small deduped Vec to keep `Permanent: Copy` — bounded by
-                    // one leak per multi-strip collision per turn, freed only at process exit.
-                    let mut union: Vec<Keyword> = p.temp_lost_keywords.to_vec();
-                    for k in keywords {
-                        if !union.contains(k) {
-                            union.push(*k);
-                        }
-                    }
-                    p.temp_lost_keywords = Box::leak(union.into_boxed_slice());
-                }
+                self.register_modifier(
+                    object,
+                    "",
+                    ModifierDuration::EndOfTurn,
+                    ModifierKind::LoseKeywords(keywords),
+                );
             }
             Event::AttachedKeywordsLost {
                 source, keywords, ..
@@ -2698,8 +2743,8 @@ impl Game {
                     .counter_batches
                     .retain(|&(o, ..)| !removed(o));
                 self.modifier_provenance
-                    .temp_boosts
-                    .retain(|&(o, ..)| !removed(o));
+                    .modifiers
+                    .retain(|m| !removed(m.host));
                 self.combat.attack_targets.retain(|&(a, d)| {
                     !removed(a)
                         && d != Defender::Player(player)

@@ -110463,6 +110463,39 @@ fn deathlace_replaces_a_creatures_colors_and_never_gives_them_back() {
     );
 }
 
+/// CR 613.3c/613.7: layer 5 applies colour-setting and colour-adding effects in timestamp order,
+/// so a set does not swallow an add that lands *after* it. Deathlace makes Restless Spire black;
+/// animating the Spire afterwards adds blue and red on top of that black, rather than the earlier
+/// set silently suppressing the animated form's own colours.
+#[test]
+fn a_color_set_does_not_swallow_colors_added_after_it() {
+    let mut game = Game::new();
+    let spire = game.spawn_on_battlefield(PlayerId(0), card("Restless Spire"));
+    let deathlace = game.spawn_in_hand(PlayerId(0), card("Deathlace"));
+
+    cast_and_resolve(&mut game, deathlace, Some(Target::Object(spire)));
+    assert_eq!(color_names(&game, spire), vec!["black"]);
+
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: spire,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        color_names(&game, spire),
+        vec!["blue", "black", "red"],
+        "the animation's added colours join the lace's black instead of being swallowed by it"
+    );
+}
+
 #[test]
 fn thoughtlace_makes_a_red_spell_counterable_by_red_elemental_blast() {
     let mut game = Game::new();

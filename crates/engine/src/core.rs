@@ -587,9 +587,19 @@ impl Game {
             .any(|&(o, ..)| o == object)
             || self
                 .modifier_provenance
-                .temp_boosts
+                .modifiers
                 .iter()
-                .any(|&(o, ..)| o == object)
+                .any(|m| m.host == object)
+    }
+
+    /// Every continuous modification registered on `object`, oldest timestamp first — the read
+    /// path for the CR 613 layers ([`Game::runtime_continuous_effects`], [`Game::colors_of`]).
+    /// The registry is appended in stamp order and only ever `retain`ed, so this needs no sort.
+    pub(crate) fn modifiers_on(&self, object: ObjectId) -> impl Iterator<Item = &Modifier> {
+        self.modifier_provenance
+            .modifiers
+            .iter()
+            .filter(move |m| m.host == object)
     }
 
     /// How many `kind`-counters the permanent at `id` has (0 if it isn't a permanent) — the
