@@ -62,5 +62,5 @@ type = "token"
 mode = "create"
 token = "37c4adc8-7455-4725-95fb-169a8b0254e5"
 count = 1
-controller = "one_per_opponent"
+per_opponent = true
 

@@ -46,5 +46,6 @@ blue = 1
 # Each player draws a card.
 [[abilities.effects]]
 type = "draw"
-mode = "each_player"
+mode = "cards"
+who = "each_player"
 count = 1

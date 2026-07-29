@@ -22,7 +22,8 @@ timing = "spell"
 # Each player draws X cards.
 [[abilities.effects]]
 type = "draw"
-mode = "each_player"
+mode = "cards"
+who = "each_player"
 count = "x"
 
 # Forecast — {2}{U}, Reveal this card from your hand: Each player draws a card. (Activate only during your upkeep
@@ -36,5 +37,6 @@ blue = 1
 # Each player draws a card.
 [[forecast.effects]]
 type = "draw"
-mode = "each_player"
+mode = "cards"
+who = "each_player"
 count = 1

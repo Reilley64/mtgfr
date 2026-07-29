@@ -47,7 +47,8 @@ timing = "spell"
 # Target player draws two cards
 [[abilities.effects]]
 type = "draw"
-mode = "target_player"
+mode = "cards"
+who = "target_player"
 count = 2
 
 # then discards two cards.
@@ -55,7 +56,7 @@ count = 2
 type = "choice"
 mode = "discard"
 count = 2
-target_player = true
+who = "target_player"
 
 # Mode 2 — "Target player creates a Treasure token." The Treasure enters under the target
 # player's control (CR 111.4).
@@ -67,7 +68,7 @@ timing = "spell"
 type = "token"
 mode = "create_treasure"
 count = 1
-target_player = true
+who = "target_player"
 
 # Mode 3 — "Destroy target artifact."
 [[abilities]]

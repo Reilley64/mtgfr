@@ -24,5 +24,5 @@ timing = "dies"
 [[abilities.effects]]
 type = "choice"
 mode = "each_player_sacrifices"
-scope = "all_players"
+who = "each_player"
 filter = "creature"

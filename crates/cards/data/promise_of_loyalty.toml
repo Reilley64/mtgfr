@@ -22,7 +22,7 @@ timing = "spell"
 [[abilities.effects]]
 type = "choice"
 mode = "each_player_sacrifices"
-scope = "all_players"
+who = "each_player"
 keep_one = true
 filter = "creature"
 

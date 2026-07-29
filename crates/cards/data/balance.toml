@@ -26,7 +26,7 @@ timing = "spell"
 [[abilities.effects]]
 type = "choice"
 mode = "each_player_sacrifices"
-scope = "all_players"
+who = "each_player"
 filter = { types = "land" }
 down_to_fewest = true
 
@@ -34,13 +34,13 @@ down_to_fewest = true
 [[abilities.effects]]
 type = "choice"
 mode = "each_player_discards"
-scope = "all_players"
+who = "each_player"
 down_to_fewest = true
 
 # … and sacrifice creatures the same way.
 [[abilities.effects]]
 type = "choice"
 mode = "each_player_sacrifices"
-scope = "all_players"
+who = "each_player"
 filter = "creature"
 down_to_fewest = true

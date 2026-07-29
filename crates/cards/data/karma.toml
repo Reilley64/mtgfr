@@ -22,5 +22,6 @@ timing = "each_upkeep"
 # this enchantment deals damage to that player equal to the number of Swamps they control.
 [[abilities.effects]]
 type = "damage"
-mode = "to_triggering_player"
+mode = "to_players"
+who = "triggering_player"
 amount = { per_permanent = { types = "land", subtypes = ["Swamp"], controller = "you" } }

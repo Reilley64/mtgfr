@@ -788,6 +788,7 @@ mod tests {
                 ])
             } else {
                 arc_slice([spell_ability(Effect::Draw(DrawEffect::Cards {
+                    who: PlayerSet::You,
                     count: Amount::Fixed(1),
                 }))])
             },

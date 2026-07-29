@@ -55,7 +55,7 @@ timing = "you_are_dealt_damage"
 [[abilities.effects]]
 type = "choice"
 mode = "each_player_sacrifices"
-scope = "you"
+who = "you"
 count = "triggering_damage_dealt"
 filter = { token = "nontoken" }
 lose_game_if_short = true

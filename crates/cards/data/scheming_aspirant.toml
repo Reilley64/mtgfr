@@ -23,5 +23,6 @@ timing = "you_proliferate"
 # each opponent loses 2 life and you gain 2 life.
 [[abilities.effects]]
 type = "life"
-mode = "each_opponent_drain"
+mode = "drain"
+who = "each_opponent"
 amount = 2

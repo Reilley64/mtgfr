@@ -35,6 +35,6 @@ mode = "discard_your_hand"
 [[abilities.effects]]
 type = "choice"
 mode = "each_player_sacrifices"
-scope = "each_opponent"
+who = "each_opponent"
 filter = "creature"
 count = "cards_discarded_this_way"
