@@ -367,7 +367,7 @@ Check freshness with `just engine-cr-index-check`.
 - `crates/engine/src/triggers.rs:1264` — (CR 109.4 / 603.3d), not its owner — a stolen or reanimated permanent
 - `crates/engine/tests/game.rs:63014` — "Its controller gains life equal to its power" names the controller (CR 109.4 — the player
 - `crates/engine/tests/game.rs:101869` — control." CR 109.4/CR 720 — "you control" is a control test, not an ownership test, so a
-- `crates/cards/src/types/effect/player_set.rs:38` — cards") — CR 109.4, so a stolen creature pays its thief rather than its owner.
+- `crates/cards/src/types/effect/player_set.rs:33` — cards") — CR 109.4, so a stolen creature pays its thief rather than its owner.
 
 ### CR 110.1
 
@@ -2390,7 +2390,7 @@ Check freshness with `just engine-cr-index-check`.
 - `crates/cards/src/types/filter.rs:1076` — The timing-conditional sibling of [`Self::kicked_scaled`] (CR 601.2c's general
 - `crates/cards/src/types/filter.rs:1086` — count range, not two), so the same-instance distinctness CR 601.2c already gives a
 - `crates/cards/src/types/mana.rs:269` — not), Strive's total depends on *how many* targets the caster commits to: CR 601.2c
-- `crates/cards/tests/de.rs:205` — value X or less" (CR 601.2c): the budget rides on the count table, and a dropped
+- `crates/cards/tests/de.rs:242` — value X or less" (CR 601.2c): the budget rides on the count table, and a dropped
 
 ### CR 601.2d
 
@@ -2487,7 +2487,7 @@ Check freshness with `just engine-cr-index-check`.
 - `crates/cards/src/types/card.rs:774` — A printed alternative cost that isn't a mana cost at all (CR 601.2f — Invigorate: "If you
 - `crates/cards/src/types/card.rs:947` — generic cost by {1} (floored at 0, CR 601.2f). `delve = true` in TOML; `false` for every
 - `crates/cards/src/types/card.rs:954` — (CR 601.2f); the resolved spell is exiled like flashback's (CR 702.19d — only relevant to a
-- `crates/cards/src/types/effect/player_set.rs:105` — One opponent (Invigorate's "an opponent gains 3 life" — CR 601.2f's alternative-cost
+- `crates/cards/src/types/effect/player_set.rs:100` — One opponent (Invigorate's "an opponent gains 3 life" — CR 601.2f's alternative-cost
 - `crates/cards/src/types/effect/shared.rs:189` — (CR 601.2f) — Plumb the Forbidden's "copy this spell for each creature sacrificed this
 - `crates/cards/src/types/effect/shared.rs:2030` — sacrifice cost (CR 601.2f): the reflexive trigger doesn't happen at all when nothing was
 - `crates/cards/src/types/effect/static.rs:541` — Gloom's "White spells cost {3} more to cast" (CR 601.2f) — the sign-flipped twin of
@@ -3206,9 +3206,9 @@ Check freshness with `just engine-cr-index-check`.
 - `crates/engine/tests/game.rs:53442` — equal to its power." CR 603.10a last-known information lands the count.
 - `crates/engine/tests/game.rs:55340` — hand is a no-op (CR 603.10a last-known information) — it stays in the graveyard rather
 - `crates/engine/tests/game.rs:105189` — its power." Its power is last-known information (CR 603.10a) — the Ghoul is already in the
-- `crates/cards/src/types/effect/player_set.rs:51` — The attacking player, baked in when the attack trigger is placed (CR 603.10a) — Parasitic
-- `crates/cards/src/types/effect/player_set.rs:58` — The one player the trigger is about, baked in when it is placed (CR 603.10a) — Howling
-- `crates/cards/src/types/effect/player_set.rs:84` — answers its owner (CR 603.10a).
+- `crates/cards/src/types/effect/player_set.rs:46` — The attacking player, baked in when the attack trigger is placed (CR 603.10a) — Parasitic
+- `crates/cards/src/types/effect/player_set.rs:53` — The one player the trigger is about, baked in when it is placed (CR 603.10a) — Howling
+- `crates/cards/src/types/effect/player_set.rs:79` — answers its owner (CR 603.10a).
 - `crates/cards/src/types/effect/shared.rs:47` — must resolve before the target leaves the battlefield (CR 613.6/603.10a last-known
 - `crates/cards/src/types/effect/shared.rs:165` — placement — the host is a graveyard card by resolution and reads 0 there (CR 603.10a), so
 - `crates/cards/src/types/effect/shared.rs:2125` — CR 603.10a last-known information: a Dies trigger's `Amount::SourcePower`/

@@ -16,11 +16,6 @@ use super::*;
     derive(serde::Deserialize),
     serde(from = "PlayerSetName")
 )]
-#[cfg_attr(
-    feature = "card-schema",
-    derive(schemars::JsonSchema),
-    schemars(rename_all = "snake_case")
-)]
 pub enum PlayerSet {
     /// The ability's controller — the unwritten default on a card that names no one ("you gain 3
     /// life", and the bare "gain 3 life" reminder shorthand).
@@ -113,29 +108,74 @@ pub enum PlayerSet {
 /// The authorable spelling of a [`PlayerSet`] — every set is a bare string in TOML
 /// (`who = "each_opponent"`).
 ///
-/// [`PlayerSet::AttackingPlayer`] carries a slot the placement filler writes into, which makes it a
-/// serde *struct* variant that a bare string can't reach. Deserializing through this shadow keeps
-/// the TOML surface uniform instead of making one set spell itself `{ attacking_player = {} }`.
+// Seven sets carry a slot the trigger's placement filler writes into, which makes them serde
+// *struct* variants that a bare string can't reach. Deserializing through this shadow keeps the
+// TOML surface uniform instead of making those sets spell themselves `{ triggering_player = {} }`,
+// and generating the JSON Schema from it keeps the schema agreeing with serde about that — derived
+// from `PlayerSet`, it would demand the object spelling and reject every card that writes a string.
+//
+// The doc comments below are therefore the *author-facing* half of each set (which card says it),
+// and they are what card authors see in schema tooltips; `PlayerSet` carries the rules half.
 #[cfg(feature = "card-dsl")]
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
+#[cfg_attr(
+    feature = "card-schema",
+    derive(schemars::JsonSchema),
+    schemars(rename_all = "snake_case")
+)]
 enum PlayerSetName {
+    /// The ability's own controller — "you gain 3 life", and the default when a card names no one.
     You,
+    /// "target player" (Ominous Harvest).
     TargetPlayer,
+    /// "target opponent" (Blood Artist).
     TargetOpponent,
+    /// The controller of this ability's *object* target — "its controller gains life equal to its
+    /// power" (Swords to Plowshares).
     TargetsController,
+    /// The owner of this ability's object target — "its owner shuffles it" (Oblation).
     TargetsOwner,
+    /// "each opponent".
     EachOpponent,
+    /// "each player" (Vandal's Edit).
     EachPlayer,
+    /// "each player other than target player" (Death by Dragons).
     EachOtherPlayer,
+    /// The attacking player — "whenever enchanted creature attacks, its controller loses 2 life"
+    /// (Parasitic Impetus). Only on an attack trigger.
     AttackingPlayer,
+    /// The one player the trigger is about — "at the beginning of each player's draw step, **that
+    /// player** draws a card" (Howling Mine), "that land's controller" (Dingus Egg).
     TriggeringPlayer,
+    /// Every opponent except the one the trigger is about — "each other opponent" (Hydra Omnivore).
     EachOtherOpponent,
+    /// The controller of the permanent that just entered — "that land's controller" (Ankh of
+    /// Mishra). Only on a `permanent_enters` trigger.
     EnteringPermanentsController,
+    /// The controller of the enchanted creature that just died — "that creature's controller"
+    /// (Creature Bond).
     DyingEnchantedCreaturesController,
+    /// The player the source just damaged — "that player discards a card at random" (Hypnotic
+    /// Specter).
     DamagedPlayer,
+    /// The controller of the permanent that dealt the damage — "that creature's controller may draw
+    /// a card" (Edric, Spymaster of Trest).
     DamagingPermanentsController,
+    /// One opponent, chosen by this ability's controller — "an opponent gains 3 life" (Invigorate).
     AnOpponent,
+}
+
+/// Generated from [`PlayerSetName`], the shape an author actually writes — see its doc comment.
+#[cfg(feature = "card-schema")]
+impl schemars::JsonSchema for PlayerSet {
+    fn schema_name() -> String {
+        "PlayerSet".to_owned()
+    }
+
+    fn json_schema(generator: &mut schemars::r#gen::SchemaGenerator) -> schemars::schema::Schema {
+        PlayerSetName::json_schema(generator)
+    }
 }
 
 #[cfg(feature = "card-dsl")]

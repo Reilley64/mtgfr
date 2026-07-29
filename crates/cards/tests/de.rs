@@ -42,6 +42,43 @@ fn kind_toml_schema_includes_instant_and_creature() {
     assert!(text.contains("creature"), "{text}");
 }
 
+/// The seven player sets that carry a trigger-placement slot are serde *struct* variants, so a
+/// schema derived from `PlayerSet` itself would demand `who = { triggering_player = {} }` and
+/// reject the string every card writes. Every set must schema as a bare string, and every one of
+/// those strings must deserialize.
+#[test]
+fn player_set_schema_offers_only_bare_strings_that_deserialize() {
+    #[derive(Deserialize)]
+    struct WhoRow {
+        who: PlayerSet,
+    }
+
+    let schema = schemars::schema_for!(PlayerSet);
+    let json = serde_json::to_value(schema).unwrap();
+    let variants = json["oneOf"].as_array().expect("oneOf variants");
+
+    let names: Vec<&str> = variants
+        .iter()
+        .map(|variant| {
+            let literals = variant["enum"]
+                .as_array()
+                .unwrap_or_else(|| panic!("player set must be a bare string, got {variant}"));
+            literals[0].as_str().expect("string literal")
+        })
+        .collect();
+    assert!(
+        names.contains(&"you") && names.contains(&"triggering_player"),
+        "{names:?}"
+    );
+
+    for name in names {
+        let row: WhoRow = toml::from_str(&format!("who = \"{name}\"")).unwrap_or_else(|error| {
+            panic!("schema offers `{name}` but it does not deserialize: {error}")
+        });
+        let _ = row.who;
+    }
+}
+
 #[test]
 fn card_toml_schema_includes_name_and_damage_effect() {
     let schema = schemars::schema_for!(cards::toml_surface::CardToml);
