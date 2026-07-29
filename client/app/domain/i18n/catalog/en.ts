@@ -29,12 +29,60 @@ function nameOnly(params: MessageParams): string {
   return String(param(params, "name"));
 }
 
-function edictWho(scope: MessageValue): string {
-  if (scope === "each_opponent") return "Each opponent";
-  if (scope === "you") return "You";
-  if (scope === "targeted_players") return "Any number of target players";
-  if (scope === "targeted_opponent") return "Target opponent";
-  return "Each player";
+/**
+ * An edict's subject and the verb suffix that agrees with it. Priest of Forgotten Gods' "any
+ * number of target players" is a resolution-time pick rather than a player set, so it names its
+ * own plural subject instead of reading `who`.
+ */
+function edictSubject(params: MessageParams): [subject: string, verbSuffix: string] {
+  if (bool(params, "chosen_by_controller")) return ["Any number of target players", ""];
+  return [playerSubject(params), playerVerbSuffix(params)];
+}
+
+/** A player set as an object phrase — "you", "each opponent", "that permanent's controller". */
+function playerPhrase(params: MessageParams): string {
+  const who = param(params, "who");
+  if (who === "target_player") return "target player";
+  if (who === "target_opponent") return "target opponent";
+  if (who === "targets_controller") return "target's controller";
+  if (who === "targets_owner") return "target's owner";
+  if (who === "each_opponent") return "each opponent";
+  if (who === "each_player") return "each player";
+  if (who === "each_other_player") return "each player other than target player";
+  if (who === "each_other_opponent") return "each other opponent";
+  if (who === "attacking_player") return "the attacking player";
+  if (who === "triggering_player") return "that player";
+  if (who === "entering_permanents_controller") return "that permanent's controller";
+  if (who === "dying_enchanted_creatures_controller") return "that creature's controller";
+  if (who === "damaged_player") return "that player";
+  if (who === "damaging_permanents_controller") return "that creature's controller";
+  if (who === "an_opponent") return "an opponent";
+  // `PlayerSet::You` is the unwritten default, so an absent `who` reads as the controller.
+  return "you";
+}
+
+/** The same set as a capitalized sentence subject — "You", "Target player", "That creature's controller". */
+function playerSubject(params: MessageParams): string {
+  const phrase = playerPhrase(params);
+  return `${phrase[0].toUpperCase()}${phrase.slice(1)}`;
+}
+
+/** The possessive to match that subject — "your graveyard" vs "their graveyard". */
+function playerPossessive(params: MessageParams): string {
+  return playerPhrase(params) === "you" ? "your" : "their";
+}
+
+/** "" when the subject is "You", "s" otherwise — "You" is the only set that takes a bare verb. */
+function playerVerbSuffix(params: MessageParams): string {
+  return playerPhrase(params) === "you" ? "" : "s";
+}
+
+/** The same set as a sentence subject, with a regular verb conjugated to match — "You gain", "Each opponent draws". */
+function playerClause(
+  params: MessageParams,
+  verb: "gain" | "lose" | "draw" | "mill" | "discard" | "shuffle" | "create" | "get",
+): string {
+  return `${playerSubject(params)} ${verb}${playerVerbSuffix(params)}`;
 }
 
 function definingPtLead(when: MessageValue): string {
@@ -43,12 +91,12 @@ function definingPtLead(when: MessageValue): string {
   return "This creature's";
 }
 
-function searchDest(dest: MessageValue): string {
+function searchDest(dest: MessageValue, possessive = "your"): string {
   if (dest === "battlefield") return "onto the battlefield";
-  if (dest === "library_top") return "on top of your library";
-  if (dest === "graveyard") return "into your graveyard";
+  if (dest === "library_top") return `on top of ${possessive} library`;
+  if (dest === "graveyard") return `into ${possessive} graveyard`;
   if (dest === "exile") return "into exile";
-  return "into your hand";
+  return `into ${possessive} hand`;
 }
 
 function topDest(params: MessageParams): string {
@@ -146,8 +194,6 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     `Look at ${param(params, "target")}'s hand and choose a card from it. That player plays that card if able`,
   "effect.choice_councils_dilemma_vote": (params) =>
     `Starting with you, each player votes for ${humanize(param(params, "options"))}`,
-  "effect.choice_damaging_creature_controller_may_draw": (params) =>
-    `That creature's controller may draw ${param(params, "count")}`,
   "effect.choice_defenders_divide_blockers_among_attackers": () =>
     "Instead of declaring blockers, each defending player divides their creatures into one pile per attacking creature, and the piles are assigned to those attackers at random",
   "effect.choice_defenders_split_blockers_into_piles": () =>
@@ -156,9 +202,9 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     `Defending player sacrifices ${param(params, "count")} permanents of their choice`,
   "effect.choice_discard": (params) => {
     const suffix = bool(params, "random") ? " at random" : "";
-    return bool(params, "target_player")
-      ? `Target player discards ${param(params, "count")}${suffix}${bool(params, "or_one_matching") ? " unless they discard a land card" : ""}`
-      : `Discard ${param(params, "count")}${suffix}${bool(params, "or_one_matching") ? " unless you discard a land card" : ""}`;
+    const pronoun = playerPhrase(params) === "you" ? "you" : "they";
+    const unless = bool(params, "or_one_matching") ? ` unless ${pronoun} discard a land card` : "";
+    return `${playerClause(params, "discard")} ${param(params, "count")}${suffix}${unless}`;
   },
   "effect.choice_each_other_token_becomes_copy_of_chosen": literal(
     "You may choose a token you control; if you do, each other token you control becomes a copy of that token",
@@ -174,18 +220,18 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.choice_each_player_names_card_then_reveals_top": literal(
     "Each player chooses a card name. Then each player reveals the top card of their library. If the card a player revealed has the name they chose, that player puts it into their hand. If it does not, that player puts it on the bottom of their library",
   ),
-  "effect.choice_each_player_discards": (params) =>
-    `${edictWho(param(params, "scope"))} ${
-      bool(params, "down_to_fewest") ? "discards down to the fewest cards in hand" : "discards a card"
-    }`,
-  "effect.choice_each_player_sacrifices": (params) =>
-    `${edictWho(param(params, "scope"))} ${
-      bool(params, "keep_one")
-        ? "keeps one creature and sacrifices the rest"
-        : bool(params, "down_to_fewest")
-          ? `sacrifices ${humanize(param(params, "filter"))} down to the fewest anyone controls`
-          : "sacrifices a permanent"
-    }`,
+  "effect.choice_each_player_discards": (params) => {
+    const [subject, s] = edictSubject(params);
+    return `${subject} discard${s} ${bool(params, "down_to_fewest") ? "down to the fewest cards in hand" : "a card"}`;
+  },
+  "effect.choice_each_player_sacrifices": (params) => {
+    const [subject, s] = edictSubject(params);
+    if (bool(params, "keep_one")) return `${subject} keep${s} one creature and sacrifice${s} the rest`;
+    if (bool(params, "down_to_fewest")) {
+      return `${subject} sacrifice${s} ${humanize(param(params, "filter"))} down to the fewest anyone controls`;
+    }
+    return `${subject} sacrifice${s} a permanent`;
+  },
   "effect.choice_each_player_shuffles_hand_and_graveyard_then_draws": (params) =>
     `Each player shuffles their hand and graveyard into their library, then draws ${param(params, "count")}`,
   "effect.choice_join_forces_pay_mana": literal("Starting with you, each player may pay any amount of mana"),
@@ -198,6 +244,7 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   ),
   "effect.choice_may_discard": literal("You may discard a card"),
   "effect.choice_may_reveal_land_from_hand": literal("You may reveal a matching land card from your hand"),
+  "effect.choice_may_draw": (params) => `${playerSubject(params)} may draw ${param(params, "count")}`,
   "effect.choice_may_draw_unless_pays": (params) =>
     `You may draw a card unless that player pays ${param(params, "cost")}`,
   "effect.choice_may_draw_up_to": (params) => `You may draw up to ${param(params, "count")}`,
@@ -237,7 +284,6 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   ),
   "effect.choice_set_own_color_until_end_of_turn": literal("Become the color of your choice until end of turn"),
   "effect.choice_target_player_exiles_from_graveyard": literal("Target player exiles a card from their graveyard"),
-  "effect.choice_target_player_may_draw": (params) => `Target player may draw ${param(params, "count")}`,
   "effect.choose_one": (_params, children) => `Choose one -- ${children.join(" • ")}`,
   "effect.conditional": (_params, children) => children.join(", then "),
   "effect.control_attach_self_to_entering": literal("Attach this to that creature"),
@@ -303,12 +349,14 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.counters_level_up": (params) => `Level ${param(params, "level")}`,
   "effect.counters_monstrosity": (params) => `Monstrosity ${param(params, "count")}`,
   "effect.counters_put_counters_on_player": (params) =>
-    `${edictWho(param(params, "scope"))} gets ${param(params, "count")} ${humanize(param(params, "kind"))} counters`,
+    `${playerClause(params, "get")} ${param(params, "count")} ${humanize(param(params, "kind"))} counters`,
   "effect.counters_put_loyalty_counter_each": literal("Put a loyalty counter on each"),
-  "effect.counters_remove_all_but_one_plus_one_counter_then_gain_life": literal(
-    "Remove all but one +1/+1 counter, gain 1 life for each removed",
-  ),
-  "effect.counters_remove_all_player_counters": (params) => `${edictWho(param(params, "scope"))} loses all counters`,
+  "effect.counters_remove_counters": (params) => {
+    const kind = bool(params, "all_kinds") ? "counters" : "+1/+1 counters";
+    const keep = param(params, "keep");
+    return keep === 0 ? `Remove all ${kind}` : `Remove all but ${keep} ${kind}`;
+  },
+  "effect.counters_remove_all_player_counters": (params) => `${playerClause(params, "lose")} all counters`,
   "effect.counters_top_up_counters_on_player": (params) =>
     `Give target player ${humanize(param(params, "kind"))} counters up to ${param(params, "to")}`,
   "effect.counters_move_counters": (params) =>
@@ -321,29 +369,18 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
       ? `Put ${param(params, "count")} +1/+1 counters`
       : `Put ${param(params, "count")} ${humanize(param(params, "kind"))} counters`,
   "effect.counters_put_counters_each": (params) => `Put ${param(params, "count")} +1/+1 counters on each`,
-  "effect.counters_remove_all_counters_then_draw": literal("Remove all counters, draw a card for each removed"),
   "effect.counters_remove_counter_from_self": (params) =>
     params.kind === "plus_one_plus_one"
       ? "Remove a +1/+1 counter from it"
       : `Remove a ${humanize(param(params, "kind"))} counter from it`,
   "effect.damage_each_creature": (params) =>
     `Deal ${param(params, "amount")} damage to ${damageEachCreatureSubject(params)}`,
-  "effect.damage_each_opponent": (params) => `Deal ${param(params, "amount")} damage to each opponent`,
-  "effect.damage_each_other_opponent": (params) => `Deal ${param(params, "amount")} damage to each other opponent`,
-  "effect.damage_each_player": (params) => `Deal ${param(params, "amount")} damage to each player`,
   "effect.damage_radiance": (params) =>
     `Deal ${param(params, "amount")} damage to target creature and each other creature that shares a color with it`,
   "effect.damage_target": (params) => `Deal ${param(params, "amount")} damage`,
-  "effect.damage_to_dying_enchanted_creatures_controller": (params) =>
-    `Deals ${param(params, "amount")} damage to that creature's controller`,
   "effect.damage_to_entering_permanent": (params) =>
     `Deal ${param(params, "amount")} damage to the permanent that entered`,
-  "effect.damage_to_entering_permanent_controller": (params) =>
-    `Deals ${param(params, "amount")} damage to that permanent's controller`,
-  "effect.damage_to_self": (params) => `Deals ${param(params, "amount")} damage to you`,
-  "effect.damage_to_target_controller": (params) =>
-    `Deals ${param(params, "amount")} damage to that creature's controller`,
-  "effect.damage_to_triggering_player": (params) => `Deals ${param(params, "amount")} damage to that player`,
+  "effect.damage_to_players": (params) => `Deal ${param(params, "amount")} damage to ${playerPhrase(params)}`,
   "effect.destroy_all": (params) => `Destroy all ${humanize(param(params, "filter", "permanents"))}`,
   "effect.destroy_target": literal("Destroy target"),
   "effect.destroy_triggering_damaged_creature": literal("Destroy that creature"),
@@ -387,21 +424,22 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     `Reveal cards from the top of your library until you reveal ${humanize(param(params, "filter", "a card"))}. Exile that card and put the rest on the bottom of your library. You may cast the exiled card without paying its mana cost`,
   "effect.dig_reveal_until_may_deploy": (params) =>
     `Reveal cards from the top of your library until you reveal ${humanize(param(params, "filter", "a card"))}. You may put that card onto the battlefield. If you do not, put it into your hand. Put the rest on the bottom of your library`,
-  "effect.dig_search_library": (params) =>
-    `Search your library for ${humanize(param(params, "filter", "a card"))}, put it ${searchDest(param(params, "to_zone"))}`,
+  "effect.dig_search_library": (params) => {
+    // Veteran Explorer hands the search to every seat, so the subject, the possessive and both
+    // verbs follow `who` rather than always reading as a self-tutor.
+    const s = playerVerbSuffix(params);
+    const possessive = playerPossessive(params);
+    // "search" takes "-es", not the bare "-s" every other verb here does.
+    return `${playerSubject(params)} search${s ? "es" : ""} ${possessive} library for ${humanize(
+      param(params, "filter", "a card"),
+    )} and put${s} it ${searchDest(param(params, "to_zone"), possessive)}`;
+  },
   "effect.dig_shuffle_library": literal("Shuffle your library"),
   "effect.dig_shuffle_target_cards_from_graveyard_into_library": (params) =>
-    `${bool(params, "target_player") ? "Target player shuffles" : "Shuffle"} ${shuffleCount(params)} target cards from ${bool(params, "target_player") ? "their" : "your"} graveyard into ${bool(params, "target_player") ? "their" : "your"} library`,
+    `${playerClause(params, "shuffle")} ${shuffleCount(params)} target cards from ${playerPossessive(params)} graveyard into ${playerPossessive(params)} library`,
   "effect.dig_surveil": (params) => `Surveil ${param(params, "count")}`,
   "effect.discard": (params) => `Discard ${param(params, "count")}`,
-  "effect.draw_attacking_player": (params) => `The attacking player draws ${param(params, "count")}`,
-  "effect.draw_cards": (params) => `Draw ${param(params, "count")}`,
-  "effect.draw_each_draw_step_player": (params) => `That player draws ${param(params, "count")}`,
-  "effect.draw_each_player": (params) => `Each player draws ${param(params, "count")}`,
-  "effect.draw_target_owner": (params) =>
-    `${bool(params, "controller") ? "That target's controller" : "That target's owner"} draws ${param(params, "count")}`,
-  "effect.draw_target_player": (params) =>
-    `${bool(params, "opponent") ? "Target opponent" : "Target player"} draws ${param(params, "count")}`,
+  "effect.draw_cards": (params) => `${playerClause(params, "draw")} ${param(params, "count")}`,
   "effect.exile_all": (params) => `Exile all ${humanize(param(params, "filter", "permanents"))}`,
   "effect.exile_all_graveyards": literal("Exile all graveyards"),
   "effect.exile_graveyard": literal("Exile target player's graveyard"),
@@ -409,26 +447,14 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.exile_target": literal("Exile target"),
   "effect.exile_target_minting_illusion_on_leave": literal("Exile target"),
   "effect.exile_until_source_leaves": literal("Exile target until this leaves the battlefield"),
-  "effect.life_attacker_loses_you_draw": (params) =>
-    `That opponent loses ${param(params, "life_loss")} life; you draw a card`,
-  "effect.life_attacker_loses_you_gain": (params) =>
-    `Enchanted creature's controller loses ${param(params, "amount")} life; you gain ${param(params, "amount")}`,
-  "effect.life_drain_target": (params) =>
-    `Target player loses ${param(params, "amount")}, you gain ${param(params, "amount")}`,
-  "effect.life_each_opponent_drain": (params) =>
-    `Each opponent loses ${param(params, "amount")}, you gain ${bool(params, "sum_gain") ? "life equal to the life lost this way" : param(params, "amount")}`,
-  "effect.life_each_opponent_loses": (params) => `Each opponent loses ${param(params, "amount")}`,
-  "effect.life_each_player_loses": (params) => `Each player loses ${param(params, "amount")}`,
+  "effect.life_drain": (params) =>
+    `${playerClause(params, "lose")} ${param(params, "amount")} life, you gain ${bool(params, "sum_gain") ? "life equal to the life lost this way" : `${param(params, "amount")} life`}`,
   "effect.life_each_player_becomes_highest": literal(
     "Each player's life total becomes the highest life total among all players",
   ),
-  "effect.life_gain": (params) => `Gain ${param(params, "amount")} life`,
-  "effect.life_gain_target_controller": (params) => `Target's controller gains ${param(params, "amount")} life`,
-  "effect.life_lose": (params) => `Lose ${param(params, "amount")} life`,
-  "effect.life_opponent_gains": (params) => `An opponent gains ${param(params, "amount")} life`,
+  "effect.life_gain": (params) => `${playerClause(params, "gain")} ${param(params, "amount")} life`,
+  "effect.life_lose": (params) => `${playerClause(params, "lose")} ${param(params, "amount")} life`,
   "effect.life_source_owner_loses_half_their_life": literal("Its owner loses half their life, rounded up"),
-  "effect.life_target_player_gains": (params) => `Target player gains ${param(params, "amount")} life`,
-  "effect.life_target_player_loses": (params) => `Target player loses ${param(params, "amount")} life`,
   "effect.mana_add": literal("Add mana"),
   "effect.mana_lose_all_unspent": (params) =>
     bool(params, "to_you")
@@ -446,8 +472,7 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   ),
   "effect.mill_exile_top_may_play": (params) =>
     `Exile the top ${param(params, "count")} card(s)${bool(params, "face_down") ? " face down" : ""}; play ${millPlayDuration(params)}${bool(params, "free_while_source") ? " without paying its mana cost" : ""}`,
-  "effect.mill_mill": (params) => `Target player mills ${param(params, "count")}`,
-  "effect.mill_mill_self": (params) => `Mill ${param(params, "count")}`,
+  "effect.mill_mill": (params) => `${playerClause(params, "mill")} ${param(params, "count")}`,
   "effect.misc_arm_combat_damage_watch": literal(
     "Arm a delayed watch: this creature becomes prepared when target creature deals combat damage to a player this combat",
   ),
@@ -701,11 +726,11 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     "For each creature token you control that entered this turn, create a tapped and attacking copy of it; sacrifice those tokens at the beginning of the next end step",
   ),
   "effect.token_create": (params) =>
-    `Create ${param(params, "count", 1)} ${humanize(param(params, "token", "token"))} token(s)`,
+    `${playerClause(params, "create")} ${param(params, "count", 1)} ${humanize(param(params, "token", "token"))} token(s)${bool(params, "per_opponent") ? " for each opponent" : ""}`,
   "effect.token_create_copy": (params) =>
     `Create ${param(params, "count", 1)} token copy/copies of ${bool(params, "entering") ? "that creature" : "target creature"}${bool(params, "sacrifice_at_next_end_step") ? "; sacrifice it at the beginning of the next end step" : ""}${bool(params, "exile_at_next_end_step") ? "; exile it at the beginning of the next end step" : ""}`,
   "effect.token_create_treasure": (params) =>
-    `${bool(params, "target_player") ? "Target player creates" : "Create"} ${param(params, "count", 1)} Treasure token(s)`,
+    `${playerClause(params, "create")} ${param(params, "count", 1)} Treasure token(s)`,
   "effect.token_myriad_token_copies": literal(
     "For each opponent other than the defending player, create a token copy that's tapped and attacking that opponent; exile the tokens at the end of combat",
   ),

@@ -3,10 +3,20 @@
 use crate::*;
 
 impl Game {
-    pub(crate) fn remove_all_counters_events(&self, object: ObjectId) -> (Vec<Event>, i32) {
+    /// Events removing counters from `object`, plus how many came off. `all_kinds` sweeps every
+    /// [`CounterKind`] as well as +1/+1 counters (Nexus Mentality's "remove all counters"); `keep`
+    /// leaves that many +1/+1 counters behind (Lily Bowen's "all but one" — a no-op at zero or one
+    /// already present). `keep` applies only to +1/+1 counters: no card in the pool keeps a named
+    /// kind back.
+    pub(crate) fn remove_counters_events(
+        &self,
+        object: ObjectId,
+        all_kinds: bool,
+        keep: i32,
+    ) -> (Vec<Event>, i32) {
         let mut events = Vec::new();
         let mut removed = 0;
-        let plus = self.permanent(object).plus_counters;
+        let plus = (self.permanent(object).plus_counters - keep).max(0);
         if plus > 0 {
             events.push(Event::CountersPlaced {
                 object,
@@ -14,6 +24,9 @@ impl Game {
                 source_name: self.def_of(object).name,
             });
             removed += plus;
+        }
+        if !all_kinds {
+            return (events, removed);
         }
         for &kind in CounterKind::ALL.iter() {
             let count = self.permanent(object).kind_counters[kind as usize] as i32;

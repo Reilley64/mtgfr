@@ -30,7 +30,7 @@ timing = "spell"
 [[abilities.effects]]
 type = "choice"
 mode = "each_player_sacrifices"
-scope = "each_opponent"
+who = "each_opponent"
 filter = { types = "artifact", token = "nontoken" }
 
 # Mode 2 — return target artifact or creature card with mana value 2 or less from your graveyard

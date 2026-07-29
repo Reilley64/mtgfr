@@ -1619,6 +1619,10 @@ impl Game {
         if filter.nonbasic && is_basic_land(printed.as_ref()) {
             return false;
         }
+        // Basic land (the positive twin — the tango-land cycle counts "two or more basic lands").
+        if filter.basic && !is_basic_land(printed.as_ref()) {
+            return false;
+        }
         // "Modified" (CR 701.29 — Silkguard's hexproof rider).
         if filter.modified && !self.is_modified(id, you) {
             return false;

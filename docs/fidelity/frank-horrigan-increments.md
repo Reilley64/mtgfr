@@ -342,6 +342,7 @@ spuriously *also* cull right after doubling. `otherwise` evaluates `condition` e
 branches, closing that gap; Lily is authored as a single `conditional` step with `then`/`otherwise`
 instead of two. lily_bowen_raging_grandma is fully faithful — no `approximates`. Still blocked:
 nothing._
+_Superseded 2026-07-28: `RemoveAllButOnePlusOneCounterThenGainLife` and `RemoveAllCountersThenDraw` were both replaced by the generic `CountersEffect::RemoveCounters { target, all_kinds, keep }` plus a following step reading `Amount::CountersRemovedThisWay`. Behavior unchanged; the "gain 1 life for each removed **this way**" shape #14 below wanted is now authorable in TOML with no Rust change._
 Depends on: nothing.
 Lily Bowen's upkeep needs three things the DSL lacks: a source-power-**at-most** condition
 (`Condition` has `TargetPowerAtLeast` and `SourceHasCounters { at_least }` only), "double the
@@ -707,7 +708,7 @@ Contagion Clasp and Contagion Engine both already place real -1/-1 counters onto
 ponytail. *Cards:* contagion_clasp, contagion_engine.
 _Landed 2026-07-26: a sweep at the top of `check_state_based_actions` (`apply.rs`) removes
 `min(plus_counters, kind_counters[MinusOneMinusOne])` of each kind via the same negative
-`CountersPlaced`/`KindCountersPlaced` idiom `remove_all_counters_events` uses, placed before the
+`CountersPlaced`/`KindCountersPlaced` idiom `remove_counters_events` uses, placed before the
 death/toughness sweep in the same function. Ordering is provably immaterial here — both kinds
 already contribute independent P/T deltas in `pt_layers`, so a creature's net toughness is
 identical whether or not annihilation has run yet; the sweep matters only for counter-counting

@@ -39,9 +39,15 @@ all_kinds = true
 [[abilities]]
 timing = "spell"
 
-# Remove all counters from target nonland permanent you control. Draw a card for each counter
-# removed this way.
+# Remove all counters from target nonland permanent you control.
 [[abilities.effects]]
 type = "counters"
-mode = "remove_all_counters_then_draw"
+mode = "remove_counters"
 target = { permanent = { types = "nonland", controller = "you" } }
+all_kinds = true
+
+# Draw a card for each counter removed this way.
+[[abilities.effects]]
+type = "draw"
+mode = "cards"
+count = "counters_removed_this_way"

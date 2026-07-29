@@ -31,4 +31,4 @@ filter = "land"
 matched_dest = "battlefield"
 matched_tapped = true
 rest_dest = "bottom"
-deploy_untapped_if = { type = "instant_or_sorcery_cards_in_your_graveyard_at_least", count = 2 }
+deploy_untapped_if = { type = "compare", left = "instant_or_sorcery_cards_in_your_graveyard", op = "at_least", right = 2 }

@@ -41,8 +41,10 @@ caster = "you"
 from_hand = true
 
 [abilities.condition]
-type = "triggering_spell_mana_value_at_least"
-at_least = 5
+type = "compare"
+left = "triggering_spell_mana_value"
+op = "at_least"
+right = 5
 
 # this creature becomes prepared.
 [[abilities.effects]]
@@ -67,5 +69,6 @@ timing = "spell"
 # Target player draws X cards.
 [[back.abilities.effects]]
 type = "draw"
-mode = "target_player"
+mode = "cards"
+who = "target_player"
 count = "x"

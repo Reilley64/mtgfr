@@ -92,19 +92,19 @@ pub enum CountersEffect {
 
     /// "Each opponent gets a poison counter" (Infectious Inquiry, Vraska's Fall) / "each player
     /// gets a poison counter" (Ichor Rats) — CR 122.1. Places `count` counters of `kind` on every
-    /// living player in `scope`. Targets nothing except under
-    /// [`EdictScope::TargetedOpponent`] ("target opponent gets a poison counter", Venerated
+    /// living player in `who`. Targets nothing except under
+    /// [`PlayerSet::TargetOpponent`] ("target opponent gets a poison counter", Venerated
     /// Rotpriest), which names exactly one chosen opponent.
     PutCountersOnPlayer {
         kind: PlayerCounterKind,
         count: Amount,
-        scope: EdictScope,
+        who: PlayerSet,
     },
 
     /// "Each opponent loses all counters" (Final Act) — CR 122.1/121.2: every counter of every
-    /// kind on each player in `scope` is removed, not just poison.
+    /// kind on each player in `who` is removed, not just poison.
     RemoveAllPlayerCounters {
-        scope: EdictScope,
+        who: PlayerSet,
     },
 
     /// "If target player has fewer than nine poison counters, they get a number of poison counters
@@ -116,20 +116,24 @@ pub enum CountersEffect {
         to: u8,
     },
 
-    RemoveAllCountersThenDraw {
+    /// "Remove all counters from target nonland permanent you control" (Nexus Mentality) /
+    /// "remove all but one +1/+1 counter from it" (Lily Bowen, Raging Grandma). Tallies how many
+    /// counters came off into [`ResolutionFrame::counters_removed_this_way`] for a following step
+    /// to read back through [`Amount::CountersRemovedThisWay`] — the "for each counter removed
+    /// this way" payoff is an ordinary next effect (draw, gain life), not a rider on this one.
+    ///
+    /// `all_kinds` also sweeps every named [`CounterKind`], not just +1/+1 counters. `keep` leaves
+    /// that many +1/+1 counters behind, and is a no-op when the permanent already has that few
+    /// ("all but one" of nothing or one is nothing).
+    ///
+    /// Resolves via [`crate::Effect`] dispatch on the `Game::run` path rather than through event
+    /// minting, because minting is `&self` and this writes the resolution frame.
+    RemoveCounters {
         target: TargetSpec,
-    },
-
-    /// "remove all but one +1/+1 counter from it, then you gain 1 life for each +1/+1 counter
-    /// removed this way" (Lily Bowen, Raging Grandma) — the cull-and-gain sibling of
-    /// [`Self::RemoveAllCountersThenDraw`]: keeps exactly one +1/+1 counter (a no-op with zero or
-    /// one already present — "all but one" of nothing or one is nothing) and the life gained is
-    /// the number actually removed, not a flat amount.
-    /// ponytail: +1/+1-only and always "keep one, gain life" — Lily Bowen is the only consumer;
-    /// grow a `keep`/`gain_life` rider (or a `kind` axis) on `RemoveAllCountersThenDraw` instead of
-    /// a new sibling if a future card needs a different keep-count or payoff.
-    RemoveAllButOnePlusOneCounterThenGainLife {
-        target: TargetSpec,
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        all_kinds: bool,
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        keep: u32,
     },
 
     /// "You may remove a +1/+1 counter from it" (Ingenious Prodigy) / "you may remove a vitality

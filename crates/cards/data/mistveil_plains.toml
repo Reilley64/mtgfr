@@ -28,6 +28,7 @@ mode = "tuck_from_graveyard"
 target = { card_in_graveyard = { whose = "yours", filter = "any_card" } }
 
 [abilities.condition]
-type = "you_control_color_permanents"
-color = "white"
-at_least = 2
+type = "compare"
+left = { per_permanent = { controller = "you", color = "white" } }
+op = "at_least"
+right = 2

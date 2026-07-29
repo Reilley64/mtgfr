@@ -94,11 +94,9 @@ impl Game {
             // effect itself doesn't fire until the matching step begins — see
             // `Game::fire_delayed_triggers`).
             MiscEffect::ScheduleAtNextUpkeep { who, then, fire_at } => {
-                let player = match who {
-                    DelayController::You => controller,
-                    DelayController::TargetSpellController => self.controller_of(
-                        expect_object_target(target, "a delayed trigger's target-spell controller"),
-                    ),
+                // A lost target leaves no seat to schedule for (CR 608.2b) — nothing is queued.
+                let Some(player) = self.sole_player_in(who, controller, target) else {
+                    return Vec::new();
                 };
                 vec![Event::DelayedTriggerScheduled {
                     controller: player,

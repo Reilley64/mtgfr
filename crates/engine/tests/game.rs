@@ -576,6 +576,7 @@ static FLASHBACK_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([spell_ability(Effect::Draw(DrawEffect::Cards {
+        who: PlayerSet::You,
         count: Amount::Fixed(1),
     }))]),
     cycling: None,
@@ -652,6 +653,7 @@ static COMBAT_ONLY_INSTANT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([spell_ability(Effect::Draw(DrawEffect::Cards {
+        who: PlayerSet::You,
         count: Amount::Fixed(1),
     }))]),
     cycling: None,
@@ -2034,6 +2036,7 @@ static TWO_ETB: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         Ability {
             timing: Timing::Triggered(Trigger::Etb),
             effect: Effect::Draw(DrawEffect::Cards {
+                who: PlayerSet::You,
                 count: Amount::Fixed(1),
             }),
             optional: false,
@@ -2045,6 +2048,7 @@ static TWO_ETB: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         Ability {
             timing: Timing::Triggered(Trigger::Etb),
             effect: Effect::Life(LifeEffect::Gain {
+                who: PlayerSet::You,
                 amount: Amount::Fixed(2),
             }),
             optional: false,
@@ -2232,6 +2236,7 @@ static MAY_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Triggered(Trigger::Etb),
         effect: Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::You,
             count: Amount::Fixed(1),
         }),
         optional: true,
@@ -2316,6 +2321,7 @@ static MAY_PAY_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Triggered(Trigger::Etb),
         effect: Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::You,
             count: Amount::Fixed(1),
         }),
         optional: true,
@@ -2661,14 +2667,14 @@ static LOOK_DIG_TO_BATTLEFIELD: LazyLock<CardDef> = LazyLock::new(|| CardDef {
 
 /// Resolve the top of the stack by having both players pass in succession.
 fn resolve_top_of_stack(game: &mut Game) {
-    game.submit(Intent::PassPriority {
-        player: game.priority_holder(),
-    })
-    .unwrap();
-    game.submit(Intent::PassPriority {
-        player: game.priority_holder(),
-    })
-    .unwrap();
+    // Every seat has to pass in succession before the top resolves (CR 117.4), so the number of
+    // passes tracks the table size rather than assuming a two-player game.
+    for _ in 0..game.player_count() {
+        game.submit(Intent::PassPriority {
+            player: game.priority_holder(),
+        })
+        .unwrap();
+    }
 }
 
 /// Resolve a just-cast Demonstrate spell's fabricated trigger (CR 702.147a), declining the copy
@@ -2963,6 +2969,13 @@ impl std::ops::DerefMut for TestGame {
 impl TestGame {
     fn new() -> Self {
         Self { game: Game::new() }
+    }
+
+    /// A `players`-seat table, for the effects that fan out across more than one opponent.
+    fn with_players(players: u8) -> Self {
+        Self {
+            game: Game::with_players(players, 0),
+        }
     }
 
     /// Begin casting `object` from player 0's hand. Mana is funded by default; chain
@@ -8020,7 +8033,8 @@ static MAKE_INKLINGS: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         effect: Effect::Token(TokenEffect::Create {
             token: INKLING.clone(),
             count: Amount::Fixed(2),
-            controller: TokenController::You,
+            who: PlayerSet::You,
+            per_opponent: false,
             enters_with: Amount::Fixed(0),
             set_base_pt: None,
             exile_at_next_end_step: false,
@@ -8206,6 +8220,7 @@ fn gain_life_3() -> CardDef {
         sorcery(
             "Gain 3 (test)",
             Box::leak(Box::new([spell_ability(Effect::Life(LifeEffect::Gain {
+                who: PlayerSet::You,
                 amount: Amount::Fixed(3),
             }))])),
         )
@@ -8220,6 +8235,7 @@ fn gain_life_0() -> CardDef {
         sorcery(
             "Gain 0 (test)",
             Box::leak(Box::new([spell_ability(Effect::Life(LifeEffect::Gain {
+                who: PlayerSet::You,
                 amount: Amount::Fixed(0),
             }))])),
         )
@@ -8234,6 +8250,7 @@ fn lose_life_3() -> CardDef {
         sorcery(
             "Lose 3 (test)",
             Box::leak(Box::new([spell_ability(Effect::Life(LifeEffect::Lose {
+                who: PlayerSet::You,
                 amount: Amount::Fixed(3),
             }))])),
         )
@@ -8391,11 +8408,50 @@ fn x_gain_sorcery() -> CardDef {
         ..sorcery(
             "X Gain (test)",
             Box::leak(Box::new([spell_ability(Effect::Life(LifeEffect::Gain {
+                who: PlayerSet::You,
                 amount: Amount::X,
             }))])),
         )
     });
     CARD.clone()
+}
+
+/// A test X-spell that drains: target player loses X life and its caster gains that much.
+fn x_drain_sorcery() -> CardDef {
+    static CARD: LazyLock<CardDef> = LazyLock::new(|| CardDef {
+        cost: Cost { x: 1, ..Cost::FREE },
+        ..sorcery(
+            "X Drain (test)",
+            Box::leak(Box::new([spell_ability(Effect::Life(LifeEffect::Drain {
+                who: PlayerSet::TargetPlayer,
+                amount: Amount::X,
+                sum_gain: false,
+            }))])),
+        )
+    });
+    CARD.clone()
+}
+
+/// The recipient and the size of a life change vary independently: `PlayerSet::TargetPlayer` picks
+/// the seat, `Amount` sizes the payload. Before they were separate axes, a drain aimed at a target
+/// carried a raw count and could not be an X-spell at all.
+#[test]
+fn a_targeted_drain_can_be_sized_by_x() {
+    let mut game = TestGame::new();
+    let before = game.life(PlayerId(0));
+
+    let spell = game.spawn_in_hand(PlayerId(0), x_drain_sorcery());
+    game.cast(spell)
+        .x(3)
+        .at(Target::Player(PlayerId(1)))
+        .resolve();
+
+    assert_eq!(game.life(PlayerId(1)), 20 - 3, "the targeted seat loses X");
+    assert_eq!(
+        game.life(PlayerId(0)) - before,
+        3,
+        "and the caster gains that much"
+    );
 }
 
 /// A bare cast-X doubler static (Unbound Flourishing's first ability, isolated from its
@@ -8582,7 +8638,10 @@ static X_DRAW_PERMANENT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             exile_self: false,
             graveyard_exile_target_count: 0,
         }),
-        effect: Effect::Draw(DrawEffect::Cards { count: Amount::X }),
+        effect: Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::You,
+            count: Amount::X,
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -8620,6 +8679,7 @@ static FIXED_DRAW_PERMANENT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             graveyard_exile_target_count: 0,
         }),
         effect: Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::You,
             count: Amount::Fixed(1),
         }),
         optional: false,
@@ -9295,7 +9355,8 @@ fn make_squirrel_per_opponent() -> CardDef {
                 TokenEffect::Create {
                     token: creature("Squirrel", 1, 1, &[]),
                     count: Amount::Fixed(1),
-                    controller: TokenController::EachOpponent,
+                    who: PlayerSet::EachOpponent,
+                    per_opponent: false,
                     enters_with: Amount::Fixed(0),
                     set_base_pt: None,
                     exile_at_next_end_step: false,
@@ -9364,7 +9425,7 @@ fn an_each_opponent_token_effect_gives_one_token_to_every_opponent() {
 
 /// A test-only sorcery "For each opponent, you create a 1/1 Pest token with 'When this token
 /// dies, you gain 1 life.'" — Turn Stones' own text, isolated (`controller =
-/// "one_per_opponent"`): one token per opponent, but every token belongs to the caster, not the
+/// `per_opponent`): one token per opponent, but every token belongs to the caster, not the
 /// opponents (CR 111.4).
 fn make_pest_per_opponent() -> CardDef {
     static CARD: LazyLock<CardDef> = LazyLock::new(|| {
@@ -9374,7 +9435,8 @@ fn make_pest_per_opponent() -> CardDef {
                 TokenEffect::Create {
                     token: PEST.clone(),
                     count: Amount::Fixed(1),
-                    controller: TokenController::OnePerOpponent,
+                    who: PlayerSet::You,
+                    per_opponent: true,
                     enters_with: Amount::Fixed(0),
                     set_base_pt: None,
                     exile_at_next_end_step: false,
@@ -9390,7 +9452,7 @@ fn make_pest_per_opponent() -> CardDef {
 
 /// Turn Stones (Eccentric Pestfinder's back face): "For each opponent, you create a 1/1 ...
 /// Pest ..." mints one token per opponent, but every token is under the caster's own control —
-/// distinct from `TokenController::EachOpponent`, which hands a token to each opponent.
+/// distinct from `PlayerSet::EachOpponent`, which hands a token to each opponent.
 #[test]
 fn eccentric_pestfinder_mints_one_pest_per_opponent_under_you() {
     let mut game = Game::with_players(4, 0);
@@ -9502,7 +9564,7 @@ fn eccentric_pestfinders_pest_death_trigger_gains_the_caster_life_not_an_opponen
 }
 
 /// Death by Dragons: "Each player other than target player creates a 5/5 red Dragon creature
-/// token with flying." — `TokenController::EachOtherPlayer`: the chosen Player target is the one
+/// token with flying." — `PlayerSet::EachOtherPlayer`: the chosen Player target is the one
 /// player who does NOT get a Dragon; every other living player (the caster included) does.
 #[test]
 fn death_by_dragons_each_other_player_gets_dragons_except_the_target() {
@@ -9718,6 +9780,7 @@ static PEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Triggered(Trigger::Dies),
         effect: Effect::Life(LifeEffect::Gain {
+            who: PlayerSet::You,
             amount: Amount::Fixed(1),
         }),
         optional: false,
@@ -9802,7 +9865,8 @@ static MAKE_PEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         effect: Effect::Token(TokenEffect::Create {
             token: PEST.clone(),
             count: Amount::Fixed(1),
-            controller: TokenController::You,
+            who: PlayerSet::You,
+            per_opponent: false,
             enters_with: Amount::Fixed(0),
             set_base_pt: None,
             exile_at_next_end_step: false,
@@ -10236,6 +10300,7 @@ static HERALD: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Triggered(Trigger::Attacks),
         effect: Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::You,
             count: Amount::Fixed(1),
         }),
         optional: false,
@@ -11725,7 +11790,8 @@ static LIFELINK_BLAST_EACH_PLAYER: LazyLock<CardDef> = LazyLock::new(|| CardDef 
         "Lifelink Blast Each Player (test)",
         &[Ability {
             timing: Timing::Spell,
-            effect: Effect::Damage(DamageEffect::EachPlayer {
+            effect: Effect::Damage(DamageEffect::ToPlayers {
+                who: PlayerSet::EachPlayer,
                 amount: Amount::Fixed(2),
             }),
             optional: false,
@@ -13826,6 +13892,7 @@ fn the_stack_query_exposes_spells_and_abilities_in_resolution_order() {
             stack[0],
             StackEntry::Ability {
                 effect: Effect::Draw(DrawEffect::Cards {
+                    who: PlayerSet::You,
                     count: Amount::Fixed(1)
                 }),
                 ..
@@ -14419,9 +14486,9 @@ static TARGET_OPPONENT_DRAWS_THREE: LazyLock<CardDef> = LazyLock::new(|| CardDef
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
         timing: Timing::Spell,
-        effect: Effect::Draw(DrawEffect::TargetPlayer {
+        effect: Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::TargetOpponent,
             count: Amount::Fixed(3),
-            opponent: true,
         }),
         optional: false,
         min_level: 0,
@@ -16671,6 +16738,7 @@ static TEST_COUNTER_SHEDDER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
                 graveyard_exile_target_count: 0,
             }),
             effect: Effect::Draw(DrawEffect::Cards {
+                who: PlayerSet::You,
                 count: Amount::Fixed(1),
             }),
             optional: false,
@@ -16856,6 +16924,7 @@ static TEST_SAC_A_FOOD: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             graveyard_exile_target_count: 0,
         }),
         effect: Effect::Life(LifeEffect::Gain {
+            who: PlayerSet::You,
             amount: Amount::Fixed(1),
         }),
         optional: false,
@@ -16930,6 +16999,7 @@ static TEST_SAC_A_CREATURE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             graveyard_exile_target_count: 0,
         }),
         effect: Effect::Life(LifeEffect::Gain {
+            who: PlayerSet::You,
             amount: Amount::Fixed(1),
         }),
         optional: false,
@@ -17057,6 +17127,7 @@ static TEST_NONTOKEN_COUNTER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             graveyard_exile_target_count: 0,
         }),
         effect: Effect::Life(LifeEffect::Gain {
+            who: PlayerSet::You,
             amount: Amount::NontokenCreaturesEnteredThisTurn,
         }),
         optional: false,
@@ -17079,7 +17150,8 @@ fn make_a_bear_token() -> CardDef {
                 TokenEffect::Create {
                     token: creature("Bear Token", 2, 2, &[]),
                     count: Amount::Fixed(1),
-                    controller: TokenController::You,
+                    who: PlayerSet::You,
+                    per_opponent: false,
                     enters_with: Amount::Fixed(0),
                     set_base_pt: None,
                     exile_at_next_end_step: false,
@@ -20084,7 +20156,8 @@ fn brudiclad() -> CardDef {
                 Effect::Token(TokenEffect::Create {
                     token: creature("Myr", 2, 1, &[]),
                     count: Amount::Fixed(1),
-                    controller: TokenController::You,
+                    who: PlayerSet::You,
+                    per_opponent: false,
                     enters_with: Amount::Fixed(0),
                     set_base_pt: None,
                     exile_at_next_end_step: false,
@@ -21946,6 +22019,7 @@ static DIES_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Triggered(Trigger::Dies),
         effect: Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::You,
             count: Amount::Fixed(1),
         }),
         optional: false,
@@ -22670,9 +22744,10 @@ static WATCHES_CREATURE_DIES: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
         timing: Timing::Triggered(Trigger::CreatureDies),
-        effect: Effect::Life(LifeEffect::DrainTarget {
-            amount: 1,
-            opponent: false,
+        effect: Effect::Life(LifeEffect::Drain {
+            who: PlayerSet::TargetPlayer,
+            amount: Amount::Fixed(1),
+            sum_gain: false,
         }),
         optional: false,
         min_level: 0,
@@ -22799,6 +22874,7 @@ static WATCHES_CREATURE_DIES_ONCE_EACH_TURN: LazyLock<CardDef> = LazyLock::new(|
     abilities: arc_slice([Ability {
         timing: Timing::Triggered(Trigger::CreatureDies),
         effect: Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::You,
             count: Amount::Fixed(1),
         }),
         optional: false,
@@ -23699,6 +23775,7 @@ static UPKEEP_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Triggered(Trigger::Upkeep),
         effect: Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::You,
             count: Amount::Fixed(1),
         }),
         optional: false,
@@ -24387,6 +24464,7 @@ static EACH_UPKEEP_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Triggered(Trigger::EachUpkeep),
         effect: Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::You,
             count: Amount::Fixed(1),
         }),
         optional: false,
@@ -24515,6 +24593,7 @@ static END_STEP_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Triggered(Trigger::EndStep),
         effect: Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::You,
             count: Amount::Fixed(1),
         }),
         optional: false,
@@ -24615,6 +24694,7 @@ static BEGIN_COMBAT_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Triggered(Trigger::BeginCombat),
         effect: Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::You,
             count: Amount::Fixed(1),
         }),
         optional: false,
@@ -24747,6 +24827,7 @@ static GAIN_LIFE_ETB: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Triggered(Trigger::Etb),
         effect: Effect::Life(LifeEffect::Gain {
+            who: PlayerSet::You,
             amount: Amount::Fixed(3),
         }),
         optional: false,
@@ -24828,6 +24909,7 @@ static LIFE_GAIN_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Triggered(Trigger::YouGainLife),
         effect: Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::You,
             count: Amount::Fixed(1),
         }),
         optional: false,
@@ -25022,6 +25104,7 @@ static MAGECRAFT_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Triggered(Trigger::Magecraft),
         effect: Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::You,
             count: Amount::Fixed(1),
         }),
         optional: false,
@@ -25544,6 +25627,7 @@ static INSTANT_FILLER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Spell,
         effect: Effect::Life(LifeEffect::Gain {
+            who: PlayerSet::You,
             amount: Amount::Fixed(1),
         }),
         optional: false,
@@ -25634,7 +25718,7 @@ static BECOMES_TARGETED_TREASURE_MAKER: LazyLock<CardDef> = LazyLock::new(|| Car
         }),
         effect: Effect::Token(TokenEffect::CreateTreasure {
             count: Amount::Fixed(1),
-            target_player: false,
+            who: PlayerSet::You,
             tapped: false,
         }),
         optional: false,
@@ -25753,11 +25837,12 @@ static AURA_CAST_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Triggered(Trigger::CastSpell {
             filter: SpellFilter::Aura,
-            caster: CasterScope::You,
+            caster: WatchedPlayer::You,
             nth_each_turn: None,
             from_hand: false,
         }),
         effect: Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::You,
             count: Amount::Fixed(1),
         }),
         optional: false,
@@ -25886,6 +25971,7 @@ static X_INSTANT_FILLER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Spell,
         effect: Effect::Life(LifeEffect::Gain {
+            who: PlayerSet::You,
             amount: Amount::Fixed(1),
         }),
         optional: false,
@@ -26430,9 +26516,9 @@ static DRAW_ONE_TARGET: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
         timing: Timing::Spell,
-        effect: Effect::Draw(DrawEffect::TargetPlayer {
+        effect: Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::TargetPlayer,
             count: Amount::Fixed(1),
-            opponent: false,
         }),
         optional: false,
         min_level: 0,
@@ -29139,8 +29225,9 @@ fn schedule_draw_one() -> CardDef {
             "Schedule Draw One (test)",
             Box::leak(Box::new([spell_ability(Effect::Misc(
                 MiscEffect::ScheduleAtNextUpkeep {
-                    who: DelayController::You,
+                    who: PlayerSet::You,
                     then: &Effect::Draw(DrawEffect::Cards {
+                        who: PlayerSet::You,
                         count: Amount::Fixed(1),
                     }),
                     fire_at: Step::Upkeep,
@@ -29406,7 +29493,7 @@ fn schedule_may_draw_up_to_two() -> CardDef {
             "Schedule May Draw Up To Two (test)",
             Box::leak(Box::new([spell_ability(Effect::Misc(
                 MiscEffect::ScheduleAtNextUpkeep {
-                    who: DelayController::You,
+                    who: PlayerSet::You,
                     then: &Effect::Choice(ChoiceEffect::MayDrawUpTo {
                         count: Amount::Fixed(2),
                     }),
@@ -31134,6 +31221,7 @@ static MUTABLE_FLYER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         Ability {
             timing: Timing::Triggered(Trigger::Attacks),
             effect: Effect::Life(LifeEffect::Gain {
+                who: PlayerSet::You,
                 amount: Amount::Fixed(1),
             }),
             optional: false,
@@ -31167,6 +31255,7 @@ static MUTABLE_FLYER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
                 graveyard_exile_target_count: 0,
             }),
             effect: Effect::Life(LifeEffect::Gain {
+                who: PlayerSet::You,
                 amount: Amount::Fixed(1),
             }),
             optional: false,
@@ -32962,6 +33051,7 @@ static WATCHES_HOST_DIES_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Triggered(Trigger::EnchantedCreatureDies),
         effect: Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::You,
             count: Amount::Fixed(1),
         }),
         optional: false,
@@ -36520,6 +36610,7 @@ static YOU_DISCARD_WATCHER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Triggered(Trigger::YouDiscard),
         effect: Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::You,
             count: Amount::Fixed(1),
         }),
         optional: false,
@@ -39138,7 +39229,7 @@ fn sevinnes_reclamation_cast_from_hand_offers_no_copy() {
 fn tuck_graveyard_card_to_bottom_of_library_mistveil() {
     // Mistveil Plains: "{W}, {T}: Put target card from your graveyard on the bottom of your
     // library. Activate only if you control two or more white permanents." Controlling two
-    // white creatures satisfies the Condition::YouControlColorPermanents activation gate.
+    // white creatures satisfies the Condition::Compare activation gate.
     let mut game = Game::new();
     // Both players need library filler to survive their normal draw steps below (an empty-library
     // draw loses the game — see `attempted_empty_draw` — which would take Mistveil off the
@@ -40531,7 +40622,7 @@ fn all_hallows_eve_returns_all_graveyard_creatures_on_expiry() {
 #[test]
 fn mistveil_plains_activates_only_with_two_white_permanents() {
     // Mistveil Plains's tuck ability: "Activate only if you control two or more white
-    // permanents" — Condition::YouControlColorPermanents gates the activation.
+    // permanents" — Condition::Compare gates the activation.
     let mut game = Game::new();
     // Library filler so both players survive the draw steps rolled through below (Mistveil
     // Plains enters tapped, so it needs an untap step before its {T} cost is payable — see
@@ -43193,8 +43284,8 @@ fn an_ordinary_token_imposes_no_must_attack_requirement() {
     .expect("an ordinary token isn't forced to attack");
 }
 
-/// A test-only sorcery combining `must_attack_defender` with `TokenController::You` (not
-/// `one_per_opponent`) — the still-flattened path every non-Furygale must-attack token takes.
+/// A test-only sorcery combining `must_attack_defender` with `PlayerSet::You` (not
+/// `per_opponent`) — the still-flattened path every non-Furygale must-attack token takes.
 fn make_forced_token_you() -> CardDef {
     static CARD: LazyLock<CardDef> = LazyLock::new(|| {
         sorcery(
@@ -43203,7 +43294,8 @@ fn make_forced_token_you() -> CardDef {
                 TokenEffect::Create {
                     token: creature("Forced Token", 2, 2, &[Keyword::Haste]),
                     count: Amount::Fixed(1),
-                    controller: TokenController::You,
+                    who: PlayerSet::You,
+                    per_opponent: false,
                     enters_with: Amount::Fixed(0),
                     set_base_pt: None,
                     exile_at_next_end_step: false,
@@ -43219,7 +43311,7 @@ fn make_forced_token_you() -> CardDef {
 
 #[test]
 fn a_must_attack_token_under_token_controller_you_still_binds_to_the_single_flattened_opponent() {
-    // Regression: only `one_per_opponent` threads a per-opponent defender (Furygale Flocking).
+    // Regression: only `per_opponent` threads a per-opponent defender (Furygale Flocking).
     // Every other `controller` value keeps today's flattened behavior — the required defender is
     // *an* opponent of the controller, not scoped per-recipient.
     let mut game = Game::with_players(3, 0);
@@ -43263,7 +43355,7 @@ fn a_must_attack_token_under_token_controller_you_still_binds_to_the_single_flat
 }
 
 /// A test-only sorcery: "For each opponent, create two 2/2 hasty tokens that attack that
-/// opponent this turn if able" — `must_attack_defender` combined with `one_per_opponent`
+/// opponent this turn if able" — `must_attack_defender` combined with `per_opponent`
 /// (Furygale Flocking): each opponent's own pair is bound to that specific opponent, not a
 /// single flattened one.
 fn make_forced_tokens_per_opponent() -> CardDef {
@@ -43274,7 +43366,8 @@ fn make_forced_tokens_per_opponent() -> CardDef {
                 TokenEffect::Create {
                     token: creature("Forced Token", 2, 2, &[Keyword::Haste]),
                     count: Amount::Fixed(2),
-                    controller: TokenController::OnePerOpponent,
+                    who: PlayerSet::You,
+                    per_opponent: true,
                     enters_with: Amount::Fixed(0),
                     set_base_pt: None,
                     exile_at_next_end_step: false,
@@ -44063,7 +44156,7 @@ static NARROW_REATTACH: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Triggered(Trigger::PermanentEnters {
             filter: PermanentFilter::of(TypeSet::CREATURE),
-            controller: EnterController::Opponent,
+            controller: WatchedPlayer::Opponent,
         }),
         effect: Effect::Control(ControlEffect::AttachSelfToEntering { entering: None }),
         optional: true,
@@ -46813,7 +46906,7 @@ static CHOOSE_TWO: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             timing: Timing::Spell,
             effect: Effect::Token(TokenEffect::CreateTreasure {
                 count: Amount::Fixed(1),
-                target_player: false,
+                who: PlayerSet::You,
                 tapped: false,
             }),
             optional: false,
@@ -46825,6 +46918,7 @@ static CHOOSE_TWO: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         Ability {
             timing: Timing::Spell,
             effect: Effect::Life(LifeEffect::Gain {
+                who: PlayerSet::You,
                 amount: Amount::Fixed(3),
             }),
             optional: false,
@@ -46836,6 +46930,7 @@ static CHOOSE_TWO: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         Ability {
             timing: Timing::Spell,
             effect: Effect::Life(LifeEffect::Gain {
+                who: PlayerSet::You,
                 amount: Amount::Fixed(7),
             }),
             optional: false,
@@ -47263,6 +47358,7 @@ static CHOOSE_ONE_OR_MORE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         Ability {
             timing: Timing::Spell,
             effect: Effect::Life(LifeEffect::Gain {
+                who: PlayerSet::You,
                 amount: Amount::Fixed(3),
             }),
             optional: false,
@@ -49095,7 +49191,8 @@ static GRAVEYARD_EXIT_WATCHER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         effect: Effect::Token(TokenEffect::Create {
             token: INKLING.clone(),
             count: Amount::Fixed(1),
-            controller: TokenController::You,
+            who: PlayerSet::You,
+            per_opponent: false,
             enters_with: Amount::Fixed(0),
             set_base_pt: None,
             exile_at_next_end_step: false,
@@ -49454,7 +49551,8 @@ fn pack_a_punch() -> CardDef {
             timing: Timing::Spell,
             effect: Effect::Sequence {
                 steps: Arc::from([
-                    Effect::Mill(MillEffect::MillSelf {
+                    Effect::Mill(MillEffect::Mill {
+                        who: PlayerSet::You,
                         count: Amount::Fixed(1),
                     }),
                     Effect::Counters(CountersEffect::PutCounters {
@@ -50848,9 +50946,9 @@ static BRAINGEYSER_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
         timing: Timing::Spell,
-        effect: Effect::Draw(DrawEffect::TargetPlayer {
+        effect: Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::TargetPlayer,
             count: Amount::X,
-            opponent: false,
         }),
         optional: false,
         min_level: 0,
@@ -50937,7 +51035,7 @@ fn dirgur_test() -> CardDef {
         abilities: arc_slice([Ability {
             timing: Timing::Triggered(Trigger::CastSpell {
                 filter: SpellFilter::InstantOrSorcery,
-                caster: CasterScope::You,
+                caster: WatchedPlayer::You,
                 nth_each_turn: None,
                 from_hand: true,
             }),
@@ -50945,7 +51043,11 @@ fn dirgur_test() -> CardDef {
             optional: false,
             min_level: 0,
             once_each_turn: false,
-            condition: Some(Condition::TriggeringSpellManaValueAtLeast { at_least: 5 }),
+            condition: Some(Condition::Compare {
+                left: &Amount::TriggeringSpellManaValue,
+                op: CompareOp::AtLeast,
+                right: &Amount::Fixed(5),
+            }),
             cost: Cost::FREE,
         }]),
         cycling: None,
@@ -51373,11 +51475,12 @@ fn unfiltered_cast_trigger_still_fires_from_any_zone() {
         abilities: arc_slice([Ability {
             timing: Timing::Triggered(Trigger::CastSpell {
                 filter: SpellFilter::InstantOrSorcery,
-                caster: CasterScope::You,
+                caster: WatchedPlayer::You,
                 nth_each_turn: None,
                 from_hand: false,
             }),
             effect: Effect::Life(LifeEffect::Gain {
+                who: PlayerSet::You,
                 amount: Amount::Fixed(7),
             }),
             optional: false,
@@ -52269,12 +52372,14 @@ fn test_planeswalker(name: &'static str, loyalty: i32) -> CardDef {
         loyalty_ability(
             1,
             Effect::Life(LifeEffect::Gain {
+                who: PlayerSet::You,
                 amount: Amount::Fixed(2),
             }),
         ),
         loyalty_ability(
             -2,
             Effect::Life(LifeEffect::Gain {
+                who: PlayerSet::You,
                 amount: Amount::Fixed(5),
             }),
         ),
@@ -53325,7 +53430,7 @@ fn context_amount_fill_shared_walker_preserves_dying_and_cast_x() {
         "drew one card per attached Aura"
     );
 
-    // Cast X-spell: Hydroid Krasis fills `X`/`HalfXRoundedDown` from the spell's chosen X.
+    // Cast X-spell: Hydroid Krasis fills its `X` reads from the spell's chosen X.
     g.stack_library(PlayerId(0), &[card("Forest"), card("Forest")]);
     let life_before = g.life(PlayerId(0));
     let hydroid = g.spawn_in_hand(PlayerId(0), card("Hydroid Krasis"));
@@ -53757,6 +53862,24 @@ fn leonin_vanguard_pumps_itself_until_end_of_turn() {
 }
 
 #[test]
+fn leonin_vanguard_stays_quiet_below_three_creatures() {
+    // The false side of the same "if you control three or more creatures" intervening-if (CR
+    // 603.4) — two creatures is one short, so the begin-combat ability never goes on the stack.
+    let mut g = TestGame::new();
+    let vanguard = g.spawn_on_battlefield(PlayerId(0), card("Leonin Vanguard"));
+    g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let starting_life = g.life(PlayerId(0));
+
+    advance_until(&mut g, |g| g.current_step() == Step::BeginCombat);
+    assert!(
+        g.stack().is_empty(),
+        "controlling only two creatures leaves the begin-combat ability unfired"
+    );
+    assert_eq!(g.power(vanguard), 1, "no pump");
+    assert_eq!(g.life(PlayerId(0)), starting_life, "no life gain");
+}
+
+#[test]
 fn double_counters_on_a_creature_with_no_counters_is_a_no_op() {
     // Tanazir Quandrix (soc): "When Tanazir Quandrix enters, double the number of +1/+1
     // counters on target creature you control." A freshly-entered creature with zero counters
@@ -53838,7 +53961,7 @@ static CREATURE_TUTOR: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             filter: CardFilter::Creature,
             to_zone: SearchDest::Hand,
             tapped: false,
-            searcher: SearchScope::You,
+            who: PlayerSet::You,
             count: 1,
             count_amount: None,
             overflow: None,
@@ -57623,7 +57746,7 @@ static MAKE_TREASURES: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         timing: Timing::Spell,
         effect: Effect::Token(TokenEffect::CreateTreasure {
             count: Amount::Fixed(3),
-            target_player: false,
+            who: PlayerSet::You,
             tapped: false,
         }),
         optional: false,
@@ -57819,6 +57942,7 @@ fn magecraft_makes_a_treasure_with_storm_kiln_artist_out() {
 /// The one ability shared by every [`instant_with_mana_value`] test spell.
 static INSTANT_DRAW_ABILITIES: LazyLock<&'static [Ability]> = LazyLock::new(|| {
     Box::leak(Box::new([spell_ability(Effect::Draw(DrawEffect::Cards {
+        who: PlayerSet::You,
         count: Amount::Fixed(1),
     }))]))
 });
@@ -58093,7 +58217,8 @@ static DEEKAH_MAGECRAFT_FRACTAL: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         effect: Effect::Token(TokenEffect::Create {
             token: creature("Fractal", 0, 0, &[]),
             count: Amount::Fixed(1),
-            controller: TokenController::You,
+            who: PlayerSet::You,
+            per_opponent: false,
             enters_with: Amount::TriggeringSpellManaValue,
             set_base_pt: None,
             exile_at_next_end_step: false,
@@ -58385,14 +58510,15 @@ static MANAFORM_HELLKITE_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Triggered(Trigger::CastSpell {
             filter: SpellFilter::NoncreatureSpells,
-            caster: CasterScope::You,
+            caster: WatchedPlayer::You,
             nth_each_turn: None,
             from_hand: false,
         }),
         effect: Effect::Token(TokenEffect::Create {
             token: MANAFORM_DRAGON_TOKEN.clone(),
             count: Amount::Fixed(1),
-            controller: TokenController::You,
+            who: PlayerSet::You,
+            per_opponent: false,
             enters_with: Amount::Fixed(0),
             set_base_pt: Some(Amount::TriggeringSpellManaSpent),
             exile_at_next_end_step: true,
@@ -58788,7 +58914,8 @@ static ROOTHA_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         effect: Effect::Token(TokenEffect::Create {
             token: ROOTHA_ELEMENTAL_TOKEN.clone(),
             count: Amount::Fixed(1),
-            controller: TokenController::You,
+            who: PlayerSet::You,
+            per_opponent: false,
             enters_with: Amount::Fixed(0),
             set_base_pt: Some(Amount::GreatestInstantOrSorceryManaValueCastThisTurn),
             exile_at_next_end_step: false,
@@ -59002,7 +59129,11 @@ static RIONYA_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
                 other: true,
                 ..PermanentFilter::of(TypeSet::CREATURE)
             }),
-            count: Amount::OnePlusInstantsAndSorceriesCastThisTurn,
+            count: Amount::Combine {
+                left: &Amount::Fixed(1),
+                op: ArithOp::Add,
+                right: &Amount::InstantsAndSorceriesCastThisTurn,
+            },
             targets: TargetCount {
                 min: 1,
                 max: 1,
@@ -59798,7 +59929,7 @@ fn modal_dragon() -> CardDef {
                     }),
                     Effect::Token(TokenEffect::CreateTreasure {
                         count: Amount::Fixed(3),
-                        target_player: false,
+                        who: PlayerSet::You,
                         tapped: false,
                     }),
                 ]),
@@ -60057,12 +60188,10 @@ fn discard_one_spell() -> CardDef {
             "Discard One",
             Box::leak(Box::new([spell_ability(Effect::Choice(
                 ChoiceEffect::Discard {
+                    who: PlayerSet::You,
                     count: Amount::Fixed(1),
-                    target_player: false,
                     or_one_matching: None,
                     random: false,
-                    damaged_player: false,
-                    discarder: None,
                 },
             ))])),
         )
@@ -60106,12 +60235,10 @@ fn discard_n_spell(count: u32) -> CardDef {
         "Discard N",
         Box::leak(Box::new([spell_ability(Effect::Choice(
             ChoiceEffect::Discard {
+                who: PlayerSet::You,
                 count: Amount::Fixed(count as i32),
-                target_player: false,
                 or_one_matching: None,
                 random: false,
-                damaged_player: false,
-                discarder: None,
             },
         ))])),
     )
@@ -61814,8 +61941,12 @@ static HALF_X_TREASURES: LazyLock<CardDef> = LazyLock::new(|| {
         SpellSpeed::Sorcery,
         X_COST,
         Effect::Token(TokenEffect::CreateTreasure {
-            count: Amount::HalfX,
-            target_player: false,
+            count: Amount::Combine {
+                left: &Amount::X,
+                op: ArithOp::DivideRoundingUp,
+                right: &Amount::Fixed(2),
+            },
+            who: PlayerSet::You,
             tapped: false,
         })
     )
@@ -61826,8 +61957,12 @@ static TWICE_X_TREASURES: LazyLock<CardDef> = LazyLock::new(|| {
         SpellSpeed::Sorcery,
         X_COST,
         Effect::Token(TokenEffect::CreateTreasure {
-            count: Amount::TwiceX,
-            target_player: false,
+            count: Amount::Combine {
+                left: &Amount::X,
+                op: ArithOp::Multiply,
+                right: &Amount::Fixed(2),
+            },
+            who: PlayerSet::You,
             tapped: false,
         })
     )
@@ -61852,6 +61987,76 @@ fn twice_x_treasures() {
     assert_eq!(treasures_from(TWICE_X_TREASURES.clone(), 3), 6);
 }
 
+/// `(X × 3) − 2` — a shape no single `Amount` variant names, spelled as one combine nested inside
+/// another. Both sides of a combine are full amounts, which is the whole point: a card that
+/// prints "twice the number of Forests, minus one" needs no new variant.
+static NESTED_ARITHMETIC_TREASURES: LazyLock<CardDef> = LazyLock::new(|| {
+    amount_spell!(
+        "Nested Arithmetic Treasures (test)",
+        SpellSpeed::Sorcery,
+        X_COST,
+        Effect::Token(TokenEffect::CreateTreasure {
+            count: Amount::Combine {
+                left: &Amount::Combine {
+                    left: &Amount::X,
+                    op: ArithOp::Multiply,
+                    right: &Amount::Fixed(3),
+                },
+                op: ArithOp::Subtract,
+                right: &Amount::Fixed(2),
+            },
+            who: PlayerSet::You,
+            tapped: false,
+        })
+    )
+});
+
+#[test]
+fn a_combine_nests_inside_another_combine() {
+    assert_eq!(
+        treasures_from(NESTED_ARITHMETIC_TREASURES.clone(), 4),
+        10,
+        "four times three is twelve, less two"
+    );
+}
+
+#[test]
+fn a_subtraction_that_would_go_negative_is_none_at_all() {
+    assert_eq!(
+        treasures_from(NESTED_ARITHMETIC_TREASURES.clone(), 0),
+        0,
+        "zero minus two is no tokens, not a debt (CR 107.1b)"
+    );
+}
+
+/// The same odd count divided both ways — the two rounding ops are the only thing separating
+/// Aspect of Wolf's power from its toughness, so a test that only ever divides an even number
+/// would pass with them swapped.
+fn division_treasures(name: &'static str, op: ArithOp) -> CardDef {
+    amount_spell!(
+        name,
+        SpellSpeed::Sorcery,
+        X_COST,
+        Effect::Token(TokenEffect::CreateTreasure {
+            count: Amount::Combine {
+                left: &Amount::X,
+                op,
+                right: &Amount::Fixed(2),
+            },
+            who: PlayerSet::You,
+            tapped: false,
+        })
+    )
+}
+
+#[test]
+fn division_rounds_the_way_the_op_names() {
+    let down = division_treasures("Halve Down Treasures (test)", ArithOp::DivideRoundingDown);
+    let up = division_treasures("Halve Up Treasures (test)", ArithOp::DivideRoundingUp);
+    assert_eq!(treasures_from(down, 5), 2, "five halves down to two");
+    assert_eq!(treasures_from(up, 5), 3, "five halves up to three");
+}
+
 static PER_CREATURE_TREASURES: LazyLock<CardDef> = LazyLock::new(|| {
     amount_spell!(
         "Per Creature Treasures (test)",
@@ -61865,7 +62070,7 @@ static PER_CREATURE_TREASURES: LazyLock<CardDef> = LazyLock::new(|| {
                 },
                 zone: AmountZone::Battlefield,
             },
-            target_player: false,
+            who: PlayerSet::You,
             tapped: false,
         })
     )
@@ -61946,7 +62151,7 @@ macro_rules! hydra_with_etb {
                     timing: Timing::Triggered(Trigger::Etb),
                     effect: Effect::Token(TokenEffect::CreateTreasure {
                         count: $count,
-                        target_player: false,
+                        who: PlayerSet::You,
                         tapped: false,
                     }),
                     optional: false,
@@ -62178,6 +62383,7 @@ static GAIN_5: LazyLock<CardDef> = LazyLock::new(|| {
         SpellSpeed::Sorcery,
         Cost::FREE,
         Effect::Life(LifeEffect::Gain {
+            who: PlayerSet::You,
             amount: Amount::Fixed(5)
         })
     )
@@ -62188,6 +62394,7 @@ static FILLER: LazyLock<CardDef> = LazyLock::new(|| {
         SpellSpeed::Sorcery,
         Cost::FREE,
         Effect::Life(LifeEffect::Gain {
+            who: PlayerSet::You,
             amount: Amount::Fixed(1)
         })
     )
@@ -62199,7 +62406,7 @@ static LIFE_GAINED_PAYOFF: LazyLock<CardDef> = LazyLock::new(|| {
         Cost::FREE,
         Effect::Token(TokenEffect::CreateTreasure {
             count: Amount::LifeGainedThisTurn,
-            target_player: false,
+            who: PlayerSet::You,
             tapped: false,
         })
     )
@@ -62211,7 +62418,7 @@ static SPELLS_CAST_PAYOFF: LazyLock<CardDef> = LazyLock::new(|| {
         Cost::FREE,
         Effect::Token(TokenEffect::CreateTreasure {
             count: Amount::SpellsCastThisTurn,
-            target_player: false,
+            who: PlayerSet::You,
             tapped: false,
         })
     )
@@ -62285,7 +62492,8 @@ fn make_token_squirrel() -> CardDef {
                 TokenEffect::Create {
                     token: creature("Squirrel", 1, 1, &[]),
                     count: Amount::Fixed(1),
-                    controller: TokenController::You,
+                    who: PlayerSet::You,
+                    per_opponent: false,
                     enters_with: Amount::Fixed(0),
                     set_base_pt: None,
                     exile_at_next_end_step: false,
@@ -62824,6 +63032,159 @@ fn swords_to_plowshares_controllers_gains_life_equal_to_exiled_powers() {
 }
 
 #[test]
+fn swords_pays_the_stolen_creatures_controller_not_its_owner() {
+    // "Its controller gains life equal to its power" names the controller (CR 109.4 — the player
+    // who currently controls it), which is not the owner once someone has stolen it.
+    let mut game = TestGame::new();
+    let bear = game.spawn_on_battlefield(PlayerId(1), creature("Big (test)", 5, 5, &[]));
+    let steal = game.spawn_in_hand(PlayerId(0), STEAL_PERMANENT.clone());
+    game.cast(steal).at(Target::Object(bear)).resolve();
+    assert_eq!(game.controller_of(bear), PlayerId(0), "player 0 stole it");
+
+    game.fund_mana(PlayerId(0));
+    let thief_life = game.life(PlayerId(0));
+    let owner_life = game.life(PlayerId(1));
+    let swords = game.spawn_in_hand(PlayerId(0), card("Swords to Plowshares"));
+    game.cast(swords).at(Target::Object(bear)).resolve();
+
+    assert_eq!(
+        game.life(PlayerId(0)),
+        thief_life + 5,
+        "the thief controls it, so the thief gains"
+    );
+    assert_eq!(
+        game.life(PlayerId(1)),
+        owner_life,
+        "merely owning it gains nothing"
+    );
+}
+
+/// A test sorcery that mills every opponent — the multi-seat shape a `who`-carrying mill unlocks.
+fn mill_each_opponent_sorcery() -> CardDef {
+    static CARD: LazyLock<CardDef> = LazyLock::new(|| {
+        sorcery(
+            "Mill Each Opponent (test)",
+            Box::leak(Box::new([spell_ability(Effect::Mill(MillEffect::Mill {
+                who: PlayerSet::EachOpponent,
+                count: Amount::Fixed(2),
+            }))])),
+        )
+    });
+    CARD.clone()
+}
+
+#[test]
+fn a_mill_can_hit_every_opponent_at_once() {
+    // Who mills and how many they mill are independent axes, so one mill effect reaches the whole
+    // table. Every seat's cards must land in its own graveyard: the ids are minted in a single
+    // pass across all three batches, since `next_object_id` doesn't advance until events apply.
+    let mut game = TestGame::with_players(4);
+    let opponents = [PlayerId(1), PlayerId(2), PlayerId(3)];
+    let stacked: Vec<Vec<ObjectId>> = opponents
+        .iter()
+        .map(|&p| game.stack_library(p, &[card("Forest"), card("Island"), card("Swamp")]))
+        .collect();
+
+    let spell = game.spawn_in_hand(PlayerId(0), mill_each_opponent_sorcery());
+    game.cast(spell).resolve();
+
+    for (opponent, library) in opponents.iter().zip(&stacked) {
+        assert_eq!(game.library_size(*opponent), 1, "each opponent milled two");
+        assert_eq!(game.zone_of(library[0]), Zone::Graveyard);
+        assert_eq!(game.zone_of(library[1]), Zone::Graveyard);
+        assert_eq!(
+            game.zone_of(library[2]),
+            Zone::Library,
+            "the third stays put"
+        );
+    }
+    assert_eq!(
+        game.library_size(PlayerId(0)),
+        0,
+        "the caster is not an opponent of themselves"
+    );
+}
+
+/// A test sorcery that bills each opponent for the cards in *their* hand — the per-recipient shape
+/// a `who`-carrying damage effect unlocks, printed by Black Vise and Karma one seat at a time.
+fn damage_each_opponent_for_their_hand_sorcery() -> CardDef {
+    static CARD: LazyLock<CardDef> = LazyLock::new(|| {
+        sorcery(
+            "Bill Each Opponent (test)",
+            Box::leak(Box::new([spell_ability(Effect::Damage(
+                DamageEffect::ToPlayers {
+                    who: PlayerSet::EachOpponent,
+                    amount: Amount::CardsInYourHand,
+                },
+            ))])),
+        )
+    });
+    CARD.clone()
+}
+
+#[test]
+fn a_player_relative_damage_amount_counts_each_recipients_own_cards() {
+    // "Deals damage equal to the number of cards in their hand" reads the seat being damaged, not
+    // the ability's controller — so a fan-out resolves the amount once per recipient and bills
+    // three opponents three different numbers off one effect.
+    let mut game = TestGame::with_players(4);
+    let opponents = [PlayerId(1), PlayerId(2), PlayerId(3)];
+    for (held, &opponent) in (1..).zip(&opponents) {
+        for _ in 0..held {
+            game.spawn_in_hand(opponent, card("Forest"));
+        }
+    }
+    let life_before: Vec<i32> = opponents.iter().map(|&p| game.life(p)).collect();
+    let caster_life = game.life(PlayerId(0));
+
+    let spell = game.spawn_in_hand(PlayerId(0), damage_each_opponent_for_their_hand_sorcery());
+    game.cast(spell).resolve();
+
+    for (held, (&opponent, before)) in (1..).zip(opponents.iter().zip(life_before)) {
+        assert_eq!(
+            game.life(opponent),
+            before - held,
+            "opponent {opponent:?} pays for their own {held} cards"
+        );
+    }
+    assert_eq!(
+        game.life(PlayerId(0)),
+        caster_life,
+        "the caster is not an opponent of themselves"
+    );
+}
+
+#[test]
+fn oblation_draws_for_the_owner_of_a_permanent_someone_else_controls() {
+    // "Its owner shuffles it into their library, then draws two cards" pays the owner, not the
+    // seat holding it. The shuffle vanishes the permanent first, so the draw reads its owner back
+    // through the resolution frame (CR 111.7) rather than off a battlefield object.
+    let mut game = TestGame::new();
+    let bear = game.spawn_on_battlefield(PlayerId(1), creature("Big (test)", 5, 5, &[]));
+    let steal = game.spawn_in_hand(PlayerId(0), STEAL_PERMANENT.clone());
+    game.cast(steal).at(Target::Object(bear)).resolve();
+    assert_eq!(game.controller_of(bear), PlayerId(0), "player 0 stole it");
+
+    game.fund_mana(PlayerId(0));
+    game.stack_library(PlayerId(1), &[card("Forest"), card("Forest")]);
+    let owner_hand = game.hand(PlayerId(1)).len();
+    let oblation = game.spawn_in_hand(PlayerId(0), card("Oblation"));
+    let thief_hand = game.hand(PlayerId(0)).len();
+    game.cast(oblation).at(Target::Object(bear)).resolve();
+
+    assert_eq!(
+        game.hand(PlayerId(1)).len(),
+        owner_hand + 2,
+        "the owner draws even though someone else controlled it"
+    );
+    assert_eq!(
+        game.hand(PlayerId(0)).len(),
+        thief_hand - 1,
+        "the thief only spent Oblation itself, drawing nothing"
+    );
+}
+
+#[test]
 fn war_room_pay_life_costs_the_commanders_color_count() {
     // War Room: "{3}, {T}, Pay life equal to the number of colors in your commanders' color
     // identity: Draw a card." Izoni, Thousand-Eyed is a two-color (B/G) commander, so the cost
@@ -63111,15 +63472,14 @@ fn loot() -> CardDef {
         Box::leak(Box::new([spell_ability(Effect::Sequence {
             steps: Arc::from([
                 Effect::Draw(DrawEffect::Cards {
+                    who: PlayerSet::You,
                     count: Amount::Fixed(2),
                 }),
                 Effect::Choice(ChoiceEffect::Discard {
+                    who: PlayerSet::You,
                     count: Amount::Fixed(2),
-                    target_player: false,
                     or_one_matching: None,
                     random: false,
-                    damaged_player: false,
-                    discarder: None,
                 }),
             ]),
         })])),
@@ -63446,6 +63806,7 @@ fn surveil_then_draw() -> CardDef {
             steps: Arc::from([
                 Effect::Dig(DigEffect::Surveil { count: 2 }),
                 Effect::Draw(DrawEffect::Cards {
+                    who: PlayerSet::You,
                     count: Amount::Fixed(1),
                 }),
             ]),
@@ -66666,7 +67027,7 @@ static WATCHES_ENCHANTMENTS_ENTER: LazyLock<CardDef> = LazyLock::new(|| CardDef 
     abilities: arc_slice([Ability {
         timing: Timing::Triggered(Trigger::PermanentEnters {
             filter: PermanentFilter::of(TypeSet::ENCHANTMENT),
-            controller: EnterController::You,
+            controller: WatchedPlayer::You,
         }),
         effect: Effect::Token(TokenEffect::Create {
             token: CardDef {
@@ -66742,7 +67103,8 @@ static WATCHES_ENCHANTMENTS_ENTER: LazyLock<CardDef> = LazyLock::new(|| CardDef 
                 dredge: None,
             },
             count: Amount::Fixed(1),
-            controller: TokenController::You,
+            who: PlayerSet::You,
+            per_opponent: false,
             enters_with: Amount::Fixed(0),
             set_base_pt: None,
             exile_at_next_end_step: false,
@@ -66835,9 +67197,10 @@ static WATCHES_OPPONENT_LANDFALL: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Triggered(Trigger::PermanentEnters {
             filter: PermanentFilter::of(TypeSet::LAND),
-            controller: EnterController::Opponent,
+            controller: WatchedPlayer::Opponent,
         }),
         effect: Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::You,
             count: Amount::Fixed(1),
         }),
         optional: false,
@@ -67301,7 +67664,7 @@ fn forum_filibuster_mints_the_token_with_nothing_to_return() {
 #[test]
 fn landfall_fires_only_for_an_opponents_land_not_your_own() {
     // Archaeomancer's Map's shape: "whenever a land an opponent controls enters." A land
-    // entering under the watcher's own controller doesn't fire (`EnterController::Opponent`
+    // entering under the watcher's own controller doesn't fire (`WatchedPlayer::Opponent`
     // requires a different controller); a land entering under an opponent does.
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), WATCHES_OPPONENT_LANDFALL.clone());
@@ -68266,6 +68629,7 @@ static FIVE_MANA_VALUE_SORCERY: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([spell_ability(Effect::Draw(DrawEffect::Cards {
+        who: PlayerSet::You,
         count: Amount::Fixed(1),
     }))]),
     cycling: None,
@@ -71745,7 +72109,7 @@ fn a_single_target_exile_card_is_unaffected_by_the_new_count_field() {
 /// Pest Infestation (soc): "Destroy up to X target artifacts and/or enchantments. Create twice X
 /// 1/1 black and green Pest creature tokens with 'When this token dies, you gain 1 life.'" The
 /// destroy half now rides the same `x_scaled` `DestroyTarget::count`; the token half was already
-/// expressible (`Amount::TwiceX`, landed by #68's cost slice) once the destroy half unblocked
+/// expressible (a doubled `Amount::X`, landed by #68's cost slice) once the destroy half unblocked
 /// scripting the card at all.
 #[test]
 fn pest_infestation_destroys_up_to_x_targets_and_creates_twice_x_pests() {
@@ -72193,9 +72557,9 @@ fn faerie_mastermind_fires_once_when_an_opponent_draws_two_at_once() {
     let mut def = DRAW_ONE_TARGET.clone();
     def.abilities = arc_slice([Ability {
         timing: Timing::Spell,
-        effect: Effect::Draw(DrawEffect::TargetPlayer {
+        effect: Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::TargetPlayer,
             count: Amount::Fixed(2),
-            opponent: false,
         }),
         optional: false,
         min_level: 0,
@@ -72304,8 +72668,8 @@ fn hydroid_krasis_cast_trigger_gains_and_draws_half_x() {
     let hydroid = find_battlefield_permanent(&g, "Hydroid Krasis");
     assert_eq!(g.plus_counters(hydroid), 6, "entered with X +1/+1 counters");
 
-    // X = 5 rounds down to 2, not up — distinguishes `Amount::HalfXRoundedDown` from the
-    // round-up `Amount::HalfX` default.
+    // X = 5 rounds down to 2, not up — distinguishes this card's `divide_rounding_down` from The
+    // Goose Mother's round-up halving of the same `Amount::X`.
     g.stack_library(PlayerId(0), &[card("Forest"), card("Forest")]);
     let life_before = g.life(PlayerId(0));
     let hydroid2 = g.spawn_in_hand(PlayerId(0), card("Hydroid Krasis"));
@@ -72719,7 +73083,7 @@ fn staff_of_the_storyteller_does_not_accrue_from_a_noncreature_token() {
         Box::leak(Box::new([spell_ability(Effect::Token(
             TokenEffect::CreateTreasure {
                 count: Amount::Fixed(1),
-                target_player: false,
+                who: PlayerSet::You,
                 tapped: false,
             },
         ))])),
@@ -76102,6 +76466,7 @@ static SACRIFICE_A_CREATURE_OUTLET: LazyLock<CardDef> = LazyLock::new(|| CardDef
             graveyard_exile_target_count: 0,
         }),
         effect: Effect::Life(LifeEffect::Gain {
+            who: PlayerSet::You,
             amount: Amount::Fixed(1),
         }),
         optional: false,
@@ -77337,7 +77702,8 @@ fn demonstrate_token_maker() -> CardDef {
                 TokenEffect::Create {
                     token: creature("Squirrel", 1, 1, &[]),
                     count: Amount::Fixed(1),
-                    controller: TokenController::You,
+                    who: PlayerSet::You,
+                    per_opponent: false,
                     enters_with: Amount::Fixed(0),
                     set_base_pt: None,
                     exile_at_next_end_step: false,
@@ -80452,6 +80818,7 @@ static TEST_CLASS: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         Ability {
             timing: Timing::Triggered(Trigger::Upkeep),
             effect: Effect::Life(LifeEffect::Gain {
+                who: PlayerSet::You,
                 amount: Amount::Fixed(1),
             }),
             optional: false,
@@ -80463,6 +80830,7 @@ static TEST_CLASS: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         Ability {
             timing: Timing::Triggered(Trigger::EndStep),
             effect: Effect::Life(LifeEffect::Gain {
+                who: PlayerSet::You,
                 amount: Amount::Fixed(10),
             }),
             optional: false,
@@ -80534,6 +80902,7 @@ static TEST_LOSE_1_LIFE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             graveyard_exile_target_count: 0,
         }),
         effect: Effect::Life(LifeEffect::Lose {
+            who: PlayerSet::You,
             amount: Amount::Fixed(1),
         }),
         optional: false,
@@ -81052,6 +81421,7 @@ static TEST_MODIFIED_DEATH_WATCHER: LazyLock<CardDef> = LazyLock::new(|| CardDef
             graveyard_exile_target_count: 0,
         }),
         effect: Effect::Life(LifeEffect::Gain {
+            who: PlayerSet::You,
             amount: Amount::Fixed(1),
         }),
         optional: false,
@@ -82206,6 +82576,7 @@ fn manifest_noncreature_cannot_be_turned_face_up() {
 const TURNED_FACE_UP_DRAW: Ability = Ability {
     timing: Timing::Triggered(Trigger::TurnedFaceUp),
     effect: Effect::Draw(DrawEffect::Cards {
+        who: PlayerSet::You,
         count: Amount::Fixed(1),
     }),
     optional: false,
@@ -83485,6 +83856,7 @@ fn plain_morph_creature_does_not_flip_on_damage() {
 const ETB_DRAW: Ability = Ability {
     timing: Timing::Triggered(Trigger::Etb),
     effect: Effect::Draw(DrawEffect::Cards {
+        who: PlayerSet::You,
         count: Amount::Fixed(1),
     }),
     optional: false,
@@ -83499,11 +83871,12 @@ const ETB_DRAW: Ability = Ability {
 const CAST_WATCH_DRAW: Ability = Ability {
     timing: Timing::Triggered(Trigger::CastSpell {
         filter: SpellFilter::AllSpells,
-        caster: CasterScope::You,
+        caster: WatchedPlayer::You,
         nth_each_turn: None,
         from_hand: false,
     }),
     effect: Effect::Draw(DrawEffect::Cards {
+        who: PlayerSet::You,
         count: Amount::Fixed(1),
     }),
     optional: false,
@@ -83558,6 +83931,7 @@ static TEST_INSTANT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         speed: SpellSpeed::Instant,
     },
     abilities: arc_slice([spell_ability(Effect::Life(LifeEffect::Gain {
+        who: PlayerSet::You,
         amount: Amount::Fixed(1),
     }))]),
     ..creature("Test Instant", 0, 0, &[])
@@ -85735,6 +86109,7 @@ static OPPONENT_DAMAGE_WATCHER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         Ability {
             timing: Timing::Triggered(Trigger::DealsDamageToOpponent),
             effect: Effect::Draw(DrawEffect::Cards {
+                who: PlayerSet::You,
                 count: Amount::Fixed(1),
             }),
             optional: false,
@@ -87117,6 +87492,7 @@ static ETB_GAIN_LIFE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Triggered(Trigger::Etb),
         effect: Effect::Life(LifeEffect::Gain {
+            who: PlayerSet::You,
             amount: Amount::Fixed(2),
         }),
         optional: false,
@@ -87780,7 +88156,7 @@ fn armadillo_cloak_gains_life_on_noncombat_damage() {
 /// Questing Phelddagrif (tsb): "{G}: This creature gets +1/+1 until end of turn. Target opponent
 /// creates a 1/1 green Hippo creature token." The self-pump and the opponent's compensation both
 /// land off one activation — `Effect::Pump(PumpEffect::PumpSelfUntilEndOfTurn)` (no target of its own) shares the
-/// ability's one chosen target with `create_token`'s opponent-restricted `TokenController::TargetOpponent`.
+/// ability's one chosen target with `create_token`'s opponent-restricted `PlayerSet::TargetOpponent`.
 #[test]
 fn questing_phelddagrif_green_gives_opponent_hippo() {
     let mut game = Game::new();
@@ -89409,6 +89785,7 @@ static MAY_DRAW_UPKEEP: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Triggered(Trigger::Upkeep),
         effect: Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::You,
             count: Amount::Fixed(1),
         }),
         optional: true,
@@ -90426,6 +90803,7 @@ static DRAW_ONE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([spell_ability(Effect::Draw(DrawEffect::Cards {
+        who: PlayerSet::You,
         count: Amount::Fixed(1),
     }))]),
     cycling: None,
@@ -90501,6 +90879,7 @@ static DRAW_THREE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([spell_ability(Effect::Draw(DrawEffect::Cards {
+        who: PlayerSet::You,
         count: Amount::Fixed(3),
     }))]),
     cycling: None,
@@ -90652,6 +91031,7 @@ static DIES_FODDER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Triggered(Trigger::Dies),
         effect: Effect::Life(LifeEffect::Gain {
+            who: PlayerSet::You,
             amount: Amount::Fixed(1),
         }),
         optional: false,
@@ -95222,7 +95602,8 @@ static MAKE_TEST_TOKEN: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         effect: Effect::Token(TokenEffect::Create {
             token: creature("Squirrel", 1, 1, &[]),
             count: Amount::Fixed(1),
-            controller: TokenController::You,
+            who: PlayerSet::You,
+            per_opponent: false,
             enters_with: Amount::Fixed(0),
             set_base_pt: None,
             exile_at_next_end_step: false,
@@ -100035,7 +100416,7 @@ fn a_post_cast_clause_spell_advertises_no_cast_target() {
     );
 }
 
-// ── Sulfurous Blast: main-phase-conditional damage amount (#8, if_main_phase) ─────────
+// ── Sulfurous Blast: main-phase-conditional damage amount (#8, SpellCastDuringMainPhase) ──
 
 /// "Sulfurous Blast deals 2 damage to each creature and each player. If you cast this spell
 /// during your main phase, Sulfurous Blast deals 3 damage to each creature and each player
@@ -101867,7 +102248,7 @@ static TEST_MINUS_ONE_EACH_TARGET_PLAYER: LazyLock<CardDef> = LazyLock::new(|| C
 
 #[test]
 fn minus_one_minus_one_counters_on_each_creature_target_player_controls() {
-    // `PutCountersEach { kind: Some(MinusOneMinusOne), target_player: true, .. }`: the -1/-1
+    // `PutCountersEach { kind: Some(MinusOneMinusOne), who: PlayerSet::TargetPlayer, .. }`: the -1/-1
     // kind lands on each of the *targeted player's* creatures, not the ability's controller's,
     // and not on that player's noncreature permanents.
     let mut game = TestGame::new();
@@ -102944,6 +103325,7 @@ static MONSTROSITY_TRIGGER_CREATURE: LazyLock<CardDef> = LazyLock::new(|| CardDe
         Ability {
             timing: Timing::Triggered(Trigger::BecomesMonstrous),
             effect: Effect::Life(LifeEffect::Gain {
+                who: PlayerSet::You,
                 amount: Amount::Fixed(7),
             }),
             optional: false,
@@ -103559,14 +103941,14 @@ fn multikicker_count_is_rejected_on_a_spell_without_multikicker() {
     );
 }
 
-// ── Increment #14 `double-counters-or-cull-and-gain`: `Condition::SourcePowerAtMost` and ──
-// ── `CountersEffect::RemoveAllButOnePlusOneCounterThenGainLife` — Lily Bowen, Raging Grandma ──
+// ── Increment #14 `double-counters-or-cull-and-gain`: a `Condition::Compare` power gate and ──
+// ── `CountersEffect::RemoveCounters` + `Amount::CountersRemovedThisWay` — Lily Bowen ──
 
 /// A test-only 0/0 creature whose only ability is Lily Bowen's cull-and-gain-life half in
 /// isolation, with no upkeep gate and no ETB counters: "{T}: Remove all but one +1/+1 counter
-/// from this creature, then you gain 1 life for each +1/+1 counter removed this way." Exercises
-/// `CountersEffect::RemoveAllButOnePlusOneCounterThenGainLife` at its own counter counts, apart
-/// from Lily's `SourcePowerAtMost` gate.
+/// from this creature, then you gain 1 life for each +1/+1 counter removed this way." Both halves
+/// are ordinary steps — `CountersEffect::RemoveCounters` tallies what it took off and the life
+/// gain reads that tally back through `Amount::CountersRemovedThisWay`.
 static TEST_CULL_CREATURE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Activated(ActivationCost {
@@ -103592,9 +103974,19 @@ static TEST_CULL_CREATURE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             exile_self: false,
             graveyard_exile_target_count: 0,
         }),
-        effect: Effect::Counters(CountersEffect::RemoveAllButOnePlusOneCounterThenGainLife {
-            target: TargetSpec::ThisPermanent,
-        }),
+        effect: Effect::Sequence {
+            steps: Arc::from([
+                Effect::Counters(CountersEffect::RemoveCounters {
+                    target: TargetSpec::ThisPermanent,
+                    all_kinds: false,
+                    keep: 1,
+                }),
+                Effect::Life(LifeEffect::Gain {
+                    who: PlayerSet::You,
+                    amount: Amount::CountersRemovedThisWay,
+                }),
+            ]),
+        },
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -103644,6 +104036,114 @@ fn remove_all_but_one_plus_one_counter_gains_one_life_each() {
     );
 }
 
+/// Nexus Mentality's second mode in isolation: "Remove all counters from target nonland permanent
+/// you control. Draw a card for each counter removed this way." Its ability seeds its own charge
+/// counters first, so one fixture covers both counter stores — the `plus_counters` scalar and
+/// `kind_counters` — without a second card on the battlefield.
+static TEST_SWEEP_CREATURE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
+    abilities: arc_slice([Ability {
+        timing: Timing::Activated(ActivationCost {
+            taps_self: true,
+            mana: Cost::FREE,
+            sacrifice: SacrificeCost::None,
+            pay_life: Amount::Fixed(0),
+            self_damage: 0,
+            loyalty: None,
+            once_each_turn: false,
+            sorcery_speed: false,
+            only_during_opponents_turn: false,
+            only_during_your_turn: false,
+            only_owner_may_activate: false,
+            only_before_attackers: false,
+            only_during_your_upkeep: false,
+            remove_counters: 0,
+            remove_counters_kind: None,
+            remove_counters_x: false,
+            return_self: false,
+            mill_self: 0,
+            discard_cost: 0,
+            exile_self: false,
+            graveyard_exile_target_count: 0,
+        }),
+        effect: Effect::Sequence {
+            steps: Arc::from([
+                Effect::Counters(CountersEffect::PutCounters {
+                    count: Amount::Fixed(3),
+                    target: TargetSpec::ThisPermanent,
+                    targets: TargetCount::default(),
+                    kind: Some(CounterKind::Charge),
+                    divided: false,
+                    max_total: None,
+                }),
+                Effect::Counters(CountersEffect::RemoveCounters {
+                    target: TargetSpec::ThisPermanent,
+                    all_kinds: true,
+                    keep: 0,
+                }),
+                Effect::Draw(DrawEffect::Cards {
+                    who: PlayerSet::You,
+                    count: Amount::CountersRemovedThisWay,
+                }),
+            ]),
+        },
+        optional: false,
+        min_level: 0,
+        once_each_turn: false,
+        condition: None,
+        cost: Cost::FREE,
+    }]),
+    ..creature("Test Sweep Creature", 1, 1, &[])
+});
+
+#[test]
+fn remove_counters_all_kinds_draws_for_every_counter_removed() {
+    // Two +1/+1 counters plus the three charge counters the ability places itself: `all_kinds`
+    // takes all five off, and the draw step reads all five back out of the tally.
+    let mut game = TestGame::new();
+    let creature = game.spawn_on_battlefield(PlayerId(0), TEST_SWEEP_CREATURE.clone());
+    put_two_counters(&mut game, PlayerId(0), creature);
+    assert_eq!(game.plus_counters(creature), 2, "one put-two-counters call");
+    game.stack_library(
+        PlayerId(0),
+        &[
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
+        ],
+    );
+    let hand_before = game.hand(PlayerId(0)).len();
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: creature,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.plus_counters(creature),
+        0,
+        "all +1/+1 counters removed"
+    );
+    assert_eq!(
+        game.counters_of_kind(creature, CounterKind::Charge),
+        0,
+        "all_kinds sweeps kind_counters too"
+    );
+    assert_eq!(
+        game.hand(PlayerId(0)).len() - hand_before,
+        5,
+        "a card drawn for each of the two +1/+1 and three charge counters removed this way"
+    );
+}
+
 #[test]
 fn remove_all_but_one_plus_one_counter_is_a_no_op_with_no_counters() {
     // "All but one" of zero is zero (the effect's own no-op guard) — no counters removed, no
@@ -103667,6 +104167,199 @@ fn remove_all_but_one_plus_one_counter_is_a_no_op_with_no_counters() {
 
     assert_eq!(game.plus_counters(creature), 0, "still zero counters");
     assert_eq!(game.life(PlayerId(0)), life_before, "no life gained");
+}
+
+/// Two removals in one resolution, each with its own reader: the tally is overwritten per
+/// [`CountersEffect::RemoveCounters`], never accumulated, so the second reader sees what the
+/// *second* removal took off — nothing — rather than the first's count.
+static TEST_DOUBLE_REMOVAL_CREATURE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
+    abilities: arc_slice([Ability {
+        timing: Timing::Activated(ActivationCost {
+            taps_self: true,
+            mana: Cost::FREE,
+            sacrifice: SacrificeCost::None,
+            pay_life: Amount::Fixed(0),
+            self_damage: 0,
+            loyalty: None,
+            once_each_turn: false,
+            sorcery_speed: false,
+            only_during_opponents_turn: false,
+            only_during_your_turn: false,
+            only_owner_may_activate: false,
+            only_before_attackers: false,
+            only_during_your_upkeep: false,
+            remove_counters: 0,
+            remove_counters_kind: None,
+            remove_counters_x: false,
+            return_self: false,
+            mill_self: 0,
+            discard_cost: 0,
+            exile_self: false,
+            graveyard_exile_target_count: 0,
+        }),
+        effect: Effect::Sequence {
+            steps: Arc::from([
+                Effect::Counters(CountersEffect::RemoveCounters {
+                    target: TargetSpec::ThisPermanent,
+                    all_kinds: false,
+                    keep: 0,
+                }),
+                Effect::Draw(DrawEffect::Cards {
+                    who: PlayerSet::You,
+                    count: Amount::CountersRemovedThisWay,
+                }),
+                Effect::Counters(CountersEffect::RemoveCounters {
+                    target: TargetSpec::ThisPermanent,
+                    all_kinds: false,
+                    keep: 0,
+                }),
+                Effect::Life(LifeEffect::Gain {
+                    who: PlayerSet::You,
+                    amount: Amount::CountersRemovedThisWay,
+                }),
+            ]),
+        },
+        optional: false,
+        min_level: 0,
+        once_each_turn: false,
+        condition: None,
+        cost: Cost::FREE,
+    }]),
+    ..creature("Test Double Removal Creature", 1, 1, &[])
+});
+
+#[test]
+fn a_second_removal_that_takes_nothing_reads_zero_rather_than_the_first_count() {
+    // First removal takes four counters and draws four. The second finds none left, so its own
+    // reader gains 0 life — the tally is overwritten, so "removed this way" never means "removed
+    // by some earlier step this way".
+    let mut game = TestGame::new();
+    let creature = game.spawn_on_battlefield(PlayerId(0), TEST_DOUBLE_REMOVAL_CREATURE.clone());
+    put_two_counters(&mut game, PlayerId(0), creature);
+    put_two_counters(&mut game, PlayerId(0), creature);
+    assert_eq!(
+        game.plus_counters(creature),
+        4,
+        "two put-two-counters calls"
+    );
+    game.stack_library(PlayerId(0), &vec![card("Grizzly Bears"); 4]);
+    let hand_before = game.hand(PlayerId(0)).len();
+    let life_before = game.life(PlayerId(0));
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: creature,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.hand(PlayerId(0)).len() - hand_before,
+        4,
+        "four cards for the four counters the first removal took"
+    );
+    assert_eq!(
+        game.life(PlayerId(0)),
+        life_before,
+        "the second removal took nothing, so its reader gains nothing"
+    );
+}
+
+/// A `then` branch that removes counters and an `otherwise` branch that reads the tally, in one
+/// ability, so two activations exercise each branch in turn. `negate` makes `then` the
+/// *above* -2-power branch: it fires while the counters are still on, and `otherwise` fires once
+/// they are gone.
+static TEST_BRANCHED_REMOVAL_CREATURE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
+    abilities: arc_slice([Ability {
+        timing: Timing::Activated(ActivationCost {
+            taps_self: false,
+            mana: Cost::FREE,
+            sacrifice: SacrificeCost::None,
+            pay_life: Amount::Fixed(0),
+            self_damage: 0,
+            loyalty: None,
+            once_each_turn: false,
+            sorcery_speed: false,
+            only_during_opponents_turn: false,
+            only_during_your_turn: false,
+            only_owner_may_activate: false,
+            only_before_attackers: false,
+            only_during_your_upkeep: false,
+            remove_counters: 0,
+            remove_counters_kind: None,
+            remove_counters_x: false,
+            return_self: false,
+            mill_self: 0,
+            discard_cost: 0,
+            exile_self: false,
+            graveyard_exile_target_count: 0,
+        }),
+        effect: Effect::Conditional {
+            condition: Condition::Compare {
+                left: &Amount::SourcePower,
+                op: CompareOp::AtMost,
+                right: &Amount::Fixed(2),
+            },
+            negate: true,
+            then: Arc::from([Effect::Counters(CountersEffect::RemoveCounters {
+                target: TargetSpec::ThisPermanent,
+                all_kinds: false,
+                keep: 0,
+            })]),
+            otherwise: &[Effect::Life(LifeEffect::Gain {
+                who: PlayerSet::You,
+                amount: Amount::CountersRemovedThisWay,
+            })],
+        },
+        optional: false,
+        min_level: 0,
+        once_each_turn: false,
+        condition: None,
+        cost: Cost::FREE,
+    }]),
+    ..creature("Test Branched Removal Creature", 1, 1, &[])
+});
+
+#[test]
+fn a_tally_written_in_the_then_branch_does_not_leak_into_a_later_otherwise() {
+    // Activation one is a 5/5, so `then` removes its four counters and writes 4. Activation two is
+    // back to 1/1, so `otherwise` runs instead — and must gain 0 life, not the 4 the earlier
+    // resolution's `then` branch left behind.
+    let mut game = TestGame::new();
+    let creature = game.spawn_on_battlefield(PlayerId(0), TEST_BRANCHED_REMOVAL_CREATURE.clone());
+    put_two_counters(&mut game, PlayerId(0), creature);
+    put_two_counters(&mut game, PlayerId(0), creature);
+
+    let activate = |game: &mut TestGame| {
+        game.submit(Intent::ActivateAbility {
+            player: PlayerId(0),
+            object: creature,
+            ability_index: 0,
+            target: None,
+            sacrifice: vec![],
+            discard_cost: vec![],
+            x: 0,
+        })
+        .unwrap();
+        resolve_top_of_stack(game);
+    };
+
+    activate(&mut game);
+    assert_eq!(game.plus_counters(creature), 0, "`then` took all four off");
+
+    let life_before = game.life(PlayerId(0));
+    activate(&mut game);
+
+    assert_eq!(
+        game.life(PlayerId(0)),
+        life_before,
+        "`otherwise` reads its own resolution's tally, which is 0"
+    );
 }
 
 #[test]
@@ -110636,6 +111329,47 @@ fn psychic_venom_bites_the_land_it_poisons() {
         game.life(PlayerId(1)),
         18,
         "only the land the Aura is attached to is watched"
+    );
+}
+
+#[test]
+fn tapping_an_already_tapped_land_is_not_a_second_becomes_tapped() {
+    // CR 701.21a: "becomes tapped" is the change from untapped to tapped, so an Icy Manipulator
+    // aimed at a land that is already tapped does nothing at all — and Psychic Venom, watching
+    // that land, must not bite a second time for it.
+    let mut game = Game::new();
+    stock_libraries(&mut game);
+    let theirs = game.spawn_on_battlefield(PlayerId(1), card("Mountain"));
+    let venom = game.spawn_in_hand(PlayerId(0), card("Psychic Venom"));
+    let icy = game.spawn_on_battlefield(PlayerId(0), card("Icy Manipulator"));
+
+    advance_until(&mut game, |g| g.current_step() == Step::Main1);
+    fund_cast_resolve(&mut game, PlayerId(0), venom, Some(Target::Object(theirs)));
+
+    game.submit(Intent::TapForMana {
+        player: PlayerId(1),
+        object: theirs,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    assert_eq!(game.life(PlayerId(1)), 18, "the first tap bites for 2");
+
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: icy,
+        ability_index: 0,
+        target: Some(Target::Object(theirs)),
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .expect("a tapped land is still a legal target — tapping it is just a no-op");
+    resolve_top_of_stack(&mut game);
+    assert!(game.is_tapped(theirs), "it was tapped and it stays tapped");
+    assert!(
+        game.stack().is_empty(),
+        "tapping what is already tapped changes nothing, so no becomes-tapped trigger is queued"
     );
 }
 

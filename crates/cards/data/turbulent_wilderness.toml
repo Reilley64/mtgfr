@@ -15,5 +15,7 @@ produces = ["green", "blue"]
 subtypes = ["Forest", "Island"]
 
 [enters_tapped_unless]
-type = "opponents_control_lands"
-count = 8
+type = "compare"
+left = { per_permanent = { types = "land", controller = "opponent" } }
+op = "at_least"
+right = 8

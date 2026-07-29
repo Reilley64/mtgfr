@@ -21,13 +21,15 @@ timing = "spell"
 # Target player draws a card
 [[abilities.effects]]
 type = "draw"
-mode = "target_player"
+mode = "cards"
+who = "target_player"
 count = 1
 
 # loses 1 life.
 [[abilities.effects]]
 type = "life"
-mode = "target_player_loses"
+mode = "lose"
+who = "target_player"
 amount = 1
 
 # Gravestorm (When you cast this spell, copy it for each permanent put into a graveyard from the

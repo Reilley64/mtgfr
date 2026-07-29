@@ -42,10 +42,13 @@ timing = "upkeep"
 # all but one +1/+1 counter from it, then you gain 1 life for each +1/+1 counter removed this way.
 [[abilities.effects]]
 type = "conditional"
-condition = { type = "source_power_at_most", at_most = 16 }
+condition = { type = "compare", left = "source_power", op = "at_most", right = 16 }
 then = [
         { type = "counters", mode = "double_counters", target = "this" },
     ]
 otherwise = [
-        { type = "counters", mode = "remove_all_but_one_plus_one_counter_then_gain_life", target = "this" },
+        # ... remove all but one +1/+1 counter from it,
+        { type = "counters", mode = "remove_counters", target = "this", keep = 1 },
+        # ... then you gain 1 life for each +1/+1 counter removed this way.
+        { type = "life", mode = "gain", amount = "counters_removed_this_way" },
     ]

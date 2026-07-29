@@ -34,8 +34,10 @@ spell_filter = "instant_or_sorcery"
 caster = "you"
 
 [abilities.condition]
-type = "triggering_spell_mana_value_at_least"
-at_least = 5
+type = "compare"
+left = "triggering_spell_mana_value"
+op = "at_least"
+right = 5
 
 # create a token that's a copy of this creature.
 [[abilities.effects]]

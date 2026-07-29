@@ -22,5 +22,5 @@ timing = "spell"
 type = "choice"
 mode = "discard"
 count = "x"
-target_player = true
+who = "target_player"
 random = true

@@ -134,43 +134,19 @@ impl Game {
                     },
                 );
             }
-            // Questing Phelddagrif's blue rider: "Target opponent may draw a card." Unlike
-            // `MayDrawUnlessPays` above, the *targeted* player answers (no pay window rides
-            // behind it) — see `Game::answer_may`.
-            Effect::Choice(ChoiceEffect::TargetPlayerMayDraw { count, opponent }) => {
-                let Some(Target::Player(player)) = target else {
-                    panic!("target-player-may-draw resolves with a chosen player target");
+            // Questing Phelddagrif's "target opponent may draw a card", Edric's "that creature's
+            // controller may draw a card". Unlike `MayDrawUnlessPays` above, the *drawing* player
+            // answers (no pay window rides behind it) — see `Game::answer_may`.
+            Effect::Choice(ChoiceEffect::MayDraw { who, count }) => {
+                let Some(player) = self.sole_player_in(who, controller, target) else {
+                    return;
                 };
                 pending::raise(
                     self,
                     pending::ChoiceRequest::MayYesNo {
                         player,
                         source,
-                        effect: Effect::Choice(ChoiceEffect::TargetPlayerMayDraw {
-                            count,
-                            opponent,
-                        }),
-                        resume: crate::MayYesNoResume::Default,
-                    },
-                );
-            }
-            // Edric, Spymaster of Trest: "its controller may draw a card." Like
-            // `TargetPlayerMayDraw` above, the drawing player answers — here the controller of the
-            // creature that dealt the combat damage, baked in at trigger placement.
-            Effect::Choice(ChoiceEffect::DamagingCreatureControllerMayDraw { count, drawer }) => {
-                let player = drawer.expect(
-                    "the damaging creature's controller is baked in by contextualize_effect at \
-                     combat-damage trigger placement",
-                );
-                pending::raise(
-                    self,
-                    pending::ChoiceRequest::MayYesNo {
-                        player,
-                        source,
-                        effect: Effect::Choice(ChoiceEffect::DamagingCreatureControllerMayDraw {
-                            count,
-                            drawer,
-                        }),
+                        effect: Effect::Choice(ChoiceEffect::MayDraw { who, count }),
                         resume: crate::MayYesNoResume::Default,
                     },
                 );

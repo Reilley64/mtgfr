@@ -18,7 +18,7 @@ use crate::de::{
 };
 use crate::toml_surface::CostToml;
 use crate::{
-    AdditionalCost, Amount, AmountZone, Color, ColorFilter, Condition, Cost, CounterAxis,
+    AdditionalCost, Amount, AmountZone, ArithOp, Color, ColorFilter, Condition, Cost, CounterAxis,
     CounterKind, Division, FilterController, Keyword, LandProduces, Mana, Parity, PermanentFilter,
     ProtectionScope, SacrificeCost, TargetCount, TokenFilter, TypeSet,
 };
@@ -240,18 +240,13 @@ struct AmountTableSchema {
     per_counter_of_kind: Option<CounterKind>,
     condition: Option<Condition>,
     then: Option<Amount>,
-    if_kicked: Option<Amount>,
-    if_main_phase: Option<Amount>,
     #[schemars(rename = "else")]
     otherwise: Option<Amount>,
     permanents_destroyed_this_way: Option<PermanentFilter>,
     auras_attached_to_source: Option<EmptyTableSchema>,
-    times: Option<i32>,
-    per: Option<Amount>,
-    half: Option<Amount>,
-    round_up: Option<bool>,
-    offset: Option<Amount>,
-    delta: Option<i32>,
+    left: Option<Amount>,
+    op: Option<ArithOp>,
+    right: Option<Amount>,
 }
 
 impl JsonSchema for Amount {
@@ -319,6 +314,7 @@ struct PermanentFilterTableSchema {
     controlled_since_turn_start: Option<bool>,
     did_not_attack_this_turn: Option<bool>,
     nonbasic: Option<bool>,
+    basic: Option<bool>,
     name: Option<String>,
     nonlegendary: Option<bool>,
     nonlair: Option<bool>,

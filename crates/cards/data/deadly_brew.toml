@@ -23,7 +23,7 @@ timing = "spell"
 [[abilities.effects]]
 type = "choice"
 mode = "each_player_sacrifices"
-scope = "all_players"
+who = "each_player"
 filter = "creature_or_planeswalker"
 
 # If you sacrificed a permanent this way, you may return another permanent card from your

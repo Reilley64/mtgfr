@@ -153,46 +153,17 @@ impl Game {
                 .map(|object| Event::LoyaltyChanged { object, amount: 1 })
                 .collect(),
             // "Each opponent gets a poison counter" (Infectious Inquiry, Vraska's Fall) / "each
-            // player gets a poison counter" (Ichor Rats): counters on the *players* in scope, not
+            // player gets a poison counter" (Ichor Rats) / "target opponent gets a poison counter"
+            // (Venerated Rotpriest): counters on the *players* `who` names, not
             // on any permanent (CR 122.1). A player who has already lost is no longer in the game
             // and gets nothing (`living_players`).
-            CountersEffect::PutCountersOnPlayer { kind, count, scope } => {
+            CountersEffect::PutCountersOnPlayer { kind, count, who } => {
                 let count = self.resolve_count(count, controller, source, target, x) as i32;
                 if count <= 0 {
                     return Vec::new();
                 }
-                // "Target opponent gets a poison counter" (Venerated Rotpriest): the one chosen
-                // target, not a scan. A target that has since left the game gets nothing.
-                if scope == EdictScope::TargetedOpponent {
-                    let Some(Target::Player(player)) = target else {
-                        return Vec::new();
-                    };
-                    if !self.living_players().any(|p| p == player) {
-                        return Vec::new();
-                    }
-                    let count = self.player_counters_after_replacements(controller, player, count);
-                    if count <= 0 {
-                        return Vec::new();
-                    }
-                    return vec![Event::PlayerCountersPlaced {
-                        player,
-                        kind,
-                        count,
-                    }];
-                }
-                self.living_players()
-                    .filter(|&player| match scope {
-                        EdictScope::AllPlayers => true,
-                        EdictScope::EachOpponent => player != controller,
-                        // ponytail: no pool card places player counters on a chosen subset of
-                        // players, and the DSL surface for this mode documents only
-                        // all_players/each_opponent/target_opponent. Give this a real arm when
-                        // one does.
-                        EdictScope::TargetedPlayers | EdictScope::You => unreachable!(
-                            "player counters have no targeted-players or you spelling in the card pool"
-                        ),
-                        EdictScope::TargetedOpponent => unreachable!("handled above"),
-                    })
+                self.players_in(who, controller, target)
+                    .into_iter()
                     .filter_map(|player| {
                         let n = self.player_counters_after_replacements(controller, player, count);
                         (n > 0).then_some(Event::PlayerCountersPlaced {
@@ -204,45 +175,22 @@ impl Game {
                     .collect()
             }
             // "Each opponent loses all counters" (Final Act) — CR 122.1/121.2: every counter of
-            // every kind on each player in `scope` is removed, not just poison. A player who has
+            // every kind on each player in `who` is removed, not just poison. A player who has
             // already lost is out of the game and loses nothing (`living_players`).
-            CountersEffect::RemoveAllPlayerCounters { scope } => {
-                let targets: Vec<PlayerId> = if scope == EdictScope::TargetedOpponent {
-                    let Some(Target::Player(player)) = target else {
-                        return Vec::new();
-                    };
-                    if !self.living_players().any(|p| p == player) {
-                        return Vec::new();
-                    }
-                    vec![player]
-                } else {
-                    self.living_players()
-                        .filter(|&player| match scope {
-                            EdictScope::AllPlayers => true,
-                            EdictScope::EachOpponent => player != controller,
-                            // ponytail: same residual as `PutCountersOnPlayer` above — no pool
-                            // card spells a chosen-subset "remove all counters" mode.
-                            EdictScope::TargetedPlayers | EdictScope::You => unreachable!(
-                                "player counters have no targeted-players or you spelling in the card pool"
-                            ),
-                            EdictScope::TargetedOpponent => unreachable!("handled above"),
-                        })
-                        .collect()
-                };
-                targets
-                    .into_iter()
-                    .flat_map(|player| {
-                        PlayerCounterKind::ALL.iter().filter_map(move |&kind| {
-                            let count = self.player_counters(player, kind) as i32;
-                            (count > 0).then_some(Event::PlayerCountersPlaced {
-                                player,
-                                kind,
-                                count: -count,
-                            })
+            CountersEffect::RemoveAllPlayerCounters { who } => self
+                .players_in(who, controller, target)
+                .into_iter()
+                .flat_map(|player| {
+                    PlayerCounterKind::ALL.iter().filter_map(move |&kind| {
+                        let count = self.player_counters(player, kind) as i32;
+                        (count > 0).then_some(Event::PlayerCountersPlaced {
+                            player,
+                            kind,
+                            count: -count,
                         })
                     })
-                    .collect()
-            }
+                })
+                .collect(),
             // "If target player has fewer than nine poison counters, they get a number of poison
             // counters equal to the difference" (Vraska, Betrayal's Sting's −9): a top-up, so a
             // target already at or above `to` gets no counters and mints no event at all.
@@ -278,38 +226,6 @@ impl Game {
                     protected: controller,
                 })
                 .collect(),
-            // Nexus Mentality's other mode: "Remove all counters from target nonland permanent
-            // you control. Draw a card for each counter removed this way."
-            CountersEffect::RemoveAllCountersThenDraw { .. } => {
-                let object = expect_object_target(target, "a remove-all-counters-then-draw effect");
-                let (mut events, removed) = self.remove_all_counters_events(object);
-                events.extend(self.draw_events(controller, removed as u32));
-                events
-            }
-            // Lily Bowen's downshift half: keep exactly one +1/+1 counter, then gain 1 life per
-            // counter actually removed. Zero or one counter present removes zero (guard-return
-            // via the `max(0)` below) and gains nothing.
-            CountersEffect::RemoveAllButOnePlusOneCounterThenGainLife { .. } => {
-                let object = expect_object_target(target, "a cull-and-gain-life effect");
-                let removed = (self.permanent(object).plus_counters - 1).max(0);
-                let mut events = Vec::new();
-                if removed > 0 {
-                    events.push(Event::CountersPlaced {
-                        object,
-                        count: -removed,
-                        source_name,
-                    });
-                }
-                let life = self.life_gain_after_replacements(controller, removed);
-                if life != 0 {
-                    events.push(Event::LifeChanged {
-                        player: controller,
-                        amount: life,
-                        source: Some(source),
-                    });
-                }
-                events
-            }
             // Breena: the attacking player (context) draws one; the controller's chosen creature
             // gets `counters` +1/+1 counters.
             CountersEffect::AttackerDrawsControllerCounters { attacker, counters } => {
@@ -350,7 +266,7 @@ impl Game {
                 events
             }
             // Ingenious Prodigy: "you may remove a +1/+1 counter from it." A negative
-            // `CountersPlaced`, mirroring `RemoveAllCountersThenDraw`'s removal above; guarded so
+            // `CountersPlaced`, mirroring `Game::remove_counters_events`; guarded so
             // a source with none doesn't go negative (unreachable in practice — the enclosing
             // ability's `SourceHasCounters` intervening-if already requires at least one).
             CountersEffect::RemoveCounterFromSelf { kind: None } => {
@@ -397,6 +313,28 @@ impl Game {
             count: n,
             source_name,
         })
+    }
+
+    /// [`CountersEffect::RemoveCounters`] — Nexus Mentality's "Remove all counters from target
+    /// nonland permanent you control", Lily Bowen's "remove all but one +1/+1 counter from it".
+    ///
+    /// Resolves here rather than on the mint path because it writes
+    /// [`ResolutionFrame::counters_removed_this_way`] for a following step to read back through
+    /// [`Amount::CountersRemovedThisWay`], and minting is `&self`. Same reason
+    /// [`Game::resolve_mill_self`] lives off the mint path. The tally is overwritten, not
+    /// accumulated, so a removal that takes nothing off reads as 0 rather than as a stale count.
+    pub(crate) fn resolve_remove_counters(
+        &mut self,
+        target: Option<Target>,
+        all_kinds: bool,
+        keep: u32,
+        events: &mut Vec<Event>,
+    ) {
+        let object = expect_object_target(target, "a remove-counters effect");
+        let (evs, removed) = self.remove_counters_events(object, all_kinds, keep as i32);
+        self.resolution_frame.counters_removed_this_way = removed.max(0) as u32;
+        self.apply_all(&evs);
+        events.extend(evs);
     }
 
     /// Kinetic Ooze's X≥10 rider (CR 601.2c/603.3d): double the +1/+1 counters on each of the

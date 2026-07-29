@@ -21,7 +21,7 @@ timing = "spell"
 [[abilities.effects]]
 type = "choice"
 mode = "each_player_sacrifices"
-scope = "each_opponent"
+who = "each_opponent"
 filter = { types = "creature_or_planeswalker" }
 
 # and gets a poison counter.
@@ -30,4 +30,4 @@ type = "counters"
 mode = "put_counters_on_player"
 kind = "poison"
 count = 1
-scope = "each_opponent"
+who = "each_opponent"

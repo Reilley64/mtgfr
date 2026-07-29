@@ -2,14 +2,154 @@ import { describe, expect, it } from "vitest";
 import { formatMessage } from "./message";
 
 describe("formatMessage", () => {
-  it("formats effect.draw_cards", () => {
+  it("names the drawer of a draw from its player set", () => {
     expect(
       formatMessage({
         key: "effect.draw_cards",
         params: [{ name: "count", int_value: 2 }],
         children: [],
       }),
-    ).toBe("Draw 2");
+    ).toBe("You draw 2");
+    expect(
+      formatMessage({
+        key: "effect.draw_cards",
+        params: [
+          { name: "who", string_value: "targets_owner" },
+          { name: "count", int_value: 2 },
+        ],
+        children: [],
+      }),
+    ).toBe("Target's owner draws 2");
+  });
+
+  it("names the recipient of damage from its player set", () => {
+    expect(
+      formatMessage({
+        key: "effect.damage_to_players",
+        params: [{ name: "amount", int_value: 2 }],
+        children: [],
+      }),
+    ).toBe("Deal 2 damage to you");
+    expect(
+      formatMessage({
+        key: "effect.damage_to_players",
+        params: [
+          { name: "who", string_value: "each_other_opponent" },
+          { name: "amount", int_value: 2 },
+        ],
+        children: [],
+      }),
+    ).toBe("Deal 2 damage to each other opponent");
+  });
+
+  it("names the discarder of a discard from its player set", () => {
+    expect(
+      formatMessage({
+        key: "effect.choice_discard",
+        params: [{ name: "count", int_value: 1 }],
+        children: [],
+      }),
+    ).toBe("You discard 1");
+    expect(
+      formatMessage({
+        key: "effect.choice_discard",
+        params: [
+          { name: "count", int_value: 1 },
+          { name: "who", string_value: "damaged_player" },
+          { name: "random", bool_value: true },
+        ],
+        children: [],
+      }),
+    ).toBe("That player discards 1 at random");
+  });
+
+  it("names the drawer of a may-draw from its player set", () => {
+    expect(
+      formatMessage({
+        key: "effect.choice_may_draw",
+        params: [
+          { name: "who", string_value: "damaging_permanents_controller" },
+          { name: "count", int_value: 1 },
+        ],
+        children: [],
+      }),
+    ).toBe("That creature's controller may draw 1");
+  });
+
+  it("names the Treasure recipient from its player set", () => {
+    expect(
+      formatMessage({
+        key: "effect.token_create_treasure",
+        params: [
+          { name: "count", int_value: 1 },
+          { name: "who", string_value: "target_player" },
+        ],
+        children: [],
+      }),
+    ).toBe("Target player creates 1 Treasure token(s)");
+  });
+
+  it("names the token recipient and the per-opponent repeat", () => {
+    expect(
+      formatMessage({
+        key: "effect.token_create",
+        params: [
+          { name: "count", int_value: 1 },
+          { name: "token", string_value: "dragon" },
+          { name: "who", string_value: "each_other_player" },
+          { name: "per_opponent", bool_value: false },
+        ],
+        children: [],
+      }),
+    ).toBe("Each player other than target player creates 1 dragon token(s)");
+
+    expect(
+      formatMessage({
+        key: "effect.token_create",
+        params: [
+          { name: "count", int_value: 2 },
+          { name: "token", string_value: "bird" },
+          { name: "per_opponent", bool_value: true },
+        ],
+        children: [],
+      }),
+    ).toBe("You create 2 bird token(s) for each opponent");
+  });
+
+  it("agrees an edict's verb with the seats it names", () => {
+    const sacrifices = (params: Array<{ name: string; string_value?: string; bool_value?: boolean }>): string =>
+      formatMessage({ key: "effect.choice_each_player_sacrifices", params, children: [] });
+
+    expect(sacrifices([{ name: "who", string_value: "each_opponent" }])).toBe("Each opponent sacrifices a permanent");
+    // Lich bills only its own controller, so the verb drops its third-person "s".
+    expect(sacrifices([{ name: "who", string_value: "you" }])).toBe("You sacrifice a permanent");
+    // Priest of Forgotten Gods picks its seats as it resolves, so `who` is not the subject.
+    expect(
+      sacrifices([
+        { name: "who", string_value: "each_player" },
+        { name: "chosen_by_controller", bool_value: true },
+      ]),
+    ).toBe("Any number of target players sacrifice a permanent");
+  });
+
+  it("names whose library a search reads", () => {
+    const search = (params: Array<{ name: string; string_value?: string }>): string =>
+      formatMessage({ key: "effect.dig_search_library", params, children: [] });
+
+    expect(
+      search([
+        { name: "filter", string_value: "basic_land" },
+        { name: "to_zone", string_value: "hand" },
+      ]),
+    ).toBe("You search your library for basic land and put it into your hand");
+    // Veteran Explorer's "each player may search their library".
+    expect(
+      search([
+        { name: "filter", string_value: "basic_land" },
+        { name: "to_zone", string_value: "battlefield" },
+        { name: "who", string_value: "each_player" },
+      ]),
+    ).toBe("Each player searches their library for basic land and puts it onto the battlefield");
   });
 
   it("joins sequence children with then", () => {
@@ -30,7 +170,7 @@ describe("formatMessage", () => {
           },
         ],
       }),
-    ).toBe("Draw 2, then Discard 2");
+    ).toBe("You draw 2, then Discard 2");
   });
 
   it("returns raw key when missing", () => {
@@ -50,14 +190,27 @@ describe("formatMessage", () => {
     expect(formatMessage({ key: "reject.illegal_target", params: [], children: [] })).toBe("Pick a legal target.");
   });
 
-  it("formats effect.life_each_player_loses", () => {
+  it("names the recipient of a life change from its player set", () => {
     expect(
       formatMessage({
-        key: "effect.life_each_player_loses",
-        params: [{ name: "amount", int_value: 3 }],
+        key: "effect.life_lose",
+        params: [
+          { name: "who", string_value: "each_player" },
+          { name: "amount", int_value: 3 },
+        ],
         children: [],
       }),
-    ).toBe("Each player loses 3");
+    ).toBe("Each player loses 3 life");
+    expect(
+      formatMessage({
+        key: "effect.life_gain",
+        params: [
+          { name: "who", string_value: "you" },
+          { name: "amount", int_value: 3 },
+        ],
+        children: [],
+      }),
+    ).toBe("You gain 3 life");
   });
 
   it("reads a base-P/T-setting Aura back as fixed numbers or as one shared count", () => {

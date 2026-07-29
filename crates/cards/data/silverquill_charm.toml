@@ -47,5 +47,6 @@ timing = "spell"
 # Each opponent loses 3 life and you gain 3 life.
 [[abilities.effects]]
 type = "life"
-mode = "each_opponent_drain"
+mode = "drain"
+who = "each_opponent"
 amount = 3

@@ -80,6 +80,108 @@ impl Game {
         self.pending_choice.is_some()
     }
 
+    /// The seats a [`PlayerSet`] names, in turn order — the one place a card's "you" / "target
+    /// player" / "each opponent" is turned into actual players.
+    ///
+    /// Dead seats are never included: [`Game::living_players`] is the roster, so an effect aimed
+    /// at "each opponent" skips anyone who has already lost (CR 104.2a).
+    pub(crate) fn players_in(
+        &self,
+        who: PlayerSet,
+        controller: PlayerId,
+        target: Option<Target>,
+    ) -> Vec<PlayerId> {
+        match who {
+            PlayerSet::You => vec![controller],
+            PlayerSet::EachPlayer => self.living_players().collect(),
+            PlayerSet::EachOpponent => self.living_players().filter(|&p| p != controller).collect(),
+            // Death by Dragons names the one seat left *out*; a lost target excludes nobody, so
+            // an unresolved target means the whole table (CR 608.2b fizzles the spell upstream).
+            PlayerSet::EachOtherPlayer => {
+                let excluded = match target {
+                    Some(Target::Player(player)) => Some(player),
+                    _ => None,
+                };
+                self.living_players()
+                    .filter(|&p| Some(p) != excluded)
+                    .collect()
+            }
+            // CR 601.2f's alternative-cost rider names no target, so there is nothing to read back
+            // — see the variant's ponytail note on the deterministic pick.
+            PlayerSet::AnOpponent => self
+                .living_players()
+                .find(|&p| p != controller)
+                .into_iter()
+                .collect(),
+            // The targeting machinery already picked and legality-checked the seat; a resolution
+            // that finds no player target has lost it (CR 608.2b) and touches no one. A seat that
+            // has left the game since targeting is no longer a legal target either (CR 104.2a).
+            PlayerSet::TargetPlayer | PlayerSet::TargetOpponent => match target {
+                Some(Target::Player(player)) if self.living_players().any(|p| p == player) => {
+                    vec![player]
+                }
+                _ => Vec::new(),
+            },
+            // Swords to Plowshares' "its controller" / Oblation's "its owner" — the *target's*
+            // player, not this ability's controller, read through the shared-target helper so a
+            // preceding Sequence step that vanished the target still answers (CR 111.7).
+            PlayerSet::TargetsController | PlayerSet::TargetsOwner => match target {
+                Some(Target::Object(object)) => {
+                    vec![self.owner_of_shared_target(object, who == PlayerSet::TargetsController)]
+                }
+                _ => Vec::new(),
+            },
+            PlayerSet::AttackingPlayer { player } => {
+                vec![player.expect("the attacking player is filled in at placement")]
+            }
+            PlayerSet::TriggeringPlayer { player } => {
+                vec![player.expect("the triggering player is filled in at placement")]
+            }
+            PlayerSet::DyingEnchantedCreaturesController { player } => {
+                vec![player.expect("the dying host's controller is filled in at placement")]
+            }
+            // The entering permanent is still on the battlefield, so its controller reads live —
+            // only the id needs baking in at placement.
+            PlayerSet::EnteringPermanentsController { permanent } => {
+                let entering = permanent.expect("the entering permanent is filled in at placement");
+                vec![self.controller_of(entering)]
+            }
+            PlayerSet::EachOtherOpponent { damaged } => {
+                let damaged = damaged.expect("the damaged opponent is filled in at placement");
+                self.living_players()
+                    .filter(|&p| p != controller && p != damaged)
+                    .collect()
+            }
+            PlayerSet::DamagedPlayer { player } => {
+                vec![player.expect("the damaged player is filled in at placement")]
+            }
+            PlayerSet::DamagingPermanentsController { player } => {
+                vec![player.expect("the damaging permanent's controller is filled in at placement")]
+            }
+        }
+    }
+
+    /// The single seat a [`PlayerSet`] names, for the effects that address exactly one player —
+    /// a discard pause asks *someone*, and there is no such thing as pausing half a table.
+    ///
+    /// `None` when the set is empty: a targeted seat whose target was lost (CR 608.2b), which
+    /// resolves as doing nothing rather than as a panic. A set naming several seats is an
+    /// authoring error on a one-seat effect and panics — the card wants a fan-out mode instead.
+    pub(crate) fn sole_player_in(
+        &self,
+        who: PlayerSet,
+        controller: PlayerId,
+        target: Option<Target>,
+    ) -> Option<PlayerId> {
+        let players = self.players_in(who, controller, target);
+        assert!(
+            players.len() <= 1,
+            "{who:?} names {} seats on an effect that addresses one",
+            players.len()
+        );
+        players.first().copied()
+    }
+
     /// The owner (or controller, if `to_controller`) of a [`Sequence`](Effect::Sequence)'s shared
     /// target — an ordinary live [`Game::owner_of`]/[`Game::controller_of`] read, except when a
     /// *preceding* step in the same Sequence already vanished that target (a token tucked by
@@ -257,6 +359,7 @@ mod tests {
     const SURVEIL_THEN_DRAW: &[Effect] = &[
         Effect::Dig(DigEffect::Surveil { count: 2 }),
         Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::You,
             count: Amount::Fixed(1),
         }),
     ];
@@ -363,6 +466,7 @@ mod tests {
 
         game.run(
             Effect::Draw(DrawEffect::Cards {
+                who: PlayerSet::You,
                 count: Amount::Fixed(1),
             }),
             ctx(PlayerId(0)),

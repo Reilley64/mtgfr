@@ -25,5 +25,6 @@ timing = "enchanted_permanent_becomes_tapped"
 # ...this Aura deals 2 damage to that land's controller.
 [[abilities.effects]]
 type = "damage"
-mode = "to_triggering_player"
+mode = "to_players"
+who = "triggering_player"
 amount = 2

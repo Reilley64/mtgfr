@@ -18,8 +18,10 @@ timing = "activated"
 taps_self = true
 
 [abilities.condition]
-type = "you_control_lands"
-at_least = 5
+type = "compare"
+left = { per_permanent = { types = "land", controller = "you" } }
+op = "at_least"
+right = 5
 
 # Add {C}{C}.
 [[abilities.effects]]

@@ -21,7 +21,8 @@ timing = "spell"
 # Its controller gains life equal to its power.
 [[abilities.effects]]
 type = "life"
-mode = "gain_target_controller"
+mode = "gain"
+who = "targets_controller"
 amount = "target_power"
 
 # Exile target creature.
