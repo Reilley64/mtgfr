@@ -1446,13 +1446,13 @@ function cursorInHandInspectBand(model: BoardModel): boolean {
 }
 
 /**
- * Hand peek leave clears aux while the cursor is still over pointer-events-none face art; with Alt
- * live re-pin that would steal to the battlefield under the hand. Keep the last hand hover latched
- * until the pointer leaves the hand sticky band (or Alt releases / a new hand card enters).
+ * Release the latched hand hover once the pointer is verifiably back over the canvas outside the
+ * hand sticky band. Only call this from BoardPointerMove, where the cursor is fresh: over the
+ * HTML hand bar no board move fires, so the cursor is stale and the band check cannot be trusted
+ * (the leave side of the aux storm keeps the latch unconditionally — see InspectAuxHovered).
  */
 function releaseStickyHandInspect(model: BoardModel): BoardModel {
   if (model.handInspectHover == null) return model;
-  if (!model.altDown) return model;
   if (cursorInHandInspectBand(model)) return model;
   return { ...model, handInspectHover: null };
 }
@@ -3150,14 +3150,22 @@ export function updateBoard(
       return [{ ...model, altDown: false, inspectPin: null, inspectCard: undefined }, []];
     case "InspectAuxHovered": {
       if (message.source === "hand") {
-        // Peek-strip leave while the cursor is still in the hand fan (face art is
-        // pointer-events-none) must not drop aux — Alt live re-pin would steal to BF underneath.
-        if (message.card == null && model.altDown && model.handInspectHover != null && cursorInHandInspectBand(model)) {
+        // A hand aux enter/leave is itself proof the pointer is over the hand bar: the bar is an
+        // HTML overlay above the canvas, so BoardPointerMove never fires there and model.cursor
+        // is stale — a band check against it would drop the latch mid enter/leave storm (raised
+        // face art is pointer-events-none) and hover-then-Alt could never pin. Keep the latch on
+        // leave; it releases on a canvas BoardPointerMove outside the band (fresh cursor, see
+        // releaseStickyHandInspect) or when a new hand/stack aux enter replaces it.
+        if (message.card == null && model.handInspectHover != null) {
           return [model, []];
         }
         return applyLiveInspectPin({ ...model, handInspectHover: message.card }, fold);
       }
-      return applyLiveInspectPin({ ...model, stackInspectHover: message.card }, fold);
+      // A stack aux enter supersedes a latched hand hover — the cursor moved to the stack.
+      if (message.card != null) {
+        return applyLiveInspectPin({ ...model, handInspectHover: null, stackInspectHover: message.card }, fold);
+      }
+      return applyLiveInspectPin({ ...model, stackInspectHover: null }, fold);
     }
     case "InspectCardFetched":
       return [{ ...model, inspectCard: message.card }, []];

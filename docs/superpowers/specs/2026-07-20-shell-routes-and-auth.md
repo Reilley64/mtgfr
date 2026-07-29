@@ -117,7 +117,7 @@ The dropdown is a `@foldkit/ui` `Menu` submodel. Its state (`accountMenu`, `Menu
 
 The panel (`account-menu`) shows the signed-in username as a group heading (`account-menu-username`) — `Menu` has no static-content slot and every item is selectable — above two rows. `Change at Gravatar` (`account-menu-gravatar`) commits `Selected`, which the app answers with `OpenGravatar`, a command opening `https://gravatar.com` in a new tab so a half-edited deck is not navigated away from; it is not an `<a>`, because `Menu`'s keyboard commit programmatically clicks the `role="menuitem"` element and a nested anchor would not follow. `Sign out` (`account-menu-sign-out`) commits `Selected` and the app folds `Auth.Message.RequestedLogout()`; losing the session on a protected route then redirects to `/login?next=…`.
 
-`Menu` renders its own trigger button, items container, and rows and accepts only class strings, so the chrome comes from `menuPanelClass` / `menuItemClass` rather than the `button` component — see [ui-component-layer](2026-07-28-ui-component-layer.md).
+`Menu` renders its own trigger button, items container, and rows and accepts only class strings, so the chrome comes from `menuPanelClass` / `menuItemClass` rather than the `button` component — see [ui-component-layer](2026-07-28-ui-component-layer.md). The panel is portaled before the app root, so its z comes from the `shell` variant's baked `z-41` — without it the open menu paints underneath the fixed shell frame.
 
 ### Foldkit state and effects (`client/app/model.ts`, `client/app/update.ts`, `client/app/subscriptions.ts`, `client/app/resources.ts`)
 

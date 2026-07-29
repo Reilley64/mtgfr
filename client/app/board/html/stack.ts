@@ -5,6 +5,7 @@
 // Resting faces hide only for in-flight `kind: "stack"` objects — not for battlefield flights that
 // share an ability's source permanent id.
 
+import { Option } from "effect";
 import { type Attribute, type Html, html } from "foldkit/html";
 import { button } from "~/ui/button";
 import { cardArt } from "~/ui/card-art";
@@ -14,7 +15,6 @@ import { aimingObjectIds, pendingStackGhost, stagedPickTargets } from "../action
 import {
   STACK_CARD_W,
   STACK_HORIZONTAL_MARGIN,
-  STACK_OVERLAY_RIGHT,
   STACK_STRIP_MIN_PEEK,
   STACK_VERTICAL_RESERVED,
   stackCardH,
@@ -23,7 +23,6 @@ import {
   stackPeekFor,
   stackPresentation,
   stackStripPeek,
-  TARGET_COLOR,
 } from "../geometry/stackLayout";
 import { formatStackTargetSuffix, stackEntryTargets } from "../geometry/stackTargets";
 import {
@@ -127,13 +126,17 @@ function stackFace(opts: {
   staged?: boolean;
   legalTarget?: boolean;
   cardH: number;
+  /** Caller-specific placement utilities reading the CSS vars in `style` (`--b`/`--x`/`--y`/`--z`). */
+  positionClass: string;
+  /** Placement data only (CSS variables); sizes come from `--stack-w`/`--card-h` on the container. */
   style: Record<string, string>;
 }): Html {
   const faceClass = [
-    "group/stack-face absolute rounded-game shadow-hand",
+    "group/stack-face absolute w-(--stack-w) rounded-game shadow-hand",
     "data-[legal-target=true]:cursor-pointer data-[legal-target=true]:ring-2 data-[legal-target=true]:ring-island-blue",
     "data-[staged=true]:ring-2 data-[staged=true]:ring-island-blue",
     opts.isTop ? "group-hover/stack:shadow-[0_0_16px_rgba(255,215,106,0.4)]" : "",
+    opts.positionClass,
   ]
     .filter((v) => v !== "")
     .join(" ");
@@ -144,15 +147,13 @@ function stackFace(opts: {
           print: opts.print,
           size: "large",
           alt: opts.imageName,
-          className: "block rounded-game",
-          style: { width: `${STACK_CARD_W}px`, height: `${opts.cardH}px` },
+          className: "block h-(--card-h) w-(--stack-w) rounded-game",
         })
       : h.div(
           [
             h.Class(
-              "flex items-center justify-center rounded-game bg-forest-hud px-1 text-center font-semibold text-caption text-seafoam",
+              "flex h-(--card-h) w-(--stack-w) items-center justify-center rounded-game bg-forest-hud px-1 text-center font-semibold text-caption text-seafoam",
             ),
-            h.Style({ width: `${STACK_CARD_W}px`, height: `${opts.cardH}px` }),
           ],
           [opts.label],
         );
@@ -168,7 +169,17 @@ function stackFace(opts: {
   }
   if (opts.legalTarget) {
     faceAttrs.push(h.DataAttribute("legal-target", "true"));
+    // Legal targets are real controls: click AND keyboard pick the target.
+    faceAttrs.push(h.Role("button"));
+    faceAttrs.push(h.Tabindex(0));
+    faceAttrs.push(h.Attribute("aria-label", `Target: ${opts.imageName ?? opts.label}`));
     faceAttrs.push(h.OnClick(TargetChosen({ target: { kind: "object", id: opts.source } })));
+    faceAttrs.push(
+      h.OnKeyDownPreventDefault((key) => {
+        if (key !== "Enter" && key !== " ") return Option.none();
+        return Option.some(TargetChosen({ target: { kind: "object", id: opts.source } }));
+      }),
+    );
   }
   // Solid stack overlay: hover a face → Alt-inspect aux for that card.
   if (opts.imageName) {
@@ -197,15 +208,14 @@ function holdBar(holdMs: number, holdPeak: number, show: boolean): Html | null {
   return h.div(
     [
       h.DataAttribute("testid", "stack-hold-bar"),
-      h.Class("pointer-events-none h-1.5 overflow-hidden rounded-full bg-white/15"),
-      h.Style({ width: `${STACK_CARD_W}px` }),
+      h.Class("pointer-events-none h-1.5 w-(--stack-w) overflow-hidden rounded-full bg-white/15"),
       h.Attribute("aria-hidden", "true"),
     ],
     [
       h.div(
         [
-          h.Class("h-full rounded-full bg-vine transition-[width] duration-150 ease-linear"),
-          h.Style({ width: `${pct}%` }),
+          h.Class("h-full w-(--w) rounded-full bg-vine transition-[width] duration-150 ease-linear"),
+          h.Style({ "--w": `${pct}%` }),
         ],
         [],
       ),
@@ -218,8 +228,7 @@ function pileCaption(state: VisibleState, showStaged: boolean): Html | null {
     return h.div(
       [
         h.DataAttribute("testid", "stack-staged-hint"),
-        h.Class("max-w-full text-center text-chip"),
-        h.Style({ color: TARGET_COLOR, maxWidth: `${STACK_CARD_W}px` }),
+        h.Class("max-w-(--stack-w) text-center text-chip text-island-blue"),
       ],
       ["Choose a target"],
     );
@@ -230,11 +239,7 @@ function pileCaption(state: VisibleState, showStaged: boolean): Html | null {
   const ability = top.kind === "ability" ? formatMessage(top.label) : "";
   if (ability === "" && target === "") return null;
   return h.div(
-    [
-      h.DataAttribute("testid", "stack-top-caption"),
-      h.Class("max-w-full text-center text-chip text-seafoam"),
-      h.Style({ maxWidth: `${STACK_CARD_W}px` }),
-    ],
+    [h.DataAttribute("testid", "stack-top-caption"), h.Class("max-w-(--stack-w) text-center text-chip text-seafoam")],
     [
       ability !== "" ? h.div([h.Class("font-semibold")], [ability]) : null,
       target !== "" ? h.div([], [target]) : null,
@@ -272,11 +277,10 @@ function pileView(
         staged: item.staged,
         legalTarget: !item.staged && legalTargets.has(item.source),
         cardH,
+        positionClass: "bottom-(--b) left-0 z-(--z)",
         style: {
-          width: `${STACK_CARD_W}px`,
-          bottom: `${item.row * peek}px`,
-          "z-index": String(item.row),
-          left: "0",
+          "--b": `${item.row * peek}px`,
+          "--z": String(item.row),
         },
       });
     });
@@ -285,11 +289,11 @@ function pileView(
 
   const pileAttrs: Attribute<Message>[] = [
     h.DataAttribute("testid", "stack-overlay"),
-    h.Class("group/stack pointer-events-auto fixed top-1/2 z-20 -translate-y-1/2"),
+    h.Class("group/stack pointer-events-auto fixed top-1/2 right-4 z-20 h-(--pile-h) w-(--stack-w) -translate-y-1/2"),
     h.Style({
-      right: `${STACK_OVERLAY_RIGHT}px`,
-      width: `${STACK_CARD_W}px`,
-      height: `${pileH}px`,
+      "--stack-w": `${STACK_CARD_W}px`,
+      "--card-h": `${cardH}px`,
+      "--pile-h": `${pileH}px`,
     }),
   ];
   if (allowDwell) {
@@ -363,11 +367,11 @@ function stripView(
         staged: item.staged,
         legalTarget: !item.staged && legalTargets.has(item.source),
         cardH,
+        positionClass: "top-(--y) left-(--x) z-(--z)",
         style: {
-          width: `${STACK_CARD_W}px`,
-          left: `${col * hPeek}px`,
-          top: `${rowY * cardH * 0.35}px`,
-          "z-index": String(item.row),
+          "--x": `${col * hPeek}px`,
+          "--y": `${rowY * cardH * 0.35}px`,
+          "--z": String(item.row),
         },
       });
     });
@@ -377,10 +381,14 @@ function stripView(
 
   const stripAttrs: Attribute<Message>[] = [
     h.DataAttribute("testid", "stack-overlay-expanded"),
-    h.Class(`group/stack pointer-events-auto fixed z-20 flex flex-col items-center gap-sm ${positionClass}`),
+    h.Class(
+      `group/stack pointer-events-auto fixed z-20 flex w-(--strip-cap) max-w-(--strip-max) flex-col items-center gap-sm ${positionClass}`,
+    ),
     h.Style({
-      width: `${Math.min(viewportW - STACK_HORIZONTAL_MARGIN, stripW)}px`,
-      maxWidth: `${viewportW - STACK_HORIZONTAL_MARGIN}px`,
+      "--stack-w": `${STACK_CARD_W}px`,
+      "--card-h": `${cardH}px`,
+      "--strip-cap": `${Math.min(viewportW - STACK_HORIZONTAL_MARGIN, stripW)}px`,
+      "--strip-max": `${viewportW - STACK_HORIZONTAL_MARGIN}px`,
     }),
   ];
   if (allowDwell) {
@@ -406,7 +414,13 @@ function stripView(
         ),
       ],
     ),
-    h.div([h.Class("relative"), h.Style({ width: `${stripW}px`, height: `${stripH}px` })], faces),
+    h.div(
+      [
+        h.Class("relative h-(--strip-h) w-(--strip-w)"),
+        h.Style({ "--strip-w": `${stripW}px`, "--strip-h": `${stripH}px` }),
+      ],
+      faces,
+    ),
     holdBar(holdMs, holdPeak, showHold),
     pileCaption(state, showStaged),
   ]);

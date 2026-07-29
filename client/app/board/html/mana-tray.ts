@@ -39,8 +39,8 @@ function chipView(chip: ManaTrayChip, zoom: number): Html {
   const wrap = (inner: Html): Html =>
     h.span(
       [
-        h.Class("inline-flex items-center"),
-        h.Style({ "font-size": `${fontPx}px` }),
+        h.Class("inline-flex items-center text-[length:var(--fsz)]"),
+        h.Style({ "--fsz": `${fontPx}px` }),
         h.Role("img"),
         h.Attribute("aria-label", label),
       ],
@@ -78,8 +78,8 @@ function chipView(chip: ManaTrayChip, zoom: number): Html {
     case "text":
       return h.span(
         [
-          h.Class("inline-flex items-center gap-px font-semibold text-seat-forest"),
-          h.Style({ "font-size": `${fontPx}px` }),
+          h.Class("inline-flex items-center gap-px font-semibold text-seat-forest text-[length:var(--fsz)]"),
+          h.Style({ "--fsz": `${fontPx}px` }),
         ],
         [
           h.span([h.Class("leading-none")], [chip.text]),

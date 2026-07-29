@@ -1,6 +1,6 @@
 import { Option } from "effect";
 import { type Html, html } from "foldkit/html";
-import { costPipPlate, costPips } from "~/costPips";
+import { costPips } from "~/costPips";
 import { manaFontClass } from "~/oracleText";
 import type { VisibleState } from "~/wire/types";
 import { layout, ZONE } from "../geometry/layout";
@@ -22,23 +22,12 @@ import {
   RadialWedgeReleased,
 } from "../messages";
 import type { BoardModel } from "../submodel";
+import { pipChip } from "./pip-chip";
 
 const h = html<Message>();
 
 function costPipView(ms: string, code: string, sizePx: number): Html {
-  return h.span(
-    [
-      h.Class("inline-flex shrink-0 items-center justify-center rounded-full shadow-[0_1px_2px_rgb(0_0_0/0.9)]"),
-      h.Style({
-        width: `${sizePx}px`,
-        height: `${sizePx}px`,
-        "background-color": costPipPlate(code),
-        color: "#111",
-        "font-size": `${Math.round(sizePx * 0.82)}px`,
-      }),
-    ],
-    [h.i([h.Class(`ms ms-${ms}`)], [])],
-  );
+  return pipChip(h, { ms, code, sizePx });
 }
 
 function costChipView(opt: RadialOption): Html | null {
@@ -65,11 +54,13 @@ function costChipView(opt: RadialOption): Html | null {
   );
 }
 
-function rowClass(disabled: boolean, active: boolean): string {
+// Row chrome is attribute-driven: JS sets data-active (hover/armed) and aria-disabled,
+// Tailwind variants own the look — no class ternaries.
+function rowClass(): string {
   return [
-    "pointer-events-auto flex w-full items-center gap-sm rounded-hud border px-sm py-xs text-left outline-none transition-colors duration-100 ease-state",
-    active ? "border-priority-gold bg-llanowar-deep" : "border-vine/40 bg-glass/40",
-    disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer",
+    "pointer-events-auto flex w-full items-center gap-sm rounded-hud border border-vine/40 bg-glass/40 px-sm py-xs text-left outline-none transition-colors duration-100 ease-state cursor-pointer",
+    "aria-disabled:cursor-not-allowed aria-disabled:opacity-60",
+    "data-[active=true]:border-priority-gold data-[active=true]:bg-llanowar-deep",
   ].join(" ");
 }
 
@@ -150,7 +141,8 @@ export function activationMenuView(board: BoardModel, state: VisibleState): Html
               h.Role("button"),
               h.Tabindex(0),
               h.Attribute("aria-disabled", opt.disabled ? "true" : "false"),
-              h.Class(rowClass(opt.disabled, active)),
+              h.DataAttribute("active", String(active)),
+              h.Class(rowClass()),
               h.OnPointerDown((_pt, _button, _sx, _sy, _ts, _cx, _cy) => Option.some(RadialWedgeArmed({ index }))),
               h.OnPointerUp((_sx, _sy, _pt, _ts) => Option.some(RadialWedgeReleased({ index }))),
               h.OnMouseEnter(RadialWedgeHovered({ index })),

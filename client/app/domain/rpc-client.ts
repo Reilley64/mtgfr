@@ -117,7 +117,8 @@ export function makeClient(fetchImpl: typeof globalThis.fetch) {
       json(Me, HttpClientRequest.post("/auth/signup").pipe(HttpClientRequest.bodyJsonUnsafe(payload))),
     login: (payload: Credentials) =>
       json(Me, HttpClientRequest.post("/auth/login").pipe(HttpClientRequest.bodyJsonUnsafe(payload))),
-    logout: () => empty(HttpClientRequest.post("/auth/logout")),
+    // The BFF parses a JSON body on every POST and 400s a bodiless one as BadJson — send `{}`.
+    logout: () => empty(HttpClientRequest.post("/auth/logout").pipe(HttpClientRequest.bodyJsonUnsafe({}))),
     me: () => json(Me, HttpClientRequest.get("/auth/me")),
 
     searchCards: (params: { q: string; limit: number; offset: number }) =>

@@ -20,18 +20,20 @@ const HEAT_INK: Record<Heat, string> = {
 };
 
 function phaseSegment(state: "past" | "now" | "future", yourTurn: boolean, name: string, detail: string | null): Html {
-  const bg =
-    state === "now"
-      ? yourTurn
-        ? "border-phase-mint bg-llanowar/90 text-snow-mint"
-        : "border-phase-ember bg-phase-ember/90 text-snow-mint"
-      : state === "past"
-        ? "bg-quiet-hover text-snow-mint"
-        : "bg-tapped-out/60 text-phase-fern";
+  // Interactive chrome is attribute-driven: JS sets data-phase-state / data-your-turn,
+  // Tailwind variants own the look (mint = your turn now, ember = theirs, dim = past/future).
   return h.div(
     [
+      h.DataAttribute("phase-state", state),
+      h.DataAttribute("your-turn", String(yourTurn)),
       h.Class(
-        `w-[7.5rem] rounded-control border border-transparent px-md py-xs text-center font-semibold text-caption ${bg}`,
+        cn(
+          "w-[7.5rem] rounded-control border border-transparent bg-tapped-out/60 px-md py-xs text-center font-semibold text-caption text-phase-fern",
+          "data-[phase-state=past]:bg-quiet-hover data-[phase-state=past]:text-snow-mint",
+          "data-[phase-state=now]:text-snow-mint",
+          "data-[phase-state=now]:data-[your-turn=true]:border-phase-mint data-[phase-state=now]:data-[your-turn=true]:bg-llanowar/90",
+          "data-[phase-state=now]:data-[your-turn=false]:border-phase-ember data-[phase-state=now]:data-[your-turn=false]:bg-phase-ember/90",
+        ),
       ),
     ],
     [name, detail == null ? null : h.div([h.Class("mt-px text-micro text-snow-mint/85")], [detail])].filter(
@@ -81,7 +83,8 @@ export function turnChromeView(board: BoardModel, state: VisibleState): Html {
       h.div(
         [
           h.DataAttribute("testid", "board-turn-label"),
-          h.Class(`font-bold text-label ${yourTurn ? "text-turn-mint" : "text-turn-ember"}`),
+          h.DataAttribute("your-turn", String(yourTurn)),
+          h.Class("font-bold text-label data-[your-turn=true]:text-turn-mint data-[your-turn=false]:text-turn-ember"),
         ],
         [yourTurn ? "Your turn" : `${playerLabel(state.players, state.active_player)}'s turn`],
       ),
