@@ -36,9 +36,9 @@ export function logPanelView(board: BoardModel, log: ReadonlyArray<LogLine>): Ht
   if (log.length === 0) return null;
 
   const lines = board.logExpanded ? log : log.slice(-LOG_VISIBLE);
-  const logClass = board.logExpanded
-    ? "pointer-events-auto max-h-[min(40vh,420px)] w-[min(300px,46vw)] overflow-y-auto rounded-hud bg-forest-hud p-md text-label leading-normal shadow-hud"
-    : "pointer-events-auto max-h-[150px] w-[min(300px,46vw)] overflow-y-auto rounded-hud bg-forest-hud p-md text-label leading-normal shadow-hud";
+  // Expand state is attribute-driven: data-expanded flips the height cap, JS sets no class ternary.
+  const logClass =
+    "pointer-events-auto max-h-[150px] w-[min(300px,46vw)] overflow-y-auto rounded-hud bg-forest-hud p-md text-label leading-normal shadow-hud data-[expanded=true]:max-h-[min(40vh,420px)]";
   const copyLabel = board.logCopied ? "Copied" : board.logCopyFailed ? "Copy failed" : "Copy";
 
   return h.div(
@@ -78,7 +78,13 @@ export function logPanelView(board: BoardModel, log: ReadonlyArray<LogLine>): Ht
         ],
       ),
       h.div(
-        [h.DataAttribute("testid", "board-log"), h.Role("log"), h.Attribute("aria-live", "polite"), h.Class(logClass)],
+        [
+          h.DataAttribute("testid", "board-log"),
+          h.DataAttribute("expanded", String(board.logExpanded)),
+          h.Role("log"),
+          h.Attribute("aria-live", "polite"),
+          h.Class(logClass),
+        ],
         lines.map(lineView),
       ),
     ],

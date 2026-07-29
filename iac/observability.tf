@@ -214,6 +214,34 @@ resource "helm_release" "tempo" {
             }
           }
         }
+        # TraceQL metrics (`{...} | rate()`, what Grafana Drilldown > Traces issues) are served
+        # for the recent window by the metrics-generator. Without a `metrics_generator.storage.path`
+        # Tempo logs "metrics-generator is not configured", never joins the generator ring, and the
+        # query 500s with "error finding generators: empty ring". Paths live on the PVC (/var/tempo).
+        metricsGenerator = {
+          enabled        = true
+          remoteWriteUrl = "${local.prometheus_rw}"
+          processor = {
+            local_blocks = {
+              # Drilldown counts client spans too, not just server spans.
+              filter_server_spans = false
+              # Flush RF1 blocks so metrics queries reach past the live window.
+              flush_to_storage = true
+            }
+          }
+          storage        = { path = "/var/tempo/generator/wal" }
+          traces_storage = { path = "/var/tempo/generator/traces" }
+        }
+        # The generator only runs a processor a tenant asks for; local-blocks backs TraceQL metrics.
+        # ponytail: local-blocks only — add service-graphs/span-metrics when the service map or
+        # tracesToMetrics panels are actually wanted (they remote-write series to Prometheus).
+        overrides = {
+          defaults = {
+            metrics_generator = {
+              processors = ["local-blocks"]
+            }
+          }
+        }
       }
       persistence = {
         enabled = true
