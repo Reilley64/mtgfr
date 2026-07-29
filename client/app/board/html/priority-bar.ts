@@ -85,12 +85,7 @@ export function priorityBarView(board: BoardModel, state: VisibleState, tableId:
         h.Class("pointer-events-auto fixed bottom-(--b) right-md z-45 flex flex-col items-end gap-sm"),
         h.Style({ "--b": `${HAND_BAR_H + 10}px` }),
       ],
-      [
-        simpleActions,
-        board.reject != null
-          ? h.div([h.DataAttribute("testid", "board-reject"), h.Class("text-caption text-burn-red")], [board.reject])
-          : null,
-      ].filter((v): v is Html => v !== null),
+      [simpleActions, board.reject != null ? rejectView(board.reject) : null].filter((v): v is Html => v !== null),
     );
   }
 
@@ -204,9 +199,15 @@ export function priorityBarView(board: BoardModel, state: VisibleState, tableId:
             [`${formatMessage(board.staged.action.label)}: click a highlighted card`],
           )
         : null,
-      board.reject != null
-        ? h.div([h.DataAttribute("testid", "board-reject"), h.Class("text-caption text-burn-red")], [board.reject])
-        : null,
+      board.reject != null ? rejectView(board.reject) : null,
     ].filter((v): v is Html => v !== null),
+  );
+}
+
+/** Illegal-action feedback: role="alert" so a failed action announces, not just paints red. */
+function rejectView(reject: string): Html {
+  return h.div(
+    [h.DataAttribute("testid", "board-reject"), h.Role("alert"), h.Class("text-caption text-burn-red")],
+    [reject],
   );
 }

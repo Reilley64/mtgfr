@@ -269,6 +269,29 @@ test("PregameTableRoute cold load resets stale lobby entry state through the par
   expect(commands).toMatchObject([{ name: "FetchDecks" }, { name: "HashMeGravatar", args: { email: me.email } }]);
 });
 
+test("the clipboard fallback table-code input has an accessible name", () => {
+  Scene.scene(
+    { update, view: lobbyAppView },
+    Scene.with(
+      tableLobbyModel({
+        lobby: {
+          ...initialLobbySlice(),
+          tableId: "ABC123",
+          selectedDeckId: 7,
+          clipboardFallback: true,
+        },
+        decks: {
+          ...init()[0].decks,
+          list: { ...init()[0].decks.list, decks: [deck], loading: false },
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("lobby-share-code")).toExist(),
+    Scene.expect(Scene.testId("lobby-share-code")).toHaveAccessibleName("Table code"),
+    Scene.Mount.resolve(BindDeckCardFlip({ deckId: 7 }), DeckCardFlipTick()),
+  );
+});
+
 test("claim seat with a pre-chosen deck has no picker", () => {
   Scene.scene(
     { update, view: lobbyAppView },

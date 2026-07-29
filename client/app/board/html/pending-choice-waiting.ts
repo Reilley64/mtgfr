@@ -19,6 +19,7 @@ export function pendingChoiceWaitingView(state: VisibleState): Html | null {
   return h.div(
     [
       h.DataAttribute("testid", "pending-choice-waiting"),
+      h.Role("status"),
       h.Class(
         // top-12 clears the spectating badge when both are visible
         "pointer-events-none fixed top-12 left-1/2 z-30 -translate-x-1/2 rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",

@@ -195,6 +195,24 @@ describe("handView unplayable brightness", () => {
   });
 });
 
+describe("handView discard pick accessibility", () => {
+  it("names discard-selectable hit targets for assistive tech", () => {
+    const a = object(42, { name: "Lightning Bolt" });
+    const tree = handView({
+      state: state({ objects: [a], actions: [] }),
+      hiddenId: null,
+      flyingIds: new Set(),
+      hiddenIds: new Set(),
+      handDrag: null,
+      discardCostIds: new Set([42]),
+    });
+
+    const hit = findTestId(tree, "hand-card-42");
+    expect(hit).not.toBeNull();
+    expect(attr(hit, "aria-label")).toBe("Lightning Bolt (discard)");
+  });
+});
+
 describe("handView playable outlines", () => {
   it("adds the playable border to castable hand tiles only", () => {
     const castable = object(42, { name: "Lightning Bolt" });
