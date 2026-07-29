@@ -69,7 +69,7 @@ function shell(model: Model, title: string, body: string) {
       title,
       chrome: chromeMeta(model),
       stage: h.section(
-        [h.Class("mx-auto flex max-w-[960px] flex-col gap-md")],
+        [h.Class("mx-auto flex max-w-[var(--size-shell-content-max)] flex-col gap-md")],
         [h.p([h.Class("m-0 text-body text-snow/80")], [body])],
       ),
     }),
@@ -166,7 +166,7 @@ function boardMount(model: Model) {
       [
         nav(model),
         h.section(
-          [h.Class("mx-auto flex max-w-[960px] flex-col gap-md p-xxl")],
+          [h.Class("mx-auto flex max-w-[var(--size-shell-content-max)] flex-col gap-md p-xxl")],
           [
             h.h1([h.Class("m-0 text-title text-lichen")], ["Board"]),
             h.p(

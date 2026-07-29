@@ -73,7 +73,7 @@ function renderDeckCardBody<Msg>(h: HtmlFactory<Msg>, card: DeckCardModel, opts:
                 ? h.span(
                     [
                       h.DataAttribute("testid", "deck-play-label"),
-                      h.Class("shrink-0 text-chip font-semibold uppercase tracking-[0.06em] text-vine"),
+                      h.Class("shrink-0 text-chip font-semibold uppercase tracking-chip text-vine"),
                     ],
                     ["Play"],
                   )
