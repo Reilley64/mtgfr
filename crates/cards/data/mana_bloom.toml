@@ -50,7 +50,7 @@ mana = ["any"]
 # its owner's hand.
 [[abilities]]
 timing = "upkeep"
-condition = { type = "source_has_no_counters_of_kind", kind = "charge" }
+condition = { type = "compare", left = { per_counter_of_kind = "charge" }, op = "at_most", right = 0 }
 
 # return it to its owner's hand.
 [[abilities.effects]]

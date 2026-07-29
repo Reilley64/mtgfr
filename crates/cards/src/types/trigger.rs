@@ -751,6 +751,19 @@ pub enum BecomesTargetedScope {
 #[derive(Debug, Clone, Copy)]
 pub struct TriggerContext {
     pub controller: PlayerId,
+    /// The ability's own source object, for a [`Condition::Compare`](crate::Condition::Compare)
+    /// whose operand reads it (`Amount::SourcePower`, `Amount::PerCounterOnSource`, …). `None`
+    /// wherever the evaluating site has no source object — a land's CR 614.13 enters-tapped gate
+    /// runs *before* the permanent exists — and a `Compare` over a source-reading operand simply
+    /// doesn't hold there. Set by [`Game::ability_condition_holds`], the [`Effect::Conditional`]
+    /// resolve site, and the conditional-keyword recompute.
+    pub source: Option<ObjectId>,
+    /// The target this resolution shares (CR 601.2c), for a
+    /// [`Condition::Compare`](crate::Condition::Compare) whose operand reads it
+    /// (`Amount::TargetPower`, …) — Yavimaya Bloomsage's "if that creature's power is 7 or
+    /// greater". `None` outside a targeted resolution; set by the [`Effect::Conditional`] resolve
+    /// site alongside `source` above.
+    pub target: Option<Target>,
     /// The active player, for a [`Trigger::EachDrawStep`] ability's "**that player** draws an
     /// additional card" payoff (Howling Mine) — the player whose draw step this is, which need
     /// not be this ability's controller — or a [`Trigger::EachPlayerFirstMainPhase`] ability's
@@ -786,8 +799,8 @@ pub struct TriggerContext {
     /// `Game::dying_creature_stats` for where this is captured.
     pub dying_source_stats: Option<(i32, i32)>,
     /// The triggering spell's mana value (CR 202.3), for a `Trigger::CastSpell` (magecraft)
-    /// ability's `Amount::TriggeringSpellManaValue`/`Condition::TriggeringSpellManaValueAtLeast`
-    /// reads (Prismari Pianist's "if that spell's mana value is 5 or greater"; Renegade Bull's
+    /// ability's `Amount::TriggeringSpellManaValue` reads, direct or as a `Condition::Compare`
+    /// operand (Prismari Pianist's "if that spell's mana value is 5 or greater"; Renegade Bull's
     /// "+X/+0 … where X is that spell's mana value"). `None` for every non-`CastSpell` trigger,
     /// so other triggers' amount/condition reads are unaffected. Locked in at trigger placement,
     /// same CR 603.4 reasoning as `dying_source_stats` above. See
@@ -966,6 +979,8 @@ impl TriggerContext {
     pub fn of(controller: PlayerId) -> Self {
         Self {
             controller,
+            source: None,
+            target: None,
             active_player: None,
             attack: None,
             discarded: None,

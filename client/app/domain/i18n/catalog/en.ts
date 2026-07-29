@@ -351,9 +351,11 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.counters_put_counters_on_player": (params) =>
     `${playerClause(params, "get")} ${param(params, "count")} ${humanize(param(params, "kind"))} counters`,
   "effect.counters_put_loyalty_counter_each": literal("Put a loyalty counter on each"),
-  "effect.counters_remove_all_but_one_plus_one_counter_then_gain_life": literal(
-    "Remove all but one +1/+1 counter, gain 1 life for each removed",
-  ),
+  "effect.counters_remove_counters": (params) => {
+    const kind = bool(params, "all_kinds") ? "counters" : "+1/+1 counters";
+    const keep = param(params, "keep");
+    return keep === 0 ? `Remove all ${kind}` : `Remove all but ${keep} ${kind}`;
+  },
   "effect.counters_remove_all_player_counters": (params) => `${playerClause(params, "lose")} all counters`,
   "effect.counters_top_up_counters_on_player": (params) =>
     `Give target player ${humanize(param(params, "kind"))} counters up to ${param(params, "to")}`,
@@ -367,7 +369,6 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
       ? `Put ${param(params, "count")} +1/+1 counters`
       : `Put ${param(params, "count")} ${humanize(param(params, "kind"))} counters`,
   "effect.counters_put_counters_each": (params) => `Put ${param(params, "count")} +1/+1 counters on each`,
-  "effect.counters_remove_all_counters_then_draw": literal("Remove all counters, draw a card for each removed"),
   "effect.counters_remove_counter_from_self": (params) =>
     params.kind === "plus_one_plus_one"
       ? "Remove a +1/+1 counter from it"

@@ -13,7 +13,7 @@ otags = ["counter-doubler", "exponential", "gains-pp-counters", "gains-trample",
 oracle = "This creature enters with X +1/+1 counters on it.\nAt the beginning of your upkeep, double the number of +1/+1 counters on this creature.\nThis creature has trample as long as it has ten or more +1/+1 counters on it."
 subtypes = ["Hydra"]
 conditional_keywords = [
-    { condition = { type = "source_has_counters", at_least = 10 }, keyword = "trample" },
+    { condition = { type = "compare", left = "per_counter_on_source", op = "at_least", right = 10 }, keyword = "trample" },
 ]
 
 [cost]

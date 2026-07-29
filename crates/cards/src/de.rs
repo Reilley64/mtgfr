@@ -81,6 +81,17 @@ where
     Ok(&*Box::leak(Box::new(Effect::deserialize(d)?)))
 }
 
+/// Leak one owned [`Amount`] into the `&'static Amount` a `Copy` field needs (the [`Amount`]
+/// sibling of [`static_effect`]). [`Condition::Compare`](crate::Condition::Compare)'s operands need
+/// it because [`Amount::IfCondition`](crate::Amount::IfCondition) already holds a [`Condition`] by
+/// value, so a `Condition` holding an `Amount` by value would be an infinitely sized cycle.
+pub fn static_amount<'de, D>(d: D) -> Result<&'static Amount, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    Ok(&*Box::leak(Box::new(Amount::deserialize(d)?)))
+}
+
 /// Leak one owned [`Cost`] into the `&'static Cost` a `Copy` field needs (the `Cost` sibling of
 /// [`static_effect`] — [`Suspend::cost`] can't hold a `Cost` by value without bloating a `Copy`
 /// [`CardDef`], since `Cost` embeds an [`AdditionalCost`]).
@@ -680,6 +691,7 @@ impl<'de> Deserialize<'de> for Amount {
                     "cards_discarded_this_way" => Amount::CardsDiscardedThisWay,
                     "creatures_sacrificed_this_way" => Amount::CreaturesSacrificedThisWay,
                     "spell_first_target_mana_value" => Amount::SpellFirstTargetManaValue,
+                    "counters_removed_this_way" => Amount::CountersRemovedThisWay,
                     other => return Err(E::unknown_variant(other, KEYWORDS)),
                 })
             }
@@ -1008,6 +1020,7 @@ pub const AMOUNT_KEYWORDS: &[&str] = &[
     "cards_discarded_this_way",
     "creatures_sacrificed_this_way",
     "spell_first_target_mana_value",
+    "counters_removed_this_way",
 ];
 
 pub const PERMANENT_FILTER_SHORTHANDS: &[&str] = &[
@@ -1070,7 +1083,7 @@ impl<'de> Deserialize<'de> for TypeSet {
 /// `blocking`, `unblocked`, `power_less_than_source`, `toughness_less_than_source_power`, `entered_this_turn`,
 /// `has_mana_ability`,
 /// `controlled_since_turn_start`, `did_not_attack_this_turn`,
-/// `nonbasic`, `nonlegendary`, `nonlair`, `exclude_subtypes`,
+/// `nonbasic`, `basic`, `nonlegendary`, `nonlair`, `exclude_subtypes`,
 /// `without_flying`, `without_keyword`, `with_flying`, `with_counter`). `noncreature` is sugar for `exclude = "creature"`;
 /// `not_color` is sugar for `color`'s negated-color arm — both fold into the same
 /// [`PermanentFilter`] fields as their general spelling (see below).
@@ -1182,6 +1195,8 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     did_not_attack_this_turn: bool,
                     #[serde(default)]
                     nonbasic: bool,
+                    #[serde(default)]
+                    basic: bool,
                     /// Printed-name restriction (Leitmotif Composer's "creatures named Leitmotif
                     /// Composer").
                     #[serde(default)]
@@ -1254,6 +1269,7 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     controlled_since_turn_start: t.controlled_since_turn_start,
                     did_not_attack_this_turn: t.did_not_attack_this_turn,
                     nonbasic: t.nonbasic,
+                    basic: t.basic,
                     name: t.name.map(|s| &*Box::leak(s.into_boxed_str())),
                     nonlegendary: t.nonlegendary,
                     nonlair: t.nonlair,

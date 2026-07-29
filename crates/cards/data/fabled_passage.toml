@@ -26,7 +26,7 @@ tapped = true
 # Then if you control four or more lands, untap that land.
 [[abilities.effects]]
 type = "conditional"
-condition = { type = "you_control_lands", at_least = 4 }
+condition = { type = "compare", left = { per_permanent = { types = "land", controller = "you" } }, op = "at_least", right = 4 }
 then = [
         { type = "zone", mode = "untap_searched_land" },
     ]

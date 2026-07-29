@@ -864,6 +864,13 @@ pub struct PermanentFilter {
     /// that includes land (a nonbasic-land filter is land AND not basic, not "any nonbasic
     /// permanent").
     pub nonbasic: bool,
+    /// Requires a basic land (CR 205.4a — the tango-land cycle's "unless you control two or more
+    /// basic lands"). `false` (default) imposes no restriction. The positive twin of
+    /// [`nonbasic`](Self::nonbasic) and, like it, reads the def's supertype flag via
+    /// [`is_basic_land`] rather than subtype strings, so a nonbasic dual sharing a basic's type
+    /// line does not qualify. Implies land-ness on its own — every basic *is* a land — so a
+    /// counting filter can set it without also naming `types`.
+    pub basic: bool,
     /// Restrict to permanents with this exact printed name (Leitmotif Composer's "creatures
     /// *named* Leitmotif Composer can't be blocked this turn" — CR 201.2, matched against
     /// [`CardDef::name`]). `None` (default) doesn't gate on name.
@@ -984,6 +991,7 @@ impl PermanentFilter {
             controlled_since_turn_start: false,
             did_not_attack_this_turn: false,
             nonbasic: false,
+            basic: false,
             name: None,
             nonlegendary: false,
             nonlair: false,

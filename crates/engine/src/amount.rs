@@ -25,7 +25,7 @@ impl Game {
             Amount::PerCreatureYouControl => self.creatures_controlled(controller) as i32,
             Amount::PerCreatureOnBattlefield => self.creatures_on_battlefield() as i32,
             Amount::PerPermanentMatching { filter, zone } => {
-                self.count_matching(&filter, zone, controller, source) as i32
+                self.count_matching(&filter, zone, controller, Some(source)) as i32
             }
             Amount::SourcePower => self.power(source),
             Amount::SourceToughness => self.toughness(source),
@@ -132,7 +132,10 @@ impl Game {
                 then,
                 else_,
             } => {
-                let ctx = TriggerContext::of(controller);
+                let ctx = TriggerContext {
+                    target,
+                    ..TriggerContext::of(controller)
+                };
                 let taken = match self.ability_condition_holds(condition, source, ctx) {
                     true => then,
                     false => else_,
@@ -206,6 +209,12 @@ impl Game {
             // Tempest's "damage … equal to the total mana value of cards milled this way").
             Amount::TotalManaValueMilledThisWay => {
                 self.resolution_frame.milled_mana_value_this_way as i32
+            }
+            // Reads the tally the preceding `Effect::Counters(CountersEffect::RemoveCounters)`
+            // step recorded (Nexus Mentality's "Draw a card for each counter removed this way",
+            // Lily Bowen's life gain); resolution-scoped, like `TotalManaValueMilledThisWay`.
+            Amount::CountersRemovedThisWay => {
+                self.resolution_frame.counters_removed_this_way as i32
             }
             // Reads the mana value the preceding `Effect::Dig(DigEffect::ExileTargetGraveyardCardRecordManaValue)`
             // step snapshotted (Surge to Victory's team +X/+0 pump); `0` if unset — unreachable in
@@ -329,13 +338,13 @@ impl Game {
         filter: &PermanentFilter,
         zone: AmountZone,
         controller: PlayerId,
-        source: ObjectId,
+        source: Option<ObjectId>,
     ) -> usize {
         match zone {
             AmountZone::Battlefield => self
                 .battlefield()
                 .into_iter()
-                .filter(|&id| self.permanent_matches(filter, id, controller, Some(source)))
+                .filter(|&id| self.permanent_matches(filter, id, controller, source))
                 .count(),
             AmountZone::Graveyard => self
                 .objects

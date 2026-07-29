@@ -12,5 +12,7 @@ type = "land"
 produces = ["black", "green"]
 
 [enters_tapped_unless]
-type = "you_control_lands"
-at_least = 2
+type = "compare"
+left = { per_permanent = { types = "land", controller = "you" } }
+op = "at_least"
+right = 2

@@ -19,7 +19,7 @@ type = "enchantment"
 # enchantment.
 [[abilities]]
 timing = "each_end_step"
-condition = { type = "no_creatures_on_battlefield" }
+condition = { type = "compare", left = "per_creature_on_battlefield", op = "at_most", right = 0 }
 
 # Sacrifice this enchantment.
 [[abilities.effects]]

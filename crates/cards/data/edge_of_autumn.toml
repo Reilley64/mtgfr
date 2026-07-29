@@ -27,7 +27,7 @@ timing = "spell"
 # tapped, then shuffle.
 [[abilities.effects]]
 type = "conditional"
-condition = { type = "you_control_lands_at_most", at_most = 4 }
+condition = { type = "compare", left = { per_permanent = { types = "land", controller = "you" } }, op = "at_most", right = 4 }
 then = [
         { type = "dig", mode = "search_library", filter = "basic_land", to_zone = "battlefield", tapped = true },
     ]

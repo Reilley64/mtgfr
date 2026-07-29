@@ -49,7 +49,7 @@ count = 1
 # If you control eight or more lands, draw two cards instead.
 [[abilities.effects]]
 type = "conditional"
-condition = { type = "you_control_lands", at_least = 8 }
+condition = { type = "compare", left = { per_permanent = { types = "land", controller = "you" } }, op = "at_least", right = 8 }
 then = [
         { type = "draw", mode = "cards", count = 1 },
     ]
