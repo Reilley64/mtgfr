@@ -60,7 +60,7 @@ timing = "spell"
 # Mill a card.
 [[back.abilities.effects]]
 type = "mill"
-mode = "mill_self"
+mode = "mill"
 count = 1
 
 # Put two +1/+1 counters on target creature.

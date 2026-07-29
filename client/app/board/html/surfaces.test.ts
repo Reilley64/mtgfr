@@ -373,6 +373,21 @@ test("turn chrome renders banner and label", () => {
   );
 });
 
+test("turn chrome drives phase and label chrome from data attributes", () => {
+  overlayScene(
+    overlayModel(),
+    Scene.expect(Scene.testId("board-turn-label")).toHaveAttr("data-your-turn", "true"),
+    Scene.expect(Scene.testId("board-turn-label")).toHaveClass("data-[your-turn=true]:text-turn-mint"),
+    // Exactly one current phase segment, wearing the now+yours mint variant.
+    Scene.expectAll(Scene.all.selector('[data-phase-state="now"]')).toHaveCount(1),
+    Scene.expect(Scene.selector('[data-phase-state="now"]')).toHaveAttr("data-your-turn", "true"),
+    Scene.expect(Scene.selector('[data-phase-state="now"]')).toHaveClass(
+      "data-[phase-state=now]:data-[your-turn=true]:border-phase-mint",
+    ),
+    Scene.expect(Scene.selector('[data-phase-state="future"]')).toHaveClass("bg-tapped-out/60"),
+  );
+});
+
 test("stack context renders resolve stack affordance and top caption", () => {
   const state = gameState({
     stack: [{ controller: 1, kind: "ability", label: testMessageRef("Ward 2"), source: 99 }],
@@ -429,6 +444,9 @@ test("non-active player sees the turn-yield rocker", () => {
   overlayScene(
     overlayModel(initialBoardModel(), gameState({ active_player: 1 })),
     Scene.expect(Scene.testId("board-turn-yield")).toExist(),
+    // The rocker's chrome keys off aria-checked — no parallel JS class state.
+    Scene.expect(Scene.testId("board-turn-yield")).toHaveAttr("aria-checked", "false"),
+    Scene.expect(Scene.testId("board-turn-yield")).toHaveClass("group/yield"),
   );
 });
 
@@ -465,7 +483,7 @@ test("staged targeting shows cancel affordance and staged hint", () => {
       gameState({ objects: [target] }),
     ),
     Scene.expect(Scene.testId("board-cancel-target")).toExist(),
-    Scene.expect(Scene.testId("board-staged-hint")).toHaveText("Gain 1 life: click a highlighted card"),
+    Scene.expect(Scene.testId("board-staged-hint")).toHaveText("You gain 1 life: click a highlighted card"),
   );
 });
 
@@ -518,6 +536,8 @@ test("board reject surface renders when local reject text is set", () => {
   overlayScene(
     overlayModel({ ...initialBoardModel(), reject: "Choose a legal target" }),
     Scene.expect(Scene.testId("board-reject")).toContainText("Choose a legal target"),
+    // Illegal-action feedback announces itself, not just paints red.
+    Scene.expect(Scene.testId("board-reject")).toHaveAttr("role", "alert"),
   );
 });
 

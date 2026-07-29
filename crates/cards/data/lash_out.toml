@@ -35,4 +35,4 @@ target = "creature"
 [[abilities.effects]]
 type = "conditional"
 condition = { type = "won_clash" }
-then = [{ type = "damage", mode = "to_target_controller", amount = 2 }]
+then = [{ type = "damage", mode = "to_players", who = "targets_controller", amount = 2 }]

@@ -41,7 +41,7 @@ timing = "etb"
 type = "token"
 mode = "create"
 token = "a468338f-635e-4206-89d6-72d723071d45"
-count = "half_x"
+count = { left = "x", op = "divide_rounding_up", right = 2 }
 
 [[abilities]]
 timing = "attacks"

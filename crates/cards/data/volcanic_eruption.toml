@@ -41,5 +41,6 @@ amount = { permanents_destroyed_this_way = { subtypes = ["Mountain"] } }
 # ... and each player ...
 [[abilities.effects]]
 type = "damage"
-mode = "each_player"
+mode = "to_players"
+who = "each_player"
 amount = { permanents_destroyed_this_way = { subtypes = ["Mountain"] } }

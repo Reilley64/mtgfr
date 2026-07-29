@@ -16,14 +16,9 @@ impl Game {
     ) -> Vec<Event> {
         let _source_name = self.source_name_of(source);
         match effect {
-            MillEffect::Mill { count, .. } => {
-                let Some(Target::Player(player)) = target else {
-                    panic!("mill resolves with a chosen player target");
-                };
-                self.mill_events(
-                    player,
-                    self.resolve_count(count, controller, source, target, x),
-                )
+            MillEffect::Mill { who, count } => {
+                let count = self.resolve_count(count, controller, source, target, x);
+                self.mill_events_for(&self.players_in(who, controller, target), count)
             }
             MillEffect::ExileTopMayPlay {
                 count,
@@ -106,26 +101,27 @@ impl Game {
                     },
                 ]
             }
-            // Perpetual Timepiece: untargeted self-mill (unlike Mill's target-player shape).
-            MillEffect::MillSelf { count } => {
-                let count = self.resolve_count(count, controller, source, target, x);
-                self.mill_events(controller, count)
-            }
         }
     }
 
-    /// Resolve [`MillEffect::MillSelf`]: mill → snapshot mana value into [`ResolutionFrame`] → apply.
-    pub(crate) fn resolve_mill_self(
+    /// Resolve [`MillEffect::Mill`]: mill → snapshot mana value into [`ResolutionFrame`] → apply.
+    ///
+    /// Every mill snapshots, not just a self-mill — "the cards milled this way" (Fateful Tempest)
+    /// is about the milling, not about whose library it came from.
+    pub(crate) fn resolve_mill(
         &mut self,
-        count: Amount,
+        mill: MillEffect,
         controller: PlayerId,
         source: ObjectId,
         target: Option<Target>,
         x: u32,
         events: &mut Vec<Event>,
     ) {
+        let MillEffect::Mill { who, count } = mill else {
+            unreachable!("only the mill mode takes this choreography");
+        };
         let n = self.resolve_count(count, controller, source, target, x);
-        let evs = self.mill_events(controller, n);
+        let evs = self.mill_events_for(&self.players_in(who, controller, target), n);
         self.resolution_frame.milled_mana_value_this_way = evs
             .iter()
             .filter_map(|e| match e {

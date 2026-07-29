@@ -6,6 +6,7 @@ import { html } from "foldkit/html";
 import { Scene } from "foldkit/test";
 import { expect, test } from "vitest";
 import { testMessageRef } from "~/i18n/testMessageRef";
+import { BindCardArt } from "~/ui/card-art";
 import type { ActionView, ObjectView, VisibleState } from "~/wire/types";
 import type { GameFoldState } from "../../game/fold";
 import { SubmitIntent } from "../../game/intents";
@@ -506,7 +507,13 @@ test("legal stack face is highlighted and click submits take_action", () => {
     resolveBoardCardArtMounts(3),
     Scene.expect(Scene.selector('[data-legal-target="true"]')).toExist(),
     Scene.expect(Scene.selector('[data-testid="stack-face-0"][data-legal-target="true"]')).toExist(),
+    Scene.expect(Scene.testId("stack-face-0")).toHaveAttr("role", "button"),
+    Scene.expect(Scene.testId("stack-face-0")).toHaveAccessibleName("Target: Lightning Bolt"),
     Scene.expect(Scene.testId("target-pick")).toBeAbsent(),
+    // Keyboard path: Enter on a focused legal target picks it, same as click.
+    Scene.keydown(Scene.testId("stack-face-0"), "Enter"),
+    Scene.expect(Scene.selector('[data-legal-target="true"]')).not.toExist(),
+    Scene.Mount.expectEnded(BindCardArt),
   );
   const [nextBoard, commands] = updateBoard(board, TargetChosen({ target: { kind: "object", id: 42 } }), fold, "T1");
   expect(nextBoard.staged).toBeNull();

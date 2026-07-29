@@ -651,6 +651,7 @@ mod forced_action_tests {
             player: P0,
             source: 0,
             effect: Effect::Draw(DrawEffect::Cards {
+                who: PlayerSet::You,
                 count: Amount::Fixed(1),
             }),
             resume: crate::MayYesNoResume::Default,
@@ -669,6 +670,7 @@ mod forced_action_tests {
             player: P0,
             source: 0,
             effect: Some(Effect::Draw(DrawEffect::Cards {
+                who: PlayerSet::You,
                 count: Amount::Fixed(1),
             })),
             legal: vec![Target::Object(7)],
@@ -695,6 +697,7 @@ mod forced_action_tests {
             player: P0,
             source: 0,
             effect: Some(Effect::Draw(DrawEffect::Cards {
+                who: PlayerSet::You,
                 count: Amount::Fixed(1),
             })),
             legal: vec![Target::Object(7), Target::Object(8)],
@@ -717,6 +720,7 @@ mod forced_action_tests {
             player: P0,
             source: 0,
             effect: Some(Effect::Draw(DrawEffect::Cards {
+                who: PlayerSet::You,
                 count: Amount::Fixed(1),
             })),
             legal: vec![Target::Object(7)],
@@ -741,6 +745,7 @@ mod forced_action_tests {
             player: P0,
             source: 0,
             effects: vec![Effect::Draw(DrawEffect::Cards {
+                who: PlayerSet::You,
                 count: Amount::Fixed(1),
             })],
         });
@@ -761,9 +766,11 @@ mod forced_action_tests {
             source: 0,
             effects: vec![
                 Effect::Draw(DrawEffect::Cards {
+                    who: PlayerSet::You,
                     count: Amount::Fixed(1),
                 }),
                 Effect::Draw(DrawEffect::Cards {
+                    who: PlayerSet::You,
                     count: Amount::Fixed(2),
                 }),
             ],
@@ -1104,6 +1111,7 @@ mod refresh_actions_tests {
             player: P0,
             source: 0,
             effect: Effect::Draw(DrawEffect::Cards {
+                who: PlayerSet::You,
                 count: Amount::Fixed(1),
             }),
             resume: crate::MayYesNoResume::Default,

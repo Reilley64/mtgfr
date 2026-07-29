@@ -29,4 +29,4 @@ timing = "upkeep"
 type = "choice"
 mode = "pay_or_else"
 cost = { green = 4 }
-otherwise = [{ type = "damage", mode = "to_self", amount = 8 }]
+otherwise = [{ type = "damage", mode = "to_players", amount = 8 }]

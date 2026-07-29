@@ -37,7 +37,7 @@ toughness = 1
 [[abilities.effects]]
 type = "token"
 mode = "create"
-controller = "target_opponent"
+who = "target_opponent"
 token = "c0751938-a8c6-4b27-b8ac-88aa70516721"
 
 # {W}: This creature gains protection from black and from red until end of turn. Target opponent
@@ -57,9 +57,9 @@ keywords = [{ protection = "black" }, { protection = "red" }]
 # Target opponent gains 2 life.
 [[abilities.effects]]
 type = "life"
-mode = "target_player_gains"
+mode = "gain"
+who = "target_opponent"
 amount = 2
-opponent = true
 
 # {U}: This creature gains flying until end of turn. Target opponent may draw a card.
 [[abilities]]
@@ -77,6 +77,6 @@ keywords = ["flying"]
 # Target opponent may draw a card.
 [[abilities.effects]]
 type = "choice"
-mode = "target_player_may_draw"
+mode = "may_draw"
+who = "target_opponent"
 count = 1
-opponent = true

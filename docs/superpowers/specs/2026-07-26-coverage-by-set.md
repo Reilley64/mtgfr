@@ -31,7 +31,7 @@ Ship an authenticated `/coverage` shell route that renders a searchable set tabl
 
 - While loading, the page shows `Loading coverage...`, clears any prior rows, clears prior global counts, clears the prior error, and closes the account menu.
 - The search query is preserved across refreshes, including `Try again`.
-- If the `LobbyClient` request fails with a tagged transport/decode error, the page enters `status: "error"`, shows `Could not load coverage.` in an alert, keeps rows empty, and renders a `Try again` button.
+- If the `LobbyClient` request fails with a tagged transport/decode error, the page enters `status: "error"`, shows `Could not load coverage.` in an alert, keeps rows empty, and renders a `Try again` button. Idle/loading copy, the error alert, and the retry ghost come from the shared `shellStatusChrome` (`shell/frame/shell-status.ts`), the same status chrome the leaderboard uses.
 - The search field is hidden only while loading. It remains available during ready and error states.
 - Ready-with-no-rows copy depends on the query: `No set coverage available.` for an empty query and `No sets match.` for a non-empty query (`coverage-empty`). After a load failure, `Try again` uses `coverage-try-again`.
 

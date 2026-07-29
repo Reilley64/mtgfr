@@ -896,8 +896,8 @@ impl Game {
 
     /// Whether the spell at `id` was cast with its kicker cost paid (CR 702.33d —
     /// [`AdditionalCost::kicker`]), `false` if `id` isn't a spell, has no kicker, or the caster
-    /// declined. The seam [`Amount::IfSpellKicked`] reads (Rite of Replication's "If this spell
-    /// was kicked, create five of those tokens instead"), the kicked-flag sibling of
+    /// declined. The seam [`Condition::SpellWasKicked`] reads (Rite of Replication's "If this
+    /// spell was kicked, create five of those tokens instead"), the kicked-flag sibling of
     /// [`Self::spell_sacrifice_count`]'s read.
     pub fn spell_was_kicked(&self, id: ObjectId) -> bool {
         match &self.objects[id as usize] {
@@ -908,7 +908,7 @@ impl Game {
 
     /// Whether the spell at `id` was cast during its controller's own precombat or postcombat
     /// main phase (CR 505.1a/505.1b — [`Spell::cast_during_main_phase`]), `false` if `id` isn't a
-    /// spell. The seam [`Amount::IfSpellCastDuringMainPhase`] and
+    /// spell. The seam [`Condition::SpellCastDuringMainPhase`] and
     /// [`TargetCount::main_phase_scaled`] read (Sulfurous Blast's "If you cast this spell during
     /// your main phase..."; Return to Dust's optional second target), the cast-timing sibling of
     /// [`Self::spell_was_kicked`]'s read.

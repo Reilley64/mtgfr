@@ -153,46 +153,17 @@ impl Game {
                 .map(|object| Event::LoyaltyChanged { object, amount: 1 })
                 .collect(),
             // "Each opponent gets a poison counter" (Infectious Inquiry, Vraska's Fall) / "each
-            // player gets a poison counter" (Ichor Rats): counters on the *players* in scope, not
+            // player gets a poison counter" (Ichor Rats) / "target opponent gets a poison counter"
+            // (Venerated Rotpriest): counters on the *players* `who` names, not
             // on any permanent (CR 122.1). A player who has already lost is no longer in the game
             // and gets nothing (`living_players`).
-            CountersEffect::PutCountersOnPlayer { kind, count, scope } => {
+            CountersEffect::PutCountersOnPlayer { kind, count, who } => {
                 let count = self.resolve_count(count, controller, source, target, x) as i32;
                 if count <= 0 {
                     return Vec::new();
                 }
-                // "Target opponent gets a poison counter" (Venerated Rotpriest): the one chosen
-                // target, not a scan. A target that has since left the game gets nothing.
-                if scope == EdictScope::TargetedOpponent {
-                    let Some(Target::Player(player)) = target else {
-                        return Vec::new();
-                    };
-                    if !self.living_players().any(|p| p == player) {
-                        return Vec::new();
-                    }
-                    let count = self.player_counters_after_replacements(controller, player, count);
-                    if count <= 0 {
-                        return Vec::new();
-                    }
-                    return vec![Event::PlayerCountersPlaced {
-                        player,
-                        kind,
-                        count,
-                    }];
-                }
-                self.living_players()
-                    .filter(|&player| match scope {
-                        EdictScope::AllPlayers => true,
-                        EdictScope::EachOpponent => player != controller,
-                        // ponytail: no pool card places player counters on a chosen subset of
-                        // players, and the DSL surface for this mode documents only
-                        // all_players/each_opponent/target_opponent. Give this a real arm when
-                        // one does.
-                        EdictScope::TargetedPlayers | EdictScope::You => unreachable!(
-                            "player counters have no targeted-players or you spelling in the card pool"
-                        ),
-                        EdictScope::TargetedOpponent => unreachable!("handled above"),
-                    })
+                self.players_in(who, controller, target)
+                    .into_iter()
                     .filter_map(|player| {
                         let n = self.player_counters_after_replacements(controller, player, count);
                         (n > 0).then_some(Event::PlayerCountersPlaced {
@@ -204,45 +175,22 @@ impl Game {
                     .collect()
             }
             // "Each opponent loses all counters" (Final Act) — CR 122.1/121.2: every counter of
-            // every kind on each player in `scope` is removed, not just poison. A player who has
+            // every kind on each player in `who` is removed, not just poison. A player who has
             // already lost is out of the game and loses nothing (`living_players`).
-            CountersEffect::RemoveAllPlayerCounters { scope } => {
-                let targets: Vec<PlayerId> = if scope == EdictScope::TargetedOpponent {
-                    let Some(Target::Player(player)) = target else {
-                        return Vec::new();
-                    };
-                    if !self.living_players().any(|p| p == player) {
-                        return Vec::new();
-                    }
-                    vec![player]
-                } else {
-                    self.living_players()
-                        .filter(|&player| match scope {
-                            EdictScope::AllPlayers => true,
-                            EdictScope::EachOpponent => player != controller,
-                            // ponytail: same residual as `PutCountersOnPlayer` above — no pool
-                            // card spells a chosen-subset "remove all counters" mode.
-                            EdictScope::TargetedPlayers | EdictScope::You => unreachable!(
-                                "player counters have no targeted-players or you spelling in the card pool"
-                            ),
-                            EdictScope::TargetedOpponent => unreachable!("handled above"),
-                        })
-                        .collect()
-                };
-                targets
-                    .into_iter()
-                    .flat_map(|player| {
-                        PlayerCounterKind::ALL.iter().filter_map(move |&kind| {
-                            let count = self.player_counters(player, kind) as i32;
-                            (count > 0).then_some(Event::PlayerCountersPlaced {
-                                player,
-                                kind,
-                                count: -count,
-                            })
+            CountersEffect::RemoveAllPlayerCounters { who } => self
+                .players_in(who, controller, target)
+                .into_iter()
+                .flat_map(|player| {
+                    PlayerCounterKind::ALL.iter().filter_map(move |&kind| {
+                        let count = self.player_counters(player, kind) as i32;
+                        (count > 0).then_some(Event::PlayerCountersPlaced {
+                            player,
+                            kind,
+                            count: -count,
                         })
                     })
-                    .collect()
-            }
+                })
+                .collect(),
             // "If target player has fewer than nine poison counters, they get a number of poison
             // counters equal to the difference" (Vraska, Betrayal's Sting's −9): a top-up, so a
             // target already at or above `to` gets no counters and mints no event at all.

@@ -68,4 +68,4 @@ timing = "spell"
 [[abilities.effects]]
 type = "counters"
 mode = "remove_all_player_counters"
-scope = "each_opponent"
+who = "each_opponent"

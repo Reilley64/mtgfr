@@ -338,6 +338,7 @@ export const view = Submodel.defineView<BoardViewModel, ViewMessage>((model) => 
         : h.div(
             [
               h.DataAttribute("testid", "board-reconnecting"),
+              h.Role("alert"),
               h.Class(
                 "fixed top-0 right-0 left-0 z-40 bg-reconnect-rust p-sm text-center font-semibold text-label text-snow",
               ),

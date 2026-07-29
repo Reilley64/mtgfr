@@ -28,13 +28,13 @@ timing = "when_you_cast_this"
 [[abilities.effects]]
 type = "life"
 mode = "gain"
-amount = "half_x_rounded_down"
+amount = { left = "x", op = "divide_rounding_down", right = 2 }
 
 # and draw half X cards. Round down each time.
 [[abilities.effects]]
 type = "draw"
 mode = "cards"
-count = "half_x_rounded_down"
+count = { left = "x", op = "divide_rounding_down", right = 2 }
 
 # This creature enters with X +1/+1 counters on it.
 [[abilities]]

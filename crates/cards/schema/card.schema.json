@@ -36,7 +36,7 @@
         "caster": {
           "allOf": [
             {
-              "$ref": "#/$defs/CasterScope"
+              "$ref": "#/$defs/WatchedPlayer"
             }
           ],
           "description": "Whose cast a `cast_spell` trigger watches — `you` (default), `opponent` (Monologue Tax, Mangara), or `any_player`. Ignored for every other trigger/timing."
@@ -54,7 +54,7 @@
         "controller": {
           "allOf": [
             {
-              "$ref": "#/$defs/EnterController"
+              "$ref": "#/$defs/WatchedPlayer"
             }
           ],
           "description": "Whose permanent a `permanent_enters` trigger watches — `you` (default, constellation's \"an enchantment you control\"), `opponent` (Archaeomancer's Map's \"a land an opponent controls\"), or `any_player`. Ignored for every other trigger/timing."
@@ -77,7 +77,7 @@
         "drawer": {
           "allOf": [
             {
-              "$ref": "#/$defs/CasterScope"
+              "$ref": "#/$defs/WatchedPlayer"
             }
           ],
           "description": "Whose draw a `player_draws` trigger watches — `you` (default), `opponent` (Faerie Mastermind), or `any_player`. Ignored for every other trigger/timing."
@@ -543,9 +543,6 @@
         {
           "enum": [
             "x",
-            "half_x",
-            "half_x_rounded_down",
-            "twice_x",
             "per_creature_you_control",
             "per_creature_on_battlefield",
             "source_power",
@@ -592,7 +589,7 @@
             "returned_nonland_card_mana_value",
             "auras_you_controlled_attached_to_dying_creature",
             "greatest_instant_or_sorcery_mana_value_cast_this_turn",
-            "one_plus_instants_and_sorceries_cast_this_turn",
+            "instants_and_sorceries_cast_this_turn",
             "instant_or_sorcery_cards_in_your_graveyard",
             "combat_damage_dealt",
             "triggering_damage_dealt",
@@ -632,13 +629,6 @@
             }
           ]
         },
-        "delta": {
-          "format": "int32",
-          "type": [
-            "integer",
-            "null"
-          ]
-        },
         "else": {
           "anyOf": [
             {
@@ -649,7 +639,7 @@
             }
           ]
         },
-        "half": {
+        "left": {
           "anyOf": [
             {
               "$ref": "#/$defs/Amount"
@@ -659,40 +649,10 @@
             }
           ]
         },
-        "if_kicked": {
+        "op": {
           "anyOf": [
             {
-              "$ref": "#/$defs/Amount"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "if_main_phase": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Amount"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "offset": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Amount"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "per": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Amount"
+              "$ref": "#/$defs/ArithOp"
             },
             {
               "type": "null"
@@ -729,10 +689,14 @@
             }
           ]
         },
-        "round_up": {
-          "type": [
-            "boolean",
-            "null"
+        "right": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Amount"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "then": {
@@ -743,13 +707,6 @@
             {
               "type": "null"
             }
-          ]
-        },
-        "times": {
-          "format": "int32",
-          "type": [
-            "integer",
-            "null"
           ]
         },
         "zone": {
@@ -771,6 +728,27 @@
         "graveyard"
       ],
       "type": "string"
+    },
+    "ArithOp": {
+      "description": "How an [`Amount::Combine`] joins its two operands. Division names its rounding rather than carrying a flag, because a card that halves a count always prints which way it rounds (Aspect of Wolf prints both).",
+      "oneOf": [
+        {
+          "enum": [
+            "add",
+            "multiply",
+            "divide_rounding_down",
+            "divide_rounding_up"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Difference, floored at zero (Black Vise's \"the number of cards in their hand minus 4\" is no damage at all below five cards). ponytail: always floors — every subtraction the pool prints feeds a damage or count slot where a negative reads as none anyway (CR 120.8/CR 107.1b). Give the op a `floor` field if a card ever wants the negative itself.",
+          "enum": [
+            "subtract"
+          ],
+          "type": "string"
+        }
+      ]
     },
     "AttackRider": {
       "description": "Whether a scheduled destruction asks about the creature's attack this turn (CR 508.1) — the two halves of one question, so one value rather than a pair of bools that must never both be set. Read only when the delayed ability actually fires, never when it is scheduled.",
@@ -1639,32 +1617,6 @@
         "name"
       ],
       "type": "object"
-    },
-    "CasterScope": {
-      "description": "Whose cast a [`Trigger::CastSpell`] watch cares about, relative to the ability's own controller (mirrors [`CombatDamageScope`]'s shape).",
-      "oneOf": [
-        {
-          "description": "The ability's own controller (default).",
-          "enum": [
-            "you"
-          ],
-          "type": "string"
-        },
-        {
-          "description": "Any opponent of the ability's controller.",
-          "enum": [
-            "opponent"
-          ],
-          "type": "string"
-        },
-        {
-          "description": "Any player, including the ability's own controller.",
-          "enum": [
-            "any_player"
-          ],
-          "type": "string"
-        }
-      ]
     },
     "Color": {
       "description": "The five colors of mana (WUBRG order). Colorless `{C}` is *not* a color (it never enters color identity) — it and \"any color\" are modelled separately as [`Mana`].",
@@ -2874,6 +2826,36 @@
           "type": "object"
         },
         {
+          "description": "\"If this spell was kicked\" (CR 702.33d — Rite of Replication's \"create five of those tokens instead\", Breath of Darigaaz's kicked damage, Dismantling Blow's kicked draw). Reads [`Game::spell_was_kicked`] off the resolving spell; source-object-based like [`SpellSacrificedToCast`](Self::SpellSacrificedToCast) just above, and unreachable through the ordinary [`condition_holds`](Game::condition_holds) path (returns `false` there).",
+          "properties": {
+            "type": {
+              "enum": [
+                "spell_was_kicked"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "\"If you cast this spell during your main phase\" (CR 505.1a/505.1b — Sulfurous Blast's \"deals 3 damage … instead\"). Reads [`Game::spell_cast_during_main_phase`] off the resolving spell, the cast-timing sibling of [`SpellWasKicked`](Self::SpellWasKicked) just above.",
+          "properties": {
+            "type": {
+              "enum": [
+                "spell_cast_during_main_phase"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
           "description": "\"if this ability has been activated `at_least` or more times this turn\" (CR 602.2b — Dragon Whelp's \"If this ability has been activated four or more times this turn, sacrifice this creature at the beginning of the next end step\"). Source-object-based like [`SourceEnteredWithXAtLeast`](Self::SourceEnteredWithXAtLeast): `TriggerContext` carries no source id, so the [`Effect::Conditional`] resolve site special-cases it directly against its own `source` parameter, counting this turn's [`Event::AbilityActivatedThisTurn`](crate::Event::AbilityActivatedThisTurn) entries for that object (`Game::once_per_turn.activated`, cleared every untap). Every activated-ability activation records one now (not just a `once_each_turn`-capped one), so a later activation this turn is already counted by the time an earlier one resolves — matching the real-card ruling that this checks the turn's total activation count, not how many have resolved yet.",
           "properties": {
             "at_least": {
@@ -3234,25 +3216,6 @@
         }
       ]
     },
-    "DelayController": {
-      "description": "Who acts when a [`Effect::Misc(MiscEffect::ScheduleAtNextUpkeep)`] delayed trigger fires (CR 603.7).",
-      "oneOf": [
-        {
-          "description": "The scheduling ability's own controller (Arcane Denial's \"you draw a card\").",
-          "enum": [
-            "you"
-          ],
-          "type": "string"
-        },
-        {
-          "description": "The controller of the scheduling ability's shared target spell (Arcane Denial's \"its controller may draw up to two cards\" — the just-countered spell's controller, read via [`Game::controller_of`], which resolves through the [`Object::Moved`] chain even after the spell has left the stack for the graveyard).",
-          "enum": [
-            "target_spell_controller"
-          ],
-          "type": "string"
-        }
-      ]
-    },
     "Division": {
       "oneOf": [
         {
@@ -3261,46 +3224,6 @@
         {
           "enum": [
             "evenly"
-          ],
-          "type": "string"
-        }
-      ]
-    },
-    "EdictScope": {
-      "description": "Which players a multi-player fan-out effect affects — a sacrifice edict ([`Effect::Choice(ChoiceEffect::EachPlayerSacrifices)`]) or a player-counter placement ([`Effect::Counters(CountersEffect::PutCountersOnPlayer)`], \"each player/opponent gets a poison counter\").",
-      "oneOf": [
-        {
-          "description": "\"Each player\" (Deadly Brew, Promise of Loyalty) — everyone, the edict's controller included.",
-          "enum": [
-            "all_players"
-          ],
-          "type": "string"
-        },
-        {
-          "description": "\"Each opponent\" (Witch of the Moors, Lorehold Charm) — every player other than the controller.",
-          "enum": [
-            "each_opponent"
-          ],
-          "type": "string"
-        },
-        {
-          "description": "\"You sacrifice…\" (Lich's damage tax) — the effect's own controller alone. A one-seat fan-out rather than a separate effect, so the prompt, the count and the shortfall check are the ones every other edict already uses.",
-          "enum": [
-            "you"
-          ],
-          "type": "string"
-        },
-        {
-          "description": "\"Any number of target players\" (Priest of Forgotten Gods, CR 601.2c/608.2b: choosing zero is legal) — the controller's own chosen subset of living players, picked via a [`PendingChoice::ChooseTargetPlayers`](super::PendingChoice::ChooseTargetPlayers) pause before the edict's per-player sacrifice fan-out begins.",
-          "enum": [
-            "targeted_players"
-          ],
-          "type": "string"
-        },
-        {
-          "description": "\"Target opponent\" (Venerated Rotpriest's \"target opponent gets a poison counter\") — exactly one opponent, chosen as an ordinary target when the ability goes on the stack (CR 601.2c), not a subset picked during resolution like [`TargetedPlayers`](Self::TargetedPlayers). The effect carrying it reports [`TargetSpec::OpponentPlayer`](super::TargetSpec::OpponentPlayer), so the shared targeting machinery picks and legality-checks the player; resolution just reads the chosen target.",
-          "enum": [
-            "targeted_opponent"
           ],
           "type": "string"
         }
@@ -3348,15 +3271,19 @@
               "type": "object"
             },
             {
+              "description": "\"deals `amount` damage to `who`\" — every damage the pool aims at seats rather than at permanents, from Psionic Blast's \"2 damage to you\" to Pestilence's \"each player\" to Ankh of Mishra's \"that land's controller\". Who takes it and how much are independent axes ([`PlayerSet`] and [`Amount`]), so no variant names a recipient.\n\nA player-relative `amount` counts the seat being damaged, not the ability's controller — Karma's \"damage equal to the number of Swamps **they** control\", Black Vise's \"cards in **their** hand\". Resolved once per recipient, so a fan-out bills each seat for its own things.",
               "properties": {
                 "amount": {
                   "$ref": "#/$defs/Amount"
                 },
                 "mode": {
                   "enum": [
-                    "each_other_opponent"
+                    "to_players"
                   ],
                   "type": "string"
+                },
+                "who": {
+                  "$ref": "#/$defs/PlayerSet"
                 }
               },
               "required": [
@@ -3385,43 +3312,6 @@
                 "amount",
                 "mode",
                 "target"
-              ],
-              "type": "object"
-            },
-            {
-              "properties": {
-                "amount": {
-                  "$ref": "#/$defs/Amount"
-                },
-                "mode": {
-                  "enum": [
-                    "each_player"
-                  ],
-                  "type": "string"
-                }
-              },
-              "required": [
-                "amount",
-                "mode"
-              ],
-              "type": "object"
-            },
-            {
-              "description": "Damage to each living opponent of the ability's controller (CR 102.3) — Advanced Reconstruction / Fateful Tempest. Same per-player events as [`Self::EachPlayer`], but the controller is carved out.",
-              "properties": {
-                "amount": {
-                  "$ref": "#/$defs/Amount"
-                },
-                "mode": {
-                  "enum": [
-                    "each_opponent"
-                  ],
-                  "type": "string"
-                }
-              },
-              "required": [
-                "amount",
-                "mode"
               ],
               "type": "object"
             },
@@ -3499,99 +3389,6 @@
                 "mode"
               ],
               "type": "object"
-            },
-            {
-              "description": "Ankh of Mishra's \"deals 2 damage to **that land's** controller\" — the player twin of [`ToEnteringPermanent`](Self::ToEnteringPermanent), filling the same `entering` slot from the same `PermanentEnters` trigger. Distinct from [`ToTargetController`](Self::ToTargetController), which reads an enclosing `Sequence`'s chosen target — a trigger that targets nothing never sets one.",
-              "properties": {
-                "amount": {
-                  "$ref": "#/$defs/Amount"
-                },
-                "mode": {
-                  "enum": [
-                    "to_entering_permanent_controller"
-                  ],
-                  "type": "string"
-                }
-              },
-              "required": [
-                "amount",
-                "mode"
-              ],
-              "type": "object"
-            },
-            {
-              "description": "Copper Tablet's \"at the beginning of each player's upkeep … deals 1 damage to **that player**\" — the player whose step this is, filled from [`TriggerContext::active_player`] at trigger placement. [`EachPlayer`](Self::EachPlayer) would bill the whole table on every upkeep, which is once per seat per round instead of once.",
-              "properties": {
-                "amount": {
-                  "$ref": "#/$defs/Amount"
-                },
-                "mode": {
-                  "enum": [
-                    "to_triggering_player"
-                  ],
-                  "type": "string"
-                }
-              },
-              "required": [
-                "amount",
-                "mode"
-              ],
-              "type": "object"
-            },
-            {
-              "description": "Creature Bond's \"when enchanted creature dies … deals damage equal to that creature's toughness to **the creature's controller**\" — the host's controller, snapshotted from [`TriggerContext::dying_enchanted_creature_stats`] at trigger placement because the host is a graveyard card by resolution and `controller_of` would answer its owner (CR 603.10a). Distinct from [`ToTriggeringPlayer`](Self::ToTriggeringPlayer), which names the player whose step it is.",
-              "properties": {
-                "amount": {
-                  "$ref": "#/$defs/Amount"
-                },
-                "mode": {
-                  "enum": [
-                    "to_dying_enchanted_creatures_controller"
-                  ],
-                  "type": "string"
-                }
-              },
-              "required": [
-                "amount",
-                "mode"
-              ],
-              "type": "object"
-            },
-            {
-              "properties": {
-                "amount": {
-                  "$ref": "#/$defs/Amount"
-                },
-                "mode": {
-                  "enum": [
-                    "to_self"
-                  ],
-                  "type": "string"
-                }
-              },
-              "required": [
-                "amount",
-                "mode"
-              ],
-              "type": "object"
-            },
-            {
-              "properties": {
-                "amount": {
-                  "$ref": "#/$defs/Amount"
-                },
-                "mode": {
-                  "enum": [
-                    "to_target_controller"
-                  ],
-                  "type": "string"
-                }
-              },
-              "required": [
-                "amount",
-                "mode"
-              ],
-              "type": "object"
             }
           ],
           "properties": {
@@ -3610,26 +3407,7 @@
         {
           "oneOf": [
             {
-              "properties": {
-                "count": {
-                  "format": "uint32",
-                  "minimum": 0.0,
-                  "type": "integer"
-                },
-                "mode": {
-                  "enum": [
-                    "attacking_player"
-                  ],
-                  "type": "string"
-                }
-              },
-              "required": [
-                "count",
-                "mode"
-              ],
-              "type": "object"
-            },
-            {
+              "description": "\"`who` draws `count` cards\" — every draw the pool prints, from the bare \"draw a card\" to Howling Mine's \"that player draws an additional card\". Who draws and how many are independent axes ([`PlayerSet`] and [`Amount`]), so no variant names a recipient.",
               "properties": {
                 "count": {
                   "$ref": "#/$defs/Amount"
@@ -3639,88 +3417,9 @@
                     "cards"
                   ],
                   "type": "string"
-                }
-              },
-              "required": [
-                "count",
-                "mode"
-              ],
-              "type": "object"
-            },
-            {
-              "properties": {
-                "count": {
-                  "format": "uint32",
-                  "minimum": 0.0,
-                  "type": "integer"
                 },
-                "mode": {
-                  "enum": [
-                    "each_draw_step_player"
-                  ],
-                  "type": "string"
-                }
-              },
-              "required": [
-                "count",
-                "mode"
-              ],
-              "type": "object"
-            },
-            {
-              "properties": {
-                "count": {
-                  "$ref": "#/$defs/Amount"
-                },
-                "mode": {
-                  "enum": [
-                    "each_player"
-                  ],
-                  "type": "string"
-                }
-              },
-              "required": [
-                "count",
-                "mode"
-              ],
-              "type": "object"
-            },
-            {
-              "properties": {
-                "controller": {
-                  "default": false,
-                  "type": "boolean"
-                },
-                "count": {
-                  "$ref": "#/$defs/Amount"
-                },
-                "mode": {
-                  "enum": [
-                    "target_owner"
-                  ],
-                  "type": "string"
-                }
-              },
-              "required": [
-                "count",
-                "mode"
-              ],
-              "type": "object"
-            },
-            {
-              "properties": {
-                "count": {
-                  "$ref": "#/$defs/Amount"
-                },
-                "mode": {
-                  "enum": [
-                    "target_player"
-                  ],
-                  "type": "string"
-                },
-                "opponent": {
-                  "default": false,
-                  "type": "boolean"
+                "who": {
+                  "$ref": "#/$defs/PlayerSet"
                 }
               },
               "required": [
@@ -3746,100 +3445,68 @@
         {
           "oneOf": [
             {
-              "properties": {
-                "life_loss": {
-                  "format": "uint32",
-                  "minimum": 0.0,
-                  "type": "integer"
-                },
-                "mode": {
-                  "enum": [
-                    "attacker_loses_you_draw"
-                  ],
-                  "type": "string"
-                }
-              },
-              "required": [
-                "life_loss",
-                "mode"
-              ],
-              "type": "object"
-            },
-            {
-              "properties": {
-                "amount": {
-                  "format": "uint32",
-                  "minimum": 0.0,
-                  "type": "integer"
-                },
-                "mode": {
-                  "enum": [
-                    "attacker_loses_you_gain"
-                  ],
-                  "type": "string"
-                }
-              },
-              "required": [
-                "amount",
-                "mode"
-              ],
-              "type": "object"
-            },
-            {
-              "properties": {
-                "amount": {
-                  "format": "int32",
-                  "type": "integer"
-                },
-                "mode": {
-                  "enum": [
-                    "drain_target"
-                  ],
-                  "type": "string"
-                },
-                "opponent": {
-                  "default": false,
-                  "type": "boolean"
-                }
-              },
-              "required": [
-                "amount",
-                "mode"
-              ],
-              "type": "object"
-            },
-            {
+              "description": "\"You gain 3 life\", \"target player gains 3 life\", \"its controller gains life equal to its power\" — one payload against whichever seats [`PlayerSet`] names, defaulting to the controller. Every gain routes through `Game::life_gain_after_replacements`, so lifegain replacements and watchers see it (CR 614/CR 118.5).",
               "properties": {
                 "amount": {
                   "$ref": "#/$defs/Amount"
                 },
                 "mode": {
                   "enum": [
-                    "each_opponent_drain"
+                    "gain"
+                  ],
+                  "type": "string"
+                },
+                "who": {
+                  "$ref": "#/$defs/PlayerSet"
+                }
+              },
+              "required": [
+                "amount",
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "\"You lose 2 life\", \"each opponent loses X life\", \"target player loses 3 life\" — the mirror of [`LifeEffect::Gain`]. Dina, Soul Steeper is a `Lose` rather than a [`LifeEffect::Drain`] precisely because she prints no lifegain half; a gain would re-trigger her own \"whenever you gain life\" ability into a loop.",
+              "properties": {
+                "amount": {
+                  "$ref": "#/$defs/Amount"
+                },
+                "mode": {
+                  "enum": [
+                    "lose"
+                  ],
+                  "type": "string"
+                },
+                "who": {
+                  "$ref": "#/$defs/PlayerSet"
+                }
+              },
+              "required": [
+                "amount",
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "\"Target opponent loses 2 life and you gain 2 life\" (Blood Artist), \"each opponent loses X life and you gain X life\" (Zulaport Cutthroat) — `who` loses, the controller gains. One effect rather than a [`LifeEffect::Lose`] beside a [`LifeEffect::Gain`] because the two halves are simultaneous (CR 118.9) and the gain is sized off what was actually lost.",
+              "properties": {
+                "amount": {
+                  "$ref": "#/$defs/Amount"
+                },
+                "mode": {
+                  "enum": [
+                    "drain"
                   ],
                   "type": "string"
                 },
                 "sum_gain": {
                   "default": false,
+                  "description": "Exsanguinate's \"you gain that much life\" — the *total* lost across `who`, not each victim's share. Off by default, which is Zulaport Cutthroat's flat gain.",
                   "type": "boolean"
-                }
-              },
-              "required": [
-                "amount",
-                "mode"
-              ],
-              "type": "object"
-            },
-            {
-              "properties": {
-                "amount": {
-                  "$ref": "#/$defs/Amount"
                 },
-                "mode": {
-                  "enum": [
-                    "each_opponent_loses"
-                  ],
-                  "type": "string"
+                "who": {
+                  "$ref": "#/$defs/PlayerSet"
                 }
               },
               "required": [
@@ -3849,6 +3516,7 @@
               "type": "object"
             },
             {
+              "description": "Arbiter of Knollridge: \"each player's life total becomes the highest life total among all players\". A set, not a gain or loss of a stated amount (CR 118.5 — it resolves as a change of the difference), so it names no [`Amount`] and can't be a [`LifeEffect::Gain`].",
               "properties": {
                 "mode": {
                   "enum": [
@@ -3863,79 +3531,7 @@
               "type": "object"
             },
             {
-              "properties": {
-                "amount": {
-                  "$ref": "#/$defs/Amount"
-                },
-                "mode": {
-                  "enum": [
-                    "each_player_loses"
-                  ],
-                  "type": "string"
-                }
-              },
-              "required": [
-                "amount",
-                "mode"
-              ],
-              "type": "object"
-            },
-            {
-              "properties": {
-                "amount": {
-                  "$ref": "#/$defs/Amount"
-                },
-                "mode": {
-                  "enum": [
-                    "gain"
-                  ],
-                  "type": "string"
-                }
-              },
-              "required": [
-                "amount",
-                "mode"
-              ],
-              "type": "object"
-            },
-            {
-              "properties": {
-                "amount": {
-                  "$ref": "#/$defs/Amount"
-                },
-                "mode": {
-                  "enum": [
-                    "gain_target_controller"
-                  ],
-                  "type": "string"
-                }
-              },
-              "required": [
-                "amount",
-                "mode"
-              ],
-              "type": "object"
-            },
-            {
-              "properties": {
-                "amount": {
-                  "$ref": "#/$defs/Amount"
-                },
-                "mode": {
-                  "enum": [
-                    "lose"
-                  ],
-                  "type": "string"
-                }
-              },
-              "required": [
-                "amount",
-                "mode"
-              ],
-              "type": "object"
-            },
-            {
-              "description": "\"Its owner loses half their life, rounded up\" (Personal Incarnation's dies trigger). The only life loss in the pool billed to the source's *owner* rather than the ability's controller, and the only one that reads a life total to size itself — so both live in the variant rather than in an [`Amount`] and a player selector nothing else would use.",
+              "description": "\"Its owner loses half their life, rounded up\" (Personal Incarnation's dies trigger). The only life loss in the pool billed to the source's *owner* rather than the ability's controller, and the only one that reads a life total to size itself — so both live in the variant rather than in an [`Amount`] and a [`PlayerSet`] nothing else would use.",
               "properties": {
                 "mode": {
                   "enum": [
@@ -3945,65 +3541,6 @@
                 }
               },
               "required": [
-                "mode"
-              ],
-              "type": "object"
-            },
-            {
-              "properties": {
-                "amount": {
-                  "$ref": "#/$defs/Amount"
-                },
-                "mode": {
-                  "enum": [
-                    "opponent_gains"
-                  ],
-                  "type": "string"
-                }
-              },
-              "required": [
-                "amount",
-                "mode"
-              ],
-              "type": "object"
-            },
-            {
-              "properties": {
-                "amount": {
-                  "$ref": "#/$defs/Amount"
-                },
-                "mode": {
-                  "enum": [
-                    "target_player_gains"
-                  ],
-                  "type": "string"
-                },
-                "opponent": {
-                  "default": false,
-                  "type": "boolean"
-                }
-              },
-              "required": [
-                "amount",
-                "mode"
-              ],
-              "type": "object"
-            },
-            {
-              "properties": {
-                "amount": {
-                  "format": "int32",
-                  "type": "integer"
-                },
-                "mode": {
-                  "enum": [
-                    "target_player_loses"
-                  ],
-                  "type": "string"
-                }
-              },
-              "required": [
-                "amount",
                 "mode"
               ],
               "type": "object"
@@ -4982,7 +4519,7 @@
               "type": "object"
             },
             {
-              "description": "\"Each opponent gets a poison counter\" (Infectious Inquiry, Vraska's Fall) / \"each player gets a poison counter\" (Ichor Rats) — CR 122.1. Places `count` counters of `kind` on every living player in `scope`. Targets nothing except under [`EdictScope::TargetedOpponent`] (\"target opponent gets a poison counter\", Venerated Rotpriest), which names exactly one chosen opponent.",
+              "description": "\"Each opponent gets a poison counter\" (Infectious Inquiry, Vraska's Fall) / \"each player gets a poison counter\" (Ichor Rats) — CR 122.1. Places `count` counters of `kind` on every living player in `who`. Targets nothing except under [`PlayerSet::TargetOpponent`] (\"target opponent gets a poison counter\", Venerated Rotpriest), which names exactly one chosen opponent.",
               "properties": {
                 "count": {
                   "$ref": "#/$defs/Amount"
@@ -4996,20 +4533,20 @@
                   ],
                   "type": "string"
                 },
-                "scope": {
-                  "$ref": "#/$defs/EdictScope"
+                "who": {
+                  "$ref": "#/$defs/PlayerSet"
                 }
               },
               "required": [
                 "count",
                 "kind",
                 "mode",
-                "scope"
+                "who"
               ],
               "type": "object"
             },
             {
-              "description": "\"Each opponent loses all counters\" (Final Act) — CR 122.1/121.2: every counter of every kind on each player in `scope` is removed, not just poison.",
+              "description": "\"Each opponent loses all counters\" (Final Act) — CR 122.1/121.2: every counter of every kind on each player in `who` is removed, not just poison.",
               "properties": {
                 "mode": {
                   "enum": [
@@ -5017,13 +4554,13 @@
                   ],
                   "type": "string"
                 },
-                "scope": {
-                  "$ref": "#/$defs/EdictScope"
+                "who": {
+                  "$ref": "#/$defs/PlayerSet"
                 }
               },
               "required": [
                 "mode",
-                "scope"
+                "who"
               ],
               "type": "object"
             },
@@ -5350,6 +4887,7 @@
               "type": "object"
             },
             {
+              "description": "\"`who` mills `count` cards\" — from Perpetual Timepiece's own-library mill to Tome Scour's \"target player mills five\". Who mills and how many are independent axes ([`PlayerSet`] and [`Amount`]), so no variant names a recipient.",
               "properties": {
                 "count": {
                   "$ref": "#/$defs/Amount"
@@ -5360,27 +4898,8 @@
                   ],
                   "type": "string"
                 },
-                "target": {
-                  "$ref": "#/$defs/TargetSpec"
-                }
-              },
-              "required": [
-                "count",
-                "mode",
-                "target"
-              ],
-              "type": "object"
-            },
-            {
-              "properties": {
-                "count": {
-                  "$ref": "#/$defs/Amount"
-                },
-                "mode": {
-                  "enum": [
-                    "mill_self"
-                  ],
-                  "type": "string"
+                "who": {
+                  "$ref": "#/$defs/PlayerSet"
                 }
               },
               "required": [
@@ -6099,9 +5618,6 @@
             },
             {
               "properties": {
-                "controller": {
-                  "$ref": "#/$defs/TokenController"
-                },
                 "count": {
                   "$ref": "#/$defs/Amount"
                 },
@@ -6126,6 +5642,11 @@
                   "default": false,
                   "type": "boolean"
                 },
+                "per_opponent": {
+                  "default": false,
+                  "description": "\"**For each opponent**, you create …\" (Eccentric Pestfinder, Furygale Flocking): the batch repeats once per opponent while `who` still names the recipient, so this is a repeat count rather than a recipient — spelling it as `who = \"each_opponent\"` would hand the tokens to the opponents instead. With `must_attack_defender`, each repeat's tokens are bound to *that* opponent rather than to the one flattened defender.",
+                  "type": "boolean"
+                },
                 "set_base_pt": {
                   "anyOf": [
                     {
@@ -6138,6 +5659,14 @@
                 },
                 "token": {
                   "type": "string"
+                },
+                "who": {
+                  "allOf": [
+                    {
+                      "$ref": "#/$defs/PlayerSet"
+                    }
+                  ],
+                  "description": "Who the tokens enter under (CR 111.4) — the ability's controller by default, `targets_controller` for Beast Within's \"its controller creates a 3/3 Beast\", `target_player` / `target_opponent` for a chosen seat, `each_other_player` for Death by Dragons. A multi-seat set mints the whole `count` under *each* named seat."
                 }
               },
               "required": [
@@ -6198,9 +5727,13 @@
                   "default": false,
                   "type": "boolean"
                 },
-                "target_player": {
-                  "default": false,
-                  "type": "boolean"
+                "who": {
+                  "allOf": [
+                    {
+                      "$ref": "#/$defs/PlayerSet"
+                    }
+                  ],
+                  "description": "Who the Treasures land under — the ability's controller by default, `target_player` for the chosen seat (Prismari Command's \"target player creates a Treasure token\")."
                 }
               },
               "required": [
@@ -7622,15 +7155,20 @@
                     }
                   ]
                 },
-                "searcher": {
-                  "$ref": "#/$defs/SearchScope"
-                },
                 "tapped": {
                   "default": false,
                   "type": "boolean"
                 },
                 "to_zone": {
                   "$ref": "#/$defs/SearchDest"
+                },
+                "who": {
+                  "allOf": [
+                    {
+                      "$ref": "#/$defs/PlayerSet"
+                    }
+                  ],
+                  "description": "Whose library is searched (CR 701.19 — \"search their library\"): the ability's own controller by default (tutors, ramp, fetchlands), `targets_controller` for the compensation ramp riders (Path to Exile, Assassin's Trophy), `each_player` for Veteran Explorer's \"each player may search their library\". A multi-seat set searches one library at a time in APNAP order (CR 101.4), each shuffling before the next begins (CR 701.19f)."
                 }
               },
               "required": [
@@ -7668,9 +7206,13 @@
                   ],
                   "type": "string"
                 },
-                "target_player": {
-                  "default": false,
-                  "type": "boolean"
+                "who": {
+                  "allOf": [
+                    {
+                      "$ref": "#/$defs/PlayerSet"
+                    }
+                  ],
+                  "description": "Whose graveyard is shuffled back — the ability's controller by default (Perpetual Timepiece), `target_player` for the chosen seat. One seat, so a multi-seat set is rejected at resolution."
                 }
               },
               "required": [
@@ -7847,26 +7389,6 @@
             {
               "properties": {
                 "count": {
-                  "format": "uint32",
-                  "minimum": 0.0,
-                  "type": "integer"
-                },
-                "mode": {
-                  "enum": [
-                    "damaging_creature_controller_may_draw"
-                  ],
-                  "type": "string"
-                }
-              },
-              "required": [
-                "count",
-                "mode"
-              ],
-              "type": "object"
-            },
-            {
-              "properties": {
-                "count": {
                   "format": "uint8",
                   "minimum": 0.0,
                   "type": "integer"
@@ -7889,11 +7411,6 @@
                 "count": {
                   "$ref": "#/$defs/Amount"
                 },
-                "damaged_player": {
-                  "default": false,
-                  "description": "\"**That player** discards a card at random\" (Hypnotic Specter) — the discarder is whoever this ability's source just damaged, not its controller. Only meaningful under a damage watch; Looter il-Kor's same-trigger \"draw a card, then discard a card\" leaves it unset, because *its* discard is the controller's.",
-                  "type": "boolean"
-                },
                 "mode": {
                   "enum": [
                     "discard"
@@ -7915,9 +7432,13 @@
                   "description": "\"Discards a card **at random**\" (Hypnotic Specter, Mind Twist): nobody chooses, so this discard raises no pause at all — it resolves straight through [`Game::run_misc_choreo`](crate::Game::run_misc_choreo), picking from the discarder's hand with the engine's injected per-op RNG.",
                   "type": "boolean"
                 },
-                "target_player": {
-                  "default": false,
-                  "type": "boolean"
+                "who": {
+                  "allOf": [
+                    {
+                      "$ref": "#/$defs/PlayerSet"
+                    }
+                  ],
+                  "description": "Who discards: the ability's controller by default (Looter il-Kor's \"draw a card, then discard a card\"), `target_player` for the chosen seat (Prismari Command), or `damaged_player` for whoever this ability's source just damaged (Hypnotic Specter's \"*that player* discards a card at random\"). A one-seat pause, so a multi-seat set is rejected at resolution — \"each player discards\" is [`EachPlayerDiscards`](Self::EachPlayerDiscards), which fans out and tallies."
                 }
               },
               "required": [
@@ -8025,11 +7546,11 @@
               "type": "object"
             },
             {
-              "description": "Each player in `scope` discards a card of their choice (Syphon Mind, \"Each other player discards a card\"). A fan-out over those players in APNAP order — a player with an empty hand is skipped — tallying [`ResolutionFrame::cards_discarded_this_way`](crate::resolution::ResolutionFrame) so a following `then`/Sequence step can read it (Syphon Mind's \"You draw a card for each card discarded this way\").",
+              "description": "Each player in `who` discards a card of their choice (Syphon Mind, \"Each other player discards a card\"). A fan-out over those players in APNAP order — a player with an empty hand is skipped — tallying [`ResolutionFrame::cards_discarded_this_way`](crate::resolution::ResolutionFrame) so a following `then`/Sequence step can read it (Syphon Mind's \"You draw a card for each card discarded this way\").",
               "properties": {
                 "down_to_fewest": {
                   "default": false,
-                  "description": "Balance's \"Players discard cards … the same way\": instead of one card each, every player discards down to the smallest hand in `scope` — see [`down_to_fewest`](Self::EachPlayerSacrifices::down_to_fewest).",
+                  "description": "Balance's \"Players discard cards … the same way\": instead of one card each, every player discards down to the smallest hand in `who` — see [`down_to_fewest`](Self::EachPlayerSacrifices::down_to_fewest).",
                   "type": "boolean"
                 },
                 "mode": {
@@ -8038,8 +7559,13 @@
                   ],
                   "type": "string"
                 },
-                "scope": {
-                  "$ref": "#/$defs/EdictScope"
+                "who": {
+                  "allOf": [
+                    {
+                      "$ref": "#/$defs/PlayerSet"
+                    }
+                  ],
+                  "description": "Whose hands the fan-out visits — `each_player` (Balance) or `each_opponent` (Syphon Mind's \"each other player\"). Resolved in APNAP order (CR 101.4) rather than seat order, since each seat's discard is a choice made in sequence."
                 }
               },
               "required": [
@@ -8092,6 +7618,11 @@
             },
             {
               "properties": {
+                "chosen_by_controller": {
+                  "default": false,
+                  "description": "Priest of Forgotten Gods' \"any number of target players\": `who` names the legal pool and the controller picks its subset as the effect resolves, via a [`PendingChoice::ChooseTargetPlayers`](crate::PendingChoice::ChooseTargetPlayers) pause before the fan-out begins (CR 601.2c/608.2b — choosing zero is legal). A modifier rather than a member of [`PlayerSet`]: the seats aren't derivable until a player answers, so no seat resolver can name them up front.",
+                  "type": "boolean"
+                },
                 "count": {
                   "allOf": [
                     {
@@ -8102,7 +7633,7 @@
                 },
                 "down_to_fewest": {
                   "default": false,
-                  "description": "Balance's \"Each player chooses a number of lands they control equal to the number of lands controlled by the player who controls the fewest, then sacrifices the rest\": the number sacrificed isn't fixed but each player's own excess over the smallest matching battlefield in `scope`, measured once as this effect starts. Overrides `count`; a player already at that floor is skipped entirely, the way an empty-handed seat is skipped by a discard fan-out.",
+                  "description": "Balance's \"Each player chooses a number of lands they control equal to the number of lands controlled by the player who controls the fewest, then sacrifices the rest\": the number sacrificed isn't fixed but each player's own excess over the smallest matching battlefield in `who`, measured once as this effect starts. Overrides `count`; a player already at that floor is skipped entirely, the way an empty-handed seat is skipped by a discard fan-out.",
                   "type": "boolean"
                 },
                 "filter": {
@@ -8128,14 +7659,19 @@
                   ],
                   "type": "string"
                 },
-                "scope": {
-                  "$ref": "#/$defs/EdictScope"
-                },
                 "then": {
                   "items": {
                     "$ref": "#/$defs/Effect"
                   },
                   "type": "array"
+                },
+                "who": {
+                  "allOf": [
+                    {
+                      "$ref": "#/$defs/PlayerSet"
+                    }
+                  ],
+                  "description": "Who pays the edict — `each_player` (Promise of Loyalty), `each_opponent` (Martyr's Bond), or `you` alone (Lich's damage tax, a one-seat fan-out so the prompt, the count and the shortfall check stay the ones every other edict uses). Resolved in APNAP order (CR 101.4), since the sacrifices are chosen one seat at a time."
                 }
               },
               "required": [
@@ -8260,6 +7796,28 @@
               },
               "required": [
                 "cost",
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "\"`who` may draw `count` cards\" — Questing Phelddagrif's \"target opponent may draw a card\", Edric's \"that creature's controller may draw a card\". The *drawer* answers, not the ability's controller (that is [`MayDrawUnlessPays`](Self::MayDrawUnlessPays)), so `who` names one seat and a multi-seat set is rejected at resolution.\n\nDistinct from [`MayDrawUpTo`](Self::MayDrawUpTo), which asks for a *number* rather than yes/no.",
+              "properties": {
+                "count": {
+                  "$ref": "#/$defs/Amount"
+                },
+                "mode": {
+                  "enum": [
+                    "may_draw"
+                  ],
+                  "type": "string"
+                },
+                "who": {
+                  "$ref": "#/$defs/PlayerSet"
+                }
+              },
+              "required": [
+                "count",
                 "mode"
               ],
               "type": "object"
@@ -8656,28 +8214,6 @@
               "required": [
                 "mode",
                 "target"
-              ],
-              "type": "object"
-            },
-            {
-              "properties": {
-                "count": {
-                  "$ref": "#/$defs/Amount"
-                },
-                "mode": {
-                  "enum": [
-                    "target_player_may_draw"
-                  ],
-                  "type": "string"
-                },
-                "opponent": {
-                  "default": false,
-                  "type": "boolean"
-                }
-              },
-              "required": [
-                "count",
-                "mode"
               ],
               "type": "object"
             }
@@ -10398,13 +9934,17 @@
                   "$ref": "#/$defs/Effect"
                 },
                 "who": {
-                  "$ref": "#/$defs/DelayController"
+                  "allOf": [
+                    {
+                      "$ref": "#/$defs/PlayerSet"
+                    }
+                  ],
+                  "description": "Who the delayed trigger belongs to, resolved to a concrete seat now and stored on the scheduled trigger — the ability's controller by default (Dragon Whelp's \"sacrifice this creature\"), `targets_controller` for the shared target spell's controller (Arcane Denial's \"**its controller** may draw up to two cards\"). One seat: a delayed trigger has one controller, so a multi-seat set is rejected at resolution."
                 }
               },
               "required": [
                 "mode",
-                "then",
-                "who"
+                "then"
               ],
               "type": "object"
             },
@@ -10667,32 +10207,6 @@
         }
       },
       "type": "object"
-    },
-    "EnterController": {
-      "description": "Whose permanent a [`Trigger::PermanentEnters`] watch cares about, relative to the ability's own controller (mirrors [`CasterScope`]'s shape).",
-      "oneOf": [
-        {
-          "description": "The ability's own controller (default) — constellation's \"an enchantment you control\".",
-          "enum": [
-            "you"
-          ],
-          "type": "string"
-        },
-        {
-          "description": "Any opponent of the ability's controller — Archaeomancer's Map's \"a land an opponent controls\".",
-          "enum": [
-            "opponent"
-          ],
-          "type": "string"
-        },
-        {
-          "description": "Any player, including the ability's own controller — plain landfall's \"a land enters\".",
-          "enum": [
-            "any_player"
-          ],
-          "type": "string"
-        }
-      ]
     },
     "EscapeCost": {
       "additionalProperties": false,
@@ -11801,6 +11315,123 @@
         }
       ]
     },
+    "PlayerSet": {
+      "description": "The authorable spelling of a [`PlayerSet`] — every set is a bare string in TOML (`who = \"each_opponent\"`).",
+      "oneOf": [
+        {
+          "description": "The ability's own controller — \"you gain 3 life\", and the default when a card names no one.",
+          "enum": [
+            "you"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "\"target player\" (Ominous Harvest).",
+          "enum": [
+            "target_player"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "\"target opponent\" (Blood Artist).",
+          "enum": [
+            "target_opponent"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "The controller of this ability's *object* target — \"its controller gains life equal to its power\" (Swords to Plowshares).",
+          "enum": [
+            "targets_controller"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "The owner of this ability's object target — \"its owner shuffles it\" (Oblation).",
+          "enum": [
+            "targets_owner"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "\"each opponent\".",
+          "enum": [
+            "each_opponent"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "\"each player\" (Vandal's Edit).",
+          "enum": [
+            "each_player"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "\"each player other than target player\" (Death by Dragons).",
+          "enum": [
+            "each_other_player"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "The attacking player — \"whenever enchanted creature attacks, its controller loses 2 life\" (Parasitic Impetus). Only on an attack trigger.",
+          "enum": [
+            "attacking_player"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "The one player the trigger is about — \"at the beginning of each player's draw step, **that player** draws a card\" (Howling Mine), \"that land's controller\" (Dingus Egg).",
+          "enum": [
+            "triggering_player"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Every opponent except the one the trigger is about — \"each other opponent\" (Hydra Omnivore).",
+          "enum": [
+            "each_other_opponent"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "The controller of the permanent that just entered — \"that land's controller\" (Ankh of Mishra). Only on a `permanent_enters` trigger.",
+          "enum": [
+            "entering_permanents_controller"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "The controller of the enchanted creature that just died — \"that creature's controller\" (Creature Bond).",
+          "enum": [
+            "dying_enchanted_creatures_controller"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "The player the source just damaged — \"that player discards a card at random\" (Hypnotic Specter).",
+          "enum": [
+            "damaged_player"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "The controller of the permanent that dealt the damage — \"that creature's controller may draw a card\" (Edric, Spymaster of Trest).",
+          "enum": [
+            "damaging_permanents_controller"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "One opponent, chosen by this ability's controller — \"an opponent gains 3 life\" (Invigorate).",
+          "enum": [
+            "an_opponent"
+          ],
+          "type": "string"
+        }
+      ]
+    },
     "ProtectionScope": {
       "enum": [
         "white",
@@ -11990,34 +11621,8 @@
         }
       ]
     },
-    "SearchScope": {
-      "description": "Whose library a [`Effect::Dig(DigEffect::SearchLibrary)`] searches (CR 701.19 — \"search their library\"). Most search effects are self-tutors/ramp; a few (Path to Exile, Assassin's Trophy) hand the search to the *affected permanent's* controller as compensation.",
-      "oneOf": [
-        {
-          "description": "The ability's own controller (tutors, ramp, fetchlands).",
-          "enum": [
-            "you"
-          ],
-          "type": "string"
-        },
-        {
-          "description": "The ability's shared target's controller (Path to Exile's/Assassin's Trophy's ramp rider — read via [`Game::controller_of`], which follows the owner chain even after the target has left the battlefield).",
-          "enum": [
-            "target_controller"
-          ],
-          "type": "string"
-        },
-        {
-          "description": "Every living player, each searching their own library in turn (Veteran Explorer's \"each player may search their library…\") — one search per player, chained in APNAP order (CR 101.4) starting with the active player; each shuffles their own library once (CR 701.19f) before the next player's search begins.",
-          "enum": [
-            "all_players"
-          ],
-          "type": "string"
-        }
-      ]
-    },
     "SpecialTiming": {
-      "description": "The `timing` tag for a triggered ability. Mirrors [`Trigger`]'s variants one-for-one, but stays fieldless: two of them ([`YouSacrifice`](TriggerTag::YouSacrifice)/ [`AnyPlayerSacrifices`](TriggerTag::AnyPlayerSacrifices)) carry a [`PermanentFilter`] on the real `Trigger`, and a third ([`DealsCombatDamageToPlayer`](TriggerTag::DealsCombatDamageToPlayer)) carries a [`CombatDamageScope`], a fourth ([`CastSpell`](TriggerTag::CastSpell)) carries a [`SpellFilter`]/[`CasterScope`]/`nth_each_turn`, a fifth ([`PlayerDraws`](TriggerTag::PlayerDraws)) carries a [`CasterScope`]/`nth_each_turn` (the draw-side twin of `CastSpell`, no filter), and a sixth and seventh ([`PermanentEnters`](TriggerTag::PermanentEnters)/ [`PermanentEntersIncludingThis`](TriggerTag::PermanentEntersIncludingThis)) carry a [`PermanentFilter`]/[`EnterController`], none of which can come from a bare `timing = \"…\"` string — [`Ability::deserialize`] pairs the tag with sibling fields (`filter`, `who`, `spell_filter`/`caster`/`drawer`/`nth_each_turn`, `controller`) to build those by hand. An eighth pair ([`YouAttackWithCreatures`](TriggerTag::YouAttackWithCreatures)/ [`OpponentAttacksYouWithCreatures`](TriggerTag::OpponentAttacksYouWithCreatures)) carries a sibling `at_least` count the same way, and [`CreatureEnchantedByYourAuraAttacks`](TriggerTag::CreatureEnchantedByYourAuraAttacks) and [`AnotherPlayerAttacksWithCreatures`](TriggerTag::AnotherPlayerAttacksWithCreatures) reuse that same `at_least` sibling. A ninth ([`SpellTargetsThisOnly`](TriggerTag::SpellTargetsThisOnly), `timing = \"spell_targets_this\"`) reuses `CastSpell`'s `spell_filter` sibling. A tenth ([`BlocksOrBecomesBlockedBy`](TriggerTag::BlocksOrBecomesBlockedBy)) reuses `YouSacrifice`'s `filter` sibling for the creature on the other side of the block. The three timings that aren't a [`Trigger`].",
+      "description": "The `timing` tag for a triggered ability. Mirrors [`Trigger`]'s variants one-for-one, but stays fieldless: two of them ([`YouSacrifice`](TriggerTag::YouSacrifice)/ [`AnyPlayerSacrifices`](TriggerTag::AnyPlayerSacrifices)) carry a [`PermanentFilter`] on the real `Trigger`, and a third ([`DealsCombatDamageToPlayer`](TriggerTag::DealsCombatDamageToPlayer)) carries a [`CombatDamageScope`], a fourth ([`CastSpell`](TriggerTag::CastSpell)) carries a [`SpellFilter`]/[`WatchedPlayer`]/`nth_each_turn`, a fifth ([`PlayerDraws`](TriggerTag::PlayerDraws)) carries a [`WatchedPlayer`]/`nth_each_turn` (the draw-side twin of `CastSpell`, no filter), and a sixth and seventh ([`PermanentEnters`](TriggerTag::PermanentEnters)/ [`PermanentEntersIncludingThis`](TriggerTag::PermanentEntersIncludingThis)) carry a [`PermanentFilter`]/[`WatchedPlayer`], none of which can come from a bare `timing = \"…\"` string — [`Ability::deserialize`] pairs the tag with sibling fields (`filter`, `who`, `spell_filter`/`caster`/`drawer`/`nth_each_turn`, `controller`) to build those by hand. An eighth pair ([`YouAttackWithCreatures`](TriggerTag::YouAttackWithCreatures)/ [`OpponentAttacksYouWithCreatures`](TriggerTag::OpponentAttacksYouWithCreatures)) carries a sibling `at_least` count the same way, and [`CreatureEnchantedByYourAuraAttacks`](TriggerTag::CreatureEnchantedByYourAuraAttacks) and [`AnotherPlayerAttacksWithCreatures`](TriggerTag::AnotherPlayerAttacksWithCreatures) reuse that same `at_least` sibling. A ninth ([`SpellTargetsThisOnly`](TriggerTag::SpellTargetsThisOnly), `timing = \"spell_targets_this\"`) reuses `CastSpell`'s `spell_filter` sibling. A tenth ([`BlocksOrBecomesBlockedBy`](TriggerTag::BlocksOrBecomesBlockedBy)) reuses `YouSacrifice`'s `filter` sibling for the creature on the other side of the block. The three timings that aren't a [`Trigger`].",
       "enum": [
         "spell",
         "static",
@@ -12553,60 +12158,6 @@
       ],
       "description": "An ability's `timing` string: one of the three non-trigger timings, or a trigger tag."
     },
-    "TokenController": {
-      "description": "Who controls a token minted by [`Effect::Token(TokenEffect::Create)`] (CR 111.4's \"under its controller's control\" default is the ability's own controller; some effects hand the token to a different player instead).",
-      "oneOf": [
-        {
-          "description": "The ability's own controller (the default — most \"create a token\" effects).",
-          "enum": [
-            "you"
-          ],
-          "type": "string"
-        },
-        {
-          "description": "The controller of this effect's target (Beast Within's \"its controller creates a 3/3 Beast\" — the destroyed/exiled permanent's controller, read via [`Game::controller_of`] even after the target has left the battlefield, since a moved object's controller chain still resolves back to its owner).",
-          "enum": [
-            "target_controller"
-          ],
-          "type": "string"
-        },
-        {
-          "description": "One token minted per opponent of the ability's controller, each under that opponent (Eccentric Pestfinder's \"for each opponent, you create a...\").",
-          "enum": [
-            "each_opponent"
-          ],
-          "type": "string"
-        },
-        {
-          "description": "One token minted per opponent of the ability's controller, each under the ability's own controller (Eccentric Pestfinder's Turn Stones back face, \"For each opponent, you create a...\"). Distinct from [`TokenController::EachOpponent`], which mints one per opponent under *each opponent*. CR 111.4.",
-          "enum": [
-            "one_per_opponent"
-          ],
-          "type": "string"
-        },
-        {
-          "description": "The ability's own chosen Player target (Shadrix Silverquill's begin-combat \"Target player creates a 2/1 ... Inkling ... token\" — CR 111.4). Makes [`Effect::target`](super::Effect::target) report [`TargetSpec::Player`](super::TargetSpec::Player) for this `CreateToken`, unlike every other `TokenController` variant (which take their recipient from context, not a target of their own).",
-          "enum": [
-            "target_player"
-          ],
-          "type": "string"
-        },
-        {
-          "description": "The ability's own chosen Player target, restricted to an opponent (CR \"target opponent\" — Questing Phelddagrif's \"Target opponent creates a 1/1 ... Hippo ... token\", CR 111.4). The opponent-restricted twin of [`TargetPlayer`](Self::TargetPlayer): same [`Target::Player`] resolution, narrower [`TargetSpec::OpponentPlayer`](super::TargetSpec::OpponentPlayer) legal-target set.",
-          "enum": [
-            "target_opponent"
-          ],
-          "type": "string"
-        },
-        {
-          "description": "Every player *other than* the ability's chosen Player target — the ability's own controller included, the target excluded (Death by Dragons: \"Each player other than target player creates a 5/5 red Dragon creature token with flying.\" — CR 111.4). Same [`Target::Player`] resolution and [`TargetSpec::Player`](super::TargetSpec::Player) report as [`TargetPlayer`](Self::TargetPlayer), but the target is the one player who does *not* get a token, not the recipient.",
-          "enum": [
-            "each_other_player"
-          ],
-          "type": "string"
-        }
-      ]
-    },
     "TokenFilter": {
       "description": "Whether a [`PermanentFilter`] accepts tokens, nontokens, or both.",
       "oneOf": [
@@ -12793,6 +12344,32 @@
             "type": "string"
           },
           "type": "array"
+        }
+      ]
+    },
+    "WatchedPlayer": {
+      "description": "*Whose* action a trigger watches, relative to the watching ability's own controller — the player half of \"whenever **you** cast a spell\" / \"whenever **an opponent** draws a card\" / \"whenever **a** land enters\".\n\nOne enum rather than one per watch: every trigger that scopes by player asks the same yes/no question of the same two seats, so [`WatchedPlayer::accepts`] answers it once instead of a three-arm match per watch. The *object* half of a trigger's scope (Whenever a creature **you control** deals damage) is [`CombatDamageScope`]'s axis, not this one.",
+      "oneOf": [
+        {
+          "description": "The ability's own controller (default) — constellation's \"an enchantment you control\".",
+          "enum": [
+            "you"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Any opponent of the ability's controller — Archaeomancer's Map's \"a land an opponent controls\".",
+          "enum": [
+            "opponent"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Any player, including the ability's own controller — plain landfall's \"a land enters\".",
+          "enum": [
+            "any_player"
+          ],
+          "type": "string"
         }
       ]
     },

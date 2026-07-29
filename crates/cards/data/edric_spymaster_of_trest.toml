@@ -26,5 +26,6 @@ who = "any_creature_damaging_your_opponent"
 # its controller may draw a card
 [[abilities.effects]]
 type = "choice"
-mode = "damaging_creature_controller_may_draw"
+mode = "may_draw"
+who = "damaging_permanents_controller"
 count = 1

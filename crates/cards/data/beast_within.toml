@@ -29,5 +29,5 @@ target = { permanent = {} }
 [[abilities.effects]]
 type = "token"
 mode = "create"
-controller = "target_controller"
+who = "targets_controller"
 token = "6bb61f34-5d57-4eaa-a02c-f5d08c1ee920"

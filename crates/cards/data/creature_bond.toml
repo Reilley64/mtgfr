@@ -25,5 +25,6 @@ timing = "enchanted_creature_dies"
 # this Aura deals damage equal to that creature's toughness to the creature's controller.
 [[abilities.effects]]
 type = "damage"
-mode = "to_dying_enchanted_creatures_controller"
+mode = "to_players"
+who = "dying_enchanted_creatures_controller"
 amount = "dying_enchanted_creature_toughness"

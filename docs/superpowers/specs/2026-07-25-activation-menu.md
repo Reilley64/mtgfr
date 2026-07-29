@@ -43,7 +43,7 @@ Render a card-anchored activation menu beside the selected battlefield permanent
 - Commit clears selection before submitting tap-for-mana or the chosen action.
 - Payment remains engine-side. The client previews `auto_tap`, but it does not pre-tap lands before submit.
 - Legal listed activations with payable costs must commit cleanly; truly illegal options stay disabled.
-- The menu panel uses Forest HUD / Vine board chrome, keeps active and hover emphasis on the row, and scrolls when the option list exceeds the capped panel height.
+- The menu panel uses Forest HUD / Vine board chrome, keeps active and hover emphasis on the row, and scrolls when the option list exceeds the capped panel height. Row chrome is attribute-driven: rows carry `data-active` (hover/armed) and `aria-disabled`, and Tailwind `data-[active=true]:…` / `aria-disabled:…` variants own the gold emphasis and dimmed looks.
 
 ## Implementation Decisions
 

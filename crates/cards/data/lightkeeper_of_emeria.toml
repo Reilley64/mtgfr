@@ -31,4 +31,4 @@ timing = "etb"
 [[abilities.effects]]
 type = "life"
 mode = "gain"
-amount = { times = 2, per = "spell_multikicker_count" }
+amount = { left = 2, op = "multiply", right = "spell_multikicker_count" }
