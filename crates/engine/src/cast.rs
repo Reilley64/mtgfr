@@ -1275,6 +1275,7 @@ impl Game {
             card,
             &[(
                 Effect::Draw(DrawEffect::Cards {
+                    who: PlayerSet::You,
                     count: Amount::Fixed(1),
                 }),
                 None,

@@ -47,6 +47,17 @@ describe("menuPanelClass", () => {
     expect(c).toContain("p-lg");
     expect(c).not.toContain("p-xs");
   });
+
+  it("carries the shell overlay z so a portaled panel beats the fixed shell frame", () => {
+    expect(menuPanelClass()).toContain("z-41");
+  });
+
+  it("lets a call-site z win over the shell default", () => {
+    const c = menuPanelClass("z-50");
+
+    expect(c).toContain("z-50");
+    expect(c).not.toContain("z-41");
+  });
 });
 
 describe("the hud variant", () => {

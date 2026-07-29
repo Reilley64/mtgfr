@@ -325,6 +325,32 @@ test("catalog and decklist are independent overscroll-contained scroll hosts", (
   );
 });
 
+test("a fresh deck tells the player how to add the first card", () => {
+  const model = { ...initialDeckBuilderSubmodel(), ...measuredPool() };
+
+  Scene.scene(
+    { update: builderUpdate, view: (model) => builderView(model, emptyViewInputs) },
+    Scene.with(model),
+    observePoolWidth,
+    Scene.expect(Scene.testId("builder-decklist-empty")).toExist(),
+    Scene.expect(Scene.testId("builder-decklist-empty")).toContainText("Click a pool card to add it"),
+  );
+});
+
+test("edit route shows a deck-loading state until the deck lands", () => {
+  const model = { ...initialDeckBuilderSubmodel("abc"), ...measuredPool() };
+
+  Scene.scene(
+    { update: builderUpdate, view: (model) => builderView(model, emptyViewInputs) },
+    Scene.with(model),
+    observePoolWidth,
+    Scene.expect(Scene.testId("builder-deck-loading")).toExist(),
+    Scene.expect(Scene.testId("deck-name")).toBeDisabled(),
+    Scene.expect(Scene.testId("builder-commander")).not.toExist(),
+    Scene.expect(Scene.testId("builder-deck-loading")).not.toContainText("0/99"),
+  );
+});
+
 test("print picker freezes catalog and decklist scroll while print grid stays scrollable", () => {
   const solRing = card({ id: "sol-ring", name: "Sol Ring" });
   const alternatePrint = print({ collector_number: "42", id: "sol-ring-alt-print", set: "rex", set_name: "Rex" });

@@ -947,6 +947,20 @@
       "shell-stage-max": {
         "$type": "dimension",
         "$value": "1100px"
+      },
+      "shell-content-max": {
+        "$type": "dimension",
+        "$value": "960px"
+      }
+    },
+    "tracking": {
+      "display": {
+        "$type": "dimension",
+        "$value": "-0.02em"
+      },
+      "chip": {
+        "$type": "dimension",
+        "$value": "0.06em"
       }
     },
     "ease": {
@@ -961,27 +975,6 @@
       }
     },
     "duration": {
-      "stack-in": {
-        "$type": "duration",
-        "$value": {
-          "value": 0.25,
-          "unit": "s"
-        }
-      },
-      "stack-return": {
-        "$type": "duration",
-        "$value": {
-          "value": 0.22,
-          "unit": "s"
-        }
-      },
-      "stack-resolve": {
-        "$type": "duration",
-        "$value": {
-          "value": 0.22,
-          "unit": "s"
-        }
-      },
       "breathe": {
         "$type": "duration",
         "$value": {

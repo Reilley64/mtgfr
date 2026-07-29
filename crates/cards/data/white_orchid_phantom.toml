@@ -38,5 +38,5 @@ mode = "search_library"
 filter = "basic_land"
 to_zone = "battlefield"
 tapped = true
-searcher = "target_controller"
+who = "targets_controller"
 optional = true

@@ -48,7 +48,7 @@ condition = { type = "source_tapped" }
 [[abilities.effects]]
 type = "conditional"
 condition = { type = "source_tapped" }
-then = [{ type = "damage", mode = "to_self", amount = 1 }]
+then = [{ type = "damage", mode = "to_players", amount = 1 }]
 
 # {T}: Add {C}{C}{C}.
 [[abilities]]

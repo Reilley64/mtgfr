@@ -34,5 +34,5 @@ mode = "schedule_next_cast_trigger"
 filter = "has_x"
 then = [
         { type = "draw", mode = "cards", count = 1 },
-        { type = "life", mode = "gain", amount = "half_x_rounded_down" },
+        { type = "life", mode = "gain", amount = { left = "x", op = "divide_rounding_down", right = 2 } },
     ]

@@ -92,19 +92,19 @@ pub enum CountersEffect {
 
     /// "Each opponent gets a poison counter" (Infectious Inquiry, Vraska's Fall) / "each player
     /// gets a poison counter" (Ichor Rats) — CR 122.1. Places `count` counters of `kind` on every
-    /// living player in `scope`. Targets nothing except under
-    /// [`EdictScope::TargetedOpponent`] ("target opponent gets a poison counter", Venerated
+    /// living player in `who`. Targets nothing except under
+    /// [`PlayerSet::TargetOpponent`] ("target opponent gets a poison counter", Venerated
     /// Rotpriest), which names exactly one chosen opponent.
     PutCountersOnPlayer {
         kind: PlayerCounterKind,
         count: Amount,
-        scope: EdictScope,
+        who: PlayerSet,
     },
 
     /// "Each opponent loses all counters" (Final Act) — CR 122.1/121.2: every counter of every
-    /// kind on each player in `scope` is removed, not just poison.
+    /// kind on each player in `who` is removed, not just poison.
     RemoveAllPlayerCounters {
-        scope: EdictScope,
+        who: PlayerSet,
     },
 
     /// "If target player has fewer than nine poison counters, they get a number of poison counters

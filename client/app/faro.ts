@@ -9,6 +9,7 @@
 import { getWebInstrumentations, initializeFaro } from "@grafana/faro-web-sdk";
 import { TracingInstrumentation } from "@grafana/faro-web-tracing";
 import { appVersion, gitCommit } from "./domain/build-meta";
+import { registerSpanFlushOnHide } from "./domain/faro/flush";
 import { ensureFaroSessionSampled } from "./domain/faro/session";
 
 const COLLECT_URL = "/api/faro/collect";
@@ -21,6 +22,9 @@ export function initFaro(): void {
   started = true;
 
   ensureFaroSessionSampled();
+  // Before `initializeFaro` on purpose — this hide listener must run ahead of the one
+  // faro-core's transport registers, so flushed spans make that same batch.
+  registerSpanFlushOnHide();
 
   initializeFaro({
     url: COLLECT_URL,

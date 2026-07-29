@@ -42,5 +42,6 @@ amount = 1
 # ... and each player.
 [[abilities.effects]]
 type = "damage"
-mode = "each_player"
+mode = "to_players"
+who = "each_player"
 amount = 1

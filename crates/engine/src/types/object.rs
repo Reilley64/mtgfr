@@ -233,7 +233,7 @@ pub(crate) struct Spell {
     /// [`Self::sacrifice_count`]'s read.
     pub(crate) revealed_creature_mana_value: u8,
     /// Whether the caster paid this spell's kicker cost (CR 702.33d — [`AdditionalCost::kicker`]),
-    /// `false` for a spell with no kicker or a decline. Read by [`Amount::IfSpellKicked`] (Rite
+    /// `false` for a spell with no kicker or a decline. Read by [`Condition::SpellWasKicked`] (Rite
     /// of Replication's "If this spell was kicked, create five of those tokens instead") via
     /// [`Game::spell_was_kicked`], the kicked-flag sibling of [`Self::sacrifice_count`]'s read.
     pub(crate) kicked: bool,
@@ -825,7 +825,7 @@ pub(crate) struct Player {
     /// How many instant and sorcery spells this player has cast this turn (turn-scoped; reset
     /// each turn at untap, 0 if none) — Rionya, Fire Dancer's "X is one plus the number of
     /// instant and sorcery spells you've cast this turn." Feeds
-    /// [`Amount::OnePlusInstantsAndSorceriesCastThisTurn`]. A copied spell doesn't bump this —
+    /// [`Amount::InstantsAndSorceriesCastThisTurn`]. A copied spell doesn't bump this —
     /// same "cast" boundary as `instant_or_sorcery_cast_this_turn` above.
     pub(crate) instants_and_sorceries_cast_this_turn: u32,
     /// Whether this player may cast spells this turn as though they had flash (turn-scoped;

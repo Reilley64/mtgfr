@@ -26,5 +26,6 @@ target = { permanent = "nonland" }
 # then draws two cards.
 [[abilities.effects]]
 type = "draw"
-mode = "target_owner"
+mode = "cards"
+who = "targets_owner"
 count = 2

@@ -1,4 +1,4 @@
-import { type Document, html } from "foldkit/html";
+import { type Document, type Html, html } from "foldkit/html";
 import { type ViewMessage as BoardViewMessage, view as boardView } from "./board";
 import { parseDeckIdParam, playDeckAccess } from "./deck-id";
 import type { AppChromeMeta } from "./domain/ui/app-version";
@@ -62,15 +62,18 @@ function nav(model: Model) {
 }
 
 function shell(model: Model, title: string, body: string) {
-  return shellFrame(h, {
-    atmosphere: "shell",
-    title,
-    chrome: chromeMeta(model),
-    stage: h.section(
-      [h.Class("mx-auto flex max-w-[960px] flex-col gap-md")],
-      [h.p([h.Class("m-0 text-body text-snow/80")], [body])],
-    ),
-  });
+  return surface(
+    "shell",
+    shellFrame(h, {
+      atmosphere: "shell",
+      title,
+      chrome: chromeMeta(model),
+      stage: h.section(
+        [h.Class("mx-auto flex max-w-[var(--size-shell-content-max)] flex-col gap-md")],
+        [h.p([h.Class("m-0 text-body text-snow/80")], [body])],
+      ),
+    }),
+  );
 }
 
 function toParentDeckListMessage(message: DeckList.ViewMessage): Message {
@@ -145,175 +148,196 @@ function boardMount(model: Model) {
   const game = model.game;
 
   if (game != null) {
-    return h.submodel({
-      slotId: "board",
-      model: { board: game.board, fold: game, tableId, connected: game.connected },
-      view: boardView,
-      toParentMessage: toParentBoardMessage,
-    });
+    return surface(
+      "board",
+      h.submodel({
+        slotId: "board",
+        model: { board: game.board, fold: game, tableId, connected: game.connected },
+        view: boardView,
+        toParentMessage: toParentBoardMessage,
+      }),
+    );
   }
 
-  return h.main(
-    [h.Class("min-h-screen bg-forest-floor text-snow"), h.DataAttribute("testid", "board-mount")],
-    [
-      nav(model),
-      h.section(
-        [h.Class("mx-auto flex max-w-[960px] flex-col gap-md p-xxl")],
-        [
-          h.h1([h.Class("m-0 text-title text-lichen")], ["Board"]),
-          h.p(
-            [h.Class("m-0 text-body text-snow/80")],
-            [tableId == null ? "Board mount point ready." : `Board mount point for table ${tableId}.`],
-          ),
-        ],
-      ),
-    ],
+  return surface(
+    "board",
+    h.main(
+      [h.Class("min-h-screen bg-forest-floor text-snow"), h.DataAttribute("testid", "board-mount")],
+      [
+        nav(model),
+        h.section(
+          [h.Class("mx-auto flex max-w-[var(--size-shell-content-max)] flex-col gap-md p-xxl")],
+          [
+            h.h1([h.Class("m-0 text-title text-lichen")], ["Board"]),
+            h.p(
+              [h.Class("m-0 text-body text-snow/80")],
+              [tableId == null ? "Board mount point ready." : `Board mount point for table ${tableId}.`],
+            ),
+          ],
+        ),
+      ],
+    ),
   );
+}
+
+/** The pregame table surface, shared by `PregameTableRoute` and `GameTableRoute`. */
+function lobbyTable(model: Model): Html {
+  return surface(
+    "lobby-table",
+    h.submodel({
+      slotId: "lobby-table",
+      model: model.lobby,
+      view: Lobby.view,
+      viewInputs: {
+        decks: model.decks.list.decks,
+        decksLoading: model.decks.list.loading,
+        knownCommanders: model.decks.list.knownCommanders,
+        chrome: chromeMeta(model),
+        surface: "table",
+        username: model.session.me?.username ?? "",
+        meGravatarHash: model.session.meGravatarHash,
+        accountMenu: model.accountMenu,
+      },
+      toParentMessage: toParentLobbyMessage,
+    }),
+  );
+}
+
+/** Wraps a route's body in a keyed, layout-invisible element so snabbdom treats a different surface
+ *  as a different node instead of patching the outgoing route's DOM into the incoming one.
+ *
+ *  Every shell route roots at `shellFrame`'s `<main>`, so without a key an unkeyed patch reuses the
+ *  same elements across a route change. `h.OnMount` runs on snabbdom's `insert` hook — on element
+ *  creation — so reused elements never start their mounts: after a client-side navigation the deck
+ *  builder's pool never got measured and the deck list's Escape binding never attached. The key is
+ *  the surface (the submodel slot), not the route: `/play/:id` swaps lobby for board under one tag,
+ *  and those are different surfaces. */
+function surface(key: string, body: Html): Html {
+  return h.keyed("div")(key, [h.Class("contents")], [body]);
 }
 
 function routeBody(model: Model) {
   if (isProtectedRoute(model.route) && (!model.sessionLoaded || model.session.me == null)) {
     // Spec: no persistent nav chrome. Blank gate until session resolves (avoids Play/Sign in flash).
-    return h.main([h.Class("min-h-screen bg-forest-floor"), h.DataAttribute("testid", "session-gate")], []);
+    return surface(
+      "session-gate",
+      h.main([h.Class("min-h-screen bg-forest-floor"), h.DataAttribute("testid", "session-gate")], []),
+    );
   }
 
   return (() => {
     switch (model.route._tag) {
       case "HomeRoute":
-        return h.submodel({
-          slotId: "deck-list",
-          model: model.decks.list,
-          view: DeckList.view,
-          viewInputs: {
-            username: model.session.me?.username ?? "",
-            meGravatarHash: model.session.meGravatarHash,
-            chrome: chromeMeta(model),
-            accountMenu: model.accountMenu,
-          },
-          toParentMessage: toParentDeckListMessage,
-        });
+        return surface(
+          "deck-list",
+          h.submodel({
+            slotId: "deck-list",
+            model: model.decks.list,
+            view: DeckList.view,
+            viewInputs: {
+              username: model.session.me?.username ?? "",
+              meGravatarHash: model.session.meGravatarHash,
+              chrome: chromeMeta(model),
+              accountMenu: model.accountMenu,
+            },
+            toParentMessage: toParentDeckListMessage,
+          }),
+        );
       case "LoginRoute":
-        return h.submodel({
-          slotId: "auth",
-          model: model.auth,
-          view: Auth.view,
-          viewInputs: chromeMeta(model),
-          toParentMessage: (message) => GotAuthMessage({ message }),
-        });
+        return surface(
+          "auth",
+          h.submodel({
+            slotId: "auth",
+            model: model.auth,
+            view: Auth.view,
+            viewInputs: chromeMeta(model),
+            toParentMessage: (message) => GotAuthMessage({ message }),
+          }),
+        );
       case "LeaderboardRoute":
-        return h.submodel({
-          slotId: "leaderboard",
-          model: model.leaderboard,
-          view: Leaderboard.view,
-          viewInputs: {
-            username: model.session.me?.username ?? "",
-            meGravatarHash: model.session.meGravatarHash,
-            chrome: chromeMeta(model),
-            accountMenu: model.accountMenu,
-          },
-          toParentMessage: toParentLeaderboardMessage,
-        });
+        return surface(
+          "leaderboard",
+          h.submodel({
+            slotId: "leaderboard",
+            model: model.leaderboard,
+            view: Leaderboard.view,
+            viewInputs: {
+              username: model.session.me?.username ?? "",
+              meGravatarHash: model.session.meGravatarHash,
+              chrome: chromeMeta(model),
+              accountMenu: model.accountMenu,
+            },
+            toParentMessage: toParentLeaderboardMessage,
+          }),
+        );
       case "CoverageRoute":
-        return h.submodel({
-          slotId: "coverage",
-          model: model.coverage,
-          view: Coverage.view,
-          viewInputs: {
-            username: model.session.me?.username ?? "",
-            meGravatarHash: model.session.meGravatarHash,
-            chrome: chromeMeta(model),
-            accountMenu: model.accountMenu,
-          },
-          toParentMessage: toParentCoverageMessage,
-        });
+        return surface(
+          "coverage",
+          h.submodel({
+            slotId: "coverage",
+            model: model.coverage,
+            view: Coverage.view,
+            viewInputs: {
+              username: model.session.me?.username ?? "",
+              meGravatarHash: model.session.meGravatarHash,
+              chrome: chromeMeta(model),
+              accountMenu: model.accountMenu,
+            },
+            toParentMessage: toParentCoverageMessage,
+          }),
+        );
       case "NewDeckRoute":
-        return h.submodel({
-          slotId: "deck-builder",
-          model: model.decks.builder,
-          view: DeckBuilder.view,
-          viewInputs: {
-            chrome: chromeMeta(model),
-            username: model.session.me?.username ?? "",
-            meGravatarHash: model.session.meGravatarHash,
-            accountMenu: model.accountMenu,
-          },
-          toParentMessage: toParentDeckBuilderMessage,
-        });
       case "DeckRoute":
-        return h.submodel({
-          slotId: "deck-builder",
-          model: model.decks.builder,
-          view: DeckBuilder.view,
-          viewInputs: {
-            chrome: chromeMeta(model),
-            username: model.session.me?.username ?? "",
-            meGravatarHash: model.session.meGravatarHash,
-            accountMenu: model.accountMenu,
-          },
-          toParentMessage: toParentDeckBuilderMessage,
-        });
+        return surface(
+          "deck-builder",
+          h.submodel({
+            slotId: "deck-builder",
+            model: model.decks.builder,
+            view: DeckBuilder.view,
+            viewInputs: {
+              chrome: chromeMeta(model),
+              username: model.session.me?.username ?? "",
+              meGravatarHash: model.session.meGravatarHash,
+              accountMenu: model.accountMenu,
+            },
+            toParentMessage: toParentDeckBuilderMessage,
+          }),
+        );
       case "PlayRoute": {
         if (model.game?.active === true) return boardMount(model);
         const deckId = parseDeckIdParam(model.route.deckId);
         const access = playDeckAccess(deckId, model.decks.list.decks, model.decks.list.loading, model.decks.list.error);
         if (access === "missing") return shell(model, "Not found", `No Foldkit route for ${model.currentPath}.`);
-        return h.submodel({
-          slotId: "lobby-entry",
-          model: model.lobby,
-          view: Lobby.view,
-          viewInputs: {
-            decks: model.decks.list.decks,
-            decksLoading: model.decks.list.loading,
-            knownCommanders: model.decks.list.knownCommanders,
-            chrome: chromeMeta(model),
-            surface: "entry",
-            username: model.session.me?.username ?? "",
-            meGravatarHash: model.session.meGravatarHash,
-            accountMenu: model.accountMenu,
-          },
-          toParentMessage: toParentLobbyMessage,
-        });
+        return surface(
+          "lobby-entry",
+          h.submodel({
+            slotId: "lobby-entry",
+            model: model.lobby,
+            view: Lobby.view,
+            viewInputs: {
+              decks: model.decks.list.decks,
+              decksLoading: model.decks.list.loading,
+              knownCommanders: model.decks.list.knownCommanders,
+              chrome: chromeMeta(model),
+              surface: "entry",
+              username: model.session.me?.username ?? "",
+              meGravatarHash: model.session.meGravatarHash,
+              accountMenu: model.accountMenu,
+            },
+            toParentMessage: toParentLobbyMessage,
+          }),
+        );
       }
       case "PregameTableRoute": {
         if (model.game?.active === true) return boardMount(model);
         const deckId = parseDeckIdParam(model.route.deckId);
         const access = playDeckAccess(deckId, model.decks.list.decks, model.decks.list.loading, model.decks.list.error);
         if (access === "missing") return shell(model, "Not found", `No Foldkit route for ${model.currentPath}.`);
-        return h.submodel({
-          slotId: "lobby-table",
-          model: model.lobby,
-          view: Lobby.view,
-          viewInputs: {
-            decks: model.decks.list.decks,
-            decksLoading: model.decks.list.loading,
-            knownCommanders: model.decks.list.knownCommanders,
-            chrome: chromeMeta(model),
-            surface: "table",
-            username: model.session.me?.username ?? "",
-            meGravatarHash: model.session.meGravatarHash,
-            accountMenu: model.accountMenu,
-          },
-          toParentMessage: toParentLobbyMessage,
-        });
+        return lobbyTable(model);
       }
       case "GameTableRoute":
         if (model.game?.active === true) return boardMount(model);
-        return h.submodel({
-          slotId: "lobby-table",
-          model: model.lobby,
-          view: Lobby.view,
-          viewInputs: {
-            decks: model.decks.list.decks,
-            decksLoading: model.decks.list.loading,
-            knownCommanders: model.decks.list.knownCommanders,
-            chrome: chromeMeta(model),
-            surface: "table",
-            username: model.session.me?.username ?? "",
-            meGravatarHash: model.session.meGravatarHash,
-            accountMenu: model.accountMenu,
-          },
-          toParentMessage: toParentLobbyMessage,
-        });
+        return lobbyTable(model);
       case "NotFoundRoute":
         return shell(model, "Not found", `No Foldkit route for ${model.route.path}.`);
       default: {

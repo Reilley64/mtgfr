@@ -1453,7 +1453,7 @@ impl Game {
 
     /// Queue a self-referential trigger: `source` is both the event's subject and the
     /// ability's controller (via ownership). Only used for `Trigger::Etb` (see its two call
-    /// sites): the entering permanent's own `Amount::X`/`Amount::HalfX` reads (The Goose
+    /// sites): the entering permanent's own `Amount::X` reads (The Goose
     /// Mother's "create half X Food tokens", Fractal Harness's "put X +1/+1 counters on
     /// [the token it creates]") resolve against [`Permanent::entered_with_x`], its locked-in
     /// cast `{X}` (CR 601.2b/107.3i) — the same value [`Game::ability_source_x`] returns for a
@@ -3094,13 +3094,7 @@ impl Game {
                             controller: scope,
                         },
                     ) => {
-                        let entering_controller = self.controller_of(entering);
-                        let scope_matches = match scope {
-                            EnterController::You => entering_controller == controller,
-                            EnterController::Opponent => entering_controller != controller,
-                            EnterController::AnyPlayer => true,
-                        };
-                        scope_matches
+                        scope.accepts(self.controller_of(entering), controller)
                             && self.permanent_matches(&filter, entering, controller, Some(id))
                     }
                     _ => false,
@@ -3144,11 +3138,9 @@ impl Game {
                     filter,
                     controller: scope,
                 }) => {
-                    let scope_matches = match scope {
-                        EnterController::You | EnterController::AnyPlayer => true,
-                        EnterController::Opponent => false,
-                    };
-                    scope_matches
+                    // The self-fire's actor *is* the watcher, so an `opponent`-scoped
+                    // constellation never sees its own entry.
+                    scope.accepts(controller, controller)
                         && self.permanent_matches(&filter, entering, controller, Some(entering))
                 }
                 _ => false,
@@ -3389,11 +3381,7 @@ impl Game {
                         nth_each_turn,
                         from_hand,
                     }) => {
-                        let caster_matches = match caster {
-                            CasterScope::You => spell_controller == controller,
-                            CasterScope::Opponent => spell_controller != controller,
-                            CasterScope::AnyPlayer => true,
-                        };
+                        let caster_matches = caster.accepts(spell_controller, controller);
                         // ponytail: only `SpellFilter::HasXInCost` gets its own tally
                         //   (`x_spells_cast_this_turn`) — every other filter still falls back to
                         //   the whole-turn `spells_cast_this_turn`, which is correct for the
@@ -3464,11 +3452,9 @@ impl Game {
                 .functional_abilities(id)
                 .iter()
                 .filter(|a| match a.timing {
-                    Timing::Triggered(Trigger::ActivateAbility { caster }) => match caster {
-                        CasterScope::You => activator == controller,
-                        CasterScope::Opponent => activator != controller,
-                        CasterScope::AnyPlayer => true,
-                    },
+                    Timing::Triggered(Trigger::ActivateAbility { caster }) => {
+                        caster.accepts(activator, controller)
+                    }
                     _ => false,
                 })
                 .filter(|a| {
@@ -3579,7 +3565,7 @@ impl Game {
     /// [`Event::NextCastTriggerConsumed`] before its `TriggerGroup` is queued, CR 603.7's "next".
     /// A sibling of [`Self::fire_delayed_triggers`] (delayed-until-a-*step*) but event-armed
     /// rather than step-armed, hence its own drain rather than overloading `delayed_triggers.
-    /// scheduled`. `then`'s `Amount::X`/`Amount::HalfXRoundedDown` are filled from the triggering
+    /// scheduled`. `then`'s `Amount::X` reads are filled from the triggering
     /// cast's own chosen `{X}` via [`TriggerContext::cast_x`], same CR 603.4 last-known-
     /// information shape [`Self::queue_cast_spell_triggers`] already uses.
     pub(crate) fn fire_next_cast_triggers(&mut self, events: &mut Vec<Event>) {
@@ -3637,7 +3623,7 @@ impl Game {
                     abilities: vec![Ability {
                         timing: Timing::Triggered(Trigger::CastSpell {
                             filter,
-                            caster: CasterScope::You,
+                            caster: WatchedPlayer::You,
                             nth_each_turn: None,
                             from_hand: false,
                         }),
@@ -3791,12 +3777,8 @@ impl Game {
                         drawer: scope,
                         nth_each_turn,
                     }) => {
-                        let drawer_matches = match scope {
-                            CasterScope::You => drawer == controller,
-                            CasterScope::Opponent => drawer != controller,
-                            CasterScope::AnyPlayer => true,
-                        };
-                        drawer_matches && nth_each_turn.is_none_or(|n| nth == u32::from(n))
+                        scope.accepts(drawer, controller)
+                            && nth_each_turn.is_none_or(|n| nth == u32::from(n))
                     }
                     _ => false,
                 })
@@ -4391,6 +4373,15 @@ impl Game {
             Condition::SpellSacrificedToCast => ctx
                 .source
                 .is_some_and(|source| self.spell_sacrifice_count(source) > 0),
+            // Rite of Replication's "If this spell was kicked" (CR 702.33d) and Sulfurous Blast's
+            // "If you cast this spell during your main phase" — both read the resolving spell's own
+            // cast record off the source, like the condition above.
+            Condition::SpellWasKicked => ctx
+                .source
+                .is_some_and(|source| self.spell_was_kicked(source)),
+            Condition::SpellCastDuringMainPhase => ctx
+                .source
+                .is_some_and(|source| self.spell_cast_during_main_phase(source)),
             // Dragon Whelp: "If this ability has been activated four or more times this turn" —
             // counts this turn's `once_per_turn.activated` entries for the source (every activated
             // ability records one, not just a `once_each_turn`-capped one).
@@ -5467,6 +5458,7 @@ mod tests {
         Ability {
             timing: Timing::Triggered(trigger),
             effect: Effect::Draw(DrawEffect::Cards {
+                who: PlayerSet::You,
                 count: Amount::Fixed(1),
             }),
             optional: false,
@@ -5612,7 +5604,7 @@ mod tests {
                 "Your Cast Source",
                 leak_abilities(vec![test_trigger_ability(Trigger::CastSpell {
                     filter: SpellFilter::AllSpells,
-                    caster: CasterScope::You,
+                    caster: WatchedPlayer::You,
                     nth_each_turn: None,
                     from_hand: false,
                 })]),
@@ -5625,7 +5617,7 @@ mod tests {
                 "Opponent Cast Source",
                 leak_abilities(vec![test_trigger_ability(Trigger::CastSpell {
                     filter: SpellFilter::AllSpells,
-                    caster: CasterScope::Opponent,
+                    caster: WatchedPlayer::Opponent,
                     nth_each_turn: None,
                     from_hand: false,
                 })]),

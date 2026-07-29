@@ -479,37 +479,29 @@ impl Game {
                 filter,
                 include_planeswalkers,
             } => {
-                // `Amount::IfSpellKicked` (CR 702.33d) reads the resolving *spell's* own kicked
-                // flag, not any one creature's — pick the kicked/unkicked branch once here
-                // against the ability's true `source`, before the per-creature substitution
-                // below stands a creature in for `source` (needed for `Amount::SourcePower`,
-                // Wave of Reckoning's "equal to its power") and `spell_was_kicked` on a creature
-                // id would silently read false (Breath of Darigaaz, kicked, would otherwise
-                // always resolve its "else" branch). Every other `Amount` variant is unaffected.
+                // An `Amount::IfCondition` here reads the resolving *spell's* own record — its
+                // kicked flag (CR 702.33d, Breath of Darigaaz) or its cast timing (Sulfurous
+                // Blast) — not any one creature's, so the branch is picked once here against the
+                // ability's true `source`, before the per-creature substitution below stands a
+                // creature in for `source` (needed for `Amount::SourcePower`, Wave of Reckoning's
+                // "equal to its power") and the condition would silently read false. The chosen
+                // arm still resolves per creature, so `Fixed` and `SourcePower` inside it behave
+                // as they would anywhere else.
                 let amount = match amount {
-                    Amount::IfSpellKicked { then, else_ } => {
-                        if self.spell_was_kicked(source) {
-                            *then
-                        } else {
-                            *else_
-                        }
-                    }
-                    // Sulfurous Blast's "If you cast this spell during your main phase... instead"
-                    // reads the resolving *spell's* own cast-timing flag, not any one creature's —
-                    // same "pick it once against the true source" reasoning as `IfSpellKicked`
-                    // above.
-                    Amount::IfSpellCastDuringMainPhase { then, else_ } => {
-                        if self.spell_cast_during_main_phase(source) {
-                            *then
-                        } else {
-                            *else_
+                    Amount::IfCondition {
+                        condition,
+                        then,
+                        else_,
+                    } => {
+                        let ctx = TriggerContext::of(self.controller_of(source));
+                        match self.ability_condition_holds(condition, source, ctx) {
+                            true => *then,
+                            false => *else_,
                         }
                     }
                     // Disaster Radius's "X is the revealed card's mana value" (CR 601.2g) reads
                     // the resolving *spell's* own reveal-cost record, not any one creature's —
-                    // same "pick it once against the true source" reasoning as `IfSpellKicked`
-                    // above, before the per-creature substitution below stands a creature in for
-                    // `source`.
+                    // same "pick it once against the true source" reasoning as the branch above.
                     Amount::RevealedCreatureManaValue => {
                         Amount::Fixed(self.revealed_creature_mana_value(source) as i32)
                     }
@@ -597,85 +589,35 @@ impl Game {
                     })
                     .collect()
             }
-
-            // Breath of Darigaaz's "... and each player": real damage to every player, the
-            // ability's own controller included — mirrors `DealDamage`'s `Target::Player` arm
-            // (life loss + `DamageDealtToPlayer` + lifelink), fanned out once per living player
-            // instead of once for a single chosen target. `amount` doesn't vary per player (no
-            // pool card reads player-specific state here), so it's resolved once, shared by
-            // every player's share.
-            DamageEffect::EachPlayer { amount } => {
-                let amount = self.resolve_amount(amount, controller, source, target, x);
-                self.living_players()
-                    .flat_map(|player| {
-                        let (mut events, amount) =
-                            self.player_damage_events(source, player, amount);
-                        // 0 damage is never dealt (CR 120.8) — no marker, no trigger.
-                        if amount > 0 {
-                            events.push(Event::DamageDealtToPlayer {
-                                source,
-                                player,
-                                amount,
-                            });
-                            // Lifelink (CR 702.15e): a source dealing damage to multiple players
-                            // gains life separately for each.
-                            events.extend(self.lifelink_gain(source, amount));
-                        }
-                        events
-                    })
-                    .collect()
-            }
-            // Advanced Reconstruction / Fateful Tempest: same per-player damage events as
-            // `EachPlayer` above, but only to living opponents (CR 102.3) — the controller is
-            // carved out.
-            DamageEffect::EachOpponent { amount } => {
-                let amount = self.resolve_amount(amount, controller, source, target, x);
-                self.living_players()
-                    .filter(|&player| player != controller)
-                    .flat_map(|player| {
-                        let (mut events, amount) =
-                            self.player_damage_events(source, player, amount);
-                        // 0 damage is never dealt (CR 120.8) — no marker, no trigger.
-                        if amount > 0 {
-                            events.push(Event::DamageDealtToPlayer {
-                                source,
-                                player,
-                                amount,
-                            });
-                            // Lifelink (CR 702.15e): a source dealing damage to multiple players
-                            // gains life separately for each.
-                            events.extend(self.lifelink_gain(source, amount));
-                        }
-                        events
-                    })
-                    .collect()
-            }
-            // Hydra Omnivore's splash: same per-player damage events as `DamageEachPlayer` above,
-            // but only to opponents of the ability's controller (CR 102.3) other than the one who
-            // already took the combat damage — that player is baked in at trigger placement.
-            DamageEffect::EachOtherOpponent { amount, damaged } => {
-                let damaged = damaged.expect("the damaged opponent is filled in at placement");
-                let amount = self.resolve_amount(amount, controller, source, target, x);
-                self.living_players()
-                    .filter(|&player| player != controller && player != damaged)
-                    .flat_map(|player| {
-                        let (mut events, amount) =
-                            self.player_damage_events(source, player, amount);
-                        // 0 damage is never dealt (CR 120.8) — no marker, no trigger.
-                        if amount > 0 {
-                            events.push(Event::DamageDealtToPlayer {
-                                source,
-                                player,
-                                amount,
-                            });
-                            // Lifelink (CR 702.15e): a source dealing damage to multiple players
-                            // gains life separately for each.
-                            events.extend(self.lifelink_gain(source, amount));
-                        }
-                        events
-                    })
-                    .collect()
-            }
+            // Every damage the pool aims at seats: Psionic Blast's "2 damage to you", Pestilence's
+            // "each player", Ankh of Mishra's "that land's controller", Hydra Omnivore's "each
+            // other opponent" — one fan-out, with `who` naming the seats. Mirrors `DealDamage`'s
+            // `Target::Player` arm (life loss + `DamageDealtToPlayer` + lifelink) once per
+            // recipient.
+            DamageEffect::ToPlayers { who, amount } => self
+                .players_in(who, controller, target)
+                .into_iter()
+                .flat_map(|player| {
+                    // A player-relative amount counts the seat being damaged: Karma's "Swamps
+                    // *they* control", Black Vise's "cards in *their* hand", Power Surge's "lands
+                    // *they* controlled". Resolved per recipient, so a fan-out bills each seat for
+                    // its own things.
+                    let amount = self.resolve_amount(amount, player, source, target, x);
+                    let (mut events, amount) = self.player_damage_events(source, player, amount);
+                    // 0 damage is never dealt (CR 120.8) — no marker, no trigger.
+                    if amount > 0 {
+                        events.push(Event::DamageDealtToPlayer {
+                            source,
+                            player,
+                            amount,
+                        });
+                        // Lifelink (CR 702.15e): a source dealing damage to multiple players gains
+                        // life separately for each.
+                        events.extend(self.lifelink_gain(source, amount));
+                    }
+                    events
+                })
+                .collect(),
             // Marauding Raptor: 2 damage to the permanent that just entered (context), not a
             // chosen target. `then_if_subtype`/`then` (the Dinosaur pump rider) are handled by
             // the caller in `run` — this leaf only deals the damage.
@@ -696,114 +638,6 @@ impl Game {
                     return Vec::new();
                 }
                 self.creature_damage_events(source, object, amount).0
-            }
-
-            // Ankh of Mishra: 2 damage to the controller of the land that just entered — the
-            // player twin of `ToEnteringPermanent` above, off the same context slot. `controller_of`
-            // (not `owner_of`) is the printed word, so a land under a Confiscate bills the thief.
-            DamageEffect::ToEnteringPermanentController { entering, amount } => {
-                let object = entering.expect("the entering permanent is filled in at placement");
-                let recipient = self.controller_of(object);
-                let amount = self.resolve_amount(amount, controller, source, target, x);
-                let (mut events, amount) = self.player_damage_events(source, recipient, amount);
-                // 0 damage is never dealt (CR 120.8) — no marker, no trigger.
-                if amount > 0 {
-                    events.push(Event::DamageDealtToPlayer {
-                        source,
-                        player: recipient,
-                        amount,
-                    });
-                    // Lifelink (CR 702.15/119.3) triggers on ANY damage the source deals.
-                    events.extend(self.lifelink_gain(source, amount));
-                }
-                events
-            }
-
-            // Copper Tablet: 1 damage to the player whose upkeep this is, baked in at trigger
-            // placement off `TriggerContext::active_player` — same shape as the arm above, with
-            // the recipient arriving as a player rather than as a permanent to ask.
-            DamageEffect::ToTriggeringPlayer { player, amount } => {
-                let recipient = player.expect("the triggering player is filled in at placement");
-                // Karma's "damage to that player equal to the number of Swamps *they* control" and
-                // Power Surge's "lands *they* controlled": a player-relative amount on this effect
-                // reads the recipient, not the source's controller.
-                // ponytail: no `who` axis on `Amount` — every "deals damage to that player equal
-                // to …" the pool prints counts that same player's things. Add one if a card ever
-                // bills the triggering player for something *you* control.
-                let amount = self.resolve_amount(amount, recipient, source, target, x);
-                let (mut events, amount) = self.player_damage_events(source, recipient, amount);
-                // 0 damage is never dealt (CR 120.8) — no marker, no trigger.
-                if amount > 0 {
-                    events.push(Event::DamageDealtToPlayer {
-                        source,
-                        player: recipient,
-                        amount,
-                    });
-                    // Lifelink (CR 702.15/119.3) triggers on ANY damage the source deals.
-                    events.extend(self.lifelink_gain(source, amount));
-                }
-                events
-            }
-
-            // Creature Bond: damage to whoever controlled the Aura's host when it died, both the
-            // recipient and (via `Amount::DyingEnchantedCreatureToughness`) the amount baked in at
-            // trigger placement — same shape as the arm above.
-            DamageEffect::ToDyingEnchantedCreaturesController { player, amount } => {
-                let recipient =
-                    player.expect("the dying host's controller is filled in at placement");
-                let amount = self.resolve_amount(amount, controller, source, target, x);
-                let (mut events, amount) = self.player_damage_events(source, recipient, amount);
-                // 0 damage is never dealt (CR 120.8) — no marker, no trigger.
-                if amount > 0 {
-                    events.push(Event::DamageDealtToPlayer {
-                        source,
-                        player: recipient,
-                        amount,
-                    });
-                    // Lifelink (CR 702.15/119.3) triggers on ANY damage the source deals.
-                    events.extend(self.lifelink_gain(source, amount));
-                }
-                events
-            }
-
-            // Real damage to the ability's own controller — mirrors `DealDamage`'s
-            // `Target::Player` arm, substituting `controller` for the chosen target.
-            DamageEffect::ToSelf { amount } => {
-                let amount = self.resolve_amount(amount, controller, source, target, x);
-                let (mut events, amount) = self.player_damage_events(source, controller, amount);
-                // 0 damage is never dealt (CR 120.8) — no marker, no trigger.
-                if amount > 0 {
-                    events.push(Event::DamageDealtToPlayer {
-                        source,
-                        player: controller,
-                        amount,
-                    });
-                    // Lifelink (CR 702.15/119.3) triggers on ANY damage the source deals.
-                    events.extend(self.lifelink_gain(source, amount));
-                }
-                events
-            }
-            // Lash Out's win rider: real damage to the *target creature's* controller, not the
-            // ability's own controller — the player twin of `DealDamageToSelf` (CR 120.1), routed
-            // through the same `DamageDealtToPlayer` life-loss + damage-watch events. The target is
-            // the enclosing `Sequence`'s shared creature; `controller_of` follows `Object::Moved`,
-            // so it still resolves even after the preceding 4-damage step killed the creature.
-            DamageEffect::ToTargetController { amount } => {
-                let creature = expect_object_target(target, "deal damage to target's controller");
-                let recipient = self.controller_of(creature);
-                let amount = self.resolve_amount(amount, controller, source, target, x);
-                let (mut events, amount) = self.player_damage_events(source, recipient, amount);
-                // 0 damage is never dealt (CR 120.8) — no marker, no trigger.
-                if amount > 0 {
-                    events.push(Event::DamageDealtToPlayer {
-                        source,
-                        player: recipient,
-                        amount,
-                    });
-                    // Lifelink (CR 702.15/119.3) triggers on ANY damage the source deals.
-                    events.extend(self.lifelink_gain(source, amount));
-                }
-                events
             }
         }
     }

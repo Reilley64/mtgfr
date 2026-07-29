@@ -42,7 +42,8 @@ Three words: **polished, snappy, focused**.
 2. **The board is the hero; chrome recedes.** Auth, lobby, and builder are quiet surfaces.
 3. **Readable from across the room.** Whose turn, priority, stack, and "you can act" at a glance.
 4. **Paper-Magic grammar.** Drag to play, tapped is sideways, piles stack, arrows point at targets.
-5. **One vocabulary, every screen.** Same buttons, panels, inputs across all surfaces.
+5. **The table is a space, not a layout.** Tabletop Simulator feel: grab and pan the felt, zoom to read a crowded seat, direct-manipulate the object you can see. The camera is the player's, never the app's.
+6. **One vocabulary, every screen.** Same buttons, panels, inputs across all surfaces.
 
 ## Accessibility & Inclusion
 

@@ -150,7 +150,7 @@ function entrySurface(
           h.div(
             [h.Class("flex flex-col gap-xs")],
             [
-              h.div([h.Class("font-display font-semibold text-title tracking-[-0.02em]")], ["Ready to play?"]),
+              h.div([h.Class("font-display font-semibold text-title tracking-display")], ["Ready to play?"]),
               h.div([h.Class("text-label text-lichen")], ["Host a fresh Commander table with this deck."]),
             ],
           ),
@@ -234,7 +234,7 @@ function seats(model: LobbySlice): Html {
       h.div(
         [
           h.Class(
-            "grid grid-cols-[auto_auto_minmax(7rem,11rem)_minmax(0,1fr)_auto] items-center gap-sm rounded-hud bg-glass-dim px-md py-sm",
+            "group/lobby-seat grid grid-cols-[auto_auto_minmax(7rem,11rem)_minmax(0,1fr)_auto] items-center gap-sm rounded-hud bg-glass-dim px-md py-sm",
           ),
           h.DataAttribute("testid", `lobby-seat-${seat.player}`),
           h.DataAttribute("claimed", seat.claimed ? "1" : "0"),
@@ -247,11 +247,20 @@ function seats(model: LobbySlice): Html {
             gravatarHash: seat.gravatar_hash ?? null,
           }),
           h.span(
-            [h.Class(seat.claimed ? "min-w-0 font-semibold" : "min-w-0 text-lichen")],
+            [
+              h.DataAttribute("testid", `lobby-seat-${seat.player}-name`),
+              h.Class(
+                "min-w-0 group-data-[claimed=1]/lobby-seat:font-semibold group-data-[claimed=0]/lobby-seat:text-lichen",
+              ),
+            ],
             [seat.claimed ? (seat.username ?? `Seat ${seat.player + 1}`) : `Seat ${seat.player + 1}`],
           ),
           h.span(
-            [h.Class(seat.claimed ? "min-w-0 text-mist" : "min-w-0 text-lichen")],
+            [
+              h.Class(
+                "min-w-0 group-data-[claimed=1]/lobby-seat:text-mist group-data-[claimed=0]/lobby-seat:text-lichen",
+              ),
+            ],
             [seat.claimed ? (seat.deck_name ?? "—") : "open"],
           ),
           h.span(
@@ -333,7 +342,7 @@ function tableLobby(
           h.span(
             [
               h.DataAttribute("testid", "lobby-table-code"),
-              h.Class("select-text font-display text-display tracking-[0.06em]"),
+              h.Class("select-text font-display text-display tracking-chip"),
             ],
             [model.tableId ?? ""],
           ),
@@ -345,8 +354,10 @@ function tableLobby(
       model.clipboardFallback
         ? input(h, {
             id: "share-code",
+            testId: "lobby-share-code",
+            ariaLabel: "Table code",
             value: model.tableId ?? "",
-            class: "w-[120px] text-chip tracking-[0.06em]",
+            class: "w-[120px] text-chip tracking-chip",
             attrs: [h.Readonly(true)],
           })
         : null,

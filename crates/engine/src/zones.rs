@@ -209,6 +209,28 @@ impl Game {
     /// what's there; milling never sets the empty-draw flag, so it can't cause a loss. Each
     /// milled card mints a new graveyard-object id (`next + i`), matching the arena slots
     /// `apply` will push into.
+    /// Mill `count` cards from each of `players`, in the order given.
+    ///
+    /// Ids are minted in one pass across every seat's batch — [`Game::mill_events`] can't be
+    /// called once per player here, since each call restarts from the same not-yet-applied
+    /// `next_object_id` and the second seat would reuse the first's ids.
+    pub(crate) fn mill_events_for(&self, players: &[PlayerId], count: u32) -> Vec<Event> {
+        let mut next = self.next_object_id();
+        let mut events = Vec::new();
+        for &player in players {
+            let library = self.players[player.0 as usize].library.clone();
+            for &from in library.iter().take(count as usize) {
+                events.push(Event::Milled {
+                    player,
+                    card: next,
+                    from,
+                });
+                next += 1;
+            }
+        }
+        events
+    }
+
     pub(crate) fn mill_events(&self, player: PlayerId, count: u32) -> Vec<Event> {
         let library = self.players[player.0 as usize].library.clone();
         let mut next = self.next_object_id();

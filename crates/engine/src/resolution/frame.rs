@@ -81,7 +81,7 @@ pub(crate) struct ResolutionFrame {
     pub(crate) search_fanout: Option<SearchFanout>,
 }
 
-/// Continuation state for [`SearchScope::AllPlayers`](crate::SearchScope::AllPlayers): the
+/// Continuation state for a multi-seat [`PlayerSet`](crate::PlayerSet) search: the
 /// players still to search (APNAP order) after the one currently paused, plus the fixed
 /// filter/destination/count/overflow every one of their searches restarts with (each player's
 /// own [`PendingChoice::SearchLibrary`](crate::PendingChoice::SearchLibrary) re-pauses/mutates

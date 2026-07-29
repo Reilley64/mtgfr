@@ -37,6 +37,6 @@ target = "creature"
 # That creature's controller draws X cards.
 [[abilities.effects]]
 type = "draw"
-mode = "target_owner"
+mode = "cards"
+who = "targets_controller"
 count = "x"
-controller = true

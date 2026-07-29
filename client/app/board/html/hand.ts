@@ -8,7 +8,7 @@
 
 import { Option } from "effect";
 import { type Attribute, type Html, html } from "foldkit/html";
-import { type CostPip, costPipPlate, costPips } from "~/costPips";
+import { type CostPip, costPips } from "~/costPips";
 import { cardArt } from "~/ui/card-art";
 import type { ActionView, ObjectView, VisibleState, WireCost } from "~/wire/types";
 import { formatMessage } from "../../domain/i18n/message";
@@ -19,6 +19,7 @@ import { HAND_FACE_W } from "../motion/flights";
 import type { HandDragState } from "../submodel";
 import { barZoneAura, byObject, bySection, handTileCaption, modesForObject } from "./actions";
 import { MountHandBarDrag } from "./hand-drag-mount";
+import { pipChip } from "./pip-chip";
 
 const h = html<Message>();
 
@@ -57,19 +58,7 @@ function actionCaption(kind: string): string | undefined {
 }
 
 function costPipView(ms: string, code: string, sizePx: number): Html {
-  return h.span(
-    [
-      h.Class("inline-flex shrink-0 items-center justify-center rounded-full shadow-[0_1px_2px_rgb(0_0_0/0.9)]"),
-      h.Style({
-        width: `${sizePx}px`,
-        height: `${sizePx}px`,
-        "background-color": costPipPlate(code),
-        color: "#111",
-        "font-size": `${Math.round(sizePx * 0.82)}px`,
-      }),
-    ],
-    [h.i([h.Class(`ms ms-${ms}`)], [])],
-  );
+  return pipChip(h, { ms, code, sizePx });
 }
 
 function tile(args: {
@@ -119,14 +108,10 @@ function tile(args: {
     "pointer-events-none absolute top-0 right-0 transition-transform duration-[120ms] ease-state group-hover/hand-tile:[transform:translateY(var(--raise-y))] group-data-[selected=true]/hand-tile:[transform:translateY(var(--raise-y))]";
 
   // The drag source fades so the canvas DragGhost carries the face; inert slots stay non-interactive.
+  // Art chrome is attribute-driven off the tile root (data-drag-source / data-playable).
   const dragSource = playable && action != null && draggingActionId != null && action.id === draggingActionId;
-  const artClass = [
-    "pointer-events-none block touch-none rounded-game object-cover shadow-hand transition-[filter,opacity] duration-[80ms] ease-state",
-    dragSource ? "opacity-25" : "",
-    playable && !dragSource ? "group-hover/hand-tile:brightness-110" : "",
-  ]
-    .filter((v) => v !== "")
-    .join(" ");
+  const artClass =
+    "pointer-events-none block touch-none rounded-game object-cover shadow-hand transition-[filter,opacity] duration-[80ms] ease-state group-data-[drag-source=true]/hand-tile:opacity-25 group-hover/hand-tile:group-data-[playable=true]/hand-tile:brightness-110";
   const pickChrome = discardSelectable || discardSelected;
   const faceChromeClass = [
     "relative origin-bottom rounded-game",
@@ -200,6 +185,7 @@ function tile(args: {
   } else if (discardSelectable && objectId != null && !slotInert) {
     hitAttrs.push(h.Role("button"));
     hitAttrs.push(h.Tabindex(0));
+    hitAttrs.push(h.Attribute("aria-label", `${name} (discard)`));
     hitAttrs.push(h.DataAttribute("discard-cost-id", String(objectId)));
     hitAttrs.push(h.OnClick(DiscardChosen({ ids: [objectId] })));
     hitAttrs.push(
@@ -242,13 +228,7 @@ function tile(args: {
     : h.div(
         [
           h.Class(
-            [
-              "flex items-center justify-center rounded-game bg-forest-shadow p-1 text-center text-caption text-snow shadow-hand transition-[filter,opacity] duration-[80ms] ease-state",
-              dragSource ? "opacity-25" : "",
-              playable && !dragSource ? "group-hover/hand-tile:brightness-110" : "",
-            ]
-              .filter((v) => v !== "")
-              .join(" "),
+            "flex items-center justify-center rounded-game bg-forest-shadow p-1 text-center text-caption text-snow shadow-hand transition-[filter,opacity] duration-[80ms] ease-state group-data-[drag-source=true]/hand-tile:opacity-25 group-hover/hand-tile:group-data-[playable=true]/hand-tile:brightness-110",
           ),
           h.Style(cardBoxStyle),
         ],
@@ -267,6 +247,8 @@ function tile(args: {
       "--hand-z": String(index + 1),
     }),
     h.DataAttribute("hand-index", String(index)),
+    h.DataAttribute("playable", String(playable)),
+    h.DataAttribute("drag-source", String(dragSource)),
   ];
   if (objectId != null) {
     tileAttrs.push(h.DataAttribute("testid", `hand-tile-${objectId}`));

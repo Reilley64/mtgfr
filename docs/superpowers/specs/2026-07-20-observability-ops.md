@@ -82,7 +82,10 @@ or private game state.
 **Self-hosted LGTM** in namespace `observability` (Terraform Helm via `iac/observability.tf`):
 - **Grafana Alloy** — sole ingest path for all telemetry.
 - **Loki** — structured log store (7d retention).
-- **Tempo** — distributed trace store (7d retention).
+- **Tempo** — distributed trace store (7d retention), with the metrics-generator enabled running
+  the `local-blocks` processor so TraceQL metrics (`{...} | rate()`) work in the RED dashboard and
+  Grafana Drilldown > Traces. Generator WAL and RF1 blocks live on the Tempo PVC under
+  `/var/tempo/generator/`.
 - **Prometheus** — metrics (15d retention).
 - **Grafana** — dashboards and trace/log correlation; operator-only via `kubectl port-forward`.
 
@@ -96,6 +99,19 @@ Cluster placement and NetworkPolicy context:
 the BFF proxies to Alloy `faro.receiver`. Session sampling forced to 100%; stale sessions
 (`isSampled=false` in `sessionStorage`) are repaired. `traceparent` propagation is same-origin
 `/api` only. Faro app identity remains `app.name=edh-web`, aligned with `service.name=edh-web`.
+
+Same-origin `/api` requests are made by Effect's `HttpClient` (`client/app/domain/rpc-client.ts`,
+`client/app/domain/lobby/client.ts`), which opens its own span per request and injects that span's
+`traceparent`. `browserTracerLayer` (`client/app/domain/faro/tracer.ts`, merged into
+`client/app/resources.ts`) backs Effect's tracer with the global OTEL provider Faro registers, so
+those spans are real browser spans that Faro ships to Tempo and the injected `traceparent` names a
+span that actually arrives. Without Faro (local dev) the global provider is a no-op, the injected
+`traceparent` is unsampled, and the BFF drops it and becomes the root.
+
+Buffered browser spans are force-flushed when the page hides or unloads (`registerSpanFlushOnHide`,
+registered before `initializeFaro` so it runs ahead of faro-core's own hide flush). The game stream
+`/api/rpc/game/:table/stream` is traced like any other request: Effect's client span ends when the
+response headers arrive, not when the SSE body closes. See Implementation Decisions.
 
 ### BFF (OTEL)
 
@@ -194,13 +210,29 @@ still drives `tracing` / fmt output.
 
 ## Implementation Decisions
 
-- **OTEL propagation pattern:** Faro injects `traceparent` same-origin only; BFF continues it as a
-  span parent when sampled; BFF passes its span to gRPC via `grpcRequestEnv` bag (not Node
+- **OTEL propagation pattern:** the browser injects `traceparent` same-origin only; BFF continues it
+  as a span parent when sampled; BFF passes its span to gRPC via `grpcRequestEnv` bag (not Node
   AsyncLocalStorage) so context survives `runPromise` across the `@effect/rpc` boundary.
 - **Faro unsampled span ignore.** Faro's tracing sampler often marks sessions `NOT_RECORD` while
   the fetch instrumentation still injects a `traceparent` for the non-recording span. Parenting
   BFF spans under an unsampled span leaves Tempo with `<root span not yet received>` orphans.
   The BFF rejects inbound `traceparent` where `traceFlags & 0x01 === 0`.
+- **Effect's tracer must share Faro's provider.** Effect's `HttpClient` opens a span for every
+  request and injects its `traceparent` — always, and always flagged sampled, even with no ambient
+  span and no OTEL configured. Backed by Effect's own tracer that span is exported by nothing:
+  Faro's `fetch` instrumentation never sees these requests (the RPC client binds `globalThis.fetch`
+  at module evaluation, before `initFaro` patches it), and Faro's SDK has no knowledge of Effect
+  spans. The BFF then parents `rpc <path>` under an id that never arrives, the API parents under
+  the BFF, and Tempo holds a rootless trace — `<root span not yet received>` on every RPC call,
+  regardless of navigation, and no browser-origin spans in Tempo at all. `browserTracerLayer`
+  installs `OtelTracer.layerGlobal`, so Effect's request spans *are* Faro's spans. The BFF's
+  sampled-only guard is what makes the Faro-less case degrade cleanly to a BFF-rooted trace.
+- **Browser spans flush on page hide.** faro-core's transport flushes its batch on
+  `visibilitychange: hidden`, but faro-web-tracing wraps a plain OTel `BatchSpanProcessor` (1 s
+  timer, 30-span batch) whose `forceFlush` nothing calls, so spans ending in that last second die
+  with the page and orphan their trace. `registerSpanFlushOnHide` is registered *before*
+  `initializeFaro` so it fires first; `FaroTraceExporter.export` pushes synchronously, so the spans
+  reach the transport buffer in time for Faro's own flush (sent with `keepalive`).
 - **Action traces off observability:** TOON files are on a dedicated PVC, not stdout or Loki.
   Retained on pod prune. PVC names include `instanceId` to avoid collisions across rolling
   Deployments ([production-topology-and-operations](2026-07-20-production-topology-and-operations.md)
@@ -208,6 +240,15 @@ still drives `tracing` / fmt output.
 - **RED dashboard queries traces directly:** Terraform provisions the dashboard through Grafana
   Helm values; panels use Tempo datasource UID `tempo` and TraceQL metrics functions because
   Prometheus does not receive generated spanmetrics in this stack.
+- **TraceQL metrics need the metrics-generator.** The `grafana/tempo` chart ships
+  `tempo.metricsGenerator.enabled: false`, which renders a `tempo.yaml` with no
+  `metrics_generator.storage.path`. Tempo then logs "metrics-generator is not configured", swaps the
+  generator for an idle service, and never joins the generator ring — so every TraceQL metrics query
+  500s with `error finding generators: empty ring`, because the querier serves the recent window
+  (`query_frontend.metrics.query_backend_after`, 15m) from generators. `iac/observability.tf` enables
+  it, lists `local-blocks` in `overrides.defaults.metrics_generator.processors` (a processor a tenant
+  does not ask for is not run), sets `filter_server_spans: false` so client spans count, and
+  `flush_to_storage: true` so queries reach past the live window.
 - **Semantic-convention pin:** the living contract pins OpenTelemetry Semantic Conventions 1.37.0.
   New telemetry families require a design pass before they join the shared dictionary.
 

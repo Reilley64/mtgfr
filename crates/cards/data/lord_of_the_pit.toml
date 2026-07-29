@@ -32,4 +32,4 @@ timing = "upkeep"
 type = "conditional"
 condition = { type = "compare", left = "per_creature_you_control", op = "at_least", right = 2 }
 then = [{ type = "choice", mode = "sacrifice_own", filter = { types = "creature", other = true }, count = 1 }]
-otherwise = [{ type = "damage", mode = "to_self", amount = 7 }]
+otherwise = [{ type = "damage", mode = "to_players", amount = 7 }]

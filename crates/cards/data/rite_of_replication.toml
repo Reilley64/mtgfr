@@ -25,5 +25,5 @@ timing = "spell"
 [[abilities.effects]]
 type = "token"
 mode = "create_copy"
-count = { if_kicked = 5, else = 1 }
+count = { condition = { type = "spell_was_kicked" }, then = 5, else = 1 }
 target = "creature"

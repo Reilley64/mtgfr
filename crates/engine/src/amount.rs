@@ -22,14 +22,6 @@ impl Game {
         match amount {
             Amount::Fixed(n) => n,
             Amount::X => x as i32,
-            // "half X, rounded up" (CR: the round-up default).
-            Amount::HalfX => x.div_ceil(2) as i32,
-            // ponytail: a live read (`x = 0` for every non-spell resolution, see `Amount`'s own
-            // doc) never actually reaches here for `Trigger::YouCastThis` — `fill_cast_x` rewrites
-            // this to `Fixed` at trigger placement (CR 603.4). The arm exists only so this match
-            // stays exhaustive, mirroring `TriggeringSpellManaValue` below.
-            Amount::HalfXRoundedDown => (x / 2) as i32,
-            Amount::TwiceX => 2 * x as i32,
             Amount::PerCreatureYouControl => self.creatures_controlled(controller) as i32,
             Amount::PerCreatureOnBattlefield => self.creatures_on_battlefield() as i32,
             Amount::PerPermanentMatching { filter, zone } => {
@@ -132,16 +124,23 @@ impl Game {
                     self.owner_of(id) == controller && self.controller_of(id) != controller
                 })
                 .count() as i32,
-            Amount::IfCondition { condition, then } => {
+            // Through `ability_condition_holds`, not `condition_holds`, so a source-object
+            // condition (kicked, cast-timing, tapped, counters) reads this effect's own `source`
+            // rather than silently answering false — `TriggerContext` carries no source id.
+            Amount::IfCondition {
+                condition,
+                then,
+                else_,
+            } => {
                 let ctx = TriggerContext {
-                    source: Some(source),
                     target,
                     ..TriggerContext::of(controller)
                 };
-                if !self.condition_holds(condition, ctx) {
-                    return 0;
-                }
-                self.resolve_amount(*then, controller, source, target, x)
+                let taken = match self.ability_condition_holds(condition, source, ctx) {
+                    true => then,
+                    false => else_,
+                };
+                self.resolve_amount(*taken, controller, source, target, x)
             }
             // A placeholder [`contextualize_sacrifice_effect`] must have already rewritten to
             // `Fixed` before the ability reaches the stack — see the variant's own doc comment.
@@ -238,22 +237,6 @@ impl Game {
                 "Amount::AurasYouControlledAttachedToDyingCreature must be contextualized to \
                  Fixed before resolving"
             ),
-            Amount::IfSpellKicked { then, else_ } => {
-                let amount = if self.spell_was_kicked(source) {
-                    *then
-                } else {
-                    *else_
-                };
-                self.resolve_amount(amount, controller, source, target, x)
-            }
-            Amount::IfSpellCastDuringMainPhase { then, else_ } => {
-                let amount = if self.spell_cast_during_main_phase(source) {
-                    *then
-                } else {
-                    *else_
-                };
-                self.resolve_amount(amount, controller, source, target, x)
-            }
             // Orim's Thunder's "that permanent's mana value" — the resolving spell's own clause-0
             // target (the destroyed artifact/enchantment), not this effect's own `target` param
             // (the damage clause's creature).
@@ -262,8 +245,8 @@ impl Game {
                 self.players[controller.0 as usize]
                     .greatest_instant_or_sorcery_mana_value_cast_this_turn as i32
             }
-            Amount::OnePlusInstantsAndSorceriesCastThisTurn => {
-                self.players[controller.0 as usize].instants_and_sorceries_cast_this_turn as i32 + 1
+            Amount::InstantsAndSorceriesCastThisTurn => {
+                self.players[controller.0 as usize].instants_and_sorceries_cast_this_turn as i32
             }
             // CR 303.4: any Aura attached, regardless of controller — unlike
             // `AurasYouControlledAttachedToDyingCreature`, no controller filter and no death
@@ -308,15 +291,23 @@ impl Game {
             Amount::ControllersPoisonCounters => {
                 self.player_counters(controller, PlayerCounterKind::Poison) as i32
             }
-            Amount::Scaled { times, by } => {
-                times * self.resolve_amount(*by, controller, source, target, x)
-            }
-            Amount::Half { of, round_up } => {
-                let n = self.resolve_amount(*of, controller, source, target, x);
-                if round_up { (n + 1) / 2 } else { n / 2 }
-            }
-            Amount::Offset { of, delta } => {
-                (self.resolve_amount(*of, controller, source, target, x) + delta).max(0)
+            Amount::Combine { left, op, right } => {
+                let left = self.resolve_amount(*left, controller, source, target, x);
+                let right = self.resolve_amount(*right, controller, source, target, x);
+                match op {
+                    ArithOp::Add => left + right,
+                    // Floored — see `ArithOp::Subtract`'s own doc (CR 120.8 / CR 107.1b).
+                    ArithOp::Subtract => (left - right).max(0),
+                    ArithOp::Multiply => left * right,
+                    // A card that halves a count never prints a zero divisor, so a `right` of 0
+                    // is an authoring bug — resolve it to 0 rather than panicking mid-resolution.
+                    ArithOp::DivideRoundingDown if right == 0 => 0,
+                    ArithOp::DivideRoundingUp if right == 0 => 0,
+                    ArithOp::DivideRoundingDown => left.div_euclid(right),
+                    ArithOp::DivideRoundingUp => {
+                        left.div_euclid(right) + i32::from(left % right != 0)
+                    }
+                }
             }
             Amount::CardsDiscardedThisWay => self.resolution_frame.cards_discarded_this_way as i32,
             Amount::CreaturesSacrificedThisWay => {

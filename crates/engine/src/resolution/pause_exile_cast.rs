@@ -36,21 +36,12 @@ impl Game {
                 },
             ),
             // Perpetual Timepiece ("Shuffle any number of target cards from your graveyard into
-            // your library", `target_player = false`) and Quandrix Command mode 3 ("Target
-            // player shuffles up to three target cards from their graveyard into their
-            // library", `target_player = true`) both pause on a ShuffleFromGraveyard choice —
-            // the graveyard owner is the ability's controller or the targeted player.
-            Effect::Dig(DigEffect::ShuffleTargetCardsFromGraveyardIntoLibrary {
-                max,
-                target_player,
-            }) => {
-                let owner = if target_player {
-                    let Some(Target::Player(player)) = target else {
-                        panic!("target-player shuffle resolves with a chosen player target");
-                    };
-                    player
-                } else {
-                    controller
+            // your library") and Quandrix Command mode 3 ("Target player shuffles up to three
+            // target cards from their graveyard into their library") both pause on a
+            // ShuffleFromGraveyard choice — `who` names whose graveyard is emptied.
+            Effect::Dig(DigEffect::ShuffleTargetCardsFromGraveyardIntoLibrary { max, who }) => {
+                let Some(owner) = self.sole_player_in(who, controller, target) else {
+                    return;
                 };
                 pending::raise(
                     self,

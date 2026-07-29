@@ -577,31 +577,6 @@ pub enum RestDest {
     Hand,
 }
 
-/// Whose library a [`Effect::Dig(DigEffect::SearchLibrary)`] searches (CR 701.19 — "search their library").
-/// Most search effects are self-tutors/ramp; a few (Path to Exile, Assassin's Trophy) hand the
-/// search to the *affected permanent's* controller as compensation.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-#[cfg_attr(
-    feature = "card-dsl",
-    derive(serde::Deserialize),
-    serde(rename_all = "snake_case")
-)]
-#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
-pub enum SearchScope {
-    /// The ability's own controller (tutors, ramp, fetchlands).
-    #[default]
-    You,
-    /// The ability's shared target's controller (Path to Exile's/Assassin's Trophy's ramp
-    /// rider — read via [`Game::controller_of`], which follows the owner chain even after the
-    /// target has left the battlefield).
-    TargetController,
-    /// Every living player, each searching their own library in turn (Veteran Explorer's "each
-    /// player may search their library…") — one search per player, chained in APNAP order (CR
-    /// 101.4) starting with the active player; each shuffles their own library once (CR 701.19f)
-    /// before the next player's search begins.
-    AllPlayers,
-}
-
 /// Which controller a [`PermanentFilter`] accepts, relative to the effect's controller ("you").
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[cfg_attr(
@@ -1032,106 +1007,6 @@ impl PermanentFilter {
     }
 }
 
-/// Which players a multi-player fan-out effect affects — a sacrifice edict
-/// ([`Effect::Choice(ChoiceEffect::EachPlayerSacrifices)`]) or a player-counter placement
-/// ([`Effect::Counters(CountersEffect::PutCountersOnPlayer)`], "each player/opponent gets a poison counter").
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(
-    feature = "card-dsl",
-    derive(serde::Deserialize),
-    serde(rename_all = "snake_case")
-)]
-#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
-pub enum EdictScope {
-    /// "Each player" (Deadly Brew, Promise of Loyalty) — everyone, the edict's controller included.
-    AllPlayers,
-    /// "Each opponent" (Witch of the Moors, Lorehold Charm) — every player other than the
-    /// controller.
-    EachOpponent,
-    /// "You sacrifice…" (Lich's damage tax) — the effect's own controller alone. A one-seat
-    /// fan-out rather than a separate effect, so the prompt, the count and the shortfall check
-    /// are the ones every other edict already uses.
-    You,
-    /// "Any number of target players" (Priest of Forgotten Gods, CR 601.2c/608.2b: choosing zero
-    /// is legal) — the controller's own chosen subset of living players, picked via a
-    /// [`PendingChoice::ChooseTargetPlayers`](super::PendingChoice::ChooseTargetPlayers) pause
-    /// before the edict's per-player sacrifice fan-out begins.
-    TargetedPlayers,
-    /// "Target opponent" (Venerated Rotpriest's "target opponent gets a poison counter") —
-    /// exactly one opponent, chosen as an ordinary target when the ability goes on the stack (CR
-    /// 601.2c), not a subset picked during resolution like
-    /// [`TargetedPlayers`](Self::TargetedPlayers). The effect carrying it reports
-    /// [`TargetSpec::OpponentPlayer`](super::TargetSpec::OpponentPlayer), so the shared targeting
-    /// machinery picks and legality-checks the player; resolution just reads the chosen target.
-    TargetedOpponent,
-}
-
-/// Who controls a token minted by [`Effect::Token(TokenEffect::Create)`] (CR 111.4's "under its controller's
-/// control" default is the ability's own controller; some effects hand the token to a different
-/// player instead).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-#[cfg_attr(
-    feature = "card-dsl",
-    derive(serde::Deserialize),
-    serde(rename_all = "snake_case")
-)]
-#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
-pub enum TokenController {
-    /// The ability's own controller (the default — most "create a token" effects).
-    #[default]
-    You,
-    /// The controller of this effect's target (Beast Within's "its controller creates a 3/3
-    /// Beast" — the destroyed/exiled permanent's controller, read via [`Game::controller_of`]
-    /// even after the target has left the battlefield, since a moved object's controller chain
-    /// still resolves back to its owner).
-    TargetController,
-    /// One token minted per opponent of the ability's controller, each under that opponent
-    /// (Eccentric Pestfinder's "for each opponent, you create a...").
-    EachOpponent,
-    /// One token minted per opponent of the ability's controller, each under the ability's own
-    /// controller (Eccentric Pestfinder's Turn Stones back face, "For each opponent, you
-    /// create a..."). Distinct from [`TokenController::EachOpponent`], which mints one per
-    /// opponent under *each opponent*. CR 111.4.
-    OnePerOpponent,
-    /// The ability's own chosen Player target (Shadrix Silverquill's begin-combat "Target player
-    /// creates a 2/1 ... Inkling ... token" — CR 111.4). Makes [`Effect::target`](super::Effect::target)
-    /// report [`TargetSpec::Player`](super::TargetSpec::Player) for this `CreateToken`, unlike
-    /// every other `TokenController` variant (which take their recipient from context, not a
-    /// target of their own).
-    TargetPlayer,
-    /// The ability's own chosen Player target, restricted to an opponent (CR "target opponent" —
-    /// Questing Phelddagrif's "Target opponent creates a 1/1 ... Hippo ... token", CR 111.4). The
-    /// opponent-restricted twin of [`TargetPlayer`](Self::TargetPlayer): same [`Target::Player`]
-    /// resolution, narrower [`TargetSpec::OpponentPlayer`](super::TargetSpec::OpponentPlayer)
-    /// legal-target set.
-    TargetOpponent,
-    /// Every player *other than* the ability's chosen Player target — the ability's own
-    /// controller included, the target excluded (Death by Dragons: "Each player other than
-    /// target player creates a 5/5 red Dragon creature token with flying." — CR 111.4). Same
-    /// [`Target::Player`] resolution and [`TargetSpec::Player`](super::TargetSpec::Player) report
-    /// as [`TargetPlayer`](Self::TargetPlayer), but the target is the one player who does *not*
-    /// get a token, not the recipient.
-    EachOtherPlayer,
-}
-
-/// Who acts when a [`Effect::Misc(MiscEffect::ScheduleAtNextUpkeep)`] delayed trigger fires (CR 603.7).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-#[cfg_attr(
-    feature = "card-dsl",
-    derive(serde::Deserialize),
-    serde(rename_all = "snake_case")
-)]
-#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
-pub enum DelayController {
-    /// The scheduling ability's own controller (Arcane Denial's "you draw a card").
-    #[default]
-    You,
-    /// The controller of the scheduling ability's shared target spell (Arcane Denial's "its
-    /// controller may draw up to two cards" — the just-countered spell's controller, read via
-    /// [`Game::controller_of`], which resolves through the [`Object::Moved`] chain even after
-    /// the spell has left the stack for the graveyard).
-    TargetSpellController,
-}
 /// How many distinct targets an effect chooses (CR 601.2c): between `min` and `max`, inclusive.
 /// The default `{1, 1}` is the ubiquitous single mandatory target, so every existing effect is
 /// untouched. `count = N` in TOML is sugar for `{N, N}` (an exact "N target"); an explicit

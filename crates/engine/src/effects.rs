@@ -934,8 +934,7 @@ impl Game {
             | Effect::Choice(ChoiceEffect::MayExileDiscardedNonlandMayPlay { .. })
             | Effect::Choice(ChoiceEffect::MayDiscard { .. })
             | Effect::Choice(ChoiceEffect::MayDrawUnlessPays { .. })
-            | Effect::Choice(ChoiceEffect::TargetPlayerMayDraw { .. })
-            | Effect::Choice(ChoiceEffect::DamagingCreatureControllerMayDraw { .. })
+            | Effect::Choice(ChoiceEffect::MayDraw { .. })
             | Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
             | Effect::Choice(ChoiceEffect::MayDrawUpToThenOpponentMayRepeat { .. })
             | Effect::Choice(ChoiceEffect::MayPutCounterOnCreature)
@@ -1121,8 +1120,8 @@ impl Game {
             Effect::Exile(exile @ ExileEffect::All { .. }) => {
                 self.resolve_exile_all(exile, controller, source, target, x, events)
             }
-            Effect::Mill(MillEffect::MillSelf { count }) => {
-                self.resolve_mill_self(count, controller, source, target, x, events)
+            Effect::Mill(mill @ MillEffect::Mill { .. }) => {
+                self.resolve_mill(mill, controller, source, target, x, events)
             }
             // Same reason: writes `counters_removed_this_way` for the following step to read.
             Effect::Counters(CountersEffect::RemoveCounters {
@@ -1217,7 +1216,12 @@ impl Game {
             // card at a time, pausing on `ChooseDredge` before any draw the controller has an eligible
             // dredger for (accepting mills + returns, declining draws). `answer_choose_dredge` re-enters
             // it for the remaining draws and resumes the deferred sequence once the batch is done.
-            Effect::Draw(DrawEffect::Cards { count }) => {
+            // Only a draw the controller themselves takes routes through dredge — every other
+            // player set mints through the ordinary path, where no seat has a dredge choice yet.
+            Effect::Draw(DrawEffect::Cards {
+                who: PlayerSet::You,
+                count,
+            }) => {
                 let n = self.resolve_count(count, controller, source, target, x);
                 self.draw_with_dredge(controller, n, false, events);
             }
