@@ -226,38 +226,6 @@ impl Game {
                     protected: controller,
                 })
                 .collect(),
-            // Nexus Mentality's other mode: "Remove all counters from target nonland permanent
-            // you control. Draw a card for each counter removed this way."
-            CountersEffect::RemoveAllCountersThenDraw { .. } => {
-                let object = expect_object_target(target, "a remove-all-counters-then-draw effect");
-                let (mut events, removed) = self.remove_all_counters_events(object);
-                events.extend(self.draw_events(controller, removed as u32));
-                events
-            }
-            // Lily Bowen's downshift half: keep exactly one +1/+1 counter, then gain 1 life per
-            // counter actually removed. Zero or one counter present removes zero (guard-return
-            // via the `max(0)` below) and gains nothing.
-            CountersEffect::RemoveAllButOnePlusOneCounterThenGainLife { .. } => {
-                let object = expect_object_target(target, "a cull-and-gain-life effect");
-                let removed = (self.permanent(object).plus_counters - 1).max(0);
-                let mut events = Vec::new();
-                if removed > 0 {
-                    events.push(Event::CountersPlaced {
-                        object,
-                        count: -removed,
-                        source_name,
-                    });
-                }
-                let life = self.life_gain_after_replacements(controller, removed);
-                if life != 0 {
-                    events.push(Event::LifeChanged {
-                        player: controller,
-                        amount: life,
-                        source: Some(source),
-                    });
-                }
-                events
-            }
             // Breena: the attacking player (context) draws one; the controller's chosen creature
             // gets `counters` +1/+1 counters.
             CountersEffect::AttackerDrawsControllerCounters { attacker, counters } => {
@@ -298,7 +266,7 @@ impl Game {
                 events
             }
             // Ingenious Prodigy: "you may remove a +1/+1 counter from it." A negative
-            // `CountersPlaced`, mirroring `RemoveAllCountersThenDraw`'s removal above; guarded so
+            // `CountersPlaced`, mirroring `Game::remove_counters_events`; guarded so
             // a source with none doesn't go negative (unreachable in practice — the enclosing
             // ability's `SourceHasCounters` intervening-if already requires at least one).
             CountersEffect::RemoveCounterFromSelf { kind: None } => {
@@ -345,6 +313,28 @@ impl Game {
             count: n,
             source_name,
         })
+    }
+
+    /// [`CountersEffect::RemoveCounters`] — Nexus Mentality's "Remove all counters from target
+    /// nonland permanent you control", Lily Bowen's "remove all but one +1/+1 counter from it".
+    ///
+    /// Resolves here rather than on the mint path because it writes
+    /// [`ResolutionFrame::counters_removed_this_way`] for a following step to read back through
+    /// [`Amount::CountersRemovedThisWay`], and minting is `&self`. Same reason
+    /// [`Game::resolve_mill_self`] lives off the mint path. The tally is overwritten, not
+    /// accumulated, so a removal that takes nothing off reads as 0 rather than as a stale count.
+    pub(crate) fn resolve_remove_counters(
+        &mut self,
+        target: Option<Target>,
+        all_kinds: bool,
+        keep: u32,
+        events: &mut Vec<Event>,
+    ) {
+        let object = expect_object_target(target, "a remove-counters effect");
+        let (evs, removed) = self.remove_counters_events(object, all_kinds, keep as i32);
+        self.resolution_frame.counters_removed_this_way = removed.max(0) as u32;
+        self.apply_all(&evs);
+        events.extend(evs);
     }
 
     /// Kinetic Ooze's X≥10 rider (CR 601.2c/603.3d): double the +1/+1 counters on each of the

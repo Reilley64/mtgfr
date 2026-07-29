@@ -37,7 +37,7 @@ target = "creature_you_control"
 # Then if that creature has power 7 or greater, this creature becomes prepared.
 [[abilities.effects]]
 type = "conditional"
-condition = { type = "target_power_at_least", at_least = 7 }
+condition = { type = "compare", left = "target_power", op = "at_least", right = 7 }
 then = [
         { type = "misc", mode = "become_prepared" },
     ]

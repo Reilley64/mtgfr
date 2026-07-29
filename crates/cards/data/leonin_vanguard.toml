@@ -40,5 +40,7 @@ mode = "gain"
 amount = 1
 
 [abilities.condition]
-type = "you_control_at_least_creatures"
-count = 3
+type = "compare"
+left = "per_creature_you_control"
+op = "at_least"
+right = 3

@@ -314,6 +314,7 @@ struct PermanentFilterTableSchema {
     controlled_since_turn_start: Option<bool>,
     did_not_attack_this_turn: Option<bool>,
     nonbasic: Option<bool>,
+    basic: Option<bool>,
     name: Option<String>,
     nonlegendary: Option<bool>,
     nonlair: Option<bool>,

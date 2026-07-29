@@ -16,5 +16,7 @@ produces = ["white", "black"]
 subtypes = ["Plains", "Swamp"]
 
 [enters_tapped_unless]
-type = "controls_basic_lands"
-count = 2
+type = "compare"
+left = { per_permanent = { basic = true, controller = "you" } }
+op = "at_least"
+right = 2

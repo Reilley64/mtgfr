@@ -20,12 +20,15 @@ type = "enchantment"
 timing = "each_end_step"
 
 [abilities.condition]
-type = "no_creatures_on_battlefield"
+type = "compare"
+left = "per_creature_on_battlefield"
+op = "at_most"
+right = 0
 
 # if no creatures are on the battlefield, sacrifice this enchantment.
 [[abilities.effects]]
 type = "conditional"
-condition = { type = "no_creatures_on_battlefield" }
+condition = { type = "compare", left = "per_creature_on_battlefield", op = "at_most", right = 0 }
 then = [{ type = "sacrifice", mode = "source" }]
 
 # {R}: This enchantment deals 1 damage to each creature and each player.
