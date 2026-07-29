@@ -14,7 +14,8 @@ import { cardArt } from "../../../domain/ui/card-art";
 import { confirmDialog } from "../../../domain/ui/confirmDialog";
 import { modalDialog } from "../../../domain/ui/dialog";
 import { input } from "../../../domain/ui/input";
-import { alertClass } from "../../../domain/ui/surfaces";
+import { menuItemClass, menuPanelClass } from "../../../domain/ui/menu";
+import { alertClass, listRowClass } from "../../../domain/ui/surfaces";
 import { windowedGrid } from "../../../domain/ui/windowedGrid";
 import { type CardArtTick, GotAccountMenuMessage, type GotAuthMessage } from "../../../messages";
 import { accountChrome } from "../../account-chrome/view";
@@ -59,17 +60,14 @@ const h = html<ViewMessage>();
 
 const CONTEXT_MENU_PRESS_MS = 500;
 
-const LIST_ROW = "border border-vine-dim bg-glass-dim text-snow hover:bg-white/8";
 const POOL_CARD = cn(
-  LIST_ROW,
+  listRowClass(),
   "flex cursor-pointer flex-col items-center gap-1 rounded-hud p-sm text-caption focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-vine",
 );
 const DECK_ROW = cn(
-  LIST_ROW,
+  listRowClass(),
   "flex w-full cursor-pointer items-center gap-xs rounded-control px-sm py-1 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-vine",
 );
-const MENU_ITEM =
-  "cursor-pointer rounded-control border-none bg-transparent px-md py-xs text-left text-label text-snow hover:bg-white/8 focus-visible:bg-white/8 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-vine";
 const PRINT_PICKER_COL = "w-[min(38vw,200px)]";
 const PRINT_TILE = cn(
   PRINT_PICKER_COL,
@@ -273,9 +271,7 @@ function contextMenu(model: DeckBuilderSubmodel): Html {
       h.div(
         [
           h.DataAttribute("testid", "builder-context-menu"),
-          h.Class(
-            "fixed top-(--y) left-(--x) z-41 flex min-w-[160px] flex-col rounded-hud border border-vine bg-forest-surface p-xs shadow-table",
-          ),
+          h.Class(menuPanelClass("fixed top-(--y) left-(--x) z-41 min-w-[160px]")),
           h.Style({ "--x": `${x}px`, "--y": `${y}px` }),
         ],
         [
@@ -286,7 +282,7 @@ function contextMenu(model: DeckBuilderSubmodel): Html {
                 h.Type("button"),
                 h.DataAttribute("testid", `builder-menu-item-${index}`),
                 h.OnClick(RanBuilderMenuAction({ action: item.action })),
-                h.Class(MENU_ITEM),
+                h.Class(menuItemClass()),
               ],
               [item.label],
             ),
@@ -549,84 +545,100 @@ export const view = Submodel.defineView<DeckBuilderSubmodel, ViewMessage, ViewIn
               value: model.name,
               onInput: (name) => ChangedBuilderName({ name }),
               class: "w-full",
+              attrs: [h.Disabled(model.loadingDeck)],
             }),
-            h.div([h.Class("text-label text-lichen")], ["Commander"]),
-            model.commander.id === ""
+            model.loadingDeck
               ? h.div(
-                  [h.Class("text-label text-lichen")],
-                  ["Right-click or long-press a legendary creature to set commander or choose its art."],
+                  [
+                    h.DataAttribute("testid", "builder-deck-loading"),
+                    h.Class("flex flex-1 items-center justify-center text-label text-lichen"),
+                  ],
+                  ["Loading deck…"],
                 )
-              : h.button(
-                  [
-                    h.Key(model.commander.id),
-                    h.Type("button"),
-                    h.DataAttribute("testid", "builder-commander"),
-                    h.Class(
-                      "flex w-full cursor-pointer items-center gap-sm rounded-control border border-vine bg-glass-dim px-sm py-xs text-left",
-                    ),
-                    h.OnMount(BindBuilderCardPointer({ cardId: model.commander.id, kind: "commander" })),
-                  ],
-                  [
-                    builderCardArt(
-                      model.commander.print,
-                      model.known[model.commander.id]?.name ?? model.commander.id,
-                      "aspect-[0.72] w-10 rounded-focus object-cover",
-                    ),
-                    h.span(
-                      [h.Class("min-w-0 flex-1 truncate font-semibold")],
-                      [`★ ${model.known[model.commander.id]?.name ?? model.commander.id}`],
-                    ),
-                  ],
-                ),
-            h.div(
-              [h.Class("flex items-center justify-between gap-sm")],
-              [
-                h.b([], ["Cards"]),
-                h.span(
-                  [h.Class(cn("shrink-0 text-caution-amber", count === DECK_SIZE && "text-vine"))],
-                  [`${count}/${DECK_SIZE}${model.commander.id ? " + commander" : ""}`],
-                ),
-              ],
-            ),
-            h.div(
-              [
-                h.Class(
-                  cn(
-                    "flex max-h-[40vh] min-h-0 flex-1 flex-col gap-1 overscroll-contain",
-                    backgroundScrollLocked ? "overflow-hidden" : "overflow-y-auto",
-                  ),
-                ),
-                h.DataAttribute("testid", "builder-decklist-scroll"),
-              ],
-              [
-                ...rows.map((row) =>
-                  h.button(
+              : null,
+            model.loadingDeck ? null : h.div([h.Class("text-label text-lichen")], ["Commander"]),
+            model.loadingDeck
+              ? null
+              : model.commander.id === ""
+                ? h.div(
+                    [h.Class("text-label text-lichen")],
+                    ["Right-click or long-press a legendary creature to set commander or choose its art."],
+                  )
+                : h.button(
                     [
-                      // Key by oracle id so removing a row remounts BindBuilderCardPointer
-                      // for the next card (Mount args are captured once at insert).
-                      h.Key(row.id),
+                      h.Key(model.commander.id),
                       h.Type("button"),
-                      h.DataAttribute("testid", `deck-row-${row.id}`),
-                      h.Class(DECK_ROW),
-                      h.OnMount(BindBuilderCardPointer({ cardId: row.id, kind: "deck" })),
+                      h.DataAttribute("testid", "builder-commander"),
+                      h.Class(
+                        "flex w-full cursor-pointer items-center gap-sm rounded-control border border-vine bg-glass-dim px-sm py-xs text-left",
+                      ),
+                      h.OnMount(BindBuilderCardPointer({ cardId: model.commander.id, kind: "commander" })),
                     ],
                     [
-                      builderCardArt(row.print, "", "aspect-[0.72] w-7 shrink-0 rounded-[3px] object-cover"),
+                      builderCardArt(
+                        model.commander.print,
+                        model.known[model.commander.id]?.name ?? model.commander.id,
+                        "aspect-[0.72] w-10 rounded-focus object-cover",
+                      ),
                       h.span(
-                        [h.Class("min-w-0 flex-1 truncate")],
+                        [h.Class("min-w-0 flex-1 truncate font-semibold")],
+                        [`★ ${model.known[model.commander.id]?.name ?? model.commander.id}`],
+                      ),
+                    ],
+                  ),
+            model.loadingDeck
+              ? null
+              : h.div(
+                  [h.Class("flex items-center justify-between gap-sm")],
+                  [
+                    h.b([], ["Cards"]),
+                    h.span(
+                      [h.Class(cn("shrink-0 text-caution-amber", count === DECK_SIZE && "text-vine"))],
+                      [`${count}/${DECK_SIZE}${model.commander.id ? " + commander" : ""}`],
+                    ),
+                  ],
+                ),
+            model.loadingDeck
+              ? null
+              : h.div(
+                  [
+                    h.Class(
+                      cn(
+                        "flex max-h-[40vh] min-h-0 flex-1 flex-col gap-1 overscroll-contain",
+                        backgroundScrollLocked ? "overflow-hidden" : "overflow-y-auto",
+                      ),
+                    ),
+                    h.DataAttribute("testid", "builder-decklist-scroll"),
+                  ],
+                  [
+                    ...rows.map((row) =>
+                      h.button(
                         [
-                          `${row.legendary ? "★ " : ""}${row.name}`,
-                          row.id === model.commander.id
-                            ? h.span([h.Class("text-label text-lichen")], [" (commander)"])
-                            : null,
+                          // Key by oracle id so removing a row remounts BindBuilderCardPointer
+                          // for the next card (Mount args are captured once at insert).
+                          h.Key(row.id),
+                          h.Type("button"),
+                          h.DataAttribute("testid", `deck-row-${row.id}`),
+                          h.Class(DECK_ROW),
+                          h.OnMount(BindBuilderCardPointer({ cardId: row.id, kind: "deck" })),
+                        ],
+                        [
+                          builderCardArt(row.print, "", "aspect-[0.72] w-7 shrink-0 rounded-[3px] object-cover"),
+                          h.span(
+                            [h.Class("min-w-0 flex-1 truncate")],
+                            [
+                              `${row.legendary ? "★ " : ""}${row.name}`,
+                              row.id === model.commander.id
+                                ? h.span([h.Class("text-label text-lichen")], [" (commander)"])
+                                : null,
+                            ],
+                          ),
+                          h.span([h.Class("shrink-0 text-label text-lichen")], [`×${row.count}`]),
                         ],
                       ),
-                      h.span([h.Class("shrink-0 text-label text-lichen")], [`×${row.count}`]),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
             // Always rendered: Dialog opens and closes the <dialog> element itself, so it has to
             // stay in the tree. `model.discardDialog.isOpen` is what makes the prompt visible.
             confirmDialog(h, {
