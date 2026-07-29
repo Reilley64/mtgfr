@@ -5,7 +5,11 @@ Set report: [leg.md](leg.md). This file is the sole engine-capability backlog fo
 
 This is a **set** grind, not a deck grind — intake is Scryfall `set:leg unique:cards`, not an
 Archidekt link, and there is no precon to ship at the end. 310 unique cards: 7 already in the
-pool, 141 authorable today, 159 blocked here, 3 out of scope.
+pool, 102 authored, 198 blocked here, 3 out of scope.
+
+Increments 1–93 come from the intake read. Increments 94–117 were raised by the Phase 3
+authoring wave, which found 39 cards the intake had judged authorable but that turned out to
+need engine work; those cards moved to section D and are ranked at the bottom of this file.
 
 Ranked S-first within dependency order. Legends is a combat-rules set: where 2ed's centre of
 gravity was damage prevention, Legends' is *what happens in the combat phase*, and the engine
@@ -25,7 +29,7 @@ skips most of it. Four clusters gate 82 of the 159 blocked cards:
   lasts indefinitely.)" is a Legends idiom with no equivalent anywhere in the current pool.
   5 cards, and it is the layer-system work the engine has so far avoided.
 
-Below those the set is a long tail: 60 of the 93 increments are single-card exotics. That is
+Below those the set is a long tail: 77 of the 117 increments are single-card exotics. That is
 Legends — it is the set where design was still inventing one-off rules text per card.
 
 ### Observability re-audit
@@ -851,3 +855,226 @@ each equal to the number of Forests sacrificed as it entered." *Sketch:* an **as
 permanent is on the battlefield — plus a characteristic-defining P/T frozen at that count
 (2ed's `base_power_toughness_from_amount` with an amount snapshotted at entry rather than
 recomputed).
+
+## Increments 94–117 — raised by the Phase 3 authoring wave
+
+Thirty-nine cards were classified as section C at intake and turned out, once authoring
+actually reached them, to need engine work the intake read missed. They are reclassified to
+section D and blocked on the increments below. Two clusters dominate: prevention that is keyed
+to a damage *source* rather than a recipient (#94, #95 — 7 cards), and the "becomes a color"
+effect, which the DSL models as a permanent, uncounted, literal-color set (#96 — 6 cards).
+
+### 94. `source-keyed-prevention-shield` — 5 cards, L
+Depends on: #12.
+Lady Evangela, Subdue, Horn of Deafening, Kry Shield, Indestructible Aura.
+"Prevent all combat damage that would be dealt by target creature this turn."
+*Sketch:* `PreventionShield` is keyed to a damage **recipient** and is consumed by the first
+damage it stands in front of. Legends wants two axes the shield does not have: a *source* key
+("dealt by that creature", any recipient) and a *duration* ("this turn", uncapped rather than
+one-shot). `StaticEffect::PreventCombatDamage { by_self }` is source-keyed but binds to the
+ability's own source and lives as long as the permanent, so it cannot be aimed. The shield needs
+a `key: Recipient(ObjectId) | Source(ObjectId)` and an `amount: Next(n) | AllThisTurn`.
+Indestructible Aura is the recipient-keyed corner of the same change (all damage, turn-long);
+Kry Shield's and Subdue's +0/+X halves are already expressible today.
+
+### 95. `grant-prevention-to-attached` — 2 cards, M
+Depends on: #94.
+Gaseous Form, Demonic Torment.
+"Prevent all combat damage that would be dealt to and dealt by enchanted creature."
+*Sketch:* `StaticEffect::GrantToAttached` carries P/T and keywords but has no prevention field,
+and `StaticEffect::PreventCombatDamage` binds to the ability's own source — the Aura — not to
+its host. Once #94 gives the shield a source/recipient key, this is an Aura-scoped standing
+shield re-keyed to `attached_to`. Demonic Torment's "can't attack" clause is `grant_to_attached
+cant_attack` today; only the prevention line blocks it.
+
+### 96. `target-becomes-color` — 6 cards, M
+Depends on: nothing.
+Dwarven Song, Heaven's Gate, Touch of Darkness, Sea Kings' Blessing, Sylvan Paradise,
+Alchor's Tomb.
+"One or more target creatures become red until end of turn."
+*Sketch:* `PumpEffect::TargetBecomesColor` hardcodes `until_end_of_turn: false`, takes no
+`count`, and names a literal color. The five one-mana spells need the duration and the
+multi-target count; Alchor's Tomb needs the third axis — a chosen color, consuming
+`ChoiceEffect::ChooseColor` — and targets a *permanent* you control rather than a creature,
+indefinitely (CR 613 layer 5, no expiry). All three axes land on the one effect.
+
+### 97. `token-profiles-without-a-scryfall-printing` — 2 cards, M
+Depends on: nothing.
+Boris Devilboon (Minor Demon), Serpent Generator (Snake).
+*Sketch:* `create_token` keys a `data/tokens/` profile by Scryfall oracle id, and Legends
+predates printed token cards, so neither token has an id to key. Needs a synthetic local id
+convention for pre-token-era tokens. Serpent Generator additionally needs its token to carry an
+ability — "Whenever this creature deals damage to a player, that player gets a poison counter" —
+which is #99's trigger on a token profile, so it lands after that.
+
+### 98. `nested-effects-lose-their-source` — 1 card, S — **bug**
+Depends on: nothing.
+Cosmic Horror: "At the beginning of your upkeep, destroy this creature unless you pay
+{3}{B}{B}{B}. If this creature is destroyed this way, it deals 7 damage to you."
+*Sketch:* not a missing capability — a defect. A `target = "this"` effect nested inside a
+`pay_or_else` `otherwise` array **silently no-ops**: `TargetSpec::ThisPermanent` is resolved to
+the source only at ability placement, never for nested effects, so the nested effect runs with
+`target: None` and `Game::run`'s no-target guard (`crates/engine/src/effects.rs:833`) drops it.
+Resolve `ThisPermanent` for nested effects too. Regression test first, per the repo's bug-fix
+rule: an unpaid Cosmic Horror upkeep must destroy it, and today it does nothing at all.
+
+### 99. `fill-player-for-counters-on-player` — 1 card, S
+Depends on: nothing.
+Pit Scorpion: "Whenever this creature deals damage to a player, that player gets a poison counter."
+*Sketch:* one missing match arm. `cards::fill_player` does not rewrite
+`CountersEffect::PutCountersOnPlayer`'s `who`, so a `deals_damage_to_opponent` trigger cannot
+fill `damaged_player` and the engine panics on the "filled in at placement" expect. Add the arm.
+
+### 100. `blocks-and-becomes-blocked-by-as-separate-triggers` — 1 card, M
+Depends on: nothing.
+Infernal Medusa: "Whenever this creature blocks a creature, destroy that creature at end of
+combat. / Whenever this creature becomes blocked by a non-Wall creature, destroy that creature
+at end of combat."
+*Sketch:* the DSL has only the combined `blocks_or_becomes_blocked_by { filter }` tag, and this
+card's two halves take *different* filters — any creature it blocks, but only non-Wall creatures
+that block it. Split into `blocks { filter }` and `becomes_blocked_by { filter }`, each carrying
+`blocking_partner`. The divergence is reachable rather than theoretical: Animate Wall is in the
+pool, so an attacking Wall blocked by the Medusa is a real board state.
+
+### 101. `filtered-per-turn-cast-tally` — 1 card, M
+Depends on: nothing.
+Ichneumon Druid: "Whenever an opponent casts an instant spell other than the first instant spell
+that player casts each turn, this creature deals 4 damage to that player."
+*Sketch:* `Trigger::CastSpell.nth_each_turn` tests an equality against the caster's unfiltered
+`Player::spells_cast_this_turn`. The card needs a tally scoped by the trigger's own filter
+(instants only) and an "every cast after the first" comparison rather than "exactly the Nth".
+The engine already documents this gap at `crates/engine/src/triggers.rs:3389`.
+
+### 102. `counter-kinds-legends-prints` — 2 cards, S
+Depends on: nothing.
+Osai Vultures (carrion counter), Spirit Shackle (-0/-2 counter).
+*Sketch:* `CounterKind` is a fixed 14-slot enum. Add the two kinds Legends prints — a named
+`Carrion` counter that only its own card reads, and `-0/-2`, which the P/T layer must apply
+alongside the existing `-1/-1`.
+
+### 103. `counter-activated-ability-payload` — 2 cards, M
+Depends on: nothing.
+Ayesha Tanaka, Rust: "Counter target activated ability from an artifact source unless that
+ability's controller pays {W}."
+*Sketch:* `MiscEffect::CounterTargetActivatedAbility` is a payload-free variant. It needs a
+source filter ("from an artifact source" — the target-legality restriction both cards share) and
+an `unless_pays` rider matching the one `CounterTargetSpell` already carries. Ayesha's banding
+half is already expressible.
+
+### 104. `blocking-this-creature-and-indefinite-gain-control` — 1 card, L
+Depends on: nothing.
+The Wretched: "At end of combat, gain control of all creatures blocking this creature for as
+long as you control this creature."
+*Sketch:* two gaps at once. `PermanentFilter::blocking` means "blocking *some* attacker" — there
+is no axis for "blocking **this** creature". And `GainControlAllUntilEndOfTurn` is the only mass
+control-change; nothing expresses the "for as long as you control this creature" duration, which
+is a conditional continuous effect that ends when the source leaves or changes controller
+(CR 611.2b), not a turn-scoped one.
+
+### 105. `filter-completeness-and-disjunction` — 3 cards, M
+Depends on: nothing.
+Abomination ("a green or white creature"), Flash Counter ("target instant spell"),
+Mana Matrix ("Instant and enchantment spells you cast").
+*Sketch:* the filter types are missing both arms and combinators. `SpellFilter` has no bare
+`instant` (only `instant_or_sorcery`, which would wrongly catch sorceries) and no way to say
+"instant or enchantment". `ColorFilter` holds one color with no OR. Add the missing arms plus a
+disjunction combinator usable by both — the union shape #8 needs for attacking-or-blocking is
+the same idea one level up.
+
+### 106. `sacrifice-filtered-permanents-as-an-alternative-cost` — 1 card, M
+Depends on: nothing.
+Mold Demon: "When this creature enters, sacrifice it unless you sacrifice two Swamps."
+*Sketch:* `pay_or_else` settles mana only — `settle_payment` takes no sacrifice rider — and
+`may_sacrifice` has neither a count nor an `otherwise` branch. Needs "sacrifice N permanents
+matching a filter, otherwise `<effects>`" as a payable cost in the `pay_or_else` window.
+
+### 107. `board-wide-attack-ban` — 1 card, M
+Depends on: nothing.
+Moat: "Creatures without flying can't attack."
+*Sketch:* `StaticEffect::CantBeAttackedBy` is scanned only off the *defending player's own*
+battlefield, so it expresses "creatures without flying can't attack **you**". Moat bans the
+attack at every seat regardless of who controls the Moat. Needs the restriction evaluated
+globally over the battlefield rather than per defender.
+
+### 108. `counter-the-triggering-spell` — 1 card, M
+Depends on: nothing.
+Presence of the Master: "Whenever a player casts an enchantment spell, counter it."
+*Sketch:* `MiscEffect::CounterTargetSpell` requires a chosen `Target`, and no `TargetSpec` names
+the spell that fired a `CastSpell` trigger. Needs the trigger to thread its spell into
+`TriggerContext` and a `TargetSpec::TriggeringSpell` that reads it — the same shape as #115's
+threading problem, one object kind over.
+
+### 109. `exile-the-source-from-the-graveyard` — 1 card, M
+Depends on: nothing.
+Cyclopean Mummy: "When this creature dies, exile it."
+*Sketch:* no effect mode exiles the ability's own source once it has left the battlefield.
+`ExileEffect::Object.object` is `serde(skip)` — always `None` from TOML, and resolution
+`.expect()`s it — while `TargetSpec::ThisPermanent` resolves empty because the source is in the
+graveyard by the time a dies-trigger resolves. Needs the source's post-death card object
+tracked through the trigger (CR 603.6c's look-back), which is adjacent to but distinct from #98.
+
+### 110. `per-effect-targets` — 1 card, L
+Depends on: nothing.
+Psionic Entity: "{T}: This creature deals 2 damage to any target and 3 damage to itself."
+*Sketch:* an ability has exactly **one** shared target — `Effect::target()` returns the first
+non-`None` target of the sequence and every effect in the ability resolves against it. This card
+needs a chosen "any target" step beside an untargeted self-damage step. Structural: targets must
+become per-effect rather than per-ability, which touches target selection, legality re-checks on
+resolution, and every existing multi-effect ability. Rank late.
+
+### 111. `activate-only-before-the-combat-damage-step` — 1 card, S
+Depends on: nothing.
+Angus Mackenzie: "Activate only before the combat damage step."
+*Sketch:* `AbilityToml` has no activation-window restriction for this. The effect it gates,
+`prevent_all_combat_damage_this_turn`, already exists — only the timing clause is missing. Sits
+beside the existing `only_during_your_upkeep` / `only_during_your_turn` restrictions.
+
+### 112. `damaged-player-discards-their-hand` — 1 card, M
+Depends on: nothing.
+Nicol Bolas: "Whenever Nicol Bolas deals damage to an opponent, that player discards their hand."
+*Sketch:* three near-misses and no hit. `ChoiceEffect::Discard`'s count `Amount` has no
+damaged-player hand-size variant; `Amount::CardsInTargetPlayerHand` needs a `Target::Player` the
+untargeted trigger never sets; `DiscardYourHand` is controller-scoped. Needs `who` on a
+whole-hand discard, filled from the trigger the way #99 fills the counter recipient. Bolas's
+other two lines are expressible today.
+
+### 113. `gain-life-equal-to-mass-damage-dealt` — 1 card, S
+Depends on: nothing.
+Syphon Soul: "Syphon Soul deals 2 damage to each other player. You gain life equal to the damage
+dealt this way."
+*Sketch:* the `gain_life_equal_to_damage` rider exists on `DamageEffect::Target` but not on
+`DamageEffect::ToPlayers`, and no `Amount` totals damage dealt across several recipients. Add
+the rider to the mass form, summing what was actually dealt (prevention and redirection change
+the total, so it must read the result rather than the intent).
+
+### 114. `cast-during-any-players-declare-attackers` — 1 card, S
+Depends on: nothing.
+Teleport: "Cast this spell only during the declare attackers step."
+*Sketch:* `playable.rs` gates `cast_only_during_declare_attackers` on
+`active_player == caster`, which reads the restriction as "during *your* declare attackers".
+Teleport's window is any player's. Split the flag, or drop the active-player clause and let the
+existing `only_during_your_turn` express the narrower case.
+
+### 115. `player-draws-trigger-context` — 1 card, S
+Depends on: nothing.
+Underworld Dreams: "Whenever an opponent draws a card, this enchantment deals 1 damage to that
+player."
+*Sketch:* `queue_player_draws_triggers` builds `TriggerContext::of(controller)` and never
+threads the *drawing* player, so `who = "triggering_player"` panics at resolution on the
+"filled in at placement" expect. Thread the drawing player into the context.
+
+### 116. `condition-scoped-to-the-triggering-player` — 1 card, M
+Depends on: nothing.
+Spiritual Sanctuary: "At the beginning of each player's upkeep, if that player controls a
+Plains, they gain 1 life."
+*Sketch:* every `Condition` evaluates against `ctx.controller`. An `each_upkeep` trigger needs
+its intervening-if clause scoped to the player whose upkeep it is (CR 603.4), which means
+`Condition` gains a subject rather than always meaning "you".
+
+### 117. `grant-to-attached-under-a-condition` — 1 card, M
+Depends on: nothing.
+Spectral Cloak: "Enchanted creature has shroud as long as it's untapped."
+*Sketch:* `StaticEffect::GrantToAttached` has no `condition` field and
+`attachment_continuous_effects` ignores `ability.condition`, so a grant cannot be gated on the
+host's state. Needs the condition evaluated against the *attached* permanent, re-checked
+continuously rather than latched at attach time.
