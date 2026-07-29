@@ -431,19 +431,20 @@ impl Game {
     }
 
     /// Resolve a multi-player sacrifice edict ([`Effect::Choice(ChoiceEffect::EachPlayerSacrifices)`]): each affected
-    /// player (per `scope`, APNAP order) loses `life_loss` life, then the affected players choose
+    /// player (per `who`, APNAP order) loses `life_loss` life, then the affected players choose
     /// their sacrifices one at a time (each raising [`ChoiceRequest::NextSacrificeEdict`]). Once
     /// all have chosen, `follow_up` runs for `controller`.
     ///
-    /// [`EdictScope::TargetedPlayers`] (Priest of Forgotten Gods' "any number of target players")
-    /// has no scope-derived affected set to compute — `controller` first raises
+    /// `chosen_by_controller` (Priest of Forgotten Gods' "any number of target players")
+    /// has no set-derived affected seats to compute — `controller` first raises
     /// [`ChoiceRequest::ChooseTargetPlayers`] (CR 601.2c/608.2b: zero is a legal choice); once
     /// answered, [`Self::choose_target_players`] applies the life loss and continues into
     /// [`Self::prompt_next_sacrifice`] exactly as below.
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn sacrifice_edict(
         &mut self,
-        scope: EdictScope,
+        who: PlayerSet,
+        chosen_by_controller: bool,
         keep_one: bool,
         filter: PermanentFilter,
         life_loss: i32,
@@ -461,8 +462,15 @@ impl Game {
         // Scoped to this one edict (Syphon Flesh's "for each creature sacrificed this way") —
         // overwrite so a prior edict can't leak through.
         self.resolution_frame.creatures_sacrificed_this_way = 0;
-        if scope == EdictScope::TargetedPlayers {
-            let legal = self.apnap_order();
+        if chosen_by_controller {
+            // The pool is `who`'s seats, offered in APNAP order (CR 101.4); the controller picks
+            // any subset of it, zero included (CR 601.2c/608.2b).
+            let scoped = self.players_in(who, controller, None);
+            let legal: Vec<PlayerId> = self
+                .apnap_order()
+                .into_iter()
+                .filter(|p| scoped.contains(p))
+                .collect();
             pending::raise(
                 self,
                 pending::ChoiceRequest::ChooseTargetPlayers {
@@ -480,14 +488,12 @@ impl Game {
             );
             return;
         }
+        // `players_in` answers *which* seats; APNAP (CR 101.4) is the order they answer in.
+        let scoped = self.players_in(who, controller, None);
         let affected: Vec<PlayerId> = self
             .apnap_order()
             .into_iter()
-            .filter(|&p| match scope {
-                EdictScope::EachOpponent => p != controller,
-                EdictScope::You => p == controller,
-                _ => true,
-            })
+            .filter(|p| scoped.contains(p))
             .collect();
         // Lich's "If you can't, you lose the game": a bill bigger than the board is unpayable, so
         // its controller is eliminated (CR 104.3b) and the prompt is never raised.

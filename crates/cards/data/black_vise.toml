@@ -33,5 +33,6 @@ condition = { type = "chosen_players_upkeep" }
 # minus 4.
 [[abilities.effects]]
 type = "damage"
-mode = "to_triggering_player"
+mode = "to_players"
+who = "triggering_player"
 amount = { left = "cards_in_your_hand", op = "subtract", right = 4 }

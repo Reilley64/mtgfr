@@ -340,6 +340,7 @@ effects = [{ type = "draw", mode = "cards", count = 1 }]
     assert!(matches!(
         row.ability.effect,
         Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::You,
             count: Amount::Fixed(1)
         })
     ));

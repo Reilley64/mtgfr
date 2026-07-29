@@ -23,7 +23,7 @@ timing = "spell"
 [[abilities.effects]]
 type = "choice"
 mode = "each_player_sacrifices"
-scope = "each_opponent"
+who = "each_opponent"
 filter = "creature"
 
 # You create a 2/2 black Zombie creature token for each creature sacrificed this way.

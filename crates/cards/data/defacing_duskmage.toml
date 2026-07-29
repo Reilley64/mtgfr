@@ -60,5 +60,6 @@ count = 2
 # Each player loses 2 life.
 [[back.abilities.effects]]
 type = "life"
-mode = "each_player_loses"
+mode = "lose"
+who = "each_player"
 amount = 2

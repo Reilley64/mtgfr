@@ -21,7 +21,7 @@ taps_self = true
 # Mill two cards.
 [[abilities.effects]]
 type = "mill"
-mode = "mill_self"
+mode = "mill"
 count = 2
 
 # {2}, Exile this artifact: Shuffle any number of target cards from your graveyard into your library.

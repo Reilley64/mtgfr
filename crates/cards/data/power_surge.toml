@@ -22,5 +22,6 @@ timing = "each_upkeep"
 # controlled at the beginning of this turn.
 [[abilities.effects]]
 type = "damage"
-mode = "to_triggering_player"
+mode = "to_players"
+who = "triggering_player"
 amount = "untapped_lands_at_turn_start"

@@ -20,5 +20,6 @@ timing = "spell"
 # Target player gains X life.
 [[abilities.effects]]
 type = "life"
-mode = "target_player_gains"
+mode = "gain"
+who = "target_player"
 amount = "x"

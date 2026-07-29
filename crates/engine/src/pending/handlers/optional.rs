@@ -121,24 +121,13 @@ impl Game {
                         activated: false,
                     },
                 );
-            } else if let Effect::Choice(ChoiceEffect::TargetPlayerMayDraw { count, .. }) = effect {
-                // Questing Phelddagrif's blue rider: `player` here is the *targeted* opponent who
-                // just answered "yes" (not the ability's own controller, unlike every other arm
-                // in this function) — draw them `count` cards directly, no further pause (CR
-                // 601.2c: no pay window rides behind this rider).
+            } else if let Effect::Choice(ChoiceEffect::MayDraw { count, .. }) = effect {
+                // Questing Phelddagrif's blue rider, Edric's combat-damage payoff: `player` here is
+                // the seat the effect's `who` named who just answered "yes" (not the ability's own
+                // controller, unlike every other arm in this function) — draw them `count` cards
+                // directly, no further pause (CR 601.2c: no pay window rides behind this).
                 let n = self.resolve_count(count, player, source, None, 0);
                 let evs = self.draw_events(player, n);
-                self.apply_all(&evs);
-                events.extend(evs);
-            } else if let Effect::Choice(ChoiceEffect::DamagingCreatureControllerMayDraw {
-                count,
-                ..
-            }) = effect
-            {
-                // Edric: `player` here is the controller of the creature that dealt the combat
-                // damage (baked in at trigger placement), not Edric's own controller — draw them
-                // `count` cards directly, the same shape as `TargetPlayerMayDraw` above.
-                let evs = self.draw_events(player, count);
                 self.apply_all(&evs);
                 events.extend(evs);
             } else if let Effect::Choice(ChoiceEffect::MayDrawUnlessPays { cost, caster }) = effect

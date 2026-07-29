@@ -423,9 +423,9 @@ pub enum Trigger {
     YouAreDealtDamage,
     /// Whenever a player casts a spell matching `filter` (CR: the general form behind
     /// [`Magecraft`](Self::Magecraft) and its kin) — a data-driven cast-watch. `caster` scopes
-    /// whose cast counts, relative to the ability's own controller ([`CasterScope::You`] default,
-    /// [`CasterScope::Opponent`] — Monologue Tax/Mangara's "an opponent casts", or
-    /// [`CasterScope::AnyPlayer`]); `nth_each_turn` restricts to exactly the caster's Nth spell
+    /// whose cast counts, relative to the ability's own controller ([`WatchedPlayer::You`] default,
+    /// [`WatchedPlayer::Opponent`] — Monologue Tax/Mangara's "an opponent casts", or
+    /// [`WatchedPlayer::AnyPlayer`]); `nth_each_turn` restricts to exactly the caster's Nth spell
     /// that turn (CR "their second spell each turn" — `Some(2)`), read off
     /// [`Player::spells_cast_this_turn`] (`None` = every matching cast). A seventh,
     /// table-dispatched watch flavor like [`DealsCombatDamageToPlayer`](Self::DealsCombatDamageToPlayer):
@@ -435,7 +435,7 @@ pub enum Trigger {
     /// Magecraft into this shape, since no `CastSpell` consumer needs the copy half.
     CastSpell {
         filter: SpellFilter,
-        caster: CasterScope,
+        caster: WatchedPlayer,
         nth_each_turn: Option<u8>,
         /// Restrict to a spell cast from its controller's hand (CR 601's default cast zone) —
         /// Dirgur Focusmage's "you cast … from your hand": `false` (the default) fires on a cast
@@ -451,26 +451,26 @@ pub enum Trigger {
     /// ability's own controller, `nth_each_turn` restricts to exactly that player's Nth draw
     /// this turn (`None` = every matching draw), read off [`Player::draws_this_turn`]. Fires off
     /// [`Event::CardDrawn`]; see [`Game::queue_player_draws_triggers`].
-    /// ponytail: reuses [`CasterScope`] rather than a parallel `PlayerScope` — the enum name says
+    /// ponytail: reuses [`WatchedPlayer`] rather than a parallel `PlayerScope` — the enum name says
     /// "caster" but the you/opponent/any-player scope math is identical for draws, and no other
     /// pool card needs a second name for the same three variants.
     PlayerDraws {
-        drawer: CasterScope,
+        drawer: WatchedPlayer,
         nth_each_turn: Option<u8>,
     },
     /// Whenever a player activates an ability whose activation cost contains `{X}` (CR 707.10 —
     /// Unbound Flourishing's "or activate an ability, if that … ability's activation cost contains
     /// {X}, copy that … ability"), scoped by `caster` relative to this ability's own controller
-    /// ([`CasterScope::You`] for Unbound). Fired directly off the activated ability's stack
+    /// ([`WatchedPlayer::You`] for Unbound). Fired directly off the activated ability's stack
     /// placement (`{X}`-gated) in [`Game::activate_ability`]; see
     /// [`Game::queue_activate_ability_triggers`]. The triggering ability's source rides in
     /// [`TriggerContext::triggering_ability`] so the payoff can copy it.
-    ActivateAbility { caster: CasterScope },
+    ActivateAbility { caster: WatchedPlayer },
     /// Whenever *another* permanent matching `filter` enters the battlefield, scoped by
     /// `controller` relative to this ability's own controller — the shape behind constellation
-    /// (CR 702.76a: "whenever an enchantment you control enters" — [`EnterController::You`],
+    /// (CR 702.76a: "whenever an enchantment you control enters" — [`WatchedPlayer::You`],
     /// Ajani's Chosen/Archon of Sun's Grace) and landfall (CR 704.5n's kin: "whenever a land
-    /// enters"; [`EnterController::Opponent`] for "a land an opponent controls enters",
+    /// enters"; [`WatchedPlayer::Opponent`] for "a land an opponent controls enters",
     /// Archaeomancer's Map). An eighth, bespoke-queued watch flavor like
     /// [`YouSacrifice`](Self::YouSacrifice): fires off any of the entering-permanent events
     /// ([`Event::PermanentEntered`], `TokenCreated`, `LandPlayed`, `SearchedToBattlefield`,
@@ -480,7 +480,7 @@ pub enum Trigger {
     /// `PermanentEnters` ability, only every *other* battlefield permanent's.
     PermanentEnters {
         filter: PermanentFilter,
-        controller: EnterController,
+        controller: WatchedPlayer,
     },
     /// Whenever this permanent *or another* permanent matching `filter` enters the battlefield —
     /// [`PermanentEnters`](Self::PermanentEnters) plus a self-fire off the watcher's own entry
@@ -492,7 +492,7 @@ pub enum Trigger {
     /// caller-supplied snapshot — see `Game::queue_self_permanent_enters_trigger`.
     PermanentEntersIncludingThis {
         filter: PermanentFilter,
-        controller: EnterController,
+        controller: WatchedPlayer,
     },
     /// Whenever one or more cards leave the controller's graveyard (Quintorius Field Historian /
     /// Lorehold's mechanic) — a controller-scoped trigger like [`Upkeep`](Self::Upkeep), but
@@ -656,8 +656,14 @@ pub enum SpendToCastPredicate {
     CreatureSharingTypeWithCommander,
 }
 
-/// Whose permanent a [`Trigger::PermanentEnters`] watch cares about, relative to the ability's
-/// own controller (mirrors [`CasterScope`]'s shape).
+/// *Whose* action a trigger watches, relative to the watching ability's own controller — the
+/// player half of "whenever **you** cast a spell" / "whenever **an opponent** draws a card" /
+/// "whenever **a** land enters".
+///
+/// One enum rather than one per watch: every trigger that scopes by player asks the same yes/no
+/// question of the same two seats, so [`WatchedPlayer::accepts`] answers it once instead of a
+/// three-arm match per watch. The *object* half of a trigger's scope (Whenever a creature **you
+/// control** deals damage) is [`CombatDamageScope`]'s axis, not this one.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[cfg_attr(
     feature = "card-dsl",
@@ -665,7 +671,7 @@ pub enum SpendToCastPredicate {
     serde(rename_all = "snake_case")
 )]
 #[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
-pub enum EnterController {
+pub enum WatchedPlayer {
     /// The ability's own controller (default) — constellation's "an enchantment you control".
     #[default]
     You,
@@ -676,23 +682,17 @@ pub enum EnterController {
     AnyPlayer,
 }
 
-/// Whose cast a [`Trigger::CastSpell`] watch cares about, relative to the ability's own
-/// controller (mirrors [`CombatDamageScope`]'s shape).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-#[cfg_attr(
-    feature = "card-dsl",
-    derive(serde::Deserialize),
-    serde(rename_all = "snake_case")
-)]
-#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
-pub enum CasterScope {
-    /// The ability's own controller (default).
-    #[default]
-    You,
-    /// Any opponent of the ability's controller.
-    Opponent,
-    /// Any player, including the ability's own controller.
-    AnyPlayer,
+impl WatchedPlayer {
+    /// Whether a watch scoped this way fires for an action taken by `actor`, as seen by the
+    /// watching ability's `controller`. Opponent-hood is "not me" (CR 102.1) — a two-player
+    /// notion the seat count never enters.
+    pub fn accepts(self, actor: PlayerId, controller: PlayerId) -> bool {
+        match self {
+            WatchedPlayer::You => actor == controller,
+            WatchedPlayer::Opponent => actor != controller,
+            WatchedPlayer::AnyPlayer => true,
+        }
+    }
 }
 
 /// Whose combat damage a [`Trigger::DealsCombatDamageToPlayer`] watch cares about, relative to
@@ -949,7 +949,7 @@ pub struct TriggerContext {
     /// The player who cast the triggering spell, for a [`Trigger::CastSpell`] watch's own
     /// "unless that player pays" payoff (Rhystic Study's "you may draw a card unless that player
     /// pays {1}" — [`Effect::Choice(ChoiceEffect::MayDrawUnlessPays)`]). Distinct from `TriggerContext::controller`
-    /// (the watcher's own controller) precisely when `caster: CasterScope::Opponent`/`AnyPlayer`
+    /// (the watcher's own controller) precisely when `caster: WatchedPlayer::Opponent`/`AnyPlayer`
     /// — `controller` alone can't name the payer for those scopes. `None` for every other
     /// trigger. See [`Game::queue_cast_spell_triggers`] for where this is captured.
     pub triggering_caster: Option<PlayerId>,

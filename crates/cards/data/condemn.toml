@@ -22,7 +22,8 @@ timing = "spell"
 # the battlefield — same last-known-information ordering as Swords to Plowshares' power rider.)
 [[abilities.effects]]
 type = "life"
-mode = "gain_target_controller"
+mode = "gain"
+who = "targets_controller"
 amount = "target_toughness"
 
 # Put target attacking creature on the bottom of its owner's library.

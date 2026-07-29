@@ -35,5 +35,6 @@ prevent_up_to = 2
 # This Aura deals 2 damage to that player.
 [[abilities.effects]]
 type = "damage"
-mode = "to_triggering_player"
+mode = "to_players"
+who = "triggering_player"
 amount = 2

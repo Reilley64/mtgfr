@@ -20,5 +20,6 @@ timing = "spell"
 # Each player draws two cards.
 [[abilities.effects]]
 type = "draw"
-mode = "each_player"
+mode = "cards"
+who = "each_player"
 count = 2

@@ -550,7 +550,7 @@ This is the pool's first "name a card" effect. Start with a `PendingChoice::Name
 Each player other than target player creates a 5/5 red Dragon creature token with flying.
 ```
 
-There is no "each Dragon created this way attacks its controller each combat if able" clause, so no forced-attack subsystem is owed on this card's account. `crates/cards/data/death_by_dragons.toml` is already in the pool and faithful (`TokenController::EachOtherPlayer`, `crates/engine/src/types/filter.rs:826`), no `approximates`. Reopen only if a real "must attack [player]" card enters the pool.
+There is no "each Dragon created this way attacks its controller each combat if able" clause, so no forced-attack subsystem is owed on this card's account. `crates/cards/data/death_by_dragons.toml` is already in the pool and faithful (`PlayerSet::EachOtherPlayer`), no `approximates`. Reopen only if a real "must attack [player]" card enters the pool.
 ---
 
 ## 176. `storm-keyword` — 1 card, M — **LANDED (2026-07-22)**

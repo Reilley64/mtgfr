@@ -598,7 +598,6 @@ impl Effect {
             | Effect::Zone(ZoneEffect::ReanimateToBattlefield { target, .. })
             | Effect::Zone(ZoneEffect::ReanimateRandomFromTargetOpponentGraveyard { target })
             | Effect::Zone(ZoneEffect::TuckFromGraveyard { target, .. })
-            | Effect::Mill(MillEffect::Mill { target, .. })
             | Effect::Choice(ChoiceEffect::TargetPlayerExilesFromGraveyard { target })
             | Effect::Choice(ChoiceEffect::ControlPlayerToPlayCardFromHand { target })
             | Effect::Choice(ChoiceEffect::ChangeText { target, .. })
@@ -715,52 +714,12 @@ impl Effect {
                 ally_is_shared_target: true,
                 ..
             }) => TargetSpec::None,
-            Effect::Draw(DrawEffect::TargetPlayer { opponent: true, .. })
-            // "Target opponent gets a poison counter" (Venerated Rotpriest).
-            | Effect::Counters(CountersEffect::PutCountersOnPlayer {
-                scope: EdictScope::TargetedOpponent,
-                ..
-            })
-            | Effect::Counters(CountersEffect::RemoveAllPlayerCounters {
-                scope: EdictScope::TargetedOpponent,
-                ..
-            })
-            | Effect::Life(LifeEffect::DrainTarget { opponent: true, .. })
             | Effect::Reveal(RevealEffect::TopAndDrainMutual)
-            | Effect::Life(LifeEffect::TargetPlayerGains { opponent: true, .. })
-            | Effect::Choice(ChoiceEffect::TargetPlayerMayDraw { opponent: true, .. })
-            | Effect::Choice(ChoiceEffect::MayDrawUpToThenOpponentMayRepeat { .. })
-            | Effect::Token(TokenEffect::Create {
-                controller: TokenController::TargetOpponent,
-                ..
-            }) => TargetSpec::OpponentPlayer,
-            Effect::Draw(DrawEffect::TargetPlayer { opponent: false, .. })
-            | Effect::Life(LifeEffect::DrainTarget { opponent: false, .. })
-            | Effect::Life(LifeEffect::TargetPlayerGains { opponent: false, .. })
-            | Effect::Choice(ChoiceEffect::TargetPlayerMayDraw { opponent: false, .. })
-            | Effect::Exile(ExileEffect::Graveyard)
-            | Effect::Life(LifeEffect::TargetPlayerLoses { .. })
-            | Effect::Choice(ChoiceEffect::Discard {
-                target_player: true,
-                ..
-            })
-            | Effect::Token(TokenEffect::CreateTreasure {
-                target_player: true,
-                ..
-            })
-            | Effect::Token(TokenEffect::Create {
-                controller: TokenController::TargetPlayer,
-                ..
-            })
-            | Effect::Token(TokenEffect::Create {
-                controller: TokenController::EachOtherPlayer,
-                ..
-            })
+            | Effect::Choice(ChoiceEffect::MayDrawUpToThenOpponentMayRepeat { .. }) => {
+                TargetSpec::OpponentPlayer
+            }
+Effect::Exile(ExileEffect::Graveyard)
             | Effect::Counters(CountersEffect::PutCountersEach {
-                target_player: true,
-                ..
-            })
-            | Effect::Dig(DigEffect::ShuffleTargetCardsFromGraveyardIntoLibrary {
                 target_player: true,
                 ..
             })
@@ -793,15 +752,32 @@ impl Effect {
             // A mana ability targets a player only when authored to (Rousing Refrain's "target
             // opponent"); every ordinary mana source defaults to `TargetSpec::None`.
             Effect::Mana(ManaEffect::Add { target, .. }) => target,
-            Effect::Draw(DrawEffect::Cards { .. })
-            | Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
-            | Effect::Life(LifeEffect::Gain { .. })
-            | Effect::Life(LifeEffect::OpponentGains { .. })
-            | Effect::Token(TokenEffect::Create { .. })
-            | Effect::Token(TokenEffect::CreateTreasure {
-                target_player: false,
-                ..
-            })
+            // A `who`-carrying effect targets whatever its player set names and nothing
+            // otherwise — a `TargetsController` gain (Swords to Plowshares' rider) or a
+            // `TargetsOwner` draw (Oblation's) reads the enclosing `Sequence`'s shared target
+            // rather than taking one of its own.
+            Effect::Life(
+                LifeEffect::Gain { who, .. }
+                | LifeEffect::Lose { who, .. }
+                | LifeEffect::Drain { who, .. },
+            )
+            | Effect::Draw(DrawEffect::Cards { who, .. })
+            | Effect::Mill(MillEffect::Mill { who, .. })
+            | Effect::Damage(DamageEffect::ToPlayers { who, .. })
+            | Effect::Choice(ChoiceEffect::Discard { who, .. })
+            | Effect::Choice(ChoiceEffect::MayDraw { who, .. })
+            | Effect::Token(TokenEffect::CreateTreasure { who, .. })
+            | Effect::Dig(DigEffect::ShuffleTargetCardsFromGraveyardIntoLibrary { who, .. })
+            | Effect::Misc(MiscEffect::ScheduleAtNextUpkeep { who, .. })
+            | Effect::Token(TokenEffect::Create { who, .. })
+            | Effect::Counters(CountersEffect::PutCountersOnPlayer { who, .. })
+            | Effect::Counters(CountersEffect::RemoveAllPlayerCounters { who }) => {
+                player_set_target_spec(who)
+            }
+            Effect::Life(
+                LifeEffect::EachPlayerBecomesHighest | LifeEffect::SourceOwnerLosesHalfTheirLife,
+            ) => TargetSpec::None,
+Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
             | Effect::Copy(CopyEffect::ThisSpell { .. })
             | Effect::Copy(CopyEffect::RetargetSpellCopy { .. })
             | Effect::Copy(CopyEffect::MayPayToCopyThis { .. })
@@ -824,10 +800,6 @@ impl Effect {
             | Effect::Static(StaticEffect::RedirectUnblockedDamageToSelf)
             | Effect::Static(StaticEffect::SetAttachedBasePt { .. })
             | Effect::Static(StaticEffect::SetAttachedTypes { .. })
-            | Effect::Life(LifeEffect::EachOpponentDrain { .. })
-            | Effect::Life(LifeEffect::EachOpponentLoses { .. })
-            | Effect::Life(LifeEffect::EachPlayerLoses { .. })
-            | Effect::Life(LifeEffect::EachPlayerBecomesHighest)
             | Effect::Dig(DigEffect::Scry { .. })
             | Effect::Dig(DigEffect::Surveil { .. })
             | Effect::Dig(DigEffect::LookAtTop { .. })
@@ -855,14 +827,7 @@ impl Effect {
             | Effect::Exile(ExileEffect::AllGraveyards)
             | Effect::Zone(ZoneEffect::ReturnAllToHand { .. })
             | Effect::Zone(ZoneEffect::MassReturnFromGraveyard { .. })
-            | Effect::Dig(DigEffect::ShuffleTargetCardsFromGraveyardIntoLibrary {
-                target_player: false,
-                ..
-            })
             | Effect::Damage(DamageEffect::EachCreature { .. })
-            | Effect::Damage(DamageEffect::EachPlayer { .. })
-            | Effect::Damage(DamageEffect::EachOpponent { .. })
-            | Effect::Damage(DamageEffect::EachOtherOpponent { .. })
             | Effect::Pump(PumpEffect::WeakenEachCreature { .. })
             | Effect::Pump(PumpEffect::PumpCreaturesYouControlUntilEndOfTurn { .. })
             | Effect::Pump(PumpEffect::PumpEachCreatureUntilEndOfTurn { .. })
@@ -909,21 +874,7 @@ impl Effect {
             | Effect::Choice(ChoiceEffect::MayDrawUnlessPays { .. })
             | Effect::Counters(CountersEffect::PutCountersEach { .. })
             | Effect::Counters(CountersEffect::PutLoyaltyCounterEach { .. })
-            // "Each player/opponent gets a poison counter" names its players by scope, not by target.
-            | Effect::Counters(CountersEffect::PutCountersOnPlayer {
-                scope: EdictScope::AllPlayers | EdictScope::EachOpponent | EdictScope::TargetedPlayers,
-                ..
-            })
-            // "Each opponent loses all counters" (Final Act) names its players by scope too.
-            | Effect::Counters(CountersEffect::RemoveAllPlayerCounters {
-                scope: EdictScope::AllPlayers | EdictScope::EachOpponent | EdictScope::TargetedPlayers,
-                ..
-            })
             | Effect::Choice(ChoiceEffect::Proliferate { .. })
-            | Effect::Choice(ChoiceEffect::Discard {
-                target_player: false,
-                ..
-            })
             | Effect::Choice(ChoiceEffect::PutLandFromHand { .. })
             | Effect::Choice(ChoiceEffect::PutCreatureFromHand { .. })
             | Effect::Choice(ChoiceEffect::PutFromHandOnTop { .. })
@@ -931,7 +882,6 @@ impl Effect {
             | Effect::Control(ControlEffect::UntapAll { .. })
             | Effect::Control(ControlEffect::TapAll { .. })
             | Effect::Control(ControlEffect::GainControlAllUntilEndOfTurn { .. })
-            | Effect::Draw(DrawEffect::EachPlayer { .. })
             | Effect::Choice(ChoiceEffect::SacrificeOwn { .. })
             | Effect::Choice(ChoiceEffect::DefendingPlayerSacrifices { .. })
             | Effect::Sacrifice(SacrificeEffect::Object { .. })
@@ -941,7 +891,6 @@ impl Effect {
             | Effect::Exile(ExileEffect::Object { .. })
             | Effect::Zone(ZoneEffect::ReturnObjectToHand { .. })
             | Effect::Zone(ZoneEffect::ExileGraveyardObjectGainLife { .. })
-            | Effect::Mill(MillEffect::MillSelf { .. })
             | Effect::Zone(ZoneEffect::ExileSelfWithTimeCounters { .. })
             | Effect::Zone(ZoneEffect::TuckSelfToLibraryBottom)
             | Effect::Zone(ZoneEffect::ExileSelfOnResolve)
@@ -953,21 +902,12 @@ impl Effect {
             | Effect::Static(StaticEffect::TappedForManaBonus { .. })
             | Effect::Static(StaticEffect::TriggerDoubling { .. })
             | Effect::Static(StaticEffect::GrantManaAbility { .. })
-            | Effect::Misc(MiscEffect::ScheduleAtNextUpkeep { .. })
             | Effect::Misc(MiscEffect::ScheduleColorlessManaForCounteredSpellNextMainPhase)
             | Effect::Misc(MiscEffect::SkipNextUntapOpponentCreatures)
             | Effect::Misc(MiscEffect::TakeExtraTurn)
             | Effect::Misc(MiscEffect::YouLoseTheGame)
             | Effect::Misc(MiscEffect::ScheduleNextCastTrigger { .. })
-            | Effect::Life(LifeEffect::AttackerLosesYouGain { .. })
-            | Effect::Life(LifeEffect::AttackerLosesYouDraw { .. })
-            | Effect::Draw(DrawEffect::AttackingPlayer { .. })
-            | Effect::Choice(ChoiceEffect::DamagingCreatureControllerMayDraw { .. })
-            | Effect::Draw(DrawEffect::EachDrawStepPlayer { .. })
             | Effect::Damage(DamageEffect::ToEnteringPermanent { .. })
-            | Effect::Damage(DamageEffect::ToEnteringPermanentController { .. })
-            | Effect::Damage(DamageEffect::ToTriggeringPlayer { .. })
-            | Effect::Damage(DamageEffect::ToDyingEnchantedCreaturesController { .. })
             | Effect::Zone(ZoneEffect::ReanimateDyingEnchantedCreature { .. })
             | Effect::Zone(ZoneEffect::ExileDeadCreatureCreateCopyWithSubtype { .. })
             | Effect::Zone(ZoneEffect::ReturnThisToHand)
@@ -1005,20 +945,9 @@ impl Effect {
             | Effect::Misc(MiscEffect::YouChooseWhichCreaturesAttack)
             | Effect::Misc(MiscEffect::YouChooseWhichCreaturesBlock)
             | Effect::Counters(CountersEffect::PlaceVowCounters { .. })
-            | Effect::Life(LifeEffect::Lose { .. })
-            | Effect::Life(LifeEffect::SourceOwnerLosesHalfTheirLife)
-            | Effect::Damage(DamageEffect::ToSelf { .. })
             // A no-target-of-its-own step: reads the enclosing `Sequence`'s shared target player,
             // whose lands the preceding step just tapped ("**that player** loses all unspent mana").
             | Effect::Mana(ManaEffect::LoseAllUnspent { .. })
-            // A no-target-of-its-own step: reads the enclosing `Sequence`'s shared target.
-            | Effect::Life(LifeEffect::GainTargetController { .. })
-            // Reads the enclosing `Sequence`'s shared target creature's controller; no target of
-            // its own (Lash Out's win rider).
-            | Effect::Damage(DamageEffect::ToTargetController { .. })
-            // A no-target-of-its-own step: reads the enclosing `Sequence`'s shared target's owner
-            // or controller (Oblation's "then draws two cards" rider).
-            | Effect::Draw(DrawEffect::TargetOwner { .. })
             // Clash picks its opponent at resolution (CR 701.22), not via a cast/activation target.
             | Effect::Dig(DigEffect::Clash)
             // A no-target-of-its-own step: manifests the enclosing `Sequence`'s shared target's
@@ -1087,13 +1016,6 @@ impl Effect {
             | Effect::Static(StaticEffect::NoMaximumHandSize)
             | Effect::Static(StaticEffect::YouDontLoseAtZeroLife)
             | Effect::Static(StaticEffect::LifeGainBecomesDraw)
-            | Effect::Counters(CountersEffect::PutCountersOnPlayer {
-                scope: EdictScope::You,
-                ..
-            })
-            | Effect::Counters(CountersEffect::RemoveAllPlayerCounters {
-                scope: EdictScope::You,
-            })
             | Effect::Static(StaticEffect::OpponentsCantSearchLibraries)
             | Effect::Static(StaticEffect::PlayAnyNumberOfLands)
             // "Creatures attack each combat if able" (Avatar of Slaughter board-wide, Juggernaut
@@ -2406,29 +2328,36 @@ pub fn contextualize_effect(effect: Effect, ctx: TriggerContext) -> Effect {
         ),
         None => effect,
     };
-    match (effect.clone(), ctx.attack) {
+    fill_attack_context(effect, ctx.attack)
+}
+
+/// Bake an attack trigger's `(attacking player, attacked player)` pair into the placeholders that
+/// read it (CR 603.10a). Recurses into a [`Effect::Sequence`] so a multi-step attack payoff —
+/// Tomik's "that opponent loses 3 life and you draw a card" — shares the one pair across every
+/// step, mirroring [`fill_entering_permanent`].
+fn fill_attack_context(effect: Effect, attack: Option<(PlayerId, PlayerId)>) -> Effect {
+    match (effect.clone(), attack) {
+        (Effect::Sequence { steps }, Some(_)) => Effect::Sequence {
+            steps: steps
+                .iter()
+                .map(|step| fill_attack_context(step.clone(), attack))
+                .collect(),
+        },
         (Effect::Counters(CountersEffect::AttackerDrawsControllerCounters { counters, .. }), Some((attacker, _attacked))) => {
             Effect::Counters(CountersEffect::AttackerDrawsControllerCounters {
                 attacker: Some(attacker),
                 counters,
             })
         }
-        (Effect::Life(LifeEffect::AttackerLosesYouGain { amount, .. }), Some((attacker, _attacked))) => {
-            Effect::Life(LifeEffect::AttackerLosesYouGain {
-                attacker: Some(attacker),
-                amount,
-            })
-        }
-        (Effect::Life(LifeEffect::AttackerLosesYouDraw { life_loss, .. }), Some((attacker, _attacked))) => {
-            Effect::Life(LifeEffect::AttackerLosesYouDraw {
-                attacker: Some(attacker),
-                life_loss,
-            })
-        }
-        (Effect::Draw(DrawEffect::AttackingPlayer { count, .. }), Some((attacker, _attacked))) => {
-            Effect::Draw(DrawEffect::AttackingPlayer {
-                drawer: Some(attacker),
-                count,
+        // CR 603.10a: an attack trigger's "its controller" / "that opponent" / "that player
+        // draws" is the attacking player, baked in here at placement rather than read back at
+        // resolution.
+        (Effect::Life(_) | Effect::Draw(_), Some((attacker, _attacked))) => {
+            fill_player(effect, &|who| match who {
+                PlayerSet::AttackingPlayer { .. } => PlayerSet::AttackingPlayer {
+                    player: Some(attacker),
+                },
+                other => other,
             })
         }
         // Goblin Guide: the *defending* player (the attack's second element) reveals, not the
@@ -2463,7 +2392,8 @@ pub fn contextualize_effect(effect: Effect, ctx: TriggerContext) -> Effect {
             Effect::Token(TokenEffect::Create {
                 token,
                 count,
-                controller,
+                who,
+                per_opponent,
                 enters_with,
                 set_base_pt,
                 exile_at_next_end_step,
@@ -2475,7 +2405,8 @@ pub fn contextualize_effect(effect: Effect, ctx: TriggerContext) -> Effect {
         ) => Effect::Token(TokenEffect::Create {
             token,
             count,
-            controller,
+            who,
+            per_opponent,
             enters_with,
             set_base_pt,
             exile_at_next_end_step,
@@ -2514,10 +2445,16 @@ fn fill_entering_permanent(effect: Effect, entering: ObjectId) -> Effect {
             then_if_subtype,
             then,
         }),
-        Effect::Damage(DamageEffect::ToEnteringPermanentController { amount, .. }) => {
-            Effect::Damage(DamageEffect::ToEnteringPermanentController {
-                entering: Some(entering),
-                amount,
+        // Ankh of Mishra's "that land's controller" names the same permanent the arm above damages,
+        // spelled as a player set rather than an effect-local slot.
+        effect @ Effect::Damage(DamageEffect::ToPlayers { .. }) => {
+            fill_player(effect, &|who| match who {
+                PlayerSet::EnteringPermanentsController { .. } => {
+                    PlayerSet::EnteringPermanentsController {
+                        permanent: Some(entering),
+                    }
+                }
+                other => other,
             })
         }
         Effect::Zone(ZoneEffect::AttachTriggeringAuraToMintedToken { .. }) => {
@@ -2596,9 +2533,18 @@ fn fill_dying_enchanted_creature_payoff(
         other => other,
     };
     match effect {
-        Effect::Damage(DamageEffect::ToDyingEnchantedCreaturesController { amount, .. }) => {
-            Effect::Damage(DamageEffect::ToDyingEnchantedCreaturesController {
-                player: Some(controller),
+        // Creature Bond names the host's controller and reads the host's toughness, so this arm
+        // fills both halves of the snapshot at once.
+        Effect::Damage(DamageEffect::ToPlayers { who, amount }) => {
+            Effect::Damage(DamageEffect::ToPlayers {
+                who: match who {
+                    PlayerSet::DyingEnchantedCreaturesController { .. } => {
+                        PlayerSet::DyingEnchantedCreaturesController {
+                            player: Some(controller),
+                        }
+                    }
+                    other => other,
+                },
                 amount: fill(amount),
             })
         }
@@ -2700,7 +2646,8 @@ fn fill_dying_permanent_types(effect: Effect, types: TypeSet) -> Effect {
     match effect {
         Effect::Choice(ChoiceEffect::EachPlayerSacrifices {
             filter,
-            scope,
+            who,
+            chosen_by_controller,
             keep_one,
             life_loss,
             count,
@@ -2709,7 +2656,8 @@ fn fill_dying_permanent_types(effect: Effect, types: TypeSet) -> Effect {
             then,
         }) if filter.shares_type_with_dying_permanent => Effect::Choice(ChoiceEffect::EachPlayerSacrifices {
             filter: PermanentFilter { types, ..filter },
-            scope,
+            who,
+            chosen_by_controller,
             keep_one,
             life_loss,
             count,
@@ -2876,66 +2824,30 @@ fn fill_triggering_caster(effect: Effect, caster: PlayerId) -> Effect {
 }
 
 /// Rewrite a [`TriggerContext::combat_damage_source_controller`]-reading effect placeholder to the
-/// player who controlled the creature that dealt the combat damage:
-/// [`Effect::Choice(ChoiceEffect::DamagingCreatureControllerMayDraw)`] (Edric's "its controller may draw a card") —
-/// mirrors [`fill_triggering_caster`] above, one field over.
+/// player who controlled the creature that dealt the combat damage — Edric's "that creature's
+/// controller may draw a card".
 fn fill_combat_damage_source_controller(effect: Effect, player: PlayerId) -> Effect {
-    match effect {
-        Effect::Choice(ChoiceEffect::DamagingCreatureControllerMayDraw { count, .. }) => {
-            Effect::Choice(ChoiceEffect::DamagingCreatureControllerMayDraw {
-                drawer: Some(player),
-                count,
-            })
-        }
-        Effect::Sequence { steps } => {
-            let filled: Vec<Effect> = steps
-                .iter()
-                .map(|step| fill_combat_damage_source_controller(step.clone(), player))
-                .collect();
-            Effect::Sequence {
-                steps: Arc::from(filled),
-            }
-        }
+    fill_player(effect, &|who| match who {
+        PlayerSet::DamagingPermanentsController { .. } => PlayerSet::DamagingPermanentsController {
+            player: Some(player),
+        },
         other => other,
-    }
+    })
 }
 
-/// Rewrite a [`TriggerContext::damage_recipient`]-reading effect placeholder to the player
-/// who took the damage: [`Effect::Damage(DamageEffect::EachOtherOpponent)`] (Hydra Omnivore's "each *other*
-/// opponent") and [`Effect::Choice(ChoiceEffect::Discard)`] (Hypnotic Specter's "*that player*
-/// discards a card at random") — mirrors [`fill_combat_damage_source_controller`] above, one field over.
+/// Rewrite a [`TriggerContext::damage_recipient`]-reading effect placeholder to the player who took
+/// the damage — Hypnotic Specter's "*that player* discards a card at random" names the seat itself,
+/// Hydra Omnivore's "each *other* opponent" names everyone else off the same snapshot.
 fn fill_damage_recipient(effect: Effect, player: PlayerId) -> Effect {
-    match effect {
-        Effect::Damage(DamageEffect::EachOtherOpponent { amount, .. }) => Effect::Damage(DamageEffect::EachOtherOpponent {
-            amount,
+    fill_player(effect, &|who| match who {
+        PlayerSet::DamagedPlayer { .. } => PlayerSet::DamagedPlayer {
+            player: Some(player),
+        },
+        PlayerSet::EachOtherOpponent { .. } => PlayerSet::EachOtherOpponent {
             damaged: Some(player),
-        }),
-        Effect::Choice(ChoiceEffect::Discard {
-            count,
-            target_player,
-            or_one_matching,
-            random,
-            damaged_player: true,
-            ..
-        }) => Effect::Choice(ChoiceEffect::Discard {
-            count,
-            target_player,
-            or_one_matching,
-            random,
-            damaged_player: true,
-            discarder: Some(player),
-        }),
-        Effect::Sequence { steps } => {
-            let filled: Vec<Effect> = steps
-                .iter()
-                .map(|step| fill_damage_recipient(step.clone(), player))
-                .collect();
-            Effect::Sequence {
-                steps: Arc::from(filled),
-            }
-        }
+        },
         other => other,
-    }
+    })
 }
 
 /// Rewrite a [`TriggerContext::triggering_permanent_controller`]-reading effect placeholder to the
@@ -2946,9 +2858,11 @@ fn fill_damage_recipient(effect: Effect, player: PlayerId) -> Effect {
 /// either way it names the one player the trigger is about.
 fn fill_triggering_permanent_controller(effect: Effect, player: PlayerId) -> Effect {
     match effect {
-        Effect::Damage(DamageEffect::ToTriggeringPlayer { amount, .. }) => Effect::Damage(DamageEffect::ToTriggeringPlayer {
-            player: Some(player),
-            amount,
+        effect @ Effect::Damage(DamageEffect::ToPlayers { .. }) => fill_player(effect, &|who| match who {
+            PlayerSet::TriggeringPlayer { .. } => PlayerSet::TriggeringPlayer {
+                player: Some(player),
+            },
+            other => other,
         }),
         // Power Leak's "that player may pay any amount of mana" names the same player its damage
         // step does, so it fills from the same slot.
@@ -3039,14 +2953,6 @@ fn fill_add_mana_recipient(effect: Effect, active_player: PlayerId) -> Effect {
 /// CR 603.4 resolution-time re-check wrapper still gets its nested draw filled.
 fn fill_active_player_payoff(effect: Effect, active_player: PlayerId) -> Effect {
     match effect {
-        Effect::Draw(DrawEffect::EachDrawStepPlayer { count, .. }) => Effect::Draw(DrawEffect::EachDrawStepPlayer {
-            drawer: Some(active_player),
-            count,
-        }),
-        Effect::Damage(DamageEffect::ToTriggeringPlayer { amount, .. }) => Effect::Damage(DamageEffect::ToTriggeringPlayer {
-            player: Some(active_player),
-            amount,
-        }),
         // Power Leak's payment step names the same player its damage step does — the upkeep whose
         // beginning the Aura watches is that player's, so it fills from here too.
         Effect::Choice(ChoiceEffect::TriggeringPlayerMayPayAnyAmountToPrevent {
@@ -3063,6 +2969,15 @@ fn fill_active_player_payoff(effect: Effect, active_player: PlayerId) -> Effect 
                 player: Some(active_player),
             })
         }
+        // Howling Mine's "that player draws an additional card" and Copper Tablet's "deals 1
+        // damage to that player" name the same seat the payment steps above do, spelled as a
+        // player set rather than an effect-local slot.
+        effect @ (Effect::Life(_) | Effect::Draw(_) | Effect::Damage(_)) => fill_player(effect, &|who| match who {
+            PlayerSet::TriggeringPlayer { .. } => PlayerSet::TriggeringPlayer {
+                player: Some(active_player),
+            },
+            other => other,
+        }),
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
@@ -3146,10 +3061,106 @@ fn relink(original: &'static Amount, rewritten: Amount) -> &'static Amount {
 /// every step. The arm set is the union of what the pool's context-filled effects need
 /// (flag-don't-force: add an arm here when a real card first needs its `Amount` field
 /// context-filled).
+/// Rewrite the [`PlayerSet`] of every effect that carries one, leaving the rest untouched — the
+/// `who`-slot twin of [`map_effect_amount_slots`]. CR 603.10a's last-known information is written
+/// here at trigger placement rather than read back at resolution, and one walker serves every
+/// context that names a seat, so a family that adopts `who` gets its context fills for free.
+///
+/// Recurses into [`Effect::Sequence`] *and* [`Effect::Conditional`]'s `then` — Howling Mine wraps
+/// its draw in a CR 603.4 resolution-time re-check, so the nested draw needs filling too.
+fn fill_player(effect: Effect, f: &impl Fn(PlayerSet) -> PlayerSet) -> Effect {
+    match effect {
+        Effect::Life(LifeEffect::Gain { who, amount }) => Effect::Life(LifeEffect::Gain {
+            who: f(who),
+            amount,
+        }),
+        Effect::Life(LifeEffect::Lose { who, amount }) => Effect::Life(LifeEffect::Lose {
+            who: f(who),
+            amount,
+        }),
+        Effect::Life(LifeEffect::Drain {
+            who,
+            amount,
+            sum_gain,
+        }) => Effect::Life(LifeEffect::Drain {
+            who: f(who),
+            amount,
+            sum_gain,
+        }),
+        Effect::Draw(DrawEffect::Cards { who, count }) => Effect::Draw(DrawEffect::Cards {
+            who: f(who),
+            count,
+        }),
+        Effect::Damage(DamageEffect::ToPlayers { who, amount }) => {
+            Effect::Damage(DamageEffect::ToPlayers {
+                who: f(who),
+                amount,
+            })
+        }
+        Effect::Choice(ChoiceEffect::Discard {
+            count,
+            who,
+            or_one_matching,
+            random,
+        }) => Effect::Choice(ChoiceEffect::Discard {
+            count,
+            who: f(who),
+            or_one_matching,
+            random,
+        }),
+        Effect::Choice(ChoiceEffect::MayDraw { who, count }) => {
+            Effect::Choice(ChoiceEffect::MayDraw { who: f(who), count })
+        }
+        Effect::Token(TokenEffect::CreateTreasure { count, who, tapped }) => {
+            Effect::Token(TokenEffect::CreateTreasure {
+                count,
+                who: f(who),
+                tapped,
+            })
+        }
+        Effect::Dig(DigEffect::ShuffleTargetCardsFromGraveyardIntoLibrary { max, who }) => {
+            Effect::Dig(DigEffect::ShuffleTargetCardsFromGraveyardIntoLibrary { max, who: f(who) })
+        }
+        // Only the outer `who` fills: `then` is `&'static`, so a fill inside it would leak.
+        Effect::Misc(MiscEffect::ScheduleAtNextUpkeep { who, then, fire_at }) => {
+            Effect::Misc(MiscEffect::ScheduleAtNextUpkeep { who: f(who), then, fire_at })
+        }
+        Effect::Sequence { steps } => Effect::Sequence {
+            steps: steps.iter().map(|step| fill_player(step.clone(), f)).collect(),
+        },
+        Effect::Conditional {
+            condition,
+            then,
+            negate,
+            otherwise,
+        } => Effect::Conditional {
+            condition,
+            then: then.iter().map(|step| fill_player(step.clone(), f)).collect(),
+            negate,
+            // ponytail: `otherwise` is a `&'static` slice, so filling it would mean leaking a new
+            //   one per placement. No card puts a context-filled seat in an else branch; if one
+            //   ever does, `fill_active_player_payoff`'s `Box::leak` is the pattern to copy.
+            otherwise,
+        },
+        other => other,
+    }
+}
+
+/// The target a [`PlayerSet`] needs the shared targeting machinery to pick. Every other set names
+/// its seats without one — "each opponent" and "its controller" take no target of their own.
+fn player_set_target_spec(who: PlayerSet) -> TargetSpec {
+    match who {
+        // `EachOtherPlayer` targets a seat too — the one it leaves *out* (Death by Dragons).
+        PlayerSet::TargetPlayer | PlayerSet::EachOtherPlayer => TargetSpec::Player,
+        PlayerSet::TargetOpponent => TargetSpec::OpponentPlayer,
+        _ => TargetSpec::None,
+    }
+}
+
 fn map_effect_amount_slots(effect: Effect, f: &impl Fn(Amount) -> Amount) -> Effect {
     match effect {
-        Effect::Life(LifeEffect::Gain { amount }) => Effect::Life(LifeEffect::Gain { amount: f(amount) }),
-        Effect::Draw(DrawEffect::Cards { count }) => Effect::Draw(DrawEffect::Cards { count: f(count) }),
+        Effect::Life(LifeEffect::Gain { who, amount }) => Effect::Life(LifeEffect::Gain { who, amount: f(amount) }),
+        Effect::Draw(DrawEffect::Cards { who, count }) => Effect::Draw(DrawEffect::Cards { who, count: f(count) }),
         Effect::Counters(CountersEffect::PutCounters {
             count,
             target,
@@ -3168,7 +3179,8 @@ fn map_effect_amount_slots(effect: Effect, f: &impl Fn(Amount) -> Amount) -> Eff
         Effect::Token(TokenEffect::Create {
             token,
             count,
-            controller,
+            who,
+            per_opponent,
             enters_with,
             set_base_pt,
             exile_at_next_end_step,
@@ -3178,7 +3190,8 @@ fn map_effect_amount_slots(effect: Effect, f: &impl Fn(Amount) -> Amount) -> Eff
         }) => Effect::Token(TokenEffect::Create {
             token,
             count: f(count),
-            controller,
+            who,
+            per_opponent,
             enters_with: f(enters_with),
             set_base_pt: set_base_pt.map(f),
             exile_at_next_end_step,
@@ -3186,17 +3199,16 @@ fn map_effect_amount_slots(effect: Effect, f: &impl Fn(Amount) -> Amount) -> Eff
             attacking_context,
             must_attack_defender,
         }),
-        Effect::Token(TokenEffect::CreateTreasure {
-            count,
-            target_player,
-            tapped,
-        }) => Effect::Token(TokenEffect::CreateTreasure {
-            count: f(count),
-            target_player,
-            tapped,
-        }),
+        Effect::Token(TokenEffect::CreateTreasure { count, who, tapped }) => {
+            Effect::Token(TokenEffect::CreateTreasure {
+                count: f(count),
+                who,
+                tapped,
+            })
+        }
         Effect::Choice(ChoiceEffect::EachPlayerSacrifices {
-            scope,
+            who,
+            chosen_by_controller,
             keep_one,
             filter,
             life_loss,
@@ -3205,7 +3217,8 @@ fn map_effect_amount_slots(effect: Effect, f: &impl Fn(Amount) -> Amount) -> Eff
             lose_game_if_short,
             then,
         }) => Effect::Choice(ChoiceEffect::EachPlayerSacrifices {
-            scope,
+            who,
+            chosen_by_controller,
             keep_one,
             filter,
             life_loss,
@@ -3214,9 +3227,9 @@ fn map_effect_amount_slots(effect: Effect, f: &impl Fn(Amount) -> Amount) -> Eff
             lose_game_if_short,
             then,
         }),
-        Effect::Damage(DamageEffect::EachOtherOpponent { amount, damaged }) => Effect::Damage(DamageEffect::EachOtherOpponent {
+        Effect::Damage(DamageEffect::ToPlayers { who, amount }) => Effect::Damage(DamageEffect::ToPlayers {
+            who,
             amount: f(amount),
-            damaged,
         }),
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
@@ -3298,7 +3311,8 @@ fn fill_cast_mana_value(effect: Effect, mv: u32) -> Effect {
         Effect::Token(TokenEffect::Create {
             token,
             count,
-            controller,
+            who,
+            per_opponent,
             enters_with,
             set_base_pt,
             exile_at_next_end_step,
@@ -3308,7 +3322,8 @@ fn fill_cast_mana_value(effect: Effect, mv: u32) -> Effect {
         }) => Effect::Token(TokenEffect::Create {
             token,
             count: fill(count),
-            controller,
+            who,
+            per_opponent,
             enters_with: fill(enters_with),
             set_base_pt: set_base_pt.map(fill),
             exile_at_next_end_step,
@@ -3488,7 +3503,8 @@ pub fn contextualize_sacrifice_effect(effect: Effect, power: i32, toughness: i32
             toughness: fill(toughness),
             keywords,
         }),
-        Effect::Life(LifeEffect::Gain { amount }) => Effect::Life(LifeEffect::Gain {
+        Effect::Life(LifeEffect::Gain { who, amount }) => Effect::Life(LifeEffect::Gain {
+            who,
             amount: fill(amount),
         }),
         // Brion Stoutarm: "deals damage equal to the sacrificed creature's power to target
@@ -3549,6 +3565,7 @@ mod tests {
     #[test]
     fn a_conditional_finds_a_target_in_either_branch() {
         const GAIN: Effect = Effect::Life(LifeEffect::Gain {
+            who: PlayerSet::You,
             amount: Amount::Fixed(1),
         });
         const BOUNCE: Effect = Effect::Zone(ZoneEffect::ReturnToHand {
@@ -3590,5 +3607,43 @@ mod tests {
             otherwise: &[GAIN],
         };
         assert_eq!(no_target.target(), TargetSpec::None);
+    }
+
+    /// A trigger's context fills reach every effect the trigger can actually run, including the
+    /// branch of a `Conditional` — a "that player discards" rider gated behind an
+    /// intervening-if is still the damaged player's discard, and an unfilled `who` panics at
+    /// resolution.
+    #[test]
+    fn a_conditional_branch_gets_the_triggers_damaged_player() {
+        let discard = Effect::Choice(ChoiceEffect::Discard {
+            count: Amount::Fixed(1),
+            who: PlayerSet::DamagedPlayer { player: None },
+            or_one_matching: None,
+            random: true,
+        });
+        let gated = Effect::Conditional {
+            condition: Condition::SourcePowerAtMost { at_most: 16 },
+            then: arc_slice([discard]),
+            negate: false,
+            otherwise: &[],
+        };
+
+        let mut ctx = TriggerContext::of(PlayerId(0));
+        ctx.damage_recipient = Some(PlayerId(2));
+
+        let Effect::Conditional { then, .. } = contextualize_effect(gated, ctx) else {
+            panic!("contextualizing a conditional keeps it a conditional");
+        };
+        assert_eq!(
+            then.as_ref(),
+            [Effect::Choice(ChoiceEffect::Discard {
+                count: Amount::Fixed(1),
+                who: PlayerSet::DamagedPlayer {
+                    player: Some(PlayerId(2))
+                },
+                or_one_matching: None,
+                random: true,
+            })]
+        );
     }
 }
