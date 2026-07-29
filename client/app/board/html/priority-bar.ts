@@ -154,12 +154,12 @@ export function priorityBarView(board: BoardModel, state: VisibleState, tableId:
           h.Attribute("aria-label", "Auto-pass until my turn"),
           h.Attribute("title", "Auto-pass until my turn"),
           h.OnClick(TurnYieldToggled({ enabled: !turnYielded })),
-          h.Class(turnYieldRockerClass(turnYielded)),
+          h.Class(turnYieldRockerClass()),
         ],
         [
           h.span(
-            [h.Class(turnYieldTrackClass(turnYielded))],
-            [h.span([h.Class(turnYieldThumbClass(turnYielded)), h.Attribute("aria-hidden", "true")], ["≫"])],
+            [h.Class(turnYieldTrackClass())],
+            [h.span([h.Class(turnYieldThumbClass()), h.Attribute("aria-hidden", "true")], ["≫"])],
           ),
         ],
       )
