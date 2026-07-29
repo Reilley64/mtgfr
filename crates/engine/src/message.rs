@@ -222,7 +222,6 @@ message_keys! {
     EFFECT_MILL_EXILE_TARGET_FROM_GRAVEYARD_WITH_THIS => "effect.mill_exile_target_from_graveyard_with_this",
     EFFECT_MILL_EXILE_TOP_MAY_PLAY => "effect.mill_exile_top_may_play",
     EFFECT_MILL_MILL => "effect.mill_mill",
-    EFFECT_MILL_MILL_SELF => "effect.mill_mill_self",
     EFFECT_MISC_ARM_COMBAT_DAMAGE_WATCH => "effect.misc_arm_combat_damage_watch",
     EFFECT_MISC_BECOME_PREPARED => "effect.misc_become_prepared",
     EFFECT_MISC_COUNTER_TARGET_ACTIVATED_ABILITY => "effect.misc_counter_target_activated_ability",
@@ -1469,10 +1468,8 @@ impl EffectMessage for Effect {
             Effect::Mana(ManaEffect::TargetPlayerTapsLandsForMana) => {
                 MessageRef::new(MessageKey::EFFECT_MANA_TARGET_PLAYER_TAPS_LANDS_FOR_MANA)
             }
-            Effect::Mill(Mill { count, .. }) => MessageRef::new(MessageKey::EFFECT_MILL_MILL)
-                .with_params(vec![amount_param("count", count)]),
-            Effect::Mill(MillSelf { count }) => MessageRef::new(MessageKey::EFFECT_MILL_MILL_SELF)
-                .with_params(vec![amount_param("count", count)]),
+            Effect::Mill(Mill { who, count }) => MessageRef::new(MessageKey::EFFECT_MILL_MILL)
+                .with_params(vec![who_param(who), amount_param("count", count)]),
             Effect::Mill(ExileTopMayPlay {
                 count,
                 until_next_turn,

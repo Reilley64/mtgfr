@@ -598,7 +598,6 @@ impl Effect {
             | Effect::Zone(ZoneEffect::ReanimateToBattlefield { target, .. })
             | Effect::Zone(ZoneEffect::ReanimateRandomFromTargetOpponentGraveyard { target })
             | Effect::Zone(ZoneEffect::TuckFromGraveyard { target, .. })
-            | Effect::Mill(MillEffect::Mill { target, .. })
             | Effect::Choice(ChoiceEffect::TargetPlayerExilesFromGraveyard { target })
             | Effect::Choice(ChoiceEffect::ControlPlayerToPlayCardFromHand { target })
             | Effect::Choice(ChoiceEffect::ChangeText { target, .. })
@@ -795,7 +794,8 @@ Effect::Choice(ChoiceEffect::TargetPlayerMayDraw { opponent: false, .. })
                 | LifeEffect::Lose { who, .. }
                 | LifeEffect::Drain { who, .. },
             )
-            | Effect::Draw(DrawEffect::Cards { who, .. }) => player_set_target_spec(who),
+            | Effect::Draw(DrawEffect::Cards { who, .. })
+            | Effect::Mill(MillEffect::Mill { who, .. }) => player_set_target_spec(who),
             Effect::Life(
                 LifeEffect::EachPlayerBecomesHighest | LifeEffect::SourceOwnerLosesHalfTheirLife,
             ) => TargetSpec::None,
@@ -939,7 +939,6 @@ Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
             | Effect::Exile(ExileEffect::Object { .. })
             | Effect::Zone(ZoneEffect::ReturnObjectToHand { .. })
             | Effect::Zone(ZoneEffect::ExileGraveyardObjectGainLife { .. })
-            | Effect::Mill(MillEffect::MillSelf { .. })
             | Effect::Zone(ZoneEffect::ExileSelfWithTimeCounters { .. })
             | Effect::Zone(ZoneEffect::TuckSelfToLibraryBottom)
             | Effect::Zone(ZoneEffect::ExileSelfOnResolve)

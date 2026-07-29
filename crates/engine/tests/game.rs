@@ -2667,14 +2667,14 @@ static LOOK_DIG_TO_BATTLEFIELD: LazyLock<CardDef> = LazyLock::new(|| CardDef {
 
 /// Resolve the top of the stack by having both players pass in succession.
 fn resolve_top_of_stack(game: &mut Game) {
-    game.submit(Intent::PassPriority {
-        player: game.priority_holder(),
-    })
-    .unwrap();
-    game.submit(Intent::PassPriority {
-        player: game.priority_holder(),
-    })
-    .unwrap();
+    // Every seat has to pass in succession before the top resolves (CR 117.4), so the number of
+    // passes tracks the table size rather than assuming a two-player game.
+    for _ in 0..game.player_count() {
+        game.submit(Intent::PassPriority {
+            player: game.priority_holder(),
+        })
+        .unwrap();
+    }
 }
 
 /// Resolve a just-cast Demonstrate spell's fabricated trigger (CR 702.147a), declining the copy
@@ -2969,6 +2969,13 @@ impl std::ops::DerefMut for TestGame {
 impl TestGame {
     fn new() -> Self {
         Self { game: Game::new() }
+    }
+
+    /// A `players`-seat table, for the effects that fan out across more than one opponent.
+    fn with_players(players: u8) -> Self {
+        Self {
+            game: Game::with_players(players, 0),
+        }
     }
 
     /// Begin casting `object` from player 0's hand. Mana is funded by default; chain
@@ -49534,7 +49541,8 @@ fn pack_a_punch() -> CardDef {
             timing: Timing::Spell,
             effect: Effect::Sequence {
                 steps: Arc::from([
-                    Effect::Mill(MillEffect::MillSelf {
+                    Effect::Mill(MillEffect::Mill {
+                        who: PlayerSet::You,
                         count: Amount::Fixed(1),
                     }),
                     Effect::Counters(CountersEffect::PutCounters {
@@ -63016,6 +63024,52 @@ fn swords_pays_the_stolen_creatures_controller_not_its_owner() {
         game.life(PlayerId(1)),
         owner_life,
         "merely owning it gains nothing"
+    );
+}
+
+/// A test sorcery that mills every opponent — the multi-seat shape a `who`-carrying mill unlocks.
+fn mill_each_opponent_sorcery() -> CardDef {
+    static CARD: LazyLock<CardDef> = LazyLock::new(|| {
+        sorcery(
+            "Mill Each Opponent (test)",
+            Box::leak(Box::new([spell_ability(Effect::Mill(MillEffect::Mill {
+                who: PlayerSet::EachOpponent,
+                count: Amount::Fixed(2),
+            }))])),
+        )
+    });
+    CARD.clone()
+}
+
+#[test]
+fn a_mill_can_hit_every_opponent_at_once() {
+    // Who mills and how many they mill are independent axes, so one mill effect reaches the whole
+    // table. Every seat's cards must land in its own graveyard: the ids are minted in a single
+    // pass across all three batches, since `next_object_id` doesn't advance until events apply.
+    let mut game = TestGame::with_players(4);
+    let opponents = [PlayerId(1), PlayerId(2), PlayerId(3)];
+    let stacked: Vec<Vec<ObjectId>> = opponents
+        .iter()
+        .map(|&p| game.stack_library(p, &[card("Forest"), card("Island"), card("Swamp")]))
+        .collect();
+
+    let spell = game.spawn_in_hand(PlayerId(0), mill_each_opponent_sorcery());
+    game.cast(spell).resolve();
+
+    for (opponent, library) in opponents.iter().zip(&stacked) {
+        assert_eq!(game.library_size(*opponent), 1, "each opponent milled two");
+        assert_eq!(game.zone_of(library[0]), Zone::Graveyard);
+        assert_eq!(game.zone_of(library[1]), Zone::Graveyard);
+        assert_eq!(
+            game.zone_of(library[2]),
+            Zone::Library,
+            "the third stays put"
+        );
+    }
+    assert_eq!(
+        game.library_size(PlayerId(0)),
+        0,
+        "the caster is not an opponent of themselves"
     );
 }
 

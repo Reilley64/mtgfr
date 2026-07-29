@@ -140,7 +140,7 @@ Representative modes by family:
 
 **`token`:** `create` (references a token profile by id or inline definition), `create_copy`, `create_treasure`.
 
-**`draw`:** `cards` — its only mode, taking a `who` [player set](#player-set) naming the drawer (default `"you"`) and a `count` `Amount`; **`mill`:** `cards`.
+**`draw`:** `cards` — its only mode, taking a `who` [player set](#player-set) naming the drawer (default `"you"`) and a `count` `Amount`. **`mill`:** `mill` takes the same `who` / `count` pair; the rest of the family (`exile_top_may_play`, `exile_discarded_with_this`, …) are graveyard/exile riders, not mills.
 
 **`dig`:** `search_library`, `scry`, `surveil`, `look_at_top`, `distribute_top`, `cascade`, `clash`.
 
@@ -162,7 +162,7 @@ Representative modes by family:
 
 ### Player set
 
-`PlayerSet` names *which seat or seats* an effect's payload lands on, so a family spells the recipient as a parameter instead of once per payload — `mode = "lose", who = "each_opponent"` rather than an `each_opponent_loses` mode, and `draw` collapses to a single `cards` mode. Every set is a bare string: `you` (the default when `who` is absent), `target_player`, `target_opponent`, `targets_controller` (the *current* controller of the object target — Swords to Plowshares' rider, CR 109.4, so a stolen creature pays its thief), `targets_owner` (Oblation's "its owner"), `each_opponent`, `each_player`, `attacking_player` (Parasitic Impetus), `active_player` (Howling Mine's "that player", the seat whose step it is), and `an_opponent`.
+`PlayerSet` names *which seat or seats* an effect's payload lands on, so a family spells the recipient as a parameter instead of once per payload — `mode = "lose", who = "each_opponent"` rather than an `each_opponent_loses` mode, and `draw` collapses to a single `cards` mode. Every set is a bare string: `you` (the default when `who` is absent), `target_player`, `target_opponent`, `targets_controller` (the *current* controller of the object target — Swords to Plowshares' rider, CR 109.4, so a stolen creature pays its thief), `targets_owner` (Oblation's "its owner"), `each_opponent`, `each_player`, `attacking_player` (Parasitic Impetus), `active_player` (Howling Mine's "that player", the seat whose step it is), and `an_opponent`. `life`, `draw`, and `mill` all take it.
 
 `target_player` and `target_opponent` carry the effect's `TargetSpec`, so the shared targeting machinery picks and legality-checks the seat; every other set resolves without a target. `attacking_player` and `active_player` carry a slot the trigger-placement filler writes into (CR 603.10a) — `fill_player` walks a placed effect and rewrites every `who` it carries, recursing through `Sequence` and `Conditional`, so each family that adopts `who` gets its context fills for free. `Game::players_in` is the single resolver, returning the seats in turn order so a multi-seat change lands as one simultaneous batch (CR 118.9).
 

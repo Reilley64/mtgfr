@@ -1164,8 +1164,8 @@ impl Game {
             Effect::Exile(exile @ ExileEffect::All { .. }) => {
                 self.resolve_exile_all(exile, controller, source, target, x, events)
             }
-            Effect::Mill(MillEffect::MillSelf { count }) => {
-                self.resolve_mill_self(count, controller, source, target, x, events)
+            Effect::Mill(mill @ MillEffect::Mill { .. }) => {
+                self.resolve_mill(mill, controller, source, target, x, events)
             }
             // Rousing Refrain / Spell Crumple / Vengeful Rebirth self-move riders — see
             // `resolution/resolve_misc.rs`.

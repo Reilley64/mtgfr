@@ -35,8 +35,8 @@ timing = "spell"
 [[abilities.effects]]
 type = "mill"
 mode = "mill"
+who = "target_player"
 count = 3
-target = "player"
 
 # then you return a land card from your graveyard to your hand. Mandatory ("you return"): with a
 # land card in your graveyard you must return one; no legal land card does nothing (CR 608.2b).

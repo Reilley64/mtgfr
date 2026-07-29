@@ -38,7 +38,7 @@ function edictWho(scope: MessageValue): string {
 }
 
 /** A player set's subject phrase, with a regular verb conjugated to match — "You gain", "Each opponent draws". */
-function playerClause(params: MessageParams, verb: "gain" | "lose" | "draw"): string {
+function playerClause(params: MessageParams, verb: "gain" | "lose" | "draw" | "mill"): string {
   const who = param(params, "who");
   if (who === "target_player") return `Target player ${verb}s`;
   if (who === "target_opponent") return `Target opponent ${verb}s`;
@@ -443,8 +443,7 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   ),
   "effect.mill_exile_top_may_play": (params) =>
     `Exile the top ${param(params, "count")} card(s)${bool(params, "face_down") ? " face down" : ""}; play ${millPlayDuration(params)}${bool(params, "free_while_source") ? " without paying its mana cost" : ""}`,
-  "effect.mill_mill": (params) => `Target player mills ${param(params, "count")}`,
-  "effect.mill_mill_self": (params) => `Mill ${param(params, "count")}`,
+  "effect.mill_mill": (params) => `${playerClause(params, "mill")} ${param(params, "count")}`,
   "effect.misc_arm_combat_damage_watch": literal(
     "Arm a delayed watch: this creature becomes prepared when target creature deals combat damage to a player this combat",
   ),

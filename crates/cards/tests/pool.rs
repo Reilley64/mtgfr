@@ -874,8 +874,8 @@ fn the_pool_loads_with_expected_card_shapes() {
     assert!(matches!(
         tome.abilities[0].effect,
         Effect::Mill(MillEffect::Mill {
+            who: PlayerSet::TargetPlayer,
             count: Amount::Fixed(5),
-            target: TargetSpec::Player
         })
     ));
 
@@ -1242,8 +1242,8 @@ fn the_pool_loads_with_expected_card_shapes() {
     assert!(matches!(
         &steps[0],
         Effect::Mill(MillEffect::Mill {
+            who: PlayerSet::TargetPlayer,
             count: Amount::Fixed(3),
-            target: TargetSpec::Player,
         })
     ));
     assert!(matches!(
@@ -1435,7 +1435,8 @@ fn the_pool_loads_with_expected_card_shapes() {
     ));
     assert!(matches!(
         then[1],
-        Effect::Mill(MillEffect::MillSelf {
+        Effect::Mill(MillEffect::Mill {
+            who: PlayerSet::You,
             count: Amount::Fixed(1)
         })
     ));

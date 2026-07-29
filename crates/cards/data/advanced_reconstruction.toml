@@ -28,7 +28,7 @@ timing = "first_main_phase"
 # mill a card,
 [[abilities.effects]]
 type = "mill"
-mode = "mill_self"
+mode = "mill"
 count = 1
 
 # then exile a card from your graveyard at random. You may play the exiled card this turn.

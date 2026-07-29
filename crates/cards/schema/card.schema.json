@@ -5098,6 +5098,7 @@
               "type": "object"
             },
             {
+              "description": "\"`who` mills `count` cards\" — from Perpetual Timepiece's own-library mill to Tome Scour's \"target player mills five\". Who mills and how many are independent axes ([`PlayerSet`] and [`Amount`]), so no variant names a recipient.",
               "properties": {
                 "count": {
                   "$ref": "#/$defs/Amount"
@@ -5108,27 +5109,8 @@
                   ],
                   "type": "string"
                 },
-                "target": {
-                  "$ref": "#/$defs/TargetSpec"
-                }
-              },
-              "required": [
-                "count",
-                "mode",
-                "target"
-              ],
-              "type": "object"
-            },
-            {
-              "properties": {
-                "count": {
-                  "$ref": "#/$defs/Amount"
-                },
-                "mode": {
-                  "enum": [
-                    "mill_self"
-                  ],
-                  "type": "string"
+                "who": {
+                  "$ref": "#/$defs/PlayerSet"
                 }
               },
               "required": [
