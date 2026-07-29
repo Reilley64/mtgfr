@@ -643,9 +643,7 @@ function targetPickButton(target: WireTarget, state: VisibleState, testId: strin
         "relative cursor-pointer rounded-[9px] p-0 shadow-hand transition-transform duration-150 ease-out hover:-translate-y-2",
       ),
     ],
-    [
-      promptCardFace(h, { print: obj?.print ?? "", label: name, size: "md" }),
-    ],
+    [promptCardFace(h, { print: obj?.print ?? "", label: name, size: "md" })],
   );
 }
 
@@ -1172,9 +1170,7 @@ function revealedToGraveyardAim(
           "relative cursor-pointer rounded-[9px] border-4 border-transparent p-0 transition-transform duration-150 ease-out hover:-translate-y-1 disabled:cursor-not-allowed disabled:opacity-50",
         ),
       ],
-      [
-        promptCardFace(h, { print, label: item.label, size: "sm" }),
-      ],
+      [promptCardFace(h, { print, label: item.label, size: "sm" })],
     );
   });
   return h.div(
