@@ -45,7 +45,7 @@ Use `PriorityContextBar` for action controls, `TurnBanner` for active player and
 
 ## Implementation Decisions
 
-- `priorityBarView` derives controls from current board model and `VisibleState`; server flags such as `yielded` and `turn_yielded` are authoritative.
+- `priorityBarView` derives controls from current board model and `VisibleState`; server flags such as `yielded` and `turn_yielded` are authoritative. Illegal-action feedback (`board-reject`) carries `role="alert"` so a rejected action announces.
 - `promptPresentation(board, state)` is the single decision-chrome classifier for the priority bar: it checks local prompt sessions before the viewer-owned `pending_choice`, returns `none | simple | modal`, classifies staged pickers from `stagedPickTargets(...)` as local modals, and leaves only pure staged on-board arrow aim on the legacy Cancel path.
 - Unknown or uncategorized pending kinds fall back to `modal`, so the bar hides idle controls instead of guessing new simple-button layouts.
 - Stack yield is one-shot and disabled while armed until the stack empties.
