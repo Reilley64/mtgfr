@@ -150,7 +150,7 @@ function entrySurface(
           h.div(
             [h.Class("flex flex-col gap-xs")],
             [
-              h.div([h.Class("font-display font-semibold text-title tracking-[-0.02em]")], ["Ready to play?"]),
+              h.div([h.Class("font-display font-semibold text-title tracking-display")], ["Ready to play?"]),
               h.div([h.Class("text-label text-lichen")], ["Host a fresh Commander table with this deck."]),
             ],
           ),
@@ -342,7 +342,7 @@ function tableLobby(
           h.span(
             [
               h.DataAttribute("testid", "lobby-table-code"),
-              h.Class("select-text font-display text-display tracking-[0.06em]"),
+              h.Class("select-text font-display text-display tracking-chip"),
             ],
             [model.tableId ?? ""],
           ),
@@ -355,7 +355,7 @@ function tableLobby(
         ? input(h, {
             id: "share-code",
             value: model.tableId ?? "",
-            class: "w-[120px] text-chip tracking-[0.06em]",
+            class: "w-[120px] text-chip tracking-chip",
             attrs: [h.Readonly(true)],
           })
         : null,

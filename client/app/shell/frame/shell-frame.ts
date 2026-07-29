@@ -57,7 +57,7 @@ export function shellFrame<Msg>(h: ReturnType<typeof createHtml<Msg>>, options: 
               h.Class("flex min-w-0 flex-col items-center text-center"),
             ],
             [
-              hasTitle ? h.h1([h.Class("m-0 font-display text-display tracking-[-0.02em]")], [title]) : null,
+              hasTitle ? h.h1([h.Class("m-0 font-display text-display tracking-display")], [title]) : null,
               typeof options.subtitle === "string"
                 ? h.p([h.Class("m-0 text-label text-lichen")], [options.subtitle])
                 : (options.subtitle ?? null),

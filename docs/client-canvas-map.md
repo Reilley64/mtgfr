@@ -70,12 +70,12 @@ specs for the current module split, especially
    | 2 | Zone furniture | Canvas / world DOM | Library, command zone, **battlefield in-play mana** (left under your seat), GY, exile |
    | 3 | Resting battlefield permanents + avatars | Mount bitmap + Canvas vector (+ card chrome) | Battlefield faces paint first; avatar/life paint follows resting cards |
    | 4 | Arrows | Canvas | Committed attack/block, **declare-attackers drag aim**, spell aim — always above resting permanents |
-   | 5 | Hand / stack / spell mana | HTML | Resting hand & stack; **spell/payment mana tray** (same layer as hand, above hand cards) |
-   | 6 | Flights | Mount / motion | In-flight play cards and battlefield exit FX — **above** hand and stack |
+   | 5 | Hand / stack / spell mana | HTML (`z-20`) | Resting hand & stack; **spell/payment mana tray** (same layer as hand, above hand cards); legend panel floats one notch up (`z-21`) |
+   | 6 | Flights | Mount / motion (`z-30`) | In-flight play cards and battlefield exit FX — **above** hand and stack |
    | 7 | Combat / life hit targets | HTML | Interactive orbs when needed (paint stays in layer 2; hits here) |
-   | 8 | Prompts / choice UI | HTML | `pending_choice` and related; centered `*-modal` / pile overlays (`z-40` / `z-29`) |
-   | 9 | Turn HUD / simple prompt bar | HTML | Phase track; idle Next / End Turn (`z-25`); **simple** prompt answer chrome in `priority-context-bar` at `z-45` so it stays above prompt/pile backdrops |
-   | 10 | Inspect dock | HTML | Mode `dock` + backdrop — **topmost** |
+   | 8 | Prompts / choice UI | HTML | `pending_choice` and related; centered `*-modal` / pile overlays (`z-40` / `z-29`); prompt frames, waiting chips, and the activation menu float at hand-adjacent `z-30` (panel `z-31` inside its own backdrop's stacking context); mulligan overlay is `z-40` and the one-shot first-player reveal sits above it at `z-50` |
+   | 9 | Turn HUD / simple prompt bar | HTML | Phase track; idle Next / End Turn (`z-25`); **simple** prompt answer chrome in `priority-context-bar` at `z-45` so it stays above prompt/pile backdrops; the reconnect banner pins top at `z-40` |
+   | 10 | Inspect dock | HTML (`z-100`) | Mode `dock` + backdrop — **topmost** |
 
    **Layer rules:**
 

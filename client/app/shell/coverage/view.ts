@@ -128,7 +128,7 @@ export const view = Submodel.defineView<CoverageSubmodel, ViewMessage, ViewInput
       ],
       [
         h.section(
-          [h.Class("mx-auto flex min-h-0 w-full max-w-[960px] flex-1 flex-col gap-sm")],
+          [h.Class("mx-auto flex min-h-0 w-full max-w-[var(--size-shell-content-max)] flex-1 flex-col gap-sm")],
           [
             model.error == null ? null : h.div([h.Role("alert"), h.Class(alertClass("shrink-0"))], [model.error]),
             status == null ? null : h.div([h.Class("shrink-0 text-label text-lichen")], [status]),

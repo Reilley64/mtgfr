@@ -19,7 +19,7 @@ function lineView(line: LogLine): Html {
         h.span(
           [
             h.Class(
-              "mt-px shrink-0 rounded-full bg-auto-moss px-xs py-px font-bold text-micro text-snow-mint tracking-[0.06em]",
+              "mt-px shrink-0 rounded-full bg-auto-moss px-xs py-px font-bold text-micro text-snow-mint tracking-chip",
             ),
           ],
           ["AUTO"],

@@ -513,7 +513,7 @@ export const view = Submodel.defineView<DeckBuilderSubmodel, ViewMessage, ViewIn
         h.section(
           [h.Class("flex min-h-0 min-w-0 flex-col")],
           [
-            h.h2([h.Class("m-0 font-display text-title tracking-[-0.02em]")], ["Card pool"]),
+            h.h2([h.Class("m-0 font-display text-title tracking-display")], ["Card pool"]),
             h.div(
               [h.Class("text-label text-lichen"), h.DataAttribute("testid", "builder-pool-hint")],
               ["Click to add. Right-click or long-press for print and other options. Only basics may exceed one copy."],
