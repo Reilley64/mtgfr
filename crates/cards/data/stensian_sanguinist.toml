@@ -59,6 +59,7 @@ timing = "spell"
 # Each opponent loses X life. You gain life equal to the life lost this way.
 [[back.abilities.effects]]
 type = "life"
-mode = "each_opponent_drain"
+mode = "drain"
+who = "each_opponent"
 amount = "x"
 sum_gain = true

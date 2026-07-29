@@ -725,9 +725,7 @@ impl Effect {
                 scope: EdictScope::TargetedOpponent,
                 ..
             })
-            | Effect::Life(LifeEffect::DrainTarget { opponent: true, .. })
             | Effect::Reveal(RevealEffect::TopAndDrainMutual)
-            | Effect::Life(LifeEffect::TargetPlayerGains { opponent: true, .. })
             | Effect::Choice(ChoiceEffect::TargetPlayerMayDraw { opponent: true, .. })
             | Effect::Choice(ChoiceEffect::MayDrawUpToThenOpponentMayRepeat { .. })
             | Effect::Token(TokenEffect::Create {
@@ -735,11 +733,8 @@ impl Effect {
                 ..
             }) => TargetSpec::OpponentPlayer,
             Effect::Draw(DrawEffect::TargetPlayer { opponent: false, .. })
-            | Effect::Life(LifeEffect::DrainTarget { opponent: false, .. })
-            | Effect::Life(LifeEffect::TargetPlayerGains { opponent: false, .. })
             | Effect::Choice(ChoiceEffect::TargetPlayerMayDraw { opponent: false, .. })
             | Effect::Exile(ExileEffect::Graveyard)
-            | Effect::Life(LifeEffect::TargetPlayerLoses { .. })
             | Effect::Choice(ChoiceEffect::Discard {
                 target_player: true,
                 ..
@@ -793,10 +788,23 @@ impl Effect {
             // A mana ability targets a player only when authored to (Rousing Refrain's "target
             // opponent"); every ordinary mana source defaults to `TargetSpec::None`.
             Effect::Mana(ManaEffect::Add { target, .. }) => target,
+            // The life family targets whatever its `who` names and nothing otherwise — a
+            // `TargetsController` gain (Swords to Plowshares' rider) reads the enclosing
+            // `Sequence`'s shared target rather than taking one of its own.
+            Effect::Life(
+                LifeEffect::Gain { who, .. }
+                | LifeEffect::Lose { who, .. }
+                | LifeEffect::Drain { who, .. },
+            ) => match who {
+                PlayerSet::TargetPlayer => TargetSpec::Player,
+                PlayerSet::TargetOpponent => TargetSpec::OpponentPlayer,
+                _ => TargetSpec::None,
+            },
+            Effect::Life(
+                LifeEffect::EachPlayerBecomesHighest | LifeEffect::SourceOwnerLosesHalfTheirLife,
+            ) => TargetSpec::None,
             Effect::Draw(DrawEffect::Cards { .. })
             | Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
-            | Effect::Life(LifeEffect::Gain { .. })
-            | Effect::Life(LifeEffect::OpponentGains { .. })
             | Effect::Token(TokenEffect::Create { .. })
             | Effect::Token(TokenEffect::CreateTreasure {
                 target_player: false,
@@ -824,10 +832,6 @@ impl Effect {
             | Effect::Static(StaticEffect::RedirectUnblockedDamageToSelf)
             | Effect::Static(StaticEffect::SetAttachedBasePt { .. })
             | Effect::Static(StaticEffect::SetAttachedTypes { .. })
-            | Effect::Life(LifeEffect::EachOpponentDrain { .. })
-            | Effect::Life(LifeEffect::EachOpponentLoses { .. })
-            | Effect::Life(LifeEffect::EachPlayerLoses { .. })
-            | Effect::Life(LifeEffect::EachPlayerBecomesHighest)
             | Effect::Dig(DigEffect::Scry { .. })
             | Effect::Dig(DigEffect::Surveil { .. })
             | Effect::Dig(DigEffect::LookAtTop { .. })
@@ -959,8 +963,6 @@ impl Effect {
             | Effect::Misc(MiscEffect::TakeExtraTurn)
             | Effect::Misc(MiscEffect::YouLoseTheGame)
             | Effect::Misc(MiscEffect::ScheduleNextCastTrigger { .. })
-            | Effect::Life(LifeEffect::AttackerLosesYouGain { .. })
-            | Effect::Life(LifeEffect::AttackerLosesYouDraw { .. })
             | Effect::Draw(DrawEffect::AttackingPlayer { .. })
             | Effect::Choice(ChoiceEffect::DamagingCreatureControllerMayDraw { .. })
             | Effect::Draw(DrawEffect::EachDrawStepPlayer { .. })
@@ -1005,14 +1007,10 @@ impl Effect {
             | Effect::Misc(MiscEffect::YouChooseWhichCreaturesAttack)
             | Effect::Misc(MiscEffect::YouChooseWhichCreaturesBlock)
             | Effect::Counters(CountersEffect::PlaceVowCounters { .. })
-            | Effect::Life(LifeEffect::Lose { .. })
-            | Effect::Life(LifeEffect::SourceOwnerLosesHalfTheirLife)
             | Effect::Damage(DamageEffect::ToSelf { .. })
             // A no-target-of-its-own step: reads the enclosing `Sequence`'s shared target player,
             // whose lands the preceding step just tapped ("**that player** loses all unspent mana").
             | Effect::Mana(ManaEffect::LoseAllUnspent { .. })
-            // A no-target-of-its-own step: reads the enclosing `Sequence`'s shared target.
-            | Effect::Life(LifeEffect::GainTargetController { .. })
             // Reads the enclosing `Sequence`'s shared target creature's controller; no target of
             // its own (Lash Out's win rider).
             | Effect::Damage(DamageEffect::ToTargetController { .. })
@@ -2406,24 +2404,31 @@ pub fn contextualize_effect(effect: Effect, ctx: TriggerContext) -> Effect {
         ),
         None => effect,
     };
-    match (effect.clone(), ctx.attack) {
+    fill_attack_context(effect, ctx.attack)
+}
+
+/// Bake an attack trigger's `(attacking player, attacked player)` pair into the placeholders that
+/// read it (CR 603.10a). Recurses into a [`Effect::Sequence`] so a multi-step attack payoff —
+/// Tomik's "that opponent loses 3 life and you draw a card" — shares the one pair across every
+/// step, mirroring [`fill_entering_permanent`].
+fn fill_attack_context(effect: Effect, attack: Option<(PlayerId, PlayerId)>) -> Effect {
+    match (effect.clone(), attack) {
+        (Effect::Sequence { steps }, Some(_)) => Effect::Sequence {
+            steps: steps
+                .iter()
+                .map(|step| fill_attack_context(step.clone(), attack))
+                .collect(),
+        },
         (Effect::Counters(CountersEffect::AttackerDrawsControllerCounters { counters, .. }), Some((attacker, _attacked))) => {
             Effect::Counters(CountersEffect::AttackerDrawsControllerCounters {
                 attacker: Some(attacker),
                 counters,
             })
         }
-        (Effect::Life(LifeEffect::AttackerLosesYouGain { amount, .. }), Some((attacker, _attacked))) => {
-            Effect::Life(LifeEffect::AttackerLosesYouGain {
-                attacker: Some(attacker),
-                amount,
-            })
-        }
-        (Effect::Life(LifeEffect::AttackerLosesYouDraw { life_loss, .. }), Some((attacker, _attacked))) => {
-            Effect::Life(LifeEffect::AttackerLosesYouDraw {
-                attacker: Some(attacker),
-                life_loss,
-            })
+        // CR 603.10a: an attack trigger's "its controller" / "that opponent" is the attacking
+        // player, baked in here at placement rather than read back at resolution.
+        (Effect::Life(life), Some((attacker, _attacked))) => {
+            Effect::Life(fill_attacking_player(life, attacker))
         }
         (Effect::Draw(DrawEffect::AttackingPlayer { count, .. }), Some((attacker, _attacked))) => {
             Effect::Draw(DrawEffect::AttackingPlayer {
@@ -3146,9 +3151,41 @@ fn relink(original: &'static Amount, rewritten: Amount) -> &'static Amount {
 /// every step. The arm set is the union of what the pool's context-filled effects need
 /// (flag-don't-force: add an arm here when a real card first needs its `Amount` field
 /// context-filled).
+/// Bake the attacking player into a life effect aimed at them (CR 603.10a) — Parasitic Impetus'
+/// "its controller loses 2 life", Tomik's "that opponent loses 3 life". A life effect naming any
+/// other [`PlayerSet`] passes through untouched, so this can run over the whole family.
+fn fill_attacking_player(effect: LifeEffect, attacker: PlayerId) -> LifeEffect {
+    let filled = |who: PlayerSet| match who {
+        PlayerSet::AttackingPlayer { .. } => PlayerSet::AttackingPlayer {
+            player: Some(attacker),
+        },
+        other => other,
+    };
+    match effect {
+        LifeEffect::Gain { who, amount } => LifeEffect::Gain {
+            who: filled(who),
+            amount,
+        },
+        LifeEffect::Lose { who, amount } => LifeEffect::Lose {
+            who: filled(who),
+            amount,
+        },
+        LifeEffect::Drain {
+            who,
+            amount,
+            sum_gain,
+        } => LifeEffect::Drain {
+            who: filled(who),
+            amount,
+            sum_gain,
+        },
+        other => other,
+    }
+}
+
 fn map_effect_amount_slots(effect: Effect, f: &impl Fn(Amount) -> Amount) -> Effect {
     match effect {
-        Effect::Life(LifeEffect::Gain { amount }) => Effect::Life(LifeEffect::Gain { amount: f(amount) }),
+        Effect::Life(LifeEffect::Gain { who, amount }) => Effect::Life(LifeEffect::Gain { who, amount: f(amount) }),
         Effect::Draw(DrawEffect::Cards { count }) => Effect::Draw(DrawEffect::Cards { count: f(count) }),
         Effect::Counters(CountersEffect::PutCounters {
             count,
@@ -3488,7 +3525,8 @@ pub fn contextualize_sacrifice_effect(effect: Effect, power: i32, toughness: i32
             toughness: fill(toughness),
             keywords,
         }),
-        Effect::Life(LifeEffect::Gain { amount }) => Effect::Life(LifeEffect::Gain {
+        Effect::Life(LifeEffect::Gain { who, amount }) => Effect::Life(LifeEffect::Gain {
+            who,
             amount: fill(amount),
         }),
         // Brion Stoutarm: "deals damage equal to the sacrificed creature's power to target
@@ -3549,6 +3587,7 @@ mod tests {
     #[test]
     fn a_conditional_finds_a_target_in_either_branch() {
         const GAIN: Effect = Effect::Life(LifeEffect::Gain {
+            who: PlayerSet::You,
             amount: Amount::Fixed(1),
         });
         const BOUNCE: Effect = Effect::Zone(ZoneEffect::ReturnToHand {

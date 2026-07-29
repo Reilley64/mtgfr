@@ -321,6 +321,7 @@ token = "{pest_id}"
     assert!(matches!(
         token.abilities[0].effect,
         Effect::Life(LifeEffect::Gain {
+            who: PlayerSet::You,
             amount: Amount::Fixed(1)
         })
     ));
@@ -845,7 +846,8 @@ fn the_pool_loads_with_expected_card_shapes() {
     };
     assert!(matches!(
         steps[0],
-        Effect::Life(LifeEffect::GainTargetController {
+        Effect::Life(LifeEffect::Gain {
+            who: PlayerSet::TargetsController,
             amount: Amount::TargetPower
         })
     ));
@@ -886,9 +888,10 @@ fn the_pool_loads_with_expected_card_shapes() {
     );
     assert!(matches!(
         blood_artist.abilities[0].effect,
-        Effect::Life(LifeEffect::DrainTarget {
-            amount: 1,
-            opponent: false,
+        Effect::Life(LifeEffect::Drain {
+            who: PlayerSet::TargetPlayer,
+            amount: Amount::Fixed(1),
+            sum_gain: false,
         })
     ));
 
@@ -901,7 +904,8 @@ fn the_pool_loads_with_expected_card_shapes() {
     );
     assert!(matches!(
         zulaport.abilities[0].effect,
-        Effect::Life(LifeEffect::EachOpponentDrain {
+        Effect::Life(LifeEffect::Drain {
+            who: PlayerSet::EachOpponent,
             amount: Amount::Fixed(1),
             sum_gain: false
         })
@@ -921,6 +925,7 @@ fn the_pool_loads_with_expected_card_shapes() {
     assert!(matches!(
         high_market.abilities[1].effect,
         Effect::Life(LifeEffect::Gain {
+            who: PlayerSet::You,
             amount: Amount::Fixed(1)
         })
     ));
@@ -983,6 +988,7 @@ fn the_pool_loads_with_expected_card_shapes() {
     assert!(matches!(
         steps[1],
         Effect::Life(LifeEffect::Lose {
+            who: PlayerSet::You,
             amount: Amount::TargetManaValue
         })
     ));
@@ -1136,7 +1142,8 @@ fn the_pool_loads_with_expected_card_shapes() {
     // Mode 2: each opponent loses 3 / you gain 3 — no target.
     assert!(matches!(
         charm.abilities[2].effect,
-        Effect::Life(LifeEffect::EachOpponentDrain {
+        Effect::Life(LifeEffect::Drain {
+            who: PlayerSet::EachOpponent,
             amount: Amount::Fixed(3),
             sum_gain: false
         })
@@ -1269,9 +1276,10 @@ fn the_pool_loads_with_expected_card_shapes() {
     ));
     assert!(matches!(
         wither.abilities[3].effect,
-        Effect::Life(LifeEffect::DrainTarget {
-            amount: 2,
-            opponent: true,
+        Effect::Life(LifeEffect::Drain {
+            who: PlayerSet::TargetOpponent,
+            amount: Amount::Fixed(2),
+            sum_gain: false,
         })
     ));
 
@@ -1371,6 +1379,7 @@ fn the_pool_loads_with_expected_card_shapes() {
     assert!(matches!(
         &steps[1],
         Effect::Life(LifeEffect::Gain {
+            who: PlayerSet::You,
             amount: Amount::Fixed(1)
         })
     ));
@@ -1785,6 +1794,7 @@ fn the_pool_loads_with_expected_card_shapes() {
     assert!(matches!(
         pest.abilities[0].effect,
         Effect::Life(LifeEffect::Gain {
+            who: PlayerSet::You,
             amount: Amount::Fixed(1)
         })
     ));
@@ -3232,9 +3242,9 @@ fn unlimited_utility_spells_carry_their_printed_effects() {
         ),
         (
             "Stream of Life",
-            Effect::Life(LifeEffect::TargetPlayerGains {
+            Effect::Life(LifeEffect::Gain {
+                who: PlayerSet::TargetPlayer,
                 amount: Amount::X,
-                opponent: false,
             }),
         ),
         (
@@ -3300,6 +3310,7 @@ fn unlimited_utility_spells_carry_their_printed_effects() {
     assert_eq!(
         steps[0],
         Effect::Life(LifeEffect::Gain {
+            who: PlayerSet::You,
             amount: Amount::DamageTakenThisTurn,
         }),
         "life equal to the damage dealt to you this turn"
@@ -3430,9 +3441,9 @@ fn unlimited_utility_spells_carry_their_printed_effects() {
     assert_eq!(
         options.as_ref(),
         &[
-            Effect::Life(LifeEffect::TargetPlayerGains {
+            Effect::Life(LifeEffect::Gain {
+                who: PlayerSet::TargetPlayer,
                 amount: Amount::Fixed(3),
-                opponent: false,
             }),
             Effect::Misc(MiscEffect::PreventNextDamage {
                 shield_source: false,
@@ -5447,6 +5458,7 @@ fn unlimited_lich_spends_your_life_total_and_bills_you_for_every_point_after() {
     assert_eq!(
         entry.effect,
         Effect::Life(LifeEffect::Lose {
+            who: PlayerSet::You,
             amount: Amount::YourLifeTotal
         }),
         "the whole life total, read live as the enchantment enters"

@@ -57,9 +57,9 @@ keywords = [{ protection = "black" }, { protection = "red" }]
 # Target opponent gains 2 life.
 [[abilities.effects]]
 type = "life"
-mode = "target_player_gains"
+mode = "gain"
+who = "target_opponent"
 amount = 2
-opponent = true
 
 # {U}: This creature gains flying until end of turn. Target opponent may draw a card.
 [[abilities]]

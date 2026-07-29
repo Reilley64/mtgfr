@@ -2161,6 +2161,7 @@ mod tests {
             Ability {
                 timing: Timing::Triggered(Trigger::CreatureYouControlDies),
                 effect: Effect::Life(LifeEffect::Gain {
+                    who: PlayerSet::You,
                     amount: Amount::Fixed(1),
                 }),
                 optional: false,

@@ -2045,6 +2045,7 @@ static TWO_ETB: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         Ability {
             timing: Timing::Triggered(Trigger::Etb),
             effect: Effect::Life(LifeEffect::Gain {
+                who: PlayerSet::You,
                 amount: Amount::Fixed(2),
             }),
             optional: false,
@@ -8206,6 +8207,7 @@ fn gain_life_3() -> CardDef {
         sorcery(
             "Gain 3 (test)",
             Box::leak(Box::new([spell_ability(Effect::Life(LifeEffect::Gain {
+                who: PlayerSet::You,
                 amount: Amount::Fixed(3),
             }))])),
         )
@@ -8220,6 +8222,7 @@ fn gain_life_0() -> CardDef {
         sorcery(
             "Gain 0 (test)",
             Box::leak(Box::new([spell_ability(Effect::Life(LifeEffect::Gain {
+                who: PlayerSet::You,
                 amount: Amount::Fixed(0),
             }))])),
         )
@@ -8234,6 +8237,7 @@ fn lose_life_3() -> CardDef {
         sorcery(
             "Lose 3 (test)",
             Box::leak(Box::new([spell_ability(Effect::Life(LifeEffect::Lose {
+                who: PlayerSet::You,
                 amount: Amount::Fixed(3),
             }))])),
         )
@@ -8391,11 +8395,50 @@ fn x_gain_sorcery() -> CardDef {
         ..sorcery(
             "X Gain (test)",
             Box::leak(Box::new([spell_ability(Effect::Life(LifeEffect::Gain {
+                who: PlayerSet::You,
                 amount: Amount::X,
             }))])),
         )
     });
     CARD.clone()
+}
+
+/// A test X-spell that drains: target player loses X life and its caster gains that much.
+fn x_drain_sorcery() -> CardDef {
+    static CARD: LazyLock<CardDef> = LazyLock::new(|| CardDef {
+        cost: Cost { x: 1, ..Cost::FREE },
+        ..sorcery(
+            "X Drain (test)",
+            Box::leak(Box::new([spell_ability(Effect::Life(LifeEffect::Drain {
+                who: PlayerSet::TargetPlayer,
+                amount: Amount::X,
+                sum_gain: false,
+            }))])),
+        )
+    });
+    CARD.clone()
+}
+
+/// The recipient and the size of a life change vary independently: `PlayerSet::TargetPlayer` picks
+/// the seat, `Amount` sizes the payload. Before they were separate axes, a drain aimed at a target
+/// carried a raw count and could not be an X-spell at all.
+#[test]
+fn a_targeted_drain_can_be_sized_by_x() {
+    let mut game = TestGame::new();
+    let before = game.life(PlayerId(0));
+
+    let spell = game.spawn_in_hand(PlayerId(0), x_drain_sorcery());
+    game.cast(spell)
+        .x(3)
+        .at(Target::Player(PlayerId(1)))
+        .resolve();
+
+    assert_eq!(game.life(PlayerId(1)), 20 - 3, "the targeted seat loses X");
+    assert_eq!(
+        game.life(PlayerId(0)) - before,
+        3,
+        "and the caster gains that much"
+    );
 }
 
 /// A bare cast-X doubler static (Unbound Flourishing's first ability, isolated from its
@@ -9718,6 +9761,7 @@ static PEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Triggered(Trigger::Dies),
         effect: Effect::Life(LifeEffect::Gain {
+            who: PlayerSet::You,
             amount: Amount::Fixed(1),
         }),
         optional: false,
@@ -16856,6 +16900,7 @@ static TEST_SAC_A_FOOD: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             graveyard_exile_target_count: 0,
         }),
         effect: Effect::Life(LifeEffect::Gain {
+            who: PlayerSet::You,
             amount: Amount::Fixed(1),
         }),
         optional: false,
@@ -16930,6 +16975,7 @@ static TEST_SAC_A_CREATURE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             graveyard_exile_target_count: 0,
         }),
         effect: Effect::Life(LifeEffect::Gain {
+            who: PlayerSet::You,
             amount: Amount::Fixed(1),
         }),
         optional: false,
@@ -17057,6 +17103,7 @@ static TEST_NONTOKEN_COUNTER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             graveyard_exile_target_count: 0,
         }),
         effect: Effect::Life(LifeEffect::Gain {
+            who: PlayerSet::You,
             amount: Amount::NontokenCreaturesEnteredThisTurn,
         }),
         optional: false,
@@ -22670,9 +22717,10 @@ static WATCHES_CREATURE_DIES: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
         timing: Timing::Triggered(Trigger::CreatureDies),
-        effect: Effect::Life(LifeEffect::DrainTarget {
-            amount: 1,
-            opponent: false,
+        effect: Effect::Life(LifeEffect::Drain {
+            who: PlayerSet::TargetPlayer,
+            amount: Amount::Fixed(1),
+            sum_gain: false,
         }),
         optional: false,
         min_level: 0,
@@ -24747,6 +24795,7 @@ static GAIN_LIFE_ETB: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Triggered(Trigger::Etb),
         effect: Effect::Life(LifeEffect::Gain {
+            who: PlayerSet::You,
             amount: Amount::Fixed(3),
         }),
         optional: false,
@@ -25544,6 +25593,7 @@ static INSTANT_FILLER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Spell,
         effect: Effect::Life(LifeEffect::Gain {
+            who: PlayerSet::You,
             amount: Amount::Fixed(1),
         }),
         optional: false,
@@ -25886,6 +25936,7 @@ static X_INSTANT_FILLER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Spell,
         effect: Effect::Life(LifeEffect::Gain {
+            who: PlayerSet::You,
             amount: Amount::Fixed(1),
         }),
         optional: false,
@@ -31134,6 +31185,7 @@ static MUTABLE_FLYER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         Ability {
             timing: Timing::Triggered(Trigger::Attacks),
             effect: Effect::Life(LifeEffect::Gain {
+                who: PlayerSet::You,
                 amount: Amount::Fixed(1),
             }),
             optional: false,
@@ -31167,6 +31219,7 @@ static MUTABLE_FLYER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
                 graveyard_exile_target_count: 0,
             }),
             effect: Effect::Life(LifeEffect::Gain {
+                who: PlayerSet::You,
                 amount: Amount::Fixed(1),
             }),
             optional: false,
@@ -46825,6 +46878,7 @@ static CHOOSE_TWO: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         Ability {
             timing: Timing::Spell,
             effect: Effect::Life(LifeEffect::Gain {
+                who: PlayerSet::You,
                 amount: Amount::Fixed(3),
             }),
             optional: false,
@@ -46836,6 +46890,7 @@ static CHOOSE_TWO: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         Ability {
             timing: Timing::Spell,
             effect: Effect::Life(LifeEffect::Gain {
+                who: PlayerSet::You,
                 amount: Amount::Fixed(7),
             }),
             optional: false,
@@ -47263,6 +47318,7 @@ static CHOOSE_ONE_OR_MORE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         Ability {
             timing: Timing::Spell,
             effect: Effect::Life(LifeEffect::Gain {
+                who: PlayerSet::You,
                 amount: Amount::Fixed(3),
             }),
             optional: false,
@@ -51378,6 +51434,7 @@ fn unfiltered_cast_trigger_still_fires_from_any_zone() {
                 from_hand: false,
             }),
             effect: Effect::Life(LifeEffect::Gain {
+                who: PlayerSet::You,
                 amount: Amount::Fixed(7),
             }),
             optional: false,
@@ -52269,12 +52326,14 @@ fn test_planeswalker(name: &'static str, loyalty: i32) -> CardDef {
         loyalty_ability(
             1,
             Effect::Life(LifeEffect::Gain {
+                who: PlayerSet::You,
                 amount: Amount::Fixed(2),
             }),
         ),
         loyalty_ability(
             -2,
             Effect::Life(LifeEffect::Gain {
+                who: PlayerSet::You,
                 amount: Amount::Fixed(5),
             }),
         ),
@@ -62260,6 +62319,7 @@ static GAIN_5: LazyLock<CardDef> = LazyLock::new(|| {
         SpellSpeed::Sorcery,
         Cost::FREE,
         Effect::Life(LifeEffect::Gain {
+            who: PlayerSet::You,
             amount: Amount::Fixed(5)
         })
     )
@@ -62270,6 +62330,7 @@ static FILLER: LazyLock<CardDef> = LazyLock::new(|| {
         SpellSpeed::Sorcery,
         Cost::FREE,
         Effect::Life(LifeEffect::Gain {
+            who: PlayerSet::You,
             amount: Amount::Fixed(1)
         })
     )
@@ -76184,6 +76245,7 @@ static SACRIFICE_A_CREATURE_OUTLET: LazyLock<CardDef> = LazyLock::new(|| CardDef
             graveyard_exile_target_count: 0,
         }),
         effect: Effect::Life(LifeEffect::Gain {
+            who: PlayerSet::You,
             amount: Amount::Fixed(1),
         }),
         optional: false,
@@ -80534,6 +80596,7 @@ static TEST_CLASS: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         Ability {
             timing: Timing::Triggered(Trigger::Upkeep),
             effect: Effect::Life(LifeEffect::Gain {
+                who: PlayerSet::You,
                 amount: Amount::Fixed(1),
             }),
             optional: false,
@@ -80545,6 +80608,7 @@ static TEST_CLASS: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         Ability {
             timing: Timing::Triggered(Trigger::EndStep),
             effect: Effect::Life(LifeEffect::Gain {
+                who: PlayerSet::You,
                 amount: Amount::Fixed(10),
             }),
             optional: false,
@@ -80616,6 +80680,7 @@ static TEST_LOSE_1_LIFE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             graveyard_exile_target_count: 0,
         }),
         effect: Effect::Life(LifeEffect::Lose {
+            who: PlayerSet::You,
             amount: Amount::Fixed(1),
         }),
         optional: false,
@@ -81134,6 +81199,7 @@ static TEST_MODIFIED_DEATH_WATCHER: LazyLock<CardDef> = LazyLock::new(|| CardDef
             graveyard_exile_target_count: 0,
         }),
         effect: Effect::Life(LifeEffect::Gain {
+            who: PlayerSet::You,
             amount: Amount::Fixed(1),
         }),
         optional: false,
@@ -83640,6 +83706,7 @@ static TEST_INSTANT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         speed: SpellSpeed::Instant,
     },
     abilities: arc_slice([spell_ability(Effect::Life(LifeEffect::Gain {
+        who: PlayerSet::You,
         amount: Amount::Fixed(1),
     }))]),
     ..creature("Test Instant", 0, 0, &[])
@@ -87199,6 +87266,7 @@ static ETB_GAIN_LIFE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Triggered(Trigger::Etb),
         effect: Effect::Life(LifeEffect::Gain {
+            who: PlayerSet::You,
             amount: Amount::Fixed(2),
         }),
         optional: false,
@@ -90734,6 +90802,7 @@ static DIES_FODDER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Triggered(Trigger::Dies),
         effect: Effect::Life(LifeEffect::Gain {
+            who: PlayerSet::You,
             amount: Amount::Fixed(1),
         }),
         optional: false,
@@ -103026,6 +103095,7 @@ static MONSTROSITY_TRIGGER_CREATURE: LazyLock<CardDef> = LazyLock::new(|| CardDe
         Ability {
             timing: Timing::Triggered(Trigger::BecomesMonstrous),
             effect: Effect::Life(LifeEffect::Gain {
+                who: PlayerSet::You,
                 amount: Amount::Fixed(7),
             }),
             optional: false,

@@ -50,14 +50,27 @@ describe("formatMessage", () => {
     expect(formatMessage({ key: "reject.illegal_target", params: [], children: [] })).toBe("Pick a legal target.");
   });
 
-  it("formats effect.life_each_player_loses", () => {
+  it("names the recipient of a life change from its player set", () => {
     expect(
       formatMessage({
-        key: "effect.life_each_player_loses",
-        params: [{ name: "amount", int_value: 3 }],
+        key: "effect.life_lose",
+        params: [
+          { name: "who", string_value: "each_player" },
+          { name: "amount", int_value: 3 },
+        ],
         children: [],
       }),
-    ).toBe("Each player loses 3");
+    ).toBe("Each player loses 3 life");
+    expect(
+      formatMessage({
+        key: "effect.life_gain",
+        params: [
+          { name: "who", string_value: "you" },
+          { name: "amount", int_value: 3 },
+        ],
+        children: [],
+      }),
+    ).toBe("You gain 3 life");
   });
 
   it("reads a base-P/T-setting Aura back as fixed numbers or as one shared count", () => {

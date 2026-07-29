@@ -144,7 +144,7 @@ Representative modes by family:
 
 **`dig`:** `search_library`, `scry`, `surveil`, `look_at_top`, `distribute_top`, `cascade`, `clash`.
 
-**`life`:** `gain`, `lose`, `each_opponent_drain`, `gain_target_controller`.
+**`life`:** `gain`, `lose`, `drain`, `each_player_becomes_highest`, `source_owner_loses_half_their_life`. The first three take a `who` [player set](#player-set) naming the recipient (default `"you"`) and an `amount` `Amount`; `drain` additionally takes `sum_gain` (default `false`), which makes the caster's gain the *total* lost across `who` rather than each victim's share (Exsanguinate, versus Zulaport Cutthroat's flat gain).
 
 **`mana`:** `add` (one or more `Mana` values; optional `repeat: Amount` for scaled production).
 
@@ -159,6 +159,14 @@ Representative modes by family:
 **`misc`:** `fight`, `counter_target_spell`, `schedule_at_next_upkeep`.
 
 **Structural:** `sequence` (run multiple effects in order), `conditional` (if condition then effects else effects), `choose_one` (modal dispatch).
+
+### Player set
+
+`PlayerSet` names *which seat or seats* an effect's payload lands on, so a family spells the recipient as a parameter instead of once per payload — `mode = "lose", who = "each_opponent"` rather than an `each_opponent_loses` mode. Every set is a bare string: `you` (the default when `who` is absent), `target_player`, `target_opponent`, `targets_controller` (the controller of the *object* target — Swords to Plowshares' rider), `each_opponent`, `each_player`, `attacking_player` (baked in when an attack trigger is placed, CR 603.10a — Parasitic Impetus), and `an_opponent`.
+
+`target_player` and `target_opponent` carry the effect's `TargetSpec`, so the shared targeting machinery picks and legality-checks the seat; every other set resolves without a target. `Game::players_in` is the single resolver, returning the seats in turn order so a multi-seat change lands as one simultaneous batch (CR 118.9).
+
+Distinct from `EdictScope`, which looks similar but is a fan-out *plan*: its `targeted_players` is a subset the controller picks during resolution, which a player set can't answer up front.
 
 ### Amount
 

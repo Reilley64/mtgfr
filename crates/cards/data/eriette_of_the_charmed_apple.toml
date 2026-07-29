@@ -38,5 +38,6 @@ timing = "end_step"
 # each opponent loses X life and you gain X life, where X is the number of Auras you control
 [[abilities.effects]]
 type = "life"
-mode = "each_opponent_drain"
+mode = "drain"
+who = "each_opponent"
 amount = { per_permanent = { subtypes = ["Aura"], controller = "you" } }

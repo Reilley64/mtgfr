@@ -37,6 +37,20 @@ function edictWho(scope: MessageValue): string {
   return "Each player";
 }
 
+/** A life change's subject phrase, with its verb conjugated to match — "You gain", "Each opponent loses". */
+function lifeClause(params: MessageParams, verb: "gain" | "lose"): string {
+  const who = param(params, "who");
+  if (who === "target_player") return `Target player ${verb}s`;
+  if (who === "target_opponent") return `Target opponent ${verb}s`;
+  if (who === "targets_controller") return `Target's controller ${verb}s`;
+  if (who === "each_opponent") return `Each opponent ${verb}s`;
+  if (who === "each_player") return `Each player ${verb}s`;
+  if (who === "attacking_player") return `The attacking player ${verb}s`;
+  if (who === "an_opponent") return `An opponent ${verb}s`;
+  // `PlayerSet::You` is the unwritten default, so an absent `who` reads as the controller.
+  return `You ${verb}`;
+}
+
 function definingPtLead(when: MessageValue): string {
   if (when === "attacking") return "As long as this creature is attacking, its";
   if (when === "not_attacking") return "As long as this creature isn't attacking, its";
@@ -409,26 +423,14 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.exile_target": literal("Exile target"),
   "effect.exile_target_minting_illusion_on_leave": literal("Exile target"),
   "effect.exile_until_source_leaves": literal("Exile target until this leaves the battlefield"),
-  "effect.life_attacker_loses_you_draw": (params) =>
-    `That opponent loses ${param(params, "life_loss")} life; you draw a card`,
-  "effect.life_attacker_loses_you_gain": (params) =>
-    `Enchanted creature's controller loses ${param(params, "amount")} life; you gain ${param(params, "amount")}`,
-  "effect.life_drain_target": (params) =>
-    `Target player loses ${param(params, "amount")}, you gain ${param(params, "amount")}`,
-  "effect.life_each_opponent_drain": (params) =>
-    `Each opponent loses ${param(params, "amount")}, you gain ${bool(params, "sum_gain") ? "life equal to the life lost this way" : param(params, "amount")}`,
-  "effect.life_each_opponent_loses": (params) => `Each opponent loses ${param(params, "amount")}`,
-  "effect.life_each_player_loses": (params) => `Each player loses ${param(params, "amount")}`,
+  "effect.life_drain": (params) =>
+    `${lifeClause(params, "lose")} ${param(params, "amount")} life, you gain ${bool(params, "sum_gain") ? "life equal to the life lost this way" : `${param(params, "amount")} life`}`,
   "effect.life_each_player_becomes_highest": literal(
     "Each player's life total becomes the highest life total among all players",
   ),
-  "effect.life_gain": (params) => `Gain ${param(params, "amount")} life`,
-  "effect.life_gain_target_controller": (params) => `Target's controller gains ${param(params, "amount")} life`,
-  "effect.life_lose": (params) => `Lose ${param(params, "amount")} life`,
-  "effect.life_opponent_gains": (params) => `An opponent gains ${param(params, "amount")} life`,
+  "effect.life_gain": (params) => `${lifeClause(params, "gain")} ${param(params, "amount")} life`,
+  "effect.life_lose": (params) => `${lifeClause(params, "lose")} ${param(params, "amount")} life`,
   "effect.life_source_owner_loses_half_their_life": literal("Its owner loses half their life, rounded up"),
-  "effect.life_target_player_gains": (params) => `Target player gains ${param(params, "amount")} life`,
-  "effect.life_target_player_loses": (params) => `Target player loses ${param(params, "amount")} life`,
   "effect.mana_add": literal("Add mana"),
   "effect.mana_lose_all_unspent": (params) =>
     bool(params, "to_you")

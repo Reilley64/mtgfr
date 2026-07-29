@@ -75,6 +75,6 @@ timing = "spell"
 # Target opponent loses 2 life and you gain 2 life.
 [[abilities.effects]]
 type = "life"
-mode = "drain_target"
+mode = "drain"
+who = "target_opponent"
 amount = 2
-opponent = true

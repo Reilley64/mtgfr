@@ -51,7 +51,8 @@ count = 1
 # and loses 1 life.
 [[abilities.effects]]
 type = "life"
-mode = "target_player_loses"
+mode = "lose"
+who = "target_player"
 amount = 1
 
 # Mode 2 — "Target player puts a +1/+1 counter on each creature they control."

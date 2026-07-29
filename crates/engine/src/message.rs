@@ -213,20 +213,11 @@ message_keys! {
     EFFECT_EXILE_TARGET => "effect.exile_target",
     EFFECT_EXILE_TARGET_MINTING_ILLUSION_ON_LEAVE => "effect.exile_target_minting_illusion_on_leave",
     EFFECT_EXILE_UNTIL_SOURCE_LEAVES => "effect.exile_until_source_leaves",
-    EFFECT_LIFE_ATTACKER_LOSES_YOU_DRAW => "effect.life_attacker_loses_you_draw",
-    EFFECT_LIFE_ATTACKER_LOSES_YOU_GAIN => "effect.life_attacker_loses_you_gain",
-    EFFECT_LIFE_DRAIN_TARGET => "effect.life_drain_target",
-    EFFECT_LIFE_EACH_OPPONENT_DRAIN => "effect.life_each_opponent_drain",
-    EFFECT_LIFE_EACH_OPPONENT_LOSES => "effect.life_each_opponent_loses",
+    EFFECT_LIFE_DRAIN => "effect.life_drain",
     EFFECT_LIFE_EACH_PLAYER_BECOMES_HIGHEST => "effect.life_each_player_becomes_highest",
-    EFFECT_LIFE_EACH_PLAYER_LOSES => "effect.life_each_player_loses",
     EFFECT_LIFE_GAIN => "effect.life_gain",
-    EFFECT_LIFE_GAIN_TARGET_CONTROLLER => "effect.life_gain_target_controller",
     EFFECT_LIFE_LOSE => "effect.life_lose",
-    EFFECT_LIFE_OPPONENT_GAINS => "effect.life_opponent_gains",
     EFFECT_LIFE_SOURCE_OWNER_LOSES_HALF_THEIR_LIFE => "effect.life_source_owner_loses_half_their_life",
-    EFFECT_LIFE_TARGET_PLAYER_GAINS => "effect.life_target_player_gains",
-    EFFECT_LIFE_TARGET_PLAYER_LOSES => "effect.life_target_player_loses",
     EFFECT_MANA_ADD => "effect.mana_add",
     EFFECT_MANA_LOSE_ALL_UNSPENT => "effect.mana_lose_all_unspent",
     EFFECT_MANA_TARGET_PLAYER_TAPS_LANDS_FOR_MANA => "effect.mana_target_player_taps_lands_for_mana",
@@ -492,6 +483,24 @@ fn bool_param(name: &'static str, value: bool) -> MessageParam {
         name,
         value: MessageParamValue::Bool(value),
     }
+}
+
+/// The recipient of a life change, named exactly as the TOML surface names it — so the client
+/// renders one subject phrase per [`PlayerSet`] rather than one string per (payload, recipient).
+fn who_param(who: PlayerSet) -> MessageParam {
+    str_param(
+        "who",
+        match who {
+            PlayerSet::You => "you",
+            PlayerSet::TargetPlayer => "target_player",
+            PlayerSet::TargetOpponent => "target_opponent",
+            PlayerSet::TargetsController => "targets_controller",
+            PlayerSet::EachOpponent => "each_opponent",
+            PlayerSet::EachPlayer => "each_player",
+            PlayerSet::AttackingPlayer { .. } => "attacking_player",
+            PlayerSet::AnOpponent => "an_opponent",
+        },
+    )
 }
 
 fn str_param(name: &'static str, value: &'static str) -> MessageParam {
@@ -1329,56 +1338,25 @@ impl EffectMessage for Effect {
                 MessageRef::new(MessageKey::EFFECT_DRAW_EACH_DRAW_STEP_PLAYER)
                     .with_params(vec![int_param("count", count)])
             }
-            Effect::Life(Gain { amount }) => MessageRef::new(MessageKey::EFFECT_LIFE_GAIN)
-                .with_params(vec![amount_param("amount", amount)]),
-            Effect::Life(OpponentGains { amount }) => {
-                MessageRef::new(MessageKey::EFFECT_LIFE_OPPONENT_GAINS)
-                    .with_params(vec![amount_param("amount", amount)])
-            }
-            Effect::Life(Lose { amount }) => MessageRef::new(MessageKey::EFFECT_LIFE_LOSE)
-                .with_params(vec![amount_param("amount", amount)]),
-            Effect::Life(SourceOwnerLosesHalfTheirLife) => MessageRef::new(
-                MessageKey::EFFECT_LIFE_SOURCE_OWNER_LOSES_HALF_THEIR_LIFE,
-            ),
-            Effect::Life(GainTargetController { amount }) => {
-                MessageRef::new(MessageKey::EFFECT_LIFE_GAIN_TARGET_CONTROLLER)
-                    .with_params(vec![amount_param("amount", amount)])
-            }
-            Effect::Life(DrainTarget { amount, opponent }) => {
-                MessageRef::new(MessageKey::EFFECT_LIFE_DRAIN_TARGET)
-                    .with_params(vec![int_param("amount", amount), bool_param("opponent", opponent)])
-            }
-            Effect::Life(TargetPlayerGains { amount, opponent }) => {
-                MessageRef::new(MessageKey::EFFECT_LIFE_TARGET_PLAYER_GAINS)
-                    .with_params(vec![amount_param("amount", amount), bool_param("opponent", opponent)])
-            }
-            Effect::Life(EachOpponentDrain { amount, sum_gain }) => {
-                MessageRef::new(MessageKey::EFFECT_LIFE_EACH_OPPONENT_DRAIN)
-                    .with_params(vec![amount_param("amount", amount), bool_param("sum_gain", sum_gain)])
-            }
-            Effect::Life(EachOpponentLoses { amount }) => {
-                MessageRef::new(MessageKey::EFFECT_LIFE_EACH_OPPONENT_LOSES)
-                    .with_params(vec![amount_param("amount", amount)])
-            }
+            Effect::Life(Gain { who, amount }) => MessageRef::new(MessageKey::EFFECT_LIFE_GAIN)
+                .with_params(vec![who_param(who), amount_param("amount", amount)]),
+            Effect::Life(Lose { who, amount }) => MessageRef::new(MessageKey::EFFECT_LIFE_LOSE)
+                .with_params(vec![who_param(who), amount_param("amount", amount)]),
+            Effect::Life(Drain {
+                who,
+                amount,
+                sum_gain,
+            }) => MessageRef::new(MessageKey::EFFECT_LIFE_DRAIN).with_params(vec![
+                who_param(who),
+                amount_param("amount", amount),
+                bool_param("sum_gain", sum_gain),
+            ]),
             Effect::Life(EachPlayerBecomesHighest) => {
                 MessageRef::new(MessageKey::EFFECT_LIFE_EACH_PLAYER_BECOMES_HIGHEST)
             }
-            Effect::Life(EachPlayerLoses { amount }) => {
-                MessageRef::new(MessageKey::EFFECT_LIFE_EACH_PLAYER_LOSES)
-                    .with_params(vec![amount_param("amount", amount)])
-            }
-            Effect::Life(TargetPlayerLoses { amount }) => {
-                MessageRef::new(MessageKey::EFFECT_LIFE_TARGET_PLAYER_LOSES)
-                    .with_params(vec![int_param("amount", amount)])
-            }
-            Effect::Life(AttackerLosesYouGain { amount, .. }) => {
-                MessageRef::new(MessageKey::EFFECT_LIFE_ATTACKER_LOSES_YOU_GAIN)
-                    .with_params(vec![int_param("amount", amount)])
-            }
-            Effect::Life(AttackerLosesYouDraw { life_loss, .. }) => {
-                MessageRef::new(MessageKey::EFFECT_LIFE_ATTACKER_LOSES_YOU_DRAW)
-                    .with_params(vec![int_param("life_loss", life_loss)])
-            }
+            Effect::Life(SourceOwnerLosesHalfTheirLife) => MessageRef::new(
+                MessageKey::EFFECT_LIFE_SOURCE_OWNER_LOSES_HALF_THEIR_LIFE,
+            ),
             Effect::Destroy(DestroyEffect::Target { .. }) => MessageRef::new(MessageKey::EFFECT_DESTROY_TARGET),
             Effect::Destroy(DestroyEffect::All { filter, .. }) => {
                 MessageRef::new(MessageKey::EFFECT_DESTROY_ALL)
@@ -2594,11 +2572,14 @@ mod tests {
         assert!(matches!(draw.params[0].value, MessageParamValue::Int(2)));
 
         let life = Effect::Life(LifeEffect::Gain {
+            who: PlayerSet::You,
             amount: Amount::Fixed(1),
         })
         .message();
         assert_eq!(life.key.as_str(), "effect.life_gain");
-        assert!(matches!(life.params[0].value, MessageParamValue::Int(1)));
+        assert_eq!(life.params[0].name, "who");
+        assert!(matches!(&life.params[0].value, MessageParamValue::Str(who) if *who == "you"));
+        assert!(matches!(life.params[1].value, MessageParamValue::Int(1)));
 
         let scry = Effect::Dig(DigEffect::Scry {
             count: Amount::Fixed(3),
