@@ -1108,8 +1108,8 @@ pub enum CastXMax {
 }
 
 /// The riders on an [`CardDef::enter_as_copy`] replacement (CR 706/707.2). `Copy` — all scalars,
-/// no `Vec` — so the nested replacement stays compact. `until_eot` reverts the copy at cleanup (Cursed Mirror,
-/// [`Permanent::reverts_to_def_eot`]); `extra_counters` are additional +1/+1 counters the copy
+/// no `Vec` — so the nested replacement stays compact. `until_eot` reverts the copy at cleanup
+/// (Cursed Mirror); `extra_counters` are additional +1/+1 counters the copy
 /// enters with (Altered Ego's X); `gains_haste` grants the copy haste (Cursed Mirror's "except it
 /// has haste"); `of` is the copyable type axis (Copy Enchantment's "any enchantment", CR 707.2,
 /// vs. the default "any creature").

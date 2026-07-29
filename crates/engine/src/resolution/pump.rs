@@ -59,8 +59,7 @@ impl Game {
             // (`Permanent::chosen_color`) by the time this step runs. No P/T change — a
             // keyword-only `TempBoost`, the single-`Keyword` twin of `PumpUntilEndOfTurn`'s
             // `&'static` `keywords` slice: the scope isn't known until resolution, so it's leaked
-            // fresh here rather than baked in at TOML-parse time (same leak-at-resolution shape as
-            // `Game::resync_modifier_aggregates`'s multi-source keyword union).
+            // fresh here rather than baked in at TOML-parse time.
             PumpEffect::GrantChosenColorProtectionUntilEndOfTurn { .. } => {
                 let object = expect_object_target(target, "a chosen-color protection grant");
                 let Some(color) = self.as_permanent(source).and_then(|p| p.chosen_color) else {

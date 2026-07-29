@@ -56,14 +56,13 @@ impl Game {
                 | CountersEffect::PutCountersOnPlayer { .. }
                 | CountersEffect::RemoveAllPlayerCounters { .. }
                 | CountersEffect::TopUpCountersOnPlayer { .. }
-                | CountersEffect::RemoveAllButOnePlusOneCounterThenGainLife { .. }
-                | CountersEffect::RemoveAllCountersThenDraw { .. }
                 | CountersEffect::RemoveCounterFromSelf { .. }) => {
                     self.mint_counters(c, controller, source, target, x)
                 }
                 CountersEffect::CommanderEntersWithBonusCounters { .. }
                 | CountersEffect::DoubleCountersOnTargetCreatures { .. }
                 | CountersEffect::MoveCounters { .. }
+                | CountersEffect::RemoveCounters { .. }
                 | CountersEffect::DoubleCountersOnAttachedCreature => {
                     unreachable!("a pausing/composite effect resolves via Game::run")
                 }

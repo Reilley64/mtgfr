@@ -1360,7 +1360,11 @@ fn the_pool_loads_with_expected_card_shapes() {
     );
     assert_eq!(
         leonin.abilities[0].condition,
-        Some(Condition::YouControlAtLeastCreatures { count: 3 })
+        Some(Condition::Compare {
+            left: &Amount::PerCreatureYouControl,
+            op: CompareOp::AtLeast,
+            right: &Amount::Fixed(3),
+        })
     );
     let Effect::Sequence { steps } = &leonin.abilities[0].effect else {
         panic!("Leonin Vanguard should resolve as pump, then life gain");
@@ -3360,9 +3364,12 @@ fn unlimited_utility_spells_carry_their_printed_effects() {
         ),
         (
             true,
-            Some(Condition::SourceHasCountersOfKind {
-                kind: CounterKind::Vitality,
-                at_least: 1,
+            Some(Condition::Compare {
+                left: &Amount::PerCounterOfKindOnSource {
+                    kind: CounterKind::Vitality,
+                },
+                op: CompareOp::AtLeast,
+                right: &Amount::Fixed(1),
             })
         ),
         "a may, and only with a counter there to remove"
@@ -4070,7 +4077,11 @@ fn pestilence_sacrifices_itself_only_once_no_creatures_remain() {
     );
     assert_eq!(
         pestilence.abilities[0].condition,
-        Some(Condition::NoCreaturesOnBattlefield),
+        Some(Condition::Compare {
+            left: &Amount::PerCreatureOnBattlefield,
+            op: CompareOp::AtMost,
+            right: &Amount::Fixed(0),
+        }),
         "an intervening-if, so a board that refills before resolution keeps it"
     );
     assert_eq!(

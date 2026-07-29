@@ -59,6 +59,7 @@ pub(crate) use resolution::ResolveCtx;
 /// [`resolution::SearchFanout`].
 pub(crate) use resolution::SearchFanout;
 pub use state::{ControlCondition, DyingCreatureStats};
+pub(crate) use state::{Modifier, ModifierDuration, ModifierKind};
 pub use types::*;
 
 /// Keyword-trigger obligations queued outside ordinary triggered abilities and drained when the

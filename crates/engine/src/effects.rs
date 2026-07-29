@@ -74,6 +74,12 @@ impl Game {
     /// applies incrementally so newly-minted object ids stay in sync with the arena.
     pub(crate) fn resolve_top(&mut self, events: &mut Vec<Event>) {
         let top = self.stack.last().expect("stack is non-empty").clone();
+        // Resolution-scoped scratch: a resolution that never reaches a `RemoveCounters` step — a
+        // `Conditional` taking `otherwise`, a fizzled branch — must read "counters removed this
+        // way" as 0, not as whatever an earlier resolution's removal left behind. Cleared here
+        // rather than in `resolve_spell` because abilities are the consumers, and only on a fresh
+        // stack item, so a paused resolution resuming mid-Sequence keeps its own tally.
+        self.resolution_frame.counters_removed_this_way = 0;
         // Resolution-scoped scratch, cleared here rather than at each destroy step: a *targeted*
         // destroy accumulates across the one step per chosen target that `resolve_spell`'s
         // multi-target expansion produces (Volcanic Eruption), so only the resolution boundary
@@ -1034,73 +1040,24 @@ impl Game {
             Effect::Sequence { steps } => self.run_sequence(steps.as_ref(), ctx, events),
             // A per-step gate: run `then` only if `condition` holds (negated by `negate`) right
             // now (mid-resolution), sharing this target/{X}. Reuses the same intervening-if
-            // evaluator triggers use, except `TargetPowerAtLeast` (Yavimaya Bloomsage's power-7
-            // check), `SourceEnteredWithXAtLeast` (Kinetic Ooze's X-threshold riders),
-            // `ColorWasSpentToCastThis` (Court Hussar's "unless {W} was spent to cast it" off a
-            // resolved permanent, Firespout's "if {R} was spent to cast this spell" off the
-            // still-on-the-stack spell), and
-            // `SourceUntapped` (Howling Mine's CR 603.4 *second* check), and `SourcePowerAtMost`
-            // (Lily Bowen, Raging Grandma's upkeep gate): `TriggerContext` carries neither a
-            // target nor a source id, so those are special-cased directly against the shared
-            // `target`/this resolution's own `source` here — the same "condition_holds can't
-            // reach it" shape as `ability_condition_holds`'s source-based special cases.
+            // evaluator triggers use, handing it this resolution's own source and shared target so
+            // the source-/target-based conditions (Yavimaya Bloomsage's power-7 check, Howling
+            // Mine's CR 603.4 *second* untapped check, Kinetic Ooze's X-threshold riders) read
+            // them the same way there as at trigger placement.
             Effect::Conditional {
                 condition,
                 then,
                 negate,
                 otherwise,
             } => {
-                let holds = match condition {
-                    Condition::TargetPowerAtLeast { at_least } => target
-                        .and_then(Target::object_id)
-                        .is_some_and(|object| self.power(object) >= at_least as i32),
-                    // Nezumi Graverobber: "Then if there are no cards in that player's graveyard"
-                    // — the just-exiled target's owner (the moved card object still records it) has
-                    // an empty graveyard now. No legal target exiled (the flip clause is a no-op):
-                    // `is_some_and` is false, so it doesn't flip.
-                    Condition::TargetCardOwnerGraveyardEmpty => {
-                        target.and_then(Target::object_id).is_some_and(|object| {
-                            self.graveyard_cards(self.owner_of(object)).is_empty()
-                        })
-                    }
-                    Condition::SourceEnteredWithXAtLeast { at_least } => {
-                        self.ability_source_x(source) >= at_least
-                    }
-                    // Lily Bowen, Raging Grandma: "double ... if its power is 16 or less.
-                    // Otherwise, ..." — source-object-based like `SourceEnteredWithXAtLeast`
-                    // above, re-read live at resolution.
-                    Condition::SourcePowerAtMost { at_most } => {
-                        self.power(source) <= at_most as i32
-                    }
-                    Condition::ColorWasSpentToCastThis { color } => self
-                        .as_permanent(source)
-                        .map(|p| p.spent_colors[color.index()])
-                        .unwrap_or_else(|| self.spell_spent_colors(source)[color.index()]),
-                    // Howling Mine's CR 603.4 *second* check: re-read the source's own tapped
-                    // state fresh at resolution, not the placement-time snapshot — the ability may
-                    // have triggered while untapped but had this intervening-if falsified by a
-                    // response that taps it before it resolves (Magma Opus's "tap two target
-                    // permanents"). Source-object-based like `SourceEnteredWithXAtLeast` above.
-                    Condition::SourceUntapped => {
-                        self.as_permanent(source).is_some_and(|p| !p.tapped)
-                    }
-                    // Mana Vault's draw-step ping re-reads the same state at CR 603.4's second
-                    // check, the other way round from Howling Mine above.
-                    Condition::SourceTapped => self.as_permanent(source).is_some_and(|p| p.tapped),
-                    // Dragon Whelp: "If this ability has been activated four or more times this
-                    // turn" — counts this turn's `once_per_turn.activated` entries for `source`
-                    // (every activated-ability activation records one, not just a
-                    // `once_each_turn`-capped one — see `Game::activate_ability`).
-                    Condition::SourceActivatedThisTurnAtLeast { at_least } => {
-                        self.once_per_turn
-                            .activated
-                            .iter()
-                            .filter(|&&(object, _)| object == source)
-                            .count() as u32
-                            >= at_least
-                    }
-                    _ => self.condition_holds(condition, TriggerContext::of(controller)),
-                };
+                let holds = self.condition_holds(
+                    condition,
+                    TriggerContext {
+                        source: Some(source),
+                        target,
+                        ..TriggerContext::of(controller)
+                    },
+                );
                 if holds != negate {
                     self.run_sequence(then.as_ref(), ctx, events);
                 } else if !otherwise.is_empty() {
@@ -1166,6 +1123,10 @@ impl Game {
             Effect::Mill(mill @ MillEffect::Mill { .. }) => {
                 self.resolve_mill(mill, controller, source, target, x, events)
             }
+            // Same reason: writes `counters_removed_this_way` for the following step to read.
+            Effect::Counters(CountersEffect::RemoveCounters {
+                all_kinds, keep, ..
+            }) => self.resolve_remove_counters(target, all_kinds, keep, events),
             // Rousing Refrain / Spell Crumple / Vengeful Rebirth self-move riders — see
             // `resolution/resolve_misc.rs`.
             Effect::Zone(ZoneEffect::ExileSelfWithTimeCounters { .. })

@@ -119,6 +119,8 @@ Engine choice tests + schema projection tests + client Scene tests for prompt su
 
 ## Wave E — CR 613 continuous effects (depth 2)
 
+> **Concrete architecture:** [effect-and-modifier-architecture](2026-07-28-effect-and-modifier-architecture-design.md) — a single registered `Modifier { source, timestamp, layer, duration, effect }` list replacing the 13 until-EOT fields on `Permanent` and the 6 registry-shaped fields on `Game`. That doc also carries the DSL vocabulary work this program deferred.
+
 ### Architecture
 
 Replace ad-hoc grant readers with a layered continuous-effect pipeline (type-changing → abilities → P/T, etc.). Migrate today’s anthem/Aura/attachment/keyword special cases onto layer registration. Implement **pool-relevant** deferred pieces: stacked base-sets / dependency-or-timestamp where pool cards need them, lose-all-abilities where needed, color SET layering already partially present.

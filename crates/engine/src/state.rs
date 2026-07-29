@@ -4,7 +4,9 @@
 //! Side state for goad (CR 701.38), delayed triggers (CR 603.7), exile links,
 //! once-per-turn flags, until-EOT control (CR 720), and inspect-ledger provenance.
 
-use crate::{CardDef, CardId, Effect, Keyword, ObjectId, PlayerId, SpellFilter, Step};
+use crate::{
+    CardDef, CardId, Color, Effect, Keyword, ObjectId, PlayerId, SpellFilter, Step, TypeSet,
+};
 
 /// The CR 611.2b duration condition scoping a control-changing effect (Rubinia Soulsinger's "for
 /// as long as you control Rubinia and Rubinia remains tapped"). Stored alongside the override in
@@ -466,16 +468,80 @@ pub(crate) struct PowerExiledThisWay {
     pub(crate) power: i32,
 }
 
-/// Sourced batches for inspect-ledger provenance, lifted off `Permanent` so it stays `Copy`.
-/// Batches are the write path for counters / EOT boosts; `plus_counters` / `temp_*` on the
-/// permanent are a derived cache refreshed by [`Game::resync_modifier_aggregates`](crate::Game::resync_modifier_aggregates).
+/// How long a registered [`Modifier`] lasts — which sweep, if any, takes it off.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ModifierDuration {
+    /// "Until end of turn": swept at cleanup (CR 514.2).
+    EndOfTurn,
+    /// "Until end of combat" (Jade Statue): swept at the End of Combat step (CR 511.3).
+    EndOfCombat,
+    /// No printed duration at all (the lace cycle's "becomes black"): never swept — it lapses on
+    /// its own when the object leaves the battlefield and becomes a new object (CR 400.7).
+    Indefinite,
+}
+
+/// What one registered [`Modifier`] does to its host, in CR 613 layer terms.
+#[derive(Clone, Copy)]
+pub(crate) enum ModifierKind {
+    /// "Gets +3/+3 and gains trample until end of turn": one resolution's layer-7c delta and the
+    /// keywords the same clause granted, kept together because one effect made them both.
+    Boost {
+        power: i32,
+        toughness: i32,
+        keywords: &'static [Keyword],
+    },
+    /// "Loses hexproof and shroud and can't have hexproof or shroud" (arcane_lighthouse, CR
+    /// 702.11e/702.18d): subtracted from the fully-unioned keyword set, so a grant landing later
+    /// the same turn is filtered right back out.
+    LoseKeywords(&'static [Keyword]),
+    /// "Has base power and toughness 3/6" (CR 613.3(7b) — Biomass Mutation, Jade Statue's
+    /// animated form).
+    BasePtSet { power: i32, toughness: i32 },
+    /// "Becomes a blue and red Elemental creature … it's still a land" (Restless Spire): the
+    /// layer-4 type/subtype ADD and the layer-5 color ADD one self-animation clause makes at once.
+    Became {
+        types: TypeSet,
+        subtypes: &'static [&'static str],
+        colors: &'static [Color],
+    },
+    /// "Becomes black" (Deathlace, Wild Mongrel): a layer-5 color *SET*, which replaces every
+    /// color established before its timestamp rather than unioning onto them (CR 613.3c).
+    SetColor(Color),
+    /// "Becomes a copy of target creature until end of turn" (CR 707.2 — Cursed Mirror): the
+    /// printed [`CardId`] to put back on the permanent when the duration ends.
+    RevertsToDef(CardId),
+}
+
+/// One continuous modification an effect made to one object, with the CR 613.7 timestamp it took
+/// effect at and the source that made it.
+#[derive(Clone, Copy)]
+pub(crate) struct Modifier {
+    /// The object being modified.
+    pub host: ObjectId,
+    /// The card that made it, for the inspect ledger. `""` where the minting event carries no
+    /// name — only [`ModifierKind::Boost`] is ledgered today.
+    pub source_name: &'static str,
+    /// CR 613.7 timestamp, stamped as the modifier is registered. Entries are appended in stamp
+    /// order and `retain`ed in place, so the registry is always sorted by this — which is what
+    /// lets every reader walk it as-is instead of sorting a copy.
+    pub timestamp: u64,
+    pub duration: ModifierDuration,
+    pub kind: ModifierKind,
+}
+
+/// Sourced provenance for everything an effect did to an object, lifted off `Permanent` so it
+/// stays `Copy`. This is the write path for counters and for every duration-scoped continuous
+/// effect; modifiers are read back as CR 613 layer entries by
+/// [`Game::runtime_continuous_effects`](crate::Game) and [`Game::colors_of`](crate::Game), while
+/// `Permanent::plus_counters` stays a derived cache refreshed by
+/// [`Game::resync_counter_aggregate`](crate::Game::resync_counter_aggregate).
 #[derive(Clone, Default)]
 pub(crate) struct ModifierProvenance {
     /// `(host, count, source_name)` — positive placements; removals shrink batches LIFO.
     pub counter_batches: Vec<(ObjectId, i32, &'static str)>,
-    /// `(host, power, toughness, keywords, source_name)` until end of turn; cleared with
+    /// Every live continuous modification, in timestamp order; swept by
     /// [`Event::TempBoostsEnded`](crate::Event::TempBoostsEnded).
-    pub temp_boosts: Vec<(ObjectId, i32, i32, &'static [Keyword], &'static str)>,
+    pub modifiers: Vec<Modifier>,
 }
 
 /// One consumable "prevent the next … damage" shield (CR 615) on

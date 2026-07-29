@@ -140,20 +140,26 @@ impl Game {
                 push(source_name, ModifierContribution::PlusCounters(count));
             }
         }
-        for &(host, power, toughness, keywords, source_name) in
-            &self.modifier_provenance.temp_boosts
-        {
-            if host != object {
+        // Only the until-EOT boosts are ledgered: they're the ones whose minting event carries a
+        // source name. The other registered modifiers (a lace's color set, a self-animation)
+        // would show up as an unattributed row.
+        for modifier in self.modifiers_on(object) {
+            let ModifierKind::Boost {
+                power,
+                toughness,
+                keywords,
+            } = modifier.kind
+            else {
                 continue;
-            }
+            };
             if power != 0 || toughness != 0 {
                 push(
-                    source_name,
+                    modifier.source_name,
                     ModifierContribution::PowerToughness { power, toughness },
                 );
             }
             for &keyword in keywords {
-                push(source_name, ModifierContribution::Keyword(keyword));
+                push(modifier.source_name, ModifierContribution::Keyword(keyword));
             }
         }
         for &(host, _, source_name) in &self.combat_extras.goaded {
@@ -433,41 +439,52 @@ impl Game {
             })
     }
 
-    /// The colors of `object` — its source card's colored cost pips (CR 105.2), plus any colors
-    /// added by a CR 613.4-style type-change layer while it's live (a manland's animated form —
-    /// [`Permanent::added_colors_eot`]). Used to test a spell/creature against a protected
-    /// permanent (a "red" source has a red pip) and by color-scoped anthems ([`Game::colors_of`]
-    /// callers).
+    /// The colors of `object` — its source card's colored cost pips (CR 105.2), then every CR
+    /// 613.3c layer-5 effect on it applied in timestamp order (CR 613.7). Used to test a
+    /// spell/creature against a protected permanent (a "red" source has a red pip) and by
+    /// color-scoped anthems.
     ///
-    /// A CR 613.3c layer-5 color-SET ([`Permanent::set_color`] — Wild Mongrel's "becomes the
-    /// color of your choice until end of turn", Deathlace's "becomes black"; [`Spell::set_color`] — Fork's "except that the
-    /// copy is red") wins ahead of the derived/added colors below: it *replaces* them rather than
-    /// unioning, so a green Mongrel that becomes black reads as black only, never green-and-black.
+    /// A layer-5 *SET* (Wild Mongrel's "becomes the color of your choice until end of turn",
+    /// Deathlace's "becomes black") replaces every color established before it rather than
+    /// unioning, so a green Mongrel that becomes black reads as black only. A layer-5 *ADD* (a
+    /// manland's animated form) unions onto whatever the effects before it left — so an animation
+    /// resolving after a lace keeps both the lace's color and its own.
     pub fn colors_of(&self, object: ObjectId) -> [bool; Color::COUNT] {
-        let set_color = match &self.objects[object as usize] {
-            Object::Permanent(p) => p.set_color.map(|(color, _)| color),
-            Object::Spell(s) => s.set_color,
-            _ => None,
-        };
-        if let Some(color) = set_color {
+        // Fork's "except that the copy is red" — a spell has no duration to sweep and ceases to
+        // exist as it resolves, so its set is a plain field rather than a registered modifier.
+        if let Object::Spell(s) = &self.objects[object as usize]
+            && let Some(color) = s.set_color
+        {
             let mut colors = [false; Color::COUNT];
             colors[color.index()] = true;
             return colors;
         }
         let mut colors = color_identity(&self.def_of(object));
-        if let Some(p) = self.as_permanent(object) {
-            for color in p.added_colors_eot {
-                colors[color.index()] = true;
-            }
-        }
         // Kormus Bell's "All Swamps are 1/1 **black** creatures" — a layer-5 add like a manland's,
         // just scoped to a land type rather than to the permanent itself.
+        // ponytail: folded in ahead of the registered effects rather than at its own timestamp,
+        // so a lace resolving *before* the Bell entered still wipes the Bell's black. An add only
+        // loses to a set, and no pool card laces a Swamp.
         for (_, _, effect) in self.land_type_statics_on(object) {
             let StaticEffect::AllLandsOfTypeBecome { add_colors, .. } = effect else {
                 continue;
             };
             for color in add_colors {
                 colors[color.index()] = true;
+            }
+        }
+        for modifier in self.modifiers_on(object) {
+            match modifier.kind {
+                ModifierKind::SetColor(color) => {
+                    colors = [false; Color::COUNT];
+                    colors[color.index()] = true;
+                }
+                ModifierKind::Became { colors: added, .. } => {
+                    for color in added {
+                        colors[color.index()] = true;
+                    }
+                }
+                _ => {}
             }
         }
         colors
@@ -942,25 +959,6 @@ impl Game {
             return Vec::new();
         };
         let mut effects = Vec::new();
-        if let Some((power, toughness)) = p.base_pt_set_eot {
-            effects.push(ContinuousEffect {
-                source: object,
-                timestamp: p.base_pt_set_eot_timestamp,
-                kind: ContinuousEffectKind::BasePtSet { power, toughness },
-            });
-        }
-        if p.added_types_eot != TypeSet::NONE || !p.added_subtypes_eot.is_empty() {
-            effects.push(ContinuousEffect {
-                source: object,
-                timestamp: p.added_types_eot_timestamp,
-                kind: ContinuousEffectKind::SetTypes {
-                    add_types: p.added_types_eot,
-                    set_types: false,
-                    set_subtypes: None,
-                    add_subtypes: p.added_subtypes_eot,
-                },
-            });
-        }
         if let Some((power, toughness)) = p.set_base_pt {
             effects.push(ContinuousEffect {
                 source: object,
@@ -1031,24 +1029,60 @@ impl Game {
                 },
             });
         }
-        if p.temp_power != 0 || p.temp_toughness != 0 {
-            effects.push(ContinuousEffect {
-                source: object,
-                timestamp: self.static_continuous_timestamp(object),
-                kind: ContinuousEffectKind::PtDelta {
-                    power: p.temp_power,
-                    toughness: p.temp_toughness,
-                },
-            });
-        }
-        if !p.temp_keywords.is_empty() {
-            effects.push(ContinuousEffect {
-                source: object,
-                timestamp: self.static_continuous_timestamp(object),
-                kind: ContinuousEffectKind::GrantKeywords {
-                    keywords: p.temp_keywords,
-                },
-            });
+        // Every registered continuous modification of this object, one layer entry each at the
+        // timestamp it was stamped with — rather than one pre-summed aggregate per layer. Layer
+        // 7c and the keyword layer are additive, so N entries and one summed entry agree, and
+        // nothing has to union keyword slices into a leaked `&'static` to fit a single field.
+        // The color kinds are absent because color isn't a layer this pipeline models — see
+        // [`Game::colors_of`], which folds them itself.
+        for modifier in self.modifiers_on(object) {
+            let timestamp = modifier.timestamp;
+            match modifier.kind {
+                ModifierKind::Boost {
+                    power,
+                    toughness,
+                    keywords,
+                } => {
+                    if power != 0 || toughness != 0 {
+                        effects.push(ContinuousEffect {
+                            source: object,
+                            timestamp,
+                            kind: ContinuousEffectKind::PtDelta { power, toughness },
+                        });
+                    }
+                    if !keywords.is_empty() {
+                        effects.push(ContinuousEffect {
+                            source: object,
+                            timestamp,
+                            kind: ContinuousEffectKind::GrantKeywords { keywords },
+                        });
+                    }
+                }
+                ModifierKind::BasePtSet { power, toughness } => effects.push(ContinuousEffect {
+                    source: object,
+                    timestamp,
+                    kind: ContinuousEffectKind::BasePtSet { power, toughness },
+                }),
+                ModifierKind::Became {
+                    types, subtypes, ..
+                } => {
+                    if types != TypeSet::NONE || !subtypes.is_empty() {
+                        effects.push(ContinuousEffect {
+                            source: object,
+                            timestamp,
+                            kind: ContinuousEffectKind::SetTypes {
+                                add_types: types,
+                                set_types: false,
+                                set_subtypes: None,
+                                add_subtypes: subtypes,
+                            },
+                        });
+                    }
+                }
+                ModifierKind::LoseKeywords(_)
+                | ModifierKind::SetColor(_)
+                | ModifierKind::RevertsToDef(_) => {}
+            }
         }
         if !p.granted_keywords.is_empty() {
             effects.push(ContinuousEffect {
@@ -1901,7 +1935,7 @@ impl Game {
 
     /// The printed base P/T to feed the CR 613 layers, or `None` if `object` has no P/T (not a
     /// creature). A printed creature contributes its printed base; an *animated* noncreature
-    /// (Restless Spire, a creature only via `added_types_eot`) has no printed P/T, so its base is
+    /// (Restless Spire, a creature only via a registered `Became`) has no printed P/T, so its base is
     /// 0/0 — the animation's until-EOT `BasePtSet` layer then supplies the real numbers (CR 613.3).
     fn pt_base(&self, object: ObjectId) -> Option<(i32, i32)> {
         // Guard on the permanent first: `effective_types` reads `def_of`, which panics on an object
@@ -2072,21 +2106,18 @@ impl Game {
             if removes_abilities {
                 break;
             }
-            // ponytail: `conditional_keywords` is a static keyword grant (CR 604.3), not a
-            // triggered ability's intervening-if — it has no `TriggerContext` to run through the
-            // general `Game::condition_holds` evaluator, so each source-object-based `Condition`
-            // this axis actually uses gets its own arm here rather than a generic dispatch. Grow
-            // this match (not a fallthrough to `condition_holds`, which is unreachable from here)
-            // when a future card conditions a keyword on something else.
-            let holds = match condition {
-                Condition::SourceHasCounters { at_least } => {
-                    self.source_has_counters(object, at_least)
-                }
-                Condition::SourceAttackedThisTurn => self
-                    .as_permanent(object)
-                    .is_some_and(|p| p.attacked_this_turn),
-                _ => false,
-            };
+            // A static keyword grant (CR 604.3), not a triggered ability's intervening-if, so
+            // there is no triggering event to describe — but the source-object-based conditions
+            // this axis uses (Primordial Hydra's ten-counter trample, Agent Frank Horrigan's
+            // attacked-this-turn indestructible) read `TriggerContext::source`, so a context
+            // naming this object and its controller is all the general evaluator needs.
+            let holds = self.condition_holds(
+                condition,
+                TriggerContext {
+                    source: Some(object),
+                    ..TriggerContext::of(self.controller_of(object))
+                },
+            );
             if holds {
                 keywords.push(keyword);
             }
@@ -2142,8 +2173,11 @@ impl Game {
         // "Lose ... and can't have" (CR 702.11e/702.18d — arcane_lighthouse): strip these off
         // the fully-unioned set last, so a keyword granted by any source above — including one
         // applied *after* the strip landed this turn — is filtered right back out.
-        if let Some(p) = self.as_permanent(object) {
-            keywords.retain(|k| !p.temp_lost_keywords.contains(k));
+        for modifier in self.modifiers_on(object) {
+            let ModifierKind::LoseKeywords(lost) = modifier.kind else {
+                continue;
+            };
+            keywords.retain(|k| !lost.contains(k));
         }
         // "Enchanted creature loses flying" (Earthbind), an ability the Aura gained rather than one
         // printed on it: stripped last for the same reason as the losses above — it beats every
@@ -2305,7 +2339,7 @@ impl Game {
                 // against the anthem source's own controller, same as its cost/trigger reads
                 // would be.
                 if let Some(cond) = condition
-                    && !self.condition_holds(cond, TriggerContext::of(source_owner))
+                    && !self.ability_condition_holds(cond, source, TriggerContext::of(source_owner))
                 {
                     continue;
                 }

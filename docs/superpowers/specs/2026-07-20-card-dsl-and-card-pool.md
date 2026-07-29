@@ -108,6 +108,25 @@ There is no `"token"` `[kind]` tag. Token profiles are separate TOMLs under `dat
 
 Each ability block has a `timing` field and one or more `[[abilities.effects]]` entries. Optional: `condition` (intervening-if clause), `optional` (bool — "you may" trigger), `trigger` (what event fires this — for triggered abilities), `target` (what the whole ability targets, for targeted activated abilities).
 
+### Conditions
+
+A `Condition` is an internally-tagged table (`{ type = "…", … }`) usable as an ability's intervening-if, as a `conditional` effect's gate, and on the `enters_tapped_unless` / `free_cast_if` / `deploy_untapped_if` / `conditional_keywords` fields. Every threshold clause that compares one number to another — "if you control three or more creatures", "if its power is 16 or less", "if that spell's mana value is 5 or greater", "if this enchantment has no charge counters on it" — is written as the generic `compare`, whose `left` and `right` are ordinary `Amount`s and whose `op` is `at_least` (`>=`) or `at_most` (`<=`):
+
+```toml
+condition = { type = "compare", left = "per_creature_you_control", op = "at_least", right = 3 }
+condition = { type = "compare", left = { per_counter_of_kind = "charge" }, op = "at_most", right = 0 }
+condition = { type = "compare", left = { per_permanent = { basic = true, controller = "you" } }, op = "at_least", right = 2 }
+```
+
+Magic thresholds are always inclusive, so those two ops cover the pool; an equality test is written as `at_most 0`. Reuse an existing `Amount` rather than adding a bespoke `Condition` variant — a board count is `per_permanent` with an ordinary `PermanentFilter`, so "you control five or more lands", "opponents control eight or more lands, combined" (`controller = "opponent"`, which sums across them), "you control two or more basic lands" (`basic = true`), and "you control two or more white permanents" (`color = "white"`) are all the same shape. The named variants that remain are the ones a scalar comparison genuinely can't express:
+
+- **existentials over players** — `an_opponent_controls_lands`, `opponent_controls_lands_with_subtype`, `an_opponent_has_life_at_most`, `any_player_hand_size_at_most`: "*an* opponent controls seven lands" is not a sum, and a `compare` has one number per side.
+- **two-subject comparisons** — `opponent_controls_more_lands`.
+- **board facts that are not counts** — `source_untapped`, `won_clash`, `during_your_turn`.
+- **land-subtype counts** — `controls_lands_with_subtype` (Clifftop Retreat's "a Mountain or a Plains"). Shaped like a board count, but a land's types live on `CardKind::Land::subtypes` while a filter's `subtypes` axis reads `CardDef::subtypes`; the two lists are unified only at the wire edge, so a filter cannot see that a Clifftop Retreat is a Mountain.
+
+Every condition is evaluated through one `Game::condition_holds` against a `TriggerContext`. The context carries the ability's own `source` object and the resolution's shared `target` where the evaluating site has them, so a `compare` over `source_power` / `per_counter_on_source` / `target_power` reads the same way at trigger placement, at resolution, at an activation-restriction check, and in a `conditional_keywords` recompute. A site that genuinely has no source — a land's CR 614.13 `enters_tapped_unless` gate runs before the permanent exists — leaves it `None`; there only a constant or a `per_permanent` board count can answer (a filter's source-relative axes impose no restriction with nothing to compare against), and a comparison over any other operand does not hold.
+
 ### Timing variants
 
 - `"spell"`: the card's own spell effect; fires on resolution.
@@ -136,7 +155,7 @@ Representative modes by family:
 
 **`control`:** `tap_target`, `tap_all`, `gain_control`, `gain_control_while`.
 
-**`counters`:** `put_counters`, `remove_counter`, `move_counters`, `put_counters_on_player` / `remove_all_player_counters` (both take a `who`, CR 122.1).
+**`counters`:** `put_counters`, `remove_counter`, `move_counters`, `remove_counters`, `put_counters_on_player` / `remove_all_player_counters` (both take a `who`, CR 122.1). `remove_counters` removes counters from its `target` along two axes: `all_kinds` (default `false` — only +1/+1 counters; `true` — every counter kind) and `keep` (default `0` — how many +1/+1 counters stay behind). It records how many it removed in the `counters_removed_this_way` `Amount`, so the "draw a card for each counter removed this way" / "gain 1 life for each +1/+1 counter removed this way" halves are authored as an ordinary following effect step rather than fused into the removal mode (Nexus Mentality mode 1, Lily Bowen's `otherwise` branch).
 
 **`token`:** `create` (references a token profile by id or inline definition; `who` names the seat the tokens enter under, CR 111.4, and `per_opponent = true` repeats the batch once per opponent without moving the recipient — Eccentric Pestfinder's "for each opponent, **you** create …"), `create_copy`, `create_treasure`.
 
@@ -172,7 +191,7 @@ Edicts (`each_player_sacrifices`, `each_player_discards`) read *which* seats fro
 
 ### Amount
 
-`Amount` is the polymorphic numeric type used anywhere a count or numeric value appears. Variants include `Fixed(n)`, `X` (the cast's {X} value), `TargetPower`, `LifeGainedThisTurn`, `CreaturesDiedThisTurn`, `SpellsCastThisTurn`, `CommanderColorCount`, `PerPermanentMatching { filter }`, `AurasAttachedToSource`, `NontokenCreaturesEnteredThisTurn`, `TriggeringSpellManaValue`, `CombatDamage`, `SacrificedCreaturePower`, `PermanentsDestroyedThisWay`, and others. `Amount` can appear as `count` on `create_token`, `draw_cards`, `gain_life`, activated cost `pay_life`, etc.
+`Amount` is the polymorphic numeric type used anywhere a count or numeric value appears. Variants include `Fixed(n)`, `X` (the cast's {X} value), `TargetPower`, `LifeGainedThisTurn`, `CreaturesDiedThisTurn`, `SpellsCastThisTurn`, `CommanderColorCount`, `PerPermanentMatching { filter }`, `AurasAttachedToSource`, `NontokenCreaturesEnteredThisTurn`, `TriggeringSpellManaValue`, `CombatDamage`, `SacrificedCreaturePower`, `PermanentsDestroyedThisWay`, `CountersRemovedThisWay`, and others. The `…ThisWay` variants read a tally the *preceding* effect step wrote on the resolution frame (see [choices-actions-and-resolution](2026-07-20-choices-actions-and-resolution.md)); adding one means registering its TOML keyword in the hand-written `Amount` deserializer (`crates/cards/src/de.rs`, both the keyword list and the match) and in `crates/cards/src/toml_surface/dsl_schema.rs` — the enum is not `derive(Deserialize)`. `Amount` can appear as `count` on `create_token`, `draw_cards`, `gain_life`, activated cost `pay_life`, etc.
 
 Two variants compose rather than name a count of their own, so every "twice", "half", "one plus", "minus 4", and "if … instead" a card prints is a composition instead of a variant:
 

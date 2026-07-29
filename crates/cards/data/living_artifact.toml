@@ -34,7 +34,7 @@ target = "this"
 [[abilities]]
 timing = "upkeep"
 optional = true
-condition = { type = "source_has_counters_of_kind", kind = "vitality", at_least = 1 }
+condition = { type = "compare", left = { per_counter_of_kind = "vitality" }, op = "at_least", right = 1 }
 
 # you may remove a vitality counter from this Aura.
 [[abilities.effects]]

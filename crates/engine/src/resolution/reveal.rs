@@ -173,7 +173,14 @@ impl Game {
                 let goal = self.resolve_count(count, controller, source, target, x);
                 let tapped = matched_tapped
                     && !deploy_untapped_if.is_some_and(|condition| {
-                        self.condition_holds(condition, TriggerContext::of(controller))
+                        self.condition_holds(
+                            condition,
+                            TriggerContext {
+                                source: Some(source),
+                                target,
+                                ..TriggerContext::of(controller)
+                            },
+                        )
                     });
                 let mut next = self.next_object_id();
                 let mut events = Vec::new();

@@ -596,7 +596,8 @@
             "spells_cast_before_this_this_turn",
             "cards_discarded_this_way",
             "creatures_sacrificed_this_way",
-            "spell_first_target_mana_value"
+            "spell_first_target_mana_value",
+            "counters_removed_this_way"
           ],
           "type": "string"
         },
@@ -1735,41 +1736,51 @@
         }
       ]
     },
-    "Condition": {
-      "description": "An intervening-if condition on a triggered ability (CR 603.4): checked once, *when the ability would trigger*. If it doesn't hold, the ability never goes on the stack. ponytail: the CR 603.4 *second* check (re-evaluated as the ability resolves) is skipped — a single placement-time check is all the pool's cards need; add the re-check when one relies on the condition becoming false between trigger and resolution. Kept `Copy` because it is a small authored predicate value.",
+    "CompareOp": {
+      "description": "An intervening-if condition on a triggered ability (CR 603.4): checked once, *when the ability would trigger*. If it doesn't hold, the ability never goes on the stack. How [`Condition::Compare`] relates its two operands. Magic thresholds are always inclusive (\"five or more lands\", \"16 or less\"), so these are `>=` and `<=`; an equality test is written as `at_most 0` where the pool needs it (\"if no creatures are on the battlefield\").",
       "oneOf": [
         {
-          "description": "\"if you control `count` or more creatures\" (Leonin Vanguard). ponytail: counts creatures only — the one object kind the pool needs; add a `kind` discriminator (permanents, artifacts, …) when a real card counts something else.",
+          "description": "\"`count` or more\" — `left >= right`.",
+          "enum": [
+            "at_least"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "\"`count` or fewer\" — `left <= right`.",
+          "enum": [
+            "at_most"
+          ],
+          "type": "string"
+        }
+      ]
+    },
+    "Condition": {
+      "description": "ponytail: the CR 603.4 *second* check (re-evaluated as the ability resolves) is skipped — a single placement-time check is all the pool's cards need; add the re-check when one relies on the condition becoming false between trigger and resolution. Kept `Copy` because it is a small authored predicate value.",
+      "oneOf": [
+        {
+          "description": "A numeric threshold: `left op right`, where both operands are ordinary [`Amount`]s (\"if you control three or more creatures\", \"if its power is 16 or less\", \"if that spell's mana value is 5 or greater\"). [`Amount`] already computes every quantity Magic compares, so this needs no subject vocabulary of its own — and every operand it gains as `Amount` grows is usable as a count anywhere else in the DSL too.\n\nBoth operands are `&'static` (leaked at deserialize, like other card-data references) because [`Amount::IfCondition`] holds a `Condition` *by value*: a `Condition` holding an `Amount` by value would be an infinitely sized cycle. This keeps [`Condition`] `Copy`.\n\nEvaluated wherever the site can supply what [`Game::resolve_amount`] needs. An operand that reads the source object (`source_power`, `per_counter_on_source`) or the resolving effect's target (`target_power`) only holds at a site that has one — the `{ type = \"conditional\", … }` resolve site and [`Game::ability_condition_holds`] both do; a bare `[abilities.condition]` checked with no source in hand does not, and reads such an operand as 0.",
           "properties": {
-            "count": {
-              "format": "uint32",
-              "minimum": 0.0,
-              "type": "integer"
+            "left": {
+              "$ref": "#/$defs/Amount"
+            },
+            "op": {
+              "$ref": "#/$defs/CompareOp"
+            },
+            "right": {
+              "$ref": "#/$defs/Amount"
             },
             "type": {
               "enum": [
-                "you_control_at_least_creatures"
+                "compare"
               ],
               "type": "string"
             }
           },
           "required": [
-            "count",
-            "type"
-          ],
-          "type": "object"
-        },
-        {
-          "description": "\"if no creatures are on the battlefield\" (Pyrohemia's self-sacrifice gate) — board-wide, every controller, unlike [`YouControlAtLeastCreatures`](Self::YouControlAtLeastCreatures) above. Reads [`Game::creatures_on_battlefield`], the same tally [`Amount::PerCreatureOnBattlefield`] uses. Usable both as `[abilities.condition]` (CR 603.4's first check, at trigger placement) and nested in a `{ type = \"conditional\", … }` step (the CR 603.4 *second* check, re-checked fresh at resolution — a creature created in response to the trigger suppresses the sacrifice), same pairing as [`SourceUntapped`](Self::SourceUntapped)/Howling Mine.",
-          "properties": {
-            "type": {
-              "enum": [
-                "no_creatures_on_battlefield"
-              ],
-              "type": "string"
-            }
-          },
-          "required": [
+            "left",
+            "op",
+            "right",
             "type"
           ],
           "type": "object"
@@ -1790,7 +1801,7 @@
           "type": "object"
         },
         {
-          "description": "\"if you control `count` or more lands whose type line carries any of `subtypes`\" (Clifftop Retreat: a Mountain or a Plains, `count = 1`; Mystic Sanctuary: three or more *other* Islands, `count = 3` — the land being checked hasn't entered the battlefield yet when this runs, so \"other\" falls out for free; Emeria: seven or more Plains, `count = 7`).",
+          "description": "\"if you control `count` or more lands whose type line carries any of `subtypes`\" (Clifftop Retreat: a Mountain or a Plains, `count = 1`; Mystic Sanctuary: three or more *other* Islands, `count = 3` — the land being checked hasn't entered the battlefield yet when this runs, so \"other\" falls out for free; Emeria: seven or more Plains, `count = 7`).\n\nShaped like a [`Compare`](Self::Compare) over a board count but not written as one: a land's types live on [`CardKind::Land::subtypes`], while [`PermanentFilter::subtypes`] reads [`CardDef::subtypes`] (the \"—\" line's creature/artifact types). Until those two lists are one, a filter cannot see that a Clifftop Retreat is a Mountain.",
           "properties": {
             "count": {
               "format": "uint32",
@@ -1840,7 +1851,7 @@
           "type": "object"
         },
         {
-          "description": "\"if an opponent controls `count` or more lands whose type line carries any of `subtypes`\" (Massacre's free-cast permission: \"if an opponent controls a Plains\" — `subtypes = [\"Plains\"], count = 1`). The opponent-scoped twin of [`ControlsLandsWithSubtype`](Self::ControlsLandsWithSubtype) — holds when *some* living opponent of the controller meets the threshold individually (not summed across opponents, unlike [`OpponentsControlLands`](Self::OpponentsControlLands)).",
+          "description": "\"if an opponent controls `count` or more lands whose type line carries any of `subtypes`\" (Massacre's free-cast permission: \"if an opponent controls a Plains\" — `subtypes = [\"Plains\"], count = 1`). The opponent-scoped twin of [`ControlsLandsWithSubtype`](Self::ControlsLandsWithSubtype) — holds when *some* living opponent of the controller meets the threshold individually. That existential is why it isn't a [`Compare`](Self::Compare) over an opponent-controlled board count: such a count sums across every opponent.",
           "properties": {
             "count": {
               "format": "uint32",
@@ -1868,49 +1879,7 @@
           "type": "object"
         },
         {
-          "description": "\"if you control `count` or more basic lands\" (Eclipsed Steppe and its tango-land cousins).",
-          "properties": {
-            "count": {
-              "format": "uint32",
-              "minimum": 0.0,
-              "type": "integer"
-            },
-            "type": {
-              "enum": [
-                "controls_basic_lands"
-              ],
-              "type": "string"
-            }
-          },
-          "required": [
-            "count",
-            "type"
-          ],
-          "type": "object"
-        },
-        {
-          "description": "\"if your opponents control `count` or more lands, combined\" (the turbulent_* slowland cycle).",
-          "properties": {
-            "count": {
-              "format": "uint32",
-              "minimum": 0.0,
-              "type": "integer"
-            },
-            "type": {
-              "enum": [
-                "opponents_control_lands"
-              ],
-              "type": "string"
-            }
-          },
-          "required": [
-            "count",
-            "type"
-          ],
-          "type": "object"
-        },
-        {
-          "description": "\"if an opponent controls `at_least` or more lands\" (Avatar of Fury's cost-reduction condition: \"If an opponent controls seven or more lands, this spell costs {6} less to cast.\"). The opponent-scoped, land-count twin of [`OpponentControlsLandsWithSubtype`](Self::OpponentControlsLandsWithSubtype) — holds when *some* living opponent individually meets the threshold (not summed across opponents, unlike [`OpponentsControlLands`](Self::OpponentsControlLands)).",
+          "description": "\"if an opponent controls `at_least` or more lands\" (Avatar of Fury's cost-reduction condition: \"If an opponent controls seven or more lands, this spell costs {6} less to cast.\"). The opponent-scoped, land-count twin of [`OpponentControlsLandsWithSubtype`](Self::OpponentControlsLandsWithSubtype) — holds when *some* living opponent individually meets the threshold, the same existential reading (and the same reason it isn't a [`Compare`](Self::Compare)).",
           "properties": {
             "at_least": {
               "format": "uint32",
@@ -1984,48 +1953,6 @@
             }
           },
           "required": [
-            "type"
-          ],
-          "type": "object"
-        },
-        {
-          "description": "\"if you control `at_least` or more lands\" — both an intervening-if and an *activation* restriction (Temple of the False God: \"Activate only if you control five or more lands\"; checked in [`Game::ability_activation_gate`]).",
-          "properties": {
-            "at_least": {
-              "format": "uint32",
-              "minimum": 0.0,
-              "type": "integer"
-            },
-            "type": {
-              "enum": [
-                "you_control_lands"
-              ],
-              "type": "string"
-            }
-          },
-          "required": [
-            "at_least",
-            "type"
-          ],
-          "type": "object"
-        },
-        {
-          "description": "\"if you control `at_most` or fewer lands\" (Edge of Autumn's \"If you control four or fewer lands, search your library for a basic land card…\") — the `at_most` twin of [`YouControlLands`](Self::YouControlLands), only reachable inside `{ type = \"conditional\", … }` (a spell's own resolve-time check, CR 608.2h) since no pool card needs it as an intervening-if or activation restriction yet.",
-          "properties": {
-            "at_most": {
-              "format": "uint32",
-              "minimum": 0.0,
-              "type": "integer"
-            },
-            "type": {
-              "enum": [
-                "you_control_lands_at_most"
-              ],
-              "type": "string"
-            }
-          },
-          "required": [
-            "at_most",
             "type"
           ],
           "type": "object"
@@ -2148,28 +2075,7 @@
           "type": "object"
         },
         {
-          "description": "\"as long as this creature has `at_least` or more +1/+1 counters on it\" (CR 702 counters; Primordial Hydra's trample gate). Source-object-based — reads the object's own `Permanent::plus_counters`, not a `TriggerContext` field.",
-          "properties": {
-            "at_least": {
-              "format": "uint32",
-              "minimum": 0.0,
-              "type": "integer"
-            },
-            "type": {
-              "enum": [
-                "source_has_counters"
-              ],
-              "type": "string"
-            }
-          },
-          "required": [
-            "at_least",
-            "type"
-          ],
-          "type": "object"
-        },
-        {
-          "description": "\"has indestructible as long as it attacked this turn\" (Agent Frank Horrigan). Source-object-based like [`SourceHasCounters`](Self::SourceHasCounters) above, but reads [`Permanent::attacked_this_turn`] — a turn-scoped flag set when the permanent is declared as an attacker and cleared at the next Untap step, *not* [`PermanentFilter::attacking`], which lapses the instant combat ends or the permanent leaves combat. The printed grant persists through end of combat and the rest of the turn.",
+          "description": "\"has indestructible as long as it attacked this turn\" (Agent Frank Horrigan). Source-object-based like [`Compare`](Self::Compare)'s source operands, but reads [`Permanent::attacked_this_turn`] — a turn-scoped flag set when the permanent is declared as an attacker and cleared at the next Untap step, *not* [`PermanentFilter::attacking`], which lapses the instant combat ends or the permanent leaves combat. The printed grant persists through end of combat and the rest of the turn.",
           "properties": {
             "type": {
               "enum": [
@@ -2199,76 +2105,7 @@
           "type": "object"
         },
         {
-          "description": "\"if this permanent has no `kind` counters on it\" (CR 702 counters; mana_bloom's upkeep self-bounce: \"if this enchantment has no charge counters on it, return it to its owner's hand\"). Source-object-based like [`SourceHasCounters`](Self::SourceHasCounters) above. ponytail: only the \"== 0\" inversion this increment's cards need, not a general `at_least`/`at_most` on a named kind; grow a `SourceHasCountersOfKind { kind, at_least }` sibling (mirroring `SourceHasCounters`) if a future card needs \"at least N story/charge counters\" as an intervening-if instead of exactly zero.",
-          "properties": {
-            "kind": {
-              "$ref": "#/$defs/CounterKind"
-            },
-            "type": {
-              "enum": [
-                "source_has_no_counters_of_kind"
-              ],
-              "type": "string"
-            }
-          },
-          "required": [
-            "kind",
-            "type"
-          ],
-          "type": "object"
-        },
-        {
-          "description": "\"if this permanent has `at_least` or more `kind` counters on it\" — the positive sibling `SourceHasNoCountersOfKind` above always said to grow. Living Artifact's \"you may remove a vitality counter from this Aura. If you do, you gain 1 life\": as an intervening-if (CR 603.4) the trigger never reaches the stack with nothing to remove, which is what \"if you do\" comes to when the removal can't fail once a counter is there.",
-          "properties": {
-            "at_least": {
-              "format": "uint32",
-              "minimum": 0.0,
-              "type": "integer"
-            },
-            "kind": {
-              "$ref": "#/$defs/CounterKind"
-            },
-            "type": {
-              "enum": [
-                "source_has_counters_of_kind"
-              ],
-              "type": "string"
-            }
-          },
-          "required": [
-            "at_least",
-            "kind",
-            "type"
-          ],
-          "type": "object"
-        },
-        {
-          "description": "\"if you control `at_least` or more `color` permanents\" (Mistveil Plains's \"activate only if you control two or more white permanents\") — an activation restriction, checked in [`Game::ability_activation_gate`]. Counts the controller's battlefield permanents whose [`Game::colors_of`] includes `color`.",
-          "properties": {
-            "at_least": {
-              "format": "uint32",
-              "minimum": 0.0,
-              "type": "integer"
-            },
-            "color": {
-              "$ref": "#/$defs/Color"
-            },
-            "type": {
-              "enum": [
-                "you_control_color_permanents"
-              ],
-              "type": "string"
-            }
-          },
-          "required": [
-            "at_least",
-            "color",
-            "type"
-          ],
-          "type": "object"
-        },
-        {
-          "description": "\"when this land enters untapped\" (Mystic Sanctuary's ETB intervening-if): whether the permanent that fired this ability is not tapped right now. Reads the object's own `Permanent::tapped`, which is set at creation from `Game::enters_tapped` (CR 614.13's own gate, evaluated before the permanent exists — see that fn), so this reads correctly with no re-derivation. Source-object-based like [`SourceHasCounters`](Self::SourceHasCounters): `TriggerContext` carries no source id, so `Game::queue_trigger_group` special-cases it directly against its own `source` parameter rather than through `condition_holds`.",
+          "description": "\"when this land enters untapped\" (Mystic Sanctuary's ETB intervening-if): whether the permanent that fired this ability is not tapped right now. Reads the object's own `Permanent::tapped`, which is set at creation from `Game::enters_tapped` (CR 614.13's own gate, evaluated before the permanent exists — see that fn), so this reads correctly with no re-derivation. Source-object-based like [`Compare`](Self::Compare)'s source operands, so it reads [`TriggerContext::source`] and holds nowhere that has no source object.",
           "properties": {
             "type": {
               "enum": [
@@ -2283,7 +2120,7 @@
           "type": "object"
         },
         {
-          "description": "\"if [this permanent] is untapped\" (Howling Mine's intervening-if) — whether the ability's own source permanent is untapped *right now*, re-read live rather than snapshotted once like [`ThisPermanentEnteredUntapped`](Self::ThisPermanentEnteredUntapped) (which asks how the permanent entered, not its current state). Source-object-based, same shape as [`SourceHasCounters`](Self::SourceHasCounters): usable both as an `[abilities.condition]` intervening-if (checked at trigger placement, [`Game::ability_condition_holds`]) *and* nested in an [`Effect::Conditional`] (checked fresh at resolution) — CR 603.4 requires *both* checks, and the pool falsifies skipping the second (Magma Opus's instant-speed \"tap two target permanents\" can tap the source in response, after it triggered untapped).",
+          "description": "\"if [this permanent] is untapped\" (Howling Mine's intervening-if) — whether the ability's own source permanent is untapped *right now*, re-read live rather than snapshotted once like [`ThisPermanentEnteredUntapped`](Self::ThisPermanentEnteredUntapped) (which asks how the permanent entered, not its current state). Source-object-based, same shape as [`Compare`](Self::Compare)'s source operands: usable both as an `[abilities.condition]` intervening-if (checked at trigger placement, [`Game::ability_condition_holds`]) *and* nested in an [`Effect::Conditional`] (checked fresh at resolution) — CR 603.4 requires *both* checks, and the pool falsifies skipping the second (Magma Opus's instant-speed \"tap two target permanents\" can tap the source in response, after it triggered untapped).",
           "properties": {
             "type": {
               "enum": [
@@ -2362,27 +2199,6 @@
           "type": "object"
         },
         {
-          "description": "\"if that spell's mana value is `at_least` or greater\" (Prismari Pianist's \"if that spell's mana value is 5 or greater, create three of those tokens instead\") — a `Trigger::CastSpell` (magecraft) intervening-if, read off `TriggerContext::cast_mana_value`. [`condition_holds`](Game::condition_holds) gives this an honest live arm, but its only consumer (Prismari Pianist) never reaches it: the DSL always wraps this condition in an [`Effect::Conditional`] baked to its `then`/no-op at trigger placement (CR 603.4 — the triggering spell's mana value is already locked when the trigger goes on the stack), same as [`fill_cast_mana_value`] rewrites `Amount::TriggeringSpellManaValue`.",
-          "properties": {
-            "at_least": {
-              "format": "uint8",
-              "minimum": 0.0,
-              "type": "integer"
-            },
-            "type": {
-              "enum": [
-                "triggering_spell_mana_value_at_least"
-              ],
-              "type": "string"
-            }
-          },
-          "required": [
-            "at_least",
-            "type"
-          ],
-          "type": "object"
-        },
-        {
           "description": "\"as long as you have the city's blessing\" (CR 702.131, Ascend — tendershoot_dryad's Saproling anthem). Reads the controller's sticky `Player::has_citys_blessing` flag, set by a state-based action ([`Game::check_state_based_actions`]) once they control ten or more permanents (CR 702.131b) and never cleared.",
           "properties": {
             "type": {
@@ -2419,28 +2235,7 @@
           "type": "object"
         },
         {
-          "description": "\"if there are `count` or more instant and/or sorcery cards in your graveyard\" (Animist's Awakening's spell mastery — CR intervening-if, checked fresh as the ability resolves). Counts the same way [`Amount::InstantOrSorceryCardsInYourGraveyard`] does (any [`CardKind::Spell`] card in the controller's graveyard).",
-          "properties": {
-            "count": {
-              "format": "uint32",
-              "minimum": 0.0,
-              "type": "integer"
-            },
-            "type": {
-              "enum": [
-                "instant_or_sorcery_cards_in_your_graveyard_at_least"
-              ],
-              "type": "string"
-            }
-          },
-          "required": [
-            "count",
-            "type"
-          ],
-          "type": "object"
-        },
-        {
-          "description": "\"if there are `count` or more artifact and/or creature cards in your graveyard\" (Lorehold Archivist's prepare trigger). Counts the controller's graveyard cards whose kind is [`CardKind::Artifact`] or [`CardKind::Creature`] — the intervening-if sibling of [`InstantOrSorceryCardsInYourGraveyardAtLeast`](Self::InstantOrSorceryCardsInYourGraveyardAtLeast).",
+          "description": "\"if there are `count` or more artifact and/or creature cards in your graveyard\" (Lorehold Archivist's prepare trigger). Counts the controller's graveyard cards whose kind is [`CardKind::Artifact`] or [`CardKind::Creature`] — the intervening-if sibling of [`Compare`](Self::Compare) over [`Amount::InstantOrSorceryCardsInYourGraveyard`].",
           "properties": {
             "count": {
               "format": "uint32",
@@ -2503,7 +2298,7 @@
           "type": "object"
         },
         {
-          "description": "\"if this card is in your graveyard with `count` or more creature cards above it\" (Nether Shadow). A *positional* graveyard read: only the cards buried on top of the source count, so a creature card underneath it never digs it out. Source-object-based like [`SourceHasCounters`](Self::SourceHasCounters), so `Game::ability_condition_holds` intercepts it at trigger placement.",
+          "description": "\"if this card is in your graveyard with `count` or more creature cards above it\" (Nether Shadow). A *positional* graveyard read: only the cards buried on top of the source count, so a creature card underneath it never digs it out. Source-object-based like [`Compare`](Self::Compare)'s source operands, so it reads `TriggerContext::source`.",
           "properties": {
             "count": {
               "format": "uint32",
@@ -2519,48 +2314,6 @@
           },
           "required": [
             "count",
-            "type"
-          ],
-          "type": "object"
-        },
-        {
-          "description": "\"if that creature has power `at_least` or greater\" (Yavimaya Bloomsage's \"Then if that creature has power 7 or greater, this creature becomes prepared\") — reads the *resolving effect's own chosen target's* power, not a `TriggerContext` field like every other arm here. `TriggerContext` carries no target, so (like `SourceHasCounters`/ `ThisPermanentEnteredUntapped` above) this is unreachable through the ordinary `condition_holds` path; the [`Effect::Conditional`] resolve site special-cases it directly against the shared `target` before falling through — see `Game::run`.",
-          "properties": {
-            "at_least": {
-              "format": "uint32",
-              "minimum": 0.0,
-              "type": "integer"
-            },
-            "type": {
-              "enum": [
-                "target_power_at_least"
-              ],
-              "type": "string"
-            }
-          },
-          "required": [
-            "at_least",
-            "type"
-          ],
-          "type": "object"
-        },
-        {
-          "description": "\"if its power is `at_most` or less\" (Lily Bowen, Raging Grandma's upkeep gate) — source-object-based like [`SourceHasCounters`](Self::SourceHasCounters): reads the source's own live [`Game::power`], not a `TriggerContext` field. `TriggerContext` carries no source id, so this is unreachable through the ordinary `condition_holds` path; the [`Effect::Conditional`] resolve site special-cases it directly against its own `source` parameter, mirroring [`SourceEnteredWithXAtLeast`](Self::SourceEnteredWithXAtLeast).",
-          "properties": {
-            "at_most": {
-              "format": "uint32",
-              "minimum": 0.0,
-              "type": "integer"
-            },
-            "type": {
-              "enum": [
-                "source_power_at_most"
-              ],
-              "type": "string"
-            }
-          },
-          "required": [
-            "at_most",
             "type"
           ],
           "type": "object"
@@ -2587,7 +2340,7 @@
           "type": "object"
         },
         {
-          "description": "\"if X is `at_least` or more\" (CR 601.2b; Kinetic Ooze's \"If X is 5 or more, you draw a card\") — reads the source permanent's *locked cast* `{X}` ([`Game::ability_source_x`], backed by [`Permanent::entered_with_x`]), not any live board state (e.g. counters that happen to equal X at ETB but can change before the ability resolves). Source-object-based like [`SourceHasCounters`](Self::SourceHasCounters): `TriggerContext` carries no source id, so the [`Effect::Conditional`] resolve site special-cases it directly against its own `source` parameter, mirroring [`TargetPowerAtLeast`](Self::TargetPowerAtLeast) above.",
+          "description": "\"if X is `at_least` or more\" (CR 601.2b; Kinetic Ooze's \"If X is 5 or more, you draw a card\") — reads the source permanent's *locked cast* `{X}` ([`Game::ability_source_x`], backed by [`Permanent::entered_with_x`]), not any live board state (e.g. counters that happen to equal X at ETB but can change before the ability resolves). Source-object-based like [`Compare`](Self::Compare)'s source operands: `TriggerContext` carries no source id, so the [`Effect::Conditional`] resolve site special-cases it directly against its own `source` parameter.",
           "properties": {
             "at_least": {
               "format": "uint32",
@@ -2741,7 +2494,7 @@
           "type": "object"
         },
         {
-          "description": "\"Then if there are no cards in that player's graveyard\" (Nezumi Graverobber's flip gate — CR 608.2, evaluated as the ability resolves, after the same ability's exile step already emptied — or didn't — the targeted card's owner's graveyard). Target-based like [`TargetPowerAtLeast`](Self::TargetPowerAtLeast): `TriggerContext` carries no target, so the [`Effect::Conditional`] resolve site special-cases it directly against the shared `target`, reading the owner of that graveyard card (its owner survives the exile — the moved object still records it) and checking that owner's graveyard is now empty. Unreachable through the ordinary [`condition_holds`](Game::condition_holds) path (returns `false` there).",
+          "description": "\"Then if there are no cards in that player's graveyard\" (Nezumi Graverobber's flip gate — CR 608.2, evaluated as the ability resolves, after the same ability's exile step already emptied — or didn't — the targeted card's owner's graveyard). Target-based like [`Compare`](Self::Compare)'s target operands: `TriggerContext` carries no target, so the [`Effect::Conditional`] resolve site special-cases it directly against the shared `target`, reading the owner of that graveyard card (its owner survives the exile — the moved object still records it) and checking that owner's graveyard is now empty. Unreachable through the ordinary [`condition_holds`](Game::condition_holds) path (returns `false` there).",
           "properties": {
             "type": {
               "enum": [
@@ -4590,29 +4343,21 @@
               "type": "object"
             },
             {
+              "description": "\"Remove all counters from target nonland permanent you control\" (Nexus Mentality) / \"remove all but one +1/+1 counter from it\" (Lily Bowen, Raging Grandma). Tallies how many counters came off into [`ResolutionFrame::counters_removed_this_way`] for a following step to read back through [`Amount::CountersRemovedThisWay`] — the \"for each counter removed this way\" payoff is an ordinary next effect (draw, gain life), not a rider on this one.\n\n`all_kinds` also sweeps every named [`CounterKind`], not just +1/+1 counters. `keep` leaves that many +1/+1 counters behind, and is a no-op when the permanent already has that few (\"all but one\" of nothing or one is nothing).\n\nResolves via [`crate::Effect`] dispatch on the `Game::run` path rather than through event minting, because minting is `&self` and this writes the resolution frame.",
               "properties": {
-                "mode": {
-                  "enum": [
-                    "remove_all_counters_then_draw"
-                  ],
-                  "type": "string"
+                "all_kinds": {
+                  "default": false,
+                  "type": "boolean"
                 },
-                "target": {
-                  "$ref": "#/$defs/TargetSpec"
-                }
-              },
-              "required": [
-                "mode",
-                "target"
-              ],
-              "type": "object"
-            },
-            {
-              "description": "\"remove all but one +1/+1 counter from it, then you gain 1 life for each +1/+1 counter removed this way\" (Lily Bowen, Raging Grandma) — the cull-and-gain sibling of [`Self::RemoveAllCountersThenDraw`]: keeps exactly one +1/+1 counter (a no-op with zero or one already present — \"all but one\" of nothing or one is nothing) and the life gained is the number actually removed, not a flat amount. ponytail: +1/+1-only and always \"keep one, gain life\" — Lily Bowen is the only consumer; grow a `keep`/`gain_life` rider (or a `kind` axis) on `RemoveAllCountersThenDraw` instead of a new sibling if a future card needs a different keep-count or payoff.",
-              "properties": {
+                "keep": {
+                  "default": 0,
+                  "format": "uint32",
+                  "minimum": 0.0,
+                  "type": "integer"
+                },
                 "mode": {
                   "enum": [
-                    "remove_all_but_one_plus_one_counter_then_gain_life"
+                    "remove_counters"
                   ],
                   "type": "string"
                 },
@@ -5370,7 +5115,7 @@
               "type": "object"
             },
             {
-              "description": "\"Target spell or permanent becomes black.\" (Deathlace and the rest of the lace cycle) — a CR 613.3c layer-5 color SET with no duration printed at all, so it lasts as long as the object does. `color` *replaces* the object's colors rather than unioning with them, which is why a laced spell stops being countered by \"counter target blue spell\". Targets a spell on the stack or a permanent, and writes [`Permanent::set_color`]/[`Spell::set_color`] through [`Event::ColorSet`]. The reminder text (\"its mana symbols remain unchanged\") needs no modelling — colors are read from `colors_of`, never re-derived from the pips.",
+              "description": "\"Target spell or permanent becomes black.\" (Deathlace and the rest of the lace cycle) — a CR 613.3c layer-5 color SET with no duration printed at all, so it lasts as long as the object does. `color` *replaces* the object's colors rather than unioning with them, which is why a laced spell stops being countered by \"counter target blue spell\". Targets a spell on the stack or a permanent, and registers the layer-5 SET / writes [`Spell::set_color`] through [`Event::ColorSet`]. The reminder text (\"its mana symbols remain unchanged\") needs no modelling — colors are read from `colors_of`, never re-derived from the pips.",
               "properties": {
                 "color": {
                   "$ref": "#/$defs/Color"
@@ -10174,7 +9919,7 @@
     },
     "EnterAsCopy": {
       "additionalProperties": false,
-      "description": "The riders on an [`CardDef::enter_as_copy`] replacement (CR 706/707.2). `Copy` — all scalars, no `Vec` — so the nested replacement stays compact. `until_eot` reverts the copy at cleanup (Cursed Mirror, [`Permanent::reverts_to_def_eot`]); `extra_counters` are additional +1/+1 counters the copy enters with (Altered Ego's X); `gains_haste` grants the copy haste (Cursed Mirror's \"except it has haste\"); `of` is the copyable type axis (Copy Enchantment's \"any enchantment\", CR 707.2, vs. the default \"any creature\").",
+      "description": "The riders on an [`CardDef::enter_as_copy`] replacement (CR 706/707.2). `Copy` — all scalars, no `Vec` — so the nested replacement stays compact. `until_eot` reverts the copy at cleanup (Cursed Mirror); `extra_counters` are additional +1/+1 counters the copy enters with (Altered Ego's X); `gains_haste` grants the copy haste (Cursed Mirror's \"except it has haste\"); `of` is the copyable type axis (Copy Enchantment's \"any enchantment\", CR 707.2, vs. the default \"any creature\").",
       "properties": {
         "also_enchantment": {
           "default": false,
@@ -10998,6 +10743,12 @@
           ]
         },
         "attacking_you": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "basic": {
           "type": [
             "boolean",
             "null"
