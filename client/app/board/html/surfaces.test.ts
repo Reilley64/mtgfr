@@ -536,6 +536,8 @@ test("board reject surface renders when local reject text is set", () => {
   overlayScene(
     overlayModel({ ...initialBoardModel(), reject: "Choose a legal target" }),
     Scene.expect(Scene.testId("board-reject")).toContainText("Choose a legal target"),
+    // Illegal-action feedback announces itself, not just paints red.
+    Scene.expect(Scene.testId("board-reject")).toHaveAttr("role", "alert"),
   );
 });
 

@@ -123,7 +123,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - `cardArt(h, opts)` has one DOM API and supports optional `style`.
 - Pure X helpers live in `client/app/domain/xCost.ts` (`clampX`, `costWithChosenX`, `costText`).
 - Choose-X preview uses brace text rather than hand-bar mana-font pips so large resolved generics cannot collapse to a false `{0}`.
-- Waiting copy lives in `client/app/domain/choiceWaiting.ts`; the banner is composed in `boardOverlays` (not inside `promptsView`) so spectators see it without seated prompt chrome.
+- Waiting copy lives in `client/app/domain/choiceWaiting.ts`; the banner is composed in `boardOverlays` (not inside `promptsView`) so spectators see it without seated prompt chrome, and carries `role="status"` so another seat's pending choice announces politely.
 - Library-search filter helpers live in `client/app/domain/cardPickSearch.ts`; filter draft is optional `filter` on `PromptDraft` `card-pick`, updated via `PromptCardFilterSet`.
 - Prompt text from the engine stays as `MessageRef` until the view edge; formulators use formatted text for titles but submit only structured answers.
 - `promptPresentation(board, state)` is the single presentation classifier for prompt chrome; it returns `none`, `simple`, or `modal`, tags whether a `simple` prompt is board-aim, and defaults uncategorized engine kinds to `modal`.

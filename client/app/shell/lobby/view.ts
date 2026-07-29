@@ -354,6 +354,8 @@ function tableLobby(
       model.clipboardFallback
         ? input(h, {
             id: "share-code",
+            testId: "lobby-share-code",
+            ariaLabel: "Table code",
             value: model.tableId ?? "",
             class: "w-[120px] text-chip tracking-chip",
             attrs: [h.Readonly(true)],

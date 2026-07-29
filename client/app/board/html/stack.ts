@@ -5,6 +5,7 @@
 // Resting faces hide only for in-flight `kind: "stack"` objects — not for battlefield flights that
 // share an ability's source permanent id.
 
+import { Option } from "effect";
 import { type Attribute, type Html, html } from "foldkit/html";
 import { button } from "~/ui/button";
 import { cardArt } from "~/ui/card-art";
@@ -168,7 +169,17 @@ function stackFace(opts: {
   }
   if (opts.legalTarget) {
     faceAttrs.push(h.DataAttribute("legal-target", "true"));
+    // Legal targets are real controls: click AND keyboard pick the target.
+    faceAttrs.push(h.Role("button"));
+    faceAttrs.push(h.Tabindex(0));
+    faceAttrs.push(h.Attribute("aria-label", `Target: ${opts.imageName ?? opts.label}`));
     faceAttrs.push(h.OnClick(TargetChosen({ target: { kind: "object", id: opts.source } })));
+    faceAttrs.push(
+      h.OnKeyDownPreventDefault((key) => {
+        if (key !== "Enter" && key !== " ") return Option.none();
+        return Option.some(TargetChosen({ target: { kind: "object", id: opts.source } }));
+      }),
+    );
   }
   // Solid stack overlay: hover a face → Alt-inspect aux for that card.
   if (opts.imageName) {
