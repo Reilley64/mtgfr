@@ -132,7 +132,7 @@ import {
 import { modesForObject } from "./html/actions";
 import { selectedRadialOptions } from "./html/activation-menu";
 import { persistHintDismissed, readHintDismissed } from "./html/discoverability";
-import { HAND_BAR_H, HAND_INSPECT_STICKY_BAND, HAND_PLAY_SLACK_PX } from "./html/hand";
+import { HAND_BAR_H, handMetrics } from "./html/hand";
 import { CopyBoardLog } from "./log-commands";
 import {
   CombatCancelAttacker,
@@ -160,9 +160,28 @@ import {
   traceFlightSync,
 } from "./motion/flights";
 
+/** Fallback board size when there is no window to measure (SSR, tests). */
 export const BOARD_VIEWPORT = { width: 1440, height: 900 } as const;
-/** Bottom bar height — Arena-scale tuck + pip row (re-exported from html/hand.ts). */
-export { HAND_BAR_H, HAND_INSPECT_STICKY_BAND };
+
+/** The board is `fixed inset-0`, so the window *is* the viewport. */
+function measuredViewport(): { width: number; height: number } {
+  if (typeof window === "undefined") return { ...BOARD_VIEWPORT };
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+  if (!(width > 0) || !(height > 0)) return { ...BOARD_VIEWPORT };
+  return { width, height };
+}
+
+/** Device pixels per CSS pixel — canvas backing stores are sized by it so retina paints sharp. */
+export function measuredDpr(): number {
+  if (typeof window === "undefined") return 1;
+  const dpr = window.devicePixelRatio;
+  if (!(dpr > 0)) return 1;
+  return Math.min(dpr, 3);
+}
+
+/** Bottom bar height at the design window — live boards use `handMetrics(viewport).barH`. */
+export { HAND_BAR_H };
 
 export type HandDragState = {
   action: ActionView;
@@ -206,6 +225,8 @@ export type BoardModel = {
   /** Activation radial hover highlight index. */
   radialHover: number | null;
   viewport: { width: number; height: number };
+  /** Device pixels per CSS pixel, clamped to 3. Canvas backing stores multiply by it. */
+  dpr: number;
   cursor: Vec2;
   // Action session state (pre-submit chrome, cost pipeline, staging).
   staged: StagedAction | null;
@@ -315,7 +336,8 @@ export function initialBoardModel(): BoardModel {
     selectedId: null,
     radialPress: { armed: null },
     radialHover: null,
-    viewport: { ...BOARD_VIEWPORT },
+    viewport: measuredViewport(),
+    dpr: measuredDpr(),
     cursor: { x: 0, y: 0 },
     staged: null,
     playModePick: null,
@@ -378,7 +400,11 @@ export function syncBoardWithGame(model: BoardModel, fold: BoardFold): BoardMode
   }
   const playerCount = Math.max(1, fold.state.players.length);
   if (!next.cameraUserMoved && next.cameraFitPlayers !== playerCount) {
-    const fitted = fitCamera({ x: next.viewport.width, y: next.viewport.height }, playerCount, HAND_BAR_H);
+    const fitted = fitCamera(
+      { x: next.viewport.width, y: next.viewport.height },
+      playerCount,
+      handMetrics(next.viewport).barH,
+    );
     next = {
       ...next,
       flights: remapFlightsForZoom(next.flights, next.camera.zoom, fitted.zoom),
@@ -739,7 +765,7 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
         name: card.name,
         x: start.x,
         y: start.y,
-        scale: handFlightScale(model.camera.zoom),
+        scale: handFlightScale(model.camera.zoom, handMetrics(model.viewport).cardW),
         targetX: target.x,
         targetY: target.y,
         targetScale: 1,
@@ -806,7 +832,7 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
         name: "",
         x: start.x,
         y: start.y,
-        scale: handFlightScale(model.camera.zoom),
+        scale: handFlightScale(model.camera.zoom, handMetrics(model.viewport).cardW),
         targetX: aim.x,
         targetY: aim.y,
         targetScale: aim.scale,
@@ -1462,7 +1488,7 @@ function applyLiveInspectPin(model: BoardModel, fold: GameFoldState): BoardRetur
 
 /** True when the cursor is still over the hand fan (including raised faces above the bar). */
 function cursorInHandInspectBand(model: BoardModel): boolean {
-  return model.cursor.y >= model.viewport.height - HAND_INSPECT_STICKY_BAND;
+  return model.cursor.y >= model.viewport.height - handMetrics(model.viewport).stickyBand;
 }
 
 /**
@@ -1642,7 +1668,7 @@ function seedDropFromHand(
     };
   }
 
-  const startScale = handFlightScale(model.camera.zoom);
+  const startScale = handFlightScale(model.camera.zoom, handMetrics(model.viewport).cardW);
   const seeded = spawnFlight({
     id: card.id,
     print: card.print ?? "",
@@ -2014,7 +2040,8 @@ function handActivated(
       [],
     ];
   }
-  const threshold = model.viewport.height - HAND_BAR_H + HAND_PLAY_SLACK_PX;
+  const bar = handMetrics(model.viewport);
+  const threshold = model.viewport.height - bar.barH + bar.playSlack;
   const objectId = action.object;
   const modes =
     action.section === "hand" && objectId != null ? modesForObject(state?.actions ?? [], objectId) : [action];
@@ -2450,6 +2477,28 @@ export function updateBoard(
           [],
         ];
       }
+    case "BoardViewportResized": {
+      if (!(message.width > 0) || !(message.height > 0)) return [model, []];
+      const viewport = { width: message.width, height: message.height };
+      const dpr = message.dpr > 0 ? Math.min(message.dpr, 3) : model.dpr;
+      if (model.cameraUserMoved || model.cameraFitPlayers == null) return [{ ...model, viewport, dpr }, []];
+
+      const fitted = fitCamera(
+        { x: viewport.width, y: viewport.height },
+        model.cameraFitPlayers,
+        handMetrics(viewport).barH,
+      );
+      return [
+        {
+          ...model,
+          viewport,
+          dpr,
+          flights: remapFlightsForZoom(model.flights, model.camera.zoom, fitted.zoom),
+          camera: fitted,
+        },
+        [],
+      ];
+    }
     case "BoardPointerDown":
       return [pointerDownModel(model, fold, message.x, message.y), []];
     case "BoardPointerMove": {

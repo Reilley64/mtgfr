@@ -21,6 +21,7 @@ import { ZONE } from "../geometry/layout";
 import type { Message } from "../messages";
 import { type BoardModel, CONCEDE_DIALOG_ID, initialBoardModel, RESULT_DIALOG_ID } from "../submodel";
 import { type BoardViewModel, view as boardView } from "../view";
+import { handMetrics } from "./hand";
 import { boardOverlays } from "./overlays";
 import {
   resolveBoardCardArtMounts,
@@ -3103,6 +3104,60 @@ test("full board view mounts the camera gesture host", () => {
   liveBoardScene(
     fullBoardModel(initialBoardModel(), gameState()),
     Scene.expect(Scene.testId("board-camera-gesture-mount")).toExist(),
+  );
+});
+
+/** The Foldkit scene canvas carries no testid — find it by tag. */
+function findCanvas(node: unknown): { data?: { props?: Record<string, number> } } | null {
+  if (node == null || typeof node !== "object") return null;
+  const n = node as { sel?: string; children?: unknown[] };
+  if (typeof n.sel === "string" && n.sel.startsWith("canvas")) return n as never;
+  for (const child of n.children ?? []) {
+    const found = findCanvas(child);
+    if (found != null) return found;
+  }
+  return null;
+}
+
+test("scene canvas paints at device resolution so retina screens stay sharp", () => {
+  const board = { ...initialBoardModel(), viewport: { width: 1600, height: 1000 }, dpr: 2 };
+  liveBoardScene(
+    fullBoardModel(board, gameState()),
+    Scene.tap((sim) => {
+      const canvas = findCanvas(sim.html);
+      expect(canvas?.data?.props?.width).toBe(3200);
+      expect(canvas?.data?.props?.height).toBe(2000);
+    }),
+  );
+});
+
+test("bitmap and flight layers carry a device-resolution backing store", () => {
+  const board = { ...initialBoardModel(), viewport: { width: 1600, height: 1000 }, dpr: 2 };
+  liveBoardScene(
+    fullBoardModel(board, gameState()),
+    Scene.tap((sim) => {
+      // The Mount paints these at the DPR; the vdom attributes must agree or the next patch
+      // resizes the backing store back down to CSS pixels and the board goes soft.
+      for (const testid of ["board-bitmap-layer", "board-flight-layer"]) {
+        const canvas = findTestId(sim.html, testid) as { data?: { attrs?: Record<string, unknown> } } | null;
+        expect(canvas?.data?.attrs?.width).toBe("3200");
+        expect(canvas?.data?.attrs?.height).toBe("2000");
+      }
+    }),
+  );
+});
+
+test("hand bar height follows the window so overlays anchored to it move with it", () => {
+  const small = handMetrics({ width: 1280, height: 720 }).barH;
+  const large = handMetrics({ width: 2560, height: 1440 }).barH;
+  expect(large).toBeGreaterThan(small);
+
+  liveBoardScene(
+    fullBoardModel({ ...initialBoardModel(), viewport: { width: 2560, height: 1440 } }, gameState()),
+    Scene.tap((sim) => {
+      const root = findTestId(sim.html, "board-mount") as { data?: { style?: Record<string, string> } } | null;
+      expect(root?.data?.style?.["--hand-bar-h"]).toBe(`${large}px`);
+    }),
   );
 });
 

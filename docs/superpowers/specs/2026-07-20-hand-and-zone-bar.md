@@ -20,10 +20,12 @@ Render a fixed DOM hand bar at the bottom of the board. It groups tiles in Arena
 ## Behavior
 
 - One DOM tile per hand card; multiple legal hand-section actions on the same object do not mint extra tiles.
-- Hand tiles fan with Arena-forward resting geometry (`HAND_FACE_W` 208, `HAND_BAR_PEEK` 92, `HAND_VISIBLE_H` 178, derived `HAND_BAR_H` 218 — pip-row 24 + bar bottom padding 16 are already implied by that height), hover raise, and cost pips above the card face.
+- Hand tiles fan with Arena-forward resting geometry, hover raise, and cost pips above the card face. The geometry is drawn against a 1440 x 900 window (`HAND_FACE_W` 208, `HAND_BAR_PEEK` 92, `HAND_VISIBLE_H` 178, derived bar height 218 — pip-row 24 + bar bottom padding 16 are already implied by that height).
+- The bar is a constant fraction of the window, not a fixed pixel size. `handMetrics(viewport)` returns every bar length in CSS px for the live window, scaled by `handUiScale` — `min(width/1440, height/900)` clamped to `[0.75, 1.5]`. Face, peek, visible height, pip row, pip glyph, bar height, sticky inspect band, play slack, and the hand-flight/drag-ghost scale all derive from it, so a 208px face that reads on a laptop becomes a ~312px face on a 2560 x 1440 desktop rather than a thumbnail.
+- Overlays anchored above the bar (prompts, log panel, priority bar, discoverability) read the inherited `--hand-bar-h` custom property set on the board root, so they follow the bar when it rescales instead of baking its height.
 - Resting cost pips show the card's printed cast cost, not cycle or hand-ability costs. Multi-legal-mode tiles omit Cycle/Discard captions; a sole legal `cycle` or `activate_hand_ability` keeps that caption. Pips render through the shared `pipChip` (`board/html/pip-chip.ts`) — opaque plate + mana-font glyph sized by `--sz` / `--fsz` / `--plate` variables — also used by the activation menu and color-pick prompts.
 - Hovering a bar tile elevates that tile's root above all other action-bar tiles (`[z-index:var(--hand-z)]` resting + `hover:[z-index:50]` on the slot; resting z is not inline). Discard / hand-put pick chrome uses `group/hand-tile` with `data-selected` / `data-selectable` on the tile root: Tailwind `group-data-[selected=true]/hand-tile:…` raises and rings Llanowar; unselected legal choices use `group-data-[selected=false]/hand-tile:group-data-[selectable=true]/hand-tile:…` Island blue. Selection alone does not elevate z; hover still brings a selected tile to the front. Non-choices omit those data attrs and stay off target chrome.
-- A release above `HAND_BAR_H - HAND_PLAY_SLACK_PX` commits the drop (`HAND_PLAY_SLACK_PX` is 96); releasing below snaps back.
+- A release above `barH - playSlack` commits the drop (play slack is 96 at the design window and scales with it); releasing below snaps back.
 - Activating a hand tile with exactly one legal mode runs the existing play/cost/target pipeline immediately. With two or more legal modes, activation clears other local action sessions, seeds a stack flight, parks the card in local `playModePick` state, and opens docked `play-mode-aim` until `PlayModeChosen` continues the selected action through the same cost/target pipeline or Cancel restores the card.
 - Design: [`2026-07-26-hand-play-mode-chooser-design.md`](2026-07-26-hand-play-mode-chooser-design.md).
 - While `playModePick` is open, snapshot and delta sync reconcile the parked modes against current legal actions. Pruned modes disappear; exactly one remaining mode auto-continues through the same play/cost/target pipeline; zero remaining modes cancel the session, return the card to hand, and submit no intent.
@@ -42,7 +44,7 @@ Render a fixed DOM hand bar at the bottom of the board. It groups tiles in Arena
 - `slotInert` is reserved for staged/in-flight cards; it is not a visual dimming signal for unplayable cards.
 - `cardArt(h, opts)` is used for DOM faces and accepts optional `style` for precise tile sizing.
 - Alt-inspect hover metadata is attached to every face-up bar tile, playable or not.
-- Resting bar spacing is hand-tuned Arena-forward constants (not a single global scale factor). Hit height, raise translate, sticky inspect band, and drag play threshold derive from those constants.
+- Resting bar spacing is hand-tuned Arena-forward constants at the design window; one clamped viewport scale multiplies them for the live window. Hit height, raise translate, sticky inspect band, and drag play threshold all derive from `handMetrics(viewport)`, so they cannot drift apart from the painted faces.
 - Canvas drag ghost strokes must use the dragged tile's **zone** (not hard-coded hand) when dragging command/gy/exile. Resting bar tiles still use `barZoneAura` CSS.
 
 ## Testing Decisions
@@ -51,7 +53,8 @@ Render a fixed DOM hand bar at the bottom of the board. It groups tiles in Arena
 - Schema snapshot tests lock `ActionView.section == "graveyard"` for a `functions_in_graveyard` activate.
 - Interaction checks should drag above and below the play threshold and assert commit versus cancel outcomes.
 - Scene tests cover multi-mode hand activation entering `playModePick`, local-session exclusivity, `PlayModeChosen` continuation, the single-mode auto path, stale legality prune/cancel behavior, stale `PlayModeChosen` without intent, and Cancel restoring the parked hand card.
-- Geometry lock in `handBarHit.test.ts` asserts face/peek/visible/`HAND_BAR_H` targets so a silent regress to the old dense values fails.
+- Geometry lock in `handBarHit.test.ts` asserts face/peek/visible/`HAND_BAR_H` targets at the design window so a silent regress to the old dense values fails.
+- `hand-scale.test.ts` covers that the design window still yields the design sizes, that a 2560 x 1440 desktop grows the faces past a physical card's width, that a small laptop shrinks them, that both clamp ends hold, and that every derived length stays in step with the face.
 - `hand.test.ts` locks hover elevate on `hand-tile-{id}`, asserts discard-selected does not add selection z elevate (`hover:[z-index:50]` remains for hover+selected), and locks `data-selected` / `group-data-[selected=true]/hand-tile:ring-llanowar` pick chrome. It also locks the art chrome contract: `data-playable` / `data-drag-source` on the tile root, the hover-brighten and drag-fade variant tokens on the face, and no bare ternary `opacity-25`.
 
 ## Out of Scope

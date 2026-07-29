@@ -23,6 +23,7 @@ import { stackPresentation } from "./geometry/stackLayout";
 import { autoTapPreviewIds, paymentPreviewAction } from "./html/actions";
 import { MountBoardAudio, MountHintAutoHide } from "./html/audio-mount";
 import { MountBoardCameraGesture } from "./html/camera-gesture-mount";
+import { handMetrics } from "./html/hand";
 import { MountBoardKeyboard } from "./html/keyboard-mount";
 import { manaTrayView } from "./html/mana-tray";
 import { boardOverlays } from "./html/overlays";
@@ -186,6 +187,7 @@ export const view = Submodel.defineView<BoardViewModel, ViewMessage>((model) => 
   publishBitmapFrame({
     width: model.board.viewport.width,
     height: model.board.viewport.height,
+    dpr: model.board.dpr,
     camera: model.board.camera,
     cards,
     viewer: state.viewer,
@@ -198,7 +200,9 @@ export const view = Submodel.defineView<BoardViewModel, ViewMessage>((model) => 
     stackPresentation: stackMode,
     flights: [...(model.board.flights instanceof Map ? model.board.flights.values() : [])],
     dragGhost:
-      model.board.handDrag == null ? null : dragGhostFromHandDrag(model.board.handDrag, model.board.camera.zoom),
+      model.board.handDrag == null
+        ? null
+        : dragGhostFromHandDrag(model.board.handDrag, model.board.camera.zoom, handMetrics(model.board.viewport).cardW),
     exitFx: [...(model.board.exitFx instanceof Map ? model.board.exitFx.values() : [])],
     hideCardIds: model.board.hideCardIds,
     targetObjects: overlay.targetObjects,
@@ -242,6 +246,8 @@ export const view = Submodel.defineView<BoardViewModel, ViewMessage>((model) => 
           declaringBlock: combatDrag.declaringBlock,
         };
 
+  const bar = handMetrics(model.board.viewport);
+  const dpr = model.board.dpr;
   const ariaSummary = boardStatusSummary(state, state.viewer);
   const reconnectText = reconnectBannerText(model);
 
@@ -253,6 +259,9 @@ export const view = Submodel.defineView<BoardViewModel, ViewMessage>((model) => 
     [
       h.Class("fixed inset-0 select-none overflow-hidden bg-forest-floor text-snow"),
       h.DataAttribute("testid", "board-mount"),
+      // Overlays anchored above the hand bar read `--hand-bar-h` rather than baking its height,
+      // so they follow the bar when it rescales with the window.
+      h.Style({ "--hand-bar-h": `${bar.barH}px` }),
     ],
     [
       h.div(
@@ -290,31 +299,41 @@ export const view = Submodel.defineView<BoardViewModel, ViewMessage>((model) => 
         [],
       ),
       h.div([h.Class("sr-only"), h.Attribute("aria-live", "polite")], [ariaSummary]),
+      // Foldkit's Canvas sizes its backing store to `width`/`height` and hands pointer events back
+      // in that space. Paint at device resolution and scale the whole scene by the DPR so the felt,
+      // seat bands, and arrows stay sharp on retina; pointer coordinates divide back to CSS px.
       Canvas.view<Message>({
-        width: model.board.viewport.width,
-        height: model.board.viewport.height,
+        width: Math.round(model.board.viewport.width * dpr),
+        height: Math.round(model.board.viewport.height * dpr),
         className: "block h-full w-full touch-none",
-        shapes: sceneShapes(state, {
-          width: model.board.viewport.width,
-          height: model.board.viewport.height,
-          camera: model.board.camera,
-          selectedId: model.board.selectedId,
-          stagedAttackers: model.board.combatAttackers,
-          stagedBlocks: model.board.combatBlocks,
-          stagedTargeting,
-          combatDrag: combatDragShapes,
-          stackPresentation: stackMode,
-        }),
-        onPointerDown: ({ x, y }) => BoardPointerDown({ x, y }),
-        onPointerMove: ({ x, y }) => BoardPointerMove({ x, y }),
-        onPointerUp: ({ x, y }) => BoardPointerUp({ x, y }),
+        shapes: [
+          Canvas.Group({
+            scale: { x: dpr, y: dpr },
+            shapes: sceneShapes(state, {
+              width: model.board.viewport.width,
+              height: model.board.viewport.height,
+              camera: model.board.camera,
+              selectedId: model.board.selectedId,
+              stagedAttackers: model.board.combatAttackers,
+              stagedBlocks: model.board.combatBlocks,
+              stagedTargeting,
+              combatDrag: combatDragShapes,
+              stackPresentation: stackMode,
+            }),
+          }),
+        ],
+        onPointerDown: ({ x, y }) => BoardPointerDown({ x: x / dpr, y: y / dpr }),
+        onPointerMove: ({ x, y }) => BoardPointerMove({ x: x / dpr, y: y / dpr }),
+        onPointerUp: ({ x, y }) => BoardPointerUp({ x: x / dpr, y: y / dpr }),
       }),
       // Layer 2: in-play mana under resting permanents (DOM sibling before bitmap).
       manaTrayView(model.board, state),
       h.canvas(
         [
-          h.Width(String(model.board.viewport.width)),
-          h.Height(String(model.board.viewport.height)),
+          // Device-resolution backing store, CSS-pixel box: the Mount paints through a DPR
+          // transform, and these attributes must match or the next vdom patch shrinks it back.
+          h.Width(String(Math.round(model.board.viewport.width * dpr))),
+          h.Height(String(Math.round(model.board.viewport.height * dpr))),
           h.Class("pointer-events-none absolute inset-0 block h-full w-full"),
           h.DataAttribute("testid", "board-bitmap-layer"),
           h.OnMount(MountBitmapLayer()),
@@ -325,8 +344,8 @@ export const view = Submodel.defineView<BoardViewModel, ViewMessage>((model) => 
       // Layer 6: flights ride their own canvas above the hand/stack HTML (z-30) but below prompts.
       h.canvas(
         [
-          h.Width(String(model.board.viewport.width)),
-          h.Height(String(model.board.viewport.height)),
+          h.Width(String(Math.round(model.board.viewport.width * dpr))),
+          h.Height(String(Math.round(model.board.viewport.height * dpr))),
           h.Class("pointer-events-none absolute inset-0 z-30 block h-full w-full"),
           h.DataAttribute("testid", "board-flight-layer"),
           h.OnMount(MountFlightLayer()),

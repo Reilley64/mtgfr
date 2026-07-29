@@ -21,7 +21,6 @@ import {
 } from "../messages";
 import { promptPresentation } from "../promptPresentation";
 import type { BoardModel } from "../submodel";
-import { HAND_BAR_H } from "./hand";
 import { simplePromptBarActions } from "./prompt-bar-actions";
 
 const h = html<Message>();
@@ -83,7 +82,7 @@ export function priorityBarView(board: BoardModel, state: VisibleState, tableId:
         h.DataAttribute("testid", "priority-context-bar"),
         // Above pile (z-29) and prompt-modal (z-40) backdrops so Choose / Confirm stay clickable.
         h.Class("pointer-events-auto fixed bottom-(--b) right-md z-45 flex flex-col items-end gap-sm"),
-        h.Style({ "--b": `${HAND_BAR_H + 10}px` }),
+        h.Style({ "--b": `calc(var(--hand-bar-h) + 10px)` }),
       ],
       [simpleActions, board.reject != null ? rejectView(board.reject) : null].filter((v): v is Html => v !== null),
     );
@@ -178,7 +177,7 @@ export function priorityBarView(board: BoardModel, state: VisibleState, tableId:
     [
       h.DataAttribute("testid", "priority-context-bar"),
       h.Class("pointer-events-auto fixed bottom-(--b) right-md z-25 flex flex-col items-end gap-sm"),
-      h.Style({ "--b": `${HAND_BAR_H + 10}px` }),
+      h.Style({ "--b": `calc(var(--hand-bar-h) + 10px)` }),
     ],
     [
       h.div(

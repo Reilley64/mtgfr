@@ -10,7 +10,6 @@ import type { VisibleState } from "~/wire/types";
 import { EXILE_OUTLINE, GRAVEYARD_OUTLINE, PLAYABLE_BORDER } from "../chrome";
 import { HintDismissed, LegendToggled, type Message } from "../messages";
 import type { BoardModel } from "../submodel";
-import { HAND_BAR_H } from "./hand";
 
 const h = html<Message>();
 
@@ -175,7 +174,7 @@ export function discoverabilityView(board: BoardModel, state: VisibleState): Htm
       bottomStrips.length > 0
         ? h.div(
             [
-              h.Style({ "--b": `${HAND_BAR_H + 10}px` }),
+              h.Style({ "--b": `calc(var(--hand-bar-h) + 10px)` }),
               h.Class(
                 "pointer-events-none fixed bottom-(--b) left-md z-20 flex max-w-[min(480px,52vw)] flex-col items-start gap-sm",
               ),

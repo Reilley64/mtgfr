@@ -5,7 +5,6 @@ import { button } from "~/ui/button";
 import type { LogLine } from "../../game/fold";
 import { LogCopyRequested, LogExpandToggled, type Message } from "../messages";
 import type { BoardModel } from "../submodel";
-import { HAND_BAR_H } from "./hand";
 
 const h = html<Message>();
 
@@ -44,7 +43,7 @@ export function logPanelView(board: BoardModel, log: ReadonlyArray<LogLine>): Ht
   return h.div(
     [
       h.Class("fixed bottom-(--b) left-md z-20 flex max-w-[min(420px,46vw)] flex-col items-start gap-sm"),
-      h.Style({ "--b": `${HAND_BAR_H + 10}px` }),
+      h.Style({ "--b": `calc(var(--hand-bar-h) + 10px)` }),
     ],
     [
       h.div(

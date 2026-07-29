@@ -81,8 +81,9 @@ export function flightOwnsId(flight: CardFlight): boolean {
   return flight.phase === "flying" || flight.hold === true;
 }
 
-export function handFlightScale(zoom: number): number {
-  return HAND_FACE_W / (CARD_W * Math.max(zoom, 0.01));
+/** `faceW` is the live hand-face width in CSS px — the bar scales with the window. */
+export function handFlightScale(zoom: number, faceW: number = HAND_FACE_W): number {
+  return faceW / (CARD_W * Math.max(zoom, 0.01));
 }
 
 export function stackFlightScale(zoom: number): number {

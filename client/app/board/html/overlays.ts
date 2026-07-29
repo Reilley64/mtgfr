@@ -85,6 +85,7 @@ export function boardOverlays(
     logPanelView(board, log),
     seatedViewer && !undecidedMulligan
       ? handView({
+          viewport: board.viewport,
           state,
           hiddenId: stagedCardId,
           flyingIds: board.hideCardIds,
