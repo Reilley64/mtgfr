@@ -1,10 +1,10 @@
 import { type Html, html } from "foldkit/html";
 import { mulliganChrome } from "~/mulligan";
 import { button } from "~/ui/button";
-import { cardArt } from "~/ui/card-art";
 import type { VisibleState } from "~/wire/types";
 import { ZONE } from "../geometry/layout";
 import { KeepHandClicked, type Message, MulliganClicked } from "../messages";
+import { promptCardFace } from "./prompt-card-face";
 
 const h = html<Message>();
 
@@ -43,24 +43,7 @@ export function mulliganOverlayView(state: VisibleState): Html | null {
             hand.map((obj) =>
               h.div(
                 [h.DataAttribute("testid", `mulligan-face-${obj.id}`), h.Class("pointer-events-none shrink-0")],
-                [
-                  obj.print
-                    ? cardArt(h, {
-                        print: obj.print,
-                        size: "large",
-                        alt: obj.name,
-                        className:
-                          "block aspect-[150/209] w-[min(22vw,160px)] rounded-[9px] bg-morph-slate shadow-hand",
-                      })
-                    : h.div(
-                        [
-                          h.Class(
-                            "flex aspect-[150/209] w-[min(22vw,160px)] items-center justify-center rounded-[9px] bg-morph-slate px-2 text-center text-caption text-snow",
-                          ),
-                        ],
-                        [obj.name],
-                      ),
-                ],
+                [promptCardFace(h, { print: obj.print ?? "", label: obj.name, size: "fluid", alt: obj.name })],
               ),
             ),
           ),

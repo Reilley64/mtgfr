@@ -27,7 +27,6 @@ import {
 import { filterOptionLabels } from "~/optionFilter";
 import { manaFontClass } from "~/oracleText";
 import { isActivePlayer } from "~/spectator";
-import { cardArt } from "~/ui/card-art";
 import { input, inputClass } from "~/ui/input";
 import { menuItemClass, menuPanelClass } from "~/ui/menu";
 import type { ChoiceItem, MessageRef, PendingChoiceView, VisibleState, WireModeChoice, WireTarget } from "~/wire/types";
@@ -83,6 +82,7 @@ import {
 import type { BoardModel } from "../submodel";
 import { HAND_BAR_H } from "./hand";
 import { pipChip } from "./pip-chip";
+import { promptCardFace } from "./prompt-card-face";
 import { promptModalFrame } from "./prompt-modal";
 
 const h = html<Message>();
@@ -180,21 +180,7 @@ function cardPickButton(item: ChoiceItem, state: VisibleState, picked: ReadonlyA
       ),
     ],
     [
-      print
-        ? cardArt(h, {
-            print,
-            size: "large",
-            alt: "",
-            className: "block aspect-[150/209] w-[120px] rounded-[6px] bg-morph-slate",
-          })
-        : h.div(
-            [
-              h.Class(
-                "flex aspect-[150/209] w-[120px] items-center justify-center rounded-[6px] bg-morph-slate px-2 text-caption text-snow",
-              ),
-            ],
-            [item.label],
-          ),
+      promptCardFace(h, { print, label: item.label, size: "sm" }),
       selected && ordered && pickOrder >= 0
         ? h.span(
             [
@@ -228,21 +214,7 @@ function arrangeLaneCard(
       ),
     ],
     [
-      print
-        ? cardArt(h, {
-            print,
-            size: "large",
-            alt: "",
-            className: "block aspect-[150/209] w-[120px] rounded-[6px] bg-morph-slate",
-          })
-        : h.div(
-            [
-              h.Class(
-                "flex aspect-[150/209] w-[120px] items-center justify-center rounded-[6px] bg-morph-slate px-2 text-caption text-snow",
-              ),
-            ],
-            [item.label],
-          ),
+      promptCardFace(h, { print, label: item.label, size: "sm" }),
       ordered && pickOrder >= 0
         ? h.span(
             [
@@ -672,21 +644,7 @@ function targetPickButton(target: WireTarget, state: VisibleState, testId: strin
       ),
     ],
     [
-      obj?.print
-        ? cardArt(h, {
-            print: obj.print,
-            size: "large",
-            alt: "",
-            className: "block aspect-[150/209] w-[150px] rounded-[9px] bg-morph-slate",
-          })
-        : h.div(
-            [
-              h.Class(
-                "flex aspect-[150/209] w-[150px] items-center justify-center rounded-[9px] bg-morph-slate px-2 text-body text-snow",
-              ),
-            ],
-            [name],
-          ),
+      promptCardFace(h, { print: obj?.print ?? "", label: name, size: "md" }),
     ],
   );
 }
@@ -1215,21 +1173,7 @@ function revealedToGraveyardAim(
         ),
       ],
       [
-        print
-          ? cardArt(h, {
-              print,
-              size: "large",
-              alt: "",
-              className: "block aspect-[150/209] w-[120px] rounded-[6px] bg-morph-slate",
-            })
-          : h.div(
-              [
-                h.Class(
-                  "flex aspect-[150/209] w-[120px] items-center justify-center rounded-[6px] bg-morph-slate px-2 text-caption text-snow",
-                ),
-              ],
-              [item.label],
-            ),
+        promptCardFace(h, { print, label: item.label, size: "sm" }),
       ],
     );
   });
@@ -2054,21 +1998,7 @@ function distributeTopLanesPrompt(
     const next = nextDistributeBucket(current, counts, caps);
     const clickBucket = next ?? current;
     const print = choiceItemPrint(item, state);
-    const face = print
-      ? cardArt(h, {
-          print,
-          size: "large",
-          alt: "",
-          className: "block aspect-[150/209] w-[120px] rounded-[6px] bg-morph-slate",
-        })
-      : h.div(
-          [
-            h.Class(
-              "flex aspect-[150/209] w-[120px] items-center justify-center rounded-[6px] bg-morph-slate px-2 text-caption text-snow",
-            ),
-          ],
-          [item.label],
-        );
+    const face = promptCardFace(h, { print, label: item.label, size: "sm" });
     if (clickBucket == null || tableId == null) {
       return h.div(
         [
@@ -2411,24 +2341,7 @@ function destinationPickPrompt(
     );
   }
   const print = choiceItemPrint(pending.item, state);
-  const face = print
-    ? cardArt(h, {
-        print,
-        size: "large",
-        alt: "",
-        className: "block aspect-[150/209] w-[120px] rounded-[6px] bg-morph-slate",
-      })
-    : h.div(
-        [
-          h.DataAttribute("testid", "prompt-revealed-face"),
-          h.Class(
-            "flex aspect-[150/209] w-[120px] items-center justify-center rounded-[6px] bg-morph-slate px-2 text-caption text-snow",
-          ),
-        ],
-        [pending.item.label],
-      );
-  const faceEl =
-    print !== "" ? h.div([h.DataAttribute("testid", "prompt-revealed-face"), h.Class("relative")], [face]) : face;
+  const faceEl = promptCardFace(h, { print, label: pending.item.label, size: "sm", testId: "prompt-revealed-face" });
   return h.div(
     [
       h.DataAttribute("testid", "pending-revealed-destination-aim"),

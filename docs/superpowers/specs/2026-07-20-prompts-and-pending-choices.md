@@ -121,6 +121,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - `initPromptDraft`, `buildAnswerFromDraft`, and readiness helpers own draft validation.
 - Local pre-submit prompts live in `BoardModel` and are not derived from shared `pending_choice`.
 - `cardArt(h, opts)` has one DOM API and supports optional `style`.
+- Card-pick faces and the mulligan opening hand render through the shared `promptCardFace` (`board/html/prompt-card-face.ts`): the Magic-aspect face (art, or a name plate when no print resolves) in `sm` (120px), `md` (150px), and `fluid` (vw-capped) sizes — the `aspect-[150/209]` geometry lives in exactly one place.
 - Pure X helpers live in `client/app/domain/xCost.ts` (`clampX`, `costWithChosenX`, `costText`).
 - Choose-X preview uses brace text rather than hand-bar mana-font pips so large resolved generics cannot collapse to a false `{0}`.
 - Waiting copy lives in `client/app/domain/choiceWaiting.ts`; the banner is composed in `boardOverlays` (not inside `promptsView`) so spectators see it without seated prompt chrome, and carries `role="status"` so another seat's pending choice announces politely.
