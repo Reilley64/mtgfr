@@ -50,6 +50,17 @@ describe("makeClient", () => {
     expect(url.pathname).toBe("/api/rpc/auth/me");
   });
 
+  it("posts an empty JSON object on logout — the BFF rejects bodiless POSTs as BadJson", async () => {
+    const { fetch, calls } = recordingFetch(new Response(null, { status: 204 }));
+    const client = makeClient(fetch);
+    await Effect.runPromise(client.logout());
+    expect(calls).toHaveLength(1);
+    expect(calls[0][0].pathname).toBe("/api/rpc/auth/logout");
+    const body = calls[0][1]?.body;
+    const text = body instanceof Uint8Array ? new TextDecoder().decode(body) : body;
+    expect(text).toBe("{}");
+  });
+
   it("builds ratings/leaderboard with limit and offset query params", async () => {
     const { fetch, calls } = recordingFetch(
       json({

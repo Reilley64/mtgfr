@@ -27,7 +27,7 @@ Compose system overlays in `boardOverlays` as DOM layers above the board surface
 - Concede confirmation submits a real `concede` intent only after confirmation; Cancel, Escape, and the backdrop all dismiss it without one.
 - `PileOverlay` opens for non-battlefield zone piles, shows an art grid, and closes by backdrop, Close, or Escape. When `selectableIds` is set, thumbs carry `data-selectable` / `data-selected` and paint Island blue / Priority Gold rings via Tailwind `data-[selected=…]` utilities. Its heading names the zone and count (`pile-overlay-title`).
 - `seenHandsView` renders one `seen-hand-<seat>` chip per opponent whose hand cards this viewer's snapshot itemized — the looked-at hands of Glasses of Urza (CR 701.20), which are otherwise invisible because every other read of an opponent's hand is `hand_count`. Each chip reads `<name>'s hand (<count>)` and opens that hand in `PileOverlay`. The strip is absent when nothing has been looked at.
-- Reconnect banner appears fixed top-center when the stream is disconnected. A transient disconnect says `Connection lost — reconnecting…`. Terminal stream failures use specific copy: 401 says the session expired and asks the player to sign in again; 404 says the table is no longer available. The banner keeps `data-testid="board-reconnecting"` for all reconnect states.
+- Reconnect banner appears fixed top-center when the stream is disconnected. A transient disconnect says `Connection lost — reconnecting…`. Terminal stream failures use specific copy: 401 says the session expired and asks the player to sign in again; 404 says the table is no longer available. The banner keeps `data-testid="board-reconnecting"` for all reconnect states and carries `role="alert"` so the state change announces.
 - Inspect renders above pile, HUD, and prompts. The result and concede modals sit above inspect: they are native `<dialog>` elements, which Dialog layers over the page while open.
 
 ## Implementation Decisions
@@ -35,7 +35,7 @@ Compose system overlays in `boardOverlays` as DOM layers above the board surface
 - System overlays remain DOM, not canvas.
 - Concede is game action chrome, not navigation.
 - Prompt modals and the mulligan overlay stay hand-rolled rather than moving to `Dialog`. `Dialog` bundles Escape and backdrop-click close into the frame with no way to drop them, and a pending choice that can be dismissed leaves the player unable to answer it. See [prompts-and-pending-choices](2026-07-20-prompts-and-pending-choices.md).
-- Pile overlay uses `cardArt(h, opts)` for card thumbnails and falls back to card names when art is unavailable. Selectable thumbs follow the AGENTS.md `data-selected` / `data-selectable` Tailwind pattern.
+- Pile overlay uses `cardArt(h, opts)` for card thumbnails and falls back to card names when art is unavailable. Selectable thumbs follow the AGENTS.md `data-selected` / `data-selectable` Tailwind pattern. Thumb sizing is class-side (`w-[90px]`, fallback `h-[126px]`), never static inline styles.
 - Escape priority dismisses inspect, the activation menu, stack expansion, and then local action/pile state.
 
 ## Testing Decisions

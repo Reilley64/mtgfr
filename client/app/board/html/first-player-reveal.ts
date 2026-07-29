@@ -40,12 +40,12 @@ export function firstPlayerRevealView(reveal: FirstPlayerReveal | null, state: V
               h.DataAttribute("lit", lit ? "true" : "false"),
               h.DataAttribute("winner", slot === winnerSlot ? "true" : "false"),
               h.Style({
-                gridColumn: String(cell.col + 1),
-                gridRow: String(cell.row + 1),
+                "--col": String(cell.col + 1),
+                "--row": String(cell.row + 1),
                 "--seat": seatColor(player.player, 1),
               }),
               h.Class(
-                "flex items-center justify-center rounded-hud border-2 px-md py-md text-chip transition-all duration-100 " +
+                "col-start-(--col) row-start-(--row) flex items-center justify-center rounded-hud border-2 px-md py-md text-chip transition-all duration-100 " +
                   "border-[color:var(--seat)] data-[lit=false]:opacity-35 data-[lit=true]:bg-[color:var(--seat)] " +
                   "data-[lit=true]:scale-105 data-[lit=true]:text-forest-hud data-[winner=true]:data-[lit=true]:scale-110",
               ),

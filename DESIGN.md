@@ -1,6 +1,6 @@
 # Design System: edh.reilley.dev
 
-**North star:** "Arena, Unplugged" — MTGA game-client polish, zero storefront chrome (see `PRODUCT.md` anti-references). Dark green felt (`forest-floor`), translucent panels, cream cards (`oracle-ivory`) on felt. **Gold = a decision is owed** (priority gold on the orb; commander gold on commanders only). **Playable border** means a card has a current action. **Zone outlines** use graveyard purple and exile green for playable bar tiles. **Seat hues = identity** (forest/island/mountain/arcane), never semantics.
+**North star:** "Arena, Unplugged" — MTGA game-client polish over a Tabletop Simulator table: the board is a physical space you grab, pan, and zoom, not a fixed Arena layout that plays itself. Zero storefront chrome (see `PRODUCT.md` anti-references). Dark green felt (`forest-floor`), translucent panels, cream cards (`oracle-ivory`) on felt. **Gold = a decision is owed** (priority gold on the orb; commander gold on commanders only). **Playable border** means a card has a current action. **Zone outlines** use graveyard purple and exile green for playable bar tiles. **Seat hues = identity** (forest/island/mountain/arcane), never semantics.
 
 **Layout:** Canvas board (96×134 world-unit cards, shared camera) + thin DOM HUD. Z-order: board → HUD → backdrop (29) → modal (30) → pinned board inspect dock (topmost, above system modals). No persistent nav chrome.
 
