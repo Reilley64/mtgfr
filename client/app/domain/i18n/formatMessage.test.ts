@@ -2,14 +2,24 @@ import { describe, expect, it } from "vitest";
 import { formatMessage } from "./message";
 
 describe("formatMessage", () => {
-  it("formats effect.draw_cards", () => {
+  it("names the drawer of a draw from its player set", () => {
     expect(
       formatMessage({
         key: "effect.draw_cards",
         params: [{ name: "count", int_value: 2 }],
         children: [],
       }),
-    ).toBe("Draw 2");
+    ).toBe("You draw 2");
+    expect(
+      formatMessage({
+        key: "effect.draw_cards",
+        params: [
+          { name: "who", string_value: "targets_owner" },
+          { name: "count", int_value: 2 },
+        ],
+        children: [],
+      }),
+    ).toBe("Target's owner draws 2");
   });
 
   it("joins sequence children with then", () => {
@@ -30,7 +40,7 @@ describe("formatMessage", () => {
           },
         ],
       }),
-    ).toBe("Draw 2, then Discard 2");
+    ).toBe("You draw 2, then Discard 2");
   });
 
   it("returns raw key when missing", () => {

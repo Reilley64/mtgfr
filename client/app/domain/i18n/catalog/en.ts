@@ -37,15 +37,17 @@ function edictWho(scope: MessageValue): string {
   return "Each player";
 }
 
-/** A life change's subject phrase, with its verb conjugated to match — "You gain", "Each opponent loses". */
-function lifeClause(params: MessageParams, verb: "gain" | "lose"): string {
+/** A player set's subject phrase, with a regular verb conjugated to match — "You gain", "Each opponent draws". */
+function playerClause(params: MessageParams, verb: "gain" | "lose" | "draw"): string {
   const who = param(params, "who");
   if (who === "target_player") return `Target player ${verb}s`;
   if (who === "target_opponent") return `Target opponent ${verb}s`;
   if (who === "targets_controller") return `Target's controller ${verb}s`;
+  if (who === "targets_owner") return `Target's owner ${verb}s`;
   if (who === "each_opponent") return `Each opponent ${verb}s`;
   if (who === "each_player") return `Each player ${verb}s`;
   if (who === "attacking_player") return `The attacking player ${verb}s`;
+  if (who === "active_player") return `That player ${verb}s`;
   if (who === "an_opponent") return `An opponent ${verb}s`;
   // `PlayerSet::You` is the unwritten default, so an absent `who` reads as the controller.
   return `You ${verb}`;
@@ -408,14 +410,7 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     `${bool(params, "target_player") ? "Target player shuffles" : "Shuffle"} ${shuffleCount(params)} target cards from ${bool(params, "target_player") ? "their" : "your"} graveyard into ${bool(params, "target_player") ? "their" : "your"} library`,
   "effect.dig_surveil": (params) => `Surveil ${param(params, "count")}`,
   "effect.discard": (params) => `Discard ${param(params, "count")}`,
-  "effect.draw_attacking_player": (params) => `The attacking player draws ${param(params, "count")}`,
-  "effect.draw_cards": (params) => `Draw ${param(params, "count")}`,
-  "effect.draw_each_draw_step_player": (params) => `That player draws ${param(params, "count")}`,
-  "effect.draw_each_player": (params) => `Each player draws ${param(params, "count")}`,
-  "effect.draw_target_owner": (params) =>
-    `${bool(params, "controller") ? "That target's controller" : "That target's owner"} draws ${param(params, "count")}`,
-  "effect.draw_target_player": (params) =>
-    `${bool(params, "opponent") ? "Target opponent" : "Target player"} draws ${param(params, "count")}`,
+  "effect.draw_cards": (params) => `${playerClause(params, "draw")} ${param(params, "count")}`,
   "effect.exile_all": (params) => `Exile all ${humanize(param(params, "filter", "permanents"))}`,
   "effect.exile_all_graveyards": literal("Exile all graveyards"),
   "effect.exile_graveyard": literal("Exile target player's graveyard"),
@@ -424,12 +419,12 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.exile_target_minting_illusion_on_leave": literal("Exile target"),
   "effect.exile_until_source_leaves": literal("Exile target until this leaves the battlefield"),
   "effect.life_drain": (params) =>
-    `${lifeClause(params, "lose")} ${param(params, "amount")} life, you gain ${bool(params, "sum_gain") ? "life equal to the life lost this way" : `${param(params, "amount")} life`}`,
+    `${playerClause(params, "lose")} ${param(params, "amount")} life, you gain ${bool(params, "sum_gain") ? "life equal to the life lost this way" : `${param(params, "amount")} life`}`,
   "effect.life_each_player_becomes_highest": literal(
     "Each player's life total becomes the highest life total among all players",
   ),
-  "effect.life_gain": (params) => `${lifeClause(params, "gain")} ${param(params, "amount")} life`,
-  "effect.life_lose": (params) => `${lifeClause(params, "lose")} ${param(params, "amount")} life`,
+  "effect.life_gain": (params) => `${playerClause(params, "gain")} ${param(params, "amount")} life`,
+  "effect.life_lose": (params) => `${playerClause(params, "lose")} ${param(params, "amount")} life`,
   "effect.life_source_owner_loses_half_their_life": literal("Its owner loses half their life, rounded up"),
   "effect.mana_add": literal("Add mana"),
   "effect.mana_lose_all_unspent": (params) =>

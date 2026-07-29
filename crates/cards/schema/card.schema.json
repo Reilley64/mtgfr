@@ -3618,26 +3618,7 @@
         {
           "oneOf": [
             {
-              "properties": {
-                "count": {
-                  "format": "uint32",
-                  "minimum": 0.0,
-                  "type": "integer"
-                },
-                "mode": {
-                  "enum": [
-                    "attacking_player"
-                  ],
-                  "type": "string"
-                }
-              },
-              "required": [
-                "count",
-                "mode"
-              ],
-              "type": "object"
-            },
-            {
+              "description": "\"`who` draws `count` cards\" — every draw the pool prints, from the bare \"draw a card\" to Howling Mine's \"that player draws an additional card\". Who draws and how many are independent axes ([`PlayerSet`] and [`Amount`]), so no variant names a recipient.",
               "properties": {
                 "count": {
                   "$ref": "#/$defs/Amount"
@@ -3647,88 +3628,9 @@
                     "cards"
                   ],
                   "type": "string"
-                }
-              },
-              "required": [
-                "count",
-                "mode"
-              ],
-              "type": "object"
-            },
-            {
-              "properties": {
-                "count": {
-                  "format": "uint32",
-                  "minimum": 0.0,
-                  "type": "integer"
                 },
-                "mode": {
-                  "enum": [
-                    "each_draw_step_player"
-                  ],
-                  "type": "string"
-                }
-              },
-              "required": [
-                "count",
-                "mode"
-              ],
-              "type": "object"
-            },
-            {
-              "properties": {
-                "count": {
-                  "$ref": "#/$defs/Amount"
-                },
-                "mode": {
-                  "enum": [
-                    "each_player"
-                  ],
-                  "type": "string"
-                }
-              },
-              "required": [
-                "count",
-                "mode"
-              ],
-              "type": "object"
-            },
-            {
-              "properties": {
-                "controller": {
-                  "default": false,
-                  "type": "boolean"
-                },
-                "count": {
-                  "$ref": "#/$defs/Amount"
-                },
-                "mode": {
-                  "enum": [
-                    "target_owner"
-                  ],
-                  "type": "string"
-                }
-              },
-              "required": [
-                "count",
-                "mode"
-              ],
-              "type": "object"
-            },
-            {
-              "properties": {
-                "count": {
-                  "$ref": "#/$defs/Amount"
-                },
-                "mode": {
-                  "enum": [
-                    "target_player"
-                  ],
-                  "type": "string"
-                },
-                "opponent": {
-                  "default": false,
-                  "type": "boolean"
+                "who": {
+                  "$ref": "#/$defs/PlayerSet"
                 }
               },
               "required": [
@@ -11672,9 +11574,16 @@
           "type": "string"
         },
         {
-          "description": "The controller of the chosen *object* target, not of this ability (Swords to Plowshares' \"its controller gains life equal to its power\").",
+          "description": "The controller of the chosen *object* target, not of this ability (Swords to Plowshares' \"its controller gains life equal to its power\", Nin's \"that creature's controller draws X cards\") — CR 109.4, so a stolen creature pays its thief rather than its owner.",
           "enum": [
             "targets_controller"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "The *owner* of the chosen object target (Oblation's \"its owner shuffles it … then draws two cards\"), which parts ways with [`PlayerSet::TargetsController`] on a stolen permanent.",
+          "enum": [
+            "targets_owner"
           ],
           "type": "string"
         },
@@ -11702,6 +11611,19 @@
           },
           "required": [
             "attacking_player"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "The player whose turn or step it is, baked in when the trigger is placed — Howling Mine's \"at the beginning of each player's draw step, **that player** draws an additional card\". [`PlayerSet::EachPlayer`] would bill the whole table on every seat's step instead of once.",
+          "properties": {
+            "active_player": {
+              "type": "object"
+            }
+          },
+          "required": [
+            "active_player"
           ],
           "type": "object"
         },

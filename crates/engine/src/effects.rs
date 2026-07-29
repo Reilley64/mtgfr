@@ -1256,7 +1256,12 @@ impl Game {
             // card at a time, pausing on `ChooseDredge` before any draw the controller has an eligible
             // dredger for (accepting mills + returns, declining draws). `answer_choose_dredge` re-enters
             // it for the remaining draws and resumes the deferred sequence once the batch is done.
-            Effect::Draw(DrawEffect::Cards { count }) => {
+            // Only a draw the controller themselves takes routes through dredge — every other
+            // player set mints through the ordinary path, where no seat has a dredge choice yet.
+            Effect::Draw(DrawEffect::Cards {
+                who: PlayerSet::You,
+                count,
+            }) => {
                 let n = self.resolve_count(count, controller, source, target, x);
                 self.draw_with_dredge(controller, n, false, events);
             }

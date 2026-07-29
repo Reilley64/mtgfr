@@ -6,46 +6,6 @@
 use crate::*;
 
 impl Game {
-    /// The seats a [`PlayerSet`] names, in turn order — the one place a card's "you" / "target
-    /// player" / "each opponent" is turned into actual players.
-    ///
-    /// Dead seats are never included: [`Game::living_players`] is the roster, so an effect aimed
-    /// at "each opponent" skips anyone who has already lost (CR 104.2a).
-    pub(crate) fn players_in(
-        &self,
-        who: PlayerSet,
-        controller: PlayerId,
-        target: Option<Target>,
-    ) -> Vec<PlayerId> {
-        match who {
-            PlayerSet::You => vec![controller],
-            PlayerSet::EachPlayer => self.living_players().collect(),
-            PlayerSet::EachOpponent => self.living_players().filter(|&p| p != controller).collect(),
-            // CR 601.2f's alternative-cost rider names no target, so there is nothing to read back
-            // — see the variant's ponytail note on the deterministic pick.
-            PlayerSet::AnOpponent => self
-                .living_players()
-                .find(|&p| p != controller)
-                .into_iter()
-                .collect(),
-            // The targeting machinery already picked and legality-checked the seat; a resolution
-            // that finds no player target has lost it (CR 608.2b) and touches no one.
-            PlayerSet::TargetPlayer | PlayerSet::TargetOpponent => match target {
-                Some(Target::Player(player)) => vec![player],
-                _ => Vec::new(),
-            },
-            // Swords to Plowshares: the *target's* controller (its owner, per the engine's
-            // control/ownership conflation), not this ability's controller.
-            PlayerSet::TargetsController => match target {
-                Some(Target::Object(object)) => vec![self.owner_of(object)],
-                _ => Vec::new(),
-            },
-            PlayerSet::AttackingPlayer { player } => {
-                vec![player.expect("the attacking player is filled in at placement")]
-            }
-        }
-    }
-
     pub(crate) fn mint_life(
         &self,
         effect: LifeEffect,

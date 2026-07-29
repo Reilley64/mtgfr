@@ -34,8 +34,12 @@ pub enum PlayerSet {
     /// [`PlayerSet::TargetPlayer`], but [`TargetSpec::OpponentPlayer`] narrows what may be picked.
     TargetOpponent,
     /// The controller of the chosen *object* target, not of this ability (Swords to Plowshares'
-    /// "its controller gains life equal to its power").
+    /// "its controller gains life equal to its power", Nin's "that creature's controller draws X
+    /// cards") — CR 109.4, so a stolen creature pays its thief rather than its owner.
     TargetsController,
+    /// The *owner* of the chosen object target (Oblation's "its owner shuffles it … then draws two
+    /// cards"), which parts ways with [`PlayerSet::TargetsController`] on a stolen permanent.
+    TargetsOwner,
     /// Every opponent, in turn order.
     EachOpponent,
     /// Every living player, the controller included (Vandal's Edit's "each player loses 2 life").
@@ -44,6 +48,13 @@ pub enum PlayerSet {
     /// Impetus' "whenever enchanted creature attacks, its controller loses 2 life". `None` only in
     /// an unplaced card template, which never reaches resolution.
     AttackingPlayer {
+        #[cfg_attr(feature = "card-dsl", serde(skip))]
+        player: Option<PlayerId>,
+    },
+    /// The player whose turn or step it is, baked in when the trigger is placed — Howling Mine's
+    /// "at the beginning of each player's draw step, **that player** draws an additional card".
+    /// [`PlayerSet::EachPlayer`] would bill the whole table on every seat's step instead of once.
+    ActivePlayer {
         #[cfg_attr(feature = "card-dsl", serde(skip))]
         player: Option<PlayerId>,
     },
@@ -69,9 +80,11 @@ enum PlayerSetName {
     TargetPlayer,
     TargetOpponent,
     TargetsController,
+    TargetsOwner,
     EachOpponent,
     EachPlayer,
     AttackingPlayer,
+    ActivePlayer,
     AnOpponent,
 }
 
@@ -83,9 +96,11 @@ impl From<PlayerSetName> for PlayerSet {
             PlayerSetName::TargetPlayer => PlayerSet::TargetPlayer,
             PlayerSetName::TargetOpponent => PlayerSet::TargetOpponent,
             PlayerSetName::TargetsController => PlayerSet::TargetsController,
+            PlayerSetName::TargetsOwner => PlayerSet::TargetsOwner,
             PlayerSetName::EachOpponent => PlayerSet::EachOpponent,
             PlayerSetName::EachPlayer => PlayerSet::EachPlayer,
             PlayerSetName::AttackingPlayer => PlayerSet::AttackingPlayer { player: None },
+            PlayerSetName::ActivePlayer => PlayerSet::ActivePlayer { player: None },
             PlayerSetName::AnOpponent => PlayerSet::AnOpponent,
         }
     }

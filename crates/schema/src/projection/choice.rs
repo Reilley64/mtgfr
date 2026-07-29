@@ -1006,6 +1006,7 @@ mod coverage_tests {
 
     const CHOOSE_ONE_MODES: &[Effect] = &[
         Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::You,
             count: Amount::Fixed(1),
         }),
         Effect::Life(LifeEffect::Gain {
@@ -1016,6 +1017,7 @@ mod coverage_tests {
 
     fn draw_effect() -> Effect {
         Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::You,
             count: Amount::Fixed(1),
         })
     }

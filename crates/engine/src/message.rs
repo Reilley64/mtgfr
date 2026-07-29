@@ -200,12 +200,7 @@ message_keys! {
     EFFECT_DIG_SHUFFLE_LIBRARY => "effect.dig_shuffle_library",
     EFFECT_DIG_SHUFFLE_TARGET_CARDS_FROM_GRAVEYARD_INTO_LIBRARY => "effect.dig_shuffle_target_cards_from_graveyard_into_library",
     EFFECT_DIG_SURVEIL => "effect.dig_surveil",
-    EFFECT_DRAW_ATTACKING_PLAYER => "effect.draw_attacking_player",
     EFFECT_DRAW_CARDS => "effect.draw_cards",
-    EFFECT_DRAW_EACH_DRAW_STEP_PLAYER => "effect.draw_each_draw_step_player",
-    EFFECT_DRAW_EACH_PLAYER => "effect.draw_each_player",
-    EFFECT_DRAW_TARGET_OWNER => "effect.draw_target_owner",
-    EFFECT_DRAW_TARGET_PLAYER => "effect.draw_target_player",
     EFFECT_EXILE_ALL => "effect.exile_all",
     EFFECT_EXILE_ALL_GRAVEYARDS => "effect.exile_all_graveyards",
     EFFECT_EXILE_GRAVEYARD => "effect.exile_graveyard",
@@ -495,9 +490,11 @@ fn who_param(who: PlayerSet) -> MessageParam {
             PlayerSet::TargetPlayer => "target_player",
             PlayerSet::TargetOpponent => "target_opponent",
             PlayerSet::TargetsController => "targets_controller",
+            PlayerSet::TargetsOwner => "targets_owner",
             PlayerSet::EachOpponent => "each_opponent",
             PlayerSet::EachPlayer => "each_player",
             PlayerSet::AttackingPlayer { .. } => "attacking_player",
+            PlayerSet::ActivePlayer { .. } => "active_player",
             PlayerSet::AnOpponent => "an_opponent",
         },
     )
@@ -1316,28 +1313,8 @@ impl EffectMessage for Effect {
                 MessageRef::new(MessageKey::EFFECT_DAMAGE_TO_DYING_ENCHANTED_CREATURES_CONTROLLER)
                     .with_params(vec![amount_param("amount", amount)])
             }
-            Effect::Draw(Cards { count }) => MessageRef::new(MessageKey::EFFECT_DRAW_CARDS)
-                .with_params(vec![amount_param("count", count)]),
-            Effect::Draw(TargetPlayer { count, opponent }) => {
-                MessageRef::new(MessageKey::EFFECT_DRAW_TARGET_PLAYER)
-                    .with_params(vec![amount_param("count", count), bool_param("opponent", opponent)])
-            }
-            Effect::Draw(TargetOwner { count, controller }) => {
-                MessageRef::new(MessageKey::EFFECT_DRAW_TARGET_OWNER).with_params(vec![
-                    amount_param("count", count),
-                    bool_param("controller", controller),
-                ])
-            }
-            Effect::Draw(DrawEffect::EachPlayer { count }) => MessageRef::new(MessageKey::EFFECT_DRAW_EACH_PLAYER)
-                .with_params(vec![amount_param("count", count)]),
-            Effect::Draw(AttackingPlayer { count, .. }) => {
-                MessageRef::new(MessageKey::EFFECT_DRAW_ATTACKING_PLAYER)
-                    .with_params(vec![int_param("count", count)])
-            }
-            Effect::Draw(EachDrawStepPlayer { count, .. }) => {
-                MessageRef::new(MessageKey::EFFECT_DRAW_EACH_DRAW_STEP_PLAYER)
-                    .with_params(vec![int_param("count", count)])
-            }
+            Effect::Draw(Cards { who, count }) => MessageRef::new(MessageKey::EFFECT_DRAW_CARDS)
+                .with_params(vec![who_param(who), amount_param("count", count)]),
             Effect::Life(Gain { who, amount }) => MessageRef::new(MessageKey::EFFECT_LIFE_GAIN)
                 .with_params(vec![who_param(who), amount_param("amount", amount)]),
             Effect::Life(Lose { who, amount }) => MessageRef::new(MessageKey::EFFECT_LIFE_LOSE)
@@ -2564,12 +2541,14 @@ mod tests {
     #[test]
     fn message_refs_are_stable() {
         let draw = Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::You,
             count: Amount::Fixed(2),
         })
         .message();
         assert_eq!(draw.key.as_str(), "effect.draw_cards");
-        assert_eq!(draw.params[0].name, "count");
-        assert!(matches!(draw.params[0].value, MessageParamValue::Int(2)));
+        assert_eq!(draw.params[0].name, "who");
+        assert!(matches!(&draw.params[0].value, MessageParamValue::Str(who) if *who == "you"));
+        assert!(matches!(draw.params[1].value, MessageParamValue::Int(2)));
 
         let life = Effect::Life(LifeEffect::Gain {
             who: PlayerSet::You,
@@ -2590,6 +2569,7 @@ mod tests {
         let seq = Effect::Sequence {
             steps: std::sync::Arc::from([
                 Effect::Draw(DrawEffect::Cards {
+                    who: PlayerSet::You,
                     count: Amount::Fixed(2),
                 }),
                 Effect::Choice(ChoiceEffect::Discard {

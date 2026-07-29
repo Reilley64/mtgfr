@@ -715,7 +715,6 @@ impl Effect {
                 ally_is_shared_target: true,
                 ..
             }) => TargetSpec::None,
-            Effect::Draw(DrawEffect::TargetPlayer { opponent: true, .. })
             // "Target opponent gets a poison counter" (Venerated Rotpriest).
             | Effect::Counters(CountersEffect::PutCountersOnPlayer {
                 scope: EdictScope::TargetedOpponent,
@@ -732,8 +731,7 @@ impl Effect {
                 controller: TokenController::TargetOpponent,
                 ..
             }) => TargetSpec::OpponentPlayer,
-            Effect::Draw(DrawEffect::TargetPlayer { opponent: false, .. })
-            | Effect::Choice(ChoiceEffect::TargetPlayerMayDraw { opponent: false, .. })
+Effect::Choice(ChoiceEffect::TargetPlayerMayDraw { opponent: false, .. })
             | Effect::Exile(ExileEffect::Graveyard)
             | Effect::Choice(ChoiceEffect::Discard {
                 target_player: true,
@@ -788,23 +786,20 @@ impl Effect {
             // A mana ability targets a player only when authored to (Rousing Refrain's "target
             // opponent"); every ordinary mana source defaults to `TargetSpec::None`.
             Effect::Mana(ManaEffect::Add { target, .. }) => target,
-            // The life family targets whatever its `who` names and nothing otherwise — a
-            // `TargetsController` gain (Swords to Plowshares' rider) reads the enclosing
-            // `Sequence`'s shared target rather than taking one of its own.
+            // A `who`-carrying effect targets whatever its player set names and nothing
+            // otherwise — a `TargetsController` gain (Swords to Plowshares' rider) or a
+            // `TargetsOwner` draw (Oblation's) reads the enclosing `Sequence`'s shared target
+            // rather than taking one of its own.
             Effect::Life(
                 LifeEffect::Gain { who, .. }
                 | LifeEffect::Lose { who, .. }
                 | LifeEffect::Drain { who, .. },
-            ) => match who {
-                PlayerSet::TargetPlayer => TargetSpec::Player,
-                PlayerSet::TargetOpponent => TargetSpec::OpponentPlayer,
-                _ => TargetSpec::None,
-            },
+            )
+            | Effect::Draw(DrawEffect::Cards { who, .. }) => player_set_target_spec(who),
             Effect::Life(
                 LifeEffect::EachPlayerBecomesHighest | LifeEffect::SourceOwnerLosesHalfTheirLife,
             ) => TargetSpec::None,
-            Effect::Draw(DrawEffect::Cards { .. })
-            | Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
+Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
             | Effect::Token(TokenEffect::Create { .. })
             | Effect::Token(TokenEffect::CreateTreasure {
                 target_player: false,
@@ -935,7 +930,6 @@ impl Effect {
             | Effect::Control(ControlEffect::UntapAll { .. })
             | Effect::Control(ControlEffect::TapAll { .. })
             | Effect::Control(ControlEffect::GainControlAllUntilEndOfTurn { .. })
-            | Effect::Draw(DrawEffect::EachPlayer { .. })
             | Effect::Choice(ChoiceEffect::SacrificeOwn { .. })
             | Effect::Choice(ChoiceEffect::DefendingPlayerSacrifices { .. })
             | Effect::Sacrifice(SacrificeEffect::Object { .. })
@@ -963,9 +957,7 @@ impl Effect {
             | Effect::Misc(MiscEffect::TakeExtraTurn)
             | Effect::Misc(MiscEffect::YouLoseTheGame)
             | Effect::Misc(MiscEffect::ScheduleNextCastTrigger { .. })
-            | Effect::Draw(DrawEffect::AttackingPlayer { .. })
             | Effect::Choice(ChoiceEffect::DamagingCreatureControllerMayDraw { .. })
-            | Effect::Draw(DrawEffect::EachDrawStepPlayer { .. })
             | Effect::Damage(DamageEffect::ToEnteringPermanent { .. })
             | Effect::Damage(DamageEffect::ToEnteringPermanentController { .. })
             | Effect::Damage(DamageEffect::ToTriggeringPlayer { .. })
@@ -1014,9 +1006,6 @@ impl Effect {
             // Reads the enclosing `Sequence`'s shared target creature's controller; no target of
             // its own (Lash Out's win rider).
             | Effect::Damage(DamageEffect::ToTargetController { .. })
-            // A no-target-of-its-own step: reads the enclosing `Sequence`'s shared target's owner
-            // or controller (Oblation's "then draws two cards" rider).
-            | Effect::Draw(DrawEffect::TargetOwner { .. })
             // Clash picks its opponent at resolution (CR 701.22), not via a cast/activation target.
             | Effect::Dig(DigEffect::Clash)
             // A no-target-of-its-own step: manifests the enclosing `Sequence`'s shared target's
@@ -2425,15 +2414,15 @@ fn fill_attack_context(effect: Effect, attack: Option<(PlayerId, PlayerId)>) -> 
                 counters,
             })
         }
-        // CR 603.10a: an attack trigger's "its controller" / "that opponent" is the attacking
-        // player, baked in here at placement rather than read back at resolution.
-        (Effect::Life(life), Some((attacker, _attacked))) => {
-            Effect::Life(fill_attacking_player(life, attacker))
-        }
-        (Effect::Draw(DrawEffect::AttackingPlayer { count, .. }), Some((attacker, _attacked))) => {
-            Effect::Draw(DrawEffect::AttackingPlayer {
-                drawer: Some(attacker),
-                count,
+        // CR 603.10a: an attack trigger's "its controller" / "that opponent" / "that player
+        // draws" is the attacking player, baked in here at placement rather than read back at
+        // resolution.
+        (Effect::Life(_) | Effect::Draw(_), Some((attacker, _attacked))) => {
+            fill_player(effect, &|who| match who {
+                PlayerSet::AttackingPlayer { .. } => PlayerSet::AttackingPlayer {
+                    player: Some(attacker),
+                },
+                other => other,
             })
         }
         // Goblin Guide: the *defending* player (the attack's second element) reveals, not the
@@ -3044,10 +3033,6 @@ fn fill_add_mana_recipient(effect: Effect, active_player: PlayerId) -> Effect {
 /// CR 603.4 resolution-time re-check wrapper still gets its nested draw filled.
 fn fill_active_player_payoff(effect: Effect, active_player: PlayerId) -> Effect {
     match effect {
-        Effect::Draw(DrawEffect::EachDrawStepPlayer { count, .. }) => Effect::Draw(DrawEffect::EachDrawStepPlayer {
-            drawer: Some(active_player),
-            count,
-        }),
         Effect::Damage(DamageEffect::ToTriggeringPlayer { amount, .. }) => Effect::Damage(DamageEffect::ToTriggeringPlayer {
             player: Some(active_player),
             amount,
@@ -3068,6 +3053,14 @@ fn fill_active_player_payoff(effect: Effect, active_player: PlayerId) -> Effect 
                 player: Some(active_player),
             })
         }
+        // Howling Mine's "that player draws an additional card" names the same seat the damage arm
+        // above does, spelled as a player set rather than an effect-local slot.
+        effect @ (Effect::Life(_) | Effect::Draw(_)) => fill_player(effect, &|who| match who {
+            PlayerSet::ActivePlayer { .. } => PlayerSet::ActivePlayer {
+                player: Some(active_player),
+            },
+            other => other,
+        }),
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
@@ -3151,42 +3144,71 @@ fn relink(original: &'static Amount, rewritten: Amount) -> &'static Amount {
 /// every step. The arm set is the union of what the pool's context-filled effects need
 /// (flag-don't-force: add an arm here when a real card first needs its `Amount` field
 /// context-filled).
-/// Bake the attacking player into a life effect aimed at them (CR 603.10a) — Parasitic Impetus'
-/// "its controller loses 2 life", Tomik's "that opponent loses 3 life". A life effect naming any
-/// other [`PlayerSet`] passes through untouched, so this can run over the whole family.
-fn fill_attacking_player(effect: LifeEffect, attacker: PlayerId) -> LifeEffect {
-    let filled = |who: PlayerSet| match who {
-        PlayerSet::AttackingPlayer { .. } => PlayerSet::AttackingPlayer {
-            player: Some(attacker),
-        },
-        other => other,
-    };
+/// Rewrite the [`PlayerSet`] of every effect that carries one, leaving the rest untouched — the
+/// `who`-slot twin of [`map_effect_amount_slots`]. CR 603.10a's last-known information is written
+/// here at trigger placement rather than read back at resolution, and one walker serves every
+/// context that names a seat, so a family that adopts `who` gets its context fills for free.
+///
+/// Recurses into [`Effect::Sequence`] *and* [`Effect::Conditional`]'s `then` — Howling Mine wraps
+/// its draw in a CR 603.4 resolution-time re-check, so the nested draw needs filling too.
+fn fill_player(effect: Effect, f: &impl Fn(PlayerSet) -> PlayerSet) -> Effect {
     match effect {
-        LifeEffect::Gain { who, amount } => LifeEffect::Gain {
-            who: filled(who),
+        Effect::Life(LifeEffect::Gain { who, amount }) => Effect::Life(LifeEffect::Gain {
+            who: f(who),
             amount,
-        },
-        LifeEffect::Lose { who, amount } => LifeEffect::Lose {
-            who: filled(who),
+        }),
+        Effect::Life(LifeEffect::Lose { who, amount }) => Effect::Life(LifeEffect::Lose {
+            who: f(who),
             amount,
-        },
-        LifeEffect::Drain {
+        }),
+        Effect::Life(LifeEffect::Drain {
             who,
             amount,
             sum_gain,
-        } => LifeEffect::Drain {
-            who: filled(who),
+        }) => Effect::Life(LifeEffect::Drain {
+            who: f(who),
             amount,
             sum_gain,
+        }),
+        Effect::Draw(DrawEffect::Cards { who, count }) => Effect::Draw(DrawEffect::Cards {
+            who: f(who),
+            count,
+        }),
+        Effect::Sequence { steps } => Effect::Sequence {
+            steps: steps.iter().map(|step| fill_player(step.clone(), f)).collect(),
+        },
+        Effect::Conditional {
+            condition,
+            then,
+            negate,
+            otherwise,
+        } => Effect::Conditional {
+            condition,
+            then: then.iter().map(|step| fill_player(step.clone(), f)).collect(),
+            negate,
+            // ponytail: `otherwise` is a `&'static` slice, so filling it would mean leaking a new
+            //   one per placement. No card puts a context-filled seat in an else branch; if one
+            //   ever does, `fill_active_player_payoff`'s `Box::leak` is the pattern to copy.
+            otherwise,
         },
         other => other,
+    }
+}
+
+/// The target a [`PlayerSet`] needs the shared targeting machinery to pick. Every other set names
+/// its seats without one — "each opponent" and "its controller" take no target of their own.
+fn player_set_target_spec(who: PlayerSet) -> TargetSpec {
+    match who {
+        PlayerSet::TargetPlayer => TargetSpec::Player,
+        PlayerSet::TargetOpponent => TargetSpec::OpponentPlayer,
+        _ => TargetSpec::None,
     }
 }
 
 fn map_effect_amount_slots(effect: Effect, f: &impl Fn(Amount) -> Amount) -> Effect {
     match effect {
         Effect::Life(LifeEffect::Gain { who, amount }) => Effect::Life(LifeEffect::Gain { who, amount: f(amount) }),
-        Effect::Draw(DrawEffect::Cards { count }) => Effect::Draw(DrawEffect::Cards { count: f(count) }),
+        Effect::Draw(DrawEffect::Cards { who, count }) => Effect::Draw(DrawEffect::Cards { who, count: f(count) }),
         Effect::Counters(CountersEffect::PutCounters {
             count,
             target,

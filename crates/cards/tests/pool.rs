@@ -796,9 +796,9 @@ fn the_pool_loads_with_expected_card_shapes() {
     let recall = get_by_name("Ancestral Recall").expect("Ancestral Recall is in the pool");
     assert!(matches!(
         recall.abilities[0].effect,
-        Effect::Draw(DrawEffect::TargetPlayer {
+        Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::TargetPlayer,
             count: Amount::Fixed(3),
-            opponent: false,
         })
     ));
 
@@ -1000,9 +1000,9 @@ fn the_pool_loads_with_expected_card_shapes() {
     assert_eq!(stroke.cost.colored[Color::Blue.index()], 1);
     assert!(matches!(
         stroke.abilities[0].effect,
-        Effect::Draw(DrawEffect::TargetPlayer {
+        Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::TargetPlayer,
             count: Amount::X,
-            opponent: false,
         })
     ));
 
@@ -1197,9 +1197,9 @@ fn the_pool_loads_with_expected_card_shapes() {
         &prismari.abilities[1].effect,
         &Effect::Sequence {
             steps: std::sync::Arc::from([
-                Effect::Draw(DrawEffect::TargetPlayer {
+                Effect::Draw(DrawEffect::Cards {
+                    who: PlayerSet::TargetPlayer,
                     count: Amount::Fixed(2),
-                    opponent: false,
                 }),
                 Effect::Choice(ChoiceEffect::Discard {
                     count: Amount::Fixed(2),
@@ -1429,6 +1429,7 @@ fn the_pool_loads_with_expected_card_shapes() {
     assert!(matches!(
         then[0],
         Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::You,
             count: Amount::Fixed(2)
         })
     ));
@@ -1735,6 +1736,7 @@ fn the_pool_loads_with_expected_card_shapes() {
     assert!(matches!(
         big_score.abilities[0].effect,
         Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::You,
             count: Amount::Fixed(2)
         })
     ));
@@ -1869,6 +1871,7 @@ fn an_effects_list_parses_into_an_ordered_sequence() {
         steps.as_ref(),
         &[
             Effect::Draw(DrawEffect::Cards {
+                who: PlayerSet::You,
                 count: Amount::Fixed(2)
             }),
             Effect::Choice(ChoiceEffect::Discard {
@@ -3683,6 +3686,7 @@ fn unlimited_tap_abilities_carry_their_printed_effects() {
         (
             "Jayemdae Tome",
             Effect::Draw(DrawEffect::Cards {
+                who: PlayerSet::You,
                 count: Amount::Fixed(1),
             }),
         ),

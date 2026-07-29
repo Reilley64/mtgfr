@@ -576,6 +576,7 @@ static FLASHBACK_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([spell_ability(Effect::Draw(DrawEffect::Cards {
+        who: PlayerSet::You,
         count: Amount::Fixed(1),
     }))]),
     cycling: None,
@@ -652,6 +653,7 @@ static COMBAT_ONLY_INSTANT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([spell_ability(Effect::Draw(DrawEffect::Cards {
+        who: PlayerSet::You,
         count: Amount::Fixed(1),
     }))]),
     cycling: None,
@@ -2034,6 +2036,7 @@ static TWO_ETB: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         Ability {
             timing: Timing::Triggered(Trigger::Etb),
             effect: Effect::Draw(DrawEffect::Cards {
+                who: PlayerSet::You,
                 count: Amount::Fixed(1),
             }),
             optional: false,
@@ -2233,6 +2236,7 @@ static MAY_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Triggered(Trigger::Etb),
         effect: Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::You,
             count: Amount::Fixed(1),
         }),
         optional: true,
@@ -2317,6 +2321,7 @@ static MAY_PAY_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Triggered(Trigger::Etb),
         effect: Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::You,
             count: Amount::Fixed(1),
         }),
         optional: true,
@@ -8625,7 +8630,10 @@ static X_DRAW_PERMANENT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             exile_self: false,
             graveyard_exile_target_count: 0,
         }),
-        effect: Effect::Draw(DrawEffect::Cards { count: Amount::X }),
+        effect: Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::You,
+            count: Amount::X,
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -8663,6 +8671,7 @@ static FIXED_DRAW_PERMANENT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             graveyard_exile_target_count: 0,
         }),
         effect: Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::You,
             count: Amount::Fixed(1),
         }),
         optional: false,
@@ -10280,6 +10289,7 @@ static HERALD: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Triggered(Trigger::Attacks),
         effect: Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::You,
             count: Amount::Fixed(1),
         }),
         optional: false,
@@ -13870,6 +13880,7 @@ fn the_stack_query_exposes_spells_and_abilities_in_resolution_order() {
             stack[0],
             StackEntry::Ability {
                 effect: Effect::Draw(DrawEffect::Cards {
+                    who: PlayerSet::You,
                     count: Amount::Fixed(1)
                 }),
                 ..
@@ -14463,9 +14474,9 @@ static TARGET_OPPONENT_DRAWS_THREE: LazyLock<CardDef> = LazyLock::new(|| CardDef
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
         timing: Timing::Spell,
-        effect: Effect::Draw(DrawEffect::TargetPlayer {
+        effect: Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::TargetOpponent,
             count: Amount::Fixed(3),
-            opponent: true,
         }),
         optional: false,
         min_level: 0,
@@ -16715,6 +16726,7 @@ static TEST_COUNTER_SHEDDER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
                 graveyard_exile_target_count: 0,
             }),
             effect: Effect::Draw(DrawEffect::Cards {
+                who: PlayerSet::You,
                 count: Amount::Fixed(1),
             }),
             optional: false,
@@ -21993,6 +22005,7 @@ static DIES_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Triggered(Trigger::Dies),
         effect: Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::You,
             count: Amount::Fixed(1),
         }),
         optional: false,
@@ -22847,6 +22860,7 @@ static WATCHES_CREATURE_DIES_ONCE_EACH_TURN: LazyLock<CardDef> = LazyLock::new(|
     abilities: arc_slice([Ability {
         timing: Timing::Triggered(Trigger::CreatureDies),
         effect: Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::You,
             count: Amount::Fixed(1),
         }),
         optional: false,
@@ -23747,6 +23761,7 @@ static UPKEEP_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Triggered(Trigger::Upkeep),
         effect: Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::You,
             count: Amount::Fixed(1),
         }),
         optional: false,
@@ -24435,6 +24450,7 @@ static EACH_UPKEEP_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Triggered(Trigger::EachUpkeep),
         effect: Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::You,
             count: Amount::Fixed(1),
         }),
         optional: false,
@@ -24563,6 +24579,7 @@ static END_STEP_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Triggered(Trigger::EndStep),
         effect: Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::You,
             count: Amount::Fixed(1),
         }),
         optional: false,
@@ -24663,6 +24680,7 @@ static BEGIN_COMBAT_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Triggered(Trigger::BeginCombat),
         effect: Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::You,
             count: Amount::Fixed(1),
         }),
         optional: false,
@@ -24877,6 +24895,7 @@ static LIFE_GAIN_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Triggered(Trigger::YouGainLife),
         effect: Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::You,
             count: Amount::Fixed(1),
         }),
         optional: false,
@@ -25071,6 +25090,7 @@ static MAGECRAFT_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Triggered(Trigger::Magecraft),
         effect: Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::You,
             count: Amount::Fixed(1),
         }),
         optional: false,
@@ -25808,6 +25828,7 @@ static AURA_CAST_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             from_hand: false,
         }),
         effect: Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::You,
             count: Amount::Fixed(1),
         }),
         optional: false,
@@ -26481,9 +26502,9 @@ static DRAW_ONE_TARGET: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
         timing: Timing::Spell,
-        effect: Effect::Draw(DrawEffect::TargetPlayer {
+        effect: Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::TargetPlayer,
             count: Amount::Fixed(1),
-            opponent: false,
         }),
         optional: false,
         min_level: 0,
@@ -29192,6 +29213,7 @@ fn schedule_draw_one() -> CardDef {
                 MiscEffect::ScheduleAtNextUpkeep {
                     who: DelayController::You,
                     then: &Effect::Draw(DrawEffect::Cards {
+                        who: PlayerSet::You,
                         count: Amount::Fixed(1),
                     }),
                     fire_at: Step::Upkeep,
@@ -33015,6 +33037,7 @@ static WATCHES_HOST_DIES_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Triggered(Trigger::EnchantedCreatureDies),
         effect: Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::You,
             count: Amount::Fixed(1),
         }),
         optional: false,
@@ -36573,6 +36596,7 @@ static YOU_DISCARD_WATCHER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Triggered(Trigger::YouDiscard),
         effect: Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::You,
             count: Amount::Fixed(1),
         }),
         optional: false,
@@ -50904,9 +50928,9 @@ static BRAINGEYSER_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
         timing: Timing::Spell,
-        effect: Effect::Draw(DrawEffect::TargetPlayer {
+        effect: Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::TargetPlayer,
             count: Amount::X,
-            opponent: false,
         }),
         optional: false,
         min_level: 0,
@@ -57878,6 +57902,7 @@ fn magecraft_makes_a_treasure_with_storm_kiln_artist_out() {
 /// The one ability shared by every [`instant_with_mana_value`] test spell.
 static INSTANT_DRAW_ABILITIES: LazyLock<&'static [Ability]> = LazyLock::new(|| {
     Box::leak(Box::new([spell_ability(Effect::Draw(DrawEffect::Cards {
+        who: PlayerSet::You,
         count: Amount::Fixed(1),
     }))]))
 });
@@ -62967,6 +62992,64 @@ fn swords_to_plowshares_controllers_gains_life_equal_to_exiled_powers() {
 }
 
 #[test]
+fn swords_pays_the_stolen_creatures_controller_not_its_owner() {
+    // "Its controller gains life equal to its power" names the controller (CR 109.4 — the player
+    // who currently controls it), which is not the owner once someone has stolen it.
+    let mut game = TestGame::new();
+    let bear = game.spawn_on_battlefield(PlayerId(1), creature("Big (test)", 5, 5, &[]));
+    let steal = game.spawn_in_hand(PlayerId(0), STEAL_PERMANENT.clone());
+    game.cast(steal).at(Target::Object(bear)).resolve();
+    assert_eq!(game.controller_of(bear), PlayerId(0), "player 0 stole it");
+
+    game.fund_mana(PlayerId(0));
+    let thief_life = game.life(PlayerId(0));
+    let owner_life = game.life(PlayerId(1));
+    let swords = game.spawn_in_hand(PlayerId(0), card("Swords to Plowshares"));
+    game.cast(swords).at(Target::Object(bear)).resolve();
+
+    assert_eq!(
+        game.life(PlayerId(0)),
+        thief_life + 5,
+        "the thief controls it, so the thief gains"
+    );
+    assert_eq!(
+        game.life(PlayerId(1)),
+        owner_life,
+        "merely owning it gains nothing"
+    );
+}
+
+#[test]
+fn oblation_draws_for_the_owner_of_a_permanent_someone_else_controls() {
+    // "Its owner shuffles it into their library, then draws two cards" pays the owner, not the
+    // seat holding it. The shuffle vanishes the permanent first, so the draw reads its owner back
+    // through the resolution frame (CR 111.7) rather than off a battlefield object.
+    let mut game = TestGame::new();
+    let bear = game.spawn_on_battlefield(PlayerId(1), creature("Big (test)", 5, 5, &[]));
+    let steal = game.spawn_in_hand(PlayerId(0), STEAL_PERMANENT.clone());
+    game.cast(steal).at(Target::Object(bear)).resolve();
+    assert_eq!(game.controller_of(bear), PlayerId(0), "player 0 stole it");
+
+    game.fund_mana(PlayerId(0));
+    game.stack_library(PlayerId(1), &[card("Forest"), card("Forest")]);
+    let owner_hand = game.hand(PlayerId(1)).len();
+    let oblation = game.spawn_in_hand(PlayerId(0), card("Oblation"));
+    let thief_hand = game.hand(PlayerId(0)).len();
+    game.cast(oblation).at(Target::Object(bear)).resolve();
+
+    assert_eq!(
+        game.hand(PlayerId(1)).len(),
+        owner_hand + 2,
+        "the owner draws even though someone else controlled it"
+    );
+    assert_eq!(
+        game.hand(PlayerId(0)).len(),
+        thief_hand - 1,
+        "the thief only spent Oblation itself, drawing nothing"
+    );
+}
+
+#[test]
 fn war_room_pay_life_costs_the_commanders_color_count() {
     // War Room: "{3}, {T}, Pay life equal to the number of colors in your commanders' color
     // identity: Draw a card." Izoni, Thousand-Eyed is a two-color (B/G) commander, so the cost
@@ -63254,6 +63337,7 @@ fn loot() -> CardDef {
         Box::leak(Box::new([spell_ability(Effect::Sequence {
             steps: Arc::from([
                 Effect::Draw(DrawEffect::Cards {
+                    who: PlayerSet::You,
                     count: Amount::Fixed(2),
                 }),
                 Effect::Choice(ChoiceEffect::Discard {
@@ -63589,6 +63673,7 @@ fn surveil_then_draw() -> CardDef {
             steps: Arc::from([
                 Effect::Dig(DigEffect::Surveil { count: 2 }),
                 Effect::Draw(DrawEffect::Cards {
+                    who: PlayerSet::You,
                     count: Amount::Fixed(1),
                 }),
             ]),
@@ -66981,6 +67066,7 @@ static WATCHES_OPPONENT_LANDFALL: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             controller: EnterController::Opponent,
         }),
         effect: Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::You,
             count: Amount::Fixed(1),
         }),
         optional: false,
@@ -68409,6 +68495,7 @@ static FIVE_MANA_VALUE_SORCERY: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([spell_ability(Effect::Draw(DrawEffect::Cards {
+        who: PlayerSet::You,
         count: Amount::Fixed(1),
     }))]),
     cycling: None,
@@ -72336,9 +72423,9 @@ fn faerie_mastermind_fires_once_when_an_opponent_draws_two_at_once() {
     let mut def = DRAW_ONE_TARGET.clone();
     def.abilities = arc_slice([Ability {
         timing: Timing::Spell,
-        effect: Effect::Draw(DrawEffect::TargetPlayer {
+        effect: Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::TargetPlayer,
             count: Amount::Fixed(2),
-            opponent: false,
         }),
         optional: false,
         min_level: 0,
@@ -82354,6 +82441,7 @@ fn manifest_noncreature_cannot_be_turned_face_up() {
 const TURNED_FACE_UP_DRAW: Ability = Ability {
     timing: Timing::Triggered(Trigger::TurnedFaceUp),
     effect: Effect::Draw(DrawEffect::Cards {
+        who: PlayerSet::You,
         count: Amount::Fixed(1),
     }),
     optional: false,
@@ -83633,6 +83721,7 @@ fn plain_morph_creature_does_not_flip_on_damage() {
 const ETB_DRAW: Ability = Ability {
     timing: Timing::Triggered(Trigger::Etb),
     effect: Effect::Draw(DrawEffect::Cards {
+        who: PlayerSet::You,
         count: Amount::Fixed(1),
     }),
     optional: false,
@@ -83652,6 +83741,7 @@ const CAST_WATCH_DRAW: Ability = Ability {
         from_hand: false,
     }),
     effect: Effect::Draw(DrawEffect::Cards {
+        who: PlayerSet::You,
         count: Amount::Fixed(1),
     }),
     optional: false,
@@ -85884,6 +85974,7 @@ static OPPONENT_DAMAGE_WATCHER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         Ability {
             timing: Timing::Triggered(Trigger::DealsDamageToOpponent),
             effect: Effect::Draw(DrawEffect::Cards {
+                who: PlayerSet::You,
                 count: Amount::Fixed(1),
             }),
             optional: false,
@@ -89559,6 +89650,7 @@ static MAY_DRAW_UPKEEP: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Triggered(Trigger::Upkeep),
         effect: Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::You,
             count: Amount::Fixed(1),
         }),
         optional: true,
@@ -90576,6 +90668,7 @@ static DRAW_ONE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([spell_ability(Effect::Draw(DrawEffect::Cards {
+        who: PlayerSet::You,
         count: Amount::Fixed(1),
     }))]),
     cycling: None,
@@ -90651,6 +90744,7 @@ static DRAW_THREE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([spell_ability(Effect::Draw(DrawEffect::Cards {
+        who: PlayerSet::You,
         count: Amount::Fixed(3),
     }))]),
     cycling: None,

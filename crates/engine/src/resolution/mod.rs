@@ -80,6 +80,52 @@ impl Game {
         self.pending_choice.is_some()
     }
 
+    /// The seats a [`PlayerSet`] names, in turn order — the one place a card's "you" / "target
+    /// player" / "each opponent" is turned into actual players.
+    ///
+    /// Dead seats are never included: [`Game::living_players`] is the roster, so an effect aimed
+    /// at "each opponent" skips anyone who has already lost (CR 104.2a).
+    pub(crate) fn players_in(
+        &self,
+        who: PlayerSet,
+        controller: PlayerId,
+        target: Option<Target>,
+    ) -> Vec<PlayerId> {
+        match who {
+            PlayerSet::You => vec![controller],
+            PlayerSet::EachPlayer => self.living_players().collect(),
+            PlayerSet::EachOpponent => self.living_players().filter(|&p| p != controller).collect(),
+            // CR 601.2f's alternative-cost rider names no target, so there is nothing to read back
+            // — see the variant's ponytail note on the deterministic pick.
+            PlayerSet::AnOpponent => self
+                .living_players()
+                .find(|&p| p != controller)
+                .into_iter()
+                .collect(),
+            // The targeting machinery already picked and legality-checked the seat; a resolution
+            // that finds no player target has lost it (CR 608.2b) and touches no one.
+            PlayerSet::TargetPlayer | PlayerSet::TargetOpponent => match target {
+                Some(Target::Player(player)) => vec![player],
+                _ => Vec::new(),
+            },
+            // Swords to Plowshares' "its controller" / Oblation's "its owner" — the *target's*
+            // player, not this ability's controller, read through the shared-target helper so a
+            // preceding Sequence step that vanished the target still answers (CR 111.7).
+            PlayerSet::TargetsController | PlayerSet::TargetsOwner => match target {
+                Some(Target::Object(object)) => {
+                    vec![self.owner_of_shared_target(object, who == PlayerSet::TargetsController)]
+                }
+                _ => Vec::new(),
+            },
+            PlayerSet::AttackingPlayer { player } => {
+                vec![player.expect("the attacking player is filled in at placement")]
+            }
+            PlayerSet::ActivePlayer { player } => {
+                vec![player.expect("the active player is filled in at placement")]
+            }
+        }
+    }
+
     /// The owner (or controller, if `to_controller`) of a [`Sequence`](Effect::Sequence)'s shared
     /// target — an ordinary live [`Game::owner_of`]/[`Game::controller_of`] read, except when a
     /// *preceding* step in the same Sequence already vanished that target (a token tucked by
@@ -257,6 +303,7 @@ mod tests {
     const SURVEIL_THEN_DRAW: &[Effect] = &[
         Effect::Dig(DigEffect::Surveil { count: 2 }),
         Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::You,
             count: Amount::Fixed(1),
         }),
     ];
@@ -363,6 +410,7 @@ mod tests {
 
         game.run(
             Effect::Draw(DrawEffect::Cards {
+                who: PlayerSet::You,
                 count: Amount::Fixed(1),
             }),
             ctx(PlayerId(0)),

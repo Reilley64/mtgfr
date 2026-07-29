@@ -21,7 +21,8 @@ timing = "spell"
 # Target player draws a card
 [[abilities.effects]]
 type = "draw"
-mode = "target_player"
+mode = "cards"
+who = "target_player"
 count = 1
 
 # loses 1 life.

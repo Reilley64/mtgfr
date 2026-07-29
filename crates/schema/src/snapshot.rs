@@ -2173,6 +2173,7 @@ mod tests {
             Ability {
                 timing: Timing::Triggered(Trigger::CreatureYouControlDies),
                 effect: Effect::Draw(DrawEffect::Cards {
+                    who: PlayerSet::You,
                     count: Amount::Fixed(1),
                 }),
                 optional: false,
