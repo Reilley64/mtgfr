@@ -28,13 +28,13 @@ function cardThumb(card: ObjectView, selectable: boolean, selected: boolean): Ht
         print: card.print,
         size: "large",
         alt: card.name,
-        className: "block rounded-md",
-        style: { width: "90px" },
+        className: "block w-[90px] rounded-md",
       })
     : h.div(
         [
-          h.Class("flex items-center justify-center rounded-md bg-forest-surface text-caption text-lichen"),
-          h.Style({ width: "90px", height: "126px" }),
+          h.Class(
+            "flex h-[126px] w-[90px] items-center justify-center rounded-md bg-forest-surface text-caption text-lichen",
+          ),
         ],
         [card.name],
       );
