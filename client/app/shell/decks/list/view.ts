@@ -141,7 +141,7 @@ function contextMenu(model: DeckListSubmodel): Html {
       h.div(
         [
           h.DataAttribute("testid", "deck-list-context-menu"),
-          h.Class(menuPanelClass("fixed top-(--y) left-(--x) z-41 min-w-[160px]")),
+          h.Class(menuPanelClass("fixed top-(--y) left-(--x) min-w-[160px]")),
           h.Style({ "--x": `${x}px`, "--y": `${y}px` }),
         ],
         [
