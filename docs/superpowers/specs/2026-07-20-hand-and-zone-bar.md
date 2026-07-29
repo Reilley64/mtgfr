@@ -38,7 +38,7 @@ Render a fixed DOM hand bar at the bottom of the board. It groups tiles in Arena
 ## Implementation Decisions
 
 - The bar is DOM, not canvas, so real buttons, keyboard activation, and drag data attributes stay available.
-- Hand-pick selection chrome is Tailwind-first: the tile root is `group/hand-tile` and carries `data-selected` / `data-selectable`; raise, hit height, and Llanowar / Island rings are `group-hover` / `group-data-*` utilities rather than JS class ternaries.
+- Hand-pick selection chrome is Tailwind-first: the tile root is `group/hand-tile` and carries `data-selected` / `data-selectable`; raise, hit height, and Llanowar / Island rings are `group-hover` / `group-data-*` utilities rather than JS class ternaries. Discard-cost hit targets are named controls: `role="button"`, tab focus, and an aria-label (`<name> (discard)`) — a discard pick is not a playable action, so it never borrows the playable label.
 - `slotInert` is reserved for staged/in-flight cards; it is not a visual dimming signal for unplayable cards.
 - `cardArt(h, opts)` is used for DOM faces and accepts optional `style` for precise tile sizing.
 - Alt-inspect hover metadata is attached to every face-up bar tile, playable or not.

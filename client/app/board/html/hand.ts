@@ -200,6 +200,7 @@ function tile(args: {
   } else if (discardSelectable && objectId != null && !slotInert) {
     hitAttrs.push(h.Role("button"));
     hitAttrs.push(h.Tabindex(0));
+    hitAttrs.push(h.Attribute("aria-label", `${name} (discard)`));
     hitAttrs.push(h.DataAttribute("discard-cost-id", String(objectId)));
     hitAttrs.push(h.OnClick(DiscardChosen({ ids: [objectId] })));
     hitAttrs.push(
