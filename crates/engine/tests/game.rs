@@ -25837,7 +25837,7 @@ static AURA_CAST_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Triggered(Trigger::CastSpell {
             filter: SpellFilter::Aura,
-            caster: CasterScope::You,
+            caster: WatchedPlayer::You,
             nth_each_turn: None,
             from_hand: false,
         }),
@@ -44156,7 +44156,7 @@ static NARROW_REATTACH: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Triggered(Trigger::PermanentEnters {
             filter: PermanentFilter::of(TypeSet::CREATURE),
-            controller: EnterController::Opponent,
+            controller: WatchedPlayer::Opponent,
         }),
         effect: Effect::Control(ControlEffect::AttachSelfToEntering { entering: None }),
         optional: true,
@@ -51035,7 +51035,7 @@ fn dirgur_test() -> CardDef {
         abilities: arc_slice([Ability {
             timing: Timing::Triggered(Trigger::CastSpell {
                 filter: SpellFilter::InstantOrSorcery,
-                caster: CasterScope::You,
+                caster: WatchedPlayer::You,
                 nth_each_turn: None,
                 from_hand: true,
             }),
@@ -51471,7 +51471,7 @@ fn unfiltered_cast_trigger_still_fires_from_any_zone() {
         abilities: arc_slice([Ability {
             timing: Timing::Triggered(Trigger::CastSpell {
                 filter: SpellFilter::InstantOrSorcery,
-                caster: CasterScope::You,
+                caster: WatchedPlayer::You,
                 nth_each_turn: None,
                 from_hand: false,
             }),
@@ -58488,7 +58488,7 @@ static MANAFORM_HELLKITE_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Triggered(Trigger::CastSpell {
             filter: SpellFilter::NoncreatureSpells,
-            caster: CasterScope::You,
+            caster: WatchedPlayer::You,
             nth_each_turn: None,
             from_hand: false,
         }),
@@ -67005,7 +67005,7 @@ static WATCHES_ENCHANTMENTS_ENTER: LazyLock<CardDef> = LazyLock::new(|| CardDef 
     abilities: arc_slice([Ability {
         timing: Timing::Triggered(Trigger::PermanentEnters {
             filter: PermanentFilter::of(TypeSet::ENCHANTMENT),
-            controller: EnterController::You,
+            controller: WatchedPlayer::You,
         }),
         effect: Effect::Token(TokenEffect::Create {
             token: CardDef {
@@ -67175,7 +67175,7 @@ static WATCHES_OPPONENT_LANDFALL: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
         timing: Timing::Triggered(Trigger::PermanentEnters {
             filter: PermanentFilter::of(TypeSet::LAND),
-            controller: EnterController::Opponent,
+            controller: WatchedPlayer::Opponent,
         }),
         effect: Effect::Draw(DrawEffect::Cards {
             who: PlayerSet::You,
@@ -67642,7 +67642,7 @@ fn forum_filibuster_mints_the_token_with_nothing_to_return() {
 #[test]
 fn landfall_fires_only_for_an_opponents_land_not_your_own() {
     // Archaeomancer's Map's shape: "whenever a land an opponent controls enters." A land
-    // entering under the watcher's own controller doesn't fire (`EnterController::Opponent`
+    // entering under the watcher's own controller doesn't fire (`WatchedPlayer::Opponent`
     // requires a different controller); a land entering under an opponent does.
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), WATCHES_OPPONENT_LANDFALL.clone());
@@ -83849,7 +83849,7 @@ const ETB_DRAW: Ability = Ability {
 const CAST_WATCH_DRAW: Ability = Ability {
     timing: Timing::Triggered(Trigger::CastSpell {
         filter: SpellFilter::AllSpells,
-        caster: CasterScope::You,
+        caster: WatchedPlayer::You,
         nth_each_turn: None,
         from_hand: false,
     }),

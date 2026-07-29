@@ -1348,11 +1348,11 @@ impl<'de> Deserialize<'de> for SacrificeCost {
 /// [`AnyPlayerSacrifices`](TriggerTag::AnyPlayerSacrifices)) carry a [`PermanentFilter`] on the
 /// real `Trigger`, and a third ([`DealsCombatDamageToPlayer`](TriggerTag::DealsCombatDamageToPlayer))
 /// carries a [`CombatDamageScope`], a fourth ([`CastSpell`](TriggerTag::CastSpell)) carries a
-/// [`SpellFilter`]/[`CasterScope`]/`nth_each_turn`, a fifth ([`PlayerDraws`](TriggerTag::PlayerDraws))
-/// carries a [`CasterScope`]/`nth_each_turn` (the draw-side twin of `CastSpell`, no filter), and a
+/// [`SpellFilter`]/[`WatchedPlayer`]/`nth_each_turn`, a fifth ([`PlayerDraws`](TriggerTag::PlayerDraws))
+/// carries a [`WatchedPlayer`]/`nth_each_turn` (the draw-side twin of `CastSpell`, no filter), and a
 /// sixth and seventh ([`PermanentEnters`](TriggerTag::PermanentEnters)/
 /// [`PermanentEntersIncludingThis`](TriggerTag::PermanentEntersIncludingThis)) carry a
-/// [`PermanentFilter`]/[`EnterController`], none of which can come from a bare `timing = "…"`
+/// [`PermanentFilter`]/[`WatchedPlayer`], none of which can come from a bare `timing = "…"`
 /// string —
 /// [`Ability::deserialize`] pairs the tag with sibling fields (`filter`, `who`,
 /// `spell_filter`/`caster`/`drawer`/`nth_each_turn`, `controller`) to build those by hand. An

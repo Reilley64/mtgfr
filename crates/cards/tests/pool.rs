@@ -1330,7 +1330,7 @@ fn the_pool_loads_with_expected_card_shapes() {
                 types: TypeSet::ENCHANTMENT,
                 ..
             },
-            controller: EnterController::You,
+            controller: WatchedPlayer::You,
         })
     ));
     let Effect::Sequence { steps } = &killian.abilities[0].effect else {
@@ -2854,7 +2854,7 @@ fn unlimited_ankh_of_mishra_bills_the_lands_controller() {
                     types: TypeSet::LAND,
                     ..
                 },
-                controller: EnterController::AnyPlayer,
+                controller: WatchedPlayer::AnyPlayer,
             })
         ),
         "whenever a land — any player's — enters"
@@ -4050,7 +4050,7 @@ fn unlimited_triggers_fire_off_the_event_their_oracle_names() {
         enchantress.abilities[0].timing,
         Timing::Triggered(Trigger::CastSpell {
             filter: SpellFilter::Enchantment,
-            caster: CasterScope::You,
+            caster: WatchedPlayer::You,
             nth_each_turn: None,
             from_hand: false,
         })
