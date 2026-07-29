@@ -1,7 +1,7 @@
 // Prompt card face: art (or a name plate when no print resolves) at the Magic card aspect.
 // One renderer for the card-pick grids in prompts and the mulligan opening hand.
 
-import { type html as createHtml, type Html } from "foldkit/html";
+import type { html as createHtml, Html } from "foldkit/html";
 import { cardArt } from "~/ui/card-art";
 
 type HtmlFactory<Msg> = ReturnType<typeof createHtml<Msg>>;
@@ -12,15 +12,18 @@ export type PromptCardFaceSize = "sm" | "md" | "fluid";
 const FACE: Record<PromptCardFaceSize, { art: string; plate: string }> = {
   sm: {
     art: "block aspect-[150/209] w-[120px] rounded-[6px] bg-morph-slate",
-    plate: "flex aspect-[150/209] w-[120px] items-center justify-center rounded-[6px] bg-morph-slate px-2 text-caption text-snow",
+    plate:
+      "flex aspect-[150/209] w-[120px] items-center justify-center rounded-[6px] bg-morph-slate px-2 text-caption text-snow",
   },
   md: {
     art: "block aspect-[150/209] w-[150px] rounded-[9px] bg-morph-slate",
-    plate: "flex aspect-[150/209] w-[150px] items-center justify-center rounded-[9px] bg-morph-slate px-2 text-body text-snow",
+    plate:
+      "flex aspect-[150/209] w-[150px] items-center justify-center rounded-[9px] bg-morph-slate px-2 text-body text-snow",
   },
   fluid: {
     art: "block aspect-[150/209] w-[min(22vw,160px)] rounded-[9px] bg-morph-slate shadow-hand",
-    plate: "flex aspect-[150/209] w-[min(22vw,160px)] items-center justify-center rounded-[9px] bg-morph-slate px-2 text-center text-caption text-snow",
+    plate:
+      "flex aspect-[150/209] w-[min(22vw,160px)] items-center justify-center rounded-[9px] bg-morph-slate px-2 text-center text-caption text-snow",
   },
 };
 
