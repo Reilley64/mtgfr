@@ -1453,7 +1453,7 @@ impl Game {
 
     /// Queue a self-referential trigger: `source` is both the event's subject and the
     /// ability's controller (via ownership). Only used for `Trigger::Etb` (see its two call
-    /// sites): the entering permanent's own `Amount::X`/`Amount::HalfX` reads (The Goose
+    /// sites): the entering permanent's own `Amount::X` reads (The Goose
     /// Mother's "create half X Food tokens", Fractal Harness's "put X +1/+1 counters on
     /// [the token it creates]") resolve against [`Permanent::entered_with_x`], its locked-in
     /// cast `{X}` (CR 601.2b/107.3i) — the same value [`Game::ability_source_x`] returns for a
@@ -3549,7 +3549,7 @@ impl Game {
     /// [`Event::NextCastTriggerConsumed`] before its `TriggerGroup` is queued, CR 603.7's "next".
     /// A sibling of [`Self::fire_delayed_triggers`] (delayed-until-a-*step*) but event-armed
     /// rather than step-armed, hence its own drain rather than overloading `delayed_triggers.
-    /// scheduled`. `then`'s `Amount::X`/`Amount::HalfXRoundedDown` are filled from the triggering
+    /// scheduled`. `then`'s `Amount::X` reads are filled from the triggering
     /// cast's own chosen `{X}` via [`TriggerContext::cast_x`], same CR 603.4 last-known-
     /// information shape [`Self::queue_cast_spell_triggers`] already uses.
     pub(crate) fn fire_next_cast_triggers(&mut self, events: &mut Vec<Event>) {

@@ -543,9 +543,6 @@
         {
           "enum": [
             "x",
-            "half_x",
-            "half_x_rounded_down",
-            "twice_x",
             "per_creature_you_control",
             "per_creature_on_battlefield",
             "source_power",

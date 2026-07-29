@@ -1156,9 +1156,6 @@ fn amount_token(amount: Amount) -> &'static str {
     match amount {
         Amount::Fixed(_) => "fixed",
         Amount::X => "x",
-        Amount::HalfX => "half_x",
-        Amount::HalfXRoundedDown => "half_x_rounded_down",
-        Amount::TwiceX => "twice_x",
         Amount::PerCreatureYouControl => "per_creature_you_control",
         Amount::PerCreatureOnBattlefield => "per_creature_on_battlefield",
         Amount::PerPermanentMatching { .. } => "per_permanent_matching",

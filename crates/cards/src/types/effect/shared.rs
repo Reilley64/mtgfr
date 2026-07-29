@@ -13,17 +13,12 @@ use crate::de;
 pub enum Amount {
     /// A fixed quantity written on the card.
     Fixed(i32),
-    /// The value of the casting spell's `{X}`.
+    /// The value of the casting spell's `{X}`. Composes like any other amount: The Goose Mother's
+    /// "half X, rounded up" is `X ÷ 2` rounding up, Pest Infestation's "twice X" is `X × 2`, and
+    /// Hydroid Krasis's "half X … rounded down" is `X ÷ 2` rounding down. On a
+    /// [`Trigger::YouCastThis`] ability's effect it is filled at placement from the cast's chosen
+    /// `{X}` (CR 603.4 — see `fill_cast_x`), inside a composite as readily as on its own.
     X,
-    /// Half the casting spell's `{X}`, rounded up (CR: "half X, rounded up" default).
-    HalfX,
-    /// Half the casting spell's `{X}`, rounded down — the explicit override some cards print
-    /// instead of the CR round-up default (Hydroid Krasis's "half X … rounded down"). Only
-    /// meaningful on a [`Trigger::YouCastThis`] ability's effect, filled at placement from the
-    /// cast's chosen `{X}` — see `fill_cast_x`.
-    HalfXRoundedDown,
-    /// Twice the casting spell's `{X}`.
-    TwiceX,
     /// The number of creatures the effect's controller controls (board-derived).
     PerCreatureYouControl,
     /// The number of creatures on the battlefield, all controllers (Chain Reaction).
@@ -383,9 +378,9 @@ pub enum Amount {
     /// `CardsInYourHand − 4`, and Rionya's "one plus the number of instant and sorcery spells
     /// you've cast this turn" is `1 + InstantsAndSorceriesCastThisTurn`. Nests freely (both sides
     /// are full amounts). Both sides are `&'static` (leaked, like other nested amounts) to keep
-    /// [`Amount`] a fixed-size, non-recursive `Copy` type. The two X-scoped halves above stay
-    /// separate: they are rewritten to `Fixed` at trigger placement by `fill_cast_x`, which reads
-    /// the variant, not the amount inside it.
+    /// [`Amount`] a fixed-size, non-recursive `Copy` type. The trigger-placement fillers see
+    /// through a combine (`map_effect_amounts` recurses into both sides), so a placeholder like
+    /// [`Amount::X`] works nested — The Goose Mother's "half X" is `X ÷ 2`.
     Combine {
         left: &'static Amount,
         op: ArithOp,
@@ -2250,9 +2245,10 @@ pub fn contextualize_effect(effect: Effect, ctx: TriggerContext) -> Effect {
         Some(spent) => fill_cast_mana_spent(effect, spent),
         None => effect,
     };
-    // CR 603.4: a `YouCastThis` self-cast trigger's `Amount::X`/`Amount::HalfXRoundedDown` reads
-    // resolve against the triggering spell's chosen `{X}`, locked in when the trigger goes on the
-    // stack — same last-known-information shape as `cast_mana_value` above.
+    // CR 603.4: a `YouCastThis` self-cast trigger's `Amount::X` reads — bare, or nested inside a
+    // combine ("half X", "twice X") — resolve against the triggering spell's chosen `{X}`, locked
+    // in when the trigger goes on the stack, same last-known-information shape as
+    // `cast_mana_value` above.
     let effect = match ctx.cast_x {
         Some(x) => fill_cast_x(effect, x),
         None => effect,
@@ -3101,11 +3097,56 @@ fn fill_active_player_payoff(effect: Effect, active_player: PlayerId) -> Effect 
     }
 }
 
-/// Rewrite every `Amount` field the trigger-context walkers touch through `f`, recursing into a
-/// [`Effect::Sequence`] so a multi-step ability shares one context snapshot across every step. The
-/// arm set is the union of what the pool's context-filled effects need (flag-don't-force: add an
-/// arm here when a real card first needs its `Amount` field context-filled).
+/// Rewrite every `Amount` field the trigger-context walkers touch through `f`, *including* the
+/// amounts nested inside a composite one — a placeholder is just as much a placeholder inside a
+/// [`Amount::Combine`] or an [`Amount::IfCondition`] arm ("twice X", "half X rounded down"), and a
+/// filler that only saw the outer node would leave it reading zero at resolution.
 fn map_effect_amounts(effect: Effect, f: &impl Fn(Amount) -> Amount) -> Effect {
+    map_effect_amount_slots(effect, &|amount| map_amount(amount, f))
+}
+
+/// Apply `f` to `amount` and then to everything nested inside the result, so a filler written
+/// against leaf placeholders reaches through composites without knowing they exist.
+fn map_amount(amount: Amount, f: &impl Fn(Amount) -> Amount) -> Amount {
+    match f(amount) {
+        Amount::Combine { left, op, right } => Amount::Combine {
+            left: relink(left, map_amount(*left, f)),
+            op,
+            right: relink(right, map_amount(*right, f)),
+        },
+        Amount::IfCondition {
+            condition,
+            then,
+            else_,
+        } => Amount::IfCondition {
+            condition,
+            then: relink(then, map_amount(*then, f)),
+            else_: relink(else_, map_amount(*else_, f)),
+        },
+        other => other,
+    }
+}
+
+/// Keep the original `&'static` when the rewrite changed nothing, so the overwhelmingly common
+/// case — a filler walking an effect whose composite amounts hold no placeholder of its kind —
+/// allocates nothing at all.
+///
+/// ponytail: a rewrite that *does* land leaks one node, at trigger placement (a few bytes per
+///   Hydroid Krasis cast, never per resolution). Give [`Amount`]'s nested sides `Arc` if a
+///   long-lived process ever notices — that costs `Amount` its `Copy`.
+fn relink(original: &'static Amount, rewritten: Amount) -> &'static Amount {
+    match rewritten == *original {
+        true => original,
+        false => Box::leak(Box::new(rewritten)),
+    }
+}
+
+/// The slot walker behind [`map_effect_amounts`]: hands `f` each effect's own `Amount` fields and
+/// recurses into a [`Effect::Sequence`] so a multi-step ability shares one context snapshot across
+/// every step. The arm set is the union of what the pool's context-filled effects need
+/// (flag-don't-force: add an arm here when a real card first needs its `Amount` field
+/// context-filled).
+fn map_effect_amount_slots(effect: Effect, f: &impl Fn(Amount) -> Amount) -> Effect {
     match effect {
         Effect::Life(LifeEffect::Gain { amount }) => Effect::Life(LifeEffect::Gain { amount: f(amount) }),
         Effect::Draw(DrawEffect::Cards { count }) => Effect::Draw(DrawEffect::Cards { count: f(count) }),
@@ -3178,7 +3219,10 @@ fn map_effect_amounts(effect: Effect, f: &impl Fn(Amount) -> Amount) -> Effect {
             damaged,
         }),
         Effect::Sequence { steps } => {
-            let filled: Vec<Effect> = steps.iter().map(|s| map_effect_amounts(s.clone(), f)).collect();
+            let filled: Vec<Effect> = steps
+                .iter()
+                .map(|s| map_effect_amount_slots(s.clone(), f))
+                .collect();
             Effect::Sequence {
                 steps: Arc::from(filled),
             }
@@ -3322,17 +3366,16 @@ fn fill_cast_mana_spent(effect: Effect, spent: u32) -> Effect {
     })
 }
 
-/// Rewrite a [`Trigger::YouCastThis`] self-cast trigger's `Amount::X`/`Amount::HalfXRoundedDown`
-/// placeholders to the triggering spell's chosen `{X}` (Hydroid Krasis's "you gain half X life
-/// and draw half X cards, rounded down") — a triggered ability's own resolution otherwise reads
-/// `x = 0` (only a spell carries an `{X}` choice), so this is the only way the value reaches the
-/// effect. Recurses into a [`Effect::Sequence`] so a multi-step ability shares the one `{X}`
-/// across every step, mirroring [`fill_cast_mana_value`] above.
+/// Rewrite a [`Trigger::YouCastThis`] self-cast trigger's `Amount::X` placeholders to the
+/// triggering spell's chosen `{X}` (Hydroid Krasis's "you gain half X life and draw half X cards,
+/// rounded down") — a triggered ability's own resolution otherwise reads `x = 0` (only a spell
+/// carries an `{X}` choice), so this is the only way the value reaches the effect. Recurses into a
+/// [`Effect::Sequence`] so a multi-step ability shares the one `{X}` across every step, mirroring
+/// [`fill_cast_mana_value`] above, and into a composite amount so the halves and doubles the pool
+/// prints (`X ÷ 2`, `X × 2`) are filled just as readily as a bare `X`.
 fn fill_cast_x(effect: Effect, x: u32) -> Effect {
     map_effect_amounts(effect, &|amount| match amount {
         Amount::X => Amount::Fixed(x as i32),
-        Amount::HalfX => Amount::Fixed(x.div_ceil(2) as i32),
-        Amount::HalfXRoundedDown => Amount::Fixed((x / 2) as i32),
         other => other,
     })
 }

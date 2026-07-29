@@ -53325,7 +53325,7 @@ fn context_amount_fill_shared_walker_preserves_dying_and_cast_x() {
         "drew one card per attached Aura"
     );
 
-    // Cast X-spell: Hydroid Krasis fills `X`/`HalfXRoundedDown` from the spell's chosen X.
+    // Cast X-spell: Hydroid Krasis fills its `X` reads from the spell's chosen X.
     g.stack_library(PlayerId(0), &[card("Forest"), card("Forest")]);
     let life_before = g.life(PlayerId(0));
     let hydroid = g.spawn_in_hand(PlayerId(0), card("Hydroid Krasis"));
@@ -61818,7 +61818,11 @@ static HALF_X_TREASURES: LazyLock<CardDef> = LazyLock::new(|| {
         SpellSpeed::Sorcery,
         X_COST,
         Effect::Token(TokenEffect::CreateTreasure {
-            count: Amount::HalfX,
+            count: Amount::Combine {
+                left: &Amount::X,
+                op: ArithOp::DivideRoundingUp,
+                right: &Amount::Fixed(2),
+            },
             target_player: false,
             tapped: false,
         })
@@ -61830,7 +61834,11 @@ static TWICE_X_TREASURES: LazyLock<CardDef> = LazyLock::new(|| {
         SpellSpeed::Sorcery,
         X_COST,
         Effect::Token(TokenEffect::CreateTreasure {
-            count: Amount::TwiceX,
+            count: Amount::Combine {
+                left: &Amount::X,
+                op: ArithOp::Multiply,
+                right: &Amount::Fixed(2),
+            },
             target_player: false,
             tapped: false,
         })
@@ -71819,7 +71827,7 @@ fn a_single_target_exile_card_is_unaffected_by_the_new_count_field() {
 /// Pest Infestation (soc): "Destroy up to X target artifacts and/or enchantments. Create twice X
 /// 1/1 black and green Pest creature tokens with 'When this token dies, you gain 1 life.'" The
 /// destroy half now rides the same `x_scaled` `DestroyTarget::count`; the token half was already
-/// expressible (`Amount::TwiceX`, landed by #68's cost slice) once the destroy half unblocked
+/// expressible (a doubled `Amount::X`, landed by #68's cost slice) once the destroy half unblocked
 /// scripting the card at all.
 #[test]
 fn pest_infestation_destroys_up_to_x_targets_and_creates_twice_x_pests() {
@@ -72378,8 +72386,8 @@ fn hydroid_krasis_cast_trigger_gains_and_draws_half_x() {
     let hydroid = find_battlefield_permanent(&g, "Hydroid Krasis");
     assert_eq!(g.plus_counters(hydroid), 6, "entered with X +1/+1 counters");
 
-    // X = 5 rounds down to 2, not up — distinguishes `Amount::HalfXRoundedDown` from the
-    // round-up `Amount::HalfX` default.
+    // X = 5 rounds down to 2, not up — distinguishes this card's `divide_rounding_down` from The
+    // Goose Mother's round-up halving of the same `Amount::X`.
     g.stack_library(PlayerId(0), &[card("Forest"), card("Forest")]);
     let life_before = g.life(PlayerId(0));
     let hydroid2 = g.spawn_in_hand(PlayerId(0), card("Hydroid Krasis"));

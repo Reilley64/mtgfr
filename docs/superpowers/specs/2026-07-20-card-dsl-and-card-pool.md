@@ -169,7 +169,7 @@ Two variants compose rather than name a count of their own, so every "twice", "h
 - **`Combine { left, op, right }`** (`{ left = 2, op = "multiply", right = "per_creature_on_battlefield" }`) — the DSL's only arithmetic. `ArithOp` is `add`, `subtract` (floored at zero — CR 120.8/CR 107.1b, so Black Vise's "cards in their hand minus 4" is no damage below five cards), `multiply`, `divide_rounding_down`, `divide_rounding_up` (division names its rounding rather than carrying a flag; Aspect of Wolf prints both).
 - **`IfCondition { condition, then, else_ }`** (`{ condition = { type = "spell_was_kicked" }, then = 5, else = 1 }`) — the DSL's only branch. Both arms default to `Fixed(0)`. Resolved through `Game::ability_condition_holds` against the effect's own source, so a source-object condition (`spell_was_kicked` — CR 702.33d, `spell_cast_during_main_phase` — CR 505.1a/b, tapped, counters) reads the right object.
 
-Both sides of each are full `Amount`s, so they nest freely: `(X × 3) − 2` is one `Combine` inside another.
+Both sides of each are full `Amount`s, so they nest freely: `(X × 3) − 2` is one `Combine` inside another. `X` is an ordinary operand — The Goose Mother's "half X, rounded up" is `X ÷ 2` rounding up, Pest Infestation's "twice X" is `X × 2`. The trigger-placement fillers (`fill_cast_x`, `fill_cast_mana_value`, `fill_combat_damage`, …) recurse into both sides and both arms, so a placeholder locked in at placement (CR 603.10a last-known information) is filled just as readily nested as bare.
 
 ### Token profiles
 

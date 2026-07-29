@@ -803,9 +803,9 @@ pub struct TriggerContext {
     /// captured.
     pub cast_mana_spent: Option<u32>,
     /// The casting spell's chosen `{X}` (CR 603.4), for a [`Trigger::YouCastThis`] self-cast
-    /// ability's `Amount::X`/`Amount::HalfXRoundedDown` reads (Hydroid Krasis's "you gain half X
+    /// ability's `Amount::X` reads (Hydroid Krasis's "you gain half X
     /// life and draw half X cards, rounded down"), a [`Trigger::CastSpell`] watcher's own `X`
-    /// read (Nev's "put X +1/+1 counters"), or a self [`Trigger::Etb`]'s `Amount::X`/`HalfX`
+    /// read (Nev's "put X +1/+1 counters"), or a self [`Trigger::Etb`]'s `Amount::X`
     /// read off the entering permanent's own already-placed counters (The Goose Mother's
     /// "create half X Food tokens" — see [`Game::queue_self_trigger`]). `None` for every other
     /// trigger. Locked in at placement — the ability is a separate stack object from the spell
