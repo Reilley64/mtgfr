@@ -82,7 +82,10 @@ or private game state.
 **Self-hosted LGTM** in namespace `observability` (Terraform Helm via `iac/observability.tf`):
 - **Grafana Alloy** — sole ingest path for all telemetry.
 - **Loki** — structured log store (7d retention).
-- **Tempo** — distributed trace store (7d retention).
+- **Tempo** — distributed trace store (7d retention), with the metrics-generator enabled running
+  the `local-blocks` processor so TraceQL metrics (`{...} | rate()`) work in the RED dashboard and
+  Grafana Drilldown > Traces. Generator WAL and RF1 blocks live on the Tempo PVC under
+  `/var/tempo/generator/`.
 - **Prometheus** — metrics (15d retention).
 - **Grafana** — dashboards and trace/log correlation; operator-only via `kubectl port-forward`.
 
@@ -237,6 +240,15 @@ still drives `tracing` / fmt output.
 - **RED dashboard queries traces directly:** Terraform provisions the dashboard through Grafana
   Helm values; panels use Tempo datasource UID `tempo` and TraceQL metrics functions because
   Prometheus does not receive generated spanmetrics in this stack.
+- **TraceQL metrics need the metrics-generator.** The `grafana/tempo` chart ships
+  `tempo.metricsGenerator.enabled: false`, which renders a `tempo.yaml` with no
+  `metrics_generator.storage.path`. Tempo then logs "metrics-generator is not configured", swaps the
+  generator for an idle service, and never joins the generator ring — so every TraceQL metrics query
+  500s with `error finding generators: empty ring`, because the querier serves the recent window
+  (`query_frontend.metrics.query_backend_after`, 15m) from generators. `iac/observability.tf` enables
+  it, lists `local-blocks` in `overrides.defaults.metrics_generator.processors` (a processor a tenant
+  does not ask for is not run), sets `filter_server_spans: false` so client spans count, and
+  `flush_to_storage: true` so queries reach past the live window.
 - **Semantic-convention pin:** the living contract pins OpenTelemetry Semantic Conventions 1.37.0.
   New telemetry families require a design pass before they join the shared dictionary.
 
