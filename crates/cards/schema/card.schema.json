@@ -9379,9 +9379,11 @@
               "type": "object"
             },
             {
+              "description": "\"Target creature you control fights target creature you don't control\" (CR 701.12). Two targets, both announced in printed order (CR 601.2c): the ally is this effect's own target ([`Effect::target`]), the enemy its second clause ([`Effect::second_target`]).",
               "properties": {
                 "ally_is_shared_target": {
                   "default": false,
+                  "description": "Primal Might: \"target creature you control gets +X/+X … then fights up to one target creature you don't control\" — the ally is a *preceding* `Sequence` step's target (the pump), so this step takes none of its own and its enemy is optional.",
                   "type": "boolean"
                 },
                 "mode": {

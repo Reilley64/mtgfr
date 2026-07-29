@@ -33,9 +33,17 @@ pub enum MiscEffect {
         strips_mana_on_decline: bool,
     },
 
+    /// "Target creature you control fights target creature you don't control" (CR 701.12).
+    /// Two targets, both announced in printed order (CR 601.2c): the ally is this effect's own
+    /// target ([`Effect::target`]), the enemy its second clause ([`Effect::second_target`]).
     Fight {
+        /// Only Primal Might's shape fills this: its enemy is an "up to one" *resolution*-time
+        /// choice, stashed here alongside the already-known ally when that choice is raised.
         #[cfg_attr(feature = "card-dsl", serde(skip))]
         enemy: Option<Target>,
+        /// Primal Might: "target creature you control gets +X/+X … then fights up to one target
+        /// creature you don't control" — the ally is a *preceding* `Sequence` step's target (the
+        /// pump), so this step takes none of its own and its enemy is optional.
         #[cfg_attr(feature = "card-dsl", serde(default))]
         ally_is_shared_target: bool,
         // Infectious Bite: "Target creature you control deals damage equal to its power to

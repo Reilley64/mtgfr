@@ -6,51 +6,42 @@
 use crate::*;
 
 impl Game {
-    /// Pause on Fight (both shapes) / MoveCounters for the matching effect.
-    pub(crate) fn run_fight_pause(&mut self, effect: Effect, ctx: ResolveCtx) {
+    /// Pause on Fight (Primal Might's shape) / MoveCounters for the matching effect — or, for a
+    /// plain two-target fight, apply it outright.
+    pub(crate) fn run_fight_pause(
+        &mut self,
+        effect: Effect,
+        ctx: ResolveCtx,
+        events: &mut Vec<Event>,
+    ) {
         let ResolveCtx {
             controller,
             source,
             target,
+            targets_second,
             x,
             ..
         } = ctx;
         match effect {
-            // Fight (CR 701.12): `target` is already the opponent's creature (chosen at cast);
-            // pause on a ChooseTarget for the controller's own creature (mirrors
-            // `place_targeted_ability`). No legal creature you control: the fight fizzles
-            // (CR 601.2c — no damage, no pause) rather than picking an illegal target.
+            // Fight (CR 701.12): both creatures were chosen at announcement in printed order
+            // (CR 601.2c) — `target` is the ally (clause 0), `targets_second` the enemy (clause 1,
+            // `Effect::second_target`). Nothing left to choose, so apply the damage here.
             Effect::Misc(MiscEffect::Fight {
                 ally_is_shared_target: false,
                 one_way,
                 ..
             }) => {
-                let legal = self.legal_targets_for(
-                    TargetSpec::CreatureYouControl,
-                    source,
-                    controller,
-                    [false; Color::COUNT],
-                    x,
-                );
-                if legal.is_empty() {
+                let ally = expect_object_target(target, "a fight's creature you control");
+                // CR 608.2b: the caller only re-checks the step's own (clause 0) target, so the
+                // enemy is checked here — gone from the battlefield, or never chosen at all
+                // because no opponent controlled a creature, and the damage half does nothing.
+                let Some(enemy) = targets_second.primary().and_then(|t| t.object_id()) else {
+                    return;
+                };
+                if !self.is_creature_on_battlefield(enemy) {
                     return;
                 }
-                pending::raise(
-                    self,
-                    pending::ChoiceRequest::ChooseTarget {
-                        player: controller,
-                        source,
-                        effect: Effect::Misc(MiscEffect::Fight {
-                            enemy: target,
-                            ally_is_shared_target: false,
-                            one_way,
-                        }),
-                        legal,
-                        count: TargetCount::default(),
-                        x: 0,
-                        activated: false,
-                    },
-                );
+                self.fight(ally, enemy, one_way, events);
             }
             // Primal Might's mirror shape (CR 701.12): `target` is already the ally (the pumped
             // creature you control, chosen at cast by a preceding Sequence step); pause on an

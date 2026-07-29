@@ -203,8 +203,9 @@ impl Game {
             );
             return Ok(events);
         };
-        // A fight's second creature (see `Effect::Misc(MiscEffect::Fight)`) is chosen mid-resolution, not placed
-        // as a new ability — apply the mutual damage directly instead of going back on the stack.
+        // Primal Might's "up to one" enemy (see `Effect::Misc(MiscEffect::Fight)`) is chosen
+        // mid-resolution, not placed as a new ability — apply the mutual damage directly instead
+        // of going back on the stack. `target` is that enemy; the pumped ally rides `enemy`.
         if let Effect::Misc(MiscEffect::Fight { enemy, one_way, .. }) = effect {
             let your_creature = expect_object_target(Some(target), "a fight's chosen creature");
             let enemy_creature =

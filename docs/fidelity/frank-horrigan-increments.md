@@ -140,12 +140,13 @@ the engine already models this for cast costs, see `crates/engine/src/types/mana
 ### 7. `one-way-damage-equal-to-power` — 1 card, S — LANDED 2026-07-26
 _Landed 2026-07-26: `MiscEffect::Fight` grew a `one_way: bool` (TOML `one_way`, default `false`)
 alongside `ally_is_shared_target`; `Game::fight` guard-returns before the enemy→ally damage event
-when set. Correction to this section's premise: the cast/resolution target split isn't "both
-targets chosen up front" — Infectious Bite reuses the same cast-time-enemy /
-resolution-time-pause-for-ally split every other `fight`-shaped effect here already uses
-(Decisive Denial, Primal Might), just with the back-half damage event skipped; this is not a
-fight at all (CR 701.12/701.12c never apply — the oracle text never says "fights"), so nothing
-that cares about fighting is told one happened. infectious_bite authored, fully faithful — its
+when set. Both targets are chosen up front in printed order (CR 601.2c) through the post-cast
+clause chain: the creature you control is the effect's own `Effect::target` (clause 0), the
+creature you don't control its `Effect::second_target` (clause 1), and neither is a cast-time
+target. This is not a fight at all (CR 701.12/701.12c never apply — the oracle text never says
+"fights"), so nothing that cares about fighting is told one happened. Only Primal Might's shape
+(`ally_is_shared_target`) still pauses mid-resolution, because its enemy is an "up to one"
+*resolution*-time choice. infectious_bite authored, fully faithful — its
 poison rider (`put_counters_on_player`, `each_opponent` scope) landed in #20 slice 1 as noted.
 Still blocked: nothing._
 
