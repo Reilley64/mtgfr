@@ -5,10 +5,10 @@ use serde::Deserialize;
 use crate::de::{TimingName, arc_strs, one_u8};
 use crate::toml_surface::{CostToml, KindToml};
 use crate::{
-    Ability, AlternativeCost, Amount, BecomesTargetedScope, CardDef, CastXMax, CasterScope, Color,
+    Ability, AlternativeCost, Amount, BecomesTargetedScope, CardDef, CastXMax, Color,
     CombatDamageScope, Condition, Cost, CounterKind, CumulativeUpkeepCost, Effect, EnterAsCopy,
-    EnterController, EscapeCost, HandActivatedAbility, Keyword, PermanentFilter, SacrificeCost,
-    SpellFilter, SpendToCastPredicate, Suspend, intern_card_def,
+    EscapeCost, HandActivatedAbility, Keyword, PermanentFilter, SacrificeCost, SpellFilter,
+    SpendToCastPredicate, Suspend, WatchedPlayer, intern_card_def,
 };
 
 /// An `[[abilities]]` table as spelled in TOML — flat: the `timing` string plus every cost
@@ -134,7 +134,7 @@ pub struct AbilityToml {
     /// "a land an opponent controls"), or `any_player`. Ignored for every other
     /// trigger/timing.
     #[serde(default)]
-    pub(crate) controller: EnterController,
+    pub(crate) controller: WatchedPlayer,
     /// Who a `deals_combat_damage_to_player` trigger watches (Leitmotif Composer's
     /// `this`, Ohran Frostfang's `your_creatures`, Curiosity Crafter's `your_tokens`,
     /// Contaminant Grafter's batch-once `your_creatures_batch`). Ignored for every other
@@ -155,11 +155,11 @@ pub struct AbilityToml {
     /// Whose cast a `cast_spell` trigger watches — `you` (default), `opponent`
     /// (Monologue Tax, Mangara), or `any_player`. Ignored for every other trigger/timing.
     #[serde(default)]
-    pub(crate) caster: CasterScope,
+    pub(crate) caster: WatchedPlayer,
     /// Whose draw a `player_draws` trigger watches — `you` (default), `opponent`
     /// (Faerie Mastermind), or `any_player`. Ignored for every other trigger/timing.
     #[serde(default)]
-    pub(crate) drawer: CasterScope,
+    pub(crate) drawer: WatchedPlayer,
     /// Restricts a `cast_spell`/`player_draws` trigger to exactly the watched player's
     /// Nth spell/draw that turn (Monologue Tax/Mangara's "their second spell each turn",
     /// Faerie Mastermind's "their second card each turn" — `2`). `None` (the default,

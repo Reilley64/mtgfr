@@ -32,6 +32,6 @@ timing = "begin_combat"
 type = "token"
 mode = "create_copy"
 target = { permanent = { types = "creature", controller = "you", other = true } }
-count = "one_plus_instants_and_sorceries_cast_this_turn"
+count = { left = 1, op = "add", right = "instants_and_sorceries_cast_this_turn" }
 haste = true
 sacrifice_at_next_end_step = true

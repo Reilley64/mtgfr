@@ -28,4 +28,4 @@ type = "choice"
 mode = "discard"
 count = 1
 random = true
-damaged_player = true
+who = "damaged_player"

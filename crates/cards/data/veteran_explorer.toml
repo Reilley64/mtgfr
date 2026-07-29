@@ -27,5 +27,5 @@ type = "dig"
 mode = "search_library"
 filter = "basic_land"
 to_zone = "battlefield"
-searcher = "all_players"
+who = "each_player"
 count = 2

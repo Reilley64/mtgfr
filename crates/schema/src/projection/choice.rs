@@ -1000,20 +1000,24 @@ mod coverage_tests {
     use crate::dto::PendingChoiceView;
     use crate::test_support::def;
     use engine::{
-        Amount, ArrangeRest, DrawEffect, Effect, Game, LifeEffect, PendingChoice, PlayerId, Target,
+        Amount, ArrangeRest, DrawEffect, Effect, Game, LifeEffect, PendingChoice, PlayerId,
+        PlayerSet, Target,
     };
 
     const CHOOSE_ONE_MODES: &[Effect] = &[
         Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::You,
             count: Amount::Fixed(1),
         }),
         Effect::Life(LifeEffect::Gain {
+            who: PlayerSet::You,
             amount: Amount::Fixed(1),
         }),
     ];
 
     fn draw_effect() -> Effect {
         Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::You,
             count: Amount::Fixed(1),
         })
     }
@@ -1034,6 +1038,7 @@ mod coverage_tests {
                     source,
                     effects: vec![
                         Effect::Life(LifeEffect::Gain {
+                            who: PlayerSet::You,
                             amount: Amount::Fixed(1),
                         }),
                         draw_effect(),

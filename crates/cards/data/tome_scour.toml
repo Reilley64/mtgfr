@@ -20,5 +20,5 @@ timing = "spell"
 [[abilities.effects]]
 type = "mill"
 mode = "mill"
+who = "target_player"
 count = 5
-target = "player"

@@ -26,5 +26,5 @@ timing = "static"
 [[abilities.effects]]
 type = "static"
 mode = "grant_to_attached"
-power = { half = { per_permanent = { subtypes = ["Forest"], controller = "you" } } }
-toughness = { half = { per_permanent = { subtypes = ["Forest"], controller = "you" } }, round_up = true }
+power = { left = { per_permanent = { subtypes = ["Forest"], controller = "you" } }, op = "divide_rounding_down", right = 2 }
+toughness = { left = { per_permanent = { subtypes = ["Forest"], controller = "you" } }, op = "divide_rounding_up", right = 2 }

@@ -21,7 +21,7 @@ timing = "spell"
 [[abilities.effects]]
 type = "choice"
 mode = "each_player_discards"
-scope = "each_opponent"
+who = "each_opponent"
 
 # You draw a card for each card discarded this way.
 [[abilities.effects]]

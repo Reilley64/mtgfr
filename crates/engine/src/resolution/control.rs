@@ -6,6 +6,21 @@
 use crate::*;
 
 impl Game {
+    /// The tap or untap event `object` would actually undergo, or `None` when it is already in that
+    /// state.
+    ///
+    /// CR 701.21a/701.21c: "becomes tapped" and "becomes untapped" name the *change*, so tapping an
+    /// already-tapped permanent does nothing — a second Icy Manipulator aimed at a land Psychic
+    /// Venom watches must not bite again. Every tap and untap this family mints goes through here so
+    /// the arms can't drift apart on that.
+    fn tap_change(&self, object: ObjectId, tapped: bool) -> Option<Event> {
+        match (self.is_tapped(object) == tapped, tapped) {
+            (true, _) => None,
+            (false, true) => Some(Event::Tapped { object }),
+            (false, false) => Some(Event::Untapped { object }),
+        }
+    }
+
     pub(crate) fn mint_control(
         &self,
         effect: ControlEffect,
@@ -52,7 +67,7 @@ impl Game {
             }
             ControlEffect::TapTarget { .. } => {
                 let object = expect_object_target(target, "tap");
-                vec![Event::Tapped { object }]
+                self.tap_change(object, true).into_iter().collect()
             }
             ControlEffect::RegenerateShield { .. } => {
                 let object = expect_object_target(target, "a regeneration shield");
@@ -60,7 +75,7 @@ impl Game {
             }
             ControlEffect::UntapTarget { .. } => {
                 let object = expect_object_target(target, "untap");
-                vec![Event::Untapped { object }]
+                self.tap_change(object, false).into_iter().collect()
             }
             ControlEffect::RemoveFromCombat {
                 release_solely_blocked,
@@ -106,7 +121,7 @@ impl Game {
                 let mut events = Vec::new();
                 // "Untap all creatures you control and all creatures target opponent controls."
                 for &object in yours.iter().chain(theirs.iter()) {
-                    events.push(Event::Untapped { object });
+                    events.extend(self.tap_change(object, false));
                 }
                 // "You and that opponent each gain control of all creatures the other controls until
                 // end of turn."
@@ -151,7 +166,7 @@ impl Game {
                 let mut events = Vec::new();
                 // "Untap all creatures ..."
                 for &object in &creatures {
-                    events.push(Event::Untapped { object });
+                    events.extend(self.tap_change(object, false));
                 }
                 // "... and gain control of them until end of turn."
                 for &object in &creatures {
@@ -227,7 +242,7 @@ impl Game {
                     self.controller_of(id) == controller
                         && self.permanent_matches(&filter, id, controller, Some(source))
                 })
-                .map(|object| Event::Untapped { object })
+                .filter_map(|object| self.tap_change(object, false))
                 .collect(),
 
             // Dread Cacodemon: "tap all other creatures you control" — the tap-side mirror of
@@ -240,14 +255,12 @@ impl Game {
                     self.controller_of(id) == controller
                         && self.permanent_matches(&filter, id, controller, Some(source))
                 })
-                .map(|object| Event::Tapped { object })
+                .filter_map(|object| self.tap_change(object, true))
                 .collect(),
 
             // Mana Short's "tap all lands target player controls": `TapAll` aimed at the chosen
             // seat instead of your own. `you` for the filter is still that player — Power Sink's
             // "lands with mana abilities **they** control" reads from their side of the table.
-            // Already-tapped lands mint nothing; `Event::Tapped` is the untapped→tapped change
-            // (CR 701.21a), and a redundant one would fire a becomes-tapped watch twice.
             ControlEffect::TapAllTargetPlayerControls { filter } => {
                 let Some(Target::Player(player)) = target else {
                     return Vec::new();
@@ -256,10 +269,9 @@ impl Game {
                     .into_iter()
                     .filter(|&id| {
                         self.controller_of(id) == player
-                            && !self.is_tapped(id)
                             && self.permanent_matches(&filter, id, player, Some(source))
                     })
-                    .map(|object| Event::Tapped { object })
+                    .filter_map(|object| self.tap_change(object, true))
                     .collect()
             }
 
@@ -268,7 +280,8 @@ impl Game {
             ControlEffect::TapSource => self
                 .battlefield()
                 .contains(&source)
-                .then_some(Event::Tapped { object: source })
+                .then(|| self.tap_change(source, true))
+                .flatten()
                 .into_iter()
                 .collect(),
 

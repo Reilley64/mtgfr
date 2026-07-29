@@ -35,12 +35,12 @@ pub enum MillEffect {
         free_while_source: bool,
     },
 
+    /// "`who` mills `count` cards" — from Perpetual Timepiece's own-library mill to Tome Scour's
+    /// "target player mills five". Who mills and how many are independent axes ([`PlayerSet`] and
+    /// [`Amount`]), so no variant names a recipient.
     Mill {
-        count: Amount,
-        target: TargetSpec,
-    },
-
-    MillSelf {
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        who: PlayerSet,
         count: Amount,
     },
 }

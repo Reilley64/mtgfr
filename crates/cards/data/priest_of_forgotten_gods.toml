@@ -28,7 +28,8 @@ sacrifice = { creature = { other = true }, count = 2 }
 [[abilities.effects]]
 type = "choice"
 mode = "each_player_sacrifices"
-scope = "targeted_players"
+who = "each_player"
+chosen_by_controller = true
 filter = "creature"
 life_loss = 2
 

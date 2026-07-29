@@ -642,7 +642,7 @@ impl Game {
                 // Feeds Condition::CastInstantOrSorceryThisTurn (Hall of Oracles's activation gate),
                 // Amount::GreatestInstantOrSorceryManaValueCastThisTurn (Rootha, Mastering the
                 // Moment's "X is the greatest mana value among instant and sorcery spells you've
-                // cast this turn"), and Amount::OnePlusInstantsAndSorceriesCastThisTurn (Rionya,
+                // cast this turn"), and Amount::InstantsAndSorceriesCastThisTurn (Rionya,
                 // Fire Dancer's "X is one plus the number of instant and sorcery spells you've
                 // cast this turn").
                 if matches!(&printed.kind, CardKind::Spell { .. }) {
