@@ -5,7 +5,13 @@
 
 import { type Html, html } from "foldkit/html";
 import { priorityPrimaryClass } from "~/priorityContextChrome";
-import { turnYieldRockerClass, turnYieldThumbClass, turnYieldTrackClass } from "~/turnYieldChrome";
+import {
+  turnYieldLabelClass,
+  turnYieldRockerClass,
+  turnYieldThumbClass,
+  turnYieldTrackClass,
+  type YieldTone,
+} from "~/turnYieldChrome";
 import { button } from "~/ui/button";
 import type { VisibleState } from "~/wire/types";
 import { formatMessage } from "../../domain/i18n/message";
@@ -67,6 +73,30 @@ function showTurnYield(state: VisibleState): boolean {
   return state.viewer !== state.active_player;
 }
 
+/** Arena rocker: a `role="switch"` toggle whose label sits collapsed to its left until hover or
+ * keyboard focus opens it. Both turn-yield toggles share this shape — only the armed hue differs. */
+function rocker(opts: { testId: string; tone: YieldTone; checked: boolean; label: string }): Html {
+  return h.button(
+    [
+      h.Type("button"),
+      h.Role("switch"),
+      h.DataAttribute("testid", opts.testId),
+      h.Attribute("aria-checked", opts.checked ? "true" : "false"),
+      h.Attribute("aria-label", opts.label),
+      h.Attribute("title", opts.label),
+      h.OnClick(TurnYieldToggled({ enabled: !opts.checked })),
+      h.Class(turnYieldRockerClass(opts.tone)),
+    ],
+    [
+      h.span([h.Class(turnYieldLabelClass()), h.Attribute("aria-hidden", "true")], [opts.label]),
+      h.span(
+        [h.Class(turnYieldTrackClass(opts.tone))],
+        [h.span([h.Class(turnYieldThumbClass(opts.tone)), h.Attribute("aria-hidden", "true")], ["≫"])],
+      ),
+    ],
+  );
+}
+
 export function priorityBarView(board: BoardModel, state: VisibleState, tableId: string | null): Html | null {
   const presentation = promptPresentation(board, state);
   if (presentation.mode === "modal") {
@@ -123,40 +153,22 @@ export function priorityBarView(board: BoardModel, state: VisibleState, tableId:
       : null;
 
   const endTurnBtn: Html | null = showEndTurn(state, pendingAttackers)
-    ? button(
-        h,
-        {
-          testId: "board-end-turn",
-          onClick: TurnYieldToggled({ enabled: !turnYielded }),
-          variant: turnYielded ? "game-yielded" : "game-quiet",
-          attrs: [
-            h.Attribute("aria-pressed", turnYielded ? "true" : "false"),
-            h.Attribute("title", turnYielded ? "Cancel end turn" : "End turn (Enter)"),
-          ],
-        },
-        [turnYielded ? "Ending turn…" : "End Turn"],
-      )
+    ? rocker({
+        testId: "board-end-turn",
+        tone: "end-turn",
+        checked: turnYielded,
+        // Constant name, like the until-my-turn rocker — armed state is the rocker's job, not the label's.
+        label: "End turn",
+      })
     : null;
 
   const turnYieldBtn: Html | null = showTurnYield(state)
-    ? h.button(
-        [
-          h.Type("button"),
-          h.Role("switch"),
-          h.DataAttribute("testid", "board-turn-yield"),
-          h.Attribute("aria-checked", turnYielded ? "true" : "false"),
-          h.Attribute("aria-label", "Auto-pass until my turn"),
-          h.Attribute("title", "Auto-pass until my turn"),
-          h.OnClick(TurnYieldToggled({ enabled: !turnYielded })),
-          h.Class(turnYieldRockerClass()),
-        ],
-        [
-          h.span(
-            [h.Class(turnYieldTrackClass())],
-            [h.span([h.Class(turnYieldThumbClass()), h.Attribute("aria-hidden", "true")], ["≫"])],
-          ),
-        ],
-      )
+    ? rocker({
+        testId: "board-turn-yield",
+        tone: "yield",
+        checked: turnYielded,
+        label: "Auto-pass until my turn",
+      })
     : null;
 
   const hasStaged =
@@ -171,7 +183,11 @@ export function priorityBarView(board: BoardModel, state: VisibleState, tableId:
     ? button(h, { testId: "board-cancel-target", onClick: CancelActionClicked(), variant: "game-quiet" }, ["Cancel"])
     : null;
 
-  const companions = [endTurnBtn, passBtn, stackYieldBtn, turnYieldBtn, cancelBtn].filter((v): v is Html => v !== null);
+  const companions = [passBtn, stackYieldBtn, cancelBtn].filter((v): v is Html => v !== null);
+  // End Turn / until-my-turn are standing toggles, not per-window actions — they get their own
+  // row under Next and the companions so they never shuffle the action row's silhouette.
+  // Exactly one can show: End Turn is the active seat's, the rocker is everyone else's.
+  const rockers = [endTurnBtn, turnYieldBtn].filter((v): v is Html => v !== null);
 
   return h.div(
     [
@@ -189,6 +205,15 @@ export function priorityBarView(board: BoardModel, state: VisibleState, tableId:
             : null,
         ].filter((v): v is Html => v !== null),
       ),
+      rockers.length > 0
+        ? h.div(
+            [
+              h.DataAttribute("testid", "priority-bar-rockers"),
+              h.Class("flex flex-row-reverse items-center justify-end gap-sm"),
+            ],
+            rockers,
+          )
+        : null,
       board.staged != null
         ? h.div(
             [

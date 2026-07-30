@@ -3380,7 +3380,7 @@ export function updateBoard(
       if (tableId == null) return [model, []];
       const enabled = !(state.turn_yielded ?? false);
       if (me === active && state.stack.length === 0) {
-        // Arming End Turn only — cancelling "Ending turn…" stays available. Match the
+        // Arming End Turn only — cancelling an armed End Turn stays available. Match the
         // priority-bar gate so Enter cannot arm through a forced goad declaration.
         const pendingAttackers = model.combatAttackers.length > 0 && !model.attackersConfirmed;
         if (enabled && !canArmEndTurn(state, pendingAttackers)) {
