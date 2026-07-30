@@ -1,0 +1,26 @@
+# Creatures you control get +1/+1 as long as you control no nonartifact, nonwhite creatures.
+name = "Angelic Voices"
+otags = ["anthem", "power-boost-to-all", "synergy-artifact", "synergy-white", "toughness-boost-to-all"]
+sets = ["bchr", "chr", "leg", "me4"]
+id = "3485109b-251f-4bef-a069-308031f47912"
+default_print = "03f49b52-05fb-4d5a-a317-9fd89afcaa25"
+oracle = "Creatures you control get +1/+1 as long as you control no nonartifact, nonwhite creatures."
+
+[cost]
+generic = 2
+white = 2
+
+[kind]
+type = "enchantment"
+
+# Creatures you control get +1/+1 as long as you control no nonartifact, nonwhite creatures.
+[[abilities]]
+timing = "static"
+
+# Creatures you control get +1/+1 as long as you control no nonartifact, nonwhite creatures.
+[[abilities.effects]]
+type = "static"
+mode = "anthem"
+power = 1
+toughness = 1
+condition = { type = "compare", left = { per_permanent = { types = "creature", controller = "you", exclude = "artifact", not_color = "white" } }, op = "at_most", right = 0 }

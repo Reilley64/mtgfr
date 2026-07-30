@@ -1079,7 +1079,7 @@ impl<'de> Deserialize<'de> for TypeSet {
 /// the old `destroy_all`/edict spellings working — or a full `{ … }` table with any of the
 /// composable axes (`types`, `controller`, `token`, `other`, `enchanted`, `attached_to_creature`,
 /// `enchanted_by_you`, `mv_max`, `mv_min`, `mv_eq_x`, `mv_max_x`, `power_max`, `power_min`, `power_parity`,
-/// `noncreature`, `exclude`, `color`, `not_color`, `modified`, `attacking`, `attacking_you`,
+/// `noncreature`, `exclude`, `color`, `not_color`, `modified`, `attacking`, `not_attacking`, `attacking_you`,
 /// `blocking`, `attacking_or_blocking`, `tapped_or_blocking`, `unblocked`, `power_less_than_source`,
 /// `toughness_less_than_source_power`, `entered_this_turn`,
 /// `has_mana_ability`,
@@ -1178,6 +1178,9 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     modified: bool,
                     #[serde(default)]
                     attacking: bool,
+                    /// Arcades Sabboth's "as long as it's not attacking" — `attacking`'s negation.
+                    #[serde(default)]
+                    not_attacking: bool,
                     #[serde(default)]
                     attacking_you: bool,
                     #[serde(default)]
@@ -1268,6 +1271,7 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                         .unwrap_or(t.color.unwrap_or_default()),
                     modified: t.modified,
                     attacking: t.attacking,
+                    not_attacking: t.not_attacking,
                     attacking_you: t.attacking_you,
                     blocking: t.blocking,
                     attacking_or_blocking: t.attacking_or_blocking,

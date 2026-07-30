@@ -480,6 +480,8 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.misc_counter_target_activated_ability": literal("Counter target activated ability"),
   "effect.misc_counter_target_spell": (params) =>
     `Counter target ${humanize(param(params, "filter", "spell"))}${params.unless_pays == null ? "" : ` unless its controller pays ${param(params, "unless_pays")}`}`,
+  "effect.misc_counter_triggering_spell": (params) =>
+    `Counter it${params.unless_pays === false ? "" : ` unless its controller pays ${param(params, "amount")}`}`,
   "effect.misc_fight": (params) =>
     bool(params, "ally_is_shared_target")
       ? "Then it fights up to one target creature you do not control"

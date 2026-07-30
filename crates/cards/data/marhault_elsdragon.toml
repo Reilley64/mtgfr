@@ -6,7 +6,6 @@ sets = ["bchr", "chr", "leg", "me3"]
 id = "c202f124-4283-48f6-aef1-470ad9ded22b"
 default_print = "2e805883-081b-478a-aa58-172b659571c2"
 oracle = "Rampage 1 (Whenever this creature becomes blocked, it gets +1/+1 until end of turn for each creature blocking it beyond the first.)"
-approximates = "the rampage bonus is never assigned to the blockers: the engine raises the damage division at declare blockers and validates its total against the attacker's power at that moment, before the rampage trigger has resolved, so the extra power lands on nobody. CR 510.1a divides in the combat damage step, reading the pumped power (increment 119)"
 legendary = true
 subtypes = ["Elf", "Warrior"]
 keywords = [{ rampage = 1 }]

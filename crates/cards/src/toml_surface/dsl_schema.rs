@@ -305,6 +305,7 @@ struct PermanentFilterTableSchema {
     not_color: Option<Color>,
     modified: Option<bool>,
     attacking: Option<bool>,
+    not_attacking: Option<bool>,
     attacking_you: Option<bool>,
     blocking: Option<bool>,
     attacking_or_blocking: Option<bool>,

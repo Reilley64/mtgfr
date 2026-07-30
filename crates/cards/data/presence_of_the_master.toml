@@ -12,3 +12,14 @@ white = 1
 
 [kind]
 type = "enchantment"
+
+# Whenever a player casts an enchantment spell, counter it.
+[[abilities]]
+timing = "cast_spell"
+caster = "any_player"
+spell_filter = "enchantment"
+
+# counter it.
+[[abilities.effects]]
+type = "misc"
+mode = "counter_triggering_spell"

@@ -1113,17 +1113,6 @@ impl Game {
         }
 
         let events = self.seal_blocks(blocks, &seats);
-        // If an attacker is blocked by several creatures, its controller orders them.
-        if let Some((attacker, blockers)) = self.next_undivided_multiblock() {
-            crate::pending::raise_choice(
-                self,
-                PendingChoice::AssignCombatDamage {
-                    player: self.damage_assigner(&blockers),
-                    attacker,
-                    blockers,
-                },
-            );
-        }
         self.consecutive_passes = 0;
         self.priority = self.active_player;
         Ok(events)
@@ -1279,7 +1268,6 @@ impl Game {
             .collect()
     }
 
-    /// The first multi-blocked attacker whose damage division hasn't been chosen yet, if any.
     /// Who divides a multi-blocked attacker's combat damage among its blockers: the attacking
     /// creature's controller (CR 510.1a), unless one of those blockers has banding — then that
     /// blocker's controller does it instead (CR 702.22j; 702.22e is the unrelated "a band lasts for
@@ -1296,8 +1284,28 @@ impl Game {
             .unwrap_or(self.active_player)
     }
 
-    pub(crate) fn next_undivided_multiblock(&self) -> Option<(ObjectId, Vec<ObjectId>)> {
+    /// The first attacker in this combat damage batch that still owes a damage division, if any:
+    /// alive, dealing damage in this batch (CR 510.5), blocked by two or more creatures that are
+    /// still there, with positive power to divide and no division chosen yet.
+    ///
+    /// A 0-or-less-power attacker is skipped rather than asked for a division of nothing: CR 510.1a
+    /// has it assign no combat damage at all, and once its power is *negative* there is no legal
+    /// answer to give, so asking would park the damage step forever.
+    /// ponytail: a double striker keeps the division it chose in the first-strike batch instead of
+    /// choosing a fresh one for the normal batch (CR 510.4). Since the first division has already
+    /// been dealt, this only shows up when a blocker survives it — scope `combat.damage` per batch
+    /// if a card ever makes that matter.
+    pub(crate) fn next_undivided_multiblock(
+        &self,
+        first_strike_batch: bool,
+    ) -> Option<(ObjectId, Vec<ObjectId>)> {
         for &attacker in &self.combat.attackers {
+            if self.as_permanent(attacker).is_none()
+                || !self.deals_this_batch(attacker, first_strike_batch)
+                || self.power(attacker) <= 0
+            {
+                continue;
+            }
             let blockers = self.blockers_of(attacker);
             let divided = self.combat.damage.iter().any(|(a, _)| *a == attacker);
             if blockers.len() >= 2 && !divided {
@@ -1305,6 +1313,37 @@ impl Game {
             }
         }
         None
+    }
+
+    /// The combat damage step's turn-based action (CR 510.1), as one interruptible unit: every
+    /// multi-blocked attacker's division is chosen first, then the whole batch of damage is dealt.
+    ///
+    /// The division is read *here* rather than at declare blockers because CR 510.1a divides the
+    /// amounts in the combat damage step, off the power the attacker has then — so a rampage bonus
+    /// (CR 702.23) or a pump cast in response to the blocks is damage its controller can really
+    /// spend. Declaring blockers only fixes the damage assignment *order* (CR 509.2), which this
+    /// engine takes as the declaration order (see [`Self::blockers_of`]).
+    ///
+    /// Returns with a choice pending and no damage dealt while a division is outstanding;
+    /// [`Game::assign_damage`] calls back in until none is, and only then is damage dealt — so
+    /// nobody divides with the batch's damage already on the board.
+    pub(crate) fn divide_or_deal_combat_damage(
+        &mut self,
+        first_strike_batch: bool,
+        events: &mut Vec<Event>,
+    ) {
+        if let Some((attacker, blockers)) = self.next_undivided_multiblock(first_strike_batch) {
+            crate::pending::raise_choice(
+                self,
+                PendingChoice::AssignCombatDamage {
+                    player: self.damage_assigner(&blockers),
+                    attacker,
+                    blockers,
+                },
+            );
+            return;
+        }
+        self.combat_damage_substep(first_strike_batch, events);
     }
 
     /// The living attackers `blocker` is blocking, in declaration order (Gomazoa's "each creature

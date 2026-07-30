@@ -330,7 +330,16 @@ impl Game {
     /// `ControlGained` events (CR 800.4a: the swap outranks any earlier steal), leaving
     /// ownership untouched (CR 108.3). Both must still be on the battlefield — an exchange
     /// needs both, so a target that has left since (CR 608.2b) cancels the whole swap.
-    pub(crate) fn resolve_exchange_control(&mut self, ctx: ResolveCtx, events: &mut Vec<Event>) {
+    ///
+    /// `destroy_attached_auras` is Gauntlets of Chaos' rider: "If those permanents are exchanged
+    /// this way, destroy all Auras attached to them." The early returns above are exactly that
+    /// "if" — a cancelled swap reaches no destruction.
+    pub(crate) fn resolve_exchange_control(
+        &mut self,
+        ctx: ResolveCtx,
+        destroy_attached_auras: bool,
+        events: &mut Vec<Event>,
+    ) {
         let ResolveCtx {
             target,
             targets_second,
@@ -345,21 +354,114 @@ impl Game {
         if self.as_permanent(first).is_none() || self.as_permanent(second).is_none() {
             return;
         }
-        let first_controller = self.controller_of(first);
-        let second_controller = self.controller_of(second);
+        self.swap_control(first, second, events);
+        if !destroy_attached_auras {
+            return;
+        }
+        for aura in [first, second]
+            .into_iter()
+            .flat_map(|host| self.attachments(host))
+            .filter(|&id| matches!(self.def_of(id).kind, CardKind::Aura))
+            .collect::<Vec<_>>()
+        {
+            self.destroy_permanent(aura, events);
+        }
+    }
+
+    /// Juxtapose (CR 701.10): "You and target player exchange control of the creature you each
+    /// control with the greatest mana value" — an exchange of two *chosen* permanents rather than
+    /// two targeted ones. One permanent per seat: the greatest printed mana value among the
+    /// permanents that seat controls whose types intersect `types`. Nothing happens unless both
+    /// seats have one (CR 701.10c — an exchange of one object isn't an exchange), and nothing
+    /// happens when the chosen player is the resolving controller (both reads land on the same
+    /// permanent).
+    ///
+    /// Juxtapose runs this twice — creatures, then artifacts — as two `Sequence` steps. The second
+    /// step reads the board `run_sequence` has already applied the first step's swap to, which is
+    /// what "then exchange control of artifacts the same way" wants: an artifact creature that just
+    /// crossed the table is one of the *recipient's* artifacts by then.
+    pub(crate) fn resolve_exchange_greatest_mana_value(
+        &mut self,
+        ctx: ResolveCtx,
+        types: TypeSet,
+        events: &mut Vec<Event>,
+    ) {
+        let ResolveCtx {
+            controller, target, ..
+        } = ctx;
+        let Some(Target::Player(other)) = target else {
+            return;
+        };
+        if other == controller {
+            return;
+        }
+        let Some(mine) = self.greatest_mana_value_permanent(controller, types) else {
+            return;
+        };
+        let Some(theirs) = self.greatest_mana_value_permanent(other, types) else {
+            return;
+        };
+        self.swap_control(mine, theirs, events);
+    }
+
+    /// The permanent `player` controls with the greatest printed mana value among those whose card
+    /// types (CR 613.4, post-layer) intersect `types`, or `None` when they control none.
+    ///
+    /// ponytail: "If two or more permanents a player controls are tied for greatest, their
+    /// controller chooses one of them" is resolved deterministically here — `max_by_key` keeps the
+    /// last maximum, so the most recently created of a tied group wins. Exactly one of the tied
+    /// group is exchanged either way; only *which* one is unfaithful. Upgrade path: a
+    /// `PendingChoice` per tied seat, which is what Juxtapose's `approximates` note and
+    /// leg-increments #124 track.
+    fn greatest_mana_value_permanent(&self, player: PlayerId, types: TypeSet) -> Option<ObjectId> {
+        self.battlefield()
+            .into_iter()
+            .filter(|&id| self.controller_of(id) == player)
+            .filter(|&id| self.effective_types(id).intersects(types))
+            .max_by_key(|&id| self.def_of(id).mana_value())
+    }
+
+    /// Hand `a` to `b`'s controller and `b` to `a`'s, as two freshly-timestamped `ControlGained`
+    /// events (CR 800.4a) that leave ownership alone (CR 108.3).
+    fn swap_control(&mut self, a: ObjectId, b: ObjectId, events: &mut Vec<Event>) {
+        let a_controller = self.controller_of(a);
+        let b_controller = self.controller_of(b);
         self.push_apply(
             events,
             Event::ControlGained {
-                object: first,
-                controller: second_controller,
+                object: a,
+                controller: b_controller,
             },
         );
         self.push_apply(
             events,
             Event::ControlGained {
-                object: second,
-                controller: first_controller,
+                object: b,
+                controller: a_controller,
             },
         );
+    }
+
+    /// Destroy one permanent, honoring indestructible, an available regeneration shield
+    /// (CR 701.15b) and tokens' ceasing to exist — the single-permanent form of
+    /// `DestroyEffect::All`'s per-permanent choreography (CR 704).
+    fn destroy_permanent(&mut self, id: ObjectId, events: &mut Vec<Event>) {
+        if self.has_keyword(id, Keyword::Indestructible) {
+            return;
+        }
+        if self.regeneration_shield_available(id) {
+            self.push_apply(events, Event::Regenerated { object: id });
+            return;
+        }
+        let event = match self.objects[id as usize] {
+            Object::Permanent(ref p) if p.token => Event::TokenCeasedToExist {
+                token: id,
+                controller: p.owner,
+                def: p.def,
+            },
+            Object::Permanent(_) => self.graveyard_or_command(id, self.next_object_id()),
+            _ => return,
+        };
+        self.push_apply(events, event);
     }
 }

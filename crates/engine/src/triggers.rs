@@ -3460,13 +3460,24 @@ impl Game {
                             // A `cast_spell` trigger's own `from_hand` gate (below) is the pool's
                             // cast-zone predicate; no card pairs it with a `cast_from_non_hand_zone`
                             // spell filter, so the plain hand-cast default suffices here.
-                            && self.spell_matches_filter(
-                                filter,
-                                def.clone(),
-                                target,
-                                spell_controller,
-                                Zone::Hand,
-                            )
+                            && match filter {
+                                // Invoke Prejudice's "doesn't share a color with a creature you
+                                // control" reads the *watcher's* controller, which
+                                // `spell_matches_filter` structurally can't see (its `caster`
+                                // parameter is the casting player at every call site) — so it is
+                                // matched here, the one choke that holds both players.
+                                SpellFilter::CreatureNotSharingColorWithCreatureYouControl => self
+                                    .creature_spell_shares_no_color_with_your_creatures(
+                                        &def, spell, controller,
+                                    ),
+                                _ => self.spell_matches_filter(
+                                    filter,
+                                    def.clone(),
+                                    target,
+                                    spell_controller,
+                                    Zone::Hand,
+                                ),
+                            }
                             && nth_each_turn.is_none_or(|n| cast_tally == u32::from(n))
                             && (!from_hand || cast_from_hand)
                     }
@@ -3490,6 +3501,29 @@ impl Game {
                 });
             }
         }
+    }
+
+    /// Invoke Prejudice's "a creature spell that doesn't share a color with a creature you control"
+    /// (CR 105.1/202.2): `watcher` is the enchantment's own controller, not the casting player.
+    /// A multicolored creature shares a color with anything holding any one of its colors, and a
+    /// colorless creature spell shares no color with anything — so it is always taxed.
+    fn creature_spell_shares_no_color_with_your_creatures(
+        &self,
+        def: &CardDef,
+        spell: ObjectId,
+        watcher: PlayerId,
+    ) -> bool {
+        if !matches!(def.kind, CardKind::Creature { .. }) {
+            return false;
+        }
+        let spell_colors = self.colors_of(spell);
+        !self.battlefield().into_iter().any(|id| {
+            if self.controller_of(id) != watcher || !self.is_creature_on_battlefield(id) {
+                return false;
+            }
+            let theirs = self.colors_of(id);
+            (0..Color::COUNT).any(|i| spell_colors[i] && theirs[i])
+        })
     }
 
     /// Fire the [`Trigger::ActivateAbility`] watchers (Unbound Flourishing's "or activate an
@@ -5222,6 +5256,40 @@ impl Game {
         None
     }
 
+    /// Gauntlets of Chaos: "Exchange control of target artifact, creature, or land you control and
+    /// target permanent an opponent controls **that shares one of those types with it**." The second
+    /// clause's legality depends on the first target (CR 601.2c), which no `PermanentFilter` axis can
+    /// see — so narrow the clause's declared type mask to the types the chosen first target actually
+    /// has (CR 613.4's post-layer types) before its legal set is read. An empty intersection means
+    /// nothing shares a type, which [`TargetSpec::None`] says and an empty `types` mask would not
+    /// (there it reads as "no restriction"). Every other second clause passes through untouched.
+    fn narrow_second_clause_to_shared_types(
+        &self,
+        effect: &Effect,
+        spec: TargetSpec,
+        first: Option<Target>,
+    ) -> TargetSpec {
+        let Effect::Control(ControlEffect::ExchangeControl {
+            second_shares_type_with_first: true,
+            ..
+        }) = effect
+        else {
+            return spec;
+        };
+        let TargetSpec::Permanent(mut filter) = spec else {
+            return spec;
+        };
+        let Some(chosen) = first.and_then(Target::object_id) else {
+            return spec;
+        };
+        let shared = self.effective_types(chosen).intersection(filter.types);
+        if shared.is_empty() {
+            return TargetSpec::None;
+        }
+        filter.types = shared;
+        TargetSpec::Permanent(filter)
+    }
+
     /// After a triggered ability's first target clause is settled with `first` (its chosen target,
     /// or `None`), choose its *second* independent target clause too (CR 603.3d — Kinetic Ooze's
     /// X≥10 "double ... any number of other target creatures") before the ability goes on the stack,
@@ -5263,6 +5331,7 @@ impl Game {
             return Placement::Placed;
         };
         let x = self.ability_source_x(source);
+        let spec = self.narrow_second_clause_to_shared_types(&effect, spec, first);
         let legal = self.legal_targets_for(spec, source, player, [false; Color::COUNT], x);
         let n = legal.len();
         let lo = (count.min as usize).min(n) as u8;

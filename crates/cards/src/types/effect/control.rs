@@ -23,6 +23,29 @@ pub enum ControlEffect {
     ExchangeControl {
         first: TargetSpec,
         second: TargetSpec,
+        /// Gauntlets of Chaos: "target permanent an opponent controls **that shares one of those
+        /// types with it**" — the second clause's legality depends on the first target, so its
+        /// declared type mask is intersected with the first target's own card types when the
+        /// second clause's legal set is read (CR 601.2c). `false` (Vedalken Plotter, Chromeshell
+        /// Crab) leaves the second filter exactly as written.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        second_shares_type_with_first: bool,
+        /// Gauntlets of Chaos: "If those permanents are exchanged this way, destroy all Auras
+        /// attached to them" — a rider on the swap, so it only happens when both permanents were
+        /// actually exchanged (CR 608.2b cancels the swap, and this with it).
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        destroy_attached_auras: bool,
+    },
+
+    /// Juxtapose: "You and target player exchange control of the creature you each control with the
+    /// greatest mana value. Then exchange control of artifacts the same way." An exchange whose two
+    /// permanents are *chosen*, not targeted (CR 701.10) — one per seat, the greatest printed mana
+    /// value among the permanents that seat controls matching `types`. `target` names the other
+    /// seat; the first is the resolving controller. Nothing happens unless both seats have one
+    /// (CR 701.10c).
+    ExchangeGreatestManaValue {
+        target: TargetSpec,
+        types: TypeSet,
     },
 
     GainControl {

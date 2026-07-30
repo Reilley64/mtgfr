@@ -5431,6 +5431,7 @@ fn a_multi_blocked_attacker_requires_a_damage_order_choice() {
 
     attack_with(&mut game, vec![attacker]);
     block_with(&mut game, vec![(b1, attacker), (b2, attacker)]).unwrap();
+    advance_until(&mut game, |g| g.current_step() == Step::CombatDamage);
 
     assert!(
         matches!(
@@ -5466,6 +5467,7 @@ fn dividing_damage_among_blockers_emits_a_combat_damage_divided_event() {
 
     attack_with(&mut game, vec![attacker]);
     block_with(&mut game, vec![(b1, attacker), (b2, attacker)]).unwrap();
+    advance_until(&mut game, |g| g.current_step() == Step::CombatDamage);
 
     let events = game
         .submit(Intent::AssignDamage {
@@ -5474,17 +5476,23 @@ fn dividing_damage_among_blockers_emits_a_combat_damage_divided_event() {
         })
         .unwrap();
 
+    // The answer both records the division and deals the batch it was holding up (CR 510.1), so
+    // the division event is one of several — but still exactly one.
+    let divided: Vec<&Event> = events
+        .iter()
+        .filter(|e| matches!(e, Event::CombatDamageDivided { .. }))
+        .collect();
     let [
         Event::CombatDamageDivided {
             attacker: divided_attacker,
             assignment,
         },
-    ] = events[..]
+    ] = divided[..]
     else {
         panic!("expected exactly one CombatDamageDivided event, got {events:?}");
     };
     assert_eq!(
-        divided_attacker, attacker,
+        *divided_attacker, attacker,
         "the division itself is event-sourced, not just a direct mutation",
     );
     assert_eq!(assignment.pairs(), vec![(b1, 2), (b2, 2)]);
@@ -5499,6 +5507,7 @@ fn the_attacker_may_divide_damage_unevenly_across_blockers() {
 
     attack_with(&mut game, vec![attacker]);
     block_with(&mut game, vec![(small, attacker), (large, attacker)]).unwrap();
+    advance_until(&mut game, |g| g.current_step() == Step::CombatDamage);
 
     // Free-form: pour 1 into the 2/2 (survives) and 3 into the 3/3 (dies) — the opposite of
     // what lethal-in-declaration-order would do (which kills the 2/2 and spares the 3/3).
@@ -5530,6 +5539,7 @@ fn an_illegal_damage_assignment_is_rejected_and_the_choice_stays() {
 
     attack_with(&mut game, vec![attacker]);
     block_with(&mut game, vec![(b1, attacker), (b2, attacker)]).unwrap();
+    advance_until(&mut game, |g| g.current_step() == Step::CombatDamage);
 
     // Only 3 of the 4/4's 4 power assigned — without trample all must be assigned to blockers. (CR 702)
     assert_eq!(
@@ -16013,24 +16023,18 @@ fn a_death_dropping_an_anthem_cascades_to_a_second_death_in_one_sweep() {
 
     attack_with(&mut game, vec![attacker]);
     block_with(&mut game, vec![(lord, attacker), (victim, attacker)]).unwrap();
+    advance_until(&mut game, |g| g.current_step() == Step::CombatDamage);
 
     // Split the 5 power: exactly-lethal 3 onto the lord (toughness 3) and 2 onto the victim —
     // lethal to the victim only once the lord dies and its anthem stops boosting toughness 3->2.
-    game.submit(Intent::AssignDamage {
-        player: PlayerId(0),
-        assignment: vec![(lord, 3), (victim, 2)],
-    })
-    .unwrap();
-
-    // Roll forward until combat damage is dealt; keep the events of the submit that kills the lord. (CR 510, CR 120.3, CR 506)
-    let mut cascade = Vec::new();
-    for _ in 0..1000 {
-        if game.zone_of(lord) == Zone::Graveyard {
-            break;
-        }
-        let p = game.priority_holder();
-        cascade = game.submit(Intent::PassPriority { player: p }).unwrap();
-    }
+    // Answering the division is what deals the batch (CR 510.1), so this submit's own events are (CR 510, CR 120.3, CR 506)
+    // the sweep that kills the lord.
+    let cascade = game
+        .submit(Intent::AssignDamage {
+            player: PlayerId(0),
+            assignment: vec![(lord, 3), (victim, 2)],
+        })
+        .unwrap();
 
     let killed = |events: &[Event], from: ObjectId| {
         events
@@ -113032,6 +113036,7 @@ fn a_banding_blocker_takes_the_division_away_from_the_attacking_player() {
 
     attack_with(&mut game, vec![ogre]);
     block_with(&mut game, vec![(hero, ogre), (wolves, ogre)]).unwrap();
+    advance_until(&mut game, |g| g.current_step() == Step::CombatDamage);
 
     let Some(PendingChoice::AssignCombatDamage {
         player, attacker, ..
@@ -113057,6 +113062,7 @@ fn without_banding_the_attacking_player_still_divides() {
 
     attack_with(&mut game, vec![ogre]);
     block_with(&mut game, vec![(one, ogre), (two, ogre)]).unwrap();
+    advance_until(&mut game, |g| g.current_step() == Step::CombatDamage);
 
     let Some(PendingChoice::AssignCombatDamage { player, .. }) = game.pending_choice() else {
         panic!("a doubly-blocked attacker's damage is divided by somebody");
@@ -113076,6 +113082,7 @@ fn a_banding_blocker_spends_the_attackers_damage_where_it_likes() {
 
     attack_with(&mut game, vec![ogre]);
     block_with(&mut game, vec![(hero, ogre), (wolves, ogre)]).unwrap();
+    advance_until(&mut game, |g| g.current_step() == Step::CombatDamage);
     game.submit(Intent::AssignDamage {
         player: PlayerId(1),
         assignment: vec![(hero, 3), (wolves, 0)],
@@ -113106,6 +113113,7 @@ fn the_attacking_player_cannot_answer_a_banding_division() {
 
     attack_with(&mut game, vec![ogre]);
     block_with(&mut game, vec![(hero, ogre), (wolves, ogre)]).unwrap();
+    advance_until(&mut game, |g| g.current_step() == Step::CombatDamage);
     assert!(
         game.submit(Intent::AssignDamage {
             player: PlayerId(0),
@@ -113146,6 +113154,7 @@ fn helm_of_chatzuk_hands_the_division_over_for_the_turn() {
     resolve_top_of_stack(&mut game);
 
     block_with(&mut game, vec![(one, ogre), (two, ogre)]).unwrap();
+    advance_until(&mut game, |g| g.current_step() == Step::CombatDamage);
     let Some(PendingChoice::AssignCombatDamage { player, .. }) = game.pending_choice() else {
         panic!("a doubly-blocked attacker's damage is divided by somebody");
     };
@@ -113828,9 +113837,9 @@ fn false_orders_lets_a_solely_blocked_attacker_through() {
 }
 
 /// The "blocked by only that creature" qualifier: an attacker a second creature is also blocking
-/// stays blocked when one of the two walks away (CR 509.1h again). The 5 damage the attacker's
-/// controller had already divided onto the pulled blocker is simply lost — it is no longer a
-/// creature blocking this attacker when damage is assigned (CR 510.1a).
+/// stays blocked when one of the two walks away (CR 509.1h again), so none of its damage reaches
+/// the player. Pulling one of the two blockers before the combat damage step doesn't spare the
+/// other: CR 510.1a divides the damage there, among the creatures blocking *then*.
 #[test]
 fn false_orders_leaves_a_double_blocked_attacker_blocked() {
     let mut game = Game::new();
@@ -113843,11 +113852,6 @@ fn false_orders_leaves_a_double_blocked_attacker_blocked() {
 
     attack_with(&mut game, vec![attacker]);
     block_with(&mut game, vec![(pulled, attacker), (stays, attacker)]).unwrap();
-    game.submit(Intent::AssignDamage {
-        player: PlayerId(0),
-        assignment: vec![(pulled, 5), (stays, 0)],
-    })
-    .unwrap();
     fund_cast_resolve(&mut game, PlayerId(0), orders, Some(Target::Object(pulled)));
     game.submit(Intent::ChooseCopyTarget {
         player: PlayerId(0),
@@ -113857,9 +113861,15 @@ fn false_orders_leaves_a_double_blocked_attacker_blocked() {
 
     advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
     assert_eq!(
-        (game.life(PlayerId(1)), game.zone_of(stays)),
-        (before, Zone::Battlefield),
+        game.life(PlayerId(1)),
+        before,
         "the second blocker is still on it, so the attacker stays blocked and hits nothing"
+    );
+    assert_eq!(
+        (game.zone_of(stays), game.zone_of(pulled)),
+        (Zone::Graveyard, Zone::Battlefield),
+        "the 5/5 assigns its damage among the creatures blocking it in the damage step — only \
+         the blocker that stayed, which dies; the pulled one takes none",
     );
 }
 

@@ -116,15 +116,25 @@ impl Game {
         // A quitter can't answer the decision the game is parked on, so drop it. Everything the
         // unanswered effect would have done is forfeited — better than deadlocking three seats on
         // one that has closed the tab.
-        if self
+        let abandoned = self
             .pending_choice
             .as_ref()
             .is_some_and(|c| c.player() == player)
-        {
-            self.pending_choice = None;
-        }
-        let events = vec![Event::PlayerLost { player }];
+            .then(|| self.pending_choice.take())
+            .flatten();
+        let mut events = vec![Event::PlayerLost { player }];
         self.apply_all(&events);
+        // The combat damage step's turn-based action is not the quitter's to forfeit, though: it
+        // belongs to the game, and the other seats' attackers and blockers are waiting on it. Finish
+        // the batch for whoever is left rather than skipping every point of damage in it (CR 510.1).
+        // The quitter's own creatures have already left with them (CR 800.4a), so their attacker
+        // divides nothing.
+        if matches!(abandoned, Some(PendingChoice::AssignCombatDamage { .. })) {
+            self.divide_or_deal_combat_damage(
+                self.step == Step::FirstStrikeCombatDamage,
+                &mut events,
+            );
+        }
         events
     }
 
@@ -1934,11 +1944,12 @@ impl Game {
             // postcombat), and "each player's" resolves in that player's own turn, so only the
             // active player's counters fire here.
             Step::Main1 => self.perform_rad_counter_mill(active, events),
-            // The two combat damage steps deal their own batch (CR 510.5). The between-steps
+            // The two combat damage steps divide and then deal their own batch (CR 510.1, CR 510.5)
+            // — a multi-block division pauses the step until it's answered. The between-steps
             // SBA sweep and death triggers are handled by `submit` after this step, and a (CR 704, CR 603, CR 104.3)
             // priority window opens between them. (CR 117)
-            Step::FirstStrikeCombatDamage => self.combat_damage_substep(true, events),
-            Step::CombatDamage => self.combat_damage_substep(false, events),
+            Step::FirstStrikeCombatDamage => self.divide_or_deal_combat_damage(true, events),
+            Step::CombatDamage => self.divide_or_deal_combat_damage(false, events),
             Step::EndCombat => {
                 // Clockwork Beast's "At end of combat, if this creature attacked or blocked this
                 // combat" (CR 511.1) — queued *before* the clear below, which is what the

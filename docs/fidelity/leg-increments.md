@@ -62,10 +62,11 @@ blocker killed in response shrinks the bonus, one killed afterwards does not.
 Rapid Fire's conditional grant is `Condition::TargetHasRampage` under `negate = true` (an exact
 `target_has_keyword` can't express "any N"). Gabriel Angelfire stays blocked on #39 — its rampage
 3 comes from a modal upkeep choice, which this increment does not touch.
-*Residual:* the pump lands on the characteristic but never on the damage. The engine locks the
-combat damage division at declare blockers against the *unpumped* power, so the bonus is assigned
-to nobody — see **#119**, which all 8 cards carry an `approximates` against. Rampage is correct as
-a P/T modification and inert as damage until that lands.
+*Residual:* none for the 8 scripted cards. The pump used to land on the characteristic and never on
+the damage — the division was locked at declare blockers against the *unpumped* power — and **#119**
+cleared that by moving the division to the combat damage step (CR 510.1a), where the pumped power is
+what gets divided; all 8 dropped the `approximates` they carried against it. Gabriel Angelfire, the
+9th card, stays blocked on #39.
 
 ### 2. `world-supertype` — 11 cards, M
 Depends on: nothing.
@@ -145,11 +146,11 @@ is **#123** — the name-as-quality form is blocked on data conventions this inc
    real-Scryfall-id convention, not on the rules.
 Do not start this before #1 and #4 land; it is the highest-risk work in the set and everything
 else in the combat cluster is cheaper.
-**Land #119 before slice 3.** Slice 3 grows a "who chooses" axis on `PendingChoice::
-AssignCombatDamage`, and #119 has to *move* that same choice from declare blockers to the combat
-damage step (CR 510.1a). Doing slice 3 first means building the new axis onto the wrong timing and
-then reworking it; #119 first means slice 3 lands on a choice that is already raised where the
-rules put it. Slices 1, 2, and 4 are unaffected.
+**#119 has landed, so slice 3 is unblocked.** `PendingChoice::AssignCombatDamage` is now raised from
+`Game::divide_or_deal_combat_damage` in the combat damage step, where CR 510.1a puts it, and its
+`player` field already carries the answer to "who chooses" — `Game::damage_assigner` computes it, and
+slice 3's second CR 702.22j clause is a change to that one function, not to the timing or the wire.
+CR 702.22k (the blocker-side division) has no choice at all yet and is the larger half.
 
 ### 4. `landwalk-negation` — 8 cards, M
 Depends on: nothing.
@@ -280,15 +281,41 @@ Silhouette is the odd one — it filters on *why* the damage happened (a targeti
 which means the damage event needs to carry its cause. Land that last, or approximate it and say
 so.
 
-### 13. `board-state-conditional-anthem` — 4 cards, M
+### 13. `board-state-conditional-anthem` — 4 cards, M — **LANDED** (wave 5; display residuals split to #125)
 Depends on: nothing.
 Static pumps gated on a board-state predicate: "as long as you control no nonartifact, nonwhite
 creatures" (Angelic Voices), "as long as an opponent controls a nontoken white permanent" (Beasts
-of Bogardan, Ivory Guardians), "as long as it's not attacking" applied per-creature (Arcades
-Sabboth). *Sketch:* the existing anthem effect grows a `condition: Option<Condition>` evaluated
-continuously; the per-creature form (Arcades Sabboth) needs the condition evaluated against each
-affected permanent rather than globally, so the condition takes the candidate as its subject.
-`nontoken` is a new filter axis.
+of Bogardan), "as long as an opponent controls a nontoken red permanent" applied to every creature
+sharing a name (Ivory Guardians), and "Each untapped creature you control … as long as it's not
+attacking" applied per-creature (Arcades Sabboth).
+*Landed:* the board-wide gates needed no new surface at all — the intake sketch's two premises were
+both already true in the tree. `StaticEffect::Anthem` carries `condition: Option<Condition>`
+re-read live by `Game::matching_anthems`, `Condition::Compare` over an
+`Amount::PerPermanentMatching` counts the board, and `TokenFilter::Nontoken` (`token = "nontoken"`)
+is an existing axis, not a new one. So Angelic Voices is `mode = "anthem"` with a `compare` on
+"creatures you control that are nonartifact and nonwhite `at_most` 0", and Beasts of Bogardan is the
+same shape under `self_only`.
+The two *candidate-side* gates did need surface: Ivory Guardians selects affected creatures by
+printed **name** and Arcades Sabboth by each creature's own tapped-ness and attacking-ness, neither
+of which `Anthem`'s fixed candidate axes can say. Both route through
+`StaticEffect::KeywordAnthem` — the pool's *filtered* anthem, which already matches candidates
+against a full `PermanentFilter` — now carrying `power` / `toughness` / `condition` beside its
+keywords, applied in the same `Game::anthem_continuous_effects` choke as `Anthem`, so a
+`PtDelta` from either kind lands at the same timestamp and is re-read on every recompute (CR 613.4).
+`PermanentFilter` gained one `not_attacking` axis (the negation of its existing `attacking`,
+matching `DefiningPtWhen::NotAttacking`'s spelling); `name` and `tapped` were already there. Arcades
+Sabboth's "you control" comes free from the anthem's own default controller scope; Ivory Guardians
+sets `all_players = true`, since its clause names no controller and every Guardians buffs every
+other, itself included.
+Arcades Sabboth's other three abilities were scripted with existing surface: `flying`, the Elder
+Dragon cycle's `pay_or_else` upkeep sacrifice-unless-`{G}{W}{U}`, and an ordinary
+`pump_self_until_end_of_turn` for `{W}: +0/+1`.
+*Residual:* none for the four cards. Two cosmetic gaps: the player-facing effect message for
+`keyword_anthem` still renders only its keywords and filter, so a P/T-only filtered anthem
+describes itself as granting nothing; and `Game::modifier_sources`' anthem re-scan reads
+`Anthem` only, so the client's per-creature "+1/+1 from …" list omits a filtered anthem's delta.
+The `keyword_anthem` mode name predates its P/T fields and now under-describes the variant; 8
+existing cards spell it, so the rename was left for a mechanical pass.
 
 ### 14. `becomes-blocked-color-change` — 1 card, M
 Depends on: nothing.
@@ -560,14 +587,52 @@ a fixed keyword list and the duration is `UntilYourNextUpkeep` (#22 needs the sa
 Halfdane). The grant replaces the previous one implicitly by expiring, so no explicit removal is
 needed.
 
-### 40. `exchange-control` — 2 cards, M
+### 40. `exchange-control` — 2 cards, M — **LANDED** (wave 5, Juxtapose's tiebreak split to #124)
 Depends on: nothing.
 Gauntlets of Chaos (exchange two chosen permanents sharing a type, then destroy Auras attached to
 them) and Juxtapose (exchange the greatest-mana-value creature you each control, then the same for
-artifacts). *Sketch:* an `ExchangeControl { a, b }` effect on top of the existing control-change
-path, with the "shares one of those types" legality check for Gauntlets and a
-greatest-mana-value selector with a controller-chosen tiebreak for Juxtapose. Control changes are
-already continuous effects, so the exchange is two of them applied together.
+artifacts).
+
+The intake's sketch — "an `ExchangeControl { a, b }` effect on top of the existing control-change
+path" — **was already built** when this increment was written: `ControlEffect::ExchangeControl` and
+`Game::resolve_exchange_control` landed with Vedalken Plotter and Chromeshell Crab, along with the
+two-independent-target-clause plumbing (`Game::ability_second_target_clause` /
+`place_ability_second_clause`) that Gauntlets' "and target permanent an opponent controls" needs.
+So did the activated-ability side of that plumbing (Zedruu's donation). Only the two wrinkles were
+new work.
+
+*Landed:*
+- **Gauntlets' dependent target.** "target permanent an opponent controls **that shares one of those
+  types with it**" is a target whose legality depends on another target, which no `PermanentFilter`
+  axis can express. `ExchangeControl` gained `second_shares_type_with_first`, and
+  `Game::narrow_second_clause_to_shared_types` intersects the second clause's declared type mask
+  with the first target's post-layer types (CR 613.4) at the one point where both are in scope —
+  just before `place_ability_second_clause` reads the clause's legal set (CR 601.2c). An empty
+  intersection becomes `TargetSpec::None` rather than an empty `types` mask, since an empty mask
+  reads as "no restriction". New `TypeSet::intersection`.
+- **Gauntlets' Aura rider.** `destroy_attached_auras` on the same variant. `resolve_exchange_control`
+  already bailed out when either permanent had left the battlefield (CR 608.2b), which is exactly
+  the "If those permanents are exchanged this way" gate, so the rider is honored after the swap and
+  unreachable when the swap is cancelled. Indestructible / regeneration shields / tokens are honored
+  the way `DestroyEffect::All` does.
+- **Juxtapose.** New `ControlEffect::ExchangeGreatestManaValue { target, types }` — an exchange whose
+  two permanents are *chosen*, not targeted (CR 701.10) — plus
+  `Game::resolve_exchange_greatest_mana_value`. Both of Juxtapose's steps are one `[[abilities]]`
+  with two `[[abilities.effects]]`, `types = "creature"` then `types = "artifact"`; both name the
+  same `target = "player"`, so `Game::ability_target_clauses` collapses them into one clause and
+  `Game::run_sequence` applies step one before step two reads the board. That ordering is the
+  faithful reading of "Then exchange control of artifacts the same way", and it is load-bearing: an
+  artifact creature that just crossed the table is one of the *recipient's* artifacts by the second
+  step, so a big enough one comes straight back. Nothing happens unless both seats have a matching
+  permanent (CR 701.10c).
+- Message keys: both variants reuse `EFFECT_CONTROL_EXCHANGE_CONTROL` rather than minting a key that
+  would need a hand-mirrored client i18n catalog entry.
+
+Nine tests in `crates/engine/tests/leg_exchange_control.rs`.
+
+*Residual:* Juxtapose's "If two or more permanents a player controls are tied for greatest, their
+controller chooses one of them" is a deterministic pick, not a choice — split out as **#124** and
+recorded in `juxtapose.toml`'s `approximates`.
 
 ### 41. `delayed-chosen-landwalk` — 1 card, M
 Depends on: #4 (the landwalk vocabulary), #5 (grants).
@@ -635,15 +700,22 @@ expensive piece — the combat assignment must support withdrawing a creature mi
 recomputing which attackers become unblocked. The "counter that ability" half needs abilities on
 the stack to be counterable targets, which the engine may not model separately from spells.
 
-### 48. `counter-unless-pays-x` — 3 cards, M
-Depends on: #2 (two of the three are World enchantments).
+### 48. `counter-unless-pays-x` — 3 cards, M — **LANDED**
+Depends on: #2 (two of the three are World enchantments), #108.
 In the Eye of Chaos and Nether Void (counter unless the caster pays a tax) and Invoke Prejudice
-(same, gated on the spell not sharing a color with a creature you control). The engine has
-counter effects but no "unless that player pays" prompt during another player's cast.
-*Sketch:* a `CounterUnlessPays { amount: Amount }` effect where the amount can be fixed ({3}) or
-the countered spell's mana value, resolved through a pending payment choice by the spell's
-controller. Invoke Prejudice's condition needs a "shares a color with a creature you control"
-predicate over the caster's opponents' board.
+(same, gated on the spell not sharing a color with a creature you control).
+
+The original sketch's `CounterUnlessPays { amount: Amount }` was already in the engine and had been
+since before this backlog was written: `MiscEffect::CounterTargetSpell::unless_pays: Option<Amount>`
+raises `pending::ChoiceRequest::PayOrCounter` against the *target spell's* controller, answered by
+`Intent::PayOptionalCost`, and `Amount::TriggeringSpellManaValue` already expressed "X is its mana
+value". All three cards therefore reduced to #108's `MiscEffect::CounterTriggeringSpell` (which
+reuses that same pause) plus one new `SpellFilter` each: `instant` for In the Eye of Chaos, and
+`creature_not_sharing_color_with_creature_you_control` for Invoke Prejudice. That last one is
+matched inline in `queue_cast_spell_triggers` rather than in `Game::spell_matches_filter`, because
+"a creature you control" is the *watching enchantment's* controller and that function's `caster`
+parameter is the casting player at all nine of its call sites — the same posture already documented
+for `mana_value_equals_x` and `instant_or_aura_targets_permanent_you_control`.
 
 ### 49. `blocks-with-toughness-filter-then-counter` — 2 cards, M
 Depends on: #8.
@@ -1159,15 +1231,19 @@ battlefield, so it expresses "creatures without flying can't attack **you**". Mo
 attack at every seat regardless of who controls the Moat. Needs the restriction evaluated
 globally over the battlefield rather than per defender.
 
-### 108. `counter-the-triggering-spell` — 1 card, M
+### 108. `counter-the-triggering-spell` — 1 card, M — **LANDED**
 Depends on: nothing.
 Presence of the Master: "Whenever a player casts an enchantment spell, counter it."
-*Sketch:* `MiscEffect::CounterTargetSpell` requires a chosen `Target`, and no `TargetSpec` names
-the spell that fired a `CastSpell` trigger.
-*Re-rated after wave 1 (cheaper than written):* the threading half is already done —
-`queue_cast_spell_triggers` sets both `triggering_spell: Some(spell)` and
-`triggering_caster: Some(spell_controller)` (`crates/engine/src/triggers.rs:3370`). All this
-needs is a `TargetSpec::TriggeringSpell` that reads the existing field. Closer to **S** than M.
+
+Landed as `MiscEffect::CounterTriggeringSpell { triggering_spell, unless_pays }` — a sibling of
+`CounterTargetSpell` whose spell arrives from `TriggerContext::triggering_spell` via
+`fill_triggering_spell`, with `Effect::target()` returning `TargetSpec::None`. The earlier
+"all this needs is a `TargetSpec::TriggeringSpell` that reads the existing field" re-rating was
+wrong twice over: `Game::legal_targets_for` receives only `(spec, source, controller,
+source_colors, x)` and has no access to the triggering spell, so no `TargetSpec` variant *can*
+read it; and CR 115.1 means "counter **it**" does not target at all, so routing it through the
+targeting machinery would have been unfaithful (it would have made the ability fizzle on an
+untargetable spell and shown a target prompt that Magic never asks for).
 
 ### 109. `exile-the-source-from-the-graveyard` — 1 card, M
 Depends on: nothing.
@@ -1264,23 +1340,55 @@ not "an opponent", so damage the Scorpion deals to its own controller — redire
 control swap mid-damage — poisons no one. Needs a `deals_damage_to_player` tag that watches
 every seat, with `deals_damage_to_opponent` kept for the cards that really do print "opponent".
 
-### 119. `divide-combat-damage-in-the-damage-step` — 8 cards, L
+### 119. `divide-combat-damage-in-the-damage-step` — 8 cards, L — **LANDED** (wave 5; rules residuals split to #126)
 Depends on: nothing. Raised by wave 1 (#1); blocks every post-declaration pump, not just rampage.
-*Sketch:* the engine raises `PendingChoice::AssignCombatDamage` from `Game::declare_blockers`,
-immediately after `seal_blocks`, and `Game::assign_damage` validates the total against
-`self.power(attacker)` **at that moment** — before any block trigger has resolved. CR 509.2 does
-choose the damage *assignment order* at declare blockers, but CR 510.1a divides the actual amounts
-in the combat damage step, reading the attacker's power *then*. So a rampage bonus, a Giant Growth
-cast in response to blockers, or any other post-declaration pump can never be assigned to the
-blockers: the locked division still totals the unpumped power. Only trample rescues it, because
+The engine raised `PendingChoice::AssignCombatDamage` from `Game::declare_blockers`, immediately
+after `seal_blocks`, and `Game::assign_damage` validated the total against `self.power(attacker)`
+**at that moment** — before any block trigger had resolved. CR 509.2 does choose the damage
+*assignment order* at declare blockers, but CR 510.1a divides the actual amounts in the combat
+damage step, reading the attacker's power *then*. So a rampage bonus, a Giant Growth cast in
+response to blockers, or any other post-declaration pump could never be assigned to the blockers:
+the locked division still totalled the unpumped power. Only trample rescued it, because
 `Game::assign_attacker_damage` computes overflow as current `power` minus *assigned*.
-Split the choice in two: an order at declare blockers, amounts at the damage step. This changes
-when the choice is raised for every multi-block in the engine, so the existing `game.rs` suite is
-the real cost — hence L, not M.
-**Schedule this before #3's slice 3**, which adds a "who chooses" axis to the same choice — see #3.
-Proven by `rampage_bonus_cannot_be_divided_because_the_division_is_locked_before_the_trigger_resolves`
-in `crates/engine/tests/leg_rampage.rs`, which asserts today's behavior; this increment makes the
-pumped total legal. All 8 of #1's cards carry an `approximates` until it lands.
+*Landed:* the choice moved to the combat damage step, both of them (CR 510.5).
+`Game::divide_or_deal_combat_damage(first_strike_batch, events)` in `crates/engine/src/combat.rs` is
+the step's whole turn-based action (CR 510.1): while any attacker in this batch still owes a
+division it raises the choice and deals nothing, and only once every one is settled does it call
+`combat_damage_substep`. `Game::perform_turn_based_actions`' two damage-step arms call it, and
+`Game::assign_damage` (`pending/handlers/combat.rs`) calls back into it after each answer — deriving
+the batch from `self.step` — so several multi-blocked attackers divide one after another with no
+priority in between, and the step's priority window opens from the answer that finishes the job
+(`advance_step` returned early to raise the choice and never reached it).
+`Game::next_undivided_multiblock` now takes the batch and skips attackers that are dead, that don't
+deal damage in this batch, or whose power is 0 or less (CR 510.1a assigns none, and a *negative*
+power would leave the choice with no legal answer at all).
+The duplicate raise in `pending/handlers/dig.rs` (Camouflage's undeclared blocks) went away with it:
+the damage step asks, however the blocks were written down.
+`Game::concede` had to learn about the new parking spot: abandoning a division that is now *inside*
+the turn-based action would have voided the whole batch for every other seat, so it drops the
+quitter's choice and then resumes the batch (CR 104.3a, CR 510.1; the quitter's own creatures have
+already left under CR 800.4a, so their attacker divides nothing).
+Two findings from retiming the `game.rs` suite:
+- `false_orders_leaves_a_double_blocked_attacker_blocked` flipped an assertion, and the **old one
+  was wrong**. Pulling one of two blockers out of combat used to strand the 5 damage already
+  assigned to it and leave the blocker that stayed untouched; now the 5/5 divides in the damage step
+  among the creatures blocking it *then*, so the remaining blocker dies. CR 510.1a.
+- `dividing_damage_among_blockers_emits_a_combat_damage_divided_event` no longer sees
+  `Event::CombatDamageDivided` as the *only* event of its submit, because answering the last
+  division is what deals the batch. It asserts exactly one such event among them instead.
+*Residual:* the split the sketch called for — "an order at declare blockers, amounts at the damage
+step" — was not built, because there is no consumer for an order: CR 509.2's assignment order is
+taken as the declaration order everywhere (`Game::blockers_of`), and the lethal-in-order fallback
+reads it straight off `combat.blocks`. Only the *amounts* choice exists, at CR 510.1a's timing. A
+card that lets a player reorder blockers would add the second choice.
+Also still open, both pre-existing and unrelated to the timing: CR 510.1c's "lethal damage to each
+earlier blocker first" is not enforced on a chosen division (any non-negative split summing to power
+is legal), and a double striker reuses its first-strike division in the normal batch instead of
+choosing a fresh one (CR 510.4) — visible only when a blocker survives the first batch.
+All 8 of #1's cards dropped their `approximates`. Tests:
+`crates/engine/tests/leg_divide_combat_damage_in_the_damage_step.rs` plus
+`rampage_bonus_is_divided_among_the_blockers_in_the_combat_damage_step` in
+`crates/engine/tests/leg_rampage.rs`.
 
 ### 120. `return-graveyard-cards-to-owners-hand` — 1 card, M
 Depends on: nothing. Raised by #8, which went looking for Spurnmage Advocate's stale blocking-axis
@@ -1354,3 +1462,50 @@ New arms are owed in `Game::keyword_token` (`crates/engine/src/message.rs`) and 
 activated ability, and the three tests slice 4 wrote are the coverage: the token carries the keyword
 and the Master does not, a two-wolf pack is blocked as a group, and a differently-named creature
 cannot join the band.
+
+### 124. `greatest-mana-value-tiebreak-choice` — 1 card, S
+Depends on: #40 (landed — the exchange itself).
+Juxtapose: "If two or more permanents a player controls are tied for greatest, their controller
+chooses one of them." Split out of #40, which landed the card with the exchange faithful and the
+tiebreak deterministic — `Game::greatest_mana_value_permanent`'s `max_by_key` keeps the last maximum,
+so the most recently created of a tied group is the one exchanged. Exactly one of a tied group moves
+either way, which is what `crates/engine/tests/leg_exchange_control.rs` asserts, so only *which* one
+is unfaithful. Recorded in `juxtapose.toml`'s `approximates`.
+*Sketch:* a `PendingChoice` offering the tied permanents to their own controller, raised once per
+tied seat, so Juxtapose can pause twice inside one resolution (and twice more for the artifact step)
+— which means it also needs a `SequenceCont`-style tail so the artifact step still reads the board
+the creature step left behind. Both seats can be tied at once and neither is necessarily the
+spell's controller, so the pause has to be answerable by a non-active player. The only card in the
+pool that wants it; the choice is CR 701.10's "chooses", not a target, so it skips the
+shroud/hexproof checks.
+
+### 125. `describe-a-filtered-anthems-pt-delta` — 0 cards, S
+Depends on: #13 (landed — which is what gave `StaticEffect::KeywordAnthem` its P/T fields).
+Two display-only gaps opened when Ivory Guardians and Arcades Sabboth routed their pumps through the
+*filtered* anthem instead of `Anthem`. The board is correct in both; only what the player is told
+is not. First, `keyword_anthem`'s effect message renders its keywords and filter, so an anthem that
+grants a P/T delta and no keyword describes itself as granting nothing. Second,
+`Game::modifier_sources`' anthem re-scan reads `StaticEffect::Anthem` only, so the client's
+per-creature "+1/+1 from …" attribution list silently omits a filtered anthem's delta — the creature
+shows the right P/T with no source for part of it.
+*Sketch:* both are one arm each — teach the message builder to name a P/T delta when present, and
+widen the `modifier_sources` scan to the same `Game::anthem_continuous_effects` choke both kinds
+already share, so it cannot drift apart again. The `keyword_anthem` mode name itself now
+under-describes the variant (8 existing cards spell it), so a rename rides here or nowhere.
+
+### 126. `finish-cr-510s-damage-assignment-rules` — 0 cards, M
+Depends on: #119 (landed — which put the division in the damage step where both of these live).
+Two pre-existing gaps in the chosen division, both surfaced by #119 and neither caused by it.
+CR 510.1c requires that a blocker be assigned lethal damage before any is assigned to a blocker
+behind it in the assignment order; the engine accepts any non-negative split that sums to the
+attacker's power, so a player may spread damage that kills nothing. CR 510.4 gives a double striker
+a *fresh* division in the normal batch, but the engine reuses the one it chose for the first-strike
+batch — visible only when a blocker survives the first batch, since otherwise the reused split is
+also the legal one.
+*Sketch:* the lethal-order check belongs in `Game::assign_damage`'s validation
+(`pending/handlers/combat.rs`), walking `Game::blockers_of`'s declaration order and requiring each
+earlier blocker to be at lethal (damage already marked plus this assignment, CR 510.1c's "lethal
+damage" reading toughness minus marked damage) before a later one takes any. The double-strike
+re-ask is in `Game::divide_or_deal_combat_damage` — clear the recorded division when the normal
+batch opens rather than treating the first-strike answer as settled for both. No pool card needs
+either to be scripted; both are correctness on cards that already ship.

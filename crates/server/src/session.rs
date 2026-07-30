@@ -717,9 +717,11 @@ mod tests {
             blocks: vec![(b1, attacker), (b2, attacker)],
         })
         .unwrap();
+        advance_to(&mut game, Step::CombatDamage);
         assert!(
             game.pending_choice().is_some(),
-            "a multi-block owes the attacker a damage-division choice",
+            "a multi-block owes the attacker a damage-division choice in the damage step \
+             (CR 510.1a)",
         );
 
         let mut table = Table::empty();

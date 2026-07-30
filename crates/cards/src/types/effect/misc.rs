@@ -33,6 +33,18 @@ pub enum MiscEffect {
         strips_mana_on_decline: bool,
     },
 
+    /// "counter it" / "counter that spell" on a [`Trigger::CastSpell`] watch — Presence of the
+    /// Master, Nether Void, In the Eye of Chaos, Invoke Prejudice. CR 115.1: "it" is not a target,
+    /// so the spell is the one that fired the watch, baked in at trigger placement from
+    /// [`TriggerContext::triggering_spell`] rather than chosen. The optional `unless_pays` rider is
+    /// CR 701.5c, offered to the spell's own controller.
+    CounterTriggeringSpell {
+        #[cfg_attr(feature = "card-dsl", serde(skip))]
+        triggering_spell: Option<ObjectId>,
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        unless_pays: Option<Amount>,
+    },
+
     Fight {
         #[cfg_attr(feature = "card-dsl", serde(skip))]
         enemy: Option<Target>,

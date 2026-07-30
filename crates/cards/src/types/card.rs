@@ -511,6 +511,14 @@ impl TypeSet {
         self.0 & other.0 != 0
     }
 
+    /// The types both sets have — Gauntlets of Chaos narrowing "artifact, creature, or land" down
+    /// to the types its chosen first target actually has. Beware the empty set's double meaning
+    /// (see [`NONE`](Self::NONE)): an empty intersection means "shares nothing", which as a
+    /// filter's `types` would read as "no restriction", so callers must handle it explicitly.
+    pub const fn intersection(self, other: TypeSet) -> TypeSet {
+        TypeSet(self.0 & other.0)
+    }
+
     /// Whether this set is empty (a filter with no type restriction).
     pub fn is_empty(self) -> bool {
         self.0 == 0

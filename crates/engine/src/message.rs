@@ -217,6 +217,7 @@ message_keys! {
     EFFECT_MISC_BECOME_PREPARED => "effect.misc_become_prepared",
     EFFECT_MISC_COUNTER_TARGET_ACTIVATED_ABILITY => "effect.misc_counter_target_activated_ability",
     EFFECT_MISC_COUNTER_TARGET_SPELL => "effect.misc_counter_target_spell",
+    EFFECT_MISC_COUNTER_TRIGGERING_SPELL => "effect.misc_counter_triggering_spell",
     EFFECT_MISC_FIGHT => "effect.misc_fight",
     EFFECT_MISC_FLIP_SOURCE => "effect.misc_flip_source",
     EFFECT_MISC_GET_EMBLEM => "effect.misc_get_emblem",
@@ -1094,6 +1095,7 @@ fn spell_filter_token(filter: SpellFilter) -> String {
         SpellFilter::SpellsThatTargetACreature => "spells_that_target_a_creature".to_string(),
         SpellFilter::Aura => "aura".to_string(),
         SpellFilter::InstantOrSorcery => "instant_or_sorcery".to_string(),
+        SpellFilter::Instant => "instant".to_string(),
         SpellFilter::Enchantment => "enchantment".to_string(),
         SpellFilter::ArtifactOrEnchantment => "artifact_or_enchantment".to_string(),
         SpellFilter::HasSubtype(subtypes) => format!("has_subtype_{}", string_list_token(subtypes)),
@@ -1108,6 +1110,9 @@ fn spell_filter_token(filter: SpellFilter) -> String {
         SpellFilter::ManaValueEqualsX => "mana_value_equals_x".to_string(),
         SpellFilter::InstantOrAuraTargetsPermanentYouControl => {
             "instant_or_aura_targets_permanent_you_control".to_string()
+        }
+        SpellFilter::CreatureNotSharingColorWithCreatureYouControl => {
+            "creature_not_sharing_color_with_creature_you_control".to_string()
         }
     }
 }
@@ -1369,7 +1374,10 @@ impl EffectMessage for Effect {
             Effect::Control(TargetOpponentGainsControl { .. }) => {
                 MessageRef::new(MessageKey::EFFECT_CONTROL_TARGET_OPPONENT_GAINS_CONTROL)
             }
-            Effect::Control(ExchangeControl { .. }) => {
+            // ponytail: Juxtapose's chosen-by-mana-value exchange reuses the plain exchange key —
+            // both describe "exchange control", and the key set is mirrored by hand into the
+            // client i18n catalog. Give it its own key if the client ever needs to say which.
+            Effect::Control(ExchangeControl { .. } | ExchangeGreatestManaValue { .. }) => {
                 MessageRef::new(MessageKey::EFFECT_CONTROL_EXCHANGE_CONTROL)
             }
             Effect::Control(ExchangeAllCreaturesUntilEndOfTurn { .. }) => {
@@ -2094,6 +2102,7 @@ impl EffectMessage for Effect {
                 keywords,
                 filter,
                 all_players,
+                ..
             }) => MessageRef::new(MessageKey::EFFECT_STATIC_KEYWORD_ANTHEM).with_params(vec![
                 keyword_list_param("keywords", keywords),
                 permanent_filter_param("filter", filter),
@@ -2418,6 +2427,17 @@ impl EffectMessage for Effect {
                     .map(|amount| amount_param("amount", amount))
                     .unwrap_or_else(|| str_param("amount", "none")),
             ]),
+            Effect::Misc(CounterTriggeringSpell {
+                unless_pays,
+                triggering_spell: _,
+            }) => MessageRef::new(MessageKey::EFFECT_MISC_COUNTER_TRIGGERING_SPELL).with_params(
+                vec![
+                    bool_param("unless_pays", unless_pays.is_some()),
+                    unless_pays
+                        .map(|amount| amount_param("amount", amount))
+                        .unwrap_or_else(|| str_param("amount", "none")),
+                ],
+            ),
             Effect::Misc(CounterTargetActivatedAbility) => {
                 MessageRef::new(MessageKey::EFFECT_MISC_COUNTER_TARGET_ACTIVATED_ABILITY)
             }

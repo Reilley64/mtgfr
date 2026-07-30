@@ -46,28 +46,6 @@ fn bears(game: &mut Game, count: usize) -> Vec<ObjectId> {
         .collect()
 }
 
-/// A multiply-blocked attacker's controller divides its combat damage as the blocks are sealed —
-/// answer that with everything on the first blocker, since these tests are about the rampage pump
-/// and not the split. Runs before the rampage trigger reaches the stack, so the total it must hit
-/// is the attacker's *unpumped* power.
-fn assign_damage_to_first_blocker(game: &mut Game) {
-    while let Some(PendingChoice::AssignCombatDamage {
-        player,
-        attacker,
-        blockers,
-    }) = game.pending_choice()
-    {
-        let power = game.power(attacker);
-        let assignment = blockers
-            .iter()
-            .enumerate()
-            .map(|(index, &blocker)| (blocker, if index == 0 { power } else { 0 }))
-            .collect();
-        game.submit(Intent::AssignDamage { player, assignment })
-            .unwrap();
-    }
-}
-
 // ── rampage N (CR 702.23) ─────────────────────────────────────────────────────────────
 
 #[test]
@@ -81,7 +59,6 @@ fn craw_giant_rampage_two_pumps_for_each_blocker_beyond_the_first() {
 
     attack_with(&mut game, vec![giant]);
     block_with(&mut game, blockers.iter().map(|&b| (b, giant)).collect()).unwrap();
-    assign_damage_to_first_blocker(&mut game);
     resolve_top_of_stack(&mut game);
 
     assert_eq!(
@@ -125,7 +102,6 @@ fn craw_giant_rampage_triggers_once_however_many_creatures_block() {
 
     attack_with(&mut game, vec![giant]);
     block_with(&mut game, blockers.iter().map(|&b| (b, giant)).collect()).unwrap();
-    assign_damage_to_first_blocker(&mut game);
 
     assert_eq!(
         game.stack().len(),
@@ -149,7 +125,6 @@ fn aerathi_berserker_rampage_three_scales_by_its_own_n() {
         blockers.iter().map(|&b| (b, berserker)).collect(),
     )
     .unwrap();
-    assign_damage_to_first_blocker(&mut game);
     resolve_top_of_stack(&mut game);
 
     assert_eq!(
@@ -171,7 +146,6 @@ fn craw_giant_rampage_counts_the_blockers_alive_when_the_trigger_resolves() {
 
     attack_with(&mut game, vec![giant]);
     block_with(&mut game, blockers.iter().map(|&b| (b, giant)).collect()).unwrap();
-    assign_damage_to_first_blocker(&mut game);
     cast_and_resolve(&mut game, bolt, Some(Target::Object(blockers[0])));
     assert_eq!(
         game.zone_of(blockers[0]),
@@ -199,7 +173,6 @@ fn craw_giant_rampage_bonus_survives_a_blocker_dying_after_it_resolves() {
 
     attack_with(&mut game, vec![giant]);
     block_with(&mut game, blockers.iter().map(|&b| (b, giant)).collect()).unwrap();
-    assign_damage_to_first_blocker(&mut game);
     resolve_top_of_stack(&mut game);
     cast_and_resolve(&mut game, bolt, Some(Target::Object(blockers[0])));
 
@@ -254,7 +227,6 @@ fn rapid_fire_grants_first_strike_and_rampage_two_to_a_creature_without_rampage(
 
     attack_with(&mut game, vec![attacker]);
     block_with(&mut game, blockers.iter().map(|&b| (b, attacker)).collect()).unwrap();
-    assign_damage_to_first_blocker(&mut game);
     resolve_top_of_stack(&mut game);
 
     assert_eq!(
@@ -281,7 +253,6 @@ fn rapid_fire_does_not_stack_a_second_rampage_on_a_creature_that_already_has_one
 
     attack_with(&mut game, vec![giant]);
     block_with(&mut game, blockers.iter().map(|&b| (b, giant)).collect()).unwrap();
-    assign_damage_to_first_blocker(&mut game);
     assert_eq!(
         game.stack().len(),
         1,
@@ -296,17 +267,13 @@ fn rapid_fire_does_not_stack_a_second_rampage_on_a_creature_that_already_has_one
     );
 }
 
-// ── the rampage bonus never reaches the blockers (increment 119) ───────────────────────
+// ── the rampage bonus reaches the blockers (increment 119) ─────────────────────────────
 
-/// Frost Giant is 4/4 rampage 2. Blocked by two 2/2 Bears its power becomes 6 (CR 702.23), but
-/// the engine raises the damage division at declare blockers — before the rampage trigger is even
-/// on the stack — and validates the total against the attacker's power *at that moment*. So the
-/// division can only ever total the unpumped 4, and the two points of rampage land on nobody.
-/// CR 510.1a puts that division in the combat damage step, where the pumped power would be read.
-///
-/// This asserts what the engine does today; increment 119 is what makes the pumped total legal.
+/// Frost Giant is 4/4 rampage 2. Blocked by two 2/2 Bears its power becomes 6 (CR 702.23), and
+/// CR 510.1a divides its combat damage in the combat damage step, reading the power it has then —
+/// so all six points are the Giant's to spend on its blockers.
 #[test]
-fn rampage_bonus_cannot_be_divided_because_the_division_is_locked_before_the_trigger_resolves() {
+fn rampage_bonus_is_divided_among_the_blockers_in_the_combat_damage_step() {
     let mut game = Game::new();
     stock_libraries(&mut game);
     let giant = game.spawn_on_battlefield(PlayerId(0), card("Frost Giant"));
@@ -314,32 +281,31 @@ fn rampage_bonus_cannot_be_divided_because_the_division_is_locked_before_the_tri
 
     attack_with(&mut game, vec![giant]);
     block_with(&mut game, blockers.iter().map(|&b| (b, giant)).collect()).unwrap();
+    resolve_top_of_stack(&mut game); // the rampage trigger
+    assert_eq!(game.power(giant), 6, "4/4 plus 1 x rampage 2");
 
+    advance_until(&mut game, |g| g.current_step() == Step::CombatDamage);
     let Some(PendingChoice::AssignCombatDamage { player, .. }) = game.pending_choice() else {
-        panic!("a multi-blocked attacker divides its damage");
+        panic!("a multi-blocked attacker divides its damage in the combat damage step");
     };
-
-    // ponytail: the rampage trigger has not resolved yet, so 3+3 — what CR 702.23 entitles the
-    // Giant to once it does — is rejected as exceeding its power. Increment 119.
     assert!(
         game.submit(Intent::AssignDamage {
             player,
-            assignment: vec![(blockers[0], 3), (blockers[1], 3)],
+            assignment: vec![(blockers[0], 2), (blockers[1], 2)],
         })
         .is_err(),
-        "the pumped total is illegal today: the division is validated before rampage resolves"
+        "the unpumped total is short of the power the Giant has in this step",
     );
 
     game.submit(Intent::AssignDamage {
         player,
-        assignment: vec![(blockers[0], 2), (blockers[1], 2)],
+        assignment: vec![(blockers[0], 3), (blockers[1], 3)],
     })
-    .expect("only the unpumped total is legal");
+    .expect("the whole rampage-pumped 6 is divisible");
 
-    resolve_top_of_stack(&mut game);
     assert_eq!(
-        game.power(giant),
-        6,
-        "the pump itself lands — it just has no division left to ride"
+        (game.zone_of(blockers[0]), game.zone_of(blockers[1])),
+        (Zone::Graveyard, Zone::Graveyard),
+        "3 apiece is lethal to both 2/2 Bears — the rampage bonus lands as damage",
     );
 }

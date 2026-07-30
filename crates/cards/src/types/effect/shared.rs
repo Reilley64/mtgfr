@@ -622,6 +622,7 @@ impl Effect {
             | Effect::Control(ControlEffect::GainControl { target })
             | Effect::Control(ControlEffect::GainControlWhile { target, .. })
             | Effect::Control(ControlEffect::TargetOpponentGainsControl { target, .. })
+            | Effect::Control(ControlEffect::ExchangeGreatestManaValue { target, .. })
             | Effect::Zone(ZoneEffect::ShuffleTargetPermanentIntoLibraryThenReveal { target })
             | Effect::Zone(ZoneEffect::ShuffleTargetPermanentIntoLibrary { target })
             | Effect::Zone(ZoneEffect::TuckPermanentIntoLibrary { target, .. })
@@ -708,6 +709,9 @@ impl Effect {
             }
             Effect::Copy(CopyEffect::TargetSpell { .. }) => TargetSpec::InstantOrSorcerySpellOnStack,
             Effect::Misc(MiscEffect::CounterTargetSpell { filter, .. }) => TargetSpec::SpellOnStack(filter),
+            // CR 115.1: "counter it" names the spell that fired the watch — nothing is targeted, so
+            // the spell arrives via `fill_triggering_spell` instead of a chosen target.
+            Effect::Misc(MiscEffect::CounterTriggeringSpell { .. }) => TargetSpec::None,
             Effect::Misc(MiscEffect::CounterTargetActivatedAbility) => TargetSpec::ActivatedAbilityOnStack,
             // The cast-time target is the *opponent's* creature; the controller's own creature
             // is chosen at resolution (see `Effect::Misc(MiscEffect::Fight)`'s doc comment).
@@ -2783,6 +2787,12 @@ fn fill_triggering_spell(effect: Effect, spell: ObjectId) -> Effect {
                 triggering_spell: Some(spell),
             })
         }
+        Effect::Misc(MiscEffect::CounterTriggeringSpell { unless_pays, .. }) => {
+            Effect::Misc(MiscEffect::CounterTriggeringSpell {
+                triggering_spell: Some(spell),
+                unless_pays,
+            })
+        }
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
@@ -3345,6 +3355,15 @@ fn fill_cast_mana_value(effect: Effect, mv: u32) -> Effect {
         other => other,
     };
     match effect {
+        // In the Eye of Chaos / Invoke Prejudice: "unless that player pays {X}, where X is its mana
+        // value" — "its" is the triggering spell's own mana value, locked in here.
+        Effect::Misc(MiscEffect::CounterTriggeringSpell {
+            triggering_spell,
+            unless_pays,
+        }) => Effect::Misc(MiscEffect::CounterTriggeringSpell {
+            triggering_spell,
+            unless_pays: unless_pays.map(fill),
+        }),
         Effect::Pump(PumpEffect::PumpUntilEndOfTurn {
             power,
             toughness,

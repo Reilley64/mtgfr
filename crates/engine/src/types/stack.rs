@@ -1100,8 +1100,14 @@ pub enum PendingChoice {
         source: ObjectId,
         candidates: Vec<ObjectId>,
     },
-    /// `player` (the attacker's controller) must divide `attacker`'s combat damage among its
-    /// `blockers`. Answered by [`Intent::AssignDamage`].
+    /// `player` must divide `attacker`'s combat damage among its `blockers`. Answered by
+    /// [`Intent::AssignDamage`].
+    ///
+    /// Raised in the combat damage step, once per batch, before any of that batch's damage is dealt
+    /// (CR 510.1a — the amounts are divided *there*, off the power the attacker has then, which is
+    /// why this isn't asked at declare blockers). `player` is normally the attacking creature's
+    /// controller, but a banding blocker moves the division to the defending player (CR 702.22j),
+    /// so it is carried explicitly rather than implied — see [`Game::damage_assigner`].
     AssignCombatDamage {
         player: PlayerId,
         attacker: ObjectId,

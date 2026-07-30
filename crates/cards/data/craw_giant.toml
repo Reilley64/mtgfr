@@ -7,7 +7,6 @@ sets = ["5ed", "bchr", "chr", "leg", "tsb"]
 id = "152b621e-4c18-438c-9999-77e2685fda79"
 default_print = "81c5ee8f-a060-486c-a7f1-7bd600f6911a"
 oracle = "Trample\nRampage 2 (Whenever this creature becomes blocked, it gets +2/+2 until end of turn for each creature blocking it beyond the first.)"
-approximates = "the rampage bonus cannot be assigned among the blockers, only trampled over: the engine raises the damage division at declare blockers and validates its total against the attacker's unpumped power, so the extra power reaches the defending player as trample overflow rather than being divisible among blockers as CR 510.1a allows (increment 119)"
 subtypes = ["Giant"]
 keywords = ["trample", { rampage = 2 }]
 

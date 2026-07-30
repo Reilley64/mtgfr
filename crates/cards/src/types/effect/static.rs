@@ -466,6 +466,19 @@ pub enum StaticEffect {
         #[cfg_attr(feature = "card-dsl", serde(default))]
         attached: bool,
     },
+    /// The *filtered* anthem: a continuous grant to every permanent matching a full
+    /// [`PermanentFilter`], rather than [`Anthem`](Self::Anthem)'s fixed set of candidate axes.
+    /// Reach for it when the affected set needs something `Anthem` can't say — a printed name
+    /// (Ivory Guardians' "Creatures named Ivory Guardians") or a per-candidate combat state read
+    /// live (Arcades Sabboth's "Each untapped creature you control … as long as it's not
+    /// attacking") — and for `Anthem` when the plain "creatures you control" axes suffice.
+    ///
+    /// The `keyword_anthem` name is what the TOML surface spells and predates the `power` /
+    /// `toughness` fields; it grants keywords and/or a P/T delta, either alone.
+    ///
+    /// Applied per candidate in `Game::anthem_continuous_effects` beside `Anthem`'s own scan, so
+    /// both kinds land in layer 7c/6 at the same timestamp choke and are re-read on every
+    /// recompute (CR 613.4) — the boost falls off the instant the filter stops matching.
     KeywordAnthem {
         #[cfg_attr(
             feature = "card-dsl",
@@ -476,6 +489,18 @@ pub enum StaticEffect {
         filter: PermanentFilter,
         #[cfg_attr(feature = "card-dsl", serde(default))]
         all_players: bool,
+        /// P/T delta granted alongside (or instead of) `keywords`. Both default to 0, so the
+        /// pool's keyword-only spellings are unchanged.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        power: Amount,
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        toughness: Amount,
+        /// An "as long as …" board gate on the *whole* anthem, evaluated against the source's own
+        /// controller — Ivory Guardians' "as long as an opponent controls a nontoken red
+        /// permanent". The candidate-side half of a card's gate belongs in `filter` instead.
+        /// Same field and same live re-read as [`Anthem`](Self::Anthem)'s `condition`.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        condition: Option<Condition>,
     },
 
     /// Crevasse's "Creatures with mountainwalk can be blocked as though they didn't have

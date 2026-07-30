@@ -41,14 +41,12 @@ impl Game {
             },
         );
 
-        // Chain to the next multi-blocked attacker's division, or hand back priority. (CR 117, CR 402.5, CR 508)
-        if let Some((next, blks)) = self.next_undivided_multiblock() {
-            self.pause_for(PendingChoice::AssignCombatDamage {
-                player: self.damage_assigner(&blks),
-                attacker: next,
-                blockers: blks,
-            });
-        } else {
+        // Resume the combat damage step's turn-based action (CR 510.1): chain to the next
+        // multi-blocked attacker's division, or — once every one is settled — deal the batch. The
+        // step's own priority window is opened here, since `advance_step` returned early to raise
+        // this choice and never reached it. (CR 117, CR 402.5, CR 508)
+        self.divide_or_deal_combat_damage(self.step == Step::FirstStrikeCombatDamage, &mut events);
+        if self.pending_choice.is_none() {
             self.consecutive_passes = 0;
             self.priority = self.active_player;
         }

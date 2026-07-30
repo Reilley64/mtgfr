@@ -1180,6 +1180,9 @@ impl Game {
                         keywords,
                         filter,
                         all_players,
+                        power,
+                        toughness,
+                        condition,
                     }),
                 ) = (ability.timing, ability.effect.clone())
                 else {
@@ -1197,6 +1200,32 @@ impl Game {
                     continue;
                 }
                 if !self.permanent_matches(&filter, candidate, candidate_controller, Some(source)) {
+                    continue;
+                }
+                // An "as long as …" board gate (Ivory Guardians' "as long as an opponent controls a
+                // nontoken red permanent") — read against the source's own controller, the same way
+                // `matching_anthems` reads `Anthem`'s. The candidate-side half of a gate rides
+                // `filter` instead, so this is only ever the global half.
+                let source_controller = self.controller_of(source);
+                if let Some(cond) = condition
+                    && !self.ability_condition_holds(
+                        cond,
+                        source,
+                        TriggerContext::of(source_controller),
+                    )
+                {
+                    continue;
+                }
+                let power = self.resolve_amount(power, source_controller, source, None, 0);
+                let toughness = self.resolve_amount(toughness, source_controller, source, None, 0);
+                if power != 0 || toughness != 0 {
+                    effects.push(ContinuousEffect {
+                        source,
+                        timestamp,
+                        kind: ContinuousEffectKind::PtDelta { power, toughness },
+                    });
+                }
+                if keywords.is_empty() {
                     continue;
                 }
                 effects.push(ContinuousEffect {
@@ -3074,6 +3103,12 @@ impl Game {
             }
             SpellFilter::Aura => matches!(def.kind, CardKind::Aura),
             SpellFilter::InstantOrSorcery => matches!(def.kind, CardKind::Spell { .. }),
+            SpellFilter::Instant => matches!(
+                def.kind,
+                CardKind::Spell {
+                    speed: SpellSpeed::Instant
+                }
+            ),
             SpellFilter::Enchantment => def.kind.types().intersects(TypeSet::ENCHANTMENT),
             SpellFilter::ArtifactOrEnchantment => def
                 .kind
@@ -3112,6 +3147,11 @@ impl Game {
             // the *candidate* spell's controller for this call's other callers). Never true here:
             // no trigger or cost-reducer filters on this shape.
             SpellFilter::InstantOrAuraTargetsPermanentYouControl => false,
+            // Invoke Prejudice's "doesn't share a color with a creature you control" is matched
+            // inline in `queue_cast_spell_triggers`, the only choke that holds the *watching
+            // permanent's* controller separately from `caster` here (which is the casting player).
+            // Never true here: no cost-reducer filters on this shape.
+            SpellFilter::CreatureNotSharingColorWithCreatureYouControl => false,
             // Balefire Liege's "cast a red spell" / "cast a white spell" — CR 105.1/202.2, the
             // spell's own colors (a multicolored spell matches every one of its colors).
             SpellFilter::Color(color) => color_identity(&def)[color.index()],

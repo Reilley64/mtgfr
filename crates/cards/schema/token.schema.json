@@ -3736,6 +3736,11 @@
             },
             {
               "properties": {
+                "destroy_attached_auras": {
+                  "default": false,
+                  "description": "Gauntlets of Chaos: \"If those permanents are exchanged this way, destroy all Auras attached to them\" — a rider on the swap, so it only happens when both permanents were actually exchanged (CR 608.2b cancels the swap, and this with it).",
+                  "type": "boolean"
+                },
                 "first": {
                   "$ref": "#/$defs/TargetSpec"
                 },
@@ -3747,12 +3752,40 @@
                 },
                 "second": {
                   "$ref": "#/$defs/TargetSpec"
+                },
+                "second_shares_type_with_first": {
+                  "default": false,
+                  "description": "Gauntlets of Chaos: \"target permanent an opponent controls **that shares one of those types with it**\" — the second clause's legality depends on the first target, so its declared type mask is intersected with the first target's own card types when the second clause's legal set is read (CR 601.2c). `false` (Vedalken Plotter, Chromeshell Crab) leaves the second filter exactly as written.",
+                  "type": "boolean"
                 }
               },
               "required": [
                 "first",
                 "mode",
                 "second"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "Juxtapose: \"You and target player exchange control of the creature you each control with the greatest mana value. Then exchange control of artifacts the same way.\" An exchange whose two permanents are *chosen*, not targeted (CR 701.10) — one per seat, the greatest printed mana value among the permanents that seat controls matching `types`. `target` names the other seat; the first is the resolving controller. Nothing happens unless both seats have one (CR 701.10c).",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "exchange_greatest_mana_value"
+                  ],
+                  "type": "string"
+                },
+                "target": {
+                  "$ref": "#/$defs/TargetSpec"
+                },
+                "types": {
+                  "$ref": "#/$defs/TypeSet"
+                }
+              },
+              "required": [
+                "mode",
+                "target",
+                "types"
               ],
               "type": "object"
             },
@@ -8877,10 +8910,22 @@
               "type": "object"
             },
             {
+              "description": "The *filtered* anthem: a continuous grant to every permanent matching a full [`PermanentFilter`], rather than [`Anthem`](Self::Anthem)'s fixed set of candidate axes. Reach for it when the affected set needs something `Anthem` can't say — a printed name (Ivory Guardians' \"Creatures named Ivory Guardians\") or a per-candidate combat state read live (Arcades Sabboth's \"Each untapped creature you control … as long as it's not attacking\") — and for `Anthem` when the plain \"creatures you control\" axes suffice.\n\nThe `keyword_anthem` name is what the TOML surface spells and predates the `power` / `toughness` fields; it grants keywords and/or a P/T delta, either alone.\n\nApplied per candidate in `Game::anthem_continuous_effects` beside `Anthem`'s own scan, so both kinds land in layer 7c/6 at the same timestamp choke and are re-read on every recompute (CR 613.4) — the boost falls off the instant the filter stops matching.",
               "properties": {
                 "all_players": {
                   "default": false,
                   "type": "boolean"
+                },
+                "condition": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/Condition"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "An \"as long as …\" board gate on the *whole* anthem, evaluated against the source's own controller — Ivory Guardians' \"as long as an opponent controls a nontoken red permanent\". The candidate-side half of a card's gate belongs in `filter` instead. Same field and same live re-read as [`Anthem`](Self::Anthem)'s `condition`."
                 },
                 "filter": {
                   "$ref": "#/$defs/PermanentFilter"
@@ -8896,6 +8941,17 @@
                     "keyword_anthem"
                   ],
                   "type": "string"
+                },
+                "power": {
+                  "allOf": [
+                    {
+                      "$ref": "#/$defs/Amount"
+                    }
+                  ],
+                  "description": "P/T delta granted alongside (or instead of) `keywords`. Both default to 0, so the pool's keyword-only spellings are unchanged."
+                },
+                "toughness": {
+                  "$ref": "#/$defs/Amount"
                 }
               },
               "required": [
@@ -9474,6 +9530,31 @@
                   "default": false,
                   "description": "Power Sink's \"if that player doesn't, they tap all lands with mana abilities they control and lose all unspent mana\" — a penalty riding on the *declined* half of `unless_pays`, so it can't be an ordinary following step (those run either way). `false` (the default) for every other counter-unless-pays. Ignored without `unless_pays`.",
                   "type": "boolean"
+                },
+                "unless_pays": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/Amount"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "\"counter it\" / \"counter that spell\" on a [`Trigger::CastSpell`] watch — Presence of the Master, Nether Void, In the Eye of Chaos, Invoke Prejudice. CR 115.1: \"it\" is not a target, so the spell is the one that fired the watch, baked in at trigger placement from [`TriggerContext::triggering_spell`] rather than chosen. The optional `unless_pays` rider is CR 701.5c, offered to the spell's own controller.",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "counter_triggering_spell"
+                  ],
+                  "type": "string"
                 },
                 "unless_pays": {
                   "anyOf": [
@@ -11073,6 +11154,12 @@
             "null"
           ]
         },
+        "not_attacking": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
         "not_color": {
           "anyOf": [
             {
@@ -11601,6 +11688,13 @@
           "type": "string"
         },
         {
+          "description": "Instant spells only (In the Eye of Chaos — \"Whenever a player casts an instant spell\"), the narrow half of [`InstantOrSorcery`](Self::InstantOrSorcery).",
+          "enum": [
+            "instant"
+          ],
+          "type": "string"
+        },
+        {
           "description": "Enchantment spells you cast (Starfield Mystic). A type-bit check via [`CardKind::types`], so an Aura spell matches too (CR 303.4a: an Aura *is* an enchantment) — the pool's white Auras get Starfield Mystic's discount.",
           "enum": [
             "enchantment"
@@ -11689,6 +11783,13 @@
           "description": "An instant or Aura spell that targets a permanent the *filtering spell's controller* controls (Avoid Fate, Ring of Immortals — \"Counter target instant or Aura spell that targets a permanent you control\"). \"You\" is the counterer, not the target spell's own controller (test that asymmetry explicitly), and any one of the target spell's targets satisfying the check is enough (CR 608.2b: a spell may have more than one target). Like [`ManaValueEqualsX`](Self::ManaValueEqualsX), matched inline in [`Game::legal_targets_for`](crate::Game)'s `SpellOnStack` enumeration — the only place that holds the filtering spell's own controller separately from the candidate spell's — so `Game::spell_matches_filter` never matches it either. No general And-combinator exists yet (see #90); a second card with a different type-plus-target-shape pair should fold into one, same posture as [`InstantOrSorceryWithXInCost`](Self::InstantOrSorceryWithXInCost).",
           "enum": [
             "instant_or_aura_targets_permanent_you_control"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "A creature spell that doesn't share a color with a creature the *watching permanent's* controller controls (Invoke Prejudice). CR 105.1/202.2: a multicolored creature shares a color with anything holding any one of its colors, and a colorless creature spell shares no color with anything. Like [`ManaValueEqualsX`](Self::ManaValueEqualsX) and [`InstantOrAuraTargetsPermanentYouControl`](Self::InstantOrAuraTargetsPermanentYouControl), matched inline — here in `Game::queue_cast_spell_triggers`, the only place that holds the watcher's controller separately from the casting player — so `Game::spell_matches_filter`, whose `caster` parameter means the caster at every call site, never matches it.",
+          "enum": [
+            "creature_not_sharing_color_with_creature_you_control"
           ],
           "type": "string"
         }

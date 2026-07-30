@@ -199,6 +199,10 @@ pub enum SpellFilter {
     /// Instant and sorcery spells you cast (Stormcatch Mentor).
     #[cfg_attr(feature = "card-dsl", serde(rename = "instant_or_sorcery"))]
     InstantOrSorcery,
+    /// Instant spells only (In the Eye of Chaos — "Whenever a player casts an instant spell"), the
+    /// narrow half of [`InstantOrSorcery`](Self::InstantOrSorcery).
+    #[cfg_attr(feature = "card-dsl", serde(rename = "instant"))]
+    Instant,
     /// Enchantment spells you cast (Starfield Mystic). A type-bit check via [`CardKind::types`],
     /// so an Aura spell matches too (CR 303.4a: an Aura *is* an enchantment) — the pool's white
     /// Auras get Starfield Mystic's discount.
@@ -279,6 +283,19 @@ pub enum SpellFilter {
         serde(rename = "instant_or_aura_targets_permanent_you_control")
     )]
     InstantOrAuraTargetsPermanentYouControl,
+    /// A creature spell that doesn't share a color with a creature the *watching permanent's*
+    /// controller controls (Invoke Prejudice). CR 105.1/202.2: a multicolored creature shares a
+    /// color with anything holding any one of its colors, and a colorless creature spell shares no
+    /// color with anything. Like [`ManaValueEqualsX`](Self::ManaValueEqualsX) and
+    /// [`InstantOrAuraTargetsPermanentYouControl`](Self::InstantOrAuraTargetsPermanentYouControl),
+    /// matched inline — here in `Game::queue_cast_spell_triggers`, the only place that holds the
+    /// watcher's controller separately from the casting player — so `Game::spell_matches_filter`,
+    /// whose `caster` parameter means the caster at every call site, never matches it.
+    #[cfg_attr(
+        feature = "card-dsl",
+        serde(rename = "creature_not_sharing_color_with_creature_you_control")
+    )]
+    CreatureNotSharingColorWithCreatureYouControl,
 }
 
 /// Which library cards a [`Effect::Dig(DigEffect::SearchLibrary)`] may find (CR 701.19 — "search for a card").
@@ -824,6 +841,12 @@ pub struct PermanentFilter {
     /// Restrict to creatures declared as attackers this combat (Tajic's Mentor — "target
     /// *attacking* creature"). `false` (default) imposes no restriction.
     pub attacking: bool,
+    /// Restrict to creatures *not* declared as attackers this combat (Arcades Sabboth's "as long as
+    /// it's not attacking"). `false` (default) imposes no restriction. The negation of
+    /// [`attacking`](Self::attacking) rather than a `Some(false)` on it, so the pool's existing
+    /// `attacking = true` spellings stay untouched; setting both at once matches nothing, which is
+    /// what the two clauses read together would mean anyway.
+    pub not_attacking: bool,
     /// Restrict to creatures attacking *this filter's own controller* (Soul Snare's "creature
     /// that's attacking you") — narrower than `attacking`, which matches an attacker no matter
     /// who its declared defender is. Reads [`Game::defender_of`], the same declared-defender
@@ -1017,6 +1040,7 @@ impl PermanentFilter {
             color: ColorFilter::Any,
             modified: false,
             attacking: false,
+            not_attacking: false,
             attacking_you: false,
             blocking: false,
             attacking_or_blocking: false,

@@ -995,8 +995,13 @@ impl Game {
                 self.resolve_target_opponent_gains_control(ctx, events)
             }
             // Exchange control — see `resolution/control.rs::resolve_exchange_control`.
-            Effect::Control(ControlEffect::ExchangeControl { .. }) => {
-                self.resolve_exchange_control(ctx, events)
+            Effect::Control(ControlEffect::ExchangeControl {
+                destroy_attached_auras,
+                ..
+            }) => self.resolve_exchange_control(ctx, destroy_attached_auras, events),
+            // Juxtapose — see `resolution/control.rs::resolve_exchange_greatest_mana_value`.
+            Effect::Control(ControlEffect::ExchangeGreatestManaValue { types, .. }) => {
+                self.resolve_exchange_greatest_mana_value(ctx, types, events)
             }
             // Perpetual Timepiece / Quandrix Command mode 3 — exile-cast pause peel
             // (`resolution/pause_exile_cast`).
@@ -1017,7 +1022,12 @@ impl Game {
                 unless_pays: None,
                 countered_dest: Some(_),
                 ..
-            }) => self.run_counter_spell(effect, ctx, events),
+            })
+            // "counter it" off a cast trigger reads its own `triggering_spell` field rather than a
+            // chosen target, so both halves (taxed and plain) live in the peel.
+            | Effect::Misc(MiscEffect::CounterTriggeringSpell { .. }) => {
+                self.run_counter_spell(effect, ctx, events)
+            }
             // Fight / MoveCounters — fight pause peel (`resolution/pause_fight`).
             Effect::Misc(MiscEffect::Fight { .. })
             | Effect::Counters(CountersEffect::MoveCounters { .. }) => {

@@ -1714,6 +1714,12 @@ impl Game {
         if filter.attacking && !self.combat.attackers.contains(&id) {
             return false;
         }
+        // *Not* declared as an attacker this combat (Arcades Sabboth's "as long as it's not
+        // attacking") — read off the same declared-attackers list as the axis above, so the answer
+        // flips the instant attackers are declared and again when combat ends (CR 506.4).
+        if filter.not_attacking && self.combat.attackers.contains(&id) {
+            return false;
+        }
         // Attacking this filter's own controller (Soul Snare's "attacking you or a planeswalker
         // you control") — the attacker's declared defender must resolve to `you`, not merely to
         // any player.

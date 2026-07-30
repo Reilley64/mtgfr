@@ -191,6 +191,7 @@
   "effect.misc_become_prepared",
   "effect.misc_counter_target_activated_ability",
   "effect.misc_counter_target_spell",
+  "effect.misc_counter_triggering_spell",
   "effect.misc_fight",
   "effect.misc_flip_source",
   "effect.misc_get_emblem",

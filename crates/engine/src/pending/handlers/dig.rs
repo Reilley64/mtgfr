@@ -230,20 +230,6 @@ impl Game {
                 attackers,
             },
         );
-        // Every defender is done and no one is left to divide, so the blocks are final: the
-        // multi-block damage division `declare_blockers` would have asked for is asked here.
-        if self.pending_choice.is_none()
-            && let Some((attacker, blockers)) = self.next_undivided_multiblock()
-        {
-            crate::pending::raise_choice(
-                self,
-                PendingChoice::AssignCombatDamage {
-                    player: self.damage_assigner(&blockers),
-                    attacker,
-                    blockers,
-                },
-            );
-        }
         Ok(events)
     }
 

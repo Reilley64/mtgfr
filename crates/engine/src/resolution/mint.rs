@@ -40,7 +40,8 @@ impl Game {
                     self.mint_control(c, controller, source, target, x)
                 }
                 ControlEffect::TargetOpponentGainsControl { .. }
-                | ControlEffect::ExchangeControl { .. } => {
+                | ControlEffect::ExchangeControl { .. }
+                | ControlEffect::ExchangeGreatestManaValue { .. } => {
                     unreachable!("a pausing/composite effect resolves via Game::run")
                 }
             },
@@ -102,6 +103,7 @@ impl Game {
                     self.mint_misc(m, controller, source, target, x)
                 }
                 MiscEffect::BlocksEachAttackerIfAble { .. }
+                | MiscEffect::CounterTriggeringSpell { .. }
                 | MiscEffect::Fight { .. }
                 | MiscEffect::MustAttackRandomOpponent
                 | MiscEffect::MustAttackTarget { .. }
