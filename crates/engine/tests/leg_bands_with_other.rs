@@ -18,15 +18,20 @@ use engine::*;
 
 // ── local drivers ─────────────────────────────────────────────────────────────────────
 
-/// Player 0 with a Cathedral of Serra on the battlefield, plus `creatures` spawned for them.
-fn cathedral_board(creatures: &[&str]) -> (Game, Vec<ObjectId>) {
+/// Player 0 with `land` on the battlefield, plus `creatures` spawned for them.
+fn banding_land_board(land: &str, creatures: &[&str]) -> (Game, Vec<ObjectId>) {
     let mut game = Game::new();
-    game.spawn_on_battlefield(PlayerId(0), card("Cathedral of Serra"));
+    game.spawn_on_battlefield(PlayerId(0), card(land));
     let ids = creatures
         .iter()
         .map(|name| game.spawn_on_battlefield(PlayerId(0), card(name)))
         .collect();
     (game, ids)
+}
+
+/// Player 0 with a Cathedral of Serra on the battlefield, plus `creatures` spawned for them.
+fn cathedral_board(creatures: &[&str]) -> (Game, Vec<ObjectId>) {
+    banding_land_board("Cathedral of Serra", creatures)
 }
 
 /// P0 declares `attackers` at P1 with `bands` as its declared attacking bands (CR 702.22c).
@@ -418,4 +423,74 @@ fn a_blocker_blocking_two_band_members_records_each_block_once() {
         Zone::Graveyard,
         "the 4/4 took 4 from Jasmine Boreal and 6 from Barktooth Warbeard"
     );
+}
+
+// ── slice 4: the remaining granting cards ─────────────────────────────────────────────
+
+#[test]
+fn each_legends_banding_land_grants_bands_with_other_to_its_own_color() {
+    // "<Color> legendary creatures you control have 'bands with other legendary creatures.'" — the
+    // `cycle-leg-banding-land` cycle is one card per color, and each grant is color-gated.
+    let bands_with = Keyword::BandsWith(BandsWithQuality::Legendary);
+    let cycle: &[(&str, &str, &str)] = &[
+        // land, a legendary creature of its color, a legendary creature of some other color
+        (
+            "Adventurers' Guildhouse",
+            "Jerrard of the Closed Fist",
+            "Hunding Gjornersen",
+        ),
+        (
+            "Mountain Stronghold",
+            "Barktooth Warbeard",
+            "Jasmine Boreal",
+        ),
+        ("Seafarer's Quay", "Jedit Ojanen", "Barktooth Warbeard"),
+        ("Unholy Citadel", "Sivitri Scarzam", "Jedit Ojanen"),
+    ];
+    for &(land, on_color, off_color) in cycle {
+        let (game, ids) = banding_land_board(land, &[on_color, off_color]);
+        let [granted, ungranted] = ids[..] else {
+            unreachable!("two creatures spawned")
+        };
+        assert!(
+            game.has_keyword(granted, bands_with),
+            "{land} grants {on_color}, a legendary creature of its color"
+        );
+        assert!(
+            !game.has_keyword(ungranted, bands_with),
+            "{land} does not reach {off_color}, a legendary creature of another color"
+        );
+    }
+}
+
+#[test]
+fn a_green_band_under_adventurers_guildhouse_is_blocked_as_a_group() {
+    // The Guildhouse's grant carries the whole banding surface, not just the keyword: two green
+    // legendary creatures band (CR 702.22c) and one block catches both (CR 702.22h), so nothing
+    // reaches the defending player.
+    let (mut game, ids) = banding_land_board(
+        "Adventurers' Guildhouse",
+        &["Jerrard of the Closed Fist", "Marhault Elsdragon"],
+    );
+    let [jerrard, marhault] = ids[..] else {
+        unreachable!("two creatures spawned")
+    };
+    let bears = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
+    attack_in_bands(&mut game, &ids, vec![vec![jerrard, marhault]])
+        .expect("two green legendary creatures under the Guildhouse are a legal band");
+    block_with(&mut game, vec![(bears, jerrard)]).expect("blocking one member is legal");
+
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+    assert_eq!(
+        game.life(PlayerId(1)),
+        20,
+        "both band members were blocked, so no combat damage reached the defending player"
+    );
+    assert_eq!(
+        game.zone_of(bears),
+        Zone::Graveyard,
+        "the 2/2 blocked a 6/5 and a 4/6 at once and died to both"
+    );
+    assert_eq!(game.zone_of(jerrard), Zone::Battlefield);
+    assert_eq!(game.zone_of(marhault), Zone::Battlefield);
 }

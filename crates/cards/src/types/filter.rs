@@ -263,6 +263,22 @@ pub enum SpellFilter {
     /// [`PermanentFilter::mv_eq_x`].
     #[cfg_attr(feature = "card-dsl", serde(rename = "mana_value_equals_x"))]
     ManaValueEqualsX,
+    /// An instant or Aura spell that targets a permanent the *filtering spell's controller*
+    /// controls (Avoid Fate, Ring of Immortals — "Counter target instant or Aura spell that
+    /// targets a permanent you control"). "You" is the counterer, not the target spell's own
+    /// controller (test that asymmetry explicitly), and any one of the target spell's targets
+    /// satisfying the check is enough (CR 608.2b: a spell may have more than one target). Like
+    /// [`ManaValueEqualsX`](Self::ManaValueEqualsX), matched inline in
+    /// [`Game::legal_targets_for`](crate::Game)'s `SpellOnStack` enumeration — the only place
+    /// that holds the filtering spell's own controller separately from the candidate spell's —
+    /// so `Game::spell_matches_filter` never matches it either. No general And-combinator exists
+    /// yet (see #90); a second card with a different type-plus-target-shape pair should fold into
+    /// one, same posture as [`InstantOrSorceryWithXInCost`](Self::InstantOrSorceryWithXInCost).
+    #[cfg_attr(
+        feature = "card-dsl",
+        serde(rename = "instant_or_aura_targets_permanent_you_control")
+    )]
+    InstantOrAuraTargetsPermanentYouControl,
 }
 
 /// Which library cards a [`Effect::Dig(DigEffect::SearchLibrary)`] may find (CR 701.19 — "search for a card").

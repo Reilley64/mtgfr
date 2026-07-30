@@ -3106,6 +3106,12 @@ impl Game {
             // only choke that knows the filtering spell's own X. Never true here: this function's
             // trigger and cost-reducer callers have no X to compare against.
             SpellFilter::ManaValueEqualsX => false,
+            // Avoid Fate / Ring of Immortals's "targets a permanent you control" is matched
+            // inline in `legal_targets_for`'s `SpellOnStack` enumeration, the only choke that
+            // holds the filtering spell's own controller separately from `caster` here (which is
+            // the *candidate* spell's controller for this call's other callers). Never true here:
+            // no trigger or cost-reducer filters on this shape.
+            SpellFilter::InstantOrAuraTargetsPermanentYouControl => false,
             // Balefire Liege's "cast a red spell" / "cast a white spell" — CR 105.1/202.2, the
             // spell's own colors (a multicolored spell matches every one of its colors).
             SpellFilter::Color(color) => color_identity(&def)[color.index()],

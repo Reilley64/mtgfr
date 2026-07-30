@@ -173,7 +173,7 @@ means the blocking increment has landed and the card is scripted; the increment 
 the record shows what unblocked it.
 
 - [ ] **Abomination** {3}{B}{B} · Creature — Horror — increment 105
-- [ ] **Adventurers' Guildhouse** — · Land — increment 3
+- [x] **Adventurers' Guildhouse** — · Land — increment 3 (slices 1, 2, 4); residual — increment 3 slice 3
 - [x] **Aerathi Berserker** {2}{R}{R}{R} · Creature — Human Berserker — increment 1; residual — increment 119
 - [ ] **Aisling Leprechaun** {G} · Creature — Faerie — increment 14
 - [ ] **Akron Legionnaire** {6}{W}{W} · Creature — Giant Soldier — increment 10
@@ -185,7 +185,7 @@ the record shows what unblocked it.
 - [ ] **Arboria** {2}{G}{G} · World Enchantment — increment 2, 16
 - [ ] **Arcades Sabboth** {2}{G}{G}{W}{W}{U}{U} · Legendary Creature — Elder Dragon — increment 13
 - [x] **Arena of the Ancients** {3} · Artifact — increment 6 (absorbed 17)
-- [ ] **Avoid Fate** {G} · Instant — increment 18
+- [x] **Avoid Fate** {G} · Instant — increment 18
 - [ ] **Ayesha Tanaka** {W}{W}{U}{U} · Legendary Creature — Human Artificer — increment 103
 - [ ] **Backdraft** {1}{R} · Instant — increment 19
 - [ ] **Backfire** {U} · Enchantment — Aura — increment 20
@@ -193,7 +193,7 @@ the record shows what unblocked it.
 - [ ] **Beasts of Bogardan** {4}{R} · Creature — Beast — increment 13
 - [x] **Black Mana Battery** {4} · Artifact — increment 11
 - [ ] **Blazing Effigy** {1}{R} · Creature — Elemental — increment 19
-- [ ] **Blood Lust** {1}{R} · Instant — increment 21
+- [x] **Blood Lust** {1}{R} · Instant — increment 21
 - [x] **Blue Mana Battery** {4} · Artifact — increment 11
 - [ ] **Boris Devilboon** {3}{B}{R} · Legendary Creature — Zombie Wizard — increment 97
 - [ ] **Brine Hag** {2}{U}{U} · Creature — Hag — increment 22
@@ -279,11 +279,11 @@ the record shows what unblocked it.
 - [ ] **Mana Matrix** {6} · Artifact — increment 105
 - [ ] **Marble Priest** {5} · Artifact Creature — Cleric — increment 12, 56
 - [x] **Marhault Elsdragon** {3}{R}{R}{G} · Legendary Creature — Elf Warrior — increment 1; residual — increment 119
-- [ ] **Master of the Hunt** {2}{G}{G} · Creature — Human — increment 3
+- [ ] **Master of the Hunt** {2}{G}{G} · Creature — Human — increment 123
 - [ ] **Mirror Universe** {6} · Artifact — increment 57
 - [ ] **Moat** {2}{W}{W} · Enchantment — increment 107
 - [ ] **Mold Demon** {5}{B}{B} · Creature — Fungus Demon — increment 106
-- [ ] **Mountain Stronghold** — · Land — increment 3
+- [x] **Mountain Stronghold** — · Land — increment 3 (slices 1, 2, 4); residual — increment 3 slice 3
 - [ ] **Nebuchadnezzar** {3}{U}{B} · Legendary Creature — Human Wizard — increment 58
 - [ ] **Nether Void** {3}{B} · World Enchantment — increment 2, 48
 - [ ] **Nicol Bolas** {2}{U}{U}{B}{B}{R}{R} · Legendary Creature — Elder Dragon — increment 112
@@ -313,11 +313,11 @@ the record shows what unblocked it.
 - [ ] **Reset** {U}{U} · Instant — increment 72
 - [ ] **Revelation** {G} · World Enchantment — increment 2, 35
 - [ ] **Reverberation** {2}{U}{U} · Instant — increment 19
-- [ ] **Ring of Immortals** {5} · Artifact — increment 18
+- [x] **Ring of Immortals** {5} · Artifact — increment 18
 - [ ] **Rohgahh of Kher Keep** {2}{B}{B}{R}{R} · Legendary Creature — Kobold — increment 73
 - [ ] **Rust** {G} · Instant — increment 103
 - [ ] **Sea Kings' Blessing** {U} · Instant — increment 96
-- [ ] **Seafarer's Quay** — · Land — increment 3
+- [x] **Seafarer's Quay** — · Land — increment 3 (slices 1, 2, 4); residual — increment 3 slice 3
 - [ ] **Seeker** {2}{W}{W} · Enchantment — Aura — increment 9
 - [ ] **Sentinel** {4} · Artifact Creature — Shapeshifter — increment 8, 22
 - [ ] **Serpent Generator** {6} · Artifact — increment 97
@@ -349,7 +349,7 @@ the record shows what unblocked it.
 - [ ] **Triassic Egg** {4} · Artifact — increment 83
 - [x] **Undertow** {2}{U} · Enchantment — increment 4
 - [x] **Underworld Dreams** {B}{B}{B} · Enchantment — increment 115
-- [ ] **Unholy Citadel** — · Land — increment 3
+- [x] **Unholy Citadel** — · Land — increment 3 (slices 1, 2, 4); residual — increment 3 slice 3
 - [x] **Ur-Drago** {3}{U}{U}{B}{B} · Legendary Creature — Elemental — increment 4
 - [ ] **Urborg** — · Legendary Land — increment 5
 - [ ] **Vampire Bats** {B} · Creature — Bat — increment 84

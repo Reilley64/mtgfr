@@ -86,7 +86,7 @@ needs a batch-scoped entry epoch, and no pool card can produce a tie yet. Each o
 cards still needs its own body increment (16, 23, 25, 35, 44, 48, 75, 80) — this one only makes
 the supertype mean something.
 
-### 3. `bands-with-other` — 8 cards, XL
+### 3. `bands-with-other` — 7 cards, XL
 Depends on: the 2ed banding increment (#14 there) — "bands with other" is banding plus a filter,
 and it inherits banding's damage-assignment machinery wholesale.
 "Bands with other <quality>" (CR 702.22b) is the single largest rules surface in the set: it
@@ -96,9 +96,9 @@ attacker's damage among its blockers (CR 702.22j, an exception to 510.1c), and t
 divides that blocker's damage among the attackers it is blocking (CR 702.22k, an exception to
 510.1d). **Five** Legends lands grant it by color to legendary creatures
 (Adventurers' Guildhouse/green, Cathedral of Serra/white, Mountain Stronghold/red, Seafarer's
-Quay/blue, Unholy Citadel/black — the `cycle-leg-banding-land` otag), Master of the Hunt grants it
-by token name, and two cards (#5) strip it. That is the 8: 5 lands + Master of the Hunt + the 2
-strippers.
+Quay/blue, Unholy Citadel/black — the `cycle-leg-banding-land` otag) and two cards (#5) strip it.
+That is the 7: 5 lands + the 2 strippers. Master of the Hunt also grants it, by token name, but it
+is **#123** — the name-as-quality form is blocked on data conventions this increment does not touch.
 *Slice staging:*
 1. **Band formation** (CR 702.22c — *not* 702.22j, which is the blocker-side damage rule) — an
    attack-declaration grouping where creatures declare as a band, legal only if some member has a
@@ -137,9 +137,12 @@ strippers.
      controller, but not to its second clause — a blocker that is "both a \[quality\] creature with
      'bands with other \[quality\]' and another \[quality\] creature".
 4. **The remaining granting cards** — Adventurers' Guildhouse, Mountain Stronghold, Seafarer's
-   Quay and Unholy Citadel (each a copy of Cathedral of Serra with its own `color`), plus Master of
-   the Hunt's name-filtered token grant, which needs a second `BandsWithQuality` variant for "other
-   creatures named Wolves of the Hunt".
+   Quay and Unholy Citadel, each a copy of Cathedral of Serra with its own `color`. **LANDED**, with
+   no engine change at all: the four are pure data over slice 1's `keyword_anthem` grant, and they
+   carry Cathedral's `approximates` for the slice 3 damage-division residual. Tests in
+   `crates/engine/tests/leg_bands_with_other.rs`. Master of the Hunt was **split out to #123** — its
+   quality is a card name rather than a supertype, and it is blocked on the token registry's
+   real-Scryfall-id convention, not on the rules.
 Do not start this before #1 and #4 land; it is the highest-risk work in the set and everything
 else in the combat cluster is cheaper.
 **Land #119 before slice 3.** Slice 3 grows a "who chooses" axis on `PendingChoice::
@@ -1301,3 +1304,38 @@ it wherever elimination is rendered today. The client has no end-of-game panel a
 this to the same treatment `PlayerLost` gets rather than building one. If a dedicated end-of-game
 surface does get built, the `Reject::WrongTiming` ponytail in `Game::submit_inner` (which stands in
 for a `Reject::GameOver` the client could not display) should be revisited with it.
+
+### 123. `token-named-band-quality` — 1 card, M
+Depends on: #3 slice 4 (landed). Raised by #3 slice 4, which landed the four remaining banding
+lands and then stopped short of Master of the Hunt on purpose.
+Master of the Hunt — "{2}{G}{G}: Create a 1/1 green Wolf creature token named Wolves of the Hunt.
+It has 'bands with other creatures named Wolves of the Hunt.'" — is the set's only card whose
+`bands with other [quality]` quality is a **card name** (CR 702.22b) rather than a supertype. It is
+blocked on a **data convention, not a rules gap**: the rules half is small and already designed
+(below), but the token half has nowhere to live. `TokenEffect::Create` carries its profile through
+`de::token_profile` (`crates/cards/src/de.rs`), which takes a string id that must resolve to a file
+in `crates/cards/data/tokens/`, and every one of those 44 files is keyed to a **real Scryfall oracle
+id** — because `default_print` feeds an image URL straight through to
+`client/app/board/html/inspect.ts` (`pin.print ?? card?.default_print ?? ""`), so a fabricated id
+does not merely look untidy, it ships a broken art tile. "Wolves of the Hunt" has **no Scryfall
+printing at all**; there has never been a 1/1 green Wolf token product. Authoring it would make it
+the pool's first synthetic id, and the grind already has decisive precedent against that in the
+Spurnmage Advocate fabrication (#120).
+*Sketch, in this order:* (1) **decide the convention first** — either give `tokens/*.toml` an
+explicit "no printing exists" form (`default_print` becomes optional, and `inspect.ts` renders the
+no-art fallback it already has for a missing print) or add a documented synthetic-id namespace that
+the client can recognise and refuse to build a URL from. Do not settle this inside the card; it is a
+pool-wide convention and roughly half this increment. (2) Then the rules half, which slice 4 built
+and reverted rather than ship as dead surface — it is **known to work** and should not be
+re-derived: add `BandsWithQuality::Named` carrying the name, and because `Keyword` is `Copy` and
+`serde`'s `'de` lifetime cannot yield a `&'static str`, give `BandsWithQuality` a hand-written
+`Deserialize` that takes an owned `String` and `Box::leak`s it (card data is loaded once and lives
+for the process). Match it in `Game::matches_bands_with_quality` against the printed name (CR
+201.2), and replace the hardcoded `[BandsWithQuality::Legendary]` list in `Game::band_is_legal`
+with a helper that discovers the qualities the band's own members carry by reading
+`Game::effective_keywords` — with a parameterised quality there is nothing left to look up by exact
+match through `Game::has_keyword`. New arms are owed in `Game::keyword_token`
+(`crates/engine/src/message.rs`) and in both `wire_keyword` and `keyword_label`
+(`crates/schema/src/catalog.rs`). (3) The card is then a plain activated ability; the three tests
+slice 4 wrote (the token carries the keyword and the Master does not, a two-wolf pack is blocked as
+a group, and a differently-named creature cannot join the band) are the coverage.

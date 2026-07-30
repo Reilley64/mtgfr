@@ -1088,6 +1088,30 @@ impl Game {
                     if let SpellFilter::Color(color) = filter {
                         return self.colors_of(id)[color.index()];
                     }
+                    // Avoid Fate / Ring of Immortals's "targets a permanent you control": "you" is
+                    // this enumeration's own `controller` (the counterer choosing a target), not
+                    // `self.controller_of(id)` (the candidate spell's own caster, below) — the same
+                    // reason `Color` and `ManaValueEqualsX` special-case here rather than going
+                    // through `spell_matches_filter`. Re-evaluated live every call, so the CR
+                    // 608.2b resolution re-check (this same function, via `target_still_legal`)
+                    // sees a target permanent's control change in response. Any one of the
+                    // candidate's targets qualifying is enough (CR 608.2b: a spell may have more
+                    // than one target).
+                    if filter == SpellFilter::InstantOrAuraTargetsPermanentYouControl {
+                        let is_instant_or_aura = matches!(
+                            self.def_of(id).kind,
+                            CardKind::Aura
+                                | CardKind::Spell {
+                                    speed: SpellSpeed::Instant
+                                }
+                        );
+                        return is_instant_or_aura
+                            && self.spell_targets(id).into_iter().any(|t| {
+                                matches!(t, Target::Object(pid)
+                                    if self.as_permanent(pid).is_some()
+                                        && self.controller_of(pid) == controller)
+                            });
+                    }
                     // A counter/target-spell filter never reads the cast-from zone; pass the
                     // plain hand-cast default (see `spell_matches_filter`).
                     self.spell_matches_filter(
