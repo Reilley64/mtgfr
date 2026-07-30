@@ -258,7 +258,11 @@ message_keys! {
     EFFECT_PUMP_RADIANCE_CHOSEN_COLOR_PROTECTION_UNTIL_END_OF_TURN => "effect.pump_radiance_chosen_color_protection_until_end_of_turn",
     EFFECT_PUMP_SET_BASE_PT_CREATURES_YOU_CONTROL_UNTIL_END_OF_TURN => "effect.pump_set_base_pt_creatures_you_control_until_end_of_turn",
     EFFECT_PUMP_SET_BASE_PT_TARGET_UNTIL_END_OF_TURN => "effect.pump_set_base_pt_target_until_end_of_turn",
+    EFFECT_PUMP_SET_BASE_PT_CREATURES_THAT_DAMAGED_SOURCE_THIS_TURN => "effect.pump_set_base_pt_creatures_that_damaged_source_this_turn",
     EFFECT_PUMP_SET_OWN_BASE_PT_FROM_AMOUNT => "effect.pump_set_own_base_pt_from_amount",
+    EFFECT_PUMP_SET_OWN_BASE_PT_FROM_TARGET_UNTIL_END_OF_NEXT_UPKEEP => "effect.pump_set_own_base_pt_from_target_until_end_of_next_upkeep",
+    EFFECT_PUMP_SET_OWN_BASE_TOUGHNESS_FROM_AMOUNT => "effect.pump_set_own_base_toughness_from_amount",
+    EFFECT_PUMP_SWITCH_PT_UNTIL_END_OF_TURN => "effect.pump_switch_pt_until_end_of_turn",
     EFFECT_PUMP_STRIP_KEYWORDS_FROM_OPPONENTS_CREATURES => "effect.pump_strip_keywords_from_opponents_creatures",
     EFFECT_PUMP_TARGET_LOSES_KEYWORDS => "effect.pump_target_loses_keywords",
     EFFECT_PUMP_TARGET_BECOMES_SUBTYPES_WHILE_SOURCE_REMAINS => "effect.pump_target_becomes_subtypes_while_source_remains",
@@ -1601,6 +1605,22 @@ impl EffectMessage for Effect {
                 MessageRef::new(MessageKey::EFFECT_PUMP_SET_OWN_BASE_PT_FROM_AMOUNT)
                     .with_params(vec![amount_param("amount", amount)])
             }
+            Effect::Pump(SetOwnBaseToughnessFromAmount { amount, .. }) => {
+                MessageRef::new(MessageKey::EFFECT_PUMP_SET_OWN_BASE_TOUGHNESS_FROM_AMOUNT)
+                    .with_params(vec![amount_param("amount", amount)])
+            }
+            Effect::Pump(SetOwnBasePtFromTargetUntilEndOfNextUpkeep { .. }) => {
+                MessageRef::new(MessageKey::EFFECT_PUMP_SET_OWN_BASE_PT_FROM_TARGET_UNTIL_END_OF_NEXT_UPKEEP)
+            }
+            Effect::Pump(SetBasePtCreaturesThatDamagedSourceThisTurn { power, toughness }) => {
+                MessageRef::new(
+                    MessageKey::EFFECT_PUMP_SET_BASE_PT_CREATURES_THAT_DAMAGED_SOURCE_THIS_TURN,
+                )
+                .with_params(vec![int_param("power", power), int_param("toughness", toughness)])
+            }
+            Effect::Pump(SwitchPtUntilEndOfTurn { .. }) => {
+                MessageRef::new(MessageKey::EFFECT_PUMP_SWITCH_PT_UNTIL_END_OF_TURN)
+            }
             Effect::Pump(PumpOtherAttackersAttackingYourOpponents { power, toughness }) => {
                 MessageRef::new(MessageKey::EFFECT_PUMP_PUMP_OTHER_ATTACKERS_ATTACKING_YOUR_OPPONENTS)
                     .with_params(vec![int_param("power", power), int_param("toughness", toughness)])
@@ -2673,6 +2693,19 @@ mod tests {
             reject_message(Reject::IllegalTarget).key.as_str(),
             "reject.illegal_target"
         );
+    }
+
+    #[test]
+    #[ignore]
+    fn bless_rust_keys_fixture() {
+        std::fs::write(
+            concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/../../client/app/domain/i18n/rustKeys.json"
+            ),
+            rust_keys_fixture(),
+        )
+        .unwrap();
     }
 
     #[test]

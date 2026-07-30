@@ -77,16 +77,22 @@ fn karakas_returns_a_legendary_creature_to_its_owners_hand() {
 }
 
 #[test]
-fn karakas_fizzles_against_a_nonlegendary_creature() {
-    // A nonlegendary creature is not a legal target, so the ability is countered on resolution for
-    // having no legal targets (CR 608.2b) — this engine checks a chosen target at resolution
-    // rather than rejecting the activation.
+fn karakas_cannot_target_a_nonlegendary_creature() {
+    // A nonlegendary creature is not a legal target, and the targets are chosen as the ability is
+    // announced (CR 602.2b → CR 601.2c), so the activation itself is refused.
     let mut game = Game::new();
     let karakas = game.spawn_on_battlefield(PlayerId(0), card("Karakas"));
     let bears = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
 
-    tap_ability_at(&mut game, karakas, bears).expect("the activation itself is not gated");
-    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        tap_ability_at(&mut game, karakas, bears),
+        Err(Reject::IllegalTarget),
+        "\"target legendary creature\" — Grizzly Bears is not one"
+    );
+    assert!(
+        !game.is_tapped(karakas),
+        "a refused activation never paid the {{T}} cost"
+    );
 
     assert_eq!(
         game.zone_of(bears),
@@ -208,14 +214,17 @@ fn willow_satyr_keeps_the_legend_only_while_it_stays_tapped() {
 }
 
 #[test]
-fn willow_satyr_fizzles_against_a_nonlegendary_creature() {
-    // Same CR 608.2b fizzle as Karakas above: the steal is countered for want of a legal target.
+fn willow_satyr_cannot_target_a_nonlegendary_creature() {
+    // Same refusal as Karakas above: the steal never gets announced for want of a legal target.
     let mut game = Game::new();
     let satyr = game.spawn_on_battlefield(PlayerId(0), card("Willow Satyr"));
     let bears = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
 
-    tap_ability_at(&mut game, satyr, bears).expect("the activation itself is not gated");
-    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        tap_ability_at(&mut game, satyr, bears),
+        Err(Reject::IllegalTarget),
+        "\"target legendary creature\" — Grizzly Bears is not one"
+    );
 
     assert_eq!(
         game.controller_of(bears),

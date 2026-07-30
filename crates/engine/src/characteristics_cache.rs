@@ -102,6 +102,10 @@ impl Game {
                 | Event::TempBoost { object, .. }
                 | Event::BasePtSetUntilEndOfTurn { object, .. }
                 | Event::BasePtSetIndefinite { object, .. }
+                | Event::BasePtSetUntilEndOfNextUpkeep { object, .. }
+                | Event::BaseToughnessSetIndefinite { object, .. }
+                | Event::PtSwitchedUntilEndOfTurn { object }
+                | Event::UpkeepDurationsEnded { object }
                 | Event::TypesAddedUntilEndOfTurn { object, .. }
                 | Event::TempBoostsEnded { object }
                 | Event::KeywordsStripped { object, .. }

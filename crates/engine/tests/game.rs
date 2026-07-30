@@ -7768,22 +7768,23 @@ fn deekah_grant_unblockable_lets_token_through() {
     let blocker = game.spawn_on_battlefield(PlayerId(1), VANILLA.clone());
     game.fund_mana(PlayerId(0));
 
-    // A nontoken creature isn't a legal target for the token-only grant, so aiming it there
-    // fizzles on resolution (CR 608.2b) instead of granting anything.
-    game.submit(Intent::ActivateAbility {
-        player: PlayerId(0),
-        object: deekah,
-        ability_index: 1, // {3}{U}: target creature token can't be blocked this turn
-        target: Some(Target::Object(nontoken)),
-        sacrifice: vec![],
-        discard_cost: vec![],
-        x: 0,
-    })
-    .unwrap();
-    resolve_top_of_stack(&mut game);
+    // A nontoken creature isn't a legal target for the token-only grant, so it can't be named as
+    // the ability is activated (CR 601.2c via CR 602.2b).
+    assert_eq!(
+        game.submit(Intent::ActivateAbility {
+            player: PlayerId(0),
+            object: deekah,
+            ability_index: 1, // {3}{U}: target creature token can't be blocked this turn
+            target: Some(Target::Object(nontoken)),
+            sacrifice: vec![],
+            discard_cost: vec![],
+            x: 0,
+        }),
+        Err(Reject::IllegalTarget),
+    );
     assert!(
         !game.has_keyword(nontoken, Keyword::Unblockable),
-        "a nontoken creature is not a legal target, so the ability fizzles"
+        "a nontoken creature never gets the grant"
     );
 
     game.submit(Intent::ActivateAbility {
@@ -8887,11 +8888,11 @@ fn nin_the_pain_artist_deals_x_damage_and_that_creatures_controller_draws_x_card
 }
 
 /// CR 702.16b: a source can't target a permanent that has protection from one of its colors.
-/// Nin is a UR source, so activating against a creature with protection from red (Flickering
-/// Ward) fizzles at resolution (CR 608.2b) — this engine's established target-illegality model
-/// (see `deekah_grant_unblockable_lets_token_through`), now sourced from the ability's own colors.
+/// Nin is a UR source, so a creature with protection from red (Flickering Ward) can't be named
+/// as its ability is activated (CR 601.2c via CR 602.2b), with the protection read against the
+/// ability's own colors.
 #[test]
-fn nin_fizzles_against_a_creature_with_protection_from_red() {
+fn nin_cannot_target_a_creature_with_protection_from_red() {
     let mut game = Game::new();
     let nin = game.spawn_on_battlefield(PlayerId(0), card("Nin, the Pain Artist"));
     let host = game.spawn_on_battlefield(PlayerId(1), VANILLA.clone());
@@ -8899,17 +8900,18 @@ fn nin_fizzles_against_a_creature_with_protection_from_red() {
     game.fund_mana(PlayerId(0));
     let library_before = game.library_size(PlayerId(1));
 
-    game.submit(Intent::ActivateAbility {
-        player: PlayerId(0),
-        object: nin,
-        ability_index: 0,
-        target: Some(Target::Object(host)),
-        sacrifice: vec![],
-        discard_cost: vec![],
-        x: 1,
-    })
-    .unwrap();
-    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        game.submit(Intent::ActivateAbility {
+            player: PlayerId(0),
+            object: nin,
+            ability_index: 0,
+            target: Some(Target::Object(host)),
+            sacrifice: vec![],
+            discard_cost: vec![],
+            x: 1,
+        }),
+        Err(Reject::IllegalTarget),
+    );
 
     assert_eq!(
         game.marked_damage(host),
@@ -8919,7 +8921,7 @@ fn nin_fizzles_against_a_creature_with_protection_from_red() {
     assert_eq!(
         game.library_size(PlayerId(1)),
         library_before,
-        "the fizzled ability drew no card either"
+        "the refused ability drew no card either"
     );
 }
 
@@ -102744,31 +102746,34 @@ fn cathedral_acolyte_grants_ward_to_creatures_with_a_counter() {
 }
 
 #[test]
-fn cathedral_acolyte_fizzles_against_a_creature_that_did_not_enter_this_turn() {
+fn cathedral_acolyte_cannot_target_a_creature_that_did_not_enter_this_turn() {
     // Cathedral Acolyte: "{T}: Put a +1/+1 counter on target creature that entered this turn."
     let mut game = Game::new();
     let acolyte = game.spawn_on_battlefield(PlayerId(0), card("Cathedral Acolyte"));
     let veteran = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
 
     // A creature that didn't enter this turn isn't a legal target for the "entered this turn"
-    // filter, so aiming the tap ability there fizzles on resolution (CR 608.2b) instead of
-    // being rejected at activation (see `deekah_grant_unblockable_lets_token_through`).
-    game.submit(Intent::ActivateAbility {
-        player: PlayerId(0),
-        object: acolyte,
-        ability_index: 1, // {T}: put a +1/+1 counter on target creature that entered this turn
-        target: Some(Target::Object(veteran)),
-        sacrifice: vec![],
-        discard_cost: vec![],
-        x: 0,
-    })
-    .unwrap();
-    resolve_top_of_stack(&mut game);
-
+    // filter, so it can't be named as the ability is activated (CR 601.2c via CR 602.2b).
+    assert_eq!(
+        game.submit(Intent::ActivateAbility {
+            player: PlayerId(0),
+            object: acolyte,
+            ability_index: 1, // {T}: put a +1/+1 counter on target creature that entered this turn
+            target: Some(Target::Object(veteran)),
+            sacrifice: vec![],
+            discard_cost: vec![],
+            x: 0,
+        }),
+        Err(Reject::IllegalTarget),
+    );
+    assert!(
+        !game.is_tapped(acolyte),
+        "the refused activation paid nothing"
+    );
     assert_eq!(
         game.plus_counters(veteran),
         0,
-        "a creature that didn't enter this turn is not a legal target, so the ability fizzles"
+        "a creature that didn't enter this turn never gets the counter"
     );
 }
 
@@ -110256,23 +110261,23 @@ fn nettling_imp_is_shut_once_attackers_are_declared() {
     );
 }
 
-/// Aim the Imp at a creature the clause doesn't reach and walk the turn out. An illegal target
-/// fizzles at resolution rather than rejecting the activation (CR 608.2b — this engine's posture,
-/// see `activate_ability`), so the tell is the end step: the punishment half never scheduled, and
-/// a creature that stayed home is still standing.
-fn nettling_imp_fizzles_against(spawn: impl Fn(&mut Game) -> ObjectId) -> Zone {
+/// Aim the Imp at a creature the clause doesn't reach and walk the turn out. A creature outside
+/// the clause can't be named at all (CR 601.2c via CR 602.2b), so the activation is refused —
+/// and the end step confirms the consequence: the punishment half never scheduled, and a creature
+/// that stayed home is still standing.
+fn nettling_imp_refused_against(
+    spawn: impl Fn(&mut Game) -> ObjectId,
+) -> (Result<Vec<Event>, Reject>, Zone) {
     let mut game = Game::new();
     stock_both_libraries(&mut game);
     let imp = game.spawn_on_battlefield(PlayerId(0), card("Nettling Imp"));
     let victim = spawn(&mut game);
 
     advance_to_begin_combat_of(&mut game, PlayerId(1));
-    activate_nettling_imp(&mut game, imp, victim).expect("an opponent's turn, before attackers");
-    resolve_top_of_stack(&mut game);
+    let verdict = activate_nettling_imp(&mut game, imp, victim);
 
     advance_until(&mut game, |g| g.current_step() == Step::End);
-    resolve_top_of_stack(&mut game);
-    game.zone_of(victim)
+    (verdict, game.zone_of(victim))
 }
 
 #[test]
@@ -110280,7 +110285,7 @@ fn nettling_imp_passes_over_a_creature_that_arrived_this_turn() {
     // "…the active player has controlled continuously since the beginning of the turn": a creature
     // cast this turn was not, so nothing sticks to it.
     assert_eq!(
-        nettling_imp_fizzles_against(|game| {
+        nettling_imp_refused_against(|game| {
             let bear_card = game.spawn_in_hand(PlayerId(1), card("Grizzly Bears"));
             advance_until(game, |g| {
                 g.active_player() == PlayerId(1) && g.current_step() == Step::Main1
@@ -110288,7 +110293,7 @@ fn nettling_imp_passes_over_a_creature_that_arrived_this_turn() {
             fund_cast_resolve(game, PlayerId(1), bear_card, None);
             game.current_id(bear_card)
         }),
-        Zone::Battlefield,
+        (Err(Reject::IllegalTarget), Zone::Battlefield),
         "it arrived mid-turn, so it was never the ability's to force or to bury"
     );
 }
@@ -110299,17 +110304,17 @@ fn nettling_imp_reaches_neither_its_own_side_nor_a_wall() {
     // clause, and each one alone is enough to put a creature out of reach. Both of these sat out
     // the combat, so an ability that had latched on would have buried them.
     assert_eq!(
-        nettling_imp_fizzles_against(
+        nettling_imp_refused_against(
             |game| game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"))
         ),
-        Zone::Battlefield,
+        (Err(Reject::IllegalTarget), Zone::Battlefield),
         "the clause reads the active player's creatures, not the Imp controller's"
     );
     assert_eq!(
-        nettling_imp_fizzles_against(
+        nettling_imp_refused_against(
             |game| game.spawn_on_battlefield(PlayerId(1), card("Wall of Stone"))
         ),
-        Zone::Battlefield,
+        (Err(Reject::IllegalTarget), Zone::Battlefield),
         "and a Wall is exempt however long its controller has had it"
     );
 }
@@ -111169,34 +111174,30 @@ fn cyclopean_tomb_activates_only_during_your_own_upkeep() {
 #[test]
 fn cyclopean_tomb_passes_over_lands_that_are_already_swamps() {
     // "target non-Swamp land" reads the *effective* type line, so the Tomb's own earlier work
-    // takes a land off its list just as a printed Swamp never was on it. An illegal target is
-    // caught at resolution (CR 608.2b), this engine's posture for every activated ability, so
-    // what is asserted is that no counter lands — not that the activation is refused.
+    // takes a land off its list just as a printed Swamp never was on it — and a land off the
+    // list can't be named at all (CR 601.2c via CR 602.2b).
     let (mut game, tomb, mountain) = cyclopean_tomb_board();
     let swamp = game.spawn_on_battlefield(PlayerId(1), card("Swamp"));
     advance_to_next_upkeep(&mut game, PlayerId(0));
 
-    mire_target(&mut game, tomb, swamp).unwrap();
-    resolve_top_of_stack(&mut game);
     assert_eq!(
-        game.counters_of_kind(swamp, CounterKind::Mire),
-        0,
+        mire_target(&mut game, tomb, swamp),
+        Err(Reject::IllegalTarget),
         "a printed Swamp was never a legal target"
     );
+    assert_eq!(game.counters_of_kind(swamp, CounterKind::Mire), 0);
 
-    advance_to_next_upkeep(&mut game, PlayerId(0));
     mire_target(&mut game, tomb, mountain).unwrap();
     resolve_top_of_stack(&mut game);
     assert_eq!(game.counters_of_kind(mountain, CounterKind::Mire), 1);
 
     advance_to_next_upkeep(&mut game, PlayerId(0));
-    mire_target(&mut game, tomb, mountain).unwrap();
-    resolve_top_of_stack(&mut game);
     assert_eq!(
-        game.counters_of_kind(mountain, CounterKind::Mire),
-        1,
-        "a land the Tomb already mired is a Swamp now, so the second try does nothing"
+        mire_target(&mut game, tomb, mountain),
+        Err(Reject::IllegalTarget),
+        "a land the Tomb already mired is a Swamp now, so it is off the list too"
     );
+    assert_eq!(game.counters_of_kind(mountain, CounterKind::Mire), 1);
 }
 
 // ── A land for as long as its source stays, and a count that switches on attacking
@@ -112422,8 +112423,9 @@ fn forcefield_lets_one_point_of_the_named_attackers_damage_through() {
 #[test]
 fn forcefield_does_not_shield_against_an_attacker_something_is_blocking() {
     // "An *unblocked* creature of your choice" — a creature the defender threw a body in front of
-    // is not one, so naming it fizzles the ability (CR 608.2b) and its trample damage lands whole.
-    // Targets are not re-validated at activation here, only at resolution.
+    // is not one, so its trample damage lands whole. (Forcefield's `approximates`: the engine
+    // models the pick as a target chosen at activation, so a blocked creature is refused there
+    // rather than simply being a wasted choice on resolution.)
     let mut game = Game::new();
     let forcefield = game.spawn_on_battlefield(PlayerId(1), card("Forcefield"));
     let attacker = game.spawn_on_battlefield(
@@ -112434,8 +112436,11 @@ fn forcefield_does_not_shield_against_an_attacker_something_is_blocking() {
 
     attack_with(&mut game, vec![attacker]);
     block_with(&mut game, vec![(blocker, attacker)]).unwrap();
-    arm_forcefield(&mut game, forcefield, attacker).unwrap();
-    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        arm_forcefield(&mut game, forcefield, attacker),
+        Err(Reject::IllegalTarget),
+        "a blocked attacker is not an \"unblocked creature\""
+    );
     advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
 
     assert_eq!(

@@ -454,6 +454,9 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   ),
   "effect.life_exchange": literal("Exchange life totals with target opponent"),
   "effect.life_gain": (params) => `${playerClause(params, "gain")} ${param(params, "amount")} life`,
+  "effect.life_gain_when_target_is_damaged_by_attacker_this_turn": literal(
+    "Whenever that creature is dealt damage by an attacking creature this turn, you gain that much life",
+  ),
   "effect.life_lose": (params) => `${playerClause(params, "lose")} ${param(params, "amount")} life`,
   "effect.life_source_owner_loses_half_their_life": literal("Its owner loses half their life, rounded up"),
   "effect.mana_add": literal("Add mana"),
@@ -554,8 +557,18 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     `${bool(params, "other") ? "Other creatures" : "Creatures"} you control have base power and toughness ${param(params, "power")}/${param(params, "toughness")} until end of turn`,
   "effect.pump_set_base_pt_target_until_end_of_turn": (params) =>
     `Target creature has base power and toughness ${param(params, "power")}/${param(params, "toughness")} until end of turn`,
+  "effect.pump_set_base_pt_creatures_that_damaged_source_this_turn": (params) =>
+    `Change the base power and toughness of all creatures that dealt damage to this creature this turn to ${param(params, "power")}/${param(params, "toughness")}`,
   "effect.pump_set_own_base_pt_from_amount": (params) =>
     `This creature has base power and toughness each equal to ${param(params, "amount")}`,
+  "effect.pump_set_own_base_pt_from_target_until_end_of_next_upkeep": literal(
+    "Change this creature's base power and toughness to the power and toughness of target creature until the end of your next upkeep",
+  ),
+  "effect.pump_set_own_base_toughness_from_amount": (params) =>
+    `Change this creature's base toughness to ${param(params, "amount")}`,
+  "effect.pump_switch_pt_until_end_of_turn": literal(
+    "Switch target creature's power and toughness until end of turn",
+  ),
   "effect.pump_strip_keywords_from_opponents_creatures": (params) =>
     `Creatures your opponents control lose ${humanize(param(params, "keywords"))} until end of turn and can't have ${humanize(param(params, "keywords"))} this turn`,
   // Hammerheim / Radjan Spirit / Tolaria / Urborg / Shelkin Brownie / Elder Land Wurm. Either

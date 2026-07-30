@@ -496,7 +496,7 @@ on top of it rather than recomputing the pump — the two locking tests in
 `crates/engine/tests/leg_blood_lust.rs` cover both directions, and a -1/-1 counter afterward can
 still kill a creature Blood Lust "saved".
 
-### 22. `change-base-power-toughness` — 5 cards, M
+### 22. `change-base-power-toughness` — 5 cards, M — **LANDED** (wave 8)
 Depends on: nothing.
 "Change the base power and toughness of … to X/Y (This effect lasts indefinitely.)" — Brine Hag
 (0/2 to everything that damaged it), Halfdane (copy a target's P/T until the end of your next
@@ -504,14 +504,23 @@ upkeep), Sentinel (base toughness to 1 plus a blocker's power), Wall of Tombston
 to 1 plus creature cards in your graveyard), and Transmutation (switch P/T until end of turn).
 This is layer 7b work the engine has not needed before — it must sit *below* +N/+N counters and
 pump effects, not compose with them arbitrarily.
-*Sketch:* a `SetBasePowerToughness { power: Option<Amount>, toughness: Option<Amount>, duration }`
-continuous effect applied in a distinct sub-layer ahead of the additive modifiers, with the
-`Amount` snapshotted at application (CR 613.4 — the value is locked in, not recomputed). Halfdane
-needs `Duration::UntilEndOfYourNextUpkeep`; the rest need #14's `Indefinite`. Transmutation's
-switch is the same layer with a swap rather than a set.
-Sentinel also needs #8's deferred **combat-partner relation** for "target creature blocking or
-blocked by this creature" — see #54, which wants the same thing; whichever of the two lands first
-builds it.
+Two premises in the sketch were wrong, corrected here. Brine Hag needed no new damage ledger:
+`Game::damaged_this_turn` already records every `(dealer, victim)` pair for the dies-watcher
+queue, so "all creatures that dealt damage to it this turn" is a filter over a list that exists
+(#19 is not a dependency). And #8's `SourceRelation::BlockedByThis` turned out to be a
+*prevention-shield* relation on `StaticEffect::PreventDamage`, not a target-legality axis, so it
+does not cover Sentinel — see #134 for what is actually missing.
+*Landed:* no new `Duration` enum and no `Option<Amount>` pair. Layer 7b is a
+`ContinuousLayer::PowerToughnessBase` fold in `apply_pt_layers` with the existing timestamp sort,
+fed by three `ModifierKind`s — the already-present `BasePtSet`, a new `BaseToughnessSet` (Sentinel,
+Wall of Tombstones — a toughness-only set is not expressible as a P/T pair), and a new `PtSwitch`
+(Transmutation) in a new `ContinuousLayer::PowerToughnessSwitch` that sorts last, CR 613.4e. The
+`Amount` is resolved at mint time, so CR 613.4b's snapshot is free. Halfdane's "until the end of
+your next upkeep" avoided a turn counter the engine does not have: `ModifierDuration::
+EndOfNextUpkeep { player, armed }` is swept at that player's Draw step, and the first sweep only
+flips `armed` — registration happens during an upkeep, so the *second* sweep is the end of the
+next one. Four new events, all projected onto existing `VisibleEvent`s, so the wire is untouched.
+Four cards faithful; Sentinel carries an `approximates` for its combat-partner target filter.
 
 ### 23. `attacker-blocker-count-cap` — 1 card, M
 Depends on: #2.
@@ -870,7 +879,7 @@ land of their choice." *Sketch:* a land-ETB replacement (the engine has no per-t
 replacement hook) with a comparative land-count condition, whose body is an ordinary sacrifice
 choice. The replacement fires on *any* way a land enters, not only land drops.
 
-### 54. `lesser-werewolf` — 1 card, S
+### 54. `lesser-werewolf` — 2 cards, S
 Depends on: #8.
 "{B}: If this creature's power is 1 or more, it gets -1/-0 until end of turn and put a -0/-1 counter
 on target creature blocking or blocked by this creature. Activate only during the declare blockers
@@ -879,8 +888,9 @@ step." *Sketch:* a `-0/-1` counter kind, a power-threshold activation condition,
 `only_during_your_upkeep`.
 The targeting is the **combat-partner relation** #8 deferred: "blocking or blocked by *this
 creature*" is not a global axis but a pairing, so it needs the filter's own `source` threaded
-against `CombatState::blocks` — match a `(blocker, attacker)` pair in either direction. Sentinel
-(#22) is the only other card that wants it; whichever of the two lands first builds it.
+against `CombatState::blocks` — match a `(blocker, attacker)` pair in either direction. #22 landed
+without it, so this increment now owns building it for both cards: **Sentinel** is scripted and
+carries an `approximates` (it targets any creature), and drops it when this lands.
 
 ### 55. `granted-regenerate-via-counter` — 1 card, M
 Depends on: #32 (granting an ability).
@@ -944,8 +954,26 @@ Depends on: nothing.
 *Landed:* `PermanentFilter::toughness_min` / `toughness_max` are in, read off the layered
 `Game::toughness` exactly as the power bounds read `Game::power` — so a creature pumped out of the
 band stops qualifying mid-turn (CR 613). Pendelhaven spells 1/1 as all four bounds set to 1 and is
-faithful. #49's `toughness_max` half is now unblocked. Tests:
-`crates/engine/tests/leg_filter_axes.rs`.
+faithful. #49's `toughness_max` half is now unblocked.
+
+The bounds alone weren't enough: `Game::activate_ability` had no target gate at all — every
+`TargetSpec` outside `ThisPermanent`/`EnchantedCreature`/`None` took whatever object the intent
+named, so aiming Pendelhaven at a 2/2 paid the mana, put the ability on the stack and fizzled it at
+resolution. That was a documented approximation, not a rule: CR 602.2b routes an activation through
+CR 601.2c, where the targets are *chosen* as the ability is announced and only a legal choice may
+be named. `activate_ability` now checks the named target against `Game::legal_targets_for` and
+returns `Reject::IllegalTarget`, leaving `Game::resolve_top`'s `target_still_legal` as what it
+actually is — the separate CR 608.2b re-check, for a target that stops qualifying *after*
+announcement (Time Elemental's target getting enchanted in response, #82). The change is
+cross-cutting: 16 tests across `game.rs`, `leg_attacking_or_blocking_filter.rs`,
+`leg_cant_be_targeted_by.rs`, `leg_color_change.rs`, `leg_legendary_filter.rs`, `leg_p1.rs`,
+`leg_p2.rs` and `leg_c1.rs` encoded the old posture and now assert the refusal (and, where it
+matters, that a refused activation never paid its `{T}` or sacrifice cost). It also resolved the
+standing ponytails in 2ed #8e (Cyclopean Tomb aimed at a Swamp) and political-puppets #223 (Nin).
+The one residual is Forcefield, whose "unblocked creature of your choice" is *faux*-targeting
+modelled as a real target — its `approximates` was widened rather than the gate narrowed.
+
+Tests: `crates/engine/tests/leg_filter_axes.rs`.
 Pendelhaven: "Target 1/1 creature gets +1/+2 until end of turn."
 
 ### 63. `primordial-ooze` — 1 card, M
@@ -1106,7 +1134,10 @@ Depends on: nothing.
 that way). The card was pure authoring: an `attacks_or_blocks` trigger scheduling
 `fire_at = "end_combat"`, whose `then` is an `Effect::Sequence` of the sacrifice and the 5 damage
 (one delayed trigger carrying two effects, so `ScheduleAtNextUpkeep::then` stayed a single
-effect). Faithful. Tests: `crates/engine/tests/leg_filter_axes.rs`.
+effect). Faithful. The bounce half is what pins both sides of the targeting split #62 landed: an
+already-enchanted permanent can't be named at all (CR 601.2c), while one that *becomes* enchanted
+after the ability is on the stack fizzles it (CR 608.2b). Tests:
+`crates/engine/tests/leg_filter_axes.rs`.
 "When this creature attacks or blocks, at end of combat, sacrifice it and it deals 5 damage to you.
 {2}{U}{U}, {T}: Return target permanent that isn't enchanted to its owner's hand."
 

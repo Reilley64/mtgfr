@@ -47,17 +47,23 @@ fn spinal_villain_destroys_a_blue_creature_and_cannot_touch_a_green_one() {
     let villain = game.spawn_on_battlefield(PlayerId(0), card("Spinal Villain"));
     let bears = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
 
-    // A green Grizzly Bears is not a blue creature, so the ability fizzles for want of a legal
-    // target on resolution (CR 608.2b).
-    activate(
-        &mut game,
-        PlayerId(0),
-        villain,
-        0,
-        Some(Target::Object(bears)),
-    )
-    .unwrap();
-    resolve_top_of_stack(&mut game);
+    // A green Grizzly Bears is not a blue creature, and targets are chosen as the ability is
+    // announced (CR 602.2b → CR 601.2c), so the activation is refused.
+    assert_eq!(
+        activate(
+            &mut game,
+            PlayerId(0),
+            villain,
+            0,
+            Some(Target::Object(bears)),
+        ),
+        Err(Reject::IllegalTarget),
+        "\"target blue creature\" — the green Bears are not one"
+    );
+    assert!(
+        !game.is_tapped(villain),
+        "a refused activation never paid the {{T}} cost"
+    );
     assert_eq!(
         game.zone_of(bears),
         Zone::Battlefield,

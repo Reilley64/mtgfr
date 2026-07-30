@@ -3876,7 +3876,12 @@ impl Game {
         watched: ObjectId,
         amount: u32,
     ) {
-        if self.delayed_triggers.pending_attacker_damage_life.is_empty() || amount == 0 {
+        if self
+            .delayed_triggers
+            .pending_attacker_damage_life
+            .is_empty()
+            || amount == 0
+        {
             return;
         }
         if !self.attackers().contains(&dealer) {

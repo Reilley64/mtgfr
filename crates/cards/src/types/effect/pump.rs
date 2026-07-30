@@ -186,6 +186,45 @@ pub enum PumpEffect {
         amount: Amount,
     },
 
+    /// "Change this creature's base toughness to 1 plus the power of target creature blocking or
+    /// blocked by this creature" (Sentinel), "…to 1 plus the number of creature cards in your
+    /// graveyard" (Wall of Tombstones): the base-*toughness*-only, indefinite sibling of
+    /// [`SetOwnBasePtFromAmount`](Self::SetOwnBasePtFromAmount). The ability's own source is what
+    /// changes; `target` is only there for an `amount` that reads off a target (Sentinel's
+    /// `target_power`) and is `TargetSpec::None` otherwise.
+    ///
+    /// Layer 7b (CR 613.3(7b)), so counters and pumps still ride above it, and — being indefinite
+    /// with its own timestamp — a second activation simply outranks the first (CR 613.7).
+    SetOwnBaseToughnessFromAmount {
+        amount: Amount,
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        target: TargetSpec,
+    },
+
+    /// "Change Halfdane's base power and toughness to the power and toughness of target creature
+    /// other than Halfdane until the end of your next upkeep": a layer-7b set on the ability's own
+    /// source, snapshotting the target's *effective* P/T as the ability resolves (CR 613.4b), on
+    /// the only duration in the pool that outlives cleanup without being indefinite.
+    SetOwnBasePtFromTargetUntilEndOfNextUpkeep {
+        target: TargetSpec,
+    },
+
+    /// "When this creature dies, change the base power and toughness of all creatures that dealt
+    /// damage to it this turn to 0/2" (Brine Hag): a layer-7b set with no duration, on every
+    /// creature the source's turn-scoped damage tally recorded as a dealer (CR 603.10a — the tally
+    /// is last-known information by the time this resolves from the graveyard).
+    SetBasePtCreaturesThatDamagedSourceThisTurn {
+        power: i32,
+        toughness: i32,
+    },
+
+    /// "Switch target creature's power and toughness until end of turn" (Transmutation): CR 613.4e,
+    /// applied after every other P/T layer rather than as a base set — a switch over a −0/−2
+    /// counter on a 6/4 gives a 2/6, not a 4/4.
+    SwitchPtUntilEndOfTurn {
+        target: TargetSpec,
+    },
+
     StripKeywordsFromOpponentsCreatures {
         #[cfg_attr(
             feature = "card-dsl",

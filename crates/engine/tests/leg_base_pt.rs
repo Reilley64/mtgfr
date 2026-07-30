@@ -118,42 +118,43 @@ fn brine_hag_leaves_a_creature_that_never_damaged_it_alone() {
 
     assert_eq!(game.zone_of(hag), Zone::Graveyard, "the 3/3 killed the Hag");
     assert_eq!(
+        game.zone_of(giant),
+        Zone::Graveyard,
+        "the blocked Giant did damage the Hag, so it went to base 0/2 and its marked 2 was lethal"
+    );
+    assert_eq!(
         game.life(PlayerId(1)),
         18,
         "the unblocked Bears connected for its printed 2 before the Hag ever died"
     );
 
-    // Next turn the untouched Bears still swings for 2; the Giant, now a base 0/2, swings for 0.
+    // Next turn the untouched Bears still swings for its printed 2.
     let before = game.life(PlayerId(1));
     advance_until(&mut game, |g| {
         g.active_player() == PlayerId(0) && g.current_step() == Step::Main1
     });
-    attack_with(&mut game, vec![giant, bears]);
+    attack_with(&mut game, vec![bears]);
     advance_until(&mut game, |g| g.current_step() == Step::End);
     assert_eq!(
         game.life(PlayerId(1)),
         before - 2,
-        "only the Bears' 2 landed — the Giant's base power is 0 for good"
+        "the Bears never damaged the Hag, so its printed 2/2 is untouched"
     );
 }
 
 #[test]
 fn a_counter_stacks_on_top_of_brine_hags_zero_two() {
-    // Layer 7d rides above 7b: a +1/+1 counter placed after the base set makes the Giant a 1/3, not
-    // a 0/2 — and 3 toughness is enough to survive the 2 damage it took killing the Hag.
+    // Layer 7d rides above 7b whatever the timestamps: the counter makes the Giant a 1/3 on top of
+    // the base set, not a 0/2 — and 3 toughness survives the 2 damage it took killing the Hag.
     let mut game = Game::new();
     stock_libraries(&mut game);
     let hag = game.spawn_on_battlefield(PlayerId(1), card("Brine Hag"));
     let giant = game.spawn_on_battlefield(PlayerId(0), card("Hill Giant"));
+    game.add_plus_counter(giant);
 
     attack_with(&mut game, vec![giant]);
     block_with(&mut game, vec![(hag, giant)]).expect("an ordinary block");
     advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
-    game.add_plus_counter(giant);
-    game.submit(Intent::PassPriority {
-        player: game.priority_holder(),
-    })
-    .unwrap();
 
     assert_eq!(
         game.zone_of(giant),
@@ -230,7 +231,11 @@ fn halfdane_reverts_when_its_next_upkeep_finds_nothing_to_target() {
 
     take_upkeep_trigger(&mut game, PlayerId(0), bears);
     cast_at(&mut game, shock, Some(bears));
-    assert_eq!(game.zone_of(bears), Zone::Graveyard, "2 damage kills the 2/2");
+    assert_eq!(
+        game.zone_of(bears),
+        Zone::Graveyard,
+        "2 damage kills the 2/2"
+    );
 
     // Round the table back to player 0's next upkeep, and past it into their main phase.
     advance_until(&mut game, |g| g.active_player() == PlayerId(1));
@@ -456,9 +461,8 @@ fn transmutation_wears_off_at_end_of_turn() {
     let transmutation = game.spawn_in_hand(PlayerId(0), card("Transmutation"));
 
     cast_at(&mut game, transmutation, Some(wurm));
-    advance_until(&mut game, |g| {
-        g.active_player() == PlayerId(0) && g.current_step() == Step::Main1
-    });
+    // Round the table back to player 0's next turn, past the cleanup that ends the switch.
+    advance_until(&mut game, |g| g.active_player() == PlayerId(1));
     advance_until(&mut game, |g| {
         g.active_player() == PlayerId(0) && g.current_step() == Step::Main1
     });

@@ -1915,6 +1915,24 @@ impl Game {
                 }
             }
             Step::Draw => {
+                // Halfdane's "until the end of your next upkeep" (CR 613.3(7b)): the upkeep step
+                // just ended, so sweep here — the first sweep a set sees only arms it, the next
+                // one takes it off. See `Event::UpkeepDurationsEnded`.
+                let expiring: BTreeSet<ObjectId> = self
+                    .modifier_provenance
+                    .modifiers
+                    .iter()
+                    .filter(|m| {
+                        matches!(
+                            m.duration,
+                            ModifierDuration::EndOfNextUpkeep { player, .. } if player == active
+                        )
+                    })
+                    .map(|m| m.host)
+                    .collect();
+                for id in expiring {
+                    self.push_apply(events, Event::UpkeepDurationsEnded { object: id });
+                }
                 // The starting player skips their first draw step in a two-player game (CR 103.8a);
                 // in multiplayer no one skips (CR 103.8c). `begin_first_turn` arms the flag from the
                 // seat count; spend it here so only that first draw is skipped.
@@ -1996,7 +2014,7 @@ impl Game {
                     .modifier_provenance
                     .modifiers
                     .iter()
-                    .filter(|m| m.duration != ModifierDuration::Indefinite)
+                    .filter(|m| m.duration.ends_at_cleanup())
                     .map(|m| m.host)
                     .collect();
                 for id in boosted {

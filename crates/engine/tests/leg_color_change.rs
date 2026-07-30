@@ -56,11 +56,16 @@ fn activate(
 }
 
 /// "{T}: Destroy target blue creature" — a colour-reading probe that says whether the layer-5
-/// SET actually took, rather than trusting a getter.
-fn spinal_villain_destroys(game: &mut Game, villain: ObjectId, victim: ObjectId) -> Zone {
-    activate(game, villain, Some(Target::Object(victim))).expect("the villain can be activated");
+/// SET actually took, rather than trusting a getter. A victim that isn't blue can't be named as
+/// the target at all (CR 602.2b → CR 601.2c), so the probe reports that refusal instead of a zone.
+fn spinal_villain_destroys(
+    game: &mut Game,
+    villain: ObjectId,
+    victim: ObjectId,
+) -> Result<Zone, Reject> {
+    activate(game, villain, Some(Target::Object(victim)))?;
     resolve_top_of_stack(game);
-    game.zone_of(victim)
+    Ok(game.zone_of(victim))
 }
 
 /// "One or more target creatures become blue until end of turn" — CR 601.2c lets the caster
@@ -80,12 +85,12 @@ fn sea_kings_blessing_recolors_every_chosen_target() {
 
     assert_eq!(
         spinal_villain_destroys(&mut game, villain_a, first),
-        Zone::Graveyard,
+        Ok(Zone::Graveyard),
         "the first chosen creature is blue now",
     );
     assert_eq!(
         spinal_villain_destroys(&mut game, villain_b, second),
-        Zone::Graveyard,
+        Ok(Zone::Graveyard),
         "so is the second — the count is a real multi-target clause, not a single target",
     );
 }
@@ -109,21 +114,26 @@ fn sylvan_paradise_wears_off_at_cleanup() {
     let later_villain = game.spawn_on_battlefield(PlayerId(0), card("Spinal Villain"));
 
     // Sylvan Paradise makes the blue Drake green, so Spinal Villain's "target blue creature"
-    // no longer describes it and the ability fizzles on resolution (CR 608.2b).
+    // no longer describes it and it can't be named as the target (CR 602.2b → CR 601.2c).
     cast_instant(&mut game, "Sylvan Paradise");
     choose_targets(&mut game, &[drake]);
     resolve_top_of_stack(&mut game);
     assert_eq!(
         spinal_villain_destroys(&mut game, villain, drake),
-        Zone::Battlefield,
+        Err(Reject::IllegalTarget),
         "a green Drake is not a blue creature",
+    );
+    assert_eq!(
+        game.zone_of(drake),
+        Zone::Battlefield,
+        "so the Drake is untouched",
     );
 
     pass_until_next_turn(&mut game);
 
     assert_eq!(
         spinal_villain_destroys(&mut game, later_villain, drake),
-        Zone::Graveyard,
+        Ok(Zone::Graveyard),
         "the colour wash ended at cleanup, so the Drake is blue again",
     );
 }
@@ -175,7 +185,7 @@ fn alchors_tomb_sets_the_color_its_controller_chooses() {
 
     assert_eq!(
         spinal_villain_destroys(&mut game, villain, giant),
-        Zone::Graveyard,
+        Ok(Zone::Graveyard),
         "the red Hill Giant became blue, so Spinal Villain can destroy it",
     );
 }
@@ -203,14 +213,14 @@ fn alchors_tomb_color_change_survives_cleanup() {
 
     assert_eq!(
         spinal_villain_destroys(&mut game, villain, giant),
-        Zone::Graveyard,
+        Ok(Zone::Graveyard),
         "the Giant is still blue a cleanup later",
     );
 }
 
 /// "Target permanent **you control**" — an opponent's permanent never becomes the chosen color:
-/// the ability finds no legal target on resolution and does nothing at all (CR 608.2b), so the
-/// controller is never even asked to name a color.
+/// it is not a legal target, so it can't be named as the ability is announced
+/// (CR 602.2b → CR 601.2c) and the controller is never asked to pick a color.
 #[test]
 fn alchors_tomb_cannot_recolor_a_permanent_an_opponent_controls() {
     let mut game = Game::new();
@@ -219,16 +229,23 @@ fn alchors_tomb_cannot_recolor_a_permanent_an_opponent_controls() {
     let villain = game.spawn_on_battlefield(PlayerId(0), card("Spinal Villain"));
     game.fund_mana(PlayerId(0));
 
-    activate(&mut game, tomb, Some(Target::Object(theirs))).ok();
-    resolve_top_of_stack(&mut game);
-
+    assert_eq!(
+        activate(&mut game, tomb, Some(Target::Object(theirs))),
+        Err(Reject::IllegalTarget),
+        "\"target permanent you control\" — an opponent's Hill Giant is not one",
+    );
     assert!(
         game.pending_choice().is_none(),
         "no color is picked for a permanent the Tomb's controller doesn't control",
     );
     assert_eq!(
         spinal_villain_destroys(&mut game, villain, theirs),
-        Zone::Battlefield,
+        Err(Reject::IllegalTarget),
         "the opponent's Hill Giant is still red, not any color the Tomb could have named",
+    );
+    assert_eq!(
+        game.zone_of(theirs),
+        Zone::Battlefield,
+        "so Spinal Villain's \"target blue creature\" can't reach it",
     );
 }

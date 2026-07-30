@@ -67,18 +67,19 @@ fn tor_wauki_kills_a_blocking_creature() {
 }
 
 #[test]
-fn tor_wauki_fizzles_against_a_creature_out_of_combat() {
-    // Neither attacking nor blocking, so the ability is countered on resolution for having no
-    // legal target (CR 608.2b) — this engine checks the chosen target at resolution rather than
-    // rejecting the activation.
+fn tor_wauki_cannot_target_a_creature_out_of_combat() {
+    // Neither attacking nor blocking, so it is not a legal target and cannot be chosen as the
+    // ability is announced (CR 602.2b → CR 601.2c).
     let mut game = Game::new();
     let wauki = game.spawn_on_battlefield(PlayerId(0), card("Tor Wauki"));
     let bystander = game.spawn_on_battlefield(PlayerId(1), card("Prodigal Sorcerer"));
     combat(&mut game, "Grizzly Bears", "Mons's Goblin Raiders");
 
-    ping(&mut game, wauki, bystander).expect("the activation itself is not gated");
-    resolve_top_of_stack(&mut game);
-
+    assert_eq!(
+        ping(&mut game, wauki, bystander),
+        Err(Reject::IllegalTarget),
+        "a creature sitting at home is neither attacking nor blocking"
+    );
     assert_eq!(
         game.zone_of(bystander),
         Zone::Battlefield,

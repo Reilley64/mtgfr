@@ -98,9 +98,10 @@ impl Game {
                 activated: _,
             } => {
                 // CR 608.2b: an ability whose stored target is no longer legal fizzles —
-                // it leaves the stack with no effect. This is where protection (CR 702.16b)
-                // actually filters a targeted ability (activation itself isn't re-validated —
-                // see `Game::activate_ability`'s own doc), sourced from the ability's own
+                // it leaves the stack with no effect. The *first* gate is CR 601.2c at
+                // announcement (`Game::activate_ability` refuses an illegal choice outright);
+                // this is the re-check for a target that stops qualifying afterwards, e.g.
+                // protection (CR 702.16b) gained in response, sourced from the ability's own
                 // permanent's colors (Nin, the Pain Artist, a UR source).
                 // The target-legality `{X}` is the ability's source's own entered X (see
                 // `Game::ability_source_x`) — needed for a `mv_max_x` re-check (Kinetic Ooze),

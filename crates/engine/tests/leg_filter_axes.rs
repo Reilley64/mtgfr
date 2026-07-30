@@ -205,6 +205,10 @@ fn mana_matrix_cannot_shave_a_colored_requirement_off_an_instant() {
 
     // A spell for the counters to aim at, so targeting never masks a mana rejection.
     game.fund_mana(PlayerId(1));
+    game.submit(Intent::PassPriority {
+        player: PlayerId(0),
+    })
+    .unwrap();
     cast(&mut game, PlayerId(1), growth, Some(Target::Object(bear)));
     let growth_on_stack = top_spell(&game);
     game.submit(Intent::PassPriority {
@@ -261,8 +265,14 @@ fn pendelhaven_pumps_a_one_one_creature() {
     let pendelhaven = game.spawn_on_battlefield(PlayerId(0), card("Pendelhaven"));
     let goblin = game.spawn_on_battlefield(PlayerId(0), card("Mons's Goblin Raiders"));
 
-    activate(&mut game, PlayerId(0), pendelhaven, 0, Some(Target::Object(goblin)))
-        .expect("a 1/1 is a legal Pendelhaven target");
+    activate(
+        &mut game,
+        PlayerId(0),
+        pendelhaven,
+        0,
+        Some(Target::Object(goblin)),
+    )
+    .expect("a 1/1 is a legal Pendelhaven target");
     resolve_top_of_stack(&mut game);
 
     assert_eq!(game.power(goblin), 2, "+1/+2 applied to the 1/1's power");
@@ -330,18 +340,30 @@ fn pendelhaven_reads_current_toughness_not_printed() {
     // is no longer a legal target.
     let mut game = Game::new();
     let first = game.spawn_on_battlefield(PlayerId(0), card("Pendelhaven"));
-    let second = game.spawn_on_battlefield(PlayerId(0), card("Pendelhaven"));
+    // The second Pendelhaven sits across the table: Pendelhaven is legendary, so two under one
+    // player would trip the legend rule (CR 704.5j) and one would be gone before the retarget.
+    let second = game.spawn_on_battlefield(PlayerId(1), card("Pendelhaven"));
     let sprite = game.spawn_on_battlefield(PlayerId(0), card("Scryb Sprites"));
 
-    activate(&mut game, PlayerId(0), first, 0, Some(Target::Object(sprite)))
-        .expect("a 1/1 is a legal target");
+    activate(
+        &mut game,
+        PlayerId(0),
+        first,
+        0,
+        Some(Target::Object(sprite)),
+    )
+    .expect("a 1/1 is a legal target");
     resolve_top_of_stack(&mut game);
     assert_eq!(game.toughness(sprite), 3);
 
+    game.submit(Intent::PassPriority {
+        player: PlayerId(0),
+    })
+    .unwrap();
     assert_eq!(
         activate(
             &mut game,
-            PlayerId(0),
+            PlayerId(1),
             second,
             0,
             Some(Target::Object(sprite))
@@ -398,6 +420,10 @@ fn time_elemental_cannot_target_an_enchanted_permanent() {
     let bears = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let aura = game.spawn_in_hand(PlayerId(1), card("Changing Loyalty"));
 
+    game.submit(Intent::PassPriority {
+        player: PlayerId(0),
+    })
+    .unwrap();
     cast(&mut game, PlayerId(1), aura, Some(Target::Object(bears)));
     resolve_top_of_stack(&mut game);
     assert_eq!(game.zone_of(aura), Zone::Battlefield);
@@ -446,7 +472,7 @@ fn time_elemental_fizzles_when_its_target_becomes_enchanted_in_response() {
     .unwrap();
     cast(&mut game, PlayerId(1), aura, Some(Target::Object(bears)));
     resolve_top_of_stack(&mut game); // the Aura attaches
-    assert_eq!(game.attached_to(aura), Some(bears));
+    assert_eq!(game.attached_to(game.current_id(aura)), Some(bears));
 
     resolve_top_of_stack(&mut game); // Time Elemental's ability tries to resolve
 

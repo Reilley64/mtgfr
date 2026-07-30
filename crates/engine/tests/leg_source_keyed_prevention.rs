@@ -246,8 +246,23 @@ fn a_source_keyed_shield_is_not_used_up_by_the_first_creature_it_saves() {
 
     attack_with(&mut game, vec![giant]);
     block_with(&mut game, vec![(first, giant), (second, giant)]).unwrap();
+    // CR 510.1c — a multi-blocked attacker still divides its damage among its blockers; a
+    // prevention shield does nothing until that damage would actually be dealt (CR 615.1). Split
+    // it lethal-first, so an unshielded giant would kill the first blocker outright.
+    advance_until(&mut game, |g| g.current_step() == Step::CombatDamage);
+    game.submit(Intent::AssignDamage {
+        player: PlayerId(0),
+        assignment: vec![(first, 2), (second, 1)],
+    })
+    .unwrap();
     advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
 
+    assert_eq!(
+        game.marked_damage(first),
+        0,
+        "the shield covers the whole division, not just its first share",
+    );
+    assert_eq!(game.marked_damage(second), 0, "and the second share too");
     assert!(alive(&game, first), "the first blocker takes nothing");
     assert!(alive(&game, second), "and so does the second");
 }

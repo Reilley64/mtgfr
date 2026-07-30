@@ -2287,7 +2287,10 @@ impl Game {
         // as many times as the cap, so this activation is illegal. `once_each_turn` is the
         // `cap == 1` sugar; `max_activations_per_turn` is the general form and wins when both are
         // set (no pool card sets both).
-        if let Some(cap) = cost.max_activations_per_turn.or(cost.once_each_turn.then_some(1)) {
+        if let Some(cap) = cost
+            .max_activations_per_turn
+            .or(cost.once_each_turn.then_some(1))
+        {
             let activations_so_far = self
                 .once_per_turn
                 .activated
@@ -2377,13 +2380,38 @@ impl Game {
                     None => return Err(Reject::IllegalTarget),
                 }
             }
-            // An ordinary chosen target isn't re-validated at activation (this engine's
-            // established posture — see `deekah_grant_unblockable_lets_token_through`, which
-            // relies on an illegal target fizzling at resolution, CR 608.2b, rather than
-            // rejecting the activation outright); `Game::resolve_top`'s `target_still_legal`
-            // re-check is where protection (CR 702.16b) actually filters it, with these same
-            // `source_colors`.
-            _ => target,
+            // "Target creature you control" (Kry Shield, Mother of Runes) is a restriction on
+            // what may be *chosen* (CR 115.4), so naming an opponent's creature is an illegal
+            // declaration rather than something that fizzles at resolution — the same shape as
+            // the Equip gate below (CR 702.6e).
+            TargetSpec::CreatureYouControl => {
+                let yours = matches!(target, Some(Target::Object(creature))
+                    if self.is_creature_on_battlefield(creature)
+                        && self.controller_of(creature) == player);
+                if !yours {
+                    return Err(Reject::IllegalTarget);
+                }
+                target
+            }
+            // An ability that targets nothing ignores whatever the intent carried.
+            TargetSpec::None => target,
+            // CR 602.2b routes activation through CR 601.2c: the targets are *chosen* as the
+            // ability is announced, and only a legal choice may be named — an illegal one makes
+            // the activation illegal rather than putting an ability on the stack to fizzle.
+            // (`Game::resolve_top`'s `target_still_legal` is the separate CR 608.2b re-check, for
+            // a target that stops qualifying *after* announcement.) Only a single-target ability
+            // names its target on the intent; a multi-target one leaves `target` `None` and picks
+            // at a `ChooseTarget` pause, which validates there.
+            spec => {
+                if let Some(chosen) = target
+                    && !self
+                        .legal_targets_for(spec, object, player, source_colors, x)
+                        .contains(&chosen)
+                {
+                    return Err(Reject::IllegalTarget);
+                }
+                target
+            }
         };
         // A loyalty ability's change (+N / 0 / −N) is paid as a cost before the effect goes
         // on the stack.

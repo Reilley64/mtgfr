@@ -70,10 +70,14 @@ fn relic_barrier_taps_an_artifact_and_nothing_else() {
 
     assert!(game.is_tapped(icy), "the targeted artifact is tapped");
 
-    // A creature is not an artifact — the ability fizzles on resolution (CR 608.2b).
+    // A creature is not an artifact, and targets are chosen as the ability is announced
+    // (CR 602.2b → CR 601.2c), so the activation is refused.
     game.untap(barrier);
-    activate(&mut game, barrier, 0, Some(Target::Object(bears))).unwrap();
-    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        activate(&mut game, barrier, 0, Some(Target::Object(bears))),
+        Err(Reject::IllegalTarget),
+        "\"target artifact\" — Grizzly Bears is not one"
+    );
 
     assert!(!game.is_tapped(bears), "a creature is not a legal target");
 }

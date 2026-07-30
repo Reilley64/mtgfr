@@ -604,6 +604,9 @@ impl Effect {
             | Effect::Pump(PumpEffect::RadianceChosenColorProtectionUntilEndOfTurn { target })
             | Effect::Pump(PumpEffect::TargetLosesKeywords { target, .. })
             | Effect::Pump(PumpEffect::SetBasePtTargetUntilEndOfTurn { target, .. })
+            | Effect::Pump(PumpEffect::SetOwnBaseToughnessFromAmount { target, .. })
+            | Effect::Pump(PumpEffect::SetOwnBasePtFromTargetUntilEndOfNextUpkeep { target, .. })
+            | Effect::Pump(PumpEffect::SwitchPtUntilEndOfTurn { target, .. })
             | Effect::Pump(PumpEffect::BecomesCopyOfTarget { target, .. })
             | Effect::Pump(PumpEffect::TargetBecomesTreasure { target })
             | Effect::Pump(PumpEffect::TargetBecomesSubtypesWhileSourceRemains { target, .. })
@@ -1083,6 +1086,8 @@ Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
             | Effect::Pump(PumpEffect::AnimateSelfUntilEndOfTurn { .. })
             // A self-base-P/T set always affects the ability's own source (Trench Gorger), no target.
             | Effect::Pump(PumpEffect::SetOwnBasePtFromAmount { .. })
+            // Brine Hag reads its own damage tally for the creatures to set — no chosen target.
+            | Effect::Pump(PumpEffect::SetBasePtCreaturesThatDamagedSourceThisTurn { .. })
             | Effect::Token(TokenEffect::CopyEachEnteredThisTurnTokenTappedAttacking { .. })
             // Myriad enumerates opponents internally — no chosen target (see the variant doc).
             | Effect::Token(TokenEffect::MyriadTokenCopies { .. })

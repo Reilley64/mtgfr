@@ -404,15 +404,15 @@ fields, mirroring `ChooseAbilityTargets`'s own, not wire-mirrored) — `unbound_
 `approximates` deleted. (c) `Game::activate_ability`'s mana payment now feeds `settle_payment` a real
 `SpellCharacteristics { has_x: cost.mana.x > 0, .. }` instead of `None`, so Elementalist's Palette's
 `HasX` restricted credit funds an ability's own `{X}`, not just a spell's. (d) Protection now filters
-a targeted ability's target — but at the *resolution* fizzle re-check (`Game::resolve_top`'s
-`target_still_legal`, CR 608.2b), not at activation: this engine's established posture for an
-illegal activated-ability target is "goes on the stack, fizzles later" (see
-`deekah_grant_unblockable_lets_token_through`), not an upfront `Reject`, so `query.rs`'s
-`legal_targets` (client highlight enumeration) and `place_targeted_ability`'s own legal-target scans
-were also threaded with real source colors for consistency. Stale `effect.rs:9`/`mana.rs:15`
+a targeted ability's target — at the *resolution* fizzle re-check (`Game::resolve_top`'s
+`target_still_legal`, CR 608.2b); `query.rs`'s `legal_targets` (client highlight enumeration) and
+`place_targeted_ability`'s own legal-target scans were also threaded with real source colors for
+consistency. (At the time this landed there was no activation-time gate at all, so an illegal
+activated-ability target went on the stack and fizzled later; leg #105 added the CR 601.2c
+announcement gate on top, and these tests now assert `Reject::IllegalTarget`.) Stale `effect.rs:9`/`mana.rs:15`
 ponytails deleted. **Fully faithful (no `approximates`):** nin_the_pain_artist. Tests:
 `nin_the_pain_artist_deals_x_damage_and_that_creatures_controller_draws_x_cards`,
-`nin_fizzles_against_a_creature_with_protection_from_red`,
+`nin_cannot_target_a_creature_with_protection_from_red`,
 `nin_activated_ability_copied_by_unbound_flourishing_may_retarget_cr_707_10c`,
 `elementalists_palette_restricted_mana_funds_nins_x_activation` (regression for (c))._
 Depends on: #215 (the who-draws rider arm); {X}-activation core (landed — see below).

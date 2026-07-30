@@ -183,16 +183,18 @@ fn tetsuo_umezawa_destroys_a_blocking_creature() {
 }
 
 #[test]
-fn tetsuo_umezawa_fizzles_against_an_untapped_creature_out_of_combat() {
-    // Neither tapped nor blocking, so the ability is countered on resolution for having no legal
-    // target (CR 608.2b) — this engine checks a chosen target at resolution rather than rejecting
-    // the activation.
+fn tetsuo_umezawa_cannot_target_an_untapped_creature_out_of_combat() {
+    // Neither tapped nor blocking, so it is not a legal target and cannot be chosen as the
+    // ability is announced (CR 602.2b → CR 601.2c).
     let mut game = Game::new();
     let tetsuo = game.spawn_on_battlefield(PlayerId(0), card("Tetsuo Umezawa"));
     let bystander = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
 
-    tetsuo_destroys(&mut game, tetsuo, bystander).expect("the activation itself is not gated");
-    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        tetsuo_destroys(&mut game, tetsuo, bystander),
+        Err(Reject::IllegalTarget),
+        "\"target tapped or blocking creature\" — this one is neither"
+    );
 
     assert_eq!(
         game.zone_of(bystander),

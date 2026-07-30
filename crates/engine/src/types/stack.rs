@@ -2670,6 +2670,36 @@ pub enum Event {
         /// permanent's P/T from the snapshot either way, so this isn't projected.
         ends_at_end_of_combat: bool,
     },
+    /// A permanent's base power/toughness was SET until the end of `player`'s next upkeep (CR
+    /// 613.3(7b) — Halfdane's "change Halfdane's base power and toughness to the power and
+    /// toughness of target creature other than Halfdane until the end of your next upkeep"), stored
+    /// as a `ModifierKind::BasePtSet` with a `ModifierDuration::EndOfNextUpkeep` and swept by
+    /// [`Event::UpkeepDurationsEnded`] rather than at cleanup. Public battlefield status, like
+    /// `BasePtSetUntilEndOfTurn`.
+    BasePtSetUntilEndOfNextUpkeep {
+        object: ObjectId,
+        power: i32,
+        toughness: i32,
+        player: PlayerId,
+    },
+    /// A permanent's base *toughness* alone was SET, indefinitely (CR 613.3(7b) — Sentinel's
+    /// "change this creature's base toughness to 1 plus the power of target creature", Wall of
+    /// Tombstones' upkeep set). A `ModifierKind::BaseToughnessSet` with
+    /// `ModifierDuration::Indefinite`: each set is its own layer-7b entry, so a later activation
+    /// simply outranks the earlier one on timestamp (CR 613.7). Public battlefield status, like
+    /// `BasePtSetUntilEndOfTurn`.
+    BaseToughnessSetIndefinite { object: ObjectId, toughness: i32 },
+    /// A permanent's power and toughness were switched until end of turn (CR 613.4e —
+    /// Transmutation). A `ModifierKind::PtSwitch` on the modifier registry, applied after every
+    /// other P/T layer and swept at cleanup with the rest. Public battlefield status, like
+    /// `BasePtSetUntilEndOfTurn`.
+    PtSwitchedUntilEndOfTurn { object: ObjectId },
+    /// The end-of-upkeep sweep for `object`'s "until the end of your next upkeep" modifiers
+    /// (Halfdane): the first sweep a modifier sees only arms it — the effect was created during an
+    /// upkeep of its own — and the next one takes it off. The narrow sibling of
+    /// [`Event::TempBoostsEnded`], which would wrongly end every *other* duration-scoped effect on
+    /// the same permanent.
+    UpkeepDurationsEnded { object: ObjectId },
     /// A permanent gained card types + creature subtypes + colors until end of turn (CR 613.4 —
     /// Restless Spire's self-animation adds Creature + Elemental + blue/red to a noncreature land).
     /// Registered as one `ModifierKind::Became` — the layer-4 type add and the layer-5 color add

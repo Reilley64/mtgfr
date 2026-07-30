@@ -196,7 +196,7 @@ the record shows what unblocked it.
 - [x] **Blood Lust** {1}{R} · Instant — increment 21
 - [x] **Blue Mana Battery** {4} · Artifact — increment 11
 - [x] **Boris Devilboon** {3}{B}{R} · Legendary Creature — Zombie Wizard — increment 97
-- [ ] **Brine Hag** {2}{U}{U} · Creature — Hag — increment 22
+- [x] **Brine Hag** {2}{U}{U} · Creature — Hag — increment 22
 - [x] **Bronze Horse** {7} · Artifact Creature — Horse — increment 12
 - [x] **Cathedral of Serra** — · Land — increment 3 (slices 1, 2, 3)
 - [ ] **Caverns of Despair** {2}{R}{R} · World Enchantment — increment 2, 23
@@ -246,7 +246,7 @@ the record shows what unblocked it.
 - [x] **Great Wall** {2}{W} · Enchantment — increment 4
 - [x] **Greater Realm of Preservation** {1}{W} · Enchantment — increment 12
 - [x] **Green Mana Battery** {4} · Artifact — increment 11
-- [ ] **Halfdane** {1}{W}{U}{B} · Legendary Creature — Shapeshifter — increment 22
+- [x] **Halfdane** {1}{W}{U}{B} · Legendary Creature — Shapeshifter — increment 22
 - [x] **Hammerheim** — · Legendary Land — increment 5
 - [ ] **Hazezon Tamar** {4}{R}{G}{W} · Legendary Creature — Human Warrior — increment 45
 - [ ] **Heaven's Gate** {W} · Instant — increment 96
@@ -319,7 +319,7 @@ the record shows what unblocked it.
 - [ ] **Sea Kings' Blessing** {U} · Instant — increment 96
 - [x] **Seafarer's Quay** — · Land — increment 3 (slices 1, 2, 3, 4)
 - [ ] **Seeker** {2}{W}{W} · Enchantment — Aura — increment 9
-- [ ] **Sentinel** {4} · Artifact Creature — Shapeshifter — increment 8, 22
+- [x] **Sentinel** {4} · Artifact Creature — Shapeshifter — increment 8, 22, 54 (approximated: targets any creature, not only a combat partner)
 - [x] **Serpent Generator** {6} · Artifact — increment 97
 - [x] **Shelkin Brownie** {1}{G} · Creature — Ouphe — increment 3, 5
 - [ ] **Shimian Night Stalker** {3}{B}{B} · Creature — Nightstalker — increment 60
@@ -345,7 +345,7 @@ the record shows what unblocked it.
 - [x] **Tolaria** — · Legendary Land — increment 3, 5
 - [x] **Tor Wauki** {2}{B}{B}{R} · Legendary Creature — Human Archer — increment 8
 - [ ] **Touch of Darkness** {B} · Instant — increment 96
-- [ ] **Transmutation** {1}{B} · Instant — increment 22
+- [x] **Transmutation** {1}{B} · Instant — increment 22
 - [ ] **Triassic Egg** {4} · Artifact — increment 83
 - [x] **Undertow** {2}{U} · Enchantment — increment 4
 - [x] **Underworld Dreams** {B}{B}{B} · Enchantment — increment 115
@@ -360,7 +360,7 @@ the record shows what unblocked it.
 - [ ] **Wall of Dust** {2}{R} · Creature — Wall — increment 42
 - [x] **Wall of Putrid Flesh** {2}{B} · Creature — Wall — increment 12
 - [ ] **Wall of Shadows** {1}{B}{B} · Creature — Wall — increment 12, 88
-- [ ] **Wall of Tombstones** {1}{B} · Creature — Wall — increment 22
+- [x] **Wall of Tombstones** {1}{B} · Creature — Wall — increment 22
 - [x] **Wall of Vapor** {3}{U} · Creature — Wall — increment 12
 - [ ] **Wall of Wonder** {2}{U}{U} · Creature — Wall — increment 89
 - [ ] **Whirling Dervish** {G}{G} · Creature — Human Monk — increment 90

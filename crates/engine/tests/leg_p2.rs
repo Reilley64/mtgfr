@@ -182,21 +182,28 @@ fn horror_of_horrors_regenerates_a_black_creature_for_a_swamp() {
     let zombies = game.spawn_on_battlefield(PlayerId(0), card("Scathe Zombies")); // black
     let bears = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears")); // green
 
-    // A green Grizzly Bears is not "target black creature", so the ability fizzles on
-    // resolution for having no legal target (CR 608.2b).
-    activate(
-        &mut game,
-        horror,
-        0,
-        Some(Target::Object(bears)),
-        vec![spare],
-    )
-    .expect("activation isn't re-validated; the target check happens on resolution");
-    resolve_top_of_stack(&mut game);
+    // A green Grizzly Bears is not "target black creature", and targets are chosen as the ability
+    // is announced (CR 602.2b → CR 601.2c), so the activation is refused.
+    assert_eq!(
+        activate(
+            &mut game,
+            horror,
+            0,
+            Some(Target::Object(bears)),
+            vec![spare],
+        ),
+        Err(Reject::IllegalTarget),
+        "\"target black creature\" — the green Bears are not one"
+    );
     assert_eq!(
         game.regeneration_shields(bears),
         0,
         "the green creature was never a legal target"
+    );
+    assert_eq!(
+        game.zone_of(spare),
+        Zone::Battlefield,
+        "a refused activation never paid the sacrifice cost"
     );
 
     activate(

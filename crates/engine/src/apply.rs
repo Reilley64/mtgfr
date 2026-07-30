@@ -1448,6 +1448,58 @@ impl Game {
                     ModifierKind::BasePtSet { power, toughness },
                 );
             }
+            // Halfdane (CR 613.3(7b)): the same layer-7b set, on the one duration in the pool that
+            // outlives cleanup without being indefinite.
+            Event::BasePtSetUntilEndOfNextUpkeep {
+                object,
+                power,
+                toughness,
+                player,
+            } => {
+                self.register_modifier(
+                    object,
+                    "",
+                    ModifierDuration::EndOfNextUpkeep {
+                        player,
+                        armed: false,
+                    },
+                    ModifierKind::BasePtSet { power, toughness },
+                );
+            }
+            // Sentinel, Wall of Tombstones (CR 613.3(7b)): a base-*toughness* set with no duration,
+            // so it stacks in the registry and the latest timestamp wins (CR 613.7).
+            Event::BaseToughnessSetIndefinite { object, toughness } => {
+                self.register_modifier(
+                    object,
+                    "",
+                    ModifierDuration::Indefinite,
+                    ModifierKind::BaseToughnessSet { toughness },
+                );
+            }
+            // Transmutation (CR 613.4e).
+            Event::PtSwitchedUntilEndOfTurn { object } => {
+                self.register_modifier(
+                    object,
+                    "",
+                    ModifierDuration::EndOfTurn,
+                    ModifierKind::PtSwitch,
+                );
+            }
+            Event::UpkeepDurationsEnded { object } => {
+                self.modifier_provenance.modifiers.retain_mut(|m| {
+                    let ModifierDuration::EndOfNextUpkeep { armed, .. } = &mut m.duration else {
+                        return true;
+                    };
+                    if m.host != object {
+                        return true;
+                    }
+                    // First sweep after registration only arms it: the effect was made during an
+                    // upkeep, and it runs until the end of the *next* one.
+                    let keep = !*armed;
+                    *armed = true;
+                    keep
+                });
+            }
             Event::TypesAddedUntilEndOfTurn {
                 object,
                 types,
@@ -1569,7 +1621,7 @@ impl Game {
                 // but the object itself changing zones clears those.
                 let mut reverts_to = None;
                 self.modifier_provenance.modifiers.retain(|m| {
-                    if m.host != object || m.duration == ModifierDuration::Indefinite {
+                    if m.host != object || !m.duration.ends_at_cleanup() {
                         return true;
                     }
                     if let ModifierKind::RevertsToDef(printed) = m.kind {

@@ -487,9 +487,23 @@ pub(crate) enum ModifierDuration {
     EndOfTurn,
     /// "Until end of combat" (Jade Statue): swept at the End of Combat step (CR 511.3).
     EndOfCombat,
+    /// "Until the end of your next upkeep" (Halfdane): swept as `player` leaves the *second*
+    /// upkeep this modifier has seen. `armed` is that one-upkeep skip — the effect is registered
+    /// during an upkeep of its own, so the first end-of-upkeep sweep only arms it and the next one
+    /// takes it off.
+    EndOfNextUpkeep { player: PlayerId, armed: bool },
     /// No printed duration at all (the lace cycle's "becomes black"): never swept — it lapses on
     /// its own when the object leaves the battlefield and becomes a new object (CR 400.7).
     Indefinite,
+}
+
+impl ModifierDuration {
+    /// Whether the cleanup-step sweep ([`Event::TempBoostsEnded`](crate::Event::TempBoostsEnded))
+    /// takes this modifier off. The durationless ones never end, and "until the end of your next
+    /// upkeep" has its own sweep.
+    pub(crate) fn ends_at_cleanup(self) -> bool {
+        matches!(self, Self::EndOfTurn | Self::EndOfCombat)
+    }
 }
 
 /// What one registered [`Modifier`] does to its host, in CR 613 layer terms.
@@ -518,6 +532,13 @@ pub(crate) enum ModifierKind {
     /// "Has base power and toughness 3/6" (CR 613.3(7b) — Biomass Mutation, Jade Statue's
     /// animated form).
     BasePtSet { power: i32, toughness: i32 },
+    /// "Change this creature's base toughness to N" (Sentinel, Wall of Tombstones): the
+    /// toughness-only half of [`BasePtSet`](Self::BasePtSet), still a layer-7b set (CR 613.3(7b)) —
+    /// it replaces the running base toughness and leaves the running base power alone.
+    BaseToughnessSet { toughness: i32 },
+    /// "Switch this creature's power and toughness" (Transmutation, CR 613.4e): applied after
+    /// every other P/T layer, which is why it is its own layer rather than a base set.
+    PtSwitch,
     /// "Becomes a blue and red Elemental creature … it's still a land" (Restless Spire): the
     /// layer-4 type/subtype ADD and the layer-5 color ADD one self-animation clause makes at once.
     Became {

@@ -354,6 +354,21 @@ pub(crate) fn project_event(
         // `AddedSubtypes` above — the client's per-object state comes from a fresh snapshot each
         // delta.
         Event::BasePtSetIndefinite { object, .. } => VisibleEvent::BasePtSetIndefinite { object },
+        // ponytail: Halfdane's borrowed body and Sentinel's toughness set both project as
+        // `BasePtSetIndefinite`, and Transmutation's switch and its end-of-upkeep sweep as the
+        // `TempBoost`/`TempBoostsEnded` pair — every one of them says "re-read this object's P/T",
+        // which is all the client does with any of them. Give them their own `VisibleEvent`s if the
+        // log ever needs to name the duration.
+        Event::BasePtSetUntilEndOfNextUpkeep { object, .. }
+        | Event::BaseToughnessSetIndefinite { object, .. } => {
+            VisibleEvent::BasePtSetIndefinite { object }
+        }
+        Event::PtSwitchedUntilEndOfTurn { object } => VisibleEvent::TempBoost {
+            object,
+            power: 0,
+            toughness: 0,
+        },
+        Event::UpkeepDurationsEnded { object } => VisibleEvent::TempBoostsEnded { object },
         // ponytail: the copied def isn't threaded onto the wire event, same rationale as
         // `AddedSubtypes` above — the client's per-object state comes from a fresh snapshot each
         // delta.

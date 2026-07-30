@@ -16,6 +16,9 @@ enum ContinuousLayer {
     PowerToughnessBase,
     PowerToughnessModifier,
     Keywords,
+    /// CR 613.4e: a P/T *switch* applies after everything else that changed power or toughness,
+    /// whatever layer that was — so it sorts last here rather than sharing 7b or 7c.
+    PowerToughnessSwitch,
 }
 
 /// One engine-internal CR 613 continuous-effect entry affecting an object's effective
@@ -43,6 +46,11 @@ enum ContinuousEffectKind {
     LoseAllAbilities,
     /// CR 613.3(7b): the creature's base P/T is set.
     BasePtSet { power: i32, toughness: i32 },
+    /// CR 613.3(7b): the creature's base *toughness* alone is set (Sentinel, Wall of Tombstones) —
+    /// same layer as [`BasePtSet`](Self::BasePtSet), but it leaves the running power untouched.
+    BaseToughnessSet { toughness: i32 },
+    /// CR 613.4e: the creature's power and toughness are switched (Transmutation).
+    PtSwitch,
     /// CR 613.3(7c): a P/T modification added on top of the base.
     PtDelta { power: i32, toughness: i32 },
     /// Keyword abilities granted by a continuous effect.
@@ -62,8 +70,10 @@ impl ContinuousEffect {
         match self.kind {
             ContinuousEffectKind::SetTypes { .. } => ContinuousLayer::Type,
             ContinuousEffectKind::LoseAllAbilities => ContinuousLayer::Ability,
-            ContinuousEffectKind::BasePtSet { .. } => ContinuousLayer::PowerToughnessBase,
+            ContinuousEffectKind::BasePtSet { .. }
+            | ContinuousEffectKind::BaseToughnessSet { .. } => ContinuousLayer::PowerToughnessBase,
             ContinuousEffectKind::PtDelta { .. } => ContinuousLayer::PowerToughnessModifier,
+            ContinuousEffectKind::PtSwitch => ContinuousLayer::PowerToughnessSwitch,
             ContinuousEffectKind::GrantKeywords { .. }
             | ContinuousEffectKind::LoseKeywords { .. } => ContinuousLayer::Keywords,
         }
@@ -1097,6 +1107,16 @@ impl Game {
                     timestamp,
                     kind: ContinuousEffectKind::BasePtSet { power, toughness },
                 }),
+                ModifierKind::BaseToughnessSet { toughness } => effects.push(ContinuousEffect {
+                    source: object,
+                    timestamp,
+                    kind: ContinuousEffectKind::BaseToughnessSet { toughness },
+                }),
+                ModifierKind::PtSwitch => effects.push(ContinuousEffect {
+                    source: object,
+                    timestamp,
+                    kind: ContinuousEffectKind::PtSwitch,
+                }),
                 ModifierKind::Became {
                     types, subtypes, ..
                 } => {
@@ -2115,7 +2135,9 @@ impl Game {
                     matches!(
                         effect.kind,
                         ContinuousEffectKind::BasePtSet { .. }
+                            | ContinuousEffectKind::BaseToughnessSet { .. }
                             | ContinuousEffectKind::PtDelta { .. }
+                            | ContinuousEffectKind::PtSwitch
                     )
                 }),
         );
@@ -2148,6 +2170,9 @@ impl Game {
                     power = base_power;
                     toughness = base_toughness;
                 }
+                ContinuousEffectKind::BaseToughnessSet {
+                    toughness: base_toughness,
+                } => toughness = base_toughness,
                 ContinuousEffectKind::PtDelta {
                     power: delta_power,
                     toughness: delta_toughness,
@@ -2155,6 +2180,7 @@ impl Game {
                     power += delta_power;
                     toughness += delta_toughness;
                 }
+                ContinuousEffectKind::PtSwitch => std::mem::swap(&mut power, &mut toughness),
                 ContinuousEffectKind::SetTypes { .. }
                 | ContinuousEffectKind::LoseAllAbilities
                 | ContinuousEffectKind::GrantKeywords { .. }

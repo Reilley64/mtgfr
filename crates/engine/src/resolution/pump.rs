@@ -233,6 +233,64 @@ impl Game {
                     toughness: value,
                 }]
             }
+            // Indefinite self base-*toughness* SET (Sentinel, Wall of Tombstones — CR 613.3(7b)):
+            // the amount is locked in here, at resolution (CR 613.4b), and the running base power
+            // is left alone. Nothing to do if the source has already left (CR 608.2c).
+            PumpEffect::SetOwnBaseToughnessFromAmount { amount, .. } => {
+                if self.as_permanent(source).is_none() {
+                    return Vec::new();
+                }
+                vec![Event::BaseToughnessSetIndefinite {
+                    object: source,
+                    toughness: self.resolve_amount(amount, controller, source, target, x),
+                }]
+            }
+            // Halfdane: the source wears the target's *effective* P/T (CR 613.4b snapshot) until
+            // the end of its controller's next upkeep. Nothing to do if either has left
+            // (CR 608.2b/608.2c).
+            PumpEffect::SetOwnBasePtFromTargetUntilEndOfNextUpkeep { .. } => {
+                let object = expect_object_target(target, "a borrowed base P/T");
+                if self.as_permanent(source).is_none() || self.as_permanent(object).is_none() {
+                    return Vec::new();
+                }
+                vec![Event::BasePtSetUntilEndOfNextUpkeep {
+                    object: source,
+                    power: self.power(object),
+                    toughness: self.toughness(object),
+                    player: controller,
+                }]
+            }
+            // Brine Hag's dies trigger: every creature its turn-scoped tally recorded as having
+            // dealt it damage gets an indefinite 0/2 base set. The Hag itself is in the graveyard
+            // by now, so the tally is read through `current_id` (CR 603.10a).
+            PumpEffect::SetBasePtCreaturesThatDamagedSourceThisTurn { power, toughness } => {
+                let mut dealers: Vec<ObjectId> = self
+                    .damaged_this_turn
+                    .iter()
+                    .filter(|&&(_, victim)| self.current_id(victim) == self.current_id(source))
+                    .map(|&(dealer, _)| self.current_id(dealer))
+                    .filter(|&dealer| self.is_creature_on_battlefield(dealer))
+                    .collect();
+                dealers.sort_unstable();
+                dealers.dedup();
+                dealers
+                    .into_iter()
+                    .map(|object| Event::BasePtSetIndefinite {
+                        object,
+                        power,
+                        toughness,
+                    })
+                    .collect()
+            }
+            // Transmutation (CR 613.4e): a P/T switch on the chosen creature, applied above every
+            // other P/T layer and swept at cleanup.
+            PumpEffect::SwitchPtUntilEndOfTurn { .. } => {
+                let object = expect_object_target(target, "a power/toughness switch");
+                if self.as_permanent(object).is_none() {
+                    return Vec::new();
+                }
+                vec![Event::PtSwitchedUntilEndOfTurn { object }]
+            }
             // Manland self-animation (Restless Spire): the source land becomes a creature until end
             // of turn — an added type/subtype (613.4), a base-P/T SET (613.3(7b)), and granted
             // keywords, all on the source. Nothing to do if the source has left (CR 608.2c).
