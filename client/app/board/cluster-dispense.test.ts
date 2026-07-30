@@ -4,7 +4,7 @@ import type { ActionView, ObjectView, VisibleState } from "~/wire/types";
 import type { GameFoldState } from "../game/fold";
 import { engagedIds } from "./engagement";
 import { layout, ZONE } from "./geometry/layout";
-import { BoardPointerDown, BoardPointerUp, CombatAttackerDropped, TargetChosen } from "./messages";
+import { BoardPointerDown, BoardPointerUp, CombatAttackerDropped } from "./messages";
 import { type BoardModel, initialBoardModel, updateBoard } from "./submodel";
 
 function creature(id: number, over: Partial<ObjectView> = {}): ObjectView {
@@ -182,6 +182,19 @@ test("clicking the residual cluster tile after a copy is staged reaches the next
 // A prompt draft toggles `picked` by object id, so clicking the cluster face twice used to
 // deselect the first copy instead of choosing a second — the second click must resolve to the
 // next distinct Saproling, not the first one's own id.
+//
+// Drives real pointer messages, twice, the way "clicking the residual cluster tile after a copy
+// is staged reaches the next free copy" does — through `cardAt` → `cardsFor` → `layout()` — rather
+// than dispatching `TargetChosen` with hardcoded ids (that reducer path calls
+// `togglePendingObjectAimPick` directly off the id already carried on the message, so it never
+// touches cluster hit-testing and stays green with the fix reverted).
+//
+// Each click re-reads the board at the point the cluster face is *now*, not the point it was
+// before the previous click: after the first pick, the engaged copy gets pulled out of the
+// cluster and the row repacks around one more slot, so the residual face's screen position shifts.
+// A real player looks at the tile, clicks it, looks again, clicks it again — they track the tile,
+// not a fixed pixel — so re-deriving the point per click is the honest simulation of that click,
+// not a workaround for the assertion.
 test("two target picks on one cluster select two distinct copies instead of toggling", () => {
   const pendingChoice = {
     kind: "choose_target" as const,
@@ -193,10 +206,32 @@ test("two target picks on one cluster select two distinct copies instead of togg
     source: 50,
   };
   const gameFold = fold({ objects: crowdedObjects(), pending_choice: pendingChoice });
+  const visible = gameFold.state as VisibleState;
   const board: BoardModel = initialBoardModel();
 
-  const [first] = updateBoard(board, TargetChosen({ target: { kind: "object", id: 10 } }), gameFold, "T1");
-  const [second] = updateBoard(first, TargetChosen({ target: { kind: "object", id: 11 } }), gameFold, "T1");
+  // Before any pick, all four Saprolings are one cluster faced by the lowest id.
+  const initialCluster = layout(visible, visible.viewer, engagedIds(visible, board)).find(
+    (c) => c.cluster > 1 && c.clusterMembers.includes(10),
+  );
+  if (initialCluster == null) throw new Error("expected the full Saproling cluster before any pick");
+  expect(initialCluster.id).toBe(10);
+  const firstClick = { x: initialCluster.x + initialCluster.w / 2, y: initialCluster.y + initialCluster.h / 2 };
 
-  expect(second.promptDraft).toMatchObject({ kind: "card-pick", picked: [10, 11] });
+  const [afterFirstDown] = updateBoard(board, BoardPointerDown(firstClick), gameFold, "T1");
+  const [afterFirst] = updateBoard(afterFirstDown, BoardPointerUp(firstClick), gameFold, "T1");
+  expect(afterFirst.promptDraft).toMatchObject({ kind: "card-pick", picked: [10] });
+
+  // Picking 10 engages it, so it splits out of the cluster and the residual face becomes 11 — at
+  // whatever screen point the repacked row now puts it.
+  const residualCluster = layout(visible, visible.viewer, engagedIds(visible, afterFirst)).find(
+    (c) => c.cluster > 1 && c.clusterMembers.includes(11),
+  );
+  if (residualCluster == null) throw new Error("expected a residual Saproling cluster containing id 11");
+  expect(residualCluster.id).toBe(11);
+  const secondClick = { x: residualCluster.x + residualCluster.w / 2, y: residualCluster.y + residualCluster.h / 2 };
+
+  const [afterSecondDown] = updateBoard(afterFirst, BoardPointerDown(secondClick), gameFold, "T1");
+  const [afterSecond] = updateBoard(afterSecondDown, BoardPointerUp(secondClick), gameFold, "T1");
+
+  expect(afterSecond.promptDraft).toMatchObject({ kind: "card-pick", picked: [10, 11] });
 });
