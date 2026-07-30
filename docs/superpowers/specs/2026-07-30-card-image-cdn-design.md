@@ -80,6 +80,8 @@ not a CDN path. The Scryfall-direct branch is unchanged.
 
 No metered Cloudflare product is in the path, so overage is structurally impossible rather than merely unlikely: Workers' 100k/day rejects rather than bills, R2 egress is free, and no Images subscription exists to bill against. Only R2 storage can accrue, and it is bounded by the catalog rather than by traffic — a fully warmed English bucket (`large` plus `art_crop`) is roughly 20 GB, or about $0.15/month past the free 10 GB. Fills are one Class A operation each, inside the free 1M/month; reads are Class B, inside the free 10M/month.
 
+This ceiling assumes the Workers **Free** plan. On Workers Paid the 100k/day hard stop does not exist, and the enabled Workers Logs observability puts a second metered product in the request path.
+
 Cloudflare offers no hard budget cap, and usage-based billing notifications require Professional plans or higher, so the ceiling has to come from the architecture. It does.
 
 ### Error / degradation
@@ -108,12 +110,16 @@ Cases:
 
 - Valid path with a bucket hit serves stored bytes and the `immutable` header, without calling Scryfall.
 - Bucket miss stores the fetched bytes under the expected key and serves them.
-- `a`/`b` not matching the print id prefix returns `404` and makes no outbound request.
-- Off-layout path (bad size, bad face, non-UUID id, wrong extension) returns `404`.
-- Non-`GET` method returns `405`.
-- Scryfall `429` returns `302` to the Scryfall URL and stores nothing.
-- Scryfall `404` returns `404`.
-- **Layout round-trip:** URLs produced by `buildImageUrl` parse under the Worker's layout matcher. The Worker cannot import shared code, so this is the test that catches drift between the two copies of the layout.
+- A back-face request asks Scryfall for `&face=back` and stores under the back-face key.
+- `a`/`b` not matching the print id prefix returns `404` and makes no outbound request, including a case that isolates each half of the fan-out check.
+- Off-layout path (bad size, bad face, non-UUID id shape, wrong extension, extra path segment, bare root) returns `404`, including an id whose fan-out chars agree with a malformed id body so the id group's own shape is what's under test.
+- An uppercase-hex UUID returns `404` rather than aliasing the lowercase key.
+- Non-`GET` method returns `405` with the `Allow` header.
+- Scryfall `429`, and a thrown network failure, both return `302` to the Scryfall URL and store nothing.
+- Scryfall `404` returns `404` and stores nothing.
+- A zero-length `2xx` fill, and a fill whose body fails to read mid-stream, both return `302` and store nothing.
+- An R2 read failure falls through to the fill; an R2 write failure still serves the fetched bytes.
+- **Layout round-trip:** every `ImageSize` × `ImageFace` combination `buildImageUrl` can emit parses under the Worker's layout matcher. The Worker cannot import shared code, so this is the test that catches drift between the two copies of the layout.
 
 ## Out of scope
 

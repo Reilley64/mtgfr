@@ -4,6 +4,8 @@
 # request path: Workers' free 100k/day rejects rather than bills, R2 egress is free, and no
 # Cloudflare Images subscription exists to bill against. Only R2 storage accrues, and it is
 # bounded by the card catalog rather than by traffic (~20 GB fully warm, ~$0.15/month).
+# This ceiling assumes the Workers Free plan — on Workers Paid, the observability block below
+# puts metered Workers Logs in the request path.
 
 locals {
   card_cdn_hostname = "edh-images.${var.dns_zone}"
@@ -12,7 +14,7 @@ locals {
 resource "cloudflare_r2_bucket" "card_images" {
   account_id = var.cloudflare_account_id
   name       = "edh-card-images"
-  location   = "WNAM"
+  location   = "wnam"
 }
 
 resource "cloudflare_workers_script" "card_cdn" {

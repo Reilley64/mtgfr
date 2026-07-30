@@ -42,7 +42,10 @@ export default {
     if (filled.status === 404) return new Response("Not found", { status: 404 });
     if (!filled.ok) return Response.redirect(upstream, 302);
 
-    const bytes = await filled.arrayBuffer();
+    const bytes = await filled.arrayBuffer().catch(() => null);
+    // A body that fails to read mid-stream (e.g. a connection reset) is a failed fill too —
+    // nothing downstream can distinguish this from any other transient Scryfall failure.
+    if (bytes === null) return Response.redirect(upstream, 302);
     // A 2xx with no bytes is a failed fill, not a valid image — storing it would freeze a
     // broken tile behind an immutable cache with no way to self-heal.
     if (bytes.byteLength === 0) return Response.redirect(upstream, 302);

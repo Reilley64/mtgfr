@@ -87,7 +87,10 @@ describe("card CDN worker", () => {
   it.each([
     ["unknown size folder", `/normal/front/a/b/${ID}.jpg`],
     ["unknown face folder", `/large/side/a/b/${ID}.jpg`],
-    ["non-UUID print id", "/large/front/a/b/not-a-uuid.jpg"],
+    // Fan-out chars `a`/`b` agree with the id's own first two chars, so this fails on the id
+    // group's shape specifically — not on the fan-out guard, which a loosened id class would
+    // still (coincidentally) pass through undetected.
+    ["non-UUID print id", "/large/front/a/b/abzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz.jpg"],
     ["wrong extension", `/large/front/a/b/${ID}.webp`],
     ["extra path segment", `/large/front/a/b/${ID}.jpg/extra`],
     ["bare root", "/"],
@@ -174,19 +177,60 @@ describe("card CDN worker", () => {
     expect(res.headers.get("Location")).toBe(SCRYFALL);
     expect(env.CARDS.put).not.toHaveBeenCalled();
   });
+
+  it("redirects and stores nothing when the fill body fails to read mid-stream", async () => {
+    const env = { CARDS: bucket() };
+    // A same-shape stand-in for a Response whose body stream errors after headers arrive
+    // (e.g. an upstream connection reset) — `Response` itself has no way to construct that.
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      arrayBuffer: () => Promise.reject(new Error("ECONNRESET")),
+    });
+
+    const res = await worker.fetch(get(`/large/front/a/b/${ID}.jpg`), env);
+
+    expect(res.status).toBe(302);
+    expect(res.headers.get("Location")).toBe(SCRYFALL);
+    expect(env.CARDS.put).not.toHaveBeenCalled();
+  });
+
+  it("404s a fan-out prefix where only the second char disagrees with the print id", async () => {
+    const env = { CARDS: bucket() };
+
+    // ID starts "ab...": `a` matches id[0], but `f` does not match id[1] — isolates the
+    // `b !== id[1]` half of the guard from the `a !== id[0]` half.
+    const res = await worker.fetch(get(`/large/front/a/f/${ID}.jpg`), env);
+
+    expect(res.status).toBe(404);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("404s an uppercase-hex UUID rather than treating it as an alias of the lowercase key", async () => {
+    const env = { CARDS: bucket() };
+
+    // Print ids are canonically lowercase. Fan-out chars uppercased to match, so this only
+    // fails on the regex's case sensitivity, not the fan-out guard.
+    const res = await worker.fetch(get("/large/front/A/B/ABCD1234-5678-90AB-CDEF-000000000001.jpg"), env);
+
+    expect(res.status).toBe(404);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });
 
 // The Worker cannot import shared code, so the layout string exists twice. This is the test
-// that fails if the two copies drift.
+// that fails if the two copies drift. Exhaustive rather than representative: the invariant is
+// that every folder `buildImageUrl` can emit is one `LAYOUT` accepts, so every `ImageSize` (which
+// collapses to two folders) crossed with every `ImageFace` must be swept, not a sample of them.
 describe("layout round-trip against buildImageUrl", () => {
-  it.each([
-    ["large", "front"],
-    ["large", "back"],
-    ["art_crop", "front"],
-    ["art_crop", "back"],
-  ] as const)("parses the URL buildImageUrl emits for %s/%s", async (size, face) => {
+  const sizes = ["small", "normal", "large", "png", "art_crop"] as const;
+  const faces = ["front", "back"] as const;
+  const cases = sizes.flatMap((size) => faces.map((face) => [size, face] as const));
+
+  it.each(cases)("parses the URL buildImageUrl emits for %s/%s", async (size, face) => {
+    const folder = size === "art_crop" ? "art_crop" : "large";
     const url = buildImageUrl(ID, size, face, "https://edh-images.reilley.dev");
-    const env = { CARDS: bucket({ [`${size}/${face}/a/b/${ID}.jpg`]: new Uint8Array([1]) }) };
+    const env = { CARDS: bucket({ [`${folder}/${face}/a/b/${ID}.jpg`]: new Uint8Array([1]) }) };
 
     const res = await worker.fetch(new Request(url), env);
 
