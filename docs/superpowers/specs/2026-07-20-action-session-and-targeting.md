@@ -35,7 +35,7 @@ Keep an action session in the board model. Pure planners decide whether an actio
 - On-board `divide_counters` reuses `pendingDamageAssignOverlay` / `clickDamageAssign` for battlefield permanents.
 - On-board pending aim clicks pack `answerFromBoardTarget` → `choiceIntent` → `SubmitIntent`. Optional `choose_target` keeps a Decline control on `pending-target-aim` chrome.
 - Multi-target on-board aim (`max > 1` or spell/ability min/max ranges) accumulates picks in the card-pick draft with `k / max` + Confirm chrome (`pending-target-count`); one-click still auto-submits when `pendingTargetOneClick`. Picked permanents paint a solid Priority Gold ring (`pickedObjects`) while other legal targets keep the dashed Island Blue aim ring. Enter or Space submits when the multi-aim draft is ready. Stack faces use the same accumulate path via `TargetChosen` (not a premature one-target submit).
-- Combat staging resolves attack drops onto opponent life-orb targets and block drops onto declared attackers.
+- Combat staging resolves attack drops onto opponent life-orb targets and block drops onto declared attackers. Dropping on an opponent's battlefield planeswalker declares the attack against it (CR 508.1a): the defender is that planeswalker's controller, whether or not an avatar sits under the drop point.
 - Required attacks are merged with staged attacks before confirmation.
 - `CancelActionClicked` and Escape call `cancelAll`, clearing staged action, X prompt, modal cast, cost picks, the activation menu, stack expand, pile expand, prompt draft, hand drag, and reject text.
 - `session.cancel` means local pre-submit cancellation only; engine `pending_choice` is handled by `PromptHost`.
