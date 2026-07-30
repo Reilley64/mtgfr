@@ -306,8 +306,8 @@ pub struct ObjectView {
     /// Whether tapping this permanent produces mana — a `produces` land, or anything with a
     /// free-tap mana ability (Sol Ring, Arcane Signet, a mana dork). Free-tap mana abilities have
     /// no `ActionView` of their own, so this is what tells the board where to offer the
-    /// tap-for-mana click instead of guessing at an ability index. A *paid* mana ability does get
-    /// an `ActionView`, flagged `mana_only`.
+    /// tap-for-mana click instead of guessing at an ability index. A paid tap-for-mana mode listed
+    /// by `paid_mana_activates` does get an `ActionView`, flagged `mana_only`.
     #[serde(default)]
     pub taps_for_mana: bool,
     /// Whether this permanent is prepared (soc/sos prepare DFCs). False for non-permanents and

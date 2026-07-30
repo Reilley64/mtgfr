@@ -330,7 +330,7 @@ The engine/schema event model includes `MulliganTaken { player, mulligans_taken,
   {B}{G}`, filter lands, karoos, signets). The engine lists those separately from
   `meaningful_actions` so they never stop auto-pass; the flag carries that distinction to the
   client, which keeps the playable border off them. Free-tap mana sources have no `ActionView` at
-  all and are found through `CardView.taps_for_mana` instead.
+  all and are found through `ObjectView.taps_for_mana` instead.
 - `VisibleEvent` has ~130 arms (stream.proto). Each arm is a purpose-built message; the large
   oneof is intentional — it avoids a generic "event with arbitrary payload" design and makes
   every event type visible to the compiler and code-generation tooling.

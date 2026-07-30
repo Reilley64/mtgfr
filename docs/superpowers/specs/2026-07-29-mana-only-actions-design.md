@@ -1,7 +1,7 @@
 # Mana-only actions — design
 
-**Status:** Approved for planning (2026-07-29)
-**Living surface specs to update at implement time:**
+**Status:** Shipped (2026-07-29)
+**Living surface specs that document the shipped behavior:**
 [`2026-07-25-activation-menu.md`](2026-07-25-activation-menu.md),
 [`2026-07-20-battlefield.md`](2026-07-20-battlefield.md),
 [`2026-07-20-wire-protocol-and-visibility.md`](2026-07-20-wire-protocol-and-visibility.md)
