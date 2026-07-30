@@ -1187,13 +1187,15 @@ impl Game {
             return targets;
         }
         // Shroud/hexproof/protection (CR 702.18, 702.11, 702.16b) all restrict who can target a
-        // permanent. Only battlefield permanents are filtered — a keyword ability functions only
-        // on the battlefield (CR 113.6a), so e.g. a pro-black creature card in a graveyard is
-        // still a legal Reanimate target.
+        // permanent, as does the filtered "can't be the target of (Aura) spells" static. Only
+        // battlefield permanents are filtered — a keyword ability functions only on the battlefield
+        // (CR 113.6a), so e.g. a pro-black creature card in a graveyard is still a legal Reanimate
+        // target.
         targets.retain(|t| match *t {
             Target::Object(id) => {
                 self.as_permanent(id).is_none()
-                    || !self.untargetable_by(id, controller, source_colors)
+                    || (!self.untargetable_by(id, controller, source_colors)
+                        && !self.cant_be_targeted_by_spell(id, source))
             }
             Target::Player(_) => true,
         });
@@ -1209,6 +1211,48 @@ impl Game {
             });
         }
         targets
+    }
+
+    /// True if a live [`StaticEffect::CantBeTargetedBy`] turns the spell `source` away from `id`
+    /// (Bartel Runeaxe's "can't be the target of Aura spells", Anti-Magic Aura's "Enchanted
+    /// creature can't be the target of spells"). Filtered, so deliberately narrower than
+    /// [`Keyword::Shroud`]: only *spells* are stopped, never an ability (CR 111.1).
+    // ponytail: `source` counts as a spell when it isn't a battlefield permanent — the same test the
+    // Aura-cast retain in `legal_targets_for` uses. An activated ability of a card outside the
+    // battlefield would read as a spell; no pool card both has one and meets one of these shields.
+    // ponytail: rescans the battlefield per candidate target. Fine at Commander board sizes; collect
+    // the shields once per `legal_targets_for` call if a profile ever says otherwise.
+    fn cant_be_targeted_by_spell(&self, id: ObjectId, source: ObjectId) -> bool {
+        if self.as_permanent(source).is_some() {
+            return false;
+        }
+        let caster = self.controller_of(source);
+        let from_zone = self.zone_of(source);
+        self.battlefield().into_iter().any(|shield| {
+            self.functional_abilities(shield).iter().any(|ability| {
+                let (spells, attached) = match (ability.timing, &ability.effect) {
+                    (
+                        Timing::Static,
+                        Effect::Static(StaticEffect::CantBeTargetedBy { spells, attached }),
+                    ) => (*spells, *attached),
+                    _ => return false,
+                };
+                // Anti-Magic Aura shields the host it's attached to; Bartel Runeaxe shields itself.
+                let shielded = if attached {
+                    self.attached_to(shield)
+                } else {
+                    Some(shield)
+                };
+                shielded == Some(id)
+                    && self.spell_matches_filter(
+                        spells,
+                        self.def_of(source),
+                        None,
+                        caster,
+                        from_zone,
+                    )
+            })
+        })
     }
 
     /// True if `id` (a battlefield permanent) can't legally be targeted by something
@@ -1660,6 +1704,14 @@ impl Game {
         // union of the two axes above, which as an intersection would match nothing.
         if filter.attacking_or_blocking
             && !self.combat.attackers.contains(&id)
+            && !self.combat.blocks.iter().any(|&(b, _)| b == id)
+        {
+            return false;
+        }
+        // Tapped *or* blocking (Tetsuo Umezawa's "target tapped or blocking creature") — likewise a
+        // union: blocking never taps (CR 509.1), so intersecting the two would match nothing.
+        if filter.tapped_or_blocking
+            && !self.is_tapped(id)
             && !self.combat.blocks.iter().any(|&(b, _)| b == id)
         {
             return false;

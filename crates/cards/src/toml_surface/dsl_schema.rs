@@ -308,6 +308,7 @@ struct PermanentFilterTableSchema {
     attacking_you: Option<bool>,
     blocking: Option<bool>,
     attacking_or_blocking: Option<bool>,
+    tapped_or_blocking: Option<bool>,
     unblocked: Option<bool>,
     power_less_than_source: Option<bool>,
     toughness_less_than_source_power: Option<bool>,

@@ -2736,6 +2736,11 @@ impl Game {
             Event::CitysBlessingGained { player } => {
                 self.players[player.0 as usize].has_citys_blessing = true;
             }
+            // CR 104.4: the game ends in a draw. No player's `lost` flag is set and none of the
+            // CR 800.4a elimination bookkeeping below runs — nobody left the game, the game left.
+            Event::GameDrawn => {
+                self.drawn = true;
+            }
             Event::PlayerLost { player } => {
                 self.players[player.0 as usize].lost = true;
                 // CR 800.4a: everything the departing player owns leaves the game — including a

@@ -132,6 +132,8 @@ impl Game {
             // CR 104.3b: a "you lose the game" effect eliminates its controller directly, not via
             // a life total, so it mints the same event a state-based sweep would.
             MiscEffect::YouLoseTheGame => vec![Event::PlayerLost { player: controller }],
+            // CR 104.4: the game is a draw — its own outcome, so no `PlayerLost` for anyone.
+            MiscEffect::GameIsADraw => vec![Event::GameDrawn],
             MiscEffect::SkipNextUntapOpponentCreatures => self
                 .battlefield()
                 .into_iter()

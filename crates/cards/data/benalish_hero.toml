@@ -10,7 +10,7 @@ default_print = "9404e779-2065-4c4f-95d1-6997c7fea156"
 oracle = "Banding (Any creatures with banding, and up to one without, can attack in a band. Bands are blocked as a group. If any creatures with banding you control are blocking or being blocked by a creature, you divide that creature's combat damage, not its controller, among any of the creatures it's being blocked by or is blocking.)"
 subtypes = ["Human", "Soldier"]
 keywords = ["banding"]
-approximates = "bands form, but nothing follows from one: a band is not blocked as a group, and while attacking, this does not take over the division of a blocker's combat damage"
+approximates = "while attacking, this does not take over the division of a blocker's combat damage: that blocker deals its full damage to each creature it's blocking instead"
 
 [cost]
 white = 1

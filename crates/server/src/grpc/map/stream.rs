@@ -1562,6 +1562,11 @@ pub fn visible_event_to_pb(event: VisibleEvent) -> Option<pb::VisibleEvent> {
                 player: u32::from(player),
             })
         }
+        VisibleEvent::GameDrawn => {
+            // The draw (CR 104.4) reaches the client as the table's `GameOver` disposition; no
+            // event payload is sent until the wire owns an explicit draw variant.
+            return None;
+        }
         VisibleEvent::MulliganTaken { .. }
         | VisibleEvent::HandKept { .. }
         | VisibleEvent::MulligansFinished => {

@@ -2,6 +2,7 @@
 # {T}, Remove any number of charge counters from this artifact: Add {B}, then add an additional
 # {B} for each charge counter removed this way.
 name = "Black Mana Battery"
+otags = ["activated-ability", "adds-multiple-mana", "alliteration", "counter-fuel-charge", "cycle-leg-battery", "mana-rock", "mana-storage", "mini-refund"]
 sets = ["4bb", "4ed", "leg", "ren"]
 id = "dc3b2bab-755d-4b2f-97c0-70a74d721a79"
 default_print = "a81f7a0f-183f-438b-b252-738d8d30c245"

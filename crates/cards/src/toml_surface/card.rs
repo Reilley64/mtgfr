@@ -180,6 +180,11 @@ pub struct AbilityToml {
     /// Decisive Mentor's "one or more" — `1`). Ignored for every other trigger/timing.
     #[serde(default)]
     pub(crate) at_least: u8,
+    /// Which counter kind a `you_remove_last_counter_from_this` trigger watches (Divine
+    /// Intervention's `intervention`). Required for that timing, ignored for every other
+    /// trigger/timing.
+    #[serde(default)]
+    pub(crate) counter_kind: Option<CounterKind>,
     /// Which cast a `spend_mana_to_cast` trigger accepts (Study Hall/Opal Palace's
     /// `commander`, Path of Ancestry's `creature_sharing_type_with_commander`). Ignored for
     /// every other trigger/timing; the field is required only when `timing =

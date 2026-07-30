@@ -423,11 +423,12 @@ pub enum Keyword {
     /// attacker's combat damage rather than the attacking player (CR 702.22j), see
     /// [`Game::damage_assigner`] — and attacking in a band (CR 702.22c), see
     /// [`Game::declare_attackers_in_bands`].
-    /// ponytail: a declared band is recorded and nothing more. Being blocked as a group
-    /// (CR 702.22h/i) and the attacker-side damage division (CR 702.22k) are not modeled yet, and
-    /// the band cannot be declared over the wire — `Intent::DeclareAttackersInBands` has no
-    /// `WireIntent` counterpart, so the proto and the client's attack UI still see a flat attacker
-    /// list. See increment #3's slices 2 and 3.
+    /// ponytail: a declared band is blocked as a group (CR 702.22h/i), but the transfer of combat
+    /// damage division is not modeled — CR 702.22j (a banded attacker's division passes to the
+    /// defending player) and CR 702.22k (a blocker's division passes to the active player) both
+    /// still leave the division where CR 510.1c/d put it. The band also cannot be declared over the
+    /// wire: `Intent::DeclareAttackersInBands` has no `WireIntent` counterpart, so the proto and the
+    /// client's attack UI still see a flat attacker list. See increment #3 slice 3 and #121.
     Banding,
     /// "Bands with other \[quality\]" (CR 702.22b) — a special form of banding whose \[quality\]
     /// is the membership test for a band declared on its strength (CR 702.22c). Granted, never

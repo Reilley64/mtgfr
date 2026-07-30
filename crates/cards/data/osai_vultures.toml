@@ -19,3 +19,30 @@ white = 1
 type = "creature"
 power = 1
 toughness = 1
+
+# At the beginning of each end step, if a creature died this turn, put a carrion counter on
+# this creature.
+[[abilities]]
+timing = "each_end_step"
+condition = { type = "compare", left = "creatures_died_this_turn_any_controller", op = "at_least", right = 1 }
+
+# put a carrion counter on this creature.
+[[abilities.effects]]
+type = "counters"
+mode = "put_counters"
+count = 1
+kind = "carrion"
+target = "this"
+
+# Remove two carrion counters from this creature: This creature gets +1/+1 until end of turn.
+[[abilities]]
+timing = "activated"
+remove_counters = 2
+remove_counters_kind = "carrion"
+
+# This creature gets +1/+1 until end of turn.
+[[abilities.effects]]
+type = "pump"
+mode = "pump_self_until_end_of_turn"
+power = 1
+toughness = 1

@@ -271,7 +271,8 @@ impl<'a> TableSession<'a> {
             turn_yields: *self.table.chrome.turn_yields(),
             stack_hold_remaining_ms: hold_ms,
         }));
-        let disposition = if game.winner().is_some() {
+        // `outcome`, not `winner`: a draw (CR 104.4) ends the game with nobody winning.
+        let disposition = if game.outcome().is_some() {
             Disposition::GameOver
         } else {
             Disposition::Live { stack_held }

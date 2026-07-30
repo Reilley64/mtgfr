@@ -824,6 +824,12 @@ pub struct PermanentFilter {
     /// separate flags would instead intersect: setting both would demand one creature do both at
     /// once, which no creature ever does. `false` (default) imposes no restriction.
     pub attacking_or_blocking: bool,
+    /// Restrict to creatures that are either tapped or blocking (Tetsuo Umezawa's "target *tapped
+    /// or blocking* creature"). The twin of [`attacking_or_blocking`](Self::attacking_or_blocking):
+    /// `tapped = Some(true)` and [`blocking`](Self::blocking) as two separate axes would instead
+    /// intersect, demanding a creature be both at once, and blocking never taps (CR 509.1).
+    /// `false` (default) imposes no restriction.
+    pub tapped_or_blocking: bool,
     /// Restrict to attacking creatures no creature is blocking (Forcefield — "an *unblocked*
     /// creature of your choice"). The complement of [`blocking`](Self::blocking) one step over:
     /// that one asks whether this creature blocks something, this one whether anything blocks it.
@@ -998,6 +1004,7 @@ impl PermanentFilter {
             attacking_you: false,
             blocking: false,
             attacking_or_blocking: false,
+            tapped_or_blocking: false,
             unblocked: false,
             power_less_than_source: false,
             toughness_less_than_source_power: false,

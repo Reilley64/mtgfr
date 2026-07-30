@@ -1138,6 +1138,7 @@ impl Game {
         blocks: &[(ObjectId, ObjectId)],
         seats: &[PlayerId],
     ) -> Vec<Event> {
+        let blocks = &self.blocks_extended_to_bands(blocks);
         let mut events = Vec::new();
         for &(blocker, attacker) in blocks {
             self.push_apply(&mut events, Event::BlockerDeclared { blocker, attacker });
@@ -1157,6 +1158,50 @@ impl Game {
         self.queue_rampage_triggers(blocks);
         self.combat.blocked_by.extend(seats); // these defenders' block declarations are final
         events
+    }
+
+    /// `blocks` plus the pairs a declared attacking band adds (CR 702.22h): "if an attacking
+    /// creature becomes blocked by a creature, each other creature in the same band as the
+    /// attacking creature becomes blocked by that same blocking creature".
+    ///
+    /// This is *not* a legality check, and deliberately runs after
+    /// [`Game::block_restrictions_ok`]: CR 702.22h's own example blocks the flier in a
+    /// flier + swampwalker band and the swampwalker "will also become blocked", so a member the
+    /// blocker could never have blocked on its own (evasion, menace, its one-creature ceiling in
+    /// CR 509.1b) becomes blocked all the same. Only the pair the defending player *declared* is
+    /// checked against those.
+    ///
+    /// It lives in [`Game::seal_blocks`] rather than in [`Game::declare_blockers`] so that blocks
+    /// an effect writes down without a declaration — Camouflage's random piles — extend along the
+    /// band too, which is CR 702.22i ("if one member of a band would become blocked due to an
+    /// effect, the entire band becomes blocked"). No card in the pool makes a creature blocked
+    /// with no blocking creature at all, so that is 702.22i's whole reachable surface.
+    fn blocks_extended_to_bands(
+        &self,
+        blocks: &[(ObjectId, ObjectId)],
+    ) -> Vec<(ObjectId, ObjectId)> {
+        let mut out = blocks.to_vec();
+        if self.combat.bands.is_empty() {
+            return out; // the overwhelmingly common case: no band was declared this combat
+        }
+        for &(blocker, attacker) in blocks {
+            let Some(band) = self.combat.bands.iter().find(|b| b.contains(&attacker)) else {
+                continue;
+            };
+            for &member in band {
+                if member == attacker || out.contains(&(blocker, member)) {
+                    continue;
+                }
+                // CR 702.22f: "an attacking creature that's removed from combat is also removed
+                // from the band it was in" — `combat.attackers` is what removal prunes, so a
+                // member missing from it is no longer in the band to be blocked with it.
+                if self.as_permanent(member).is_none() || !self.combat.attackers.contains(&member) {
+                    continue;
+                }
+                out.push((blocker, member));
+            }
+        }
+        out
     }
 
     /// Whether `blocks` breaks no blocking *restriction* (CR 509.1b): every pair legal on its own
@@ -1237,8 +1282,12 @@ impl Game {
     /// The first multi-blocked attacker whose damage division hasn't been chosen yet, if any.
     /// Who divides a multi-blocked attacker's combat damage among its blockers: the attacking
     /// creature's controller (CR 510.1a), unless one of those blockers has banding — then that
-    /// blocker's controller does it instead (CR 702.22e). All of an attacker's blockers belong to
-    /// the one defending player, so the first banding blocker names the answer.
+    /// blocker's controller does it instead (CR 702.22j; 702.22e is the unrelated "a band lasts for
+    /// the rest of combat" rule). All of an attacker's blockers belong to the one defending player,
+    /// so the first banding blocker names the answer.
+    /// ponytail: only CR 702.22j's first clause. Its second — blockers that are "both a \[quality\]
+    /// creature with 'bands with other \[quality\]' and another \[quality\] creature" — also moves
+    /// the division to the defending player, and is part of increment #3 slice 3.
     pub(crate) fn damage_assigner(&self, blockers: &[ObjectId]) -> PlayerId {
         blockers
             .iter()

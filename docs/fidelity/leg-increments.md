@@ -91,8 +91,10 @@ Depends on: the 2ed banding increment (#14 there) — "bands with other" is band
 and it inherits banding's damage-assignment machinery wholesale.
 "Bands with other <quality>" (CR 702.22b) is the single largest rules surface in the set: it
 changes who may attack together (CR 702.22c), how a band is blocked as a group (CR 702.22h/i), and
-— the expensive part — transfers combat damage *assignment* from the defending player to the band's
-controller (CR 702.22j/k). **Five** Legends lands grant it by color to legendary creatures
+— the expensive part — swaps who *assigns* combat damage: the defending player divides a banded
+attacker's damage among its blockers (CR 702.22j, an exception to 510.1c), and the attacking player
+divides that blocker's damage among the attackers it is blocking (CR 702.22k, an exception to
+510.1d). **Five** Legends lands grant it by color to legendary creatures
 (Adventurers' Guildhouse/green, Cathedral of Serra/white, Mountain Stronghold/red, Seafarer's
 Quay/blue, Unholy Citadel/black — the `cycle-leg-banding-land` otag), Master of the Hunt grants it
 by token name, and two cards (#5) strip it. That is the 8: 5 lands + Master of the Hunt + the 2
@@ -107,14 +109,33 @@ strippers.
    `Game::declare_attackers_in_bands` / `Game::band_is_legal` / `Game::attacking_bands` in
    `crates/engine/src/combat.rs` (CR 702.22c's plain-banding sentence is checked too, so a
    printed-banding band forms); Cathedral of Serra scripted via `keyword_anthem`. Tests:
-   `crates/engine/tests/leg_bands_with_other.rs`. **What slice 2 picks up:** there is no
-   `WireIntent`/proto/client path for `DeclareAttackersInBands` yet, so a band can only be declared
-   from inside the engine — slice 2 owes that wire surface alongside blocked-as-a-group.
-2. **Blocked as a group** — blocking any member blocks the whole band; the block-legality check
-   reads the band, not the creature.
-3. **Damage assignment transfer** — the band controller (not the defending player) divides the
-   blocker's combat damage among the creatures it is blocked by. This is where the existing
-   damage-assignment ordering has to grow a "who chooses" axis.
+   `crates/engine/tests/leg_bands_with_other.rs`. The wire/client surface for
+   `DeclareAttackersInBands` is **increment #121**, not part of any slice here.
+2. **Blocked as a group** (CR 702.22h: "if an attacking creature becomes blocked by a creature, each
+   other creature in the same band as the attacking creature becomes blocked by that same blocking
+   creature"). **LANDED.** `Game::blocks_extended_to_bands` in `crates/engine/src/combat.rs`,
+   called on the first line of `Game::seal_blocks`, so the extra pairs become ordinary
+   `Event::BlockerDeclared`s and blocked-ness, damage routing and the block-trigger scans all follow
+   for free. Tests in `crates/engine/tests/leg_bands_with_other.rs`. Three findings worth carrying:
+   - The extension is **not** a legality check and must run *after* `Game::block_restrictions_ok`.
+     CR 702.22h's own example blocks the flier in a flier + swampwalker band and the swampwalker
+     "will also become blocked" — so a member the blocker could never have blocked itself (evasion,
+     menace, its one-creature ceiling) becomes blocked anyway. Only the *declared* pair is checked.
+   - It lives in `seal_blocks`, not `declare_blockers`, so blocks an effect writes down with no
+     declaration (Camouflage, via `pending/handlers/dig.rs`) extend along the band too. That is
+     CR 702.22i, and since no card in the pool makes a creature blocked with no blocking creature at
+     all, it is 702.22i's whole reachable surface.
+   - CR 702.22f ("an attacking creature that's removed from combat is also removed from the band it
+     was in") falls out of gating each extension on `combat.attackers`, which removal prunes.
+3. **Damage assignment transfer** — two halves, both still open:
+   - **CR 702.22k** (the active player divides a *blocker's* damage among the attackers it blocks)
+     is missing entirely: `combat_damage_substep` deals a blocker's full power to every attacker it
+     is blocking, so there is no division to reassign. That is a plain CR 510.1d gap first, and only
+     then a banding one — the six banding cards' residual notes all name this.
+   - **CR 702.22j** (the defending player divides a banded *attacker's* damage among its blockers)
+     is half-built: `Game::damage_assigner` already hands the choice to a banding blocker's
+     controller, but not to its second clause — a blocker that is "both a \[quality\] creature with
+     'bands with other \[quality\]' and another \[quality\] creature".
 4. **The remaining granting cards** — Adventurers' Guildhouse, Mountain Stronghold, Seafarer's
    Quay and Unholy Citadel (each a copy of Cathedral of Serra with its own `color`), plus Master of
    the Hunt's name-filtered token grant, which needs a second `BandsWithQuality` variant for "other
@@ -192,7 +213,8 @@ four working axes into an enum is churn with no fidelity gain.
 Two shapes remain, each folded into the increment of the card that actually needs it, because both
 of those cards are blocked on further work anyway and an unused axis is dead code:
 - "Target **tapped or blocking** creature" (Tetsuo Umezawa) — a second union axis; Tetsuo is also
-  blocked on #15 (can't be the target of Aura spells), so it lands there.
+  blocked on #15 (can't be the target of Aura spells), so it landed there as
+  `PermanentFilter::tapped_or_blocking`.
 - "Target creature **blocking or blocked by** this creature" (Lesser Werewolf, Sentinel) — the
   *combat-partner* relation, not a global filter: it needs the source threaded against the current
   block assignment. Lesser Werewolf is also blocked on #54 and Sentinel on #22, so it lands with
@@ -274,19 +296,32 @@ partner. "Indefinite" (not "until end of turn") means it survives combat and tur
 the current duration enum cannot express; add a `Duration::Indefinite` that the cleanup step
 skips.
 
-### 15. `cant-be-targeted-by` — 3 cards, S
+### 15. `cant-be-targeted-by` — 3 cards, S — **LANDED**
 Depends on: nothing.
+Cards: **Bartel Runeaxe**, **Tetsuo Umezawa**, **Anti-Magic Aura** (all three faithful).
 "Can't be the target of Aura spells" (Bartel Runeaxe, Tetsuo Umezawa) and "can't be the target of
-spells and can't be enchanted by other Auras" (Anti-Magic Aura). *Sketch:* a
-`CantBeTargetedBy { filter: SpellFilter }` continuous effect checked in target legality, plus a
-separate attach-legality check for "can't be enchanted by other Auras" (CR 303.4 attach
-restrictions are checked on resolution and continuously, not only at targeting). Shroud-like but
-filtered, so it is not the existing hexproof/shroud keyword.
-**Also owns Tetsuo Umezawa's targeting**, deferred here by #8: "{U}{B}{B}{R}, {T}: Destroy target
-tapped or blocking creature." needs a `tapped_or_blocking` union axis on `PermanentFilter`, the twin
-of the `attacking_or_blocking` #8 landed — one bool, checked against `Permanent::tapped` and
-`CombatState::blocks`. #8 left it out because Tetsuo is the only card that wants it and it would
-have shipped as dead code.
+spells and can't be enchanted by other Auras" (Anti-Magic Aura). Landed as
+`StaticEffect::CantBeTargetedBy { spells: SpellFilter, attached: bool }`
+(`crates/cards/src/types/effect/static.rs`), enforced by `Game::cant_be_targeted_by_spell` in the
+same `retain` as shroud/hexproof/protection, so an Aura or spell aimed at a shielded permanent is
+rejected with `Reject::IllegalTarget`. The sketch's single `filter` field grew the `attached` scope
+flag so one variant serves both "*this creature* can't be the target" (self-shield) and "*enchanted
+creature* can't be the target" (Anti-Magic Aura), keeping enforcement to one battlefield scan; a
+`cant_be_targeted_by` field on `GrantToAttached` was rejected because the two self-shielding legends
+would still have needed a standalone variant. Deliberately narrower than `Keyword::Shroud`: the
+scan only fires when the source isn't a battlefield permanent, so an activated ability still targets
+through it (CR 111.1).
+"Can't be enchanted by other Auras" needed **no new engine work** — `GrantToAttached`'s existing
+`cant_be_enchanted` flag already feeds both `Game::host_cant_be_enchanted_by` (the cast-time refusal,
+CR 303.4a) and `Game::attachment_host_legal` (the continuous CR 704.5n sweep that puts an Aura which
+*became* illegally attached into its owner's graveyard). Anti-Magic Aura scripts its two halves as
+two separate `[[abilities]]` static blocks, since two effects in one block fold into
+`Effect::Sequence` and become invisible to both static scanners.
+**Also owned Tetsuo Umezawa's targeting**, deferred here by #8: "{U}{B}{B}{R}, {T}: Destroy target
+tapped or blocking creature." shipped as `PermanentFilter::tapped_or_blocking`, the twin of #8's
+`attacking_or_blocking` — one bool read against `Game::is_tapped` and `CombatState::blocks`. A union
+rather than two axes because blocking never taps (CR 509.1), so intersecting them would match
+nothing.
 
 ### 16. `arboria-attack-restriction` — 1 card, M
 Depends on: #2.
@@ -399,9 +434,15 @@ existing remove-counter path does not report.
 
 ### 27. `game-is-a-draw` — 1 card, S
 Depends on: nothing.
-Divine Intervention. The engine has win/lose outcomes but no draw. *Sketch:* a `GameResult::Draw`
+Divine Intervention. The engine has win/lose outcomes but no draw. *Sketch:* a `GameOutcome::Draw`
 alongside the existing outcomes and an effect that sets it, plus the "when you remove the last
-<kind> counter" trigger shape (a state-triggered ability on counter count reaching zero).
+intervention counter from this enchantment" trigger shape — an ordinary triggered ability on the
+*removal* (CR 603.2), not a state trigger on the count reaching zero.
+
+Landed: `CounterKind::Intervention`, `MiscEffect::GameIsADraw` → `Event::GameDrawn`,
+`Trigger::YouRemoveLastCounterFromThis { kind }` (TOML timing
+`you_remove_last_counter_from_this` + `counter_kind` sibling), `Game::outcome() -> Option<GameOutcome>`,
+and a post-draw `submit` gate. Tests: `crates/engine/tests/leg_game_is_a_draw.rs`.
 
 ### 28. `becomes-color-of-your-choice` — 1 card, M
 Depends on: #14.
@@ -1232,3 +1273,31 @@ and its `PendingChoice::ChooseActivationCostTargets` machinery — built for thi
 nothing else — with no card behind them, so **delete both** in the same change unless another card
 has claimed them by then; `spurnmage_advocate_two_target_clauses` in `crates/engine/tests/game.rs`
 goes with them.
+
+### 121. `declare-bands-from-the-client` — 0 cards, M
+Depends on: #3 slice 1 (landed). Carved out of #3 slice 2 deliberately — slice 2 is a rules slice
+and stays testable in the engine, while this is client-surface work.
+`Intent::DeclareAttackersInBands` exists and is exercised by `crates/engine/tests/`, but it has no
+`WireIntent` counterpart, so the proto and the client's attack UI still see a flat attacker list: a
+human player cannot declare a band, only a test can. No card is blocked by this — the six banding
+cards are already as faithful as the rules slices make them — but the grind's live smoke game
+cannot show banding at all until it lands, so **it belongs in the client catch-up phase, before the
+smoke game, not after.**
+*Sketch:* add a repeated group of attacker ids to the declare-attackers wire intent, map it at the
+gRPC edge to the `bands` argument, and give the attack UI a way to group selected attackers. The
+engine already rejects an illegal band (`Game::band_is_legal`), so the client needs no legality
+logic of its own — surface `Reject::IllegalDeclaration` as it does for any other bad declaration.
+
+### 122. `show-the-game-ended-in-a-draw` — 0 cards, S
+Depends on: #27 (landed). Raised by #27, which stopped at the wire edge on purpose.
+The engine ends a draw correctly — `GameOutcome::Draw`, `Event::GameDrawn`, and every subsequent
+intent rejected (CR 104.4b) — and `crates/server/src/session.rs` reads `outcome()` rather than a
+winner so the table reaches `Disposition::GameOver`. But `VisibleEvent::GameDrawn` maps to `None` at
+`crates/server/src/grpc/map/stream.rs`: the wire owns no draw variant, and no `PlayerLost` fires in a
+draw, so from the client's side the game simply stops responding with nothing said. Divine
+Intervention is faithful in the engine and invisible in the UI.
+*Sketch:* add a `VisibleEventGameDrawn` message to `stream.proto`, drop the `return None`, and render
+it wherever elimination is rendered today. The client has no end-of-game panel at all yet, so scope
+this to the same treatment `PlayerLost` gets rather than building one. If a dedicated end-of-game
+surface does get built, the `Reject::WrongTiming` ponytail in `Game::submit_inner` (which stands in
+for a `Reject::GameOver` the client could not display) should be revisited with it.

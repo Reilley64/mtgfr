@@ -1041,6 +1041,19 @@ impl Game {
                 },
             });
         }
+        // Spirit Shackle's -0/-2 counters (CR 121.1): toughness only, the mirror of the +1/+0 read
+        // above. A separate kind from -1/-1, so both can sit here and both apply.
+        let minus_zero_minus_two = p.kind_counters[CounterKind::MinusZeroMinusTwo as usize] as i32;
+        if minus_zero_minus_two != 0 {
+            effects.push(ContinuousEffect {
+                source: object,
+                timestamp: self.static_continuous_timestamp(object),
+                kind: ContinuousEffectKind::PtDelta {
+                    power: 0,
+                    toughness: -2 * minus_zero_minus_two,
+                },
+            });
+        }
         // Every registered continuous modification of this object, one layer entry each at the
         // timestamp it was stamped with — rather than one pre-summed aggregate per layer. Layer
         // 7c and the keyword layer are additive, so N entries and one summed entry agree, and

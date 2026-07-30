@@ -444,6 +444,28 @@ pub enum StaticEffect {
         legendary_only: bool,
     },
 
+    /// Bartel Runeaxe's "Bartel Runeaxe can't be the target of Aura spells" and Anti-Magic Aura's
+    /// "Enchanted creature can't be the target of spells" — a *filtered* targeting restriction (CR
+    /// 115.4/115.6), deliberately not [`Keyword::Shroud`](crate::Keyword): shroud turns away
+    /// abilities too, and these clauses name only spells (Anti-Magic Aura) or only Aura spells
+    /// (Bartel Runeaxe, Tetsuo Umezawa). Enforced alongside
+    /// shroud/hexproof/protection in the engine's target enumeration, so a spell that tries anyway
+    /// is rejected at target selection like any other illegal target.
+    CantBeTargetedBy {
+        /// Which spells are turned away — [`SpellFilter::Aura`] for "Aura spells",
+        /// [`SpellFilter::AllSpells`] for the unqualified "spells".
+        spells: SpellFilter,
+        /// The shield lands on the host this Aura is attached to (Anti-Magic Aura's "Enchanted
+        /// creature") rather than on the ability's own source (Bartel Runeaxe naming itself).
+        /// `false` (default) is the self-shield.
+        ///
+        /// A flag here rather than a `cant_be_targeted_by` field on
+        /// [`GrantToAttached`](Self::GrantToAttached) — where the pool's other "Enchanted creature
+        /// …" clauses live — because the self-shielding creatures need this variant regardless, and
+        /// one variant carrying both scopes keeps the enforcement to a single battlefield scan.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        attached: bool,
+    },
     KeywordAnthem {
         #[cfg_attr(
             feature = "card-dsl",

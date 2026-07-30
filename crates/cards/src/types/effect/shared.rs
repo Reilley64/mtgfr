@@ -917,6 +917,7 @@ Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
             | Effect::Misc(MiscEffect::SkipNextUntapOpponentCreatures)
             | Effect::Misc(MiscEffect::TakeExtraTurn)
             | Effect::Misc(MiscEffect::YouLoseTheGame)
+            | Effect::Misc(MiscEffect::GameIsADraw)
             | Effect::Misc(MiscEffect::ScheduleNextCastTrigger { .. })
             | Effect::Damage(DamageEffect::ToEnteringPermanent { .. })
             | Effect::Zone(ZoneEffect::ReanimateDyingEnchantedCreature { .. })
@@ -1037,6 +1038,9 @@ Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
             // negator (Crevasse) is read there too — it waives a restriction rather than adding one.
             | Effect::Static(StaticEffect::CanBlockAdditional { .. })
             | Effect::Static(StaticEffect::CantBeBlockedBy { .. })
+            // The shielded permanent is the static's own source or the host it's attached to,
+            // never a chosen target — read off the battlefield in `Game::legal_targets_for`.
+            | Effect::Static(StaticEffect::CantBeTargetedBy { .. })
             | Effect::Static(StaticEffect::CantBlockAttackers { .. })
             | Effect::Static(StaticEffect::LandwalkNegated { .. })
             // Backup's grant rides the enclosing `Sequence`'s shared target (the counter's
@@ -1336,6 +1340,23 @@ pub enum CounterKind {
     /// [`MinusOneMinusOne`](Self::MinusOneMinusOne) — power only, toughness untouched, which is
     /// why it can't ride the scalar `plus_counters` path.
     PlusOnePlusZero,
+    /// A carrion counter (CR 122.1 — Osai Vultures): banked deaths, one per end step a creature
+    /// died in, spent two at a time to pump the Bird. Inert bookkeeping like
+    /// [`Corpse`](Self::Corpse) — nothing but its own card reads it.
+    Carrion,
+    /// A -0/-2 counter (CR 121.1/122.1 — Spirit Shackle): a real P/T counter, toughness only, read
+    /// out of this map by [`Game::pt_layers`] in layer 7d exactly like
+    /// [`PlusOnePlusZero`](Self::PlusOnePlusZero). Deliberately *not* modeled as two
+    /// [`MinusOneMinusOne`](Self::MinusOneMinusOne) counters: CR 121.3's state-based annihilation
+    /// pairs +1/+1 only with -1/-1, so a -0/-2 counter must survive a +1/+1 counter on the same
+    /// permanent, and its own removal costs must not be payable with -1/-1 counters.
+    MinusZeroMinusTwo,
+    /// An intervention counter (CR 122.1 — Divine Intervention): a countdown of its controller's
+    /// upkeeps, one removed each of them, and when the last one comes off the game is a draw
+    /// (CR 104.4). Inert bookkeeping like [`Corpse`](Self::Corpse) — the counter changes nothing
+    /// about the enchantment by itself; the card's own
+    /// [`Trigger::YouRemoveLastCounterFromThis`](crate::Trigger) is what watches it reach zero.
+    Intervention,
 }
 
 impl CounterKind {
@@ -1347,7 +1368,7 @@ impl CounterKind {
     /// `&'static [(CounterKind, u8)]` slice if the kind set ever needs to be open-ended. A counter
     /// kind that sits on a *player* (poison, CR 122.1) doesn't belong here at all — it has its own
     /// parallel [`PlayerCounterKind`] and its own store on [`Player::kind_counters`].
-    pub const COUNT: usize = 14;
+    pub const COUNT: usize = 17;
 
     /// Every kind, for enumerating "each kind present" (proliferate, move/remove-all-counters).
     pub const ALL: [CounterKind; Self::COUNT] = [
@@ -1365,6 +1386,9 @@ impl CounterKind {
         CounterKind::Mire,
         CounterKind::Vitality,
         CounterKind::PlusOnePlusZero,
+        CounterKind::Carrion,
+        CounterKind::MinusZeroMinusTwo,
+        CounterKind::Intervention,
     ];
 }
 

@@ -635,6 +635,16 @@ pub enum Trigger {
     /// ponytail: fieldless — "you" is the only scope any pool card needs (flag-don't-force; add an
     /// opponent/any-player scope the moment a second consumer wants one).
     YouProliferate,
+    /// "When you remove the last intervention counter from this enchantment, …" (Divine
+    /// Intervention). An ordinary triggered ability on the *removal* (CR 603.2), not a state
+    /// trigger (CR 603.8) on the count being zero: it fires from the removal that empties the
+    /// permanent of `kind`, so a permanent that never had one, or that reaches zero and then gains
+    /// another, can't fire it a second time without another removal.
+    /// ponytail: "you" is unchecked — the trigger fires off whichever removal empties the source,
+    /// not only its controller's (CR 603.2's "you remove" would mute a Clockspinning an opponent
+    /// controls). Nothing in the pool removes another player's named counters; thread the removing
+    /// player through [`Event::KindCountersPlaced`](crate::Event) when one does.
+    YouRemoveLastCounterFromThis { kind: CounterKind },
 }
 
 /// Which cast a [`Trigger::SpendManaToCast`] watch accepts as "this mana was spent to cast …",

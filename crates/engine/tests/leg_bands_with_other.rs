@@ -1,11 +1,15 @@
-//! Legends (`leg`) grind — increment 3: bands-with-other, slice 1 (band formation).
+//! Legends (`leg`) grind — increment 3: bands-with-other, slices 1 (band formation) and 2 (blocked
+//! as a group).
 //!
-//! CR 702.22c is the whole of this slice: "As a player declares attackers, they may declare that
-//! one or more attacking creatures with banding and up to one attacking creature without banding
-//! … are all in a 'band.' They may also declare that one or more attacking \[quality\] creatures
-//! with 'bands with other \[quality\]' and any number of other attacking \[quality\] creatures are
-//! all in a band." A band is *recorded* here and nothing else — being blocked as a group
-//! (CR 702.22h) and the damage-assignment transfer (CR 702.22j/k) are slices 2 and 3.
+//! Slice 1 is CR 702.22c: "As a player declares attackers, they may declare that one or more
+//! attacking creatures with banding and up to one attacking creature without banding … are all in a
+//! 'band.' They may also declare that one or more attacking \[quality\] creatures with 'bands with
+//! other \[quality\]' and any number of other attacking \[quality\] creatures are all in a band."
+//!
+//! Slice 2 is CR 702.22h: "If an attacking creature becomes blocked by a creature, each other
+//! creature in the same band as the attacking creature becomes blocked by that same blocking
+//! creature." The damage-assignment transfer (CR 702.22j/k) is slice 3 and is not modeled: a
+//! blocker still deals its full power to every band member it is blocking.
 
 mod common;
 
@@ -261,4 +265,157 @@ fn an_ordinary_attack_declares_no_bands() {
     );
     advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
     assert_eq!(game.life(PlayerId(1)), 16, "the 4/5 connected as usual");
+}
+
+// ── slice 2: blocked as a group (CR 702.22h) ──────────────────────────────────────────
+
+#[test]
+fn blocking_one_member_of_a_band_blocks_the_whole_band() {
+    // CR 702.22h: "if an attacking creature becomes blocked by a creature, each other creature in
+    // the same band as the attacking creature becomes blocked by that same blocking creature." The
+    // defending player declares one block and gets two blocked attackers — so nothing gets through.
+    let (mut game, ids) = cathedral_board(&["Jasmine Boreal", "Barktooth Warbeard"]);
+    let [jasmine, barktooth] = ids[..] else {
+        unreachable!("two creatures spawned")
+    };
+    let bears = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
+    attack_in_bands(&mut game, &ids, vec![vec![jasmine, barktooth]])
+        .expect("a legendary band is a legal declaration");
+    block_with(&mut game, vec![(bears, jasmine)]).expect("blocking one member is legal");
+
+    assert!(
+        game.blocks().contains(&(bears, barktooth)),
+        "the undeclared band member is blocked by the same creature"
+    );
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+    assert_eq!(
+        game.life(PlayerId(1)),
+        20,
+        "both band members were blocked, so no combat damage reached the defending player"
+    );
+    assert_eq!(
+        game.zone_of(bears),
+        Zone::Graveyard,
+        "the 2/2 blocked a 4/5 and a 6/5 at once and died to both"
+    );
+    assert_eq!(game.zone_of(jasmine), Zone::Battlefield);
+    assert_eq!(game.zone_of(barktooth), Zone::Battlefield);
+}
+
+#[test]
+fn a_swampwalking_band_member_becomes_blocked_with_its_band() {
+    // CR 702.22h's own example, in the shape the pool can build it: "a player attacks with a band
+    // consisting of a creature with flying and a creature with swampwalk. The defending player, who
+    // controls a Swamp, can block the flying creature if able. If they do, then the creature with
+    // swampwalk will also become blocked." Being blocked as a group is a consequence, not a
+    // legality test — a member the blocker could never have blocked itself is blocked anyway.
+    let (mut game, ids) = cathedral_board(&["Jasmine Boreal", "Sol'kanar the Swamp King"]);
+    let [jasmine, solkanar] = ids[..] else {
+        unreachable!("two creatures spawned")
+    };
+    game.spawn_on_battlefield(PlayerId(1), card("Swamp"));
+    let bears = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
+    attack_in_bands(&mut game, &ids, vec![vec![jasmine, solkanar]])
+        .expect("a legendary band is a legal declaration");
+
+    assert!(
+        block_with(&mut game, vec![(bears, solkanar)]).is_err(),
+        "swampwalk still can't be blocked by a defender with a Swamp (CR 702.14b)"
+    );
+    block_with(&mut game, vec![(bears, jasmine)]).expect("blocking the other member is legal");
+    assert!(
+        game.blocked_attackers().contains(&solkanar),
+        "the swampwalker becomes blocked along with its band"
+    );
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+    assert_eq!(
+        game.life(PlayerId(1)),
+        20,
+        "the swampwalker was blocked, so it dealt no damage to the defending player"
+    );
+    assert_eq!(
+        game.zone_of(bears),
+        Zone::Graveyard,
+        "the 2/2 blocked 4 + 5"
+    );
+}
+
+#[test]
+fn only_the_blocked_creatures_own_band_becomes_blocked() {
+    // The extension is per band (CR 702.22h says "in the same band"), so an attacker that joined no
+    // band is unaffected and connects for its own power.
+    let (mut game, ids) =
+        cathedral_board(&["Jasmine Boreal", "Barktooth Warbeard", "Jedit Ojanen"]);
+    let [jasmine, barktooth, jedit] = ids[..] else {
+        unreachable!("three creatures spawned")
+    };
+    let wall = game.spawn_on_battlefield(PlayerId(1), card("Wall of Stone"));
+    attack_in_bands(&mut game, &ids, vec![vec![jasmine, barktooth]])
+        .expect("a legendary band plus a lone attacker is a legal declaration");
+    block_with(&mut game, vec![(wall, jasmine)]).expect("blocking a band member is legal");
+
+    assert!(
+        !game.blocked_attackers().contains(&jedit),
+        "Jedit Ojanen is in no band, so blocking the band leaves it unblocked"
+    );
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+    assert_eq!(
+        game.life(PlayerId(1)),
+        15,
+        "only the unbanded 5/5 got through"
+    );
+}
+
+#[test]
+fn an_unbanded_attack_is_blocked_creature_by_creature() {
+    // The additive half of the slice: with no band declared, one block blocks one attacker.
+    let (mut game, ids) = cathedral_board(&["Jasmine Boreal", "Barktooth Warbeard"]);
+    let [jasmine, barktooth] = ids[..] else {
+        unreachable!("two creatures spawned")
+    };
+    let wall = game.spawn_on_battlefield(PlayerId(1), card("Wall of Stone"));
+    attack_with(&mut game, ids.clone());
+    block_with(&mut game, vec![(wall, jasmine)]).expect("an ordinary block");
+
+    assert_eq!(
+        game.blocks(),
+        [(wall, jasmine)],
+        "no band, no extension — Barktooth Warbeard stays unblocked"
+    );
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+    assert_eq!(game.life(PlayerId(1)), 14, "the unblocked 6/5 connected");
+    assert_eq!(game.zone_of(barktooth), Zone::Battlefield);
+}
+
+#[test]
+fn a_blocker_blocking_two_band_members_records_each_block_once() {
+    // A creature that can block an additional creature may declare both pairs itself, and the band
+    // extension must not write the second one down twice — a doubled block would double the damage
+    // and re-fire the blocker's triggers.
+    let (mut game, ids) = cathedral_board(&["Jasmine Boreal", "Barktooth Warbeard"]);
+    let [jasmine, barktooth] = ids[..] else {
+        unreachable!("two creatures spawned")
+    };
+    let giant = game.spawn_on_battlefield(PlayerId(1), card("Two-Headed Giant of Foriys"));
+    attack_in_bands(&mut game, &ids, vec![vec![jasmine, barktooth]])
+        .expect("a legendary band is a legal declaration");
+    block_with(&mut game, vec![(giant, jasmine), (giant, barktooth)])
+        .expect("Two-Headed Giant of Foriys can block an additional creature");
+
+    assert_eq!(
+        game.blocks(),
+        [(giant, jasmine), (giant, barktooth)],
+        "each pair is recorded exactly once"
+    );
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+    assert!(
+        game.pending_choice().is_none(),
+        "neither attacker has two blockers, so no damage division is asked for"
+    );
+    assert_eq!(game.life(PlayerId(1)), 20, "both attackers were blocked");
+    assert_eq!(
+        game.zone_of(giant),
+        Zone::Graveyard,
+        "the 4/4 took 4 from Jasmine Boreal and 6 from Barktooth Warbeard"
+    );
 }

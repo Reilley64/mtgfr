@@ -1080,7 +1080,7 @@ impl<'de> Deserialize<'de> for TypeSet {
 /// composable axes (`types`, `controller`, `token`, `other`, `enchanted`, `attached_to_creature`,
 /// `enchanted_by_you`, `mv_max`, `mv_min`, `mv_eq_x`, `mv_max_x`, `power_max`, `power_min`, `power_parity`,
 /// `noncreature`, `exclude`, `color`, `not_color`, `modified`, `attacking`, `attacking_you`,
-/// `blocking`, `attacking_or_blocking`, `unblocked`, `power_less_than_source`,
+/// `blocking`, `attacking_or_blocking`, `tapped_or_blocking`, `unblocked`, `power_less_than_source`,
 /// `toughness_less_than_source_power`, `entered_this_turn`,
 /// `has_mana_ability`,
 /// `controlled_since_turn_start`, `did_not_attack_this_turn`,
@@ -1185,6 +1185,8 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     #[serde(default)]
                     attacking_or_blocking: bool,
                     #[serde(default)]
+                    tapped_or_blocking: bool,
+                    #[serde(default)]
                     unblocked: bool,
                     #[serde(default)]
                     power_less_than_source: bool,
@@ -1269,6 +1271,7 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     attacking_you: t.attacking_you,
                     blocking: t.blocking,
                     attacking_or_blocking: t.attacking_or_blocking,
+                    tapped_or_blocking: t.tapped_or_blocking,
                     unblocked: t.unblocked,
                     power_less_than_source: t.power_less_than_source,
                     toughness_less_than_source_power: t.toughness_less_than_source_power,
@@ -1502,6 +1505,10 @@ pub(crate) enum TriggerTag {
     YouLoseLifeFirstTimeEachTurn,
     Cycled,
     YouProliferate,
+    /// Takes a `counter_kind` sibling naming the counter kind whose last one coming off fires the
+    /// ability (Divine Intervention's `intervention`). See
+    /// [`Trigger::YouRemoveLastCounterFromThis`].
+    YouRemoveLastCounterFromThis,
 }
 
 /// An `[[abilities]]` table is flat in TOML: the timing is a string, and an activated
@@ -1663,6 +1670,15 @@ impl<'de> Deserialize<'de> for Ability {
                 TriggerTag::YouLoseLifeFirstTimeEachTurn => Trigger::YouLoseLifeFirstTimeEachTurn,
                 TriggerTag::Cycled => Trigger::Cycled,
                 TriggerTag::YouProliferate => Trigger::YouProliferate,
+                TriggerTag::YouRemoveLastCounterFromThis => {
+                    let Some(kind) = flat.counter_kind else {
+                        return Err(de::Error::custom(
+                            "`timing = \"you_remove_last_counter_from_this\"` needs a \
+                             `counter_kind` sibling naming the counter kind it watches",
+                        ));
+                    };
+                    Trigger::YouRemoveLastCounterFromThis { kind }
+                }
             }),
             TimingName::Special(SpecialTiming::Spell) => Timing::Spell,
             TimingName::Special(SpecialTiming::Static) => Timing::Static,

@@ -481,6 +481,25 @@ impl Game {
                 Event::BecameMonstrous { object } => {
                     self.queue_self_trigger(object, Trigger::BecomesMonstrous);
                 }
+                // "When you remove the last intervention counter from this enchantment" (Divine
+                // Intervention) — an ordinary triggered ability on the *removal* (CR 603.2), not a
+                // state trigger on the count being zero (CR 603.8): the count is already updated
+                // (the apply ran first), so the removal that emptied the permanent is the one that
+                // took it to zero. A permanent that never had one of `kind` mints no removal.
+                Event::KindCountersPlaced {
+                    object,
+                    kind,
+                    count,
+                } if count < 0 => {
+                    // `counters_of_kind` reads 0 for an object that has since left the
+                    // battlefield, which would look like an emptied permanent.
+                    if self.as_permanent(object).is_none()
+                        || self.counters_of_kind(object, kind) != 0
+                    {
+                        continue;
+                    }
+                    self.queue_self_trigger(object, Trigger::YouRemoveLastCounterFromThis { kind });
+                }
                 Event::TokenCreated {
                     token,
                     controller,

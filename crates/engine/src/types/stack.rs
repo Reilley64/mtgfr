@@ -3349,6 +3349,9 @@ pub enum Event {
     DrewFromEmptyLibrary { player: PlayerId },
     /// A player lost the game (a state-based action; e.g. life <= 0).
     PlayerLost { player: PlayerId },
+    /// The game is a draw (CR 104.4 — Divine Intervention). Nobody won and nobody lost, so this is
+    /// not a batch of [`PlayerLost`](Self::PlayerLost); see [`Game::outcome`](crate::Game::outcome).
+    GameDrawn,
     /// `player` got the city's blessing (CR 702.131 Ascend) — a state-based action fired once
     /// they control ten or more permanents. Fully public: sticky for the rest of the game.
     CitysBlessingGained { player: PlayerId },

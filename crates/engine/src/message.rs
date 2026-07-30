@@ -237,6 +237,7 @@ message_keys! {
     EFFECT_MISC_SKIP_NEXT_UNTAP_OPPONENT_CREATURES => "effect.misc_skip_next_untap_opponent_creatures",
     EFFECT_MISC_TAKE_EXTRA_TURN => "effect.misc_take_extra_turn",
     EFFECT_MISC_YOU_LOSE_THE_GAME => "effect.misc_you_lose_the_game",
+    EFFECT_MISC_GAME_IS_A_DRAW => "effect.misc_game_is_a_draw",
     EFFECT_MISC_YOU_CHOOSE_WHICH_CREATURES_ATTACK => "effect.misc_you_choose_which_creatures_attack",
     EFFECT_MISC_YOU_CHOOSE_WHICH_CREATURES_BLOCK => "effect.misc_you_choose_which_creatures_block",
     EFFECT_PUMP_ANIMATE_SELF_UNTIL_END_OF_TURN => "effect.pump_animate_self_until_end_of_turn",
@@ -278,6 +279,7 @@ message_keys! {
     EFFECT_STATIC_MAY_SKIP_DRAW_FOR_CANT_BE_ATTACKED_BY => "effect.static_may_skip_draw_for_cant_be_attacked_by",
     EFFECT_STATIC_CANT_BLOCK_FILTER => "effect.static_cant_block_filter",
     EFFECT_STATIC_CANT_BE_BLOCKED_BY => "effect.static_cant_be_blocked_by",
+    EFFECT_STATIC_CANT_BE_TARGETED_BY => "effect.static_cant_be_targeted_by",
     EFFECT_STATIC_CANT_BLOCK_ATTACKERS => "effect.static_cant_block_attackers",
     EFFECT_STATIC_CAN_BLOCK_ADDITIONAL => "effect.static_can_block_additional",
     EFFECT_STATIC_LANDWALK_NEGATED => "effect.static_landwalk_negated",
@@ -700,6 +702,9 @@ fn counter_kind_token(kind: CounterKind) -> &'static str {
         CounterKind::Corpse => "corpse",
         CounterKind::Vitality => "vitality",
         CounterKind::Mire => "mire",
+        CounterKind::Carrion => "carrion",
+        CounterKind::MinusZeroMinusTwo => "minus_zero_minus_two",
+        CounterKind::Intervention => "intervention",
     }
 }
 
@@ -949,6 +954,9 @@ fn permanent_filter_token(filter: PermanentFilter) -> String {
     }
     if filter.attacking_or_blocking {
         parts.push("attacking_or_blocking".to_string());
+    }
+    if filter.tapped_or_blocking {
+        parts.push("tapped_or_blocking".to_string());
     }
     if filter.unblocked {
         parts.push("unblocked".to_string());
@@ -2241,6 +2249,12 @@ impl EffectMessage for Effect {
                 .with_params(vec![permanent_filter_param("filter", filter)]),
             Effect::Static(CantBeBlockedBy { filter }) => MessageRef::new(MessageKey::EFFECT_STATIC_CANT_BE_BLOCKED_BY)
                 .with_params(vec![permanent_filter_param("filter", filter)]),
+            Effect::Static(CantBeTargetedBy { spells, attached }) => {
+                MessageRef::new(MessageKey::EFFECT_STATIC_CANT_BE_TARGETED_BY).with_params(vec![
+                    spell_filter_param("spells", spells),
+                    bool_param("attached", attached),
+                ])
+            }
             Effect::Static(CantBlockAttackers { filter }) => MessageRef::new(MessageKey::EFFECT_STATIC_CANT_BLOCK_ATTACKERS)
                 .with_params(vec![permanent_filter_param("filter", filter)]),
             Effect::Static(CanBlockAdditional { count }) => MessageRef::new(MessageKey::EFFECT_STATIC_CAN_BLOCK_ADDITIONAL)
@@ -2354,6 +2368,7 @@ impl EffectMessage for Effect {
             Effect::Misc(YouLoseTheGame) => {
                 MessageRef::new(MessageKey::EFFECT_MISC_YOU_LOSE_THE_GAME)
             }
+            Effect::Misc(GameIsADraw) => MessageRef::new(MessageKey::EFFECT_MISC_GAME_IS_A_DRAW),
             Effect::Misc(BlocksEachAttackerIfAble { .. }) => {
                 MessageRef::new(MessageKey::EFFECT_MISC_BLOCKS_EACH_ATTACKER_IF_ABLE)
             }

@@ -181,7 +181,7 @@ the record shows what unblocked it.
 - [ ] **Alchor's Tomb** {4} · Artifact — increment 96
 - [ ] **Angelic Voices** {2}{W}{W} · Enchantment — increment 13
 - [ ] **Angus Mackenzie** {G}{W}{U} · Legendary Creature — Human Cleric — increment 111
-- [ ] **Anti-Magic Aura** {2}{U} · Enchantment — Aura — increment 15
+- [x] **Anti-Magic Aura** {2}{U} · Enchantment — Aura — increment 15
 - [ ] **Arboria** {2}{G}{G} · World Enchantment — increment 2, 16
 - [ ] **Arcades Sabboth** {2}{G}{G}{W}{W}{U}{U} · Legendary Creature — Elder Dragon — increment 13
 - [x] **Arena of the Ancients** {3} · Artifact — increment 6 (absorbed 17)
@@ -189,7 +189,7 @@ the record shows what unblocked it.
 - [ ] **Ayesha Tanaka** {W}{W}{U}{U} · Legendary Creature — Human Artificer — increment 103
 - [ ] **Backdraft** {1}{R} · Instant — increment 19
 - [ ] **Backfire** {U} · Enchantment — Aura — increment 20
-- [ ] **Bartel Runeaxe** {3}{B}{R}{G} · Legendary Creature — Giant Warrior — increment 15
+- [x] **Bartel Runeaxe** {3}{B}{R}{G} · Legendary Creature — Giant Warrior — increment 15
 - [ ] **Beasts of Bogardan** {4}{R} · Creature — Beast — increment 13
 - [x] **Black Mana Battery** {4} · Artifact — increment 11
 - [ ] **Blazing Effigy** {1}{R} · Creature — Elemental — increment 19
@@ -198,7 +198,7 @@ the record shows what unblocked it.
 - [ ] **Boris Devilboon** {3}{B}{R} · Legendary Creature — Zombie Wizard — increment 97
 - [ ] **Brine Hag** {2}{U}{U} · Creature — Hag — increment 22
 - [ ] **Bronze Horse** {7} · Artifact Creature — Horse — increment 12
-- [x] **Cathedral of Serra** — · Land — increment 3 (slice 1); residual — increment 3 slices 2, 3
+- [x] **Cathedral of Serra** — · Land — increment 3 (slices 1, 2); residual — increment 3 slice 3
 - [ ] **Caverns of Despair** {2}{R}{R} · World Enchantment — increment 2, 23
 - [ ] **Chains of Mephistopheles** {1}{B} · Enchantment — increment 24
 - [x] **Chromium** {2}{W}{W}{U}{U}{B}{B} · Legendary Creature — Elder Dragon — increment 1; residual — increment 119
@@ -212,7 +212,7 @@ the record shows what unblocked it.
 - [x] **D'Avenant Archer** {2}{W} · Creature — Human Soldier Archer — increment 8
 - [x] **Deadfall** {2}{G} · Enchantment — increment 4
 - [ ] **Demonic Torment** {2}{B} · Enchantment — Aura — increment 95
-- [ ] **Divine Intervention** {6}{W}{W} · Enchantment — increment 27
+- [x] **Divine Intervention** {6}{W}{W} · Enchantment — increment 27
 - [ ] **Dream Coat** {U} · Enchantment — Aura — increment 28
 - [ ] **Dwarven Song** {R} · Instant — increment 96
 - [ ] **Elder Land Wurm** {4}{W}{W}{W} · Creature — Dragon Wurm — increment 5
@@ -289,7 +289,7 @@ the record shows what unblocked it.
 - [ ] **Nicol Bolas** {2}{U}{U}{B}{B}{R}{R} · Legendary Creature — Elder Dragon — increment 112
 - [ ] **North Star** {4} · Artifact — increment 59
 - [ ] **Nova Pentacle** {4} · Artifact — increment 60
-- [ ] **Osai Vultures** {1}{W} · Creature — Bird — increment 102
+- [x] **Osai Vultures** {1}{W} · Creature — Bird — increment 102
 - [ ] **Part Water** {X}{X}{U} · Sorcery — increment 61
 - [ ] **Pendelhaven** — · Legendary Land — increment 62
 - [ ] **Petra Sphinx** {2}{W}{W}{W} · Creature — Sphinx — increment 58
@@ -325,7 +325,7 @@ the record shows what unblocked it.
 - [ ] **Shimian Night Stalker** {3}{B}{B} · Creature — Nightstalker — increment 60
 - [ ] **Silhouette** {1}{U} · Instant — increment 12
 - [ ] **Spectral Cloak** {U}{U} · Enchantment — Aura — increment 117
-- [ ] **Spirit Shackle** {B}{B} · Enchantment — Aura — increment 102
+- [x] **Spirit Shackle** {B}{B} · Enchantment — Aura — increment 102
 - [ ] **Spiritual Sanctuary** {2}{W}{W} · Enchantment — increment 116
 - [ ] **Stangg** {4}{R}{G} · Legendary Creature — Human Warrior — increment 74
 - [ ] **Storm World** {R} · World Enchantment — increment 2, 75
@@ -337,7 +337,7 @@ the record shows what unblocked it.
 - [ ] **Takklemaggot** {2}{B}{B} · Enchantment — Aura — increment 78
 - [ ] **Telekinesis** {U}{U} · Instant — increment 79
 - [x] **Teleport** {U}{U}{U} · Instant — increment 114
-- [ ] **Tetsuo Umezawa** {U}{B}{R} · Legendary Creature — Human Archer — increment 8, 15
+- [x] **Tetsuo Umezawa** {U}{B}{R} · Legendary Creature — Human Archer — increment 8, 15
 - [ ] **The Abyss** {3}{B} · World Enchantment — increment 2, 80
 - [ ] **The Tabernacle at Pendrell Vale** — · Legendary Land — increment 81
 - [ ] **The Wretched** {3}{B}{B} · Creature — Demon — increment 104

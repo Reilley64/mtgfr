@@ -67,6 +67,17 @@
           ],
           "description": "The cost to accept an `optional` trigger (CR 603.2c \"you may pay …\"), e.g. Trudge Garden's \"you may pay {2}.\" Ignored for a non-optional ability. Same `[cost]`-table shape as a spell's own top-level cost (§2); omitted = a plain free \"may\"."
         },
+        "counter_kind": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CounterKind"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Which counter kind a `you_remove_last_counter_from_this` trigger watches (Divine Intervention's `intervention`). Required for that timing, ignored for every other trigger/timing."
+        },
         "discard_cost": {
           "default": 0,
           "description": "\"Discard a card\" as part of the cost (Wild Mongrel's \"Discard a card\").",
@@ -2919,6 +2930,27 @@
           "description": "A +1/+0 counter (CR 121.1 — Clockwork Beast): a real P/T counter, not bookkeeping, read out of this map by [`Game::pt_layers`] in layer 7d exactly like [`MinusOneMinusOne`](Self::MinusOneMinusOne) — power only, toughness untouched, which is why it can't ride the scalar `plus_counters` path.",
           "enum": [
             "plus_one_plus_zero"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "A carrion counter (CR 122.1 — Osai Vultures): banked deaths, one per end step a creature died in, spent two at a time to pump the Bird. Inert bookkeeping like [`Corpse`](Self::Corpse) — nothing but its own card reads it.",
+          "enum": [
+            "carrion"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "A -0/-2 counter (CR 121.1/122.1 — Spirit Shackle): a real P/T counter, toughness only, read out of this map by [`Game::pt_layers`] in layer 7d exactly like [`PlusOnePlusZero`](Self::PlusOnePlusZero). Deliberately *not* modeled as two [`MinusOneMinusOne`](Self::MinusOneMinusOne) counters: CR 121.3's state-based annihilation pairs +1/+1 only with -1/-1, so a -0/-2 counter must survive a +1/+1 counter on the same permanent, and its own removal costs must not be payable with -1/-1 counters.",
+          "enum": [
+            "minus_zero_minus_two"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "An intervention counter (CR 122.1 — Divine Intervention): a countdown of its controller's upkeeps, one removed each of them, and when the last one comes off the game is a draw (CR 104.4). Inert bookkeeping like [`Corpse`](Self::Corpse) — the counter changes nothing about the enchantment by itself; the card's own [`Trigger::YouRemoveLastCounterFromThis`](crate::Trigger) is what watches it reach zero.",
+          "enum": [
+            "intervention"
           ],
           "type": "string"
         }
@@ -8816,6 +8848,35 @@
               "type": "object"
             },
             {
+              "description": "Bartel Runeaxe's \"Bartel Runeaxe can't be the target of Aura spells\" and Anti-Magic Aura's \"Enchanted creature can't be the target of spells\" — a *filtered* targeting restriction (CR 115.4/115.6), deliberately not [`Keyword::Shroud`](crate::Keyword): shroud turns away abilities too, and these clauses name only spells (Anti-Magic Aura) or only Aura spells (Bartel Runeaxe, Tetsuo Umezawa). Enforced alongside shroud/hexproof/protection in the engine's target enumeration, so a spell that tries anyway is rejected at target selection like any other illegal target.",
+              "properties": {
+                "attached": {
+                  "default": false,
+                  "description": "The shield lands on the host this Aura is attached to (Anti-Magic Aura's \"Enchanted creature\") rather than on the ability's own source (Bartel Runeaxe naming itself). `false` (default) is the self-shield.\n\nA flag here rather than a `cant_be_targeted_by` field on [`GrantToAttached`](Self::GrantToAttached) — where the pool's other \"Enchanted creature …\" clauses live — because the self-shielding creatures need this variant regardless, and one variant carrying both scopes keeps the enforcement to a single battlefield scan.",
+                  "type": "boolean"
+                },
+                "mode": {
+                  "enum": [
+                    "cant_be_targeted_by"
+                  ],
+                  "type": "string"
+                },
+                "spells": {
+                  "allOf": [
+                    {
+                      "$ref": "#/$defs/SpellFilter"
+                    }
+                  ],
+                  "description": "Which spells are turned away — [`SpellFilter::Aura`] for \"Aura spells\", [`SpellFilter::AllSpells`] for the unqualified \"spells\"."
+                }
+              },
+              "required": [
+                "mode",
+                "spells"
+              ],
+              "type": "object"
+            },
+            {
               "properties": {
                 "all_players": {
                   "default": false,
@@ -9843,6 +9904,21 @@
               "type": "object"
             },
             {
+              "description": "\"The game is a draw\" (CR 104.4 — Divine Intervention). Its own game outcome, not everybody losing: the game ends the moment this resolves with no winner and no loser ([`Game::outcome`](crate::Game::outcome) reports [`GameOutcome::Draw`](crate::GameOutcome)), so no player's `lost` flag is set and none of the CR 800.4a elimination bookkeeping runs.",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "game_is_a_draw"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
               "properties": {
                 "mode": {
                   "enum": [
@@ -10364,7 +10440,7 @@
           "type": "string"
         },
         {
-          "description": "Banding (CR 702.22). Two halves are modeled: the blocker-side damage assignment — when a creature with banding is among an attacker's blockers, *its* controller divides that attacker's combat damage rather than the attacking player (CR 702.22j), see [`Game::damage_assigner`] — and attacking in a band (CR 702.22c), see [`Game::declare_attackers_in_bands`]. ponytail: a declared band is recorded and nothing more. Being blocked as a group (CR 702.22h/i) and the attacker-side damage division (CR 702.22k) are not modeled yet, and the band cannot be declared over the wire — `Intent::DeclareAttackersInBands` has no `WireIntent` counterpart, so the proto and the client's attack UI still see a flat attacker list. See increment #3's slices 2 and 3.",
+          "description": "Banding (CR 702.22). Two halves are modeled: the blocker-side damage assignment — when a creature with banding is among an attacker's blockers, *its* controller divides that attacker's combat damage rather than the attacking player (CR 702.22j), see [`Game::damage_assigner`] — and attacking in a band (CR 702.22c), see [`Game::declare_attackers_in_bands`]. ponytail: a declared band is blocked as a group (CR 702.22h/i), but the transfer of combat damage division is not modeled — CR 702.22j (a banded attacker's division passes to the defending player) and CR 702.22k (a blocker's division passes to the active player) both still leave the division where CR 510.1c/d put it. The band also cannot be declared over the wire: `Intent::DeclareAttackersInBands` has no `WireIntent` counterpart, so the proto and the client's attack UI still see a flat attacker list. See increment #3 slice 3 and #121.",
           "enum": [
             "banding"
           ],
@@ -11067,6 +11143,12 @@
           ]
         },
         "tapped": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "tapped_or_blocking": {
           "type": [
             "boolean",
             "null"
@@ -12148,6 +12230,13 @@
           "description": "Reuses `AnyPlayerSacrifices`' `filter` sibling for the tapped permanent, plus its own `for_mana` bool.",
           "enum": [
             "permanent_becomes_tapped"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Takes a `counter_kind` sibling naming the counter kind whose last one coming off fires the ability (Divine Intervention's `intervention`). See [`Trigger::YouRemoveLastCounterFromThis`].",
+          "enum": [
+            "you_remove_last_counter_from_this"
           ],
           "type": "string"
         }

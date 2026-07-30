@@ -524,6 +524,7 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   ),
   "effect.misc_take_extra_turn": literal("Take an extra turn after this one"),
   "effect.misc_you_lose_the_game": literal("You lose the game"),
+  "effect.misc_game_is_a_draw": literal("The game is a draw"),
   "effect.pump_animate_self_until_end_of_turn": (params) =>
     `Becomes a ${param(params, "base_power")}/${param(params, "base_toughness")} creature until end of turn`,
   "effect.pump_enchanted_attacker_pump_attacking_opponent_else_controller_loses_life": (params) =>
@@ -600,6 +601,12 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   },
   "effect.static_cant_be_blocked_by": (params) =>
     `This creature can't be blocked by ${humanize(param(params, "filter", "creatures"))}`,
+  "effect.static_cant_be_targeted_by": (params) => {
+    const spells = param(params, "spells", "all");
+    const subject = bool(params, "attached") ? "Enchanted permanent" : "This permanent";
+    const what = spells === "all" ? "spells" : `${humanize(spells)} spells`;
+    return `${subject} can't be the target of ${what}`;
+  },
   "effect.static_cant_block_attackers": (params) =>
     `This creature can't block ${humanize(param(params, "filter", "creatures"))}`,
   "effect.static_cant_block_filter": (params) => `${humanize(param(params, "filter", "Creatures"))} can't block`,

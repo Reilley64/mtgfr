@@ -6,6 +6,15 @@
 
 use crate::*;
 
+/// How the game ended (CR 104.1). Reported by [`Game::outcome`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GameOutcome {
+    /// CR 104.2a: one player left standing.
+    Winner(PlayerId),
+    /// CR 104.4: the game is a draw for every player still in it — nobody won and nobody lost.
+    Draw,
+}
+
 impl Game {
     /// A fresh game with the default seat count, seeded for deterministic shuffles.
     pub fn with_seed(seed: u64) -> Self {
@@ -77,6 +86,7 @@ impl Game {
             pending_enter_bonus_counters: Vec::new(),
             exile_time_counters: Vec::new(),
             resolution_finish: None,
+            drawn: false,
         }
     }
 
@@ -252,6 +262,17 @@ impl Game {
             Some(_) => None, // still ≥2 players in the game
             None => first,   // exactly one (or zero) remain
         }
+    }
+
+    /// Whether the game has ended, and how (CR 104.1). A draw (CR 104.4) is its own outcome, not
+    /// every player losing — [`has_lost`](Self::has_lost) stays false for everyone and
+    /// [`winner`](Self::winner) stays `None`, so a draw is only visible here.
+    pub fn outcome(&self) -> Option<GameOutcome> {
+        // CR 104.4b: the draw ends the game for every player still in it, whatever the seat count.
+        if self.drawn {
+            return Some(GameOutcome::Draw);
+        }
+        self.winner().map(GameOutcome::Winner)
     }
 
     /// Test/setup helper: deal `amount` commander damage to `player` from `source` (routed through

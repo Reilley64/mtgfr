@@ -49,6 +49,7 @@ mod triggers;
 mod types;
 mod zones;
 
+pub use crate::core::GameOutcome;
 pub use message::*;
 pub use mulligan::hand_size_after_mulligans;
 /// What a would-be counter placement is aimed at — see [`replacements::CounterRecipient`].
@@ -244,6 +245,9 @@ pub struct Game {
     /// [`Game::finish_instant_sorcery_resolution`], so the one-spell-at-a-time resolution model
     /// is enough lifetime management.
     pub(crate) resolution_finish: Option<FinishPolicy>,
+    /// The game ended in a draw (CR 104.4 — Divine Intervention). Not a loss for anyone, so it
+    /// can't be read off the players' `lost` flags; see [`Game::outcome`].
+    pub(crate) drawn: bool,
 }
 
 impl Game {
@@ -270,6 +274,14 @@ impl Game {
     }
 
     fn submit_inner(&mut self, intent: Intent) -> Result<Vec<Event>, Reject> {
+        // CR 104.4b: a draw ends the game immediately for every player still in it, so nothing
+        // further is legal — not even conceding.
+        // ponytail: reuses `WrongTiming` rather than minting a `Reject::GameOver`, which would need
+        // a proto/client arm; add the dedicated variant when the client shows an end-of-game state.
+        if self.drawn {
+            return Err(Reject::WrongTiming);
+        }
+
         // While a choice is pending, only an answer intent from that player is legal (the
         // specific handler rejects an answer that doesn't match the pending choice's kind).
         // Conceding is the exception: a player must be able to quit whoever the game is waiting on,

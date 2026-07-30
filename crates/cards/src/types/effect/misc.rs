@@ -222,6 +222,13 @@ pub enum MiscEffect {
     /// off.
     YouLoseTheGame,
 
+    /// "The game is a draw" (CR 104.4 — Divine Intervention). Its own game outcome, not everybody
+    /// losing: the game ends the moment this resolves with no winner and no loser
+    /// ([`Game::outcome`](crate::Game::outcome) reports
+    /// [`GameOutcome::Draw`](crate::GameOutcome)), so no player's `lost` flag is set and none of
+    /// the CR 800.4a elimination bookkeeping runs.
+    GameIsADraw,
+
     YouChooseWhichCreaturesAttack,
 
     YouChooseWhichCreaturesBlock,

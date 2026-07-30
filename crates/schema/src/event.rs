@@ -789,6 +789,8 @@ pub enum VisibleEvent {
     PlayerLost {
         player: u8,
     },
+    /// The game ended in a draw (CR 104.4 — Divine Intervention): no winner, no loser.
+    GameDrawn,
     /// `player` got the city's blessing (CR 702.131 Ascend) — fully public.
     CitysBlessingGained {
         player: u8,

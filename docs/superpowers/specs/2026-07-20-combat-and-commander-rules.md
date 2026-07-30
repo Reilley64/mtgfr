@@ -183,7 +183,10 @@ this turn" / "…which creatures block this turn"). `CombatExtras::attack_declar
 ## Out of Scope
 
 - **Planeswalker as attack target** (full attack-a-planeswalker declaration, CR 306.9) — partially supported via `player_or_planeswalker` damage target; the full "declare attackers at a planeswalker" declaration path is in progress.
-- **Banding** (CR 702.22) — not implemented.
+- **Banding** (CR 702.22) — bands are declared (CR 702.22c/d, `Intent::DeclareAttackersInBands`) and
+  are blocked as a group (CR 702.22h/i). The combat damage division transfers of CR 702.22j/k are not
+  implemented, and the declaration is engine-only — no `WireIntent`, so the client's attack UI sees a
+  flat attacker list.
 - **Damage prevention and redirection** (general CR 615 prevention effects beyond Inkshield/Moment's Peace) — flagged per-deck when needed (`docs/fidelity/`).
 - **Ninjutsu** (CR 702.49) — not implemented.
 - **Blocking multiple attackers** (a single creature blocking two attackers) — not in scope for the current pool.

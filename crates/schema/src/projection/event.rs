@@ -848,6 +848,7 @@ pub(crate) fn project_event(
             VisibleEvent::DrewFromEmptyLibrary { player: player.0 }
         }
         Event::PlayerLost { player } => VisibleEvent::PlayerLost { player: player.0 },
+        Event::GameDrawn => VisibleEvent::GameDrawn,
         Event::CitysBlessingGained { player } => {
             VisibleEvent::CitysBlessingGained { player: player.0 }
         }
