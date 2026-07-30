@@ -288,6 +288,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             required_attacks: Vec::new(),
             taps_self: false,
             declare_for: Vec::new(),
+            mana_only: action.mana_only,
         },
         MeaningfulAction::Mulligan => ActionView {
             id: action.id,
@@ -313,6 +314,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             required_attacks: Vec::new(),
             taps_self: false,
             declare_for: Vec::new(),
+            mana_only: action.mana_only,
         },
         MeaningfulAction::PlayLand { card, zone } => ActionView {
             id: action.id,
@@ -338,6 +340,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             required_attacks: Vec::new(),
             taps_self: false,
             declare_for: Vec::new(),
+            mana_only: action.mana_only,
         },
         MeaningfulAction::Cast { card, zone } => {
             let def = game.def_of(card);
@@ -412,6 +415,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
                 required_attacks: Vec::new(),
                 taps_self: false,
                 declare_for: Vec::new(),
+                mana_only: action.mana_only,
             }
         }
         MeaningfulAction::Activate { source, ability } => {
@@ -457,6 +461,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
                 required_attacks: Vec::new(),
                 taps_self,
                 declare_for: Vec::new(),
+                mana_only: action.mana_only,
             }
         }
         MeaningfulAction::Cycle { card } => ActionView {
@@ -485,6 +490,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             required_attacks: Vec::new(),
             taps_self: false,
             declare_for: Vec::new(),
+            mana_only: action.mana_only,
         },
         MeaningfulAction::ActivateHandAbility { card, index } => {
             let def = game.def_of(card);
@@ -529,6 +535,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
                 required_attacks: Vec::new(),
                 taps_self: false,
                 declare_for: Vec::new(),
+                mana_only: action.mana_only,
             }
         }
         // The label must not leak the hidden card's identity (CR 708.2) — a plain "Cast face down".
@@ -556,6 +563,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             required_attacks: Vec::new(),
             taps_self: false,
             declare_for: Vec::new(),
+            mana_only: action.mana_only,
         },
         MeaningfulAction::Suspend { card } => ActionView {
             id: action.id,
@@ -581,6 +589,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             required_attacks: Vec::new(),
             taps_self: false,
             declare_for: Vec::new(),
+            mana_only: action.mana_only,
         },
         MeaningfulAction::Encore { card } => ActionView {
             id: action.id,
@@ -606,6 +615,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             required_attacks: Vec::new(),
             taps_self: false,
             declare_for: Vec::new(),
+            mana_only: action.mana_only,
         },
         // The label must not leak the hidden card's identity (CR 708.2) — a plain "Turn face up".
         MeaningfulAction::TurnFaceUp { permanent } => ActionView {
@@ -632,6 +642,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             required_attacks: Vec::new(),
             taps_self: false,
             declare_for: Vec::new(),
+            mana_only: action.mana_only,
         },
         // Guardian Angel's standing "you may pay {1}" offer: no object to hang it on, so it rides
         // the action bar on its own like the combat declarations do.
@@ -659,6 +670,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             required_attacks: Vec::new(),
             taps_self: false,
             declare_for: Vec::new(),
+            mana_only: action.mana_only,
         },
         MeaningfulAction::CastPrepared { source } => {
             let back = game
@@ -699,6 +711,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
                 required_attacks: Vec::new(),
                 taps_self: false,
                 declare_for: Vec::new(),
+                mana_only: action.mana_only,
             }
         }
         // One action per half of a split card (CR 709.4a) — the label is the half's own name, which
@@ -742,6 +755,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
                 required_attacks: Vec::new(),
                 taps_self: false,
                 declare_for: Vec::new(),
+                mana_only: action.mana_only,
             }
         }
         MeaningfulAction::DeclareAttackers => ActionView {
@@ -774,6 +788,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
                 .collect(),
             taps_self: false,
             declare_for: vec![game.active_player().0],
+            mana_only: action.mana_only,
         },
         MeaningfulAction::DeclareBlockers => ActionView {
             id: action.id,
@@ -803,6 +818,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
                 .into_iter()
                 .map(|seat| seat.0)
                 .collect(),
+            mana_only: action.mana_only,
         },
     };
     view.auto_tap = game.auto_tap_objects(action);
@@ -3546,5 +3562,38 @@ mod tests {
         assert_eq!(entry.print, expected_print);
         assert_eq!(entry.name, "Food");
         assert_eq!(entry.card_id, expected_card_id);
+    }
+
+    /// The Bog's `{1}, {T}: Add {B}{G}` is menu-only; Nezumi's exile activate is a real play. The
+    /// client keys the playable border off this flag, so the projection must tell them apart.
+    #[test]
+    fn only_paid_mana_activates_project_as_mana_only() {
+        let mut game = Game::new();
+        let p0 = PlayerId(0);
+        let bog = game.spawn_on_battlefield(p0, def("Viridescent Bog"));
+        let nezumi = game.spawn_on_battlefield(p0, def("Nezumi Graverobber"));
+        game.spawn_in_graveyard(PlayerId(1), def("Grizzly Bears"));
+        game.fund_mana(p0);
+        // Tap a land so `refresh_actions` runs (spawn helpers don't); mana is already funded.
+        let tapland = game.spawn_on_battlefield(p0, def("Swamp"));
+        refresh_via_mana_tap(&mut game, tapland);
+
+        let snap = snapshot(&game, p0);
+        let bog_action = snap
+            .actions
+            .iter()
+            .find(|a| a.kind == "activate" && a.object == Some(bog))
+            .expect("the Bog's paid mana mode is listed");
+        assert!(bog_action.mana_only, "a paid mana ability is not a play");
+
+        let nezumi_action = snap
+            .actions
+            .iter()
+            .find(|a| a.kind == "activate" && a.object == Some(nezumi))
+            .expect("Nezumi's activate is listed");
+        assert!(
+            !nezumi_action.mana_only,
+            "a non-mana activated ability is a real play"
+        );
     }
 }

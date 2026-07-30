@@ -3474,6 +3474,10 @@ pub struct LegalAction {
     pub id: u64,
     pub player: PlayerId,
     pub kind: MeaningfulAction,
+    /// Whether this action does nothing but produce mana — a paid tap-for-mana mode from
+    /// [`Game::paid_mana_activates`], listed for the radial but never halt-worthy. The client uses
+    /// it to keep the playable border off permanents that can only make mana.
+    pub mana_only: bool,
 }
 
 /// Whether `top` and `bottom` together are exactly the cards in `cards` (a valid split for a

@@ -326,6 +326,11 @@ The engine/schema event model includes `MulliganTaken { player, mulligans_taken,
   rather than re-deriving whose declaration it is — which a moved declaration would get wrong.
   Empty for every other action kind. `required_attacks` on `declare_attackers` likewise always
   describes the active player's must-attack creatures, not the declarer's.
+- `ActionView.mana_only` is true for a paid tap-for-mana mode (Viridescent Bog's `{1}, {T}: Add
+  {B}{G}`, filter lands, karoos, signets). The engine lists those separately from
+  `meaningful_actions` so they never stop auto-pass; the flag carries that distinction to the
+  client, which keeps the playable border off them. Free-tap mana sources have no `ActionView` at
+  all and are found through `ObjectView.taps_for_mana` instead.
 - `VisibleEvent` has ~130 arms (stream.proto). Each arm is a purpose-built message; the large
   oneof is intentional — it avoids a generic "event with arbitrary payload" design and makes
   every event type visible to the compiler and code-generation tooling.
