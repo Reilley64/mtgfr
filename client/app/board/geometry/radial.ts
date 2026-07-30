@@ -7,7 +7,8 @@ import type { RenderCard } from "./layout";
 
 export type RadialOption =
   | { kind: "tap_for_mana"; label: string; disabled: boolean }
-  | { kind: "action"; action: ActionView; label: string; disabled: boolean };
+  /** `available` counts the cluster copies that can still activate this ability; absent when 1. */
+  | { kind: "action"; action: ActionView; label: string; disabled: boolean; available?: number };
 
 export type ActivationCostChip =
   | { kind: "tap" }
@@ -129,9 +130,13 @@ export function radialPressUp(
   return { state: clear, commit: wedgeIndex, dismiss: false };
 }
 
-/** Options for the activation radial around a selected permanent. */
+/**
+ * Options for the activation radial around a selected permanent, or around a whole cluster when
+ * `objectIds` holds its members. The engine lists an entry per object that can legally act, so an
+ * ability stays on offer while any copy can still pay for it, and `available` reports how many can.
+ */
 export function radialOptions(
-  objectId: number,
+  objectIds: readonly number[],
   actions: ActionView[] | undefined,
   tapsForMana: boolean,
   tapped: boolean,
@@ -148,9 +153,28 @@ export function radialOptions(
       disabled: !canAct || tapped || sickBlocksTap,
     });
   }
+  const ids = new Set(objectIds);
+  // One row per distinct ability, carrying the first copy's action id so activation routes to a
+  // copy that can still act. `available` counts distinct copies, not rows.
+  const byLabel = new Map<string, { action: ActionView; copies: Set<number> }>();
   for (const a of actions ?? []) {
-    if (a.section !== "battlefield" || a.object !== objectId) continue;
-    out.push({ kind: "action", action: a, label: formatMessage(a.label), disabled: false });
+    if (a.section !== "battlefield" || a.object == null || !ids.has(a.object)) continue;
+    const label = formatMessage(a.label);
+    const seen = byLabel.get(label);
+    if (seen == null) {
+      byLabel.set(label, { action: a, copies: new Set([a.object]) });
+      continue;
+    }
+    seen.copies.add(a.object);
+  }
+  for (const [label, { action, copies }] of byLabel) {
+    out.push({
+      kind: "action",
+      action,
+      label,
+      disabled: false,
+      ...(copies.size > 1 && { available: copies.size }),
+    });
   }
   return out;
 }

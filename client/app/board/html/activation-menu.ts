@@ -55,6 +55,18 @@ function costChipView(opt: RadialOption): Html | null {
   );
 }
 
+/** `×k` when more than one copy in the cluster can still activate this ability. */
+function availableChipView(opt: RadialOption): Html | null {
+  if (opt.kind !== "action" || opt.available == null) return null;
+  return h.span(
+    [
+      h.DataAttribute("testid", `activation-menu-available-${radialOptionKey(opt)}`),
+      h.Class("shrink-0 tabular-nums text-snow/70"),
+    ],
+    [`×${opt.available}`],
+  );
+}
+
 // Row chrome is attribute-driven: JS sets data-active (hover/armed) and aria-disabled,
 // Tailwind variants own the look — no class ternaries.
 function rowClass(): string {
@@ -68,10 +80,12 @@ function rowClass(): string {
 export function selectedRadialOptions(board: BoardModel, state: VisibleState): RadialOption[] {
   const id = board.selectedId;
   if (id == null) return [];
-  const card = layout(state, state.viewer, engagedIds(state, board)).find((c) => c.id === id);
+  const cards = layout(state, state.viewer, engagedIds(state, board));
+  const card = cards.find((c) => c.id === id) ?? cards.find((c) => c.clusterMembers.includes(id));
   if (card == null) return [];
   return radialOptions(
-    id,
+    // `clusterMembers` already holds the face id, and is empty for an uncollapsed permanent.
+    [card.id, ...card.clusterMembers],
     state.actions,
     card.tapsForMana,
     card.tapped,
@@ -153,9 +167,11 @@ export function activationMenuView(board: BoardModel, state: VisibleState): Html
                 return Option.some(RadialOptionPicked({ index }));
               }),
             ],
-            [h.span([h.Class("min-w-0 flex-1 line-clamp-2 text-left")], [opt.label]), costChipView(opt)].filter(
-              (child): child is Html => child !== null,
-            ),
+            [
+              h.span([h.Class("min-w-0 flex-1 line-clamp-2 text-left")], [opt.label]),
+              availableChipView(opt),
+              costChipView(opt),
+            ].filter((child): child is Html => child !== null),
           );
         }),
       ),

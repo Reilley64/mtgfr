@@ -2198,7 +2198,8 @@ function commitRadialIndex(model: BoardModel, fold: GameFoldState, tableId: stri
   if (opt.kind === "tap_for_mana") {
     return [cleared, boardIntentSubmit(tableId, { kind: "tap_for_mana", player: fold.state.viewer, object: id })];
   }
-  const card = fold.state.objects.find((o) => o.id === id) ?? null;
+  // On a cluster the selection is the face, but the offered action may belong to another copy.
+  const card = fold.state.objects.find((o) => o.id === (opt.action.object ?? id)) ?? null;
   return continueAfterCostPick(
     cleared,
     fold,

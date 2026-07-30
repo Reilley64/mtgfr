@@ -21,7 +21,10 @@ Render a card-anchored activation menu beside the selected battlefield permanent
 ## Behavior
 
 - The activation menu opens only for a selected battlefield permanent with at least one option.
-- Options are synthesized from `tap_for_mana` plus battlefield `ActionView` entries for the selected object.
+- Options are synthesized from `tap_for_mana` plus battlefield `ActionView` entries for the selected object. When the selection is a cluster face, the entries for every member id (`[face.id, ...clusterMembers]`) are counted together.
+- One row per distinct ability label. The row carries the `ActionView` of a copy that can still act, so activation routes to an unspent copy; an ability stays on offer while any copy has an entry and disappears when the last copy's is gone.
+- A row carrying more than one copy shows a `data-testid="activation-menu-available-{key}"` chip reading `×k`, where `k` counts the distinct member ids that can still activate it.
+- Nothing splits out of the cluster for an activation. Visible consequences (tapped, counters, modifiers) split it through `clusterKey` as usual.
 - Empty option lists render nothing; no panel appears.
 - The menu anchor is the selected card's screen-space center.
 - Placement prefers right of the card, then left, then above, then below, and clamps the panel fully on-screen.
@@ -50,14 +53,15 @@ Render a card-anchored activation menu beside the selected battlefield permanent
 - Keep option building, stable option identity, press-state reduction, card screen-center math, placement, and cost-chip derivation in `client/app/board/geometry/radial.ts`.
 - Keep board message names `RadialWedgeArmed`, `RadialWedgeReleased`, `RadialWedgeHovered`, and `RadialOptionPicked`; the interaction channel stays index-based for menu rows.
 - Keep the activation surface in DOM, not canvas, so focus, keyboard handlers, and accessibility roles remain available.
-- `selectedRadialOptions` remains the board-side selector for the chosen permanent's menu rows.
-- `commitRadialIndex` still clears selection before submitting tap-for-mana or a battlefield action.
+- `selectedRadialOptions` remains the board-side selector for the chosen permanent's menu rows, and resolves a selected non-face cluster member back to its face card.
+- `commitRadialIndex` still clears selection before submitting tap-for-mana or a battlefield action. It resolves the acting object from `action.object` so a cluster row commits against the copy that owns it; tap-for-mana stays on the selected face.
+- The engine is the authority on which copies can act — `state.actions` lists one entry per object that passes the activation gate, so a spent once-per-turn ability simply has no entry and needs no client bookkeeping.
 
 ## Testing Decisions
 
-- Geometry tests cover menu placement preference order, viewport clamping, estimated menu height, and cost-chip derivation.
+- Geometry tests cover menu placement preference order, viewport clamping, estimated menu height, cost-chip derivation, and the cluster count: one row for three copies labelled `×3`, distinct copies rather than rows counted, the row surviving on the unspent copy's action, and no row when every copy has spent it.
 - Board update tests cover arm / release behavior, disabled rows, keyboard commit, and submit outcomes.
-- Scene tests cover `activation-menu`, `activation-menu-panel`, `activation-menu-row-*`, `activation-menu-cost`, disabled visibility, and panel placement beside the selected card.
+- Scene tests cover `activation-menu`, `activation-menu-panel`, `activation-menu-row-*`, `activation-menu-cost`, `activation-menu-available-*`, disabled visibility, and panel placement beside the selected card.
 
 ## Out of Scope
 
