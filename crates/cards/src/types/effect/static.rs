@@ -131,6 +131,23 @@ pub enum StaticEffect {
         when: DefiningPtWhen,
     },
 
+    /// "Non-Eye creatures you control can't attack" (Evil Eye of Orms-by-Gore) / "Except for
+    /// creatures named Akron Legionnaire and artifact creatures, creatures you control can't
+    /// attack" (Akron Legionnaire): an attack ban on every creature matching `filter`, wherever
+    /// that creature is (CR 508.1a). The mirror of [`CantBlockFilter`](Self::CantBlockFilter) —
+    /// like it, the whole battlefield is scanned for the static and `filter` is read from the
+    /// static's *own* controller's perspective, so `controller = "you"` scopes the ban to the
+    /// source's controller and `controller = "any"` makes it board-wide (Moat).
+    ///
+    /// An "except for X" clause is authored inverted, as the *banned* set — Akron Legionnaire's
+    /// exemptions become `exclude = "artifact"` plus `exclude_name = "Akron Legionnaire"` — the
+    /// same convention [`CantBeBlockedBy`](Self::CantBeBlockedBy) uses. Folded into
+    /// [`Game::can_attack`](crate::Game), so a banned creature is not "able" to attack and goad
+    /// cannot demand an attack the card forbids (CR 509.1a).
+    CantAttackFilter {
+        filter: PermanentFilter,
+    },
+
     /// "Each opponent who cast a spell this turn can't attack with creatures" (Angelic Arbiter):
     /// a blanket per-player attack ban, unlike [`StaticEffect::CantBeAttackedBy`]'s
     /// defender-scoped filter — the gated player can't declare *any* attacker, not just ones
@@ -575,11 +592,36 @@ pub enum StaticEffect {
 
     PlayFromGraveyardOncePerTurn,
 
-    PreventCombatDamage {
+    /// A permanent's own printed prevention shield (CR 615): "Prevent all damage that would be
+    /// dealt to this creature by …". Applies as the damage would be dealt and never uses the
+    /// stack, so it is read at the damage chokes rather than placed as a triggered ability.
+    ///
+    /// `to_self` shields damage dealt *to* the permanent (Guard Gomazoa, every Wall in this
+    /// family); `by_self` shields damage it deals to others (Fog Bank's "and dealt by"). The three
+    /// gates below narrow *which* damage — an unset gate imposes no restriction, which is the
+    /// unqualified "prevent all combat damage" both 2ed cards print.
+    PreventDamage {
         #[cfg_attr(feature = "card-dsl", serde(default))]
         to_self: bool,
         #[cfg_attr(feature = "card-dsl", serde(default))]
         by_self: bool,
+        /// "Prevent all **combat** damage" (Fog Bank, Guard Gomazoa, Enchanted Being, Marble
+        /// Priest). `false` — Wall of Vapor's plain "prevent all damage" — covers combat and
+        /// noncombat damage alike. The word is the whole difference between Enchanted Being and
+        /// Wall of Putrid Flesh, which otherwise print the same shield.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        combat_only: bool,
+        /// "… by enchanted creatures" (Enchanted Being, Wall of Putrid Flesh) / "… by Walls"
+        /// (Marble Priest): a gate on the damage's *source*, read as an ordinary permanent
+        /// filter from the shielded permanent's controller's perspective. A source that isn't a
+        /// permanent (a spell) never matches one — see [`SourceRelation`] for those.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        source_filter: Option<PermanentFilter>,
+        /// "… by creatures it's blocking" (Wall of Shadows, Wall of Vapor) / "… by spells that
+        /// target it" (Bronze Horse): a *relationship* between the damage's source and the
+        /// shielded permanent, which no [`PermanentFilter`] axis can express.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        source_relation: Option<SourceRelation>,
     },
 
     PreventDamageToSelfRemovingCounter,
@@ -766,4 +808,26 @@ pub enum CounterRecipients {
 pub enum CounterPlacer {
     You,
     Opponents,
+}
+
+/// How a prevention shield's *source* gate reads the shielded object rather than the source's own
+/// characteristics (CR 615) — the two Legends shields whose "by …" clause names a relationship
+/// instead of a class of permanents. A [`PermanentFilter`] can say "by Walls"; neither of these
+/// can be said that way, because both depend on the shielded object.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "card-dsl",
+    derive(serde::Deserialize),
+    serde(rename_all = "snake_case")
+)]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
+pub enum SourceRelation {
+    /// "by creatures it's blocking" (Wall of Shadows, Wall of Vapor): the shielded permanent is
+    /// blocking the damage's source. Read per damage source, not per combat — a creature can
+    /// block two attackers (CR 509.1), and the shield stands in front of each of them.
+    BlockedByThis,
+    /// "by spells that target it" (Bronze Horse) / "a spell or ability that targets that
+    /// creature" (Silhouette): the damage's source is a spell on the stack among whose chosen
+    /// targets the shielded permanent is.
+    SpellTargetingThis,
 }

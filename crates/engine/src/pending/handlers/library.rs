@@ -357,39 +357,40 @@ impl Game {
         Ok(events)
     }
 
-    /// Answer a [`PendingChoice::ChooseColor`] — either an as-enters choice (CR 614.12/700.9-style
-    /// — Flickering Ward: stores `color` on `source`'s indefinite [`Permanent::chosen_color`]) or
-    /// a resolution-time color-SET (CR 613.3c — Wild Mongrel: stores it on `source`'s
-    /// as an until-end-of-turn registered color SET instead, per the pause's `until_end_of_turn`
-    /// flag). Any of the five colors is a legal answer (no game-state legality to violate), so
-    /// `color` is taken as given. `_player` isn't needed beyond `submit`'s choice-gate actor check.
+    /// Answer a [`PendingChoice::ChooseColor`] — the pause's [`ChosenColorUse`] says which of the
+    /// three callers asked: an as-enters choice remembered on `source` (CR 614.12/700.9-style —
+    /// Flickering Ward's [`Permanent::chosen_color`]), or a CR 613.3c layer-5 color SET on
+    /// `source` with the duration the card printed (Wild Mongrel until end of turn, Alchor's Tomb
+    /// indefinitely). Any of the five colors is a legal answer (no game-state legality to
+    /// violate), so `color` is taken as given. `_player` isn't needed beyond `submit`'s
+    /// choice-gate actor check.
     pub(crate) fn choose_color(
         &mut self,
         _player: PlayerId,
         color: Color,
     ) -> Result<Vec<Event>, Reject> {
-        let Some(PendingChoice::ChooseColor {
-            source,
-            until_end_of_turn,
-            ..
-        }) = self.pending_choice.clone()
+        let Some(PendingChoice::ChooseColor { source, use_, .. }) = self.pending_choice.clone()
         else {
             return Err(Reject::IllegalChoice);
         };
         self.finish_answer();
 
         let mut events = Vec::new();
-        let event = if until_end_of_turn {
-            Event::ColorSet {
+        let event = match use_ {
+            ChosenColorUse::Remember => Event::ColorChosen {
+                object: source,
+                color,
+            },
+            ChosenColorUse::SetUntilEndOfTurn => Event::ColorSet {
                 object: source,
                 color,
                 until_end_of_turn: true,
-            }
-        } else {
-            Event::ColorChosen {
+            },
+            ChosenColorUse::SetIndefinitely => Event::ColorSet {
                 object: source,
                 color,
-            }
+                until_end_of_turn: false,
+            },
         };
         self.push_apply_effect_event(&mut events, event);
         Ok(events)

@@ -177,7 +177,7 @@ the record shows what unblocked it.
 - [x] **Aerathi Berserker** {2}{R}{R}{R} · Creature — Human Berserker — increment 1, 119
 - [ ] **Aisling Leprechaun** {G} · Creature — Faerie — increment 14
 - [ ] **Akron Legionnaire** {6}{W}{W} · Creature — Giant Soldier — increment 10
-- [ ] **Al-abara's Carpet** {5} · Artifact — increment 12
+- [x] **Al-abara's Carpet** {5} · Artifact — increment 12
 - [ ] **Alchor's Tomb** {4} · Artifact — increment 96
 - [x] **Angelic Voices** {2}{W}{W} · Enchantment — increment 13
 - [ ] **Angus Mackenzie** {G}{W}{U} · Legendary Creature — Human Cleric — increment 111
@@ -195,9 +195,9 @@ the record shows what unblocked it.
 - [ ] **Blazing Effigy** {1}{R} · Creature — Elemental — increment 19
 - [x] **Blood Lust** {1}{R} · Instant — increment 21
 - [x] **Blue Mana Battery** {4} · Artifact — increment 11
-- [ ] **Boris Devilboon** {3}{B}{R} · Legendary Creature — Zombie Wizard — increment 97
+- [x] **Boris Devilboon** {3}{B}{R} · Legendary Creature — Zombie Wizard — increment 97
 - [ ] **Brine Hag** {2}{U}{U} · Creature — Hag — increment 22
-- [ ] **Bronze Horse** {7} · Artifact Creature — Horse — increment 12
+- [x] **Bronze Horse** {7} · Artifact Creature — Horse — increment 12
 - [x] **Cathedral of Serra** — · Land — increment 3 (slices 1, 2, 3)
 - [ ] **Caverns of Despair** {2}{R}{R} · World Enchantment — increment 2, 23
 - [ ] **Chains of Mephistopheles** {1}{B} · Enchantment — increment 24
@@ -218,7 +218,7 @@ the record shows what unblocked it.
 - [x] **Elder Land Wurm** {4}{W}{W}{W} · Creature — Dragon Wurm — increment 5
 - [ ] **Elder Spawn** {4}{U}{U}{U} · Creature — Spawn — increment 29
 - [ ] **Elven Riders** {3}{G}{G} · Creature — Elf — increment 9
-- [ ] **Enchanted Being** {1}{W}{W} · Creature — Human — increment 12
+- [x] **Enchanted Being** {1}{W}{W} · Creature — Human — increment 12
 - [ ] **Enchantment Alteration** {U} · Instant — increment 30
 - [ ] **Energy Tap** {U} · Sorcery — increment 31
 - [ ] **Equinox** {W} · Enchantment — Aura — increment 32
@@ -244,7 +244,7 @@ the record shows what unblocked it.
 - [x] **Gosta Dirk** {3}{W}{W}{U}{U} · Legendary Creature — Human Warrior — increment 4
 - [ ] **Gravity Sphere** {2}{R} · World Enchantment — increment 2, 44
 - [x] **Great Wall** {2}{W} · Enchantment — increment 4
-- [ ] **Greater Realm of Preservation** {1}{W} · Enchantment — increment 12
+- [x] **Greater Realm of Preservation** {1}{W} · Enchantment — increment 12
 - [x] **Green Mana Battery** {4} · Artifact — increment 11
 - [ ] **Halfdane** {1}{W}{U}{B} · Legendary Creature — Shapeshifter — increment 22
 - [x] **Hammerheim** — · Legendary Land — increment 5
@@ -320,10 +320,10 @@ the record shows what unblocked it.
 - [x] **Seafarer's Quay** — · Land — increment 3 (slices 1, 2, 3, 4)
 - [ ] **Seeker** {2}{W}{W} · Enchantment — Aura — increment 9
 - [ ] **Sentinel** {4} · Artifact Creature — Shapeshifter — increment 8, 22
-- [ ] **Serpent Generator** {6} · Artifact — increment 97
+- [x] **Serpent Generator** {6} · Artifact — increment 97
 - [x] **Shelkin Brownie** {1}{G} · Creature — Ouphe — increment 3, 5
 - [ ] **Shimian Night Stalker** {3}{B}{B} · Creature — Nightstalker — increment 60
-- [ ] **Silhouette** {1}{U} · Instant — increment 12
+- [ ] **Silhouette** {1}{U} · Instant — increment 12, 130
 - [ ] **Spectral Cloak** {U}{U} · Enchantment — Aura — increment 117
 - [x] **Spirit Shackle** {B}{B} · Enchantment — Aura — increment 102
 - [ ] **Spiritual Sanctuary** {2}{W}{W} · Enchantment — increment 116
@@ -358,10 +358,10 @@ the record shows what unblocked it.
 - [ ] **Voodoo Doll** {6} · Artifact — increment 86
 - [ ] **Wall of Caltrops** {1}{W} · Creature — Wall — increment 49, 87
 - [ ] **Wall of Dust** {2}{R} · Creature — Wall — increment 42
-- [ ] **Wall of Putrid Flesh** {2}{B} · Creature — Wall — increment 12
+- [x] **Wall of Putrid Flesh** {2}{B} · Creature — Wall — increment 12
 - [ ] **Wall of Shadows** {1}{B}{B} · Creature — Wall — increment 12, 88
 - [ ] **Wall of Tombstones** {1}{B} · Creature — Wall — increment 22
-- [ ] **Wall of Vapor** {3}{U} · Creature — Wall — increment 12
+- [x] **Wall of Vapor** {3}{U} · Creature — Wall — increment 12
 - [ ] **Wall of Wonder** {2}{U}{U} · Creature — Wall — increment 89
 - [ ] **Whirling Dervish** {G}{G} · Creature — Human Monk — increment 90
 - [x] **White Mana Battery** {4} · Artifact — increment 11

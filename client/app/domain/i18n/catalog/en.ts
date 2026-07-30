@@ -574,6 +574,7 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     );
     return `Target creature loses ${lost}${bool(params, "until_end_of_turn") ? " until end of turn" : ""}`;
   },
+  "effect.pump_target_becomes_chosen_color": () => `Target becomes the color of your choice`,
   "effect.pump_target_becomes_color": (params) => `Target spell or permanent becomes ${param(params, "color")}`,
   "effect.pump_target_becomes_subtypes_while_source_remains": (params) =>
     `Target land becomes a ${humanize(param(params, "set_subtypes"))} until this permanent leaves the battlefield`,
@@ -605,6 +606,7 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     `Creatures can't attack you unless their controller pays {${param(params, "amount")}} for each creature they control that's attacking you`,
   "effect.static_base_power_toughness_from_amount": (params) =>
     `${definingPtLead(param(params, "when"))} power and toughness are each equal to ${param(params, "power")}`,
+  "effect.static_cant_attack_filter": (params) => `${humanize(param(params, "filter", "Creatures"))} can't attack`,
   "effect.static_cant_attack_if_cast_this_turn": literal(
     "Each opponent who cast a spell this turn can't attack with creatures",
   ),

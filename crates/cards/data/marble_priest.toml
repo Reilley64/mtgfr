@@ -1,0 +1,31 @@
+# All Walls able to block this creature do so.
+# Prevent all combat damage that would be dealt to this creature by Walls.
+name = "Marble Priest"
+otags = ["class-type-only", "damage-prevention", "damage-prevention-self", "hate-set-mechanic", "hate-typal-wall", "lure-limited", "type-addition-from-none"]
+sets = ["leg"]
+id = "96bcabee-e84e-409f-8439-80f5308d73e9"
+default_print = "459b71d7-34c1-43b9-93ff-364f95aa4789"
+oracle = "All Walls able to block this creature do so.\nPrevent all combat damage that would be dealt to this creature by Walls."
+approximates = "the first ability is unmodeled — a Wall able to block this creature is not forced to"
+subtypes = ["Cleric"]
+
+[cost]
+generic = 5
+
+[kind]
+type = "creature"
+power = 3
+toughness = 3
+also = ["artifact"]
+
+# Prevent all combat damage that would be dealt to this creature by Walls.
+[[abilities]]
+timing = "static"
+
+# Prevent all combat damage that would be dealt to this creature by Walls.
+[[abilities.effects]]
+type = "static"
+mode = "prevent_damage"
+to_self = true
+combat_only = true
+source_filter = { types = "creature", subtypes = ["Wall"] }

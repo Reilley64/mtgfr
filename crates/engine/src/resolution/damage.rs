@@ -162,7 +162,71 @@ impl Game {
         if shield.combat_only && !self.in_combat_damage_step() {
             return false;
         }
+        // "… by attacking creatures without flying" (Al-abara's Carpet) — the turn-scoped twin of
+        // a `StaticEffect::PreventDamage` source filter, read from the shielded side's own
+        // perspective. A non-permanent source (a spell) never matches one.
+        if let Some(filter) = shield.from_filter {
+            let you = match target {
+                Target::Player(player) => player,
+                Target::Object(object) => self.controller_of(object),
+            };
+            if !self.permanent_matches(&filter, source, you, target.object_id()) {
+                return false;
+            }
+        }
+        // "… a spell or ability that targets that creature" (Silhouette) — only a shield standing
+        // in front of a *permanent* can read a relationship to the source.
+        if let Some(relation) = shield.from_relation {
+            let Target::Object(object) = target else {
+                return false;
+            };
+            if !self.source_relates(relation, source, object) {
+                return false;
+            }
+        }
         self.color_matches(shield.from_color, source)
+    }
+
+    /// Whether the damage's `source` stands in the named relationship to the shielded permanent
+    /// `object` (CR 615) — the two "by …" clauses that read the shielded object rather than the
+    /// source's own characteristics. Shared by the permanent statics (Wall of Vapor, Bronze Horse)
+    /// and the turn-scoped shields (Silhouette), so both answer the same question the same way.
+    pub(crate) fn source_relates(
+        &self,
+        relation: SourceRelation,
+        source: ObjectId,
+        object: ObjectId,
+    ) -> bool {
+        match relation {
+            // "creatures it's blocking" — per damage source, not per combat: a creature blocking
+            // two attackers (CR 509.1) shields against each of them independently.
+            SourceRelation::BlockedByThis => self.combat.blocks.contains(&(object, source)),
+            // "spells that target it" — the source is still a spell on the stack while it
+            // resolves, so its chosen targets are readable here (CR 608.2). Both target clauses
+            // count: the shield asks whether the spell targets the creature at all.
+            SourceRelation::SpellTargetingThis => {
+                let Object::Spell(spell) = &self.objects[source as usize] else {
+                    return false;
+                };
+                let targeted =
+                    |list: &crate::TargetList| list.iter().any(|t| t == Target::Object(object));
+                targeted(&spell.targets) || targeted(&spell.targets_second)
+            }
+        }
+    }
+
+    /// Whether a permanent's own [`StaticEffect::PreventDamage`] shield prevents this whole hit
+    /// (CR 615) — Guard Gomazoa's "prevent all combat damage that would be dealt to" and the
+    /// Legends family that narrows it with a source gate. Read at
+    /// [`creature_damage_events_inner`](Self::creature_damage_events_inner), the one choke every
+    /// creature-damage path routes through, so combat, fight, burn and sweeps are all covered.
+    pub(crate) fn static_damage_prevented(&self, target: ObjectId, source: ObjectId) -> bool {
+        self.replacement_registry().damage_prevented_to_permanent(
+            self,
+            target,
+            source,
+            self.in_combat_damage_step(),
+        )
     }
 
     /// Whether damage being dealt right now is combat damage — read off the step rather than
@@ -215,6 +279,13 @@ impl Game {
         exile_instead_of_dying: bool,
         allow_redirect: bool,
     ) -> (Vec<Event>, i32) {
+        // Guard Gomazoa / Wall of Vapor (CR 615): the shielded permanent's own "prevent all
+        // damage that would be dealt to this creature by …" static eats the whole hit before any
+        // spendable shield pays for it. Silent, like the other whole-event shields — nothing in
+        // the pool reads a prevented total on the creature side.
+        if self.static_damage_prevented(object, source) {
+            return (Vec::new(), 0);
+        }
         // Rock Hydra's per-point shield (CR 615) is spent first and only covers as many points as
         // it has counters; whatever it can't pay for falls through to the ordinary shields below
         // and is dealt for real.

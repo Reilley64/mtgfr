@@ -38,7 +38,7 @@ This mirrors the DSL's top-level card shape with owned fields, then folds into t
 | `cumulative_upkeep` | CumulativeUpkeepCost \| null | no | - | Cumulative upkeep (CR 702.24) — `[cumulative_upkeep]` (`graveyard_cards = N`); absent for a card without cumulative upkeep. |
 | `cycling` | CostToml \| null | no | - | Cycling {N} (CR 702.29a) — `cycling = { generic = N }`; absent for a card with none. |
 | `cycling_sacrifice` | SacrificeCost | no | - | A sacrifice folded into the cycling cost (CR 702.29b — Edge of Autumn's "Cycling—Sacrifice a land"), same [`SacrificeCost`] table/shorthand shape as an activation sacrifice cost. Absent (`SacrificeCost::None`) for ordinary cycling. |
-| `default_print` | string | no | `` | Scryfall card UUID for the default Printing — required on top-level pool TOMLs. |
+| `default_print` | string | no | `` | Scryfall card UUID for the default Printing — required on top-level pool TOMLs. Token profiles (`data/tokens/`) may omit it (`""`) when the token predates printed token cards and has no Scryfall printing to key (fidelity increment #97) — an empty `default_print` already renders as the card back client-side, so this is the faithful "no printing" value rather than a gap. |
 | `delve` | boolean | no | `false` | Delve (CR 702.66) — `delve = true`; absent (`false`) for a card without delve. |
 | `demonstrate` | boolean | no | `false` | Demonstrate (CR 702.147) — `demonstrate = true`; absent (`false`) for a card without demonstrate. |
 | `devoid` | boolean | no | `false` | Devoid (CR 702.114a) — `devoid = true`; absent (`false`) for every ordinary card. |

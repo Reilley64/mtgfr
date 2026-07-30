@@ -423,11 +423,22 @@ impl Game {
                     also_types: TypeSet::NONE,
                 }]
             }
-            // "Target spell or permanent becomes black" (the lace cycle): a layer-5 SET with no
-            // printed duration, so it rides the object. `until_end_of_turn: false` — cleanup must
-            // not take it back. Nothing to do if the target already left the stack or the
-            // battlefield (CR 608.2b; `target_still_legal` normally fizzles this first).
-            PumpEffect::TargetBecomesColor { color, .. } => {
+            // "…becomes the color of your choice" is peeled to the color picker by `Game::run`
+            // before it ever reaches the minter (see `run_choose_pause`), so there is no color to
+            // set here.
+            PumpEffect::TargetBecomesColor { color: None, .. } => Vec::new(),
+            // "Target spell or permanent becomes black" (the lace cycle, no printed duration, so
+            // the SET rides the object) and "one or more target creatures become red until end of
+            // turn" (the Legends colour-wash cycle, swept at cleanup) — one layer-5 SET, told
+            // apart by the duration the card printed. A `color` of `None` ("of your choice",
+            // Alchor's Tomb) never reaches here: `Game::run` peels it to the color picker first.
+            // Nothing to do if the target already left the stack or the battlefield (CR 608.2b;
+            // `target_still_legal` normally fizzles this first).
+            PumpEffect::TargetBecomesColor {
+                color: Some(color),
+                until_end_of_turn,
+                ..
+            } => {
                 let object = expect_object_target(target, "becomes a color");
                 if !matches!(
                     self.objects[object as usize],
@@ -438,7 +449,7 @@ impl Game {
                 vec![Event::ColorSet {
                     object,
                     color,
-                    until_end_of_turn: false,
+                    until_end_of_turn,
                 }]
             }
             // "Target land becomes a Forest until this creature leaves the battlefield" (Gaea's

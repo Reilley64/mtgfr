@@ -948,6 +948,7 @@ Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
             | Effect::Static(StaticEffect::CantBeAttackedBy { .. })
             | Effect::Static(StaticEffect::MaySkipDrawForCantBeAttackedBy { .. })
             | Effect::Static(StaticEffect::CantBlockFilter { .. })
+            | Effect::Static(StaticEffect::CantAttackFilter { .. })
             | Effect::Static(StaticEffect::DoesntUntap { .. })
             | Effect::Static(StaticEffect::PlayersSkipUntapSteps)
             | Effect::Static(StaticEffect::PlayersPlayWithHandsRevealed)
@@ -1073,7 +1074,7 @@ Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
             | Effect::Static(StaticEffect::PreventDamageToSelfRemovingCounterPerPoint)
             // Bloatfly Swarm's rad-counter rider is also self-only — no chosen target.
             | Effect::Static(StaticEffect::PreventDamageToSelfRemovingCountersGivingRad)
-            | Effect::Static(StaticEffect::PreventCombatDamage { .. })
+            | Effect::Static(StaticEffect::PreventDamage { .. })
             // Redoubled Stormsinger enumerates matching tokens internally — no chosen target.
             | Effect::Pump(PumpEffect::SetBasePtCreaturesYouControlUntilEndOfTurn { .. })
             // A self-animation always affects the ability's own source (Restless Spire), no target.
@@ -1144,7 +1145,8 @@ Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
             | Effect::Control(ControlEffect::UntapTarget { count, .. })
             | Effect::Exile(ExileEffect::Target { count, .. })
             | Effect::Destroy(DestroyEffect::Target { count, .. })
-            | Effect::Dig(DigEffect::ExileTargetGraveyardSpellCastFree { count, .. }) => count,
+            | Effect::Dig(DigEffect::ExileTargetGraveyardSpellCastFree { count, .. })
+            | Effect::Pump(PumpEffect::TargetBecomesColor { count, .. }) => count,
             // "return up to one target Aura or Equipment card" (CR 601.2c — a declinable target).
             Effect::Zone(ZoneEffect::ReturnFromGraveyardAttachedToToken { .. }) => TargetCount {
                 min: 0,

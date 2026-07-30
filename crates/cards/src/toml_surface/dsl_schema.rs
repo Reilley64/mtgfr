@@ -331,6 +331,7 @@ struct PermanentFilterTableSchema {
     creature_or_vehicle: Option<bool>,
     snow: Option<bool>,
     exclude_subtypes: Option<Vec<String>>,
+    exclude_name: Option<String>,
 }
 
 impl JsonSchema for PermanentFilter {

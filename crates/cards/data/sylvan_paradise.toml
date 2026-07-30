@@ -5,9 +5,25 @@ sets = ["leg"]
 id = "91693cad-3233-440a-b2f0-fe4d8b17ed42"
 default_print = "f323c3bb-cece-4035-b1a7-c4817cf7a08c"
 oracle = "One or more target creatures become green until end of turn."
+# ponytail: the engine's target list is a fixed six slots (MAX_TARGETS), so "one or more" stops there; widen
+# MAX_TARGETS if a card ever needs a seventh.
+approximates = "\"one or more target creatures\" is capped at six targets by the engine's fixed-width target list"
 
 [cost]
 green = 1
 
 [kind]
 type = "instant"
+
+# One or more target creatures become green until end of turn.
+[[abilities]]
+timing = "spell"
+
+# One or more target creatures become green until end of turn.
+[[abilities.effects]]
+type = "pump"
+mode = "target_becomes_color"
+color = "green"
+target = "creature"
+count = { min = 1, max = 6 }
+until_end_of_turn = true

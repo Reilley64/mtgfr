@@ -61,7 +61,7 @@ pub(crate) struct CombatExtras {
     /// turn, so a combat-only shield cleared at Untap is behavior-exact (same turn-boundary idiom
     /// `must_attack`/`pending_next_cast` use). Combat-damage-to-a-*player* only — the N-point
     /// (Inkshield) shape stays this-turn/per-player; the permanent per-source shape (Guard
-    /// Gomazoa, Fog Bank, #220) is a separate static, [`Effect::Static(StaticEffect::PreventCombatDamage)`],
+    /// Gomazoa, Fog Bank, #220) is a separate static, [`Effect::Static(StaticEffect::PreventDamage)`],
     /// scanned live off the permanent rather than stored here.
     pub combat_damage_prevention_shields: Vec<(PlayerId, CardDef)>,
     /// "Prevent all combat damage that would be dealt this turn" (Moment's Peace, #150 — the
@@ -580,6 +580,18 @@ pub struct PreventionShield {
     /// "Would deal *combat* damage" (Forcefield): the shield only stands in front of damage dealt
     /// in a combat damage step. `false` — every other shield — covers combat and noncombat alike.
     pub combat_only: bool,
+    /// "… by attacking creatures without flying" (Al-abara's Carpet): a gate on the damage's
+    /// *source*, read as an ordinary permanent filter from the shielded side's perspective. A
+    /// source that isn't a permanent never matches one. `None` gates nothing.
+    pub from_filter: Option<crate::PermanentFilter>,
+    /// "… a spell or ability that targets that creature" (Silhouette): a relationship between the
+    /// damage's source and the shielded *permanent*, which no filter axis can express. `None` on
+    /// every other shield.
+    pub from_relation: Option<crate::SourceRelation>,
+    /// "Prevent **all** damage … this turn" (Al-abara's Carpet, Silhouette) rather than "the next
+    /// N": CR 615.6 — the shield is never used up, so it stands in front of every qualifying hit
+    /// until it expires at end of turn. `false` shields are consumed by what they prevent.
+    pub persistent: bool,
     /// Reverse Damage's "you gain life equal to the damage prevented this way" — paid to the
     /// shield's own controller as the spend is minted.
     pub gain_life: bool,

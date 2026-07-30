@@ -1,0 +1,33 @@
+# Defender (This creature can't attack.)
+# Prevent all damage that would be dealt to this creature by creatures it's blocking.
+# This creature can't be the target of spells that can target only Walls or of abilities that can
+# target only Walls.
+name = "Wall of Shadows"
+otags = ["damage-prevention", "damage-prevention-self", "drawback", "pseudo-shroud", "synergy-blocker-self"]
+sets = ["bchr", "chr", "leg"]
+id = "0e6ff89e-9ae7-4dc3-98b7-05401c5df266"
+default_print = "69c6e076-d7bf-435b-ba79-84aa9f073130"
+oracle = "Defender (This creature can't attack.)\nPrevent all damage that would be dealt to this creature by creatures it's blocking.\nThis creature can't be the target of spells that can target only Walls or of abilities that can target only Walls."
+approximates = "the third ability is unmodeled — a spell or ability that can target only Walls may still target this creature"
+subtypes = ["Wall"]
+keywords = ["defender"]
+
+[cost]
+generic = 1
+black = 2
+
+[kind]
+type = "creature"
+power = 0
+toughness = 1
+
+# Prevent all damage that would be dealt to this creature by creatures it's blocking.
+[[abilities]]
+timing = "static"
+
+# Prevent all damage that would be dealt to this creature by creatures it's blocking.
+[[abilities.effects]]
+type = "static"
+mode = "prevent_damage"
+to_self = true
+source_relation = "blocked_by_this"

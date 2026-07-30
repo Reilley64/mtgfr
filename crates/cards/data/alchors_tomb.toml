@@ -12,3 +12,18 @@ generic = 4
 
 [kind]
 type = "artifact"
+
+# {2}, {T}: Target permanent you control becomes the color of your choice. (This effect lasts
+# indefinitely.)
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+[abilities.activation_cost]
+generic = 2
+
+# Target permanent you control becomes the color of your choice. (This effect lasts indefinitely.)
+[[abilities.effects]]
+type = "pump"
+mode = "target_becomes_color"
+target = { permanent = { controller = "you" } }

@@ -1326,7 +1326,7 @@
         },
         "default_print": {
           "default": "",
-          "description": "Scryfall card UUID for the default Printing — required on top-level pool TOMLs.",
+          "description": "Scryfall card UUID for the default Printing — required on top-level pool TOMLs. Token profiles (`data/tokens/`) may omit it (`\"\"`) when the token predates printed token cards and has no Scryfall printing to key (fidelity increment #97) — an empty `default_print` already renders as the card back client-side, so this is the faithful \"no printing\" value rather than a gap.",
           "type": "string"
         },
         "delve": {
@@ -1742,6 +1742,27 @@
           },
           "required": [
             "not_color"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Has any one of the named colors (CR 105.2a — Greater Realm of Preservation's \"a black or **red** source\"). The union the five single-color variants can't spell; an empty list matches nothing.",
+          "properties": {
+            "any_of": {
+              "properties": {
+                "colors": {
+                  "items": {
+                    "$ref": "#/$defs/Color"
+                  },
+                  "type": "array"
+                }
+              },
+              "type": "object"
+            }
+          },
+          "required": [
+            "any_of"
           ],
           "type": "object"
         }
@@ -5290,10 +5311,20 @@
               "type": "object"
             },
             {
-              "description": "\"Target spell or permanent becomes black.\" (Deathlace and the rest of the lace cycle) — a CR 613.3c layer-5 color SET with no duration printed at all, so it lasts as long as the object does. `color` *replaces* the object's colors rather than unioning with them, which is why a laced spell stops being countered by \"counter target blue spell\". Targets a spell on the stack or a permanent, and registers the layer-5 SET / writes [`Spell::set_color`] through [`Event::ColorSet`]. The reminder text (\"its mana symbols remain unchanged\") needs no modelling — colors are read from `colors_of`, never re-derived from the pips.",
+              "description": "\"Target spell or permanent becomes black.\" (Deathlace and the rest of the lace cycle) — a CR 613.3c layer-5 color SET with no duration printed at all, so it lasts as long as the object does. `color` *replaces* the object's colors rather than unioning with them, which is why a laced spell stops being countered by \"counter target blue spell\". Targets a spell on the stack or a permanent, and registers the layer-5 SET / writes [`Spell::set_color`] through [`Event::ColorSet`]. The reminder text (\"its mana symbols remain unchanged\") needs no modelling — colors are read from `colors_of`, never re-derived from the pips.\n\nThe Legends colour-wash cycle (Dwarven Song, Heaven's Gate, Sea Kings' Blessing, Sylvan Paradise, Touch of Darkness) is the same SET with the two other axes turned on: `count` carries \"one or more target creatures\" (CR 601.2c) and `until_end_of_turn` its printed duration. Alchor's Tomb turns on the third — a `color` of `None` is \"the color of your choice\", picked by the ability's controller at resolution (CR 609.3) through the shared `PendingChoice::ChooseColor` picker rather than authored here. Colorless is never a candidate: CR 105.1 says colorless is not a color.",
               "properties": {
                 "color": {
-                  "$ref": "#/$defs/Color"
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/Color"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "count": {
+                  "$ref": "#/$defs/TargetCount"
                 },
                 "mode": {
                   "enum": [
@@ -5303,10 +5334,13 @@
                 },
                 "target": {
                   "$ref": "#/$defs/TargetSpec"
+                },
+                "until_end_of_turn": {
+                  "default": false,
+                  "type": "boolean"
                 }
               },
               "required": [
-                "color",
                 "mode",
                 "target"
               ],
@@ -8352,6 +8386,25 @@
               "type": "object"
             },
             {
+              "description": "\"Non-Eye creatures you control can't attack\" (Evil Eye of Orms-by-Gore) / \"Except for creatures named Akron Legionnaire and artifact creatures, creatures you control can't attack\" (Akron Legionnaire): an attack ban on every creature matching `filter`, wherever that creature is (CR 508.1a). The mirror of [`CantBlockFilter`](Self::CantBlockFilter) — like it, the whole battlefield is scanned for the static and `filter` is read from the static's *own* controller's perspective, so `controller = \"you\"` scopes the ban to the source's controller and `controller = \"any\"` makes it board-wide (Moat).\n\nAn \"except for X\" clause is authored inverted, as the *banned* set — Akron Legionnaire's exemptions become `exclude = \"artifact\"` plus `exclude_name = \"Akron Legionnaire\"` — the same convention [`CantBeBlockedBy`](Self::CantBeBlockedBy) uses. Folded into [`Game::can_attack`](crate::Game), so a banned creature is not \"able\" to attack and goad cannot demand an attack the card forbids (CR 509.1a).",
+              "properties": {
+                "filter": {
+                  "$ref": "#/$defs/PermanentFilter"
+                },
+                "mode": {
+                  "enum": [
+                    "cant_attack_filter"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "filter",
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
               "description": "\"Each opponent who cast a spell this turn can't attack with creatures\" (Angelic Arbiter): a blanket per-player attack ban, unlike [`StaticEffect::CantBeAttackedBy`]'s defender-scoped filter — the gated player can't declare *any* attacker, not just ones aimed at a specific defender. Checked against `Player::spells_cast_this_turn` in `Game::declare_attackers`, and only against a static controlled by someone other than the declaring player (CR: \"opponent\").",
               "properties": {
                 "mode": {
@@ -9211,16 +9264,44 @@
               "type": "object"
             },
             {
+              "description": "A permanent's own printed prevention shield (CR 615): \"Prevent all damage that would be dealt to this creature by …\". Applies as the damage would be dealt and never uses the stack, so it is read at the damage chokes rather than placed as a triggered ability.\n\n`to_self` shields damage dealt *to* the permanent (Guard Gomazoa, every Wall in this family); `by_self` shields damage it deals to others (Fog Bank's \"and dealt by\"). The three gates below narrow *which* damage — an unset gate imposes no restriction, which is the unqualified \"prevent all combat damage\" both 2ed cards print.",
               "properties": {
                 "by_self": {
                   "default": false,
                   "type": "boolean"
                 },
+                "combat_only": {
+                  "default": false,
+                  "description": "\"Prevent all **combat** damage\" (Fog Bank, Guard Gomazoa, Enchanted Being, Marble Priest). `false` — Wall of Vapor's plain \"prevent all damage\" — covers combat and noncombat damage alike. The word is the whole difference between Enchanted Being and Wall of Putrid Flesh, which otherwise print the same shield.",
+                  "type": "boolean"
+                },
                 "mode": {
                   "enum": [
-                    "prevent_combat_damage"
+                    "prevent_damage"
                   ],
                   "type": "string"
+                },
+                "source_filter": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/PermanentFilter"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "\"… by enchanted creatures\" (Enchanted Being, Wall of Putrid Flesh) / \"… by Walls\" (Marble Priest): a gate on the damage's *source*, read as an ordinary permanent filter from the shielded permanent's controller's perspective. A source that isn't a permanent (a spell) never matches one — see [`SourceRelation`] for those."
+                },
+                "source_relation": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/SourceRelation"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "\"… by creatures it's blocking\" (Wall of Shadows, Wall of Vapor) / \"… by spells that target it\" (Bronze Horse): a *relationship* between the damage's source and the shielded permanent, which no [`PermanentFilter`] axis can express."
                 },
                 "to_self": {
                   "default": false,
@@ -9859,6 +9940,11 @@
                   ],
                   "description": "\"Prevent all but 1 of that damage\" (Forcefield, CR 615.4) — the points that get *through*, rather than the points stopped. Set it instead of `amount`, not alongside: a keep-shield is spent outright by the hit it stood in front of."
                 },
+                "all_damage": {
+                  "default": false,
+                  "description": "\"Prevent **all** damage … this turn\" (Al-abara's Carpet, Silhouette) rather than \"the next …\": CR 615.6 — this shield is never used up, so it stands in front of every qualifying hit until it expires at end of turn. `false` (every other pool shield) is consumed by what it prevents.",
+                  "type": "boolean"
+                },
                 "amount": {
                   "anyOf": [
                     {
@@ -9881,6 +9967,28 @@
                     }
                   ],
                   "description": "\"a **black** source of your choice\" (CR 105.2a) — only damage from a source of this color is prevented. [`ColorFilter::Any`] (the default) is the plain uncolored shield.\n\nponytail: the color, but not the *choice*. A Circle's source is picked when the ability resolves (CR 609.7), which lets its controller hold the shield for the second of two black hits; this arms against whichever black source strikes first. Identical in the ordinary line — the Circle is activated in response to the damage — and the upgrade path is `PendingChoice::ChooseDamageSource`, offering every battlefield and stack object of the color."
+                },
+                "from_filter": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/PermanentFilter"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "\"… by **attacking creatures without flying**\" (Al-abara's Carpet) — a gate on the damage's *source*, the turn-scoped twin of [`StaticEffect::PreventDamage`](crate::StaticEffect::PreventDamage)'s `source_filter`. A source that isn't a permanent never matches one."
+                },
+                "from_relation": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/SourceRelation"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "\"… a spell or ability that **targets that creature**\" (Silhouette) — the same source/recipient relationship [`StaticEffect::PreventDamage`](crate::StaticEffect::PreventDamage)'s `source_relation` reads, on a turn-scoped shield instead of a permanent's static."
                 },
                 "gain_life": {
                   "default": false,
@@ -11210,6 +11318,12 @@
             }
           ]
         },
+        "exclude_name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "exclude_subtypes": {
           "items": {
             "type": "string"
@@ -11769,6 +11883,25 @@
           "description": "Into exile (Trench Gorger: \"exile them\"), routed through the same [`Event::MovedToExile`] choke a graveyard-to-exile move uses.",
           "enum": [
             "exile"
+          ],
+          "type": "string"
+        }
+      ]
+    },
+    "SourceRelation": {
+      "description": "How a prevention shield's *source* gate reads the shielded object rather than the source's own characteristics (CR 615) — the two Legends shields whose \"by …\" clause names a relationship instead of a class of permanents. A [`PermanentFilter`] can say \"by Walls\"; neither of these can be said that way, because both depend on the shielded object.",
+      "oneOf": [
+        {
+          "description": "\"by creatures it's blocking\" (Wall of Shadows, Wall of Vapor): the shielded permanent is blocking the damage's source. Read per damage source, not per combat — a creature can block two attackers (CR 509.1), and the shield stands in front of each of them.",
+          "enum": [
+            "blocked_by_this"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "\"by spells that target it\" (Bronze Horse) / \"a spell or ability that targets that creature\" (Silhouette): the damage's source is a spell on the stack among whose chosen targets the shielded permanent is.",
+          "enum": [
+            "spell_targeting_this"
           ],
           "type": "string"
         }
@@ -12754,7 +12887,7 @@
     },
     "default_print": {
       "default": "",
-      "description": "Scryfall card UUID for the default Printing — required on top-level pool TOMLs.",
+      "description": "Scryfall card UUID for the default Printing — required on top-level pool TOMLs. Token profiles (`data/tokens/`) may omit it (`\"\"`) when the token predates printed token cards and has no Scryfall printing to key (fidelity increment #97) — an empty `default_print` already renders as the card back client-side, so this is the faithful \"no printing\" value rather than a gap.",
       "type": "string"
     },
     "delve": {

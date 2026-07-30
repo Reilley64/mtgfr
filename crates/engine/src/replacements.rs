@@ -41,10 +41,13 @@ enum ReplacementEffect {
         /// prevent the whole event however big it is.
         per_point: bool,
     },
-    PreventCombatDamage {
+    PreventDamage {
         object: ObjectId,
         to_self: bool,
         by_self: bool,
+        combat_only: bool,
+        source_filter: Option<PermanentFilter>,
+        source_relation: Option<SourceRelation>,
     },
     PreventNoncombatDamageToOtherCreaturesYouControl {
         source: ObjectId,
@@ -96,6 +99,19 @@ impl ReplacementRegistry {
                 if ability.timing != Timing::Static {
                     continue;
                 }
+                // "As long as you control another creature, …" (Bronze Horse) — a static ability's
+                // `condition` reads as its CR 613 "as long as" gate, re-checked every time the
+                // registry is built, so the shield turns off the moment the condition stops
+                // holding. `None` on every other replacement static here.
+                if let Some(condition) = ability.condition
+                    && !game.ability_condition_holds(
+                        condition,
+                        source,
+                        TriggerContext::of(controller),
+                    )
+                {
+                    continue;
+                }
                 match ability.effect {
                     Effect::Static(StaticEffect::PreventDamageToSelfRemovingCounter) => {
                         effects.push(ReplacementEffect::PreventDamageToSelfRemovingCounter {
@@ -118,11 +134,20 @@ impl ReplacementRegistry {
                             per_point: true,
                         });
                     }
-                    Effect::Static(StaticEffect::PreventCombatDamage { to_self, by_self }) => {
-                        effects.push(ReplacementEffect::PreventCombatDamage {
+                    Effect::Static(StaticEffect::PreventDamage {
+                        to_self,
+                        by_self,
+                        combat_only,
+                        source_filter,
+                        source_relation,
+                    }) => {
+                        effects.push(ReplacementEffect::PreventDamage {
                             object: source,
                             to_self,
                             by_self,
+                            combat_only,
+                            source_filter,
+                            source_relation,
                         });
                     }
                     Effect::Static(
@@ -270,20 +295,45 @@ impl ReplacementRegistry {
         })
     }
 
-    pub(crate) fn combat_damage_prevented_to_creature(&self, target: ObjectId) -> bool {
-        self.effects.iter().any(|effect| match effect {
-            ReplacementEffect::PreventCombatDamage {
+    /// Whether a permanent's own [`StaticEffect::PreventDamage`] shield stands between `source`
+    /// and `target` right now (CR 615). `combat` says whether the damage being dealt is combat
+    /// damage, which is the only thing a `combat_only` shield stops.
+    pub(crate) fn damage_prevented_to_permanent(
+        &self,
+        game: &Game,
+        target: ObjectId,
+        source: ObjectId,
+        combat: bool,
+    ) -> bool {
+        self.effects.iter().any(|effect| {
+            let ReplacementEffect::PreventDamage {
                 object,
                 to_self: true,
+                combat_only,
+                source_filter,
+                source_relation,
                 ..
-            } => *object == target,
-            _ => false,
+            } = effect
+            else {
+                return false;
+            };
+            if *object != target || (*combat_only && !combat) {
+                return false;
+            }
+            // "… by enchanted creatures" / "… by Walls": read from the shielded permanent's own
+            // controller's perspective, with the shield's permanent as the filter's source.
+            if let Some(filter) = source_filter
+                && !game.permanent_matches(filter, source, game.controller_of(target), Some(target))
+            {
+                return false;
+            }
+            source_relation.is_none_or(|relation| game.source_relates(relation, source, target))
         })
     }
 
     pub(crate) fn combat_damage_prevented_by_source(&self, source: ObjectId) -> bool {
         self.effects.iter().any(|effect| match effect {
-            ReplacementEffect::PreventCombatDamage {
+            ReplacementEffect::PreventDamage {
                 object,
                 by_self: true,
                 ..

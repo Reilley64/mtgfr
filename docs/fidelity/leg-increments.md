@@ -46,7 +46,7 @@ Everything else held.
 
 ---
 
-### 1. `rampage-n` — 9 cards, M
+### 1. `rampage-n` — 9 cards, M — **LANDED** (Gabriel Angelfire waits on #39, not on rampage)
 Depends on: nothing.
 Rampage N (CR 702.23) is a triggered ability that fires on *becoming blocked* and scales with the
 number of blockers beyond the first. The engine has a `blocks_or_becomes_blocked_by` trigger but
@@ -68,7 +68,7 @@ cleared that by moving the division to the combat damage step (CR 510.1a), where
 what gets divided; all 8 dropped the `approximates` they carried against it. Gabriel Angelfire, the
 9th card, stays blocked on #39.
 
-### 2. `world-supertype` — 11 cards, M
+### 2. `world-supertype` — 11 cards, M — **LANDED** (six World cards wait on their other increments, not on the supertype)
 Depends on: nothing.
 CR 704.5k: if two or more permanents have the World supertype, all but the most recently
 gained one are put into their owners' graveyards as a state-based action. The intake sketch had
@@ -169,7 +169,7 @@ cards, Shelkin Brownie and Tolaria, strip "bands with other" and landed alongsid
 in the same wave, so all 7 are scripted. The wire/client surface for `DeclareAttackersInBands`
 remains **#121**.
 
-### 4. `landwalk-negation` — 8 cards, M
+### 4. `landwalk-negation` — 8 cards, M — **LANDED**
 Depends on: nothing.
 "Creatures with <type>walk can be blocked as though they didn't have <type>walk" — eight cards,
 one per basic type plus two legendary creatures carrying it as a static. The engine models
@@ -218,7 +218,7 @@ Elder Land Wurm needed `Trigger::Blocks` (`timing = "blocks"`) — the blocker-o
 Tolaria needed `Condition::DuringUpkeep` (`type = "during_upkeep"`), the seat-blind sibling of
 `DuringYourUpkeep`, since the printed line says "any upkeep step".
 
-### 6. `legendary-filter-axis` — 3 cards, S
+### 6. `legendary-filter-axis` — 3 cards, S — **LANDED** (Livonya Silone waits on #7)
 Depends on: nothing.
 `PermanentFilter` has `nonlegendary` but no positive `legendary`. Karakas ("{T}: Add {W}. / {T}:
 Return target legendary creature to its owner's hand."), Arena of the Ancients ("Legendary
@@ -226,12 +226,12 @@ creatures don't untap during their controllers' untap steps. / When this artifac
 legendary creatures."), Willow Satyr ("You may choose not to untap this creature during your untap
 step. / {T}: Gain control of target legendary creature for as long as you control this creature and
 this creature remains tapped."), and the four bands-with-other lands (#3) all want the positive
-form. *Sketch:* add `legendary: bool` alongside `nonlegendary` in
-`crates/cards/src/types/filter.rs` and match it in `Game::permanent_matches`. Arena's enters
-trigger also needs `ControlEffect::TapAll` to honor its filter's `controller` axis instead of
-hardwiring "you control", so a card that says "all" reaches across the table; Willow Satyr is
+form. *Landed:* `legendary: bool` alongside `nonlegendary` in
+`crates/cards/src/types/filter.rs`, matched in `Game::permanent_matches`. Arena's enters
+trigger also took `ControlEffect::TapAll` honoring its filter's `controller` axis instead of
+hardwiring "you control", so a card that says "all" reaches across the table; Willow Satyr was
 otherwise Rubinia Soulsinger's shape (`may_choose_not_to_untap` + `gain_control_while`), which
-already lands. Smallest increment in the set; unblocks four others.
+already landed. Smallest increment in the set; unblocked four others, and absorbed #17.
 
 ### 7. `legendary-landwalk` — 1 card, S
 Depends on: #6.
@@ -266,25 +266,40 @@ target cards from an opponent's graveyard to their hand. Destroy target attackin
 plain `attacking`, no union. The stale blocking-axis note is gone; the card's real defect — a body
 that models invented text — is now #120.
 
-### 9. `block-restriction-by-filter` — 3 cards, M
+### 9. `block-restriction-by-filter` — 3 cards, M — **LANDED** (wave 7; card authoring only, no engine change)
 Depends on: nothing.
 "Can't be blocked except by Walls and/or creatures with flying" (Elven Riders), "except by Walls"
 (Evil Eye of Orms-by-Gore), "except by artifact creatures and/or white creatures" (Seeker).
-The engine's evasion checks are hard-coded per keyword. *Sketch:* a
-`CantBeBlockedExcept { filter: PermanentFilter }` continuous effect consulted in block legality;
-"and/or" is a filter union, so the filter type needs an `any_of` list. Elder Spawn's negative form
-("can't be blocked by red creatures", #29) shares this plumbing inverted.
+The sketch was wrong on both counts. `StaticEffect::CantBeBlockedBy { filter }` already existed
+(Juggernaut) and is already read by `Game::can_block`, and `GrantToAttached`'s
+`cant_be_blocked_by` already carries the Aura form (Invisibility) — so Seeker needed no new
+effect either. No filter union was needed: an "except by A and/or B" clause inverts to a *single*
+banned set that must miss both exceptions at once, which the existing narrow axes spell —
+`exclude_subtypes = ["Wall"]` (Evil Eye), `+ without_flying = true` (Elven Riders),
+`exclude = "artifact", not_color = "white"` (Seeker). Elder Spawn's negative form (#29) is the
+same effect authored the printed way round.
 
-### 10. `attack-ban-by-filter` — 2 cards, M
+### 10. `attack-ban-by-filter` — 2 cards, M — **LANDED** (wave 7)
 Depends on: nothing.
 Akron Legionnaire and Evil Eye of Orms-by-Gore both ban *their own controller's* other creatures
-from attacking, with an exclusion filter ("except creatures named Akron Legionnaire and artifact
-creatures" / "Non-Eye creatures you control"). *Sketch:* a `CantAttack { filter }` continuous
-effect checked at attack declaration. The filter is evaluated per candidate attacker, so the
-name/subtype exclusions ride the existing filter axes; the only new part is the declaration-time
-hook, which the attack-requirement work (#56) also wants.
+from attacking, with an exclusion filter ("Except for creatures named Akron Legionnaire and
+artifact creatures, creatures you control can't attack" / "Non-Eye creatures you control can't
+attack"). Landed as `StaticEffect::CantAttackFilter { filter }`, board-scanned by a new
+`Game::cant_attack_filter` modeled on the existing `Game::cant_block_filter` — each static's
+filter is matched from *its own* controller's perspective, so `controller = "you"` scopes the ban
+to the source's controller. The check is folded into `Game::can_attack` rather than only into
+`Game::declare_attackers`, which gets declaration rejection and goad's "if able" (CR 509.1a) from
+one line: a banned creature is never *able*, so a requirement can't demand it.
 
-### 11. `mana-battery-counters` — 5 cards, M
+The name exclusion did **not** ride an existing axis — `PermanentFilter` had only a positive
+`name`. Added `exclude_name: Option<&'static str>`. Deliberately name-matching, not
+identity-matching (`other = true` would exempt only the source, leaving a *second* Akron
+Legionnaire banned, which contradicts the printed plural).
+
+`CantAttackFilter` also closes #107 (Moat) with no further engine work — `controller = "any",
+without_flying = true` is the board-wide form.
+
+### 11. `mana-battery-counters` — 5 cards, M — **LANDED** (pure card authoring; no engine change was needed)
 Depends on: nothing.
 The five mana batteries share one shape: `{2}, {T}: Put a charge counter on this artifact.`, then
 `{T}, Remove any number of charge counters from this artifact: Add {B}, then add an additional {B}
@@ -304,7 +319,7 @@ pending choice**: the removal count rides on `Intent::ActivateAbility`'s `x`, so
 the intent log and replay-deterministic by construction rather than by a re-derivation the submit
 path would have to pause for. Five cards, all faithful, pure card authoring.
 
-### 12. `filtered-damage-prevention` — 9 cards, L
+### 12. `filtered-damage-prevention` — 9 cards, L — **LANDED** (wave 7; Silhouette's cause tracking split to #130)
 Depends on: the 2ed prevention-shield increment (#4 there).
 2ed's shields prevent the next N damage from a source or all damage to a permanent. Legends adds
 a **filter on the damage's source** and, in two cases, on the *relationship* between source and
@@ -313,11 +328,32 @@ recipient: by attacking creatures without flying (Al-abara's Carpet), by spells 
 Priest), by creatures it's blocking (Wall of Shadows, Wall of Vapor), by a black or red source of
 your choice (Greater Realm of Preservation), and by anything a targeting spell or ability causes
 to damage the creature (Silhouette).
-*Sketch:* extend the existing shield with `source_filter: Option<PermanentFilter>` plus a small
-`SourceRelation` enum for the two relational cases (`BlockedByThis`, `EnchantedByAnything`).
-Silhouette is the odd one — it filters on *why* the damage happened (a targeting spell/ability),
-which means the damage event needs to carry its cause. Land that last, or approximate it and say
-so.
+
+Four premises in the intake sketch were wrong, corrected here. The nine cards do **not** share one
+shield: six of them are a *permanent's own printed static* shielding itself, which is
+`StaticEffect::PreventDamage` read live off the battlefield, while three (Al-abara's Carpet,
+Greater Realm of Preservation, Silhouette) are turn-scoped `PreventionShield` entries an ability
+puts up — two different existing mechanisms, not one. The split is **not** combat-vs-noncombat
+either: Wall of Vapor, Wall of Shadows, Wall of Putrid Flesh and Bronze Horse prevent *all*
+damage, only Enchanted Being and Marble Priest say "combat". `EnchantedByAnything` isn't a
+relation at all — "by enchanted creatures" is an ordinary `PermanentFilter` axis (`enchanted`)
+that already existed; the two real relations are "creatures it's blocking" and "spells that target
+it". And Bronze Horse carries an "as long as you control another creature" gate the sketch didn't
+mention, plus a *spell* source, which no `PermanentFilter` can match.
+*Landed:* `StaticEffect::PreventCombatDamage` renamed to `PreventDamage` (its name would otherwise
+have lied about four of these cards) and widened with `combat_only`, `source_filter:
+Option<PermanentFilter>` and `source_relation: Option<SourceRelation>`; `SourceRelation` is
+`BlockedByThis | SpellTargetingThis`. The "dealt to" half moved out of `combat.rs` and into
+`Game::creature_damage_events_inner` — the one choke every creature-damage path routes through —
+so combat, fight, burn and sweeps are all covered by construction and the two combat call sites
+shrank to the "dealt by" half. Bronze Horse's "as long as" gate reuses the existing (previously
+unread) `Ability::condition` on a `Timing::Static` ability, re-checked every time
+`ReplacementRegistry` is built, which is CR 613's continuous re-check. The three turn-scoped cards
+extend `state::PreventionShield` with the same two gates (`from_filter`, `from_relation`) plus
+`persistent` for CR 615.6's "prevent all damage … this turn" shields, which are not used up by
+what they prevent; `ColorFilter::AnyOf` is Greater Realm's "a black or red source". Six cards
+faithful; Marble Priest and Wall of Shadows keep an `approximates` naming only their *other*
+ability (#56 and #88 respectively), and Silhouette keeps one for the cause tracking split to #130.
 
 ### 13. `board-state-conditional-anthem` — 4 cards, M — **LANDED** (wave 5; display residuals split to #125)
 Depends on: nothing.
@@ -401,7 +437,7 @@ paths, snapshotted at end of turn as "last turn's" values, and read by the attac
 legality check. Their turn is "last turn" relative to the attack, which for a 4-player game means
 the most recent turn *that player* took, not the previous turn in sequence.
 
-### 17. `dont-untap-by-filter` — 1 card, S — absorbed into #6
+### 17. `dont-untap-by-filter` — 1 card, S — **LANDED** (absorbed into #6)
 Depends on: #6.
 Arena of the Ancients: "Legendary creatures don't untap during their controllers' untap steps",
 plus an ETB tap-all. **Premise was wrong:** the engine already has the filtered global —
@@ -531,7 +567,7 @@ the two counter kinds. Cocoon's "If you can't, sacrifice it, put a +1/+1 counter
 creature gains flying" is an if-you-can't fallback on the remove-a-counter effect, which the
 existing remove-counter path does not report.
 
-### 27. `game-is-a-draw` — 1 card, S
+### 27. `game-is-a-draw` — 1 card, S — **LANDED**
 Depends on: nothing.
 Divine Intervention. The engine has win/lose outcomes but no draw. *Sketch:* a `GameOutcome::Draw`
 alongside the existing outcomes and an effect that sets it, plus the "when you remove the last
@@ -550,13 +586,20 @@ turn." *Sketch:* #14's `SetColor` effect taking a player-chosen color *set* (one
 than a fixed color — a pending choice at resolution. `once_each_turn` already exists on
 `AbilityToml`.
 
-### 29. `elder-spawn` — 1 card, S
-Depends on: #9 (shares the block-restriction plumbing, inverted).
+### 29. `elder-spawn` — 1 card, S — **PARTIAL** (wave 7; the block half landed, the upkeep half moved to #106)
+Depends on: #106 for the remaining half.
 "At the beginning of your upkeep, unless you sacrifice an Island, sacrifice this creature and it
-deals 6 damage to you" plus "can't be blocked by red creatures". *Sketch:* the block restriction
-is #9's filter with the sense flipped (`CantBeBlockedBy { filter }`); the upkeep half is an
-unless-you-pay trigger where the "cost" is a sacrifice rather than mana, which the existing
-upkeep-tax shape (Chromium, Arcades Sabboth) can grow into by widening its cost type.
+deals 6 damage to you" plus "can't be blocked by red creatures". The block restriction landed as
+plain `cant_be_blocked_by` with `{ types = "creature", color = "red" }` — nothing new was needed.
+
+The upkeep half is **not** an upkeep-tax widening. It is `pay_or_else` with a *sacrifice* cost,
+which is exactly the shape #106 already owns (Mold Demon), and it cannot be authored without a
+wire change: `PendingChoice::PayOrElse` projects to the wire-locked
+`PendingChoiceView::SacrificeUnlessPay { player, source, cost }`, whose only payload is a mana
+cost, so the client would prompt for `{0}`. Elder Spawn carries an `approximates` naming #106
+until that lands. Note the earlier backlog text had this card's oracle wrong — it prints no
+"can't attack unless defending player controls an Island" clause at all (that is Sea Serpent),
+so there is no defending-player half to build here.
 
 ### 30. `move-attached-aura` — 1 card, M
 Depends on: nothing.
@@ -1182,24 +1225,25 @@ multi-target count; Alchor's Tomb needs the third axis — a chosen color, consu
 `ChoiceEffect::ChooseColor` — and targets a *permanent* you control rather than a creature,
 indefinitely (CR 613 layer 5, no expiry). All three axes land on the one effect.
 
-### 97. `token-profiles-without-a-scryfall-printing` — 3 cards, M
+### 97. `token-profiles-without-a-scryfall-printing` — 3 cards, M — **LANDED** (wave 7)
 Depends on: nothing. **Gates #123.**
+Tests: `crates/engine/tests/leg_token_profiles.rs`.
 Boris Devilboon (Minor Demon), Serpent Generator (Snake), Master of the Hunt (Wolves of the Hunt).
-*Sketch:* `create_token` keys a `data/tokens/` profile by Scryfall oracle id — `de::token_profile`
-in `crates/cards/src/de.rs` resolves the string against `crates/cards/data/tokens/`, and all 44
-files there carry a real one — and Legends predates printed token cards, so none of these three
-tokens has an id to key. Needs a synthetic local id convention for pre-token-era tokens.
-The constraint that decides the shape is **`default_print`**: it is a required plain `String`
-(`crates/cards/src/toml_surface/card.rs`) with no format validation, and it feeds an image URL
-straight through `client/app/board/html/inspect.ts` (`pin.print ?? card?.default_print ?? ""`), so
-a synthetic id is not merely untidy — it ships a broken art tile. So either make `default_print`
-optional and let `inspect.ts` take the no-art path it already has for a missing print, or give
-synthetic ids a documented namespace the client recognises and refuses to build a URL from. Decide
-this before authoring any of the three cards; it is a pool-wide convention, not a per-card call, and
-the grind has precedent against quietly fabricating an id (the Spurnmage Advocate frame error, #120).
-Serpent Generator additionally needs its token to carry an ability — "Whenever this creature deals
-damage to a player, that player gets a poison counter" — which is #99's trigger on a token profile,
-so it lands after that.
+*Landed:* `default_print` (`crates/cards/src/toml_surface/card.rs`) is optional for a token profile
+— still required on top-level deckable cards — rather than inventing a synthetic Scryfall id for
+one of the three; `crates/cards/src/lib.rs`'s pool loader and `gen_card_schema.rs`'s token schema
+both dropped the empty-string panic/`required` for tokens specifically. `default_print` stays a
+plain `String` end to end (schema, snapshot, proto, client all already treat `""` as "no printing"
+without panicking), so no wire/client change was needed —
+`client/app/domain/ui/card-art.ts` already falls back to the card back on an absent print. `id`
+takes a locally synthetic, non-UUID slug (`"leg-token-minor-demon"`, `"leg-token-snake-poison"`,
+`"leg-token-wolves-of-the-hunt"`) documented per-file in `data/tokens/*.toml` — `id` was already an
+opaque lookup key with no format validation anywhere in the stack, so this isn't the Spurnmage
+Advocate mistake (#120 fabricated an entire ability body; this picks a self-evidently-synthetic
+lookup string). Serpent Generator's token carries #99's poison trigger, same shape as Pit Scorpion.
+Master of the Hunt's token lands *without* "bands with other creatures named Wolves of the Hunt" —
+that mechanic is `BandsWithQuality`'s deferred `Named` variant, tracked as **#123**, which this
+increment unblocks but does not implement.
 
 ### 98. `nested-effects-lose-their-source` — 1 card, S — **bug** — **LANDED** (wave 1)
 Depends on: nothing.
@@ -1246,7 +1290,7 @@ that player casts each turn, this creature deals 4 damage to that player."
 (instants only) and an "every cast after the first" comparison rather than "exactly the Nth".
 The engine already documents this gap at `crates/engine/src/triggers.rs:3389`.
 
-### 102. `counter-kinds-legends-prints` — 2 cards, S
+### 102. `counter-kinds-legends-prints` — 2 cards, S — **LANDED**
 Depends on: nothing.
 Osai Vultures (carrion counter), Spirit Shackle (-0/-2 counter).
 *Sketch:* `CounterKind` is a fixed 14-slot enum. Add the two kinds Legends prints — a named
@@ -1282,20 +1326,24 @@ Mana Matrix ("Instant and enchantment spells you cast").
 disjunction combinator usable by both — the union shape #8 needs for attacking-or-blocking is
 the same idea one level up.
 
-### 106. `sacrifice-filtered-permanents-as-an-alternative-cost` — 1 card, M
+### 106. `sacrifice-filtered-permanents-as-an-alternative-cost` — 2 cards, M
 Depends on: nothing.
-Mold Demon: "When this creature enters, sacrifice it unless you sacrifice two Swamps."
+Mold Demon: "When this creature enters, sacrifice it unless you sacrifice two Swamps." Elder
+Spawn: "At the beginning of your upkeep, unless you sacrifice an Island, sacrifice this creature
+and it deals 6 damage to you" (#29's remaining half — same shape, count 1, on an upkeep trigger).
 *Sketch:* `pay_or_else` settles mana only — `settle_payment` takes no sacrifice rider — and
 `may_sacrifice` has neither a count nor an `otherwise` branch. Needs "sacrifice N permanents
-matching a filter, otherwise `<effects>`" as a payable cost in the `pay_or_else` window.
+matching a filter, otherwise `<effects>`" as a payable cost in the `pay_or_else` window. Note the
+client half: `PendingChoiceView::SacrificeUnlessPay` carries a mana `cost` and nothing else, so
+this needs a new choice view through proto → BFF → board prompt, not only an engine change.
 
-### 107. `board-wide-attack-ban` — 1 card, M
-Depends on: nothing.
+### 107. `board-wide-attack-ban` — 1 card, S
+Depends on: #10 (**landed** — the effect exists; this is now card authoring only).
 Moat: "Creatures without flying can't attack."
-*Sketch:* `StaticEffect::CantBeAttackedBy` is scanned only off the *defending player's own*
-battlefield, so it expresses "creatures without flying can't attack **you**". Moat bans the
-attack at every seat regardless of who controls the Moat. Needs the restriction evaluated
-globally over the battlefield rather than per defender.
+Wave 7's `StaticEffect::CantAttackFilter { filter }` is board-scanned rather than read off the
+defending player's own battlefield, which is exactly what Moat wants:
+`filter = { types = "creature", without_flying = true }` with the default `controller = "any"`.
+No engine work remains.
 
 ### 108. `counter-the-triggering-spell` — 1 card, M — **LANDED**
 Depends on: nothing.
@@ -1611,3 +1659,37 @@ shield consumed by the next destruction.
 destroyed") consulted wherever a destroy is about to apply, honoring the same
 `cant_be_regenerated_this_turn` suppression flag `MiscEffect::SourceCantBeRegeneratedThisTurn`
 (from #25) sets, rather than a fresh cost-paid shield per destruction.
+
+### 129. `unbounded-one-or-more-target-clauses` — 5 cards, M
+Depends on: #96 (landed — which is what made the ceiling reachable).
+Dwarven Song, Heaven's Gate, Sea Kings' Blessing, Sylvan Paradise, Touch of Darkness.
+"One or more target creatures become red until end of turn." — an *unbounded* multi-target clause
+(CR 601.2c): the caster may name every creature on the battlefield. `MAX_TARGETS` (6, in
+`crates/engine/src/types/stack.rs`) bounds `TargetList`'s fixed `Copy` array, so #96 scripted these
+five as `count = { min = 1, max = 6 }` and each carries an `approximates` note. A seventh creature
+cannot be chosen. Aether Gale, the card `MAX_TARGETS` was sized for, prints a literal six, so this
+is the first clause in the pool that wants more.
+*Sketch:* the same shape as #127's `MAX_BLOCKERS` problem, and probably the same fix — either widen
+the fixed array (cheap for a small bump, and the number of creatures a real four-player board
+fields is the real bound) or make `TargetCount` express "unbounded" and back `TargetList` with a
+`Vec`, which costs `Event: Copy`. A test that puts seven creatures on the battlefield and casts
+Sylvan Paradise naming all seven is the acceptance criterion; drop the `approximates` note from all
+five cards when it passes.
+
+### 130. `damage-cause-tracking` — 1 card, L
+Depends on: #12 (landed — which is what made the residual visible).
+Silhouette: "Choose target creature. If a spell or ability that targets that creature would cause a
+source to deal damage to that creature this turn, prevent that damage." The shield doesn't read the
+damage's *source* at all — it reads what **caused** the damage to be dealt, which can be a
+different object entirely (Rod of Ruin's ability causes the Rod to deal it; Fireball's own spell
+causes Fireball to deal it). #12 shipped the half a source-keyed shield can express — a damage
+*spell* that itself targets the creature — and Silhouette carries an `approximates` for the rest: a
+targeted **ability**, and any spell or ability that targets the creature but makes some other
+source deal the damage, both get through.
+*Sketch:* thread the resolving stack object through the damage mint as a `cause: Option<ObjectId>`
+alongside `source`, so `PreventionShield::from_relation` can ask "did the thing that caused this
+hit target my protectee?" rather than "is the source a spell targeting it?". The mint chokes
+(`creature_damage_events_inner`, `player_damage_events_inner`) already take `source`; the cause is
+whatever `Game::resolve_effect` is currently resolving, so it is available at every call site
+without a new event. A test where Rod of Ruin's *ability* targets the chosen creature and is
+prevented is the acceptance criterion; drop Silhouette's `approximates` when it passes.

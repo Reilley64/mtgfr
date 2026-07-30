@@ -707,6 +707,16 @@ pub enum ColorFilter {
     /// creature"). Read off `Game::colors_of`; a colorless permanent has no colors, so it always
     /// satisfies a `NotColor` gate.
     NotColor(Color),
+    /// Has any one of the named colors (CR 105.2a — Greater Realm of Preservation's "a black or
+    /// **red** source"). The union the five single-color variants can't spell; an empty list
+    /// matches nothing.
+    AnyOf {
+        #[cfg_attr(
+            feature = "card-dsl",
+            serde(default, deserialize_with = "crate::de::static_slice")
+        )]
+        colors: &'static [Color],
+    },
 }
 
 impl ColorFilter {
@@ -724,6 +734,11 @@ impl ColorFilter {
             ColorFilter::Monocolored => return colors.iter().filter(|&&c| c).count() == 1,
             // "Nonblack" (Terror): a colorless object has no colors, so it always passes.
             ColorFilter::NotColor(color) => return !colors[color.index()],
+            // "A black or red source" (Greater Realm of Preservation) — a union, so any one hit
+            // is enough.
+            ColorFilter::AnyOf { colors: named } => {
+                return named.iter().any(|c| colors[c.index()]);
+            }
             ColorFilter::Any => return true,
         };
         colors[named.index()]
@@ -996,6 +1011,11 @@ pub struct PermanentFilter {
     /// longer by its printed subtype. Distinct from `nonlair` above, which deliberately reads a
     /// land's *printed* type line instead.
     pub exclude_subtypes: &'static [&'static str],
+    /// Excludes permanents with this exact printed name (Akron Legionnaire's "except for creatures
+    /// *named Akron Legionnaire*" — CR 201.2, the negative twin of [`name`](Self::name)). `None`
+    /// (default) doesn't gate on name. Name-matching, not identity-matching: a second Akron
+    /// Legionnaire is exempt too, which `other` could not express.
+    pub exclude_name: Option<&'static str>,
 }
 
 /// TOML `with_counter = "any"` / `with_counter = "plus_one_plus_one"` — the two counter shapes
@@ -1065,6 +1085,7 @@ impl PermanentFilter {
             creature_or_vehicle: false,
             snow: false,
             exclude_subtypes: &[],
+            exclude_name: None,
         }
     }
 }

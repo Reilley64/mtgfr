@@ -70,7 +70,7 @@ impl Game {
                 pending::ChoiceRequest::ChooseColor {
                     player: controller,
                     source,
-                    until_end_of_turn: false,
+                    use_: ChosenColorUse::Remember,
                 },
             ),
             // Black Vise's "As this artifact enters, choose an opponent": the shared "an opponent
@@ -88,9 +88,33 @@ impl Game {
                 pending::ChoiceRequest::ChooseColor {
                     player: controller,
                     source,
-                    until_end_of_turn: true,
+                    use_: ChosenColorUse::SetUntilEndOfTurn,
                 },
             ),
+            // Alchor's Tomb's "target permanent you control becomes the color of your choice": the
+            // same picker again, but the color lands on the *chosen target* rather than the (CR 609.3)
+            // ability's own source, and with the duration the card printed. A target that has left
+            // since leaves nothing to ask about (CR 608.2b).
+            Effect::Pump(PumpEffect::TargetBecomesColor {
+                color: None,
+                until_end_of_turn,
+                ..
+            }) => {
+                let Some(object) = target.and_then(Target::object_id) else {
+                    return;
+                };
+                pending::raise(
+                    self,
+                    pending::ChoiceRequest::ChooseColor {
+                        player: controller,
+                        source: object,
+                        use_: match until_end_of_turn {
+                            true => ChosenColorUse::SetUntilEndOfTurn,
+                            false => ChosenColorUse::SetIndefinitely,
+                        },
+                    },
+                )
+            }
             // "Choose one —" reached mid-resolution — a modal spell's own resolution step (CR
             // 608.2, Zimone's Hypothesis), not a triggered ability (those choose their mode at
             // placement, see `place_pending_triggers`). Pause on a ChooseMode; the chosen mode

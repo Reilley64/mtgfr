@@ -48,7 +48,7 @@ pub(crate) enum ChoiceRequest {
     ChooseColor {
         player: crate::PlayerId,
         source: crate::ObjectId,
-        until_end_of_turn: bool,
+        use_: crate::ChosenColorUse,
     },
     ChooseMode {
         player: crate::PlayerId,

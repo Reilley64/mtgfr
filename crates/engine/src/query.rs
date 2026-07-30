@@ -1750,6 +1750,13 @@ impl Game {
         {
             return false;
         }
+        // Excluded printed name (Akron Legionnaire's "except for creatures named Akron
+        // Legionnaire") — by name, so a second copy of the card is exempt as well.
+        if let Some(name) = filter.exclude_name
+            && printed.name == name
+        {
+            return false;
+        }
         // Declared as an attacker this combat (Tajic's Mentor — "target attacking creature").
         if filter.attacking && !self.combat.attackers.contains(&id) {
             return false;

@@ -2471,22 +2471,11 @@ impl Game {
             .phantom_shield_active(self, target)
     }
 
-    /// Whether `target` carries a permanent combat-damage-prevention static shielding damage
-    /// dealt TO itself (CR 615 — Guard Gomazoa: "Prevent all combat damage that would be dealt
-    /// to Guard Gomazoa."; Fog Bank's "to and by" wording sets this half too). True iff `target`
-    /// has a `(Timing::Static, PreventCombatDamageStatic { to_self: true, .. })` ability of its
-    /// own — combat-only, unlike [`Game::phantom_shield_active`], which covers noncombat damage
-    /// too and removes a counter each time.
-    pub(crate) fn combat_damage_prevented_to_creature(&self, target: ObjectId) -> bool {
-        self.replacement_registry()
-            .combat_damage_prevented_to_creature(target)
-    }
-
     /// Whether `source` carries a permanent combat-damage-prevention static shielding damage it
     /// deals TO OTHERS (CR 615 — Fog Bank: "... and dealt by Fog Bank."). True iff `source` has
-    /// a `(Timing::Static, PreventCombatDamageStatic { by_self: true, .. })` ability of its own —
-    /// the sibling query to [`Game::combat_damage_prevented_to_creature`], keyed on the source
-    /// end of a combat-damage instance instead of the target end.
+    /// a `(Timing::Static, PreventDamage { by_self: true, combat_only: true })` ability of its own
+    /// — the sibling query to [`Game::static_damage_prevented`], keyed on the source end of a
+    /// combat-damage instance instead of the target end.
     pub(crate) fn combat_damage_prevented_by_source(&self, source: ObjectId) -> bool {
         self.replacement_registry()
             .combat_damage_prevented_by_source(source)

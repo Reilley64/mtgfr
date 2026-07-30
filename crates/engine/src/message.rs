@@ -260,6 +260,7 @@ message_keys! {
     EFFECT_PUMP_STRIP_KEYWORDS_FROM_OPPONENTS_CREATURES => "effect.pump_strip_keywords_from_opponents_creatures",
     EFFECT_PUMP_TARGET_LOSES_KEYWORDS => "effect.pump_target_loses_keywords",
     EFFECT_PUMP_TARGET_BECOMES_SUBTYPES_WHILE_SOURCE_REMAINS => "effect.pump_target_becomes_subtypes_while_source_remains",
+    EFFECT_PUMP_TARGET_BECOMES_CHOSEN_COLOR => "effect.pump_target_becomes_chosen_color",
     EFFECT_PUMP_TARGET_BECOMES_COLOR => "effect.pump_target_becomes_color",
     EFFECT_PUMP_TARGET_BECOMES_TREASURE => "effect.pump_target_becomes_treasure",
     EFFECT_PUMP_WEAKEN_EACH_CREATURE => "effect.pump_weaken_each_creature",
@@ -276,6 +277,7 @@ message_keys! {
     EFFECT_STATIC_ANTHEM => "effect.static_anthem",
     EFFECT_STATIC_ATTACK_TAX => "effect.static_attack_tax",
     EFFECT_STATIC_BASE_POWER_TOUGHNESS_FROM_AMOUNT => "effect.static_base_power_toughness_from_amount",
+    EFFECT_STATIC_CANT_ATTACK_FILTER => "effect.static_cant_attack_filter",
     EFFECT_STATIC_CANT_ATTACK_IF_CAST_THIS_TURN => "effect.static_cant_attack_if_cast_this_turn",
     EFFECT_STATIC_CANT_ATTACK_UNLESS_DEFENDER_CONTROLS => "effect.static_cant_attack_unless_defender_controls",
     EFFECT_STATIC_CANT_BE_ATTACKED_BY => "effect.static_cant_be_attacked_by",
@@ -615,6 +617,11 @@ fn color_filter_token(filter: ColorFilter) -> String {
         ColorFilter::Red => "red".to_string(),
         ColorFilter::Green => "green".to_string(),
         ColorFilter::NotColor(color) => format!("not_{}", color_token(color)),
+        // "A black or red source" (Greater Realm of Preservation) — the union reads as its
+        // members joined, the same shape `color_list_param` gives an authored colour list.
+        ColorFilter::AnyOf { colors } => {
+            join_tokens(colors.iter().map(|color| color_token(*color).to_string()))
+        }
     }
 }
 
@@ -995,6 +1002,9 @@ fn permanent_filter_token(filter: PermanentFilter) -> String {
     }
     if let Some(name) = filter.name {
         parts.push(format!("named_{}", snake_text(name)));
+    }
+    if let Some(name) = filter.exclude_name {
+        parts.push(format!("not_named_{}", snake_text(name)));
     }
     if filter.nonlegendary {
         parts.push("nonlegendary".to_string());
@@ -2288,6 +2298,8 @@ impl EffectMessage for Effect {
             }
             Effect::Static(CantBlockFilter { filter }) => MessageRef::new(MessageKey::EFFECT_STATIC_CANT_BLOCK_FILTER)
                 .with_params(vec![permanent_filter_param("filter", filter)]),
+            Effect::Static(CantAttackFilter { filter }) => MessageRef::new(MessageKey::EFFECT_STATIC_CANT_ATTACK_FILTER)
+                .with_params(vec![permanent_filter_param("filter", filter)]),
             Effect::Static(CantBeBlockedBy { filter }) => MessageRef::new(MessageKey::EFFECT_STATIC_CANT_BE_BLOCKED_BY)
                 .with_params(vec![permanent_filter_param("filter", filter)]),
             Effect::Static(CantBeTargetedBy { spells, attached }) => {
@@ -2336,7 +2348,9 @@ impl EffectMessage for Effect {
                 MessageRef::new(MessageKey::EFFECT_STATIC_MAY_SKIP_DRAW_FOR_CANT_BE_ATTACKED_BY)
                     .with_params(vec![permanent_filter_param("filter", filter)])
             }
-            Effect::Static(PreventCombatDamage { to_self, by_self }) => {
+            Effect::Static(PreventDamage {
+                to_self, by_self, ..
+            }) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_PREVENT_COMBAT_DAMAGE)
                     .with_params(vec![bool_param("to_self", to_self), bool_param("by_self", by_self)])
             }
@@ -2544,9 +2558,12 @@ impl EffectMessage for Effect {
                 MessageRef::new(MessageKey::EFFECT_PUMP_TARGET_BECOMES_SUBTYPES_WHILE_SOURCE_REMAINS)
                     .with_params(vec![string_list_param("set_subtypes", set_subtypes)])
             }
-            Effect::Pump(TargetBecomesColor { color, .. }) => {
-                MessageRef::new(MessageKey::EFFECT_PUMP_TARGET_BECOMES_COLOR)
-                    .with_params(vec![str_param("color", color_token(color))])
+            Effect::Pump(TargetBecomesColor {
+                color: Some(color), ..
+            }) => MessageRef::new(MessageKey::EFFECT_PUMP_TARGET_BECOMES_COLOR)
+                .with_params(vec![str_param("color", color_token(color))]),
+            Effect::Pump(TargetBecomesColor { color: None, .. }) => {
+                MessageRef::new(MessageKey::EFFECT_PUMP_TARGET_BECOMES_CHOSEN_COLOR)
             }
             Effect::Pump(BecomesCopyOfTarget { .. }) => {
                 MessageRef::new(MessageKey::EFFECT_PUMP_BECOMES_COPY_OF_TARGET)

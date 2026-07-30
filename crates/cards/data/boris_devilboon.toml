@@ -17,3 +17,16 @@ red = 1
 type = "creature"
 power = 2
 toughness = 2
+
+# {2}{B}{R}, {T}: Create a 1/1 black and red Demon creature token named Minor Demon.
+[[abilities]]
+timing = "activated"
+taps_self = true
+activation_cost = { generic = 2, black = 1, red = 1 }
+
+# Create a 1/1 black and red Demon creature token named Minor Demon.
+[[abilities.effects]]
+type = "token"
+mode = "create"
+token = "leg-token-minor-demon"
+count = 1

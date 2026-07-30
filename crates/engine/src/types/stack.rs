@@ -896,6 +896,21 @@ pub enum ArrangeRest {
     Nowhere,
 }
 
+/// What answering a [`PendingChoice::ChooseColor`] does with the named color. Engine-internal —
+/// the wire prompt is "pick one of the five colors" in every case, so nothing here is projected.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ChosenColorUse {
+    /// Flickering Ward's as-enters "choose a color" (CR 614.12/700.9): remember it on the object
+    /// as [`Permanent::chosen_color`] for a protection ability to read. Not a color change at all.
+    Remember,
+    /// Wild Mongrel's "…and becomes the color of your choice until end of turn": a CR 613.3c
+    /// layer-5 SET, swept at the next cleanup.
+    SetUntilEndOfTurn,
+    /// Alchor's Tomb's "becomes the color of your choice. (This effect lasts indefinitely.)": the
+    /// same layer-5 SET with no printed duration (CR 400.7), so cleanup never takes it back.
+    SetIndefinitely,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PendingChoice {
     /// `player` must order their simultaneously-triggered abilities (put on the stack
@@ -1850,18 +1865,17 @@ pub enum PendingChoice {
         /// projected. `None` for every as-enters "choose a creature type".
         then: Option<TextSwapPick>,
     },
-    /// `player` must name a color for `source` — either an as-enters choice (CR 614.12/700.9-style
-    /// — Flickering Ward's [`Effect::Choice(ChoiceEffect::ChooseColor)`]) or a resolution-time color-SET (CR 613.3c —
-    /// Wild Mongrel's [`Effect::Choice(ChoiceEffect::SetOwnColorUntilEndOfTurn)`]). The candidate list is the fixed five
-    /// colors ([`Color::ALL`]), so unlike [`Self::ChooseCreatureType`] no `options` slice is
-    /// carried. Both raise this same picker (same wire prompt — [`Self::ChooseColor`] variant
-    /// reused, not a second picker); `until_end_of_turn` tells [`Intent::ChooseColor`]'s handler
-    /// which of the two answered: `false` sets `source`'s indefinite [`Permanent::chosen_color`],
-    /// `true` registers an until-end-of-turn `ModifierKind::SetColor` instead.
+    /// `player` must name a color for `source` — the object the color lands on, which is the
+    /// ability's own permanent for an as-enters choice (Flickering Ward) or a self-recolor (Wild
+    /// Mongrel) and the *chosen target* for Alchor's Tomb. The candidate list is the fixed five
+    /// colors ([`Color::ALL`]) — CR 105.1: colorless is not a color — so unlike
+    /// [`Self::ChooseCreatureType`] no `options` slice is carried. All three raise this one picker
+    /// (same wire prompt, not a second picker); `use_` tells [`Intent::ChooseColor`]'s handler
+    /// which of them answered.
     ChooseColor {
         player: PlayerId,
         source: ObjectId,
-        until_end_of_turn: bool,
+        use_: ChosenColorUse,
     },
     /// `player` chooses a card name for [`Effect::Choice(ChoiceEffect::EachPlayerNamesCardThenRevealsTop)`]'s per-seat
     /// fan-out (CR 201.2/703.2j "choose a card name" — Conundrum Sphinx's attack trigger).
@@ -2003,6 +2017,7 @@ pub const CREATURE_TYPES: &[&str] = &[
     "Elemental",
     "Elephant",
     "Elf",
+    "Eye",
     "Faerie",
     "Fish",
     "Fox",
@@ -2076,6 +2091,7 @@ pub const CREATURE_TYPES: &[&str] = &[
     "Snake",
     "Soldier",
     "Sorcerer",
+    "Spawn",
     "Specter",
     "Sphinx",
     "Spider",

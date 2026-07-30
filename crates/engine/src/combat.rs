@@ -334,6 +334,11 @@ impl Game {
             // so a restriction beats a requirement (CR 509.1a) — a creature that can't attack
             // isn't "able", so every must-attack loop below reads this and stops demanding it.
             && !self.cant_attack_if_cast_this_turn(self.controller_of(creature))
+            // Evil Eye of Orms-by-Gore's "Non-Eye creatures you control can't attack": a
+            // board-wide filtered ban, checked here for the same reason as the player-wide ban
+            // above — a restriction beats a requirement (CR 509.1a), so a banned creature is
+            // never "able" and goad can't demand it.
+            && !self.cant_attack_filter(creature)
             && self.living_players().any(|d| {
                 // Sea Serpent's "unless defending player controls an Island" is per-defender, so
                 // "able to attack" means *some* seat is open. Checked here as well as at the
@@ -601,6 +606,30 @@ impl Game {
                         self.permanent_matches(
                             &filter,
                             blocker,
+                            self.controller_of(source),
+                            Some(source),
+                        )
+                    }
+                    _ => false,
+                })
+        })
+    }
+
+    /// Whether any permanent on the battlefield carries a live
+    /// [`Effect::Static(StaticEffect::CantAttackFilter)`] static matching `creature` (CR 508.1a —
+    /// Evil Eye of Orms-by-Gore's "Non-Eye creatures you control can't attack"): the attack-side
+    /// twin of [`Game::cant_block_filter`], and read the same way — the whole battlefield is
+    /// scanned and each static's filter is matched from *its own* controller's perspective, so a
+    /// `controller = "you"` filter bans only that player's creatures.
+    fn cant_attack_filter(&self, creature: ObjectId) -> bool {
+        self.battlefield().into_iter().any(|source| {
+            self.functional_abilities(source)
+                .iter()
+                .any(|a| match (a.timing, a.effect.clone()) {
+                    (Timing::Static, Effect::Static(StaticEffect::CantAttackFilter { filter })) => {
+                        self.permanent_matches(
+                            &filter,
+                            creature,
                             self.controller_of(source),
                             Some(source),
                         )
@@ -1624,12 +1653,6 @@ impl Game {
             if self.damage_prevented_by_protection(blocker, Some(attacker)) {
                 continue;
             }
-            // Guard Gomazoa / Fog Bank (CR 615, #220): a permanent "prevent all combat damage ...
-            // dealt to" static on the blocker itself prevents this share, same as protection
-            // above — the prevented share still counts as assigned.
-            if self.combat_damage_prevented_to_creature(blocker) {
-                continue;
-            }
             // A blocking Phantom Centaur (or Bloatfly Swarm's scaling variant) prevents this
             // share and removes +1/+1 counters instead (CR 615) — the same self-shield
             // `deal_creature_damage` applies on the blocker-to-attacker path. The prevented share
@@ -1796,13 +1819,10 @@ impl Game {
         if !combat && self.noncombat_damage_prevented_to_creature(target) {
             return;
         }
-        // Guard Gomazoa / Fog Bank (CR 615, #220): a permanent combat-damage-prevention static —
-        // either `target`'s own "dealt to" half or `source`'s own "dealt by" half. Combat-only,
-        // like the table-wide shield below (Tajic's noncombat static is checked above instead).
-        if combat
-            && (self.combat_damage_prevented_to_creature(target)
-                || self.combat_damage_prevented_by_source(source))
-        {
+        // Fog Bank (CR 615, #220): the "dealt by" half of a permanent's own prevention static,
+        // keyed on the damage's source. Combat-only, like the table-wide shield below. The "dealt
+        // to" half lives at the damage mint instead, where every damage path meets it.
+        if combat && self.combat_damage_prevented_by_source(source) {
             return;
         }
         // Moment's Peace (CR 615, #150): a this-turn table-wide "prevent all combat damage"

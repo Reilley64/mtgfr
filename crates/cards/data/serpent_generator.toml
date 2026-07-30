@@ -13,3 +13,20 @@ generic = 6
 
 [kind]
 type = "artifact"
+
+# {4}, {T}: Create a 1/1 colorless Snake artifact creature token. It has "Whenever this creature
+# deals damage to a player, that player gets a poison counter." (A player with ten or more poison
+# counters loses the game.)
+[[abilities]]
+timing = "activated"
+taps_self = true
+activation_cost = { generic = 4 }
+
+# Create a 1/1 colorless Snake artifact creature token. It has "Whenever this creature deals
+# damage to a player, that player gets a poison counter." (A player with ten or more poison
+# counters loses the game.)
+[[abilities.effects]]
+type = "token"
+mode = "create"
+token = "leg-token-snake-poison"
+count = 1

@@ -1978,6 +1978,12 @@ impl Game {
                     if left <= 0 || !stood {
                         return true;
                     }
+                    // CR 615.6: a "prevent all damage … this turn" shield isn't used up by what
+                    // it prevents — it stays until end of turn, however many hits it eats.
+                    if shield.persistent {
+                        left = 0;
+                        return true;
+                    }
                     // "Prevent that damage" and Forcefield's "prevent all but 1 of that damage"
                     // are both spent outright by the hit they stood in front of, however big; a
                     // point shield keeps whatever the hit didn't need.

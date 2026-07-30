@@ -256,6 +256,9 @@ impl Game {
                         from_color: crate::ColorFilter::Any,
                         from_source: None,
                         combat_only: false,
+                        from_filter: None,
+                        from_relation: None,
+                        persistent: false,
                         gain_life: false,
                         redirect_to: None,
                     });

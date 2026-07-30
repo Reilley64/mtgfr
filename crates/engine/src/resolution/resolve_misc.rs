@@ -298,6 +298,9 @@ impl Game {
                 all_but,
                 target_is_source,
                 combat_only,
+                from_filter,
+                from_relation,
+                all_damage,
                 ..
             }) => {
                 // No point total is "prevent *that* damage" (the Circles, Reverse Damage) — the
@@ -340,6 +343,9 @@ impl Game {
                         from_color,
                         from_source,
                         combat_only,
+                        from_filter,
+                        from_relation,
+                        persistent: all_damage,
                         gain_life,
                         redirect_to: redirect_to_controller.then_some(Target::Player(controller)),
                     });

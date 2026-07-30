@@ -988,6 +988,9 @@ impl Game {
             | Effect::Pump(PumpEffect::TargetLosesKeywords {
                 choose_one: true, ..
             })
+            // Alchor's Tomb's "becomes the color of your choice" (CR 609.3) — peeled to the color
+            // picker; an authored color (`Some`) skips this and mints its SET straight away.
+            | Effect::Pump(PumpEffect::TargetBecomesColor { color: None, .. })
             | Effect::Copy(CopyEffect::Demonstrate { .. })
             | Effect::Choice(ChoiceEffect::Proliferate { .. })
             | Effect::Choice(ChoiceEffect::PhaseOut) => self.run_choose_pause(effect, ctx),

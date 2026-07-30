@@ -168,6 +168,23 @@ pub enum MiscEffect {
         /// is stopped. `false` (default) covers combat and noncombat alike.
         #[cfg_attr(feature = "card-dsl", serde(default))]
         combat_only: bool,
+        /// "… by **attacking creatures without flying**" (Al-abara's Carpet) — a gate on the
+        /// damage's *source*, the turn-scoped twin of
+        /// [`StaticEffect::PreventDamage`](crate::StaticEffect::PreventDamage)'s `source_filter`.
+        /// A source that isn't a permanent never matches one.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        from_filter: Option<PermanentFilter>,
+        /// "… a spell or ability that **targets that creature**" (Silhouette) — the same
+        /// source/recipient relationship [`StaticEffect::PreventDamage`](crate::StaticEffect::PreventDamage)'s
+        /// `source_relation` reads, on a turn-scoped shield instead of a permanent's static.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        from_relation: Option<SourceRelation>,
+        /// "Prevent **all** damage … this turn" (Al-abara's Carpet, Silhouette) rather than "the
+        /// next …": CR 615.6 — this shield is never used up, so it stands in front of every
+        /// qualifying hit until it expires at end of turn. `false` (every other pool shield) is
+        /// consumed by what it prevents.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        all_damage: bool,
     },
 
     /// Guardian Angel's second sentence: "Until end of turn, you may pay {1} any time you could

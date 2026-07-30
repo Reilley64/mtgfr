@@ -437,8 +437,11 @@ token = { name = "Inkling", power = 2, toughness = 1 }
     );
 }
 
-/// Battlefield art is print-UUID-only (accounts-decks-and-catalog spec). Every resolved `create_token` profile
-/// must stamp `id` + `default_print` from `data/tokens/`.
+/// Battlefield art is print-UUID-only (accounts-decks-and-catalog spec). Every resolved
+/// `create_token` profile must stamp a lookup `id` from `data/tokens/`. `default_print` is
+/// normally a Scryfall print UUID too, but a token that predates printed token cards and has no
+/// Scryfall printing to key (fidelity increment #97) may leave it empty — the client already
+/// degrades an absent print to the card back rather than needing a fabricated id.
 #[test]
 fn pool_token_profiles_carry_scryfall_art_ids() {
     fn collect_steps(steps: &[Effect], out: &mut Vec<(&'static str, CardDef)>) {
@@ -522,12 +525,12 @@ fn pool_token_profiles_carry_scryfall_art_ids() {
     );
     let missing: Vec<_> = tokens
         .iter()
-        .filter(|(_, _, t)| t.id.is_empty() || t.default_print.is_empty())
+        .filter(|(_, _, t)| t.id.is_empty())
         .map(|(card, name, _)| format!("{card} → {name}"))
         .collect();
     assert!(
         missing.is_empty(),
-        "token profiles need Scryfall id + default_print for battlefield art: {missing:?}"
+        "token profiles need a lookup id for battlefield art: {missing:?}"
     );
     for (_, _, token) in &tokens {
         let reg = get_token(token.id).unwrap_or_else(|| {
@@ -2635,6 +2638,9 @@ fn unlimited_kudzu_destroys_its_host_then_offers_itself_to_that_lands_controller
 fn unlimited_forcefield_shields_its_controller_against_the_creature_it_names() {
     let forcefield = get_by_name("Forcefield").expect("Forcefield is in the pool");
     let Effect::Misc(MiscEffect::PreventNextDamage {
+        from_filter: None,
+        from_relation: None,
+        all_damage: false,
         amount,
         target,
         all_but,
@@ -3456,6 +3462,9 @@ fn unlimited_utility_spells_carry_their_printed_effects() {
                 amount: Amount::Fixed(3),
             }),
             Effect::Misc(MiscEffect::PreventNextDamage {
+                from_filter: None,
+                from_relation: None,
+                all_damage: false,
                 shield_source: false,
                 all_but: None,
                 target_is_source: false,
@@ -3749,6 +3758,9 @@ fn unlimited_tap_abilities_carry_their_printed_effects() {
         (
             "Samite Healer",
             Effect::Misc(MiscEffect::PreventNextDamage {
+                from_filter: None,
+                from_relation: None,
+                all_damage: false,
                 shield_source: false,
                 all_but: None,
                 target_is_source: false,
@@ -3765,6 +3777,9 @@ fn unlimited_tap_abilities_carry_their_printed_effects() {
             // "…dealt to you" names no target at all, so the shield lands on whoever
             // activated it.
             Effect::Misc(MiscEffect::PreventNextDamage {
+                from_filter: None,
+                from_relation: None,
+                all_damage: false,
                 shield_source: false,
                 all_but: None,
                 target_is_source: false,
@@ -4862,6 +4877,9 @@ fn guardian_angel_hangs_its_standing_offer_off_the_targeted_shield() {
     assert_eq!(
         steps[0],
         Effect::Misc(MiscEffect::PreventNextDamage {
+            from_filter: None,
+            from_relation: None,
+            all_damage: false,
             shield_source: false,
             all_but: None,
             target_is_source: false,
@@ -4907,6 +4925,9 @@ fn unlimited_the_protection_circles_gate_their_shield_on_their_own_color() {
         assert_eq!(
             ability.effect,
             Effect::Misc(MiscEffect::PreventNextDamage {
+                from_filter: None,
+                from_relation: None,
+                all_damage: false,
                 shield_source: false,
                 all_but: None,
                 target_is_source: false,
@@ -4928,6 +4949,9 @@ fn unlimited_the_protection_circles_gate_their_shield_on_their_own_color() {
     assert_eq!(
         spell.effect,
         Effect::Misc(MiscEffect::PreventNextDamage {
+            from_filter: None,
+            from_relation: None,
+            all_damage: false,
             shield_source: false,
             all_but: None,
             target_is_source: false,
@@ -4959,6 +4983,9 @@ fn unlimited_jade_monolith_shields_a_creature_by_standing_in_front_of_it() {
     assert_eq!(
         ability.effect,
         Effect::Misc(MiscEffect::PreventNextDamage {
+            from_filter: None,
+            from_relation: None,
+            all_damage: false,
             shield_source: false,
             all_but: None,
             target_is_source: false,
@@ -5220,6 +5247,9 @@ fn unlimited_personal_incarnation_answers_to_its_owner_and_not_its_controller() 
     assert_eq!(
         shield.effect,
         Effect::Misc(MiscEffect::PreventNextDamage {
+            from_filter: None,
+            from_relation: None,
+            all_damage: false,
             amount: Some(Amount::Fixed(1)),
             target: TargetSpec::None,
             from_color: ColorFilter::Any,
@@ -5320,6 +5350,9 @@ fn unlimited_rock_hydra_pays_a_counter_a_point_and_grows_only_in_upkeep() {
     assert!(matches!(
         prevent.effect,
         Effect::Misc(MiscEffect::PreventNextDamage {
+            from_filter: None,
+            from_relation: None,
+            all_damage: false,
             shield_source: true,
             ..
         })
@@ -5671,12 +5704,83 @@ fn unlimited_laces_recolor_a_spell_or_a_permanent() {
         let [ability] = &def.abilities[..] else {
             panic!("{name} prints one line");
         };
-        let Effect::Pump(PumpEffect::TargetBecomesColor { color, target }) = ability.effect else {
+        let Effect::Pump(PumpEffect::TargetBecomesColor {
+            color,
+            target,
+            count,
+            until_end_of_turn,
+        }) = ability.effect
+        else {
             panic!("{name} sets a colour");
         };
-        assert_eq!(color, expected);
+        assert_eq!(color, Some(expected));
         assert_eq!(target, TargetSpec::SpellOrPermanent);
+        assert_eq!(count, TargetCount::default(), "{name} takes one target");
+        assert!(!until_end_of_turn, "{name} prints no duration");
     }
+}
+
+/// Legends prints the same colour wash five more times, and the two axes the lace cycle leaves
+/// off are the whole increment: each takes "one or more target creatures" (CR 601.2c) rather
+/// than a single spell-or-permanent, and each wears off at cleanup.
+#[test]
+fn legends_color_wash_instants_take_several_creatures_until_end_of_turn() {
+    for (name, expected) in [
+        ("Dwarven Song", Color::Red),
+        ("Heaven's Gate", Color::White),
+        ("Sea Kings' Blessing", Color::Blue),
+        ("Sylvan Paradise", Color::Green),
+        ("Touch of Darkness", Color::Black),
+    ] {
+        let def = get_by_name(name).unwrap_or_else(|| panic!("{name} is in the pool"));
+        let [ability] = &def.abilities[..] else {
+            panic!("{name} prints one line");
+        };
+        let Effect::Pump(PumpEffect::TargetBecomesColor {
+            color,
+            target,
+            count,
+            until_end_of_turn,
+        }) = ability.effect
+        else {
+            panic!("{name} sets a colour");
+        };
+        assert_eq!(color, Some(expected));
+        assert_eq!(target, TargetSpec::Creature);
+        assert_eq!(count.min, 1, "{name} takes at least one creature");
+        assert!(count.max > 1, "{name} takes more than one creature");
+        assert!(until_end_of_turn, "{name} wears off at cleanup");
+    }
+}
+
+/// Alchor's Tomb is the sixth colour wash and the only one that leaves the colour blank: the
+/// controller names it as the ability resolves (CR 609.3), and nothing takes it back.
+#[test]
+fn alchors_tomb_leaves_the_color_to_its_controller_indefinitely() {
+    let def = get_by_name("Alchor's Tomb").expect("Alchor's Tomb is in the pool");
+    let [ability] = &def.abilities[..] else {
+        panic!("Alchor's Tomb prints one line");
+    };
+    let Timing::Activated(cost) = ability.timing else {
+        panic!("Alchor's Tomb prints an activated ability");
+    };
+    assert_eq!(cost.mana.generic, 2, "the ability costs {{2}}");
+    assert!(cost.taps_self, "and {{T}}");
+    let Effect::Pump(PumpEffect::TargetBecomesColor {
+        color,
+        target,
+        until_end_of_turn,
+        ..
+    }) = ability.effect
+    else {
+        panic!("Alchor's Tomb sets a colour");
+    };
+    assert_eq!(color, None, "the controller picks the colour on resolution");
+    assert!(!until_end_of_turn, "the effect lasts indefinitely");
+    let TargetSpec::Permanent(filter) = target else {
+        panic!("Alchor's Tomb targets a permanent");
+    };
+    assert_eq!(filter.controller, FilterController::You);
 }
 
 /// The five 1993 land-tap payoffs split two ways, and which side a card lands on is the whole

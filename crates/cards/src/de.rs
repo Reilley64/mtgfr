@@ -28,7 +28,11 @@ use crate::{
 };
 
 /// Token profiles loaded from `cards/data/tokens/` before deckable cards deserialize. Keyed by
-/// Scryfall oracle id; [`token_profile`] resolves `token = "<id>"` against this map.
+/// `id` — normally a Scryfall oracle id, but a token with no Scryfall printing to key (fidelity
+/// increment #97 — e.g. Legends predates printed token cards) uses a locally synthetic, non-UUID
+/// slug instead (`"leg-token-<name>"`) rather than a fabricated Scryfall id. [`token_profile`]
+/// resolves `token = "<id>"` against this map either way — the key is an opaque lookup string,
+/// not validated as a UUID anywhere in the stack.
 static TOKEN_DEFS: OnceLock<HashMap<&'static str, CardDef>> = OnceLock::new();
 
 /// Install the token-profile registry used by [`token_profile`]. Call once from the `cards` crate
@@ -241,15 +245,17 @@ pub fn creature_edict() -> PermanentFilter {
     PermanentFilter::of(TypeSet::CREATURE)
 }
 
-/// A token profile reference on `create_token` (and siblings): a Scryfall oracle id string
-/// (`token = "37c4adc8-…"`) resolved against the registry installed by [`install_token_defs`].
-/// Token characteristics live in `cards/data/tokens/*.toml`; after resolve the effect embeds a
-/// full [`CardDef`] so mint paths stay pool-agnostic.
+/// A token profile reference on `create_token` (and siblings): a token id string — a Scryfall
+/// oracle id (`token = "37c4adc8-…"`) for a printed token, or a synthetic slug
+/// (`token = "leg-token-minor-demon"`) for one with no Scryfall printing to key (#97) — resolved
+/// against the registry installed by [`install_token_defs`]. Token characteristics live in
+/// `cards/data/tokens/*.toml`; after resolve the effect embeds a full [`CardDef`] so mint paths
+/// stay pool-agnostic.
 pub fn token_profile<'de, D: Deserializer<'de>>(d: D) -> Result<CardDef, D::Error> {
     let id = String::deserialize(d)?;
     if id.is_empty() {
         return Err(de::Error::custom(
-            "token profile id is empty — expected a Scryfall oracle id from data/tokens/",
+            "token profile id is empty — expected a token id from data/tokens/",
         ));
     }
     token_def(&id).ok_or_else(|| {
@@ -1092,7 +1098,7 @@ impl<'de> Deserialize<'de> for TypeSet {
 /// `toughness_less_than_source_power`, `entered_this_turn`,
 /// `has_mana_ability`,
 /// `controlled_since_turn_start`, `did_not_attack_this_turn`,
-/// `nonbasic`, `basic`, `nonlegendary`, `legendary`, `nonlair`, `exclude_subtypes`,
+/// `nonbasic`, `basic`, `nonlegendary`, `legendary`, `nonlair`, `exclude_subtypes`, `exclude_name`,
 /// `without_flying`, `without_keyword`, `with_flying`, `with_counter`). `noncreature` is sugar for `exclude = "creature"`;
 /// `not_color` is sugar for `color`'s negated-color arm — both fold into the same
 /// [`PermanentFilter`] fields as their general spelling (see below).
@@ -1247,6 +1253,10 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     /// Subtype exclusion (Keldon Warlord's "non-Wall creatures you control").
                     #[serde(default)]
                     exclude_subtypes: Vec<String>,
+                    /// Printed-name exclusion (Akron Legionnaire's "except for creatures named
+                    /// Akron Legionnaire") — `name`'s negative twin.
+                    #[serde(default)]
+                    exclude_name: Option<String>,
                 }
 
                 let t = Table::deserialize(de::value::MapAccessDeserializer::new(map))?;
@@ -1304,6 +1314,7 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     creature_or_vehicle: t.creature_or_vehicle,
                     snow: t.snow,
                     exclude_subtypes: intern_strs(t.exclude_subtypes),
+                    exclude_name: t.exclude_name.map(|s| &*Box::leak(s.into_boxed_str())),
                 })
             }
         }

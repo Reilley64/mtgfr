@@ -230,7 +230,11 @@ pub struct CardToml {
     /// Nested faces/tokens may omit it (`""`).
     #[serde(default)]
     pub id: String,
-    /// Scryfall card UUID for the default Printing — required on top-level pool TOMLs.
+    /// Scryfall card UUID for the default Printing — required on top-level pool TOMLs. Token
+    /// profiles (`data/tokens/`) may omit it (`""`) when the token predates printed token cards
+    /// and has no Scryfall printing to key (fidelity increment #97) — an empty `default_print`
+    /// already renders as the card back client-side, so this is the faithful "no printing"
+    /// value rather than a gap.
     #[serde(default)]
     pub default_print: String,
     /// Printed card name and card-pool registry key. The filename is arbitrary; this field

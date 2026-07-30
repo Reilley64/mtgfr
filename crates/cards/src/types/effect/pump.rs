@@ -221,9 +221,22 @@ pub enum PumpEffect {
     /// on the stack or a permanent, and registers the layer-5 SET / writes [`Spell::set_color`]
     /// through [`Event::ColorSet`]. The reminder text ("its mana symbols remain unchanged") needs
     /// no modelling — colors are read from `colors_of`, never re-derived from the pips.
+    ///
+    /// The Legends colour-wash cycle (Dwarven Song, Heaven's Gate, Sea Kings' Blessing, Sylvan
+    /// Paradise, Touch of Darkness) is the same SET with the two other axes turned on: `count`
+    /// carries "one or more target creatures" (CR 601.2c) and `until_end_of_turn` its printed
+    /// duration. Alchor's Tomb turns on the third — a `color` of `None` is "the color of your
+    /// choice", picked by the ability's controller at resolution (CR 609.3) through the shared
+    /// `PendingChoice::ChooseColor` picker rather than authored here.
+    /// Colorless is never a candidate: CR 105.1 says colorless is not a color.
     TargetBecomesColor {
         target: TargetSpec,
-        color: Color,
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        color: Option<Color>,
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        count: TargetCount,
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        until_end_of_turn: bool,
     },
 
     /// "Target land becomes a Forest until this creature leaves the battlefield" (Gaea's Liege) —

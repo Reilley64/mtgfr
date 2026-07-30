@@ -5,9 +5,25 @@ sets = ["leg"]
 id = "fafdba94-51cd-413c-82f3-eb294825c6ca"
 default_print = "461d7c11-3a7d-42c2-bb6b-0a43779e6842"
 oracle = "One or more target creatures become white until end of turn."
+# ponytail: the engine's target list is a fixed six slots (MAX_TARGETS), so "one or more" stops there; widen
+# MAX_TARGETS if a card ever needs a seventh.
+approximates = "\"one or more target creatures\" is capped at six targets by the engine's fixed-width target list"
 
 [cost]
 white = 1
 
 [kind]
 type = "instant"
+
+# One or more target creatures become white until end of turn.
+[[abilities]]
+timing = "spell"
+
+# One or more target creatures become white until end of turn.
+[[abilities.effects]]
+type = "pump"
+mode = "target_becomes_color"
+color = "white"
+target = "creature"
+count = { min = 1, max = 6 }
+until_end_of_turn = true
