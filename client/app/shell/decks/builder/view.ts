@@ -7,7 +7,7 @@ import { cn } from "../../../domain/cn";
 import { cardHoverPreviewView } from "../../../domain/deck-builder/card-hover-preview";
 import { DECK_SIZE, deckCount, sortedDeckList } from "../../../domain/deck-builder/cards";
 import { formatReleasedAt } from "../../../domain/deck-builder/print";
-import type { ScryfallPrint } from "../../../domain/deck-builder/scryfall";
+import type { ImageSize, ScryfallPrint } from "../../../domain/deck-builder/scryfall";
 import type { AppChromeMeta } from "../../../domain/ui/app-version";
 import { button } from "../../../domain/ui/button";
 import { cardArt } from "../../../domain/ui/card-art";
@@ -232,8 +232,11 @@ export const BindBuilderCardPointer = Mount.defineStream(
     ),
 );
 
-function builderCardArt(print: string, alt: string, className: string): Html {
-  return cardArt(h, { print, alt, className });
+// Size is required rather than defaulted: every art in the builder renders small, so the default
+// `display` (672px) would be 3-5x oversampled everywhere. Pick from the rendered width — `grid`
+// (488px) for the tile grids, `thumb` (146px) for the list rows.
+function builderCardArt(print: string, alt: string, className: string, size: ImageSize): Html {
+  return cardArt(h, { print, alt, className, size });
 }
 
 function hoverPreview(model: DeckBuilderSubmodel): Html | null {
@@ -302,7 +305,7 @@ function printTile(cardId: string, print: ScryfallPrint): Html {
       h.OnClick(PickedBuilderPrint({ cardId, print: print.id })),
     ],
     [
-      builderCardArt(print.id, `${print.set_name} #${print.collector_number}`, CARD_ART),
+      builderCardArt(print.id, `${print.set_name} #${print.collector_number}`, CARD_ART, "grid"),
       h.div(
         [h.Class(PRINT_BADGE_ROW)],
         [
@@ -403,7 +406,7 @@ function poolTile(model: DeckBuilderSubmodel, card: DeckBuilderSubmodel["pool"][
       h.OnMount(BindBuilderCardPointer({ cardId: card.id, kind: "pool" })),
     ],
     [
-      builderCardArt(print, card.name, CARD_ART),
+      builderCardArt(print, card.name, CARD_ART, "grid"),
       // One line, ellipsised: the windowed grid needs every tile the same height, and a long card
       // name that wrapped would push its art out of the row. `w-full` because `items-center`
       // otherwise shrinks the span to its text and leaves nothing to truncate. No `title` — the
@@ -579,6 +582,7 @@ export const view = Submodel.defineView<DeckBuilderSubmodel, ViewMessage, ViewIn
                         model.commander.print,
                         model.known[model.commander.id]?.name ?? model.commander.id,
                         "aspect-[0.72] w-10 rounded-focus object-cover",
+                        "thumb",
                       ),
                       h.span(
                         [h.Class("min-w-0 flex-1 truncate font-semibold")],
@@ -632,7 +636,12 @@ export const view = Submodel.defineView<DeckBuilderSubmodel, ViewMessage, ViewIn
                           h.OnMount(BindBuilderCardPointer({ cardId: row.id, kind: "deck" })),
                         ],
                         [
-                          builderCardArt(row.print, "", "aspect-[0.72] w-7 shrink-0 rounded-[3px] object-cover"),
+                          builderCardArt(
+                            row.print,
+                            "",
+                            "aspect-[0.72] w-7 shrink-0 rounded-[3px] object-cover",
+                            "thumb",
+                          ),
                           h.span(
                             [h.Class("min-w-0 flex-1 truncate")],
                             [

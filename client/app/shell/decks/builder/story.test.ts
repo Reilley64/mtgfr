@@ -1069,3 +1069,62 @@ test("the discard prompt asks before throwing edits away", () => {
     Scene.expect(Scene.text("Discard changes?")).toExist(),
   );
 });
+
+// The Scryfall size segment of the art URL a testid's `cardArt` requested. Scene's selector parser
+// has no `*=`, and the size is what these tests are about, so read it off the vnode.
+function artSize(sim: { html: unknown }, testId: string): string | null {
+  const node = Scene.selector(`[data-testid="${testId}"] [data-art-url]`)(sim.html as never);
+  if (Option.isNone(node)) return null;
+  const url = node.value.data?.attrs?.["data-art-url"];
+  return typeof url === "string" ? (new URL(url).pathname.split("/")[1] ?? null) : null;
+}
+
+// Every art in the builder renders small — pool and print tiles at 120-200px, list rows at 28-40px
+// — while `cardArt`'s default is `display` (672px). These assert the requested size rather than
+// merely that art exists, because oversampling is invisible: the wrong size still paints correctly,
+// it just moves 5x the bytes.
+test("builder tile grids request grid-sized art, not the full-size default", () => {
+  const solRing = card({ id: "sol-ring", name: "Sol Ring" });
+  const model = {
+    ...initialDeckBuilderSubmodel(),
+    atEnd: true,
+    pool: [solRing],
+    ...measuredPool(),
+    preferredPrint: { "sol-ring": solRing.default_print },
+    searching: false,
+  };
+
+  Scene.scene(
+    { update: builderUpdate, view: (model) => builderView(model, emptyViewInputs) },
+    Scene.with(model),
+    observePoolWidth,
+    Scene.tap((sim) => expect(artSize(sim, "pool-card-sol-ring")).toBe("grid")),
+    Scene.Mount.resolve(BindBuilderCardPointer({ cardId: "sol-ring", kind: "pool" }), ClearedBuilderHover()),
+    Scene.Mount.resolve(BindCardArt, ClearedBuilderHover() as never),
+  );
+});
+
+test("builder list rows request thumb-sized art, not the full-size default", () => {
+  const solRing = card({ id: "sol-ring", name: "Sol Ring" });
+  const model = {
+    ...initialDeckBuilderSubmodel(),
+    atEnd: true,
+    commander: { id: solRing.id, print: solRing.default_print },
+    entries: { "sol-ring": { count: 1, print: solRing.default_print } },
+    known: { "sol-ring": solRing },
+    preferredPrint: { "sol-ring": solRing.default_print },
+    searching: false,
+  };
+
+  Scene.scene(
+    { update: builderUpdate, view: (model) => builderView(model, emptyViewInputs) },
+    Scene.with(model),
+    observePoolWidth,
+    Scene.tap((sim) => expect(artSize(sim, "deck-row-sol-ring")).toBe("thumb")),
+    Scene.tap((sim) => expect(artSize(sim, "builder-commander")).toBe("thumb")),
+    Scene.Mount.resolve(BindBuilderCardPointer({ cardId: "sol-ring", kind: "deck" }), ClearedBuilderHover()),
+    Scene.Mount.resolve(BindBuilderCardPointer({ cardId: "sol-ring", kind: "commander" }), ClearedBuilderHover()),
+    Scene.Mount.resolve(BindCardArt, ClearedBuilderHover() as never),
+    Scene.Mount.resolve(BindCardArt, ClearedBuilderHover() as never),
+  );
+});
