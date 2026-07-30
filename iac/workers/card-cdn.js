@@ -9,9 +9,11 @@ const LAYOUT =
 const IMMUTABLE = { "Cache-Control": "public, max-age=31536000, immutable", "Content-Type": "image/jpeg" };
 const USER_AGENT = "edh.reilley.dev/0.1";
 
-function scryfallImageUrl(size, face, id) {
-  const back = face === "back" ? "&face=back" : "";
-  return `https://api.scryfall.com/cards/${id}?format=image&version=${size}${back}`;
+// cards.scryfall.io serves image bytes directly at this layout, unlike api.scryfall.com/cards/{id}
+// (which 302s to it). Built from the validated capture groups, not url.pathname — a/b are the
+// trust boundary (see the a/b === id check below) and must stay pinned to the one print's id.
+function scryfallImageUrl(size, face, a, b, id) {
+  return `https://cards.scryfall.io/${size}/${face}/${a}/${b}/${id}.jpg`;
 }
 
 export default {
@@ -34,7 +36,7 @@ export default {
     const stored = await env.CARDS.get(key).catch(() => null);
     if (stored) return new Response(stored.body, { headers: IMMUTABLE });
 
-    const upstream = scryfallImageUrl(size, face, id);
+    const upstream = scryfallImageUrl(size, face, a, b, id);
     const filled = await fetch(upstream, { headers: { "User-Agent": USER_AGENT } }).catch(() => null);
     // A print that does not exist is not transient; anything else might be, so send the browser
     // to Scryfall directly this once. `large` has no client-side fallback of its own.

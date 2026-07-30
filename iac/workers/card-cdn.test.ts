@@ -4,7 +4,7 @@ import worker from "./card-cdn.js";
 
 const ID = "abcd1234-5678-90ab-cdef-000000000001";
 const KEY = `large/front/a/b/${ID}.jpg`;
-const SCRYFALL = `https://api.scryfall.com/cards/${ID}?format=image&version=large`;
+const SCRYFALL = `https://cards.scryfall.io/large/front/a/b/${ID}.jpg`;
 
 type Stored = { body: Uint8Array };
 
@@ -68,9 +68,7 @@ describe("card CDN worker", () => {
 
     await worker.fetch(get(`/art_crop/back/a/b/${ID}.jpg`), env);
 
-    expect(fetchMock.mock.calls[0]?.[0]).toBe(
-      `https://api.scryfall.com/cards/${ID}?format=image&version=art_crop&face=back`,
-    );
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(`https://cards.scryfall.io/art_crop/back/a/b/${ID}.jpg`);
     expect(env.CARDS.put.mock.calls[0]?.[0]).toBe(`art_crop/back/a/b/${ID}.jpg`);
   });
 
@@ -116,6 +114,21 @@ describe("card CDN worker", () => {
   it("redirects to Scryfall and stores nothing when the fill is rate-limited", async () => {
     const env = { CARDS: bucket() };
     fetchMock.mockResolvedValue(new Response("", { status: 429 }));
+
+    const res = await worker.fetch(get(`/large/front/a/b/${ID}.jpg`), env);
+
+    expect(res.status).toBe(302);
+    expect(res.headers.get("Location")).toBe(SCRYFALL);
+    expect(env.CARDS.put).not.toHaveBeenCalled();
+  });
+
+  it("redirects to Scryfall and stores nothing when the fill itself is a redirect", async () => {
+    // The exact shape of the bug this guards: api.scryfall.com/cards/{id}?format=image redirects
+    // rather than returning bytes, so `!filled.ok` must still catch a 3xx from upstream, not
+    // just 429/5xx — a Worker that trusted a 2xx-shaped mock here would have shipped with every
+    // fill silently failing.
+    const env = { CARDS: bucket() };
+    fetchMock.mockResolvedValue(new Response("", { status: 302, headers: { Location: "https://example.com/x" } }));
 
     const res = await worker.fetch(get(`/large/front/a/b/${ID}.jpg`), env);
 

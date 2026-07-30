@@ -321,8 +321,9 @@ CI/Buildx cache and release tag cascade: [ci-and-release](2026-07-20-ci-and-rele
 
 `edh-images.reilley.dev` is a Cloudflare Worker over the `edh-card-images` R2 bucket, both
 Terraform-owned. The Worker is the only reader/writer of the bucket: a hit serves the stored
-bytes with a year-long `immutable` cache, a miss fetches the print from Scryfall, stores the
-JPEG unchanged, and serves it. A failed fill `302`s to Scryfall; a Scryfall `404` is a `404`.
+bytes with a year-long `immutable` cache, a miss fetches the print from `cards.scryfall.io`,
+stores the JPEG unchanged, and serves it. A failed fill `302`s there; a Scryfall `404` is a
+`404`. Fills go to Scryfall's image CDN rather than its rate-limited API.
 The bucket starts empty and fills from real traffic — there is no bulk upload and no cron.
 
 The hostname is a first-level subdomain so free Universal SSL covers it. Nothing metered is in
@@ -335,7 +336,8 @@ Tunnel or the Nitro BFF.
 ([ci-and-release](2026-07-20-ci-and-release.md)); changing the CDN needs a rebuild. Path layout
 is owned by `buildImageUrl` ([deck-list-and-builder](2026-07-20-deck-list-and-builder.md)) and
 duplicated in the Worker's matcher, with a round-trip test at `iac/workers/card-cdn.test.ts`
-guarding the drift.
+guarding the drift. It matches `cards.scryfall.io`'s own layout, so a miss maps to the upstream
+URL one-for-one.
 
 ---
 
