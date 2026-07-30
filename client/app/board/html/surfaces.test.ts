@@ -417,6 +417,48 @@ test("active player sees the end-turn affordance", () => {
   overlayScene(overlayModel(), Scene.expect(Scene.testId("board-end-turn")).toExist());
 });
 
+test("end turn is a rocker in island blue, never priority gold", () => {
+  overlayScene(
+    overlayModel(),
+    // Same rocker shape as until-my-turn: ARIA drives the chrome, no parallel JS class state.
+    Scene.expect(Scene.testId("board-end-turn")).toHaveAttr("role", "switch"),
+    Scene.expect(Scene.testId("board-end-turn")).toHaveAttr("aria-checked", "false"),
+    Scene.expect(Scene.testId("board-end-turn")).toHaveClass("group/yield"),
+    Scene.expect(Scene.testId("board-end-turn")).toHaveClass("aria-checked:bg-island-blue/15"),
+    Scene.expect(Scene.testId("board-end-turn")).toHaveAccessibleName("End turn"),
+  );
+});
+
+test("arming end turn checks the rocker without renaming it", () => {
+  overlayScene(
+    overlayModel(initialBoardModel(), gameState({ turn_yielded: true })),
+    Scene.expect(Scene.testId("board-end-turn")).toHaveAttr("aria-checked", "true"),
+    // The label always names the control, never the reversed action.
+    Scene.expect(Scene.testId("board-end-turn")).toHaveAccessibleName("End turn"),
+  );
+});
+
+test("the rockers ride in their own row, out of the action row", () => {
+  overlayScene(
+    overlayModel(),
+    Scene.expect(Scene.selector('[data-testid="priority-bar-rockers"] [data-testid="board-end-turn"]')).toExist(),
+    // Next stays put — moving the rockers must not drag the primary action down with them.
+    Scene.expect(Scene.selector('[data-testid="priority-bar-rockers"] [data-testid="board-primary"]')).toBeAbsent(),
+  );
+});
+
+test("the hover label sits to the left of the rocker track", () => {
+  // `Scene.selector` resolves to the first match in document order — the label span.
+  const label = Scene.selector('[data-testid="board-turn-yield"] span');
+  overlayScene(
+    overlayModel(initialBoardModel(), gameState({ active_player: 1 })),
+    // The rocker itself is plain `flex`, so the first span paints leftmost — Arena's placement.
+    Scene.expect(label).toHaveText("Auto-pass until my turn"),
+    Scene.expect(label).toHaveClass("max-w-0"),
+    Scene.expect(label).toHaveClass("group-hover/yield:max-w-[160px]"),
+  );
+});
+
 test("end turn is hidden when a goaded creature must attack", () => {
   overlayScene(
     overlayModel(
