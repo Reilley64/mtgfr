@@ -2,18 +2,21 @@
 // Spec: docs/superpowers/specs/2026-07-30-card-image-cdn-design.md
 // Uploaded verbatim by iac/card-cdn.tf, so: plain ES module, no imports, no bundler.
 
+// Every size Scryfall serves as WebP. Admitting all of them — not just the two the client asks
+// for today — is what lets a surface switch to a smaller image without redeploying this Worker.
 const LAYOUT =
-  /^\/(large|art_crop)\/(front|back)\/([0-9a-f])\/([0-9a-f])\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.jpg$/;
+  /^\/(thumb|grid|display|art|crop)\/(front|back)\/([0-9a-f])\/([0-9a-f])\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.webp$/;
 
 // Print ids never change, so the bytes at a key never change either.
-const IMMUTABLE = { "Cache-Control": "public, max-age=31536000, immutable", "Content-Type": "image/jpeg" };
+const IMMUTABLE = { "Cache-Control": "public, max-age=31536000, immutable", "Content-Type": "image/webp" };
 const USER_AGENT = "edh.reilley.dev/0.1";
 
-// cards.scryfall.io serves image bytes directly at this layout, unlike api.scryfall.com/cards/{id}
-// (which 302s to it). Built from the validated capture groups, not url.pathname — a/b are the
-// trust boundary (see the a/b === id check below) and must stay pinned to the one print's id.
+// cards.scryfall.io serves image bytes directly at this layout, unlike api.scryfall.com/cards/{id},
+// which 302s to it — and whose `version=` param answers the WebP size names with the large JPEG.
+// Built from the validated capture groups, not url.pathname — a/b are the trust boundary (see the
+// a/b === id check below) and must stay pinned to the one print's id.
 function scryfallImageUrl(size, face, a, b, id) {
-  return `https://cards.scryfall.io/${size}/${face}/${a}/${b}/${id}.jpg`;
+  return `https://cards.scryfall.io/${size}/${face}/${a}/${b}/${id}.webp`;
 }
 
 export default {
@@ -30,7 +33,7 @@ export default {
     // trust boundary: pinning the fan-out chars to the id pins the outbound URL to one print.
     if (a !== id[0] || b !== id[1]) return new Response("Not found", { status: 404 });
 
-    const key = `${size}/${face}/${a}/${b}/${id}.jpg`;
+    const key = `${size}/${face}/${a}/${b}/${id}.webp`;
     // A read failure is not distinguishable from a miss here, so treat it as one — the fill
     // path below has its own redirect-on-failure handling.
     const stored = await env.CARDS.get(key).catch(() => null);
@@ -52,7 +55,7 @@ export default {
     // broken tile behind an immutable cache with no way to self-heal.
     if (bytes.byteLength === 0) return Response.redirect(upstream, 302);
     // A failed write only costs the next request another fill — serve what we already have.
-    await env.CARDS.put(key, bytes, { httpMetadata: { contentType: "image/jpeg" } }).catch(() => {});
+    await env.CARDS.put(key, bytes, { httpMetadata: { contentType: "image/webp" } }).catch(() => {});
     return new Response(bytes, { headers: IMMUTABLE });
   },
 };

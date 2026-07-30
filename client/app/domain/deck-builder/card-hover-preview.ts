@@ -98,7 +98,7 @@ function textPanel<M>(
 function artColumn<M>(h: HtmlFactory<M>, print: string, name: string, face: "front" | "back" | undefined): Html {
   return cardArt(h, {
     print,
-    size: "large",
+    size: "display",
     face,
     alt: name,
     className: "w-(--w) flex-none rounded-[14px] shadow-table",

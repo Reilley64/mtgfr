@@ -322,14 +322,18 @@ CI/Buildx cache and release tag cascade: [ci-and-release](2026-07-20-ci-and-rele
 `edh-images.reilley.dev` is a Cloudflare Worker over the `edh-card-images` R2 bucket, both
 Terraform-owned. The Worker is the only reader/writer of the bucket: a hit serves the stored
 bytes with a year-long `immutable` cache, a miss fetches the print from `cards.scryfall.io`,
-stores the JPEG unchanged, and serves it. A failed fill `302`s there; a Scryfall `404` is a
-`404`. Fills go to Scryfall's image CDN rather than its rate-limited API.
-The bucket starts empty and fills from real traffic — there is no bulk upload and no cron.
+stores the WebP unchanged, and serves it. A failed fill `302`s there; a Scryfall `404` is a
+`404`. Fills go to Scryfall's image CDN rather than its rate-limited API — which additionally
+cannot serve the WebP sizes at all (`?format=image&version=display` answers with the `large`
+JPEG). The bucket starts empty and fills from real traffic — there is no bulk upload and no cron.
+
+Keys are `{thumb|grid|display|art|crop}/{front|back}/{a}/{b}/{id}.webp`: Scryfall's own WebP size
+names, stored unconverted at roughly half the JPEG bytes for the same dimensions.
 
 The hostname is a first-level subdomain so free Universal SSL covers it. Nothing metered is in
 the request path (Workers' free 100k/day rejects rather than bills, R2 egress is free, no
 Cloudflare Images subscription exists), so only R2 storage can accrue — bounded by the catalog
-at roughly 20 GB fully warm. Image traffic deliberately does **not** cross the Cloudflare
+at roughly 11 GB fully warm. Image traffic deliberately does **not** cross the Cloudflare
 Tunnel or the Nitro BFF.
 
 `VITE_CARD_CDN` is baked at image build time from the same-named GitHub Actions repo variable

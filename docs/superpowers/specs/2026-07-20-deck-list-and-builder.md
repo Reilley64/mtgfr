@@ -42,7 +42,7 @@ a `@foldkit/ui` `Menu` submodel owned by the root model — see
 [shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md). Search and grid share the
 shell stage max-width column (no nested 960px wrappers).
 
-Tiles use a raised `minmax(220px, 1fr)` track, landscape commander `art_crop`
+Tiles use a raised `minmax(220px, 1fr)` track, landscape commander `art`
 (~1.37:1), deck name, color-identity pips, and a Precon chip when `id < 0`. Names stay
 single-line truncate. There is no cursor-follow card hover preview on this surface. The
 first grid cell is always a dashed create tile linking to `/decks/new`
@@ -97,18 +97,20 @@ stage body is a split-pane layout (no duplicate page title in the decklist pane)
 
 ### Card art CDN (`client/app/domain/deck-builder/scryfall.ts`, `client/app/domain/ui/card-art.ts`, `client/app/domain/image-cache.ts`)
 
-Art is keyed by Scryfall **Printing** UUID. `imageUrlByPrint(printId, size, face)` returns:
-- When `VITE_CARD_CDN` is set and `size === "art_crop"`: CDN
-  `VITE_CARD_CDN/art_crop/{face}/{a}/{b}/{id}.jpg` (deck-list tiles use this path).
-- When `VITE_CARD_CDN` is set and `size` is any other value: CDN
-  `VITE_CARD_CDN/large/{face}/{a}/{b}/{id}.jpg`.
-- When `VITE_CARD_CDN` is unset: Scryfall image API
-  (`https://api.scryfall.com/cards/{id}?format=image&version={size}`) (local/dev).
+Art is keyed by Scryfall **Printing** UUID. `ImageSize` is Scryfall's own WebP size names —
+`thumb` (146×204), `grid` (488×680), `display` (672×936, the default), `art` (626×457, art box
+only, used by deck-list tiles), `crop` (480×680, full card with the border trimmed). There is no
+`png` size; Scryfall's transparent PNG has no WebP counterpart.
 
-The CDN path replicates Scryfall's folder fan (`first two hex chars` of the UUID). DFC backs are
-fetched with `face=back` in the Scryfall path; the CDN serves the same JPEG under `/back/`.
-There is no client-side Scryfall fallback at either size — the CDN redirects to Scryfall itself
-when it cannot fill ([production-topology-and-operations](2026-07-20-production-topology-and-operations.md)),
+`imageUrlByPrint(printId, size, face)` returns `{base}/{size}/{face}/{a}/{b}/{id}.webp`, where
+`base` is `VITE_CARD_CDN` when set and `https://cards.scryfall.io` otherwise (local/dev). Our CDN
+mirrors Scryfall's layout, so only the origin differs. `a`/`b` are the UUID's first two hex chars,
+replicating Scryfall's folder fan. Not `api.scryfall.com/cards/{id}?format=image&version=…` — that
+endpoint redirects instead of serving bytes and answers WebP size names with the `large` JPEG.
+
+DFC backs come from the `/back/` path segment at every size. There is no client-side Scryfall
+fallback — the CDN redirects to Scryfall itself when it cannot fill
+([production-topology-and-operations](2026-07-20-production-topology-and-operations.md)),
 so a failed `<img>` load leaves the host empty.
 
 `cardBackUrl()` returns `/card-back.webp` for library piles and face-down cards.

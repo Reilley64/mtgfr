@@ -5,7 +5,7 @@ import * as Mount from "foldkit/mount";
 import { cardBackUrl, type ImageFace, type ImageSize, imageUrlByPrint } from "../deck-builder/scryfall";
 import { type ImageCache, sharedImageCache } from "../image-cache";
 
-export function cardArtUrl(print: string, size: ImageSize = "large", face: ImageFace = "front"): string {
+export function cardArtUrl(print: string, size: ImageSize = "display", face: ImageFace = "front"): string {
   if (!print) return cardBackUrl();
   return imageUrlByPrint(print, size, face);
 }
@@ -90,7 +90,7 @@ export function cardArt<M>(
     testId?: string;
   },
 ): Html {
-  const size = opts.size ?? "large";
+  const size = opts.size ?? "display";
   const face = opts.face ?? "front";
   const url = cardArtUrl(opts.print, size, face);
   return h.div(

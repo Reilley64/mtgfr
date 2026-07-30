@@ -1,6 +1,6 @@
 import * as Effect from "effect/Effect";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { buildImageUrl, parseRetryAfterMs, printSearchUrl, scryfallImageUrl, searchPrintPage } from "./scryfall";
+import { buildImageUrl, parseRetryAfterMs, printSearchUrl, searchPrintPage } from "./scryfall";
 
 afterEach(() => {
   vi.useRealTimers();
@@ -173,42 +173,28 @@ describe("searchPrintPage paging", () => {
 describe("buildImageUrl", () => {
   const id = "abcd1234-5678-90ab-cdef-000000000001";
 
-  it("uses Scryfall version=art_crop when cdnBase is empty", () => {
-    expect(buildImageUrl(id, "art_crop", "front", "")).toBe(
-      `https://api.scryfall.com/cards/${id}?format=image&version=art_crop`,
+  it("names the size in the path, so a smaller size fetches a smaller image", () => {
+    expect(buildImageUrl(id, "thumb", "front", "https://cards.example.com")).toBe(
+      `https://cards.example.com/thumb/front/a/b/${id}.webp`,
+    );
+    expect(buildImageUrl(id, "display", "front", "https://cards.example.com")).toBe(
+      `https://cards.example.com/display/front/a/b/${id}.webp`,
     );
   });
 
-  it("uses CDN art_crop folder when cdnBase is set", () => {
-    expect(buildImageUrl(id, "art_crop", "front", "https://cards.example.com")).toBe(
-      `https://cards.example.com/art_crop/front/a/b/${id}.jpg`,
+  it("keeps the face in the path and tolerates a trailing slash on the base", () => {
+    expect(buildImageUrl(id, "art", "back", "https://cards.example.com/")).toBe(
+      `https://cards.example.com/art/back/a/b/${id}.webp`,
     );
   });
 
-  it("maps non-art_crop sizes to CDN large folder when cdnBase is set", () => {
-    expect(buildImageUrl(id, "large", "front", "https://cards.example.com")).toBe(
-      `https://cards.example.com/large/front/a/b/${id}.jpg`,
-    );
-    expect(buildImageUrl(id, "small", "back", "https://cards.example.com/")).toBe(
-      `https://cards.example.com/large/back/a/b/${id}.jpg`,
-    );
-  });
-
-  it("adds face=back on Scryfall URLs", () => {
-    expect(buildImageUrl(id, "art_crop", "back", "")).toBe(
-      `https://api.scryfall.com/cards/${id}?format=image&version=art_crop&face=back`,
-    );
+  // Not api.scryfall.com/cards/{id}?format=image&version=… — that endpoint 302s instead of
+  // serving bytes, and answers `version=display` with the `large` JPEG.
+  it("falls back to Scryfall's image host at the same layout when cdnBase is empty", () => {
+    expect(buildImageUrl(id, "display", "back", "")).toBe(`https://cards.scryfall.io/display/back/a/b/${id}.webp`);
   });
 
   it("returns empty string for empty print id", () => {
-    expect(buildImageUrl("", "art_crop", "front", "https://cards.example.com")).toBe("");
-  });
-});
-
-describe("scryfallImageUrl", () => {
-  it("ignores CDN and always builds Scryfall", () => {
-    const id = "ffff0000-0000-0000-0000-000000000001";
-    expect(scryfallImageUrl(id, "art_crop")).toContain("version=art_crop");
-    expect(scryfallImageUrl(id, "art_crop")).toContain("api.scryfall.com");
+    expect(buildImageUrl("", "art", "front", "https://cards.example.com")).toBe("");
   });
 });
