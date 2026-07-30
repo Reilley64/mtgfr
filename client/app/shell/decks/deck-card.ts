@@ -45,7 +45,7 @@ function renderDeckCardBody<Msg>(h: HtmlFactory<Msg>, card: DeckCardModel, opts:
         ? h.div([h.Class("aspect-[137/100] w-full bg-glass")], [])
         : cardArt(h, {
             print: card.print,
-            size: "art_crop",
+            size: "art",
             alt: "",
             className: "aspect-[137/100] w-full object-cover",
           }),

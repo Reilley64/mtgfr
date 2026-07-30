@@ -2,7 +2,12 @@ import { Schema as S } from "effect";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 
-export type ImageSize = "small" | "normal" | "large" | "png" | "art_crop";
+/**
+ * Scryfall's WebP sizes, named as Scryfall names them: `thumb` 146×204, `grid` 488×680,
+ * `display` 672×936, `art` 626×457 (art box only), `crop` 480×680 (full card, border trimmed).
+ * There is no WebP counterpart to Scryfall's transparent `png`, so that size does not exist here.
+ */
+export type ImageSize = "thumb" | "grid" | "display" | "art" | "crop";
 export type ImageFace = "front" | "back";
 
 const CDN = String(import.meta.env.VITE_CARD_CDN ?? "").replace(/\/$/, "");
@@ -17,30 +22,22 @@ export function cardBackUrl(): string {
   return "/card-back.webp";
 }
 
+/**
+ * Our CDN mirrors Scryfall's own path layout exactly, so with no CDN configured the same builder
+ * points straight at Scryfall's image host — only the origin differs.
+ *
+ * Not `api.scryfall.com/cards/{id}?format=image&version=…`: that endpoint 302s rather than serving
+ * bytes, and it silently ignores the WebP size names (`version=display` returns the `large` JPEG).
+ */
+const SCRYFALL_IMAGES = "https://cards.scryfall.io";
+
 export function buildImageUrl(printId: string, size: ImageSize, face: ImageFace, cdnBase: string): string {
   if (!printId) return "";
-  const base = cdnBase.replace(/\/$/, "");
-  if (base) {
-    const a = printId[0];
-    const b = printId[1];
-    const folder = size === "art_crop" ? "art_crop" : "large";
-    return `${base}/${folder}/${face}/${a}/${b}/${printId}.webp`;
-  }
-  const faceParam = face === "back" ? "&face=back" : "";
-  return `https://api.scryfall.com/cards/${printId}?format=image&version=${size}${faceParam}`;
+  const base = cdnBase.replace(/\/$/, "") || SCRYFALL_IMAGES;
+  return `${base}/${size}/${face}/${printId[0]}/${printId[1]}/${printId}.webp`;
 }
 
-export function scryfallImageUrl(printId: string, size: ImageSize, face: ImageFace = "front"): string {
-  return buildImageUrl(printId, size, face, "");
-}
-
-export function artCropFallbackUrl(printId: string, face: ImageFace = "front", cdnBase: string = CDN): string | null {
-  if (!printId) return null;
-  if (!cdnBase.replace(/\/$/, "")) return null;
-  return scryfallImageUrl(printId, "art_crop", face);
-}
-
-export function imageUrlByPrint(printId: string, size: ImageSize = "large", face: ImageFace = "front"): string {
+export function imageUrlByPrint(printId: string, size: ImageSize = "display", face: ImageFace = "front"): string {
   return buildImageUrl(printId, size, face, CDN);
 }
 

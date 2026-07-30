@@ -1,0 +1,61 @@
+// Card art CDN — R2 bucket filled on miss from Scryfall.
+// Spec: docs/superpowers/specs/2026-07-30-card-image-cdn-design.md
+// Uploaded verbatim by iac/card-cdn.tf, so: plain ES module, no imports, no bundler.
+
+// Every size Scryfall serves as WebP. Admitting all of them — not just the two the client asks
+// for today — is what lets a surface switch to a smaller image without redeploying this Worker.
+const LAYOUT =
+  /^\/(thumb|grid|display|art|crop)\/(front|back)\/([0-9a-f])\/([0-9a-f])\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.webp$/;
+
+// Print ids never change, so the bytes at a key never change either.
+const IMMUTABLE = { "Cache-Control": "public, max-age=31536000, immutable", "Content-Type": "image/webp" };
+const USER_AGENT = "edh.reilley.dev/0.1";
+
+// cards.scryfall.io serves image bytes directly at this layout, unlike api.scryfall.com/cards/{id},
+// which 302s to it — and whose `version=` param answers the WebP size names with the large JPEG.
+// Built from the validated capture groups, not url.pathname — a/b are the trust boundary (see the
+// a/b === id check below) and must stay pinned to the one print's id.
+function scryfallImageUrl(size, face, a, b, id) {
+  return `https://cards.scryfall.io/${size}/${face}/${a}/${b}/${id}.webp`;
+}
+
+export default {
+  async fetch(request, env) {
+    if (request.method !== "GET" && request.method !== "HEAD") {
+      return new Response("Method not allowed", { status: 405, headers: { Allow: "GET, HEAD" } });
+    }
+
+    const match = LAYOUT.exec(new URL(request.url).pathname);
+    if (!match) return new Response("Not found", { status: 404 });
+
+    const [, size, face, a, b, id] = match;
+    // Anyone can make this endpoint write to the bucket and fetch from Scryfall, so the path is a
+    // trust boundary: pinning the fan-out chars to the id pins the outbound URL to one print.
+    if (a !== id[0] || b !== id[1]) return new Response("Not found", { status: 404 });
+
+    const key = `${size}/${face}/${a}/${b}/${id}.webp`;
+    // A read failure is not distinguishable from a miss here, so treat it as one — the fill
+    // path below has its own redirect-on-failure handling.
+    const stored = await env.CARDS.get(key).catch(() => null);
+    if (stored) return new Response(stored.body, { headers: IMMUTABLE });
+
+    const upstream = scryfallImageUrl(size, face, a, b, id);
+    const filled = await fetch(upstream, { headers: { "User-Agent": USER_AGENT } }).catch(() => null);
+    // A print that does not exist is not transient; anything else might be, so send the browser
+    // to Scryfall directly this once. `large` has no client-side fallback of its own.
+    if (filled === null) return Response.redirect(upstream, 302);
+    if (filled.status === 404) return new Response("Not found", { status: 404 });
+    if (!filled.ok) return Response.redirect(upstream, 302);
+
+    const bytes = await filled.arrayBuffer().catch(() => null);
+    // A body that fails to read mid-stream (e.g. a connection reset) is a failed fill too —
+    // nothing downstream can distinguish this from any other transient Scryfall failure.
+    if (bytes === null) return Response.redirect(upstream, 302);
+    // A 2xx with no bytes is a failed fill, not a valid image — storing it would freeze a
+    // broken tile behind an immutable cache with no way to self-heal.
+    if (bytes.byteLength === 0) return Response.redirect(upstream, 302);
+    // A failed write only costs the next request another fill — serve what we already have.
+    await env.CARDS.put(key, bytes, { httpMetadata: { contentType: "image/webp" } }).catch(() => {});
+    return new Response(bytes, { headers: IMMUTABLE });
+  },
+};

@@ -145,7 +145,7 @@ function stackFace(opts: {
     opts.imageName && opts.print
       ? cardArt(h, {
           print: opts.print,
-          size: "large",
+          size: "display",
           alt: opts.imageName,
           className: "block h-(--card-h) w-(--stack-w) rounded-game",
         })

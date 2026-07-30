@@ -35,7 +35,7 @@ export function promptCardFace<Msg>(
   return opts.print
     ? cardArt(h, {
         print: opts.print,
-        size: "large",
+        size: "display",
         alt: opts.alt ?? "",
         className: face.art,
         ...(opts.testId != null ? { testId: opts.testId } : {}),
