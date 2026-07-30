@@ -32,15 +32,27 @@ export function handleCombatDrop(
   /** Seats this declaration covers (`declaresFor`) — the viewer's own unless it was moved. */
   seats: readonly number[],
   opponents: number[] = [],
+  /** Extra copies committed alongside `from` — the rest of a shift-dropped cluster. Cluster members
+   * are identical by construction, so the legality guards that pass for `from` pass for them all,
+   * and an illegal face rejects the whole pile rather than staging part of it. */
+  alsoIds: readonly number[] = [],
 ): CombatDropResult {
   if (mode === "attackers") {
     const pw = attackablePlaneswalker(blockTarget, opponents);
-    const next = attackDrop(currentAttackers, from, defender, pw?.id);
-    return next ? { kind: "attackers", value: next } : { kind: "none" };
+    let next = attackDrop(currentAttackers, from, defender, pw?.id);
+    if (!next) return { kind: "none" };
+    for (const id of alsoIds) {
+      next = attackDrop(next, { ...from, id }, defender, pw?.id) ?? next;
+    }
+    return { kind: "attackers", value: next };
   }
   if (mode === "blockers") {
-    const next = blockDrop(currentBlocks, from.id, blockTarget, declaredAttackers, seats);
-    return next ? { kind: "blockers", value: next } : { kind: "none" };
+    let next = blockDrop(currentBlocks, from.id, blockTarget, declaredAttackers, seats);
+    if (!next) return { kind: "none" };
+    for (const id of alsoIds) {
+      next = blockDrop(next, id, blockTarget, declaredAttackers, seats) ?? next;
+    }
+    return { kind: "blockers", value: next };
   }
   return { kind: "none" };
 }

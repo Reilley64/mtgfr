@@ -17,7 +17,7 @@ Use `PriorityContextBar` for action controls, `TurnBanner` for active player and
 - As a non-active player, I can auto-pass Until my turn.
 - As a player, I can use Space and Enter for common board actions.
 - As a new player, I can discover drag, Alt inspect, Space pass, and badge meanings.
-- As a player declaring attackers or blockers, I see a combat coach strip explaining drag-to-stage, click-to-cancel, and Confirm.
+- As a player declaring attackers or blockers, I see a combat coach strip explaining drag-to-stage, shift-drag for a whole stack, click-to-cancel, and Confirm.
 
 ## Behavior
 
@@ -38,7 +38,7 @@ Use `PriorityContextBar` for action controls, `TurnBanner` for active player and
 - On the first fold where `VisibleState.mulliganing` is true, a one-shot `first-player-reveal` spotlight arms over the mulligan overlay (`z-50`, above its `z-40`) naming the CR 103.1 rolled starter. Seat chips lay out in the viewer-relative 2×2 quadrants (`seatSlot`, the same viewer-relative rule as the board's `seatCell`), hopping through them on a decelerating schedule before settling on the winner's chip and the "`<username>` goes first" banner. It renders for every viewer, spectators included, with no seated-viewer gate, and its `pointer-events-auto` backdrop keeps mulligan Keep/Mulligan unreachable until it clears. `prefers-reduced-motion` skips the hop: the winner's chip and banner appear together and hold. A `sessionStorage` key per table (`mtgfr:first-player-reveal:<tableId>`) makes the reveal a true one-shot — reloading after it arms goes straight to the opening hand; a throwing `sessionStorage` (privacy mode) counts as not-yet-seen, so the worst case is a replay on reload, never a block. The hop and the final hold are `Command.define` sleeps dispatching `FirstPlayerRevealStepped` / `FirstPlayerRevealFinished`, which advance and then clear the reveal.
 - `TurnBanner` shows five phase bands: Beginning, Main 1, Combat, Main 2, End, plus step detail when needed. Phase-segment and turn-label chrome is attribute-driven: each segment carries `data-phase-state` (`past` / `now` / `future`) and `data-your-turn`, and the label carries `data-your-turn`; Tailwind `data-[…]` variants own the mint (now, yours) / ember (now, theirs) / dim (past, future) looks, so JS sets attributes and never composes class ternaries.
 - `HintStrip` explains drag, activation click, Alt inspect, and Space pass; it auto-hides after 12 seconds and persists dismissal as `mtgfr.hintDismissed`.
-- During local declare-attackers / declare-blockers windows, `board-combat-coach` shows drag-to-stage and click-to-cancel copy (independent of hint dismissal): attack → opponent life orb (click attacker to un-stage), block → attacker creature (click blocker to un-stage).
+- During local declare-attackers / declare-blockers windows, `board-combat-coach` shows drag-to-stage, shift-drag-the-stack, and click-to-cancel copy (independent of hint dismissal): attack → opponent life orb (Shift drag a stack to send all; click attacker to un-stage), block → attacker creature (Shift drag a stack to block with all; click blocker to un-stage). The shift copy lives on the coach rather than `HintStrip` because it only applies while a declaration is open.
 - `LegendPanel` explains badges, target/combat outlines, playable border, commander outline, and graveyard/exile outlines.
 - Sound toggle sits in the top-left toolbar with legend controls and is visible to all viewers.
 - Playability is communicated with playable borders and zone outlines, not with a dim veil over unplayable permanents.
@@ -52,6 +52,7 @@ Use `PriorityContextBar` for action controls, `TurnBanner` for active player and
 - End Turn reuses `SetTurnYield`; there is no separate end-turn intent.
 - The top-left toolbar has one fixed container for legend and sound controls.
 - Global keyboard handling ignores inputs, textareas, selects, and button Space/Enter default activation.
+- `boardKeyListeners` builds the window `keydown` / `keyup` / `blur` handlers `MountBoardKeyboard` installs, so the modifier lifecycle is unit-testable apart from the Mount stream. Alt keydown calls `preventDefault`; Shift does not, staying a live modifier for text selection and native shortcuts. `blur` emits `ShiftUp`, so a Shift keyup that lands in another window cannot leave the whole-pile combat drop armed.
 
 ## Testing Decisions
 
@@ -63,7 +64,7 @@ Use `PriorityContextBar` for action controls, `TurnBanner` for active player and
 - `spotlightSteps`/arming unit tests (`first-player-reveal.test.ts`) cover the hop schedule ending on the winner's slot and decelerating, reduced motion collapsing to a single step, a one-seat table not dividing by zero, and one-shot arming — arms once per table, a second call is a no-op, never arms outside mulligans, and a throwing `sessionStorage` doesn't throw out of `markRevealSeen`.
 - Chrome Scene tests cover the `first-player-reveal` spotlight over a still-present `mulligan-overlay` with the winning seat's chip lit and the banner naming the winner, the banner staying blank mid-hop before the reveal settles, and the reveal clearing (with mulligan controls live again) once `FirstPlayerRevealFinished` lands.
 - Mulligan unit tests cover Keep/Mulligan copy, enablement, and waiting status that names undecided seats (including empty-username fallback).
-- Keyboard tests cover Space, Enter, Escape, and Alt behavior without stealing text-input focus.
+- Keyboard tests cover Space, Enter, Escape, Alt, and Shift behavior without stealing text-input focus, including `boardKeyListeners` emitting `ShiftDown` / `ShiftUp` on hold and release and releasing Shift on window blur.
 - Discoverability tests cover hint auto-hide, dismissal persistence, legend content, toolbar placement, and combat staging coach copy.
 - Playable-chrome tests assert outlines/borders rather than dimming.
 

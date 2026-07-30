@@ -5,7 +5,14 @@ import type { GameFoldState } from "../game/fold";
 import { engagedIds } from "./engagement";
 import { layout, ZONE } from "./geometry/layout";
 import { selectedRadialOptions } from "./html/activation-menu";
-import { BoardPointerDown, BoardPointerUp, CombatAttackerDropped, RadialOptionPicked } from "./messages";
+import {
+  BoardPointerDown,
+  BoardPointerUp,
+  CombatAttackerDropped,
+  RadialOptionPicked,
+  ShiftDown,
+  ShiftUp,
+} from "./messages";
 import { type BoardModel, initialBoardModel, updateBoard } from "./submodel";
 
 function creature(id: number, over: Partial<ObjectView> = {}): ObjectView {
@@ -149,6 +156,30 @@ test("two distinct dropped attacker ids each keep their own combatAttackers entr
   );
 
   expect(afterSecond.combatAttackers.map((a) => a.attacker).sort()).toEqual([10, 11]);
+});
+
+// Shift commits the whole pile. The drop message carries one attacker id; `combatDropModel` has to
+// resolve that id back to its cluster face through `cardsFor` → `layout()` and stage every member.
+test("a shift-held drop sends the whole Saproling cluster at the defender", () => {
+  const gameFold = fold({ objects: crowdedObjects(), actions: [declareAttackers], step: 5, players: twoSeats });
+  const [held] = updateBoard(initialBoardModel(), ShiftDown(), gameFold, "T1");
+  expect(held.shiftDown).toBe(true);
+
+  const [next] = updateBoard(held, CombatAttackerDropped({ attackerId: 10, defenderSeat: 1 }), gameFold, "T1");
+
+  expect(next.combatAttackers.map((a) => a.attacker).sort()).toEqual([10, 11, 12, 13]);
+  expect(next.combatAttackers.every((a) => a.defender === 1)).toBe(true);
+});
+
+test("releasing shift goes back to one attacker per drop", () => {
+  const gameFold = fold({ objects: crowdedObjects(), actions: [declareAttackers], step: 5, players: twoSeats });
+  const [held] = updateBoard(initialBoardModel(), ShiftDown(), gameFold, "T1");
+  const [released] = updateBoard(held, ShiftUp(), gameFold, "T1");
+  expect(released.shiftDown).toBe(false);
+
+  const [next] = updateBoard(released, CombatAttackerDropped({ attackerId: 10, defenderSeat: 1 }), gameFold, "T1");
+
+  expect(next.combatAttackers.map((a) => a.attacker)).toEqual([10]);
 });
 
 test("clicking the residual cluster tile after a copy is staged reaches the next free copy", () => {

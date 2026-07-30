@@ -209,6 +209,12 @@ export const RadialDismissed = m("RadialDismissed");
 export const AltDown = m("AltDown");
 /** Alt key released: dismiss the inspect dock. */
 export const AltUp = m("AltUp");
+
+// ── Shift (whole-pile combat declaration) ─────────────────────────────────────
+/** Shift key held: a combat drop commits every copy in the dragged cluster. */
+export const ShiftDown = m("ShiftDown");
+/** Shift key released (or the window lost focus, which eats the keyup). */
+export const ShiftUp = m("ShiftUp");
 /** Hand or stack DOM overlay hover — preferred over canvas hit when Alt-pinning. */
 export const InspectAuxHovered = m("InspectAuxHovered", {
   source: S.Union([S.Literal("hand"), S.Literal("stack")]),
@@ -346,6 +352,8 @@ export const Message = S.Union([
   RadialDismissed,
   AltDown,
   AltUp,
+  ShiftDown,
+  ShiftUp,
   InspectAuxHovered,
   InspectCardFetched,
   CardNameSuggestionsFetched,

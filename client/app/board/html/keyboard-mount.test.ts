@@ -3,7 +3,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { isAltKeyEvent, shouldIgnoreBoardShortcut } from "./keyboard-mount"; // export the pure helper
+import { boardKeyListeners, isAltKeyEvent, isShiftKeyEvent, shouldIgnoreBoardShortcut } from "./keyboard-mount"; // export the pure helper
 
 function shortcutIgnoredBy(target: Element, init: KeyboardEventInit): boolean {
   let ignored: boolean | undefined;
@@ -27,6 +27,44 @@ describe("isAltKeyEvent", () => {
 
   it("ignores unrelated keys", () => {
     expect(isAltKeyEvent({ key: "a", code: "KeyA" } as KeyboardEvent)).toBe(false);
+  });
+});
+
+describe("isShiftKeyEvent", () => {
+  it("matches ShiftLeft and ShiftRight codes", () => {
+    expect(isShiftKeyEvent({ key: "Shift", code: "ShiftLeft" } as KeyboardEvent)).toBe(true);
+    expect(isShiftKeyEvent({ key: "Shift", code: "ShiftRight" } as KeyboardEvent)).toBe(true);
+  });
+
+  it("matches key Shift even when code is empty", () => {
+    expect(isShiftKeyEvent({ key: "Shift", code: "" } as KeyboardEvent)).toBe(true);
+  });
+
+  it("ignores unrelated keys", () => {
+    expect(isShiftKeyEvent({ key: "S", code: "KeyS" } as KeyboardEvent)).toBe(false);
+  });
+});
+
+describe("boardKeyListeners", () => {
+  function record(): { tags: string[]; listeners: ReturnType<typeof boardKeyListeners> } {
+    const tags: string[] = [];
+    return { tags, listeners: boardKeyListeners((message) => tags.push(message._tag)) };
+  }
+
+  it("emits ShiftDown while shift is held and ShiftUp on release", () => {
+    const { tags, listeners } = record();
+    listeners.onKeyDown(new KeyboardEvent("keydown", { key: "Shift", code: "ShiftLeft" }));
+    listeners.onKeyUp(new KeyboardEvent("keyup", { key: "Shift", code: "ShiftLeft" }));
+    expect(tags).toEqual(["ShiftDown", "ShiftUp"]);
+  });
+
+  // Alt-tabbing away with shift held sends the keyup to another window. Without the blur release
+  // the modifier latches on and every later combat drop silently commits the whole pile.
+  it("releases shift when the window loses focus so a lost keyup can't latch it on", () => {
+    const { tags, listeners } = record();
+    listeners.onKeyDown(new KeyboardEvent("keydown", { key: "Shift", code: "ShiftLeft" }));
+    listeners.onBlur();
+    expect(tags).toEqual(["ShiftDown", "ShiftUp"]);
   });
 });
 

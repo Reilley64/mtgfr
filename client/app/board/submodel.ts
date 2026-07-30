@@ -248,6 +248,8 @@ export type BoardModel = {
   // Alt-pin inspect (Solid parity: Alt-down pins under cursor / aux hover; Alt-up dismisses).
   /** Alt key is currently held — also gates Alt+click pin as a secondary path. */
   altDown: boolean;
+  /** Shift key is currently held — a combat drop then commits every copy in the dragged cluster. */
+  shiftDown: boolean;
   /** The card pinned in the inspect overlay; null when no overlay is shown. */
   inspectPin: InspectPin | null;
   /** Catalog data for the current inspect pin. `undefined` = fetch in-flight; `null` = not found. */
@@ -354,6 +356,7 @@ export function initialBoardModel(): BoardModel {
     priorStep: null,
     reject: null,
     altDown: false,
+    shiftDown: false,
     inspectPin: null,
     inspectCard: undefined,
     inspectFace: "front",
@@ -2422,6 +2425,10 @@ function combatDropModel(
   // Opponents of the seat being declared for, not of the viewer — a moved declaration attacks on
   // someone else's behalf, and you may not send their creatures at their own planeswalker.
   const opponents = state.players.map((p) => p.player).filter((p) => !seats.includes(p));
+  // Shift commits the whole pile: cluster members are identical by construction, so the legality
+  // guards that pass for the face pass for all of them.
+  const face = model.shiftDown ? cardsFor(fold, model).find((c) => c.id === from.id) : undefined;
+  const alsoIds = face != null && face.cluster > 1 ? face.clusterMembers.filter((id) => id !== from.id) : [];
   const result = handleCombatDrop(
     mode,
     model.combatAttackers,
@@ -2432,6 +2439,7 @@ function combatDropModel(
     state.combat.attackers,
     seats,
     opponents,
+    alsoIds,
   );
   if (result.kind === "attackers") return [{ ...model, combatAttackers: result.value }, []];
   if (result.kind === "blockers") return [{ ...model, combatBlocks: result.value }, []];
@@ -3220,6 +3228,11 @@ export function updateBoard(
     }
     case "AltUp":
       return [{ ...model, altDown: false, inspectPin: null, inspectCard: undefined }, []];
+    // ── Shift (whole-pile combat drop) ──────────────────────────────────────
+    case "ShiftDown":
+      return [{ ...model, shiftDown: true }, []];
+    case "ShiftUp":
+      return [{ ...model, shiftDown: false }, []];
     case "InspectAuxHovered": {
       if (message.source === "hand") {
         // A hand aux enter/leave is itself proof the pointer is over the hand bar: the bar is an
