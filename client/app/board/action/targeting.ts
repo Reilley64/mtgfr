@@ -216,8 +216,22 @@ export function pendingStackGhost(
   if (pc.kind !== "choose_target" && !ONBOARD_CARD_PICK_KINDS.has(pc.kind)) return null;
   const source = pendingStackGhostSourceId(pc);
   if (source == null) return null;
-  if (state.stack.some((entry) => entry.source === source)) return null;
+  if (restingSpellFace(state, source)) return null;
   return state.objects.find((o) => o.id === source) ?? null;
+}
+
+/**
+ * Whether the pending choice's source is already drawn as a resting stack face.
+ *
+ * Only a *spell* can be: its stack entry is the spell object itself, and it stays there until
+ * finish. An ability entry carries the **source permanent's** id instead, so a second simultaneous
+ * trigger off that same permanent (CR 603.3b, or a Veyran/Harmonic Prodigy double) would match a
+ * resting entry that is a *different* ability — suppressing its ghost and pointing the aim arrow
+ * at the previous trigger's face. The ability being targeted is never resting: placement pauses on
+ * `choose_target` before it is pushed, so it is always the top (ghost) face.
+ */
+function restingSpellFace(state: VisibleState, source: number): boolean {
+  return state.stack.some((entry) => entry.kind === "spell" && entry.source === source);
 }
 
 /** How many faces the pile should count for aim origin while a pending board aim is live. */
@@ -228,7 +242,7 @@ export function pendingAimStackCount(
 ): number {
   if (pendingStackGhost(state, pc) != null) return stackLen + 1;
   const source = pc != null ? pendingStackGhostSourceId(pc) : null;
-  if (source != null && state.stack.some((entry) => entry.source === source)) {
+  if (source != null && restingSpellFace(state, source)) {
     return Math.max(1, stackLen);
   }
   return stackLen + 1;
