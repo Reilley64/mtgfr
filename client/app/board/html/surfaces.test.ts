@@ -3240,3 +3240,58 @@ test("mana tray precedes bitmap layer in board-mount composition (under permanen
     Scene.expect(Scene.testId("board-flight-layer")).toHaveClass("z-30"),
   );
 });
+
+/** snabbdom pairs old/new siblings by `sel` + `key` (`sameVnode`), so two unkeyed sibling `div`s are
+ *  interchangeable and a vanishing conditional child shifts the whole tail onto its neighbours' DOM
+ *  elements — silently, since `OnMount` only runs on element creation. */
+function pairsWith(a: unknown, b: unknown): boolean {
+  const previous = a as { sel?: string; key?: unknown };
+  const next = b as { sel?: string; key?: unknown };
+  return previous.sel === next.sel && previous.key === next.key;
+}
+
+function boardChildren(model: BoardViewModel): ReadonlyArray<unknown> {
+  let children: ReadonlyArray<unknown> = [];
+  const hint = !model.board.hintDismissed && !model.board.hintAutoHidden;
+  Scene.scene<BoardViewModel, Message>(
+    { update: (m) => [m, []], view: fullBoardView },
+    Scene.with(model),
+    resolveLiveBoardMounts({ hint }),
+    Scene.tap((sim) => {
+      const root = findTestId(sim.html, "board-mount") as { children?: unknown[] } | null;
+      children = root?.children ?? [];
+    }),
+  );
+  return children;
+}
+
+test("the auto-hiding hint cannot graft a sibling mount onto its element", () => {
+  const state = gameState();
+  const hinted = boardChildren(fullBoardModel({ ...initialBoardModel(), hintAutoHidden: false }, state));
+  const hidden = boardChildren(fullBoardModel({ ...initialBoardModel(), hintAutoHidden: true }, state));
+
+  const slot = hinted.findIndex((child) => testId(child) === "board-hint-mount");
+  expect(slot).toBeGreaterThan(-1);
+  // The camera gesture host slides into the hint's slot 12s into a table. Unkeyed, snabbdom patched
+  // it onto the hint's element and the still-running wheel/pinch mount kept a stale node whose rect
+  // rejects every wheel event — scroll-wheel zoom stopped working mid-game.
+  expect(testId(hidden[slot])).toBe("board-camera-gesture-mount");
+  expect(pairsWith(hinted[slot], hidden[slot])).toBe(false);
+});
+
+test("every board mount host carries a key", () => {
+  const children = boardChildren(fullBoardModel());
+  const hosts = [
+    "board-keyboard-mount",
+    "board-audio-mount",
+    "board-hint-mount",
+    "board-camera-gesture-mount",
+    "board-bitmap-layer",
+    "board-flight-layer",
+  ];
+  for (const host of hosts) {
+    const node = children.find((child) => testId(child) === host) as { key?: unknown } | undefined;
+    expect(node, host).toBeDefined();
+    expect(node?.key, host).toBe(host);
+  }
+});
