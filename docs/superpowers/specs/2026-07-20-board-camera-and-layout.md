@@ -73,7 +73,7 @@ These transforms are presentation overlays only. They do not change object ident
 
 ### Attachments and tapped cards
 
-Attachments remain associated with their host for layout and hover raise. Tapped cards rotate through the render data so paint and hits can agree on footprint. In-flight cards use flight poses for paint only; their source/destination ownership is handled by flight state.
+Attachments remain associated with their host for layout. Tapped cards rotate through the render data so paint and hits can agree on footprint. In-flight cards use flight poses for paint only; their source/destination ownership is handled by flight state.
 
 ## Implementation Decisions
 

@@ -14,7 +14,7 @@ specs for the current module split, especially
 
 1. **Paint (pixels):** `client/app/board/canvas/scene.ts` builds the vector `BoardScene`; `felt.ts` / `avatars.ts` / `arrows.ts` are dumb paint helpers under `client/app/board/canvas/`.
 2. **Bitmaps (card art):** `client/app/board/bitmap/mount.ts` — Foldkit `Mount` regions blit card faces + flights on top of the canvas via the shared `ImageCache`.
-3. **Hits / camera:** `client/app/board/geometry/{camera,hit-test,layout,interaction}.ts` — pure geometry; used by the board submodel + `action/` planners.
+3. **Hits / camera:** `client/app/board/geometry/{camera,hit-test,layout,interaction}.ts` — pure geometry; used by the board submodel + `action/` planners. `client/app/board/engagement.ts` supplies the committed-permanent set that layout splits out of clusters.
 4. **Screen motion / flights:** `client/app/board/motion/flights.ts`, `exit-fx.ts`, `screen-motion.ts` — canvas-owned drag ghosts, in-flight cards, and battlefield exit FX share the Mount flight layer; resting hand/stack stay HTML.
 
    Flight / ExitFx animation is Mount-local rAF: mid-flight ticks paint only the

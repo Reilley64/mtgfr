@@ -112,10 +112,8 @@ function kindFill(card: RenderCard): string {
 
 function cardRotation(card: RenderCard, viewer: number): number {
   const tapFrac = card.tapFrac ?? (card.tapped ? 1 : 0);
-  let angle = card.controller !== viewer ? Math.PI : 0;
-  angle += card.fanAngle ?? 0;
-  angle += tapFrac * (Math.PI / 2);
-  return angle;
+  const angle = card.controller !== viewer ? Math.PI : 0;
+  return angle + tapFrac * (Math.PI / 2);
 }
 
 function cardShapes(

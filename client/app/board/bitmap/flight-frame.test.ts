@@ -40,10 +40,10 @@ describe("restingPaintChanged", () => {
     expect(restingPaintChanged(a, b)).toBe(true);
   });
 
-  it("is true when only fanAngle changes on a card", () => {
-    const flat = restingPaintSnapshot({ ...baseResting, cards: [{ id: 1, fanAngle: 0 }] } as never);
-    const fanned = restingPaintSnapshot({ ...baseResting, cards: [{ id: 1, fanAngle: 0.12 }] } as never);
-    expect(restingPaintChanged(flat, fanned)).toBe(true);
+  it("is true when only a card's tap rotation changes", () => {
+    const upright = restingPaintSnapshot({ ...baseResting, cards: [{ id: 1, tapFrac: 0 }] } as never);
+    const tapped = restingPaintSnapshot({ ...baseResting, cards: [{ id: 1, tapFrac: 0.5 }] } as never);
+    expect(restingPaintChanged(upright, tapped)).toBe(true);
   });
 
   it("is true when only stack declared targets change", () => {

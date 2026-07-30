@@ -122,8 +122,6 @@ export interface RenderCard {
   /** Animated tap rotation 0 (upright) → 1 (tapped), filled in by the board's tween; absent in raw
    * layout (the draw falls back to the binary `tapped`). */
   tapFrac?: number;
-  /** Extra world-space tilt for a fanned permanent-cluster member (radians, about card center). */
-  fanAngle?: number;
 }
 
 export const CARD_W = 96;
