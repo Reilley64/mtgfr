@@ -1,13 +1,6 @@
 import * as Effect from "effect/Effect";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  artCropFallbackUrl,
-  buildImageUrl,
-  parseRetryAfterMs,
-  printSearchUrl,
-  scryfallImageUrl,
-  searchPrintPage,
-} from "./scryfall";
+import { buildImageUrl, parseRetryAfterMs, printSearchUrl, scryfallImageUrl, searchPrintPage } from "./scryfall";
 
 afterEach(() => {
   vi.useRealTimers();
@@ -188,16 +181,16 @@ describe("buildImageUrl", () => {
 
   it("uses CDN art_crop folder when cdnBase is set", () => {
     expect(buildImageUrl(id, "art_crop", "front", "https://cards.example.com")).toBe(
-      `https://cards.example.com/art_crop/front/a/b/${id}.webp`,
+      `https://cards.example.com/art_crop/front/a/b/${id}.jpg`,
     );
   });
 
   it("maps non-art_crop sizes to CDN large folder when cdnBase is set", () => {
     expect(buildImageUrl(id, "large", "front", "https://cards.example.com")).toBe(
-      `https://cards.example.com/large/front/a/b/${id}.webp`,
+      `https://cards.example.com/large/front/a/b/${id}.jpg`,
     );
     expect(buildImageUrl(id, "small", "back", "https://cards.example.com/")).toBe(
-      `https://cards.example.com/large/back/a/b/${id}.webp`,
+      `https://cards.example.com/large/back/a/b/${id}.jpg`,
     );
   });
 
@@ -217,22 +210,5 @@ describe("scryfallImageUrl", () => {
     const id = "ffff0000-0000-0000-0000-000000000001";
     expect(scryfallImageUrl(id, "art_crop")).toContain("version=art_crop");
     expect(scryfallImageUrl(id, "art_crop")).toContain("api.scryfall.com");
-  });
-});
-
-describe("artCropFallbackUrl", () => {
-  it("returns null when module CDN is unset (default vitest)", () => {
-    expect(artCropFallbackUrl("abcd1234-5678-90ab-cdef-000000000001")).toBeNull();
-  });
-
-  it("returns Scryfall art_crop when a cdnBase is provided", () => {
-    const id = "abcd1234-5678-90ab-cdef-000000000001";
-    expect(artCropFallbackUrl(id, "front", "https://cards.example.com")).toBe(
-      `https://api.scryfall.com/cards/${id}?format=image&version=art_crop`,
-    );
-  });
-
-  it("returns null when cdnBase is empty", () => {
-    expect(artCropFallbackUrl("abcd1234-5678-90ab-cdef-000000000001", "front", "")).toBeNull();
   });
 });

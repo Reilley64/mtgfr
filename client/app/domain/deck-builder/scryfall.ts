@@ -24,7 +24,7 @@ export function buildImageUrl(printId: string, size: ImageSize, face: ImageFace,
     const a = printId[0];
     const b = printId[1];
     const folder = size === "art_crop" ? "art_crop" : "large";
-    return `${base}/${folder}/${face}/${a}/${b}/${printId}.webp`;
+    return `${base}/${folder}/${face}/${a}/${b}/${printId}.jpg`;
   }
   const faceParam = face === "back" ? "&face=back" : "";
   return `https://api.scryfall.com/cards/${printId}?format=image&version=${size}${faceParam}`;
@@ -32,12 +32,6 @@ export function buildImageUrl(printId: string, size: ImageSize, face: ImageFace,
 
 export function scryfallImageUrl(printId: string, size: ImageSize, face: ImageFace = "front"): string {
   return buildImageUrl(printId, size, face, "");
-}
-
-export function artCropFallbackUrl(printId: string, face: ImageFace = "front", cdnBase: string = CDN): string | null {
-  if (!printId) return null;
-  if (!cdnBase.replace(/\/$/, "")) return null;
-  return scryfallImageUrl(printId, "art_crop", face);
 }
 
 export function imageUrlByPrint(printId: string, size: ImageSize = "large", face: ImageFace = "front"): string {

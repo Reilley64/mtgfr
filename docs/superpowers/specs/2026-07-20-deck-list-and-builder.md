@@ -99,14 +99,17 @@ stage body is a split-pane layout (no duplicate page title in the decklist pane)
 
 Art is keyed by Scryfall **Printing** UUID. `imageUrlByPrint(printId, size, face)` returns:
 - When `VITE_CARD_CDN` is set and `size === "art_crop"`: CDN
-  `VITE_CARD_CDN/art_crop/{face}/{a}/{b}/{id}.webp`. If that asset fails to load, `cardArt`
-  falls back once to Scryfall `version=art_crop` (deck-list tiles use this path).
+  `VITE_CARD_CDN/art_crop/{face}/{a}/{b}/{id}.jpg` (deck-list tiles use this path).
 - When `VITE_CARD_CDN` is set and `size` is any other value: CDN
-  `VITE_CARD_CDN/large/{face}/{a}/{b}/{id}.webp` — missing `large` does **not** fall back to Scryfall.
+  `VITE_CARD_CDN/large/{face}/{a}/{b}/{id}.jpg`.
 - When `VITE_CARD_CDN` is unset: Scryfall image API
   (`https://api.scryfall.com/cards/{id}?format=image&version={size}`) (local/dev).
 
-Missing ordinary (non-`art_crop`) CDN art stays empty after load failure (no Scryfall fallback in production). The CDN path replicates Scryfall's folder fan (`first two hex chars` of the UUID). DFC backs are fetched with `face=back` in the Scryfall path; CDN serves the same `large` webp. `imageFaceAfterLoadError` falls back from `back` to `front` on load error (DFC prepare/flip cards have no Scryfall `/back/` — transformer backs that exist load on first try).
+The CDN path replicates Scryfall's folder fan (`first two hex chars` of the UUID). DFC backs are
+fetched with `face=back` in the Scryfall path; the CDN serves the same JPEG under `/back/`.
+There is no client-side Scryfall fallback at either size — the CDN redirects to Scryfall itself
+when it cannot fill ([production-topology-and-operations](2026-07-20-production-topology-and-operations.md)),
+so a failed `<img>` load leaves the host empty.
 
 `cardBackUrl()` returns `/card-back.webp` for library piles and face-down cards.
 
@@ -122,7 +125,6 @@ Missing ordinary (non-`art_crop`) CDN art stays empty after load failure (no Scr
 - **Route entry is child-owned.** Home and `/decks/...` entry run through deck-surface `informRouteChanged` helpers, which call the child update with route-change messages instead of having the parent mutate deck-list or builder state directly.
 - **Printing is art-preference only.** Card rules identity is the oracle id. Decks store `(id, count, print)` with `print` required. The engine is print-agnostic. Wire DTOs carry `print` for consistent art across all clients.
 - **`VITE_CARD_CDN` is build-time baked**, not runtime. Changing CDN requires a new image build.
-- **No Scryfall fallback for ordinary CDN art.** Missing non-`art_crop` CDN art does not hit Scryfall (avoids rate-limiting). The intentional exception is CDN `art_crop` load failure → Scryfall `version=art_crop` once.
 
 ---
 

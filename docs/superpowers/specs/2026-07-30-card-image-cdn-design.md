@@ -69,7 +69,13 @@ Consequently the `.jpg` extension is not load-bearing for caching here; it is ch
 
 ### Client change
 
-`buildImageUrl` (`client/app/domain/deck-builder/scryfall.ts`) emits `.jpg` instead of `.webp` for the CDN branch. `cardBackUrl()` keeps returning the local `/card-back.webp` asset — that is a bundled static file, not a CDN path. The Scryfall-direct branch is unchanged.
+`buildImageUrl` (`client/app/domain/deck-builder/scryfall.ts`) emits `.jpg` instead of `.webp` for
+the CDN branch, and the client-side `art_crop` Scryfall fallback (`artCropFallbackUrl`, the
+`data-art-fallback` attribute, and the swap in `syncCardArtHost`) is deleted: the Worker's `302`
+covers Scryfall failure for both sizes server-side, and the CDN-side failure the client fallback
+covered cannot be seen in isolation, since the site is itself served through Cloudflare.
+`cardBackUrl()` keeps returning the local `/card-back.webp` asset — that is a bundled static file,
+not a CDN path. The Scryfall-direct branch is unchanged.
 
 ### Cost ceiling
 
@@ -88,7 +94,10 @@ Cloudflare offers no hard budget cap, and usage-based billing notifications requ
 | Scryfall `404` | `404` |
 | Scryfall `429`/`5xx`/network failure | `302` to the Scryfall image URL; nothing stored |
 
-The redirect is what gives `large` a fallback it does not currently have: `cardArt` only attaches `artCropFallbackUrl` when `size === "art_crop"`, so without it a throttled fill is a visibly broken card on the board and in the builder.
+The redirect is the only art fallback that remains, and it applies to both sizes. It replaces the
+narrower client-side one it made redundant: `cardArt` used to attach `artCropFallbackUrl` when
+`size === "art_crop"`, so a throttled fill on `large` was a visibly broken card on the board and
+in the builder.
 
 ## Testing
 
