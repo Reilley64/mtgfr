@@ -345,12 +345,22 @@ untap during their controllers' untap steps" has used since the 2ed grind — so
 effect was needed. Arena needed only #6's positive `legendary` axis plus `ControlEffect::TapAll`
 honoring its filter's `controller` axis, and landed with #6.
 
-### 18. `counter-spell-targeting-your-permanent` — 2 cards, S
+### 18. `counter-spell-targeting-your-permanent` — 2 cards, S — **LANDED** (wave 4)
 Depends on: nothing.
 Avoid Fate and Ring of Immortals both counter "target instant or Aura spell that targets a
-permanent you control". *Sketch:* `SpellFilter` grows `targets_permanent_you_control: bool`,
-resolved by inspecting the target spell's chosen targets on the stack. The instant-or-Aura half is
-existing type/subtype filtering.
+permanent you control".
+*Landed:* `SpellFilter::InstantOrAuraTargetsPermanentYouControl`
+(`filter = "instant_or_aura_targets_permanent_you_control"`), matched **inline** in
+`Game::legal_targets_for`'s `SpellOnStack` enumeration rather than in
+`Game::spell_matches_filter` — that enumeration is the only choke that holds the *counterer* apart
+from the candidate spell's own controller, and "you" here is the counterer. `Color` and
+`ManaValueEqualsX` special-case in the same place for the same reason; both filter functions carry a
+comment saying so. Because it re-evaluates live, the CR 608.2b resolution re-check (the same
+function, via `target_still_legal`) sees a target permanent change control in response and the
+counterspell fizzles. Any one of the candidate's targets qualifying is enough (CR 608.2b: a spell may
+have more than one target). Tests: `crates/engine/tests/leg_counter_spell_targeting_yours.rs`.
+No general And-combinator over `SpellFilter` exists — the instant-or-Aura half is matched in the
+same arm; see #105 if a second card wants the pieces separately.
 
 ### 19. `damage-dealt-this-turn-ledger` — 3 cards, L
 Depends on: nothing.
@@ -372,13 +382,18 @@ one — …"). *Sketch:* two new trigger tags — `enchanted_deals_damage_to_you
 as a trigger-scoped `Amount`, and `enchanted_becomes_tapped`. Relic Bind's modal half reuses the
 existing modal-effect surface.
 
-### 21. `blood-lust-conditional-pump` — 1 card, S
+### 21. `blood-lust-conditional-pump` — 1 card, S — **LANDED** (wave 4)
 Depends on: nothing.
 Blood Lust: "+4/-4 if toughness 5 or greater, otherwise +4/-X where X is its toughness minus 1"
-— i.e. always leaves the creature with at least 1 toughness. *Sketch:* a pump whose toughness
-delta is an `Amount` computed from the target's own toughness at resolution
-(`min(4, toughness - 1)` negated). One new amount variant, no new plumbing; the conditional
-phrasing collapses to arithmetic.
+— i.e. always leaves the creature with at least 1 toughness. The intake's "collapses to arithmetic"
+reading was **checked against Scryfall and is exactly right**.
+*Landed:* pure data, no engine change — the existing conditional/arithmetic `Amount` surface already
+expressed it, so `blood_lust.toml`'s toughness delta is a `compare` on `target_toughness` against 5
+with the else branch computing `(target_toughness - 1) * -1`. X is computed once at resolution
+(CR 608.2g) and locked in as a fixed `TempBoost` delta (CR 613.4), so later toughness changes stack
+on top of it rather than recomputing the pump — the two locking tests in
+`crates/engine/tests/leg_blood_lust.rs` cover both directions, and a -1/-1 counter afterward can
+still kill a creature Blood Lust "saved".
 
 ### 22. `change-base-power-toughness` — 5 cards, M
 Depends on: nothing.
@@ -1029,14 +1044,24 @@ multi-target count; Alchor's Tomb needs the third axis — a chosen color, consu
 `ChoiceEffect::ChooseColor` — and targets a *permanent* you control rather than a creature,
 indefinitely (CR 613 layer 5, no expiry). All three axes land on the one effect.
 
-### 97. `token-profiles-without-a-scryfall-printing` — 2 cards, M
-Depends on: nothing.
-Boris Devilboon (Minor Demon), Serpent Generator (Snake).
-*Sketch:* `create_token` keys a `data/tokens/` profile by Scryfall oracle id, and Legends
-predates printed token cards, so neither token has an id to key. Needs a synthetic local id
-convention for pre-token-era tokens. Serpent Generator additionally needs its token to carry an
-ability — "Whenever this creature deals damage to a player, that player gets a poison counter" —
-which is #99's trigger on a token profile, so it lands after that.
+### 97. `token-profiles-without-a-scryfall-printing` — 3 cards, M
+Depends on: nothing. **Gates #123.**
+Boris Devilboon (Minor Demon), Serpent Generator (Snake), Master of the Hunt (Wolves of the Hunt).
+*Sketch:* `create_token` keys a `data/tokens/` profile by Scryfall oracle id — `de::token_profile`
+in `crates/cards/src/de.rs` resolves the string against `crates/cards/data/tokens/`, and all 44
+files there carry a real one — and Legends predates printed token cards, so none of these three
+tokens has an id to key. Needs a synthetic local id convention for pre-token-era tokens.
+The constraint that decides the shape is **`default_print`**: it is a required plain `String`
+(`crates/cards/src/toml_surface/card.rs`) with no format validation, and it feeds an image URL
+straight through `client/app/board/html/inspect.ts` (`pin.print ?? card?.default_print ?? ""`), so
+a synthetic id is not merely untidy — it ships a broken art tile. So either make `default_print`
+optional and let `inspect.ts` take the no-art path it already has for a missing print, or give
+synthetic ids a documented namespace the client recognises and refuses to build a URL from. Decide
+this before authoring any of the three cards; it is a pool-wide convention, not a per-card call, and
+the grind has precedent against quietly fabricating an id (the Spurnmage Advocate frame error, #120).
+Serpent Generator additionally needs its token to carry an ability — "Whenever this creature deals
+damage to a player, that player gets a poison counter" — which is #99's trigger on a token profile,
+so it lands after that.
 
 ### 98. `nested-effects-lose-their-source` — 1 card, S — **bug** — **LANDED** (wave 1)
 Depends on: nothing.
@@ -1306,36 +1331,26 @@ surface does get built, the `Reject::WrongTiming` ponytail in `Game::submit_inne
 for a `Reject::GameOver` the client could not display) should be revisited with it.
 
 ### 123. `token-named-band-quality` — 1 card, M
-Depends on: #3 slice 4 (landed). Raised by #3 slice 4, which landed the four remaining banding
-lands and then stopped short of Master of the Hunt on purpose.
+Depends on: #3 slice 4 (landed) and **#97**, which owns the token-id convention this needs.
 Master of the Hunt — "{2}{G}{G}: Create a 1/1 green Wolf creature token named Wolves of the Hunt.
 It has 'bands with other creatures named Wolves of the Hunt.'" — is the set's only card whose
-`bands with other [quality]` quality is a **card name** (CR 702.22b) rather than a supertype. It is
-blocked on a **data convention, not a rules gap**: the rules half is small and already designed
-(below), but the token half has nowhere to live. `TokenEffect::Create` carries its profile through
-`de::token_profile` (`crates/cards/src/de.rs`), which takes a string id that must resolve to a file
-in `crates/cards/data/tokens/`, and every one of those 44 files is keyed to a **real Scryfall oracle
-id** — because `default_print` feeds an image URL straight through to
-`client/app/board/html/inspect.ts` (`pin.print ?? card?.default_print ?? ""`), so a fabricated id
-does not merely look untidy, it ships a broken art tile. "Wolves of the Hunt" has **no Scryfall
-printing at all**; there has never been a 1/1 green Wolf token product. Authoring it would make it
-the pool's first synthetic id, and the grind already has decisive precedent against that in the
-Spurnmage Advocate fabrication (#120).
-*Sketch, in this order:* (1) **decide the convention first** — either give `tokens/*.toml` an
-explicit "no printing exists" form (`default_print` becomes optional, and `inspect.ts` renders the
-no-art fallback it already has for a missing print) or add a documented synthetic-id namespace that
-the client can recognise and refuse to build a URL from. Do not settle this inside the card; it is a
-pool-wide convention and roughly half this increment. (2) Then the rules half, which slice 4 built
-and reverted rather than ship as dead surface — it is **known to work** and should not be
-re-derived: add `BandsWithQuality::Named` carrying the name, and because `Keyword` is `Copy` and
-`serde`'s `'de` lifetime cannot yield a `&'static str`, give `BandsWithQuality` a hand-written
-`Deserialize` that takes an owned `String` and `Box::leak`s it (card data is loaded once and lives
-for the process). Match it in `Game::matches_bands_with_quality` against the printed name (CR
-201.2), and replace the hardcoded `[BandsWithQuality::Legendary]` list in `Game::band_is_legal`
-with a helper that discovers the qualities the band's own members carry by reading
-`Game::effective_keywords` — with a parameterised quality there is nothing left to look up by exact
-match through `Game::has_keyword`. New arms are owed in `Game::keyword_token`
-(`crates/engine/src/message.rs`) and in both `wire_keyword` and `keyword_label`
-(`crates/schema/src/catalog.rs`). (3) The card is then a plain activated ability; the three tests
-slice 4 wrote (the token carries the keyword and the Master does not, a two-wolf pack is blocked as
-a group, and a differently-named creature cannot join the band) are the coverage.
+`bands with other [quality]` quality is a **card name** (CR 702.22b) rather than a supertype. Split
+out of #3 slice 4, which landed the four remaining banding lands and stopped here on purpose: the
+rules half is small and was **built and proven** in that slice before being reverted rather than
+shipped as surface with no card behind it, and the blocker is entirely #97's — "Wolves of the Hunt"
+has no Scryfall printing at all (there has never been a 1/1 green Wolf token product), and the
+existing `tokens/wolf.toml` is Garruk's 2/2 black-green Wolf, so the name that carries the band
+quality cannot come from it.
+*Sketch:* land #97 first, then the rules half, which is **known to work** and should not be
+re-derived. Add `BandsWithQuality::Named` carrying the name; because `Keyword` is `Copy` and serde's
+`'de` lifetime cannot yield a `&'static str`, give `BandsWithQuality` a hand-written `Deserialize`
+that takes an owned `String` and `Box::leak`s it (card data loads once and lives for the process).
+Match it in `Game::matches_bands_with_quality` against the printed name (CR 201.2), and replace the
+hardcoded `[BandsWithQuality::Legendary]` list in `Game::band_is_legal` with a helper that discovers
+the qualities the band's own members carry by reading `Game::effective_keywords` — with a
+parameterised quality there is nothing left to look up by exact match through `Game::has_keyword`.
+New arms are owed in `Game::keyword_token` (`crates/engine/src/message.rs`) and in both
+`wire_keyword` and `keyword_label` (`crates/schema/src/catalog.rs`). The card is then a plain
+activated ability, and the three tests slice 4 wrote are the coverage: the token carries the keyword
+and the Master does not, a two-wolf pack is blocked as a group, and a differently-named creature
+cannot join the band.
