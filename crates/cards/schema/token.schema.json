@@ -3876,6 +3876,7 @@
               "type": "object"
             },
             {
+              "description": "A tap sweep over whatever `filter` matches — Dread Cacodemon's \"tap all other creatures you control\" (`controller = \"you\"`) or Arena of the Ancients' table-wide \"tap all legendary creatures\" (the default [`FilterController::Any`](crate::FilterController)). The seat restriction lives entirely in the filter, unlike [`TapAllTargetPlayerControls`](Self::TapAllTargetPlayerControls), which reads the seat off a chosen target instead.",
               "properties": {
                 "filter": {
                   "$ref": "#/$defs/PermanentFilter"
@@ -8830,6 +8831,25 @@
               "type": "object"
             },
             {
+              "description": "Crevasse's \"Creatures with mountainwalk can be blocked as though they didn't have mountainwalk\" (and its four siblings, plus Gosta Dirk / Lord Magnus / Ur-Drago printing the same static on a creature): the landwalk evasion for `land` stops being checked, board-wide.\n\nCR 702.14b's evasion is *checked* when blockers are declared, not a property removed from the creature — the attacker keeps its [`Keyword::Landwalk`](crate::Keyword), so Island Sanctuary's \"except by creatures with … islandwalk\" still sees it. Only [`Game::can_block`](crate::Game)'s landwalk check is waived, via [`Game::landwalk_negated`](crate::Game).\n\nOne land type per variant, so Lord Magnus's two statics accumulate instead of one replacing the other: the board scan finds each on its own.",
+              "properties": {
+                "land": {
+                  "$ref": "#/$defs/BasicLandType"
+                },
+                "mode": {
+                  "enum": [
+                    "landwalk_negated"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "land",
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
               "description": "Lich's \"You don't lose the game for having 0 or less life\" — CR 704.5a's exemption, read by the state-based sweep off every permanent its controller controls. Says nothing about the other loss conditions: an empty-library draw, ten poison and lethal commander damage all still eliminate its controller.",
               "properties": {
                 "mode": {
@@ -10871,6 +10891,12 @@
           ]
         },
         "has_mana_ability": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "legendary": {
           "type": [
             "boolean",
             "null"

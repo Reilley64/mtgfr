@@ -113,10 +113,17 @@ Depends on: nothing.
 "Creatures with <type>walk can be blocked as though they didn't have <type>walk" — eight cards,
 one per basic type plus two legendary creatures carrying it as a static. The engine models
 landwalk as an evasion check in block legality with no way to switch it off globally.
-*Sketch:* a continuous effect that suppresses one landwalk variety for block-legality purposes
-only (the creature keeps the keyword — CR 702.13 evasion is checked, not removed), consulted by
-the same block-legality path that reads landwalk today. Lord Magnus carries two of them, so the
-effect must stack rather than replace.
+*Landed:* `StaticEffect::LandwalkNegated { land }` (`mode = "landwalk_negated"`, `land = "swamp"`),
+one variant per basic land type. `Game::landwalk_negated` sweeps the battlefield for a live one the
+way `Game::cant_block_filter` does — the static names a *keyword*, not a controller, so whose
+permanent prints it never matters — and `Game::can_block`'s existing landwalk arm is the only
+consultation: `!self.landwalk_negated(land) && lands_with_subtype_controlled(..) > 0`. CR 702.14b's
+evasion is checked there, never removed, so the attacker keeps `Keyword::Landwalk` and Island
+Sanctuary's "except by creatures with … islandwalk" attack restriction still sees it. Lord Magnus
+prints the static twice and both apply: a per-land-type scan finds each on its own, with no
+replacement semantics to get wrong.
+Ur-Drago, Gosta Dirk and Lord Magnus also print plain first strike, so all three are whole cards
+here rather than partial.
 
 ### 5. `lose-keyword-until-eot` — 6 cards, M
 Depends on: #3 (Shelkin Brownie and Tolaria strip "bands with other"), #4 for the landwalk
@@ -129,14 +136,20 @@ name a specific keyword, a keyword *family* (all landwalk, all bands-with-other)
 player-chosen one-of-two. Removal is a continuous effect in the ability-adding/removing layer, so
 it must lose to nothing and win over grants applied earlier by timestamp.
 
-### 6. `legendary-filter-axis` — 4 cards, S
+### 6. `legendary-filter-axis` — 3 cards, S
 Depends on: nothing.
-`PermanentFilter` has `nonlegendary` but no positive `legendary`. Karakas ("return target
-legendary creature"), Arena of the Ancients ("legendary creatures don't untap"), Willow Satyr
-("gain control of target legendary creature"), and the four bands-with-other lands (#3) all want
-the positive form. *Sketch:* add `legendary: bool` alongside `nonlegendary` in
-`crates/cards/src/types/filter.rs` and match it in `Game::permanent_matches`. Smallest increment
-in the set; unblocks four others.
+`PermanentFilter` has `nonlegendary` but no positive `legendary`. Karakas ("{T}: Add {W}. / {T}:
+Return target legendary creature to its owner's hand."), Arena of the Ancients ("Legendary
+creatures don't untap during their controllers' untap steps. / When this artifact enters, tap all
+legendary creatures."), Willow Satyr ("You may choose not to untap this creature during your untap
+step. / {T}: Gain control of target legendary creature for as long as you control this creature and
+this creature remains tapped."), and the four bands-with-other lands (#3) all want the positive
+form. *Sketch:* add `legendary: bool` alongside `nonlegendary` in
+`crates/cards/src/types/filter.rs` and match it in `Game::permanent_matches`. Arena's enters
+trigger also needs `ControlEffect::TapAll` to honor its filter's `controller` axis instead of
+hardwiring "you control", so a card that says "all" reaches across the table; Willow Satyr is
+otherwise Rubinia Soulsinger's shape (`may_choose_not_to_untap` + `gain_control_while`), which
+already lands. Smallest increment in the set; unblocks four others.
 
 ### 7. `legendary-landwalk` — 1 card, S
 Depends on: #6.
@@ -237,12 +250,14 @@ paths, snapshotted at end of turn as "last turn's" values, and read by the attac
 legality check. Their turn is "last turn" relative to the attack, which for a 4-player game means
 the most recent turn *that player* took, not the previous turn in sequence.
 
-### 17. `dont-untap-by-filter` — 1 card, S
+### 17. `dont-untap-by-filter` — 1 card, S — absorbed into #6
 Depends on: #6.
 Arena of the Ancients: "Legendary creatures don't untap during their controllers' untap steps",
-plus an ETB tap-all. The engine has per-permanent untap suppression but not a filtered global.
-*Sketch:* a `DontUntap { filter }` continuous effect the untap step consults per permanent; the
-ETB half is an existing tap-all with #6's filter.
+plus an ETB tap-all. **Premise was wrong:** the engine already has the filtered global —
+`StaticEffect::DoesntUntap { filter }`, which Meekstone's "creatures with power 3 or greater don't
+untap during their controllers' untap steps" has used since the 2ed grind — so no new continuous
+effect was needed. Arena needed only #6's positive `legendary` axis plus `ControlEffect::TapAll`
+honoring its filter's `controller` axis, and landed with #6.
 
 ### 18. `counter-spell-targeting-your-permanent` — 2 cards, S
 Depends on: nothing.

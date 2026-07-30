@@ -113,7 +113,8 @@ impl Game {
         // islandwalk is still blockable by an opponent who runs no Islands.
         if self.effective_keywords(attacker).iter().any(|&k| match k {
             Keyword::Landwalk(land) => {
-                self.lands_with_subtype_controlled(player, &[land.as_str()]) > 0
+                !self.landwalk_negated(land)
+                    && self.lands_with_subtype_controlled(player, &[land.as_str()]) > 0
             }
             _ => false,
         }) {
@@ -604,6 +605,29 @@ impl Game {
                             Some(source),
                         )
                     }
+                    _ => false,
+                })
+        })
+    }
+
+    /// Whether some permanent on the battlefield says creatures with `land`walk "can be blocked as
+    /// though they didn't have" it (Crevasse and its four siblings, Gosta Dirk, Lord Magnus,
+    /// Ur-Drago). Board-wide like [`Game::cant_block_filter`] — the static names a *keyword*, not a
+    /// controller, so whose permanent prints it never matters.
+    ///
+    /// CR 702.14b's evasion is checked here at block declaration, never removed: the attacker keeps
+    /// [`Keyword::Landwalk`], so every other reader of it (Island Sanctuary's attack restriction)
+    /// is untouched. Two negators for the same land type are simply both found, and Lord Magnus's
+    /// two different ones each answer their own call.
+    fn landwalk_negated(&self, land: BasicLandType) -> bool {
+        self.battlefield().into_iter().any(|source| {
+            self.functional_abilities(source)
+                .iter()
+                .any(|a| match (a.timing, a.effect.clone()) {
+                    (
+                        Timing::Static,
+                        Effect::Static(StaticEffect::LandwalkNegated { land: off }),
+                    ) => off == land,
                     _ => false,
                 })
         })

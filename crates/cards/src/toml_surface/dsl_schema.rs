@@ -317,6 +317,7 @@ struct PermanentFilterTableSchema {
     basic: Option<bool>,
     name: Option<String>,
     nonlegendary: Option<bool>,
+    legendary: Option<bool>,
     nonlair: Option<bool>,
     without_flying: Option<bool>,
     without_keyword: Option<Keyword>,

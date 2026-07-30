@@ -280,6 +280,7 @@ message_keys! {
     EFFECT_STATIC_CANT_BE_BLOCKED_BY => "effect.static_cant_be_blocked_by",
     EFFECT_STATIC_CANT_BLOCK_ATTACKERS => "effect.static_cant_block_attackers",
     EFFECT_STATIC_CAN_BLOCK_ADDITIONAL => "effect.static_can_block_additional",
+    EFFECT_STATIC_LANDWALK_NEGATED => "effect.static_landwalk_negated",
     EFFECT_STATIC_CANT_CAST_DURING_COMBAT => "effect.static_cant_cast_during_combat",
     EFFECT_STATIC_CANT_CAST_IF_ATTACKED_THIS_TURN => "effect.static_cant_cast_if_attacked_this_turn",
     EFFECT_STATIC_DISCARD_TO_LIBRARY_TOP_INSTEAD => "effect.static_discard_to_library_top_instead",
@@ -968,6 +969,9 @@ fn permanent_filter_token(filter: PermanentFilter) -> String {
     }
     if filter.nonlegendary {
         parts.push("nonlegendary".to_string());
+    }
+    if filter.legendary {
+        parts.push("legendary".to_string());
     }
     if filter.nonlair {
         parts.push("nonlair".to_string());
@@ -2237,6 +2241,8 @@ impl EffectMessage for Effect {
                 .with_params(vec![permanent_filter_param("filter", filter)]),
             Effect::Static(CanBlockAdditional { count }) => MessageRef::new(MessageKey::EFFECT_STATIC_CAN_BLOCK_ADDITIONAL)
                 .with_params(vec![int_param("count", count as i32)]),
+            Effect::Static(LandwalkNegated { land }) => MessageRef::new(MessageKey::EFFECT_STATIC_LANDWALK_NEGATED)
+                .with_params(vec![keyword_list_param("landwalk", &[Keyword::Landwalk(land)])]),
             Effect::Static(DoesntUntap { self_only, filter }) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_DOESNT_UNTAP).with_params(vec![
                     bool_param("self_only", self_only),

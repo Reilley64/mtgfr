@@ -2030,6 +2030,7 @@ pub const CREATURE_TYPES: &[&str] = &[
     "Rat",
     "Rebel",
     "Rogue",
+    "Satyr",
     "Scorpion",
     "Scout",
     "Serpent",

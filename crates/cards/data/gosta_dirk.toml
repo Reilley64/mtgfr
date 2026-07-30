@@ -1,0 +1,30 @@
+# First strike
+# Creatures with islandwalk can be blocked as though they didn't have islandwalk.
+name = "Gosta Dirk"
+otags = ["deprecated-legend-type", "hate-landwalk", "unique-mana-cost"]
+sets = ["leg"]
+id = "fb966147-1d60-4150-b4e7-acf301b2d067"
+default_print = "92ef316b-dd22-40d1-82e8-8890976684c0"
+oracle = "First strike\nCreatures with islandwalk can be blocked as though they didn't have islandwalk."
+legendary = true
+subtypes = ["Human", "Warrior"]
+keywords = ["first_strike"]
+
+[cost]
+generic = 3
+white = 2
+blue = 2
+
+[kind]
+type = "creature"
+power = 4
+toughness = 4
+
+# Creatures with islandwalk can be blocked as though they didn't have islandwalk.
+[[abilities]]
+timing = "static"
+
+[[abilities.effects]]
+type = "static"
+mode = "landwalk_negated"
+land = "island"

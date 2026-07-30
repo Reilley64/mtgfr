@@ -881,6 +881,13 @@ pub struct PermanentFilter {
     /// Ever-Changing's "up to one target *nonlegendary* creature you control"). `false` (default)
     /// imposes no restriction. Reads the current (possibly copied) [`CardDef::legendary`].
     pub nonlegendary: bool,
+    /// Requires a legendary permanent (CR 205.4a's "Legendary" supertype — Karakas' "target
+    /// *legendary* creature", Arena of the Ancients' "legendary creatures", Willow Satyr's "target
+    /// legendary creature"). `false` (default) imposes no restriction. The positive twin of
+    /// [`nonlegendary`](Self::nonlegendary) and, like it, reads the current (possibly copied)
+    /// [`CardDef::legendary`] rather than a printed type line, so a permanent copying a legend
+    /// qualifies (CR 706.2).
+    pub legendary: bool,
     /// Excludes the "Lair" land subtype (CR 305 — Treva's Ruins' "return a *non-Lair* land you
     /// control"). `false` (default) imposes no restriction. Reads the printed land-type list
     /// directly ([`CardKind::Land::subtypes`], the rules-relevant one — see that field's doc),
@@ -994,6 +1001,7 @@ impl PermanentFilter {
             basic: false,
             name: None,
             nonlegendary: false,
+            legendary: false,
             nonlair: false,
             without_flying: false,
             without_keyword: None,

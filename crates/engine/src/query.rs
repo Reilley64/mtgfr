@@ -1666,6 +1666,11 @@ impl Game {
         if filter.nonlegendary && self.def_of(id).legendary {
             return false;
         }
+        // Legendary requirement (CR 205.4a — Karakas' "target legendary creature"). Same
+        // (possibly copied) def the exclusion above reads.
+        if filter.legendary && !self.def_of(id).legendary {
+            return false;
+        }
         // Non-Lair land exclusion (CR 305 — Treva's Ruins' "non-Lair land"). Reads the printed
         // land-type list directly, not `CardDef::subtypes` (see the field's doc).
         if filter.nonlair

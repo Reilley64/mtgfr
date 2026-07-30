@@ -254,6 +254,7 @@
   "effect.static_cant_be_blocked_by",
   "effect.static_cant_block_attackers",
   "effect.static_can_block_additional",
+  "effect.static_landwalk_negated",
   "effect.static_cant_cast_during_combat",
   "effect.static_cant_cast_if_attacked_this_turn",
   "effect.static_discard_to_library_top_instead",

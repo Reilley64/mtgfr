@@ -67,6 +67,12 @@ pub enum ControlEffect {
 
     RevertAllCreaturesToOwners,
 
+    /// A tap sweep over whatever `filter` matches — Dread Cacodemon's "tap all other creatures you
+    /// control" (`controller = "you"`) or Arena of the Ancients' table-wide "tap all legendary
+    /// creatures" (the default [`FilterController::Any`](crate::FilterController)). The seat
+    /// restriction lives entirely in the filter, unlike
+    /// [`TapAllTargetPlayerControls`](Self::TapAllTargetPlayerControls), which reads the seat off a
+    /// chosen target instead.
     TapAll {
         filter: PermanentFilter,
     },

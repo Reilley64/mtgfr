@@ -1,0 +1,30 @@
+# First strike
+# Creatures with swampwalk can be blocked as though they didn't have swampwalk.
+name = "Ur-Drago"
+otags = ["deprecated-legend-type", "hate-landwalk"]
+sets = ["leg"]
+id = "537162d5-a2c2-4ad4-9fae-d2ec7a269dcc"
+default_print = "81a40f34-fc26-4d05-9c52-6ffbf1766a3b"
+oracle = "First strike\nCreatures with swampwalk can be blocked as though they didn't have swampwalk."
+legendary = true
+subtypes = ["Elemental"]
+keywords = ["first_strike"]
+
+[cost]
+generic = 3
+blue = 2
+black = 2
+
+[kind]
+type = "creature"
+power = 4
+toughness = 4
+
+# Creatures with swampwalk can be blocked as though they didn't have swampwalk.
+[[abilities]]
+timing = "static"
+
+[[abilities.effects]]
+type = "static"
+mode = "landwalk_negated"
+land = "swamp"

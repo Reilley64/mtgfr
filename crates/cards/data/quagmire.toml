@@ -1,0 +1,23 @@
+# Creatures with swampwalk can be blocked as though they didn't have swampwalk.
+name = "Quagmire"
+otags = ["cycle-leg-anti-landwalk-enchant", "hate-landwalk", "single-english-word-name"]
+sets = ["leg"]
+id = "0fb54ed7-4c64-4029-b52d-2bf5343e7426"
+default_print = "94e2aa9e-af6a-41c6-99a8-ca9335730ddb"
+oracle = "Creatures with swampwalk can be blocked as though they didn't have swampwalk."
+
+[cost]
+generic = 2
+black = 1
+
+[kind]
+type = "enchantment"
+
+# Creatures with swampwalk can be blocked as though they didn't have swampwalk.
+[[abilities]]
+timing = "static"
+
+[[abilities.effects]]
+type = "static"
+mode = "landwalk_negated"
+land = "swamp"

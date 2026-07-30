@@ -1083,7 +1083,7 @@ impl<'de> Deserialize<'de> for TypeSet {
 /// `blocking`, `unblocked`, `power_less_than_source`, `toughness_less_than_source_power`, `entered_this_turn`,
 /// `has_mana_ability`,
 /// `controlled_since_turn_start`, `did_not_attack_this_turn`,
-/// `nonbasic`, `basic`, `nonlegendary`, `nonlair`, `exclude_subtypes`,
+/// `nonbasic`, `basic`, `nonlegendary`, `legendary`, `nonlair`, `exclude_subtypes`,
 /// `without_flying`, `without_keyword`, `with_flying`, `with_counter`). `noncreature` is sugar for `exclude = "creature"`;
 /// `not_color` is sugar for `color`'s negated-color arm — both fold into the same
 /// [`PermanentFilter`] fields as their general spelling (see below).
@@ -1203,6 +1203,9 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     name: Option<String>,
                     #[serde(default)]
                     nonlegendary: bool,
+                    /// Karakas' "target legendary creature" — `nonlegendary`'s positive twin.
+                    #[serde(default)]
+                    legendary: bool,
                     #[serde(default)]
                     nonlair: bool,
                     #[serde(default)]
@@ -1272,6 +1275,7 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     basic: t.basic,
                     name: t.name.map(|s| &*Box::leak(s.into_boxed_str())),
                     nonlegendary: t.nonlegendary,
+                    legendary: t.legendary,
                     nonlair: t.nonlair,
                     without_flying: t.without_flying,
                     without_keyword: t.without_keyword,

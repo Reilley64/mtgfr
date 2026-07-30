@@ -594,6 +594,10 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     `You may skip your draw-step draw; if you do, ${humanize(param(params, "filter", "creatures"))} can't attack you until your next turn`,
   "effect.static_can_block_additional": (params) =>
     `This creature can block ${param(params, "count", "1")} additional creature(s) each combat`,
+  "effect.static_landwalk_negated": (params) => {
+    const landwalk = param(params, "landwalk", "landwalk");
+    return `Creatures with ${landwalk} can be blocked as though they didn't have ${landwalk}`;
+  },
   "effect.static_cant_be_blocked_by": (params) =>
     `This creature can't be blocked by ${humanize(param(params, "filter", "creatures"))}`,
   "effect.static_cant_block_attackers": (params) =>

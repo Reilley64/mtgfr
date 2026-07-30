@@ -456,6 +456,22 @@ pub enum StaticEffect {
         all_players: bool,
     },
 
+    /// Crevasse's "Creatures with mountainwalk can be blocked as though they didn't have
+    /// mountainwalk" (and its four siblings, plus Gosta Dirk / Lord Magnus / Ur-Drago printing the
+    /// same static on a creature): the landwalk evasion for `land` stops being checked, board-wide.
+    ///
+    /// CR 702.14b's evasion is *checked* when blockers are declared, not a property removed from
+    /// the creature — the attacker keeps its [`Keyword::Landwalk`](crate::Keyword), so Island
+    /// Sanctuary's "except by creatures with … islandwalk" still sees it. Only
+    /// [`Game::can_block`](crate::Game)'s landwalk check is waived, via
+    /// [`Game::landwalk_negated`](crate::Game).
+    ///
+    /// One land type per variant, so Lord Magnus's two statics accumulate instead of one replacing
+    /// the other: the board scan finds each on its own.
+    LandwalkNegated {
+        land: BasicLandType,
+    },
+
     /// Lich's "You don't lose the game for having 0 or less life" — CR 704.5a's exemption, read
     /// by the state-based sweep off every permanent its controller controls. Says nothing about
     /// the other loss conditions: an empty-library draw, ten poison and lethal commander damage

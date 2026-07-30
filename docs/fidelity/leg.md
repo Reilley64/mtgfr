@@ -181,7 +181,7 @@ the record shows what unblocked it.
 - [ ] **Anti-Magic Aura** {2}{U} · Enchantment — Aura — increment 15
 - [ ] **Arboria** {2}{G}{G} · World Enchantment — increment 2, 16
 - [ ] **Arcades Sabboth** {2}{G}{G}{W}{W}{U}{U} · Legendary Creature — Elder Dragon — increment 13
-- [ ] **Arena of the Ancients** {3} · Artifact — increment 6, 17
+- [x] **Arena of the Ancients** {3} · Artifact — increment 6 (absorbed 17)
 - [ ] **Avoid Fate** {G} · Instant — increment 18
 - [ ] **Ayesha Tanaka** {W}{W}{U}{U} · Legendary Creature — Human Artificer — increment 103
 - [ ] **Backdraft** {1}{R} · Instant — increment 19
@@ -203,11 +203,11 @@ the record shows what unblocked it.
 - [ ] **Cocoon** {G} · Enchantment — Aura — increment 26
 - [x] **Cosmic Horror** {3}{B}{B}{B} · Creature — Horror — increment 98
 - [x] **Craw Giant** {3}{G}{G}{G}{G} · Creature — Giant — increment 1; residual — increment 119
-- [ ] **Crevasse** {2}{R} · Enchantment — increment 4
+- [x] **Crevasse** {2}{R} · Enchantment — increment 4
 - [ ] **Crimson Manticore** {2}{R}{R} · Creature — Manticore — increment 8
 - [ ] **Cyclopean Mummy** {1}{B} · Creature — Zombie — increment 109
 - [ ] **D'Avenant Archer** {2}{W} · Creature — Human Soldier Archer — increment 8
-- [ ] **Deadfall** {2}{G} · Enchantment — increment 4
+- [x] **Deadfall** {2}{G} · Enchantment — increment 4
 - [ ] **Demonic Torment** {2}{B} · Enchantment — Aura — increment 95
 - [ ] **Divine Intervention** {6}{W}{W} · Enchantment — increment 27
 - [ ] **Dream Coat** {U} · Enchantment — Aura — increment 28
@@ -238,9 +238,9 @@ the record shows what unblocked it.
 - [ ] **Glyph of Doom** {B} · Instant — increment 43
 - [ ] **Glyph of Life** {W} · Instant — increment 43
 - [ ] **Glyph of Reincarnation** {G} · Instant — increment 43
-- [ ] **Gosta Dirk** {3}{W}{W}{U}{U} · Legendary Creature — Human Warrior — increment 4
+- [x] **Gosta Dirk** {3}{W}{W}{U}{U} · Legendary Creature — Human Warrior — increment 4
 - [ ] **Gravity Sphere** {2}{R} · World Enchantment — increment 2, 44
-- [ ] **Great Wall** {2}{W} · Enchantment — increment 4
+- [x] **Great Wall** {2}{W} · Enchantment — increment 4
 - [ ] **Greater Realm of Preservation** {1}{W} · Enchantment — increment 12
 - [ ] **Green Mana Battery** {4} · Artifact — increment 11
 - [ ] **Halfdane** {1}{W}{U}{B} · Legendary Creature — Shapeshifter — increment 22
@@ -260,7 +260,7 @@ the record shows what unblocked it.
 - [ ] **Ivory Guardians** {4}{W}{W} · Creature — Giant Cleric — increment 13
 - [ ] **Johan** {3}{R}{G}{W} · Legendary Creature — Human Wizard — increment 50
 - [ ] **Juxtapose** {3}{U} · Sorcery — increment 40
-- [ ] **Karakas** — · Legendary Land — increment 6
+- [x] **Karakas** — · Legendary Land — increment 6
 - [ ] **Kismet** {3}{W} · Enchantment — increment 51
 - [ ] **Knowledge Vault** {4} · Artifact — increment 52
 - [ ] **Kry Shield** {2} · Artifact — increment 94
@@ -272,7 +272,7 @@ the record shows what unblocked it.
 - [ ] **Life Matrix** {4} · Artifact — increment 55
 - [ ] **Living Plane** {2}{G}{G} · World Enchantment — increment 2, 44
 - [ ] **Livonya Silone** {2}{R}{R}{G}{G} · Legendary Creature — Human Warrior — increment 6, 7
-- [ ] **Lord Magnus** {3}{G}{W}{W} · Legendary Creature — Human Druid — increment 4
+- [x] **Lord Magnus** {3}{G}{W}{W} · Legendary Creature — Human Druid — increment 4
 - [ ] **Mana Matrix** {6} · Artifact — increment 105
 - [ ] **Marble Priest** {5} · Artifact Creature — Cleric — increment 12, 56
 - [x] **Marhault Elsdragon** {3}{R}{R}{G} · Legendary Creature — Elf Warrior — increment 1; residual — increment 119
@@ -296,7 +296,7 @@ the record shows what unblocked it.
 - [ ] **Psionic Entity** {4}{U} · Creature — Illusion — increment 110
 - [ ] **Psychic Purge** {U} · Sorcery — increment 64
 - [ ] **Puppet Master** {U}{U}{U} · Enchantment — Aura — increment 65
-- [ ] **Quagmire** {2}{B} · Enchantment — increment 4
+- [x] **Quagmire** {2}{B} · Enchantment — increment 4
 - [ ] **Quarum Trench Gnomes** {3}{R} · Creature — Gnome — increment 66
 - [ ] **Rabid Wombat** {2}{G}{G} · Creature — Wombat — increment 67
 - [ ] **Radjan Spirit** {3}{G} · Creature — Spirit — increment 5
@@ -344,10 +344,10 @@ the record shows what unblocked it.
 - [ ] **Touch of Darkness** {B} · Instant — increment 96
 - [ ] **Transmutation** {1}{B} · Instant — increment 22
 - [ ] **Triassic Egg** {4} · Artifact — increment 83
-- [ ] **Undertow** {2}{U} · Enchantment — increment 4
+- [x] **Undertow** {2}{U} · Enchantment — increment 4
 - [x] **Underworld Dreams** {B}{B}{B} · Enchantment — increment 115
 - [ ] **Unholy Citadel** — · Land — increment 3
-- [ ] **Ur-Drago** {3}{U}{U}{B}{B} · Legendary Creature — Elemental — increment 4
+- [x] **Ur-Drago** {3}{U}{U}{B}{B} · Legendary Creature — Elemental — increment 4
 - [ ] **Urborg** — · Legendary Land — increment 5
 - [ ] **Vampire Bats** {B} · Creature — Bat — increment 84
 - [ ] **Venarian Gold** {X}{U}{U} · Enchantment — Aura — increment 26
@@ -362,7 +362,7 @@ the record shows what unblocked it.
 - [ ] **Wall of Wonder** {2}{U}{U} · Creature — Wall — increment 89
 - [ ] **Whirling Dervish** {G}{G} · Creature — Human Monk — increment 90
 - [ ] **White Mana Battery** {4} · Artifact — increment 11
-- [ ] **Willow Satyr** {2}{G}{G} · Creature — Satyr — increment 6
+- [x] **Willow Satyr** {2}{G}{G} · Creature — Satyr — increment 6
 - [ ] **Winds of Change** {R} · Sorcery — increment 91
 - [ ] **Winter Blast** {X}{G} · Sorcery — increment 61, 92
 - [x] **Wolverine Pack** {2}{G}{G} · Creature — Wolverine — increment 1; residual — increment 119

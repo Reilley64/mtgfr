@@ -1033,10 +1033,12 @@ Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
             // self-only): a requirement, not a chosen target — enforced in `Game::declare_attackers`.
             | Effect::Static(StaticEffect::MustAttackEachCombat { .. })
             // The block restrictions and the extra block slot are all read off the battlefield at
-            // declaration time (`Game::can_block`, `Game::max_blocks`), never targeted.
+            // declaration time (`Game::can_block`, `Game::max_blocks`), never targeted. The landwalk
+            // negator (Crevasse) is read there too — it waives a restriction rather than adding one.
             | Effect::Static(StaticEffect::CanBlockAdditional { .. })
             | Effect::Static(StaticEffect::CantBeBlockedBy { .. })
             | Effect::Static(StaticEffect::CantBlockAttackers { .. })
+            | Effect::Static(StaticEffect::LandwalkNegated { .. })
             // Backup's grant rides the enclosing `Sequence`'s shared target (the counter's
             // creature), never a target of its own — see the variant doc.
             | Effect::Control(ControlEffect::GrantSourceAbilitiesUntilEndOfTurn)

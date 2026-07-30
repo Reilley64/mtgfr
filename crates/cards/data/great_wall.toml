@@ -1,0 +1,23 @@
+# Creatures with plainswalk can be blocked as though they didn't have plainswalk.
+name = "Great Wall"
+otags = ["cycle-leg-anti-landwalk-enchant", "hate-landwalk"]
+sets = ["leg"]
+id = "232d7613-4156-4bf5-9746-97fc79e4193d"
+default_print = "cd860a1d-aa17-4579-b9b1-d101d2416387"
+oracle = "Creatures with plainswalk can be blocked as though they didn't have plainswalk."
+
+[cost]
+generic = 2
+white = 1
+
+[kind]
+type = "enchantment"
+
+# Creatures with plainswalk can be blocked as though they didn't have plainswalk.
+[[abilities]]
+timing = "static"
+
+[[abilities.effects]]
+type = "static"
+mode = "landwalk_negated"
+land = "plains"

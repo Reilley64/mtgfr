@@ -245,16 +245,15 @@ impl Game {
                 .filter_map(|object| self.tap_change(object, false))
                 .collect(),
 
-            // Dread Cacodemon: "tap all other creatures you control" — the tap-side mirror of
-            // `UntapAll` just above. `filter.other` (already set by the card's TOML) relies on
-            // `permanent_matches`'s `Some(source)` to exclude Dread's own permanent id.
+            // Dread Cacodemon's "tap all other creatures you control" and Arena of the Ancients'
+            // table-wide "tap all legendary creatures" — the tap-side mirror of `UntapAll` just
+            // above. The seat restriction is the filter's own `controller` axis, so a card that
+            // says "all" reaches across the table. `filter.other` (Dread's) relies on
+            // `permanent_matches`'s `Some(source)` to exclude the source's own permanent id.
             ControlEffect::TapAll { filter } => self
                 .battlefield()
                 .into_iter()
-                .filter(|&id| {
-                    self.controller_of(id) == controller
-                        && self.permanent_matches(&filter, id, controller, Some(source))
-                })
+                .filter(|&id| self.permanent_matches(&filter, id, controller, Some(source)))
                 .filter_map(|object| self.tap_change(object, true))
                 .collect(),
 
