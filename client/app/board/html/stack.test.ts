@@ -753,6 +753,79 @@ test("pending choose_target does not duplicate a spell already on the stack", ()
   );
 });
 
+test("a second trigger from one permanent gets its own top face while aiming", () => {
+  // Simultaneous triggers off one source (CR 603.3b): the engine places them one at a time and
+  // pauses on `choose_target` before pushing the next, so the ability you are targeting is always
+  // the top face. Ability entries carry the *source permanent's* id, so the already-placed first
+  // trigger must not be mistaken for the one being targeted.
+  const veyran: ObjectView = {
+    controller: 0,
+    has_haste: false,
+    id: 3,
+    is_commander: false,
+    kind: { kind: "creature", power: 2, toughness: 2 },
+    mana_cost: { generic: 2, colored: [0, 0, 1, 1, 0] },
+    marked_damage: 0,
+    name: "Veyran, Voice of Duality",
+    needs_target: false,
+    owner: 0,
+    plus_counters: 0,
+    power: 2,
+    print: "veyran-print",
+    summoning_sick: false,
+    tapped: false,
+    toughness: 2,
+    zone: ZONE.Battlefield,
+  };
+  const bear: ObjectView = {
+    controller: 0,
+    has_haste: false,
+    id: 7,
+    is_commander: false,
+    kind: { kind: "creature", power: 2, toughness: 2 },
+    mana_cost: { generic: 1, colored: [0, 0, 0, 0, 1] },
+    marked_damage: 0,
+    name: "Grizzly Bear",
+    needs_target: false,
+    owner: 0,
+    plus_counters: 0,
+    power: 2,
+    print: "bear-print",
+    summoning_sick: false,
+    tapped: false,
+    toughness: 2,
+    zone: ZONE.Battlefield,
+  };
+  const model: ViewModel = {
+    board: initialBoardModel(),
+    fold: gameFold(
+      gameState({
+        objects: [veyran, bear],
+        stack: [{ controller: 0, kind: "ability", label: testMessageRef("Draw a card"), source: veyran.id }],
+        pending_choice: {
+          kind: "choose_target",
+          label: testMessageRef("Target creature gets +1/+1"),
+          min: 1,
+          max: 1,
+          player: 0,
+          source: veyran.id,
+          items: [{ id: bear.id, label: "Grizzly Bear", print: "bear-print" }],
+        },
+      }),
+    ),
+    tableId: "T1",
+  };
+  Scene.scene(
+    { update: (m) => [m, []], view: overlayView },
+    Scene.with(model),
+    resolveBoardOverlayMounts(),
+    resolveBoardCardArtMounts(2),
+    Scene.expect(Scene.testId("stack-face-0")).toExist(),
+    Scene.expect(Scene.testId("stack-face-1")).toHaveAttr("data-staged", "true"),
+    Scene.expect(Scene.testId("stack-staged-hint")).toContainText("Choose a target"),
+  );
+});
+
 test("expand button appears for a tall stack and opens strip view", () => {
   const objects: ObjectView[] = [];
   const stack: VisibleState["stack"] = [];

@@ -122,8 +122,6 @@ export interface RenderCard {
   /** Animated tap rotation 0 (upright) → 1 (tapped), filled in by the board's tween; absent in raw
    * layout (the draw falls back to the binary `tapped`). */
   tapFrac?: number;
-  /** Extra world-space tilt for a fanned permanent-cluster member (radians, about card center). */
-  fanAngle?: number;
 }
 
 export const CARD_W = 96;
@@ -461,13 +459,15 @@ type RowSlot = { members: ObjectView[] };
 
 /**
  * Build row slots. When the row fits at full spacing, every permanent is its own slot.
- * On overflow, collapse every eligible identical group (hosts with attachment stacks never merge).
+ * On overflow, collapse every eligible identical group. `neverMerge` ids always take their own
+ * slot — hosts with attachment stacks, and permanents committed to a combat declaration or a
+ * target (see `board/engagement.ts`).
  */
-function rowSlots(objects: ObjectView[], hostsWithAttachments: Set<number>): RowSlot[] {
+function rowSlots(objects: ObjectView[], neverMerge: Set<number>): RowSlot[] {
   if (objects.length <= SEAT_COLS) {
     return objects.map((o) => ({ members: [o] }));
   }
-  const keyOf = (o: ObjectView) => (hostsWithAttachments.has(o.id) ? `id:${o.id}` : clusterKey(o));
+  const keyOf = (o: ObjectView) => (neverMerge.has(o.id) ? `id:${o.id}` : clusterKey(o));
   const order: string[] = [];
   const groups = new Map<string, ObjectView[]>();
   for (const o of objects) {
@@ -528,7 +528,7 @@ function isNoncreatureLeft(kind: Kind): boolean {
   return kind !== "creature" && kind !== "land" && kind !== "planeswalker";
 }
 
-export function layout(state: VisibleState, viewer: number): RenderCard[] {
+export function layout(state: VisibleState, viewer: number, engaged: ReadonlySet<number> = new Set()): RenderCard[] {
   const count = state.players.length;
   const out: RenderCard[] = [];
 
@@ -551,6 +551,9 @@ export function layout(state: VisibleState, viewer: number): RenderCard[] {
       .map((o) => attachedHostId(o))
       .filter((id): id is number => id != null),
   );
+
+  // Attachment hosts and committed permanents share one rule: never collapse into a cluster.
+  const neverMerge = new Set([...hostsWithAttachments, ...engaged]);
 
   /** Host id → world top-left of the host card (filled as free permanents are placed). */
   const hostPos = new Map<number, { x: number; y: number; flip: boolean }>();
@@ -597,7 +600,7 @@ export function layout(state: VisibleState, viewer: number): RenderCard[] {
       for (const m of slot.members) hostPos.set(m.id, { x, y, flip });
     };
 
-    const ncSlots = rowSlots([...leftBlock, ...planeswalkers], hostsWithAttachments);
+    const ncSlots = rowSlots([...leftBlock, ...planeswalkers], neverMerge);
     const leftSlots = ncSlots.filter((s) => isNoncreatureLeft(s.members[0].kind.kind));
     const pwSlots = ncSlots.filter((s) => s.members[0].kind.kind === "planeswalker");
     const { left: leftXs, pws: pwXs } = noncreatureXs(o.x, leftSlots.length, pwSlots.length);
@@ -608,12 +611,12 @@ export function layout(state: VisibleState, viewer: number): RenderCard[] {
       placeSlot(slot, pwXs[i], noncreatureY);
     });
 
-    const creatureSlots = rowSlots(creatures, hostsWithAttachments);
+    const creatureSlots = rowSlots(creatures, neverMerge);
     creatureSlots.forEach((slot, i) => {
       placeSlot(slot, centerOutX(o.x, i, creatureSlots.length), creaturesY);
     });
 
-    const landSlots = rowSlots(lands, hostsWithAttachments);
+    const landSlots = rowSlots(lands, neverMerge);
     landSlots.forEach((slot, i) => {
       placeSlot(slot, centerOutX(o.x, i, landSlots.length), landsY);
     });

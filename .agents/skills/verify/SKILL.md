@@ -16,10 +16,18 @@ When a live drive fails mysteriously, use **`systematic-debugging`** before patc
   the build has no sqlite feature (`unsupported feature: sqlite feature not enabled`), give the
   smoke run its own two Postgres DBs instead of touching the dev ones: `createdb mtgfr_smoke_api` +
   `server migration apply`, and `createdb mtgfr_smoke` + `WEB_DATABASE_URL=… just client-migrate`
-  (the recipe does not default that variable). A fresh Drizzle DB is also the cheapest way past
-  "migrations in the database that do not match any local migration" when the worktree's migration
-  dir is behind the one the dev DB was migrated with. Vite prints the port it actually took —
-  in a worktree alongside a running dev loop that is `:3001`, not `:5173`.
+  (the recipe does not default that variable). Postgres itself comes from `docker compose up -d`,
+  which also creates `mtgfr_web`. Vite prints the port it actually took — in a worktree alongside a
+  running dev loop that is `:3001`, not `:5173`, and on a bare `bun run dev` it is `:3000`.
+- **"migrations in the database that do not match any local migration"** means the Drizzle ledger
+  outlived the migration files — `client/db/migrations/` was squashed to a single init and the dev
+  `mtgfr_web` still carries the pre-squash rows. A fresh DB (`createdb mtgfr_web_smoke` +
+  `WEB_DATABASE_URL=… just client-migrate`) is the cheapest way past it for a smoke run. To repair
+  the dev DB in place, confirm its schema matches a freshly-migrated one (diff
+  `information_schema.columns`), then point the ledger at the squashed migration:
+  `update drizzle.__drizzle_migrations set hash = '<hash from the fresh DB>' where id = 1;` and
+  delete the leftover rows. Lobby data survives; dropping the DB also works and loses only
+  pre-game lobbies.
 - Confirm the API is up: `curl -s localhost:8080/health/live`. Every game/auth/decks/cards route is gRPC now (wire-protocol-and-visibility spec) — there's no `/openapi.json` or REST path to curl directly; drive it through the BFF's `/api/rpc` (below) or a gRPC client against `:50051`.
 - **An isolated stack may pick its own HTTP, Vite and Postgres ports — never its own gRPC port.**
   Routed table calls ignore `GRPC_UPSTREAM`: the BFF maps a table's `pod_dns` through
@@ -48,8 +56,12 @@ names/shapes, or use a gRPC client (e.g. `grpcurl`) straight against `:50051` wi
    -6 Enchantress Rubinia, -7 Deathdancer Xira, -8 Political Puppets, -9 Mirror Mastery,
    -10 Heavenly Inferno); usable by anyone, no deck building.
 3. Lobby, one cookie jar per seat: `POST /api/tables/v1` (host — returns `{table_id}`) →
-   `POST /api/tables/join/v1 {table_id, deck_id}` per seat → `POST /api/tables/ready/v1
-   {table_id, ready:true}` → `POST /api/tables/start/v1 {table_id}`.
+   `POST /api/tables/<table>/join/v1 {deck_id}` per seat → `POST /api/tables/<table>/ready/v1
+   {ready:true}` → `POST /api/tables/<table>/start/v1 {}`. **The table id is a path param, not a
+   body field** (`client/server/routes/api/tables/[table]/`, per the AGENTS.md routing rule) — a
+   body-only `{table_id}` hits no route and Nitro answers 200 with the SPA's index HTML, so a driver
+   that only checks the status code sees four silent no-ops and then a lobby that never starts.
+   `GET /api/tables/<table>/lobby/v1` reads back `{seats, started, start_error}`.
 
 ## Reading state / driving intents
 

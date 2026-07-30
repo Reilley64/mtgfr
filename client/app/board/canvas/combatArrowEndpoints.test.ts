@@ -1,5 +1,10 @@
-import { describe, expect, it } from "vitest";
-import type { RenderCard } from "../geometry/layout";
+import { describe, expect, it, test } from "vitest";
+import type { ObjectView, VisibleState } from "~/wire/types";
+import { engagedIds } from "../engagement";
+import { fitCamera } from "../geometry/interaction";
+import { layout, type RenderCard, ZONE } from "../geometry/layout";
+import { initialBoardModel } from "../submodel";
+import { avatarScreenPositions } from "./avatars";
 import { allBlockersDeclared, combatArrowEndpoints } from "./combatArrowEndpoints";
 
 function card(id: number, over: Partial<RenderCard> = {}): RenderCard {
@@ -155,4 +160,98 @@ describe("combatArrowEndpoints", () => {
     expect(endpoints.some((endpoint) => endpoint.kind === "block")).toBe(true);
     expect(endpoints).toContainEqual({ from: { x: 248, y: 67 }, to: { x: 48, y: 67 }, kind: "block" });
   });
+});
+
+// Regression coverage for a real `layout()`-built card list, not the `card()` fixture above:
+// `combatArrowEndpoints` used to look up an attacker through the layout id map and silently
+// `continue` when it was absent — a declared attacker inside a permanent cluster drew no arrow.
+function creature(id: number, controller: number, over: Partial<ObjectView> = {}): ObjectView {
+  return {
+    controller,
+    has_haste: false,
+    id,
+    is_commander: false,
+    kind: { kind: "creature", power: 2, toughness: 2 },
+    mana_cost: { generic: 1, colored: [0, 0, 0, 0, 0] },
+    marked_damage: 0,
+    name: "Bear",
+    needs_target: false,
+    owner: controller,
+    plus_counters: 0,
+    power: 2,
+    summoning_sick: false,
+    tapped: false,
+    toughness: 2,
+    zone: ZONE.Battlefield,
+    ...over,
+  };
+}
+
+function state(over: Partial<VisibleState> = {}): VisibleState {
+  return {
+    active_player: 0,
+    can_act: true,
+    combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [], blocked_attackers: [] },
+    objects: [],
+    pending_choice: null,
+    players: [
+      {
+        commander_tax: 0,
+        hand_count: 7,
+        library_count: 80,
+        life: 40,
+        lost: false,
+        mana_pool: { any: 0, colored: [0, 0, 0, 0, 0], colorless: 0 },
+        player: 0,
+        username: "Alice",
+      },
+      {
+        commander_tax: 0,
+        hand_count: 7,
+        library_count: 80,
+        life: 40,
+        lost: false,
+        mana_pool: { any: 0, colored: [0, 0, 0, 0, 0], colorless: 0 },
+        player: 1,
+        username: "Bob",
+      },
+    ],
+    priority: 0,
+    stack: [],
+    step: 3,
+    viewer: 0,
+    ...over,
+  };
+}
+
+test("an attacker inside a permanent cluster still draws its combat arrow", () => {
+  const bears = Array.from({ length: 6 }, (_, i) => creature(i + 1, 0, { name: `Bear ${i}` }));
+  const saprolings = [10, 11, 12, 13].map((id) =>
+    creature(id, 0, { name: "Saproling", power: 1, toughness: 1, kind: { kind: "creature", power: 1, toughness: 1 } }),
+  );
+  const attacking = state({
+    objects: [...bears, ...saprolings],
+    // Attacker is 12, not the cluster's lowest id (10) — the lowest id is always the collapsed
+    // cluster's face regardless of engagement, so an attacker id that already happens to be the
+    // face wouldn't discriminate a broken engaged-set wire-up from a working one.
+    combat: {
+      attackers: [{ attacker: 12, defender: 1 }],
+      blocks: [],
+      attackers_declared: true,
+      blockers_declared: [],
+      blocked_attackers: [],
+    },
+  });
+
+  const endpoints = combatArrowEndpoints({
+    camera: fitCamera({ x: 1600, y: 900 }, 2, 0),
+    cards: layout(attacking, 0, engagedIds(attacking, initialBoardModel())),
+    avatars: avatarScreenPositions(attacking.players, 0, 2, fitCamera({ x: 1600, y: 900 }, 2, 0)),
+    attackers: attacking.combat.attackers,
+    blocks: [],
+    blockersDeclared: [],
+    blockedAttackers: [],
+  });
+
+  expect(endpoints.filter((e) => e.kind === "attack")).toHaveLength(1);
 });

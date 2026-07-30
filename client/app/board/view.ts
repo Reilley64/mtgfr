@@ -17,6 +17,7 @@ import {
 } from "./action/targeting";
 import { MountBitmapLayer, MountFlightLayer, publishBitmapFrame } from "./bitmap/mount";
 import { sceneShapes } from "./canvas/scene";
+import { engagedIds } from "./engagement";
 import { worldToScreen } from "./geometry/camera";
 import { layout, STEP } from "./geometry/layout";
 import { stackPresentation } from "./geometry/stackLayout";
@@ -96,7 +97,10 @@ export const view = Submodel.defineView<BoardViewModel, ViewMessage>((model) => 
   const state = model.fold.state;
   if (state == null) return connectingBoard();
 
-  const cards = layout(state, state.viewer);
+  // Paint and hit-test must agree on which permanents are engaged, or a card paints where it
+  // cannot be clicked — one set shared between `layout()` here and the `sceneShapes` call below.
+  const engaged = engagedIds(state, model.board);
+  const cards = layout(state, state.viewer, engaged);
   const stagedOverlay = stagingOverlay(model.board.staged, state, model.board.viewport, state.stack.length);
   const pendingOverlay = pendingTargetingOverlay(
     state.pending_choice,
@@ -254,6 +258,13 @@ export const view = Submodel.defineView<BoardViewModel, ViewMessage>((model) => 
   // Foldkit keeps only the last OnMount insert hook per element — never stack
   // MountBoardKeyboard / MountBoardAudio / MountHintAutoHide on the same node
   // (that silently dropped Alt inspect and could mute table audio).
+  //
+  // Every mount host here is keyed, and so is every conditional sibling. Unkeyed sibling `div`s are
+  // interchangeable to snabbdom (`sameVnode` compares sel + key), so a conditional child vanishing
+  // shifts the whole tail one slot: the hint auto-hiding after 12s used to patch the camera vnode
+  // onto the hint's element, leaving the running gesture mount holding a `sr-only` node whose rect
+  // rejects every wheel event — scroll zoom died silently. Keys also make connecting → live a real
+  // insert rather than a reuse of the connecting div, so the keyboard mount starts on a cold load.
   const showHint = hintVisible(model.board);
   return h.main(
     [
@@ -264,11 +275,13 @@ export const view = Submodel.defineView<BoardViewModel, ViewMessage>((model) => 
       h.Style({ "--hand-bar-h": `${bar.barH}px` }),
     ],
     [
-      h.div(
+      h.keyed("div")(
+        "board-keyboard-mount",
         [h.Class("hidden"), h.DataAttribute("testid", "board-keyboard-mount"), h.OnMount(MountBoardKeyboard())],
         [],
       ),
-      h.div(
+      h.keyed("div")(
+        "board-audio-mount",
         [
           h.Class("hidden"),
           h.DataAttribute("testid", "board-audio-mount"),
@@ -278,7 +291,8 @@ export const view = Submodel.defineView<BoardViewModel, ViewMessage>((model) => 
         [],
       ),
       showHint
-        ? h.div(
+        ? h.keyed("div")(
+            "board-hint-mount",
             [
               h.Class("hidden"),
               h.DataAttribute("testid", "board-hint-mount"),
@@ -288,7 +302,8 @@ export const view = Submodel.defineView<BoardViewModel, ViewMessage>((model) => 
             [],
           )
         : null,
-      h.div(
+      h.keyed("div")(
+        "board-camera-gesture-mount",
         [
           h.Class("pointer-events-none absolute inset-0 z-10 touch-none"),
           h.DataAttribute("testid", "board-camera-gesture-mount"),
@@ -313,6 +328,7 @@ export const view = Submodel.defineView<BoardViewModel, ViewMessage>((model) => 
               width: model.board.viewport.width,
               height: model.board.viewport.height,
               camera: model.board.camera,
+              engaged,
               selectedId: model.board.selectedId,
               stagedAttackers: model.board.combatAttackers,
               stagedBlocks: model.board.combatBlocks,
@@ -328,7 +344,8 @@ export const view = Submodel.defineView<BoardViewModel, ViewMessage>((model) => 
       }),
       // Layer 2: in-play mana under resting permanents (DOM sibling before bitmap).
       manaTrayView(model.board, state),
-      h.canvas(
+      h.keyed("canvas")(
+        "board-bitmap-layer",
         [
           // Device-resolution backing store, CSS-pixel box: the Mount paints through a DPR
           // transform, and these attributes must match or the next vdom patch shrinks it back.
@@ -342,7 +359,8 @@ export const view = Submodel.defineView<BoardViewModel, ViewMessage>((model) => 
       ),
       boardOverlays(model.board, state, model.tableId, model.fold.log),
       // Layer 6: flights ride their own canvas above the hand/stack HTML (z-30) but below prompts.
-      h.canvas(
+      h.keyed("canvas")(
+        "board-flight-layer",
         [
           h.Width(String(Math.round(model.board.viewport.width * dpr))),
           h.Height(String(Math.round(model.board.viewport.height * dpr))),
@@ -354,7 +372,8 @@ export const view = Submodel.defineView<BoardViewModel, ViewMessage>((model) => 
       ),
       reconnectText == null
         ? null
-        : h.div(
+        : h.keyed("div")(
+            "board-reconnecting",
             [
               h.DataAttribute("testid", "board-reconnecting"),
               h.Role("alert"),

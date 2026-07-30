@@ -361,6 +361,29 @@ describe("pendingTargetingOverlay", () => {
     expect(pendingAimStackCount(game, 1)).toBe(1);
   });
 
+  it("ghosts a second trigger from a source whose first trigger is already on the stack", () => {
+    // Simultaneous triggers off one permanent (CR 603.3b, or a Veyran/Harmonic Prodigy double):
+    // the engine places them one at a time and pauses on `choose_target` *before* pushing the
+    // next, so the ability being targeted is never a resting entry. Ability entries reuse the
+    // source permanent's id, so deduping on `source` alone would suppress the ghost and leave the
+    // aim arrow on the *previous* trigger's face.
+    const veyran = object({ id: 3, name: "Veyran, Voice of Duality", print: "veyran-print" });
+    const bear = object({ id: 7 });
+    const game = state([veyran, bear]);
+    game.stack = [{ controller: 0, kind: "ability", label: testMessageRef("Draw a card"), source: 3 }];
+    game.pending_choice = {
+      kind: "choose_target",
+      label: testMessageRef("Target creature gets +1/+1"),
+      min: 1,
+      max: 1,
+      player: 0,
+      source: 3,
+      items: [{ id: 7, label: "Bear" }],
+    };
+    expect(pendingStackGhost(game)?.id).toBe(3);
+    expect(pendingAimStackCount(game, 1)).toBe(2);
+  });
+
   it("aims for multi-target choose_target when all items are on the battlefield", () => {
     const a = object({ id: 1 });
     const b = object({ id: 2 });

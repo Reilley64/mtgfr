@@ -1,7 +1,7 @@
 # Battlefield
 
 **Status:** Current (as of 2026-07-27)
-**Module:** `client/app/board/canvas/`, `client/app/board/bitmap/`, `client/app/board/chrome.ts`, `client/app/board/geometry/layout.ts`, `client/app/board/geometry/density.ts`
+**Module:** `client/app/board/canvas/`, `client/app/board/bitmap/`, `client/app/board/chrome.ts`, `client/app/board/geometry/layout.ts`, `client/app/board/engagement.ts`
 
 ---
 
@@ -75,7 +75,7 @@ Unplayable permanents are not darkened. Castability and activation availability 
 - `GRAVEYARD_OUTLINE = "#7B5CFF"`
 - `EXILE_OUTLINE = "#3DDC97"`
 
-Battlefield playable borders are derived from current `ActionView` data. Tap-only mana lands remain selectable for their tap wedge but do not get a playable border unless they have another action. Commander gold can coexist with a playable border as an outer halo.
+Battlefield playable borders are derived from current `ActionView` data. Mana sources do not get a playable border: free-tap lands have no `ActionView`, and an action flagged `mana_only` (a paid tap-for-mana mode such as Viridescent Bog's `{1}, {T}: Add {B}{G}`) is skipped. Both remain selectable for their tap wedge and radial row. Commander gold can coexist with a playable border as an outer halo.
 
 ### Avatars
 
@@ -106,12 +106,15 @@ When badge or outline meaning changes, update [`DESIGN.md`](../../DESIGN.md) and
 
 ### Packing and clusters
 
-Density overlays affect where cards paint and how topmost ordering works:
-
 - Row packing compresses crowded rows inside the seat band.
-- Clusters can replace indistinguishable groups with one face and a count.
-- Fanning a cluster paints members in an arc and keeps them inside the seat band.
-- Hover raise moves the hovered card and its attachment stack to the top of the resting-card order.
+- Clusters replace indistinguishable groups with one face and a count. The face is the
+  lowest-id member.
+- A permanent committed to something — declared or staged attacker, declared or staged
+  blocker, a blocked attacker, the target of a stack object, or a staged/drafted target —
+  never joins a cluster (`board/engagement.ts`). It takes its own slot, so its combat arrow,
+  target ring, and hit box are its own, and the cluster face becomes the next free copy.
+- Holding Shift on a combat drop commits every copy in the dragged cluster to that defender
+  or attacker.
 
 These are visual/layout rules only; they do not collapse engine objects.
 
@@ -135,7 +138,7 @@ These are visual/layout rules only; they do not collapse engine objects.
 - Bitmap paint tests assert stack→target arrows paint after resting card art and avatars, and blocked attackers with no living blocker paint no combat arrow after blockers are declared.
 - Combat arrow endpoint and Canvas shape tests assert pre-declare arrows, post-declare retargeting, and no-arrow blocked attackers.
 - Scene tests assert arrows and interactive life-orb hit targets remain layered correctly.
-- Density tests assert packing, cluster fan, and hover raise order.
+- Layout tests assert packing, cluster collapse, and that committed permanents split out.
 
 ## Out of Scope
 

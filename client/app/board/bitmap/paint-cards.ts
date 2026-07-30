@@ -300,9 +300,7 @@ function rotateCard(
   h: number,
 ): void {
   const tapFrac = card.tapFrac ?? (card.tapped ? 1 : 0);
-  let angle = card.controller !== viewer ? Math.PI : 0;
-  angle += card.fanAngle ?? 0;
-  angle += tapFrac * (Math.PI / 2);
+  const angle = (card.controller !== viewer ? Math.PI : 0) + tapFrac * (Math.PI / 2);
   if (angle === 0) return;
 
   ctx.translate(x + w / 2, y + h / 2);
