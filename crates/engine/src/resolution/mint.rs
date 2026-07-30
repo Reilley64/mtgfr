@@ -99,7 +99,8 @@ impl Game {
                 | MiscEffect::YouLoseTheGame
                 | MiscEffect::GameIsADraw
                 | MiscEffect::ScheduleNextCastTrigger { .. }
-                | MiscEffect::ScheduleThisTurnCombatDamageCopy) => {
+                | MiscEffect::ScheduleThisTurnCombatDamageCopy
+                | MiscEffect::SourceCantBeRegeneratedThisTurn) => {
                     self.mint_misc(m, controller, source, target, x)
                 }
                 MiscEffect::BlocksEachAttackerIfAble { .. }

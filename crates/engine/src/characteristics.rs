@@ -47,6 +47,14 @@ enum ContinuousEffectKind {
     PtDelta { power: i32, toughness: i32 },
     /// Keyword abilities granted by a continuous effect.
     GrantKeywords { keywords: &'static [Keyword] },
+    /// CR 613.1f: keyword abilities *removed* by a continuous effect (the Legends strippers).
+    /// Shares the keyword layer with [`GrantKeywords`](Self::GrantKeywords) so the two fold in
+    /// timestamp order — which is the whole point: a removal beats every grant before it and loses
+    /// to every grant after it.
+    LoseKeywords {
+        keywords: &'static [Keyword],
+        families: &'static [KeywordFamily],
+    },
 }
 
 impl ContinuousEffect {
@@ -56,7 +64,8 @@ impl ContinuousEffect {
             ContinuousEffectKind::LoseAllAbilities => ContinuousLayer::Ability,
             ContinuousEffectKind::BasePtSet { .. } => ContinuousLayer::PowerToughnessBase,
             ContinuousEffectKind::PtDelta { .. } => ContinuousLayer::PowerToughnessModifier,
-            ContinuousEffectKind::GrantKeywords { .. } => ContinuousLayer::Keywords,
+            ContinuousEffectKind::GrantKeywords { .. }
+            | ContinuousEffectKind::LoseKeywords { .. } => ContinuousLayer::Keywords,
         }
     }
 }
@@ -1104,7 +1113,20 @@ impl Game {
                         });
                     }
                 }
-                ModifierKind::LoseKeywords(_)
+                // A plain CR 613.1f removal is a keyword-layer entry at its own timestamp. The
+                // "and can't have" reading (arcane_lighthouse) is deliberately *not* one: it has
+                // to beat grants stamped after it too, so it stays a final `retain` in
+                // `compute_effective_keywords_uncached` instead.
+                ModifierKind::LoseKeywords {
+                    keywords,
+                    families,
+                    cant_have: false,
+                } => effects.push(ContinuousEffect {
+                    source: object,
+                    timestamp,
+                    kind: ContinuousEffectKind::LoseKeywords { keywords, families },
+                }),
+                ModifierKind::LoseKeywords { .. }
                 | ModifierKind::SetColor(_)
                 | ModifierKind::RevertsToDef(_) => {}
             }
@@ -2135,7 +2157,8 @@ impl Game {
                 }
                 ContinuousEffectKind::SetTypes { .. }
                 | ContinuousEffectKind::LoseAllAbilities
-                | ContinuousEffectKind::GrantKeywords { .. } => {}
+                | ContinuousEffectKind::GrantKeywords { .. }
+                | ContinuousEffectKind::LoseKeywords { .. } => {}
             }
         }
         (power, toughness)
@@ -2185,14 +2208,30 @@ impl Game {
                 *keyword = swap.keyword(*keyword);
             }
         }
-        for effect in self
+        // CR 613.1f/613.7: grants and removals share the keyword layer, so they fold in timestamp
+        // order rather than "every grant, then every removal". That is what lets Radjan Spirit
+        // ground a creature the Cathedral already granted "bands with other legendary creatures"
+        // to, while a Cathedral that arrives *after* the strip grants it right back.
+        let mut keyword_layer: Vec<ContinuousEffect> = self
             .attachment_continuous_effects(object)
             .into_iter()
             .chain(self.runtime_continuous_effects(object))
             .chain(self.anthem_continuous_effects(object))
-        {
-            if let ContinuousEffectKind::GrantKeywords { keywords: granted } = effect.kind {
-                keywords.extend_from_slice(granted);
+            .filter(|effect| effect.layer() == ContinuousLayer::Keywords)
+            .collect();
+        keyword_layer.sort_by_key(|effect| effect.timestamp);
+        for effect in keyword_layer {
+            match effect.kind {
+                ContinuousEffectKind::GrantKeywords { keywords: granted } => {
+                    keywords.extend_from_slice(granted)
+                }
+                ContinuousEffectKind::LoseKeywords {
+                    keywords: lost,
+                    families,
+                } => keywords.retain(|k| {
+                    !lost.contains(k) && !families.iter().any(|family| family.matches(*k))
+                }),
+                _ => {}
             }
         }
         // Backup / "it gains the following abilities until end of turn" (CR 702.166): a granted
@@ -2228,10 +2267,16 @@ impl Game {
         // the fully-unioned set last, so a keyword granted by any source above — including one
         // applied *after* the strip landed this turn — is filtered right back out.
         for modifier in self.modifiers_on(object) {
-            let ModifierKind::LoseKeywords(lost) = modifier.kind else {
+            let ModifierKind::LoseKeywords {
+                keywords: lost,
+                families,
+                cant_have: true,
+            } = modifier.kind
+            else {
                 continue;
             };
-            keywords.retain(|k| !lost.contains(k));
+            keywords
+                .retain(|k| !lost.contains(k) && !families.iter().any(|family| family.matches(*k)));
         }
         // "Enchanted creature loses flying" (Earthbind), an ability the Aura gained rather than one
         // printed on it: stripped last for the same reason as the losses above — it beats every

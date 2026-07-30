@@ -87,13 +87,13 @@ needs a batch-scoped entry epoch, and no pool card can produce a tie yet. Each o
 cards still needs its own body increment (16, 23, 25, 35, 44, 48, 75, 80) — this one only makes
 the supertype mean something.
 
-### 3. `bands-with-other` — 7 cards, XL
+### 3. `bands-with-other` — 7 cards, XL — **LANDED** (wave 6; client surface split to #121, Master of the Hunt to #123)
 Depends on: the 2ed banding increment (#14 there) — "bands with other" is banding plus a filter,
 and it inherits banding's damage-assignment machinery wholesale.
 "Bands with other <quality>" (CR 702.22b) is the single largest rules surface in the set: it
 changes who may attack together (CR 702.22c), how a band is blocked as a group (CR 702.22h/i), and
 — the expensive part — swaps who *assigns* combat damage: the defending player divides a banded
-attacker's damage among its blockers (CR 702.22j, an exception to 510.1c), and the attacking player
+attacker's damage among its blockers (CR 702.22j, an exception to 510.1c), and the **active** player
 divides that blocker's damage among the attackers it is blocking (CR 702.22k, an exception to
 510.1d). **Five** Legends lands grant it by color to legendary creatures
 (Adventurers' Guildhouse/green, Cathedral of Serra/white, Mountain Stronghold/red, Seafarer's
@@ -128,29 +128,46 @@ is **#123** — the name-as-quality form is blocked on data conventions this inc
      all, it is 702.22i's whole reachable surface.
    - CR 702.22f ("an attacking creature that's removed from combat is also removed from the band it
      was in") falls out of gating each extension on `combat.attackers`, which removal prunes.
-3. **Damage assignment transfer** — two halves, both still open:
-   - **CR 702.22k** (the active player divides a *blocker's* damage among the attackers it blocks)
-     is missing entirely: `combat_damage_substep` deals a blocker's full power to every attacker it
-     is blocking, so there is no division to reassign. That is a plain CR 510.1d gap first, and only
-     then a banding one — the six banding cards' residual notes all name this.
-   - **CR 702.22j** (the defending player divides a banded *attacker's* damage among its blockers)
-     is half-built: `Game::damage_assigner` already hands the choice to a banding blocker's
-     controller, but not to its second clause — a blocker that is "both a \[quality\] creature with
-     'bands with other \[quality\]' and another \[quality\] creature".
+3. **Damage assignment transfer** — both halves. **LANDED.** The plain CR 510.1d blocker-side
+   division came first, with no banding in it: `Game::next_undivided_division` in
+   `crates/engine/src/combat.rs` now walks the blockers as well as the attackers and raises a
+   second `PendingChoice::AssignCombatDamage` for any creature blocking two or more attackers, and
+   `Game::assign_blocker_damage` spends that recorded division instead of dealing full power to
+   each attacker. Only then the banding exception on top: `Game::banding_division_shifter` reads
+   CR 702.22j's and CR 702.22k's shared condition over one side of a block ("a creature with
+   banding, or … both a \[quality\] creature with 'bands with other \[quality\]' and another
+   \[quality\] creature"), and `Game::attacker_damage_assigner` / `Game::blocker_damage_assigner`
+   move each division the opposite way from it. Tests in
+   `crates/engine/tests/leg_bands_with_other.rs`, including both directions in one game. Findings:
+   - `PendingChoice::AssignCombatDamage`'s `attacker`/`blockers` fields and
+     `Event::CombatDamageDivided`'s `attacker` are now `source`/`recipients` and `source` — a
+     blocker divides too, so the old names lied. The **wire is untouched**: `PendingChoiceView` and
+     `VisibleEvent` already spelled these `source`/`items` and `attacker`, and
+     `crates/schema/src/projection/{choice,event}.rs` remap at the edge. No proto, no codegen.
+   - CR 702.19b/c: an attacking trampler's division may come up short (it holds the excess back for
+     the defending player) but a **blocking** trampler's must spend its whole power — nowhere to put
+     it. `pending/handlers/combat.rs` now gates the short-total allowance on the divider actually
+     attacking. Two-Headed Giant of Foriys is the pool card that reaches this.
+   - A creature blocking two attackers is listed once per pair in `combat.blocks`, so both the
+     division-raising walk and `combat_damage_substep` dedupe on it; its whole division is dealt
+     under the first attacker that names it.
+   - Four slice-2/4 tests had encoded the unfaithful behavior and changed assertion:
+     `blocking_one_member_of_a_band_blocks_the_whole_band`,
+     `a_swampwalking_band_member_becomes_blocked_with_its_band` and
+     `a_green_band_under_adventurers_guildhouse_is_blocked_as_a_group` each now answer a division
+     before combat damage resolves, and `a_blocker_blocking_two_band_members_records_each_block_once`
+     no longer asserts `pending_choice().is_none()` — the Giant blocks two attackers and so divides.
+     The outcome assertions (who died, life totals) are unchanged in all four.
 4. **The remaining granting cards** — Adventurers' Guildhouse, Mountain Stronghold, Seafarer's
    Quay and Unholy Citadel, each a copy of Cathedral of Serra with its own `color`. **LANDED**, with
-   no engine change at all: the four are pure data over slice 1's `keyword_anthem` grant, and they
-   carry Cathedral's `approximates` for the slice 3 damage-division residual. Tests in
+   no engine change at all: the four are pure data over slice 1's `keyword_anthem` grant. Tests in
    `crates/engine/tests/leg_bands_with_other.rs`. Master of the Hunt was **split out to #123** — its
    quality is a card name rather than a supertype, and it is blocked on the token registry's
    real-Scryfall-id convention, not on the rules.
-Do not start this before #1 and #4 land; it is the highest-risk work in the set and everything
-else in the combat cluster is cheaper.
-**#119 has landed, so slice 3 is unblocked.** `PendingChoice::AssignCombatDamage` is now raised from
-`Game::divide_or_deal_combat_damage` in the combat damage step, where CR 510.1a puts it, and its
-`player` field already carries the answer to "who chooses" — `Game::damage_assigner` computes it, and
-slice 3's second CR 702.22j clause is a change to that one function, not to the timing or the wire.
-CR 702.22k (the blocker-side division) has no choice at all yet and is the larger half.
+All four slices have landed and all five lands have dropped their `approximates`. The other two
+cards, Shelkin Brownie and Tolaria, strip "bands with other" and landed alongside as **#5**'s work
+in the same wave, so all 7 are scripted. The wire/client surface for `DeclareAttackersInBands`
+remains **#121**.
 
 ### 4. `landwalk-negation` — 8 cards, M
 Depends on: nothing.
@@ -169,16 +186,37 @@ replacement semantics to get wrong.
 Ur-Drago, Gosta Dirk and Lord Magnus also print plain first strike, so all three are whole cards
 here rather than partial.
 
-### 5. `lose-keyword-until-eot` — 6 cards, M
+### 5. `lose-keyword-until-eot` — 6 cards, M — **LANDED** (wave 6)
 Depends on: #3 (Shelkin Brownie and Tolaria strip "bands with other"), #4 for the landwalk
 vocabulary.
 Targeted keyword *removal* until end of turn: all landwalk (Hammerheim), flying (Radjan Spirit),
 banding and all "bands with other" (Tolaria), first strike or swampwalk — the controller's choice
 (Urborg), and defender-on-block (Elder Land Wurm, which loses it to its own trigger).
-*Sketch:* a `LoseKeywords { keywords: KeywordSelector, duration }` effect where the selector can
-name a specific keyword, a keyword *family* (all landwalk, all bands-with-other), or a
-player-chosen one-of-two. Removal is a continuous effect in the ability-adding/removing layer, so
-it must lose to nothing and win over grants applied earlier by timestamp.
+*Landed:* `PumpEffect::TargetLosesKeywords { target, keywords, families, until_end_of_turn,
+choose_one }` (`mode = "target_loses_keywords"`), plus `KeywordFamily::{Landwalk, BandsWith}` in
+`crates/cards/src/types/card.rs` — a *family* rather than an enumerated member list, so a quality
+added later (Master of the Hunt's, in #3) is stripped without editing every stripper. The
+resolution emits the existing `Event::KeywordsStripped`, which grew `families` /
+`until_end_of_turn` / `cant_have` so Arcane Lighthouse's "and can't have" and the Legends
+strippers' plain CR 613.1f removal share one event and one `ModifierKind::LoseKeywords`.
+*Correction to the intake sketch:* `until_end_of_turn` is the **special** case, not the duration
+of the increment's name — Elder Land Wurm's "it loses defender" is an untracked *indefinite*
+effect (CR 613.1f with no duration), so it keeps the loss for the rest of the game.
+*Layer fix:* `compute_effective_keywords_uncached` used to union every grant in arbitrary source
+order and strip last, which cannot express "loses to grants applied later". Grants and
+non-`cant_have` removals now share `ContinuousLayer::Keywords` and fold in timestamp order (CR
+613.7), so a Cathedral of Serra that entered before Shelkin Brownie's activation loses the band
+and one that enters after it wins. The `cant_have` retain stays last, since "can't have" is not a
+timestamped removal.
+Urborg's "first strike **or** swampwalk" is a CR 609.4 resolution-time choice, not CR 601.2b's
+activation-time mode, so it does *not* reuse `Effect::ChooseOne` (which `Game::activate`
+intercepts and asks at activation). `choose_one = true` routes the effect through
+`run_choose_pause`, which synthesizes one single-keyword mode per entry and raises the existing
+`ChoiceRequest::ChooseMode` with the target already locked.
+Elder Land Wurm needed `Trigger::Blocks` (`timing = "blocks"`) — the blocker-only half of
+`AttacksOrBlocks`, so a creature that later attacks and becomes blocked does not re-fire it — and
+Tolaria needed `Condition::DuringUpkeep` (`type = "during_upkeep"`), the seat-blind sibling of
+`DuringYourUpkeep`, since the printed line says "any upkeep step".
 
 ### 6. `legendary-filter-axis` — 3 cards, S
 Depends on: nothing.
@@ -459,7 +497,7 @@ counter to identify the exempt first draw. The replacement's body is itself a dr
 re-trigger the replacement for the same event (CR 614.5). Land the replacement hook first as its
 own slice; the card body is small once the hook exists.
 
-### 25. `any-player-may-activate` — 2 cards, M
+### 25. `any-player-may-activate` — 2 cards, M — **LANDED** (wave 6; Clergy's regeneration shield split to #128)
 Depends on: nothing.
 Land's Edge ("Any player may activate this ability") and Clergy of the Holy Nimbus ("Only your
 opponents may activate this ability"). `AbilityToml` has `only_owner_may_activate` but no way to
@@ -467,6 +505,22 @@ say *anyone* or *only opponents*. *Sketch:* replace that bool with an
 `activator: Activator { Controller, Opponents, AnyPlayer }` enum, defaulting to `Controller`, and
 thread it through the activation-legality check and the priority-holder's available-actions list.
 Migrate the existing `only_owner_may_activate` users in the same change.
+*Landed:* `Activator { Controller, Opponents, AnyPlayer, Owner }` (`AbilityToml.activator`,
+snake_case) replacing `only_owner_may_activate`; both live legality surfaces already routed
+through the single `Game::ability_activation_gate` (`crates/engine/src/cast.rs`) — the activation
+itself and `push_activatable_abilities`'s available-actions scan (`crates/engine/src/query.rs`,
+which backs `Game::meaningful_actions`) — so no separate change was needed to thread it through
+each; CR 602.2a (the activator becomes the ability's controller) already held. Land's Edge's own
+half needed two more pieces: `Amount::DiscardCostWasLand(i32)` (`{ discard_cost_was_land = N }`),
+resolved off the paid discard cost through `contextualize_discard_effect` to `Amount::Fixed(N)` or
+`Amount::Fixed(0)` — the existing CR 120.8 "0 damage is never dealt" guard turns the zero case into
+no damage, so no new `Condition` variant was needed. Clergy's second ability needed
+`MiscEffect::SourceCantBeRegeneratedThisTurn` (nullary, modeled on `FlipSource`) and
+`Event::CantBeRegeneratedThisTurnMarked`, setting the same `cant_be_regenerated_this_turn` flag
+`DamageMarked`'s `cant_be_regenerated` rider does. Test: `crates/engine/tests/leg_any_player_may_activate.rs`.
+*Residual:* Clergy's first ability ("If this creature would be destroyed, regenerate it" — a
+costless permanent regeneration-replacement shield, CR 701.15) is a different shape from the
+one-shot activated `{cost}: Regenerate` the engine has today; see #128.
 
 ### 26. `counter-gated-untap-suppression` — 2 cards, M
 Depends on: nothing.
@@ -544,15 +598,27 @@ selector (an attacker plus everything blocking it) reused for both halves, and a
 scoped to *damage dealt by* a set of permanents rather than damage dealt to one — the opposite
 direction from every shield built so far.
 
-### 35. `revealed-zone-visibility` — 2 cards, M
+### 35. `revealed-zone-visibility` — 2 cards, M — **LANDED** (wave 6)
 Depends on: #2.
 Field of Dreams (top card of every library revealed) and Revelation (all hands revealed). These
 are the only cards in the set that change the **server-side visibility filter**, which is a hard
-rule (hands and libraries are private). *Sketch:* per-player visibility overrides
-(`hand_revealed_to_all`, `library_top_revealed_to_all`) derived from continuous effects and read
-by the projection layer, not by the engine's own logic. The engine change is small; the projection
-and client change is the real work, and it must fail *closed* — an override that fails to apply
-leaks nothing.
+rule (hands and libraries are private).
+*Landed:* two nullary `StaticEffect` variants (`mode = "players_play_with_hands_revealed"` /
+`"players_play_with_library_tops_revealed"`) and, in `crates/engine/src/query.rs`,
+`Game::hands_revealed_to_all()` / `Game::library_tops_revealed_to_all()` — each a scan of live
+battlefield static abilities — plus `Game::library_top(player)`. Nothing in the rules logic reads
+them; `schema::snapshot::project_board` does, as the sole widening of its per-viewer object gate.
+Both default to `false`, so the gate they open starts closed and a miss over-hides. Seats only: a
+spectator holds no seat, so they stay at counts (a `ponytail:` note marks that ceiling). No wire
+change — revealed cards are just extra `ObjectView`s in the existing `objects` list, which is why
+the client needed almost nothing: Glasses of Urza's `seen-hands.ts` chips already open any
+itemized opponent hand, and the deck slot in `layout.ts` now paints the revealed top face-up
+instead of the face-down placeholder.
+*Correction to the intake sketch:* it claimed these two "do not contend under the legend rule …
+because CR 704.5k is per-name". CR 704.5k is the **world** rule and groups by neither controller
+nor name (see `crates/engine/src/apply.rs`), so Revelation and Field of Dreams can never share a
+battlefield — the planned "both out at once" test is an unreachable board state and was replaced
+by `the_world_rule_lets_only_one_of_the_two_reveals_stand`.
 
 ### 36. `firestorm-phoenix` — 1 card, L
 Depends on: nothing.
@@ -1359,7 +1425,7 @@ division it raises the choice and deals nothing, and only once every one is sett
 the batch from `self.step` — so several multi-blocked attackers divide one after another with no
 priority in between, and the step's priority window opens from the answer that finishes the job
 (`advance_step` returned early to raise the choice and never reached it).
-`Game::next_undivided_multiblock` now takes the batch and skips attackers that are dead, that don't
+`Game::next_undivided_division` now takes the batch and skips attackers that are dead, that don't
 deal damage in this batch, or whose power is 0 or less (CR 510.1a assigns none, and a *negative*
 power would leave the choice with no legal answer at all).
 The duplicate raise in `pending/handlers/dig.rs` (Camouflage's undeclared blocks) went away with it:
@@ -1509,3 +1575,39 @@ damage" reading toughness minus marked damage) before a later one takes any. The
 re-ask is in `Game::divide_or_deal_combat_damage` — clear the recorded division when the normal
 batch opens rather than treating the first-strike answer as settled for both. No pool card needs
 either to be scripted; both are correctness on cards that already ship.
+**#3 slice 3 widened both gaps to the blocker side.** A blocker now divides too, so CR 510.1c's
+lethal-order requirement applies to a blocker's division among the attackers it blocks (CR 510.1d
+defers to the same ordering) and the double-strike re-ask applies to it as well. The validation
+still lives in one place — `Game::assign_damage` in `pending/handlers/combat.rs` — but the
+declaration order it must walk is `Game::blockers_of` for an attacker's division and
+`Game::attackers_blocked_by` for a blocker's.
+
+### 127. `unanswerable-division-past-max-blockers` — 0 cards, S
+Depends on: #119 and #3 slice 3 (landed — which is what made a division reachable from both sides).
+`MAX_BLOCKERS` (8, in `crates/engine/src/types/stack.rs`) bounds `DamageAssignment`'s fixed `Copy`
+array. `Game::assign_damage` rejects an assignment longer than the ceiling with
+`Reject::IllegalChoice`, and a rejected answer leaves the choice pending — so a nine-recipient
+division is not truncated, it is *unanswerable*, and the combat damage step never completes.
+Slice 3 made this reachable from a second direction: a band of nine attackers all blocked by one
+creature asks that creature's division to name nine attackers. Nothing in the Legends pool reaches
+it (the largest single-attacker gang-block a real board assembles is well under 8), but it is a
+softlock rather than a wrong answer, which is the wrong failure mode to leave unguarded.
+*Sketch:* either raise the ceiling and make the array a `Vec` (dropping `Event`'s `Copy`, which the
+object arena currently relies on, so this is the expensive option), or — cheaper — refuse to *raise*
+a division with more than `MAX_BLOCKERS` recipients in `Game::next_undivided_division` and fall back
+to CR 510's default even split, so the step still finishes. A test that gang-blocks past the ceiling
+and asserts the game reaches end of combat is the whole acceptance criterion.
+
+### 128. `costless-permanent-regeneration-shield` — 0 cards, M
+Depends on: nothing (Clergy of the Holy Nimbus already counted under #25; this is its residual).
+Clergy of the Holy Nimbus's first ability: "If this creature would be destroyed, regenerate it."
+No cost, no activation — a standing replacement effect (CR 701.15, CR 614.1c-style "would"
+intercept) that keeps applying every time the creature would be destroyed, for as long as the
+creature exists, until something removes it or turns it off (a "can't be regenerated this turn"
+effect, which #25 already scripted for Clergy's own second ability). This is a different shape
+from the one-shot activated `{cost}: Regenerate` the engine has today, which sets a one-time
+shield consumed by the next destruction.
+*Sketch:* a `StaticEffect`/replacement variant ("this permanent regenerates in place of being
+destroyed") consulted wherever a destroy is about to apply, honoring the same
+`cant_be_regenerated_this_turn` suppression flag `MiscEffect::SourceCantBeRegeneratedThisTurn`
+(from #25) sets, rather than a fresh cost-paid shield per destruction.

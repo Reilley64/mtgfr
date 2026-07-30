@@ -26,6 +26,14 @@
         "activation_cost": {
           "$ref": "#/$defs/CostToml"
         },
+        "activator": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Activator"
+            }
+          ],
+          "description": "Who may activate this ability (CR 602.2b/602.5b/c) — see [`Activator`]. Defaults to `controller`, the unstated CR 602.2 baseline."
+        },
         "at_least": {
           "default": 0,
           "description": "The attacker-count threshold for a `you_attack_with_creatures`/ `opponent_attacks_you_with_creatures`/`creature_enchanted_by_your_aura_attacks` trigger (Firemane Commando/Mangara/Tomik's \"two or more creatures\" — `2`; Killian, Decisive Mentor's \"one or more\" — `1`). Ignored for every other trigger/timing.",
@@ -187,11 +195,6 @@
           "description": "\"Activate only during your upkeep\" (CR 602.5b — Cyclopean Tomb): a step-and-controller window rather than the phase-shaped ones above. The controller half is what makes it *your* upkeep.",
           "type": "boolean"
         },
-        "only_owner_may_activate": {
-          "default": false,
-          "description": "\"Only this creature's owner may activate this ability\" (CR 602.5c — Personal Incarnation): the pool's one activation restriction keyed to ownership rather than control.",
-          "type": "boolean"
-        },
         "optional": {
           "default": false,
           "type": "boolean"
@@ -290,6 +293,14 @@
       "additionalProperties": false,
       "description": "The cost to activate an ability: tapping the permanent, paying mana, and/or a sacrifice.\n\nA plain [`Ability`] spells its `Timing::Activated` cost as flat fields alongside the ability itself (see `de.rs`'s `Ability::deserialize`), so this type's own `Deserialize` below is only exercised where an `ActivationCost` is nested *inside* another value — currently [`Effect::Static(StaticEffect::GrantManaAbility)`]'s `cost` field, spelled as a `[…cost]` table with these same field names.",
       "properties": {
+        "activator": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Activator"
+            }
+          ],
+          "description": "Who may activate this ability (CR 602.2b/602.5b/c) — see [`Activator`]. `Controller` (default) is the unstated CR 602.2 baseline."
+        },
         "discard_cost": {
           "default": 0,
           "description": "\"Discard a card\" as part of the cost (CR 602.2b/118 — Wild Mongrel's \"Discard a card: Wild Mongrel gets +1/+1...\"): the activating [`Intent::ActivateAbility`]'s own `discard_cost` names this many distinct hand cards to discard. `0` for none. Paid on activation via the normal discard choke (so \"whenever you discard a card\" watchers fire); an activator whose hand holds fewer than this many cards — or who names cards not in hand, or names the same card twice — can't pay it (CR 602.2b — an uncompletable/illegal cost makes activation illegal).",
@@ -353,11 +364,6 @@
           "description": "\"Activate only during your upkeep\" (CR 602.5b — Cyclopean Tomb): a step-and-controller window rather than the phase-shaped ones above, and the tightest the pool asks for. The controller half is what makes it \"your\" upkeep, so this is not just `only_before_attackers` with a different step.",
           "type": "boolean"
         },
-        "only_owner_may_activate": {
-          "default": false,
-          "description": "\"Only this creature's owner may activate this ability\" (CR 602.5c — Personal Incarnation): the pool's one activation restriction keyed to ownership rather than control. ponytail: this only ever *narrows* who may activate. The printed line also widens it — an owner who has lost control may still activate — but CR 602.2's controller check runs first here, so a stolen Incarnation is activatable by nobody rather than by its thief.",
-          "type": "boolean"
-        },
         "pay_life": {
           "allOf": [
             {
@@ -415,6 +421,16 @@
         }
       },
       "type": "object"
+    },
+    "Activator": {
+      "description": "Who may activate an ability (CR 602.2b/602.5b/c). `Controller` (default) is CR 602.2's baseline — only the permanent's controller — left unstated on nearly every activated ability in the pool. `Opponents` and `AnyPlayer` are printed *widenings* past that baseline (Land's Edge's \"Any player may activate this ability\"; Clergy of the Holy Nimbus's \"Only your opponents may activate this ability\"). `Owner` is Personal Incarnation's CR 602.5c restriction, keyed to ownership rather than control — a different axis from the other three, which all key off *whoever controls the permanent right now* — so it stays activatable by an owner who has lost control of the permanent, matching the printed line's own widening past the controller-only default.",
+      "enum": [
+        "controller",
+        "opponents",
+        "any_player",
+        "owner"
+      ],
+      "type": "string"
     },
     "AdditionalCost": {
       "$ref": "#/$defs/AdditionalCostTableSchema"
@@ -639,6 +655,13 @@
             {
               "type": "null"
             }
+          ]
+        },
+        "discard_cost_was_land": {
+          "format": "int32",
+          "type": [
+            "integer",
+            "null"
           ]
         },
         "else": {
@@ -2482,6 +2505,21 @@
             "type": {
               "enum": [
                 "during_your_upkeep"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "\"Activate only during any upkeep step\" (Tolaria) — the seat-blind sibling of [`DuringYourUpkeep`](Self::DuringYourUpkeep): only the step matters, so the land's controller may fire it on an opponent's upkeep too. Read through the same [`Game::ability_activation_gate`](crate::Game) path as [`DuringCombat`](Self::DuringCombat).",
+          "properties": {
+            "type": {
+              "enum": [
+                "during_upkeep"
               ],
               "type": "string"
             }
@@ -4867,6 +4905,45 @@
               "required": [
                 "keywords",
                 "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "\"Target creature loses `keywords` (and every keyword in `families`)\" — the targeted, CR 613.1f-layered keyword removal the Legends lands and their two creatures print: Hammerheim's \"all landwalk abilities\", Radjan Spirit's \"flying\", Tolaria's \"banding and all \\\"bands with other\\\" abilities\", Shelkin Brownie's \"all \\\"bands with other\\\" abilities\", Urborg's \"first strike or swampwalk\", and Elder Land Wurm's own \"it loses defender\".\n\n`until_end_of_turn` is the *special* case, not the default: Elder Land Wurm's blocks trigger has no duration at all, so the loss is indefinite unless the card says otherwise.\n\n`choose_one` is CR 609.4's resolution-time pick between the listed `keywords` (Urborg's \"first strike **or** swampwalk\"): the ability's target is locked at activation and its controller names one of the keywords when it resolves, not when it goes on the stack — which is what separates it from a printed \"Choose one —\" (CR 601.2b). Peeled to the mode pause before this ever reaches the pump minter.\n\nUnlike [`StripKeywordsFromOpponentsCreatures`](Self::StripKeywordsFromOpponentsCreatures) the loss is *not* \"and can't have\": a grant with a later timestamp beats it (CR 613.7).",
+              "properties": {
+                "choose_one": {
+                  "default": false,
+                  "type": "boolean"
+                },
+                "families": {
+                  "items": {
+                    "$ref": "#/$defs/KeywordFamily"
+                  },
+                  "type": "array"
+                },
+                "keywords": {
+                  "items": {
+                    "$ref": "#/$defs/Keyword"
+                  },
+                  "type": "array"
+                },
+                "mode": {
+                  "enum": [
+                    "target_loses_keywords"
+                  ],
+                  "type": "string"
+                },
+                "target": {
+                  "$ref": "#/$defs/TargetSpec"
+                },
+                "until_end_of_turn": {
+                  "default": false,
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "mode",
+                "target"
               ],
               "type": "object"
             },
@@ -8642,6 +8719,36 @@
               "type": "object"
             },
             {
+              "description": "Revelation's \"Players play with their hands revealed.\" Read by [`Game::hands_revealed_to_all`](crate::Game) — and *only* by the projection layer in `crate::schema`, which widens its per-viewer privacy gate. No rules logic branches on it: a revealed hand is still a hand, so nothing about casting, discarding, or targeting from it changes (CR 400.2).\n\nUnscoped like [`PlayersSkipUntapSteps`](Self::PlayersSkipUntapSteps) — \"players\" is everyone, the enchantment's own controller included.",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "players_play_with_hands_revealed"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "Field of Dreams' \"Players play with the top card of their libraries revealed.\" The library twin of [`PlayersPlayWithHandsRevealed`](Self::PlayersPlayWithHandsRevealed), read by [`Game::library_tops_revealed_to_all`](crate::Game): exactly the one card [`Game::library_top`](crate::Game) names per player, never the cards beneath it, and the library stays unordered-to-the-client in every other respect.",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "players_play_with_library_tops_revealed"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
               "description": "Smoke's \"Players can't untap more than one creature during their untap steps\" and Winter Orb's land twin (CR 502.2). Read by [`Game::untap_at_most_one_filters`](crate::Game), which the untap step consults while building its untap set: the permanents matching `filter` that were about to untap go into the [`PendingChoice::DeclineUntap`](crate::PendingChoice) pause instead, and only the one the active player leaves out of `keep_tapped` comes back up.\n\nUnscoped like [`PlayersSkipUntapSteps`](Self::PlayersSkipUntapSteps) — \"players\" is everyone, so `filter`'s default [`FilterController::Any`](crate::FilterController) is what makes both cards symmetrical. Winter Orb's \"as long as this artifact is untapped\" rides on the ability's own [`Condition::SourceUntapped`](crate::Condition), read once as the untap step starts — which is why an Orb tapped down in response untaps alongside your lands without stopping any of them.",
               "properties": {
                 "filter": {
@@ -9941,6 +10048,21 @@
               "type": "object"
             },
             {
+              "description": "\"This creature can't be regenerated this turn\" (Clergy of the Holy Nimbus's second ability, CR 701.15d) — sets the same suppression flag Disintegrate/Terror bundle with their own destruction, but on its own, with no damage or destroy attached. Always the ability's own source, never a target — the printed ability names \"this creature\", not \"target creature\".",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "source_cant_be_regenerated_this_turn"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
               "properties": {
                 "mode": {
                   "enum": [
@@ -10521,7 +10643,7 @@
           "type": "string"
         },
         {
-          "description": "Banding (CR 702.22). Two halves are modeled: the blocker-side damage assignment — when a creature with banding is among an attacker's blockers, *its* controller divides that attacker's combat damage rather than the attacking player (CR 702.22j), see [`Game::damage_assigner`] — and attacking in a band (CR 702.22c), see [`Game::declare_attackers_in_bands`]. ponytail: a declared band is blocked as a group (CR 702.22h/i), but the transfer of combat damage division is not modeled — CR 702.22j (a banded attacker's division passes to the defending player) and CR 702.22k (a blocker's division passes to the active player) both still leave the division where CR 510.1c/d put it. The band also cannot be declared over the wire: `Intent::DeclareAttackersInBands` has no `WireIntent` counterpart, so the proto and the client's attack UI still see a flat attacker list. See increment #3 slice 3 and #121.",
+          "description": "Banding (CR 702.22). Attacking in a band (CR 702.22c) is [`Game::declare_attackers_in_bands`]; a band is blocked as a group (CR 702.22h/i); and both halves of the damage-division transfer move the division off the player CR 510.1c/d would give it to — CR 702.22j sends a blocked attacker's division to the defending player ([`Game::attacker_damage_assigner`]) and CR 702.22k sends a blocker's division to the active player ([`Game::blocker_damage_assigner`]). ponytail: a band cannot be declared over the wire — `Intent::DeclareAttackersInBands` has no `WireIntent` counterpart, so the proto and the client's attack UI still see a flat attacker list. See increment #121.",
           "enum": [
             "banding"
           ],
@@ -10597,6 +10719,25 @@
             "rampage"
           ],
           "type": "object"
+        }
+      ]
+    },
+    "KeywordFamily": {
+      "description": "A whole family of parametrized keywords, named the way a card names it: \"all landwalk abilities\" (Hammerheim), \"all \\\"bands with other\\\" abilities\" (Shelkin Brownie, Tolaria). Used by keyword *removal* — see [`PumpEffect::TargetLosesKeywords`](crate::PumpEffect) — where a card sweeps every member of the family rather than naming one.\n\nA family rather than the expanded list of members because both families are open: a sixth [`BasicLandType`] or a second [`BandsWithQuality`] (Master of the Hunt's \"bands with other creatures named Wolves of the Hunt\") would silently fall out of an enumerated list.\n\nIn TOML a bare string in `keyword_families`: `keyword_families = [\"landwalk\"]`.",
+      "oneOf": [
+        {
+          "description": "Every [`Keyword::Landwalk`], whatever the land type (CR 702.14).",
+          "enum": [
+            "landwalk"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Every [`Keyword::BandsWith`], whatever the quality (CR 702.22b). Says nothing about plain [`Keyword::Banding`] — Tolaria names both, separately.",
+          "enum": [
+            "bands_with"
+          ],
+          "type": "string"
         }
       ]
     },
@@ -12245,6 +12386,7 @@
             "turned_face_up",
             "becomes_monstrous",
             "attacks",
+            "blocks",
             "blocks_or_becomes_blocked",
             "blocks_or_becomes_blocked_by",
             "attacks_or_blocks",

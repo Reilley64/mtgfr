@@ -1268,55 +1268,126 @@ impl Game {
             .collect()
     }
 
-    /// Who divides a multi-blocked attacker's combat damage among its blockers: the attacking
-    /// creature's controller (CR 510.1a), unless one of those blockers has banding — then that
-    /// blocker's controller does it instead (CR 702.22j; 702.22e is the unrelated "a band lasts for
-    /// the rest of combat" rule). All of an attacker's blockers belong to the one defending player,
-    /// so the first banding blocker names the answer.
-    /// ponytail: only CR 702.22j's first clause. Its second — blockers that are "both a \[quality\]
-    /// creature with 'bands with other \[quality\]' and another \[quality\] creature" — also moves
-    /// the division to the defending player, and is part of increment #3 slice 3.
-    pub(crate) fn damage_assigner(&self, blockers: &[ObjectId]) -> PlayerId {
-        blockers
+    /// CR 702.22j and CR 702.22k's shared condition, read over one side of a block: is there "a
+    /// creature with banding, or … both a \[quality\] creature with 'bands with other
+    /// \[quality\]' and another \[quality\] creature" among `creatures`? Returns the creature that
+    /// carries the condition, so a caller that needs the *other* side's seat can read its
+    /// controller. (702.22e is the unrelated "a band lasts for the rest of combat" rule.)
+    ///
+    /// The second clause is a conjunction: "bands with other \[quality\]" on its own moves nothing
+    /// — it needs a second creature of the same quality beside it, which is what makes the pair a
+    /// band. Plain banding needs no partner.
+    fn banding_division_shifter(&self, creatures: &[ObjectId]) -> Option<ObjectId> {
+        if let Some(&bander) = creatures
             .iter()
-            .find(|&&b| self.has_keyword(b, Keyword::Banding))
-            .map(|&b| self.controller_of(b))
-            .unwrap_or(self.active_player)
+            .find(|&&c| self.has_keyword(c, Keyword::Banding))
+        {
+            return Some(bander);
+        }
+        // Every printed quality is tried: the condition only needs to hold under some one of them.
+        [BandsWithQuality::Legendary]
+            .into_iter()
+            .find_map(|quality| {
+                let carrier = creatures.iter().copied().find(|&c| {
+                    self.has_keyword(c, Keyword::BandsWith(quality))
+                        && self.matches_bands_with_quality(c, quality)
+                })?;
+                creatures
+                    .iter()
+                    .any(|&other| {
+                        other != carrier && self.matches_bands_with_quality(other, quality)
+                    })
+                    .then_some(carrier)
+            })
     }
 
-    /// The first attacker in this combat damage batch that still owes a damage division, if any:
-    /// alive, dealing damage in this batch (CR 510.5), blocked by two or more creatures that are
-    /// still there, with positive power to divide and no division chosen yet.
+    /// Who divides a multi-blocked attacker's combat damage among its blockers: the active player
+    /// (CR 510.1c), unless CR 702.22j's condition holds over those blockers — then "the defending
+    /// player (rather than the active player) chooses how the attacking creature's damage is
+    /// assigned". All of an attacker's blockers belong to that one defending player, so the
+    /// creature carrying the condition names the seat.
+    pub(crate) fn attacker_damage_assigner(&self, blockers: &[ObjectId]) -> PlayerId {
+        let Some(shifter) = self.banding_division_shifter(blockers) else {
+            return self.active_player;
+        };
+        self.controller_of(shifter)
+    }
+
+    /// Who divides a blocker's combat damage among the attackers it's blocking: its own controller
+    /// (CR 510.1d), unless CR 702.22k's condition holds over those attackers — then "the active
+    /// player (rather than the defending player) chooses how the blocking creature's damage is
+    /// assigned". The mirror of [`Self::attacker_damage_assigner`], and it points the other way.
+    pub(crate) fn blocker_damage_assigner(
+        &self,
+        blocker: ObjectId,
+        attackers: &[ObjectId],
+    ) -> PlayerId {
+        if self.banding_division_shifter(attackers).is_some() {
+            return self.active_player;
+        }
+        self.controller_of(blocker)
+    }
+
+    /// Whether `creature` still owes a combat damage division in this batch: alive, dealing damage
+    /// in this batch (CR 510.5), with positive power to divide and no division chosen yet.
     ///
-    /// A 0-or-less-power attacker is skipped rather than asked for a division of nothing: CR 510.1a
+    /// A 0-or-less-power creature is skipped rather than asked for a division of nothing: CR 510.1a
     /// has it assign no combat damage at all, and once its power is *negative* there is no legal
     /// answer to give, so asking would park the damage step forever.
     /// ponytail: a double striker keeps the division it chose in the first-strike batch instead of
     /// choosing a fresh one for the normal batch (CR 510.4). Since the first division has already
-    /// been dealt, this only shows up when a blocker survives it — scope `combat.damage` per batch
-    /// if a card ever makes that matter.
-    pub(crate) fn next_undivided_multiblock(
+    /// been dealt, this only shows up when the other side survives it — scope `combat.damage` per
+    /// batch if a card ever makes that matter.
+    fn owes_a_division(&self, creature: ObjectId, first_strike_batch: bool) -> bool {
+        self.as_permanent(creature).is_some()
+            && self.deals_this_batch(creature, first_strike_batch)
+            && self.power(creature) > 0
+            && !self.combat.damage.iter().any(|(c, _)| *c == creature)
+    }
+
+    /// The next combat damage division this batch still owes, if any — attackers first (CR 510.1c:
+    /// an attacker blocked by two or more creatures divides among them), then blockers (CR 510.1d:
+    /// a creature blocking two or more attackers divides among *them*). CR 702.22j/k change only
+    /// which seat is asked, never whether the division exists.
+    pub(crate) fn next_undivided_division(
         &self,
         first_strike_batch: bool,
-    ) -> Option<(ObjectId, Vec<ObjectId>)> {
+    ) -> Option<PendingChoice> {
         for &attacker in &self.combat.attackers {
-            if self.as_permanent(attacker).is_none()
-                || !self.deals_this_batch(attacker, first_strike_batch)
-                || self.power(attacker) <= 0
-            {
+            if !self.owes_a_division(attacker, first_strike_batch) {
                 continue;
             }
             let blockers = self.blockers_of(attacker);
-            let divided = self.combat.damage.iter().any(|(a, _)| *a == attacker);
-            if blockers.len() >= 2 && !divided {
-                return Some((attacker, blockers));
+            if blockers.len() >= 2 {
+                return Some(PendingChoice::AssignCombatDamage {
+                    player: self.attacker_damage_assigner(&blockers),
+                    source: attacker,
+                    recipients: blockers,
+                });
+            }
+        }
+        // `blocks` lists a creature blocking two attackers once per pair, so the first entry naming
+        // it is the one that raises its division; `owes_a_division` then keeps the rest out.
+        for &(blocker, _) in &self.combat.blocks {
+            if !self.owes_a_division(blocker, first_strike_batch) {
+                continue;
+            }
+            let attackers = self.attackers_blocked_by(blocker);
+            if attackers.len() >= 2 {
+                return Some(PendingChoice::AssignCombatDamage {
+                    player: self.blocker_damage_assigner(blocker, &attackers),
+                    source: blocker,
+                    recipients: attackers,
+                });
             }
         }
         None
     }
 
     /// The combat damage step's turn-based action (CR 510.1), as one interruptible unit: every
-    /// multi-blocked attacker's division is chosen first, then the whole batch of damage is dealt.
+    /// division a creature in the batch owes is chosen first — a multi-blocked attacker's among its
+    /// blockers (CR 510.1c) and a multi-blocking blocker's among its attackers (CR 510.1d) — then
+    /// the whole batch of damage is dealt.
     ///
     /// The division is read *here* rather than at declare blockers because CR 510.1a divides the
     /// amounts in the combat damage step, off the power the attacker has then — so a rampage bonus
@@ -1332,15 +1403,8 @@ impl Game {
         first_strike_batch: bool,
         events: &mut Vec<Event>,
     ) {
-        if let Some((attacker, blockers)) = self.next_undivided_multiblock(first_strike_batch) {
-            crate::pending::raise_choice(
-                self,
-                PendingChoice::AssignCombatDamage {
-                    player: self.damage_assigner(&blockers),
-                    attacker,
-                    blockers,
-                },
-            );
+        if let Some(choice) = self.next_undivided_division(first_strike_batch) {
+            crate::pending::raise_choice(self, choice);
             return;
         }
         self.combat_damage_substep(first_strike_batch, events);
@@ -1393,12 +1457,15 @@ impl Game {
     }
 
     /// One combat-damage batch: creatures whose first-strike status matches this batch
-    /// deal their damage (attackers to blockers/player, blockers to their attacker).
+    /// deal their damage (attackers to blockers/player, blockers to the attackers they block).
     pub(crate) fn combat_damage_substep(
         &mut self,
         first_strike_batch: bool,
         events: &mut Vec<Event>,
     ) {
+        // A creature blocking two attackers appears under both of them, but assigns its damage once
+        // (CR 510.1d) — the first attacker that names it is where its whole division is dealt.
+        let mut blockers_dealt: Vec<ObjectId> = Vec::new();
         for attacker in self.combat.attackers.clone() {
             if self.as_permanent(attacker).is_none() {
                 continue;
@@ -1430,15 +1497,48 @@ impl Game {
                 }
             }
             for blocker in blockers {
+                if blockers_dealt.contains(&blocker) {
+                    continue;
+                }
                 if self.as_permanent(blocker).is_some()
                     && self.deals_this_batch(blocker, first_strike_batch)
                 {
+                    blockers_dealt.push(blocker);
                     // CR 615: a masked blocker that would deal combat damage is turned face up
                     // first — before its power is read, so it deals its real power.
                     self.flip_masked(blocker, events);
-                    self.damage_creature(blocker, attacker, events);
+                    self.assign_blocker_damage(blocker, events);
                 }
             }
+        }
+    }
+
+    /// Assign a blocker's combat damage across the attacking creatures it's blocking (CR 510.1d).
+    /// One attacker takes the blocker's whole power; two or more split it by the division its
+    /// assigner chose in this step (CR 510.1d, or CR 702.22k when a band moved the choice to the
+    /// active player), stored in `combat.damage` under the *blocker*.
+    fn assign_blocker_damage(&mut self, blocker: ObjectId, events: &mut Vec<Event>) {
+        let attackers = self.attackers_blocked_by(blocker);
+        let division = self
+            .combat
+            .damage
+            .iter()
+            .find(|(c, _)| *c == blocker)
+            .map(|(_, split)| split.clone());
+        let Some(division) = division else {
+            for attacker in attackers {
+                self.damage_creature(blocker, attacker, events);
+            }
+            return;
+        };
+        for (attacker, amount) in division {
+            // CR 510.1a reads the division against the creatures being blocked *now*: an attacker
+            // removed from combat after the division was chosen takes none of it, and its share is
+            // simply not assigned rather than sliding onto another attacker.
+            if !attackers.contains(&attacker) {
+                continue;
+            }
+            self.deal_creature_damage(blocker, attacker, amount, true, events);
         }
     }
 

@@ -283,6 +283,7 @@ export type VisibleEvent =
   | { kind: "regeneration_shield_created"; object: U32 }
   | { kind: "regenerated"; object: U32 }
   | { kind: "regeneration_shields_expired"; object: U32 }
+  | { kind: "cant_be_regenerated_this_turn_marked"; object: U32 }
   | { kind: "lost_summoning_sickness"; object: U32 }
   | { count: number; kind: "counters_placed"; object: U32 }
   | { count: number; counter_kind: number; kind: "kind_counters_placed"; object: U32 }

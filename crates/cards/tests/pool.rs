@@ -5198,7 +5198,7 @@ fn unlimited_camouflage_is_castable_only_while_your_attack_hangs_undefended() {
 }
 
 /// Personal Incarnation is a liability its owner cannot hand off. Both halves of that are
-/// only true because of a flag: `only_owner_may_activate` is what stops a thief spending the
+/// only true because of a flag: `activator: Activator::Owner` is what stops a thief spending the
 /// shield, and `SourceOwnerLosesHalfTheirLife` is what sends the bill past whoever was
 /// controlling it when it died. Drop either and the card still compiles into something that
 /// works — for the wrong player.
@@ -5212,8 +5212,9 @@ fn unlimited_personal_incarnation_answers_to_its_owner_and_not_its_controller() 
     let Timing::Activated(cost) = &shield.timing else {
         panic!("\"{{0}}:\" is an activated ability");
     };
-    assert!(
-        cost.only_owner_may_activate,
+    assert_eq!(
+        cost.activator,
+        Activator::Owner,
         "\"only this creature's owner may activate\""
     );
     assert_eq!(

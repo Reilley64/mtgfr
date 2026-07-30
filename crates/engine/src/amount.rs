@@ -152,6 +152,11 @@ impl Game {
             Amount::SacrificedCreatureToughness => panic!(
                 "Amount::SacrificedCreatureToughness must be contextualized to Fixed before resolving"
             ),
+            // A placeholder [`contextualize_discard_effect`] must have already rewritten to
+            // `Fixed` before the ability reaches the stack — see the variant's own doc comment.
+            Amount::DiscardCostWasLand(_) => panic!(
+                "Amount::DiscardCostWasLand must be contextualized to Fixed before resolving"
+            ),
             // A placeholder [`contextualize_effect`] must have already rewritten to `Fixed` at
             // trigger placement — see the variant's own doc comment.
             Amount::DyingEnchantedCreatureToughness => panic!(

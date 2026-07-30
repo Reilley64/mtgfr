@@ -745,6 +745,44 @@ test("a looked-at opponent hand gets a chip that opens it in the pile overlay", 
   );
 });
 
+// Revelation — "Players play with their hands revealed." The server itemizes every hand to every
+// seat, so each opponent gets the same chip a Glasses of Urza look leaves, opening onto the cards
+// themselves.
+test("a revealed opponent hand opens card by card", () => {
+  const revealed = [
+    card(72, { owner: 1, controller: 1, zone: ZONE.Hand, name: "Shivan Dragon" }),
+    card(73, { owner: 1, controller: 1, zone: ZONE.Hand, name: "Counterspell" }),
+  ];
+  overlayScene(
+    overlayModel(initialBoardModel(), gameState({ objects: revealed })),
+    Scene.expect(Scene.testId("seen-hand-1")).toHaveText("Bob's hand (2)"),
+  );
+
+  overlayScene(
+    overlayModel(
+      { ...initialBoardModel(), pileExpand: { zone: ZONE.Hand, owner: 1 } },
+      gameState({ objects: revealed }),
+    ),
+    Scene.expect(Scene.testId("pile-overlay-title")).toHaveText("Hand (2)"),
+    Scene.expect(Scene.testId("pile-overlay")).toContainText("Shivan Dragon"),
+    Scene.expect(Scene.testId("pile-overlay")).toContainText("Counterspell"),
+  );
+});
+
+// Field of Dreams — "Players play with the top card of their libraries revealed." The server sends
+// exactly one library card per seat, and the deck slot opens it here.
+test("a revealed library top opens under its own heading", () => {
+  const top = card(74, { owner: 1, controller: 1, zone: ZONE.Library, name: "Sol Ring" });
+  overlayScene(
+    overlayModel(
+      { ...initialBoardModel(), pileExpand: { zone: ZONE.Library, owner: 1 } },
+      gameState({ objects: [top] }),
+    ),
+    Scene.expect(Scene.testId("pile-overlay-title")).toHaveText("Library (1)"),
+    Scene.expect(Scene.testId("pile-overlay")).toContainText("Sol Ring"),
+  );
+});
+
 test("no chip when this viewer has looked at nobody's hand", () => {
   overlayScene(
     overlayModel(initialBoardModel(), gameState({ objects: [card(71, { owner: 0, zone: ZONE.Hand })] })),

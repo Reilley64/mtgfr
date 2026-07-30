@@ -86,6 +86,14 @@ pub enum Trigger {
     /// side only, deduped like [`Game::queue_blocks_or_becomes_blocked_triggers`] so a creature
     /// blocking multiple attackers still fires once.
     AttacksOrBlocks,
+    /// Whenever this creature blocks (Elder Land Wurm's "When this creature blocks, it loses
+    /// defender", CR 509.1a) — the blocker-only half of
+    /// [`AttacksOrBlocks`](Self::AttacksOrBlocks), and unlike
+    /// [`BlocksOrBecomesBlocked`](Self::BlocksOrBecomesBlocked) it never fires off the *attacker*
+    /// side. Batch-scanned from [`Game::declare_blockers`] alongside `AttacksOrBlocks` and deduped
+    /// the same way, so a creature blocking multiple attackers still fires once. Spelled
+    /// `"blocks"` in TOML.
+    Blocks,
     /// When this permanent dies — CR 700.4's "put into a graveyard from the battlefield", for any
     /// permanent type (Lich's enchantment), or — for a token — ceases to exist.
     Dies,

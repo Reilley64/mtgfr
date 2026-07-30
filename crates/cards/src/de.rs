@@ -724,6 +724,10 @@ impl<'de> Deserialize<'de> for Amount {
                     /// `permanents_destroyed_this_way` table-vs-nullary-keyword split.
                     #[serde(default)]
                     auras_attached_to_source: Option<de::IgnoredAny>,
+                    /// `{ discard_cost_was_land = 2 }` — [`Amount::DiscardCostWasLand`] (Land's
+                    /// Edge's "If the discarded card was a land card, ~ deals 2 damage…").
+                    #[serde(default)]
+                    discard_cost_was_land: Option<i32>,
                     /// `{ left = 2, op = "multiply", right = "per_creature_on_battlefield" }` —
                     /// [`Amount::Combine`] (Congregate's "2 life for each creature on the
                     /// battlefield"). All three keys go together; both sides are full amounts, so
@@ -756,27 +760,31 @@ impl<'de> Deserialize<'de> for Amount {
                     t.condition,
                     t.permanents_destroyed_this_way,
                     t.auras_attached_to_source,
+                    t.discard_cost_was_land,
                 ) {
-                    (Some(filter), None, None, None, None) => Ok(Amount::PerPermanentMatching {
-                        filter,
-                        zone: t.zone,
-                    }),
-                    (None, Some(kind), None, None, None) => {
+                    (Some(filter), None, None, None, None, None) => {
+                        Ok(Amount::PerPermanentMatching {
+                            filter,
+                            zone: t.zone,
+                        })
+                    }
+                    (None, Some(kind), None, None, None, None) => {
                         Ok(Amount::PerCounterOfKindOnSource { kind })
                     }
-                    (None, None, Some(condition), None, None) => Ok(Amount::IfCondition {
+                    (None, None, Some(condition), None, None, None) => Ok(Amount::IfCondition {
                         condition,
                         then: &*Box::leak(Box::new(t.then.unwrap_or(Amount::Fixed(0)))),
                         else_: &*Box::leak(Box::new(t.otherwise.unwrap_or(Amount::Fixed(0)))),
                     }),
-                    (None, None, None, Some(filter), None) => {
+                    (None, None, None, Some(filter), None, None) => {
                         Ok(Amount::PermanentsDestroyedThisWay { filter })
                     }
-                    (None, None, None, None, Some(_)) => Ok(Amount::AurasAttachedToSource),
+                    (None, None, None, None, Some(_), None) => Ok(Amount::AurasAttachedToSource),
+                    (None, None, None, None, None, Some(n)) => Ok(Amount::DiscardCostWasLand(n)),
                     _ => Err(de::Error::custom(
                         "an amount table needs exactly one of `per_permanent`, `per_counter_of_kind`, \
                          `condition` (with `then`/`else`), `permanents_destroyed_this_way`, \
-                         `auras_attached_to_source`, or `left`+`op`+`right`",
+                         `auras_attached_to_source`, `discard_cost_was_land`, or `left`+`op`+`right`",
                     )),
                 }
             }
@@ -1424,6 +1432,7 @@ pub(crate) enum TriggerTag {
     TurnedFaceUp,
     BecomesMonstrous,
     Attacks,
+    Blocks,
     BlocksOrBecomesBlocked,
     BlocksOrBecomesBlockedBy,
     AttacksOrBlocks,
@@ -1540,6 +1549,7 @@ impl<'de> Deserialize<'de> for Ability {
                 TriggerTag::TurnedFaceUp => Trigger::TurnedFaceUp,
                 TriggerTag::BecomesMonstrous => Trigger::BecomesMonstrous,
                 TriggerTag::Attacks => Trigger::Attacks,
+                TriggerTag::Blocks => Trigger::Blocks,
                 TriggerTag::BlocksOrBecomesBlocked => Trigger::BlocksOrBecomesBlocked,
                 TriggerTag::BlocksOrBecomesBlockedBy => Trigger::BlocksOrBecomesBlockedBy {
                     filter: flat.filter,
@@ -1702,7 +1712,7 @@ impl<'de> Deserialize<'de> for Ability {
                 only_during_your_turn: flat.only_during_your_turn,
                 only_before_attackers: flat.only_before_attackers,
                 only_during_your_upkeep: flat.only_during_your_upkeep,
-                only_owner_may_activate: flat.only_owner_may_activate,
+                activator: flat.activator,
                 return_self: flat.return_self,
                 mill_self: flat.mill_self,
                 discard_cost: flat.discard_cost,

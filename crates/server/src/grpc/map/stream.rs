@@ -984,6 +984,11 @@ pub fn visible_event_to_pb(event: VisibleEvent) -> Option<pb::VisibleEvent> {
         VisibleEvent::RegenerationShieldsExpired { object } => {
             Event::RegenerationShieldsExpired(pb::VisibleEventRegenerationShieldsExpired { object })
         }
+        VisibleEvent::CantBeRegeneratedThisTurnMarked { object } => {
+            Event::CantBeRegeneratedThisTurnMarked(
+                pb::VisibleEventCantBeRegeneratedThisTurnMarked { object },
+            )
+        }
         VisibleEvent::LostSummoningSickness { object } => {
             Event::LostSummoningSickness(pb::VisibleEventLostSummoningSickness { object })
         }

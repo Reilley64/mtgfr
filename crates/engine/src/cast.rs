@@ -965,7 +965,7 @@ impl Game {
     /// divided as you choose among any number of targets"). A no-op for a spell with no divided
     /// effect, or whose divided effect has no chosen targets (a legal "any number... including
     /// none" of zero). A single chosen target needs no choice — the whole amount is auto-assigned
-    /// to it, mirroring `next_undivided_multiblock`'s single-blocker skip for combat damage. Nor
+    /// to it, mirroring `next_undivided_division`'s single-recipient skip for combat damage. Nor
     /// does [`Division::Evenly`] (Fireball), whose split is computed rather than chosen.
     /// Called from both `choose_spell_targets`'s forced-autofill branch above and
     /// `Game::choose_spell_targets_answer`'s player-chosen branch.
@@ -2160,12 +2160,6 @@ impl Game {
         } else if perm.is_none() {
             return Err(Reject::CannotActivate);
         }
-        // CR 602.2: only a permanent's *controller* may activate its abilities — a stolen
-        // permanent activates for its thief, not its owner. (A `functions_in_graveyard` card
-        // activates from its owner's graveyard, where control and ownership coincide.)
-        if self.controller_of(source) != player {
-            return Err(Reject::CannotActivate);
-        }
         // CR 613.1e/701 "loses all abilities": a printed activated ability is suppressed while an
         // ability-removing Aura (Darksteel Mutation) is attached. The Aura's own granted abilities
         // (indices past the printed slice) sit after the removal in CR 613 order, so stay active.
@@ -2178,6 +2172,23 @@ impl Game {
         let Timing::Activated(mut cost) = ability.timing else {
             return Err(Reject::CannotActivate);
         };
+        // Who may activate this ability (CR 602.2/602.2b/602.5b/c) — see `Activator`.
+        // `Controller` is CR 602.2's baseline: only a permanent's *controller* may activate its
+        // abilities (a stolen permanent activates for its thief, not its owner; a
+        // `functions_in_graveyard` card activates from its owner's graveyard, where control and
+        // ownership coincide). `Opponents`/`AnyPlayer` are printed widenings past that baseline
+        // (Land's Edge, Clergy of the Holy Nimbus); `Owner` is CR 602.5c's ownership-keyed
+        // restriction (Personal Incarnation) — unlike the other three, it stays activatable by an
+        // owner who has lost control.
+        let eligible_activator = match cost.activator {
+            Activator::Controller => self.controller_of(source) == player,
+            Activator::Opponents => self.controller_of(source) != player,
+            Activator::AnyPlayer => true,
+            Activator::Owner => self.owner_of(source) == player,
+        };
+        if !eligible_activator {
+            return Err(Reject::CannotActivate);
+        }
         // Gloom's "Activated abilities of white enchantments cost {3} more to activate"
         // (CR 602.2b). Folded in here, at the single gate every read of an activation cost routes
         // through — the activation itself, the priority scans, the playability previews — so no
@@ -2312,12 +2323,6 @@ impl Game {
             && (self.step != Step::Upkeep || self.active_player != player)
         {
             return Err(Reject::WrongTiming);
-        }
-        // "Only this creature's owner may activate this ability" (CR 602.5c — Personal
-        // Incarnation). The controller check above has already passed, so this only bites a
-        // permanent whose control has moved away from its owner.
-        if cost.only_owner_may_activate && self.owner_of(source) != player {
-            return Err(Reject::CannotActivate);
         }
         Ok((ability, cost))
     }
@@ -2481,6 +2486,13 @@ impl Game {
             }
             None => ability.effect,
         };
+        // "If the discarded card was a land card, ~" (Land's Edge, CR 602.2b) — read before the
+        // discard events fire below, same reason as the sacrifice read above. `named` is empty
+        // (so `was_land` is trivially `false`) for every ability without a discard cost.
+        let was_land = named
+            .iter()
+            .any(|&id| matches!(self.def_of(id).kind, CardKind::Land { .. }));
+        let effect = contextualize_discard_effect(effect, was_land);
         // Pay the cost. The mana settles first (auto-tapping lands for a pool shortfall) so an
         // unpayable activation rejects before any other cost event lands; its own source is
         // excluded from the auto-tap plan when the activation already taps it.

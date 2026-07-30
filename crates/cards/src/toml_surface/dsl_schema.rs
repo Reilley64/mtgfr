@@ -244,6 +244,7 @@ struct AmountTableSchema {
     otherwise: Option<Amount>,
     permanents_destroyed_this_way: Option<PermanentFilter>,
     auras_attached_to_source: Option<EmptyTableSchema>,
+    discard_cost_was_land: Option<i32>,
     left: Option<Amount>,
     op: Option<ArithOp>,
     right: Option<Amount>,

@@ -487,6 +487,7 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
       ? "Then it fights up to one target creature you do not control"
       : "Target creature you control fights target creature you do not control",
   "effect.misc_flip_source": literal("Flip this permanent"),
+  "effect.misc_source_cant_be_regenerated_this_turn": literal("This creature can't be regenerated this turn"),
   "effect.misc_get_emblem": literal("You get an emblem"),
   "effect.misc_grant_channel_colorless_mana_this_turn": literal(
     "Until end of turn, any time you could activate a mana ability, you may pay 1 life. If you do, add {C}",
@@ -556,6 +557,23 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     `This creature has base power and toughness each equal to ${param(params, "amount")}`,
   "effect.pump_strip_keywords_from_opponents_creatures": (params) =>
     `Creatures your opponents control lose ${humanize(param(params, "keywords"))} until end of turn and can't have ${humanize(param(params, "keywords"))} this turn`,
+  // Hammerheim / Radjan Spirit / Tolaria / Urborg / Shelkin Brownie / Elder Land Wurm. Either
+  // list is "none" when the effect names only the other one; `choose_one` is Urborg's CR 609.4
+  // "first strike **or** swampwalk", so it swaps the conjunction rather than adding a clause.
+  "effect.pump_target_loses_keywords": (params) => {
+    const list = (name: string): string => {
+      const raw = String(param(params, name));
+      return raw === "none" ? "" : humanize(raw);
+    };
+    const families = list("families")
+      .split(" and ")
+      .filter(Boolean)
+      .map((family) => (family === "bands with" ? 'all "bands with other" abilities' : `all ${family} abilities`));
+    const lost = [...list("keywords").split(" and ").filter(Boolean), ...families].join(
+      bool(params, "choose_one") ? " or " : " and ",
+    );
+    return `Target creature loses ${lost}${bool(params, "until_end_of_turn") ? " until end of turn" : ""}`;
+  },
   "effect.pump_target_becomes_color": (params) => `Target spell or permanent becomes ${param(params, "color")}`,
   "effect.pump_target_becomes_subtypes_while_source_remains": (params) =>
     `Target land becomes a ${humanize(param(params, "set_subtypes"))} until this permanent leaves the battlefield`,
@@ -624,6 +642,10 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
       ? "This permanent doesn't untap during your untap step"
       : `${humanize(param(params, "filter", "Permanents"))} don't untap during their controllers' untap steps`,
   "effect.static_players_skip_untap_steps": literal("Players skip their untap steps"),
+  "effect.static_players_play_with_hands_revealed": literal("Players play with their hands revealed"),
+  "effect.static_players_play_with_library_tops_revealed": literal(
+    "Players play with the top card of their libraries revealed",
+  ),
   "effect.static_untap_at_most_one": (params) =>
     `Players can't untap more than one ${humanize(param(params, "filter", "permanent"))} during their untap steps`,
   "effect.static_may_skip_turn_while_tapped": literal(

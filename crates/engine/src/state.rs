@@ -5,7 +5,8 @@
 //! once-per-turn flags, until-EOT control (CR 720), and inspect-ledger provenance.
 
 use crate::{
-    CardDef, CardId, Color, Effect, Keyword, ObjectId, PlayerId, SpellFilter, Step, TypeSet,
+    CardDef, CardId, Color, Effect, Keyword, KeywordFamily, ObjectId, PlayerId, SpellFilter, Step,
+    TypeSet,
 };
 
 /// The CR 611.2b duration condition scoping a control-changing effect (Rubinia Soulsinger's "for
@@ -490,10 +491,19 @@ pub(crate) enum ModifierKind {
         toughness: i32,
         keywords: &'static [Keyword],
     },
-    /// "Loses hexproof and shroud and can't have hexproof or shroud" (arcane_lighthouse, CR
-    /// 702.11e/702.18d): subtracted from the fully-unioned keyword set, so a grant landing later
-    /// the same turn is filtered right back out.
-    LoseKeywords(&'static [Keyword]),
+    /// "Loses `keywords`" — plus every keyword in `families` ("all landwalk abilities", "all
+    /// \"bands with other\" abilities"), which no fixed list could stay honest about.
+    ///
+    /// `cant_have` picks which of the two CR readings applies. `true` is "loses … **and can't
+    /// have** …" (arcane_lighthouse, CR 702.11e/702.18d): subtracted from the fully-unioned
+    /// keyword set, so a grant landing later the same turn is filtered right back out. `false` is
+    /// a plain CR 613.1f removal (the Legends strippers): one timestamped entry in the keyword
+    /// layer, which beats every grant stamped before it and loses to every grant stamped after.
+    LoseKeywords {
+        keywords: &'static [Keyword],
+        families: &'static [KeywordFamily],
+        cant_have: bool,
+    },
     /// "Has base power and toughness 3/6" (CR 613.3(7b) — Biomass Mutation, Jade Statue's
     /// animated form).
     BasePtSet { power: i32, toughness: i32 },

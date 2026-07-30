@@ -342,6 +342,27 @@ impl Game {
                     keywords,
                 }]
             }
+            // Targeted keyword removal (CR 613.1f — the Legends strippers). A target that has left
+            // since (CR 608.2b) leaves nothing to strip. `choose_one` never reaches here: the mode
+            // pause peels it off first (see `Game::run`).
+            PumpEffect::TargetLosesKeywords {
+                keywords,
+                families,
+                until_end_of_turn,
+                ..
+            } => {
+                let object = expect_object_target(target, "a keyword loss");
+                if self.as_permanent(object).is_none() {
+                    return Vec::new();
+                }
+                vec![Event::KeywordsStripped {
+                    object,
+                    keywords,
+                    families,
+                    until_end_of_turn,
+                    cant_have: false,
+                }]
+            }
             // Mass keyword strip: every creature an opponent of the controller controls loses
             // `keywords` and can't have them until end of turn (arcane_lighthouse).
             PumpEffect::StripKeywordsFromOpponentsCreatures { keywords } => self
@@ -350,7 +371,13 @@ impl Game {
                 .filter(|&id| {
                     self.is_creature_on_battlefield(id) && self.controller_of(id) != controller
                 })
-                .map(|object| Event::KeywordsStripped { object, keywords })
+                .map(|object| Event::KeywordsStripped {
+                    object,
+                    keywords,
+                    families: &[],
+                    until_end_of_turn: true,
+                    cant_have: true,
+                })
                 .collect(),
             // Vesuvan Doppelganger's upkeep: "you may have this creature become a copy of target
             // creature, except it doesn't copy that creature's color and it has this ability."

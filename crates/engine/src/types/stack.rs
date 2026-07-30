@@ -293,13 +293,14 @@ pub enum Intent {
     /// answerer in the pool needs an `{X}`, and this keeps every existing plain pay/decline call
     /// site untouched. See [`Game::pay_optional_cost_with_x`](crate::Game::pay_optional_cost_with_x).
     PayOptionalCostX { player: PlayerId, pay: bool, x: u32 },
-    /// Answer a [`PendingChoice::AssignCombatDamage`] with `(blocker, amount)` assignments.
+    /// Answer a [`PendingChoice::AssignCombatDamage`] with `(recipient, amount)` assignments — the
+    /// blockers of a dividing attacker, or the attackers a dividing blocker is blocking.
     AssignDamage {
         player: PlayerId,
         assignment: Vec<(ObjectId, i32)>,
     },
     /// Answer a [`PendingChoice::DivideSpellDamage`] with `(target, amount)` assignments (CR
-    /// 601.2d). Distinct from [`Self::AssignDamage`] (combat, always blockers): a divided-damage
+    /// 601.2d). Distinct from [`Self::AssignDamage`] (combat, always creatures): a divided-damage
     /// spell's "any number of targets" may include a *player*, which [`Self::AssignDamage`]'s
     /// `ObjectId` wire can't name — so this keys by [`Target`].
     DivideSpellDamage {
@@ -1100,18 +1101,21 @@ pub enum PendingChoice {
         source: ObjectId,
         candidates: Vec<ObjectId>,
     },
-    /// `player` must divide `attacker`'s combat damage among its `blockers`. Answered by
-    /// [`Intent::AssignDamage`].
+    /// `player` must divide `source`'s combat damage among the `recipients` it is in combat with.
+    /// Answered by [`Intent::AssignDamage`]. Both sides of a block use this one choice: `source` is
+    /// an attacker and `recipients` the creatures blocking it (CR 510.1c), or `source` is a blocker
+    /// and `recipients` the attacking creatures it's blocking (CR 510.1d).
     ///
     /// Raised in the combat damage step, once per batch, before any of that batch's damage is dealt
-    /// (CR 510.1a — the amounts are divided *there*, off the power the attacker has then, which is
-    /// why this isn't asked at declare blockers). `player` is normally the attacking creature's
-    /// controller, but a banding blocker moves the division to the defending player (CR 702.22j),
-    /// so it is carried explicitly rather than implied — see [`Game::damage_assigner`].
+    /// (CR 510.1a — the amounts are divided *there*, off the power the creature has then, which is
+    /// why this isn't asked at declare blockers). `player` is normally the dividing creature's own
+    /// controller, but banding swaps the two sides (CR 702.22j/k), so it is carried explicitly
+    /// rather than implied — see [`Game::attacker_damage_assigner`] and
+    /// [`Game::blocker_damage_assigner`].
     AssignCombatDamage {
         player: PlayerId,
-        attacker: ObjectId,
-        blockers: Vec<ObjectId>,
+        source: ObjectId,
+        recipients: Vec<ObjectId>,
     },
     /// `player` (the caster) must divide a divided-damage `spell`'s `total` among its already-
     /// chosen `targets` (CR 601.2d — Magma Opus's "4 damage divided as you choose among any number
@@ -2047,6 +2051,7 @@ pub const CREATURE_TYPES: &[&str] = &[
     "Ooze",
     "Orc",
     "Otter",
+    "Ouphe",
     "Ox",
     "Pegasus",
     "Pest",
@@ -2728,13 +2733,21 @@ pub enum Event {
         /// and resets with the object (CR 400.7). [`TypeSet::NONE`] for every other copy.
         also_types: TypeSet,
     },
-    /// A permanent lost `keywords` until end of turn and can't have them, registered as a
-    /// `ModifierKind::LoseKeywords` (arcane_lighthouse's strip — see
-    /// [`Effect::Pump(PumpEffect::StripKeywordsFromOpponentsCreatures)`]). Swept with every other
-    /// duration-scoped modifier at [`Event::TempBoostsEnded`].
+    /// A permanent lost `keywords` — and every keyword in `families` — registered as a
+    /// [`ModifierKind::LoseKeywords`]. Two shapes share the event: arcane_lighthouse's "loses …
+    /// and can't have …" (`cant_have`, see
+    /// [`Effect::Pump(PumpEffect::StripKeywordsFromOpponentsCreatures)`]) and the Legends
+    /// strippers' plain CR 613.1f removal (see
+    /// [`Effect::Pump(PumpEffect::TargetLosesKeywords)`]), which a later grant can undo.
+    /// `until_end_of_turn` is swept with every other duration-scoped modifier at
+    /// [`Event::TempBoostsEnded`]; without it the loss is indefinite (Elder Land Wurm's blocks
+    /// trigger prints no duration) and lapses only when the object leaves the battlefield.
     KeywordsStripped {
         object: ObjectId,
         keywords: &'static [Keyword],
+        families: &'static [KeywordFamily],
+        until_end_of_turn: bool,
+        cant_have: bool,
     },
     /// An Aura's own resolving trigger gave it "Enchanted creature loses `keywords`" (Earthbind).
     /// Recorded on the *Aura* ([`Permanent::attachment_lost_keywords`]) rather than on `object`, so
@@ -2860,6 +2873,12 @@ pub enum Event {
     /// or not it was tapped), so it untaps normally on every later untap step. Removes the
     /// [`NextUntapSkipMarked`](Self::NextUntapSkipMarked) entry.
     NextUntapSkipConsumed { object: ObjectId },
+    /// `object` was marked "can't be regenerated this turn" (Clergy of the Holy Nimbus's second
+    /// ability, CR 701.15d) with no accompanying damage or destroy — see
+    /// [`Effect::Misc(MiscEffect::SourceCantBeRegeneratedThisTurn)`]. Sets the same
+    /// `cant_be_regenerated_this_turn` flag [`DamageMarked`](Self::DamageMarked)'s own
+    /// `cant_be_regenerated` rider does; both clear at the next untap step.
+    CantBeRegeneratedThisTurnMarked { object: ObjectId },
     /// `player` was granted an extra turn to take after the current one (Time Walk; CR 505.6a).
     /// Pushed onto [`Game::extra_turns`], which [`Game::advance_step`] drains as the current turn
     /// ends. There is no matching "taken" event: the [`StepBegan`](Self::StepBegan) that opens the
@@ -2960,10 +2979,11 @@ pub enum Event {
         blocker: ObjectId,
         attacker: ObjectId,
     },
-    /// A multi-blocked attacker's combat damage was divided among its blockers (the damage
-    /// itself is dealt separately, in the combat-damage step).
+    /// A combat damage division was chosen: `source` is a multi-blocked attacker dividing among its
+    /// blockers (CR 510.1c) or a blocker dividing among the attackers it's blocking (CR 510.1d).
+    /// The damage itself is dealt separately, later in the same combat damage step.
     CombatDamageDivided {
-        attacker: ObjectId,
+        source: ObjectId,
         assignment: DamageAssignment,
     },
     /// A divided-damage spell's total was split among its chosen targets (CR 601.2d — see
@@ -3629,13 +3649,16 @@ impl Modes {
     }
 }
 
-/// The most blockers a single gang-blocked attacker's damage division needs to remember in one
-/// [`Event::CombatDamageDivided`]. Bounds the fixed, `Copy` per-blocker array in
-/// [`DamageAssignment`] so `Event` stays `Copy` (the id-indexed object arena requires it).
-/// ponytail: bump if a pool board ever gang-blocks one attacker with more bodies than this.
+/// The most recipients one combat damage division needs to remember in a single
+/// [`Event::CombatDamageDivided`] — the blockers of a gang-blocked attacker, or the attackers a
+/// blocker is blocking. Bounds the fixed, `Copy` array in [`DamageAssignment`] so `Event` stays
+/// `Copy` (the id-indexed object arena requires it).
+/// ponytail: bump if a pool board ever puts more bodies than this on one side of a block. Over the
+/// ceiling the division is unanswerable rather than truncated — see increment #127.
 pub(crate) const MAX_BLOCKERS: usize = 8;
 
-/// How a multi-blocked attacker's combat damage is divided among its blockers (CR 510.1c).
+/// How a dividing creature's combat damage is split among its recipients — a multi-blocked
+/// attacker among its blockers (CR 510.1c), or a blocker among the attackers it blocks (CR 510.1d).
 /// `Copy` so `Event::CombatDamageDivided` stays `Copy`; see [`MAX_BLOCKERS`]. `pub` (not
 /// `pub(crate)`): the `schema` crate's redaction reads it back out via [`Self::pairs`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -3644,7 +3667,7 @@ pub struct DamageAssignment {
 }
 
 impl DamageAssignment {
-    /// Build from `(blocker, amount)` pairs. Callers must have already checked
+    /// Build from `(recipient, amount)` pairs. Callers must have already checked
     /// `pairs.len() <= MAX_BLOCKERS`; any pair beyond the ceiling is silently dropped.
     pub(crate) fn from_pairs(pairs: &[(ObjectId, i32)]) -> Self {
         let mut assignment = DamageAssignment::default();
@@ -3654,7 +3677,7 @@ impl DamageAssignment {
         assignment
     }
 
-    /// The `(blocker, amount)` pairs, in the order they were assigned.
+    /// The `(recipient, amount)` pairs, in the order they were assigned.
     pub fn pairs(&self) -> Vec<(ObjectId, i32)> {
         self.slots.into_iter().flatten().collect()
     }

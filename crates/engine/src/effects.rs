@@ -983,6 +983,11 @@ impl Game {
             | Effect::Choice(ChoiceEffect::ChooseOpponent)
             | Effect::Choice(ChoiceEffect::SetOwnColorUntilEndOfTurn)
             | Effect::ChooseOne { .. }
+            // Urborg's resolution-time "first strike **or** swampwalk" (CR 609.4) — peeled to the
+            // mode pause before the pump minter, which only ever sees a settled keyword list.
+            | Effect::Pump(PumpEffect::TargetLosesKeywords {
+                choose_one: true, ..
+            })
             | Effect::Copy(CopyEffect::Demonstrate { .. })
             | Effect::Choice(ChoiceEffect::Proliferate { .. })
             | Effect::Choice(ChoiceEffect::PhaseOut) => self.run_choose_pause(effect, ctx),

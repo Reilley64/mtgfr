@@ -235,6 +235,7 @@ message_keys! {
     EFFECT_MISC_SCHEDULE_COLORLESS_MANA_FOR_COUNTERED_SPELL_NEXT_MAIN_PHASE => "effect.misc_schedule_colorless_mana_for_countered_spell_next_main_phase",
     EFFECT_MISC_SCHEDULE_NEXT_CAST_TRIGGER => "effect.misc_schedule_next_cast_trigger",
     EFFECT_MISC_SCHEDULE_THIS_TURN_COMBAT_DAMAGE_COPY => "effect.misc_schedule_this_turn_combat_damage_copy",
+    EFFECT_MISC_SOURCE_CANT_BE_REGENERATED_THIS_TURN => "effect.misc_source_cant_be_regenerated_this_turn",
     EFFECT_MISC_SKIP_NEXT_UNTAP_OPPONENT_CREATURES => "effect.misc_skip_next_untap_opponent_creatures",
     EFFECT_MISC_TAKE_EXTRA_TURN => "effect.misc_take_extra_turn",
     EFFECT_MISC_YOU_LOSE_THE_GAME => "effect.misc_you_lose_the_game",
@@ -257,6 +258,7 @@ message_keys! {
     EFFECT_PUMP_SET_BASE_PT_TARGET_UNTIL_END_OF_TURN => "effect.pump_set_base_pt_target_until_end_of_turn",
     EFFECT_PUMP_SET_OWN_BASE_PT_FROM_AMOUNT => "effect.pump_set_own_base_pt_from_amount",
     EFFECT_PUMP_STRIP_KEYWORDS_FROM_OPPONENTS_CREATURES => "effect.pump_strip_keywords_from_opponents_creatures",
+    EFFECT_PUMP_TARGET_LOSES_KEYWORDS => "effect.pump_target_loses_keywords",
     EFFECT_PUMP_TARGET_BECOMES_SUBTYPES_WHILE_SOURCE_REMAINS => "effect.pump_target_becomes_subtypes_while_source_remains",
     EFFECT_PUMP_TARGET_BECOMES_COLOR => "effect.pump_target_becomes_color",
     EFFECT_PUMP_TARGET_BECOMES_TREASURE => "effect.pump_target_becomes_treasure",
@@ -289,6 +291,8 @@ message_keys! {
     EFFECT_STATIC_DISCARD_TO_LIBRARY_TOP_INSTEAD => "effect.static_discard_to_library_top_instead",
     EFFECT_STATIC_DOESNT_UNTAP => "effect.static_doesnt_untap",
     EFFECT_STATIC_PLAYERS_SKIP_UNTAP_STEPS => "effect.static_players_skip_untap_steps",
+    EFFECT_STATIC_PLAYERS_PLAY_WITH_HANDS_REVEALED => "effect.static_players_play_with_hands_revealed",
+    EFFECT_STATIC_PLAYERS_PLAY_WITH_LIBRARY_TOPS_REVEALED => "effect.static_players_play_with_library_tops_revealed",
     EFFECT_STATIC_UNTAP_AT_MOST_ONE => "effect.static_untap_at_most_one",
     EFFECT_STATIC_MAY_SKIP_TURN_WHILE_TAPPED => "effect.static_may_skip_turn_while_tapped",
     EFFECT_CHOICE_TRIGGERING_PLAYER_MAY_PAY => "effect.choice_triggering_player_may_pay",
@@ -673,6 +677,18 @@ fn keyword_token(keyword: Keyword) -> String {
 
 fn keyword_list_param(name: &'static str, values: &[Keyword]) -> MessageParam {
     owned_str_param(name, join_tokens(values.iter().copied().map(keyword_token)))
+}
+
+/// "all landwalk abilities" / "all \"bands with other\" abilities" — a whole keyword family named
+/// at once (Hammerheim, Shelkin Brownie), rather than one keyword per token.
+fn keyword_family_list_param(name: &'static str, values: &[KeywordFamily]) -> MessageParam {
+    owned_str_param(
+        name,
+        join_tokens(values.iter().map(|family| match family {
+            KeywordFamily::Landwalk => "landwalk".to_string(),
+            KeywordFamily::BandsWith => "bands_with".to_string(),
+        })),
+    )
 }
 
 /// Which combat state a defining P/T count is gated on, for the log line's "As long as …" lead.
@@ -1198,6 +1214,7 @@ fn amount_token(amount: Amount) -> &'static str {
         Amount::NontokenCreaturesEnteredThisTurn => "nontoken_creatures_entered_this_turn",
         Amount::SacrificedCreaturePower => "sacrificed_creature_power",
         Amount::SacrificedCreatureToughness => "sacrificed_creature_toughness",
+        Amount::DiscardCostWasLand(_) => "discard_cost_was_land",
         Amount::DyingEnchantedCreatureToughness => "dying_enchanted_creature_toughness",
         Amount::CommanderColorCount => "commander_color_count",
         Amount::TotalPowerYouControl => "total_power_you_control",
@@ -1579,6 +1596,18 @@ impl EffectMessage for Effect {
                 MessageRef::new(MessageKey::EFFECT_PUMP_ENCHANTED_CREATURE_LOSES_KEYWORDS)
                     .with_params(vec![keyword_list_param("keywords", keywords)])
             }
+            Effect::Pump(TargetLosesKeywords {
+                keywords,
+                families,
+                until_end_of_turn,
+                choose_one,
+                ..
+            }) => MessageRef::new(MessageKey::EFFECT_PUMP_TARGET_LOSES_KEYWORDS).with_params(vec![
+                keyword_list_param("keywords", keywords),
+                keyword_family_list_param("families", families),
+                bool_param("until_end_of_turn", until_end_of_turn),
+                bool_param("choose_one", choose_one),
+            ]),
             Effect::Pump(StripKeywordsFromOpponentsCreatures { keywords }) => {
                 MessageRef::new(MessageKey::EFFECT_PUMP_STRIP_KEYWORDS_FROM_OPPONENTS_CREATURES)
                     .with_params(vec![keyword_list_param("keywords", keywords)])
@@ -2282,6 +2311,12 @@ impl EffectMessage for Effect {
             Effect::Static(PlayersSkipUntapSteps) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_PLAYERS_SKIP_UNTAP_STEPS)
             }
+            Effect::Static(PlayersPlayWithHandsRevealed) => {
+                MessageRef::new(MessageKey::EFFECT_STATIC_PLAYERS_PLAY_WITH_HANDS_REVEALED)
+            }
+            Effect::Static(PlayersPlayWithLibraryTopsRevealed) => {
+                MessageRef::new(MessageKey::EFFECT_STATIC_PLAYERS_PLAY_WITH_LIBRARY_TOPS_REVEALED)
+            }
             Effect::Static(UntapAtMostOne { filter }) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_UNTAP_AT_MOST_ONE)
                     .with_params(vec![permanent_filter_param("filter", filter)])
@@ -2453,6 +2488,9 @@ impl EffectMessage for Effect {
             }
             Effect::Misc(ScheduleThisTurnCombatDamageCopy) => {
                 MessageRef::new(MessageKey::EFFECT_MISC_SCHEDULE_THIS_TURN_COMBAT_DAMAGE_COPY)
+            }
+            Effect::Misc(SourceCantBeRegeneratedThisTurn) => {
+                MessageRef::new(MessageKey::EFFECT_MISC_SOURCE_CANT_BE_REGENERATED_THIS_TURN)
             }
             Effect::Misc(BecomePrepared) => MessageRef::new(MessageKey::EFFECT_MISC_BECOME_PREPARED),
             Effect::Misc(FlipSource) => MessageRef::new(MessageKey::EFFECT_MISC_FLIP_SOURCE),

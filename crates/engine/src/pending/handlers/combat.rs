@@ -9,25 +9,30 @@ impl Game {
         assignment: Vec<(ObjectId, i32)>,
     ) -> Result<Vec<Event>, Reject> {
         let Some(PendingChoice::AssignCombatDamage {
-            attacker, blockers, ..
+            source, recipients, ..
         }) = self.pending_choice.clone()
         else {
             return Err(Reject::IllegalChoice);
         };
 
         let assigned: Vec<ObjectId> = assignment.iter().map(|&(b, _)| b).collect();
-        let covers_blockers = assigned.len() == blockers.len()
-            && blockers.iter().all(|b| assigned.contains(b))
-            && assigned.iter().all(|b| blockers.contains(b));
+        let covers_recipients = assigned.len() == recipients.len()
+            && recipients.iter().all(|b| assigned.contains(b))
+            && assigned.iter().all(|b| recipients.contains(b));
         let nonneg = assignment.iter().all(|&(_, amt)| amt >= 0);
         let total: i32 = assignment.iter().map(|&(_, amt)| amt).sum();
-        let power = self.power(attacker);
-        let total_ok = if self.has_keyword(attacker, Keyword::Trample) {
+        let power = self.power(source);
+        // CR 702.19b lets an *attacking* trampler hold damage back for the defending player, so its
+        // division may come up short. CR 702.19c gives a blocking trampler nowhere to put the
+        // excess, so a blocker's division still has to spend its whole power.
+        let tramples_over =
+            self.has_keyword(source, Keyword::Trample) && self.combat.attackers.contains(&source);
+        let total_ok = if tramples_over {
             total <= power
         } else {
             total == power
         };
-        if !covers_blockers || !nonneg || !total_ok || assignment.len() > MAX_BLOCKERS {
+        if !covers_recipients || !nonneg || !total_ok || assignment.len() > MAX_BLOCKERS {
             return Err(Reject::IllegalChoice); // invalid — the choice stays pending
         }
 
@@ -36,7 +41,7 @@ impl Game {
         self.push_apply(
             &mut events,
             Event::CombatDamageDivided {
-                attacker,
+                source,
                 assignment: DamageAssignment::from_pairs(&assignment),
             },
         );

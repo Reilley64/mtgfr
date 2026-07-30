@@ -336,6 +336,41 @@ pub enum BandsWithQuality {
     Legendary,
 }
 
+/// A whole family of parametrized keywords, named the way a card names it: "all landwalk
+/// abilities" (Hammerheim), "all \"bands with other\" abilities" (Shelkin Brownie, Tolaria). Used
+/// by keyword *removal* — see [`PumpEffect::TargetLosesKeywords`](crate::PumpEffect) — where a
+/// card sweeps every member of the family rather than naming one.
+///
+/// A family rather than the expanded list of members because both families are open: a sixth
+/// [`BasicLandType`] or a second [`BandsWithQuality`] (Master of the Hunt's "bands with other
+/// creatures named Wolves of the Hunt") would silently fall out of an enumerated list.
+///
+/// In TOML a bare string in `keyword_families`: `keyword_families = ["landwalk"]`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "card-dsl",
+    derive(serde::Deserialize),
+    serde(rename_all = "snake_case")
+)]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
+pub enum KeywordFamily {
+    /// Every [`Keyword::Landwalk`], whatever the land type (CR 702.14).
+    Landwalk,
+    /// Every [`Keyword::BandsWith`], whatever the quality (CR 702.22b). Says nothing about plain
+    /// [`Keyword::Banding`] — Tolaria names both, separately.
+    BandsWith,
+}
+
+impl KeywordFamily {
+    /// Whether `keyword` is a member of this family.
+    pub fn matches(self, keyword: Keyword) -> bool {
+        match self {
+            KeywordFamily::Landwalk => matches!(keyword, Keyword::Landwalk(_)),
+            KeywordFamily::BandsWith => matches!(keyword, Keyword::BandsWith(_)),
+        }
+    }
+}
+
 /// The evergreen keywords that change combat/timing math in the Phase 1 pool.
 ///
 /// In TOML a keyword is a bare string (`"flying"`) or, for the parametrized ones, a
@@ -418,17 +453,15 @@ pub enum Keyword {
     /// "This creature can't block" (CR 509.1a — Bloodghast is never a legal blocker). Read by
     /// [`Game::can_block`].
     CantBlock,
-    /// Banding (CR 702.22). Two halves are modeled: the blocker-side damage assignment — when a
-    /// creature with banding is among an attacker's blockers, *its* controller divides that
-    /// attacker's combat damage rather than the attacking player (CR 702.22j), see
-    /// [`Game::damage_assigner`] — and attacking in a band (CR 702.22c), see
-    /// [`Game::declare_attackers_in_bands`].
-    /// ponytail: a declared band is blocked as a group (CR 702.22h/i), but the transfer of combat
-    /// damage division is not modeled — CR 702.22j (a banded attacker's division passes to the
-    /// defending player) and CR 702.22k (a blocker's division passes to the active player) both
-    /// still leave the division where CR 510.1c/d put it. The band also cannot be declared over the
-    /// wire: `Intent::DeclareAttackersInBands` has no `WireIntent` counterpart, so the proto and the
-    /// client's attack UI still see a flat attacker list. See increment #3 slice 3 and #121.
+    /// Banding (CR 702.22). Attacking in a band (CR 702.22c) is
+    /// [`Game::declare_attackers_in_bands`]; a band is blocked as a group (CR 702.22h/i); and both
+    /// halves of the damage-division transfer move the division off the player CR 510.1c/d would
+    /// give it to — CR 702.22j sends a blocked attacker's division to the defending player
+    /// ([`Game::attacker_damage_assigner`]) and CR 702.22k sends a blocker's division to the active
+    /// player ([`Game::blocker_damage_assigner`]).
+    /// ponytail: a band cannot be declared over the wire — `Intent::DeclareAttackersInBands` has no
+    /// `WireIntent` counterpart, so the proto and the client's attack UI still see a flat attacker
+    /// list. See increment #121.
     Banding,
     /// "Bands with other \[quality\]" (CR 702.22b) — a special form of banding whose \[quality\]
     /// is the membership test for a band declared on its strength (CR 702.22c). Granted, never
@@ -1465,7 +1498,7 @@ fn treasure_token_builtin() -> CardDef {
             sorcery_speed: false,
             only_during_opponents_turn: false,
             only_during_your_turn: false,
-            only_owner_may_activate: false,
+            activator: Activator::Controller,
             only_before_attackers: false,
             only_during_your_upkeep: false,
             remove_counters: 0,

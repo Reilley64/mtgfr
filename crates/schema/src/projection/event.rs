@@ -243,6 +243,9 @@ pub(crate) fn project_event(
         Event::RegenerationShieldsExpired { object } => {
             VisibleEvent::RegenerationShieldsExpired { object }
         }
+        Event::CantBeRegeneratedThisTurnMarked { object } => {
+            VisibleEvent::CantBeRegeneratedThisTurnMarked { object }
+        }
         Event::LostSummoningSickness { object } => VisibleEvent::LostSummoningSickness { object },
         Event::CountersPlaced {
             object,
@@ -358,10 +361,7 @@ pub(crate) fn project_event(
         // ponytail: the stripped keywords aren't threaded onto the wire event, same rationale as
         // `TempBoost` above — the client's per-object keyword state comes from a fresh snapshot
         // each delta.
-        Event::KeywordsStripped {
-            object,
-            keywords: _,
-        } => VisibleEvent::KeywordsStripped { object },
+        Event::KeywordsStripped { object, .. } => VisibleEvent::KeywordsStripped { object },
         // ponytail: an Aura grounding its host is the same "this object's keywords changed, re-read
         // it" cue as the until-end-of-turn strip above, so it reuses that wire event rather than
         // adding one — neither the duration nor the Aura that carries it is on the wire, and the
@@ -531,11 +531,10 @@ pub(crate) fn project_event(
         Event::BlockerDeclared { blocker, attacker } => {
             VisibleEvent::BlockerDeclared { blocker, attacker }
         }
-        Event::CombatDamageDivided {
-            attacker,
-            assignment,
-        } => VisibleEvent::CombatDamageDivided {
-            attacker,
+        // The engine's `source` is the dividing creature — usually the attacker, but under CR
+        // 702.22k a blocker divides too. The view's field keeps its wire name.
+        Event::CombatDamageDivided { source, assignment } => VisibleEvent::CombatDamageDivided {
+            attacker: source,
             assignment: assignment.pairs(),
         },
         Event::SpellDamageDivided {

@@ -173,7 +173,7 @@ means the blocking increment has landed and the card is scripted; the increment 
 the record shows what unblocked it.
 
 - [ ] **Abomination** {3}{B}{B} · Creature — Horror — increment 105
-- [x] **Adventurers' Guildhouse** — · Land — increment 3 (slices 1, 2, 4); residual — increment 3 slice 3
+- [x] **Adventurers' Guildhouse** — · Land — increment 3 (slices 1, 2, 3, 4)
 - [x] **Aerathi Berserker** {2}{R}{R}{R} · Creature — Human Berserker — increment 1, 119
 - [ ] **Aisling Leprechaun** {G} · Creature — Faerie — increment 14
 - [ ] **Akron Legionnaire** {6}{W}{W} · Creature — Giant Soldier — increment 10
@@ -198,11 +198,11 @@ the record shows what unblocked it.
 - [ ] **Boris Devilboon** {3}{B}{R} · Legendary Creature — Zombie Wizard — increment 97
 - [ ] **Brine Hag** {2}{U}{U} · Creature — Hag — increment 22
 - [ ] **Bronze Horse** {7} · Artifact Creature — Horse — increment 12
-- [x] **Cathedral of Serra** — · Land — increment 3 (slices 1, 2); residual — increment 3 slice 3
+- [x] **Cathedral of Serra** — · Land — increment 3 (slices 1, 2, 3)
 - [ ] **Caverns of Despair** {2}{R}{R} · World Enchantment — increment 2, 23
 - [ ] **Chains of Mephistopheles** {1}{B} · Enchantment — increment 24
 - [x] **Chromium** {2}{W}{W}{U}{U}{B}{B} · Legendary Creature — Elder Dragon — increment 1, 119
-- [ ] **Clergy of the Holy Nimbus** {W} · Creature — Human Cleric — increment 25
+- [ ] **Clergy of the Holy Nimbus** {W} · Creature — Human Cleric — increment 25, 128
 - [ ] **Cocoon** {G} · Enchantment — Aura — increment 26
 - [x] **Cosmic Horror** {3}{B}{B}{B} · Creature — Horror — increment 98
 - [x] **Craw Giant** {3}{G}{G}{G}{G} · Creature — Giant — increment 1, 119
@@ -215,7 +215,7 @@ the record shows what unblocked it.
 - [x] **Divine Intervention** {6}{W}{W} · Enchantment — increment 27
 - [ ] **Dream Coat** {U} · Enchantment — Aura — increment 28
 - [ ] **Dwarven Song** {R} · Instant — increment 96
-- [ ] **Elder Land Wurm** {4}{W}{W}{W} · Creature — Dragon Wurm — increment 5
+- [x] **Elder Land Wurm** {4}{W}{W}{W} · Creature — Dragon Wurm — increment 5
 - [ ] **Elder Spawn** {4}{U}{U}{U} · Creature — Spawn — increment 29
 - [ ] **Elven Riders** {3}{G}{G} · Creature — Elf — increment 9
 - [ ] **Enchanted Being** {1}{W}{W} · Creature — Human — increment 12
@@ -225,7 +225,7 @@ the record shows what unblocked it.
 - [ ] **Eureka** {2}{G}{G} · Sorcery — increment 33
 - [ ] **Evil Eye of Orms-by-Gore** {4}{B} · Creature — Eye — increment 9, 10
 - [ ] **Feint** {R} · Instant — increment 34
-- [ ] **Field of Dreams** {U} · World Enchantment — increment 2, 35
+- [x] **Field of Dreams** {U} · World Enchantment — faithful as of increment 35
 - [ ] **Firestorm Phoenix** {4}{R}{R} · Creature — Phoenix — increment 36
 - [ ] **Flash Counter** {1}{U} · Instant — increment 105
 - [ ] **Floral Spuzzem** {3}{G} · Creature — Elemental — increment 37
@@ -247,7 +247,7 @@ the record shows what unblocked it.
 - [ ] **Greater Realm of Preservation** {1}{W} · Enchantment — increment 12
 - [x] **Green Mana Battery** {4} · Artifact — increment 11
 - [ ] **Halfdane** {1}{W}{U}{B} · Legendary Creature — Shapeshifter — increment 22
-- [ ] **Hammerheim** — · Legendary Land — increment 5
+- [x] **Hammerheim** — · Legendary Land — increment 5
 - [ ] **Hazezon Tamar** {4}{R}{G}{W} · Legendary Creature — Human Warrior — increment 45
 - [ ] **Heaven's Gate** {W} · Instant — increment 96
 - [ ] **Hellfire** {2}{B}{B}{B} · Sorcery — increment 46
@@ -270,7 +270,7 @@ the record shows what unblocked it.
 - [x] **Lady Caleria** {3}{G}{G}{W}{W} · Legendary Creature — Elf Archer — increment 8
 - [ ] **Lady Evangela** {W}{U}{B} · Legendary Creature — Human Cleric — increment 94
 - [ ] **Land Equilibrium** {2}{U}{U} · Enchantment — increment 53
-- [ ] **Land's Edge** {1}{R}{R} · World Enchantment — increment 2, 25
+- [x] **Land's Edge** {1}{R}{R} · World Enchantment — increment 2, 25
 - [ ] **Lesser Werewolf** {3}{B} · Creature — Werewolf — increment 8, 54
 - [ ] **Life Matrix** {4} · Artifact — increment 55
 - [ ] **Living Plane** {2}{G}{G} · World Enchantment — increment 2, 44
@@ -283,7 +283,7 @@ the record shows what unblocked it.
 - [ ] **Mirror Universe** {6} · Artifact — increment 57
 - [ ] **Moat** {2}{W}{W} · Enchantment — increment 107
 - [ ] **Mold Demon** {5}{B}{B} · Creature — Fungus Demon — increment 106
-- [x] **Mountain Stronghold** — · Land — increment 3 (slices 1, 2, 4); residual — increment 3 slice 3
+- [x] **Mountain Stronghold** — · Land — increment 3 (slices 1, 2, 3, 4)
 - [ ] **Nebuchadnezzar** {3}{U}{B} · Legendary Creature — Human Wizard — increment 58
 - [x] **Nether Void** {3}{B} · World Enchantment — increment 2, 48
 - [ ] **Nicol Bolas** {2}{U}{U}{B}{B}{R}{R} · Legendary Creature — Elder Dragon — increment 112
@@ -302,7 +302,7 @@ the record shows what unblocked it.
 - [x] **Quagmire** {2}{B} · Enchantment — increment 4
 - [ ] **Quarum Trench Gnomes** {3}{R} · Creature — Gnome — increment 66
 - [ ] **Rabid Wombat** {2}{G}{G} · Creature — Wombat — increment 67
-- [ ] **Radjan Spirit** {3}{G} · Creature — Spirit — increment 5
+- [x] **Radjan Spirit** {3}{G} · Creature — Spirit — increment 5
 - [x] **Rapid Fire** {3}{W} · Instant — increment 1, 119
 - [ ] **Rasputin Dreamweaver** {4}{W}{U} · Legendary Creature — Human Wizard — increment 68
 - [ ] **Recall** {X}{X}{U} · Sorcery — increment 69
@@ -311,17 +311,17 @@ the record shows what unblocked it.
 - [ ] **Relic Bind** {2}{U} · Enchantment — Aura — increment 20
 - [ ] **Remove Enchantments** {W} · Instant — increment 71
 - [ ] **Reset** {U}{U} · Instant — increment 72
-- [ ] **Revelation** {G} · World Enchantment — increment 2, 35
+- [x] **Revelation** {G} · World Enchantment — faithful as of increment 35
 - [ ] **Reverberation** {2}{U}{U} · Instant — increment 19
 - [x] **Ring of Immortals** {5} · Artifact — increment 18
 - [ ] **Rohgahh of Kher Keep** {2}{B}{B}{R}{R} · Legendary Creature — Kobold — increment 73
 - [ ] **Rust** {G} · Instant — increment 103
 - [ ] **Sea Kings' Blessing** {U} · Instant — increment 96
-- [x] **Seafarer's Quay** — · Land — increment 3 (slices 1, 2, 4); residual — increment 3 slice 3
+- [x] **Seafarer's Quay** — · Land — increment 3 (slices 1, 2, 3, 4)
 - [ ] **Seeker** {2}{W}{W} · Enchantment — Aura — increment 9
 - [ ] **Sentinel** {4} · Artifact Creature — Shapeshifter — increment 8, 22
 - [ ] **Serpent Generator** {6} · Artifact — increment 97
-- [ ] **Shelkin Brownie** {1}{G} · Creature — Ouphe — increment 3, 5
+- [x] **Shelkin Brownie** {1}{G} · Creature — Ouphe — increment 3, 5
 - [ ] **Shimian Night Stalker** {3}{B}{B} · Creature — Nightstalker — increment 60
 - [ ] **Silhouette** {1}{U} · Instant — increment 12
 - [ ] **Spectral Cloak** {U}{U} · Enchantment — Aura — increment 117
@@ -342,16 +342,16 @@ the record shows what unblocked it.
 - [ ] **The Tabernacle at Pendrell Vale** — · Legendary Land — increment 81
 - [ ] **The Wretched** {3}{B}{B} · Creature — Demon — increment 104
 - [ ] **Time Elemental** {2}{U} · Creature — Elemental — increment 82
-- [ ] **Tolaria** — · Legendary Land — increment 3, 5
+- [x] **Tolaria** — · Legendary Land — increment 3, 5
 - [x] **Tor Wauki** {2}{B}{B}{R} · Legendary Creature — Human Archer — increment 8
 - [ ] **Touch of Darkness** {B} · Instant — increment 96
 - [ ] **Transmutation** {1}{B} · Instant — increment 22
 - [ ] **Triassic Egg** {4} · Artifact — increment 83
 - [x] **Undertow** {2}{U} · Enchantment — increment 4
 - [x] **Underworld Dreams** {B}{B}{B} · Enchantment — increment 115
-- [x] **Unholy Citadel** — · Land — increment 3 (slices 1, 2, 4); residual — increment 3 slice 3
+- [x] **Unholy Citadel** — · Land — increment 3 (slices 1, 2, 3, 4)
 - [x] **Ur-Drago** {3}{U}{U}{B}{B} · Legendary Creature — Elemental — increment 4
-- [ ] **Urborg** — · Legendary Land — increment 5
+- [x] **Urborg** — · Legendary Land — increment 5
 - [ ] **Vampire Bats** {B} · Creature — Bat — increment 84
 - [ ] **Venarian Gold** {X}{U}{U} · Enchantment — Aura — increment 26
 - [ ] **Visions** {W} · Sorcery — increment 85

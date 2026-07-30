@@ -18,7 +18,16 @@ export function pileCards(state: VisibleState, zone: number, owner: number): Obj
 /** Pile zone display name for the heading. */
 function zoneName(zone: number, count: number): string {
   const base =
-    zone === ZONE.Graveyard ? "Graveyard" : zone === ZONE.Exile ? "Exile" : zone === ZONE.Hand ? "Hand" : "Pile";
+    zone === ZONE.Graveyard
+      ? "Graveyard"
+      : zone === ZONE.Exile
+        ? "Exile"
+        : zone === ZONE.Hand
+          ? "Hand"
+          : // Field of Dreams reveals the top card of a library, and the deck slot opens here.
+            zone === ZONE.Library
+            ? "Library"
+            : "Pile";
   return `${base} (${count})`;
 }
 

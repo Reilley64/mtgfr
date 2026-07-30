@@ -1,6 +1,7 @@
-// Chips for the opponent hands this viewer has looked at (Glasses of Urza — CR 701.20). The
-// server itemizes those cards to the looker alone, and every other read of an opponent's hand on
-// this board is `hand_count`, so without this strip a look leaves nothing behind but a log line.
+// Chips for the opponent hands the server itemized to this viewer — a look this viewer took
+// (Glasses of Urza — CR 701.20), or every hand at once while Revelation is on the battlefield.
+// Every other read of an opponent's hand on this board is `hand_count`, so without this strip a
+// look leaves nothing behind but a log line.
 
 import { type Html, html } from "foldkit/html";
 import { playerLabel } from "~/players";

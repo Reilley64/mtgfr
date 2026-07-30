@@ -298,12 +298,12 @@ impl<'a> ChoiceCtx<'a> {
             },
             engine::PendingChoice::AssignCombatDamage {
                 player,
-                attacker,
-                blockers,
+                source,
+                recipients,
             } => PendingChoiceView::AssignCombatDamage {
                 player: player.0,
-                source: attacker,
-                items: self.label_items(blockers),
+                source,
+                items: self.label_items(recipients),
             },
             engine::PendingChoice::DivideSpellDamage {
                 player,
@@ -1126,8 +1126,8 @@ mod coverage_tests {
             (
                 PendingChoice::AssignCombatDamage {
                     player: PlayerId(0),
-                    attacker: source,
-                    blockers: vec![blocker],
+                    source,
+                    recipients: vec![blocker],
                 },
                 |view| matches!(view, PendingChoiceView::AssignCombatDamage { .. }),
             ),

@@ -3,6 +3,8 @@
 //! Pause peel behind [`Game::run`] (card-dsl-and-card-pool spec deepen). Pause bookkeeping stays in
 //! [`crate::pending`]; this module only raises the choice.
 
+use std::sync::Arc;
+
 use crate::*;
 
 impl Game {
@@ -106,6 +108,47 @@ impl Game {
                         target,
                         x,
                         modes: options,
+                        at_placement: false,
+                        activated: false,
+                    },
+                );
+            }
+            // Urborg's "target creature loses first strike or swampwalk until end of turn": CR
+            // 609.4 puts the pick at *resolution*, made by the ability's controller with the target
+            // already locked — unlike a printed "Choose one —", which is chosen as the ability is
+            // activated (CR 601.2b, the `Effect::ChooseOne` branch in `Game::activate`). Each mode
+            // is this same effect narrowed to one keyword; `answer_choose_mode` runs it straight
+            // away against this resolution's own target.
+            Effect::Pump(PumpEffect::TargetLosesKeywords {
+                target: spec,
+                keywords,
+                until_end_of_turn,
+                ..
+            }) => {
+                let modes: Arc<[Effect]> = keywords
+                    .iter()
+                    .enumerate()
+                    .map(|(i, _)| {
+                        Effect::Pump(PumpEffect::TargetLosesKeywords {
+                            target: spec,
+                            keywords: &keywords[i..=i],
+                            families: &[],
+                            until_end_of_turn,
+                            choose_one: false,
+                        })
+                    })
+                    .collect();
+                if modes.is_empty() {
+                    return;
+                }
+                pending::raise(
+                    self,
+                    pending::ChoiceRequest::ChooseMode {
+                        player: controller,
+                        source,
+                        target,
+                        x,
+                        modes,
                         at_placement: false,
                         activated: false,
                     },

@@ -188,6 +188,11 @@ pub enum VisibleEvent {
     RegenerationShieldsExpired {
         object: ObjectId,
     },
+    /// A permanent was marked "can't be regenerated this turn" (CR 701.15d) with no accompanying
+    /// damage — Clergy of the Holy Nimbus's second ability.
+    CantBeRegeneratedThisTurnMarked {
+        object: ObjectId,
+    },
     LostSummoningSickness {
         object: ObjectId,
     },

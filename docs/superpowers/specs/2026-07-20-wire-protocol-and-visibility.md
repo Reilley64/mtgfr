@@ -170,7 +170,15 @@ Implemented in `crates/schema/` (`schema::event::{redact, spectator_redact}` re-
 - `CardDrawn`, `SearchedToHand`, `PutFromHandOnTop` — `card` and `from` are `None` for all
   viewers except the player who drew/searched/put.
 - `ObjectView` for hand cards — emitted only to the owner; opponents receive `hand_count`.
-- Library order is never event-sourced; `library_count` is the only library fact in `PlayerView`.
+- Library order is never event-sourced, and library cards are not itemized; `library_count` is
+  normally the only library fact in `PlayerView`.
+- Two board states widen those two gates, and only for seats (a spectator stays at counts):
+  `Game::hands_revealed_to_all()` (Revelation) itemizes every hand to every seat, and
+  `Game::library_tops_revealed_to_all()` (Field of Dreams) adds exactly one `ObjectView` per
+  seat — that player's top library card, via `Game::library_top`. Both are derived live from
+  battlefield static abilities and read only by `schema::snapshot::project_board`; the engine's
+  rules logic never branches on who can see what. Each widening defaults to revealing nothing,
+  so a projection that fails to notice the permanent over-hides rather than leaks.
 - Player/account email is auth-private (`Me` only). Public lobby seats and `PlayerView` carry
   `gravatar_hash` only, so clients can paint Gravatar faces without receiving another player's
   email. Empty hash means monogram fallback.

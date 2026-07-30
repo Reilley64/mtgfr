@@ -56,6 +56,41 @@ pub enum PumpEffect {
         keywords: &'static [Keyword],
     },
 
+    /// "Target creature loses `keywords` (and every keyword in `families`)" — the targeted,
+    /// CR 613.1f-layered keyword removal the Legends lands and their two creatures print:
+    /// Hammerheim's "all landwalk abilities", Radjan Spirit's "flying", Tolaria's "banding and all
+    /// \"bands with other\" abilities", Shelkin Brownie's "all \"bands with other\" abilities",
+    /// Urborg's "first strike or swampwalk", and Elder Land Wurm's own "it loses defender".
+    ///
+    /// `until_end_of_turn` is the *special* case, not the default: Elder Land Wurm's blocks trigger
+    /// has no duration at all, so the loss is indefinite unless the card says otherwise.
+    ///
+    /// `choose_one` is CR 609.4's resolution-time pick between the listed `keywords` (Urborg's
+    /// "first strike **or** swampwalk"): the ability's target is locked at activation and its
+    /// controller names one of the keywords when it resolves, not when it goes on the stack — which
+    /// is what separates it from a printed "Choose one —" (CR 601.2b). Peeled to the mode pause
+    /// before this ever reaches the pump minter.
+    ///
+    /// Unlike [`StripKeywordsFromOpponentsCreatures`](Self::StripKeywordsFromOpponentsCreatures)
+    /// the loss is *not* "and can't have": a grant with a later timestamp beats it (CR 613.7).
+    TargetLosesKeywords {
+        target: TargetSpec,
+        #[cfg_attr(
+            feature = "card-dsl",
+            serde(default, deserialize_with = "de::static_slice")
+        )]
+        keywords: &'static [Keyword],
+        #[cfg_attr(
+            feature = "card-dsl",
+            serde(default, deserialize_with = "de::static_slice")
+        )]
+        families: &'static [KeywordFamily],
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        until_end_of_turn: bool,
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        choose_one: bool,
+    },
+
     GrantChosenColorProtectionUntilEndOfTurn {
         target: TargetSpec,
     },

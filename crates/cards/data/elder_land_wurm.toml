@@ -1,0 +1,30 @@
+# Defender, trample
+# When this creature blocks, it loses defender.
+name = "Elder Land Wurm"
+otags = ["block-trigger", "drawback", "removes-defender", "synergy-blocker-self", "turns-off-defender-self", "type-errata", "untracked-indefinite-effect"]
+sets = ["4bb", "4ed", "leg", "me1", "ren"]
+id = "5948381a-419d-4b8b-8ea2-ea623cb0d606"
+default_print = "369b3ebc-572b-4614-aacb-4990309d8848"
+oracle = "Defender, trample\nWhen this creature blocks, it loses defender."
+subtypes = ["Dragon", "Wurm"]
+keywords = ["defender", "trample"]
+
+[cost]
+generic = 4
+white = 3
+
+[kind]
+type = "creature"
+power = 5
+toughness = 5
+
+# When this creature blocks, it loses defender.
+[[abilities]]
+timing = "blocks"
+
+# it loses defender.
+[[abilities.effects]]
+type = "pump"
+mode = "target_loses_keywords"
+target = "this"
+keywords = ["defender"]

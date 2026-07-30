@@ -161,6 +161,14 @@ impl Game {
                 Some(p) if !p.flipped => vec![Event::Flipped { object: source }],
                 _ => vec![],
             },
+
+            // Clergy of the Holy Nimbus: "This creature can't be regenerated this turn." Always
+            // the source, never a target; a no-op if the source has already left the battlefield
+            // by the time this ability resolves (nothing left to mark).
+            MiscEffect::SourceCantBeRegeneratedThisTurn => match self.as_permanent(source) {
+                Some(_) => vec![Event::CantBeRegeneratedThisTurnMarked { object: source }],
+                None => vec![],
+            },
             _ => unreachable!("misc family mint received a non-family effect"),
         }
     }

@@ -1,5 +1,5 @@
-//! Legends (`leg`) grind — increment 3: bands-with-other, slices 1 (band formation) and 2 (blocked
-//! as a group).
+//! Legends (`leg`) grind — increment 3: bands-with-other, slices 1 (band formation), 2 (blocked as
+//! a group) and 3 (the damage assignment transfer).
 //!
 //! Slice 1 is CR 702.22c: "As a player declares attackers, they may declare that one or more
 //! attacking creatures with banding and up to one attacking creature without banding … are all in a
@@ -8,8 +8,17 @@
 //!
 //! Slice 2 is CR 702.22h: "If an attacking creature becomes blocked by a creature, each other
 //! creature in the same band as the attacking creature becomes blocked by that same blocking
-//! creature." The damage-assignment transfer (CR 702.22j/k) is slice 3 and is not modeled: a
-//! blocker still deals its full power to every band member it is blocking.
+//! creature."
+//!
+//! Slice 3 is CR 702.22j — "if an attacking creature is being blocked by a creature with banding,
+//! or by both a \[quality\] creature with 'bands with other \[quality\]' and another \[quality\]
+//! creature, the defending player (rather than the active player) chooses how the attacking
+//! creature's damage is assigned" — and its mirror CR 702.22k, "if a blocking creature is blocking
+//! a creature with banding, or both a \[quality\] creature with 'bands with other \[quality\]' and
+//! another \[quality\] creature, the active player (rather than the defending player) chooses how
+//! the blocking creature's damage is assigned." They are exceptions to CR 510.1c and CR 510.1d
+//! respectively, so the plain blocker-side division (CR 510.1d) is tested first, with no banding
+//! in it at all.
 
 mod common;
 
@@ -48,6 +57,25 @@ fn attack_in_bands(
             .map(|&a| (a, Defender::Player(PlayerId(1))))
             .collect(),
         bands,
+    })
+}
+
+/// The seat the pending combat-damage division belongs to, panicking if none is pending.
+fn pending_assigner(game: &Game) -> PlayerId {
+    let Some(PendingChoice::AssignCombatDamage { player, .. }) = game.pending_choice() else {
+        panic!(
+            "a combat damage division should be pending; got {:?}",
+            game.pending_choice()
+        );
+    };
+    player
+}
+
+/// Answer the pending division on behalf of the seat it belongs to.
+fn assign(game: &mut Game, assignment: Vec<(ObjectId, i32)>) -> Result<Vec<Event>, Reject> {
+    game.submit(Intent::AssignDamage {
+        player: pending_assigner(game),
+        assignment,
     })
 }
 
@@ -292,6 +320,10 @@ fn blocking_one_member_of_a_band_blocks_the_whole_band() {
         game.blocks().contains(&(bears, barktooth)),
         "the undeclared band member is blocked by the same creature"
     );
+    // Blocking two attackers, the Bears divides its 2 — and the band it blocked moves that division
+    // to the active player (CR 702.22k, covered in its own test below).
+    advance_until(&mut game, |g| g.current_step() == Step::CombatDamage);
+    assign(&mut game, vec![(jasmine, 2), (barktooth, 0)]).expect("the Bears' 2 goes somewhere");
     advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
     assert_eq!(
         game.life(PlayerId(1)),
@@ -332,6 +364,8 @@ fn a_swampwalking_band_member_becomes_blocked_with_its_band() {
         game.blocked_attackers().contains(&solkanar),
         "the swampwalker becomes blocked along with its band"
     );
+    advance_until(&mut game, |g| g.current_step() == Step::CombatDamage);
+    assign(&mut game, vec![(jasmine, 2), (solkanar, 0)]).expect("the Bears' 2 goes somewhere");
     advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
     assert_eq!(
         game.life(PlayerId(1)),
@@ -412,11 +446,16 @@ fn a_blocker_blocking_two_band_members_records_each_block_once() {
         [(giant, jasmine), (giant, barktooth)],
         "each pair is recorded exactly once"
     );
-    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
-    assert!(
-        game.pending_choice().is_none(),
-        "neither attacker has two blockers, so no damage division is asked for"
+    advance_until(&mut game, |g| g.current_step() == Step::CombatDamage);
+    assert_eq!(
+        pending_assigner(&game),
+        PlayerId(0),
+        "neither attacker has two blockers, but the Giant blocks two attackers and so divides its \
+         own damage (CR 510.1d) — moved to the active player by the band it blocked (CR 702.22k)"
     );
+    assign(&mut game, vec![(jasmine, 4), (barktooth, 0)])
+        .expect("the Giant's whole 4 may go to one member of the band");
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
     assert_eq!(game.life(PlayerId(1)), 20, "both attackers were blocked");
     assert_eq!(
         game.zone_of(giant),
@@ -480,6 +519,8 @@ fn a_green_band_under_adventurers_guildhouse_is_blocked_as_a_group() {
         .expect("two green legendary creatures under the Guildhouse are a legal band");
     block_with(&mut game, vec![(bears, jerrard)]).expect("blocking one member is legal");
 
+    advance_until(&mut game, |g| g.current_step() == Step::CombatDamage);
+    assign(&mut game, vec![(jerrard, 2), (marhault, 0)]).expect("the Bears' 2 goes somewhere");
     advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
     assert_eq!(
         game.life(PlayerId(1)),
@@ -493,4 +534,256 @@ fn a_green_band_under_adventurers_guildhouse_is_blocked_as_a_group() {
     );
     assert_eq!(game.zone_of(jerrard), Zone::Battlefield);
     assert_eq!(game.zone_of(marhault), Zone::Battlefield);
+}
+
+// ── slice 3: the damage assignment transfer (CR 510.1d, then CR 702.22j/k) ────────────
+
+#[test]
+fn a_blocker_blocking_two_attackers_divides_its_combat_damage() {
+    // CR 510.1d, with no banding anywhere: "each blocking creature assigns combat damage, divided
+    // as its controller chooses, among the attacking creatures it's blocking." Two-Headed Giant of
+    // Foriys blocks an additional creature on its own printed text, so the plain rule is reachable
+    // without a band — and its whole 4 power belongs to one of the two Bears if its controller
+    // says so, rather than being dealt twice over.
+    let mut game = Game::new();
+    let first = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let second = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let giant = game.spawn_on_battlefield(PlayerId(1), card("Two-Headed Giant of Foriys"));
+
+    attack_with(&mut game, vec![first, second]);
+    block_with(&mut game, vec![(giant, first), (giant, second)])
+        .expect("Two-Headed Giant of Foriys can block an additional creature");
+    advance_until(&mut game, |g| g.current_step() == Step::CombatDamage);
+
+    assert_eq!(
+        pending_assigner(&game),
+        PlayerId(1),
+        "CR 510.1d leaves a blocker's division with its own controller"
+    );
+    assert!(
+        assign(&mut game, vec![(first, 2), (second, 1)]).is_err(),
+        "CR 702.19c: the Giant's trample is no licence to hold damage back while blocking — the \
+         division must total its power"
+    );
+    assign(&mut game, vec![(first, 4), (second, 0)])
+        .expect("the whole 4 may go to one of the two attackers");
+
+    assert_eq!(
+        (game.zone_of(first), game.zone_of(second)),
+        (Zone::Graveyard, Zone::Battlefield),
+        "the division decided which 2/2 died; the Giant did not deal 4 to each"
+    );
+    assert_eq!(
+        game.zone_of(giant),
+        Zone::Graveyard,
+        "the 4/4 still took 2 from each attacker"
+    );
+}
+
+#[test]
+fn a_blocker_blocking_one_attacker_is_asked_for_no_division() {
+    // CR 510.1d only divides among "the attacking creatures it's blocking" — with one of them
+    // there is nothing to divide, so no choice is raised and the blocker deals its whole power.
+    let (mut game, ids) = cathedral_board(&["Jasmine Boreal"]);
+    let bears = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
+    attack_with(&mut game, ids.clone());
+    block_with(&mut game, vec![(bears, ids[0])]).expect("an ordinary block");
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+
+    assert!(
+        game.pending_choice().is_none(),
+        "one attacker blocked is no division; got {:?}",
+        game.pending_choice()
+    );
+    assert_eq!(game.marked_damage(ids[0]), 2, "the Bears dealt its whole 2");
+}
+
+#[test]
+fn the_active_player_divides_a_blockers_damage_among_the_band_it_blocks() {
+    // CR 702.22k: the blocking Craw Wurm is blocking Jasmine Boreal — a legendary creature with
+    // "bands with other legendary creatures" (via the Cathedral) — and Barktooth Warbeard, another
+    // legendary creature, so the *active* player divides the Wurm's 6 rather than its controller.
+    // Spread 3 and 3 it kills neither 5-toughness band member; dealt in full to each it would kill
+    // both, which is what the unmodeled transfer used to do.
+    let (mut game, ids) = cathedral_board(&["Jasmine Boreal", "Barktooth Warbeard"]);
+    let [jasmine, barktooth] = ids[..] else {
+        unreachable!("two creatures spawned")
+    };
+    let wurm = game.spawn_on_battlefield(PlayerId(1), card("Craw Wurm"));
+    attack_in_bands(&mut game, &ids, vec![vec![jasmine, barktooth]])
+        .expect("a legendary band is a legal declaration");
+    block_with(&mut game, vec![(wurm, jasmine)]).expect("blocking one member blocks the band");
+    advance_until(&mut game, |g| g.current_step() == Step::CombatDamage);
+
+    assert_eq!(
+        pending_assigner(&game),
+        PlayerId(0),
+        "the attacking player divides the blocker's damage (CR 702.22k)"
+    );
+    assert_eq!(
+        game.submit(Intent::AssignDamage {
+            player: PlayerId(1),
+            assignment: vec![(jasmine, 6), (barktooth, 0)],
+        }),
+        Err(Reject::ChoicePending),
+        "the Wurm's own controller no longer owns this division"
+    );
+    assign(&mut game, vec![(jasmine, 3), (barktooth, 3)])
+        .expect("the active player spreads the Wurm's 6 across the band");
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+
+    assert_eq!(
+        (game.zone_of(jasmine), game.zone_of(barktooth)),
+        (Zone::Battlefield, Zone::Battlefield),
+        "3 apiece is lethal to neither — the band survives its own blocker"
+    );
+    assert_eq!(
+        game.zone_of(wurm),
+        Zone::Graveyard,
+        "the 6/4 still took 4 and 6 from the band it blocked"
+    );
+    assert_eq!(game.life(PlayerId(1)), 20, "both band members were blocked");
+}
+
+#[test]
+fn a_blocking_band_moves_the_attackers_division_to_the_defending_player() {
+    // CR 702.22j's second clause: the lone attacker is blocked by both a legendary creature with
+    // "bands with other legendary creatures" (Jasmine, via the defending player's own Cathedral)
+    // and another legendary creature (Barktooth), so the *defending* player divides the attacker's
+    // damage. Spread 3 and 3 it kills neither blocker.
+    let mut game = Game::new();
+    let wurm = game.spawn_on_battlefield(PlayerId(0), card("Craw Wurm"));
+    game.spawn_on_battlefield(PlayerId(1), card("Cathedral of Serra"));
+    let jasmine = game.spawn_on_battlefield(PlayerId(1), card("Jasmine Boreal"));
+    let barktooth = game.spawn_on_battlefield(PlayerId(1), card("Barktooth Warbeard"));
+
+    attack_with(&mut game, vec![wurm]);
+    block_with(&mut game, vec![(jasmine, wurm), (barktooth, wurm)]).expect("two legal blocks");
+    advance_until(&mut game, |g| g.current_step() == Step::CombatDamage);
+
+    assert_eq!(
+        pending_assigner(&game),
+        PlayerId(1),
+        "the defending player divides the attacker's damage (CR 702.22j)"
+    );
+    assign(&mut game, vec![(jasmine, 3), (barktooth, 3)])
+        .expect("the defending player spreads the Wurm's 6 across its blockers");
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+
+    assert_eq!(
+        (game.zone_of(jasmine), game.zone_of(barktooth)),
+        (Zone::Battlefield, Zone::Battlefield),
+        "3 apiece is lethal to neither 5-toughness blocker"
+    );
+    assert_eq!(
+        game.zone_of(wurm),
+        Zone::Graveyard,
+        "the 6/4 took 4 and 6 back from the two creatures blocking it"
+    );
+}
+
+#[test]
+fn a_lone_bands_with_other_blocker_leaves_the_division_with_the_attacker() {
+    // CR 702.22j's second clause needs "a \[quality\] creature with 'bands with other \[quality\]'
+    // *and another* \[quality\] creature" — one of the two blockers is a plain Grizzly Bears, so
+    // Jasmine's grant moves nothing and CR 510.1c stands.
+    let mut game = Game::new();
+    let wurm = game.spawn_on_battlefield(PlayerId(0), card("Craw Wurm"));
+    game.spawn_on_battlefield(PlayerId(1), card("Cathedral of Serra"));
+    let jasmine = game.spawn_on_battlefield(PlayerId(1), card("Jasmine Boreal"));
+    let bears = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
+
+    attack_with(&mut game, vec![wurm]);
+    block_with(&mut game, vec![(jasmine, wurm), (bears, wurm)]).expect("two legal blocks");
+    advance_until(&mut game, |g| g.current_step() == Step::CombatDamage);
+
+    assert_eq!(
+        pending_assigner(&game),
+        PlayerId(0),
+        "the Bears is not a legendary creature, so no band is blocking"
+    );
+    assign(&mut game, vec![(jasmine, 0), (bears, 6)]).expect("the attacker picks its own target");
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+
+    assert_eq!(
+        (game.zone_of(jasmine), game.zone_of(bears)),
+        (Zone::Battlefield, Zone::Graveyard),
+        "the attacking player spent all 6 on the 2/2"
+    );
+}
+
+#[test]
+fn banding_moves_each_side_of_the_division_the_opposite_way() {
+    // The asymmetry, in one combat: CR 702.22j hands the *attackers'* divisions to the defending
+    // player (Timber Wolves has banding), while CR 702.22k hands the *blockers'* divisions to the
+    // active player (both are blocking a "bands with other legendary" creature and another
+    // legendary creature). Each seat owns exactly the divisions the rules gave it and is refused
+    // the others.
+    let (mut game, ids) = cathedral_board(&["Jasmine Boreal", "Barktooth Warbeard"]);
+    let [jasmine, barktooth] = ids[..] else {
+        unreachable!("two creatures spawned")
+    };
+    let wolves = game.spawn_on_battlefield(PlayerId(1), card("Timber Wolves"));
+    let wurm = game.spawn_on_battlefield(PlayerId(1), card("Craw Wurm"));
+    attack_in_bands(&mut game, &ids, vec![vec![jasmine, barktooth]])
+        .expect("a legendary band is a legal declaration");
+    block_with(&mut game, vec![(wolves, jasmine), (wurm, jasmine)])
+        .expect("both blocks extend across the band");
+    advance_until(&mut game, |g| g.current_step() == Step::CombatDamage);
+
+    // The two attackers' divisions: CR 702.22j moved them to the defending player, who pours
+    // everything onto the 1/1 to keep the Wurm alive.
+    assert_eq!(
+        pending_assigner(&game),
+        PlayerId(1),
+        "a banding blocker takes the attacker's division (CR 702.22j)"
+    );
+    assert_eq!(
+        game.submit(Intent::AssignDamage {
+            player: PlayerId(0),
+            assignment: vec![(wolves, 0), (wurm, 4)],
+        }),
+        Err(Reject::ChoicePending),
+        "the active player cannot answer a division CR 702.22j took away"
+    );
+    assign(&mut game, vec![(wolves, 4), (wurm, 0)]).expect("Jasmine Boreal's 4");
+    assert_eq!(pending_assigner(&game), PlayerId(1));
+    assign(&mut game, vec![(wolves, 6), (wurm, 0)]).expect("Barktooth Warbeard's 6");
+
+    // The two blockers' divisions: CR 702.22k moved them to the active player, who spreads them so
+    // that neither band member dies.
+    assert_eq!(
+        pending_assigner(&game),
+        PlayerId(0),
+        "a blocked band takes the blocker's division (CR 702.22k)"
+    );
+    assert_eq!(
+        game.submit(Intent::AssignDamage {
+            player: PlayerId(1),
+            assignment: vec![(jasmine, 1), (barktooth, 0)],
+        }),
+        Err(Reject::ChoicePending),
+        "the defending player cannot answer a division CR 702.22k took away"
+    );
+    assign(&mut game, vec![(jasmine, 1), (barktooth, 0)]).expect("Timber Wolves' 1");
+    assert_eq!(pending_assigner(&game), PlayerId(0));
+    assign(&mut game, vec![(jasmine, 3), (barktooth, 3)]).expect("Craw Wurm's 6");
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+
+    assert_eq!(
+        game.zone_of(wolves),
+        Zone::Graveyard,
+        "the defending player took all 10 on the 1/1"
+    );
+    assert_eq!(
+        game.zone_of(wurm),
+        Zone::Battlefield,
+        "and so kept the 6/4 alive — the division was really theirs to make"
+    );
+    assert_eq!(
+        (game.zone_of(jasmine), game.zone_of(barktooth)),
+        (Zone::Battlefield, Zone::Battlefield),
+        "the active player spread 7 across two 5-toughness band members and lost neither"
+    );
+    assert_eq!(game.life(PlayerId(1)), 20, "the whole band was blocked");
 }

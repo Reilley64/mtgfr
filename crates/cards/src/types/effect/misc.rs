@@ -221,6 +221,13 @@ pub enum MiscEffect {
 
     ScheduleThisTurnCombatDamageCopy,
 
+    /// "This creature can't be regenerated this turn" (Clergy of the Holy Nimbus's second
+    /// ability, CR 701.15d) — sets the same suppression flag Disintegrate/Terror bundle with
+    /// their own destruction, but on its own, with no damage or destroy attached. Always the
+    /// ability's own source, never a target — the printed ability names "this creature", not
+    /// "target creature".
+    SourceCantBeRegeneratedThisTurn,
+
     SkipNextUntapOpponentCreatures,
 
     /// "Take an extra turn after this one" (Time Walk; CR 505.6a). Queues one turn for the

@@ -1608,12 +1608,27 @@ impl Game {
             // A second strip landing on the same permanent the same turn is just a second
             // registered modifier — both are subtracted from the unioned keyword set, so nothing
             // has to leak a merged `&'static` slice to fit a single field.
-            Event::KeywordsStripped { object, keywords } => {
+            Event::KeywordsStripped {
+                object,
+                keywords,
+                families,
+                until_end_of_turn,
+                cant_have,
+            } => {
+                let duration = if until_end_of_turn {
+                    ModifierDuration::EndOfTurn
+                } else {
+                    ModifierDuration::Indefinite
+                };
                 self.register_modifier(
                     object,
                     "",
-                    ModifierDuration::EndOfTurn,
-                    ModifierKind::LoseKeywords(keywords),
+                    duration,
+                    ModifierKind::LoseKeywords {
+                        keywords,
+                        families,
+                        cant_have,
+                    },
                 );
             }
             Event::AttachedKeywordsLost {
@@ -1748,6 +1763,9 @@ impl Game {
             Event::NextUntapSkipMarked { object } => self.skip_next_untap.push(object),
             Event::NextUntapSkipConsumed { object } => {
                 self.skip_next_untap.retain(|&id| id != object)
+            }
+            Event::CantBeRegeneratedThisTurnMarked { object } => {
+                self.permanent_mut(object).cant_be_regenerated_this_turn = true;
             }
             Event::NextCastTriggerArmed {
                 controller,
@@ -1889,10 +1907,9 @@ impl Game {
                 self.combat.blocked_ever.push((blocker, attacker));
                 self.combat.attacked_or_blocked.push(blocker);
             }
-            Event::CombatDamageDivided {
-                attacker,
-                assignment,
-            } => self.combat.damage.push((attacker, assignment.pairs())),
+            Event::CombatDamageDivided { source, assignment } => {
+                self.combat.damage.push((source, assignment.pairs()))
+            }
             Event::DeathtouchMarked { object } => self.permanent_mut(object).deathtouched = true,
             Event::CombatCleared => self.combat = CombatState::default(),
             Event::CommanderCastFromCommandZone { player } => {

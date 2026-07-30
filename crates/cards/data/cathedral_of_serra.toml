@@ -9,7 +9,6 @@ sets = ["leg"]
 id = "4b9922b9-c5b5-467e-8a5b-1e45e862194d"
 default_print = "e65356e6-0ead-49fd-b069-be1ea9b1c105"
 oracle = "White legendary creatures you control have \"bands with other legendary creatures.\" (Any legendary creatures can attack in a band as long as at least one has \"bands with other legendary creatures.\" Bands are blocked as a group. If at least two legendary creatures you control, one of which has \"bands with other legendary creatures,\" are blocking or being blocked by the same creature, you divide that creature's combat damage, not its controller, among any of the creatures it's being blocked by or is blocking.)"
-approximates = "the damage division is not transferred: a creature blocking the band deals its full damage to each member instead of you dividing it among them"
 
 # No `produces`: Cathedral of Serra is a land with no mana ability at all — the static grant below is the whole card.
 [kind]

@@ -5,7 +5,7 @@ use serde::Deserialize;
 use crate::de::{TimingName, arc_strs, one_u8};
 use crate::toml_surface::{CostToml, KindToml};
 use crate::{
-    Ability, AlternativeCost, Amount, BecomesTargetedScope, CardDef, CastXMax, Color,
+    Ability, Activator, AlternativeCost, Amount, BecomesTargetedScope, CardDef, CastXMax, Color,
     CombatDamageScope, Condition, Cost, CounterKind, CumulativeUpkeepCost, Effect, EnterAsCopy,
     EscapeCost, HandActivatedAbility, Keyword, PermanentFilter, SacrificeCost, SpellFilter,
     SpendToCastPredicate, Suspend, WatchedPlayer, intern_card_def,
@@ -80,11 +80,10 @@ pub struct AbilityToml {
     /// *your* upkeep.
     #[serde(default)]
     pub(crate) only_during_your_upkeep: bool,
-    /// "Only this creature's owner may activate this ability" (CR 602.5c — Personal
-    /// Incarnation): the pool's one activation restriction keyed to ownership rather than
-    /// control.
+    /// Who may activate this ability (CR 602.2b/602.5b/c) — see [`Activator`]. Defaults to
+    /// `controller`, the unstated CR 602.2 baseline.
     #[serde(default)]
-    pub(crate) only_owner_may_activate: bool,
+    pub(crate) activator: Activator,
     /// "Return this to its owner's hand" as part of the cost (Rootha, Mercurial
     /// Artist's "Return Rootha to its owner's hand").
     #[serde(default)]

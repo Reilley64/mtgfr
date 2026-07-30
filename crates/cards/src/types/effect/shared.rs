@@ -157,6 +157,17 @@ pub enum Amount {
     /// sacrificed creature's toughness at ability placement — resolving this variant directly is
     /// a bug (see [`Game::resolve_amount`]'s panic).
     SacrificedCreatureToughness,
+    /// The literal amount printed on the card, if the card discarded to pay this activated
+    /// ability's discard cost was a land card, else 0 (Land's Edge: "If the discarded card was a
+    /// land card, this enchantment deals 2 damage…" — CR 120.8, a source that would deal 0
+    /// damage deals none at all). A placeholder like
+    /// [`SacrificedCreaturePower`](Self::SacrificedCreaturePower):
+    /// [`contextualize_discard_effect`] rewrites it to [`Fixed`](Self::Fixed) with `n` or `0` at
+    /// ability placement, from what was actually discarded to pay the cost — the discarded card
+    /// is a graveyard object by the time this resolves, so there's nothing on the stack that
+    /// still knows what left the activator's hand (resolving this variant directly is a bug, see
+    /// [`Game::resolve_amount`]'s panic).
+    DiscardCostWasLand(i32),
     /// The toughness the *enchanted* creature last had before it died, on an
     /// [`Trigger::EnchantedCreatureDies`](crate::Trigger::EnchantedCreatureDies) ability (Creature
     /// Bond's "damage equal to that creature's toughness"). Same placeholder shape as
@@ -591,6 +602,7 @@ impl Effect {
             | Effect::Pump(PumpEffect::PumpUntilEndOfTurn { target, .. })
             | Effect::Pump(PumpEffect::GrantChosenColorProtectionUntilEndOfTurn { target })
             | Effect::Pump(PumpEffect::RadianceChosenColorProtectionUntilEndOfTurn { target })
+            | Effect::Pump(PumpEffect::TargetLosesKeywords { target, .. })
             | Effect::Pump(PumpEffect::SetBasePtTargetUntilEndOfTurn { target, .. })
             | Effect::Pump(PumpEffect::BecomesCopyOfTarget { target, .. })
             | Effect::Pump(PumpEffect::TargetBecomesTreasure { target })
@@ -938,6 +950,8 @@ Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
             | Effect::Static(StaticEffect::CantBlockFilter { .. })
             | Effect::Static(StaticEffect::DoesntUntap { .. })
             | Effect::Static(StaticEffect::PlayersSkipUntapSteps)
+            | Effect::Static(StaticEffect::PlayersPlayWithHandsRevealed)
+            | Effect::Static(StaticEffect::PlayersPlayWithLibraryTopsRevealed)
             | Effect::Static(StaticEffect::UntapAtMostOne { .. })
             | Effect::Static(StaticEffect::MaySkipTurnWhileTapped)
             | Effect::Static(StaticEffect::CantCastDuringCombat)
@@ -983,6 +997,9 @@ Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
             | Effect::Misc(MiscEffect::BecomePrepared)
             // Flipping (CR 712) always affects the ability's own source, never a chosen target.
             | Effect::Misc(MiscEffect::FlipSource)
+            // "This creature can't be regenerated this turn" always affects the ability's own
+            // source, never a chosen target.
+            | Effect::Misc(MiscEffect::SourceCantBeRegeneratedThisTurn)
             // "Level N" always raises the ability's own source's level, never a chosen target.
             | Effect::Counters(CountersEffect::LevelUp { .. })
             // "Monstrosity N" always affects the ability's own source, never a chosen target.
@@ -1554,6 +1571,30 @@ pub struct ReanimateBecomes {
     pub keywords: &'static [Keyword],
 }
 
+/// Who may activate an ability (CR 602.2b/602.5b/c). `Controller` (default) is CR 602.2's
+/// baseline — only the permanent's controller — left unstated on nearly every activated ability
+/// in the pool. `Opponents` and `AnyPlayer` are printed *widenings* past that baseline (Land's
+/// Edge's "Any player may activate this ability"; Clergy of the Holy Nimbus's "Only your
+/// opponents may activate this ability"). `Owner` is Personal Incarnation's CR 602.5c
+/// restriction, keyed to ownership rather than control — a different axis from the other three,
+/// which all key off *whoever controls the permanent right now* — so it stays activatable by an
+/// owner who has lost control of the permanent, matching the printed line's own widening past
+/// the controller-only default.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(
+    feature = "card-dsl",
+    derive(serde::Deserialize),
+    serde(rename_all = "snake_case")
+)]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
+pub enum Activator {
+    #[default]
+    Controller,
+    Opponents,
+    AnyPlayer,
+    Owner,
+}
+
 /// The cost to activate an ability: tapping the permanent, paying mana, and/or a sacrifice.
 ///
 /// A plain [`Ability`] spells its `Timing::Activated` cost as flat fields alongside the ability
@@ -1643,13 +1684,9 @@ pub struct ActivationCost {
     /// controller half is what makes it "your" upkeep, so this is not just `only_before_attackers`
     /// with a different step.
     pub only_during_your_upkeep: bool,
-    /// "Only this creature's owner may activate this ability" (CR 602.5c — Personal
-    /// Incarnation): the pool's one activation restriction keyed to ownership rather than
-    /// control.
-    /// ponytail: this only ever *narrows* who may activate. The printed line also widens it —
-    /// an owner who has lost control may still activate — but CR 602.2's controller check runs
-    /// first here, so a stolen Incarnation is activatable by nobody rather than by its thief.
-    pub only_owner_may_activate: bool,
+    /// Who may activate this ability (CR 602.2b/602.5b/c) — see [`Activator`]. `Controller`
+    /// (default) is the unstated CR 602.2 baseline.
+    pub activator: Activator,
     /// "Return this to its owner's hand" as part of the cost (CR 118 — Rootha, Mercurial
     /// Artist's "{2}, Return Rootha to its owner's hand: …"). Paid on activation as a self-bounce
     /// (a token ceases to exist instead, CR 111.7); the source is always payable since an
@@ -1996,6 +2033,11 @@ pub enum Condition {
     /// the game must be in the upkeep step. Read through the same
     /// [`Game::ability_activation_gate`](crate::Game) path as [`DuringCombat`](Self::DuringCombat).
     DuringYourUpkeep,
+    /// "Activate only during any upkeep step" (Tolaria) — the seat-blind sibling of
+    /// [`DuringYourUpkeep`](Self::DuringYourUpkeep): only the step matters, so the land's
+    /// controller may fire it on an opponent's upkeep too. Read through the same
+    /// [`Game::ability_activation_gate`](crate::Game) path as [`DuringCombat`](Self::DuringCombat).
+    DuringUpkeep,
     /// "Activate only during combat" (Jade Statue — CR 506.1's combat phase, from Beginning of
     /// Combat through End of Combat). Holds iff the current step is a combat step, whoever the
     /// active player is — the Statue's own text names no seat, so it animates on an opponent's
@@ -3622,6 +3664,39 @@ pub fn contextualize_sacrifice_effect(effect: Effect, power: i32, toughness: i32
                 steps: Arc::from(filled),
             }
         }
+        other => other,
+    }
+}
+
+/// Fill an activated ability's [`Amount::DiscardCostWasLand`] placeholder from what was actually
+/// discarded to pay this activation's discard cost (Land's Edge's "If the discarded card was a
+/// land card, ~ deals 2 damage…"), read *before* the discard — a discarded card becomes a new
+/// graveyard object (CR 400.7), so there's nothing left in the activator's hand to check by the
+/// time the ability resolves off the stack. Called at [`Game::activate_ability`], mirroring
+/// [`contextualize_sacrifice_effect`] above.
+pub fn contextualize_discard_effect(effect: Effect, was_land: bool) -> Effect {
+    let fill = |amount: Amount| match amount {
+        Amount::DiscardCostWasLand(n) => Amount::Fixed(if was_land { n } else { 0 }),
+        other => other,
+    };
+    match effect {
+        Effect::Damage(DamageEffect::Target {
+            amount,
+            target,
+            count,
+            divided,
+            cant_be_regenerated,
+            exile_instead_of_dying,
+            gain_life_equal_to_damage,
+        }) => Effect::Damage(DamageEffect::Target {
+            amount: fill(amount),
+            target,
+            count,
+            divided,
+            cant_be_regenerated,
+            exile_instead_of_dying,
+            gain_life_equal_to_damage,
+        }),
         other => other,
     }
 }

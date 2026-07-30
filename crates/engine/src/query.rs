@@ -1321,6 +1321,46 @@ impl Game {
         self.players[player.0 as usize].library.len()
     }
 
+    /// The top card of `player`'s library — the one a draw would take (CR 121.3) — or `None` for an
+    /// empty library. The only card of a library the projection layer may ever name, and then only
+    /// while [`Game::library_tops_revealed_to_all`] holds.
+    pub fn library_top(&self, player: PlayerId) -> Option<ObjectId> {
+        self.players[player.0 as usize].library.first().copied()
+    }
+
+    /// Whether a live battlefield permanent has the table playing with its hands revealed
+    /// (Revelation). Unscoped like [`Game::players_skip_untap_steps`] — "players" is everyone, the
+    /// enchantment's own controller included.
+    ///
+    /// Read by `schema`'s board projection and by nothing in the rules, so a revealed hand behaves
+    /// in every other respect like a hidden one. A `false` here is the private default: the gate it
+    /// widens starts closed, so failing to spot the enchantment over-hides rather than leaks.
+    pub fn hands_revealed_to_all(&self) -> bool {
+        self.any_battlefield_static(|effect| {
+            matches!(effect, StaticEffect::PlayersPlayWithHandsRevealed)
+        })
+    }
+
+    /// Whether a live battlefield permanent has the table playing with the top card of every
+    /// library revealed (Field of Dreams). The library twin of [`Game::hands_revealed_to_all`],
+    /// with the same fail-closed default; it licenses naming [`Game::library_top`] and no other
+    /// card of any library.
+    pub fn library_tops_revealed_to_all(&self) -> bool {
+        self.any_battlefield_static(|effect| {
+            matches!(effect, StaticEffect::PlayersPlayWithLibraryTopsRevealed)
+        })
+    }
+
+    /// Whether any battlefield permanent has a live static ability whose effect matches `wanted`.
+    fn any_battlefield_static(&self, wanted: impl Fn(&StaticEffect) -> bool) -> bool {
+        self.battlefield().into_iter().any(|source| {
+            self.functional_abilities(source).iter().any(|ability| {
+                ability.timing == Timing::Static
+                    && matches!(&ability.effect, Effect::Static(effect) if wanted(effect))
+            })
+        })
+    }
+
     pub fn op_iteration(&self, player: PlayerId) -> u64 {
         self.players[player.0 as usize].op_iteration
     }

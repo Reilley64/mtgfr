@@ -15,6 +15,7 @@ export const VISIBLE_EVENT_KIND_PRESENCE = {
   became_copy: true,
   became_monstrous: true,
   blocker_declared: true,
+  cant_be_regenerated_this_turn_marked: true,
   card_drawn: true,
   card_exiled_with_source_left_exile: true,
   cast_from_exile_free_bottoms_library_on_leave: true,

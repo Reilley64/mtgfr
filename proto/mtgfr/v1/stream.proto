@@ -1102,6 +1102,7 @@ message VisibleEvent {
     VisibleEventLookedAtHand looked_at_hand = 137;
     VisibleEventExtraTurnQueued extra_turn_queued = 138;
     VisibleEventTextChanged text_changed = 139;
+    VisibleEventCantBeRegeneratedThisTurnMarked cant_be_regenerated_this_turn_marked = 140;
   }
   // 132 was VisibleEventPlayerPoisonChanged, superseded by the general player-counter
   // subsystem (`player_counters_placed`). Burned, not reused (docs/WIRE_COMPAT.md).
@@ -1293,6 +1294,12 @@ message VisibleEventRegenerated {
 
 // A permanent's regeneration shields expired at cleanup (CR 701.15b's "this turn").
 message VisibleEventRegenerationShieldsExpired {
+  uint32 object = 1;
+}
+
+// A permanent was marked "can't be regenerated this turn" (CR 701.15d) with no accompanying
+// damage — Clergy of the Holy Nimbus's second ability.
+message VisibleEventCantBeRegeneratedThisTurnMarked {
   uint32 object = 1;
 }
 

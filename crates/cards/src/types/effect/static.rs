@@ -302,6 +302,23 @@ pub enum StaticEffect {
     /// would let it back in.
     PlayersSkipUntapSteps,
 
+    /// Revelation's "Players play with their hands revealed." Read by
+    /// [`Game::hands_revealed_to_all`](crate::Game) — and *only* by the projection layer in
+    /// `crate::schema`, which widens its per-viewer privacy gate. No rules logic branches on it:
+    /// a revealed hand is still a hand, so nothing about casting, discarding, or targeting from it
+    /// changes (CR 400.2).
+    ///
+    /// Unscoped like [`PlayersSkipUntapSteps`](Self::PlayersSkipUntapSteps) — "players" is
+    /// everyone, the enchantment's own controller included.
+    PlayersPlayWithHandsRevealed,
+
+    /// Field of Dreams' "Players play with the top card of their libraries revealed." The library
+    /// twin of [`PlayersPlayWithHandsRevealed`](Self::PlayersPlayWithHandsRevealed), read by
+    /// [`Game::library_tops_revealed_to_all`](crate::Game): exactly the one card
+    /// [`Game::library_top`](crate::Game) names per player, never the cards beneath it, and the
+    /// library stays unordered-to-the-client in every other respect.
+    PlayersPlayWithLibraryTopsRevealed,
+
     /// Smoke's "Players can't untap more than one creature during their untap steps" and Winter
     /// Orb's land twin (CR 502.2). Read by
     /// [`Game::untap_at_most_one_filters`](crate::Game), which the untap step consults while
