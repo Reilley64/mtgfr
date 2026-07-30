@@ -9,6 +9,33 @@ async function waitUntil(predicate: () => boolean, timeoutMs = 1000): Promise<vo
   }
 }
 
+describe("ImageCache warm priority", () => {
+  it("requests warmed art at low fetch priority before the request starts", () => {
+    const priorityAtRequest: Array<string | undefined> = [];
+    const cache = new ImageCache(
+      () => {},
+      () => {
+        const img = {
+          onload: null,
+          onerror: null,
+          fetchPriority: undefined as string | undefined,
+          get src() {
+            return "";
+          },
+          set src(_value: string) {
+            priorityAtRequest.push(img.fetchPriority);
+          },
+        };
+        return img;
+      },
+    );
+
+    cache.preload(["https://example.test/warm.webp"], "low");
+
+    expect(priorityAtRequest).toEqual(["low"]);
+  });
+});
+
 describe("ImageCache failures", () => {
   it("marks url failed and notifies subscribers on onerror", async () => {
     let img!: { src: string; onload: (() => void) | null; onerror: (() => void) | null };

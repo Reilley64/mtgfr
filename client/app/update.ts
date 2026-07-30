@@ -6,7 +6,9 @@ import type { Message as BoardMessage } from "./board/messages";
 import { type OutMessage as BoardOutMessage, updateBoard } from "./board/submodel";
 import { captureDeckCardFlipForNav } from "./deck-card-nav";
 import { parseDeckIdParam, playDeckAccess } from "./deck-id";
+import { deckArtUrls } from "./domain/deck-builder/print";
 import { gravatarHash } from "./domain/gravatar";
+import { sharedImageCache } from "./domain/image-cache";
 import { updateGame } from "./game";
 import {
   GotAccountMenuMessage,
@@ -21,9 +23,10 @@ import {
   type Message,
   NavigationCompleted,
   ReceivedMeGravatarHash,
+  WarmedDeckArt,
 } from "./messages";
 import { emptyGameSlice, type Model } from "./model";
-import type { LobbyClient, RpcClient } from "./resources";
+import { type LobbyClient, RpcClient } from "./resources";
 import {
   GameTableRoute,
   isProtectedRoute,
@@ -80,6 +83,24 @@ const LoadExternalUrl = Command.define(
   { href: S.String },
   NavigationCompleted,
 )(({ href }) => Navigation.load(href).pipe(Effect.as(NavigationCompleted())));
+
+/** Pull the seated deck's art into the shared cache while players wait in the lobby. Fire and
+ *  forget: nothing waits on it, and a failed fetch just leaves the board to load art on demand.
+ *  ponytail: the browser's 6-connections-per-origin cap is the only throttle — add a chunked
+ *  queue if a CDN-less deployment (`VITE_CARD_CDN` unset, art straight from Scryfall) starts 429ing. */
+export const warmDeckArt = (deckId: number) =>
+  Effect.gen(function* () {
+    const rpc = yield* RpcClient;
+    const deck = yield* rpc.getDeck(String(deckId));
+    sharedImageCache.preload(deckArtUrls(deck), "low");
+    return WarmedDeckArt();
+  }).pipe(Effect.catch(() => Effect.succeed(WarmedDeckArt())));
+
+export const WarmDeckArt = Command.define(
+  "WarmDeckArt",
+  { deckId: S.Number },
+  WarmedDeckArt,
+)(({ deckId }) => warmDeckArt(deckId));
 
 export const HashMeGravatar = Command.define(
   "HashMeGravatar",
@@ -162,6 +183,7 @@ function enterLobbyRoute(
 ): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, AppResources>>] {
   const [list, deckListCommands] = DeckList.informRouteChanged(model.decks.list);
   const [lobby, lobbyCommands] = Lobby.informRouteChanged(model.lobby, args);
+  const warm = args.selectedDeckId == null ? [] : [WarmDeckArt({ deckId: args.selectedDeckId })];
   return [
     {
       ...model,
@@ -169,7 +191,7 @@ function enterLobbyRoute(
       game: null,
       lobby,
     },
-    [...mapDeckListCommands(deckListCommands), ...mapLobbyCommands(lobbyCommands)],
+    [...mapDeckListCommands(deckListCommands), ...mapLobbyCommands(lobbyCommands), ...warm],
   ];
 }
 
@@ -407,6 +429,7 @@ export const update = (
           }),
         ),
       NavigationCompleted: () => [model, []],
+      WarmedDeckArt: () => [model, []],
       LandscapeRotateChanged: ({ active }) => [{ ...model, landscapeRotate: { active } }, []],
       ReceivedMeGravatarHash: ({ email, hash }) => {
         if (model.session.me?.email !== email) return [model, []];
