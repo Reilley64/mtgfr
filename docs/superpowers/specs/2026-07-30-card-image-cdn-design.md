@@ -7,7 +7,7 @@
 
 ## Problem Statement
 
-`VITE_CARD_CDN` points at a host serving an 86 GB bulk mirror of Scryfall card images, built and populated by a separate repository. The topology spec records that host as "managed separately," so nothing in this repo describes it, tests it, or keeps its path layout aligned with the layout `buildImageUrl` constructs. New sets need a manual bulk re-run to appear, and a layout mismatch fails quietly: `artCropFallbackUrl` degrades `art_crop` to a direct Scryfall hotlink, while `large` has no fallback at all and shows a broken tile.
+`VITE_CARD_CDN` points at a host serving an 86 GB bulk mirror of Scryfall card images, built and populated by a separate repository. The topology spec records that host as "managed separately," so nothing in this repo describes it, tests it, or keeps its path layout aligned with the layout `buildImageUrl` constructs. New sets need a manual bulk re-run to appear, and a layout mismatch failed quietly: `artCropFallbackUrl` degraded `art_crop` to a direct Scryfall hotlink, while `large` had no fallback at all and showed a broken tile.
 
 ## Goal
 
@@ -25,7 +25,7 @@ Serve card art from a CDN this repo owns and can test, populated on demand from 
 | Fill failure | `302` to the Scryfall image URL, store nothing, retry on next request |
 | Scryfall 404 | `404` — a print that does not exist is not a transient failure |
 | Cutover | Flip `VITE_CARD_CDN`; accept the cold-bucket warmup |
-| Worker deploy | `cloudflare_workers_script` reading `iac/workers/card-cdn.js` via `file()`. No wrangler, no bundler |
+| Worker deploy | `cloudflare_workers_script` with `content_file` + `content_sha256` pointed at `iac/workers/card-cdn.js`. No wrangler, no bundler |
 
 ## Approaches considered
 
@@ -46,7 +46,6 @@ WebP needs Images transformations, whose free allowance is 5,000 unique/month. U
 - **R2 bucket** — keyed exactly as `buildImageUrl` builds paths: `{large|art_crop}/{front|back}/{a}/{b}/{id}.jpg`, where `a`/`b` are the first two characters of the print id.
 - **Worker** (`iac/workers/card-cdn.js`) — the only reader/writer of the bucket. Self-contained plain JS with no imports, because Terraform embeds the file directly.
 - **DNS + route** — proxied record for `edh-images.reilley.dev` in the existing `reilley.dev` zone, routed to the Worker.
-- **Rate-limiting rule** — one rule scoped to the hostname. The free plan includes exactly one and `iac/` does not currently use it.
 
 ### Request flow
 

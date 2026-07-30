@@ -317,6 +317,28 @@ CI/Buildx cache and release tag cascade: [ci-and-release](2026-07-20-ci-and-rele
 
 ---
 
+## Card art CDN (`iac/card-cdn.tf`, `iac/workers/card-cdn.js`)
+
+`edh-images.reilley.dev` is a Cloudflare Worker over the `edh-card-images` R2 bucket, both
+Terraform-owned. The Worker is the only reader/writer of the bucket: a hit serves the stored
+bytes with a year-long `immutable` cache, a miss fetches the print from Scryfall, stores the
+JPEG unchanged, and serves it. A failed fill `302`s to Scryfall; a Scryfall `404` is a `404`.
+The bucket starts empty and fills from real traffic — there is no bulk upload and no cron.
+
+The hostname is a first-level subdomain so free Universal SSL covers it. Nothing metered is in
+the request path (Workers' free 100k/day rejects rather than bills, R2 egress is free, no
+Cloudflare Images subscription exists), so only R2 storage can accrue — bounded by the catalog
+at roughly 20 GB fully warm. Image traffic deliberately does **not** cross the Cloudflare
+Tunnel or the Nitro BFF.
+
+`VITE_CARD_CDN` is baked at image build time from the same-named GitHub Actions repo variable
+([ci-and-release](2026-07-20-ci-and-release.md)); changing the CDN needs a rebuild. Path layout
+is owned by `buildImageUrl` ([deck-list-and-builder](2026-07-20-deck-list-and-builder.md)) and
+duplicated in the Worker's matcher, with a round-trip test at `iac/workers/card-cdn.test.ts`
+guarding the drift.
+
+---
+
 ## Out of Scope
 
 - **Multi-node horizontal scale of same image tag**: not in scope. Concurrent Terminating
@@ -325,8 +347,6 @@ CI/Buildx cache and release tag cascade: [ci-and-release](2026-07-20-ci-and-rele
 - **Cluster bootstrap**: k3s node setup is out of scope for this repo. Terraform deploys *into*
   an existing cluster.
 - **Homelab Docker/Traefik**: retired as the hosting path. Only k3s + Cloudflare Tunnel.
-- **Card art CDN** (`cards.example.com`): managed separately; `VITE_CARD_CDN` build-arg is
-  optional. This spec covers the game server and BFF only.
 - **Multi-environment (staging vs prod) Terraform**: one `iac/` tree targets one cluster.
   Staging can be a second `terraform workspace` or a separate directory, not currently set up.
 - **mTLS between in-cluster services**: accepted for v1. Cloudflare Tunnel provides edge TLS;
