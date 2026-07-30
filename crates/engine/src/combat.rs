@@ -722,6 +722,98 @@ impl Game {
             })
     }
 
+    /// The attacking bands declared this combat (CR 702.22c), each entry one band's members.
+    /// Empty for every combat in which nobody declared one.
+    pub fn attacking_bands(&self) -> &[Vec<ObjectId>] {
+        &self.combat.bands
+    }
+
+    /// Whether `object` is what the \[quality\] in "bands with other \[quality\]" names
+    /// (CR 702.22b) — the membership test every creature in a band declared on that keyword's
+    /// strength has to pass (CR 702.22c).
+    fn matches_bands_with_quality(&self, object: ObjectId, quality: BandsWithQuality) -> bool {
+        match quality {
+            BandsWithQuality::Legendary => self.def_of(object).legendary,
+        }
+    }
+
+    /// Whether `band` is a legal attacking band within the declaration `attackers` (CR 702.22c —
+    /// "one or more attacking creatures with banding and up to one attacking creature without
+    /// banding (even if it has 'bands with other') are all in a 'band'. They may also declare that
+    /// one or more attacking \[quality\] creatures with 'bands with other \[quality\]' and any
+    /// number of other attacking \[quality\] creatures are all in a band"). "Each creature may be a
+    /// member of only one of them" is a property of the whole set, so
+    /// [`Game::declare_attackers_in_bands`] checks it across bands.
+    fn band_is_legal(&self, band: &[ObjectId], attackers: &[(ObjectId, Defender)]) -> bool {
+        // A one-creature "band" is indistinguishable from that creature attacking alone, so there
+        // is nothing to record — reject rather than store a grouping that means nothing.
+        if band.len() < 2 {
+            return false;
+        }
+        let mut defenders = Vec::with_capacity(band.len());
+        for &member in band {
+            // Only an *attacking* creature can be in an attacking band (CR 702.22c); this also
+            // establishes that every member is a live permanent, since `declare_attackers`'
+            // `can_attack` gate has already run over the same list.
+            let Some(&(_, defender)) = attackers.iter().find(|&&(a, _)| a == member) else {
+                return false;
+            };
+            defenders.push(defender);
+        }
+        // CR 702.22d: "all creatures in an attacking band must attack the same player,
+        // planeswalker, or battle."
+        if defenders.windows(2).any(|w| w[0] != w[1]) {
+            return false;
+        }
+        // CR 702.22c's first sentence — a plain-banding band.
+        let with_banding = band
+            .iter()
+            .filter(|&&m| self.has_keyword(m, Keyword::Banding))
+            .count();
+        if with_banding >= 1 && band.len() - with_banding <= 1 {
+            return true;
+        }
+        // CR 702.22c's second sentence — a "bands with other \[quality\]" band. Every printed
+        // quality is tried: a band only needs *some* quality under which it holds.
+        [BandsWithQuality::Legendary].into_iter().any(|quality| {
+            band.iter()
+                .any(|&m| self.has_keyword(m, Keyword::BandsWith(quality)))
+                && band
+                    .iter()
+                    .all(|&m| self.matches_bands_with_quality(m, quality))
+        })
+    }
+
+    /// [`Game::declare_attackers`] plus declared attacking bands (CR 702.22c). The bands are
+    /// checked first and the whole declaration is rejected if any is illegal, so a rejected band
+    /// leaves no attack behind.
+    pub(crate) fn declare_attackers_in_bands(
+        &mut self,
+        player: PlayerId,
+        attackers: &[(ObjectId, Defender)],
+        bands: &[Vec<ObjectId>],
+    ) -> Result<Vec<Event>, Reject> {
+        // CR 702.22c: "a player may declare as many attacking bands as they want, but each
+        // creature may be a member of only one of them" — which also rules out one creature listed
+        // twice inside a single band.
+        let mut members: Vec<ObjectId> = bands.concat();
+        let claimed = members.len();
+        members.sort_unstable();
+        members.dedup();
+        if members.len() != claimed {
+            return Err(Reject::IllegalDeclaration);
+        }
+        if bands
+            .iter()
+            .any(|band| !self.band_is_legal(band, attackers))
+        {
+            return Err(Reject::IllegalDeclaration);
+        }
+        let events = self.declare_attackers(player, attackers)?;
+        self.combat.bands = bands.to_vec();
+        Ok(events)
+    }
+
     /// The active player declares attackers during their declare-attackers step. Each must be
     /// an untapped, non-sick creature they control, attacking a living opponent or one of that
     /// opponent's planeswalkers (CR 508.1a); each taps unless it has vigilance.

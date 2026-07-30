@@ -1,0 +1,264 @@
+//! Legends (`leg`) grind — increment 3: bands-with-other, slice 1 (band formation).
+//!
+//! CR 702.22c is the whole of this slice: "As a player declares attackers, they may declare that
+//! one or more attacking creatures with banding and up to one attacking creature without banding
+//! … are all in a 'band.' They may also declare that one or more attacking \[quality\] creatures
+//! with 'bands with other \[quality\]' and any number of other attacking \[quality\] creatures are
+//! all in a band." A band is *recorded* here and nothing else — being blocked as a group
+//! (CR 702.22h) and the damage-assignment transfer (CR 702.22j/k) are slices 2 and 3.
+
+mod common;
+
+use common::*;
+use engine::*;
+
+// ── local drivers ─────────────────────────────────────────────────────────────────────
+
+/// Player 0 with a Cathedral of Serra on the battlefield, plus `creatures` spawned for them.
+fn cathedral_board(creatures: &[&str]) -> (Game, Vec<ObjectId>) {
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Cathedral of Serra"));
+    let ids = creatures
+        .iter()
+        .map(|name| game.spawn_on_battlefield(PlayerId(0), card(name)))
+        .collect();
+    (game, ids)
+}
+
+/// P0 declares `attackers` at P1 with `bands` as its declared attacking bands (CR 702.22c).
+fn attack_in_bands(
+    game: &mut Game,
+    attackers: &[ObjectId],
+    bands: Vec<Vec<ObjectId>>,
+) -> Result<Vec<Event>, Reject> {
+    advance_until(game, |g| g.current_step() == Step::DeclareAttackers);
+    game.submit(Intent::DeclareAttackersInBands {
+        player: PlayerId(0),
+        attackers: attackers
+            .iter()
+            .map(|&a| (a, Defender::Player(PlayerId(1))))
+            .collect(),
+        bands,
+    })
+}
+
+// ── tests ─────────────────────────────────────────────────────────────────────────────
+
+#[test]
+fn cathedral_of_serra_grants_bands_with_other_legendary_creatures() {
+    // "White legendary creatures you control have 'bands with other legendary creatures.'"
+    let (game, ids) = cathedral_board(&["Jasmine Boreal", "Barktooth Warbeard", "Grizzly Bears"]);
+    let [jasmine, barktooth, bears] = ids[..] else {
+        unreachable!("three creatures spawned")
+    };
+    let bands_with = Keyword::BandsWith(BandsWithQuality::Legendary);
+    assert!(
+        game.has_keyword(jasmine, bands_with),
+        "Jasmine Boreal is a white legendary creature, so the Cathedral grants it"
+    );
+    assert!(
+        !game.has_keyword(barktooth, bands_with),
+        "Barktooth Warbeard is legendary but not white — no grant"
+    );
+    assert!(
+        !game.has_keyword(bears, bands_with),
+        "Grizzly Bears is neither white nor legendary"
+    );
+}
+
+#[test]
+fn a_legendary_band_forms_and_still_deals_its_combat_damage() {
+    // CR 702.22c: one member has "bands with other legendary creatures" (Jasmine, via the
+    // Cathedral) and the other is a legendary creature, so the band is legal — Barktooth needs no
+    // grant of its own. Slice 1 changes no damage, so the 4/5 and the 6/5 still connect for 10.
+    let (mut game, ids) = cathedral_board(&["Jasmine Boreal", "Barktooth Warbeard"]);
+    let [jasmine, barktooth] = ids[..] else {
+        unreachable!("two creatures spawned")
+    };
+    attack_in_bands(&mut game, &ids, vec![vec![jasmine, barktooth]])
+        .expect("a legendary band is a legal declaration");
+
+    assert_eq!(
+        game.attacking_bands(),
+        [vec![jasmine, barktooth]],
+        "the declared band is recorded as a group"
+    );
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+    assert_eq!(
+        game.life(PlayerId(1)),
+        10,
+        "recording the band must not cost the band its combat damage"
+    );
+}
+
+#[test]
+fn a_band_needs_a_member_with_bands_with_other() {
+    // CR 702.22c: "at least one has 'bands with other legendary creatures.'" Two legends with no
+    // Cathedral in play is two legends, not a band.
+    let mut game = Game::new();
+    let jasmine = game.spawn_on_battlefield(PlayerId(0), card("Jasmine Boreal"));
+    let barktooth = game.spawn_on_battlefield(PlayerId(0), card("Barktooth Warbeard"));
+    assert!(
+        attack_in_bands(
+            &mut game,
+            &[jasmine, barktooth],
+            vec![vec![jasmine, barktooth]]
+        )
+        .is_err(),
+        "no member has bands with other, so the band is illegal"
+    );
+    assert!(
+        game.attacking_bands().is_empty(),
+        "a rejected declaration records nothing"
+    );
+    assert_eq!(game.life(PlayerId(1)), 20, "and nobody attacked");
+}
+
+#[test]
+fn a_nonlegendary_creature_cant_join_a_legendary_band() {
+    // CR 702.22c: every other member must be a creature of the band's own \[quality\] — the Bears
+    // is not legendary, so it can't ride along on Jasmine's grant.
+    let (mut game, ids) = cathedral_board(&["Jasmine Boreal", "Grizzly Bears"]);
+    let [jasmine, bears] = ids[..] else {
+        unreachable!("two creatures spawned")
+    };
+    assert!(
+        attack_in_bands(&mut game, &ids, vec![vec![jasmine, bears]]).is_err(),
+        "Grizzly Bears fails the band's quality (CR 702.22c)"
+    );
+    assert!(game.attacking_bands().is_empty());
+}
+
+#[test]
+fn a_band_must_attack_the_same_defender() {
+    // CR 702.22d: "All creatures in an attacking band must attack the same player, planeswalker,
+    // or battle."
+    let mut game = Game::with_players(4, 0);
+    game.spawn_on_battlefield(PlayerId(0), card("Cathedral of Serra"));
+    let jasmine = game.spawn_on_battlefield(PlayerId(0), card("Jasmine Boreal"));
+    let barktooth = game.spawn_on_battlefield(PlayerId(0), card("Barktooth Warbeard"));
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+    let split = game.submit(Intent::DeclareAttackersInBands {
+        player: PlayerId(0),
+        attackers: vec![
+            (jasmine, Defender::Player(PlayerId(1))),
+            (barktooth, Defender::Player(PlayerId(2))),
+        ],
+        bands: vec![vec![jasmine, barktooth]],
+    });
+    assert!(
+        split.is_err(),
+        "a band split across two defenders is illegal"
+    );
+}
+
+#[test]
+fn a_band_member_must_be_an_attacker() {
+    // CR 702.22c declares bands out of the *attacking* creatures.
+    let (mut game, ids) =
+        cathedral_board(&["Jasmine Boreal", "Barktooth Warbeard", "Jedit Ojanen"]);
+    let [jasmine, barktooth, jedit] = ids[..] else {
+        unreachable!("three creatures spawned")
+    };
+    assert!(
+        attack_in_bands(&mut game, &[jasmine, barktooth], vec![vec![jasmine, jedit]]).is_err(),
+        "Jedit was never declared as an attacker"
+    );
+}
+
+#[test]
+fn a_creature_can_be_in_only_one_band() {
+    // CR 702.22c: "A player may declare as many attacking bands as they want, but each creature
+    // may be a member of only one of them."
+    let (mut game, ids) =
+        cathedral_board(&["Jasmine Boreal", "Barktooth Warbeard", "Jedit Ojanen"]);
+    let [jasmine, barktooth, jedit] = ids[..] else {
+        unreachable!("three creatures spawned")
+    };
+    assert!(
+        attack_in_bands(
+            &mut game,
+            &ids,
+            vec![vec![jasmine, barktooth], vec![jasmine, jedit]],
+        )
+        .is_err(),
+        "Jasmine cannot be a member of two bands"
+    );
+}
+
+#[test]
+fn two_bands_can_be_declared_in_one_attack() {
+    // CR 702.22c: "A player may declare as many attacking bands as they want." Jedit is white and
+    // legendary, so the Cathedral grants it too — each band carries its own granter.
+    let (mut game, ids) = cathedral_board(&[
+        "Jasmine Boreal",
+        "Barktooth Warbeard",
+        "Jedit Ojanen",
+        "Hunding Gjornersen",
+    ]);
+    let [jasmine, barktooth, jedit, hunding] = ids[..] else {
+        unreachable!("four creatures spawned")
+    };
+    attack_in_bands(
+        &mut game,
+        &ids,
+        vec![vec![jasmine, barktooth], vec![jedit, hunding]],
+    )
+    .expect("two legendary bands in one declaration");
+    assert_eq!(
+        game.attacking_bands(),
+        [vec![jasmine, barktooth], vec![jedit, hunding]]
+    );
+}
+
+#[test]
+fn plain_banding_forms_a_band_with_up_to_one_creature_without_it() {
+    // CR 702.22c's first sentence, which "bands with other" is a special form of (CR 702.22b):
+    // "one or more attacking creatures with banding and up to one attacking creature without
+    // banding … are all in a band."
+    let mut game = Game::new();
+    let wolves = game.spawn_on_battlefield(PlayerId(0), card("Timber Wolves"));
+    let bears = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    assert!(
+        attack_in_bands(&mut game, &[wolves, bears], vec![vec![wolves, bears]]).is_ok(),
+        "one banding creature plus one without it is a legal band"
+    );
+
+    let mut game = Game::new();
+    let wolves = game.spawn_on_battlefield(PlayerId(0), card("Timber Wolves"));
+    let bears = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let more_bears = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    assert!(
+        attack_in_bands(
+            &mut game,
+            &[wolves, bears, more_bears],
+            vec![vec![wolves, bears, more_bears]],
+        )
+        .is_err(),
+        "only one member may lack banding (CR 702.22c)"
+    );
+}
+
+#[test]
+fn a_band_of_one_is_not_a_band() {
+    // A single creature is behaviorally never a band — nothing is blocked as a group with it and
+    // no damage division moves — so the declaration is rejected rather than recorded as noise.
+    let (mut game, ids) = cathedral_board(&["Jasmine Boreal"]);
+    assert!(
+        attack_in_bands(&mut game, &ids, vec![vec![ids[0]]]).is_err(),
+        "a one-member band is rejected"
+    );
+}
+
+#[test]
+fn an_ordinary_attack_declares_no_bands() {
+    // The additive half of the slice: nothing about a bandless attack changed.
+    let (mut game, ids) = cathedral_board(&["Jasmine Boreal"]);
+    attack_with(&mut game, ids.clone());
+    assert!(
+        game.attacking_bands().is_empty(),
+        "an ordinary declaration records no band"
+    );
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+    assert_eq!(game.life(PlayerId(1)), 16, "the 4/5 connected as usual");
+}

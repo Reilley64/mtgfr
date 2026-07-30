@@ -1,39 +1,40 @@
-# {T}, Exile two target cards from an opponent's graveyard: Remove target attacking or blocking
-# creature from combat and tap it.
+# {T}: Return two target cards from an opponent's graveyard to their hand. Destroy target
+# attacking creature.
 name = "Spurnmage Advocate"
 sets = ["cmd", "jud"]
 id = "0477b923-9f32-4e7f-ac08-c715cca819a4"
 default_print = "9c014b89-895c-432f-94f5-cda2dfac57e4"
 otags = ["activated-ability", "graveyard-hate", "removal-tempo"]
-oracle = "{T}, Exile two target cards from an opponent's graveyard: Remove target attacking or blocking creature from combat and tap it."
-approximates = "only \"attacking\" is modeled — no `blocking` filter axis exists yet on `PermanentFilter` (see `Effect::RemoveFromCombat`'s own doc); widen with one if a card needs a blocking target too."
-subtypes = ["Human", "Cleric"]
+oracle = "{T}: Return two target cards from an opponent's graveyard to their hand. Destroy target attacking creature."
+approximates = "the body models text this card does not have: the two graveyard cards are exiled as an activation cost instead of returned to their owner's hand on resolution, and the creature is removed from combat and tapped instead of destroyed. Needs a \"return N target cards from an opponent's graveyard to their owner's hand\" effect."
+subtypes = ["Human", "Nomad"]
 
 [cost]
-generic = 1
 white = 1
 
 [kind]
 type = "creature"
-power = 2
-toughness = 2
+power = 1
+toughness = 1
 
-# {T}, Exile two target cards from an opponent's graveyard: Remove target attacking or blocking
-# creature from combat and tap it.
-# ponytail: only "attacking" is modeled — no `blocking` filter axis exists yet on `PermanentFilter`
-# (see `Effect::RemoveFromCombat`'s own doc); widen with one if a card needs a blocking target too.
+# {T}: Return two target cards from an opponent's graveyard to their hand. Destroy target
+# attacking creature.
+# ponytail: the two graveyard cards are exiled as an activation cost rather than returned to their
+# owner's hand as part of the resolution, and the creature is removed from combat and tapped rather
+# than destroyed. Upgrade path: a graveyard-to-hand effect over the same `card_in_graveyard` target
+# form `Effect::Exile(ExileEffect::Target)` already uses, then a plain destroy on the second clause.
 [[abilities]]
 timing = "activated"
 taps_self = true
 graveyard_exile_target_count = 2
 
-# Remove target attacking or blocking creature from combat
+# Destroy target attacking creature.
 [[abilities.effects]]
 type = "control"
 mode = "remove_from_combat"
 target = { permanent = { types = "creature", attacking = true } }
 
-# and tap it.
+# Destroy target attacking creature.
 [[abilities.effects]]
 type = "control"
 mode = "tap_target"

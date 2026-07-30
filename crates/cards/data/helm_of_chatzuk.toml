@@ -9,7 +9,7 @@ sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "fbb", "lea", "l
 id = "948e3bb7-8265-4e95-acd1-a0c4f22441df"
 default_print = "b0d2c643-39cc-47f8-9f70-327f004c1373"
 oracle = "{1}, {T}: Target creature gains banding until end of turn. (Any creatures with banding, and up to one without, can attack in a band. Bands are blocked as a group. If any creatures with banding a player controls are blocking or being blocked by a creature, that player divides that creature's combat damage, not its controller, among any of the creatures it's being blocked by or is blocking.)"
-approximates = "the granted banding only takes over the damage division when the creature blocks; attacking in a band is not modeled"
+approximates = "the granted banding bands form, but nothing follows from one: a band is not blocked as a group, and while attacking, this does not take over the division of a blocker's combat damage"
 
 [cost]
 generic = 1

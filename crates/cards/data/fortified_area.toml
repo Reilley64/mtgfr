@@ -9,6 +9,7 @@ sets = ["4bb", "4ed", "leg", "ren"]
 id = "cef37acf-ee97-48bf-a605-b17efcce5ce8"
 default_print = "8f89968f-0182-4639-96fd-0dc94b6ad926"
 oracle = "Wall creatures you control get +1/+0 and have banding. (Any creatures with banding, and up to one without, can attack in a band. Bands are blocked as a group. If any creatures with banding you control are blocking or being blocked by a creature, you divide that creature's combat damage, not its controller, among any of the creatures it's being blocked by or is blocking.)"
+approximates = "the granted bands form, but nothing follows from one: a band is not blocked as a group, and while attacking, this does not take over the division of a blocker's combat damage"
 
 [cost]
 generic = 1

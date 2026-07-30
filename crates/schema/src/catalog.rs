@@ -68,7 +68,7 @@ pub(crate) const COLORS: [engine::Color; 5] = [
 /// Stable snake_case id for a keyword on the wire (`flying`, `first_strike`, `ward:2`,
 /// `protection:red`). Used by battlefield `ObjectView` badges and catalog `keywords`.
 pub(crate) fn wire_keyword(keyword: engine::Keyword) -> String {
-    use engine::{Color, Keyword, ProtectionScope};
+    use engine::{BandsWithQuality, Color, Keyword, ProtectionScope};
     match keyword {
         Keyword::Flying => "flying".into(),
         Keyword::FirstStrike => "first_strike".into(),
@@ -94,6 +94,7 @@ pub(crate) fn wire_keyword(keyword: engine::Keyword) -> String {
         Keyword::LesserPowerCantBlock => "lesser_power_cant_block".into(),
         Keyword::CantBlock => "cant_block".into(),
         Keyword::Banding => "banding".into(),
+        Keyword::BandsWith(BandsWithQuality::Legendary) => "bands_with:legendary".into(),
         Keyword::CanBlockOnlyFlyers => "can_block_only_flyers".into(),
         Keyword::Decayed => "decayed".into(),
         Keyword::Myriad => "myriad".into(),
@@ -120,7 +121,7 @@ pub(crate) fn wire_keyword(keyword: engine::Keyword) -> String {
 
 /// Human-readable keyword for modifier ledgers where a compact string contribution is enough.
 pub(crate) fn keyword_label(keyword: engine::Keyword) -> String {
-    use engine::{Color, Keyword, ProtectionScope};
+    use engine::{BandsWithQuality, Color, Keyword, ProtectionScope};
     match keyword {
         Keyword::Flying => "Flying".into(),
         Keyword::FirstStrike => "First strike".into(),
@@ -146,6 +147,9 @@ pub(crate) fn keyword_label(keyword: engine::Keyword) -> String {
         Keyword::LesserPowerCantBlock => "Lesser-power creatures can't block it".into(),
         Keyword::CantBlock => "Can't block".into(),
         Keyword::Banding => "Banding".into(),
+        Keyword::BandsWith(BandsWithQuality::Legendary) => {
+            "Bands with other legendary creatures".into()
+        }
         Keyword::CanBlockOnlyFlyers => "Can block only creatures with flying".into(),
         Keyword::Decayed => "Decayed".into(),
         Keyword::Myriad => "Myriad".into(),

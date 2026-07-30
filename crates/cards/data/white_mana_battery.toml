@@ -1,0 +1,49 @@
+# {2}, {T}: Put a charge counter on this artifact.
+# {T}, Remove any number of charge counters from this artifact: Add {W}, then add an additional
+# {W} for each charge counter removed this way.
+name = "White Mana Battery"
+sets = ["4bb", "4ed", "leg", "ren"]
+id = "cf58682f-c305-4803-b54b-37f0841788e9"
+default_print = "b622e694-858d-482f-a67d-0e52d268708c"
+oracle = "{2}, {T}: Put a charge counter on this artifact.\n{T}, Remove any number of charge counters from this artifact: Add {W}, then add an additional {W} for each charge counter removed this way."
+
+[cost]
+generic = 4
+
+[kind]
+type = "artifact"
+
+# {2}, {T}: Put a charge counter on this artifact.
+[[abilities]]
+timing = "activated"
+taps_self = true
+activation_cost = { generic = 2 }
+
+# Put a charge counter on this artifact.
+[[abilities.effects]]
+type = "counters"
+mode = "put_counters"
+count = 1
+target = "this"
+kind = "charge"
+
+# {T}, Remove any number of charge counters from this artifact: Add {W}, then add an additional
+# {W} for each charge counter removed this way.
+[[abilities]]
+timing = "activated"
+taps_self = true
+remove_counters_x = true
+remove_counters_kind = "charge"
+
+# Add {W},
+[[abilities.effects]]
+type = "mana"
+mode = "add"
+mana = ["white"]
+
+# then add an additional {W} for each charge counter removed this way.
+[[abilities.effects]]
+type = "mana"
+mode = "add"
+mana = ["white"]
+repeat = "x"

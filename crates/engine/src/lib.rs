@@ -408,6 +408,11 @@ impl Game {
                 Intent::DeclareAttackers { player, attackers } => {
                     self.declare_attackers(player, &attackers)?
                 }
+                Intent::DeclareAttackersInBands {
+                    player,
+                    attackers,
+                    bands,
+                } => self.declare_attackers_in_bands(player, &attackers, &bands)?,
                 Intent::DeclareBlockers { player, blocks } => {
                     self.declare_blockers(player, &blocks)?
                 }

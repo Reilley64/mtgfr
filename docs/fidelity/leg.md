@@ -41,10 +41,13 @@ and `crates/cards/src/` was re-read against the incoming set. Two claims fell:
   Land's Edge, Living Plane, Nether Void, Revelation, Storm World, The Abyss). CR 704.5k now
   has plenty to bite on. Moves to real work as **increment 2**.
 - **Spurnmage Advocate** — "only 'attacking' is modeled — no `blocking` filter axis exists
-  yet on `PermanentFilter`." Stale independent of this set: the 2ed grind's Righteousness
-  increment added `PermanentFilter::blocking` (`crates/cards/src/types/filter.rs:820`). The
-  card can widen its filter and drop the note; folded into **increment 8**, which needs the
-  attacking-or-blocking union anyway.
+  yet on `PermanentFilter`." The note describes a card that does not exist. Spurnmage Advocate
+  reads "{T}: Return two target cards from an opponent's graveyard to their hand. Destroy target
+  attacking creature." — a {W} 1/1 Human Nomad with a plain `attacking` target and no "or
+  blocking" clause. The pool TOML was authored against invented text (the wrong cost, P/T and
+  subtypes, an exile-as-cost first clause, and Labyrinth of Skophos' remove-from-combat as the
+  second). **Increment 8** cleared the bogus note and corrected the front matter; the body is
+  now **increment 120**, carrying a precise `approximates` until it lands.
 
 Everything else held. The `reveal.rs` `matched_dest` trio, the CR 613 timestamp note in
 `characteristics.rs`, the text-changer composition note in `types/object.rs`, and the
@@ -188,14 +191,14 @@ the record shows what unblocked it.
 - [ ] **Backfire** {U} · Enchantment — Aura — increment 20
 - [ ] **Bartel Runeaxe** {3}{B}{R}{G} · Legendary Creature — Giant Warrior — increment 15
 - [ ] **Beasts of Bogardan** {4}{R} · Creature — Beast — increment 13
-- [ ] **Black Mana Battery** {4} · Artifact — increment 11
+- [x] **Black Mana Battery** {4} · Artifact — increment 11
 - [ ] **Blazing Effigy** {1}{R} · Creature — Elemental — increment 19
 - [ ] **Blood Lust** {1}{R} · Instant — increment 21
-- [ ] **Blue Mana Battery** {4} · Artifact — increment 11
+- [x] **Blue Mana Battery** {4} · Artifact — increment 11
 - [ ] **Boris Devilboon** {3}{B}{R} · Legendary Creature — Zombie Wizard — increment 97
 - [ ] **Brine Hag** {2}{U}{U} · Creature — Hag — increment 22
 - [ ] **Bronze Horse** {7} · Artifact Creature — Horse — increment 12
-- [ ] **Cathedral of Serra** — · Land — increment 3
+- [x] **Cathedral of Serra** — · Land — increment 3 (slice 1); residual — increment 3 slices 2, 3
 - [ ] **Caverns of Despair** {2}{R}{R} · World Enchantment — increment 2, 23
 - [ ] **Chains of Mephistopheles** {1}{B} · Enchantment — increment 24
 - [x] **Chromium** {2}{W}{W}{U}{U}{B}{B} · Legendary Creature — Elder Dragon — increment 1; residual — increment 119
@@ -204,9 +207,9 @@ the record shows what unblocked it.
 - [x] **Cosmic Horror** {3}{B}{B}{B} · Creature — Horror — increment 98
 - [x] **Craw Giant** {3}{G}{G}{G}{G} · Creature — Giant — increment 1; residual — increment 119
 - [x] **Crevasse** {2}{R} · Enchantment — increment 4
-- [ ] **Crimson Manticore** {2}{R}{R} · Creature — Manticore — increment 8
+- [x] **Crimson Manticore** {2}{R}{R} · Creature — Manticore — increment 8
 - [ ] **Cyclopean Mummy** {1}{B} · Creature — Zombie — increment 109
-- [ ] **D'Avenant Archer** {2}{W} · Creature — Human Soldier Archer — increment 8
+- [x] **D'Avenant Archer** {2}{W} · Creature — Human Soldier Archer — increment 8
 - [x] **Deadfall** {2}{G} · Enchantment — increment 4
 - [ ] **Demonic Torment** {2}{B} · Enchantment — Aura — increment 95
 - [ ] **Divine Intervention** {6}{W}{W} · Enchantment — increment 27
@@ -242,7 +245,7 @@ the record shows what unblocked it.
 - [ ] **Gravity Sphere** {2}{R} · World Enchantment — increment 2, 44
 - [x] **Great Wall** {2}{W} · Enchantment — increment 4
 - [ ] **Greater Realm of Preservation** {1}{W} · Enchantment — increment 12
-- [ ] **Green Mana Battery** {4} · Artifact — increment 11
+- [x] **Green Mana Battery** {4} · Artifact — increment 11
 - [ ] **Halfdane** {1}{W}{U}{B} · Legendary Creature — Shapeshifter — increment 22
 - [ ] **Hammerheim** — · Legendary Land — increment 5
 - [ ] **Hazezon Tamar** {4}{R}{G}{W} · Legendary Creature — Human Warrior — increment 45
@@ -264,7 +267,7 @@ the record shows what unblocked it.
 - [ ] **Kismet** {3}{W} · Enchantment — increment 51
 - [ ] **Knowledge Vault** {4} · Artifact — increment 52
 - [ ] **Kry Shield** {2} · Artifact — increment 94
-- [ ] **Lady Caleria** {3}{G}{G}{W}{W} · Legendary Creature — Elf Archer — increment 8
+- [x] **Lady Caleria** {3}{G}{G}{W}{W} · Legendary Creature — Elf Archer — increment 8
 - [ ] **Lady Evangela** {W}{U}{B} · Legendary Creature — Human Cleric — increment 94
 - [ ] **Land Equilibrium** {2}{U}{U} · Enchantment — increment 53
 - [ ] **Land's Edge** {1}{R}{R} · World Enchantment — increment 2, 25
@@ -303,7 +306,7 @@ the record shows what unblocked it.
 - [x] **Rapid Fire** {3}{W} · Instant — increment 1; residual — increment 119
 - [ ] **Rasputin Dreamweaver** {4}{W}{U} · Legendary Creature — Human Wizard — increment 68
 - [ ] **Recall** {X}{X}{U} · Sorcery — increment 69
-- [ ] **Red Mana Battery** {4} · Artifact — increment 11
+- [x] **Red Mana Battery** {4} · Artifact — increment 11
 - [ ] **Reincarnation** {1}{G}{G} · Instant — increment 70
 - [ ] **Relic Bind** {2}{U} · Enchantment — Aura — increment 20
 - [ ] **Remove Enchantments** {W} · Instant — increment 71
@@ -340,7 +343,7 @@ the record shows what unblocked it.
 - [ ] **The Wretched** {3}{B}{B} · Creature — Demon — increment 104
 - [ ] **Time Elemental** {2}{U} · Creature — Elemental — increment 82
 - [ ] **Tolaria** — · Legendary Land — increment 3, 5
-- [ ] **Tor Wauki** {2}{B}{B}{R} · Legendary Creature — Human Archer — increment 8
+- [x] **Tor Wauki** {2}{B}{B}{R} · Legendary Creature — Human Archer — increment 8
 - [ ] **Touch of Darkness** {B} · Instant — increment 96
 - [ ] **Transmutation** {1}{B} · Instant — increment 22
 - [ ] **Triassic Egg** {4} · Artifact — increment 83
@@ -361,7 +364,7 @@ the record shows what unblocked it.
 - [ ] **Wall of Vapor** {3}{U} · Creature — Wall — increment 12
 - [ ] **Wall of Wonder** {2}{U}{U} · Creature — Wall — increment 89
 - [ ] **Whirling Dervish** {G}{G} · Creature — Human Monk — increment 90
-- [ ] **White Mana Battery** {4} · Artifact — increment 11
+- [x] **White Mana Battery** {4} · Artifact — increment 11
 - [x] **Willow Satyr** {2}{G}{G} · Creature — Satyr — increment 6
 - [ ] **Winds of Change** {R} · Sorcery — increment 91
 - [ ] **Winter Blast** {X}{G} · Sorcery — increment 61, 92

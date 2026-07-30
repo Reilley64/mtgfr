@@ -317,6 +317,25 @@ impl TextWords {
     }
 }
 
+/// The \[quality\] in "bands with other \[quality\]" (CR 702.22b) — what every member of a band
+/// declared on that keyword's strength has to be (CR 702.22c).
+/// ponytail: a purpose-built axis rather than a [`PermanentFilter`](crate::PermanentFilter), which
+/// would make [`Keyword`] non-`Copy` for the sake of two printed qualities. Master of the Hunt's
+/// "bands with other creatures named Wolves of the Hunt" is the second one and arrives with
+/// increment #3's slice 4.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "card-dsl",
+    derive(serde::Deserialize),
+    serde(rename_all = "snake_case")
+)]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
+pub enum BandsWithQuality {
+    /// "bands with other legendary creatures" — the five Legends color lands' grant (CR 205.4a's
+    /// Legendary supertype).
+    Legendary,
+}
+
 /// The evergreen keywords that change combat/timing math in the Phase 1 pool.
 ///
 /// In TOML a keyword is a bare string (`"flying"`) or, for the parametrized ones, a
@@ -399,13 +418,24 @@ pub enum Keyword {
     /// "This creature can't block" (CR 509.1a — Bloodghast is never a legal blocker). Read by
     /// [`Game::can_block`].
     CantBlock,
-    /// Banding (CR 702.22). Only the damage-assignment half is modeled: when a creature with
-    /// banding is among an attacker's blockers, *its* controller divides that attacker's combat
-    /// damage rather than the attacking player (CR 702.22e). See [`Game::damage_assigner`].
-    /// ponytail: attacking as a band is not modeled — `Intent::DeclareAttackers` carries a flat
-    /// list of attackers with no grouping, and bands would have to travel through the intent, the
-    /// projection, the proto, and the client's attack UI. See increment #79.
+    /// Banding (CR 702.22). Two halves are modeled: the blocker-side damage assignment — when a
+    /// creature with banding is among an attacker's blockers, *its* controller divides that
+    /// attacker's combat damage rather than the attacking player (CR 702.22j), see
+    /// [`Game::damage_assigner`] — and attacking in a band (CR 702.22c), see
+    /// [`Game::declare_attackers_in_bands`].
+    /// ponytail: a declared band is recorded and nothing more. Being blocked as a group
+    /// (CR 702.22h/i) and the attacker-side damage division (CR 702.22k) are not modeled yet, and
+    /// the band cannot be declared over the wire — `Intent::DeclareAttackersInBands` has no
+    /// `WireIntent` counterpart, so the proto and the client's attack UI still see a flat attacker
+    /// list. See increment #3's slices 2 and 3.
     Banding,
+    /// "Bands with other \[quality\]" (CR 702.22b) — a special form of banding whose \[quality\]
+    /// is the membership test for a band declared on its strength (CR 702.22c). Granted, never
+    /// printed: the five Legends color lands each grant it to their color's legendary creatures
+    /// ("White legendary creatures you control have 'bands with other legendary creatures.'"). In
+    /// TOML, `{ bands_with = "legendary" }`. See [`Game::declare_attackers_in_bands`].
+    #[cfg_attr(feature = "card-dsl", serde(rename = "bands_with"))]
+    BandsWith(BandsWithQuality),
     /// Brazen Borrower's printed "can block only creatures with flying" static — MTG names no
     /// keyword for it.
     /// ponytail: modeled as a card-specific keyword-bag arm on the shared block-legality check

@@ -1656,6 +1656,14 @@ impl Game {
         if filter.blocking && !self.combat.blocks.iter().any(|&(b, _)| b == id) {
             return false;
         }
+        // Attacking *or* blocking (Tor Wauki's "target attacking or blocking creature") — the
+        // union of the two axes above, which as an intersection would match nothing.
+        if filter.attacking_or_blocking
+            && !self.combat.attackers.contains(&id)
+            && !self.combat.blocks.iter().any(|&(b, _)| b == id)
+        {
+            return false;
+        }
         // Nothing is blocking *it* (Forcefield's "an unblocked creature of your choice") — the
         // mirror image of the line above, read off the same declared-blocks list.
         if filter.unblocked && self.is_blocked(id) {

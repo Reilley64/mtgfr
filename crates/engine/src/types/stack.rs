@@ -223,6 +223,21 @@ pub enum Intent {
         /// (attacking creature, what it attacks).
         attackers: Vec<(ObjectId, Defender)>,
     },
+    /// [`Self::DeclareAttackers`] plus declared attacking *bands* (CR 702.22c — "as a player
+    /// declares attackers, they may declare that one or more attacking creatures … are all in a
+    /// band"). A separate variant rather than a field on `DeclareAttackers` so that a bandless
+    /// attack — every attack in the game but a banding one — is untouched.
+    /// ponytail: no `WireIntent` counterpart yet, so this is engine-side only: nothing over the
+    /// wire can declare a band until increment #3's slice 2 adds the proto message and the client's
+    /// grouping affordance.
+    DeclareAttackersInBands {
+        player: PlayerId,
+        /// (attacking creature, what it attacks) — exactly [`Self::DeclareAttackers`]'s list.
+        attackers: Vec<(ObjectId, Defender)>,
+        /// Each declared band's members. Every member must also appear in `attackers`, and no
+        /// creature may be in two bands (CR 702.22c).
+        bands: Vec<Vec<ObjectId>>,
+    },
     /// The defending player declares blocks as (blocker, attacker) pairs.
     DeclareBlockers {
         player: PlayerId,
@@ -549,6 +564,12 @@ impl Intent {
                 .iter()
                 .flat_map(|&(a, d)| once(a).chain(d.object_id()))
                 .collect(),
+            // The band members are a subset of `attackers` (CR 702.22c), so listing the attackers
+            // covers every id this intent references.
+            Intent::DeclareAttackersInBands { attackers, .. } => attackers
+                .iter()
+                .flat_map(|&(a, d)| once(a).chain(d.object_id()))
+                .collect(),
             Intent::DeclareBlockers { blocks, .. } => {
                 blocks.iter().flat_map(|&(b, a)| [b, a]).collect()
             }
@@ -664,6 +685,7 @@ impl Intent {
             | Intent::ChannelColorlessMana { player, .. }
             | Intent::ActivateAbility { player, .. }
             | Intent::DeclareAttackers { player, .. }
+            | Intent::DeclareAttackersInBands { player, .. }
             | Intent::DeclareBlockers { player, .. }
             | Intent::ChooseOrder { player, .. }
             | Intent::ChooseTargets { player, .. }
@@ -776,6 +798,7 @@ impl Intent {
             | Intent::ChannelColorlessMana { .. }
             | Intent::ActivateAbility { .. }
             | Intent::DeclareAttackers { .. }
+            | Intent::DeclareAttackersInBands { .. }
             | Intent::DeclareBlockers { .. }
             | Intent::TakeAction { .. }
             | Intent::PassPriority { .. }
@@ -2002,6 +2025,7 @@ pub const CREATURE_TYPES: &[&str] = &[
     "Kor",
     "Leviathan",
     "Lizard",
+    "Manticore",
     "Mercenary",
     "Merfolk",
     "Minion",
@@ -2198,6 +2222,18 @@ pub(crate) struct CombatState {
     /// no special case — a flyer is never divided into a pile, so it is never excluded. Lives on
     /// [`CombatState`] so "this combat" expiry is [`Event::CombatCleared`] and nothing else.
     pub(crate) cant_block_this_combat: Vec<(ObjectId, ObjectId)>,
+    /// The attacking bands declared this combat (CR 702.22c), each entry one band's members in
+    /// declaration order. Empty for nearly every combat — only banding and "bands with other" can
+    /// put a creature in one. CR 702.22e: "once an attacking band has been announced, it lasts for
+    /// the rest of combat, even if something later removes banding … from one or more of the
+    /// creatures in the band", so this is never re-validated after the declaration; combat-scoped
+    /// like everything else here, so [`Event::CombatCleared`] is its only expiry.
+    /// ponytail: transient combat bookkeeping set directly by
+    /// [`Game::declare_attackers_in_bands`](crate::Game), the same as `attackers_declared` above —
+    /// the attacks it groups are what get event-sourced. CR 702.22f's "an attacking creature that's
+    /// removed from combat is also removed from the band it was in" is read as a filter at the use
+    /// site rather than pruned here, mirroring `blockers_of`'s live-permanent filter.
+    pub(crate) bands: Vec<Vec<ObjectId>>,
 }
 
 /// One group of abilities that triggered simultaneously from a single source.

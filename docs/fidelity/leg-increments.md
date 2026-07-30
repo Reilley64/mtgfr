@@ -40,7 +40,7 @@ that clears it (full detail in [leg.md](leg.md) § B):
 | Claim | Where | Falsified by | Increment |
 | --- | --- | --- | --- |
 | "World supertype … the only World card in the pool, so the rule has nothing to interact with yet" | `crates/cards/data/concordant_crossroads.toml` | 11 World enchantments | #2 |
-| "only 'attacking' is modeled — no `blocking` filter axis exists yet on `PermanentFilter`" | `crates/cards/data/spurnmage_advocate.toml` | stale since the 2ed grind — `PermanentFilter::blocking` exists at `crates/cards/src/types/filter.rs:820` | #8 |
+| "only 'attacking' is modeled — no `blocking` filter axis exists yet on `PermanentFilter`" | `crates/cards/data/spurnmage_advocate.toml` | the note describes a card that does not exist — Spurnmage Advocate reads "Destroy target **attacking** creature", with no "or blocking" clause. Cleared in #8; the card's real defect is now #120 | #8, #120 |
 
 Everything else held.
 
@@ -89,24 +89,43 @@ the supertype mean something.
 ### 3. `bands-with-other` — 8 cards, XL
 Depends on: the 2ed banding increment (#14 there) — "bands with other" is banding plus a filter,
 and it inherits banding's damage-assignment machinery wholesale.
-"Bands with other <quality>" (CR 702.22j) is the single largest rules surface in the set: it
-changes who may attack together, how a band is blocked as a group, and — the expensive part —
-transfers combat damage *assignment* from the defending player to the band's controller. Four
-Legends lands grant it by color to legendary creatures, Master of the Hunt grants it by token
-name, and two cards (#5) strip it.
+"Bands with other <quality>" (CR 702.22b) is the single largest rules surface in the set: it
+changes who may attack together (CR 702.22c), how a band is blocked as a group (CR 702.22h/i), and
+— the expensive part — transfers combat damage *assignment* from the defending player to the band's
+controller (CR 702.22j/k). **Five** Legends lands grant it by color to legendary creatures
+(Adventurers' Guildhouse/green, Cathedral of Serra/white, Mountain Stronghold/red, Seafarer's
+Quay/blue, Unholy Citadel/black — the `cycle-leg-banding-land` otag), Master of the Hunt grants it
+by token name, and two cards (#5) strip it. That is the 8: 5 lands + Master of the Hunt + the 2
+strippers.
 *Slice staging:*
-1. **Band formation** — an attack-declaration grouping where creatures declare as a band, legal
-   only if at least one member has a `BandsWith` matching all the others. No damage changes yet;
-   banded attackers are just recorded as a group.
+1. **Band formation** (CR 702.22c — *not* 702.22j, which is the blocker-side damage rule) — an
+   attack-declaration grouping where creatures declare as a band, legal only if some member has a
+   `BandsWith` whose quality every member has. No damage changes yet; banded attackers are just
+   recorded as a group. **LANDED.** `Keyword::BandsWith(BandsWithQuality::Legendary)` in
+   `crates/cards/src/types/card.rs`; `CombatState::bands` + engine-only
+   `Intent::DeclareAttackersInBands` in `crates/engine/src/types/stack.rs`;
+   `Game::declare_attackers_in_bands` / `Game::band_is_legal` / `Game::attacking_bands` in
+   `crates/engine/src/combat.rs` (CR 702.22c's plain-banding sentence is checked too, so a
+   printed-banding band forms); Cathedral of Serra scripted via `keyword_anthem`. Tests:
+   `crates/engine/tests/leg_bands_with_other.rs`. **What slice 2 picks up:** there is no
+   `WireIntent`/proto/client path for `DeclareAttackersInBands` yet, so a band can only be declared
+   from inside the engine — slice 2 owes that wire surface alongside blocked-as-a-group.
 2. **Blocked as a group** — blocking any member blocks the whole band; the block-legality check
    reads the band, not the creature.
 3. **Damage assignment transfer** — the band controller (not the defending player) divides the
    blocker's combat damage among the creatures it is blocked by. This is where the existing
    damage-assignment ordering has to grow a "who chooses" axis.
-4. **The granting cards** — the four lands' color-filtered grants and Master of the Hunt's
-   name-filtered token grant, on top of #6's legendary filter axis for the lands.
+4. **The remaining granting cards** — Adventurers' Guildhouse, Mountain Stronghold, Seafarer's
+   Quay and Unholy Citadel (each a copy of Cathedral of Serra with its own `color`), plus Master of
+   the Hunt's name-filtered token grant, which needs a second `BandsWithQuality` variant for "other
+   creatures named Wolves of the Hunt".
 Do not start this before #1 and #4 land; it is the highest-risk work in the set and everything
 else in the combat cluster is cheaper.
+**Land #119 before slice 3.** Slice 3 grows a "who chooses" axis on `PendingChoice::
+AssignCombatDamage`, and #119 has to *move* that same choice from declare blockers to the combat
+damage step (CR 510.1a). Doing slice 3 first means building the new axis onto the wrong timing and
+then reworking it; #119 first means slice 3 lands on a choice that is already raised where the
+rules put it. Slices 1, 2, and 4 are unaffected.
 
 ### 4. `landwalk-negation` — 8 cards, M
 Depends on: nothing.
@@ -158,16 +177,30 @@ legendary land". Landwalk today keys on basic land *types*; this one keys on a s
 *Sketch:* widen the landwalk keyword's payload from a basic land type to a land filter, with the
 existing basic-type variants expressed through it. The evasion check then reuses #6's axis.
 
-### 8. `attacking-or-blocking-filter` — 7 cards, S
+### 8. `attacking-or-blocking-filter` — 7 cards, S — **LANDED** (wave 2, the union axis only)
 Depends on: nothing.
+Cards: **Crimson Manticore**, **D'Avenant Archer**, **Lady Caleria**, **Tor Wauki** (all four
+faithful), **Tetsuo Umezawa**, **Lesser Werewolf**, **Sentinel**.
 "Target attacking or blocking creature" — the union of two axes that both already exist
-(`attacking` and, since the 2ed grind, `blocking`). Also covers "target tapped or blocking
-creature" (Tetsuo Umezawa) and "target creature blocking or blocked by this creature"
-(Lesser Werewolf, Sentinel), which is the *combat-partner* relation rather than a global filter.
-*Sketch:* make the existing bool axes a small `CombatState` enum on `PermanentFilter` with an
-`AttackingOrBlocking` variant, plus a separate `in_combat_with: Option<CombatRelation>` for the
-blocking-or-blocked-by-this pairing, resolved against the current combat assignment. Clears the
-stale `Spurnmage Advocate` note in the same change.
+(`attacking` and, since the 2ed grind, `blocking`). Landed as `PermanentFilter::attacking_or_blocking`
+(`crates/cards/src/types/filter.rs`), one bool consulted in `Game::permanent_matches`; the four
+archers above are scripted and faithful.
+The `CombatState` enum the original sketch proposed was **not** built: `attacking`,
+`attacking_you`, `blocking` and `unblocked` are read across `query.rs`, `message.rs` and
+`anthem_static`, `PermanentFilter` derives `Default`, and a fifth bool costs one line — collapsing
+four working axes into an enum is churn with no fidelity gain.
+Two shapes remain, each folded into the increment of the card that actually needs it, because both
+of those cards are blocked on further work anyway and an unused axis is dead code:
+- "Target **tapped or blocking** creature" (Tetsuo Umezawa) — a second union axis; Tetsuo is also
+  blocked on #15 (can't be the target of Aura spells), so it lands there.
+- "Target creature **blocking or blocked by** this creature" (Lesser Werewolf, Sentinel) — the
+  *combat-partner* relation, not a global filter: it needs the source threaded against the current
+  block assignment. Lesser Werewolf is also blocked on #54 and Sentinel on #22, so it lands with
+  whichever of those comes first.
+Spurnmage Advocate turned out **not** to belong here at all: its real oracle is "{T}: Return two
+target cards from an opponent's graveyard to their hand. Destroy target attacking creature." —
+plain `attacking`, no union. The stale blocking-axis note is gone; the card's real defect — a body
+that models invented text — is now #120.
 
 ### 9. `block-restriction-by-filter` — 3 cards, M
 Depends on: nothing.
@@ -189,13 +222,23 @@ hook, which the attack-requirement work (#56) also wants.
 
 ### 11. `mana-battery-counters` — 5 cards, M
 Depends on: nothing.
-The five mana batteries share one shape: `{2}, {T}: Put a charge counter`, then
-`{T}, Remove any number of charge counters: Add {C}, then add an additional {C} for each counter
-removed this way`. Two new things: **remove any number of counters as a cost** (a player-chosen
-variable cost) and **mana production scaled by what that cost paid**.
-*Sketch:* a `Cost::RemoveAnyNumberOfCounters { kind }` that prompts for a count at activation and
-records it, plus an `Amount::CountersRemovedThisWay` the mana effect reads. The prompt is a
-pending choice in the submit path, so it must be replay-deterministic.
+The five mana batteries share one shape: `{2}, {T}: Put a charge counter on this artifact.`, then
+`{T}, Remove any number of charge counters from this artifact: Add {B}, then add an additional {B}
+for each charge counter removed this way.` The intake sketch had two wrong premises, corrected
+here: the mana added is the battery's **own color** (`{W}`/`{U}`/`{B}`/`{R}`/`{G}`, one per card),
+not `{C}`; and neither "new thing" was new — the engine has expressed both since the 2ed grind's
+storage lands.
+*Landed:* nothing. `ActivationCost::remove_counters_x` + `remove_counters_kind` is exactly
+"remove any number of counters of `kind` as a cost" (Fungal Reaches' "Remove X storage counters
+from this land"), bounds-checked against the source's actual count in `Game::activate_ability`
+(CR 602.2b; `X = 0` stays legal, CR 107.3c), and `Effect::Mana(ManaEffect::Add)`'s `repeat = "x"`
+is the mana scaled by what that cost paid. The base `{B}` and the per-counter `{B}` are two
+`[[abilities.effects]]` blocks — one per oracle clause — and a `Sequence` of mana adds is still a
+mana ability (`Effect::is_mana_ability`), so the whole thing resolves without the stack (CR
+605.3a). No `Cost::RemoveAnyNumberOfCounters`, no `Amount::CountersRemovedThisWay`, and **no
+pending choice**: the removal count rides on `Intent::ActivateAbility`'s `x`, so it is recorded in
+the intent log and replay-deterministic by construction rather than by a re-derivation the submit
+path would have to pause for. Five cards, all faithful, pure card authoring.
 
 ### 12. `filtered-damage-prevention` — 9 cards, L
 Depends on: the 2ed prevention-shield increment (#4 there).
@@ -239,6 +282,11 @@ spells and can't be enchanted by other Auras" (Anti-Magic Aura). *Sketch:* a
 separate attach-legality check for "can't be enchanted by other Auras" (CR 303.4 attach
 restrictions are checked on resolution and continuously, not only at targeting). Shroud-like but
 filtered, so it is not the existing hexproof/shroud keyword.
+**Also owns Tetsuo Umezawa's targeting**, deferred here by #8: "{U}{B}{B}{R}, {T}: Destroy target
+tapped or blocking creature." needs a `tapped_or_blocking` union axis on `PermanentFilter`, the twin
+of the `attacking_or_blocking` #8 landed — one bool, checked against `Permanent::tapped` and
+`CombatState::blocks`. #8 left it out because Tetsuo is the only card that wants it and it would
+have shipped as dead code.
 
 ### 16. `arboria-attack-restriction` — 1 card, M
 Depends on: #2.
@@ -307,6 +355,9 @@ continuous effect applied in a distinct sub-layer ahead of the additive modifier
 `Amount` snapshotted at application (CR 613.4 — the value is locked in, not recomputed). Halfdane
 needs `Duration::UntilEndOfYourNextUpkeep`; the rest need #14's `Indefinite`. Transmutation's
 switch is the same layer with a swap rather than a set.
+Sentinel also needs #8's deferred **combat-partner relation** for "target creature blocking or
+blocked by this creature" — see #54, which wants the same thing; whichever of the two lands first
+builds it.
 
 ### 23. `attacker-blocker-count-cap` — 1 card, M
 Depends on: #2.
@@ -582,7 +633,11 @@ Depends on: #8.
 on target creature blocking or blocked by this creature. Activate only during the declare blockers
 step." *Sketch:* a `-0/-1` counter kind, a power-threshold activation condition, and an
 `only_during_declare_blockers` ability restriction alongside the existing
-`only_during_your_upkeep`. The targeting is #8's combat-partner relation.
+`only_during_your_upkeep`.
+The targeting is the **combat-partner relation** #8 deferred: "blocking or blocked by *this
+creature*" is not a global axis but a pairing, so it needs the filter's own `source` threaded
+against `CombatState::blocks` — match a `(blocker, attacker)` pair in either direction. Sentinel
+(#22) is the only other card that wants it; whichever of the two lands first builds it.
 
 ### 55. `granted-regenerate-via-counter` — 1 card, M
 Depends on: #32 (granting an ability).
@@ -1153,6 +1208,27 @@ blockers: the locked division still totals the unpumped power. Only trample resc
 Split the choice in two: an order at declare blockers, amounts at the damage step. This changes
 when the choice is raised for every multi-block in the engine, so the existing `game.rs` suite is
 the real cost — hence L, not M.
+**Schedule this before #3's slice 3**, which adds a "who chooses" axis to the same choice — see #3.
 Proven by `rampage_bonus_cannot_be_divided_because_the_division_is_locked_before_the_trigger_resolves`
 in `crates/engine/tests/leg_rampage.rs`, which asserts today's behavior; this increment makes the
 pumped total legal. All 8 of #1's cards carry an `approximates` until it lands.
+
+### 120. `return-graveyard-cards-to-owners-hand` — 1 card, M
+Depends on: nothing. Raised by #8, which went looking for Spurnmage Advocate's stale blocking-axis
+note and found the whole card fabricated.
+Spurnmage Advocate's real oracle is "{T}: Return two target cards from an opponent's graveyard to
+their hand. Destroy target attacking creature." — a {W} 1/1 Human **Nomad**. The pool TOML was
+authored in the `political-puppets` grind (#218 there, `soc` in the `game.rs` test comment) against
+text no printed card has: a {1}{W} 2/2 Human
+Cleric whose ability *exiles* the two graveyard cards as an activation cost and then *removes the
+attacker from combat and taps it* — the second clause is Labyrinth of Skophos' text, not this
+card's. The front matter (cost, P/T, subtypes, oracle) is corrected as of #8 and the body carries a
+precise `approximates`; the body itself is this increment.
+*Sketch:* the two clauses are both resolution effects, not costs. Add a graveyard-to-owner's-hand
+effect over the same `card_in_graveyard` target form `Effect::Exile(ExileEffect::Target)` already
+uses, with a target count of 2, and swap the second clause to a plain destroy on
+`{ types = "creature", attacking = true }`. That leaves `AbilityCost::graveyard_exile_target_count`
+and its `PendingChoice::ChooseActivationCostTargets` machinery — built for this card and used by
+nothing else — with no card behind them, so **delete both** in the same change unless another card
+has claimed them by then; `spurnmage_advocate_two_target_clauses` in `crates/engine/tests/game.rs`
+goes with them.

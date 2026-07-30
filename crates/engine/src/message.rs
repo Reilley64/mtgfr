@@ -661,6 +661,7 @@ fn keyword_token(keyword: Keyword) -> String {
         Keyword::LesserPowerCantBlock => "lesser_power_cant_block".to_string(),
         Keyword::CantBlock => "cant_block".to_string(),
         Keyword::Banding => "banding".to_string(),
+        Keyword::BandsWith(BandsWithQuality::Legendary) => "bands_with_legendary".to_string(),
         Keyword::CanBlockOnlyFlyers => "can_block_only_flyers".to_string(),
         Keyword::Decayed => "decayed".to_string(),
         Keyword::Myriad => "myriad".to_string(),
@@ -945,6 +946,9 @@ fn permanent_filter_token(filter: PermanentFilter) -> String {
     }
     if filter.blocking {
         parts.push("blocking".to_string());
+    }
+    if filter.attacking_or_blocking {
+        parts.push("attacking_or_blocking".to_string());
     }
     if filter.unblocked {
         parts.push("unblocked".to_string());

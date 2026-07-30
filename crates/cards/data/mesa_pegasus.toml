@@ -10,7 +10,7 @@ default_print = "7ff95a24-86e9-4302-bd90-89ca96164032"
 oracle = "Flying; banding (Any creatures with banding, and up to one without, can attack in a band. Bands are blocked as a group. If any creatures with banding you control are blocking or being blocked by a creature, you divide that creature's combat damage, not its controller, among any of the creatures it's being blocked by or is blocking.)"
 subtypes = ["Pegasus"]
 keywords = ["flying", "banding"]
-approximates = "banding only takes over the damage division when this blocks; attacking in a band, and dividing a blocker's damage while attacking, are not modeled"
+approximates = "bands form, but nothing follows from one: a band is not blocked as a group, and while attacking, this does not take over the division of a blocker's combat damage"
 
 [cost]
 generic = 1
