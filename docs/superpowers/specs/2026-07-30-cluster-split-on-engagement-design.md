@@ -73,12 +73,14 @@ Keying by **id**, not by the engagement itself, is load-bearing: if the split ke
 `atk:seat2`, two copies attacking the same defender would re-merge into a cluster of two and draw
 one arrow for two attackers.
 
-New `client/app/board/geometry/engagement.ts` holds one pure function and no state:
+New `client/app/board/engagement.ts` holds one pure function and no state. It lives in `board/`
+rather than `board/geometry/` because it reads board staging types; `layout()` only ever receives
+the finished set.
 
 ```ts
 export function engagedIds(
   state: VisibleState,
-  local: { attackers: WireAttack[]; blocks: WireBlock[]; targets: readonly number[] },
+  local: { combatAttackers: readonly WireAttack[]; combatBlocks: readonly WireBlock[]; promptDraft: PromptDraft | null },
 ): ReadonlySet<number>;
 ```
 
@@ -88,8 +90,10 @@ An object id is engaged when it is:
 - a blocker — wire `state.combat.blocks` ∪ local `combatBlocks`
 - in `state.combat.blocked_attackers`
 - the target of a stack entry — `stackEntryTargets` over `state.stack`
-- a locally chosen target — `staged.target` (object targets) and `promptDraft.picked` for
-  `card-pick` drafts
+- a locally drafted target — `promptDraft` `card-pick.picked`, `target.id`, `targets.ids`
+
+`StagedAction` carries no chosen target — `completeStagedTarget` submits on release — so a staged
+cast contributes nothing until its object reaches the stack.
 
 The set is re-derived every frame, so re-merge needs no bookkeeping: an attacker rejoins the pile
 when combat clears and it untaps; a targeted creature rejoins when the spell resolves.
@@ -138,7 +142,8 @@ The discoverability hint gains `Shift: whole pile` while a declaration is live.
 `layout(state, viewer, engaged?)` takes an optional third argument defaulting to an empty set.
 Call sites: `submodel.cardsFor` and `submodel.syncFlightsWithGame`, `view.ts:99`,
 `canvas/scene.ts:222`, and both `activation-menu.ts` calls (so the radial anchors to the split
-card). `cardsFor(fold)` gains the board model, which its callers already hold.
+card). `cardsFor(fold)` gains the board model, which its callers already hold. The paint path and
+the hit path must derive the set identically, or a card paints where it cannot be clicked.
 
 ### Deletions
 
@@ -169,10 +174,12 @@ Regressions first, each at the lowest layer that catches the failure.
   distinct attackers; likewise two block drops produce two distinct blockers.
 - `canvas/combatArrowEndpoints.test.ts` — an attacker inside a cluster draws an attack arrow (today
   it draws none).
-- `geometry/layout.test.ts` — wire attackers, local staged attackers, blockers, `blocked_attackers`,
-  stack targets, and staged/draft targets each pull a member into its own slot; the residual
-  cluster's count drops and its face becomes the next free id; an in-flight drag with no committed
-  staging splits nothing.
+- `board/engagement.test.ts` — wire attackers, local staged attackers, blockers,
+  `blocked_attackers`, stack targets, and prompt drafts each land in the set; an idle board yields
+  an empty one.
+- `geometry/layout.test.ts` — an engaged member takes its own slot, the residual cluster's count
+  drops and its face becomes the next free id, two engaged members do not re-merge with each other,
+  and engaged ids on a row that never clustered change nothing.
 - `board/submodel` prompt tests — two picks on one cluster select two distinct ids instead of
   toggling the first off.
 - `board/html/activation-menu` tests — a cluster where one of three copies has spent its
