@@ -266,7 +266,11 @@ test("PregameTableRoute cold load resets stale lobby entry state through the par
     tableId: "XYZ789",
     selectedDeckId: 9,
   });
-  expect(commands).toMatchObject([{ name: "FetchDecks" }, { name: "HashMeGravatar", args: { email: me.email } }]);
+  expect(commands).toMatchObject([
+    { name: "FetchDecks" },
+    { name: "WarmDeckArt", args: { deckId: 9 } },
+    { name: "HashMeGravatar", args: { email: me.email } },
+  ]);
 });
 
 test("the clipboard fallback table-code input has an accessible name", () => {

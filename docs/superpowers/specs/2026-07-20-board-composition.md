@@ -72,7 +72,7 @@ The root includes an `sr-only` `aria-live="polite"` region populated by `boardSt
 
 ### Image preload
 
-Board image use goes through `sharedImageCache`. Published bitmap frames preload visible resting-card, flight-card, card-back, and Gravatar face URLs before painting so decode work is not tied to a single draw call. Avatar image-load notifications repaint the resting bitmap layer through the shared cache subscription; fallback monogram circles remain available while a hash is absent or an image has not decoded. See [Gravatar Seat Faces Design](2026-07-25-gravatar-seat-faces-design.md).
+Board image use goes through `sharedImageCache`. Published bitmap frames preload visible resting-card, flight-card, card-back, and Gravatar face URLs before painting so decode work is not tied to a single draw call. Frame preloads use the default `fetchPriority` ("auto"); only the pregame deck warm ([lobby-entry-ui](2026-07-20-lobby-entry-ui.md)) passes `"low"`, so bulk warming yields the connection to art the board needs on screen. Avatar image-load notifications repaint the resting bitmap layer through the shared cache subscription; fallback monogram circles remain available while a hash is absent or an image has not decoded. See [Gravatar Seat Faces Design](2026-07-25-gravatar-seat-faces-design.md).
 
 ### Prompts
 
