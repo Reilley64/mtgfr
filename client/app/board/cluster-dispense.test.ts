@@ -4,7 +4,7 @@ import type { ActionView, ObjectView, VisibleState } from "~/wire/types";
 import type { GameFoldState } from "../game/fold";
 import { engagedIds } from "./engagement";
 import { layout, ZONE } from "./geometry/layout";
-import { BoardPointerDown, BoardPointerUp, CombatAttackerDropped } from "./messages";
+import { BoardPointerDown, BoardPointerUp, CombatAttackerDropped, TargetChosen } from "./messages";
 import { type BoardModel, initialBoardModel, updateBoard } from "./submodel";
 
 function creature(id: number, over: Partial<ObjectView> = {}): ObjectView {
@@ -177,4 +177,26 @@ test("clicking the residual cluster tile after a copy is staged reaches the next
   // attacking (10) — the click reaches `cardAt` → `cardsFor` → `layout()`, so this fails if that
   // path ever stops feeding it the engaged set.
   expect(afterUp.selectedId).toBe(11);
+});
+
+// A prompt draft toggles `picked` by object id, so clicking the cluster face twice used to
+// deselect the first copy instead of choosing a second — the second click must resolve to the
+// next distinct Saproling, not the first one's own id.
+test("two target picks on one cluster select two distinct copies instead of toggling", () => {
+  const pendingChoice = {
+    kind: "choose_target" as const,
+    label: testMessageRef("Choose two creatures"),
+    items: [10, 11, 12, 13].map((id) => ({ id, label: "Saproling" })),
+    min: 2,
+    max: 2,
+    player: 0,
+    source: 50,
+  };
+  const gameFold = fold({ objects: crowdedObjects(), pending_choice: pendingChoice });
+  const board: BoardModel = initialBoardModel();
+
+  const [first] = updateBoard(board, TargetChosen({ target: { kind: "object", id: 10 } }), gameFold, "T1");
+  const [second] = updateBoard(first, TargetChosen({ target: { kind: "object", id: 11 } }), gameFold, "T1");
+
+  expect(second.promptDraft).toMatchObject({ kind: "card-pick", picked: [10, 11] });
 });
