@@ -170,22 +170,24 @@ than to an illegal intent:
 
 Regressions first, each at the lowest layer that catches the failure.
 
-- `geometry/interaction.test.ts` — two sequential attack drops on a four-member cluster produce two
-  distinct attackers; likewise two block drops produce two distinct blockers.
+- `board/cluster-dispense.test.ts` — sequential pointer drops and picks on one cluster reach distinct
+  copies, driven through `cardAt` → `cardsFor` → `layout()` rather than through literal ids.
 - `canvas/combatArrowEndpoints.test.ts` — an attacker inside a cluster draws an attack arrow (today
-  it draws none).
+  it draws none). The fixture must engage a member that is not the cluster's natural face, or it
+  passes either way.
 - `board/engagement.test.ts` — wire attackers, local staged attackers, blockers,
   `blocked_attackers`, stack targets, and prompt drafts each land in the set; an idle board yields
   an empty one.
 - `geometry/layout.test.ts` — an engaged member takes its own slot, the residual cluster's count
   drops and its face becomes the next free id, two engaged members do not re-merge with each other,
   and engaged ids on a row that never clustered change nothing.
-- `board/submodel` prompt tests — two picks on one cluster select two distinct ids instead of
-  toggling the first off.
+- `board/cluster-dispense.test.ts` — two pointer picks on one cluster select two distinct ids
+  instead of toggling the first off.
 - `board/html/activation-menu` tests — a cluster where one of three copies has spent its
   once-per-turn ability still offers the ability, labelled `×2`, and dispatches the unspent copy's
   action id; when all three are spent the row is gone.
 - `geometry/combat-staging.test.ts` — a shift drop of a five-member cluster on a seat yields five
   attackers against that defender; on an attacker, five blocks; shift with an illegal face yields
   none.
-- `board/scene.test.ts` — committed combat on a clustered row paints one arrow per attacker.
+- `board/html/chrome.test.ts` — the combat coach strip carries the shift copy while a declaration
+  is open.

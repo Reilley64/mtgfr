@@ -470,7 +470,7 @@ test("declare attackers shows combat staging coach for the active seat", () => {
     }),
     resolveBoardOverlayMounts(),
     Scene.expect(Scene.testId("board-combat-coach")).toContainText("Drag onto an opponent to attack"),
-    Scene.expect(Scene.testId("board-combat-coach")).toContainText("Shift drag a pile to send all"),
+    Scene.expect(Scene.testId("board-combat-coach")).toContainText("Shift drag to send all copies"),
   );
 });
 

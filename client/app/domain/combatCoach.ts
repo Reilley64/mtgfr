@@ -36,11 +36,11 @@ export function combatCoachFromState(
 export function combatCoachText(input: CombatCoachInput): string | null {
   const attackDone = input.attackersConfirmedLocally || input.attackersDeclared;
   if (input.step === DECLARE_ATTACKERS && input.activePlayer === input.viewer && !attackDone) {
-    return "Drag onto an opponent to attack · Shift drag a pile to send all · Click attacker to cancel · Confirm with Attack";
+    return "Drag onto an opponent to attack · Shift drag to send all copies · Click attacker to cancel · Confirm with Attack";
   }
   const blockDone = input.blockersConfirmedLocally || input.blockersDeclaredForViewer;
   if (input.step === DECLARE_BLOCKERS && input.attackingViewer && !blockDone) {
-    return "Drag onto an attacker to block · Shift drag a pile to block with all · Click blocker to cancel · Confirm with Block";
+    return "Drag onto an attacker to block · Shift drag to block with all copies · Click blocker to cancel · Confirm with Block";
   }
   return null;
 }

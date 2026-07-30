@@ -15,7 +15,7 @@ describe("combatCoachText", () => {
         blockersConfirmedLocally: false,
       }),
     ).toBe(
-      "Drag onto an opponent to attack · Shift drag a pile to send all · Click attacker to cancel · Confirm with Attack",
+      "Drag onto an opponent to attack · Shift drag to send all copies · Click attacker to cancel · Confirm with Attack",
     );
   });
 
@@ -59,7 +59,7 @@ describe("combatCoachText", () => {
         blockersConfirmedLocally: false,
       }),
     ).toBe(
-      "Drag onto an attacker to block · Shift drag a pile to block with all · Click blocker to cancel · Confirm with Block",
+      "Drag onto an attacker to block · Shift drag to block with all copies · Click blocker to cancel · Confirm with Block",
     );
   });
 

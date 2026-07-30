@@ -156,6 +156,10 @@ export function radialOptions(
   const ids = new Set(objectIds);
   // One row per distinct ability, carrying the first copy's action id so activation routes to a
   // copy that can still act. `available` counts distinct copies, not rows.
+  // ponytail: grouped by rendered label, so one permanent with two identically-worded abilities
+  // shows one row. `ActionView` types `ability_index?: never` (`domain/wire/types.ts`) even though
+  // the engine sends it — widen that type and key on `${label}:${ability_index}` if a real card
+  // ever needs it.
   const byLabel = new Map<string, { action: ActionView; copies: Set<number> }>();
   for (const a of actions ?? []) {
     if (a.section !== "battlefield" || a.object == null || !ids.has(a.object)) continue;
