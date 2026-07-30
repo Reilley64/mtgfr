@@ -92,9 +92,11 @@ falls back to `cards.scryfall.io`, so local development bypasses the CDN without
 `scryfallImageUrl` is deleted: it existed only to force the Scryfall branch, which is now what an
 empty base already does.
 
-Call sites move `large` → `display` (board stack, prompt card face, pile overlay, hover preview,
-`cardArtUrl`'s default) and `art_crop` → `art` (deck card). No call site asked for `small`,
-`normal`, or `png`.
+Each surface then asks for the size it renders rather than the largest one — the board and hover
+preview keep the full card (`display`), deck-list tiles take `art`, the builder's tile grids take
+`grid`, and its 28-40px list rows take `thumb`. `builderCardArt` requires the size as an argument
+so no builder surface can silently inherit the `display` default. The per-surface table lives in
+[deck-list-and-builder](2026-07-20-deck-list-and-builder.md) §Card art CDN.
 
 The client-side `art_crop` Scryfall fallback (`artCropFallbackUrl`, the `data-art-fallback`
 attribute, and the swap in `syncCardArtHost`) is deleted: the Worker's `302` covers Scryfall failure
@@ -152,7 +154,6 @@ Cases:
 - The separate bulk-mirror repository and its 86 GB of images. It serves TTS importers, a different consumer with different needs, and is not a production dependency of this design. Retiring `mtg.reilley.dev` is a follow-up.
 - Pre-warming the bucket. Cutover accepts the cold start.
 - Format conversion of any kind, and any Cloudflare Images subscription. WebP is what Scryfall already serves.
-- Picking a right-sized image per surface (`grid` for the builder catalog grid, `thumb` for the 28px deck rows). The sizes exist and the Worker admits them; choosing them is a visual change that wants its own review.
 - Authenticating the CDN. Card art is public data.
 
 ## Success criteria

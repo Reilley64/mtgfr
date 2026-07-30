@@ -108,6 +108,21 @@ mirrors Scryfall's layout, so only the origin differs. `a`/`b` are the UUID's fi
 replicating Scryfall's folder fan. Not `api.scryfall.com/cards/{id}?format=image&version=…` — that
 endpoint redirects instead of serving bytes and answers WebP size names with the `large` JPEG.
 
+Each surface asks for the size it renders, not the largest one — a too-large image paints
+identically and only moves more bytes, so the sizes are pinned rather than defaulted:
+
+| Surface | Rendered width | Size |
+|---|---|---|
+| Deck-list tile | landscape art box | `art` |
+| Pool tile (`minmax(120px, 1fr)`) | ~120px | `grid` |
+| Print picker tile (`w-[min(38vw,200px)]`) | ≤200px | `grid` |
+| Commander row (`w-10`) | 40px | `thumb` |
+| Decklist row (`w-7`) | 28px | `thumb` |
+| Hover preview, board art | full card | `display` |
+
+`builderCardArt` takes the size as a required argument for that reason: every art in the builder
+renders small, so inheriting `cardArt`'s `display` default would oversample all five surfaces.
+
 DFC backs come from the `/back/` path segment at every size. There is no client-side Scryfall
 fallback — the CDN redirects to Scryfall itself when it cannot fill
 ([production-topology-and-operations](2026-07-20-production-topology-and-operations.md)),
