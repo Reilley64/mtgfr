@@ -42,6 +42,9 @@ export function handleCombatDrop(
     let next = attackDrop(currentAttackers, from, defender, pw?.id);
     if (!next) return { kind: "none" };
     for (const id of alsoIds) {
+      // `?? next` is defensive only: attackDrop rejects only on from.tapped / summoningSick-without-haste
+      // / a null defender, all facts clusterKey holds equal across members, so a member can't fail here
+      // once the face above has already passed.
       next = attackDrop(next, { ...from, id }, defender, pw?.id) ?? next;
     }
     return { kind: "attackers", value: next };
@@ -50,6 +53,9 @@ export function handleCombatDrop(
     let next = blockDrop(currentBlocks, from.id, blockTarget, declaredAttackers, seats);
     if (!next) return { kind: "none" };
     for (const id of alsoIds) {
+      // `?? next` is defensive only: blockDrop rejects only on a missing target or an undeclared
+      // attacker, neither of which reads the blocker id, so a member can't fail here once the face
+      // above has already passed.
       next = blockDrop(next, id, blockTarget, declaredAttackers, seats) ?? next;
     }
     return { kind: "blockers", value: next };

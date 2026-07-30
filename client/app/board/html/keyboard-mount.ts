@@ -38,6 +38,9 @@ export function isShiftKeyEvent(e: KeyboardEvent): boolean {
  * The window listeners `MountBoardKeyboard` installs, factored out of the Stream so the modifier
  * lifecycle is unit-testable — a Shift keyup that lands in another window must not leave the
  * whole-pile drop armed, so `onBlur` releases it too.
+ *
+ * Alt is deliberately keyup-only (no `onBlur` release): blur-releasing Alt would dismiss the
+ * inspect pin it arms, a behavior change to that surface rather than a fix to this one.
  */
 export function boardKeyListeners(offer: (message: KeyMessage) => void): {
   onKeyDown: (e: Event) => void;
