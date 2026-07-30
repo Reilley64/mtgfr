@@ -17,6 +17,7 @@ import {
 } from "./action/targeting";
 import { MountBitmapLayer, MountFlightLayer, publishBitmapFrame } from "./bitmap/mount";
 import { sceneShapes } from "./canvas/scene";
+import { engagedIds } from "./engagement";
 import { worldToScreen } from "./geometry/camera";
 import { layout, STEP } from "./geometry/layout";
 import { stackPresentation } from "./geometry/stackLayout";
@@ -96,7 +97,10 @@ export const view = Submodel.defineView<BoardViewModel, ViewMessage>((model) => 
   const state = model.fold.state;
   if (state == null) return connectingBoard();
 
-  const cards = layout(state, state.viewer);
+  // Paint and hit-test must agree on which permanents are engaged, or a card paints where it
+  // cannot be clicked — one set shared between `layout()` here and the `sceneShapes` call below.
+  const engaged = engagedIds(state, model.board);
+  const cards = layout(state, state.viewer, engaged);
   const stagedOverlay = stagingOverlay(model.board.staged, state, model.board.viewport, state.stack.length);
   const pendingOverlay = pendingTargetingOverlay(
     state.pending_choice,
@@ -324,6 +328,7 @@ export const view = Submodel.defineView<BoardViewModel, ViewMessage>((model) => 
               width: model.board.viewport.width,
               height: model.board.viewport.height,
               camera: model.board.camera,
+              engaged,
               selectedId: model.board.selectedId,
               stagedAttackers: model.board.combatAttackers,
               stagedBlocks: model.board.combatBlocks,

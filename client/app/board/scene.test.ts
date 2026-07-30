@@ -1800,6 +1800,28 @@ test("selected permanent with tap-for-mana shows activation menu row", () => {
   );
 });
 
+test("selecting a cluster face offers its ability once, chipped with how many copies can use it", () => {
+  // Eight identical Elves overflow the row and collapse into one face; three still have mana up.
+  const elves = Array.from({ length: 8 }, (_, i) => creature(10 + i, 0, { name: "Llanowar Elves" }));
+  const actions: ActionView[] = [10, 11, 12].map((object, i) => ({
+    id: 100 + i,
+    kind: "activate",
+    label: testMessageRef("Add {G}"),
+    needs_target: false,
+    object,
+    section: "battlefield",
+    targets: [],
+  }));
+  const base = viewModel(fold(state({ objects: elves, actions, can_act: true })));
+  const selected: ViewModel = { ...base, board: { ...base.board, selectedId: 10 } };
+  overlayScene(
+    selected,
+    Scene.expect(Scene.testId("activation-menu-row-action:100")).toExist(),
+    Scene.expect(Scene.testId("activation-menu-row-action:101")).toBeAbsent(),
+    Scene.expect(Scene.testId("activation-menu-available-action:100")).toHaveText("×3"),
+  );
+});
+
 test("hovering an activation row marks it active for the gold variant", () => {
   const land = creature(5, 0, {
     name: "Forest",

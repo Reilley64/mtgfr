@@ -18,7 +18,6 @@ function card(overrides: Partial<RenderCard> = {}): RenderCard {
     controller: 0,
     counters: 0,
     faceDown: false,
-    fanAngle: 0,
     goaded: false,
     h: 134,
     hasHaste: false,
@@ -129,6 +128,18 @@ describe("paintCard", () => {
     paintCard(ctx, { panX: 0, panY: 0, zoom: 1 }, card(), cache, 0);
 
     expect(ctx.drawImage).toHaveBeenCalledWith(image, 10, 20, 96, 134);
+  });
+
+  it("turns a tapped card a quarter turn and leaves an untapped one upright", () => {
+    const cache = { get: vi.fn(() => undefined) };
+
+    const tappedCtx = mockCtx();
+    paintCard(tappedCtx, { panX: 0, panY: 0, zoom: 1 }, card({ tapped: true }), cache, 0);
+    expect(tappedCtx.rotate).toHaveBeenCalledWith(Math.PI / 2);
+
+    const uprightCtx = mockCtx();
+    paintCard(uprightCtx, { panX: 0, panY: 0, zoom: 1 }, card(), cache, 0);
+    expect(uprightCtx.rotate).not.toHaveBeenCalled();
   });
 
   it("keeps commander gold when adding a playable outline", () => {

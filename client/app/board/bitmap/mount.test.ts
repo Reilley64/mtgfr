@@ -79,7 +79,6 @@ function card(overrides: Partial<RenderCard> = {}): RenderCard {
     controller: 0,
     counters: 0,
     faceDown: false,
-    fanAngle: 0,
     goaded: false,
     h: 134,
     hasHaste: false,

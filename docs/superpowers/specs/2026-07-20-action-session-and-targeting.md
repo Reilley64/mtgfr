@@ -17,6 +17,7 @@ Keep an action session in the board model. Pure planners decide whether an actio
 - As a player answering a one-click on-board engine target choice, I aim the same arrow instead of a card grid.
 - As a player targeting a spell or ability on the stack, I click the highlighted stack face instead of a modal picker.
 - As an active combat player, I can stage attackers or blockers before confirming.
+- As a player with a stack of identical creatures, I hold Shift on a combat drop to send or block with the whole pile in one drag.
 - As a player, I can cancel local staging without answering or corrupting an engine pending choice.
 - As a player aiming or paying for a cast/activate, I keep seeing which lands will auto-tap until I submit or cancel.
 
@@ -36,6 +37,8 @@ Keep an action session in the board model. Pure planners decide whether an actio
 - On-board pending aim clicks pack `answerFromBoardTarget` → `choiceIntent` → `SubmitIntent`. Optional `choose_target` keeps a Decline control on `pending-target-aim` chrome.
 - Multi-target on-board aim (`max > 1` or spell/ability min/max ranges) accumulates picks in the card-pick draft with `k / max` + Confirm chrome (`pending-target-count`); one-click still auto-submits when `pendingTargetOneClick`. Picked permanents paint a solid Priority Gold ring (`pickedObjects`) while other legal targets keep the dashed Island Blue aim ring. Enter or Space submits when the multi-aim draft is ready. Stack faces use the same accumulate path via `TargetChosen` (not a premature one-target submit).
 - Combat staging resolves attack drops onto opponent life-orb targets and block drops onto declared attackers. Dropping on an opponent's battlefield planeswalker declares the attack against it (CR 508.1a): the defender is that planeswalker's controller, whether or not an avatar sits under the drop point.
+- A cluster tile dispenses its next free member per drop: the dragged card is always the cluster face (the lowest-id member), and once a drop commits that member to an attack or block it splits out of the pile (`board/engagement.ts`), so the face becomes the next free copy and a second drop on the same tile reaches a distinct creature. No dispenser code runs in `interaction.ts` or `combat-staging.ts`; the reordering is layout falling out of engagement.
+- Holding Shift during a combat drop commits every copy in the dragged cluster tile: `handleCombatDrop` takes the face's clustermates as `alsoIds` and applies the same drop to each, so a shift-drop of five identical creatures declares five attackers against that defender, or five blocks of that attacker. Cluster members are identical by construction, so an illegal face rejects the whole pile rather than staging part of it, and a shift-drop of a non-clustered card is the ordinary single declaration.
 - Required attacks are merged with staged attacks before confirmation.
 - `CancelActionClicked` and Escape call `cancelAll`, clearing staged action, X prompt, modal cast, cost picks, the activation menu, stack expand, pile expand, prompt draft, hand drag, and reject text.
 - `session.cancel` means local pre-submit cancellation only; engine `pending_choice` is handled by `PromptHost`.
@@ -63,7 +66,8 @@ Keep an action session in the board model. Pure planners decide whether an actio
 - Action execution tests cover cost pipeline ordering, X prompt creation, target staging, and submit intent shape.
 - Targeting tests cover arrow versus picker target modes, pending on-board aim versus modal idle, `pendingStackGhost` for mid-resolution proliferate / phase-out (and no duplicate when the spell remains on the stack), and `pickedPlayersFromDraft` for proliferate `card-pick.players`.
 - Board pointer tests cover pending on-board choose_target click → `choose_targets` intent and proliferate seat+permanent accumulate → Confirm.
-- Combat staging tests cover attacker/blocker drops, required attack merge, and step-transition clearing.
+- Combat staging tests cover attacker/blocker drops, required attack merge, step-transition clearing, and shift-dropping a cluster (every member staged against one defender or attacker; an illegal face stages nothing).
+- Cluster dispense tests drive `ShiftDown` / `ShiftUp` through `updateBoard` so a shift-held drop stages the whole pile and a released Shift goes back to one attacker per drop.
 - Board tests cover cancel behavior and keyboard Escape ordering.
 
 ## Out of Scope

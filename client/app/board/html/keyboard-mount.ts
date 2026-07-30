@@ -5,11 +5,21 @@
 
 import { Effect, Queue, Stream } from "effect";
 import * as Mount from "foldkit/mount";
-import { AltDown, AltUp, KeyboardEnterPressed, KeyboardEscape, KeyboardSpacePressed } from "../messages";
+import {
+  AltDown,
+  AltUp,
+  KeyboardEnterPressed,
+  KeyboardEscape,
+  KeyboardSpacePressed,
+  ShiftDown,
+  ShiftUp,
+} from "../messages";
 
 type KeyMessage =
   | typeof AltDown.Type
   | typeof AltUp.Type
+  | typeof ShiftDown.Type
+  | typeof ShiftUp.Type
   | typeof KeyboardEscape.Type
   | typeof KeyboardEnterPressed.Type
   | typeof KeyboardSpacePressed.Type;
@@ -19,10 +29,70 @@ export function isAltKeyEvent(e: KeyboardEvent): boolean {
   return e.key === "Alt";
 }
 
+export function isShiftKeyEvent(e: KeyboardEvent): boolean {
+  if (e.code === "ShiftLeft" || e.code === "ShiftRight") return true;
+  return e.key === "Shift";
+}
+
+/**
+ * The window listeners `MountBoardKeyboard` installs, factored out of the Stream so the modifier
+ * lifecycle is unit-testable — a Shift keyup that lands in another window must not leave the
+ * whole-pile drop armed, so `onBlur` releases it too.
+ *
+ * Alt is deliberately keyup-only (no `onBlur` release): blur-releasing Alt would dismiss the
+ * inspect pin it arms, a behavior change to that surface rather than a fix to this one.
+ */
+export function boardKeyListeners(offer: (message: KeyMessage) => void): {
+  onKeyDown: (e: Event) => void;
+  onKeyUp: (e: Event) => void;
+  onBlur: () => void;
+} {
+  const onKeyDown = (e: Event): void => {
+    if (!(e instanceof KeyboardEvent)) return;
+    // Don't intercept board shortcuts while typing in an interactive control.
+    if (shouldIgnoreBoardShortcut(e)) return;
+
+    if (isAltKeyEvent(e)) {
+      e.preventDefault();
+      offer(AltDown());
+      return;
+    }
+    // No preventDefault: Shift stays a live modifier for text selection and native shortcuts.
+    if (isShiftKeyEvent(e)) {
+      offer(ShiftDown());
+      return;
+    }
+    if (e.key === "Escape") {
+      offer(KeyboardEscape());
+      return;
+    }
+    if (e.key === "Enter") {
+      e.preventDefault();
+      offer(KeyboardEnterPressed());
+      return;
+    }
+    if (e.key === " ") {
+      e.preventDefault();
+      offer(KeyboardSpacePressed());
+      return;
+    }
+  };
+
+  const onKeyUp = (e: Event): void => {
+    if (!(e instanceof KeyboardEvent)) return;
+    if (isAltKeyEvent(e)) offer(AltUp());
+    if (isShiftKeyEvent(e)) offer(ShiftUp());
+  };
+
+  const onBlur = (): void => offer(ShiftUp());
+
+  return { onKeyDown, onKeyUp, onBlur };
+}
+
 /**
  * Attach this to any long-lived board element. Emits keyboard Messages for the
- * board-global shortcuts: Alt (inspect pin), Space (primary/pass), Enter (end turn),
- * Escape (cancel / dismiss).
+ * board-global shortcuts: Alt (inspect pin), Shift (whole-pile combat drop), Space (primary/pass),
+ * Enter (end turn), Escape (cancel / dismiss).
  *
  * Alt-down pins the card under the cursor (or hand/stack aux hover); Alt-up dismisses —
  * same as the Solid board. The element receiving this mount must be non-interactive itself
@@ -32,6 +102,8 @@ export const MountBoardKeyboard = Mount.defineStream(
   "MountBoardKeyboard",
   AltDown,
   AltUp,
+  ShiftDown,
+  ShiftUp,
   KeyboardEscape,
   KeyboardEnterPressed,
   KeyboardSpacePressed,
@@ -40,47 +112,17 @@ export const MountBoardKeyboard = Mount.defineStream(
     Effect.gen(function* () {
       yield* Effect.acquireRelease(
         Effect.sync(() => {
-          const onKeyDown = (e: Event): void => {
-            if (!(e instanceof KeyboardEvent)) return;
-            // Don't intercept board shortcuts while typing in an interactive control.
-            if (shouldIgnoreBoardShortcut(e)) return;
-
-            if (isAltKeyEvent(e)) {
-              e.preventDefault();
-              Queue.offerUnsafe(queue, AltDown());
-              return;
-            }
-            if (e.key === "Escape") {
-              Queue.offerUnsafe(queue, KeyboardEscape());
-              return;
-            }
-            if (e.key === "Enter") {
-              e.preventDefault();
-              Queue.offerUnsafe(queue, KeyboardEnterPressed());
-              return;
-            }
-            if (e.key === " ") {
-              e.preventDefault();
-              Queue.offerUnsafe(queue, KeyboardSpacePressed());
-              return;
-            }
-          };
-
-          const onKeyUp = (e: Event): void => {
-            if (!(e instanceof KeyboardEvent)) return;
-            if (isAltKeyEvent(e)) {
-              Queue.offerUnsafe(queue, AltUp());
-            }
-          };
-
-          window.addEventListener("keydown", onKeyDown);
-          window.addEventListener("keyup", onKeyUp);
-          return { onKeyDown, onKeyUp };
+          const listeners = boardKeyListeners((message) => Queue.offerUnsafe(queue, message));
+          window.addEventListener("keydown", listeners.onKeyDown);
+          window.addEventListener("keyup", listeners.onKeyUp);
+          window.addEventListener("blur", listeners.onBlur);
+          return listeners;
         }),
-        ({ onKeyDown, onKeyUp }) =>
+        ({ onKeyDown, onKeyUp, onBlur }) =>
           Effect.sync(() => {
             window.removeEventListener("keydown", onKeyDown);
             window.removeEventListener("keyup", onKeyUp);
+            window.removeEventListener("blur", onBlur);
           }),
       );
 

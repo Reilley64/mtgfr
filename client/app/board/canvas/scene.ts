@@ -64,6 +64,8 @@ export type SceneShapesOptions = {
   stagedTargeting?: StagedTargeting | null;
   combatDrag?: { from: { x: number; y: number }; to: { x: number; y: number }; declaringBlock: boolean } | null;
   stackPresentation?: StackPresentation;
+  /** Committed permanents that must not collapse into a cluster (see `board/engagement.ts`). */
+  engaged?: ReadonlySet<number>;
 };
 
 function seatShapes(state: VisibleState, camera: Camera): Shape[] {
@@ -110,10 +112,8 @@ function kindFill(card: RenderCard): string {
 
 function cardRotation(card: RenderCard, viewer: number): number {
   const tapFrac = card.tapFrac ?? (card.tapped ? 1 : 0);
-  let angle = card.controller !== viewer ? Math.PI : 0;
-  angle += card.fanAngle ?? 0;
-  angle += tapFrac * (Math.PI / 2);
-  return angle;
+  const angle = card.controller !== viewer ? Math.PI : 0;
+  return angle + tapFrac * (Math.PI / 2);
 }
 
 function cardShapes(
@@ -219,7 +219,7 @@ export function sceneShapes(state: VisibleState, options: SceneShapesOptions = {
   const height = options.height ?? BOARD_VIEWPORT.height;
   const count = Math.max(1, state.players.length);
   const camera = options.camera ?? fitCamera({ x: width, y: height }, count, 0);
-  const cards = layout(state, state.viewer);
+  const cards = layout(state, state.viewer, options.engaged);
   const avatars = avatarScreenPositions(state.players, state.viewer, count, camera);
   const targeting = options.stagedTargeting ?? null;
   const targetObjects = targeting?.targetObjects ?? new Set<number>();
