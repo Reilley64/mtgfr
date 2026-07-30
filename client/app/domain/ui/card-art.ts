@@ -52,7 +52,10 @@ export function syncCardArtHost(element: HTMLElement, cache: ImageCache = shared
 
   cache.get(url);
   const sk = document.createElement("div");
-  sk.className = `${className} animate-skeleton bg-white/8`;
+  // Fill the host rather than trusting `className` to size it: the hand bar sizes its art host by
+  // inline `style` (`cardBoxStyle`), so a class-only skeleton there collapses to zero height and
+  // the tile reads as blank while the print loads.
+  sk.className = `${className} absolute inset-0 animate-skeleton bg-white/8`;
   sk.setAttribute("aria-hidden", "true");
   element.append(sk);
 }
