@@ -12,3 +12,13 @@ blue = 1
 
 [kind]
 type = "instant"
+
+# Counter target instant spell.
+[[abilities]]
+timing = "spell"
+
+# Counter target instant spell.
+[[abilities.effects]]
+type = "misc"
+mode = "counter_target_spell"
+filter = "instant"

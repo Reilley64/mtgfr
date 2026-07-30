@@ -11,3 +11,14 @@ white = 1
 
 [kind]
 type = "instant"
+
+# Prevent all damage that would be dealt to target creature this turn.
+[[abilities]]
+timing = "spell"
+
+# Prevent all damage that would be dealt to target creature this turn.
+[[abilities.effects]]
+type = "misc"
+mode = "prevent_next_damage"
+target = "creature"
+all_damage = true

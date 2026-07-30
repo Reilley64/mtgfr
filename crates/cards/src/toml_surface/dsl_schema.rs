@@ -300,6 +300,8 @@ struct PermanentFilterTableSchema {
     power_max: Option<u8>,
     power_min: Option<u8>,
     power_parity: Option<Parity>,
+    toughness_max: Option<u8>,
+    toughness_min: Option<u8>,
     noncreature: Option<bool>,
     exclude: Option<TypeSet>,
     color: Option<ColorFilter>,

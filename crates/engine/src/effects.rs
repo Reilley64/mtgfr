@@ -1273,6 +1273,18 @@ impl Game {
                 let n = self.resolve_count(count, controller, source, target, x);
                 self.draw_with_dredge(controller, n, false, events);
             }
+            // Glyph of Life arms a CR 603.7 repeatable watch on the chosen creature rather than
+            // minting a gain now (the amount isn't known yet), so it needs `&mut self` to record
+            // it — see `DelayedTriggers::pending_attacker_damage_life` and
+            // `Game::fire_attacker_damage_life_triggers`.
+            Effect::Life(LifeEffect::GainWhenTargetIsDamagedByAttackerThisTurn { .. }) => {
+                let Some(Target::Object(watched)) = target else {
+                    return;
+                };
+                self.delayed_triggers
+                    .pending_attacker_damage_life
+                    .push((controller, source, watched));
+            }
             _ => {
                 let evs = self.execute_effect(effect, controller, source, target, x);
                 self.apply_effect_events_with_replacements(evs, events);

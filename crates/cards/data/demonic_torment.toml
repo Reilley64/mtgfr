@@ -15,3 +15,25 @@ black = 1
 
 [kind]
 type = "aura"
+
+# Enchanted creature can't attack.
+[[abilities]]
+timing = "static"
+
+# Enchanted creature can't attack.
+[[abilities.effects]]
+type = "static"
+mode = "grant_to_attached"
+cant_attack = true
+
+# Prevent all combat damage that would be dealt by enchanted creature.
+[[abilities]]
+timing = "static"
+
+# Prevent all combat damage that would be dealt by enchanted creature.
+[[abilities.effects]]
+type = "static"
+mode = "prevent_damage"
+combat_only = true
+by_self = true
+attached = true

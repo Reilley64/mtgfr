@@ -1685,6 +1685,18 @@ impl Game {
         {
             return false;
         }
+        // Toughness bounds (Pendelhaven's "target 1/1 creature", whose 1/1 is all four P/T bounds
+        // pinned to 1). Read live off the layered toughness, like the power bounds above.
+        if let Some(max) = filter.toughness_max
+            && self.toughness(id) > max as i32
+        {
+            return false;
+        }
+        if let Some(min) = filter.toughness_min
+            && self.toughness(id) < min as i32
+        {
+            return false;
+        }
         // Power parity (Zimone's Hypothesis's "power of the chosen quality" — zero is even).
         if let Some(parity) = filter.power_parity {
             let is_even = self.power(id).rem_euclid(2) == 0;

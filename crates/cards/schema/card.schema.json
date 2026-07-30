@@ -146,6 +146,16 @@
             "null"
           ]
         },
+        "max_activations_per_turn": {
+          "default": null,
+          "description": "\"Activate no more than N times each turn\" (CR 602.2b — Vampire Bats: \"Activate no more than twice each turn\"), the general form of `once_each_turn` above. `None` leaves the cap to `once_each_turn`.",
+          "format": "uint32",
+          "minimum": 0.0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
         "mill_self": {
           "default": 0,
           "description": "\"Mill a card\" as part of the cost (Millikin's \"Mill a card\").",
@@ -331,6 +341,16 @@
         },
         "mana": {
           "$ref": "#/$defs/CostToml"
+        },
+        "max_activations_per_turn": {
+          "default": null,
+          "description": "An activation restriction: \"Activate no more than N times each turn\" (Vampire Bats: \"Activate no more than twice each turn\") — the general form of [`once_each_turn`](Self::once_each_turn) above (CR 602.2b). `None` leaves the cap to `once_each_turn` (`= 1` when set); `Some(n)` caps activations at `n` regardless of `once_each_turn`. Counted against the same per-turn activation ledger (`Game::once_per_turn.activated`) the `once_each_turn` check reads.",
+          "format": "uint32",
+          "minimum": 0.0,
+          "type": [
+            "integer",
+            "null"
+          ]
         },
         "mill_self": {
           "default": 0,
@@ -3414,6 +3434,43 @@
                     "source_owner_loses_half_their_life"
                   ],
                   "type": "string"
+                }
+              },
+              "required": [
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "Glyph of Life: \"Choose target Wall creature. Whenever that creature is dealt damage by an attacking creature this turn, you gain that much life.\" A CR 603.7 delayed *repeatable* watch on the chosen creature rather than a one-shot gain — the amount isn't known when this resolves, so no [`Amount`] can size it. Recorded on [`Game::attacker_damage_life_watches`](crate::Game) and fired from the creature-damage choke; it watches the damage's *recipient*, which is what separates it from [`Trigger::EnchantedCreatureDealsDamage`](crate::Trigger)'s dealer-side twin (Spirit Link). Expires at the same next-Untap \"this turn\" boundary the prevention shields use.",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "gain_when_target_is_damaged_by_attacker_this_turn"
+                  ],
+                  "type": "string"
+                },
+                "target": {
+                  "$ref": "#/$defs/TargetSpec"
+                }
+              },
+              "required": [
+                "mode",
+                "target"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "\"Exchange life totals with target opponent\" (Mirror Universe). CR 118.7: the exchange is a single event for each player, not a gain/loss loop that watchers count twice — resolved as one [`Event::LifeChanged`](crate::Event::LifeChanged) per player, sized off the difference. No [`Amount`] — the swapped values *are* the amount.",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "exchange"
+                  ],
+                  "type": "string"
+                },
+                "who": {
+                  "$ref": "#/$defs/PlayerSet"
                 }
               },
               "required": [
@@ -9266,6 +9323,11 @@
             {
               "description": "A permanent's own printed prevention shield (CR 615): \"Prevent all damage that would be dealt to this creature by …\". Applies as the damage would be dealt and never uses the stack, so it is read at the damage chokes rather than placed as a triggered ability.\n\n`to_self` shields damage dealt *to* the permanent (Guard Gomazoa, every Wall in this family); `by_self` shields damage it deals to others (Fog Bank's \"and dealt by\"). The three gates below narrow *which* damage — an unset gate imposes no restriction, which is the unqualified \"prevent all combat damage\" both 2ed cards print.",
               "properties": {
+                "attached": {
+                  "default": false,
+                  "description": "The shield lands on the host this Aura is attached to (Gaseous Form's and Demonic Torment's \"enchanted creature\") rather than on the ability's own source. `false` (default) is the self-shield every creature in this family prints. Same flag, same reasoning, as [`CantBeTargetedBy`](Self::CantBeTargetedBy)'s `attached`.",
+                  "type": "boolean"
+                },
                 "by_self": {
                   "default": false,
                   "type": "boolean"
@@ -9954,6 +10016,11 @@
                       "type": "null"
                     }
                   ]
+                },
+                "any_recipient": {
+                  "default": false,
+                  "description": "\"Prevent all combat damage that would be dealt **by** target creature this turn\" (Lady Evangela, Horn of Deafening, Subdue, Kry Shield): the shield names only a source, so it stands in front of every recipient at once. Set alongside `target_is_source`, which says *which* source; Forcefield sets that one alone, because it also names the one player it protects.",
+                  "type": "boolean"
                 },
                 "combat_only": {
                   "default": false,
@@ -11512,6 +11579,22 @@
             "null"
           ]
         },
+        "toughness_max": {
+          "format": "uint8",
+          "minimum": 0.0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "toughness_min": {
+          "format": "uint8",
+          "minimum": 0.0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
         "types": {
           "anyOf": [
             {
@@ -11979,6 +12062,13 @@
           "description": "Artifact or enchantment spells you cast (Quandrix Command's hard counter mode — CR 303/300: Auras count as enchantments here too, via [`CardKind::types`]).",
           "enum": [
             "artifact_or_enchantment"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Instant or enchantment spells you cast (Mana Matrix — \"Instant and enchantment spells you cast cost {2} less to cast\"). The instant half is a [`CardKind::Spell`] speed check, the enchantment half the same [`CardKind::types`] read [`Enchantment`](Self::Enchantment) uses, so an Aura spell qualifies (CR 303.4a).",
+          "enum": [
+            "instant_or_enchantment"
           ],
           "type": "string"
         },

@@ -164,6 +164,13 @@ pub enum MiscEffect {
         /// protects — is what every other card in the pool prints.
         #[cfg_attr(feature = "card-dsl", serde(default))]
         target_is_source: bool,
+        /// "Prevent all combat damage that would be dealt **by** target creature this turn" (Lady
+        /// Evangela, Horn of Deafening, Subdue, Kry Shield): the shield names only a source, so it
+        /// stands in front of every recipient at once. Set alongside `target_is_source`, which
+        /// says *which* source; Forcefield sets that one alone, because it also names the one
+        /// player it protects.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        any_recipient: bool,
         /// "Would deal *combat* damage" (Forcefield): only damage dealt in a combat damage step
         /// is stopped. `false` (default) covers combat and noncombat alike.
         #[cfg_attr(feature = "card-dsl", serde(default))]

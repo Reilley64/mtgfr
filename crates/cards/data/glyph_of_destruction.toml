@@ -1,0 +1,47 @@
+# Target blocking Wall you control gets +10/+0 until end of combat. Prevent all damage that would
+# be dealt to it this turn. Destroy it at the beginning of the next end step.
+name = "Glyph of Destruction"
+sets = ["leg"]
+id = "cca68900-2093-4cae-b757-efc7dd807e18"
+default_print = "8e9c153c-9224-491b-bc84-8a9f0a83ee5a"
+oracle = "Target blocking Wall you control gets +10/+0 until end of combat. Prevent all damage that would be dealt to it this turn. Destroy it at the beginning of the next end step."
+# ponytail: the +10/+0 lasts until end of turn rather than until end of combat — `PumpUntilEndOfTurn`
+# has no duration knob, and the pump files are another slice's this wave. Only observable across a
+# second combat phase in the same turn; see docs/fidelity/leg-increments.md #137.
+approximates = "the +10/+0 lasts until end of turn instead of until end of combat (increment #137); the prevention and the delayed destruction are faithful."
+
+[cost]
+red = 1
+
+[kind]
+type = "instant"
+
+# Target blocking Wall you control gets +10/+0 until end of combat. Prevent all damage that would be
+# dealt to it this turn. Destroy it at the beginning of the next end step.
+[[abilities]]
+timing = "spell"
+
+# Target blocking Wall you control gets +10/+0 until end of combat.
+[[abilities.effects]]
+type = "pump"
+mode = "pump_until_end_of_turn"
+target = { permanent = { types = "creature", subtypes = [
+  "Wall",
+], controller = "you", blocking = true } }
+power = 10
+toughness = 0
+
+# Prevent all damage that would be dealt to it this turn.
+[[abilities.effects]]
+type = "misc"
+mode = "prevent_next_damage"
+all_damage = true
+
+# Destroy it at the beginning of the next end step.
+[[abilities.effects]]
+type = "destroy"
+mode = "target"
+at = "end"
+target = { permanent = { types = "creature", subtypes = [
+  "Wall",
+], controller = "you", blocking = true } }

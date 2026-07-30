@@ -2282,16 +2282,21 @@ impl Game {
             return Err(Reject::CannotActivate);
         }
         // "Activate only once each turn" (CR 602.2b — an activation restriction; Beledros
-        // Witherbloom's untap ability): already activated this turn, so this activation is
-        // illegal.
-        if cost.once_each_turn
-            && self
+        // Witherbloom's untap ability) or "Activate no more than N times each turn" (Vampire
+        // Bats: "Activate no more than twice each turn"): already activated this turn at least
+        // as many times as the cap, so this activation is illegal. `once_each_turn` is the
+        // `cap == 1` sugar; `max_activations_per_turn` is the general form and wins when both are
+        // set (no pool card sets both).
+        if let Some(cap) = cost.max_activations_per_turn.or(cost.once_each_turn.then_some(1)) {
+            let activations_so_far = self
                 .once_per_turn
                 .activated
                 .iter()
-                .any(|&(o, i)| o == source && i == index)
-        {
-            return Err(Reject::CannotActivate);
+                .filter(|&&(o, i)| o == source && i == index)
+                .count() as u32;
+            if activations_so_far >= cap {
+                return Err(Reject::CannotActivate);
+            }
         }
         // "Activate only as a sorcery" (CR 602.5b — Ozolith, the Shattered Spire's counter
         // ability): an ordinary activated ability restricted to a legal sorcery-speed moment. (CR 602, CR 113)

@@ -14,3 +14,16 @@ blue = 1
 
 [kind]
 type = "aura"
+
+# Prevent all combat damage that would be dealt to and dealt by enchanted creature.
+[[abilities]]
+timing = "static"
+
+# Prevent all combat damage that would be dealt to and dealt by enchanted creature.
+[[abilities.effects]]
+type = "static"
+mode = "prevent_damage"
+combat_only = true
+to_self = true
+by_self = true
+attached = true

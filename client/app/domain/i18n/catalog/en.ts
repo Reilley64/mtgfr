@@ -452,6 +452,7 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.life_each_player_becomes_highest": literal(
     "Each player's life total becomes the highest life total among all players",
   ),
+  "effect.life_exchange": literal("Exchange life totals with target opponent"),
   "effect.life_gain": (params) => `${playerClause(params, "gain")} ${param(params, "amount")} life`,
   "effect.life_lose": (params) => `${playerClause(params, "lose")} ${param(params, "amount")} life`,
   "effect.life_source_owner_loses_half_their_life": literal("Its owner loses half their life, rounded up"),

@@ -1990,6 +1990,7 @@ pub const CREATURE_TYPES: &[&str] = &[
     "Barbarian",
     "Bard",
     "Basilisk",
+    "Bat",
     "Bear",
     "Beast",
     "Berserker",

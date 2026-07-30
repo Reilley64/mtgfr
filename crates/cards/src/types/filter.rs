@@ -212,6 +212,12 @@ pub enum SpellFilter {
     /// Auras count as enchantments here too, via [`CardKind::types`]).
     #[cfg_attr(feature = "card-dsl", serde(rename = "artifact_or_enchantment"))]
     ArtifactOrEnchantment,
+    /// Instant or enchantment spells you cast (Mana Matrix — "Instant and enchantment spells you
+    /// cast cost {2} less to cast"). The instant half is a [`CardKind::Spell`] speed check, the
+    /// enchantment half the same [`CardKind::types`] read [`Enchantment`](Self::Enchantment) uses,
+    /// so an Aura spell qualifies (CR 303.4a).
+    #[cfg_attr(feature = "card-dsl", serde(rename = "instant_or_enchantment"))]
+    InstantOrEnchantment,
     /// Spells whose card carries any of these printed subtypes (Sram, Senior Edificer's "an Aura,
     /// Equipment, or Vehicle spell" — `["Aura", "Equipment", "Vehicle"]`; an Aura's own subtype
     /// list always includes "Aura", so no separate [`Aura`](Self::Aura) union is needed).
@@ -837,6 +843,14 @@ pub struct PermanentFilter {
     /// Power parity gate (Zimone's Hypothesis's "return each creature with power of the chosen
     /// quality"); `None` doesn't gate on parity.
     pub power_parity: Option<Parity>,
+    /// Toughness ceiling; `None` doesn't gate on toughness. The toughness twin of
+    /// [`power_max`](Self::power_max), read just as live off [`Game::toughness`] — a creature
+    /// pumped past the bound stops qualifying. Pairing it with `power_min`/`power_max` at the same
+    /// value is how "target 1/1 creature" (Pendelhaven) is spelled.
+    pub toughness_max: Option<u8>,
+    /// Toughness floor; `None` doesn't gate on toughness. The mirror of
+    /// [`toughness_max`](Self::toughness_max).
+    pub toughness_min: Option<u8>,
     /// Excluded card types (CR: "noncreature artifact"/"noncreature enchantment" — Haywire
     /// Mite; "nonartifact creature" — Terror/Shriekmaw/Ashes to Ashes). Empty (default) imposes
     /// no restriction; a permanent with *any* type in this set fails, so an Artifact Creature
@@ -1056,6 +1070,8 @@ impl PermanentFilter {
             power_max: None,
             power_min: None,
             power_parity: None,
+            toughness_max: None,
+            toughness_min: None,
             exclude: TypeSet::NONE,
             color: ColorFilter::Any,
             modified: false,

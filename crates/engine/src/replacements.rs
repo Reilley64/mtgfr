@@ -140,9 +140,21 @@ impl ReplacementRegistry {
                         combat_only,
                         source_filter,
                         source_relation,
+                        attached,
                     }) => {
+                        // Gaseous Form / Demonic Torment: the shield is worded about "enchanted
+                        // creature", so it stands on this Aura's host rather than on the Aura
+                        // itself. An unattached Aura shields nothing (CR 303.4 — it would already
+                        // be in the graveyard).
+                        let shielded = match attached {
+                            false => source,
+                            true => match game.attached_to(source) {
+                                Some(host) => host,
+                                None => continue,
+                            },
+                        };
                         effects.push(ReplacementEffect::PreventDamage {
-                            object: source,
+                            object: shielded,
                             to_self,
                             by_self,
                             combat_only,

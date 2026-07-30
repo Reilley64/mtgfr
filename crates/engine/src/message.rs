@@ -201,7 +201,9 @@ message_keys! {
     EFFECT_EXILE_UNTIL_SOURCE_LEAVES => "effect.exile_until_source_leaves",
     EFFECT_LIFE_DRAIN => "effect.life_drain",
     EFFECT_LIFE_EACH_PLAYER_BECOMES_HIGHEST => "effect.life_each_player_becomes_highest",
+    EFFECT_LIFE_EXCHANGE => "effect.life_exchange",
     EFFECT_LIFE_GAIN => "effect.life_gain",
+    EFFECT_LIFE_GAIN_WHEN_TARGET_IS_DAMAGED_BY_ATTACKER_THIS_TURN => "effect.life_gain_when_target_is_damaged_by_attacker_this_turn",
     EFFECT_LIFE_LOSE => "effect.life_lose",
     EFFECT_LIFE_SOURCE_OWNER_LOSES_HALF_THEIR_LIFE => "effect.life_source_owner_loses_half_their_life",
     EFFECT_MANA_ADD => "effect.mana_add",
@@ -958,6 +960,12 @@ fn permanent_filter_token(filter: PermanentFilter) -> String {
     if let Some(parity) = filter.power_parity {
         parts.push(format!("power_{}", parity_token(parity)));
     }
+    if let Some(max) = filter.toughness_max {
+        parts.push(format!("toughness_lte_{max}"));
+    }
+    if let Some(min) = filter.toughness_min {
+        parts.push(format!("toughness_gte_{min}"));
+    }
     if !filter.exclude.is_empty() {
         parts.push(format!("excluding_{}", type_set_token(filter.exclude)));
     }
@@ -1124,6 +1132,7 @@ fn spell_filter_token(filter: SpellFilter) -> String {
         SpellFilter::Instant => "instant".to_string(),
         SpellFilter::Enchantment => "enchantment".to_string(),
         SpellFilter::ArtifactOrEnchantment => "artifact_or_enchantment".to_string(),
+        SpellFilter::InstantOrEnchantment => "instant_or_enchantment".to_string(),
         SpellFilter::HasSubtype(subtypes) => format!("has_subtype_{}", string_list_token(subtypes)),
         SpellFilter::HasXInCost => "has_x_in_cost".to_string(),
         SpellFilter::InstantOrSorceryWithXInCost => "instant_or_sorcery_with_x_in_cost".to_string(),
@@ -1349,6 +1358,12 @@ impl EffectMessage for Effect {
             Effect::Life(SourceOwnerLosesHalfTheirLife) => MessageRef::new(
                 MessageKey::EFFECT_LIFE_SOURCE_OWNER_LOSES_HALF_THEIR_LIFE,
             ),
+            Effect::Life(GainWhenTargetIsDamagedByAttackerThisTurn { .. }) => MessageRef::new(
+                MessageKey::EFFECT_LIFE_GAIN_WHEN_TARGET_IS_DAMAGED_BY_ATTACKER_THIS_TURN,
+            ),
+            Effect::Life(Exchange { who }) => {
+                MessageRef::new(MessageKey::EFFECT_LIFE_EXCHANGE).with_params(vec![who_param(who)])
+            }
             Effect::Destroy(DestroyEffect::Target { .. }) => MessageRef::new(MessageKey::EFFECT_DESTROY_TARGET),
             Effect::Destroy(DestroyEffect::All { filter, .. }) => {
                 MessageRef::new(MessageKey::EFFECT_DESTROY_ALL)

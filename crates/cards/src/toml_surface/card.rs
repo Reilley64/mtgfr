@@ -56,6 +56,11 @@ pub struct AbilityToml {
     /// feeding whichever struct `timing` resolves to (`ActivationCost` or [`Ability`]).
     #[serde(default)]
     pub(crate) once_each_turn: bool,
+    /// "Activate no more than N times each turn" (CR 602.2b — Vampire Bats: "Activate no more
+    /// than twice each turn"), the general form of `once_each_turn` above. `None` leaves the cap
+    /// to `once_each_turn`.
+    #[serde(default)]
+    pub(crate) max_activations_per_turn: Option<u32>,
     /// "Activate only as a sorcery" (CR 602.5b): restricts activation to a legal
     /// sorcery-speed moment (Ozolith, the Shattered Spire's counter ability).
     #[serde(default)]

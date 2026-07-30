@@ -443,6 +443,17 @@ pub(crate) struct DelayedTriggers {
     /// same boundary `pending_next_cast` itself clears at. See
     /// [`Game::fire_combat_damage_copy_triggers`].
     pub pending_combat_damage_copy: Vec<(PlayerId, ObjectId, ObjectId)>,
+    /// Each `(controller, source, watched)`, armed by
+    /// [`Effect::Life(LifeEffect::GainWhenTargetIsDamagedByAttackerThisTurn)`](crate::Effect::Life(crate::LifeEffect::GainWhenTargetIsDamagedByAttackerThisTurn))
+    /// (Glyph of Life's "whenever that creature is dealt damage by an attacking creature this
+    /// turn, you gain that much life") — the *receiving*-side twin of
+    /// `pending_combat_damage_copy` above: keyed on the creature the damage is dealt **to**
+    /// rather than on the dealer or its controller, and fired from the creature-damage choke
+    /// ([`Game::fire_attacker_damage_life_triggers`](crate::Game::fire_attacker_damage_life_triggers))
+    /// so noncombat damage from an attacking creature counts too. Repeatable like
+    /// `pending_combat_damage_copy` — never removed on fire, cleared unconsumed at the next
+    /// turn's Untap step (CR "this turn" — `Game::apply`'s `Step::Untap` arm).
+    pub pending_attacker_damage_life: Vec<(PlayerId, ObjectId, ObjectId)>,
 }
 
 /// A permanent's controller/token-ness/card-def facts, snapshotted at the moment `Effect::Destroy(DestroyEffect::DestroyAll)`
@@ -577,6 +588,13 @@ pub struct PreventionShield {
     /// chosen creature). `None` — every shield but Forcefield's — leaves `from_color` as the only
     /// gate.
     pub from_source: Option<crate::ObjectId>,
+    /// "Prevent all combat damage that would be dealt **by** target creature this turn" (Lady
+    /// Evangela, Horn of Deafening, Subdue, Kry Shield): the shield is keyed to its
+    /// [`from_source`](Self::from_source) alone and stands in front of every recipient at once —
+    /// creature or player — rather than the one thing `target` names, which it ignores. `false`
+    /// is every other shield in the pool, Forcefield's included: that one also names a source,
+    /// but only in front of "you".
+    pub any_recipient: bool,
     /// "Would deal *combat* damage" (Forcefield): the shield only stands in front of damage dealt
     /// in a combat damage step. `false` — every other shield — covers combat and noncombat alike.
     pub combat_only: bool,

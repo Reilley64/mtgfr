@@ -1181,6 +1181,9 @@ impl Game {
                     // without a fresh arm, so clearing it here is CR-equivalent to per-entry
                     // cleanup-step expiry.
                     self.delayed_triggers.pending_combat_damage_copy.clear();
+                    // Glyph of Life's "this turn" watch is repeatable too, and expires at the
+                    // same boundary for the same reason `pending_combat_damage_copy` does.
+                    self.delayed_triggers.pending_attacker_damage_life.clear();
                     // "Attacks this turn if able" (Furygale Flocking) expires at the turn
                     // boundary, the same "this turn" scope as the tallies above.
                     self.combat_extras.must_attack.clear();

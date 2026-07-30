@@ -172,7 +172,7 @@ Blocked on the numbered increments in [`leg-increments.md`](leg-increments.md). 
 means the blocking increment has landed and the card is scripted; the increment number stays so
 the record shows what unblocked it.
 
-- [ ] **Abomination** {3}{B}{B} · Creature — Horror — increment 105
+- [x] **Abomination** {3}{B}{B} · Creature — Horror — increment 105
 - [x] **Adventurers' Guildhouse** — · Land — increment 3 (slices 1, 2, 3, 4)
 - [x] **Aerathi Berserker** {2}{R}{R}{R} · Creature — Human Berserker — increment 1, 119
 - [ ] **Aisling Leprechaun** {G} · Creature — Faerie — increment 14
@@ -211,7 +211,7 @@ the record shows what unblocked it.
 - [ ] **Cyclopean Mummy** {1}{B} · Creature — Zombie — increment 109
 - [x] **D'Avenant Archer** {2}{W} · Creature — Human Soldier Archer — increment 8
 - [x] **Deadfall** {2}{G} · Enchantment — increment 4
-- [ ] **Demonic Torment** {2}{B} · Enchantment — Aura — increment 95
+- [x] **Demonic Torment** {2}{B} · Enchantment — Aura — increment 95
 - [x] **Divine Intervention** {6}{W}{W} · Enchantment — increment 27
 - [ ] **Dream Coat** {U} · Enchantment — Aura — increment 28
 - [ ] **Dwarven Song** {R} · Instant — increment 96
@@ -227,12 +227,12 @@ the record shows what unblocked it.
 - [ ] **Feint** {R} · Instant — increment 34
 - [x] **Field of Dreams** {U} · World Enchantment — faithful as of increment 35
 - [ ] **Firestorm Phoenix** {4}{R}{R} · Creature — Phoenix — increment 36
-- [ ] **Flash Counter** {1}{U} · Instant — increment 105
+- [x] **Flash Counter** {1}{U} · Instant — increment 105
 - [ ] **Floral Spuzzem** {3}{G} · Creature — Elemental — increment 37
 - [ ] **Forethought Amulet** {5} · Artifact — increment 38
 - [x] **Frost Giant** {3}{R}{R}{R} · Creature — Giant — increment 1, 119
 - [ ] **Gabriel Angelfire** {3}{G}{G}{W}{W} · Legendary Creature — Angel — increment 1, 39
-- [ ] **Gaseous Form** {2}{U} · Enchantment — Aura — increment 95
+- [x] **Gaseous Form** {2}{U} · Enchantment — Aura — increment 95
 - [x] **Gauntlets of Chaos** {5} · Artifact — increment 40
 - [ ] **Giant Slug** {1}{B} · Creature — Slug — increment 41
 - [ ] **Giant Turtle** {1}{G}{G} · Creature — Turtle — increment 42
@@ -251,12 +251,12 @@ the record shows what unblocked it.
 - [ ] **Hazezon Tamar** {4}{R}{G}{W} · Legendary Creature — Human Warrior — increment 45
 - [ ] **Heaven's Gate** {W} · Instant — increment 96
 - [ ] **Hellfire** {2}{B}{B}{B} · Sorcery — increment 46
-- [ ] **Horn of Deafening** {4} · Artifact — increment 94
+- [x] **Horn of Deafening** {4} · Artifact — increment 94
 - [x] **Hunding Gjornersen** {3}{W}{U}{U} · Legendary Creature — Human Warrior — increment 1, 119
 - [ ] **Ichneumon Druid** {1}{G}{G} · Creature — Human Druid — increment 101
 - [ ] **Imprison** {B} · Enchantment — Aura — increment 47
 - [x] **In the Eye of Chaos** {2}{U} · World Enchantment — increment 2, 48
-- [ ] **Indestructible Aura** {W} · Instant — increment 94
+- [x] **Indestructible Aura** {W} · Instant — increment 94
 - [ ] **Infernal Medusa** {3}{B}{B} · Creature — Gorgon — increment 100
 - [ ] **Infinite Authority** {W}{W}{W} · Enchantment — Aura — increment 49
 - [x] **Invoke Prejudice** {U}{U}{U}{U} · Enchantment — increment 48
@@ -266,9 +266,9 @@ the record shows what unblocked it.
 - [x] **Karakas** — · Legendary Land — increment 6
 - [ ] **Kismet** {3}{W} · Enchantment — increment 51
 - [ ] **Knowledge Vault** {4} · Artifact — increment 52
-- [ ] **Kry Shield** {2} · Artifact — increment 94
+- [x] **Kry Shield** {2} · Artifact — increment 94
 - [x] **Lady Caleria** {3}{G}{G}{W}{W} · Legendary Creature — Elf Archer — increment 8
-- [ ] **Lady Evangela** {W}{U}{B} · Legendary Creature — Human Cleric — increment 94
+- [x] **Lady Evangela** {W}{U}{B} · Legendary Creature — Human Cleric — increment 94
 - [ ] **Land Equilibrium** {2}{U}{U} · Enchantment — increment 53
 - [x] **Land's Edge** {1}{R}{R} · World Enchantment — increment 2, 25
 - [ ] **Lesser Werewolf** {3}{B} · Creature — Werewolf — increment 8, 54
@@ -276,7 +276,7 @@ the record shows what unblocked it.
 - [ ] **Living Plane** {2}{G}{G} · World Enchantment — increment 2, 44
 - [ ] **Livonya Silone** {2}{R}{R}{G}{G} · Legendary Creature — Human Warrior — increment 6, 7
 - [x] **Lord Magnus** {3}{G}{W}{W} · Legendary Creature — Human Druid — increment 4
-- [ ] **Mana Matrix** {6} · Artifact — increment 105
+- [x] **Mana Matrix** {6} · Artifact — increment 105
 - [ ] **Marble Priest** {5} · Artifact Creature — Cleric — increment 12, 56
 - [x] **Marhault Elsdragon** {3}{R}{R}{G} · Legendary Creature — Elf Warrior — increment 1, 119
 - [ ] **Master of the Hunt** {2}{G}{G} · Creature — Human — increment 123
@@ -291,7 +291,7 @@ the record shows what unblocked it.
 - [ ] **Nova Pentacle** {4} · Artifact — increment 60
 - [x] **Osai Vultures** {1}{W} · Creature — Bird — increment 102
 - [ ] **Part Water** {X}{X}{U} · Sorcery — increment 61
-- [ ] **Pendelhaven** — · Legendary Land — increment 62
+- [x] **Pendelhaven** — · Legendary Land — increment 62
 - [ ] **Petra Sphinx** {2}{W}{W}{W} · Creature — Sphinx — increment 58
 - [x] **Pit Scorpion** {2}{B} · Creature — Scorpion — increment 99; residual carried to increment 118
 - [x] **Presence of the Master** {3}{W} · Enchantment — increment 108
@@ -329,7 +329,7 @@ the record shows what unblocked it.
 - [ ] **Spiritual Sanctuary** {2}{W}{W} · Enchantment — increment 116
 - [ ] **Stangg** {4}{R}{G} · Legendary Creature — Human Warrior — increment 74
 - [ ] **Storm World** {R} · World Enchantment — increment 2, 75
-- [ ] **Subdue** {G} · Instant — increment 94
+- [x] **Subdue** {G} · Instant — increment 94
 - [ ] **Sword of the Ages** {6} · Artifact — increment 76
 - [ ] **Sylvan Library** {1}{G} · Enchantment — increment 77
 - [ ] **Sylvan Paradise** {G} · Instant — increment 96
@@ -341,7 +341,7 @@ the record shows what unblocked it.
 - [ ] **The Abyss** {3}{B} · World Enchantment — increment 2, 80
 - [ ] **The Tabernacle at Pendrell Vale** — · Legendary Land — increment 81
 - [ ] **The Wretched** {3}{B}{B} · Creature — Demon — increment 104
-- [ ] **Time Elemental** {2}{U} · Creature — Elemental — increment 82
+- [x] **Time Elemental** {2}{U} · Creature — Elemental — increment 82
 - [x] **Tolaria** — · Legendary Land — increment 3, 5
 - [x] **Tor Wauki** {2}{B}{B}{R} · Legendary Creature — Human Archer — increment 8
 - [ ] **Touch of Darkness** {B} · Instant — increment 96

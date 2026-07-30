@@ -1093,6 +1093,7 @@ impl<'de> Deserialize<'de> for TypeSet {
 /// the old `destroy_all`/edict spellings working — or a full `{ … }` table with any of the
 /// composable axes (`types`, `controller`, `token`, `other`, `enchanted`, `attached_to_creature`,
 /// `enchanted_by_you`, `mv_max`, `mv_min`, `mv_eq_x`, `mv_max_x`, `power_max`, `power_min`, `power_parity`,
+/// `toughness_max`, `toughness_min`,
 /// `noncreature`, `exclude`, `color`, `not_color`, `modified`, `attacking`, `not_attacking`, `attacking_you`,
 /// `blocking`, `attacking_or_blocking`, `tapped_or_blocking`, `unblocked`, `power_less_than_source`,
 /// `toughness_less_than_source_power`, `entered_this_turn`,
@@ -1176,6 +1177,12 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     power_min: Option<u8>,
                     #[serde(default)]
                     power_parity: Option<Parity>,
+                    /// Pendelhaven's "target 1/1 creature" — the toughness twins of `power_max`
+                    /// and `power_min`.
+                    #[serde(default)]
+                    toughness_max: Option<u8>,
+                    #[serde(default)]
+                    toughness_min: Option<u8>,
                     /// Sugar for `exclude = "creature"` (kept for the pool's existing spelling).
                     #[serde(default)]
                     noncreature: bool,
@@ -1278,6 +1285,8 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     power_max: t.power_max,
                     power_min: t.power_min,
                     power_parity: t.power_parity,
+                    toughness_max: t.toughness_max,
+                    toughness_min: t.toughness_min,
                     exclude: t.exclude.union(if t.noncreature {
                         TypeSet::CREATURE
                     } else {
@@ -1718,6 +1727,7 @@ impl<'de> Deserialize<'de> for Ability {
                 self_damage: flat.self_damage,
                 loyalty: flat.loyalty,
                 once_each_turn: flat.once_each_turn,
+                max_activations_per_turn: flat.max_activations_per_turn,
                 sorcery_speed: flat.sorcery_speed,
                 only_during_opponents_turn: flat.only_during_opponents_turn,
                 only_during_your_turn: flat.only_during_your_turn,

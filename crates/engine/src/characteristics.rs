@@ -3148,6 +3148,16 @@ impl Game {
                 .kind
                 .types()
                 .intersects(TypeSet::ARTIFACT.union(TypeSet::ENCHANTMENT)),
+            // Mana Matrix's "Instant and enchantment spells you cast" — an instant *or* an
+            // enchantment (CR 303.4a: an Aura is an enchantment, so it qualifies too).
+            SpellFilter::InstantOrEnchantment => {
+                matches!(
+                    def.kind,
+                    CardKind::Spell {
+                        speed: SpellSpeed::Instant
+                    }
+                ) || def.kind.types().intersects(TypeSet::ENCHANTMENT)
+            }
             SpellFilter::HasSubtype(subtypes) => def.subtypes.iter().any(|s| subtypes.contains(s)),
             SpellFilter::HasXInCost => def.cost.x > 0,
             SpellFilter::InstantOrSorceryWithXInCost => {

@@ -255,6 +255,7 @@ impl Game {
                         keep: None,
                         from_color: crate::ColorFilter::Any,
                         from_source: None,
+                        any_recipient: false,
                         combat_only: false,
                         from_filter: None,
                         from_relation: None,

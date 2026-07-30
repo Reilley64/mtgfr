@@ -622,6 +622,12 @@ pub enum StaticEffect {
         /// shielded permanent, which no [`PermanentFilter`] axis can express.
         #[cfg_attr(feature = "card-dsl", serde(default))]
         source_relation: Option<SourceRelation>,
+        /// The shield lands on the host this Aura is attached to (Gaseous Form's and Demonic
+        /// Torment's "enchanted creature") rather than on the ability's own source. `false`
+        /// (default) is the self-shield every creature in this family prints. Same flag, same
+        /// reasoning, as [`CantBeTargetedBy`](Self::CantBeTargetedBy)'s `attached`.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        attached: bool,
     },
 
     PreventDamageToSelfRemovingCounter,

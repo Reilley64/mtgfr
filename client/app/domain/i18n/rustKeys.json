@@ -175,6 +175,7 @@
   "effect.exile_until_source_leaves",
   "effect.life_drain",
   "effect.life_each_player_becomes_highest",
+  "effect.life_exchange",
   "effect.life_gain",
   "effect.life_lose",
   "effect.life_source_owner_loses_half_their_life",

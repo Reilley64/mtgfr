@@ -16,3 +16,15 @@ black = 2
 type = "creature"
 power = 2
 toughness = 6
+
+# Whenever this creature blocks or becomes blocked by a green or white creature, destroy that
+# creature at end of combat.
+[[abilities]]
+timing = "blocks_or_becomes_blocked_by"
+filter = { types = "creature", color = { any_of = { colors = ["green", "white"] } } }
+
+# destroy that creature at end of combat
+[[abilities.effects]]
+type = "destroy"
+mode = "that_creature"
+at = "end_combat"

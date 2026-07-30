@@ -12,3 +12,26 @@ green = 1
 
 [kind]
 type = "instant"
+
+# Prevent all combat damage that would be dealt by target creature this turn. That creature gets
+# +0/+X until end of turn, where X is its mana value.
+[[abilities]]
+timing = "spell"
+
+# Prevent all combat damage that would be dealt by target creature this turn.
+[[abilities.effects]]
+type = "misc"
+mode = "prevent_next_damage"
+target = "creature"
+target_is_source = true
+any_recipient = true
+combat_only = true
+all_damage = true
+
+# That creature gets +0/+X until end of turn, where X is its mana value.
+[[abilities.effects]]
+type = "pump"
+mode = "pump_until_end_of_turn"
+target = "creature"
+power = 0
+toughness = "target_mana_value"

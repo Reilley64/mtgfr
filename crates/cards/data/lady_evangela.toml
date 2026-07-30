@@ -17,3 +17,19 @@ black = 1
 type = "creature"
 power = 1
 toughness = 2
+
+# {W}{B}, {T}: Prevent all combat damage that would be dealt by target creature this turn.
+[[abilities]]
+timing = "activated"
+activation_cost = { white = 1, black = 1 }
+taps_self = true
+
+# Prevent all combat damage that would be dealt by target creature this turn.
+[[abilities.effects]]
+type = "misc"
+mode = "prevent_next_damage"
+target = "creature"
+target_is_source = true
+any_recipient = true
+combat_only = true
+all_damage = true

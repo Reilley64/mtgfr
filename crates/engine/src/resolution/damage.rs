@@ -151,7 +151,9 @@ impl Game {
         target: Target,
         source: ObjectId,
     ) -> bool {
-        if shield.target != target {
+        // A source-keyed shield (Lady Evangela's "dealt **by** target creature this turn") names
+        // no recipient at all, so it stands in front of whoever the named source is hitting.
+        if !shield.any_recipient && shield.target != target {
             return false;
         }
         // A named source (Forcefield's chosen creature) replaces the colour gate rather than

@@ -761,13 +761,16 @@ turn ends. Both are #10's `CantAttack` with a temporal condition.
 
 ### 43. `glyph-cycle` — 5 cards, L
 Depends on: nothing.
-The five Glyphs all key on "creatures that <target Wall> blocked this turn" — a per-Wall memory of
-what it blocked, surviving past the combat in which it blocked. On top of that: glyph counters with
-a granted untap-suppression and upkeep-removal pair (Glyph of Delusion), a prevent-then-destroy-at-
-end-step combo (Glyph of Destruction), a delayed end-of-combat mass destroy (Glyph of Doom), a
+**Three** of the five Glyphs key on "creatures that <target Wall> blocked this turn" — a per-Wall
+memory of what it blocked, surviving past the combat in which it blocked: Glyph of Delusion, Glyph
+of Doom and Glyph of Reincarnation. The other two need no such ledger — Glyph of Destruction targets
+a *blocking* Wall (present tense, this combat), and Glyph of Life watches damage dealt to a chosen
+creature by an attacking creature this turn. On top of that: glyph counters with a granted
+untap-suppression and upkeep-removal pair (Glyph of Delusion), a prevent-then-destroy-at-end-step
+combo (Glyph of Destruction), a delayed end-of-combat mass destroy (Glyph of Doom), a
 damage-triggered lifegain watcher (Glyph of Life), and a destroy-then-reanimate-from-the-right-
 graveyard (Glyph of Reincarnation, which needs "the player who controlled that creature the last
-time it became blocked by that Wall").
+time it became blocked by that Wall", plus "cast this spell only after combat").
 *Sketch:* a turn-scoped `blocked_by_this_turn: Vec<(blocker, attacker, controller_at_the_time)>`
 ledger appended at declare-blockers and cleared at cleanup. Every Glyph is a small effect once the
 ledger exists; Glyph of Delusion additionally needs #26's counter-gated untap suppression *granted*
@@ -936,11 +939,14 @@ Part Water and Winter Blast both take "X target creatures" — a target *count* 
 resolved at cast time from the announced X, with the usual "as many as possible if fewer are
 legal" rule. Winter Blast's damage half is #92.
 
-### 62. `exact-power-toughness-filter` — 1 card, S
+### 62. `exact-power-toughness-filter` — 1 card, S — **LANDED** (wave 8)
 Depends on: nothing.
-Pendelhaven: "Target 1/1 creature gets +1/+2 until end of turn." *Sketch:* `power_min`/`power_max`
-exist; add `toughness_min`/`toughness_max` (#49 wants `toughness_max` too) and express 1/1 as all
-four bounds set to 1.
+*Landed:* `PermanentFilter::toughness_min` / `toughness_max` are in, read off the layered
+`Game::toughness` exactly as the power bounds read `Game::power` — so a creature pumped out of the
+band stops qualifying mid-turn (CR 613). Pendelhaven spells 1/1 as all four bounds set to 1 and is
+faithful. #49's `toughness_max` half is now unblocked. Tests:
+`crates/engine/tests/leg_filter_axes.rs`.
+Pendelhaven: "Target 1/1 creature gets +1/+2 until end of turn."
 
 ### 63. `primordial-ooze` — 1 card, M
 Depends on: nothing.
@@ -1093,13 +1099,16 @@ creature unless you pay {1}." *Sketch:* #32's ability-granting applied globally 
 the granted ability is a *triggered* one whose "your" resolves per affected creature's controller.
 The self-reference ("this creature") must bind to each grantee, not to the Tabernacle.
 
-### 82. `time-elemental` — 1 card, S
+### 82. `time-elemental` — 1 card, S — **LANDED** (wave 8)
 Depends on: nothing.
+*Landed:* no filter work was needed — `PermanentFilter::enchanted` is an `Option<bool>`, so
+`enchanted = false` already *is* the negative axis the sketch asked for (Winds of Rath spells it
+that way). The card was pure authoring: an `attacks_or_blocks` trigger scheduling
+`fire_at = "end_combat"`, whose `then` is an `Effect::Sequence` of the sacrifice and the 5 damage
+(one delayed trigger carrying two effects, so `ScheduleAtNextUpkeep::then` stayed a single
+effect). Faithful. Tests: `crates/engine/tests/leg_filter_axes.rs`.
 "When this creature attacks or blocks, at end of combat, sacrifice it and it deals 5 damage to you.
-{2}{U}{U}, {T}: Return target permanent that isn't enchanted to its owner's hand." *Sketch:* an
-`attacks_or_blocks` trigger registering a delayed end-of-combat effect (both shapes exist), plus a
-`PermanentFilter::enchanted` inverse — the filter has `enchanted` but not `unenchanted`; add the
-negative axis.
+{2}{U}{U}, {T}: Return target permanent that isn't enchanted to its owner's hand."
 
 ### 83. `triassic-egg` — 1 card, S
 Depends on: nothing.
@@ -1191,28 +1200,45 @@ section D and blocked on the increments below. Two clusters dominate: prevention
 to a damage *source* rather than a recipient (#94, #95 — 7 cards), and the "becomes a color"
 effect, which the DSL models as a permanent, uncounted, literal-color set (#96 — 6 cards).
 
-### 94. `source-keyed-prevention-shield` — 5 cards, L
+### 94. `source-keyed-prevention-shield` — 5 cards, L — **LANDED** (wave 8)
 Depends on: #12.
 Lady Evangela, Subdue, Horn of Deafening, Kry Shield, Indestructible Aura.
 "Prevent all combat damage that would be dealt by target creature this turn."
-*Sketch:* `PreventionShield` is keyed to a damage **recipient** and is consumed by the first
-damage it stands in front of. Legends wants two axes the shield does not have: a *source* key
-("dealt by that creature", any recipient) and a *duration* ("this turn", uncapped rather than
-one-shot). `StaticEffect::PreventCombatDamage { by_self }` is source-keyed but binds to the
-ability's own source and lives as long as the permanent, so it cannot be aimed. The shield needs
-a `key: Recipient(ObjectId) | Source(ObjectId)` and an `amount: Next(n) | AllThisTurn`.
-Indestructible Aura is the recipient-keyed corner of the same change (all damage, turn-long);
-Kry Shield's and Subdue's +0/+X halves are already expressible today.
 
-### 95. `grant-prevention-to-attached` — 2 cards, M
+Three premises in the sketch were wrong, corrected here. The *duration* axis already shipped in
+#12: `PreventionShield::persistent` is CR 615.6's never-used-up shield, authored as `all_damage`,
+so no `amount: Next(n) | AllThisTurn` was needed. The *source* key already shipped too, as
+`from_source` plus the `target_is_source` authoring flag Forcefield uses. What was actually
+missing is narrower than either: a source-keyed shield still insisted the damage's **recipient**
+be the one object `target` named, because Forcefield — the only card that had set
+`target_is_source` — also names the one player it protects. And `StaticEffect::PreventCombatDamage`
+no longer exists under that name (#12 renamed it `PreventDamage`), so its `by_self` half was never
+a candidate for aiming.
+*Landed:* one flag — `any_recipient` on `MiscEffect::PreventNextDamage` and on
+`state::PreventionShield` — read at the single `Game::shield_stands_between` predicate both damage
+chokes and `apply.rs` share: a shield that sets it skips the recipient check entirely and stands in
+front of every creature and player at once, still gated by `combat_only`. Indestructible Aura
+needed no engine surface at all — recipient-keyed, `all_damage`, exactly Silhouette's shape.
+Kry Shield's and Subdue's "+0/+X where X is its mana value" halves are `pump_until_end_of_turn`
+with `toughness = "target_mana_value"` in the same `[[abilities.effects]]` sequence, sharing the
+one target. All five cards faithful.
+
+### 95. `grant-prevention-to-attached` — 2 cards, M — **LANDED** (wave 8)
 Depends on: #94.
 Gaseous Form, Demonic Torment.
 "Prevent all combat damage that would be dealt to and dealt by enchanted creature."
-*Sketch:* `StaticEffect::GrantToAttached` carries P/T and keywords but has no prevention field,
-and `StaticEffect::PreventCombatDamage` binds to the ability's own source — the Aura — not to
-its host. Once #94 gives the shield a source/recipient key, this is an Aura-scoped standing
-shield re-keyed to `attached_to`. Demonic Torment's "can't attack" clause is `grant_to_attached
-cant_attack` today; only the prevention line blocks it.
+
+The sketch's premise was wrong in two ways. `StaticEffect::GrantToAttached` is not the mechanism —
+prevention is a replacement effect the `ReplacementRegistry` reads off the battlefield, not a
+characteristic grant, and threading it through the grant would have duplicated all five of
+`PreventDamage`'s gates. And this needs nothing from #94: the Aura's shield is recipient-keyed and
+source-keyed at once ("to and dealt by"), which `PreventDamage { to_self, by_self }` has expressed
+since #12; only *whose* damage it reads was wrong.
+*Landed:* `attached: bool` on `StaticEffect::PreventDamage`, following the `CantBeTargetedBy {
+attached }` precedent — when set, `ReplacementRegistry::new` registers the effect against
+`game.attached_to(source)` instead of the Aura itself, and an unattached Aura registers nothing.
+Demonic Torment keeps its existing `grant_to_attached cant_attack` ability alongside. Both cards
+faithful.
 
 ### 96. `target-becomes-color` — 6 cards, M
 Depends on: nothing.
@@ -1316,15 +1342,19 @@ control-change; nothing expresses the "for as long as you control this creature"
 is a conditional continuous effect that ends when the source leaves or changes controller
 (CR 611.2b), not a turn-scoped one.
 
-### 105. `filter-completeness-and-disjunction` — 3 cards, M
+### 105. `filter-completeness-and-disjunction` — 3 cards, M — **LANDED** (wave 8)
 Depends on: nothing.
+*Landed:* two thirds of the sketch were already false when the wave opened. `SpellFilter::Instant`
+had landed with #48 (In the Eye of Chaos), and `ColorFilter::AnyOf { colors }` with wave 7's
+Greater Realm of Preservation — so Flash Counter needed only its ability written, and Abomination
+only `color = { any_of = { colors = ["green", "white"] } }` on the
+`blocks_or_becomes_blocked_by` filter Thicket Basilisk already uses. The one real gap was
+Mana Matrix's "instant **or** enchantment", added as the flat `SpellFilter::InstantOrEnchantment`
+arm next to the existing `ArtifactOrEnchantment` rather than as a general disjunction combinator:
+a `SpellFilter::AnyOf` would have had one user, and the union shape #8 wants is over *triggers*,
+not spell filters. All three cards are faithful. Tests: `crates/engine/tests/leg_filter_axes.rs`.
 Abomination ("a green or white creature"), Flash Counter ("target instant spell"),
 Mana Matrix ("Instant and enchantment spells you cast").
-*Sketch:* the filter types are missing both arms and combinators. `SpellFilter` has no bare
-`instant` (only `instant_or_sorcery`, which would wrongly catch sorceries) and no way to say
-"instant or enchantment". `ColorFilter` holds one color with no OR. Add the missing arms plus a
-disjunction combinator usable by both — the union shape #8 needs for attacking-or-blocking is
-the same idea one level up.
 
 ### 106. `sacrifice-filtered-permanents-as-an-alternative-cost` — 2 cards, M
 Depends on: nothing.

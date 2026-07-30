@@ -1050,6 +1050,8 @@ impl Game {
                         continue;
                     };
                     self.queue_enchanted_creature_deals_damage_triggers(source, amount);
+                    // Glyph of Life's receiving-side twin of the dealer-side watch just above.
+                    self.fire_attacker_damage_life_triggers(source, object, amount.max(0) as u32);
                     // Vampiric Dragon's turn-scoped "a creature dealt damage by this creature
                     // this turn dies" tally (fidelity increment #194) — every creature-damage choke
                     // records here, combat or noncombat alike; read back at the death choke below.
@@ -3853,6 +3855,58 @@ impl Game {
                     }],
                 });
             }
+        }
+    }
+
+    /// Fire CR 603.7's repeatable delayed watches armed by
+    /// [`Effect::Life(LifeEffect::GainWhenTargetIsDamagedByAttackerThisTurn)`] (Glyph of Life's
+    /// "Whenever that creature is dealt damage by an attacking creature this turn, you gain that
+    /// much life"): `dealer` just marked `amount` damage on `watched`. The receiving-side twin of
+    /// [`Self::fire_combat_damage_copy_triggers`] — keyed on the damage's *recipient* rather than
+    /// on the dealer — and repeatable for the same reason: CR "this turn" fires again on every
+    /// subsequent qualifying damage, so entries are never removed here; an unconsumed entry is
+    /// cleared at the next turn's Untap step (`Game::apply`'s `Step::Untap` arm). "An attacking
+    /// creature" is read live off [`Self::attackers`] (CR 506.4 — a creature is attacking only
+    /// while combat has it declared), which is what makes a first-strike blocker's own damage and
+    /// a Prodigal Sorcerer ping alike not count. `timing`/`condition` are fabricated
+    /// placeholders, same shape as `fire_combat_damage_copy_triggers`'s own note.
+    pub(crate) fn fire_attacker_damage_life_triggers(
+        &mut self,
+        dealer: ObjectId,
+        watched: ObjectId,
+        amount: u32,
+    ) {
+        if self.delayed_triggers.pending_attacker_damage_life.is_empty() || amount == 0 {
+            return;
+        }
+        if !self.attackers().contains(&dealer) {
+            return;
+        }
+        let matches: Vec<(PlayerId, ObjectId)> = self
+            .delayed_triggers
+            .pending_attacker_damage_life
+            .iter()
+            .filter(|&&(_, _, w)| w == watched)
+            .map(|&(controller, source, _)| (controller, source))
+            .collect();
+        for (controller, source) in matches {
+            self.pending_trigger_groups.push(TriggerGroup {
+                expanded: false,
+                controller,
+                source,
+                abilities: vec![Ability {
+                    timing: Timing::Triggered(Trigger::ThisIsDealtDamage),
+                    effect: Effect::Life(LifeEffect::Gain {
+                        who: PlayerSet::You,
+                        amount: Amount::Fixed(amount as i32),
+                    }),
+                    optional: false,
+                    min_level: 0,
+                    cost: Cost::FREE,
+                    condition: None,
+                    once_each_turn: false,
+                }],
+            });
         }
     }
 

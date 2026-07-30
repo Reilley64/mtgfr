@@ -11,3 +11,14 @@ generic = 6
 
 [kind]
 type = "artifact"
+
+# Instant and enchantment spells you cast cost {2} less to cast.
+[[abilities]]
+timing = "static"
+
+# Instant and enchantment spells you cast cost {2} less to cast.
+[[abilities.effects]]
+type = "static"
+mode = "reduce_spell_cost"
+amount = 2
+filter = "instant_or_enchantment"

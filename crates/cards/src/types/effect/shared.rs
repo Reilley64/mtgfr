@@ -643,6 +643,7 @@ impl Effect {
             | Effect::Token(TokenEffect::BecomeCopyOfTargetCreatureGainingMyriad { target })
             | Effect::Copy(CopyEffect::ChangeTargetOfTargetSpellOrAbility { target, .. })
             | Effect::Destroy(DestroyEffect::Target { target, .. })
+            | Effect::Life(LifeEffect::GainWhenTargetIsDamagedByAttackerThisTurn { target })
             // Conservator's "dealt to you" leaves this `TargetSpec::None`, which is exactly what
             // an untargeted effect reports anyway.
             | Effect::Misc(MiscEffect::PreventNextDamage { target, .. }) => target,
@@ -786,7 +787,8 @@ Effect::Exile(ExileEffect::Graveyard)
             Effect::Life(
                 LifeEffect::Gain { who, .. }
                 | LifeEffect::Lose { who, .. }
-                | LifeEffect::Drain { who, .. },
+                | LifeEffect::Drain { who, .. }
+                | LifeEffect::Exchange { who },
             )
             | Effect::Draw(DrawEffect::Cards { who, .. })
             | Effect::Mill(MillEffect::Mill { who, .. })
@@ -1658,6 +1660,13 @@ pub struct ActivationCost {
     /// Keyed by (source object, ability index) in [`Game::once_each_turn_activated`]; `false` for
     /// an ability with no such cap.
     pub once_each_turn: bool,
+    /// An activation restriction: "Activate no more than N times each turn" (Vampire Bats:
+    /// "Activate no more than twice each turn") — the general form of
+    /// [`once_each_turn`](Self::once_each_turn) above (CR 602.2b). `None` leaves the cap to
+    /// `once_each_turn` (`= 1` when set); `Some(n)` caps activations at `n` regardless of
+    /// `once_each_turn`. Counted against the same per-turn activation ledger
+    /// (`Game::once_per_turn.activated`) the `once_each_turn` check reads.
+    pub max_activations_per_turn: Option<u32>,
     /// An activation timing restriction: "Activate only as a sorcery" (CR 602.5b — Ozolith, the
     /// Shattered Spire's counter ability). Checked against the same "any time you could cast a
     /// sorcery" predicate spells use ([`Game::can_take_sorcery_speed_action`]). Independent of a
