@@ -23,6 +23,9 @@ export function playableBattlefieldObjectIds(
   for (const action of actions ?? []) {
     if (action.section !== "battlefield") continue;
     if (action.object == null) continue;
+    // A paid mana ability (Viridescent Bog) still gets a radial row, but making mana you can't
+    // spend is not a play — don't advertise it as one.
+    if (action.mana_only === true) continue;
     const card = byId.get(action.object);
     // CR 302.6: summoning-sick creatures can't pay {T}/{Q}. Don't advertise those activates.
     if (card?.summoningSick && !card.hasHaste && action.taps_self === true) {

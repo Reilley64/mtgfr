@@ -22,6 +22,7 @@ Render a card-anchored activation menu beside the selected battlefield permanent
 
 - The activation menu opens only for a selected battlefield permanent with at least one option.
 - Options are synthesized from `tap_for_mana` plus battlefield `ActionView` entries for the selected object.
+- Actions flagged `mana_only` (paid tap-for-mana modes) list like any other row, with their cost chip and auto-tap preview. Only the battlefield playable border skips them.
 - Empty option lists render nothing; no panel appears.
 - The menu anchor is the selected card's screen-space center.
 - Placement prefers right of the card, then left, then above, then below, and clamps the panel fully on-screen.

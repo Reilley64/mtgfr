@@ -114343,3 +114343,53 @@ fn camouflage_is_locked_out_of_every_step_but_your_declare_attackers() {
         "a main-phase Camouflage has no attackers to hide among",
     );
 }
+
+/// Viridescent Bog's `{1}, {T}: Add {B}{G}` is a paid mana ability: it is listed for the radial but
+/// must never read as a play. `mana_only` is what carries that to the wire.
+#[test]
+fn a_paid_mana_activate_is_listed_as_mana_only() {
+    let mut game = Game::new();
+    let bog = game.spawn_on_battlefield(PlayerId(0), card("Viridescent Bog"));
+    let forest = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
+    // Tap the Forest for the Bog's {1} — this also forces `refresh_actions` to run.
+    game.submit(Intent::TapForMana {
+        player: PlayerId(0),
+        object: forest,
+    })
+    .unwrap();
+
+    let action = game
+        .legal_actions()
+        .iter()
+        .find(|a| matches!(a.kind, MeaningfulAction::Activate { source, .. } if source == bog))
+        .expect("the Bog's paid mana mode is listed for the radial");
+    assert!(
+        action.mana_only,
+        "a paid mana ability is menu-only, not a play"
+    );
+    assert!(
+        !game.has_meaningful_action(PlayerId(0)),
+        "bare mana production still must not stop auto-pass",
+    );
+}
+
+#[test]
+fn a_land_drop_is_not_mana_only() {
+    let mut game = Game::new();
+    let forest_in_hand = game.spawn_in_hand(PlayerId(0), card("Forest"));
+    let tapland = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
+    game.submit(Intent::TapForMana {
+        player: PlayerId(0),
+        object: tapland,
+    })
+    .unwrap();
+
+    let action = game
+        .legal_actions()
+        .iter()
+        .find(
+            |a| matches!(a.kind, MeaningfulAction::PlayLand { card, .. } if card == forest_in_hand),
+        )
+        .expect("the land drop is listed");
+    assert!(!action.mana_only, "playing a land is a real action");
+}
