@@ -4,7 +4,8 @@ import type { ActionView, ObjectView, VisibleState } from "~/wire/types";
 import type { GameFoldState } from "../game/fold";
 import { engagedIds } from "./engagement";
 import { layout, ZONE } from "./geometry/layout";
-import { BoardPointerDown, BoardPointerUp, CombatAttackerDropped } from "./messages";
+import { selectedRadialOptions } from "./html/activation-menu";
+import { BoardPointerDown, BoardPointerUp, CombatAttackerDropped, RadialOptionPicked } from "./messages";
 import { type BoardModel, initialBoardModel, updateBoard } from "./submodel";
 
 function creature(id: number, over: Partial<ObjectView> = {}): ObjectView {
@@ -234,4 +235,36 @@ test("two target picks on one cluster select two distinct copies instead of togg
   const [afterSecond] = updateBoard(afterSecondDown, BoardPointerUp(secondClick), gameFold, "T1");
 
   expect(afterSecond.promptDraft).toMatchObject({ kind: "card-pick", picked: [10, 11] });
+});
+
+// A cluster offers one row per ability, and that row carries the `ActionView` of whichever copy can
+// still pay for it — which is not the face once the face has spent its ability. The staged card is
+// what the aim leg then treats as the ability's source, so it has to be the acting copy: stage the
+// face instead and the arrow points from the wrong permanent and self-referential aim reads the
+// wrong id.
+//
+// `commitRadialIndex` is the only place that resolves it. Asserting on `planRunAction` would not
+// discriminate — it falls back to `action.object` only when `card` is null, so a wrongly-resolved
+// face card wins there silently.
+test("activating a cluster ability stages the copy that can act, not the cluster face", () => {
+  // Saproling 10 (the face) already spent this ability, so the engine lists it only for copy 11.
+  const pump: ActionView = {
+    id: 77,
+    kind: "activate",
+    label: testMessageRef("Pump"),
+    needs_target: true,
+    object: 11,
+    section: "battlefield",
+    targets: [{ kind: "object", id: 1 }],
+  };
+  const gameFold = fold({ objects: crowdedObjects(), actions: [pump] });
+  const visible = gameFold.state as VisibleState;
+  const board: BoardModel = { ...initialBoardModel(), selectedId: 10 };
+
+  const index = selectedRadialOptions(board, visible).findIndex((o) => o.kind === "action" && o.action.id === pump.id);
+  if (index < 0) throw new Error("expected the cluster menu to offer copy 11's ability");
+
+  const [after] = updateBoard(board, RadialOptionPicked({ index }), gameFold, "T1");
+
+  expect(after.staged?.card.id).toBe(11);
 });

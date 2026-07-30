@@ -109,7 +109,8 @@ describe("radialOptions", () => {
   });
 
   it("counts the copies that can act, not the ability rows they contribute", () => {
-    // Copy 10 lists the same ability twice (two abilities with one oracle line); that is one copy.
+    // Object 10 contributes two same-labelled rows on its own; only object 11 adds a second copy.
+    // So `available` must be 2 (distinct objects that can act), not 3 (rows in the action list).
     const actions = [
       activate({ id: 1, object: 10, label: testMessageRef("Pump") }),
       activate({ id: 2, object: 10, label: testMessageRef("Pump") }),
