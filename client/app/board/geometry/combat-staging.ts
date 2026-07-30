@@ -35,7 +35,9 @@ export function handleCombatDrop(
 ): CombatDropResult {
   if (mode === "attackers") {
     const pw = attackablePlaneswalker(blockTarget, opponents);
-    const next = attackDrop(currentAttackers, from, defender, pw?.id);
+    // Planeswalkers sit in the battlefield rows, clear of the seat's avatar circle, so a drop on
+    // one hits no avatar — its controller is the defending player (CR 508.1a).
+    const next = attackDrop(currentAttackers, from, defender ?? pw?.controller ?? null, pw?.id);
     return next ? { kind: "attackers", value: next } : { kind: "none" };
   }
   if (mode === "blockers") {
