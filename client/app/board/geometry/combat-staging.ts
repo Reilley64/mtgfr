@@ -39,13 +39,16 @@ export function handleCombatDrop(
 ): CombatDropResult {
   if (mode === "attackers") {
     const pw = attackablePlaneswalker(blockTarget, opponents);
-    let next = attackDrop(currentAttackers, from, defender, pw?.id);
+    // Planeswalkers sit in the battlefield rows, clear of the seat's avatar circle, so a drop on
+    // one hits no avatar — its controller is the defending player (CR 508.1a).
+    const defendingPlayer = defender ?? pw?.controller ?? null;
+    let next = attackDrop(currentAttackers, from, defendingPlayer, pw?.id);
     if (!next) return { kind: "none" };
     for (const id of alsoIds) {
       // `?? next` is defensive only: attackDrop rejects only on from.tapped / summoningSick-without-haste
       // / a null defender, all facts clusterKey holds equal across members, so a member can't fail here
       // once the face above has already passed.
-      next = attackDrop(next, { ...from, id }, defender, pw?.id) ?? next;
+      next = attackDrop(next, { ...from, id }, defendingPlayer, pw?.id) ?? next;
     }
     return { kind: "attackers", value: next };
   }

@@ -75,7 +75,7 @@ Unplayable permanents are not darkened. Castability and activation availability 
 - `GRAVEYARD_OUTLINE = "#7B5CFF"`
 - `EXILE_OUTLINE = "#3DDC97"`
 
-Battlefield playable borders are derived from current `ActionView` data. Tap-only mana lands remain selectable for their tap wedge but do not get a playable border unless they have another action. Commander gold can coexist with a playable border as an outer halo.
+Battlefield playable borders are derived from current `ActionView` data. Mana sources do not get a playable border: free-tap lands have no `ActionView`, and an action flagged `mana_only` (a paid tap-for-mana mode such as Viridescent Bog's `{1}, {T}: Add {B}{G}`) is skipped. Both remain selectable for their tap wedge and radial row. Commander gold can coexist with a playable border as an outer halo.
 
 ### Avatars
 

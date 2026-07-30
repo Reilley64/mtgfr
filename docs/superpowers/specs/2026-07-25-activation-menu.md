@@ -22,6 +22,7 @@ Render a card-anchored activation menu beside the selected battlefield permanent
 
 - The activation menu opens only for a selected battlefield permanent with at least one option.
 - Options are synthesized from `tap_for_mana` plus battlefield `ActionView` entries for the selected object. When the selection is a cluster face, the entries for every member id (`[face.id, ...clusterMembers]`) are counted together.
+- Actions flagged `mana_only` (paid tap-for-mana modes) list like any other row, with their cost chip and auto-tap preview. Only the battlefield playable border skips them.
 - One row per distinct ability label. The row carries the `ActionView` of a copy that can still act, so activation routes to an unspent copy; an ability stays on offer while any copy has an entry and disappears when the last copy's is gone.
 - A row carrying more than one copy shows a `data-testid="activation-menu-available-{key}"` chip reading `×k`, where `k` counts the distinct member ids that can still activate it.
 - Nothing splits out of the cluster for an activation. Visible consequences (tapped, counters, modifiers) split it through `clusterKey` as usual.

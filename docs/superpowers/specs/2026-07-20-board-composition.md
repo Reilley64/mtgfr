@@ -35,6 +35,8 @@ The board root is `data-testid="board-mount"` in both connecting and live states
 
 When no `VisibleState` is available, the board renders the same root plus `data-testid="board-connecting"` and a connecting message. Once state is present, the root mounts keyboard, audio, and hint helpers as separate hidden children so each Mount hook remains active.
 
+Every mount host under the root is keyed with its `data-testid`, and so is every conditional child. Mount hooks run on element creation, and the vdom pairs unkeyed siblings of the same tag positionally — without keys a child that disappears (the hint after auto-hide) shifts the tail onto its neighbours' elements, leaving already-running mounts holding the wrong node.
+
 ### Surfaces and overlays
 
 The live board composes:
@@ -111,6 +113,7 @@ Stable markers include `board-mount`, `board-connecting`, `board-keyboard-mount`
 ## Testing Decisions
 
 - Scene tests cover root mounting, `select-none`, layer order, board keyboard/audio mounts, overlays, prompts, hand chrome, life-orb hit targets, and inspect.
+- Composition tests assert each mount host is keyed and that hiding the hint leaves no sibling pairing with the vacated slot.
 - Board pointer tests cover combat staging drops and click-to-cancel on staged attackers/blockers (including refusing cancel for required/goad attackers).
 - Unit tests cover board update outcomes for spectator/eliminated behavior, prompt state, sound toggles, and keyboard handling.
 - Live board verification should exercise route entry, reconnect banner visibility where feasible, and a seated play path with hand, stack, and priority chrome.

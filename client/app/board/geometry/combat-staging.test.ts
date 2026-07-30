@@ -50,6 +50,17 @@ describe("handleCombatDrop", () => {
     });
   });
 
+  // A planeswalker sits in the battlefield rows, nowhere near the seat's avatar circle, so the
+  // drop hits no avatar — the defending seat comes from the planeswalker's controller.
+  it("stages an attacker onto a planeswalker with no avatar under the drop point", () => {
+    const pw = creature(9, { kind: "planeswalker", zone: ZONE.Battlefield, controller: 1 });
+    const result = handleCombatDrop("attackers", [], [], creature(3), null, pw, [], [0], [1, 2, 3]);
+    expect(result).toEqual({
+      kind: "attackers",
+      value: [{ attacker: 3, defender: 1, defender_planeswalker: 9 }],
+    });
+  });
+
   it("dropping on a non-planeswalker permanent still attacks the seat under it", () => {
     const bear = creature(9, { zone: ZONE.Battlefield, controller: 1 });
     const result = handleCombatDrop("attackers", [], [], creature(3), 1, bear, [], [0], [1, 2, 3]);

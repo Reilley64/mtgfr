@@ -615,6 +615,14 @@ impl Game {
     /// Paid tap-for-mana activates (filter lands, karoos, signets) for the wire radial — **not**
     /// part of [`Game::meaningful_actions`], so they never stop auto-pass (turn-priority-and-stack spec). Appended onto
     /// [`Game::actions`] by [`Game::refresh_actions`] so the client can show them.
+    ///
+    /// ponytail: bare mana production is never halt-worthy, which is wrong once a player controls a
+    /// mana-persist static (Kruphix, Omnath, Upwelling) or a controller-facing "whenever you tap a
+    /// land for mana" payoff — no such card is scripted in `crates/cards/data/` today. When the
+    /// first one lands, add `Game::mana_matters(player)` and OR it into
+    /// [`Game::has_meaningful_action`] (not into `meaningful_actions`, which would duplicate radial
+    /// rows), and carry it as a snapshot boolean so the client borders every `taps_for_mana`
+    /// permanent, basics included. See docs/superpowers/specs/2026-07-29-mana-only-actions-design.md.
     pub(crate) fn paid_mana_activates(&self, player: PlayerId) -> Vec<MeaningfulAction> {
         if self.mulliganing {
             return Vec::new();
