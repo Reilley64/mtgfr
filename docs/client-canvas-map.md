@@ -14,7 +14,7 @@ specs for the current module split, especially
 
 1. **Paint (pixels):** `client/app/board/canvas/scene.ts` builds the vector `BoardScene`; `felt.ts` / `avatars.ts` / `arrows.ts` are dumb paint helpers under `client/app/board/canvas/`.
 2. **Bitmaps (card art):** `client/app/board/bitmap/mount.ts` — Foldkit `Mount` regions blit card faces + flights on top of the canvas via the shared `ImageCache`.
-3. **Hits / camera:** `client/app/board/geometry/{camera,hit-test,density,layout,interaction}.ts` — pure geometry; used by the board submodel + `action/` planners.
+3. **Hits / camera:** `client/app/board/geometry/{camera,hit-test,layout,interaction}.ts` — pure geometry; used by the board submodel + `action/` planners.
 4. **Screen motion / flights:** `client/app/board/motion/flights.ts`, `exit-fx.ts`, `screen-motion.ts` — canvas-owned drag ghosts, in-flight cards, and battlefield exit FX share the Mount flight layer; resting hand/stack stay HTML.
 
    Flight / ExitFx animation is Mount-local rAF: mid-flight ticks paint only the
@@ -32,8 +32,8 @@ specs for the current module split, especially
 |--------|------|
 | `app/board/geometry/camera.ts` | Camera SoT: `screen = world * zoom + pan` |
 | `app/board/geometry/hit-test.ts` | Screen→world card/avatar hits (tapped/fan footprints) |
-| `app/board/geometry/density.ts` | Row packing / hover-raise / clusters ([battlefield](superpowers/specs/2026-07-20-battlefield.md)) |
-| `app/board/geometry/layout.ts` | Seat bands, card size, zone columns, attach layout |
+| `app/board/geometry/layout.ts` | Seat bands, card size, zone columns, attach layout, row packing, clusters ([battlefield](superpowers/specs/2026-07-20-battlefield.md)) |
+| `app/board/engagement.ts` | Committed permanents that split out of a cluster (attackers, blockers, targets) |
 | `app/board/geometry/interaction.ts` | Pointer FSM reducers + `fitCamera` |
 | `app/board/geometry/combat-staging.ts` | Combat pointer resolution |
 | `app/board/canvas/scene.ts` | Plain `BoardScene` builder + dumb `paintBoardScene` |

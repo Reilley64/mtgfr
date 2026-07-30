@@ -1,7 +1,7 @@
 # Board Camera and Layout
 
 **Status:** Current (as of 2026-07-25)
-**Module:** `client/app/board/geometry/camera.ts`, `client/app/board/geometry/interaction.ts`, `client/app/board/geometry/layout.ts`, `client/app/board/geometry/hit-test.ts`, `client/app/board/geometry/density.ts`, `client/app/board/html/camera-gesture-mount.ts`, `client/app/board/submodel.ts`
+**Module:** `client/app/board/geometry/camera.ts`, `client/app/board/geometry/interaction.ts`, `client/app/board/geometry/layout.ts`, `client/app/board/geometry/hit-test.ts`, `client/app/board/engagement.ts`, `client/app/board/html/camera-gesture-mount.ts`, `client/app/board/submodel.ts`
 
 ---
 
@@ -11,7 +11,7 @@ The board needs one coordinate model that can support pan, zoom, layout, pointer
 
 ## Solution
 
-`camera.ts` defines the pure screen/world transform. `layout.ts` converts the visible game snapshot into `RenderCard` records in world coordinates. `interaction.ts` handles camera fitting and pointer transitions. `hit-test.ts` maps pointer coordinates back to logical cards. `density.ts` defines the intended overlays for row packing, cluster fans, and hover raise.
+`camera.ts` defines the pure screen/world transform. `layout.ts` converts the visible game snapshot into `RenderCard` records in world coordinates, packing crowded rows and collapsing indistinguishable permanents into cluster faces; a permanent committed to combat or a target takes its own slot instead (`board/engagement.ts`). `interaction.ts` handles camera fitting and pointer transitions. `hit-test.ts` maps pointer coordinates back to logical cards.
 
 The layer stack and the paint-vs-hit ownership rules are documented in [`docs/client-canvas-map.md`](../../client-canvas-map.md).
 
@@ -62,16 +62,12 @@ Seat avatars use a 40 world-unit radius. Their label gutter is part of `boardBou
 
 Pointer events arrive in screen coordinates and are tested through the shared camera. Hits resolve against the logical `RenderCard` layout, not against tweened or in-flight paint poses. When multiple cards overlap, the topmost card in the resolved layout order wins. Avatar hits use the same camera transform and seat positions.
 
-### Density, packing, and clusters
-
-The intended density overlay is `withBoardDensity`, with top-order lifting handled by `withHoverRaise`:
+### Packing and clusters
 
 - Row packing compresses horizontal spacing per battlefield row when a row exceeds its normal slot count.
 - Packed rows stay inside the seat band; seats do not widen and cards do not spill into neighboring bands.
-- Identical indistinguishable permanents may collapse into one cluster face with a member count.
-- Hover or long-press fans cluster members in an MTGA-style arc.
-- A selected fanned member keeps the fan open until deselected.
-- Hover raise lifts the hovered card and its attachment stack above peers for paint and hit testing.
+- Identical indistinguishable permanents collapse into one cluster face with a member count; the face is the lowest-id member.
+- A permanent committed to combat or a target — declared or staged attacker, declared or staged blocker, a blocked attacker, the target of a stack object, or a staged/drafted target — takes its own slot instead of merging into its cluster (`board/engagement.ts`), so the cluster face becomes the next free copy. See [`2026-07-20-battlefield.md`](2026-07-20-battlefield.md) for the full rule.
 
 These transforms are presentation overlays only. They do not change object identity, game zones, controller, or engine state.
 
@@ -84,7 +80,7 @@ Attachments remain associated with their host for layout and hover raise. Tapped
 - Keep camera math pure and shared by Canvas, Mount, and HTML projection code.
 - Use `RenderCard` as the board layout contract; do not read object positions from DOM.
 - Resolve hits from logical layout and topmost order, not animation poses.
-- Treat density, hover raise, packing, and cluster fans as layout overlays rather than engine facts.
+- Treat packing and cluster collapse as layout overlays rather than engine facts.
 - Keep `fitCamera` in geometry code so tests can exercise it without rendering.
 - Keep camera persistence out of browser storage; the camera resets to fit on cold board entry until the user pans or zooms.
 
@@ -93,7 +89,7 @@ Attachments remain associated with their host for layout and hover raise. Tapped
 - Camera tests cover world/screen round trips, pan, zoom-at invariants, and fit behavior.
 - Layout tests cover seat placement, zone columns, tapped rotation fields, attachments, avatar label bounds, player-count variation, and that a spectator viewer still resolves four distinct quadrants.
 - Hit-test tests cover overlapped/tapped cards, topmost resolution, and avatar hits.
-- Density tests cover row packing, cluster fan poses, clamping to seat bands, and hover raise ordering.
+- Layout tests cover row packing, cluster collapse, clamping to seat bands, and that a committed permanent splits out of its cluster to its own slot.
 - Interaction tests cover pan-vs-click thresholds and camera user-moved behavior.
 - Gesture mount tests cover wheel factors, pinch factors, and client-to-board coordinate conversion.
 - Board sync tests cover that a user-panned or user-zoomed camera is preserved across later game syncs (actions/deltas must not re-fit).
