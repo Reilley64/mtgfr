@@ -87,6 +87,7 @@ import {
   stagedPickTargets,
 } from "./action/targeting";
 import { CARD_NAME_COMBOBOX_ID, CardNameCombobox } from "./card-name-combobox";
+import { engagedIds } from "./engagement";
 import {
   markRevealSeen,
   prefersReducedMotion,
@@ -536,13 +537,13 @@ function partitionReady(
 
 type ActionlessPendingChoice = NonNullable<BoardFold["state"]>["pending_choice"];
 
-function cardsFor(fold: GameFoldState): RenderCard[] {
+function cardsFor(fold: GameFoldState, model: BoardModel): RenderCard[] {
   if (fold.state == null) return [];
-  return layout(fold.state, fold.state.viewer);
+  return layout(fold.state, fold.state.viewer, engagedIds(fold.state, model));
 }
 
 function cardAt(fold: GameFoldState, model: BoardModel, x: number, y: number): RenderCard | null {
-  const cards = cardsFor(fold);
+  const cards = cardsFor(fold, model);
   const hitId = hitTest(model.camera, x, y, cards);
   if (hitId == null) return null;
   return cards.find((card) => card.id === hitId) ?? null;
@@ -659,7 +660,7 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
   const state = fold.state;
   if (state == null) return model;
 
-  const cards = layout(state, state.viewer);
+  const cards = layout(state, state.viewer, engagedIds(state, model));
   const cardsById = new Map(cards.map((card) => [card.id, card]));
   const battlefieldExitIds = new Set(fold.provenance.battlefieldExits.keys());
   const exitFx = new Map(model.exitFx);

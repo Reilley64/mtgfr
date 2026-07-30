@@ -3,6 +3,7 @@ import { type Html, html } from "foldkit/html";
 import { costPips } from "~/costPips";
 import { manaFontClass } from "~/oracleText";
 import type { VisibleState } from "~/wire/types";
+import { engagedIds } from "../engagement";
 import { layout, ZONE } from "../geometry/layout";
 import {
   ACTIVATION_MENU_WIDTH_PX,
@@ -67,7 +68,7 @@ function rowClass(): string {
 export function selectedRadialOptions(board: BoardModel, state: VisibleState): RadialOption[] {
   const id = board.selectedId;
   if (id == null) return [];
-  const card = layout(state, state.viewer).find((c) => c.id === id);
+  const card = layout(state, state.viewer, engagedIds(state, board)).find((c) => c.id === id);
   if (card == null) return [];
   return radialOptions(
     id,
@@ -89,7 +90,7 @@ export function activationMenuView(board: BoardModel, state: VisibleState): Html
   const options = selectedRadialOptions(board, state);
   if (options.length === 0) return null;
 
-  const cards = layout(state, state.viewer);
+  const cards = layout(state, state.viewer, engagedIds(state, board));
   const card =
     cards.find((renderCard) => renderCard.id === id) ??
     cards.find((renderCard) => renderCard.clusterMembers.includes(id));

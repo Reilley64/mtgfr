@@ -64,6 +64,8 @@ export type SceneShapesOptions = {
   stagedTargeting?: StagedTargeting | null;
   combatDrag?: { from: { x: number; y: number }; to: { x: number; y: number }; declaringBlock: boolean } | null;
   stackPresentation?: StackPresentation;
+  /** Committed permanents that must not collapse into a cluster (see `board/engagement.ts`). */
+  engaged?: ReadonlySet<number>;
 };
 
 function seatShapes(state: VisibleState, camera: Camera): Shape[] {
@@ -219,7 +221,7 @@ export function sceneShapes(state: VisibleState, options: SceneShapesOptions = {
   const height = options.height ?? BOARD_VIEWPORT.height;
   const count = Math.max(1, state.players.length);
   const camera = options.camera ?? fitCamera({ x: width, y: height }, count, 0);
-  const cards = layout(state, state.viewer);
+  const cards = layout(state, state.viewer, options.engaged);
   const avatars = avatarScreenPositions(state.players, state.viewer, count, camera);
   const targeting = options.stagedTargeting ?? null;
   const targetObjects = targeting?.targetObjects ?? new Set<number>();
