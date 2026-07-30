@@ -112,6 +112,8 @@ Missing ordinary (non-`art_crop`) CDN art stays empty after load failure (no Scr
 
 **Image cache and board preload:** `client/app/domain/image-cache.ts` provides a URL→HTMLImageElement cache (`sharedImageCache`) with a subscriber list for canvas redraws on image settle. HTML `cardArt` mounts subscribe to that cache. On the board bitmap Mount (`client/app/board/bitmap/mount.ts`), `preloadFrameArt` collects face/print URLs for the published frame's cards and flights and calls `sharedImageCache.preload(urls)` so gameplay paint hits the cache. There is no separate `deckImagePreload` / `preloadDecksIntoCache` module.
 
+**Loading skeleton:** while a print is still in flight, `syncCardArtHost` paints an `aria-hidden` `animate-skeleton` child instead of the `<img>`. The skeleton is `absolute inset-0` inside the host (which `cardArt` always renders `relative overflow-hidden`), so it fills hosts sized by inline `style` — the hand bar and stack faces — as well as class-sized ones. A failed load leaves the host empty.
+
 ---
 
 ## Implementation Decisions
