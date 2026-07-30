@@ -29,7 +29,9 @@ export default {
     if (a !== id[0] || b !== id[1]) return new Response("Not found", { status: 404 });
 
     const key = `${size}/${face}/${a}/${b}/${id}.jpg`;
-    const stored = await env.CARDS.get(key);
+    // A read failure is not distinguishable from a miss here, so treat it as one — the fill
+    // path below has its own redirect-on-failure handling.
+    const stored = await env.CARDS.get(key).catch(() => null);
     if (stored) return new Response(stored.body, { headers: IMMUTABLE });
 
     const upstream = scryfallImageUrl(size, face, id);
@@ -41,6 +43,9 @@ export default {
     if (!filled.ok) return Response.redirect(upstream, 302);
 
     const bytes = await filled.arrayBuffer();
+    // A 2xx with no bytes is a failed fill, not a valid image — storing it would freeze a
+    // broken tile behind an immutable cache with no way to self-heal.
+    if (bytes.byteLength === 0) return Response.redirect(upstream, 302);
     // A failed write only costs the next request another fill — serve what we already have.
     await env.CARDS.put(key, bytes, { httpMetadata: { contentType: "image/jpeg" } }).catch(() => {});
     return new Response(bytes, { headers: IMMUTABLE });

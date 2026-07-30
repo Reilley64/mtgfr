@@ -87,7 +87,7 @@ describe("card CDN worker", () => {
   it.each([
     ["unknown size folder", `/normal/front/a/b/${ID}.jpg`],
     ["unknown face folder", `/large/side/a/b/${ID}.jpg`],
-    ["non-UUID print id", "/large/front/n/o/not-a-uuid.jpg"],
+    ["non-UUID print id", "/large/front/a/b/not-a-uuid.jpg"],
     ["wrong extension", `/large/front/a/b/${ID}.webp`],
     ["extra path segment", `/large/front/a/b/${ID}.jpg/extra`],
     ["bare root", "/"],
@@ -151,6 +151,28 @@ describe("card CDN worker", () => {
 
     expect(res.status).toBe(200);
     expect(new Uint8Array(await res.arrayBuffer())).toEqual(new Uint8Array([4]));
+  });
+
+  it("falls through to the fill when the R2 read fails", async () => {
+    const env = { CARDS: bucket() };
+    env.CARDS.get.mockRejectedValue(new Error("R2 unavailable"));
+    fetchMock.mockResolvedValue(new Response(new Uint8Array([5, 6]), { status: 200 }));
+
+    const res = await worker.fetch(get(`/large/front/a/b/${ID}.jpg`), env);
+
+    expect(res.status).toBe(200);
+    expect(new Uint8Array(await res.arrayBuffer())).toEqual(new Uint8Array([5, 6]));
+  });
+
+  it("redirects and stores nothing when the fill is a zero-length 200", async () => {
+    const env = { CARDS: bucket() };
+    fetchMock.mockResolvedValue(new Response(new Uint8Array([]), { status: 200 }));
+
+    const res = await worker.fetch(get(`/large/front/a/b/${ID}.jpg`), env);
+
+    expect(res.status).toBe(302);
+    expect(res.headers.get("Location")).toBe(SCRYFALL);
+    expect(env.CARDS.put).not.toHaveBeenCalled();
   });
 });
 

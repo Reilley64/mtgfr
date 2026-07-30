@@ -52,10 +52,10 @@ WebP needs Images transformations, whose free allowance is 5,000 unique/month. U
 
 1. Reject non-`GET`/`HEAD` with `405`.
 2. Match the path against the layout. Verify `a`/`b` equal the first two characters of `id`. Any mismatch → `404` **before** any outbound request.
-3. `env.CARDS.get(key)`. Hit → serve the bytes with `Cache-Control: public, max-age=31536000, immutable`.
+3. `env.CARDS.get(key)`. Hit → serve the bytes with `Cache-Control: public, max-age=31536000, immutable`. A read failure is treated as a miss, so step 4 runs and its own failure handling applies.
 4. Miss → fetch `api.scryfall.com/cards/{id}?format=image&version={size}` (plus `&face=back` for back faces) with our User-Agent.
-5. `2xx` → `put()` the bytes into R2 and serve them with the same headers.
-6. Upstream `404` → `404`. Any other failure → `302` to the same Scryfall image URL.
+5. `2xx` with a non-empty body → `put()` the bytes into R2 and serve them with the same headers. `2xx` with an empty body is not a successful fill.
+6. Upstream `404` → `404`. Any other failure, including an empty `2xx` body → `302` to the same Scryfall image URL.
 
 ### Path validation as a trust boundary
 
@@ -90,7 +90,9 @@ Cloudflare offers no hard budget cap, and usage-based billing notifications requ
 | Off-layout path, or `a`/`b` mismatch | `404`, no outbound request |
 | Non-`GET`/`HEAD` | `405` with `Allow` |
 | R2 hit | Stored bytes, `immutable` |
-| Scryfall `2xx` | Stored, then served |
+| R2 read failure | Treated as a miss; the fill's own handling applies |
+| Scryfall `2xx` with a non-empty body | Stored, then served |
+| Scryfall `2xx` with an empty body | `302` to the Scryfall image URL; nothing stored |
 | Scryfall `404` | `404` |
 | Scryfall `429`/`5xx`/network failure | `302` to the Scryfall image URL; nothing stored |
 
