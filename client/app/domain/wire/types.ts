@@ -203,8 +203,10 @@ export type ObjectView = {
   has_haste: boolean;
   id: U32;
   is_commander: boolean;
+  is_token: boolean;
   keywords?: Array<string>;
   kind: WireKind;
+  legendary: boolean;
   loyalty?: number;
   mana_cost: WireCost;
   marked_damage: number;

@@ -10,6 +10,8 @@ function mkObject(overrides: Partial<ObjectView> = {}): ObjectView {
     has_haste: false,
     id: 0,
     is_commander: false,
+    is_token: false,
+    legendary: false,
     kind: { kind: "creature", power: 0, toughness: 0 },
     mana_cost: { colored: [0, 0, 0, 0, 0], generic: 0 },
     marked_damage: 0,

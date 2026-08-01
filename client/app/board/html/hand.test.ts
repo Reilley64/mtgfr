@@ -18,6 +18,8 @@ function object(id: number, overrides: Partial<ObjectView> = {}): ObjectView {
     has_haste: false,
     id,
     is_commander: false,
+    is_token: false,
+    legendary: false,
     kind: { kind: "instant" },
     mana_cost: cost(),
     marked_damage: 0,
@@ -163,6 +165,8 @@ describe("handView unplayable brightness", () => {
       name: "Atraxa",
       zone: ZONE.Command,
       is_commander: true,
+      is_token: false,
+      legendary: false,
       kind: { kind: "creature", power: 4, toughness: 4 },
     });
     const tree = renderHand(state({ objects: [commander], actions: [] }));
@@ -277,6 +281,8 @@ describe("handView playable outlines", () => {
     const commander = object(9, {
       zone: ZONE.Command,
       is_commander: true,
+      is_token: false,
+      legendary: false,
       name: "Zimone, Quandrix Prodigy",
     });
     const tree = renderHand(state({ objects: [commander], actions: [] }));
@@ -298,6 +304,8 @@ describe("handView playable outlines", () => {
     const commander = object(9, {
       zone: ZONE.Command,
       is_commander: true,
+      is_token: false,
+      legendary: false,
       name: "Zimone, Quandrix Prodigy",
     });
     const tree = renderHand(
@@ -364,6 +372,8 @@ describe("handView drag chrome", () => {
     const commander = object(9, {
       zone: ZONE.Command,
       is_commander: true,
+      is_token: false,
+      legendary: false,
       name: "Zimone, Quandrix Prodigy",
     });
     const cast = action(9, { object: 9, section: "command", kind: "cast" });

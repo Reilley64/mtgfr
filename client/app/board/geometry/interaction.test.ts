@@ -352,6 +352,8 @@ describe("resolveClick", () => {
     has_haste: false,
     id: 50,
     is_commander: true,
+    is_token: false,
+    legendary: false,
     kind: { kind: "creature", power: 2, toughness: 2 },
     mana_cost: { generic: 1, colored: [1, 0, 0, 0, 0] },
     marked_damage: 0,

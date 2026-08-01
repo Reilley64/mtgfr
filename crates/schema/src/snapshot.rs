@@ -966,6 +966,8 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
                 plus_counters: game.plus_counters(id),
                 marked_damage: game.marked_damage(id),
                 is_commander: game.is_commander(id),
+                is_token: game.is_token(id),
+                legendary: !face_down && def.legendary,
                 goaded: game.is_goaded(id),
                 taps_for_mana: game.taps_for_mana(id),
                 prepared: game.prepared(id),
@@ -3274,6 +3276,33 @@ mod tests {
         assert_eq!(beast_view.name, "Beast");
         assert_eq!(beast_view.print, "5871be0a-0fd6-441d-8f9e-76c66b5bd8bc");
         assert_eq!(beast_view.card_id, "6bb61f34-5d57-4eaa-a02c-f5d08c1ee920");
+    }
+
+    /// The Arena-style card-frame renderer needs to know whether an object is a minted token
+    /// (drawn with an arched top and no title bar) and whether the printed card is legendary
+    /// (drawn with the legend crown) — neither fact was on `ObjectView` before this test.
+    #[test]
+    fn object_view_reports_token_and_legendary() {
+        let mut game = Game::new();
+        let p0 = PlayerId(0);
+        let bear = game.spawn_on_battlefield(p0, def("Grizzly Bears"));
+        let token = game.spawn_token_on_battlefield(p0, engine::treasure_token());
+
+        let view = snapshot(&game, p0);
+        let bear_view = view
+            .objects
+            .iter()
+            .find(|o| o.id == bear)
+            .expect("bear projected");
+        let token_view = view
+            .objects
+            .iter()
+            .find(|o| o.id == token)
+            .expect("token projected");
+
+        assert!(!bear_view.is_token, "a printed card is not a token");
+        assert!(token_view.is_token, "a minted token reports as one");
+        assert!(!bear_view.legendary, "Grizzly Bears is not legendary");
     }
 
     /// Master Warcraft (CR 508.1a) hands the attack declaration to its caster, so the client must

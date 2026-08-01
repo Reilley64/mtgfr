@@ -17,6 +17,8 @@ function object(overrides: Partial<ObjectView> = {}): ObjectView {
     has_haste: false,
     id: 3,
     is_commander: false,
+    is_token: false,
+    legendary: false,
     kind: { kind: "land", colors: [4] },
     mana_cost: { colored: [0, 0, 0, 0, 0], generic: 0 },
     marked_damage: 0,

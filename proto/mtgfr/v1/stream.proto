@@ -94,6 +94,11 @@ message ObjectView {
   optional uint32 attached_to = 26;
   // Live sourced modifiers for Alt-inspect (grouped by source card def name).
   repeated ModifierSourceView modifiers = 27;
+  // Whether this object is a token (CR 111) — the board draws tokens with an arched top and no
+  // title bar.
+  bool is_token = 28;
+  // Whether the printed card is legendary; the card-frame renderer draws the legend crown.
+  bool legendary = 29;
 }
 
 // One entry on the stack, for the stack panel. Bottom-first in `VisibleState.stack`.

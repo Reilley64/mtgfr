@@ -109,6 +109,8 @@ function battlefieldCreature(id: number, name: string, overrides: Partial<Object
     has_haste: false,
     id,
     is_commander: false,
+    is_token: false,
+    legendary: false,
     kind: { kind: "creature", power: 2, toughness: 2 },
     mana_cost: { colored: [0, 0, 0, 0, 0], generic: 1 },
     marked_damage: 0,

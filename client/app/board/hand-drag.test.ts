@@ -55,6 +55,8 @@ const bolt: ObjectView = {
   has_haste: false,
   id: 42,
   is_commander: false,
+  is_token: false,
+  legendary: false,
   kind: { kind: "instant" },
   mana_cost: { colored: [0, 0, 0, 0, 0], generic: 1 },
   marked_damage: 0,

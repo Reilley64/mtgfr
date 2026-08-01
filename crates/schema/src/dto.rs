@@ -300,6 +300,18 @@ pub struct ObjectView {
     pub plus_counters: i32,
     pub marked_damage: i32,
     pub is_commander: bool,
+    /// Whether this object is a token (CR 111). The board draws a token with an arched top and
+    /// no title bar, the way Arena does.
+    ///
+    /// ponytail: reported even when the permanent is face down, unlike `legendary`. Nothing in the
+    /// engine can mint a face-down token today, so nothing leaks. Gate this on `face_down` the way
+    /// `legendary` is if an effect ever turns a token face down — a face-down permanent's back
+    /// looks the same whether or not it's a token.
+    #[serde(default)]
+    pub is_token: bool,
+    /// Whether the printed card is legendary — the frame renderer draws the legend crown.
+    #[serde(default)]
+    pub legendary: bool,
     /// Whether this creature is currently goaded (CR 701.38) — one-shot or continuous-from-Aura.
     #[serde(default)]
     pub goaded: bool,
