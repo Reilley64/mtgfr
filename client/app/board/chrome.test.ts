@@ -42,10 +42,7 @@ describe("playableBattlefieldObjectIds", () => {
   });
 
   it("omits actions that only produce mana", () => {
-    const ids = playableBattlefieldObjectIds([
-      activate(7, { mana_only: true }),
-      activate(8, { mana_only: false }),
-    ]);
+    const ids = playableBattlefieldObjectIds([activate(7, { mana_only: true }), activate(8, { mana_only: false })]);
     expect(ids.has(7)).toBe(false);
     expect(ids.has(8)).toBe(true);
   });

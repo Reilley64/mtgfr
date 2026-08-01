@@ -1,4 +1,4 @@
-// Project per-seat mana pools to screen-anchored tray seats (camera + layout).
+// Project per-seat mana pools to screen-anchored tray seats (camera + layout, h).
 
 import { type ManaTrayChip, manaTrayChips } from "~/manaPips";
 import type { PlayerView } from "~/wire/types";

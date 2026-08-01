@@ -13,57 +13,48 @@ function authErrorMessage(error: unknown): string {
   return "Something went wrong.";
 }
 
-export const FetchMe = Command.define(
-  "FetchMe",
-  ReceivedMe,
-)(
-  Effect.gen(function* () {
+export const FetchMe = Command.define("FetchMe", {
+  messages: [ReceivedMe],
+  execute: Effect.gen(function* () {
     const rpc = yield* RpcClient;
     return yield* rpc.me().pipe(
       Effect.map((me) => ReceivedMe({ me })),
       Effect.catch(() => Effect.succeed(ReceivedMe({ me: null }))),
     );
   }),
-);
+});
 
-export const Login = Command.define(
-  "Login",
-  { email: S.String, password: S.String, next: S.String },
-  ReceivedMe,
-  AuthFailed,
-)(({ email, password, next }) =>
-  Effect.gen(function* () {
-    const rpc = yield* RpcClient;
-    return yield* rpc.login({ email, password }).pipe(
-      Effect.tap(() => Navigation.replaceUrl(safeNext(next))),
-      Effect.map((me) => ReceivedMe({ me })),
-      Effect.catch((error) => Effect.succeed(AuthFailed({ message: authErrorMessage(error) }))),
-    );
-  }),
-);
+export const Login = Command.define("Login", {
+  args: { email: S.String, password: S.String, next: S.String },
+  messages: [ReceivedMe, AuthFailed],
+  execute: ({ email, password, next }) =>
+    Effect.gen(function* () {
+      const rpc = yield* RpcClient;
+      return yield* rpc.login({ email, password }).pipe(
+        Effect.tap(() => Navigation.replaceUrl(safeNext(next))),
+        Effect.map((me) => ReceivedMe({ me })),
+        Effect.catch((error) => Effect.succeed(AuthFailed({ message: authErrorMessage(error) }))),
+      );
+    }),
+});
 
-export const Signup = Command.define(
-  "Signup",
-  { email: S.String, password: S.String, username: S.String, next: S.String },
-  ReceivedMe,
-  AuthFailed,
-)(({ email, password, username, next }) =>
-  Effect.gen(function* () {
-    const rpc = yield* RpcClient;
-    return yield* rpc.signup({ email, password, username }).pipe(
-      Effect.tap(() => Navigation.replaceUrl(safeNext(next))),
-      Effect.map((me) => ReceivedMe({ me })),
-      Effect.catch((error) => Effect.succeed(AuthFailed({ message: authErrorMessage(error) }))),
-    );
-  }),
-);
+export const Signup = Command.define("Signup", {
+  args: { email: S.String, password: S.String, username: S.String, next: S.String },
+  messages: [ReceivedMe, AuthFailed],
+  execute: ({ email, password, username, next }) =>
+    Effect.gen(function* () {
+      const rpc = yield* RpcClient;
+      return yield* rpc.signup({ email, password, username }).pipe(
+        Effect.tap(() => Navigation.replaceUrl(safeNext(next))),
+        Effect.map((me) => ReceivedMe({ me })),
+        Effect.catch((error) => Effect.succeed(AuthFailed({ message: authErrorMessage(error) }))),
+      );
+    }),
+});
 
-export const Logout = Command.define(
-  "Logout",
-  ReceivedMe,
-  AuthFailed,
-)(
-  Effect.gen(function* () {
+export const Logout = Command.define("Logout", {
+  messages: [ReceivedMe, AuthFailed],
+  execute: Effect.gen(function* () {
     const rpc = yield* RpcClient;
     return yield* rpc.logout().pipe(
       Effect.tap(() => Navigation.replaceUrl("/login")),
@@ -71,7 +62,7 @@ export const Logout = Command.define(
       Effect.catch(() => Effect.succeed(AuthFailed({ message: "Couldn't sign out — try again." }))),
     );
   }),
-);
+});
 
 export const update = (
   model: AuthSubmodel,

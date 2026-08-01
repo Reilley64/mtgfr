@@ -2,11 +2,11 @@
  * @vitest-environment happy-dom
  */
 import { Submodel } from "foldkit";
-import { html } from "foldkit/html";
 import { Scene } from "foldkit/test";
 import { beforeAll, test } from "vitest";
 import { testMessageRef } from "~/i18n/testMessageRef";
 import { SPECTATOR_VIEWER } from "~/spectator";
+import { testHtml } from "~/test-html";
 import { BindCardArt, CardArtTick } from "~/ui/card-art";
 import type { ObjectView, VisibleState } from "~/wire/types";
 import type { GameFoldState } from "../../game/fold";
@@ -34,7 +34,7 @@ import { MountBoardKeyboard } from "./keyboard-mount";
 import { boardOverlays } from "./overlays";
 import { resolveBoardOverlayMounts, resolveLiveBoardMounts } from "./scene-helpers";
 
-const h = html<Message>();
+const h = testHtml<Message>();
 
 beforeAll(() => {
   class MockImage {
@@ -126,7 +126,7 @@ type OverlayModel = { board: BoardModel; fold: GameFoldState; tableId: string };
 
 const overlayView = Submodel.defineView<OverlayModel, Message>((model) => {
   if (model.fold.state == null) return h.div([], []);
-  return boardOverlays(model.board, model.fold.state, model.tableId, model.fold.log);
+  return boardOverlays(model.board, model.fold.state, model.tableId, model.fold.log, h);
 });
 
 /** Real board `update` for scenes that assert what a message does, not just how a model renders. */
@@ -135,7 +135,7 @@ function overlayUpdate(model: OverlayModel, message: Message): [OverlayModel, []
   return [{ ...model, board }, []];
 }
 
-const fullBoardView = Submodel.defineView<BoardViewModel, Message>(boardView);
+const fullBoardView = boardView;
 
 function boardModel(fold: GameFoldState, connected = true): BoardViewModel {
   return {
@@ -154,7 +154,7 @@ test("active player sees hand, priority bar, concede, and hint chrome", () => {
   };
   Scene.scene(
     { update: (m) => [m, []], view: overlayView },
-    Scene.with(model),
+    Scene.given(model),
     resolveBoardOverlayMounts(),
     Scene.expect(Scene.testId("hand-bar")).toExist(),
     Scene.expect(Scene.testId("board-primary")).toExist(),
@@ -184,7 +184,7 @@ test("a seat handed a moved attack declaration gets the confirm button, not 'Nex
   });
   Scene.scene(
     { update: (m) => [m, []], view: overlayView },
-    Scene.with({ board: initialBoardModel(), fold: gameFold(state), tableId: "T1" }),
+    Scene.given({ board: initialBoardModel(), fold: gameFold(state), tableId: "T1" }),
     resolveBoardOverlayMounts(),
     Scene.expect(Scene.testId("board-primary")).toContainText("No attackers"),
   );
@@ -195,7 +195,7 @@ test("the active player whose attack declaration was moved away sees 'Next'", ()
   const state = gameState({ active_player: 0, step: 5, viewer: 0, actions: [] });
   Scene.scene(
     { update: (m) => [m, []], view: overlayView },
-    Scene.with({ board: initialBoardModel(), fold: gameFold(state), tableId: "T1" }),
+    Scene.given({ board: initialBoardModel(), fold: gameFold(state), tableId: "T1" }),
     resolveBoardOverlayMounts(),
     Scene.expect(Scene.testId("board-primary")).toContainText("Next"),
   );
@@ -230,7 +230,7 @@ test("mulliganing undecided seat sees overlay and hides hand bar", () => {
   };
   Scene.scene(
     { update: (m) => [m, []], view: overlayView },
-    Scene.with(model),
+    Scene.given(model),
     Scene.Mount.resolveAll([MountPriorityWatch(), PriorityElapsed({ seconds: 0 })], [BindCardArt, CardArtTick()]),
     Scene.expect(Scene.testId("mulligan-overlay")).toExist(),
     Scene.expect(Scene.testId("mulligan-keep")).toExist(),
@@ -269,7 +269,7 @@ test("spotlights the winning seat over the mulligan overlay", () => {
   };
   Scene.scene(
     { update: (m) => [m, []], view: overlayView },
-    Scene.with(model),
+    Scene.given(model),
     Scene.Mount.resolveAll([MountPriorityWatch(), PriorityElapsed({ seconds: 0 })]),
     Scene.expect(Scene.testId("first-player-reveal")).toExist(),
     Scene.expect(Scene.testId("reveal-winner")).toHaveText("Bob goes first"),
@@ -304,7 +304,7 @@ test("does not name the winner mid-hop, before the reveal settles", () => {
   };
   Scene.scene(
     { update: (m) => [m, []], view: overlayView },
-    Scene.with(model),
+    Scene.given(model),
     resolveBoardOverlayMounts(),
     Scene.expect(Scene.testId("first-player-reveal")).toExist(),
     Scene.expect(Scene.testId("reveal-winner")).toHaveText(""),
@@ -334,7 +334,7 @@ test("clears the spotlight once the reveal finishes", () => {
   };
   Scene.scene(
     { update: overlayUpdate, view: overlayView },
-    Scene.with(model),
+    Scene.given(model),
     Scene.expect(Scene.testId("first-player-reveal")).toExist(),
     // Any pending Mount will do as the courier; the subject is what `FirstPlayerRevealFinished`
     // does to the board model, not which surface raised it.
@@ -358,7 +358,7 @@ test("live board submodel lifts mulligan CardArtTick without wrapping as GotBoar
   });
   Scene.scene(
     { update: appUpdate, view: appView },
-    Scene.with({
+    Scene.given({
       ...base,
       route: GameTableRoute({ table: "ABC123" }),
       currentPath: "/play/ABC123",
@@ -406,7 +406,7 @@ test("mulligan take is disabled when can_mulligan is false", () => {
   });
   Scene.scene(
     { update: (m) => [m, []], view: overlayView },
-    Scene.with({
+    Scene.given({
       board: initialBoardModel(),
       fold: gameFold(state),
       tableId: "T1",
@@ -440,7 +440,7 @@ test("mulligan kept seat sees waiting banner and hand bar", () => {
       update: (m) => [m, []],
       view: overlayView,
     },
-    Scene.with({
+    Scene.given({
       board: initialBoardModel(),
       fold: gameFold(state),
       tableId: "T1",
@@ -463,7 +463,7 @@ test("declare attackers shows combat staging coach for the active seat", () => {
   });
   Scene.scene(
     { update: (m) => [m, []], view: overlayView },
-    Scene.with({
+    Scene.given({
       board: initialBoardModel(),
       fold: gameFold(state),
       tableId: "T1",
@@ -482,7 +482,7 @@ test("spectator hides hand, priority bar, concede, and discoverability chrome", 
   };
   Scene.scene(
     { update: (m) => [m, []], view: overlayView },
-    Scene.with(model),
+    Scene.given(model),
     Scene.expect(Scene.testId("hand-bar")).not.toExist(),
     Scene.expect(Scene.testId("board-primary")).not.toExist(),
     Scene.expect(Scene.testId("board-concede")).not.toExist(),
@@ -506,7 +506,7 @@ test("eliminated player hides action chrome like a spectator", () => {
   };
   Scene.scene(
     { update: (m) => [m, []], view: overlayView },
-    Scene.with(model),
+    Scene.given(model),
     Scene.expect(Scene.testId("hand-bar")).not.toExist(),
     Scene.expect(Scene.testId("board-primary")).not.toExist(),
     Scene.expect(Scene.testId("board-concede")).not.toExist(),
@@ -517,7 +517,7 @@ test("eliminated player hides action chrome like a spectator", () => {
 test("connecting empty state shows centered connecting hud", () => {
   Scene.scene(
     { update: (m) => [m, []], view: fullBoardView },
-    Scene.with(boardModel(gameFold(null))),
+    Scene.given(boardModel(gameFold(null))),
     Scene.expect(Scene.testId("board-connecting")).toExist(),
     Scene.expect(Scene.text("Connecting to the table…")).toExist(),
     Scene.expect(Scene.testId("board-reconnecting")).not.toExist(),
@@ -527,7 +527,7 @@ test("connecting empty state shows centered connecting hud", () => {
 test("reconnect banner appears only when disconnected with live state", () => {
   Scene.scene(
     { update: (m) => [m, []], view: fullBoardView },
-    Scene.with(boardModel(gameFold(), false)),
+    Scene.given(boardModel(gameFold(), false)),
     resolveLiveBoardMounts(),
     Scene.expect(Scene.testId("board-reconnecting")).toExist(),
     Scene.expect(Scene.text("Connection lost — reconnecting…")).toExist(),
@@ -538,7 +538,7 @@ test("reconnect banner appears only when disconnected with live state", () => {
 test("reconnect banner explains an expired session terminal error", () => {
   Scene.scene(
     { update: (m) => [m, []], view: fullBoardView },
-    Scene.with(boardModel(gameFold(gameState(), "Session expired — sign in again."), false)),
+    Scene.given(boardModel(gameFold(gameState(), "Session expired — sign in again."), false)),
     resolveLiveBoardMounts(),
     Scene.expect(Scene.testId("board-reconnecting")).toExist(),
     Scene.expect(Scene.text("Session expired — sign in again.")).toExist(),
@@ -548,7 +548,7 @@ test("reconnect banner explains an expired session terminal error", () => {
 test("reconnect banner explains a missing table terminal error", () => {
   Scene.scene(
     { update: (m) => [m, []], view: fullBoardView },
-    Scene.with(boardModel(gameFold(gameState(), "Table no longer available."), false)),
+    Scene.given(boardModel(gameFold(gameState(), "Table no longer available."), false)),
     resolveLiveBoardMounts(),
     Scene.expect(Scene.testId("board-reconnecting")).toExist(),
     Scene.expect(Scene.text("Table no longer available.")).toExist(),
@@ -558,7 +558,7 @@ test("reconnect banner explains a missing table terminal error", () => {
 test("connected board does not show reconnect banner or status pill", () => {
   Scene.scene(
     { update: (m) => [m, []], view: fullBoardView },
-    Scene.with(boardModel(gameFold(), true)),
+    Scene.given(boardModel(gameFold(), true)),
     resolveLiveBoardMounts(),
     Scene.expect(Scene.testId("board-reconnecting")).not.toExist(),
     Scene.expect(Scene.testId("board-status")).not.toExist(),
@@ -573,7 +573,7 @@ test("sound toggle is visible for spectators", () => {
   };
   Scene.scene(
     { update: (m) => [m, []], view: overlayView },
-    Scene.with(model),
+    Scene.given(model),
     Scene.expect(Scene.testId("board-sound-toggle")).toExist(),
   );
 });

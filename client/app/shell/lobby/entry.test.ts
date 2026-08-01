@@ -1,7 +1,7 @@
 import { Option } from "effect";
-import { html } from "foldkit/html";
 import { Scene } from "foldkit/test";
 import { expect, test } from "vitest";
+import { testHtml } from "~/test-html";
 import { BindDeckCardFlip, DeckCardFlipTick } from "../../deck-card-nav";
 import { BindCardArt, CardArtTick } from "../../domain/ui/card-art";
 import type { CatalogCard } from "../../domain/wire/types";
@@ -17,7 +17,7 @@ import { initialLobbySlice } from "./submodel";
 import { type ViewMessage as LobbyViewMessage, view as lobbyView } from "./view";
 
 const me = { id: 1, email: "alice@example.com", username: "alice" };
-const h = html<Message>();
+const h = testHtml<Message>();
 
 const url = (pathname: string, search = "") => ({
   protocol: "http:",
@@ -121,7 +121,7 @@ const lobbyAppView = (model: Model) =>
 test("entry without a route deck asks the player to use deck play", () => {
   Scene.scene(
     { update, view: lobbyAppView },
-    Scene.with(
+    Scene.given(
       playLobbyModel({
         lobby: { ...initialLobbySlice(), selectedDeckId: null },
         decks: {
@@ -139,7 +139,7 @@ test("entry without a route deck asks the player to use deck play", () => {
 test("shows build-a-deck copy when the player has no decks", () => {
   Scene.scene(
     { update, view: lobbyAppView },
-    Scene.with(
+    Scene.given(
       playLobbyModel({
         lobby: { ...initialLobbySlice(), selectedDeckId: null },
         decks: {
@@ -157,7 +157,7 @@ test("shows build-a-deck copy when the player has no decks", () => {
 test("keeps entry visible while decks load when a deck is selected", () => {
   Scene.scene(
     { update, view: lobbyAppView },
-    Scene.with(
+    Scene.given(
       playLobbyModel({
         lobby: { ...initialLobbySlice(), selectedDeckId: 7 },
         decks: { ...init()[0].decks, list: { ...init()[0].decks.list, decks: [], loading: true } },
@@ -173,7 +173,7 @@ test("keeps entry visible while decks load when a deck is selected", () => {
 test("entry shows deck hero, Host primary, and soft-inline Join", () => {
   Scene.scene(
     { update, view: lobbyAppView },
-    Scene.with(
+    Scene.given(
       playLobbyModel({
         route: PlayRoute({ deckId: "9" }),
         lobby: { ...initialLobbySlice(), selectedDeckId: 9 },
@@ -232,7 +232,7 @@ test("unknown deck after load shows not-found, not lobby", () => {
   expect(next.route._tag).toBe("NotFoundRoute");
   Scene.scene(
     { update, view: appView },
-    Scene.with(next),
+    Scene.given(next),
     Scene.expect(Scene.text("Not found")).toExist(),
     Scene.expect(Scene.text("No Foldkit route for /play/99.")).toExist(),
     Scene.expect(Scene.selector('[data-testid="lobby"]')).toBeAbsent(),
@@ -276,7 +276,7 @@ test("PregameTableRoute cold load resets stale lobby entry state through the par
 test("the clipboard fallback table-code input has an accessible name", () => {
   Scene.scene(
     { update, view: lobbyAppView },
-    Scene.with(
+    Scene.given(
       tableLobbyModel({
         lobby: {
           ...initialLobbySlice(),
@@ -299,7 +299,7 @@ test("the clipboard fallback table-code input has an accessible name", () => {
 test("claim seat with a pre-chosen deck has no picker", () => {
   Scene.scene(
     { update, view: lobbyAppView },
-    Scene.with(
+    Scene.given(
       tableLobbyModel({
         lobby: {
           ...initialLobbySlice(),
@@ -345,7 +345,7 @@ test("claim seat with a pre-chosen deck has no picker", () => {
 test("claim seat pre-pick includes Back to decks", () => {
   Scene.scene(
     { update, view: lobbyAppView },
-    Scene.with(
+    Scene.given(
       tableLobbyModel({
         lobby: {
           ...initialLobbySlice(),
@@ -385,7 +385,7 @@ test("claim seat pre-pick includes Back to decks", () => {
 test("unknown table explains that the link is stale", () => {
   Scene.scene(
     { update, view: lobbyAppView },
-    Scene.with(
+    Scene.given(
       tableLobbyModel({
         lobby: {
           ...initialLobbySlice(),
@@ -409,7 +409,7 @@ test("unknown table explains that the link is stale", () => {
 test("watchers are told to stay on the table link for spectator view", () => {
   Scene.scene(
     { update, view: lobbyAppView },
-    Scene.with(
+    Scene.given(
       tableLobbyModel({
         lobby: {
           ...initialLobbySlice(),
@@ -483,7 +483,7 @@ test("host handoff on PlayRoute keeps entry UI (no claim-seat flash)", () => {
 
   Scene.scene(
     { update, view: lobbyAppView },
-    Scene.with(afterCreate),
+    Scene.given(afterCreate),
     Scene.expect(Scene.testId("lobby-entry")).toExist(),
     Scene.expect(Scene.testId("lobby-host")).toExist(),
     Scene.expect(Scene.testId("lobby-claim")).toBeAbsent(),
@@ -495,7 +495,7 @@ test("host handoff on PlayRoute keeps entry UI (no claim-seat flash)", () => {
 test("joined lobby shows ready/start without a deck picker", () => {
   Scene.scene(
     { update, view: lobbyAppView },
-    Scene.with(
+    Scene.given(
       tableLobbyModel({
         lobby: {
           ...initialLobbySlice(),
@@ -543,7 +543,7 @@ test("joined lobby shows ready/start without a deck picker", () => {
 test("NotAllReady start gate uses waiting copy and caution amber", () => {
   Scene.scene(
     { update, view: lobbyAppView },
-    Scene.with(
+    Scene.given(
       tableLobbyModel({
         lobby: {
           ...initialLobbySlice(),

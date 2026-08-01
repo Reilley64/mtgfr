@@ -7,12 +7,9 @@ import type { CoverageSubmodel } from "./submodel";
 
 const COVERAGE_LOAD_ERROR = "Could not load coverage.";
 
-export const FetchCoverage = Command.define(
-  "FetchCoverage",
-  ReceivedCoverageMeta,
-  CoverageLoadFailed,
-)(
-  Effect.gen(function* () {
+export const FetchCoverage = Command.define("FetchCoverage", {
+  messages: [ReceivedCoverageMeta, CoverageLoadFailed],
+  execute: Effect.gen(function* () {
     const lobby = yield* LobbyClient;
     return yield* lobby.coverageMeta().pipe(
       Effect.map((response) =>
@@ -24,7 +21,7 @@ export const FetchCoverage = Command.define(
       ),
     );
   }).pipe(Effect.catch(() => Effect.succeed(CoverageLoadFailed({ message: COVERAGE_LOAD_ERROR })))),
-);
+});
 
 export function loadCoverage(
   model: CoverageSubmodel,

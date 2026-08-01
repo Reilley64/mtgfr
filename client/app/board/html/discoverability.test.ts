@@ -2,9 +2,9 @@
  * @vitest-environment happy-dom
  */
 import { Submodel } from "foldkit";
-import { html } from "foldkit/html";
 import { Scene } from "foldkit/test";
 import { expect, test } from "vitest";
+import { testHtml } from "~/test-html";
 import type { VisibleState } from "~/wire/types";
 import type { GameFoldState } from "../../game/fold";
 import { HintDismissed, LegendToggled, type Message } from "../messages";
@@ -27,13 +27,13 @@ if (typeof localStorage === "undefined") {
   });
 }
 
-const h = html<Message>();
+const h = testHtml<Message>();
 
 type ViewModel = { board: BoardModel; fold: GameFoldState; tableId: string };
 
 const overlayView = Submodel.defineView<ViewModel, Message>((model) => {
   if (model.fold.state == null) return h.div([], []);
-  return boardOverlays(model.board, model.fold.state, model.tableId, model.fold.log);
+  return boardOverlays(model.board, model.fold.state, model.tableId, model.fold.log, h);
 });
 
 function player(): import("~/wire/types").PlayerView {
@@ -86,7 +86,7 @@ function gameFold(): GameFoldState {
 }
 
 const discoverView = Submodel.defineView<{ board: BoardModel }, never>((m) =>
-  discoverabilityView(m.board, gameState()),
+  discoverabilityView(m.board, gameState(), h),
 );
 
 test("discoverability shows hint strip for seated players", () => {
@@ -94,7 +94,7 @@ test("discoverability shows hint strip for seated players", () => {
   const board = initialBoardModel();
   Scene.scene(
     { update: (m) => [m, []], view: overlayView },
-    Scene.with({ board, fold: gameFold(), tableId: "t1" }),
+    Scene.given({ board, fold: gameFold(), tableId: "t1" }),
     resolveBoardOverlayMounts(),
     Scene.expect(Scene.selector('[data-testid="board-hint"]')).toExist(),
     Scene.expect(Scene.selector('[data-testid="board-legend-toggle"]')).toExist(),
@@ -110,7 +110,7 @@ test("dismissing hint hides strip and persists to localStorage", () => {
 
   Scene.scene(
     { update: (m) => [m, []], view: discoverView },
-    Scene.with({ board }),
+    Scene.given({ board }),
     Scene.expect(Scene.selector('[data-testid="board-hint"]')).not.toExist(),
     Scene.expect(Scene.selector('[data-testid="board-legend-toggle"]')).toExist(),
   );
@@ -123,7 +123,7 @@ test("legend toggle opens and closes the legend panel", () => {
 
   Scene.scene(
     { update: (m) => [m, []], view: discoverView },
-    Scene.with({ board }),
+    Scene.given({ board }),
     Scene.expect(Scene.selector('[data-testid="board-legend"]')).toExist(),
     Scene.expect(Scene.text("Board legend")).toExist(),
   );

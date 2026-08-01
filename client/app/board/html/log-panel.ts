@@ -1,16 +1,14 @@
 // Game log panel: recent or expanded fold lines in a Hud surface above the hand bar (left column).
 
-import { type Html, html } from "foldkit/html";
+import type { Html, HtmlBuilder } from "foldkit/html";
 import { button } from "~/ui/button";
 import type { LogLine } from "../../game/fold";
 import { LogCopyRequested, LogExpandToggled, type Message } from "../messages";
 import type { BoardModel } from "../submodel";
 
-const h = html<Message>();
-
 const LOG_VISIBLE = 30;
 
-function lineView(line: LogLine): Html {
+function lineView(line: LogLine, h: HtmlBuilder<Message>): Html {
   if (line.auto) {
     return h.div(
       [h.Class("flex items-start gap-xs text-caption text-snow-mint")],
@@ -31,7 +29,7 @@ function lineView(line: LogLine): Html {
   return h.div([h.Class("text-caption text-mist")], [line.text]);
 }
 
-export function logPanelView(board: BoardModel, log: ReadonlyArray<LogLine>): Html | null {
+export function logPanelView(board: BoardModel, log: ReadonlyArray<LogLine>, h: HtmlBuilder<Message>): Html | null {
   if (log.length === 0) return null;
 
   const lines = board.logExpanded ? log : log.slice(-LOG_VISIBLE);
@@ -84,7 +82,7 @@ export function logPanelView(board: BoardModel, log: ReadonlyArray<LogLine>): Ht
           h.Attribute("aria-live", "polite"),
           h.Class(logClass),
         ],
-        lines.map(lineView),
+        lines.map((line) => lineView(line, h)),
       ),
     ],
   );

@@ -10,14 +10,12 @@
 // nested anchor would not follow.
 
 import type * as Menu from "@foldkit/ui/menu";
-import { childAttributes, type html as createHtml, type Html } from "foldkit/html";
+import { childAttributes, type Html, type HtmlBuilder } from "foldkit/html";
 import { button } from "../../domain/ui/button";
 import { menuItemClass, menuPanelClass } from "../../domain/ui/menu";
 import { seatFace } from "../../domain/ui/seat-face";
 import { LeaderboardRoute, routePath } from "../../routes";
 import { ACCOUNT_MENU_ID, AccountMenu, type AccountMenuItem } from "./menu";
-
-type HtmlFactory<Msg> = ReturnType<typeof createHtml<Msg>>;
 
 export type AccountChromeOptions<Msg> = {
   /** The owner's menu state. Create with `Menu.init({ id: ACCOUNT_MENU_ID })`. */
@@ -36,7 +34,7 @@ const ITEM_LABEL: Record<AccountMenuItem, string> = {
 
 const ITEMS: ReadonlyArray<AccountMenuItem> = ["gravatar", "sign-out"];
 
-export function accountChrome<Msg>(h: HtmlFactory<Msg>, options: AccountChromeOptions<Msg>): Html {
+export function accountChrome<Msg>(h: HtmlBuilder<Msg>, options: AccountChromeOptions<Msg>): Html {
   const { menu, toMenuMessage, username, gravatarHash, showLeaderboardLink } = options;
 
   return h.div(

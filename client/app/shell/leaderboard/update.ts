@@ -7,20 +7,18 @@ import type { LeaderboardSubmodel } from "./submodel";
 
 const LEADERBOARD_PAGE_SIZE = 50;
 
-export const FetchLeaderboard = Command.define(
-  "FetchLeaderboard",
-  { limit: S.Number, offset: S.Number },
-  ReceivedLeaderboardPage,
-  LeaderboardLoadFailed,
-)(({ limit, offset }) =>
-  Effect.gen(function* () {
-    const rpc = yield* RpcClient;
-    return yield* rpc.ratings.leaderboard({ limit, offset }).pipe(
-      Effect.map((leaderboard) => ReceivedLeaderboardPage({ leaderboard, offset })),
-      Effect.catch(() => Effect.succeed(LeaderboardLoadFailed({ message: "Could not load the leaderboard." }))),
-    );
-  }),
-);
+export const FetchLeaderboard = Command.define("FetchLeaderboard", {
+  args: { limit: S.Number, offset: S.Number },
+  messages: [ReceivedLeaderboardPage, LeaderboardLoadFailed],
+  execute: ({ limit, offset }) =>
+    Effect.gen(function* () {
+      const rpc = yield* RpcClient;
+      return yield* rpc.ratings.leaderboard({ limit, offset }).pipe(
+        Effect.map((leaderboard) => ReceivedLeaderboardPage({ leaderboard, offset })),
+        Effect.catch(() => Effect.succeed(LeaderboardLoadFailed({ message: "Could not load the leaderboard." }))),
+      );
+    }),
+});
 
 export function loadLeaderboard(
   model: LeaderboardSubmodel,
