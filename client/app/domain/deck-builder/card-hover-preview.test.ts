@@ -76,6 +76,17 @@ test("card hover preview renders art and oracle text", () => {
   );
 });
 
+test("preview art host reserves card height so the loading skeleton is visible", () => {
+  // The skeleton card-art paints is `absolute inset-0`; without an aspect the host is 0px tall and
+  // the preview reads as blank until the print arrives.
+  Scene.scene(
+    { update: (m) => [m, []], view: followView },
+    Scene.with({ hover: { id: "sol-ring", print: "sol-ring-print", x: 120, y: 80 }, card: solRing }),
+    Scene.expect(Scene.selector("[data-art-url]")).toHaveClass("aspect-[0.716]"),
+    Scene.Mount.resolve(BindCardArt, CardArtTick()),
+  );
+});
+
 test("dock mode renders backdrop and left-docked preview", () => {
   Scene.scene(
     { update: (m) => [m, []], view: dockView },

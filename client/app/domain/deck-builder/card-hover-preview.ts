@@ -101,7 +101,9 @@ function artColumn<M>(h: HtmlFactory<M>, print: string, name: string, face: "fro
     size: "display",
     face,
     alt: name,
-    className: "w-(--w) flex-none rounded-[14px] shadow-table",
+    // aspect keeps the box tall while the print loads — the skeleton is `absolute inset-0`, so a
+    // width-only class collapses to zero height and the preview reads as blank.
+    className: "aspect-[0.716] w-(--w) flex-none rounded-[14px] shadow-table",
     style: { "--w": `${PREVIEW_W}px` },
   });
 }
