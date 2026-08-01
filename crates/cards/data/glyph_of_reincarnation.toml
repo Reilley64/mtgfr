@@ -1,0 +1,40 @@
+# Cast this spell only after combat.
+# Destroy all creatures that were blocked by target Wall this turn. They can't be regenerated. For
+# each creature that died this way, put a creature card from the graveyard of the player who
+# controlled that creature the last time it became blocked by that Wall onto the battlefield under
+# its owner's control.
+name = "Glyph of Reincarnation"
+sets = ["leg"]
+id = "93d9a1c6-9f6f-487f-a46c-bfd80946ccdf"
+default_print = "a67e8214-a192-4143-9d5e-d0e254e1bf6e"
+oracle = "Cast this spell only after combat.\nDestroy all creatures that were blocked by target Wall this turn. They can't be regenerated. For each creature that died this way, put a creature card from the graveyard of the player who controlled that creature the last time it became blocked by that Wall onto the battlefield under its owner's control."
+# ponytail: "Cast this spell only after combat" is not enforced — the DSL has no phase-scoped cast
+# restriction. Castable at any instant speed instead, which only matters precombat (during combat
+# it does the same thing a beat early). See docs/fidelity/leg-increments.md #133.
+approximates = "the \"cast this spell only after combat\" timing restriction is not enforced (increment #133); the destruction and the reincarnation are faithful."
+
+[cost]
+green = 1
+
+[kind]
+type = "instant"
+
+# Destroy all creatures that were blocked by target Wall this turn. They can't be regenerated. For
+# each creature that died this way, put a creature card from the graveyard of the player who
+# controlled that creature the last time it became blocked by that Wall onto the battlefield under
+# its owner's control.
+[[abilities]]
+timing = "spell"
+
+# Destroy all creatures that were blocked by target Wall this turn. They can't be regenerated. For
+# each creature that died this way, put a creature card from the graveyard of the player who
+# controlled that creature the last time it became blocked by that Wall onto the battlefield under
+# its owner's control.
+[[abilities.effects]]
+type = "destroy"
+mode = "blocked_by_target"
+cant_be_regenerated = true
+reincarnate = true
+target = { permanent = { types = "creature", subtypes = [
+  "Wall",
+] } }

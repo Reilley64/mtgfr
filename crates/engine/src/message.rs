@@ -132,7 +132,7 @@ message_keys! {
     EFFECT_CHOICE_EACH_PLAYER_EXILES_FROM_GRAVEYARD => "effect.choice_each_player_exiles_from_graveyard",
     EFFECT_CHOICE_EACH_PLAYER_NAMES_CARD_THEN_REVEALS_TOP => "effect.choice_each_player_names_card_then_reveals_top",
     EFFECT_CHOICE_EACH_PLAYER_SACRIFICES => "effect.choice_each_player_sacrifices",
-    EFFECT_CHOICE_EACH_PLAYER_SHUFFLES_HAND_AND_GRAVEYARD_THEN_DRAWS => "effect.choice_each_player_shuffles_hand_and_graveyard_then_draws",
+    EFFECT_CHOICE_EACH_PLAYER_SHUFFLES_HAND_THEN_DRAWS => "effect.choice_each_player_shuffles_hand_then_draws",
     EFFECT_CHOICE_JOIN_FORCES_PAY_MANA => "effect.choice_join_forces_pay_mana",
     EFFECT_CHOICE_TRIGGERING_PLAYER_MAY_ATTACH_THIS_AURA_TO_CHOSEN => "effect.choice_triggering_player_may_attach_this_aura_to_chosen",
     EFFECT_CHOICE_TRIGGERING_PLAYER_MAY_PAY_ANY_AMOUNT_TO_PREVENT => "effect.choice_triggering_player_may_pay_any_amount_to_prevent",
@@ -165,6 +165,8 @@ message_keys! {
     EFFECT_DAMAGE_TO_ENTERING_PERMANENT => "effect.damage_to_entering_permanent",
     EFFECT_DAMAGE_TO_PLAYERS => "effect.damage_to_players",
     EFFECT_DESTROY_ALL => "effect.destroy_all",
+    EFFECT_DESTROY_BLOCKED_BY_TARGET => "effect.destroy_blocked_by_target",
+    EFFECT_DESTROY_BLOCKED_BY_TARGET_REINCARNATE => "effect.destroy_blocked_by_target_reincarnate",
     EFFECT_DESTROY_TARGET => "effect.destroy_target",
     EFFECT_DESTROY_TRIGGERING_DAMAGED_CREATURE => "effect.destroy_triggering_damaged_creature",
     EFFECT_DIG_CASCADE => "effect.dig_cascade",
@@ -320,6 +322,7 @@ message_keys! {
     EFFECT_STATIC_LIFE_GAIN_REPLACEMENT => "effect.static_life_gain_replacement",
     EFFECT_STATIC_LIFE_GAIN_BECOMES_DRAW => "effect.static_life_gain_becomes_draw",
     EFFECT_STATIC_NO_MAXIMUM_HAND_SIZE => "effect.static_no_maximum_hand_size",
+    EFFECT_STATIC_OPPONENTS_PERMANENTS_ENTER_TAPPED => "effect.static_opponents_permanents_enter_tapped",
     EFFECT_STATIC_PLAY_ANY_NUMBER_OF_LANDS => "effect.static_play_any_number_of_lands",
     EFFECT_STATIC_PLAY_FROM_GRAVEYARD_ONCE_PER_TURN => "effect.static_play_from_graveyard_once_per_turn",
     EFFECT_STATIC_PREVENT_COMBAT_DAMAGE => "effect.static_prevent_combat_damage",
@@ -735,6 +738,7 @@ fn counter_kind_token(kind: CounterKind) -> &'static str {
         CounterKind::Carrion => "carrion",
         CounterKind::MinusZeroMinusTwo => "minus_zero_minus_two",
         CounterKind::Intervention => "intervention",
+        CounterKind::Glyph => "glyph",
     }
 }
 
@@ -1375,6 +1379,14 @@ impl EffectMessage for Effect {
             }
             // The key's name predates the variant's; its string is already "Destroy that creature",
             // which reads right for the damage look-back and Stone Giant's delayed landing alike.
+            // Glyph of Doom / Glyph of Reincarnation — the reincarnate rider is a whole second
+            // sentence, so it gets its own key rather than a parameter on the first.
+            Effect::Destroy(DestroyEffect::BlockedByTarget { reincarnate, .. }) => {
+                MessageRef::new(match reincarnate {
+                    true => MessageKey::EFFECT_DESTROY_BLOCKED_BY_TARGET_REINCARNATE,
+                    false => MessageKey::EFFECT_DESTROY_BLOCKED_BY_TARGET,
+                })
+            }
             Effect::Destroy(ThatCreature { .. }) => {
                 MessageRef::new(MessageKey::EFFECT_DESTROY_TRIGGERING_DAMAGED_CREATURE)
             }
@@ -2103,11 +2115,16 @@ impl EffectMessage for Effect {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_EACH_PLAYER_DISCARDS_HAND_THEN_DRAWS)
                     .with_params(vec![amount_param("count", count)])
             }
-            Effect::Choice(EachPlayerShufflesHandAndGraveyardThenDraws { count }) => {
-                MessageRef::new(
-                    MessageKey::EFFECT_CHOICE_EACH_PLAYER_SHUFFLES_HAND_AND_GRAVEYARD_THEN_DRAWS,
-                )
-                .with_params(vec![amount_param("count", count)])
+            Effect::Choice(EachPlayerShufflesHandThenDraws {
+                include_graveyard,
+                count,
+            }) => {
+                // An absent `count` is "that many" — a per-player number the client cannot know,
+                // so it renders the phrase rather than a figure.
+                let mut params = vec![bool_param("include_graveyard", include_graveyard)];
+                params.extend(count.map(|count| amount_param("count", count)));
+                MessageRef::new(MessageKey::EFFECT_CHOICE_EACH_PLAYER_SHUFFLES_HAND_THEN_DRAWS)
+                    .with_params(params)
             }
             Effect::Choice(EachOtherTokenBecomesCopyOfChosen) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_EACH_OTHER_TOKEN_BECOMES_COPY_OF_CHOSEN)
@@ -2421,6 +2438,15 @@ impl EffectMessage for Effect {
             Effect::Static(CreaturesYouControlEnterWithCounters { filter, count }) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_CREATURES_YOU_CONTROL_ENTER_WITH_COUNTERS)
                     .with_params(vec![permanent_filter_param("filter", filter), amount_param("count", count)])
+            }
+            // The variant carries only types, so `PermanentFilter::of` reaches the client's
+            // existing type-list formatter with nothing lost.
+            Effect::Static(OpponentsPermanentsEnterTapped { types }) => {
+                MessageRef::new(MessageKey::EFFECT_STATIC_OPPONENTS_PERMANENTS_ENTER_TAPPED)
+                    .with_params(vec![permanent_filter_param(
+                        "filter",
+                        PermanentFilter::of(types),
+                    )])
             }
             Effect::Static(GrantToAttached {
                 power, toughness, ..

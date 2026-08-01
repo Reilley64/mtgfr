@@ -646,6 +646,7 @@ impl Effect {
             | Effect::Token(TokenEffect::BecomeCopyOfTargetCreatureGainingMyriad { target })
             | Effect::Copy(CopyEffect::ChangeTargetOfTargetSpellOrAbility { target, .. })
             | Effect::Destroy(DestroyEffect::Target { target, .. })
+            | Effect::Destroy(DestroyEffect::BlockedByTarget { target, .. })
             | Effect::Life(LifeEffect::GainWhenTargetIsDamagedByAttackerThisTurn { target })
             // Conservator's "dealt to you" leaves this `TargetSpec::None`, which is exactly what
             // an untargeted effect reports anyway.
@@ -854,6 +855,7 @@ Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
             | Effect::Static(StaticEffect::CastXReplacement { .. })
             | Effect::Static(StaticEffect::EntersWithCounters { .. })
             | Effect::Static(StaticEffect::CreaturesYouControlEnterWithCounters { .. })
+            | Effect::Static(StaticEffect::OpponentsPermanentsEnterTapped { .. })
             | Effect::Destroy(DestroyEffect::All { .. })
             | Effect::Exile(ExileEffect::All { .. })
             | Effect::Exile(ExileEffect::AllGraveyards)
@@ -891,7 +893,7 @@ Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
             | Effect::Choice(ChoiceEffect::EachOtherTokenBecomesCopyOfChosen)
             | Effect::Choice(ChoiceEffect::PutCounterThenMayBecomeCopyOfCardFromList { .. })
             | Effect::Choice(ChoiceEffect::EachPlayerDiscardsHandThenDraws { .. })
-            | Effect::Choice(ChoiceEffect::EachPlayerShufflesHandAndGraveyardThenDraws { .. })
+            | Effect::Choice(ChoiceEffect::EachPlayerShufflesHandThenDraws { .. })
             | Effect::Choice(ChoiceEffect::MaySacrifice { .. })
             | Effect::Choice(ChoiceEffect::MayReturnFromGraveyard { .. })
             | Effect::Choice(ChoiceEffect::MayDiscard { .. })
@@ -1387,6 +1389,14 @@ pub enum CounterKind {
     /// about the enchantment by itself; the card's own
     /// [`Trigger::YouRemoveLastCounterFromThis`](crate::Trigger) is what watches it reach zero.
     Intervention,
+    /// A glyph counter (CR 122.1 — Glyph of Delusion): a functional reminder counter marking a
+    /// creature that "doesn't untap during its controller's untap step if it has a glyph counter
+    /// on it", with one coming off at each of that controller's upkeeps. Like
+    /// [`Vow`](Self::Vow) and [`Mire`](Self::Mire), the counter *is* the effect — the Glyph is an
+    /// instant that leaves nothing behind to read the granted abilities off, so
+    /// [`Game::doesnt_untap`](crate::Game) consults this slot directly and the upkeep step
+    /// removes one unconditionally.
+    Glyph,
 }
 
 impl CounterKind {
@@ -1398,7 +1408,7 @@ impl CounterKind {
     /// `&'static [(CounterKind, u8)]` slice if the kind set ever needs to be open-ended. A counter
     /// kind that sits on a *player* (poison, CR 122.1) doesn't belong here at all — it has its own
     /// parallel [`PlayerCounterKind`] and its own store on [`Player::kind_counters`].
-    pub const COUNT: usize = 17;
+    pub const COUNT: usize = 18;
 
     /// Every kind, for enumerating "each kind present" (proliferate, move/remove-all-counters).
     pub const ALL: [CounterKind; Self::COUNT] = [
@@ -1419,6 +1429,7 @@ impl CounterKind {
         CounterKind::Carrion,
         CounterKind::MinusZeroMinusTwo,
         CounterKind::Intervention,
+        CounterKind::Glyph,
     ];
 }
 

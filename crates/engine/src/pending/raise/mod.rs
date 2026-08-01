@@ -282,6 +282,13 @@ pub(crate) enum ChoiceRequest {
         caster: crate::PlayerId,
         source: crate::ObjectId,
     },
+    /// Next graveyard in Glyph of Reincarnation's "for each creature that died this way"
+    /// fan-out — a graveyard with no creature card is skipped, and an empty list skips entirely.
+    NextGlyphReincarnation {
+        graveyards: Vec<crate::PlayerId>,
+        chooser: crate::PlayerId,
+        source: crate::ObjectId,
+    },
     /// Next seat in Nils' counter-target fan-out — empty remaining skips.
     NextCounterTarget {
         remaining: Vec<crate::PlayerId>,
@@ -611,6 +618,11 @@ pub(super) fn choice_from_request(game: &Game, request: ChoiceRequest) -> Option
             chooser,
             source,
         } => fanout::next_counter_target(game, remaining, chooser, source),
+        ChoiceRequest::NextGlyphReincarnation {
+            graveyards,
+            chooser,
+            source,
+        } => optional::glyph_reincarnation(game, chooser, source, graveyards),
         ChoiceRequest::NextJoinForcesPayment {
             remaining,
             source,

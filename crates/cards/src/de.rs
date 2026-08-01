@@ -1095,7 +1095,7 @@ impl<'de> Deserialize<'de> for TypeSet {
 /// `enchanted_by_you`, `mv_max`, `mv_min`, `mv_eq_x`, `mv_max_x`, `power_max`, `power_min`, `power_parity`,
 /// `toughness_max`, `toughness_min`,
 /// `noncreature`, `exclude`, `color`, `not_color`, `modified`, `attacking`, `not_attacking`, `attacking_you`,
-/// `blocking`, `attacking_or_blocking`, `tapped_or_blocking`, `unblocked`, `power_less_than_source`,
+/// `blocking`, `attacking_or_blocking`, `tapped_or_blocking`, `unblocked`, `blocked_by_a_wall_this_turn`, `power_less_than_source`,
 /// `toughness_less_than_source_power`, `entered_this_turn`,
 /// `has_mana_ability`,
 /// `controlled_since_turn_start`, `did_not_attack_this_turn`,
@@ -1213,6 +1213,8 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     #[serde(default)]
                     unblocked: bool,
                     #[serde(default)]
+                    blocked_by_a_wall_this_turn: bool,
+                    #[serde(default)]
                     power_less_than_source: bool,
                     #[serde(default)]
                     toughness_less_than_source_power: bool,
@@ -1304,6 +1306,7 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     attacking_or_blocking: t.attacking_or_blocking,
                     tapped_or_blocking: t.tapped_or_blocking,
                     unblocked: t.unblocked,
+                    blocked_by_a_wall_this_turn: t.blocked_by_a_wall_this_turn,
                     power_less_than_source: t.power_less_than_source,
                     toughness_less_than_source_power: t.toughness_less_than_source_power,
                     entered_this_turn: t.entered_this_turn,

@@ -514,6 +514,7 @@ impl<'a> ChoiceCtx<'a> {
                 source,
                 options,
                 mandatory,
+                ..
             } => PendingChoiceView::MayReturnFromGraveyard {
                 player: player.0,
                 source,

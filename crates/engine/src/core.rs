@@ -322,6 +322,16 @@ impl Game {
         {
             card.def = *fused;
         }
+        // Kismet's "Artifacts, creatures, and lands your opponents control enter tapped" (CR
+        // 614.13). `fresh_permanent` sets `tapped` from the card's own printed flag, which is all
+        // it can see; the board's half is asked here, at the one choke point every permanent —
+        // resolved spell, token, reanimated, test spawn — is minted through. `|=` so a card that
+        // was already entering tapped stays tapped.
+        if let Object::Permanent(permanent) = &mut object
+            && !permanent.tapped
+        {
+            permanent.tapped = self.static_enters_tapped(permanent.def, permanent.owner);
+        }
         // A card leaving a graveyard (reanimation, graveyard recursion, cast-from-graveyard) marks
         // its owner's turn-scoped "a card left your graveyard this turn" flag — the CR 603.4
         // intervening-if behind Relic Retriever / Primary Research. This single object-move choke

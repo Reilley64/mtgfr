@@ -1913,6 +1913,25 @@ impl Game {
                         self.queue_self_sacrifice_trigger(id);
                     }
                 }
+                // Glyph of Delusion's granted "At the beginning of your upkeep, remove a glyph
+                // counter from this creature." The counter is the effect (see
+                // [`CounterKind::Glyph`]) — the Glyph is an instant with nothing left on the
+                // battlefield to hang a real triggered ability off, so the tick runs here beside
+                // suspend's and vanishing's, over the active player's own creatures ("*your*
+                // upkeep" — the creature's controller, who is the one whose untap step it misses).
+                for id in self.controlled_battlefield(active) {
+                    if self.counters_of_kind(id, CounterKind::Glyph) == 0 {
+                        continue;
+                    }
+                    self.push_apply(
+                        events,
+                        Event::KindCountersPlaced {
+                            object: id,
+                            kind: CounterKind::Glyph,
+                            count: -1,
+                        },
+                    );
+                }
             }
             Step::Draw => {
                 // Halfdane's "until the end of your next upkeep" (CR 613.3(7b)): the upkeep step
@@ -2204,6 +2223,7 @@ mod tests {
             cast_only_before_combat_damage: false,
             cast_only_during_declare_blockers: false,
             cast_only_during_declare_attackers: false,
+            cast_only_after_upkeep: false,
             approximates: None,
             oracle: None,
             sets: empty_slice(),

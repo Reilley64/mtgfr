@@ -3273,8 +3273,27 @@ fn unlimited_utility_spells_carry_their_printed_effects() {
         (
             "Timetwister",
             // Recycles rather than discards — the shuffle-back sibling of the wheel.
-            Effect::Choice(ChoiceEffect::EachPlayerShufflesHandAndGraveyardThenDraws {
-                count: Amount::Fixed(7),
+            Effect::Choice(ChoiceEffect::EachPlayerShufflesHandThenDraws {
+                include_graveyard: true,
+                count: Some(Amount::Fixed(7)),
+            }),
+        ),
+        (
+            "Winds of Change",
+            // The same shuffle-back, hands only and with each player's own count.
+            Effect::Choice(ChoiceEffect::EachPlayerShufflesHandThenDraws {
+                include_graveyard: false,
+                count: None,
+            }),
+        ),
+        (
+            // "Artifacts, creatures, and lands" is the whole list — enchantments and
+            // planeswalkers are off it, which is the only thing the type gate carries.
+            "Kismet",
+            Effect::Static(StaticEffect::OpponentsPermanentsEnterTapped {
+                types: TypeSet::ARTIFACT
+                    .union(TypeSet::CREATURE)
+                    .union(TypeSet::LAND),
             }),
         ),
     ];

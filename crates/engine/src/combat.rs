@@ -1472,6 +1472,43 @@ impl Game {
         self.combat.blocked_ever.iter().any(|&(_, a)| a == attacker)
     }
 
+    /// The creatures `blocker` blocked at any point *this turn*, in declaration order, each paired
+    /// with the controller it had when it became blocked (Glyph of Doom's and Glyph of
+    /// Reincarnation's "all creatures that were blocked by that creature this turn").
+    ///
+    /// The turn-scoped twin of [`Self::is_blocked`]: that one reads `CombatState::blocked_ever`,
+    /// which end of combat wipes, while this reads `CombatExtras::blocked_this_turn`, which the
+    /// next Untap step does. Every creature named appears once, carrying the controller from its
+    /// *last* block by this blocker — Glyph of Reincarnation's "the player who controlled that
+    /// creature the last time it became blocked by that Wall". Creatures that have already left
+    /// the battlefield stay in the list; the caller decides (a corpse can't be destroyed again,
+    /// but it can still name whose graveyard the Glyph reads).
+    pub(crate) fn blocked_by_this_turn(&self, blocker: ObjectId) -> Vec<(ObjectId, PlayerId)> {
+        let mut out: Vec<(ObjectId, PlayerId)> = Vec::new();
+        for &(b, attacker, controller) in &self.combat_extras.blocked_this_turn {
+            if b != blocker {
+                continue;
+            }
+            match out.iter_mut().find(|(a, _)| *a == attacker) {
+                Some(entry) => entry.1 = controller,
+                None => out.push((attacker, controller)),
+            }
+        }
+        out
+    }
+
+    /// Whether a Wall blocked `attacker` at any point this turn — Glyph of Delusion's "target
+    /// creature that target Wall blocked this turn" as a target restriction over
+    /// [`Self::blocked_by_this_turn`]'s ledger, read from the attacker's side.
+    pub(crate) fn blocked_by_a_wall_this_turn(&self, attacker: ObjectId) -> bool {
+        self.combat_extras
+            .blocked_this_turn
+            .iter()
+            .any(|&(blocker, a, _)| {
+                a == attacker && self.effective_subtypes(blocker).contains(&"Wall")
+            })
+    }
+
     /// Whether any attacking or blocking creature has first or double strike as the combat
     /// damage step begins (CR 510.5) — the condition for creating a separate first-strike
     /// combat damage step. When false, that step is skipped and only the normal one occurs.

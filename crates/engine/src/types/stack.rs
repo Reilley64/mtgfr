@@ -1491,6 +1491,16 @@ pub enum PendingChoice {
         source: ObjectId,
         options: Vec<ObjectId>,
         mandatory: bool,
+        /// Glyph of Reincarnation's "put a creature card … onto the battlefield **under its
+        /// owner's control**": the chosen card is reanimated instead of returned to `player`'s
+        /// hand, and — unlike every other user of this variant — `options` are cards `player`
+        /// does *not* own (the blocked creature's controller's graveyard), so `player` here is
+        /// only the chooser. `false` for the hand-return spelling.
+        to_battlefield: bool,
+        /// The graveyards still owed a card by the same "for each creature that died this way"
+        /// fan-out, prompted one at a time from the answer handler (the
+        /// `prompt_next_counter_target` chaining shape). Empty for a one-shot choice.
+        then_graveyards: Vec<PlayerId>,
     },
     /// `player` may exile one of `options` (a nonland card they just discarded, still in their
     /// graveyard) face-up with impulse-play permission until end of turn, or decline

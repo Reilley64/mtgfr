@@ -103,6 +103,65 @@ impl Game {
                 }
                 events
             }
+            // "Destroy all creatures that were blocked by target Wall this turn" (Glyph of
+            // Reincarnation; Glyph of Doom once its delayed ability fires). A mass destroy like
+            // `All`, but driven off the turn-scoped block ledger instead of a board scan.
+            DestroyEffect::BlockedByTarget {
+                cant_be_regenerated,
+                at,
+                reincarnate,
+                blocker,
+                ..
+            } => {
+                let wall = blocker.unwrap_or_else(|| expect_object_target(target, "destroy"));
+                // Glyph of Doom's "at this turn's next end of combat": only the Wall is baked in;
+                // the ledger is re-read when this fires, so a block declared in the meantime — or
+                // after the Wall itself has died — is still swept.
+                if let Some(fire_at) = at {
+                    return vec![Event::DelayedTriggerScheduled {
+                        controller,
+                        source,
+                        fire_at,
+                        effect: Effect::Destroy(DestroyEffect::BlockedByTarget {
+                            target: TargetSpec::None,
+                            cant_be_regenerated,
+                            at: None,
+                            reincarnate,
+                            blocker: Some(wall),
+                        }),
+                    }];
+                }
+                let mut next = self.next_object_id();
+                let mut events = Vec::new();
+                for (id, _) in self.blocked_by_this_turn(wall) {
+                    let Object::Permanent(ref p) = self.objects[id as usize] else {
+                        continue;
+                    };
+                    if self.zone_of(id) != Zone::Battlefield {
+                        continue;
+                    }
+                    if self.has_keyword(id, Keyword::Indestructible) {
+                        continue;
+                    }
+                    // CR 701.15b/d — the shield replaces the destruction unless the card says
+                    // "can't be regenerated", which Glyph of Reincarnation does.
+                    if !cant_be_regenerated && self.regeneration_shield_available(id) {
+                        events.push(Event::Regenerated { object: id });
+                        continue;
+                    }
+                    if p.token {
+                        events.push(Event::TokenCeasedToExist {
+                            token: id,
+                            controller: p.owner,
+                            def: p.def,
+                        });
+                        continue;
+                    }
+                    events.push(self.graveyard_or_command(id, next));
+                    next += 1;
+                }
+                events
+            }
             DestroyEffect::ThatCreature {
                 creature,
                 attack_rider,
@@ -351,6 +410,70 @@ impl Game {
         self.record_destroyed_this_way(&evs);
         self.apply_all(&evs);
         events.extend(evs);
+    }
+
+    /// Glyph of Doom / Glyph of Reincarnation: "Destroy all creatures that were blocked by target
+    /// Wall this turn." The ledger-driven sibling of [`Game::resolve_destroy_all`] — same mint →
+    /// snapshot → apply, plus Glyph of Reincarnation's payoff, which needs to know *which*
+    /// creatures actually died and whose graveyard each one names. That mapping is read off the
+    /// minted events (a regenerated or indestructible creature mints nothing and so reanimates
+    /// nothing) crossed with the ledger's recorded controllers.
+    pub(crate) fn resolve_destroy_blocked_by_target(
+        &mut self,
+        effect: DestroyEffect,
+        controller: PlayerId,
+        source: ObjectId,
+        target: Option<Target>,
+        x: u32,
+        events: &mut Vec<Event>,
+    ) {
+        let DestroyEffect::BlockedByTarget {
+            at,
+            reincarnate,
+            blocker,
+            ..
+        } = effect
+        else {
+            debug_assert!(
+                false,
+                "resolve_destroy_blocked_by_target on the wrong effect"
+            );
+            return;
+        };
+        let wall = blocker.or(match target {
+            Some(Target::Object(id)) => Some(id),
+            _ => None,
+        });
+        let ledger = wall
+            .map(|w| self.blocked_by_this_turn(w))
+            .unwrap_or_default();
+
+        let evs = self.execute_effect(Effect::Destroy(effect), controller, source, target, x);
+        // Whose graveyard each death names, in the ledger's own order (CR 700.2 leaves the order
+        // of a "for each" fan-out to the effect's controller; declaration order is deterministic
+        // and matches how the deaths were minted).
+        let died: Vec<ObjectId> =
+            evs.iter()
+                .filter_map(|e| match e {
+                    Event::MovedToGraveyard { from, .. }
+                    | Event::MovedToCommandZone { from, .. } => Some(*from),
+                    _ => None,
+                })
+                .collect();
+        let graveyards: Vec<PlayerId> = ledger
+            .iter()
+            .filter(|(id, _)| died.contains(id))
+            .map(|&(_, owner)| owner)
+            .collect();
+
+        self.record_destroyed_this_way(&evs);
+        self.apply_effect_events_with_replacements(evs, events);
+
+        // `at` already turned this into a delayed ability; the payoff rides with it.
+        if !reincarnate || at.is_some() {
+            return;
+        }
+        self.prompt_next_glyph_reincarnation(graveyards, controller, source);
     }
 
     /// Volcanic Eruption: "Destroy X target Mountains. … damage equal to the number of Mountains

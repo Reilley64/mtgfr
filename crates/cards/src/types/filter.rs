@@ -905,6 +905,16 @@ pub struct PermanentFilter {
     /// [`attacking_you`](Self::attacking_you) — on its own it also matches every creature sitting
     /// at home, which no attacker is blocking either.
     pub unblocked: bool,
+    /// Requires that some Wall blocked this creature at any point *this turn* (Glyph of
+    /// Delusion — "target creature that target Wall blocked this turn"). `false` (default)
+    /// imposes no restriction. Reads `CombatExtras::blocked_this_turn`, the Glyph cycle's
+    /// turn-scoped ledger, so unlike [`unblocked`](Self::unblocked) — which asks the live
+    /// combat-scoped question — it still answers after the combat the block happened in has
+    /// ended, and stops answering when the turn does.
+    /// ponytail: "*that* Wall" is narrowed to "a Wall", because the DSL has no second target
+    /// clause for a spell (increment #131). The distinction only bites with two Walls blocking
+    /// different creatures in one turn.
+    pub blocked_by_a_wall_this_turn: bool,
     /// Power strictly less than the filter's own source permanent's power (Mentor, CR 702.121a
     /// "lesser power"). `false` (default) imposes no restriction. Meaningless without a `source`
     /// (see [`Game::permanent_matches`]) — every filter that sets this pairs it with a targeted
@@ -1082,6 +1092,7 @@ impl PermanentFilter {
             attacking_or_blocking: false,
             tapped_or_blocking: false,
             unblocked: false,
+            blocked_by_a_wall_this_turn: false,
             power_less_than_source: false,
             toughness_less_than_source_power: false,
             entered_this_turn: false,

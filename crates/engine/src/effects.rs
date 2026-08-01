@@ -1163,6 +1163,9 @@ impl Game {
             Effect::Destroy(destroy @ DestroyEffect::All { .. }) => {
                 self.resolve_destroy_all(destroy, controller, source, target, x, events)
             }
+            Effect::Destroy(destroy @ DestroyEffect::BlockedByTarget { .. }) => {
+                self.resolve_destroy_blocked_by_target(destroy, controller, source, target, x, events)
+            }
             Effect::Destroy(destroy @ DestroyEffect::Target { .. }) => {
                 self.resolve_destroy_target(destroy, controller, source, target, x, events)
             }
@@ -1191,10 +1194,10 @@ impl Game {
             Effect::Choice(ChoiceEffect::EachPlayerDiscardsHandThenDraws { .. }) => {
                 self.run_misc_choreo(effect, ctx, events)
             }
-            // Timetwister — see `resolution/resolve_misc.rs`.
-            Effect::Choice(ChoiceEffect::EachPlayerShufflesHandAndGraveyardThenDraws {
-                ..
-            }) => self.run_misc_choreo(effect, ctx, events),
+            // Timetwister and Winds of Change — see `resolution/resolve_misc.rs`.
+            Effect::Choice(ChoiceEffect::EachPlayerShufflesHandThenDraws { .. }) => {
+                self.run_misc_choreo(effect, ctx, events)
+            }
             // Malfegor's "discard your hand" — see `resolution/resolve_misc.rs`.
             Effect::Choice(ChoiceEffect::DiscardYourHand) => {
                 self.run_misc_choreo(effect, ctx, events)

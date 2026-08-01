@@ -1449,7 +1449,8 @@ Timetwister itself goes to the graveyard after (so it isn't shuffled in). *Sketc
 on that effect with the zones to shuffle and no discard step.
 *Cards:* timetwister.
 
-*Landed:* a sibling `ChoiceEffect` variant (`each_player_shuffles_hand_and_graveyard_then_draws`),
+*Landed:* a sibling `ChoiceEffect` variant (`each_player_shuffles_hand_then_draws`, named
+`each_player_shuffles_hand_and_graveyard_then_draws` until Legends' Winds of Change joined it),
 not a flag on the wheel — the zones read, the zone written, and the triggers fired all differ, and a
 bool that flips discard-to-shuffle *and* adds the graveyard is two axes wearing one name. The move
 itself needed nothing new: `Event::TuckedToLibrary` already accepts any origin (the graveyard

@@ -232,8 +232,12 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     }
     return `${subject} sacrifice${s} a permanent`;
   },
-  "effect.choice_each_player_shuffles_hand_and_graveyard_then_draws": (params) =>
-    `Each player shuffles their hand and graveyard into their library, then draws ${param(params, "count")}`,
+  "effect.choice_each_player_shuffles_hand_then_draws": (params) => {
+    const zones = bool(params, "include_graveyard") ? "their hand and graveyard" : "their hand";
+    // No `count` is Winds of Change's "that many" — a per-player number, so it stays a phrase.
+    const count = params["count"] === undefined ? "that many cards" : String(param(params, "count"));
+    return `Each player shuffles ${zones} into their library, then draws ${count}`;
+  },
   "effect.choice_join_forces_pay_mana": literal("Starting with you, each player may pay any amount of mana"),
   "effect.choice_triggering_player_may_attach_this_aura_to_chosen": (params) =>
     `That permanent's controller may attach this Aura to a ${humanize(param(params, "filter"))} of their choice`,
@@ -382,6 +386,10 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     `Deal ${param(params, "amount")} damage to the permanent that entered`,
   "effect.damage_to_players": (params) => `Deal ${param(params, "amount")} damage to ${playerPhrase(params)}`,
   "effect.destroy_all": (params) => `Destroy all ${humanize(param(params, "filter", "permanents"))}`,
+  "effect.destroy_blocked_by_target": literal("Destroy all creatures that were blocked by it this turn"),
+  "effect.destroy_blocked_by_target_reincarnate": literal(
+    "Destroy all creatures that were blocked by it this turn, then reanimate a creature card for each",
+  ),
   "effect.destroy_target": literal("Destroy target"),
   "effect.destroy_triggering_damaged_creature": literal("Destroy that creature"),
   "effect.dig_cascade": literal("Cascade"),
@@ -682,6 +690,8 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   ),
   "effect.static_creatures_you_control_enter_with_counters": (params) =>
     `${humanize(param(params, "filter", "Creatures"))} you control enter with ${param(params, "count")} additional +1/+1 counters`,
+  "effect.static_opponents_permanents_enter_tapped": (params) =>
+    `${humanize(param(params, "filter", "Permanents"))} your opponents control enter tapped`,
   "effect.static_enters_with_counters": (params) =>
     params.kind == null
       ? `Enters with ${param(params, "amount")} +1/+1 counters`

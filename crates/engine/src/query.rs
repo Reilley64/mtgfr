@@ -1810,6 +1810,12 @@ impl Game {
         if filter.unblocked && self.is_blocked(id) {
             return false;
         }
+        // A Wall blocked it earlier this turn (Glyph of Delusion) — the turn-scoped ledger, not
+        // the combat-scoped block list the two lines above read, because the Glyph is cast after
+        // the combat the block happened in.
+        if filter.blocked_by_a_wall_this_turn && !self.blocked_by_a_wall_this_turn(id) {
+            return false;
+        }
         // Nonlegendary exclusion (CR 205.4a — Muddle, the Ever-Changing's "nonlegendary
         // creature you control"). Reads the current (possibly copied) def.
         if filter.nonlegendary && self.def_of(id).legendary {
@@ -1941,6 +1947,7 @@ mod permanent_filter_tests {
             cast_only_before_combat_damage: false,
             cast_only_during_declare_blockers: false,
             cast_only_during_declare_attackers: false,
+            cast_only_after_upkeep: false,
             approximates: None,
             oracle: None,
             sets: empty_slice(),

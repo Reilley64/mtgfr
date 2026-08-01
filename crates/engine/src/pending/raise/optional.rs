@@ -128,7 +128,46 @@ pub(super) fn may_return_from_graveyard(
         source,
         options,
         mandatory,
+        to_battlefield: false,
+        then_graveyards: Vec::new(),
     })
+}
+
+/// Glyph of Reincarnation: `chooser` puts a creature card from the first of `graveyards` that has
+/// one onto the battlefield under its owner's control, with the rest carried along to be prompted
+/// for in turn. `None` when no listed graveyard holds a creature card at all — CR 700.2's "as much
+/// as possible" leaves nothing to do, so the resolution never pauses.
+pub(super) fn glyph_reincarnation(
+    game: &Game,
+    chooser: PlayerId,
+    source: ObjectId,
+    graveyards: Vec<PlayerId>,
+) -> Option<PendingChoice> {
+    let mut rest = graveyards.into_iter();
+    while let Some(owner) = rest.next() {
+        let options: Vec<ObjectId> = game
+            .live_object_ids()
+            .into_iter()
+            .filter(|&id| {
+                game.zone_of(id) == crate::Zone::Graveyard
+                    && game.owner_of(id) == owner
+                    && CardFilter::Creature.matches(&game.def_of(id))
+            })
+            .collect();
+        if options.is_empty() {
+            continue;
+        }
+        return Some(PendingChoice::MayReturnFromGraveyard {
+            player: chooser,
+            source,
+            options,
+            // "put a creature card … onto the battlefield" — not "you may" (CR 700.2).
+            mandatory: true,
+            to_battlefield: true,
+            then_graveyards: rest.collect(),
+        });
+    }
+    None
 }
 
 pub(super) fn may_exile_discarded_nonland_may_play(

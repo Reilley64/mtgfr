@@ -1192,6 +1192,9 @@ impl Game {
                     // boundary, for the same reason `must_attack` does.
                     self.combat_extras.may_block_any_number.clear();
                     self.combat_extras.must_block_all.clear();
+                    // The Glyph cycle's "…blocked by that creature this turn" ledger expires at the
+                    // same turn boundary, for the same reason `must_attack` does.
+                    self.combat_extras.blocked_this_turn.clear();
                     // ponytail: "Prevent all combat damage … this turn" (Inkshield) shields expire
                     // at the next Untap — combat is always within the turn, so a combat-only shield
                     // cleared here is behavior-exact for "this turn", the same idiom `must_attack`
@@ -1958,6 +1961,14 @@ impl Game {
             // site.
             Event::Discarded { .. } => {}
             Event::BlockerDeclared { blocker, attacker } => {
+                // The Glyph cycle's turn-scoped ledger, snapshotting the attacker's controller as
+                // it becomes blocked (`CombatExtras::blocked_this_turn`) — the combat-scoped
+                // `blocked_ever` beside it dies at end of combat, which is where those three
+                // Glyphs start reading.
+                let attacker_controller = self.controller_of(attacker);
+                self.combat_extras
+                    .blocked_this_turn
+                    .push((blocker, attacker, attacker_controller));
                 self.combat.blocks.push((blocker, attacker));
                 self.combat.blocked_ever.push((blocker, attacker));
                 self.combat.attacked_or_blocked.push(blocker);

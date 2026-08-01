@@ -19,6 +19,25 @@ impl Game {
         );
     }
 
+    /// Pause on the next graveyard owed a creature card by Glyph of Reincarnation's "for each
+    /// creature that died this way" fan-out (skipping any with no creature card in it), or — when
+    /// none remain — return, letting the enclosing resolution finish.
+    pub(crate) fn prompt_next_glyph_reincarnation(
+        &mut self,
+        graveyards: Vec<PlayerId>,
+        chooser: PlayerId,
+        source: ObjectId,
+    ) {
+        crate::pending::raise(
+            self,
+            crate::pending::ChoiceRequest::NextGlyphReincarnation {
+                graveyards,
+                chooser,
+                source,
+            },
+        );
+    }
+
     /// Answer a [`PendingChoice::ChooseCounterTargetForPlayer`]: `chosen` is the up-to-one creature
     /// the chooser counters for `target_player` (empty declines — CR 603.3d). Put one +1/+1 counter
     /// on it through the replacement pipeline [`Effect::Counters(CountersEffect::PutCounters)`] uses, then advance to the next
@@ -521,7 +540,12 @@ impl Game {
         choice: Vec<ObjectId>,
     ) -> Result<Vec<Event>, Reject> {
         let Some(PendingChoice::MayReturnFromGraveyard {
-            options, mandatory, ..
+            player: chooser,
+            source,
+            options,
+            mandatory,
+            to_battlefield,
+            then_graveyards,
         }) = self.pending_choice.clone()
         else {
             return Err(Reject::IllegalChoice);
@@ -537,13 +561,19 @@ impl Game {
 
         let mut events = Vec::new();
         for &id in &choice {
-            self.push_apply(
-                &mut events,
-                Event::ReturnedToHand {
+            // Glyph of Reincarnation puts it onto the battlefield "under its owner's control";
+            // every other user of this variant returns it to the chooser's hand.
+            let event = match to_battlefield {
+                true => self.reanimate_event(id, self.owner_of(id), false),
+                false => Event::ReturnedToHand {
                     card: self.next_object_id(),
                     from: id,
                 },
-            );
+            };
+            self.push_apply(&mut events, event);
+        }
+        if !then_graveyards.is_empty() {
+            self.prompt_next_glyph_reincarnation(then_graveyards, chooser, source);
         }
         Ok(events)
     }

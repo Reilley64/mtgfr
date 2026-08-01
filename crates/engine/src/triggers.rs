@@ -4683,6 +4683,28 @@ impl Game {
         }
     }
 
+    /// Whether some *other* permanent's static ability makes a permanent with `def` enter tapped
+    /// under `controller` (CR 614.13 — Kismet's "Artifacts, creatures, and lands your opponents
+    /// control enter tapped"). The board's half of the question [`Game::enters_tapped`] asks of
+    /// the card itself, so both are consulted and either one taps.
+    ///
+    /// Asked from [`Game::create_object`], the one choke point every permanent is minted through,
+    /// which is why it takes a [`CardId`] rather than an [`ObjectId`]: the permanent does not
+    /// exist yet. "Your opponents" is therefore just "not the static's own controller".
+    pub(crate) fn static_enters_tapped(&self, def: CardId, controller: PlayerId) -> bool {
+        let entering = card_def(def).kind.types();
+        self.battlefield().into_iter().any(|source| {
+            self.controller_of(source) != controller
+                && self.functional_abilities(source).iter().any(|ability| {
+                    matches!(
+                        ability.effect,
+                        Effect::Static(StaticEffect::OpponentsPermanentsEnterTapped { types })
+                            if types.intersects(entering)
+                    )
+                })
+        })
+    }
+
     /// First hand card of `player` whose printed land subtypes intersect `subtypes`, if any —
     /// the automatic pick for an accepted may-reveal (any matching card satisfies the replacement).
     pub(crate) fn first_hand_land_with_subtype(
@@ -5626,6 +5648,7 @@ mod tests {
             cast_only_before_combat_damage: false,
             cast_only_during_declare_blockers: false,
             cast_only_during_declare_attackers: false,
+            cast_only_after_upkeep: false,
             approximates: None,
             oracle: None,
             sets: empty_slice(),
@@ -5715,6 +5738,7 @@ mod tests {
             cast_only_before_combat_damage: false,
             cast_only_during_declare_blockers: false,
             cast_only_during_declare_attackers: false,
+            cast_only_after_upkeep: false,
             approximates: None,
             oracle: None,
             sets: empty_slice(),

@@ -280,6 +280,25 @@ pub enum StaticEffect {
         count: Amount,
     },
 
+    /// "Artifacts, creatures, and lands your opponents control enter tapped" (Kismet) — a CR
+    /// 614.13 replacement on entering the battlefield, read by
+    /// [`Game::static_enters_tapped`](crate::Game) at every site that mints a permanent. The
+    /// sibling of a card's own printed [`CardDef::enters_tapped`](crate::CardDef): that one is a
+    /// property of the card arriving, this one a property of the board it arrives on.
+    ///
+    /// Gated by a bare [`TypeSet`](crate::TypeSet) rather than a
+    /// [`PermanentFilter`](crate::PermanentFilter), and with "your opponents" baked into the
+    /// name rather than read from `filter.controller`: the permanent does not exist yet when
+    /// this is asked, so there is no [`ObjectId`](crate::ObjectId) for
+    /// [`Game::permanent_matches`](crate::Game) to look at, and card types are the one axis
+    /// answerable from a [`CardDef`](crate::CardDef) alone. A card that gates on anything richer
+    /// (power, colour, its own controller) needs a def-level matcher first.
+    OpponentsPermanentsEnterTapped {
+        /// The card types this catches — Kismet's "artifacts, creatures, and lands". A permanent
+        /// carrying any of them enters tapped; Kismet leaves enchantments and planeswalkers alone.
+        types: TypeSet,
+    },
+
     /// "This artifact doesn't untap during your untap step" (Mana Vault, Basalt Monolith) /
     /// "Creatures with power 3 or greater don't untap during their controllers' untap steps"
     /// (Meekstone) — CR 502.2's untap-step exception. Read by

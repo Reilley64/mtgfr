@@ -95,18 +95,31 @@ impl Game {
                 }
             }
             // "Each player shuffles their hand and graveyard into their library, then draws seven
-            // cards." (Timetwister): the same APNAP loop as the wheel above, but each old card is
-            // tucked back into the library (`TuckedToLibrary`, the zone move the graveyard
-            // shuffle-backs already use) and the library shuffled once per player before they
-            // draw. Timetwister itself is still on the stack here, so it isn't swept up (CR
-            // 608.2m puts it into the graveyard only once the effect has finished).
-            Effect::Choice(ChoiceEffect::EachPlayerShufflesHandAndGraveyardThenDraws { count }) => {
-                let n = self.resolve_count(count, controller, source, target, x);
+            // cards." (Timetwister), and Winds of Change's hands-only "then draws that many
+            // cards": the same APNAP loop as the wheel above, but each old card is tucked back
+            // into the library (`TuckedToLibrary`, the zone move the graveyard shuffle-backs
+            // already use) and the library shuffled once per player before they draw. The spell
+            // itself is still on the stack here, so it isn't swept up (CR 608.2m puts it into the
+            // graveyard only once the effect has finished).
+            Effect::Choice(ChoiceEffect::EachPlayerShufflesHandThenDraws {
+                include_graveyard,
+                count,
+            }) => {
                 for player in self.apnap_order() {
-                    let recycled: Vec<ObjectId> = self
-                        .hand_of(player)
+                    let hand = self.hand_of(player);
+                    // "That many" is this player's hand size, read before they shuffle — so it is
+                    // per player, unlike Timetwister's one number for the table.
+                    let n = match count {
+                        Some(count) => self.resolve_count(count, controller, source, target, x),
+                        None => hand.len() as u32,
+                    };
+                    let recycled: Vec<ObjectId> = hand
                         .into_iter()
-                        .chain(self.graveyard_cards(player))
+                        .chain(if include_graveyard {
+                            self.graveyard_cards(player)
+                        } else {
+                            Vec::new()
+                        })
                         .collect();
                     for from in recycled {
                         self.push_apply(

@@ -376,6 +376,12 @@ pub struct CardToml {
     /// ordinary card.
     #[serde(default)]
     pub cast_only_during_declare_attackers: bool,
+    /// "Cast this spell only during an opponent's turn after their upkeep step" (CR 601.3e —
+    /// Reset) — `cast_only_after_upkeep = true` for the second half; the first half is
+    /// `cast_only_during_opponents_turn`. Closed through the upkeep, open from the draw step on.
+    /// Absent (`false`) for every ordinary card.
+    #[serde(default)]
+    pub cast_only_after_upkeep: bool,
     #[serde(default)]
     /// Machine-readable fidelity note for modeled divergences. Set this whenever a
     /// `# ponytail:` comment marks a deliberate simplification; leave absent for faithful
@@ -574,6 +580,7 @@ impl From<CardToml> for CardDef {
             cast_only_before_combat_damage: card.cast_only_before_combat_damage,
             cast_only_during_declare_blockers: card.cast_only_during_declare_blockers,
             cast_only_during_declare_attackers: card.cast_only_during_declare_attackers,
+            cast_only_after_upkeep: card.cast_only_after_upkeep,
             approximates: card.approximates.map(|s| &*Box::leak(s.into_boxed_str())),
             oracle: card.oracle.map(|s| &*Box::leak(s.into_boxed_str())),
             sets: arc_strs(card.sets),

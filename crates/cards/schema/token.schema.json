@@ -1229,6 +1229,11 @@
           "description": "Cascade (CR 702.85) — `cascade = true`; absent (`false`) for a card without cascade.",
           "type": "boolean"
         },
+        "cast_only_after_upkeep": {
+          "default": false,
+          "description": "\"Cast this spell only during an opponent's turn after their upkeep step\" (CR 601.3e — Reset) — `cast_only_after_upkeep = true` for the second half; the first half is `cast_only_during_opponents_turn`. Closed through the upkeep, open from the draw step on. Absent (`false`) for every ordinary card.",
+          "type": "boolean"
+        },
         "cast_only_before_attackers": {
           "default": false,
           "description": "\"Cast this spell only before attackers are declared\" (CR 601.3e — Master Warcraft) — `cast_only_before_attackers = true`; absent (`false`) for every ordinary card.",
@@ -3032,6 +3037,13 @@
             "intervention"
           ],
           "type": "string"
+        },
+        {
+          "description": "A glyph counter (CR 122.1 — Glyph of Delusion): a functional reminder counter marking a creature that \"doesn't untap during its controller's untap step if it has a glyph counter on it\", with one coming off at each of that controller's upkeeps. Like [`Vow`](Self::Vow) and [`Mire`](Self::Mire), the counter *is* the effect — the Glyph is an instant that leaves nothing behind to read the granted abilities off, so [`Game::doesnt_untap`](crate::Game) consults this slot directly and the upkeep step removes one unconditionally.",
+          "enum": [
+            "glyph"
+          ],
+          "type": "string"
         }
       ]
     },
@@ -3594,6 +3606,50 @@
               },
               "required": [
                 "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "\"Destroy all creatures that were blocked by target Wall **this turn**\" (Glyph of Reincarnation, and Glyph of Doom's delayed form). Neither a board scan like [`Self::All`] nor a single chosen victim like [`Self::Target`]: the victims are read out of the Glyph cycle's turn-scoped ledger (`CombatExtras::blocked_this_turn`) through `Game::blocked_by_this_turn`, keyed by the *targeted blocker*. It has to be that ledger rather than the live block list, because both cards are cast after the combat the block happened in — CR 509.1h's \"still blocked\" fact dies at end of combat, and these want the rest of the turn.",
+              "properties": {
+                "at": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/Step"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "`Some(step)` postpones the sweep to a CR 603.7 delayed triggered ability at that step (Glyph of Doom's \"at this turn's next end of combat\"). Only the *blocker* is baked in when it is scheduled (into `blocker` below) — the ledger itself is re-read when the delayed ability fires, so a block declared after this resolved is still swept, the same late-reading shape [`Self::All`]'s `at` has."
+                },
+                "cant_be_regenerated": {
+                  "default": false,
+                  "type": "boolean"
+                },
+                "mode": {
+                  "enum": [
+                    "blocked_by_target"
+                  ],
+                  "type": "string"
+                },
+                "reincarnate": {
+                  "default": false,
+                  "description": "Glyph of Reincarnation's \"For each creature that died this way, put a creature card from the graveyard of the player who controlled that creature the last time it became blocked by that Wall onto the battlefield under its owner's control.\" `false` (the default) is Glyph of Doom — destroy and stop.",
+                  "type": "boolean"
+                },
+                "target": {
+                  "allOf": [
+                    {
+                      "$ref": "#/$defs/TargetSpec"
+                    }
+                  ],
+                  "description": "The blocker whose ledger is read — \"target Wall\"."
+                }
+              },
+              "required": [
+                "mode",
+                "target"
               ],
               "type": "object"
             }
@@ -7623,20 +7679,32 @@
               "type": "object"
             },
             {
-              "description": "Timetwister's \"Each player shuffles their hand and graveyard into their library, then draws seven cards.\" The recycling sibling of [`EachPlayerDiscardsHandThenDraws`](Self::EachPlayerDiscardsHandThenDraws): same APNAP fan-out and same redraw, but the old cards are tucked back into the library and shuffled instead of discarded, so no card reaches a graveyard and `you_discard` triggers stay quiet. A separate variant rather than a flag on the discard one — the zones moved, the zone moved *to*, and the triggers fired all differ.",
+              "description": "Timetwister's \"Each player shuffles their hand and graveyard into their library, then draws seven cards\", and Winds of Change's \"Each player shuffles the cards from their hand into their library, then draws that many cards.\" The recycling sibling of [`EachPlayerDiscardsHandThenDraws`](Self::EachPlayerDiscardsHandThenDraws): same APNAP fan-out and same redraw, but the old cards are tucked back into the library and shuffled instead of discarded, so no card reaches a graveyard and `you_discard` triggers stay quiet. A separate variant from the discard one rather than a flag on it — the zones moved, the zone moved *to*, and the triggers fired all differ. Timetwister and Winds of Change differ in none of those, so they share this variant and are told apart by its two knobs.",
               "properties": {
                 "count": {
-                  "$ref": "#/$defs/Amount"
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/Amount"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Timetwister's flat seven, shared by the table. `None` is Winds of Change's \"that many\": each player redraws exactly what they shuffled away, a count read per player just before that player shuffles rather than one number for everyone."
+                },
+                "include_graveyard": {
+                  "default": false,
+                  "description": "Timetwister sweeps graveyards back in alongside hands; Winds of Change touches only hands.",
+                  "type": "boolean"
                 },
                 "mode": {
                   "enum": [
-                    "each_player_shuffles_hand_and_graveyard_then_draws"
+                    "each_player_shuffles_hand_then_draws"
                   ],
                   "type": "string"
                 }
               },
               "required": [
-                "count",
                 "mode"
               ],
               "type": "object"
@@ -8859,6 +8927,30 @@
                 "count",
                 "filter",
                 "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "\"Artifacts, creatures, and lands your opponents control enter tapped\" (Kismet) — a CR 614.13 replacement on entering the battlefield, read by [`Game::static_enters_tapped`](crate::Game) at every site that mints a permanent. The sibling of a card's own printed [`CardDef::enters_tapped`](crate::CardDef): that one is a property of the card arriving, this one a property of the board it arrives on.\n\nGated by a bare [`TypeSet`](crate::TypeSet) rather than a [`PermanentFilter`](crate::PermanentFilter), and with \"your opponents\" baked into the name rather than read from `filter.controller`: the permanent does not exist yet when this is asked, so there is no [`ObjectId`](crate::ObjectId) for [`Game::permanent_matches`](crate::Game) to look at, and card types are the one axis answerable from a [`CardDef`](crate::CardDef) alone. A card that gates on anything richer (power, colour, its own controller) needs a def-level matcher first.",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "opponents_permanents_enter_tapped"
+                  ],
+                  "type": "string"
+                },
+                "types": {
+                  "allOf": [
+                    {
+                      "$ref": "#/$defs/TypeSet"
+                    }
+                  ],
+                  "description": "The card types this catches — Kismet's \"artifacts, creatures, and lands\". A permanent carrying any of them enters tapped; Kismet leaves enchantments and planeswalkers alone."
+                }
+              },
+              "required": [
+                "mode",
+                "types"
               ],
               "type": "object"
             },
@@ -11398,6 +11490,12 @@
             "null"
           ]
         },
+        "blocked_by_a_wall_this_turn": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
         "blocking": {
           "type": [
             "boolean",
@@ -12943,6 +13041,11 @@
     "cascade": {
       "default": false,
       "description": "Cascade (CR 702.85) — `cascade = true`; absent (`false`) for a card without cascade.",
+      "type": "boolean"
+    },
+    "cast_only_after_upkeep": {
+      "default": false,
+      "description": "\"Cast this spell only during an opponent's turn after their upkeep step\" (CR 601.3e — Reset) — `cast_only_after_upkeep = true` for the second half; the first half is `cast_only_during_opponents_turn`. Closed through the upkeep, open from the draw step on. Absent (`false`) for every ordinary card.",
       "type": "boolean"
     },
     "cast_only_before_attackers": {

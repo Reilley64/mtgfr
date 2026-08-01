@@ -916,6 +916,13 @@ pub struct CardDef {
     /// [`Ability::condition`]) for the seat half. `cast_only_during_declare_attackers = true` in
     /// TOML; `false` for every ordinary card.
     pub cast_only_during_declare_attackers: bool,
+    /// "…after their upkeep step" (CR 601.3e — Reset): closed through the upkeep, open from the
+    /// draw step on. A separate flag rather than a variant of one shared timing enum because
+    /// these restrictions *compose* — Reset prints this and
+    /// [`Self::cast_only_during_opponents_turn`] in one sentence, exactly as Siren's Call pairs
+    /// two others — so a mutually-exclusive enum could not express any of them.
+    /// `cast_only_after_upkeep = true` in TOML; `false` for every ordinary card.
+    pub cast_only_after_upkeep: bool,
     /// A one-line plain-English note on how this card's modeled behavior diverges from its
     /// printed rules text (a dropped clause, a coarsened trigger, a folded-together mechanic) —
     /// the same fact a `# ponytail:` TOML comment records, but as a datum the catalog/deck
@@ -1571,6 +1578,7 @@ fn treasure_token_builtin() -> CardDef {
         cast_only_before_combat_damage: false,
         cast_only_during_declare_blockers: false,
         cast_only_during_declare_attackers: false,
+        cast_only_after_upkeep: false,
         approximates: None,
         oracle: None,
         sets: empty_slice(),
@@ -1649,6 +1657,7 @@ pub fn rogue_token_stub() -> CardDef {
         cast_only_before_combat_damage: false,
         cast_only_during_declare_blockers: false,
         cast_only_during_declare_attackers: false,
+        cast_only_after_upkeep: false,
         approximates: None,
         oracle: None,
         sets: empty_slice(),
@@ -1729,6 +1738,7 @@ pub fn illusion_token() -> CardDef {
         cast_only_before_combat_damage: false,
         cast_only_during_declare_blockers: false,
         cast_only_during_declare_attackers: false,
+        cast_only_after_upkeep: false,
         approximates: None,
         oracle: None,
         sets: empty_slice(),

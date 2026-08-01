@@ -100,14 +100,24 @@ pub enum ChoiceEffect {
     },
 
     /// Timetwister's "Each player shuffles their hand and graveyard into their library, then draws
-    /// seven cards." The recycling sibling of
+    /// seven cards", and Winds of Change's "Each player shuffles the cards from their hand into
+    /// their library, then draws that many cards." The recycling sibling of
     /// [`EachPlayerDiscardsHandThenDraws`](Self::EachPlayerDiscardsHandThenDraws): same APNAP
     /// fan-out and same redraw, but the old cards are tucked back into the library and shuffled
     /// instead of discarded, so no card reaches a graveyard and `you_discard` triggers stay quiet.
-    /// A separate variant rather than a flag on the discard one — the zones moved, the zone moved
-    /// *to*, and the triggers fired all differ.
-    EachPlayerShufflesHandAndGraveyardThenDraws {
-        count: Amount,
+    /// A separate variant from the discard one rather than a flag on it — the zones moved, the
+    /// zone moved *to*, and the triggers fired all differ. Timetwister and Winds of Change differ
+    /// in none of those, so they share this variant and are told apart by its two knobs.
+    EachPlayerShufflesHandThenDraws {
+        /// Timetwister sweeps graveyards back in alongside hands; Winds of Change touches only
+        /// hands.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        include_graveyard: bool,
+        /// Timetwister's flat seven, shared by the table. `None` is Winds of Change's "that many":
+        /// each player redraws exactly what they shuffled away, a count read per player just
+        /// before that player shuffles rather than one number for everyone.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        count: Option<Amount>,
     },
 
     /// Each player in `who` discards a card of their choice (Syphon Mind, "Each other player

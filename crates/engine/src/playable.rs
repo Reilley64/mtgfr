@@ -381,6 +381,13 @@ impl Game {
         if def.cast_only_during_declare_attackers && self.step != Step::DeclareAttackers {
             return false;
         }
+        // "…after their upkeep step" (CR 601.3e — Reset): closed for the upkeep and open from the
+        // draw step on. `Step`'s ordering is the turn order, so this is the mirror of the
+        // `before`-windows above. The untap step needs no mention — nobody receives priority
+        // there (CR 502.3) — but it sorts before upkeep anyway, so the comparison covers it.
+        if def.cast_only_after_upkeep && self.step <= Step::Upkeep {
+            return false;
+        }
         // A `condition` on a *spell* ability is a cast restriction (CR 601.3e), not the
         // intervening-if (CR 603.4) it is on a triggered one: a spell ability never triggers, so
         // cast time is the only moment it can be read. It composes with the card-level windows
@@ -822,6 +829,7 @@ mod tests {
             cast_only_before_combat_damage: false,
             cast_only_during_declare_blockers: false,
             cast_only_during_declare_attackers: false,
+            cast_only_after_upkeep: false,
             approximates: None,
             oracle: None,
             sets: empty_slice(),

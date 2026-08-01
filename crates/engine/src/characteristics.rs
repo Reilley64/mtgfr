@@ -1500,6 +1500,13 @@ impl Game {
     /// Battlefield-wide like `Game::cant_block_filter`, not controller-scoped — Meekstone reads
     /// "their controllers' untap steps", so who controls the Meekstone never enters into it.
     pub(crate) fn doesnt_untap(&self, id: ObjectId) -> bool {
+        // Glyph of Delusion's granted "doesn't untap during your untap step if it has a glyph
+        // counter on it". The counter *is* the effect (the [`CounterKind::Glyph`] doc says why):
+        // the Glyph is an instant, so there is no permanent left on the battlefield for the scan
+        // below to find the granted ability on.
+        if self.counters_of_kind(id, CounterKind::Glyph) > 0 {
+            return true;
+        }
         // Paralyze's attachment-scoped form. Folded in here rather than given its own scanner so
         // the untap step keeps reading exactly one, and so "doesn't untap" means the same thing
         // whether the source is an Aura on the permanent or a Meekstone across the table.
@@ -3465,6 +3472,7 @@ mod cache_tests {
             cast_only_before_combat_damage: false,
             cast_only_during_declare_blockers: false,
             cast_only_during_declare_attackers: false,
+            cast_only_after_upkeep: false,
             approximates: None,
             oracle: None,
             sets: empty_slice(),
@@ -3565,6 +3573,7 @@ mod cache_tests {
             cast_only_before_combat_damage: false,
             cast_only_during_declare_blockers: false,
             cast_only_during_declare_attackers: false,
+            cast_only_after_upkeep: false,
             approximates: None,
             oracle: None,
             sets: empty_slice(),
@@ -3756,6 +3765,7 @@ mod cache_tests {
             cast_only_before_combat_damage: false,
             cast_only_during_declare_blockers: false,
             cast_only_during_declare_attackers: false,
+            cast_only_after_upkeep: false,
             approximates: None,
             oracle: None,
             sets: empty_slice(),
@@ -3916,6 +3926,7 @@ mod characteristic_query_tests {
             cast_only_before_combat_damage: false,
             cast_only_during_declare_blockers: false,
             cast_only_during_declare_attackers: false,
+            cast_only_after_upkeep: false,
             approximates: None,
             oracle: None,
             sets: empty_slice(),
@@ -3992,6 +4003,7 @@ mod characteristic_query_tests {
             cast_only_before_combat_damage: false,
             cast_only_during_declare_blockers: false,
             cast_only_during_declare_attackers: false,
+            cast_only_after_upkeep: false,
             approximates: None,
             oracle: None,
             sets: empty_slice(),
@@ -4099,6 +4111,7 @@ mod characteristic_query_tests {
                 cast_only_before_combat_damage: false,
                 cast_only_during_declare_blockers: false,
                 cast_only_during_declare_attackers: false,
+                cast_only_after_upkeep: false,
                 approximates: None,
                 oracle: None,
                 sets: empty_slice(),
@@ -4194,6 +4207,7 @@ mod characteristic_query_tests {
                 cast_only_before_combat_damage: false,
                 cast_only_during_declare_blockers: false,
                 cast_only_during_declare_attackers: false,
+                cast_only_after_upkeep: false,
                 approximates: None,
                 oracle: None,
                 sets: empty_slice(),
@@ -4287,6 +4301,7 @@ mod characteristic_query_tests {
                 cast_only_before_combat_damage: false,
                 cast_only_during_declare_blockers: false,
                 cast_only_during_declare_attackers: false,
+                cast_only_after_upkeep: false,
                 approximates: None,
                 oracle: None,
                 sets: empty_slice(),

@@ -768,7 +768,10 @@ by the attack-legality check; Wall of Dust instead applies a targeted "can't att
 next turn" marker to another creature, which needs the marker to survive until that player's next
 turn ends. Both are #10's `CantAttack` with a temporal condition.
 
-### 43. `glyph-cycle` — 5 cards, L
+### 43. `glyph-cycle` — 5 cards, L — **LANDED** (wave 8 took the two Glyphs that need no ledger —
+Glyph of Destruction and Glyph of Life; wave 9 built the ledger and took Delusion, Doom and
+Reincarnation. Residuals split to #131 and #132 (Delusion's second target and its granted
+abilities) and #133 (Reincarnation's cast restriction); Destruction's pump duration is #134.)
 Depends on: nothing.
 **Three** of the five Glyphs key on "creatures that <target Wall> blocked this turn" — a per-Wall
 memory of what it blocked, surviving past the combat in which it blocked: Glyph of Delusion, Glyph
@@ -864,6 +867,15 @@ Kismet: "Artifacts, creatures, and lands your opponents control enter tapped." *
 ETB-replacement continuous effect with a filter, applied in the existing enters-tapped path (which
 today only reads the permanent's own `enters_tapped`).
 
+*Landed (wave 9):* `StaticEffect::OpponentsPermanentsEnterTapped { types }`, read by
+`Game::static_enters_tapped` from `Game::create_object` — the one choke point every permanent
+(resolved spell, token, reanimated, test spawn) is minted through, and the same place the split-card
+and graveyard-exit hooks already live. Not the sketched filter: the permanent does not exist yet
+when the question is asked, so there is no `ObjectId` for `Game::permanent_matches`, and card types
+are the one axis a `CardDef` alone can answer. "Your opponents" is baked into the variant rather
+than read from a `filter.controller` for the same reason. A card gating on power, colour, or its own
+controller needs a def-level matcher first; nothing in Legends does.
+
 ### 52. `exiled-with-this-face-down` — 1 card, M
 Depends on: nothing.
 Knowledge Vault: exile cards face down "with this artifact", return them all on sacrifice, dump
@@ -914,6 +926,14 @@ Depends on: nothing.
 Mirror Universe. *Sketch:* an `ExchangeLifeTotals { target_opponent }` effect. Life setting already
 exists; the only subtlety is that the exchange is a single event, so life-gain/life-loss triggers
 see one change each (CR 118.7).
+
+*Landed (wave 9):* the effect (`LifeEffect::Exchange`) and its resolution shipped in wave 8, but
+the card script and any test did not — a silent partial of the same shape as #84's, where a key
+existed with nothing exercising it. Wave 9 added `mirror_universe.toml` and the two tests: the
+exchange itself (both seats swap, an untargeted third seat does not) and the
+`only_during_your_upkeep` window, which reuses Cyclopean Tomb's existing restriction rather than
+adding one. The sacrifice is a cost, so the artifact is already in the graveyard when the ability
+resolves.
 
 ### 58. `name-a-card` — 2 cards, M
 Depends on: nothing.
@@ -1055,6 +1075,15 @@ restriction, which is a step/turn-ownership predicate alongside the existing
 `cast_only_during_declare_attackers`. Generalize that field to a small timing-restriction enum
 rather than adding a second bool.
 
+*Landed (wave 9):* a second bool, `cast_only_after_upkeep`, not the sketched enum — these
+restrictions **compose** rather than exclude each other. Reset prints two of them in one sentence
+(`cast_only_during_opponents_turn` + this one), exactly as Siren's Call pairs two others, so a
+mutually-exclusive enum could not express any of the cards that already use the family. It reads
+`self.step <= Step::Upkeep` in `cast_timing_ok`, the mirror of the `before`-windows beside it.
+Untap needed nothing new: `ControlEffect::UntapAll` already takes a `PermanentFilter`, and
+`controller = "you"` is the whole of "lands you control".
+*Cards:* reset.
+
 ### 73. `rohgahh-of-kher-keep` — 1 card, M
 Depends on: nothing.
 "At the beginning of your upkeep, you may pay {R}{R}{R}. If you don't, tap Rohgahh and all creatures
@@ -1147,11 +1176,14 @@ Hatchling counters, a sacrifice ability gated on having two or more, and a two-m
 (reanimate from hand or from graveyard). *Sketch:* an activation condition on a counter count
 threshold — the only missing piece; both modes and the counter-adding ability are expressible.
 
-### 84. `activate-no-more-than-twice-each-turn` — 1 card, S
+### 84. `activate-no-more-than-twice-each-turn` — 1 card, S — **LANDED** (wave 8, tested wave 9)
 Depends on: nothing.
-Vampire Bats. `AbilityToml` has `once_each_turn` and `nth_each_turn`; neither expresses "no more
-than twice". *Sketch:* replace `once_each_turn` with `max_activations_per_turn: Option<u32>`
-(1 for the existing users, 2 here) and migrate the pool in the same change.
+Vampire Bats. `AbilityToml` had `once_each_turn` and `nth_each_turn`; neither expressed "no more
+than twice". `max_activations_per_turn: Option<u32>` was added alongside `once_each_turn` rather
+than replacing it, so the existing users were left untouched. The key shipped in wave 8 with no
+test at all; wave 9 added `leg_w9_c.rs`, which pins both halves — the third activation in a turn is
+refused as it is announced (CR 602.2b, so `Reject::CannotActivate` rather than a countered
+ability), and a new turn hands both uses back.
 
 ### 85. `look-at-top-n-then-may-shuffle` — 1 card, S
 Depends on: nothing.
@@ -1206,6 +1238,16 @@ Depends on: nothing.
 "Each player shuffles the cards from their hand into their library, then draws that many cards."
 *Sketch:* a per-player count captured before the shuffle and used for the draw — a
 resolution-scoped per-player amount (#46/#69's shape, one value per player).
+
+*Landed (wave 9):* no new effect — Timetwister's
+`each_player_shuffles_hand_and_graveyard_then_draws` is the same shuffle-back, so it was widened
+into `each_player_shuffles_hand_then_draws` with two knobs: `include_graveyard` (Timetwister sets
+it; Winds of Change does not) and an optional `count` whose absence *is* "that many", read per
+player inside the APNAP loop just before that player shuffles. The 2ed note argued for a separate
+variant on the grounds that the zones read, the zone written, and the triggers fired all differ
+between wheel and shuffle-back; between these two they differ in none of those, so the same
+argument makes them one variant.
+*Cards:* winds_of_change.
 
 ### 92. `damage-to-filtered-subset-of-targets` — 1 card, S
 Depends on: #61.
@@ -1271,8 +1313,9 @@ attached }` precedent — when set, `ReplacementRegistry::new` registers the eff
 Demonic Torment keeps its existing `grant_to_attached cant_attack` ability alongside. Both cards
 faithful.
 
-### 96. `target-becomes-color` — 6 cards, M
+### 96. `target-becomes-color` — 6 cards, M — **LANDED** (wave 8, recorded wave 9)
 Depends on: nothing.
+Tests: `crates/engine/tests/leg_color_change.rs`.
 Dwarven Song, Heaven's Gate, Touch of Darkness, Sea Kings' Blessing, Sylvan Paradise,
 Alchor's Tomb.
 "One or more target creatures become red until end of turn."
@@ -1281,6 +1324,17 @@ Alchor's Tomb.
 multi-target count; Alchor's Tomb needs the third axis — a chosen color, consuming
 `ChoiceEffect::ChooseColor` — and targets a *permanent* you control rather than a creature,
 indefinitely (CR 613 layer 5, no expiry). All three axes land on the one effect.
+
+*Landed:* all three axes went onto `PumpEffect::TargetBecomesColor` as sketched — `color:
+Option<Color>` (`None` consumes the chosen colour), `count: TargetCount`, `until_end_of_turn:
+bool` — and all six cards are scripted. The wave that did the work never ticked them in
+[`leg.md`](leg.md) or marked this entry, which is why it read as open until wave 9 audited the
+pool against the report; the same audit found #57 and #84 in the same state.
+
+*Residual:* the five one-mana spells carry an `approximates` for "one or more target creatures" —
+the engine's target list is fixed-width, so `count = { min = 1, max = 6 }` caps them at six. Not
+its own increment: the cap is a property of the target-list representation, reached by no Legends
+board state, and lifting it is an engine-wide change rather than a card one.
 
 ### 97. `token-profiles-without-a-scryfall-printing` — 3 cards, M — **LANDED** (wave 7)
 Depends on: nothing. **Gates #123.**
@@ -1754,3 +1808,66 @@ hit target my protectee?" rather than "is the source a spell targeting it?". The
 whatever `Game::resolve_effect` is currently resolving, so it is available at every call site
 without a new event. A test where Rod of Ruin's *ability* targets the chosen creature and is
 prevented is the acceptance criterion; drop Silhouette's `approximates` when it passes.
+
+### 131. `second-target-clause-for-spells` — 1 card, M
+Depends on: #43 (landed — which is what made the residual visible).
+Glyph of Delusion: "Put X glyph counters on target creature **that target Wall blocked this turn**."
+Two target clauses on one spell, where the second restricts the first. The engine has a second
+target clause for *abilities* (`Game::ability_second_target_clause`, feeding `ResolveCtx::
+targets_second` — Exchange Control's two halves), but a spell's targets come from one `TargetSpec`
+on the effect. Glyph of Delusion is scripted with a single target on the blocked creature plus a
+`blocked_by_a_wall_this_turn` filter axis, so *any* Wall's block this turn qualifies it rather than
+one named Wall's; it carries an `approximates` for that. Only observable with two Walls that blocked
+different creatures in the same turn.
+*Sketch:* lift the ability-side second-target machinery to the cast path so a spell can carry two
+`TargetSpec`s (chosen together at CR 601.2c), then let a filter axis reference the *other* clause's
+chosen object — `blocked_by_target_wall_this_turn` reading `targets_second` instead of scanning
+every Wall. A test with two Walls, each having blocked a different attacker, naming the Wall that
+did *not* block the chosen creature and expecting the cast to be refused is the acceptance
+criterion; drop the first half of Glyph of Delusion's `approximates` when it passes.
+
+### 132. `granted-abilities-from-a-one-shot-spell` — 1 card, M
+Depends on: #43 (landed), #32 (ability-granting).
+Glyph of Delusion: "The creature gains 'This creature doesn't untap during your untap step if it has
+a glyph counter on it' and 'At the beginning of your upkeep, remove a glyph counter from this
+creature.'" A *permanent* ability grant with no permanent behind it — the Glyph is an instant, so
+there is no source left on the battlefield for the static/Aura grant paths
+(`StaticEffect::GrantToAttached`, `GrantActivatedAbility`) to hang off. Scripted instead as the
+counter *being* the effect: `Game::doesnt_untap` reads a `CounterKind::Glyph` directly and the
+upkeep step removes one, the same "the counter is the effect" shortcut `CounterKind::Vow`
+(Promise of Loyalty) and `CounterKind::Mire` (Cyclopean Tomb) take. Behaviorally faithful; what is
+missing is that the two abilities are not *on* the creature, so nothing can copy, remove, or read
+them, and any creature that gains a glyph counter some other way would inherit the behavior.
+*Sketch:* an indefinite-duration granted-ability modifier keyed to the creature rather than to a
+live source (CR 611.2 — the effect outlives the spell), holding a `&'static [Ability]`. The two
+abilities themselves are already expressible (a counter-gated `StaticEffect::DoesntUntap` and an
+upkeep `Trigger::YourUpkeep` removing one counter); it is the *granting* that has no home. A test
+that copies or removes the granted abilities is the acceptance criterion; drop the second half of
+Glyph of Delusion's `approximates` when it passes.
+
+### 133. `cast-only-after-combat` — 1 card, S
+Depends on: nothing.
+Glyph of Reincarnation: "Cast this spell only after combat." (CR 601.3e) — a phase-scoped cast
+restriction with no key in the `cast_only_*` family, which today covers `during_combat`,
+`before_attackers`, `before_blockers`, `before_combat_damage`, `during_declare_attackers`,
+`during_declare_blockers`, `during_opponents_turn` and `after_upkeep`. The Glyph is scripted
+without it and carries an `approximates`: it can be cast at any instant speed, which only diverges
+before and during combat (cast mid-combat it does the same thing a beat early; cast precombat it
+sweeps a ledger that is usually empty).
+*Sketch:* one more `cast_only_after_combat: bool` on `CardDef` beside its siblings, checked in the
+same `Game::cast_timing_ok` choke they are (`crates/engine/src/playable.rs`) — legal from the postcombat main phase on, closed
+from untap through end of combat. A test that refuses the cast in the precombat main phase and
+during the declare-blockers step, and allows it in Main2, is the acceptance criterion; drop Glyph
+of Reincarnation's `approximates` when it passes.
+
+### 134. `until-end-of-combat-pump-duration` — 1 card, S
+Depends on: nothing.
+Glyph of Destruction: "Target blocking Wall you control gets +10/+0 until end of combat." The pump
+effect the DSL exposes is `pump_until_end_of_turn`, which has no duration knob, so the Wall keeps
++10/+0 past the combat the Glyph was cast in. The Glyph is scripted with it and carries an
+`approximates`; the divergence is only observable when a second combat phase happens in the same
+turn (Relentless Assault and friends), where the Wall should have shrunk back and does not.
+*Sketch:* a duration on the pump modifier — the same `until end of combat` cleanup that combat-only
+state already runs on `Event::CombatCleared` — rather than a new effect mode. A test that gives a
+Wall +10/+0, ends combat, starts a second combat and asserts the Wall's power is back to base is
+the acceptance criterion; drop Glyph of Destruction's `approximates` when it passes.

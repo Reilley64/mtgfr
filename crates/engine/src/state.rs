@@ -99,6 +99,20 @@ pub(crate) struct CombatExtras {
     /// whoever's it is, while this one is cleared only at the *shielded* player's own next Untap,
     /// which is exactly "until your next turn".
     pub repelled_until_next_turn: Vec<(PlayerId, crate::PermanentFilter)>,
+    /// "…creatures that were blocked by that creature **this turn**" (the Glyph cycle — Glyph of
+    /// Delusion, Glyph of Doom, Glyph of Reincarnation): each entry is `(blocker, attacker, the
+    /// attacker's controller at the moment it became blocked)`, appended at every
+    /// [`Event::BlockerDeclared`](crate::Event) and never pruned within the turn.
+    ///
+    /// Turn-scoped rather than combat-scoped, which is what separates it from
+    /// `CombatState::blocked_ever` — that one answers CR 509.1h's "is this attacker still blocked"
+    /// and dies with [`Event::CombatCleared`](crate::Event), while these three Glyphs are cast
+    /// *after* the combat the block happened in and need the memory to outlive it. The recorded
+    /// controller is the one Glyph of Reincarnation names ("the player who controlled that creature
+    /// the last time it became blocked by that Wall"), so it is snapshotted here rather than read
+    /// live off a creature that is about to die. Cleared at the next turn's Untap step, the same
+    /// "this turn" boundary [`must_attack`](Self::must_attack) uses.
+    pub blocked_this_turn: Vec<(ObjectId, ObjectId, PlayerId)>,
 }
 
 /// Active play and control permissions stored outside `Card`/`Permanent` so they stay `Copy`.
