@@ -108,6 +108,15 @@ those spans are real browser spans that Faro ships to Tempo and the injected `tr
 span that actually arrives. Without Faro (local dev) the global provider is a no-op, the injected
 `traceparent` is unsampled, and the BFF drops it and becomes the root.
 
+**Web vitals:** `getWebInstrumentations` collects CLS, FCP, INP, LCP, and TTFB, and Alloy's
+`faro.receiver` writes them to Loki as logfmt measurement lines (`kind=measurement
+type=web-vitals lcp=…`). `loki.process "faro_web_vitals"` sits between the receiver and
+`loki.write`: lines reach Loki unchanged, and metric stages mirror each value into a histogram
+(`faro_web_vitals_cls`, `faro_web_vitals_{fcp,inp,lcp,ttfb}_milliseconds`) exposed on Alloy's own
+`/metrics`. `prometheus.scrape "self"` scrapes loopback `127.0.0.1:12345` every 60s and
+`prometheus.relabel "faro_only"` keeps just the `faro_web_vitals_*` series before remote-write, so
+p75 panels are a Prometheus query and outlive Loki's 7d retention.
+
 Buffered browser spans are force-flushed when the page hides or unloads (`registerSpanFlushOnHide`,
 registered before `initializeFaro` so it runs ahead of faro-core's own hide flush). The game stream
 `/api/rpc/game/:table/stream` is traced like any other request: Effect's client span ends when the
@@ -249,6 +258,16 @@ still drives `tracing` / fmt output.
   it, lists `local-blocks` in `overrides.defaults.metrics_generator.processors` (a processor a tenant
   does not ask for is not run), sets `filter_server_spans: false` so client spans count, and
   `flush_to_storage: true` so queries reach past the live window.
+- **Web-vitals metrics come from the log stream, not a metrics output.** `faro.receiver` has only
+  `logs` and `traces` outputs, so the histograms are extracted from the Loki-bound measurement
+  lines. The metric stages key on the value name (`lcp`, `cls`, …) rather than `kind`/`type`:
+  `stage.match` with `action = "keep"` drops non-matching entries out of the pipeline entirely,
+  which would cost Loki every Faro error and event. A metric stage whose `source` key is absent
+  from a line is skipped, and only web-vitals measurements carry those keys at the top level.
+  Timings stay in milliseconds as Faro reports them — a `_seconds` rename needs a template stage
+  that would have to cope with lines missing the key. `max_idle_duration = "24h"` keeps series
+  alive across quiet hours so the histogram counters do not reset on an idle friend-group table.
+  `alloy.listenPort` is pinned in the Helm values because the self-scrape hardcodes that port.
 - **Semantic-convention pin:** the living contract pins OpenTelemetry Semantic Conventions 1.37.0.
   New telemetry families require a design pass before they join the shared dictionary.
 
@@ -269,6 +288,11 @@ still drives `tracing` / fmt output.
 - Dashboard provisioning changes are validated with JSON syntax checks and `terraform validate`
   from `iac/`; dashboard query behavior is checked manually through operator Grafana after
   port-forwarding.
+- Alloy pipeline changes are validated by extracting `local.alloy_config` and running
+  `docker run --rm -v "$PWD:/w" grafana/alloy:v1.11.0 validate /w/config.alloy` — it catches
+  unknown arguments and unresolved component references, not just syntax. Web-vitals histograms
+  are then confirmed live with `count(faro_web_vitals_lcp_milliseconds_bucket)` in operator
+  Grafana after a page load.
 - API Rust unit tests cover RPC/gRPC and `mtgfr.*` span fields in `grpc/trace.rs` and
   `otel_semconv.rs` (including legacy bare game key exclusion on span field names), plus
   `deployment.environment` trim/omit behavior in `telemetry.rs`. They do not golden-fixture full

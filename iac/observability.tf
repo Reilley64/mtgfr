@@ -76,8 +76,102 @@ locals {
       }
 
       output {
-        logs   = [loki.write.default.receiver]
+        logs   = [loki.process.faro_web_vitals.receiver]
         traces = [otelcol.processor.batch.default.input]
+      }
+    }
+
+    // faro.receiver has no metrics output — web vitals arrive as logfmt measurement lines
+    // (`kind=measurement type=web-vitals lcp=1234.500000 ...`). Lines still reach Loki unchanged;
+    // the metric stages mirror the values into histograms so p75 panels are a Prometheus query
+    // instead of a LogQL unwrap, and survive past Loki's 7d retention.
+    loki.process "faro_web_vitals" {
+      forward_to = [loki.write.default.receiver]
+
+      stage.logfmt {
+        mapping = {
+          cls  = "",
+          fcp  = "",
+          inp  = "",
+          lcp  = "",
+          ttfb = "",
+        }
+      }
+
+      // Keyed on the value name, not on kind/type: only web-vitals measurements carry these as
+      // top-level keys, and `stage.match` with action=keep would drop every other Faro line
+      // (errors, events, other measurements) out of Loki. A metric stage whose source key is
+      // absent from the line is skipped.
+      //
+      // Timings are milliseconds as Faro reports them (no _seconds rename — converting needs a
+      // template stage that would then have to cope with lines missing the key). Shared buckets
+      // cover every Google threshold in play: INP 200/500, TTFB 800/1800, FCP 1800/3000,
+      // LCP 2500/4000.
+      stage.metrics {
+        metric.histogram {
+          name              = "web_vitals_cls"
+          prefix            = "faro_"
+          description       = "Faro browser Cumulative Layout Shift (unitless)."
+          source            = "cls"
+          buckets           = [0.01, 0.05, 0.1, 0.15, 0.25, 0.5, 1]
+          max_idle_duration = "24h"
+        }
+
+        metric.histogram {
+          name              = "web_vitals_fcp_milliseconds"
+          prefix            = "faro_"
+          description       = "Faro browser First Contentful Paint."
+          source            = "fcp"
+          buckets           = [50, 100, 200, 300, 500, 800, 1000, 1800, 2500, 3000, 4000, 6000, 10000]
+          max_idle_duration = "24h"
+        }
+
+        metric.histogram {
+          name              = "web_vitals_inp_milliseconds"
+          prefix            = "faro_"
+          description       = "Faro browser Interaction to Next Paint."
+          source            = "inp"
+          buckets           = [50, 100, 200, 300, 500, 800, 1000, 1800, 2500, 3000, 4000, 6000, 10000]
+          max_idle_duration = "24h"
+        }
+
+        metric.histogram {
+          name              = "web_vitals_lcp_milliseconds"
+          prefix            = "faro_"
+          description       = "Faro browser Largest Contentful Paint."
+          source            = "lcp"
+          buckets           = [50, 100, 200, 300, 500, 800, 1000, 1800, 2500, 3000, 4000, 6000, 10000]
+          max_idle_duration = "24h"
+        }
+
+        metric.histogram {
+          name              = "web_vitals_ttfb_milliseconds"
+          prefix            = "faro_"
+          description       = "Faro browser Time To First Byte."
+          source            = "ttfb"
+          buckets           = [50, 100, 200, 300, 500, 800, 1000, 1800, 2500, 3000, 4000, 6000, 10000]
+          max_idle_duration = "24h"
+        }
+      }
+    }
+
+    // stage.metrics only exposes series on Alloy's own /metrics — nothing forwards them. Scrape
+    // ourselves over loopback (exempt from the alloy-ingress NetworkPolicy) and keep the faro_
+    // series only, so Alloy's several hundred internal series stay out of Prometheus.
+    prometheus.scrape "self" {
+      targets         = [{ __address__ = "127.0.0.1:12345" }]
+      job_name        = "alloy"
+      scrape_interval = "60s"
+      forward_to      = [prometheus.relabel.faro_only.receiver]
+    }
+
+    prometheus.relabel "faro_only" {
+      forward_to = [prometheus.remote_write.default.receiver]
+
+      rule {
+        source_labels = ["__name__"]
+        regex         = "faro_web_vitals_.*"
+        action        = "keep"
       }
     }
 
@@ -431,6 +525,9 @@ resource "helm_release" "alloy" {
       }
       alloy = {
         stabilityLevel = "generally-available"
+        # Pinned because `prometheus.scrape "self"` dials 127.0.0.1 on this port for the
+        # Faro web-vitals histograms; a chart-default change would silently stop that scrape.
+        listenPort = 12345
         configMap = {
           content = local.alloy_config
         }
