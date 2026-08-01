@@ -38,6 +38,8 @@ port-forward`; no tunnel hostname for the observability plane. Exporters no-op l
 - As an **operator**, I open the `mtgfr OTEL RED` dashboard and see BFF HTTP rate/error/latency by
   `http.route`, plus API gRPC rate/error/latency by `rpc.service`, `rpc.method`, and
   `rpc.grpc.status_code`.
+- As an **operator**, I open the `mtgfr Faro RUM` dashboard and see p75 web vitals (TTFB, FCP, CLS,
+  LCP, INP) over time plus browser exception volume and the top exception messages.
 - As an **operator**, I open Grafana (via port-forward) and see browser → BFF → API traces
   correlated by W3C `traceparent`, with no hand/library contents in any span.
 
@@ -107,6 +109,13 @@ Same-origin `/api` requests are made by Effect's `HttpClient` (`client/app/domai
 those spans are real browser spans that Faro ships to Tempo and the injected `traceparent` names a
 span that actually arrives. Without Faro (local dev) the global provider is a no-op, the injected
 `traceparent` is unsampled, and the BFF drops it and becomes the root.
+
+**Faro log labels:** `faro.receiver` sets `extra_log_labels = { kind = "", app_name = "" }` — an
+empty value takes the label from the payload field of the same name. Without it every Faro line
+lands in a single stream Loki auto-labels `service_name="unknown_service"`, leaving nothing to
+select on. With it, streams carry `kind` (`log` / `event` / `measurement` / `exception`) and
+`app_name=edh-web`, and Loki's own service detection resolves `service_name=edh-web`. Both labels
+are low cardinality; `session_id` and `page_url` stay as line fields and must not be promoted.
 
 **Web vitals:** `getWebInstrumentations` collects CLS, FCP, INP, LCP, and TTFB, and Alloy's
 `faro.receiver` writes them to Loki as logfmt measurement lines (`kind=measurement
@@ -182,12 +191,16 @@ kubectl -n observability port-forward svc/grafana 3000:80
 # or: kubectl -n observability get secret grafana-admin -o jsonpath='{.data.admin-password}' | base64 -d
 ```
 
+### Dashboards
+
+Grafana provisions operator dashboards from `iac/dashboards/*.json` via the Helm chart's
+`dashboardProviders` and `dashboards` values. The directory is deliberately not named `grafana/` —
+Helm resolves `chart` as a local path before the remote `repository`, so `iac/grafana/` shadows the
+upstream chart.
+
 ### RED dashboard
 
-Grafana provisions one operator dashboard from
-`iac/dashboards/mtgfr-otel-red.json` via the Helm chart's `dashboardProviders` and
-`dashboards` values. The directory is deliberately not named `grafana/` — Helm resolves `chart` as
-a local path before the remote `repository`, so `iac/grafana/` shadows the upstream chart. The dashboard uses Tempo TraceQL metrics panels rather than Prometheus
+`iac/dashboards/mtgfr-otel-red.json` uses Tempo TraceQL metrics panels rather than Prometheus
 spanmetrics because the current Alloy/Tempo topology does not configure a spanmetrics connector or
 Tempo metrics-generator.
 
@@ -209,6 +222,30 @@ Faro fetch (edh-web, HTTP client attrs)
 
 Privacy check: open the API leaf span for a sampled submit path and confirm no hand/library
 contents, no intent payload, no SQL text, and no Authorization/cookie values are present.
+
+### Faro RUM dashboard
+
+`iac/dashboards/mtgfr-faro-rum.json` (uid `mtgfr-faro-rum`) is the browser-side counterpart,
+modeled on Grafana Cloud's stock Frontend Observability layout.
+
+Panels:
+- **Performance** — TTFB / FCP / CLS / LCP / INP p75 stat tiles over the dashboard range, then
+  "Page Load, p75" (TTFB + FCP + LCP overlaid), "Cumulative Layout Shift, p75", and "Interaction to
+  Next Paint, p75" timeseries. All read the Prometheus histograms from `loki.process
+  "faro_web_vitals"` as `histogram_quantile(0.75, sum by (le) (…(<metric>_bucket[…])))`.
+- **Exceptions** — Total Exceptions stat, Exceptions Over Time bars, and a Top Exceptions table
+  (`topk(10, sum by (type, value) (count_over_time(…)))`), all LogQL over
+  `{kind="exception", app_name="edh-web"}`.
+
+INP replaces Grafana Cloud's FID tile: web-vitals v4 dropped FID, so Faro never emits it.
+
+The timeseries panels set `interval: "5m"` so `$__rate_interval` widens to 20m. RUM traffic on this
+app is sparse; at the default 1m interval most 4m windows contain no page load, `rate()` is zero in
+every bucket, and `histogram_quantile` over an all-zero histogram returns NaN. Combined with
+`spanNulls`, the wider window keeps the curves continuous. The stat tiles use
+`increase(…[$__range])` for the same reason.
+
+There is no app template variable — Faro reports one app (`edh-web`), so the label is hardcoded.
 
 ### Local / dev
 
@@ -287,7 +324,9 @@ still drives `tracing` / fmt output.
   `client/app/domain/build-meta.test.ts` ([shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md)).
 - Dashboard provisioning changes are validated with JSON syntax checks and `terraform validate`
   from `iac/`; dashboard query behavior is checked manually through operator Grafana after
-  port-forwarding.
+  port-forwarding. The Faro RUM panel queries were additionally run against a local
+  Alloy + Loki + Prometheus stack fed synthetic Faro payloads, which is how the NaN-from-flat-
+  histogram behavior behind the `interval: "5m"` choice was found.
 - Alloy pipeline changes are validated by extracting `local.alloy_config` and running
   `docker run --rm -v "$PWD:/w" grafana/alloy:v1.11.0 validate /w/config.alloy` — it catches
   unknown arguments and unresolved component references, not just syntax. Web-vitals histograms
@@ -306,7 +345,7 @@ still drives `tracing` / fmt output.
 
 ## Out of Scope
 
-- Grafana Faro public dashboard (operator-only via port-forward).
+- Publicly exposing Grafana (dashboards are operator-only via port-forward).
 - Putting hand/library contents or intent payloads in telemetry (hard rule).
 - Engine OTEL exporters (engine stays pure).
 

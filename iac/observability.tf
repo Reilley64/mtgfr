@@ -75,6 +75,16 @@ locals {
         }
       }
 
+      // Without these, every Faro line lands in one stream Loki auto-labels
+      // `service_name="unknown_service"` — nothing to select on. An empty value means "take the
+      // label from the payload field of the same name". Both are low-cardinality: `kind` is
+      // log/event/measurement/exception, `app_name` is `edh-web`. Do not promote `session_id`
+      // or `page_url` here.
+      extra_log_labels = {
+        kind     = "",
+        app_name = "",
+      }
+
       output {
         logs   = [loki.process.faro_web_vitals.receiver]
         traces = [otelcol.processor.batch.default.input]
@@ -491,6 +501,9 @@ resource "helm_release" "grafana" {
         mtgfr = {
           "mtgfr-otel-red" = {
             json = file("${path.module}/dashboards/mtgfr-otel-red.json")
+          }
+          "mtgfr-faro-rum" = {
+            json = file("${path.module}/dashboards/mtgfr-faro-rum.json")
           }
         }
       }
