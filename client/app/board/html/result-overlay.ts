@@ -2,7 +2,7 @@
 // Mirrors Solid board-overlays.tsx ResultOverlay.
 
 import type * as Dialog from "@foldkit/ui/dialog";
-import { type Html, html } from "foldkit/html";
+import type { Html, HtmlBuilder } from "foldkit/html";
 import { outcome } from "~/outcome";
 import { playerLabel } from "~/players";
 import { button } from "~/ui/button";
@@ -10,8 +10,6 @@ import { modalDialog } from "~/ui/dialog";
 import type { VisibleState } from "~/wire/types";
 import { GotResultDialogMessage, LeaveGame, type Message } from "../messages";
 import { RESULT_DIALOG_ID } from "../submodel";
-
-const h = html<Message>();
 
 function headline(state: VisibleState): string {
   const o = outcome(state.players, state.viewer);
@@ -51,7 +49,7 @@ function watchLabel(state: VisibleState): string {
  * (`raiseResultDialog` on the fold that ends it). Always rendered: a closed `<dialog>` is what
  * Dialog opens. Staying on the board is the dismiss, so it takes Dialog's close path.
  */
-export function resultOverlayView(state: VisibleState, model: Dialog.Model): Html {
+export function resultOverlayView(state: VisibleState, model: Dialog.Model, h: HtmlBuilder<Message>): Html {
   return modalDialog(
     h,
     {

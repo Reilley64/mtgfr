@@ -1,4 +1,4 @@
-import type { html as createHtml, Html } from "foldkit/html";
+import type { Html, HtmlBuilder } from "foldkit/html";
 import { cn } from "../../domain/cn";
 import { type AppChromeMeta, appVersionBadge } from "../../domain/ui/app-version";
 
@@ -22,7 +22,7 @@ export type ShellFrameOptions = {
   testId?: string;
 };
 
-export function shellFrame<Msg>(h: ReturnType<typeof createHtml<Msg>>, options: ShellFrameOptions): Html {
+export function shellFrame<Msg>(h: HtmlBuilder<Msg>, options: ShellFrameOptions): Html {
   const atmosphereClass = options.atmosphere === "auth" ? "shell-atmosphere-auth" : "shell-atmosphere-shell";
   const stageChildren = Array.isArray(options.stage) ? options.stage : [options.stage];
   const title = options.title?.trim();

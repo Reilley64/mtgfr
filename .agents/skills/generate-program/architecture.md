@@ -232,8 +232,7 @@ h.submodel({
 })
 
 // Child view, branded with Submodel.defineView
-export const view = Submodel.defineView<Model, Message>(model => {
-  const h = html<Message>()
+export const view = Submodel.defineView<Model, Message>((model, h) => {
   return h.button([h.OnClick(ClickedSubmit())], ['Submit'])
 })
 ```

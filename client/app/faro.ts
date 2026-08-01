@@ -1,4 +1,4 @@
-// Faro RUM boot for the Foldkit entry (no-op without upstream).
+// Faro RUM boot for the Foldkit entry (no-op without upstream, h).
 //
 // - Same-origin `/api/faro/collect` collector (Nitro forwards to `FARO_COLLECT_UPSTREAM`).
 // - Session sampling repair for resumed sessions (avoids Tempo orphans).

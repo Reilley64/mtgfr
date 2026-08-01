@@ -22,10 +22,8 @@
 // state.
 
 import * as VirtualList from "@foldkit/ui/virtualList";
-import { childAttributes, type html as createHtml, type Html } from "foldkit/html";
+import { childAttributes, type Html, type HtmlBuilder } from "foldkit/html";
 import { cn } from "../cn";
-
-type HtmlFactory<Msg> = ReturnType<typeof createHtml<Msg>>;
 
 export type WindowedGridProps<Item, Msg> = {
   /** The owner's grid state. Create with `VirtualList.init({ id, rowHeightPx })`. */
@@ -62,7 +60,7 @@ function toRows<Item>(items: ReadonlyArray<Item>, columns: number): ReadonlyArra
 }
 
 /** Renders `items` as a windowed grid of `columns`-wide rows. */
-export function windowedGrid<Item, Msg>(h: HtmlFactory<Msg>, props: WindowedGridProps<Item, Msg>): Html {
+export function windowedGrid<Item, Msg>(h: HtmlBuilder<Msg>, props: WindowedGridProps<Item, Msg>): Html {
   const { model, toGridMessage, items, columns, itemToKey, itemToView, rowClass, rowStyle, containerClass, testId } =
     props;
   const rows = toRows(items, columns);

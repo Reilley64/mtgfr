@@ -1,6 +1,6 @@
 import * as Dialog from "@foldkit/ui/dialog";
 import * as Menu from "@foldkit/ui/menu";
-import { Story, Submodel } from "foldkit";
+import { Story } from "foldkit";
 import { Scene } from "foldkit/test";
 import { expect, test } from "vitest";
 import { BindDeckCardFlip, DeckCardFlipTick } from "../../../deck-card-nav";
@@ -24,9 +24,12 @@ import { BindDeckListContextMenu, BindDeckListContextMenuEscape, view } from "./
 const emptyChrome = { version: null, faithfulCount: null, oracleTotal: null, coverageHref: null };
 const accountMenu = Menu.init({ id: "account-menu" });
 
-const listView = Submodel.defineView<ReturnType<typeof initialDeckListSubmodel>, DeckListMessage>((model) =>
-  view(model, { username: "alice", meGravatarHash: null, chrome: emptyChrome, accountMenu }),
-);
+const listView = Scene.withViewInputs(view, {
+  username: "alice",
+  meGravatarHash: null,
+  chrome: emptyChrome,
+  accountMenu,
+});
 type SceneListMessage = DeckListMessage | { readonly _tag?: string } | undefined;
 
 function isDeckListMessage(message: SceneListMessage): message is DeckListMessage {
@@ -53,7 +56,7 @@ const listUpdate = (model: ReturnType<typeof initialDeckListSubmodel>, message: 
   if (!isDeckListMessage(message)) return [model, []] as const;
   return update(model, message);
 };
-const listProgram = { update: listUpdate, view: listView };
+const listProgram = { update: listUpdate, view: listView() };
 
 function card(overrides: Partial<CatalogCard> = {}): CatalogCard {
   return {
@@ -79,7 +82,7 @@ test("GotDeckListMessage updates the deck list through the parent update", () =>
 
   Story.story(
     appUpdate,
-    Story.with(model),
+    Story.given(model),
     Story.message(GotDeckListMessage({ message: RequestedDecksRefresh() })),
     Story.model((m) => {
       expect(m.decks.list.loading).toBe(true);
@@ -93,7 +96,7 @@ test("GotDeckListMessage updates the deck list through the parent update", () =>
 test("deck list chrome and tiles use the shell stage width", () => {
   Scene.scene(
     listProgram,
-    Scene.with({
+    Scene.given({
       ...initialDeckListSubmodel(),
       decks: [{ id: 1, name: "Superfriends", commander: "atraxa", commander_print: "atraxa-print" }],
       knownCommanders: {
@@ -118,7 +121,7 @@ test("deck list chrome and tiles use the shell stage width", () => {
 test("empty deck list points players to deck creation", () => {
   Scene.scene(
     listProgram,
-    Scene.with({ ...initialDeckListSubmodel(), decks: [], loading: false }),
+    Scene.given({ ...initialDeckListSubmodel(), decks: [], loading: false }),
     Scene.expect(Scene.selector('[data-testid="deck-list-empty"]')).toExist(),
     Scene.expect(Scene.selector('[data-testid="deck-list-empty"] a[href="/decks/new"]')).toExist(),
     Scene.expect(Scene.selector('[data-testid="deck-list-new-deck"][href="/decks/new"]')).toExist(),
@@ -129,7 +132,7 @@ test("empty deck list points players to deck creation", () => {
 test("deck list does not render a hover preview", () => {
   Scene.scene(
     listProgram,
-    Scene.with({
+    Scene.given({
       ...initialDeckListSubmodel(),
       knownCommanders: {
         atraxa: card({
@@ -166,7 +169,7 @@ test("tile Play href uses /play/:deckId and search filters tiles", () => {
 
   Scene.scene(
     listProgram,
-    Scene.with({ ...initialDeckListSubmodel(), decks, knownCommanders }),
+    Scene.given({ ...initialDeckListSubmodel(), decks, knownCommanders }),
     Scene.expect(Scene.selector('[data-testid="deck-tile-1"][href="/play/1"]')).toExist(),
     Scene.expect(Scene.selector('[data-testid="deck-tile--9"]')).toExist(),
     Scene.expect(Scene.selector('[data-testid="deck-tile--1"]')).toExist(),
@@ -216,7 +219,7 @@ test("tile Play href uses /play/:deckId and search filters tiles", () => {
 test("owned deck context menu offers Edit and Delete", () => {
   Scene.scene(
     listProgram,
-    Scene.with({
+    Scene.given({
       ...initialDeckListSubmodel(),
       contextMenu: { deckId: 1, x: 40, y: 50 },
       decks: [
@@ -244,7 +247,7 @@ test("owned deck context menu offers Edit and Delete", () => {
 test("menu Delete opens the confirm dialog", () => {
   Scene.scene(
     listProgram,
-    Scene.with({
+    Scene.given({
       ...initialDeckListSubmodel(),
       contextMenu: { deckId: 1, x: 40, y: 50 },
       decks: [{ id: 1, name: "Superfriends", commander: "atraxa", commander_print: "atraxa-print" }],
@@ -264,7 +267,7 @@ test("menu Delete opens the confirm dialog", () => {
 test("Escape closes the context menu", () => {
   Scene.scene(
     listProgram,
-    Scene.with({
+    Scene.given({
       ...initialDeckListSubmodel(),
       contextMenu: { deckId: 1, x: 40, y: 50 },
       decks: [{ id: 1, name: "Superfriends", commander: "atraxa", commander_print: "atraxa-print" }],
@@ -300,7 +303,7 @@ const resolveDeckListMounts = (times: number) =>
 test("backing out of the delete prompt leaves the deck where it was", () => {
   Scene.scene(
     listProgram,
-    Scene.with(askingToDelete),
+    Scene.given(askingToDelete),
     ...resolveDeckListMounts(1),
     Scene.click(Scene.selector('[data-testid="confirm-cancel"]')),
     Scene.Command.resolve(Dialog.CloseDialog, Dialog.CompletedCloseDialog()),
@@ -312,7 +315,7 @@ test("backing out of the delete prompt leaves the deck where it was", () => {
 test("clicking the dimmed page behind the prompt cancels the delete", () => {
   Scene.scene(
     listProgram,
-    Scene.with(askingToDelete),
+    Scene.given(askingToDelete),
     ...resolveDeckListMounts(1),
     Scene.click(Scene.selector('[data-testid="confirm-backdrop"]')),
     Scene.Command.resolve(Dialog.CloseDialog, Dialog.CompletedCloseDialog()),
@@ -324,7 +327,7 @@ test("clicking the dimmed page behind the prompt cancels the delete", () => {
 test("confirming the prompt deletes the deck and the tile is gone on reload", () => {
   Scene.scene(
     listProgram,
-    Scene.with(askingToDelete),
+    Scene.given(askingToDelete),
     ...resolveDeckListMounts(1),
     Scene.click(Scene.selector('[data-testid="confirm-ok"]')),
     Scene.Command.resolve(Dialog.CloseDialog, Dialog.CompletedCloseDialog()),

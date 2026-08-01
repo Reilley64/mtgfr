@@ -1,7 +1,7 @@
 import type * as Menu from "@foldkit/ui/menu";
 import { Effect, Option, Queue, Schema as S, Stream } from "effect";
 import { Submodel } from "foldkit";
-import { type Html, html } from "foldkit/html";
+import type { Html, HtmlBuilder } from "foldkit/html";
 import * as Mount from "foldkit/mount";
 import { cn } from "../../../domain/cn";
 import { cardHoverPreviewView } from "../../../domain/deck-builder/card-hover-preview";
@@ -55,8 +55,6 @@ export type ViewMessage =
   | typeof CardArtTick.Type
   | typeof GotAccountMenuMessage.Type
   | typeof GotAuthMessage.Type;
-
-const h = html<ViewMessage>();
 
 const CONTEXT_MENU_PRESS_MS = 500;
 
@@ -235,11 +233,17 @@ export const BindBuilderCardPointer = Mount.defineStream(
 // Size is required rather than defaulted: every art in the builder renders small, so the default
 // `display` (672px) would be 3-5x oversampled everywhere. Pick from the rendered width — `grid`
 // (488px) for the tile grids, `thumb` (146px) for the list rows.
-function builderCardArt(print: string, alt: string, className: string, size: ImageSize): Html {
+function builderCardArt(
+  print: string,
+  alt: string,
+  className: string,
+  size: ImageSize,
+  h: HtmlBuilder<ViewMessage>,
+): Html {
   return cardArt(h, { print, alt, className, size });
 }
 
-function hoverPreview(model: DeckBuilderSubmodel): Html | null {
+function hoverPreview(model: DeckBuilderSubmodel, h: HtmlBuilder<ViewMessage>): Html | null {
   const hover = model.hover;
   if (hover == null) return null;
   return cardHoverPreviewView(h, {
@@ -249,7 +253,7 @@ function hoverPreview(model: DeckBuilderSubmodel): Html | null {
   });
 }
 
-function contextMenu(model: DeckBuilderSubmodel): Html {
+function contextMenu(model: DeckBuilderSubmodel, h: HtmlBuilder<ViewMessage>): Html {
   const menu = model.menu;
   if (menu == null || model.printPicker != null) return null;
 
@@ -296,7 +300,7 @@ function contextMenu(model: DeckBuilderSubmodel): Html {
   );
 }
 
-function printTile(cardId: string, print: ScryfallPrint): Html {
+function printTile(cardId: string, print: ScryfallPrint, h: HtmlBuilder<ViewMessage>): Html {
   return h.button(
     [
       h.Type("button"),
@@ -305,7 +309,7 @@ function printTile(cardId: string, print: ScryfallPrint): Html {
       h.OnClick(PickedBuilderPrint({ cardId, print: print.id })),
     ],
     [
-      builderCardArt(print.id, `${print.set_name} #${print.collector_number}`, CARD_ART, "grid"),
+      builderCardArt(print.id, `${print.set_name} #${print.collector_number}`, CARD_ART, "grid", h),
       h.div(
         [h.Class(PRINT_BADGE_ROW)],
         [
@@ -318,7 +322,7 @@ function printTile(cardId: string, print: ScryfallPrint): Html {
   );
 }
 
-function skeletonPrintTile(): Html {
+function skeletonPrintTile(h: HtmlBuilder<ViewMessage>): Html {
   return h.div(
     [h.Class(cn(PRINT_SKELETON, "pointer-events-none")), h.DataAttribute("testid", "print-skeleton")],
     [
@@ -330,7 +334,7 @@ function skeletonPrintTile(): Html {
 
 /** The picker's scrolling area: skeletons, a status line, or the prints themselves. A card can have
  *  hundreds of printings (basic lands especially), so the prints are windowed. */
-function printPickerBody(model: DeckBuilderSubmodel, picker: BuilderPrintPicker): Html {
+function printPickerBody(model: DeckBuilderSubmodel, picker: BuilderPrintPicker, h: HtmlBuilder<ViewMessage>): Html {
   // Skeletons only until the first page lands; later pages append under the prints already shown.
   if (picker.prints.length === 0) {
     if (picker.error) {
@@ -339,7 +343,7 @@ function printPickerBody(model: DeckBuilderSubmodel, picker: BuilderPrintPicker)
     if (picker.pendingPage !== null) {
       return h.div(
         [h.Class(PRINT_PICKER_GRID)],
-        Array.from({ length: 4 }, () => skeletonPrintTile()),
+        Array.from({ length: 4 }, () => skeletonPrintTile(h)),
       );
     }
     return h.div([h.Class("text-label text-lichen")], ["No printings found."]);
@@ -351,14 +355,14 @@ function printPickerBody(model: DeckBuilderSubmodel, picker: BuilderPrintPicker)
     items: picker.prints,
     columns: PRINT_GRID_COLUMNS,
     itemToKey: (print) => print.id,
-    itemToView: (print) => printTile(picker.cardId, print),
+    itemToView: (print) => printTile(picker.cardId, print, h),
     rowClass: PRINT_PICKER_ROW,
     containerClass: "max-h-[min(60vh,720px)] w-fit",
     testId: PRINT_GRID_ID,
   });
 }
 
-function printPicker(model: DeckBuilderSubmodel): Html {
+function printPicker(model: DeckBuilderSubmodel, h: HtmlBuilder<ViewMessage>): Html {
   const picker = model.printPicker;
 
   return modalDialog(
@@ -382,7 +386,7 @@ function printPicker(model: DeckBuilderSubmodel): Html {
                 ]),
               ],
             ),
-            printPickerBody(model, picker),
+            printPickerBody(model, picker, h),
           ],
   );
 }
@@ -393,7 +397,11 @@ function offIdentity(model: DeckBuilderSubmodel, card: DeckBuilderSubmodel["pool
   return card.color_identity.some((c) => !identity.includes(c));
 }
 
-function poolTile(model: DeckBuilderSubmodel, card: DeckBuilderSubmodel["pool"][number]): Html {
+function poolTile(
+  model: DeckBuilderSubmodel,
+  card: DeckBuilderSubmodel["pool"][number],
+  h: HtmlBuilder<ViewMessage>,
+): Html {
   const print = model.preferredPrint[card.id] ?? card.default_print;
   return h.button(
     [
@@ -406,7 +414,7 @@ function poolTile(model: DeckBuilderSubmodel, card: DeckBuilderSubmodel["pool"][
       h.OnMount(BindBuilderCardPointer({ cardId: card.id, kind: "pool" })),
     ],
     [
-      builderCardArt(print, card.name, CARD_ART, "grid"),
+      builderCardArt(print, card.name, CARD_ART, "grid", h),
       // One line, ellipsised: the windowed grid needs every tile the same height, and a long card
       // name that wrapped would push its art out of the row. `w-full` because `items-center`
       // otherwise shrinks the span to its text and leaves nothing to truncate. No `title` — the
@@ -416,7 +424,7 @@ function poolTile(model: DeckBuilderSubmodel, card: DeckBuilderSubmodel["pool"][
   );
 }
 
-function skeletonTile(): Html {
+function skeletonTile(h: HtmlBuilder<ViewMessage>): Html {
   return h.div(
     [h.Class(cn(POOL_CARD, "pointer-events-none cursor-default"))],
     [
@@ -433,12 +441,12 @@ const POOL_SKELETON_GRID = "grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))]
 
 /** The pool's scrolling area. Windowed, because the catalog runs to tens of thousands of cards and
  *  every tile that renders also fetches its art. */
-function poolBody(model: DeckBuilderSubmodel, scrollLocked: boolean): Html {
+function poolBody(model: DeckBuilderSubmodel, scrollLocked: boolean, h: HtmlBuilder<ViewMessage>): Html {
   if (model.pool.length === 0) {
     if (model.searching)
       return h.div(
         [h.Class(POOL_SKELETON_GRID)],
-        Array.from({ length: 10 }, () => skeletonTile()),
+        Array.from({ length: 10 }, () => skeletonTile(h)),
       );
     return h.div([h.Class("text-label text-lichen")], ["No cards match."]);
   }
@@ -449,7 +457,7 @@ function poolBody(model: DeckBuilderSubmodel, scrollLocked: boolean): Html {
     items: model.pool,
     columns: poolGridColumns(model.poolWidth),
     itemToKey: (card) => card.id,
-    itemToView: (card) => poolTile(model, card),
+    itemToView: (card) => poolTile(model, card, h),
     rowClass: POOL_ROW,
     rowStyle: { "grid-template-columns": `repeat(${poolGridColumns(model.poolWidth)},minmax(0,1fr))` },
     // VirtualList writes `overflow: auto` on the container as an inline style, so freezing the pool
@@ -466,7 +474,7 @@ export type ViewInputs = {
   readonly accountMenu: Menu.Model;
 };
 
-export const view = Submodel.defineView<DeckBuilderSubmodel, ViewMessage, ViewInputs>((model, viewInputs) => {
+export const view = Submodel.defineView<DeckBuilderSubmodel, ViewMessage, ViewInputs>((model, viewInputs, h) => {
   const rows = sortedDeckList(model.entries, model.known);
   const count = deckCount(model.entries);
   const backgroundScrollLocked = model.printPicker != null;
@@ -534,7 +542,7 @@ export const view = Submodel.defineView<DeckBuilderSubmodel, ViewMessage, ViewIn
                 h.DataAttribute("testid", "builder-pool-measure"),
                 h.OnMount(ObservePoolWidth()),
               ],
-              [poolBody(model, backgroundScrollLocked)],
+              [poolBody(model, backgroundScrollLocked, h)],
             ),
           ],
         ),
@@ -583,6 +591,7 @@ export const view = Submodel.defineView<DeckBuilderSubmodel, ViewMessage, ViewIn
                         model.known[model.commander.id]?.name ?? model.commander.id,
                         "aspect-[0.72] w-10 rounded-focus object-cover",
                         "thumb",
+                        h,
                       ),
                       h.span(
                         [h.Class("min-w-0 flex-1 truncate font-semibold")],
@@ -641,6 +650,7 @@ export const view = Submodel.defineView<DeckBuilderSubmodel, ViewMessage, ViewIn
                             "",
                             "aspect-[0.72] w-7 shrink-0 rounded-[3px] object-cover",
                             "thumb",
+                            h,
                           ),
                           h.span(
                             [h.Class("min-w-0 flex-1 truncate")],
@@ -677,9 +687,9 @@ export const view = Submodel.defineView<DeckBuilderSubmodel, ViewMessage, ViewIn
                 ),
           ],
         ),
-        hoverPreview(model),
-        contextMenu(model),
-        printPicker(model),
+        hoverPreview(model, h),
+        contextMenu(model, h),
+        printPicker(model, h),
       ],
     ),
   });

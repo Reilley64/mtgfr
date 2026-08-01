@@ -8,10 +8,10 @@
 import * as Combobox from "@foldkit/ui/combobox";
 import * as Dialog from "@foldkit/ui/dialog";
 import { Submodel } from "foldkit";
-import { html } from "foldkit/html";
 import { Scene } from "foldkit/test";
 import { beforeAll, expect, test } from "vitest";
 import { testMessageRef } from "~/i18n/testMessageRef";
+import { testHtml } from "~/test-html";
 import { fromProtoWire } from "~/wire/protoMap";
 import type { ActionView, ObjectView, VisibleState, WireCost } from "~/wire/types";
 import type { GameFoldState, LogLine } from "../../game/fold";
@@ -20,7 +20,7 @@ import { CARD_NAME_COMBOBOX_ID, CardNameCombobox } from "../card-name-combobox";
 import { ZONE } from "../geometry/layout";
 import type { Message } from "../messages";
 import { type BoardModel, CONCEDE_DIALOG_ID, initialBoardModel, RESULT_DIALOG_ID } from "../submodel";
-import { type BoardViewModel, view as boardView } from "../view";
+import { type BoardViewModel, view as boardView, type ViewMessage } from "../view";
 import { handMetrics } from "./hand";
 import { boardOverlays } from "./overlays";
 import {
@@ -105,7 +105,7 @@ function findParentOfTestId(node: unknown, id: string): unknown | null {
   return null;
 }
 
-const h = html<Message>();
+const h = testHtml<Message>();
 
 beforeAll(() => {
   class MockImage {
@@ -124,10 +124,10 @@ type OverlayModel = { board: BoardModel; fold: GameFoldState; tableId: string };
 
 const overlayView = Submodel.defineView<OverlayModel, Message>((model) => {
   if (model.fold.state == null) return h.div([], []);
-  return boardOverlays(model.board, model.fold.state, model.tableId, model.fold.log);
+  return boardOverlays(model.board, model.fold.state, model.tableId, model.fold.log, h);
 });
 
-const fullBoardView = Submodel.defineView<BoardViewModel, Message>(boardView);
+const fullBoardView = boardView;
 
 function player(
   seat: number,
@@ -280,7 +280,7 @@ function fullBoardModel(
 function overlayScene(model: OverlayModel, ...steps: readonly unknown[]) {
   Scene.scene<OverlayModel, Message>(
     { update: (m) => [m, []], view: overlayView },
-    Scene.with(model),
+    Scene.given(model),
     resolveBoardOverlayMounts(),
     ...(steps as []),
   );
@@ -289,15 +289,15 @@ function overlayScene(model: OverlayModel, ...steps: readonly unknown[]) {
 function overlaySceneWithoutMounts(model: OverlayModel, ...steps: readonly unknown[]) {
   Scene.scene<OverlayModel, Message>(
     { update: (m) => [m, []], view: overlayView },
-    Scene.with(model),
+    Scene.given(model),
     ...(steps as []),
   );
 }
 
 function liveBoardScene(model: BoardViewModel, ...steps: readonly unknown[]) {
-  Scene.scene<BoardViewModel, Message>(
+  Scene.scene<BoardViewModel, ViewMessage>(
     { update: (m) => [m, []], view: fullBoardView },
-    Scene.with(model),
+    Scene.given(model),
     resolveLiveBoardMounts(),
     ...(steps as []),
   );
@@ -2017,6 +2017,14 @@ test("choose_card_name center modal lists matching catalog suggestions", () => {
     Scene.expect(Scene.testId("pending-card-name-aim")).toBeAbsent(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
     Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
+    // happy-dom has no layout, so Floating UI never resolves a side here and `data-placement`
+    // can't be observed; assert the Mount actually carries the lock instead of faking a result.
+    Scene.Mount.expectHas(
+      Combobox.AnchorCombobox({
+        buttonId: `${CARD_NAME_COMBOBOX_ID}-input-wrapper`,
+        anchor: { placement: "bottom-start", gap: 4, isPlacementLocked: true },
+      }),
+    ),
     resolveCardNameComboboxMounts(),
     Scene.expect(Scene.testId("prompt-name-suggestions")).toExist(),
     Scene.expect(Scene.testId("prompt-name-suggestion-0")).toHaveText("Sol Ring"),
@@ -3295,9 +3303,9 @@ function pairsWith(a: unknown, b: unknown): boolean {
 function boardChildren(model: BoardViewModel): ReadonlyArray<unknown> {
   let children: ReadonlyArray<unknown> = [];
   const hint = !model.board.hintDismissed && !model.board.hintAutoHidden;
-  Scene.scene<BoardViewModel, Message>(
+  Scene.scene<BoardViewModel, ViewMessage>(
     { update: (m) => [m, []], view: fullBoardView },
-    Scene.with(model),
+    Scene.given(model),
     resolveLiveBoardMounts({ hint }),
     Scene.tap((sim) => {
       const root = findTestId(sim.html, "board-mount") as { children?: unknown[] } | null;

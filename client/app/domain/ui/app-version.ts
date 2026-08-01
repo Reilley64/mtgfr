@@ -1,4 +1,4 @@
-import type { html as createHtml, Html } from "foldkit/html";
+import type { Html, HtmlBuilder } from "foldkit/html";
 import { cn } from "../cn";
 import { appVersionClass } from "./surfaces";
 
@@ -20,7 +20,7 @@ export function formatFaithfulPercent(faithfulCount: number, oracleTotal: number
 }
 
 /** Fixed bottom-left API badge — hidden until `version` is known (Solid AppVersion parity). */
-export function appVersionBadge<M>(h: ReturnType<typeof createHtml<M>>, meta: AppChromeMeta): Html | null {
+export function appVersionBadge<M>(h: HtmlBuilder<M>, meta: AppChromeMeta): Html | null {
   if (meta.version == null) return null;
   const pct =
     meta.faithfulCount != null && meta.oracleTotal != null
