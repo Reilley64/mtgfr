@@ -41,7 +41,7 @@ target is a small version of the actual card: real frame art, real typefaces, re
 
 | Variant | Slots drawn | Consumers |
 |---------|-------------|-----------|
-| `permanent` | frame, title bar, art window; square. Tokens: arched top, no title bar | battlefield Mount paint, flights, drag ghost, exit FX |
+| `permanent` | full-bleed art with the frame's top strip and title bar over it; square. No printed P/T — the live badge owns that corner. Tokens: arched top, no frame, no title bar | battlefield Mount paint, flights, drag ghost, exit FX |
 | `full` | frame, title bar, art window, type line, text box, P/T or loyalty. **Mana cost is never drawn** | hand bar tiles (hand, command, graveyard, exile) |
 | `stack` | as `full`, but the text box holds only what is on the stack — a spell's own oracle text, or a single ability's sentence — plus its declared targets | stack overlay |
 
@@ -51,8 +51,15 @@ bitmap count.
 
 ### Battlefield
 
-- A permanent is a square tile: frame, title bar with the card name, art window, P/T box. No type
-  line, no text box — card inspect remains the read-the-card surface.
+- A permanent is a square tile: art filling the square, with the frame's top strip and title bar
+  laid over it (the crown replaces that strip when legendary). No type line, no text box — card
+  inspect remains the read-the-card surface.
+- The square draws **no printed P/T**. `paint-cards.ts` already paints a live P/T badge in that
+  corner that tracks counters and damage without redrawing the face, and two readouts on one tile
+  is a bug.
+- The square blits only the frame's top strip, scaled by the tile's width in both axes. Squashing
+  a whole 750 × 1050 frame into the square would run it at 71% of its own height; below the title
+  bar the strip is transparent, so the art shows through.
 - A token draws with an arched top and no title bar.
 - Chrome layered over a permanent is unchanged: tap rotation, keyword glyph badges, counters,
   commander gold, target dashes, cluster count badge, attach offsets, seat aura.
@@ -99,9 +106,13 @@ bitmap count.
 `WireCost` cannot express hybrid, X, or Phyrexian costs, which is why the printed mana cost string
 is carried as text rather than derived from the existing cost message.
 
-`ObjectView` also gains `is_token` and `legendary`. The renderer needs both to pick a frame — a
-token draws arched with no title bar, a legendary permanent draws the crown — and neither is
-derivable from the fields on the message today.
+`ObjectView` also gains `is_token`, `legendary`, and `colors`. The renderer needs all three to pick
+a frame — a token draws arched with no title bar, a legendary permanent draws the crown, and the
+frame's colour is the object's colours (CR 105.2) — and none is derivable from the fields on the
+message today. `colors` is the engine's `Game::colors_of` as WUBRG indices, not the cost's coloured
+pip counts: a hybrid pip counts as no colour while making the card both, a token's colour is stated
+rather than paid for, and devoid makes a card with coloured pips colourless. `legendary` and
+`colors` are blanked for a face-down permanent, which is a colourless 2/2 (CR 708.2).
 
 ## Implementation Decisions
 
@@ -136,7 +147,8 @@ derivable from the fields on the message today.
 
 ## Slices
 
-1. `PrintRenderView` RPC and the printings cache, plus `is_token` / `legendary` on `ObjectView`.
+1. `PrintRenderView` RPC and the printings cache, plus `is_token` / `legendary` / `colors` on
+   `ObjectView`.
    Frame selection needs the printing's layout, frame, and rarity, so no variant can be drawn
    before this lands.
 2. Renderer, vendored assets, and the `permanent` variant behind the battlefield (includes the

@@ -1,5 +1,6 @@
+import { ZONE } from "../../board/geometry/layout";
 import type { ObjectView } from "../wire/types";
-import type { FrameKey } from "./assets";
+import { ASSET_H, ASSET_W, type FrameKey } from "./assets";
 
 export type FaceVariant = "permanent" | "full" | "stack";
 
@@ -18,45 +19,82 @@ export type FaceData = {
   /** Scryfall print id — the art key on the card CDN, and part of the face cache key. */
   print: string;
   name: string;
-  /** WUBRG indices with at least one pip in the printed cost (see `engine::Color::index`). */
+  /**
+   * The object's colors (CR 105.2) as WUBRG indices (`engine::Color::index`), straight off
+   * `ObjectView.colors`. The engine already folded in devoid, hybrid pips, a token's stated color,
+   * and color-setting effects, so this is the frame's colour with no further interpretation.
+   */
   colors: readonly number[];
   isLand: boolean;
   isToken: boolean;
   legendary: boolean;
-  /** Printed as drawn — the battlefield's current power, not the printed one. `""` when absent. */
+  /** The battlefield's live P/T; printed P/T anywhere else. `""` when the card has none. */
   power: string;
   toughness: string;
+  /** A planeswalker's loyalty or a battle's defence — one badge slot, same corner. */
   loyalty: string;
   /** `""` on the `permanent` variant, which draws neither. Slice 3 fills them from `CatalogCard`. */
   typeLine: string;
   oracle: string;
 };
 
+/**
+ * The P/T-corner numbers. Live values only exist on the battlefield: `Game::pt_base` bails on a
+ * non-permanent, so the projection reports 0 for a creature in hand or on the stack, and the
+ * printed numbers on `view.kind` are the only real ones there. Same fallback the board's P/T badge
+ * uses (`board/geometry/layout.ts`).
+ */
+function badges(view: ObjectView): { power: string; toughness: string; loyalty: string } {
+  const blank = { power: "", toughness: "", loyalty: "" };
+  const live = view.zone === ZONE.Battlefield;
+  const kind = view.kind;
+  if (kind.kind === "creature") {
+    const power = live ? view.power : kind.power;
+    const toughness = live ? view.toughness : kind.toughness;
+    return { power: String(power), toughness: String(toughness), loyalty: "" };
+  }
+  if (kind.kind === "planeswalker") {
+    return { ...blank, loyalty: String(live ? (view.loyalty ?? kind.loyalty) : kind.loyalty) };
+  }
+  // A battle's live defence counters ride on `loyalty` too, and print in the same corner.
+  if (kind.kind === "battle") {
+    return { ...blank, loyalty: String(live ? (view.loyalty ?? kind.defense) : kind.defense) };
+  }
+  return blank;
+}
+
 /** Read the renderer's inputs off a board object. */
 export function faceDataFrom(view: ObjectView): FaceData {
-  const isCreature = view.kind.kind === "creature";
-  const isPlaneswalker = view.kind.kind === "planeswalker";
   return {
     print: view.print ?? "",
     name: view.name,
-    colors: view.mana_cost.colored.flatMap((count, index) => (count > 0 ? [index] : [])),
+    colors: view.colors ?? [],
     isLand: view.kind.kind === "land",
     isToken: view.is_token,
     legendary: view.legendary,
-    power: isCreature ? String(view.power) : "",
-    toughness: isCreature ? String(view.toughness) : "",
-    loyalty: isPlaneswalker ? String(view.loyalty ?? 0) : "",
+    ...badges(view),
     typeLine: "",
     oracle: "",
   };
 }
 
+/** A rectangle in whichever space its holder names — asset pixels or canonical face pixels. */
 export type Rect = { x: number; y: number; w: number; h: number };
 
-/** Which slots a variant draws. A null slot is one this variant leaves off the face. */
+/** A piece of a frame asset: `src` in asset pixels (750x1050), `dst` in canonical face pixels. */
+export type Blit = { src: Rect; dst: Rect };
+
+/** Which pieces a variant draws. A null slot is one this variant leaves off the face. */
 export type SlotRects = {
-  frame: Rect;
+  /** Frame pieces, drawn over the art in order. Empty when the variant draws no frame (a token). */
+  frame: Blit[];
+  /** Where the printing's art goes. Drawn first, under `frame`. */
   art: Rect;
+  /** The legend crown, from the crown asset. Null when the card is not legendary. */
+  crown: Blit | null;
+  /** The P/T plate, from the P/T asset. Null when the variant or the card has none. */
+  ptPlate: Blit | null;
+  /** Text rects. Null means this variant does not draw that text. */
   title: Rect | null;
   type: Rect | null;
   text: Rect | null;
@@ -73,29 +111,35 @@ export const CANONICAL: Record<FaceVariant, { w: number; h: number }> = {
   stack: { w: 745, h: 1040 },
 };
 
-/** Fractions of the canonical face, measured off the M15 template. */
-const MARGIN = 0.0455;
-const TITLE_TOP = 0.0413;
-const TITLE_H = 0.0625;
-const ART_TOP = 0.1163;
-const TYPE_H = 0.0577;
-const PT_W = 0.1638;
-const PT_H = 0.0625;
+/*
+ * Where each printed element sits on the vendored 750x1050 asset canvas.
+ *
+ * `ART_WINDOW` (the transparent hole every frame leaves for the art), `PT_PLATE` and the crown's
+ * `TOP_STRIP` bound are alpha-measured off the art itself — `magick <asset> -alpha extract
+ * -threshold 50% -format "%@" info:` — and must not be nudged.
+ *
+ * `TITLE_BAR`, `TYPE_BAR` and `TEXT_BOX` are eyeballed: the frame is opaque there, so alpha cannot
+ * segment them. They are close enough to lay out against and are tuned by a live check.
+ */
+const ART_WINDOW: Rect = { x: 58, y: 119, w: 634, h: 463 };
+const TITLE_BAR: Rect = { x: 58, y: 43, w: 634, h: 66 };
+const TYPE_BAR: Rect = { x: 58, y: 592, w: 634, h: 61 };
+const TEXT_BOX: Rect = { x: 58, y: 662, w: 634, h: 267 };
+const PT_PLATE: Rect = { x: 579, y: 932, w: 130, h: 64 };
+/** Card top down through the crown's bottom edge (measured at y+h = 195) — the square's one blit. */
+const TOP_STRIP: Rect = { x: 0, y: 0, w: ASSET_W, h: 195 };
+const WHOLE_ASSET: Rect = { x: 0, y: 0, w: ASSET_W, h: ASSET_H };
 
 /** WUBRG index (`engine::Color::index`) → frame asset key. */
 const COLOR_FRAMES: readonly FrameKey[] = ["w", "u", "b", "r", "g"];
 
-function rect(w: number, h: number, x: number, y: number, rw: number, rh: number): Rect {
-  return { x: x * w, y: y * h, w: rw * w, h: rh * h };
+function scale(rect: Rect, sx: number, sy: number): Rect {
+  return { x: rect.x * sx, y: rect.y * sy, w: rect.w * sx, h: rect.h * sy };
 }
 
 /**
  * The frame a card draws in. Lands always take the land frame; two or more colours take gold;
  * one colour takes that colour; anything else is colourless.
- *
- * ponytail: read off the printed cost's pips, not the card's colour indicator — a colourless card
- * with a coloured indicator draws in the wrong frame. Nothing in the pool has one today; read the
- * indicator here when one does.
  */
 export function frameKey(face: FaceData): FrameKey {
   if (face.isLand) return "land";
@@ -109,38 +153,56 @@ function hasPT(face: FaceData): boolean {
 }
 
 /**
- * Where each slot lands on the canonical face. `permanent` shows a title and art only — card
- * inspect is the read-the-card surface — and a token shows art alone, arched, with no title.
+ * The Arena square: art edge to edge with the frame's top strip laid over it.
+ *
+ * Blitting the whole 750x1050 frame into a 745x745 square would crush it to 71% of its own height,
+ * so only the top strip is drawn, scaled by width in both axes to keep the art's aspect. Below the
+ * title bar that strip is transparent, so the art shows through and the same strip serves the
+ * legendary and nonlegendary cases alike — the crown is that same region of the crown asset.
+ */
+function squareSlots(w: number, h: number, face: FaceData): SlotRects {
+  const art: Rect = { x: 0, y: 0, w, h };
+  // A token has no title bar to draw. Its arched top is a clip shape applied at paint time, not
+  // a slot.
+  if (face.isToken) {
+    return { frame: [], art, crown: null, ptPlate: null, title: null, type: null, text: null, pt: null };
+  }
+  const s = w / ASSET_W;
+  const strip: Blit = { src: TOP_STRIP, dst: { x: 0, y: 0, w, h: TOP_STRIP.h * s } };
+  return {
+    frame: [strip],
+    art,
+    crown: face.legendary ? { src: TOP_STRIP, dst: strip.dst } : null,
+    // ponytail: the square draws no printed P/T. `board/bitmap/paint-cards.ts` already paints a
+    // live P/T badge in that corner which tracks counters and damage without redrawing the face,
+    // and two readouts on one tile is a bug. Drop that badge first if the printed plate should win.
+    ptPlate: null,
+    title: scale(TITLE_BAR, s, s),
+    type: null,
+    text: null,
+    pt: null,
+  };
+}
+
+/**
+ * Where each slot lands on the canonical face. `permanent` shows a title over full-bleed art —
+ * card inspect is the read-the-card surface — while `full`/`stack` draw the whole printed frame.
  */
 export function slotRects(variant: FaceVariant, face: FaceData): SlotRects {
   const { w, h } = CANONICAL[variant];
-  const frame = { x: 0, y: 0, w, h };
-  const inner = 1 - 2 * MARGIN;
-  const pt = hasPT(face) ? rect(w, h, 1 - MARGIN - PT_W, 1 - MARGIN - PT_H * 0.55, PT_W, PT_H) : null;
+  if (variant === "permanent") return squareSlots(w, h, face);
 
-  if (variant === "permanent") {
-    if (face.isToken) {
-      return { frame, art: rect(w, h, MARGIN, MARGIN, inner, 1 - 2 * MARGIN), title: null, type: null, text: null, pt };
-    }
-    return {
-      frame,
-      art: rect(w, h, MARGIN, ART_TOP, inner, 1 - ART_TOP - MARGIN),
-      title: rect(w, h, MARGIN, TITLE_TOP, inner, TITLE_H),
-      type: null,
-      text: null,
-      pt,
-    };
-  }
-
-  const artH = 0.4413 - ART_TOP;
-  const typeTop = ART_TOP + artH + 0.012;
-  const textTop = typeTop + TYPE_H + 0.008;
+  const sx = w / ASSET_W;
+  const sy = h / ASSET_H;
+  const whole: Rect = { x: 0, y: 0, w, h };
   return {
-    frame,
-    art: rect(w, h, MARGIN, ART_TOP, inner, artH),
-    title: rect(w, h, MARGIN, TITLE_TOP, inner, TITLE_H),
-    type: rect(w, h, MARGIN, typeTop, inner, TYPE_H),
-    text: rect(w, h, MARGIN, textTop, inner, 1 - textTop - MARGIN - 0.03),
-    pt,
+    frame: [{ src: WHOLE_ASSET, dst: whole }],
+    art: scale(ART_WINDOW, sx, sy),
+    crown: face.legendary ? { src: WHOLE_ASSET, dst: whole } : null,
+    ptPlate: hasPT(face) ? { src: PT_PLATE, dst: scale(PT_PLATE, sx, sy) } : null,
+    title: scale(TITLE_BAR, sx, sy),
+    type: scale(TYPE_BAR, sx, sy),
+    text: scale(TEXT_BOX, sx, sy),
+    pt: hasPT(face) ? scale(PT_PLATE, sx, sy) : null,
   };
 }
