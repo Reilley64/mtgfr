@@ -197,6 +197,9 @@ export type PlayerView = {
 export type ObjectView = {
   attached_to?: null | number;
   card_id?: string;
+  // The object's colors (CR 105.2) as WUBRG indices — the frame the card renders in. Empty is
+  // colorless. Folds in devoid, hybrid pips, a token's stated color, and color-setting effects.
+  colors?: Array<number>;
   controller: number;
   face_down?: boolean;
   goaded?: boolean;

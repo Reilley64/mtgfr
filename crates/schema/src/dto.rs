@@ -312,6 +312,12 @@ pub struct ObjectView {
     /// Whether the printed card is legendary — the frame renderer draws the legend crown.
     #[serde(default)]
     pub legendary: bool,
+    /// This object's colors (CR 105.2) as WUBRG indices (`engine::Color::index`) — the card frame
+    /// the client draws it in. Empty is colorless. Not color identity: devoid, hybrid pips, a
+    /// token's stated color, and color-setting effects all land here, and this is what the frame
+    /// shows.
+    #[serde(default)]
+    pub colors: Vec<u8>,
     /// Whether this creature is currently goaded (CR 701.38) — one-shot or continuous-from-Aura.
     #[serde(default)]
     pub goaded: bool,

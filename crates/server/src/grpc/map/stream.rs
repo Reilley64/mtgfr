@@ -105,6 +105,7 @@ pub fn object_view_to_pb(obj: ObjectView) -> pb::ObjectView {
         is_commander: obj.is_commander,
         is_token: obj.is_token,
         legendary: obj.legendary,
+        colors: obj.colors.into_iter().map(u32::from).collect(),
         goaded: obj.goaded,
         taps_for_mana: obj.taps_for_mana,
         prepared: obj.prepared,
@@ -1765,6 +1766,7 @@ mod tests {
                 is_commander: false,
                 is_token: false,
                 legendary: false,
+                colors: vec![4],
                 goaded: false,
                 taps_for_mana: false,
                 prepared: false,
@@ -1862,6 +1864,8 @@ mod tests {
                 toughness: 2,
             }))
         );
+        // WUBRG indices, widened u8 -> u32 — the frame the client draws the Bear in.
+        assert_eq!(st.objects[0].colors, vec![4]);
         assert!(matches!(
             st.pending_choice.as_ref().and_then(|c| c.choice.as_ref()),
             Some(pb::pending_choice_view::Choice::ChooseTarget(_))

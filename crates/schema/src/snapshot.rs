@@ -968,6 +968,18 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
                 is_commander: game.is_commander(id),
                 is_token: game.is_token(id),
                 legendary: !face_down && def.legendary,
+                // A face-down permanent is a colorless 2/2 (CR 708.2), and telling the client
+                // otherwise would leak the card's color through its frame.
+                colors: if face_down {
+                    Vec::new()
+                } else {
+                    game.colors_of(id)
+                        .iter()
+                        .enumerate()
+                        .filter(|(_, is_color)| **is_color)
+                        .map(|(index, _)| index as u8)
+                        .collect()
+                },
                 goaded: game.is_goaded(id),
                 taps_for_mana: game.taps_for_mana(id),
                 prepared: game.prepared(id),
@@ -3303,6 +3315,44 @@ mod tests {
         assert!(!bear_view.is_token, "a printed card is not a token");
         assert!(token_view.is_token, "a minted token reports as one");
         assert!(!bear_view.legendary, "Grizzly Bears is not legendary");
+    }
+
+    /// The card frame the client draws comes from the object's *colors* (CR 105.2), which the
+    /// cost's colored pip counts do not answer: a hybrid pip is both its colors (CR 105.2b) while
+    /// counting as neither, a token's color is stated on the token rather than paid for, and
+    /// devoid (CR 702.114a) makes a card with colored pips colorless. All three drew the wrong
+    /// frame before `colors` was on the projection.
+    #[test]
+    fn object_view_reports_colors_for_the_card_frame() {
+        let mut game = Game::new();
+        let p0 = PlayerId(0);
+        let liege = game.spawn_on_battlefield(p0, def("Balefire Liege"));
+        let abomination = game.spawn_on_battlefield(p0, def("Smothering Abomination"));
+        let beast = game.spawn_token_on_battlefield(
+            p0,
+            cards::get_token("6bb61f34-5d57-4eaa-a02c-f5d08c1ee920").expect("Beast token in pool"),
+        );
+
+        let snap = snapshot(&game, p0);
+        let colors = |id: ObjectId| {
+            snap.objects
+                .iter()
+                .find(|o| o.id == id)
+                .expect("projected")
+                .colors
+                .clone()
+        };
+
+        // {2}{R/W}{R/W}{R/W}: not one monocolored pip, and yet white and red.
+        assert_eq!(colors(liege), vec![0, 3], "Balefire Liege is white and red");
+        // {2}{B}{B} with devoid.
+        assert_eq!(
+            colors(abomination),
+            Vec::<u8>::new(),
+            "a devoid card is colorless"
+        );
+        // No mana cost at all; `colors = ["green"]` on the token.
+        assert_eq!(colors(beast), vec![4], "the Beast token is green");
     }
 
     /// Master Warcraft (CR 508.1a) hands the attack declaration to its caster, so the client must

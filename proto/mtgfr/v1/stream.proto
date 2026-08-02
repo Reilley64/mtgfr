@@ -99,6 +99,10 @@ message ObjectView {
   bool is_token = 28;
   // Whether the printed card is legendary; the card-frame renderer draws the legend crown.
   bool legendary = 29;
+  // This object's colors (CR 105.2) as WUBRG indices (`engine::Color::index`) — the card frame
+  // the renderer draws it in. Empty is colorless. Not color identity: devoid, hybrid pips, a
+  // token's stated color, and color-setting effects all land here.
+  repeated uint32 colors = 30;
 }
 
 // One entry on the stack, for the stack panel. Bottom-first in `VisibleState.stack`.
