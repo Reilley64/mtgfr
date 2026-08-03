@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 ENGINE_SRC = ROOT / "crates" / "engine" / "src"
 ENGINE_TESTS = ROOT / "crates" / "engine" / "tests"
 
-# Module headers intentionally without chapter ownership (see docs/agent-navigation.md).
+# Module headers intentionally without chapter ownership (see docs/AGENT_NAVIGATION.md).
 SKIP_MODULE_HEADERS = {
     "lib.rs",
     "de.rs",

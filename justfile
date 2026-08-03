@@ -64,6 +64,12 @@ proto-breaking:
 [doc("proto-lint + proto-breaking")]
 proto-check: proto-lint proto-breaking
 
+# ── Docs / OpenSpec ───────────────────────────────────────────────────────────────────
+
+[doc("Validate OpenSpec living specs and active changes (strict)")]
+openspec-check:
+    openspec validate --all --strict --no-interactive
+
 # ── Client ───────────────────────────────────────────────────────────────────────────
 
 [group('client')]

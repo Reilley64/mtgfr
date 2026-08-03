@@ -2,8 +2,7 @@
 
 Source: `docs/decklists/lorehold_spirit.md` (official Wizards `soc` precon list, cross-checked
 against the live pool files and the current planeswalker / graveyard / recursion paths). Commander:
-**Quintorius, History Chaser**. Backlog:
-[lorehold-spirit-increments.md](lorehold-spirit-increments.md).
+**Quintorius, History Chaser**. Engine increments for this grind all landed; backlog file removed.
 
 Intake counts: 79 faithful / 0 approximated / 0 expressible / 4 needing engine work.
 The classifier returned 83 A / 0 B / 0 missing, including `Quintorius, History Chaser` from the
@@ -155,7 +154,7 @@ landed. Lorehold's live backlog is narrower.
 ### 2. `Ao` and `Atsushi` now choose triggered modes on placement (LANDED)
 
 `Ao, the Dawn Sky` and `Atsushi, the Blazing Sky` both rode the triggered modal-choice fix from
-increment [#1](lorehold-spirit-increments.md#1-triggered-modal-choices-must-be-chosen-on-placement--2-cards-m):
+increment #1:
 their dies triggers now choose the branch when the trigger is put onto the stack, preserving the
 real response window before resolution.
 
@@ -166,15 +165,13 @@ creatures and Vehicle-subtype permanents; `Smuggler's Copter` is the Vehicle obs
 
 `Augusta, Order Returned` now exiles the nonland cards first, then creates the reflexive trigger
 only if at least one card was exiled, and that second trigger chooses its attacking-creature target
-on its own stack object. This closes increment
-[#2](lorehold-spirit-increments.md#2-reflexive-trigger-follow-up-targeting--1-card-m).
+on its own stack object. This closes increment #2.
 
 ### 4. `Conspiracy Theorist` now batches nonland discards into one exile choice (LANDED)
 
 `Conspiracy Theorist` now uses `timing = "you_discard_nonland"` +
 `may_exile_discarded_nonland_may_play`: a land discard grants no impulse play, and a multi-card
-nonland discard yields one "choose one of them" exile window. This closes increment
-[#3](lorehold-spirit-increments.md#3-discard-trigger-batch-filter-and-choose-one--1-card-m--landed-2026-07-26).
+nonland discard yields one "choose one of them" exile window. This closes increment #3.
 
 ### 5. The remaining ponytails stay harmless for this deck
 

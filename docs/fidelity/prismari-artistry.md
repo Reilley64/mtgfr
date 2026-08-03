@@ -3,7 +3,7 @@
 Source: `docs/decklists/prismari_artistry.md` (official Wizards `soc` precon list, cross-checked
 against live pool files and the current copy / cast-trigger / mana-payment paths). Commander:
 **Rootha, Mastering the Moment**. Backlog:
-[prismari-artistry-increments.md](prismari-artistry-increments.md).
+Engine increments for this grind all landed; backlog file removed.
 
 Intake counts: 75 faithful / 0 approximated / 0 expressible / 10 needing engine work.
 The classifier returned 85 A / 0 B / 0 missing, but the Prismari re-audit demoted 10 cards to D:

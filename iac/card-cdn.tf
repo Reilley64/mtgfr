@@ -1,4 +1,4 @@
-# Card image CDN — spec: docs/superpowers/specs/2026-07-30-card-image-cdn-design.md
+# Card image CDN — OpenSpec: openspec/specs/production-and-ops/spec.md (Card art CDN)
 #
 # A Worker in front of an R2 bucket, filled on miss from Scryfall. Nothing metered sits in the
 # request path: Workers' free 100k/day rejects rather than bills, R2 egress is free, and no

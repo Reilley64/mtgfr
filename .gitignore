@@ -30,10 +30,9 @@ jar.txt
 # Visual brainstorm companion sessions (obra/superpowers)
 .superpowers/
 
-# Local agent implementation plans (execution checklists; not feature SoT)
-# Living behavior lives in docs/superpowers/specs/. Agents still write plans
-# under docs/superpowers/plans/ in their workspace; do not commit them.
-docs/superpowers/plans/
+# Local Superpowers agent scratch (brainstorming design docs + implementation plans).
+# Not the living contract — OpenSpec is. Do not commit.
+docs/superpowers/
 
 # Ephemeral CR-index hook state + atomic write scratch
 .cursor/hooks/state/
