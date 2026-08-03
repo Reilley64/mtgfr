@@ -23,6 +23,7 @@ just check                      # format + lint + typecheck + test (both sides)
 just format                     # server-format + client-format
 just lint                       # server-lint + client-lint
 just proto-check                # buf STANDARD lint + WIRE breaking vs origin/main
+just openspec-check             # openspec validate --all --strict (living specs + active changes)
 just typecheck                  # client-typecheck
 just test                       # server-test + client-test
 just migrate                    # apply Toasty migrations (Postgres)

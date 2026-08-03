@@ -139,6 +139,7 @@ Commits and squash-merge PR titles SHALL follow Angular conventional commits. Hu
 - **verify-server**: pass-marker gate (`verify-server-v3-*` content hash) with restore-only gate and save-only mark after success; on miss, parallel `verify-server-lint`, three nextest shards (`cargo nextest run --profile ci --partition count:i/3`), and `verify-server-migrate` inside `ghcr.io/<owner>/mtgfr-ci:latest` (`--user root`); lint includes CR index, card schema/DSL/pool checks, fmt, and clippy; nextest shards SHALL NOT start Postgres; migrate SHALL use Postgres 16 + `just migrate` only; shared `Swatinem/rust-cache` key `verify-server`; aggregator job green on cache hit or full miss success
 - **verify-client**: Bun-only `just client-check` with its own pass marker hashing client/proto/tokens/workflow inputs (not `crates/**`)
 - **verify-wire**: no pass marker; `buf lint` under full `STANDARD` with no `except`/`ignore`/`ignore_only`; on pull requests, `buf breaking` category `WIRE` against `origin/main` unless PR title or body contains `BREAKING CHANGE`; main pushes run lint only
+- **verify-openspec**: no pass marker; install pinned `@fission-ai/openspec` and run `just openspec-check` (`openspec validate --all --strict --no-interactive`) so living specs and active change artifacts keep valid structure
 
 #### Scenario: Server pass-marker hit skips miss-path jobs
 
@@ -154,6 +155,11 @@ Commits and squash-merge PR titles SHALL follow Angular conventional commits. Hu
 
 - **WHEN** server verify misses the pass marker
 - **THEN** the three nextest partition jobs run without Postgres while migrate alone starts Postgres and applies Toasty migrations
+
+#### Scenario: OpenSpec structural validate runs on every verify
+
+- **WHEN** `verify-jobs.yml` runs on a PR or main push
+- **THEN** `verify-openspec` installs the pinned OpenSpec CLI and fails if living specs or active changes fail strict validation
 
 ### Requirement: Release images and CI toolchain image
 
