@@ -1,8 +1,8 @@
-import { html } from "foldkit/html";
 import { describe, expect, it } from "vitest";
+import { testHtml } from "~/test-html";
 import { seatFace } from "./seat-face";
 
-const h = html<never>();
+const h = testHtml<never>();
 
 describe("seatFace", () => {
   it("uses the zero-based seat number for empty-username monograms", () => {

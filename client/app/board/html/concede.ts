@@ -2,16 +2,14 @@
 // Conceding is a real game action (CR 104.3a), not navigation.
 
 import type * as Dialog from "@foldkit/ui/dialog";
-import { type Html, html } from "foldkit/html";
+import type { Html, HtmlBuilder } from "foldkit/html";
 import { button } from "~/ui/button";
 import { confirmDialog } from "~/ui/confirmDialog";
 import { ConcedeClicked, ConcedeConfirmed, GotConcedeDialogMessage, type Message } from "../messages";
 import { CONCEDE_DIALOG_ID } from "../submodel";
 
-const h = html<Message>();
-
 /** Concede button — fixed top-right, shown while the viewer is still in the game. */
-export function concedeButtonView(): Html {
+export function concedeButtonView(h: HtmlBuilder<Message>): Html {
   return button(
     h,
     {
@@ -25,7 +23,7 @@ export function concedeButtonView(): Html {
 }
 
 /** Confirmation dialog for conceding. Always rendered — a closed `<dialog>` is what Dialog opens. */
-export function concedeDialogView(model: Dialog.Model): Html {
+export function concedeDialogView(model: Dialog.Model, h: HtmlBuilder<Message>): Html {
   return confirmDialog(h, {
     model,
     toDialogMessage: (message) => GotConcedeDialogMessage({ message }),

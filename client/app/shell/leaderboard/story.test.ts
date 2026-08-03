@@ -15,7 +15,7 @@ test("GotLeaderboardMessage updates the leaderboard through the parent update", 
 
   Story.story(
     appUpdate,
-    Story.with({
+    Story.given({
       ...model,
       leaderboard: {
         ...model.leaderboard,

@@ -1,9 +1,9 @@
 import { Submodel } from "foldkit";
-import { html } from "foldkit/html";
 import { Scene } from "foldkit/test";
 import { expect, test } from "vitest";
 import { choiceDraftKey } from "~/choice";
 import { testMessageRef } from "~/i18n/testMessageRef";
+import { testHtml } from "~/test-html";
 import { fromProtoWire } from "~/wire/protoMap";
 import type { ActionView, ObjectView, VisibleState, WireCost } from "~/wire/types";
 import type { GameFoldState } from "../../game/fold";
@@ -27,13 +27,13 @@ import { type BoardModel, initialBoardModel, syncBoardWithGame, updateBoard } fr
 import { boardOverlays } from "./overlays";
 import { resolveBoardOverlayMounts } from "./scene-helpers";
 
-const h = html<Message>();
+const h = testHtml<Message>();
 
 type ViewModel = { board: BoardModel; fold: GameFoldState; tableId: string };
 
 const view = Submodel.defineView<ViewModel, Message>((model) => {
   if (model.fold.state == null) return h.div([], []);
-  return boardOverlays(model.board, model.fold.state, model.tableId, model.fold.log);
+  return boardOverlays(model.board, model.fold.state, model.tableId, model.fold.log, h);
 });
 
 function state(overrides: Partial<VisibleState> = {}): VisibleState {
@@ -164,7 +164,7 @@ function clickPromptIntent(s: VisibleState, click: ReturnType<typeof Scene.click
     commands.push(...nextCommands);
     return [{ ...model, board }, []];
   };
-  Scene.scene({ update, view }, Scene.with(viewModel(s)), resolveBoardOverlayMounts(), click);
+  Scene.scene({ update, view }, Scene.given(viewModel(s)), resolveBoardOverlayMounts(), click);
   return commands.map(intentFromCommand);
 }
 
@@ -183,7 +183,7 @@ test("discard prompt submit disabled until count cards picked", () => {
   });
   Scene.scene(
     { update: sceneUpdate, view },
-    Scene.with(viewModel(s)),
+    Scene.given(viewModel(s)),
     resolveBoardOverlayMounts(),
     Scene.expect(Scene.testId("prompt-submit")).toBeDisabled(),
     Scene.click(Scene.testId("prompt-card-10")),
@@ -208,7 +208,7 @@ test("winter orb untap prompt keeps submit shut until all but one land stays tap
   });
   Scene.scene(
     { update: sceneUpdate, view },
-    Scene.with(viewModel(s)),
+    Scene.given(viewModel(s)),
     resolveBoardOverlayMounts(),
     Scene.expect(Scene.testId("prompt-submit")).toBeDisabled(),
     Scene.click(Scene.testId("prompt-card-20")),
@@ -249,7 +249,7 @@ test("order_triggers shows reorder controls and submit", () => {
   });
   Scene.scene(
     { update: sceneUpdate, view },
-    Scene.with(viewModel(s)),
+    Scene.given(viewModel(s)),
     resolveBoardOverlayMounts(),
     Scene.expect(Scene.testId("prompt-order-list")).toExist(),
     Scene.expect(Scene.testId("prompt-order-0")).toExist(),
@@ -272,7 +272,7 @@ test("order_triggers rows are HTML5-draggable drop targets", () => {
   });
   Scene.scene(
     { update: sceneUpdate, view },
-    Scene.with(viewModel(s)),
+    Scene.given(viewModel(s)),
     resolveBoardOverlayMounts(),
     Scene.expect(Scene.selector('[data-testid="prompt-order-0"][draggable="true"]')).toExist(),
     Scene.expect(Scene.selector('[data-testid="prompt-order-1"][draggable="true"]')).toExist(),
@@ -365,7 +365,7 @@ test("scry prompt shows Top and Bottom lanes instead of a flat ordered grid", ()
   });
   Scene.scene(
     { update: sceneUpdate, view },
-    Scene.with(viewModel(s)),
+    Scene.given(viewModel(s)),
     resolveBoardOverlayMounts(),
     Scene.expect(Scene.testId("prompt-arrange-lanes")).toExist(),
     Scene.expect(Scene.testId("prompt-arrange-top")).toExist(),
@@ -387,7 +387,7 @@ test("surveil bottom lane is labeled Graveyard", () => {
   });
   Scene.scene(
     { update: sceneUpdate, view },
-    Scene.with(viewModel(s)),
+    Scene.given(viewModel(s)),
     resolveBoardOverlayMounts(),
     Scene.expect(Scene.testId("prompt-arrange-lanes")).toExist(),
     Scene.expect(Scene.testId("prompt-arrange-bottom-label")).toHaveText("Graveyard"),
@@ -408,7 +408,7 @@ test("reorder_top second lane holds the cards not placed yet, and they still go 
   });
   Scene.scene(
     { update: sceneUpdate, view },
-    Scene.with(viewModel(s)),
+    Scene.given(viewModel(s)),
     resolveBoardOverlayMounts(),
     Scene.expect(Scene.testId("prompt-arrange-lanes")).toExist(),
     Scene.expect(Scene.testId("prompt-arrange-bottom-label")).toHaveText("Not yet ordered"),
@@ -477,7 +477,7 @@ test("scry submit keeps Top cards in Top while pending choice lingers", () => {
   expect(second).toHaveLength(0);
   Scene.scene(
     { update: sceneUpdate, view },
-    Scene.with(viewModel(s, board)),
+    Scene.given(viewModel(s, board)),
     resolveBoardOverlayMounts(),
     Scene.expect(Scene.selector('[data-testid="prompt-arrange-top"] [data-testid="prompt-card-1"]')).toExist(),
     Scene.expect(Scene.selector('[data-testid="prompt-arrange-bottom"] [data-testid="prompt-card-1"]')).toBeAbsent(),
@@ -524,7 +524,7 @@ test("distribute_top uses a center modal with Hand Bottom Exile lanes", () => {
   });
   Scene.scene(
     { update: sceneUpdate, view },
-    Scene.with(viewModel(s)),
+    Scene.given(viewModel(s)),
     resolveBoardOverlayMounts(),
     Scene.expect(Scene.testId("pending-distribute-modal")).toExist(),
     Scene.expect(Scene.testId("pending-distribute-aim")).toBeAbsent(),
@@ -580,7 +580,7 @@ test("partition_revealed uses a center modal with Pile A and Pile B lanes", () =
   });
   Scene.scene(
     { update: sceneUpdate, view },
-    Scene.with(viewModel(s)),
+    Scene.given(viewModel(s)),
     resolveBoardOverlayMounts(),
     Scene.expect(Scene.testId("pending-partition-modal")).toExist(),
     Scene.expect(Scene.testId("pending-partition-aim")).toBeAbsent(),
@@ -606,7 +606,7 @@ test("partition_revealed relabels itself for Raging River's creature piles", () 
   });
   Scene.scene(
     { update: sceneUpdate, view },
-    Scene.with(viewModel(s)),
+    Scene.given(viewModel(s)),
     resolveBoardOverlayMounts(),
     Scene.expect(Scene.testId("pending-partition-modal")).toExist(),
     Scene.expect(Scene.testId("prompt-modal-title")).toHaveText("Choose creatures for this pile"),
@@ -626,7 +626,7 @@ test("choose_pile_for_hand names the attacker being sent left or right", () => {
   });
   Scene.scene(
     { update: sceneUpdate, view },
-    Scene.with(viewModel(s)),
+    Scene.given(viewModel(s)),
     resolveBoardOverlayMounts(),
     Scene.expect(Scene.testId("prompt-pile-heading")).toHaveText("Send Shivan Dragon left or right"),
     Scene.expect(Scene.testId("prompt-pile-0")).toHaveText("Left"),
@@ -665,7 +665,7 @@ test("choose_dredge shows Draw normally and disables Dredge until one pick", () 
   });
   Scene.scene(
     { update: sceneUpdate, view },
-    Scene.with(viewModel(s)),
+    Scene.given(viewModel(s)),
     resolveBoardOverlayMounts(),
     Scene.expect(Scene.testId("prompt-submit")).toBeDisabled(),
     Scene.expect(Scene.testId("prompt-decline")).toHaveText("Draw normally"),
@@ -787,7 +787,7 @@ test("search_library Choose submits selected card", () => {
   };
   Scene.scene(
     { update, view },
-    Scene.with(viewModel(s)),
+    Scene.given(viewModel(s)),
     resolveBoardOverlayMounts(),
     Scene.click(Scene.testId("prompt-card-1")),
     Scene.click(Scene.testId("prompt-submit")),
@@ -846,7 +846,7 @@ test("optional may_return_from_graveyard Decline emits empty choose_sacrifices",
 
   Scene.scene(
     { update, view },
-    Scene.with(
+    Scene.given(
       viewModel(s, {
         ...initialBoardModel(),
         pileExpand: { zone: ZONE.Graveyard, owner: 0 },
@@ -878,7 +878,7 @@ test("mandatory may_return_from_graveyard blocks empty submit until a card is ch
 
   Scene.scene(
     { update, view },
-    Scene.with(viewModel(s)),
+    Scene.given(viewModel(s)),
     resolveBoardOverlayMounts(),
     Scene.expect(Scene.testId("prompt-submit")).toBeDisabled(),
     Scene.expect(Scene.testId("prompt-decline")).toBeAbsent(),
@@ -893,7 +893,7 @@ test("mandatory may_return_from_graveyard blocks empty submit until a card is ch
 test("may_exile_discarded_to_play shows exile and decline copy on graveyard aim", () => {
   Scene.scene(
     { update: sceneUpdate, view },
-    Scene.with(viewModel(mayExileDiscardedState())),
+    Scene.given(viewModel(mayExileDiscardedState())),
     resolveBoardOverlayMounts(),
     Scene.expect(Scene.testId("pending-gy-aim")).toExist(),
     Scene.expect(Scene.testId("prompt-submit")).toHaveText("Exile"),
@@ -931,7 +931,7 @@ test("choose_exiled_dig_to_cast_free swaps to hand-pick wording for Word of Comm
 
   Scene.scene(
     { update: sceneUpdate, view },
-    Scene.with(viewModel(s)),
+    Scene.given(viewModel(s)),
     resolveBoardOverlayMounts(),
     Scene.expect(Scene.testId("pick-title")).toHaveText("Choose a card from their hand for them to play"),
     Scene.expect(Scene.testId("prompt-submit")).toHaveText("Play"),
@@ -951,7 +951,7 @@ test("choose_copy_target swaps to counter wording for the MayPutCounterOnCreatur
 
   Scene.scene(
     { update: sceneUpdate, view },
-    Scene.with(viewModel(s)),
+    Scene.given(viewModel(s)),
     resolveBoardOverlayMounts(),
     Scene.expect(Scene.testId("pending-card-pick-modal")).toExist(),
     Scene.expect(Scene.testId("pending-card-pick-aim")).toBeAbsent(),
@@ -974,7 +974,7 @@ test("choose_copy_target swaps to block wording for False Orders' re-aim", () =>
 
   Scene.scene(
     { update: sceneUpdate, view },
-    Scene.with(viewModel(s)),
+    Scene.given(viewModel(s)),
     resolveBoardOverlayMounts(),
     Scene.expect(Scene.testId("pending-card-pick-modal")).toExist(),
     Scene.expect(Scene.testId("pick-title")).toHaveText("Choose an attacking creature to block"),
@@ -994,7 +994,7 @@ test("choose_copy_target keeps copy wording for real copy prompts", () => {
 
   Scene.scene(
     { update: sceneUpdate, view },
-    Scene.with(viewModel(s)),
+    Scene.given(viewModel(s)),
     resolveBoardOverlayMounts(),
     Scene.expect(Scene.testId("pending-card-pick-modal")).toExist(),
     Scene.expect(Scene.testId("pending-card-pick-aim")).toBeAbsent(),
@@ -1102,7 +1102,7 @@ test("assign_combat_damage stepper increments a blocker amount", () => {
   const s = state({ objects: [attacker], pending_choice: pending });
   Scene.scene(
     { update: sceneUpdate, view },
-    Scene.with(
+    Scene.given(
       viewModel(s, {
         ...initialBoardModel(),
         pendingChoiceKey: choiceDraftKey(pending),
@@ -1235,7 +1235,7 @@ test("pay_cost with discard disables Pay until a discard is picked", () => {
   });
   Scene.scene(
     { update: sceneUpdate, view },
-    Scene.with(viewModel(s)),
+    Scene.given(viewModel(s)),
     resolveBoardOverlayMounts(),
     Scene.expect(Scene.testId("pending-pay-cost-aim")).toExist(),
     Scene.expect(Scene.testId("pending-pay-discard-count")).toHaveText("0 / 1 selected"),
@@ -1289,7 +1289,7 @@ test("pay_cost with discard emits discard_cost on pay and omit on decline", () =
   };
   Scene.scene(
     { update, view },
-    Scene.with(
+    Scene.given(
       viewModel(s, {
         ...initialBoardModel(),
         pendingChoiceKey: choiceDraftKey(pending),
@@ -1318,7 +1318,7 @@ test("pay_cost prompt shows cost on Pay and Don't pay decline", () => {
   });
   Scene.scene(
     { update: sceneUpdate, view },
-    Scene.with(viewModel(s)),
+    Scene.given(viewModel(s)),
     resolveBoardOverlayMounts(),
     Scene.expect(Scene.testId("pending-pay-cost-aim")).toExist(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
@@ -1340,7 +1340,7 @@ test("pay_cost prompt disables Pay when the player cannot afford the cost", () =
   });
   Scene.scene(
     { update: sceneUpdate, view },
-    Scene.with(viewModel(s)),
+    Scene.given(viewModel(s)),
     resolveBoardOverlayMounts(),
     Scene.expect(Scene.testId("prompt-pay")).toBeDisabled(),
     Scene.expect(Scene.testId("prompt-decline")).toExist(),
@@ -1358,7 +1358,7 @@ test("pay_echo_or_sacrifice decline is labeled Sacrifice", () => {
   });
   Scene.scene(
     { update: sceneUpdate, view },
-    Scene.with(viewModel(s)),
+    Scene.given(viewModel(s)),
     resolveBoardOverlayMounts(),
     Scene.expect(Scene.testId("prompt-pay")).toHaveText("Pay {1}"),
     Scene.expect(Scene.testId("prompt-decline")).toHaveText("Sacrifice"),
@@ -1372,7 +1372,7 @@ test("pay_life_or_enters_tapped offers the life payment and pays through", () =>
   });
   Scene.scene(
     { update: sceneUpdate, view },
-    Scene.with(viewModel(s)),
+    Scene.given(viewModel(s)),
     resolveBoardOverlayMounts(),
     Scene.expect(Scene.testId("pending-pay-cost-aim")).toExist(),
     Scene.expect(Scene.testId("prompt-pay")).toHaveText("Pay 2 life"),
@@ -1394,7 +1394,7 @@ test("pay_or_counter decline is labeled Let it be countered", () => {
   });
   Scene.scene(
     { update: sceneUpdate, view },
-    Scene.with(viewModel(s)),
+    Scene.given(viewModel(s)),
     resolveBoardOverlayMounts(),
     Scene.expect(Scene.testId("prompt-pay")).toHaveText("Pay {U}"),
     Scene.expect(Scene.testId("prompt-decline")).toHaveText("Let it be countered"),
@@ -1419,7 +1419,7 @@ test("choose_mode prompt emits choose_mode intent from UI", () => {
 test("choose_mode aim docks above the hand bar", () => {
   Scene.scene(
     { update: sceneUpdate, view },
-    Scene.with(
+    Scene.given(
       viewModel(
         state({
           pending_choice: {
@@ -1453,7 +1453,7 @@ test("choose_trigger_modes aim docks above the hand bar", () => {
   });
   Scene.scene(
     { update: sceneUpdate, view },
-    Scene.with(viewModel(s)),
+    Scene.given(viewModel(s)),
     resolveBoardOverlayMounts(),
     Scene.expect(Scene.testId("pending-trigger-modes-aim")).toExist(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
@@ -1510,7 +1510,7 @@ test("choose_target_players on-board aim shows pending-player-aim chrome", () =>
   });
   Scene.scene(
     { update: sceneUpdate, view },
-    Scene.with(viewModel(s)),
+    Scene.given(viewModel(s)),
     resolveBoardOverlayMounts(),
     Scene.expect(Scene.testId("pending-player-aim")).toExist(),
     Scene.expect(Scene.testId("pending-player-count")).toHaveText("0 / 2 selected"),
@@ -1566,7 +1566,7 @@ test("choose_splitting_opponent on-board aim shows pending-player-aim chrome", (
   });
   Scene.scene(
     { update: sceneUpdate, view },
-    Scene.with(viewModel(s)),
+    Scene.given(viewModel(s)),
     resolveBoardOverlayMounts(),
     Scene.expect(Scene.testId("pending-player-aim")).toExist(),
     Scene.expect(Scene.testId("prompt-player-2")).not.toExist(),
@@ -1612,7 +1612,7 @@ test("choose_pile_for_hand prompt emits choose_opponent_pile intent from UI", ()
   });
   Scene.scene(
     { update: sceneUpdate, view },
-    Scene.with(viewModel(s)),
+    Scene.given(viewModel(s)),
     resolveBoardOverlayMounts(),
     Scene.expect(Scene.testId("pending-pile-aim")).toExist(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
@@ -1660,7 +1660,7 @@ test("choose_color prompt emits choose_color intent from UI", () => {
 test("choose_color prompt renders mana-font pips instead of letter labels", () => {
   Scene.scene(
     { update: sceneUpdate, view },
-    Scene.with(
+    Scene.given(
       viewModel(
         state({
           pending_choice: {
@@ -1695,7 +1695,7 @@ test("choose_creature_type prompt emits choose_creature_type intent from UI", ()
   });
   Scene.scene(
     { update: sceneUpdate, view },
-    Scene.with(viewModel(s)),
+    Scene.given(viewModel(s)),
     resolveBoardOverlayMounts(),
     Scene.expect(Scene.testId("pending-creature-type-modal")).toExist(),
     Scene.expect(Scene.testId("pending-creature-type-aim")).toBeAbsent(),
@@ -1715,7 +1715,7 @@ test("choose_card_name prompt has placeholder and Names a typed card", () => {
   });
   Scene.scene(
     { update: sceneUpdate, view },
-    Scene.with(viewModel(s)),
+    Scene.given(viewModel(s)),
     resolveBoardOverlayMounts(),
     Scene.expect(Scene.testId("pending-card-name-modal")).toExist(),
     Scene.expect(Scene.testId("pending-card-name-aim")).toBeAbsent(),
@@ -1746,7 +1746,7 @@ test("may_draw_up_to prompt emits choose_draw_count intent from UI", () => {
   });
   Scene.scene(
     { update: sceneUpdate, view },
-    Scene.with(viewModel(s)),
+    Scene.given(viewModel(s)),
     resolveBoardOverlayMounts(),
     Scene.expect(Scene.testId("pending-draw-count-modal")).toExist(),
     Scene.expect(Scene.testId("pending-draw-count-aim")).toBeAbsent(),
@@ -1768,7 +1768,7 @@ test("pay_any_amount_of_mana uses a stepper and submits the draft amount", () =>
   });
   Scene.scene(
     { update: sceneUpdate, view },
-    Scene.with(viewModel(s)),
+    Scene.given(viewModel(s)),
     resolveBoardOverlayMounts(),
     Scene.expect(Scene.testId("pending-join-forces-modal")).toExist(),
     Scene.expect(Scene.testId("pending-join-forces-aim")).toBeAbsent(),
@@ -1916,7 +1916,7 @@ test("choose-X stepper dec updates value and preview via the view", () => {
   };
   Scene.scene(
     { update: sceneUpdate, view },
-    Scene.with(viewModel(s, board)),
+    Scene.given(viewModel(s, board)),
     resolveBoardOverlayMounts(),
     Scene.expect(Scene.testId("x-prompt-value")).toHaveText("3"),
     Scene.expect(Scene.testId("x-prompt-inc")).toBeDisabled(),

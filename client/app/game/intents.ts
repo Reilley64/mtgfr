@@ -25,98 +25,91 @@ function ackMessage(ack: Ack) {
   return IntentRejected({ reason: ack.reject_reason ? formatMessage(ack.reject_reason) : "That didn't work." });
 }
 
-export const SubmitIntent = Command.define(
-  "SubmitIntent",
-  { tableId: S.String, intent: WireIntentSchema },
-  IntentAcked,
-  IntentRejected,
-)(({ tableId, intent }) =>
-  Effect.gen(function* () {
-    const rpc = yield* RpcClient;
-    return yield* rpc.submitIntent(tableId, nextEnvelope(tableId, intent)).pipe(
-      Effect.map(ackMessage),
-      Effect.catch((error) => Effect.succeed(IntentRejected({ reason: failureReason(error) }))),
-    );
-  }),
-);
+export const SubmitIntent = Command.define("SubmitIntent", {
+  args: { tableId: S.String, intent: WireIntentSchema },
+  messages: [IntentAcked, IntentRejected],
+  execute: ({ tableId, intent }) =>
+    Effect.gen(function* () {
+      const rpc = yield* RpcClient;
+      return yield* rpc.submitIntent(tableId, nextEnvelope(tableId, intent)).pipe(
+        Effect.map(ackMessage),
+        Effect.catch((error) => Effect.succeed(IntentRejected({ reason: failureReason(error) }))),
+      );
+    }),
+});
 
-export const SetYield = Command.define(
-  "SetYield",
-  { tableId: S.String, enabled: S.Boolean },
-  IntentAcked,
-  IntentRejected,
-)(({ tableId, enabled }) =>
-  Effect.gen(function* () {
-    const rpc = yield* RpcClient;
-    return yield* rpc.setYield(tableId, { enabled }).pipe(
-      Effect.map(ackMessage),
-      Effect.catch((error) => Effect.succeed(IntentRejected({ reason: failureReason(error) }))),
-    );
-  }),
-);
+export const SetYield = Command.define("SetYield", {
+  args: { tableId: S.String, enabled: S.Boolean },
+  messages: [IntentAcked, IntentRejected],
+  execute: ({ tableId, enabled }) =>
+    Effect.gen(function* () {
+      const rpc = yield* RpcClient;
+      return yield* rpc.setYield(tableId, { enabled }).pipe(
+        Effect.map(ackMessage),
+        Effect.catch((error) => Effect.succeed(IntentRejected({ reason: failureReason(error) }))),
+      );
+    }),
+});
 
-export const SetTurnYield = Command.define(
-  "SetTurnYield",
-  { tableId: S.String, enabled: S.Boolean },
-  IntentAcked,
-  IntentRejected,
-)(({ tableId, enabled }) =>
-  Effect.gen(function* () {
-    const rpc = yield* RpcClient;
-    return yield* rpc.setTurnYield(tableId, { enabled }).pipe(
-      Effect.map(ackMessage),
-      Effect.catch((error) => Effect.succeed(IntentRejected({ reason: failureReason(error) }))),
-    );
-  }),
-);
+export const SetTurnYield = Command.define("SetTurnYield", {
+  args: { tableId: S.String, enabled: S.Boolean },
+  messages: [IntentAcked, IntentRejected],
+  execute: ({ tableId, enabled }) =>
+    Effect.gen(function* () {
+      const rpc = yield* RpcClient;
+      return yield* rpc.setTurnYield(tableId, { enabled }).pipe(
+        Effect.map(ackMessage),
+        Effect.catch((error) => Effect.succeed(IntentRejected({ reason: failureReason(error) }))),
+      );
+    }),
+});
 
-export const SetStackDwell = Command.define(
-  "SetStackDwell",
-  { tableId: S.String, dwelling: S.Boolean },
-  IntentAcked,
-  IntentRejected,
-)(({ tableId, dwelling }) =>
-  Effect.gen(function* () {
-    const rpc = yield* RpcClient;
-    return yield* rpc.setStackDwell(tableId, { dwelling }).pipe(
-      Effect.map(ackMessage),
-      Effect.catch((error) => Effect.succeed(IntentRejected({ reason: failureReason(error) }))),
-    );
-  }),
-);
+export const SetStackDwell = Command.define("SetStackDwell", {
+  args: { tableId: S.String, dwelling: S.Boolean },
+  messages: [IntentAcked, IntentRejected],
+  execute: ({ tableId, dwelling }) =>
+    Effect.gen(function* () {
+      const rpc = yield* RpcClient;
+      return yield* rpc.setStackDwell(tableId, { dwelling }).pipe(
+        Effect.map(ackMessage),
+        Effect.catch((error) => Effect.succeed(IntentRejected({ reason: failureReason(error) }))),
+      );
+    }),
+});
 
-export const FetchInspectCard = Command.define(
-  "FetchInspectCard",
-  { cardId: S.String },
-  InspectCardFetched,
-)(({ cardId }) =>
-  Effect.gen(function* () {
-    const rpc = yield* RpcClient;
-    return yield* rpc.lookupCards([cardId]).pipe(
-      Effect.map((cards) => InspectCardFetched({ card: cards[0] ?? null })),
-      Effect.catch(() => Effect.succeed(InspectCardFetched({ card: null }))),
-    );
-  }),
-);
+export const FetchInspectCard = Command.define("FetchInspectCard", {
+  args: { cardId: S.String },
+  messages: [InspectCardFetched],
+  execute: ({ cardId }) =>
+    Effect.gen(function* () {
+      const rpc = yield* RpcClient;
+      return yield* rpc.lookupCards([cardId]).pipe(
+        Effect.map((cards) => InspectCardFetched({ card: cards[0] ?? null })),
+        Effect.catch(() => Effect.succeed(InspectCardFetched({ card: null }))),
+      );
+    }),
+});
 
 const CARD_NAME_SUGGEST_LIMIT = 8;
 
-/** Catalog typeahead for `choose_card_name` — suggestions assist; engine still accepts any name. */
-export const SearchCardNames = Command.define(
-  "SearchCardNames",
-  { query: S.String },
-  CardNameSuggestionsFetched,
-)(({ query }) =>
-  Effect.gen(function* () {
-    const rpc = yield* RpcClient;
-    return yield* rpc.searchCards({ q: query, limit: CARD_NAME_SUGGEST_LIMIT, offset: 0 }).pipe(
-      Effect.map((cards) =>
-        CardNameSuggestionsFetched({
-          query,
-          names: cards.map((c) => c.name),
-        }),
-      ),
-      Effect.catch(() => Effect.succeed(CardNameSuggestionsFetched({ query, names: [] }))),
-    );
-  }),
-);
+/** Catalog typeahead for `choose_card_name` — suggestions assist; engine still accepts any name.
+ *  Interruptible under one key: only the search for what is in the input now is worth finishing,
+ *  so each keystroke cancels the one before it. */
+export const SearchCardNames = Command.define("SearchCardNames", {
+  args: { query: S.String },
+  messages: [CardNameSuggestionsFetched],
+  interrupt: true,
+  execute: ({ query }) =>
+    Effect.gen(function* () {
+      const rpc = yield* RpcClient;
+      return yield* rpc.searchCards({ q: query, limit: CARD_NAME_SUGGEST_LIMIT, offset: 0 }).pipe(
+        Effect.map((cards) =>
+          CardNameSuggestionsFetched({
+            query,
+            names: cards.map((c) => c.name),
+          }),
+        ),
+        Effect.catch(() => Effect.succeed(CardNameSuggestionsFetched({ query, names: [] }))),
+      );
+    }),
+});

@@ -1,6 +1,6 @@
 // Turn banner: whose turn, current phase track, priority watch.
 
-import { type Html, html } from "foldkit/html";
+import type { Html, HtmlBuilder } from "foldkit/html";
 import { cn } from "~/cn";
 import { playerLabel } from "~/players";
 import { isActivePlayer } from "~/spectator";
@@ -11,15 +11,19 @@ import type { Message } from "../messages";
 import type { BoardModel } from "../submodel";
 import { MountPriorityWatch } from "./audio-mount";
 
-const h = html<Message>();
-
 const HEAT_INK: Record<Heat, string> = {
   sage: "text-watch-sage",
   ember: "text-turn-ember",
   flare: "text-watch-flare",
 };
 
-function phaseSegment(state: "past" | "now" | "future", yourTurn: boolean, name: string, detail: string | null): Html {
+function phaseSegment(
+  state: "past" | "now" | "future",
+  yourTurn: boolean,
+  name: string,
+  detail: string | null,
+  h: HtmlBuilder<Message>,
+): Html {
   // Interactive chrome is attribute-driven: JS sets data-phase-state / data-your-turn,
   // Tailwind variants own the look (mint = your turn now, ember = theirs, dim = past/future).
   return h.div(
@@ -42,7 +46,7 @@ function phaseSegment(state: "past" | "now" | "future", yourTurn: boolean, name:
   );
 }
 
-function priorityWatchView(board: BoardModel, state: VisibleState): Html {
+function priorityWatchView(board: BoardModel, state: VisibleState, h: HtmlBuilder<Message>): Html {
   const holder = state.priority;
   const yours = holder === state.viewer;
   const elapsed = board.priorityElapsed;
@@ -61,7 +65,7 @@ function priorityWatchView(board: BoardModel, state: VisibleState): Html {
   );
 }
 
-export function turnChromeView(board: BoardModel, state: VisibleState): Html {
+export function turnChromeView(board: BoardModel, state: VisibleState, h: HtmlBuilder<Message>): Html {
   const yourTurn = state.active_player === state.viewer;
   const current = phaseOf(state.step);
   const currentBand = PHASES[current];
@@ -96,10 +100,11 @@ export function turnChromeView(board: BoardModel, state: VisibleState): Html {
             yourTurn,
             band.name,
             i === current ? detail : null,
+            h,
           ),
         ),
       ),
-      isActivePlayer(state.players, state.viewer) ? priorityWatchView(board, state) : null,
+      isActivePlayer(state.players, state.viewer) ? priorityWatchView(board, state, h) : null,
     ].filter((v): v is Html => v !== null),
   );
 }

@@ -150,7 +150,7 @@ export type AvatarLabelOffsets = {
 const GAP = 8;
 const CARD_HSTEP = CARD_W + GAP; // horizontal distance between card centers
 const VSTEP = CARD_H + GAP;
-const ROW_H = VSTEP; // one battlefield row (card + gap)
+const ROW_H = VSTEP; // one battlefield row (card + gap, h)
 const BATTLE_H = 3 * ROW_H;
 // Avatars hang off the *outer* edge of each band (above the top row / below the bottom), not in
 // the gutter between seats — so the inter-row gutter only needs a hair of separation.

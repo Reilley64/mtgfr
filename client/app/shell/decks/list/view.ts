@@ -1,7 +1,7 @@
 import type * as Menu from "@foldkit/ui/menu";
 import { Effect, Queue, Schema as S, Stream } from "effect";
 import { Submodel } from "foldkit";
-import { type Html, html } from "foldkit/html";
+import type { Html, HtmlBuilder } from "foldkit/html";
 import * as Mount from "foldkit/mount";
 import type { AppChromeMeta } from "../../../domain/ui/app-version";
 import { button } from "../../../domain/ui/button";
@@ -33,8 +33,6 @@ export type ViewMessage =
   | typeof DeckCardFlipTick.Type
   | typeof GotAuthMessage.Type
   | typeof GotAccountMenuMessage.Type;
-
-const h = html<ViewMessage>();
 
 type ContextMenuMessage = typeof OpenedDeckListMenu.Type | typeof ClosedDeckListMenu.Type;
 
@@ -117,7 +115,7 @@ function deckCardModel(model: DeckListSubmodel, deck: DeckListSubmodel["decks"][
   };
 }
 
-function contextMenu(model: DeckListSubmodel): Html {
+function contextMenu(model: DeckListSubmodel, h: HtmlBuilder<ViewMessage>): Html {
   const menu = model.contextMenu;
   if (menu == null) return null;
 
@@ -176,7 +174,7 @@ export type ViewInputs = {
   readonly accountMenu: Menu.Model;
 };
 
-export const view = Submodel.defineView<DeckListSubmodel, ViewMessage, ViewInputs>((model, viewInputs) => {
+export const view = Submodel.defineView<DeckListSubmodel, ViewMessage, ViewInputs>((model, viewInputs, h) => {
   const visible = visibleDecks(model.decks, model.knownCommanders, model.searchQuery);
 
   return shellFrame(h, {
@@ -295,7 +293,7 @@ export const view = Submodel.defineView<DeckListSubmodel, ViewMessage, ViewInput
               : null,
           ],
         ),
-        contextMenu(model),
+        contextMenu(model, h),
       ],
     ),
   });

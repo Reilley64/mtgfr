@@ -49,97 +49,90 @@ import {
   viewportWidthPx,
 } from "./submodel";
 
-export const NavigateHome = Command.define(
-  "NavigateHome",
-  NavigatedAwayFromBuilder,
-)(Navigation.replaceUrl("/").pipe(Effect.as(NavigatedAwayFromBuilder())));
+export const NavigateHome = Command.define("NavigateHome", {
+  messages: [NavigatedAwayFromBuilder],
+  execute: Navigation.replaceUrl("/").pipe(Effect.as(NavigatedAwayFromBuilder())),
+});
 
-export const SearchDeckBuilderCards = Command.define(
-  "SearchDeckBuilderCards",
-  { offset: S.Number, query: S.String },
-  ReceivedBuilderSearchPage,
-  BuilderSearchFailed,
-)(({ offset, query }) =>
-  Effect.gen(function* () {
-    const rpc = yield* RpcClient;
-    return yield* rpc.searchCards({ q: query, limit: PAGE, offset }).pipe(
-      Effect.map((cards) => ReceivedBuilderSearchPage({ cards, offset, query })),
-      Effect.catch(() => Effect.succeed(BuilderSearchFailed())),
-    );
-  }),
-);
+export const SearchDeckBuilderCards = Command.define("SearchDeckBuilderCards", {
+  args: { offset: S.Number, query: S.String },
+  messages: [ReceivedBuilderSearchPage, BuilderSearchFailed],
+  execute: ({ offset, query }) =>
+    Effect.gen(function* () {
+      const rpc = yield* RpcClient;
+      return yield* rpc.searchCards({ q: query, limit: PAGE, offset }).pipe(
+        Effect.map((cards) => ReceivedBuilderSearchPage({ cards, offset, query })),
+        Effect.catch(() => Effect.succeed(BuilderSearchFailed())),
+      );
+    }),
+});
 
-export const LoadDeckForBuilder = Command.define(
-  "LoadDeckForBuilder",
-  { id: S.String },
-  ReceivedDeckForBuilder,
-  DeckBuilderLoadFailed,
-)(({ id }) =>
-  Effect.gen(function* () {
-    const rpc = yield* RpcClient;
-    return yield* rpc.getDeck(id).pipe(
-      Effect.map((deck) => ReceivedDeckForBuilder({ deck })),
-      Effect.catch(() => Effect.succeed(DeckBuilderLoadFailed({ message: "Could not load that deck." }))),
-    );
-  }),
-);
+export const LoadDeckForBuilder = Command.define("LoadDeckForBuilder", {
+  args: { id: S.String },
+  messages: [ReceivedDeckForBuilder, DeckBuilderLoadFailed],
+  execute: ({ id }) =>
+    Effect.gen(function* () {
+      const rpc = yield* RpcClient;
+      return yield* rpc.getDeck(id).pipe(
+        Effect.map((deck) => ReceivedDeckForBuilder({ deck })),
+        Effect.catch(() => Effect.succeed(DeckBuilderLoadFailed({ message: "Could not load that deck." }))),
+      );
+    }),
+});
 
-export const HydrateBuilderCards = Command.define(
-  "HydrateBuilderCards",
-  { ids: S.Array(S.String) },
-  HydratedBuilderCards,
-)(({ ids }) =>
-  Effect.gen(function* () {
-    const rpc = yield* RpcClient;
-    return yield* lookupCardsByIds(rpc, ids).pipe(
-      Effect.map((cards) => HydratedBuilderCards({ cards })),
-      Effect.catch(() => Effect.succeed(HydratedBuilderCards({ cards: [] }))),
-    );
-  }),
-);
+export const HydrateBuilderCards = Command.define("HydrateBuilderCards", {
+  args: { ids: S.Array(S.String) },
+  messages: [HydratedBuilderCards],
+  execute: ({ ids }) =>
+    Effect.gen(function* () {
+      const rpc = yield* RpcClient;
+      return yield* lookupCardsByIds(rpc, ids).pipe(
+        Effect.map((cards) => HydratedBuilderCards({ cards })),
+        Effect.catch(() => Effect.succeed(HydratedBuilderCards({ cards: [] }))),
+      );
+    }),
+});
 
 /** Fetches one page of printings. The update re-issues this for `nextPage` until there is none,
  *  so a card with hundreds of printings shows its first 175 while the rest are still arriving. */
-export const SearchBuilderPrints = Command.define(
-  "SearchBuilderPrints",
-  { cardId: S.String, url: S.String },
-  ReceivedBuilderPrints,
-  BuilderPrintSearchFailed,
-)(({ cardId, url }) =>
-  searchPrintPage(url).pipe(
-    Effect.map(({ nextPage, prints }) => ReceivedBuilderPrints({ cardId, nextPage, prints, url })),
-    Effect.catch(() => Effect.succeed(BuilderPrintSearchFailed({ cardId }))),
-  ),
-);
+export const SearchBuilderPrints = Command.define("SearchBuilderPrints", {
+  args: { cardId: S.String, url: S.String },
+  messages: [ReceivedBuilderPrints, BuilderPrintSearchFailed],
+  execute: ({ cardId, url }) =>
+    searchPrintPage(url).pipe(
+      Effect.map(({ nextPage, prints }) => ReceivedBuilderPrints({ cardId, nextPage, prints, url })),
+      Effect.catch(() => Effect.succeed(BuilderPrintSearchFailed({ cardId }))),
+    ),
+});
 
-export const SaveDeck = Command.define(
-  "SaveDeck",
-  { body: SaveDeckRequest, id: S.NullOr(S.String) },
-  DeckSaved,
-  DeckSaveFailed,
-)(({ body, id }) =>
-  Effect.gen(function* () {
-    const rpc = yield* RpcClient;
+export const SaveDeck = Command.define("SaveDeck", {
+  args: { body: SaveDeckRequest, id: S.NullOr(S.String) },
+  messages: [DeckSaved, DeckSaveFailed],
+  execute: ({ body, id }) =>
+    Effect.gen(function* () {
+      const rpc = yield* RpcClient;
 
-    if (id !== null) {
-      return yield* rpc.updateDeck(id, body).pipe(
+      if (id !== null) {
+        return yield* rpc.updateDeck(id, body).pipe(
+          Effect.tap(() => Navigation.replaceUrl("/")),
+          Effect.as(DeckSaved()),
+          Effect.catchTag("UpdateDeck422", (err) =>
+            Effect.succeed(DeckSaveFailed({ problems: [...err.cause.problems] })),
+          ),
+          Effect.catch(() => Effect.succeed(DeckSaveFailed({ problems: ["Could not save the deck."] }))),
+        );
+      }
+
+      return yield* rpc.createDeck(body).pipe(
         Effect.tap(() => Navigation.replaceUrl("/")),
         Effect.as(DeckSaved()),
-        Effect.catchTag("UpdateDeck422", (err) =>
+        Effect.catchTag("CreateDeck422", (err) =>
           Effect.succeed(DeckSaveFailed({ problems: [...err.cause.problems] })),
         ),
         Effect.catch(() => Effect.succeed(DeckSaveFailed({ problems: ["Could not save the deck."] }))),
       );
-    }
-
-    return yield* rpc.createDeck(body).pipe(
-      Effect.tap(() => Navigation.replaceUrl("/")),
-      Effect.as(DeckSaved()),
-      Effect.catchTag("CreateDeck422", (err) => Effect.succeed(DeckSaveFailed({ problems: [...err.cause.problems] }))),
-      Effect.catch(() => Effect.succeed(DeckSaveFailed({ problems: ["Could not save the deck."] }))),
-    );
-  }),
-);
+    }),
+});
 
 export function enterBuilder(
   editingId: string | null,

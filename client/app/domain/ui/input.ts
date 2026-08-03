@@ -3,11 +3,9 @@
 // The recipe is private on purpose — a styled thing that is not a field should not be reachable.
 
 import * as Input from "@foldkit/ui/input";
-import type { Attribute, html as createHtml, Html } from "foldkit/html";
+import type { Attribute, Html, HtmlBuilder } from "foldkit/html";
 import type { ClassValue } from "../cn";
 import { cva } from "./recipe";
-
-type HtmlFactory<Msg> = ReturnType<typeof createHtml<Msg>>;
 
 const recipe = cva({
   variants: {
@@ -43,19 +41,22 @@ export type InputProps<Msg> = {
   attrs?: ReadonlyArray<Attribute<Msg>>;
 };
 
-export function input<Msg>(h: HtmlFactory<Msg>, props: InputProps<Msg>): Html {
-  return Input.view<Msg>({
-    id: props.id,
-    value: props.value,
-    onInput: props.onInput,
-    type: props.type,
-    placeholder: props.placeholder,
-    isAutofocus: props.autofocus,
-    toView: (a) => {
-      const extra: Array<Attribute<Msg>> = [h.Class(recipe({ variant: props.variant, class: props.class }))];
-      if (props.testId != null) extra.push(h.DataAttribute("testid", props.testId));
-      if (props.ariaLabel != null) extra.push(h.AriaLabel(props.ariaLabel));
-      return h.input([...a.input, ...extra, ...(props.attrs ?? [])]);
+export function input<Msg>(h: HtmlBuilder<Msg>, props: InputProps<Msg>): Html {
+  return Input.view(
+    {
+      id: props.id,
+      value: props.value,
+      onInput: props.onInput,
+      type: props.type,
+      placeholder: props.placeholder,
+      isAutofocus: props.autofocus,
+      toView: (a) => {
+        const extra: Array<Attribute<Msg>> = [h.Class(recipe({ variant: props.variant, class: props.class }))];
+        if (props.testId != null) extra.push(h.DataAttribute("testid", props.testId));
+        if (props.ariaLabel != null) extra.push(h.AriaLabel(props.ariaLabel));
+        return h.input([...a.input, ...extra, ...(props.attrs ?? [])]);
+      },
     },
-  });
+    h,
+  );
 }

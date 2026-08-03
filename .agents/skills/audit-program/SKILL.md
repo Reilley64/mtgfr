@@ -145,7 +145,7 @@ These are the failure modes that pass typecheck and tests but fall short of the 
 
 14. **A11y gaps.** For anything outside `Ui.*` coverage: label/input pairing via `For(id)` + `Id(id)`, dynamic errors announced via `Role('alert')` or `AriaLive('polite')`, icon-only buttons with `AriaLabel`, external links with `Rel('noopener noreferrer')`, exactly one `h1` per route, semantic landmarks over `div` soup. Color is not the only carrier of meaning.
 
-15. **Missing scene test (Tier 3+).** `scene.test.ts` is REQUIRED at Tier 3+. Absent? BLOCKER. Present but no `Scene.expect(...)` or `Scene.Command.resolve(...)` in any block? Same. A Scene that only does `Scene.with(model)` only verifies the view doesn't throw; it doesn't test anything.
+15. **Missing scene test (Tier 3+).** `scene.test.ts` is REQUIRED at Tier 3+. Absent? BLOCKER. Present but no `Scene.expect(...)` or `Scene.Command.resolve(...)` in any block? Same. A Scene that only does `Scene.given(model)` only verifies the view doesn't throw; it doesn't test anything.
 
 16. **ARIA role confusion.** Checkboxes use `Role('checkbox')` + `AriaChecked(boolean)`. Toggle buttons (Play/Pause, Bold on/off, formatting toggles) use `AriaPressed(string)`. Mistaking one for the other is a semantic bug screen readers expose. Ask: does the label say "Mark as done" (checkbox) or "toggle bold" (pressed button)?
 

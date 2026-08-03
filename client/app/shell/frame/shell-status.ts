@@ -1,13 +1,11 @@
 // Shared shell status chrome: the idle/loading copy line, the error alert, and the Try again
-// ghost, used by every data-backed list surface (coverage, leaderboard). Bake layout-neutral
+// ghost, used by every data-backed list surface (coverage, leaderboard, h). Bake layout-neutral
 // shrink-0 in — block columns ignore it and contained flex columns (coverage) require it.
 
 import { Schema as S } from "effect";
-import type { html as createHtml, Html } from "foldkit/html";
+import type { Html, HtmlBuilder } from "foldkit/html";
 import { button } from "../../domain/ui/button";
 import { alertClass } from "../../domain/ui/surfaces";
-
-type HtmlFactory<Msg> = ReturnType<typeof createHtml<Msg>>;
 
 export const ShellStatus = S.Union([S.Literal("idle"), S.Literal("loading"), S.Literal("ready"), S.Literal("error")]);
 export type ShellStatus = typeof ShellStatus.Type;
@@ -31,7 +29,7 @@ export function shellStatusCopy(noun: string, status: ShellStatus): string | nul
 
 /** [error alert, status line, try-again button] — each null when not applicable. */
 export function shellStatusChrome<Msg>(
-  h: HtmlFactory<Msg>,
+  h: HtmlBuilder<Msg>,
   opts: {
     noun: string;
     status: ShellStatus;

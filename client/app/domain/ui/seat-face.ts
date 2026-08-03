@@ -1,8 +1,6 @@
-import type { Html, html } from "foldkit/html";
+import type { Html, HtmlBuilder } from "foldkit/html";
 import { cn } from "../cn";
 import { gravatarUrl, monogramLetter } from "../gravatar";
-
-type HtmlFactory<Message> = ReturnType<typeof html<Message>>;
 
 export type SeatFaceOptions = {
   seat: number;
@@ -11,7 +9,7 @@ export type SeatFaceOptions = {
   className?: string;
 };
 
-export function seatFace<Message>(h: HtmlFactory<Message>, options: SeatFaceOptions): Html {
+export function seatFace<Message>(h: HtmlBuilder<Message>, options: SeatFaceOptions): Html {
   const className = cn(
     "inline-flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-vine-dim font-bold text-caption text-snow",
     options.className,

@@ -1,17 +1,19 @@
 // CR 103.1 reveal: a one-shot spotlight hopping the seat quadrants onto the rolled starter.
-import { type Html, html } from "foldkit/html";
+import type { Html, HtmlBuilder } from "foldkit/html";
 import type { VisibleState } from "~/wire/types";
 import { seatCell, seatColor, seatSlot } from "../geometry/layout";
 import type { Message } from "../messages";
 import type { FirstPlayerReveal } from "../submodel";
 
-const h = html<Message>();
-
 function seatLabel(state: VisibleState, seat: number): string {
   return state.players.find((p) => p.player === seat)?.username ?? `Seat ${seat + 1}`;
 }
 
-export function firstPlayerRevealView(reveal: FirstPlayerReveal | null, state: VisibleState): Html | null {
+export function firstPlayerRevealView(
+  reveal: FirstPlayerReveal | null,
+  state: VisibleState,
+  h: HtmlBuilder<Message>,
+): Html | null {
   if (reveal == null) return null;
 
   const count = Math.max(1, state.players.length);

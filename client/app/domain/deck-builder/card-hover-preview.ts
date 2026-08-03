@@ -1,6 +1,6 @@
 // Shared card preview: cursor-follow (builder/list) and left-dock inspect (board).
 
-import type { Html, html } from "foldkit/html";
+import type { Html, HtmlBuilder } from "foldkit/html";
 import { cn } from "../cn";
 import { type OraclePart, splitOracleText } from "../oracleText";
 import { cardArt } from "../ui/card-art";
@@ -52,9 +52,7 @@ const PREVIEW_GAP = 24;
 const PANEL_CARD =
   "w-(--w) shrink-0 rounded-panel border border-vine bg-forest-surface px-xl py-lg text-preview-ash leading-[1.4]";
 
-type HtmlFactory<M> = ReturnType<typeof html<M>>;
-
-function oracleRichText<M>(h: HtmlFactory<M>, text: string): Array<Html | string> {
+function oracleRichText<M>(h: HtmlBuilder<M>, text: string): Array<Html | string> {
   return splitOracleText(text).map((part: OraclePart) => {
     if (part.kind === "symbol") {
       return h.span(
@@ -72,7 +70,7 @@ function oracleRichText<M>(h: HtmlFactory<M>, text: string): Array<Html | string
 }
 
 function textPanel<M>(
-  h: HtmlFactory<M>,
+  h: HtmlBuilder<M>,
   oracle: string | null | undefined,
   approximates: string | null | undefined,
   maxH: string,
@@ -95,18 +93,20 @@ function textPanel<M>(
   );
 }
 
-function artColumn<M>(h: HtmlFactory<M>, print: string, name: string, face: "front" | "back" | undefined): Html {
+function artColumn<M>(h: HtmlBuilder<M>, print: string, name: string, face: "front" | "back" | undefined): Html {
   return cardArt(h, {
     print,
     size: "display",
     face,
     alt: name,
-    className: "w-(--w) flex-none rounded-[14px] shadow-table",
+    // aspect keeps the box tall while the print loads — the skeleton is `absolute inset-0`, so a
+    // width-only class collapses to zero height and the preview reads as blank.
+    className: "aspect-[0.716] w-(--w) flex-none rounded-[14px] shadow-table",
     style: { "--w": `${PREVIEW_W}px` },
   });
 }
 
-function followPreviewView<M>(h: HtmlFactory<M>, args: FollowPreviewArgs): Html {
+function followPreviewView<M>(h: HtmlBuilder<M>, args: FollowPreviewArgs): Html {
   const { hover, card, testId = "card-hover-preview" } = args;
   const oracle = card?.oracle ?? null;
   const approximates = card?.approximates ?? null;
@@ -134,7 +134,7 @@ function followPreviewView<M>(h: HtmlFactory<M>, args: FollowPreviewArgs): Html 
   );
 }
 
-function dockPreviewView<M>(h: HtmlFactory<M>, args: DockPreviewArgs<M>): Html {
+function dockPreviewView<M>(h: HtmlBuilder<M>, args: DockPreviewArgs<M>): Html {
   const { print, name, oracle, approximates, face, extras, onDismiss, testId = "card-hover-preview" } = args;
 
   const text = textPanel(h, oracle, approximates, `${PREVIEW_H}px`);
@@ -166,7 +166,7 @@ function dockPreviewView<M>(h: HtmlFactory<M>, args: DockPreviewArgs<M>): Html {
 }
 
 /** Large face + optional oracle panel — `follow` (cursor) or `dock` (left + backdrop). */
-export function cardHoverPreviewView<M>(h: HtmlFactory<M>, args: CardPreviewArgs<M>): Html {
+export function cardHoverPreviewView<M>(h: HtmlBuilder<M>, args: CardPreviewArgs<M>): Html {
   if (args.mode === "dock") return dockPreviewView(h, args);
   return followPreviewView(h, args);
 }

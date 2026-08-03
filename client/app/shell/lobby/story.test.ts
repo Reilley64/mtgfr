@@ -28,7 +28,7 @@ test("started lobby view activates the board handoff and strips the deck path", 
 
   Story.story(
     update,
-    Story.with({
+    Story.given({
       ...model,
       route: PregameTableRoute({ deckId: "0", table: "ABC123" }),
       sessionLoaded: true,

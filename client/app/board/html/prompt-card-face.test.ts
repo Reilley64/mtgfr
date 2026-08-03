@@ -1,8 +1,8 @@
-import { html } from "foldkit/html";
 import { describe, expect, it } from "vitest";
+import { testHtml } from "~/test-html";
 import { promptCardFace } from "./prompt-card-face";
 
-const h = html<never>();
+const h = testHtml<never>();
 
 type VNode = {
   data?: { class?: Record<string, boolean>; attrs?: Record<string, string> };

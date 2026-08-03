@@ -1,10 +1,10 @@
-import { html } from "foldkit/html";
 import { describe, expect, it } from "vitest";
+import { testHtml } from "~/test-html";
 import { button } from "./button";
 
 type Msg = { _tag: "clicked" };
 
-const h = html<Msg>();
+const h = testHtml<Msg>();
 const clicked: Msg = { _tag: "clicked" };
 
 /** snabbdom stores classes as a truth-map under data.class. */

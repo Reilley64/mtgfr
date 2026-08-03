@@ -1,12 +1,13 @@
 import { expect, test } from "vitest";
 import { testMessageRef } from "~/i18n/testMessageRef";
+import { testHtml } from "~/test-html";
 import type { ActionView, ObjectView, VisibleState } from "~/wire/types";
 import type { GameFoldState } from "../game/fold";
 import { SubmitIntent } from "../game/intents";
 import { emptyCostPicks } from "./action/execution";
 import { ZONE } from "./geometry/layout";
 import { promptsView } from "./html/prompts";
-import { TargetChosen } from "./messages";
+import { type Message, TargetChosen } from "./messages";
 import { type BoardModel, initialBoardModel, updateBoard } from "./submodel";
 
 function creature(id: number, over: Partial<ObjectView> = {}): ObjectView {
@@ -102,7 +103,7 @@ test("off-board staged target opens the target-pick prompt", () => {
       playOriginScreen: { x: 0, y: 0 },
     },
   };
-  const view = promptsView(board, state({ objects: [spell, corpse] }), "T1");
+  const view = promptsView(board, state({ objects: [spell, corpse] }), "T1", testHtml<Message>());
   expect(view).not.toBeNull();
 });
 

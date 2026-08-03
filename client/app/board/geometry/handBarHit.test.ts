@@ -68,7 +68,7 @@ describe("handBarHitWidth", () => {
     expect(handBarHitWidth(2, 3, PEEK, FACE)).toBe(FACE);
   });
 
-  it("uses the full face for a single-card section (commander)", () => {
+  it("uses the full face for a single-card section (commander, h)", () => {
     expect(handBarHitWidth(0, 1, PEEK, FACE)).toBe(FACE);
   });
 });

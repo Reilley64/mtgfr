@@ -2,11 +2,10 @@
 // The recipe is private on purpose — a styled thing that is not a button should not be reachable.
 
 import * as Button from "@foldkit/ui/button";
-import type { Attribute, ChildAttribute, html as createHtml, Html } from "foldkit/html";
+import type { Attribute, ChildAttribute, Html, HtmlBuilder } from "foldkit/html";
 import type { ClassValue } from "../cn";
 import { cva } from "./recipe";
 
-type HtmlFactory<Msg> = ReturnType<typeof createHtml<Msg>>;
 // `foldkit/html`'s public surface re-exports Attribute/Html/etc but not the `Child` type alias
 // itself, so its definition (Html | string) is inlined here rather than imported.
 type Child = Html | string;
@@ -55,7 +54,7 @@ type SharedProps<Msg> = {
 export type ButtonProps<Msg> = SharedProps<Msg> &
   ({ as?: "button"; type?: "button" | "submit" | "reset"; disabled?: boolean } | { as: "a"; href: string });
 
-function shared<Msg>(h: HtmlFactory<Msg>, props: ButtonProps<Msg>): Array<Attribute<Msg> | ChildAttribute> {
+function shared<Msg>(h: HtmlBuilder<Msg>, props: ButtonProps<Msg>): Array<Attribute<Msg> | ChildAttribute> {
   const className = recipe({ variant: props.variant, class: props.class });
   const out: Array<Attribute<Msg> | ChildAttribute> = [h.Class(className)];
   if (props.testId != null) out.push(h.DataAttribute("testid", props.testId));
@@ -63,7 +62,7 @@ function shared<Msg>(h: HtmlFactory<Msg>, props: ButtonProps<Msg>): Array<Attrib
   return [...out, ...(props.attrs ?? [])];
 }
 
-export function button<Msg>(h: HtmlFactory<Msg>, props: ButtonProps<Msg>, children: ReadonlyArray<Child>): Html {
+export function button<Msg>(h: HtmlBuilder<Msg>, props: ButtonProps<Msg>, children: ReadonlyArray<Child>): Html {
   // An anchor is not a button: @foldkit/ui's button emits `type`, which is invalid on <a>.
   // Link-styled navigation therefore renders directly instead of through Button.view.
   if (props.as === "a") {
@@ -73,12 +72,15 @@ export function button<Msg>(h: HtmlFactory<Msg>, props: ButtonProps<Msg>, childr
     return h.a([h.Href(props.href), ...onClick, ...shared(h, props)], children);
   }
 
-  return Button.view<Msg>({
-    onClick: props.onClick,
-    isDisabled: props.disabled,
-    type: props.type ?? "button",
-    // Button.view only marks disabled via aria-disabled/data-disabled; set the native `disabled`
-    // prop too so the browser actually blocks focus/click and form submission.
-    toView: (a) => h.button([...a.button, h.Disabled(props.disabled ?? false), ...shared(h, props)], children),
-  });
+  return Button.view(
+    {
+      onClick: props.onClick,
+      isDisabled: props.disabled,
+      type: props.type ?? "button",
+      // Button.view only marks disabled via aria-disabled/data-disabled; set the native `disabled`
+      // prop too so the browser actually blocks focus/click and form submission.
+      toView: (a) => h.button([...a.button, h.Disabled(props.disabled ?? false), ...shared(h, props)], children),
+    },
+    h,
+  );
 }

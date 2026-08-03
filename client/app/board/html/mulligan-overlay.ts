@@ -1,4 +1,4 @@
-import { type Html, html } from "foldkit/html";
+import type { Html, HtmlBuilder } from "foldkit/html";
 import { mulliganChrome } from "~/mulligan";
 import { button } from "~/ui/button";
 import type { VisibleState } from "~/wire/types";
@@ -6,9 +6,7 @@ import { ZONE } from "../geometry/layout";
 import { KeepHandClicked, type Message, MulliganClicked } from "../messages";
 import { promptCardFace } from "./prompt-card-face";
 
-const h = html<Message>();
-
-export function mulliganOverlayView(state: VisibleState): Html | null {
+export function mulliganOverlayView(state: VisibleState, h: HtmlBuilder<Message>): Html | null {
   const chrome = mulliganChrome({
     mulliganing: state.mulliganing,
     localSeat: state.viewer,
@@ -69,7 +67,7 @@ export function mulliganOverlayView(state: VisibleState): Html | null {
   );
 }
 
-export function mulliganWaitingView(state: VisibleState): Html | null {
+export function mulliganWaitingView(state: VisibleState, h: HtmlBuilder<Message>): Html | null {
   const chrome = mulliganChrome({
     mulliganing: state.mulliganing,
     localSeat: state.viewer,

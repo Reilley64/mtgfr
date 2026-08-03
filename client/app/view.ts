@@ -1,4 +1,4 @@
-import { type Document, type Html, html } from "foldkit/html";
+import type { Document, Html, HtmlBuilder } from "foldkit/html";
 import { type ViewMessage as BoardViewMessage, view as boardView } from "./board";
 import { parseDeckIdParam, playDeckAccess } from "./deck-id";
 import type { AppChromeMeta } from "./domain/ui/app-version";
@@ -22,8 +22,6 @@ import { shellFrame } from "./shell/frame/shell-frame";
 import * as Leaderboard from "./shell/leaderboard";
 import * as Lobby from "./shell/lobby";
 
-const h = html<Message>();
-
 function chromeMeta(model: Model): AppChromeMeta {
   return {
     version: model.apiVersion,
@@ -33,7 +31,7 @@ function chromeMeta(model: Model): AppChromeMeta {
   };
 }
 
-function nav(model: Model) {
+function nav(model: Model, h: HtmlBuilder<Message>) {
   const user = model.session.me;
 
   return h.header(
@@ -61,7 +59,7 @@ function nav(model: Model) {
   );
 }
 
-function shell(model: Model, title: string, body: string) {
+function shell(model: Model, title: string, body: string, h: HtmlBuilder<Message>) {
   return surface(
     "shell",
     shellFrame(h, {
@@ -73,6 +71,7 @@ function shell(model: Model, title: string, body: string) {
         [h.p([h.Class("m-0 text-body text-snow/80")], [body])],
       ),
     }),
+    h,
   );
 }
 
@@ -140,7 +139,7 @@ function toParentCoverageMessage(message: Coverage.ViewMessage): Message {
   }
 }
 
-function boardMount(model: Model) {
+function boardMount(model: Model, h: HtmlBuilder<Message>) {
   const tableId =
     model.game?.tableId ??
     model.lobby.tableId ??
@@ -156,6 +155,7 @@ function boardMount(model: Model) {
         view: boardView,
         toParentMessage: toParentBoardMessage,
       }),
+      h,
     );
   }
 
@@ -164,7 +164,7 @@ function boardMount(model: Model) {
     h.main(
       [h.Class("min-h-screen bg-forest-floor text-snow"), h.DataAttribute("testid", "board-mount")],
       [
-        nav(model),
+        nav(model, h),
         h.section(
           [h.Class("mx-auto flex max-w-[var(--size-shell-content-max)] flex-col gap-md p-xxl")],
           [
@@ -177,11 +177,12 @@ function boardMount(model: Model) {
         ),
       ],
     ),
+    h,
   );
 }
 
 /** The pregame table surface, shared by `PregameTableRoute` and `GameTableRoute`. */
-function lobbyTable(model: Model): Html {
+function lobbyTable(model: Model, h: HtmlBuilder<Message>): Html {
   return surface(
     "lobby-table",
     h.submodel({
@@ -200,6 +201,7 @@ function lobbyTable(model: Model): Html {
       },
       toParentMessage: toParentLobbyMessage,
     }),
+    h,
   );
 }
 
@@ -210,18 +212,19 @@ function lobbyTable(model: Model): Html {
  *  same elements across a route change. `h.OnMount` runs on snabbdom's `insert` hook — on element
  *  creation — so reused elements never start their mounts: after a client-side navigation the deck
  *  builder's pool never got measured and the deck list's Escape binding never attached. The key is
- *  the surface (the submodel slot), not the route: `/play/:id` swaps lobby for board under one tag,
+ *  the surface (the submodel slot, h), not the route: `/play/:id` swaps lobby for board under one tag,
  *  and those are different surfaces. */
-function surface(key: string, body: Html): Html {
+function surface(key: string, body: Html, h: HtmlBuilder<Message>): Html {
   return h.keyed("div")(key, [h.Class("contents")], [body]);
 }
 
-function routeBody(model: Model) {
+function routeBody(model: Model, h: HtmlBuilder<Message>) {
   if (isProtectedRoute(model.route) && (!model.sessionLoaded || model.session.me == null)) {
     // Spec: no persistent nav chrome. Blank gate until session resolves (avoids Play/Sign in flash).
     return surface(
       "session-gate",
       h.main([h.Class("min-h-screen bg-forest-floor"), h.DataAttribute("testid", "session-gate")], []),
+      h,
     );
   }
 
@@ -242,6 +245,7 @@ function routeBody(model: Model) {
             },
             toParentMessage: toParentDeckListMessage,
           }),
+          h,
         );
       case "LoginRoute":
         return surface(
@@ -253,6 +257,7 @@ function routeBody(model: Model) {
             viewInputs: chromeMeta(model),
             toParentMessage: (message) => GotAuthMessage({ message }),
           }),
+          h,
         );
       case "LeaderboardRoute":
         return surface(
@@ -269,6 +274,7 @@ function routeBody(model: Model) {
             },
             toParentMessage: toParentLeaderboardMessage,
           }),
+          h,
         );
       case "CoverageRoute":
         return surface(
@@ -285,6 +291,7 @@ function routeBody(model: Model) {
             },
             toParentMessage: toParentCoverageMessage,
           }),
+          h,
         );
       case "NewDeckRoute":
       case "DeckRoute":
@@ -302,12 +309,13 @@ function routeBody(model: Model) {
             },
             toParentMessage: toParentDeckBuilderMessage,
           }),
+          h,
         );
       case "PlayRoute": {
-        if (model.game?.active === true) return boardMount(model);
+        if (model.game?.active === true) return boardMount(model, h);
         const deckId = parseDeckIdParam(model.route.deckId);
         const access = playDeckAccess(deckId, model.decks.list.decks, model.decks.list.loading, model.decks.list.error);
-        if (access === "missing") return shell(model, "Not found", `No Foldkit route for ${model.currentPath}.`);
+        if (access === "missing") return shell(model, "Not found", `No Foldkit route for ${model.currentPath}.`, h);
         return surface(
           "lobby-entry",
           h.submodel({
@@ -326,20 +334,21 @@ function routeBody(model: Model) {
             },
             toParentMessage: toParentLobbyMessage,
           }),
+          h,
         );
       }
       case "PregameTableRoute": {
-        if (model.game?.active === true) return boardMount(model);
+        if (model.game?.active === true) return boardMount(model, h);
         const deckId = parseDeckIdParam(model.route.deckId);
         const access = playDeckAccess(deckId, model.decks.list.decks, model.decks.list.loading, model.decks.list.error);
-        if (access === "missing") return shell(model, "Not found", `No Foldkit route for ${model.currentPath}.`);
-        return lobbyTable(model);
+        if (access === "missing") return shell(model, "Not found", `No Foldkit route for ${model.currentPath}.`, h);
+        return lobbyTable(model, h);
       }
       case "GameTableRoute":
-        if (model.game?.active === true) return boardMount(model);
-        return lobbyTable(model);
+        if (model.game?.active === true) return boardMount(model, h);
+        return lobbyTable(model, h);
       case "NotFoundRoute":
-        return shell(model, "Not found", `No Foldkit route for ${model.route.path}.`);
+        return shell(model, "Not found", `No Foldkit route for ${model.route.path}.`, h);
       default: {
         const exhaustive: never = model.route;
         return exhaustive;
@@ -348,7 +357,7 @@ function routeBody(model: Model) {
   })();
 }
 
-export const view = (model: Model): Document => {
+export const view = (model: Model, h: HtmlBuilder<Message>): Document => {
   return {
     title: "edh.reilley.dev",
     body: h.div(
@@ -356,7 +365,7 @@ export const view = (model: Model): Document => {
         h.DataAttribute("testid", "landscape-root"),
         ...(model.landscapeRotate.active ? [h.Class("landscape-rotate-root")] : []),
       ],
-      [routeBody(model)],
+      [routeBody(model, h)],
     ),
   };
 };

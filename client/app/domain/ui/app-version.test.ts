@@ -1,8 +1,8 @@
-import { html } from "foldkit/html";
 import { describe, expect, it } from "vitest";
+import { testHtml } from "~/test-html";
 import { appVersionBadge, formatFaithfulPercent } from "./app-version";
 
-const h = html<never>();
+const h = testHtml<never>();
 
 describe("formatFaithfulPercent", () => {
   it("returns null when oracleTotal is not positive", () => {

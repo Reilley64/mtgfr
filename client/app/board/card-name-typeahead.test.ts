@@ -2,7 +2,7 @@ import * as Combobox from "@foldkit/ui/combobox";
 import { expect, test } from "vitest";
 import type { VisibleState } from "~/wire/types";
 import type { GameFoldState } from "../game/fold";
-import { GotCardNameComboboxMessage, PromptStringSet } from "./messages";
+import { CompletedCancelSearchCardNames, GotCardNameComboboxMessage, PromptStringSet } from "./messages";
 import { initialBoardModel, updateBoard } from "./submodel";
 
 function state(overrides: Partial<VisibleState> = {}): VisibleState {
@@ -74,7 +74,11 @@ test("typing in the typeahead fills the draft and searches the catalog", () => {
   );
   expect(model.cardNameCombobox.inputValue).toBe("Sol");
   expect(model.promptDraft).toEqual({ kind: "string", value: "Sol" });
-  expect(cmds.some((c) => (c as { name?: string }).name === "SearchCardNames")).toBe(true);
+  // The keystroke stops the search before it; the catalog search for "Sol" goes out when that
+  // cancellation lands.
+  expect(cmds.some((c) => (c as { name?: string }).name === "SearchCardNames.Interrupt")).toBe(true);
+  const [, searchCmds] = updateBoard(model, CompletedCancelSearchCardNames(), fold(), "T1");
+  expect(searchCmds).toEqual([expect.objectContaining({ name: "SearchCardNames", args: { query: "Sol" } })]);
 });
 
 test("picking a suggestion names that card", () => {
@@ -98,12 +102,14 @@ test("PromptStringSet searches catalog names once the query is long enough", () 
     promptDraft: { kind: "string" as const, value: "" },
     pendingChoiceKey: "choose_card_name",
   };
-  const [short, shortCmds] = updateBoard(board, PromptStringSet({ value: "S" }), game, "T1");
+  const [short] = updateBoard(board, PromptStringSet({ value: "S" }), game, "T1");
   expect(short.promptDraft).toEqual({ kind: "string", value: "S" });
   expect(short.cardNameSuggestions).toBeNull();
-  expect(shortCmds).toEqual([]);
+  // Too short to search: the in-flight search is still cancelled, and nothing replaces it.
+  expect(updateBoard(short, CompletedCancelSearchCardNames(), game, "T1")[1]).toEqual([]);
 
-  const [ready, readyCmds] = updateBoard(short, PromptStringSet({ value: "Sol" }), game, "T1");
+  const [ready] = updateBoard(short, PromptStringSet({ value: "Sol" }), game, "T1");
   expect(ready.promptDraft).toEqual({ kind: "string", value: "Sol" });
+  const [, readyCmds] = updateBoard(ready, CompletedCancelSearchCardNames(), game, "T1");
   expect((readyCmds[0] as { name?: string } | undefined)?.name).toBe("SearchCardNames");
 });

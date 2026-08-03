@@ -1,8 +1,8 @@
-import { html } from "foldkit/html";
 import { describe, expect, it } from "vitest";
+import { testHtml } from "~/test-html";
 import { pipChip } from "./pip-chip";
 
-const h = html<never>();
+const h = testHtml<never>();
 
 type VNode = {
   data?: { class?: Record<string, boolean>; style?: Record<string, string>; attrs?: Record<string, string> };

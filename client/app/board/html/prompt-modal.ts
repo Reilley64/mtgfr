@@ -1,9 +1,10 @@
-import { type Html, html } from "foldkit/html";
+import type { Html, HtmlBuilder } from "foldkit/html";
 import type { Message } from "../messages";
 
-const h = html<Message>();
-
-export function promptModalFrame(options: { testId: string; title: string; body: Html[]; actions: Html[] }): Html {
+export function promptModalFrame(
+  options: { testId: string; title: string; body: Html[]; actions: Html[] },
+  h: HtmlBuilder<Message>,
+): Html {
   return h.div(
     [
       h.DataAttribute("testid", options.testId),

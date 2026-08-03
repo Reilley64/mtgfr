@@ -1,5 +1,5 @@
 import { Effect } from "effect";
-import type { html as createHtml, Html } from "foldkit/html";
+import type { Html, HtmlBuilder } from "foldkit/html";
 import { m } from "foldkit/message";
 import * as Mount from "foldkit/mount";
 import { cardBackUrl, type ImageFace, type ImageSize, imageUrlByPrint } from "../deck-builder/scryfall";
@@ -79,7 +79,7 @@ export const BindCardArt = Mount.define(
 );
 
 export function cardArt<M>(
-  h: ReturnType<typeof createHtml<M>>,
+  h: HtmlBuilder<M>,
   opts: {
     print: string;
     size?: ImageSize;

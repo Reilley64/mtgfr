@@ -1,6 +1,6 @@
 import type * as Menu from "@foldkit/ui/menu";
 import { Submodel } from "foldkit";
-import { type Html, html } from "foldkit/html";
+import type { Html, HtmlBuilder } from "foldkit/html";
 import { type AppChromeMeta, formatFaithfulPercent } from "../../domain/ui/app-version";
 import { button } from "../../domain/ui/button";
 import { input } from "../../domain/ui/input";
@@ -21,8 +21,6 @@ export type ViewInputs = {
   chrome: AppChromeMeta;
   accountMenu: Menu.Model;
 };
-
-const h = html<ViewMessage>();
 
 function compareReleasedAtDescending(left: CoverageSetRow, right: CoverageSetRow): number {
   if (left.releasedAt == null && right.releasedAt == null) return 0;
@@ -56,7 +54,7 @@ export function visibleCoverageRows(model: Pick<CoverageSubmodel, "query" | "set
   });
 }
 
-function tableRow(row: CoverageSetRow): Html {
+function tableRow(row: CoverageSetRow, h: HtmlBuilder<ViewMessage>): Html {
   return h.div(
     [
       h.Class(listRowClass("grid grid-cols-[minmax(0,1.75fr)_96px_96px_80px] items-center gap-md px-md py-sm")),
@@ -80,7 +78,7 @@ function tableRow(row: CoverageSetRow): Html {
   );
 }
 
-export const view = Submodel.defineView<CoverageSubmodel, ViewMessage, ViewInputs>((model, viewInputs): Html => {
+export const view = Submodel.defineView<CoverageSubmodel, ViewMessage, ViewInputs>((model, viewInputs, h): Html => {
   const { chrome, meGravatarHash, username } = viewInputs;
   const rows = visibleCoverageRows(model);
   const globalPercent = coveragePercentText(model.faithfulCount, model.oracleTotal);
@@ -153,7 +151,7 @@ export const view = Submodel.defineView<CoverageSubmodel, ViewMessage, ViewInput
                         h.Class("flex min-h-0 flex-1 flex-col gap-xs overflow-y-auto overscroll-contain"),
                         h.DataAttribute("testid", "coverage-table-body"),
                       ],
-                      rows.map(tableRow),
+                      rows.map((r) => tableRow(r, h)),
                     ),
                   ],
                 )

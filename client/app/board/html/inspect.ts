@@ -3,18 +3,16 @@
 // State lives in BoardModel (inspectPin, inspectCard, inspectFace). The catalog fetch is
 // a Command (FetchInspectCard → InspectCardFetched) fired from updateBoard on pin change.
 
-import { type Html, html } from "foldkit/html";
+import type { Html, HtmlBuilder } from "foldkit/html";
 import { cardHoverPreviewView } from "~/deck-builder/card-hover-preview";
 import { commanderDamageBreakdown, type InspectFace, type InspectPin, shownName } from "~/inspect";
 import { button } from "~/ui/button";
 import type { CatalogCard, ObjectView, PlayerView } from "~/wire/types";
 import { InspectDismissed, InspectFlipFace, type Message } from "../messages";
 
-const h = html<Message>();
-
 const PANEL_W = 280;
 
-function modifierLedger(modifiers: NonNullable<ObjectView["modifiers"]>): Html | null {
+function modifierLedger(modifiers: NonNullable<ObjectView["modifiers"]>, h: HtmlBuilder<Message>): Html | null {
   if (modifiers.length === 0) return null;
   const entries = modifiers.map((group) =>
     h.div(
@@ -36,6 +34,7 @@ function commanderDamagePanel(
   player: PlayerView,
   players: ReadonlyArray<PlayerView>,
   objects: ReadonlyArray<ObjectView>,
+  h: HtmlBuilder<Message>,
 ): Html | null {
   const rows = commanderDamageBreakdown(player, players, objects);
   if (rows.length === 0) return null;
@@ -54,6 +53,7 @@ function playerInspectView(
   pin: InspectPin,
   players: ReadonlyArray<PlayerView>,
   objects: ReadonlyArray<ObjectView>,
+  h: HtmlBuilder<Message>,
 ): Html {
   const seat = pin.playerSeat;
   const player = seat != null ? (players.find((p) => p.player === seat) ?? null) : null;
@@ -62,7 +62,7 @@ function playerInspectView(
     life != null
       ? h.div([h.DataAttribute("testid", "inspect-player-life"), h.Class(panelClass())], [`Life: ${life}`])
       : null;
-  const damageEl = player != null ? commanderDamagePanel(player, players, objects) : null;
+  const damageEl = player != null ? commanderDamagePanel(player, players, objects, h) : null;
   const panels = [
     h.div(
       [
@@ -108,12 +108,13 @@ export function inspectView(
   card: CatalogCard | null | undefined,
   face: InspectFace,
   /** Live ObjectView for the pinned object, when on battlefield — modifiers and marked damage. */
-  liveObject?: ObjectView | null,
-  players: ReadonlyArray<PlayerView> = [],
-  objects: ReadonlyArray<ObjectView> = [],
+  liveObject: ObjectView | null | undefined,
+  players: ReadonlyArray<PlayerView>,
+  objects: ReadonlyArray<ObjectView>,
+  h: HtmlBuilder<Message>,
 ): Html | null {
   if (pin == null) return null;
-  if (pin.playerSeat != null) return playerInspectView(pin, players, objects);
+  if (pin.playerSeat != null) return playerInspectView(pin, players, objects, h);
 
   const back = card?.back ?? null;
   const hasBack = !!back?.name;
@@ -131,7 +132,7 @@ export function inspectView(
   const catalogReady = card !== undefined;
   const displayFace: InspectFace = catalogReady ? currentFace : pin.prepared ? "back" : "front";
 
-  const modsEl = modifierLedger(modifiers);
+  const modsEl = modifierLedger(modifiers, h);
   const markedDamage = liveObject?.marked_damage ?? 0;
   const markedDamageEl =
     markedDamage > 0

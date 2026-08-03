@@ -775,7 +775,7 @@ test("KeyboardSpacePressed submits pass_priority intent", () => {
 test("RadialWedgeArmed still sets radial press with new state", () => {
   Story.story(
     (model: BoardModel, message: Message) => updateBoard(model, message, gameFold(), null),
-    Story.with(initialBoardModel()),
+    Story.given(initialBoardModel()),
     Story.message(RadialWedgeArmed({ index: 2 })),
     Story.model((model) => {
       expect(model.radialPress.armed).toBe(2);

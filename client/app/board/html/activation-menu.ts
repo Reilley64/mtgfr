@@ -1,5 +1,5 @@
 import { Option } from "effect";
-import { type Html, html } from "foldkit/html";
+import type { Html, HtmlBuilder } from "foldkit/html";
 import { costPips } from "~/costPips";
 import { manaFontClass } from "~/oracleText";
 import type { VisibleState } from "~/wire/types";
@@ -25,13 +25,11 @@ import {
 import type { BoardModel } from "../submodel";
 import { pipChip } from "./pip-chip";
 
-const h = html<Message>();
-
-function costPipView(ms: string, code: string, sizePx: number): Html {
+function costPipView(ms: string, code: string, sizePx: number, h: HtmlBuilder<Message>): Html {
   return pipChip(h, { ms, code, sizePx });
 }
 
-function costChipView(opt: RadialOption): Html | null {
+function costChipView(opt: RadialOption, h: HtmlBuilder<Message>): Html | null {
   const chip = activationCostChip(opt);
   if (chip == null) return null;
 
@@ -50,13 +48,13 @@ function costChipView(opt: RadialOption): Html | null {
     ],
     [
       chip.kind === "tap" || chip.kind === "tap_and_mana" ? tap : null,
-      ...mana.map((pip) => costPipView(pip.ms, pip.code, 14)),
+      ...mana.map((pip) => costPipView(pip.ms, pip.code, 14, h)),
     ].filter((child): child is Html => child !== null),
   );
 }
 
 /** `×k` when more than one copy in the cluster can still activate this ability. */
-function availableChipView(opt: RadialOption): Html | null {
+function availableChipView(opt: RadialOption, h: HtmlBuilder<Message>): Html | null {
   if (opt.kind !== "action" || opt.available == null) return null;
   return h.span(
     [
@@ -95,7 +93,7 @@ export function selectedRadialOptions(board: BoardModel, state: VisibleState): R
   );
 }
 
-export function activationMenuView(board: BoardModel, state: VisibleState): Html | null {
+export function activationMenuView(board: BoardModel, state: VisibleState, h: HtmlBuilder<Message>): Html | null {
   const id = board.selectedId;
   if (id == null) return null;
   const obj = state.objects.find((object) => object.id === id);
@@ -169,8 +167,8 @@ export function activationMenuView(board: BoardModel, state: VisibleState): Html
             ],
             [
               h.span([h.Class("min-w-0 flex-1 line-clamp-2 text-left")], [opt.label]),
-              availableChipView(opt),
-              costChipView(opt),
+              availableChipView(opt, h),
+              costChipView(opt, h),
             ].filter((child): child is Html => child !== null),
           );
         }),

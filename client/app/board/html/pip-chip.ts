@@ -1,13 +1,11 @@
 // Mana pip chip: opaque colored plate + mana-font glyph, sized in px. Shared by the hand cost
 // strip, the activation menu cost chip, and color-pick prompts — one renderer, one pip ink.
 
-import type { html as createHtml, Html } from "foldkit/html";
+import type { Html, HtmlBuilder } from "foldkit/html";
 import { costPipPlate } from "~/costPips";
 
-type HtmlFactory<Msg> = ReturnType<typeof createHtml<Msg>>;
-
 export function pipChip<Msg>(
-  h: HtmlFactory<Msg>,
+  h: HtmlBuilder<Msg>,
   opts: { ms: string; code: string; sizePx: number; extraClass?: string; testId?: string },
 ): Html {
   return h.span(

@@ -84,78 +84,68 @@ function applyRouteChange(
   };
 }
 
-export const CreateLobbyTable = Command.define(
-  "CreateLobbyTable",
-  LobbyTableCreated,
-  LobbyRequestFailed,
-)(
-  Effect.gen(function* () {
+export const CreateLobbyTable = Command.define("CreateLobbyTable", {
+  messages: [LobbyTableCreated, LobbyRequestFailed],
+  execute: Effect.gen(function* () {
     const lobby = yield* LobbyClient;
     return yield* lobby.createTable().pipe(
       Effect.map((created) => LobbyTableCreated({ tableId: created.table_id })),
       Effect.catch((error) => Effect.succeed(lobbyFailure(error))),
     );
   }),
-);
+});
 
-export const JoinLobbyTable = Command.define(
-  "JoinLobbyTable",
-  { tableId: S.String, deckId: S.Number },
-  ReceivedLobbyView,
-  LobbyRequestFailed,
-)(({ tableId, deckId }) =>
-  Effect.gen(function* () {
-    const lobby = yield* LobbyClient;
-    return yield* lobby.joinTable(tableId, { deck_id: deckId }).pipe(
+export const JoinLobbyTable = Command.define("JoinLobbyTable", {
+  args: { tableId: S.String, deckId: S.Number },
+  messages: [ReceivedLobbyView, LobbyRequestFailed],
+  execute: ({ tableId, deckId }) =>
+    Effect.gen(function* () {
+      const lobby = yield* LobbyClient;
+      return yield* lobby.joinTable(tableId, { deck_id: deckId }).pipe(
+        Effect.map(viewResult),
+        Effect.catch((error) => Effect.succeed(lobbyFailure(error))),
+      );
+    }),
+});
+
+export const ReadyLobby = Command.define("ReadyLobby", {
+  args: { tableId: S.String, ready: S.Boolean },
+  messages: [ReceivedLobbyView, LobbyRequestFailed],
+  execute: ({ tableId, ready }) =>
+    Effect.sync(() => unlockTableAudio()).pipe(
+      Effect.flatMap(() =>
+        Effect.gen(function* () {
+          const lobby = yield* LobbyClient;
+          return yield* lobby.readyUp(tableId, { ready });
+        }),
+      ),
       Effect.map(viewResult),
       Effect.catch((error) => Effect.succeed(lobbyFailure(error))),
-    );
-  }),
-);
-
-export const ReadyLobby = Command.define(
-  "ReadyLobby",
-  { tableId: S.String, ready: S.Boolean },
-  ReceivedLobbyView,
-  LobbyRequestFailed,
-)(({ tableId, ready }) =>
-  Effect.sync(() => unlockTableAudio()).pipe(
-    Effect.flatMap(() =>
-      Effect.gen(function* () {
-        const lobby = yield* LobbyClient;
-        return yield* lobby.readyUp(tableId, { ready });
-      }),
     ),
-    Effect.map(viewResult),
-    Effect.catch((error) => Effect.succeed(lobbyFailure(error))),
-  ),
-);
+});
 
-export const StartLobbyGame = Command.define(
-  "StartLobbyGame",
-  { tableId: S.String },
-  ReceivedLobbyView,
-  LobbyRequestFailed,
-)(({ tableId }) =>
-  Effect.gen(function* () {
-    const lobby = yield* LobbyClient;
-    return yield* lobby.startGame(tableId).pipe(
-      Effect.map(viewResult),
-      Effect.catch((error) => Effect.succeed(lobbyFailure(error))),
-    );
-  }),
-);
+export const StartLobbyGame = Command.define("StartLobbyGame", {
+  args: { tableId: S.String },
+  messages: [ReceivedLobbyView, LobbyRequestFailed],
+  execute: ({ tableId }) =>
+    Effect.gen(function* () {
+      const lobby = yield* LobbyClient;
+      return yield* lobby.startGame(tableId).pipe(
+        Effect.map(viewResult),
+        Effect.catch((error) => Effect.succeed(lobbyFailure(error))),
+      );
+    }),
+});
 
-export const CopyLobbyLink = Command.define(
-  "CopyLobbyLink",
-  { tableId: S.String },
-  LobbyCopyCompleted,
-)(({ tableId }) =>
-  Effect.tryPromise(() => navigator.clipboard.writeText(tableId)).pipe(
-    Effect.as(LobbyCopyCompleted({ ok: true })),
-    Effect.catch(() => Effect.succeed(LobbyCopyCompleted({ ok: false }))),
-  ),
-);
+export const CopyLobbyLink = Command.define("CopyLobbyLink", {
+  args: { tableId: S.String },
+  messages: [LobbyCopyCompleted],
+  execute: ({ tableId }) =>
+    Effect.tryPromise(() => navigator.clipboard.writeText(tableId)).pipe(
+      Effect.as(LobbyCopyCompleted({ ok: true })),
+      Effect.catch(() => Effect.succeed(LobbyCopyCompleted({ ok: false }))),
+    ),
+});
 
 function joinCommand(
   model: LobbySlice,

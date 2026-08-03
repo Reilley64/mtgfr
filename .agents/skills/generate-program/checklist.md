@@ -44,7 +44,7 @@ grep -rn "Array\.map.*=>\s*\(li\|div\)" src/
 grep -rn "^\s*return li(" src/    # row-renderer helpers
 grep -rn "^\s*return div(" src/   # same for div-based rows
 
-# Scene tests without assertions: Scene.scene(...) calls that only do Scene.with()
+# Scene tests without assertions: Scene.scene(...) calls that only do Scene.given()
 # and nothing else verify only that the view doesn't throw. Each test needs at least
 # one Scene.expect(...) OR a Scene.click/type/submit followed by Scene.Command.resolve(...).
 # Eyeball every Scene.scene block: if it contains no "Scene.expect" and no "Scene.Command.resolve",
@@ -77,7 +77,7 @@ grep -rn "label(\[" src/ | grep -v "For("
 grep -rn "maybe[A-Z][a-zA-Z]*: [A-Z][a-zA-Z]* | undefined" src/
 grep -rn "maybe[A-Z][a-zA-Z]*: string\b\|maybe[A-Z][a-zA-Z]*: number\b\|maybe[A-Z][a-zA-Z]*: boolean\b" src/
 
-# h.span([], []): use h.empty (the empty value off h = html<Message>(), bound inside the view function)
+# h.span([], []): use h.empty (the empty value off the `h` builder the runtime passes in)
 grep -rn "\.span(\[\], \[\])\|^span(\[\], \[\])" src/
 
 # Effect.ignore on infallible Effects (pushUrl, load, back, forward)

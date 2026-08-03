@@ -51,14 +51,14 @@ export function prefersReducedMotion(): boolean {
   return matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
-export const RevealStepTimer = Command.define(
-  "RevealStepTimer",
-  { ms: S.Number },
-  FirstPlayerRevealStepped,
-)(({ ms }) => Effect.sleep(Duration.millis(ms)).pipe(Effect.as(FirstPlayerRevealStepped())));
+export const RevealStepTimer = Command.define("RevealStepTimer", {
+  args: { ms: S.Number },
+  messages: [FirstPlayerRevealStepped],
+  execute: ({ ms }) => Effect.sleep(Duration.millis(ms)).pipe(Effect.as(FirstPlayerRevealStepped())),
+});
 
-export const RevealHoldTimer = Command.define(
-  "RevealHoldTimer",
-  { ms: S.Number },
-  FirstPlayerRevealFinished,
-)(({ ms }) => Effect.sleep(Duration.millis(ms)).pipe(Effect.as(FirstPlayerRevealFinished())));
+export const RevealHoldTimer = Command.define("RevealHoldTimer", {
+  args: { ms: S.Number },
+  messages: [FirstPlayerRevealFinished],
+  execute: ({ ms }) => Effect.sleep(Duration.millis(ms)).pipe(Effect.as(FirstPlayerRevealFinished())),
+});

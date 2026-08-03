@@ -7,7 +7,7 @@
 // card uses the full face (`handBarHitWidth`).
 
 import { Option } from "effect";
-import { type Attribute, type Html, html } from "foldkit/html";
+import type { Attribute, Html, HtmlBuilder } from "foldkit/html";
 import { type CostPip, costPips } from "~/costPips";
 import { cardArt } from "~/ui/card-art";
 import type { ActionView, ObjectView, VisibleState, WireCost } from "~/wire/types";
@@ -20,8 +20,6 @@ import type { HandDragState } from "../submodel";
 import { barZoneAura, byObject, bySection, handTileCaption, modesForObject } from "./actions";
 import { MountHandBarDrag } from "./hand-drag-mount";
 import { pipChip } from "./pip-chip";
-
-const h = html<Message>();
 
 export const HAND_CARD_PEEK = HAND_BAR_PEEK;
 export const HAND_VISIBLE_H = 178;
@@ -107,29 +105,32 @@ function actionCaption(kind: string): string | undefined {
   return undefined;
 }
 
-function costPipView(ms: string, code: string, sizePx: number): Html {
+function costPipView(ms: string, code: string, sizePx: number, h: HtmlBuilder<Message>): Html {
   return pipChip(h, { ms, code, sizePx });
 }
 
-function tile(args: {
-  metrics: HandMetrics;
-  name: string;
-  print: string;
-  cardId?: string;
-  zone: "hand" | "command" | "graveyard" | "exile";
-  objectId?: number;
-  objectKind?: string;
-  manaCost: WireCost;
-  action: ActionView | null;
-  slotInert: boolean;
-  /** Action id of the active hand drag — fades the source tile while the canvas ghost follows. */
-  draggingActionId?: number | null;
-  caption?: string;
-  index: number;
-  count: number;
-  discardSelectable?: boolean;
-  discardSelected?: boolean;
-}): Html {
+function tile(
+  args: {
+    metrics: HandMetrics;
+    name: string;
+    print: string;
+    cardId?: string;
+    zone: "hand" | "command" | "graveyard" | "exile";
+    objectId?: number;
+    objectKind?: string;
+    manaCost: WireCost;
+    action: ActionView | null;
+    slotInert: boolean;
+    /** Action id of the active hand drag — fades the source tile while the canvas ghost follows. */
+    draggingActionId?: number | null;
+    caption?: string;
+    index: number;
+    count: number;
+    discardSelectable?: boolean;
+    discardSelected?: boolean;
+  },
+  h: HtmlBuilder<Message>,
+): Html {
   const {
     metrics,
     name,
@@ -257,7 +258,7 @@ function tile(args: {
             h.Style({ top: `-${metrics.pipRowH}px`, height: `${metrics.pipRowH}px` }),
             h.Attribute("aria-hidden", "true"),
           ],
-          pips.map((pip: CostPip) => costPipView(pip.ms, pip.code, metrics.pipSize)),
+          pips.map((pip: CostPip) => costPipView(pip.ms, pip.code, metrics.pipSize, h)),
         )
       : null;
 
@@ -337,7 +338,7 @@ function tile(args: {
   ]);
 }
 
-function section(name: string, overlap: number, tiles: ReadonlyArray<Html>): Html | null {
+function section(name: string, overlap: number, tiles: ReadonlyArray<Html>, h: HtmlBuilder<Message>): Html | null {
   if (tiles.length === 0) return null;
   return h.fieldset(
     [
@@ -365,7 +366,7 @@ export type HandViewInputs = {
   discardSelectedIds?: ReadonlySet<number> | null;
 };
 
-export function handView(inputs: HandViewInputs): Html {
+export function handView(inputs: HandViewInputs, h: HtmlBuilder<Message>): Html {
   const {
     viewport,
     state,
@@ -406,22 +407,25 @@ export function handView(inputs: HandViewInputs): Html {
   const draggingActionId = handDrag?.action.id ?? null;
 
   const commandTiles = commandVisible.map((c, index) =>
-    tile({
-      metrics,
-      name: c.name,
-      print: c.print ?? "",
-      cardId: c.card_id,
-      zone: "command",
-      objectId: c.id,
-      objectKind: c.kind.kind,
-      manaCost: c.mana_cost,
-      action: commandActionByObject.get(c.id) ?? null,
-      slotInert: slotInert(c.id),
-      draggingActionId,
-      caption: c.is_commander && commanderTax > 0 ? `Tax +{${commanderTax}}` : undefined,
-      index,
-      count: commandVisible.length,
-    }),
+    tile(
+      {
+        metrics,
+        name: c.name,
+        print: c.print ?? "",
+        cardId: c.card_id,
+        zone: "command",
+        objectId: c.id,
+        objectKind: c.kind.kind,
+        manaCost: c.mana_cost,
+        action: commandActionByObject.get(c.id) ?? null,
+        slotInert: slotInert(c.id),
+        draggingActionId,
+        caption: c.is_commander && commanderTax > 0 ? `Tax +{${commanderTax}}` : undefined,
+        index,
+        count: commandVisible.length,
+      },
+      h,
+    ),
   );
 
   type HandSlot = {
@@ -457,14 +461,17 @@ export function handView(inputs: HandViewInputs): Html {
     });
   }
   const handTiles = handSlots.map((slot, index) =>
-    tile({
-      metrics,
-      ...slot,
-      zone: "hand",
-      draggingActionId,
-      index,
-      count: handSlots.length,
-    }),
+    tile(
+      {
+        metrics,
+        ...slot,
+        zone: "hand",
+        draggingActionId,
+        index,
+        count: handSlots.length,
+      },
+      h,
+    ),
   );
 
   // GY/exile peeks are playable-only (unlike command, which always shows the commander).
@@ -473,22 +480,25 @@ export function handView(inputs: HandViewInputs): Html {
     actions.map((a, index, arr) => {
       const meta = metaFor(a.object);
       const id = a.object ?? undefined;
-      return tile({
-        metrics,
-        name: formatMessage(a.label),
-        print: meta.print,
-        cardId: meta.cardId,
-        zone,
-        objectId: id,
-        objectKind: meta.kind,
-        manaCost: meta.manaCost,
-        action: a,
-        slotInert: id != null ? slotInert(id) : false,
-        draggingActionId,
-        caption: actionCaption(a.kind),
-        index,
-        count: arr.length,
-      });
+      return tile(
+        {
+          metrics,
+          name: formatMessage(a.label),
+          print: meta.print,
+          cardId: meta.cardId,
+          zone,
+          objectId: id,
+          objectKind: meta.kind,
+          manaCost: meta.manaCost,
+          action: a,
+          slotInert: id != null ? slotInert(id) : false,
+          draggingActionId,
+          caption: actionCaption(a.kind),
+          index,
+          count: arr.length,
+        },
+        h,
+      );
     });
 
   return h.div(
@@ -504,10 +514,10 @@ export function handView(inputs: HandViewInputs): Html {
           h.Style({ height: `${metrics.barH}px` }),
         ],
         [
-          section("Command", metrics.overlap, commandTiles),
-          section("Hand", metrics.overlap, handTiles),
-          section("Graveyard", metrics.overlap, zoneTiles("graveyard", grouped.graveyard)),
-          section("Exile", metrics.overlap, zoneTiles("exile", grouped.exile)),
+          section("Command", metrics.overlap, commandTiles, h),
+          section("Hand", metrics.overlap, handTiles, h),
+          section("Graveyard", metrics.overlap, zoneTiles("graveyard", grouped.graveyard), h),
+          section("Exile", metrics.overlap, zoneTiles("exile", grouped.exile), h),
         ].filter((child): child is Html => child !== null),
       ),
     ].filter((child): child is Html => child !== null),

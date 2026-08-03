@@ -1,9 +1,9 @@
 // Priority context bar: Next / Resolve card / Resolve stack / End Turn / turn yield.
 //
 // Ported silhouette from Solid `priority-context-bar.tsx`: game button variants, primary
-// emphasis while this seat must act, Arena turn-yield rocker (amber earth, never priority gold).
+// emphasis while this seat must act, Arena turn-yield rocker (amber earth, never priority gold, h).
 
-import { type Html, html } from "foldkit/html";
+import type { Html, HtmlBuilder } from "foldkit/html";
 import { priorityPrimaryClass } from "~/priorityContextChrome";
 import {
   turnYieldLabelClass,
@@ -28,8 +28,6 @@ import {
 import { promptPresentation } from "../promptPresentation";
 import type { BoardModel } from "../submodel";
 import { simplePromptBarActions } from "./prompt-bar-actions";
-
-const h = html<Message>();
 
 /** The same decision the click path makes (`primaryActionFor`) — the button's label and what it
  * submits must never disagree. */
@@ -75,7 +73,10 @@ function showTurnYield(state: VisibleState): boolean {
 
 /** Arena rocker: a `role="switch"` toggle whose label sits collapsed to its left until hover or
  * keyboard focus opens it. Both turn-yield toggles share this shape — only the armed hue differs. */
-function rocker(opts: { testId: string; tone: YieldTone; checked: boolean; label: string }): Html {
+function rocker(
+  opts: { testId: string; tone: YieldTone; checked: boolean; label: string },
+  h: HtmlBuilder<Message>,
+): Html {
   return h.button(
     [
       h.Type("button"),
@@ -97,7 +98,12 @@ function rocker(opts: { testId: string; tone: YieldTone; checked: boolean; label
   );
 }
 
-export function priorityBarView(board: BoardModel, state: VisibleState, tableId: string | null): Html | null {
+export function priorityBarView(
+  board: BoardModel,
+  state: VisibleState,
+  tableId: string | null,
+  h: HtmlBuilder<Message>,
+): Html | null {
   const presentation = promptPresentation(board, state);
   if (presentation.mode === "modal") {
     // Rich prompts keep answer chrome inside the centered modal; an empty bar above the
@@ -105,7 +111,7 @@ export function priorityBarView(board: BoardModel, state: VisibleState, tableId:
     return null;
   }
   if (presentation.mode === "simple") {
-    const simpleActions = simplePromptBarActions(board, state, tableId);
+    const simpleActions = simplePromptBarActions(board, state, tableId, h);
 
     return h.div(
       [
@@ -114,7 +120,7 @@ export function priorityBarView(board: BoardModel, state: VisibleState, tableId:
         h.Class("pointer-events-auto fixed bottom-(--b) right-md z-45 flex flex-col items-end gap-sm"),
         h.Style({ "--b": `calc(var(--hand-bar-h) + 10px)` }),
       ],
-      [simpleActions, board.reject != null ? rejectView(board.reject) : null].filter((v): v is Html => v !== null),
+      [simpleActions, board.reject != null ? rejectView(board.reject, h) : null].filter((v): v is Html => v !== null),
     );
   }
 
@@ -153,22 +159,28 @@ export function priorityBarView(board: BoardModel, state: VisibleState, tableId:
       : null;
 
   const endTurnBtn: Html | null = showEndTurn(state, pendingAttackers)
-    ? rocker({
-        testId: "board-end-turn",
-        tone: "end-turn",
-        checked: turnYielded,
-        // Constant name, like the until-my-turn rocker — armed state is the rocker's job, not the label's.
-        label: "End turn",
-      })
+    ? rocker(
+        {
+          testId: "board-end-turn",
+          tone: "end-turn",
+          checked: turnYielded,
+          // Constant name, like the until-my-turn rocker — armed state is the rocker's job, not the label's.
+          label: "End turn",
+        },
+        h,
+      )
     : null;
 
   const turnYieldBtn: Html | null = showTurnYield(state)
-    ? rocker({
-        testId: "board-turn-yield",
-        tone: "yield",
-        checked: turnYielded,
-        label: "Auto-pass until my turn",
-      })
+    ? rocker(
+        {
+          testId: "board-turn-yield",
+          tone: "yield",
+          checked: turnYielded,
+          label: "Auto-pass until my turn",
+        },
+        h,
+      )
     : null;
 
   const hasStaged =
@@ -223,13 +235,13 @@ export function priorityBarView(board: BoardModel, state: VisibleState, tableId:
             [`${formatMessage(board.staged.action.label)}: click a highlighted card`],
           )
         : null,
-      board.reject != null ? rejectView(board.reject) : null,
+      board.reject != null ? rejectView(board.reject, h) : null,
     ].filter((v): v is Html => v !== null),
   );
 }
 
 /** Illegal-action feedback: role="alert" so a failed action announces, not just paints red. */
-function rejectView(reject: string): Html {
+function rejectView(reject: string, h: HtmlBuilder<Message>): Html {
   return h.div(
     [h.DataAttribute("testid", "board-reject"), h.Role("alert"), h.Class("text-caption text-burn-red")],
     [reject],

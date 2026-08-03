@@ -14,10 +14,8 @@
 // `toView` returns.
 
 import * as Dialog from "@foldkit/ui/dialog";
-import type { html as createHtml, Html } from "foldkit/html";
+import type { Html, HtmlBuilder } from "foldkit/html";
 import { modalClass } from "./surfaces";
-
-type HtmlFactory<Msg> = ReturnType<typeof createHtml<Msg>>;
 
 export type ModalDialogProps<Msg> = {
   /** The owner's dialog state. Create with `Dialog.init({ id })`; drive with `Dialog.update`. */
@@ -37,7 +35,7 @@ export type ModalDialogProps<Msg> = {
  * which has to stay in the DOM for Dialog to open and close it.
  */
 export function modalDialog<Msg>(
-  h: HtmlFactory<Msg>,
+  h: HtmlBuilder<Msg>,
   props: ModalDialogProps<Msg>,
   children: (render: Dialog.RenderInfo) => ReadonlyArray<Html>,
 ): Html {

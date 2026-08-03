@@ -8,11 +8,9 @@
 // Confirm carries a parent message.
 
 import type * as Dialog from "@foldkit/ui/dialog";
-import type { html as createHtml, Html } from "foldkit/html";
+import type { Html, HtmlBuilder } from "foldkit/html";
 import { button } from "./button";
 import { modalDialog } from "./dialog";
-
-type HtmlFactory<Msg> = ReturnType<typeof createHtml<Msg>>;
 
 export type ConfirmDialogProps<Msg> = {
   /** The owner's dialog state. Create with `Dialog.init({ id })`; drive with `Dialog.update`. */
@@ -32,7 +30,7 @@ export type ConfirmDialogProps<Msg> = {
  * Cancel spreads Dialog's `closeButton` (so a plain dismiss needs no parent message) and its
  * `initialFocus` marker, so a destructive confirm is never one Enter away.
  */
-export function confirmDialog<Msg>(h: HtmlFactory<Msg>, props: ConfirmDialogProps<Msg>): Html {
+export function confirmDialog<Msg>(h: HtmlBuilder<Msg>, props: ConfirmDialogProps<Msg>): Html {
   const { model, toDialogMessage, title, body, confirmLabel, danger = false, onConfirm } = props;
 
   return modalDialog(

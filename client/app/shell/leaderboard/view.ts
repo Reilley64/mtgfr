@@ -1,6 +1,6 @@
 import type * as Menu from "@foldkit/ui/menu";
 import { Submodel } from "foldkit";
-import { type Html, html } from "foldkit/html";
+import type { Html, HtmlBuilder } from "foldkit/html";
 import type { AppChromeMeta } from "../../domain/ui/app-version";
 import { button } from "../../domain/ui/button";
 import { listRowClass } from "../../domain/ui/surfaces";
@@ -25,9 +25,7 @@ export type ViewInputs = {
   accountMenu: Menu.Model;
 };
 
-const h = html<ViewMessage>();
-
-function row(entry: LeaderboardSubmodel["entries"][number]): Html {
+function row(entry: LeaderboardSubmodel["entries"][number], h: HtmlBuilder<ViewMessage>): Html {
   return h.div(
     [
       h.DataAttribute("testid", "leaderboard-row"),
@@ -41,7 +39,7 @@ function row(entry: LeaderboardSubmodel["entries"][number]): Html {
   );
 }
 
-export const view = Submodel.defineView<LeaderboardSubmodel, ViewMessage, ViewInputs>((model, viewInputs): Html => {
+export const view = Submodel.defineView<LeaderboardSubmodel, ViewMessage, ViewInputs>((model, viewInputs, h): Html => {
   const { accountMenu, chrome, meGravatarHash, username } = viewInputs;
   const canLoadMore = model.status !== "error" && model.entries.length < model.total;
 
@@ -75,7 +73,7 @@ export const view = Submodel.defineView<LeaderboardSubmodel, ViewMessage, ViewIn
                   ["No rated games yet."],
                 )
               : null,
-            ...model.entries.map(row),
+            ...model.entries.map((e) => row(e, h)),
             canLoadMore
               ? button(
                   h,
