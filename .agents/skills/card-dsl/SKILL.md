@@ -52,3 +52,8 @@ disagree, the code wins. Engine gaps for a deck live in that deck's
   an already-expressible DSL surface still wants a regression test when the card is
   non-trivial.
 - Card identity is the `name` field, not the filename; filename is arbitrary.
+- **Composable effects.** Prefer combining existing DSL leaves (`sequence`, filters, shared
+  modes, amounts) over a one-off effect leaf for a single card. Grow the vocabulary only when
+  a real card cannot be expressed from what already exists (see `AGENTS.md`).
+- **Forge reference.** For sticky rules / ability encoding, use the `forge` skill
+  (vendored `.repos/forge`; `just forge` to sync from upstream).
