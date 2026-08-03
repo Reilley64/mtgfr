@@ -42,10 +42,10 @@ docs/CR_INDEX.md.lock
 __pycache__/
 *.py[cod]
 
-# Scryfall fetch cache for tooling/set_fidelity_intake.py
+# Scryfall fetch cache for tooling/set_fidelity_upsample.py
 .cache/
 
-# Terraform (iac/) — deploy PRD §Terraform. State lives in the kubernetes backend, not locally;
+# Terraform (iac/) — deploy PRD §Terraform. State lives in the Cloudflare backend, not locally;
 # tfvars hold secrets (image tags, DB password, Cloudflare token, kubeconfig path).
 # `.terraform.lock.hcl` is intentionally NOT ignored — commit it for reproducible provider installs.
 iac/.terraform/

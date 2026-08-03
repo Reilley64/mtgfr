@@ -8,7 +8,7 @@ A browser-based 4-player Commander (MTG) game for playing with friends. The **no
 
 Grow the engine and DSL *from real cards*, TDD, smallest-increment-first, and **flag-don't-force**: when a card needs something the DSL can't yet express, surface it in that deck's `docs/fidelity/<slug>-increments.md` rather than contort the card. Decks are taken to faithful one at a time — `docs/fidelity/` is the record of which have been ground and where each stands. Each is a proving ground, not the terminal scope.
 
-Card authoring: `.agents/skills/card-dsl/`. Deck-to-faithful pipeline (Archidekt link in, per-deck fidelity report + increments backlog, grind waves, client catch-up, PR out): `.agents/skills/fidelity-grind/`. For tricky rules interactions, consult [Forge](https://github.com/Card-Forge/forge) — its card scripts and rules implementation are the reference.
+Card authoring: `.agents/skills/card-dsl/`. Deck-to-faithful pipeline (Archidekt link in, per-deck fidelity report + increments backlog, grind waves, client catch-up, PR out): `.agents/skills/fidelity-grind/`. For tricky rules interactions, use the `forge` skill (vendored sparse tree at `.repos/forge`, refresh with `just forge`) — [Card-Forge/forge](https://github.com/Card-Forge/forge) card/token scripts are the reference. **Prefer composable effects** — reuse and combine existing DSL leaves (`sequence`, filters, shared modes, amounts) rather than minting a one-off effect per card; grow the vocabulary only when a real card cannot be expressed from what already exists.
 
 ## Commands
 
@@ -24,6 +24,7 @@ just format                     # server-format + client-format
 just lint                       # server-lint + client-lint
 just proto-check                # buf STANDARD lint + WIRE breaking vs origin/main
 just openspec-check             # openspec validate --all --strict (living specs + active changes)
+just forge                      # sync vendored Card-Forge/forge → .repos/forge (commit the diff)
 just typecheck                  # client-typecheck
 just test                       # server-test + client-test
 just migrate                    # apply Toasty migrations (Postgres)
@@ -54,7 +55,7 @@ Commits on `main`/`master` follow the [Angular commit message guidelines](https:
 - **Client:** Foldkit SPA on Nitro (Vite; single event-reactor `Model`/`update`/`view` in `client/app/`) — hybrid canvas + Mount bitmap board with thin HTML overlays; same-origin Effect RPC (`/api/rpc`) to the BFF, which dials tonic. **Camera transform** (single source of truth for pan/zoom) and **screen→world hit-testing** are foundations everything downstream assumes. Design tokens live in `design.tokens.json` (DTCG); Tailwind `@theme` and canvas TS outputs are generated — see [`DESIGN.md`](DESIGN.md).
 - **Client state is Effect-first Foldkit.** Async work — wire calls, streams, polling — stays in Effect services/streams at runtime boundaries; Foldkit `Model`/`update`/`view` owns UI state and dispatches messages. Keep `effect`, every `@effect/*`, `foldkit`, and `@foldkit/ui` pinned to exact versions that move as one set — `@foldkit/ui` peer-requires a specific `effect` beta, so bump the whole set together or not at all (`client/package.json` holds the current pins). Styled components live in `client/app/domain/ui/`. BFF Drizzle is Effect-native via `drizzle-orm/effect-postgres` + `@effect/sql-pg` (no pg-proxy).
 - **Observability:** self-hosted LGTM + Faro + OTEL. Exporters no-op locally unless `OTEL_EXPORTER_OTLP_ENDPOINT` / Faro upstream is set; never put hand/library contents or intent payloads in telemetry.
-- **Card pool is data-driven scripts.** `cards` defines the vocabulary (the enums); `engine` implements the rules around it. Let the scripting DSL grow from real cards — resist generalizing it prematurely.
+- **Card pool is data-driven scripts.** `cards` defines the vocabulary (the enums); `engine` implements the rules around it. Let the scripting DSL grow from real cards — resist generalizing it prematurely. Author cards by composing that vocabulary; do not add a bespoke effect leaf for a single card when sequence/conditional/filters/amounts already cover it.
 - **Wire types:** `.proto` is the sole contract → prost/tonic (`build.rs` → `OUT_DIR`) + Effect-gRPC clients (`just server-codegen` / `bun run gen` → gitignored `client/app/domain/wire/generated/`). Run codegen after proto changes. See [docs/WIRE_COMPAT.md](docs/WIRE_COMPAT.md).
 - **Routing:** Required identifiers belong in **path params** (server: Axum `Path`, client: Foldkit route path segments). **Query params are optional** — filters, paging, redirect targets (`?next=`), and preselection (`?deck=`). Never put a required resource id in a query string.
 - **Public crawl posture:** `client/public/robots.txt` disallows all crawlers; do not add sitemaps or marketing SEO without revisiting that choice.
@@ -92,7 +93,7 @@ OpenSpec CLI context and per-artifact rules: [`openspec/config.yaml`](openspec/c
 
 ## Agent skills
 
-Project skills live in `.agents/skills/` — `card-dsl` and `fidelity-grind` for card work, `verify` for the live-game and interaction checklists, plus Foldkit and Effect helpers. Root `skills-lock.json` tracks the GitHub-installed ones. `ls .agents/skills/` for the current set.
+Project skills live in `.agents/skills/` — `card-dsl`, `fidelity-grind`, and `forge` for card work, `verify` for the live-game and interaction checklists, plus Foldkit and Effect helpers. Root `skills-lock.json` tracks the GitHub-installed ones. `ls .agents/skills/` for the current set.
 
 Workflow skills (`brainstorming`, `test-driven-development`, `systematic-debugging`, `verification-before-completion`, `requesting-code-review`, `writing-plans`, `executing-plans`, `using-git-worktrees`, and the rest) come from the Cursor **`superpowers`** plugin, enabled in `.cursor/settings.json`. Do not vendor or fork them into `.agents/skills/`.
 
