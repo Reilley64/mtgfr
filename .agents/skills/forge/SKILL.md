@@ -1,6 +1,6 @@
 ---
 name: forge
-description: Look up Card-Forge/forge card scripts, token scripts, and effect scripts as the rules-implementation reference when authoring or grinding mtgfr cards. Use for tricky rules interactions, fidelity gaps, or "how does Forge model this ability?"
+description: Look up Card-Forge/forge card scripts and token scripts as the rules-implementation reference when authoring or grinding mtgfr cards. Use for tricky rules interactions, fidelity gaps, or "how does Forge model this ability?"
 ---
 
 # Forge reference
@@ -11,7 +11,7 @@ Vendored tree (committed like `./.repos/effect`): `./.repos/forge` — sparse sn
 
 - `forge-gui/res/cardsfolder/` — card scripts (`.txt`)
 - `forge-gui/res/tokenscripts/` — token scripts
-- `forge-gui/res/effects/` — shared effect scripts
+- `VENDOR_REVISION` — upstream Forge commit SHA last synced
 
 ## Prerequisite
 
@@ -57,9 +57,8 @@ rg -n 'A:|K:|SVar:' .repos/forge/forge-gui/res/cardsfolder/s/sol_ring.txt
 # Ability / mode search across the pool
 rg -n 'ChangeZone|DealDamage|Pump' .repos/forge/forge-gui/res/cardsfolder -g '*.txt' | head
 
-# Tokens / shared effects
+# Tokens
 rg -n -i '<name>' .repos/forge/forge-gui/res/tokenscripts
-rg -n -i '<pattern>' .repos/forge/forge-gui/res/effects
 ```
 
 Read the matching `.txt` with the Read tool. Forge script lines of interest:
