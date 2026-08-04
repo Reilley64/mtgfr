@@ -102,17 +102,13 @@ resource "cloudflare_ruleset" "edh_cache_coverage_meta" {
       expression  = "(http.host eq \"${var.edh_hostname}\" and http.request.uri.path eq \"/api/meta/coverage/v1\")"
       action      = "set_cache_settings"
 
+      # Eligibility only — both TTLs are left at their defaults, which already follow the origin:
+      # Free/Pro/Business have origin cache control permanently on (the `edge_ttl` override for it
+      # is Enterprise-only and makes the whole rule out-of-plan and uneditable), and the zone's
+      # Browser Cache TTL is set to "Respect Existing Headers" (its 4h default would otherwise
+      # override the route's shorter `max-age`, where a purge cannot reach it).
       action_parameters = {
-        cache                = true
-        origin_cache_control = true
-
-        edge_ttl = {
-          mode = "respect_origin"
-        }
-
-        browser_ttl = {
-          mode = "respect_origin"
-        }
+        cache = true
       }
     },
   ]
