@@ -61,10 +61,10 @@ function tracedLobbyBody<A, E, R>(body: Effect.Effect<A, E, R>): Effect.Effect<A
   ) as Effect.Effect<A, never, R>;
 }
 
-export function json(data: unknown, status = 200): Response {
+export function json(data: unknown, status = 200, headers: Record<string, string> = {}): Response {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", ...headers },
   });
 }
 

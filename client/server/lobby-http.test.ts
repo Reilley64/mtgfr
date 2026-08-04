@@ -61,10 +61,11 @@ describe("lobby-http", () => {
     mocks.sweepWebDb.mockReturnValue(Effect.void);
   });
 
-  it("json sets content-type and status", async () => {
-    const res = json({ ok: true }, 201);
+  it("json sets content-type, status, and any extra headers", async () => {
+    const res = json({ ok: true }, 201, { "cache-control": "public, max-age=60" });
     expect(res.status).toBe(201);
     expect(res.headers.get("content-type")).toBe("application/json");
+    expect(res.headers.get("cache-control")).toBe("public, max-age=60");
     await expect(res.json()).resolves.toEqual({ ok: true });
   });
 
