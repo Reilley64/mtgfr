@@ -423,9 +423,10 @@ describe("layout", () => {
     expect(byId.get(1)).toMatchObject({ x: 312, y: 424, w: 96, h: 96, zone: ZONE.Battlefield });
     expect(byId.get(2)).toMatchObject({ x: 312, y: 528, w: 96, h: 96 });
     // Zone column top -> bottom for the viewer: commander, deck (no exile), graveyard.
-    // COL_STRIDE = 78 → commander@320, deck@476, graveyard@554.
-    expect(byId.get(3)).toMatchObject({ x: -64, y: 320, w: 48, h: 48, pile: 0 });
-    expect(byId.get(4)).toMatchObject({ x: -64, y: 554, w: 48, h: 48, pile: 1, zone: ZONE.Graveyard });
+    // COL_STRIDE = 78 → commander@320, deck@476, graveyard@554. A pile is a stack of cards, not a
+    // permanent, so it keeps the printed card's proportions rather than the battlefield square.
+    expect(byId.get(3)).toMatchObject({ x: -64, y: 320, w: 48, h: 67, pile: 0 });
+    expect(byId.get(4)).toMatchObject({ x: -64, y: 554, w: 48, h: 67, pile: 1, zone: ZONE.Graveyard });
 
     // Opponent (o.y=0, flipped): Creatures at o.y+ROW_H = 104.
     expect(byId.get(5)).toMatchObject({ x: 312, y: 104, w: 96, h: 96 });
@@ -433,11 +434,11 @@ describe("layout", () => {
     // Opponent's library placeholder is the only zone-column card (synthetic id -1 - owner = -2),
     // and it lands at the flipped column's second slot (deck is index 1 once reversed).
     const opponentDeck = cards.find((c) => c.id === -2);
-    expect(opponentDeck).toMatchObject({ x: -64, y: 78, w: 48, h: 48, pile: 25, faceDown: true });
+    expect(opponentDeck).toMatchObject({ x: -64, y: 78, w: 48, h: 67, pile: 25, faceDown: true });
 
     // Viewer's own library placeholder is the third slot (index 2) in the unreversed column.
     const viewerDeck = cards.find((c) => c.id === -1);
-    expect(viewerDeck).toMatchObject({ x: -64, y: 476, w: 48, h: 48, pile: 30, faceDown: true });
+    expect(viewerDeck).toMatchObject({ x: -64, y: 476, w: 48, h: 67, pile: 30, faceDown: true });
 
     expect(cards).toHaveLength(7);
   });

@@ -173,8 +173,10 @@ const BAND_STRIDE = BATTLE_H + BAND_GAP; // vertical distance between the two ta
 
 // The left column's cards are rendered at half size so four stack alongside the three-row
 // battlefield (4 × COL_STRIDE ≈ BATTLE_H). Top → bottom: commander, exile, deck, graveyard.
-const COL_W = CARD_W * 0.5;
-const COL_H = CARD_H * 0.5;
+// A pile is a stack of cards, not a permanent, so it keeps the printed card's proportions — the
+// Arena square is the battlefield's treatment alone.
+const COL_W = FLIGHT_CARD_W * 0.5;
+const COL_H = Math.round(FLIGHT_CARD_H * 0.5);
 const COL_STRIDE = BATTLE_H / 4;
 const COL_X = -(COL_W + 2 * GAP); // just left of the battlefield's first card (x = 0)
 

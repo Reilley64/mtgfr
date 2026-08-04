@@ -201,6 +201,21 @@ describe("paintCard: the rendered Arena face", () => {
     expect(request).toHaveBeenCalledWith(bear, "permanent");
   });
 
+  // The Arena square is a battlefield treatment. A graveyard/exile/commander pile is a stack of
+  // cards seen edge on, so it keeps the printed image.
+  it("leaves the zone-column piles on the printed image", () => {
+    const ctx = mockCtx();
+    const request = vi.fn();
+
+    paintCard(ctx, cam, card({ zone: ZONE.Graveyard, pile: 3 }), printedCache, 0, {
+      faces: { get: () => face, request },
+    });
+
+    expect(request).not.toHaveBeenCalled();
+    expect(drawn(ctx)).toContain(printed);
+    expect(drawn(ctx)).not.toContain(face);
+  });
+
   it("does not ask for a face-down permanent — it is a card back, not a printing", () => {
     const ctx = mockCtx();
     const request = vi.fn();

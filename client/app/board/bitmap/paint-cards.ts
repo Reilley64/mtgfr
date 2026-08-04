@@ -332,9 +332,12 @@ function paintFaceUp(
   r: number,
   faces?: FaceSource,
 ): void {
-  // The rendered Arena face once it is drawn; the printed image until the frame asset lands.
-  faces?.request(card.face, "permanent");
-  const img = faces?.get(card.face, "permanent") ?? cache.get(imageUrlByPrint(card.print));
+  // The rendered Arena face once it is drawn; the printed image until the frame asset lands. Only
+  // the battlefield gets the square — a zone-column pile is a stack of cards, so it stays printed.
+  const arena = card.zone === ZONE.Battlefield;
+  if (arena) faces?.request(card.face, "permanent");
+  const rendered = arena ? faces?.get(card.face, "permanent") : undefined;
+  const img = rendered ?? cache.get(imageUrlByPrint(card.print));
   if (img) {
     ctx.save();
     roundRect(ctx, x, y, w, h, r);
