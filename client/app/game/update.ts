@@ -6,6 +6,7 @@ import {
   drainPlayModeIfSingleton,
   dropHeldSeeds,
   raiseResultDialog,
+  requestBarCardText,
   syncBoardWithGame,
 } from "../board/submodel";
 import { type Message as AppMessage, GotBoardMessage, GotGameMessage } from "../messages";
@@ -28,8 +29,9 @@ function mergeGameFold(
   const synced = { ...next, board: syncBoardWithGame(next.board, next) };
   const [armed, revealCmds] = armFirstPlayerReveal(synced.board, synced, synced.tableId);
   const [raised, resultCmds] = raiseResultDialog(armed, synced);
-  const [board, commands] = drainPlayModeIfSingleton(raised, synced, synced.tableId);
-  return [{ ...synced, board }, [...revealCmds, ...resultCmds, ...commands]];
+  const [drained, commands] = drainPlayModeIfSingleton(raised, synced, synced.tableId);
+  const [board, textCmds] = requestBarCardText(drained, synced);
+  return [{ ...synced, board }, [...revealCmds, ...resultCmds, ...commands, ...textCmds]];
 }
 
 function deltaEnvelope(message: Extract<Message, { _tag: "ReceivedDelta" }>): DeltaEnvelope {

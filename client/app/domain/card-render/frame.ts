@@ -11,9 +11,9 @@ export type FaceVariant = "permanent" | "full" | "stack";
  * printing shows through the **art**, which the CDN already serves by print id. No mana cost: the
  * pip tray under the card owns cost, so the face never draws one.
  *
- * `typeLine` and `oracle` are `""` here and only the `full`/`stack` variants draw them. When those
- * slices land they fill from `CatalogCard` — which already carries `oracle` and `subtypes` over the
- * catalog RPC the board calls for inspect — not from a new wire field.
+ * `typeLine` and `oracle` come from `CatalogCard` over the catalog RPC, not from a new wire field —
+ * `faceDataFrom` leaves them `""` and the caller folds them in (see `card-text.ts`). Only the
+ * `full`/`stack` variants draw them; the square permanent has no room and shows none.
  */
 export type FaceData = {
   /** Scryfall print id — the art key on the card CDN, and part of the face cache key. */
@@ -33,7 +33,7 @@ export type FaceData = {
   toughness: string;
   /** A planeswalker's loyalty or a battle's defence — one badge slot, same corner. */
   loyalty: string;
-  /** `""` on the `permanent` variant, which draws neither. Slice 3 fills them from `CatalogCard`. */
+  /** `""` until the catalog lookup lands; the `permanent` variant draws neither in any case. */
   typeLine: string;
   oracle: string;
 };

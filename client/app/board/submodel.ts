@@ -31,12 +31,14 @@ import type {
   WireTarget,
 } from "~/wire/types";
 import { clampX } from "~/xCost";
+import { type CardText, cardTextOf } from "../domain/card-render/card-text";
 import { formatMessage } from "../domain/i18n/message";
 import { type InspectPin, inspectPinChanged, pinFromCard, pinFromPlayer } from "../domain/inspect";
 import { humanReason } from "../domain/reject";
 import { isSoundEnabled, playUnmuteTick, setSoundEnabled, unlockTableAudio } from "../domain/tableAudio";
 import type { GameFoldState } from "../game/fold";
 import {
+  FetchCardText,
   FetchInspectCard,
   SearchCardNames,
   SetStackDwell,
@@ -264,6 +266,9 @@ export type BoardModel = {
   inspectPin: InspectPin | null;
   /** Catalog data for the current inspect pin. `undefined` = fetch in-flight; `null` = not found. */
   inspectCard: CatalogCard | null | undefined;
+  /** Type line and rules text for the faces the bar draws, by catalog card id. A null entry is a
+   *  lookup already asked for — pending or empty, either way it stops the refetch. */
+  cardText: ReadonlyMap<string, CardText | null>;
   /** Which face of a DFC to show in the inspect overlay. */
   inspectFace: "front" | "back";
   /** Hand-bar card under the pointer (DOM overlay above the canvas). */
@@ -369,6 +374,7 @@ export function initialBoardModel(): BoardModel {
     shiftDown: false,
     inspectPin: null,
     inspectCard: undefined,
+    cardText: new Map(),
     inspectFace: "front",
     handInspectHover: null,
     stackInspectHover: null,
@@ -1993,6 +1999,35 @@ export function armFirstPlayerReveal(model: BoardModel, fold: BoardFold, tableId
   return [{ ...model, firstPlayerReveal: reveal }, revealTimer(reveal)];
 }
 
+/** Zones whose cards the bar draws as full faces — the only ones whose text is worth fetching. */
+const BAR_TEXT_ZONES: ReadonlySet<number> = new Set([ZONE.Hand, ZONE.Command, ZONE.Graveyard, ZONE.Exile]);
+
+/**
+ * Ask the catalog for the type line and rules text of the viewer's bar cards, once each.
+ *
+ * The rendered face draws words the game state doesn't carry — the wire sends what the engine
+ * needs, not what the card prints. Runs on every fold merge, so a card drawn into hand asks the
+ * turn it arrives.
+ */
+export function requestBarCardText(model: BoardModel, fold: BoardFold): BoardReturn {
+  const state = fold.state;
+  if (state == null) return [model, []];
+
+  const missing = new Set<string>();
+  for (const object of state.objects) {
+    const cardId = object.card_id;
+    if (cardId == null || cardId === "" || model.cardText.has(cardId) || missing.has(cardId)) continue;
+    if (Number(object.owner) !== Number(state.viewer)) continue;
+    if (!BAR_TEXT_ZONES.has(Number(object.zone))) continue;
+    missing.add(cardId);
+  }
+  if (missing.size === 0) return [model, []];
+
+  const cardText = new Map(model.cardText);
+  for (const cardId of missing) cardText.set(cardId, null);
+  return [{ ...model, cardText }, [FetchCardText({ cardIds: [...missing] }) as unknown as BoardCmd]];
+}
+
 function hideHintOnHandUse(model: BoardModel): BoardModel {
   if (model.hintAutoHidden) return model;
   return { ...model, hintAutoHidden: true };
@@ -3273,6 +3308,11 @@ export function updateBoard(
     }
     case "InspectCardFetched":
       return [{ ...model, inspectCard: message.card }, []];
+    case "CardTextFetched": {
+      const cardText = new Map(model.cardText);
+      for (const card of message.cards) cardText.set(card.id, cardTextOf(card));
+      return [{ ...model, cardText }, []];
+    }
     case "InspectFlipFace":
       return [{ ...model, inspectFace: model.inspectFace === "front" ? "back" : "front" }, []];
     case "InspectDismissed":

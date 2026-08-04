@@ -14,6 +14,7 @@ const WireTarget: S.Schema<WireTargetT> = S.Any;
 const WireIntent: S.Schema<WireIntentT> = S.Any;
 const ActionView: S.Schema<ActionViewT> = S.Any;
 const CatalogCard: S.Schema<CatalogCardT | null> = S.Any;
+const CatalogCardItem: S.Schema<CatalogCardT> = S.Any;
 const FlightPhase = S.Union([S.Literal("flying"), S.Literal("settled")]);
 const FlightKind = S.Union([S.Literal("battlefield"), S.Literal("stack"), S.Literal("from-stack")]);
 const ExitFxKind = S.Union([S.Literal("destroy"), S.Literal("exile")]);
@@ -228,6 +229,8 @@ export const InspectAuxHovered = m("InspectAuxHovered", {
 });
 /** Catalog lookup returned for the current inspect pin. */
 export const InspectCardFetched = m("InspectCardFetched", { card: CatalogCard });
+/** Catalog lookup returned for the bar's faces — type line and rules text to draw on them. */
+export const CardTextFetched = m("CardTextFetched", { cards: S.Array(CatalogCardItem) });
 /** Catalog name suggestions for `choose_card_name` typeahead. */
 export const CardNameSuggestionsFetched = m("CardNameSuggestionsFetched", {
   query: S.String,
@@ -359,6 +362,7 @@ export const Message = S.Union([
   ShiftUp,
   InspectAuxHovered,
   InspectCardFetched,
+  CardTextFetched,
   CardNameSuggestionsFetched,
   CompletedCancelSearchCardNames,
   InspectFlipFace,

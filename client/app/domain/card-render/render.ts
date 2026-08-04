@@ -2,6 +2,17 @@ import { BODY_FONT, frameAssetUrl, TITLE_FONT } from "./assets";
 import { type Blit, type FaceData, type FaceVariant, frameKey, type Rect, slotRects } from "./frame";
 import { fitFontSize, LINE_HEIGHT, type Measure, wrapLines } from "./text";
 
+/*
+ * Printed type sizes, as a fraction of the slot each sits in. A real M15 card sets its name in about
+ * 41px, its type line in 36px and its rules text in 35px at this asset's 750x1050 — those over the
+ * slot heights in `frame.ts` are the numbers below. Rules text is a ceiling: a wordy card shrinks to
+ * fit its box, the way a printed one does.
+ */
+const TITLE_SCALE = 0.62;
+const TYPE_SCALE = 0.58;
+const RULES_SCALE = 0.13;
+const PT_SCALE = 0.62;
+
 export type FaceInput = {
   face: FaceData;
   variant: FaceVariant;
@@ -50,8 +61,8 @@ export function drawFace(ctx: CanvasRenderingContext2D, input: FaceInput): void 
   ctx.fillStyle = "#17130d";
   ctx.textBaseline = "middle";
 
-  if (slots.title != null) drawFitted(ctx, face.name, slots.title, TITLE_FONT, slots.title.h * 0.72);
-  if (slots.type != null) drawFitted(ctx, face.typeLine, slots.type, TITLE_FONT, slots.type.h * 0.62);
+  if (slots.title != null) drawFitted(ctx, face.name, slots.title, TITLE_FONT, slots.title.h * TITLE_SCALE);
+  if (slots.type != null) drawFitted(ctx, face.typeLine, slots.type, TITLE_FONT, slots.type.h * TYPE_SCALE);
   if (slots.text != null) drawTextBox(ctx, face.oracle, slots.text, measure);
   if (slots.pt != null) drawPT(ctx, face, slots.pt);
 
@@ -107,7 +118,7 @@ function drawFitted(ctx: CanvasRenderingContext2D, text: string, box: Rect, font
 
 function drawTextBox(ctx: CanvasRenderingContext2D, text: string, box: Rect, measure: Measure): void {
   if (text === "") return;
-  const size = fitFontSize(text, box, box.h * 0.11, measure);
+  const size = fitFontSize(text, box, box.h * RULES_SCALE, measure);
   ctx.font = `${size}px ${BODY_FONT}, serif`;
   ctx.textAlign = "left";
   let y = box.y + size * LINE_HEIGHT * 0.7;
@@ -120,7 +131,7 @@ function drawTextBox(ctx: CanvasRenderingContext2D, text: string, box: Rect, mea
 function drawPT(ctx: CanvasRenderingContext2D, face: FaceData, box: Rect): void {
   const label = face.loyalty !== "" ? face.loyalty : `${face.power}/${face.toughness}`;
   if (label === "/") return;
-  ctx.font = `${box.h * 0.62}px ${TITLE_FONT}, serif`;
+  ctx.font = `${box.h * PT_SCALE}px ${TITLE_FONT}, serif`;
   ctx.textAlign = "center";
   ctx.fillText(label, box.x + box.w / 2, box.y + box.h / 2);
 }

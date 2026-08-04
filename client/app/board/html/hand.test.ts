@@ -256,6 +256,28 @@ describe("handView rendered face", () => {
     expect(attr(host, "data-face-variant")).toBe("full");
   });
 
+  it("folds the catalog's words into the face once the lookup lands", () => {
+    const bolt = object(42, { name: "Lightning Bolt", print: "lea-161", card_id: "bolt" });
+    const tree = handView(
+      {
+        viewport: HAND_DESIGN_VIEWPORT,
+        state: state({ objects: [bolt], actions: [] }),
+        hiddenId: null,
+        flyingIds: new Set(),
+        hiddenIds: new Set(),
+        handDrag: null,
+        cardText: new Map([["bolt", { typeLine: "Instant", oracle: "Deals 3 damage to any target." }]]),
+      },
+      h,
+    );
+
+    const host = findWithAttr(findTestId(tree, "hand-card-face-42"), "data-face");
+    expect(JSON.parse(attr(host, "data-face") ?? "{}")).toMatchObject({
+      typeLine: "Instant",
+      oracle: "Deals 3 damage to any target.",
+    });
+  });
+
   it("draws a graveyard bar tile's card face, not its action label", () => {
     const pest = object(62, { zone: ZONE.Graveyard, name: "Teacher's Pest", print: "snc-99" });
     const tree = renderHand(

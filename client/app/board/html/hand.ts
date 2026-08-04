@@ -8,6 +8,7 @@
 
 import { Option } from "effect";
 import type { Attribute, Html, HtmlBuilder } from "foldkit/html";
+import type { CardText } from "~/card-render/card-text";
 import { type FaceData, faceDataFrom } from "~/card-render/frame";
 import { type CostPip, costPips } from "~/costPips";
 import { cardFace } from "~/ui/card-face";
@@ -369,6 +370,8 @@ export type HandViewInputs = {
    * `board.handHidden` and any external hide set. */
   hiddenIds: ReadonlySet<number>;
   handDrag: HandDragState | null;
+  /** Type line and rules text by catalog card id — the words the wire doesn't send. */
+  cardText?: ReadonlyMap<string, CardText | null>;
   /** Object ids legal for the live local discard cost; null when not discarding. */
   discardCostIds?: ReadonlySet<number> | null;
   /** Object ids currently selected for discard cost / pending discard pick. */
@@ -383,6 +386,7 @@ export function handView(inputs: HandViewInputs, h: HtmlBuilder<Message>): Html 
     flyingIds,
     hiddenIds,
     handDrag,
+    cardText = new Map(),
     discardCostIds = null,
     discardSelectedIds = null,
   } = inputs;
@@ -400,13 +404,20 @@ export function handView(inputs: HandViewInputs, h: HtmlBuilder<Message>): Html 
   const commanderTax = state.players.find((p) => p.player === viewer)?.commander_tax ?? 0;
   const objectsById = new Map(state.objects.map((o) => [o.id, o]));
 
+  /** The face to draw, with the catalog's words folded in once its lookup lands. */
+  const faceOf = (object: ObjectView): FaceData => {
+    const text = object.card_id != null ? cardText.get(object.card_id) : null;
+    const face = faceDataFrom(object);
+    return text == null ? face : { ...face, ...text };
+  };
+
   const slotInert = (id: number) => id === hiddenId || flyingIds.has(id);
 
   const metaFor = (id: number | undefined | null) => {
     const obj = id != null ? objectsById.get(id) : undefined;
     return {
       print: obj?.print ?? "",
-      face: obj ? faceDataFrom(obj) : null,
+      face: obj ? faceOf(obj) : null,
       cardId: obj?.card_id,
       kind: obj?.kind?.kind,
       manaCost: obj?.mana_cost ?? emptyCost(),
@@ -422,7 +433,7 @@ export function handView(inputs: HandViewInputs, h: HtmlBuilder<Message>): Html 
         metrics,
         name: c.name,
         print: c.print ?? "",
-        face: faceDataFrom(c),
+        face: faceOf(c),
         cardId: c.card_id,
         zone: "command",
         objectId: c.id,
@@ -461,7 +472,7 @@ export function handView(inputs: HandViewInputs, h: HtmlBuilder<Message>): Html 
     handSlots.push({
       name: c.name,
       print: c.print ?? "",
-      face: faceDataFrom(c),
+      face: faceOf(c),
       cardId: c.card_id,
       objectId: c.id,
       objectKind: c.kind.kind,

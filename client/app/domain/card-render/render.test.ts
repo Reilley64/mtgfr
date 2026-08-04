@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { ASSET_W } from "./assets";
+import { ASSET_W, BODY_FONT, TITLE_FONT } from "./assets";
 import { CANONICAL, type FaceData, slotRects } from "./frame";
 import { drawFace, faceAssetUrls } from "./render";
 
@@ -58,8 +58,8 @@ function face(overrides: Partial<FaceData> = {}): FaceData {
     power: "1",
     toughness: "1",
     loyalty: "",
-    // The permanent variant leaves both blank; the full-variant tests below set them the way
-    // slice 3 will, off CatalogCard.
+    // The permanent variant draws neither; the full-variant tests below set them the way the
+    // catalog lookup does.
     typeLine: "",
     oracle: "",
     ...overrides,
@@ -122,6 +122,26 @@ describe("drawFace", () => {
     drawFace(ctx, inputs({ variant: "full" }));
 
     expect(texts()).toContain("1/1");
+  });
+
+  // A real M15 card at this asset's 750x1050 sets its name in roughly 41px, its type line in 36px
+  // and its rules text in 35px. The face is drawn at 745x1040, so the same numbers land here.
+  it("sets each slot at the size a printed card uses", () => {
+    const { ctx, ops } = fakeCtx();
+    drawFace(ctx, inputs({ variant: "full", face: face({ typeLine: "Creature — Elf Druid", oracle: "Haste." }) }));
+
+    const sizesIn = (font: string) =>
+      ops
+        .filter((o) => o.op === "font" && String(o.args[0]).includes(font))
+        .map((o) => Number.parseFloat(String(o.args[0])));
+    const [name, typeLine] = sizesIn(TITLE_FONT);
+
+    expect(name).toBeGreaterThan(39);
+    expect(name).toBeLessThan(43);
+    expect(typeLine).toBeGreaterThan(34);
+    expect(typeLine).toBeLessThan(38);
+    expect(Math.max(...sizesIn(BODY_FONT))).toBeGreaterThan(33);
+    expect(Math.max(...sizesIn(BODY_FONT))).toBeLessThan(37);
   });
 
   it("draws a planeswalker's loyalty instead of a power/toughness", () => {
