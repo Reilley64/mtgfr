@@ -85,7 +85,9 @@ test("warming a deck hands its fetched prints to the shared image cache at low p
 
   await Effect.runPromise(warmDeckArt(7).pipe(Effect.provide(Layer.succeed(RpcClient, rpc))));
 
-  expect(preload).toHaveBeenCalledWith([imageUrlByPrint("print-cmd"), imageUrlByPrint("print-a")], "low");
+  // `art` is the crop every rendered face draws — warming `display` left the board fetching on its
+  // first paint anyway.
+  expect(preload).toHaveBeenCalledWith([imageUrlByPrint("print-cmd", "art"), imageUrlByPrint("print-a", "art")], "low");
   preload.mockRestore();
 });
 
