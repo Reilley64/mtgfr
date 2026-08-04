@@ -2,7 +2,7 @@
 
 Source: https://archidekt.com/decks/2209176 (Archidekt deck 2209176, fetched 2026-07-18).
 72 unique non-basic cards + basics. Commander: **Zedruu the Greathearted**. Backlog
-increments: #203–#231 ([political-puppets-increments.md](political-puppets-increments.md)).
+increments #203–#231 landed; backlog file removed.
 
 Intake counts: 12 faithful / 0 approximated / 18 expressible / 42 needing engine work.
 (The classification pass marked 21 expressible; the observability re-audit demoted 3 of

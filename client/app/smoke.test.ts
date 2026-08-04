@@ -76,7 +76,7 @@ describe("foldkit scaffold", () => {
   it("does not render protected route content before the session loads", () => {
     Scene.scene(
       { update, view },
-      Scene.with(playModel({ sessionLoaded: false, session: { me: null, meGravatarHash: null } })),
+      Scene.given(playModel({ sessionLoaded: false, session: { me: null, meGravatarHash: null } })),
       Scene.expect(Scene.selector('[data-testid="lobby"]')).not.toExist(),
       Scene.expect(Scene.selector('[data-testid="session-gate"]')).toExist(),
       Scene.expect(Scene.text("Sign in")).not.toExist(),
@@ -87,7 +87,7 @@ describe("foldkit scaffold", () => {
   it("does not render protected route content for an unsigned loaded session", () => {
     Scene.scene(
       { update, view },
-      Scene.with(playModel({ sessionLoaded: true, session: { me: null, meGravatarHash: null } })),
+      Scene.given(playModel({ sessionLoaded: true, session: { me: null, meGravatarHash: null } })),
       Scene.expect(Scene.selector('[data-testid="lobby"]')).not.toExist(),
       Scene.expect(Scene.selector('[data-testid="session-gate"]')).toExist(),
       Scene.expect(Scene.text("Sign in")).not.toExist(),
@@ -97,7 +97,7 @@ describe("foldkit scaffold", () => {
   it("renders protected route content after authorization", () => {
     Scene.scene(
       { update, view },
-      Scene.with(playModel({ sessionLoaded: true, session: { me, meGravatarHash: null } })),
+      Scene.given(playModel({ sessionLoaded: true, session: { me, meGravatarHash: null } })),
       Scene.expect(Scene.selector('[data-testid="lobby"]')).toExist(),
       Scene.Mount.resolve(BindDeckCardFlip({ deckId: 1 }), DeckCardFlipTick()),
       Scene.Mount.resolve(BindCardArt, CardArtTick()),
@@ -114,7 +114,7 @@ describe("foldkit scaffold", () => {
   it("survives BindCardArt mount on the post-login home deck list", () => {
     Scene.scene(
       { update, view },
-      Scene.with(homeWithDecks()),
+      Scene.given(homeWithDecks()),
       Scene.expect(Scene.selector("[data-art-url]")).toExist(),
       Scene.Mount.resolve(BindDeckListContextMenu({ deckId: 1 }), ClosedDeckListMenu()),
       Scene.Mount.resolve(BindDeckCardFlip({ deckId: 1 }), DeckCardFlipTick()),
@@ -133,7 +133,7 @@ describe("foldkit scaffold", () => {
 
     Scene.scene(
       { update, view },
-      Scene.with(homeWithDecks()),
+      Scene.given(homeWithDecks()),
       Scene.tap((simulation) => {
         list.key = surfaceKeyOf(simulation.html);
       }),
@@ -144,7 +144,7 @@ describe("foldkit scaffold", () => {
     );
     Scene.scene(
       { update, view },
-      Scene.with({ ...homeWithDecks(), route: NewDeckRoute() }),
+      Scene.given({ ...homeWithDecks(), route: NewDeckRoute() }),
       Scene.tap((simulation) => {
         builder.key = surfaceKeyOf(simulation.html);
       }),
@@ -158,7 +158,7 @@ describe("foldkit scaffold", () => {
   it("applies landscape rotate class instead of a portrait dialog", () => {
     Scene.scene(
       { update, view },
-      Scene.with(playModel({ landscapeRotate: { active: true } })),
+      Scene.given(playModel({ landscapeRotate: { active: true } })),
       Scene.expect(Scene.selector("#portrait-gate")).not.toExist(),
       Scene.expect(Scene.selector('[data-testid="landscape-root"]')).toHaveClass("landscape-rotate-root"),
     );

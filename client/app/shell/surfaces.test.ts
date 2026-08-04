@@ -183,7 +183,7 @@ describe("shell surface scenes", () => {
   it("renders auth login surfaces from the app view", () => {
     Scene.scene(
       { update, view },
-      Scene.with(loginModel({ apiVersion: "1.2.3" })),
+      Scene.given(loginModel({ apiVersion: "1.2.3" })),
       Scene.expect(Scene.selector('[data-testid="auth-panel"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="auth-brand"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="auth-brand"]')).toHaveClass("font-display"),
@@ -214,7 +214,7 @@ describe("shell surface scenes", () => {
 
     Scene.scene(
       { update, view },
-      Scene.with(loginModel(chrome)),
+      Scene.given(loginModel(chrome)),
       Scene.tap((sim) => {
         const ids = collectTestIds(sim.html);
         const coverage = ids.indexOf("pool-coverage");
@@ -235,7 +235,7 @@ describe("shell surface scenes", () => {
 
     Scene.scene(
       { update, view },
-      Scene.with(
+      Scene.given(
         loginModel({
           auth: {
             ...model.auth,
@@ -254,7 +254,7 @@ describe("shell surface scenes", () => {
   it("renders deck list chrome and tiles", () => {
     Scene.scene(
       { update, view },
-      Scene.with(
+      Scene.given(
         authedModel(HomeRoute(), {
           decks: {
             ...init()[0].decks,
@@ -294,7 +294,7 @@ describe("shell surface scenes", () => {
   it("opens the account menu from the home avatar", () => {
     Scene.scene(
       { update, view },
-      Scene.with(
+      Scene.given(
         authedModel(HomeRoute(), {
           decks: {
             ...init()[0].decks,
@@ -324,7 +324,7 @@ describe("shell surface scenes", () => {
   it("renders the deck delete confirmation dialog", () => {
     Scene.scene(
       { update, view },
-      Scene.with(
+      Scene.given(
         authedModel(HomeRoute(), {
           decks: {
             ...init()[0].decks,
@@ -351,7 +351,7 @@ describe("shell surface scenes", () => {
   it("shows a New deck create tile when the list is empty", () => {
     Scene.scene(
       { update, view },
-      Scene.with(
+      Scene.given(
         authedModel(HomeRoute(), {
           decks: {
             ...init()[0].decks,
@@ -374,7 +374,7 @@ describe("shell surface scenes", () => {
   it("renders deck list loading copy", () => {
     Scene.scene(
       { update, view },
-      Scene.with(
+      Scene.given(
         authedModel(HomeRoute(), {
           decks: {
             ...init()[0].decks,
@@ -393,7 +393,7 @@ describe("shell surface scenes", () => {
   it("renders leaderboard rows with usernames and ratings", () => {
     Scene.scene(
       { update, view },
-      Scene.with(
+      Scene.given(
         authedModel(LeaderboardRoute(), {
           leaderboard: {
             entries: [
@@ -425,7 +425,7 @@ describe("shell surface scenes", () => {
   it("shows a quiet leaderboard empty state when there are no rated games", () => {
     Scene.scene(
       { update, view },
-      Scene.with(
+      Scene.given(
         authedModel(LeaderboardRoute(), {
           leaderboard: {
             entries: [],
@@ -443,7 +443,7 @@ describe("shell surface scenes", () => {
   it("renders coverage page table and global percent", () => {
     Scene.scene(
       { update, view },
-      Scene.with(
+      Scene.given(
         authedModel(CoverageRoute(), {
           coverage: {
             ...init()[0].coverage,
@@ -498,7 +498,7 @@ describe("shell surface scenes", () => {
   it("shows an honest global percent when either global count is missing", () => {
     Scene.scene(
       { update, view },
-      Scene.with(
+      Scene.given(
         authedModel(CoverageRoute(), {
           coverage: {
             ...init()[0].coverage,
@@ -525,7 +525,7 @@ describe("shell surface scenes", () => {
   it("shows the coverage retry UI after a load failure", () => {
     Scene.scene(
       { update, view },
-      Scene.with(
+      Scene.given(
         authedModel(CoverageRoute(), {
           coverage: {
             ...init()[0].coverage,
@@ -548,7 +548,7 @@ describe("shell surface scenes", () => {
   it("filters coverage rows and shows the empty state from search input", () => {
     Scene.scene(
       { update, view },
-      Scene.with(
+      Scene.given(
         authedModel(CoverageRoute(), {
           coverage: {
             ...init()[0].coverage,
@@ -592,7 +592,7 @@ describe("shell surface scenes", () => {
   it("opens the account menu on the leaderboard", () => {
     Scene.scene(
       { update, view },
-      Scene.with(
+      Scene.given(
         authedModel(LeaderboardRoute(), {
           leaderboard: {
             entries: [{ rank: 1, rating: 1200, user_id: 1, username: "alice" }],
@@ -615,7 +615,7 @@ describe("shell surface scenes", () => {
   it("signing out from the account menu ends the session", () => {
     Scene.scene(
       { update, view },
-      Scene.with(authedModel(LeaderboardRoute())),
+      Scene.given(authedModel(LeaderboardRoute())),
       Scene.click(Scene.testId("account-menu-trigger")),
       ...resolveAccountMenuMounts(),
       Scene.click(Scene.testId("account-menu-sign-out")),
@@ -634,7 +634,7 @@ describe("shell surface scenes", () => {
   it("picking Gravatar from the account menu opens gravatar.com", () => {
     Scene.scene(
       { update, view },
-      Scene.with(authedModel(LeaderboardRoute())),
+      Scene.given(authedModel(LeaderboardRoute())),
       Scene.click(Scene.testId("account-menu-trigger")),
       ...resolveAccountMenuMounts(),
       Scene.click(Scene.testId("account-menu-gravatar")),
@@ -647,7 +647,7 @@ describe("shell surface scenes", () => {
   it("hides load more while the leaderboard shows a retry error", () => {
     Scene.scene(
       { update, view },
-      Scene.with(
+      Scene.given(
         authedModel(LeaderboardRoute(), {
           leaderboard: {
             entries: [{ rank: 1, rating: 1200, user_id: 1, username: "alice" }],
@@ -671,7 +671,7 @@ describe("shell surface scenes", () => {
   it("renders deck builder chrome, problems, and builder mounts", () => {
     Scene.scene(
       { update, view },
-      Scene.with(
+      Scene.given(
         authedModel(NewDeckRoute(), {
           decks: {
             ...init()[0].decks,
@@ -714,7 +714,7 @@ describe("shell surface scenes", () => {
   it("renders lobby entry with Host primary and soft-inline Join", () => {
     Scene.scene(
       { update, view },
-      Scene.with(
+      Scene.given(
         authedModel(PlayRoute({ deckId: "1" }), {
           decks: {
             ...init()[0].decks,
@@ -745,7 +745,7 @@ describe("shell surface scenes", () => {
   it("keeps a play deck route in the lobby while the deck list error is visible", () => {
     Scene.scene(
       { update, view },
-      Scene.with(
+      Scene.given(
         authedModel(PlayRoute({ deckId: "1" }), {
           currentPath: "/play/1",
           decks: {
@@ -765,7 +765,7 @@ describe("shell surface scenes", () => {
   it("renders lobby table chrome, seats, and errors", () => {
     Scene.scene(
       { update, view },
-      Scene.with(
+      Scene.given(
         authedModel(PregameTableRoute({ deckId: "1", table: "ABC123" }), {
           decks: {
             ...init()[0].decks,
@@ -821,7 +821,7 @@ describe("shell surface scenes", () => {
   it("renders the table-only game route without a deck-path guard", () => {
     Scene.scene(
       { update, view },
-      Scene.with(
+      Scene.given(
         authedModel(GameTableRoute({ table: "ABC123" }), {
           currentPath: "/play/ABC123",
           decks: {
@@ -851,7 +851,7 @@ describe("shell surface scenes", () => {
   it("renders the board mount from the table-only route once the game slice is active", () => {
     Scene.scene(
       { update, view },
-      Scene.with(
+      Scene.given(
         authedModel(GameTableRoute({ table: "ABC123" }), {
           currentPath: "/play/ABC123",
           game: emptyGameSlice("ABC123"),
@@ -871,7 +871,7 @@ describe("shell surface scenes", () => {
   it("renders the app not-found route", () => {
     Scene.scene(
       { update, view },
-      Scene.with(authedModel(NotFoundRoute({ path: "/missing" }))),
+      Scene.given(authedModel(NotFoundRoute({ path: "/missing" }))),
       ...expectShellFrame(),
       Scene.expect(Scene.text("Not found")).toExist(),
       Scene.expect(Scene.text("No Foldkit route for /missing.")).toExist(),

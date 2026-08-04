@@ -1,4 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { testHtml } from "~/test-html";
+import type { Message } from "../messages";
+
+const h = testHtml<Message>();
+
 import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ActionView, ObjectView, VisibleState, WireCost } from "~/wire/types";
 import { ZONE } from "../geometry/layout";
@@ -77,14 +82,17 @@ function state(overrides: Partial<VisibleState> = {}): VisibleState {
 }
 
 function renderHand(visible: VisibleState): unknown {
-  return handView({
-    viewport: HAND_DESIGN_VIEWPORT,
-    state: visible,
-    hiddenId: null,
-    flyingIds: new Set(),
-    hiddenIds: new Set(),
-    handDrag: null,
-  });
+  return handView(
+    {
+      viewport: HAND_DESIGN_VIEWPORT,
+      state: visible,
+      hiddenId: null,
+      flyingIds: new Set(),
+      hiddenIds: new Set(),
+      handDrag: null,
+    },
+    h,
+  );
 }
 
 function testId(node: unknown): string | null {
@@ -178,21 +186,24 @@ describe("handView unplayable brightness", () => {
   it("still fades the drag-source hand tile", () => {
     const castable = object(42, { name: "Lightning Bolt" });
     const cast = action(7, { object: 42 });
-    const tree = handView({
-      viewport: HAND_DESIGN_VIEWPORT,
-      state: state({ objects: [castable], actions: [cast] }),
-      hiddenId: null,
-      flyingIds: new Set(),
-      hiddenIds: new Set(),
-      handDrag: {
-        action: cast,
-        name: "Lightning Bolt",
-        print: "",
-        manaCost: cost(),
-        x: 10,
-        y: 10,
+    const tree = handView(
+      {
+        viewport: HAND_DESIGN_VIEWPORT,
+        state: state({ objects: [castable], actions: [cast] }),
+        hiddenId: null,
+        flyingIds: new Set(),
+        hiddenIds: new Set(),
+        handDrag: {
+          action: cast,
+          name: "Lightning Bolt",
+          print: "",
+          manaCost: cost(),
+          x: 10,
+          y: 10,
+        },
       },
-    });
+      h,
+    );
     const root = findTestId(tree, "hand-tile-42");
     expect(attr(root, "data-drag-source")).toBe("true");
     const face = findTestId(tree, "hand-card-face-42");
@@ -204,15 +215,18 @@ describe("handView unplayable brightness", () => {
 describe("handView discard pick accessibility", () => {
   it("names discard-selectable hit targets for assistive tech", () => {
     const a = object(42, { name: "Lightning Bolt" });
-    const tree = handView({
-      viewport: HAND_DESIGN_VIEWPORT,
-      state: state({ objects: [a], actions: [] }),
-      hiddenId: null,
-      flyingIds: new Set(),
-      hiddenIds: new Set(),
-      handDrag: null,
-      discardCostIds: new Set([42]),
-    });
+    const tree = handView(
+      {
+        viewport: HAND_DESIGN_VIEWPORT,
+        state: state({ objects: [a], actions: [] }),
+        hiddenId: null,
+        flyingIds: new Set(),
+        hiddenIds: new Set(),
+        handDrag: null,
+        discardCostIds: new Set([42]),
+      },
+      h,
+    );
 
     const hit = findTestId(tree, "hand-card-42");
     expect(hit).not.toBeNull();
@@ -324,22 +338,25 @@ describe("handView drag chrome", () => {
   it("fades the drag source and leaves the ghost to the flight canvas", () => {
     const castable = object(42, { name: "Lightning Bolt" });
     const cast = action(7, { object: 42 });
-    const tree = handView({
-      viewport: HAND_DESIGN_VIEWPORT,
-      state: state({ objects: [castable], actions: [cast] }),
-      hiddenId: null,
-      flyingIds: new Set(),
-      hiddenIds: new Set(),
-      handDrag: {
-        action: cast,
-        name: "Lightning Bolt",
-        print: "bolt-print",
-        manaCost: cost(),
-        zone: "hand",
-        x: 10,
-        y: 10,
+    const tree = handView(
+      {
+        viewport: HAND_DESIGN_VIEWPORT,
+        state: state({ objects: [castable], actions: [cast] }),
+        hiddenId: null,
+        flyingIds: new Set(),
+        hiddenIds: new Set(),
+        handDrag: {
+          action: cast,
+          name: "Lightning Bolt",
+          print: "bolt-print",
+          manaCost: cost(),
+          zone: "hand",
+          x: 10,
+          y: 10,
+        },
       },
-    });
+      h,
+    );
     const source = findTestId(tree, "hand-card-face-42");
     expect(className(source)).not.toContain("ring-playable-border");
     expect(treeHasClass(source, "group-data-[drag-source=true]/hand-tile:opacity-25")).toBe(true);
@@ -349,22 +366,25 @@ describe("handView drag chrome", () => {
   it("does not render an HTML drag ghost for name-only cards", () => {
     const castable = object(42, { name: "Lightning Bolt", print: "" });
     const cast = action(7, { object: 42 });
-    const tree = handView({
-      viewport: HAND_DESIGN_VIEWPORT,
-      state: state({ objects: [castable], actions: [cast] }),
-      hiddenId: null,
-      flyingIds: new Set(),
-      hiddenIds: new Set(),
-      handDrag: {
-        action: cast,
-        name: "Lightning Bolt",
-        print: "",
-        manaCost: cost(),
-        zone: "hand",
-        x: 10,
-        y: 10,
+    const tree = handView(
+      {
+        viewport: HAND_DESIGN_VIEWPORT,
+        state: state({ objects: [castable], actions: [cast] }),
+        hiddenId: null,
+        flyingIds: new Set(),
+        hiddenIds: new Set(),
+        handDrag: {
+          action: cast,
+          name: "Lightning Bolt",
+          print: "",
+          manaCost: cost(),
+          zone: "hand",
+          x: 10,
+          y: 10,
+        },
       },
-    });
+      h,
+    );
     expect(findTestId(tree, "hand-drag-ghost")).toBeNull();
   });
 
@@ -377,22 +397,25 @@ describe("handView drag chrome", () => {
       name: "Zimone, Quandrix Prodigy",
     });
     const cast = action(9, { object: 9, section: "command", kind: "cast" });
-    const tree = handView({
-      viewport: HAND_DESIGN_VIEWPORT,
-      state: state({ objects: [commander], actions: [cast] }),
-      hiddenId: null,
-      flyingIds: new Set(),
-      hiddenIds: new Set(),
-      handDrag: {
-        action: cast,
-        name: commander.name,
-        print: "",
-        manaCost: commander.mana_cost,
-        zone: "command",
-        x: 10,
-        y: 10,
+    const tree = handView(
+      {
+        viewport: HAND_DESIGN_VIEWPORT,
+        state: state({ objects: [commander], actions: [cast] }),
+        hiddenId: null,
+        flyingIds: new Set(),
+        hiddenIds: new Set(),
+        handDrag: {
+          action: cast,
+          name: commander.name,
+          print: "",
+          manaCost: commander.mana_cost,
+          zone: "command",
+          x: 10,
+          y: 10,
+        },
       },
-    });
+      h,
+    );
     expect(findTestId(tree, "hand-drag-ghost")).toBeNull();
     const source = findTestId(tree, "hand-card-face-9");
     expect(className(source)).not.toContain("ring-playable-border");
@@ -471,16 +494,19 @@ describe("handView hover stacking", () => {
 
   it("does not elevate z for discard-selected without hover; hover still brings to front", () => {
     const a = object(42, { name: "Lightning Bolt" });
-    const tree = handView({
-      viewport: HAND_DESIGN_VIEWPORT,
-      state: state({ objects: [a], actions: [] }),
-      hiddenId: null,
-      flyingIds: new Set(),
-      hiddenIds: new Set(),
-      handDrag: null,
-      discardCostIds: new Set([42]),
-      discardSelectedIds: new Set([42]),
-    });
+    const tree = handView(
+      {
+        viewport: HAND_DESIGN_VIEWPORT,
+        state: state({ objects: [a], actions: [] }),
+        hiddenId: null,
+        flyingIds: new Set(),
+        hiddenIds: new Set(),
+        handDrag: null,
+        discardCostIds: new Set([42]),
+        discardSelectedIds: new Set([42]),
+      },
+      h,
+    );
     const root = findTestId(tree, "hand-tile-42");
     expect(root).not.toBeNull();
     // Selection alone must not add a selected z class; hover elevate stays available.

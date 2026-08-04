@@ -138,6 +138,7 @@ import { CopyBoardLog } from "./log-commands";
 import {
   CombatCancelAttacker,
   CombatCancelBlocker,
+  CompletedCancelSearchCardNames,
   GotCardNameComboboxMessage,
   GotConcedeDialogMessage,
   GotResultDialogMessage,
@@ -3031,11 +3032,20 @@ export function updateBoard(
       if (pc?.kind !== "choose_card_name") {
         return [{ ...next, cardNameSuggestions: null }, []];
       }
+      // A keystroke abandons the search the last one started. Cancel it here and fetch from the
+      // cancellation's own result — Commands in one batch have no execution order, so emitting the
+      // Interrupt alongside the replacement would race them.
       const q = message.value.trim();
-      if (q.length < 2) {
-        return [{ ...next, cardNameSuggestions: null }, []];
-      }
-      return [next, [SearchCardNames({ query: q }) as unknown as BoardCmd]];
+      const cleared = q.length < 2 ? { ...next, cardNameSuggestions: null } : next;
+      return [cleared, [SearchCardNames.Interrupt(() => CompletedCancelSearchCardNames())]];
+    }
+    case "CompletedCancelSearchCardNames": {
+      if (fold.state?.pending_choice?.kind !== "choose_card_name") return [model, []];
+      const draft = model.promptDraft;
+      if (draft?.kind !== "string") return [model, []];
+      const q = draft.value.trim();
+      if (q.length < 2) return [model, []];
+      return [model, [SearchCardNames({ query: q }) as unknown as BoardCmd]];
     }
     // Open/close, arrow keys, active descendant, and blur are the Combobox's. The board only has
     // to keep the string draft — what the answer is built from — level with the input.

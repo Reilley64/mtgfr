@@ -233,6 +233,9 @@ export const CardNameSuggestionsFetched = m("CardNameSuggestionsFetched", {
   query: S.String,
   names: S.Array(S.String),
 });
+/** The superseded typeahead search has been stopped. Carries nothing: the query to search next is
+ *  whatever the draft holds by the time this lands, which is later than the keystroke that sent it. */
+export const CompletedCancelSearchCardNames = m("CompletedCancelSearchCardNames");
 /** Toggle DFC face in the inspect overlay. */
 export const InspectFlipFace = m("InspectFlipFace");
 /** Dismiss inspect overlay (Escape / backdrop click). */
@@ -357,6 +360,7 @@ export const Message = S.Union([
   InspectAuxHovered,
   InspectCardFetched,
   CardNameSuggestionsFetched,
+  CompletedCancelSearchCardNames,
   InspectFlipFace,
   InspectDismissed,
   PileExpanded,

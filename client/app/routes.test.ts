@@ -157,7 +157,7 @@ test("LeaderboardRoute loads the first page on protected route entry", () => {
 
   Story.story(
     update,
-    Story.with(model),
+    Story.given(model),
     Story.message(GotAuthMessage({ message: Auth.Message.ReceivedMe({ me }) })),
     Story.Command.expectExact(load, HashMeGravatar({ email: me.email })),
     Story.Command.resolve(load, page),
@@ -188,7 +188,7 @@ test("CoverageRoute loads set coverage on protected route entry", () => {
 
   Story.story(
     update,
-    Story.with(model),
+    Story.given(model),
     Story.message(GotAuthMessage({ message: Auth.Message.ReceivedMe({ me }) })),
     Story.Command.expectExact(load, HashMeGravatar({ email: me.email })),
     Story.Command.resolve(load, page),
@@ -216,7 +216,7 @@ test("HomeRoute loads decks on protected route entry", () => {
 
   Story.story(
     update,
-    Story.with(model),
+    Story.given(model),
     Story.message(GotAuthMessage({ message: Auth.Message.ReceivedMe({ me }) })),
     Story.Command.expectExact(DeckList.FetchDecks, HashMeGravatar({ email: me.email })),
     Story.Command.resolve(DeckList.FetchDecks, DeckList.Message.ReceivedDecks({ decks })),
@@ -237,7 +237,7 @@ test("UrlChanged to HomeRoute clears transient deck list UI before loading decks
 
   Story.story(
     update,
-    Story.with({
+    Story.given({
       ...base,
       currentPath: "/leaderboard",
       route: LeaderboardRoute(),
@@ -275,7 +275,7 @@ test("HomeRoute cold load clears transient deck list UI through the same route e
 
   Story.story(
     update,
-    Story.with({
+    Story.given({
       ...base,
       decks: {
         ...base.decks,
@@ -325,7 +325,7 @@ test("leaderboard retry refreshes from the first page after an error", () => {
 
   Story.story(
     update,
-    Story.with(model),
+    Story.given(model),
     Story.message(GotLeaderboardMessage({ message: RequestedLeaderboardRefresh() })),
     Story.Command.expectExact(load),
     Story.model((m) => {
@@ -363,7 +363,7 @@ test("coverage retry clears rows and re-enters loading", () => {
 
   Story.story(
     update,
-    Story.with(model),
+    Story.given(model),
     Story.message(GotCoverageMessage({ message: RequestedCoverageRefresh() })),
     Story.Command.expectExact(load),
     Story.model((m) => {
@@ -386,7 +386,7 @@ test("coverage query updates in place", () => {
 
   Story.story(
     update,
-    Story.with(base),
+    Story.given(base),
     Story.message(GotCoverageMessage({ message: ChangedCoverageQuery({ query: "strix" }) })),
     Story.model((m) => {
       expect(m.coverage.query).toBe("strix");
@@ -404,7 +404,7 @@ test("redirects unsigned protected play routes with path deck", () => {
 
   Story.story(
     update,
-    Story.with(model),
+    Story.given(model),
     Story.message(GotAuthMessage({ message: Auth.Message.ReceivedMe({ me: null }) })),
     Story.Command.expectExact(redirect),
     Story.Command.resolve(redirect, NavigationCompleted()),
@@ -421,7 +421,7 @@ test("redirects unsigned protected leaderboard route", () => {
 
   Story.story(
     update,
-    Story.with(model),
+    Story.given(model),
     Story.message(GotAuthMessage({ message: Auth.Message.ReceivedMe({ me: null }) })),
     Story.Command.expectExact(redirect),
     Story.Command.resolve(redirect, NavigationCompleted()),
@@ -438,7 +438,7 @@ test("redirects unsigned protected coverage route", () => {
 
   Story.story(
     update,
-    Story.with(model),
+    Story.given(model),
     Story.message(GotAuthMessage({ message: Auth.Message.ReceivedMe({ me: null }) })),
     Story.Command.expectExact(redirect),
     Story.Command.resolve(redirect, NavigationCompleted()),

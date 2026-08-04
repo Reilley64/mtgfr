@@ -11,7 +11,7 @@ test("GotCoverageMessage updates coverage through the parent update", () => {
 
   Story.story(
     appUpdate,
-    Story.with({
+    Story.given({
       ...model,
       coverage: {
         ...model.coverage,

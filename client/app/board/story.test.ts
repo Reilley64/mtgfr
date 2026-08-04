@@ -3,6 +3,7 @@ import { expect, test } from "vitest";
 import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ActionView, ObjectView, VisibleState } from "~/wire/types";
 import type { GameFoldState } from "../game/fold";
+import { SearchCardNames } from "../game/intents";
 import { update as appUpdate, init } from "../main-exports";
 import { GotBoardMessage } from "../messages";
 import { emptyGameSlice } from "../model";
@@ -11,9 +12,12 @@ import {
   BoardCameraZoomed,
   BoardPointerDown,
   BoardPointerMove,
+  CardNameSuggestionsFetched,
   CombatAttackerDropped,
   CombatBlockerDropped,
+  CompletedCancelSearchCardNames,
   FlightsSynced,
+  PromptStringSet,
 } from "./messages";
 import { spawnExitFx } from "./motion/exit-fx";
 import { spawnFlight } from "./motion/flights";
@@ -109,7 +113,7 @@ test("GotBoardMessage updates the board through the parent update", () => {
 
   Story.story(
     appUpdate,
-    Story.with({
+    Story.given({
       ...model,
       game: { ...emptyGameSlice("ABC123"), seq: 1, state: state() },
     }),
@@ -125,7 +129,7 @@ test("pointer down on empty felt enters pan phase", () => {
 
   Story.story(
     (model: BoardModel, message: Message) => updateBoard(model, message, fold, null),
-    Story.with(initialBoardModel()),
+    Story.given(initialBoardModel()),
     Story.message(BoardPointerDown({ x: 12, y: 18 })),
     Story.model((model) => {
       expect(model.pointer).toEqual({ kind: "pan", x: 12, y: 18 });
@@ -154,7 +158,7 @@ test("FlightsSynced stores still-flying poses and hides the source card", () => 
 
   Story.story(
     (board: BoardModel, message: Message) => updateBoard(board, message, fold, null),
-    Story.with(initialBoardModel()),
+    Story.given(initialBoardModel()),
     Story.message(FlightsSynced({ flights: [flight], exitFx: [], now: 200 })),
     Story.model((board) => {
       expect(board.flights.get(1)).toEqual(flight);
@@ -180,7 +184,7 @@ test("FlightsSynced keeps exit FX ids hidden even without flights", () => {
 
   Story.story(
     (board: BoardModel, message: Message) => updateBoard(board, message, fold, null),
-    Story.with(initialBoardModel()),
+    Story.given(initialBoardModel()),
     Story.message(FlightsSynced({ flights: [], exitFx: [fx], now: 200 })),
     Story.model((board) => {
       expect(board.exitFx.get(7)).toEqual(fx);
@@ -221,7 +225,7 @@ test("FlightsSynced keeps flyers and exit FX ids hidden together", () => {
 
   Story.story(
     (board: BoardModel, message: Message) => updateBoard(board, message, fold, null),
-    Story.with(initialBoardModel()),
+    Story.given(initialBoardModel()),
     Story.message(FlightsSynced({ flights: [flight], exitFx: [fx], now: 200 })),
     Story.model((board) => {
       expect(board.flights.get(1)).toEqual(flight);
@@ -263,7 +267,7 @@ test("FlightsSynced clears hidden cards when flights disappear", () => {
 
   Story.story(
     (board: BoardModel, message: Message) => updateBoard(board, message, fold, null),
-    Story.with(model),
+    Story.given(model),
     Story.message(FlightsSynced({ flights: [], exitFx: [], now: 200 })),
     Story.model((board) => {
       expect(board.flights.size).toBe(0);
@@ -323,7 +327,7 @@ test("FlightsSynced keeps flyers and drops settled entries in one payload", () =
 
   Story.story(
     (board: BoardModel, message: Message) => updateBoard(board, message, fold, null),
-    Story.with(model),
+    Story.given(model),
     Story.message(FlightsSynced({ flights: [flyer, settled], exitFx: [], now: 90 })),
     Story.model((board) => {
       expect(board.flights.get(1)).toEqual(flyer);
@@ -509,7 +513,7 @@ test("a moved attack declaration stages the creatures of the seat it covers", ()
 
   Story.story(
     (model: BoardModel, message: Message) => updateBoard(model, message, fold, null),
-    Story.with(initialBoardModel()),
+    Story.given(initialBoardModel()),
     Story.message(CombatAttackerDropped({ attackerId: 7, defenderSeat: 2 })),
     Story.model((model) => {
       expect(model.combatAttackers).toEqual([{ attacker: 7, defender: 2 }]);
@@ -536,10 +540,40 @@ test("a moved block declaration stages blocks for the attacked seat, not the dec
 
   Story.story(
     (model: BoardModel, message: Message) => updateBoard(model, message, attacked, null),
-    Story.with(initialBoardModel()),
+    Story.given(initialBoardModel()),
     Story.message(CombatBlockerDropped({ attackerId: 7, blockerId: 8 })),
     Story.model((model) => {
       expect(model.combatBlocks).toEqual([{ blocker: 8, attacker: 7 }]);
+    }),
+  );
+});
+
+// The typeahead fires on every keystroke, so the request the last one started is already in flight.
+// It is cancelled first and the replacement goes out from the cancellation's own result — batching
+// the two together would race them.
+test("a keystroke cancels the in-flight name search, and the abandoned one never lands", () => {
+  const naming = gameFold({ pending_choice: { kind: "choose_card_name", player: 0, source: 1 } });
+  const namingBoard: BoardModel = {
+    ...initialBoardModel(),
+    promptDraft: { kind: "string", value: "" },
+    pendingChoiceKey: "choose_card_name",
+  };
+  const cancelled = SearchCardNames.Interrupt(() => CompletedCancelSearchCardNames());
+
+  Story.story(
+    (model: BoardModel, message: Message) => updateBoard(model, message, naming, null),
+    Story.given(namingBoard),
+    Story.message(PromptStringSet({ value: "Sol" })),
+    Story.Command.resolve(cancelled, CompletedCancelSearchCardNames()),
+    // "Sol" is in flight; the next keystroke abandons it.
+    Story.message(PromptStringSet({ value: "Sol R" })),
+    Story.Command.resolve(cancelled, CompletedCancelSearchCardNames()),
+    // Only the search for what is in the input now is left — the "Sol" search is gone, so its
+    // reply can never reach the model.
+    Story.Command.expectExact(SearchCardNames({ query: "Sol R" })),
+    Story.Command.resolve(SearchCardNames, CardNameSuggestionsFetched({ query: "Sol R", names: ["Sol Ring"] })),
+    Story.model((model) => {
+      expect(model.cardNameSuggestions).toEqual({ query: "Sol R", names: ["Sol Ring"] });
     }),
   );
 });

@@ -1,14 +1,14 @@
 import { Submodel } from "foldkit";
-import { html } from "foldkit/html";
 import { Scene } from "foldkit/test";
 import { expect, test } from "vitest";
+import { testHtml } from "~/test-html";
 import type { CatalogCard } from "~/wire/types";
 import { BindCardArt, CardArtTick } from "../ui/card-art";
 import { cardHoverPreviewView } from "./card-hover-preview";
 
 type PreviewMessage = "dismiss" | "flip";
 
-const h = html<PreviewMessage>();
+const h = testHtml<PreviewMessage>();
 
 const solRing: CatalogCard = {
   color_identity: [],
@@ -48,7 +48,7 @@ const dockView = Submodel.defineView<
   },
   PreviewMessage
 >((model) =>
-  cardHoverPreviewView(h, {
+  cardHoverPreviewView<PreviewMessage>(h, {
     mode: "dock",
     print: model.print,
     name: model.name,
@@ -68,7 +68,7 @@ const dockView = Submodel.defineView<
 test("card hover preview renders art and oracle text", () => {
   Scene.scene(
     { update: (m) => [m, []], view: followView },
-    Scene.with({ hover: { id: "sol-ring", print: "sol-ring-print", x: 120, y: 80 }, card: solRing }),
+    Scene.given({ hover: { id: "sol-ring", print: "sol-ring-print", x: 120, y: 80 }, card: solRing }),
     Scene.expect(Scene.selector('[data-testid="deck-list-hover-preview"]')).toExist(),
     Scene.expect(Scene.selector('[data-testid="deck-list-hover-preview"]')).toHaveClass("top-(--y)"),
     Scene.expect(Scene.selector('[data-testid="deck-list-hover-preview"]')).toHaveClass("left-(--x)"),
@@ -76,10 +76,21 @@ test("card hover preview renders art and oracle text", () => {
   );
 });
 
+test("preview art host reserves card height so the loading skeleton is visible", () => {
+  // The skeleton card-art paints is `absolute inset-0`; without an aspect the host is 0px tall and
+  // the preview reads as blank until the print arrives.
+  Scene.scene(
+    { update: (m) => [m, []], view: followView },
+    Scene.given({ hover: { id: "sol-ring", print: "sol-ring-print", x: 120, y: 80 }, card: solRing }),
+    Scene.expect(Scene.selector("[data-art-url]")).toHaveClass("aspect-[0.716]"),
+    Scene.Mount.resolve(BindCardArt, CardArtTick()),
+  );
+});
+
 test("dock mode renders backdrop and left-docked preview", () => {
   Scene.scene(
     { update: (m) => [m, []], view: dockView },
-    Scene.with({
+    Scene.given({
       print: "sol-ring-print",
       name: "Sol Ring",
       oracle: "{T}: Add {C}.",
@@ -101,7 +112,7 @@ test("dock mode renders backdrop and left-docked preview", () => {
 test("dock mode includes extras after the oracle panel", () => {
   Scene.scene(
     { update: (m) => [m, []], view: dockView },
-    Scene.with({
+    Scene.given({
       print: "sol-ring-print",
       name: "Sol Ring",
       oracle: "{T}: Add {C}.",
@@ -124,7 +135,7 @@ test("dock mode does not dismiss when a content control is clicked", () => {
       },
       view: dockView,
     },
-    Scene.with({
+    Scene.given({
       print: "sol-ring-print",
       name: "Sol Ring",
       oracle: "{T}: Add {C}.",
@@ -147,7 +158,7 @@ test("dock mode dismisses from the backdrop", () => {
       },
       view: dockView,
     },
-    Scene.with({
+    Scene.given({
       print: "sol-ring-print",
       name: "Sol Ring",
       oracle: "{T}: Add {C}.",

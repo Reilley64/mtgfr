@@ -622,7 +622,7 @@ impl Game {
     /// first one lands, add `Game::mana_matters(player)` and OR it into
     /// [`Game::has_meaningful_action`] (not into `meaningful_actions`, which would duplicate radial
     /// rows), and carry it as a snapshot boolean so the client borders every `taps_for_mana`
-    /// permanent, basics included. See docs/superpowers/specs/2026-07-29-mana-only-actions-design.md.
+    /// permanent, basics included. See OpenSpec `engine` / `wire-protocol` (`mana_only` / meaningful-action carve-out).
     pub(crate) fn paid_mana_activates(&self, player: PlayerId) -> Vec<MeaningfulAction> {
         if self.mulliganing {
             return Vec::new();

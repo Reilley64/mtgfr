@@ -59,7 +59,7 @@ phase('Plan')
 const plan = await agent(
   `You are the PLANNER for one wave of the mtgfr engine fidelity grind. Repo root: ${ROOT} (branch {{BRANCH}}).\n\n` +
   `The backlog is {{BACKLOG_FILE}} only — increments {{BACKLOG_RANGE}}. There is no global FIDELITY_BACKLOG; deps may reference earlier increments in this same file (or already-landed code). Increments marked "**LANDED**" are DONE; do not repick them. VERIFY eligibility against the card TOMLs and the code, not backlog prose — "still blocked" lists go stale.\n\n` +
-  `Grep to find where things live NOW; do not assume file layouts from older briefs. docs/agent-navigation.md maps the layout.\n\n` +
+  `Grep / ast-grep to find where things live NOW; do not assume file layouts from older briefs. docs/AGENT_NAVIGATION.md maps the layout.\n\n` +
   `Your job: pick the NEXT batch of increments, then write a self-sufficient handoff brief for each.\n\n` +
   `Selection rules (in order):\n` +
   `1. An increment is eligible ONLY if (a) not already landed, (b) every "Depends on:" dep is landed, and (c) at least one real pool card in crates/cards/data/*.toml would become faithful or measurably closer (grep the approximates notes for a live consumer — flag-don't-force, never add a dead variant). IMPORTANT: an increment whose *Cards:* line names a deck card NOT YET on disk is STILL eligible — the increment AUTHORS that card (TOML + tests) as part of its own work; "card absent from the pool" is never a reason to skip an increment in a deck grind.\n` +

@@ -130,7 +130,7 @@ Each component is a Foldkit Submodel with its own Model, Message, init, update, 
 
 **Always prefer Foldkit UI components over hand-rolling interactive widgets.** They make accessibility the default, not an afterthought.
 
-**For form inputs specifically:** every text input, textarea, and button in a form MUST use `Ui.Input`, `Ui.Textarea`, and `Ui.Button` respectively. This is not optional, even though raw `input`/`textarea` HTML elements are available from `html<Message>()`. The form example (`examples/form/src/main.ts:347-403`) defines `inputFieldView` and `textareaFieldView` helpers that wrap `Ui.Input.view` and `Ui.Textarea.view` with label + validation feedback. Copy that helper pattern. Raw `input`/`textarea` are for non-form cases (search fields, inline editors) where you're intentionally working below the Ui component layer, and even then, reach for the Ui component first.
+**For form inputs specifically:** every text input, textarea, and button in a form MUST use `Ui.Input`, `Ui.Textarea`, and `Ui.Button` respectively. This is not optional, even though raw `input`/`textarea` HTML elements are available off `h`. The form example (`examples/form/src/main.ts:347-403`) defines `inputFieldView` and `textareaFieldView` helpers that wrap `Ui.Input.view` and `Ui.Textarea.view` with label + validation feedback. Copy that helper pattern. Raw `input`/`textarea` are for non-form cases (search fields, inline editors) where you're intentionally working below the Ui component layer, and even then, reach for the Ui component first.
 
 If the app uses UI components, **always read the ui-showcase example first** to understand how components are wired. This is the canonical reference for Foldkit UI integration patterns:
 
@@ -290,7 +290,7 @@ For each Foldkit module you plan to use, read the `.d.ts` at the paths below. Re
 ```
 # Every app
 client/node_modules/foldkit/dist/index.d.ts          # top-level re-exports
-client/node_modules/foldkit/dist/html/index.d.ts     # html<Message>(), element signatures, Attribute<Message>, empty, keyed
+client/node_modules/foldkit/dist/html/index.d.ts     # HtmlBuilder<Message>, element signatures, Attribute<Message>, empty, keyed
 client/node_modules/foldkit/dist/message/index.d.ts  # m()
 client/node_modules/foldkit/dist/schema/index.d.ts   # ts(), r()
 client/node_modules/foldkit/dist/struct/index.d.ts   # evo(): check nested-update signature
@@ -302,7 +302,7 @@ client/node_modules/foldkit/dist/url/index.d.ts      # toString
 client/node_modules/foldkit/dist/navigation/index.d.ts # pushUrl, load: all return Effect<void> (no Effect.ignore needed)
 
 # If using async / side effects
-client/node_modules/foldkit/dist/command/index.d.ts  # Command.define: result schemas are required
+client/node_modules/foldkit/dist/command/index.d.ts  # Command.define: named config ({ args, messages, execute, interrupt })
 client/node_modules/foldkit/dist/dom/index.d.ts      # focus, advanceFocus, scrollIntoView, showDialog, closeDialog, clickElement, lockScroll, unlockScroll, inertOthers, restoreInert, detectElementMovement, waitForAnimationSettled. For time/random/uuid/delay use Effect's Clock, Random, Effect.uuid, Effect.sleep + Duration directly.
 
 # If using subscriptions
@@ -330,7 +330,7 @@ client/node_modules/foldkit/dist/calendar/index.d.ts # CalendarDate, today.local
 For each symbol you'll call, write one line:
 
 ```
-html<Message>(): { div, input (VOID), textarea, button, Class, Href, For, Id, Role, OnClick(Message), OnInput(value=>Message), OnBlur(Message), OnSubmit(Message), keyed, empty, ... }
+`h` (the builder the runtime passes to a view): { div, input (VOID), textarea, button, Class, Href, For, Id, Role, OnClick(Message), OnInput(value=>Message), OnBlur(Message), OnSubmit(Message), keyed, empty, ... }
 Route.mapTo(schema)(parser): curried
 pushUrl(path): Effect<void>  // NOT fallible, no Effect.ignore needed
 urlToString(url: Url): string
@@ -346,12 +346,12 @@ Record these in the crib and keep them visible while generating:
 - **`input` and `br` and other void elements take ONLY attributes**: `input([...])`, never `input([...], [])`. `textarea` and `button` DO take children.
 - **`UrlRequest` tags are `Internal` and `External`**, not `InternalUrl` / `ExternalUrl`.
 - **`OnClick` and `OnSubmit` take a Message directly**, not a `() => Message`. Only `OnInput` takes `(value) => Message` because it needs the input value.
-- **`keyed`, `empty` are properties on the record returned by `html<Message>()`**: accessed as `h.keyed` and `h.empty` after `const h = html<Message>()`. They are not top-level exports of `foldkit/html`.
+- **`keyed`, `empty` are properties on the `h` builder**: accessed as `h.keyed` and `h.empty`. They are not top-level exports of `foldkit/html`.
 - **Attribute helpers are specific**: `Value(...)`, `Type(...)`, `Placeholder(...)`, `Href(...)`, `Target(...)`, `Rel(...)`, `Rows(n)`, `Id(...)`, `For(...)`, `Role(...)`, `AriaLabel(...)`. There is no generic `Attr('...', '...')`.
 - **`ApplicationInit<Model, Message, Flags>` has no URL parameter.** For routed apps, use `RoutingApplicationInit<Model, Message, Flags>`: the second arg is `url: Url`.
 - **`Route.mapTo` takes the route schema, not a factory function.** `pipe(literal('new'), Route.mapTo(NewLinkRoute))`. NOT `Route.mapTo(() => NewLinkRoute())`.
 - **`Effect.ignore` is ONLY for fallible Effects.** `pushUrl(path).pipe(Effect.as(Message()))`. No `Effect.ignore` because `pushUrl` returns `Effect<void>`.
-- **`Command.define` requires result Message schemas after the name**: `Command.define('Fetch', SucceededFetch, FailedFetch)`. Infallible Commands only need one result: `Command.define('ReadClock', RecordedTime)`.
+- **`Command.define` takes a named config**: `Command.define('Fetch', { args: { id: S.Number }, messages: [SucceededFetch, FailedFetch], execute: ({ id }) => ... })`. `args` and `interrupt` are optional; an infallible Command lists one Message.
 - **`makeRules` takes `{ required?: Rule.RuleMessage, rules: Array<Rule.Rule> }` where `Rule.Rule = [Predicate, Rule.RuleMessage]`**: a tuple, NOT `{ test, message }`. Rule constructors live on the `Rule` namespace (`Rule.url({ message })`, `Rule.email(message?)`, `Rule.minLength(n, message?)`, `Rule.pattern(regex, message?)`, `Rule.fromSchema(schema, message)`).
 - **`Field.Invalid` has `errors: NonEmptyArray<string>`, not `error: string`.** Use `Array.headNonEmpty(errors)` to get the first message; use `Rule.resolveMessage(message, value)` to resolve a rule message to its final string.
 - **Route variants are `HomeRoute`, `NewLinkRoute`, etc., with the `Route` suffix.** Every exemplar uses this convention.
@@ -435,7 +435,7 @@ Every message must carry meaning. No `NoOp`.
 
 ### Commands
 
-- Define Command identities with `Command.define`, passing result Message schemas after the name. Result types are required
+- Define Command identities with `Command.define`, passing a named config ({ args, messages, execute, interrupt }). `messages` is required
 - Always assign definitions to PascalCase constants. Never inline in pipe chains
 - Definitions live where they're produced, colocated with the update function
 - Let TypeScript infer return types. No explicit `Command<typeof A>` annotations
@@ -501,7 +501,7 @@ For file uploads (resumes, images, attachments):
 
 ### View
 
-- Bind the html factory inside each view function (never at module level): `const h = html<Message>()` as the first line of the function body. Reach for elements, attributes, and event handlers off `h`: `h.div`, `h.Class`, `h.OnClick`. For Submodel views (children embedded via `h.submodel`), brand with `Submodel.defineView<Model, Message>` and bind `const h = html<Message>()` inside the body. The child dispatches in its own Message type and the parent declares the wrap at the embed site via `toParentMessage`.
+- The runtime passes the `h` builder to every view as its last parameter; a view helper takes it as an ordinary parameter (`html<Message>()` was removed in foldkit 0.134, and `inertHtml` is the only builder obtainable outside a render). Reach for elements, attributes, and event handlers off `h`: `h.div`, `h.Class`, `h.OnClick`. For Submodel views (children embedded via `h.submodel`), brand with `Submodel.defineView<Model, Message>`; its callback is `(model, h)` (or `(model, viewInputs, h)` when the Submodel declares ViewInputs). The child dispatches in its own Message type and the parent declares the wrap at the embed site via `toParentMessage`.
 - Use `h.Class(...)` for Tailwind classes
 - Use `clsx` from the `clsx` package for conditional class composition: `h.Class(clsx('base-classes', { 'active-class': isActive, 'bg-blue-500': variant === 'Primary' }))`. Use `clsx` whenever classes depend on model state, boolean flags, or discriminated union tags. Never string concatenation, template literals, or `&&` expressions.
 - Pattern match on model state: `M.value(model.state).pipe(M.tagsExhaustive({...}))`
@@ -813,7 +813,7 @@ COMMON BLIND SPOTS. Check each explicitly; these are frequently missed:
     perspective.
 
     Also: **Scene tests must contain assertions.** A `Scene.scene(...)`
-    call with only `Scene.with(model)` and no `Scene.expect(...)` or
+    call with only `Scene.given(model)` and no `Scene.expect(...)` or
     `Scene.click(...).resolve(...)` only verifies the view doesn't
     throw. Each test needs at least one `Scene.expect(locator).toX()`
     or an interaction that asserts on the resulting state.

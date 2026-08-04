@@ -3,7 +3,7 @@
 Source: `docs/decklists/silverquill_influence.md` (official Wizards `soc` precon list, cross-checked
 against live pool files and the current engine trigger/combat paths). Commander:
 **Killian, Decisive Mentor**. Backlog:
-[silverquill-influence-increments.md](silverquill-influence-increments.md).
+Engine increments for this grind all landed; backlog file removed.
 
 Intake counts: 56 faithful / 0 approximated / 0 expressible / 28 needing engine work.
 The classifier returned 84 A / 0 B / 0 missing, but the Silverquill re-audit demoted 28 cards to

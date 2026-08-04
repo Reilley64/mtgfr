@@ -64,6 +64,16 @@ proto-breaking:
 [doc("proto-lint + proto-breaking")]
 proto-check: proto-lint proto-breaking
 
+# ── Docs / OpenSpec ───────────────────────────────────────────────────────────────────
+
+[doc("Validate OpenSpec living specs and active changes (strict)")]
+openspec-check:
+    openspec validate --all --strict --no-interactive
+
+[doc("Sync vendored Card-Forge/forge at .repos/forge from upstream (commit the diff)")]
+forge:
+    ./scripts/sync-forge.sh
+
 # ── Client ───────────────────────────────────────────────────────────────────────────
 
 [group('client')]

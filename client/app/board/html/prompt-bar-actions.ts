@@ -1,4 +1,4 @@
-import { type Html, html } from "foldkit/html";
+import type { Html, HtmlBuilder } from "foldkit/html";
 import {
   type AnswerInput,
   buildAnswerFromDraft,
@@ -45,7 +45,6 @@ import {
 } from "../messages";
 import type { BoardModel } from "../submodel";
 
-const h = html<Message>();
 type SimplePayPending = Extract<
   PendingChoiceView,
   {
@@ -70,11 +69,11 @@ function messageText(message: MessageRef | null | undefined): string {
   return formatMessage(message);
 }
 
-function barRow(actions: ReadonlyArray<Html>): Html {
+function barRow(actions: ReadonlyArray<Html>, h: HtmlBuilder<Message>): Html {
   return h.div([h.Class("flex flex-row-reverse flex-wrap items-center justify-end gap-sm")], actions);
 }
 
-function barStack(actions: ReadonlyArray<Html>): Html {
+function barStack(actions: ReadonlyArray<Html>, h: HtmlBuilder<Message>): Html {
   return h.div([h.Class("flex max-w-[min(100vw-2rem,24rem)] flex-col items-end gap-sm")], actions);
 }
 
@@ -83,6 +82,7 @@ function barButton(
   label: string,
   onClick: Message,
   primary: boolean,
+  h: HtmlBuilder<Message>,
   disabled = false,
   pressed: boolean | null = null,
 ): Html {
@@ -107,16 +107,24 @@ function pendingBarButton(
   answer: AnswerInput,
   primary: boolean,
   disabled: boolean,
+  h: HtmlBuilder<Message>,
 ): Html {
-  return barButton(testId, label, PendingChoiceAnswered({ intent: choiceIntent(pending, answer) }), primary, disabled);
+  return barButton(
+    testId,
+    label,
+    PendingChoiceAnswered({ intent: choiceIntent(pending, answer) }),
+    primary,
+    h,
+    disabled,
+  );
 }
 
-function submitBarButton(label: string, onClick: Message, disabled: boolean): Html {
-  return barButton("prompt-submit", label, onClick, true, disabled);
+function submitBarButton(label: string, onClick: Message, disabled: boolean, h: HtmlBuilder<Message>): Html {
+  return barButton("prompt-submit", label, onClick, true, h, disabled);
 }
 
-function cancelBarButton(): Html {
-  return barButton("prompt-cancel", "Cancel", CancelActionClicked(), false);
+function cancelBarButton(h: HtmlBuilder<Message>): Html {
+  return barButton("prompt-cancel", "Cancel", CancelActionClicked(), false, h);
 }
 
 function payCostDeclineLabel(kind: SimplePayPending["kind"]): string {
@@ -141,7 +149,12 @@ function payCostDeclineLabel(kind: SimplePayPending["kind"]): string {
   }
 }
 
-function payCostBarActions(board: BoardModel, pending: SimplePayPending, tableId: string | null): Html {
+function payCostBarActions(
+  board: BoardModel,
+  pending: SimplePayPending,
+  tableId: string | null,
+  h: HtmlBuilder<Message>,
+): Html {
   const shockland = pending.kind === "pay_life_or_enters_tapped";
   const payLabel = shockland ? `Pay ${pending.life} life` : `Pay ${costText(pending.cost)}`;
   const canPay = !("can_pay" in pending) || pending.can_pay;
@@ -152,22 +165,35 @@ function payCostBarActions(board: BoardModel, pending: SimplePayPending, tableId
   const payAnswer: AnswerInput =
     discardNeed > 0 ? { kind: "pay", pay: true, discard: picked } : { kind: "pay", pay: true };
 
-  return barRow([
-    pendingBarButton(pending, "prompt-pay", payLabel, payAnswer, true, tableId == null || !canPay || !discardReady),
-    pendingBarButton(
-      pending,
-      "prompt-decline",
-      payCostDeclineLabel(pending.kind),
-      { kind: "pay", pay: false },
-      false,
-      tableId == null,
-    ),
-  ]);
+  return barRow(
+    [
+      pendingBarButton(
+        pending,
+        "prompt-pay",
+        payLabel,
+        payAnswer,
+        true,
+        tableId == null || !canPay || !discardReady,
+        h,
+      ),
+      pendingBarButton(
+        pending,
+        "prompt-decline",
+        payCostDeclineLabel(pending.kind),
+        { kind: "pay", pay: false },
+        false,
+        tableId == null,
+        h,
+      ),
+    ],
+    h,
+  );
 }
 
 function chooseModeBarActions(
   pending: Extract<SimpleModePending, { kind: "choose_mode" }>,
   tableId: string | null,
+  h: HtmlBuilder<Message>,
 ): Html {
   return barStack(
     pending.labels.map((label, index) =>
@@ -178,8 +204,10 @@ function chooseModeBarActions(
         { kind: "mode", mode: index },
         index === 0,
         tableId == null,
+        h,
       ),
     ),
+    h,
   );
 }
 
@@ -187,80 +215,103 @@ function chooseTriggerModesBarActions(
   pending: Extract<SimpleModePending, { kind: "choose_trigger_modes" }>,
   board: BoardModel,
   state: VisibleState,
+  h: HtmlBuilder<Message>,
 ): Html {
   const draft = board.promptDraft ?? initPromptDraft(pending, state);
   const picked = draft.kind === "modes" ? draft.modes : [];
   const ready = picked.length === pending.choose || (pending.optional && picked.length === 0);
 
-  return barRow([
-    barButton("prompt-submit", "Choose", PromptSubmitted(), true, !ready),
-    barButton("prompt-cancel", "Cancel", CancelActionClicked(), false),
-  ]);
+  return barRow(
+    [
+      barButton("prompt-submit", "Choose", PromptSubmitted(), true, h, !ready),
+      barButton("prompt-cancel", "Cancel", CancelActionClicked(), false, h),
+    ],
+    h,
+  );
 }
 
-function pilePickBarActions(pending: SimplePilePending, tableId: string | null): Html {
+function pilePickBarActions(pending: SimplePilePending, tableId: string | null, h: HtmlBuilder<Message>): Html {
   // Raging River sends each attacker left or right rather than into an unnamed pile A/B.
   const sided = pending.kind === "choose_pile_for_hand" && pending.attacker != null;
-  return barRow([
-    pendingBarButton(
-      pending,
-      "prompt-pile-0",
-      sided ? "Left" : "Pile A",
-      { kind: "opponent_pile", pile: 0 },
-      true,
-      tableId == null,
-    ),
-    pendingBarButton(
-      pending,
-      "prompt-pile-1",
-      sided ? "Right" : "Pile B",
-      { kind: "opponent_pile", pile: 1 },
-      false,
-      tableId == null,
-    ),
-  ]);
-}
-
-function destinationBarActions(pending: SimpleDestinationPending, tableId: string | null): Html {
-  if (pending.kind === "choose_countered_spell_destination") {
-    return barRow([
+  return barRow(
+    [
       pendingBarButton(
         pending,
-        "prompt-destination-top",
-        "Top",
-        { kind: "top_or_bottom", top: true },
+        "prompt-pile-0",
+        sided ? "Left" : "Pile A",
+        { kind: "opponent_pile", pile: 0 },
         true,
         tableId == null,
+        h,
       ),
       pendingBarButton(
         pending,
-        "prompt-destination-bottom",
-        "Bottom",
-        { kind: "top_or_bottom", top: false },
+        "prompt-pile-1",
+        sided ? "Right" : "Pile B",
+        { kind: "opponent_pile", pile: 1 },
         false,
         tableId == null,
+        h,
       ),
-    ]);
+    ],
+    h,
+  );
+}
+
+function destinationBarActions(
+  pending: SimpleDestinationPending,
+  tableId: string | null,
+  h: HtmlBuilder<Message>,
+): Html {
+  if (pending.kind === "choose_countered_spell_destination") {
+    return barRow(
+      [
+        pendingBarButton(
+          pending,
+          "prompt-destination-top",
+          "Top",
+          { kind: "top_or_bottom", top: true },
+          true,
+          tableId == null,
+          h,
+        ),
+        pendingBarButton(
+          pending,
+          "prompt-destination-bottom",
+          "Bottom",
+          { kind: "top_or_bottom", top: false },
+          false,
+          tableId == null,
+          h,
+        ),
+      ],
+      h,
+    );
   }
 
-  return barRow([
-    pendingBarButton(
-      pending,
-      "prompt-destination-battlefield",
-      "Battlefield",
-      { kind: "revealed", choice: pending.item.id },
-      true,
-      tableId == null,
-    ),
-    pendingBarButton(
-      pending,
-      "prompt-destination-hand",
-      "Hand",
-      { kind: "revealed", choice: null },
-      false,
-      tableId == null,
-    ),
-  ]);
+  return barRow(
+    [
+      pendingBarButton(
+        pending,
+        "prompt-destination-battlefield",
+        "Battlefield",
+        { kind: "revealed", choice: pending.item.id },
+        true,
+        tableId == null,
+        h,
+      ),
+      pendingBarButton(
+        pending,
+        "prompt-destination-hand",
+        "Hand",
+        { kind: "revealed", choice: null },
+        false,
+        tableId == null,
+        h,
+      ),
+    ],
+    h,
+  );
 }
 
 function boardAimDeclineLabel(pending: PendingChoiceView): string | null {
@@ -337,21 +388,21 @@ function onHandDiscardCost(board: BoardModel, state: VisibleState): boolean {
   return choices.every((id) => handIds.has(id));
 }
 
-function localBoardAimBarActions(board: BoardModel, state: VisibleState): Html | null {
+function localBoardAimBarActions(board: BoardModel, state: VisibleState, h: HtmlBuilder<Message>): Html | null {
   if (board.modalCast?.chosen != null) {
-    return barRow([cancelBarButton()]);
+    return barRow([cancelBarButton(h)], h);
   }
 
   if (board.sacrificePick != null) {
     const choices = board.sacrificePick.action.sacrifice_choices ?? [];
     if (sacrificeCostObjectIds(choices, state) != null) {
-      return barRow([cancelBarButton()]);
+      return barRow([cancelBarButton(h)], h);
     }
   }
 
   if (board.discardPick != null && onHandDiscardCost(board, state)) {
     const ready = board.discardPick.picks.discard_cost.length === 1;
-    return barRow([submitBarButton("Confirm", DiscardCostConfirmed(), !ready), cancelBarButton()]);
+    return barRow([submitBarButton("Confirm", DiscardCostConfirmed(), !ready, h), cancelBarButton(h)], h);
   }
 
   if (board.gyExilePick != null) {
@@ -362,18 +413,23 @@ function localBoardAimBarActions(board: BoardModel, state: VisibleState): Html |
       const selected = board.gyExilePick.picks.graveyard_exile;
       const oneClick = max <= 1;
       const ready = !oneClick && selected.length >= min && selected.length <= max;
-      const actions: Html[] = [cancelBarButton()];
+      const actions: Html[] = [cancelBarButton(h)];
       if (!oneClick && min < max) {
-        actions.unshift(submitBarButton("Exile", GyExileConfirmed(), !ready));
+        actions.unshift(submitBarButton("Exile", GyExileConfirmed(), !ready, h));
       }
-      return barRow(actions);
+      return barRow(actions, h);
     }
   }
 
   return null;
 }
 
-function pendingBoardAimBarActions(board: BoardModel, state: VisibleState, tableId: string | null): Html | null {
+function pendingBoardAimBarActions(
+  board: BoardModel,
+  state: VisibleState,
+  tableId: string | null,
+  h: HtmlBuilder<Message>,
+): Html | null {
   const pending = state.pending_choice;
   if (pending == null) return null;
   if (pending.kind === "pay_cost") return null;
@@ -381,16 +437,20 @@ function pendingBoardAimBarActions(board: BoardModel, state: VisibleState, table
   if (pending.kind === "opponent_chooses_revealed_to_graveyard") {
     const decline = declineAnswer(pending);
     if (decline == null) return null;
-    return barRow([
-      pendingBarButton(
-        pending,
-        "prompt-decline",
-        boardAimDeclineLabel(pending) ?? "Decline",
-        decline,
-        false,
-        tableId == null,
-      ),
-    ]);
+    return barRow(
+      [
+        pendingBarButton(
+          pending,
+          "prompt-decline",
+          boardAimDeclineLabel(pending) ?? "Decline",
+          decline,
+          false,
+          tableId == null,
+          h,
+        ),
+      ],
+      h,
+    );
   }
 
   if (pendingGraveyardPickIds(pending, state) != null) {
@@ -400,7 +460,9 @@ function pendingBoardAimBarActions(board: BoardModel, state: VisibleState, table
     const ready = !oneClick && cardPickReady(pending, picked);
     const actions: Html[] = [];
     if (!oneClick) {
-      actions.push(submitBarButton(graveyardSubmitLabel(pending.kind), PromptSubmitted(), tableId == null || !ready));
+      actions.push(
+        submitBarButton(graveyardSubmitLabel(pending.kind), PromptSubmitted(), tableId == null || !ready, h),
+      );
     }
     const decline = declineAnswer(pending);
     if (decline != null) {
@@ -412,10 +474,11 @@ function pendingBoardAimBarActions(board: BoardModel, state: VisibleState, table
           decline,
           false,
           tableId == null,
+          h,
         ),
       );
     }
-    return actions.length > 0 ? barRow(actions) : null;
+    return actions.length > 0 ? barRow(actions, h) : null;
   }
 
   const digHost = pendingDigCastHostMode(pending, state, board.promptDraft);
@@ -426,7 +489,7 @@ function pendingBoardAimBarActions(board: BoardModel, state: VisibleState, table
     const ready = !oneClick && cardPickReady(pending, picked);
     const actions: Html[] = [];
     if (!oneClick) {
-      actions.push(submitBarButton("Choose", PromptSubmitted(), tableId == null || !ready));
+      actions.push(submitBarButton("Choose", PromptSubmitted(), tableId == null || !ready, h));
     }
     const decline = declineAnswer(pending);
     if (decline != null) {
@@ -438,10 +501,11 @@ function pendingBoardAimBarActions(board: BoardModel, state: VisibleState, table
           decline,
           false,
           tableId == null,
+          h,
         ),
       );
     }
-    return actions.length > 0 ? barRow(actions) : null;
+    return actions.length > 0 ? barRow(actions, h) : null;
   }
 
   if (pendingHandPickIds(pending, state) != null) {
@@ -451,7 +515,7 @@ function pendingBoardAimBarActions(board: BoardModel, state: VisibleState, table
     const ready = !oneClick && cardPickReady(pending, picked);
     const actions: Html[] = [];
     if (!oneClick) {
-      actions.push(submitBarButton(handSubmitLabel(pending.kind), PromptSubmitted(), tableId == null || !ready));
+      actions.push(submitBarButton(handSubmitLabel(pending.kind), PromptSubmitted(), tableId == null || !ready, h));
     }
     const decline = declineAnswer(pending);
     if (decline != null) {
@@ -463,10 +527,11 @@ function pendingBoardAimBarActions(board: BoardModel, state: VisibleState, table
           decline,
           false,
           tableId == null,
+          h,
         ),
       );
     }
-    return actions.length > 0 ? barRow(actions) : null;
+    return actions.length > 0 ? barRow(actions, h) : null;
   }
 
   if (pendingBoardTargetMode(pending, state) != null || digHost != null) {
@@ -476,7 +541,7 @@ function pendingBoardAimBarActions(board: BoardModel, state: VisibleState, table
     const ready = !oneClick && cardPickReady(pending, picked);
     const actions: Html[] = [];
     if (!oneClick) {
-      actions.push(submitBarButton("Confirm", PromptSubmitted(), tableId == null || !ready));
+      actions.push(submitBarButton("Confirm", PromptSubmitted(), tableId == null || !ready, h));
     }
     const decline = declineAnswer(pending);
     if (decline != null) {
@@ -488,10 +553,11 @@ function pendingBoardAimBarActions(board: BoardModel, state: VisibleState, table
           decline,
           false,
           tableId == null,
+          h,
         ),
       );
     }
-    return actions.length > 0 ? barRow(actions) : null;
+    return actions.length > 0 ? barRow(actions, h) : null;
   }
 
   if (pendingPlayerAimSeats(pending, state) != null) {
@@ -501,43 +567,56 @@ function pendingBoardAimBarActions(board: BoardModel, state: VisibleState, table
     const draft = board.promptDraft ?? initPromptDraft(pending, state);
     const picked = draft.kind === "player-pick" ? draft.players : [];
     const ready = picked.length >= pending.min && picked.length <= pending.max;
-    return barRow([submitBarButton("Confirm", PromptSubmitted(), tableId == null || !ready)]);
+    return barRow([submitBarButton("Confirm", PromptSubmitted(), tableId == null || !ready, h)], h);
   }
 
   if (pending.kind === "assign_combat_damage" && pendingDamageAssignBlockers(pending, state) != null) {
     const draft = board.promptDraft ?? initPromptDraft(pending, state);
-    return barRow([
-      submitBarButton("Assign", PromptSubmitted(), tableId == null || !damageAssignReady(pending, draft, state)),
-    ]);
+    return barRow(
+      [submitBarButton("Assign", PromptSubmitted(), tableId == null || !damageAssignReady(pending, draft, state), h)],
+      h,
+    );
   }
 
   if (pending.kind === "divide_spell_damage" && pendingDivideSpellObjectIndexes(pending, state) != null) {
     const draft = board.promptDraft ?? initPromptDraft(pending, state);
-    return barRow([
-      submitBarButton("Assign", PromptSubmitted(), tableId == null || buildAnswerFromDraft(pending, draft) == null),
-    ]);
+    return barRow(
+      [
+        submitBarButton(
+          "Assign",
+          PromptSubmitted(),
+          tableId == null || buildAnswerFromDraft(pending, draft) == null,
+          h,
+        ),
+      ],
+      h,
+    );
   }
 
   if (pending.kind === "divide_counters" && pendingDamageAssignBlockers(pending, state) != null) {
     const draft = board.promptDraft ?? initPromptDraft(pending, state);
-    return barRow([
-      submitBarButton("Assign", PromptSubmitted(), tableId == null || !damageAssignReady(pending, draft, state)),
-    ]);
+    return barRow(
+      [submitBarButton("Assign", PromptSubmitted(), tableId == null || !damageAssignReady(pending, draft, state), h)],
+      h,
+    );
   }
 
   return null;
 }
 
-function playModeBarActions(pick: NonNullable<BoardModel["playModePick"]>): Html {
-  return barStack([
-    ...pick.modes.map((mode, index) =>
-      barButton(`play-mode-${index}`, messageText(mode.label), PlayModeChosen({ actionId: mode.id }), index === 0),
-    ),
-    barButton("prompt-cancel", "Cancel", CancelActionClicked(), false),
-  ]);
+function playModeBarActions(pick: NonNullable<BoardModel["playModePick"]>, h: HtmlBuilder<Message>): Html {
+  return barStack(
+    [
+      ...pick.modes.map((mode, index) =>
+        barButton(`play-mode-${index}`, messageText(mode.label), PlayModeChosen({ actionId: mode.id }), index === 0, h),
+      ),
+      barButton("prompt-cancel", "Cancel", CancelActionClicked(), false, h),
+    ],
+    h,
+  );
 }
 
-function modalModeBarActions(mc: NonNullable<BoardModel["modalCast"]>): Html | null {
+function modalModeBarActions(mc: NonNullable<BoardModel["modalCast"]>, h: HtmlBuilder<Message>): Html | null {
   if (mc.chosen != null) return null;
 
   const choose = mc.action.modal?.choose ?? 1;
@@ -555,6 +634,7 @@ function modalModeBarActions(mc: NonNullable<BoardModel["modalCast"]>): Html | n
         `${messageText(mode.label)}${available ? "" : " (no legal target)"}`,
         ModalModeToggled({ index }),
         selected,
+        h,
         !available,
         selected,
       );
@@ -565,47 +645,56 @@ function modalModeBarActions(mc: NonNullable<BoardModel["modalCast"]>): Html | n
       messageText(mode.label),
       ModalModesChosen({ chosen: [index] }),
       index === 0,
+      h,
       !available,
     );
   });
 
   const footer = multi
     ? [
-        barButton("modal-cast", "Cast", ModalModesChosen({ chosen: [...picked] }), true, !ready),
-        barButton("prompt-cancel", "Cancel", CancelActionClicked(), false),
+        barButton("modal-cast", "Cast", ModalModesChosen({ chosen: [...picked] }), true, h, !ready),
+        barButton("prompt-cancel", "Cancel", CancelActionClicked(), false, h),
       ]
-    : [barButton("prompt-cancel", "Cancel", CancelActionClicked(), false)];
+    : [barButton("prompt-cancel", "Cancel", CancelActionClicked(), false, h)];
 
   return h.div(
     [h.Class("flex max-w-[min(100vw-2rem,24rem)] flex-col items-end gap-sm")],
-    [...modeButtons, barRow(footer)],
+    [...modeButtons, barRow(footer, h)],
   );
 }
 
-export function simplePromptBarActions(_board: BoardModel, state: VisibleState, tableId: string | null): Html | null {
-  if (_board.playModePick != null) return playModeBarActions(_board.playModePick);
+export function simplePromptBarActions(
+  _board: BoardModel,
+  state: VisibleState,
+  tableId: string | null,
+  h: HtmlBuilder<Message>,
+): Html | null {
+  if (_board.playModePick != null) return playModeBarActions(_board.playModePick, h);
 
   if (_board.modalCast != null) {
-    const modalActions = modalModeBarActions(_board.modalCast);
+    const modalActions = modalModeBarActions(_board.modalCast, h);
     if (modalActions != null) return modalActions;
   }
 
-  const localBoardAimActions = localBoardAimBarActions(_board, state);
+  const localBoardAimActions = localBoardAimBarActions(_board, state, h);
   if (localBoardAimActions != null) return localBoardAimActions;
 
   const pending = state.pending_choice;
   if (pending == null) return null;
 
-  const pendingBoardAimActions = pendingBoardAimBarActions(_board, state, tableId);
+  const pendingBoardAimActions = pendingBoardAimBarActions(_board, state, tableId, h);
   if (pendingBoardAimActions != null) return pendingBoardAimActions;
 
   switch (pending.kind) {
     case "may_yes_no":
     case "dance_exile_more":
-      return barRow([
-        pendingBarButton(pending, "prompt-yes", "Yes", { kind: "may", yes: true }, true, tableId == null),
-        pendingBarButton(pending, "prompt-no", "No", { kind: "may", yes: false }, false, tableId == null),
-      ]);
+      return barRow(
+        [
+          pendingBarButton(pending, "prompt-yes", "Yes", { kind: "may", yes: true }, true, tableId == null, h),
+          pendingBarButton(pending, "prompt-no", "No", { kind: "may", yes: false }, false, tableId == null, h),
+        ],
+        h,
+      );
     case "pay_cost":
     case "pay_or_counter":
     case "pay_or_controller_draws":
@@ -613,17 +702,17 @@ export function simplePromptBarActions(_board: BoardModel, state: VisibleState, 
     case "pay_recover_or_exile":
     case "sacrifice_unless_pay":
     case "pay_life_or_enters_tapped":
-      return payCostBarActions(_board, pending, tableId);
+      return payCostBarActions(_board, pending, tableId, h);
     case "choose_mode":
-      return chooseModeBarActions(pending, tableId);
+      return chooseModeBarActions(pending, tableId, h);
     case "choose_trigger_modes":
-      return chooseTriggerModesBarActions(pending, _board, state);
+      return chooseTriggerModesBarActions(pending, _board, state, h);
     case "opponent_chooses_pile":
     case "choose_pile_for_hand":
-      return pilePickBarActions(pending, tableId);
+      return pilePickBarActions(pending, tableId, h);
     case "choose_countered_spell_destination":
     case "revealed_card_to_battlefield_or_hand":
-      return destinationBarActions(pending, tableId);
+      return destinationBarActions(pending, tableId, h);
     default:
       return null;
   }

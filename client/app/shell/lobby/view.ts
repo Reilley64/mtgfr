@@ -1,6 +1,6 @@
 import type * as Menu from "@foldkit/ui/menu";
 import { Submodel } from "foldkit";
-import { type Html, html } from "foldkit/html";
+import type { Html, HtmlBuilder } from "foldkit/html";
 import type { DeckCardFlipTick } from "../../deck-card-nav";
 import type { BuilderCatalogCard } from "../../domain/deck-builder/cards";
 import type { AppChromeMeta } from "../../domain/ui/app-version";
@@ -46,8 +46,6 @@ export type ViewInputs = {
   accountMenu: Menu.Model;
 };
 
-const h = html<ViewMessage>();
-
 const seatDots = ["bg-seat-forest", "bg-seat-island", "bg-seat-mountain", "bg-seat-arcane"];
 
 function humanError(code: string): string {
@@ -87,6 +85,7 @@ function deckCardAndBack(
   decks: ReadonlyArray<DeckSummary>,
   decksLoading: boolean,
   knownCommanders: Readonly<Record<string, BuilderCatalogCard>>,
+  h: HtmlBuilder<ViewMessage>,
 ): Html {
   const deck = model.selectedDeckId == null ? undefined : decks.find((item) => item.id === model.selectedDeckId);
   const card =
@@ -113,6 +112,7 @@ function selectedDeckCard(
   deck: DeckSummary | undefined,
   decksLoading: boolean,
   knownCommanders: Readonly<Record<string, BuilderCatalogCard>>,
+  h: HtmlBuilder<ViewMessage>,
 ): Html {
   if (deck == null) {
     return h.div(
@@ -132,6 +132,7 @@ function entrySurface(
   deck: DeckSummary | undefined,
   decksLoading: boolean,
   knownCommanders: Readonly<Record<string, BuilderCatalogCard>>,
+  h: HtmlBuilder<ViewMessage>,
 ): Html {
   return h.div(
     [
@@ -142,7 +143,7 @@ function entrySurface(
     [
       h.div(
         [h.Class("max-w-[320px]"), h.DataAttribute("testid", "lobby-deck-card")],
-        [selectedDeckCard(deck, decksLoading, knownCommanders)],
+        [selectedDeckCard(deck, decksLoading, knownCommanders, h)],
       ),
       h.div(
         [h.Class("flex flex-col gap-md")],
@@ -210,24 +211,25 @@ function entry(
   decks: ReadonlyArray<DeckSummary>,
   decksLoading: boolean,
   knownCommanders: Readonly<Record<string, BuilderCatalogCard>>,
+  h: HtmlBuilder<ViewMessage>,
 ): Html {
   if (decksLoading && decks.length === 0 && model.selectedDeckId == null) {
     return h.div([h.Class("text-label text-lichen")], ["Loading decks…"]);
   }
 
   if (!decksLoading && decks.length === 0 && model.selectedDeckId == null) {
-    return lobbyEmpty("Build a deck first (Your decks → New deck).");
+    return lobbyEmpty("Build a deck first (Your decks → New deck).", h);
   }
 
   if (model.selectedDeckId == null) {
-    return lobbyEmpty("Pick a deck to play first (Your decks → Play).");
+    return lobbyEmpty("Pick a deck to play first (Your decks → Play).", h);
   }
 
   const deck = decks.find((item) => item.id === model.selectedDeckId);
-  return entrySurface(model, deck, decksLoading, knownCommanders);
+  return entrySurface(model, deck, decksLoading, knownCommanders, h);
 }
 
-function seats(model: LobbySlice): Html {
+function seats(model: LobbySlice, h: HtmlBuilder<ViewMessage>): Html {
   return h.div(
     [h.Class("flex flex-col gap-sm"), h.DataAttribute("testid", "lobby-seats")],
     (model.view?.seats ?? []).map((seat) =>
@@ -293,6 +295,7 @@ function claimSeat(
   decks: ReadonlyArray<DeckSummary>,
   decksLoading: boolean,
   knownCommanders: Readonly<Record<string, BuilderCatalogCard>>,
+  h: HtmlBuilder<ViewMessage>,
 ): Html {
   if (decksLoading && model.selectedDeckId == null) {
     return h.div([h.Class("text-label text-lichen")], ["Loading decks…"]);
@@ -302,7 +305,7 @@ function claimSeat(
     return h.div(
       [h.Class("flex flex-col gap-md")],
       [
-        deckCardAndBack(model, decks, decksLoading, knownCommanders),
+        deckCardAndBack(model, decks, decksLoading, knownCommanders, h),
         button(
           h,
           { testId: "lobby-claim", disabled: model.submitting, onClick: RequestedLobbyJoin(), variant: "primary" },
@@ -313,13 +316,13 @@ function claimSeat(
   }
 
   if (decks.length === 0) {
-    return lobbyEmpty("Build a deck first (Your decks → New deck).");
+    return lobbyEmpty("Build a deck first (Your decks → New deck).", h);
   }
 
-  return lobbyEmpty("Pick a deck to play first (Your decks → Play).");
+  return lobbyEmpty("Pick a deck to play first (Your decks → Play).", h);
 }
 
-function lobbyEmpty(message: string): Html {
+function lobbyEmpty(message: string, h: HtmlBuilder<ViewMessage>): Html {
   return h.div([h.Class("text-caution-amber text-label"), h.DataAttribute("testid", "lobby-empty")], [message]);
 }
 
@@ -328,6 +331,7 @@ function tableLobby(
   decks: ReadonlyArray<DeckSummary>,
   decksLoading: boolean,
   knownCommanders: Readonly<Record<string, BuilderCatalogCard>>,
+  h: HtmlBuilder<ViewMessage>,
 ): Html {
   const joined = model.view?.you != null;
   const startError = model.view?.start_error ?? null;
@@ -361,7 +365,7 @@ function tableLobby(
             attrs: [h.Readonly(true)],
           })
         : null,
-      seats(model),
+      seats(model, h),
       !joined && model.view != null && !model.view.started
         ? h.div(
             [
@@ -405,19 +409,19 @@ function tableLobby(
                   ),
             ],
           )
-        : claimSeat(model, decks, decksLoading, knownCommanders),
+        : claimSeat(model, decks, decksLoading, knownCommanders, h),
     ],
   );
 }
 
-export const view = Submodel.defineView<LobbySlice, ViewMessage, ViewInputs>((model, viewInputs): Html => {
+export const view = Submodel.defineView<LobbySlice, ViewMessage, ViewInputs>((model, viewInputs, h): Html => {
   const { accountMenu, chrome, decks, decksLoading, knownCommanders, meGravatarHash, surface, username } = viewInputs;
   // PlayRoute always paints entry — even after Host sets tableId and queues
   // Redirect — so we do not flash claim-seat / table chrome before navigation.
   const body =
     surface === "entry"
-      ? entry(model, decks, decksLoading, knownCommanders)
-      : tableLobby(model, decks, decksLoading, knownCommanders);
+      ? entry(model, decks, decksLoading, knownCommanders, h)
+      : tableLobby(model, decks, decksLoading, knownCommanders, h);
 
   const error =
     model.error == null
