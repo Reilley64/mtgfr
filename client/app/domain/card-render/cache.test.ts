@@ -237,3 +237,20 @@ describe("faceKey", () => {
     }
   });
 });
+
+describe("CardFaceCache.clear", () => {
+  it("redraws every face — the card typefaces land after the first frames are on screen", () => {
+    const { drawn, make } = stubCanvas();
+    const cache = new CardFaceCache(readyImages(), make);
+    const listener = vi.fn();
+    cache.subscribe(listener);
+
+    cache.request(face(), "permanent");
+    cache.clear();
+    expect(cache.get(face(), "permanent")).toBeUndefined();
+    expect(listener).toHaveBeenCalled();
+
+    cache.request(face(), "permanent");
+    expect(drawn).toHaveLength(2);
+  });
+});

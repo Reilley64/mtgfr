@@ -10,7 +10,7 @@ surfaces (Canvas vector, Mount bitmap, HTML overlays). Living board requirements
 ## How to find a concern
 
 1. **Paint (pixels):** `client/app/board/canvas/scene.ts` builds the vector `BoardScene`; `felt.ts` / `avatars.ts` / `arrows.ts` are dumb paint helpers under `client/app/board/canvas/`.
-2. **Bitmaps (card art):** `client/app/board/bitmap/mount.ts` — Foldkit `Mount` regions blit card faces + flights on top of the canvas via the shared `ImageCache`.
+2. **Bitmaps (card art):** `client/app/board/bitmap/mount.ts` — Foldkit `Mount` regions blit card faces + flights on top of the canvas via the shared `ImageCache`. A resting face-up permanent blits a *rendered* Arena-style face from `client/app/domain/card-render/` (frame assets + art + name drawn offscreen), falling back to the printed image until that face lands.
 3. **Hits / camera:** `client/app/board/geometry/{camera,hit-test,layout,interaction}.ts` — pure geometry; used by the board submodel + `action/` planners. `client/app/board/engagement.ts` supplies the committed-permanent set that layout splits out of clusters.
 4. **Screen motion / flights:** `client/app/board/motion/flights.ts`, `exit-fx.ts`, `screen-motion.ts` — canvas-owned drag ghosts, in-flight cards, and battlefield exit FX share the Mount flight layer; resting hand/stack stay HTML.
 
@@ -49,6 +49,9 @@ surfaces (Canvas vector, Mount bitmap, HTML overlays). Living board requirements
 | `app/board/html/stack.ts` | Stack DOM (pile / strip / full) |
 | `app/board/html/turn-chrome.ts` | Turn/priority chrome |
 | `app/board/html/log-panel.ts` | Game log HUD (`board-log`; last 30 fold lines) |
+| `app/domain/card-render/frame.ts` | Frame pick + slot geometry per variant (square `permanent`, token arch, legend crown) |
+| `app/domain/card-render/{render,text,assets}.ts` | Offscreen face draw, name typesetting, frame/typeface assets |
+| `app/domain/card-render/cache.ts` | `CardFaceCache` — `request`/`get`/`subscribe`/`clear`; `sharedFaceCache` |
 | `lib/image-cache.ts` | Art decode cache (shared canvas + bitmap) |
 | `lib/wire/types.ts` | Wire shapes (snake_case) |
 

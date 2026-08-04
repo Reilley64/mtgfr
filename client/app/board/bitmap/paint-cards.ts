@@ -1,4 +1,5 @@
 import { colors } from "~/design-tokens.generated";
+import type { FaceData, FaceVariant } from "../../domain/card-render/frame";
 import { cardBackUrl, imageUrlByPrint } from "../../domain/deck-builder/scryfall";
 import type { ImageCache } from "../../domain/image-cache";
 import { TARGET_COLOR } from "../action/targeting";
@@ -69,11 +70,22 @@ const BADGE_KEYWORDS = [
 
 const MAX_KEYWORD_BADGES = 4;
 
+/**
+ * Where a drawn card face comes from. `CardFaceCache` is the one implementation; the narrow shape
+ * keeps paint testable without an OffscreenCanvas.
+ */
+export type FaceSource = {
+  get(face: FaceData, variant: FaceVariant): CanvasImageSource | undefined;
+  request(face: FaceData, variant: FaceVariant): void;
+};
+
 export type CardPaintOptions = {
   outline?: Stroke | null;
   glow?: string | null;
   dim?: boolean;
   autoTapPreview?: boolean;
+  /** Rendered Arena-style faces. Absent, or not yet drawn, falls back to the printed image. */
+  faces?: FaceSource;
 };
 
 export type BitmapImageCache = Pick<ImageCache, "get">;
@@ -119,7 +131,7 @@ export function paintCard(
   if (card.faceDown) {
     paintFaceDown(ctx, cam, card, cache, tl.x, tl.y, w, h, r);
   } else {
-    paintFaceUp(ctx, cam, card, cache, tl.x, tl.y, w, h, r);
+    paintFaceUp(ctx, cam, card, cache, tl.x, tl.y, w, h, r, options.faces);
   }
 
   // Restroke after art so playable / commander chrome stays rounded on top of the face.
@@ -153,40 +165,6 @@ export function paintCard(
   }
 
   if (options.autoTapPreview) drawAutoTapGlyph(ctx, tl.x, tl.y, w, h, cam.zoom);
-  ctx.restore();
-}
-
-export function paintCardArt(
-  ctx: CanvasRenderingContext2D,
-  cam: Camera,
-  card: RenderCard,
-  cache: BitmapImageCache,
-  viewer: number,
-): void {
-  const tl = worldToScreen(cam, card.x, card.y);
-  const w = card.w * cam.zoom;
-  const h = card.h * cam.zoom;
-  const r = CARD_CORNER_RADIUS * cam.zoom;
-
-  ctx.save();
-  rotateCard(ctx, card, viewer, tl.x, tl.y, w, h);
-
-  const url = card.faceDown ? cardBackUrl() : imageUrlByPrint(card.print);
-  const image = cache.get(url);
-  if (image) {
-    roundRect(ctx, tl.x, tl.y, w, h, r);
-    ctx.clip();
-    ctx.drawImage(image, tl.x, tl.y, w, h);
-    ctx.restore();
-    return;
-  }
-
-  roundRect(ctx, tl.x, tl.y, w, h, r);
-  ctx.fillStyle = card.faceDown ? "rgba(42,55,66,0.78)" : "rgba(232,228,216,0.72)";
-  ctx.fill();
-  ctx.fillStyle = card.faceDown ? "#eff" : CARD_OUTLINE;
-  ctx.font = `${Math.round(9 * cam.zoom)}px system-ui, sans-serif`;
-  wrapText(ctx, card.name, tl.x + 6 * cam.zoom, tl.y + 16 * cam.zoom, w - 12 * cam.zoom, 11 * cam.zoom);
   ctx.restore();
 }
 
@@ -352,8 +330,11 @@ function paintFaceUp(
   w: number,
   h: number,
   r: number,
+  faces?: FaceSource,
 ): void {
-  const img = cache.get(imageUrlByPrint(card.print));
+  // The rendered Arena face once it is drawn; the printed image until the frame asset lands.
+  faces?.request(card.face, "permanent");
+  const img = faces?.get(card.face, "permanent") ?? cache.get(imageUrlByPrint(card.print));
   if (img) {
     ctx.save();
     roundRect(ctx, x, y, w, h, r);

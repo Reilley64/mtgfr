@@ -3,9 +3,7 @@
 ## Purpose
 
 Define the sole client–server game and account wire contract, per-viewer visibility redaction, live stream framing, and expand-only compatibility rules so concurrent binaries remain parseable during rolling deploys.
-
 ## Requirements
-
 ### Requirement: Protocol buffers are the sole wire contract
 All messages exchanged between API and clients for auth, decks, ratings, catalog, game stream/intents, and table seed SHALL be native protocol-buffer messages under a versioned package path. The protocol MUST NOT use JSON-in-string escape hatches for game trees, intents, decks, cards, or seed payloads. Generated bindings on API and client sides SHALL be regenerated from the same `.proto` sources after contract changes.
 
@@ -143,3 +141,16 @@ Where the client keeps hand-maintained unions or registries for pending-choice a
 #### Scenario: New visible-event arm without registry update fails check
 - **WHEN** a new VisibleEvent oneof arm is generated but the client presence registry omits it
 - **THEN** the client wire case-coverage check fails
+
+### Requirement: Object views carry the facts a rendered card face needs
+
+An object view SHALL carry, alongside its identity, whether the object is a token, whether it is legendary, and the card's colours, so a client can render a card face without a second lookup. The legendary flag and the colours SHALL follow the same redaction as every other card identity: a face-down permanent SHALL report neither. The token flag SHALL be reported regardless of face-down state, because a face-down permanent's back looks the same whether or not it is a token.
+
+#### Scenario: Face-up permanent carries its face facts
+- **WHEN** a viewer sees a face-up legendary permanent
+- **THEN** its object view reports it as legendary, reports whether it is a token, and lists its colours
+
+#### Scenario: Face-down permanent hides its identity
+- **WHEN** a viewer sees a face-down permanent
+- **THEN** its object view carries no legendary flag and no colours
+

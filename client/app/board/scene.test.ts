@@ -12,6 +12,7 @@ import { testMessageRef } from "~/i18n/testMessageRef";
 import { testHtml } from "~/test-html";
 import { BindCardArt } from "~/ui/card-art";
 import type { ActionView, ObjectView, VisibleState } from "~/wire/types";
+import { BLANK_FACE } from "../domain/card-render/frame";
 import type { GameFoldState, LogLine } from "../game/fold";
 import { SetStackDwell, SubmitIntent } from "../game/intents";
 import { emptyCostPicks, type PlayModePick } from "./action/execution";
@@ -789,6 +790,7 @@ function renderStub(id: number): RenderCard {
     hasHaste: true,
     keywords: [],
     goaded: false,
+    face: BLANK_FACE,
     isCommander: false,
     prepared: false,
     pile: 0,

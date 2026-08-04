@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { colors } from "~/design-tokens.generated";
+import { BLANK_FACE } from "../../domain/card-render/frame";
 import type { RenderCard } from "../geometry/layout";
 import { ZONE } from "../geometry/layout";
 import {
@@ -19,6 +20,7 @@ function card(overrides: Partial<RenderCard> = {}): RenderCard {
     counters: 0,
     faceDown: false,
     goaded: false,
+    face: BLANK_FACE,
     h: 134,
     hasHaste: false,
     id: 1,
@@ -159,5 +161,53 @@ describe("paintCard", () => {
     // Playable border on the card edge, then gold as the outer halo.
     expect(playableAt).toBeGreaterThan(-1);
     expect(goldAt).toBeGreaterThan(playableAt);
+  });
+});
+
+describe("paintCard: the rendered Arena face", () => {
+  const cam = { panX: 0, panY: 0, zoom: 1 };
+  const face = {} as CanvasImageSource;
+  const printed = {} as unknown as HTMLImageElement;
+  const printedCache = { get: vi.fn(() => printed) };
+
+  function drawn(ctx: CanvasRenderingContext2D) {
+    return (ctx.drawImage as unknown as { mock: { calls: unknown[][] } }).mock.calls.map((args) => args[0]);
+  }
+
+  it("blits the rendered face instead of the printed image once the face is drawn", () => {
+    const ctx = mockCtx();
+
+    paintCard(ctx, cam, card(), printedCache, 0, { faces: { get: () => face, request: () => {} } });
+
+    expect(drawn(ctx)).toContain(face);
+    expect(drawn(ctx)).not.toContain(printed);
+  });
+
+  it("falls back to the printed image while the face is still being drawn", () => {
+    const ctx = mockCtx();
+
+    paintCard(ctx, cam, card(), printedCache, 0, { faces: { get: () => undefined, request: () => {} } });
+
+    expect(drawn(ctx)).toContain(printed);
+  });
+
+  it("asks the face cache for the permanent variant of this card's face", () => {
+    const ctx = mockCtx();
+    const request = vi.fn();
+    const bear = { ...BLANK_FACE, name: "Grizzly Bears", print: "print-id" };
+
+    paintCard(ctx, cam, card({ face: bear }), printedCache, 0, { faces: { get: () => undefined, request } });
+
+    expect(request).toHaveBeenCalledWith(bear, "permanent");
+  });
+
+  it("does not ask for a face-down permanent — it is a card back, not a printing", () => {
+    const ctx = mockCtx();
+    const request = vi.fn();
+
+    paintCard(ctx, cam, card({ faceDown: true }), printedCache, 0, { faces: { get: () => face, request } });
+
+    expect(request).not.toHaveBeenCalled();
+    expect(drawn(ctx)).not.toContain(face);
   });
 });

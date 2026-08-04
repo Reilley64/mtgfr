@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { colors } from "~/design-tokens.generated";
 import { testMessageRef } from "~/i18n/testMessageRef";
+import { BLANK_FACE } from "../../domain/card-render/frame";
 import { TARGET_COLOR } from "../action/targeting";
 import type { RenderCard } from "../geometry/layout";
 import { aimArrowShapes, arrowShapes, combatDragArrowShapes, stackTargetArrowShapes } from "./arrows";
@@ -29,6 +30,7 @@ function card(id: number, over: Partial<RenderCard> = {}): RenderCard {
     hasHaste: false,
     keywords: [],
     goaded: false,
+    face: BLANK_FACE,
     isCommander: false,
     prepared: false,
     pile: 0,

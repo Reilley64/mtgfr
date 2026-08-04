@@ -10,6 +10,7 @@
 // The hand is a DOM overlay (components/molecules/hand.tsx); the mana tray is a world-anchored DOM overlay (ManaTray.tsx).
 
 import type { ObjectView, VisibleState, WireKind } from "~/wire/types";
+import { BLANK_FACE, type FaceData, faceDataFrom } from "../../domain/card-render/frame";
 
 /** Zone discriminants — must match `engine::Zone`'s declaration order. */
 export const ZONE = {
@@ -108,6 +109,8 @@ export interface RenderCard {
   keywords: string[];
   /** Goaded (CR 701.38) — Arena status chip. */
   goaded: boolean;
+  /** Everything the card-face renderer draws. Built once here so paint stays a pure blit. */
+  face: FaceData;
   isCommander: boolean;
   /** Prepare-DFC status — drives card-inspect play-face default. */
   prepared: boolean;
@@ -362,6 +365,7 @@ function toCard(o: ObjectView): RenderCard {
     hasHaste: o.has_haste,
     keywords: o.keywords ?? [],
     goaded: o.goaded ?? false,
+    face: faceDataFrom(o),
     isCommander: o.is_commander,
     prepared: o.prepared ?? false,
     pile: 0,
@@ -413,6 +417,7 @@ function deckCard(owner: number, count: number): RenderCard | null {
     hasHaste: false,
     keywords: [],
     goaded: false,
+    face: BLANK_FACE,
     isCommander: false,
     prepared: false,
     pile: count,

@@ -3,9 +3,7 @@
 ## Purpose
 
 The in-game board is the Foldkit Canvas + Mount + HTML Commander table: lobby entry into a seated game, camera/layout, battlefield paint, hand/stack/prompts/priority chrome, local action sessions, flights, overlays, audio, and the event log — composed so four seats stay readable without a single DOM battlefield or a client rules engine.
-
 ## Requirements
-
 ### Requirement: Lobby Entry and Seated Pregame
 
 Play routes SHALL use path-param deck and table ids (`/play/:deckId`, `/play/:deckId/:table`, `/play/:table`). Entry SHALL be Layout C: selected deck card left; Host primary; soft-inline Join code + ghost Join; ghost Back — no deck `<select>`, Bringing strip, or choose→join mode switch. Seated lobby SHALL poll until `started`, show seat-color dots and Gravatar/monogram faces (public `gravatar_hash` only), Ready/Start, table-code copy with clipboard fallback, and watcher copy for unsigned seats. Ready SHALL unlock table audio. Pregame play-route entry with a deck SHALL fire-and-forget `WarmDeckArt` at `fetchPriority: "low"`. Host create→redirect SHALL NOT flash claim-seat chrome on the entry route. On start, seated pregame URLs SHALL replace with `/play/:table` preserving the table id.
@@ -36,7 +34,7 @@ The live board SHALL compose Foldkit Canvas (vector furniture/arrows), Mount bit
 
 ### Requirement: Camera, Layout, and Hit Testing
 
-Camera SHALL be pure `{ panX, panY, zoom }` with `screen = world * zoom + pan`. Wheel and two-finger pinch SHALL emit `BoardCameraZoomed` via the camera gesture mount and set `cameraUserMoved` so later sync does not re-fit. `fitCamera` SHALL reserve live hand-bar height and re-fit on cold load, player-count change, and resize until the user moves the camera. `layout` SHALL emit world-space `RenderCard[]` with seat bands from the viewer perspective, packing, and cluster collapse. Hits SHALL resolve against logical layout (topmost wins), not flight poses. DPR-aware canvas backing stores SHALL match the CSS viewport.
+Camera SHALL be pure `{ panX, panY, zoom }` with `screen = world * zoom + pan`. Wheel and two-finger pinch SHALL emit `BoardCameraZoomed` via the camera gesture mount and set `cameraUserMoved` so later sync does not re-fit. `fitCamera` SHALL reserve live hand-bar height and re-fit on cold load, player-count change, and resize until the user moves the camera. `layout` SHALL emit world-space `RenderCard[]` with seat bands from the viewer perspective, packing, and cluster collapse. A permanent at rest SHALL occupy a square footprint; a card in motion — drag ghost or flight — SHALL keep the taller card-shaped footprint, so a played card is card-shaped until it settles. Hits SHALL resolve against logical layout (topmost wins), not flight poses. DPR-aware canvas backing stores SHALL match the CSS viewport.
 
 #### Scenario: User zoom persists across sync
 - **WHEN** the player has panned or zoomed and a game delta arrives
@@ -46,9 +44,17 @@ Camera SHALL be pure `{ panX, panY, zoom }` with `screen = world * zoom + pan`. 
 - **WHEN** a permanent is committed as attacker, blocker, blocked attacker, stack target, or staged/drafted target
 - **THEN** it takes its own layout slot and the cluster face becomes the next free copy
 
+#### Scenario: Square at rest, card-shaped in flight
+- **WHEN** a card is played and its flight settles onto the battlefield
+- **THEN** the flight paints at card proportions and the resting permanent paints square
+
+#### Scenario: Four seats stay readable
+- **WHEN** the camera fits a four-player board at 1440×900 with the live hand bar
+- **THEN** a resting permanent is at least 70 screen pixels on each side
+
 ### Requirement: Battlefield Paint and Chrome
 
-Battlefield paint order SHALL be felt → seats → resting cards → avatars → arrows → flights. Playability SHALL use playable borders, not unplayable darkening. Mana-only actions and free-tap lands SHALL NOT receive playable borders but remain selectable. Avatars SHALL paint Gravatar or monogram faces with life, hand count, and clock chips (max commander damage, poison, rad). After every attacked defender has declared blockers, blocked attackers SHALL point at living blockers (attack-red); block-green arrows SHALL be suppressed; blocked attackers with no living blocker SHALL paint no combat arrow. Stack→target arrows SHALL paint on the Mount layer above resting art. Shift on a combat drop SHALL commit every copy in the dragged cluster.
+Battlefield paint order SHALL be felt → seats → resting cards → avatars → arrows → flights. A face-up resting permanent SHALL paint as a rendered card face — the card's art and its name drawn into a real card frame chosen from the card's colours and type — not as a crop of the printed card image. The rendered face SHALL omit the printed mana cost, because the hand bar's pip tray owns cost, and SHALL omit the printed power/toughness plate, because the live P/T badge already paints over the tile. A token SHALL draw no name and an arched top; a legendary permanent SHALL draw the legend crown. Counters, status badges, the live P/T badge, playable borders, and commander gold SHALL paint over the rendered face. A face-down permanent SHALL paint the card back. Until a face has been rendered the printed card image SHALL paint in its place, and the board SHALL repaint when the face lands. Playability SHALL use playable borders, not unplayable darkening. Mana-only actions and free-tap lands SHALL NOT receive playable borders but remain selectable. Avatars SHALL paint Gravatar or monogram faces with life, hand count, and clock chips (max commander damage, poison, rad). After every attacked defender has declared blockers, blocked attackers SHALL point at living blockers (attack-red); block-green arrows SHALL be suppressed; blocked attackers with no living blocker SHALL paint no combat arrow. Stack→target arrows SHALL paint on the Mount layer above resting art. Shift on a combat drop SHALL commit every copy in the dragged cluster.
 
 #### Scenario: Mana-only outline skip
 - **WHEN** a permanent’s only current action is flagged `mana_only`
@@ -57,6 +63,18 @@ Battlefield paint order SHALL be felt → seats → resting cards → avatars �
 #### Scenario: Post-declare blocked retarget
 - **WHEN** blockers are declared and an attacker still has living blockers
 - **THEN** the attack arrow points at those blockers, not the defending avatar
+
+#### Scenario: Rendered face replaces the printed image
+- **WHEN** a face-up permanent's rendered face is available
+- **THEN** the board paints that face and does not paint the card's printed image
+
+#### Scenario: Printed image covers the gap
+- **WHEN** a face-up permanent's face has not been rendered yet
+- **THEN** the board paints the printed image, and repaints the tile once the face is rendered
+
+#### Scenario: Face-down permanent is a card back
+- **WHEN** a permanent is face down
+- **THEN** no card face is rendered for it and the card back paints instead
 
 ### Requirement: Hand and Zone Bar
 
@@ -193,3 +211,4 @@ When the fold log is non-empty, a DOM log panel above the hand bar SHALL show th
 #### Scenario: Collapsed window
 - **WHEN** the log has more than 30 retained lines and is collapsed
 - **THEN** only the newest 30 paint, with expand revealing older retained lines
+

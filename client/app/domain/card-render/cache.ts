@@ -55,6 +55,17 @@ export class CardFaceCache {
     return this.faces.get(faceKey(face, variant));
   }
 
+  /**
+   * Drops every drawn face so the next paint redraws them. The card typefaces load after the first
+   * frames are already on screen, and a bitmap keeps whatever typeface drew it — without this the
+   * board would show the fallback serif for the rest of the session.
+   */
+  clear(): void {
+    this.faces.clear();
+    this.pending.clear();
+    for (const listener of this.listeners) listener();
+  }
+
   /** Ensures this face is drawn, or waiting on an image. Cheap to call every frame. */
   request(face: FaceData, variant: FaceVariant): void {
     const key = faceKey(face, variant);

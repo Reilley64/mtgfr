@@ -63,6 +63,21 @@ function badges(view: ObjectView): { power: string; toughness: string; loyalty: 
   return blank;
 }
 
+/** A face with nothing to draw — the library placeholder, and a base for test fixtures. */
+export const BLANK_FACE: FaceData = {
+  print: "",
+  name: "",
+  colors: [],
+  isLand: false,
+  isToken: false,
+  legendary: false,
+  power: "",
+  toughness: "",
+  loyalty: "",
+  typeLine: "",
+  oracle: "",
+};
+
 /** Read the renderer's inputs off a board object. */
 export function faceDataFrom(view: ObjectView): FaceData {
   return {

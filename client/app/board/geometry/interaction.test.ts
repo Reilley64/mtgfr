@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ActionView, ObjectView, VisibleState } from "~/wire/types";
+import { BLANK_FACE } from "../../domain/card-render/frame";
 import { worldToScreen } from "./camera";
 import {
   attackablePlaneswalker,
@@ -46,6 +47,7 @@ function card(over: Partial<RenderCard> = {}): RenderCard {
     hasHaste: false,
     keywords: [],
     goaded: false,
+    face: BLANK_FACE,
     isCommander: false,
     prepared: false,
     pile: 0,

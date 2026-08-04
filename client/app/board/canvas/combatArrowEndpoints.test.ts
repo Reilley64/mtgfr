@@ -1,5 +1,6 @@
 import { describe, expect, it, test } from "vitest";
 import type { ObjectView, VisibleState } from "~/wire/types";
+import { BLANK_FACE } from "../../domain/card-render/frame";
 import { engagedIds } from "../engagement";
 import { fitCamera } from "../geometry/interaction";
 import { layout, type RenderCard, ZONE } from "../geometry/layout";
@@ -31,6 +32,7 @@ function card(id: number, over: Partial<RenderCard> = {}): RenderCard {
     hasHaste: false,
     keywords: [],
     goaded: false,
+    face: BLANK_FACE,
     isCommander: false,
     prepared: false,
     pile: 0,
