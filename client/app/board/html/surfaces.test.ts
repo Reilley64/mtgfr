@@ -25,6 +25,7 @@ import { handMetrics } from "./hand";
 import { boardOverlays } from "./overlays";
 import {
   resolveBoardCardArtMounts,
+  resolveBoardCardFaceMounts,
   resolveBoardOverlayMounts,
   resolveCardNameComboboxMounts,
   resolveLiveBoardMounts,
@@ -337,7 +338,7 @@ test("smoke scene keeps existing chrome visible", () => {
 
   overlayScene(
     model,
-    resolveBoardCardArtMounts(),
+    resolveBoardCardFaceMounts(),
     Scene.expect(Scene.testId("hand-bar")).toExist(),
     Scene.expect(Scene.testId("board-primary")).toExist(),
     Scene.expect(Scene.testId("board-concede")).toExist(),
@@ -613,7 +614,7 @@ test("hand surfaces render cost pips and fade the drag source without an HTML gh
       },
       gameState({ actions: [castAction], objects: [handCard] }),
     ),
-    resolveBoardCardArtMounts(1),
+    resolveBoardCardFaceMounts(1),
     Scene.expect(Scene.testId("hand-cost-pips")).toExist(),
     Scene.expect(Scene.testId("hand-drag-ghost")).not.toExist(),
   );

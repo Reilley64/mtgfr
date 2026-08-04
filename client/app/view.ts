@@ -113,6 +113,7 @@ function toParentLobbyMessage(message: Lobby.ViewMessage): Message {
 function toParentBoardMessage(message: BoardViewMessage): Message {
   switch (message._tag) {
     case "CardArtTick":
+    case "CardFaceTick":
       return message;
     default:
       return GotBoardMessage({ message });

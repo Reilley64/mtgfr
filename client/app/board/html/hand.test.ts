@@ -234,6 +234,42 @@ describe("handView discard pick accessibility", () => {
   });
 });
 
+describe("handView rendered face", () => {
+  function findWithAttr(node: unknown, name: string): unknown | null {
+    if (attr(node, name) != null) return node;
+    if (node == null || typeof node !== "object") return null;
+    const n = node as { children?: unknown[] };
+    for (const child of n.children ?? []) {
+      const found = findWithAttr(child, name);
+      if (found != null) return found;
+    }
+    return null;
+  }
+
+  it("draws the rendered card face, not the printed image", () => {
+    const bolt = object(42, { name: "Lightning Bolt", print: "lea-161" });
+    const tree = renderHand(state({ objects: [bolt], actions: [] }));
+
+    const host = findWithAttr(findTestId(tree, "hand-card-face-42"), "data-face");
+    expect(host).not.toBeNull();
+    expect(JSON.parse(attr(host, "data-face") ?? "{}")).toMatchObject({ name: "Lightning Bolt", print: "lea-161" });
+    expect(attr(host, "data-face-variant")).toBe("full");
+  });
+
+  it("draws a graveyard bar tile's card face, not its action label", () => {
+    const pest = object(62, { zone: ZONE.Graveyard, name: "Teacher's Pest", print: "snc-99" });
+    const tree = renderHand(
+      state({
+        objects: [pest],
+        actions: [action(62, { object: 62, section: "graveyard", label: testMessageRef("Cast Teacher's Pest") })],
+      }),
+    );
+
+    const host = findWithAttr(findTestId(tree, "hand-card-face-62"), "data-face");
+    expect(JSON.parse(attr(host, "data-face") ?? "{}")).toMatchObject({ name: "Teacher's Pest" });
+  });
+});
+
 describe("handView playable outlines", () => {
   it("adds the playable border to castable hand tiles only", () => {
     const castable = object(42, { name: "Lightning Bolt" });

@@ -17,7 +17,7 @@ import { type Message, StackCollapseClicked, TargetChosen } from "../messages";
 import { spawnFlight } from "../motion/flights";
 import { type BoardModel, initialBoardModel, updateBoard } from "../submodel";
 import { boardOverlays } from "./overlays";
-import { resolveBoardCardArtMounts, resolveBoardOverlayMounts } from "./scene-helpers";
+import { resolveBoardCardArtMounts, resolveBoardCardFaceMounts, resolveBoardOverlayMounts } from "./scene-helpers";
 
 const h = testHtml<Message>();
 
@@ -454,7 +454,8 @@ test("staged ghost appears on the stack during arrow targeting", () => {
     { update: (m) => [m, []], view: overlayView },
     Scene.given(model),
     resolveBoardOverlayMounts(),
-    resolveBoardCardArtMounts(2),
+    resolveBoardCardArtMounts(1),
+    resolveBoardCardFaceMounts(1),
     Scene.expect(Scene.testId("stack-overlay")).toExist(),
     Scene.expect(Scene.testId("stack-face-0")).toExist(),
     Scene.expect(Scene.testId("stack-staged-hint")).toContainText("Choose a target"),
@@ -516,7 +517,8 @@ test("legal stack face is highlighted and click submits take_action", () => {
     },
     Scene.given({ board, fold, tableId: "T1" }),
     resolveBoardOverlayMounts(),
-    resolveBoardCardArtMounts(3),
+    resolveBoardCardArtMounts(2),
+    resolveBoardCardFaceMounts(1),
     Scene.expect(Scene.selector('[data-legal-target="true"]')).toExist(),
     Scene.expect(Scene.selector('[data-testid="stack-face-0"][data-legal-target="true"]')).toExist(),
     Scene.expect(Scene.testId("stack-face-0")).toHaveAttr("role", "button"),
