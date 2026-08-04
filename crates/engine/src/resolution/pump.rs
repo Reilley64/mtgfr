@@ -32,6 +32,12 @@ impl Game {
                     source_name,
                 }]
             }
+            // Cocoon: "that creature gains flying", with no duration at all — the Aura that grants
+            // it is sacrificed by the same ability, so nothing is left to radiate a static grant.
+            PumpEffect::GrantKeywordsIndefinitely { keywords, .. } => {
+                let object = expect_object_target(target, "an indefinite keyword grant");
+                vec![Event::KeywordsGrantedIndefinitely { object, keywords }]
+            }
             // Self-pump: the ability's own source, no target (prowess). The source is already
             // known at resolution, so there's nothing to choose.
             PumpEffect::PumpSelfUntilEndOfTurn {

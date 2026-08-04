@@ -2814,6 +2814,17 @@ impl Game {
             return;
         }
         let controller = self.controller_of(source);
+        // Pit Scorpion's unscoped "deals damage to a player" watch fires for every seat, the
+        // controller included — so it is queued before the opponent test below.
+        self.queue_trigger_group(
+            TriggerContext {
+                damage_recipient: Some(player),
+                ..TriggerContext::of(controller)
+            },
+            source,
+            self.def_of(source),
+            Trigger::DealsDamageToPlayer,
+        );
         if player == controller {
             return;
         }
@@ -3115,6 +3126,16 @@ impl Game {
         {
             let controller = self.controller_of(entering);
             self.players[controller.0 as usize].nontoken_creatures_entered_this_turn += 1;
+        }
+        // Feeds Arboria's "or put a nontoken permanent onto the battlefield during their last
+        // turn": the same nontoken test as the creature tally above, over every permanent type, and
+        // a flag rather than a count — Arboria only asks whether the player did anything at all.
+        // Read and reset once per turn by `Game::roll_own_turn_history`.
+        if let Some(perm) = self.as_permanent(entering)
+            && !perm.token
+        {
+            let controller = self.controller_of(entering);
+            self.players[controller.0 as usize].nontoken_permanent_entered_this_turn = true;
         }
         // Feeds `Condition::LandEnteredUnderYourControlThisTurn` (Zimone, All-Questioning) — CR
         // landfall's own "enters," not "played," so a cast, fetched, *or token* land all set it;
@@ -4428,6 +4449,18 @@ impl Game {
                 .source
                 .and_then(|source| self.as_permanent(source))
                 .is_some_and(|p| p.attacked_this_turn),
+            // Whirling Dervish's "if this creature dealt damage to an opponent this turn" — the
+            // turn-scoped ledger, so a ping in someone else's turn counts as readily as a combat
+            // hit, and every seat but the source's controller is an opponent (CR 102.3).
+            Condition::SourceDealtDamageToOpponentThisTurn => ctx.source.is_some_and(|source| {
+                let controller = self.controller_of(source);
+                self.damage_dealt_this_turn
+                    .iter()
+                    .any(|&(dealer, recipient, _)| {
+                        dealer == source
+                            && matches!(recipient, Target::Player(player) if player != controller)
+                    })
+            }),
             // Clockwork Beast's "if this creature attacked or blocked this combat" — the historic
             // declaration list, still populated because `queue_end_of_combat_triggers` runs ahead
             // of `Event::CombatCleared` in the same turn-based action.
@@ -4486,6 +4519,15 @@ impl Game {
                 .target
                 .and_then(Target::object_id)
                 .is_some_and(|object| self.rampage_amounts(object).next().is_some()),
+            // Winter Blast's "each of those creatures with flying" — a filter over the already
+            // chosen target, not a new target clause. No target (an "up to" clause declined, or a
+            // target that left) fails closed, so the gated rider simply doesn't run.
+            Condition::TargetMatches { filter } => ctx
+                .target
+                .and_then(Target::object_id)
+                .is_some_and(|object| {
+                    self.permanent_matches(&filter, object, ctx.controller, ctx.source)
+                }),
             Condition::YouHaveCitysBlessing => {
                 self.players[ctx.controller.0 as usize].has_citys_blessing
             }

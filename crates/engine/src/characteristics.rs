@@ -1513,7 +1513,7 @@ impl Game {
         if self.attachments(id).into_iter().any(|aura| {
             !self.is_phased_out(aura)
                 && self.def_of(aura).abilities.iter().any(|a| {
-                    matches!(
+                    if !matches!(
                         (a.timing, a.effect.clone()),
                         (
                             Timing::Static,
@@ -1522,7 +1522,20 @@ impl Game {
                                 ..
                             })
                         )
-                    )
+                    ) {
+                        return false;
+                    }
+                    // Cocoon and Venarian Gold gate the restriction on a counter ("… if this Aura
+                    // has a pupa counter on it"), so the Aura's own intervening-if has to be read
+                    // here the way `untap_at_most_one_filters` reads Winter Orb's. Paralyze prints
+                    // no condition and is unaffected.
+                    a.condition.is_none_or(|condition| {
+                        self.ability_condition_holds(
+                            condition,
+                            aura,
+                            TriggerContext::of(self.controller_of(aura)),
+                        )
+                    })
                 })
         }) {
             return true;
@@ -2693,6 +2706,24 @@ impl Game {
                 grants.push((g.cost, g.effects));
             }
         }
+        // Life Matrix's "that creature gains 'Remove a matrix counter from this creature:
+        // Regenerate this creature'" has no duration, so it has to outlive the Matrix that granted
+        // it (CR 400.7). The matrix counter is the only trace left on the board, so — like Vow and
+        // Glyph — the counter *is* the grant. Appended last so the board's own grants keep their
+        // `ability_at` indices.
+        if self.counters_of_kind(host, CounterKind::Matrix) > 0 {
+            static REGENERATE_SELF: &[Effect] = &[Effect::Control(ControlEffect::RegenerateShield {
+                target: TargetSpec::ThisPermanent,
+            })];
+            grants.push((
+                ActivationCost {
+                    remove_counters: 1,
+                    remove_counters_kind: Some(CounterKind::Matrix),
+                    ..ActivationCost::default()
+                },
+                REGENERATE_SELF,
+            ));
+        }
         grants
     }
 
@@ -3174,6 +3205,12 @@ impl Game {
                 def.kind,
                 CardKind::Spell {
                     speed: SpellSpeed::Instant
+                }
+            ),
+            SpellFilter::Sorcery => matches!(
+                def.kind,
+                CardKind::Spell {
+                    speed: SpellSpeed::Sorcery
                 }
             ),
             SpellFilter::Enchantment => def.kind.types().intersects(TypeSet::ENCHANTMENT),

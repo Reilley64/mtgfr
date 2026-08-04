@@ -104,43 +104,21 @@ pub(super) fn devour(
     })
 }
 
+/// The next graveyard still owed a card by a return-from-graveyard effect: `graveyards` is the
+/// queue of owners, and the first that actually holds a matching card becomes this prompt (the
+/// rest ride along on the choice to be prompted for in turn). One entry is the ordinary
+/// single return (Deadly Brew's rider); the *same* owner repeated is Recall's "a card ... for each
+/// card discarded this way" (each prompt recomputes the options, so an already-returned card is
+/// gone from the next one); distinct owners are Glyph of Reincarnation's per-graveyard fan-out.
+/// `None` when no listed graveyard holds a matching card at all — CR 700.2's "as much as
+/// possible" leaves nothing to do, so the resolution never pauses.
 pub(super) fn may_return_from_graveyard(
-    game: &Game,
-    player: PlayerId,
-    source: ObjectId,
-    filter: CardFilter,
-    mandatory: bool,
-) -> Option<PendingChoice> {
-    let options: Vec<ObjectId> = game
-        .live_object_ids()
-        .into_iter()
-        .filter(|&id| {
-            game.zone_of(id) == crate::Zone::Graveyard
-                && game.owner_of(id) == player
-                && filter.matches(&game.def_of(id))
-        })
-        .collect();
-    if options.is_empty() {
-        return None;
-    }
-    Some(PendingChoice::MayReturnFromGraveyard {
-        player,
-        source,
-        options,
-        mandatory,
-        to_battlefield: false,
-        then_graveyards: Vec::new(),
-    })
-}
-
-/// Glyph of Reincarnation: `chooser` puts a creature card from the first of `graveyards` that has
-/// one onto the battlefield under its owner's control, with the rest carried along to be prompted
-/// for in turn. `None` when no listed graveyard holds a creature card at all — CR 700.2's "as much
-/// as possible" leaves nothing to do, so the resolution never pauses.
-pub(super) fn glyph_reincarnation(
     game: &Game,
     chooser: PlayerId,
     source: ObjectId,
+    filter: CardFilter,
+    mandatory: bool,
+    to_battlefield: bool,
     graveyards: Vec<PlayerId>,
 ) -> Option<PendingChoice> {
     let mut rest = graveyards.into_iter();
@@ -151,7 +129,7 @@ pub(super) fn glyph_reincarnation(
             .filter(|&id| {
                 game.zone_of(id) == crate::Zone::Graveyard
                     && game.owner_of(id) == owner
-                    && CardFilter::Creature.matches(&game.def_of(id))
+                    && filter.matches(&game.def_of(id))
             })
             .collect();
         if options.is_empty() {
@@ -161,9 +139,9 @@ pub(super) fn glyph_reincarnation(
             player: chooser,
             source,
             options,
-            // "put a creature card … onto the battlefield" — not "you may" (CR 700.2).
-            mandatory: true,
-            to_battlefield: true,
+            filter,
+            mandatory,
+            to_battlefield,
             then_graveyards: rest.collect(),
         });
     }

@@ -17,7 +17,7 @@ import type { ActionView, ObjectView, VisibleState, WireCost } from "~/wire/type
 import type { GameFoldState, LogLine } from "../../game/fold";
 import { emptyCostPicks, type ModalCast, type PlayModePick, type XPromptState } from "../action/execution";
 import { CARD_NAME_COMBOBOX_ID, CardNameCombobox } from "../card-name-combobox";
-import { ZONE } from "../geometry/layout";
+import { STEP, ZONE } from "../geometry/layout";
 import type { Message } from "../messages";
 import { type BoardModel, CONCEDE_DIALOG_ID, initialBoardModel, RESULT_DIALOG_ID } from "../submodel";
 import { type BoardViewModel, view as boardView } from "../view";
@@ -3221,5 +3221,84 @@ test("mana tray precedes bitmap layer in board-mount composition (under permanen
     Scene.expect(Scene.testId("mana-tray")).toExist(),
     Scene.expect(Scene.testId("board-bitmap-layer")).toExist(),
     Scene.expect(Scene.testId("board-flight-layer")).toHaveClass("z-30"),
+  );
+});
+
+// CR 702.22c banding: the grouping affordance opens only when a staged attacker can band, so an
+// ordinary attack pays nothing for it. Legality is the engine's (`Game::band_is_legal`).
+function bandingCombat(board: Partial<BoardModel> = {}) {
+  const bander = card(30, {
+    kind: { kind: "creature", power: 2, toughness: 2 },
+    name: "Cathedral Knight",
+    keywords: ["bands_with:legendary"],
+    zone: ZONE.Battlefield,
+  });
+  const partner = card(31, {
+    kind: { kind: "creature", power: 1, toughness: 1 },
+    name: "Legendary Ally",
+    zone: ZONE.Battlefield,
+  });
+  return overlayModel(
+    {
+      ...initialBoardModel(),
+      combatAttackers: [
+        { attacker: bander.id, defender: 1 },
+        { attacker: partner.id, defender: 1 },
+      ],
+      ...board,
+    },
+    gameState({
+      step: STEP.DeclareAttackers,
+      objects: [bander, partner],
+      actions: [action(1, { kind: "declare_attackers", section: "combat", declare_for: [0] })],
+    }),
+  );
+}
+
+test("band panel offers every staged attacker once one of them can band", () => {
+  overlayScene(
+    bandingCombat(),
+    Scene.expect(Scene.testId("board-band-panel")).toExist(),
+    Scene.expect(Scene.selector('[data-testid="board-band-panel"] [data-testid="board-band-chip-30"]')).toExist(),
+    Scene.expect(Scene.selector('[data-testid="board-band-panel"] [data-testid="board-band-chip-31"]')).toExist(),
+    Scene.expect(Scene.testId("board-band-chip-30")).toHaveAttr("data-banded", "false"),
+  );
+});
+
+test("banded chips carry data-banded so Tailwind variants own the look", () => {
+  overlayScene(
+    bandingCombat({ combatBand: [30] }),
+    Scene.expect(Scene.testId("board-band-chip-30")).toHaveAttr("data-banded", "true"),
+    Scene.expect(Scene.testId("board-band-chip-30")).toHaveAttr("aria-pressed", "true"),
+    Scene.expect(Scene.testId("board-band-chip-31")).toHaveAttr("data-banded", "false"),
+  );
+});
+
+test("an ordinary attack with no banding creature never renders the band panel", () => {
+  const plain = card(30, { kind: { kind: "creature", power: 2, toughness: 2 }, zone: ZONE.Battlefield });
+  const other = card(31, { kind: { kind: "creature", power: 1, toughness: 1 }, zone: ZONE.Battlefield });
+  overlayScene(
+    overlayModel(
+      {
+        ...initialBoardModel(),
+        combatAttackers: [
+          { attacker: plain.id, defender: 1 },
+          { attacker: other.id, defender: 1 },
+        ],
+      },
+      gameState({
+        step: STEP.DeclareAttackers,
+        objects: [plain, other],
+        actions: [action(1, { kind: "declare_attackers", section: "combat", declare_for: [0] })],
+      }),
+    ),
+    Scene.expect(Scene.testId("board-band-panel")).toBeAbsent(),
+  );
+});
+
+test("the band panel closes once the declaration is confirmed", () => {
+  overlayScene(
+    bandingCombat({ attackersConfirmed: true }),
+    Scene.expect(Scene.testId("board-band-panel")).toBeAbsent(),
   );
 });

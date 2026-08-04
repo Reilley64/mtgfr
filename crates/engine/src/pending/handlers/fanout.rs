@@ -19,21 +19,29 @@ impl Game {
         );
     }
 
-    /// Pause on the next graveyard owed a creature card by Glyph of Reincarnation's "for each
-    /// creature that died this way" fan-out (skipping any with no creature card in it), or — when
-    /// none remain — return, letting the enclosing resolution finish.
-    pub(crate) fn prompt_next_glyph_reincarnation(
+    /// Pause on the next graveyard still owed a card (skipping any with no matching card in it),
+    /// or — when none remain — return, letting the enclosing resolution finish. Serves all three
+    /// shapes: one graveyard (Deadly Brew's single return), the same graveyard repeated (Recall's
+    /// "a card … for each card discarded this way"), and one per dying creature's owner (Glyph of
+    /// Reincarnation).
+    pub(crate) fn prompt_next_graveyard_return(
         &mut self,
         graveyards: Vec<PlayerId>,
         chooser: PlayerId,
         source: ObjectId,
+        filter: CardFilter,
+        mandatory: bool,
+        to_battlefield: bool,
     ) {
         crate::pending::raise(
             self,
-            crate::pending::ChoiceRequest::NextGlyphReincarnation {
-                graveyards,
-                chooser,
+            crate::pending::ChoiceRequest::MayReturnFromGraveyard {
+                player: chooser,
                 source,
+                filter,
+                mandatory,
+                to_battlefield,
+                graveyards,
             },
         );
     }
@@ -543,6 +551,7 @@ impl Game {
             player: chooser,
             source,
             options,
+            filter,
             mandatory,
             to_battlefield,
             then_graveyards,
@@ -573,7 +582,14 @@ impl Game {
             self.push_apply(&mut events, event);
         }
         if !then_graveyards.is_empty() {
-            self.prompt_next_glyph_reincarnation(then_graveyards, chooser, source);
+            self.prompt_next_graveyard_return(
+                then_graveyards,
+                chooser,
+                source,
+                filter,
+                mandatory,
+                to_battlefield,
+            );
         }
         Ok(events)
     }
@@ -656,6 +672,13 @@ impl Game {
         // CR 701.8: every discard fires "whenever you discard" watchers — a cleanup hand-size
         // trim counts exactly the same as an effect discard.
         self.discard_ids(&cards, player, &mut events);
+        // Recall's "for each card discarded this way": tally what an *effect* discard actually
+        // took, so a following step in the same resolution can read it back through
+        // `Amount::CardsDiscardedThisWay`. A short hand discards fewer than asked (CR 700.2), and
+        // that smaller number is what the rider is owed. A cleanup trim is not "this way".
+        if !is_cleanup {
+            self.resolution_frame.cards_discarded_this_way = cards.len() as u32;
+        }
         // A cleanup discard resumes the step-transition loop it interrupted; an effect discard's
         // sequence tail (if any) is resumed by [`Game::resume_deferred_sequence`] after this returns.
         if is_cleanup {

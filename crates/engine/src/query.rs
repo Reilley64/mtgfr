@@ -1155,7 +1155,7 @@ impl Game {
             // readily. Keyed by the ability's `source` id (see the spec's identity ponytail); only
             // `activated` entries are yielded, so a triggered ability on the stack is not a legal
             // target, and a mana ability never reaches the stack to be one.
-            TargetSpec::ActivatedAbilityOnStack => self
+            TargetSpec::ActivatedAbilityOnStack { artifact_source } => self
                 .stack
                 .iter()
                 .filter_map(|item| match item {
@@ -1165,6 +1165,16 @@ impl Game {
                         ..
                     } => Some(Target::Object(*source)),
                     _ => None,
+                })
+                // "from an artifact source" (Rust, Ayesha Tanaka): the ability's source permanent
+                // has to be an artifact right now (CR 109.5 — a source that has left the
+                // battlefield is read from last known information, which this pool never needs).
+                .filter(|target| match target {
+                    Target::Object(source) => {
+                        !artifact_source
+                            || self.effective_types(*source).intersects(TypeSet::ARTIFACT)
+                    }
+                    Target::Player(_) => false,
                 })
                 .collect(),
             // A fixed reference to the ability's own source (Hangarback's "this creature",
@@ -1206,7 +1216,7 @@ impl Game {
                 // The ability on the stack is the target, not its source permanent — the source's
                 // own shroud/hexproof/protection (CR 702.11/702.16b/702.18) doesn't shield its
                 // ability, so don't run the battlefield-permanent filter against the source id.
-                | TargetSpec::ActivatedAbilityOnStack
+                | TargetSpec::ActivatedAbilityOnStack { .. }
         ) {
             return targets;
         }

@@ -89,6 +89,15 @@ impl WireAttack {
     }
 }
 
+/// One declared attacking band (CR 702.22c): every member must also appear in the declaration's
+/// `attackers`, and no creature may be in two bands. A named struct rather than a bare
+/// `Vec<ObjectId>` so proto3 (which has no repeated-of-repeated) and the generated TypeScript
+/// share one shape.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WireBand {
+    pub members: Vec<ObjectId>,
+}
+
 /// One combat-damage assignment: `amount` of an attacker's damage dealt to `blocker`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WireDamage {
@@ -201,6 +210,12 @@ pub enum WireIntent {
     DeclareAttackers {
         player: u8,
         attackers: Vec<WireAttack>,
+        /// Declared attacking bands (CR 702.22c). Empty — every attack but a banding one — maps to
+        /// [`engine::Intent::DeclareAttackers`]; non-empty to
+        /// [`engine::Intent::DeclareAttackersInBands`]. The engine checks legality
+        /// (`Game::band_is_legal`), so a client may declare any grouping and be rejected.
+        #[serde(default)]
+        bands: Vec<WireBand>,
     },
     DeclareBlockers {
         player: u8,
@@ -654,7 +669,13 @@ fn with_player(wire: WireIntent, player: u8) -> WireIntent {
             discard_cost,
             x,
         },
-        DeclareAttackers { attackers, .. } => DeclareAttackers { player, attackers },
+        DeclareAttackers {
+            attackers, bands, ..
+        } => DeclareAttackers {
+            player,
+            attackers,
+            bands,
+        },
         DeclareBlockers { blocks, .. } => DeclareBlockers { player, blocks },
         ChooseOrder { order, .. } => ChooseOrder { player, order },
         ChooseTargets { targets, .. } => ChooseTargets { player, targets },
@@ -880,10 +901,27 @@ pub fn to_intent(wire: WireIntent) -> engine::Intent {
             discard_cost,
             x,
         },
-        WireIntent::DeclareAttackers { player, attackers } => Intent::DeclareAttackers {
-            player: PlayerId(player),
-            attackers: attackers.into_iter().map(WireAttack::to_engine).collect(),
-        },
+        WireIntent::DeclareAttackers {
+            player,
+            attackers,
+            bands,
+        } => {
+            let attackers: Vec<_> = attackers.into_iter().map(WireAttack::to_engine).collect();
+            // A bandless attack — every attack in the game but a banding one — stays the plain
+            // variant, so nothing downstream of it changes shape.
+            if bands.is_empty() {
+                Intent::DeclareAttackers {
+                    player: PlayerId(player),
+                    attackers,
+                }
+            } else {
+                Intent::DeclareAttackersInBands {
+                    player: PlayerId(player),
+                    attackers,
+                    bands: bands.into_iter().map(|b| b.members).collect(),
+                }
+            }
+        }
         WireIntent::DeclareBlockers { player, blocks } => Intent::DeclareBlockers {
             player: PlayerId(player),
             blocks: blocks
@@ -1232,7 +1270,8 @@ pub fn to_intent(wire: WireIntent) -> engine::Intent {
 #[cfg(test)]
 mod tests {
     use crate::intent::{
-        WireBlock, WireDamage, WireIntent, WireTarget, to_intent, to_intent_for_seat,
+        WireAttack, WireBand, WireBlock, WireDamage, WireIntent, WireTarget, to_intent,
+        to_intent_for_seat,
     };
     use engine::PlayerId;
 
@@ -1315,6 +1354,55 @@ mod tests {
                 graveyard_exile: vec![],
                 attackers: vec![],
                 blocks: vec![],
+            },
+        );
+    }
+
+    // CR 702.22c: `bands` is what a human client uses to declare an attacking band. Empty stays the
+    // plain variant so every non-banding attack is untouched.
+    #[test]
+    fn to_intent_maps_a_bandless_declaration_to_the_plain_variant() {
+        let wire = WireIntent::DeclareAttackers {
+            player: 0,
+            attackers: vec![WireAttack {
+                attacker: 5,
+                defender: 1,
+                defender_planeswalker: None,
+            }],
+            bands: vec![],
+        };
+        assert_eq!(
+            to_intent(wire),
+            engine::Intent::DeclareAttackers {
+                player: PlayerId(0),
+                attackers: vec![(5, engine::Defender::Player(PlayerId(1)))],
+            },
+        );
+    }
+
+    #[test]
+    fn to_intent_maps_declared_bands_to_declare_attackers_in_bands() {
+        let attack = |attacker| WireAttack {
+            attacker,
+            defender: 1,
+            defender_planeswalker: None,
+        };
+        let wire = WireIntent::DeclareAttackers {
+            player: 0,
+            attackers: vec![attack(5), attack(6)],
+            bands: vec![WireBand {
+                members: vec![5, 6],
+            }],
+        };
+        assert_eq!(
+            to_intent(wire),
+            engine::Intent::DeclareAttackersInBands {
+                player: PlayerId(0),
+                attackers: vec![
+                    (5, engine::Defender::Player(PlayerId(1))),
+                    (6, engine::Defender::Player(PlayerId(1))),
+                ],
+                bands: vec![vec![5, 6]],
             },
         );
     }

@@ -188,6 +188,14 @@ pub struct Game {
     /// new object (CR 400.7) and rightly won't match. Reset alongside
     /// [`permanents_died_this_turn`](Self::permanents_died_this_turn) at every Untap step.
     pub(crate) damaged_this_turn: Vec<(ObjectId, ObjectId)>,
+    /// `(source, recipient, amount)` rows for every point of damage actually dealt this turn (CR
+    /// 120.3), recorded in `apply` as each damage event lands so prevention and redirection have
+    /// already had their say. The history behind `Amount::DamageDealtToThisThisTurnByOthersNamed`
+    /// (Blazing Effigy) and `Condition::DealtDamageToOpponentThisTurn` (Whirling Dervish). Unlike
+    /// [`damaged_this_turn`](Self::damaged_this_turn) — which answers "did this hit that at all" —
+    /// these rows keep the amount and the source, so several hits from the same source are several
+    /// rows. Reset at every Untap step.
+    pub(crate) damage_dealt_this_turn: Vec<(ObjectId, Target, i32)>,
     /// `(looker, card)` pairs for every hand card a player has privately looked at (CR 701.20 —
     /// Glasses of Urza). Read only by the wire redaction layer, which itemizes a hand card to its
     /// owner and to anyone holding a pair for it. Never cleared: a card that leaves the hand is a

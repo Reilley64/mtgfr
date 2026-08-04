@@ -473,7 +473,16 @@ impl Game {
         if !reincarnate || at.is_some() {
             return;
         }
-        self.prompt_next_glyph_reincarnation(graveyards, controller, source);
+        // "put a creature card … onto the battlefield under its owner's control" — not "you may"
+        // (CR 700.2), one prompt per listed graveyard.
+        self.prompt_next_graveyard_return(
+            graveyards,
+            controller,
+            source,
+            CardFilter::Creature,
+            true,
+            true,
+        );
     }
 
     /// Volcanic Eruption: "Destroy X target Mountains. … damage equal to the number of Mountains

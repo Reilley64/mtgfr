@@ -49,6 +49,39 @@ impl Game {
                     },
                 );
             }
+            // "Counter target activated ability … unless that ability's controller pays {W}"
+            // (Ayesha Tanaka): the same PayOrCounter pause one object kind over — the choice's
+            // `spell` field holds the ability's *source* permanent id (see
+            // `TargetSpec::ActivatedAbilityOnStack`), which is how the decline handler tells an
+            // ability apart from a spell.
+            Effect::Misc(MiscEffect::CounterTargetActivatedAbility {
+                unless_pays: Some(cost),
+                ..
+            }) => {
+                let source_id = expect_object_target(target, "an activated ability to counter");
+                // Already off the stack (countered or resolved in response): nothing to hold
+                // hostage, so no choice is raised (CR 608.2b).
+                let Some(player) = self.stack.iter().find_map(|item| match item {
+                    StackItem::Ability {
+                        source,
+                        controller,
+                        activated: true,
+                        ..
+                    } if *source == source_id => Some(*controller),
+                    _ => None,
+                }) else {
+                    return;
+                };
+                pending::raise(
+                    self,
+                    pending::ChoiceRequest::PayOrCounter {
+                        player,
+                        cost,
+                        spell: source_id,
+                        strips_mana_on_decline: false,
+                    },
+                );
+            }
             // Hinder's destination rider (CR 701.5b — `countered_dest`): pause this ability's
             // controller on a top/bottom pick before the countered card moves, unless it's not
             // going to a graveyard anyway — already left the stack / uncounterable (CR 608.2b /

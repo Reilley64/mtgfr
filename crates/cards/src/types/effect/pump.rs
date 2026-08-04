@@ -169,6 +169,18 @@ pub enum PumpEffect {
         keywords: &'static [Keyword],
     },
 
+    /// "That creature gains flying" (Cocoon) — a keyword grant with **no printed duration**, so it
+    /// lasts as long as the object does (CR 400.7) rather than wearing off at cleanup. The
+    /// durationless twin of [`Self::PumpUntilEndOfTurn`]'s keyword half; it grants no P/T, because
+    /// nothing in the pool sets an indefinite boost this way. Distinct from an
+    /// [`Effect::Static(StaticEffect::GrantToAttached)`] keyword grant, which only holds while the
+    /// granting Aura is still attached — Cocoon is sacrificed by the very ability that grants this.
+    GrantKeywordsIndefinitely {
+        target: TargetSpec,
+        #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::static_slice"))]
+        keywords: &'static [Keyword],
+    },
+
     SetBasePtCreaturesYouControlUntilEndOfTurn {
         power: Amount,
         toughness: Amount,

@@ -23,6 +23,7 @@ pub(crate) fn fresh_permanent(
         summoning_sick,
         entered_this_turn: true,
         attacked_this_turn: false,
+        attacked_on_last_own_turn: false,
         monstrous: false,
         plus_counters: 0,
         kind_counters: [0; CounterKind::COUNT],
@@ -331,6 +332,18 @@ pub(crate) struct Permanent {
     /// while the permanent is still in combat this turn: this stays `true` after end of combat,
     /// after the permanent is removed from combat, or after it changes controllers mid-combat.
     pub(crate) attacked_this_turn: bool,
+    /// Whether this permanent attacked during its controller's *previous* turn (Giant Turtle's
+    /// "This creature can't attack if it attacked during your last turn", CR 508.1a). `attacked_this_turn`
+    /// above can't answer that on its own — it is cleared at *every* Untap, so the intervening
+    /// opponents' turns wipe it long before its controller's next combat. This one is rolled once
+    /// per turn, at the active player's cleanup step, from that same flag: a fact recorded during
+    /// the controller's turn N reads back throughout their turn N+1 and is overwritten at N+1's
+    /// cleanup.
+    ///
+    /// ponytail: rolled for the permanents its controller holds *at that cleanup*, so a creature
+    /// that changes controllers between attacking and its owner's next turn carries the flag to the
+    /// new controller rather than staying tied to the seat it attacked under.
+    pub(crate) attacked_on_last_own_turn: bool,
     /// Whether this permanent has become monstrous (CR 701.28b) — a one-way state, not
     /// turn-scoped: it is never cleared at any Untap step, and a permanent that leaves the
     /// battlefield and returns is a new object that starts `false` again ([`fresh_permanent`]).
@@ -763,6 +776,21 @@ pub(crate) struct Player {
     /// can't cast spells." Set by [`Event::AttackerDeclared`] (`Game::apply`), keyed by the
     /// attacker's own controller; read by [`Game::cant_cast_if_attacked_this_turn`].
     pub(crate) attacked_this_turn: bool,
+    /// Whether a nontoken permanent entered the battlefield under this player's control this turn
+    /// — the second half of Arboria's "unless that player cast a spell or put a nontoken permanent
+    /// onto the battlefield during their last turn". The existing
+    /// `nontoken_creatures_entered_this_turn` tally next to it is creature-only, which Arboria is
+    /// not. Read once per turn, at this player's own cleanup step, and reset there (see
+    /// [`Game::roll_own_turn_history`]) rather than at the shared Untap reset — the point of the
+    /// pair is to survive the other seats' turns.
+    pub(crate) nontoken_permanent_entered_this_turn: bool,
+    /// Whether this player cast a spell or put a nontoken permanent onto the battlefield during
+    /// their *previous* turn (Arboria) — the per-player twin of
+    /// [`Permanent::attacked_on_last_own_turn`], rolled at the same cleanup step from
+    /// `spells_cast_this_turn` and `nontoken_permanent_entered_this_turn` above. `false` for a
+    /// player who has not yet taken a turn, which is what Arboria wants: no last turn, nothing done
+    /// during it, no attacking them.
+    pub(crate) acted_on_last_own_turn: bool,
     /// Monotonic counter for derive-per-op RNG — bumped once per random operation for this seat.
     pub(crate) op_iteration: u64,
     /// Times this player has cast their commander from the command zone (tax = 2× this).

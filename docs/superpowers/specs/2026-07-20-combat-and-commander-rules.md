@@ -163,6 +163,7 @@ this turn" / "…which creatures block this turn"). `CombatExtras::attack_declar
 - **Goad enforcement mirrors must-attack.** Both are constraint loops in `declare_attackers` that validate the declaration against requirements; goad's "if able" is gated on `Game::can_afford_attack_tax` (CR 508.1g). A declaration failing these is rejected with `Reject::IllegalDeclaration`.
 - **Commander damage uses object ids, not card def ids.** Because zone changes mint new object ids (CR 400.7), the commander is tracked as the current object id of the commander permanent in combat. This is consistent with how all other per-permanent effects are tracked.
 - **Planeswalker combat damage is partially implemented.** The `target = "player_or_planeswalker"` filter exists in the DSL; direct planeswalker-takes-attacker-damage in the combat damage path follows the same route. A complete attack-a-planeswalker flow (declaring attack at a planeswalker object id rather than a player) is in progress.
+- **Bands ride on the declare-attackers intent, not a second one.** `Intent::DeclareAttackersInBands` (CR 702.22c/d) is the engine variant, but the wire carries one `WireIntent::DeclareAttackers` whose `bands: Vec<WireBand>` selects it: empty — every attack but a banding one — maps to plain `Intent::DeclareAttackers`, non-empty to the banded variant. `Game::band_is_legal` owns legality, so a client may submit any grouping and gets `Reject::IllegalDeclaration` for an illegal one; no client-side banding rules exist.
 - **`CombatExtras::combat_damage_prevention_shields`** models per-player, per-token combat damage prevention (Inkshield pattern). A separate `prevent_all_combat_damage_this_turn` boolean handles table-wide prevention (Moment's Peace). Both are checked at all three combat-damage chokes.
 
 ---
@@ -183,10 +184,6 @@ this turn" / "…which creatures block this turn"). `CombatExtras::attack_declar
 ## Out of Scope
 
 - **Planeswalker as attack target** (full attack-a-planeswalker declaration, CR 306.9) — partially supported via `player_or_planeswalker` damage target; the full "declare attackers at a planeswalker" declaration path is in progress.
-- **Banding** (CR 702.22) — bands are declared (CR 702.22c/d, `Intent::DeclareAttackersInBands`) and
-  are blocked as a group (CR 702.22h/i). The combat damage division transfers of CR 702.22j/k are not
-  implemented, and the declaration is engine-only — no `WireIntent`, so the client's attack UI sees a
-  flat attacker list.
 - **Damage prevention and redirection** (general CR 615 prevention effects beyond Inkshield/Moment's Peace) — flagged per-deck when needed (`docs/fidelity/`).
 - **Ninjutsu** (CR 702.49) — not implemented.
 - **Blocking multiple attackers** (a single creature blocking two attackers) — not in scope for the current pool.

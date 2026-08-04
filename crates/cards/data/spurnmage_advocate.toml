@@ -6,7 +6,7 @@ id = "0477b923-9f32-4e7f-ac08-c715cca819a4"
 default_print = "9c014b89-895c-432f-94f5-cda2dfac57e4"
 otags = ["activated-ability", "graveyard-hate", "removal-tempo"]
 oracle = "{T}: Return two target cards from an opponent's graveyard to their hand. Destroy target attacking creature."
-approximates = "the body models text this card does not have: the two graveyard cards are exiled as an activation cost instead of returned to their owner's hand on resolution, and the creature is removed from combat and tapped instead of destroyed. Needs a \"return N target cards from an opponent's graveyard to their owner's hand\" effect."
+approximates = "the two returned cards may be taken from two different opponents' graveyards. The printed card draws both from one opponent's graveyard, and the pool has no set-level \"same graveyard\" restriction on a multi-target clause (increment 151)"
 subtypes = ["Human", "Nomad"]
 
 [cost]
@@ -19,23 +19,24 @@ toughness = 1
 
 # {T}: Return two target cards from an opponent's graveyard to their hand. Destroy target
 # attacking creature.
-# ponytail: the two graveyard cards are exiled as an activation cost rather than returned to their
-# owner's hand as part of the resolution, and the creature is removed from combat and tapped rather
-# than destroyed. Upgrade path: a graveyard-to-hand effect over the same `card_in_graveyard` target
-# form `Effect::Exile(ExileEffect::Target)` already uses, then a plain destroy on the second clause.
+# ponytail: the two clauses are authored in the reverse of their printed order. The ability's own
+# (first) target clause is the attacking creature; the two graveyard cards are the independent
+# second clause (CR 601.2c/603.3d), which the engine finds as the step marked
+# `reads_second_target_clause`. Only the order the two clauses are chosen in differs — both are
+# locked in as the ability goes on the stack, so nothing observable turns on which resolves first.
 [[abilities]]
 timing = "activated"
 taps_self = true
-graveyard_exile_target_count = 2
 
 # Destroy target attacking creature.
 [[abilities.effects]]
-type = "control"
-mode = "remove_from_combat"
+type = "destroy"
+mode = "target"
 target = { permanent = { types = "creature", attacking = true } }
 
-# Destroy target attacking creature.
+# Return two target cards from an opponent's graveyard to their hand.
 [[abilities.effects]]
-type = "control"
-mode = "tap_target"
-target = { permanent = { types = "creature", attacking = true } }
+type = "zone"
+mode = "return_target_cards_from_graveyard_to_hand"
+target = { card_in_graveyard = { whose = "opponents", filter = "any_card" } }
+count = { min = 2, max = 2 }

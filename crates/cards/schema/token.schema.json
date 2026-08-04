@@ -8707,6 +8707,78 @@
               "type": "object"
             },
             {
+              "description": "Caverns of Despair's \"No more than two creatures can attack each combat\" (CR 508.1a): a table-wide ceiling on the *size of the declaration*, not a per-creature ban. Read by [`Game::declare_attackers`](crate::Game), which rejects an over-ceiling declaration outright. Because it is a restriction, it also caps what a requirement may demand (CR 509.1a / 508.1a): a declaration already at the ceiling discharges every \"attacks if able\" the declaring player is under, so goad can't make a legal combat impossible.",
+              "properties": {
+                "count": {
+                  "format": "uint8",
+                  "minimum": 0.0,
+                  "type": "integer"
+                },
+                "mode": {
+                  "enum": [
+                    "max_attackers_each_combat"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "count",
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "Caverns of Despair's \"No more than two creatures can block each combat\" (CR 509.1b): the block-side twin of [`MaxAttackersEachCombat`](Self::MaxAttackersEachCombat). Counted in *blocking creatures*, not blocks, and across the whole combat rather than per defending player, so the ceiling is checked against the blockers already sealed this combat plus the ones being declared now.",
+              "properties": {
+                "count": {
+                  "format": "uint8",
+                  "minimum": 0.0,
+                  "type": "integer"
+                },
+                "mode": {
+                  "enum": [
+                    "max_blockers_each_combat"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "count",
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "Giant Turtle's \"This creature can't attack if it attacked during your last turn\" (CR 508.1a): a restriction on the printing permanent alone, read by `Game::can_attack` off the turn history `Game::roll_own_turn_history` rolls at its controller's cleanup step.",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "cant_attack_if_attacked_last_own_turn"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "Arboria's \"Creatures can't attack a player unless that player cast a spell or put a nontoken permanent onto the battlefield during their last turn\" (CR 508.1a): a restriction on the defending player rather than on any attacking creature, board-scanned like `cant_attack_filter`.",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "cant_attack_player_unless_they_acted"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
               "description": "Juggernaut's \"This creature can't be blocked by Walls\" (CR 509.1b): `filter` names the creatures turned away, so a blocker matching it can never be declared against this permanent. Invisibility's \"can't be blocked *except* by Walls\" is the same restriction authored inverted (`exclude_subtypes = [\"Wall\"]`), granted to a host by [`GrantToAttached`](Self::GrantToAttached)'s `cant_be_blocked_by` rather than printed.",
               "properties": {
                 "filter": {
@@ -10144,6 +10216,36 @@
                 },
                 "target": {
                   "$ref": "#/$defs/TargetSpec"
+                }
+              },
+              "required": [
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "Wall of Dust's \"Whenever this creature blocks a creature, that creature can't attack during its controller's next turn\" (CR 508.1a). Not a target — the creature is the one on the other side of the block pair, baked in when the ability is placed, exactly like `that_creature`'s Cockatrice fill.",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "that_creature_cant_attack_next_own_turn"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "Floral Spuzzem's \"this creature assigns no combat damage this turn\" (CR 510.1a). Always the source, never a target, like `source_cant_be_regenerated_this_turn`.",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "source_assigns_no_combat_damage_this_turn"
+                  ],
+                  "type": "string"
                 }
               },
               "required": [
@@ -12792,6 +12894,7 @@
             "turned_face_up",
             "becomes_monstrous",
             "attacks",
+            "attacks_and_isnt_blocked",
             "blocks",
             "blocks_or_becomes_blocked",
             "blocks_or_becomes_blocked_by",

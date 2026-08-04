@@ -57,7 +57,8 @@ impl Game {
                 | CountersEffect::PutCountersOnPlayer { .. }
                 | CountersEffect::RemoveAllPlayerCounters { .. }
                 | CountersEffect::TopUpCountersOnPlayer { .. }
-                | CountersEffect::RemoveCounterFromSelf { .. }) => {
+                | CountersEffect::RemoveCounterFromSelf { .. }
+                | CountersEffect::RemoveCounterFromAttached { .. }) => {
                     self.mint_counters(c, controller, source, target, x)
                 }
                 CountersEffect::CommanderEntersWithBonusCounters { .. }
@@ -88,13 +89,14 @@ impl Game {
                 | MiscEffect::BecomePrepared
                 | MiscEffect::FlipSource
                 | MiscEffect::GetEmblem { .. }
-                | MiscEffect::CounterTargetActivatedAbility
+                | MiscEffect::CounterTargetActivatedAbility { .. }
                 | MiscEffect::CounterTargetSpell { .. }
                 | MiscEffect::GrantChannelColorlessManaThisTurn
                 | MiscEffect::GrantFlashThisTurn
                 | MiscEffect::ScheduleAtNextUpkeep { .. }
                 | MiscEffect::ScheduleColorlessManaForCounteredSpellNextMainPhase
                 | MiscEffect::SkipNextUntapOpponentCreatures
+                | MiscEffect::SkipNextUntaps { .. }
                 | MiscEffect::TakeExtraTurn
                 | MiscEffect::YouLoseTheGame
                 | MiscEffect::GameIsADraw
@@ -104,6 +106,8 @@ impl Game {
                     self.mint_misc(m, controller, source, target, x)
                 }
                 MiscEffect::BlocksEachAttackerIfAble { .. }
+                | MiscEffect::ThatCreatureCantAttackNextOwnTurn { .. }
+                | MiscEffect::SourceAssignsNoCombatDamageThisTurn
                 | MiscEffect::CounterTriggeringSpell { .. }
                 | MiscEffect::Fight { .. }
                 | MiscEffect::MustAttackRandomOpponent
@@ -147,6 +151,7 @@ impl Game {
                 // Tariel's random pick needs the injected RNG (`&mut self`) — resolves via
                 // `Game::run_misc_choreo`, not this pure mint path.
                 ZoneEffect::ReanimateRandomFromTargetOpponentGraveyard { .. }
+                | ZoneEffect::ReturnTargetCardsFromGraveyardToHand { .. }
                 | ZoneEffect::UntapSearchedLand
                 | ZoneEffect::AttachTriggeringAuraToMintedToken { .. }
                 | ZoneEffect::ReflexiveTrigger { .. }

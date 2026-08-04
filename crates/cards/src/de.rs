@@ -698,6 +698,13 @@ impl<'de> Deserialize<'de> for Amount {
                     "creatures_sacrificed_this_way" => Amount::CreaturesSacrificedThisWay,
                     "spell_first_target_mana_value" => Amount::SpellFirstTargetManaValue,
                     "counters_removed_this_way" => Amount::CountersRemovedThisWay,
+                    "damage_dealt_this_way" => Amount::DamageDealtThisWay,
+                    "damage_dealt_to_source_this_turn_by_others_named_the_same" => {
+                        Amount::DamageDealtToSourceThisTurnByOthersNamedTheSame
+                    }
+                    "half_greatest_damage_dealt_by_target_players_sorcery_this_turn" => {
+                        Amount::HalfGreatestDamageDealtByTargetPlayersSorceryThisTurn
+                    }
                     other => return Err(E::unknown_variant(other, KEYWORDS)),
                 })
             }
@@ -712,6 +719,12 @@ impl<'de> Deserialize<'de> for Amount {
                     zone: AmountZone,
                     #[serde(default)]
                     per_counter_of_kind: Option<CounterKind>,
+                    /// `{ per_counter_of_kind = "sleep", on_attached = true }` — count the
+                    /// counters on the permanent the source is attached to (Venarian Gold's
+                    /// enchanted creature) rather than on the source itself. A modifier on
+                    /// `per_counter_of_kind`, not an amount of its own.
+                    #[serde(default)]
+                    on_attached: bool,
                     #[serde(default)]
                     condition: Option<Condition>,
                     #[serde(default)]
@@ -774,9 +787,10 @@ impl<'de> Deserialize<'de> for Amount {
                             zone: t.zone,
                         })
                     }
-                    (None, Some(kind), None, None, None, None) => {
-                        Ok(Amount::PerCounterOfKindOnSource { kind })
-                    }
+                    (None, Some(kind), None, None, None, None) => Ok(match t.on_attached {
+                        true => Amount::PerCounterOfKindOnAttached { kind },
+                        false => Amount::PerCounterOfKindOnSource { kind },
+                    }),
                     (None, None, Some(condition), None, None, None) => Ok(Amount::IfCondition {
                         condition,
                         then: &*Box::leak(Box::new(t.then.unwrap_or(Amount::Fixed(0)))),
@@ -1035,6 +1049,9 @@ pub const AMOUNT_KEYWORDS: &[&str] = &[
     "creatures_sacrificed_this_way",
     "spell_first_target_mana_value",
     "counters_removed_this_way",
+    "damage_dealt_this_way",
+    "damage_dealt_to_source_this_turn_by_others_named_the_same",
+    "half_greatest_damage_dealt_by_target_players_sorcery_this_turn",
 ];
 
 pub const PERMANENT_FILTER_SHORTHANDS: &[&str] = &[
@@ -1518,6 +1535,9 @@ pub(crate) enum TriggerTag {
     ThisIsDealtDamage,
     CreatureDealtDamageByThisDies,
     DealsDamageToOpponent,
+    /// Whenever this permanent deals damage to *any* player, its controller included (Pit
+    /// Scorpion). See [`Trigger::DealsDamageToPlayer`].
+    DealsDamageToPlayer,
     CastSpell,
     PlayerDraws,
     ActivateAbility,
@@ -1661,6 +1681,7 @@ impl<'de> Deserialize<'de> for Ability {
                 TriggerTag::ThisIsDealtDamage => Trigger::ThisIsDealtDamage,
                 TriggerTag::CreatureDealtDamageByThisDies => Trigger::CreatureDealtDamageByThisDies,
                 TriggerTag::DealsDamageToOpponent => Trigger::DealsDamageToOpponent,
+                TriggerTag::DealsDamageToPlayer => Trigger::DealsDamageToPlayer,
                 TriggerTag::CastSpell => Trigger::CastSpell {
                     filter: flat.spell_filter,
                     caster: flat.caster,

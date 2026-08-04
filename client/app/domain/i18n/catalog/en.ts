@@ -266,7 +266,11 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.choice_put_counter_then_may_become_copy_of_card_from_list": literal(
     "Put a +1/+1 counter on this creature, then you may have this creature become a copy of an artifact or creature card from among those cards until end of turn",
   ),
-  "effect.choice_discard_your_hand": literal("Discard your hand"),
+  "effect.choice_discard_your_hand": (params) => {
+    const who = param(params, "who");
+    if (who === "" || who === "you") return "Discard your hand";
+    return `${playerSubject(params)} discard${playerVerbSuffix(params)} their hand`;
+  },
   "effect.choice_each_player_chooses_war_or_peace": literal("Each player chooses war or peace"),
   "effect.choice_put_creature_from_hand": literal(
     "You may put a creature card from your hand onto the battlefield. It gains haste. Sacrifice it at the beginning of the next end step",
@@ -373,6 +377,10 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
       ? `Put ${param(params, "count")} +1/+1 counters`
       : `Put ${param(params, "count")} ${humanize(param(params, "kind"))} counters`,
   "effect.counters_put_counters_each": (params) => `Put ${param(params, "count")} +1/+1 counters on each`,
+  "effect.counters_remove_counter_from_attached": (params) =>
+    params.kind === "plus_one_plus_one"
+      ? "Remove a +1/+1 counter from the enchanted permanent"
+      : `Remove a ${humanize(param(params, "kind"))} counter from the enchanted permanent`,
   "effect.counters_remove_counter_from_self": (params) =>
     params.kind === "plus_one_plus_one"
       ? "Remove a +1/+1 counter from it"
@@ -537,6 +545,8 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.misc_skip_next_untap_opponent_creatures": literal(
     "Creatures your opponents control do not untap during their next untap steps",
   ),
+  "effect.misc_skip_next_untaps": (params) =>
+    `It does not untap during its controller's next ${param(params, "count")} untap steps`,
   "effect.misc_take_extra_turn": literal("Take an extra turn after this one"),
   "effect.misc_you_lose_the_game": literal("You lose the game"),
   "effect.misc_game_is_a_draw": literal("The game is a draw"),
@@ -556,6 +566,8 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.pump_pump_each_creature_until_end_of_turn": (params) => pumpLabel(params, "Each creature gets"),
   "effect.pump_pump_other_attackers_attacking_your_opponents": (params) =>
     `Each other creature that's attacking one of your opponents gets +${param(params, "power")}/+${param(params, "toughness")} until end of turn`,
+  "effect.pump_grant_keywords_indefinitely": (params) =>
+    `Target creature gains ${humanize(param(params, "keywords"))}`,
   "effect.pump_pump_self_until_end_of_turn": (params) => pumpLabel(params, ""),
   "effect.pump_pump_until_end_of_turn": (params) => pumpLabel(params, ""),
   "effect.pump_radiance_chosen_color_protection_until_end_of_turn": literal(
@@ -574,9 +586,7 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   ),
   "effect.pump_set_own_base_toughness_from_amount": (params) =>
     `Change this creature's base toughness to ${param(params, "amount")}`,
-  "effect.pump_switch_pt_until_end_of_turn": literal(
-    "Switch target creature's power and toughness until end of turn",
-  ),
+  "effect.pump_switch_pt_until_end_of_turn": literal("Switch target creature's power and toughness until end of turn"),
   "effect.pump_strip_keywords_from_opponents_creatures": (params) =>
     `Creatures your opponents control lose ${humanize(param(params, "keywords"))} until end of turn and can't have ${humanize(param(params, "keywords"))} this turn`,
   // Hammerheim / Radjan Spirit / Tolaria / Urborg / Shelkin Brownie / Elder Land Wurm. Either
@@ -632,6 +642,18 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.static_cant_attack_if_cast_this_turn": literal(
     "Each opponent who cast a spell this turn can't attack with creatures",
   ),
+  "effect.static_max_attackers_each_combat": (params) =>
+    `No more than ${param(params, "count", "1")} creature(s) can attack each combat`,
+  "effect.static_max_blockers_each_combat": (params) =>
+    `No more than ${param(params, "count", "1")} creature(s) can block each combat`,
+  "effect.static_cant_attack_if_attacked_last_own_turn": () =>
+    "This creature can't attack if it attacked during your last turn",
+  "effect.static_cant_attack_player_unless_they_acted": () =>
+    "Creatures can't attack a player unless that player cast a spell or put a nontoken permanent onto the battlefield during their last turn",
+  "effect.misc_that_creature_cant_attack_next_own_turn": () =>
+    "That creature can't attack during its controller's next turn",
+  "effect.misc_source_assigns_no_combat_damage_this_turn": () =>
+    "This creature assigns no combat damage this turn",
   "effect.static_cant_attack_unless_defender_controls": (params) =>
     `This creature can't attack unless defending player controls ${param(params, "filter")}`,
   "effect.static_cant_be_attacked_by": (params) => `${humanize(param(params, "filter", "Creatures"))} can't attack you`,

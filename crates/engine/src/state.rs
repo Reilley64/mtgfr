@@ -113,6 +113,23 @@ pub(crate) struct CombatExtras {
     /// live off a creature that is about to die. Cleared at the next turn's Untap step, the same
     /// "this turn" boundary [`must_attack`](Self::must_attack) uses.
     pub blocked_this_turn: Vec<(ObjectId, ObjectId, PlayerId)>,
+    /// "That creature can't attack during its controller's next turn" (Wall of Dust): creatures
+    /// banned from a turn that hasn't started yet. Written when the block trigger resolves and
+    /// promoted into [`cant_attack_this_own_turn`](Self::cant_attack_this_own_turn) at the cleanup
+    /// step of the turn the block happened in — attackers are declared by the active player, so
+    /// that cleanup is the boundary between "its controller's turn" and "its controller's *next*
+    /// turn" (see [`Game::roll_own_turn_history`](crate::Game)).
+    pub cant_attack_next_own_turn: Vec<ObjectId>,
+    /// The armed half of [`cant_attack_next_own_turn`](Self::cant_attack_next_own_turn): creatures
+    /// whose banned turn is the one now being played. Read by
+    /// [`Game::can_attack`](crate::Game) alongside the printed attack restrictions, and dropped at
+    /// that turn's own cleanup, one turn after it was promoted.
+    pub cant_attack_this_own_turn: Vec<ObjectId>,
+    /// "This creature assigns no combat damage this turn" (Floral Spuzzem, CR 510.1a). Read by
+    /// [`Game::deals_this_batch`](crate::Game) — the one gate both the damage assignment and the
+    /// division question go through — and cleared at the next Untap step, the same "this turn"
+    /// boundary [`must_attack`](Self::must_attack) uses.
+    pub assigns_no_combat_damage_this_turn: Vec<ObjectId>,
 }
 
 /// Active play and control permissions stored outside `Card`/`Permanent` so they stay `Copy`.

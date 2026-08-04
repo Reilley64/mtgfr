@@ -339,12 +339,74 @@ impl Game {
             // above — a restriction beats a requirement (CR 509.1a), so a banned creature is
             // never "able" and goad can't demand it.
             && !self.cant_attack_filter(creature)
+            // Giant Turtle's "can't attack if it attacked during your last turn" and Wall of Dust's
+            // "that creature can't attack during its controller's next turn": both read the turn
+            // history rolled at the controller's cleanup step, and both sit here rather than at the
+            // declaration for the same CR 509.1a reason as the bans above.
+            && !self.cant_attack_after_last_own_turn(creature)
             && self.living_players().any(|d| {
                 // Sea Serpent's "unless defending player controls an Island" is per-defender, so
                 // "able to attack" means *some* seat is open. Checked here as well as at the
                 // declaration so a restriction beats goad's requirement (CR 509.1a).
-                d != self.controller_of(creature) && self.may_attack_defender(creature, d)
+                d != self.controller_of(creature)
+                    && self.may_attack_defender(creature, d)
+                    // Arboria shields the *player*, so a seat with a planeswalker is still open.
+                    && (!self.defender_shielded_by_inaction(d) || self.controls_a_planeswalker(d))
             })
+    }
+
+    /// Whether `creature` is barred from this combat by something that happened on an *earlier*
+    /// turn (CR 508.1a): Giant Turtle's own "can't attack if it attacked during your last turn",
+    /// or Wall of Dust's ban on a creature it blocked last time around. Both facts are rolled once
+    /// per turn by [`Game::roll_own_turn_history`], so this is a plain read.
+    fn cant_attack_after_last_own_turn(&self, creature: ObjectId) -> bool {
+        if self
+            .combat_extras
+            .cant_attack_this_own_turn
+            .contains(&creature)
+        {
+            return true;
+        }
+        self.permanent(creature).attacked_on_last_own_turn
+            && self.functional_abilities(creature).iter().any(|a| {
+                matches!(
+                    (a.timing, &a.effect),
+                    (
+                        Timing::Static,
+                        Effect::Static(StaticEffect::CantAttackIfAttackedLastOwnTurn)
+                    )
+                )
+            })
+    }
+
+    /// Whether any permanent on the battlefield bars `defender` from being attacked at all because
+    /// they did nothing on their own last turn (CR 508.1a — Arboria). Board-scanned like
+    /// [`Game::cant_attack_filter`]; the restriction names the defending *player*, so no attacking
+    /// creature's characteristics enter into it.
+    fn defender_shielded_by_inaction(&self, defender: PlayerId) -> bool {
+        if self.players[defender.0 as usize].acted_on_last_own_turn {
+            return false;
+        }
+        self.battlefield().into_iter().any(|source| {
+            self.functional_abilities(source).iter().any(|a| {
+                matches!(
+                    (a.timing, &a.effect),
+                    (
+                        Timing::Static,
+                        Effect::Static(StaticEffect::CantAttackPlayerUnlessTheyActed)
+                    )
+                )
+            })
+        })
+    }
+
+    /// Whether `defender` controls a planeswalker, and so is still worth attacking even while
+    /// Arboria shields the player themselves (CR 508.1a — the restriction names attacking a
+    /// *player*, and attacking their planeswalker is not that).
+    fn controls_a_planeswalker(&self, defender: PlayerId) -> bool {
+        self.controlled_battlefield(defender)
+            .into_iter()
+            .any(|id| self.def_of(id).kind.types().intersects(TypeSet::PLANESWALKER))
     }
 
     /// Whether `attacker`'s own printed attack restriction (Sea Serpent's "this creature can't
@@ -639,6 +701,104 @@ impl Game {
         })
     }
 
+    /// The tightest live "no more than N creatures can attack each combat" ceiling anywhere on the
+    /// battlefield (CR 508.1a — Caverns of Despair), or `None` when nothing caps the declaration.
+    /// Board-wide like [`Game::cant_attack_filter`], and for the same reason: the printed sentence
+    /// names no controller, so whose permanent prints it never matters. Two ceilings are both
+    /// restrictions, so the lower one is the one a declaration has to satisfy.
+    fn max_attackers_each_combat(&self) -> Option<u32> {
+        self.combat_ceiling(|effect| match effect {
+            StaticEffect::MaxAttackersEachCombat { count } => Some(count as u32),
+            _ => None,
+        })
+    }
+
+    /// The block-side twin of [`Game::max_attackers_each_combat`] (CR 509.1b).
+    fn max_blockers_each_combat(&self) -> Option<u32> {
+        self.combat_ceiling(|effect| match effect {
+            StaticEffect::MaxBlockersEachCombat { count } => Some(count as u32),
+            _ => None,
+        })
+    }
+
+    /// The lowest ceiling `read` finds among the battlefield's live static abilities, shared by the
+    /// attack and block halves of Caverns of Despair.
+    fn combat_ceiling(&self, read: impl Fn(StaticEffect) -> Option<u32>) -> Option<u32> {
+        self.battlefield()
+            .into_iter()
+            .flat_map(|source| self.functional_abilities(source).to_vec())
+            .filter_map(|a| match (a.timing, a.effect.clone()) {
+                (Timing::Static, Effect::Static(effect)) => read(effect),
+                _ => None,
+            })
+            .min()
+    }
+
+    /// Roll the once-per-turn memories the "during your last turn" restrictions read, at the
+    /// cleanup step of `active_player`'s turn (CR 514) — the only moment at which this turn's facts
+    /// are all recorded and the next turn's have not started arriving.
+    ///
+    /// Three cards ride on it: Giant Turtle ("can't attack if it attacked during your last turn"),
+    /// Wall of Dust ("that creature can't attack during its controller's next turn") and Arboria
+    /// ("unless that player cast a spell or put a nontoken permanent onto the battlefield during
+    /// their last turn"). All three ask about a seat's *own* previous turn, which the shared
+    /// `*_this_turn` tallies can't answer — those are cleared at every Untap, so the intervening
+    /// seats' turns wipe them first.
+    pub(crate) fn roll_own_turn_history(&mut self, active_player: PlayerId) {
+        // Giant Turtle: this turn's attack becomes "attacked during your last turn" for exactly the
+        // span of this player's next turn, and the roll overwrites it again at that turn's cleanup.
+        for id in self.controlled_battlefield(active_player) {
+            let attacked = self.permanent(id).attacked_this_turn;
+            self.permanent_mut(id).attacked_on_last_own_turn = attacked;
+        }
+        // Wall of Dust: the ban that was armed during this turn ("its controller's *next* turn")
+        // comes into force now, and the one that was in force during this turn is spent.
+        let mine = |game: &Game, id: ObjectId| {
+            game.as_permanent(id)
+                .is_some_and(|_| game.controller_of(id) == active_player)
+        };
+        let spent: Vec<ObjectId> = self
+            .combat_extras
+            .cant_attack_this_own_turn
+            .iter()
+            .copied()
+            .filter(|&id| mine(self, id) || self.as_permanent(id).is_none())
+            .collect();
+        let promoted: Vec<ObjectId> = self
+            .combat_extras
+            .cant_attack_next_own_turn
+            .iter()
+            .copied()
+            .filter(|&id| mine(self, id))
+            .collect();
+        self.combat_extras
+            .cant_attack_this_own_turn
+            .retain(|id| !spent.contains(id));
+        self.combat_extras
+            .cant_attack_next_own_turn
+            .retain(|id| !promoted.contains(id));
+        self.combat_extras.cant_attack_this_own_turn.extend(promoted);
+        // Arboria: "cast a spell or put a nontoken permanent onto the battlefield during their last
+        // turn", recorded per seat at that seat's own cleanup.
+        let player = &mut self.players[active_player.0 as usize];
+        player.acted_on_last_own_turn =
+            player.spells_cast_this_turn > 0 || player.nontoken_permanent_entered_this_turn;
+        player.nontoken_permanent_entered_this_turn = false;
+    }
+
+    /// How many creatures are already committed to blocking this combat (CR 509.1b) — the distinct
+    /// blockers in the declarations other defending players have already sealed. Counted in
+    /// creatures rather than blocks, so a Two-Headed Giant of Foriys blocking two attackers is one.
+    fn blockers_already_declared(&self) -> Vec<ObjectId> {
+        let mut out: Vec<ObjectId> = Vec::new();
+        for &(blocker, _) in &self.combat.blocks {
+            if !out.contains(&blocker) {
+                out.push(blocker);
+            }
+        }
+        out
+    }
+
     /// Whether some permanent on the battlefield says creatures with `land`walk "can be blocked as
     /// though they didn't have" it (Crevasse and its four siblings, Gosta Dirk, Lord Magnus,
     /// Ur-Drago). Board-wide like [`Game::cant_block_filter`] — the static names a *keyword*, not a
@@ -879,6 +1039,16 @@ impl Game {
             if !self.may_attack_defender(a, defending_player) {
                 return Err(Reject::IllegalDeclaration);
             }
+            // Arboria's "creatures can't attack a player unless that player cast a spell or put a
+            // nontoken permanent onto the battlefield during their last turn": the restriction is
+            // on attacking the *player*, so their planeswalkers stay open — which is why it is
+            // checked here, against the declared `Defender`, rather than inside the
+            // defending-player-keyed check above.
+            if matches!(defender, Defender::Player(_))
+                && self.defender_shielded_by_inaction(defending_player)
+            {
+                return Err(Reject::IllegalDeclaration);
+            }
             resolved.push((a, defending_player));
         }
 
@@ -956,6 +1126,18 @@ impl Game {
             }
         }
 
+        // "No more than two creatures can attack each combat" (CR 508.1a — Caverns of Despair): a
+        // whole-declaration restriction, in the mould of menace's two-or-more rule, since no single
+        // creature can tell whether it is the third one.
+        let attack_ceiling = self.max_attackers_each_combat();
+        if attack_ceiling.is_some_and(|c| attackers.len() as u32 > c) {
+            return Err(Reject::IllegalDeclaration);
+        }
+        // A restriction also caps what a requirement may demand (CR 508.1a): once the declaration
+        // sits at the ceiling, no further creature is "able" to attack, so every must-attack loop
+        // below stops asking for one rather than wedging the combat into unsatisfiability.
+        let at_attack_ceiling = attack_ceiling.is_some_and(|c| attackers.len() as u32 >= c);
+
         // Goad requirements (CR 701.38a): every goaded creature the active player controls that
         // *could* attack must be attacking, and must attack a non-goader if one is a legal
         // defender. A goaded creature that can't attack at all ("if able") is simply not required.
@@ -976,6 +1158,9 @@ impl Game {
                 continue; // not able — the tax can't be paid to reach any defender
             }
             let Some(&(_, defender)) = attackers.iter().find(|&&(a, _)| a == id) else {
+                if at_attack_ceiling {
+                    continue; // the declaration is full — no room left to be "able" (CR 508.1a)
+                }
                 return Err(Reject::IllegalDeclaration); // a goaded able creature must attack
             };
             // CR 701.38a: "attacks a *player* other than you if able" — a non-goader only counts
@@ -1007,6 +1192,9 @@ impl Game {
                 continue;
             }
             let Some(&(_, defender)) = attackers.iter().find(|&&(a, _)| a == id) else {
+                if at_attack_ceiling {
+                    continue; // the declaration is full — no room left to be "able" (CR 508.1a)
+                }
                 return Err(Reject::IllegalDeclaration); // a required able creature must attack
             };
             let required_legal = required != player
@@ -1029,7 +1217,7 @@ impl Game {
             if !self.must_attack_each_combat(id) || !self.can_attack(id) {
                 continue;
             }
-            if !attackers.iter().any(|&(a, _)| a == id) {
+            if !attackers.iter().any(|&(a, _)| a == id) && !at_attack_ceiling {
                 return Err(Reject::IllegalDeclaration); // must attack if able
             }
         }
@@ -1175,7 +1363,30 @@ impl Game {
         // for; the attacker side only, and once per attacker however many creatures blocked it.
         self.queue_rampage_triggers(blocks);
         self.combat.blocked_by.extend(seats); // these defenders' block declarations are final
+        // Floral Spuzzem's "whenever this creature attacks and isn't blocked" — the last thing,
+        // since it can only be answered once every attacked seat above is done declaring.
+        self.queue_attacks_and_isnt_blocked_triggers();
         events
+    }
+
+    /// Queue [`Trigger::AttacksAndIsntBlocked`] (Floral Spuzzem, CR 509.1h) over the attackers
+    /// nobody blocked. Called from [`Self::seal_blocks`] and a no-op until the *last* attacked
+    /// seat has declared: until then an attacker that looks unblocked may still be blocked by a
+    /// seat that hasn't spoken (a multi-seat attack, or a planeswalker and its controller).
+    fn queue_attacks_and_isnt_blocked_triggers(&mut self) {
+        let still_to_declare: Vec<PlayerId> = self
+            .living_players()
+            .filter(|&p| self.is_attacked_player(p) && !self.combat.blocked_by.contains(&p))
+            .collect();
+        if !still_to_declare.is_empty() {
+            return;
+        }
+        for attacker in self.combat.attackers.clone() {
+            if self.is_blocked(attacker) {
+                continue;
+            }
+            self.queue_self_trigger(attacker, Trigger::AttacksAndIsntBlocked);
+        }
     }
 
     /// `blocks` plus the pairs a declared attacking band adds (CR 702.22h): "if an attacking
@@ -1252,6 +1463,21 @@ impl Game {
                 continue; // "can block any number of creatures" — no ceiling to exceed
             };
             if blocks.iter().filter(|&&(b, _)| b == blocker).count() as u32 > ceiling {
+                return false;
+            }
+        }
+        // "No more than two creatures can block each combat" (CR 509.1b — Caverns of Despair):
+        // counted across the whole combat, so an earlier defending player's sealed blockers eat
+        // into the ceiling a later one has left. Distinct *creatures*, not blocks — Two-Headed
+        // Giant of Foriys blocking two attackers is still one blocker.
+        if let Some(ceiling) = self.max_blockers_each_combat() {
+            let mut blockers = self.blockers_already_declared();
+            for &(blocker, _) in blocks {
+                if !blockers.contains(&blocker) {
+                    blockers.push(blocker);
+                }
+            }
+            if blockers.len() as u32 > ceiling {
                 return false;
             }
         }
@@ -2047,8 +2273,19 @@ impl Game {
     }
 
     /// Whether `object` deals combat damage in this batch (first-strike creatures in the
-    /// first-strike batch, everyone else in the normal batch).
+    /// first-strike batch, everyone else in the normal batch) — and at all: Floral Spuzzem's "this
+    /// creature assigns no combat damage this turn" (CR 510.1a) is answered here because this is
+    /// the one gate both the assignment in [`Self::combat_damage_substep`] and the division
+    /// question in [`Self::owes_a_division`] read, so a creature told to stand down neither
+    /// divides nor deals, in either batch.
     pub(crate) fn deals_this_batch(&self, object: ObjectId, first_strike_batch: bool) -> bool {
+        if self
+            .combat_extras
+            .assigns_no_combat_damage_this_turn
+            .contains(&object)
+        {
+            return false;
+        }
         if self.has_keyword(object, Keyword::DoubleStrike) {
             return true; // deals in both the first-strike and the normal batch
         }

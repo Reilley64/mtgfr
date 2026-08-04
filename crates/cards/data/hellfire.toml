@@ -1,0 +1,32 @@
+# Destroy all nonblack creatures. Hellfire deals X plus 3 damage to you, where X is the number of
+# creatures that died this way.
+name = "Hellfire"
+otags = ["burn-you", "drawback", "sweeper"]
+sets = ["leg", "me3"]
+id = "e7b1975d-9574-4333-8530-33167948078a"
+default_print = "362f1fe9-20af-434c-9957-7a1a564d89e6"
+oracle = "Destroy all nonblack creatures. Hellfire deals X plus 3 damage to you, where X is the number of creatures that died this way."
+
+[cost]
+generic = 2
+black = 3
+
+[kind]
+type = "sorcery"
+
+# Destroy all nonblack creatures. Hellfire deals X plus 3 damage to you, where X is the number of
+# creatures that died this way.
+[[abilities]]
+timing = "spell"
+
+# Destroy all nonblack creatures.
+[[abilities.effects]]
+type = "destroy"
+mode = "all"
+filter = { types = "creature", not_color = "black" }
+
+# Hellfire deals X plus 3 damage to you, where X is the number of creatures that died this way.
+[[abilities.effects]]
+type = "damage"
+mode = "to_players"
+amount = { left = { permanents_destroyed_this_way = { types = "creature" } }, op = "add", right = 3 }

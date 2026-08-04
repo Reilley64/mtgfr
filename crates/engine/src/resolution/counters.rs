@@ -291,6 +291,31 @@ impl Game {
                     count: -1,
                 }]
             }
+            // Venarian Gold: "remove a sleep counter from that creature" — the same tick as the
+            // arm above, one zone over onto whatever the Aura is attached to.
+            CountersEffect::RemoveCounterFromAttached { kind } => {
+                let Some(host) = self.as_permanent(source).and_then(|p| p.attached_to) else {
+                    return vec![];
+                };
+                let Some(kind) = kind else {
+                    if self.plus_counters(host) <= 0 {
+                        return vec![];
+                    }
+                    return vec![Event::CountersPlaced {
+                        object: host,
+                        count: -1,
+                        source_name,
+                    }];
+                };
+                if self.counters_of_kind(host, kind) == 0 {
+                    return vec![];
+                }
+                vec![Event::KindCountersPlaced {
+                    object: host,
+                    kind,
+                    count: -1,
+                }]
+            }
             _ => unreachable!("counters family mint received a non-family effect"),
         }
     }

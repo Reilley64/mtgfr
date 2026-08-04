@@ -226,10 +226,8 @@ pub enum Intent {
     /// [`Self::DeclareAttackers`] plus declared attacking *bands* (CR 702.22c — "as a player
     /// declares attackers, they may declare that one or more attacking creatures … are all in a
     /// band"). A separate variant rather than a field on `DeclareAttackers` so that a bandless
-    /// attack — every attack in the game but a banding one — is untouched.
-    /// ponytail: no `WireIntent` counterpart yet, so this is engine-side only: nothing over the
-    /// wire can declare a band until increment #3's slice 2 adds the proto message and the client's
-    /// grouping affordance.
+    /// attack — every attack in the game but a banding one — is untouched. Over the wire both are
+    /// one `WireIntent::DeclareAttackers`, whose non-empty `bands` selects this variant.
     DeclareAttackersInBands {
         player: PlayerId,
         /// (attacking creature, what it attacks) — exactly [`Self::DeclareAttackers`]'s list.
@@ -1490,6 +1488,9 @@ pub enum PendingChoice {
         player: PlayerId,
         source: ObjectId,
         options: Vec<ObjectId>,
+        /// What the *next* prompt in `then_graveyards` may offer — carried so the answer handler
+        /// can rebuild the following choice's options without knowing which effect raised this one.
+        filter: CardFilter,
         mandatory: bool,
         /// Glyph of Reincarnation's "put a creature card … onto the battlefield **under its
         /// owner's control**": the chosen card is reanimated instead of returned to `player`'s
@@ -2653,6 +2654,13 @@ pub enum Event {
         toughness: i32,
         keywords: &'static [Keyword],
         source_name: &'static str,
+    },
+    /// A permanent gained `keywords` with no printed duration (Cocoon's "that creature gains
+    /// flying") — the durationless twin of [`TempBoost`](Event::TempBoost), so the cleanup sweep
+    /// leaves it alone and only the object changing zones ends it (CR 400.7).
+    KeywordsGrantedIndefinitely {
+        object: ObjectId,
+        keywords: &'static [Keyword],
     },
     /// A permanent's until-end-of-turn boosts wore off (cleanup).
     TempBoostsEnded { object: ObjectId },

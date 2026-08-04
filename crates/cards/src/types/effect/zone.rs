@@ -160,6 +160,17 @@ pub enum ZoneEffect {
         object: Option<ObjectId>,
     },
 
+    /// Spurnmage Advocate's "Return two target cards from an opponent's graveyard to their hand" —
+    /// the plural sibling of [`Self::ReturnFromGraveyardToHand`], which returns the one target the
+    /// ability shares. This is an *independent* target clause (CR 601.2c/603.3d) chosen alongside
+    /// the ability's own target and read back off `targets_second` at resolution, the same shape as
+    /// [`crate::CountersEffect::DoubleCountersOnTargetCreatures`].
+    ReturnTargetCardsFromGraveyardToHand {
+        target: TargetSpec,
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        count: TargetCount,
+    },
+
     ReturnThisAuraAttachedTo {
         #[cfg_attr(feature = "card-dsl", serde(skip))]
         creature: Option<ObjectId>,

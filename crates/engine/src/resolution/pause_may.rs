@@ -12,6 +12,7 @@ impl Game {
             controller,
             source,
             target,
+            x,
             ..
         } = ctx;
         match effect {
@@ -33,6 +34,7 @@ impl Game {
             // declining, no pause at all.
             Effect::Choice(ChoiceEffect::MayReturnFromGraveyard {
                 filter,
+                count,
                 if_you_sacrificed_this_way,
                 mandatory,
             }) => {
@@ -41,6 +43,10 @@ impl Game {
                 {
                     return;
                 }
+                // Recall's "a card … for each card discarded this way": the same graveyard queued
+                // once per card owed, prompted one at a time. A count of zero (nothing was
+                // discarded) queues nothing and never pauses.
+                let n = self.resolve_amount(count, controller, source, None, x).max(0) as usize;
                 pending::raise(
                     self,
                     pending::ChoiceRequest::MayReturnFromGraveyard {
@@ -48,6 +54,8 @@ impl Game {
                         source,
                         filter,
                         mandatory,
+                        to_battlefield: false,
+                        graveyards: vec![controller; n],
                     },
                 )
             }

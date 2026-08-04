@@ -179,6 +179,7 @@ export function extractProvenance(
         "play_from_exile_ended",
         "play_from_exile_permission_armed",
         "player_lost",
+        "game_drawn",
         "priority_passed",
         "put_from_hand_on_top",
         "put_on_bottom_of_library",
@@ -270,6 +271,9 @@ export function describe(e: VisibleEvent, state: VisibleState): string | null {
       // reads as an unexplained death.
       drew_from_empty_library: (e) => `${p(e.player)} tries to draw from an empty library`,
       player_lost: (e) => `${p(e.player)} loses the game`,
+      // CR 104.4 — everyone still in the game loses at once, so there is nobody to name and no
+      // `player_lost` fires. Without this line the game just stops responding with nothing said.
+      game_drawn: () => "The game is a draw",
       creature_type_chosen: (e) => `${name(e.object)} is chosen as ${e.subtype}`,
       color_chosen: (e) => `${name(e.object)} is chosen as ${colorName(e.color)}`,
       color_set_until_end_of_turn: (e) => `${name(e.object)} becomes ${colorName(e.color)} until end of turn`,

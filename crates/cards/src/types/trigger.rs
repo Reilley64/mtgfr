@@ -61,6 +61,13 @@ pub enum Trigger {
     BecomesMonstrous,
     /// When this creature is declared as an attacker.
     Attacks,
+    /// Whenever this creature attacks and isn't blocked (Floral Spuzzem, CR 509.1h): fires once
+    /// every attacked seat's block declaration is final, over the attackers nobody blocked, from
+    /// [`Game::seal_blocks`] — the earliest moment "isn't blocked" has an answer. Not a per-event
+    /// scan for the same reason [`BlocksOrBecomesBlocked`](Self::BlocksOrBecomesBlocked) isn't:
+    /// the fact being watched is a property of the whole declaration, not of one
+    /// [`Event::BlockerDeclared`]. Spelled `"attacks_and_isnt_blocked"` in TOML.
+    AttacksAndIsntBlocked,
     /// Whenever this creature blocks or becomes blocked (Goblin Cadets, CR 509/CR 509.1h): fires
     /// off [`Event::BlockerDeclared`] when this creature is named as either the blocker or the
     /// attacker — once per creature per combat, not once per (blocker, attacker) pair, so a
@@ -420,6 +427,15 @@ pub enum Trigger {
     /// `source`); every player other than the controller is an opponent (CR 102.3). See
     /// [`Game::queue_deals_damage_to_opponent_triggers`].
     DealsDamageToOpponent,
+    /// Whenever this permanent deals damage to *any* player — its own controller included (CR
+    /// 603.3, Pit Scorpion: "Whenever this creature deals damage to a player, that player gets a
+    /// poison counter."). The unscoped twin of
+    /// [`DealsDamageToOpponent`](Self::DealsDamageToOpponent): same events, same
+    /// [`TriggerContext::damage_recipient`] fill, but no opponent test, so damage redirected onto
+    /// the controller (or dealt after a control swap) still fires it. Cards that really do print
+    /// "an opponent" keep the opponent-scoped tag. See
+    /// [`Game::queue_deals_damage_to_opponent_triggers`], which queues both.
+    DealsDamageToPlayer,
     /// Whenever this permanent's controller is dealt damage, combat or noncombat alike (CR 120.1
     /// — Living Artifact's "Whenever you're dealt damage, put that many vitality counters on this
     /// Aura", Lich's "sacrifice that many nontoken permanents"). Controller-scoped on the

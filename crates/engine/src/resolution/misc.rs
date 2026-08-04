@@ -80,7 +80,7 @@ impl Game {
             // `AbilityCountered` apply removes the topmost matching stack ability. A guard-return
             // (CR 608.2b) if it already left the stack is handled upstream by `target_still_legal`,
             // which fizzles this ability before it runs; this stays a no-op if nothing matches.
-            MiscEffect::CounterTargetActivatedAbility => {
+            MiscEffect::CounterTargetActivatedAbility { .. } => {
                 let source_id = expect_object_target(target, "an activated ability to counter");
                 let on_stack = self.stack.iter().any(|item| {
                     matches!(item, StackItem::Ability { source, activated: true, .. } if *source == source_id)
@@ -134,6 +134,13 @@ impl Game {
             MiscEffect::YouLoseTheGame => vec![Event::PlayerLost { player: controller }],
             // CR 104.4: the game is a draw — its own outcome, so no `PlayerLost` for anyone.
             MiscEffect::GameIsADraw => vec![Event::GameDrawn],
+            // Telekinesis' "It doesn't untap during its controller's next two untap steps": one
+            // mark per skipped step, since each untap step spends exactly one (see
+            // `Event::NextUntapSkipConsumed`).
+            MiscEffect::SkipNextUntaps { count, .. } => {
+                let object = expect_object_target(target, "a creature to hold down");
+                std::iter::repeat_n(Event::NextUntapSkipMarked { object }, count as usize).collect()
+            }
             MiscEffect::SkipNextUntapOpponentCreatures => self
                 .battlefield()
                 .into_iter()

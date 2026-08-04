@@ -201,6 +201,50 @@ pub enum StaticEffect {
         count: u8,
     },
 
+    /// Caverns of Despair's "No more than two creatures can attack each combat" (CR 508.1a): a
+    /// table-wide ceiling on the *size of the declaration*, not a per-creature ban. Board-scanned
+    /// like [`CantAttackFilter`](Self::CantAttackFilter), but read only in
+    /// `Game::declare_attackers` — a single creature can't tell whether it is the third one, so
+    /// this is a whole-declaration rule in the mould of menace, and the lowest ceiling on the
+    /// battlefield wins (CR 613 sequencing is irrelevant: they are all restrictions, so they all
+    /// apply).
+    ///
+    /// Because it is a restriction, it also caps what a requirement may demand (CR 509.1a /
+    /// 508.1a): a declaration already at the ceiling discharges every "attacks if able" the
+    /// declaring player is under, so goad can't make a legal combat impossible.
+    MaxAttackersEachCombat {
+        count: u8,
+    },
+
+    /// Caverns of Despair's "No more than two creatures can block each combat" (CR 509.1b): the
+    /// block-side twin of [`MaxAttackersEachCombat`](Self::MaxAttackersEachCombat). Counted in
+    /// *blocking creatures*, not blocks — one creature blocking two attackers (Two-Headed Giant of
+    /// Foriys) still spends one of the two slots.
+    ///
+    /// Each defending player declares separately (CR 509.1a), so the ceiling is checked against
+    /// the blockers already sealed this combat plus the ones being declared now; the first seat to
+    /// declare can spend the whole allowance.
+    MaxBlockersEachCombat {
+        count: u8,
+    },
+
+    /// Giant Turtle's "This creature can't attack if it attacked during your last turn" (CR
+    /// 508.1a): a restriction on the printing permanent alone, read by `Game::can_attack` off
+    /// [`Permanent::attacked_on_last_own_turn`], which `Game::roll_own_turn_history` rolls once per
+    /// turn at its controller's cleanup step.
+    CantAttackIfAttackedLastOwnTurn,
+
+    /// Arboria's "Creatures can't attack a player unless that player cast a spell or put a
+    /// nontoken permanent onto the battlefield during their last turn" (CR 508.1a): a restriction
+    /// on the *defender*, not on any attacking creature, so it is read where the declaration picks
+    /// a defending player (`Game::may_attack_defender`) rather than per attacker. Board-wide like
+    /// [`CantAttackFilter`](Self::CantAttackFilter) — the printed sentence names no controller.
+    ///
+    /// The "did they act" memory is [`Player::acted_on_last_own_turn`], rolled beside the Giant
+    /// Turtle flag above; a player who has not yet taken a turn has done nothing during it and so
+    /// can't be attacked.
+    CantAttackPlayerUnlessTheyActed,
+
     /// Juggernaut's "This creature can't be blocked by Walls" (CR 509.1b): `filter` names the
     /// creatures turned away, so a blocker matching it can never be declared against this
     /// permanent. Invisibility's "can't be blocked *except* by Walls" is the same restriction

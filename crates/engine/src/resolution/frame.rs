@@ -50,6 +50,13 @@ pub(crate) struct ResolutionFrame {
     /// stack item begins resolving ([`Game::resolve_top`](crate::Game)), so a branch that never
     /// removed anything cannot read a previous resolution's count.
     pub(crate) counters_removed_this_way: u32,
+    /// Damage this resolution has actually dealt, summed across every recipient (Syphon Soul's
+    /// "You gain life equal to the damage dealt this way"), read by
+    /// [`Amount::DamageDealtThisWay`](crate::Amount). Accumulated in [`Game::apply`](crate::Game)
+    /// as each damage event lands — so prevention and redirection are already accounted for — and
+    /// cleared as each stack item begins resolving
+    /// ([`Game::resolve_top`](crate::Game)).
+    pub(crate) damage_dealt_this_way: u32,
     /// Card id + mana value from [`Effect::Dig(DigEffect::ExileTargetGraveyardCardRecordManaValue)`](crate::Effect::Dig(DigEffect::ExileTargetGraveyardCardRecordManaValue)).
     pub(crate) surge_exiled_card: Option<(ObjectId, u32)>,
     /// The mana value of the **nonland** card this resolution returned from a graveyard to its

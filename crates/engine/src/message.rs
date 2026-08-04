@@ -109,6 +109,7 @@ message_keys! {
     EFFECT_COUNTERS_PUT_COUNTERS => "effect.counters_put_counters",
     EFFECT_COUNTERS_PUT_COUNTERS_EACH => "effect.counters_put_counters_each",
     EFFECT_COUNTERS_REMOVE_COUNTER_FROM_SELF => "effect.counters_remove_counter_from_self",
+    EFFECT_COUNTERS_REMOVE_COUNTER_FROM_ATTACHED => "effect.counters_remove_counter_from_attached",
     EFFECT_CHOICE_CAST_CREATURE_FACE_DOWN => "effect.choice_cast_creature_face_down",
     EFFECT_CHOICE_CASTER_KEEPS_ONE_OF_EACH_TYPE_PER_PLAYER => "effect.choice_caster_keeps_one_of_each_type_per_player",
     EFFECT_CHOICE_CHANGE_TEXT => "effect.choice_change_text",
@@ -241,6 +242,7 @@ message_keys! {
     EFFECT_MISC_SCHEDULE_THIS_TURN_COMBAT_DAMAGE_COPY => "effect.misc_schedule_this_turn_combat_damage_copy",
     EFFECT_MISC_SOURCE_CANT_BE_REGENERATED_THIS_TURN => "effect.misc_source_cant_be_regenerated_this_turn",
     EFFECT_MISC_SKIP_NEXT_UNTAP_OPPONENT_CREATURES => "effect.misc_skip_next_untap_opponent_creatures",
+    EFFECT_MISC_SKIP_NEXT_UNTAPS => "effect.misc_skip_next_untaps",
     EFFECT_MISC_TAKE_EXTRA_TURN => "effect.misc_take_extra_turn",
     EFFECT_MISC_YOU_LOSE_THE_GAME => "effect.misc_you_lose_the_game",
     EFFECT_MISC_GAME_IS_A_DRAW => "effect.misc_game_is_a_draw",
@@ -251,6 +253,7 @@ message_keys! {
     EFFECT_PUMP_ENCHANTED_ATTACKER_PUMP_ATTACKING_OPPONENT_ELSE_CONTROLLER_LOSES_LIFE => "effect.pump_enchanted_attacker_pump_attacking_opponent_else_controller_loses_life",
     EFFECT_PUMP_ENCHANTED_CREATURE_LOSES_KEYWORDS => "effect.pump_enchanted_creature_loses_keywords",
     EFFECT_PUMP_GRANT_CHOSEN_COLOR_PROTECTION_UNTIL_END_OF_TURN => "effect.pump_grant_chosen_color_protection_until_end_of_turn",
+    EFFECT_PUMP_GRANT_KEYWORDS_INDEFINITELY => "effect.pump_grant_keywords_indefinitely",
     EFFECT_PUMP_GRANT_KEYWORDS_TO_PERMANENTS_YOU_CONTROL_UNTIL_END_OF_TURN => "effect.pump_grant_keywords_to_permanents_you_control_until_end_of_turn",
     EFFECT_PUMP_PUMP_EACH_CREATURE_UNTIL_END_OF_TURN => "effect.pump_pump_each_creature_until_end_of_turn",
     EFFECT_PUMP_PUMP_CREATURES_YOU_CONTROL_UNTIL_END_OF_TURN => "effect.pump_pump_creatures_you_control_until_end_of_turn",
@@ -287,6 +290,12 @@ message_keys! {
     EFFECT_STATIC_BASE_POWER_TOUGHNESS_FROM_AMOUNT => "effect.static_base_power_toughness_from_amount",
     EFFECT_STATIC_CANT_ATTACK_FILTER => "effect.static_cant_attack_filter",
     EFFECT_STATIC_CANT_ATTACK_IF_CAST_THIS_TURN => "effect.static_cant_attack_if_cast_this_turn",
+    EFFECT_STATIC_MAX_ATTACKERS_EACH_COMBAT => "effect.static_max_attackers_each_combat",
+    EFFECT_STATIC_MAX_BLOCKERS_EACH_COMBAT => "effect.static_max_blockers_each_combat",
+    EFFECT_STATIC_CANT_ATTACK_IF_ATTACKED_LAST_OWN_TURN => "effect.static_cant_attack_if_attacked_last_own_turn",
+    EFFECT_STATIC_CANT_ATTACK_PLAYER_UNLESS_THEY_ACTED => "effect.static_cant_attack_player_unless_they_acted",
+    EFFECT_MISC_THAT_CREATURE_CANT_ATTACK_NEXT_OWN_TURN => "effect.misc_that_creature_cant_attack_next_own_turn",
+    EFFECT_MISC_SOURCE_ASSIGNS_NO_COMBAT_DAMAGE_THIS_TURN => "effect.misc_source_assigns_no_combat_damage_this_turn",
     EFFECT_STATIC_CANT_ATTACK_UNLESS_DEFENDER_CONTROLS => "effect.static_cant_attack_unless_defender_controls",
     EFFECT_STATIC_CANT_BE_ATTACKED_BY => "effect.static_cant_be_attacked_by",
     EFFECT_STATIC_MAY_SKIP_DRAW_FOR_CANT_BE_ATTACKED_BY => "effect.static_may_skip_draw_for_cant_be_attacked_by",
@@ -739,6 +748,9 @@ fn counter_kind_token(kind: CounterKind) -> &'static str {
         CounterKind::MinusZeroMinusTwo => "minus_zero_minus_two",
         CounterKind::Intervention => "intervention",
         CounterKind::Glyph => "glyph",
+        CounterKind::Sleep => "sleep",
+        CounterKind::Pupa => "pupa",
+        CounterKind::Matrix => "matrix",
     }
 }
 
@@ -1138,6 +1150,7 @@ fn spell_filter_token(filter: SpellFilter) -> String {
         SpellFilter::Aura => "aura".to_string(),
         SpellFilter::InstantOrSorcery => "instant_or_sorcery".to_string(),
         SpellFilter::Instant => "instant".to_string(),
+        SpellFilter::Sorcery => "sorcery".to_string(),
         SpellFilter::Enchantment => "enchantment".to_string(),
         SpellFilter::ArtifactOrEnchantment => "artifact_or_enchantment".to_string(),
         SpellFilter::InstantOrEnchantment => "instant_or_enchantment".to_string(),
@@ -1196,7 +1209,7 @@ fn target_spec_token(target: TargetSpec) -> String {
             format!("spell_on_stack_{}", spell_filter_token(filter))
         }
         TargetSpec::SingleTargetSpellOnStack => "single_target_spell_on_stack".to_string(),
-        TargetSpec::ActivatedAbilityOnStack => "activated_ability_on_stack".to_string(),
+        TargetSpec::ActivatedAbilityOnStack { .. } => "activated_ability_on_stack".to_string(),
         TargetSpec::SpellOrPermanent => "spell_or_permanent".to_string(),
         TargetSpec::ArtifactEnchantmentOrPlaneswalker => {
             "artifact_enchantment_or_planeswalker".to_string()
@@ -1228,6 +1241,7 @@ fn amount_token(amount: Amount) -> &'static str {
         Amount::TargetManaValue => "target_mana_value",
         Amount::PerCounterOnSource => "per_counter_on_source",
         Amount::PerCounterOfKindOnSource { .. } => "per_counter_of_kind_on_source",
+        Amount::PerCounterOfKindOnAttached { .. } => "per_counter_of_kind_on_attached",
         Amount::YourLifeTotal => "your_life_total",
         Amount::LifeGainedThisTurn => "life_gained_this_turn",
         Amount::DamageTakenThisTurn => "damage_taken_this_turn",
@@ -1256,6 +1270,13 @@ fn amount_token(amount: Amount) -> &'static str {
         Amount::CardsDiscardedThisWay => "cards_discarded_this_way",
         Amount::CreaturesSacrificedThisWay => "creatures_sacrificed_this_way",
         Amount::CountersRemovedThisWay => "counters_removed_this_way",
+        Amount::DamageDealtThisWay => "damage_dealt_this_way",
+        Amount::DamageDealtToSourceThisTurnByOthersNamedTheSame => {
+            "damage_dealt_to_source_this_turn_by_others_named_the_same"
+        }
+        Amount::HalfGreatestDamageDealtByTargetPlayersSorceryThisTurn => {
+            "half_greatest_damage_dealt_by_target_players_sorcery_this_turn"
+        }
         Amount::BlockersBeyondFirst { .. } => "blockers_beyond_first",
         Amount::Combine { .. } => "combine",
         Amount::RevealedCreatureManaValue => "revealed_creature_mana_value",
@@ -1507,6 +1528,13 @@ impl EffectMessage for Effect {
                         kind.map_or("plus_one_plus_one", counter_kind_token),
                     )])
             }
+            Effect::Counters(RemoveCounterFromAttached { kind }) => {
+                MessageRef::new(MessageKey::EFFECT_COUNTERS_REMOVE_COUNTER_FROM_ATTACHED)
+                    .with_params(vec![str_param(
+                        "kind",
+                        kind.map_or("plus_one_plus_one", counter_kind_token),
+                    )])
+            }
             Effect::Mana(ManaEffect::Add { .. }) => MessageRef::new(MessageKey::EFFECT_MANA_ADD),
             Effect::Mana(ManaEffect::LoseAllUnspent { to_you }) => {
                 MessageRef::new(MessageKey::EFFECT_MANA_LOSE_ALL_UNSPENT)
@@ -1589,6 +1617,10 @@ impl EffectMessage for Effect {
                 keyword_list_param("keywords", keywords),
                 permanent_filter_param("filter", filter),
             ]),
+            Effect::Pump(GrantKeywordsIndefinitely { keywords, .. }) => {
+                MessageRef::new(MessageKey::EFFECT_PUMP_GRANT_KEYWORDS_INDEFINITELY)
+                    .with_params(vec![keyword_list_param("keywords", keywords)])
+            }
             Effect::Pump(GrantKeywordsToPermanentsYouControlUntilEndOfTurn { keywords, filter }) => {
                 MessageRef::new(MessageKey::EFFECT_PUMP_GRANT_KEYWORDS_TO_PERMANENTS_YOU_CONTROL_UNTIL_END_OF_TURN)
                     .with_params(vec![keyword_list_param("keywords", keywords), permanent_filter_param("filter", filter)])
@@ -1799,7 +1831,10 @@ impl EffectMessage for Effect {
                 MessageRef::new(MessageKey::EFFECT_ZONE_RETURN_ALL_TO_HAND)
                     .with_params(vec![permanent_filter_param("filter", filter)])
             }
-            Effect::Zone(ReturnFromGraveyardToHand { .. }) => {
+            // Spurnmage Advocate's plural second clause reads the same to a player — "return it to
+            // its owner's hand", once per chosen card — so it shares the singular's key.
+            Effect::Zone(ReturnFromGraveyardToHand { .. })
+            | Effect::Zone(ReturnTargetCardsFromGraveyardToHand { .. }) => {
                 MessageRef::new(MessageKey::EFFECT_ZONE_RETURN_FROM_GRAVEYARD_TO_HAND)
             }
             Effect::Zone(ReanimateRandomFromTargetOpponentGraveyard { .. }) => {
@@ -2029,7 +2064,10 @@ impl EffectMessage for Effect {
             Effect::Choice(EachPlayerChoosesWarOrPeace) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_EACH_PLAYER_CHOOSES_WAR_OR_PEACE)
             }
-            Effect::Choice(DiscardYourHand) => MessageRef::new(MessageKey::EFFECT_CHOICE_DISCARD_YOUR_HAND),
+            Effect::Choice(DiscardYourHand { who }) => {
+                MessageRef::new(MessageKey::EFFECT_CHOICE_DISCARD_YOUR_HAND)
+                    .with_params(vec![who_param(who)])
+            }
             Effect::Choice(CastCreatureFaceDown) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_CAST_CREATURE_FACE_DOWN)
             }
@@ -2352,6 +2390,22 @@ impl EffectMessage for Effect {
                 .with_params(vec![permanent_filter_param("filter", filter)]),
             Effect::Static(CantAttackFilter { filter }) => MessageRef::new(MessageKey::EFFECT_STATIC_CANT_ATTACK_FILTER)
                 .with_params(vec![permanent_filter_param("filter", filter)]),
+            Effect::Static(MaxAttackersEachCombat { count }) => MessageRef::new(MessageKey::EFFECT_STATIC_MAX_ATTACKERS_EACH_COMBAT)
+                .with_params(vec![int_param("count", count as i32)]),
+            Effect::Static(MaxBlockersEachCombat { count }) => MessageRef::new(MessageKey::EFFECT_STATIC_MAX_BLOCKERS_EACH_COMBAT)
+                .with_params(vec![int_param("count", count as i32)]),
+            Effect::Static(CantAttackIfAttackedLastOwnTurn) => {
+                MessageRef::new(MessageKey::EFFECT_STATIC_CANT_ATTACK_IF_ATTACKED_LAST_OWN_TURN)
+            }
+            Effect::Static(CantAttackPlayerUnlessTheyActed) => {
+                MessageRef::new(MessageKey::EFFECT_STATIC_CANT_ATTACK_PLAYER_UNLESS_THEY_ACTED)
+            }
+            Effect::Misc(MiscEffect::ThatCreatureCantAttackNextOwnTurn { .. }) => {
+                MessageRef::new(MessageKey::EFFECT_MISC_THAT_CREATURE_CANT_ATTACK_NEXT_OWN_TURN)
+            }
+            Effect::Misc(MiscEffect::SourceAssignsNoCombatDamageThisTurn) => {
+                MessageRef::new(MessageKey::EFFECT_MISC_SOURCE_ASSIGNS_NO_COMBAT_DAMAGE_THIS_TURN)
+            }
             Effect::Static(CantBeBlockedBy { filter }) => MessageRef::new(MessageKey::EFFECT_STATIC_CANT_BE_BLOCKED_BY)
                 .with_params(vec![permanent_filter_param("filter", filter)]),
             Effect::Static(CantBeTargetedBy { spells, attached }) => {
@@ -2486,6 +2540,10 @@ impl EffectMessage for Effect {
             Effect::Misc(SkipNextUntapOpponentCreatures) => {
                 MessageRef::new(MessageKey::EFFECT_MISC_SKIP_NEXT_UNTAP_OPPONENT_CREATURES)
             }
+            Effect::Misc(SkipNextUntaps { count, .. }) => {
+                MessageRef::new(MessageKey::EFFECT_MISC_SKIP_NEXT_UNTAPS)
+                    .with_params(vec![int_param("count", count)])
+            }
             Effect::Misc(TakeExtraTurn) => MessageRef::new(MessageKey::EFFECT_MISC_TAKE_EXTRA_TURN),
             Effect::Misc(YouLoseTheGame) => {
                 MessageRef::new(MessageKey::EFFECT_MISC_YOU_LOSE_THE_GAME)
@@ -2548,7 +2606,7 @@ impl EffectMessage for Effect {
                         .unwrap_or_else(|| str_param("amount", "none")),
                 ],
             ),
-            Effect::Misc(CounterTargetActivatedAbility) => {
+            Effect::Misc(CounterTargetActivatedAbility { .. }) => {
                 MessageRef::new(MessageKey::EFFECT_MISC_COUNTER_TARGET_ACTIVATED_ABILITY)
             }
             Effect::Misc(ScheduleAtNextUpkeep { then, fire_at, .. }) => {

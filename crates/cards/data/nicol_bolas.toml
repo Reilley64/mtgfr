@@ -21,3 +21,24 @@ red = 2
 type = "creature"
 power = 7
 toughness = 7
+
+# At the beginning of your upkeep, sacrifice Nicol Bolas unless you pay {U}{B}{R}.
+[[abilities]]
+timing = "upkeep"
+
+# sacrifice Nicol Bolas unless you pay {U}{B}{R}
+[[abilities.effects]]
+type = "choice"
+mode = "pay_or_else"
+cost = { blue = 1, black = 1, red = 1 }
+otherwise = [{ type = "sacrifice", mode = "source" }]
+
+# Whenever Nicol Bolas deals damage to an opponent, that player discards their hand.
+[[abilities]]
+timing = "deals_damage_to_opponent"
+
+# that player discards their hand.
+[[abilities.effects]]
+type = "choice"
+mode = "discard_your_hand"
+who = "damaged_player"

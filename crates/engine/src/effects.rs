@@ -85,6 +85,9 @@ impl Game {
         // multi-target expansion produces (Volcanic Eruption), so only the resolution boundary
         // knows where the count starts over.
         self.resolution_frame.destroyed_this_way.clear();
+        // Same reasoning for "damage dealt this way" (Syphon Soul): a resolution that dealt
+        // nothing must read 0, not the previous burn spell's total.
+        self.resolution_frame.damage_dealt_this_way = 0;
         match top {
             StackItem::Spell(object) => self.resolve_spell(object, events),
             StackItem::Ability {
@@ -999,6 +1002,10 @@ impl Game {
             Effect::Counters(CountersEffect::DoubleCountersOnTargetCreatures { .. }) => {
                 self.resolve_double_counters_on_target_creatures(ctx, events)
             }
+            // Spurnmage Advocate — see `resolution/zones.rs::resolve_return_target_cards_from_graveyard`.
+            Effect::Zone(ZoneEffect::ReturnTargetCardsFromGraveyardToHand { .. }) => {
+                self.resolve_return_target_cards_from_graveyard(ctx, events)
+            }
             // Donation — see `resolution/control.rs::resolve_target_opponent_gains_control`.
             Effect::Control(ControlEffect::TargetOpponentGainsControl { .. }) => {
                 self.resolve_target_opponent_gains_control(ctx, events)
@@ -1034,7 +1041,13 @@ impl Game {
             })
             // "counter it" off a cast trigger reads its own `triggering_spell` field rather than a
             // chosen target, so both halves (taxed and plain) live in the peel.
-            | Effect::Misc(MiscEffect::CounterTriggeringSpell { .. }) => {
+            | Effect::Misc(MiscEffect::CounterTriggeringSpell { .. })
+            // Ayesha Tanaka's "unless that ability's controller pays {W}" pauses the same way its
+            // spell-side twin does; the plain counter (Rust) stays on the mint path.
+            | Effect::Misc(MiscEffect::CounterTargetActivatedAbility {
+                unless_pays: Some(_),
+                ..
+            }) => {
                 self.run_counter_spell(effect, ctx, events)
             }
             // Fight / MoveCounters — fight pause peel (`resolution/pause_fight`).
@@ -1199,7 +1212,7 @@ impl Game {
                 self.run_misc_choreo(effect, ctx, events)
             }
             // Malfegor's "discard your hand" — see `resolution/resolve_misc.rs`.
-            Effect::Choice(ChoiceEffect::DiscardYourHand) => {
+            Effect::Choice(ChoiceEffect::DiscardYourHand { .. }) => {
                 self.run_misc_choreo(effect, ctx, events)
             }
             // `CreateToken`'s `enters_with` choreography — see
@@ -1236,6 +1249,14 @@ impl Game {
             }
             // Blaze of Glory — see `resolution/resolve_misc.rs`.
             Effect::Misc(MiscEffect::BlocksEachAttackerIfAble { .. }) => {
+                self.run_misc_choreo(effect, ctx, events)
+            }
+            // Wall of Dust — see `resolution/resolve_misc.rs`.
+            Effect::Misc(MiscEffect::ThatCreatureCantAttackNextOwnTurn { .. }) => {
+                self.run_misc_choreo(effect, ctx, events)
+            }
+            // Floral Spuzzem's damage rider — see `resolution/resolve_misc.rs`.
+            Effect::Misc(MiscEffect::SourceAssignsNoCombatDamageThisTurn) => {
                 self.run_misc_choreo(effect, ctx, events)
             }
             // Master Warcraft — see `resolution/resolve_misc.rs`.

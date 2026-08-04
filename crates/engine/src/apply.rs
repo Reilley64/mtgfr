@@ -7,6 +7,21 @@
 use crate::*;
 
 impl Game {
+    /// Record `amount` damage dealt by `source` to `recipient` in the turn-scoped ledger
+    /// ([`Game::damage_dealt_this_turn`]) and in this resolution's "dealt this way" tally
+    /// ([`ResolutionFrame::damage_dealt_this_way`](crate::resolution::ResolutionFrame)). Called
+    /// from the damage arms of [`Game::apply`], so what lands here is damage *dealt* — prevention
+    /// and redirection already had their say (CR 615), and CR 120.8's "0 damage is never dealt"
+    /// is the early return.
+    pub(crate) fn record_damage_dealt(&mut self, source: ObjectId, recipient: Target, amount: i32) {
+        if amount <= 0 {
+            return;
+        }
+        self.damage_dealt_this_turn
+            .push((source, recipient, amount));
+        self.resolution_frame.damage_dealt_this_way += amount as u32;
+    }
+
     /// Whether `host` is a legal object for `attachment` (an Aura or Equipment) to be attached to
     /// right now: `attachment`'s own `def.enchant` filter re-checked against its live host, or the
     /// default "enchant creature" filter when it has none (a plain Aura, or Equipment — the DSL
@@ -1142,6 +1157,7 @@ impl Game {
                     self.players[active_player.0 as usize].lands_played = 0;
                     self.permanents_died_this_turn = 0;
                     self.damaged_this_turn.clear();
+                    self.damage_dealt_this_turn.clear();
                     for player in &mut self.players {
                         player.life_gained_this_turn = 0;
                         player.spells_cast_this_turn = 0;
@@ -1195,6 +1211,11 @@ impl Game {
                     // The Glyph cycle's "…blocked by that creature this turn" ledger expires at the
                     // same turn boundary, for the same reason `must_attack` does.
                     self.combat_extras.blocked_this_turn.clear();
+                    // Floral Spuzzem's "assigns no combat damage this turn" expires at the same
+                    // turn boundary, for the same reason `must_attack` does.
+                    self.combat_extras
+                        .assigns_no_combat_damage_this_turn
+                        .clear();
                     // ponytail: "Prevent all combat damage … this turn" (Inkshield) shields expire
                     // at the next Untap — combat is always within the turn, so a combat-only shield
                     // cleared here is behavior-exact for "this turn", the same idiom `must_attack`
@@ -1266,6 +1287,8 @@ impl Game {
                     // combat expires here, same silent-clear shape as `pending_next_cast`'s own
                     // turn-boundary expiry above.
                     self.delayed_triggers.pending_combat_damage_watch.clear();
+                } else if step == Step::Cleanup {
+                    self.roll_own_turn_history(active_player);
                 }
             }
             Event::LandPlayed {
@@ -1618,6 +1641,19 @@ impl Game {
                 // `CopyRiderKeywordsGranted` event(s) that follow this `BecameCopy`.
                 p.copy_rider_keywords = &[];
             }
+            // Cocoon's "that creature gains flying": a keyword-only boost the cleanup sweep skips.
+            Event::KeywordsGrantedIndefinitely { object, keywords } => {
+                self.register_modifier(
+                    object,
+                    "",
+                    ModifierDuration::Indefinite,
+                    ModifierKind::Boost {
+                        power: 0,
+                        toughness: 0,
+                        keywords,
+                    },
+                );
+            }
             Event::TempBoostsEnded { object } => {
                 // Every modifier on `object` that has a duration ends together (CR 514.2 /
                 // 511.3); the durationless ones (a lace's "becomes black") survive, since nothing
@@ -1819,8 +1855,12 @@ impl Game {
             }),
             Event::ExtraTurnQueued { player } => self.extra_turns.push(player),
             Event::NextUntapSkipMarked { object } => self.skip_next_untap.push(object),
+            // One mark per skipped untap step, so a permanent marked twice (Telekinesis'
+            // "next two untap steps") spends one now and keeps the other for the step after.
             Event::NextUntapSkipConsumed { object } => {
-                self.skip_next_untap.retain(|&id| id != object)
+                if let Some(at) = self.skip_next_untap.iter().position(|&id| id == object) {
+                    self.skip_next_untap.remove(at);
+                }
             }
             Event::CantBeRegeneratedThisTurnMarked { object } => {
                 self.permanent_mut(object).cant_be_regenerated_this_turn = true;
@@ -2004,8 +2044,13 @@ impl Game {
             // `enqueue_triggers`; the life loss it accompanies already applied via `LifeChanged`,
             // so the only state here is the turn-scoped damage-taken tally behind
             // `Amount::DamageTakenThisTurn` (Simulacrum's "the damage dealt to you this turn").
-            Event::CombatDamageDealtToPlayer { player, amount, .. } => {
+            Event::CombatDamageDealtToPlayer {
+                player,
+                amount,
+                source,
+            } => {
                 self.players[player.0 as usize].damage_taken_this_turn += amount.max(0) as u32;
+                self.record_damage_dealt(source, Target::Player(player), amount);
             }
             // A marker only — `Game::enqueue_triggers`'s `Event::CombatDamageDealtToCreature` arm
             // reads it, but it mutates no state of its own (the marked damage it accompanies
@@ -2015,8 +2060,13 @@ impl Game {
             // feeds the turn-scoped tally behind `Amount::DamageTakenThisTurn` (Simulacrum) —
             // these two arms are the only places damage reaches a player, and life loss that
             // isn't damage never passes through either.
-            Event::DamageDealtToPlayer { player, amount, .. } => {
+            Event::DamageDealtToPlayer {
+                player,
+                amount,
+                source,
+            } => {
                 self.players[player.0 as usize].damage_taken_this_turn += amount.max(0) as u32;
+                self.record_damage_dealt(source, Target::Player(player), amount);
             }
             // A marker only — the prevented damage's absence (no `LifeChanged`) and the Inkling
             // mints (accompanying `TokenCreated` events) carry all the state; this event mutates
@@ -2358,8 +2408,11 @@ impl Game {
                 amount,
                 cant_be_regenerated,
                 exile_instead_of_dying,
-                ..
+                source,
             } => {
+                if let Some(source) = source {
+                    self.record_damage_dealt(source, Target::Object(object), amount);
+                }
                 let p = self.permanent_mut(object);
                 p.marked_damage += amount;
                 // Disintegrate's riders mark the creature, not the damage — they stay set for the

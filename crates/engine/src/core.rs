@@ -77,6 +77,7 @@ impl Game {
             batch_trigger_scratch: state::BatchTriggerScratch::default(),
             permanents_died_this_turn: 0,
             damaged_this_turn: Vec::new(),
+            damage_dealt_this_turn: Vec::new(),
             hand_cards_seen: Vec::new(),
             damage_prevention_shields: Vec::new(),
             standing_preventions: Vec::new(),

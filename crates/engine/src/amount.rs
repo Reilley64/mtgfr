@@ -41,6 +41,12 @@ impl Game {
                 .mana_value() as i32,
             Amount::PerCounterOnSource => self.plus_counters(source),
             Amount::PerCounterOfKindOnSource { kind } => self.counters_of_kind(source, kind) as i32,
+            // Venarian Gold reads the counters on what it enchants, not on itself; an Aura that
+            // has come unattached counts nothing.
+            Amount::PerCounterOfKindOnAttached { kind } => self
+                .as_permanent(source)
+                .and_then(|p| p.attached_to)
+                .map_or(0, |host| self.counters_of_kind(host, kind) as i32),
             Amount::YourLifeTotal => self.players[controller.0 as usize].life,
             Amount::LifeGainedThisTurn => {
                 self.players[controller.0 as usize].life_gained_this_turn as i32
@@ -322,8 +328,52 @@ impl Game {
                 }
             }
             Amount::CardsDiscardedThisWay => self.resolution_frame.cards_discarded_this_way as i32,
+            Amount::DamageDealtThisWay => self.resolution_frame.damage_dealt_this_way as i32,
+            // Blazing Effigy's "damage dealt to this creature this turn by other sources named
+            // Blazing Effigy": the ledger rows aimed at this object, from a *different* object
+            // whose card shares its name. `def_of` still answers for a source that has since
+            // changed zones, so a dead Effigy's hits still count (CR 603.10a).
+            Amount::DamageDealtToSourceThisTurnByOthersNamedTheSame => {
+                let name = self.def_of(source).name;
+                self.damage_dealt_this_turn
+                    .iter()
+                    .filter(|&&(dealer, recipient, _)| {
+                        dealer != source
+                            && recipient == Target::Object(source)
+                            && self.def_of(dealer).name == name
+                    })
+                    .map(|&(_, _, amount)| amount)
+                    .sum()
+            }
             Amount::CreaturesSacrificedThisWay => {
                 self.resolution_frame.creatures_sacrificed_this_way as i32
+            }
+            Amount::HalfGreatestDamageDealtByTargetPlayersSorceryThisTurn => {
+                let Some(Target::Player(chosen)) = target else {
+                    return 0;
+                };
+                // One sorcery can deal damage in several rows (Syphon Soul hits each opponent), so
+                // total each dealer before picking the biggest — "the damage dealt by one of those
+                // sorcery spells" is that whole spell's output.
+                let mut by_spell: Vec<(ObjectId, i32)> = Vec::new();
+                for &(dealer, _, dealt) in &self.damage_dealt_this_turn {
+                    let def = self.def_of(dealer);
+                    if !matches!(
+                        def.kind,
+                        CardKind::Spell {
+                            speed: SpellSpeed::Sorcery,
+                            ..
+                        }
+                    ) || self.controller_of(dealer) != chosen
+                    {
+                        continue;
+                    }
+                    match by_spell.iter_mut().find(|(id, _)| *id == dealer) {
+                        Some(row) => row.1 += dealt,
+                        None => by_spell.push((dealer, dealt)),
+                    }
+                }
+                by_spell.iter().map(|&(_, total)| total).max().unwrap_or(0) / 2
             }
         }
     }

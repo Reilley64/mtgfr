@@ -138,14 +138,17 @@ impl Game {
                     }
                 }
             }
-            // Malfegor's "discard your hand": the controller discards their whole hand (no choice,
-            // so no `PendingChoice`), setting `cards_discarded_this_way` to its size so a following
-            // Sequence step (Malfegor's each-opponent sacrifice) reads "for each card discarded
-            // this way".
-            Effect::Choice(ChoiceEffect::DiscardYourHand) => {
-                let hand = self.hand_of(controller);
-                self.resolution_frame.cards_discarded_this_way = hand.len() as u32;
-                self.discard_ids(&hand, controller, events);
+            // Malfegor's "discard your hand" and Nicol Bolas's "that player discards their hand":
+            // every seat in `who` discards its whole hand (no choice, so no `PendingChoice`),
+            // setting `cards_discarded_this_way` to the total so a following Sequence step
+            // (Malfegor's each-opponent sacrifice) reads "for each card discarded this way".
+            Effect::Choice(ChoiceEffect::DiscardYourHand { who }) => {
+                self.resolution_frame.cards_discarded_this_way = 0;
+                for player in self.players_in(who, controller, target) {
+                    let hand = self.hand_of(player);
+                    self.resolution_frame.cards_discarded_this_way += hand.len() as u32;
+                    self.discard_ids(&hand, player, events);
+                }
             }
             // Advanced Reconstruction's base ability: "exile a card from your graveyard at
             // random. You may play the exiled card this turn." The card is picked by the
@@ -222,6 +225,23 @@ impl Game {
                 };
                 self.combat_extras.may_block_any_number.push(creature);
                 self.combat_extras.must_block_all.push(creature);
+            }
+            // Wall of Dust: "Whenever this creature blocks a creature, that creature can't attack
+            // during its controller's next turn." Turn-scoped combat bookkeeping written straight,
+            // like Blaze of Glory's pair above — the creature was fixed when the trigger was
+            // placed, so nothing is chosen here.
+            Effect::Misc(MiscEffect::ThatCreatureCantAttackNextOwnTurn { creature }) => {
+                let Some(creature) = creature else {
+                    return;
+                };
+                self.combat_extras.cant_attack_next_own_turn.push(creature);
+            }
+            // Floral Spuzzem: "…this creature assigns no combat damage this turn." Same turn-scoped
+            // combat bookkeeping, always about the source (CR 510.1a).
+            Effect::Misc(MiscEffect::SourceAssignsNoCombatDamageThisTurn) => {
+                self.combat_extras
+                    .assigns_no_combat_damage_this_turn
+                    .push(source);
             }
             Effect::Misc(MiscEffect::MustAttackTarget { .. }) => {
                 let Some(Target::Object(creature)) = target else {
@@ -307,6 +327,7 @@ impl Game {
                 from_color,
                 gain_life,
                 redirect_to_controller,
+                redirect_to_target_controller,
                 shield_source,
                 all_but,
                 target_is_source,
@@ -362,7 +383,18 @@ impl Game {
                         from_relation,
                         persistent: all_damage,
                         gain_life,
-                        redirect_to: redirect_to_controller.then_some(Target::Player(controller)),
+                        // Reverberation sends the moved damage to the *targeted spell's*
+                        // controller; Jade Monolith's `redirect_to_controller` sends it to the
+                        // seat that armed the shield. No card sets both.
+                        redirect_to: match (redirect_to_target_controller, from_source) {
+                            (true, Some(watched)) => {
+                                Some(Target::Player(self.controller_of(watched)))
+                            }
+                            (true, None) => None,
+                            (false, _) => {
+                                redirect_to_controller.then_some(Target::Player(controller))
+                            }
+                        },
                     });
             }
             // Guardian Angel's "until end of turn, you may pay {1} any time you could cast an

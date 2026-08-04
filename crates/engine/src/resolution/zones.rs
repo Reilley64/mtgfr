@@ -603,4 +603,29 @@ impl Game {
             Event::LibraryShuffled { player: owner },
         ]
     }
+
+    /// Spurnmage Advocate's "Return two target cards from an opponent's graveyard to their hand"
+    /// (CR 601.2c/603.3d): the cards are an independent target clause, chosen as the ability went
+    /// on the stack and read back off `targets_second` — the ability's own target is the attacking
+    /// creature its destroy step takes. A card that has left the graveyard since is skipped
+    /// (CR 608.2b). Each event is applied before the next id is minted, so the ids stay distinct.
+    pub(crate) fn resolve_return_target_cards_from_graveyard(
+        &mut self,
+        ctx: ResolveCtx,
+        events: &mut Vec<Event>,
+    ) {
+        for chosen in ctx.targets_second.iter() {
+            let Some(object) = chosen.object_id() else {
+                continue;
+            };
+            if self.zone_of(object) != Zone::Graveyard {
+                continue;
+            }
+            let event = Event::ReturnedToHand {
+                card: self.next_object_id(),
+                from: object,
+            };
+            self.push_apply(events, event);
+        }
+    }
 }

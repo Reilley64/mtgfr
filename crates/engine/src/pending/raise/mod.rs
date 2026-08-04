@@ -111,12 +111,17 @@ pub(crate) enum ChoiceRequest {
         source: crate::ObjectId,
         multiplier: u32,
     },
-    /// [`Effect::Choice(ChoiceEffect::MayReturnFromGraveyard)`] — no legal card skips.
+    /// [`Effect::Choice(ChoiceEffect::MayReturnFromGraveyard)`] — no legal card in any listed
+    /// graveyard skips. `graveyards` is the queue of owners still owed a card: one entry for the
+    /// ordinary single return, the same owner repeated for Recall's counted return, distinct
+    /// owners for Glyph of Reincarnation's fan-out.
     MayReturnFromGraveyard {
         player: crate::PlayerId,
         source: crate::ObjectId,
         filter: crate::CardFilter,
         mandatory: bool,
+        to_battlefield: bool,
+        graveyards: Vec<crate::PlayerId>,
     },
     /// [`Effect::Choice(ChoiceEffect::MayExileDiscardedNonlandMayPlay)`] — no card still in the
     /// graveyard skips (Conspiracy Theorist).
@@ -284,11 +289,6 @@ pub(crate) enum ChoiceRequest {
     },
     /// Next graveyard in Glyph of Reincarnation's "for each creature that died this way"
     /// fan-out — a graveyard with no creature card is skipped, and an empty list skips entirely.
-    NextGlyphReincarnation {
-        graveyards: Vec<crate::PlayerId>,
-        chooser: crate::PlayerId,
-        source: crate::ObjectId,
-    },
     /// Next seat in Nils' counter-target fan-out — empty remaining skips.
     NextCounterTarget {
         remaining: Vec<crate::PlayerId>,
@@ -480,7 +480,17 @@ pub(super) fn choice_from_request(game: &Game, request: ChoiceRequest) -> Option
             source,
             filter,
             mandatory,
-        } => optional::may_return_from_graveyard(game, player, source, filter, mandatory),
+            to_battlefield,
+            graveyards,
+        } => optional::may_return_from_graveyard(
+            game,
+            player,
+            source,
+            filter,
+            mandatory,
+            to_battlefield,
+            graveyards,
+        ),
         ChoiceRequest::MayExileDiscardedNonlandMayPlay {
             player,
             source,
@@ -618,11 +628,6 @@ pub(super) fn choice_from_request(game: &Game, request: ChoiceRequest) -> Option
             chooser,
             source,
         } => fanout::next_counter_target(game, remaining, chooser, source),
-        ChoiceRequest::NextGlyphReincarnation {
-            graveyards,
-            chooser,
-            source,
-        } => optional::glyph_reincarnation(game, chooser, source, graveyards),
         ChoiceRequest::NextJoinForcesPayment {
             remaining,
             source,

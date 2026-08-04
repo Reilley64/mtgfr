@@ -413,7 +413,13 @@ impl Game {
 
         if !pay {
             self.finish_answer();
-            let mut evs = self.counter_spell(spell);
+            // Ayesha Tanaka holds an *activated ability* hostage instead of a spell; there the
+            // field carries the ability's source permanent id, so the object kind is the
+            // discriminant (a permanent is never an `Object::Spell`).
+            let mut evs = match matches!(self.objects[spell as usize], Object::Spell(_)) {
+                true => self.counter_spell(spell),
+                false => vec![Event::AbilityCountered { source: spell }],
+            };
             self.apply_all(&evs);
             // Power Sink's "if that player doesn't, they tap all lands with mana abilities they
             // control and lose all unspent mana" — the penalty rides on this decline, which is why

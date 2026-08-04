@@ -861,7 +861,7 @@ at attack declaration (Johan untapped), plus #10's `CantAttack` self-applied. Th
 "attacking doesn't cause tapping" is the existing vigilance check widened to a controller-scoped
 continuous effect.
 
-### 51. `opponents-permanents-enter-tapped` — 1 card, S
+### 51. `opponents-permanents-enter-tapped` — 1 card, S — **LANDED** (wave 9)
 Depends on: nothing.
 Kismet: "Artifacts, creatures, and lands your opponents control enter tapped." *Sketch:* an
 ETB-replacement continuous effect with a filter, applied in the existing enters-tapped path (which
@@ -921,7 +921,7 @@ checked as "no other legal block assignment satisfies more requirements". With o
 the pool this collapses to "every able Wall must be blocking it"; implement the general check
 anyway — requirements compound badly if approximated.
 
-### 57. `exchange-life-totals` — 1 card, S
+### 57. `exchange-life-totals` — 1 card, S — **LANDED** (wave 8, carded and tested wave 9)
 Depends on: nothing.
 Mirror Universe. *Sketch:* an `ExchangeLifeTotals { target_opponent }` effect. Life setting already
 exists; the only subtlety is that the exchange is a single event, so life-gain/life-loss triggers
@@ -1067,7 +1067,7 @@ does not filter on it) and an attachment-host axis ("attached to a permanent you
 "attached to an attacking creature an opponent controls"). Both halves then reuse existing bounce
 and destroy effects.
 
-### 72. `reset` — 1 card, S
+### 72. `reset` — 1 card, S — **LANDED** (wave 9)
 Depends on: nothing.
 "Cast this spell only during an opponent's turn after their upkeep step. Untap all lands you
 control." *Sketch:* untap-all-by-filter exists in spirit (mass untap); the new part is the cast
@@ -1233,7 +1233,7 @@ Whirling Dervish: "At the beginning of each end step, if this creature dealt dam
 this turn, put a +1/+1 counter on it." *Sketch:* a query against #19's damage ledger, filtered to
 this source and opponent recipients. If #19 lands first this is a one-line condition.
 
-### 91. `winds-of-change` — 1 card, S
+### 91. `winds-of-change` — 1 card, S — **LANDED** (wave 9)
 Depends on: nothing.
 "Each player shuffles the cards from their hand into their library, then draws that many cards."
 *Sketch:* a per-player count captured before the shuffle and used for the draw — a
@@ -1639,7 +1639,7 @@ nothing else — with no card behind them, so **delete both** in the same change
 has claimed them by then; `spurnmage_advocate_two_target_clauses` in `crates/engine/tests/game.rs`
 goes with them.
 
-### 121. `declare-bands-from-the-client` — 0 cards, M
+### 121. `declare-bands-from-the-client` — 0 cards, M — **LANDED** (wave 10)
 Depends on: #3 slice 1 (landed). Carved out of #3 slice 2 deliberately — slice 2 is a rules slice
 and stays testable in the engine, while this is client-surface work.
 `Intent::DeclareAttackersInBands` exists and is exercised by `crates/engine/tests/`, but it has no
@@ -1652,6 +1652,21 @@ smoke game, not after.**
 gRPC edge to the `bands` argument, and give the attack UI a way to group selected attackers. The
 engine already rejects an illegal band (`Game::band_is_legal`), so the client needs no legality
 logic of its own — surface `Reject::IllegalDeclaration` as it does for any other bad declaration.
+*Landed:* one wire arm for both engine variants rather than a second intent — `bands: repeated
+WireBand { members }` on `WireIntentDeclareAttackers` (field 3, wire-compatible), mirrored in
+`schema::WireIntent::DeclareAttackers` and `types.ts`. `schema::to_intent` branches on
+`bands.is_empty()`: empty → `Intent::DeclareAttackers`, so every non-banding attack is untouched;
+non-empty → `Intent::DeclareAttackersInBands`. `WireBand` is a wrapper message because proto3 has
+no repeated-of-repeated, and keeping the same shape in all three representations means
+`protoMap`'s generic camel↔snake walk needs no per-field code. The affordance is `board-band-panel`
+in `client/app/board/html/priority-bar.ts`: it opens above the Attack button only when a staged
+attacker carries an effective `banding` / `bands_with:` keyword (`bandCandidates` reads
+`ObjectView.keywords`, so a quality granted by one of the five banding lands counts), then offers a
+`data-banded` toggle chip per staged attacker — *every* staged attacker, since a "bands with other
+legendary" band may include a plain legendary creature (CR 702.22c). The toggles are a
+discoverability gate, not a legality check; `Game::band_is_legal` still owns legality and an
+illegal grouping lands in `board-reject`. One band per declaration (`BoardModel.combatBand`);
+two simultaneous bands would need four banding creatures attacking at once and is not built.
 
 ### 122. `show-the-game-ended-in-a-draw` — 0 cards, S
 Depends on: #27 (landed). Raised by #27, which stopped at the wire edge on purpose.

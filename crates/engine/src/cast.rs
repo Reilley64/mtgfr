@@ -2413,6 +2413,26 @@ impl Game {
                 target
             }
         };
+        // A mandatory *second* target clause (CR 601.2c/603.3d — Spurnmage Advocate's "Return two
+        // target cards from an opponent's graveyard") needs its full complement of legal targets
+        // for the activation to be legal at all, the same rule the graveyard-exile cost check
+        // below enforces. `Game::place_ability_second_clause` clamps its pick to what is legal, so
+        // without this gate an activation with too few cards would pay its costs and then quietly
+        // take fewer targets than the ability calls for.
+        // ponytail: read off the clause's declared spec, not the first-target-narrowed one
+        // (Gauntlets of Chaos' "shares one of those types with it") — narrowing only ever shrinks
+        // the legal set, so this gate is conservative rather than wrong. Narrow here too if a card
+        // needs the tighter gate.
+        if let Some((spec, count)) =
+            self.ability_second_target_clause(ability.effect.clone(), object, player)
+            && count.min > 0
+        {
+            let clause_x = self.ability_source_x(object);
+            let legal = self.legal_targets_for(spec, object, player, source_colors, clause_x);
+            if legal.len() < count.min as usize {
+                return Err(Reject::IllegalTarget);
+            }
+        }
         // A loyalty ability's change (+N / 0 / −N) is paid as a cost before the effect goes
         // on the stack.
         // ponytail: loyalty abilities in the pool carry no mana/tap/sacrifice cost, so only the

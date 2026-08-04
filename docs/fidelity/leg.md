@@ -18,13 +18,16 @@ second-side misses.
 
 Already scripted with no `approximates` field. Re-frame-audited as part of this grind.
 
-- [ ] **All Hallow's Eve** {2}{B}{B} · Sorcery
-- [ ] **Chain Lightning** {R} · Sorcery
+- [x] **All Hallow's Eve** {2}{B}{B} · Sorcery — scream-counter countdown ticks in the `Step::Upkeep`
+      arm and the `on_expiry` payload runs after the graveyard move
+- [x] **Chain Lightning** {R} · Sorcery — the reflexive `{R}{R}` is offered to the damaged player or
+      the damaged permanent's controller, and the copy mints under that payer
 - [x] **Concordant Crossroads** {G} · World Enchantment — faithful as of increment 2
-- [ ] **Fallen Angel** {3}{B}{B} · Creature — Angel
-- [ ] **Land Tax** {W} · Enchantment
-- [ ] **Rubinia Soulsinger** {2}{G}{W}{U} · Legendary Creature — Faerie
-- [ ] **Xira Arien** {B}{R}{G} · Legendary Creature — Insect Wizard
+- [x] **Fallen Angel** {3}{B}{B} · Creature — Angel
+- [x] **Land Tax** {W} · Enchantment — "up to three" and the single shuffle both hold
+- [x] **Rubinia Soulsinger** {2}{G}{W}{U} · Legendary Creature — Faerie — the steal reverts as a
+      state-based check on all three legs: source leaves, you lose control of it, or it untaps
+- [x] **Xira Arien** {B}{R}{G} · Legendary Creature — Insect Wizard
 
 ## B. In the pool, approximated
 
@@ -236,11 +239,15 @@ the record shows what unblocked it.
 - [x] **Gauntlets of Chaos** {5} · Artifact — increment 40
 - [ ] **Giant Slug** {1}{B} · Creature — Slug — increment 41
 - [ ] **Giant Turtle** {1}{G}{G} · Creature — Turtle — increment 42
-- [ ] **Glyph of Delusion** {U} · Instant — increment 43, 131, 132
-- [ ] **Glyph of Destruction** {R} · Instant — increment 43, 134
+- [x] **Glyph of Delusion** {U} · Instant — increment 43, 131, 132 (approximated: any Wall's block
+      this turn qualifies the creature rather than a second targeted Wall; the two granted abilities
+      are modeled by the glyph counter)
+- [x] **Glyph of Destruction** {R} · Instant — increment 43, 134 (approximated: the +10/+0 lasts
+      until end of turn instead of until end of combat)
 - [x] **Glyph of Doom** {B} · Instant — increment 43
 - [x] **Glyph of Life** {W} · Instant — increment 43
-- [ ] **Glyph of Reincarnation** {G} · Instant — increment 43, 133
+- [x] **Glyph of Reincarnation** {G} · Instant — increment 43, 133 (approximated: the "cast this
+      spell only after combat" timing restriction is not enforced)
 - [x] **Gosta Dirk** {3}{W}{W}{U}{U} · Legendary Creature — Human Warrior — increment 4
 - [ ] **Gravity Sphere** {2}{R} · World Enchantment — increment 2, 44
 - [x] **Great Wall** {2}{W} · Enchantment — increment 4

@@ -101,7 +101,12 @@ pub enum TargetSpec {
     /// activated abilities on the stack shared a source, resolution counters the topmost match; no
     /// pool card produces that, and Azorius counters exactly one. Give stack abilities real object
     /// identity when a card forces the distinction.
-    ActivatedAbilityOnStack,
+    ActivatedAbilityOnStack {
+        /// "target activated ability from an artifact source" (Rust, Ayesha Tanaka): only
+        /// abilities whose source permanent is an artifact are legal. `false` (Azorius Guildmage)
+        /// leaves every activated ability on the stack targetable.
+        artifact_source: bool,
+    },
     /// A spell on the stack *or* a permanent on the battlefield, unrestricted — the lace cycle's
     /// "target spell or permanent" (Deathlace). The only spec that spans the two zones; every
     /// other spell spec ([`Self::SpellOnStack`]) and permanent spec ([`Self::Permanent`]) picks
@@ -203,6 +208,10 @@ pub enum SpellFilter {
     /// narrow half of [`InstantOrSorcery`](Self::InstantOrSorcery).
     #[cfg_attr(feature = "card-dsl", serde(rename = "instant"))]
     Instant,
+    /// Sorcery spells only (Reverberation — "target sorcery spell"), the other half of
+    /// [`InstantOrSorcery`](Self::InstantOrSorcery).
+    #[cfg_attr(feature = "card-dsl", serde(rename = "sorcery"))]
+    Sorcery,
     /// Enchantment spells you cast (Starfield Mystic). A type-bit check via [`CardKind::types`],
     /// so an Aura spell matches too (CR 303.4a: an Aura *is* an enchantment) — the pool's white
     /// Auras get Starfield Mystic's discount.

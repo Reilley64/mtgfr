@@ -15,7 +15,20 @@ pub enum MiscEffect {
 
     BecomePrepared,
 
-    CounterTargetActivatedAbility,
+    CounterTargetActivatedAbility {
+        /// "from an artifact source" (Rust, Ayesha Tanaka) — narrows the legal targets to
+        /// abilities whose source permanent is an artifact, carried on
+        /// [`TargetSpec::ActivatedAbilityOnStack`]. `false` (Azorius Guildmage) counters any
+        /// activated ability on the stack.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        artifact_source: bool,
+        /// "unless that ability's controller pays {W}" (Ayesha Tanaka) — the activated-ability
+        /// twin of [`Self::CounterTargetSpell`]'s own `unless_pays`, spelled as a full [`Cost`]
+        /// rather than a generic [`Amount`] because this one is a colored mana symbol. `None`
+        /// (Rust, Azorius Guildmage) counters outright.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        unless_pays: Option<Cost>,
+    },
 
     CounterTargetSpell {
         #[cfg_attr(feature = "card-dsl", serde(default))]
@@ -110,6 +123,31 @@ pub enum MiscEffect {
         target: TargetSpec,
     },
 
+    /// Wall of Dust's "Whenever this creature blocks a creature, that creature can't attack during
+    /// its controller's next turn" (CR 508.1a). Not a target — the creature is the one on the other
+    /// side of the block pair, baked in when the ability is placed, exactly like
+    /// [`DestroyEffect::ThatCreature`](crate::DestroyEffect::ThatCreature)'s Cockatrice fill.
+    /// `None` means no context ever filled it in, and nothing is banned.
+    ///
+    /// Resolution records the creature in `CombatExtras::cant_attack_next_own_turn`;
+    /// `Game::roll_own_turn_history` promotes it at the cleanup step of the turn it was blocked in
+    /// (attackers are declared by the active player, so that is the boundary of "its controller's
+    /// next turn") and spends it one turn later.
+    ThatCreatureCantAttackNextOwnTurn {
+        #[cfg_attr(feature = "card-dsl", serde(skip))]
+        creature: Option<ObjectId>,
+    },
+
+    /// Floral Spuzzem's "this creature assigns no combat damage this turn" (CR 510.1a). Always the
+    /// source, never a target, like
+    /// [`SourceCantBeRegeneratedThisTurn`](Self::SourceCantBeRegeneratedThisTurn). Records the
+    /// source in `CombatExtras::assigns_no_combat_damage_this_turn`, which
+    /// `Game::deals_this_batch` — the one gate both the damage assignment and the division
+    /// question read — answers `false` for, so the creature neither divides nor deals. Not
+    /// prevention: the damage is never assigned in the first place, so a "damage can't be
+    /// prevented" rider would not bring it back.
+    SourceAssignsNoCombatDamageThisTurn,
+
     PreventAllCombatDamageThisTurn,
 
     /// "Prevent the next N damage that would be dealt to any target this turn" (CR 615 — Healing
@@ -148,6 +186,12 @@ pub enum MiscEffect {
         /// redirect send it to the same player who armed the shield, so there is nothing to name.
         #[cfg_attr(feature = "card-dsl", serde(default))]
         redirect_to_controller: bool,
+        /// "… is dealt to **that spell's controller** instead" (Reverberation, CR 615.10) — the
+        /// redirect goes to whoever controls the object this ability targeted, not to the
+        /// ability's own controller. Set alongside `target_is_source`, which is what makes the
+        /// targeted spell the source being watched.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        redirect_to_target_controller: bool,
         /// "Damage that would be dealt to **this creature**" (Personal Incarnation): the shield
         /// covers the permanent that armed it. Not a `target` — the ability targets nothing, and
         /// no [`TargetSpec`](crate::TargetSpec) can name an effect's own source.
@@ -253,6 +297,22 @@ pub enum MiscEffect {
     SourceCantBeRegeneratedThisTurn,
 
     SkipNextUntapOpponentCreatures,
+
+    /// "It doesn't untap during its controller's next **two** untap steps" (Telekinesis) — the
+    /// targeted, countable twin of
+    /// [`SkipNextUntapOpponentCreatures`](Self::SkipNextUntapOpponentCreatures) above. Marks the
+    /// chosen permanent `count` times on [`Game::skip_next_untap`](crate::Game), one mark spent
+    /// per untap step it would otherwise have untapped in, so the marks stack rather than
+    /// overwrite: two Telekineses owe the creature four missed untap steps.
+    ///
+    /// Not [`StaticEffect::DoesntUntap`](crate::StaticEffect::DoesntUntap): that one is a
+    /// continuous effect a live permanent radiates, and Telekinesis is an instant that leaves
+    /// nothing behind.
+    SkipNextUntaps {
+        #[cfg_attr(feature = "card-dsl", serde(default = "de::target_creature"))]
+        target: TargetSpec,
+        count: u8,
+    },
 
     /// "Take an extra turn after this one" (Time Walk; CR 505.6a). Queues one turn for the
     /// controller, taken as this turn ends and before the rotation moves on — see

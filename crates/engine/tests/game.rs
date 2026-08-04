@@ -35292,6 +35292,7 @@ fn may_return_ungated() -> CardDef {
             Box::leak(Box::new([spell_ability(Effect::Choice(
                 ChoiceEffect::MayReturnFromGraveyard {
                     filter: CardFilter::Permanent,
+                    count: Amount::Fixed(1),
                     if_you_sacrificed_this_way: false,
                     mandatory: false,
                 },
@@ -93580,77 +93581,6 @@ fn intets_play_permission_ends_when_intet_leaves_the_battlefield() {
         }),
         Err(Reject::NotCastable),
         "the permission lapses with Intet"
-    );
-}
-
-// ── Activated-ability independent second target clause (CR 601.2c, #218) ──────────────
-
-#[test]
-fn spurnmage_advocate_two_target_clauses() {
-    // Spurnmage Advocate (soc): "{T}, Exile two target cards from an opponent's graveyard:
-    // Remove target attacking or blocking creature from combat and tap it." Two independent
-    // target clauses on one activated ability: the graveyard-exile cost's two cards, and the
-    // ability's own attacking-creature target.
-    let mut game = Game::new();
-    let advocate = game.spawn_on_battlefield(PlayerId(0), card("Spurnmage Advocate"));
-    let gy1 = game.spawn_in_graveyard(PlayerId(1), VANILLA.clone());
-    let gy2 = game.spawn_in_graveyard(PlayerId(1), VANILLA.clone());
-
-    // Player 1 attacks player 0 with a creature Spurnmage Advocate will remove from combat.
-    // A library card so player 1's second-turn draw step doesn't deck them out.
-    game.stack_library(PlayerId(1), std::slice::from_ref(&*VANILLA));
-    pass_until_next_turn(&mut game);
-    let attacker = game.spawn_on_battlefield(PlayerId(1), VANILLA.clone());
-    advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
-    game.submit(Intent::DeclareAttackers {
-        player: PlayerId(1),
-        attackers: vec![(attacker, Defender::Player(PlayerId(0)))],
-    })
-    .unwrap();
-    advance_until(&mut game, |g| g.priority_holder() == PlayerId(0));
-
-    game.submit(Intent::ActivateAbility {
-        player: PlayerId(0),
-        object: advocate,
-        ability_index: 0,
-        target: Some(Target::Object(attacker)),
-        sacrifice: vec![],
-        discard_cost: vec![],
-        x: 0,
-    })
-    .unwrap();
-
-    let Some(PendingChoice::ChooseActivationCostTargets { legal, count, .. }) =
-        game.pending_choice()
-    else {
-        panic!("activating pauses to name the graveyard-exile cost's two targets");
-    };
-    assert_eq!(count, 2, "the cost exiles exactly two cards");
-    assert!(legal.contains(&Target::Object(gy1)));
-    assert!(legal.contains(&Target::Object(gy2)));
-
-    game.submit(Intent::ChooseTargets {
-        player: PlayerId(0),
-        targets: vec![Target::Object(gy1), Target::Object(gy2)],
-    })
-    .unwrap();
-
-    assert_eq!(game.zone_of(gy1), Zone::Exile, "the cost exiled both cards");
-    assert_eq!(game.zone_of(gy2), Zone::Exile, "the cost exiled both cards");
-    assert!(
-        game.attackers().contains(&attacker),
-        "the ability is still on the stack — the creature hasn't resolved off combat yet"
-    );
-
-    resolve_top_of_stack(&mut game);
-
-    assert!(
-        !game.attackers().contains(&attacker),
-        "the ability resolved: the attacker is removed from combat"
-    );
-    assert!(
-        game.is_tapped(attacker),
-        "the ability resolved: the attacker is tapped"
     );
 }
 

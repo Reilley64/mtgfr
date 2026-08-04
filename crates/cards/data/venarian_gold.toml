@@ -1,0 +1,63 @@
+# Enchant creature
+# When this Aura enters, tap enchanted creature and put X sleep counters on it.
+# Enchanted creature doesn't untap during its controller's untap step if it has a sleep counter
+# on it.
+# At the beginning of the upkeep of enchanted creature's controller, remove a sleep counter from
+# that creature.
+name = "Venarian Gold"
+otags = ["tapper", "tapper-creature", "triggered-ability"]
+sets = ["leg"]
+id = "5d7acb89-1778-409a-9e91-aaeadd13ca27"
+default_print = "11fb92c0-bb1e-463a-a6b6-887a5d0cb873"
+oracle = "Enchant creature\nWhen this Aura enters, tap enchanted creature and put X sleep counters on it.\nEnchanted creature doesn't untap during its controller's untap step if it has a sleep counter on it.\nAt the beginning of the upkeep of enchanted creature's controller, remove a sleep counter from that creature."
+subtypes = ["Aura"]
+enchant = { types = "creature" }
+
+[cost]
+x = 1
+blue = 2
+
+[kind]
+type = "aura"
+
+# When this Aura enters, tap enchanted creature and put X sleep counters on it.
+[[abilities]]
+timing = "etb"
+
+# tap enchanted creature
+[[abilities.effects]]
+type = "control"
+mode = "tap_target"
+target = "enchanted_creature"
+
+# and put X sleep counters on it.
+[[abilities.effects]]
+type = "counters"
+mode = "put_counters"
+count = "x"
+target = "enchanted_creature"
+kind = "sleep"
+
+# Enchanted creature doesn't untap during its controller's untap step if it has a sleep counter
+# on it.
+[[abilities]]
+timing = "static"
+condition = { type = "compare", left = { per_counter_of_kind = "sleep", on_attached = true }, op = "at_least", right = 1 }
+
+# Enchanted creature doesn't untap during its controller's untap step
+[[abilities.effects]]
+type = "static"
+mode = "grant_to_attached"
+doesnt_untap = true
+
+# At the beginning of the upkeep of enchanted creature's controller, remove a sleep counter from
+# that creature.
+[[abilities]]
+timing = "each_upkeep"
+condition = { type = "enchanted_permanents_controllers_upkeep" }
+
+# remove a sleep counter from that creature.
+[[abilities.effects]]
+type = "counters"
+mode = "remove_counter_from_attached"
+kind = "sleep"

@@ -217,6 +217,8 @@ stable-id or answer payload. `TakeAction { id }` references a `LegalAction` id f
 recent `actions` list in `VisibleState`; stable ids survive across multiple intents as long as
 the underlying action remains legal (lobby-table-routing-and-live-game spec).
 
+`WireIntentDeclareAttackers` carries `bands: repeated WireBand { members }` alongside `attackers`. It is one wire arm for two engine variants: empty `bands` — every attack but a banding one — becomes `Intent::DeclareAttackers`, non-empty becomes `Intent::DeclareAttackersInBands` (CR 702.22c). Proto3 has no repeated-of-repeated, so `WireBand` is a wrapper message; the same shape is mirrored in `crates/schema` and `types.ts` so `protoMap`'s generic walk needs no per-field code.
+
 Pre-game mulligans use dedicated `KeepHand { player }` and `Mulligan { player }` intent arms. The authenticated seat stamps the actor at the schema boundary, so a client cannot keep or mulligan for another player by changing the payload.
 
 `Ack` returns `accepted` plus optional `reject_reason: MessageRef` when an intent is rejected.

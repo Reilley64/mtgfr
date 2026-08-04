@@ -98,6 +98,7 @@ export const VISIBLE_EVENT_KIND_PRESENCE = {
   play_from_exile_permission_armed: true,
   player_counters_placed: true,
   player_lost: true,
+  game_drawn: true,
   prepared_changed: true,
   prepared_spell_cast: true,
   priority_passed: true,

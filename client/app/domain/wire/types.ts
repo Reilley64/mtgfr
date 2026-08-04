@@ -238,6 +238,9 @@ export type StackObjectView = {
 // planeswalker being attacked, when the attack named one (CR 508.1a).
 export type WireAttack = { attacker: U32; defender: number; defender_planeswalker?: U32 | null };
 export type WireBlock = { attacker: U32; blocker: U32 };
+/** One declared attacking band (CR 702.22c). Wrapper object, not a bare `U32[]`, because proto3
+ * has no repeated-of-repeated — this shape is what `protoMap`'s generic walk already handles. */
+export type WireBand = { members: Array<U32> };
 export type WireDamage = { amount: number; blocker: U32 };
 export type WireTarget = { id: U32; kind: "object" } | { kind: "player"; player: number };
 export type ModeView = { label: MessageRef; needs_target: boolean; targets: Array<WireTarget> };
@@ -402,6 +405,7 @@ export type VisibleEvent =
   | { amount: number; kind: "life_changed"; player: number; source?: null | number }
   | { kind: "drew_from_empty_library"; player: number }
   | { kind: "player_lost"; player: number }
+  | { kind: "game_drawn" }
   | { kind: "citys_blessing_gained"; player: number }
   | { card?: string | null; from?: null | U32; kind: "card_drawn"; object: U32; player: number }
   | { by: number; kind: "sacrificed"; object: U32 }
@@ -638,7 +642,7 @@ export type WireIntent =
       target?: null | WireTarget;
       x?: number;
     }
-  | { attackers: Array<WireAttack>; kind: "declare_attackers"; player: number }
+  | { attackers: Array<WireAttack>; bands?: Array<WireBand>; kind: "declare_attackers"; player: number }
   | { blocks: Array<WireBlock>; kind: "declare_blockers"; player: number }
   | { kind: "choose_order"; order: Array<number>; player: number }
   | { kind: "choose_targets"; player: number; targets: Array<WireTarget> }

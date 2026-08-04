@@ -119,8 +119,20 @@ impl Game {
     fn redirected_damage_events(&self, source: ObjectId, to: Target, amount: i32) -> Vec<Event> {
         match to {
             Target::Player(player) => {
-                self.player_damage_events_inner(source, player, amount, false)
-                    .0
+                // The moved damage is dealt to this player for real (CR 615.10), so it carries the
+                // same "damage was dealt to a player" marker an ordinary hit does — Pit Scorpion's
+                // watch and the turn's damage ledger both read it. `player_damage_events_inner`
+                // mints only the life loss; every other caller pushes the marker itself.
+                let (mut events, dealt) =
+                    self.player_damage_events_inner(source, player, amount, false);
+                if dealt > 0 {
+                    events.push(Event::DamageDealtToPlayer {
+                        source,
+                        player,
+                        amount: dealt,
+                    });
+                }
+                events
             }
             Target::Object(object) => {
                 self.creature_damage_events_inner(source, object, amount, false, false, false)

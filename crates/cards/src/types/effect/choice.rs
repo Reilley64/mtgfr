@@ -2,6 +2,12 @@ use super::*;
 #[cfg(feature = "card-dsl")]
 use crate::de;
 
+/// A count field whose implicit value is one, not [`Amount`]'s flat zero.
+#[cfg(feature = "card-dsl")]
+fn one_card() -> Amount {
+    Amount::Fixed(1)
+}
+
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(
@@ -138,18 +144,23 @@ pub enum ChoiceEffect {
         down_to_fewest: bool,
     },
 
-    /// The effect's controller discards their whole hand (Malfegor's "discard your hand"). A
-    /// choiceless whole-hand discard (the discard sibling of
-    /// [`EachPlayerDiscardsHandThenDraws`](Self::EachPlayerDiscardsHandThenDraws), scoped to the
-    /// controller), emitting the normal [`Event::Discarded`](crate::Event) markers so
-    /// `Trigger::YouDiscard` fires and setting
+    /// Every player in `who` discards their whole hand (Malfegor's "discard your hand"; Nicol
+    /// Bolas's "that player discards their hand"). A choiceless whole-hand discard (the discard
+    /// sibling of [`EachPlayerDiscardsHandThenDraws`](Self::EachPlayerDiscardsHandThenDraws)),
+    /// emitting the normal [`Event::Discarded`](crate::Event) markers so `Trigger::YouDiscard`
+    /// fires and setting
     /// [`ResolutionFrame::cards_discarded_this_way`](crate::resolution::ResolutionFrame) to the
-    /// hand's size so a following Sequence step reads it (Malfegor's "for each card discarded this
-    /// way").
-    // ponytail: choiceless, so it sits a little oddly under ChoiceEffect. Only Malfegor needs it
-    // today — promote to its own Effect::Discard(DiscardEffect) family (mirroring Effect::Sacrifice)
-    // once a second/third choiceless discard card makes the family pay for itself.
-    DiscardYourHand,
+    /// discarded total so a following Sequence step reads it (Malfegor's "for each card discarded
+    /// this way").
+    // ponytail: choiceless, so it sits a little oddly under ChoiceEffect. Only Malfegor and Nicol
+    // Bolas need it today — promote to its own Effect::Discard(DiscardEffect) family (mirroring
+    // Effect::Sacrifice) once a third choiceless discard card makes the family pay for itself.
+    DiscardYourHand {
+        /// Whose hand goes: `you` (Malfegor, the default) or `damaged_player` (Nicol Bolas's
+        /// "that player", filled in from the trigger that placed the ability — CR 603.10a).
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        who: PlayerSet,
+    },
 
     EachPlayerExilesFromGraveyard,
 
@@ -329,6 +340,12 @@ pub enum ChoiceEffect {
 
     MayReturnFromGraveyard {
         filter: CardFilter,
+        /// How many cards are returned, one prompt at a time (Recall's "return a card from your
+        /// graveyard to your hand **for each card discarded this way**"). Defaults to the single
+        /// return every other user of this effect wants. A count larger than the graveyard holds
+        /// returns as many as it can (CR 700.2).
+        #[cfg_attr(feature = "card-dsl", serde(default = "one_card"))]
+        count: Amount,
         #[cfg_attr(feature = "card-dsl", serde(default))]
         if_you_sacrificed_this_way: bool,
         /// "you return" (Witherbloom Command mode 0) rather than "you may return" (Deadly Brew,

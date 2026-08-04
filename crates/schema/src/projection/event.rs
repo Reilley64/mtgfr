@@ -302,6 +302,14 @@ pub(crate) fn project_event(
             power,
             toughness,
         },
+        // A durationless keyword grant is the same "re-read this object" signal to the client as
+        // a `TempBoost`, and like `TempBoost`'s own keywords the list itself stays off the wire —
+        // the next snapshot carries the object's new keyword set.
+        Event::KeywordsGrantedIndefinitely { object, .. } => VisibleEvent::TempBoost {
+            object,
+            power: 0,
+            toughness: 0,
+        },
         Event::TempBoostsEnded { object } => VisibleEvent::TempBoostsEnded { object },
         // A copy-effect exception keyword rider (CR 707.2 — "except it has haste/myriad") is a
         // keyword-status change, so it surfaces to the client the same as a `TempBoost`: a
