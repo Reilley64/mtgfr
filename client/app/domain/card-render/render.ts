@@ -1,6 +1,7 @@
 import { BODY_FONT, frameAssetUrl, TITLE_FONT } from "./assets";
 import { type Blit, type FaceData, type FaceVariant, frameKey, type Rect, slotRects } from "./frame";
-import { fitFontSize, LINE_HEIGHT, type Measure, wrapLines } from "./text";
+import { drawManaSymbol } from "./symbols";
+import { fitOracleSize, LINE_HEIGHT, type Measure, SYMBOL_EM, wrapOracle } from "./text";
 
 /*
  * Printed type sizes, as a fraction of the slot each sits in. A real M15 card sets its name in about
@@ -10,8 +11,18 @@ import { fitFontSize, LINE_HEIGHT, type Measure, wrapLines } from "./text";
  */
 const TITLE_SCALE = 0.62;
 const TYPE_SCALE = 0.58;
-const RULES_SCALE = 0.13;
+const RULES_SCALE = 0.116;
 const PT_SCALE = 0.62;
+
+/** Printed ink — the near-black a card's text is set in, not pure black. */
+const INK = "#17130d";
+/**
+ * Text-box padding, as a fraction of the box. Measured off a printed card: its rules text sits
+ * about 12px in from a 628px-wide box, and centres vertically in the paper — so the vertical
+ * number is only a floor for text too tall to centre, not a printed margin.
+ */
+const TEXT_PAD_X = 0.02;
+const TEXT_PAD_Y = 0.03;
 
 export type FaceInput = {
   face: FaceData;
@@ -45,9 +56,10 @@ export function faceAssetUrls(face: FaceData): { frame: string; pt: string | nul
 export function drawFace(ctx: CanvasRenderingContext2D, input: FaceInput): void {
   const { face, variant } = input;
   const slots = slotRects(variant, face);
-  const measure: Measure = (text, fontPx) => {
-    ctx.font = `${fontPx}px ${BODY_FONT}, serif`;
-    return ctx.measureText(text).width;
+  const measure: Measure = (piece, fontPx) => {
+    if (piece.kind === "symbol") return fontPx * SYMBOL_EM;
+    ctx.font = bodyFont(fontPx, piece.reminder);
+    return ctx.measureText(piece.value).width;
   };
 
   ctx.save();
@@ -58,7 +70,7 @@ export function drawFace(ctx: CanvasRenderingContext2D, input: FaceInput): void 
   if (input.crownImage != null && slots.crown != null) blit(ctx, input.crownImage, slots.crown);
   if (input.ptImage != null && slots.ptPlate != null) blit(ctx, input.ptImage, slots.ptPlate);
 
-  ctx.fillStyle = "#17130d";
+  ctx.fillStyle = INK;
   ctx.textBaseline = "middle";
 
   if (slots.title != null) drawFitted(ctx, face.name, slots.title, TITLE_FONT, slots.title.h * TITLE_SCALE);
@@ -116,15 +128,40 @@ function drawFitted(ctx: CanvasRenderingContext2D, text: string, box: Rect, font
   ctx.fillText(text, box.x + box.w * 0.02, box.y + box.h / 2);
 }
 
+/** Body font for one run — reminder text prints italic, the way a printed card sets it. */
+function bodyFont(fontPx: number, reminder: boolean): string {
+  return `${reminder ? "italic " : ""}${fontPx}px ${BODY_FONT}, serif`;
+}
+
+/**
+ * Rules text, inset from the printed box and centred in what is left — a short ability sits in the
+ * middle of its box on a real card, not pinned to the top edge.
+ */
 function drawTextBox(ctx: CanvasRenderingContext2D, text: string, box: Rect, measure: Measure): void {
   if (text === "") return;
-  const size = fitFontSize(text, box, box.h * RULES_SCALE, measure);
-  ctx.font = `${size}px ${BODY_FONT}, serif`;
+  const padX = box.w * TEXT_PAD_X;
+  const padY = box.h * TEXT_PAD_Y;
+  const inner = { w: box.w - 2 * padX, h: box.h - 2 * padY };
+  const size = fitOracleSize(text, inner, box.h * RULES_SCALE, measure);
+  const lines = wrapOracle(text, inner.w, size, measure);
+  const step = size * LINE_HEIGHT;
+
   ctx.textAlign = "left";
-  let y = box.y + size * LINE_HEIGHT * 0.7;
-  for (const line of wrapLines(text, box.w, size, measure)) {
-    ctx.fillText(line, box.x, y);
-    y += size * LINE_HEIGHT;
+  ctx.textBaseline = "middle";
+  let y = box.y + Math.max(padY, (box.h - lines.length * step) / 2) + step / 2;
+  for (const line of lines) {
+    let x = box.x + padX;
+    for (const piece of line) {
+      if (piece.kind === "symbol") {
+        drawManaSymbol(ctx, piece, x, y, size);
+      } else {
+        ctx.font = bodyFont(size, piece.reminder);
+        ctx.fillStyle = INK;
+        ctx.fillText(piece.value, x, y);
+      }
+      x += measure(piece, size);
+    }
+    y += step;
   }
 }
 

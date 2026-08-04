@@ -137,13 +137,19 @@ export const CANONICAL: Record<FaceVariant, { w: number; h: number }> = {
  * `TOP_STRIP` bound are alpha-measured off the art itself — `magick <asset> -alpha extract
  * -threshold 50% -format "%@" info:` — and must not be nudged.
  *
- * `TITLE_BAR`, `TYPE_BAR` and `TEXT_BOX` are eyeballed: the frame is opaque there, so alpha cannot
- * segment them. They are close enough to lay out against and are tuned by a live check.
+ * `TITLE_BAR` and `TYPE_BAR` are eyeballed: the frame is opaque there, so alpha cannot segment
+ * them. They are close enough to lay out against and are tuned by a live check.
+ *
+ * `TEXT_BOX` is the printed paper, read off a Scryfall 744x1040 png by luminance: the pale box runs
+ * y 655..957 there, which is these numbers once scaled to the asset. Getting the bottom right is
+ * what makes plain vertical centring land where a real card's text lands — on both a one-line card
+ * and a rules-plus-flavour one, the printed block centres on this box to within a pixel. The P/T
+ * plate overlaps its bottom corner, exactly as it does in print.
  */
 const ART_WINDOW: Rect = { x: 58, y: 119, w: 634, h: 463 };
 const TITLE_BAR: Rect = { x: 58, y: 43, w: 634, h: 66 };
 const TYPE_BAR: Rect = { x: 58, y: 592, w: 634, h: 61 };
-const TEXT_BOX: Rect = { x: 58, y: 662, w: 634, h: 267 };
+const TEXT_BOX: Rect = { x: 58, y: 661, w: 633, h: 305 };
 const PT_PLATE: Rect = { x: 579, y: 932, w: 130, h: 64 };
 /**
  * The printed black card border, measured off the asset's own top and left edges. The square crops

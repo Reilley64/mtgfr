@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { ASSET_W, BODY_FONT, TITLE_FONT } from "./assets";
+import { MANA_GLYPH } from "../mana-glyphs.generated";
+import { ASSET_W, BODY_FONT, SYMBOL_FONT, TITLE_FONT } from "./assets";
 import { CANONICAL, type FaceData, slotRects } from "./frame";
 import { drawFace, faceAssetUrls } from "./render";
 
@@ -20,6 +21,8 @@ function fakeCtx() {
       save: record("save"),
       restore: record("restore"),
       beginPath: record("beginPath"),
+      arc: record("arc"),
+      createLinearGradient: vi.fn(() => ({ addColorStop: () => {} })),
       translate: record("translate"),
       rotate: record("rotate"),
       roundRect: record("roundRect"),
@@ -142,6 +145,26 @@ describe("drawFace", () => {
     expect(typeLine).toBeLessThan(38);
     expect(Math.max(...sizesIn(BODY_FONT))).toBeGreaterThan(33);
     expect(Math.max(...sizesIn(BODY_FONT))).toBeLessThan(37);
+  });
+
+  it("draws a rules-text mana symbol as a disk with its mana-font glyph, not braces", () => {
+    const { ctx, ops, texts } = fakeCtx();
+    drawFace(ctx, inputs({ variant: "full", face: face({ oracle: "{T}: Add {G}." }) }));
+
+    expect(texts().some((t) => t.includes("{"))).toBe(false);
+    expect(ops.filter((o) => o.op === "arc")).toHaveLength(2);
+    expect(texts()).toContain(MANA_GLYPH.tap);
+    expect(texts()).toContain(MANA_GLYPH.g);
+    expect(ops.some((o) => o.op === "font" && String(o.args[0]).includes(SYMBOL_FONT))).toBe(true);
+  });
+
+  it("prints reminder text in italics, the way a card sets it", () => {
+    const { ctx, ops } = fakeCtx();
+    drawFace(ctx, inputs({ variant: "full", face: face({ oracle: "Flying (It can't be blocked.)" }) }));
+
+    const fonts = ops.filter((o) => o.op === "font").map((o) => String(o.args[0]));
+    expect(fonts.some((f) => f.startsWith("italic") && f.includes(BODY_FONT))).toBe(true);
+    expect(fonts.some((f) => !f.startsWith("italic") && f.includes(BODY_FONT))).toBe(true);
   });
 
   it("draws a planeswalker's loyalty instead of a power/toughness", () => {

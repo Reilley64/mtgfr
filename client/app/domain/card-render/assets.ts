@@ -36,10 +36,12 @@ export function frameAssetUrl(name: string): string {
 
 export const TITLE_FONT = "Beleren";
 export const BODY_FONT = "MPlantin";
+/** mana-font, declared in `global.css` — the pips inside rules text are drawn from it. */
+export const SYMBOL_FONT = "Mana";
 
 let fontsReady: Promise<void> | null = null;
 
-/** Loads both typefaces into the document so canvas `ctx.font` can name them. Idempotent. */
+/** Loads the card typefaces into the document so canvas `ctx.font` can name them. Idempotent. */
 export function loadCardFonts(): Promise<void> {
   if (fontsReady != null) return fontsReady;
   if (typeof FontFace !== "function" || typeof document === "undefined") {
@@ -50,8 +52,11 @@ export function loadCardFonts(): Promise<void> {
     new FontFace(TITLE_FONT, `url(/card-fonts/beleren-bold.ttf) format("truetype")`, { weight: "700" }),
     new FontFace(BODY_FONT, `url(/card-fonts/mplantin.ttf) format("truetype")`),
   ];
-  fontsReady = Promise.all(faces.map((face) => face.load().then((loaded) => document.fonts.add(loaded)))).then(
-    () => undefined,
-  );
+  fontsReady = Promise.all([
+    ...faces.map((face) => face.load().then((loaded) => document.fonts.add(loaded))),
+    // Mana is declared in `global.css` (the pip tray uses it too) — this only waits for the bytes,
+    // so the first face drawn has its `{T}` rather than a blank box.
+    document.fonts.load(`16px ${SYMBOL_FONT}`),
+  ]).then(() => undefined);
   return fontsReady;
 }

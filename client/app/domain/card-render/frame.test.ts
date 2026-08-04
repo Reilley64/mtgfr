@@ -46,7 +46,7 @@ function face(overrides: Partial<ObjectView> = {}): FaceData {
 const ART_WINDOW = { x: 58, y: 119, w: 634, h: 463 };
 const TITLE_BAR = { x: 58, y: 43, w: 634, h: 66 };
 const TYPE_BAR = { x: 58, y: 592, w: 634, h: 61 };
-const TEXT_BOX = { x: 58, y: 662, w: 634, h: 267 };
+const TEXT_BOX = { x: 58, y: 661, w: 633, h: 305 };
 const PT_PLATE = { x: 579, y: 932, w: 130, h: 64 };
 const TOP_STRIP_H = 195;
 /** The printed black border the square crops off, so the tile's own outline is the only rim. */
@@ -217,12 +217,16 @@ describe("slotRects", () => {
     expect(slots.type?.y).toBeGreaterThanOrEqual(slots.art.y + slots.art.h);
   });
 
-  it("does not overlap a full face's text box with its P/T box", () => {
+  // The printed P/T plate sits over the text box's bottom-right corner — that is how a real card
+  // is laid out, and why rules text centres in the box rather than filling it to the last line.
+  it("keeps a full face's text box between the type bar and the printed bottom border", () => {
     const slots = slotRects("full", face());
     expect(slots.text).not.toBeNull();
     expect(slots.pt).not.toBeNull();
     if (slots.text == null || slots.pt == null) return;
-    expect(slots.text.y + slots.text.h).toBeLessThanOrEqual(slots.pt.y);
+    expect(slots.text.y).toBeGreaterThanOrEqual((slots.type?.y ?? 0) + (slots.type?.h ?? 0));
+    expect(slots.text.y + slots.text.h).toBeLessThanOrEqual(slots.pt.y + slots.pt.h);
+    expect(slots.text.x + slots.text.w).toBeGreaterThan(slots.pt.x);
   });
 
   it("blits the whole asset onto a full face and adds the crown only when legendary", () => {
