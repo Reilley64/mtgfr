@@ -60,7 +60,17 @@ export function drawFace(ctx: CanvasRenderingContext2D, input: FaceInput): void 
 
 function blit(ctx: CanvasRenderingContext2D, image: CanvasImageSource, piece: Blit): void {
   const { src, dst } = piece;
-  ctx.drawImage(image, src.x, src.y, src.w, src.h, dst.x, dst.y, dst.w, dst.h);
+  if (piece.turn == null) {
+    ctx.drawImage(image, src.x, src.y, src.w, src.h, dst.x, dst.y, dst.w, dst.h);
+    return;
+  }
+  // A quarter turn counterclockwise about the destination's centre. Inside the turned frame the
+  // box is its own height by its own width, so a tall rail fills a wide band.
+  ctx.save();
+  ctx.translate(dst.x + dst.w / 2, dst.y + dst.h / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.drawImage(image, src.x, src.y, src.w, src.h, -dst.h / 2, -dst.w / 2, dst.h, dst.w);
+  ctx.restore();
 }
 
 /**

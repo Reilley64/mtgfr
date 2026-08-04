@@ -42,6 +42,8 @@ function stubCanvas() {
         save: () => {},
         restore: () => {},
         beginPath: () => {},
+        translate: () => {},
+        rotate: () => {},
         rect: () => {},
         clip: () => {},
         drawImage: () => {},

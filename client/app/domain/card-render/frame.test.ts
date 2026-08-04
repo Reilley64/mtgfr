@@ -264,10 +264,12 @@ describe("slotRects", () => {
     const top = TOP_STRIP_H * s;
     const [, left, right, bottom] = slotRects("permanent", face()).frame;
 
-    // Each edge is sourced from the asset's matching edge, so it keeps the card's own colour.
+    // Each edge is sourced from the asset's matching edge, so it keeps the card's own colour. M15
+    // prints no coloured band under the text box, so the bottom is the side rail laid on its side.
     expect(left?.src.x).toBe(0);
     expect(right?.src.x).toBe(ASSET_W - ART_WINDOW.x);
-    expect(bottom?.src.y ?? 0).toBeGreaterThan(TEXT_BOX.y + TEXT_BOX.h);
+    expect(bottom?.src).toEqual(left?.src);
+    expect(bottom?.turn).toBe("ccw");
 
     // The sides run from under the top strip down to the bottom edge, leaving no gap.
     expectRectClose(left?.dst ?? null, { x: 0, y: top, w: side, h: h - top - side });

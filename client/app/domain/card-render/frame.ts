@@ -96,8 +96,12 @@ export function faceDataFrom(view: ObjectView): FaceData {
 /** A rectangle in whichever space its holder names — asset pixels or canonical face pixels. */
 export type Rect = { x: number; y: number; w: number; h: number };
 
-/** A piece of a frame asset: `src` in asset pixels (750x1050), `dst` in canonical face pixels. */
-export type Blit = { src: Rect; dst: Rect };
+/**
+ * A piece of a frame asset: `src` in asset pixels (750x1050), `dst` in canonical face pixels.
+ * `turn` lays the piece on its side inside `dst` — a quarter turn counterclockwise about the
+ * destination's centre, which is how a vertical rail becomes a horizontal one.
+ */
+export type Blit = { src: Rect; dst: Rect; turn?: "ccw" };
 
 /** Which pieces a variant draws. A null slot is one this variant leaves off the face. */
 export type SlotRects = {
@@ -148,12 +152,14 @@ const TOP_STRIP: Rect = { x: 0, y: 0, w: ASSET_W, h: 195 };
  * black border plus the frame's bevel — which is what the top strip already shows at its own left
  * and right, so the sides continue it without a seam.
  *
- * The printed bottom border is far deeper than the sides (M15 leaves room for the collector line),
- * so `BOTTOM_STRIP` starts at the frame's last textured row and is squashed to `SIDE_W` at paint
- * time: an even ring, drawn in the card's own colour.
+ * M15 prints no coloured band along the bottom of a card: under the text box it is the black
+ * collector border, which on a dark board reads as no border at all. The bottom edge is therefore
+ * the same side rail laid on its side, turned so the rail's outer black edge lands on the card's
+ * bottom. Its texture stretches along the card's width; at the size a permanent paints, it reads
+ * as the border the sides already draw.
  */
 const SIDE_W = ART_WINDOW.x;
-const BOTTOM_STRIP: Rect = { x: 0, y: 960, w: ASSET_W, h: ASSET_H - 960 };
+const rail = (x: number): Rect => ({ x, y: ART_WINDOW.y, w: SIDE_W, h: ART_WINDOW.h });
 const WHOLE_ASSET: Rect = { x: 0, y: 0, w: ASSET_W, h: ASSET_H };
 
 /** WUBRG index (`engine::Color::index`) → frame asset key. */
@@ -198,13 +204,12 @@ function squareSlots(w: number, h: number, face: FaceData): SlotRects {
   const strip: Blit = { src: TOP_STRIP, dst: { x: 0, y: 0, w, h: TOP_STRIP.h * s } };
   const side = SIDE_W * s;
   const flank = { y: strip.dst.h, w: side, h: h - strip.dst.h - side };
-  const sideSrc: Rect = { x: 0, y: ART_WINDOW.y, w: SIDE_W, h: ART_WINDOW.h };
   return {
     frame: [
       strip,
-      { src: sideSrc, dst: { x: 0, ...flank } },
-      { src: { ...sideSrc, x: ASSET_W - SIDE_W }, dst: { x: w - side, ...flank } },
-      { src: BOTTOM_STRIP, dst: { x: 0, y: h - side, w, h: side } },
+      { src: rail(0), dst: { x: 0, ...flank } },
+      { src: rail(ASSET_W - SIDE_W), dst: { x: w - side, ...flank } },
+      { src: rail(0), dst: { x: 0, y: h - side, w, h: side }, turn: "ccw" },
     ],
     art,
     crown: face.legendary ? { src: TOP_STRIP, dst: strip.dst } : null,

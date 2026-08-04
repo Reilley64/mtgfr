@@ -20,6 +20,8 @@ function fakeCtx() {
       save: record("save"),
       restore: record("restore"),
       beginPath: record("beginPath"),
+      translate: record("translate"),
+      rotate: record("rotate"),
       roundRect: record("roundRect"),
       rect: record("rect"),
       clip: record("clip"),
@@ -147,6 +149,17 @@ describe("drawFace", () => {
     // src: the strip, not the 1050-tall card. dst: scaled by width in both axes, so it keeps shape.
     expect(frame.slice(1, 5)).toEqual([0, 0, ASSET_W, 195]);
     expect(frame.slice(5)).toEqual([0, 0, CANONICAL.permanent.w, 195 * scale]);
+  });
+
+  // M15 has no coloured band along the card's bottom, so the square's bottom edge is the side rail
+  // turned on its side — drawn under a quarter turn, into a box with its own w and h swapped.
+  it("lays the square's bottom edge on its side", () => {
+    const { ctx, ops, drawn } = fakeCtx();
+    drawFace(ctx, inputs());
+
+    const band = slotRects("permanent", face()).frame.at(-1)?.dst;
+    expect(ops.some((o) => o.op === "rotate" && o.args[0] === -Math.PI / 2)).toBe(true);
+    expect(drawn().at(-1)?.slice(5)).toEqual([-(band?.h ?? 0) / 2, -(band?.w ?? 0) / 2, band?.h, band?.w]);
   });
 
   it("crops the art to fill the square instead of squashing it", () => {
