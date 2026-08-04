@@ -59,6 +59,24 @@ describe("syncCardFaceHost", () => {
     expect(element.querySelector("[aria-hidden='true']")?.className).toContain("animate-skeleton");
   });
 
+  it("paints the face `request` drew on the spot rather than leaving a skeleton up", () => {
+    // The real cache draws inside `request` when the frame and art are already loaded, and tells
+    // its listeners so — before this host has subscribed. Missing that left the commander in hand
+    // showing a skeleton for the rest of the game.
+    let drawn = false;
+    const cache = {
+      get: vi.fn(() => (drawn ? ({ width: 745, height: 1040 } as unknown as CanvasImageSource) : undefined)),
+      request: vi.fn(() => {
+        drawn = true;
+      }),
+    };
+
+    syncCardFaceHost(host(), cache, 1);
+
+    expect(document.querySelector("canvas")).not.toBeNull();
+    expect(document.querySelector(".animate-skeleton")).toBeNull();
+  });
+
   it("repaints when the card changes — a hand tile is reused as cards come and go", () => {
     const cache = stubCache(true);
     const element = host();

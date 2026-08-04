@@ -27,9 +27,16 @@ export function syncCardFaceHost(element: HTMLElement, faces: Faces = sharedFace
   const h = Number(element.dataset.faceH);
   const className = element.dataset.faceClass ?? "";
 
-  const drawn = faces.get(face, variant);
+  // `request` draws on the spot when the frame and art are already in the image cache — the usual
+  // case once a card of that colour is on the board. Read again after it: the cache tells its
+  // listeners it drew, and this host has not subscribed yet on its first paint, so trusting the
+  // first read leaves the skeleton up for good.
+  let drawn = faces.get(face, variant);
   if (drawn == null) {
     faces.request(face, variant);
+    drawn = faces.get(face, variant);
+  }
+  if (drawn == null) {
     element.replaceChildren();
     const sk = document.createElement("div");
     // Same skeleton the printed-image host shows: the hand bar sizes its host by inline style, so
@@ -67,9 +74,14 @@ export const BindCardFace = Mount.define(
         const paint = () => syncCardFaceHost(element);
         paint();
         const unsub = sharedFaceCache.subscribe(paint);
-        // Foldkit patches `data-face` in place as the hand changes — remount does not run.
+        // Foldkit patches these in place as the hand changes — remount does not run. The box size
+        // is in the filter too: the hand bar shrinks its tiles as it fills, and the canvas carries
+        // its own inline width.
         const observer = new MutationObserver(paint);
-        observer.observe(element, { attributes: true, attributeFilter: ["data-face"] });
+        observer.observe(element, {
+          attributes: true,
+          attributeFilter: ["data-face", "data-face-variant", "data-face-w", "data-face-h", "data-face-class"],
+        });
         return { unsub, observer };
       }),
       (handle) =>
