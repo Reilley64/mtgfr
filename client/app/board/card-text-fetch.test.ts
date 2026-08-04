@@ -3,9 +3,10 @@
 
 import { expect, test } from "vitest";
 import type { CatalogCard, ObjectView, VisibleState } from "~/wire/types";
+import { cardTextOf } from "../domain/card-render/card-text";
 import type { GameFoldState } from "../game/fold";
 import { ZONE } from "./geometry/layout";
-import { CardTextFetched } from "./messages";
+import { CardTextFetched, PrintFlavorFetched } from "./messages";
 import { type BoardModel, initialBoardModel, requestBarCardText, updateBoard } from "./submodel";
 
 function object(id: number, overrides: Partial<ObjectView> = {}): ObjectView {
@@ -125,5 +126,65 @@ test("folds the catalog reply into the text the face draws", () => {
     typeLine: "Creature — Elemental",
     oracle: "Haste.",
     flavor: "Fast as fire.",
+    flavorPrint: "print",
   });
+});
+
+// Flavor is per printing. The catalog only knows the card's default printing, so a deck playing a
+// reprint would otherwise set the wrong quote under the art it actually shows.
+test("asks for the flavor of the printing the deck plays, and drops the default printing's words", () => {
+  const model: BoardModel = {
+    ...initialBoardModel(),
+    cardText: new Map([
+      ["terminate", cardTextOf(catalogCard("terminate", { flavor: "I think, therefore I annihilate!" }))],
+    ]),
+  };
+
+  const [next, commands] = requestBarCardText(model, fold([object(1, { card_id: "terminate", print: "c11-print" })]));
+
+  expect(commands).toHaveLength(1);
+  expect(commands[0]?.args).toEqual({ cards: [{ cardId: "terminate", print: "c11-print" }] });
+  expect(next.cardText.get("terminate")?.flavor).toBe("");
+});
+
+test("keeps the catalog flavor when the deck plays the card's default printing", () => {
+  const model: BoardModel = {
+    ...initialBoardModel(),
+    cardText: new Map([["bolt", cardTextOf(catalogCard("bolt", { flavor: "Fast as fire." }))]]),
+  };
+
+  const [next, commands] = requestBarCardText(model, fold([object(1, { card_id: "bolt", print: "print" })]));
+
+  expect(commands).toEqual([]);
+  expect(next.cardText.get("bolt")?.flavor).toBe("Fast as fire.");
+});
+
+test("asks for a printing's flavor once — the next fold does not ask again", () => {
+  const model: BoardModel = {
+    ...initialBoardModel(),
+    cardText: new Map([["terminate", cardTextOf(catalogCard("terminate", { flavor: "Old words." }))]]),
+  };
+  const cards = fold([object(1, { card_id: "terminate", print: "c11-print" })]);
+  const [asked] = requestBarCardText(model, cards);
+  const [, again] = requestBarCardText(asked, cards);
+
+  expect(again).toEqual([]);
+});
+
+test("sets the printing's own flavor when it lands", () => {
+  const model: BoardModel = {
+    ...initialBoardModel(),
+    cardText: new Map([
+      ["terminate", { ...cardTextOf(catalogCard("terminate")), flavor: "", flavorPrint: "c11-print" }],
+    ]),
+  };
+
+  const [next] = updateBoard(
+    model,
+    PrintFlavorFetched({ flavors: [{ cardId: "terminate", print: "c11-print", flavor: "I've seen death before." }] }),
+    fold([]),
+    "T1",
+  );
+
+  expect(next.cardText.get("terminate")?.flavor).toBe("I've seen death before.");
 });

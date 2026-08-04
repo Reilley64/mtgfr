@@ -3,8 +3,14 @@
 
 import type { CatalogCard, WireKind } from "~/wire/types";
 
-/** Type line, rules text and flavor for a face. Empty strings draw nothing. */
-export type CardText = { typeLine: string; oracle: string; flavor: string };
+/**
+ * Type line, rules text and flavor for a face. Empty strings draw nothing.
+ *
+ * `flavorPrint` names the printing the flavor belongs to — the catalog only knows the card's
+ * `default_print`, and flavor is per printing, so a card played from a deck that chose another
+ * printing has to have its own flavor fetched (see `requestBarCardText`).
+ */
+export type CardText = { typeLine: string; oracle: string; flavor: string; flavorPrint: string };
 
 const KIND_LABEL: Record<WireKind["kind"], string> = {
   artifact: "Artifact",
@@ -31,5 +37,10 @@ export function typeLineOf(card: CatalogCard): string {
 }
 
 export function cardTextOf(card: CatalogCard): CardText {
-  return { typeLine: typeLineOf(card), oracle: card.oracle ?? "", flavor: card.flavor ?? "" };
+  return {
+    typeLine: typeLineOf(card),
+    oracle: card.oracle ?? "",
+    flavor: card.flavor ?? "",
+    flavorPrint: card.default_print,
+  };
 }

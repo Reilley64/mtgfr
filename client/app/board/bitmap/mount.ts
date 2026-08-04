@@ -355,7 +355,12 @@ export function paintBitmapLayer(
 }
 
 /** Layer 6: screen motion (drag ghost + flights + ExitFx), above hand/stack HTML. */
-export function paintFlightLayer(canvas: HTMLCanvasElement, frame: BitmapFrame, cache: Pick<ImageCache, "get">): void {
+export function paintFlightLayer(
+  canvas: HTMLCanvasElement,
+  frame: BitmapFrame,
+  cache: Pick<ImageCache, "get">,
+  faces?: FaceSource,
+): void {
   const ctx = prepareLayerCtx(canvas, frame);
   if (ctx == null) return;
 
@@ -401,6 +406,7 @@ export function paintFlightLayer(canvas: HTMLCanvasElement, frame: BitmapFrame, 
     exitFx: frame.exitFx ?? [],
     zoom: frame.camera.zoom,
     cache,
+    faces,
   });
 }
 
@@ -417,7 +423,7 @@ function renderBoardLayer(canvas: HTMLCanvasElement): void {
 
 function renderFlightLayer(canvas: HTMLCanvasElement): void {
   if (currentFrame == null) return;
-  paintFlightLayer(canvas, currentFrame, sharedImageCache);
+  paintFlightLayer(canvas, currentFrame, sharedImageCache, sharedFaceCache);
 }
 
 function registerLayer(

@@ -47,6 +47,7 @@ describe("cardTextOf", () => {
       typeLine: "Instant",
       oracle: "Deals 3 damage to any target.",
       flavor: "",
+      flavorPrint: "print",
     });
     expect(cardTextOf(card({ oracle: null })).oracle).toBe("");
   });

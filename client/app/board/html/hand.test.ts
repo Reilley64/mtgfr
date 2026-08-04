@@ -266,7 +266,9 @@ describe("handView rendered face", () => {
         flyingIds: new Set(),
         hiddenIds: new Set(),
         handDrag: null,
-        cardText: new Map([["bolt", { typeLine: "Instant", oracle: "Deals 3 damage to any target.", flavor: "" }]]),
+        cardText: new Map([
+          ["bolt", { typeLine: "Instant", oracle: "Deals 3 damage to any target.", flavor: "", flavorPrint: "p" }],
+        ]),
       },
       h,
     );

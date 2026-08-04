@@ -1,3 +1,4 @@
+import type { FaceData } from "../../domain/card-render/frame";
 import { FLIGHT_CARD_W } from "../geometry/layout";
 import { STACK_CARD_W } from "../geometry/stackLayout";
 
@@ -19,6 +20,8 @@ export interface CardFlight {
   id: number;
   print: string;
   name: string;
+  /** The rendered face to fly, when the spawner knows it; absent flies the printed image. */
+  face?: FaceData;
   x: number;
   y: number;
   scale: number;

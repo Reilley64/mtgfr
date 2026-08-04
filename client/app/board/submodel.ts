@@ -32,6 +32,7 @@ import type {
 } from "~/wire/types";
 import { clampX } from "~/xCost";
 import { type CardText, cardTextOf } from "../domain/card-render/card-text";
+import type { FaceData } from "../domain/card-render/frame";
 import { formatMessage } from "../domain/i18n/message";
 import { type InspectPin, inspectPinChanged, pinFromCard, pinFromPlayer } from "../domain/inspect";
 import { humanReason } from "../domain/reject";
@@ -40,6 +41,7 @@ import type { GameFoldState } from "../game/fold";
 import {
   FetchCardText,
   FetchInspectCard,
+  FetchPrintFlavor,
   SearchCardNames,
   SetStackDwell,
   SetTurnYield,
@@ -200,6 +202,7 @@ export type HandDragState = {
   action: ActionView;
   name: string;
   print: string;
+  face?: FaceData;
   manaCost: WireCost;
   kind?: string;
   zone?: "hand" | "command" | "graveyard" | "exile";
@@ -2014,18 +2017,40 @@ export function requestBarCardText(model: BoardModel, fold: BoardFold): BoardRet
   if (state == null) return [model, []];
 
   const missing = new Set<string>();
+  // Cards whose flavor belongs to a printing the deck doesn't play — the catalog carries the
+  // card's `default_print` flavor, and flavor is per printing.
+  const wrongPrinting = new Map<string, string>();
   for (const object of state.objects) {
     const cardId = object.card_id;
-    if (cardId == null || cardId === "" || model.cardText.has(cardId) || missing.has(cardId)) continue;
+    if (cardId == null || cardId === "") continue;
     if (Number(object.owner) !== Number(state.viewer)) continue;
     if (!BAR_TEXT_ZONES.has(Number(object.zone))) continue;
-    missing.add(cardId);
+    const text = model.cardText.get(cardId);
+    if (text === undefined) {
+      missing.add(cardId);
+      continue;
+    }
+    const print = object.print ?? "";
+    if (text == null || print === "" || print === text.flavorPrint) continue;
+    wrongPrinting.set(cardId, print);
   }
-  if (missing.size === 0) return [model, []];
+  if (missing.size === 0 && wrongPrinting.size === 0) return [model, []];
 
   const cardText = new Map(model.cardText);
   for (const cardId of missing) cardText.set(cardId, null);
-  return [{ ...model, cardText }, [FetchCardText({ cardIds: [...missing] }) as unknown as BoardCmd]];
+  const commands: BoardCmd[] = [];
+  if (missing.size > 0) commands.push(FetchCardText({ cardIds: [...missing] }) as unknown as BoardCmd);
+  if (wrongPrinting.size > 0) {
+    // Claim the printing now, blanking the default printing's words: the face draws no flavor
+    // rather than another printing's until the fetch lands, and this stops it asking twice.
+    for (const [cardId, print] of wrongPrinting) {
+      const text = cardText.get(cardId);
+      if (text != null) cardText.set(cardId, { ...text, flavor: "", flavorPrint: print });
+    }
+    const cards = [...wrongPrinting].map(([cardId, print]) => ({ cardId, print }));
+    commands.push(FetchPrintFlavor({ cards }) as unknown as BoardCmd);
+  }
+  return [{ ...model, cardText }, commands];
 }
 
 function hideHintOnHandUse(model: BoardModel): BoardModel {
@@ -2584,6 +2609,7 @@ export function updateBoard(
             action: message.action,
             name: message.name,
             print: message.print,
+            face: message.face as FaceData | undefined,
             manaCost: message.manaCost,
             kind: message.kind,
             zone: message.zone,
@@ -3311,6 +3337,15 @@ export function updateBoard(
     case "CardTextFetched": {
       const cardText = new Map(model.cardText);
       for (const card of message.cards) cardText.set(card.id, cardTextOf(card));
+      return [{ ...model, cardText }, []];
+    }
+    case "PrintFlavorFetched": {
+      const cardText = new Map(model.cardText);
+      for (const { cardId, print, flavor } of message.flavors) {
+        const text = cardText.get(cardId);
+        if (text == null) continue;
+        cardText.set(cardId, { ...text, flavor, flavorPrint: print });
+      }
       return [{ ...model, cardText }, []];
     }
     case "InspectFlipFace":

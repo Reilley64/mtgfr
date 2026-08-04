@@ -4,6 +4,7 @@
 import { Effect, Queue, Stream } from "effect";
 import * as Mount from "foldkit/mount";
 import type { ActionView, WireCost } from "~/wire/types";
+import type { FaceData } from "../../domain/card-render/frame";
 import { formatMessage } from "../../domain/i18n/message";
 import { HandActionHovered, HandDragEnded, HandDragMoved, HandDragStarted } from "../messages";
 import { clientToBoardPoint } from "./camera-gesture-mount";
@@ -70,12 +71,24 @@ export function readHandDragPayload(hit: HTMLElement, x: number, y: number): typ
     action,
     name: hit.dataset.cardName ?? formatMessage(action.label),
     print: hit.dataset.cardPrint ?? "",
+    face: readFace(hit),
     manaCost: readManaCost(hit.dataset.manaCost),
     kind: hit.dataset.objectKind,
     zone,
     x,
     y,
   });
+}
+
+/** The tile paints its face through a `data-face` host; the ghost flies that same face. */
+function readFace(hit: HTMLElement): FaceData | undefined {
+  const raw = hit.querySelector("[data-face]")?.getAttribute("data-face");
+  if (raw == null) return undefined;
+  try {
+    return JSON.parse(raw) as FaceData;
+  } catch {
+    return undefined;
+  }
 }
 
 function readManaCost(raw: string | undefined): WireCost {

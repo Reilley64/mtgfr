@@ -110,6 +110,8 @@ A rendered card face SHALL be drawn from the M15 frame assets — art, name, typ
 
 The full card face SHALL be drawn for hand and command-zone tiles; the square permanent face SHALL be drawn for the battlefield and draws neither type line nor rules text, having no room for them.
 
+Art and flavor SHALL both come from the printing the object plays — the printing the deck chose, not the card's default printing. While that printing's flavor is unknown the face SHALL draw no flavor rather than another printing's words.
+
 #### Scenario: Rules text sets mana symbols as pips
 - **WHEN** a face's rules text contains a mana symbol such as `{T}` or `{G}`
 - **THEN** it draws as the coloured disk with its mana-font glyph, and no braces appear on the card
@@ -117,6 +119,10 @@ The full card face SHALL be drawn for hand and command-zone tiles; the square pe
 #### Scenario: Flavor sits under the divider
 - **WHEN** a card prints both rules text and flavor text
 - **THEN** the flavor sets in italics below a divider ruled between the two blocks
+
+#### Scenario: Flavor follows the printing the deck plays
+- **WHEN** a card is played from a deck that chose a printing other than the card's default
+- **THEN** the face draws that printing's flavor under its art, and draws none until that printing's flavor is known
 
 #### Scenario: A card with no flavor rules no divider
 - **WHEN** a card's printing prints no flavor text
@@ -152,7 +158,11 @@ The stack SHALL be a right-edge DOM overlay with pile / expanded strip / full-gr
 
 ### Requirement: Screen Motion
 
-Drag ghosts, `CardFlight`s, and battlefield `ExitFx` SHALL share one Mount flight-layer paint pass. Flights SHALL spawn from authorized local seeds or sync provenance, retarget to authoritative poses, hold local hand seeds until provenance, and settle without duplicate resting faces (`hideCardIds`, `handHidden`, owned ids). Battlefield→graveyard/exile SHALL use in-place ExitFx (destroy/exile), not a zone glide. Rejected intents and Cancel SHALL drop held seeds. Reduced motion SHALL snap flights and complete ExitFx immediately. Pose-only ticks SHALL repaint only the flight layer. Lift shadow on drag ghosts and flights SHALL match the shared lift-shadow tokens.
+Drag ghosts, `CardFlight`s, and battlefield `ExitFx` SHALL share one Mount flight-layer paint pass. Flights SHALL spawn from authorized local seeds or sync provenance, retarget to authoritative poses, hold local hand seeds until provenance, and settle without duplicate resting faces (`hideCardIds`, `handHidden`, owned ids). Battlefield→graveyard/exile SHALL use in-place ExitFx (destroy/exile), not a zone glide. Rejected intents and Cancel SHALL drop held seeds. Reduced motion SHALL snap flights and complete ExitFx immediately. Pose-only ticks SHALL repaint only the flight layer. Lift shadow on drag ghosts and flights SHALL match the shared lift-shadow tokens. A card in motion SHALL paint the same rendered card face its tile paints, falling back to the printed card image only until that face has been rendered.
+
+#### Scenario: A dragged card keeps its face
+- **WHEN** a hand tile painting a rendered face is dragged
+- **THEN** the ghost paints that same rendered face rather than the printed card image
 
 #### Scenario: Continuous drag-to-flight
 - **WHEN** a hand drag releases into a seeded flight

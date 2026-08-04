@@ -108,7 +108,10 @@ function extractGlyphs(css) {
 function tsMap(entries) {
   return Object.entries(entries)
     .sort(([a], [b]) => (a < b ? -1 : 1))
-    .map(([key, glyph]) => `  ${/^[a-z][a-z0-9]*$/.test(key) ? key : JSON.stringify(key)}: "\\u${glyph.codePointAt(0).toString(16)}",`)
+    .map(
+      ([key, glyph]) =>
+        `  ${/^[a-z][a-z0-9]*$/.test(key) ? key : JSON.stringify(key)}: "\\u${glyph.codePointAt(0).toString(16)}",`,
+    )
     .join("\n");
 }
 

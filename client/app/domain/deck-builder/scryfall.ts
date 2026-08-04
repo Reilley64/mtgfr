@@ -76,21 +76,22 @@ export function parseRetryAfterMs(header: string | null, nowMs: number = Date.no
   return DEFAULT_RETRY_AFTER_MS;
 }
 
-function fetchPrintSearchPage(url: string): Effect.Effect<Response, Error> {
+function fetchScryfall(url: string, init?: RequestInit): Effect.Effect<Response, Error> {
   return Effect.gen(function* () {
     let retries = 0;
     while (true) {
       const res = yield* Effect.tryPromise({
         try: () =>
           fetch(url, {
-            headers: { Accept: "application/json", "User-Agent": SCRYFALL_UA },
+            ...init,
+            headers: { Accept: "application/json", "User-Agent": SCRYFALL_UA, ...init?.headers },
           }),
         catch: (cause) => (cause instanceof Error ? cause : new Error(String(cause))),
       });
 
       if (res.status !== 429) return res;
       if (retries >= MAX_429_RETRIES) {
-        return yield* Effect.fail(new Error(`Scryfall print search failed (${res.status})`));
+        return yield* Effect.fail(new Error(`Scryfall refused (${res.status})`));
       }
 
       retries += 1;
@@ -113,7 +114,7 @@ export function printSearchUrl(oracleId: string): string {
  *  themselves so each page can be shown as it lands instead of after the last one. */
 export function searchPrintPage(url: string): Effect.Effect<PrintPage, Error> {
   return Effect.gen(function* () {
-    const res = yield* fetchPrintSearchPage(url);
+    const res = yield* fetchScryfall(url);
     if (!res.ok) {
       return yield* Effect.fail(new Error(`Scryfall print search failed (${res.status})`));
     }
@@ -142,5 +143,57 @@ export function searchPrintPage(url: string): Effect.Effect<PrintPage, Error> {
       });
     }
     return { prints, nextPage: body.has_more === true ? readString(body, "next_page") : null };
+  });
+}
+
+/** Scryfall's collection endpoint takes this many identifiers per request. */
+const COLLECTION_BATCH = 75;
+
+/**
+ * The front face's flavor. A card prints one block per face and a face renders its own; a printing
+ * that prints no flavor answers `""`, which is a real answer — the face then draws none.
+ */
+function flavorOf(card: Record<string, unknown>): string {
+  const own = readString(card, "flavor_text");
+  if (own != null) return own;
+  const faces = Array.isArray(card.card_faces) ? card.card_faces : [];
+  const front = faces[0];
+  return isRecord(front) ? (readString(front, "flavor_text") ?? "") : "";
+}
+
+/**
+ * Flavor text for specific printings, keyed by print id.
+ *
+ * Flavor is per printing, so a deck that plays a reprint prints different words under the divider
+ * than the card's `default_print` does — and the catalog only carries the latter. A printing
+ * Scryfall doesn't answer for is absent from the map, and the caller draws no flavor for it.
+ *
+ * ponytail: straight to Scryfall from the browser, the way the builder's print picker already
+ * goes. Move it behind the card CDN if the table ever fetches enough to be worth caching.
+ */
+export function fetchPrintFlavor(printIds: readonly string[]): Effect.Effect<Map<string, string>, Error> {
+  return Effect.gen(function* () {
+    const flavor = new Map<string, string>();
+    for (let start = 0; start < printIds.length; start += COLLECTION_BATCH) {
+      const batch = printIds.slice(start, start + COLLECTION_BATCH);
+      const res = yield* fetchScryfall("https://api.scryfall.com/cards/collection", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ identifiers: batch.map((id) => ({ id })) }),
+      });
+      if (!res.ok) return yield* Effect.fail(new Error(`Scryfall collection failed (${res.status})`));
+      const body: unknown = yield* Effect.tryPromise({
+        try: () => res.json(),
+        catch: (cause) => (cause instanceof Error ? cause : new Error(String(cause))),
+      });
+      if (!isRecord(body)) continue;
+      for (const value of Array.isArray(body.data) ? body.data : []) {
+        if (!isRecord(value)) continue;
+        const id = readString(value, "id");
+        if (id == null) continue;
+        flavor.set(id, flavorOf(value));
+      }
+    }
+    return flavor;
   });
 }

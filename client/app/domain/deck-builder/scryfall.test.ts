@@ -1,6 +1,6 @@
 import * as Effect from "effect/Effect";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { buildImageUrl, parseRetryAfterMs, printSearchUrl, searchPrintPage } from "./scryfall";
+import { buildImageUrl, fetchPrintFlavor, parseRetryAfterMs, printSearchUrl, searchPrintPage } from "./scryfall";
 
 afterEach(() => {
   vi.useRealTimers();
@@ -124,7 +124,7 @@ describe("searchPrintPage 429 retry", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const pending = Effect.runPromise(searchPrintPage(printSearchUrl("e4912bc3-bee9-4a2f-a13e-3a99018f8a65")));
-    const expectation = expect(pending).rejects.toThrow(/Scryfall print search failed \(429\)/);
+    const expectation = expect(pending).rejects.toThrow(/Scryfall refused \(429\)/);
     await vi.advanceTimersByTimeAsync(1_000);
     await vi.advanceTimersByTimeAsync(1_000);
     await expectation;
@@ -196,5 +196,45 @@ describe("buildImageUrl", () => {
 
   it("returns empty string for empty print id", () => {
     expect(buildImageUrl("", "art", "front", "https://cards.example.com")).toBe("");
+  });
+});
+
+describe("fetchPrintFlavor", () => {
+  it("keys each printing's own flavor by print id, front face first", async () => {
+    const fetchMock = vi.fn(
+      async (_url: string, _init?: RequestInit) =>
+        new Response(
+          JSON.stringify({
+            data: [
+              { id: "p1", flavor_text: "I think, therefore I annihilate!" },
+              { id: "p2", card_faces: [{ flavor_text: "Front words." }, { flavor_text: "Back words." }] },
+              { id: "p3" },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const flavor = await Effect.runPromise(fetchPrintFlavor(["p1", "p2", "p3"]));
+
+    expect(flavor.get("p1")).toBe("I think, therefore I annihilate!");
+    expect(flavor.get("p2")).toBe("Front words.");
+    expect(flavor.get("p3")).toBe("");
+    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+    expect(body).toEqual({ identifiers: [{ id: "p1" }, { id: "p2" }, { id: "p3" }] });
+  });
+
+  // Scryfall's collection endpoint takes 75 identifiers per request and 400s on more.
+  it("batches past 75 printings", async () => {
+    const fetchMock = vi.fn(
+      async (_url: string, _init?: RequestInit) =>
+        new Response(JSON.stringify({ data: [] }), { status: 200, headers: { "Content-Type": "application/json" } }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await Effect.runPromise(fetchPrintFlavor(Array.from({ length: 80 }, (_, i) => `p${i}`)));
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });

@@ -72,6 +72,8 @@ export const HandDragStarted = m("HandDragStarted", {
   action: ActionView,
   name: S.String,
   print: S.String,
+  /** The tile's rendered `FaceData`, so the ghost flies the same face the tile wears. */
+  face: S.optional(S.Any),
   manaCost: S.Any,
   kind: S.optional(S.String),
   zone: S.optional(HandBarZone),
@@ -231,6 +233,10 @@ export const InspectAuxHovered = m("InspectAuxHovered", {
 export const InspectCardFetched = m("InspectCardFetched", { card: CatalogCard });
 /** Catalog lookup returned for the bar's faces — type line and rules text to draw on them. */
 export const CardTextFetched = m("CardTextFetched", { cards: S.Array(CatalogCardItem) });
+/** Flavor text for the printings the viewer's deck actually plays, keyed back to the card. */
+export const PrintFlavorFetched = m("PrintFlavorFetched", {
+  flavors: S.Array(S.Struct({ cardId: S.String, print: S.String, flavor: S.String })),
+});
 /** Catalog name suggestions for `choose_card_name` typeahead. */
 export const CardNameSuggestionsFetched = m("CardNameSuggestionsFetched", {
   query: S.String,
@@ -363,6 +369,7 @@ export const Message = S.Union([
   InspectAuxHovered,
   InspectCardFetched,
   CardTextFetched,
+  PrintFlavorFetched,
   CardNameSuggestionsFetched,
   CompletedCancelSearchCardNames,
   InspectFlipFace,

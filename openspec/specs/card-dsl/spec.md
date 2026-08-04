@@ -95,7 +95,7 @@ When a card diverges from oracle text, the definition SHALL carry a machine-read
 - **THEN** the card is noted in the deck's fidelity increments with an approximates note instead of being silently mis-modeled
 
 ### Requirement: Catalog metadata is non-rules
-Oracle text, flavor text, oracle tags, and set codes SHALL be catalog metadata for hover, card rendering, thematic search, and printing coverage. Flavor text SHALL be the flavor of the card's `default_print`, since flavor is per-printing, and SHALL be absent for a printing that prints none. The rules engine MUST NOT parse oracle or flavor text or read oracle tags or set codes for gameplay. Rules behavior SHALL come only from abilities, keywords, costs, kinds, and related rules fields.
+Oracle text, flavor text, oracle tags, and set codes SHALL be catalog metadata for hover, card rendering, thematic search, and printing coverage. Flavor is per-printing: catalog flavor text SHALL be the flavor of the card's `default_print` and SHALL be absent for a printing that prints none, and a client showing a card in another printing SHALL correct the flavor to that printing's own rather than print the default printing's words. The rules engine MUST NOT parse oracle or flavor text or read oracle tags or set codes for gameplay. Rules behavior SHALL come only from abilities, keywords, costs, kinds, and related rules fields.
 
 #### Scenario: Search by oracle tag
 - **WHEN** a deck builder searches for a thematic tag such as ramp or typal-spirit

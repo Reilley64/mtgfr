@@ -408,7 +408,8 @@ export function handView(inputs: HandViewInputs, h: HtmlBuilder<Message>): Html 
   const faceOf = (object: ObjectView): FaceData => {
     const text = object.card_id != null ? cardText.get(object.card_id) : null;
     const face = faceDataFrom(object);
-    return text == null ? face : { ...face, ...text };
+    if (text == null) return face;
+    return { ...face, typeLine: text.typeLine, oracle: text.oracle, flavor: text.flavor };
   };
 
   const slotInert = (id: number) => id === hiddenId || flyingIds.has(id);

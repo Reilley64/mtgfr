@@ -7,9 +7,10 @@ export type FaceVariant = "permanent" | "full" | "stack";
 /**
  * Everything the renderer draws about one card, read off the board's own `ObjectView`.
  *
- * Deliberately not per-printing. Every print draws in the modern frame, the way Arena does — the
- * printing shows through the **art**, which the CDN already serves by print id. No mana cost: the
- * pip tray under the card owns cost, so the face never draws one.
+ * The frame is deliberately not per-printing. Every print draws in the modern frame, the way Arena
+ * does — the printing shows through the **art**, which the CDN already serves by print id, and
+ * through the **flavor**, which the printing writes. No mana cost: the pip tray under the card owns
+ * cost, so the face never draws one.
  *
  * `typeLine`, `oracle` and `flavor` come from `CatalogCard` over the catalog RPC, not from a new wire field —
  * `faceDataFrom` leaves them `""` and the caller folds them in (see `card-text.ts`). Only the
