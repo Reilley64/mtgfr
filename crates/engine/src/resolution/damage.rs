@@ -376,6 +376,15 @@ impl Game {
     ) -> (Vec<Event>, i32) {
         let (mut events, amount) =
             self.spend_prevention_shields(Target::Player(player), source, amount, allow_redirect);
+        // Forethought Amulet's "it deals 2 damage to you instead" (CR 615.9) — a replacement that
+        // rewrites the amount rather than subtracting from it, so it is read *after* the shields
+        // have taken their bite. CR 615.9 lets the affected player order the two; with one
+        // rewrite in the pool and prevention only ever shrinking the hit, the order is unobservable
+        // except when a shield drops a hit below the rewrite's threshold, which is the reading
+        // that leaves the player better off.
+        let amount = self
+            .replacement_registry()
+            .replaced_damage_to_player(self, player, source, amount);
         // CR 615: damage a shield ate entirely was never dealt — no life loss, and the caller's
         // `amount > 0` guard drops the `DamageDealtToPlayer` marker and lifelink with it.
         if !events.is_empty() && amount <= 0 {

@@ -832,6 +832,12 @@ pub enum SplittingContinuation {
     /// Archangel of Strife's vote lands on [`Player::war_choices`], and the card's upkeep trigger
     /// reads it back from there.
     RememberAsChosenOpponent,
+    /// Rohgahh of Kher Keep's "an opponent gains control of them": the chosen opponent takes every
+    /// permanent in `objects` (snapshotted as the effect resolved). Like [`Self::Clash`] it needs
+    /// an `events` sink for the control changes, so it resumes through
+    /// [`Game::gain_control_of_all`] rather than the eventless
+    /// [`Game::resume_splitting_opponent`].
+    GainControlOf { objects: Vec<ObjectId> },
 }
 
 /// One thing proliferate may choose (CR 701.27: "Choose any number of permanents and/or
@@ -909,6 +915,21 @@ pub enum ChosenColorUse {
     SetIndefinitely,
 }
 
+/// What answering a [`PendingChoice::ChooseCardName`] does with the named card name (CR 201.2).
+/// Engine-internal — the wire prompt is "name a card" in every case, so nothing here is projected,
+/// the same shape [`ChosenColorUse`] takes for the color picker.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CardNameUse {
+    /// Conundrum Sphinx (and Petra Sphinx, with `miss_to_graveyard`): the answering player reveals
+    /// their own top library card; a name match goes to their hand, a miss to the bottom of their
+    /// library — or to their graveyard when `miss_to_graveyard` (Petra Sphinx's one difference).
+    RevealTopOfOwnLibrary { miss_to_graveyard: bool },
+    /// Nebuchadnezzar: `subject` reveals `count` cards at random from their hand (the injected
+    /// per-op RNG) and then discards every revealed card with the named name. The answering seat
+    /// is the ability's controller, not `subject`.
+    SubjectRevealsHandAtRandomThenDiscards { subject: PlayerId, count: u32 },
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PendingChoice {
     /// `player` must order their simultaneously-triggered abilities (put on the stack
@@ -935,6 +956,11 @@ pub enum PendingChoice {
     /// choices. Answered by [`Intent::ChooseTargets`].
     ChooseTarget {
         player: PlayerId,
+        /// The ability's own controller, which is *not* always the chooser: The Abyss's "destroy
+        /// target nonartifact creature that player controls **of their choice**" routes the pick
+        /// to the upkeep player (`player`) while the trigger stays on the stack under the
+        /// enchantment's controller (this field). Equal to `player` for every other raise site.
+        controller: PlayerId,
         source: ObjectId,
         effect: Option<Effect>,
         legal: Vec<Target>,
@@ -1475,7 +1501,13 @@ pub enum PendingChoice {
         player: PlayerId,
         source: ObjectId,
         options: Vec<ObjectId>,
+        /// How many of `options` the offer costs — Mold Demon's "two Swamps". `1` for the plain
+        /// "you may sacrifice a permanent" shape; an answer is either empty (declining) or exactly
+        /// this many.
+        count: u8,
         then: &'static [Effect],
+        /// The price of declining — Mold Demon's "sacrifice it". Empty when declining is free.
+        otherwise: &'static [Effect],
     },
     /// `player` may return one of `options` (a graveyard card they own) to their hand, or decline
     /// ([`Effect::Choice(ChoiceEffect::MayReturnFromGraveyard)`] — Deadly Brew's "you may return another permanent card
@@ -1836,6 +1868,18 @@ pub enum PendingChoice {
         count: u32,
         options: Vec<ObjectId>,
     },
+    /// `player` may sacrifice any subset of `options` — including none — as `source` enters
+    /// ([`Effect::Choice(ChoiceEffect::SacrificeAnyNumber)`](cards::ChoiceEffect::SacrificeAnyNumber),
+    /// Wood Elemental's "as this creature enters, sacrifice any number of untapped Forests"). How
+    /// many were sacrificed is then locked onto `source` as the X it entered with, which its
+    /// characteristic-defining power and toughness read for the rest of its time on the
+    /// battlefield. Answered by [`Intent::ChooseSacrifices`], the same "name the sacrificed set"
+    /// wire shape [`Self::Devour`] uses; only raised when something matches.
+    SacrificeAnyNumber {
+        player: PlayerId,
+        source: ObjectId,
+        options: Vec<ObjectId>,
+    },
     /// `player` (a Devour N creature's controller) may sacrifice any subset of `options` (the
     /// other creatures they control) as `source` enters (CR 702.82 — "you may sacrifice any
     /// number of creatures"); `source` then gains `multiplier × count` +1/+1 counters, routed
@@ -1904,6 +1948,11 @@ pub enum PendingChoice {
         player: PlayerId,
         source: ObjectId,
         remaining: Vec<PlayerId>,
+        /// What the answered name is *for* — the three cards that print "choose a card name" ask
+        /// the same question and do different things with the answer. Engine-internal (the wire
+        /// prompt is "name a card" either way), the same shape
+        /// [`Self::ChooseCreatureType`]'s `then` uses.
+        use_: CardNameUse,
     },
     /// `player` (an entering permanent's controller) may have `source` enter as a copy of one of
     /// `candidates` (every other object of the marker's [`EnterAsCopy::of`] type on the
@@ -2072,6 +2121,7 @@ pub const CREATURE_TYPES: &[&str] = &[
     "Mutant",
     "Myr",
     "Nightmare",
+    "Nightstalker",
     "Nomad",
     "Nymph",
     "Ogre",
@@ -2083,6 +2133,7 @@ pub const CREATURE_TYPES: &[&str] = &[
     "Pegasus",
     "Pest",
     "Phelddagrif",
+    "Phoenix",
     "Phyrexian",
     "Pirate",
     "Plant",
@@ -2117,9 +2168,11 @@ pub const CREATURE_TYPES: &[&str] = &[
     "Wall",
     "Warlock",
     "Warrior",
+    "Werewolf",
     "Wizard",
     "Wolf",
     "Wolverine",
+    "Wombat",
     "Wraith",
     "Wurm",
     "Yeti",
@@ -2195,6 +2248,7 @@ impl PendingChoice {
             | PendingChoice::ChooseExiledToCastFree { player, .. }
             | PendingChoice::RevealedCardToBattlefieldOrHand { player, .. }
             | PendingChoice::ChooseOwnSacrifices { player, .. }
+            | PendingChoice::SacrificeAnyNumber { player, .. }
             | PendingChoice::Devour { player, .. }
             | PendingChoice::ChooseManaColor { player, .. }
             | PendingChoice::ChooseCreatureType { player, .. }
@@ -2273,6 +2327,18 @@ pub(crate) struct CombatState {
     /// removed from combat is also removed from the band it was in" is read as a filter at the use
     /// site rather than pruned here, mirroring `blockers_of`'s live-permanent filter.
     pub(crate) bands: Vec<Vec<ObjectId>>,
+    /// Johan's "gain \"Johan can't attack\" until end of combat": creatures barred from *this*
+    /// combat, read by [`Game::can_attack`](crate::Game) beside the turn-scoped bans on
+    /// `CombatExtras`. Combat-scoped, so [`Event::CombatCleared`] is its only expiry.
+    /// ponytail: transient combat bookkeeping written straight by the resolution, like
+    /// `attackers_declared` and `bands` above.
+    pub(crate) cant_attack_this_combat: Vec<ObjectId>,
+    /// Johan's "attacking doesn't cause creatures you control to tap this combat if Johan is
+    /// untapped", each entry `(the controller whose attackers are spared, the source that must
+    /// still be untapped for it to hold)`. Read at the attack declaration next to
+    /// [`Keyword::Vigilance`](cards::Keyword) — the source's tapped state is checked *then*, not
+    /// when the ability resolved.
+    pub(crate) attacks_dont_tap: Vec<(PlayerId, ObjectId)>,
 }
 
 /// One group of abilities that triggered simultaneously from a single source.
@@ -2651,13 +2717,16 @@ pub enum Event {
         object: ObjectId,
         host: Option<ObjectId>,
     },
-    /// A permanent received an until-end-of-turn power/toughness boost and/or keyword grant.
+    /// A permanent received a duration-scoped power/toughness boost and/or keyword grant.
+    /// `ends_at_end_of_combat` picks which sweep takes it off: the end of combat step (CR 511.3 —
+    /// Glyph of Destruction's "+10/+0 until end of combat") or, the usual case, cleanup.
     TempBoost {
         object: ObjectId,
         power: i32,
         toughness: i32,
         keywords: &'static [Keyword],
         source_name: &'static str,
+        ends_at_end_of_combat: bool,
     },
     /// A permanent gained `keywords` with no printed duration (Cocoon's "that creature gains
     /// flying") — the durationless twin of [`TempBoost`](Event::TempBoost), so the cleanup sweep
@@ -2666,8 +2735,25 @@ pub enum Event {
         object: ObjectId,
         keywords: &'static [Keyword],
     },
-    /// A permanent's until-end-of-turn boosts wore off (cleanup).
-    TempBoostsEnded { object: ObjectId },
+    /// A permanent gained `keywords` "until your next upkeep" (Gabriel Angelfire) — swept as
+    /// `player`'s next upkeep *begins*, before that upkeep's own triggers are placed, so the grant
+    /// it is about to be replaced by never overlaps with it. The start-of-upkeep sibling of
+    /// [`BasePtSetUntilEndOfNextUpkeep`](Event::BasePtSetUntilEndOfNextUpkeep), which Halfdane's
+    /// longer "until the *end* of your next upkeep" needs.
+    KeywordsGrantedUntilNextUpkeep {
+        object: ObjectId,
+        keywords: &'static [Keyword],
+        player: PlayerId,
+    },
+    /// A permanent's duration-scoped modifiers wore off. `end_of_combat_only` is the end of combat
+    /// step's narrower sweep (CR 511.3): it takes off only what was scoped to *this combat* and
+    /// leaves the until-end-of-turn modifiers on the same permanent alone, so a Giant Growth cast
+    /// on a creature that also carries a Glyph of Destruction survives to cleanup. `false` is the
+    /// cleanup sweep, which ends every duration-scoped modifier at once (CR 514.2).
+    TempBoostsEnded {
+        object: ObjectId,
+        end_of_combat_only: bool,
+    },
     /// A copy effect made `object` a copy "except it has `keywords`" (CR 707.2 — Twinflame's
     /// "except it has haste," Muddle's "except it has myriad," Cursed Mirror's haste). Unlike a
     /// [`TempBoost`](Event::TempBoost) keyword grant, these are part of the object's **copiable**
@@ -2722,6 +2808,11 @@ pub enum Event {
     /// [`Event::TempBoostsEnded`], which would wrongly end every *other* duration-scoped effect on
     /// the same permanent.
     UpkeepDurationsEnded { object: ObjectId },
+    /// The start-of-upkeep sweep for `object`'s "until your next upkeep" modifiers (Gabriel
+    /// Angelfire). No arming: the sweep runs as the upkeep step begins, so a modifier registered by
+    /// a trigger *during* an upkeep has already missed that step's sweep and the next one takes it
+    /// off. See [`Event::KeywordsGrantedUntilNextUpkeep`].
+    UpkeepStartDurationsEnded { object: ObjectId },
     /// A permanent gained card types + creature subtypes + colors until end of turn (CR 613.4 —
     /// Restless Spire's self-animation adds Creature + Elemental + blue/red to a noncreature land).
     /// Registered as one `ModifierKind::Became` — the layer-4 type add and the layer-5 color add
@@ -2732,6 +2823,10 @@ pub enum Event {
         types: TypeSet,
         subtypes: &'static [&'static str],
         colors: &'static [Color],
+        /// Jade Statue's "until end of combat": the type add is swept at the End of Combat step
+        /// with the rest of the animation instead of at cleanup. Bookkeeping for the sweep only,
+        /// like `BasePtSetUntilEndOfTurn`'s flag of the same name.
+        ends_at_end_of_combat: bool,
     },
     /// A just-reanimated permanent took on an *indefinite* set of characteristics (CR 611.2c —
     /// Excava, the Risen Past's "It's a 1/1 Spirit creature with flying in addition to its other
@@ -2925,6 +3020,17 @@ pub enum Event {
         fire_at: Step,
         effect: Effect,
     },
+    /// The controller-scoped upkeep sibling of [`DelayedTriggerScheduled`](Self::DelayedTriggerScheduled):
+    /// "at the beginning of **your** next upkeep" (Hazezon Tamar), which fires on `controller`'s own
+    /// upkeep rather than on the next upkeep to begin (Arcane Denial's "the next turn's upkeep").
+    /// Kept in its own list ([`DelayedTriggers::scheduled_your_upkeep`](crate::state::DelayedTriggers))
+    /// so the unscoped timing stays exactly as it was; both drain on the same
+    /// [`DelayedTriggersFired`](Self::DelayedTriggersFired).
+    DelayedTriggerScheduledForYourNextUpkeep {
+        controller: PlayerId,
+        source: ObjectId,
+        effect: Effect,
+    },
     /// Every delayed trigger scheduled for `fire_at` fired at once (CR 603.7, drained in full the
     /// first time a step matching `fire_at` begins after scheduling). `active_player` is the player
     /// whose step it is; only the controller-scoped `Main1` timing (Scattering Stroke's "your next
@@ -2969,6 +3075,26 @@ pub enum Event {
     /// turn" expiry is a silent clear at the next turn's Untap step instead ([`Game::apply`]'s
     /// `Step::Untap` arm, mirroring how `spells_cast_this_turn` resets) — not an event of its own.
     NextCastTriggerConsumed {
+        controller: PlayerId,
+        source: ObjectId,
+    },
+    /// A CR 603.7 delayed watch was armed by
+    /// [`Effect::Misc(MiscEffect::ScheduleWhenTargetDiesThisTurn)`] (Reincarnation): `then` runs
+    /// the first time `watched` dies, any time later this turn. Object-scoped like
+    /// [`CombatDamageWatchArmed`](Self::CombatDamageWatchArmed), but carrying its own payoff the
+    /// way [`NextCastTriggerArmed`](Self::NextCastTriggerArmed) does. See
+    /// [`Game::fire_dies_this_turn_triggers`].
+    DiesThisTurnWatchArmed {
+        controller: PlayerId,
+        source: ObjectId,
+        watched: ObjectId,
+        then: &'static [Effect],
+    },
+    /// A [`DiesThisTurnWatchArmed`](Self::DiesThisTurnWatchArmed) watch fired (`watched` died) and
+    /// is removed — CR 603.7's "when that creature dies" is at most once. An unconsumed watch's
+    /// "this turn" expiry is a silent clear at the next turn's Untap step instead ([`Game::apply`]'s
+    /// `Step::Untap` arm), mirroring [`NextCastTriggerConsumed`](Self::NextCastTriggerConsumed).
+    DiesThisTurnWatchConsumed {
         controller: PlayerId,
         source: ObjectId,
     },
@@ -3085,6 +3211,11 @@ pub enum Event {
     /// 605 — Yavimaya Bloomsage's Channel). Sets
     /// [`Player::channel_colorless_mana_this_turn`]; cleared at the next Untap step.
     ChannelColorlessManaGranted { player: PlayerId },
+    /// `player` may spend mana as though it were mana of any type to pay one spell's mana cost
+    /// this turn (CR 609.4b — North Star). Sets
+    /// [`Player::spend_mana_as_any_type_this_turn`]; cleared by that player's next
+    /// [`Self::SpellCast`], or at the next Untap step if they never cast one.
+    SpendManaAsAnyTypeGranted { player: PlayerId },
     /// Combat damage dealt to a player by a commander, tracked per source.
     CommanderDamageDealt {
         source: ObjectId,
@@ -3211,6 +3342,15 @@ pub enum Event {
         def: CardId,
         creator: ObjectId,
     },
+    /// Two permanents were paired as each other's twin (Stangg and the Stangg Twin token he
+    /// creates): both records point at the other, so either half's "when the other leaves the
+    /// battlefield" ability can find its partner from the surviving side. See
+    /// [`Permanent::linked_twin`](crate::types::object::Permanent).
+    TwinLinked { a: ObjectId, b: ObjectId },
+    /// Lock a number onto a permanent as the X it entered with (Wood Elemental's count of Forests
+    /// sacrificed as it entered) — the same slot a cast `{X}` fills, written after the fact by an
+    /// as-enters replacement effect instead of by the resolving spell.
+    EnteredWithXSet { object: ObjectId, x: u32 },
     /// A token left the battlefield and ceased to exist (CR 111.7) — a state-based action.
     /// Carries the token's `controller`/`def` (as [`Self::TokenCreated`] does) so its
     /// "when this dies" trigger can still be built after the arena slot is gone.

@@ -658,11 +658,17 @@ impl Effect {
             | Effect::Zone(ZoneEffect::ReanimateRandomFromTargetOpponentGraveyard { target })
             | Effect::Zone(ZoneEffect::TuckFromGraveyard { target, .. })
             | Effect::Choice(ChoiceEffect::TargetPlayerExilesFromGraveyard { target })
+            | Effect::Choice(ChoiceEffect::TargetPlayerNamesCardThenRevealsTop { target })
+            | Effect::Choice(ChoiceEffect::NameCardThenTargetRevealsAtRandomAndDiscards {
+                target,
+                ..
+            })
             | Effect::Choice(ChoiceEffect::ControlPlayerToPlayCardFromHand { target })
             | Effect::Choice(ChoiceEffect::ChangeText { target, .. })
             | Effect::Control(ControlEffect::GoadTarget { target })
             | Effect::Token(TokenEffect::CreateCopy { target, .. })
             | Effect::Control(ControlEffect::TapTarget { target, .. })
+            | Effect::Control(ControlEffect::TapBlockersOfTarget { target })
             | Effect::Control(ControlEffect::UntapTarget { target, .. })
             | Effect::Control(ControlEffect::RemoveFromCombat { target, .. })
             | Effect::Control(ControlEffect::GainControlUntilEndOfTurn { target })
@@ -684,12 +690,16 @@ impl Effect {
             // Conservator's "dealt to you" leaves this `TargetSpec::None`, which is exactly what
             // an untargeted effect reports anyway.
             | Effect::Misc(MiscEffect::PreventNextDamage { target, .. })
-            | Effect::Misc(MiscEffect::SkipNextUntaps { target, .. }) => target,
+            | Effect::Misc(MiscEffect::SkipNextUntaps { target, .. })
+            | Effect::Misc(MiscEffect::ScheduleWhenTargetDiesThisTurn { target, .. }) => target,
             Effect::Zone(ZoneEffect::ReturnToHand { target, .. }) => target,
             Effect::Zone(ZoneEffect::ReturnTargetCardsFromGraveyardToHand { target, .. }) => target,
             // The first target clause is the ability's own target; the second is chosen separately
             // (see `Game::ability_second_target_clause`) and read off `targets_second`.
             Effect::Control(ControlEffect::ExchangeControl { first, .. }) => first,
+            // Enchantment Alteration: clause 0 is the Aura; clause 1 (the new host) rides
+            // `Effect::second_target` and is read off `targets_second` at resolution.
+            Effect::Control(ControlEffect::MoveAura { target, .. }) => target,
             // A sequence shares one target: the first step that needs one supplies it. A
             // second-clause step is skipped — its spec belongs to the *other* clause
             // (`Game::second_clause_in` reads it off the step directly), not to the shared one.
@@ -865,6 +875,9 @@ Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
             | Effect::Dig(DigEffect::CashOutExiledWithThis)
             | Effect::Dig(DigEffect::CastExiledWithThisFree)
             | Effect::Static(StaticEffect::BasePowerToughnessFromAmount { .. })
+            // Forethought Amulet's rewrite is worded about "you" — its own controller — and takes
+            // no target.
+            | Effect::Static(StaticEffect::ReplaceDamageToYou { .. })
             | Effect::Static(StaticEffect::CantAttackUnlessDefenderControls { .. })
             | Effect::Static(StaticEffect::GrantToAttached { .. })
             | Effect::Static(StaticEffect::ProtectionFromChosenColor)
@@ -952,12 +965,16 @@ Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
             | Effect::Choice(ChoiceEffect::PutFromHandOnTop { .. })
             | Effect::Choice(ChoiceEffect::CastCreatureFaceDown)
             | Effect::Control(ControlEffect::UntapAll { .. })
+            | Effect::Control(ControlEffect::OpponentGainsControlAll { .. })
             | Effect::Control(ControlEffect::TapAll { .. })
             | Effect::Control(ControlEffect::GainControlAllUntilEndOfTurn { .. })
             | Effect::Choice(ChoiceEffect::SacrificeOwn { .. })
+            | Effect::Choice(ChoiceEffect::SacrificeAnyNumber { .. })
             | Effect::Choice(ChoiceEffect::DefendingPlayerSacrifices { .. })
             | Effect::Sacrifice(SacrificeEffect::Object { .. })
             | Effect::Sacrifice(SacrificeEffect::Source)
+            | Effect::Sacrifice(SacrificeEffect::LinkedTwin)
+            | Effect::Exile(ExileEffect::LinkedTwin)
             | Effect::Sacrifice(SacrificeEffect::EnchantedCreature { .. })
             | Effect::Destroy(DestroyEffect::ThatCreature { .. })
             | Effect::Exile(ExileEffect::Object { .. })
@@ -970,7 +987,7 @@ Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
             | Effect::Static(StaticEffect::AllLandsOfTypeBecome { .. })
             | Effect::Static(StaticEffect::Anthem { .. })
             | Effect::Static(StaticEffect::GrantActivatedAbility { .. })
-            | Effect::Static(StaticEffect::KeywordAnthem { .. })
+            | Effect::Static(StaticEffect::FilteredAnthem { .. })
             | Effect::Static(StaticEffect::TappedForManaBonus { .. })
             | Effect::Static(StaticEffect::TriggerDoubling { .. })
             | Effect::Static(StaticEffect::GrantManaAbility { .. })
@@ -982,6 +999,7 @@ Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
             | Effect::Misc(MiscEffect::ScheduleNextCastTrigger { .. })
             | Effect::Damage(DamageEffect::ToEnteringPermanent { .. })
             | Effect::Zone(ZoneEffect::ReanimateDyingEnchantedCreature { .. })
+            | Effect::Zone(ZoneEffect::ReturnDyingEnchantedCreatureToHand { .. })
             | Effect::Zone(ZoneEffect::ExileDeadCreatureCreateCopyWithSubtype { .. })
             | Effect::Zone(ZoneEffect::ReturnThisToHand)
             // The phase-out set is chosen at resolution (a resolution-time subset choice), not a
@@ -989,6 +1007,7 @@ Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
             | Effect::Choice(ChoiceEffect::PhaseOut)
             | Effect::Zone(ZoneEffect::ReturnThisFromGraveyardToBattlefield { .. })
             | Effect::Static(StaticEffect::AttackTax { .. })
+            | Effect::Static(StaticEffect::CounterMaximum { .. })
             | Effect::Static(StaticEffect::CounterScaledAttackTax)
             | Effect::Static(StaticEffect::CantBeAttackedBy { .. })
             | Effect::Static(StaticEffect::MaySkipDrawForCantBeAttackedBy { .. })
@@ -1005,13 +1024,20 @@ Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
             // Wall of Dust's ban rides the block pair the trigger names, not a chosen target.
             | Effect::Misc(MiscEffect::ThatCreatureCantAttackNextOwnTurn { .. })
             // Floral Spuzzem's damage rider always names its own source.
+            | Effect::Misc(MiscEffect::SourceCantAttackThisCombat)
+            | Effect::Misc(MiscEffect::YourAttacksDontTapWhileSourceUntappedThisCombat)
             | Effect::Misc(MiscEffect::SourceAssignsNoCombatDamageThisTurn)
+            // Aisling Leprechaun's colour wash rides the block pair the trigger names.
+            | Effect::Pump(PumpEffect::ThatCreatureBecomesColor { .. })
+            // Feint's second sentence rides the attacker its `Sequence`'s first step chose.
+            | Effect::Misc(MiscEffect::ThatCreatureAndItsBlockersAssignNoCombatDamageThisTurn)
             | Effect::Static(StaticEffect::DoesntUntap { .. })
             | Effect::Static(StaticEffect::PlayersSkipUntapSteps)
             | Effect::Static(StaticEffect::PlayersPlayWithHandsRevealed)
             | Effect::Static(StaticEffect::PlayersPlayWithLibraryTopsRevealed)
             | Effect::Static(StaticEffect::UntapAtMostOne { .. })
             | Effect::Static(StaticEffect::MaySkipTurnWhileTapped)
+            | Effect::Static(StaticEffect::RegeneratesInsteadOfBeingDestroyed)
             | Effect::Static(StaticEffect::CantCastDuringCombat)
             // "Each opponent who cast a spell this turn can't attack with creatures" /
             // "...who attacked with a creature this turn can't cast spells" (Angelic Arbiter): a
@@ -1077,6 +1103,7 @@ Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
             // Grants the ability's controller a permission — no chosen target.
             | Effect::Misc(MiscEffect::GrantFlashThisTurn)
             | Effect::Misc(MiscEffect::GrantChannelColorlessManaThisTurn)
+            | Effect::Misc(MiscEffect::GrantSpendManaAsAnyTypeForOneSpellThisTurn)
             // The searched land is read back from the resolution's own events, not a target.
             | Effect::Zone(ZoneEffect::UntapSearchedLand)
             // The attach address (a minted token, the triggering entering permanent, or a
@@ -1106,6 +1133,7 @@ Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
             | Effect::Zone(ZoneEffect::ReturnThisAuraFromGraveyardAttachedToChosenHost)
             | Effect::Zone(ZoneEffect::ScheduleReturnThisAuraFromGraveyardAttachedToChosenHost)
             | Effect::Static(StaticEffect::DiscardToLibraryTopInstead)
+            | Effect::Static(StaticEffect::ReturnToHandInsteadOfDying)
             | Effect::Static(StaticEffect::NoMaximumHandSize)
             | Effect::Static(StaticEffect::YouDontLoseAtZeroLife)
             | Effect::Static(StaticEffect::LifeGainBecomesDraw)
@@ -1119,9 +1147,11 @@ Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
             // negator (Crevasse) is read there too — it waives a restriction rather than adding one.
             | Effect::Static(StaticEffect::CanBlockAdditional { .. })
             | Effect::Static(StaticEffect::CantBeBlockedBy { .. })
+            | Effect::Static(StaticEffect::MustBeBlockedBy { .. })
             // The shielded permanent is the static's own source or the host it's attached to,
             // never a chosen target — read off the battlefield in `Game::legal_targets_for`.
             | Effect::Static(StaticEffect::CantBeTargetedBy { .. })
+            | Effect::Static(StaticEffect::CantBeTargetedBySubtypeOnlyEffects { .. })
             | Effect::Static(StaticEffect::CantBlockAttackers { .. })
             | Effect::Static(StaticEffect::LandwalkNegated { .. })
             // Backup's grant rides the enclosing `Sequence`'s shared target (the counter's
@@ -1140,6 +1170,8 @@ Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
             | Effect::Pump(PumpEffect::AnimateSelfUntilEndOfTurn { .. })
             // A self-base-P/T set always affects the ability's own source (Trench Gorger), no target.
             | Effect::Pump(PumpEffect::SetOwnBasePtFromAmount { .. })
+            // Gabriel Angelfire's keyword grant lands on his own source — no chosen target.
+            | Effect::Pump(PumpEffect::GrantSelfKeywordsUntilNextUpkeep { .. })
             // Brine Hag reads its own damage tally for the creatures to set — no chosen target.
             | Effect::Pump(PumpEffect::SetBasePtCreaturesThatDamagedSourceThisTurn { .. })
             | Effect::Token(TokenEffect::CopyEachEnteredThisTurnTokenTappedAttacking { .. })
@@ -1207,7 +1239,8 @@ Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
             | Effect::Exile(ExileEffect::Target { count, .. })
             | Effect::Destroy(DestroyEffect::Target { count, .. })
             | Effect::Dig(DigEffect::ExileTargetGraveyardSpellCastFree { count, .. })
-            | Effect::Pump(PumpEffect::TargetBecomesColor { count, .. }) => count,
+            | Effect::Pump(PumpEffect::TargetBecomesColor { count, .. })
+            | Effect::Pump(PumpEffect::PumpUntilEndOfTurn { count, .. }) => count,
             // "return up to one target Aura or Equipment card" (CR 601.2c — a declinable target).
             Effect::Zone(ZoneEffect::ReturnFromGraveyardAttachedToToken { .. }) => TargetCount {
                 min: 0,
@@ -1238,6 +1271,23 @@ Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
     /// everything else, including Primal Might's shape, whose enemy is an optional
     /// resolution-time choice instead.
     pub fn second_target(&self) -> Option<TargetSpec> {
+        // Enchantment Alteration's new host — an authored spec, unlike the fight's implied one.
+        if let Effect::Control(ControlEffect::MoveAura { second, .. }) = self {
+            return Some(*second);
+        }
+        // Glyph of Delusion's "target creature that **target Wall** blocked this turn" — the Wall
+        // is a clause of its own (CR 601.2c), implied by the restriction axis rather than authored:
+        // a creature is only a legal first target *because* some Wall blocked it, and the second
+        // clause is which one. `Game::narrow_blocked_by_target_wall_clause` then cuts the Walls
+        // down to the ones that blocked whatever clause 0 named.
+        if let TargetSpec::Permanent(filter) = self.clone().target()
+            && filter.blocked_by_a_wall_this_turn
+        {
+            return Some(TargetSpec::Permanent(PermanentFilter {
+                subtypes: &["Wall"],
+                ..PermanentFilter::of(TypeSet::CREATURE)
+            }));
+        }
         let Effect::Misc(MiscEffect::Fight {
             ally_is_shared_target: false,
             ..
@@ -1457,6 +1507,12 @@ pub enum CounterKind {
     /// pairs +1/+1 only with -1/-1, so a -0/-2 counter must survive a +1/+1 counter on the same
     /// permanent, and its own removal costs must not be payable with -1/-1 counters.
     MinusZeroMinusTwo,
+    /// A -0/-1 counter (CR 121.1/122.1 — Lesser Werewolf): a real P/T counter, toughness only,
+    /// read out of this map by [`Game::pt_layers`] in layer 7d exactly like its -0/-2 sibling
+    /// above. Its own kind for the same reason that one is: CR 121.3 annihilates +1/+1 against
+    /// -1/-1 and nothing else, so a -0/-1 counter has to survive a +1/+1 counter on the same
+    /// permanent.
+    MinusZeroMinusOne,
     /// An intervention counter (CR 122.1 — Divine Intervention): a countdown of its controller's
     /// upkeeps, one removed each of them, and when the last one comes off the game is a draw
     /// (CR 104.4). Inert bookkeeping like [`Corpse`](Self::Corpse) — the counter changes nothing
@@ -1491,6 +1547,17 @@ pub enum CounterKind {
     /// grant, [`Game::granted_activated_abilities`](crate::Game) hands that ability to anything
     /// holding one of these.
     Matrix,
+    /// A hatchling counter (CR 122.1 — Triassic Egg): banked activations of the Egg's own
+    /// `{3}, {T}` ability, read back by its sacrifice ability's "Activate only if there are two or
+    /// more hatchling counters on this artifact" gate. Inert bookkeeping like
+    /// [`Corpse`](Self::Corpse) — the counter changes nothing about the artifact by itself; it is
+    /// only ever a threshold the Egg's other ability compares against.
+    Hatchling,
+    /// A dream counter (CR 122.1 — Rasputin Dreamweaver): a spendable resource, one removed to
+    /// pay for a colorless mana or for a point of damage prevention, and one put back at each of
+    /// its controller's upkeeps. Inert bookkeeping like [`Corpse`](Self::Corpse) — the counter
+    /// changes nothing about the creature by itself; the card's own abilities are what read it.
+    Dream,
 }
 
 impl CounterKind {
@@ -1502,7 +1569,7 @@ impl CounterKind {
     /// `&'static [(CounterKind, u8)]` slice if the kind set ever needs to be open-ended. A counter
     /// kind that sits on a *player* (poison, CR 122.1) doesn't belong here at all — it has its own
     /// parallel [`PlayerCounterKind`] and its own store on [`Player::kind_counters`].
-    pub const COUNT: usize = 21;
+    pub const COUNT: usize = 24;
 
     /// Every kind, for enumerating "each kind present" (proliferate, move/remove-all-counters).
     pub const ALL: [CounterKind; Self::COUNT] = [
@@ -1522,11 +1589,14 @@ impl CounterKind {
         CounterKind::PlusOnePlusZero,
         CounterKind::Carrion,
         CounterKind::MinusZeroMinusTwo,
+        CounterKind::MinusZeroMinusOne,
         CounterKind::Intervention,
         CounterKind::Glyph,
         CounterKind::Sleep,
         CounterKind::Pupa,
         CounterKind::Matrix,
+        CounterKind::Hatchling,
+        CounterKind::Dream,
     ];
 }
 
@@ -1808,6 +1878,13 @@ pub struct ActivationCost {
     /// controller half is what makes it "your" upkeep, so this is not just `only_before_attackers`
     /// with a different step.
     pub only_during_your_upkeep: bool,
+    /// "Activate only during the declare blockers step" (CR 602.5b — Lesser Werewolf): a step
+    /// window with no controller half, unlike
+    /// [`only_during_your_upkeep`](Self::only_during_your_upkeep) — the declare-blockers step
+    /// happens once a turn and both seats are in the combat it belongs to, so "your" would be the
+    /// wrong question. The step is what makes the ability's "creature blocking or blocked by this
+    /// creature" target exist at all.
+    pub only_during_declare_blockers: bool,
     /// "Activate only before the combat damage step" (CR 602.5b — Angus Mackenzie): the
     /// activation-side twin of `CardDef::cast_only_before_combat_damage` (Berserk) and gated
     /// identically. The widest window in this family — it is the whole turn up to the first
@@ -2062,6 +2139,21 @@ pub enum Condition {
     /// its twin is: at trigger placement in [`Game::ability_condition_holds`], and again fresh at
     /// resolution.
     SourceTapped,
+    /// "if [this permanent] started the turn untapped" (Rasputin Dreamweaver's upkeep regrowth) —
+    /// how the source stood as the turn began, *before* the untap step's turn-based action, which
+    /// is a different question from [`SourceUntapped`](Self::SourceUntapped)'s live read (a
+    /// Rasputin tapped last turn is untapped by the time its upkeep arrives, and still fails
+    /// this). Snapshotted onto the permanent at the start of every untap step, so it survives the
+    /// untapping that follows.
+    SourceStartedTheTurnUntapped,
+    /// "as long as it's untapped" read of the *enchanted* permanent rather than the source
+    /// (Spectral Cloak's "Enchanted creature has shroud as long as it's untapped"). The host-side
+    /// twin of [`SourceUntapped`](Self::SourceUntapped): every other Aura intervening-if in the
+    /// pool means the Aura itself (Cocoon's "if this Aura has a pupa counter on it"), so reading
+    /// the host needs its own variant. An unattached Aura holds no host, so it doesn't hold.
+    /// Live, re-read on every characteristics recompute — `Event::Tapped`/`Untapped` drop the
+    /// host's cache entry, so the grant appears and disappears as the creature turns.
+    EnchantedPermanentUntapped,
     /// The gate that turns "at the beginning of **each** upkeep" into "at the beginning of the
     /// upkeep of **enchanted permanent's controller**" (the 2ed upkeep-tax Aura cycle — Cursed
     /// Land, Feedback, Wanderlust, Warp Artifact): holds only on the upkeep of the player who
@@ -2615,6 +2707,7 @@ fn fill_attack_context(effect: Effect, attack: Option<(PlayerId, PlayerId)>) -> 
                 exile_at_next_end_step,
                 enters_tapped_and_attacking: true,
                 must_attack_defender,
+            link_as_twin,
                 ..
             }),
             Some(attack),
@@ -2629,6 +2722,7 @@ fn fill_attack_context(effect: Effect, attack: Option<(PlayerId, PlayerId)>) -> 
             enters_tapped_and_attacking: true,
             attacking_context: Some(attack),
             must_attack_defender,
+            link_as_twin,
         }),
         // Redoubled Stormsinger: "Whenever this creature attacks..." — bake the same
         // (attacker, defender) pair so the minted copies enter tapped and attacking the
@@ -2723,6 +2817,9 @@ fn fill_dying_enchanted_creature(effect: Effect, dying: ObjectId) -> Effect {
                 under_owner,
             })
         }
+        Effect::Zone(ZoneEffect::ReturnDyingEnchantedCreatureToHand { .. }) => {
+            Effect::Zone(ZoneEffect::ReturnDyingEnchantedCreatureToHand { dying: Some(dying) })
+        }
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
@@ -2800,6 +2897,13 @@ fn fill_that_creature(effect: Effect, creature: ObjectId) -> Effect {
                 creature: Some(creature),
             })
         }
+        // Aisling Leprechaun's "that creature becomes green" — same block-pair fill again.
+        Effect::Pump(PumpEffect::ThatCreatureBecomesColor { color, .. }) => {
+            Effect::Pump(PumpEffect::ThatCreatureBecomesColor {
+                color,
+                creature: Some(creature),
+            })
+        }
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
@@ -2847,6 +2951,25 @@ fn fill_dead_creature(effect: Effect, dead: ObjectId) -> Effect {
             dead: Some(dead),
             add_subtypes,
             leaves_returns_exiled,
+        }),
+        // Reincarnation's payoff names *its owner's* graveyard, so the dead creature's id has to
+        // ride into the return. Gated on `reincarnate` — an ordinary "you may return a card from
+        // your graveyard" rider that happens to hang off a death trigger keeps reading its own
+        // controller's graveyard, the same way `fill_dying_permanent_types` gates on its filter.
+        Effect::Choice(ChoiceEffect::MayReturnFromGraveyard {
+            filter,
+            count,
+            if_you_sacrificed_this_way,
+            mandatory,
+            reincarnate: true,
+            ..
+        }) => Effect::Choice(ChoiceEffect::MayReturnFromGraveyard {
+            filter,
+            count,
+            if_you_sacrificed_this_way,
+            mandatory,
+            reincarnate: true,
+            dead: Some(dead),
         }),
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
@@ -3379,8 +3502,8 @@ fn fill_player(effect: Effect, f: &impl Fn(PlayerSet) -> PlayerSet) -> Effect {
             Effect::Dig(DigEffect::ShuffleTargetCardsFromGraveyardIntoLibrary { max, who: f(who) })
         }
         // Only the outer `who` fills: `then` is `&'static`, so a fill inside it would leak.
-        Effect::Misc(MiscEffect::ScheduleAtNextUpkeep { who, then, fire_at }) => {
-            Effect::Misc(MiscEffect::ScheduleAtNextUpkeep { who: f(who), then, fire_at })
+        Effect::Misc(MiscEffect::ScheduleAtNextUpkeep { who, then, fire_at, your_upkeep }) => {
+            Effect::Misc(MiscEffect::ScheduleAtNextUpkeep { who: f(who), then, fire_at, your_upkeep })
         }
         Effect::Sequence { steps } => Effect::Sequence {
             steps: steps.iter().map(|step| fill_player(step.clone(), f)).collect(),
@@ -3444,6 +3567,7 @@ fn map_effect_amount_slots(effect: Effect, f: &impl Fn(Amount) -> Amount) -> Eff
             enters_tapped_and_attacking,
             attacking_context,
             must_attack_defender,
+            link_as_twin,
         }) => Effect::Token(TokenEffect::Create {
             token,
             count: f(count),
@@ -3455,6 +3579,7 @@ fn map_effect_amount_slots(effect: Effect, f: &impl Fn(Amount) -> Amount) -> Eff
             enters_tapped_and_attacking,
             attacking_context,
             must_attack_defender,
+            link_as_twin,
         }),
         Effect::Token(TokenEffect::CreateTreasure { count, who, tapped }) => {
             Effect::Token(TokenEffect::CreateTreasure {
@@ -3568,11 +3693,15 @@ fn fill_cast_mana_value(effect: Effect, mv: u32) -> Effect {
             toughness,
             target,
             keywords,
+            ends_at_end_of_combat,
+            count,
         }) => Effect::Pump(PumpEffect::PumpUntilEndOfTurn {
             power: fill(power),
             toughness: fill(toughness),
             target,
             keywords,
+            ends_at_end_of_combat,
+            count,
         }),
         Effect::Token(TokenEffect::Create {
             token,
@@ -3585,6 +3714,7 @@ fn fill_cast_mana_value(effect: Effect, mv: u32) -> Effect {
             enters_tapped_and_attacking,
             attacking_context,
             must_attack_defender,
+            link_as_twin,
         }) => Effect::Token(TokenEffect::Create {
             token,
             count: fill(count),
@@ -3596,6 +3726,7 @@ fn fill_cast_mana_value(effect: Effect, mv: u32) -> Effect {
             enters_tapped_and_attacking,
             attacking_context,
             must_attack_defender,
+            link_as_twin,
         }),
         Effect::Conditional {
             condition:

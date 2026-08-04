@@ -35,6 +35,9 @@ impl Game {
         if !covers_recipients || !nonneg || !total_ok || assignment.len() > MAX_BLOCKERS {
             return Err(Reject::IllegalChoice); // invalid — the choice stays pending
         }
+        if !self.lethal_order_respected(source, &recipients, &assignment) {
+            return Err(Reject::IllegalChoice); // CR 510.1c — the choice stays pending
+        }
 
         self.finish_answer();
         let mut events = Vec::new();
@@ -56,6 +59,51 @@ impl Game {
             self.priority = self.active_player;
         }
         Ok(events)
+    }
+
+    /// CR 510.1c: a creature dividing its combat damage may not assign any to a recipient until
+    /// every recipient ahead of it in the *damage assignment order* has been assigned lethal
+    /// damage (CR 510.1d defers to the same reading for a blocker dividing among the attackers it
+    /// blocks). "Lethal damage" is toughness minus damage already marked, or 1 for a deathtouch
+    /// source (CR 702.2b).
+    ///
+    /// The engine records no damage assignment order — CR 509.2 has the dividing player announce
+    /// one as blockers are declared, and it may be any permutation of the recipients. So the rule
+    /// is enforced in the form that is order-independent: an assignment is realizable under *some*
+    /// order exactly when **at most one** recipient is left short of lethal while still taking
+    /// damage, since every recipient at lethal sorts ahead of that one and every zero sorts behind
+    /// it. Two half-killed blockers is the shape the rule forbids.
+    ///
+    /// CR 702.22j/k are exceptions: when banding moved the choice to the other seat, that seat
+    /// divides freely and no order constrains it. [`Game::banding_division_shifter`] reads the
+    /// same condition over the recipients that picked the assigner in the first place.
+    ///
+    /// ponytail: damage assigned by *another* creature in the same batch does not count toward a
+    /// recipient's lethal reading — the rule allows it, and tracking it needs a batch-wide ledger
+    /// the divisions are answered one at a time without. A trampler holding damage back (CR
+    /// 702.19b) is likewise not made to bring every blocker to lethal first.
+    fn lethal_order_respected(
+        &self,
+        source: ObjectId,
+        recipients: &[ObjectId],
+        assignment: &[(ObjectId, i32)],
+    ) -> bool {
+        if self.banding_division_shifter(recipients).is_some() {
+            return true;
+        }
+        let deathtouch = self.has_keyword(source, Keyword::Deathtouch);
+        let short_of_lethal = assignment
+            .iter()
+            .filter(|&&(recipient, amount)| {
+                let lethal = if deathtouch {
+                    1
+                } else {
+                    (self.toughness(recipient) - self.permanent(recipient).marked_damage).max(0)
+                };
+                amount > 0 && amount < lethal
+            })
+            .count();
+        short_of_lethal <= 1
     }
 
     /// Answer a [`PendingChoice::DivideSpellDamage`]: settle how a divided-damage spell's total

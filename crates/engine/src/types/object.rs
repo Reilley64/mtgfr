@@ -22,6 +22,7 @@ pub(crate) fn fresh_permanent(
         tapped: printed.enters_tapped,
         summoning_sick,
         entered_this_turn: true,
+        started_turn_untapped: false,
         attacked_this_turn: false,
         attacked_on_last_own_turn: false,
         monstrous: false,
@@ -56,6 +57,7 @@ pub(crate) fn fresh_permanent(
         entered_with_x: 0,
         entered_multikicker_count: 0,
         cast_time_enchant_target: None,
+        linked_twin: None,
         enchant_rewrite_host: None,
         vow_protected: None,
         phased_out: false,
@@ -323,6 +325,14 @@ pub(crate) struct Permanent {
     /// back to `false` to keep their "as if it had been there since before the turn" contract,
     /// the same way they override `summoning_sick`.
     pub(crate) entered_this_turn: bool,
+    /// Whether this permanent was untapped as the turn began — Rasputin Dreamweaver's "if
+    /// Rasputin started the turn untapped", backing
+    /// [`Condition::SourceStartedTheTurnUntapped`](cards::Condition). Stamped for every
+    /// battlefield permanent in [`Event::StepBegan`]'s Untap block, which runs *before* the
+    /// step's untapping turn-based action — so a permanent that was tapped last turn still reads
+    /// `false` at the upkeep that follows, which is the whole point of the clause. `false` for a
+    /// permanent minted mid-turn (it did not exist when the turn started).
+    pub(crate) started_turn_untapped: bool,
     /// Whether this permanent was declared as an attacker this turn (CR 508.1, [`Event::AttackerDeclared`]).
     /// Backs [`Condition::SourceAttackedThisTurn`] (Agent Frank Horrigan's "has indestructible as
     /// long as it attacked this turn"). Turn-scoped like `entered_this_turn` above — set the
@@ -490,6 +500,10 @@ pub(crate) struct Permanent {
     /// "put X +1/+1 counters on [a separate token]" ETB is the case that actually needs it, since
     /// nothing places counters on Fractal Harness itself. 0 for a token or a permanent with no
     /// {X} in its cost.
+    ///
+    /// An as-enters replacement effect can write it too ([`Event::EnteredWithXSet`]): Wood
+    /// Elemental's "the number of Forests sacrificed as it entered" is a number fixed at entry and
+    /// read back by an ability, which is exactly what this slot holds.
     pub(crate) entered_with_x: u32,
     /// How many times the spell that became this permanent paid its Multikicker cost (CR
     /// 702.33c), fixed for the rest of this permanent's existence — copied from
@@ -508,6 +522,14 @@ pub(crate) struct Permanent {
     /// dropped, rather than reanimating whatever moved in). `None` for every permanent whose
     /// spell had no chosen target, or wasn't cast with `enchant_graveyard` set.
     pub(crate) cast_time_enchant_target: Option<ObjectId>,
+    /// The permanent this one is paired with — Stangg's Twin token and Stangg himself, linked as
+    /// the token is created ([`Event::TwinLinked`]) and read back by
+    /// [`TargetSpec::LinkedTwin`](cards::TargetSpec). Held on *both* halves so either one's
+    /// "when the other leaves the battlefield" ability can still find its partner: the leaving
+    /// permanent's own record is gone by the time its trigger resolves, so the lookup always
+    /// scans the battlefield for the survivor that points back at it. `None` for every permanent
+    /// that isn't half of a printed pair.
+    pub(crate) linked_twin: Option<ObjectId>,
     /// The creature this [`CardDef::enchant_graveyard`] Aura reanimated and attached itself to —
     /// the object its rewritten enchant ability names (CR 613.3/702: "it loses 'enchant creature
     /// card in a graveyard' and gains 'enchant creature put onto the battlefield with this
@@ -765,6 +787,17 @@ pub(crate) struct Player {
     /// [`Effect::Misc(MiscEffect::GrantChannelColorlessManaThisTurn)`]. Read by
     /// [`Game::channel_colorless_mana`](crate::Game::channel_colorless_mana).
     pub(crate) channel_colorless_mana_this_turn: bool,
+    /// Whether this player may spend mana as though it were mana of any type to pay a spell's mana
+    /// cost (turn-scoped; reset each turn at untap) — CR 609.4b, granted by
+    /// [`Effect::Misc(MiscEffect::GrantSpendManaAsAnyTypeForOneSpellThisTurn)`] (North Star).
+    /// Widens [`Game::mana_substitutions`](crate::Game) into every color pair while it holds, and
+    /// is cleared by the next [`Event::SpellCast`] this player makes — North Star's "for one
+    /// spell."
+    /// ponytail: colors only. The card says "any *type*", which includes colorless {C} pips;
+    /// nothing in this pool prints a {C} pip a North Star player would want to relax, and
+    /// [`ManaPool::substituted`] is a color→color widening. Widen the substitution vocabulary if
+    /// a {C} cost ever needs it.
+    pub(crate) spend_mana_as_any_type_this_turn: bool,
     /// Whether this player has already used Serra Paragon's graveyard-play permission this turn
     /// (turn-scoped; reset each turn at untap) — CR 118.9's "once during each of your turns."
     /// Set when a land / permanent spell is played or cast from the graveyard under

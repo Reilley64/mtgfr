@@ -19,8 +19,8 @@ use crate::de::{
 use crate::toml_surface::CostToml;
 use crate::{
     AdditionalCost, Amount, AmountZone, ArithOp, Color, ColorFilter, Condition, Cost, CounterAxis,
-    CounterKind, Division, FilterController, Keyword, LandProduces, Mana, Parity, PermanentFilter,
-    ProtectionScope, SacrificeCost, TargetCount, TokenFilter, TypeSet,
+    CounterKind, Division, FilterController, FilterOwner, Keyword, LandProduces, Mana, Parity,
+    PermanentFilter, ProtectionScope, SacrificeCost, TargetCount, TokenFilter, TypeSet,
 };
 
 // ── schema-building helpers ─────────────────────────────────────────────────────────
@@ -286,10 +286,12 @@ struct PermanentFilterTableSchema {
     types: Option<TypeSet>,
     subtypes: Option<Vec<String>>,
     controller: Option<FilterController>,
+    owner: Option<FilterOwner>,
     token: Option<TokenFilter>,
     other: Option<bool>,
     enchanted: Option<bool>,
     attached_to_creature: Option<bool>,
+    attached_to: Option<PermanentFilter>,
     enchanted_by_you: Option<bool>,
     mv_max: Option<u8>,
     mv_min: Option<u8>,
@@ -315,6 +317,7 @@ struct PermanentFilterTableSchema {
     tapped_or_blocking: Option<bool>,
     unblocked: Option<bool>,
     blocked_by_a_wall_this_turn: Option<bool>,
+    in_combat_with_source: Option<bool>,
     power_less_than_source: Option<bool>,
     toughness_less_than_source_power: Option<bool>,
     entered_this_turn: Option<bool>,

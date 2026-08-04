@@ -1042,7 +1042,7 @@ pub fn visible_event_to_pb(event: VisibleEvent) -> Option<pb::VisibleEvent> {
             power,
             toughness,
         }),
-        VisibleEvent::TempBoostsEnded { object } => {
+        VisibleEvent::TempBoostsEnded { object, .. } => {
             Event::TempBoostsEnded(pb::VisibleEventTempBoostsEnded { object })
         }
         VisibleEvent::BasePtSetUntilEndOfTurn {
@@ -1253,6 +1253,11 @@ pub fn visible_event_to_pb(event: VisibleEvent) -> Option<pb::VisibleEvent> {
         }
         VisibleEvent::ChannelColorlessManaGranted { player } => {
             Event::ChannelColorlessManaGranted(pb::VisibleEventChannelColorlessManaGranted {
+                player: u32::from(player),
+            })
+        }
+        VisibleEvent::SpendManaAsAnyTypeGranted { player } => {
+            Event::SpendManaAsAnyTypeGranted(pb::VisibleEventSpendManaAsAnyTypeGranted {
                 player: u32::from(player),
             })
         }

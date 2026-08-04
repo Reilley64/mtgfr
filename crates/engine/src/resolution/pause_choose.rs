@@ -143,6 +143,36 @@ impl Game {
             // activated (CR 601.2b, the `Effect::ChooseOne` branch in `Game::activate`). Each mode
             // is this same effect narrowed to one keyword; `answer_choose_mode` runs it straight
             // away against this resolution's own target.
+            // Gabriel Angelfire's "choose flying, first strike, trample, or rampage 3": the same
+            // CR 609.4 resolution-time pick as Urborg's right below, on a self-grant with no target
+            // to lock in. Each mode is this same effect narrowed to one keyword.
+            Effect::Pump(PumpEffect::GrantSelfKeywordsUntilNextUpkeep { keywords, .. }) => {
+                let modes: Arc<[Effect]> = keywords
+                    .iter()
+                    .enumerate()
+                    .map(|(i, _)| {
+                        Effect::Pump(PumpEffect::GrantSelfKeywordsUntilNextUpkeep {
+                            keywords: &keywords[i..=i],
+                            choose_one: false,
+                        })
+                    })
+                    .collect();
+                if modes.is_empty() {
+                    return;
+                }
+                pending::raise(
+                    self,
+                    pending::ChoiceRequest::ChooseMode {
+                        player: controller,
+                        source,
+                        target,
+                        x,
+                        modes,
+                        at_placement: false,
+                        activated: false,
+                    },
+                );
+            }
             Effect::Pump(PumpEffect::TargetLosesKeywords {
                 target: spec,
                 keywords,

@@ -79,6 +79,7 @@ impl Game {
             damaged_this_turn: Vec::new(),
             damage_dealt_this_turn: Vec::new(),
             hand_cards_seen: Vec::new(),
+            revealed_unplayable_until_next_turn: Vec::new(),
             damage_prevention_shields: Vec::new(),
             standing_preventions: Vec::new(),
             resolution_frame: crate::resolution::ResolutionFrame::default(),
@@ -706,8 +707,26 @@ impl Game {
     /// lethal-damage state-based action and every `destroy` effect alike. A destruction that
     /// carries its own `cant_be_regenerated` (Terror) turns the shield off on top of this.
     pub(crate) fn regeneration_shield_available(&self, id: ObjectId) -> bool {
-        self.as_permanent(id)
-            .is_some_and(|p| p.regeneration_shields > 0 && !p.cant_be_regenerated_this_turn)
+        self.as_permanent(id).is_some_and(|p| {
+            (p.regeneration_shields > 0 || self.regenerates_in_place_of_destruction(id))
+                && !p.cant_be_regenerated_this_turn
+        })
+    }
+
+    /// Clergy of the Holy Nimbus's "If this creature would be destroyed, regenerate it."
+    /// (CR 701.15) — a standing shield that is never spent, folded into
+    /// [`regeneration_shield_available`](Self::regeneration_shield_available) so every destroy
+    /// path and the lethal-damage state-based action honor it for free. `Event::Regenerated`'s
+    /// `saturating_sub` leaves the (already zero) counted shields alone, so the replacement keeps
+    /// applying — which is the whole difference from the activated `{cost}: Regenerate` shape.
+    fn regenerates_in_place_of_destruction(&self, id: ObjectId) -> bool {
+        self.def_of(id).abilities.iter().any(|a| {
+            a.timing == Timing::Static
+                && matches!(
+                    a.effect,
+                    Effect::Static(StaticEffect::RegeneratesInsteadOfBeingDestroyed)
+                )
+        })
     }
 
     /// Whether the permanent at `id` has any counter on it at all — CR 122.1's unqualified
@@ -776,6 +795,16 @@ impl Game {
     /// Urza) and so may still read it. A card's own owner doesn't need this; the redaction layer
     /// gates on ownership first.
     pub fn has_seen_hand_card(&self, viewer: PlayerId, card: ObjectId) -> bool {
+        // Firestorm Phoenix's returned card is played "revealed in their hand" until its owner's
+        // next turn — a standing window onto that one card for every seat, which is what this
+        // question already answers for a Glasses of Urza look.
+        if self
+            .revealed_unplayable_until_next_turn
+            .iter()
+            .any(|&(c, _)| c == card)
+        {
+            return true;
+        }
         self.hand_cards_seen.contains(&(viewer, card))
     }
 

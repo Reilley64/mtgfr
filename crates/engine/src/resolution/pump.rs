@@ -21,6 +21,7 @@ impl Game {
                 power,
                 toughness,
                 keywords,
+                ends_at_end_of_combat,
                 ..
             } => {
                 let object = expect_object_target(target, "a pump");
@@ -30,6 +31,7 @@ impl Game {
                     toughness: self.resolve_amount(toughness, controller, source, target, x),
                     keywords,
                     source_name,
+                    ends_at_end_of_combat,
                 }]
             }
             // Cocoon: "that creature gains flying", with no duration at all — the Aura that grants
@@ -37,6 +39,20 @@ impl Game {
             PumpEffect::GrantKeywordsIndefinitely { keywords, .. } => {
                 let object = expect_object_target(target, "an indefinite keyword grant");
                 vec![Event::KeywordsGrantedIndefinitely { object, keywords }]
+            }
+            // Gabriel Angelfire: the chosen ability lands on the ability's own source and lasts
+            // until that controller's next upkeep begins. `choose_one` has already been peeled to
+            // a single keyword by the mode pause, so this only ever sees a settled list. Nothing
+            // to grant if the source has already left the battlefield (CR 608.2c).
+            PumpEffect::GrantSelfKeywordsUntilNextUpkeep { keywords, .. } => {
+                if self.as_permanent(source).is_none() {
+                    return Vec::new();
+                }
+                vec![Event::KeywordsGrantedUntilNextUpkeep {
+                    object: source,
+                    keywords,
+                    player: controller,
+                }]
             }
             // Self-pump: the ability's own source, no target (prowess). The source is already
             // known at resolution, so there's nothing to choose.
@@ -57,6 +73,7 @@ impl Game {
                     toughness: self.resolve_amount(toughness, controller, source, target, x),
                     keywords,
                     source_name,
+                    ends_at_end_of_combat: false,
                 }]
             }
             // Mother of Runes: "{T}: Target creature you control gains protection from the color
@@ -81,6 +98,7 @@ impl Game {
                         ProtectionScope::Color(color),
                     )])),
                     source_name,
+                    ends_at_end_of_combat: false,
                 }]
             }
             // Bathe in Light: "Target creature and each other creature that shares a color with
@@ -110,6 +128,7 @@ impl Game {
                         toughness: 0,
                         keywords,
                         source_name,
+                        ends_at_end_of_combat: false,
                     })
                     .collect()
             }
@@ -136,6 +155,7 @@ impl Game {
                         toughness,
                         keywords,
                         source_name,
+                        ends_at_end_of_combat: false,
                     })
                     .collect()
             }
@@ -163,6 +183,7 @@ impl Game {
                         toughness,
                         keywords,
                         source_name,
+                        ends_at_end_of_combat: false,
                     })
                     .collect()
             }
@@ -183,6 +204,7 @@ impl Game {
                         toughness: 0,
                         keywords,
                         source_name,
+                        ends_at_end_of_combat: false,
                     })
                     .collect()
             }
@@ -318,6 +340,7 @@ impl Game {
                         types: add_types,
                         subtypes: add_subtypes,
                         colors: add_colors,
+                        ends_at_end_of_combat,
                     },
                     Event::BasePtSetUntilEndOfTurn {
                         object: source,
@@ -327,12 +350,15 @@ impl Game {
                     },
                 ];
                 if !keywords.is_empty() {
+                    // One clause, one duration: keywords the animation grants end when the rest of
+                    // it does.
                     events.push(Event::TempBoost {
                         object: source,
                         power: 0,
                         toughness: 0,
                         keywords,
                         source_name,
+                        ends_at_end_of_combat,
                     });
                 }
                 events
@@ -357,6 +383,7 @@ impl Game {
                         toughness,
                         keywords: &[],
                         source_name,
+                        ends_at_end_of_combat: false,
                     })
                     .collect()
             }
@@ -384,6 +411,7 @@ impl Game {
                         toughness,
                         keywords: &[],
                         source_name,
+                        ends_at_end_of_combat: false,
                     }];
                 }
                 vec![Event::LifeChanged {
@@ -516,6 +544,23 @@ impl Game {
                     until_end_of_turn,
                 }]
             }
+            // Aisling Leprechaun's "that creature becomes green" — the same layer-5 SET as the
+            // lace arm above, with no printed duration, aimed at the block pair's other half
+            // rather than a chosen target. Nothing to do if it has left the battlefield since
+            // (CR 608.2b).
+            PumpEffect::ThatCreatureBecomesColor { color, creature } => {
+                let Some(object) = creature else {
+                    return Vec::new();
+                };
+                if self.as_permanent(object).is_none() {
+                    return Vec::new();
+                }
+                vec![Event::ColorSet {
+                    object,
+                    color,
+                    until_end_of_turn: false,
+                }]
+            }
             // "Target land becomes a Forest until this creature leaves the battlefield" (Gaea's
             // Liege): the whole land-type line is replaced (CR 305.7), and the entry names the
             // source so the read side can check it is still there. A target that has left the
@@ -559,6 +604,7 @@ impl Game {
                             toughness: -toughness,
                             keywords: &[],
                             source_name,
+                            ends_at_end_of_combat: false,
                         }
                     })
                     .collect()

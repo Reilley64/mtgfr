@@ -239,6 +239,20 @@ impl Game {
                 };
                 vec![self.reanimate_event(card, new_controller, false)]
             }
+            // Puppet Master: the same snapshot, to the hand instead of the battlefield.
+            ZoneEffect::ReturnDyingEnchantedCreatureToHand { dying } => {
+                let Some(dying) = dying else {
+                    return Vec::new();
+                };
+                let card = self.current_id(dying);
+                if self.zone_of(card) != Zone::Graveyard {
+                    return Vec::new();
+                }
+                vec![Event::ReturnedToHand {
+                    card: self.next_object_id(),
+                    from: card,
+                }]
+            }
             // Hofri Ghostforge: "exile it. If you do, create a token that's a copy of that
             // creature, except it's a Spirit in addition to its other types ...". `dead` is the
             // pre-death battlefield id; `current_id` follows its `Moved` lineage into the graveyard

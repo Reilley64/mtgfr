@@ -15,3 +15,15 @@ black = 2
 type = "creature"
 power = 6
 toughness = 6
+
+# When this creature enters, sacrifice it unless you sacrifice two Swamps.
+[[abilities]]
+timing = "etb"
+
+# sacrifice it unless you sacrifice two Swamps.
+[[abilities.effects]]
+type = "choice"
+mode = "may_sacrifice"
+filter = { types = "land", subtypes = ["Swamp"] }
+count = 2
+otherwise = [{ type = "sacrifice", mode = "source" }]

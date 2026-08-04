@@ -330,12 +330,17 @@ impl TriggerWatchEvent {
     }
 }
 
-const ENTERS_BATTLEFIELD_TRIGGER_WATCHES: &[TriggerWatch] = &[
-    // First, so a card carrying both makes its CR 614.12 as-enters choice before its ETB trigger
-    // is placed on the stack. `place_pending_triggers` resolves this group inline, never placing it.
-    TriggerWatch::battlefield_self(Trigger::AsEnters, TriggerWatchContextKind::SelfCastX),
-    TriggerWatch::battlefield_self(Trigger::Etb, TriggerWatchContextKind::SelfCastX),
-];
+const ENTERS_BATTLEFIELD_TRIGGER_WATCHES: &[TriggerWatch] = &[TriggerWatch::battlefield_self(
+    Trigger::Etb,
+    TriggerWatchContextKind::SelfCastX,
+)];
+/// CR 614.12 as-enters replacement effects, queued and run by their own pipeline phase
+/// ([`Game::run_as_enters_replacements`]) ahead of the state-based sweep — a card carrying both
+/// therefore makes its as-enters choice before its ETB trigger is even queued.
+const AS_ENTERS_TRIGGER_WATCHES: &[TriggerWatch] = &[TriggerWatch::battlefield_self(
+    Trigger::AsEnters,
+    TriggerWatchContextKind::SelfCastX,
+)];
 const TURNED_FACE_UP_TRIGGER_WATCHES: &[TriggerWatch] = &[TriggerWatch::battlefield_self(
     Trigger::TurnedFaceUp,
     TriggerWatchContextKind::Controller,
@@ -994,7 +999,11 @@ impl Game {
                     );
                     // Armadillo Cloak's attached-host damage watch: this creature dealt combat
                     // damage to a player. See `queue_enchanted_creature_deals_damage_triggers`.
-                    self.queue_enchanted_creature_deals_damage_triggers(source, amount);
+                    self.queue_enchanted_creature_deals_damage_triggers(
+                        source,
+                        amount,
+                        Some(player),
+                    );
                 }
                 // Combat damage to a creature (CR 510.2) — still needs the eliminated-source
                 // guard here, but the actual self trigger now queues through the watch table once
@@ -1029,6 +1038,15 @@ impl Game {
                         DAMAGE_TO_PLAYER_TRIGGER_WATCHES,
                         TriggerWatchEvent::for_damage_to_player(source, player, amount),
                     );
+                    // The attached-host damage watch's noncombat-to-a-player leg. `DamageMarked`
+                    // covers the creature side and `CombatDamageDealtToPlayer` the combat side, so
+                    // without this a Backfire/Armadillo Cloak host pinging a player directly
+                    // (Prodigal Sorcerer) would be the one damage event nobody watched.
+                    self.queue_enchanted_creature_deals_damage_triggers(
+                        source,
+                        amount,
+                        Some(player),
+                    );
                 }
                 // Damage marked on a creature (CR 120.3/506) — `Game::deal_creature_damage` is the
                 // shared choke behind both combat damage to a blocker/attacker and noncombat
@@ -1049,7 +1067,7 @@ impl Game {
                     let Some(source) = source else {
                         continue;
                     };
-                    self.queue_enchanted_creature_deals_damage_triggers(source, amount);
+                    self.queue_enchanted_creature_deals_damage_triggers(source, amount, None);
                     // Glyph of Life's receiving-side twin of the dealer-side watch just above.
                     self.fire_attacker_damage_life_triggers(source, object, amount.max(0) as u32);
                     // Vampiric Dragon's turn-scoped "a creature dealt damage by this creature
@@ -2188,7 +2206,7 @@ impl Game {
         // turn's upkeep", Arcane Denial) fire for whoever's step it is, so only `Main1` filters by
         // controller here (and the matching drain in `apply` mirrors this).
         let controller_scoped = fire_at == Step::Main1;
-        let due: Vec<(PlayerId, ObjectId, Effect)> = self
+        let mut due: Vec<(PlayerId, ObjectId, Effect)> = self
             .delayed_triggers
             .scheduled
             .iter()
@@ -2197,6 +2215,17 @@ impl Game {
             })
             .map(|&(controller, source, _, ref effect)| (controller, source, effect.clone()))
             .collect();
+        // "At the beginning of **your** next upkeep" (Hazezon Tamar) — always the scheduling
+        // ability's own controller, never whoever's upkeep begins first.
+        if fire_at == Step::Upkeep {
+            due.extend(
+                self.delayed_triggers
+                    .scheduled_your_upkeep
+                    .iter()
+                    .filter(|&&(controller, _, _)| controller == active_player)
+                    .map(|&(controller, source, ref effect)| (controller, source, effect.clone())),
+            );
+        }
         if due.is_empty() {
             return;
         }
@@ -2570,7 +2599,13 @@ impl Game {
         blocks: &[(ObjectId, ObjectId)],
     ) {
         for &(blocker, attacker) in blocks {
-            for (watcher, partner) in [(blocker, attacker), (attacker, blocker)] {
+            // The two halves of the one declaration: the blocker "blocks", the attacker "becomes
+            // blocked by". A card printing both with different filters (Infernal Medusa) narrows
+            // each ability to its own `BlockSide`; the fused wording watches both.
+            for (watcher, partner, side) in [
+                (blocker, attacker, BlockSide::Blocks),
+                (attacker, blocker, BlockSide::BecomesBlockedBy),
+            ] {
                 let controller = self.owner_of(watcher);
                 let ctx = TriggerContext {
                     blocking_partner: Some(partner),
@@ -2585,8 +2620,17 @@ impl Game {
                     .iter()
                     .chain(granted.iter())
                     .filter(|a| match a.timing {
-                        Timing::Triggered(Trigger::BlocksOrBecomesBlockedBy { filter }) => {
-                            self.permanent_matches(&filter, partner, controller, Some(watcher))
+                        Timing::Triggered(Trigger::BlocksOrBecomesBlockedBy {
+                            filter,
+                            side: watched,
+                        }) => {
+                            (watched == BlockSide::Either || watched == side)
+                                && self.permanent_matches(
+                                    &filter,
+                                    partner,
+                                    controller,
+                                    Some(watcher),
+                                )
                         }
                         _ => false,
                     })
@@ -2787,17 +2831,32 @@ impl Game {
         &mut self,
         source: ObjectId,
         amount: i32,
+        damaged: Option<PlayerId>,
     ) {
         for aura in self.attachments(source) {
+            let controller = self.controller_of(aura);
             let ctx = TriggerContext {
                 triggering_damage_dealt: Some(amount),
-                ..TriggerContext::of(self.controller_of(aura))
+                combat_damage_source_controller: Some(self.controller_of(source)),
+                damage_recipient: damaged,
+                ..TriggerContext::of(controller)
             };
             self.queue_trigger_group(
                 ctx,
                 aura,
                 self.def_of(aura),
                 Trigger::EnchantedCreatureDealsDamage,
+            );
+            // Backfire's "…to you": same watch, gated on the damaged seat being the Aura's own
+            // controller. Damage to a creature (`damaged: None`) never qualifies.
+            if damaged != Some(controller) {
+                continue;
+            }
+            self.queue_trigger_group(
+                ctx,
+                aura,
+                self.def_of(aura),
+                Trigger::EnchantedCreatureDealsDamageToYou,
             );
         }
     }
@@ -3770,6 +3829,68 @@ impl Game {
         }
     }
 
+    /// Fire CR 603.7 delayed watches armed by
+    /// [`Effect::Misc(MiscEffect::ScheduleWhenTargetDiesThisTurn)`] (Reincarnation's "when that
+    /// creature dies this turn"): scans the just-applied batch for the watched permanent moving to
+    /// a graveyard and runs the armed payoff, removed via [`Event::DiesThisTurnWatchConsumed`]
+    /// before its `TriggerGroup` is queued. Object-armed like [`Self::fire_combat_damage_watch_triggers`],
+    /// payoff-carrying like [`Self::fire_next_cast_triggers`].
+    ///
+    /// [`Event::MovedToGraveyard`]'s `from` is the *battlefield* object id, and object ids are
+    /// never reused, so `from == watched` already means "that permanent died" (CR 700.4) — no
+    /// zone or card-type re-check is needed, and a commander diverting to the command zone (a
+    /// different event) correctly never fires this. The dead creature rides into the payoff as
+    /// [`TriggerContext::dead_creature`] so a clause naming "its owner" can read it.
+    pub(crate) fn fire_dies_this_turn_triggers(&mut self, events: &mut Vec<Event>) {
+        if self.delayed_triggers.pending_dies_this_turn.is_empty() {
+            return;
+        }
+        let deaths: Vec<ObjectId> = events
+            .iter()
+            .filter_map(|e| match e {
+                Event::MovedToGraveyard { from, .. } => Some(*from),
+                _ => None,
+            })
+            .collect();
+        for dead in deaths {
+            let matches: Vec<(PlayerId, ObjectId, &'static [Effect])> = self
+                .delayed_triggers
+                .pending_dies_this_turn
+                .iter()
+                .filter(|&&(_, _, watched, _)| watched == dead)
+                .map(|&(controller, source, _, then)| (controller, source, then))
+                .collect();
+            for (controller, source, then) in matches {
+                self.push_apply(
+                    events,
+                    Event::DiesThisTurnWatchConsumed { controller, source },
+                );
+                let ctx = TriggerContext {
+                    dead_creature: Some(dead),
+                    ..TriggerContext::of(controller)
+                };
+                let effect = match then {
+                    [only] => only.clone(),
+                    _ => Effect::Sequence { steps: then.into() },
+                };
+                self.pending_trigger_groups.push(TriggerGroup {
+                    expanded: false,
+                    controller,
+                    source,
+                    abilities: vec![Ability {
+                        timing: Timing::Triggered(Trigger::CreatureDies),
+                        effect: contextualize_effect(effect, ctx),
+                        optional: false,
+                        min_level: 0,
+                        cost: Cost::FREE,
+                        condition: None,
+                        once_each_turn: false,
+                    }],
+                });
+            }
+        }
+    }
+
     /// Fire CR 603.7 delayed watches armed by [`Effect::Misc(MiscEffect::ArmCombatDamageWatch)`] (Stensian
     /// Sanguinist's "Whenever that creature deals combat damage to a player this combat, this
     /// creature becomes prepared"): scans the just-applied batch for
@@ -4480,6 +4601,19 @@ impl Game {
                 .source
                 .and_then(|source| self.as_permanent(source))
                 .is_some_and(|p| !p.tapped),
+            // Spectral Cloak: the same read, one attachment hop away — "enchanted creature has
+            // shroud as long as **it's** untapped" is the host's tapped state, not the Aura's.
+            Condition::EnchantedPermanentUntapped => ctx
+                .source
+                .and_then(|source| self.attached_to(source))
+                .and_then(|host| self.as_permanent(host))
+                .is_some_and(|p| !p.tapped),
+            // Rasputin Dreamweaver: not the live read above but the snapshot the untap step
+            // stamped, so the untapping that happens moments later can't retro-qualify it.
+            Condition::SourceStartedTheTurnUntapped => ctx
+                .source
+                .and_then(|source| self.as_permanent(source))
+                .is_some_and(|p| p.started_turn_untapped),
             // Mana Vault's draw-step ping reads the same state the other way round.
             Condition::SourceTapped => ctx
                 .source
@@ -4793,6 +4927,21 @@ impl Game {
             .count()
     }
 
+    /// How many legendary lands `controller` controls — the supertype sibling of
+    /// [`Self::lands_with_subtype_controlled`], read by legendary landwalk (CR 702.14a). Supertypes
+    /// are printed and nothing in the pool rewrites them, so this reads the card def where its
+    /// subtype sibling has to read the effective line.
+    pub(crate) fn legendary_lands_controlled(&self, controller: PlayerId) -> usize {
+        self.battlefield()
+            .into_iter()
+            .filter(|&id| {
+                self.controller_of(id) == controller
+                    && self.effective_types(id).intersects(TypeSet::LAND)
+                    && self.def_of(id).legendary
+            })
+            .count()
+    }
+
     /// Whether `controller`'s hand contains a card whose printed subtypes intersect `subtypes`
     /// (reveal-land match check — see [`Condition::HandHasLandWithSubtype`] /
     /// [`PendingChoice::MayRevealLandFromHand`]).
@@ -4824,6 +4973,87 @@ impl Game {
             .into_iter()
             .filter(|&id| self.controller_of(id) == player)
             .count()
+    }
+
+    /// Run every "as this permanent enters, …" replacement effect (CR 614.12) fired by this
+    /// batch's entries. These are replacement effects, not triggered abilities: they never reach
+    /// the stack, and no player receives priority between the entry and the choice — so they run
+    /// in their own pipeline phase ahead of the state-based sweep (CR 704.3). Wood Elemental is
+    /// why the ordering matters: it enters as a 0/0 and only the Forests it sacrifices as it
+    /// enters give it a toughness, so a sweep in between would bury it.
+    ///
+    /// A choice raised here returns; the answer re-runs the pipeline, which re-enters this phase
+    /// and drains whatever is still queued.
+    pub(crate) fn run_as_enters_replacements(&mut self, events: &mut Vec<Event>) {
+        if self.pending_choice.is_some() {
+            return;
+        }
+        let entered: Vec<ObjectId> = events
+            .iter()
+            .filter_map(|event| match *event {
+                Event::PermanentEntered { permanent, .. }
+                | Event::ReanimatedToBattlefield { permanent, .. }
+                | Event::ReturnedFromLinkedExile { permanent, .. }
+                | Event::FlickeredToBattlefield { permanent, .. }
+                | Event::SearchedToBattlefield { permanent, .. }
+                | Event::PutOntoBattlefieldFromHand { permanent, .. }
+                | Event::Manifested { permanent, .. }
+                | Event::LandPlayed { permanent, .. } => Some(permanent),
+                Event::TokenCreated { token, .. } => Some(token),
+                _ => None,
+            })
+            .collect();
+        for permanent in entered {
+            // Same guard as `enqueue_triggers`: a permanent whose controller was eliminated by
+            // this same batch left the game outright (CR 800.4a) and has no abilities to run.
+            if self.as_permanent(permanent).is_none() {
+                continue;
+            }
+            self.queue_trigger_watch_table(
+                AS_ENTERS_TRIGGER_WATCHES,
+                TriggerWatchEvent::for_source(permanent),
+            );
+        }
+        while let Some(index) = self.pending_trigger_groups.iter().position(|group| {
+            group
+                .abilities
+                .first()
+                .is_some_and(|ability| ability.timing == Timing::Triggered(Trigger::AsEnters))
+        }) {
+            let group = &mut self.pending_trigger_groups[index];
+            let (controller, source) = (group.controller, group.source);
+            let ability = group.abilities.remove(0);
+            if group.abilities.is_empty() {
+                self.pending_trigger_groups.remove(index);
+            }
+            debug_assert!(
+                !ability.optional,
+                "an as-enters replacement effect can't be a 'you may' — it has no optional gate"
+            );
+            self.run_as_enters(controller, source, ability.effect, events);
+            if self.pending_choice.is_some() {
+                return;
+            }
+        }
+    }
+
+    /// Resolve one as-enters replacement effect in place (no stack, no priority).
+    fn run_as_enters(
+        &mut self,
+        controller: PlayerId,
+        source: ObjectId,
+        effect: Effect,
+        events: &mut Vec<Event>,
+    ) {
+        let ctx = crate::resolution::ResolveCtx {
+            controller,
+            source,
+            target: None,
+            targets_second: TargetList::default(),
+            x: 0,
+            spent_mana: [0; 6],
+        };
+        self.run(effect, ctx, events);
     }
 
     /// Put queued triggers on the stack. A group with several abilities raises an
@@ -4902,29 +5132,11 @@ impl Game {
             let (player, source, effect) = (group.controller, group.source, ability.effect);
 
             // "As this permanent enters, …" (CR 614.12) is a replacement effect, not a triggered
-            // ability: run it right here instead of placing it, so no player holds priority
-            // between the entry and the choice. A choice it raises returns; the post-intent
-            // pipeline re-enters placement once answered, and this group is already popped.
-            // ponytail: state-based actions run one pipeline phase *ahead* of placement, so the
-            // choice lands a sweep later than CR 704.3 strictly wants. Unobservable for every
-            // as-enters card in the pool (their payoffs only add stats or grant protection, and
-            // nothing between the two sweeps gets priority); move this ahead of the SBA phase if
-            // an as-enters choice ever decides whether a permanent survives that first sweep.
+            // ability: it never reaches the stack. `PostIntentPhase::AsEntersReplacements` drains
+            // these ahead of the state-based sweep, so one only lands here when placement is
+            // re-entered directly (a target choice answered mid-batch) — run it inline.
             if ability.timing == Timing::Triggered(Trigger::AsEnters) {
-                debug_assert!(
-                    !ability.optional,
-                    "an as-enters replacement effect can't be a 'you may' — it never reaches the \
-                     optional gate below"
-                );
-                let ctx = crate::resolution::ResolveCtx {
-                    controller: player,
-                    source,
-                    target: None,
-                    targets_second: TargetList::default(),
-                    x: 0,
-                    spent_mana: [0; 6],
-                };
-                self.run(effect, ctx, events);
+                self.run_as_enters(player, source, effect, events);
                 if self.pending_choice.is_some() {
                     return;
                 }
@@ -5305,7 +5517,8 @@ impl Game {
         crate::pending::raise_choice(
             self,
             PendingChoice::ChooseTarget {
-                player,
+                player: self.target_chooser(spec, player),
+                controller: player,
                 source,
                 effect: Some(effect),
                 legal,
@@ -5318,6 +5531,26 @@ impl Game {
             },
         );
         Placement::Paused
+    }
+
+    /// Who picks this ability's target. Normally the ability's own controller — but a clause whose
+    /// candidates are scoped to the *active player's* board is The Abyss's "destroy target
+    /// nonartifact creature that player controls **of their choice**" (CR 601.2c), and that player
+    /// chooses. The trigger still goes on the stack under `controller` (see
+    /// [`PendingChoice::ChooseTarget::controller`]).
+    /// ponytail: read off the target filter rather than a `chosen_by` axis on the DSL — every card
+    /// that scopes a *target* to the active player's own board also hands them the choice, and
+    /// [`FilterController::ActivePlayer`] is otherwise only used by untargeted sweeps (Siren's
+    /// Call). Mint an explicit `chosen_by` if a card ever prints "target creature the active
+    /// player controls" that *you* choose.
+    fn target_chooser(&self, spec: TargetSpec, controller: PlayerId) -> PlayerId {
+        let TargetSpec::Permanent(filter) = spec else {
+            return controller;
+        };
+        if filter.controller != FilterController::ActivePlayer {
+            return controller;
+        }
+        self.active_player
     }
 
     /// A triggered ability's *second* independent target clause (CR 603.3d — an ability may target
@@ -5488,6 +5721,7 @@ impl Game {
             self,
             PendingChoice::ChooseTarget {
                 player,
+                controller: player,
                 source,
                 effect: Some(effect),
                 legal,

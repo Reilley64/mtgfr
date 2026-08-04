@@ -147,6 +147,7 @@ impl Game {
                         toughness: 0,
                         keywords: &[Keyword::Haste],
                         source_name,
+                        ends_at_end_of_combat: false,
                     });
                 }
                 events
@@ -184,6 +185,7 @@ impl Game {
                         toughness: 0,
                         keywords: &[Keyword::Haste],
                         source_name,
+                        ends_at_end_of_combat: false,
                     });
                 }
                 events
@@ -257,6 +259,19 @@ impl Game {
                 .filter_map(|object| self.tap_change(object, true))
                 .collect(),
 
+            // Feint's "tap all creatures blocking target attacking creature": `TapAll` narrowed
+            // to one attacker's declared blockers instead of a filter sweep. Tapping them does not
+            // un-block anything (CR 509.1h) — the fog rider beside it is what saves the attacker.
+            ControlEffect::TapBlockersOfTarget { .. } => {
+                let Some(Target::Object(attacker)) = target else {
+                    return Vec::new();
+                };
+                self.blockers_of(attacker)
+                    .into_iter()
+                    .filter_map(|object| self.tap_change(object, true))
+                    .collect()
+            }
+
             // Mana Short's "tap all lands target player controls": `TapAll` aimed at the chosen
             // seat instead of your own. `you` for the filter is still that player — Power Sink's
             // "lands with mana abilities **they** control" reads from their side of the table.
@@ -285,6 +300,71 @@ impl Game {
                 .collect(),
 
             _ => unreachable!("control family mint received a non-family effect"),
+        }
+    }
+
+    /// Rohgahh of Kher Keep's "then an opponent gains control of them": the swept set is read at
+    /// resolution (plus the source itself when `with_source`, which no filter can name), the
+    /// controller picks one opponent to hand *all* of it to, and a table with a single opponent
+    /// left skips the pause. Handing the set over is [`Self::resolve_target_opponent_gains_control`]'s
+    /// `ControlGained` per permanent.
+    pub(crate) fn resolve_opponent_gains_control_all(
+        &mut self,
+        ctx: ResolveCtx,
+        filter: PermanentFilter,
+        with_source: bool,
+        events: &mut Vec<Event>,
+    ) {
+        let ResolveCtx {
+            controller, source, ..
+        } = ctx;
+        let mut objects: Vec<ObjectId> = self
+            .battlefield()
+            .into_iter()
+            .filter(|&id| self.permanent_matches(&filter, id, controller, Some(source)))
+            .collect();
+        if with_source && self.as_permanent(source).is_some() && !objects.contains(&source) {
+            objects.push(source);
+        }
+        if objects.is_empty() {
+            return;
+        }
+        let legal: Vec<PlayerId> = self.living_players().filter(|&p| p != controller).collect();
+        match legal.as_slice() {
+            // ponytail: no opponent left to hand them to — unreachable in a real game.
+            [] => {}
+            [only] => self.gain_control_of_all(*only, &objects, events),
+            _ => pending::raise(
+                self,
+                pending::ChoiceRequest::ChooseSplittingOpponent {
+                    player: controller,
+                    source,
+                    legal,
+                    then: SplittingContinuation::GainControlOf { objects },
+                },
+            ),
+        }
+    }
+
+    /// Hand `objects` to `recipient` — the tail of [`Self::resolve_opponent_gains_control_all`],
+    /// reached directly when one opponent is left and through the chooser's answer otherwise.
+    pub(crate) fn gain_control_of_all(
+        &mut self,
+        recipient: PlayerId,
+        objects: &[ObjectId],
+        events: &mut Vec<Event>,
+    ) {
+        for &object in objects {
+            if self.as_permanent(object).is_none() {
+                continue;
+            }
+            self.push_apply(
+                events,
+                Event::ControlGained {
+                    object,
+                    controller: recipient,
+                },
+            );
         }
     }
 
@@ -366,6 +446,40 @@ impl Game {
         {
             self.destroy_permanent(aura, events);
         }
+    }
+
+    /// Enchantment Alteration: "Attach target Aura attached to a creature or land to another
+    /// permanent of that type." Clause 0 is the Aura (`ctx.target`), clause 1 the new host
+    /// (`ctx.targets_second`, chosen at announcement — CR 601.2c). Either target having left the
+    /// battlefield since (CR 608.2b) drops the whole move, and the attach is still gated on the
+    /// Aura's own enchant restriction and the host's protection (CR 303.4f/702.16e) — clause 1's
+    /// legality was narrowed to the *old* host's types, which a type-changing effect in response
+    /// can outdate.
+    pub(crate) fn resolve_move_aura(&mut self, ctx: ResolveCtx, events: &mut Vec<Event>) {
+        let ResolveCtx {
+            target,
+            targets_second,
+            ..
+        } = ctx;
+        let Some(aura) = target.and_then(Target::object_id) else {
+            return;
+        };
+        let Some(Target::Object(host)) = targets_second.iter().next() else {
+            return;
+        };
+        if self.as_permanent(aura).is_none() || self.as_permanent(host).is_none() {
+            return;
+        }
+        if !self.noncast_attach_legal(aura, host) {
+            return;
+        }
+        self.push_apply(
+            events,
+            Event::AttachedTo {
+                object: aura,
+                host: Some(host),
+            },
+        );
     }
 
     /// Juxtapose (CR 701.10): "You and target player exchange control of the creature you each

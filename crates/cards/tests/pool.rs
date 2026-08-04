@@ -2972,6 +2972,8 @@ fn unlimited_pump_auras_activate_off_the_aura_onto_its_host() {
                 // The pump lands on the creature this Aura enchants, not on a fresh target.
                 target: TargetSpec::EnchantedCreature,
                 keywords: &[],
+                count: TargetCount::default(),
+                ends_at_end_of_combat: false,
             }),
             "{name} pumps its host"
         );
@@ -3120,6 +3122,8 @@ fn unlimited_combat_tricks_pump_their_target_until_end_of_turn() {
                 toughness: *toughness,
                 target: TargetSpec::Creature,
                 keywords,
+                count: TargetCount::default(),
+                ends_at_end_of_combat: false,
             }),
             "{name} pumps its target"
         );
@@ -3482,6 +3486,8 @@ fn unlimited_utility_spells_carry_their_printed_effects() {
             }),
             Effect::Misc(MiscEffect::PreventNextDamage {
                 from_filter: None,
+                redirect_to_source: false,
+                redirect_to_target: false,
                 from_relation: None,
                 all_damage: false,
                 shield_source: false,
@@ -3780,6 +3786,8 @@ fn unlimited_tap_abilities_carry_their_printed_effects() {
             "Samite Healer",
             Effect::Misc(MiscEffect::PreventNextDamage {
                 from_filter: None,
+                redirect_to_source: false,
+                redirect_to_target: false,
                 from_relation: None,
                 all_damage: false,
                 shield_source: false,
@@ -3801,6 +3809,8 @@ fn unlimited_tap_abilities_carry_their_printed_effects() {
             // activated it.
             Effect::Misc(MiscEffect::PreventNextDamage {
                 from_filter: None,
+                redirect_to_source: false,
+                redirect_to_target: false,
                 from_relation: None,
                 all_damage: false,
                 shield_source: false,
@@ -3828,6 +3838,8 @@ fn unlimited_tap_abilities_carry_their_printed_effects() {
                     ..PermanentFilter::default()
                 }),
                 keywords: &[Keyword::Unblockable],
+                count: TargetCount::default(),
+                ends_at_end_of_combat: false,
             }),
         ),
     ];
@@ -3886,6 +3898,8 @@ fn unlimited_tap_abilities_carry_their_printed_effects() {
                 toughness: Amount::Fixed(0),
                 target: liftable,
                 keywords: &[Keyword::Flying],
+                count: TargetCount::default(),
+                ends_at_end_of_combat: false,
             }),
             Effect::Destroy(DestroyEffect::Target {
                 target: liftable,
@@ -4024,7 +4038,9 @@ fn unlimited_triggers_fire_off_the_event_their_oracle_names() {
         forces.abilities[0].timing,
         Timing::Triggered(Trigger::Upkeep)
     );
-    let Effect::Choice(ChoiceEffect::PayOrElse { cost, otherwise }) = forces.abilities[0].effect
+    let Effect::Choice(ChoiceEffect::PayOrElse {
+        cost, otherwise, ..
+    }) = forces.abilities[0].effect
     else {
         panic!("Phantasmal Forces asks for rent");
     };
@@ -4046,7 +4062,9 @@ fn unlimited_triggers_fire_off_the_event_their_oracle_names() {
         force.abilities[0].timing,
         Timing::Triggered(Trigger::Upkeep)
     );
-    let Effect::Choice(ChoiceEffect::PayOrElse { cost, otherwise }) = force.abilities[0].effect
+    let Effect::Choice(ChoiceEffect::PayOrElse {
+        cost, otherwise, ..
+    }) = force.abilities[0].effect
     else {
         panic!("Force of Nature asks for rent too");
     };
@@ -4510,7 +4528,10 @@ fn unlimited_stasis_skips_the_step_rather_than_holding_permanents_down() {
         "players skip their untap steps — not \"permanents don't untap\""
     );
     assert_eq!(upkeep.timing, Timing::Triggered(Trigger::Upkeep));
-    let Effect::Choice(ChoiceEffect::PayOrElse { cost, otherwise }) = &upkeep.effect else {
+    let Effect::Choice(ChoiceEffect::PayOrElse {
+        cost, otherwise, ..
+    }) = &upkeep.effect
+    else {
         panic!("sacrifice this enchantment unless you pay 1 blue");
     };
     assert_eq!(cost.colored[Color::Blue as usize], 1);
@@ -4627,7 +4648,8 @@ fn unlimited_petrifiers_spare_walls_and_wait_for_end_of_combat() {
                         types: TypeSet::CREATURE,
                         exclude_subtypes: ["Wall"],
                         ..
-                    }
+                    },
+                    ..
                 })
             ),
             "{name} watches blocks by non-Wall creatures only, got {:?}",
@@ -4904,6 +4926,8 @@ fn guardian_angel_hangs_its_standing_offer_off_the_targeted_shield() {
         steps[0],
         Effect::Misc(MiscEffect::PreventNextDamage {
             from_filter: None,
+            redirect_to_source: false,
+            redirect_to_target: false,
             from_relation: None,
             all_damage: false,
             shield_source: false,
@@ -4954,6 +4978,8 @@ fn unlimited_the_protection_circles_gate_their_shield_on_their_own_color() {
             ability.effect,
             Effect::Misc(MiscEffect::PreventNextDamage {
                 from_filter: None,
+                redirect_to_source: false,
+                redirect_to_target: false,
                 from_relation: None,
                 all_damage: false,
                 shield_source: false,
@@ -4980,6 +5006,8 @@ fn unlimited_the_protection_circles_gate_their_shield_on_their_own_color() {
         spell.effect,
         Effect::Misc(MiscEffect::PreventNextDamage {
             from_filter: None,
+            redirect_to_source: false,
+            redirect_to_target: false,
             from_relation: None,
             all_damage: false,
             shield_source: false,
@@ -5016,6 +5044,8 @@ fn unlimited_jade_monolith_shields_a_creature_by_standing_in_front_of_it() {
         ability.effect,
         Effect::Misc(MiscEffect::PreventNextDamage {
             from_filter: None,
+            redirect_to_source: false,
+            redirect_to_target: false,
             from_relation: None,
             all_damage: false,
             shield_source: false,
@@ -5282,6 +5312,8 @@ fn unlimited_personal_incarnation_answers_to_its_owner_and_not_its_controller() 
         shield.effect,
         Effect::Misc(MiscEffect::PreventNextDamage {
             from_filter: None,
+            redirect_to_source: false,
+            redirect_to_target: false,
             from_relation: None,
             all_damage: false,
             amount: Some(Amount::Fixed(1)),

@@ -19,10 +19,6 @@ green = 1
 type = "aura"
 
 # When this Aura enters, tap enchanted creature and put three pupa counters on this Aura.
-# ponytail: split into two enters triggers because a single ability carries one settled
-# fixed-reference target for all of its effects, and these two halves point at different
-# permanents (the creature, then the Aura). Both go on the stack together and neither depends on
-# the other, so the board lands the same.
 [[abilities]]
 timing = "etb"
 
@@ -33,9 +29,6 @@ mode = "tap_target"
 target = "enchanted_creature"
 
 # and put three pupa counters on this Aura.
-[[abilities]]
-timing = "etb"
-
 [[abilities.effects]]
 type = "counters"
 mode = "put_counters"

@@ -82,6 +82,16 @@ pub enum ZoneEffect {
         under_owner: bool,
     },
 
+    /// Puppet Master: "When enchanted creature dies, return **that card** to its owner's hand."
+    /// The hand-side twin of [`ReanimateDyingEnchantedCreature`](Self::ReanimateDyingEnchantedCreature)
+    /// — same CR 603.10a snapshot of the dying host, filled at trigger placement by
+    /// `fill_dying_enchanted_creature`, since by resolution the host is a graveyard card. A
+    /// no-op if it has left the graveyard by then (CR 400.7).
+    ReturnDyingEnchantedCreatureToHand {
+        #[cfg_attr(feature = "card-dsl", serde(skip))]
+        dying: Option<ObjectId>,
+    },
+
     /// Tariel, Reckoner of Souls: "Choose a creature card at random from target opponent's
     /// graveyard. Put that card onto the battlefield under your control." `target` is the
     /// targeted opponent (CR-real target, `TargetSpec::OpponentPlayer`); the creature card

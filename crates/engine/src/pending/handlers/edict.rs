@@ -85,6 +85,40 @@ impl Game {
         Ok(events)
     }
 
+    /// Answer a [`PendingChoice::SacrificeAnyNumber`]: `sacrifices` is any subset (empty
+    /// sacrifices nothing) of the choice's `options`, each distinct. Sacrifice them, then lock the
+    /// count onto `source` as the X it entered with — Wood Elemental's power and toughness read it
+    /// back from there, frozen at what was paid as it entered.
+    pub(crate) fn answer_sacrifice_any_number(
+        &mut self,
+        _player: PlayerId,
+        sacrifices: Vec<ObjectId>,
+    ) -> Result<Vec<Event>, Reject> {
+        let Some(PendingChoice::SacrificeAnyNumber {
+            source, options, ..
+        }) = self.pending_choice.clone()
+        else {
+            return Err(Reject::IllegalChoice);
+        };
+        for (i, &id) in sacrifices.iter().enumerate() {
+            if !options.contains(&id) || sacrifices[..i].contains(&id) {
+                return Err(Reject::IllegalChoice);
+            }
+        }
+        self.finish_answer();
+
+        let mut events = Vec::new();
+        self.sacrifice_ids(&sacrifices, &mut events);
+        self.push_apply(
+            &mut events,
+            Event::EnteredWithXSet {
+                object: source,
+                x: sacrifices.len() as u32,
+            },
+        );
+        Ok(events)
+    }
+
     /// Answer a [`PendingChoice::Devour`]: `sacrifices` is any subset (empty declines) of the
     /// choice's `options`, each distinct. Sacrifice them, then place `multiplier × count` +1/+1
     /// counters on `source` through [`Game::counters_after_replacements`] (CR 614 doublers apply).

@@ -17,6 +17,7 @@ pub(super) fn map_identical(request: &ChoiceRequest) -> Option<PendingChoice> {
             activated,
         } => Some(PendingChoice::ChooseTarget {
             player: *player,
+            controller: *player,
             source: *source,
             effect: Some(effect.clone()),
             legal: legal.clone(),

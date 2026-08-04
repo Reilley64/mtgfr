@@ -220,6 +220,24 @@ impl Game {
         events: &mut Vec<Event>,
     ) {
         for (i, step) in steps.iter().enumerate() {
+            // A step naming a *fixed reference* (CR 115 — "itself", "enchanted creature") is not
+            // the sequence's shared target: Psionic Entity's "deals 2 damage to any target **and 3
+            // damage to itself**" would otherwise put both halves on the chosen target. Blanking
+            // it here hands the step to `Game::run`'s existing settle-from-source path, which is
+            // what a nested (never-placed) fixed-reference effect already takes.
+            // ponytail: the one slice of "per-effect targets" this pool needs — fixed references,
+            // which are settled rather than chosen. Two independently *chosen* targets in one
+            // ability still share clause 0; give `run_sequence` a per-step target list if a card
+            // ever prints that.
+            let mut ctx = ctx;
+            if matches!(
+                step.target(),
+                TargetSpec::ThisPermanent
+                    | TargetSpec::EnchantedCreature
+                    | TargetSpec::ThisAurasGraveyardTarget
+            ) {
+                ctx.target = None;
+            }
             self.run(step.clone(), ctx, events);
             if self.resolution_is_paused() {
                 let rest = &steps[i + 1..];

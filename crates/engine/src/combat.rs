@@ -116,6 +116,10 @@ impl Game {
                 !self.landwalk_negated(land)
                     && self.lands_with_subtype_controlled(player, &[land.as_str()]) > 0
             }
+            // Livonya Silone's legendary landwalk names a supertype, so there is no land subtype
+            // to count and no `LandwalkNegated` static that can name it (every printed negation
+            // is basic-type-scoped).
+            Keyword::LegendaryLandwalk => self.legendary_lands_controlled(player) > 0,
             _ => false,
         }) {
             return false;
@@ -344,6 +348,9 @@ impl Game {
             // history rolled at the controller's cleanup step, and both sit here rather than at the
             // declaration for the same CR 509.1a reason as the bans above.
             && !self.cant_attack_after_last_own_turn(creature)
+            // Johan's "gain \"Johan can't attack\" until end of combat": a combat-scoped ban, here
+            // beside the turn-scoped ones for the same CR 509.1a reason.
+            && !self.combat.cant_attack_this_combat.contains(&creature)
             && self.living_players().any(|d| {
                 // Sea Serpent's "unless defending player controls an Island" is per-defender, so
                 // "able to attack" means *some* seat is open. Checked here as well as at the
@@ -353,6 +360,16 @@ impl Game {
                     // Arboria shields the *player*, so a seat with a planeswalker is still open.
                     && (!self.defender_shielded_by_inaction(d) || self.controls_a_planeswalker(d))
             })
+    }
+
+    /// Whether attacking costs `player`'s creatures nothing this combat (Johan's "attacking
+    /// doesn't cause creatures you control to tap this combat if Johan is untapped") — pseudo-
+    /// vigilance for a whole side, gated on the source still being on the battlefield and
+    /// untapped *now*, at the declaration, rather than when the ability resolved.
+    fn attacks_dont_tap(&self, player: PlayerId) -> bool {
+        self.combat.attacks_dont_tap.iter().any(|&(who, source)| {
+            who == player && self.as_permanent(source).is_some() && !self.is_tapped(source)
+        })
     }
 
     /// Whether `creature` is barred from this combat by something that happened on an *earlier*
@@ -857,6 +874,29 @@ impl Game {
             .any(|filter| self.permanent_matches(&filter, blocker, defender, Some(attacker)))
     }
 
+    /// Whether `blocker` is *required* to block `attacker` by a live "all \[filter\] able to block
+    /// this creature do so" static printed on the attacker (CR 509.1c — Marble Priest's Walls).
+    /// The requirement twin of [`Game::cant_be_blocked_by`] just above: same attacker-side scan,
+    /// same `defender` point of view for the filter, opposite verdict.
+    ///
+    /// Ability-ness only; whether the blocker *can* block at all is
+    /// [`Game::required_blocks`]'s own `can_block` call ("able to block").
+    fn must_be_blocked_by(
+        &self,
+        attacker: ObjectId,
+        blocker: ObjectId,
+        defender: PlayerId,
+    ) -> bool {
+        self.functional_abilities(attacker)
+            .iter()
+            .any(|a| match (a.timing, a.effect.clone()) {
+                (Timing::Static, Effect::Static(StaticEffect::MustBeBlockedBy { filter })) => {
+                    self.permanent_matches(&filter, blocker, defender, Some(attacker))
+                }
+                _ => false,
+            })
+    }
+
     /// Whether `blocker` carries a live "this creature can't block \[filter\]" restriction that
     /// `attacker` matches (CR 509.1b — Ironclaw Orcs). Self-only and attacker-facing, which is
     /// what separates it from [`Game::cant_block_filter`] just below.
@@ -1256,7 +1296,7 @@ impl Game {
                     defender_planeswalker: defender.object_id(),
                 },
             );
-            if !self.has_keyword(a, Keyword::Vigilance) {
+            if !self.has_keyword(a, Keyword::Vigilance) && !self.attacks_dont_tap(player) {
                 // CR 615: a masked Illusionary Mask attacker becoming tapped is turned face up first.
                 self.flip_masked(a, &mut events);
                 self.push_apply(&mut events, Event::Tapped { object: a });
@@ -1500,7 +1540,9 @@ impl Game {
             let lured = self.host_must_be_blocked_by_all(attacker);
             for &seat in seats {
                 for blocker in self.controlled_battlefield(seat) {
-                    let forced = lured || self.combat_extras.must_block_all.contains(&blocker);
+                    let forced = lured
+                        || self.combat_extras.must_block_all.contains(&blocker)
+                        || self.must_be_blocked_by(attacker, blocker, seat);
                     if !forced || !self.can_block(seat, blocker, attacker) {
                         continue;
                     }
@@ -1537,7 +1579,7 @@ impl Game {
     /// The second clause is a conjunction: "bands with other \[quality\]" on its own moves nothing
     /// — it needs a second creature of the same quality beside it, which is what makes the pair a
     /// band. Plain banding needs no partner.
-    fn banding_division_shifter(&self, creatures: &[ObjectId]) -> Option<ObjectId> {
+    pub(crate) fn banding_division_shifter(&self, creatures: &[ObjectId]) -> Option<ObjectId> {
         if let Some(&bander) = creatures
             .iter()
             .find(|&&c| self.has_keyword(c, Keyword::Banding))
@@ -1594,10 +1636,9 @@ impl Game {
     /// A 0-or-less-power creature is skipped rather than asked for a division of nothing: CR 510.1a
     /// has it assign no combat damage at all, and once its power is *negative* there is no legal
     /// answer to give, so asking would park the damage step forever.
-    /// ponytail: a double striker keeps the division it chose in the first-strike batch instead of
-    /// choosing a fresh one for the normal batch (CR 510.4). Since the first division has already
-    /// been dealt, this only shows up when the other side survives it — scope `combat.damage` per
-    /// batch if a card ever makes that matter.
+    /// CR 510.4 gives a double striker a *fresh* division in the normal batch: `advance_step`'s
+    /// `Step::CombatDamage` arm clears `combat.damage` before the batch opens, so the "no division
+    /// chosen yet" test below is true again for a creature that already divided under first strike.
     fn owes_a_division(&self, creature: ObjectId, first_strike_batch: bool) -> bool {
         self.as_permanent(creature).is_some()
             && self.deals_this_batch(creature, first_strike_batch)
@@ -1609,6 +1650,13 @@ impl Game {
     /// an attacker blocked by two or more creatures divides among them), then blockers (CR 510.1d:
     /// a creature blocking two or more attackers divides among *them*). CR 702.22j/k change only
     /// which seat is asked, never whether the division exists.
+    ///
+    /// ponytail: a division with more than `MAX_BLOCKERS` recipients is never *raised* —
+    /// `DamageAssignment`'s fixed `Copy` array cannot hold the answer, so `Game::assign_damage`
+    /// would reject every reply and the combat damage step would never finish. Past the ceiling
+    /// the creature falls through to the default lethal-in-order split instead, which is a wrong
+    /// division rather than a softlocked game. The upgrade path is a heap-allocated assignment
+    /// (which costs `Event: Copy`, and the object arena leans on it).
     pub(crate) fn next_undivided_division(
         &self,
         first_strike_batch: bool,
@@ -1618,7 +1666,7 @@ impl Game {
                 continue;
             }
             let blockers = self.blockers_of(attacker);
-            if blockers.len() >= 2 {
+            if (2..=MAX_BLOCKERS).contains(&blockers.len()) {
                 return Some(PendingChoice::AssignCombatDamage {
                     player: self.attacker_damage_assigner(&blockers),
                     source: attacker,
@@ -1633,7 +1681,7 @@ impl Game {
                 continue;
             }
             let attackers = self.attackers_blocked_by(blocker);
-            if attackers.len() >= 2 {
+            if (2..=MAX_BLOCKERS).contains(&attackers.len()) {
                 return Some(PendingChoice::AssignCombatDamage {
                     player: self.blocker_damage_assigner(blocker, &attackers),
                     source: blocker,

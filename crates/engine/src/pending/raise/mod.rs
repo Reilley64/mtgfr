@@ -101,12 +101,22 @@ pub(crate) enum ChoiceRequest {
         player: crate::PlayerId,
         source: crate::ObjectId,
     },
-    /// [`Effect::Choice(ChoiceEffect::MaySacrifice)`] — no legal permanent skips.
+    /// [`Effect::Choice(ChoiceEffect::MaySacrifice)`] — fewer than `count` legal permanents skips
+    /// (the `otherwise` penalty is run by the caller before the raise, see `Game::run_effect`).
     MaySacrifice {
         player: crate::PlayerId,
         source: crate::ObjectId,
         filter: crate::PermanentFilter,
+        count: u8,
         then: &'static [crate::Effect],
+        otherwise: &'static [crate::Effect],
+    },
+    /// [`Effect::Choice(ChoiceEffect::SacrificeAnyNumber)`](crate::ChoiceEffect::SacrificeAnyNumber)
+    /// as-enters (Wood Elemental) — no matching permanent skips.
+    SacrificeAnyNumber {
+        player: crate::PlayerId,
+        source: crate::ObjectId,
+        filter: crate::PermanentFilter,
     },
     /// [`CardDef::devour`] as-enters — no other creature skips.
     Devour {
@@ -317,6 +327,9 @@ pub(crate) enum ChoiceRequest {
     NextCardName {
         remaining: Vec<crate::PlayerId>,
         source: crate::ObjectId,
+        /// What the answered name is for — see [`crate::CardNameUse`]. Conundrum Sphinx's fan-out
+        /// and Petra Sphinx's single seat differ only in this tail.
+        use_: crate::CardNameUse,
     },
     /// Next seat in a multi-player sacrifice edict — no real choice left → `None` (caller runs
     /// follow-up).
@@ -471,8 +484,15 @@ pub(super) fn choice_from_request(game: &Game, request: ChoiceRequest) -> Option
             player,
             source,
             filter,
+            count,
             then,
-        } => optional::may_sacrifice(game, player, source, filter, then),
+            otherwise,
+        } => optional::may_sacrifice(game, player, source, filter, count, then, otherwise),
+        ChoiceRequest::SacrificeAnyNumber {
+            player,
+            source,
+            filter,
+        } => optional::sacrifice_any_number(game, player, source, filter),
         ChoiceRequest::Devour {
             player,
             source,
@@ -641,9 +661,11 @@ pub(super) fn choice_from_request(game: &Game, request: ChoiceRequest) -> Option
             source,
             options,
         } => fanout::next_vote(remaining, source, options),
-        ChoiceRequest::NextCardName { remaining, source } => {
-            fanout::next_card_name(remaining, source)
-        }
+        ChoiceRequest::NextCardName {
+            remaining,
+            source,
+            use_,
+        } => fanout::next_card_name(remaining, source, use_),
         ChoiceRequest::NextSacrificeEdict {
             remaining,
             keep_one,

@@ -1,0 +1,30 @@
+# {3}, {T}: The next time a source of your choice would deal damage to you this turn, that damage
+# is dealt to target creature of an opponent's choice instead.
+name = "Nova Pentacle"
+otags = ["activated-ability", "damage-prevention-you", "damage-redirection", "delayed-replacement-effect"]
+sets = ["leg", "me3"]
+id = "db121503-8a34-498a-829c-72c33798369b"
+default_print = "bc60e209-aa29-48aa-9128-9bb175403c0c"
+oracle = "{3}, {T}: The next time a source of your choice would deal damage to you this turn, that damage is dealt to target creature of an opponent's choice instead."
+approximates = "the redirection catches whichever source hits you first instead of one picked as the ability resolves, and the creature the damage moves to is named by this artifact's controller rather than by an opponent"
+
+[cost]
+generic = 4
+
+[kind]
+type = "artifact"
+
+# {3}, {T}: The next time a source of your choice would deal damage to you this turn, that damage
+# is dealt to target creature of an opponent's choice instead.
+[[abilities]]
+timing = "activated"
+activation_cost = { generic = 3 }
+taps_self = true
+
+# The next time a source of your choice would deal damage to you this turn, that damage is dealt
+# to target creature of an opponent's choice instead.
+[[abilities.effects]]
+type = "misc"
+mode = "prevent_next_damage"
+target = "creature"
+redirect_to_target = true

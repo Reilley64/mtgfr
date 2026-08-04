@@ -92,7 +92,7 @@ impl Game {
                     count: -count,
                 },
             );
-            let n = self.kind_counters_after_replacements(placer, to, count);
+            let n = self.kind_counters_after_replacements(placer, to, kind, count);
             if n > 0 {
                 self.push_apply(
                     events,

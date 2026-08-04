@@ -203,6 +203,14 @@ pub struct Game {
     /// drawn after the look were never in it — which is exactly what "look at" means, as against a
     /// standing window onto the hand.
     pub(crate) hand_cards_seen: Vec<(PlayerId, ObjectId)>,
+    /// `(card, owner)` for every hand card that came back from a death replacement which shuts it
+    /// down for a turn cycle — Firestorm Phoenix's "Until that player's next turn, that player
+    /// plays with that card revealed in their hand and can't play it." Both halves of that clause
+    /// read this one list: [`Game::has_seen_hand_card`] treats an entry as a standing window onto
+    /// the card for every seat, and the cast path refuses it. Cleared for the active player at
+    /// their untap step, the same "until your next turn" boundary
+    /// [`CombatExtras::repelled_until_next_turn`] uses.
+    pub(crate) revealed_unplayable_until_next_turn: Vec<(ObjectId, PlayerId)>,
     /// "Prevent the next N damage that would be dealt to `target` this turn" (CR 615 — Healing
     /// Salve, Samite Healer, Conservator): each entry is a *consumable* shield, `(what it
     /// protects, how many points are left on it)`. Spent at the two damage chokes
@@ -702,6 +710,7 @@ mod forced_action_tests {
         let mut game = Game::with_players(2, 0);
         game.pending_choice = Some(PendingChoice::ChooseTarget {
             player: P0,
+            controller: P0,
             source: 0,
             effect: Some(Effect::Draw(DrawEffect::Cards {
                 who: PlayerSet::You,
@@ -729,6 +738,7 @@ mod forced_action_tests {
         let mut game = Game::with_players(2, 0);
         game.pending_choice = Some(PendingChoice::ChooseTarget {
             player: P0,
+            controller: P0,
             source: 0,
             effect: Some(Effect::Draw(DrawEffect::Cards {
                 who: PlayerSet::You,
@@ -752,6 +762,7 @@ mod forced_action_tests {
         let mut game = Game::with_players(2, 0);
         game.pending_choice = Some(PendingChoice::ChooseTarget {
             player: P0,
+            controller: P0,
             source: 0,
             effect: Some(Effect::Draw(DrawEffect::Cards {
                 who: PlayerSet::You,

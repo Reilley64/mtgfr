@@ -68,17 +68,48 @@ pub(super) fn may_sacrifice(
     player: PlayerId,
     source: ObjectId,
     filter: PermanentFilter,
+    count: u8,
     then: &'static [Effect],
+    otherwise: &'static [Effect],
 ) -> Option<PendingChoice> {
     let options = game.edict_options(player, filter, Some(source));
-    if options.is_empty() {
+    // Can't make the offer (Mold Demon on one Swamp): no prompt. The penalty isn't lost — the
+    // caller ran `otherwise` instead of reaching this raise at all.
+    if options.len() < count.max(1) as usize {
         return None;
     }
     Some(PendingChoice::MaySacrifice {
         player,
         source,
         options,
+        count: count.max(1),
         then,
+        otherwise,
+    })
+}
+
+/// Wood Elemental's as-enters "sacrifice any number of untapped Forests": every matching permanent
+/// its controller has, minus the source itself (a permanent can't be sacrificed to its own entry
+/// cost — and no printing of this shape matches its own type anyway). `None` when nothing matches,
+/// so the entry never pauses on an empty prompt.
+pub(super) fn sacrifice_any_number(
+    game: &Game,
+    player: PlayerId,
+    source: ObjectId,
+    filter: PermanentFilter,
+) -> Option<PendingChoice> {
+    let options: Vec<ObjectId> = game
+        .edict_options(player, filter, Some(source))
+        .into_iter()
+        .filter(|&id| id != source)
+        .collect();
+    if options.is_empty() {
+        return None;
+    }
+    Some(PendingChoice::SacrificeAnyNumber {
+        player,
+        source,
+        options,
     })
 }
 

@@ -345,10 +345,19 @@ impl Game {
     /// Pause on the next seat in Conundrum Sphinx's name-a-card fan-out, or — when none remain —
     /// return, letting the enclosing sequence resume. Naming is mandatory (CR 201.2), so unlike a
     /// graveyard fan-out no seat is ever skipped.
-    pub(crate) fn prompt_next_card_name(&mut self, remaining: Vec<PlayerId>, source: ObjectId) {
+    pub(crate) fn prompt_next_card_name(
+        &mut self,
+        remaining: Vec<PlayerId>,
+        source: ObjectId,
+        use_: CardNameUse,
+    ) {
         crate::pending::raise(
             self,
-            crate::pending::ChoiceRequest::NextCardName { remaining, source },
+            crate::pending::ChoiceRequest::NextCardName {
+                remaining,
+                source,
+                use_,
+            },
         );
     }
 
@@ -369,6 +378,7 @@ impl Game {
             player: chooser,
             source,
             remaining,
+            use_,
         }) = self.pending_choice.clone()
         else {
             return Err(Reject::IllegalChoice);
@@ -385,34 +395,102 @@ impl Game {
         self.finish_answer();
 
         let mut events = Vec::new();
-        if let Some(&card) = self.players[player.0 as usize].library.first() {
-            let def = self.def_id_of(card);
-            let printed = card_def(def);
-            self.push_apply(
-                &mut events,
-                Event::RevealedTopOfLibrary { player, card, def },
-            );
-            if printed.name == chosen {
-                self.push_apply(
-                    &mut events,
-                    Event::SearchedToHand {
-                        player,
-                        object: self.next_object_id(),
-                        from: card,
-                        card: def,
-                    },
-                );
-            } else {
-                self.push_apply(&mut events, Event::PutOnBottomOfLibrary { player, card });
+        match use_ {
+            CardNameUse::RevealTopOfOwnLibrary { miss_to_graveyard } => {
+                self.reveal_top_against_name(player, chosen, miss_to_graveyard, &mut events);
+            }
+            CardNameUse::SubjectRevealsHandAtRandomThenDiscards { subject, count } => {
+                self.reveal_hand_at_random_then_discard_named(subject, count, chosen, &mut events);
             }
         }
-        self.prompt_next_card_name(remaining, source);
+        self.prompt_next_card_name(remaining, source, use_);
         Ok(events)
     }
 
-    /// Answer a [`PendingChoice::MaySacrifice`]: `sacrifices` is empty to decline, or names the
-    /// one permanent (one of the choice's `options`) sacrificed to gain `then`'s effects (CR
-    /// 601.2f-style "you may … if you do").
+    /// The Sphinxes' half of a named card (CR 201.2/703.2j): reveal `player`'s own top library
+    /// card; a name match goes to their hand, a miss to their graveyard (Petra Sphinx) or the
+    /// bottom of their library (Conundrum Sphinx). An empty library reveals nothing.
+    fn reveal_top_against_name(
+        &mut self,
+        player: PlayerId,
+        chosen: &str,
+        miss_to_graveyard: bool,
+        events: &mut Vec<Event>,
+    ) {
+        let Some(&card) = self.players[player.0 as usize].library.first() else {
+            return;
+        };
+        let def = self.def_id_of(card);
+        let printed = card_def(def);
+        self.push_apply(events, Event::RevealedTopOfLibrary { player, card, def });
+        if printed.name == chosen {
+            self.push_apply(
+                events,
+                Event::SearchedToHand {
+                    player,
+                    object: self.next_object_id(),
+                    from: card,
+                    card: def,
+                },
+            );
+            return;
+        }
+        if miss_to_graveyard {
+            self.push_apply(
+                events,
+                Event::Milled {
+                    player,
+                    card: self.next_object_id(),
+                    from: card,
+                },
+            );
+            return;
+        }
+        self.push_apply(events, Event::PutOnBottomOfLibrary { player, card });
+    }
+
+    /// Nebuchadnezzar's half: `subject` reveals `count` cards at random from their hand (CR 701.30
+    /// — the injected per-op RNG, so a replay reveals the same cards), then discards every card
+    /// revealed this way whose name is `chosen`. Revealing more than the hand holds simply reveals
+    /// the whole hand.
+    fn reveal_hand_at_random_then_discard_named(
+        &mut self,
+        subject: PlayerId,
+        count: u32,
+        chosen: &str,
+        events: &mut Vec<Event>,
+    ) {
+        let mut hand = self.hand_of(subject);
+        let mut revealed = Vec::new();
+        for _ in 0..(count as usize).min(hand.len()) {
+            let idx = self.with_op_rng(subject, |rng| rng.gen_index(hand.len()));
+            revealed.push(hand.swap_remove(idx));
+        }
+        let mut named = Vec::new();
+        for card in revealed {
+            let def = self.def_id_of(card);
+            self.push_apply(
+                events,
+                Event::RevealedFromHand {
+                    player: subject,
+                    card,
+                    def,
+                },
+            );
+            if card_def(def).name == chosen {
+                named.push(card);
+            }
+        }
+        // The shared discard path, so discard watchers, madness and Containment Construct see
+        // these exactly as they see a chosen pitch.
+        self.discard_ids(&named, subject, events);
+    }
+
+    /// Answer a [`PendingChoice::MaySacrifice`]: `sacrifices` is empty to decline, or names
+    /// exactly `count` distinct permanents (from the choice's `options`) sacrificed to gain
+    /// `then`'s effects (CR 601.2f-style "you may … if you do"). Declining runs `otherwise` —
+    /// Mold Demon's "sacrifice it unless you sacrifice two Swamps" — which is empty for the plain
+    /// no-penalty shape.
     pub(crate) fn answer_may_sacrifice(
         &mut self,
         player: PlayerId,
@@ -421,13 +499,21 @@ impl Game {
         let Some(PendingChoice::MaySacrifice {
             source,
             options,
+            count,
             then,
+            otherwise,
             ..
         }) = self.pending_choice.clone()
         else {
             return Err(Reject::IllegalChoice);
         };
-        if sacrifices.len() > 1 || sacrifices.iter().any(|id| !options.contains(id)) {
+        // "Two Swamps" is a price, not a maximum: pay it in full or not at all. Each named
+        // permanent must be a distinct offered one — the same Swamp twice isn't two Swamps.
+        let paid = !sacrifices.is_empty();
+        if (paid && sacrifices.len() != count as usize)
+            || sacrifices.iter().any(|id| !options.contains(id))
+            || (1..sacrifices.len()).any(|i| sacrifices[i..].contains(&sacrifices[i - 1]))
+        {
             return Err(Reject::IllegalChoice);
         }
         self.finish_answer();
@@ -450,20 +536,18 @@ impl Game {
         // itself pause (Springbloom Druid's rider is a library search) — `run_sequence` is the
         // general "run this effect list, deferring a pausing tail" runner (the same one
         // `Effect::Sequence` uses), so a pausing rider defers correctly.
-        if !sacrifices.is_empty() {
-            self.run_sequence(
-                then,
-                ResolveCtx {
-                    controller: player,
-                    source,
-                    target: None,
-                    targets_second: TargetList::default(),
-                    x: 0,
-                    spent_mana: [0; 6],
-                },
-                &mut events,
-            );
-        }
+        let ctx = ResolveCtx {
+            controller: player,
+            source,
+            target: None,
+            targets_second: TargetList::default(),
+            x: 0,
+            spent_mana: [0; 6],
+        };
+        // Paid → the "if you do" rider; declined → the price of declining ("unless you sacrifice
+        // two Swamps, sacrifice it"), which is empty for every card that only offers upside.
+        let branch = if paid { then } else { otherwise };
+        self.run_sequence(branch, ctx, &mut events);
         Ok(events)
     }
 

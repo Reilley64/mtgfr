@@ -167,6 +167,19 @@ pub enum PumpEffect {
             serde(default, deserialize_with = "de::static_slice")
         )]
         keywords: &'static [Keyword],
+        /// "Gets +10/+0 **until end of combat**" (CR 511.3 — Glyph of Destruction): the shorter
+        /// of the two durations a pump can print, and the same knob Jade Statue's
+        /// [`AnimateSelfUntilEndOfTurn`](Self::AnimateSelfUntilEndOfTurn) spells. Defaults to
+        /// `false`, which is the until-end-of-turn wording the mode is named for; `true` moves the
+        /// wear-off from the cleanup step to the end of combat step.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        ends_at_end_of_combat: bool,
+        /// Part Water's "**X target creatures** gain islandwalk until end of turn" (CR 601.2c) —
+        /// the same target-count axis [`ControlEffect::TapTarget`](crate::ControlEffect) carries
+        /// for Winter Blast's "tap X target creatures". Defaults to the single target every other
+        /// pump in the pool takes.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        count: TargetCount,
     },
 
     /// "That creature gains flying" (Cocoon) — a keyword grant with **no printed duration**, so it
@@ -179,6 +192,25 @@ pub enum PumpEffect {
         target: TargetSpec,
         #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::static_slice"))]
         keywords: &'static [Keyword],
+    },
+
+    /// "Gabriel Angelfire gains that ability until your next upkeep" — a keyword grant on the
+    /// ability's own source (no target) on the one duration that ends at the *start* of an upkeep
+    /// rather than at its end. Strictly shorter than Halfdane's
+    /// [`SetOwnBasePtFromTargetUntilEndOfNextUpkeep`](Self::SetOwnBasePtFromTargetUntilEndOfNextUpkeep):
+    /// the previous grant is already gone by the time the next upkeep's trigger resolves, which is
+    /// what makes each upkeep's choice replace the last one without any explicit removal.
+    ///
+    /// `choose_one` is CR 609.4's resolution-time pick among the listed `keywords` ("choose flying,
+    /// first strike, trample, or rampage 3"), the same shape
+    /// [`TargetLosesKeywords`](Self::TargetLosesKeywords) uses for Urborg — not a printed
+    /// "Choose one —" (CR 601.2b/603.3d), which a triggered ability would decide as it goes on the
+    /// stack. Peeled to the mode pause before this ever reaches the pump minter.
+    GrantSelfKeywordsUntilNextUpkeep {
+        #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::static_slice"))]
+        keywords: &'static [Keyword],
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        choose_one: bool,
     },
 
     SetBasePtCreaturesYouControlUntilEndOfTurn {
@@ -288,6 +320,19 @@ pub enum PumpEffect {
         count: TargetCount,
         #[cfg_attr(feature = "card-dsl", serde(default))]
         until_end_of_turn: bool,
+    },
+
+    /// Aisling Leprechaun's "that creature becomes green. (This effect lasts indefinitely.)" —
+    /// [`TargetBecomesColor`](Self::TargetBecomesColor)'s no-duration layer-5 SET aimed at a block
+    /// pair's other half instead of a chosen target (CR 613.3c). "That creature" is not a target
+    /// (CR 115.1), so `creature` is baked in when the trigger is placed, the same slot
+    /// [`DestroyEffect::ThatCreature`](crate::DestroyEffect) and
+    /// [`MiscEffect::ThatCreatureCantAttackNextOwnTurn`](crate::MiscEffect) take off the same
+    /// block pair.
+    ThatCreatureBecomesColor {
+        color: Color,
+        #[cfg_attr(feature = "card-dsl", serde(skip))]
+        creature: Option<ObjectId>,
     },
 
     /// "Target land becomes a Forest until this creature leaves the battlefield" (Gaea's Liege) —

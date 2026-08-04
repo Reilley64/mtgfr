@@ -18,10 +18,10 @@ use serde::Deserialize;
 use serde::de::{self, Deserializer, IntoDeserializer, Visitor};
 
 use crate::{
-    Ability, ActivationCost, AdditionalCost, Amount, AmountZone, ArithOp, CardDef, CardFilter,
-    CardKind, Color, ColorFilter, CombatDamageScope, Condition, Cost, CounterAxis, CounterKind,
-    Effect, FilterController, GrantedAbility, LandProduces, Mana, ManaPool, Parity,
-    PermanentFilter, ProtectionScope, ReanimateBecomes, SacrificeAdditionalCost,
+    Ability, ActivationCost, AdditionalCost, Amount, AmountZone, ArithOp, BlockSide, CardDef,
+    CardFilter, CardKind, Color, ColorFilter, CombatDamageScope, Condition, Cost, CounterAxis,
+    CounterKind, Effect, FilterController, FilterOwner, GrantedAbility, LandProduces, Mana,
+    ManaPool, Parity, PermanentFilter, ProtectionScope, ReanimateBecomes, SacrificeAdditionalCost,
     SacrificeAdditionalCostCount, SacrificeCost, SpendToCastPredicate, TargetCount, Timing,
     TokenFilter, Trigger, TypeSet,
     toml_surface::{AbilityToml, CardToml, CostToml, KindToml},
@@ -165,7 +165,10 @@ where
         }
         GrantedTriggerTag::Upkeep {} => Trigger::Upkeep,
         GrantedTriggerTag::BlocksOrBecomesBlockedBy { filter } => {
-            Trigger::BlocksOrBecomesBlockedBy { filter }
+            Trigger::BlocksOrBecomesBlockedBy {
+                filter,
+                side: BlockSide::Either,
+            }
         }
     }))
 }
@@ -1140,7 +1143,7 @@ impl<'de> Deserialize<'de> for TypeSet {
 /// `enchanted_by_you`, `mv_max`, `mv_min`, `mv_eq_x`, `mv_max_x`, `power_max`, `power_min`, `power_parity`,
 /// `toughness_max`, `toughness_min`,
 /// `noncreature`, `exclude`, `color`, `not_color`, `modified`, `attacking`, `not_attacking`, `attacking_you`,
-/// `blocking`, `attacking_or_blocking`, `tapped_or_blocking`, `unblocked`, `blocked_by_a_wall_this_turn`, `power_less_than_source`,
+/// `blocking`, `attacking_or_blocking`, `tapped_or_blocking`, `unblocked`, `blocked_by_a_wall_this_turn`, `in_combat_with_source`, `power_less_than_source`,
 /// `toughness_less_than_source_power`, `entered_this_turn`,
 /// `has_mana_ability`,
 /// `controlled_since_turn_start`, `did_not_attack_this_turn`,
@@ -1193,6 +1196,10 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     subtypes: Vec<String>,
                     #[serde(default)]
                     controller: FilterController,
+                    /// CR 108.3's owner, independent of `controller` (Remove Enchantments' "all
+                    /// enchantments you both own and control").
+                    #[serde(default)]
+                    owner: FilterOwner,
                     #[serde(default)]
                     token: TokenFilter,
                     #[serde(default)]
@@ -1201,6 +1208,11 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     enchanted: Option<bool>,
                     #[serde(default)]
                     attached_to_creature: Option<bool>,
+                    /// The host side as a nested filter (Enchantment Alteration's "Aura attached
+                    /// to a creature or land") — recursion is fine here, the inner table is just
+                    /// another `PermanentFilter`.
+                    #[serde(default)]
+                    attached_to: Option<PermanentFilter>,
                     #[serde(default)]
                     enchanted_by_you: bool,
                     #[serde(default)]
@@ -1259,6 +1271,10 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     unblocked: bool,
                     #[serde(default)]
                     blocked_by_a_wall_this_turn: bool,
+                    /// "…blocking or blocked by this creature" (Lesser Werewolf, Sentinel) — the
+                    /// pairing against the filter's own source, read from either end.
+                    #[serde(default)]
+                    in_combat_with_source: bool,
                     #[serde(default)]
                     power_less_than_source: bool,
                     #[serde(default)]
@@ -1318,10 +1334,12 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     types: t.types,
                     subtypes: intern_strs(t.subtypes),
                     controller: t.controller,
+                    owner: t.owner,
                     token: t.token,
                     other: t.other,
                     enchanted: t.enchanted,
                     attached_to_creature: t.attached_to_creature,
+                    attached_to: t.attached_to.map(|f| &*Box::leak(Box::new(f))),
                     enchanted_by_you: t.enchanted_by_you,
                     mv_max: t.mv_max,
                     mv_min: t.mv_min,
@@ -1352,6 +1370,7 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     tapped_or_blocking: t.tapped_or_blocking,
                     unblocked: t.unblocked,
                     blocked_by_a_wall_this_turn: t.blocked_by_a_wall_this_turn,
+                    in_combat_with_source: t.in_combat_with_source,
                     power_less_than_source: t.power_less_than_source,
                     toughness_less_than_source_power: t.toughness_less_than_source_power,
                     entered_this_turn: t.entered_this_turn,
@@ -1504,6 +1523,12 @@ pub(crate) enum TriggerTag {
     Blocks,
     BlocksOrBecomesBlocked,
     BlocksOrBecomesBlockedBy,
+    /// "Whenever this creature blocks a \[filter\]" (Infernal Medusa) — the blocker half of
+    /// [`BlocksOrBecomesBlockedBy`](Self::BlocksOrBecomesBlockedBy), reusing its `filter` sibling.
+    BlocksCreature,
+    /// "Whenever this creature becomes blocked by a \[filter\]" (Infernal Medusa) — the attacker
+    /// half, likewise on the shared `filter` sibling.
+    BecomesBlockedBy,
     AttacksOrBlocks,
     Dies,
     CreatureDies,
@@ -1545,6 +1570,10 @@ pub(crate) enum TriggerTag {
     /// Whenever the enchanted host deals damage, combat or noncombat (Armadillo Cloak's "you gain
     /// that much life"). See [`Trigger::EnchantedCreatureDealsDamage`].
     EnchantedCreatureDealsDamage,
+    /// Whenever the enchanted host deals damage *to this Aura's own controller* (Backfire's
+    /// "whenever enchanted creature deals damage to you"). See
+    /// [`Trigger::EnchantedCreatureDealsDamageToYou`].
+    EnchantedCreatureDealsDamageToYou,
     /// Whenever this permanent's controller is dealt damage, combat or noncombat (Living
     /// Artifact's "put that many vitality counters"). See [`Trigger::YouAreDealtDamage`].
     YouAreDealtDamage,
@@ -1626,6 +1655,15 @@ impl<'de> Deserialize<'de> for Ability {
                 TriggerTag::BlocksOrBecomesBlocked => Trigger::BlocksOrBecomesBlocked,
                 TriggerTag::BlocksOrBecomesBlockedBy => Trigger::BlocksOrBecomesBlockedBy {
                     filter: flat.filter,
+                    side: BlockSide::Either,
+                },
+                TriggerTag::BlocksCreature => Trigger::BlocksOrBecomesBlockedBy {
+                    filter: flat.filter,
+                    side: BlockSide::Blocks,
+                },
+                TriggerTag::BecomesBlockedBy => Trigger::BlocksOrBecomesBlockedBy {
+                    filter: flat.filter,
+                    side: BlockSide::BecomesBlockedBy,
                 },
                 TriggerTag::AttacksOrBlocks => Trigger::AttacksOrBlocks,
                 TriggerTag::Dies => Trigger::Dies,
@@ -1681,6 +1719,9 @@ impl<'de> Deserialize<'de> for Ability {
                 TriggerTag::EnchantedCreatureAttacks => Trigger::EnchantedCreatureAttacks,
                 TriggerTag::EnchantedCreatureDies => Trigger::EnchantedCreatureDies,
                 TriggerTag::EnchantedCreatureDealsDamage => Trigger::EnchantedCreatureDealsDamage,
+                TriggerTag::EnchantedCreatureDealsDamageToYou => {
+                    Trigger::EnchantedCreatureDealsDamageToYou
+                }
                 TriggerTag::YouAreDealtDamage => Trigger::YouAreDealtDamage,
                 TriggerTag::AnEnchantedCreatureDies => Trigger::AnEnchantedCreatureDies,
                 TriggerTag::CreatureEnchantedByYourAuraAttacks => {
@@ -1787,6 +1828,7 @@ impl<'de> Deserialize<'de> for Ability {
                 only_during_your_turn: flat.only_during_your_turn,
                 only_before_attackers: flat.only_before_attackers,
                 only_during_your_upkeep: flat.only_during_your_upkeep,
+                only_during_declare_blockers: flat.only_during_declare_blockers,
                 only_before_combat_damage_step: flat.only_before_combat_damage_step,
                 activator: flat.activator,
                 return_self: flat.return_self,

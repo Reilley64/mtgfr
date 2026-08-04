@@ -83,6 +83,7 @@ impl Game {
             );
         }
         let Some(PendingChoice::ChooseTarget {
+            controller,
             source,
             effect,
             legal,
@@ -97,6 +98,10 @@ impl Game {
         else {
             return Err(Reject::IllegalChoice);
         };
+        // Everything past the answer itself runs under the *ability's* controller, which is only
+        // sometimes `player`: The Abyss lets the upkeep player pick the victim, but the trigger
+        // is still the enchantment controller's (see `PendingChoice::ChooseTarget::controller`).
+        let player = controller;
         if effect.is_none() {
             return self
                 .choose_spell_targets_answer(player, source, clause, count, &legal, targets);
@@ -326,7 +331,7 @@ impl Game {
             if self.permanent(id).kind_counters[kind as usize] == 0 {
                 continue;
             }
-            let n = self.kind_counters_after_replacements(placer, id, 1);
+            let n = self.kind_counters_after_replacements(placer, id, kind, 1);
             if n > 0 {
                 self.push_apply(
                     events,

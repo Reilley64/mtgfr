@@ -156,7 +156,7 @@ fn clergys_second_ability_is_activatable_by_an_opponent() {
     game.submit(Intent::ActivateAbility {
         player: PlayerId(1),
         object: clergy,
-        ability_index: 0,
+        ability_index: 1,
         target: None,
         sacrifice: vec![],
         discard_cost: vec![],
@@ -175,7 +175,7 @@ fn clergys_own_controller_may_not_activate_its_second_ability() {
         game.submit(Intent::ActivateAbility {
             player: PlayerId(0),
             object: clergy,
-            ability_index: 0,
+            ability_index: 1,
             target: None,
             sacrifice: vec![],
             discard_cost: vec![],
@@ -196,7 +196,7 @@ fn clergys_second_ability_is_meaningful_only_for_opponents() {
     assert!(
         opponent_actions.contains(&MeaningfulAction::Activate {
             source: clergy,
-            ability: 0
+            ability: 1
         }),
         "an opponent with mana up sees it as activatable: {opponent_actions:?}"
     );
@@ -205,7 +205,7 @@ fn clergys_second_ability_is_meaningful_only_for_opponents() {
     assert!(
         !controller_actions.contains(&MeaningfulAction::Activate {
             source: clergy,
-            ability: 0
+            ability: 1
         }),
         "its own controller never sees it as activatable: {controller_actions:?}"
     );

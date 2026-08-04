@@ -17,6 +17,12 @@ pub enum ExileEffect {
 
     Graveyard,
 
+    /// "Exile Stangg Twin when Stangg leaves the battlefield" — the exile half of
+    /// [`SacrificeEffect::LinkedTwin`](crate::SacrificeEffect::LinkedTwin): exile the permanent
+    /// paired with the source (`token.link_as_twin`), found by scanning the battlefield for the
+    /// permanent that points back at it. A token partner ceases to exist instead (CR 111.7).
+    LinkedTwin,
+
     Object {
         #[cfg_attr(feature = "card-dsl", serde(skip))]
         object: Option<ObjectId>,

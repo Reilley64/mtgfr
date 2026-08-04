@@ -297,6 +297,9 @@ pub(crate) fn project_event(
             toughness,
             keywords: _,
             source_name: _,
+            // Engine bookkeeping for the End of Combat sweep (Glyph of Destruction, Jade Statue) —
+            // the client reads the boosted P/T off the snapshot, so the duration isn't projected.
+            ends_at_end_of_combat: _,
         } => VisibleEvent::TempBoost {
             object,
             power,
@@ -310,12 +313,34 @@ pub(crate) fn project_event(
             power: 0,
             toughness: 0,
         },
-        Event::TempBoostsEnded { object } => VisibleEvent::TempBoostsEnded { object },
+        Event::TempBoostsEnded { object, .. } => VisibleEvent::TempBoostsEnded { object },
+        // Gabriel Angelfire's "until your next upkeep" grant and its start-of-upkeep sweep ride the
+        // same two wire events as the indefinite grant above — the keyword list stays off the wire.
+        Event::KeywordsGrantedUntilNextUpkeep { object, .. } => VisibleEvent::TempBoost {
+            object,
+            power: 0,
+            toughness: 0,
+        },
+        Event::UpkeepStartDurationsEnded { object } => VisibleEvent::TempBoostsEnded { object },
         // A copy-effect exception keyword rider (CR 707.2 — "except it has haste/myriad") is a
         // keyword-status change, so it surfaces to the client the same as a `TempBoost`: a
         // re-snapshot signal, with no P/T delta. The client reads the object's live keyword set
         // from the fresh snapshot each delta (same rationale as `TempBoost`'s dropped `keywords`).
         Event::CopyRiderKeywordsGranted { object, .. } => VisibleEvent::TempBoost {
+            object,
+            power: 0,
+            toughness: 0,
+        },
+        // Stangg's twin pairing and Wood Elemental's as-enters X are both engine bookkeeping the
+        // client never names — but each changes how an object reads, so they reuse the same
+        // "re-read this object" cue as the keyword grants above. `TwinLinked` announces one side;
+        // both halves enter together, so one cue re-snapshots the pair.
+        Event::TwinLinked { a, .. } => VisibleEvent::TempBoost {
+            object: a,
+            power: 0,
+            toughness: 0,
+        },
+        Event::EnteredWithXSet { object, .. } => VisibleEvent::TempBoost {
             object,
             power: 0,
             toughness: 0,
@@ -340,6 +365,9 @@ pub(crate) fn project_event(
             types: _,
             subtypes: _,
             colors: _,
+            // Engine bookkeeping for the End of Combat sweep (Jade Statue), same as
+            // `BasePtSetUntilEndOfTurn` above.
+            ends_at_end_of_combat: _,
         } => VisibleEvent::TypesAddedUntilEndOfTurn { object },
         // ponytail: the set characteristics aren't threaded onto the wire event, same rationale as
         // `TypesAddedUntilEndOfTurn` above — the client's per-object state comes from a fresh
@@ -453,6 +481,14 @@ pub(crate) fn project_event(
             object,
             defender: defender.0,
         },
+        // "Your next upkeep" is the same "a delayed trigger is waiting" signal to the client as the
+        // unscoped timing — the step it waits for stays off the wire either way.
+        Event::DelayedTriggerScheduledForYourNextUpkeep {
+            controller, source, ..
+        } => VisibleEvent::DelayedTriggerScheduled {
+            controller: controller.0,
+            source,
+        },
         Event::DelayedTriggerScheduled {
             controller, source, ..
         } => VisibleEvent::DelayedTriggerScheduled {
@@ -487,6 +523,16 @@ pub(crate) fn project_event(
                 source,
             }
         }
+        // Reincarnation's "when that creature dies this turn" watch is a CR 603.7 delayed trigger
+        // like any other, so it rides the two generic delayed-trigger wire events rather than
+        // minting a pair of its own — the payoff itself surfaces as the effect events it produces.
+        Event::DiesThisTurnWatchArmed {
+            controller, source, ..
+        } => VisibleEvent::DelayedTriggerScheduled {
+            controller: controller.0,
+            source,
+        },
+        Event::DiesThisTurnWatchConsumed { .. } => VisibleEvent::DelayedTriggersFired,
         Event::CombatDamageCopyArmed {
             controller,
             source,
@@ -587,6 +633,9 @@ pub(crate) fn project_event(
         }
         Event::ChannelColorlessManaGranted { player } => {
             VisibleEvent::ChannelColorlessManaGranted { player: player.0 }
+        }
+        Event::SpendManaAsAnyTypeGranted { player } => {
+            VisibleEvent::SpendManaAsAnyTypeGranted { player: player.0 }
         }
         Event::CommanderDamageDealt {
             source,

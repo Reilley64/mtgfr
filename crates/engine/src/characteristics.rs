@@ -268,69 +268,25 @@ impl Game {
             }
         }
 
-        // Anthems: re-scan like matching_anthems but keep the source permanent's name.
-        if let Some(candidate_permanent) = self.as_permanent(object) {
-            let owner = candidate_permanent.owner;
-            for &id in &self.battlefield() {
-                let Some(p) = self.as_permanent(id) else {
-                    continue;
-                };
-                let def = card_def(p.def);
-                for ability in def.abilities.iter().cloned() {
-                    let (
-                        Timing::Static,
-                        Effect::Static(StaticEffect::Anthem {
-                            power,
-                            toughness,
-                            keywords,
-                            subtypes,
-                            colors,
-                            exclude_source,
-                            attacking_only,
-                            untapped_only,
-                            all_players,
-                            ..
-                        }),
-                    ) = (ability.timing, ability.effect.clone())
-                    else {
-                        continue;
-                    };
-                    if !all_players && p.owner != owner {
-                        continue;
-                    }
-                    if exclude_source && id == object {
-                        continue;
-                    }
-                    if !colors.is_empty()
-                        && !colors.iter().any(|c| self.colors_of(object)[c.index()])
-                    {
-                        continue;
-                    }
-                    let candidate_subtypes = self.effective_subtypes(object);
-                    if !subtypes.is_empty()
-                        && !subtypes.iter().any(|s| candidate_subtypes.contains(s))
-                    {
-                        continue;
-                    }
-                    if attacking_only && !self.combat.attackers.contains(&object) {
-                        continue;
-                    }
-                    if untapped_only && self.as_permanent(object).is_some_and(|p| p.tapped) {
-                        continue;
-                    }
-                    let name = def.name;
-                    if let (Amount::Fixed(power), Amount::Fixed(toughness)) = (power, toughness)
-                        && (power != 0 || toughness != 0)
-                    {
-                        push(
-                            name,
-                            ModifierContribution::PowerToughness { power, toughness },
-                        );
-                    }
+        // Anthems: read the same `anthem_continuous_effects` choke the board itself reads, so the
+        // ledger cannot drift from what the creature is actually showing. It covers the filtered
+        // kind ([`StaticEffect::FilteredAnthem`]) as well as the plain one, and its amounts arrive
+        // already resolved — a `*`-valued anthem is attributed, not silently dropped.
+        for effect in self.anthem_continuous_effects(object) {
+            let name = self.source_name_of(effect.source);
+            match effect.kind {
+                ContinuousEffectKind::PtDelta { power, toughness } => {
+                    push(
+                        name,
+                        ModifierContribution::PowerToughness { power, toughness },
+                    );
+                }
+                ContinuousEffectKind::GrantKeywords { keywords } => {
                     for &keyword in keywords {
                         push(name, ModifierContribution::Keyword(keyword));
                     }
                 }
+                _ => {}
             }
         }
 
@@ -919,6 +875,24 @@ impl Game {
             let controller = self.controller_of(id);
             let timestamp = self.static_continuous_timestamp(id);
             for ability in self.def_of(id).abilities.iter().cloned() {
+                // Only static abilities contribute here — every arm below says so. Checked before
+                // the condition gate, not by it: a *triggered* ability's intervening-if can ask
+                // about the host's characteristics (Earthbind's "if enchanted creature has
+                // flying"), and answering that mid-recompute recurses straight back into this
+                // function.
+                if ability.timing != Timing::Static {
+                    continue;
+                }
+                // "as long as …" on an Aura's static grant (Spectral Cloak's "has shroud as long
+                // as it's untapped") — read live on every recompute, exactly as `Game::doesnt_untap`
+                // reads Cocoon's counter gate, and against the *Aura* as source (the pool's
+                // convention: the host side is spelled by the condition itself, e.g.
+                // `EnchantedPermanentUntapped`).
+                if !ability.condition.is_none_or(|condition| {
+                    self.ability_condition_holds(condition, id, TriggerContext::of(controller))
+                }) {
+                    continue;
+                }
                 match (ability.timing, ability.effect.clone()) {
                     (
                         Timing::Static,
@@ -1073,6 +1047,19 @@ impl Game {
                 },
             });
         }
+        // Lesser Werewolf's -0/-1 counters (CR 121.1): the same toughness-only read one counter
+        // shallower.
+        let minus_zero_minus_one = p.kind_counters[CounterKind::MinusZeroMinusOne as usize] as i32;
+        if minus_zero_minus_one != 0 {
+            effects.push(ContinuousEffect {
+                source: object,
+                timestamp: self.static_continuous_timestamp(object),
+                kind: ContinuousEffectKind::PtDelta {
+                    power: 0,
+                    toughness: -minus_zero_minus_one,
+                },
+            });
+        }
         // Every registered continuous modification of this object, one layer entry each at the
         // timestamp it was stamped with — rather than one pre-summed aggregate per layer. Layer
         // 7c and the keyword layer are additive, so N entries and one summed entry agree, and
@@ -1218,7 +1205,7 @@ impl Game {
             for ability in self.functional_abilities(source).iter().cloned() {
                 let (
                     Timing::Static,
-                    Effect::Static(StaticEffect::KeywordAnthem {
+                    Effect::Static(StaticEffect::FilteredAnthem {
                         keywords,
                         filter,
                         all_players,
@@ -1769,6 +1756,22 @@ impl Game {
     /// battlefield-permanent ability iteration (trigger placement, activation gate, static scans)
     /// reads so the removal applies uniformly. Grants the Aura layers onto the host (its
     /// `grant_to_attached` keywords, its type/base-P/T sets) are separate and unaffected.
+    /// Whether `id` carries Firestorm Phoenix's "If this creature would die, return it to its
+    /// owner's hand instead" (CR 614.1b). Read off the effective abilities rather than the printed
+    /// def so a copy of the Phoenix replaces its own death too.
+    pub(crate) fn returns_to_hand_instead_of_dying(&self, id: ObjectId) -> bool {
+        self.as_permanent(id).is_some()
+            && self.functional_abilities(id).iter().any(|a| {
+                matches!(
+                    (a.timing, &a.effect),
+                    (
+                        Timing::Static,
+                        Effect::Static(StaticEffect::ReturnToHandInsteadOfDying)
+                    )
+                )
+            })
+    }
+
     pub(crate) fn functional_abilities(&self, id: ObjectId) -> Arc<[Ability]> {
         // CR 708.2: a face-down permanent (a manifest) has no abilities.
         if self.is_face_down(id) {
@@ -2101,9 +2104,12 @@ impl Game {
                 DefiningPtWhen::NotAttacking if attacking => return None,
                 _ => {}
             }
+            // A CDA reading `x` reads the permanent's own remembered X (Wood Elemental's Forests
+            // sacrificed as it entered), the same slot every other ability of it reads X from.
+            let x = self.ability_source_x(object);
             Some((
-                self.resolve_amount(*power, controller, object, None, 0),
-                self.resolve_amount(*toughness, controller, object, None, 0),
+                self.resolve_amount(*power, controller, object, None, x),
+                self.resolve_amount(*toughness, controller, object, None, x),
             ))
         })
     }
@@ -3043,6 +3049,19 @@ impl Game {
                 subs.push((from, to));
             }
         }
+        // North Star's "spend mana as though it were mana of any type" is the same widening with
+        // every pair in it (CR 609.4b), so it rides the one seam the payment planners already
+        // consult rather than a second knob. Turn-scoped and spent by the player's next spell —
+        // see `Player::spend_mana_as_any_type_this_turn`.
+        if self.players[player.0 as usize].spend_mana_as_any_type_this_turn {
+            for from in Color::ALL {
+                for to in Color::ALL {
+                    if from != to {
+                        subs.push((from, to));
+                    }
+                }
+            }
+        }
         subs
     }
 
@@ -3297,15 +3316,41 @@ impl Game {
         &self,
         placer: PlayerId,
         object: ObjectId,
+        kind: CounterKind,
         base: i32,
     ) -> i32 {
-        self.replacement_registry().counter_replaced_amount(
+        let replaced = self.replacement_registry().counter_replaced_amount(
             self,
             placer,
             CounterRecipient::Permanent(object),
             false,
             base,
-        )
+        );
+        // "Rasputin can't have more than seven dream counters on it" (CR 122.6): a ceiling on the
+        // recipient's *total*, so what lands is the room left. Applied after the replacements
+        // above — a doubler can't push a permanent past its own maximum.
+        match self.counter_maximum(object, kind) {
+            None => replaced,
+            Some(max) => {
+                replaced.min(i32::from(max) - i32::from(self.counters_of_kind(object, kind)))
+            }
+        }
+    }
+
+    /// The cap `object`'s own printed statics put on its total of `kind`-counters, if any
+    /// ([`StaticEffect::CounterMaximum`] — Rasputin Dreamweaver). Read live off the permanent's
+    /// card, not off a registry: the clause names only its own source, so nothing else on the
+    /// battlefield can contribute one.
+    fn counter_maximum(&self, object: ObjectId, kind: CounterKind) -> Option<u8> {
+        let def = self.as_permanent(object).map(|p| card_def(p.def))?;
+        def.abilities
+            .iter()
+            .find_map(|ability| match ability.effect {
+                Effect::Static(StaticEffect::CounterMaximum { kind: k, max }) if k == kind => {
+                    Some(max)
+                }
+                _ => None,
+            })
     }
 
     /// The number of counters actually placed when `placer` would put `base` on `player` — the
@@ -3758,6 +3803,7 @@ mod cache_tests {
             toughness: 0,
             keywords: &[Keyword::Flying],
             source_name: "Test",
+            ends_at_end_of_combat: false,
         });
         assert!(
             game.characteristics_cache

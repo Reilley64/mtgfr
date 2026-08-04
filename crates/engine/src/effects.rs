@@ -589,7 +589,8 @@ impl Game {
                 }
             }
             Some(kind) => {
-                let n = self.kind_counters_after_replacements(controller, perm, counters as i32);
+                let n =
+                    self.kind_counters_after_replacements(controller, perm, kind, counters as i32);
                 if n > 0 {
                     self.push_apply(
                         events,
@@ -948,9 +949,12 @@ impl Game {
             | Effect::Choice(ChoiceEffect::TriggeringPlayerMayPayAnyAmountToPrevent { .. })
             | Effect::Choice(ChoiceEffect::TriggeringPlayerMayAttachThisAuraToChosen { .. })
             | Effect::Choice(ChoiceEffect::EachPlayerNamesCardThenRevealsTop)
+            | Effect::Choice(ChoiceEffect::TargetPlayerNamesCardThenRevealsTop { .. })
+            | Effect::Choice(ChoiceEffect::NameCardThenTargetRevealsAtRandomAndDiscards { .. })
             | Effect::Choice(ChoiceEffect::EachOtherTokenBecomesCopyOfChosen)
             | Effect::Choice(ChoiceEffect::PutCounterThenMayBecomeCopyOfCardFromList { .. })
             | Effect::Choice(ChoiceEffect::SacrificeOwn { .. })
+            | Effect::Choice(ChoiceEffect::SacrificeAnyNumber { .. })
             | Effect::Choice(ChoiceEffect::DefendingPlayerSacrifices { .. })
             | Effect::Choice(ChoiceEffect::SacrificeSelfUnlessReturnLand { .. }) => {
                 self.run_edict_pause(effect, ctx, events)
@@ -974,6 +978,22 @@ impl Game {
             // picks one, pausing on an OpponentChoosesExiledNonland choice.
             Effect::Dig(DigEffect::EachPlayerExilesUntilNonlandOpponentPicks) => {
                 self.each_player_exiles_until_nonland(controller, source, events)
+            }
+            // "Sacrifice it unless you sacrifice two Swamps" with fewer than two Swamps around:
+            // the offer can't be made, so the penalty is taken outright rather than prompting the
+            // controller for a payment they can't afford (CR 601.2f). Ahead of the may-pause peel
+            // below because that raise skips a choice it can't build, which would otherwise drop
+            // the penalty on the floor.
+            Effect::Choice(ChoiceEffect::MaySacrifice {
+                filter,
+                count,
+                otherwise,
+                ..
+            }) if !otherwise.is_empty()
+                && self.edict_options(controller, filter, Some(source)).len()
+                    < count.max(1) as usize =>
+            {
+                self.run_sequence(otherwise, ctx, events)
             }
             // MaySacrifice / MayReturnFromGraveyard / MayDiscard / MayDraw* /
             // PayOrElse — may pause peel (`resolution/pause_may`).
@@ -1006,6 +1026,11 @@ impl Game {
             | Effect::Pump(PumpEffect::TargetLosesKeywords {
                 choose_one: true, ..
             })
+            // Gabriel Angelfire's "choose flying, first strike, trample, or rampage 3" — the same
+            // CR 609.4 resolution-time pick, on the grant side.
+            | Effect::Pump(PumpEffect::GrantSelfKeywordsUntilNextUpkeep {
+                choose_one: true, ..
+            })
             // Alchor's Tomb's "becomes the color of your choice" (CR 609.3) — peeled to the color
             // picker; an authored color (`Some`) skips this and mints its SET straight away.
             | Effect::Pump(PumpEffect::TargetBecomesColor { color: None, .. })
@@ -1020,6 +1045,11 @@ impl Game {
             Effect::Zone(ZoneEffect::ReturnTargetCardsFromGraveyardToHand { .. }) => {
                 self.resolve_return_target_cards_from_graveyard(ctx, events)
             }
+            // Rohgahh of Kher Keep — see `resolution/control.rs::resolve_opponent_gains_control_all`.
+            Effect::Control(ControlEffect::OpponentGainsControlAll {
+                filter,
+                with_source,
+            }) => self.resolve_opponent_gains_control_all(ctx, filter, with_source, events),
             // Donation — see `resolution/control.rs::resolve_target_opponent_gains_control`.
             Effect::Control(ControlEffect::TargetOpponentGainsControl { .. }) => {
                 self.resolve_target_opponent_gains_control(ctx, events)
@@ -1029,6 +1059,8 @@ impl Game {
                 destroy_attached_auras,
                 ..
             }) => self.resolve_exchange_control(ctx, destroy_attached_auras, events),
+            // Enchantment Alteration — see `resolution/control.rs::resolve_move_aura`.
+            Effect::Control(ControlEffect::MoveAura { .. }) => self.resolve_move_aura(ctx, events),
             // Juxtapose — see `resolution/control.rs::resolve_exchange_greatest_mana_value`.
             Effect::Control(ControlEffect::ExchangeGreatestManaValue { types, .. }) => {
                 self.resolve_exchange_greatest_mana_value(ctx, types, events)
@@ -1271,6 +1303,15 @@ impl Game {
             }
             // Floral Spuzzem's damage rider — see `resolution/resolve_misc.rs`.
             Effect::Misc(MiscEffect::SourceAssignsNoCombatDamageThisTurn) => {
+                self.run_misc_choreo(effect, ctx, events)
+            }
+            // Johan's begin-combat pair — see `resolution/resolve_misc.rs`.
+            Effect::Misc(MiscEffect::SourceCantAttackThisCombat)
+            | Effect::Misc(MiscEffect::YourAttacksDontTapWhileSourceUntappedThisCombat) => {
+                self.run_misc_choreo(effect, ctx, events)
+            }
+            // Feint's second sentence — see `resolution/resolve_misc.rs`.
+            Effect::Misc(MiscEffect::ThatCreatureAndItsBlockersAssignNoCombatDamageThisTurn) => {
                 self.run_misc_choreo(effect, ctx, events)
             }
             // Master Warcraft — see `resolution/resolve_misc.rs`.

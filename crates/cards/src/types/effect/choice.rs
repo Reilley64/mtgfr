@@ -166,6 +166,29 @@ pub enum ChoiceEffect {
 
     EachPlayerNamesCardThenRevealsTop,
 
+    /// Petra Sphinx: "Target player chooses a card name, then reveals the top card of their
+    /// library. If that card has the chosen name, that player puts it into their hand. If it
+    /// doesn't, the player puts it into their graveyard." The targeted-player sibling of
+    /// [`EachPlayerNamesCardThenRevealsTop`](Self::EachPlayerNamesCardThenRevealsTop): one seat
+    /// instead of a fan-out, the *targeted* player names rather than the ability's controller
+    /// (CR 201.2 — whoever the card says chooses, chooses), and a miss goes to the graveyard
+    /// rather than the bottom of the library.
+    TargetPlayerNamesCardThenRevealsTop {
+        target: TargetSpec,
+    },
+
+    /// Nebuchadnezzar: "Choose a card name. Target opponent reveals X cards at random from their
+    /// hand. Then that player discards all cards with that name revealed this way." Unlike the two
+    /// reveal-the-top namers above, the ability's *controller* names the card and a different
+    /// player pays for it — the reveal comes off the injected per-op RNG (CR 701.30, the same
+    /// randomness [`Discard`](Self::Discard)'s `random` uses), so the discard is whatever the
+    /// reveal happened to turn up rather than every copy in hand.
+    NameCardThenTargetRevealsAtRandomAndDiscards {
+        target: TargetSpec,
+        /// How many cards the targeted player reveals — Nebuchadnezzar's `{X}`.
+        count: Amount,
+    },
+
     EachPlayerSacrifices {
         /// Who pays the edict — `each_player` (Promise of Loyalty), `each_opponent` (Martyr's
         /// Bond), or `you` alone (Lich's damage tax, a one-seat fan-out so the prompt, the count
@@ -353,16 +376,43 @@ pub enum ChoiceEffect {
         /// No legal card in the graveyard still quietly does nothing (no pause).
         #[cfg_attr(feature = "card-dsl", serde(default))]
         mandatory: bool,
+        /// Reincarnation's "return a creature card from **its owner's** graveyard **to the
+        /// battlefield** under that creature's owner's control": both halves of the same rider,
+        /// so one flag rather than two that must always be set together — the same compound
+        /// `reincarnate` [`DestroyEffect::BlockedByTarget`](crate::DestroyEffect::BlockedByTarget)
+        /// already carries for Glyph of Reincarnation. `false` (the default) is every other user:
+        /// the ability's controller's own graveyard, back to their hand.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        reincarnate: bool,
+        /// The creature whose death this return is paying off, baked in by
+        /// `contextualize_effect` when the delayed trigger fires. Read only under
+        /// `reincarnate` above, to name whose graveyard. `None` everywhere else.
+        #[cfg_attr(feature = "card-dsl", serde(skip))]
+        dead: Option<ObjectId>,
     },
 
     MaySacrifice {
         #[cfg_attr(feature = "card-dsl", serde(default))]
         filter: PermanentFilter,
+        /// How many permanents the offer costs — Mold Demon's "unless you sacrifice **two**
+        /// Swamps". `0` (the default) reads as one, the shape every other user wants. Fewer than
+        /// this many legal permanents means the offer can't be made at all: no prompt, straight to
+        /// `otherwise`.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        count: u8,
         #[cfg_attr(
             feature = "card-dsl",
             serde(default, deserialize_with = "de::static_slice")
         )]
         then: &'static [Effect],
+        /// What happens when the offer is declined (or can't be made) — Mold Demon's "sacrifice
+        /// it", Elder Spawn's "sacrifice this creature and it deals 6 damage to you". Empty (the
+        /// default) is the plain "you may … if you do" shape where declining costs nothing.
+        #[cfg_attr(
+            feature = "card-dsl",
+            serde(default, deserialize_with = "de::static_slice")
+        )]
+        otherwise: &'static [Effect],
     },
 
     PhaseOut,
@@ -402,6 +452,16 @@ pub enum ChoiceEffect {
         tapped: bool,
     },
 
+    /// "As this creature enters, sacrifice any number of untapped Forests" (Wood Elemental) — the
+    /// free-subset sibling of [`SacrificeOwn`](Self::SacrificeOwn), whose `count` is a price to
+    /// pay in full. Any subset of the controller's matching permanents (including none) is a legal
+    /// answer, and the number sacrificed is remembered on the source as the X it entered with, so
+    /// a characteristic-defining `power = "x"` can read it back for as long as it is on the
+    /// battlefield.
+    SacrificeAnyNumber {
+        filter: PermanentFilter,
+    },
+
     SacrificeOwn {
         filter: PermanentFilter,
         count: u32,
@@ -420,6 +480,12 @@ pub enum ChoiceEffect {
     /// Nature's is "this creature deals 8 damage to you". Always pauses: only the player can answer.
     PayOrElse {
         cost: Cost,
+        /// Primordial Ooze's "you may pay {X}, where X is the number of +1/+1 counters on it":
+        /// generic pips whose count is a board read taken as the offer is made, added to
+        /// [`Cost::generic`] above. Not [`Cost::x`] — that is CR 107.3's *chosen* value, and this
+        /// one is derived, so the payer never picks it. `None` for every fixed "unless you pay".
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        extra_generic: Option<Amount>,
         #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::static_slice"))]
         otherwise: &'static [Effect],
     },

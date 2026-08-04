@@ -693,6 +693,7 @@ impl Game {
                     toughness: 0,
                     keywords: HASTE,
                     source_name: self.source_name_of(source),
+                    ends_at_end_of_combat: false,
                 },
             );
             self.push_apply(

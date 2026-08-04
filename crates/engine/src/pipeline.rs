@@ -13,6 +13,10 @@ use crate::*;
 /// A named phase of the post-intent pipeline, in execution order.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum PostIntentPhase {
+    /// Run "as this permanent enters, …" replacement effects (CR 614.12) for permanents that
+    /// entered in this batch — before the first state-based sweep, since one of them (Wood
+    /// Elemental) decides whether the entering permanent has any toughness at all.
+    AsEntersReplacements,
     /// Sweep state-based actions to a fixpoint (CR 704).
     StateBasedActions,
     /// If the priority holder was eliminated by an SBA, hand priority to the next living player.
@@ -23,6 +27,8 @@ pub(crate) enum PostIntentPhase {
     DelayedTriggers,
     /// Fire event-armed delayed one-shots (CR 603.7) whose watched cast just happened.
     NextCastTriggers,
+    /// Fire event-armed delayed watches (CR 603.7) whose watched permanent just died.
+    DiesThisTurnTriggers,
     /// Fire event-armed delayed watches (CR 603.7) whose watched creature just dealt combat
     /// damage to a player.
     CombatDamageWatchTriggers,
@@ -37,11 +43,13 @@ pub(crate) enum PostIntentPhase {
 
 impl PostIntentPhase {
     pub(crate) const ALL: &'static [PostIntentPhase] = &[
+        Self::AsEntersReplacements,
         Self::StateBasedActions,
         Self::PriorityHandoffOnElimination,
         Self::TriggerEnqueue,
         Self::DelayedTriggers,
         Self::NextCastTriggers,
+        Self::DiesThisTurnTriggers,
         Self::CombatDamageWatchTriggers,
         Self::CombatDamageCopyTriggers,
         Self::TriggerPlacement,
@@ -73,6 +81,7 @@ impl PostIntentPipeline {
 
     fn run_phase(game: &mut Game, phase: PostIntentPhase, events: &mut Vec<Event>) {
         match phase {
+            PostIntentPhase::AsEntersReplacements => game.run_as_enters_replacements(events),
             PostIntentPhase::StateBasedActions => game.sweep_state_based_actions(events),
             PostIntentPhase::PriorityHandoffOnElimination => {
                 Self::handoff_priority_on_elimination(game);
@@ -80,6 +89,7 @@ impl PostIntentPipeline {
             PostIntentPhase::TriggerEnqueue => game.enqueue_triggers(events),
             PostIntentPhase::DelayedTriggers => game.fire_delayed_triggers(events),
             PostIntentPhase::NextCastTriggers => game.fire_next_cast_triggers(events),
+            PostIntentPhase::DiesThisTurnTriggers => game.fire_dies_this_turn_triggers(events),
             PostIntentPhase::CombatDamageWatchTriggers => {
                 game.fire_combat_damage_watch_triggers(events);
             }
@@ -191,11 +201,13 @@ mod tests {
         assert_eq!(
             PostIntentPhase::ALL,
             &[
+                PostIntentPhase::AsEntersReplacements,
                 PostIntentPhase::StateBasedActions,
                 PostIntentPhase::PriorityHandoffOnElimination,
                 PostIntentPhase::TriggerEnqueue,
                 PostIntentPhase::DelayedTriggers,
                 PostIntentPhase::NextCastTriggers,
+                PostIntentPhase::DiesThisTurnTriggers,
                 PostIntentPhase::CombatDamageWatchTriggers,
                 PostIntentPhase::CombatDamageCopyTriggers,
                 PostIntentPhase::TriggerPlacement,

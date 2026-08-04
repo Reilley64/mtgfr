@@ -299,40 +299,45 @@ fn sentinel_sets_only_its_toughness_and_survives_what_it_blocks() {
 #[test]
 fn sentinels_later_activation_wins_on_timestamp() {
     // The ability is free and repeatable, so two indefinite base-toughness sets can be live at
-    // once; CR 613.7 says the later timestamp wins. Setting off the 2/2 Bears second leaves the
-    // Sentinel at toughness 3, which the 3-power Giant it is blocking now kills.
+    // once; CR 613.7 says the later timestamp wins. Both targets have to be blocking the Sentinel
+    // for either activation to be legal, so it attacks into a double block: the 3/3 Giant and the
+    // 0/1 Wall. Setting off the Wall second leaves the Sentinel at base toughness 2, which the
+    // Giant's 3 damage now kills.
     let mut game = Game::new();
     stock_libraries(&mut game);
     let giant = game.spawn_on_battlefield(PlayerId(1), card("Hill Giant"));
-    let bears = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
+    let wall = game.spawn_on_battlefield(PlayerId(1), card("Wall of Tombstones"));
     let sentinel = game.spawn_on_battlefield(PlayerId(0), card("Sentinel"));
 
     advance_until(&mut game, |g| {
-        g.active_player() == PlayerId(1) && g.current_step() == Step::DeclareAttackers
+        g.active_player() == PlayerId(0) && g.current_step() == Step::DeclareAttackers
     });
     game.submit(Intent::DeclareAttackers {
-        player: PlayerId(1),
-        attackers: vec![
-            (giant, Defender::Player(PlayerId(0))),
-            (bears, Defender::Player(PlayerId(0))),
-        ],
+        player: PlayerId(0),
+        attackers: vec![(sentinel, Defender::Player(PlayerId(1)))],
     })
-    .expect("both attack");
+    .expect("the Sentinel attacks");
     advance_until(&mut game, |g| g.current_step() == Step::DeclareBlockers);
     game.submit(Intent::DeclareBlockers {
-        player: PlayerId(0),
-        blocks: vec![(sentinel, giant)],
+        player: PlayerId(1),
+        blocks: vec![(giant, sentinel), (wall, sentinel)],
     })
-    .expect("the Sentinel blocks the Giant");
+    .expect("both block the Sentinel");
 
     activate_at(&mut game, sentinel, giant);
-    activate_at(&mut game, sentinel, bears);
+    activate_at(&mut game, sentinel, wall);
+    advance_until(&mut game, |g| g.current_step() == Step::CombatDamage);
+    game.submit(Intent::AssignDamage {
+        player: PlayerId(0),
+        assignment: vec![(giant, 1), (wall, 0)],
+    })
+    .expect("a double-blocked attacker divides its 1 damage");
     advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
 
     assert_eq!(
         game.zone_of(sentinel),
         Zone::Graveyard,
-        "the second set (1 + the Bears' 2) replaced the first (1 + the Giant's 3)"
+        "the second set (1 + the Wall's 1) replaced the first (1 + the Giant's 3)"
     );
 }
 

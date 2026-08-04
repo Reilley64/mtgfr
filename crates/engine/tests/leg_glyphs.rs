@@ -469,6 +469,11 @@ fn glyph_of_doom_cannot_choose_a_creature_that_is_not_a_wall() {
 
 // ── Glyph of Delusion ─────────────────────────────────────────────────────────────────
 //
+// Two independent target clauses (CR 601.2c), so it is cast with no announced target and both are
+// chosen on the stack — clause 0 the creature, clause 1 the Wall. With one candidate each the
+// choice is forced and auto-fills, which is why the casts below name nothing; increment 131's
+// tests in `leg_w11_e.rs` cover the boards where the second clause has a real choice.
+//
 // "Put X glyph counters on target creature that target Wall blocked this turn, where X is the
 // power of that blocked creature. The creature gains 'This creature doesn't untap during your
 // untap step if it has a glyph counter on it' and 'At the beginning of your upkeep, remove a
@@ -488,7 +493,7 @@ fn glyph_of_delusion_lands_counters_equal_to_the_blocked_creatures_power() {
     let giant = game.spawn_on_battlefield(PlayerId(0), card("Hill Giant"));
     let (_, glyph) = wall_blocks_all(&mut game, "Wall of Stone", "Glyph of Delusion", &[giant]);
 
-    cast_and_resolve(&mut game, PlayerId(1), glyph, Some(Target::Object(giant)));
+    cast_and_resolve(&mut game, PlayerId(1), glyph, None);
 
     assert_eq!(
         game.counters_of_kind(giant, CounterKind::Glyph),
@@ -505,7 +510,7 @@ fn glyph_of_delusion_holds_the_creature_down_for_one_untap_step_per_counter() {
     let giant = game.spawn_on_battlefield(PlayerId(0), card("Hill Giant"));
     let (_, glyph) = wall_blocks_all(&mut game, "Wall of Stone", "Glyph of Delusion", &[giant]);
 
-    cast_and_resolve(&mut game, PlayerId(1), glyph, Some(Target::Object(giant)));
+    cast_and_resolve(&mut game, PlayerId(1), glyph, None);
     assert!(game.is_tapped(giant), "it is tapped from attacking");
 
     for expected in [2, 1, 0] {
@@ -537,7 +542,7 @@ fn glyph_of_delusion_can_be_cast_after_the_combat_the_block_happened_in() {
     let (_, glyph) = wall_blocks_all(&mut game, "Wall of Stone", "Glyph of Delusion", &[giant]);
 
     advance_until(&mut game, |g| g.current_step() == Step::Main2);
-    cast_and_resolve(&mut game, PlayerId(1), glyph, Some(Target::Object(giant)));
+    cast_and_resolve(&mut game, PlayerId(1), glyph, None);
 
     assert_eq!(
         game.counters_of_kind(giant, CounterKind::Glyph),
@@ -556,7 +561,7 @@ fn glyph_of_delusion_cannot_choose_a_creature_no_wall_blocked_this_turn() {
 
     attack_with(&mut game, vec![giant]);
     block_with(&mut game, vec![]).unwrap();
-    let rejected = cast(&mut game, PlayerId(1), glyph, Some(Target::Object(giant)));
+    let rejected = cast(&mut game, PlayerId(1), glyph, None);
 
     assert!(rejected.is_err(), "nothing blocked it");
 }
@@ -569,7 +574,7 @@ fn glyph_of_delusion_stops_looking_once_the_turn_that_armed_it_is_over() {
     let (_, glyph) = wall_blocks_all(&mut game, "Wall of Stone", "Glyph of Delusion", &[giant]);
 
     pass_until_next_turn(&mut game);
-    let rejected = cast(&mut game, PlayerId(1), glyph, Some(Target::Object(giant)));
+    let rejected = cast(&mut game, PlayerId(1), glyph, None);
 
     assert!(rejected.is_err(), "the ledger expired with its turn");
 }

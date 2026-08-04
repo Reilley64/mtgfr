@@ -1,8 +1,5 @@
 # {0}: Change this creature's base toughness to 1 plus the power of target creature blocking or
 # blocked by this creature. (This effect lasts indefinitely.)
-#
-# approximates: the ability targets any creature, not only one "blocking or blocked by this
-# creature" — the target-legality filter has no combat-partner axis yet (fidelity increment #54).
 name = "Sentinel"
 sets = ["bchr", "chr", "leg"]
 id = "c30e8efb-d097-4388-8d5c-1037ccc29fba"
@@ -30,5 +27,5 @@ activation_cost = { generic = 0 }
 [[abilities.effects]]
 type = "pump"
 mode = "set_own_base_toughness_from_amount"
-target = "creature"
+target = { permanent = { types = "creature", in_combat_with_source = true } }
 amount = { left = 1, op = "add", right = "target_power" }

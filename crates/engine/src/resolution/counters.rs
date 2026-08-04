@@ -36,7 +36,7 @@ impl Game {
                     }
                     None => count,
                 };
-                let count = self.kind_counters_after_replacements(controller, object, count);
+                let count = self.kind_counters_after_replacements(controller, object, kind, count);
                 if count <= 0 {
                     return Vec::new();
                 }
@@ -121,8 +121,8 @@ impl Game {
                     }
                     return matching
                         .filter_map(|object| {
-                            let n =
-                                self.kind_counters_after_replacements(controller, object, count);
+                            let n = self
+                                .kind_counters_after_replacements(controller, object, kind, count);
                             (n > 0).then_some(Event::KindCountersPlaced {
                                 object,
                                 kind,

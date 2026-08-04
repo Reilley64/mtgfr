@@ -935,6 +935,13 @@ impl Game {
             self.resume_clash(opponent, controller, source, &mut events);
             return Ok(events);
         }
+        // Rohgahh of Kher Keep: the same events-sink detour — the chosen opponent takes the swept
+        // set, one `ControlGained` apiece.
+        if let SplittingContinuation::GainControlOf { objects } = &then {
+            let mut events = Vec::new();
+            self.gain_control_of_all(opponent, &objects.clone(), &mut events);
+            return Ok(events);
+        }
         self.resume_splitting_opponent(opponent, controller, source, then);
         Ok(Vec::new())
     }
@@ -994,6 +1001,11 @@ impl Game {
             SplittingContinuation::Clash => {
                 unreachable!("clash resumes via resume_clash, not resume_splitting_opponent")
             }
+            // Rohgahh of Kher Keep: needs an events sink too, so its raise site and its answer both
+            // route to `gain_control_of_all` and never reach here.
+            SplittingContinuation::GainControlOf { .. } => unreachable!(
+                "an opponent gaining control resumes via gain_control_of_all, not resume_splitting_opponent"
+            ),
         }
     }
 

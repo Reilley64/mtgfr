@@ -444,6 +444,12 @@ pub(crate) struct DelayedTriggers {
     /// the next time a step matching `fire_at` begins
     /// ([`Game::fire_delayed_triggers`](crate::Game::fire_delayed_triggers)).
     pub scheduled: Vec<(PlayerId, ObjectId, Step, Effect)>,
+    /// Each `(controller, source, effect)` for "at the beginning of **your** next upkeep" (Hazezon
+    /// Tamar) — the controller-scoped upkeep twin of `scheduled` above, which fires on whoever's
+    /// upkeep comes first (Arcane Denial's "the next turn's upkeep"). Fired and drained alongside
+    /// `scheduled` at the Upkeep step, filtered to the entries whose controller is the active
+    /// player.
+    pub scheduled_your_upkeep: Vec<(PlayerId, ObjectId, Effect)>,
     /// Each `(controller, source, filter, then)`, armed by
     /// [`Effect::Misc(MiscEffect::ScheduleNextCastTrigger)`](crate::Effect::Misc(MiscEffect::ScheduleNextCastTrigger)) — CR 603.7's
     /// event-armed sibling of `scheduled` above: fires once the next time `controller` casts a
@@ -462,6 +468,15 @@ pub(crate) struct DelayedTriggers {
     /// then removed. Cleared unconsumed at end of combat (CR "this combat" — `Game::apply`'s
     /// `Step::EndCombat` arm), unlike `pending_next_cast`'s turn-boundary expiry.
     pub pending_combat_damage_watch: Vec<(PlayerId, ObjectId, ObjectId)>,
+    /// Each `(controller, source, watched, then)`, armed by
+    /// [`Effect::Misc(MiscEffect::ScheduleWhenTargetDiesThisTurn)`](crate::Effect::Misc(MiscEffect::ScheduleWhenTargetDiesThisTurn))
+    /// (Reincarnation's "when that creature dies this turn") — object-armed like
+    /// `pending_combat_damage_watch` above, but carrying its own payoff the way
+    /// `pending_next_cast` does, and keyed on a death rather than on combat damage. Fires once
+    /// and is removed ([`Game::fire_dies_this_turn_triggers`](crate::Game::fire_dies_this_turn_triggers));
+    /// cleared unconsumed at the next turn's Untap step (CR "this turn" — `Game::apply`'s
+    /// `Step::Untap` arm), the same boundary `pending_next_cast` clears at.
+    pub pending_dies_this_turn: Vec<(PlayerId, ObjectId, ObjectId, &'static [Effect])>,
     /// Each `(controller, source, card)`, armed by
     /// [`Effect::Misc(MiscEffect::ScheduleThisTurnCombatDamageCopy)`](crate::Effect::Misc(MiscEffect::ScheduleThisTurnCombatDamageCopy))
     /// (Surge to Victory) — CR 603.7's *repeatable* sibling of `pending_combat_damage_watch`
@@ -523,6 +538,11 @@ pub(crate) enum ModifierDuration {
     /// during an upkeep of its own, so the first end-of-upkeep sweep only arms it and the next one
     /// takes it off.
     EndOfNextUpkeep { player: PlayerId, armed: bool },
+    /// "Until your next upkeep" (Gabriel Angelfire): swept as `player`'s upkeep step *begins*,
+    /// before that step's own triggers are placed. Registered during an upkeep of its own, but —
+    /// unlike [`EndOfNextUpkeep`](Self::EndOfNextUpkeep) — the step-begin sweep for that upkeep has
+    /// already run by then, so there is no one-sweep skip to arm.
+    UntilNextUpkeep { player: PlayerId },
     /// No printed duration at all (the lace cycle's "becomes black"): never swept — it lapses on
     /// its own when the object leaves the battlefield and becomes a new object (CR 400.7).
     Indefinite,

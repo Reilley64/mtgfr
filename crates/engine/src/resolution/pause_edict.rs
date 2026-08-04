@@ -317,8 +317,53 @@ impl Game {
                 pending::ChoiceRequest::NextCardName {
                     remaining: self.apnap_order(),
                     source,
+                    use_: CardNameUse::RevealTopOfOwnLibrary {
+                        miss_to_graveyard: false,
+                    },
                 },
             ),
+            // Petra Sphinx: "Target player chooses a card name, then reveals the top card of their
+            // library." One seat — the *targeted* player, who is the one that answers (CR 201.2) —
+            // and a miss lands in their graveyard rather than under their library.
+            Effect::Choice(ChoiceEffect::TargetPlayerNamesCardThenRevealsTop { .. }) => {
+                let Some(Target::Player(player)) = target else {
+                    panic!("target player names a card resolves with a chosen player target");
+                };
+                pending::raise(
+                    self,
+                    pending::ChoiceRequest::NextCardName {
+                        remaining: vec![player],
+                        source,
+                        use_: CardNameUse::RevealTopOfOwnLibrary {
+                            miss_to_graveyard: true,
+                        },
+                    },
+                )
+            }
+            // Nebuchadnezzar: "Choose a card name. Target opponent reveals X cards at random from
+            // their hand. Then that player discards all cards with that name revealed this way."
+            // The controller names — the only name-a-card pause whose answering seat is not the
+            // seat the answer costs — so the targeted opponent rides along on the pause's tail.
+            Effect::Choice(ChoiceEffect::NameCardThenTargetRevealsAtRandomAndDiscards {
+                count,
+                ..
+            }) => {
+                let Some(Target::Player(subject)) = target else {
+                    panic!("Nebuchadnezzar's reveal resolves with a chosen player target");
+                };
+                let count = self.resolve_count(count, controller, source, target, ctx.x);
+                pending::raise(
+                    self,
+                    pending::ChoiceRequest::NextCardName {
+                        remaining: vec![controller],
+                        source,
+                        use_: CardNameUse::SubjectRevealsHandAtRandomThenDiscards {
+                            subject,
+                            count,
+                        },
+                    },
+                )
+            }
             // Brudiclad: "you may choose a token you control; if you do, each other token you
             // control becomes a copy of that token." Pauses on a ChooseTokenToCopy choice; with no
             // token to choose there's nothing to convert (guarded like MaySacrifice).
@@ -385,6 +430,19 @@ impl Game {
                     self.sacrifice_ids(&options, events);
                 }
             }
+            // "As this creature enters, sacrifice any number of untapped Forests" (Wood Elemental):
+            // a free-subset pick, so it always pauses when there is anything to pick from — unlike
+            // the fixed-count edict above, "as many as possible" can't stand in for a choice whose
+            // legal answers include none. With nothing matching, nothing is remembered and the
+            // source stays the 0/0 it entered as.
+            Effect::Choice(ChoiceEffect::SacrificeAnyNumber { filter }) => pending::raise(
+                self,
+                pending::ChoiceRequest::SacrificeAnyNumber {
+                    player: controller,
+                    source,
+                    filter,
+                },
+            ),
             // Annihilator N (Eldrazi Conscription): the defending player, not the controller,
             // directs the forced sacrifice — same ChooseOwnSacrifices machinery, any permanent.
             Effect::Choice(ChoiceEffect::DefendingPlayerSacrifices { count, defender }) => {

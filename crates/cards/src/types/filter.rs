@@ -625,6 +625,28 @@ pub enum RestDest {
     Hand,
 }
 
+/// Which *owner* a [`PermanentFilter`] accepts, relative to the effect's controller ("you") — CR
+/// 108.3's owner, the player whose deck the card started in, which parts ways with
+/// [`FilterController`] the moment a permanent changes hands (Remove Enchantments' "all
+/// enchantments you both **own** and control"). Deliberately narrower than `FilterController`:
+/// "the active player owns it" is not a clause any card prints.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(
+    feature = "card-dsl",
+    derive(serde::Deserialize),
+    serde(rename_all = "snake_case")
+)]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
+pub enum FilterOwner {
+    /// Any owner (default).
+    #[default]
+    Any,
+    /// A permanent you own, whoever controls it.
+    You,
+    /// A permanent an opponent owns.
+    Opponent,
+}
+
 /// Which controller a [`PermanentFilter`] accepts, relative to the effect's controller ("you").
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[cfg_attr(
@@ -799,6 +821,9 @@ pub struct PermanentFilter {
     pub subtypes: &'static [&'static str],
     /// Whose permanents qualify (default any).
     pub controller: FilterController,
+    /// Whose *owned* permanents qualify (default any) — the CR 108.3 axis, independent of
+    /// `controller`; Remove Enchantments' "you both own and control" sets both.
+    pub owner: FilterOwner,
     /// Token-ness restriction (default any).
     pub token: TokenFilter,
     /// "another permanent" — excludes the filter's own source (CR: "each other"). Needs a
@@ -813,6 +838,15 @@ pub struct PermanentFilter {
     /// attached to a noncreature permanent); `Some(false)` requires the opposite; `None` doesn't
     /// care. The mirror image of `enchanted` (which reads the *host* side).
     pub attached_to_creature: Option<bool>,
+    /// Requires the candidate (an Aura or Equipment) be attached to a permanent that itself matches
+    /// this filter — Enchantment Alteration's "Aura attached to a creature or land", Remove
+    /// Enchantments' "Auras … attached to permanents you control" and "attached to attacking
+    /// creatures your opponents control". Unattached never matches. The general form of
+    /// `attached_to_creature`, which stays as sugar for its one-bit case (and, unlike this axis,
+    /// can say "*not* attached to a creature"). `None` doesn't care.
+    /// ponytail: a `&'static` self-reference rather than a `Box`, so `PermanentFilter` stays
+    /// `Copy` — every host filter is an interned authored value, never built per resolution.
+    pub attached_to: Option<&'static PermanentFilter>,
     /// Requires an attached Aura controlled by "you" (Eriette of the Charmed Apple's "enchanted
     /// by an Aura you control") — narrower than `enchanted`, which matches any attached Aura.
     /// `false` (default) imposes no restriction. Read against `you` in [`Game::permanent_matches`].
@@ -924,6 +958,14 @@ pub struct PermanentFilter {
     /// clause for a spell (increment #131). The distinction only bites with two Walls blocking
     /// different creatures in one turn.
     pub blocked_by_a_wall_this_turn: bool,
+    /// "…blocking or blocked by **this creature**" (Lesser Werewolf, Sentinel — CR 509.1). A
+    /// *pairing* rather than a board-wide axis: unlike [`blocking`](Self::blocking), which asks
+    /// whether this creature blocks anything at all, this one asks whether it and the filter's
+    /// `source` are on opposite ends of the same declared block, in either direction. `false`
+    /// (default) imposes no restriction. Meaningless without a `source` (see
+    /// [`Game::permanent_matches`]) — both cards that print it are targeted abilities, which
+    /// always thread theirs.
+    pub in_combat_with_source: bool,
     /// Power strictly less than the filter's own source permanent's power (Mentor, CR 702.121a
     /// "lesser power"). `false` (default) imposes no restriction. Meaningless without a `source`
     /// (see [`Game::permanent_matches`]) — every filter that sets this pairs it with a targeted
@@ -1075,10 +1117,12 @@ impl PermanentFilter {
             types,
             subtypes: &[],
             controller: FilterController::Any,
+            owner: FilterOwner::Any,
             token: TokenFilter::Any,
             other: false,
             enchanted: None,
             attached_to_creature: None,
+            attached_to: None,
             enchanted_by_you: false,
             mv_max: None,
             mv_min: None,
@@ -1102,6 +1146,7 @@ impl PermanentFilter {
             tapped_or_blocking: false,
             unblocked: false,
             blocked_by_a_wall_this_turn: false,
+            in_combat_with_source: false,
             power_less_than_source: false,
             toughness_less_than_source_power: false,
             entered_this_turn: false,

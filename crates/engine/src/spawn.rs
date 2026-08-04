@@ -58,6 +58,10 @@ impl Game {
             None,
             Object::Permanent(Permanent {
                 entered_this_turn: false,
+                // The helper's "as if it had been there since before the turn" contract covers
+                // Rasputin Dreamweaver's "started the turn untapped" too — unless the card's own
+                // `enters_tapped` says otherwise, which `fresh_permanent` has already applied.
+                started_turn_untapped: !card_def(def).enters_tapped,
                 ..fresh_permanent(def, player, false, false)
             }),
         );
@@ -78,6 +82,7 @@ impl Game {
             Object::Permanent(Permanent {
                 summoning_sick: false,
                 entered_this_turn: false,
+                started_turn_untapped: true,
                 ..fresh_token(def, player)
             }),
         );
@@ -155,6 +160,13 @@ impl Game {
             && !self.is_commander(from)
         {
             return Event::MovedToExile { card: new_id, from };
+        }
+        // Firestorm Phoenix's "If this creature would die, return it to its owner's hand instead"
+        // (CR 614.1b) — a self-replacement read off the live permanent, so a copy of the Phoenix
+        // gets it too. Ordered after the exile replacements above: a finality counter and this
+        // clause are two replacements for one event (CR 616.1), and no pool card carries both.
+        if self.returns_to_hand_instead_of_dying(from) && !self.is_commander(from) {
+            return Event::ReturnedToHand { card: new_id, from };
         }
         // Serra Paragon's granted rider (CR 118.9 — "When this permanent is put into a graveyard
         // from the battlefield, exile it and you gain 2 life.") is a real placed trigger, not a

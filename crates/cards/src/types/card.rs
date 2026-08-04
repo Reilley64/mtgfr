@@ -365,7 +365,9 @@ impl KeywordFamily {
     /// Whether `keyword` is a member of this family.
     pub fn matches(self, keyword: Keyword) -> bool {
         match self {
-            KeywordFamily::Landwalk => matches!(keyword, Keyword::Landwalk(_)),
+            KeywordFamily::Landwalk => {
+                matches!(keyword, Keyword::Landwalk(_) | Keyword::LegendaryLandwalk)
+            }
             KeywordFamily::BandsWith => matches!(keyword, Keyword::BandsWith(_)),
         }
     }
@@ -421,6 +423,14 @@ pub enum Keyword {
     /// `{ landwalk = "island" }`. See [`Game::can_block`].
     #[cfg_attr(feature = "card-dsl", serde(rename = "landwalk"))]
     Landwalk(BasicLandType),
+    /// Legendary landwalk (CR 702.14a): the ability names a land *supertype*, not one of
+    /// [`BasicLandType`]'s subtypes, so it can't ride [`Landwalk`](Self::Landwalk)'s payload.
+    /// Its own variant rather than a widened payload because all of Magic prints exactly two —
+    /// Livonya Silone and Ayumi, the Last Visitor. Widen `Landwalk` to a land filter when a
+    /// *third* off-subtype walk (desertwalk, snow, nonbasic) needs one.
+    /// A member of [`KeywordFamily::Landwalk`], so "loses all landwalk abilities" (Hammerheim)
+    /// strips it too.
+    LegendaryLandwalk,
     /// Can't be the target of spells or abilities *opponents* control (CR 702.11). Its own
     /// controller can still target it. See the target-legality retain in
     /// [`Game::legal_targets_for`].
@@ -686,6 +696,12 @@ pub struct Ability {
     /// Camouflage's "only during *your* declare attackers step" is
     /// [`CardDef::cast_only_during_declare_attackers`] for the step plus
     /// [`Condition::DuringYourTurn`] here for the seat.
+    ///
+    /// On a [`Timing::Activated`] ability it reads as an activation restriction instead (CR 602.2b
+    /// — Triassic Egg's "Activate only if there are two or more hatchling counters on this
+    /// artifact"), checked in `Game::ability_activation_gate` alongside the timing windows
+    /// [`ActivationCost`]'s own `only_*` flags spell. Board-state gates belong here; timing
+    /// windows belong there.
     pub condition: Option<Condition>,
     /// "This ability triggers only once each turn" (Morbid Opportunist, Tocasia's Welcome, Dina
     /// Essence Brewer's draw ability): caps a *triggered* ability at its first placement per
@@ -1515,6 +1531,7 @@ fn treasure_token_builtin() -> CardDef {
             activator: Activator::Controller,
             only_before_attackers: false,
             only_during_your_upkeep: false,
+            only_during_declare_blockers: false,
             only_before_combat_damage_step: false,
             remove_counters: 0,
             remove_counters_kind: None,

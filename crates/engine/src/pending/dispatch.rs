@@ -395,6 +395,12 @@ pub(crate) fn answer(game: &mut Game, intent: Intent) -> Result<Vec<Event>, Reje
             }
             _ => Err(Reject::IllegalChoice),
         },
+        PendingChoice::SacrificeAnyNumber { .. } => match intent {
+            Intent::ChooseSacrifices { player, sacrifices } => {
+                game.answer_sacrifice_any_number(player, sacrifices)
+            }
+            _ => Err(Reject::IllegalChoice),
+        },
         PendingChoice::Devour { .. } => match intent {
             Intent::ChooseSacrifices { player, sacrifices } => {
                 game.answer_devour(player, sacrifices)
@@ -580,6 +586,7 @@ pub(crate) fn forced(game: &Game) -> Option<Intent> {
         | PendingChoice::ChooseExiledToCastFree { .. }
         | PendingChoice::RevealedCardToBattlefieldOrHand { .. }
         | PendingChoice::ChooseOwnSacrifices { .. }
+        | PendingChoice::SacrificeAnyNumber { .. }
         | PendingChoice::Devour { .. }
         | PendingChoice::ChooseManaColor { .. }
         | PendingChoice::ChooseCreatureType { .. }

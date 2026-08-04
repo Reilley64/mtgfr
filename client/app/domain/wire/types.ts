@@ -348,6 +348,7 @@ export type VisibleEvent =
   | { kind: "commander_cast_from_command_zone"; player: number }
   | { kind: "flash_permission_granted"; player: number }
   | { kind: "channel_colorless_mana_granted"; player: number }
+  | { kind: "spend_mana_as_any_type_granted"; player: number }
   | { amount: number; kind: "commander_damage_dealt"; player: number; source: U32 }
   | { amount: number; kind: "combat_damage_dealt_to_player"; player: number; source: U32 }
   | { amount: number; kind: "combat_damage_dealt_to_creature"; source: U32; target: U32 }

@@ -16,6 +16,16 @@ impl Game {
         let Object::Card(c) = &self.objects[id as usize] else {
             return None;
         };
+        // Firestorm Phoenix's returned card "can't be played" until its owner's next turn — the
+        // whole clause, cast and land drop alike, which is why it sits at this shared choke rather
+        // than in `cast`'s own guards.
+        if self
+            .revealed_unplayable_until_next_turn
+            .iter()
+            .any(|&(card, _)| card == id)
+        {
+            return None;
+        }
         let playable = match c.zone {
             Zone::Hand => c.owner == player,
             Zone::Command => c.commander && c.owner == player,
@@ -847,6 +857,111 @@ impl Game {
     /// room to choose fewer or which), it's auto-filled here with no pause and the next clause runs;
     /// otherwise the caster answers a [`PendingChoice::ChooseTarget`] carrying this `clause`.
     /// See [`Self::choose_spell_targets`] for `anchor`/`chooser`.
+    /// Enchantment Alteration: "Attach target Aura attached to a creature or land to **another
+    /// permanent of that type**." Clause 1's legality depends on clause 0's chosen Aura (CR
+    /// 601.2c), which no `PermanentFilter` axis can see — so once the Aura is settled, drop every
+    /// clause-1 candidate that shares no card type with the Aura's current host (CR 613.4's
+    /// post-layer types), and the host itself ("another"). Every other clause passes through
+    /// untouched. The spell-side sibling of `Game::narrow_second_clause_to_shared_types`, which
+    /// narrows the *spec* — this narrows the legal set, since "not that one object" is not
+    /// something a `PermanentFilter` can say.
+    /// ponytail: no CR 608.2b re-check at resolution reads this narrowing (`target_still_legal`
+    /// only re-tests the declared spec), so a type-changing effect in response can leave a chosen
+    /// host that no longer shares a type. `resolve_move_aura`'s own attach-legality gate catches
+    /// the cases that matter for the pool; thread the narrowing through the re-check if one doesn't.
+    fn narrow_move_aura_second_clause(
+        &self,
+        spell: ObjectId,
+        clause: usize,
+        legal: Vec<Target>,
+    ) -> Vec<Target> {
+        if clause != 1 {
+            return legal;
+        }
+        let def = self.def_of(spell);
+        let is_move_aura = def.abilities.iter().any(|a| {
+            matches!(
+                (a.timing, &a.effect),
+                (
+                    Timing::Spell,
+                    Effect::Control(ControlEffect::MoveAura { .. })
+                )
+            )
+        });
+        if !is_move_aura {
+            return legal;
+        }
+        let Some(aura) = self
+            .spell(spell)
+            .targets
+            .iter()
+            .next()
+            .and_then(Target::object_id)
+        else {
+            return legal;
+        };
+        let Some(old_host) = self.attached_to(aura) else {
+            return legal;
+        };
+        let host_types = self.effective_types(old_host);
+        legal
+            .into_iter()
+            .filter(|&t| {
+                let Some(id) = t.object_id() else {
+                    return false;
+                };
+                id != old_host && self.effective_types(id).intersects(host_types)
+            })
+            .collect()
+    }
+
+    /// Glyph of Delusion: "Put X glyph counters on target creature that **target Wall** blocked
+    /// this turn." Clause 1 is the Wall ([`Effect::second_target`]); which Walls are legal depends
+    /// on the creature clause 0 named (CR 601.2c), so once that is settled, keep only the Walls
+    /// that actually blocked it this turn. Every other clause passes through untouched. The
+    /// blocked-this-turn sibling of [`Self::narrow_move_aura_second_clause`] — same shape, same
+    /// reason: "that one blocked that one" is not something a `PermanentFilter` can say.
+    /// ponytail: shares the MoveAura caveat above — no CR 608.2b re-check reads this narrowing, so
+    /// only the declared spec (any Wall blocked it) is re-tested at resolution. The ledger is
+    /// turn-scoped and append-only, so nothing in the pool can invalidate a chosen pair in
+    /// response; thread it through `target_still_legal` if something ever can.
+    fn narrow_blocked_by_target_wall_clause(
+        &self,
+        spell: ObjectId,
+        clause: usize,
+        legal: Vec<Target>,
+    ) -> Vec<Target> {
+        if clause != 1 {
+            return legal;
+        }
+        let def = self.def_of(spell);
+        let Some((TargetSpec::Permanent(first), _)) = self.spell_target_clause(&def, 0) else {
+            return legal;
+        };
+        if !first.blocked_by_a_wall_this_turn {
+            return legal;
+        }
+        let Some(blocked) = self
+            .spell(spell)
+            .targets
+            .iter()
+            .next()
+            .and_then(Target::object_id)
+        else {
+            return legal;
+        };
+        legal
+            .into_iter()
+            .filter(|&t| {
+                t.object_id().is_some_and(|wall| {
+                    self.blocked_by_this_turn(wall)
+                        .iter()
+                        .any(|&(a, _)| a == blocked)
+                })
+            })
+            .collect()
+    }
+
     #[allow(clippy::too_many_arguments)]
     fn choose_spell_target_clause(
         &mut self,
@@ -865,6 +980,8 @@ impl Game {
             color_identity(&self.def_of(spell)),
             self.spell(spell).x,
         );
+        let legal = self.narrow_move_aura_second_clause(spell, clause, legal);
+        let legal = self.narrow_blocked_by_target_wall_clause(spell, clause, legal);
         let n = legal.len();
         // CR 601.2b: X is chosen before targets are chosen, so an `x_scaled` count (Curse of the
         // Swine's "exile X target creatures", Silkguard's "up to X") substitutes the spell's own
@@ -953,6 +1070,7 @@ impl Game {
             self,
             PendingChoice::ChooseTarget {
                 player: chooser,
+                controller: chooser,
                 source: spell,
                 effect: None,
                 legal,
@@ -1553,6 +1671,7 @@ impl Game {
                         toughness: 0,
                         keywords: HASTE,
                         source_name: printed.name,
+                        ends_at_end_of_combat: false,
                     },
                 );
                 self.push_apply(
@@ -2338,6 +2457,12 @@ impl Game {
         {
             return Err(Reject::WrongTiming);
         }
+        // "Activate only during the declare blockers step" (CR 602.5b — Lesser Werewolf): the
+        // step alone, no controller half — the ability reads a declared block, which exists for
+        // attacker and blocker alike.
+        if cost.only_during_declare_blockers && self.step != Step::DeclareBlockers {
+            return Err(Reject::WrongTiming);
+        }
         // "Activate only before the combat damage step" (CR 602.5b — Angus Mackenzie): the
         // activation-side twin of `cast_only_before_combat_damage` (Berserk), and the same
         // boundary for the same reason — `Step::FirstStrikeCombatDamage` is the *first* combat
@@ -2346,6 +2471,18 @@ impl Game {
         // `Step`'s turn ordering means the postcombat main phase stays shut.
         if cost.only_before_combat_damage_step && self.step >= Step::FirstStrikeCombatDamage {
             return Err(Reject::WrongTiming);
+        }
+        // "Activate only if there are two or more hatchling counters on this artifact" (CR 602.2b —
+        // Triassic Egg): a board-state activation restriction, spelled with the same
+        // `[abilities.condition]` a trigger uses for its intervening-if (CR 603.4) and a spell for
+        // its cast restriction (CR 601.3e). Unlike those two it is checked *only* here, at
+        // announcement — an ability already on the stack whose gate stops holding still resolves.
+        // Evaluated with the source in hand, so a counter- or P/T-reading operand has a permanent
+        // to read.
+        if let Some(condition) = ability.condition
+            && !self.ability_condition_holds(condition, source, TriggerContext::of(player))
+        {
+            return Err(Reject::CannotActivate);
         }
         Ok((ability, cost))
     }

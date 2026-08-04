@@ -490,6 +490,11 @@ pub enum VisibleEvent {
     ChannelColorlessManaGranted {
         player: u8,
     },
+    /// `player` may spend mana as though it were mana of any type to pay one spell's mana cost this
+    /// turn (CR 609.4b — North Star). Public — no hidden information.
+    SpendManaAsAnyTypeGranted {
+        player: u8,
+    },
     CommanderDamageDealt {
         source: ObjectId,
         player: u8,

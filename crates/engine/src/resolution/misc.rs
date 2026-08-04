@@ -40,6 +40,19 @@ impl Game {
                     watched,
                 }]
             }
+            // Reincarnation's "Choose target creature. When that creature dies this turn, …":
+            // arm a one-shot delayed trigger on the chosen creature (CR 603.7). A target that has
+            // since left the battlefield already fizzled the whole spell (CR 608.2b), so there is
+            // nothing to guard here beyond the untargeted case.
+            MiscEffect::ScheduleWhenTargetDiesThisTurn { then, .. } => {
+                let watched = expect_object_target(target, "a dies-this-turn watch's armed target");
+                vec![Event::DiesThisTurnWatchArmed {
+                    controller,
+                    source,
+                    watched,
+                    then,
+                }]
+            }
             // Surge to Victory: arm the this-turn, controller-scoped, repeatable combat-damage-
             // copy watch over the card the preceding `Sequence` step just exiled. `None` (the
             // exile step never ran) is unreachable in practice — CR 608.2b already fizzles the
@@ -69,6 +82,12 @@ impl Game {
             MiscEffect::GrantChannelColorlessManaThisTurn => {
                 vec![Event::ChannelColorlessManaGranted { player: controller }]
             }
+            // North Star: "For one spell this turn, you may spend mana as though it were mana of (CR 609.4b)
+            // any type to pay that spell's mana cost." The same one-shot turn-flag set as the two
+            // grants above; `Game::mana_substitutions` widens every color pair while it holds.
+            MiscEffect::GrantSpendManaAsAnyTypeForOneSpellThisTurn => {
+                vec![Event::SpendManaAsAnyTypeGranted { player: controller }]
+            }
             // Counter target spell (the unconditional hard-counter path — `unless_pays: Some(_)`
             // is intercepted earlier, in `run`, so this arm only ever sees `None`).
             MiscEffect::CounterTargetSpell { .. } => {
@@ -93,11 +112,25 @@ impl Game {
             // Schedule a CR 603.7 delayed trigger: resolve `who` to a concrete player now (the
             // effect itself doesn't fire until the matching step begins — see
             // `Game::fire_delayed_triggers`).
-            MiscEffect::ScheduleAtNextUpkeep { who, then, fire_at } => {
+            MiscEffect::ScheduleAtNextUpkeep {
+                who,
+                then,
+                fire_at,
+                your_upkeep,
+            } => {
                 // A lost target leaves no seat to schedule for (CR 608.2b) — nothing is queued.
                 let Some(player) = self.sole_player_in(who, controller, target) else {
                     return Vec::new();
                 };
+                // "Your next upkeep" (Hazezon Tamar) waits for that seat's own upkeep; the default
+                // fires on whichever matching step begins first.
+                if your_upkeep {
+                    return vec![Event::DelayedTriggerScheduledForYourNextUpkeep {
+                        controller: player,
+                        source,
+                        effect: then.clone(),
+                    }];
+                }
                 vec![Event::DelayedTriggerScheduled {
                     controller: player,
                     source,

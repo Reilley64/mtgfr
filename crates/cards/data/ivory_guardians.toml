@@ -27,7 +27,7 @@ timing = "static"
 # every Guardians buffs every other, itself included.
 [[abilities.effects]]
 type = "static"
-mode = "keyword_anthem"
+mode = "filtered_anthem"
 all_players = true
 power = 1
 toughness = 1

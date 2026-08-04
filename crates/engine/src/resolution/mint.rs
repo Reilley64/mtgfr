@@ -32,6 +32,7 @@ impl Game {
                 | ControlEffect::RemoveFromCombat { .. }
                 | ControlEffect::RevertAllCreaturesToOwners
                 | ControlEffect::TapAll { .. }
+                | ControlEffect::TapBlockersOfTarget { .. }
                 | ControlEffect::TapAllTargetPlayerControls { .. }
                 | ControlEffect::TapSource
                 | ControlEffect::TapTarget { .. }
@@ -39,8 +40,10 @@ impl Game {
                 | ControlEffect::UntapTarget { .. }) => {
                     self.mint_control(c, controller, source, target, x)
                 }
-                ControlEffect::TargetOpponentGainsControl { .. }
+                ControlEffect::OpponentGainsControlAll { .. }
+                | ControlEffect::TargetOpponentGainsControl { .. }
                 | ControlEffect::ExchangeControl { .. }
+                | ControlEffect::MoveAura { .. }
                 | ControlEffect::ExchangeGreatestManaValue { .. } => {
                     unreachable!("a pausing/composite effect resolves via Game::run")
                 }
@@ -93,7 +96,9 @@ impl Game {
                 | MiscEffect::CounterTargetSpell { .. }
                 | MiscEffect::GrantChannelColorlessManaThisTurn
                 | MiscEffect::GrantFlashThisTurn
+                | MiscEffect::GrantSpendManaAsAnyTypeForOneSpellThisTurn
                 | MiscEffect::ScheduleAtNextUpkeep { .. }
+                | MiscEffect::ScheduleWhenTargetDiesThisTurn { .. }
                 | MiscEffect::ScheduleColorlessManaForCounteredSpellNextMainPhase
                 | MiscEffect::SkipNextUntapOpponentCreatures
                 | MiscEffect::SkipNextUntaps { .. }
@@ -107,7 +112,10 @@ impl Game {
                 }
                 MiscEffect::BlocksEachAttackerIfAble { .. }
                 | MiscEffect::ThatCreatureCantAttackNextOwnTurn { .. }
+                | MiscEffect::SourceCantAttackThisCombat
+                | MiscEffect::YourAttacksDontTapWhileSourceUntappedThisCombat
                 | MiscEffect::SourceAssignsNoCombatDamageThisTurn
+                | MiscEffect::ThatCreatureAndItsBlockersAssignNoCombatDamageThisTurn
                 | MiscEffect::CounterTriggeringSpell { .. }
                 | MiscEffect::Fight { .. }
                 | MiscEffect::MustAttackRandomOpponent
@@ -131,6 +139,7 @@ impl Game {
                 | ZoneEffect::Manifest
                 | ZoneEffect::MassReturnFromGraveyard { .. }
                 | ZoneEffect::ReanimateDyingEnchantedCreature { .. }
+                | ZoneEffect::ReturnDyingEnchantedCreatureToHand { .. }
                 | ZoneEffect::ReanimateToBattlefield { .. }
                 | ZoneEffect::ReturnAllToHand { .. }
                 | ZoneEffect::ReturnExiledCardToOwnersGraveyard { .. }

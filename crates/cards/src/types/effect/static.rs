@@ -317,6 +317,20 @@ pub enum StaticEffect {
         filter: Option<PermanentFilter>,
     },
 
+    /// "Rasputin can't have more than seven dream counters on it" (CR 122.6) — a ceiling on the
+    /// *source's own* total of one named kind, enforced wherever counters are placed
+    /// ([`Game::kind_counters_after_replacements`]), so proliferate and foreign effects hit it
+    /// too. The sibling of [`CountersEffect::PutCounters`](crate::CountersEffect)'s `max_total`,
+    /// which is Clockwork Beast's narrower "*this ability* can't cause …": that one binds one
+    /// ability, this one binds the permanent.
+    ///
+    /// Self-scoped on purpose — every printing of this clause in Magic says "on it", so there is
+    /// no filter axis to grow until a card caps something other than itself.
+    CounterMaximum {
+        kind: CounterKind,
+        max: u8,
+    },
+
     CounterScaledAttackTax,
 
     CreaturesYouControlEnterWithCounters {
@@ -361,6 +375,15 @@ pub enum StaticEffect {
     /// still discarded — [`Event::Discarded`](crate::Event::Discarded) still fires for every
     /// "whenever you discard" watcher — only its destination changes.
     DiscardToLibraryTopInstead,
+
+    /// Firestorm Phoenix's "If this creature would die, return it to its owner's hand instead.
+    /// Until that player's next turn, that player plays with that card revealed in their hand and
+    /// can't play it." (CR 614.1b — a self-replacement from a static ability.) Read by
+    /// [`Game::graveyard_or_command`](crate::Game), the one choke every death routes through, and
+    /// by the [`Event::ReturnedToHand`](crate::Event) apply arm that arms the revealed-and-shut
+    /// window on the card that comes back. Unscoped: the printed sentence only ever names its own
+    /// source, so there is no filter to carry.
+    ReturnToHandInsteadOfDying,
 
     DoesntUntap {
         #[cfg_attr(feature = "card-dsl", serde(default))]
@@ -438,6 +461,16 @@ pub enum StaticEffect {
         #[cfg_attr(feature = "card-dsl", serde(default))]
         kind: Option<CounterKind>,
     },
+
+    /// Clergy of the Holy Nimbus's "If this creature would be destroyed, regenerate it." — a
+    /// standing regeneration shield (CR 701.15) rather than the one-shot, cost-paid
+    /// [`ControlEffect::RegenerateShield`](crate::ControlEffect::RegenerateShield) the activated
+    /// `{cost}: Regenerate` prints: it replaces *every* destruction, is never used up, and needs
+    /// no activation. Still turned off by "can't be regenerated this turn" (CR 701.15d), which is
+    /// what Clergy's own second ability sells to opponents.
+    ///
+    /// Fieldless: "this creature" is the source and the replacement is unconditional.
+    RegeneratesInsteadOfBeingDestroyed,
 
     /// Zombie Master's "Other Zombies have '{B}: Regenerate this permanent.'" — an activated
     /// ability granted to every permanent matching `filter`, wherever it is on the battlefield.
@@ -563,6 +596,25 @@ pub enum StaticEffect {
         #[cfg_attr(feature = "card-dsl", serde(default))]
         attached: bool,
     },
+
+    /// Wall of Shadows' "This creature can't be the target of spells that can target only Walls
+    /// or of abilities that can target only Walls" (CR 115.4). The sibling of
+    /// [`CantBeTargetedBy`](Self::CantBeTargetedBy) above, and its opposite in what it reads: that
+    /// one asks what the *source* is (an Aura spell, a spell at all), which only a spell can
+    /// answer; this one asks what the source's own **target restriction** admits, which an
+    /// activated ability's restriction answers just as well — hence "or of abilities".
+    ///
+    /// `subtypes` names the restriction that shields: a source is turned away when its
+    /// [`TargetSpec`](crate::TargetSpec) requires at least one subtype and every subtype it
+    /// requires is one of these (Animate Wall's "Enchant Wall"). A source with no subtype
+    /// restriction can target non-Walls too, so it is never caught.
+    /// ponytail: read off the declared filter, so a source that happens to be able to hit only
+    /// Walls for some *other* reason (a toughness bound no non-Wall meets) is not caught. That is
+    /// also how the CR reads the clause — it is about the targeting restriction, not the board.
+    CantBeTargetedBySubtypeOnlyEffects {
+        #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::static_str_slice"))]
+        subtypes: &'static [&'static str],
+    },
     /// The *filtered* anthem: a continuous grant to every permanent matching a full
     /// [`PermanentFilter`], rather than [`Anthem`](Self::Anthem)'s fixed set of candidate axes.
     /// Reach for it when the affected set needs something `Anthem` can't say — a printed name
@@ -570,13 +622,14 @@ pub enum StaticEffect {
     /// live (Arcades Sabboth's "Each untapped creature you control … as long as it's not
     /// attacking") — and for `Anthem` when the plain "creatures you control" axes suffice.
     ///
-    /// The `keyword_anthem` name is what the TOML surface spells and predates the `power` /
-    /// `toughness` fields; it grants keywords and/or a P/T delta, either alone.
+    /// It grants keywords and/or a P/T delta, either alone — which is why the mode is spelled
+    /// `filtered_anthem` rather than the `keyword_anthem` it was named before it grew `power` /
+    /// `toughness`.
     ///
     /// Applied per candidate in `Game::anthem_continuous_effects` beside `Anthem`'s own scan, so
     /// both kinds land in layer 7c/6 at the same timestamp choke and are re-read on every
     /// recompute (CR 613.4) — the boost falls off the instant the filter stops matching.
-    KeywordAnthem {
+    FilteredAnthem {
         #[cfg_attr(
             feature = "card-dsl",
             serde(default, deserialize_with = "de::static_slice")
@@ -639,6 +692,17 @@ pub enum StaticEffect {
     MustAttackEachCombat {
         #[cfg_attr(feature = "card-dsl", serde(default))]
         self_only: bool,
+    },
+
+    /// Marble Priest's "All Walls able to block this creature do so" (CR 509.1c): a blocking
+    /// *requirement* printed on the attacker, narrowed to the blockers `filter` names. The
+    /// filtered twin of [`GrantToAttached`](Self::GrantToAttached)'s `must_be_blocked_by_all`
+    /// (Lure's unfiltered "all creatures"), and the requirement mirror of
+    /// [`CantBeBlockedBy`](Self::CantBeBlockedBy) — that one says who may not block this
+    /// creature, this one says who must. Collected by `Game::required_blocks`, where "able to
+    /// block" is `Game::can_block`, so a tapped or otherwise barred Wall is never forced.
+    MustBeBlockedBy {
+        filter: PermanentFilter,
     },
 
     NoMaximumHandSize,
@@ -721,6 +785,27 @@ pub enum StaticEffect {
     /// (an activated ability, say); no pool card creates that case, and the upgrade path is a
     /// per-turn "went unblocked" set the general damage choke could read.
     RedirectUnblockedDamageToSelf,
+
+    /// Forethought Amulet's "If an instant or sorcery source would deal 3 or more damage to you,
+    /// it deals 2 damage to you instead" (CR 615.9) — a *replacement* that rewrites the amount
+    /// rather than a prevention that subtracts from it, gated on the damage source and on a
+    /// threshold. Standing on the permanent, so it applies to every qualifying hit for as long as
+    /// the permanent is on the battlefield, unlike the armed-and-spent shields
+    /// [`MiscEffect::PreventNextDamage`](crate::MiscEffect::PreventNextDamage) mints.
+    ///
+    /// "to you" is the permanent's own controller — no `TargetSpec` names it, exactly as
+    /// [`PreventNoncombatDamageToOtherCreaturesYouControl`](Self::PreventNoncombatDamageToOtherCreaturesYouControl)
+    /// reads its own controller's creatures.
+    ReplaceDamageToYou {
+        /// "an **instant or sorcery** source" — matched against the damage source's own card,
+        /// so a permanent source never qualifies.
+        source: SpellFilter,
+        /// "would deal **3 or more** damage": the threshold at or above which the rewrite
+        /// applies. A smaller hit is dealt as printed.
+        at_least: i32,
+        /// "it deals **2** damage to you instead": what a qualifying hit becomes.
+        becomes: i32,
+    },
 
     ReduceSpellCost {
         amount: Amount,

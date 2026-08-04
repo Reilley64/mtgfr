@@ -21,6 +21,6 @@ timing = "static"
 # White legendary creatures you control have "bands with other legendary creatures."
 [[abilities.effects]]
 type = "static"
-mode = "keyword_anthem"
+mode = "filtered_anthem"
 keywords = [{ bands_with = "legendary" }]
 filter = { types = ["creature"], color = "white", legendary = true, controller = "you" }

@@ -8,7 +8,6 @@ id = "66566999-f70a-4f14-9bf0-23325295a977"
 default_print = "db1f578f-fa3b-4447-953b-1490852b6c80"
 oracle = "If this creature would be destroyed, regenerate it.\n{1}: This creature can't be regenerated this turn. Only your opponents may activate this ability."
 subtypes = ["Human", "Cleric"]
-approximates = "the first ability (\"if this creature would be destroyed, regenerate it\") is not modeled — a costless permanent regeneration-replacement shield (CR 701.15) is a different shape from the one-shot activated `{cost}: Regenerate` the engine has today; see docs/fidelity/leg-increments.md #128. The second ability (\"can't be regenerated this turn\", opponents-only) is scripted and faithful on its own."
 
 [cost]
 white = 1
@@ -17,6 +16,15 @@ white = 1
 type = "creature"
 power = 1
 toughness = 1
+
+# If this creature would be destroyed, regenerate it.
+[[abilities]]
+timing = "static"
+
+# If this creature would be destroyed, regenerate it.
+[[abilities.effects]]
+type = "static"
+mode = "regenerates_instead_of_being_destroyed"
 
 # {1}: This creature can't be regenerated this turn. Only your opponents may activate this
 # ability.

@@ -1,0 +1,59 @@
+# At the beginning of your upkeep, you may pay {R}{R}{R}. If you don't, tap Rohgahh and all
+# creatures named Kobolds of Kher Keep, then an opponent gains control of them.
+# Creatures you control named Kobolds of Kher Keep get +2/+2.
+name = "Rohgahh of Kher Keep"
+sets = ["leg", "me3"]
+id = "44412804-aa69-4e62-b118-123741d91914"
+default_print = "1429cc3d-f6a2-4011-b716-5c3e0cf251d0"
+oracle = "At the beginning of your upkeep, you may pay {R}{R}{R}. If you don't, tap Rohgahh and all creatures named Kobolds of Kher Keep, then an opponent gains control of them.\nCreatures you control named Kobolds of Kher Keep get +2/+2."
+otags = [
+    "alliteration",
+    "deprecated-legend-type",
+    "donate",
+    "drawback",
+    "triggered-ability",
+    "type-errata",
+    "upkeep-cost",
+]
+subtypes = ["Kobold"]
+legendary = true
+
+[cost]
+generic = 2
+black = 2
+red = 2
+
+[kind]
+type = "creature"
+power = 5
+toughness = 5
+
+# At the beginning of your upkeep, you may pay {R}{R}{R}. If you don't, tap Rohgahh and all
+# creatures named Kobolds of Kher Keep, then an opponent gains control of them.
+[[abilities]]
+timing = "upkeep"
+
+# you may pay {R}{R}{R}. If you don't, tap Rohgahh and all creatures named Kobolds of Kher Keep,
+# then an opponent gains control of them. The sweep is table-wide — the clause says "all creatures
+# named", not "you control" — and one opponent, chosen as it resolves, takes the whole set.
+[[abilities.effects]]
+type = "choice"
+mode = "pay_or_else"
+cost = { red = 3 }
+otherwise = [
+    { type = "control", mode = "tap_source" },
+    { type = "control", mode = "tap_all", filter = { name = "Kobolds of Kher Keep" } },
+    { type = "control", mode = "opponent_gains_control_all", filter = { name = "Kobolds of Kher Keep" }, with_source = true },
+]
+
+# Creatures you control named Kobolds of Kher Keep get +2/+2.
+[[abilities]]
+timing = "static"
+
+# Creatures you control named Kobolds of Kher Keep get +2/+2.
+[[abilities.effects]]
+type = "static"
+mode = "filtered_anthem"
+filter = { types = "creature", name = "Kobolds of Kher Keep", controller = "you" }
+power = 2
+toughness = 2

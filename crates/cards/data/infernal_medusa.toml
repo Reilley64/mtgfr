@@ -17,3 +17,26 @@ black = 2
 type = "creature"
 power = 2
 toughness = 4
+
+# Whenever this creature blocks a creature, destroy that creature at end of combat.
+[[abilities]]
+timing = "blocks_creature"
+filter = { types = "creature" }
+
+# destroy that creature at end of combat
+[[abilities.effects]]
+type = "destroy"
+mode = "that_creature"
+at = "end_combat"
+
+# Whenever this creature becomes blocked by a non-Wall creature, destroy that creature at end
+# of combat.
+[[abilities]]
+timing = "becomes_blocked_by"
+filter = { types = "creature", exclude_subtypes = ["Wall"] }
+
+# destroy that creature at end of combat
+[[abilities.effects]]
+type = "destroy"
+mode = "that_creature"
+at = "end_combat"

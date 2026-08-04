@@ -8,7 +8,6 @@ sets = ["bchr", "chr", "leg"]
 id = "0e6ff89e-9ae7-4dc3-98b7-05401c5df266"
 default_print = "69c6e076-d7bf-435b-ba79-84aa9f073130"
 oracle = "Defender (This creature can't attack.)\nPrevent all damage that would be dealt to this creature by creatures it's blocking.\nThis creature can't be the target of spells that can target only Walls or of abilities that can target only Walls."
-approximates = "the third ability is unmodeled — a spell or ability that can target only Walls may still target this creature"
 subtypes = ["Wall"]
 keywords = ["defender"]
 
@@ -31,3 +30,15 @@ type = "static"
 mode = "prevent_damage"
 to_self = true
 source_relation = "blocked_by_this"
+
+# This creature can't be the target of spells that can target only Walls or of abilities that can
+# target only Walls.
+[[abilities]]
+timing = "static"
+
+# This creature can't be the target of spells that can target only Walls or of abilities that can
+# target only Walls.
+[[abilities.effects]]
+type = "static"
+mode = "cant_be_targeted_by_subtype_only_effects"
+subtypes = ["Wall"]

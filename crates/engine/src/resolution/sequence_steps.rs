@@ -249,6 +249,7 @@ impl Game {
                         toughness: 0,
                         keywords: HASTE,
                         source_name,
+                        ends_at_end_of_combat: false,
                     },
                 );
                 self.push_apply(

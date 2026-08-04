@@ -103,6 +103,9 @@ pub(crate) fn wire_keyword(keyword: engine::Keyword) -> String {
         Keyword::Rampage(n) => format!("rampage:{n}"),
         // The printed keyword names itself after the land: `islandwalk`, `forestwalk`, …
         Keyword::Landwalk(land) => format!("{}walk", land.as_str().to_lowercase()),
+        // Livonya Silone's landwalk reads a supertype, not a land type, so it can't ride
+        // `Landwalk`'s parameterized id.
+        Keyword::LegendaryLandwalk => "legendary_landwalk".into(),
         Keyword::Ward(n) => format!("ward:{n}"),
         Keyword::ProtectionFrom(scope) => {
             let name = match scope {
@@ -157,6 +160,7 @@ pub(crate) fn keyword_label(keyword: engine::Keyword) -> String {
         Keyword::Toxic(n) => format!("Toxic {n}"),
         Keyword::Rampage(n) => format!("Rampage {n}"),
         Keyword::Landwalk(land) => format!("{}walk", land.as_str()),
+        Keyword::LegendaryLandwalk => "Legendary landwalk".into(),
         Keyword::Ward(n) => format!("Ward {{{n}}}"),
         Keyword::ProtectionFrom(scope) => {
             let name = match scope {

@@ -233,12 +233,28 @@ hardwiring "you control", so a card that says "all" reaches across the table; Wi
 otherwise Rubinia Soulsinger's shape (`may_choose_not_to_untap` + `gain_control_while`), which
 already landed. Smallest increment in the set; unblocked four others, and absorbed #17.
 
-### 7. `legendary-landwalk` — 1 card, S
+### 7. `legendary-landwalk` — 1 card, S — **LANDED** (wave 11)
 Depends on: #6.
 Livonya Silone has legendary landwalk — "can't be blocked as long as defending player controls a
 legendary land". Landwalk today keys on basic land *types*; this one keys on a supertype.
 *Sketch:* widen the landwalk keyword's payload from a basic land type to a land filter, with the
 existing basic-type variants expressed through it. The evasion check then reuses #6's axis.
+
+*Landed:* Livonya Silone is faithful, and the sketch's widening was **not** built. Legendary landwalk
+names a land *supertype*, and all of Magic prints exactly two cards with it (Livonya Silone and
+Ayumi, the Last Visitor) — so turning `Keyword::Landwalk`'s payload into a land filter would have
+churned 15 card scripts, `message.rs`'s `"{land}walk"` token, `text_change.rs`'s Magical Hack swap
+and `combat.rs`'s negation lookup to express one card. It landed instead as its own
+`Keyword::LegendaryLandwalk` — which is also how the card reads it, a distinct printed keyword
+ability — plus one `Game::legendary_lands_controlled` beside `lands_with_subtype_controlled` and one
+arm in the block check. `KeywordFamily::Landwalk::matches` covers it, so Hammerheim's "loses all
+landwalk abilities" strips it without a second thought, and no negation static can name it (every
+printed landwalk negation is basic-type-scoped).
+
+Widen the payload to a filter when a *third* off-subtype walk arrives — desertwalk (Desert Nomads),
+snow-covered landwalk, nonbasic landwalk. Two variants is not a pattern.
+
+No residual.
 
 ### 8. `attacking-or-blocking-filter` — 7 cards, S — **LANDED** (wave 2, the union axis only)
 Depends on: nothing.
@@ -391,7 +407,7 @@ describes itself as granting nothing; and `Game::modifier_sources`' anthem re-sc
 The `keyword_anthem` mode name predates its P/T fields and now under-describes the variant; 8
 existing cards spell it, so the rename was left for a mechanical pass.
 
-### 14. `becomes-blocked-color-change` — 1 card, M
+### 14. `becomes-blocked-color-change` — 1 card, M — **LANDED** (wave 11)
 Depends on: nothing.
 Aisling Leprechaun: "Whenever this creature blocks or becomes blocked by a creature, that creature
 becomes green. (This effect lasts indefinitely.)" *Sketch:* a `SetColor` effect with no duration —
@@ -489,7 +505,7 @@ a player recipient, so redirected damage was invisible to every damage-to-a-play
 the new ledger — it now pushes `Event::DamageDealtToPlayer` like every other caller.
 Tests in `crates/engine/tests/leg_w10_a.rs`. Backdraft is scripted with an `approximates` — see #135.
 
-### 20. `damage-triggered-aura-payback` — 2 cards, M
+### 20. `damage-triggered-aura-payback` — 2 cards, M — **LANDED** (wave 11)
 Depends on: nothing.
 Backfire ("whenever enchanted creature deals damage to you, this Aura deals that much damage to
 that creature's controller") and Relic Bind ("whenever enchanted artifact becomes tapped, choose
@@ -634,7 +650,7 @@ until that lands. Note the earlier backlog text had this card's oracle wrong —
 "can't attack unless defending player controls an Island" clause at all (that is Sea Serpent),
 so there is no defending-player half to build here.
 
-### 30. `move-attached-aura` — 1 card, M
+### 30. `move-attached-aura` — 1 card, M — **LANDED** (wave 11)
 Depends on: nothing.
 Enchantment Alteration: "Attach target Aura attached to a creature or land to another permanent of
 that type." *Sketch:* a `MoveAura { target_aura, new_host }` effect calling the existing attach
@@ -642,11 +658,18 @@ path, with a legality check that the new host matches the Aura's enchant restric
 two-target shape where the second target's legality depends on the first is new — the target
 chooser must resolve them in order.
 
-### 31. `tap-creature-for-mana-by-mana-value` — 1 card, S
+### 31. `tap-creature-for-mana-by-mana-value` — 1 card, S — **LANDED** (wave 11)
 Depends on: nothing.
 Energy Tap: "Tap target untapped creature you control. If you do, add {C} equal to that creature's
 mana value." *Sketch:* an `Amount::TargetManaValue` read at resolution, feeding the existing
 add-mana effect. The if-you-do gate is the existing conditional-on-cost-paid shape.
+
+*Landed:* **no engine change** — the sketch was filed before `Amount::TargetManaValue` existed and
+it has since arrived for other cards, so Energy Tap is a two-step `[[abilities.effects]]` sequence
+of `control`/`tap_target` (`tapped = false`, `controller = "you"`) then `mana`/`add` with
+`repeat = "target_mana_value"`. The if-you-do gate turned out to need nothing at all: the creature
+is the spell's only target, so one that is no longer an untapped creature you control on resolution
+fizzles the whole spell before the mana step is reached (CR 608.2b).
 
 ### 32. `granted-land-ability-with-conditional-counter` — 1 card, M
 Depends on: nothing.
@@ -666,7 +689,7 @@ round-robin optional choice — a pending-choice loop in the submit path that te
 full cycle passes with no player acting. Determinism matters: the loop state (whose turn to
 choose, whether anyone acted this cycle) is orchestration state that must survive intent replay.
 
-### 34. `feint` — 1 card, M
+### 34. `feint` — 1 card, M — **LANDED** (wave 11)
 Depends on: #12.
 Feint: "Tap all creatures blocking target attacking creature. Prevent all combat damage that would
 be dealt this turn by that creature and each creature blocking it." *Sketch:* a combat-group
@@ -696,7 +719,7 @@ nor name (see `crates/engine/src/apply.rs`), so Revelation and Field of Dreams c
 battlefield — the planned "both out at once" test is an unreachable board state and was replaced
 by `the_world_rule_lets_only_one_of_the_two_reveals_stand`.
 
-### 36. `firestorm-phoenix` — 1 card, L
+### 36. `firestorm-phoenix` — 1 card, L — **LANDED** (wave 11)
 Depends on: nothing.
 "If this creature would die, return it to its owner's hand instead. Until that player's next turn,
 that player plays with that card revealed in their hand and can't play it." *Sketch:* a dies-
@@ -704,6 +727,20 @@ replacement (the engine has regeneration but not a general death replacement), p
 "revealed and unplayable until <player>'s next turn" marker that follows a *specific card object*
 into the hand — which means the hand needs per-card annotations that survive the zone change.
 Interacts with #35's visibility work.
+
+*Landed (wave 11):* much smaller than the "L" suggested, because both halves already had a home.
+`Game::graveyard_or_command` is the single choke every death routes through and can already return a
+different `Event`, so the replacement is one guard there returning `Event::ReturnedToHand`. And
+`Game::has_seen_hand_card` is an existing per-card hand-visibility question that `crates/schema`
+already reads, so "plays with that card revealed in their hand" needed **no** proto, schema, or
+client work. One new state list, `revealed_unplayable_until_next_turn: Vec<(ObjectId, PlayerId)>`,
+serves both clauses: `has_seen_hand_card` treats an entry as a standing window for every seat, and
+`playable_zone` — the shared cast + land-drop choke — refuses it. Armed in the
+`Event::ReturnedToHand` apply arm off the dying permanent's *effective* statics (so a copy of the
+Phoenix replaces its own death too, and replay stays deterministic without a new event), cleared for
+the active player at untap, the same "until your next turn" lapse `repelled_until_next_turn` uses.
+New DSL surface: `StaticEffect::ReturnToHandInsteadOfDying`, unscoped — the printed sentence only
+ever names its own source.
 
 ### 37. `attacks-unblocked-trigger` — 1 card, M — **LANDED** (wave 10)
 Depends on: nothing.
@@ -713,7 +750,7 @@ defending player controls. If you do, this creature assigns no combat damage thi
 locked in, plus an `AssignsNoCombatDamage` marker the damage step checks. The "defending player"
 scoping is per-attack, so the trigger carries the defender.
 
-### 38. `damage-reduction-replacement` — 1 card, M
+### 38. `damage-reduction-replacement` — 1 card, M — **LANDED** (wave 11)
 Depends on: #12.
 Forethought Amulet: "If an instant or sorcery source would deal 3 or more damage to you, it deals 2
 damage to you instead." Not prevention — a *replacement* that rewrites the amount, gated on the
@@ -721,7 +758,7 @@ source type and a threshold. *Sketch:* a `ReplaceDamageAmount { source_filter, w
 new_amount }` hook in the damage path, ordered after prevention (CR 615.9 — the recipient chooses
 the order, but with one effect it does not matter here).
 
-### 39. `gabriel-angelfire` — 1 card, M
+### 39. `gabriel-angelfire` — 1 card, M — **LANDED** (wave 11)
 Depends on: #1, #5.
 "At the beginning of your upkeep, choose flying, first strike, trample, or rampage 3. Gabriel
 Angelfire gains that ability until your next upkeep." *Sketch:* a modal grant where the mode set is
@@ -823,7 +860,7 @@ destroyed by creature removal, be affected by anthems, and die to lethal damage)
 type-changing layer, applied before P/T layers so #22's work composes. Land this after #22 — the
 0/0-plus-counters interaction is where type-changing effects usually break.
 
-### 45. `hazezon-tamar` — 1 card, M
+### 45. `hazezon-tamar` — 1 card, M — **LANDED** (wave 11)
 Depends on: nothing.
 "When Hazezon enters, create X 1/1 Sand Warrior creature tokens … at the beginning of your next
 upkeep, where X is the number of lands you control at that time. When Hazezon leaves the
@@ -886,7 +923,7 @@ so did not pick them up at the shared choke. The conditional second half is a `t
 the creature in a graveyard — reaching that branch *is* the intervening-if, so no delayed-trigger
 condition was needed.
 
-### 50. `johan` — 1 card, M
+### 50. `johan` — 1 card, M — **LANDED** (wave 11)
 Depends on: nothing.
 "At the beginning of combat on your turn, you may have Johan gain 'Johan can't attack' until end of
 combat. If you do, attacking doesn't cause creatures you control to tap this combat if Johan is
@@ -925,7 +962,7 @@ land of their choice." *Sketch:* a land-ETB replacement (the engine has no per-t
 replacement hook) with a comparative land-count condition, whose body is an ordinary sacrifice
 choice. The replacement fires on *any* way a land enters, not only land drops.
 
-### 54. `lesser-werewolf` — 2 cards, S
+### 54. `lesser-werewolf` — 2 cards, S — **LANDED** (wave 11)
 Depends on: #8.
 "{B}: If this creature's power is 1 or more, it gets -1/-0 until end of turn and put a -0/-1 counter
 on target creature blocking or blocked by this creature. Activate only during the declare blockers
@@ -937,6 +974,19 @@ creature*" is not a global axis but a pairing, so it needs the filter's own `sou
 against `CombatState::blocks` — match a `(blocker, attacker)` pair in either direction. #22 landed
 without it, so this increment now owns building it for both cards: **Sentinel** is scripted and
 carries an `approximates` (it targets any creature), and drops it when this lands.
+
+*Landed (wave 11):* three narrow additions, no new effect leaf. `PermanentFilter::in_combat_with_source`
+reads `CombatState::blocks` from both ends against the filter's own `source`, which
+`Game::permanent_matches` already threads — the pairing #8 deferred, and the whole of it.
+`CounterKind::MinusZeroMinusOne` is a toughness-only P/T counter read by `Game::pt_layers` exactly
+like its `MinusZeroMinusTwo` sibling (its own kind for the same CR 121.3 reason: only +1/+1 and
+-1/-1 annihilate). `ActivationCost::only_during_declare_blockers` is a step check with no
+controller half — both seats are in the combat the ability reads, so "your" would be the wrong
+question. The sketch's "power-threshold activation condition" was **not** built: the oracle reads
+"{B}: *If* this creature's power is 1 or more, …", so it is an ordinary
+`{ type = "conditional", condition = { type = "compare", left = "source_power", op = "at_least",
+right = 1 } }` inside the effect — the ability activates at 0 power and does nothing, which is
+what the card says. Sentinel dropped its `approximates` in the same change.
 
 ### 55. `granted-regenerate-via-counter` — 1 card, M — **LANDED** (wave 10)
 Depends on: #32 (granting an ability).
@@ -952,7 +1002,7 @@ granter. `CounterKind::Matrix` carries it instead: `Game::granted_activated_abil
 outlives the Matrix (CR 400.7) exactly as Vow and Glyph's counters carry their own effects. Appended
 last so the board's own grants keep their `ability_at` indices.
 
-### 56. `must-block-by-filter` — 1 card, M
+### 56. `must-block-by-filter` — 1 card, M — **LANDED** (wave 11)
 Depends on: #12 (Marble Priest's other half).
 Marble Priest: "All Walls able to block this creature do so." A block *requirement* rather than a
 restriction — CR 509.1c, the harder half of the declare-blockers legality check, because the
@@ -976,7 +1026,7 @@ exchange itself (both seats swap, an untargeted third seat does not) and the
 adding one. The sacrifice is a cost, so the artifact is already in the graveyard when the ability
 resolves.
 
-### 58. `name-a-card` — 2 cards, M
+### 58. `name-a-card` — 2 cards, M — **LANDED** (wave 11)
 Depends on: nothing.
 Nebuchadnezzar ("choose a card name; target opponent reveals X cards at random from their hand;
 discard all with that name") and Petra Sphinx ("target player chooses a card name, then reveals the
@@ -985,7 +1035,7 @@ against the card catalog — plus **random selection from a hidden zone**, which
 RNG (the engine takes no randomness it is not given) and must stay replay-deterministic. Petra
 Sphinx's chooser is the *targeted* player, not the controller.
 
-### 59. `spend-mana-as-any-type` — 1 card, M
+### 59. `spend-mana-as-any-type` — 1 card, M — **LANDED** (wave 11)
 Depends on: nothing.
 North Star: "For one spell this turn, you may spend mana as though it were mana of any type to pay
 that spell's mana cost." *Sketch:* a turn-scoped, one-shot payment relaxation flag consulted by the
@@ -993,8 +1043,19 @@ mana-payment validator. "One spell" means it is consumed by the first cast that 
 player chooses implicitly — so the flag is offered as an option during payment rather than applied
 automatically.
 
-### 60. `damage-redirection` — 2 cards, L
+### 60. `damage-redirection` — 2 cards, L — **LANDED** (wave 11)
 Depends on: #12, #19.
+
+*Landed:* no new registry — the sketch's "redirection registry parallel to the prevention shields"
+already exists as `PreventionShield::redirect_to` (Jade Monolith, Reverberation). Both cards are
+`MiscEffect::PreventNextDamage` shields with two new redirect destinations: `redirect_to_source`
+("is dealt to **this creature** instead" — the ability's own source permanent, the redirect-side
+twin of `shield_source`) and `redirect_to_target` ("is dealt to **target creature** … instead" —
+the targeted creature is the new recipient, so the shield itself stands in front of the
+controller). Shimian Night Stalker is faithful. Nova Pentacle carries an `approximates`: the
+chosen source is not modeled (the shield catches whichever source hits you first, the same note
+Jade Monolith and Forcefield already carry), and the redirect creature is named by the artifact's
+controller rather than by an opponent — **#80**'s opponent-choice target routing finishes it.
 Nova Pentacle ("the next time a source of your choice would deal damage to you this turn, that
 damage is dealt to target creature of an opponent's choice instead") and Shimian Night Stalker
 ("all damage that would be dealt to you this turn by target attacking creature is dealt to this
@@ -1003,7 +1064,7 @@ creature instead"). *Sketch:* a redirection registry parallel to the prevention 
 prevention. Nova Pentacle's new recipient is chosen by an **opponent** at the time the shield is
 created, which is a pending choice held by a non-controller.
 
-### 61. `x-target-creatures` — 2 cards, M
+### 61. `x-target-creatures` — 2 cards, M — **LANDED** (wave 11)
 Depends on: nothing.
 Part Water and Winter Blast both take "X target creatures" — a target *count* determined by X.
 *Sketch:* the targeting system takes a fixed arity today; it needs `TargetCount::Variable(Amount)`
@@ -1037,7 +1098,7 @@ modelled as a real target — its `approximates` was widened rather than the gat
 Tests: `crates/engine/tests/leg_filter_axes.rs`.
 Pendelhaven: "Target 1/1 creature gets +1/+2 until end of turn."
 
-### 63. `primordial-ooze` — 1 card, M
+### 63. `primordial-ooze` — 1 card, M — **LANDED** (wave 11)
 Depends on: nothing.
 "Attacks each combat if able. At the beginning of your upkeep, put a +1/+1 counter on this creature.
 Then you may pay {X}, where X is the number of +1/+1 counters on it. If you don't, tap this creature
@@ -1053,7 +1114,7 @@ discards. *Sketch:* the trigger system watches the battlefield, stack, and grave
 hand-scoped trigger check for this shape, and the discard event needs to carry its cause (which
 player's spell or ability, or a turn-based action).
 
-### 65. `puppet-master` — 1 card, M
+### 65. `puppet-master` — 1 card, M — **LANDED** (wave 11)
 Depends on: nothing.
 "When enchanted creature dies, return that card to its owner's hand. If that card is returned this
 way, you may pay {U}{U}{U}. If you do, return this card to its owner's hand." The Aura triggers on
@@ -1069,12 +1130,12 @@ white mana. (This effect lasts indefinitely.)" *Sketch:* a mana-production repla
 permanent — the engine resolves mana abilities directly with no interception point. Add one, keyed
 by the produced color, and make it #14-indefinite.
 
-### 67. `pump-per-attached-aura` — 1 card, S
+### 67. `pump-per-attached-aura` — 1 card, S — **LANDED** (wave 11)
 Depends on: nothing.
 Rabid Wombat: "+2/+2 for each Aura attached to it." *Sketch:* an `Amount::AurasAttachedToThis` in
 the existing per-permanent-count amount family, read continuously by a self-anthem.
 
-### 68. `rasputin-dreamweaver` — 1 card, M
+### 68. `rasputin-dreamweaver` — 1 card, M — **LANDED** (wave 11)
 Depends on: #12.
 Seven dream counters that are simultaneously a mana source and a prevention resource, an upkeep
 regrowth conditional on having started the turn untapped, and a hard cap of seven. *Sketch:* the
@@ -1089,7 +1150,7 @@ Depends on: nothing.
 way. Exile Recall." *Sketch:* an `Amount::CardsDiscardedThisWay` scoped to the resolution (#46's
 resolution-scoped counter), plus self-exile on resolution, which the engine has for other cards.
 
-### 70. `dies-this-turn-delayed-trigger` — 1 card, S
+### 70. `dies-this-turn-delayed-trigger` — 1 card, S — **LANDED** (wave 11)
 Depends on: nothing.
 Reincarnation: "Choose target creature. When that creature dies this turn, return a creature card
 from its owner's graveyard to the battlefield under the control of that creature's owner."
@@ -1097,7 +1158,30 @@ from its owner's graveyard to the battlefield under the control of that creature
 existing delayed-trigger machinery covers timing; the new part is keying one to a permanent
 identity rather than to a step.
 
-### 71. `remove-enchantments` — 1 card, M
+*Landed:* the sketch called the new part right, and the *payoff* turned out to already exist. The
+delayed trigger is `MiscEffect::ScheduleWhenTargetDiesThisTurn { target, then }` with a
+`DelayedTriggers::pending_dies_this_turn` list — the same arm/fire/expire shape
+`pending_combat_damage_watch` has (object-armed) crossed with `pending_next_cast` (carries its own
+payoff), fired from a new `PostIntentPhase::DiesThisTurnTriggers` that scans the batch for the
+watched id in an `Event::MovedToGraveyard`. Object ids are never reused, so `from == watched` *is*
+"that permanent died" (CR 700.4) — no zone or card-type re-check, and a commander diverting to the
+command zone correctly never fires it.
+
+The return needed one axis, not a new effect: `ChoiceRequest::MayReturnFromGraveyard` already takes
+`{ to_battlefield, graveyards }` and already reanimates under the card's own owner
+(`pending/handlers/fanout.rs`), which is exactly "to the battlefield under the control of that
+creature's owner" — Glyph of Reincarnation has been using it since increment 43. All that was
+missing was a way for the *DSL* to reach it: `pause_may.rs` hardcoded `to_battlefield: false,
+graveyards: vec![controller; n]`. So `ChoiceEffect::MayReturnFromGraveyard` gained one authored
+`reincarnate: bool` (both halves of the same rider — whose graveyard *and* which zone — so one flag,
+the same compound `reincarnate` `DestroyEffect::BlockedByTarget` already carries) plus a
+context-filled `dead: Option<ObjectId>`, threaded by `fill_dead_creature` and *gated* on
+`reincarnate` so an ordinary "return a card from your graveyard" rider hanging off some future death
+trigger keeps reading its own controller's graveyard.
+
+No residual: the card is faithful.
+
+### 71. `remove-enchantments` — 1 card, M — **LANDED** (wave 11)
 Depends on: nothing.
 "Return to your hand all enchantments you both own and control, all Auras you own attached to
 permanents you control, and all Auras you own attached to attacking creatures your opponents
@@ -1125,7 +1209,7 @@ Untap needed nothing new: `ControlEffect::UntapAll` already takes a `PermanentFi
 `controller = "you"` is the whole of "lands you control".
 *Cards:* reset.
 
-### 73. `rohgahh-of-kher-keep` — 1 card, M
+### 73. `rohgahh-of-kher-keep` — 1 card, M — **LANDED** (wave 11)
 Depends on: nothing.
 "At the beginning of your upkeep, you may pay {R}{R}{R}. If you don't, tap Rohgahh and all creatures
 named Kobolds of Kher Keep, then an opponent gains control of them." *Sketch:* an unless-you-pay
@@ -1133,7 +1217,7 @@ upkeep trigger (shared with #29) whose failure branch is a mass tap plus a contr
 opponent — and *which* opponent is a choice the controller makes (CR 616 / "an opponent" means the
 effect's controller chooses). The by-name anthem half is ordinary.
 
-### 74. `stangg-twin` — 1 card, M
+### 74. `stangg-twin` — 1 card, M — **LANDED** (wave 11)
 Depends on: nothing.
 "When Stangg enters, create Stangg Twin, a legendary 3/4 red and green Human Warrior creature token.
 Exile that token when Stangg leaves the battlefield. Sacrifice Stangg when that token leaves the
@@ -1187,7 +1271,7 @@ in the untap step. The prevention half is #34's damage-dealt-by shield with a si
 was missing: `MiscEffect::SkipNextUntaps` with a `count`, and `Event::NextUntapSkipConsumed` spending
 exactly one mark per untap step.
 
-### 80. `opponent-chooses-the-target` — 1 card, M
+### 80. `opponent-chooses-the-target` — 1 card, M — **LANDED** (wave 11)
 Depends on: #2.
 The Abyss: "At the beginning of each player's upkeep, destroy target nonartifact creature that
 player controls of their choice." The target is chosen by the *upkeep player*, not by the
@@ -1216,11 +1300,28 @@ after the ability is on the stack fizzles it (CR 608.2b). Tests:
 "When this creature attacks or blocks, at end of combat, sacrifice it and it deals 5 damage to you.
 {2}{U}{U}, {T}: Return target permanent that isn't enchanted to its owner's hand."
 
-### 83. `triassic-egg` — 1 card, S
+### 83. `triassic-egg` — 1 card, S — **LANDED** (wave 11)
 Depends on: nothing.
 Hatchling counters, a sacrifice ability gated on having two or more, and a two-mode choice
 (reanimate from hand or from graveyard). *Sketch:* an activation condition on a counter count
 threshold — the only missing piece; both modes and the counter-adding ability are expressible.
+
+*Landed:* the sketch was right about the missing piece and slightly wrong about how much of it was
+missing. There is no new condition vocabulary at all — `Amount::PerCounterOfKindOnSource` and
+`Condition::Compare` already spell "two or more hatchling counters on this artifact"; what was
+missing was that `Game::ability_activation_gate` simply never read `Ability::condition`. One
+`if let` at the end of that gate gives *every* activated ability in the pool a board-state
+activation restriction (CR 602.2b), the counterpart to the timing windows `ActivationCost`'s own
+`only_*` flags already spelled. Plus `CounterKind::Hatchling`.
+
+The two modes needed nothing: `ChoiceEffect::PutCreatureFromHand { keep = true }` and
+`ZoneEffect::ReanimateToBattlefield` both existed. **Residual, carried as a `ponytail:` on the card
+rather than filed as an increment:** the "Choose one" is spelled as *two* sacrifice abilities with
+the same cost and the same gate, because `modal` is a card-level flag over a card's whole ability
+list and this card also has the unrelated `{3}, {T}` counter ability. Both spellings pick a mode at
+announcement for the same cost (CR 601.2b), so nothing at the table can tell them apart. Real modal
+*activated* abilities become worth building when a card copies or counts activated abilities — no
+Legends card does.
 
 ### 84. `activate-no-more-than-twice-each-turn` — 1 card, S — **LANDED** (wave 8, tested wave 9)
 Depends on: nothing.
@@ -1256,7 +1357,7 @@ banding until end of turn." *Sketch:* a `blocks` trigger with an intervening-if 
 *other* blockers of the same attacker by filter — a co-blocker predicate the combat assignment can
 answer once #3 has built the band/group vocabulary.
 
-### 88. `cant-be-targeted-by-wall-only-effects` — 1 card, M
+### 88. `cant-be-targeted-by-wall-only-effects` — 1 card, M — **LANDED** (wave 11)
 Depends on: #15.
 Wall of Shadows: "can't be the target of spells that can target only Walls or of abilities that can
 target only Walls." The predicate is about the *targeting restriction of the source*, not about the
@@ -1305,7 +1406,7 @@ flying." *Sketch:* a second effect scoped to the *previously chosen target set* 
 an `EffectTarget::PreviousTargetsMatching { filter }` the resolution threads from the first effect
 to the second.
 
-### 93. `wood-elemental` — 1 card, M
+### 93. `wood-elemental` — 1 card, M — **LANDED** (wave 11)
 Depends on: nothing.
 "As this creature enters, sacrifice any number of untapped Forests. Its power and toughness are
 each equal to the number of Forests sacrificed as it entered." *Sketch:* an **as-enters**
@@ -1430,7 +1531,7 @@ Pit Scorpion: "Whenever this creature deals damage to a player, that player gets
 `CountersEffect::PutCountersOnPlayer`'s `who`, so a `deals_damage_to_opponent` trigger cannot
 fill `damaged_player` and the engine panics on the "filled in at placement" expect. Add the arm.
 
-### 100. `blocks-and-becomes-blocked-by-as-separate-triggers` — 1 card, M
+### 100. `blocks-and-becomes-blocked-by-as-separate-triggers` — 1 card, M — **LANDED** (wave 11)
 Depends on: nothing.
 Infernal Medusa: "Whenever this creature blocks a creature, destroy that creature at end of
 combat. / Whenever this creature becomes blocked by a non-Wall creature, destroy that creature
@@ -1499,7 +1600,7 @@ not spell filters. All three cards are faithful. Tests: `crates/engine/tests/leg
 Abomination ("a green or white creature"), Flash Counter ("target instant spell"),
 Mana Matrix ("Instant and enchantment spells you cast").
 
-### 106. `sacrifice-filtered-permanents-as-an-alternative-cost` — 2 cards, M
+### 106. `sacrifice-filtered-permanents-as-an-alternative-cost` — 2 cards, M — **LANDED** (wave 11 — no `pay_or_else` work and no new choice view: `ChoiceEffect::MaySacrifice` grew `count` + `otherwise`, and the already-wired `PendingChoice::MaySacrifice` carries both. The wire view still drops the count — increment #175)
 Depends on: nothing.
 Mold Demon: "When this creature enters, sacrifice it unless you sacrifice two Swamps." Elder
 Spawn: "At the beginning of your upkeep, unless you sacrifice an Island, sacrifice this creature
@@ -1541,7 +1642,7 @@ Cyclopean Mummy: "When this creature dies, exile it."
 graveyard by the time a dies-trigger resolves. Needs the source's post-death card object
 tracked through the trigger (CR 603.6c's look-back), which is adjacent to but distinct from #98.
 
-### 110. `per-effect-targets` — 1 card, L
+### 110. `per-effect-targets` — 1 card, L — **LANDED** (wave 11 — the general problem was never needed: Psionic Entity's second half is a *fixed reference*, so #145's per-step settle covers it. Two independently **chosen** targets in one ability are still unbuilt, and no Legends card asks for them.)
 Depends on: nothing.
 Psionic Entity: "{T}: This creature deals 2 damage to any target and 3 damage to itself."
 *Sketch:* an ability has exactly **one** shared target — `Effect::target()` returns the first
@@ -1620,7 +1721,7 @@ Plains, they gain 1 life."
 its intervening-if clause scoped to the player whose upkeep it is (CR 603.4), which means
 `Condition` gains a subject rather than always meaning "you".
 
-### 117. `grant-to-attached-under-a-condition` — 1 card, M
+### 117. `grant-to-attached-under-a-condition` — 1 card, M — **LANDED** (wave 11)
 Depends on: nothing.
 Spectral Cloak: "Enchanted creature has shroud as long as it's untapped."
 *Sketch:* `StaticEffect::GrantToAttached` has no `condition` field and
@@ -1809,7 +1910,7 @@ owed after all. What makes it M is the wire: `crates/schema/src/projection/choic
 catch-up behind it. Land it in a wave that can regenerate and take the client half, not in a
 card-only slice.
 
-### 125. `describe-a-filtered-anthems-pt-delta` — 0 cards, S
+### 125. `describe-a-filtered-anthems-pt-delta` — 0 cards, S — **LANDED** (wave 11)
 Depends on: #13 (landed — which is what gave `StaticEffect::KeywordAnthem` its P/T fields).
 Two display-only gaps opened when Ivory Guardians and Arcades Sabboth routed their pumps through the
 *filtered* anthem instead of `Anthem`. The board is correct in both; only what the player is told
@@ -1823,7 +1924,24 @@ widen the `modifier_sources` scan to the same `Game::anthem_continuous_effects` 
 already share, so it cannot drift apart again. The `keyword_anthem` mode name itself now
 under-describes the variant (8 existing cards spell it), so a rename rides here or nowhere.
 
-### 126. `finish-cr-510s-damage-assignment-rules` — 0 cards, M
+*Landed:* both gaps, plus the rename. The attribution half wasn't "widen the scan" so much as *delete*
+it: `Game::modifier_sources` carried a hand-rolled 55-line re-implementation of `matching_anthems`
+(its own `all_players` / `exclude_source` / colors / subtypes / attacking / untapped gates), which is
+why it could read `StaticEffect::Anthem` only and why it silently dropped any anthem whose amounts
+weren't `Amount::Fixed`. It now loops `Game::anthem_continuous_effects(object)` — the same choke the
+board reads — and maps `ContinuousEffectKind::PtDelta` / `GrantKeywords` to the ledger's
+`ModifierContribution::PowerToughness` / `Keyword`. Both kinds of anthem, amounts already resolved,
+one place to drift from. The message half is the two `amount_param`s the arm was dropping.
+
+The rename went through: `StaticEffect::KeywordAnthem` → `FilteredAnthem`, mode `keyword_anthem` →
+`filtered_anthem` across the 10 card scripts that spell it, plus `EFFECT_STATIC_FILTERED_ANTHEM` /
+`effect.static_filtered_anthem` and its `en.ts` formatter, which now composes the two clauses
+("… get +0/+2", "… have flying") instead of assuming a keyword-only anthem and printing the filter's
+permanents as a bare "Permanents you control".
+
+No residual.
+
+### 126. `finish-cr-510s-damage-assignment-rules` — 0 cards, M — **LANDED** (wave 11)
 Depends on: #119 (landed — which put the division in the damage step where both of these live).
 Two pre-existing gaps in the chosen division, both surfaced by #119 and neither caused by it.
 CR 510.1c requires that a blocker be assigned lethal damage before any is assigned to a blocker
@@ -1846,7 +1964,25 @@ still lives in one place — `Game::assign_damage` in `pending/handlers/combat.r
 declaration order it must walk is `Game::blockers_of` for an attacker's division and
 `Game::attackers_blocked_by` for a blocker's.
 
-### 127. `unanswerable-division-past-max-blockers` — 0 cards, S
+*Landed:* the CR 510.1c check is `Game::lethal_order_respected` in `pending/handlers/combat.rs`,
+called from `assign_damage`'s validation. **The sketch was wrong about the order**: CR 510.1c
+constrains the *damage assignment order*, which CR 509.2 lets the dividing player announce freely
+as blockers are declared — it is not the declaration order `blockers_of` returns, and the existing
+`game.rs` division tests already depend on a free order ("pour 1 into the 2/2 and 3 into the 3/3").
+So the rule is enforced order-independently: an assignment is realizable under *some* order exactly
+when at most one recipient is left short of lethal while still taking damage. Two half-killed
+blockers is the shape that is refused. CR 702.22j/k are an explicit exception — when banding moved
+the choice to the other seat that seat divides freely, so the check returns early on
+`banding_division_shifter(recipients)` (made `pub(crate)`), which is what keeps the 24
+`leg_bands_with_other` tests green. ponytail: damage assigned by *another* creature in the same
+batch is not counted toward a recipient's lethal reading (the rules allow it), and a trampler
+holding damage back (CR 702.19b) is not made to bring every blocker to lethal first. The CR 510.4
+re-ask landed one level up from the sketch — the
+`Step::CombatDamage` arm of `Game::advance_step` (`priority.rs`) clears `self.combat.damage` before
+calling `divide_or_deal_combat_damage`, which is safe because nothing but the two batches writes
+that table and only creatures that still deal damage this batch are asked.
+
+### 127. `unanswerable-division-past-max-blockers` — 0 cards, S — **LANDED** (wave 11)
 Depends on: #119 and #3 slice 3 (landed — which is what made a division reachable from both sides).
 `MAX_BLOCKERS` (8, in `crates/engine/src/types/stack.rs`) bounds `DamageAssignment`'s fixed `Copy`
 array. `Game::assign_damage` rejects an assignment longer than the ceiling with
@@ -1862,7 +1998,12 @@ a division with more than `MAX_BLOCKERS` recipients in `Game::next_undivided_div
 to CR 510's default even split, so the step still finishes. A test that gang-blocks past the ceiling
 and asserts the game reaches end of combat is the whole acceptance criterion.
 
-### 128. `costless-permanent-regeneration-shield` — 0 cards, M
+*Landed:* `Game::next_undivided_division` (`combat.rs`) now raises a division only when the
+recipient count is in `2..=MAX_BLOCKERS`, so a gang block wider than the ceiling falls through to
+the default lethal-in-order split instead of raising a choice no answer can satisfy. ponytail: the
+ceiling itself stays — lifting it means giving up `Event: Copy`.
+
+### 128. `costless-permanent-regeneration-shield` — 0 cards, M — **LANDED** (wave 11)
 Depends on: nothing (Clergy of the Holy Nimbus already counted under #25; this is its residual).
 Clergy of the Holy Nimbus's first ability: "If this creature would be destroyed, regenerate it."
 No cost, no activation — a standing replacement effect (CR 701.15, CR 614.1c-style "would"
@@ -1875,6 +2016,14 @@ shield consumed by the next destruction.
 destroyed") consulted wherever a destroy is about to apply, honoring the same
 `cant_be_regenerated_this_turn` suppression flag `MiscEffect::SourceCantBeRegeneratedThisTurn`
 (from #25) sets, rather than a fresh cost-paid shield per destruction.
+
+*Landed:* a fieldless `StaticEffect::RegeneratesInsteadOfBeingDestroyed`, folded into
+`Game::regeneration_shield_available` (`core.rs`) — the single choke every destroy path and the
+lethal-damage state-based action already ask, so all seven call sites honor it for free.
+`Event::Regenerated`'s `saturating_sub` leaves the (already zero) counted shields alone, which is
+exactly what makes the replacement standing rather than one-shot; `cant_be_regenerated_this_turn`
+still turns it off, so Clergy's own second ability works against it. Clergy of the Holy Nimbus is
+now faithful and its `approximates` line is gone.
 
 ### 129. `unbounded-one-or-more-target-clauses` — 5 cards, M — **LANDED** (wave 11)
 Depends on: #96 (landed — which is what made the ceiling reachable).
@@ -1937,7 +2086,7 @@ does only stop spells. Silhouette's `approximates` is gone.
 frame, so damage dealt after the pause is not attributed (false negatives only). No pool card hits
 it; noted as a `ponytail:` on the field rather than filed.
 
-### 131. `second-target-clause-for-spells` — 1 card, M
+### 131. `second-target-clause-for-spells` — 1 card, M — **LANDED** (wave 11 — the spell-side clause chain already existed for Enchantment Alteration; all that was missing was making the Wall a clause and narrowing it, so no new DSL surface)
 Depends on: #43 (landed — which is what made the residual visible).
 Glyph of Delusion: "Put X glyph counters on target creature **that target Wall blocked this turn**."
 Two target clauses on one spell, where the second restricts the first. The engine has a second
@@ -1988,7 +2137,7 @@ from untap through end of combat. A test that refuses the cast in the precombat 
 during the declare-blockers step, and allows it in Main2, is the acceptance criterion; drop Glyph
 of Reincarnation's `approximates` when it passes.
 
-### 134. `until-end-of-combat-pump-duration` — 1 card, S
+### 134. `until-end-of-combat-pump-duration` — 1 card, S — **LANDED** (wave 11)
 Depends on: nothing.
 Glyph of Destruction: "Target blocking Wall you control gets +10/+0 until end of combat." The pump
 effect the DSL exposes is `pump_until_end_of_turn`, which has no duration knob, so the Wall keeps
@@ -2021,7 +2170,7 @@ offering the ledger rows attributable to the chosen player's sorceries, which
 and with two damaging sorceries in the graveyard the controller can pick the smaller one; drop
 Backdraft's `approximates` when both pass.
 
-### 145. `per-step-fixed-reference-targets` — 0 cards, S
+### 145. `per-step-fixed-reference-targets` — 0 cards, S — **LANDED** (wave 11)
 Depends on: #26 (landed — which is where this surfaced).
 Cocoon's one printed enters trigger is "tap enchanted creature **and** put three pupa counters on
 this Aura" — two effects pointing at two different fixed references. A multi-effect ability is
@@ -2102,3 +2251,18 @@ Legends smoke game has produced.
 first band is full, and keep `stagedBands` dropping any group that falls below two members. No wire
 or engine change. Acceptance: two disjoint groups toggled in the panel submit as two `WireBand`s and
 arrive as two entries in the engine's `bands`.
+
+### 175. `carry-the-sacrifice-count-on-the-may-sacrifice-choice-view` — 0 cards, S
+Depends on: #106 (landed).
+`PendingChoice::MaySacrifice` now carries a `count` (Mold Demon's "unless you sacrifice **two**
+Swamps"), but `PendingChoiceView::MaySacrifice` projects `items` only, so a client can't tell a
+one-permanent offer from a two-permanent one; the engine rejects a short answer with
+`Reject::IllegalChoice` and the board has no way to say why. Nothing is blocked — every other
+`may_sacrifice` user is count 1, and Mold Demon plays correctly for a client that submits both
+Swamps.
+*Sketch:* add `count` to `PendingChoiceView::MaySacrifice` (`crates/schema/src/dto.rs`), fill it in
+`crates/schema/src/projection/choice.rs` (the `ponytail:` comment there marks the spot), add the
+field to `PendingChoiceViewMaySacrifice` in `proto/mtgfr/v1/stream.proto` plus
+`crates/server/src/grpc/map/stream.rs`, and have the board prompt require that many picks before it
+enables Confirm. Wire-additive, so it belongs in a wave that is already regenerating. Acceptance: a
+Mold Demon prompt projects `count = 2` and the board refuses to submit one Swamp.

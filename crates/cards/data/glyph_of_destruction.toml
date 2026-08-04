@@ -5,10 +5,6 @@ sets = ["leg"]
 id = "cca68900-2093-4cae-b757-efc7dd807e18"
 default_print = "8e9c153c-9224-491b-bc84-8a9f0a83ee5a"
 oracle = "Target blocking Wall you control gets +10/+0 until end of combat. Prevent all damage that would be dealt to it this turn. Destroy it at the beginning of the next end step."
-# ponytail: the +10/+0 lasts until end of turn rather than until end of combat — `PumpUntilEndOfTurn`
-# has no duration knob, and the pump files are another slice's this wave. Only observable across a
-# second combat phase in the same turn; see docs/fidelity/leg-increments.md #134.
-approximates = "the +10/+0 lasts until end of turn instead of until end of combat (increment #134); the prevention and the delayed destruction are faithful."
 
 [cost]
 red = 1
@@ -30,6 +26,7 @@ target = { permanent = { types = "creature", subtypes = [
 ], controller = "you", blocking = true } }
 power = 10
 toughness = 0
+ends_at_end_of_combat = true
 
 # Prevent all damage that would be dealt to it this turn.
 [[abilities.effects]]

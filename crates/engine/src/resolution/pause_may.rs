@@ -18,13 +18,20 @@ impl Game {
         match effect {
             // A resolution-time optional sacrifice (Witherbloom Charm mode 0) pauses on a
             // MaySacrifice choice; declining runs nothing.
-            Effect::Choice(ChoiceEffect::MaySacrifice { filter, then }) => pending::raise(
+            Effect::Choice(ChoiceEffect::MaySacrifice {
+                filter,
+                count,
+                then,
+                otherwise,
+            }) => pending::raise(
                 self,
                 pending::ChoiceRequest::MaySacrifice {
                     player: controller,
                     source,
                     filter,
+                    count: count.max(1),
                     then,
+                    otherwise,
                 },
             ),
             // A resolution-time optional graveyard return (Deadly Brew's rider) pauses on a
@@ -37,6 +44,8 @@ impl Game {
                 count,
                 if_you_sacrificed_this_way,
                 mandatory,
+                reincarnate,
+                dead,
             }) => {
                 if if_you_sacrificed_this_way
                     && !self.resolution_frame.sacrificed_by_edict_controller
@@ -49,16 +58,25 @@ impl Game {
                 let n = self
                     .resolve_amount(count, controller, source, None, x)
                     .max(0) as usize;
-                pending::raise(
-                    self,
-                    pending::ChoiceRequest::MayReturnFromGraveyard {
-                        player: controller,
-                        source,
-                        filter,
-                        mandatory,
-                        to_battlefield: false,
-                        graveyards: vec![controller; n],
+                // Reincarnation reaches into the *dead* creature's owner's graveyard and puts the
+                // card onto the battlefield under that owner's control (`to_battlefield` already
+                // reanimates under the card's own owner). Every other user reads its own
+                // controller's graveyard, back to hand. An armed watch always fills `dead`, so a
+                // `None` here is an authoring slip, not a rules case — nothing to reach into.
+                let graveyards = match reincarnate {
+                    false => vec![controller; n],
+                    true => match dead {
+                        Some(dead) => vec![self.owner_of(self.current_id(dead)); n],
+                        None => return,
                     },
+                };
+                self.prompt_next_graveyard_return(
+                    graveyards,
+                    controller,
+                    source,
+                    filter,
+                    mandatory,
+                    reincarnate,
                 )
             }
             // A resolution-time optional "put a +1/+1 counter on a creature" (Zimone's Hypothesis'
@@ -210,15 +228,34 @@ impl Game {
             // Nature's upkeeps). Pauses on the same pay-or-decline shape Echo's
             // `PayEchoOrSacrifice` uses, under its own variant (these are real triggered
             // abilities, not Echo — CR 603.3b, not CR 702.31).
-            Effect::Choice(ChoiceEffect::PayOrElse { cost, otherwise }) => pending::raise(
-                self,
-                pending::ChoiceRequest::PayOrElse {
-                    player: controller,
-                    source,
-                    cost,
-                    otherwise,
-                },
-            ),
+            Effect::Choice(ChoiceEffect::PayOrElse {
+                cost,
+                extra_generic,
+                otherwise,
+            }) => {
+                // Primordial Ooze's "pay {X}, where X is the number of +1/+1 counters on it": a
+                // board read taken now, as the offer is made, and folded into the generic pips so
+                // everything downstream sees an ordinary fixed cost.
+                let cost = match extra_generic {
+                    None => cost,
+                    Some(amount) => Cost {
+                        generic: cost.generic.saturating_add(
+                            self.resolve_amount(amount, controller, source, target, x)
+                                .clamp(0, u8::MAX as i32) as u8,
+                        ),
+                        ..cost
+                    },
+                };
+                pending::raise(
+                    self,
+                    pending::ChoiceRequest::PayOrElse {
+                        player: controller,
+                        source,
+                        cost,
+                        otherwise,
+                    },
+                )
+            }
             // Paralyze: "that player may pay {4}. If the player does, untap the creature."
             // `PendingChoice::PayCost` is already the pay-to-get-the-effect shape an optional
             // trigger's `[abilities.cost]` raises — the only difference here is whose offer it is,

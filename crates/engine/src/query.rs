@@ -1247,7 +1247,8 @@ impl Game {
             Target::Object(id) => {
                 self.as_permanent(id).is_none()
                     || (!self.untargetable_by(id, controller, source_colors)
-                        && !self.cant_be_targeted_by_spell(id, source))
+                        && !self.cant_be_targeted_by_spell(id, source)
+                        && !self.cant_be_targeted_by_subtype_only_effect(id, spec))
             }
             Target::Player(_) => true,
         });
@@ -1304,6 +1305,34 @@ impl Game {
                         from_zone,
                     )
             })
+        })
+    }
+
+    /// True if a live [`StaticEffect::CantBeTargetedBySubtypeOnlyEffects`] on `id` turns away a
+    /// source whose target restriction is `spec` (Wall of Shadows' "can't be the target of spells
+    /// that can target only Walls or of abilities that can target only Walls").
+    ///
+    /// Unlike [`Self::cant_be_targeted_by_spell`] this reads nothing about the source at all —
+    /// only the restriction it declares — which is exactly why it reaches abilities too. A spec is
+    /// "\[subtype\]-only" when it requires at least one subtype and every subtype it requires is
+    /// shielded; [`TargetSpec::Permanent`] is the only spec that carries a subtype restriction, so
+    /// every other spec (a bare "target creature", "any target") can reach non-Walls and passes.
+    fn cant_be_targeted_by_subtype_only_effect(&self, id: ObjectId, spec: TargetSpec) -> bool {
+        let TargetSpec::Permanent(filter) = spec else {
+            return false;
+        };
+        if filter.subtypes.is_empty() {
+            return false;
+        }
+        self.functional_abilities(id).iter().any(|ability| {
+            let (
+                Timing::Static,
+                Effect::Static(StaticEffect::CantBeTargetedBySubtypeOnlyEffects { subtypes }),
+            ) = (ability.timing, &ability.effect)
+            else {
+                return false;
+            };
+            filter.subtypes.iter().all(|s| subtypes.contains(s))
         })
     }
 
@@ -1502,6 +1531,16 @@ impl Game {
     /// Ids of all live permanents on the battlefield. Excludes phased-out permanents (CR 702.26e:
     /// treated as though they don't exist), so every scan routed through here — statics, combat,
     /// state-based actions, targeting, board counts — skips them until they phase in.
+    /// The surviving half of a printed pair (Stangg and Stangg Twin) — the battlefield permanent
+    /// whose [`Permanent::linked_twin`] points back at `object`. Scanned rather than read off
+    /// `object` itself because the leaves-the-battlefield triggers that ask for it resolve after
+    /// `object` has left, when its own permanent record is gone.
+    pub(crate) fn linked_twin(&self, object: ObjectId) -> Option<ObjectId> {
+        self.battlefield()
+            .into_iter()
+            .find(|&id| self.permanent(id).linked_twin == Some(object))
+    }
+
     pub(crate) fn battlefield(&self) -> Vec<ObjectId> {
         self.objects
             .iter()
@@ -1644,6 +1683,15 @@ impl Game {
             }
             _ => {}
         }
+        // Owner, relative to "you" — CR 108.3, and *not* the controller read above: Remove
+        // Enchantments returns only the enchantments you both own and control, and destroys the
+        // ones you control but someone else owns.
+        match filter.owner {
+            FilterOwner::Any => {}
+            FilterOwner::You if self.owner_of(id) != you => return false,
+            FilterOwner::Opponent if self.owner_of(id) == you => return false,
+            _ => {}
+        }
         // Token-ness.
         match filter.token {
             TokenFilter::Any => {}
@@ -1669,6 +1717,17 @@ impl Game {
                 .attached_to(id)
                 .is_some_and(|host| self.is_creature_on_battlefield(host));
             if host_is_creature != want {
+                return false;
+            }
+        }
+        // Attached-to-<filter>: the general form of the axis above — this (Aura or Equipment)
+        // candidate's own host must itself match a whole nested filter (Enchantment Alteration's
+        // "Aura attached to a creature or land"). Unattached never matches.
+        if let Some(host_filter) = filter.attached_to {
+            let host_matches = self
+                .attached_to(id)
+                .is_some_and(|host| self.permanent_matches(host_filter, host, you, source));
+            if !host_matches {
                 return false;
             }
         }
@@ -1842,6 +1901,18 @@ impl Game {
         // the combat-scoped block list the two lines above read, because the Glyph is cast after
         // the combat the block happened in.
         if filter.blocked_by_a_wall_this_turn && !self.blocked_by_a_wall_this_turn(id) {
+            return false;
+        }
+        // Blocking or blocked by the filter's own source (Lesser Werewolf, Sentinel) — one
+        // declared block read from both ends, so it holds whether the source is the attacker or
+        // the blocker. No source in hand means no pairing to be half of.
+        if filter.in_combat_with_source
+            && !source.is_some_and(|src| {
+                self.combat.blocks.iter().any(|&(blocker, attacker)| {
+                    (blocker == id && attacker == src) || (blocker == src && attacker == id)
+                })
+            })
+        {
             return false;
         }
         // Nonlegendary exclusion (CR 205.4a — Muddle, the Ever-Changing's "nonlegendary

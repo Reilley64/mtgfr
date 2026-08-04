@@ -236,12 +236,40 @@ impl Game {
                 };
                 self.combat_extras.cant_attack_next_own_turn.push(creature);
             }
+            // Johan: "you may have Johan gain \"Johan can't attack\" until end of combat."
+            // Combat-scoped rather than turn-scoped, so it lives on `CombatState` and dies with
+            // `Event::CombatCleared` — otherwise the same straight write as the pair above.
+            Effect::Misc(MiscEffect::SourceCantAttackThisCombat) => {
+                self.combat.cant_attack_this_combat.push(source);
+            }
+            // Johan: "If you do, attacking doesn't cause creatures you control to tap this combat
+            // if Johan is untapped." The "if Johan is untapped" half is deliberately *not*
+            // resolved here — `Game::attacks_dont_tap` reads it live at the declaration.
+            Effect::Misc(MiscEffect::YourAttacksDontTapWhileSourceUntappedThisCombat) => {
+                self.combat.attacks_dont_tap.push((controller, source));
+            }
             // Floral Spuzzem: "…this creature assigns no combat damage this turn." Same turn-scoped
             // combat bookkeeping, always about the source (CR 510.1a).
             Effect::Misc(MiscEffect::SourceAssignsNoCombatDamageThisTurn) => {
                 self.combat_extras
                     .assigns_no_combat_damage_this_turn
                     .push(source);
+            }
+            // Feint: "…by that creature and each creature blocking it." The same ledger the
+            // Spuzzem writes, over one combat group — the attacker the `Sequence`'s tap step chose
+            // plus whatever is blocking it now. See the variant's `ponytail:` on why this is an
+            // assignment ban rather than a CR 615 shield.
+            Effect::Misc(MiscEffect::ThatCreatureAndItsBlockersAssignNoCombatDamageThisTurn) => {
+                let Some(Target::Object(attacker)) = target else {
+                    return;
+                };
+                let blockers = self.blockers_of(attacker);
+                self.combat_extras
+                    .assigns_no_combat_damage_this_turn
+                    .push(attacker);
+                self.combat_extras
+                    .assigns_no_combat_damage_this_turn
+                    .extend(blockers);
             }
             Effect::Misc(MiscEffect::MustAttackTarget { .. }) => {
                 let Some(Target::Object(creature)) = target else {
@@ -328,6 +356,8 @@ impl Game {
                 gain_life,
                 redirect_to_controller,
                 redirect_to_target_controller,
+                redirect_to_source,
+                redirect_to_target,
                 shield_source,
                 all_but,
                 target_is_source,
@@ -365,7 +395,9 @@ impl Game {
                         // every other one covers whatever the ability targeted, or its controller.
                         target: if shield_source {
                             Target::Object(source)
-                        } else if target_is_source {
+                        } else if target_is_source || redirect_to_target {
+                            // Nova Pentacle targets the creature the damage *moves to*, not the
+                            // thing it protects — "would deal damage to you" is the controller.
                             Target::Player(controller)
                         } else {
                             target.unwrap_or(Target::Player(controller))
@@ -386,13 +418,21 @@ impl Game {
                         // Reverberation sends the moved damage to the *targeted spell's*
                         // controller; Jade Monolith's `redirect_to_controller` sends it to the
                         // seat that armed the shield. No card sets both.
-                        redirect_to: match (redirect_to_target_controller, from_source) {
-                            (true, Some(watched)) => {
-                                Some(Target::Player(self.controller_of(watched)))
-                            }
-                            (true, None) => None,
-                            (false, _) => {
-                                redirect_to_controller.then_some(Target::Player(controller))
+                        redirect_to: if redirect_to_source {
+                            // Shimian Night Stalker's "is dealt to this creature instead".
+                            Some(Target::Object(source))
+                        } else if redirect_to_target {
+                            // Nova Pentacle's "is dealt to target creature … instead".
+                            target
+                        } else {
+                            match (redirect_to_target_controller, from_source) {
+                                (true, Some(watched)) => {
+                                    Some(Target::Player(self.controller_of(watched)))
+                                }
+                                (true, None) => None,
+                                (false, _) => {
+                                    redirect_to_controller.then_some(Target::Player(controller))
+                                }
                             }
                         },
                     });

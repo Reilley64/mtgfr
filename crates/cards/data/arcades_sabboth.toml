@@ -44,7 +44,7 @@ timing = "static"
 # "you control" comes from the anthem's own default controller scope, not from the filter.
 [[abilities.effects]]
 type = "static"
-mode = "keyword_anthem"
+mode = "filtered_anthem"
 power = 0
 toughness = 2
 filter = { types = "creature", tapped = false, not_attacking = true }

@@ -448,6 +448,9 @@ impl<'a> ChoiceCtx<'a> {
                 count,
                 items: self.label_targets(legal),
             },
+            // ponytail: the choice's `count` (Mold Demon's "two Swamps") is dropped — the wire view
+            // carries items only, so a client shows a plain optional sacrifice list and the engine
+            // rejects a short answer. Carrying the count needs a proto field; increment #175.
             engine::PendingChoice::MaySacrifice {
                 player,
                 source,
@@ -579,6 +582,21 @@ impl<'a> ChoiceCtx<'a> {
                 player: player.0,
                 source,
                 count,
+                items: self.label_items(options),
+            },
+            // "Sacrifice any number of untapped Forests" as Wood Elemental enters: the same
+            // free-subset sacrifice prompt Devour is, answered by the same intent, so it rides the
+            // Devour view rather than widening the wire. ponytail: the client labels it "choose
+            // creatures to devour"; give it its own view (and prompt string) when the client next
+            // catches up — `multiplier: 0` marks a payoff that isn't counters.
+            engine::PendingChoice::SacrificeAnyNumber {
+                player,
+                source,
+                options,
+            } => PendingChoiceView::Devour {
+                player: player.0,
+                source,
+                multiplier: 0,
                 items: self.label_items(options),
             },
             engine::PendingChoice::Devour {
@@ -1050,6 +1068,7 @@ mod coverage_tests {
             (
                 PendingChoice::ChooseTarget {
                     player: PlayerId(0),
+                    controller: PlayerId(0),
                     source,
                     effect: Some(draw_effect()),
                     legal: vec![Target::Object(blocker)],
@@ -1065,6 +1084,7 @@ mod coverage_tests {
             (
                 PendingChoice::ChooseTarget {
                     player: PlayerId(0),
+                    controller: PlayerId(0),
                     source: spell,
                     effect: None,
                     legal: vec![Target::Object(blocker)],
@@ -1262,6 +1282,9 @@ mod coverage_tests {
                     player: PlayerId(0),
                     source,
                     remaining: vec![PlayerId(1)],
+                    use_: engine::CardNameUse::RevealTopOfOwnLibrary {
+                        miss_to_graveyard: false,
+                    },
                 },
                 |view| matches!(view, PendingChoiceView::ChooseCardName { .. }),
             ),

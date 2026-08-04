@@ -291,6 +291,22 @@ impl Game {
                 }
                 events
             }
+            // "Exile Stangg Twin when Stangg leaves the battlefield." The partner is found on the
+            // battlefield, so it needs no zone check; a token partner ceases to exist (CR 111.7).
+            ExileEffect::LinkedTwin => {
+                let Some(id) = self.linked_twin(source) else {
+                    return Vec::new();
+                };
+                let permanent = self.permanent(id);
+                if permanent.token {
+                    return vec![Event::TokenCeasedToExist {
+                        token: id,
+                        controller: permanent.owner,
+                        def: permanent.def,
+                    }];
+                }
+                vec![self.exile_or_command(id, self.next_object_id())]
+            }
             ExileEffect::Object { object } => {
                 let id = object.expect("filled in when the delayed exile was scheduled");
                 if self.zone_of(id) != Zone::Battlefield {
@@ -392,6 +408,21 @@ impl Game {
                     Event::Sacrificed {
                         object: id,
                         by: controller,
+                        def,
+                    },
+                ]
+            }
+            // "Sacrifice Stangg when that token leaves the battlefield."
+            SacrificeEffect::LinkedTwin => {
+                let Some(id) = self.linked_twin(source) else {
+                    return Vec::new();
+                };
+                let def = self.def_id_of(id);
+                vec![
+                    self.sacrifice_event(id),
+                    Event::Sacrificed {
+                        object: id,
+                        by: self.controller_of(id),
                         def,
                     },
                 ]

@@ -1826,6 +1826,20 @@ impl Game {
                 }
             }
             Step::Upkeep => {
+                // Gabriel Angelfire's "until your next upkeep": the duration ends as this step
+                // begins, before the upkeep's own triggers are placed — so the grant this upkeep is
+                // about to make never overlaps the one it replaces. The end-of-upkeep sweep for
+                // Halfdane's longer wording lives in the `Step::Draw` arm below.
+                let starting: BTreeSet<ObjectId> = self
+                    .modifier_provenance
+                    .modifiers
+                    .iter()
+                    .filter(|m| m.duration == ModifierDuration::UntilNextUpkeep { player: active })
+                    .map(|m| m.host)
+                    .collect();
+                for id in starting {
+                    self.push_apply(events, Event::UpkeepStartDurationsEnded { object: id });
+                }
                 // Suspend (CR 702.62d): at the start of its owner's upkeep, remove one time
                 // counter from each of that player's suspended cards. When the last is removed
                 // the owner may cast it from exile without paying its mana cost (CR 702.62e) —
@@ -1990,7 +2004,15 @@ impl Game {
             // SBA sweep and death triggers are handled by `submit` after this step, and a (CR 704, CR 603, CR 104.3)
             // priority window opens between them. (CR 117)
             Step::FirstStrikeCombatDamage => self.divide_or_deal_combat_damage(true, events),
-            Step::CombatDamage => self.divide_or_deal_combat_damage(false, events),
+            Step::CombatDamage => {
+                // CR 510.4: a double striker divides *again* in the normal batch — the split it
+                // chose for the first-strike batch is not carried over. Clearing the whole table
+                // is safe because nothing but the two batches ever writes it, and only creatures
+                // that still deal this batch are asked (`owes_a_division`). Without a first-strike
+                // batch the table is already empty and this is a no-op.
+                self.combat.damage.clear();
+                self.divide_or_deal_combat_damage(false, events)
+            }
             Step::EndCombat => {
                 // Clockwork Beast's "At end of combat, if this creature attacked or blocked this
                 // combat" (CR 511.1) — queued *before* the clear below, which is what the
@@ -2001,11 +2023,11 @@ impl Game {
                 if self.combat.attackers_declared {
                     self.push_apply(events, Event::CombatCleared);
                 }
-                // Jade Statue's "becomes a 3/6 Golem artifact creature until end of combat" — the
-                // only duration in the pool shorter than a turn, swept here instead of at cleanup.
-                // ponytail: `TempBoostsEnded` ends *every* until-EOT effect on the Statue, so a
-                // pump cast on it mid-combat ends early too. Narrow enough to live with; split the
-                // event if a second end-of-combat card ever lands.
+                // Jade Statue's "becomes a 3/6 Golem artifact creature until end of combat" and
+                // Glyph of Destruction's "+10/+0 until end of combat" — the durations in the pool
+                // shorter than a turn, swept here instead of at cleanup. `end_of_combat_only`
+                // keeps this sweep to exactly those: an until-end-of-turn pump cast on the same
+                // permanent mid-combat is untouched and lives to cleanup (CR 511.3 / 514.2).
                 let animated: BTreeSet<ObjectId> = self
                     .modifier_provenance
                     .modifiers
@@ -2014,7 +2036,13 @@ impl Game {
                     .map(|m| m.host)
                     .collect();
                 for id in animated {
-                    self.push_apply(events, Event::TempBoostsEnded { object: id });
+                    self.push_apply(
+                        events,
+                        Event::TempBoostsEnded {
+                            object: id,
+                            end_of_combat_only: true,
+                        },
+                    );
                 }
             }
             Step::Cleanup => {
@@ -2037,7 +2065,13 @@ impl Game {
                     .map(|m| m.host)
                     .collect();
                 for id in boosted {
-                    self.push_apply(events, Event::TempBoostsEnded { object: id });
+                    self.push_apply(
+                        events,
+                        Event::TempBoostsEnded {
+                            object: id,
+                            end_of_combat_only: false,
+                        },
+                    );
                 }
 
                 // Regeneration shields last only "this turn" (CR 701.15b) — any unused one expires.

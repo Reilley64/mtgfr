@@ -53,6 +53,12 @@ enum ReplacementEffect {
         source: ObjectId,
         controller: PlayerId,
     },
+    ReplaceDamageToYou {
+        controller: PlayerId,
+        source_filter: SpellFilter,
+        at_least: i32,
+        becomes: i32,
+    },
     CounterReplacement {
         source: ObjectId,
         controller: PlayerId,
@@ -171,6 +177,18 @@ impl ReplacementRegistry {
                                 controller,
                             },
                         );
+                    }
+                    Effect::Static(StaticEffect::ReplaceDamageToYou {
+                        source: source_filter,
+                        at_least,
+                        becomes,
+                    }) => {
+                        effects.push(ReplacementEffect::ReplaceDamageToYou {
+                            controller,
+                            source_filter,
+                            at_least,
+                            becomes,
+                        });
                     }
                     Effect::Static(StaticEffect::CounterReplacement {
                         add,
@@ -305,6 +323,52 @@ impl ReplacementRegistry {
                 } if *object == target
             )
         })
+    }
+
+    /// Forethought Amulet's "If an instant or sorcery source would deal 3 or more damage to you,
+    /// it deals 2 damage to you instead" (CR 615.9): the damage `player` is about to take,
+    /// rewritten by every standing [`StaticEffect::ReplaceDamageToYou`] whose source gate and
+    /// threshold this hit clears. Returns `amount` unchanged when none applies.
+    ///
+    /// ponytail: two applicable rewrites would both fire, smallest last. CR 616.1 lets the
+    /// affected player order simultaneous replacements, and no board can hold two of these today
+    /// (one pool card prints it); the upgrade path is the same ordering choice
+    /// [`counter_replaced_amount`](Self::counter_replaced_amount) defers.
+    pub(crate) fn replaced_damage_to_player(
+        &self,
+        game: &Game,
+        player: PlayerId,
+        source: ObjectId,
+        amount: i32,
+    ) -> i32 {
+        let mut amount = amount;
+        for effect in &self.effects {
+            let ReplacementEffect::ReplaceDamageToYou {
+                controller,
+                source_filter,
+                at_least,
+                becomes,
+            } = effect
+            else {
+                continue;
+            };
+            if *controller != player || amount < *at_least {
+                continue;
+            }
+            // "an instant or sorcery **source**" — read off the damage source's own card, so a
+            // permanent source (or an ability's source permanent) never matches one.
+            if !game.spell_matches_filter(
+                *source_filter,
+                game.def_of(source),
+                None,
+                player,
+                Zone::Hand,
+            ) {
+                continue;
+            }
+            amount = *becomes;
+        }
+        amount
     }
 
     /// Whether a permanent's own [`StaticEffect::PreventDamage`] shield stands between `source`

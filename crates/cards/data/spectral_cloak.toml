@@ -14,3 +14,16 @@ blue = 2
 
 [kind]
 type = "aura"
+
+# Enchanted creature has shroud as long as it's untapped. (It can't be the target of spells or
+# abilities.)
+[[abilities]]
+timing = "static"
+# "as long as it's untapped" — "it" is the enchanted creature, not this Aura.
+condition = { type = "enchanted_permanent_untapped" }
+
+# Enchanted creature has shroud
+[[abilities.effects]]
+type = "static"
+mode = "grant_to_attached"
+keywords = ["shroud"]

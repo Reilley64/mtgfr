@@ -22,6 +22,7 @@ export const VISIBLE_EVENT_KIND_PRESENCE = {
   cast_from_exile_free_ended: true,
   cast_from_exile_free_permission_granted: true,
   channel_colorless_mana_granted: true,
+  spend_mana_as_any_type_granted: true,
   citys_blessing_gained: true,
   color_chosen: true,
   color_set_until_end_of_turn: true,

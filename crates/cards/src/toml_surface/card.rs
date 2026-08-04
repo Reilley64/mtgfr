@@ -85,6 +85,10 @@ pub struct AbilityToml {
     /// *your* upkeep.
     #[serde(default)]
     pub(crate) only_during_your_upkeep: bool,
+    /// "Activate only during the declare blockers step" (CR 602.5b — Lesser Werewolf): the step
+    /// alone, with no controller half — both seats are in the combat it belongs to.
+    #[serde(default)]
+    pub(crate) only_during_declare_blockers: bool,
     /// "Activate only before the combat damage step" (CR 602.5b — Angus Mackenzie): the
     /// activation-side twin of `cast_only_before_combat_damage`. The widest window in this family
     /// — the whole turn up to the first combat damage step, so the upkeep and the precombat main

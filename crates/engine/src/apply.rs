@@ -676,6 +676,13 @@ impl Game {
                     .on_adventure
                     .retain(|&(card, _)| card != from);
                 self.players[controller.0 as usize].spells_cast_this_turn += 1;
+                // North Star's "for one spell this turn" — the permission is spent here, after
+                // this spell's mana was settled and before any other spell can plan a payment.
+                // ponytail: spent by the *next* spell cast rather than by one the player picks,
+                // which is the only spell anyone activates North Star for; give the flag an
+                // explicit "use it on this cast" rider on `Intent::Cast` if a real line ever wants
+                // to skip a spell.
+                self.players[controller.0 as usize].spend_mana_as_any_type_this_turn = false;
                 // Feeds the `has_x` `nth_each_turn` gate (Nev, Zimone Infinite Analyst) —
                 // SpellFilter::HasXInCost's own predicate (characteristics.rs).
                 if printed.cost.x > 0 {
@@ -1175,6 +1182,7 @@ impl Game {
                         player.instants_and_sorceries_cast_this_turn = 0;
                         player.flash_permission_this_turn = false;
                         player.channel_colorless_mana_this_turn = false;
+                        player.spend_mana_as_any_type_this_turn = false;
                         player.graveyard_play_used_this_turn = false;
                         player.attacked_this_turn = false;
                     }
@@ -1191,6 +1199,9 @@ impl Game {
                     // everything left here is CR-equivalent to per-entry cleanup-step expiry —
                     // same boundary/reasoning as the `player.*_this_turn` tallies just above.
                     self.delayed_triggers.pending_next_cast.clear();
+                    // Reincarnation's "when that creature dies **this turn**" watch expires at the
+                    // same boundary, for the same reason `pending_next_cast` does.
+                    self.delayed_triggers.pending_dies_this_turn.clear();
                     // ponytail: `ScheduleThisTurnCombatDamageCopy`'s CR 603.7 "this turn" watch
                     // is repeatable (unlike `pending_next_cast`'s one-shot), but the same
                     // turn-boundary reasoning applies — nothing reads it after this Untap step
@@ -1248,6 +1259,10 @@ impl Game {
                     self.combat_extras
                         .repelled_until_next_turn
                         .retain(|&(shielded, _)| shielded != active_player);
+                    // Firestorm Phoenix's returned card is revealed and unplayable "until that
+                    // player's next turn" — the same active-player-only lapse as the line above.
+                    self.revealed_unplayable_until_next_turn
+                        .retain(|&(_, owner)| owner != active_player);
                     self.combat_extras.attack_declarer = None;
                     self.combat_extras.block_declarer = None;
                     // "Entered the battlefield this turn" (Oran-Rief, the Vastwood) expires at
@@ -1255,6 +1270,10 @@ impl Game {
                     // active player's (a new turn, anyone's, ends "this turn").
                     for id in self.battlefield() {
                         let p = self.permanent_mut(id);
+                        // Rasputin Dreamweaver's "if Rasputin started the turn untapped": this
+                        // block runs before the untap step's own turn-based action, so the tapped
+                        // state read here is the one the turn began in.
+                        p.started_turn_untapped = !p.tapped;
                         p.entered_this_turn = false;
                         p.attacked_this_turn = false;
                         // Disintegrate's "this turn" riders expire at the same boundary.
@@ -1445,11 +1464,16 @@ impl Game {
                 toughness,
                 keywords,
                 source_name,
+                ends_at_end_of_combat,
             } => {
+                let duration = match ends_at_end_of_combat {
+                    true => ModifierDuration::EndOfCombat,
+                    false => ModifierDuration::EndOfTurn,
+                };
                 self.register_modifier(
                     object,
                     source_name,
-                    ModifierDuration::EndOfTurn,
+                    duration,
                     ModifierKind::Boost {
                         power,
                         toughness,
@@ -1511,6 +1535,14 @@ impl Game {
                     ModifierKind::PtSwitch,
                 );
             }
+            // Gabriel Angelfire's "until your next upkeep": no arming — the sweep runs at the
+            // *start* of the upkeep step, which the grant's own upkeep had already passed.
+            Event::UpkeepStartDurationsEnded { object } => {
+                self.modifier_provenance.modifiers.retain(|m| {
+                    !matches!(m.duration, ModifierDuration::UntilNextUpkeep { .. })
+                        || m.host != object
+                });
+            }
             Event::UpkeepDurationsEnded { object } => {
                 self.modifier_provenance.modifiers.retain_mut(|m| {
                     let ModifierDuration::EndOfNextUpkeep { armed, .. } = &mut m.duration else {
@@ -1531,11 +1563,16 @@ impl Game {
                 types,
                 subtypes,
                 colors,
+                ends_at_end_of_combat,
             } => {
+                let duration = match ends_at_end_of_combat {
+                    true => ModifierDuration::EndOfCombat,
+                    false => ModifierDuration::EndOfTurn,
+                };
                 self.register_modifier(
                     object,
                     "",
-                    ModifierDuration::EndOfTurn,
+                    duration,
                     ModifierKind::Became {
                         types,
                         subtypes,
@@ -1641,6 +1678,24 @@ impl Game {
                 // `CopyRiderKeywordsGranted` event(s) that follow this `BecameCopy`.
                 p.copy_rider_keywords = &[];
             }
+            // Gabriel Angelfire's "gains that ability until your next upkeep": a keyword-only
+            // boost with its own start-of-upkeep sweep (see `Step::Upkeep` in `priority.rs`).
+            Event::KeywordsGrantedUntilNextUpkeep {
+                object,
+                keywords,
+                player,
+            } => {
+                self.register_modifier(
+                    object,
+                    "",
+                    ModifierDuration::UntilNextUpkeep { player },
+                    ModifierKind::Boost {
+                        power: 0,
+                        toughness: 0,
+                        keywords,
+                    },
+                );
+            }
             // Cocoon's "that creature gains flying": a keyword-only boost the cleanup sweep skips.
             Event::KeywordsGrantedIndefinitely { object, keywords } => {
                 self.register_modifier(
@@ -1654,13 +1709,21 @@ impl Game {
                     },
                 );
             }
-            Event::TempBoostsEnded { object } => {
-                // Every modifier on `object` that has a duration ends together (CR 514.2 /
-                // 511.3); the durationless ones (a lace's "becomes black") survive, since nothing
-                // but the object itself changing zones clears those.
+            Event::TempBoostsEnded {
+                object,
+                end_of_combat_only,
+            } => {
+                // At cleanup every modifier on `object` that has a duration ends together (CR
+                // 514.2); the durationless ones (a lace's "becomes black") survive, since nothing
+                // but the object itself changing zones clears those. The end of combat step's
+                // sweep is the narrower one (CR 511.3) — only what was scoped to this combat.
                 let mut reverts_to = None;
                 self.modifier_provenance.modifiers.retain(|m| {
-                    if m.host != object || !m.duration.ends_at_cleanup() {
+                    let ends_now = match end_of_combat_only {
+                        true => m.duration == ModifierDuration::EndOfCombat,
+                        false => m.duration.ends_at_cleanup(),
+                    };
+                    if m.host != object || !ends_now {
                         return true;
                     }
                     if let ModifierKind::RevertsToDef(printed) = m.kind {
@@ -1844,15 +1907,32 @@ impl Game {
                 .delayed_triggers
                 .scheduled
                 .push((controller, source, fire_at, effect)),
+            Event::DelayedTriggerScheduledForYourNextUpkeep {
+                controller,
+                source,
+                effect,
+            } => self
+                .delayed_triggers
+                .scheduled_your_upkeep
+                .push((controller, source, effect)),
             Event::DelayedTriggersFired {
                 fire_at,
                 active_player,
-            } => self.delayed_triggers.scheduled.retain(|&(c, _, f, _)| {
-                // Mirror `fire_delayed_triggers`'s `due` filter: `Main1` is controller-scoped
-                // (only the active player's entries fired, so only those are drained); every other
-                // timing fired regardless of whose step it is.
-                !(f == fire_at && (fire_at != Step::Main1 || c == active_player))
-            }),
+            } => {
+                self.delayed_triggers.scheduled.retain(|&(c, _, f, _)| {
+                    // Mirror `fire_delayed_triggers`'s `due` filter: `Main1` is controller-scoped
+                    // (only the active player's entries fired, so only those are drained); every
+                    // other timing fired regardless of whose step it is.
+                    !(f == fire_at && (fire_at != Step::Main1 || c == active_player))
+                });
+                // "Your next upkeep" is always controller-scoped, so only the active player's
+                // entries fired and only those drain.
+                if fire_at == Step::Upkeep {
+                    self.delayed_triggers
+                        .scheduled_your_upkeep
+                        .retain(|&(c, _, _)| c != active_player);
+                }
+            }
             Event::ExtraTurnQueued { player } => self.extra_turns.push(player),
             Event::NextUntapSkipMarked { object } => self.skip_next_untap.push(object),
             // One mark per skipped untap step, so a permanent marked twice (Telekinesis'
@@ -1877,6 +1957,20 @@ impl Game {
             Event::NextCastTriggerConsumed { controller, source } => {
                 self.delayed_triggers
                     .pending_next_cast
+                    .retain(|&(c, s, _, _)| !(c == controller && s == source));
+            }
+            Event::DiesThisTurnWatchArmed {
+                controller,
+                source,
+                watched,
+                then,
+            } => self
+                .delayed_triggers
+                .pending_dies_this_turn
+                .push((controller, source, watched, then)),
+            Event::DiesThisTurnWatchConsumed { controller, source } => {
+                self.delayed_triggers
+                    .pending_dies_this_turn
                     .retain(|&(c, s, _, _)| !(c == controller && s == source));
             }
             Event::CombatDamageWatchArmed {
@@ -2026,6 +2120,9 @@ impl Game {
             }
             Event::ChannelColorlessManaGranted { player } => {
                 self.players[player.0 as usize].channel_colorless_mana_this_turn = true
+            }
+            Event::SpendManaAsAnyTypeGranted { player } => {
+                self.players[player.0 as usize].spend_mana_as_any_type_this_turn = true
             }
             Event::CommanderDamageDealt {
                 source,
@@ -2345,6 +2442,21 @@ impl Game {
                 let id = self.create_object(None, Object::Permanent(fresh_token(def, controller)));
                 assert_eq!(id, token);
                 self.permanent_mut(token).continuous_timestamp = self.stamp_continuous_timestamp();
+            }
+            // Wood Elemental: "the number of Forests sacrificed as it entered" is remembered the
+            // same way a cast X is (see `Permanent::entered_with_x`).
+            Event::EnteredWithXSet { object, x } => {
+                if self.as_permanent(object).is_some() {
+                    self.permanent_mut(object).entered_with_x = x;
+                }
+            }
+            // Stangg and his Twin: point each half at the other, so whichever one survives can
+            // still name its partner from the battlefield after the other has left.
+            Event::TwinLinked { a, b } => {
+                if self.as_permanent(a).is_some() && self.as_permanent(b).is_some() {
+                    self.permanent_mut(a).linked_twin = Some(b);
+                    self.permanent_mut(b).linked_twin = Some(a);
+                }
             }
             Event::TokenCeasedToExist {
                 token,
@@ -2689,6 +2801,10 @@ impl Game {
                 assert_eq!(id, permanent);
             }
             Event::ReturnedToHand { card, from } => {
+                // Firestorm Phoenix's death replacement routes here, and only that one arrives on
+                // a permanent still carrying the static — an ordinary bounce is a bounce. Read it
+                // before the move, while `from` is still a permanent to read it off of.
+                let phoenix = self.returns_to_hand_instead_of_dying(from);
                 // A bounce sends the permanent to its *owner's* hand, not the caster's.
                 let def = self.def_id_of(from);
                 let printed = card_def(def);
@@ -2722,6 +2838,12 @@ impl Game {
                 );
                 assert_eq!(id, card);
                 self.remove_spell_from_stack(from);
+                // "Until that player's next turn, that player plays with that card revealed in
+                // their hand and can't play it" — armed on the card that came back, not on the
+                // permanent that left, since the two are different objects (CR 400.7).
+                if phoenix {
+                    self.revealed_unplayable_until_next_turn.push((card, owner));
+                }
             }
             Event::TuckedToLibrary {
                 card,

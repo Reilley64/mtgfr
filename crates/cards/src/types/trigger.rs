@@ -38,6 +38,23 @@ use super::*;
 /// is the mirror image of the every-player flavor: it fires under its own controller at the
 /// beginning of every *other* player's untap step, explicitly excluding the controller's own
 /// (Drumbellower).
+/// Which half of a block declaration a [`Trigger::BlocksOrBecomesBlockedBy`] watches (CR 509.1a /
+/// CR 509.1h). One creature-pair produces both halves — the blocker "blocks", the attacker
+/// "becomes blocked by" — and most cards print them fused, so [`Either`](Self::Either) is the
+/// default and the only value the five older cards use. Infernal Medusa is why the split exists:
+/// its two halves take *different* filters ("blocks a creature" / "becomes blocked by a non-Wall
+/// creature"), which one fused trigger cannot say.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum BlockSide {
+    /// "…blocks or becomes blocked by…" (Cockatrice, Thicket Basilisk) — either side fires.
+    #[default]
+    Either,
+    /// "Whenever this creature blocks a \[filter\]" — this creature is the *blocker*.
+    Blocks,
+    /// "Whenever this creature becomes blocked by a \[filter\]" — this creature is the *attacker*.
+    BecomesBlockedBy,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Trigger {
     /// When this permanent enters the battlefield (ETB). Spelled `"etb"` in TOML.
@@ -83,8 +100,13 @@ pub enum Trigger {
     /// [`TriggerContext::blocking_partner`], which fills the payoff's
     /// [`DestroyEffect::ThatCreature`](crate::DestroyEffect::ThatCreature). Batch-scanned from
     /// [`Game::declare_blockers`] like the variant above, not [`Game::enqueue_triggers`]'s
-    /// per-event pass. Spelled `"blocks_or_becomes_blocked_by"` in TOML, with a sibling `filter`.
-    BlocksOrBecomesBlockedBy { filter: PermanentFilter },
+    /// per-event pass. Spelled `"blocks_or_becomes_blocked_by"` in TOML, with a sibling `filter`;
+    /// `"blocks_creature"` and `"becomes_blocked_by"` are the same trigger narrowed to one
+    /// [`BlockSide`], which is what lets Infernal Medusa give its two halves different filters.
+    BlocksOrBecomesBlockedBy {
+        filter: PermanentFilter,
+        side: BlockSide,
+    },
     /// Whenever this creature attacks or blocks (Mana-Charged Dragon, CR 508.1a / CR 509.3a) —
     /// unlike [`BlocksOrBecomesBlocked`](Self::BlocksOrBecomesBlocked), the *attacker* half of a
     /// block declaration doesn't fire this (an attacker "becomes blocked", it doesn't "block").
@@ -323,6 +345,16 @@ pub enum Trigger {
     /// it. The dealt amount rides in [`TriggerContext::triggering_damage_dealt`]
     /// (`Amount::TriggeringDamageDealt`); see [`Game::queue_enchanted_creature_deals_damage_triggers`].
     EnchantedCreatureDealsDamage,
+    /// [`EnchantedCreatureDealsDamage`](Self::EnchantedCreatureDealsDamage) scoped to the damage
+    /// landing on *this* Aura's controller (Backfire: "Whenever enchanted creature deals damage to
+    /// **you**, this Aura deals that much damage to that creature's controller"). Damage to any
+    /// other player, or to a creature, never fires it — so hanging Backfire on your own attacker
+    /// costs its controller nothing. The dealt amount rides in
+    /// [`TriggerContext::triggering_damage_dealt`] exactly as the unscoped watch's does, and
+    /// [`TriggerContext::combat_damage_source_controller`] carries the host's controller for
+    /// "that creature's controller" ([`PlayerSet::DamagingPermanentsController`]). See
+    /// [`Game::queue_enchanted_creature_deals_damage_triggers`].
+    EnchantedCreatureDealsDamageToYou,
     /// Whenever *any* enchanted creature dies (CR 603.6c, Hateful Eidolon: "Whenever an
     /// enchanted creature dies, draw a card for each Aura you controlled that was attached to
     /// it.") — a watch-others twin of [`EnchantedCreatureDies`](Self::EnchantedCreatureDies):

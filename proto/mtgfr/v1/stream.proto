@@ -1107,6 +1107,7 @@ message VisibleEvent {
     VisibleEventTextChanged text_changed = 139;
     VisibleEventCantBeRegeneratedThisTurnMarked cant_be_regenerated_this_turn_marked = 140;
     VisibleEventGameDrawn game_drawn = 141;
+    VisibleEventSpendManaAsAnyTypeGranted spend_mana_as_any_type_granted = 142;
   }
   // 132 was VisibleEventPlayerPoisonChanged, superseded by the general player-counter
   // subsystem (`player_counters_placed`). Burned, not reused (docs/WIRE_COMPAT.md).
@@ -1626,6 +1627,12 @@ message VisibleEventFlashPermissionGranted {
 // `player` may, at mana-ability timing, pay 1 life to add {C} for the rest of the turn (CR 605
 // — Yavimaya Bloomsage's Channel). Public — no hidden information.
 message VisibleEventChannelColorlessManaGranted {
+  uint32 player = 1;
+}
+
+// North Star: the player may spend mana as though it were mana of any type to pay one spell's mana
+// cost this turn (CR 609.4b).
+message VisibleEventSpendManaAsAnyTypeGranted {
   uint32 player = 1;
 }
 
