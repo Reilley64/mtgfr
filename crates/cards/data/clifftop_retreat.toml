@@ -6,6 +6,7 @@ id = "d7faa3c8-46cf-46b2-bfa4-89000307cf18"
 default_print = "4a7f7767-1959-4812-8654-0a22634096b1"
 otags = ["activated-ability", "cycle-isd-checkland", "synergy-mountain", "synergy-plains"]
 oracle = "This land enters tapped unless you control a Mountain or a Plains.\n{T}: Add {R} or {W}."
+flavor = "\"Too many heroes in New York City? Hey, I'm not complaining. It certainly makes team-ups easier!\"\n—Human Torch, Johnny Storm"
 
 [kind]
 type = "land"

@@ -28,6 +28,9 @@ pub struct CatalogCard {
     /// The card's printed (oracle) rules text, for the deck builder's read-the-text hover
     /// (`engine::CardDef::oracle`). `None` for a card whose text isn't recorded, or a vanilla.
     pub oracle: Option<String>,
+    /// The card's printed flavor text — the italic words a rendered card face sets under the
+    /// rules divider (`engine::CardDef::flavor`). `None` when the printing prints none.
+    pub flavor: Option<String>,
     /// Deprecated legacy set/edition code; always empty. Use `sets`.
     pub set: String,
     /// Every Scryfall set code with a printing of this oracle (lowercase). A deck-builder search
@@ -429,6 +432,7 @@ pub fn catalog_card(def: &engine::CardDef) -> CatalogCard {
         color_identity: identity_indices(color_identity(def)),
         approximates: def.approximates.map(str::to_string),
         oracle: def.oracle.map(str::to_string),
+        flavor: def.flavor.map(str::to_string),
         set: String::new(),
         sets: def.sets.iter().map(|s| s.to_string()).collect(),
         subtypes: all_subtypes(def),

@@ -95,11 +95,15 @@ When a card diverges from oracle text, the definition SHALL carry a machine-read
 - **THEN** the card is noted in the deck's fidelity increments with an approximates note instead of being silently mis-modeled
 
 ### Requirement: Catalog metadata is non-rules
-Oracle text, oracle tags, and set codes SHALL be catalog metadata for hover, thematic search, and printing coverage. The rules engine MUST NOT parse oracle text or read oracle tags or set codes for gameplay. Rules behavior SHALL come only from abilities, keywords, costs, kinds, and related rules fields.
+Oracle text, flavor text, oracle tags, and set codes SHALL be catalog metadata for hover, card rendering, thematic search, and printing coverage. Flavor text SHALL be the flavor of the card's `default_print`, since flavor is per-printing, and SHALL be absent for a printing that prints none. The rules engine MUST NOT parse oracle or flavor text or read oracle tags or set codes for gameplay. Rules behavior SHALL come only from abilities, keywords, costs, kinds, and related rules fields.
 
 #### Scenario: Search by oracle tag
 - **WHEN** a deck builder searches for a thematic tag such as ramp or typal-spirit
 - **THEN** matching uses oracle tags even if that tag is not itself a rules keyword
+
+#### Scenario: Flavor rides the catalog, not the rules
+- **WHEN** a card definition carries `flavor`
+- **THEN** it reaches the client on `CatalogCard` beside `oracle` and no rules decision reads it
 
 ### Requirement: Authoring schema and reference stay generated
 Committed JSON Schemas for card and token authoring surfaces SHALL be generated from the TOML authoring types. A generated field reference SHALL be produced from the same surface. Structural validation against the schema SHALL catch authoring-shape mistakes (including misspelled effect family tags) with file path, JSON Pointer, and schema message. Rust deserialization into the printed definition SHALL remain authoritative for load. Schema validation MUST NOT encode fidelity judgment, Scryfall freshness, deck legality, or every custom fold that still lives in the loader. Full-pool structural validation SHALL be part of the server verification bar.

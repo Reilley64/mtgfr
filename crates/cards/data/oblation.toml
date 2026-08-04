@@ -5,6 +5,7 @@ sets = ["c14", "c16", "c21", "cmd", "ons"]
 id = "860e744d-899c-43c7-84bb-d52c69d2f45a"
 default_print = "dcfdea72-4736-4442-987b-173f6885528a"
 oracle = "The owner of target nonland permanent shuffles it into their library, then draws two cards."
+flavor = "\"A richer people could give more but they could never give as much.\""
 
 [cost]
 generic = 2

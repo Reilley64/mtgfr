@@ -4,6 +4,7 @@ name = "Ancient Grudge"
 sets = ["f12", "ha5", "isd", "mb2", "mm3", "plst", "prm", "sld", "td0", "tsp", "tsr"]
 otags = ["castable-from-graveyard", "cheaper-than-mv", "cycle-isd-allied-flashback", "cycle-tsp-forward-flashback", "exile-self", "meme", "removal-artifact", "removal-destroy", "repeatable-crime", "repeatable-removal", "single-target-instant-sorcery", "spot-removal"]
 oracle = "Destroy target artifact.\nFlashback {G} (You may cast this card from your graveyard for its flashback cost. Then exile it.)"
+flavor = "The time rifts remind Yavimaya of the enemies of its past and provide fresh fuel for its fires."
 id = "306593b0-6ea8-476f-a3f2-e17876c1bab4"
 default_print = "5f28d4a2-6c75-44c2-93ac-e7159c1c623f"
 identity = ["green"]

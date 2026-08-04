@@ -6,6 +6,7 @@ sets = ["cma", "cmd", "ddn", "sok"]
 id = "f551093d-40b7-43ac-8023-4cfbb6c646da"
 default_print = "ddd1e712-826a-47ee-9578-ca61f2d65221"
 oracle = "Haste\nAt the beginning of your upkeep, return a red creature you control to its owner's hand."
+flavor = "The oni leapt easily from peak to peak, toying with its victims, its voice a purr from the rumbling depths of nightmare."
 subtypes = ["Demon", "Spirit"]
 keywords = ["haste"]
 

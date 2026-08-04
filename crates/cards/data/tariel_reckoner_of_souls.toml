@@ -7,6 +7,7 @@ id = "9c00b503-ae5e-4ce3-ad6a-92b541b2e3cd"
 default_print = "c09448cf-70c9-494d-90e2-63a958b49bcd"
 otags = ["activated-ability", "evasion", "reanimate-creature", "random-effect", "hate-graveyard", "opponents"]
 oracle = "Flying, vigilance\n{T}: Choose a creature card at random from target opponent's graveyard. Put that card onto the battlefield under your control."
+flavor = "\"After death you face paradise, damnation, or Tariel.\"\n—Priest's teaching"
 legendary = true
 subtypes = ["Angel"]
 keywords = ["flying", "vigilance"]

@@ -3,6 +3,7 @@ name = "Gruul Signet"
 sets = ["aa1", "afc", "arc", "blc", "c16", "clu", "cmd", "gk2", "gpt", "mm3", "moc", "plst", "prm", "rvr", "sld", "td0"]
 otags = ["activated-ability", "cycle-rav-signet", "mana-rock", "refund"]
 oracle = "{1}, {T}: Add {R}{G}."
+flavor = "Gruul territorial markings need not be legible. The blood, snot, and muck used to smear them are unmistakably Gruul."
 id = "d36e0c9f-c025-4dfe-9644-9cad2461ce38"
 default_print = "ed1adca8-9386-42b0-ac6b-699394ac7969"
 

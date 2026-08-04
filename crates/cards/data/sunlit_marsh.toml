@@ -7,6 +7,7 @@ id = "a5e5a259-5fa7-4b01-93cb-a2b4aaf80927"
 default_print = "fa447616-db24-4729-bf66-7f72aba0272d"
 otags = ["activated-ability", "cycle-dmu-dual-land", "nonbasic-basic-land-type"]
 oracle = "({T}: Add {W} or {B}.)\nThis land enters tapped."
+flavor = "Even the poisoned land around the Stronghold blossomed with new life in the wake of the Great Mending."
 enters_tapped = true
 
 [kind]

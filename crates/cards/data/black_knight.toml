@@ -7,6 +7,7 @@ sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ath", "ced", "cei", "f02", "f
 id = "9456c5b6-946d-403a-8ed0-dff9f921d98c"
 default_print = "36b94d0d-fbe5-4f32-af02-bbe3ab2e234a"
 oracle = "First strike (This creature deals combat damage before creatures without first strike.)\nProtection from white (This creature can't be blocked, targeted, dealt damage, or enchanted by anything white.)"
+flavor = "Battle doesn't need a purpose; the battle is its own purpose. You don't ask why a plague spreads or a field burns. Don't ask why I fight."
 subtypes = ["Human", "Knight"]
 keywords = ["first_strike", { protection = "white" }]
 

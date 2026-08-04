@@ -6,6 +6,7 @@ otags = ["change-target", "copy-instant", "copy-sorcery", "copy-spell"]
 id = "8c35fd11-be45-4984-bd83-6e4f3fbc47a9"
 default_print = "8d3dddfa-9579-42d7-867b-7e37b83b3eeb"
 oracle = "You may choose new targets for target instant or sorcery spell. Then copy that spell. You may choose new targets for the copy."
+flavor = "\"May your day never match your expectations.\"\n—Scriptus Fleen, flectomancer"
 
 [cost]
 generic = 2

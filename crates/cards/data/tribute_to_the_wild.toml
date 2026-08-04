@@ -5,6 +5,7 @@ id = "ba0fc2ca-7084-454a-9d4e-5cbca945a7ca"
 default_print = "54945049-b5ae-444a-bec0-0bdeb9d075a1"
 otags = ["card-advantage-edge", "edict-conditional", "removal-artifact", "removal-enchantment", "removal-sacrifice", "sweeper-asymmetric"]
 oracle = "Each opponent sacrifices an artifact or enchantment of their choice."
+flavor = "\"You may enter, but leave those lifeless things of your world behind.\"\n—Modruni, maro-sorcerer"
 
 [cost]
 generic = 1

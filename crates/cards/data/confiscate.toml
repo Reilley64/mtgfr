@@ -7,6 +7,7 @@ subtypes = ["Aura"]
 id = "d599a38c-7719-443e-bb59-55bd43a8fee6"
 default_print = "a98a1553-e5f3-4c9c-833d-579e82e1708f"
 oracle = "Enchant permanent\nYou control enchanted permanent."
+flavor = "\"But I brought enough for the whole class!\""
 enchant = {}
 
 [cost]

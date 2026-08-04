@@ -6,6 +6,7 @@ id = "cb8ec2e4-8223-4172-8f2c-37c918a573fa"
 default_print = "54734347-eee7-4c52-b514-7342afeccabd"
 otags = ["activated-ability", "utility-land"]
 oracle = "{T}: Add {C}.\n{T}: Each player gains control of all creatures they own."
+flavor = "\"Let your heels point you home.\"\n—Ancient blessing"
 
 [kind]
 type = "land"

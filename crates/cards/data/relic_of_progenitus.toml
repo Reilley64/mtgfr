@@ -6,6 +6,7 @@ otags = ["activated-ability", "exile-self", "hand-neutral", "namesake-spell", "p
 id = "6a9c3401-570c-41cb-a605-75dfa57d6ab7"
 default_print = "436cd66c-0622-43cd-8748-af4d21a2db3f"
 oracle = "{T}: Target player exiles a card from their graveyard.\n{1}, Exile this artifact: Exile all graveyards. Draw a card."
+flavor = "Elves believe the hydra-god Progenitus sleeps beneath Naya, feeding on forgotten magics."
 
 [cost]
 generic = 1

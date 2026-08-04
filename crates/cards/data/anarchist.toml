@@ -6,6 +6,7 @@ subtypes = ["Human", "Rebel"]
 id = "82b9ad93-df75-4417-9746-798db8fe6ba0"
 default_print = "966d56fd-4df8-4532-860c-371641630a70"
 oracle = "When this creature enters, you may return target sorcery card from your graveyard to your hand."
+flavor = "\"I'll take that. You won't need it when the revolution comes.\""
 
 [cost]
 generic = 4

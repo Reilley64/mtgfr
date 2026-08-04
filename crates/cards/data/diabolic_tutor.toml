@@ -7,6 +7,7 @@ id = "14589b6b-1814-46f9-a364-83cc15dacac2"
 default_print = "d650dd8c-edd8-44e4-ae95-aaaf84557a72"
 otags = ["tutor-card", "tutor-to-hand"]
 oracle = "Search your library for a card, put that card into your hand, then shuffle."
+flavor = "The wise always keep an ear open to the whispers of power."
 
 [cost]
 generic = 2

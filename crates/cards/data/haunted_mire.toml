@@ -7,6 +7,7 @@ id = "b0b58a03-462c-4964-97c7-42bc777ec23e"
 default_print = "3e041aef-5771-4a3f-af07-e85a66c48979"
 otags = ["activated-ability", "cycle-dmu-dual-land", "nonbasic-basic-land-type"]
 oracle = "({T}: Add {B} or {G}.)\nThis land enters tapped."
+flavor = "Some of the nature spirits and wraiths that haunt Urborg take offense at the term \"ghost town.\""
 enters_tapped = true
 
 [kind]

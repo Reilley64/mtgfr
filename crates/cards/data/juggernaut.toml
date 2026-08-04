@@ -6,6 +6,7 @@ sets = ["10e", "2ed", "30a", "3ed", "arc", "bbd", "ced", "cei", "ddf", "dmr", "d
 id = "4ac9116f-36bc-4d71-b696-d6ee064e1d58"
 default_print = "0cde95ea-ad1a-4acb-a8bd-5457f119aeb7"
 oracle = "This creature attacks each combat if able.\nThis creature can't be blocked by Walls."
+flavor = "We had taken refuge in a small cave, thinking the entrance was too narrow for it to follow. To our horror, its gigantic head smashed into the mountainside, ripping itself a new entrance."
 subtypes = ["Juggernaut"]
 
 [cost]

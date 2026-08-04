@@ -46,7 +46,13 @@ describe("cardTextOf", () => {
     expect(cardTextOf(card({ oracle: "Deals 3 damage to any target." }))).toEqual({
       typeLine: "Instant",
       oracle: "Deals 3 damage to any target.",
+      flavor: "",
     });
     expect(cardTextOf(card({ oracle: null })).oracle).toBe("");
+  });
+
+  it("carries the flavor text through, empty when the printing prints none", () => {
+    expect(cardTextOf(card({ flavor: "It watches." })).flavor).toBe("It watches.");
+    expect(cardTextOf(card({ flavor: null })).flavor).toBe("");
   });
 });

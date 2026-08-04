@@ -6,6 +6,7 @@ id = "eaabd151-2160-4bff-82c0-3fa88659be98"
 default_print = "e886a604-e3ce-4c6a-b63e-2c7f910a177a"
 otags = ["cycle-jud-incarnation", "gives-haste", "keyword-anthem", "single-english-word-name", "synergy-mountain"]
 oracle = "Haste\nAs long as this card is in your graveyard and you control a Mountain, creatures you control have haste."
+flavor = "\"Molten earth has no anger of its own. Only by infusing it with your own rage can the magma seethe and take shape.\"\n—Koth of the Hammer"
 subtypes = ["Incarnation"]
 keywords = ["haste"]
 functions_in_graveyard = true

@@ -163,6 +163,7 @@ export type CatalogCard = {
   legendary: boolean;
   name: string;
   oracle?: string | null;
+  flavor?: string | null;
   otags: Array<string>;
   set: string;
   sets: Array<string>;

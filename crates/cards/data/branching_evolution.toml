@@ -5,6 +5,7 @@ id = "28fe909b-06e0-424c-9f75-c824a25f5865"
 default_print = "c0f1a736-8b12-4f58-a031-bf1733f65c51"
 otags = ["counter-doubler", "pp-counters-matter"]
 oracle = "If one or more +1/+1 counters would be put on a creature you control, twice that many +1/+1 counters are put on that creature instead."
+flavor = "As Aclazotz's undead forces approached the temple of Ojer Kaslem, they met a roaring wall of vibrant, flourishing life."
 sets = ["mh3"]
 
 [cost]

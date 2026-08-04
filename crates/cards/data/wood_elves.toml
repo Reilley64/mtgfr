@@ -6,6 +6,7 @@ subtypes = ["Elf", "Scout"]
 id = "8973bd99-20f8-4867-90ef-50392147ee1b"
 default_print = "2476e42b-b209-4207-8ed9-cb668f89b218"
 oracle = "When this creature enters, search your library for a Forest card, put that card onto the battlefield, then shuffle."
+flavor = "After the coming of Humans, the Wood-Elves took ever more and more to the gloaming and the dusk. Still Elves they were and remained—that is, Good People."
 
 [cost]
 generic = 2

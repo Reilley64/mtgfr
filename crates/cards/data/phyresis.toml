@@ -6,6 +6,7 @@ id = "958628af-243c-4eb0-8620-5d483b6da768"
 default_print = "0059d21b-0725-4806-8691-2451db36787f"
 otags = ["french-vanilla-aura", "gives-infect", "gives-mm-counters"]
 oracle = "Enchant creature\nEnchanted creature has infect. (It deals damage to creatures in the form of -1/-1 counters and to players in the form of poison counters.)"
+flavor = "\"Perfection is at hand. You have been freed of weakness and made *compleat*.\"\n—Sheoldred, Whispering One"
 sets = ["mbs"]
 subtypes = ["Aura"]
 

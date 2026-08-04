@@ -8,6 +8,7 @@ subtypes = ["Aura"]
 id = "15397a59-70a8-441f-abf7-230405a1602b"
 default_print = "fa232c65-dbb4-4414-bd95-b3bbd321c653"
 oracle = "Enchant creature\nEnchanted creature gets +2/+2 and has trample.\nWhenever enchanted creature deals damage, you gain that much life."
+flavor = "\"Don't laugh. It works.\""
 
 [cost]
 generic = 1

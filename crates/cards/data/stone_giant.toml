@@ -6,6 +6,7 @@ sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "ddi", "fbb", "l
 id = "0b8e3f9b-a4da-49a3-8545-ce7a265e5856"
 default_print = "64dad66b-403b-4af6-b6eb-c123567e2b86"
 oracle = "{T}: Target creature you control with toughness less than this creature's power gains flying until end of turn. Destroy that creature at the beginning of the next end step."
+flavor = "What goes up, must come down."
 subtypes = ["Giant"]
 
 [cost]

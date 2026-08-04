@@ -1,5 +1,6 @@
 # (no rules text — vanilla creature)
 name = "Craw Wurm"
+flavor = "The most terrifying thing about the craw wurm is probably the horrible crashing sound it makes as it speeds through the forest. This noise is so loud it echoes through the trees and seems to come from all directions at once."
 otags = ["meme"]
 sets = ["10e", "2ed", "30a", "3ed", "4bb", "4ed", "5ed", "8ed", "9ed", "ced", "cei", "fbb", "lea", "leb", "m10", "sum"]
 id = "6a462a69-3e42-41de-a3aa-a488d9f38d69"

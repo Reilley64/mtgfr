@@ -1,7 +1,7 @@
 import { BODY_FONT, frameAssetUrl, TITLE_FONT } from "./assets";
 import { type Blit, type FaceData, type FaceVariant, frameKey, type Rect, slotRects } from "./frame";
 import { drawManaSymbol } from "./symbols";
-import { fitOracleSize, LINE_HEIGHT, type Measure, SYMBOL_EM, wrapOracle } from "./text";
+import { cardTextBlock, fitCardText, LINE_HEIGHT, type Measure, SYMBOL_EM } from "./text";
 
 /*
  * Printed type sizes, as a fraction of the slot each sits in. A real M15 card sets its name in about
@@ -23,6 +23,8 @@ const INK = "#17130d";
  */
 const TEXT_PAD_X = 0.02;
 const TEXT_PAD_Y = 0.03;
+/** The flavor divider's width, as a fraction of the text box — a printed one stops short of both edges. */
+const DIVIDER_W = 0.9;
 
 export type FaceInput = {
   face: FaceData;
@@ -75,7 +77,7 @@ export function drawFace(ctx: CanvasRenderingContext2D, input: FaceInput): void 
 
   if (slots.title != null) drawFitted(ctx, face.name, slots.title, TITLE_FONT, slots.title.h * TITLE_SCALE);
   if (slots.type != null) drawFitted(ctx, face.typeLine, slots.type, TITLE_FONT, slots.type.h * TYPE_SCALE);
-  if (slots.text != null) drawTextBox(ctx, face.oracle, slots.text, measure);
+  if (slots.text != null) drawTextBox(ctx, face, slots.text, measure);
   if (slots.pt != null) drawPT(ctx, face, slots.pt);
 
   ctx.restore();
@@ -137,19 +139,20 @@ function bodyFont(fontPx: number, reminder: boolean): string {
  * Rules text, inset from the printed box and centred in what is left — a short ability sits in the
  * middle of its box on a real card, not pinned to the top edge.
  */
-function drawTextBox(ctx: CanvasRenderingContext2D, text: string, box: Rect, measure: Measure): void {
-  if (text === "") return;
+function drawTextBox(ctx: CanvasRenderingContext2D, face: FaceData, box: Rect, measure: Measure): void {
+  if (face.oracle === "" && face.flavor === "") return;
   const padX = box.w * TEXT_PAD_X;
   const padY = box.h * TEXT_PAD_Y;
   const inner = { w: box.w - 2 * padX, h: box.h - 2 * padY };
-  const size = fitOracleSize(text, inner, box.h * RULES_SCALE, measure);
-  const lines = wrapOracle(text, inner.w, size, measure);
+  const size = fitCardText(face.oracle, face.flavor, inner, box.h * RULES_SCALE, measure);
+  const { lines, divider } = cardTextBlock(face.oracle, face.flavor, inner.w, size, measure);
   const step = size * LINE_HEIGHT;
 
   ctx.textAlign = "left";
   ctx.textBaseline = "middle";
   let y = box.y + Math.max(padY, (box.h - lines.length * step) / 2) + step / 2;
-  for (const line of lines) {
+  for (const [index, line] of lines.entries()) {
+    if (index === divider) drawDivider(ctx, box, y);
     let x = box.x + padX;
     for (const piece of line) {
       if (piece.kind === "symbol") {
@@ -163,6 +166,25 @@ function drawTextBox(ctx: CanvasRenderingContext2D, text: string, box: Rect, mea
     }
     y += step;
   }
+}
+
+/**
+ * The rule between rules text and flavor: on a printed card a soft shadow about 80% of the box
+ * wide, centred, not a drawn line. Measured off a printed card at 1040 tall: the paper darkens over
+ * about four rows into one darkest row a fifth below the paper, then lifts for a row underneath.
+ */
+function drawDivider(ctx: CanvasRenderingContext2D, box: Rect, y: number): void {
+  const w = box.w * DIVIDER_W;
+  const x = box.x + (box.w - w) / 2;
+  const ramp = ctx.createLinearGradient(0, y - 4, 0, y + 1);
+  ramp.addColorStop(0, "rgba(23, 19, 13, 0)");
+  ramp.addColorStop(0.75, "rgba(23, 19, 13, 0.12)");
+  ramp.addColorStop(1, "rgba(23, 19, 13, 0.31)");
+  ctx.fillStyle = ramp;
+  ctx.fillRect(x, y - 4, w, 5);
+  ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
+  ctx.fillRect(x, y + 1.5, w, 1);
+  ctx.fillStyle = INK;
 }
 
 function drawPT(ctx: CanvasRenderingContext2D, face: FaceData, box: Rect): void {

@@ -8,6 +8,7 @@ id = "dc974eb4-72b9-4213-887b-8ee684b93420"
 default_print = "df797e0d-8ae2-4fdb-a33d-4ba7852b0172"
 otags = ["activated-ability", "cycle-eve-filterland"]
 oracle = "{T}: Add {C}.\n{G/U}, {T}: Add {G}{G}, {G}{U}, or {U}{U}."
+flavor = "At full moon, the river seeps over its banks and crawls through the woods like a blanket of serpents."
 
 [kind]
 type = "land"

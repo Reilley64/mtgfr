@@ -5,6 +5,7 @@ sets = ["2ed", "30a", "3ed", "4bb", "4ed", "9ed", "ath", "ced", "cei", "cn2", "f
 id = "10bc98b0-3fdc-46d1-8d3b-6d160e9dd62f"
 default_print = "26cbb4d5-bb1b-4b1c-b94d-58e45ba497ca"
 oracle = "{R}: This creature gains flying until end of turn."
+flavor = "\"From up here we can drop rocks and arrows and more rocks!\" \"Uh, yeah boss, but how do we get down?\""
 subtypes = ["Goblin", "Warrior"]
 
 [cost]

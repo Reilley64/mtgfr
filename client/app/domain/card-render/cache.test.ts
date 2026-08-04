@@ -15,6 +15,7 @@ function face(overrides: Partial<FaceData> = {}): FaceData {
     loyalty: "",
     typeLine: "",
     oracle: "",
+    flavor: "",
     ...overrides,
   };
 }
@@ -231,6 +232,7 @@ describe("faceKey", () => {
       loyalty: "9",
       typeLine: "Land",
       oracle: "Flying",
+      flavor: "It watches.",
     };
     for (const field of Object.keys(base) as Array<keyof FaceData>) {
       expect(faceKey({ ...base, [field]: changed[field] }, "permanent"), `faceKey ignores ${field}`).not.toBe(

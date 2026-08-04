@@ -6,6 +6,7 @@ sets = ["a25", "brc", "clb", "cmd", "cmm", "cmr", "dmc", "gtc", "hbg", "j25", "j
 id = "134a9877-5cfb-4a2a-a0f0-930dce45f58b"
 default_print = "cd77a4d0-3d5c-48a5-ad91-b0861021ef8a"
 oracle = "When this artifact enters, draw a card.\n{1}, {T}: Add one mana of any color."
+flavor = "\"The explorer who found it got a bad deal when he sold it. He merely got rich.\""
 
 [cost]
 generic = 2

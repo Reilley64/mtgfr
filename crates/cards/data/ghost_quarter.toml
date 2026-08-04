@@ -5,6 +5,7 @@ name = "Ghost Quarter"
 sets = ["c14", "c15", "cm2", "cma", "dis", "ha2", "isd", "ltc", "mb2", "md1", "plst", "sld", "td0"]
 otags = ["activated-ability", "removal-destroy", "removal-land", "sacrifice-self", "spot-removal", "swap-removal", "tutor-land-basic", "tutor-land-to-battlefield", "utility-land"]
 oracle = "{T}: Add {C}.\n{T}, Sacrifice this land: Destroy target land. Its controller may search their library for a basic land card, put it onto the battlefield, then shuffle."
+flavor = "Deserted, but not uninhabited."
 id = "2ec4288e-34c6-4831-a2c0-ba1ca1d9d1dc"
 default_print = "12f8071c-8955-4aa2-889c-6043df047223"
 

@@ -11,6 +11,7 @@ id = "e828b189-0e8f-43b8-b909-4c23e742e028"
 default_print = "e1f723a8-0be9-4270-b451-a52d6b2fda4e"
 otags = ["tax-attack"]
 oracle = "Creatures can't attack you unless their controller pays {2} for each creature they control that's attacking you."
+flavor = "\"May the memory of our fallen heroes ensnare the violent hearts of lesser men.\"\n—Great Threshold of Monserkat inscription"
 [cost]
 generic = 2
 white = 1

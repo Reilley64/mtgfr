@@ -5,6 +5,7 @@ otags = ["activated-ability", "cycle-nem-seal", "disenchant-naturalize", "remova
 id = "a75dbe70-7e3e-446f-9a76-9fbb414f2e7c"
 default_print = "22a6673b-1528-4e0f-b316-bd482c7ed8aa"
 oracle = "Sacrifice this enchantment: Destroy target artifact or enchantment."
+flavor = "\"I am the purifier, the light that clears all shadows.\"\n—Seal inscription"
 
 [cost]
 generic = 1

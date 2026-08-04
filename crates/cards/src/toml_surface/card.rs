@@ -366,6 +366,10 @@ pub struct CardToml {
     /// never parses this; behavior comes from abilities, keywords, and other DSL fields.
     #[serde(default)]
     pub oracle: Option<String>,
+    /// Verbatim printed flavor text — the italic words a rendered face sets under the rules
+    /// divider. Metadata like `oracle`; the engine never reads it.
+    #[serde(default)]
+    pub flavor: Option<String>,
     /// Every Scryfall set code with a printing of this oracle, used by coverage and
     /// catalog search. Pure metadata; gameplay never reads it.
     #[serde(default)]
@@ -556,6 +560,7 @@ impl From<CardToml> for CardDef {
             cast_only_during_declare_attackers: card.cast_only_during_declare_attackers,
             approximates: card.approximates.map(|s| &*Box::leak(s.into_boxed_str())),
             oracle: card.oracle.map(|s| &*Box::leak(s.into_boxed_str())),
+            flavor: card.flavor.map(|s| &*Box::leak(s.into_boxed_str())),
             sets: arc_strs(card.sets),
             subtypes: arc_strs(card.subtypes),
             otags: arc_strs(card.otags),

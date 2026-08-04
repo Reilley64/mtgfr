@@ -6,6 +6,7 @@ id = "047e761e-7bbe-403b-86d7-cb9fb0b20b21"
 default_print = "aae856bc-f65f-42ba-9344-1a30b356c041"
 otags = ["evasion", "french-vanilla", "gives-mm-counters", "poisonous", "type-addition-phyrexian"]
 oracle = "Flying\nInfect (This creature deals damage to creatures in the form of -1/-1 counters and to players in the form of poison counters.)"
+flavor = "It leaves its victims one sting closer to phyresis."
 sets = ["som"]
 subtypes = ["Phyrexian", "Insect", "Horror"]
 keywords = ["flying", "infect"]

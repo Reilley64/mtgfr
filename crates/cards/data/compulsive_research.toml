@@ -6,6 +6,7 @@ otags = ["burst-draw", "force-draw", "hand-neutral", "hand-positive", "single-ta
 id = "f947808c-a1cc-41ea-9d06-e1279a0da527"
 default_print = "a247ab59-7749-4d37-87f6-f90f44cd54f4"
 oracle = "Target player draws three cards. Then that player discards two cards unless they discard a land card."
+flavor = "\"Four parts molten bronze, yes . . . one part frozen mercury, yes, yes . . . but then what?\""
 
 [cost]
 generic = 2

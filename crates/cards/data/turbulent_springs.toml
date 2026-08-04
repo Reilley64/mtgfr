@@ -8,6 +8,7 @@ id = "9aef7510-9f06-4939-8cae-f71330d1105e"
 default_print = "a25cb813-aa6d-469c-aa29-61ffa32267f2"
 otags = ["activated-ability", "cycle-soc-octoland", "multiplayer", "nonbasic-basic-land-type"]
 oracle = "({T}: Add {U} or {R}.)\nThis land enters tapped unless your opponents control eight or more lands."
+flavor = "\"The Multiverse itself is a never-ending act of creation. Do not look inward so often that you forget how to see it.\"\n—Galazeth Prismari"
 
 [kind]
 type = "land"

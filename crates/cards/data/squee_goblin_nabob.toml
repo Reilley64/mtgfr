@@ -6,6 +6,7 @@ id = "0ef760f4-bbec-4735-8d60-fc24d973452a"
 default_print = "8aabc541-ff2a-416f-a973-44eda8ec4706"
 otags = ["deprecated-legend-type", "regrowth-self", "trigger-from-graveyard"]
 oracle = "At the beginning of your upkeep, you may return this card from your graveyard to your hand."
+flavor = "\"Some goblins are expendable. Some are impossible to get rid of. But he's both—at the same time!\"\n—Starke"
 subtypes = ["Goblin"]
 legendary = true
 # CR 603.6e — Squee's only ability is a triggered ability that functions from the graveyard.

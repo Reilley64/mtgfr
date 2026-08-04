@@ -5,6 +5,7 @@ sets = ["c14", "c17", "clb", "cm2", "cma", "cmd", "dci", "fic", "hop", "m3c", "m
 id = "abc37d6c-6300-47b5-a679-9db5b83eb54f"
 default_print = "53a224be-4365-46da-9ff2-a04ea16e5154"
 oracle = "Each other player discards a card. You draw a card for each card discarded this way."
+flavor = "When tempers run high, it's easy to lose your head."
 
 [cost]
 generic = 3

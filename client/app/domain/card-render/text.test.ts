@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fitOracleSize, LINE_HEIGHT, type Measure, type Piece, wrapOracle } from "./text";
+import { cardTextBlock, fitCardText, LINE_HEIGHT, type Measure, type Piece, wrapOracle } from "./text";
 
 /** A fake metric: every glyph is half the font size wide, every pip one em. No canvas. */
 const measure: Measure = (piece, fontPx) => (piece.kind === "symbol" ? fontPx : piece.value.length * fontPx * 0.5);
@@ -40,14 +40,14 @@ describe("wrapOracle", () => {
   });
 });
 
-describe("fitOracleSize", () => {
+describe("fitCardText", () => {
   it("keeps the maximum size when the text already fits", () => {
-    expect(fitOracleSize("Flying", { w: 400, h: 200 }, 20, measure)).toBe(20);
+    expect(fitCardText("Flying", "", { w: 400, h: 200 }, 20, measure)).toBe(20);
   });
 
   it("shrinks until the wrapped text fits the box height", () => {
     const long = "Whenever this creature attacks, ".repeat(3);
-    const fitted = fitOracleSize(long, { w: 200, h: 60 }, 20, measure);
+    const fitted = fitCardText(long, "", { w: 200, h: 60 }, 20, measure);
     expect(fitted).toBeLessThan(20);
     expect(wrapOracle(long, 200, fitted, measure).length * fitted * LINE_HEIGHT).toBeLessThanOrEqual(60);
   });
@@ -56,6 +56,36 @@ describe("fitOracleSize", () => {
     // No size in range fits this much text in this box; the floor holds and the text overhangs,
     // which is what a real card does when its text box is over-full.
     const wall = "Whenever this creature attacks, ".repeat(12);
-    expect(fitOracleSize(wall, { w: 200, h: 60 }, 20, measure)).toBe(12);
+    expect(fitCardText(wall, "", { w: 200, h: 60 }, 20, measure)).toBe(12);
+  });
+});
+
+describe("cardTextBlock", () => {
+  it("rules the divider between the rules text and the flavor", () => {
+    const block = cardTextBlock("Flying", "It watches.", 400, 20, measure);
+
+    expect(block.divider).toBe(1);
+    expect(block.lines[1]).toEqual([]); // the row the divider is drawn across
+    expect(prose(block.lines[2] ?? [])).toBe("It watches.");
+  });
+
+  it("sets the flavor in italics, the way a printed card does", () => {
+    const block = cardTextBlock("Flying", "It watches.", 400, 20, measure);
+
+    expect(block.lines[0]?.every((piece) => piece.reminder)).toBe(false);
+    expect(block.lines[2]?.every((piece) => piece.reminder)).toBe(true);
+  });
+
+  it("rules no divider when the card prints only one of the two", () => {
+    expect(cardTextBlock("Flying", "", 400, 20, measure).divider).toBeNull();
+    expect(cardTextBlock("", "It watches.", 400, 20, measure).divider).toBeNull();
+  });
+
+  it("counts the divider row against the fit, so flavor cannot overhang the box", () => {
+    // Three lines of text plus a divider row: the fit has to shrink further than the text alone.
+    const box = { w: 200, h: 90 };
+    expect(fitCardText("Whenever this creature attacks, ", "It watches. ", box, 20, measure)).toBeLessThan(
+      fitCardText("Whenever this creature attacks, ", "", box, 20, measure),
+    );
   });
 });

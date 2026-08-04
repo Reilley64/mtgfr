@@ -6,6 +6,7 @@ sets = ["40k", "afr", "akh", "akr", "anb", "bfz", "blc", "brc", "bro", "c13", "c
 id = "a75445d3-1303-4bb5-89ad-26ea93fecd48"
 default_print = "3b52b2e9-31d1-4c9a-bf40-fc9c1eac7528"
 oracle = "{T}, Sacrifice this land: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle."
+flavor = "Every world is an organism, able to grow new lands. Some just do it faster than others."
 
 # A fetch-only land: no `produces`, so it has no tap-for-mana ability — it's played only to be
 # sacrificed for the fetch below.

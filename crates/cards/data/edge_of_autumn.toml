@@ -7,6 +7,7 @@ id = "42d86827-6459-42fc-86b6-6eb055604c36"
 default_print = "1c72229c-f3da-4e35-af79-14452efe581b"
 otags = ["tutor-land-basic", "tutor-land-to-battlefield", "cycling"]
 oracle = "If you control four or fewer lands, search your library for a basic land card, put it onto the battlefield tapped, then shuffle.\nCycling—Sacrifice a land. (Sacrifice a land, Discard this card: Draw a card.)"
+flavor = "\"At harvest are seeds of next year sown.\""
 # Cycling—Sacrifice a land.
 cycling = {}
 cycling_sacrifice = { permanent = { types = "land" } }

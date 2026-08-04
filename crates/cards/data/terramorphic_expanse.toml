@@ -7,6 +7,7 @@ id = "1bd3e453-aa21-4ee6-95c2-d6d920ee8e7a"
 default_print = "a81f924b-0527-4311-8120-9bfff71524f6"
 otags = ["activated-ability", "tutor-land-basic", "fetchland"]
 oracle = "{T}, Sacrifice this land: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle."
+flavor = "\"This is . . . I can't explain it. The opposite of all we know. A negative zone.\"\n—Mister Fantastic, Reed Richards"
 
 # A fetch-only land: no `produces`, so it has no tap-for-mana ability — it's played only to be
 # sacrificed for the fetch below.

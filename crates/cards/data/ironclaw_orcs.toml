@@ -5,6 +5,7 @@ sets = ["2ed", "30a", "4bb", "4ed", "5ed", "ced", "cei", "itp", "lea", "leb", "m
 id = "c645a616-0d7d-416c-b5f3-057b3a1666a0"
 default_print = "0e17623a-5bc0-42d7-a842-394de0a01a01"
 oracle = "This creature can't block creatures with power 2 or greater."
+flavor = "Generations of genetic weeding have given rise to the deviously cowardly Ironclaw clan. To say that Orcs in general are vicious, depraved, and ignoble does not do justice to the Ironclaw."
 subtypes = ["Orc"]
 
 [cost]

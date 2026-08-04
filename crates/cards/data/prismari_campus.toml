@@ -8,6 +8,7 @@ id = "3a3a1b35-ae4d-49d5-ae09-5a1693ad53ce"
 default_print = "7c464dee-dd89-4955-ae40-8bb74e9ff42a"
 otags = ["activated-ability", "cycle-stx-campus", "mana-sink", "scry", "utility-land"]
 oracle = "This land enters tapped.\n{T}: Add {U} or {R}.\n{4}, {T}: Scry 1. (Look at the top card of your library. You may put that card on the bottom.)"
+flavor = "Mage-students who see spellcraft as the highest form of expression choose Prismari, the college of elemental arts."
 enters_tapped = true
 
 [kind]

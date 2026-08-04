@@ -6,6 +6,7 @@ sets = ["cmd", "cn2", "dd2", "gn3", "inv", "jvc", "otp", "plst", "wc02", "woc"]
 id = "6f7ef1d1-c441-41ba-b7d6-6b7727ffcf04"
 default_print = "b0088059-7354-4fd5-add1-b824f5b82ac7"
 oracle = "Return target creature to its owner's hand.\nDraw a card."
+flavor = "\"You aren't invited.\""
 
 [cost]
 generic = 2

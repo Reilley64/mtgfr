@@ -6,6 +6,7 @@ otags = ["hate-attacker", "lifegain", "opponent-lifegain", "removal-creature", "
 id = "377d31b5-0a48-4d5b-91bd-b5a62d4f7899"
 default_print = "0c93201b-7664-4bfd-a462-f1c684ebedf6"
 oracle = "Put target attacking creature on the bottom of its owner's library. Its controller gains life equal to its toughness."
+flavor = "\"No doubt the arbiters would put you away, after all the documents are signed. But I will have justice now.\"\n—Alovnek, Boros guildmage"
 
 [cost]
 white = 1

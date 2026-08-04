@@ -5,6 +5,7 @@ sets = ["cmd", "prm", "puds", "uds"]
 id = "87c44c23-f209-494a-ab66-c9f5cf7bb4ea"
 default_print = "f41a43ba-1867-4ce3-97fe-5ae67d3f36c3"
 oracle = "When this creature dies, exile all creatures."
+flavor = "\"You lived for Serra's love. Will you not die for it?\""
 subtypes = ["Human", "Cleric"]
 
 [cost]

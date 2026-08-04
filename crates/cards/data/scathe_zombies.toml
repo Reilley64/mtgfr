@@ -1,5 +1,6 @@
 # (no rules text — vanilla creature)
 name = "Scathe Zombies"
+flavor = "\"They groaned, they stirred, they all uprose,/ Nor spake, nor moved their eyes;/ It had been strange, even in a dream,/ To have seen those dead men rise.\"/ —Samuel Coleridge, \"The Rime of the Ancient Mariner\""
 sets = ["10e", "2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "8ed", "9ed", "anb", "ced", "cei", "fbb", "itp", "lea", "leb", "rqs", "s99", "sum"]
 id = "e0fefaf0-da20-4d58-8db7-019dba16c780"
 default_print = "08e060d5-85f2-46a7-9f05-8a8c713ea999"

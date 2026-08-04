@@ -6,6 +6,7 @@ sets = ["a25", "c18", "c20", "cma", "cmd", "hop", "ons", "v13", "wc04"]
 id = "ae19dce5-c9fc-4fbe-99b5-dc6a12124a68"
 default_print = "e45b4cba-cd60-4491-a334-30976d0990b7"
 oracle = "Destroy all artifacts, creatures, and enchantments.\nCycling {3} ({3}, Discard this card: Draw a card.)"
+flavor = "\"Many must die for the one who should not have perished.\""
 cycling = { generic = 3 }
 
 [cost]

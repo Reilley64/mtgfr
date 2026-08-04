@@ -7,6 +7,7 @@ id = "8957f7c2-040c-4048-9f21-efa7c97682b7"
 default_print = "37f9be6b-ae6e-4708-9749-83bebd351102"
 otags = ["color-break", "french-vanilla"]
 oracle = "Flash\nDeathtouch"
+flavor = "\"Living creatures seldom impress me. But I like this one.\"\n—Uta Falkenrath"
 subtypes = ["Snake"]
 keywords = ["flash", "deathtouch"]
 

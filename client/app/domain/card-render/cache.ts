@@ -12,7 +12,7 @@ import { drawFace, faceAssetUrls } from "./render";
 export function faceKey(face: FaceData, variant: FaceVariant): string {
   const pt = `${face.power}/${face.toughness}/${face.loyalty}`;
   const flags = `${face.isLand ? "L" : ""}${face.isToken ? "t" : ""}${face.legendary ? "l" : ""}`;
-  return `${variant}:${face.print}:${face.name}:${face.colors.join("")}:${pt}:${flags}:${face.typeLine}:${face.oracle}`;
+  return `${variant}:${face.print}:${face.name}:${face.colors.join("")}:${pt}:${flags}:${face.typeLine}:${face.oracle}:${face.flavor}`;
 }
 
 type Images = Pick<ImageCache, "get" | "preload" | "subscribe" | "isFailed">;

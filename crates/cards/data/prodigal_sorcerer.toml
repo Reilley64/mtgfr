@@ -5,6 +5,7 @@ sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "brb", "ced", "c
 id = "5e961d15-5972-4e4b-9385-1cd7cd7c6bbe"
 default_print = "4cfb5638-4502-44ed-b54c-27276d45d1ad"
 oracle = "{T}: This creature deals 1 damage to any target."
+flavor = "Occasionally a member of the Institute of Arcane Study acquires a taste for worldly pleasures. Seldom do they have trouble finding employment."
 subtypes = ["Human", "Wizard", "Sorcerer"]
 
 [cost]

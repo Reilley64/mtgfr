@@ -6,6 +6,7 @@ sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "ced", "cei", "fbb", "l
 id = "c4822813-cd81-465d-9fe8-3a4c2dcd31ef"
 default_print = "32401b72-e351-45fa-a16e-33cc818a07e0"
 oracle = "Whenever this creature blocks or becomes blocked by a non-Wall creature, destroy that creature at end of combat."
+flavor = "Moss-covered statues littered the area, a macabre monument to the Basilisk's power."
 subtypes = ["Basilisk"]
 
 [cost]

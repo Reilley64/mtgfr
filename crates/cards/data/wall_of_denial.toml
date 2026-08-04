@@ -6,6 +6,7 @@ sets = ["arb", "cmd", "cmm", "ddi", "mm3", "plst"]
 id = "9cc092f9-e8f0-40ea-847d-813b70f889db"
 default_print = "e5eecd2c-0908-44d6-9dea-eb59049a7924"
 oracle = "Defender, flying\nShroud (This creature can't be the target of spells or abilities.)"
+flavor = "It provides what every discerning mage requires—time to think."
 subtypes = ["Wall"]
 keywords = ["defender", "flying", "shroud"]
 

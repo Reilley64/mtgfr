@@ -3,6 +3,7 @@ name = "Phyrexian Arena"
 sets = ["8ed", "9ed", "apc", "c15", "cc2", "cn2", "dde", "fdn", "ha1", "hop", "mkc", "one", "pfdn", "plst", "pone", "sld", "td0", "wc01"]
 otags = ["cycle-apc-phyrexian-vertical", "deal-with-the-devil", "draw-engine", "life-for-cards", "repeatable-pure-draw", "triggered-ability"]
 oracle = "At the beginning of your upkeep, you draw a card and you lose 1 life."
+flavor = "A spark of resistance against a tide of corruption."
 id = "ee579a32-a048-4335-b966-231ba731cdea"
 default_print = "0784b6f0-9ebf-43d2-ba0f-a6bc93ba0c48"
 

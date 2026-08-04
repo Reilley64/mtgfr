@@ -5,6 +5,7 @@ id = "d26b27db-a567-4631-b4b6-7294222fbdd1"
 default_print = "26dba440-a2af-40c6-a126-4f7c031e9fd6"
 otags = ["draw-engine", "each-player-draws", "group-hug", "symmetrical-draw", "vulnerable-to-tapping"]
 oracle = "At the beginning of each player's draw step, if this artifact is untapped, that player draws an additional card."
+flavor = "The mine's riches never end, nor do the moans of the spirits doomed to haunt them."
 
 [cost]
 generic = 2

@@ -5,6 +5,7 @@ sets = ["10e", "2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "8ed", "9
 id = "c000811e-bde7-4840-a3bb-9714d5c977eb"
 default_print = "da899c3d-c424-4901-ae5a-2a8e0c66e631"
 oracle = "{T}: This creature deals 2 damage to any target and 3 damage to you."
+flavor = "In a rare display of ingenuity, the Orcs invented an incredibly destructive weapon. Most Orcish artillerists are those who dared criticize its effectiveness."
 subtypes = ["Orc", "Warrior"]
 
 [cost]

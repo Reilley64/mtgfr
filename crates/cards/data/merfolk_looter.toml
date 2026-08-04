@@ -6,6 +6,7 @@ subtypes = ["Merfolk", "Rogue"]
 id = "67362406-b1ca-49e2-800d-9050bfe8742a"
 default_print = "6d740928-bf61-4420-a403-63097538b97d"
 oracle = "{T}: Draw a card, then discard a card."
+flavor = "Merfolk don't always know what they're looking for, but they're certain once they find it."
 
 [cost]
 generic = 1

@@ -6,6 +6,7 @@ sets = ["2ed", "30a", "3ed", "ced", "cei", "fbb", "lea", "leb", "me4", "prm", "s
 id = "a6a43190-cca2-4f07-afe9-8af681d777da"
 default_print = "5a30ed3f-0b21-45ea-83af-339249b4e93e"
 oracle = "This creature gets +1/+1 as long as you control a Swamp.\n{B}: Regenerate this creature."
+flavor = "The stench in the hovel was overpowering; something loathsome was cooking. Occasionally something surfaced in the thick paste, but my host would casually push it down before I could make out what it was."
 subtypes = ["Troll"]
 
 [cost]

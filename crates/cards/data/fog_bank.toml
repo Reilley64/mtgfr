@@ -7,6 +7,7 @@ sets = ["bbd", "c13", "c14", "cmd", "cmm", "fdn", "gn3", "ima", "m13", "m3c", "p
 id = "3a2bb47d-228d-499e-a34b-9e10d99e9b2c"
 default_print = "18748b1d-4161-482c-a726-8762b4c1819c"
 oracle = "Defender (This creature can't attack.)\nFlying\nPrevent all combat damage that would be dealt to and dealt by this creature."
+flavor = "The battalion thought they could escape the fog by marching in a straight line. Three days later, they began to suspect it was following them."
 subtypes = ["Wall"]
 keywords = ["defender", "flying"]
 

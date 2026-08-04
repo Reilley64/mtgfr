@@ -6,6 +6,7 @@ id = "faaf9975-74df-4e9d-be0c-19a446cd507c"
 default_print = "5c15f211-2c59-4b02-ac91-955f695816ec"
 otags = ["enlarge-self", "landfall", "triggered-ability"]
 oracle = "Landfall — Whenever a land you control enters, this creature gets +4/+4 and gains trample until end of turn. (It can deal excess combat damage to the player or planeswalker it's attacking.)"
+flavor = "Its insatiable hunger quickly depletes a region of prey. It must migrate from place to place to feed its massive bulk."
 subtypes = ["Beast"]
 
 [cost]

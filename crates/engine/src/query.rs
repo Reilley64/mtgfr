@@ -1817,6 +1817,7 @@ mod permanent_filter_tests {
             cast_only_during_declare_attackers: false,
             approximates: None,
             oracle: None,
+            flavor: None,
             sets: empty_slice(),
             subtypes: empty_slice(),
             otags: empty_slice(),

@@ -7,6 +7,7 @@ id = "03dee43b-6377-4f7b-956b-a384160322e4"
 default_print = "c19e0ebf-ca94-4684-8b2c-68e592b65a24"
 otags = ["evasion", "extra-untap", "untapper-creature"]
 oracle = "Flying\nUntap all creatures you control during each other player's untap step."
+flavor = "By the second night after the kami had drifted into town, the local general store was completely sold out of earplugs."
 subtypes = ["Spirit"]
 keywords = ["flying"]
 

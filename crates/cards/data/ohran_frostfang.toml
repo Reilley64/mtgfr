@@ -6,6 +6,7 @@ id = "b99ada26-9a61-4175-9fb8-15a106960220"
 default_print = "55fb93e6-d057-4b70-ad12-e98291fd4a2c"
 otags = ["attacking-matters", "curiosity", "draw-engine", "gives-deathtouch", "keyword-anthem", "repeatable-pure-draw", "triggered-ability"]
 oracle = "Attacking creatures you control have deathtouch.\nWhenever a creature you control deals combat damage to a player, draw a card."
+flavor = "Silent as a snowdrift. Inexorable as an avalanche."
 subtypes = ["Snake"]
 snow = true
 

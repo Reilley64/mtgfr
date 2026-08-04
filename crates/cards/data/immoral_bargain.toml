@@ -6,6 +6,7 @@ id = "c82cc78b-ffd6-4f72-881d-85913830feb2"
 default_print = "fc01f092-80fb-4643-8ada-c2e5aeb68658"
 otags = ["multi-removal", "multiple-targets", "removal-destroy", "removal-nonland", "sacrifice-outlet-creature", "single-target-instant-sorcery", "spot-removal"]
 oracle = "As an additional cost to cast this spell, sacrifice X creatures.\nDestroy X target nonland permanents."
+flavor = "To control a spell, you must first strip it of its flesh and bones."
 
 [cost]
 generic = 1

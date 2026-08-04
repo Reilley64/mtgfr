@@ -7,6 +7,7 @@ subtypes = ["Kor", "Rogue"]
 id = "c87e3b1d-2d24-4f1c-84e8-1c21a347cdc2"
 default_print = "7083c77c-166f-4c6f-a2ca-dd1b877ff5f7"
 oracle = "Shadow (This creature can block or be blocked by only creatures with shadow.)\nWhenever this creature deals damage to an opponent, draw a card, then discard a card."
+flavor = "Unable to touch items of value, he goes forth to steal secrets instead."
 keywords = ["shadow"]
 
 [cost]

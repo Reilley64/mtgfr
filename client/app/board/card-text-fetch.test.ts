@@ -113,6 +113,7 @@ test("folds the catalog reply into the text the face draws", () => {
           kind: { kind: "creature", power: 2, toughness: 2 },
           subtypes: ["Elemental"],
           oracle: "Haste.",
+          flavor: "Fast as fire.",
         }),
       ],
     }),
@@ -120,5 +121,9 @@ test("folds the catalog reply into the text the face draws", () => {
     "T1",
   );
 
-  expect(next.cardText.get("bolt")).toEqual({ typeLine: "Creature — Elemental", oracle: "Haste." });
+  expect(next.cardText.get("bolt")).toEqual({
+    typeLine: "Creature — Elemental",
+    oracle: "Haste.",
+    flavor: "Fast as fire.",
+  });
 });

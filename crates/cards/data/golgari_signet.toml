@@ -3,6 +3,7 @@ name = "Golgari Signet"
 sets = ["aa1", "blc", "c15", "c16", "clu", "cm2", "cma", "cmd", "ddj", "dsc", "gk1", "mm3", "onc", "prm", "rav", "rvr", "sld", "td0"]
 otags = ["activated-ability", "cycle-rav-signet", "mana-rock", "refund"]
 oracle = "{1}, {T}: Add {B}{G}."
+flavor = "Depending on your point of view, the seal represents a proud guardian of the natural cycle or one who has sold her soul to darkness for eternal life."
 id = "1cf51f50-24e4-48d0-95b3-1dad3ffa4bf5"
 default_print = "95103b4c-d0c0-40fa-9ddd-c7416455ca0c"
 

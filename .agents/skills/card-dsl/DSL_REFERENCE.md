@@ -55,6 +55,7 @@ This mirrors the DSL's top-level card shape with owned fields, then folds into t
 | `escape` | EscapeCost \| null | no | - | Escape (CR 702.19) — `[escape]` (an `[escape.cost]` sub-table plus `exile`/ `plus_one_plus_one_counters`); absent for a card without escape. |
 | `evoke` | CostToml \| null | no | - | Evoke (CR 702.74) — `[evoke]` with the same `[cost]`-table shape as `[echo]`; absent for a card without evoke. |
 | `flashback` | CostToml \| null | no | - | Flashback (CR 702.34) — `[flashback]` with the same `[cost]`-table shape (may carry a `[flashback.additional]` rider); absent for a card without flashback. |
+| `flavor` | string \| null | no | `null` | Verbatim printed flavor text — the italic words a rendered face sets under the rules divider. Metadata like `oracle`; the engine never reads it. |
 | `forecast` | HandActivatedAbility \| null | no | - | Forecast (CR 702.57, Skyscribing) — a `[forecast]` table (`[forecast.cost]` + `[[forecast.effects]]`), the reveal-and-keep sibling of `hand_ability`. Absent for a card without one. |
 | `free_cast_if` | Condition \| null | no | - | A printed conditional free-cast permission (CR 118.5) — `free_cast_if = { .. }` with the same `Condition` table shape as `enters_tapped_unless`; absent for a card without one. |
 | `functions_in_graveyard` | boolean | no | `false` | CR 603.6e — this card's triggered abilities fire from its owner's graveyard rather than the battlefield (Squee, Nether Traitor). `false` for every ordinary card. |

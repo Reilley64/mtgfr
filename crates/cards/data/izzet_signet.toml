@@ -5,6 +5,7 @@ id = "2fda4fe7-8b0c-489c-a000-6d358e614e34"
 default_print = "2c747a97-9070-4c1e-b7b7-52637fbb30e1"
 otags = ["activated-ability", "cycle-rav-signet", "mana-rock", "refund"]
 oracle = "{1}, {T}: Add {U}{R}."
+flavor = "The Izzet signet is redesigned often, each time becoming closer to a vanity portrait of Niv-Mizzet."
 
 [cost]
 generic = 2

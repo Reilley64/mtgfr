@@ -11,7 +11,7 @@ export type FaceVariant = "permanent" | "full" | "stack";
  * printing shows through the **art**, which the CDN already serves by print id. No mana cost: the
  * pip tray under the card owns cost, so the face never draws one.
  *
- * `typeLine` and `oracle` come from `CatalogCard` over the catalog RPC, not from a new wire field —
+ * `typeLine`, `oracle` and `flavor` come from `CatalogCard` over the catalog RPC, not from a new wire field —
  * `faceDataFrom` leaves them `""` and the caller folds them in (see `card-text.ts`). Only the
  * `full`/`stack` variants draw them; the square permanent has no room and shows none.
  */
@@ -36,6 +36,8 @@ export type FaceData = {
   /** `""` until the catalog lookup lands; the `permanent` variant draws neither in any case. */
   typeLine: string;
   oracle: string;
+  /** Printed flavor text, set in italics under the rules divider. `""` when the printing has none. */
+  flavor: string;
 };
 
 /**
@@ -76,6 +78,7 @@ export const BLANK_FACE: FaceData = {
   loyalty: "",
   typeLine: "",
   oracle: "",
+  flavor: "",
 };
 
 /** Read the renderer's inputs off a board object. */
@@ -90,6 +93,7 @@ export function faceDataFrom(view: ObjectView): FaceData {
     ...badges(view),
     typeLine: "",
     oracle: "",
+    flavor: "",
   };
 }
 

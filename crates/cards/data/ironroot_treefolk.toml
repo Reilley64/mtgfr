@@ -1,5 +1,6 @@
 # (no rules text — vanilla creature)
 name = "Ironroot Treefolk"
+flavor = "\"'I'll show you how to handle the treefolk!' the giant bragged, and he strode off into the forest. Two days later he returned, his face masked in sap and a nest behind his ear. None dared ask who won.\"\n—Azeworai, \"The Treeling\""
 sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
 id = "b7c0bb85-fb87-4c73-bc1b-7b4dc763c7e8"
 default_print = "6bdbba38-b4c9-4c14-b869-669b39390e4e"

@@ -1,5 +1,6 @@
 # (no rules text — vanilla creature)
 name = "Obsianus Golem"
+flavor = "\"The foot stone is connected to the ankle stone, the ankle stone is connected to the leg stone...\"\n—Song of the Artificer"
 otags = ["type-addition-from-none"]
 sets = ["2ed", "30a", "3ed", "4bb", "4ed", "6ed", "ced", "cei", "fbb", "lea", "leb", "me4", "sum"]
 id = "ac41171e-c454-49e9-9004-c082ae099630"

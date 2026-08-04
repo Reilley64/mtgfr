@@ -7,6 +7,7 @@ id = "afbc348a-7b27-4577-8c24-cd6d5b894dc1"
 default_print = "ef261999-1c18-46f3-bbd6-72911e14328f"
 otags = ["counters-matter"]
 oracle = "Proliferate X times. (To proliferate, choose any number of permanents and/or players, then give each another counter of each kind already there.)"
+flavor = "\"When you find an equation that works, all that's left is finding its many applications.\"\n—Zimone"
 
 [cost]
 blue = 2

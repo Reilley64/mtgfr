@@ -8,6 +8,7 @@ id = "5effaa94-7f87-4485-8959-473d584c5034"
 default_print = "606c5f42-fe5f-4dcd-b8f4-b67beabe3f0a"
 otags = ["activated-ability", "cycle-dka-enemy-utilityland", "draw-engine", "repeatable-plunder", "sacrifice-outlet-creature", "utility-land"]
 oracle = "{T}: Add {C}.\n{2}{B}{G}, {T}, Sacrifice a creature: Draw a card."
+flavor = "\"I love what they've done with the place.\"\n—Liliana Vess"
 
 [kind]
 type = "land"

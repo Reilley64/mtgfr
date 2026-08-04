@@ -6,6 +6,7 @@ id = "8a29bd35-33ef-4317-9fe5-8aaff5d7d64d"
 default_print = "956d4728-e7a3-43f4-a350-86eca1b95d06"
 otags = ["cycle-ori-pivotal-moment", "removal-nonland", "removal-sacrifice", "sweeper"]
 oracle = "For each player, you choose from among the permanents that player controls an artifact, a creature, an enchantment, and a planeswalker. Then each player sacrifices all other nonland permanents they control."
+flavor = "\"Here we are again, Victor. This is how it always goes.\"\n—Mister Fantastic, Reed Richards"
 
 [cost]
 generic = 3

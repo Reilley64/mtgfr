@@ -5,6 +5,7 @@ sets = ["c13", "cmd", "dis", "e01"]
 id = "6d42dff5-97ec-4768-b112-84a3584d0b87"
 default_print = "92b8cffe-4466-48b0-836e-51ba5db36696"
 oracle = "Each player draws two cards."
+flavor = "\"I could see in the other mage's eyes that he'd thought of it too. Then it became a race to exploit the knowledge first.\""
 
 [cost]
 generic = 1

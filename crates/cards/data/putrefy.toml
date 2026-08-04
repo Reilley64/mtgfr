@@ -3,6 +3,7 @@ name = "Putrefy"
 sets = ["blc", "c15", "c16", "c18", "c19", "c20", "cm2", "cma", "ddj", "dgm", "dsc", "ecc", "eoc", "gk1", "khc", "mm3", "onc", "otc", "p06", "pip", "plst", "prm", "rav", "rvr", "sld", "sta", "td0", "td2", "tdc"]
 otags = ["cycle-mm3-draft-signpost", "cycle-rvr-u-two-color", "hate-regenerate", "removal-artifact", "removal-creature", "removal-destroy", "single-english-word-name", "single-target-instant-sorcery", "spot-removal"]
 oracle = "Destroy target artifact or creature. It can't be regenerated."
+flavor = "\"We are all decaying, always in a state of near-death. One moment without breath and we begin to break down.\"\n—Cevraya, Golgari shaman"
 id = "9b271430-f53d-42d6-a547-2f286dd9bcb6"
 default_print = "ad6ed9f1-2014-49e2-91c6-2b55c8d60cdc"
 

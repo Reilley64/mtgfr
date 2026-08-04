@@ -6,6 +6,7 @@ sets = ["10e", "2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "8ed", "9
 id = "375932e6-1b3e-48dc-8154-9b664c3add34"
 default_print = "747d4c99-0287-4138-af13-6244f33d2e57"
 oracle = "Flying (This creature can't be blocked except by creatures with flying or reach.)\nNightmare's power and toughness are each equal to the number of Swamps you control."
+flavor = "The Nightmare arises from its lair in the swamps. As the poisoned land spreads, so does the Nightmare's rage and terrifying strength."
 subtypes = ["Nightmare", "Horse"]
 keywords = ["flying"]
 

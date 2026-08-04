@@ -1,5 +1,6 @@
 # (no rules text — vanilla creature)
 name = "Merfolk of the Pearl Trident"
+flavor = "\"The merfolk of the Pearl Trident have risen from the waves since the earliest days, at times allies to humans, other times enemies. Now their power is cresting again, and who can say which way the new tide will flow.\"\n—Kalis, Onean scholar"
 otags = ["cycle-s99-vanilla-1-drop", "type-errata-summon-creature"]
 sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "ced", "cei", "fbb", "itp", "lea", "leb", "m13", "plst", "por", "psal", "rqs", "s99", "sld", "sum", "wc01"]
 id = "218d9277-c179-4de3-9c7f-79b5a6d4fa38"

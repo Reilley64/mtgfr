@@ -6,6 +6,7 @@ sets = ["arc", "brc", "c14", "c15", "c17", "c18", "cm2", "cmd", "cmm", "cmr", "j
 id = "0e2575be-c596-4c8c-bf07-7941ca065721"
 default_print = "ba98ab5e-cd66-4d2a-8f7e-42ed6bc51810"
 oracle = "{T}: Add {C}{C}{C}.\n{3}, {T}, Sacrifice this artifact: Draw three cards."
+flavor = "Only the Eldrazi mind thinks in the warped paths required to open the hedrons and tap the power within."
 
 [cost]
 generic = 6

@@ -7,6 +7,7 @@ subtypes = ["Aura"]
 id = "ec9e8611-e785-4d5d-b6e1-bf63daf408df"
 default_print = "6619db75-4d32-4c7b-856c-00aa33434342"
 oracle = "Enchant creature\nEnchanted creature gets +1/+1 for each card in your hand."
+flavor = "\"An angel appeared in the smoldering skies above the fray, her clothes as flames, her armor as fire.\"\n—\"Hymn of Angelfire\""
 
 [cost]
 generic = 1

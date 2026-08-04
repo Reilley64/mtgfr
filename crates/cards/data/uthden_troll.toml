@@ -5,6 +5,7 @@ sets = ["2ed", "30a", "3ed", "4bb", "4ed", "ath", "brb", "ced", "cei", "fbb", "l
 id = "d6329dcc-b450-482a-8ee3-45449f7a4b3d"
 default_print = "30bb1158-fe16-49e6-9b7a-44b7bee84737"
 oracle = "{R}: Regenerate this creature."
+flavor = "\"Oi oi oi, me gotta hurt in 'ere,\nOi oi oi, me smell a ting is near,\nGonna bosh 'n gonna nosh 'n da\nhurt'll disappear.\"\n—Traditional"
 subtypes = ["Troll"]
 
 [cost]

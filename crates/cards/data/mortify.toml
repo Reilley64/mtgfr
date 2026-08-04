@@ -5,6 +5,7 @@ sets = ["40k", "acr", "c16", "c17", "c18", "cm2", "cma", "cmd", "cns", "ddk", "d
 id = "faa01ed1-ccfa-4e58-951f-cd81f9068027"
 default_print = "88e85619-3a7d-48c2-b9b0-20718c913696"
 oracle = "Destroy target creature or enchantment."
+flavor = "The queen sent her champion to defeat the necromancer threat. His helmet was returned the next day, warped and stained with blood."
 
 [cost]
 generic = 1

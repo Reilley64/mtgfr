@@ -71,19 +71,45 @@ export function wrapOracle(text: string, maxWidth: number, fontPx: number, measu
 }
 
 /**
- * The largest size whose wrapped text fits the box, never below 60% of `maxFontPx`. A card with
+ * Everything the text box sets: the rules lines, then the divider row, then the flavor lines. The
+ * divider is the index of a blank line the caller rules across; `null` when the card prints only
+ * one of the two blocks.
+ */
+export type TextBlock = { lines: Piece[][]; divider: number | null };
+
+/** Flavor text is set in italics, which is what a reminder piece already draws as. */
+const italic = (line: Piece[]): Piece[] => line.map((piece) => ({ ...piece, reminder: true }));
+
+export function cardTextBlock(
+  oracle: string,
+  flavor: string,
+  maxWidth: number,
+  fontPx: number,
+  measure: Measure,
+): TextBlock {
+  const rules = oracle === "" ? [] : wrapOracle(oracle, maxWidth, fontPx, measure);
+  if (flavor === "") return { lines: rules, divider: null };
+  const flavorLines = wrapOracle(flavor, maxWidth, fontPx, measure).map(italic);
+  if (rules.length === 0) return { lines: flavorLines, divider: null };
+  return { lines: [...rules, [], ...flavorLines], divider: rules.length };
+}
+
+/**
+ * The largest size whose wrapped block fits the box, never below 60% of `maxFontPx`. A card with
  * more text than its box holds overhangs at that floor rather than shrinking to illegibility —
  * which is what an over-full printed text box does too.
  */
-export function fitOracleSize(
-  text: string,
+export function fitCardText(
+  oracle: string,
+  flavor: string,
   box: { w: number; h: number },
   maxFontPx: number,
   measure: Measure,
 ): number {
   const floor = maxFontPx * MIN_SCALE;
   for (let size = maxFontPx; size > floor; size -= 0.5) {
-    if (wrapOracle(text, box.w, size, measure).length * size * LINE_HEIGHT <= box.h) return size;
+    const { lines } = cardTextBlock(oracle, flavor, box.w, size, measure);
+    if (lines.length * size * LINE_HEIGHT <= box.h) return size;
   }
   return floor;
 }

@@ -5,6 +5,7 @@ id = "82d109ea-3421-46eb-9bbf-f7f28b548ea6"
 default_print = "2ebe58a3-ba3f-451e-b834-30e71f071861"
 otags = ["combat-trigger", "legendary", "must-attack", "random-effect"]
 oracle = "At the beginning of combat on your turn, choose an opponent at random. Ruhan attacks that player this combat if able."
+flavor = "\"I'm not great at everything, but I am great at one thing: surrounding myself with excellent people. And that tends to take care of the rest.\""
 subtypes = ["Giant", "Warrior"]
 legendary = true
 

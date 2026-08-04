@@ -6,6 +6,7 @@ id = "0477b923-9f32-4e7f-ac08-c715cca819a4"
 default_print = "9c014b89-895c-432f-94f5-cda2dfac57e4"
 otags = ["activated-ability", "graveyard-hate", "removal-tempo"]
 oracle = "{T}, Exile two target cards from an opponent's graveyard: Remove target attacking or blocking creature from combat and tap it."
+flavor = "\"Our unity humbles our foes.\""
 approximates = "only \"attacking\" is modeled — no `blocking` filter axis exists yet on `PermanentFilter` (see `Effect::RemoveFromCombat`'s own doc); widen with one if a card needs a blocking target too."
 subtypes = ["Human", "Cleric"]
 

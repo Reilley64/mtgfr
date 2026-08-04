@@ -65,6 +65,7 @@ function face(overrides: Partial<FaceData> = {}): FaceData {
     // catalog lookup does.
     typeLine: "",
     oracle: "",
+    flavor: "",
     ...overrides,
   };
 }
@@ -165,6 +166,24 @@ describe("drawFace", () => {
     const fonts = ops.filter((o) => o.op === "font").map((o) => String(o.args[0]));
     expect(fonts.some((f) => f.startsWith("italic") && f.includes(BODY_FONT))).toBe(true);
     expect(fonts.some((f) => !f.startsWith("italic") && f.includes(BODY_FONT))).toBe(true);
+  });
+
+  it("sets flavor text under a rule, in italics", () => {
+    const { ctx, ops, texts } = fakeCtx();
+    drawFace(ctx, inputs({ variant: "full", face: face({ oracle: "Flying", flavor: "It watches." }) }));
+
+    expect(texts().join(" ")).toContain("watches.");
+    // The rule itself: a filled band no text draws, between the two blocks.
+    expect(ops.some((o) => o.op === "fillRect")).toBe(true);
+    const fonts = ops.filter((o) => o.op === "font").map((o) => String(o.args[0]));
+    expect(fonts.some((f) => f.startsWith("italic") && f.includes(BODY_FONT))).toBe(true);
+  });
+
+  it("rules no divider when the card prints no flavor", () => {
+    const { ctx, ops } = fakeCtx();
+    drawFace(ctx, inputs({ variant: "full", face: face({ oracle: "Flying" }) }));
+
+    expect(ops.some((o) => o.op === "fillRect")).toBe(false);
   });
 
   it("draws a planeswalker's loyalty instead of a power/toughness", () => {

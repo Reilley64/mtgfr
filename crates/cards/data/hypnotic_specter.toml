@@ -6,6 +6,7 @@ sets = ["10e", "2ed", "30a", "3ed", "4bb", "4ed", "9ed", "ath", "ced", "cei", "f
 id = "759af941-f6a3-4726-91f2-9b1e4e55ea71"
 default_print = "e12847f4-4ace-4116-bc96-f3e5336eb35f"
 oracle = "Flying\nWhenever this creature deals damage to an opponent, that player discards a card at random."
+flavor = "\"...There was no trace/ Of aught on that illumined face...\"\n—Samuel Coleridge, \"Phantom\""
 subtypes = ["Specter"]
 keywords = ["flying"]
 

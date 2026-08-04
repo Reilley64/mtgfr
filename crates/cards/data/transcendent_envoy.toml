@@ -9,6 +9,7 @@ id = "f08f7814-4585-41dd-b82e-ed2ef5e24242"
 default_print = "363a88de-c9ae-41b8-a8d8-321a1b95a427"
 otags = ["cost-reducer-aura", "evasion", "synergy-aura", "unique-type-line"]
 oracle = "Flying\nAura spells you cast cost {1} less to cast."
+flavor = "\"The first griffins were made by the gods to capture falling stars; they were given the keenest eyes and the swiftest wings, and sent to keep watch above the clouds.\"\n—*The Cosmogony*"
 subtypes = ["Griffin"]
 keywords = ["flying"]
 

@@ -8,6 +8,7 @@ id = "6cd58a88-6434-4c55-bf93-a739b5ed9bc1"
 default_print = "e5af06c8-86ab-4731-aa4a-2eec2c664488"
 otags = ["activated-ability", "cycle-stx-campus", "mana-sink", "scry", "utility-land"]
 oracle = "This land enters tapped.\n{T}: Add {B} or {G}.\n{4}, {T}: Scry 1. (Look at the top card of your library. You may put that card on the bottom.)"
+flavor = "Mage-students fascinated by the energies of life and death choose Witherbloom, the college of essence studies."
 enters_tapped = true
 
 [kind]

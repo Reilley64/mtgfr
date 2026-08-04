@@ -6,6 +6,7 @@ id = "d683d985-9888-4d21-8b5f-69e69ce4a03b"
 default_print = "95ca89ea-1200-4bb4-ae4b-af35d3ccd35b"
 otags = ["donate-rampant-growth", "drawback", "land-ramp", "removal-creature", "removal-exile", "single-target-instant-sorcery", "spot-removal", "swap-removal", "tutor-land-basic", "tutor-land-to-battlefield"]
 oracle = "Exile target creature. Its controller may search their library for a basic land card, put that card onto the battlefield tapped, then shuffle."
+flavor = "\"I ain't a man any more. I'm just . . . a monster.\"\n—The Thing, Ben Grimm"
 
 [cost]
 white = 1

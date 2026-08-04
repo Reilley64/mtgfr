@@ -9,6 +9,7 @@ id = "4fb00dbe-1f82-4ba6-b18c-97e816d10d3a"
 default_print = "537ea7e7-e8e8-4736-bdd9-1085f1a7c259"
 otags = ["activated-ability", "anthem", "mana-rock-with-set-s-mechanic", "mini-refund", "power-boost-to-all", "toughness-boost-to-all", "typal-choose", "utility-mana-rock"]
 oracle = "As this artifact enters, choose a creature type.\nCreatures you control of the chosen type get +1/+1.\n{T}: Add one mana of any color."
+flavor = "The Hand is comprised of many ninja factions united under the banner of the Beast, an ancient demon who grants them dark, mystical strength."
 
 [cost]
 generic = 3

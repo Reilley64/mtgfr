@@ -62,7 +62,7 @@ Camera SHALL be pure `{ panX, panY, zoom }` with `screen = world * zoom + pan`. 
 
 ### Requirement: Battlefield Paint and Chrome
 
-Battlefield paint order SHALL be felt → seats → resting cards → avatars → arrows → flights. A face-up resting permanent SHALL paint as a rendered card face — the card's art and its name drawn into a real card frame chosen from the card's colours and type — not as a crop of the printed card image. The rendered face's frame SHALL border the tile on all four edges. The rendered face SHALL omit the printed mana cost, because the hand bar's pip tray owns cost, and SHALL omit the printed power/toughness plate, because the live P/T badge already paints over the tile. A token SHALL draw its art edge to edge with no frame and no name, so it reads as a token at a glance; a legendary permanent SHALL draw the legend crown. A tapped permanent SHALL tilt a few degrees off square rather than turn a quarter turn, because a square tile turned 90° keeps its silhouette, and SHALL paint a black veil over its face; both the tilt and the veil SHALL follow the tap animation's progress. Counters, status badges, the live P/T badge, playable borders, and commander gold SHALL paint over the rendered face. A face-down permanent SHALL paint the card back. Until a face has been rendered the printed card image SHALL paint in its place, and the board SHALL repaint when the face lands. Only the battlefield SHALL take the rendered face: a zone-column pile SHALL paint the printed card image. Playability SHALL use playable borders, not unplayable darkening. Mana-only actions and free-tap lands SHALL NOT receive playable borders but remain selectable. Avatars SHALL paint Gravatar or monogram faces with life, hand count, and clock chips (max commander damage, poison, rad). After every attacked defender has declared blockers, blocked attackers SHALL point at living blockers (attack-red); block-green arrows SHALL be suppressed; blocked attackers with no living blocker SHALL paint no combat arrow. Stack→target arrows SHALL paint on the Mount layer above resting art. Shift on a combat drop SHALL commit every copy in the dragged cluster.
+Battlefield paint order SHALL be felt → seats → resting cards → avatars → arrows → flights. A face-up resting permanent SHALL paint as a rendered card face — the card's art and its name drawn into a real card frame chosen from the card's colours and type — not as a crop of the printed card image. The rendered face's frame SHALL border the tile on all four edges. The rendered face SHALL omit the printed mana cost, because the hand bar's pip tray owns cost. A creature's square SHALL carry the printed power/toughness plate, and the board SHALL write the live power/toughness onto that plate rather than a second badge over it, so counters and damage still track without redrawing the face; a token or a tile still showing the printed card image SHALL keep the rounded P/T badge. A token SHALL draw its art edge to edge with no frame and no name, so it reads as a token at a glance; a legendary permanent SHALL draw the legend crown. A tapped permanent SHALL tilt a few degrees off square rather than turn a quarter turn, because a square tile turned 90° keeps its silhouette, and SHALL paint a black veil over its face; both the tilt and the veil SHALL follow the tap animation's progress. Counters, status badges, the live P/T badge, playable borders, and commander gold SHALL paint over the rendered face. A face-down permanent SHALL paint the card back. Until a face has been rendered the printed card image SHALL paint in its place, and the board SHALL repaint when the face lands. A zone-column pile SHALL paint the printed card image, not a rendered face. Playability SHALL use playable borders, not unplayable darkening. Mana-only actions and free-tap lands SHALL NOT receive playable borders but remain selectable. Avatars SHALL paint Gravatar or monogram faces with life, hand count, and clock chips (max commander damage, poison, rad). After every attacked defender has declared blockers, blocked attackers SHALL point at living blockers (attack-red); block-green arrows SHALL be suppressed; blocked attackers with no living blocker SHALL paint no combat arrow. Stack→target arrows SHALL paint on the Mount layer above resting art. Shift on a combat drop SHALL commit every copy in the dragged cluster.
 
 #### Scenario: Mana-only outline skip
 - **WHEN** a permanent’s only current action is flagged `mana_only`
@@ -99,6 +99,32 @@ Battlefield paint order SHALL be felt → seats → resting cards → avatars �
 #### Scenario: A tapped permanent reads as tapped
 - **WHEN** a permanent becomes tapped
 - **THEN** its tile settles at a slight tilt off square and darkens under a black veil
+
+#### Scenario: Live power/toughness prints on the square's own plate
+- **WHEN** a rendered creature square has taken damage or counters
+- **THEN** the current power/toughness prints on the frame's power/toughness plate and no badge box paints over it
+
+### Requirement: Rendered Card Face
+
+A rendered card face SHALL be drawn from the M15 frame assets — art, name, type line, rules text, flavor text and the power/toughness plate composed onto a real frame — never a crop of the printed card image. Frame, legend crown, and power/toughness plate SHALL be chosen from the card's colours and type; no land SHALL take a plate. Typography SHALL follow the printed card: the name and type line set in the title face, rules and flavor in the body face, mana symbols in rules text drawn as coloured disks bearing their mana-font glyph rather than braces, reminder text and flavor text set in italics, and rules text shrunk to fit its box the way a crowded printed box sets smaller. A card that prints both rules and flavor text SHALL separate them with the printed flavor divider — a soft shadow across most of the text box, not a drawn line. The mana cost SHALL never be drawn: the hand bar's pip tray owns cost.
+
+The full card face SHALL be drawn for hand and command-zone tiles; the square permanent face SHALL be drawn for the battlefield and draws neither type line nor rules text, having no room for them.
+
+#### Scenario: Rules text sets mana symbols as pips
+- **WHEN** a face's rules text contains a mana symbol such as `{T}` or `{G}`
+- **THEN** it draws as the coloured disk with its mana-font glyph, and no braces appear on the card
+
+#### Scenario: Flavor sits under the divider
+- **WHEN** a card prints both rules text and flavor text
+- **THEN** the flavor sets in italics below a divider ruled between the two blocks
+
+#### Scenario: A card with no flavor rules no divider
+- **WHEN** a card's printing prints no flavor text
+- **THEN** its rules text sets alone with no divider
+
+#### Scenario: Hand tiles read as cards
+- **WHEN** a hand tile paints for an object with a known printing
+- **THEN** it paints the full rendered face, with its cost shown only by the pip tray beneath it
 
 ### Requirement: Hand and Zone Bar
 

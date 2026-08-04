@@ -3,8 +3,8 @@
 
 import type { CatalogCard, WireKind } from "~/wire/types";
 
-/** Type line and rules text for a face. Empty strings draw nothing. */
-export type CardText = { typeLine: string; oracle: string };
+/** Type line, rules text and flavor for a face. Empty strings draw nothing. */
+export type CardText = { typeLine: string; oracle: string; flavor: string };
 
 const KIND_LABEL: Record<WireKind["kind"], string> = {
   artifact: "Artifact",
@@ -31,5 +31,5 @@ export function typeLineOf(card: CatalogCard): string {
 }
 
 export function cardTextOf(card: CatalogCard): CardText {
-  return { typeLine: typeLineOf(card), oracle: card.oracle ?? "" };
+  return { typeLine: typeLineOf(card), oracle: card.oracle ?? "", flavor: card.flavor ?? "" };
 }

@@ -5,6 +5,7 @@ sets = ["a25", "cma", "cmd", "dmr", "hop", "m14", "m15", "plst", "usg"]
 id = "d139294c-36bb-4a1e-800d-50c4a4ae9877"
 default_print = "fd0e6027-1516-4587-8f16-9f2354074503"
 oracle = "Target player gains 2 life for each creature on the battlefield."
+flavor = "\"In the gathering there is strength for all who founder, renewal for all who languish, love for all who sing.\"\n—*Song of All*, canto 642"
 
 [cost]
 generic = 3

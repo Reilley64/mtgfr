@@ -9,6 +9,7 @@ id = "b21d6482-1b3a-47e6-98a5-3067f5f3818b"
 default_print = "4e336e87-e5af-46a0-8caf-5d9ad8d671fd"
 otags = ["multi-removal", "multiple-targets", "removal-bounce", "removal-nonland", "rescue-nonland"]
 oracle = "Return six target nonland permanents to their owners' hands."
+flavor = "The militia formed up in the central plaza awaiting the onslaught, but the giants never quite made it."
 
 [cost]
 generic = 3

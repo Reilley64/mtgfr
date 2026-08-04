@@ -7,6 +7,7 @@ sets = ["acr", "afc", "c13", "c16", "c20", "clb", "cmd", "fic", "m3c", "msc", "o
 id = "ea9709b6-4c37-4d5a-b04d-cd4c42e4f9dd"
 default_print = "48f9976c-e8a2-4f5a-a2d0-aa63b27c19dc"
 oracle = "Creatures can't attack you unless their controller pays {2} for each creature they control that's attacking you."
+flavor = "\"You've failed Gerrard. You've failed the Legacy. You've failed yourself. I can do no more.\"\n—Volrath, to Karn"
 approximates = "the tax is auto-paid (pool first, then auto-tapped lands) at declare time rather than offered as an explicit pay-or-decline choice — can't-afford makes the declaration illegal."
 [cost]
 generic = 2

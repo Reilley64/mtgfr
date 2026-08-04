@@ -1,5 +1,6 @@
 # (no rules text — vanilla creature)
 name = "Gray Ogre"
+flavor = "The Ogre philosopher Gnerdel believed the purpose of life was to live as high on the food chain as possible. She refused to eat vegetarians, preferring to live entirely on creatures that preyed on sentient beings."
 otags = ["cycle-lea-red-escalate"]
 sets = ["2ed", "30a", "3ed", "4bb", "4ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
 id = "83c8a3a6-2e1a-4e26-8847-6d066f42d906"

@@ -7,6 +7,7 @@ id = "78826359-fe63-44ad-adc4-a17ffcd710e4"
 default_print = "7afc4a15-5ff8-457a-aa62-803b2d78d912"
 otags = ["land-ramp", "refund", "tutor-land-forest", "tutor-land-to-battlefield"]
 oracle = "Search your library for a Forest card, put that card onto the battlefield, then shuffle."
+flavor = "\"How can you build a better future without first looking to the past?\"\n—Queen Mother Ramonda"
 
 [cost]
 generic = 1

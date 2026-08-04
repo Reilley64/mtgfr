@@ -8,6 +8,7 @@ id = "0070db93-142b-4d04-afd3-836792dc134b"
 default_print = "0a451ab5-6244-48a0-a638-07da72b156b5"
 otags = ["activated-ability", "cycle-tangoland", "lands-matter", "nonbasic-basic-land-type", "synergy-basic"]
 oracle = "({T}: Add {G} or {U}.)\nThis land enters tapped unless you control two or more basic lands."
+flavor = "\"Sheesh. Ya call a place Monster Isle and wotta ya expect? It's not gonna be full a' petunias and bunny bun buns.\"\n—The Thing, Ben Grimm"
 
 [kind]
 type = "land"

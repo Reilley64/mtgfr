@@ -7,6 +7,7 @@ sets = ["cmd", "zen"]
 id = "0c82ae16-f995-4ac3-adb4-a5cc93a6e6f2"
 default_print = "4d2c0c7e-a486-45c5-92fa-f36087714ad3"
 oracle = "Defender, flying\n{T}: Put this creature and each creature it's blocking on top of their owners' libraries, then those players shuffle."
+flavor = "To explorers, \"point man\" is a polite way of saying \"gomazoa fodder.\""
 subtypes = ["Jellyfish"]
 keywords = ["defender", "flying"]
 

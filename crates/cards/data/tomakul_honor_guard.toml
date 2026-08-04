@@ -8,6 +8,7 @@ id = "b68cf4e6-205e-40b6-b28b-f4b7d8af7017"
 default_print = "c7745439-f40b-4647-8bff-53751d511bbd"
 otags = ["french-vanilla", "rhystic", "triggered-ability"]
 oracle = "Ward {2} (Whenever this creature becomes the target of a spell or ability an opponent controls, counter it unless that player pays {2}.)"
+flavor = "In the Great Desert, one law is enforced over all others: water belongs to all."
 subtypes = ["Human", "Soldier"]
 keywords = [{ ward = 2 }]
 

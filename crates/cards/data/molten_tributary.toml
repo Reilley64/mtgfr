@@ -7,6 +7,7 @@ id = "58c592ed-20fc-481b-909b-2315567e5f20"
 default_print = "9c6d0f64-b8e1-41bc-ab86-bd6783daf72a"
 otags = ["activated-ability", "cycle-dmu-dual-land", "nonbasic-basic-land-type"]
 oracle = "({T}: Add {U} or {R}.)\nThis land enters tapped."
+flavor = "Though dangerous, Shiv teems with both life and mana, making it a tempting destination for ambitious mages."
 enters_tapped = true
 
 [kind]

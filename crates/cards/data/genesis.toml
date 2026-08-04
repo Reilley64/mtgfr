@@ -4,6 +4,7 @@ name = "Genesis"
 sets = ["j13", "jud", "mh1", "slc", "td0", "vma", "wc02"]
 otags = ["intervening-if-clause", "regrowth-creature", "regrowth-self", "repeatable-card-advantage", "single-english-word-name", "trigger-from-graveyard"]
 oracle = "At the beginning of your upkeep, if this creature is in your graveyard, you may pay {2}{G}. If you do, return target creature card from your graveyard to your hand."
+flavor = "Not dryad, centaur, or avatar but life itself."
 subtypes = ["Incarnation"]
 id = "15afdd88-05fc-4335-8a55-c6ee702f3bef"
 default_print = "9b741d88-513a-4f47-a4fd-af42c5e44b6d"

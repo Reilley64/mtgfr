@@ -5,6 +5,7 @@ id = "2fc6305e-e75e-478a-826b-49f655ed832c"
 default_print = "f2e0978f-8577-443b-9f7d-59f439510d78"
 otags = ["anthem", "double-strike", "must-attack", "static"]
 oracle = "All creatures have double strike and attack each combat if able."
+flavor = "\"Diplomacy has solved nothing. Only bloodspill can end this now. Call forth the warbringer.\"\n—Basandra, Battle Seraph"
 subtypes = ["Avatar"]
 
 [cost]

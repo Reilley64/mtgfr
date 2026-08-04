@@ -8,6 +8,7 @@ sets = ["40k", "c13", "cmd", "hop", "msc", "pls", "pz1"]
 id = "2da232d8-580f-4116-b977-2c59cd21b5a4"
 default_print = "772c0618-b805-4a5a-b5bc-7086b3b7f9df"
 oracle = "Choose one —\n• Destroy target artifact.\n• Destroy target enchantment.\n• Destroy target artifact and target enchantment."
+flavor = "\"Crovax knows we're coming now,\" said a grinning Sisay. \"I just sent the *Predator* crashing into his stronghold.\""
 modal = true
 
 [cost]

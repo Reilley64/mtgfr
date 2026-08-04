@@ -5,6 +5,7 @@ sets = ["2ed", "30a", "8ed", "ced", "cei", "lea", "leb"]
 id = "caf3c6ec-d17e-497c-8fe7-6f818ce93f96"
 default_print = "a6b2fe92-0521-4a85-9a8d-4203b0e0e118"
 oracle = "{T}: Destroy target Wall."
+flavor = "Foolishly, Najib retreated to his castle at El-Abar; the next morning he was dead. In just one night, the dwarven forces had reduced the mighty walls to mere rubble."
 subtypes = ["Dwarf"]
 
 [cost]

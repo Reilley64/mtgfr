@@ -6,6 +6,7 @@ otags = ["activated-ability", "cycle-inv-dual-tapland"]
 id = "f0367926-4380-4d22-8cb8-46c2076f102a"
 default_print = "4febfcf0-6537-4e30-a963-9859314d0657"
 oracle = "This land enters tapped.\n{T}: Add {W} or {U}."
+flavor = "A beacon in the night, a dream in the fog."
 enters_tapped = true
 
 [kind]

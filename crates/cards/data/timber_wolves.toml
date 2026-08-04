@@ -8,6 +8,7 @@ sets = ["2ed", "30a", "3ed", "4bb", "4ed", "ced", "cei", "fbb", "lea", "leb", "s
 id = "35d07ac9-b184-4b5f-8192-34b1db042f69"
 default_print = "0d24fc87-7b30-4c99-a525-b1746821391c"
 oracle = "Banding (Any creatures with banding, and up to one without, can attack in a band. Bands are blocked as a group. If any creatures with banding you control are blocking or being blocked by a creature, you divide that creature's combat damage, not its controller, among any of the creatures it's being blocked by or is blocking.)"
+flavor = "Though many think of Wolves as solitary predators, they are actually extremely social animals. During a hunt they often call to each other, which can be quite unsettling for their prey."
 subtypes = ["Wolf"]
 keywords = ["banding"]
 approximates = "banding only takes over the damage division when this blocks; attacking in a band, and dividing a blocker's damage while attacking, are not modeled"

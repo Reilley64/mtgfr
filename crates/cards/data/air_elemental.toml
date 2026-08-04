@@ -5,6 +5,7 @@ sets = ["10e", "2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "8ed", "9
 id = "7744bae4-a8b7-44a5-9b4c-0048ad4cc448"
 default_print = "a27efec0-40c4-48bc-a21a-3af28a6529b5"
 oracle = "Flying"
+flavor = "As the ship approached, the jade totem rose high overhead. Power rippled. Eyes of stone glowed and crackled. Out hissed a breath of the world, and a windstorm came alive."
 subtypes = ["Elemental"]
 keywords = ["flying"]
 

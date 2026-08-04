@@ -5,6 +5,7 @@ sets = ["10e", "2ed", "30a", "3ed", "4bb", "4ed", "8ed", "9ed", "acr", "ced", "c
 id = "9ed6f28f-a3db-48c5-9ab0-b90a7fba5f57"
 default_print = "5cceb11b-0f70-4749-8a8c-d698cd01cd6e"
 oracle = "{T}: Destroy target tapped creature."
+flavor = "Trained in the arts of stealth, the royal assassins choose their victims carefully, relying on timing and precision rather than brute force."
 subtypes = ["Human", "Assassin"]
 
 [cost]

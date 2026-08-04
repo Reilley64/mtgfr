@@ -77,6 +77,9 @@ message CatalogCard {
   // The card's printed (oracle) rules text, for the deck builder's read-the-text hover. Absent
   // for a card whose text isn't recorded, or a vanilla.
   optional string oracle = 11;
+  // The card's printed flavor text — the italic words a rendered card face sets under the rules
+  // divider. Absent when the printing prints none.
+  optional string flavor = 18;
   // Set/edition code — deprecated; always empty. Use `sets`.
   string set = 12;
   // Printed subtypes for search (creature types, plus a land's printed types).

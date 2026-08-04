@@ -6,6 +6,7 @@ sets = ["c15", "c21", "cma", "cmd", "cmr", "cns", "e02", "gn3", "mkc", "pz1", "s
 id = "1e7bddbd-e448-4aea-9d18-b44bd45837c5"
 default_print = "210920ef-917b-4e2c-a5da-1180baa37959"
 oracle = "Enchant creature\nEnchanted creature gets +2/+2, has vigilance, and can't attack you or planeswalkers you control."
+flavor = "\"I prefer loyalty to be a matter of respect, not of magic. But one does what one must.\"\n—Kaalia of the Vast"
 subtypes = ["Aura"]
 
 [cost]

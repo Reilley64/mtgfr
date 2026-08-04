@@ -5,6 +5,7 @@ otags = ["activated-ability", "cycle-lea-slush-art", "evasion", "mana-dork", "re
 id = "d3a0b660-358c-41bd-9cd2-41fbf3491b1a"
 default_print = "492c2f9a-51e7-4e0f-9899-23bf43ea988b"
 oracle = "Flying\n{T}: Add one mana of any color."
+flavor = "The migration of the cranes is believed to be a portent of coming abundance in Wakanda."
 sets = ["msc"]
 subtypes = ["Bird"]
 keywords = ["flying"]
