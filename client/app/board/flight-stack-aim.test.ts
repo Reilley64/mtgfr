@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ObjectView, PlayerView, VisibleState } from "~/wire/types";
 import type { GameFoldState } from "../game/fold";
-import { CARD_W, ZONE } from "./geometry/layout";
+import { FLIGHT_CARD_W, ZONE } from "./geometry/layout";
 import { STACK_CARD_W, stackFaceScreenOrigin, stackPeekFor, stackPresentation } from "./geometry/stackLayout";
 import { FlightsSynced, HandActionActivated, KeyboardEscape } from "./messages";
 import { handFlightScale, spawnFlight, stackFlightScale, stepFlights } from "./motion/flights";
@@ -104,7 +104,7 @@ function restingStackFace(model: ReturnType<typeof initialBoardModel>, count: nu
 describe("stack flight settle handoff", () => {
   it("sizes stack flights to the resting HTML stack face width", () => {
     const zoom = 1;
-    expect(stackFlightScale(zoom)).toBe(STACK_CARD_W / (CARD_W * zoom));
+    expect(stackFlightScale(zoom)).toBe(STACK_CARD_W / (FLIGHT_CARD_W * zoom));
     expect(STACK_CARD_W).toBe(180);
   });
 
@@ -127,7 +127,7 @@ describe("stack flight settle handoff", () => {
             scale: 2,
             targetX: BOARD_VIEWPORT.width - 160,
             targetY: BOARD_VIEWPORT.height / 2,
-            targetScale: 112 / CARD_W,
+            targetScale: 112 / FLIGHT_CARD_W,
             kind: "stack",
             fromCardId: fromHand,
           }),

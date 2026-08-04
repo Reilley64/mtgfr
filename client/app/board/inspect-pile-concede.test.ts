@@ -8,6 +8,7 @@ import type { GameFoldState } from "../game/fold";
 import { SubmitIntent } from "../game/intents";
 import { worldToScreen } from "./geometry/camera";
 import { avatarPos, layout } from "./geometry/layout";
+import { handMetrics } from "./html/hand";
 import type { Message } from "./messages";
 import {
   AltDown,
@@ -93,12 +94,24 @@ function update(model: BoardModel, message: Message): BoardModel {
   return next;
 }
 
-function screenCenterForCard(fold: GameFoldState, id: number) {
+function screenCenterForCard(fold: GameFoldState, id: number, camera = initialBoardModel().camera) {
   const state = fold.state;
   if (state == null) throw new Error("expected game state");
   const card = layout(state, state.viewer).find((c) => c.id === id);
   if (card == null) throw new Error(`expected card ${id}`);
-  return worldToScreen(initialBoardModel().camera, card.x + card.w / 2, card.y + card.h / 2);
+  return worldToScreen(camera, card.x + card.w / 2, card.y + card.h / 2);
+}
+
+/**
+ * A cursor point that is over card `id` *and* inside the hand sticky band — the raised hand faces
+ * overlap the board, so a pointer there hits both. Pans the camera to arrange that rather than
+ * depending on where a seat's rows happen to fall on screen.
+ */
+function overCardInHandBand(model: BoardModel, fold: GameFoldState, id: number) {
+  const target = model.viewport.height - handMetrics(model.viewport).stickyBand + 20;
+  const y = screenCenterForCard(fold, id, model.camera).y;
+  const camera = { ...model.camera, panY: model.camera.panY + (target - y) };
+  return { model: { ...model, camera }, point: screenCenterForCard(fold, id, camera) };
 }
 
 // ── AltDown / AltUp (hold Alt over a card to pin; release clears) ─
@@ -265,9 +278,10 @@ test("while Alt held, leaving the hand peek keeps hand inspect over a battlefiel
   // cursor is still over hand art. Live Alt re-pin must not steal to the BF card underneath.
   const creature = battlefieldCreature(7, "Board Bolt");
   const fold = gameFold({ objects: [creature] });
-  const screen = screenCenterForCard(fold, 7);
+  const band = overCardInHandBand({ ...initialBoardModel(), altDown: true }, fold, 7);
+  const screen = band.point;
 
-  let model: BoardModel = { ...initialBoardModel(), altDown: true };
+  let model: BoardModel = band.model;
   [model] = updateBoard(
     model,
     InspectAuxHovered({
@@ -298,9 +312,10 @@ test("while Alt held, leaving the hand peek keeps hand inspect over a battlefiel
 test("while Alt held, moving above the hand sticky band releases hand inspect to the board", () => {
   const creature = battlefieldCreature(7, "Board Bolt");
   const fold = gameFold({ objects: [creature] });
-  const screen = screenCenterForCard(fold, 7);
+  const band = overCardInHandBand({ ...initialBoardModel(), altDown: true }, fold, 7);
+  const screen = band.point;
 
-  let model: BoardModel = { ...initialBoardModel(), altDown: true };
+  let model: BoardModel = band.model;
   [model] = updateBoard(
     model,
     InspectAuxHovered({

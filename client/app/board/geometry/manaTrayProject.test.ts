@@ -21,7 +21,7 @@ describe("projectManaTrays", () => {
     expect(trays[0]).toMatchObject({
       seat: 0,
       x: -8 * 2 + 10,
-      y: 868 * 2 + 20,
+      y: 640 * 2 + 20,
       zoom: 2,
     });
     expect(trays[0].chips).toEqual([{ kind: "glyph", ms: "w", code: "W", amount: 2 }]);

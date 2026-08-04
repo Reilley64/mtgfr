@@ -1,6 +1,6 @@
 import type { ImageCache } from "../../domain/image-cache";
 import { COMMANDER_GOLD, EXILE_OUTLINE, GRAVEYARD_OUTLINE, PLAYABLE_BORDER } from "../chrome";
-import { CARD_H, CARD_W } from "../geometry/layout";
+import { FLIGHT_CARD_H, FLIGHT_CARD_W } from "../geometry/layout";
 import { type ExitFx, exitFxParticles, particleAllowancePerFx } from "../motion/exit-fx";
 import type { CardFlight } from "../motion/flights";
 import type { DragGhost, DragGhostZone } from "../motion/screen-motion";
@@ -50,8 +50,8 @@ export function paintDragGhost(
     cache,
   );
 
-  const w = CARD_W * zoom * ghost.scale;
-  const h = CARD_H * zoom * ghost.scale;
+  const w = FLIGHT_CARD_W * zoom * ghost.scale;
+  const h = FLIGHT_CARD_H * zoom * ghost.scale;
   const x = ghost.x - w / 2;
   const y = ghost.y - h / 2;
   const r = 6 * zoom * Math.max(ghost.scale, 0.5);

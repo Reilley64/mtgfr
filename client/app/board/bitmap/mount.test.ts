@@ -554,7 +554,7 @@ describe("paintBitmapLayer", () => {
 
     expect(cache.get).toHaveBeenCalledWith(gravatarUrl(hash));
     expect(calls).toContain("image:gravatar");
-    expect(calls).toContain("text:40@956");
+    expect(calls).toContain("text:40@728");
   });
 
   // Poison is a lose condition (CR 704.5c) and rad drives a mill clock — both belong on the orb.

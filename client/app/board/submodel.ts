@@ -120,7 +120,16 @@ import {
   primaryActionFor,
   resolveClick,
 } from "./geometry/interaction";
-import { avatarPos, CARD_H, CARD_W, landRowCenter, layout, type RenderCard, seatSlot, ZONE } from "./geometry/layout";
+import {
+  avatarPos,
+  FLIGHT_CARD_H,
+  FLIGHT_CARD_W,
+  landRowCenter,
+  layout,
+  type RenderCard,
+  seatSlot,
+  ZONE,
+} from "./geometry/layout";
 import { type RadialPress, radialPressDown, radialPressUp } from "./geometry/radial";
 import {
   STACK_HOLD_MAX_MS,
@@ -2054,7 +2063,7 @@ function handActivated(
   if (playPlan.kind === "ignore") return [model, []];
   const withHint = hideHintOnHandUse(model);
   const world = screenToWorld(withHint.camera, x, y);
-  const dropSeed: Vec = { x: world.x - CARD_W / 2, y: world.y - CARD_H / 2 };
+  const dropSeed: Vec = { x: world.x - FLIGHT_CARD_W / 2, y: world.y - FLIGHT_CARD_H / 2 };
   const screenOrigin: Vec = { x, y };
   if (playPlan.kind === "choose") {
     const firstMode = playPlan.modes[0];

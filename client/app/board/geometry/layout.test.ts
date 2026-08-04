@@ -6,6 +6,10 @@ import {
   AVATAR_R,
   avatarPos,
   boardBounds,
+  CARD_H,
+  CARD_W,
+  FLIGHT_CARD_H,
+  FLIGHT_CARD_W,
   layout,
   manaTrayPos,
   STEP,
@@ -16,10 +20,20 @@ import {
   ZONE,
 } from "./layout";
 
-// Geometry constants mirrored from layout.ts (CARD_W=96, CARD_H=134, GAP=8, AVATAR_R=40):
-// STEP=104, ROW_H=142, BATTLE_H=426, BAND_GAP=8, BAND_STRIDE=434, COL_X=-64, COL_STRIDE=106.5.
+// Geometry constants mirrored from layout.ts (CARD_W=96, CARD_H=96, GAP=8, AVATAR_R=40):
+// STEP=104, ROW_H=104, BATTLE_H=312, BAND_GAP=8, BAND_STRIDE=320, COL_X=-64, COL_STRIDE=78.
 // Quadrant grid: SEAT_COLS=7, SEAT_STRIDE_X=896 (column 1 origin), BAND_W=800.
-// ATTACH_OFFSET = CARD_H * 0.2 = 26.8.
+// ATTACH_OFFSET = CARD_H * 0.2 = 19.2.
+
+describe("card tile shape", () => {
+  it("rests permanents in a square tile so a four-seat board reads at a glance", () => {
+    expect(CARD_W).toBe(CARD_H);
+  });
+
+  it("keeps a card in motion card-shaped — a flight does not morph mid-air", () => {
+    expect(FLIGHT_CARD_H / FLIGHT_CARD_W).toBeCloseTo(134 / 96, 2);
+  });
+});
 
 function mkObject(overrides: Partial<ObjectView> = {}): ObjectView {
   return {
@@ -110,33 +124,33 @@ describe("seatCell", () => {
 });
 
 describe("seatBand", () => {
-  // 2×2 quadrant: you bottom-left (col 0, row 1 → band y 426); front above you (col 0, row 0 →
+  // 2×2 quadrant: you bottom-left (col 0, row 1 → band y 312); front above you (col 0, row 0 →
   // y -8); side beside you (col 1, row 1 → x 824); diagonal top-right (col 1, row 0).
   it("puts the viewer's own band at the bottom-left of a 4-player table", () => {
-    expect(seatBand(0, 0, 4)).toEqual({ x: -72, y: 426, w: 800, h: 434 });
+    expect(seatBand(0, 0, 4)).toEqual({ x: -72, y: 312, w: 800, h: 320 });
   });
 
   it("puts the seat after the viewer directly in front (top-left)", () => {
-    expect(seatBand(1, 0, 4)).toEqual({ x: -72, y: -8, w: 800, h: 434 });
+    expect(seatBand(1, 0, 4)).toEqual({ x: -72, y: -8, w: 800, h: 320 });
   });
 
   it("puts the next seat to the side (bottom-right) and the last diagonal (top-right)", () => {
-    expect(seatBand(2, 0, 4)).toMatchObject({ x: 824, y: 426 }); // side, beside you
+    expect(seatBand(2, 0, 4)).toMatchObject({ x: 824, y: 312 }); // side, beside you
     expect(seatBand(3, 0, 4)).toMatchObject({ x: 824, y: -8 }); // diagonal
   });
 
   it("assigns quadrants by turn order regardless of which seat is the viewer", () => {
     // Viewer is seat 2: turn order after them is 3 (front), 0 (side), 1 (diagonal).
-    expect(seatBand(2, 2, 4)).toMatchObject({ x: -72, y: 426 }); // self, bottom-left
+    expect(seatBand(2, 2, 4)).toMatchObject({ x: -72, y: 312 }); // self, bottom-left
     expect(seatBand(3, 2, 4)).toMatchObject({ x: -72, y: -8 }); // front
-    expect(seatBand(0, 2, 4)).toMatchObject({ x: 824, y: 426 }); // side
+    expect(seatBand(0, 2, 4)).toMatchObject({ x: 824, y: 312 }); // side
     expect(seatBand(1, 2, 4)).toMatchObject({ x: 824, y: -8 }); // diagonal
   });
 });
 
 describe("avatarPos", () => {
   it("sits below the viewer's own bottom-left band", () => {
-    expect(avatarPos(0, 0, 4)).toEqual({ x: 328, y: 908 });
+    expect(avatarPos(0, 0, 4)).toEqual({ x: 328, y: 680 });
   });
 
   it("sits above the flipped front seat's band", () => {
@@ -144,7 +158,7 @@ describe("avatarPos", () => {
   });
 
   it("sits below the upright side seat and above the flipped diagonal", () => {
-    expect(avatarPos(2, 0, 4)).toEqual({ x: 1224, y: 908 }); // side, avatar below
+    expect(avatarPos(2, 0, 4)).toEqual({ x: 1224, y: 680 }); // side, avatar below
     expect(avatarPos(3, 0, 4)).toEqual({ x: 1224, y: -48 }); // diagonal, avatar above
   });
 });
@@ -154,7 +168,7 @@ describe("manaTrayPos", () => {
   it("sits under the zone column below the viewer's upright band", () => {
     const band = seatBand(0, 0, 4);
     const tray = manaTrayPos(0, 0, 4);
-    expect(tray).toEqual({ x: -8, y: 868 });
+    expect(tray).toEqual({ x: -8, y: 640 });
     expect(tray.x).toBeLessThan(band.x + band.w / 2);
     expect(tray.y).toBeGreaterThan(band.y + band.h);
   });
@@ -167,7 +181,7 @@ describe("manaTrayPos", () => {
   });
 
   it("keeps the same seat-relative offset for side and diagonal", () => {
-    expect(manaTrayPos(2, 0, 4)).toEqual({ x: 888, y: 868 });
+    expect(manaTrayPos(2, 0, 4)).toEqual({ x: 888, y: 640 });
     expect(manaTrayPos(3, 0, 4)).toEqual({ x: 888, y: -16 });
   });
 });
@@ -176,15 +190,15 @@ describe("boardBounds", () => {
   // A 2-player table is a single (left) column; 3 and 4 players both span both columns, so their
   // bounds match (the 3p table just leaves the diagonal cell empty).
   it("fits a 2-player table (one column)", () => {
-    expect(boardBounds(2)).toEqual({ minX: -72, minY: -128, maxX: 728, maxY: 988 });
+    expect(boardBounds(2)).toEqual({ minX: -72, minY: -128, maxX: 728, maxY: 760 });
   });
 
   it("fits a 3-player table (both columns, no diagonal)", () => {
-    expect(boardBounds(3)).toEqual({ minX: -72, minY: -128, maxX: 1624, maxY: 988 });
+    expect(boardBounds(3)).toEqual({ minX: -72, minY: -128, maxX: 1624, maxY: 760 });
   });
 
   it("fits a 4-player table (full 2×2)", () => {
-    expect(boardBounds(4)).toEqual({ minX: -72, minY: -128, maxX: 1624, maxY: 988 });
+    expect(boardBounds(4)).toEqual({ minX: -72, minY: -128, maxX: 1624, maxY: 760 });
   });
 
   it("reserves label space on the outer side of flipped and upright seats", () => {
@@ -404,26 +418,26 @@ describe("layout", () => {
     const cards = layout(state, 0);
     const byId = new Map(cards.map((c) => [c.id, c]));
 
-    // Viewer (o.y=434): Noncreature / Creatures / Lands at 434 / 576 / 718. Lone card centers
+    // Viewer (o.y=320): Noncreature / Creatures / Lands at 320 / 424 / 528. Lone card centers
     // on the row: (SEAT_COLS - 1)/2 * CARD_HSTEP = 3 * 104 = 312.
-    expect(byId.get(1)).toMatchObject({ x: 312, y: 576, w: 96, h: 134, zone: ZONE.Battlefield });
-    expect(byId.get(2)).toMatchObject({ x: 312, y: 718, w: 96, h: 134 });
+    expect(byId.get(1)).toMatchObject({ x: 312, y: 424, w: 96, h: 96, zone: ZONE.Battlefield });
+    expect(byId.get(2)).toMatchObject({ x: 312, y: 528, w: 96, h: 96 });
     // Zone column top -> bottom for the viewer: commander, deck (no exile), graveyard.
-    // COL_STRIDE = 106.5 → commander@434, deck@647, graveyard@753.5.
-    expect(byId.get(3)).toMatchObject({ x: -64, y: 434, w: 48, h: 67, pile: 0 });
-    expect(byId.get(4)).toMatchObject({ x: -64, y: 753.5, w: 48, h: 67, pile: 1, zone: ZONE.Graveyard });
+    // COL_STRIDE = 78 → commander@320, deck@476, graveyard@554.
+    expect(byId.get(3)).toMatchObject({ x: -64, y: 320, w: 48, h: 48, pile: 0 });
+    expect(byId.get(4)).toMatchObject({ x: -64, y: 554, w: 48, h: 48, pile: 1, zone: ZONE.Graveyard });
 
-    // Opponent (o.y=0, flipped): Creatures at o.y+ROW_H = 142.
-    expect(byId.get(5)).toMatchObject({ x: 312, y: 142, w: 96, h: 134 });
+    // Opponent (o.y=0, flipped): Creatures at o.y+ROW_H = 104.
+    expect(byId.get(5)).toMatchObject({ x: 312, y: 104, w: 96, h: 96 });
 
     // Opponent's library placeholder is the only zone-column card (synthetic id -1 - owner = -2),
     // and it lands at the flipped column's second slot (deck is index 1 once reversed).
     const opponentDeck = cards.find((c) => c.id === -2);
-    expect(opponentDeck).toMatchObject({ x: -64, y: 106.5, w: 48, h: 67, pile: 25, faceDown: true });
+    expect(opponentDeck).toMatchObject({ x: -64, y: 78, w: 48, h: 48, pile: 25, faceDown: true });
 
     // Viewer's own library placeholder is the third slot (index 2) in the unreversed column.
     const viewerDeck = cards.find((c) => c.id === -1);
-    expect(viewerDeck).toMatchObject({ x: -64, y: 647, w: 48, h: 67, pile: 30, faceDown: true });
+    expect(viewerDeck).toMatchObject({ x: -64, y: 476, w: 48, h: 48, pile: 30, faceDown: true });
 
     expect(cards).toHaveLength(7);
   });
@@ -455,10 +469,10 @@ describe("layout", () => {
     });
     const byId = new Map(layout(state, 0).map((c) => [c.id, c]));
     // Viewer o.y = BAND_STRIDE (1p still uses bottom-left cell).
-    expect(byId.get(1)?.y).toBe(434); // Noncreature
-    expect(byId.get(2)?.y).toBe(434); // Noncreature
-    expect(byId.get(3)?.y).toBe(576); // Creatures
-    expect(byId.get(4)?.y).toBe(718); // Lands
+    expect(byId.get(1)?.y).toBe(320); // Noncreature
+    expect(byId.get(2)?.y).toBe(320); // Noncreature
+    expect(byId.get(3)?.y).toBe(424); // Creatures
+    expect(byId.get(4)?.y).toBe(528); // Lands
   });
 
   it("left-aligns artifacts then enchantments; right-aligns planeswalkers", () => {
@@ -806,12 +820,12 @@ describe("layout", () => {
     expect(ring).toBeDefined();
     if (!host || !equip || !ring) return;
 
-    expect(host.y).toBe(576); // Creatures row
-    expect(ring.y).toBe(434); // Noncreature row
+    expect(host.y).toBe(424); // Creatures row
+    expect(ring.y).toBe(320); // Noncreature row
     expect(ring.x).toBe(0); // left-aligned alone
     // Attachment centerward of host (smaller Y when upright), same X; under host in array order.
     expect(equip.x).toBe(host.x);
-    expect(equip.y).toBe(host.y - 26.8);
+    expect(equip.y).toBe(host.y - 19.2);
     expect(cards.findIndex((c) => c.id === 2)).toBeLessThan(cards.findIndex((c) => c.id === 1));
   });
 
@@ -846,9 +860,9 @@ describe("layout", () => {
     expect(host).toBeDefined();
     expect(aura).toBeDefined();
     if (!host || !aura) return;
-    // Flipped opponent creature at y=142; Aura centerward (+ATTACH_OFFSET when flipped).
-    expect(host).toMatchObject({ x: 312, y: 142 });
-    expect(aura).toMatchObject({ x: host.x, y: host.y + 26.8 });
+    // Flipped opponent creature at y=104; Aura centerward (+ATTACH_OFFSET when flipped).
+    expect(host).toMatchObject({ x: 312, y: 104 });
+    expect(aura).toMatchObject({ x: host.x, y: host.y + 19.2 });
     expect(cards.findIndex((c) => c.id === 2)).toBeLessThan(cards.findIndex((c) => c.id === 1));
   });
 
@@ -870,8 +884,8 @@ describe("layout", () => {
       ],
     });
     const bear = layout(state, 0).find((c) => c.id === 1);
-    // P1's flipped creature row sits at y=142 (see the opponent-bear case above), NOT P0's row.
-    expect(bear).toMatchObject({ y: 142, owner: 0, controller: 1 });
+    // P1's flipped creature row sits at y=104 (see the opponent-bear case above), NOT P0's row.
+    expect(bear).toMatchObject({ y: 104, owner: 0, controller: 1 });
   });
 
   it("falls back to the Noncreature row when attached_to points at a missing host", () => {
@@ -883,8 +897,8 @@ describe("layout", () => {
       ],
     });
     const byId = new Map(layout(state, 0).map((c) => [c.id, c]));
-    expect(byId.get(2)).toMatchObject({ x: 0, y: 434 }); // left block, Noncreature
-    expect(byId.get(3)).toMatchObject({ x: 104, y: 434 });
+    expect(byId.get(2)).toMatchObject({ x: 0, y: 320 }); // left block, Noncreature
+    expect(byId.get(3)).toMatchObject({ x: 104, y: 320 });
   });
 
   it("puts unexpected WireKinds in the Noncreature left block", () => {
@@ -897,8 +911,8 @@ describe("layout", () => {
     });
     const byId = new Map(layout(state, 0).map((c) => [c.id, c]));
     // Artifacts rank before other leftover kinds; both on Noncreature.
-    expect(byId.get(2)).toMatchObject({ x: 0, y: 434 });
-    expect(byId.get(1)).toMatchObject({ x: 104, y: 434 });
+    expect(byId.get(2)).toMatchObject({ x: 0, y: 320 });
+    expect(byId.get(1)).toMatchObject({ x: 104, y: 320 });
   });
 
   it("flips Noncreature to the centerward edge for a top-row opponent", () => {
@@ -922,8 +936,8 @@ describe("layout", () => {
       ],
     });
     const byId = new Map(layout(state, 0).map((c) => [c.id, c]));
-    // Flipped o.y=0: Noncreature at 284, Lands at 0.
-    expect(byId.get(1)?.y).toBe(284);
+    // Flipped o.y=0: Noncreature at 208, Lands at 0.
+    expect(byId.get(1)?.y).toBe(208);
     expect(byId.get(2)?.y).toBe(0);
   });
 });

@@ -1,4 +1,4 @@
-import { CARD_W } from "../geometry/layout";
+import { FLIGHT_CARD_W } from "../geometry/layout";
 import { STACK_CARD_W } from "../geometry/stackLayout";
 
 export const HAND_FACE_W = 208;
@@ -83,11 +83,11 @@ export function flightOwnsId(flight: CardFlight): boolean {
 
 /** `faceW` is the live hand-face width in CSS px — the bar scales with the window. */
 export function handFlightScale(zoom: number, faceW: number = HAND_FACE_W): number {
-  return faceW / (CARD_W * Math.max(zoom, 0.01));
+  return faceW / (FLIGHT_CARD_W * Math.max(zoom, 0.01));
 }
 
 export function stackFlightScale(zoom: number): number {
-  return STACK_CARD_W / (CARD_W * Math.max(zoom, 0.01));
+  return STACK_CARD_W / (FLIGHT_CARD_W * Math.max(zoom, 0.01));
 }
 
 export function stepFlights(

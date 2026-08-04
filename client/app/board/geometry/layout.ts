@@ -124,8 +124,19 @@ export interface RenderCard {
   tapFrac?: number;
 }
 
+/**
+ * A resting permanent is an Arena-style square tile: name slot and art, no oracle text. Square so
+ * three rows of seven fit four seats without the camera zooming out past readability.
+ */
 export const CARD_W = 96;
-export const CARD_H = 134;
+export const CARD_H = 96;
+
+/**
+ * A card in motion keeps the printed card's proportions — a flight paints the full face and the
+ * square tile appears only when the card comes to rest, with no mid-air morph.
+ */
+export const FLIGHT_CARD_W = 96;
+export const FLIGHT_CARD_H = 134;
 
 /** Radius of a player's life-orb avatar, in world units (so it pans/zooms with the board). */
 export const AVATAR_R = 40;
