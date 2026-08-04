@@ -11,20 +11,26 @@ export default defineHandler(async (event) => {
   return runMetaGet(event, "api meta/coverage/v1", () =>
     Effect.gen(function* () {
       const meta = yield* Effect.promise(() => fetchCoverageMeta());
-      return cached(
-        json({
-          faithful_count: meta.faithfulCount,
-          oracle_total: meta.oracleTotal,
-          sets: meta.sets.map((set) => ({
-            code: set.code,
-            name: set.name,
-            released_at: set.releasedAt,
-            faithful: set.faithful,
-            oracle_total: set.oracleTotal,
-          })),
-        }),
-        CACHE_CONTROL,
-      );
+      const body = json({
+        faithful_count: meta.faithfulCount,
+        oracle_total: meta.oracleTotal,
+        sets: meta.sets.map((set) => ({
+          code: set.code,
+          name: set.name,
+          released_at: set.releasedAt,
+          faithful: set.faithful,
+          oracle_total: set.oracleTotal,
+        })),
+      });
+
+      // `fetchCoverageMeta` degrades to a 200 with null counts (API rolling, Scryfall cache cold),
+      // and every set then reports 0 faithful. A deploy purges the good copy moments before the API
+      // goes unready, so caching that would pin a zeroed page at the edge until the *next* deploy.
+      if (meta.faithfulCount == null || meta.oracleTotal == null || meta.sets.length === 0) {
+        return body;
+      }
+
+      return cached(body, CACHE_CONTROL);
     }),
   );
 });

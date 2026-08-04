@@ -5,29 +5,50 @@ import coverageHandler from "./routes/api/meta/coverage/v1.get";
 
 const mocks = vi.hoisted(() => ({
   fetchCoverageMeta: vi.fn(),
+  runTracedRequest: vi.fn(),
 }));
 
 vi.mock("../app/domain/coverage-meta", () => ({
   fetchCoverageMeta: mocks.fetchCoverageMeta,
 }));
 
-vi.mock("./lobby-http", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("./lobby-http")>()),
-  runMetaGet: (_event: H3Event, _span: string, body: () => Effect.Effect<Response, never>) => Effect.runPromise(body()),
+vi.mock("../app/domain/otel", () => ({
+  runTracedRequest: mocks.runTracedRequest,
 }));
 
-const event = { req: { method: "GET", headers: new Headers() } } as unknown as H3Event;
+const event = { req: new Request("http://test.local") } as unknown as H3Event;
+
+const warmMeta = {
+  faithfulCount: 12,
+  oracleTotal: 100,
+  sets: [{ code: "blb", name: "Bloomburrow", releasedAt: "2024-08-02", faithful: 3, oracleTotal: 40 }],
+};
 
 describe("api meta/coverage/v1", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.fetchCoverageMeta.mockResolvedValue({ faithfulCount: 12, oracleTotal: 100, sets: [] });
+    mocks.runTracedRequest.mockImplementation((_traceparent, _spanName, body) => Effect.runPromise(body));
   });
 
   // Cloudflare's Cache Rule only marks the path eligible — this header is the edge/browser TTL.
   it("sends a cache-control the edge can cache on", async () => {
+    mocks.fetchCoverageMeta.mockResolvedValue(warmMeta);
+
     const res = await coverageHandler(event);
+
     expect(res.headers.get("cache-control")).toBe("public, max-age=60, s-maxage=3600, stale-while-revalidate=600");
     await expect(res.json()).resolves.toMatchObject({ faithful_count: 12, oracle_total: 100 });
+  });
+
+  it.each([
+    ["the API is unreachable", { ...warmMeta, faithfulCount: null }],
+    ["the oracle total is unknown", { ...warmMeta, oracleTotal: null }],
+    ["the Scryfall set cache is cold", { ...warmMeta, sets: [] }],
+  ])("does not let the edge cache a degraded read when %s", async (_case, meta) => {
+    mocks.fetchCoverageMeta.mockResolvedValue(meta);
+
+    const res = await coverageHandler(event);
+
+    expect(res.headers.get("cache-control")).toBeNull();
   });
 });
