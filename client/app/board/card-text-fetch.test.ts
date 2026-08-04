@@ -171,6 +171,21 @@ test("asks for a printing's flavor once — the next fold does not ask again", (
   expect(again).toEqual([]);
 });
 
+test("corrects the printing as soon as the catalog reply lands, without waiting for a state delta", () => {
+  const model: BoardModel = { ...initialBoardModel(), cardText: new Map([["terminate", null]]) };
+
+  const [next, commands] = updateBoard(
+    model,
+    CardTextFetched({ cards: [catalogCard("terminate", { flavor: "I think, therefore I annihilate!" })] }),
+    fold([object(1, { card_id: "terminate", print: "c11-print" })]),
+    "T1",
+  );
+
+  expect(commands).toHaveLength(1);
+  expect(commands[0]?.args).toEqual({ cards: [{ cardId: "terminate", print: "c11-print" }] });
+  expect(next.cardText.get("terminate")?.flavor).toBe("");
+});
+
 test("sets the printing's own flavor when it lands", () => {
   const model: BoardModel = {
     ...initialBoardModel(),

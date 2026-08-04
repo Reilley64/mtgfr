@@ -3337,7 +3337,10 @@ export function updateBoard(
     case "CardTextFetched": {
       const cardText = new Map(model.cardText);
       for (const card of message.cards) cardText.set(card.id, cardTextOf(card));
-      return [{ ...model, cardText }, []];
+      // The catalog answers with the card's `default_print` flavor. Check the deck's printing right
+      // here rather than on the next state delta — a quiet board would otherwise sit on the wrong
+      // printing's words until something else moved.
+      return requestBarCardText({ ...model, cardText }, fold);
     }
     case "PrintFlavorFetched": {
       const cardText = new Map(model.cardText);
