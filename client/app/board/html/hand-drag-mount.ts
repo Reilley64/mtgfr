@@ -80,9 +80,13 @@ export function readHandDragPayload(hit: HTMLElement, x: number, y: number): typ
   });
 }
 
-/** The tile paints its face through a `data-face` host; the ghost flies that same face. */
+/**
+ * The tile paints its face through a `data-face` host; the ghost flies that same face. The host is
+ * the hit rect's sibling, not its child, so read it off the tile root both of them sit in.
+ */
 function readFace(hit: HTMLElement): FaceData | undefined {
-  const raw = hit.querySelector("[data-face]")?.getAttribute("data-face");
+  const tile = hit.closest("[data-hand-index]") ?? hit;
+  const raw = tile.querySelector("[data-face]")?.getAttribute("data-face");
   if (raw == null) return undefined;
   try {
     return JSON.parse(raw) as FaceData;

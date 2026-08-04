@@ -34,9 +34,12 @@ function hit(args: { action: ActionView; barZone?: string; face?: unknown }): HT
     element.dataset.barZone = args.barZone;
   }
   if (args.face != null) {
+    // The real tile: the hit rect and the face host are siblings under the tile root.
+    const tile = document.createElement("div");
+    tile.dataset.handIndex = "0";
     const faceHost = document.createElement("div");
     faceHost.dataset.face = JSON.stringify(args.face);
-    element.append(faceHost);
+    tile.append(element, faceHost);
   }
   return element;
 }
