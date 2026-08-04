@@ -141,8 +141,19 @@ const TITLE_BAR: Rect = { x: 58, y: 43, w: 634, h: 66 };
 const TYPE_BAR: Rect = { x: 58, y: 592, w: 634, h: 61 };
 const TEXT_BOX: Rect = { x: 58, y: 662, w: 634, h: 267 };
 const PT_PLATE: Rect = { x: 579, y: 932, w: 130, h: 64 };
-/** Card top down through the crown's bottom edge (measured at y+h = 195) — the square's one blit. */
+/** Card top down through the crown's bottom edge (measured at y+h = 195). */
 const TOP_STRIP: Rect = { x: 0, y: 0, w: ASSET_W, h: 195 };
+/**
+ * The square's remaining three edges. `SIDE_W` is the gap from the card edge to the art window —
+ * black border plus the frame's bevel — which is what the top strip already shows at its own left
+ * and right, so the sides continue it without a seam.
+ *
+ * The printed bottom border is far deeper than the sides (M15 leaves room for the collector line),
+ * so `BOTTOM_STRIP` starts at the frame's last textured row and is squashed to `SIDE_W` at paint
+ * time: an even ring, drawn in the card's own colour.
+ */
+const SIDE_W = ART_WINDOW.x;
+const BOTTOM_STRIP: Rect = { x: 0, y: 960, w: ASSET_W, h: ASSET_H - 960 };
 const WHOLE_ASSET: Rect = { x: 0, y: 0, w: ASSET_W, h: ASSET_H };
 
 /** WUBRG index (`engine::Color::index`) → frame asset key. */
@@ -168,11 +179,12 @@ function hasPT(face: FaceData): boolean {
 }
 
 /**
- * The Arena square: art edge to edge with the frame's top strip laid over it.
+ * The Arena square: art edge to edge, ringed by the frame's own border.
  *
  * Blitting the whole 750x1050 frame into a 745x745 square would crush it to 71% of its own height,
- * so only the top strip is drawn, scaled by width in both axes to keep the art's aspect. Below the
- * title bar that strip is transparent, so the art shows through and the same strip serves the
+ * so the border is assembled edge by edge instead — the top strip scaled by width in both axes to
+ * keep the art's aspect, then the two sides and the bottom stretched to close the ring. Below the
+ * title bar the top strip is transparent, so the art shows through and the same strip serves the
  * legendary and nonlegendary cases alike — the crown is that same region of the crown asset.
  */
 function squareSlots(w: number, h: number, face: FaceData): SlotRects {
@@ -184,8 +196,16 @@ function squareSlots(w: number, h: number, face: FaceData): SlotRects {
   }
   const s = w / ASSET_W;
   const strip: Blit = { src: TOP_STRIP, dst: { x: 0, y: 0, w, h: TOP_STRIP.h * s } };
+  const side = SIDE_W * s;
+  const flank = { y: strip.dst.h, w: side, h: h - strip.dst.h - side };
+  const sideSrc: Rect = { x: 0, y: ART_WINDOW.y, w: SIDE_W, h: ART_WINDOW.h };
   return {
-    frame: [strip],
+    frame: [
+      strip,
+      { src: sideSrc, dst: { x: 0, ...flank } },
+      { src: { ...sideSrc, x: ASSET_W - SIDE_W }, dst: { x: w - side, ...flank } },
+      { src: BOTTOM_STRIP, dst: { x: 0, y: h - side, w, h: side } },
+    ],
     art,
     crown: face.legendary ? { src: TOP_STRIP, dst: strip.dst } : null,
     // ponytail: the square draws no printed P/T. `board/bitmap/paint-cards.ts` already paints a

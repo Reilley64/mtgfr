@@ -243,17 +243,36 @@ describe("slotRects", () => {
     expect(slotRects("stack", face())).toEqual(slotRects("full", face()));
   });
 
-  it("fills the Arena square with art and lays only the top strip over it", () => {
+  it("fills the Arena square with art and lays the top strip over it", () => {
     const { w, h } = CANONICAL.permanent;
     const s = w / ASSET_W;
     const slots = slotRects("permanent", face());
     expect(slots.art).toEqual({ x: 0, y: 0, w, h });
-    expect(slots.frame).toHaveLength(1);
     expect(slots.frame[0]?.src).toEqual({ x: 0, y: 0, w: ASSET_W, h: TOP_STRIP_H });
     expectRectClose(slots.frame[0]?.dst ?? null, { x: 0, y: 0, w, h: TOP_STRIP_H * s });
     expectRectClose(slots.title, scaled(TITLE_BAR, s, s));
     expect(slots.type).toBeNull();
     expect(slots.text).toBeNull();
+  });
+
+  // The top strip alone left the square open below y=195: no side border past the title and no
+  // bottom edge at all, so the art bled to three edges. The border has to close the ring.
+  it("borders the Arena square on all four edges", () => {
+    const { w, h } = CANONICAL.permanent;
+    const s = w / ASSET_W;
+    const side = ART_WINDOW.x * s;
+    const top = TOP_STRIP_H * s;
+    const [, left, right, bottom] = slotRects("permanent", face()).frame;
+
+    // Each edge is sourced from the asset's matching edge, so it keeps the card's own colour.
+    expect(left?.src.x).toBe(0);
+    expect(right?.src.x).toBe(ASSET_W - ART_WINDOW.x);
+    expect(bottom?.src.y ?? 0).toBeGreaterThan(TEXT_BOX.y + TEXT_BOX.h);
+
+    // The sides run from under the top strip down to the bottom edge, leaving no gap.
+    expectRectClose(left?.dst ?? null, { x: 0, y: top, w: side, h: h - top - side });
+    expectRectClose(right?.dst ?? null, { x: w - side, y: top, w: side, h: h - top - side });
+    expectRectClose(bottom?.dst ?? null, { x: 0, y: h - side, w, h: side });
   });
 
   // A 750x1050 frame squashed into the square would run at 71% of its own height; the strip keeps

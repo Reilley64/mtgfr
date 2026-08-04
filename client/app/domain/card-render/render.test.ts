@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { ASSET_W } from "./assets";
-import { CANONICAL, type FaceData } from "./frame";
+import { CANONICAL, type FaceData, slotRects } from "./frame";
 import { drawFace, faceAssetUrls } from "./render";
 
 /** Records the ops a draw makes, so the test asserts what was drawn without pixels. */
@@ -134,7 +134,8 @@ describe("drawFace", () => {
     const { ctx, drawn } = fakeCtx();
     drawFace(ctx, inputs({ art: null }));
 
-    expect(drawn()).toHaveLength(1);
+    expect(drawn()).toHaveLength(slotRects("permanent", face()).frame.length);
+    expect(drawn().every((blit) => blit[0] === assetImage)).toBe(true);
   });
 
   it("lays only the frame's top strip over the square, not the squashed whole card", () => {
@@ -162,8 +163,9 @@ describe("drawFace", () => {
     const { ctx, drawn } = fakeCtx();
     drawFace(ctx, inputs({ face: face({ legendary: true }), crownImage: assetImage }));
 
-    const [, frame, crown] = drawn();
-    expect(crown.slice(1)).toEqual(frame.slice(1));
+    // Art, then the frame's four edges, then the crown — over the top strip it replaces.
+    const [, topStrip] = drawn();
+    expect(drawn().at(-1)?.slice(1)).toEqual(topStrip?.slice(1));
   });
 
   it("blits the P/T plate from its corner of the asset on a full face", () => {
