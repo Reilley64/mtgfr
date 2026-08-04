@@ -4,7 +4,7 @@ import * as Layer from "effect/Layer";
 import type { H3Event } from "nitro/h3";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { EXCEPTION_TYPE } from "../app/domain/otel/semconv";
-import { json, readJsonObject, runMetaGet, tableParam, unknownLobby, withLobbyAuth } from "./lobby-http";
+import { cached, json, readJsonObject, runMetaGet, tableParam, unknownLobby, withLobbyAuth } from "./lobby-http";
 
 vi.hoisted ??= <T>(factory: () => T): T => factory();
 
@@ -61,11 +61,17 @@ describe("lobby-http", () => {
     mocks.sweepWebDb.mockReturnValue(Effect.void);
   });
 
-  it("json sets content-type, status, and any extra headers", async () => {
-    const res = json({ ok: true }, 201, { "cache-control": "public, max-age=60" });
+  it("json sets content-type and status", async () => {
+    const res = json({ ok: true }, 201);
     expect(res.status).toBe(201);
     expect(res.headers.get("content-type")).toBe("application/json");
+    await expect(res.json()).resolves.toEqual({ ok: true });
+  });
+
+  it("cached sets cache-control without disturbing the body", async () => {
+    const res = cached(json({ ok: true }), "public, max-age=60");
     expect(res.headers.get("cache-control")).toBe("public, max-age=60");
+    expect(res.headers.get("content-type")).toBe("application/json");
     await expect(res.json()).resolves.toEqual({ ok: true });
   });
 

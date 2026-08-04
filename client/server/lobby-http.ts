@@ -61,11 +61,17 @@ function tracedLobbyBody<A, E, R>(body: Effect.Effect<A, E, R>): Effect.Effect<A
   ) as Effect.Effect<A, never, R>;
 }
 
-export function json(data: unknown, status = 200, headers: Record<string, string> = {}): Response {
+export function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { "content-type": "application/json", ...headers },
+    headers: { "content-type": "application/json" },
   });
+}
+
+/** Sets the edge/browser TTL. Cloudflare's Cache Rule only marks a path eligible — this is the TTL. */
+export function cached(response: Response, cacheControl: string): Response {
+  response.headers.set("cache-control", cacheControl);
+  return response;
 }
 
 export function tableParam(event: H3Event): string | null {
