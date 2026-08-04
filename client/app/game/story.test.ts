@@ -9,7 +9,7 @@ import { init, update } from "../main-exports";
 import { GotGameMessage } from "../messages";
 import { emptyGameSlice } from "../model";
 import { PregameTableRoute } from "../routes";
-import { ReceivedDelta } from "./messages";
+import { ReceivedDelta, ReceivedSnapshot } from "./messages";
 
 function object(overrides: Partial<ObjectView> = {}): ObjectView {
   return {
@@ -168,4 +168,46 @@ test("ReceivedDelta with land_played provenance spawns a board flight", () => {
       expect(m.game?.board.ownedIds.has(3)).toBe(true);
     }),
   );
+});
+
+test("ReceivedSnapshot books the viewer's own printed words, replacing the last connection's", () => {
+  const [model] = init();
+  const given = {
+    ...model,
+    route: PregameTableRoute({ deckId: "0", table: "ABC123" }),
+    game: { ...emptyGameSlice(), active: true, tableId: "ABC123" },
+  };
+
+  const [booked] = update(
+    given,
+    GotGameMessage({
+      message: ReceivedSnapshot({
+        seq: 1,
+        state: state(),
+        card_text: [{ card_id: "bolt", type_line: "Instant", oracle: "Deals 3 damage.", flavor: "Fast as fire." }],
+      }),
+    }),
+  );
+
+  expect(booked.game?.board.cardText.get("bolt")).toEqual({
+    card_id: "bolt",
+    type_line: "Instant",
+    oracle: "Deals 3 damage.",
+    flavor: "Fast as fire.",
+  });
+
+  // Reconnecting into another seat gets that seat's book, not the union of both decks.
+  const [reseated] = update(
+    booked,
+    GotGameMessage({
+      message: ReceivedSnapshot({
+        seq: 2,
+        state: state(),
+        card_text: [{ card_id: "swamp", type_line: "Basic Land — Swamp", oracle: "", flavor: "" }],
+      }),
+    }),
+  );
+
+  expect(reseated.game?.board.cardText.has("bolt")).toBe(false);
+  expect(reseated.game?.board.cardText.get("swamp")?.type_line).toBe("Basic Land — Swamp");
 });

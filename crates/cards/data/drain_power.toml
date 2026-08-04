@@ -2,7 +2,6 @@
 # unspent mana and you add the mana lost this way.
 name = "Drain Power"
 otags = ["refund", "ritual", "single-target-instant-sorcery", "theft-mana", "unique-cr-reference"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "fbb", "lea", "leb", "me4", "sum"]
 id = "0669172d-396b-4f5a-9703-129c5c849b55"
 default_print = "6123f833-236d-4c61-b543-4ac662759336"
 oracle = "Target player activates a mana ability of each land they control. Then that player loses all unspent mana and you add the mana lost this way."

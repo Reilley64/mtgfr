@@ -1,7 +1,6 @@
 # Destroy target land.
 name = "Stone Rain"
 otags = ["removal-destroy", "removal-land", "single-target-instant-sorcery", "spot-removal"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "8ed", "9ed", "ced", "cei", "chk", "fbb", "fnm", "ice", "lea", "leb", "mir", "mmq", "p02", "plst", "por", "prm", "ptk", "s99", "sta", "sum", "tmp", "wc00", "wc99"]
 id = "6e880df6-fc00-43d2-a9c8-f575f40b78c6"
 default_print = "cdb490bb-43fe-49ab-a094-438585677801"
 oracle = "Destroy target land."

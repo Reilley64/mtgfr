@@ -77,9 +77,6 @@ message CatalogCard {
   // The card's printed (oracle) rules text, for the deck builder's read-the-text hover. Absent
   // for a card whose text isn't recorded, or a vanilla.
   optional string oracle = 11;
-  // The card's printed flavor text — the italic words a rendered card face sets under the rules
-  // divider. Absent when the printing prints none.
-  optional string flavor = 18;
   // Set/edition code — deprecated; always empty. Use `sets`.
   string set = 12;
   // Printed subtypes for search (creature types, plus a land's printed types).
@@ -90,6 +87,10 @@ message CatalogCard {
   optional CatalogBackFace back = 15;
   // Every Scryfall set code with a printing of this oracle (lowercase).
   repeated string sets = 17;
+  // Flavor text was here. It is per printing, not per card — the game stream carries the deck's
+  // printing's words (`CardTextView`), and the catalog carries none.
+  reserved 18;
+  reserved "flavor";
 }
 
 // One seat to seed, in seat-index order.

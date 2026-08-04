@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::catalog::{wire_cost, wire_kind};
 use crate::dto::{
-    ActionView, CombatView, CommanderDamageView, MessageRef, ModalView, ModeView,
+    ActionView, CardTextView, CombatView, CommanderDamageView, MessageRef, ModalView, ModeView,
     ModifierSourceView, ObjectView, PlayerView, StackObjectView, VisibleState, WireKind,
     WireManaPool,
 };
@@ -1106,6 +1106,9 @@ pub enum StreamFrame {
     Snapshot {
         seq: u64,
         state: VisibleState,
+        /// Printed words for every card in the viewer's own deck — the only cards whose faces the
+        /// bar draws. Empty for a spectator. Private by construction: never another seat's list.
+        card_text: Vec<CardTextView>,
     },
     Delta(DeltaEnvelope),
     /// A periodic liveness ping (server emits one every few seconds) so the client can tell an
@@ -2242,7 +2245,6 @@ mod tests {
             cast_only_during_declare_attackers: false,
             approximates: None,
             oracle: None,
-            flavor: None,
             sets: empty_slice(),
             subtypes: empty_slice(),
             otags: empty_slice(),

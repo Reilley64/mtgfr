@@ -5,7 +5,6 @@
 # that opponent this turn if able. They gain haste. Sacrifice them at the beginning of the next end step. Activate only
 # as a sorcery.)
 name = "Angel of Indemnity"
-sets = ["otc", "soc"]
 id = "4f57a320-b6b5-49de-af0a-f2e2649758a7"
 default_print = "41163f43-7357-4bbc-a1e7-9c8070135c93"
 otags = ["copy-self", "delayed-trigger", "evasion", "gains-haste", "mana-value-matters", "multi-land-ramp", "per-player", "reanimate-permanent", "renew", "repeatable-lifegain", "temporary-token", "virtual-french-vanilla"]

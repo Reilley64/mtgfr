@@ -1,7 +1,6 @@
 # Destroy target Wall. It can't be regenerated.
 name = "Tunnel"
 otags = ["hate-regenerate", "hate-typal-wall", "noncreature-typal", "removal-creature", "removal-destroy", "single-english-word-name", "single-target-instant-sorcery", "spot-removal"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
 id = "80559618-9dd9-4987-b3bc-1a1b5537bbc5"
 default_print = "a0176176-0530-43e6-85e4-d1f4296f0697"
 oracle = "Destroy target Wall. It can't be regenerated."

@@ -2,11 +2,9 @@
 # Flying
 name = "Wall of Swords"
 otags = ["drawback", "evasion", "french-vanilla", "type-errata-summon-creature"]
-sets = ["10e", "2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "8ed", "ced", "cei", "fbb", "lea", "leb", "m14", "plst", "por", "sum"]
 id = "eb098958-50d3-4476-ba74-382033703ff9"
 default_print = "0437a9e4-df29-4fbb-8c99-05e5d30a18e3"
 oracle = "Defender (This creature can't attack.)\nFlying"
-flavor = "Just as the evil ones approached to slay Justina, she cast a great spell, imbuing her weapons with her own life force. Thus she fulfilled the prophecy: \"In the death of your savior will you find salvation.\""
 subtypes = ["Wall"]
 keywords = ["flying", "defender"]
 

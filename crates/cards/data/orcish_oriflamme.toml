@@ -1,7 +1,6 @@
 # Attacking creatures you control get +1/+0.
 name = "Orcish Oriflamme"
 otags = ["alliteration", "attacking-matters", "power-boost-to-all"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "ced", "cei", "ema", "fbb", "itp", "lea", "leb", "plst", "rqs", "sum"]
 id = "0b16a650-68b0-44dc-a9e1-15b7966e0b18"
 default_print = "def20e99-7a94-4b24-87fb-758ede816b57"
 oracle = "Attacking creatures you control get +1/+0."

@@ -1,7 +1,6 @@
 # Target creature gets +3/+3 until end of turn.
 name = "Giant Growth"
 otags = ["alliteration", "cycle-lea-boon", "enlarge", "single-target-instant-sorcery", "giant-growth"]
-sets = ["10e", "2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "8ed", "9ed", "a25", "ath", "bbd", "blb", "brb", "bro", "btd", "ced", "cei", "dd1", "ddd", "dkm", "dpa", "e02", "evg", "fbb", "fdn", "fnm", "gvl", "ice", "j21", "j25", "lea", "leb", "m10", "m11", "m14", "me2", "me3", "me4", "msh", "p06", "pjjt", "plst", "prm", "ps11", "psus", "rtr", "sld", "soa", "sum", "war", "wc97", "wc99"]
 id = "5748ebf1-24e3-499d-ab7c-c2cebd462a24"
 default_print = "211ba440-1c29-403a-8dd7-aa5792d20a1a"
 oracle = "Target creature gets +3/+3 until end of turn."

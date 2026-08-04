@@ -1,7 +1,6 @@
 # Take an extra turn after this one.
 name = "Time Walk"
 otags = ["power-nine", "extra-turn"]
-sets = ["2ed", "30a", "ced", "cei", "lea", "leb", "ovnt", "prm", "vma", "ydmu"]
 id = "d0209d3f-3f7e-4fd5-bce5-10bce6f29c86"
 default_print = "ade7d00d-4e7b-46e9-ace1-63f628a589fc"
 oracle = "Take an extra turn after this one."

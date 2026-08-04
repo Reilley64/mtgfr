@@ -1,7 +1,6 @@
 # {T}: Add {C}.
 # {3}, {T}, Sacrifice a creature: You gain life equal to the sacrificed creature's toughness.
 name = "Miren, the Moaning Well"
-sets = ["sld", "sok", "td0"]
 otags = ["activated-ability", "alliteration", "repeatable-lifegain", "repeatable-sacrifice-outlet", "sacrifice-outlet-creature", "toughness-matters", "utility-land"]
 id = "03fe19bb-8e22-4030-8299-2ddd2d5a7eb2"
 default_print = "53d414f0-15ae-446b-a8d7-56c1b502740c"

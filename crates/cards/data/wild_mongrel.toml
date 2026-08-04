@@ -1,11 +1,9 @@
 # Discard a card: This creature gets +1/+1 and becomes the color of your choice until end of turn.
 name = "Wild Mongrel"
 otags = ["activated-ability", "color-change-self", "cycle-ody-hound", "free-discard-outlet", "hellbending", "shade-pump", "type-errata-hound"]
-sets = ["ddd", "f06", "gvl", "ody", "plst", "prm", "slc", "td0", "uma", "vma", "wc02", "wc03"]
 id = "e9441ab3-7a17-4f9b-a873-e5e82f6e9690"
 default_print = "4d5be4ab-f85a-4272-ac08-99cb0105eb11"
 oracle = "Discard a card: This creature gets +1/+1 and becomes the color of your choice until end of turn."
-flavor = "It teaches *you* to play dead."
 subtypes = ["Dog"]
 
 [cost]

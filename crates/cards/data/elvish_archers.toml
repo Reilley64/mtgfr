@@ -1,11 +1,9 @@
 # First strike
 name = "Elvish Archers"
 otags = ["french-vanilla", "type-errata"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "ced", "cei", "fbb", "itp", "lea", "leb", "ptc", "rqs", "sum"]
 id = "534ce8e2-53a1-407c-9881-d3b5347d43c3"
 default_print = "0e8411c9-4f6f-4301-ac36-386016a32852"
 oracle = "First strike"
-flavor = "The archers have a reputation for attacking without warning. They claim that the first arrow *is* the warning."
 subtypes = ["Elf", "Archer"]
 keywords = ["first_strike"]
 

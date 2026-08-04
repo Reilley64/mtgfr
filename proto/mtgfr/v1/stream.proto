@@ -2055,9 +2055,26 @@ message DeltaEnvelope {
   repeated MessageRef auto_actions = 5;
 }
 
+// The printed words of one card in the viewer's deck: what a rendered face draws and the game
+// state never carries. Sent once with the snapshot rather than fetched per card.
+message CardTextView {
+  // Scryfall oracle id — `ObjectView.card_id`.
+  string card_id = 1;
+  // The printed type line ("Legendary Creature — Phyrexian Angel Horror").
+  string type_line = 2;
+  // Printed (oracle) rules text. Empty for a vanilla.
+  string oracle = 3;
+  // The flavor text of the printing THIS deck plays — flavor is per printing, not per card.
+  // Empty when that printing prints none.
+  string flavor = 4;
+}
+
 message SnapshotFrame {
   uint64 seq = 1;
   VisibleState state = 2;
+  // Printed words for every card in the viewer's own deck — the only cards whose faces the bar
+  // draws. A spectator gets none. Private by construction: never another seat's decklist.
+  repeated CardTextView card_text = 3;
 }
 
 message Heartbeat {}

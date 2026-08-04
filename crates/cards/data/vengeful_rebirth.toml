@@ -3,7 +3,6 @@
 # Exile Vengeful Rebirth.
 name = "Vengeful Rebirth"
 otags = ["burn-any", "cycle-mm2-draft-signpost", "exile-on-resolution", "hand-neutral", "multiple-targets", "regrowth-any", "scales-with-mana-value", "spot-removal"]
-sets = ["arb", "cmd", "mm2", "plst", "uma"]
 oracle = "Return target card from your graveyard to your hand. If you return a nonland card to your hand this way, Vengeful Rebirth deals damage equal to that card's mana value to any target.\nExile Vengeful Rebirth."
 id = "522297b1-493a-4c62-a82a-3017c44183e8"
 default_print = "b03bb160-8113-409a-a130-2b3fdc476e6a"

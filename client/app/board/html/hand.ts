@@ -8,11 +8,10 @@
 
 import { Option } from "effect";
 import type { Attribute, Html, HtmlBuilder } from "foldkit/html";
-import type { CardText } from "~/card-render/card-text";
 import { type FaceData, faceDataFrom } from "~/card-render/frame";
 import { type CostPip, costPips } from "~/costPips";
 import { cardFace } from "~/ui/card-face";
-import type { ActionView, ObjectView, VisibleState, WireCost } from "~/wire/types";
+import type { ActionView, CardTextView, ObjectView, VisibleState, WireCost } from "~/wire/types";
 import { formatMessage } from "../../domain/i18n/message";
 import { HAND_BAR_PEEK, handBarHitHeight, handBarHitWidth, handBarRaiseTranslateY } from "../geometry/handBarHit";
 import { ZONE } from "../geometry/layout";
@@ -379,8 +378,8 @@ export type HandViewInputs = {
    * `board.handHidden` and any external hide set. */
   hiddenIds: ReadonlySet<number>;
   handDrag: HandDragState | null;
-  /** Type line and rules text by catalog card id — the words the wire doesn't send. */
-  cardText?: ReadonlyMap<string, CardText | null>;
+  /** Printed words by card id, from the snapshot's book of the viewer's own deck. */
+  cardText?: ReadonlyMap<string, CardTextView>;
   /** Object ids legal for the live local discard cost; null when not discarding. */
   discardCostIds?: ReadonlySet<number> | null;
   /** Object ids currently selected for discard cost / pending discard pick. */
@@ -418,7 +417,7 @@ export function handView(inputs: HandViewInputs, h: HtmlBuilder<Message>): Html 
     const text = object.card_id != null ? cardText.get(object.card_id) : null;
     const face = faceDataFrom(object);
     if (text == null) return face;
-    return { ...face, typeLine: text.typeLine, oracle: text.oracle, flavor: text.flavor };
+    return { ...face, typeLine: text.type_line, oracle: text.oracle, flavor: text.flavor };
   };
 
   const slotInert = (id: number) => id === hiddenId || flyingIds.has(id);

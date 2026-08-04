@@ -1,11 +1,9 @@
 # Destroy target creature. You lose 2 life.
 name = "Infernal Grasp"
-sets = ["dbl", "dsc", "ecc", "eoc", "inr", "j25", "mar", "mid", "omb", "psvc", "soc", "tdc"]
 id = "94f0a572-e91c-4b56-a5d1-6cbbeabd210d"
 default_print = "f67b323d-0dda-45f8-84b7-d883ce5045a8"
 otags = ["life-payment", "removal-creature", "removal-destroy", "single-target-instant-sorcery", "spot-removal"]
 oracle = "Destroy target creature. You lose 2 life."
-flavor = "Ancient evils dwell within the burning chasm called the Ashmouth, ever ready to devour those foolish enough to travel alone."
 [cost]
 generic = 1
 black = 1

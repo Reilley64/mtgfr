@@ -3,7 +3,6 @@
 # creature at end of combat.
 name = "Cockatrice"
 otags = ["block-trigger", "delayed-trigger", "eponymous", "evasion", "hate-blocker", "hate-typal-non-wall", "old-blocking-deathtouch", "removal-creature", "removal-destroy", "repeatable-removal", "single-english-word-name", "spot-removal"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "fbb", "lea", "leb", "sum", "tsb"]
 id = "af354337-424c-4c7e-8ca5-6149261368d2"
 default_print = "8392d34d-d14a-43ca-997d-fe59e505034e"
 oracle = "Flying\nWhenever this creature blocks or becomes blocked by a non-Wall creature, destroy that creature at end of combat."

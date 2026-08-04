@@ -6,7 +6,6 @@
 #    onto the battlefield tapped, then shuffle.
 #    Equip {3}"
 name = "Bitterthorn, Nissa's Animus"
-sets = ["moc", "soc"]
 id = "5a57fba3-01e3-4852-8c45-7c910502bd03"
 default_print = "926cbd68-3b66-4ccc-a7c9-fb20e38a3126"
 otags = ["activated-ability", "attack-trigger", "attacking-matters", "combat-ramp", "land-ramp", "living-weapon", "namesake-spell", "tutor-land-basic", "tutor-land-to-battlefield"]

@@ -1,11 +1,9 @@
 # Defender (This creature can't attack.)
 name = "Wall of Stone"
 otags = ["drawback", "french-vanilla"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "8ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
 id = "cd4cadb4-3156-49bd-b36e-12ba5c85938b"
 default_print = "2a2cab55-fc64-4b3f-bc46-a1a297d2d448"
 oracle = "Defender (This creature can't attack.)"
-flavor = "The Earth herself lends her strength to these walls of living stone, which possess the stability of ancient mountains. These mighty bulwarks thwart ground-based troops, providing welcome relief for weary warriors who defend the land."
 subtypes = ["Wall"]
 keywords = ["defender"]
 

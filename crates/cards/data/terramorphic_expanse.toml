@@ -2,12 +2,10 @@
 # Terramorphic Expanse: "{T}, Sacrifice this land: Search your library for a basic land card,
 # put it onto the battlefield tapped, then shuffle." — a fetchland with no life cost.
 name = "Terramorphic Expanse"
-sets = ["10e", "40k", "afc", "arc", "blc", "brc", "c13", "c14", "c15", "c16", "c17", "c18", "c19", "cm2", "cma", "cmd", "cmm", "cmr", "dde", "ddh", "ddn", "dmc", "drc", "dsk", "ecc", "eoc", "h09", "hop", "j25", "jmp", "lcc", "ltc", "m10", "m11", "m3c", "mma", "moc", "msc", "one", "otc", "pc2", "pca", "pip", "plst", "prm", "ps11", "psal", "sld", "sos", "td0", "td2", "tdc", "tsp", "tsr", "uma", "who", "znc"]
 id = "1bd3e453-aa21-4ee6-95c2-d6d920ee8e7a"
 default_print = "a81f924b-0527-4311-8120-9bfff71524f6"
 otags = ["activated-ability", "tutor-land-basic", "fetchland"]
 oracle = "{T}, Sacrifice this land: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle."
-flavor = "\"This is . . . I can't explain it. The opposite of all we know. A negative zone.\"\n—Mister Fantastic, Reed Richards"
 
 # A fetch-only land: no `produces`, so it has no tap-for-mana ability — it's played only to be
 # sacrificed for the fetch below.

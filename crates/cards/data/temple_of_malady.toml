@@ -3,7 +3,6 @@
 # {T}: Add {B} or {G}.
 # Temple of Malady: "This land enters tapped. When this land enters, scry 1. {T}: Add {B} or {G}."
 name = "Temple of Malady"
-sets = ["blc", "c21", "cmm", "dsc", "fdn", "jou", "m20", "m21", "m3c", "ncc", "onc", "otc", "pip", "pm20", "pm21", "prm", "soc", "tdc"]
 id = "dc55421f-dee8-4263-9df0-2365df5f14bb"
 default_print = "1ca36218-db87-4e44-8606-2a516504ed20"
 otags = ["activated-ability", "cycle-block-ths-scry-land", "scry", "triggered-ability", "utility-land"]

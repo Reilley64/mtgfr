@@ -3,7 +3,6 @@
 # that player.
 name = "Warp Artifact"
 otags = ["burn-player", "hate-artifact", "parasitic-aura", "pinger", "triggered-ability"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "fbb", "itp", "lea", "leb", "me4", "rqs", "sum"]
 id = "f4b18451-1f40-48bd-8ca9-eec784ad5dd7"
 default_print = "d1320d4a-ecfc-4cd5-bc6b-445f63c17b27"
 oracle = "Enchant artifact\nAt the beginning of the upkeep of enchanted artifact's controller, this Aura deals 1 damage to that player."

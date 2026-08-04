@@ -1,7 +1,6 @@
 # Target spell or permanent becomes white. (Mana symbols on that permanent remain unchanged.)
 name = "Purelace"
 otags = ["color-change", "cycle-lea-lace", "interrupt", "single-target-instant-sorcery", "untracked-indefinite-effect"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
 id = "3773001a-8868-49ec-a406-298cf72359c2"
 default_print = "bd89c79a-668e-4f3c-b248-6f067e6fca65"
 oracle = "Target spell or permanent becomes white. (Mana symbols on that permanent remain unchanged.)"

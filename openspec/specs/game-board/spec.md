@@ -110,7 +110,7 @@ A rendered card face SHALL be drawn from the M15 frame assets — art, name, typ
 
 The full card face SHALL be drawn for hand and command-zone tiles; the square permanent face SHALL be drawn for the battlefield and draws neither type line nor rules text, having no room for them.
 
-Art and flavor SHALL both come from the printing the object plays — the printing the deck chose, not the card's default printing. While that printing's flavor is unknown the face SHALL draw no flavor rather than another printing's words.
+Art and flavor SHALL both come from the printing the object plays — the printing the deck chose, not the card's default printing. The printed words a face draws — type line, rules text and that printing's flavor — SHALL arrive with the opening snapshot for the viewer's whole deck; the board MUST NOT request card text per card, from the catalog or from any card API.
 
 #### Scenario: Rules text sets mana symbols as pips
 - **WHEN** a face's rules text contains a mana symbol such as `{T}` or `{G}`
@@ -122,7 +122,7 @@ Art and flavor SHALL both come from the printing the object plays — the printi
 
 #### Scenario: Flavor follows the printing the deck plays
 - **WHEN** a card is played from a deck that chose a printing other than the card's default
-- **THEN** the face draws that printing's flavor under its art, and draws none until that printing's flavor is known
+- **THEN** the face draws that printing's flavor under its art, from the words the snapshot already carried, without a further request
 
 #### Scenario: A card with no flavor rules no divider
 - **WHEN** a card's printing prints no flavor text

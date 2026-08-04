@@ -2,7 +2,6 @@
 # counters on it.)
 # At the beginning of your upkeep, create a 1/1 green Saproling creature token for each +1/+1 counter on this creature.
 name = "Mycoloth"
-sets = ["ala", "c15", "c16", "cma", "pc2", "pca", "plst", "sld", "soc"]
 id = "d7fd16ce-282d-49cd-b2b4-0d25935e7a72"
 default_print = "924976cf-9b46-4cbf-ab27-07ca72a21608"
 otags = ["devour", "pp-counters-matter", "repeatable-creature-tokens", "sacrifice-outlet-creature", "triggered-ability"]

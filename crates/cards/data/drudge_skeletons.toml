@@ -2,11 +2,9 @@
 # instead tap it, remove it from combat, and heal all damage on it.)
 name = "Drudge Skeletons"
 otags = ["activated-ability", "regenerates-self"]
-sets = ["10e", "2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "8ed", "9ed", "ced", "cei", "ddd", "dpa", "fbb", "gvl", "lea", "leb", "m10", "ps11", "sum"]
 id = "c180ed02-07f4-4538-9bea-8c249234a8e2"
 default_print = "4eb88d79-048b-4f7c-9ca0-4d9066af805e"
 oracle = "{B}: Regenerate this creature. (The next time this creature would be destroyed this turn, instead tap it, remove it from combat, and heal all damage on it.)"
-flavor = "Bones scattered around us joined to form misshapen bodies. We struck at them repeatedly—they fell, but soon formed again, with the same mocking look on their faceless skulls."
 subtypes = ["Skeleton"]
 
 [cost]

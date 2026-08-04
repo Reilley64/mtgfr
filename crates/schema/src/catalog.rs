@@ -3,7 +3,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::dto::{MessageParam, MessageRef, WireCost, WireKind};
+use crate::dto::{CardTextView, MessageParam, MessageRef, WireCost, WireKind};
 use engine::EffectMessage;
 
 /// One pool card, for the deck builder to browse. Stats/keywords/summary are engine truth.
@@ -28,9 +28,6 @@ pub struct CatalogCard {
     /// The card's printed (oracle) rules text, for the deck builder's read-the-text hover
     /// (`engine::CardDef::oracle`). `None` for a card whose text isn't recorded, or a vanilla.
     pub oracle: Option<String>,
-    /// The card's printed flavor text — the italic words a rendered card face sets under the
-    /// rules divider (`engine::CardDef::flavor`). `None` when the printing prints none.
-    pub flavor: Option<String>,
     /// Deprecated legacy set/edition code; always empty. Use `sets`.
     pub set: String,
     /// Every Scryfall set code with a printing of this oracle (lowercase). A deck-builder search
@@ -422,6 +419,71 @@ fn all_subtypes(def: &engine::CardDef) -> Vec<String> {
     out
 }
 
+/// The card's printed type line, as close as the pool records it.
+///
+/// ponytail: supertypes are Legendary / Basic / Snow — the three the pool tracks; World and the
+/// rest are lost until a card needs one.
+fn type_line(def: &engine::CardDef) -> String {
+    use engine::{CardKind, SpellSpeed, TypeSet};
+
+    let mut words: Vec<&str> = Vec::new();
+    if def.legendary {
+        words.push("Legendary");
+    }
+    if matches!(def.kind, CardKind::Land { basic: true, .. }) {
+        words.push("Basic");
+    }
+    if def.snow {
+        words.push("Snow");
+    }
+    match def.kind {
+        // A creature's other card types print first: "Artifact Creature", "Enchantment Creature".
+        CardKind::Creature { also, .. } => {
+            for (bit, word) in [
+                (TypeSet::ARTIFACT, "Artifact"),
+                (TypeSet::ENCHANTMENT, "Enchantment"),
+                (TypeSet::LAND, "Land"),
+            ] {
+                if also.intersects(bit) {
+                    words.push(word);
+                }
+            }
+            words.push("Creature");
+        }
+        CardKind::Spell {
+            speed: SpellSpeed::Instant,
+        } => words.push("Instant"),
+        CardKind::Spell {
+            speed: SpellSpeed::Sorcery,
+        } => words.push("Sorcery"),
+        // An Aura is an enchantment; "Aura" itself is a subtype, and the card carries it.
+        CardKind::Enchantment | CardKind::Aura => words.push("Enchantment"),
+        CardKind::Artifact => words.push("Artifact"),
+        CardKind::Planeswalker { .. } => words.push("Planeswalker"),
+        CardKind::Battle { .. } => words.push("Battle"),
+        CardKind::Land { .. } => words.push("Land"),
+    }
+
+    let types = words.join(" ");
+    let subtypes = all_subtypes(def);
+    if subtypes.is_empty() {
+        return types;
+    }
+    format!("{types} — {}", subtypes.join(" "))
+}
+
+/// The printed words of one card as the deck plays it — what a rendered face draws and the game
+/// state never carries. `flavor` is the flavor of THAT printing ([`cards::print_flavor`]), not of
+/// the card's `default_print`: flavor is per printing, and a reprint prints other words.
+pub fn card_text(def: &engine::CardDef, flavor: Option<&str>) -> CardTextView {
+    CardTextView {
+        card_id: def.id.to_string(),
+        type_line: type_line(def),
+        oracle: def.oracle.unwrap_or_default().to_string(),
+        flavor: flavor.unwrap_or_default().to_string(),
+    }
+}
+
 /// A pool card in browse form for the deck builder.
 pub fn catalog_card(def: &engine::CardDef) -> CatalogCard {
     let keywords: Vec<String> = def.keywords.iter().copied().map(wire_keyword).collect();
@@ -443,7 +505,6 @@ pub fn catalog_card(def: &engine::CardDef) -> CatalogCard {
         color_identity: identity_indices(color_identity(def)),
         approximates: def.approximates.map(str::to_string),
         oracle: def.oracle.map(str::to_string),
-        flavor: def.flavor.map(str::to_string),
         set: String::new(),
         sets: def.sets.iter().map(|s| s.to_string()).collect(),
         subtypes: all_subtypes(def),

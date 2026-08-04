@@ -2,7 +2,6 @@
 # Forestcycling {2} ({2}, Discard this card: Search your library for a Forest card, reveal it, put it into your hand,
 # then shuffle.)
 name = "Elvish Aberration"
-sets = ["2xm", "a25", "cmd", "cns", "ddu", "dmr", "pal03", "prm", "scg", "vma"]
 id = "1d25b831-c1de-4f79-bbb3-1582eda96452"
 default_print = "cfd91d0d-bc6c-41a1-aecf-d31465717182"
 otags = ["activate-from-hand", "cycle-onslaught-creature-landcycler", "mana-dork", "ramp", "tutor-land-forest", "tutor-to-hand"]

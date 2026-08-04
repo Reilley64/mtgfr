@@ -2,7 +2,6 @@
 # {T}: Add {R}.
 # Cycling {R} ({R}, Discard this card: Draw a card.)
 name = "Forgotten Cave"
-sets = ["40k", "blc", "c13", "c14", "c15", "c18", "c19", "c20", "c21", "cm2", "cma", "cmd", "cmr", "dd1", "ddj", "ddt", "evg", "ha2", "j22", "j25", "m3c", "mh1", "onc", "ons", "plst", "td0", "vma"]
 otags = ["activate-from-hand", "cycle-ons-m-cycling-land", "hand-neutral", "pure-draw", "utility-land"]
 oracle = "This land enters tapped.\n{T}: Add {R}.\nCycling {R} ({R}, Discard this card: Draw a card.)"
 id = "394c6de5-7957-4a0b-a6b9-ee0c707cd022"

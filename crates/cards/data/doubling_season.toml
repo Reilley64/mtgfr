@@ -2,7 +2,6 @@
 # If an effect would put one or more counters on a permanent you control, it puts twice that many of those counters on
 # that permanent instead.
 name = "Doubling Season"
-sets = ["2xm", "bbd", "cmm", "fdn", "g11", "mma", "pfdn", "prm", "pza", "rav", "wot"]
 id = "01546b7d-a233-4176-8843-d732074dc5b6"
 default_print = "f2c4f80e-84a0-463b-82c3-5c6503809351"
 otags = ["synergy-planeswalker", "synergy-token", "token-doubler", "counter-doubler"]

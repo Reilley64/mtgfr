@@ -55,7 +55,6 @@ This mirrors the DSL's top-level card shape with owned fields, then folds into t
 | `escape` | EscapeCost \| null | no | - | Escape (CR 702.19) — `[escape]` (an `[escape.cost]` sub-table plus `exile`/ `plus_one_plus_one_counters`); absent for a card without escape. |
 | `evoke` | CostToml \| null | no | - | Evoke (CR 702.74) — `[evoke]` with the same `[cost]`-table shape as `[echo]`; absent for a card without evoke. |
 | `flashback` | CostToml \| null | no | - | Flashback (CR 702.34) — `[flashback]` with the same `[cost]`-table shape (may carry a `[flashback.additional]` rider); absent for a card without flashback. |
-| `flavor` | string \| null | no | `null` | Verbatim printed flavor text — the italic words a rendered face sets under the rules divider. Metadata like `oracle`; the engine never reads it. |
 | `forecast` | HandActivatedAbility \| null | no | - | Forecast (CR 702.57, Skyscribing) — a `[forecast]` table (`[forecast.cost]` + `[[forecast.effects]]`), the reveal-and-keep sibling of `hand_ability`. Absent for a card without one. |
 | `free_cast_if` | Condition \| null | no | - | A printed conditional free-cast permission (CR 118.5) — `free_cast_if = { .. }` with the same `Condition` table shape as `enters_tapped_unless`; absent for a card without one. |
 | `functions_in_graveyard` | boolean | no | `false` | CR 603.6e — this card's triggered abilities fire from its owner's graveyard rather than the battlefield (Squee, Nether Traitor). `false` for every ordinary card. |
@@ -75,7 +74,6 @@ This mirrors the DSL's top-level card shape with owned fields, then folds into t
 | `otags` | array<string> | no | `[]` | Scryfall Tagger oracle-tag slugs for thematic catalog search. Pure metadata. |
 | `recover` | CostToml \| null | no | - | Recover (CR 702.59) — `[recover]` with the same `[cost]`-table shape as `[echo]`; absent for a card without recover. |
 | `retrace` | boolean | no | `false` | Retrace (CR 702.83) — `retrace = true`; absent (`false`) for a card without retrace. |
-| `sets` | array<string> | no | `[]` | Every Scryfall set code with a printing of this oracle, used by coverage and catalog search. Pure metadata; gameplay never reads it. |
 | `snow` | boolean | no | `false` | Snow supertype (CR 205.4g) — `snow = true`; absent (`false`) for every ordinary card. |
 | `subtypes` | array<string> | no | `[]` | Printed non-land subtypes, such as creature, artifact, and enchantment subtypes. Land types live under `[kind].subtypes`. |
 | `suspend` | Suspend \| null | no | - | Suspend N—[cost] (CR 702.62, Rousing Refrain) — a `[suspend]` table whose `cost` sub-table is leaked to `'static` by the `Suspend` impl. Absent for ordinary cards. |

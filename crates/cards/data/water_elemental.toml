@@ -1,7 +1,5 @@
 # (no rules text — vanilla creature)
 name = "Water Elemental"
-flavor = "Unpredictable as the sea itself, Water Elementals shift without warning from tranquility to tempest. Capricious and fickle, they flow restlessly from one shape to another, expressing their moods with their physical forms."
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "ced", "cei", "fbb", "lea", "leb", "me4", "s99", "sum"]
 id = "c470fbe1-0538-46ec-8741-3143f5e78af8"
 default_print = "c498c898-1671-4632-b69a-0e1e9b8d05b8"
 subtypes = ["Elemental"]

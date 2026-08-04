@@ -4,7 +4,6 @@
 # on it. At the beginning of your upkeep, remove a time counter. When the last is removed, you may cast it without
 # paying its mana cost.)
 name = "Rousing Refrain"
-sets = ["c21", "otc", "prm", "soc"]
 id = "515c522f-51d5-4f6d-b9b1-ea3c7f6a378e"
 default_print = "2b3ec666-0e57-4c42-872c-51799e0b5c68"
 otags = ["adds-multiple-mana", "alliteration", "cast-on-resolution", "castable-from-exile", "cheaper-than-mv", "hate-full-hand", "intervening-if-clause", "recurring-suspend", "repeatable-crime", "ritual", "single-target-instant-sorcery", "trigger-from-exile"]

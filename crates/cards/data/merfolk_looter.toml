@@ -1,12 +1,10 @@
 # {T}: Draw a card, then discard a card.
 name = "Merfolk Looter"
-sets = ["10e", "7ed", "a25", "afc", "cn2", "ddt", "ema", "exo", "ha5", "m10", "m12", "plst", "td0", "tpr", "wc01", "wc02"]
 otags = ["activated-ability", "hand-neutral", "type-errata", "repeatable-loot"]
 subtypes = ["Merfolk", "Rogue"]
 id = "67362406-b1ca-49e2-800d-9050bfe8742a"
 default_print = "6d740928-bf61-4420-a403-63097538b97d"
 oracle = "{T}: Draw a card, then discard a card."
-flavor = "Merfolk don't always know what they're looking for, but they're certain once they find it."
 
 [cost]
 generic = 1

@@ -1,7 +1,6 @@
 # Target player gains X life.
 name = "Stream of Life"
 otags = ["lifegain", "single-target-instant-sorcery"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "8ed", "9ed", "ced", "cei", "fbb", "lea", "leb", "pmei", "sum"]
 id = "9eb2912d-2130-49f2-9529-b58fa5a97a15"
 default_print = "70e476cb-8b72-434c-b5e9-0fd0319a1bff"
 oracle = "Target player gains X life."

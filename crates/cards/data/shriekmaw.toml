@@ -2,7 +2,6 @@
 # When this creature enters, destroy target nonartifact, nonblack creature.
 # Evoke {1}{B} (You may cast this spell for its evoke cost. If you do, it's sacrificed when it enters.)
 name = "Shriekmaw"
-sets = ["afc", "arc", "c14", "c15", "c20", "cma", "cmd", "ddh", "ecc", "lrw", "mkc", "plrw", "plst", "prm", "td0", "tsr", "uma"]
 id = "717bbb9d-0a5b-4979-a24b-9d54aac7657a"
 default_print = "ed2d62c2-85c9-4fd4-8a7e-0017640606be"
 otags = ["evoke", "removal-creature", "removal-destroy", "spot-removal"]

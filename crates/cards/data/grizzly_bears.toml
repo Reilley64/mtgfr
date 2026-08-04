@@ -1,7 +1,5 @@
 # (no rules text — vanilla creature)
 name = "Grizzly Bears"
-flavor = "\"We cannot forget that among all of Dominaria's wonders, a system of life exists, with prey and predators that will never fight wars nor vie for ancient power.\"\n—Jolrael, empress of beasts"
-sets = ["10e", "2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "8ed", "9ed", "ced", "cei", "fbb", "itp", "j21", "lea", "leb", "por", "rqs", "s99", "sum"]
 id = "14c8f55d-d177-4c25-a931-ebeb9e6062a0"
 default_print = "409f9b88-f03e-40b6-9883-68c14c37c0de"
 otags = ["magic-term-name", "meme", "real-life-animal-name", "type-errata-summon-creature"]

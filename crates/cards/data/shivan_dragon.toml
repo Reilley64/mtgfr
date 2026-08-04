@@ -2,11 +2,9 @@
 # {R}: This creature gets +1/+0 until end of turn.
 name = "Shivan Dragon"
 otags = ["activated-ability", "bottomless-mana-sink", "cycle-m19-precon-r", "cycle-w16-r", "cycle-w17-r-creature", "evasion", "firebreathing", "meme"]
-sets = ["10e", "2ed", "30a", "3ed", "4bb", "4ed", "5ed", "7ed", "8ed", "9ed", "btd", "ced", "cei", "dmr", "dpa", "drb", "fbb", "fdn", "gn3", "j21", "lea", "leb", "m10", "m14", "m15", "m19", "m20", "me4", "o90p", "ori", "p30h", "p30t", "p9ed", "pmei", "prm", "ps11", "slc", "sld", "sum", "w16", "w17"]
 id = "711eea87-0fa3-46e0-a42b-fa5a86455f04"
 default_print = "fd4f6e34-3f66-4e10-8170-56039c5f6fcc"
 oracle = "Flying\n{R}: This creature gets +1/+0 until end of turn."
-flavor = "While it's true most Dragons are cruel, the Shivan Dragon seems to take particular glee in the misery of others, often tormenting its victims much like a cat plays with a mouse before delivering the final blow."
 subtypes = ["Dragon"]
 keywords = ["flying"]
 

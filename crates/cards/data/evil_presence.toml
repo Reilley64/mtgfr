@@ -2,7 +2,6 @@
 # Enchanted land is a Swamp.
 name = "Evil Presence"
 otags = ["land-conversion"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "fbb", "lea", "leb", "me3", "nph", "sum"]
 id = "3d8ac41c-0566-48b2-a744-39db2f72272c"
 default_print = "19d85c34-2057-4572-a881-29dd35c1ee30"
 oracle = "Enchant land\nEnchanted land is a Swamp."

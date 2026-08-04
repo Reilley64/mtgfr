@@ -2,11 +2,9 @@
 # player controls an Island.)
 name = "Lord of Atlantis"
 otags = ["anthem", "gives-islandwalk", "keyword-anthem", "power-boost-to-all", "symmetrical", "toughness-boost-to-all", "typal-merfolk", "type-errata-lord", "type-errata-name-self"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "ced", "cei", "fbb", "j18", "lea", "leb", "mar", "p30h", "prm", "psus", "pw24", "spg", "sum", "tsb", "wc01"]
 id = "cc7f290f-ca00-4285-9bdb-4b4402444f30"
 default_print = "fa161987-2dd1-4efe-b934-acbd93653169"
 oracle = "Other Merfolk get +1/+1 and have islandwalk. (They can't be blocked as long as defending player controls an Island.)"
-flavor = "A master of tactics, the Lord of Atlantis makes his people bold in battle merely by arriving to lead them."
 subtypes = ["Merfolk"]
 
 [cost]

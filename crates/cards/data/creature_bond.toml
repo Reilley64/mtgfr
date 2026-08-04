@@ -3,7 +3,6 @@
 # the creature's controller.
 name = "Creature Bond"
 otags = ["burn-player", "death-trigger", "hate-high-pt"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
 id = "70492e32-ba4d-4314-b016-892fb15f7a23"
 default_print = "1f9e4aa8-4ca7-4893-81d7-98205246f357"
 oracle = "Enchant creature\nWhen enchanted creature dies, this Aura deals damage equal to that creature's toughness to the creature's controller."

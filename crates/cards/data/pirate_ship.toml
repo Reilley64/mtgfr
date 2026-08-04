@@ -3,7 +3,6 @@
 # When you control no Islands, sacrifice this creature.
 name = "Pirate Ship"
 otags = ["activated-ability", "burn-any", "creature-type-ship", "landhome", "pinger", "repeatable-crime", "repeatable-removal", "restricted-attacker", "spot-removal", "state-trigger"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "fbb", "lea", "leb", "sum", "tsb"]
 id = "c6b3f924-806d-47d3-b044-72b48470196c"
 default_print = "d6119988-4797-4993-a75f-e7015c2c6354"
 oracle = "This creature can't attack unless defending player controls an Island.\n{T}: This creature deals 1 damage to any target.\nWhen you control no Islands, sacrifice this creature."

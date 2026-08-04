@@ -2,11 +2,9 @@
 # If an opponent would begin an extra turn, that player skips that turn instead.
 name = "Stranglehold"
 otags = ["hate-tutor", "prevent-extra-turns", "single-english-word-name"]
-sets = ["cma", "cmd", "p22", "sld"]
 id = "b66c6e3a-daed-43a3-95d6-4f9d6223bbf1"
 default_print = "10a4d051-8e13-47c1-bfd6-17ab44670250"
 oracle = "Your opponents can't search libraries.\nIf an opponent would begin an extra turn, that player skips that turn instead."
-flavor = "The correct answer to a barbarian's riddle is to choke on your cleverness and die."
 approximates = "\"If an opponent would begin an extra turn, that player skips that turn instead\" is dropped — no card in the pool grants an extra turn, so the engine has no extra-turn machinery to skip."
 
 [cost]

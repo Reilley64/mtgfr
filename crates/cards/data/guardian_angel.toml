@@ -3,7 +3,6 @@
 # would be dealt to that permanent or player this turn.
 name = "Guardian Angel"
 otags = ["damage-prevention", "damage-prevention-self", "single-target-instant-sorcery", "untracked-effect"]
-sets = ["2ed", "30a", "3ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
 id = "1a91ca69-e890-41dc-866b-3aabf10c9a9c"
 default_print = "c2b47221-c468-4b77-89c5-79a06443ef81"
 oracle = "Prevent the next X damage that would be dealt to any target this turn. Until end of turn, you may pay {1} any time you could cast an instant. If you do, prevent the next 1 damage that would be dealt to that permanent or player this turn."

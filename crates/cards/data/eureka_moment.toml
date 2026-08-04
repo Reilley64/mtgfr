@@ -2,12 +2,10 @@
 # Eureka Moment {2}{G}{U} — "Draw two cards. You may put a land card from your hand onto
 # the battlefield."
 name = "Eureka Moment"
-sets = ["dsc", "m3c", "soc", "stx"]
 id = "0e2c11b2-d95f-4402-9a4a-afd3f7ffb8be"
 default_print = "4d267ed8-e760-4f92-962b-f83dea822c45"
 otags = ["cycle-stx-c-2c-noncreature", "hand-neutral", "hand-positive", "land-ramp", "pure-draw", "sneak-land"]
 oracle = "Draw two cards. You may put a land card from your hand onto the battlefield."
-flavor = "\"At first, the equations were simply numbers. But in those numbers I saw a story, and in that story I saw a pattern, and suddenly it all fit together!\""
 
 [cost]
 generic = 2

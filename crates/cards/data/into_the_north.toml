@@ -1,11 +1,9 @@
 # Search your library for a snow land card, put it onto the battlefield tapped, then shuffle.
 name = "Into the North"
-sets = ["csp", "mh1"]
 id = "30aefabc-5fd2-451b-aa93-8e5a972c7691"
 default_print = "79cea55d-8ef3-44a5-894e-967f1e97fc02"
 otags = ["land-ramp", "snow-matters", "tutor-land-to-battlefield"]
 oracle = "Search your library for a snow land card, put it onto the battlefield tapped, then shuffle."
-flavor = "\"Our border lands fall under the grip of Heidar's second winter. Go forth and reclaim them for Yavimaya.\"\n—Kaysa, elder druid of the Juniper Order"
 
 [cost]
 generic = 1

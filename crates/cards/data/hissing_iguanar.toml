@@ -1,9 +1,7 @@
 # Whenever another creature dies, you may have this creature deal 1 damage to target player or planeswalker.
 name = "Hissing Iguanar"
-sets = ["2x2", "ala", "pc2", "pca", "td0", "uma"]
 otags = ["burn-planeswalker", "burn-player", "death-trigger", "pinger", "repeatable-crime", "repeatable-removal"]
 oracle = "Whenever another creature dies, you may have this creature deal 1 damage to target player or planeswalker."
-flavor = "Viashino thrashes keep iguanars as hunting companions, giving them wounded captives as playthings."
 subtypes = ["Lizard"]
 id = "7c4fc524-4734-4fb8-a5ca-ac2617242c3f"
 default_print = "2268cf4b-de6d-4447-86e8-f8298728a3bd"

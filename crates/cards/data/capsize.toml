@@ -2,7 +2,6 @@
 # resolves.)
 # Return target permanent to its owner's hand.
 name = "Capsize"
-sets = ["f03", "mp2", "prm", "td0", "tmp", "tpr", "wc98"]
 otags = ["bottomless-mana-sink", "more-expensive-than-mv", "removal-bounce", "removal-permanent", "repeatable-crime", "repeatable-removal", "single-english-word-name", "single-target-instant-sorcery", "spot-removal", "tmp-storyline-in-cards"]
 id = "77637eff-2963-4402-88f3-ca346f762fc8"
 default_print = "f36f6545-e4e0-4dc8-acea-e527e43f3e14"

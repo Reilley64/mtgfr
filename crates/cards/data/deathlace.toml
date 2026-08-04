@@ -1,7 +1,6 @@
 # Target spell or permanent becomes black. (Mana symbols on that permanent remain unchanged.)
 name = "Deathlace"
 otags = ["color-change", "cycle-lea-lace", "interrupt", "single-target-instant-sorcery", "untracked-indefinite-effect"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
 id = "fb80aaba-352a-4b58-8db2-1e02d542819c"
 default_print = "c3e02432-b8bd-4091-a520-6895313ff141"
 oracle = "Target spell or permanent becomes black. (Mana symbols on that permanent remain unchanged.)"

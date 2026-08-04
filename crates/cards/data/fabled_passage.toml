@@ -1,10 +1,8 @@
 name = "Fabled Passage"
-sets = ["blb", "eld", "eoc", "m21", "msc", "pblb", "peld", "plst", "pm21", "prm", "pw21", "sld", "soc", "tle", "tmc"]
 id = "0c85b8f7-0bd0-4680-9ec5-d4b110460a54"
 default_print = "62ef854d-ec9e-443d-a4ba-4b2875ed3fe7"
 otags = ["activated-ability", "conditional-tapland", "fetchland", "lands-matter", "tutor-land-basic"]
 oracle = "{T}, Sacrifice this land: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle. Then if you control four or more lands, untap that land."
-flavor = "\"Well? You coming in or what?\"\n—The One Above All"
 
 [kind]
 type = "land"

@@ -1,12 +1,10 @@
 # This creature can't block.
 name = "Jungle Lion"
-sets = ["me3", "plst", "por", "td0"]
 otags = ["drawback", "type-errata-summon-creature"]
 subtypes = ["Cat"]
 id = "45b42694-9ee8-44f3-9de3-aa2c0f1b6a13"
 default_print = "71142f87-2ffd-4736-b796-e22dc410c9cd"
 oracle = "This creature can't block."
-flavor = "The lion's only loyalty is to its hunger."
 keywords = ["cant_block"]
 
 [cost]

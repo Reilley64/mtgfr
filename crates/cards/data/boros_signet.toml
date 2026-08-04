@@ -1,9 +1,7 @@
 # {1}, {T}: Add {R}{W}.
 name = "Boros Signet"
 otags = ["activated-ability", "cycle-rav-signet", "mana-rock", "refund"]
-sets = ["aa1", "blc", "c15", "c17", "c20", "clu", "cm2", "cma", "cmd", "cmm", "cmr", "gk1", "hop", "mm3", "onc", "prm", "rav", "rvr", "sld", "tdc"]
 oracle = "{1}, {T}: Add {R}{W}."
-flavor = "Carved high into stone, the signet requires all to look up at it—whether with fear or admiration."
 id = "41c84665-1f99-40ab-aaca-1188649eb263"
 default_print = "49c37c0e-d363-4033-a069-710241cd9923"
 

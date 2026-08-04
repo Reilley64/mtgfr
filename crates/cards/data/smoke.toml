@@ -1,7 +1,6 @@
 # Players can't untap more than one creature during their untap steps.
 name = "Smoke"
 otags = ["single-english-word-name", "stasis", "symmetrical"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "fbb", "lea", "leb", "me4", "sum"]
 id = "8aa97d25-cd51-4ceb-b7eb-af64f0914a8c"
 default_print = "4d2553c0-1105-4eed-baf2-e13f1005dfb7"
 oracle = "Players can't untap more than one creature during their untap steps."

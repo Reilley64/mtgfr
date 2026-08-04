@@ -6,7 +6,6 @@
 # upkeep.
 name = "Clockwork Beast"
 otags = ["activated-ability", "deprecated-p-t-counter", "intervening-if-clause", "type-addition-from-none"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "btd", "ced", "cei", "fbb", "itp", "lea", "leb", "me1", "rqs", "sum"]
 id = "eb97c8db-ac6c-476c-b14d-87785e9c82f0"
 default_print = "c7741816-0bc1-4540-b4b2-006275ffe572"
 oracle = "This creature enters with seven +1/+0 counters on it.\nAt end of combat, if this creature attacked or blocked this combat, remove a +1/+0 counter from it.\n{X}, {T}: Put up to X +1/+0 counters on this creature. This ability can't cause the total number of +1/+0 counters on this creature to be greater than seven. Activate only during your upkeep."

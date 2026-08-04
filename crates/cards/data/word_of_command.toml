@@ -6,7 +6,6 @@
 # spell is resolving.
 name = "Word of Command"
 otags = ["cycle-lea-slush-art", "hand-disruption", "notorious-templating", "peek-hand", "rules-nightmare", "single-target-instant-sorcery", "turn-control"]
-sets = ["2ed", "30a", "ced", "cei", "lea", "leb", "me4"]
 id = "e8ad3a77-b293-4d69-b080-27ca9f95d443"
 default_print = "239c8547-207b-41d1-a2be-8825bfc6ef7f"
 oracle = "Look at target opponent's hand and choose a card from it. You control that player until Word of Command finishes resolving. The player plays that card if able. While doing so, the player can activate mana abilities only if they're from lands that player controls and only if mana they produce is spent to activate other mana abilities of lands the player controls and/or to play that card. If the chosen card is cast as a spell, you control the player while that spell is resolving."

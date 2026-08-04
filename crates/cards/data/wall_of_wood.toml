@@ -1,11 +1,9 @@
 # Defender (This creature can't attack.)
 name = "Wall of Wood"
 otags = ["alliteration", "drawback", "french-vanilla"]
-sets = ["10e", "2ed", "30a", "3ed", "4bb", "4ed", "ced", "cei", "dpa", "fbb", "lea", "leb", "ps11", "sum"]
 id = "aa5e6894-8c97-46f8-a0fd-07c6db51e9a7"
 default_print = "b55d8375-ea70-4dd0-950e-3dbf3dfdd4f6"
 oracle = "Defender (This creature can't attack.)"
-flavor = "Everybody knows that to ward off trouble, you knock on wood. But usually it's better to make a wall out of the wood and let trouble do the knocking."
 subtypes = ["Wall"]
 keywords = ["defender"]
 

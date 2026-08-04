@@ -1,11 +1,9 @@
 # Search your library for up to three creature cards, put them into your graveyard, then shuffle.
 name = "Buried Alive"
-sets = ["cm2", "cmd", "mh3", "ody", "pd3", "plst", "sld", "td0", "uma", "wc03", "wth"]
 id = "8203c621-a1a0-4865-8c9a-0d4064c86107"
 default_print = "76878b19-2916-4f3f-bee5-20846bc9e2db"
 otags = ["tutor-creature", "tutor-to-graveyard"]
 oracle = "Search your library for up to three creature cards, put them into your graveyard, then shuffle."
-flavor = "The scrape of shovels and the tumble of cold dirt soon muffled their pleas."
 
 [cost]
 generic = 2

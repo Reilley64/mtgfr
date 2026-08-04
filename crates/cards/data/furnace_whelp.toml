@@ -2,11 +2,9 @@
 # {R}: This creature gets +1/+0 until end of turn.
 name = "Furnace Whelp"
 otags = ["activated-ability", "bottomless-mana-sink", "evasion", "firebreathing"]
-sets = ["10e", "5dn", "arc", "cma", "cmd", "dd2", "gn3", "ima", "j22", "jmp", "jvc", "m13", "m15", "plst", "ps11", "scd"]
 id = "8422f1e0-00ca-4ffb-a6b2-e2c9f96d7f23"
 default_print = "2ce76e86-39f3-4ebf-b550-88ea7f23a91f"
 oracle = "Flying\n{R}: This creature gets +1/+0 until end of turn."
-flavor = "Baby dragons can't figure out humans—if they didn't want to be killed, why were they made of meat and treasure?"
 subtypes = ["Dragon"]
 keywords = ["flying"]
 

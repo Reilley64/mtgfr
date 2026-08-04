@@ -1,7 +1,6 @@
 # All Forests are 1/1 creatures that are still lands.
 name = "Living Lands"
 otags = ["alliteration", "animate-land", "symmetrical", "synergy-forest", "universal-type-change"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "ced", "cei", "fbb", "lea", "leb", "me4", "sum"]
 id = "8f0179fe-6d7d-49cc-ab06-d3b402c6fc8d"
 default_print = "a0a8474f-279e-44d7-a062-6dcb556c328d"
 oracle = "All Forests are 1/1 creatures that are still lands."

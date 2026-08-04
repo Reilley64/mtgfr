@@ -1,8 +1,6 @@
 # (no rules text — vanilla creature)
 name = "Hill Giant"
-flavor = "Fortunately, hill giants have large blind spots in which a human can easily hide. Unfortunately, these blind spots are beneath the bottoms of their feet."
 otags = ["magic-term-name", "type-errata-summon-creature"]
-sets = ["10e", "2ed", "30a", "3ed", "4bb", "4ed", "5ed", "7ed", "8ed", "9ed", "ced", "cei", "dpa", "fbb", "itp", "lea", "leb", "por", "ps11", "rqs", "sum"]
 id = "342199e0-15b6-4824-83da-25caef2592b3"
 default_print = "14c2be6a-9ca6-4d3a-8dd0-db4ea40799f8"
 subtypes = ["Giant"]

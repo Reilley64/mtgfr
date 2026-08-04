@@ -1,7 +1,6 @@
 # Destroy target artifact or enchantment.
 name = "Disenchant"
 otags = ["disenchant-naturalize", "removal-destroy", "single-english-word-name", "single-target-instant-sorcery", "spot-removal", "tmp-storyline-in-cards", "usg-storyline-in-cards"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "a25", "ath", "brb", "bro", "ced", "cei", "cmr", "cn2", "cst", "f03", "fbb", "fdn", "ice", "ima", "lea", "leb", "m20", "me2", "me3", "mir", "mmq", "olep", "p07", "parl", "plst", "pmei", "prm", "ptc", "scd", "sum", "tmp", "tpr", "tsb", "usg", "wc97", "wc98", "znr"]
 id = "a7e97fa9-4b72-4548-b854-5be5f18a6f1a"
 default_print = "73636b95-103d-43c8-bc96-63fad0da34dd"
 oracle = "Destroy target artifact or enchantment."

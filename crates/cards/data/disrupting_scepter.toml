@@ -1,7 +1,6 @@
 # {3}, {T}: Target player discards a card. Activate only during your turn.
 name = "Disrupting Scepter"
 otags = ["activated-ability", "discard", "repeatable-crime"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "8ed", "9ed", "ced", "cei", "fbb", "lea", "leb", "ptc", "sum"]
 id = "cd30a128-4b23-476e-8066-2272fdc395d9"
 default_print = "0c58f236-0b2c-4b71-8819-1beaea7ded17"
 oracle = "{3}, {T}: Target player discards a card. Activate only during your turn."

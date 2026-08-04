@@ -5,8 +5,6 @@ id = "f6d24565-5b32-4eff-b2e0-6e2c25516ff0"
 default_print = "78897104-80e1-4d8a-9958-145b40f679e8"
 otags = ["dual-land", "enters-tapped-conditional", "fixing-land"]
 oracle = "This land enters tapped unless you control two or more other lands.\n{T}: Add {B} or {G}."
-flavor = "\"Life is defined by change. When I shucked my flesh to combat the Phyrexian infection, it was not loss to me, merely a new state of being.\"\n—Moseo, dean of the vein"
-sets = ["sos"]
 
 [kind]
 type = "land"

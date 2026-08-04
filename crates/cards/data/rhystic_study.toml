@@ -1,11 +1,9 @@
 # Whenever an opponent casts a spell, you may draw a card unless that player pays {1}.
 name = "Rhystic Study"
-sets = ["cm1", "fca", "j18", "j22", "jmp", "pcy", "plst", "prm", "pz1", "sld", "td0", "wot"]
 otags = ["cast-tax", "cast-trigger-other", "draw-engine", "meme", "repeatable-pure-draw", "rhystic"]
 id = "53236dd7-845a-444c-96d5-f41ed7325d8f"
 default_print = "9f37c5b6-a59c-45cd-9a99-e9357fe9ea1b"
 oracle = "Whenever an opponent casts a spell, you may draw a card unless that player pays {1}."
-flavor = "\"I'll teach you the leyline paratrigonometrics, no problem. But you need to show me how to make that fiery swirly thing.\"\n—Zimone, to Rootha"
 
 [cost]
 generic = 2

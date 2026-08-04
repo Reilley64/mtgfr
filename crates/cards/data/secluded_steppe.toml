@@ -3,7 +3,6 @@
 # Cycling {W} ({W}, Discard this card: Draw a card.)
 name = "Secluded Steppe"
 otags = ["activate-from-hand", "alliteration", "cycle-ons-m-cycling-land", "hand-neutral", "pure-draw", "utility-land"]
-sets = ["arc", "c13", "c14", "c15", "c17", "c18", "c20", "c21", "cm2", "cma", "cmd", "cmr", "ddc", "ddo", "dvd", "eoc", "ha2", "j25", "mh1", "mkc", "onc", "ons", "vma", "wc04"]
 oracle = "This land enters tapped.\n{T}: Add {W}.\nCycling {W} ({W}, Discard this card: Draw a card.)"
 id = "8dec6fcf-1254-4b1b-ba23-7a3e492a7241"
 default_print = "aaa5bee9-3f6a-45b0-a282-6b23222e948f"

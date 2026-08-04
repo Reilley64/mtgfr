@@ -1,7 +1,6 @@
 # Whenever a land enters, this artifact deals 2 damage to that land's controller.
 name = "Ankh of Mishra"
 otags = ["burn-player", "hate-ramp", "landfall-other", "namesake-spell", "pinger", "symmetrical", "triggered-ability"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "ced", "cei", "fbb", "lea", "leb", "me1", "sum", "vma"]
 id = "63c1eda1-3e6f-4e9c-adf3-a43164df98bb"
 default_print = "808cad10-69d5-4e14-9834-476c53ec97e4"
 oracle = "Whenever a land enters, this artifact deals 2 damage to that land's controller."

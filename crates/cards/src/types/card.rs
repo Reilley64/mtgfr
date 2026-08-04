@@ -833,14 +833,11 @@ pub struct CardDef {
     /// engine never parses it (behavior comes from `abilities`/`keywords`). A DFC joins its faces'
     /// text. `oracle = "…"` in TOML; `None` for a card whose text isn't recorded (or a vanilla).
     pub oracle: Option<&'static str>,
-    /// The card's printed flavor text — the italic words under the rules-text divider. Pure
-    /// catalog metadata, like `oracle`; the engine never reads it. Flavor is per-printing, so
-    /// this is the flavor of the printing `tooling/backfill-flavor.mjs` resolved. `flavor = "…"`
-    /// in TOML; `None` for a card whose printing prints none.
-    pub flavor: Option<&'static str>,
-    /// Scryfall set codes for every known printing of this card. Pure catalog + coverage
-    /// metadata — the engine never consults it for rules. `sets = ["soc", …]` in TOML; empty
-    /// for a card whose printings are not recorded yet.
+    /// Scryfall set codes for every known printing of this card, alphabetical. Pure catalog +
+    /// coverage metadata — the engine never consults it for rules. Not authored: derived at pool
+    /// load from `data/prints/<slug>.toml` (see [`crate::print_flavor`]), so it is empty for a
+    /// [`CardDef`] built outside the pool. Flavor text lives there too — it is per printing, and
+    /// a card has no one flavor.
     pub sets: Arc<[&'static str]>,
     /// The card's printed subtypes (the segment after the "—": creature types like "Goblin",
     /// "Wizard"; also artifact/enchantment subtypes). Gameplay-relevant, not just catalog
@@ -1481,7 +1478,6 @@ fn treasure_token_builtin() -> CardDef {
         cast_only_during_declare_attackers: false,
         approximates: None,
         oracle: None,
-        flavor: None,
         sets: empty_slice(),
         subtypes: arc_slice(["Treasure"]),
         otags: empty_slice(),
@@ -1559,7 +1555,6 @@ pub fn rogue_token_stub() -> CardDef {
         cast_only_during_declare_attackers: false,
         approximates: None,
         oracle: None,
-        flavor: None,
         sets: empty_slice(),
         subtypes: arc_slice(["Rogue"]),
         otags: empty_slice(),
@@ -1639,7 +1634,6 @@ pub fn illusion_token() -> CardDef {
         cast_only_during_declare_attackers: false,
         approximates: None,
         oracle: None,
-        flavor: None,
         sets: empty_slice(),
         subtypes: arc_slice(["Illusion"]),
         otags: empty_slice(),

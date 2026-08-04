@@ -2,11 +2,9 @@
 # control, then tap all other creatures you control.
 name = "Dread Cacodemon"
 otags = ["intervening-if-clause", "removal-creature", "removal-destroy", "sweeper-one-sided", "unique-mana-cost", "virtual-vanilla"]
-sets = ["aa4", "cma", "cmd"]
 id = "1d34e78e-4fe9-44e1-88d3-a98fd64555a9"
 default_print = "25344729-19a5-496f-8e6f-ce7b69afdc68"
 oracle = "When this creature enters, if you cast it from your hand, destroy all creatures your opponents control, then tap all other creatures you control."
-flavor = "Those who hear its roar perish. The lucky ones only feel its fetid breath."
 subtypes = ["Demon"]
 
 [cost]

@@ -3,7 +3,6 @@
 # this creature.
 # {1}, {T}: Put a +1/+1 counter on this creature.
 name = "Hangarback Walker"
-sets = ["cmm", "ea1", "eoc", "j22", "mps", "ori", "plg20", "plst", "soc"]
 id = "dde55256-5259-44e7-a267-fca45a7f0d04"
 default_print = "cc387ccf-f746-4855-81e5-64f5a5e0fdda"
 otags = ["activated-ability", "evasion", "gains-pp-counters", "pp-counters-matter", "repeatable-pp-counters", "splits-on-death", "virtual-legendary"]

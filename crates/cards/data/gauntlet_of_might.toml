@@ -2,7 +2,6 @@
 # Whenever a Mountain is tapped for mana, its controller adds an additional {R}.
 name = "Gauntlet of Might"
 otags = ["anthem", "mana-increaser", "power-boost-to-all", "symmetrical", "synergy-mountain", "synergy-red", "toughness-boost-to-all", "triggered-ability", "uninspired"]
-sets = ["2ed", "30a", "ced", "cei", "lea", "leb", "me4", "prm"]
 id = "d38ad188-515e-4865-a0ed-5d0fd4c7b453"
 default_print = "407650c3-9388-45c3-a599-6929c7d6e5bd"
 oracle = "Red creatures get +1/+1.\nWhenever a Mountain is tapped for mana, its controller adds an additional {R}."

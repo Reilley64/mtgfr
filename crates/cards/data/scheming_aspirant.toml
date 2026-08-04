@@ -4,8 +4,6 @@ id = "cf4a3b1a-4b87-473e-be1f-3aa3da45c28e"
 default_print = "8de80f71-82b5-499c-afc0-6bbae6b896ad"
 otags = ["counters-matter", "opponent-loses-life", "proliferate"]
 oracle = "Whenever you proliferate, each opponent loses 2 life and you gain 2 life."
-flavor = "\"I have raised many of my own contenders for the Coliseum. This one will be fearsome one day, mark my words.\""
-sets = ["one"]
 subtypes = ["Phyrexian", "Advisor"]
 
 [cost]

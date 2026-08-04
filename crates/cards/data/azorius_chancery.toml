@@ -2,7 +2,6 @@
 # When this land enters, return a land you control to its owner's hand.
 # {T}: Add {W}{U}.
 name = "Azorius Chancery"
-sets = ["2x2", "afc", "brc", "c13", "c16", "c18", "c19", "c20", "clu", "cm2", "cma", "cmd", "ddi", "dis", "dsc", "gk2", "ima", "khc", "m3c", "mkc", "mm2", "prm", "td0", "voc"]
 otags = ["activated-ability", "cycle-rav-bounceland", "drawback", "triggered-ability"]
 id = "189fc8f4-17ac-4f1d-82c8-8401445bdaf4"
 default_print = "50ef0ac3-e911-4d67-a751-8d86160ae843"

@@ -3,7 +3,6 @@
 # into your hand and the rest on the bottom of your library in any order.
 # When this creature enters, sacrifice it unless {W} was spent to cast it.
 name = "Court Hussar"
-sets = ["a25", "cmd", "dis", "gk2", "plst", "td0"]
 otags = ["color-spent-matters", "cycle-a25-allied-enhanced", "cycle-rav-backward-boost", "hand-neutral", "impulse", "triggered-ability", "virtual-french-vanilla"]
 subtypes = ["Vedalken", "Knight"]
 id = "74fedfc4-3eb7-4845-9d3e-9d5243a0062a"

@@ -3,7 +3,6 @@
 # of your library face down. You may look at that card for as long as it remains exiled. You may
 # play that card without paying its mana cost for as long as Intet remains on the battlefield.
 name = "Intet, the Dreamer"
-sets = ["2x2", "c17", "cmd", "ocmd", "plc"]
 id = "9518ffbc-bb3d-4f48-a900-f5bad8302a87"
 default_print = "9a56c0db-beef-4ce7-abc9-d135eeff4c5a"
 otags = ["combat-damage-trigger", "evasion", "legendary", "long-term-impulsive-draw"]

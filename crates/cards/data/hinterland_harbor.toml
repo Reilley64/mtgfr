@@ -1,12 +1,10 @@
 # This land enters tapped unless you control a Forest or an Island.
 # {T}: Add {G} or {U}.
 name = "Hinterland Harbor"
-sets = ["blc", "dmr", "dom", "drc", "dsc", "fic", "isd", "lcc", "ltc", "msc", "otc", "pdom", "pip", "soc", "tdc", "tmc", "yeoe"]
 id = "fb5a3403-7f0b-406c-8c4f-d693be010ca6"
 default_print = "892451a1-5527-4857-84f8-62028d147489"
 otags = ["activated-ability", "alliteration", "cycle-isd-checkland", "synergy-forest", "synergy-island"]
 oracle = "This land enters tapped unless you control a Forest or an Island.\n{T}: Add {G} or {U}."
-flavor = "\"You swabs did all right. But I got my own crew ta get back to. Ship's yers now. Sail 'er well.\"\n—Blackbeard the Pirate, Ben Grimm"
 
 [kind]
 type = "land"

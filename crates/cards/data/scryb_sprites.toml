@@ -1,11 +1,9 @@
 # Flying
 name = "Scryb Sprites"
 otags = ["evasion", "french-vanilla"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "brb", "ced", "cei", "fbb", "itp", "lea", "leb", "me1", "me3", "prm", "rqs", "sum"]
 id = "a1f20695-6f08-4d5c-9fba-b0018bee298e"
 default_print = "e9e2f1fe-4df0-48c8-b469-4175ba5011e8"
 oracle = "Flying"
-flavor = "The only sound was the gentle clicking of the Faeries' wings. Then those intruders who were still standing turned and fled. One thing was certain: they didn't think the Scryb were very funny anymore."
 subtypes = ["Faerie"]
 keywords = ["flying"]
 

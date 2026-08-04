@@ -7,7 +7,6 @@ id = "0a7d0d1f-a5ac-4db9-860c-9fcbe3fd9e71"
 default_print = "1e2dc5b0-ac26-4829-9716-f213eda5df30"
 otags = ["activated-ability", "evasion", "monstrosity", "removal-destroy", "removal-permanent", "repeatable-crime", "repeatable-removal", "spot-removal", "triggered-ability"]
 oracle = "Menace, trample\nWhen this creature enters or becomes monstrous, destroy target permanent.\n{5}{B}{G}: Monstrosity 4. (If this creature isn't monstrous, put four +1/+1 counters on it and it becomes monstrous.)"
-sets = ["pip"]
 subtypes = ["Lizard", "Mutant"]
 keywords = ["menace", "trample"]
 

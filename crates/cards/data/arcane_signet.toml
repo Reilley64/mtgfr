@@ -1,11 +1,9 @@
 # {T}: Add one mana of any color in your commander's color identity.
 name = "Arcane Signet"
-sets = ["40k", "afc", "anb", "blc", "brc", "c20", "c21", "clb", "cmm", "cmr", "dmc", "drc", "dsc", "ecc", "eld", "eoc", "fdc", "fic", "hoc", "khc", "lcc", "ltc", "m3c", "mb2", "mic", "mkc", "moc", "msc", "ncc", "nec", "onc", "otc", "p30m", "pf25", "pip", "plst", "prm", "psvc", "scd", "sld", "soc", "tdc", "tle", "tmc", "voc", "who", "woc", "znc"]
 id = "0bc7f093-bef0-4f1a-852c-4b75ebf54838"
 default_print = "1cad1bd2-7c56-4ce0-99a6-b2a49c1288dd"
 otags = ["activated-ability", "commander-identity-matters", "mana-rock-with-set-s-mechanic", "mini-refund", "synergy-commander"]
 oracle = "{T}: Add one mana of any color in your commander's color identity."
-flavor = "\"The new ID cards are amazing! Instant communication with any Avenger worldwide, top level security clearance in over a hundred countries, and ten percent off at the cafe downstairs!\" -She-Hulk, Jennifer Walters"
 
 [cost]
 generic = 2

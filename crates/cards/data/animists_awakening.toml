@@ -1,5 +1,4 @@
 name = "Animist's Awakening"
-sets = ["c20", "ori", "soc"]
 id = "6f1bfe50-b61a-4fdd-963c-40d59117bdf4"
 default_print = "d5ace571-0644-40d6-a05f-15f2e47d8861"
 otags = ["alliteration", "cycle-ori-r-spell-mastery", "extra-land", "impulse-land", "impulse-onto-battlefield", "multi-land-ramp", "namesake-spell", "synergy-instant", "synergy-sorcery"]

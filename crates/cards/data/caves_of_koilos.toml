@@ -1,12 +1,10 @@
 # {T}: Add {C}.
 # {T}: Add {W} or {B}. This land deals 1 damage to you.
 name = "Caves of Koilos"
-sets = ["10e", "9ed", "apc", "c16", "c20", "c21", "dmu", "drc", "dsc", "m15", "m3c", "md1", "ori", "otc", "pdmu", "prm", "soc", "tdc"]
 id = "33de01e9-ce5a-42d4-afcb-343cd54a6d80"
 default_print = "a8a57915-5226-4d3c-ae8e-a55c50f3c131"
 otags = ["activated-ability", "burn-you", "cycle-apc-painland", "mana-ability-with-extra-effect"]
 oracle = "{T}: Add {C}.\n{T}: Add {W} or {B}. This land deals 1 damage to you."
-flavor = "After years of silence, the caves once again echo with the grisly sounds of Phyrexians preparing for war."
 
 [kind]
 type = "land"

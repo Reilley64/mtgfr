@@ -188,6 +188,10 @@ cards-dsl-ref:
 cards-dsl-ref-check:
     cargo run -p cards --bin gen_dsl_reference -- --check
 
+[doc("Regenerate crates/cards/data/prints/ from Scryfall bulk data")]
+cards-printings:
+    node tooling/gen-printings.mjs
+
 [doc("Validate card TOML files against the generated JSON Schema")]
 cards-toml-validate *args:
     cargo run -p cards --bin validate_card_toml -- {{ args }}

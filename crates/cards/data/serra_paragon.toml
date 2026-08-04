@@ -1,6 +1,5 @@
 # Secrets of Strixhaven Commander printing. {2}{W}{W}, Creature — Angel, 3/4.
 name = "Serra Paragon"
-sets = ["dmu", "pdmu", "prm", "soc"]
 id = "ecd8d7f4-7b11-4097-afc0-ef3c81edd90c"
 default_print = "8e77a410-a053-4349-950c-d59e76b17923"
 otags = ["crucible-of-worlds", "death-trigger", "evasion", "gives-castable-from-graveyard", "mana-value-matters", "namesake-spell", "reanimate-cast", "reanimate-permanent", "repeatable-lifegain"]

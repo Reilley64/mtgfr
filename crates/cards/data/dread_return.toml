@@ -2,12 +2,10 @@
 # Flashback—Sacrifice three creatures. (You may cast this card from your graveyard for its flashback cost. Then
 # exile it.)
 name = "Dread Return"
-sets = ["2xm", "40k", "c14", "cmm", "ddq", "dmr", "pd3", "plst", "prm", "td0", "tsp", "tsr"]
 id = "352b64d2-2ae5-44ee-a64f-94932ef545d3"
 default_print = "34a87901-98bb-41dd-b566-bcb510c20022"
 otags = ["reanimate-creature", "single-target-instant-sorcery"]
 oracle = "Return target creature card from your graveyard to the battlefield.\nFlashback—Sacrifice three creatures. (You may cast this card from your graveyard for its flashback cost. Then exile it.)"
-flavor = "Those who forget the horrors of the past are doomed to re-meet them."
 
 [cost]
 generic = 2

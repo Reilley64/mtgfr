@@ -1,11 +1,9 @@
 # Draw three cards, then put two cards from your hand on top of your library in any order.
 name = "Brainstorm"
 otags = ["cantrip", "hand-neutral", "portmanteau", "single-english-word-name", "brainstorm"]
-sets = ["2xm", "40k", "5ed", "a25", "afc", "btd", "c15", "c18", "c21", "cmd", "cns", "cst", "ddj", "dsc", "ema", "f04", "fca", "ice", "mb2", "me2", "mkc", "mmq", "olgc", "plst", "prm", "pz1", "pza", "sld", "slp", "ss1", "sta", "tle", "vma", "wc00"]
 id = "36cd2364-d113-47d1-b2c4-b088d9eb88dd"
 default_print = "b5545882-6963-4729-b2c6-fb4bdc75ffcc"
 oracle = "Draw three cards, then put two cards from your hand on top of your library in any order."
-flavor = "\"Now I get it. Something awful happened on that day. I don't know what, but I do know why. Firebenders lose their bending during a solar eclipse!\"\n—Sokka"
 
 [cost]
 blue = 1

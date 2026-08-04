@@ -2,12 +2,10 @@
 # When this creature enters, destroy up to one target nonbasic land. Its controller may search their library for a basic
 # land card, put it onto the battlefield tapped, then shuffle.
 name = "White Orchid Phantom"
-sets = ["mh3", "pmh3", "purl", "soc"]
 id = "6edd2a36-3d65-4bf9-bd82-b6d03a7e8fea"
 default_print = "e6cebc57-d7b0-4e86-bc9e-ebb1de58f932"
 otags = ["evasion", "hate-nonbasic-land", "removal-destroy", "removal-land", "spot-removal", "swap-removal", "triggered-ability", "tutor-land-basic", "tutor-land-to-battlefield", "virtual-french-vanilla"]
 oracle = "Flying, first strike\nWhen this creature enters, destroy up to one target nonbasic land. Its controller may search their library for a basic land card, put it onto the battlefield tapped, then shuffle."
-flavor = "His oath required no service beyond death, but his honor demanded it."
 subtypes = ["Spirit", "Knight"]
 keywords = ["flying", "first_strike"]
 

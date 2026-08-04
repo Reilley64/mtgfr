@@ -3,12 +3,10 @@
 # Turbulent Moor (SOC): Land — Plains Swamp. "{T}: Add {W} or {B}. This land enters tapped
 # unless your opponents control eight or more lands."
 name = "Turbulent Moor"
-sets = ["soc"]
 id = "2eb4da30-2600-4a7f-8e6c-6a090faa9a8d"
 default_print = "da54562d-8c09-4728-bb2b-ae8d464106b8"
 otags = ["activated-ability", "cycle-soc-octoland", "multiplayer", "nonbasic-basic-land-type"]
 oracle = "({T}: Add {W} or {B}.)\nThis land enters tapped unless your opponents control eight or more lands."
-flavor = "\"Where others see melancholy, I see promise. All our kindness and cruelty make such haunting poetry.\"\n—Shadrix Silverquill"
 
 [kind]
 type = "land"

@@ -1,10 +1,8 @@
 # Search your library for up to two basic land cards, reveal those cards, put one onto the battlefield tapped and the
 # other into your hand, then shuffle.
 name = "Kodama's Reach"
-sets = ["c15", "c16", "c17", "c20", "c21", "chk", "clb", "cmd", "cmm", "cmr", "dmc", "ecc", "lcc", "mma", "moc", "ncc", "nec", "otc", "plst", "prm", "psal", "sld", "td0", "tdc", "uma", "znc"]
 otags = ["land-ramp", "namesake-spell", "ramp-with-set-s-mechanic", "tutor-land-basic", "tutor-land-to-battlefield", "tutor-to-hand"]
 oracle = "Search your library for up to two basic land cards, reveal those cards, put one onto the battlefield tapped and the other into your hand, then shuffle."
-flavor = "\"The land grows only where the kami will it.\"\n—Dosan the Falling Leaf"
 subtypes = ["Arcane"]
 id = "1593ea18-2f2f-4ab4-83fb-6ccc0bec8a90"
 default_print = "90c423cc-1264-4067-9c50-e7c88c68ef2d"

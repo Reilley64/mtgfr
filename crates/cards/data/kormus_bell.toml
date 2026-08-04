@@ -1,7 +1,6 @@
 # All Swamps are 1/1 black creatures that are still lands.
 name = "Kormus Bell"
 otags = ["animate-land", "color-change", "rules-nightmare", "symmetrical", "synergy-swamp", "universal-type-change"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "ced", "cei", "fbb", "lea", "leb", "me4", "sum"]
 id = "d2d477a5-f055-4d47-a852-26e8239f2a01"
 default_print = "736e4586-a6c6-42c0-8555-5f09d214e1cb"
 oracle = "All Swamps are 1/1 black creatures that are still lands."

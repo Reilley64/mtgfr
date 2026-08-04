@@ -5,7 +5,6 @@
 # {T}: Target land becomes a Forest until this creature leaves the battlefield.
 name = "Gaea's Liege"
 otags = ["activated-ability", "blood-moon-effect", "hate-forest", "land-conversion", "maro-sorcerer", "namesake-spell", "repeatable-crime", "synergy-forest", "type-errata-name-self", "untracked-indefinite-effect", "virtual-legendary"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "ced", "cei", "fbb", "lea", "leb", "pw24", "sum", "tsb"]
 id = "8d134a60-e1e5-4163-8bdc-36af91567185"
 default_print = "5eb712ea-c9f5-4831-9e1e-22bf5a75d426"
 oracle = "As long as Gaea's Liege isn't attacking, its power and toughness are each equal to the number of Forests you control. As long as Gaea's Liege is attacking, its power and toughness are each equal to the number of Forests defending player controls.\n{T}: Target land becomes a Forest until this creature leaves the battlefield."

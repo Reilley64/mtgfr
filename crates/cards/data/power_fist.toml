@@ -6,8 +6,6 @@ id = "bdfcf7df-8c06-4abe-af41-eccabb9fc2c8"
 default_print = "9e8f7fbc-bf2a-43c1-a88d-807c1e7dab69"
 otags = ["activated-ability", "exponential", "gives-pp-counters", "gives-trample", "scales-with-damage-dealt", "slith-ability", "triggered-ability"]
 oracle = "Equipped creature has trample and \"Whenever this creature deals combat damage to a player, put that many +1/+1 counters on it.\"\nEquip {2}"
-flavor = "A fist fight will leave a bruise. A power fist fight will leave a crater."
-sets = ["pip"]
 subtypes = ["Equipment"]
 
 [cost]

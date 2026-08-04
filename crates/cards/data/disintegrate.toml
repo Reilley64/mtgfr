@@ -2,7 +2,6 @@
 # turn, and if it would die this turn, exile it instead.
 name = "Disintegrate"
 otags = ["burn-any", "disintegrate", "hate-regenerate", "single-english-word-name", "single-target-instant-sorcery", "spot-removal"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "fbb", "itp", "lea", "leb", "prm", "rqs", "sum", "tsb", "wc97"]
 id = "92d6af2f-728e-4e41-87cb-5c90878a2f2f"
 default_print = "f94878cc-4c0f-42e4-a49f-02a2b269ef06"
 oracle = "Disintegrate deals X damage to any target. If it's a creature, it can't be regenerated this turn, and if it would die this turn, exile it instead."

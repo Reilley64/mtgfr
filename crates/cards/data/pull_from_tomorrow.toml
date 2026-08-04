@@ -1,11 +1,9 @@
 # Draw X cards, then discard a card.
 name = "Pull from Tomorrow"
-sets = ["2x2", "akh", "akr", "blc", "clb", "drc", "eoc", "fic", "gn3", "moc", "pakh", "soc"]
 id = "b1a23235-3076-475c-a68a-db29cf2a9dba"
 default_print = "74d8d661-a43f-4cee-87d5-1f74433a283e"
 otags = ["burst-draw", "hand-positive", "loot"]
 oracle = "Draw X cards, then discard a card."
-flavor = "\"Anyone who says a textbook can't end on a cliffhanger has never read volume one of *Finite Lattice Representation*!\""
 
 [cost]
 x = true

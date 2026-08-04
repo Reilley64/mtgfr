@@ -6,7 +6,6 @@ import {
   drainPlayModeIfSingleton,
   dropHeldSeeds,
   raiseResultDialog,
-  requestBarCardText,
   syncBoardWithGame,
 } from "../board/submodel";
 import { type Message as AppMessage, GotBoardMessage, GotGameMessage } from "../messages";
@@ -29,9 +28,8 @@ function mergeGameFold(
   const synced = { ...next, board: syncBoardWithGame(next.board, next) };
   const [armed, revealCmds] = armFirstPlayerReveal(synced.board, synced, synced.tableId);
   const [raised, resultCmds] = raiseResultDialog(armed, synced);
-  const [drained, commands] = drainPlayModeIfSingleton(raised, synced, synced.tableId);
-  const [board, textCmds] = requestBarCardText(drained, synced);
-  return [{ ...synced, board }, [...revealCmds, ...resultCmds, ...commands, ...textCmds]];
+  const [board, commands] = drainPlayModeIfSingleton(raised, synced, synced.tableId);
+  return [{ ...synced, board }, [...revealCmds, ...resultCmds, ...commands]];
 }
 
 function deltaEnvelope(message: Extract<Message, { _tag: "ReceivedDelta" }>): DeltaEnvelope {
@@ -70,7 +68,10 @@ export function updateGame(
   switch (message._tag) {
     case "ReceivedSnapshot": {
       const [next, commands] = mergeGameFold(game, applySnapshotPure(game, message.seq, message.state));
-      return [next, mapBoardCommands(commands)];
+      // The snapshot carries the whole book of the viewer's own deck, so it replaces rather than
+      // merges: reconnecting into another seat must not keep the previous seat's words.
+      const cardText = new Map(message.card_text.map((text) => [text.card_id, text]));
+      return [{ ...next, board: { ...next.board, cardText } }, mapBoardCommands(commands)];
     }
     case "ReceivedDelta": {
       const [next, commands] = mergeGameFold(game, applyDeltaPure(game, deltaEnvelope(message)));

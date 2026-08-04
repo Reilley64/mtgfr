@@ -7,7 +7,6 @@ otags = ["activated-ability", "adds-multiple-mana", "mana-rock-with-set-s-mechan
 id = "15679808-baba-4a11-b111-f313ce24197f"
 default_print = "b825db05-7e95-400b-944b-526cfa6addc0"
 oracle = "This artifact enters tapped.\nWhen this artifact enters, proliferate.\n{T}: Add one mana of any color.\nCorrupted — {T}: Add three mana of any one color. Activate only if an opponent has three or more poison counters."
-sets = ["onc"]
 enters_tapped = true
 
 [cost]

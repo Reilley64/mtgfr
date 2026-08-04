@@ -1,9 +1,7 @@
 # When this creature enters, you may return target card from your graveyard to your hand.
 name = "Eternal Witness"
-sets = ["2x2", "5dn", "aa2", "c15", "cm2", "cma", "cmd", "cmm", "cmr", "ddj", "f08", "m3c", "mic", "mma", "p30a", "plst", "prm", "puma", "pz1", "scd", "sld", "td0", "tsr", "uma", "wc04"]
 otags = ["hand-neutral", "regrowth-any", "triggered-ability", "virtual-vanilla"]
 oracle = "When this creature enters, you may return target card from your graveyard to your hand."
-flavor = "She remembers every word spoken, from the hero's oath to the baby's cry."
 subtypes = ["Human", "Shaman"]
 id = "30b24e8e-3b0e-4d8e-90f3-f66eb7c1858c"
 default_print = "39704000-65d3-4d39-849e-a3b617376bbc"

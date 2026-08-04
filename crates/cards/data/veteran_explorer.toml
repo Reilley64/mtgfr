@@ -1,7 +1,6 @@
 # When this creature dies, each player may search their library for up to two basic land cards, put them onto the
 # battlefield, then shuffle.
 name = "Veteran Explorer"
-sets = ["2xm", "bbd", "c16", "cmd", "mb2", "wth"]
 otags = ["death-trigger-self", "each-player", "tutor-land-basic", "tutor-land-to-battlefield", "type-addition-human"]
 oracle = "When this creature dies, each player may search their library for up to two basic land cards, put them onto the battlefield, then shuffle."
 subtypes = ["Human", "Soldier", "Scout"]

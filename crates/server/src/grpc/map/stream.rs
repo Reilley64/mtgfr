@@ -1647,6 +1647,15 @@ pub fn visible_event_to_pb(event: VisibleEvent) -> Option<pb::VisibleEvent> {
     Some(pb::VisibleEvent { event: Some(event) })
 }
 
+fn card_text_to_pb(text: schema::CardTextView) -> pb::CardTextView {
+    pb::CardTextView {
+        card_id: text.card_id,
+        type_line: text.type_line,
+        oracle: text.oracle,
+        flavor: text.flavor,
+    }
+}
+
 pub fn visible_state_to_pb(state: VisibleState) -> pb::VisibleState {
     pb::VisibleState {
         viewer: u32::from(state.viewer),
@@ -1674,9 +1683,14 @@ pub fn visible_state_to_pb(state: VisibleState) -> pb::VisibleState {
 pub fn stream_frame_to_pb(frame: StreamFrame) -> pb::StreamResponse {
     use pb::stream_response::Frame;
     let frame = match frame {
-        StreamFrame::Snapshot { seq, state } => Frame::Snapshot(pb::SnapshotFrame {
+        StreamFrame::Snapshot {
+            seq,
+            state,
+            card_text,
+        } => Frame::Snapshot(pb::SnapshotFrame {
             seq,
             state: Some(visible_state_to_pb(state)),
+            card_text: card_text.into_iter().map(card_text_to_pb).collect(),
         }),
         StreamFrame::Delta(envelope) => Frame::Delta(pb::DeltaEnvelope {
             seq: envelope.seq,
@@ -1848,11 +1862,21 @@ mod tests {
         let pb = stream_frame_to_pb(StreamFrame::Snapshot {
             seq: 9,
             state: state.clone(),
+            card_text: vec![schema::CardTextView {
+                card_id: "bear".into(),
+                type_line: "Creature — Bear".into(),
+                oracle: String::new(),
+                flavor: "Rrrrr.".into(),
+            }],
         });
         let Some(pb::stream_response::Frame::Snapshot(snap)) = pb.frame else {
             panic!("expected Snapshot frame");
         };
         assert_eq!(snap.seq, 9);
+        // The printed words ride the snapshot: the board never asks a card API per card.
+        assert_eq!(snap.card_text.len(), 1);
+        assert_eq!(snap.card_text[0].type_line, "Creature — Bear");
+        assert_eq!(snap.card_text[0].flavor, "Rrrrr.");
         let st = snap.state.expect("snapshot state");
         assert_eq!(st.viewer, 0);
         assert_eq!(st.objects.len(), 1);

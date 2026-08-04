@@ -1,11 +1,9 @@
 # Forestwalk (This creature can't be blocked as long as defending player controls a Forest.)
 name = "Shanodin Dryads"
 otags = ["french-vanilla-walker", "type-errata", "unique-type-line"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
 id = "998484cc-fefc-4da5-9987-5d6e89599c34"
 default_print = "b25f298a-9784-4192-b640-caec2b94ba4c"
 oracle = "Forestwalk (This creature can't be blocked as long as defending player controls a Forest.)"
-flavor = "Moving without sound, swift figures pass through branches and undergrowth completely unhindered. One with the trees around them, the Dryads of Shanodin Forest are seen only when they wish to be."
 subtypes = ["Nymph", "Dryad"]
 
 # Forestwalk (This creature can't be blocked as long as defending player controls a Forest.)

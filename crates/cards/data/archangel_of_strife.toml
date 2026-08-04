@@ -3,7 +3,6 @@
 # Creatures controlled by players who chose war get +3/+0.
 # Creatures controlled by players who chose peace get +0/+3.
 name = "Archangel of Strife"
-sets = ["cma", "cmd", "v15"]
 id = "19e302f8-6ddb-4a43-98bc-ee71a456ac5a"
 default_print = "51104596-ffb3-49e3-a1d5-fa294da0d758"
 otags = ["anthem", "flying", "modal-inverse-choices", "symmetrical"]

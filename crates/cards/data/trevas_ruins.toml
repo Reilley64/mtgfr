@@ -2,7 +2,6 @@
 # owner's hand.
 # {T}: Add {G}, {W}, or {U}.
 name = "Treva's Ruins"
-sets = ["dmr", "pls", "td0"]
 otags = ["activated-ability", "cycle-pls-lair", "namesake-spell", "triggered-ability"]
 id = "7b2c7758-2b89-49ff-8838-8dc9880c7209"
 default_print = "4f39366c-00df-4528-a324-6a89d0c53f0a"

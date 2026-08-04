@@ -7,8 +7,8 @@
 use axum::http::StatusCode;
 use engine::{Event, Game, PlayerId};
 use schema::{
-    DeltaCompose, MessageRef, StreamFrame, ViewExtras, VisibleState, complete_visible,
-    compose_delta,
+    CardTextView, DeltaCompose, MessageRef, StreamFrame, ViewExtras, VisibleState, card_text,
+    complete_visible, compose_delta,
 };
 use tokio::sync::broadcast;
 
@@ -55,6 +55,8 @@ pub struct TableSubscription {
     pub viewer: Option<PlayerId>,
     pub seats: [Seat; 4],
     pub prints: [std::collections::HashMap<String, String>; 4],
+    /// Printed words for the viewer's own deck, sent once with the snapshot.
+    pub card_text: Vec<CardTextView>,
     /// The table's `broadcast_seq` at snapshot time — later messages at or below this are
     /// already reflected in the snapshot (see [`should_deliver`]).
     pub snapshot_broadcast_seq: u64,
@@ -86,15 +88,38 @@ pub fn subscribe(
         viewer,
         &extras,
     );
+    let card_text = match viewer {
+        Some(PlayerId(seat)) => card_text_book(&table.prints[seat as usize]),
+        None => Vec::new(),
+    };
     Ok(TableSubscription {
         rx: table.tx.subscribe(),
         snapshot_seq: table.seq,
         snapshot,
         viewer,
+        card_text,
         seats: table.seats.clone(),
         prints: table.prints.clone(),
         snapshot_broadcast_seq: table.broadcast_seq,
     })
+}
+
+/// The printed words of one seat's whole deck, joined by the printing that deck plays.
+///
+/// `prints` is that seat's Card id → Printing UUID map — the deck list itself, so the book covers
+/// every card whose face that player can ever be shown, and no other seat's. Flavor is per
+/// printing ([`cards::print_flavor`]), so the join is on the print id, not the card id. Sorted by
+/// card id: the wire frame is compared byte-for-byte in tests, and a HashMap has no order.
+pub fn card_text_book(prints: &std::collections::HashMap<String, String>) -> Vec<CardTextView> {
+    let mut book: Vec<CardTextView> = prints
+        .iter()
+        .filter_map(|(card_id, print)| {
+            let def = cards::get(card_id)?;
+            Some(card_text(&def, cards::print_flavor(print)))
+        })
+        .collect();
+    book.sort_by(|a, b| a.card_id.cmp(&b.card_id));
+    book
 }
 
 /// Table → [`ViewExtras`] for the opening snapshot (and for tests that build frames from a live
@@ -272,5 +297,43 @@ mod tests {
             should_deliver(11, 10),
             "broadcast_seq == snapshot + 1: the first genuinely new message",
         );
+    }
+
+    #[test]
+    fn the_card_text_book_joins_the_printing_the_deck_plays() {
+        let bolt = def("Lightning Bolt");
+        let prints = std::collections::HashMap::from([(
+            bolt.id.to_string(),
+            // The M10 printing, whose flavor the Alpha printing does not print.
+            "435589bb-27c6-4a6d-9d63-394d5092b9d8".to_string(),
+        )]);
+
+        let book = card_text_book(&prints);
+
+        assert_eq!(book.len(), 1);
+        assert_eq!(book[0].card_id, bolt.id);
+        assert_eq!(book[0].type_line, "Instant");
+        assert!(book[0].oracle.contains("3 damage"));
+        assert!(
+            book[0].flavor.starts_with("The sparkmage shrieked"),
+            "the deck's printing prints its own flavor: {:?}",
+            book[0].flavor,
+        );
+    }
+
+    #[test]
+    fn the_card_text_book_is_only_that_seats_deck() {
+        // The book is built from one seat's print map, so it never carries another seat's list —
+        // and a spectator, who has no seat, gets nothing.
+        let alice = std::collections::HashMap::from([(
+            def("Lightning Bolt").id.to_string(),
+            "435589bb-27c6-4a6d-9d63-394d5092b9d8".to_string(),
+        )]);
+        let shock = def("Shock").id.to_string();
+
+        let book = card_text_book(&alice);
+
+        assert!(book.iter().all(|text| text.card_id != shock));
+        assert!(card_text_book(&Default::default()).is_empty());
     }
 }

@@ -1,11 +1,9 @@
 # {1}, {T}: Add {G}{U}.
 name = "Simic Signet"
-sets = ["aa1", "c13", "c15", "c16", "c21", "clu", "cm2", "cma", "cmd", "cmr", "dis", "dsc", "gk2", "lcc", "mkc", "mm3", "moc", "prm", "rvr", "sld", "td0"]
 otags = ["activated-ability", "alliteration", "cycle-rav-signet", "mana-rock", "refund"]
 id = "44503105-3e13-408d-a44f-37d503c61d72"
 default_print = "bf222c78-f12e-4857-93da-fade99c740b8"
 oracle = "{1}, {T}: Add {G}{U}."
-flavor = "For the Simic Combine, its sigil serves not as an emblem of honor but as a trademark. Its familiar image on any biological commodity attests to superb craftsmanship, ingenious innovation, and higher cost."
 
 [cost]
 generic = 2

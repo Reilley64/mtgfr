@@ -5,7 +5,6 @@
 # {T}: Take an extra turn after this one.
 name = "Time Vault"
 otags = ["activated-ability", "doesn-t-untap", "extra-turn", "meme", "skip-turn", "stock-turn", "untaps-self"]
-sets = ["2ed", "30a", "ced", "cei", "lea", "leb", "me4", "vma"]
 id = "99d4d99d-cf56-45aa-aa39-a250695612f2"
 default_print = "0b64dd0f-2e99-41bd-87aa-f623582d64d0"
 oracle = "This artifact enters tapped.\nThis artifact doesn't untap during your untap step.\nIf you would begin your turn while this artifact is tapped, you may skip that turn instead. If you do, untap this artifact.\n{T}: Take an extra turn after this one."

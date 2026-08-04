@@ -3,7 +3,6 @@
 # Prevent all combat damage that would be dealt this turn.
 name = "Constant Mists"
 otags = ["fog", "protects-planeswalker", "repeatable-sacrifice-outlet", "sacrifice-outlet-land", "symmetrical"]
-sets = ["sld", "sth", "td0", "wc99"]
 id = "c850a29e-dc40-4ab6-89f1-d501a1a350d1"
 default_print = "97a8a5fe-0391-489b-9556-0a1bf7e1900d"
 oracle = "Buyback—Sacrifice a land. (You may sacrifice a land in addition to any other costs as you cast this spell. If you do, put this card into your hand as it resolves.)\nPrevent all combat damage that would be dealt this turn."

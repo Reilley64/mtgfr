@@ -5,7 +5,6 @@
 # continuously since the beginning of the turn.
 name = "Siren's Call"
 otags = ["delayed-trigger", "force-attacker", "hate-typal-non-wall", "notorious-templating", "removal-creature", "removal-destroy", "spot-removal"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
 id = "269fc857-a052-4f0a-9759-467ccf42bebb"
 default_print = "0c907ef4-a2cf-4e7a-acf6-f187308ff303"
 oracle = "Cast this spell only during an opponent's turn, before attackers are declared.\nCreatures the active player controls attack this turn if able.\nAt the beginning of the next end step, destroy all non-Wall creatures that player controls that didn't attack this turn. Ignore this effect for each creature the player didn't control continuously since the beginning of the turn."

@@ -267,6 +267,22 @@ pub struct WireCost {
     pub phyrexian: [u8; 5],
 }
 
+/// The printed words of one card in the viewer's deck: the type line, rules text and flavor a
+/// rendered face draws. The game state carries what the engine needs, not what the card prints, so
+/// these ride the opening snapshot ([`crate::snapshot::StreamFrame::Snapshot`]) — the client never
+/// asks a card API per card.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CardTextView {
+    /// Card id (Scryfall oracle id) — [`ObjectView::card_id`].
+    pub card_id: String,
+    /// The printed type line ("Legendary Creature — Phyrexian Angel Horror").
+    pub type_line: String,
+    /// Printed (oracle) rules text; empty for a vanilla.
+    pub oracle: String,
+    /// The flavor of the printing THIS deck plays; empty when that printing prints none.
+    pub flavor: String,
+}
+
 /// One object the viewer may see, with its render-relevant state.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ObjectView {

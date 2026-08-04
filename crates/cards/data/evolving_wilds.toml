@@ -2,11 +2,9 @@
 # shuffle.
 name = "Evolving Wilds"
 otags = ["activated-ability", "fetchland", "tutor-land-basic"]
-sets = ["40k", "afr", "akh", "akr", "anb", "bfz", "blc", "brc", "bro", "c13", "c14", "c15", "c16", "c17", "c18", "c19", "clb", "cm2", "cma", "cmd", "cmr", "cn2", "dbl", "ddh", "ddk", "ddn", "ddo", "ddp", "dka", "dmc", "drc", "dsc", "dtk", "ecl", "eoc", "f12", "fdn", "fic", "iko", "ima", "inr", "j22", "j25", "lcc", "ltc", "m13", "m15", "m20", "m3c", "mid", "mm2", "moc", "msc", "ori", "otc", "pana", "pio", "pip", "plst", "prix", "prm", "ptkdf", "rix", "roe", "sis", "sld", "tdm", "tmc", "vow", "who", "woe", "znc"]
 id = "a75445d3-1303-4bb5-89ad-26ea93fecd48"
 default_print = "3b52b2e9-31d1-4c9a-bf40-fc9c1eac7528"
 oracle = "{T}, Sacrifice this land: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle."
-flavor = "Every world is an organism, able to grow new lands. Some just do it faster than others."
 
 # A fetch-only land: no `produces`, so it has no tap-for-mana ability — it's played only to be
 # sacrificed for the fetch below.

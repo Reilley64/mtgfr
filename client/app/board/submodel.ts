@@ -20,6 +20,7 @@ import { mulliganChrome } from "~/mulligan";
 import { outcome } from "~/outcome";
 import type {
   ActionView,
+  CardTextView,
   CatalogCard,
   ObjectView,
   VisibleState,
@@ -31,7 +32,6 @@ import type {
   WireTarget,
 } from "~/wire/types";
 import { clampX } from "~/xCost";
-import { type CardText, cardTextOf } from "../domain/card-render/card-text";
 import type { FaceData } from "../domain/card-render/frame";
 import { formatMessage } from "../domain/i18n/message";
 import { type InspectPin, inspectPinChanged, pinFromCard, pinFromPlayer } from "../domain/inspect";
@@ -39,9 +39,7 @@ import { humanReason } from "../domain/reject";
 import { isSoundEnabled, playUnmuteTick, setSoundEnabled, unlockTableAudio } from "../domain/tableAudio";
 import type { GameFoldState } from "../game/fold";
 import {
-  FetchCardText,
   FetchInspectCard,
-  FetchPrintFlavor,
   SearchCardNames,
   SetStackDwell,
   SetTurnYield,
@@ -269,9 +267,9 @@ export type BoardModel = {
   inspectPin: InspectPin | null;
   /** Catalog data for the current inspect pin. `undefined` = fetch in-flight; `null` = not found. */
   inspectCard: CatalogCard | null | undefined;
-  /** Type line and rules text for the faces the bar draws, by catalog card id. A null entry is a
-   *  lookup already asked for — pending or empty, either way it stops the refetch. */
-  cardText: ReadonlyMap<string, CardText | null>;
+  /** Printed words for the faces the bar draws, by card id. The snapshot carries the viewer's
+   *  whole deck once per connection, so there is nothing to fetch per card. */
+  cardText: ReadonlyMap<string, CardTextView>;
   /** Which face of a DFC to show in the inspect overlay. */
   inspectFace: "front" | "back";
   /** Hand-bar card under the pointer (DOM overlay above the canvas). */
@@ -2002,57 +2000,6 @@ export function armFirstPlayerReveal(model: BoardModel, fold: BoardFold, tableId
   return [{ ...model, firstPlayerReveal: reveal }, revealTimer(reveal)];
 }
 
-/** Zones whose cards the bar draws as full faces — the only ones whose text is worth fetching. */
-const BAR_TEXT_ZONES: ReadonlySet<number> = new Set([ZONE.Hand, ZONE.Command, ZONE.Graveyard, ZONE.Exile]);
-
-/**
- * Ask the catalog for the type line and rules text of the viewer's bar cards, once each.
- *
- * The rendered face draws words the game state doesn't carry — the wire sends what the engine
- * needs, not what the card prints. Runs on every fold merge, so a card drawn into hand asks the
- * turn it arrives.
- */
-export function requestBarCardText(model: BoardModel, fold: BoardFold): BoardReturn {
-  const state = fold.state;
-  if (state == null) return [model, []];
-
-  const missing = new Set<string>();
-  // Cards whose flavor belongs to a printing the deck doesn't play — the catalog carries the
-  // card's `default_print` flavor, and flavor is per printing.
-  const wrongPrinting = new Map<string, string>();
-  for (const object of state.objects) {
-    const cardId = object.card_id;
-    if (cardId == null || cardId === "") continue;
-    if (Number(object.owner) !== Number(state.viewer)) continue;
-    if (!BAR_TEXT_ZONES.has(Number(object.zone))) continue;
-    const text = model.cardText.get(cardId);
-    if (text === undefined) {
-      missing.add(cardId);
-      continue;
-    }
-    const print = object.print ?? "";
-    if (text == null || print === "" || print === text.flavorPrint) continue;
-    wrongPrinting.set(cardId, print);
-  }
-  if (missing.size === 0 && wrongPrinting.size === 0) return [model, []];
-
-  const cardText = new Map(model.cardText);
-  for (const cardId of missing) cardText.set(cardId, null);
-  const commands: BoardCmd[] = [];
-  if (missing.size > 0) commands.push(FetchCardText({ cardIds: [...missing] }) as unknown as BoardCmd);
-  if (wrongPrinting.size > 0) {
-    // Claim the printing now, blanking the default printing's words: the face draws no flavor
-    // rather than another printing's until the fetch lands, and this stops it asking twice.
-    for (const [cardId, print] of wrongPrinting) {
-      const text = cardText.get(cardId);
-      if (text != null) cardText.set(cardId, { ...text, flavor: "", flavorPrint: print });
-    }
-    const cards = [...wrongPrinting].map(([cardId, print]) => ({ cardId, print }));
-    commands.push(FetchPrintFlavor({ cards }) as unknown as BoardCmd);
-  }
-  return [{ ...model, cardText }, commands];
-}
-
 function hideHintOnHandUse(model: BoardModel): BoardModel {
   if (model.hintAutoHidden) return model;
   return { ...model, hintAutoHidden: true };
@@ -3334,23 +3281,6 @@ export function updateBoard(
     }
     case "InspectCardFetched":
       return [{ ...model, inspectCard: message.card }, []];
-    case "CardTextFetched": {
-      const cardText = new Map(model.cardText);
-      for (const card of message.cards) cardText.set(card.id, cardTextOf(card));
-      // The catalog answers with the card's `default_print` flavor. Check the deck's printing right
-      // here rather than on the next state delta — a quiet board would otherwise sit on the wrong
-      // printing's words until something else moved.
-      return requestBarCardText({ ...model, cardText }, fold);
-    }
-    case "PrintFlavorFetched": {
-      const cardText = new Map(model.cardText);
-      for (const { cardId, print, flavor } of message.flavors) {
-        const text = cardText.get(cardId);
-        if (text == null) continue;
-        cardText.set(cardId, { ...text, flavor, flavorPrint: print });
-      }
-      return [{ ...model, cardText }, []];
-    }
     case "InspectFlipFace":
       return [{ ...model, inspectFace: model.inspectFace === "front" ? "back" : "front" }, []];
     case "InspectDismissed":

@@ -2,7 +2,6 @@
 # Whenever Numot, the Devastator deals combat damage to a player, you may pay {2}{R}. If you do,
 # destroy up to two target lands.
 name = "Numot, the Devastator"
-sets = ["cmd", "ocmd", "plc"]
 id = "1c6d4322-1588-4fc2-a60a-5b5e724638c5"
 default_print = "cb098692-d584-4cbe-a8b9-67bdbf7514bc"
 otags = ["combat-damage-trigger", "evasion", "land-destruction", "legendary", "spot-removal"]

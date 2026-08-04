@@ -1,7 +1,6 @@
 # {3}, {T}: Prevent the next 2 damage that would be dealt to you this turn.
 name = "Conservator"
 otags = ["activated-ability", "damage-prevention", "damage-prevention-you", "single-english-word-name"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
 id = "1940e56d-0972-4ca4-946c-bbd42dde1dcb"
 default_print = "744e7821-8bfd-4816-a8af-4e6fe7b35505"
 oracle = "{3}, {T}: Prevent the next 2 damage that would be dealt to you this turn."

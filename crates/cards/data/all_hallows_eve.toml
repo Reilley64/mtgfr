@@ -4,7 +4,6 @@
 # graveyard to the battlefield.
 name = "All Hallow's Eve"
 otags = ["aesthetic-counter", "exile-on-resolution", "group-hug", "intervening-if-clause", "mass-reanimation", "notorious-templating", "reanimate-creature", "symmetrical", "trigger-from-exile"]
-sets = ["leg", "me3", "olep", "td0"]
 id = "ebed900f-6de3-4ae7-9795-fae34882298d"
 default_print = "af266eec-e61b-4bda-be7f-3a5a59eee864"
 oracle = "Exile All Hallow's Eve with two scream counters on it.\nAt the beginning of your upkeep, if this card is exiled with a scream counter on it, remove a scream counter from it. If there are no more scream counters on it, put it into your graveyard and each player returns all creature cards from their graveyard to the battlefield."

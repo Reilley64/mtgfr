@@ -2,11 +2,9 @@
 # Defender, flying
 name = "Plumeveil"
 otags = ["cycle-shm-u-hybrid-3-drop", "drawback", "evasion", "french-vanilla"]
-sets = ["cmd", "mma", "shm", "uma"]
 id = "14fa0771-cf2b-4563-98b2-ff4ee24bce21"
 default_print = "6b2d484d-b0fd-4add-a54f-0956d7401950"
 oracle = "Flash\nDefender, flying"
-flavor = "\"It was vast, a great sheet of soaring wings, and equally silent. It caught us unawares and blocked our view of the kithkin stronghold.\"\n—Grensch, merrow cutthroat"
 subtypes = ["Elemental"]
 keywords = ["flash", "defender", "flying"]
 

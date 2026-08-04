@@ -1,11 +1,9 @@
 # Lightning Bolt deals 3 damage to any target.
 name = "Lightning Bolt"
-sets = ["2ed", "2x2", "30a", "3ed", "4bb", "4ed", "a25", "ath", "btd", "ced", "cei", "clb", "clu", "e01", "fbb", "fca", "gn3", "hbg", "j21", "jgp", "jmp", "lea", "leb", "m10", "m11", "me1", "mm2", "msc", "olgc", "p09", "p10", "pd2", "pf19", "pf25", "plst", "prm", "ptc", "pw26", "sld", "slp", "sta", "sum", "td0", "tle"]
 id = "4457ed35-7c10-48c8-9776-456485fdf070"
 default_print = "7673784e-db4b-43a1-8d55-1bb9fc1e284f"
 otags = ["cycle-lea-boon", "meme", "single-target-instant-sorcery", "spot-removal", "burn-any"]
 oracle = "Lightning Bolt deals 3 damage to any target."
-flavor = "\"I am the god of thunder, the lord of the savage lightning, and the very skies must tremble when speaks The Mighty Thor!\""
 
 [cost]
 red = 1

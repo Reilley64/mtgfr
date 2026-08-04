@@ -1,6 +1,5 @@
 name = "Dragon Whelp"
 otags = ["activated-ability", "berserk", "bottomless-mana-sink", "evasion", "firebreathing", "sacrifice-self"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "arc", "ced", "cei", "cma", "cmd", "ddg", "dmr", "dmu", "drb", "fbb", "j25", "lea", "leb", "m10", "plst", "sum", "tsb"]
 id = "705a1985-ed39-4a4b-812e-a677170b596e"
 default_print = "2eb0cfc3-8b6d-4cda-9603-75bd6266e0b1"
 oracle = "Flying\n{R}: This creature gets +1/+0 until end of turn. If this ability has been activated four or more times this turn, sacrifice this creature at the beginning of the next end step."

@@ -2,7 +2,6 @@
 # All creatures able to block enchanted creature do so.
 name = "Lure"
 otags = ["removal-creature", "repeatable-removal", "single-english-word-name", "lure"]
-sets = ["10e", "2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "8ed", "ced", "cei", "chk", "fbb", "ice", "ima", "lea", "leb", "m12", "mmq", "plst", "psal", "sum"]
 id = "7a7425ba-4478-4bc4-855f-abf947ea4fa2"
 default_print = "f790990a-f47d-4fb0-a361-108037dd7464"
 oracle = "Enchant creature\nAll creatures able to block enchanted creature do so."

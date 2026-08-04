@@ -5,8 +5,6 @@ id = "7b740cd6-e07d-4273-8a7f-e084bdaf0f1c"
 default_print = "83dfb2a5-cd5c-46c6-9bb8-7c5d00f3e003"
 otags = ["multiple-targets", "one-sided-fight", "poison-opponents", "poisonous"]
 oracle = "Target creature you control deals damage equal to its power to target creature you don't control. Each opponent gets a poison counter."
-flavor = "\"Let me tell you why you must never close your eyes when on watch. Not even for a second.\"\n—Jor Kadeen"
-sets = ["one"]
 
 [cost]
 generic = 1

@@ -3,11 +3,9 @@
 # it gains haste until end of turn.
 name = "Dominus of Fealty"
 otags = ["cycle-eve-avatar", "evasion", "gives-haste", "land-ramp", "repeatable-crime", "theft-permanent", "threaten", "triggered-ability", "unique-mana-cost", "untapper-permanent"]
-sets = ["cmd", "eve", "plst"]
 id = "f5e18b27-c5cc-4f5e-b767-4b1b43e00fd0"
 default_print = "91433559-ad01-4bde-b0c0-f9cbb3589e89"
 oracle = "Flying\nAt the beginning of your upkeep, you may gain control of target permanent until end of turn. If you do, untap it and it gains haste until end of turn."
-flavor = "\"Nothing is truly your own. It is his, whether you know it or not.\"\n—*The Seer's Parables*"
 subtypes = ["Spirit", "Avatar"]
 
 # Flying

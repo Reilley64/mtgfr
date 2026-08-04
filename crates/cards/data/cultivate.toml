@@ -3,12 +3,10 @@
 # Cultivate {2}{G} — sorcery. "Search your library for up to two basic land cards, reveal
 # those cards, put one onto the battlefield tapped and the other into your hand, then shuffle."
 name = "Cultivate"
-sets = ["40k", "a25", "afc", "blc", "c13", "c16", "c17", "c18", "c19", "c20", "c21", "clb", "cm2", "cmd", "cmm", "cmr", "dmc", "dsc", "e01", "ecc", "eoc", "f11", "fic", "j22", "lcc", "ltc", "m11", "m21", "moc", "msc", "ncc", "onc", "pc2", "pca", "pip", "plst", "prm", "pw23", "pz1", "scd", "sld", "soc", "sta", "tdc", "tmc", "who"]
 id = "8b755881-a72d-4e21-a369-d2924eb4585a"
 default_print = "e60deb92-f7dd-4f4e-9036-e47dd586f985"
 otags = ["land-ramp", "single-english-word-name", "tutor-land-basic", "tutor-land-to-battlefield", "tutor-to-hand"]
 oracle = "Search your library for up to two basic land cards, reveal those cards, put one onto the battlefield tapped and the other into your hand, then shuffle."
-flavor = "\"Don't get so caught up in the science that you forget to embrace the wonder in front of you.\"\n—Reed Richards, to Valeria Richards"
 
 [cost]
 generic = 2

@@ -2,7 +2,6 @@
 # X is 5.)
 name = "Spell Blast"
 otags = ["counterspell", "interrupt", "single-target-instant-sorcery"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "ced", "cei", "fbb", "lea", "leb", "m14", "ptc", "sum", "tmp", "tpr"]
 id = "04477339-7ed5-4770-9e5c-6e481ffcc858"
 default_print = "9ec03950-80f7-4783-9b65-f2538436c9be"
 oracle = "Counter target spell with mana value X. (For example, if that spell's mana cost is {3}{U}{U}, X is 5.)"

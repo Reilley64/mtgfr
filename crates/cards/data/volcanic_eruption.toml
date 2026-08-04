@@ -2,7 +2,6 @@
 # equal to the number of Mountains put into a graveyard this way.
 name = "Volcanic Eruption"
 otags = ["burn-creature", "burn-player-each", "hate-mountain", "multi-removal", "multiple-targets", "removal-land", "single-target-instant-sorcery", "strive", "sweeper"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
 id = "4c15889e-3172-413b-b805-a2b7ad05f636"
 default_print = "6d7c78a4-e3db-42bf-8365-d7a08c26f4a9"
 oracle = "Destroy X target Mountains. Volcanic Eruption deals damage to each creature and each player equal to the number of Mountains put into a graveyard this way."

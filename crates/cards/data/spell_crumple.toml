@@ -1,7 +1,6 @@
 # Counter target spell. If that spell is countered this way, put it on the bottom of its owner's library instead of
 # into that player's graveyard. Put Spell Crumple on the bottom of its owner's library.
 name = "Spell Crumple"
-sets = ["cm2", "cmd"]
 otags = ["counterspell-tuck", "self-replacement-effect", "single-target-instant-sorcery"]
 id = "d4ab7848-5c37-4c6b-be29-0bb703333e5b"
 default_print = "522d6195-7660-42c0-848b-cc46e19fc4eb"

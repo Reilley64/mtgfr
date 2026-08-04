@@ -3,7 +3,6 @@
 # controls a Mountain.)
 name = "Burrowing"
 otags = ["french-vanilla-aura", "gives-mountainwalk", "single-english-word-name"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "6ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
 id = "d6b9b88b-e31b-4b88-9d53-3df5687804ba"
 default_print = "08c109d4-6dd1-42a5-90ed-f8a71b6a0ca5"
 oracle = "Enchant creature\nEnchanted creature has mountainwalk. (It can't be blocked as long as defending player controls a Mountain.)"

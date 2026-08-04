@@ -1,5 +1,4 @@
 name = "Quintorius, History Chaser"
-sets = ["soc"]
 id = "5c40a8d4-6969-4d71-aba5-5c7e4109b7d5"
 default_print = "0742f19d-179c-43c4-ab95-4160c56b4384"
 otags = ["activated-ability", "cycle-soc-face-commander", "gives-double-strike", "gives-vigilance", "leaves-graveyard-trigger", "mill-self", "repeatable-creature-tokens", "repeatable-rummage", "typal-spirit"]

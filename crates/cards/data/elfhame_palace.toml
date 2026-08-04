@@ -1,12 +1,10 @@
 # This land enters tapped.
 # {T}: Add {G} or {W}.
 name = "Elfhame Palace"
-sets = ["8ed", "c17", "dde", "inv", "plst", "scd", "td0", "wc03"]
 otags = ["activated-ability", "cycle-inv-dual-tapland"]
 id = "cade8b94-2998-4d23-87bb-9fbdddd19dea"
 default_print = "1ddd0084-349d-4d5f-86af-a3a65dcce73a"
 oracle = "This land enters tapped.\n{T}: Add {G} or {W}."
-flavor = "Llanowar has seven elfhames, or kingdoms, each with its own ruler. Their palaces are objects of awe, wonder, and envy."
 enters_tapped = true
 
 [kind]

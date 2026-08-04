@@ -4,7 +4,6 @@
 # then shuffle.)
 name = "Twisted Abomination"
 otags = ["activate-from-hand", "cheaper-than-mv", "cycle-scg-5m-landcycler", "regenerates-self", "tutor-land-swamp", "tutor-to-hand"]
-sets = ["2xm", "a25", "arc", "cmm", "cns", "ddd", "drc", "ema", "gvl", "pd3", "plst", "scg", "td0", "tsb"]
 id = "139af10d-a3e5-4ade-b876-87324e6c8017"
 default_print = "7bcaee2c-fad7-4ee2-8fe7-20b2c1eee5c5"
 oracle = "{B}: Regenerate this creature. (The next time this creature would be destroyed this turn, instead tap it, remove it from combat, and heal all damage on it.)\nSwampcycling {2} ({2}, Discard this card: Search your library for a Swamp card, reveal it, put it into your hand, then shuffle.)"

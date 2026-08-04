@@ -1,11 +1,9 @@
 # Whenever one or more other creatures die, draw a card. This ability triggers only once each turn.
 name = "Morbid Opportunist"
-sets = ["blc", "dbl", "dsc", "fic", "inr", "j25", "mid", "otc", "pip", "plst", "soc", "spg", "tdc"]
 id = "322f44f0-e6da-4ee0-b474-e7d5e9a461c5"
 default_print = "08838865-a9b6-4323-96a2-0d3a7aba9d3d"
 otags = ["death-trigger", "draw-engine", "morbid", "repeatable-pure-draw"]
 oracle = "Whenever one or more other creatures die, draw a card. This ability triggers only once each turn."
-flavor = "On Innistrad, one person's windfall usually starts with another person lying face down in the mud."
 subtypes = ["Human", "Rogue"]
 
 [cost]

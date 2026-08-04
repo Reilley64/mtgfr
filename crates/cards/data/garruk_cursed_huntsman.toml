@@ -7,7 +7,6 @@ otags = ["activated-ability", "cycle-eld-r-m-two-color", "death-trigger", "draw-
 id = "e0cef79c-ad47-4cbc-9d73-a913e487ccb7"
 default_print = "abef512f-8f1d-4257-b16f-c0eed58670ec"
 oracle = "0: Create two 2/2 black and green Wolf creature tokens with \"When this token dies, put a loyalty counter on each Garruk you control.\"\n−3: Destroy target creature. Draw a card.\n−6: You get an emblem with \"Creatures you control get +3/+3 and have trample.\""
-sets = ["eld"]
 subtypes = ["Garruk"]
 legendary = true
 

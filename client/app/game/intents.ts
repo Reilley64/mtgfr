@@ -1,7 +1,6 @@
 import { Effect, Schema as S } from "effect";
 import { Command } from "foldkit";
-import { CardNameSuggestionsFetched, CardTextFetched, InspectCardFetched, PrintFlavorFetched } from "../board/messages";
-import { fetchPrintFlavor } from "../domain/deck-builder/scryfall";
+import { CardNameSuggestionsFetched, InspectCardFetched } from "../board/messages";
 import { formatMessage } from "../domain/i18n/message";
 import { statusOf } from "../domain/rpc-client";
 import type { Ack, IntentEnvelope, WireIntent } from "../domain/wire/types";
@@ -76,37 +75,6 @@ export const SetStackDwell = Command.define("SetStackDwell", {
         Effect.catch((error) => Effect.succeed(IntentRejected({ reason: failureReason(error) }))),
       );
     }),
-});
-
-export const FetchCardText = Command.define("FetchCardText", {
-  args: { cardIds: S.Array(S.String) },
-  messages: [CardTextFetched],
-  execute: ({ cardIds }) =>
-    Effect.gen(function* () {
-      const rpc = yield* RpcClient;
-      return yield* rpc.lookupCards([...cardIds]).pipe(
-        Effect.map((cards) => CardTextFetched({ cards })),
-        // ponytail: a failed lookup leaves those faces textless for the table — the ids are already
-        // marked asked, so nothing retries. Frame, art and name still draw; add a retry if it bites.
-        Effect.catch(() => Effect.succeed(CardTextFetched({ cards: [] }))),
-      );
-    }),
-});
-
-export const FetchPrintFlavor = Command.define("FetchPrintFlavor", {
-  args: { cards: S.Array(S.Struct({ cardId: S.String, print: S.String })) },
-  messages: [PrintFlavorFetched],
-  execute: ({ cards }) =>
-    fetchPrintFlavor(cards.map((c) => c.print)).pipe(
-      Effect.map((flavor) =>
-        PrintFlavorFetched({
-          flavors: cards.map((c) => ({ ...c, flavor: flavor.get(c.print) ?? "" })),
-        }),
-      ),
-      // ponytail: a printing Scryfall won't answer for draws no flavor rather than the wrong
-      // printing's — the card is already marked asked, so nothing retries.
-      Effect.catch(() => Effect.succeed(PrintFlavorFetched({ flavors: cards.map((c) => ({ ...c, flavor: "" })) }))),
-    ),
 });
 
 export const FetchInspectCard = Command.define("FetchInspectCard", {

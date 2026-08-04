@@ -2,7 +2,6 @@
 # When this land enters, return a land you control to its owner's hand.
 # {T}: Add {G}{W}.
 name = "Selesnya Sanctuary"
-sets = ["2x2", "c13", "c16", "c17", "c18", "c19", "c20", "clu", "cma", "cmd", "cmm", "ddg", "gk1", "ima", "mic", "mkc", "mm2", "pc2", "pca", "prm", "psal", "rav", "td0", "znc"]
 otags = ["activated-ability", "alliteration", "cycle-rav-bounceland", "drawback", "triggered-ability"]
 id = "00ef1c55-dea1-4564-bd57-66de86cba4df"
 default_print = "fdc53c6a-8e28-4314-9bcf-b31b6c6f56d7"

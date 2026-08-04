@@ -3,7 +3,6 @@
 # Remove a corpse counter from this creature: Regenerate this creature.
 name = "Scavenging Ghoul"
 otags = ["activated-ability", "aesthetic-counter", "counter-fuel-aesthetic", "morbid", "regenerates-self", "triggered-ability", "type-errata-ghoul", "unnoted-tracked-information"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "ced", "cei", "fbb", "lea", "leb", "me4", "sum"]
 id = "68c0c04e-b0d5-4721-83bf-bf18e8b7e680"
 default_print = "12459e80-2878-4a76-b45a-478ee3b0f7a4"
 oracle = "At the beginning of each end step, put a corpse counter on this creature for each creature that died this turn.\nRemove a corpse counter from this creature: Regenerate this creature."

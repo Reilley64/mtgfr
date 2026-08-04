@@ -8,7 +8,6 @@
 #     the battlefield.
 #   • Creatures you control get +1/+1 and gain trample until end of turn.
 name = "Lorehold Charm"
-sets = ["sos"]
 id = "a5729f11-6cde-4830-b882-ab4c5251c1a9"
 default_print = "5fe70295-e550-4577-a341-dab6c25aabfd"
 otags = ["cycle-sos-charm", "mana-value-matters", "multi-removal", "overrun", "reanimate-artifact", "reanimate-creature", "removal-artifact", "removal-sacrifice", "single-target-instant-sorcery", "spot-removal", "toughness-boost-to-all"]

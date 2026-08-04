@@ -6,7 +6,6 @@
 # {1}{R}: Level 3
 # Spells you cast from anywhere other than your hand cost {2} less to cast.
 name = "Advanced Reconstruction"
-sets = ["soc"]
 id = "f00bc101-8082-4459-b987-f0c4b7a12344"
 default_print = "cc912fec-827d-4deb-8430-79f5ea31ca9b"
 otags = ["activated-ability", "burn-player", "cost-reducer", "graveyard-fuel", "group-slug", "impulsive-recursion", "leaves-graveyard-trigger", "mill-self", "paradox", "pinger", "repeatable-impulsive-draw"]

@@ -1,11 +1,9 @@
 # {T}: Prevent the next 1 damage that would be dealt to any target this turn.
 name = "Samite Healer"
 otags = ["activated-ability", "damage-prevention", "repeatable-crime", "type-addition-human"]
-sets = ["10e", "2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "8ed", "9ed", "ath", "ced", "cei", "fbb", "lea", "leb", "sum"]
 id = "95a0ca48-d924-47f4-86ed-42c673ee778c"
 default_print = "7281e17d-a6e0-4e0e-8ee6-c6d9dec54231"
 oracle = "{T}: Prevent the next 1 damage that would be dealt to any target this turn."
-flavor = "Healers ultimately acquire the divine gifts of spiritual and physical wholeness. The most devout are also granted the ability to pass physical wholeness on to others."
 subtypes = ["Human", "Cleric"]
 
 [cost]

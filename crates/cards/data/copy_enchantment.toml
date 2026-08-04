@@ -1,11 +1,9 @@
 # You may have this enchantment enter as a copy of any enchantment on the battlefield.
 name = "Copy Enchantment"
-sets = ["rav", "rvr", "td0", "wot"]
 otags = ["clone", "copy-enchantment", "fun-ruling"]
 id = "87bc0b1f-49ef-4c06-9049-2c148b467882"
 default_print = "ce82b316-8982-41bf-a990-6b776a9e83ac"
 oracle = "You may have this enchantment enter as a copy of any enchantment on the battlefield."
-flavor = "Simic mages create redundant backups of their experiments to reduce the consequences of catastrophe."
 
 # You may have this enchantment enter as a copy of any enchantment on the battlefield.
 enter_as_copy = { of = "enchantment" }

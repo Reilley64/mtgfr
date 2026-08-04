@@ -4,7 +4,6 @@
 # escape cost.)
 # This creature escapes with two +1/+1 counters on it.
 name = "Woe Strider"
-sets = ["ajmp", "blc", "clb", "ncc", "prm", "pthb", "soc", "tdc", "thb"]
 id = "3adbd963-e85d-4569-963a-4472594f06f9"
 default_print = "f458ae68-5cda-4c40-a348-47b4196fba02"
 otags = ["activated-ability", "castable-from-graveyard", "enters-in-company", "free-sacrifice-outlet", "gains-pp-counters", "graveyard-fuel", "more-expensive-than-mv", "out-of-color-token", "reanimate-cast", "reanimate-self", "sacrifice-outlet-creature", "scry"]

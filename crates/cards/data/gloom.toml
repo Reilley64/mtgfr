@@ -2,7 +2,6 @@
 # Activated abilities of white enchantments cost {3} more to activate.
 name = "Gloom"
 otags = ["cost-increaser", "hate-activation", "hate-enchantment", "hate-white", "single-english-word-name", "symmetrical"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "fbb", "lea", "leb", "me4", "sum"]
 id = "4d022f53-b1fb-4071-afcc-0af3214fe604"
 default_print = "f463412c-ac10-476c-bba1-27724c041d68"
 oracle = "White spells cost {3} more to cast.\nActivated abilities of white enchantments cost {3} more to activate."

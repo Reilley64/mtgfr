@@ -2,11 +2,9 @@
 # on the battlefield.
 name = "Plague Rats"
 otags = ["cda-power", "cda-toughness", "quadratic", "scales-with-multiple"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
 id = "16cf1cf9-6900-406c-a5b4-0e5750f530e0"
 default_print = "f2a5bd30-a11f-4218-aca6-3183d82d02b9"
 oracle = "Plague Rats's power and toughness are each equal to the number of creatures named Plague Rats on the battlefield."
-flavor = "\"Should you a Rat to madness tease\nWhy ev'n a Rat may plague you...\"\n—Samuel Coleridge, \"Recantation\""
 subtypes = ["Rat"]
 
 [cost]

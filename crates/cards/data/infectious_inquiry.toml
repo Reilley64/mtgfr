@@ -1,11 +1,9 @@
 # You draw two cards and you lose 2 life. Each opponent gets a poison counter.
 name = "Infectious Inquiry"
-sets = ["one"]
 id = "66051196-53ea-4461-b241-205df9395b3b"
 default_print = "0a10f284-b043-4307-bdc7-6dad47cc9221"
 otags = ["alliteration", "hand-positive", "life-for-cards", "poison-opponents", "pure-draw"]
 oracle = "You draw two cards and you lose 2 life. Each opponent gets a poison counter."
-flavor = "\"I give you pain, you give me information. A simple trade, is it not?\""
 
 [cost]
 generic = 2

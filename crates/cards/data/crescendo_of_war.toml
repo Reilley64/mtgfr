@@ -3,7 +3,6 @@
 # Blocking creatures you control get +1/+0 for each strife counter on this enchantment.
 name = "Crescendo of War"
 otags = ["aesthetic-counter", "attacking-matters", "power-boost-to-all", "symmetrical", "synergy-blocker", "triggered-ability", "unique-counter"]
-sets = ["cmd", "plst", "vma"]
 id = "3c6a8ad8-9b40-4136-9cfd-2b4cf9a9d900"
 default_print = "ab4e8458-58b1-4218-9923-7f1aa393ff7d"
 oracle = "At the beginning of each upkeep, put a strife counter on this enchantment.\nAttacking creatures get +1/+0 for each strife counter on this enchantment.\nBlocking creatures you control get +1/+0 for each strife counter on this enchantment."

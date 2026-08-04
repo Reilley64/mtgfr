@@ -1,7 +1,6 @@
 # {T}: Add {W}.
 name = "Mox Pearl"
 otags = ["activated-ability", "cycle-lea-moxen", "manaless-value", "power-nine"]
-sets = ["2ed", "30a", "ced", "cei", "lea", "leb", "ovnt", "prm", "vma", "ydmu"]
 id = "824597b8-c89a-47ec-8526-7efc6e24ef0e"
 default_print = "c84e8a0e-49a7-46f6-8a37-910e32753528"
 oracle = "{T}: Add {W}."

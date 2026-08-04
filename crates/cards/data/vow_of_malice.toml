@@ -4,7 +4,6 @@
 # creatures that share a color with it.)
 name = "Vow of Malice"
 otags = ["cycle-cmd-vow", "gives-intimidate", "multiplayer", "prevent-attack", "removal-creature", "synergy-planeswalker"]
-sets = ["c15", "cm2", "cma", "cmd", "plst", "pz1"]
 id = "894bc28a-6627-43dd-9650-86300b6fe5e6"
 default_print = "c58a738c-3f39-4556-ae9a-90f240e3062b"
 oracle = "Enchant creature\nEnchanted creature gets +2/+2, has intimidate, and can't attack you or planeswalkers you control. (A creature with intimidate can't be blocked except by artifact creatures and/or creatures that share a color with it.)"

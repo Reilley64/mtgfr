@@ -2,12 +2,10 @@
 # Whenever a creature an opponent controls dies, put a +1/+1 counter on Yahenni.
 # Sacrifice another creature: Yahenni gains indestructible until end of turn.
 name = "Yahenni, Undying Partisan"
-sets = ["2x2", "aer", "cmm", "klr", "lcc", "paer", "plst", "soc", "tdc"]
 id = "fdba89eb-1cf5-46e6-9d09-1adb9bc40fcd"
 default_print = "518b155a-cb84-48d3-9aba-07577f60f091"
 otags = ["activated-ability", "cycle-aer-legend", "death-trigger", "free-sacrifice-outlet", "gains-indestructible", "gains-pp-counters", "repeatable-pp-counters", "sacrifice-outlet-creature", "unique-type-line"]
 oracle = "Haste\nWhenever a creature an opponent controls dies, put a +1/+1 counter on Yahenni.\nSacrifice another creature: Yahenni gains indestructible until end of turn."
-flavor = "\"The time for subtlety is over, darling.\""
 subtypes = ["Aetherborn", "Vampire"]
 legendary = true
 keywords = ["haste"]

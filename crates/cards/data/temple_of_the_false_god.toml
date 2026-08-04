@@ -3,12 +3,10 @@
 # No `produces`, so the only mana ability is the exact "{T}: Add {C}{C}" below, gated on the
 # five-land activation restriction (checked at activation legality).
 name = "Temple of the False God"
-sets = ["40k", "c13", "c14", "c15", "c16", "c17", "c18", "c19", "c20", "c21", "clb", "cm2", "cma", "cmd", "cmm", "ddo", "dsc", "fic", "lcc", "mic", "mkc", "moc", "ncc", "onc", "otc", "p30a", "pip", "plst", "prm", "pz1", "scg", "slc", "soc", "voc", "wc04", "who", "woc"]
 id = "cfdd5dc6-593e-495a-8cfe-3a56b3c4c7df"
 default_print = "1024f555-e0d7-48ac-b86e-c87290eac832"
 otags = ["activated-ability", "adds-multiple-mana", "lands-matter", "ramp", "sol-land"]
 oracle = "{T}: Add {C}{C}. Activate only if you control five or more lands."
-flavor = "Those who bring nothing to the temple take nothing away."
 
 [kind]
 type = "land"

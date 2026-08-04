@@ -2,7 +2,6 @@
 # Whenever this creature deals combat damage to a player, create that many 0/1 colorless Eldrazi Spawn creature tokens.
 # They have "Sacrifice this token: Add {C}."
 name = "Rapacious One"
-sets = ["cmd", "cmm", "plst", "roe"]
 id = "3af03c99-d215-477b-ba49-51f4e87907ff"
 default_print = "be25bcb7-2be6-4257-8762-2a26dc8a16ff"
 otags = ["ramp", "repeatable-creature-tokens", "triggered-ability"]

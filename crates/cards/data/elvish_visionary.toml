@@ -1,11 +1,9 @@
 # When this creature enters, draw a card.
 name = "Elvish Visionary"
-sets = ["ala", "bbd", "c14", "c15", "cma", "cmr", "ddr", "dpa", "f10", "gn3", "ha1", "j25", "ltc", "m10", "m13", "ori", "plst", "prm", "ps11", "sld", "td0"]
 id = "c6a3a882-a127-4590-93d7-679ef4313efe"
 default_print = "a2f174e6-9532-4fc3-815b-2dc3966c6523"
 otags = ["cantrip", "hand-neutral", "triggered-ability", "virtual-vanilla"]
 oracle = "When this creature enters, draw a card."
-flavor = "\"From a tiny sprout, the greatest trees grow and flourish. May the seeds of your mind be equally fruitful.\""
 subtypes = ["Elf", "Shaman"]
 
 [cost]

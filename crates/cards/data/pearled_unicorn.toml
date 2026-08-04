@@ -1,7 +1,5 @@
 # (no rules text — vanilla creature)
 name = "Pearled Unicorn"
-flavor = "\"'Do you know, I always thought Unicorns were fabulous monsters, too? I never saw one alive before!' 'Well, now that we have seen each other,' said the Unicorn, 'if you'll believe in me, I'll believe in you.'\" —Lewis Carroll"
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "fbb", "itp", "lea", "leb", "rqs", "sum"]
 id = "c071be90-0531-40cc-af46-0cbe80c4ddd4"
 default_print = "9254b0be-d350-41c1-8ed9-41a22525adf9"
 subtypes = ["Unicorn"]

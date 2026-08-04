@@ -22,14 +22,14 @@ mod snapshot;
 pub(crate) mod test_support;
 
 pub use answer_protocol::{Answer, encode_answer};
-pub use catalog::{CatalogBackFace, CatalogCard, catalog_card, color_identity};
+pub use catalog::{CatalogBackFace, CatalogCard, card_text, catalog_card, color_identity};
 pub use dto::{
-    ActionView, ChoiceItem, CombatView, CommanderDamageView, CreateTableResponse, Credentials,
-    DeckCardEntry, DeckDetail, DeckError, DeckSummary, JoinRequest, LobbyView, Me, MessageParam,
-    MessageRef, ModalView, ModeView, ModifierSourceView, ObjectView, PendingChoiceView, PlayerView,
-    ReadyRequest, SaveDeckRequest, SeatView, SeedRequest, SeedResponse, SeedSeat,
-    SignupCredentials, StackObjectView, StartRequest, VisibleState, WireCost, WireEitherMana,
-    WireKind, WireManaPool, WireOfColorsMana,
+    ActionView, CardTextView, ChoiceItem, CombatView, CommanderDamageView, CreateTableResponse,
+    Credentials, DeckCardEntry, DeckDetail, DeckError, DeckSummary, JoinRequest, LobbyView, Me,
+    MessageParam, MessageRef, ModalView, ModeView, ModifierSourceView, ObjectView,
+    PendingChoiceView, PlayerView, ReadyRequest, SaveDeckRequest, SeatView, SeedRequest,
+    SeedResponse, SeedSeat, SignupCredentials, StackObjectView, StartRequest, VisibleState,
+    WireCost, WireEitherMana, WireKind, WireManaPool, WireOfColorsMana,
 };
 pub use event::{DeltaEnvelope, VisibleEvent, redact, spectator_redact};
 pub use intent::{

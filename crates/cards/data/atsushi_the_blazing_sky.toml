@@ -5,7 +5,6 @@
 # Atsushi, the Blazing Sky (soc): 4/4 legendary Dragon Spirit, Flying, trample. "When Atsushi
 # dies, choose one — [exile top two, may play until end of next turn] • [create three Treasures]."
 name = "Atsushi, the Blazing Sky"
-sets = ["neo", "pneo", "prm", "pw22", "sld", "soc", "tdc"]
 id = "535f405d-94df-4f45-aedc-b331103720b7"
 default_print = "06658540-0104-428f-91b1-40552826e781"
 otags = ["cycle-neo-dragon", "death-trigger-self", "evasion", "long-term-impulsive-draw", "modal", "ramp"]

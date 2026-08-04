@@ -1,7 +1,6 @@
 # {T}: Look at target player's hand.
 name = "Glasses of Urza"
 otags = ["activated-ability", "namesake-spell", "peek-hand", "repeatable-crime", "virtual-legendary"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "ced", "cei", "fbb", "itp", "lea", "leb", "me4", "rqs", "sum"]
 id = "af7fabf4-8d55-4b06-9c21-472f4a5775b4"
 default_print = "c8635a10-12fc-4308-8f1e-6c4bc6acd9b5"
 oracle = "{T}: Look at target player's hand."

@@ -3,12 +3,10 @@
 # Turbulent Wilderness (SOC): Land — Forest Island. "{T}: Add {G} or {U}. This land enters
 # tapped unless your opponents control eight or more lands."
 name = "Turbulent Wilderness"
-sets = ["soc"]
 id = "bd8adca6-4f16-45f8-994a-fe55bd573bd0"
 default_print = "b6ca755c-4b17-450b-b995-bfec8a55396f"
 otags = ["activated-ability", "cycle-soc-octoland", "multiplayer", "nonbasic-basic-land-type"]
 oracle = "({T}: Add {G} or {U}.)\nThis land enters tapped unless your opponents control eight or more lands."
-flavor = "\"Existence is more perfect, more informative and unknowable, than the cleverest theorem ever devised.\"\n—Tanazir Quandrix"
 
 [kind]
 type = "land"

@@ -256,7 +256,7 @@ describe("handView rendered face", () => {
     expect(attr(host, "data-face-variant")).toBe("full");
   });
 
-  it("folds the catalog's words into the face once the lookup lands", () => {
+  it("draws the snapshot's printed words — including the deck printing's flavor", () => {
     const bolt = object(42, { name: "Lightning Bolt", print: "lea-161", card_id: "bolt" });
     const tree = handView(
       {
@@ -267,7 +267,15 @@ describe("handView rendered face", () => {
         hiddenIds: new Set(),
         handDrag: null,
         cardText: new Map([
-          ["bolt", { typeLine: "Instant", oracle: "Deals 3 damage to any target.", flavor: "", flavorPrint: "p" }],
+          [
+            "bolt",
+            {
+              card_id: "bolt",
+              type_line: "Instant",
+              oracle: "Deals 3 damage to any target.",
+              flavor: "The sparkmage shrieked.",
+            },
+          ],
         ]),
       },
       h,
@@ -277,6 +285,7 @@ describe("handView rendered face", () => {
     expect(JSON.parse(attr(host, "data-face") ?? "{}")).toMatchObject({
       typeLine: "Instant",
       oracle: "Deals 3 damage to any target.",
+      flavor: "The sparkmage shrieked.",
     });
   });
 

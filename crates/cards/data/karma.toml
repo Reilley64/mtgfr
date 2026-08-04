@@ -2,7 +2,6 @@
 # to the number of Swamps they control.
 name = "Karma"
 otags = ["burn-player-each", "hate-swamp", "single-english-word-name", "triggered-ability"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "8ed", "ced", "cei", "fbb", "lea", "leb", "ptc", "sum"]
 id = "fac4da47-f0b2-4b57-9703-e0ed100d3499"
 default_print = "c9aa32e2-aeb0-4104-8603-a56bd8fc0953"
 oracle = "At the beginning of each player's upkeep, this enchantment deals damage to that player equal to the number of Swamps they control."

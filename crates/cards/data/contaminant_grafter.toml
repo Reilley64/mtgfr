@@ -7,7 +7,6 @@ otags = ["draw-engine", "intervening-if-clause", "land-ramp", "mix-and-match", "
 id = "ba922414-878f-4261-9bce-500c5c9e9506"
 default_print = "0ef2f776-ff35-464b-bfcf-075c9ae4baa7"
 oracle = "Trample, toxic 1\nWhenever one or more creatures you control deal combat damage to one or more players, proliferate.\nCorrupted — At the beginning of your end step, if an opponent has three or more poison counters, draw a card, then you may put a land card from your hand onto the battlefield."
-sets = ["onc"]
 subtypes = ["Phyrexian", "Druid"]
 keywords = ["trample", { toxic = 1 }]
 

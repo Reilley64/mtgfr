@@ -1,10 +1,8 @@
 # Flying
 # {B}{R}{G}, {T}: Target player draws a card.
 name = "Xira Arien"
-sets = ["bchr", "chr", "dmr", "leg", "me3", "td0"]
 otags = ["activated-ability", "cycle-dmr-tricolor-legend", "deprecated-legend-type", "draw-engine", "evasion", "force-draw", "repeatable-crime", "repeatable-pure-draw", "unique-type-line"]
 oracle = "Flying\n{B}{R}{G}, {T}: Target player draws a card."
-flavor = "Her wits are sharp, but her blades are sharper."
 subtypes = ["Insect", "Wizard"]
 id = "4a6e367c-7bc9-44a3-8ede-f2d0651abad3"
 default_print = "ce050d13-7897-4889-a514-a7617a1ed686"

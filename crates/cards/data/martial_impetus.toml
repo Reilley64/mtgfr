@@ -4,7 +4,6 @@
 # Whenever enchanted creature attacks, each other creature that's attacking one of your opponents gets +1/+1 until end
 # of turn.
 name = "Martial Impetus"
-sets = ["blc", "c20", "c21", "clb", "clu", "mkc", "soc"]
 id = "c8decfdf-1421-4649-acde-5215e7f08bb9"
 default_print = "41ccc31c-9377-4e8a-aede-248d16cd5264"
 otags = ["attack-trigger", "attacking-matters", "cycle-c20-impetus", "force-attacker"]

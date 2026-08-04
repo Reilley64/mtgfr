@@ -916,6 +916,7 @@ mod tests {
         let snap = StreamFrame::Snapshot {
             seq: 0,
             state: snapshot(&game, PlayerId(0)),
+            card_text: vec![],
         };
         let delta = StreamFrame::Delta(DeltaEnvelope {
             seq: 1,

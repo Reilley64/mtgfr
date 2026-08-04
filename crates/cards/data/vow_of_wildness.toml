@@ -2,11 +2,9 @@
 # Enchanted creature gets +3/+3, has trample, and can't attack you or planeswalkers you control.
 name = "Vow of Wildness"
 otags = ["cycle-cmd-vow", "cycle-cmr-vow", "gives-trample", "multiplayer", "prevent-attack", "removal-creature", "synergy-planeswalker"]
-sets = ["c18", "cm2", "cmd", "cmr", "e02", "gn3", "pz1"]
 id = "569a65fb-e35f-4388-ab49-f57be46b4889"
 default_print = "764fa7f1-b92b-42cc-983e-e0b5457369a7"
 oracle = "Enchant creature\nEnchanted creature gets +3/+3, has trample, and can't attack you or planeswalkers you control."
-flavor = "\"Savagery is the birthright of every creature that draws breath—or wishes it could.\"\n—Karador, Ghost Chieftain"
 subtypes = ["Aura"]
 
 [cost]

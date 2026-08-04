@@ -2,11 +2,9 @@
 # When this creature enters, destroy target permanent.
 name = "Angel of Despair"
 otags = ["evasion", "removal-destroy", "removal-permanent", "spot-removal", "triggered-ability", "virtual-french-vanilla"]
-sets = ["cma", "cmd", "gk2", "gpt", "plst", "sch", "sld", "uma"]
 id = "02520741-d7f0-46e6-acbe-010b65fc24c0"
 default_print = "a07809b2-dabe-4242-84c3-fd640d7d5998"
 oracle = "Flying\nWhen this creature enters, destroy target permanent."
-flavor = "\"I feel in them a sense of duty and commitment, yet I can feel nothing else. It is as if their duty is to an empty void.\"\n—Razia, Boros archangel"
 subtypes = ["Angel"]
 keywords = ["flying"]
 

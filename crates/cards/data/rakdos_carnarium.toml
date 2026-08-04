@@ -2,7 +2,6 @@
 # When this land enters, return a land you control to its owner's hand.
 # {T}: Add {B}{R}.
 name = "Rakdos Carnarium"
-sets = ["2x2", "afc", "arc", "brc", "c13", "c16", "c17", "c18", "c19", "c20", "clu", "cma", "cmd", "ddk", "dis", "dmc", "ecc", "gk2", "ima", "mm2", "prm", "td0", "voc"]
 otags = ["activated-ability", "cycle-rav-bounceland", "drawback", "triggered-ability"]
 oracle = "This land enters tapped.\nWhen this land enters, return a land you control to its owner's hand.\n{T}: Add {B}{R}."
 id = "0a023964-2905-4928-9c3e-dc63e6ebd218"

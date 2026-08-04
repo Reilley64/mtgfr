@@ -6,7 +6,6 @@ otags = ["activated-ability", "burst-draw", "cycle-c19-planeswalker", "cycle-m12
 id = "298a7e1a-b254-442e-bc1d-2a3e5296d849"
 default_print = "79cfc0d7-fccb-47fb-87b6-08dd32528be6"
 oracle = "+1: Create a 3/3 green Beast creature token.\n−3: Draw cards equal to the greatest power among creatures you control.\n−6: Create a 6/6 green Wurm creature token for each land you control."
-sets = ["c21"]
 subtypes = ["Garruk"]
 legendary = true
 

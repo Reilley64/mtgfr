@@ -1425,14 +1425,6 @@
           ],
           "description": "Flashback (CR 702.34) — `[flashback]` with the same `[cost]`-table shape (may carry a `[flashback.additional]` rider); absent for a card without flashback."
         },
-        "flavor": {
-          "default": null,
-          "description": "Verbatim printed flavor text — the italic words a rendered face sets under the rules divider. Metadata like `oracle`; the engine never reads it.",
-          "type": [
-            "string",
-            "null"
-          ]
-        },
         "forecast": {
           "anyOf": [
             {
@@ -1572,14 +1564,6 @@
           "default": false,
           "description": "Retrace (CR 702.83) — `retrace = true`; absent (`false`) for a card without retrace.",
           "type": "boolean"
-        },
-        "sets": {
-          "default": [],
-          "description": "Every Scryfall set code with a printing of this oracle, used by coverage and catalog search. Pure metadata; gameplay never reads it.",
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
         },
         "snow": {
           "default": false,
@@ -12478,14 +12462,6 @@
       ],
       "description": "Flashback (CR 702.34) — `[flashback]` with the same `[cost]`-table shape (may carry a `[flashback.additional]` rider); absent for a card without flashback."
     },
-    "flavor": {
-      "default": null,
-      "description": "Verbatim printed flavor text — the italic words a rendered face sets under the rules divider. Metadata like `oracle`; the engine never reads it.",
-      "type": [
-        "string",
-        "null"
-      ]
-    },
     "forecast": {
       "anyOf": [
         {
@@ -12625,14 +12601,6 @@
       "default": false,
       "description": "Retrace (CR 702.83) — `retrace = true`; absent (`false`) for a card without retrace.",
       "type": "boolean"
-    },
-    "sets": {
-      "default": [],
-      "description": "Every Scryfall set code with a printing of this oracle, used by coverage and catalog search. Pure metadata; gameplay never reads it.",
-      "items": {
-        "type": "string"
-      },
-      "type": "array"
     },
     "snow": {
       "default": false,

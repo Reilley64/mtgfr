@@ -3,7 +3,6 @@
 # {3}: Untap this artifact.
 name = "Basalt Monolith"
 otags = ["activated-ability", "adds-multiple-mana", "doesn-t-untap", "full-refund", "fun-ruling", "mana-rock", "untaps-self"]
-sets = ["2ed", "2xm", "30a", "3ed", "c13", "c15", "ced", "cei", "cm2", "cma", "fbb", "lea", "leb", "ltc", "mb2", "me4", "prm", "pz1", "sum"]
 id = "6b8cf2a0-b045-4d91-9d91-c602d40c6237"
 default_print = "5a72cd4b-5b47-46b8-b230-4b246f97221f"
 oracle = "This artifact doesn't untap during your untap step.\n{T}: Add {C}{C}{C}.\n{3}: Untap this artifact."

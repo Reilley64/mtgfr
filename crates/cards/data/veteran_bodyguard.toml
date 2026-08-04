@@ -2,11 +2,9 @@
 # creatures is dealt to this creature instead.
 name = "Veteran Bodyguard"
 otags = ["creature-type-bodyguard", "damage-prevention-you", "hate-attacker", "pariah", "type-errata", "untapped-matters-self"]
-sets = ["2ed", "30a", "3ed", "ced", "cei", "fbb", "lea", "leb", "me4", "sum"]
 id = "d29078c0-1fb8-437a-81d1-bb319f646941"
 default_print = "8d693da0-039d-462b-a5cb-d2bb179df65e"
 oracle = "As long as this creature is untapped, all damage that would be dealt to you by unblocked creatures is dealt to this creature instead."
-flavor = "Good bodyguards are hard to find, mainly because they don't live long."
 subtypes = ["Human"]
 approximates = "only combat damage is moved; noncombat damage an unblocked creature deals still reaches its controller"
 

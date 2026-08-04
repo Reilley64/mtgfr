@@ -1,7 +1,6 @@
 # Creatures with power 3 or greater don't untap during their controllers' untap steps.
 name = "Meekstone"
 otags = ["hate-high-pt", "lockdown-creature", "removal-creature", "stasis", "symmetrical", "synergy-low-power"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "ced", "cei", "fbb", "lea", "leb", "mb2", "mps", "ptc", "sum", "wc00", "wc01"]
 id = "5ba73182-30a7-4bad-9cb6-c0feecc2db33"
 default_print = "2d1ced0f-a232-4a05-aa59-6e611b52d617"
 oracle = "Creatures with power 3 or greater don't untap during their controllers' untap steps."

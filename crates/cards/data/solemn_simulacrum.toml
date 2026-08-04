@@ -5,7 +5,6 @@
 # "When this creature enters, you may search your library for a basic land card, put it onto the
 #  battlefield tapped, then shuffle. When this creature dies, you may draw a card."
 name = "Solemn Simulacrum"
-sets = ["afc", "blc", "brc", "c14", "c15", "c16", "c19", "c20", "c21", "clb", "cm2", "cmd", "cmm", "ddu", "dmc", "drc", "dsc", "fdn", "fic", "j22", "m12", "m21", "m3c", "mkc", "mps", "mrd", "msc", "ncc", "nec", "onc", "pfdn", "pip", "plst", "pm21", "prm", "pw26", "scd", "sld", "soc", "tdc", "tsr", "who"]
 id = "00c0543c-2a1f-4425-8283-4062d74a1637"
 default_print = "daafd816-f7c1-4630-9e5c-a1e5db570a35"
 otags = ["alliteration", "death-trigger-self", "invitational-card", "land-ramp", "pure-draw", "tutor-land-basic", "type-addition-from-none", "tutor-land-to-battlefield"]

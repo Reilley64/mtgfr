@@ -1,7 +1,5 @@
 # (no rules text — vanilla creature)
 name = "Fire Elemental"
-flavor = "\"The best way to learn from a book on pyromancy is to burn it.\"\n—Jaya Ballard"
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "6ed", "7ed", "ced", "cei", "dom", "fbb", "fdn", "lea", "leb", "m13", "m19", "m20", "plst", "s99", "sum"]
 id = "3912d21e-1ebc-4a81-9dc9-f404248d564a"
 default_print = "dc506f58-048d-49cc-ad8c-2eb851b08bb6"
 subtypes = ["Elemental"]

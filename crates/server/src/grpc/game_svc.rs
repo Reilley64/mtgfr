@@ -89,12 +89,17 @@ impl pb::game_service_server::GameService for GameSvc {
             viewer,
             seats,
             prints,
+            card_text,
             snapshot_broadcast_seq,
         } = stream::subscribe(&self.state, &table_id, user.id)
             .map_err(|_| Status::not_found("unknown table or game not started"))?;
 
         let out = async_stream::stream! {
-            yield Ok(map::stream_frame_to_pb(StreamFrame::Snapshot { seq: snapshot_seq, state: snapshot }));
+            yield Ok(map::stream_frame_to_pb(StreamFrame::Snapshot {
+                seq: snapshot_seq,
+                state: snapshot,
+                card_text,
+            }));
             let mut heartbeat =
                 tokio::time::interval(std::time::Duration::from_secs(crate::HEARTBEAT_SECS));
             heartbeat.tick().await; // first tick fires immediately; skip so it doesn't double the snapshot

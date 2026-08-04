@@ -1,11 +1,9 @@
 # Return target creature card from your graveyard to your hand.
 name = "Raise Dead"
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "8ed", "9ed", "anb", "ced", "cei", "cn2", "fbb", "itp", "lea", "leb", "p02", "plst", "por", "rqs", "s99", "sum", "w17"]
 id = "cbc9c731-181a-4f00-a7b0-eb7e56eac2ea"
 default_print = "4950c3c2-80c1-4447-ac38-cf40f76b9545"
 otags = ["hand-neutral", "regrowth-creature", "single-target-instant-sorcery"]
 oracle = "Return target creature card from your graveyard to your hand."
-flavor = "The earth cannot hold that which magic commands."
 
 [cost]
 black = 1

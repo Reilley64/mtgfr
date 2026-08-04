@@ -2,11 +2,9 @@
 # {R}: Enchanted creature gets +1/+0 until end of turn.
 name = "Firebreathing"
 otags = ["activated-ability", "bottomless-mana-sink", "single-english-word-name", "firebreathing"]
-sets = ["10e", "2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "9ed", "ced", "cei", "fbb", "lea", "leb", "m10", "m12", "mir", "sum"]
 id = "8603bf74-faab-4910-8e45-0f2e3b318efb"
 default_print = "dc2bfe7b-9850-4450-9bad-73fa0d678a5f"
 oracle = "Enchant creature\n{R}: Enchanted creature gets +1/+0 until end of turn."
-flavor = "\"And topples round the dreary west\nA looming bastion fringed with fire.\"\n—Alfred, Lord Tennyson, \"In Memoriam\""
 subtypes = ["Aura"]
 
 [cost]

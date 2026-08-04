@@ -1,5 +1,4 @@
 name = "Karmic Guide"
-sets = ["afc", "c13", "cma", "ema", "j12", "mh2", "sld", "soc", "ulg", "vma", "voc"]
 id = "8c31fec9-e4b3-4761-990e-7be38eb05604"
 default_print = "b26d50dd-54a1-43ce-9884-3999f698d97b"
 otags = ["drawback", "evasion", "hate-black", "intervening-if-clause", "reanimate-creature", "type-errata", "virtual-french-vanilla"]

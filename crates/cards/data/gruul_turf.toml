@@ -2,7 +2,6 @@
 # When this land enters, return a land you control to its owner's hand.
 # {T}: Add {R}{G}.
 name = "Gruul Turf"
-sets = ["2x2", "afc", "blc", "c16", "c18", "c19", "c20", "clb", "clu", "cmd", "ecc", "gk2", "gpt", "hop", "ima", "mkc", "mm2", "nec", "pc2", "pca", "prm", "td0", "znc"]
 otags = ["activated-ability", "cycle-rav-bounceland", "drawback", "triggered-ability"]
 oracle = "This land enters tapped.\nWhen this land enters, return a land you control to its owner's hand.\n{T}: Add {R}{G}."
 id = "657243dd-e479-4f4b-99d2-09b55d833a35"

@@ -2,7 +2,6 @@
 # {1}, {T}: Put a storage counter on this land.
 # {1}, Remove X storage counters from this land: Add X mana in any combination of {B} and/or {R}.
 name = "Molten Slagheap"
-sets = ["40k", "c13", "cma", "cmd", "pz1", "scd", "tsp", "tsr"]
 id = "33587cb2-0fd3-4e4c-bc5e-e7299cc9dab5"
 default_print = "37454595-4735-4037-a718-98b186af6439"
 otags = ["activated-ability", "adds-multiple-mana", "aesthetic-counter", "counter-fuel-aesthetic", "cycle-tsp-storage-land", "ramp"]

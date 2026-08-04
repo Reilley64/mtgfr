@@ -2,11 +2,9 @@
 # opponent sacrifices a permanent of their choice that shares a card type with it.
 name = "Martyr's Bond"
 otags = ["death-trigger", "grave-pact", "multi-removal", "removal-nonland", "removal-sacrifice", "repeatable-removal", "spot-removal"]
-sets = ["cmd", "plst", "prm", "ss2"]
 id = "7de8ffa5-f6e5-4987-b3f8-6d6fc83f8fa8"
 default_print = "2ff99e85-bfb7-4c8c-a8e1-3b0618ffe479"
 oracle = "Whenever this enchantment or another nonland permanent you control is put into a graveyard from the battlefield, each opponent sacrifices a permanent of their choice that shares a card type with it."
-flavor = "\"Our lives are connected by divine law. The truth of this will be made evident in time.\"\n—Zedruu the Greathearted"
 
 [cost]
 generic = 4

@@ -1,9 +1,7 @@
 # Return target card from your graveyard to your hand.
 name = "Elven Cache"
-sets = ["6ed", "por", "td0", "vis"]
 otags = ["hand-neutral", "regrowth-any", "single-target-instant-sorcery"]
 oracle = "Return target card from your graveyard to your hand."
-flavor = "Elves know where to harvest the best of the forest, for they planted it there themselves."
 id = "8a922366-ee2a-4ddb-a904-683dcf4f191a"
 default_print = "10d3d239-1e16-4a23-9098-ee67d32e0208"
 

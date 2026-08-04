@@ -2,11 +2,9 @@
 # When you control no Islands, sacrifice this creature.
 name = "Sea Serpent"
 otags = ["alliteration", "landhome", "restricted-attacker", "state-trigger"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "fbb", "lea", "leb", "me4", "sum"]
 id = "c16495fc-784d-4bac-9a68-ed437008df73"
 default_print = "af430730-2ce8-45c3-b1da-9745fc792d71"
 oracle = "This creature can't attack unless defending player controls an Island.\nWhen you control no Islands, sacrifice this creature."
-flavor = "Legend has it that Serpents used to be bigger, but how could that be?"
 approximates = "\"When you control no Islands, sacrifice this creature\" is a state trigger (CR 603.8) — it fires the moment the last Island leaves. The engine has no state-trigger shape, so it is authored as an end-step trigger with the same intervening-if: the Serpent survives until the end step of the turn its controller ran out, instead of dying immediately."
 subtypes = ["Serpent"]
 

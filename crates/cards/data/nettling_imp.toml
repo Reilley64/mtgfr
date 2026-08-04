@@ -4,7 +4,6 @@
 # before attackers are declared.
 name = "Nettling Imp"
 otags = ["activated-ability", "delayed-trigger", "force-attacker", "hate-typal-non-wall", "notorious-templating", "removal-creature", "removal-destroy", "repeatable-crime", "repeatable-removal", "spot-removal"]
-sets = ["2ed", "30a", "3ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
 id = "c58dfcbf-49e6-4ef0-bd31-ebd81b0cfa41"
 default_print = "96706002-176d-41f7-9788-3d0f7962ea03"
 oracle = "{T}: Choose target non-Wall creature the active player has controlled continuously since the beginning of the turn. That creature attacks this turn if able. Destroy it at the beginning of the next end step if it didn't attack this turn. Activate only during an opponent's turn, before attackers are declared."

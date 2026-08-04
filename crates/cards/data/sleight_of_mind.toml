@@ -4,7 +4,6 @@
 name = "Sleight of Mind"
 otags = ["interrupt", "single-target-instant-sorcery", "text-change-color", "untracked-indefinite-effect"]
 approximates = "the swap reaches a color word the card model stores as an enum — a permanent's printed protection color and the color a prevention shield names (Circle of Protection) — but not one buried in a filter or in an Aura's keyword grant"
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "fbb", "ice", "lea", "leb", "sum"]
 id = "99dba614-40d3-41c1-a3b2-edc8777b010f"
 default_print = "d1349af8-a709-4535-b532-eb769289906d"
 oracle = "Change the text of target spell or permanent by replacing all instances of one color word with another. (For example, you may change \"target black spell\" to \"target blue spell.\" This effect lasts indefinitely.)"
