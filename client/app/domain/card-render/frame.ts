@@ -142,8 +142,11 @@ export const CANONICAL: Record<FaceVariant, { w: number; h: number }> = {
  * `TOP_STRIP` bound are alpha-measured off the art itself — `magick <asset> -alpha extract
  * -threshold 50% -format "%@" info:` — and must not be nudged.
  *
- * `TITLE_BAR` and `TYPE_BAR` are eyeballed: the frame is opaque there, so alpha cannot segment
- * them. They are close enough to lay out against and are tuned by a live check.
+ * `TITLE_BAR` and `TYPE_BAR` are where those two lines *sit*, not the plates they sit on: the frame
+ * is opaque there, so alpha cannot segment a plate, and the renderer only ever reads their width (to
+ * shrink an overlong line) and their vertical centre. Both are calibrated against Scryfall's png for
+ * an M15 printing with `client/scripts/card-render-diff.mjs` — a printed name inks rows 64..92 of a
+ * 1040-tall face, a printed type line rows 599..623 — so nudge them only against that measurement.
  *
  * `TEXT_BOX` is the printed paper, read off a Scryfall 744x1040 png by luminance: the pale box runs
  * y 655..957 there, which is these numbers once scaled to the asset. Getting the bottom right is
@@ -152,8 +155,8 @@ export const CANONICAL: Record<FaceVariant, { w: number; h: number }> = {
  * plate overlaps its bottom corner, exactly as it does in print.
  */
 const ART_WINDOW: Rect = { x: 58, y: 119, w: 634, h: 463 };
-const TITLE_BAR: Rect = { x: 58, y: 43, w: 634, h: 66 };
-const TYPE_BAR: Rect = { x: 58, y: 592, w: 634, h: 61 };
+const TITLE_BAR: Rect = { x: 58, y: 49, w: 634, h: 66 };
+const TYPE_BAR: Rect = { x: 58, y: 589, w: 634, h: 61 };
 const TEXT_BOX: Rect = { x: 58, y: 661, w: 633, h: 305 };
 const PT_PLATE: Rect = { x: 579, y: 932, w: 130, h: 64 };
 /**

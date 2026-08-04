@@ -82,8 +82,9 @@ describe("cardTextBlock", () => {
   });
 
   it("counts the divider row against the fit, so flavor cannot overhang the box", () => {
-    // Three lines of text plus a divider row: the fit has to shrink further than the text alone.
-    const box = { w: 200, h: 90 };
+    // The rules alone wrap to two lines; the divider row and the flavor line take it past a box
+    // that only holds three, so the fit has to shrink further than the text alone.
+    const box = { w: 200, h: 20 * LINE_HEIGHT * 3.5 };
     expect(fitCardText("Whenever this creature attacks, ", "It watches. ", box, 20, measure)).toBeLessThan(
       fitCardText("Whenever this creature attacks, ", "", box, 20, measure),
     );

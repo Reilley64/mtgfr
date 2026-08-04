@@ -9,10 +9,15 @@
 import { type OraclePart, splitOracleText } from "../oracleText";
 
 /**
- * Line height as a multiple of font size. A printed card's rules lines step about 40px at a 35px
- * body — measured between line midpoints on a wrapped three-line card.
+ * Line height as a multiple of font size. A printed M15 card's rules lines step about 37px at a
+ * 35px body — measured row by row off Scryfall's png for Llanowar Elves (`fdn`), whose flavor block
+ * wraps to four lines at a 36.7px pitch.
+ *
+ * ponytail: one pitch for the whole box. Print adds about a third of a line of air *between*
+ * abilities (43px against 32px within one) — modelling that needs paragraph breaks threaded through
+ * `wrapOracle` → `cardTextBlock` → `fitCardText`, and it only shows on a multi-ability card.
  */
-export const LINE_HEIGHT = 1.16;
+export const LINE_HEIGHT = 1.06;
 
 /** How far `fitOracleSize` will shrink before it lets the text overhang. */
 const MIN_SCALE = 0.6;

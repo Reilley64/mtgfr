@@ -5,24 +5,33 @@ import { cardTextBlock, fitCardText, LINE_HEIGHT, type Measure, SYMBOL_EM } from
 
 /*
  * Printed type sizes, as a fraction of the slot each sits in. A real M15 card sets its name in about
- * 41px, its type line in 36px and its rules text in 35px at this asset's 750x1050 — those over the
- * slot heights in `frame.ts` are the numbers below. Rules text is a ceiling: a wordy card shrinks to
- * fit its box, the way a printed one does.
+ * 40px, its type line in 34px and its rules text in 35px on a 745x1040 face — those over the slot
+ * heights in `frame.ts` are the numbers below. Rules text is a ceiling: a wordy card shrinks to fit
+ * its box, the way a printed one does.
+ *
+ * These are set by width, not by eye: on Scryfall's png for Llanowar Elves (`fdn`) the name inks
+ * 255px across, the type line 304px and a flavor line 560px, and `client/scripts/card-render-diff.mjs`
+ * re-measures them.
  */
-const TITLE_SCALE = 0.62;
-const TYPE_SCALE = 0.58;
-const RULES_SCALE = 0.116;
+const TITLE_SCALE = 0.605;
+const TYPE_SCALE = 0.5555;
+const RULES_SCALE = 0.115;
 const PT_SCALE = 0.62;
 
 /** Printed ink — the near-black a card's text is set in, not pure black. */
 const INK = "#17130d";
 /**
- * Text-box padding, as a fraction of the box. Measured off a printed card: its rules text sits
- * about 12px in from a 628px-wide box, and centres vertically in the paper — so the vertical
- * number is only a floor for text too tall to centre, not a printed margin.
+ * Text-box padding, as a fraction of the box. Measured off a printed card: its rules text inks from
+ * about 8px in on a 628px-wide box, and centres vertically in the paper — so the vertical number is
+ * only a floor for text too tall to centre, not a printed margin.
  */
-const TEXT_PAD_X = 0.02;
+const TEXT_PAD_X = 0.0125;
 const TEXT_PAD_Y = 0.03;
+/**
+ * The title and type lines start much closer to their bar's edge than rules text does to the paper —
+ * about 5px in on a printed M15 card, against the text box's 19.
+ */
+const BAR_PAD_X = 0.008;
 /** The flavor divider's width, as a fraction of the text box — a printed one stops short of both edges. */
 const DIVIDER_W = 0.9;
 
@@ -127,7 +136,7 @@ function drawFitted(ctx: CanvasRenderingContext2D, text: string, box: Rect, font
     ctx.font = `${size}px ${font}, serif`;
   }
   ctx.textAlign = "left";
-  ctx.fillText(text, box.x + box.w * 0.02, box.y + box.h / 2);
+  ctx.fillText(text, box.x + box.w * BAR_PAD_X, box.y + box.h / 2);
 }
 
 /** Body font for one run — reminder text prints italic, the way a printed card sets it. */
