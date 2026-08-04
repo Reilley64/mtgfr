@@ -3,7 +3,7 @@ import { ZONE } from "../../board/geometry/layout";
 import type { ObjectView } from "../wire/types";
 import { ASSET_H, ASSET_W } from "./assets";
 import type { Blit, FaceData, FaceVariant, Rect, SlotRects } from "./frame";
-import { CANONICAL, faceDataFrom, frameKey, slotRects } from "./frame";
+import { CANONICAL, faceDataFrom, frameKey, slotRects, squarePtPlate } from "./frame";
 
 /** `colors` and `mana_cost.colored` are both WUBRG-indexed — see `engine::Color::index`. */
 const W = 0;
@@ -316,9 +316,23 @@ describe("slotRects", () => {
 
   // `board/bitmap/paint-cards.ts` already paints a live P/T badge in that corner; a printed one
   // would double it up.
-  it("draws no printed P/T on the Arena square", () => {
-    expect(slotRects("permanent", face()).pt).toBeNull();
-    expect(slotRects("permanent", face()).ptPlate).toBeNull();
+  // The plate is art; the numbers on it are live, so `board/bitmap/paint-cards.ts` writes those
+  // each frame from the same rect — hence a plate but no `pt` slot.
+  it("gives the Arena square a printed P/T plate in its bottom-right corner, with no text slot", () => {
+    const slots = slotRects("permanent", face());
+    const { w, h } = CANONICAL.permanent;
+    expect(slots.pt).toBeNull();
+    expect(slots.ptPlate?.src).toEqual(PT_PLATE);
+    expect(slots.ptPlate?.dst.x).toBeGreaterThan(w / 2);
+    expect(slots.ptPlate?.dst.y).toBeGreaterThan(h / 2);
+    expect((slots.ptPlate?.dst.x ?? 0) + (slots.ptPlate?.dst.w ?? 0)).toBeLessThanOrEqual(w);
+    expect((slots.ptPlate?.dst.y ?? 0) + (slots.ptPlate?.dst.h ?? 0)).toBeLessThanOrEqual(h);
+  });
+
+  it("prints no P/T plate on a square that has no printed plate to show", () => {
+    expect(squarePtPlate(face({ kind: { kind: "land", colors: [] }, power: 0, toughness: 0 }))).toBeNull();
+    expect(squarePtPlate(face({ kind: { kind: "artifact" }, power: 0, toughness: 0 }))).toBeNull();
+    expect(squarePtPlate(face({ is_token: true }))).toBeNull();
   });
 
   it("crowns a legendary permanent over the same strip", () => {

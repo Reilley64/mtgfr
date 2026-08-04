@@ -179,7 +179,8 @@ describe("drawFace", () => {
     const { ctx, drawn } = fakeCtx();
     drawFace(ctx, inputs({ art: null }));
 
-    expect(drawn()).toHaveLength(slotRects("permanent", face()).frame.length);
+    // The frame's edges plus the printed P/T plate — everything but the art.
+    expect(drawn()).toHaveLength(slotRects("permanent", face()).frame.length + 1);
     expect(drawn().every((blit) => blit[0] === assetImage)).toBe(true);
   });
 
@@ -202,9 +203,12 @@ describe("drawFace", () => {
     const { ctx, ops, drawn } = fakeCtx();
     drawFace(ctx, inputs());
 
-    const band = slotRects("permanent", face()).frame.at(-1)?.dst;
+    const frame = slotRects("permanent", face()).frame;
+    const band = frame.at(-1)?.dst;
+    // The art draws first, so the frame's last edge is the last blit of the frame run.
+    const bottom = drawn()[frame.length];
     expect(ops.some((o) => o.op === "rotate" && o.args[0] === -Math.PI / 2)).toBe(true);
-    expect(drawn().at(-1)?.slice(5)).toEqual([-(band?.h ?? 0) / 2, -(band?.w ?? 0) / 2, band?.h, band?.w]);
+    expect(bottom?.slice(5)).toEqual([-(band?.h ?? 0) / 2, -(band?.w ?? 0) / 2, band?.h, band?.w]);
   });
 
   it("crops the art to fill the square instead of squashing it", () => {
@@ -223,7 +227,8 @@ describe("drawFace", () => {
 
     // Art, then the frame's four edges, then the crown — over the top strip it replaces.
     const [, topStrip] = drawn();
-    expect(drawn().at(-1)?.slice(1)).toEqual(topStrip?.slice(1));
+    const crown = drawn()[1 + slotRects("permanent", face({ legendary: true })).frame.length];
+    expect(crown?.slice(1)).toEqual(topStrip?.slice(1));
   });
 
   it("blits the P/T plate from its corner of the asset on a full face", () => {

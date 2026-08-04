@@ -202,6 +202,28 @@ function hasPT(face: FaceData): boolean {
 }
 
 /**
+ * Where the square draws its printed P/T plate, as a fraction of the face — null when the card
+ * prints none. The plate hugs the bottom-right corner at the same inset the printed one keeps from
+ * the card's right edge, so it overlaps the border rail the way print does.
+ *
+ * `board/bitmap/paint-cards.ts` writes the live numbers — which track counters and damage without
+ * redrawing the face — over this plate, so the rect lives here rather than in either drawer.
+ */
+export function squarePtPlate(face: FaceData): Rect | null {
+  // Same test as `faceAssetUrls`: only a creature has a plate to blit, and no land prints one.
+  if (face.isToken || frameKey(face) === "land") return null;
+  if (face.power === "" && face.toughness === "") return null;
+  const span = ASSET_W - 2 * CARD_BORDER;
+  const inset = ASSET_W - CARD_BORDER - (PT_PLATE.x + PT_PLATE.w);
+  return {
+    x: (span - inset - PT_PLATE.w) / span,
+    y: (span - inset - PT_PLATE.h) / span,
+    w: PT_PLATE.w / span,
+    h: PT_PLATE.h / span,
+  };
+}
+
+/**
  * The Arena square: art edge to edge, ringed by the frame's own border.
  *
  * Blitting the whole 750x1050 frame into a 745x745 square would crush it to 71% of its own height,
@@ -222,6 +244,7 @@ function squareSlots(w: number, h: number, face: FaceData): SlotRects {
   const strip: Blit = { src: TOP_STRIP, dst: { x: 0, y: 0, w, h: TOP_STRIP.h * s } };
   const side = rail(0).w * s;
   const flank = { y: strip.dst.h, w: side, h: h - strip.dst.h - side };
+  const plate = squarePtPlate(face);
   return {
     frame: [
       strip,
@@ -231,10 +254,9 @@ function squareSlots(w: number, h: number, face: FaceData): SlotRects {
     ],
     art,
     crown: face.legendary ? { src: TOP_STRIP, dst: strip.dst } : null,
-    // ponytail: the square draws no printed P/T. `board/bitmap/paint-cards.ts` already paints a
-    // live P/T badge in that corner which tracks counters and damage without redrawing the face,
-    // and two readouts on one tile is a bug. Drop that badge first if the printed plate should win.
-    ptPlate: null,
+    // The plate art only — the numbers on it are live, so `paint-cards.ts` writes them each frame.
+    ptPlate:
+      plate == null ? null : { src: PT_PLATE, dst: { x: plate.x * w, y: plate.y * h, w: plate.w * w, h: plate.h * h } },
     // The face's origin is the asset's border corner, so a printed rect shifts by it before scaling.
     title: scale({ ...TITLE_BAR, x: TITLE_BAR.x - CARD_BORDER, y: TITLE_BAR.y - CARD_BORDER }, s, s),
     type: null,

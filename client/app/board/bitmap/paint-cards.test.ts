@@ -246,6 +246,32 @@ describe("paintCard: the rendered Arena face", () => {
     expect(drawn(ctx)).not.toContain(face);
   });
 
+  // The rendered square carries the printed plate art, so a badge over it would be a second box.
+  it("writes the live power/toughness onto the rendered square's printed plate", () => {
+    const calls: string[] = [];
+    const ctx = mockCtx(calls);
+    const bear = { ...BLANK_FACE, name: "Grizzly Bears", power: "2", toughness: "2" };
+
+    paintCard(ctx, cam, card({ face: bear, pt: "4/4" }), printedCache, 0, {
+      faces: { get: () => face, request: () => {} },
+    });
+
+    expect(ctx.fillText).toHaveBeenCalledWith("4/4", expect.any(Number), expect.any(Number));
+    expect(calls).not.toContain("fill:#f4efe2"); // no badge behind it — the plate is the box
+  });
+
+  it("keeps the badge on a token, which prints no plate", () => {
+    const calls: string[] = [];
+    const ctx = mockCtx(calls);
+    const token = { ...BLANK_FACE, name: "Beast", isToken: true, power: "3", toughness: "3" };
+
+    paintCard(ctx, cam, card({ face: token, pt: "3/3" }), printedCache, 0, {
+      faces: { get: () => face, request: () => {} },
+    });
+
+    expect(calls).toContain("fill:#f4efe2");
+  });
+
   it("does not ask for a face-down permanent — it is a card back, not a printing", () => {
     const ctx = mockCtx();
     const request = vi.fn();

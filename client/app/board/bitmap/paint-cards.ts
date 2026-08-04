@@ -1,5 +1,6 @@
 import { colors } from "~/design-tokens.generated";
-import type { FaceData, FaceVariant } from "../../domain/card-render/frame";
+import { TITLE_FONT } from "../../domain/card-render/assets";
+import { type FaceData, type FaceVariant, squarePtPlate } from "../../domain/card-render/frame";
 import { cardBackUrl, imageUrlByPrint } from "../../domain/deck-builder/scryfall";
 import type { ImageCache } from "../../domain/image-cache";
 import { TARGET_COLOR } from "../action/targeting";
@@ -393,17 +394,24 @@ function paintFaceUp(
 
   drawStatusBadges(ctx, x, y, w, cam.zoom, card);
   if (card.pt) {
-    badge(
-      ctx,
-      x + w - 30 * cam.zoom,
-      y + h - 20 * cam.zoom,
-      26 * cam.zoom,
-      15 * cam.zoom,
-      card.pt,
-      cam.zoom,
-      "#f4efe2",
-      "#111",
-    );
+    // On a rendered square the face already carries the printed plate, so the live numbers go
+    // straight onto it. A token or a printed image has no plate, so those keep the badge.
+    const plate = rendered == null ? null : squarePtPlate(card.face);
+    if (plate == null) {
+      badge(
+        ctx,
+        x + w - 30 * cam.zoom,
+        y + h - 20 * cam.zoom,
+        26 * cam.zoom,
+        15 * cam.zoom,
+        card.pt,
+        cam.zoom,
+        "#f4efe2",
+        "#111",
+      );
+    } else {
+      printedPT(ctx, card.pt, x + plate.x * w, y + plate.y * h, plate.w * w, plate.h * h);
+    }
   }
   if (card.counters > 0) {
     badge(
@@ -478,6 +486,17 @@ function wrapText(
     line = test;
   }
   if (line) ctx.fillText(line, x, yy);
+}
+
+/** Live power/toughness set on the face's own printed plate — no box, the plate art is the box. */
+function printedPT(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, w: number, h: number): void {
+  ctx.fillStyle = "#17130d";
+  ctx.font = `${h * 0.62}px ${TITLE_FONT}, serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, x + w / 2, y + h / 2);
+  ctx.textAlign = "left";
+  ctx.textBaseline = "alphabetic";
 }
 
 function badge(
