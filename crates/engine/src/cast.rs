@@ -872,7 +872,7 @@ impl Game {
         // multi-target selection.
         // ponytail: the substituted X is clamped to MAX_TARGETS (the fixed TargetList width, CR
         // 601.2c's "maximum possible" is itself capped there) — bump that const before a real
-        // board needs an X-target spell targeting more than six.
+        // board needs an X-target spell targeting past it.
         // CR 601.2f: the sacrifice-defined sibling of the above — Immoral Bargain's X is settled
         // by the additional cost paid before the spell was even put on the stack (see
         // `Game::cast_with_kind`'s `sacrifice_cost` loop, which runs before this is reached), so
@@ -916,6 +916,12 @@ impl Game {
             } else {
                 (count.min, count.min)
             }
+        } else if count.unbounded {
+            // CR 601.2c: "one or more target creatures" prints a floor and no ceiling, so the
+            // caster may name every legal target. The engine's fixed `TargetList` width is the
+            // only ceiling, and the clamp to `n` just below reduces it to the targets that
+            // actually exist — which is what CR 601.2c's "maximum possible number" means.
+            (count.min, MAX_TARGETS as u8)
         } else {
             (count.min, count.max)
         };
@@ -2330,6 +2336,15 @@ impl Game {
         if cost.only_during_your_upkeep
             && (self.step != Step::Upkeep || self.active_player != player)
         {
+            return Err(Reject::WrongTiming);
+        }
+        // "Activate only before the combat damage step" (CR 602.5b — Angus Mackenzie): the
+        // activation-side twin of `cast_only_before_combat_damage` (Berserk), and the same
+        // boundary for the same reason — `Step::FirstStrikeCombatDamage` is the *first* combat
+        // damage step wherever it exists, and the engine only creates it when a first striker is
+        // in combat (CR 510.5). Not "during combat": the window is open from the untap step, and
+        // `Step`'s turn ordering means the postcombat main phase stays shut.
+        if cost.only_before_combat_damage_step && self.step >= Step::FirstStrikeCombatDamage {
             return Err(Reject::WrongTiming);
         }
         Ok((ability, cost))

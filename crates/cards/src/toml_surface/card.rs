@@ -85,6 +85,12 @@ pub struct AbilityToml {
     /// *your* upkeep.
     #[serde(default)]
     pub(crate) only_during_your_upkeep: bool,
+    /// "Activate only before the combat damage step" (CR 602.5b — Angus Mackenzie): the
+    /// activation-side twin of `cast_only_before_combat_damage`. The widest window in this family
+    /// — the whole turn up to the first combat damage step, so the upkeep and the precombat main
+    /// phase are inside it, and it does not reopen afterwards.
+    #[serde(default)]
+    pub(crate) only_before_combat_damage_step: bool,
     /// Who may activate this ability (CR 602.2b/602.5b/c) — see [`Activator`]. Defaults to
     /// `controller`, the unstated CR 602.2 baseline.
     #[serde(default)]

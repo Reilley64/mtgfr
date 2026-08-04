@@ -5,9 +5,6 @@ sets = ["leg"]
 id = "e6ea475e-61ba-487b-b7e9-683845a90b73"
 default_print = "11d1f02d-533e-4b77-a72a-ff5f91ae0626"
 oracle = "One or more target creatures become blue until end of turn."
-# ponytail: the engine's target list is a fixed six slots (MAX_TARGETS), so "one or more" stops there; widen
-# MAX_TARGETS if a card ever needs a seventh.
-approximates = "\"one or more target creatures\" is capped at six targets by the engine's fixed-width target list"
 
 [cost]
 blue = 1
@@ -25,5 +22,5 @@ type = "pump"
 mode = "target_becomes_color"
 color = "blue"
 target = "creature"
-count = { min = 1, max = 6 }
+count = { min = 1, unbounded = true }
 until_end_of_turn = true

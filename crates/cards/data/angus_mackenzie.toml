@@ -18,3 +18,20 @@ green = 1
 type = "creature"
 power = 2
 toughness = 2
+
+# {G}{W}{U}, {T}: Prevent all combat damage that would be dealt this turn. Activate only before
+# the combat damage step.
+[[abilities]]
+timing = "activated"
+taps_self = true
+only_before_combat_damage_step = true
+
+[abilities.activation_cost]
+white = 1
+blue = 1
+green = 1
+
+# Prevent all combat damage that would be dealt this turn.
+[[abilities.effects]]
+type = "misc"
+mode = "prevent_all_combat_damage_this_turn"

@@ -1214,6 +1214,15 @@ pub struct TargetCount {
     /// multi-target clause is what makes the second target "other" for free. Defaults to `false`.
     /// Parsed by the hand-written `Deserialize` impl in `de.rs`.
     pub main_phase_scaled: bool,
+    /// "One or more target creatures" (CR 601.2c — Sylvan Paradise, Dwarven Song, Heaven's Gate,
+    /// Sea Kings' Blessing, Touch of Darkness): a clause with a printed floor and **no printed
+    /// ceiling**, so the caster may name every legal target there is. When `true`, `max` is
+    /// ignored and the effective ceiling is the engine's `TargetList` width, which
+    /// `Game::choose_spell_target_clause` then clamps to the number of legal targets that
+    /// actually exist. Spelled `unbounded = true` in TOML, where `max` is omitted entirely —
+    /// a card must not restate the engine's width, so that width can change without touching
+    /// the pool. Defaults to `false`. Parsed by the hand-written `Deserialize` impl in `de.rs`.
+    pub unbounded: bool,
 }
 
 impl Default for TargetCount {
@@ -1226,6 +1235,7 @@ impl Default for TargetCount {
             strive_scaled: false,
             total_mv_max: None,
             multikicker_scaled: false,
+            unbounded: false,
             kicked_scaled: false,
             main_phase_scaled: false,
         }

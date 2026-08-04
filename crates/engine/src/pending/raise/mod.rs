@@ -19,6 +19,9 @@ use crate::{Game, PendingChoice};
 
 /// Engine-internal raise request (not wire). Covers effect/cast pause sites, fan-out kickoffs,
 /// and dig-loop pause payloads (prep/dig events stay at the call site — see module deferred notes).
+// ponytail: every variant here carries an `Effect` (~6.3KB), so the spread the lint measures is
+// noise against a floor set by `Effect` itself — same call as `Event`/`StackItem`.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
 pub(crate) enum ChoiceRequest {
     ChooseTarget {

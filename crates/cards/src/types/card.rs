@@ -1515,6 +1515,7 @@ fn treasure_token_builtin() -> CardDef {
             activator: Activator::Controller,
             only_before_attackers: false,
             only_during_your_upkeep: false,
+            only_before_combat_damage_step: false,
             remove_counters: 0,
             remove_counters_kind: None,
             remove_counters_x: false,

@@ -190,6 +190,11 @@
           "description": "\"…before attackers are declared\" (CR 602.5b — Nettling Imp): the activation-side twin of `cast_only_before_attackers`. The window runs up to and including the declare-attackers step and shuts the moment the declaration is made.",
           "type": "boolean"
         },
+        "only_before_combat_damage_step": {
+          "default": false,
+          "description": "\"Activate only before the combat damage step\" (CR 602.5b — Angus Mackenzie): the activation-side twin of `cast_only_before_combat_damage`. The widest window in this family — the whole turn up to the first combat damage step, so the upkeep and the precombat main phase are inside it, and it does not reopen afterwards.",
+          "type": "boolean"
+        },
         "only_during_opponents_turn": {
           "default": false,
           "description": "\"Activate only during an opponent's turn\" (CR 602.5b — Nettling Imp): someone other than the activating player must be the active player. Composable with the siblings below the same way the `cast_only_*` card restrictions are with each other.",
@@ -367,6 +372,11 @@
         "only_before_attackers": {
           "default": false,
           "description": "\"…before attackers are declared\" (CR 602.5b — Nettling Imp): the activation-side twin of `CardDef::cast_only_before_attackers` (Master Warcraft) and gated identically — the window runs up to and including the declare-attackers step, and shuts the moment the declaration is actually made rather than at the step boundary.",
+          "type": "boolean"
+        },
+        "only_before_combat_damage_step": {
+          "default": false,
+          "description": "\"Activate only before the combat damage step\" (CR 602.5b — Angus Mackenzie): the activation-side twin of `CardDef::cast_only_before_combat_damage` (Berserk) and gated identically. The widest window in this family — it is the whole turn up to the first combat damage step, so the upkeep and the precombat main phase are inside it, and it does not reopen in the postcombat main phase.",
           "type": "boolean"
         },
         "only_during_opponents_turn": {
@@ -12853,6 +12863,11 @@
               "type": "null"
             }
           ]
+        },
+        "unbounded": {
+          "default": false,
+          "description": "\"One or more target …\" (CR 601.2c) — no printed ceiling, so `max` is omitted and the engine's `TargetList` width stands in. See [`TargetCount::unbounded`].",
+          "type": "boolean"
         },
         "x_scaled": {
           "default": false,

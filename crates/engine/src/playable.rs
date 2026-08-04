@@ -789,6 +789,7 @@ mod tests {
                                 multikicker_scaled: false,
                                 kicked_scaled: false,
                                 main_phase_scaled: false,
+                                unbounded: false,
                             },
                             divided: Division::None,
                             cant_be_regenerated: false,

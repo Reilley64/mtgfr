@@ -1550,7 +1550,7 @@ needs a chosen "any target" step beside an untargeted self-damage step. Structur
 become per-effect rather than per-ability, which touches target selection, legality re-checks on
 resolution, and every existing multi-effect ability. Rank late.
 
-### 111. `activate-only-before-the-combat-damage-step` — 1 card, S
+### 111. `activate-only-before-the-combat-damage-step` — 1 card, S — **LANDED** (wave 11)
 Depends on: nothing.
 Angus Mackenzie: "Activate only before the combat damage step."
 *Sketch:* `AbilityToml` has no activation-window restriction for this. The effect it gates,
@@ -1876,7 +1876,7 @@ destroyed") consulted wherever a destroy is about to apply, honoring the same
 `cant_be_regenerated_this_turn` suppression flag `MiscEffect::SourceCantBeRegeneratedThisTurn`
 (from #25) sets, rather than a fresh cost-paid shield per destruction.
 
-### 129. `unbounded-one-or-more-target-clauses` — 5 cards, M
+### 129. `unbounded-one-or-more-target-clauses` — 5 cards, M — **LANDED** (wave 11)
 Depends on: #96 (landed — which is what made the ceiling reachable).
 Dwarven Song, Heaven's Gate, Sea Kings' Blessing, Sylvan Paradise, Touch of Darkness.
 "One or more target creatures become red until end of turn." — an *unbounded* multi-target clause
@@ -1891,6 +1891,23 @@ fields is the real bound) or make `TargetCount` express "unbounded" and back `Ta
 `Vec`, which costs `Event: Copy`. A test that puts seven creatures on the battlefield and casts
 Sylvan Paradise naming all seven is the acceptance criterion; drop the `approximates` note from all
 five cards when it passes.
+
+*Landed:* the first option, plus a DSL spelling so the pool never restates the engine's width.
+`MAX_TARGETS` went 6 → 32 (`Event` grew 6344 → 6552 bytes, 3.3%, measured — `TargetList` is a
+rounding error inside an enum that large, so the `Vec`-and-lose-`Copy` option the sketch floats is
+not worth its cost yet). `TargetCount` gained `unbounded: bool`, spelled `count = { min = 1,
+unbounded = true }` with **no** `max` — the deserializer rejects an `unbounded` count that also
+carries a `max`, so a card cannot hardcode the engine's width. `Game::choose_spell_target_clause`
+resolves it to `MAX_TARGETS` and then applies the pre-existing clamp to the number of legal targets
+that exist, which is what CR 601.2c's "maximum possible number" already meant. All five cards
+dropped their `approximates` and their `ponytail:` blocks.
+
+**Residual, deliberately not filed as a new increment:** 32 is still a fixed ceiling, so a board
+with 33+ legal targets would truncate. That is unreachable in a real four-player game for these
+five cards, and the `ponytail:` on `MAX_TARGETS` itself already names the bump as the upgrade path.
+If a future card genuinely needs unbounded targeting (a "target each creature" storm-scale board),
+the `Vec`-backed `TargetList` becomes the real work, and `unbounded = true` is already the spelling
+it would use — no card would change.
 
 ### 130. `damage-cause-tracking` — 1 card, L — **LANDED** (wave 10)
 Depends on: #12 (landed — which is what made the residual visible).

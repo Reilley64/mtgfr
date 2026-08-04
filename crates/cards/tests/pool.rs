@@ -5784,7 +5784,10 @@ fn legends_color_wash_instants_take_several_creatures_until_end_of_turn() {
         assert_eq!(color, Some(expected));
         assert_eq!(target, TargetSpec::Creature);
         assert_eq!(count.min, 1, "{name} takes at least one creature");
-        assert!(count.max > 1, "{name} takes more than one creature");
+        assert!(
+            count.unbounded,
+            "{name} prints \"one or more\" — a floor and no ceiling",
+        );
         assert!(until_end_of_turn, "{name} wears off at cleanup");
     }
 }

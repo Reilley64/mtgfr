@@ -892,6 +892,10 @@ pub(crate) struct TargetCountToml {
     pub(crate) kicked_scaled: bool,
     #[serde(default)]
     pub(crate) main_phase_scaled: bool,
+    /// "One or more target …" (CR 601.2c) — no printed ceiling, so `max` is omitted and the
+    /// engine's `TargetList` width stands in. See [`TargetCount::unbounded`].
+    #[serde(default)]
+    pub(crate) unbounded: bool,
 }
 
 impl<'de> Deserialize<'de> for TargetCount {
@@ -925,6 +929,7 @@ impl<'de> Deserialize<'de> for TargetCount {
                     multikicker_scaled: false,
                     kicked_scaled: false,
                     main_phase_scaled: false,
+                    unbounded: false,
                 })
             }
 
@@ -937,8 +942,13 @@ impl<'de> Deserialize<'de> for TargetCount {
 
             fn visit_map<A: de::MapAccess<'de>>(self, map: A) -> Result<TargetCount, A::Error> {
                 let t = TargetCountToml::deserialize(de::value::MapAccessDeserializer::new(map))?;
-                if t.min > t.max {
+                if !t.unbounded && t.min > t.max {
                     return Err(de::Error::custom("target count min exceeds max"));
+                }
+                if t.unbounded && t.max != 0 {
+                    return Err(de::Error::custom(
+                        "an unbounded target count has no max — omit it",
+                    ));
                 }
                 Ok(TargetCount {
                     min: t.min,
@@ -950,6 +960,7 @@ impl<'de> Deserialize<'de> for TargetCount {
                     multikicker_scaled: t.multikicker_scaled,
                     kicked_scaled: t.kicked_scaled,
                     main_phase_scaled: t.main_phase_scaled,
+                    unbounded: t.unbounded,
                 })
             }
         }
@@ -1776,6 +1787,7 @@ impl<'de> Deserialize<'de> for Ability {
                 only_during_your_turn: flat.only_during_your_turn,
                 only_before_attackers: flat.only_before_attackers,
                 only_during_your_upkeep: flat.only_during_your_upkeep,
+                only_before_combat_damage_step: flat.only_before_combat_damage_step,
                 activator: flat.activator,
                 return_self: flat.return_self,
                 mill_self: flat.mill_self,

@@ -2347,6 +2347,10 @@ pub enum StackEntry {
 /// A canonical, full-information record of something that happened. The *only* thing
 /// that mutates game state (via [`Game::apply`]). The engine is audience-unaware; any
 /// per-viewer redaction happens outside the engine.
+// ponytail: same call as `StackItem`/`StackEntry` above — the variants carrying an `Effect` are
+// ~6.3KB whatever `MAX_TARGETS` is, and boxing them would cost `Copy`, which the id-indexed
+// object arena requires. Revisit only if `Effect` itself shrinks.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Event {
     /// A card was cast: it left `from` (hand/command) and became the spell `spell` on the stack.
@@ -3634,10 +3638,15 @@ pub(crate) fn is_partition(top: &[ObjectId], bottom: &[ObjectId], cards: &[Objec
     combined == expected
 }
 
-/// The most targets any multi-target spell in the pool chooses (Aether Gale's six). Bounds the
-/// fixed, `Copy` array in [`TargetList`] so `Spell`/`Event` stay `Copy` (the id-indexed object
-/// arena requires it), mirroring [`MAX_MODES`]. ponytail: bump when a card targets more.
-pub(crate) const MAX_TARGETS: usize = 6;
+/// The ceiling on how many targets one spell chooses. Bounds the fixed, `Copy` array in
+/// [`TargetList`] so `Spell`/`Event` stay `Copy` (the id-indexed object arena requires it),
+/// mirroring [`MAX_MODES`]. Printed counts stay well under it (Aether Gale's six); what sets it
+/// is the *unbounded* clause — "one or more target creatures" (Sylvan Paradise) has no printed
+/// ceiling, so `TargetCount::unbounded` resolves to this width and CR 601.2c's "maximum possible
+/// number" is whatever legal targets exist below it. ponytail: 32 is a board size no four-player
+/// game of this pool reaches; bump it if one does, or move `TargetList` to a `Vec` (and lose
+/// `Copy`) if a card ever needs a genuinely unbounded count.
+pub(crate) const MAX_TARGETS: usize = 32;
 
 /// A spell's chosen targets (CR 601.2c), in the order chosen. A single-target spell fills just
 /// `[0]`; a multi-target spell (Aether Gale) fills up to [`MAX_TARGETS`]. `Copy` so `Spell`/

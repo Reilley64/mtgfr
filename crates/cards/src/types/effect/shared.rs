@@ -1808,6 +1808,12 @@ pub struct ActivationCost {
     /// controller half is what makes it "your" upkeep, so this is not just `only_before_attackers`
     /// with a different step.
     pub only_during_your_upkeep: bool,
+    /// "Activate only before the combat damage step" (CR 602.5b — Angus Mackenzie): the
+    /// activation-side twin of `CardDef::cast_only_before_combat_damage` (Berserk) and gated
+    /// identically. The widest window in this family — it is the whole turn up to the first
+    /// combat damage step, so the upkeep and the precombat main phase are inside it, and it
+    /// does not reopen in the postcombat main phase.
+    pub only_before_combat_damage_step: bool,
     /// Who may activate this ability (CR 602.2b/602.5b/c) — see [`Activator`]. `Controller`
     /// (default) is the unstated CR 602.2 baseline.
     pub activator: Activator,
@@ -3878,6 +3884,7 @@ mod tests {
                 multikicker_scaled: false,
                 kicked_scaled: false,
                 main_phase_scaled: false,
+                unbounded: false,
             },
         });
 
