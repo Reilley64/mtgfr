@@ -7,7 +7,7 @@ const h = testHtml<Message>();
 import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ActionView, ObjectView, VisibleState, WireCost } from "~/wire/types";
 import { ZONE } from "../geometry/layout";
-import { HAND_DESIGN_VIEWPORT, handView } from "./hand";
+import { HAND_DESIGN_VIEWPORT, handMetrics, handView } from "./hand";
 
 function cost(overrides: Partial<WireCost> = {}): WireCost {
   return {
@@ -278,6 +278,20 @@ describe("handView rendered face", () => {
       typeLine: "Instant",
       oracle: "Deals 3 damage to any target.",
     });
+  });
+
+  it("tucks the cost pips over the card's top-right corner", () => {
+    const bolt = object(42, { name: "Lightning Bolt", print: "lea-161" });
+    const tree = renderHand(state({ objects: [bolt], actions: [] }));
+    const pips = findTestId(tree, "hand-cost-pips");
+    const metrics = handMetrics(HAND_DESIGN_VIEWPORT);
+
+    // The row no longer clears the frame: its bottom edge sits below the card's top edge, and it
+    // holds off the right border so the disks land inside it.
+    const top = Number.parseFloat(styleValue(pips, "top") ?? "0");
+    expect(top).toBeGreaterThan(-metrics.pipRowH);
+    expect(top + metrics.pipRowH).toBeGreaterThan(0);
+    expect(Number.parseFloat(styleValue(pips, "paddingRight") ?? "0")).toBeGreaterThan(0);
   });
 
   it("draws a graveyard bar tile's card face, not its action label", () => {

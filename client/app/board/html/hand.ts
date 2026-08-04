@@ -255,13 +255,22 @@ function tile(
     );
   }
 
+  // Arena tucks the cost into the card's top-right corner rather than floating it clear above: the
+  // row slides down until the pips half-overlap the frame, and pulls in from the right so the disks
+  // sit inside the black border instead of straddling it.
+  const pipOverlap = Math.round(metrics.pipSize * 0.75);
+  const pipInset = Math.round(metrics.pipSize * 0.45);
   const pipRow =
     pips.length > 0
       ? h.div(
           [
             h.DataAttribute("testid", "hand-cost-pips"),
-            h.Class("absolute right-0 left-0 z-20 flex items-end justify-end gap-px pb-0.5"),
-            h.Style({ top: `-${metrics.pipRowH}px`, height: `${metrics.pipRowH}px` }),
+            h.Class("absolute right-0 left-0 z-20 flex items-end justify-end gap-px"),
+            h.Style({
+              top: `-${metrics.pipRowH - pipOverlap}px`,
+              height: `${metrics.pipRowH}px`,
+              paddingRight: `${pipInset}px`,
+            }),
             h.Attribute("aria-hidden", "true"),
           ],
           pips.map((pip: CostPip) => costPipView(pip.ms, pip.code, metrics.pipSize, h)),
