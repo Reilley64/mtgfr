@@ -2,7 +2,7 @@ import { Canvas } from "foldkit";
 import { colors } from "~/design-tokens.generated";
 import type { VisibleState, WireAttack, WireBlock } from "~/wire/types";
 import { TARGET_COLOR } from "../action/targeting";
-import { CARD_CORNER_RADIUS } from "../bitmap/paint-cards";
+import { CARD_CORNER_RADIUS, TAP_TILT } from "../bitmap/paint-cards";
 import { CARD_RESTING_OUTLINE, COMMANDER_GOLD, PLAYABLE_BORDER, playableBattlefieldObjectIds } from "../chrome";
 import { type Camera, worldToScreen } from "../geometry/camera";
 import { fitCamera } from "../geometry/interaction";
@@ -113,7 +113,7 @@ function kindFill(card: RenderCard): string {
 function cardRotation(card: RenderCard, viewer: number): number {
   const tapFrac = card.tapFrac ?? (card.tapped ? 1 : 0);
   const angle = card.controller !== viewer ? Math.PI : 0;
-  return angle + tapFrac * (Math.PI / 2);
+  return angle + tapFrac * TAP_TILT;
 }
 
 function cardShapes(

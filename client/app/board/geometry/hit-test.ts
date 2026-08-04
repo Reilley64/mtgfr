@@ -11,25 +11,13 @@ export interface CardRect {
   y: number;
   w: number;
   h: number;
-  tapped?: boolean;
 }
 
-// A tapped card is drawn rotated 90° about its center, so its clickable footprint is the upright
-// rect turned on its side — same center, w and h swapped. (The opponent's 180° rotation maps the
-// rect onto itself, so it needs no adjustment.) Mid-tap-animation frames are counted as upright:
-// the rotation is a few hundred ms and the two rects overlap heavily throughout.
-function footprint(c: CardRect): { x: number; y: number; w: number; h: number } {
-  if (!c.tapped) return { x: c.x, y: c.y, w: c.w, h: c.h };
-  return {
-    x: c.x + (c.w - c.h) / 2,
-    y: c.y + (c.h - c.w) / 2,
-    w: c.h,
-    h: c.w,
-  };
-}
-
-function contains(fp: { x: number; y: number; w: number; h: number }, px: number, py: number): boolean {
-  return px >= fp.x && px <= fp.x + fp.w && py >= fp.y && py <= fp.y + fp.h;
+// Every rotation a card is drawn with — the opponent's 180°, the tapped tile's slight tilt — leaves
+// it centred on its upright rect, so the upright rect is the footprint. ponytail: the tilted
+// corners poke a few px outside it; nobody aims at a corner.
+function contains(c: CardRect, px: number, py: number): boolean {
+  return px >= c.x && px <= c.x + c.w && py >= c.y && py <= c.y + c.h;
 }
 
 // Cards are drawn in array order, so later cards paint on top. Return the last
@@ -37,7 +25,7 @@ function contains(fp: { x: number; y: number; w: number; h: number }, px: number
 export function hitTest(cam: Camera, screenX: number, screenY: number, cards: readonly CardRect[]): number | null {
   const p = screenToWorld(cam, screenX, screenY);
   for (let i = cards.length - 1; i >= 0; i--) {
-    if (contains(footprint(cards[i]), p.x, p.y)) return cards[i].id;
+    if (contains(cards[i], p.x, p.y)) return cards[i].id;
   }
   return null;
 }

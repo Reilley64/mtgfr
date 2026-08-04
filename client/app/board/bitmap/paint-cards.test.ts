@@ -132,16 +132,46 @@ describe("paintCard", () => {
     expect(ctx.drawImage).toHaveBeenCalledWith(image, 10, 20, 96, 134);
   });
 
-  it("turns a tapped card a quarter turn and leaves an untapped one upright", () => {
+  // A square tile has no long edge to swing, so a quarter turn reads as "nothing moved". Arena
+  // tilts the tile instead and darkens it, which is legible at four-seat zoom.
+  it("tilts a tapped card off square and leaves an untapped one upright", () => {
     const cache = { get: vi.fn(() => undefined) };
 
     const tappedCtx = mockCtx();
     paintCard(tappedCtx, { panX: 0, panY: 0, zoom: 1 }, card({ tapped: true }), cache, 0);
-    expect(tappedCtx.rotate).toHaveBeenCalledWith(Math.PI / 2);
+    const [angle] = (tappedCtx.rotate as unknown as { mock: { calls: number[][] } }).mock.calls[0];
+    expect(angle).toBeGreaterThan(0);
+    expect(angle).toBeLessThan(Math.PI / 8);
 
     const uprightCtx = mockCtx();
     paintCard(uprightCtx, { panX: 0, panY: 0, zoom: 1 }, card(), cache, 0);
     expect(uprightCtx.rotate).not.toHaveBeenCalled();
+  });
+
+  it("veils a tapped card in black and leaves an untapped one clear", () => {
+    const cache = { get: vi.fn(() => undefined) };
+
+    const calls: string[] = [];
+    paintCard(mockCtx(calls), { panX: 0, panY: 0, zoom: 1 }, card({ tapped: true }), cache, 0);
+    expect(calls.some((c) => c.startsWith("fill:rgba(0,0,0,"))).toBe(true);
+
+    const upright: string[] = [];
+    paintCard(mockCtx(upright), { panX: 0, panY: 0, zoom: 1 }, card(), cache, 0);
+    expect(upright.some((c) => c.startsWith("fill:rgba(0,0,0,"))).toBe(false);
+  });
+
+  // The veil follows the tap animation in, so a card mid-turn is only part-way darkened.
+  it("fades the veil in with the tap animation", () => {
+    const cache = { get: vi.fn(() => undefined) };
+    const veil = (calls: string[]) => calls.find((c) => c.startsWith("fill:rgba(0,0,0,")) ?? "";
+
+    const half: string[] = [];
+    paintCard(mockCtx(half), { panX: 0, panY: 0, zoom: 1 }, card({ tapped: true, tapFrac: 0.5 }), cache, 0);
+    const full: string[] = [];
+    paintCard(mockCtx(full), { panX: 0, panY: 0, zoom: 1 }, card({ tapped: true }), cache, 0);
+
+    expect(veil(half)).not.toBe("");
+    expect(veil(half)).not.toBe(veil(full));
   });
 
   it("keeps commander gold when adding a playable outline", () => {

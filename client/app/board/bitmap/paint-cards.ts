@@ -16,6 +16,13 @@ export const CARD_OUTLINE = CARD_RESTING_OUTLINE;
 /** World-space corner radius; screen px = this × camera.zoom (matches Foldkit card paths). */
 export const CARD_CORNER_RADIUS = 6;
 export const DIM_CARD_VEIL = 0.45;
+/**
+ * Arena's tap tell. A quarter turn is invisible on a square permanent — same silhouette, same
+ * footprint — so a tapped tile tilts off square and darkens instead. Both track `tapFrac`, so the
+ * tap animation still plays.
+ */
+export const TAP_TILT = Math.PI / 12;
+export const TAP_VEIL = 0.4;
 export const TAP_GLYPH = "\ue61a";
 export const TARGET_STROKE: Stroke = { color: TARGET_COLOR, dash: [2, 6] };
 export { TARGET_COLOR };
@@ -158,6 +165,13 @@ export function paintCard(
     ctx.stroke();
   }
 
+  const tapFrac = card.tapFrac ?? (card.tapped ? 1 : 0);
+  if (tapFrac > 0) {
+    roundRect(ctx, tl.x, tl.y, w, h, r);
+    ctx.fillStyle = `rgba(0,0,0,${(TAP_VEIL * tapFrac).toFixed(3)})`;
+    ctx.fill();
+  }
+
   if (options.dim) {
     roundRect(ctx, tl.x, tl.y, w, h, r);
     ctx.fillStyle = `rgba(0,0,0,${DIM_CARD_VEIL})`;
@@ -278,7 +292,7 @@ function rotateCard(
   h: number,
 ): void {
   const tapFrac = card.tapFrac ?? (card.tapped ? 1 : 0);
-  const angle = (card.controller !== viewer ? Math.PI : 0) + tapFrac * (Math.PI / 2);
+  const angle = (card.controller !== viewer ? Math.PI : 0) + tapFrac * TAP_TILT;
   if (angle === 0) return;
 
   ctx.translate(x + w / 2, y + h / 2);
