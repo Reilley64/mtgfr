@@ -1750,8 +1750,7 @@ mod tests {
                 mana_cost: WireCost {
                     generic: 1,
                     colored: [0, 0, 0, 0, 1],
-                    has_x: false,
-                    x_symbols: 0,
+                    ..Default::default()
                 },
                 needs_target: false,
                 tapped: false,

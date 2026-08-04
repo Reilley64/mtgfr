@@ -150,9 +150,7 @@ mod tests {
             name: "Summary Card".to_string(),
             cost: WireCost {
                 generic: 1,
-                colored: [0, 0, 0, 0, 0],
-                has_x: false,
-                x_symbols: 0,
+                ..Default::default()
             },
             kind: WireKind::Creature {
                 power: 2,

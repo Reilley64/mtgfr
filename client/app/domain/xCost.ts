@@ -1,4 +1,5 @@
 import type { WireCost } from "~/wire/types";
+import { HYBRID_PIP } from "./costPips";
 
 export function clampX(value: number, min: number, max: number): number {
   if (max < min) return min;
@@ -13,6 +14,10 @@ export function costWithChosenX(cost: WireCost, x: number): WireCost {
     colored: [...cost.colored] as WireCost["colored"],
     has_x: false,
     x_symbols: 0,
+    // Choosing X leaves the rest of the cost as printed — hybrid and Phyrexian pips still have to
+    // be paid, so they ride along instead of being dropped from the preview.
+    hybrid: cost.hybrid,
+    phyrexian: cost.phyrexian,
   };
 }
 
@@ -29,6 +34,14 @@ export function costText(cost: WireCost): string {
   for (let i = 0; i < 5; i++) {
     const n = cost.colored[i] ?? 0;
     for (let k = 0; k < n; k++) parts.push(`{${COLOR_BRACE[i]}}`);
+  }
+  // Hybrid (CR 107.4e) and Phyrexian (CR 107.4f) pips print as their own symbols — without them a
+  // hybrid-only cost reads as "{0}" on the pay prompt.
+  for (const [i, n] of (cost.hybrid ?? []).entries()) {
+    for (let k = 0; k < n; k++) parts.push(`{${HYBRID_PIP[i]}}`);
+  }
+  for (const [i, n] of (cost.phyrexian ?? []).entries()) {
+    for (let k = 0; k < n; k++) parts.push(`{${COLOR_BRACE[i]}/P}`);
   }
   if (parts.length === 0) return "{0}";
   return parts.join("");

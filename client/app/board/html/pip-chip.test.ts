@@ -45,6 +45,19 @@ describe("pipChip", () => {
     expect(styleValue(tree, "--plate")).toBe("#93b483");
   });
 
+  it("hands a hybrid pip's split disk to mana-font instead of our flat plate", () => {
+    const tree = pipChip(h, { ms: "rw", code: "W/R", sizePx: 14 }) as VNode;
+
+    expect(styleValue(tree, "--plate")).toBe("transparent");
+    expect(className(tree.children?.[0])).toContain("ms-cost");
+    expect(className(tree.children?.[0])).toContain("ms-rw");
+  });
+
+  it("keeps our plate and a bare glyph for a mono pip", () => {
+    const tree = pipChip(h, { ms: "g", code: "G", sizePx: 14 }) as VNode;
+    expect(className(tree.children?.[0])).not.toContain("ms-cost");
+  });
+
   it("carries the call site's extra class and test id", () => {
     const tree = pipChip(h, {
       ms: "w",

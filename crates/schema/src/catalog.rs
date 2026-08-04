@@ -299,15 +299,26 @@ fn land_colors(def: &engine::CardDef) -> Vec<u8> {
         .collect()
 }
 
-/// Wire form of a mana cost.
+/// Wire form of a mana cost. Hybrid and Phyrexian pips are counted per pair / per color rather
+/// than kept in printed order — the client draws a pip per symbol, not a cost string.
 /// ponytail: colorless `{C}` cost pips aren't surfaced on the wire yet (no pool card has one);
 /// add a field to `WireCost` when a `{C}`-costed card enters the pool.
 pub(crate) fn wire_cost(cost: engine::Cost) -> WireCost {
+    let mut hybrid = [0u8; engine::COLOR_PAIRS.len()];
+    for &(a, b) in cost.hybrid {
+        hybrid[engine::color_pair_index(a, b)] += 1;
+    }
+    let mut phyrexian = [0u8; 5];
+    for color in cost.phyrexian {
+        phyrexian[color.index()] += 1;
+    }
     WireCost {
         generic: cost.generic,
         colored: cost.colored,
         has_x: cost.x > 0,
         x_symbols: cost.x,
+        hybrid,
+        phyrexian,
     }
 }
 
@@ -549,6 +560,25 @@ mod tests {
         let s = wire_cost(shock.cost);
         assert_eq!(s.x_symbols, 0);
         assert!(!s.has_x);
+    }
+
+    #[test]
+    fn wire_cost_carries_hybrid_and_phyrexian_pips() {
+        // Boros Guildmage is {R/W}{R/W} — nothing generic, nothing mono. Dropping the hybrids left
+        // the client with an empty cost, which it drew as a `{0}` pip.
+        let guildmage = wire_cost(def("Boros Guildmage").cost);
+        assert_eq!(guildmage.generic, 0);
+        assert_eq!(guildmage.colored, [0; 5]);
+        assert_eq!(
+            guildmage.hybrid[engine::color_pair_index(engine::Color::Red, engine::Color::White)],
+            2
+        );
+
+        // Vraska, Betrayal's Sting is {4}{B}{B}{B/P}.
+        let vraska = wire_cost(def("Vraska, Betrayal's Sting").cost);
+        assert_eq!(vraska.generic, 4);
+        assert_eq!(vraska.phyrexian[engine::Color::Black.index()], 1);
+        assert_eq!(vraska.hybrid, [0; engine::COLOR_PAIRS.len()]);
     }
 
     #[test]

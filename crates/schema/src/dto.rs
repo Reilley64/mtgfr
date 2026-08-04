@@ -244,8 +244,8 @@ pub enum WireKind {
     },
 }
 
-/// A mana cost for the client: generic plus per-color pips (WUBRG).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+/// A mana cost for the client: generic plus per-color pips (WUBRG), hybrid and Phyrexian pips.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WireCost {
     pub generic: u8,
     /// Colored pips indexed WUBRG (see `engine::Color::index`).
@@ -258,6 +258,13 @@ pub struct WireCost {
     /// Number of `{X}` symbols (`engine::Cost.x`).
     #[serde(default)]
     pub x_symbols: u8,
+    /// Hybrid pips (CR 107.4e — `{a/b}`), counted per unordered color pair in `engine::COLOR_PAIRS`
+    /// order. Ordering within the printed cost is lost, the same way `colored` loses it.
+    #[serde(default)]
+    pub hybrid: [u8; engine::COLOR_PAIRS.len()],
+    /// Phyrexian pips (CR 107.4f — `{a/P}`), counted per color indexed WUBRG.
+    #[serde(default)]
+    pub phyrexian: [u8; 5],
 }
 
 /// One object the viewer may see, with its render-relevant state.
@@ -1562,8 +1569,7 @@ mod tests {
                 cost: WireCost {
                     generic: 1,
                     colored: [0, 0, 1, 0, 0],
-                    has_x: false,
-                    x_symbols: 0,
+                    ..Default::default()
                 },
                 label: msg("effect.draw_cards"),
                 can_pay: true,
@@ -1573,7 +1579,10 @@ mod tests {
             .unwrap(),
             serde_json::json!({
                 "kind": "pay_cost", "player": 3, "source": 7,
-                "cost": {"generic": 1, "colored": [0, 0, 1, 0, 0], "has_x": false, "x_symbols": 0},
+                "cost": {
+                    "generic": 1, "colored": [0, 0, 1, 0, 0], "has_x": false, "x_symbols": 0,
+                    "hybrid": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "phyrexian": [0, 0, 0, 0, 0],
+                },
                 "label": {"key": "effect.draw_cards", "params": [], "children": []},
                 "can_pay": true,
                 "discard_count": 0,

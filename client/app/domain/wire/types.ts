@@ -137,7 +137,16 @@ export type SeatView = {
 };
 export type SeedResponse = { pod_dns: string; table_id: string; version: string };
 export type SeedSeat = { deck_id: number; gravatar_hash?: string; user_id: number; username: string };
-export type WireCost = { colored: Array<number>; generic: number; has_x?: boolean; x_symbols?: number };
+export type WireCost = {
+  colored: Array<number>;
+  generic: number;
+  has_x?: boolean;
+  x_symbols?: number;
+  /** Hybrid pips per unordered colour pair, in `engine::COLOR_PAIRS` order (WU WB WR WG UB UR UG BR BG RG). */
+  hybrid?: Array<number>;
+  /** Phyrexian pips per colour, WUBRG. */
+  phyrexian?: Array<number>;
+};
 export type WireEitherMana = { a: number; amount: number; b: number };
 export type WireKind =
   | { kind: "creature"; power: number; toughness: number }

@@ -154,3 +154,11 @@ An object view SHALL carry, alongside its identity, whether the object is a toke
 - **WHEN** a viewer sees a face-down permanent
 - **THEN** its object view carries no legendary flag and no colours
 
+### Requirement: A wire mana cost counts every kind of pip
+
+A wire mana cost SHALL carry, alongside its generic amount, `{X}` count and per-colour WUBRG pips, its hybrid pips (CR 107.4e) counted per unordered colour pair and its Phyrexian pips (CR 107.4f) counted per colour, so that a cost made only of hybrid or Phyrexian symbols does not read as free. Printed order within a cost is not preserved for any pip kind; a client draws one glyph per counted symbol.
+
+#### Scenario: A hybrid-only cost is not empty
+- **WHEN** a viewer sees a card whose entire cost is hybrid symbols
+- **THEN** its wire cost reports a pip per hybrid symbol rather than an empty cost
+
