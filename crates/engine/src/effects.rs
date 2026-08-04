@@ -134,6 +134,12 @@ impl Game {
                 // `CopyTargetSpell`, minting a copy spell on top of the stack) must land on top
                 // of whatever's left once this ability is gone, not underneath it.
                 self.push_apply(events, Event::AbilityResolved { source });
+                // What this ability targets, readable by a `SpellOrAbilityTargetingThis` shield
+                // (Silhouette) for as long as its effects run — armed here, past the fizzle gate,
+                // so an ability that never resolves never counts, and cleared right after so no
+                // later damage is attributed to it.
+                self.resolution_frame.resolving_targets =
+                    target.into_iter().chain(targets_second.iter()).collect();
                 // A triggered ability carries `x = 0`; an activated (or copied) ability whose
                 // cost contains `{X}` resolves its `Amount::X` against the chosen value
                 // (CR 107.3). A pausing effect leaves a PendingChoice behind.
@@ -149,6 +155,7 @@ impl Game {
                     },
                     events,
                 );
+                self.resolution_frame.resolving_targets.clear();
             }
         }
     }
@@ -330,6 +337,10 @@ impl Game {
                             spell.x,
                         )
                     });
+                // Same arming as the ability arm above: a spell that targets the creature but
+                // points the damage at some other source (a fight) is still "a spell that targets
+                // that creature causing a source to deal damage to it".
+                self.resolution_frame.resolving_targets = self.spell_targets(object);
                 if !all_targets_illegal {
                     for (ability, target) in steps {
                         // CR 608.2b/c: a step whose stored target is no longer legal is skipped —
@@ -362,6 +373,7 @@ impl Game {
                         );
                     }
                 }
+                self.resolution_frame.resolving_targets.clear();
                 // A resolution-time optional rider on this spell's own ability (Sevinne's
                 // Reclamation's "you may copy this spell") paused mid-resolution — leave this
                 // spell as a live `Object::Spell` on the stack until that choice is answered

@@ -132,6 +132,7 @@ mod game_tests {
             cast_only_during_declare_blockers: false,
             cast_only_during_declare_attackers: false,
             cast_only_after_upkeep: false,
+            cast_only_after_combat: false,
             approximates: None,
             oracle: None,
             sets: empty_slice(),

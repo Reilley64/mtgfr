@@ -382,6 +382,12 @@ pub struct CardToml {
     /// Absent (`false`) for every ordinary card.
     #[serde(default)]
     pub cast_only_after_upkeep: bool,
+    /// "Cast this spell only after combat" (CR 601.3e — Glyph of Reincarnation) —
+    /// `cast_only_after_combat = true`: closed from untap through the end of combat step, open from
+    /// the postcombat main phase on. The phase-scoped mirror of `cast_only_before_combat_damage`.
+    /// Absent (`false`) for every ordinary card.
+    #[serde(default)]
+    pub cast_only_after_combat: bool,
     #[serde(default)]
     /// Machine-readable fidelity note for modeled divergences. Set this whenever a
     /// `# ponytail:` comment marks a deliberate simplification; leave absent for faithful
@@ -581,6 +587,7 @@ impl From<CardToml> for CardDef {
             cast_only_during_declare_blockers: card.cast_only_during_declare_blockers,
             cast_only_during_declare_attackers: card.cast_only_during_declare_attackers,
             cast_only_after_upkeep: card.cast_only_after_upkeep,
+            cast_only_after_combat: card.cast_only_after_combat,
             approximates: card.approximates.map(|s| &*Box::leak(s.into_boxed_str())),
             oracle: card.oracle.map(|s| &*Box::leak(s.into_boxed_str())),
             sets: arc_strs(card.sets),

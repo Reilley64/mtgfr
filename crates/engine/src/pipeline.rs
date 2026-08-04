@@ -155,6 +155,18 @@ impl PostIntentPipeline {
             if !Self::seal_combat_declarations(game, events) {
                 return PriorityRoundOutcome::AwaitCombatDeclaration;
             }
+            // A declaration sealed by all-pass still fires its declaration triggers (rampage,
+            // Cockatrice, Floral Spuzzem's "attacks and isn't blocked"), and CR 509.4 puts those
+            // on the stack *in the declaration step*, before the combat damage step's turn-based
+            // action. Leaving the step here would deal damage first, so hold the step open for
+            // one more round instead — [`Self::TriggerPlacement`] runs right after this and puts
+            // them on the stack. The declared-by-intent path already gets this ordering for free,
+            // since its own pipeline pass places them before anybody can pass again.
+            if !game.pending_trigger_groups.is_empty() {
+                game.consecutive_passes = 0;
+                game.priority = game.active_player;
+                return PriorityRoundOutcome::AwaitCombatDeclaration;
+            }
             events.extend(game.advance_step());
             PriorityRoundOutcome::AdvanceStep
         } else {

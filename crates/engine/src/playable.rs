@@ -388,6 +388,13 @@ impl Game {
         if def.cast_only_after_upkeep && self.step <= Step::Upkeep {
             return false;
         }
+        // "Cast this spell only after combat" (CR 601.3e — Glyph of Reincarnation): the phase-scoped
+        // mirror of the sibling above. Combat is over once the end of combat step has ended, so the
+        // postcombat main phase is the first open moment — and `Step`'s turn ordering makes that the
+        // single comparison. A turn with no combat phase never reaches those steps at all.
+        if def.cast_only_after_combat && self.step < Step::Main2 {
+            return false;
+        }
         // A `condition` on a *spell* ability is a cast restriction (CR 601.3e), not the
         // intervening-if (CR 603.4) it is on a triggered one: a spell ability never triggers, so
         // cast time is the only moment it can be read. It composes with the card-level windows
@@ -830,6 +837,7 @@ mod tests {
             cast_only_during_declare_blockers: false,
             cast_only_during_declare_attackers: false,
             cast_only_after_upkeep: false,
+            cast_only_after_combat: false,
             approximates: None,
             oracle: None,
             sets: empty_slice(),

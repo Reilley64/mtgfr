@@ -11,3 +11,13 @@ green = 1
 
 [kind]
 type = "instant"
+
+# Counter target activated ability from an artifact source.
+[[abilities]]
+timing = "spell"
+
+# Counter target activated ability from an artifact source.
+[[abilities.effects]]
+type = "misc"
+mode = "counter_target_activated_ability"
+artifact_source = true

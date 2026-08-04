@@ -85,6 +85,15 @@ where
     Ok(&*Box::leak(Box::new(Effect::deserialize(d)?)))
 }
 
+/// `deserialize_with` for an *optional* nested effect ([`DestroyEffect::ThatCreature`]'s `then`).
+/// Only called when the key is present, so it always yields `Some`.
+pub fn opt_static_effect<'de, D>(d: D) -> Result<Option<&'static Effect>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    Ok(Some(&*Box::leak(Box::new(Effect::deserialize(d)?))))
+}
+
 /// Leak one owned [`Amount`] into the `&'static Amount` a `Copy` field needs (the [`Amount`]
 /// sibling of [`static_effect`]). [`Condition::Compare`](crate::Condition::Compare)'s operands need
 /// it because [`Amount::IfCondition`](crate::Amount::IfCondition) already holds a [`Condition`] by
@@ -137,6 +146,11 @@ pub enum GrantedTriggerTag {
     /// it is spelled `trigger = { upkeep = {} }`. "Your" is the *host's* controller, which is
     /// who a granted ability belongs to.
     Upkeep {},
+    /// Infinite Authority's "Whenever enchanted creature blocks or becomes blocked by a creature
+    /// with toughness 3 or less, …" — the granted twin of the printed
+    /// [`TriggerTag::BlocksOrBecomesBlockedBy`], whose `filter` sibling lives on the ability's own
+    /// TOML row and so has to be spelled inline here instead.
+    BlocksOrBecomesBlockedBy { filter: PermanentFilter },
 }
 
 /// `deserialize_with` for [`GrantedAbility`]'s `trigger`. Only called when the key is present (a
@@ -150,6 +164,9 @@ where
             Trigger::DealsCombatDamageToPlayer { who }
         }
         GrantedTriggerTag::Upkeep {} => Trigger::Upkeep,
+        GrantedTriggerTag::BlocksOrBecomesBlockedBy { filter } => {
+            Trigger::BlocksOrBecomesBlockedBy { filter }
+        }
     }))
 }
 
@@ -1472,6 +1489,7 @@ pub(crate) enum TriggerTag {
     TurnedFaceUp,
     BecomesMonstrous,
     Attacks,
+    AttacksAndIsntBlocked,
     Blocks,
     BlocksOrBecomesBlocked,
     BlocksOrBecomesBlockedBy,
@@ -1592,6 +1610,7 @@ impl<'de> Deserialize<'de> for Ability {
                 TriggerTag::TurnedFaceUp => Trigger::TurnedFaceUp,
                 TriggerTag::BecomesMonstrous => Trigger::BecomesMonstrous,
                 TriggerTag::Attacks => Trigger::Attacks,
+                TriggerTag::AttacksAndIsntBlocked => Trigger::AttacksAndIsntBlocked,
                 TriggerTag::Blocks => Trigger::Blocks,
                 TriggerTag::BlocksOrBecomesBlocked => Trigger::BlocksOrBecomesBlocked,
                 TriggerTag::BlocksOrBecomesBlockedBy => Trigger::BlocksOrBecomesBlockedBy {

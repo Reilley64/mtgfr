@@ -304,3 +304,78 @@ fn spurnmage_advocate_needs_two_cards_in_one_opponents_graveyard() {
         Err(Reject::IllegalTarget)
     );
 }
+
+// ── Recall (#69) ────────────────────────────────────────────────────────────────────────────────
+
+#[test]
+fn recall_returns_one_graveyard_card_per_card_it_discarded() {
+    // "Discard X cards, then return a card from your graveyard to your hand for each card
+    // discarded this way. Exile Recall." X=2 discards two and returns two, one prompt at a time —
+    // and the discarded cards are themselves in the graveyard by then, so they are fair game.
+    let mut game = Game::new();
+    let recall = game.spawn_in_hand(PlayerId(0), card("Recall"));
+    let pitch_a = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
+    let pitch_b = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
+    let buried = game.spawn_in_graveyard(PlayerId(0), card("Lightning Bolt"));
+    let spare = game.spawn_in_graveyard(PlayerId(0), card("Forest"));
+
+    cast(&mut game, recall, None, 2);
+    resolve_top_of_stack(&mut game);
+
+    let Some(PendingChoice::DiscardCards {
+        player: PlayerId(0),
+        count: 2,
+        ..
+    }) = game.pending_choice()
+    else {
+        panic!("X=2 discards two: {:?}", game.pending_choice());
+    };
+    game.submit(Intent::Discard {
+        player: PlayerId(0),
+        cards: vec![pitch_a, pitch_b],
+    })
+    .expect("discarding exactly X cards from hand is legal");
+
+    // Two discards owe two returns, prompted one at a time.
+    for want in [buried, spare] {
+        assert!(
+            matches!(
+                game.pending_choice(),
+                Some(PendingChoice::MayReturnFromGraveyard {
+                    player: PlayerId(0),
+                    ..
+                })
+            ),
+            "a return prompt per card discarded: {:?}",
+            game.pending_choice()
+        );
+        game.submit(Intent::ChooseSacrifices {
+            player: PlayerId(0),
+            sacrifices: vec![want],
+        })
+        .expect("returning a card from your own graveyard is legal");
+    }
+
+    assert!(game.pending_choice().is_none(), "two returns, then done");
+    assert_eq!(game.zone_of(buried), Zone::Hand);
+    assert_eq!(game.zone_of(spare), Zone::Hand);
+    assert_eq!(game.zone_of(pitch_a), Zone::Graveyard, "discarded");
+    assert_eq!(game.zone_of(pitch_b), Zone::Graveyard, "discarded");
+    assert_eq!(game.zone_of(recall), Zone::Exile, "Exile Recall.");
+}
+
+#[test]
+fn recall_for_zero_discards_nothing_returns_nothing_and_still_exiles() {
+    // X=0: no discard, so "for each card discarded this way" is zero and the spell never pauses —
+    // but it still exiles itself instead of going to the graveyard.
+    let mut game = Game::new();
+    let recall = game.spawn_in_hand(PlayerId(0), card("Recall"));
+    let buried = game.spawn_in_graveyard(PlayerId(0), card("Lightning Bolt"));
+
+    cast(&mut game, recall, None, 0);
+    resolve_top_of_stack(&mut game);
+
+    assert!(game.pending_choice().is_none(), "nothing to choose");
+    assert_eq!(game.zone_of(buried), Zone::Graveyard, "nothing returned");
+    assert_eq!(game.zone_of(recall), Zone::Exile, "Exile Recall.");
+}

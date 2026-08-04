@@ -12,6 +12,8 @@ default_print = "8ce912d9-406b-4eba-97be-3bf1d425ee05"
 oracle = "Banding (Any creatures with banding, and up to one without, can attack in a band. Bands are blocked as a group. If any creatures with banding you control are blocking or being blocked by a creature, you divide that creature's combat damage, not its controller, among any of the creatures it's being blocked by or is blocking.)\n{T}: Counter target activated ability from an artifact source unless that ability's controller pays {W}. (Mana abilities can't be targeted.)"
 legendary = true
 subtypes = ["Human", "Artificer"]
+keywords = ["banding"]
+approximates = "while attacking, this does not take over the division of a blocker's combat damage: that blocker deals its full damage to each creature it's blocking instead"
 
 [cost]
 white = 2
@@ -21,3 +23,17 @@ blue = 2
 type = "creature"
 power = 2
 toughness = 2
+
+# {T}: Counter target activated ability from an artifact source unless that ability's controller
+# pays {W}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# {T}: Counter target activated ability from an artifact source unless that ability's controller
+# pays {W}.
+[[abilities.effects]]
+type = "misc"
+mode = "counter_target_activated_ability"
+artifact_source = true
+unless_pays = { white = 1 }

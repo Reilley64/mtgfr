@@ -46,7 +46,9 @@ impl Game {
                 // Recall's "a card … for each card discarded this way": the same graveyard queued
                 // once per card owed, prompted one at a time. A count of zero (nothing was
                 // discarded) queues nothing and never pauses.
-                let n = self.resolve_amount(count, controller, source, None, x).max(0) as usize;
+                let n = self
+                    .resolve_amount(count, controller, source, None, x)
+                    .max(0) as usize;
                 pending::raise(
                     self,
                     pending::ChoiceRequest::MayReturnFromGraveyard {

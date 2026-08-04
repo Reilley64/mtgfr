@@ -582,6 +582,33 @@ fn glyph_of_delusion_stops_looking_once_the_turn_that_armed_it_is_over() {
 // under its owner's control."
 
 #[test]
+fn glyph_of_reincarnation_cant_be_cast_until_combat_is_over() {
+    // "Cast this spell only after combat" (CR 601.3e): closed from untap through end of combat,
+    // open from the postcombat main phase on. The Wall it targets is on the battlefield the whole
+    // time, so a reject here is the timing window and nothing else.
+    let mut game = Game::new();
+    stock_libraries(&mut game);
+    let wall = game.spawn_on_battlefield(PlayerId(1), card("Wall of Stone"));
+    let glyph = game.spawn_in_hand(PlayerId(1), card("Glyph of Reincarnation"));
+
+    advance_until(&mut game, |g| g.current_step() == Step::Main1);
+    assert!(
+        cast(&mut game, PlayerId(1), glyph, Some(Target::Object(wall))).is_err(),
+        "the precombat main phase is before combat, not after it",
+    );
+
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareBlockers);
+    assert!(
+        cast(&mut game, PlayerId(1), glyph, Some(Target::Object(wall))).is_err(),
+        "mid-combat is not after combat either",
+    );
+
+    advance_until(&mut game, |g| g.current_step() == Step::Main2);
+    cast(&mut game, PlayerId(1), glyph, Some(Target::Object(wall)))
+        .expect("the postcombat main phase is after combat");
+}
+
+#[test]
 fn glyph_of_reincarnation_destroys_what_its_wall_blocked_earlier_this_turn() {
     // Cast after combat, over a block that happened before it: the ledger is what makes the card
     // work at all.

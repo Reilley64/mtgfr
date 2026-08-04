@@ -36,6 +36,7 @@ impl Game {
                             creature: Some(object),
                             attack_rider,
                             at: None,
+                            then: None,
                         }),
                     }];
                 }
@@ -166,6 +167,7 @@ impl Game {
                 creature,
                 attack_rider,
                 at,
+                then,
             } => {
                 let Some(id) = creature else {
                     return Vec::new();
@@ -181,6 +183,7 @@ impl Game {
                             creature,
                             attack_rider,
                             at: None,
+                            then,
                         }),
                     }];
                 }
@@ -206,7 +209,19 @@ impl Game {
                 if self.regeneration_shield_available(id) {
                     return vec![Event::Regenerated { object: id }];
                 }
-                vec![self.graveyard_or_command(id, self.next_object_id())]
+                let mut events = vec![self.graveyard_or_command(id, self.next_object_id())];
+                // Infinite Authority's "at the beginning of the next end step, if that creature
+                // was destroyed this way, put a +1/+1 counter on the first creature": only this
+                // branch actually destroyed anything, so reaching it *is* the intervening-if.
+                if let Some(then) = then {
+                    events.push(Event::DelayedTriggerScheduled {
+                        controller,
+                        source,
+                        fire_at: Step::End,
+                        effect: then.clone(),
+                    });
+                }
+                events
             }
         }
     }

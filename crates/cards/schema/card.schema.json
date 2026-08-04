@@ -1232,6 +1232,11 @@
           "description": "Cascade (CR 702.85) — `cascade = true`; absent (`false`) for a card without cascade.",
           "type": "boolean"
         },
+        "cast_only_after_combat": {
+          "default": false,
+          "description": "\"Cast this spell only after combat\" (CR 601.3e — Glyph of Reincarnation) — `cast_only_after_combat = true`: closed from untap through the end of combat step, open from the postcombat main phase on. The phase-scoped mirror of `cast_only_before_combat_damage`. Absent (`false`) for every ordinary card.",
+          "type": "boolean"
+        },
         "cast_only_after_upkeep": {
           "default": false,
           "description": "\"Cast this spell only during an opponent's turn after their upkeep step\" (CR 601.3e — Reset) — `cast_only_after_upkeep = true` for the second half; the first half is `cast_only_during_opponents_turn`. Closed through the upkeep, open from the draw step on. Absent (`false`) for every ordinary card.",
@@ -3660,6 +3665,17 @@
                     "that_creature"
                   ],
                   "type": "string"
+                },
+                "then": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/Effect"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "\"At the beginning of the next end step, **if that creature was destroyed this way**, put a +1/+1 counter on the first creature\" (Infinite Authority): scheduled as a second CR 603.7 delayed ability *only* on the branch where this destruction actually put the creature in a graveyard, which is what makes the intervening-if free — a regenerated, indestructible or already-gone creature never reaches it. Carried through `at`'s re-schedule so an end-of-combat destroy still gets its end-step payoff. Runs against this ability's own source, so `this` is the Aura's host."
                 }
               },
               "required": [
@@ -11067,6 +11083,27 @@
             "upkeep"
           ],
           "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Infinite Authority's \"Whenever enchanted creature blocks or becomes blocked by a creature with toughness 3 or less, …\" — the granted twin of the printed [`TriggerTag::BlocksOrBecomesBlockedBy`], whose `filter` sibling lives on the ability's own TOML row and so has to be spelled inline here instead.",
+          "properties": {
+            "blocks_or_becomes_blocked_by": {
+              "properties": {
+                "filter": {
+                  "$ref": "#/$defs/PermanentFilter"
+                }
+              },
+              "required": [
+                "filter"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "blocks_or_becomes_blocked_by"
+          ],
+          "type": "object"
         }
       ]
     },
@@ -12461,9 +12498,16 @@
           "type": "string"
         },
         {
-          "description": "\"by spells that target it\" (Bronze Horse) / \"a spell or ability that targets that creature\" (Silhouette): the damage's source is a spell on the stack among whose chosen targets the shielded permanent is.",
+          "description": "\"by spells that target it\" (Bronze Horse): the damage's source is a spell on the stack among whose chosen targets the shielded permanent is. An *ability* that targets it is not covered — see [`Self::SpellOrAbilityTargetingThis`] for the wider wording.",
           "enum": [
             "spell_targeting_this"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "\"if a spell or ability that targets that creature would cause a source to deal damage to it\" (Silhouette): the stack item now resolving targets the shielded permanent, whatever source that item points the damage at. Wider than [`Self::SpellTargetingThis`] in both directions — activated and triggered abilities count, and the damage's own source need not be the targeting item (a fight, a \"target creature deals damage to target creature\").",
+          "enum": [
+            "spell_or_ability_targeting_this"
           ],
           "type": "string"
         }
@@ -13110,6 +13154,7 @@
             "turned_face_up",
             "becomes_monstrous",
             "attacks",
+            "attacks_and_isnt_blocked",
             "blocks",
             "blocks_or_becomes_blocked",
             "blocks_or_becomes_blocked_by",
@@ -13366,6 +13411,11 @@
     "cascade": {
       "default": false,
       "description": "Cascade (CR 702.85) — `cascade = true`; absent (`false`) for a card without cascade.",
+      "type": "boolean"
+    },
+    "cast_only_after_combat": {
+      "default": false,
+      "description": "\"Cast this spell only after combat\" (CR 601.3e — Glyph of Reincarnation) — `cast_only_after_combat = true`: closed from untap through the end of combat step, open from the postcombat main phase on. The phase-scoped mirror of `cast_only_before_combat_damage`. Absent (`false`) for every ordinary card.",
       "type": "boolean"
     },
     "cast_only_after_upkeep": {

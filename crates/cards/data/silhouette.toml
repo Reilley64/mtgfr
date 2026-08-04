@@ -6,7 +6,6 @@ sets = ["leg"]
 id = "5a074b0a-3a4d-4c6f-b161-5d1281f6136d"
 default_print = "e6d6fac6-9a23-465f-a813-92e1ed1cd742"
 oracle = "Choose target creature. If a spell or ability that targets that creature would cause a source to deal damage to that creature this turn, prevent that damage."
-approximates = "only a damage-dealing spell that itself targets the creature is stopped — a targeted *ability*, and a spell or ability that targets the creature but makes some other source deal the damage, both get through"
 
 [cost]
 generic = 1
@@ -27,4 +26,4 @@ type = "misc"
 mode = "prevent_next_damage"
 target = { permanent = { types = "creature" } }
 all_damage = true
-from_relation = "spell_targeting_this"
+from_relation = "spell_or_ability_targeting_this"

@@ -235,7 +235,7 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.choice_each_player_shuffles_hand_then_draws": (params) => {
     const zones = bool(params, "include_graveyard") ? "their hand and graveyard" : "their hand";
     // No `count` is Winds of Change's "that many" — a per-player number, so it stays a phrase.
-    const count = params["count"] === undefined ? "that many cards" : String(param(params, "count"));
+    const count = params.count === undefined ? "that many cards" : String(param(params, "count"));
     return `Each player shuffles ${zones} into their library, then draws ${count}`;
   },
   "effect.choice_join_forces_pay_mana": literal("Starting with you, each player may pay any amount of mana"),
@@ -566,8 +566,7 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.pump_pump_each_creature_until_end_of_turn": (params) => pumpLabel(params, "Each creature gets"),
   "effect.pump_pump_other_attackers_attacking_your_opponents": (params) =>
     `Each other creature that's attacking one of your opponents gets +${param(params, "power")}/+${param(params, "toughness")} until end of turn`,
-  "effect.pump_grant_keywords_indefinitely": (params) =>
-    `Target creature gains ${humanize(param(params, "keywords"))}`,
+  "effect.pump_grant_keywords_indefinitely": (params) => `Target creature gains ${humanize(param(params, "keywords"))}`,
   "effect.pump_pump_self_until_end_of_turn": (params) => pumpLabel(params, ""),
   "effect.pump_pump_until_end_of_turn": (params) => pumpLabel(params, ""),
   "effect.pump_radiance_chosen_color_protection_until_end_of_turn": literal(
@@ -652,8 +651,7 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     "Creatures can't attack a player unless that player cast a spell or put a nontoken permanent onto the battlefield during their last turn",
   "effect.misc_that_creature_cant_attack_next_own_turn": () =>
     "That creature can't attack during its controller's next turn",
-  "effect.misc_source_assigns_no_combat_damage_this_turn": () =>
-    "This creature assigns no combat damage this turn",
+  "effect.misc_source_assigns_no_combat_damage_this_turn": () => "This creature assigns no combat damage this turn",
   "effect.static_cant_attack_unless_defender_controls": (params) =>
     `This creature can't attack unless defending player controls ${param(params, "filter")}`,
   "effect.static_cant_be_attacked_by": (params) => `${humanize(param(params, "filter", "Creatures"))} can't attack you`,

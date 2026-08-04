@@ -3406,6 +3406,8 @@ test("the band panel closes once the declaration is confirmed", () => {
     bandingCombat({ attackersConfirmed: true }),
     Scene.expect(Scene.testId("board-band-panel")).toBeAbsent(),
   );
+});
+
 /** snabbdom pairs old/new siblings by `sel` + `key` (`sameVnode`), so two unkeyed sibling `div`s are
  *  interchangeable and a vanishing conditional child shifts the whole tail onto its neighbours' DOM
  *  elements — silently, since `OnMount` only runs on element creation. */

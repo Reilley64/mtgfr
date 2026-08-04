@@ -2576,9 +2576,14 @@ impl Game {
                     blocking_partner: Some(partner),
                     ..TriggerContext::of(controller)
                 };
+                // Bespoke-queued, so like the combat-damage scanner this one consults attachment
+                // grants itself (Infinite Authority's "Whenever enchanted creature blocks or
+                // becomes blocked by a creature with toughness 3 or less").
+                let granted = self.granted_attachment_triggers(watcher);
                 let abilities: Vec<Ability> = self
                     .functional_abilities(watcher)
                     .iter()
+                    .chain(granted.iter())
                     .filter(|a| match a.timing {
                         Timing::Triggered(Trigger::BlocksOrBecomesBlockedBy { filter }) => {
                             self.permanent_matches(&filter, partner, controller, Some(watcher))
@@ -5691,6 +5696,7 @@ mod tests {
             cast_only_during_declare_blockers: false,
             cast_only_during_declare_attackers: false,
             cast_only_after_upkeep: false,
+            cast_only_after_combat: false,
             approximates: None,
             oracle: None,
             sets: empty_slice(),
@@ -5781,6 +5787,7 @@ mod tests {
             cast_only_during_declare_blockers: false,
             cast_only_during_declare_attackers: false,
             cast_only_after_upkeep: false,
+            cast_only_after_combat: false,
             approximates: None,
             oracle: None,
             sets: empty_slice(),

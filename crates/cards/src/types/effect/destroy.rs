@@ -67,6 +67,19 @@ pub enum DestroyEffect {
         /// Stinkweed Imp's shape. Same schedule-or-do-it-now knob as [`Self::Target::at`].
         #[cfg_attr(feature = "card-dsl", serde(default))]
         at: Option<Step>,
+        /// "At the beginning of the next end step, **if that creature was destroyed this way**,
+        /// put a +1/+1 counter on the first creature" (Infinite Authority): scheduled as a second
+        /// CR 603.7 delayed ability *only* on the branch where this destruction actually put the
+        /// creature in a graveyard, which is what makes the intervening-if free — a regenerated,
+        /// indestructible or already-gone creature never reaches it. Carried through `at`'s
+        /// re-schedule so an end-of-combat destroy still gets its end-step payoff. Runs against
+        /// this ability's own source, so `this` is the Aura's host.
+        #[cfg_attr(
+            feature = "card-dsl",
+            serde(default, deserialize_with = "de::opt_static_effect")
+        )]
+        #[cfg_attr(feature = "card-schema", schemars(with = "Option<Effect>"))]
+        then: Option<&'static Effect>,
     },
 
     /// "Destroy all creatures that were blocked by target Wall **this turn**" (Glyph of

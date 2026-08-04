@@ -2712,9 +2712,10 @@ impl Game {
         // Glyph — the counter *is* the grant. Appended last so the board's own grants keep their
         // `ability_at` indices.
         if self.counters_of_kind(host, CounterKind::Matrix) > 0 {
-            static REGENERATE_SELF: &[Effect] = &[Effect::Control(ControlEffect::RegenerateShield {
-                target: TargetSpec::ThisPermanent,
-            })];
+            static REGENERATE_SELF: &[Effect] =
+                &[Effect::Control(ControlEffect::RegenerateShield {
+                    target: TargetSpec::ThisPermanent,
+                })];
             grants.push((
                 ActivationCost {
                     remove_counters: 1,
@@ -3510,6 +3511,7 @@ mod cache_tests {
             cast_only_during_declare_blockers: false,
             cast_only_during_declare_attackers: false,
             cast_only_after_upkeep: false,
+            cast_only_after_combat: false,
             approximates: None,
             oracle: None,
             sets: empty_slice(),
@@ -3611,6 +3613,7 @@ mod cache_tests {
             cast_only_during_declare_blockers: false,
             cast_only_during_declare_attackers: false,
             cast_only_after_upkeep: false,
+            cast_only_after_combat: false,
             approximates: None,
             oracle: None,
             sets: empty_slice(),
@@ -3803,6 +3806,7 @@ mod cache_tests {
             cast_only_during_declare_blockers: false,
             cast_only_during_declare_attackers: false,
             cast_only_after_upkeep: false,
+            cast_only_after_combat: false,
             approximates: None,
             oracle: None,
             sets: empty_slice(),
@@ -3964,6 +3968,7 @@ mod characteristic_query_tests {
             cast_only_during_declare_blockers: false,
             cast_only_during_declare_attackers: false,
             cast_only_after_upkeep: false,
+            cast_only_after_combat: false,
             approximates: None,
             oracle: None,
             sets: empty_slice(),
@@ -4041,6 +4046,7 @@ mod characteristic_query_tests {
             cast_only_during_declare_blockers: false,
             cast_only_during_declare_attackers: false,
             cast_only_after_upkeep: false,
+            cast_only_after_combat: false,
             approximates: None,
             oracle: None,
             sets: empty_slice(),
@@ -4149,6 +4155,7 @@ mod characteristic_query_tests {
                 cast_only_during_declare_blockers: false,
                 cast_only_during_declare_attackers: false,
                 cast_only_after_upkeep: false,
+                cast_only_after_combat: false,
                 approximates: None,
                 oracle: None,
                 sets: empty_slice(),
@@ -4245,6 +4252,7 @@ mod characteristic_query_tests {
                 cast_only_during_declare_blockers: false,
                 cast_only_during_declare_attackers: false,
                 cast_only_after_upkeep: false,
+                cast_only_after_combat: false,
                 approximates: None,
                 oracle: None,
                 sets: empty_slice(),
@@ -4339,6 +4347,7 @@ mod characteristic_query_tests {
                 cast_only_during_declare_blockers: false,
                 cast_only_during_declare_attackers: false,
                 cast_only_after_upkeep: false,
+                cast_only_after_combat: false,
                 approximates: None,
                 oracle: None,
                 sets: empty_slice(),

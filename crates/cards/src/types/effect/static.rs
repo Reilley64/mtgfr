@@ -895,8 +895,14 @@ pub enum SourceRelation {
     /// blocking the damage's source. Read per damage source, not per combat — a creature can
     /// block two attackers (CR 509.1), and the shield stands in front of each of them.
     BlockedByThis,
-    /// "by spells that target it" (Bronze Horse) / "a spell or ability that targets that
-    /// creature" (Silhouette): the damage's source is a spell on the stack among whose chosen
-    /// targets the shielded permanent is.
+    /// "by spells that target it" (Bronze Horse): the damage's source is a spell on the stack
+    /// among whose chosen targets the shielded permanent is. An *ability* that targets it is not
+    /// covered — see [`Self::SpellOrAbilityTargetingThis`] for the wider wording.
     SpellTargetingThis,
+    /// "if a spell or ability that targets that creature would cause a source to deal damage to
+    /// it" (Silhouette): the stack item now resolving targets the shielded permanent, whatever
+    /// source that item points the damage at. Wider than [`Self::SpellTargetingThis`] in both
+    /// directions — activated and triggered abilities count, and the damage's own source need not
+    /// be the targeting item (a fight, a "target creature deals damage to target creature").
+    SpellOrAbilityTargetingThis,
 }

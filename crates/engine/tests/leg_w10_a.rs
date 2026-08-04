@@ -59,6 +59,23 @@ fn cast_and_resolve(game: &mut Game, player: PlayerId, object: ObjectId, target:
     resolve_top_of_stack(game);
 }
 
+/// Activate `object`'s ability at `index` for `player` and let it resolve, funding the cost.
+fn activate(game: &mut Game, player: PlayerId, object: ObjectId, index: usize, target: Target) {
+    give_priority(game, player);
+    game.fund_mana(player);
+    game.submit(Intent::ActivateAbility {
+        player,
+        object,
+        ability_index: index,
+        target: Some(target),
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(game);
+}
+
 // ── increment 113: Syphon Soul ────────────────────────────────────────────────────────
 //
 // "Syphon Soul deals 2 damage to each other player. You gain life equal to the damage dealt
@@ -299,7 +316,6 @@ fn blazing_effigy_adds_the_damage_a_sibling_effigy_dealt_it() {
     );
 }
 
-
 // ── increment 19: Backdraft ───────────────────────────────────────────────────────────
 //
 // "Choose a player who cast one or more sorcery spells this turn. Backdraft deals damage to that
@@ -310,20 +326,20 @@ fn backdraft_deals_half_the_damage_the_chosen_players_sorcery_dealt() {
     let mut game = Game::with_players(4, 7);
     stock_libraries(&mut game);
     // Syphon Soul is a sorcery that deals 2 to each of the other three seats — 6 damage.
-    let soul = game.spawn_in_hand(PlayerId(1), card("Syphon Soul"));
-    cast_and_resolve(&mut game, PlayerId(1), soul, None);
+    let soul = game.spawn_in_hand(PlayerId(0), card("Syphon Soul"));
+    cast_and_resolve(&mut game, PlayerId(0), soul, None);
 
     let backdraft = game.spawn_in_hand(PlayerId(0), card("Backdraft"));
-    let before = game.life(PlayerId(1));
+    let before = game.life(PlayerId(0));
     cast_and_resolve(
         &mut game,
         PlayerId(0),
         backdraft,
-        Some(Target::Player(PlayerId(1))),
+        Some(Target::Player(PlayerId(0))),
     );
 
     assert_eq!(
-        game.life(PlayerId(1)),
+        game.life(PlayerId(0)),
         before - 3,
         "half of the 6 that sorcery dealt, rounded down"
     );
@@ -359,19 +375,32 @@ fn backdraft_deals_nothing_to_a_player_whose_sorceries_dealt_no_damage() {
 fn reverberation_turns_a_sorcerys_damage_back_on_its_caster() {
     let mut game = Game::with_players(4, 7);
     stock_libraries(&mut game);
-    // Syphon Soul is P1's sorcery: 2 to each other player, and it gains its controller life equal
-    // to the damage dealt this way.
-    let soul = game.spawn_in_hand(PlayerId(1), card("Syphon Soul"));
-    let reverb = game.spawn_in_hand(PlayerId(0), card("Reverberation"));
+    // Syphon Soul is P0's sorcery: 2 to each other player, and its controller gains life equal to
+    // the damage dealt this way. Left alone that is -2/-2/-2 and +6 for P0.
+    let soul = game.spawn_in_hand(PlayerId(0), card("Syphon Soul"));
+    let reverb = game.spawn_in_hand(PlayerId(1), card("Reverberation"));
     let before: Vec<i32> = (0..4).map(|p| game.life(PlayerId(p))).collect();
 
-    cast(&mut game, PlayerId(1), soul, None).expect("P1 casts the sorcery");
-    cast(&mut game, PlayerId(0), reverb, Some(Target::Object(soul)))
-        .expect("Reverberation targets the sorcery on the stack");
+    // Fund P1 up front: a seat with no castable answer is passed over, and the sorcery would
+    // resolve before Reverberation ever got priority.
+    game.fund_mana(PlayerId(1));
+    cast(&mut game, PlayerId(0), soul, None).expect("P0 casts the sorcery");
+    // Casting mints a new object id for the stack copy (CR 400.7) — that is what Reverberation
+    // names, not the card that was in hand.
+    let StackEntry::Spell(soul_on_stack) = game.stack()[0] else {
+        panic!("the sorcery is on the stack");
+    };
+    cast(
+        &mut game,
+        PlayerId(1),
+        reverb,
+        Some(Target::Object(soul_on_stack)),
+    )
+    .expect("Reverberation targets the sorcery on the stack");
     resolve_top_of_stack(&mut game);
     resolve_top_of_stack(&mut game);
 
-    for seat in [0, 2, 3] {
+    for seat in 1..4 {
         assert_eq!(
             game.life(PlayerId(seat)),
             before[seat as usize],
@@ -379,8 +408,52 @@ fn reverberation_turns_a_sorcerys_damage_back_on_its_caster() {
         );
     }
     assert_eq!(
-        game.life(PlayerId(1)),
-        before[1] - 6 + 6,
-        "all six points came back at the caster, who still gains life for damage dealt this way"
+        game.life(PlayerId(0)),
+        before[0],
+        "all six points came back at the caster, cancelling the six life the spell gains them"
+    );
+}
+
+// ── increment 130: Silhouette ─────────────────────────────────────────────────────────
+
+#[test]
+fn silhouette_prevents_the_ping_from_an_artifact_ability_that_targeted_the_chosen_creature() {
+    // "Choose target creature. If a spell or ability that targets that creature would cause a
+    // source to deal damage to that creature this turn, prevent that damage."
+    // Rod of Ruin exercises both halves at once: the thing that targets is an *ability*, and the
+    // source it causes to deal the damage is the Rod itself, not the ability.
+    let mut game = Game::new();
+    stock_libraries(&mut game);
+    let chosen = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let bystander = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let silhouette = game.spawn_in_hand(PlayerId(0), card("Silhouette"));
+    let rod = game.spawn_on_battlefield(PlayerId(1), card("Rod of Ruin"));
+    let other_rod = game.spawn_on_battlefield(PlayerId(1), card("Rod of Ruin"));
+
+    advance_until(&mut game, |g| g.current_step() == Step::Main1);
+    cast_and_resolve(
+        &mut game,
+        PlayerId(0),
+        silhouette,
+        Some(Target::Object(chosen)),
+    );
+    activate(&mut game, PlayerId(1), rod, 0, Target::Object(chosen));
+    activate(
+        &mut game,
+        PlayerId(1),
+        other_rod,
+        0,
+        Target::Object(bystander),
+    );
+
+    assert_eq!(
+        game.marked_damage(chosen),
+        0,
+        "the ability targeted the chosen creature, so the damage it caused the Rod to deal is prevented"
+    );
+    assert_eq!(
+        game.marked_damage(bystander),
+        1,
+        "an identical ping at an unchosen creature still lands — the shield is not blanket"
     );
 }

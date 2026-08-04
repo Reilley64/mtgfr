@@ -57,6 +57,19 @@ pub(crate) struct ResolutionFrame {
     /// cleared as each stack item begins resolving
     /// ([`Game::resolve_top`](crate::Game)).
     pub(crate) damage_dealt_this_way: u32,
+    /// What the stack item now resolving *targets* (CR 603.3d: both clauses, plus a modal spell's
+    /// chosen-mode target), read by
+    /// [`Game::source_relates`](crate::Game)'s `SpellTargetingThis` arm so Silhouette can ask "did
+    /// the spell or ability that **caused** this damage target my protectee?" rather than only "is
+    /// the damage's source itself a spell targeting it". Set immediately before the effect runs
+    /// and cleared immediately after, in both [`Game::resolve_top`](crate::Game) arms, so any
+    /// damage minted while it is non-empty was caused by that item — which is what makes the
+    /// source-blind read safe.
+    ///
+    /// ponytail: a resolution that *pauses* for a choice resumes elsewhere and does not re-arm
+    /// this, so damage dealt after the pause is not attributed. False negatives only; the upgrade
+    /// path is arming it on the resume frame too.
+    pub(crate) resolving_targets: Vec<crate::Target>,
     /// Card id + mana value from [`Effect::Dig(DigEffect::ExileTargetGraveyardCardRecordManaValue)`](crate::Effect::Dig(DigEffect::ExileTargetGraveyardCardRecordManaValue)).
     pub(crate) surge_exiled_card: Option<(ObjectId, u32)>,
     /// The mana value of the **nonland** card this resolution returned from a graveyard to its

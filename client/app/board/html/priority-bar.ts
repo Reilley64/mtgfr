@@ -30,8 +30,6 @@ import { promptPresentation } from "../promptPresentation";
 import type { BoardModel } from "../submodel";
 import { simplePromptBarActions } from "./prompt-bar-actions";
 
-/** The same decision the click path makes (`primaryActionFor`) — the button's label and what it
- * submits must never disagree. */
 /** The attacker list the button label, the band panel and the submit path all read (staged ∪ goad). */
 function mergedAttackers(board: BoardModel, state: VisibleState): WireAttack[] {
   return stagedAttackersForDisplay(
@@ -41,6 +39,8 @@ function mergedAttackers(board: BoardModel, state: VisibleState): WireAttack[] {
   );
 }
 
+/** The same decision the click path makes (`primaryActionFor`) — the button's label and what it
+ * submits must never disagree. */
 function primaryFor(board: BoardModel, state: VisibleState, attackers: WireAttack[]): PrimaryAction {
   return primaryActionFor({
     step: state.step,
@@ -59,7 +59,12 @@ function primaryFor(board: BoardModel, state: VisibleState, attackers: WireAttac
 /** Band grouping affordance (CR 702.22c): one toggle per staged attacker, shown only once some
  * staged attacker can band. Whether the grouping is *legal* is the engine's call — an illegal band
  * comes back as `Reject::IllegalDeclaration` in `board-reject` like any other bad declaration. */
-function bandPanelView(board: BoardModel, state: VisibleState, attackers: WireAttack[]): Html | null {
+function bandPanelView(
+  board: BoardModel,
+  state: VisibleState,
+  attackers: WireAttack[],
+  h: HtmlBuilder<Message>,
+): Html | null {
   if (board.attackersConfirmed || state.combat.attackers_declared) return null;
   const candidates = bandCandidates(state.objects, attackers);
   if (candidates.length === 0) return null;
@@ -251,7 +256,7 @@ export function priorityBarView(
       h.Style({ "--b": `calc(var(--hand-bar-h) + 10px)` }),
     ],
     [
-      bandPanelView(board, state, attackers),
+      bandPanelView(board, state, attackers, h),
       h.div(
         [h.Class("flex flex-row-reverse flex-wrap items-center justify-end gap-md")],
         [

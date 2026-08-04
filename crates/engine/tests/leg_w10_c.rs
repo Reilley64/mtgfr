@@ -158,7 +158,12 @@ fn venarian_gold_leaving_frees_the_creature_even_with_sleep_counters_left() {
     assert_eq!(game.counters_of_kind(bear, CounterKind::Sleep), 3);
 
     let disenchant = game.spawn_in_hand(PlayerId(0), card("Disenchant"));
-    cast_and_resolve(&mut game, PlayerId(0), disenchant, Some(Target::Object(gold)));
+    cast_and_resolve(
+        &mut game,
+        PlayerId(0),
+        disenchant,
+        Some(Target::Object(gold)),
+    );
     assert_eq!(game.zone_of(gold), Zone::Graveyard);
 
     next_turn_of(&mut game, PlayerId(0));
@@ -216,8 +221,15 @@ fn cocoon_holds_its_creature_down_then_hatches_it() {
 
 // ── increment 55: Life Matrix ─────────────────────────────────────────────────────────
 
-/// Activate `object`'s ability at `ability_index` for `player`, funding whatever it costs.
-fn activate(game: &mut Game, player: PlayerId, object: ObjectId, index: usize, target: Option<Target>) {
+/// Put `object`'s ability at `ability_index` on the stack for `player`, funding whatever it costs,
+/// and leave it there — which is where increment 103 needs to reach it.
+fn activate_only(
+    game: &mut Game,
+    player: PlayerId,
+    object: ObjectId,
+    index: usize,
+    target: Option<Target>,
+) {
     give_priority(game, player);
     game.fund_mana(player);
     game.submit(Intent::ActivateAbility {
@@ -230,6 +242,17 @@ fn activate(game: &mut Game, player: PlayerId, object: ObjectId, index: usize, t
         x: 0,
     })
     .unwrap();
+}
+
+/// Activate `object`'s ability at `ability_index` for `player`, funding whatever it costs.
+fn activate(
+    game: &mut Game,
+    player: PlayerId,
+    object: ObjectId,
+    index: usize,
+    target: Option<Target>,
+) {
+    activate_only(game, player, object, index, target);
     resolve_top_of_stack(game);
 }
 
@@ -250,7 +273,13 @@ fn life_matrix_counter_carries_its_regenerate_ability_after_the_matrix_is_gone()
     advance_until(&mut game, |g| {
         g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
     });
-    activate(&mut game, PlayerId(0), matrix, 0, Some(Target::Object(bear)));
+    activate(
+        &mut game,
+        PlayerId(0),
+        matrix,
+        0,
+        Some(Target::Object(bear)),
+    );
     assert_eq!(game.counters_of_kind(bear, CounterKind::Matrix), 1);
 
     let disenchant = game.spawn_in_hand(PlayerId(0), card("Disenchant"));
@@ -309,5 +338,194 @@ fn telekinesis_holds_a_creature_down_for_two_untap_steps() {
     assert!(
         !game.is_tapped(bear),
         "the third untap step is an ordinary one — both marks are spent"
+    );
+}
+
+// ── increment 103: Rust, Ayesha Tanaka ────────────────────────────────────────────────
+
+/// Set the table up with Rod of Ruin's ping on the stack, aimed at `victim`: an artifact's
+/// activated ability whose outcome is a life total, so "countered" needs no follow-up choice.
+fn rod_ability_on_stack(game: &mut Game, controller: PlayerId, victim: PlayerId) -> ObjectId {
+    let rod = game.spawn_on_battlefield(controller, card("Rod of Ruin"));
+    activate_only(game, controller, rod, 0, Some(Target::Player(victim)));
+    rod
+}
+
+#[test]
+fn rust_counters_an_activated_ability_from_an_artifact_source() {
+    // "Counter target activated ability from an artifact source."
+    let mut game = Game::with_players(2, 0);
+    stock_libraries(&mut game);
+    let rust = game.spawn_in_hand(PlayerId(1), card("Rust"));
+    let rod = rod_ability_on_stack(&mut game, PlayerId(0), PlayerId(1));
+    let life = game.life(PlayerId(1));
+
+    cast_and_resolve(&mut game, PlayerId(1), rust, Some(Target::Object(rod)));
+    assert!(
+        game.stack_is_empty(),
+        "Rust took the ping off the stack with it"
+    );
+    assert_eq!(
+        game.life(PlayerId(1)),
+        life,
+        "the countered ability dealt no damage"
+    );
+}
+
+#[test]
+fn rust_cannot_target_an_activated_ability_from_a_creature() {
+    // "from an artifact source" is a targeting restriction, so a Prodigal Sorcerer ping is not a
+    // legal target however much its controller would like it countered.
+    let mut game = Game::with_players(2, 0);
+    stock_libraries(&mut game);
+    let rust = game.spawn_in_hand(PlayerId(1), card("Rust"));
+    let sorcerer = game.spawn_on_battlefield(PlayerId(0), card("Prodigal Sorcerer"));
+    activate_only(
+        &mut game,
+        PlayerId(0),
+        sorcerer,
+        0,
+        Some(Target::Player(PlayerId(1))),
+    );
+
+    assert!(
+        cast(
+            &mut game,
+            PlayerId(1),
+            rust,
+            Some(Target::Object(sorcerer)),
+            0
+        )
+        .is_err(),
+        "a creature's activated ability is not an artifact source"
+    );
+}
+
+#[test]
+fn ayesha_tanaka_counters_an_artifact_ability_unless_its_controller_pays_white() {
+    // "{T}: Counter target activated ability from an artifact source unless that ability's
+    // controller pays {W}."
+    let mut game = Game::with_players(2, 0);
+    stock_libraries(&mut game);
+    let ayesha = game.spawn_on_battlefield(PlayerId(1), card("Ayesha Tanaka"));
+    let rod = rod_ability_on_stack(&mut game, PlayerId(0), PlayerId(1));
+    let life = game.life(PlayerId(1));
+
+    activate(&mut game, PlayerId(1), ayesha, 0, Some(Target::Object(rod)));
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::PayOrCounter {
+                player: PlayerId(0),
+                ..
+            })
+        ),
+        "the *ability's* controller gets the chance to pay {{W}}"
+    );
+
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::PayOptionalCost {
+        player: PlayerId(0),
+        pay: true,
+        discard_cost: vec![],
+    })
+    .unwrap();
+    while !game.stack_is_empty() {
+        resolve_top_of_stack(&mut game);
+    }
+    assert_eq!(
+        game.life(PlayerId(1)),
+        life - 1,
+        "paying {{W}} saved the ability, so the ping landed"
+    );
+}
+
+#[test]
+fn ayesha_tanaka_counters_the_ability_when_its_controller_declines() {
+    let mut game = Game::with_players(2, 0);
+    stock_libraries(&mut game);
+    let ayesha = game.spawn_on_battlefield(PlayerId(1), card("Ayesha Tanaka"));
+    let rod = rod_ability_on_stack(&mut game, PlayerId(0), PlayerId(1));
+    let life = game.life(PlayerId(1));
+
+    activate(&mut game, PlayerId(1), ayesha, 0, Some(Target::Object(rod)));
+    game.submit(Intent::PayOptionalCost {
+        player: PlayerId(0),
+        pay: false,
+        discard_cost: vec![],
+    })
+    .unwrap();
+    while !game.stack_is_empty() {
+        resolve_top_of_stack(&mut game);
+    }
+    assert_eq!(
+        game.life(PlayerId(1)),
+        life,
+        "declining lets the ability be countered, so no damage landed"
+    );
+}
+
+// ── increment 49: Infinite Authority ──────────────────────────────────────────────────
+
+#[test]
+fn infinite_authority_petrifies_a_small_blocker_then_grows_its_creature() {
+    // "Whenever enchanted creature blocks or becomes blocked by a creature with toughness 3 or
+    // less, destroy the other creature at end of combat. At the beginning of the next end step,
+    // if that creature was destroyed this way, put a +1/+1 counter on the first creature."
+    let mut game = Game::with_players(2, 0);
+    stock_libraries(&mut game);
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let authority = game.spawn_in_hand(PlayerId(0), card("Infinite Authority"));
+    cast_aura(&mut game, PlayerId(0), authority, bear, 0);
+    // Wall of Wood is 0/3 — small enough to be watched, tough enough to survive the bear's two damage, so the
+    // end-of-combat destroy is the only thing that could have killed it.
+    let wall = game.spawn_on_battlefield(PlayerId(1), card("Wall of Wood"));
+
+    attack_with(&mut game, vec![bear]);
+    block_with(&mut game, vec![(wall, bear)]).expect("a 0/3 Wall can block a 2/2");
+    resolve_top_of_stack(&mut game); // the granted "becomes blocked" trigger schedules the destroy
+
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        game.zone_of(wall),
+        Zone::Graveyard,
+        "toughness 3 or less, so it turns to stone once combat is over"
+    );
+    assert_eq!(
+        game.plus_counters(bear),
+        0,
+        "the reward waits for the end step"
+    );
+
+    advance_until(&mut game, |g| g.current_step() == Step::End);
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        game.plus_counters(bear),
+        1,
+        "…and then the first creature gets its +1/+1 counter"
+    );
+}
+
+#[test]
+fn infinite_authority_ignores_a_blocker_with_toughness_four() {
+    // "with toughness 3 or less" — a 0/8 Wall blocks the same creature and nothing happens, so the
+    // +1/+1 counter's intervening-if never comes due either.
+    let mut game = Game::with_players(2, 0);
+    stock_libraries(&mut game);
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let authority = game.spawn_in_hand(PlayerId(0), card("Infinite Authority"));
+    cast_aura(&mut game, PlayerId(0), authority, bear, 0);
+    let ox = game.spawn_on_battlefield(PlayerId(1), card("Wall of Stone"));
+
+    attack_with(&mut game, vec![bear]);
+    block_with(&mut game, vec![(ox, bear)]).expect("a 0/8 Wall can block a 2/2");
+
+    advance_until(&mut game, |g| g.current_step() == Step::End);
+    assert_eq!(game.zone_of(ox), Zone::Battlefield, "too tough to petrify");
+    assert_eq!(
+        game.plus_counters(bear),
+        0,
+        "nothing was destroyed this way, so no counter"
     );
 }

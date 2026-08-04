@@ -4639,6 +4639,7 @@ fn unlimited_petrifiers_spare_walls_and_wait_for_end_of_combat() {
                 creature: None,
                 attack_rider: AttackRider::Ignore,
                 at: Some(Step::EndCombat),
+                then: None,
             }),
             "{name} postpones the destroy to end of combat"
         );
@@ -5907,5 +5908,32 @@ fn every_creature_type_printed_in_the_pool_can_be_chosen() {
         missing.is_empty(),
         "add these to CREATURE_TYPES: {}",
         missing.join(", ")
+    );
+}
+
+/// Reverberation is the pool's only "damage … is dealt to that spell's controller instead": the
+/// shield lands on the *targeted spell* as its source (`target_is_source`) and moves every point
+/// to whoever controls it, rather than to the shield's own controller the way the redirect rider
+/// on every other Legends prevention reads.
+#[test]
+fn legends_reverberation_moves_a_sorcerys_damage_to_that_sorcerys_own_controller() {
+    let reverb = get_by_name("Reverberation").expect("Reverberation is in the pool");
+    let [ability] = &reverb.abilities[..] else {
+        panic!("Reverberation prints one line");
+    };
+    assert!(
+        matches!(
+            ability.effect,
+            Effect::Misc(MiscEffect::PreventNextDamage {
+                target: TargetSpec::SpellOnStack(SpellFilter::Sorcery),
+                target_is_source: true,
+                any_recipient: true,
+                all_damage: true,
+                redirect_to_target_controller: true,
+                redirect_to_controller: false,
+                ..
+            })
+        ),
+        "every point the targeted sorcery would deal goes to its controller, whoever that is"
     );
 }

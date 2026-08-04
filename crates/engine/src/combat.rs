@@ -404,9 +404,12 @@ impl Game {
     /// Arboria shields the player themselves (CR 508.1a — the restriction names attacking a
     /// *player*, and attacking their planeswalker is not that).
     fn controls_a_planeswalker(&self, defender: PlayerId) -> bool {
-        self.controlled_battlefield(defender)
-            .into_iter()
-            .any(|id| self.def_of(id).kind.types().intersects(TypeSet::PLANESWALKER))
+        self.controlled_battlefield(defender).into_iter().any(|id| {
+            self.def_of(id)
+                .kind
+                .types()
+                .intersects(TypeSet::PLANESWALKER)
+        })
     }
 
     /// Whether `attacker`'s own printed attack restriction (Sea Serpent's "this creature can't
@@ -777,7 +780,9 @@ impl Game {
         self.combat_extras
             .cant_attack_next_own_turn
             .retain(|id| !promoted.contains(id));
-        self.combat_extras.cant_attack_this_own_turn.extend(promoted);
+        self.combat_extras
+            .cant_attack_this_own_turn
+            .extend(promoted);
         // Arboria: "cast a spell or put a nontoken permanent onto the battlefield during their last
         // turn", recorded per seat at that seat's own cleanup.
         let player = &mut self.players[active_player.0 as usize];

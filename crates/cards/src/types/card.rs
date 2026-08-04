@@ -923,6 +923,12 @@ pub struct CardDef {
     /// two others — so a mutually-exclusive enum could not express any of them.
     /// `cast_only_after_upkeep = true` in TOML; `false` for every ordinary card.
     pub cast_only_after_upkeep: bool,
+    /// "Cast this spell only after combat" (CR 601.3e — Glyph of Reincarnation): closed from untap
+    /// through the end of combat step, open from the postcombat main phase on. The phase-scoped
+    /// mirror of [`Self::cast_only_before_combat_damage`], and like every flag in this family it
+    /// composes rather than excluding the others.
+    /// `cast_only_after_combat = true` in TOML; `false` for every ordinary card.
+    pub cast_only_after_combat: bool,
     /// A one-line plain-English note on how this card's modeled behavior diverges from its
     /// printed rules text (a dropped clause, a coarsened trigger, a folded-together mechanic) —
     /// the same fact a `# ponytail:` TOML comment records, but as a datum the catalog/deck
@@ -1579,6 +1585,7 @@ fn treasure_token_builtin() -> CardDef {
         cast_only_during_declare_blockers: false,
         cast_only_during_declare_attackers: false,
         cast_only_after_upkeep: false,
+        cast_only_after_combat: false,
         approximates: None,
         oracle: None,
         sets: empty_slice(),
@@ -1658,6 +1665,7 @@ pub fn rogue_token_stub() -> CardDef {
         cast_only_during_declare_blockers: false,
         cast_only_during_declare_attackers: false,
         cast_only_after_upkeep: false,
+        cast_only_after_combat: false,
         approximates: None,
         oracle: None,
         sets: empty_slice(),
@@ -1739,6 +1747,7 @@ pub fn illusion_token() -> CardDef {
         cast_only_during_declare_blockers: false,
         cast_only_during_declare_attackers: false,
         cast_only_after_upkeep: false,
+        cast_only_after_combat: false,
         approximates: None,
         oracle: None,
         sets: empty_slice(),

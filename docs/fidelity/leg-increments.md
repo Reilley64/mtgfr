@@ -427,7 +427,7 @@ tapped or blocking creature." shipped as `PermanentFilter::tapped_or_blocking`, 
 rather than two axes because blocking never taps (CR 509.1), so intersecting them would match
 nothing.
 
-### 16. `arboria-attack-restriction` — 1 card, M
+### 16. `arboria-attack-restriction` — 1 card, M — **LANDED** (wave 10)
 Depends on: #2.
 Arboria: "Creatures can't attack a player unless that player cast a spell or put a nontoken
 permanent onto the battlefield during their last turn." Needs a per-player, per-turn memory of two
@@ -463,7 +463,7 @@ have more than one target). Tests: `crates/engine/tests/leg_counter_spell_target
 No general And-combinator over `SpellFilter` exists — the instant-or-Aura half is matched in the
 same arm; see #105 if a second card wants the pieces separately.
 
-### 19. `damage-dealt-this-turn-ledger` — 3 cards, L
+### 19. `damage-dealt-this-turn-ledger` — 3 cards, L — **LANDED** (wave 10; Backdraft's chooser residual split to #135)
 Depends on: nothing.
 Three cards read a *history* of damage the engine does not keep: "half the damage dealt by one of
 those sorcery spells this turn" (Backdraft), "damage dealt to this creature this turn by other
@@ -474,6 +474,20 @@ by the damage path, cleared at cleanup — with `Amount` variants that query it.
 not a ledger read but a *redirection registered against a spell object*, so it also needs the
 damage path to consult per-source redirections (shared with #60). Sizeable because the ledger
 touches every damage site; do it once, carefully.
+*Landed (wave 10):* one turn-scoped `Game::damage_dealt_this_turn: Vec<(ObjectId, Target, i32)>`,
+appended by `Game::record_damage_dealt` from the three damage-event arms in `apply.rs` and cleared
+with the other turn tallies at `Step::Untap`. No `source_name` column — object ids are never reused
+(`Object::Removed` keeps the def), so `def_of(dealer).name` answers the name question at query time.
+Blazing Effigy reads it through `Amount::DamageDealtToSourceThisTurnByOthersNamedTheSame`, Backdraft
+through `Amount::HalfGreatestDamageDealtByTargetPlayersSorceryThisTurn`. Reverberation is the
+redirection half and needed no ledger at all: `MiscEffect::PreventNextDamage` already had
+`target_is_source` + `any_recipient` + `all_damage`, so it wanted one new rider
+(`redirect_to_target_controller`, sending the moved damage to the targeted spell's controller rather
+than the shield's own) plus `SpellFilter::Sorcery` so `target = { spell_on_stack = "sorcery" }` can
+name the spell. Fixed along the way: `Game::redirected_damage_events` minted only the life loss for
+a player recipient, so redirected damage was invisible to every damage-to-a-player trigger and to
+the new ledger — it now pushes `Event::DamageDealtToPlayer` like every other caller.
+Tests in `crates/engine/tests/leg_w10_a.rs`. Backdraft is scripted with an `approximates` — see #135.
 
 ### 20. `damage-triggered-aura-payback` — 2 cards, M
 Depends on: nothing.
@@ -522,7 +536,7 @@ flips `armed` — registration happens during an upkeep, so the *second* sweep i
 next one. Four new events, all projected onto existing `VisibleEvent`s, so the wire is untouched.
 Four cards faithful; Sentinel carries an `approximates` for its combat-partner target filter.
 
-### 23. `attacker-blocker-count-cap` — 1 card, M
+### 23. `attacker-blocker-count-cap` — 1 card, M — **LANDED** (wave 10)
 Depends on: #2.
 Caverns of Despair: "No more than two creatures can attack each combat. No more than two creatures
 can block each combat." A global cap across *all* players, not per player.
@@ -567,7 +581,7 @@ no damage, so no new `Condition` variant was needed. Clergy's second ability nee
 costless permanent regeneration-replacement shield, CR 701.15) is a different shape from the
 one-shot activated `{cost}: Regenerate` the engine has today; see #128.
 
-### 26. `counter-gated-untap-suppression` — 2 cards, M
+### 26. `counter-gated-untap-suppression` — 2 cards, M — **LANDED** (wave 10)
 Depends on: nothing.
 Cocoon and Venarian Gold both read "doesn't untap during [its controller's] untap step if it has a
 <kind> counter on it", with an upkeep trigger removing one. *Sketch:* a `DontUntap` continuous
@@ -575,6 +589,16 @@ effect (shared with #17) whose condition is a counter-presence check on a named 
 the two counter kinds. Cocoon's "If you can't, sacrifice it, put a +1/+1 counter…, and that
 creature gains flying" is an if-you-can't fallback on the remove-a-counter effect, which the
 existing remove-counter path does not report.
+
+*Landed (wave 10):* `CounterKind::Sleep` and `CounterKind::Pupa`, `Amount::PerCounterOfKindOnAttached`,
+and `CountersEffect::RemoveCounterFromAttached`. The two cards are *not* the same shape, which the
+sketch conflates: Venarian Gold's sleep counters go on the enchanted **creature** and Cocoon's pupa
+counters on the **Aura**, so the gating condition needed both an on-host and an on-attachment
+reading. Neither uses the "counter *is* the effect" pattern of Vow/Glyph — the restriction is the
+Aura's own static, and a regression test proves destroying Venarian Gold frees the creature with its
+sleep counters still on it. Cocoon's if-you-can't fallback is scripted as two upkeep abilities with
+complementary counter-count conditions rather than a new fallback report; its enters trigger is split
+in two for the unrelated reason in #145.
 
 ### 27. `game-is-a-draw` — 1 card, S — **LANDED**
 Depends on: nothing.
@@ -681,7 +705,7 @@ replacement (the engine has regeneration but not a general death replacement), p
 into the hand — which means the hand needs per-card annotations that survive the zone change.
 Interacts with #35's visibility work.
 
-### 37. `attacks-unblocked-trigger` — 1 card, M
+### 37. `attacks-unblocked-trigger` — 1 card, M — **LANDED** (wave 10)
 Depends on: nothing.
 Floral Spuzzem: "Whenever this creature attacks and isn't blocked, you may destroy target artifact
 defending player controls. If you do, this creature assigns no combat damage this turn."
@@ -759,7 +783,7 @@ gains landwalk of the chosen type until the end of that turn." *Sketch:* a delay
 resolution prompts for a basic land type and applies a keyword grant with a
 `UntilEndOfThatTurn` duration. The choice happens on the *delayed* resolution, not at activation.
 
-### 42. `attacked-last-turn-restriction` — 2 cards, M
+### 42. `attacked-last-turn-restriction` — 2 cards, M — **LANDED** (wave 10)
 Depends on: nothing.
 Giant Turtle ("can't attack if it attacked during your last turn") and Wall of Dust ("whenever this
 creature blocks a creature, that creature can't attack during its controller's next turn").
@@ -808,7 +832,7 @@ for the next upkeep, with X evaluated on the *delayed* resolution; plus an LTB t
 creature type, which is the existing exile-by-filter with a subtype axis. The token count coming
 from a later evaluation is the only genuinely new part.
 
-### 46. `hellfire` — 1 card, S
+### 46. `hellfire` — 1 card, S — **LANDED** (wave 10)
 Depends on: nothing.
 "Destroy all nonblack creatures. Hellfire deals X plus 3 damage to you, where X is the number of
 creatures that died this way." *Sketch:* the destroy-all already exists; the new part is an
@@ -841,7 +865,7 @@ matched inline in `queue_cast_spell_triggers` rather than in `Game::spell_matche
 parameter is the casting player at all nine of its call sites — the same posture already documented
 for `mana_value_equals_x` and `instant_or_aura_targets_permanent_you_control`.
 
-### 49. `blocks-with-toughness-filter-then-counter` — 2 cards, M
+### 49. `blocks-with-toughness-filter-then-counter` — 1 card, M — **LANDED** (wave 10)
 Depends on: #8.
 Infinite Authority: "Whenever enchanted creature blocks or becomes blocked by a creature with
 toughness 3 or less, destroy the other creature at end of combat. At the beginning of the next end
@@ -851,6 +875,16 @@ Wall of Caltrops' block-count condition is #87.
 bounds), plus the delayed-destroy-at-end-combat shape (which Thicket Basilisk already uses) and a
 second delayed trigger conditional on the first having resolved — an intervening-if on a delayed
 trigger, which the engine has not needed.
+
+*Landed (wave 10):* the sketch is half wrong — `PermanentFilter::toughness_max` already existed, and
+Wall of Caltrops was never this increment's (it is #87's), so this is one card. What was missing was
+`GrantedTriggerTag::BlocksOrBecomesBlockedBy { filter }` (the printed trigger's `filter` sibling
+lives on the ability's own TOML row, so a granted copy has to spell it inline) plus a scan of
+attachment grants in `Game::queue_blocks_or_becomes_blocked_by_triggers`, which is bespoke-queued and
+so did not pick them up at the shared choke. The conditional second half is a `then` rider on
+`DestroyEffect::ThatCreature`, scheduled at the next end step only on the branch that actually put
+the creature in a graveyard — reaching that branch *is* the intervening-if, so no delayed-trigger
+condition was needed.
 
 ### 50. `johan` — 1 card, M
 Depends on: nothing.
@@ -904,12 +938,19 @@ against `CombatState::blocks` — match a `(blocker, attacker)` pair in either d
 without it, so this increment now owns building it for both cards: **Sentinel** is scripted and
 carries an `approximates` (it targets any creature), and drops it when this lands.
 
-### 55. `granted-regenerate-via-counter` — 1 card, M
+### 55. `granted-regenerate-via-counter` — 1 card, M — **LANDED** (wave 10)
 Depends on: #32 (granting an ability).
 Life Matrix: "{4}, {T}: Put a matrix counter on target creature and that creature gains 'Remove a
 matrix counter from this creature: Regenerate this creature.' Activate only during your upkeep."
 *Sketch:* #32's ability grant, where the granted ability's cost is a counter removal on the *host*.
 The grant is indefinite (#14's duration) and stacks — a creature can receive several.
+
+*Landed (wave 10):* not #32's grant — `StaticEffect::GrantActivatedAbility` and `GrantToAttached`
+both already existed, and neither can express a per-creature grant with no duration and no surviving
+granter. `CounterKind::Matrix` carries it instead: `Game::granted_activated_abilities` appends a
+"remove a matrix counter: regenerate this creature" ability to anything holding one, so the grant
+outlives the Matrix (CR 400.7) exactly as Vow and Glyph's counters carry their own effects. Appended
+last so the board's own grants keep their `ability_at` indices.
 
 ### 56. `must-block-by-filter` — 1 card, M
 Depends on: #12 (Marble Priest's other half).
@@ -1042,7 +1083,7 @@ parts are a **counter maximum** (a continuous "can't have more than N" enforced 
 counter placement, CR 122.6) and a `started_the_turn_untapped` per-permanent flag stamped in the
 untap step.
 
-### 69. `recall` — 1 card, S
+### 69. `recall` — 1 card, S — **LANDED** (wave 10)
 Depends on: nothing.
 "Discard X cards, then return a card from your graveyard to your hand for each card discarded this
 way. Exile Recall." *Sketch:* an `Amount::CardsDiscardedThisWay` scoped to the resolution (#46's
@@ -1100,7 +1141,7 @@ battlefield." A **linked pair** — each half watches the other. *Sketch:* the E
 created token's id on Stangg's permanent state, and two delayed triggers key off that id. The token
 is legendary and named, so the legend rule applies to it.
 
-### 75. `four-minus-cards-in-hand` — 1 card, S
+### 75. `four-minus-cards-in-hand` — 1 card, S — **LANDED** (wave 10)
 Depends on: #2.
 Storm World: "deals X damage to that player, where X is 4 minus the number of cards in their hand."
 *Sketch:* an arithmetic `Amount` — `Amount::Difference { from: 4, subtract: CardsInHand(who) }` —
@@ -1134,12 +1175,17 @@ on re-entry. Model it as two distinct permanent shapes selected at ETB by a flag
 effect — cleaner than mutating abilities, and honest about what is happening. The opponent-chooses-
 the-host part is a pending choice held by a non-controller (#60 has the same shape).
 
-### 79. `skip-next-two-untap-steps` — 1 card, S
+### 79. `skip-next-two-untap-steps` — 1 card, S — **LANDED** (wave 10)
 Depends on: #26.
 Telekinesis: "Tap target creature. Prevent all combat damage that would be dealt by that creature
 this turn. It doesn't untap during its controller's next two untap steps." *Sketch:* #26's untap
 suppression with a *count* (skip the next N) rather than a counter-presence condition, decremented
 in the untap step. The prevention half is #34's damage-dealt-by shield with a single creature.
+
+*Landed (wave 10):* #34 was not a blocker — `MiscEffect::PreventNextDamage` already carried the
+`target_is_source` / `combat_only` / `all_damage` knobs the prevention sentence needs. Only the count
+was missing: `MiscEffect::SkipNextUntaps` with a `count`, and `Event::NextUntapSkipConsumed` spending
+exactly one mark per untap step.
 
 ### 80. `opponent-chooses-the-target` — 1 card, M
 Depends on: #2.
@@ -1185,7 +1231,7 @@ test at all; wave 9 added `leg_w9_c.rs`, which pins both halves — the third ac
 refused as it is announced (CR 602.2b, so `Reject::CannotActivate` rather than a countered
 ability), and a new turn hands both uses back.
 
-### 85. `look-at-top-n-then-may-shuffle` — 1 card, S
+### 85. `look-at-top-n-then-may-shuffle` — 1 card, S — **LANDED** (wave 10, approximated — the look is a rearrange, #150)
 Depends on: nothing.
 Visions: "Look at the top five cards of target player's library. You may then have that player
 shuffle that library." *Sketch:* a look-at-hidden-zone effect scoped to a *targeted* player's
@@ -1220,18 +1266,21 @@ filter admit only Walls?"), computed from the filter's subtype axis. Feasible be
 data; if it turns out to need a general filter-subsumption check, approximate to "the filter names
 Wall as a required subtype" and mark it.
 
-### 89. `attack-as-though-no-defender` — 1 card, S
+### 89. `attack-as-though-no-defender` — 1 card, S — **LANDED** (wave 10)
 Depends on: nothing.
 Wall of Wonder: "{2}{U}{U}: This creature gets +4/-4 until end of turn and can attack this turn as
 though it didn't have defender." *Sketch:* an `IgnoresDefenderForAttacking` marker with an
 until-end-of-turn duration, checked in attack legality alongside the defender check. Not keyword
 removal (#5) — the creature keeps defender for everything else.
 
-### 90. `dealt-damage-to-opponent-this-turn` — 1 card, S
+### 90. `dealt-damage-to-opponent-this-turn` — 1 card, S — **LANDED** (wave 10)
 Depends on: #19.
 Whirling Dervish: "At the beginning of each end step, if this creature dealt damage to an opponent
 this turn, put a +1/+1 counter on it." *Sketch:* a query against #19's damage ledger, filtered to
 this source and opponent recipients. If #19 lands first this is a one-line condition.
+*Landed (wave 10):* exactly that — `Condition::SourceDealtDamageToOpponentThisTurn` scans #19's
+ledger for a row whose dealer is the source and whose recipient is a player other than the source's
+controller. `whirling_dervish.toml` is `each_end_step` + that condition + a +1/+1 counter on `this`.
 
 ### 91. `winds-of-change` — 1 card, S — **LANDED** (wave 9)
 Depends on: nothing.
@@ -1249,7 +1298,7 @@ between wheel and shuffle-back; between these two they differ in none of those, 
 argument makes them one variant.
 *Cards:* winds_of_change.
 
-### 92. `damage-to-filtered-subset-of-targets` — 1 card, S
+### 92. `damage-to-filtered-subset-of-targets` — 1 card, S — **LANDED** (wave 10)
 Depends on: #61.
 Winter Blast: "Tap X target creatures. Winter Blast deals 2 damage to each of those creatures with
 flying." *Sketch:* a second effect scoped to the *previously chosen target set* filtered down —
@@ -1408,7 +1457,7 @@ Osai Vultures (carrion counter), Spirit Shackle (-0/-2 counter).
 `Carrion` counter that only its own card reads, and `-0/-2`, which the P/T layer must apply
 alongside the existing `-1/-1`.
 
-### 103. `counter-activated-ability-payload` — 2 cards, M
+### 103. `counter-activated-ability-payload` — 2 cards, M — **LANDED** (wave 10)
 Depends on: nothing.
 Ayesha Tanaka, Rust: "Counter target activated ability from an artifact source unless that
 ability's controller pays {W}."
@@ -1416,6 +1465,15 @@ ability's controller pays {W}."
 source filter ("from an artifact source" — the target-legality restriction both cards share) and
 an `unless_pays` rider matching the one `CounterTargetSpell` already carries. Ayesha's banding
 half is already expressible.
+
+*Landed (wave 10):* `CounterTargetActivatedAbility` became a struct variant with `artifact_source`
+and `unless_pays`, both `#[serde(default)]` so Azorius Guildmage's payload-free spelling is
+unchanged. `unless_pays` is a full `Cost` rather than `CounterTargetSpell`'s generic-only `Amount`,
+because Ayesha's is a colored symbol. The pause reuses `PendingChoice::PayOrCounter` with the
+ability's *source permanent* id in its `spell` field — a permanent is never an `Object::Spell`, so
+the object kind is the discriminant in the decline handler and no new pending-choice variant or wire
+change was needed. `TargetSpec::ActivatedAbilityOnStack` grew the matching `artifact_source`
+target-legality filter. Ayesha's banding carries the pool's standing damage-division `approximates`.
 
 ### 104. `blocking-this-creature-and-indefinite-gain-control` — 1 card, L
 Depends on: nothing.
@@ -1452,7 +1510,7 @@ matching a filter, otherwise `<effects>`" as a payable cost in the `pay_or_else`
 client half: `PendingChoiceView::SacrificeUnlessPay` carries a mana `cost` and nothing else, so
 this needs a new choice view through proto → BFF → board prompt, not only an engine change.
 
-### 107. `board-wide-attack-ban` — 1 card, S
+### 107. `board-wide-attack-ban` — 1 card, S — **LANDED** (wave 10)
 Depends on: #10 (**landed** — the effect exists; this is now card authoring only).
 Moat: "Creatures without flying can't attack."
 Wave 7's `StaticEffect::CantAttackFilter { filter }` is board-scanned rather than read off the
@@ -1499,7 +1557,7 @@ Angus Mackenzie: "Activate only before the combat damage step."
 `prevent_all_combat_damage_this_turn`, already exists — only the timing clause is missing. Sits
 beside the existing `only_during_your_upkeep` / `only_during_your_turn` restrictions.
 
-### 112. `damaged-player-discards-their-hand` — 1 card, M
+### 112. `damaged-player-discards-their-hand` — 1 card, M — **LANDED** (wave 10)
 Depends on: nothing.
 Nicol Bolas: "Whenever Nicol Bolas deals damage to an opponent, that player discards their hand."
 *Sketch:* three near-misses and no hit. `ChoiceEffect::Discard`'s count `Amount` has no
@@ -1510,8 +1568,13 @@ other two lines are expressible today.
 *Re-rated after wave 1:* #99 landed the exact pattern — `damage_recipient` is already in
 `TriggerContext` and `fill_player` already rewrites a `damaged_player` placeholder. This is now
 `who` on `DiscardYourHand` plus one more `fill_player` arm. Closer to **S** than M.
+*Landed (wave 10):* the re-rating was right — `ChoiceEffect::DiscardYourHand` grew a
+`who: PlayerSet` (defaulting to `you`, which is Malfegor's reading), one `fill_player` arm rewrites
+`damaged_player` from the trigger context, and resolution discards each named seat's hand while
+still tallying `cards_discarded_this_way` for Malfegor. Nicol Bolas's upkeep
+`{U}{B}{R}`-or-sacrifice line is scripted alongside it.
 
-### 113. `gain-life-equal-to-mass-damage-dealt` — 1 card, S
+### 113. `gain-life-equal-to-mass-damage-dealt` — 1 card, S — **LANDED** (wave 10)
 Depends on: nothing.
 Syphon Soul: "Syphon Soul deals 2 damage to each other player. You gain life equal to the damage
 dealt this way."
@@ -1519,6 +1582,12 @@ dealt this way."
 `DamageEffect::ToPlayers`, and no `Amount` totals damage dealt across several recipients. Add
 the rider to the mass form, summing what was actually dealt (prevention and redirection change
 the total, so it must read the result rather than the intent).
+*Landed (wave 10):* no rider on `DamageEffect::ToPlayers` — that would have churned every struct
+literal in `crates/cards/tests/pool.rs`. Instead the established "this way" shape:
+`ResolutionFrame::damage_dealt_this_way` accumulates in `apply.rs` as each damage event lands (so
+prevention and redirection have already had their say), is cleared per resolving stack item, and
+`Amount::DamageDealtThisWay` reads it. Syphon Soul is two ordinary effects — mass damage, then a
+life gain of `damage_dealt_this_way`.
 
 ### 114. `cast-during-any-players-declare-attackers` — 1 card, S — **LANDED** (wave 1)
 Depends on: nothing.
@@ -1559,7 +1628,7 @@ Spectral Cloak: "Enchanted creature has shroud as long as it's untapped."
 host's state. Needs the condition evaluated against the *attached* permanent, re-checked
 continuously rather than latched at attach time.
 
-### 118. `damage-to-any-player-trigger` — 1 card, S
+### 118. `damage-to-any-player-trigger` — 1 card, S — **LANDED** (wave 10)
 Depends on: nothing. Raised by wave 1 (#99).
 Pit Scorpion: "Whenever this creature deals damage to a player, that player gets a poison
 counter."
@@ -1568,6 +1637,12 @@ early-returns when the damaged player is the source's controller. The oracle say
 not "an opponent", so damage the Scorpion deals to its own controller — redirection, or a
 control swap mid-damage — poisons no one. Needs a `deals_damage_to_player` tag that watches
 every seat, with `deals_damage_to_opponent` kept for the cards that really do print "opponent".
+*Landed (wave 10):* `Trigger::DealsDamageToPlayer` (`timing = "deals_damage_to_player"`) rides the
+existing watch rather than a new `TriggerWatchKind` — `queue_deals_damage_to_opponent_triggers`
+queues it for every seat *before* its own `player == controller` early return, so one extra call
+covers both wordings. Pit Scorpion's `approximates` is gone. Proving it needed damage the Scorpion
+deals to its own controller, which is a Jade Monolith redirect; that in turn exposed the missing
+`Event::DamageDealtToPlayer` on the redirect path recorded under #19.
 
 ### 119. `divide-combat-damage-in-the-damage-step` — 8 cards, L — **LANDED** (wave 5; rules residuals split to #126)
 Depends on: nothing. Raised by wave 1 (#1); blocks every post-declaration pump, not just rampage.
@@ -1619,7 +1694,7 @@ All 8 of #1's cards dropped their `approximates`. Tests:
 `rampage_bonus_is_divided_among_the_blockers_in_the_combat_damage_step` in
 `crates/engine/tests/leg_rampage.rs`.
 
-### 120. `return-graveyard-cards-to-owners-hand` — 1 card, M
+### 120. `return-graveyard-cards-to-owners-hand` — 1 card, M — **LANDED** (wave 10, approximated — one graveyard per clause, #151; the dead cost machinery split to #152)
 Depends on: nothing. Raised by #8, which went looking for Spurnmage Advocate's stale blocking-axis
 note and found the whole card fabricated.
 Spurnmage Advocate's real oracle is "{T}: Return two target cards from an opponent's graveyard to
@@ -1668,7 +1743,7 @@ discoverability gate, not a legality check; `Game::band_is_legal` still owns leg
 illegal grouping lands in `board-reject`. One band per declaration (`BoardModel.combatBand`);
 two simultaneous bands would need four banding creatures attacking at once and is not built.
 
-### 122. `show-the-game-ended-in-a-draw` — 0 cards, S
+### 122. `show-the-game-ended-in-a-draw` — 0 cards, S — **LANDED** (wave 10)
 Depends on: #27 (landed). Raised by #27, which stopped at the wire edge on purpose.
 The engine ends a draw correctly — `GameOutcome::Draw`, `Event::GameDrawn`, and every subsequent
 intent rejected (CR 104.4b) — and `crates/server/src/session.rs` reads `outcome()` rather than a
@@ -1707,7 +1782,7 @@ activated ability, and the three tests slice 4 wrote are the coverage: the token
 and the Master does not, a two-wolf pack is blocked as a group, and a differently-named creature
 cannot join the band.
 
-### 124. `greatest-mana-value-tiebreak-choice` — 1 card, S
+### 124. `greatest-mana-value-tiebreak-choice` — 1 card, M
 Depends on: #40 (landed — the exchange itself).
 Juxtapose: "If two or more permanents a player controls are tied for greatest, their controller
 chooses one of them." Split out of #40, which landed the card with the exchange faithful and the
@@ -1722,6 +1797,17 @@ the creature step left behind. Both seats can be tied at once and neither is nec
 spell's controller, so the pause has to be answerable by a non-active player. The only card in the
 pool that wants it; the choice is CR 701.10's "chooses", not a target, so it skips the
 shroud/hexproof checks.
+**Re-sized S → M by wave 10 slice D, which looked at it and left it.** The engine half is cheap and
+already has a proven shape: queue the two seats the way `PendingChoice::MayReturnFromGraveyard`'s
+`then_graveyards` queues graveyards, so `Game::resolve_exchange_greatest_mana_value` settles each
+seat's pick (auto when untied, a pause when tied) before swapping anything, and the sequence tail
+resumes into the artifact step exactly as Recall's discard-then-return does — no `SequenceCont` is
+owed after all. What makes it M is the wire: `crates/schema/src/projection/choice.rs` matches
+`PendingChoice` exhaustively with no fallback, so a new variant drags a `PendingChoiceView` arm
+(`crates/schema/src/dto.rs`, including its `items` walker), `crates/schema/src/answer_protocol.rs`,
+`crates/server/src/grpc/map/stream.rs`, a new `proto/mtgfr/v1/stream.proto` message, and the client
+catch-up behind it. Land it in a wave that can regenerate and take the client half, not in a
+card-only slice.
 
 ### 125. `describe-a-filtered-anthems-pt-delta` — 0 cards, S
 Depends on: #13 (landed — which is what gave `StaticEffect::KeywordAnthem` its P/T fields).
@@ -1806,7 +1892,7 @@ fields is the real bound) or make `TargetCount` express "unbounded" and back `Ta
 Sylvan Paradise naming all seven is the acceptance criterion; drop the `approximates` note from all
 five cards when it passes.
 
-### 130. `damage-cause-tracking` — 1 card, L
+### 130. `damage-cause-tracking` — 1 card, L — **LANDED** (wave 10)
 Depends on: #12 (landed — which is what made the residual visible).
 Silhouette: "Choose target creature. If a spell or ability that targets that creature would cause a
 source to deal damage to that creature this turn, prevent that damage." The shield doesn't read the
@@ -1823,6 +1909,16 @@ hit target my protectee?" rather than "is the source a spell targeting it?". The
 whatever `Game::resolve_effect` is currently resolving, so it is available at every call site
 without a new event. A test where Rod of Ruin's *ability* targets the chosen creature and is
 prevented is the acceptance criterion; drop Silhouette's `approximates` when it passes.
+*Landed (wave 10):* no `cause` threaded through the mint after all — the resolution frame already
+scopes "what is resolving right now", so `ResolutionFrame::resolving_targets` is armed with the
+resolving spell's or ability's chosen targets just before its effects run and cleared right after,
+and the new `SourceRelation::SpellOrAbilityTargetingThis` reads it. Being source-blind, that one
+read covers both halves of the `approximates` at once: Rod of Ruin's *ability* targets the creature
+while the *Rod* deals the damage. Bronze Horse keeps the narrower `SpellTargetingThis` — it really
+does only stop spells. Silhouette's `approximates` is gone.
+*Residual:* a resolution that **pauses** for a choice and resumes elsewhere does not re-arm the
+frame, so damage dealt after the pause is not attributed (false negatives only). No pool card hits
+it; noted as a `ponytail:` on the field rather than filed.
 
 ### 131. `second-target-clause-for-spells` — 1 card, M
 Depends on: #43 (landed — which is what made the residual visible).
@@ -1860,7 +1956,7 @@ upkeep `Trigger::YourUpkeep` removing one counter); it is the *granting* that ha
 that copies or removes the granted abilities is the acceptance criterion; drop the second half of
 Glyph of Delusion's `approximates` when it passes.
 
-### 133. `cast-only-after-combat` — 1 card, S
+### 133. `cast-only-after-combat` — 1 card, S — **LANDED** (wave 10)
 Depends on: nothing.
 Glyph of Reincarnation: "Cast this spell only after combat." (CR 601.3e) — a phase-scoped cast
 restriction with no key in the `cast_only_*` family, which today covers `during_combat`,
@@ -1886,3 +1982,106 @@ turn (Relentless Assault and friends), where the Wall should have shrunk back an
 state already runs on `Event::CombatCleared` — rather than a new effect mode. A test that gives a
 Wall +10/+0, ends combat, starts a second combat and asserts the Wall's power is back to base is
 the acceptance criterion; drop Glyph of Destruction's `approximates` when it passes.
+
+### 135. `choose-a-player-who-and-pick-one-of-those` — 1 card, M — raised by wave 10 (#19)
+Depends on: #19 (landed — which is what made the residual visible).
+Backdraft: "**Choose a player who cast one or more sorcery spells this turn.** Backdraft deals
+damage to that player equal to half the damage dealt by **one of those** sorcery spells this turn,
+rounded down." Two chooser clauses the DSL cannot express. The first is a *restriction on who may
+be chosen* that reads turn history rather than any board characteristic — `TargetSpec::Player` has
+no filter axis at all, so any seat is targetable. The second asks the spell's controller to pick
+one of that player's sorceries; `Amount::HalfGreatestDamageDealtByTargetPlayersSorceryThisTurn`
+always takes the biggest, which is the choice they would usually make but not always (a smaller
+sorcery is the right pick when the bigger one's half would kill a player they want alive, or when
+they are aiming Backdraft at themselves). Both are recorded in `backdraft.toml`'s `approximates`;
+the amount is 0 for a player who cast no damaging sorcery, so the first clause bites in practice
+even though the target is unrestricted.
+*Sketch:* a `PlayerFilter` on `TargetSpec::Player` (the player-side twin of `PermanentFilter`) with
+a `cast_a_sorcery_this_turn` axis reading `Player::spells_cast_this_turn`-style bookkeeping — the
+count is already tracked, only the sorcery split is not — and a `PendingChoice::ChooseDamageSource`
+offering the ledger rows attributable to the chosen player's sorceries, which
+#130's cause-tracking would also want. Acceptance: a player who cast no sorcery cannot be chosen,
+and with two damaging sorceries in the graveyard the controller can pick the smaller one; drop
+Backdraft's `approximates` when both pass.
+
+### 145. `per-step-fixed-reference-targets` — 0 cards, S
+Depends on: #26 (landed — which is where this surfaced).
+Cocoon's one printed enters trigger is "tap enchanted creature **and** put three pupa counters on
+this Aura" — two effects pointing at two different fixed references. A multi-effect ability is
+wrapped in `Effect::Sequence`, and `Game::run_sequence` hands every step the same `ctx.target` that
+`Game::place_targeted_ability` settled once for the whole ability, so the second step inherits the
+first's creature and the counters land on the wrong permanent. `cocoon.toml` works around it by
+splitting the trigger into two `[[abilities]]` with `timing = "etb"`, carrying a `ponytail:` comment
+saying so; both go on the stack together, neither depends on the other, and the board lands
+identically, so the card is faithful and carries no `approximates`. What is not faithful is the
+script: one printed sentence reads as two abilities, and a player ordering simultaneous triggers
+(CR 603.3b) is asked to sequence a split that Magic never made.
+*Sketch:* settle fixed-reference `TargetSpec`s (`ThisPermanent`, `EnchantedCreature`,
+`EquippedCreature`, …) per step inside `run_sequence` rather than once for the ability — they need no
+choice from any player, so re-reading them at each step costs nothing and cannot change what was
+announced. Chosen targets (`TargetSpec::Creature` and friends) must keep the single settled value
+they have today, since CR 601.2c fixes them at announcement. Acceptance: rewrite Cocoon as one
+`etb` ability with both effects, assert the tap lands on the enchanted creature and the three pupa
+counters on the Aura, and drop the split's `ponytail:` comment.
+
+### 150. `look-at-top-n-without-rearranging` — 1 card, S
+Depends on: #85 (landed — which scripted Visions on the nearest existing effect).
+Visions' "Look at the top five cards of target player's library" is scripted as
+`rearrange_target_players_top` with a count of five, because the pool has no *look-only* pause: every
+effect that shows a player a hidden zone today also asks them to do something with it. The five
+cards are the right five and only the spell's controller sees them, so the information is faithful;
+what is not is that the controller may reorder them on the way out. Recorded in `visions.toml`'s
+`approximates`.
+*Sketch:* a look-only sibling of the arrange pause — same candidate list and same per-player
+visibility grant, an answer that carries no order and applies no `Event`. The pause exists purely so
+the client can show the cards and the player can dismiss them, which is the one thing the arrange
+pause cannot express (an arrange answer is always an order). Acceptance: cast Visions at an opponent
+whose top five are known, dismiss the look, and assert the library order is byte-identical; drop
+Visions' `approximates` when it passes.
+
+### 151. `restrict-a-multi-target-clause-to-one-graveyard` — 1 card, S
+Depends on: #120 (landed — which put the clause on the card).
+Spurnmage Advocate's "Return two target cards from **an opponent's** graveyard to their hand" picks
+both cards out of *one* opponent's graveyard. The pool's `card_in_graveyard` target form has a
+`whose = "opponents"` scope but no "and all of them from the same seat" tie between the members of
+one multi-target clause, so the engine will happily take one card from each of two opponents.
+Recorded in `spurnmage_advocate.toml`'s `approximates`. Only observable in multiplayer with cards in
+two or more opponents' graveyards; heads-up it is exactly right.
+*Sketch:* a same-owner constraint on `TargetCount` (the struct that already carries `min`/`max`/
+`x_scaled`/`total_mv_max` — this is one more knob of the same kind, checked in the same legality pass
+that rejects duplicate targets), not a new target form. `Game::legal_targets_for` narrows the
+candidate list once the first member of the clause is chosen; the pre-cost gate wave 10 added in
+`Game::activate_ability` must then count the *largest single graveyard*, not the union, or an
+activation with one card in each of two graveyards would still be announced and then find itself
+short. Acceptance: two opponents with one matching card each refuses the activation; one opponent
+with two allows it.
+
+### 152. `delete-the-graveyard-exile-activation-cost` — 0 cards, S
+Depends on: #120 (landed — which took the last card off this machinery).
+`AbilityCost::graveyard_exile_target_count` and the `PendingChoice::ChooseActivationCostTargets`
+pause behind it were built for the fabricated Spurnmage Advocate text. #120 rewrote that card to the
+printed oracle, so nothing in `crates/cards/data/` sets the field and nothing in the engine raises
+the pause except the code that reads the field — it is dead from the TOML surface all the way to the
+client. Wave 10 deleted only the orphaned `spurnmage_advocate_two_target_clauses` test; the rest was
+left standing because it spans regenerated surfaces a card-only slice must not touch.
+*Sketch:* a pure deletion across the field's three homes (`crates/cards/src/types/effect/shared.rs`,
+`crates/cards/src/toml_surface/card.rs`, `crates/cards/src/de.rs`), the two cost sites in
+`crates/engine/src/cast.rs`, `PendingChoice::ChooseActivationCostTargets` and its
+`crates/engine/src/pending/` dispatch and handler, then the wire chain it drags —
+`crates/schema/src/{dto,answer_protocol}.rs`, `crates/schema/src/projection/choice.rs`,
+`crates/server/src/grpc/map/stream.rs`, `proto/mtgfr/v1/stream.proto` and the client catch-up. A
+`WIRE_COMPAT` removal, so it belongs in a wave that is already regenerating; the acceptance criterion
+is that the suite stays green with the field gone, since no behavior is meant to change.
+
+### 153. `declare-a-second-attacking-band` — 0 cards, S
+Depends on: #121 (landed).
+`WireIntentDeclareAttackers.bands` is `repeated`, and the engine's
+`Intent::DeclareAttackersInBands` takes `Vec<Vec<ObjectId>>`, so both ends already carry any number
+of bands. Only the client is capped: `BoardModel.combatBand` is one `number[]` and
+`stagedBands` emits at most one band, marked with a `ponytail:` comment naming the ceiling. Nothing
+is blocked — a second band needs four banding creatures attacking in the same combat, which no
+Legends smoke game has produced.
+*Sketch:* widen `combatBand` to `number[][]` with the panel offering a second toggle group once the
+first band is full, and keep `stagedBands` dropping any group that falls below two members. No wire
+or engine change. Acceptance: two disjoint groups toggled in the panel submit as two `WireBand`s and
+arrive as two entries in the engine's `bands`.

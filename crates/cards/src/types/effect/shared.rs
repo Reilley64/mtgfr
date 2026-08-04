@@ -2779,11 +2779,12 @@ fn fill_dying_enchanted_creature_payoff(
 /// [`fill_dying_enchanted_creature`] above, one effect variant only.
 fn fill_that_creature(effect: Effect, creature: ObjectId) -> Effect {
     match effect {
-        Effect::Destroy(DestroyEffect::ThatCreature { at, .. }) => {
+        Effect::Destroy(DestroyEffect::ThatCreature { at, then, .. }) => {
             Effect::Destroy(DestroyEffect::ThatCreature {
                 creature: Some(creature),
                 attack_rider: AttackRider::default(),
                 at,
+                then,
             })
         }
         // Wall of Dust's "that creature can't attack during its controller's next turn" — the same

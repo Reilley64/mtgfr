@@ -109,6 +109,12 @@ The engine MUST check state-based actions to a fixpoint after intents, including
 ### Requirement: Continuous Effects and Characteristics
 Effective power, toughness, types, colors, and keywords MUST be computed on demand from a continuous-effect pipeline fed by a single duration-scoped modifier registry (plus attachments and statics), ordered with CR 613.7 timestamps. Durations MUST include until end of turn (cleanup sweep), until end of combat (end-of-combat sweep), and durationless effects that lapse with the object. Layer reads MUST cover base P/T sets, additive P/T (counters, pumps, anthems, attach bonuses), type/subtype sets and unions, ability loss before printed abilities, color set vs add, and keyword grants/strips. Results MAY be memoized and MUST invalidate on relevant events. Copy effects MUST swap the printed-definition handle; "except it has …" riders MUST be copiable characteristics that clear when a new wholesale copy replaces them.
 
+A counter on a permanent MAY itself be the carrier of a grant: where a durationless ability is handed to a permanent by a source that leaves nothing else behind, the grant MUST be read live off that counter, so it survives its granter leaving the battlefield (CR 400.7) and ends when the counter is removed. Such a grant MUST be appended after the permanent's own abilities so existing activation indices are unchanged.
+
+#### Scenario: A counter-carried ability outlives its granter
+- **WHEN** the permanent that granted a durationless ability alongside a counter leaves the battlefield
+- **THEN** the ability is still activatable off the counter, and paying it by removing that counter ends the grant
+
 #### Scenario: Until-EOT modifiers end at cleanup
 - **WHEN** cleanup removes until-end-of-turn effects
 - **THEN** durationed modifiers for those hosts are dropped and characteristics no longer include them
@@ -124,6 +130,18 @@ The engine MUST maintain a live replacement registry covering combat and noncomb
 - **WHEN** combat damage is dealt or a permanent enters via a non-spell path with enters-with-counters / extra-counter statics
 - **THEN** those modifications are read through the same replacement registry path
 
+Damage moved by a redirection shield (CR 615.10) MUST be dealt for real at its new recipient: it MUST NOT be moved a second time (CR 616.1), and when the new recipient is a player it MUST fire damage-to-a-player triggers and count toward the turn's damage history exactly as an ordinary hit does.
+
+#### Scenario: Redirected damage lands as damage
+- **WHEN** a prevention shield redirects a hit onto a player
+- **THEN** that player takes the damage, damage-to-a-player triggers on the dealing source fire, and the redirect is not applied again
+
+A shield whose source gate asks about the spell or ability that **caused** the damage MUST be answered from the stack item currently resolving, not from the damage's source object: it MUST match whenever that item targets the shielded permanent, whatever source the item points the damage at. Damage minted outside any resolution — combat damage — MUST NOT match such a gate.
+
+#### Scenario: An ability that targets the shielded creature is caught
+- **WHEN** an activated ability targets a creature under a cause-gated shield and makes its own source deal damage to that creature
+- **THEN** that damage is prevented, while the same ability aimed at an unshielded creature still deals its damage
+
 ### Requirement: Elimination and Winner
 A player who reaches ≤ 0 life, must draw from an empty library, accumulates lethal poison, takes 21 combat damage from one commander source, or concedes MUST lose. On loss, every object that player owns MUST leave the game; control effects involving that player MUST end; the seat MUST be skipped in turn order and priority. Attackers targeting an eliminated defender MUST continue as unblocked. Eliminated seats remain in the player list as lost and MUST still be able to observe the match stream at the host layer. When exactly one living player remains, that player MUST be the winner.
 
@@ -136,11 +154,17 @@ A player who reaches ≤ 0 life, must draw from an empty library, accumulates le
 - **THEN** the engine reports that player as the winner
 
 ### Requirement: Turn Structure and Turn-Based Actions
-A turn MUST progress through: Untap → Upkeep → Draw → Main1 → BeginCombat → DeclareAttackers → DeclareBlockers → CombatDamage → EndCombat → Main2 → End → Cleanup. Untap MUST NOT grant priority. Cleanup MUST NOT grant priority unless a triggered ability fired or discard-to-hand-size requires a choice (then a mini priority round may occur before another cleanup pass). All other steps MUST grant priority to the active player on entry. Turn-based actions at step start MUST include: untap controlled permanents and clear turn-scoped tallies / goad for the previous active player / advance suspend time counters (Untap); draw one card subject to first-draw skip (Draw); discard to hand size 7, remove marked damage, end until-EOT effects and expiring permissions (Cleanup). Mana pools MUST empty at each step/phase boundary except `persist` mana, which carries until used or end of turn.
+A turn MUST progress through: Untap → Upkeep → Draw → Main1 → BeginCombat → DeclareAttackers → DeclareBlockers → CombatDamage → EndCombat → Main2 → End → Cleanup. Untap MUST NOT grant priority. Cleanup MUST NOT grant priority unless a triggered ability fired or discard-to-hand-size requires a choice (then a mini priority round may occur before another cleanup pass). All other steps MUST grant priority to the active player on entry. Turn-based actions at step start MUST include: untap controlled permanents and clear turn-scoped tallies — which MUST include a ledger of damage dealt this turn, recording the dealing source, the recipient, and the amount actually dealt — / goad for the previous active player / advance suspend time counters (Untap); draw one card subject to first-draw skip (Draw); discard to hand size 7, remove marked damage, end until-EOT effects and expiring permissions (Cleanup). Mana pools MUST empty at each step/phase boundary except `persist` mana, which carries until used or end of turn.
+
+A permanent MUST stay tapped through its controller's untap step while any continuous effect says it does not untap, and while it carries a mark for a skipped untap step. A skipped-untap mark MUST be consumed one per untap step, so "the next two untap steps" holds a permanent down through exactly two of them and no more. Marks MUST be independent of counters on the permanent: an effect that reads counters MUST re-read them each untap step, so removing the last counter frees the permanent at the next one.
 
 #### Scenario: Untap has no priority
 - **WHEN** the active player's untap step begins
 - **THEN** permanents untap and turn tallies clear without granting priority
+
+#### Scenario: Two skipped untap steps release on the third
+- **WHEN** a permanent is marked to skip its controller's next two untap steps
+- **THEN** it stays tapped through the next two and untaps normally at the third
 
 #### Scenario: Cleanup discard pause
 - **WHEN** a player has more than seven cards in hand at cleanup
@@ -152,6 +176,12 @@ A turn MUST progress through: Untap → Upkeep → Draw → Main1 → BeginComba
 
 ### Requirement: Priority and Stack
 Priority MUST begin with the active player on steps that grant it. After a player acts (cast, activate, play land) or a stack item resolves, priority MUST return to the active player. When consecutive passes equal the number of living players: if the stack is non-empty, resolve the top item, reset passes, and return priority to the active player; if the stack is empty, advance to the next step. Combat declaration steps MUST remain until a valid declaration is made (empty declarations legal when not forced by goad/must-attack). Mana abilities that produce mana and have no target MUST resolve immediately without using the stack and without changing priority or the pass counter.
+
+An activated ability on the stack MUST be targetable and counterable in its own right, independently of the permanent that produced it: countering it MUST remove it from the stack without touching its source, and a targeting restriction naming its source's card type MUST be enforced when targets are chosen. A counter-unless-pays form MUST offer the payment to the *ability's* controller, and MUST counter the ability only when that player declines.
+
+#### Scenario: An activated ability is countered on the stack
+- **WHEN** a spell that counters a target activated ability from an artifact source resolves against an artifact's ability
+- **THEN** that ability leaves the stack without resolving, the artifact itself is untouched, and an ability from a nonartifact source was never a legal target
 
 #### Scenario: All-pass resolves stack
 - **WHEN** all living players pass with a non-empty stack
@@ -177,7 +207,11 @@ The engine MUST expose whether a seat has any meaningful action. Meaningful acti
 - **THEN** the engine state is unchanged except insofar as the host submits PassPriority on that seat's behalf
 
 ### Requirement: Pending Choices
-While a pending choice is set, legal actions MUST be empty and only the matching answer intent from the awaited player MUST be accepted. Choice kinds MUST cover at least: target selection (including multi-clause and up-to-N); order simultaneous triggers for one controller; may yes/no; may draw up to N; pay optional cost; discard to hand size; sacrifice edicts / choose sacrifice; arrange top (scry/surveil); search library/graveyard (fail-to-find always legal); choose mode (placement vs mid-resolution); commander redirect; assign combat damage; choose attach host; legend keep; pay echo or sacrifice; pay recover or exile; pay cumulative upkeep or sacrifice; triggered discard; may exile discarded nonlands to play. "May" choices, arrange-top, search fail-to-find, commander redirect, and keep-one edicts MUST NOT be auto-forced. Target choice with min ≥ 1 and exactly one legal target MAY be forced; min == 0 with one legal target MUST NOT be forced.
+While a pending choice is set, legal actions MUST be empty and only the matching answer intent from the awaited player MUST be accepted. Choice kinds MUST cover at least: target selection (including multi-clause and up-to-N); order simultaneous triggers for one controller; may yes/no; may draw up to N; pay optional cost; discard to hand size; sacrifice edicts / choose sacrifice; arrange top (scry/surveil); search library/graveyard (fail-to-find always legal); choose mode (placement vs mid-resolution); commander redirect; assign combat damage; choose attach host; legend keep; pay echo or sacrifice; pay recover or exile; pay cumulative upkeep or sacrifice; triggered discard; may exile discarded nonlands to play. "May" choices, arrange-top, search fail-to-find, commander redirect, and keep-one edicts MUST NOT be auto-forced. Target choice with min ≥ 1 and exactly one legal target MAY be forced; min == 0 with one legal target MUST NOT be forced. An ability whose effect carries an independent second target clause MUST have that clause's full complement of legal targets available at announcement, before any cost is paid, or the activation MUST be rejected; a clause whose legal set exactly equals its required count MUST be filled without raising a choice.
+
+#### Scenario: Second target clause short of targets refuses the activation
+- **WHEN** an ability with a mandatory two-target second clause is activated while only one legal target for that clause exists
+- **THEN** the activation is rejected before costs are paid rather than resolving with fewer targets
 
 #### Scenario: Choice gates other actions
 - **WHEN** a pending choice is active
@@ -253,6 +287,16 @@ Combat MUST use five steps: BeginCombat (priority, beginning-of-combat triggers)
 - **WHEN** an attacker was blocked and all blockers have left combat
 - **THEN** a non-trample attacker deals no damage to the defending player, while a trample attacker may still assign its power to that defender
 
+Triggers that fire on a declaration MUST go on the stack in that declaration step, before the
+combat damage step's turn-based action (CR 509.4), whether the declaration arrived as an intent or
+was sealed empty by an all-pass round. A "whenever this creature attacks and isn't blocked" trigger
+MUST be queued only once every attacked seat's block declaration is final (CR 509.1h), over the
+attackers nobody blocked.
+
+#### Scenario: All-pass declaration still resolves its triggers first
+- **WHEN** a declaration is sealed because every player passed, and that declaration queued triggers
+- **THEN** the step stays open for one more priority round so those triggers are put on the stack and resolve before combat damage
+
 ### Requirement: Attack and Block Legality
 Attackers MUST be controlled creatures that are untapped (vigilance taps only as needed by rules), without summoning sickness unless haste, without can't-attack restrictions, and able to pay any pillow-fort attack tax toward the chosen defender. Goaded and must-attack requirements MUST be enforced at declaration; goad's "if able" MUST intersect attack-tax affordability (force only toward affordable defenders; prefer affordable non-goader when one exists). Block legality MUST enforce flying/reach, unblockable, skulk, shadow (bidirectional), fear, protection, menace (whole declaration), can't-block / decayed / continuous can't-block, can-block-only-flyers, lesser-power-can't-block, and that the attacker is attacking that defender. Listing and validation MUST share the same predicates. Declaration overrides MAY move who chooses attacks/blocks for the turn without changing what may be chosen; overridden declarers fall back if that seat has lost.
 
@@ -267,6 +311,31 @@ Attackers MUST be controlled creatures that are untapped (vigilance taps only as
 #### Scenario: Declaration override moves chooser only
 - **WHEN** an attack-declarer override is set
 - **THEN** that seat submits the declare-attackers intent but the creatures declared remain the active player's
+
+Attack bans MUST be answered by the same predicate that answers "is this creature able to attack",
+so a restriction beats a requirement (CR 509.1a): board-wide filter bans (Moat's "creatures without
+flying can't attack") apply to every player's creatures regardless of who controls the source; a
+creature that attacked during its controller's *own* last turn, or that was blocked by a creature
+whose ability bans it for its controller's next turn, MUST be barred for that turn; and a player who
+neither cast a spell nor put a nontoken permanent onto the battlefield during their own last turn
+MUST NOT be attackable while such a static is on the battlefield, though their planeswalkers still
+may be. Those "during your last turn" facts MUST be rolled once per turn at the active player's
+cleanup step, since the per-turn tallies are cleared at every untap and intervening seats' turns
+would erase them. A cap on how many creatures may attack or block each combat MUST be enforced over
+the whole declaration — across all players, counted in creatures rather than in blocks — rather than
+by banning any individual creature.
+
+#### Scenario: Board-wide attack ban reaches every seat
+- **WHEN** a static bans creatures matching a filter from attacking
+- **THEN** creatures matching it are unable to attack no matter whose battlefield they or the source are on
+
+#### Scenario: Attacked-last-own-turn creature must rest
+- **WHEN** a creature with "can't attack if it attacked during your last turn" attacked on its controller's previous turn
+- **THEN** it is not a legal attacker this turn, and becomes legal again the turn after
+
+#### Scenario: Attack cap beats a requirement to attack
+- **WHEN** a cap allows two attackers and three goaded creatures could otherwise be forced to attack
+- **THEN** a declaration of two is legal and a declaration of three is rejected
 
 ### Requirement: Combat Damage and Combat Keywords
 Unblocked attackers MUST deal power to the defending player (planeswalker-as-attack-target is only partially supported). Blocked attackers and blockers MUST deal damage simultaneously within each damage sub-step. First strike and double strike MUST participate in the first-strike sub-step; double strike also in the regular sub-step. Trample MUST raise damage assignment with lethal-to-each-blocker minimums; deathtouch MUST treat any non-zero damage as lethal for those minimums. Damage MUST mark permanents and/or reduce life, then SBAs apply. Implemented combat-relevant keywords include flying, reach, vigilance, haste, trample, first/double strike, deathtouch, indestructible, lifelink, protection, menace, shadow, fear, skulk, decayed, unblockable, goad, and related can't-block restrictions. Per-player and table-wide combat damage prevention shields MUST be consulted at combat-damage application.
@@ -289,6 +358,14 @@ step rather than at declare blockers, so it totals the power the attacker has at
 510.1a) — a rampage bonus or a pump spell cast in response to the blocks is assignable. Assignment
 order MUST be the blocker declaration order (CR 509.2). When a banding blocker is involved, the
 **defending** player answers the division instead of the attacking player (CR 702.22j).
+
+A creature told it "assigns no combat damage this turn" (CR 510.1a) MUST be excluded from the
+assignment itself rather than have its damage prevented: it neither raises a division question nor
+deals damage in either sub-step, for the rest of the turn.
+
+#### Scenario: Assigns no combat damage
+- **WHEN** an unblocked attacker is told it assigns no combat damage this turn
+- **THEN** the defending player's life is unchanged when the combat damage step passes
 
 ### Requirement: Commander Identity Rules
 Each deck has exactly one commander. When a commander would move to graveyard, exile, hand, or library, its controller MUST be offered redirection to the command zone (not forced). Commander combat damage MUST be tracked per commander source identity as implemented (by source commander's owner seat for lethal aggregation) and MUST eliminate a player at 21 or more from one source. Partner commanders are out of scope.

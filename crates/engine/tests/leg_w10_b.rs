@@ -353,7 +353,11 @@ fn floral_spuzzem_destroys_an_artifact_and_then_deals_no_damage() {
     .expect("the artifact its defending player controls is the one legal target");
     resolve_top_of_stack(&mut game);
 
-    assert_eq!(game.zone_of(ring), Zone::Graveyard, "the artifact is destroyed");
+    assert_eq!(
+        game.zone_of(ring),
+        Zone::Graveyard,
+        "the artifact is destroyed"
+    );
     advance_until(&mut game, |g| g.current_step() == Step::End);
     assert_eq!(
         game.life(PlayerId(1)),

@@ -226,6 +226,16 @@ impl Game {
                     |list: &crate::TargetList| list.iter().any(|t| t == Target::Object(object));
                 targeted(&spell.targets) || targeted(&spell.targets_second)
             }
+            // "a spell or ability that targets that creature would *cause a source* to deal
+            // damage to it" — the question is about the item that caused the damage, not about
+            // the source it named, so it is answered from the resolution frame rather than from
+            // `source`'s own characteristics. `resolving_targets` is armed only while a stack
+            // item's effects are running, so damage minted outside a resolution (combat) reads
+            // an empty list and is never caught.
+            SourceRelation::SpellOrAbilityTargetingThis => self
+                .resolution_frame
+                .resolving_targets
+                .contains(&Target::Object(object)),
         }
     }
 
