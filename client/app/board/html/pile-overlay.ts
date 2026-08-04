@@ -1,14 +1,12 @@
 // Pile (graveyard / exile) expand overlay — art grid with a Close button.
 // Mirrors Solid board-overlays.tsx PileOverlay.
 
-import { type Html, html } from "foldkit/html";
+import type { Html, HtmlBuilder } from "foldkit/html";
 import { button } from "~/ui/button";
 import { cardArt } from "~/ui/card-art";
 import type { ObjectView, VisibleState } from "~/wire/types";
 import { ZONE } from "../geometry/layout";
 import { type Message, PileCardClicked, PileOverlayClosed } from "../messages";
-
-const h = html<Message>();
 
 /** Cards that belong to the expanded pile: objects in the given zone owned by the given seat. */
 export function pileCards(state: VisibleState, zone: number, owner: number): ObjectView[] {
@@ -31,11 +29,11 @@ function zoneName(zone: number, count: number): string {
   return `${base} (${count})`;
 }
 
-function cardThumb(card: ObjectView, selectable: boolean, selected: boolean): Html {
+function cardThumb(card: ObjectView, selectable: boolean, selected: boolean, h: HtmlBuilder<Message>): Html {
   const face = card.print
     ? cardArt(h, {
         print: card.print,
-        size: "large",
+        size: "display",
         alt: card.name,
         className: "block w-[90px] rounded-md",
       })
@@ -85,6 +83,7 @@ export function pileOverlayView(
   expand: { zone: number; owner: number } | null,
   state: VisibleState,
   options: PileOverlayOptions = {},
+  h: HtmlBuilder<Message>,
 ): Html | null {
   if (expand == null) return null;
 
@@ -93,7 +92,7 @@ export function pileOverlayView(
   const selectable = options.selectableIds ?? null;
   const selected = new Set(options.selectedIds ?? []);
 
-  const cardList = cards.map((card) => cardThumb(card, selectable?.has(card.id) ?? false, selected.has(card.id)));
+  const cardList = cards.map((card) => cardThumb(card, selectable?.has(card.id) ?? false, selected.has(card.id), h));
 
   const modal = h.div(
     [

@@ -1,10 +1,10 @@
-import { html } from "foldkit/html";
 import { describe, expect, it } from "vitest";
+import { testHtml } from "~/test-html";
 import { shellFrame } from "./shell-frame";
 
 type Msg = { _tag: "noop" };
 
-const h = html<Msg>();
+const h = testHtml<Msg>();
 
 function collectTestIds(node: unknown, out: string[] = []): string[] {
   if (node == null || typeof node !== "object") return out;

@@ -5,11 +5,11 @@
  * @vitest-environment happy-dom
  */
 import { Submodel } from "foldkit";
-import { html } from "foldkit/html";
 import { Scene } from "foldkit/test";
 import { beforeAll, expect, test } from "vitest";
 import { buildAnswerFromDraft, choiceDraftKey, choiceIntent } from "~/choice";
 import { testMessageRef } from "~/i18n/testMessageRef";
+import { testHtml } from "~/test-html";
 import { BindCardArt } from "~/ui/card-art";
 import type { ActionView, ObjectView, VisibleState } from "~/wire/types";
 import type { GameFoldState, LogLine } from "../game/fold";
@@ -44,9 +44,9 @@ import {
   TargetChosen,
 } from "./messages";
 import { BOARD_VIEWPORT, type BoardModel, initialBoardModel, syncBoardWithGame, updateBoard } from "./submodel";
-import { type BoardViewModel, view as boardView } from "./view";
+import { type BoardViewModel, view as boardView, type ViewMessage } from "./view";
 
-const h = html<Message>();
+const h = testHtml<Message>();
 
 beforeAll(() => {
   class MockImage {
@@ -65,10 +65,10 @@ type ViewModel = { board: BoardModel; fold: GameFoldState; tableId: string };
 
 const view = Submodel.defineView<ViewModel, Message>((model) => {
   if (model.fold.state == null) return h.div([], []);
-  return boardOverlays(model.board, model.fold.state, model.tableId, model.fold.log);
+  return boardOverlays(model.board, model.fold.state, model.tableId, model.fold.log, h);
 });
 
-const fullBoardView = Submodel.defineView<BoardViewModel, Message>(boardView);
+const fullBoardView = boardView;
 
 function player(overrides: Partial<import("~/wire/types").PlayerView> = {}): import("~/wire/types").PlayerView {
   return {
@@ -142,18 +142,18 @@ const update = (model: ViewModel, message: Message): readonly [ViewModel, Readon
 };
 
 function overlayScene(model: ViewModel, ...steps: readonly unknown[]) {
-  Scene.scene<ViewModel, Message>({ update, view }, Scene.with(model), resolveBoardOverlayMounts(), ...(steps as []));
+  Scene.scene<ViewModel, Message>({ update, view }, Scene.given(model), resolveBoardOverlayMounts(), ...(steps as []));
 }
 
 function staticOverlayScene(model: ViewModel, ...steps: readonly unknown[]) {
-  Scene.scene<ViewModel, Message>({ update, view }, Scene.with(model), ...(steps as []));
+  Scene.scene<ViewModel, Message>({ update, view }, Scene.given(model), ...(steps as []));
 }
 
 function liveBoardScene(model: BoardViewModel, ...steps: readonly unknown[]) {
   const hint = !model.board.hintDismissed && !model.board.hintAutoHidden;
-  Scene.scene<BoardViewModel, Message>(
+  Scene.scene<BoardViewModel, ViewMessage>(
     { update: (m) => [m, []], view: fullBoardView },
-    Scene.with(model),
+    Scene.given(model),
     resolveLiveBoardMounts({ hint }),
     ...(steps as []),
   );
@@ -206,7 +206,7 @@ test("hand tile activates when clicked (below hand-bar threshold)", () => {
 
   Scene.scene<ViewModel, Message>(
     { update: (m, msg) => [update(m, msg)[0], []] as const, view },
-    Scene.with(model),
+    Scene.given(model),
     resolveBoardOverlayMounts(),
     Scene.expect(Scene.testId("hand-card-42")).toExist(),
   );
@@ -1894,6 +1894,28 @@ test("selected permanent with tap-for-mana shows activation menu row", () => {
   );
 });
 
+test("selecting a cluster face offers its ability once, chipped with how many copies can use it", () => {
+  // Eight identical Elves overflow the row and collapse into one face; three still have mana up.
+  const elves = Array.from({ length: 8 }, (_, i) => creature(10 + i, 0, { name: "Llanowar Elves" }));
+  const actions: ActionView[] = [10, 11, 12].map((object, i) => ({
+    id: 100 + i,
+    kind: "activate",
+    label: testMessageRef("Add {G}"),
+    needs_target: false,
+    object,
+    section: "battlefield",
+    targets: [],
+  }));
+  const base = viewModel(fold(state({ objects: elves, actions, can_act: true })));
+  const selected: ViewModel = { ...base, board: { ...base.board, selectedId: 10 } };
+  overlayScene(
+    selected,
+    Scene.expect(Scene.testId("activation-menu-row-action:100")).toExist(),
+    Scene.expect(Scene.testId("activation-menu-row-action:101")).toBeAbsent(),
+    Scene.expect(Scene.testId("activation-menu-available-action:100")).toHaveText("×3"),
+  );
+});
+
 test("hovering an activation row marks it active for the gold variant", () => {
   const land = creature(5, 0, {
     name: "Forest",
@@ -2910,10 +2932,10 @@ test("dig-cast Aura: exile pick stages draft, then host click submits with targe
       },
       view: (model: { board: BoardModel; fold: GameFoldState; tableId: string }) => {
         if (model.fold.state == null) return h.div([], []);
-        return boardOverlays(model.board, model.fold.state, model.tableId, model.fold.log);
+        return boardOverlays(model.board, model.fold.state, model.tableId, model.fold.log, h);
       },
     },
-    Scene.with({ board: afterExile, fold: gameFold, tableId: "T1" }),
+    Scene.given({ board: afterExile, fold: gameFold, tableId: "T1" }),
     resolveBoardOverlayMounts(),
     Scene.expect(Scene.testId("pending-target-aim")).toExist(),
     Scene.expect(Scene.testId("pending-target-aim")).toHaveText(/Choose what to enchant/),

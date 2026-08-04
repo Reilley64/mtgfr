@@ -87,6 +87,7 @@ import {
   stagedPickTargets,
 } from "./action/targeting";
 import { CARD_NAME_COMBOBOX_ID, CardNameCombobox } from "./card-name-combobox";
+import { engagedIds } from "./engagement";
 import {
   markRevealSeen,
   prefersReducedMotion,
@@ -133,11 +134,12 @@ import {
 import { modesForObject } from "./html/actions";
 import { selectedRadialOptions } from "./html/activation-menu";
 import { persistHintDismissed, readHintDismissed } from "./html/discoverability";
-import { HAND_BAR_H, HAND_INSPECT_STICKY_BAND, HAND_PLAY_SLACK_PX } from "./html/hand";
+import { HAND_BAR_H, handMetrics } from "./html/hand";
 import { CopyBoardLog } from "./log-commands";
 import {
   CombatCancelAttacker,
   CombatCancelBlocker,
+  CompletedCancelSearchCardNames,
   GotCardNameComboboxMessage,
   GotConcedeDialogMessage,
   GotResultDialogMessage,
@@ -161,9 +163,28 @@ import {
   traceFlightSync,
 } from "./motion/flights";
 
+/** Fallback board size when there is no window to measure (SSR, tests). */
 export const BOARD_VIEWPORT = { width: 1440, height: 900 } as const;
-/** Bottom bar height — Arena-scale tuck + pip row (re-exported from html/hand.ts). */
-export { HAND_BAR_H, HAND_INSPECT_STICKY_BAND };
+
+/** The board is `fixed inset-0`, so the window *is* the viewport. */
+function measuredViewport(): { width: number; height: number } {
+  if (typeof window === "undefined") return { ...BOARD_VIEWPORT };
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+  if (!(width > 0) || !(height > 0)) return { ...BOARD_VIEWPORT };
+  return { width, height };
+}
+
+/** Device pixels per CSS pixel — canvas backing stores are sized by it so retina paints sharp. */
+export function measuredDpr(): number {
+  if (typeof window === "undefined") return 1;
+  const dpr = window.devicePixelRatio;
+  if (!(dpr > 0)) return 1;
+  return Math.min(dpr, 3);
+}
+
+/** Bottom bar height at the design window — live boards use `handMetrics(viewport).barH`. */
+export { HAND_BAR_H };
 
 export type HandDragState = {
   action: ActionView;
@@ -207,6 +228,8 @@ export type BoardModel = {
   /** Activation radial hover highlight index. */
   radialHover: number | null;
   viewport: { width: number; height: number };
+  /** Device pixels per CSS pixel, clamped to 3. Canvas backing stores multiply by it. */
+  dpr: number;
   cursor: Vec2;
   // Action session state (pre-submit chrome, cost pipeline, staging).
   staged: StagedAction | null;
@@ -230,6 +253,8 @@ export type BoardModel = {
   // Alt-pin inspect (Solid parity: Alt-down pins under cursor / aux hover; Alt-up dismisses).
   /** Alt key is currently held — also gates Alt+click pin as a secondary path. */
   altDown: boolean;
+  /** Shift key is currently held — a combat drop then commits every copy in the dragged cluster. */
+  shiftDown: boolean;
   /** The card pinned in the inspect overlay; null when no overlay is shown. */
   inspectPin: InspectPin | null;
   /** Catalog data for the current inspect pin. `undefined` = fetch in-flight; `null` = not found. */
@@ -319,7 +344,8 @@ export function initialBoardModel(): BoardModel {
     selectedId: null,
     radialPress: { armed: null },
     radialHover: null,
-    viewport: { ...BOARD_VIEWPORT },
+    viewport: measuredViewport(),
+    dpr: measuredDpr(),
     cursor: { x: 0, y: 0 },
     staged: null,
     playModePick: null,
@@ -336,6 +362,7 @@ export function initialBoardModel(): BoardModel {
     priorStep: null,
     reject: null,
     altDown: false,
+    shiftDown: false,
     inspectPin: null,
     inspectCard: undefined,
     inspectFace: "front",
@@ -383,7 +410,11 @@ export function syncBoardWithGame(model: BoardModel, fold: BoardFold): BoardMode
   }
   const playerCount = Math.max(1, fold.state.players.length);
   if (!next.cameraUserMoved && next.cameraFitPlayers !== playerCount) {
-    const fitted = fitCamera({ x: next.viewport.width, y: next.viewport.height }, playerCount, HAND_BAR_H);
+    const fitted = fitCamera(
+      { x: next.viewport.width, y: next.viewport.height },
+      playerCount,
+      handMetrics(next.viewport).barH,
+    );
     next = {
       ...next,
       flights: remapFlightsForZoom(next.flights, next.camera.zoom, fitted.zoom),
@@ -515,13 +546,13 @@ function partitionReady(
 
 type ActionlessPendingChoice = NonNullable<BoardFold["state"]>["pending_choice"];
 
-function cardsFor(fold: GameFoldState): RenderCard[] {
+function cardsFor(fold: GameFoldState, model: BoardModel): RenderCard[] {
   if (fold.state == null) return [];
-  return layout(fold.state, fold.state.viewer);
+  return layout(fold.state, fold.state.viewer, engagedIds(fold.state, model));
 }
 
 function cardAt(fold: GameFoldState, model: BoardModel, x: number, y: number): RenderCard | null {
-  const cards = cardsFor(fold);
+  const cards = cardsFor(fold, model);
   const hitId = hitTest(model.camera, x, y, cards);
   if (hitId == null) return null;
   return cards.find((card) => card.id === hitId) ?? null;
@@ -638,7 +669,7 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
   const state = fold.state;
   if (state == null) return model;
 
-  const cards = layout(state, state.viewer);
+  const cards = layout(state, state.viewer, engagedIds(state, model));
   const cardsById = new Map(cards.map((card) => [card.id, card]));
   const battlefieldExitIds = new Set(fold.provenance.battlefieldExits.keys());
   const exitFx = new Map(model.exitFx);
@@ -744,7 +775,7 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
         name: card.name,
         x: start.x,
         y: start.y,
-        scale: handFlightScale(model.camera.zoom),
+        scale: handFlightScale(model.camera.zoom, handMetrics(model.viewport).cardW),
         targetX: target.x,
         targetY: target.y,
         targetScale: 1,
@@ -811,7 +842,7 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
         name: "",
         x: start.x,
         y: start.y,
-        scale: handFlightScale(model.camera.zoom),
+        scale: handFlightScale(model.camera.zoom, handMetrics(model.viewport).cardW),
         targetX: aim.x,
         targetY: aim.y,
         targetScale: aim.scale,
@@ -824,10 +855,30 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
 
   // After provenance folds, held seeds may still be easing. Hand off when parked; while far,
   // refresh aim without clearing hold (avoids the post-retarget short second ease).
+  // From `state.objects`, not `cards` — the hand is HTML, so `layout` never emits hand faces.
+  const handIds = new Set(state.objects.filter((object) => object.zone === ZONE.Hand).map((object) => object.id));
   for (const [id, flight] of [...flights.entries()]) {
     if (!flight.hold) continue;
+    // Unclaimed seed whose card already left hand: the provenance that would have rebound it is
+    // gone (snapshot clears provenance; a delta carries only its own). No later sync can release
+    // it and a settled hold gets no more clock ticks — it would stay painted for the rest of the
+    // game. Cut to the authoritative face instead.
+    if (!authorityOwnsFlightDestination(fold, { ...flight, id })) {
+      if (handIds.has(flight.fromCardId ?? id)) continue;
+      traceFlightSync({
+        op: "synced-drop",
+        zone: flight.kind,
+        id,
+        hold: true,
+        phase: flight.phase,
+        remainingPx: Math.hypot(flight.targetX - flight.x, flight.targetY - flight.y),
+        note: "stale-seed",
+      });
+      flights.delete(id);
+      handHidden.delete(flight.fromCardId ?? id);
+      continue;
+    }
     if (flight.kind === "stack") {
-      if (!state.stack.some((entry) => entry.source === id)) continue;
       const aim = stackFlightAimForSource(model, state.stack, id);
       if (poseAtTarget(flight, aim) || poseNearHandoff(flight, aim)) {
         flights.delete(id);
@@ -1447,7 +1498,7 @@ function applyLiveInspectPin(model: BoardModel, fold: GameFoldState): BoardRetur
 
 /** True when the cursor is still over the hand fan (including raised faces above the bar). */
 function cursorInHandInspectBand(model: BoardModel): boolean {
-  return model.cursor.y >= model.viewport.height - HAND_INSPECT_STICKY_BAND;
+  return model.cursor.y >= model.viewport.height - handMetrics(model.viewport).stickyBand;
 }
 
 /**
@@ -1627,7 +1678,7 @@ function seedDropFromHand(
     };
   }
 
-  const startScale = handFlightScale(model.camera.zoom);
+  const startScale = handFlightScale(model.camera.zoom, handMetrics(model.viewport).cardW);
   const seeded = spawnFlight({
     id: card.id,
     print: card.print ?? "",
@@ -1999,7 +2050,8 @@ function handActivated(
       [],
     ];
   }
-  const threshold = model.viewport.height - HAND_BAR_H + HAND_PLAY_SLACK_PX;
+  const bar = handMetrics(model.viewport);
+  const threshold = model.viewport.height - bar.barH + bar.playSlack;
   const objectId = action.object;
   const modes =
     action.section === "hand" && objectId != null ? modesForObject(state?.actions ?? [], objectId) : [action];
@@ -2082,12 +2134,13 @@ function handActivated(
 }
 
 function cancelAll(model: BoardModel): BoardModel {
-  let clearedOrigin = model.staged != null ? clearPlayOrigin(model, model.staged.card.id) : model;
-  if (clearedOrigin.playModePick != null) {
-    clearedOrigin = clearPlayOrigin(clearedOrigin, clearedOrigin.playModePick.card.id);
-  }
+  // Cancel closes every action session below, so no held seed outlives it: an X prompt / modal /
+  // sacrifice / discard / gy-exile seed left behind gets no session, no provenance and no clock
+  // tick, and stays painted over a hidden hand tile for the rest of the game. Dropping all held
+  // seeds (rather than the ids of the sessions we happen to remember) keeps that true when a new
+  // session kind is added. An already-submitted seed re-flies from provenance when its delta lands.
   return {
-    ...clearedOrigin,
+    ...dropHeldSeeds(model),
     staged: null,
     playModePick: null,
     xPrompt: null,
@@ -2154,7 +2207,8 @@ function commitRadialIndex(model: BoardModel, fold: GameFoldState, tableId: stri
   if (opt.kind === "tap_for_mana") {
     return [cleared, boardIntentSubmit(tableId, { kind: "tap_for_mana", player: fold.state.viewer, object: id })];
   }
-  const card = fold.state.objects.find((o) => o.id === id) ?? null;
+  // On a cluster the selection is the face, but the offered action may belong to another copy.
+  const card = fold.state.objects.find((o) => o.id === (opt.action.object ?? id)) ?? null;
   return continueAfterCostPick(
     cleared,
     fold,
@@ -2383,6 +2437,10 @@ function combatDropModel(
   // Opponents of the seat being declared for, not of the viewer — a moved declaration attacks on
   // someone else's behalf, and you may not send their creatures at their own planeswalker.
   const opponents = state.players.map((p) => p.player).filter((p) => !seats.includes(p));
+  // Shift commits the whole pile: cluster members are identical by construction, so the legality
+  // guards that pass for the face pass for all of them.
+  const face = model.shiftDown ? cardsFor(fold, model).find((c) => c.id === from.id) : undefined;
+  const alsoIds = face != null && face.cluster > 1 ? face.clusterMembers.filter((id) => id !== from.id) : [];
   const result = handleCombatDrop(
     mode,
     model.combatAttackers,
@@ -2393,6 +2451,7 @@ function combatDropModel(
     state.combat.attackers,
     seats,
     opponents,
+    alsoIds,
   );
   if (result.kind === "attackers") return [{ ...model, combatAttackers: result.value }, []];
   if (result.kind === "blockers") return [{ ...model, combatBlocks: result.value }, []];
@@ -2441,6 +2500,28 @@ export function updateBoard(
           [],
         ];
       }
+    case "BoardViewportResized": {
+      if (!(message.width > 0) || !(message.height > 0)) return [model, []];
+      const viewport = { width: message.width, height: message.height };
+      const dpr = message.dpr > 0 ? Math.min(message.dpr, 3) : model.dpr;
+      if (model.cameraUserMoved || model.cameraFitPlayers == null) return [{ ...model, viewport, dpr }, []];
+
+      const fitted = fitCamera(
+        { x: viewport.width, y: viewport.height },
+        model.cameraFitPlayers,
+        handMetrics(viewport).barH,
+      );
+      return [
+        {
+          ...model,
+          viewport,
+          dpr,
+          flights: remapFlightsForZoom(model.flights, model.camera.zoom, fitted.zoom),
+          camera: fitted,
+        },
+        [],
+      ];
+    }
     case "BoardPointerDown":
       return [pointerDownModel(model, fold, message.x, message.y), []];
     case "BoardPointerMove": {
@@ -2969,11 +3050,20 @@ export function updateBoard(
       if (pc?.kind !== "choose_card_name") {
         return [{ ...next, cardNameSuggestions: null }, []];
       }
+      // A keystroke abandons the search the last one started. Cancel it here and fetch from the
+      // cancellation's own result — Commands in one batch have no execution order, so emitting the
+      // Interrupt alongside the replacement would race them.
       const q = message.value.trim();
-      if (q.length < 2) {
-        return [{ ...next, cardNameSuggestions: null }, []];
-      }
-      return [next, [SearchCardNames({ query: q }) as unknown as BoardCmd]];
+      const cleared = q.length < 2 ? { ...next, cardNameSuggestions: null } : next;
+      return [cleared, [SearchCardNames.Interrupt(() => CompletedCancelSearchCardNames())]];
+    }
+    case "CompletedCancelSearchCardNames": {
+      if (fold.state?.pending_choice?.kind !== "choose_card_name") return [model, []];
+      const draft = model.promptDraft;
+      if (draft?.kind !== "string") return [model, []];
+      const q = draft.value.trim();
+      if (q.length < 2) return [model, []];
+      return [model, [SearchCardNames({ query: q }) as unknown as BoardCmd]];
     }
     // Open/close, arrow keys, active descendant, and blur are the Combobox's. The board only has
     // to keep the string draft — what the answer is built from — level with the input.
@@ -3166,6 +3256,11 @@ export function updateBoard(
     }
     case "AltUp":
       return [{ ...model, altDown: false, inspectPin: null, inspectCard: undefined }, []];
+    // ── Shift (whole-pile combat drop) ──────────────────────────────────────
+    case "ShiftDown":
+      return [{ ...model, shiftDown: true }, []];
+    case "ShiftUp":
+      return [{ ...model, shiftDown: false }, []];
     case "InspectAuxHovered": {
       if (message.source === "hand") {
         // A hand aux enter/leave is itself proof the pointer is over the hand bar: the bar is an
@@ -3313,7 +3408,7 @@ export function updateBoard(
       if (tableId == null) return [model, []];
       const enabled = !(state.turn_yielded ?? false);
       if (me === active && state.stack.length === 0) {
-        // Arming End Turn only — cancelling "Ending turn…" stays available. Match the
+        // Arming End Turn only — cancelling an armed End Turn stays available. Match the
         // priority-bar gate so Enter cannot arm through a forced goad declaration.
         const pendingAttackers = model.combatAttackers.length > 0 && !model.attackersConfirmed;
         if (enabled && !canArmEndTurn(state, pendingAttackers)) {

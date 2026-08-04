@@ -1,6 +1,6 @@
 // Discoverability: hint strip + legend panel (Solid `board-discoverability.tsx`).
 
-import { type Html, html } from "foldkit/html";
+import type { Html, HtmlBuilder } from "foldkit/html";
 import { cn } from "~/cn";
 import { combatCoachFromState } from "~/combatCoach";
 import { colors } from "~/design-tokens.generated";
@@ -10,9 +10,6 @@ import type { VisibleState } from "~/wire/types";
 import { EXILE_OUTLINE, GRAVEYARD_OUTLINE, PLAYABLE_BORDER } from "../chrome";
 import { HintDismissed, LegendToggled, type Message } from "../messages";
 import type { BoardModel } from "../submodel";
-import { HAND_BAR_H } from "./hand";
-
-const h = html<Message>();
 
 export const HINT_DISMISSED_KEY = "mtgfr.hintDismissed";
 
@@ -58,7 +55,7 @@ function hintVisible(board: BoardModel): boolean {
   return !board.hintDismissed && !board.hintAutoHidden;
 }
 
-function hintStripView(): Html {
+function hintStripView(h: HtmlBuilder<Message>): Html {
   return h.div(
     [
       h.DataAttribute("testid", "board-hint"),
@@ -82,7 +79,7 @@ function hintStripView(): Html {
   );
 }
 
-function combatCoachView(text: string): Html {
+function combatCoachView(text: string, h: HtmlBuilder<Message>): Html {
   return h.div(
     [
       h.DataAttribute("testid", "board-combat-coach"),
@@ -94,7 +91,7 @@ function combatCoachView(text: string): Html {
   );
 }
 
-function legendPanelView(): Html {
+function legendPanelView(h: HtmlBuilder<Message>): Html {
   return h.div(
     [
       h.DataAttribute("testid", "board-legend"),
@@ -133,7 +130,7 @@ function legendPanelView(): Html {
   );
 }
 
-function legendToggleButton(expanded: boolean): Html {
+function legendToggleButton(expanded: boolean, h: HtmlBuilder<Message>): Html {
   return button(
     h,
     {
@@ -149,7 +146,7 @@ function legendToggleButton(expanded: boolean): Html {
 }
 
 /** Hint strip, combat staging coach, legend toggle, and legend panel for seated active players. */
-export function discoverabilityView(board: BoardModel, state: VisibleState): Html | null {
+export function discoverabilityView(board: BoardModel, state: VisibleState, h: HtmlBuilder<Message>): Html | null {
   if (!seatedPlayer(state)) return null;
 
   const showHint = hintVisible(board);
@@ -160,22 +157,22 @@ export function discoverabilityView(board: BoardModel, state: VisibleState): Htm
   });
 
   if (!showHint && !showLegend && coach == null) {
-    return legendToggleButton(false);
+    return legendToggleButton(false, h);
   }
 
   const bottomStrips: Html[] = [];
-  if (coach != null) bottomStrips.push(combatCoachView(coach));
-  if (showHint) bottomStrips.push(hintStripView());
+  if (coach != null) bottomStrips.push(combatCoachView(coach, h));
+  if (showHint) bottomStrips.push(hintStripView(h));
 
   return h.div(
     [],
     [
-      h.div([h.Class("pointer-events-none flex items-center gap-xs")], [legendToggleButton(showLegend)]),
-      showLegend ? legendPanelView() : null,
+      h.div([h.Class("pointer-events-none flex items-center gap-xs")], [legendToggleButton(showLegend, h)]),
+      showLegend ? legendPanelView(h) : null,
       bottomStrips.length > 0
         ? h.div(
             [
-              h.Style({ "--b": `${HAND_BAR_H + 10}px` }),
+              h.Style({ "--b": `calc(var(--hand-bar-h) + 10px)` }),
               h.Class(
                 "pointer-events-none fixed bottom-(--b) left-md z-20 flex max-w-[min(480px,52vw)] flex-col items-start gap-sm",
               ),

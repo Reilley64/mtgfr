@@ -1,10 +1,8 @@
 // Prompt card face: art (or a name plate when no print resolves) at the Magic card aspect.
 // One renderer for the card-pick grids in prompts and the mulligan opening hand.
 
-import type { html as createHtml, Html } from "foldkit/html";
+import type { Html, HtmlBuilder } from "foldkit/html";
 import { cardArt } from "~/ui/card-art";
-
-type HtmlFactory<Msg> = ReturnType<typeof createHtml<Msg>>;
 
 /** `sm` 120px pick tiles, `md` 150px large picks, `fluid` the mulligan hand's vw-capped tiles. */
 export type PromptCardFaceSize = "sm" | "md" | "fluid";
@@ -28,14 +26,14 @@ const FACE: Record<PromptCardFaceSize, { art: string; plate: string }> = {
 };
 
 export function promptCardFace<Msg>(
-  h: HtmlFactory<Msg>,
+  h: HtmlBuilder<Msg>,
   opts: { print: string; label: string; size: PromptCardFaceSize; testId?: string; alt?: string },
 ): Html {
   const face = FACE[opts.size];
   return opts.print
     ? cardArt(h, {
         print: opts.print,
-        size: "large",
+        size: "display",
         alt: opts.alt ?? "",
         className: face.art,
         ...(opts.testId != null ? { testId: opts.testId } : {}),

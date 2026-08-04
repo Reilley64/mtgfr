@@ -79,7 +79,6 @@ function card(overrides: Partial<RenderCard> = {}): RenderCard {
     controller: 0,
     counters: 0,
     faceDown: false,
-    fanAngle: 0,
     goaded: false,
     h: 134,
     hasHaste: false,
@@ -170,6 +169,7 @@ function frame(overrides: Partial<BitmapFrame> = {}): BitmapFrame {
   return {
     width: 800,
     height: 600,
+    dpr: 1,
     camera: { panX: 0, panY: 0, zoom: 1 },
     cards: [card()],
     viewer: 0,
@@ -223,6 +223,7 @@ describe("paintBitmapLayer", () => {
       {
         width: 800,
         height: 600,
+        dpr: 1,
         camera: { panX: 0, panY: 0, zoom: 1 },
         cards: [
           card({ name: "Runeclaw Bear", pt: "2/2", summoningSick: true }),
@@ -286,6 +287,7 @@ describe("paintBitmapLayer", () => {
       {
         width: 800,
         height: 600,
+        dpr: 1,
         camera: { panX: 0, panY: 0, zoom: 1 },
         cards: [card()],
         viewer: 0,
@@ -373,6 +375,7 @@ describe("paintBitmapLayer", () => {
       {
         width: 800,
         height: 600,
+        dpr: 1,
         camera: { panX: 0, panY: 0, zoom: 1 },
         cards: [card()],
         viewer: 0,
@@ -433,6 +436,7 @@ describe("paintBitmapLayer", () => {
       {
         width: 800,
         height: 600,
+        dpr: 1,
         camera: { panX: 0, panY: 0, zoom: 1 },
         cards: [],
         viewer: 0,
@@ -523,6 +527,7 @@ describe("paintBitmapLayer", () => {
       {
         width: 800,
         height: 600,
+        dpr: 1,
         camera: { panX: 0, panY: 0, zoom: 1 },
         cards: [],
         viewer: 0,
@@ -596,6 +601,7 @@ describe("paintBitmapLayer", () => {
       {
         width: 800,
         height: 600,
+        dpr: 1,
         camera: { panX: 0, panY: 0, zoom: 1 },
         cards: [card()],
         viewer: 0,
@@ -641,6 +647,7 @@ describe("paintBitmapLayer", () => {
       {
         width: 800,
         height: 600,
+        dpr: 1,
         camera: { panX: 0, panY: 0, zoom: 1 },
         cards: [card()],
         viewer: 0,
@@ -687,6 +694,7 @@ describe("paintBitmapLayer", () => {
       {
         width: 800,
         height: 600,
+        dpr: 1,
         camera: { panX: 0, panY: 0, zoom: 1 },
         cards: [card({ id: 5, kind: "land", pt: "" })],
         viewer: 0,
@@ -727,6 +735,7 @@ describe("paintBitmapLayer", () => {
     const frame = {
       width: 800,
       height: 600,
+      dpr: 1,
       camera: { panX: 0, panY: 0, zoom: 1 },
       cards: [
         card({ id: 7, pt: "", name: "Timberwatch Elf" }),
@@ -773,6 +782,7 @@ describe("paintBitmapLayer", () => {
     const frame = {
       width: 800,
       height: 600,
+      dpr: 1,
       camera: { panX: 0, panY: 0, zoom: 1 },
       cards: [card({ id: 7, pt: "", name: "Zimone, Quandrix Prodigy", summoningSick: true })],
       viewer: 0,
@@ -818,6 +828,7 @@ describe("paintBitmapLayer", () => {
       {
         width: 1440,
         height: 900,
+        dpr: 1,
         camera: { panX: 0, panY: 0, zoom: 1 },
         cards: [card({ id: 22 }), card({ id: 99, x: 200, y: 200, name: "Forest", kind: "land", pt: "" })],
         viewer: 0,
@@ -863,6 +874,7 @@ describe("paintBitmapLayer", () => {
       {
         width: 1440,
         height: 900,
+        dpr: 1,
         camera: { panX: 0, panY: 0, zoom: 1 },
         cards: [card({ id: 22 }), card({ id: 99, x: 200, y: 200, name: "Elf" })],
         viewer: 0,
@@ -909,6 +921,7 @@ describe("paintBitmapLayer", () => {
       {
         width: 1440,
         height: 900,
+        dpr: 1,
         camera: { panX: 0, panY: 0, zoom: 1 },
         cards: [],
         viewer: 0,
@@ -953,6 +966,7 @@ describe("paintBitmapLayer", () => {
       {
         width: 800,
         height: 600,
+        dpr: 1,
         camera: { panX: 0, panY: 0, zoom: 1 },
         cards: [],
         viewer: 0,
@@ -1012,6 +1026,7 @@ describe("paintFlightLayer", () => {
       {
         width: 800,
         height: 600,
+        dpr: 1,
         camera: { panX: 0, panY: 0, zoom: 1 },
         cards: [card()],
         viewer: 0,

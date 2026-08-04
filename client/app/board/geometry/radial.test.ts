@@ -43,16 +43,16 @@ describe("radialScreenCenter", () => {
 
 describe("radialOptions", () => {
   it("always includes tap-for-mana for mana sources and disables it when unusable", () => {
-    expect(radialOptions(7, [], true, false, true)).toEqual([
+    expect(radialOptions([7], [], true, false, true)).toEqual([
       { kind: "tap_for_mana", label: "Tap for mana", disabled: false },
     ]);
-    expect(radialOptions(7, [], true, false, false)).toEqual([
+    expect(radialOptions([7], [], true, false, false)).toEqual([
       { kind: "tap_for_mana", label: "Tap for mana", disabled: true },
     ]);
-    expect(radialOptions(7, [], true, true, true)).toEqual([
+    expect(radialOptions([7], [], true, true, true)).toEqual([
       { kind: "tap_for_mana", label: "Tap for mana", disabled: true },
     ]);
-    expect(radialOptions(7, [], true, false, true, true, false)).toEqual([
+    expect(radialOptions([7], [], true, false, true, true, false)).toEqual([
       { kind: "tap_for_mana", label: "Tap for mana", disabled: true },
     ]);
   });
@@ -63,7 +63,7 @@ describe("radialOptions", () => {
       activate({ id: 2, object: 8, label: testMessageRef("Other") }),
       activate({ id: 3, section: "hand", label: testMessageRef("Cast") }),
     ];
-    expect(radialOptions(7, actions, false, false, true)).toEqual([
+    expect(radialOptions([7], actions, false, false, true)).toEqual([
       { kind: "action", action: actions[0], label: "Pump", disabled: false },
     ]);
   });
@@ -76,14 +76,14 @@ describe("radialOptions", () => {
       needs_target: true,
       targets: [{ kind: "object", id: 3 }],
     });
-    expect(radialOptions(7, [prepared], false, false, true)).toEqual([
+    expect(radialOptions([7], [prepared], false, false, true)).toEqual([
       { kind: "action", action: prepared, label: "Pack a Punch", disabled: false },
     ]);
   });
 
   it("combines tap-for-mana with activates", () => {
     const a = activate();
-    expect(radialOptions(7, [a], true, false, true)).toHaveLength(2);
+    expect(radialOptions([7], [a], true, false, true)).toHaveLength(2);
   });
 
   it("shows a paid mana activate when the permanent does not tapsForMana", () => {
@@ -92,9 +92,47 @@ describe("radialOptions", () => {
       id: 4,
       label: testMessageRef("Add {U}{R}"),
     });
-    expect(radialOptions(7, [filter], false, false, true)).toEqual([
+    expect(radialOptions([7], [filter], false, false, true)).toEqual([
       { kind: "action", action: filter, label: "Add {U}{R}", disabled: false },
     ]);
+  });
+
+  it("offers one row per distinct ability across cluster members, counting how many can still use it", () => {
+    const actions = [
+      activate({ id: 1, object: 10, label: testMessageRef("Pump") }),
+      activate({ id: 2, object: 11, label: testMessageRef("Pump") }),
+      activate({ id: 3, object: 12, label: testMessageRef("Pump") }),
+    ];
+    expect(radialOptions([10, 11, 12], actions, false, false, true)).toEqual([
+      { kind: "action", action: actions[0], label: "Pump", disabled: false, available: 3 },
+    ]);
+  });
+
+  it("counts the copies that can act, not the ability rows they contribute", () => {
+    // Object 10 contributes two same-labelled rows on its own; only object 11 adds a second copy.
+    // So `available` must be 2 (distinct objects that can act), not 3 (rows in the action list).
+    const actions = [
+      activate({ id: 1, object: 10, label: testMessageRef("Pump") }),
+      activate({ id: 2, object: 10, label: testMessageRef("Pump") }),
+      activate({ id: 3, object: 11, label: testMessageRef("Pump") }),
+    ];
+    expect(radialOptions([10, 11], actions, false, false, true)).toEqual([
+      { kind: "action", action: actions[0], label: "Pump", disabled: false, available: 2 },
+    ]);
+  });
+
+  it("keeps offering an ability while one copy can still use it, and dispatches that copy's action", () => {
+    // Copy 10 already spent its once-per-turn ability, so the engine lists no action for it.
+    const actions = [activate({ id: 2, object: 11, label: testMessageRef("Pump") })];
+    expect(radialOptions([10, 11], actions, false, false, true)).toEqual([
+      { kind: "action", action: actions[0], label: "Pump", disabled: false },
+    ]);
+  });
+
+  it("drops the ability when every copy has spent it", () => {
+    // A permanent outside the cluster still has the same ability; that must not stand in for a copy.
+    const elsewhere = activate({ id: 4, object: 99, label: testMessageRef("Pump") });
+    expect(radialOptions([10, 11], [elsewhere], false, false, true)).toEqual([]);
   });
 });
 

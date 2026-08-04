@@ -25,12 +25,12 @@ is the intended design. Verify "landed" claims against the code, not the prose.
 
 ## Where things live
 
-`docs/agent-navigation.md` maps the layout — grep to confirm, module boundaries move.
+`docs/AGENT_NAVIGATION.md` maps the layout — `rg` / `ast-grep` to confirm; module boundaries move.
 Fixed points:
 
 - `crates/cards/src/types/` — `CardDef`, `Effect`, `Trigger`, filters, amounts, costs,
   stack types, with the serde derives (feature `card-dsl`). Open
-  `docs/agent-navigation.md` first, then the relevant files under `types/` (module
+  `docs/AGENT_NAVIGATION.md` first, then the relevant files under `types/` (module
   boundaries move). Runtime objects carry interned `CardId`s; card definitions are loaded as
   `Arc<CardDef>`. `CardDef` / `Effect` are `Clone`, and list-like fields in the current types
   use `Arc<[T]>` (see `card.rs`, `stack.rs`, `effect/shared.rs`) rather than assuming leaked

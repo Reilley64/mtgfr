@@ -2,9 +2,13 @@ import * as Effect from "effect/Effect";
 
 interface ImageLike {
   src: string;
+  fetchPriority?: string;
   onload: ((this: GlobalEventHandlers, ev: Event) => unknown) | null;
   onerror: ((this: GlobalEventHandlers, ev: Event) => unknown) | null;
 }
+
+/** `"low"` yields the socket to art the board needs on screen right now. */
+export type FetchPriority = "auto" | "low";
 
 export class ImageCache {
   private images = new Map<string, ImageLike>();
@@ -25,10 +29,10 @@ export class ImageCache {
     };
   }
 
-  preload(urls: Iterable<string>): void {
+  preload(urls: Iterable<string>, priority: FetchPriority = "auto"): void {
     for (const url of urls) {
       if (!url) continue;
-      void this.get(url);
+      void this.get(url, priority);
     }
   }
 
@@ -40,11 +44,13 @@ export class ImageCache {
     return this.failed.has(url);
   }
 
-  get(url: string): HTMLImageElement | undefined {
+  get(url: string, priority: FetchPriority = "auto"): HTMLImageElement | undefined {
     const existing = this.images.get(url);
     if (existing) return this.ready.has(url) ? (existing as HTMLImageElement) : undefined;
 
     const img = this.makeImage();
+    // Before `src`: the browser reads the hint when it queues the request.
+    img.fetchPriority = priority;
     this.images.set(url, img);
     this.failed.delete(url);
 

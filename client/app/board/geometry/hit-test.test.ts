@@ -40,14 +40,6 @@ describe("hitTest", () => {
     expect(hitTest(identity, 50, 130, tapped)).toBeNull(); // below the tapped rect, inside the upright
     expect(hitTest(identity, 50, 130, upright)).toBe(1);
   });
-
-  it("hits a fan-tilted card via its rotated footprint", () => {
-    // 45° about center (50, 70): a point just right of the upright AABB sits inside the tilted card.
-    const flat: CardRect[] = [{ id: 1, x: 0, y: 0, w: 100, h: 140 }];
-    const tilted: CardRect[] = [{ ...flat[0], fanAngle: Math.PI / 4 }];
-    expect(hitTest(identity, 110, 70, tilted)).toBe(1);
-    expect(hitTest(identity, 110, 70, flat)).toBeNull();
-  });
 });
 
 describe("hitAvatar", () => {

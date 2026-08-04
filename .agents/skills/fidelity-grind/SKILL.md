@@ -7,7 +7,8 @@ description: Given an Archidekt deck link or frozen decklist, make every card in
 
 Turn an Archidekt deck into a fully faithful slice of the card pool, end to end. This skill
 encodes the process that took the first 429-card pool from ~60% to 99.3% faithful (waves 1–142,
-2026-07). Read `card-dsl` (authoring bar). Drive implementation with the
+2026-07). Read `card-dsl` (authoring bar). For sticky ability encoding, use the `forge` skill
+(vendored `.repos/forge`). Drive implementation with the
 `test-driven-development` skill (red → green) throughout. Use other superpowers plugin skills
 named below for isolation, planning, verification, review, and branch finish.
 
@@ -21,6 +22,7 @@ the wrap-up report as its body.
 | Phase | Skill | Role |
 |-------|-------|------|
 | 0 | `using-git-worktrees` | Isolated worktree before any edits |
+| 0 | `forge` | Vendored `.repos/forge` script reference (`just forge` to sync) |
 | 3–4 | `test-driven-development` | Failing engine test before production code |
 | 4 (plan) | `writing-plans` / `dispatching-parallel-agents` | Wave planning + brief writing (via `wave-workflow.js`) |
 | 4 (verify) | `verification-before-completion` | Evidence before claiming a wave green |

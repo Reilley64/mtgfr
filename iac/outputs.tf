@@ -25,3 +25,8 @@ output "grafana_admin_password" {
   value       = random_password.grafana_admin.result
   sensitive   = true
 }
+
+output "card_cdn_url" {
+  description = "Value for the VITE_CARD_CDN build arg / GitHub Actions repo variable."
+  value       = "https://${local.card_cdn_hostname}"
+}

@@ -3615,6 +3615,10 @@ pub struct LegalAction {
     pub id: u64,
     pub player: PlayerId,
     pub kind: MeaningfulAction,
+    /// Whether this action does nothing but produce mana — a paid tap-for-mana mode from
+    /// [`Game::paid_mana_activates`], listed for the radial but never halt-worthy. The client uses
+    /// it to keep the playable border off permanents that can only make mana.
+    pub mana_only: bool,
 }
 
 /// Whether `top` and `bottom` together are exactly the cards in `cards` (a valid split for a
@@ -3788,21 +3792,31 @@ pub(crate) fn nth_mode(def: &CardDef, mode: usize) -> Option<Ability> {
 /// ever does.
 pub(crate) fn ability_target_clauses(ability: &Ability) -> Vec<(TargetSpec, TargetCount)> {
     let Effect::Sequence { steps } = &ability.effect else {
-        if ability.effect.clone().target() == TargetSpec::None {
-            return Vec::new();
-        }
-        return vec![(
-            ability.effect.clone().target(),
-            ability.effect.clone().target_count(),
-        )];
+        return step_target_clauses(&ability.effect);
     };
     let mut clauses: Vec<(TargetSpec, TargetCount)> = Vec::new();
     for step in steps.iter() {
-        let spec = step.clone().target();
-        if spec == TargetSpec::None || clauses.last().is_some_and(|&(prev, _)| prev == spec) {
-            continue;
+        for (spec, count) in step_target_clauses(step) {
+            if clauses.last().is_some_and(|&(prev, _)| prev == spec) {
+                continue;
+            }
+            clauses.push((spec, count));
         }
-        clauses.push((spec, step.clone().target_count()));
+    }
+    clauses
+}
+
+/// One `Sequence` step's (or a bare effect's) own target clauses: its own spec, plus the second
+/// clause a two-target effect carries in the same printed sentence (Infectious Bite's fight —
+/// [`Effect::second_target`]). Empty when the step takes no target.
+fn step_target_clauses(effect: &Effect) -> Vec<(TargetSpec, TargetCount)> {
+    let spec = effect.clone().target();
+    if spec == TargetSpec::None {
+        return Vec::new();
+    }
+    let mut clauses = vec![(spec, effect.clone().target_count())];
+    if let Some(second) = effect.second_target() {
+        clauses.push((second, TargetCount::default()));
     }
     clauses
 }

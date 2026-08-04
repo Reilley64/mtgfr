@@ -352,7 +352,9 @@ impl Game {
                                 controller: spell.controller,
                                 source: object,
                                 target,
-                                targets_second: TargetList::default(),
+                                // A two-target step reads its second clause here rather than as
+                                // its own step (Infectious Bite's enemy — `Effect::second_target`).
+                                targets_second: spell.targets_second,
                                 x: spell.x,
                                 spent_mana: [0; 6],
                             },
@@ -1053,7 +1055,7 @@ impl Game {
             // Fight / MoveCounters — fight pause peel (`resolution/pause_fight`).
             Effect::Misc(MiscEffect::Fight { .. })
             | Effect::Counters(CountersEffect::MoveCounters { .. }) => {
-                self.run_fight_pause(effect, ctx)
+                self.run_fight_pause(effect, ctx, events)
             }
             // Copy-family choreography — see `resolution/copy.rs::run_copy`.
             Effect::Copy(CopyEffect::TargetSpell { .. })

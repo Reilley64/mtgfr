@@ -605,6 +605,92 @@ describe("layout", () => {
     expect(xs[xs.length - 1]).toBe(624); // (SEAT_COLS-1) * CARD_HSTEP
   });
 
+  it("splits an engaged permanent out of its cluster and leaves the next free copy as the face", () => {
+    // 6 unique + 4 identical Saprolings = 10 raw → overflow → Saprolings would collapse to 1 slot.
+    const uniques = Array.from({ length: 6 }, (_, i) =>
+      mkObject({
+        id: i + 1,
+        name: `Bear ${i}`,
+        kind: { kind: "creature", power: 2, toughness: 2 },
+        power: 2,
+        toughness: 2,
+      }),
+    );
+    const saprolings = [10, 11, 12, 13].map((id) =>
+      mkObject({
+        id,
+        name: "Saproling",
+        kind: { kind: "creature", power: 1, toughness: 1 },
+        power: 1,
+        toughness: 1,
+      }),
+    );
+    const state = mkState({
+      players: [mkPlayer({ player: 0 })],
+      objects: [...uniques, ...saprolings],
+    });
+
+    const bf = layout(state, 0, new Set([10])).filter((c) => c.zone === ZONE.Battlefield);
+
+    expect(bf).toHaveLength(8); // 6 bears + the split Saproling + a 3-member cluster
+    const split = bf.find((c) => c.id === 10);
+    expect(split).toMatchObject({ cluster: 0, clusterMembers: [] });
+    const cluster = bf.find((c) => c.cluster > 1);
+    expect(cluster).toMatchObject({ id: 11, cluster: 3 });
+    expect(cluster?.clusterMembers).toEqual([11, 12, 13]);
+  });
+
+  it("gives every engaged copy its own slot rather than re-merging them", () => {
+    const uniques = Array.from({ length: 6 }, (_, i) =>
+      mkObject({
+        id: i + 1,
+        name: `Bear ${i}`,
+        kind: { kind: "creature", power: 2, toughness: 2 },
+        power: 2,
+        toughness: 2,
+      }),
+    );
+    const saprolings = [10, 11, 12, 13].map((id) =>
+      mkObject({
+        id,
+        name: "Saproling",
+        kind: { kind: "creature", power: 1, toughness: 1 },
+        power: 1,
+        toughness: 1,
+      }),
+    );
+    const state = mkState({
+      players: [mkPlayer({ player: 0 })],
+      objects: [...uniques, ...saprolings],
+    });
+
+    const bf = layout(state, 0, new Set([10, 11])).filter((c) => c.zone === ZONE.Battlefield);
+
+    expect(bf).toHaveLength(9); // 6 bears + 2 split Saprolings + a 2-member cluster
+    expect(bf.filter((c) => c.id === 10 || c.id === 11).every((c) => c.cluster === 0)).toBe(true);
+    expect(bf.find((c) => c.cluster > 1)).toMatchObject({ id: 12, cluster: 2 });
+  });
+
+  it("ignores engaged ids on a row that never clustered", () => {
+    const state = mkState({
+      players: [mkPlayer({ player: 0 })],
+      objects: Array.from({ length: 4 }, (_, i) =>
+        mkObject({
+          id: i + 1,
+          name: "Saproling",
+          kind: { kind: "creature", power: 1, toughness: 1 },
+          power: 1,
+          toughness: 1,
+        }),
+      ),
+    });
+
+    const bf = layout(state, 0, new Set([2])).filter((c) => c.zone === ZONE.Battlefield);
+
+    expect(bf).toHaveLength(4);
+    expect(bf.every((c) => c.cluster === 0)).toBe(true);
+  });
+
   it("does not cluster a permanent that has an attachment stack", () => {
     // 10 creatures: 4 plain Saprolings + 1 Saproling with equipment + 5 unique = overflow.
     // Plain Saprolings cluster; equipped one stays separate.

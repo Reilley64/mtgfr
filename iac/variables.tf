@@ -53,7 +53,7 @@ variable "faro_collect_upstream" {
 # ── Cloudflare ───────────────────────────────────────────────────────────────────────────────────
 
 variable "cloudflare_api_token" {
-  description = "Cloudflare API token with DNS edit + Zero Trust tunnel edit scope on the example.com zone/account."
+  description = "Cloudflare API token with DNS edit, Zero Trust tunnel edit, Workers Scripts edit, and Workers R2 Storage edit scope on the example.com zone/account."
   type        = string
   sensitive   = true
 }

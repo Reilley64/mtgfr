@@ -1,14 +1,19 @@
-import { Option } from "effect";
-import { expect, test } from "vitest";
+import { Effect, Layer, Option } from "effect";
+import { expect, test, vi } from "vitest";
 import { LeaveGame } from "./board/messages";
+import { imageUrlByPrint } from "./domain/deck-builder/scryfall";
+import { sharedImageCache } from "./domain/image-cache";
+import type { Client } from "./domain/rpc-client";
 import { StreamTerminalError } from "./game/messages";
 import { init, update } from "./main-exports";
 import { GotAuthMessage, GotBoardMessage, GotGameMessage, GotLobbyMessage, UrlChanged } from "./messages";
 import { emptyGameSlice } from "./model";
+import { RpcClient } from "./resources";
 import { GameTableRoute, routePath } from "./routes";
 import * as Auth from "./shell/auth";
 import { ChangedAuthEmail } from "./shell/auth/messages";
 import { ReceivedLobbyView } from "./shell/lobby/messages";
+import { warmDeckArt } from "./update";
 
 const me = { id: 1, email: "alice@example.com", username: "alice" };
 
@@ -57,6 +62,38 @@ test("LeaveGame redirects home from the result overlay", () => {
   const [, commands] = update(base, GotBoardMessage({ message: LeaveGame() }));
   const redirect = commands.find((command) => command.name === "Redirect") as { args?: { path?: string } } | undefined;
   expect(redirect?.args?.path).toBe("/");
+});
+
+test("seating at a pregame table warms that deck's card art", () => {
+  const [base] = init(url("/play/7/ABC123"));
+  const [, commands] = update(base, GotAuthMessage({ message: Auth.Message.ReceivedMe({ me }) }));
+
+  const warm = commands.find((command) => command.name === "WarmDeckArt") as { args?: { deckId?: number } } | undefined;
+  expect(warm?.args?.deckId).toBe(7);
+});
+
+test("warming a deck hands its fetched prints to the shared image cache at low priority", async () => {
+  const preload = vi.spyOn(sharedImageCache, "preload").mockImplementation(() => {});
+  const deck = {
+    id: 7,
+    name: "Atraxa",
+    commander: "oracle-cmd",
+    commander_print: "print-cmd",
+    cards: [{ id: "oracle-a", count: 1, print: "print-a" }],
+  };
+  const rpc = { getDeck: () => Effect.succeed(deck) } as unknown as Client;
+
+  await Effect.runPromise(warmDeckArt(7).pipe(Effect.provide(Layer.succeed(RpcClient, rpc))));
+
+  expect(preload).toHaveBeenCalledWith([imageUrlByPrint("print-cmd"), imageUrlByPrint("print-a")], "low");
+  preload.mockRestore();
+});
+
+test("entering a live table route does not warm deck art mid-game", () => {
+  const [base] = init(url("/play/ABC123"));
+  const [, commands] = update(base, GotAuthMessage({ message: Auth.Message.ReceivedMe({ me }) }));
+
+  expect(commands.find((command) => command.name === "WarmDeckArt")).toBeUndefined();
 });
 
 test("lobby start redirect followed by UrlChanged keeps the active GameTableRoute game slice", () => {

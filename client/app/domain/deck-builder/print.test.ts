@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { commanderPrintForRow, formatReleasedAt, reconcileEntries } from "./print";
+import { commanderPrintForRow, deckArtUrls, formatReleasedAt, reconcileEntries } from "./print";
+import { imageUrlByPrint } from "./scryfall";
 
 describe("formatReleasedAt", () => {
   it("returns the release year from a Scryfall date", () => {
@@ -24,6 +25,23 @@ describe("reconcileEntries", () => {
       "oracle-a": { count: 1, print: "print-a" },
       "oracle-b": { count: 3, print: "print-b" },
     });
+  });
+});
+
+describe("deckArtUrls", () => {
+  it("lists the commander print and every card print at board art size", () => {
+    expect(
+      deckArtUrls({
+        id: 4,
+        name: "Atraxa",
+        commander: "oracle-cmd",
+        commander_print: "print-cmd",
+        cards: [
+          { id: "oracle-a", count: 1, print: "print-a" },
+          { id: "oracle-b", count: 9, print: "print-b" },
+        ],
+      }),
+    ).toEqual([imageUrlByPrint("print-cmd"), imageUrlByPrint("print-a"), imageUrlByPrint("print-b")]);
   });
 });
 

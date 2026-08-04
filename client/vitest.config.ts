@@ -13,6 +13,7 @@ export default defineConfig({
   test: {
     environment: "node",
     setupFiles: ["./vitest-setup.ts"],
+    include: [...configDefaults.include, "../iac/workers/**/*.test.ts"],
     exclude: [...configDefaults.exclude, ".output/**"],
     ...(ci
       ? {

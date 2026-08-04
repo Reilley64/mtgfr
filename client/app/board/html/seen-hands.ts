@@ -3,14 +3,12 @@
 // Every other read of an opponent's hand on this board is `hand_count`, so without this strip a
 // look leaves nothing behind but a log line.
 
-import { type Html, html } from "foldkit/html";
+import type { Html, HtmlBuilder } from "foldkit/html";
 import { playerLabel } from "~/players";
 import { button } from "~/ui/button";
 import type { VisibleState } from "~/wire/types";
 import { ZONE } from "../geometry/layout";
 import { type Message, PileExpanded } from "../messages";
-
-const h = html<Message>();
 
 /** Seats other than the viewer whose hand cards this snapshot itemized, and how many arrived. */
 export function seenHands(state: VisibleState): Array<{ owner: number; count: number }> {
@@ -24,7 +22,7 @@ export function seenHands(state: VisibleState): Array<{ owner: number; count: nu
 }
 
 /** One chip per looked-at hand, opening it in the pile overlay. Absent when nothing was seen. */
-export function seenHandsView(state: VisibleState): Html | null {
+export function seenHandsView(state: VisibleState, h: HtmlBuilder<Message>): Html | null {
   const seen = seenHands(state);
   if (seen.length === 0) return null;
   return h.div(

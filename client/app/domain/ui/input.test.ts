@@ -1,10 +1,10 @@
-import { html } from "foldkit/html";
 import { describe, expect, it } from "vitest";
+import { testHtml } from "~/test-html";
 import { input, inputClass } from "./input";
 
 type Msg = { _tag: "typed"; value: string };
 
-const h = html<Msg>();
+const h = testHtml<Msg>();
 const typed = (value: string): Msg => ({ _tag: "typed", value });
 
 /** snabbdom stores classes as a truth-map under data.class. */

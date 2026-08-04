@@ -1,8 +1,8 @@
-import { html } from "foldkit/html";
 import { describe, expect, it } from "vitest";
+import { testHtml } from "~/test-html";
 import { shellStatusChrome, shellStatusCopy } from "./shell-status";
 
-const h = html<never>();
+const h = testHtml<never>();
 
 describe("shellStatusCopy", () => {
   it("names the surface in idle and loading copy", () => {

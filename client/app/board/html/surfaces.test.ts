@@ -8,10 +8,10 @@
 import * as Combobox from "@foldkit/ui/combobox";
 import * as Dialog from "@foldkit/ui/dialog";
 import { Submodel } from "foldkit";
-import { html } from "foldkit/html";
 import { Scene } from "foldkit/test";
 import { beforeAll, expect, test } from "vitest";
 import { testMessageRef } from "~/i18n/testMessageRef";
+import { testHtml } from "~/test-html";
 import { fromProtoWire } from "~/wire/protoMap";
 import type { ActionView, ObjectView, VisibleState, WireCost } from "~/wire/types";
 import type { GameFoldState, LogLine } from "../../game/fold";
@@ -20,7 +20,8 @@ import { CARD_NAME_COMBOBOX_ID, CardNameCombobox } from "../card-name-combobox";
 import { STEP, ZONE } from "../geometry/layout";
 import type { Message } from "../messages";
 import { type BoardModel, CONCEDE_DIALOG_ID, initialBoardModel, RESULT_DIALOG_ID } from "../submodel";
-import { type BoardViewModel, view as boardView } from "../view";
+import { type BoardViewModel, view as boardView, type ViewMessage } from "../view";
+import { handMetrics } from "./hand";
 import { boardOverlays } from "./overlays";
 import {
   resolveBoardCardArtMounts,
@@ -104,7 +105,7 @@ function findParentOfTestId(node: unknown, id: string): unknown | null {
   return null;
 }
 
-const h = html<Message>();
+const h = testHtml<Message>();
 
 beforeAll(() => {
   class MockImage {
@@ -123,10 +124,10 @@ type OverlayModel = { board: BoardModel; fold: GameFoldState; tableId: string };
 
 const overlayView = Submodel.defineView<OverlayModel, Message>((model) => {
   if (model.fold.state == null) return h.div([], []);
-  return boardOverlays(model.board, model.fold.state, model.tableId, model.fold.log);
+  return boardOverlays(model.board, model.fold.state, model.tableId, model.fold.log, h);
 });
 
-const fullBoardView = Submodel.defineView<BoardViewModel, Message>(boardView);
+const fullBoardView = boardView;
 
 function player(
   seat: number,
@@ -279,7 +280,7 @@ function fullBoardModel(
 function overlayScene(model: OverlayModel, ...steps: readonly unknown[]) {
   Scene.scene<OverlayModel, Message>(
     { update: (m) => [m, []], view: overlayView },
-    Scene.with(model),
+    Scene.given(model),
     resolveBoardOverlayMounts(),
     ...(steps as []),
   );
@@ -288,15 +289,15 @@ function overlayScene(model: OverlayModel, ...steps: readonly unknown[]) {
 function overlaySceneWithoutMounts(model: OverlayModel, ...steps: readonly unknown[]) {
   Scene.scene<OverlayModel, Message>(
     { update: (m) => [m, []], view: overlayView },
-    Scene.with(model),
+    Scene.given(model),
     ...(steps as []),
   );
 }
 
 function liveBoardScene(model: BoardViewModel, ...steps: readonly unknown[]) {
-  Scene.scene<BoardViewModel, Message>(
+  Scene.scene<BoardViewModel, ViewMessage>(
     { update: (m) => [m, []], view: fullBoardView },
-    Scene.with(model),
+    Scene.given(model),
     resolveLiveBoardMounts(),
     ...(steps as []),
   );
@@ -414,6 +415,48 @@ test("armed stack yield state renders separately", () => {
 
 test("active player sees the end-turn affordance", () => {
   overlayScene(overlayModel(), Scene.expect(Scene.testId("board-end-turn")).toExist());
+});
+
+test("end turn is a rocker in island blue, never priority gold", () => {
+  overlayScene(
+    overlayModel(),
+    // Same rocker shape as until-my-turn: ARIA drives the chrome, no parallel JS class state.
+    Scene.expect(Scene.testId("board-end-turn")).toHaveAttr("role", "switch"),
+    Scene.expect(Scene.testId("board-end-turn")).toHaveAttr("aria-checked", "false"),
+    Scene.expect(Scene.testId("board-end-turn")).toHaveClass("group/yield"),
+    Scene.expect(Scene.testId("board-end-turn")).toHaveClass("aria-checked:bg-island-blue/15"),
+    Scene.expect(Scene.testId("board-end-turn")).toHaveAccessibleName("End turn"),
+  );
+});
+
+test("arming end turn checks the rocker without renaming it", () => {
+  overlayScene(
+    overlayModel(initialBoardModel(), gameState({ turn_yielded: true })),
+    Scene.expect(Scene.testId("board-end-turn")).toHaveAttr("aria-checked", "true"),
+    // The label always names the control, never the reversed action.
+    Scene.expect(Scene.testId("board-end-turn")).toHaveAccessibleName("End turn"),
+  );
+});
+
+test("the rockers ride in their own row, out of the action row", () => {
+  overlayScene(
+    overlayModel(),
+    Scene.expect(Scene.selector('[data-testid="priority-bar-rockers"] [data-testid="board-end-turn"]')).toExist(),
+    // Next stays put — moving the rockers must not drag the primary action down with them.
+    Scene.expect(Scene.selector('[data-testid="priority-bar-rockers"] [data-testid="board-primary"]')).toBeAbsent(),
+  );
+});
+
+test("the hover label sits to the left of the rocker track", () => {
+  // `Scene.selector` resolves to the first match in document order — the label span.
+  const label = Scene.selector('[data-testid="board-turn-yield"] span');
+  overlayScene(
+    overlayModel(initialBoardModel(), gameState({ active_player: 1 })),
+    // The rocker itself is plain `flex`, so the first span paints leftmost — Arena's placement.
+    Scene.expect(label).toHaveText("Auto-pass until my turn"),
+    Scene.expect(label).toHaveClass("max-w-0"),
+    Scene.expect(label).toHaveClass("group-hover/yield:max-w-[160px]"),
+  );
 });
 
 test("end turn is hidden when a goaded creature must attack", () => {
@@ -2012,6 +2055,14 @@ test("choose_card_name center modal lists matching catalog suggestions", () => {
     Scene.expect(Scene.testId("pending-card-name-aim")).toBeAbsent(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
     Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
+    // happy-dom has no layout, so Floating UI never resolves a side here and `data-placement`
+    // can't be observed; assert the Mount actually carries the lock instead of faking a result.
+    Scene.Mount.expectHas(
+      Combobox.AnchorCombobox({
+        buttonId: `${CARD_NAME_COMBOBOX_ID}-input-wrapper`,
+        anchor: { placement: "bottom-start", gap: 4, isPlacementLocked: true },
+      }),
+    ),
     resolveCardNameComboboxMounts(),
     Scene.expect(Scene.testId("prompt-name-suggestions")).toExist(),
     Scene.expect(Scene.testId("prompt-name-suggestion-0")).toHaveText("Sol Ring"),
@@ -3144,6 +3195,60 @@ test("full board view mounts the camera gesture host", () => {
   );
 });
 
+/** The Foldkit scene canvas carries no testid — find it by tag. */
+function findCanvas(node: unknown): { data?: { props?: Record<string, number> } } | null {
+  if (node == null || typeof node !== "object") return null;
+  const n = node as { sel?: string; children?: unknown[] };
+  if (typeof n.sel === "string" && n.sel.startsWith("canvas")) return n as never;
+  for (const child of n.children ?? []) {
+    const found = findCanvas(child);
+    if (found != null) return found;
+  }
+  return null;
+}
+
+test("scene canvas paints at device resolution so retina screens stay sharp", () => {
+  const board = { ...initialBoardModel(), viewport: { width: 1600, height: 1000 }, dpr: 2 };
+  liveBoardScene(
+    fullBoardModel(board, gameState()),
+    Scene.tap((sim) => {
+      const canvas = findCanvas(sim.html);
+      expect(canvas?.data?.props?.width).toBe(3200);
+      expect(canvas?.data?.props?.height).toBe(2000);
+    }),
+  );
+});
+
+test("bitmap and flight layers carry a device-resolution backing store", () => {
+  const board = { ...initialBoardModel(), viewport: { width: 1600, height: 1000 }, dpr: 2 };
+  liveBoardScene(
+    fullBoardModel(board, gameState()),
+    Scene.tap((sim) => {
+      // The Mount paints these at the DPR; the vdom attributes must agree or the next patch
+      // resizes the backing store back down to CSS pixels and the board goes soft.
+      for (const testid of ["board-bitmap-layer", "board-flight-layer"]) {
+        const canvas = findTestId(sim.html, testid) as { data?: { attrs?: Record<string, unknown> } } | null;
+        expect(canvas?.data?.attrs?.width).toBe("3200");
+        expect(canvas?.data?.attrs?.height).toBe("2000");
+      }
+    }),
+  );
+});
+
+test("hand bar height follows the window so overlays anchored to it move with it", () => {
+  const small = handMetrics({ width: 1280, height: 720 }).barH;
+  const large = handMetrics({ width: 2560, height: 1440 }).barH;
+  expect(large).toBeGreaterThan(small);
+
+  liveBoardScene(
+    fullBoardModel({ ...initialBoardModel(), viewport: { width: 2560, height: 1440 } }, gameState()),
+    Scene.tap((sim) => {
+      const root = findTestId(sim.html, "board-mount") as { data?: { style?: Record<string, string> } } | null;
+      expect(root?.data?.style?.["--hand-bar-h"]).toBe(`${large}px`);
+    }),
+  );
+});
+
 test("board root disables native text selection", () => {
   liveBoardScene(
     fullBoardModel(initialBoardModel(), gameState()),
@@ -3301,4 +3406,57 @@ test("the band panel closes once the declaration is confirmed", () => {
     bandingCombat({ attackersConfirmed: true }),
     Scene.expect(Scene.testId("board-band-panel")).toBeAbsent(),
   );
+/** snabbdom pairs old/new siblings by `sel` + `key` (`sameVnode`), so two unkeyed sibling `div`s are
+ *  interchangeable and a vanishing conditional child shifts the whole tail onto its neighbours' DOM
+ *  elements — silently, since `OnMount` only runs on element creation. */
+function pairsWith(a: unknown, b: unknown): boolean {
+  const previous = a as { sel?: string; key?: unknown };
+  const next = b as { sel?: string; key?: unknown };
+  return previous.sel === next.sel && previous.key === next.key;
+}
+
+function boardChildren(model: BoardViewModel): ReadonlyArray<unknown> {
+  let children: ReadonlyArray<unknown> = [];
+  const hint = !model.board.hintDismissed && !model.board.hintAutoHidden;
+  Scene.scene<BoardViewModel, ViewMessage>(
+    { update: (m) => [m, []], view: fullBoardView },
+    Scene.given(model),
+    resolveLiveBoardMounts({ hint }),
+    Scene.tap((sim) => {
+      const root = findTestId(sim.html, "board-mount") as { children?: unknown[] } | null;
+      children = root?.children ?? [];
+    }),
+  );
+  return children;
+}
+
+test("the auto-hiding hint cannot graft a sibling mount onto its element", () => {
+  const state = gameState();
+  const hinted = boardChildren(fullBoardModel({ ...initialBoardModel(), hintAutoHidden: false }, state));
+  const hidden = boardChildren(fullBoardModel({ ...initialBoardModel(), hintAutoHidden: true }, state));
+
+  const slot = hinted.findIndex((child) => testId(child) === "board-hint-mount");
+  expect(slot).toBeGreaterThan(-1);
+  // The camera gesture host slides into the hint's slot 12s into a table. Unkeyed, snabbdom patched
+  // it onto the hint's element and the still-running wheel/pinch mount kept a stale node whose rect
+  // rejects every wheel event — scroll-wheel zoom stopped working mid-game.
+  expect(testId(hidden[slot])).toBe("board-camera-gesture-mount");
+  expect(pairsWith(hinted[slot], hidden[slot])).toBe(false);
+});
+
+test("every board mount host carries a key", () => {
+  const children = boardChildren(fullBoardModel());
+  const hosts = [
+    "board-keyboard-mount",
+    "board-audio-mount",
+    "board-hint-mount",
+    "board-camera-gesture-mount",
+    "board-bitmap-layer",
+    "board-flight-layer",
+  ];
+  for (const host of hosts) {
+    const node = children.find((child) => testId(child) === host) as { key?: unknown } | undefined;
+    expect(node, host).toBeDefined();
+    expect(node?.key, host).toBe(host);
+  }
 });

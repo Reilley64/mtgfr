@@ -1,4 +1,4 @@
-import type { Attribute, html as createHtml, Html } from "foldkit/html";
+import type { Attribute, Html, HtmlBuilder } from "foldkit/html";
 import { BindDeckCardFlip } from "../../deck-card-nav";
 import { manaFontClass } from "../../domain/oracleText";
 import { cardArt } from "../../domain/ui/card-art";
@@ -14,9 +14,7 @@ export type DeckCardModel = {
   colorIdentity: readonly number[];
 };
 
-type HtmlFactory<Msg> = ReturnType<typeof createHtml<Msg>>;
-
-function renderPips<Msg>(h: HtmlFactory<Msg>, colorIdentity: readonly number[]): Html {
+function renderPips<Msg>(h: HtmlBuilder<Msg>, colorIdentity: readonly number[]): Html {
   const pips = identityPipCodes(colorIdentity);
   if (pips.length === 0) return null;
 
@@ -30,7 +28,7 @@ function renderPips<Msg>(h: HtmlFactory<Msg>, colorIdentity: readonly number[]):
   );
 }
 
-function renderDeckCardBody<Msg>(h: HtmlFactory<Msg>, card: DeckCardModel, opts: { showPlayLabel: boolean }): Html {
+function renderDeckCardBody<Msg>(h: HtmlBuilder<Msg>, card: DeckCardModel, opts: { showPlayLabel: boolean }): Html {
   // Flip mounts on the inner chrome so the outer root can keep a separate OnMount
   // (e.g. deck-list context menu) — Foldkit allows one OnMount per element.
   return h.div(
@@ -45,7 +43,7 @@ function renderDeckCardBody<Msg>(h: HtmlFactory<Msg>, card: DeckCardModel, opts:
         ? h.div([h.Class("aspect-[137/100] w-full bg-glass")], [])
         : cardArt(h, {
             print: card.print,
-            size: "art_crop",
+            size: "art",
             alt: "",
             className: "aspect-[137/100] w-full object-cover",
           }),
@@ -87,7 +85,7 @@ function renderDeckCardBody<Msg>(h: HtmlFactory<Msg>, card: DeckCardModel, opts:
 }
 
 export function renderDeckCard<Msg>(
-  h: HtmlFactory<Msg>,
+  h: HtmlBuilder<Msg>,
   card: DeckCardModel,
   opts: {
     mode: "link" | "static";

@@ -529,13 +529,17 @@ fn auto_advance(
             turn_yields[active.0 as usize] = false;
             break;
         }
+        // A seat that armed its own turn yield has already declined every window until its
+        // Untap (turn-priority-and-stack spec) — offering it an End Turn response window parks
+        // the walk on a player who asked not to be asked, and burns their flag the moment they
+        // pass by hand.
         let can_respond = end_turn
             && holder != active
+            && !turn_yields[holder.0 as usize]
             && game.stack_is_empty()
             && game.has_empty_stack_instant_play(holder);
         let skip = yields[holder.0 as usize]
-            // End Turn response windows override the responder's until-my-turn (turn-priority-and-stack spec).
-            || (turn_yields[holder.0 as usize] && !can_respond && !forced_attack_declaration)
+            || (turn_yields[holder.0 as usize] && !forced_attack_declaration)
             || (!game.has_meaningful_action(holder) && !can_respond);
         if !skip {
             break;
@@ -1735,9 +1739,10 @@ mod tests {
         );
     }
 
-    /// End Turn response windows must open even when the responder already armed until-my-turn.
+    /// End Turn response windows open only for seats that are still listening: a seat holding an
+    /// empty-stack instant *and* until-my-turn has opted out, so End Turn walks straight past it.
     #[test]
-    fn end_turn_stops_for_turn_yielded_opponent_with_an_instant() {
+    fn end_turn_does_not_stop_for_a_turn_yielded_opponent_with_an_instant() {
         let bear = || cards::get_by_name("Grizzly Bears").expect("Grizzly Bears in pool");
         let mut table = Table::empty();
         let mut game = engine::Game::new();
@@ -1758,14 +1763,20 @@ mod tests {
         let (result, _) = TableSession::new(&mut table).set_turn_yield(PlayerId(0), true);
         assert!(result.accepted);
 
-        assert_eq!(
+        assert_ne!(
             table.game.as_ref().unwrap().priority_holder(),
             PlayerId(1),
-            "until-my-turn must not skip an End Turn response window"
+            "until-my-turn must not be interrupted by an End Turn response window"
         );
         assert!(
-            table.chrome.turn_yields()[0],
-            "P0's end turn stays armed until P1 acts or the turn ends"
+            result.events.iter().any(|e| matches!(
+                e,
+                Event::StepBegan {
+                    step: engine::Step::Untap,
+                    active_player,
+                } if *active_player == PlayerId(1)
+            )),
+            "End Turn finishes P0's turn instead of stalling on the yielded seat"
         );
     }
 

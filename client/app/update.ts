@@ -6,7 +6,9 @@ import type { Message as BoardMessage } from "./board/messages";
 import { type OutMessage as BoardOutMessage, updateBoard } from "./board/submodel";
 import { captureDeckCardFlipForNav } from "./deck-card-nav";
 import { parseDeckIdParam, playDeckAccess } from "./deck-id";
+import { deckArtUrls } from "./domain/deck-builder/print";
 import { gravatarHash } from "./domain/gravatar";
+import { sharedImageCache } from "./domain/image-cache";
 import { updateGame } from "./game";
 import {
   GotAccountMenuMessage,
@@ -21,9 +23,10 @@ import {
   type Message,
   NavigationCompleted,
   ReceivedMeGravatarHash,
+  WarmedDeckArt,
 } from "./messages";
 import { emptyGameSlice, type Model } from "./model";
-import type { LobbyClient, RpcClient } from "./resources";
+import { type LobbyClient, RpcClient } from "./resources";
 import {
   GameTableRoute,
   isProtectedRoute,
@@ -52,42 +55,57 @@ import type { Message as LobbyMessage } from "./shell/lobby/messages";
 
 type AppResources = LobbyClient | RpcClient;
 
-const Redirect = Command.define(
-  "Redirect",
-  { path: S.String },
-  NavigationCompleted,
-)(({ path }) => Navigation.replaceUrl(path).pipe(Effect.as(NavigationCompleted())));
+const Redirect = Command.define("Redirect", {
+  args: { path: S.String },
+  messages: [NavigationCompleted],
+  execute: ({ path }) => Navigation.replaceUrl(path).pipe(Effect.as(NavigationCompleted())),
+});
 
-const PushUrl = Command.define(
-  "PushUrl",
-  { url: S.String },
-  NavigationCompleted,
-)(({ url }) => Navigation.pushUrl(url).pipe(Effect.as(NavigationCompleted())));
+const PushUrl = Command.define("PushUrl", {
+  args: { url: S.String },
+  messages: [NavigationCompleted],
+  execute: ({ url }) => Navigation.pushUrl(url).pipe(Effect.as(NavigationCompleted())),
+});
 
 /** Gravatar in a new tab, so a half-edited deck is not navigated away from. */
-export const OpenGravatar = Command.define(
-  "OpenGravatar",
-  NavigationCompleted,
-)(
-  Effect.sync(() => {
+export const OpenGravatar = Command.define("OpenGravatar", {
+  messages: [NavigationCompleted],
+  execute: Effect.sync(() => {
     window.open(GRAVATAR_URL, "_blank", "noopener,noreferrer");
     return NavigationCompleted();
   }),
-);
+});
 
-const LoadExternalUrl = Command.define(
-  "LoadExternalUrl",
-  { href: S.String },
-  NavigationCompleted,
-)(({ href }) => Navigation.load(href).pipe(Effect.as(NavigationCompleted())));
+const LoadExternalUrl = Command.define("LoadExternalUrl", {
+  args: { href: S.String },
+  messages: [NavigationCompleted],
+  execute: ({ href }) => Navigation.load(href).pipe(Effect.as(NavigationCompleted())),
+});
 
-export const HashMeGravatar = Command.define(
-  "HashMeGravatar",
-  { email: S.String },
-  ReceivedMeGravatarHash,
-)(({ email }) =>
-  Effect.promise(() => gravatarHash(email)).pipe(Effect.map((hash) => ReceivedMeGravatarHash({ email, hash }))),
-);
+/** Pull the seated deck's art into the shared cache while players wait in the lobby. Fire and
+ *  forget: nothing waits on it, and a failed fetch just leaves the board to load art on demand.
+ *  ponytail: the browser's 6-connections-per-origin cap is the only throttle — add a chunked
+ *  queue if a CDN-less deployment (`VITE_CARD_CDN` unset, art straight from Scryfall) starts 429ing. */
+export const warmDeckArt = (deckId: number) =>
+  Effect.gen(function* () {
+    const rpc = yield* RpcClient;
+    const deck = yield* rpc.getDeck(String(deckId));
+    sharedImageCache.preload(deckArtUrls(deck), "low");
+    return WarmedDeckArt();
+  }).pipe(Effect.catch(() => Effect.succeed(WarmedDeckArt())));
+
+export const WarmDeckArt = Command.define("WarmDeckArt", {
+  args: { deckId: S.Number },
+  messages: [WarmedDeckArt],
+  execute: ({ deckId }) => warmDeckArt(deckId),
+});
+
+export const HashMeGravatar = Command.define("HashMeGravatar", {
+  args: { email: S.String },
+  messages: [ReceivedMeGravatarHash],
+  execute: ({ email }) =>
+    Effect.promise(() => gravatarHash(email)).pipe(Effect.map((hash) => ReceivedMeGravatarHash({ email, hash }))),
+});
 
 function loginRedirectFor(model: Model): string {
   return `/login?next=${encodeURIComponent(model.currentPath)}`;
@@ -162,6 +180,7 @@ function enterLobbyRoute(
 ): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, AppResources>>] {
   const [list, deckListCommands] = DeckList.informRouteChanged(model.decks.list);
   const [lobby, lobbyCommands] = Lobby.informRouteChanged(model.lobby, args);
+  const warm = args.selectedDeckId == null ? [] : [WarmDeckArt({ deckId: args.selectedDeckId })];
   return [
     {
       ...model,
@@ -169,7 +188,7 @@ function enterLobbyRoute(
       game: null,
       lobby,
     },
-    [...mapDeckListCommands(deckListCommands), ...mapLobbyCommands(lobbyCommands)],
+    [...mapDeckListCommands(deckListCommands), ...mapLobbyCommands(lobbyCommands), ...warm],
   ];
 }
 
@@ -407,6 +426,7 @@ export const update = (
           }),
         ),
       NavigationCompleted: () => [model, []],
+      WarmedDeckArt: () => [model, []],
       LandscapeRotateChanged: ({ active }) => [{ ...model, landscapeRotate: { active } }, []],
       ReceivedMeGravatarHash: ({ email, hash }) => {
         if (model.session.me?.email !== email) return [model, []];

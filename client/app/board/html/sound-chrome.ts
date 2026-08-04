@@ -1,13 +1,11 @@
 // Top-left sound toggle — visible for everyone on the stream (Solid board.tsx).
 
-import { type Html, html } from "foldkit/html";
+import type { Html, HtmlBuilder } from "foldkit/html";
 import { button } from "~/ui/button";
 import { type Message, SoundToggled } from "../messages";
 import type { BoardModel } from "../submodel";
 
-const h = html<Message>();
-
-export function soundToggleView(board: BoardModel): Html {
+export function soundToggleView(board: BoardModel, h: HtmlBuilder<Message>): Html {
   const on = board.soundOn;
   return button(
     h,

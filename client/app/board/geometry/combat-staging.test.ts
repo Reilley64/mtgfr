@@ -52,6 +52,17 @@ describe("handleCombatDrop", () => {
     });
   });
 
+  // A planeswalker sits in the battlefield rows, nowhere near the seat's avatar circle, so the
+  // drop hits no avatar — the defending seat comes from the planeswalker's controller.
+  it("stages an attacker onto a planeswalker with no avatar under the drop point", () => {
+    const pw = creature(9, { kind: "planeswalker", zone: ZONE.Battlefield, controller: 1 });
+    const result = handleCombatDrop("attackers", [], [], creature(3), null, pw, [], [0], [1, 2, 3]);
+    expect(result).toEqual({
+      kind: "attackers",
+      value: [{ attacker: 3, defender: 1, defender_planeswalker: 9 }],
+    });
+  });
+
   it("dropping on a non-planeswalker permanent still attacks the seat under it", () => {
     const bear = creature(9, { zone: ZONE.Battlefield, controller: 1 });
     const result = handleCombatDrop("attackers", [], [], creature(3), 1, bear, [], [0], [1, 2, 3]);
@@ -60,6 +71,42 @@ describe("handleCombatDrop", () => {
 
   it("returns none outside a combat mode", () => {
     expect(handleCombatDrop(null, [], [], creature(3), 1, null, [], [0])).toEqual({ kind: "none" });
+  });
+
+  it("stages every copy in a shift-dropped cluster against the same defender", () => {
+    const result = handleCombatDrop("attackers", [], [], creature(10), 1, null, [], [0], [1], [11, 12, 13]);
+    expect(result.kind).toBe("attackers");
+    if (result.kind !== "attackers") return;
+    expect(result.value.map((a) => a.attacker).sort()).toEqual([10, 11, 12, 13]);
+    expect(result.value.every((a) => a.defender === 1)).toBe(true);
+  });
+
+  it("stages every copy in a shift-dropped cluster as a blocker of the same attacker", () => {
+    const declared = [{ attacker: 99, defender: 0 }];
+    const target = creature(99, { zone: ZONE.Battlefield, controller: 1 });
+    const result = handleCombatDrop("blockers", [], [], creature(10), null, target, declared, [0], [1], [11, 12]);
+    expect(result.kind).toBe("blockers");
+    if (result.kind !== "blockers") return;
+    expect(result.value.map((b) => b.blocker).sort()).toEqual([10, 11, 12]);
+    expect(result.value.every((b) => b.attacker === 99)).toBe(true);
+  });
+
+  // Members are identical by construction, so an illegal face means every member is illegal: the
+  // pile is rejected as one unit rather than partially staged.
+  it("stages nothing when a shift-dropped cluster's face can't attack", () => {
+    const result = handleCombatDrop(
+      "attackers",
+      [],
+      [],
+      creature(10, { tapped: true }),
+      1,
+      null,
+      [],
+      [0],
+      [1],
+      [11, 12],
+    );
+    expect(result).toEqual({ kind: "none" });
   });
 });
 

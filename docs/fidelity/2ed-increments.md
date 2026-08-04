@@ -2534,6 +2534,5 @@ via the already-generic `PileExpanded { zone, owner }`. No new overlay, no new w
 cards were already arriving. The server-side gate is untouched: `has_seen_hand_card` still decides
 per card what the looker gets, so a seat that never looked still sees no chip.
 
-Both affected surface specs were updated in the same change
-([system-overlays](../superpowers/specs/2026-07-20-system-overlays.md),
-[prompts-and-pending-choices](../superpowers/specs/2026-07-20-prompts-and-pending-choices.md)).
+Both affected surfaces were updated in the same change
+([`game-board`](../../openspec/specs/game-board/spec.md)).

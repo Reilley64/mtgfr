@@ -17,48 +17,42 @@ import {
 import type { DeckListSubmodel } from "./submodel";
 import { deckListContextMenuAllowed } from "./visible";
 
-export const FetchDecks = Command.define(
-  "FetchDecks",
-  ReceivedDecks,
-  DecksLoadFailed,
-)(
-  Effect.gen(function* () {
+export const FetchDecks = Command.define("FetchDecks", {
+  messages: [ReceivedDecks, DecksLoadFailed],
+  execute: Effect.gen(function* () {
     const rpc = yield* RpcClient;
     return yield* rpc.listDecks().pipe(
       Effect.map((decks) => ReceivedDecks({ decks })),
       Effect.catch(() => Effect.succeed(DecksLoadFailed({ message: "Could not load decks." }))),
     );
   }),
-);
+});
 
-export const LookupDeckListCommanders = Command.define(
-  "LookupDeckListCommanders",
-  { ids: S.Array(S.String) },
-  ReceivedDeckListCommanders,
-)(({ ids }) =>
-  Effect.gen(function* () {
-    const rpc = yield* RpcClient;
-    return yield* lookupCardsByIds(rpc, ids).pipe(
-      Effect.map((cards) => ReceivedDeckListCommanders({ cards })),
-      Effect.catch(() => Effect.succeed(ReceivedDeckListCommanders({ cards: [] }))),
-    );
-  }),
-);
+export const LookupDeckListCommanders = Command.define("LookupDeckListCommanders", {
+  args: { ids: S.Array(S.String) },
+  messages: [ReceivedDeckListCommanders],
+  execute: ({ ids }) =>
+    Effect.gen(function* () {
+      const rpc = yield* RpcClient;
+      return yield* lookupCardsByIds(rpc, ids).pipe(
+        Effect.map((cards) => ReceivedDeckListCommanders({ cards })),
+        Effect.catch(() => Effect.succeed(ReceivedDeckListCommanders({ cards: [] }))),
+      );
+    }),
+});
 
-export const DeleteDeck = Command.define(
-  "DeleteDeck",
-  { id: S.Number },
-  DeckDeleted,
-  DeckDeleteFailed,
-)(({ id }) =>
-  Effect.gen(function* () {
-    const rpc = yield* RpcClient;
-    return yield* rpc.deleteDeck(String(id)).pipe(
-      Effect.as(DeckDeleted()),
-      Effect.catch(() => Effect.succeed(DeckDeleteFailed({ message: "Couldn't delete that deck — try again." }))),
-    );
-  }),
-);
+export const DeleteDeck = Command.define("DeleteDeck", {
+  args: { id: S.Number },
+  messages: [DeckDeleted, DeckDeleteFailed],
+  execute: ({ id }) =>
+    Effect.gen(function* () {
+      const rpc = yield* RpcClient;
+      return yield* rpc.deleteDeck(String(id)).pipe(
+        Effect.as(DeckDeleted()),
+        Effect.catch(() => Effect.succeed(DeckDeleteFailed({ message: "Couldn't delete that deck — try again." }))),
+      );
+    }),
+});
 
 export function loadDeckList(
   model: DeckListSubmodel,

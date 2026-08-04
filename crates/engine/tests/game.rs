@@ -4625,12 +4625,7 @@ fn stinkweed_imp_creature_trigger_does_not_fire_on_noncombat_damage() {
     let foe = g.spawn_on_battlefield(PlayerId(1), creature("Sturdy Foe", 0, 5, &[]));
     let spell = g.spawn_in_hand(PlayerId(0), FIGHT_SPELL.clone());
 
-    g.cast(spell).at(Target::Object(foe)).resolve();
-    g.submit(Intent::ChooseTargets {
-        player: PlayerId(0),
-        targets: vec![Target::Object(imp)],
-    })
-    .unwrap();
+    cast_fight(&mut g, spell, imp, foe);
 
     assert_eq!(
         g.zone_of(g.current_id(foe)),
@@ -47934,8 +47929,9 @@ fn shadrix_declining_the_may_resolves_to_nothing() {
 
 // ── Fight (CR 701.12, fidelity increment #48) ───────────────────────────────────────────
 
-/// A free instant that just fights: `Effect::Misc(MiscEffect::Fight)` targets an opponent's creature at cast, then
-/// pauses at resolution for the caster to pick their own creature (see `Effect::Misc(MiscEffect::Fight)`'s doc).
+/// A free instant that just fights: `Effect::Misc(MiscEffect::Fight)` announces two targets in
+/// printed order — the creature you control, then the creature you don't (see
+/// `Effect::Misc(MiscEffect::Fight)`'s doc).
 static FIGHT_SPELL: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     name: "Fight (test)",
     id: "",
@@ -48021,6 +48017,52 @@ static FIGHT_SPELL: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     dredge: None,
 });
 
+/// Cast a fight spell with no cast-time target and settle both of its announced clauses in
+/// printed order (CR 601.2c): the creature you control, then the creature you don't. Returns the
+/// events the resolution itself produced.
+fn cast_fight(game: &mut Game, spell: ObjectId, ally: ObjectId, enemy: ObjectId) -> Vec<Event> {
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: spell,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        multikicker_count: 0,
+        alternative_cost: false,
+    })
+    .expect("a fight spell takes no cast-time target — both are chosen on the stack");
+    choose_fight_clauses(game, ally, enemy);
+    resolve_top_of_stack_events(game)
+}
+
+/// Answer a fight's two announced target clauses, ally (clause 0) then enemy (clause 1). A clause
+/// with exactly one legal target is auto-filled with no pause, so each is answered only if it
+/// actually stopped for a choice.
+fn choose_fight_clauses(game: &mut Game, ally: ObjectId, enemy: ObjectId) {
+    for (clause, chosen) in [ally, enemy].into_iter().enumerate() {
+        if !matches!(
+            game.pending_choice(),
+            Some(PendingChoice::ChooseTarget { clause: c, .. }) if c as usize == clause
+        ) {
+            continue;
+        }
+        game.submit(Intent::ChooseTargets {
+            player: PlayerId(0),
+            targets: vec![Target::Object(chosen)],
+        })
+        .expect("a legal fight clause target");
+    }
+}
+
 #[test]
 fn fight_deals_mutual_damage() {
     let mut g = TestGame::new();
@@ -48028,13 +48070,7 @@ fn fight_deals_mutual_damage() {
     let theirs = g.spawn_on_battlefield(PlayerId(1), creature("Theirs 2/2", 2, 2, &[]));
     let spell = g.spawn_in_hand(PlayerId(0), FIGHT_SPELL.clone());
 
-    // Cast-time target is the opponent's creature; the fight then pauses for my own creature.
-    g.cast(spell).at(Target::Object(theirs)).resolve();
-    g.submit(Intent::ChooseTargets {
-        player: PlayerId(0),
-        targets: vec![Target::Object(mine)],
-    })
-    .unwrap();
+    cast_fight(&mut g, spell, mine, theirs);
 
     assert_eq!(
         g.zone_of(g.current_id(theirs)),
@@ -48060,12 +48096,7 @@ fn fight_deals_damage_simultaneously_so_both_sides_can_die() {
     let theirs = g.spawn_on_battlefield(PlayerId(1), creature("Theirs 2/2", 2, 2, &[]));
     let spell = g.spawn_in_hand(PlayerId(0), FIGHT_SPELL.clone());
 
-    g.cast(spell).at(Target::Object(theirs)).resolve();
-    g.submit(Intent::ChooseTargets {
-        player: PlayerId(0),
-        targets: vec![Target::Object(mine)],
-    })
-    .unwrap();
+    cast_fight(&mut g, spell, mine, theirs);
 
     // Both powers are read before either amount is marked (CR 510.2/701.12c), so a "dead" 2/2
     // still deals its 2 — both creatures die.
@@ -48082,17 +48113,16 @@ fn fight_deals_damage_simultaneously_so_both_sides_can_die() {
 }
 
 #[test]
-fn fight_fizzles_with_no_legal_creature_you_control() {
+fn fight_is_not_castable_with_no_legal_creature_you_control() {
     let mut g = TestGame::new();
     let theirs = g.spawn_on_battlefield(PlayerId(1), creature("Theirs 2/2", 2, 2, &[]));
     let spell = g.spawn_in_hand(PlayerId(0), FIGHT_SPELL.clone());
 
-    // No creature I control: the fight resolves with no damage and no pending choice (CR 601.2c).
-    g.cast(spell).at(Target::Object(theirs)).resolve();
-
-    assert!(
-        g.pending_choice().is_none(),
-        "no own-creature choice is offered when there's nothing to fight with",
+    // "Target creature you control" is announced at cast (CR 601.2c), so with no creature to
+    // fight with there is no legal first target and the spell can't be cast at all.
+    assert_eq!(
+        g.cast(spell).try_submit().unwrap_err(),
+        Reject::IllegalTarget,
     );
     assert_eq!(
         g.zone_of(g.current_id(theirs)),
@@ -48109,15 +48139,11 @@ fn decisive_denial_modal_fight_mode_fights() {
     let theirs = g.spawn_on_battlefield(PlayerId(1), creature("Theirs 2/2", 2, 2, &[]));
     let denial = g.spawn_in_hand(PlayerId(0), card("Decisive Denial"));
 
-    // Mode 0 is the fight; its cast-time target is the opponent's creature.
-    g.cast(denial)
-        .mode(0, Some(Target::Object(theirs)))
-        .resolve();
-    g.submit(Intent::ChooseTargets {
-        player: PlayerId(0),
-        targets: vec![Target::Object(mine)],
-    })
-    .unwrap();
+    // Mode 0 is the fight: it takes no per-mode target — both of its creatures are announced on
+    // the stack in printed order, yours first (CR 601.2c).
+    g.cast(denial).mode(0, None).submit();
+    choose_fight_clauses(&mut g, mine, theirs);
+    resolve_top_of_stack(&mut g);
 
     assert_eq!(
         g.zone_of(g.current_id(theirs)),
@@ -84081,14 +84107,8 @@ fn illusionary_mask_creature_flips_when_dealt_damage() {
     let enemy = game.spawn_on_battlefield(PlayerId(1), creature("Enemy 3/3", 3, 3, &[]));
     let fight = game.spawn_in_hand(PlayerId(0), FIGHT_SPELL.clone());
 
-    // Fight: the opponent's creature is the cast target, then the masked creature is chosen.
-    game.cast(fight).at(Target::Object(enemy)).resolve();
-    let events = game
-        .submit(Intent::ChooseTargets {
-            player: PlayerId(0),
-            targets: vec![Target::Object(masked)],
-        })
-        .unwrap();
+    // Fight: the masked creature is the announced ally, the opponent's creature the enemy.
+    let events = cast_fight(&mut game, fight, masked, enemy);
 
     // The reveal (TurnedFaceUp) must precede the masked creature being dealt damage (DamageMarked).
     let flip = events
@@ -84181,12 +84201,7 @@ fn plain_morph_creature_does_not_flip_on_damage() {
 
     let enemy = game.spawn_on_battlefield(PlayerId(1), creature("Enemy 1/1", 1, 1, &[]));
     let fight = game.spawn_in_hand(PlayerId(0), FIGHT_SPELL.clone());
-    game.cast(fight).at(Target::Object(enemy)).resolve();
-    game.submit(Intent::ChooseTargets {
-        player: PlayerId(0),
-        targets: vec![Target::Object(morphed)],
-    })
-    .unwrap();
+    cast_fight(&mut game, fight, morphed, enemy);
 
     assert!(
         game.is_face_down(game.current_id(morphed)),
@@ -84967,12 +84982,7 @@ fn tajic_prevents_fight_damage_to_your_creature() {
     let enemy = g.spawn_on_battlefield(PlayerId(1), creature("Enemy 2/2", 2, 2, &[]));
     let spell = g.spawn_in_hand(PlayerId(0), FIGHT_SPELL.clone());
 
-    g.cast(spell).at(Target::Object(enemy)).resolve();
-    g.submit(Intent::ChooseTargets {
-        player: PlayerId(0),
-        targets: vec![Target::Object(x)],
-    })
-    .unwrap();
+    cast_fight(&mut g, spell, x, enemy);
 
     assert_eq!(
         g.marked_damage(g.current_id(x)),
@@ -88481,12 +88491,7 @@ fn armadillo_cloak_gains_life_on_noncombat_damage() {
 
     let p0_life_before = game.life(PlayerId(0));
     let spell = game.spawn_in_hand(PlayerId(0), FIGHT_SPELL.clone());
-    cast_and_resolve(&mut game, spell, Some(Target::Object(host)));
-    game.submit(Intent::ChooseTargets {
-        player: PlayerId(0),
-        targets: vec![Target::Object(mine)],
-    })
-    .unwrap();
+    cast_fight(&mut game, spell, mine, host);
     resolve_top_of_stack(&mut game); // the cloak's EnchantedCreatureDealsDamage trigger resolves
 
     // Host is 3+2=5 power (the cloak's +2/+2) — its noncombat fight damage still gains the
@@ -101620,8 +101625,8 @@ fn power_fists_trigger_stops_once_it_moves_to_another_creature() {
     );
 }
 
-/// One-way damage equal to power (Infectious Bite, fidelity increment #7): same cast-time /
-/// resolution-time target split as [`FIGHT_SPELL`], but `one_way: true` — no fight (CR 701.12
+/// One-way damage equal to power (Infectious Bite, fidelity increment #7): same two announced
+/// target clauses as [`FIGHT_SPELL`], but `one_way: true` — no fight (CR 701.12
 /// never applies; the oracle text never says "fights"), so only the ally's damage to the enemy
 /// happens.
 static ONE_WAY_FIGHT_SPELL: LazyLock<CardDef> = LazyLock::new(|| CardDef {
@@ -101652,12 +101657,7 @@ fn one_way_damage_equal_to_power_does_not_damage_the_source_back() {
     let theirs = g.spawn_on_battlefield(PlayerId(1), creature("Theirs 2/2", 2, 2, &[]));
     let spell = g.spawn_in_hand(PlayerId(0), ONE_WAY_FIGHT_SPELL.clone());
 
-    g.cast(spell).at(Target::Object(theirs)).resolve();
-    g.submit(Intent::ChooseTargets {
-        player: PlayerId(0),
-        targets: vec![Target::Object(mine)],
-    })
-    .unwrap();
+    cast_fight(&mut g, spell, mine, theirs);
 
     assert_eq!(
         g.zone_of(g.current_id(theirs)),
@@ -101671,27 +101671,67 @@ fn one_way_damage_equal_to_power_does_not_damage_the_source_back() {
     );
 }
 
+/// Infectious Bite: "Target creature you control deals damage equal to its power to target
+/// creature you don't control." Both targets are chosen at announcement in printed order
+/// (CR 601.2c) — the ally is clause 0, the enemy clause 1.
 #[test]
-fn infectious_bite_poisons_the_opponent_after_the_ally_choice_resolves() {
-    // Infectious Bite: "... Each opponent gets a poison counter." — the poison step is the rest
-    // of the spell's `Sequence`, deferred behind the ally-choice pause; it must still run once
-    // that choice is answered.
+fn infectious_bite_chooses_your_creature_first_then_the_opponents() {
     let mut g = TestGame::new();
     let mine = g.spawn_on_battlefield(PlayerId(0), creature("Mine 3/3", 3, 3, &[]));
+    let my_decoy = g.spawn_on_battlefield(PlayerId(0), creature("My Decoy 1/1", 1, 1, &[]));
     let theirs = g.spawn_on_battlefield(PlayerId(1), creature("Theirs 2/2", 2, 2, &[]));
+    let their_decoy = g.spawn_on_battlefield(PlayerId(1), creature("Their Decoy 1/1", 1, 1, &[]));
     let spell = g.spawn_in_hand(PlayerId(0), card("Infectious Bite"));
 
-    g.cast(spell).at(Target::Object(theirs)).resolve();
+    g.cast(spell)
+        .try_submit()
+        .expect("both targets are chosen after the spell is on the stack");
+
+    match g.pending_choice() {
+        Some(PendingChoice::ChooseTarget { legal, clause, .. }) => {
+            assert_eq!(clause, 0, "clause 0 is the creature you control");
+            assert_eq!(
+                legal,
+                vec![Target::Object(mine), Target::Object(my_decoy)],
+                "only creatures you control are legal for clause 0",
+            );
+        }
+        other => panic!("expected the ally clause first, got {other:?}"),
+    }
     g.submit(Intent::ChooseTargets {
         player: PlayerId(0),
         targets: vec![Target::Object(mine)],
     })
-    .unwrap();
+    .expect("my 3/3 is a legal clause-0 target");
+
+    match g.pending_choice() {
+        Some(PendingChoice::ChooseTarget { legal, clause, .. }) => {
+            assert_eq!(clause, 1, "clause 1 is the creature you don't control");
+            assert_eq!(
+                legal,
+                vec![Target::Object(theirs), Target::Object(their_decoy)],
+                "only creatures you don't control are legal for clause 1",
+            );
+        }
+        other => panic!("expected the enemy clause second, got {other:?}"),
+    }
+    g.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(theirs)],
+    })
+    .expect("their 2/2 is a legal clause-1 target");
+
+    resolve_top_of_stack(&mut g);
 
     assert_eq!(
         g.zone_of(g.current_id(theirs)),
         Zone::Graveyard,
         "the 2/2 took my 3/3's 3 power and died",
+    );
+    assert_eq!(
+        g.zone_of(g.current_id(their_decoy)),
+        Zone::Battlefield,
+        "the untargeted creature was never damaged",
     );
     assert_eq!(
         g.marked_damage(g.current_id(mine)),
@@ -101701,7 +101741,22 @@ fn infectious_bite_poisons_the_opponent_after_the_ally_choice_resolves() {
     assert_eq!(
         g.player_counters(PlayerId(1), PlayerCounterKind::Poison),
         1,
-        "each opponent gets a poison counter, after the ally-choice pause resumes the sequence",
+        "each opponent still gets a poison counter",
+    );
+}
+
+#[test]
+fn infectious_bite_is_not_castable_without_a_creature_you_control() {
+    // "Target creature you control" is a target chosen at announcement, so with nothing to
+    // damage with the spell can't legally be cast at all (CR 601.2c).
+    let mut g = TestGame::new();
+    g.spawn_on_battlefield(PlayerId(1), creature("Theirs 2/2", 2, 2, &[]));
+    let spell = g.spawn_in_hand(PlayerId(0), card("Infectious Bite"));
+
+    assert_eq!(
+        g.cast(spell).try_submit().unwrap_err(),
+        Reject::IllegalTarget,
+        "no creature you control means no legal first target",
     );
 }
 
@@ -103411,12 +103466,7 @@ fn infect_noncombat_damage_also_becomes_counters() {
     let theirs = g.spawn_on_battlefield(PlayerId(1), creature("Theirs 4/4", 4, 4, &[]));
     let spell = g.spawn_in_hand(PlayerId(0), FIGHT_SPELL.clone());
 
-    g.cast(spell).at(Target::Object(theirs)).resolve();
-    g.submit(Intent::ChooseTargets {
-        player: PlayerId(0),
-        targets: vec![Target::Object(mine)],
-    })
-    .unwrap();
+    cast_fight(&mut g, spell, mine, theirs);
 
     assert_eq!(
         g.counters_of_kind(theirs, CounterKind::MinusOneMinusOne),
@@ -114572,4 +114622,54 @@ fn camouflage_is_locked_out_of_every_step_but_your_declare_attackers() {
         .is_err(),
         "a main-phase Camouflage has no attackers to hide among",
     );
+}
+
+/// Viridescent Bog's `{1}, {T}: Add {B}{G}` is a paid mana ability: it is listed for the radial but
+/// must never read as a play. `mana_only` is what carries that to the wire.
+#[test]
+fn a_paid_mana_activate_is_listed_as_mana_only() {
+    let mut game = Game::new();
+    let bog = game.spawn_on_battlefield(PlayerId(0), card("Viridescent Bog"));
+    let forest = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
+    // Tap the Forest for the Bog's {1} — this also forces `refresh_actions` to run.
+    game.submit(Intent::TapForMana {
+        player: PlayerId(0),
+        object: forest,
+    })
+    .unwrap();
+
+    let action = game
+        .legal_actions()
+        .iter()
+        .find(|a| matches!(a.kind, MeaningfulAction::Activate { source, .. } if source == bog))
+        .expect("the Bog's paid mana mode is listed for the radial");
+    assert!(
+        action.mana_only,
+        "a paid mana ability is menu-only, not a play"
+    );
+    assert!(
+        !game.has_meaningful_action(PlayerId(0)),
+        "bare mana production still must not stop auto-pass",
+    );
+}
+
+#[test]
+fn a_land_drop_is_not_mana_only() {
+    let mut game = Game::new();
+    let forest_in_hand = game.spawn_in_hand(PlayerId(0), card("Forest"));
+    let tapland = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
+    game.submit(Intent::TapForMana {
+        player: PlayerId(0),
+        object: tapland,
+    })
+    .unwrap();
+
+    let action = game
+        .legal_actions()
+        .iter()
+        .find(
+            |a| matches!(a.kind, MeaningfulAction::PlayLand { card, .. } if card == forest_in_hand),
+        )
+        .expect("the land drop is listed");
+    assert!(!action.mana_only, "playing a land is a real action");
 }

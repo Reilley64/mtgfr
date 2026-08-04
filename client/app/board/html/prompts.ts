@@ -3,7 +3,7 @@
 // Pending-choice formulators collect answers and route every submission through `choiceIntent`.
 
 import { Match, Option } from "effect";
-import { childAttributes, type Html, html } from "foldkit/html";
+import { childAttributes, type Html, type HtmlBuilder } from "foldkit/html";
 import {
   cardPickIsSearchable,
   filterChoiceItems,
@@ -80,18 +80,15 @@ import {
   XSubmitted,
 } from "../messages";
 import type { BoardModel } from "../submodel";
-import { HAND_BAR_H } from "./hand";
 import { pipChip } from "./pip-chip";
 import { promptCardFace } from "./prompt-card-face";
 import { promptModalFrame } from "./prompt-modal";
-
-const h = html<Message>();
 
 function messageText(message: MessageRef | null | undefined): string {
   return formatMessage(message);
 }
 
-function itemButton(label: string, testId: string, onClick: Message, disabled = false): Html {
+function itemButton(label: string, testId: string, onClick: Message, h: HtmlBuilder<Message>, disabled = false): Html {
   return h.button(
     [
       h.Type("button"),
@@ -115,7 +112,7 @@ function itemButton(label: string, testId: string, onClick: Message, disabled = 
   );
 }
 
-function submitButton(label: string, disabled: boolean): Html {
+function submitButton(label: string, disabled: boolean, h: HtmlBuilder<Message>): Html {
   return h.button(
     [
       h.Type("button"),
@@ -130,7 +127,7 @@ function submitButton(label: string, disabled: boolean): Html {
   );
 }
 
-function cancelButton(): Html {
+function cancelButton(h: HtmlBuilder<Message>): Html {
   return h.button(
     [
       h.Type("button"),
@@ -142,7 +139,7 @@ function cancelButton(): Html {
   );
 }
 
-function frame(testId: string, title: string, body: ReadonlyArray<Html>): Html {
+function frame(testId: string, title: string, body: ReadonlyArray<Html>, h: HtmlBuilder<Message>): Html {
   return h.div(
     [
       h.DataAttribute("testid", testId),
@@ -160,7 +157,13 @@ function choiceItemPrint(item: ChoiceItem, state: VisibleState): string {
   return obj?.print ?? "";
 }
 
-function cardPickButton(item: ChoiceItem, state: VisibleState, picked: ReadonlyArray<number>, ordered: boolean): Html {
+function cardPickButton(
+  item: ChoiceItem,
+  state: VisibleState,
+  picked: ReadonlyArray<number>,
+  ordered: boolean,
+  h: HtmlBuilder<Message>,
+): Html {
   const selected = picked.includes(item.id);
   const pickOrder = picked.indexOf(item.id);
   const print = choiceItemPrint(item, state);
@@ -200,6 +203,7 @@ function arrangeLaneCard(
   state: VisibleState,
   laneIds: ReadonlyArray<number>,
   ordered: boolean,
+  h: HtmlBuilder<Message>,
 ): Html {
   const pickOrder = laneIds.indexOf(item.id);
   const print = choiceItemPrint(item, state);
@@ -233,6 +237,7 @@ function arrangeLanesPrompt(
   pending: Extract<PendingChoiceView, { kind: "scry" | "surveil" | "reorder_top" }>,
   state: VisibleState,
   board: BoardModel,
+  h: HtmlBuilder<Message>,
 ): Html {
   const draft = board.promptDraft ?? initPromptDraft(pending, state);
   const buckets =
@@ -272,58 +277,61 @@ function arrangeLanesPrompt(
     Match.orElse(() => "Click a card to move it between Top and Bottom. Order in each lane is left to right."),
   );
 
-  return promptModalFrame({
-    testId: "pending-arrange-modal",
-    title,
-    body: [
-      h.div(
-        [
-          h.DataAttribute("testid", "prompt-arrange-lanes"),
-          h.Class("flex min-h-0 w-[min(92vw,720px)] flex-1 flex-col gap-3 overflow-y-auto overscroll-contain"),
-        ],
-        [
-          h.div([h.Class("shrink-0 text-caption text-mist")], [hint]),
-          h.div(
-            [h.DataAttribute("testid", "prompt-arrange-top"), h.Class("flex flex-col gap-2")],
-            [
-              h.div(
-                [
-                  h.DataAttribute("testid", "prompt-arrange-top-label"),
-                  h.Class("text-caption font-semibold text-seafoam"),
-                ],
-                ["Top of library"],
-              ),
-              h.div(
-                [h.Class("flex min-h-[100px] flex-wrap justify-center gap-2 rounded-panel bg-glass/40 p-2")],
-                topItems.length > 0
-                  ? topItems.map((item) => arrangeLaneCard(item, state, topIds, true))
-                  : [h.div([h.Class("self-center text-caption text-mist")], ["None"])],
-              ),
-            ],
-          ),
-          h.div(
-            [h.DataAttribute("testid", "prompt-arrange-bottom"), h.Class("flex flex-col gap-2")],
-            [
-              h.div(
-                [
-                  h.DataAttribute("testid", "prompt-arrange-bottom-label"),
-                  h.Class("text-caption font-semibold text-seafoam"),
-                ],
-                [bottomLabel],
-              ),
-              h.div(
-                [h.Class("flex min-h-[100px] flex-wrap justify-center gap-2 rounded-panel bg-glass/40 p-2")],
-                bottomItems.length > 0
-                  ? bottomItems.map((item) => arrangeLaneCard(item, state, bottomIds, pending.kind === "scry"))
-                  : [h.div([h.Class("self-center text-caption text-mist")], ["None"])],
-              ),
-            ],
-          ),
-        ],
-      ),
-    ],
-    actions: [submitButton("Done", false)],
-  });
+  return promptModalFrame(
+    {
+      testId: "pending-arrange-modal",
+      title,
+      body: [
+        h.div(
+          [
+            h.DataAttribute("testid", "prompt-arrange-lanes"),
+            h.Class("flex min-h-0 w-[min(92vw,720px)] flex-1 flex-col gap-3 overflow-y-auto overscroll-contain"),
+          ],
+          [
+            h.div([h.Class("shrink-0 text-caption text-mist")], [hint]),
+            h.div(
+              [h.DataAttribute("testid", "prompt-arrange-top"), h.Class("flex flex-col gap-2")],
+              [
+                h.div(
+                  [
+                    h.DataAttribute("testid", "prompt-arrange-top-label"),
+                    h.Class("text-caption font-semibold text-seafoam"),
+                  ],
+                  ["Top of library"],
+                ),
+                h.div(
+                  [h.Class("flex min-h-[100px] flex-wrap justify-center gap-2 rounded-panel bg-glass/40 p-2")],
+                  topItems.length > 0
+                    ? topItems.map((item) => arrangeLaneCard(item, state, topIds, true, h))
+                    : [h.div([h.Class("self-center text-caption text-mist")], ["None"])],
+                ),
+              ],
+            ),
+            h.div(
+              [h.DataAttribute("testid", "prompt-arrange-bottom"), h.Class("flex flex-col gap-2")],
+              [
+                h.div(
+                  [
+                    h.DataAttribute("testid", "prompt-arrange-bottom-label"),
+                    h.Class("text-caption font-semibold text-seafoam"),
+                  ],
+                  [bottomLabel],
+                ),
+                h.div(
+                  [h.Class("flex min-h-[100px] flex-wrap justify-center gap-2 rounded-panel bg-glass/40 p-2")],
+                  bottomItems.length > 0
+                    ? bottomItems.map((item) => arrangeLaneCard(item, state, bottomIds, pending.kind === "scry", h))
+                    : [h.div([h.Class("self-center text-caption text-mist")], ["None"])],
+                ),
+              ],
+            ),
+          ],
+        ),
+      ],
+      actions: [submitButton("Done", false, h)],
+    },
+    h,
+  );
 }
 
 function cardPickPrompt(
@@ -338,6 +346,7 @@ function cardPickPrompt(
     declineLabel?: string;
     ordered?: boolean;
   },
+  h: HtmlBuilder<Message>,
 ): Html {
   const draft = board.promptDraft ?? initPromptDraft(pending, state);
   const picked = draft.kind === "card-pick" ? draft.picked : [];
@@ -372,16 +381,16 @@ function cardPickPrompt(
       : null;
   const cardsEl = h.div(
     [h.Class("flex flex-wrap justify-center gap-2")],
-    [...shown.map((item) => cardPickButton(item, state, picked, config.ordered ?? false)), emptyEl].filter(
+    [...shown.map((item) => cardPickButton(item, state, picked, config.ordered ?? false, h)), emptyEl].filter(
       (v): v is Html => v !== null,
     ),
   );
   const actionsEl = h.div(
     [h.Class("flex shrink-0 flex-wrap gap-2")],
     [
-      submitButton(config.submitLabel, !ready),
+      submitButton(config.submitLabel, !ready, h),
       config.declineLabel != null
-        ? itemButton(config.declineLabel, "prompt-decline", PromptDeclined())
+        ? itemButton(config.declineLabel, "prompt-decline", PromptDeclined(), h)
         : h.span([], []),
     ],
   );
@@ -397,42 +406,52 @@ function cardPickPrompt(
   );
 
   if (searchable) {
-    return promptModalFrame({
-      testId: "pending-library-modal",
+    return promptModalFrame(
+      {
+        testId: "pending-library-modal",
+        title: config.title,
+        body: [
+          h.div([h.DataAttribute("testid", "pick-title"), h.Class("sr-only")], [config.title]),
+          h.div(
+            [h.Class("pointer-events-none shrink-0 text-caption text-mist")],
+            ["Filter by name, click a card, then Choose — or Fail to find."],
+          ),
+          h.div(
+            [h.Class("flex min-h-0 w-[min(92vw,720px)] flex-1 flex-col gap-2")],
+            [filterEl ?? h.span([], []), scrollEl],
+          ),
+        ].filter((v): v is Html => v !== null),
+        actions: [
+          submitButton(config.submitLabel, !ready, h),
+          config.declineLabel != null
+            ? itemButton(config.declineLabel, "prompt-decline", PromptDeclined(), h)
+            : h.span([], []),
+        ].filter((v): v is Html => v !== null),
+      },
+      h,
+    );
+  }
+
+  return promptModalFrame(
+    {
+      testId: "pending-card-pick-modal",
       title: config.title,
       body: [
         h.div([h.DataAttribute("testid", "pick-title"), h.Class("sr-only")], [config.title]),
-        h.div(
-          [h.Class("pointer-events-none shrink-0 text-caption text-mist")],
-          ["Filter by name, click a card, then Choose — or Fail to find."],
-        ),
-        h.div(
-          [h.Class("flex min-h-0 w-[min(92vw,720px)] flex-1 flex-col gap-2")],
-          [filterEl ?? h.span([], []), scrollEl],
-        ),
+        hintEl,
+        h.div([h.Class("flex min-h-0 w-[min(92vw,720px)] flex-1 flex-col gap-2")], [scrollEl]),
       ].filter((v): v is Html => v !== null),
-      actions: [
-        submitButton(config.submitLabel, !ready),
-        config.declineLabel != null
-          ? itemButton(config.declineLabel, "prompt-decline", PromptDeclined())
-          : h.span([], []),
-      ].filter((v): v is Html => v !== null),
-    });
-  }
-
-  return promptModalFrame({
-    testId: "pending-card-pick-modal",
-    title: config.title,
-    body: [
-      h.div([h.DataAttribute("testid", "pick-title"), h.Class("sr-only")], [config.title]),
-      hintEl,
-      h.div([h.Class("flex min-h-0 w-[min(92vw,720px)] flex-1 flex-col gap-2")], [scrollEl]),
-    ].filter((v): v is Html => v !== null),
-    actions: [actionsEl],
-  });
+      actions: [actionsEl],
+    },
+    h,
+  );
 }
 
-function orderPrompt(pending: Extract<PendingChoiceView, { kind: "order_triggers" }>, board: BoardModel): Html {
+function orderPrompt(
+  pending: Extract<PendingChoiceView, { kind: "order_triggers" }>,
+  board: BoardModel,
+  h: HtmlBuilder<Message>,
+): Html {
   const draft = board.promptDraft;
   const order = draft?.kind === "order" ? draft.order : pending.labels.map((_, i) => i);
   const pick = board.orderPickPos;
@@ -493,42 +512,45 @@ function orderPrompt(pending: Extract<PendingChoiceView, { kind: "order_triggers
       ],
     );
   });
-  return promptModalFrame({
-    testId: "pending-order-modal",
-    title: "Order these triggers — the last one resolves first",
-    body: [
-      h.div(
-        [h.Class("flex min-h-0 w-[min(92vw,560px)] flex-1 flex-col gap-2")],
-        [
-          h.div(
-            [h.Class("shrink-0 text-caption text-mist")],
-            [
-              pick == null
-                ? "Drag a trigger to reorder, or click then click where it should go (↑↓ also work)."
-                : "Drop on another row to place it — or click / release to cancel.",
-            ],
-          ),
-          h.div(
-            [
-              h.DataAttribute("testid", "prompt-order-list"),
-              h.Class("flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain"),
-            ],
-            rows,
-          ),
-        ],
-      ),
-    ],
-    actions: [submitButton("Submit", false)],
-  });
+  return promptModalFrame(
+    {
+      testId: "pending-order-modal",
+      title: "Order these triggers — the last one resolves first",
+      body: [
+        h.div(
+          [h.Class("flex min-h-0 w-[min(92vw,560px)] flex-1 flex-col gap-2")],
+          [
+            h.div(
+              [h.Class("shrink-0 text-caption text-mist")],
+              [
+                pick == null
+                  ? "Drag a trigger to reorder, or click then click where it should go (↑↓ also work)."
+                  : "Drop on another row to place it — or click / release to cancel.",
+              ],
+            ),
+            h.div(
+              [
+                h.DataAttribute("testid", "prompt-order-list"),
+                h.Class("flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain"),
+              ],
+              rows,
+            ),
+          ],
+        ),
+      ],
+      actions: [submitButton("Submit", false, h)],
+    },
+    h,
+  );
 }
 
-function amountStepper(id: number, amount: number, max: number): Html {
+function amountStepper(id: number, amount: number, max: number, h: HtmlBuilder<Message>): Html {
   const value = clampX(amount, 0, max);
   return h.div(
     [h.Class("flex flex-wrap items-center gap-1")],
     [
-      itemButton("Min", `prompt-damage-${id}-min`, PromptDamageSet({ id, amount: 0 })),
-      itemButton("−", `prompt-damage-${id}-dec`, PromptDamageSet({ id, amount: value - 1 }), value <= 0),
+      itemButton("Min", `prompt-damage-${id}-min`, PromptDamageSet({ id, amount: 0 }), h),
+      itemButton("−", `prompt-damage-${id}-dec`, PromptDamageSet({ id, amount: value - 1 }), h, value <= 0),
       h.span(
         [
           h.DataAttribute("testid", `prompt-damage-${id}-value`),
@@ -536,8 +558,8 @@ function amountStepper(id: number, amount: number, max: number): Html {
         ],
         [String(value)],
       ),
-      itemButton("+", `prompt-damage-${id}-inc`, PromptDamageSet({ id, amount: value + 1 }), value >= max),
-      itemButton("Max", `prompt-damage-${id}-max`, PromptDamageSet({ id, amount: max })),
+      itemButton("+", `prompt-damage-${id}-inc`, PromptDamageSet({ id, amount: value + 1 }), h, value >= max),
+      itemButton("Max", `prompt-damage-${id}-max`, PromptDamageSet({ id, amount: max }), h),
     ],
   );
 }
@@ -546,6 +568,7 @@ function damageAssignPrompt(
   pending: Extract<PendingChoiceView, { kind: "assign_combat_damage" }>,
   state: VisibleState,
   board: BoardModel,
+  h: HtmlBuilder<Message>,
 ): Html {
   const draft = board.promptDraft ?? initPromptDraft(pending, state);
   const amounts = draft.kind === "damage" ? draft.amounts : {};
@@ -561,13 +584,16 @@ function damageAssignPrompt(
     : pending.items.map((it) =>
         h.div(
           [h.Class("flex items-center gap-2")],
-          [h.span([h.Class("w-28 truncate text-body")], [it.label]), amountStepper(it.id, amounts[it.id] ?? 0, power)],
+          [
+            h.span([h.Class("w-28 truncate text-body")], [it.label]),
+            amountStepper(it.id, amounts[it.id] ?? 0, power, h),
+          ],
         ),
       );
   return h.div(
     [
       h.DataAttribute("testid", "pending-damage-aim"),
-      h.Style({ "--b": `${HAND_BAR_H + 12}px` }),
+      h.Style({ "--b": `calc(var(--hand-bar-h) + 12px)` }),
       h.Class(
         [
           "fixed bottom-(--b) left-1/2 z-30 flex max-w-[min(100%-2rem,28rem)] -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
@@ -600,12 +626,12 @@ function damageAssignPrompt(
             [`to defender: ${overflow}`],
           )
         : null,
-      onBoard ? null : submitButton("Assign", !ready),
+      onBoard ? null : submitButton("Assign", !ready, h),
     ].filter((v): v is Html => v !== null),
   );
 }
 
-function targetPickButton(target: WireTarget, state: VisibleState, testId: string): Html {
+function targetPickButton(target: WireTarget, state: VisibleState, testId: string, h: HtmlBuilder<Message>): Html {
   if (target.kind === "player") {
     const label = playerSeatLabel(state, target.player);
     return h.button(
@@ -647,67 +673,78 @@ function targetPickButton(target: WireTarget, state: VisibleState, testId: strin
   );
 }
 
-function targetPickPrompt(title: string, targets: ReadonlyArray<WireTarget>, state: VisibleState): Html {
-  return promptModalFrame({
-    testId: "target-pick-modal",
-    title,
-    body: [
-      h.div(
-        [
-          h.Class(
-            `${PICK_CARD_SCROLL_MIN_CLASS} w-[min(92vw,720px)] flex-1 overflow-y-auto overscroll-contain rounded-panel bg-glass/30 p-2`,
-          ),
-        ],
-        [
-          h.div(
-            [h.Class("flex flex-wrap justify-center gap-3")],
-            targets.map((t, i) => targetPickButton(t, state, `target-pick-${i}`)),
-          ),
-        ],
-      ),
-    ],
-    actions: [cancelButton()],
-  });
+function targetPickPrompt(
+  title: string,
+  targets: ReadonlyArray<WireTarget>,
+  state: VisibleState,
+  h: HtmlBuilder<Message>,
+): Html {
+  return promptModalFrame(
+    {
+      testId: "target-pick-modal",
+      title,
+      body: [
+        h.div(
+          [
+            h.Class(
+              `${PICK_CARD_SCROLL_MIN_CLASS} w-[min(92vw,720px)] flex-1 overflow-y-auto overscroll-contain rounded-panel bg-glass/30 p-2`,
+            ),
+          ],
+          [
+            h.div(
+              [h.Class("flex flex-wrap justify-center gap-3")],
+              targets.map((t, i) => targetPickButton(t, state, `target-pick-${i}`, h)),
+            ),
+          ],
+        ),
+      ],
+      actions: [cancelButton(h)],
+    },
+    h,
+  );
 }
 
-function boardXPrompt(prompt: NonNullable<BoardModel["xPrompt"]>): Html {
+function boardXPrompt(prompt: NonNullable<BoardModel["xPrompt"]>, h: HtmlBuilder<Message>): Html {
   const { minX, maxX, draftX, xCost, name } = prompt;
   const preview = costText(costWithChosenX(xCost, draftX));
-  return promptModalFrame({
-    testId: "x-prompt-modal",
-    title: `Choose X for ${name}`,
-    body: [
-      h.div(
-        [h.Class("flex min-h-0 w-[min(92vw,28rem)] flex-col items-center gap-sm")],
-        [
-          h.div(
-            [
-              h.Class("flex items-center justify-center gap-2 text-body text-mist"),
-              h.DataAttribute("testid", "x-prompt-preview"),
-            ],
-            [`Pay ${preview}`],
-          ),
-          h.div(
-            [h.Class("flex flex-wrap items-center justify-center gap-2")],
-            [
-              itemButton("Min", "x-prompt-min", XDraftSet({ x: minX })),
-              itemButton("−", "x-prompt-dec", XDraftSet({ x: draftX - 1 }), draftX <= minX),
-              h.span(
-                [
-                  h.DataAttribute("testid", "x-prompt-value"),
-                  h.Class("min-w-[2ch] text-center text-body font-semibold text-snow"),
-                ],
-                [String(draftX)],
-              ),
-              itemButton("+", "x-prompt-inc", XDraftSet({ x: draftX + 1 }), draftX >= maxX),
-              itemButton("Max", "x-prompt-max", XDraftSet({ x: maxX })),
-            ],
-          ),
-        ],
-      ),
-    ],
-    actions: [itemButton("Confirm", "x-prompt-confirm", XSubmitted({ x: draftX })), cancelButton()],
-  });
+  return promptModalFrame(
+    {
+      testId: "x-prompt-modal",
+      title: `Choose X for ${name}`,
+      body: [
+        h.div(
+          [h.Class("flex min-h-0 w-[min(92vw,28rem)] flex-col items-center gap-sm")],
+          [
+            h.div(
+              [
+                h.Class("flex items-center justify-center gap-2 text-body text-mist"),
+                h.DataAttribute("testid", "x-prompt-preview"),
+              ],
+              [`Pay ${preview}`],
+            ),
+            h.div(
+              [h.Class("flex flex-wrap items-center justify-center gap-2")],
+              [
+                itemButton("Min", "x-prompt-min", XDraftSet({ x: minX }), h),
+                itemButton("−", "x-prompt-dec", XDraftSet({ x: draftX - 1 }), h, draftX <= minX),
+                h.span(
+                  [
+                    h.DataAttribute("testid", "x-prompt-value"),
+                    h.Class("min-w-[2ch] text-center text-body font-semibold text-snow"),
+                  ],
+                  [String(draftX)],
+                ),
+                itemButton("+", "x-prompt-inc", XDraftSet({ x: draftX + 1 }), h, draftX >= maxX),
+                itemButton("Max", "x-prompt-max", XDraftSet({ x: maxX }), h),
+              ],
+            ),
+          ],
+        ),
+      ],
+      actions: [itemButton("Confirm", "x-prompt-confirm", XSubmitted({ x: draftX }), h), cancelButton(h)],
+    },
+    h,
+  );
 }
 
 function costPickPrompt(
@@ -716,27 +753,31 @@ function costPickPrompt(
   choices: ReadonlyArray<number>,
   state: VisibleState,
   message: (id: number) => Message,
+  h: HtmlBuilder<Message>,
   presentation: "aim" | "modal" = "aim",
 ): Html {
   const body = h.div(
     [h.Class("flex min-h-0 w-[min(92vw,28rem)] flex-wrap justify-center gap-2")],
     choices.map((id) => {
       const obj = state.objects.find((o) => o.id === id);
-      return itemButton(obj?.name ?? `#${id}`, `${testId}-${id}`, message(id));
+      return itemButton(obj?.name ?? `#${id}`, `${testId}-${id}`, message(id), h);
     }),
   );
   if (presentation === "modal") {
-    return promptModalFrame({
-      testId: `${testId}-modal`,
-      title,
-      body: [body],
-      actions: [cancelButton()],
-    });
+    return promptModalFrame(
+      {
+        testId: `${testId}-modal`,
+        title,
+        body: [body],
+        actions: [cancelButton(h)],
+      },
+      h,
+    );
   }
   return h.div(
     [
       h.DataAttribute("testid", `${testId}-aim`),
-      h.Style({ "--b": `${HAND_BAR_H + 12}px` }),
+      h.Style({ "--b": `calc(var(--hand-bar-h) + 12px)` }),
       h.Class(
         "pointer-events-auto fixed bottom-(--b) left-1/2 z-30 flex max-w-[min(100%-2rem,28rem)] -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
       ),
@@ -744,18 +785,18 @@ function costPickPrompt(
     [
       h.div([h.Class("pointer-events-none text-center font-semibold text-body text-snow")], [title]),
       body,
-      cancelButton(),
+      cancelButton(h),
     ],
   );
 }
 
-function modalPrompt(mc: NonNullable<BoardModel["modalCast"]>): Html {
+function modalPrompt(mc: NonNullable<BoardModel["modalCast"]>, h: HtmlBuilder<Message>): Html {
   if (mc.chosen == null) {
     const title = messageText(mc.action.label) || "Choose modes";
     return h.div(
       [
         h.DataAttribute("testid", "modal-mode-aim"),
-        h.Style({ "--b": `${HAND_BAR_H + 12}px` }),
+        h.Style({ "--b": `calc(var(--hand-bar-h) + 12px)` }),
         h.Class(
           "pointer-events-auto fixed bottom-(--b) left-1/2 z-30 flex max-w-[min(100%-2rem,28rem)] -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
         ),
@@ -766,7 +807,7 @@ function modalPrompt(mc: NonNullable<BoardModel["modalCast"]>): Html {
   return h.div(
     [
       h.DataAttribute("testid", "modal-waiting-aim"),
-      h.Style({ "--b": `${HAND_BAR_H + 12}px` }),
+      h.Style({ "--b": `calc(var(--hand-bar-h) + 12px)` }),
       h.Class(
         "pointer-events-none fixed bottom-(--b) left-1/2 z-30 flex max-w-[min(100%-2rem,28rem)] -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
       ),
@@ -780,11 +821,11 @@ function modalPrompt(mc: NonNullable<BoardModel["modalCast"]>): Html {
   );
 }
 
-function playModePrompt(_pick: NonNullable<BoardModel["playModePick"]>): Html {
+function playModePrompt(_pick: NonNullable<BoardModel["playModePick"]>, h: HtmlBuilder<Message>): Html {
   return h.div(
     [
       h.DataAttribute("testid", "play-mode-aim"),
-      h.Style({ "--b": `${HAND_BAR_H + 12}px` }),
+      h.Style({ "--b": `calc(var(--hand-bar-h) + 12px)` }),
       h.Class(
         "pointer-events-auto fixed bottom-(--b) left-1/2 z-30 flex max-w-[min(100%-2rem,28rem)] -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
       ),
@@ -808,6 +849,7 @@ function answerButton(
   answer: AnswerInput,
   primary: boolean,
   disabled = false,
+  h: HtmlBuilder<Message>,
 ): Html {
   return h.button(
     [
@@ -1152,6 +1194,7 @@ function revealedToGraveyardAim(
   pending: Extract<PendingChoiceView, { kind: "opponent_chooses_revealed_to_graveyard" }>,
   state: VisibleState,
   tableId: string | null,
+  h: HtmlBuilder<Message>,
 ): Html {
   const cards = pending.items.map((item) => {
     const print = choiceItemPrint(item, state);
@@ -1176,7 +1219,7 @@ function revealedToGraveyardAim(
   return h.div(
     [
       h.DataAttribute("testid", "pending-revealed-aim"),
-      h.Style({ "--b": `${HAND_BAR_H + 12}px` }),
+      h.Style({ "--b": `calc(var(--hand-bar-h) + 12px)` }),
       h.Class(
         "pointer-events-auto fixed bottom-(--b) left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
       ),
@@ -1193,9 +1236,10 @@ function cardPickForKind(
   state: VisibleState,
   board: BoardModel,
   tableId: string | null,
+  h: HtmlBuilder<Message>,
 ): Html | null {
   if (pending.kind === "opponent_chooses_revealed_to_graveyard") {
-    return revealedToGraveyardAim(pending, state, tableId);
+    return revealedToGraveyardAim(pending, state, tableId, h);
   }
   const gyPick = pendingGraveyardPickIds(pending, state);
   if (gyPick != null) {
@@ -1232,7 +1276,7 @@ function cardPickForKind(
     return h.div(
       [
         h.DataAttribute("testid", "pending-gy-aim"),
-        h.Style({ "--b": `${HAND_BAR_H + 12}px` }),
+        h.Style({ "--b": `calc(var(--hand-bar-h) + 12px)` }),
         h.Class(
           "pointer-events-none fixed bottom-(--b) left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-xs rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
         ),
@@ -1273,7 +1317,7 @@ function cardPickForKind(
       return h.div(
         [
           h.DataAttribute("testid", "pending-exile-aim"),
-          h.Style({ "--b": `${HAND_BAR_H + 12}px` }),
+          h.Style({ "--b": `calc(var(--hand-bar-h) + 12px)` }),
           h.Class(
             "pointer-events-none fixed bottom-(--b) left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-xs rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
           ),
@@ -1315,7 +1359,7 @@ function cardPickForKind(
     return h.div(
       [
         h.DataAttribute("testid", discardKind ? "pending-discard-aim" : "pending-hand-aim"),
-        h.Style({ "--b": `${HAND_BAR_H + 12}px` }),
+        h.Style({ "--b": `calc(var(--hand-bar-h) + 12px)` }),
         h.Class(
           "pointer-events-none fixed bottom-(--b) left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-xs rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
         ),
@@ -1359,7 +1403,7 @@ function cardPickForKind(
     return h.div(
       [
         h.DataAttribute("testid", "pending-target-aim"),
-        h.Style({ "--b": `${HAND_BAR_H + 12}px` }),
+        h.Style({ "--b": `calc(var(--hand-bar-h) + 12px)` }),
         h.Class(
           "pointer-events-none fixed bottom-(--b) left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-xs rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
         ),
@@ -1379,6 +1423,7 @@ function cardPickForKind(
           { kind: "target", id: item.id, player: seat },
           false,
           tableId == null,
+          h,
         ),
       ];
     });
@@ -1392,34 +1437,39 @@ function cardPickForKind(
           decline,
           false,
           tableId == null,
+          h,
         ),
       );
     }
-    return promptModalFrame({
-      testId: "pending-player-pick-modal",
-      title: messageText(pending.label),
-      body: [h.div([h.Class("flex min-h-0 w-[min(92vw,28rem)] flex-wrap justify-center gap-2")], buttons)],
-      actions: [],
-    });
+    return promptModalFrame(
+      {
+        testId: "pending-player-pick-modal",
+        title: messageText(pending.label),
+        body: [h.div([h.Class("flex min-h-0 w-[min(92vw,28rem)] flex-wrap justify-center gap-2")], buttons)],
+        actions: [],
+      },
+      h,
+    );
   }
 
   if (pending.kind === "scry" || pending.kind === "surveil" || pending.kind === "reorder_top") {
-    return arrangeLanesPrompt(pending, state, board);
+    return arrangeLanesPrompt(pending, state, board, h);
   }
 
   if (pending.kind === "select_from_top") {
-    return selectFromTopLanesPrompt(pending, state, board);
+    return selectFromTopLanesPrompt(pending, state, board, h);
   }
 
   const items = "items" in pending ? pending.items : [];
   const config = cardPickConfig(pending);
-  return cardPickPrompt(pending, items, state, board, config);
+  return cardPickPrompt(pending, items, state, board, config, h);
 }
 
 function selectFromTopLanesPrompt(
   pending: Extract<PendingChoiceView, { kind: "select_from_top" }>,
   state: VisibleState,
   board: BoardModel,
+  h: HtmlBuilder<Message>,
 ): Html {
   const draft = board.promptDraft ?? initPromptDraft(pending, state);
   const picked = draft.kind === "card-pick" ? draft.picked : [];
@@ -1429,68 +1479,74 @@ function selectFromTopLanesPrompt(
     return item != null ? [item] : [];
   });
   const restItems = pending.items.filter((it) => !picked.includes(it.id));
-  return promptModalFrame({
-    testId: "pending-select-top-modal",
-    title: `Select up to ${pending.up_to} from the top`,
-    body: [
-      h.div(
-        [
-          h.DataAttribute("testid", "prompt-select-top-lanes"),
-          h.Class("flex min-h-0 w-[min(92vw,720px)] flex-1 flex-col gap-3 overflow-y-auto overscroll-contain"),
-        ],
-        [
-          h.div(
-            [h.Class("shrink-0 text-caption text-mist")],
-            ["Click a card to take it or put it back. Untaken cards go to the bottom."],
-          ),
-          h.div(
-            [h.DataAttribute("testid", "prompt-select-top-take"), h.Class("flex flex-col gap-2")],
-            [
-              h.div(
-                [
-                  h.DataAttribute("testid", "prompt-select-top-take-label"),
-                  h.Class("text-caption font-semibold text-seafoam"),
-                ],
-                [`Take (${picked.length} / ${pending.up_to})`],
-              ),
-              h.div(
-                [h.Class("flex min-h-[100px] flex-wrap justify-center gap-2 rounded-panel bg-glass/40 p-2")],
-                takeItems.length > 0
-                  ? takeItems.map((item) => arrangeLaneCard(item, state, picked, true))
-                  : [h.div([h.Class("self-center text-caption text-mist")], ["None"])],
-              ),
-            ],
-          ),
-          h.div(
-            [h.DataAttribute("testid", "prompt-select-top-rest"), h.Class("flex flex-col gap-2")],
-            [
-              h.div(
-                [
-                  h.DataAttribute("testid", "prompt-select-top-rest-label"),
-                  h.Class("text-caption font-semibold text-seafoam"),
-                ],
-                ["Bottom of library"],
-              ),
-              h.div(
-                [h.Class("flex min-h-[100px] flex-wrap justify-center gap-2 rounded-panel bg-glass/40 p-2")],
-                restItems.length > 0
-                  ? restItems.map((item) => arrangeLaneCard(item, state, [], false))
-                  : [h.div([h.Class("self-center text-caption text-mist")], ["None"])],
-              ),
-            ],
-          ),
-        ],
-      ),
-    ],
-    actions: [submitButton("Done", false)],
-  });
+  return promptModalFrame(
+    {
+      testId: "pending-select-top-modal",
+      title: `Select up to ${pending.up_to} from the top`,
+      body: [
+        h.div(
+          [
+            h.DataAttribute("testid", "prompt-select-top-lanes"),
+            h.Class("flex min-h-0 w-[min(92vw,720px)] flex-1 flex-col gap-3 overflow-y-auto overscroll-contain"),
+          ],
+          [
+            h.div(
+              [h.Class("shrink-0 text-caption text-mist")],
+              ["Click a card to take it or put it back. Untaken cards go to the bottom."],
+            ),
+            h.div(
+              [h.DataAttribute("testid", "prompt-select-top-take"), h.Class("flex flex-col gap-2")],
+              [
+                h.div(
+                  [
+                    h.DataAttribute("testid", "prompt-select-top-take-label"),
+                    h.Class("text-caption font-semibold text-seafoam"),
+                  ],
+                  [`Take (${picked.length} / ${pending.up_to})`],
+                ),
+                h.div(
+                  [h.Class("flex min-h-[100px] flex-wrap justify-center gap-2 rounded-panel bg-glass/40 p-2")],
+                  takeItems.length > 0
+                    ? takeItems.map((item) => arrangeLaneCard(item, state, picked, true, h))
+                    : [h.div([h.Class("self-center text-caption text-mist")], ["None"])],
+                ),
+              ],
+            ),
+            h.div(
+              [h.DataAttribute("testid", "prompt-select-top-rest"), h.Class("flex flex-col gap-2")],
+              [
+                h.div(
+                  [
+                    h.DataAttribute("testid", "prompt-select-top-rest-label"),
+                    h.Class("text-caption font-semibold text-seafoam"),
+                  ],
+                  ["Bottom of library"],
+                ),
+                h.div(
+                  [h.Class("flex min-h-[100px] flex-wrap justify-center gap-2 rounded-panel bg-glass/40 p-2")],
+                  restItems.length > 0
+                    ? restItems.map((item) => arrangeLaneCard(item, state, [], false, h))
+                    : [h.div([h.Class("self-center text-caption text-mist")], ["None"])],
+                ),
+              ],
+            ),
+          ],
+        ),
+      ],
+      actions: [submitButton("Done", false, h)],
+    },
+    h,
+  );
 }
 
-function yesNoPrompt(pending: Extract<PendingChoiceView, { kind: "may_yes_no" | "dance_exile_more" }>): Html {
+function yesNoPrompt(
+  pending: Extract<PendingChoiceView, { kind: "may_yes_no" | "dance_exile_more" }>,
+  h: HtmlBuilder<Message>,
+): Html {
   return h.div(
     [
       h.DataAttribute("testid", "pending-yes-no-aim"),
-      h.Style({ "--b": `${HAND_BAR_H + 12}px` }),
+      h.Style({ "--b": `calc(var(--hand-bar-h) + 12px)` }),
       h.Class(
         "pointer-events-auto fixed bottom-(--b) left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
       ),
@@ -1520,6 +1576,7 @@ function payCostPrompt(
   >,
   board: BoardModel,
   _tableId: string | null,
+  h: HtmlBuilder<Message>,
 ): Html {
   // The shockland choice carries a life amount rather than a cost, and no server label.
   const shockland = pending.kind === "pay_life_or_enters_tapped";
@@ -1544,7 +1601,7 @@ function payCostPrompt(
   return h.div(
     [
       h.DataAttribute("testid", "pending-pay-cost-aim"),
-      h.Style({ "--b": `${HAND_BAR_H + 12}px` }),
+      h.Style({ "--b": `calc(var(--hand-bar-h) + 12px)` }),
       h.Class(
         "pointer-events-auto fixed bottom-(--b) left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
       ),
@@ -1560,12 +1617,13 @@ function modeListPrompt(
   board: BoardModel,
   state: VisibleState,
   tableId: string | null,
+  h: HtmlBuilder<Message>,
 ): Html {
   if (pending.kind === "choose_mode") {
     return h.div(
       [
         h.DataAttribute("testid", "pending-mode-aim"),
-        h.Style({ "--b": `${HAND_BAR_H + 12}px` }),
+        h.Style({ "--b": `calc(var(--hand-bar-h) + 12px)` }),
         h.Class(
           "pointer-events-auto fixed bottom-(--b) left-1/2 z-30 flex max-w-[min(100%-2rem,28rem)] -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
         ),
@@ -1588,7 +1646,7 @@ function modeListPrompt(
   return h.div(
     [
       h.DataAttribute("testid", "pending-trigger-modes-aim"),
-      h.Style({ "--b": `${HAND_BAR_H + 12}px` }),
+      h.Style({ "--b": `calc(var(--hand-bar-h) + 12px)` }),
       h.Class(
         "pointer-events-auto fixed bottom-(--b) left-1/2 z-30 flex max-w-[min(100%-2rem,28rem)] -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
       ),
@@ -1632,6 +1690,7 @@ function playerPickPrompt(
   state: VisibleState,
   board: BoardModel,
   tableId: string | null,
+  h: HtmlBuilder<Message>,
 ): Html {
   if (pendingPlayerAimSeats(pending, state) != null) {
     const oneClick = pendingPlayerAimOneClick(pending);
@@ -1648,7 +1707,7 @@ function playerPickPrompt(
     return h.div(
       [
         h.DataAttribute("testid", "pending-player-aim"),
-        h.Style({ "--b": `${HAND_BAR_H + 12}px` }),
+        h.Style({ "--b": `calc(var(--hand-bar-h) + 12px)` }),
         h.Class(
           "pointer-events-none fixed bottom-(--b) left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-xs rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
         ),
@@ -1660,77 +1719,85 @@ function playerPickPrompt(
   }
 
   if (pending.kind === "choose_splitting_opponent") {
-    return promptModalFrame({
-      testId: "pending-player-pick-modal",
-      title: messageText(pending.label),
-      body: [
-        h.div(
-          [h.Class("flex min-h-0 w-[min(92vw,28rem)] flex-wrap justify-center gap-2")],
-          pending.items.flatMap((item, index) => {
-            const seat = playerSeatFromItem(item, state, index);
-            if (seat == null) return [];
-            return [
-              answerButton(
-                pending,
-                `prompt-player-${seat}`,
-                item.label,
-                { kind: "target", id: item.id, player: seat },
-                false,
-                tableId == null,
-              ),
-            ];
-          }),
-        ),
-      ],
-      actions: [],
-    });
+    return promptModalFrame(
+      {
+        testId: "pending-player-pick-modal",
+        title: messageText(pending.label),
+        body: [
+          h.div(
+            [h.Class("flex min-h-0 w-[min(92vw,28rem)] flex-wrap justify-center gap-2")],
+            pending.items.flatMap((item, index) => {
+              const seat = playerSeatFromItem(item, state, index);
+              if (seat == null) return [];
+              return [
+                answerButton(
+                  pending,
+                  `prompt-player-${seat}`,
+                  item.label,
+                  { kind: "target", id: item.id, player: seat },
+                  false,
+                  tableId == null,
+                  h,
+                ),
+              ];
+            }),
+          ),
+        ],
+        actions: [],
+      },
+      h,
+    );
   }
 
   const draft = board.promptDraft ?? initPromptDraft(pending, state);
   const picked = draft.kind === "player-pick" ? draft.players : [];
   const ready = picked.length >= pending.min && picked.length <= pending.max;
-  return promptModalFrame({
-    testId: "pending-player-pick-modal",
-    title: messageText(pending.label),
-    body: [
-      h.div([h.Class("pointer-events-none text-caption text-mist")], [`${picked.length} / ${pending.max} selected`]),
-      h.div(
-        [h.Class("flex min-h-0 w-[min(92vw,28rem)] flex-wrap justify-center gap-2")],
-        pending.items.flatMap((item, index) => {
-          const seat = playerSeatFromItem(item, state, index);
-          if (seat == null) return [];
-          const selected = picked.includes(seat);
-          return [
-            h.button(
-              [
-                h.Type("button"),
-                h.DataAttribute("testid", `prompt-player-${seat}`),
-                h.DataAttribute("selected", selected ? "true" : "false"),
-                h.AriaPressed(selected ? "true" : "false"),
-                h.Disabled(tableId == null),
-                h.OnClick(PromptCardToggled({ id: seat })),
-                h.Class(
-                  [
-                    "group/prompt-player rounded-hud bg-glass px-3 py-2 text-body text-snow",
-                    "data-[selected=true]:bg-llanowar/25",
-                    tableId == null ? "cursor-not-allowed opacity-50" : "hover:bg-glass-dim",
-                  ].join(" "),
-                ),
-              ],
-              [item.label],
-            ),
-          ];
-        }),
-      ),
-    ],
-    actions: [submitButton("Choose", !ready), cancelButton()],
-  });
+  return promptModalFrame(
+    {
+      testId: "pending-player-pick-modal",
+      title: messageText(pending.label),
+      body: [
+        h.div([h.Class("pointer-events-none text-caption text-mist")], [`${picked.length} / ${pending.max} selected`]),
+        h.div(
+          [h.Class("flex min-h-0 w-[min(92vw,28rem)] flex-wrap justify-center gap-2")],
+          pending.items.flatMap((item, index) => {
+            const seat = playerSeatFromItem(item, state, index);
+            if (seat == null) return [];
+            const selected = picked.includes(seat);
+            return [
+              h.button(
+                [
+                  h.Type("button"),
+                  h.DataAttribute("testid", `prompt-player-${seat}`),
+                  h.DataAttribute("selected", selected ? "true" : "false"),
+                  h.AriaPressed(selected ? "true" : "false"),
+                  h.Disabled(tableId == null),
+                  h.OnClick(PromptCardToggled({ id: seat })),
+                  h.Class(
+                    [
+                      "group/prompt-player rounded-hud bg-glass px-3 py-2 text-body text-snow",
+                      "data-[selected=true]:bg-llanowar/25",
+                      tableId == null ? "cursor-not-allowed opacity-50" : "hover:bg-glass-dim",
+                    ].join(" "),
+                  ),
+                ],
+                [item.label],
+              ),
+            ];
+          }),
+        ),
+      ],
+      actions: [submitButton("Choose", !ready, h), cancelButton(h)],
+    },
+    h,
+  );
 }
 
 function divideTotalPrompt(
   pending: Extract<PendingChoiceView, { kind: "divide_spell_damage" | "divide_counters" }>,
   board: BoardModel,
   state: VisibleState,
+  h: HtmlBuilder<Message>,
 ): Html {
   const draft = board.promptDraft ?? initPromptDraft(pending, state);
   const ready = buildAnswerFromDraft(pending, draft) != null;
@@ -1745,14 +1812,14 @@ function divideTotalPrompt(
             [h.Class("flex items-center gap-2")],
             [
               h.span([h.Class("w-44 truncate text-body")], [item.label]),
-              amountStepper(index, amounts[index] ?? 0, pending.total),
+              amountStepper(index, amounts[index] ?? 0, pending.total, h),
             ],
           ),
         );
     return h.div(
       [
         h.DataAttribute("testid", "pending-divide-aim"),
-        h.Style({ "--b": `${HAND_BAR_H + 12}px` }),
+        h.Style({ "--b": `calc(var(--hand-bar-h) + 12px)` }),
         h.Class(
           [
             "fixed bottom-(--b) left-1/2 z-30 flex max-w-[min(100%-2rem,28rem)] -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
@@ -1779,7 +1846,7 @@ function divideTotalPrompt(
           ],
           [`assigned ${assigned} / ${pending.total}`],
         ),
-        onBoard ? null : submitButton("Assign", !ready),
+        onBoard ? null : submitButton("Assign", !ready, h),
       ].filter((v): v is Html => v !== null),
     );
   }
@@ -1794,14 +1861,14 @@ function divideTotalPrompt(
           [h.Class("flex items-center gap-2")],
           [
             h.span([h.Class("w-44 truncate text-body")], [item.label]),
-            amountStepper(item.id, amounts[item.id] ?? 0, pending.total),
+            amountStepper(item.id, amounts[item.id] ?? 0, pending.total, h),
           ],
         ),
       );
   return h.div(
     [
       h.DataAttribute("testid", "pending-divide-counters-aim"),
-      h.Style({ "--b": `${HAND_BAR_H + 12}px` }),
+      h.Style({ "--b": `calc(var(--hand-bar-h) + 12px)` }),
       h.Class(
         [
           "fixed bottom-(--b) left-1/2 z-30 flex max-w-[min(100%-2rem,28rem)] -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
@@ -1828,7 +1895,7 @@ function divideTotalPrompt(
         ],
         [`assigned ${assigned} / ${pending.total}`],
       ),
-      onBoard ? null : submitButton("Assign", !ready),
+      onBoard ? null : submitButton("Assign", !ready, h),
     ].filter((v): v is Html => v !== null),
   );
 }
@@ -1836,6 +1903,7 @@ function divideTotalPrompt(
 function pilePickPrompt(
   pending: Extract<PendingChoiceView, { kind: "opponent_chooses_pile" | "choose_pile_for_hand" }>,
   _tableId: string | null,
+  h: HtmlBuilder<Message>,
 ): Html {
   // Raging River names the attacker each pick is about; every other pile choice is A/B.
   const attacker = pending.kind === "choose_pile_for_hand" ? pending.attacker : undefined;
@@ -1853,7 +1921,7 @@ function pilePickPrompt(
   return h.div(
     [
       h.DataAttribute("testid", "pending-pile-aim"),
-      h.Style({ "--b": `${HAND_BAR_H + 12}px` }),
+      h.Style({ "--b": `calc(var(--hand-bar-h) + 12px)` }),
       h.Class(
         "pointer-events-auto fixed bottom-(--b) left-1/2 z-30 flex max-w-[min(100%-2rem,40rem)] -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
       ),
@@ -1882,6 +1950,7 @@ function partitionPrompt(
   board: BoardModel,
   state: VisibleState,
   tableId: string | null,
+  h: HtmlBuilder<Message>,
 ): Html {
   const draft = board.promptDraft ?? initPromptDraft(pending, state);
 
@@ -1894,62 +1963,68 @@ function partitionPrompt(
       return item != null ? [item] : [];
     });
     const pileBItems = pending.items.filter((it) => !pileAIds.includes(it.id));
-    return promptModalFrame({
-      testId: "pending-partition-modal",
-      // Raging River and Camouflage divide creatures on the battlefield, not revealed cards.
-      title: pending.into_piles === true ? "Choose creatures for this pile" : "Choose cards for Pile A",
-      body: [
-        h.div(
-          [
-            h.DataAttribute("testid", "prompt-partition-lanes"),
-            h.Class("flex min-h-0 w-[min(92vw,720px)] flex-1 flex-col gap-3 overflow-y-auto overscroll-contain"),
-          ],
-          [
-            h.div([h.Class("shrink-0 text-caption text-mist")], ["Click a card to move it between Pile A and Pile B."]),
-            h.div(
-              [h.DataAttribute("testid", "prompt-partition-a"), h.Class("flex flex-col gap-2")],
-              [
-                h.div(
-                  [
-                    h.DataAttribute("testid", "prompt-partition-a-label"),
-                    h.Class("text-caption font-semibold text-seafoam"),
-                  ],
-                  [`Pile A (${pileAIds.length})`],
-                ),
-                h.div(
-                  [h.Class("flex min-h-[100px] flex-wrap justify-center gap-2 rounded-panel bg-glass/40 p-2")],
-                  pileAItems.length > 0
-                    ? pileAItems.map((item) => arrangeLaneCard(item, state, pileAIds, false))
-                    : [h.div([h.Class("self-center text-caption text-mist")], ["None"])],
-                ),
-              ],
-            ),
-            h.div(
-              [h.DataAttribute("testid", "prompt-partition-b"), h.Class("flex flex-col gap-2")],
-              [
-                h.div(
-                  [
-                    h.DataAttribute("testid", "prompt-partition-b-label"),
-                    h.Class("text-caption font-semibold text-seafoam"),
-                  ],
-                  [`Pile B (${pileBItems.length})`],
-                ),
-                h.div(
-                  [h.Class("flex min-h-[100px] flex-wrap justify-center gap-2 rounded-panel bg-glass/40 p-2")],
-                  pileBItems.length > 0
-                    ? pileBItems.map((item) => arrangeLaneCard(item, state, [], false))
-                    : [h.div([h.Class("self-center text-caption text-mist")], ["None"])],
-                ),
-              ],
-            ),
-          ],
-        ),
-      ],
-      actions: [submitButton("Lock piles", false), cancelButton()],
-    });
+    return promptModalFrame(
+      {
+        testId: "pending-partition-modal",
+        // Raging River and Camouflage divide creatures on the battlefield, not revealed cards.
+        title: pending.into_piles === true ? "Choose creatures for this pile" : "Choose cards for Pile A",
+        body: [
+          h.div(
+            [
+              h.DataAttribute("testid", "prompt-partition-lanes"),
+              h.Class("flex min-h-0 w-[min(92vw,720px)] flex-1 flex-col gap-3 overflow-y-auto overscroll-contain"),
+            ],
+            [
+              h.div(
+                [h.Class("shrink-0 text-caption text-mist")],
+                ["Click a card to move it between Pile A and Pile B."],
+              ),
+              h.div(
+                [h.DataAttribute("testid", "prompt-partition-a"), h.Class("flex flex-col gap-2")],
+                [
+                  h.div(
+                    [
+                      h.DataAttribute("testid", "prompt-partition-a-label"),
+                      h.Class("text-caption font-semibold text-seafoam"),
+                    ],
+                    [`Pile A (${pileAIds.length})`],
+                  ),
+                  h.div(
+                    [h.Class("flex min-h-[100px] flex-wrap justify-center gap-2 rounded-panel bg-glass/40 p-2")],
+                    pileAItems.length > 0
+                      ? pileAItems.map((item) => arrangeLaneCard(item, state, pileAIds, false, h))
+                      : [h.div([h.Class("self-center text-caption text-mist")], ["None"])],
+                  ),
+                ],
+              ),
+              h.div(
+                [h.DataAttribute("testid", "prompt-partition-b"), h.Class("flex flex-col gap-2")],
+                [
+                  h.div(
+                    [
+                      h.DataAttribute("testid", "prompt-partition-b-label"),
+                      h.Class("text-caption font-semibold text-seafoam"),
+                    ],
+                    [`Pile B (${pileBItems.length})`],
+                  ),
+                  h.div(
+                    [h.Class("flex min-h-[100px] flex-wrap justify-center gap-2 rounded-panel bg-glass/40 p-2")],
+                    pileBItems.length > 0
+                      ? pileBItems.map((item) => arrangeLaneCard(item, state, [], false, h))
+                      : [h.div([h.Class("self-center text-caption text-mist")], ["None"])],
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+        actions: [submitButton("Lock piles", false, h), cancelButton(h)],
+      },
+      h,
+    );
   }
 
-  return distributeTopLanesPrompt(pending, board, state, tableId);
+  return distributeTopLanesPrompt(pending, board, state, tableId, h);
 }
 
 function distributeTopLanesPrompt(
@@ -1957,6 +2032,7 @@ function distributeTopLanesPrompt(
   board: BoardModel,
   state: VisibleState,
   tableId: string | null,
+  h: HtmlBuilder<Message>,
 ): Html {
   const draft = board.promptDraft ?? initPromptDraft(pending, state);
   const buckets = draft.kind === "partition" ? draft.buckets : {};
@@ -2037,45 +2113,49 @@ function distributeTopLanesPrompt(
     );
   };
 
-  return promptModalFrame({
-    testId: "pending-distribute-modal",
-    title: "Distribute the revealed cards",
-    body: [
-      h.div(
-        [
-          h.DataAttribute("testid", "prompt-distribute-lanes"),
-          h.Class("flex min-h-0 w-[min(92vw,720px)] flex-1 flex-col gap-3 overflow-y-auto overscroll-contain"),
-        ],
-        [
-          h.div(
-            [h.Class("shrink-0 text-caption text-mist")],
-            ["Click a card to cycle Hand → Bottom → Exile (skips full lanes)."],
-          ),
-          h.div(
-            [h.DataAttribute("testid", "prompt-distribute-pool"), h.Class("flex flex-col gap-2")],
-            [
-              h.div([h.Class("text-caption font-semibold text-seafoam")], [`Revealed (${pool.length})`]),
-              h.div(
-                [h.Class("flex min-h-[100px] flex-wrap justify-center gap-2 rounded-panel bg-glass/40 p-2")],
-                pool.length > 0
-                  ? pool.map((item) => laneCard(item))
-                  : [h.div([h.Class("self-center text-caption text-mist")], ["None"])],
-              ),
-            ],
-          ),
-          lane("prompt-distribute-hand", "Hand", toHand, pending.to_hand),
-          lane("prompt-distribute-bottom", "Bottom of library", toBottom, pending.to_bottom),
-          lane("prompt-distribute-exile", "Exile (may play)", toExile, pending.to_exile_may_play),
-        ],
-      ),
-    ],
-    actions: [submitButton("Distribute", !ready), cancelButton()],
-  });
+  return promptModalFrame(
+    {
+      testId: "pending-distribute-modal",
+      title: "Distribute the revealed cards",
+      body: [
+        h.div(
+          [
+            h.DataAttribute("testid", "prompt-distribute-lanes"),
+            h.Class("flex min-h-0 w-[min(92vw,720px)] flex-1 flex-col gap-3 overflow-y-auto overscroll-contain"),
+          ],
+          [
+            h.div(
+              [h.Class("shrink-0 text-caption text-mist")],
+              ["Click a card to cycle Hand → Bottom → Exile (skips full lanes)."],
+            ),
+            h.div(
+              [h.DataAttribute("testid", "prompt-distribute-pool"), h.Class("flex flex-col gap-2")],
+              [
+                h.div([h.Class("text-caption font-semibold text-seafoam")], [`Revealed (${pool.length})`]),
+                h.div(
+                  [h.Class("flex min-h-[100px] flex-wrap justify-center gap-2 rounded-panel bg-glass/40 p-2")],
+                  pool.length > 0
+                    ? pool.map((item) => laneCard(item))
+                    : [h.div([h.Class("self-center text-caption text-mist")], ["None"])],
+                ),
+              ],
+            ),
+            lane("prompt-distribute-hand", "Hand", toHand, pending.to_hand),
+            lane("prompt-distribute-bottom", "Bottom of library", toBottom, pending.to_bottom),
+            lane("prompt-distribute-exile", "Exile (may play)", toExile, pending.to_exile_may_play),
+          ],
+        ),
+      ],
+      actions: [submitButton("Distribute", !ready, h), cancelButton(h)],
+    },
+    h,
+  );
 }
 
 function colorPickPrompt(
   pending: Extract<PendingChoiceView, { kind: "choose_color" | "choose_mana_color" }>,
   tableId: string | null,
+  h: HtmlBuilder<Message>,
 ): Html {
   const colors = [
     { index: 0, code: "W", name: "White" },
@@ -2086,49 +2166,52 @@ function colorPickPrompt(
   ] as const;
   const sizePx = 28;
   const title = pending.kind === "choose_mana_color" ? "Choose a mana color" : "Choose a color";
-  return promptModalFrame({
-    testId: "pending-color-modal",
-    title,
-    body: [
-      h.div(
-        [h.Class("flex flex-wrap items-center justify-center gap-2")],
-        colors.map((color) => {
-          const ms = manaFontClass(color.code) ?? color.code.toLowerCase();
-          return h.button(
-            [
-              h.Type("button"),
-              h.DataAttribute("testid", `prompt-color-${color.index}`),
-              h.AriaLabel(color.name),
-              h.Disabled(tableId == null),
-              h.OnClick(
-                PendingChoiceAnswered({
-                  intent: choiceIntent(
-                    pending,
-                    pending.kind === "choose_mana_color"
-                      ? { kind: "mana_color", color: color.index }
-                      : { kind: "color", color: color.index },
-                  ),
+  return promptModalFrame(
+    {
+      testId: "pending-color-modal",
+      title,
+      body: [
+        h.div(
+          [h.Class("flex flex-wrap items-center justify-center gap-2")],
+          colors.map((color) => {
+            const ms = manaFontClass(color.code) ?? color.code.toLowerCase();
+            return h.button(
+              [
+                h.Type("button"),
+                h.DataAttribute("testid", `prompt-color-${color.index}`),
+                h.AriaLabel(color.name),
+                h.Disabled(tableId == null),
+                h.OnClick(
+                  PendingChoiceAnswered({
+                    intent: choiceIntent(
+                      pending,
+                      pending.kind === "choose_mana_color"
+                        ? { kind: "mana_color", color: color.index }
+                        : { kind: "color", color: color.index },
+                    ),
+                  }),
+                ),
+                h.Class(
+                  "group relative cursor-pointer rounded-hud border-0 bg-transparent p-1 disabled:cursor-not-allowed disabled:opacity-50",
+                ),
+              ],
+              [
+                pipChip(h, {
+                  ms,
+                  code: color.code,
+                  sizePx,
+                  extraClass: "transition-transform duration-150 ease-out group-hover:-translate-y-1",
+                  testId: `prompt-color-pip-${color.index}`,
                 }),
-              ),
-              h.Class(
-                "group relative cursor-pointer rounded-hud border-0 bg-transparent p-1 disabled:cursor-not-allowed disabled:opacity-50",
-              ),
-            ],
-            [
-              pipChip(h, {
-                ms,
-                code: color.code,
-                sizePx,
-                extraClass: "transition-transform duration-150 ease-out group-hover:-translate-y-1",
-                testId: `prompt-color-pip-${color.index}`,
-              }),
-            ],
-          );
-        }),
-      ),
-    ],
-    actions: [],
-  });
+              ],
+            );
+          }),
+        ),
+      ],
+      actions: [],
+    },
+    h,
+  );
 }
 
 function stringPickPrompt(
@@ -2136,6 +2219,7 @@ function stringPickPrompt(
   board: BoardModel,
   state: VisibleState,
   tableId: string | null,
+  h: HtmlBuilder<Message>,
 ): Html {
   if (pending.kind === "choose_card_name") {
     const draft = board.promptDraft ?? initPromptDraft(pending, state);
@@ -2147,104 +2231,113 @@ function stringPickPrompt(
       board.cardNameSuggestions.names.length > 0
         ? board.cardNameSuggestions.names
         : [];
-    return promptModalFrame({
-      testId: "pending-card-name-modal",
-      title: "Name a card",
+    return promptModalFrame(
+      {
+        testId: "pending-card-name-modal",
+        title: "Name a card",
+        body: [
+          h.div(
+            [h.Class("flex min-h-0 w-[min(92vw,360px)] flex-1 flex-col gap-sm")],
+            [
+              // Combobox owns the input text, opens the list as you type, and moves the active row
+              // on arrow keys; Enter commits the highlighted name into the draft. It renders the
+              // panel only when it has items, and anchors and portals it, so `z-50` is what keeps
+              // it over the `z-40` prompt frame.
+              h.submodel({
+                slotId: CARD_NAME_COMBOBOX_ID,
+                model: board.cardNameCombobox,
+                view: CardNameCombobox.view,
+                viewInputs: {
+                  items: suggestions,
+                  maybeSelectedValue: value === "" ? Option.none() : Option.some(value),
+                  restingInputValue: value,
+                  itemToValue: (name: string) => name,
+                  itemToDisplayText: (name: string) => name,
+                  itemToConfig: (name: string, context: { isActive: boolean }) => ({
+                    className: menuItemClass(context.isActive ? "bg-white/8" : undefined, "hud"),
+                    content: h.span(
+                      [h.DataAttribute("testid", `prompt-name-suggestion-${suggestions.indexOf(name)}`)],
+                      [name],
+                    ),
+                  }),
+                  ariaLabel: "Card name",
+                  inputPlaceholder: "Card name",
+                  inputClassName: inputClass("w-full", "hud"),
+                  inputAttributes: childAttributes([h.DataAttribute("testid", "prompt-name-input"), h.Autofocus(true)]),
+                  inputWrapperClassName: "w-full",
+                  itemsClassName: menuPanelClass("z-50 max-h-[40vh] w-(--button-width) gap-1", "hud"),
+                  itemsAttributes: childAttributes([h.DataAttribute("testid", "prompt-name-suggestions")]),
+                  itemsScrollClassName: "min-h-0 overflow-y-auto",
+                  // Locks the resolved side so the suggestion list doesn't flip above/below the
+                  // input as filtering changes its height on every keystroke (@foldkit/ui 0.137).
+                  anchor: { placement: "bottom-start" as const, gap: 4, isPlacementLocked: true },
+                },
+                toParentMessage: (message) => GotCardNameComboboxMessage({ message }),
+              }) as Html,
+            ],
+          ),
+        ],
+        actions: [submitButton("Name", !canSubmit, h)],
+      },
+      h,
+    );
+  }
+  return promptModalFrame(
+    {
+      testId: "pending-creature-type-modal",
+      title: "Choose a creature type",
       body: [
         h.div(
           [h.Class("flex min-h-0 w-[min(92vw,360px)] flex-1 flex-col gap-sm")],
           [
-            // Combobox owns the input text, opens the list as you type, and moves the active row
-            // on arrow keys; Enter commits the highlighted name into the draft. It renders the
-            // panel only when it has items, and anchors and portals it, so `z-50` is what keeps
-            // it over the `z-40` prompt frame.
-            h.submodel({
-              slotId: CARD_NAME_COMBOBOX_ID,
-              model: board.cardNameCombobox,
-              view: CardNameCombobox.view,
-              viewInputs: {
-                items: suggestions,
-                maybeSelectedValue: value === "" ? Option.none() : Option.some(value),
-                restingInputValue: value,
-                itemToValue: (name: string) => name,
-                itemToDisplayText: (name: string) => name,
-                itemToConfig: (name: string, context: { isActive: boolean }) => ({
-                  className: menuItemClass(context.isActive ? "bg-white/8" : undefined, "hud"),
-                  content: h.span(
-                    [h.DataAttribute("testid", `prompt-name-suggestion-${suggestions.indexOf(name)}`)],
-                    [name],
-                  ),
-                }),
-                ariaLabel: "Card name",
-                inputPlaceholder: "Card name",
-                inputClassName: inputClass("w-full", "hud"),
-                inputAttributes: childAttributes([h.DataAttribute("testid", "prompt-name-input"), h.Autofocus(true)]),
-                inputWrapperClassName: "w-full",
-                itemsClassName: menuPanelClass("z-50 max-h-[40vh] w-(--button-width) gap-1", "hud"),
-                itemsAttributes: childAttributes([h.DataAttribute("testid", "prompt-name-suggestions")]),
-                itemsScrollClassName: "min-h-0 overflow-y-auto",
-                anchor: { placement: "bottom-start" as const, gap: 4 },
-              },
-              toParentMessage: (message) => GotCardNameComboboxMessage({ message }),
-            }) as Html,
+            input(h, {
+              id: "prompt-type-filter",
+              variant: "hud",
+              testId: "prompt-type-filter",
+              type: "search",
+              placeholder: "Filter types…",
+              autofocus: true,
+              ariaLabel: "Filter creature types",
+              value: board.promptOptionFilter,
+              onInput: (v) => PromptOptionFilterSet({ query: v }),
+              class: "w-full",
+            }),
+            h.div(
+              [
+                h.DataAttribute("testid", "prompt-type-scroll"),
+                h.Class("min-h-0 w-full flex-1 overflow-y-auto overscroll-contain"),
+              ],
+              [
+                h.div(
+                  [h.Class("flex flex-wrap justify-center gap-2")],
+                  (() => {
+                    const shown = filterOptionLabels(pending.options, board.promptOptionFilter);
+                    if (shown.length === 0 && board.promptOptionFilter.trim() !== "") {
+                      return [h.div([h.Class("text-label text-mist")], ["No types match."])];
+                    }
+                    return shown.map((option) => {
+                      const index = pending.options.indexOf(option);
+                      return answerButton(
+                        pending,
+                        `prompt-string-${index}`,
+                        option,
+                        { kind: "creature_type", subtype: option },
+                        false,
+                        tableId == null,
+                        h,
+                      );
+                    });
+                  })(),
+                ),
+              ],
+            ),
           ],
         ),
       ],
-      actions: [submitButton("Name", !canSubmit)],
-    });
-  }
-  return promptModalFrame({
-    testId: "pending-creature-type-modal",
-    title: "Choose a creature type",
-    body: [
-      h.div(
-        [h.Class("flex min-h-0 w-[min(92vw,360px)] flex-1 flex-col gap-sm")],
-        [
-          input(h, {
-            id: "prompt-type-filter",
-            variant: "hud",
-            testId: "prompt-type-filter",
-            type: "search",
-            placeholder: "Filter types…",
-            autofocus: true,
-            ariaLabel: "Filter creature types",
-            value: board.promptOptionFilter,
-            onInput: (v) => PromptOptionFilterSet({ query: v }),
-            class: "w-full",
-          }),
-          h.div(
-            [
-              h.DataAttribute("testid", "prompt-type-scroll"),
-              h.Class("min-h-0 w-full flex-1 overflow-y-auto overscroll-contain"),
-            ],
-            [
-              h.div(
-                [h.Class("flex flex-wrap justify-center gap-2")],
-                (() => {
-                  const shown = filterOptionLabels(pending.options, board.promptOptionFilter);
-                  if (shown.length === 0 && board.promptOptionFilter.trim() !== "") {
-                    return [h.div([h.Class("text-label text-mist")], ["No types match."])];
-                  }
-                  return shown.map((option) => {
-                    const index = pending.options.indexOf(option);
-                    return answerButton(
-                      pending,
-                      `prompt-string-${index}`,
-                      option,
-                      { kind: "creature_type", subtype: option },
-                      false,
-                      tableId == null,
-                    );
-                  });
-                })(),
-              ),
-            ],
-          ),
-        ],
-      ),
-    ],
-    actions: [],
-  });
+      actions: [],
+    },
+    h,
+  );
 }
 
 function numberPickTitle(
@@ -2259,56 +2352,64 @@ function numberPickPrompt(
   board: BoardModel,
   state: VisibleState,
   tableId: string | null,
+  h: HtmlBuilder<Message>,
 ): Html {
   if (pending.kind === "pay_any_amount_of_mana") {
     const draft = board.promptDraft ?? initPromptDraft(pending, state);
     const max = pending.max;
     const count = clampX(draft.kind === "number" ? draft.count : 0, 0, max);
-    return promptModalFrame({
-      testId: "pending-join-forces-modal",
+    return promptModalFrame(
+      {
+        testId: "pending-join-forces-modal",
+        title: numberPickTitle(pending),
+        body: [
+          h.div(
+            [h.Class("flex min-h-0 w-[min(92vw,28rem)] flex-wrap items-center justify-center gap-2")],
+            [
+              itemButton("Min", "prompt-number-min", PromptNumberSet({ count: 0 }), h),
+              itemButton("−", "prompt-number-dec", PromptNumberSet({ count: count - 1 }), h, count <= 0),
+              h.span(
+                [
+                  h.DataAttribute("testid", "prompt-number-value"),
+                  h.Class("min-w-[2ch] text-center text-body font-semibold text-snow"),
+                ],
+                [String(count)],
+              ),
+              itemButton("+", "prompt-number-inc", PromptNumberSet({ count: count + 1 }), h, count >= max),
+              itemButton("Max", "prompt-number-max", PromptNumberSet({ count: max }), h),
+            ],
+          ),
+        ],
+        actions: [submitButton(count === 0 ? "Pay 0 (decline)" : `Pay {${count}}`, tableId == null, h)],
+      },
+      h,
+    );
+  }
+  const answerFor = (count: number): AnswerInput => ({ kind: "draw_count", count });
+  return promptModalFrame(
+    {
+      testId: "pending-draw-count-modal",
       title: numberPickTitle(pending),
       body: [
         h.div(
-          [h.Class("flex min-h-0 w-[min(92vw,28rem)] flex-wrap items-center justify-center gap-2")],
-          [
-            itemButton("Min", "prompt-number-min", PromptNumberSet({ count: 0 })),
-            itemButton("−", "prompt-number-dec", PromptNumberSet({ count: count - 1 }), count <= 0),
-            h.span(
-              [
-                h.DataAttribute("testid", "prompt-number-value"),
-                h.Class("min-w-[2ch] text-center text-body font-semibold text-snow"),
-              ],
-              [String(count)],
+          [h.Class("flex min-h-0 w-[min(92vw,28rem)] flex-wrap justify-center gap-2")],
+          Array.from({ length: pending.max + 1 }, (_, count) =>
+            answerButton(
+              pending,
+              `prompt-number-${count}`,
+              String(count),
+              answerFor(count),
+              count === pending.max,
+              tableId == null,
+              h,
             ),
-            itemButton("+", "prompt-number-inc", PromptNumberSet({ count: count + 1 }), count >= max),
-            itemButton("Max", "prompt-number-max", PromptNumberSet({ count: max })),
-          ],
-        ),
-      ],
-      actions: [submitButton(count === 0 ? "Pay 0 (decline)" : `Pay {${count}}`, tableId == null)],
-    });
-  }
-  const answerFor = (count: number): AnswerInput => ({ kind: "draw_count", count });
-  return promptModalFrame({
-    testId: "pending-draw-count-modal",
-    title: numberPickTitle(pending),
-    body: [
-      h.div(
-        [h.Class("flex min-h-0 w-[min(92vw,28rem)] flex-wrap justify-center gap-2")],
-        Array.from({ length: pending.max + 1 }, (_, count) =>
-          answerButton(
-            pending,
-            `prompt-number-${count}`,
-            String(count),
-            answerFor(count),
-            count === pending.max,
-            tableId == null,
           ),
         ),
-      ),
-    ],
-    actions: [],
-  });
+      ],
+      actions: [],
+    },
+    h,
+  );
 }
 
 function destinationPickPrompt(
@@ -2318,12 +2419,13 @@ function destinationPickPrompt(
   >,
   state: VisibleState,
   _tableId: string | null,
+  h: HtmlBuilder<Message>,
 ): Html {
   if (pending.kind === "choose_countered_spell_destination") {
     return h.div(
       [
         h.DataAttribute("testid", "pending-destination-aim"),
-        h.Style({ "--b": `${HAND_BAR_H + 12}px` }),
+        h.Style({ "--b": `calc(var(--hand-bar-h) + 12px)` }),
         h.Class(
           "pointer-events-auto fixed bottom-(--b) left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
         ),
@@ -2341,7 +2443,7 @@ function destinationPickPrompt(
   return h.div(
     [
       h.DataAttribute("testid", "pending-revealed-destination-aim"),
-      h.Style({ "--b": `${HAND_BAR_H + 12}px` }),
+      h.Style({ "--b": `calc(var(--hand-bar-h) + 12px)` }),
       h.Class(
         "pointer-events-auto fixed bottom-(--b) left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
       ),
@@ -2361,22 +2463,23 @@ function pendingChoicePrompt(
   state: VisibleState,
   board: BoardModel,
   tableId: string | null,
+  h: HtmlBuilder<Message>,
 ): Html | null {
   const id = FORMULATOR_FOR_KIND[pending.kind];
   switch (id) {
     case "cardPick":
-      return cardPickForKind(pending, state, board, tableId);
+      return cardPickForKind(pending, state, board, tableId, h);
     case "orderTriggers":
-      if (pending.kind !== "order_triggers") return frame("pending-choice", pendingChoiceTitle(pending), []);
-      return orderPrompt(pending, board);
+      if (pending.kind !== "order_triggers") return frame("pending-choice", pendingChoiceTitle(pending), [], h);
+      return orderPrompt(pending, board, h);
     case "damageAssign":
-      if (pending.kind !== "assign_combat_damage") return frame("pending-choice", pendingChoiceTitle(pending), []);
-      return damageAssignPrompt(pending, state, board);
+      if (pending.kind !== "assign_combat_damage") return frame("pending-choice", pendingChoiceTitle(pending), [], h);
+      return damageAssignPrompt(pending, state, board, h);
     case "yesNo":
       if (pending.kind !== "may_yes_no" && pending.kind !== "dance_exile_more") {
-        return frame("pending-choice", pendingChoiceTitle(pending), []);
+        return frame("pending-choice", pendingChoiceTitle(pending), [], h);
       }
-      return yesNoPrompt(pending);
+      return yesNoPrompt(pending, h);
     case "payCost":
       if (
         pending.kind !== "pay_cost" &&
@@ -2387,57 +2490,57 @@ function pendingChoicePrompt(
         pending.kind !== "sacrifice_unless_pay" &&
         pending.kind !== "pay_life_or_enters_tapped"
       ) {
-        return frame("pending-choice", pendingChoiceTitle(pending), []);
+        return frame("pending-choice", pendingChoiceTitle(pending), [], h);
       }
-      return payCostPrompt(pending, board, tableId);
+      return payCostPrompt(pending, board, tableId, h);
     case "modeList":
       if (pending.kind !== "choose_mode" && pending.kind !== "choose_trigger_modes") {
-        return frame("pending-choice", pendingChoiceTitle(pending), []);
+        return frame("pending-choice", pendingChoiceTitle(pending), [], h);
       }
-      return modeListPrompt(pending, board, state, tableId);
+      return modeListPrompt(pending, board, state, tableId, h);
     case "playerPick":
       if (pending.kind !== "choose_target_players" && pending.kind !== "choose_splitting_opponent") {
-        return frame("pending-choice", pendingChoiceTitle(pending), []);
+        return frame("pending-choice", pendingChoiceTitle(pending), [], h);
       }
-      return playerPickPrompt(pending, state, board, tableId);
+      return playerPickPrompt(pending, state, board, tableId, h);
     case "divideTotal":
       if (pending.kind !== "divide_spell_damage" && pending.kind !== "divide_counters") {
-        return frame("pending-choice", pendingChoiceTitle(pending), []);
+        return frame("pending-choice", pendingChoiceTitle(pending), [], h);
       }
-      return divideTotalPrompt(pending, board, state);
+      return divideTotalPrompt(pending, board, state, h);
     case "pilePick":
       if (pending.kind !== "opponent_chooses_pile" && pending.kind !== "choose_pile_for_hand") {
-        return frame("pending-choice", pendingChoiceTitle(pending), []);
+        return frame("pending-choice", pendingChoiceTitle(pending), [], h);
       }
-      return pilePickPrompt(pending, tableId);
+      return pilePickPrompt(pending, tableId, h);
     case "partition":
       if (pending.kind !== "partition_revealed" && pending.kind !== "distribute_top") {
-        return frame("pending-choice", pendingChoiceTitle(pending), []);
+        return frame("pending-choice", pendingChoiceTitle(pending), [], h);
       }
-      return partitionPrompt(pending, board, state, tableId);
+      return partitionPrompt(pending, board, state, tableId, h);
     case "colorPick":
       if (pending.kind !== "choose_color" && pending.kind !== "choose_mana_color") {
-        return frame("pending-choice", pendingChoiceTitle(pending), []);
+        return frame("pending-choice", pendingChoiceTitle(pending), [], h);
       }
-      return colorPickPrompt(pending, tableId);
+      return colorPickPrompt(pending, tableId, h);
     case "stringPick":
       if (pending.kind !== "choose_creature_type" && pending.kind !== "choose_card_name") {
-        return frame("pending-choice", pendingChoiceTitle(pending), []);
+        return frame("pending-choice", pendingChoiceTitle(pending), [], h);
       }
-      return stringPickPrompt(pending, board, state, tableId);
+      return stringPickPrompt(pending, board, state, tableId, h);
     case "numberPick":
       if (pending.kind !== "may_draw_up_to" && pending.kind !== "pay_any_amount_of_mana") {
-        return frame("pending-choice", pendingChoiceTitle(pending), []);
+        return frame("pending-choice", pendingChoiceTitle(pending), [], h);
       }
-      return numberPickPrompt(pending, board, state, tableId);
+      return numberPickPrompt(pending, board, state, tableId, h);
     case "destinationPick":
       if (
         pending.kind !== "choose_countered_spell_destination" &&
         pending.kind !== "revealed_card_to_battlefield_or_hand"
       ) {
-        return frame("pending-choice", pendingChoiceTitle(pending), []);
+        return frame("pending-choice", pendingChoiceTitle(pending), [], h);
       }
-      return destinationPickPrompt(pending, state, tableId);
+      return destinationPickPrompt(pending, state, tableId, h);
     default: {
       const _exhaustive: never = id;
       return _exhaustive;
@@ -2452,17 +2555,22 @@ function shouldShowPendingChoice(state: VisibleState): boolean {
   return pending.player === state.viewer;
 }
 
-export function promptsView(board: BoardModel, state: VisibleState, tableId: string | null): Html | null {
-  if (board.playModePick != null) return playModePrompt(board.playModePick);
-  if (board.xPrompt != null) return boardXPrompt(board.xPrompt);
-  if (board.modalCast != null) return modalPrompt(board.modalCast);
+export function promptsView(
+  board: BoardModel,
+  state: VisibleState,
+  tableId: string | null,
+  h: HtmlBuilder<Message>,
+): Html | null {
+  if (board.playModePick != null) return playModePrompt(board.playModePick, h);
+  if (board.xPrompt != null) return boardXPrompt(board.xPrompt, h);
+  if (board.modalCast != null) return modalPrompt(board.modalCast, h);
   if (board.sacrificePick != null) {
     const choices = board.sacrificePick.action.sacrifice_choices ?? [];
     if (sacrificeCostObjectIds(choices, state) != null) {
       return h.div(
         [
           h.DataAttribute("testid", "sacrifice-cost-aim"),
-          h.Style({ "--b": `${HAND_BAR_H + 12}px` }),
+          h.Style({ "--b": `calc(var(--hand-bar-h) + 12px)` }),
           h.Class(
             "pointer-events-none fixed bottom-(--b) left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-xs rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
           ),
@@ -2476,6 +2584,7 @@ export function promptsView(board: BoardModel, state: VisibleState, tableId: str
       choices,
       state,
       (id) => SacrificeChosen({ objectId: id }),
+      h,
       "modal",
     );
   }
@@ -2490,7 +2599,7 @@ export function promptsView(board: BoardModel, state: VisibleState, tableId: str
       return h.div(
         [
           h.DataAttribute("testid", "discard-cost-aim"),
-          h.Style({ "--b": `${HAND_BAR_H + 12}px` }),
+          h.Style({ "--b": `calc(var(--hand-bar-h) + 12px)` }),
           h.Class(
             "pointer-events-none fixed bottom-(--b) left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-xs rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
           ),
@@ -2510,6 +2619,7 @@ export function promptsView(board: BoardModel, state: VisibleState, tableId: str
       choices,
       state,
       (id) => DiscardChosen({ ids: [id] }),
+      h,
       "modal",
     );
   }
@@ -2529,7 +2639,7 @@ export function promptsView(board: BoardModel, state: VisibleState, tableId: str
       return h.div(
         [
           h.DataAttribute("testid", "gy-exile-cost-aim"),
-          h.Style({ "--b": `${HAND_BAR_H + 12}px` }),
+          h.Style({ "--b": `calc(var(--hand-bar-h) + 12px)` }),
           h.Class(
             "pointer-events-none fixed bottom-(--b) left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-xs rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
           ),
@@ -2543,18 +2653,23 @@ export function promptsView(board: BoardModel, state: VisibleState, tableId: str
         ].filter((v): v is Html => v !== null),
       );
     }
-    return costPickPrompt("gy-exile-pick", "Choose cards to exile from graveyard", choices, state, (id) =>
-      GyExileChosen({ ids: [id] }),
+    return costPickPrompt(
+      "gy-exile-pick",
+      "Choose cards to exile from graveyard",
+      choices,
+      state,
+      (id) => GyExileChosen({ ids: [id] }),
+      h,
     );
   }
   if (board.staged != null) {
     const targets = stagedPickTargets(board.staged, state);
     if (targets != null) {
-      return targetPickPrompt(stagedTargetTitle(board.staged), targets, state);
+      return targetPickPrompt(stagedTargetTitle(board.staged), targets, state, h);
     }
   }
   const pending = state.pending_choice;
   if (pending == null) return null;
   if (!shouldShowPendingChoice(state)) return null;
-  return pendingChoicePrompt(pending, state, board, tableId);
+  return pendingChoicePrompt(pending, state, board, tableId, h);
 }

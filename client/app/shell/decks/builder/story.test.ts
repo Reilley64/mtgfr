@@ -5,6 +5,7 @@ import { Effect, Option } from "effect";
 import { Story } from "foldkit";
 import { Scene } from "foldkit/test";
 import { expect, test } from "vitest";
+import { asBuilder } from "~/test-html";
 import { PAGE } from "../../../domain/deck-builder/cards";
 import { printSearchUrl, type ScryfallPrint } from "../../../domain/deck-builder/scryfall";
 import { client } from "../../../domain/rpc-client";
@@ -139,7 +140,7 @@ test("GotDeckBuilderMessage updates the builder through the parent update", () =
 
   Story.story(
     appUpdate,
-    Story.with(model),
+    Story.given(model),
     Story.message(appMessage(ChangedBuilderName({ name: "x" }))),
     Story.model((m) => {
       expect(m.decks.builder.name).toBe("x");
@@ -201,7 +202,7 @@ test("CreateDeck422 folds into problems list", () => {
 
   Story.story(
     appUpdate,
-    Story.with(model),
+    Story.given(model),
     Story.message(appMessage(DeckSaveFailed({ problems: ["Too many cards"] }))),
     Story.model((m) => {
       expect(m.decks.builder.problems).toEqual(["Too many cards"]);
@@ -216,7 +217,7 @@ test("non-basic cards stay singleton while basics can be added and removed", () 
 
   Story.story(
     appUpdate,
-    Story.with(model),
+    Story.given(model),
     Story.message(appMessage(ReceivedBuilderSearchPage({ cards: [solRing, island], offset: 0, query: "" }))),
     Story.message(appMessage(AddedBuilderCard({ card: solRing }))),
     Story.message(appMessage(AddedBuilderCard({ card: solRing }))),
@@ -242,7 +243,7 @@ test("picking a print for a commander-only card updates commander art", () => {
 
   Story.story(
     appUpdate,
-    Story.with(model),
+    Story.given(model),
     Story.message(appMessage(ReceivedBuilderSearchPage({ cards: [commander], offset: 0, query: "" }))),
     Story.message(appMessage(SetBuilderCommander({ card: commander }))),
     Story.message(appMessage(OpenedBuilderPrintPicker({ addOnPick: false, cardId: "commander" }))),
@@ -266,7 +267,7 @@ test("picking a print for a deck row updates preferredPrint and the entry print"
 
   Story.story(
     appUpdate,
-    Story.with(model),
+    Story.given(model),
     Story.message(appMessage(ReceivedBuilderSearchPage({ cards: [solRing], offset: 0, query: "" }))),
     Story.message(appMessage(AddedBuilderCard({ card: solRing }))),
     Story.message(appMessage(OpenedBuilderPrintPicker({ addOnPick: false, cardId: "sol-ring" }))),
@@ -297,8 +298,8 @@ test("catalog and decklist are independent overscroll-contained scroll hosts", (
   };
 
   Scene.scene(
-    { update: builderUpdate, view: (model) => builderView(model, emptyViewInputs) },
-    Scene.with(model),
+    { update: builderUpdate, view: (model, h) => builderView(model, emptyViewInputs, asBuilder(h)) },
+    Scene.given(model),
     observePoolWidth,
     Scene.Mount.resolve(BindBuilderCardPointer({ cardId: "sol-ring", kind: "pool" }), ClearedBuilderHover()),
     Scene.Mount.resolve(BindBuilderCardPointer({ cardId: "sol-ring", kind: "deck" }), ClearedBuilderHover()),
@@ -329,8 +330,8 @@ test("a fresh deck tells the player how to add the first card", () => {
   const model = { ...initialDeckBuilderSubmodel(), ...measuredPool() };
 
   Scene.scene(
-    { update: builderUpdate, view: (model) => builderView(model, emptyViewInputs) },
-    Scene.with(model),
+    { update: builderUpdate, view: (model, h) => builderView(model, emptyViewInputs, asBuilder(h)) },
+    Scene.given(model),
     observePoolWidth,
     Scene.expect(Scene.testId("builder-decklist-empty")).toExist(),
     Scene.expect(Scene.testId("builder-decklist-empty")).toContainText("Click a pool card to add it"),
@@ -341,8 +342,8 @@ test("edit route shows a deck-loading state until the deck lands", () => {
   const model = { ...initialDeckBuilderSubmodel("abc"), ...measuredPool() };
 
   Scene.scene(
-    { update: builderUpdate, view: (model) => builderView(model, emptyViewInputs) },
-    Scene.with(model),
+    { update: builderUpdate, view: (model, h) => builderView(model, emptyViewInputs, asBuilder(h)) },
+    Scene.given(model),
     observePoolWidth,
     Scene.expect(Scene.testId("builder-deck-loading")).toExist(),
     Scene.expect(Scene.testId("deck-name")).toBeDisabled(),
@@ -368,8 +369,8 @@ test("print picker freezes catalog and decklist scroll while print grid stays sc
   };
 
   Scene.scene(
-    { update: builderUpdate, view: (model) => builderView(model, emptyViewInputs) },
-    Scene.with(model),
+    { update: builderUpdate, view: (model, h) => builderView(model, emptyViewInputs, asBuilder(h)) },
+    Scene.given(model),
     observePoolWidth,
     Scene.Mount.resolve(BindBuilderCardPointer({ cardId: "sol-ring", kind: "pool" }), ClearedBuilderHover()),
     Scene.Mount.resolve(BindBuilderCardPointer({ cardId: "sol-ring", kind: "deck" }), ClearedBuilderHover()),
@@ -407,8 +408,8 @@ test("clicking the dimmed page behind the print picker dismisses it and unfreeze
   };
 
   Scene.scene(
-    { update: builderUpdate, view: (model) => builderView(model, emptyViewInputs) },
-    Scene.with(model),
+    { update: builderUpdate, view: (model, h) => builderView(model, emptyViewInputs, asBuilder(h)) },
+    Scene.given(model),
     observePoolWidth,
     Scene.Mount.resolve(BindBuilderCardPointer({ cardId: "sol-ring", kind: "pool" }), ClearedBuilderHover()),
     Scene.Mount.resolve(BindBuilderCardPointer({ cardId: "sol-ring", kind: "deck" }), ClearedBuilderHover()),
@@ -442,8 +443,8 @@ test("the print picker's Close button dismisses it", () => {
   };
 
   Scene.scene(
-    { update: builderUpdate, view: (model) => builderView(model, emptyViewInputs) },
-    Scene.with(model),
+    { update: builderUpdate, view: (model, h) => builderView(model, emptyViewInputs, asBuilder(h)) },
+    Scene.given(model),
     observePoolWidth,
     Scene.Mount.resolve(BindBuilderCardPointer({ cardId: "sol-ring", kind: "deck" }), ClearedBuilderHover()),
     Scene.Mount.resolveAll(
@@ -473,8 +474,8 @@ test("print selection renders a Scryfall tile picker instead of a UUID input", (
   };
 
   Scene.scene(
-    { update: builderUpdate, view: (model) => builderView(model, emptyViewInputs) },
-    Scene.with(model),
+    { update: builderUpdate, view: (model, h) => builderView(model, emptyViewInputs, asBuilder(h)) },
+    Scene.given(model),
     observePoolWidth,
     Scene.Mount.resolve(BindBuilderCardPointer({ cardId: "sol-ring", kind: "deck" }), ClearedBuilderHover()),
     Scene.Mount.resolveAll(
@@ -509,8 +510,8 @@ test("a card with hundreds of printings paints a screenful of tiles, not all of 
   };
 
   Scene.scene(
-    { update: builderUpdate, view: (model) => builderView(model, emptyViewInputs) },
-    Scene.with(model),
+    { update: builderUpdate, view: (model, h) => builderView(model, emptyViewInputs, asBuilder(h)) },
+    Scene.given(model),
     observePoolWidth,
     // Every rendered tile also loads its art, so this count is how many Scryfall images the picker
     // asks for: eight rows around the viewport, not all 400.
@@ -562,8 +563,8 @@ test("printings show as soon as the first page lands, while later pages are stil
   };
 
   Scene.scene(
-    { update: builderUpdate, view: (model) => builderView(model, emptyViewInputs) },
-    Scene.with(model),
+    { update: builderUpdate, view: (model, h) => builderView(model, emptyViewInputs, asBuilder(h)) },
+    Scene.given(model),
     observePoolWidth,
     Scene.Mount.resolve(BindCardArt, ClearedBuilderHover() as never),
     Scene.expect(Scene.selector('[data-testid="print-tile-island-a"]')).toExist(),
@@ -583,7 +584,7 @@ test("later pages of printings append to the ones already shown", () => {
 
   Story.story(
     appUpdate,
-    Story.with(model),
+    Story.given(model),
     Story.message(appMessage(ReceivedBuilderSearchPage({ cards: [island], offset: 0, query: "" }))),
     Story.message(appMessage(OpenedBuilderPrintPicker({ addOnPick: false, cardId: "island" }))),
     Story.Command.resolve(Dialog.ShowDialog, Dialog.CompletedShowDialog()),
@@ -631,7 +632,7 @@ test("a failed page leaves the printings that already arrived on screen", () => 
 
   Story.story(
     appUpdate,
-    Story.with(model),
+    Story.given(model),
     Story.message(appMessage(ReceivedBuilderSearchPage({ cards: [island], offset: 0, query: "" }))),
     Story.message(appMessage(OpenedBuilderPrintPicker({ addOnPick: false, cardId: "island" }))),
     Story.Command.resolve(Dialog.ShowDialog, Dialog.CompletedShowDialog()),
@@ -672,8 +673,8 @@ test("a pool of thousands paints a screenful of tiles, not all of them", () => {
   const painted = 45;
 
   Scene.scene(
-    { update: builderUpdate, view: (model) => builderView(model, emptyViewInputs) },
-    Scene.with(model),
+    { update: builderUpdate, view: (model, h) => builderView(model, emptyViewInputs, asBuilder(h)) },
+    Scene.given(model),
     observePoolWidth,
     Scene.Mount.resolveAll(
       ...Array.from(
@@ -734,7 +735,7 @@ test("opening a pool context menu builds expected items and clears hover", () =>
 
   Story.story(
     appUpdate,
-    Story.with(model),
+    Story.given(model),
     Story.message(appMessage(ReceivedBuilderSearchPage({ cards: [island], offset: 0, query: "" }))),
     Story.message(appMessage(MovedBuilderHover({ id: "island", x: 10, y: 20 }))),
     Story.message(appMessage(OpenedBuilderMenu({ cardId: "island", kind: "pool", x: 40, y: 50 }))),
@@ -758,7 +759,7 @@ test("activated pool target adds a card; deck target removes one", () => {
 
   Story.story(
     appUpdate,
-    Story.with(model),
+    Story.given(model),
     Story.message(appMessage(ReceivedBuilderSearchPage({ cards: [solRing], offset: 0, query: "" }))),
     Story.message(appMessage(ActivatedBuilderTarget({ cardId: "sol-ring", kind: "pool" }))),
     Story.message(appMessage(ActivatedBuilderTarget({ cardId: "sol-ring", kind: "deck" }))),
@@ -775,7 +776,7 @@ test("removing two different deck cards clears both entries", () => {
 
   Story.story(
     appUpdate,
-    Story.with(model),
+    Story.given(model),
     Story.message(appMessage(ReceivedBuilderSearchPage({ cards: [solRing, manaCrypt], offset: 0, query: "" }))),
     Story.message(appMessage(ActivatedBuilderTarget({ cardId: "sol-ring", kind: "pool" }))),
     Story.message(appMessage(ActivatedBuilderTarget({ cardId: "mana-crypt", kind: "pool" }))),
@@ -808,8 +809,8 @@ test("decklist rows are keyed by card id so pointer mounts remount after remove"
   // Keys force snabbdom to destroy/recreate rows; without them BindBuilderCardPointer
   // keeps the removed cardId after the first click (Mount args are mount-time only).
   Scene.scene(
-    { update: builderUpdate, view: (model) => builderView(model, emptyViewInputs) },
-    Scene.with(model),
+    { update: builderUpdate, view: (model, h) => builderView(model, emptyViewInputs, asBuilder(h)) },
+    Scene.given(model),
     observePoolWidth,
     Scene.tap((sim) => {
       for (const id of ["mana-crypt", "sol-ring"] as const) {
@@ -832,7 +833,7 @@ test("choose-print menu action opens the print picker without adding a copy", ()
 
   Story.story(
     appUpdate,
-    Story.with(model),
+    Story.given(model),
     Story.message(appMessage(ReceivedBuilderSearchPage({ cards: [solRing], offset: 0, query: "" }))),
     Story.message(appMessage(AddedBuilderCard({ card: solRing }))),
     Story.message(
@@ -870,8 +871,8 @@ test("pool cards do not set a native title tooltip on hover", () => {
   };
 
   Scene.scene(
-    { update: builderUpdate, view: (model) => builderView(model, emptyViewInputs) },
-    Scene.with(model),
+    { update: builderUpdate, view: (model, h) => builderView(model, emptyViewInputs, asBuilder(h)) },
+    Scene.given(model),
     observePoolWidth,
     Scene.expect(Scene.selector('[data-testid="pool-card-sol-ring"]')).toExist(),
     Scene.expect(Scene.selector('[data-testid="pool-card-sol-ring"][title]')).toBeAbsent(),
@@ -904,8 +905,8 @@ test("hover preview and context menu render when present in the model", () => {
   };
 
   Scene.scene(
-    { update: builderUpdate, view: (model) => builderView(model, emptyViewInputs) },
-    Scene.with(model),
+    { update: builderUpdate, view: (model, h) => builderView(model, emptyViewInputs, asBuilder(h)) },
+    Scene.given(model),
     observePoolWidth,
     Scene.expect(Scene.selector('[data-testid="builder-hover-preview"]')).toExist(),
     Scene.expect(Scene.selector('[data-testid="builder-context-menu"]')).toExist(),
@@ -939,7 +940,7 @@ test("Cancel on a clean builder does not open the discard confirm", () => {
 
   Story.story(
     appUpdate,
-    Story.with(model),
+    Story.given(model),
     Story.message(appMessage(RequestedBuilderCancel())),
     Story.Command.resolve(NavigateHome, NavigatedAwayFromBuilder()),
     Story.model((m) => {
@@ -954,7 +955,7 @@ test("Cancel on a dirty builder opens the discard confirm", () => {
 
   Story.story(
     appUpdate,
-    Story.with(model),
+    Story.given(model),
     Story.message(appMessage(ReceivedBuilderSearchPage({ cards: [solRing], offset: 0, query: "" }))),
     Story.message(appMessage(AddedBuilderCard({ card: solRing }))),
     Story.message(appMessage(RequestedBuilderCancel())),
@@ -972,7 +973,7 @@ test("dismissing the discard confirm keeps the edits and stays in the builder", 
 
   Story.story(
     appUpdate,
-    Story.with(model),
+    Story.given(model),
     Story.message(appMessage(ReceivedBuilderSearchPage({ cards: [solRing], offset: 0, query: "" }))),
     Story.message(appMessage(AddedBuilderCard({ card: solRing }))),
     Story.message(appMessage(RequestedBuilderCancel())),
@@ -991,7 +992,7 @@ test("ConfirmedBuilderDiscard is handled without throwing", () => {
 
   Story.story(
     appUpdate,
-    Story.with(model),
+    Story.given(model),
     Story.message(appMessage(ConfirmedBuilderDiscard())),
     Story.Command.resolve(NavigateHome, NavigatedAwayFromBuilder()),
     Story.model((m) => {
@@ -1008,8 +1009,8 @@ test("Cancel button renders in builder view", () => {
   };
 
   Scene.scene(
-    { update: builderUpdate, view: (model) => builderView(model, emptyViewInputs) },
-    Scene.with(model),
+    { update: builderUpdate, view: (model, h) => builderView(model, emptyViewInputs, asBuilder(h)) },
+    Scene.given(model),
     observePoolWidth,
     Scene.expect(Scene.selector('[data-testid="builder-cancel"]')).toExist(),
   );
@@ -1026,13 +1027,13 @@ const askingToDiscard = {
 
 const builderProgram = {
   update: builderUpdate,
-  view: (model: typeof askingToDiscard) => builderView(model, emptyViewInputs),
+  view: (model: typeof askingToDiscard, h: unknown) => builderView(model, emptyViewInputs, asBuilder(h)),
 };
 
 test("backing out of the discard prompt keeps the edits", () => {
   Scene.scene(
     builderProgram,
-    Scene.with(askingToDiscard),
+    Scene.given(askingToDiscard),
     observePoolWidth,
     Scene.click(Scene.selector('[data-testid="confirm-cancel"]')),
     Scene.Command.resolve(Dialog.CloseDialog, Dialog.CompletedCloseDialog()),
@@ -1044,7 +1045,7 @@ test("backing out of the discard prompt keeps the edits", () => {
 test("confirming the discard prompt leaves the builder", () => {
   Scene.scene(
     builderProgram,
-    Scene.with(askingToDiscard),
+    Scene.given(askingToDiscard),
     observePoolWidth,
     Scene.click(Scene.selector('[data-testid="confirm-ok"]')),
     Scene.Command.resolve(Dialog.CloseDialog, Dialog.CompletedCloseDialog()),
@@ -1062,10 +1063,69 @@ test("the discard prompt asks before throwing edits away", () => {
   };
 
   Scene.scene(
-    { update: builderUpdate, view: (model) => builderView(model, emptyViewInputs) },
-    Scene.with(model),
+    { update: builderUpdate, view: (model, h) => builderView(model, emptyViewInputs, asBuilder(h)) },
+    Scene.given(model),
     observePoolWidth,
     Scene.expect(Scene.selector('[data-testid="builder-discard-confirm"]')).toExist(),
     Scene.expect(Scene.text("Discard changes?")).toExist(),
+  );
+});
+
+// The Scryfall size segment of the art URL a testid's `cardArt` requested. Scene's selector parser
+// has no `*=`, and the size is what these tests are about, so read it off the vnode.
+function artSize(sim: { html: unknown }, testId: string): string | null {
+  const node = Scene.selector(`[data-testid="${testId}"] [data-art-url]`)(sim.html as never);
+  if (Option.isNone(node)) return null;
+  const url = node.value.data?.attrs?.["data-art-url"];
+  return typeof url === "string" ? (new URL(url).pathname.split("/")[1] ?? null) : null;
+}
+
+// Every art in the builder renders small — pool and print tiles at 120-200px, list rows at 28-40px
+// — while `cardArt`'s default is `display` (672px). These assert the requested size rather than
+// merely that art exists, because oversampling is invisible: the wrong size still paints correctly,
+// it just moves 5x the bytes.
+test("builder tile grids request grid-sized art, not the full-size default", () => {
+  const solRing = card({ id: "sol-ring", name: "Sol Ring" });
+  const model = {
+    ...initialDeckBuilderSubmodel(),
+    atEnd: true,
+    pool: [solRing],
+    ...measuredPool(),
+    preferredPrint: { "sol-ring": solRing.default_print },
+    searching: false,
+  };
+
+  Scene.scene(
+    { update: builderUpdate, view: (model, h) => builderView(model, emptyViewInputs, asBuilder(h)) },
+    Scene.given(model),
+    observePoolWidth,
+    Scene.tap((sim) => expect(artSize(sim, "pool-card-sol-ring")).toBe("grid")),
+    Scene.Mount.resolve(BindBuilderCardPointer({ cardId: "sol-ring", kind: "pool" }), ClearedBuilderHover()),
+    Scene.Mount.resolve(BindCardArt, ClearedBuilderHover() as never),
+  );
+});
+
+test("builder list rows request thumb-sized art, not the full-size default", () => {
+  const solRing = card({ id: "sol-ring", name: "Sol Ring" });
+  const model = {
+    ...initialDeckBuilderSubmodel(),
+    atEnd: true,
+    commander: { id: solRing.id, print: solRing.default_print },
+    entries: { "sol-ring": { count: 1, print: solRing.default_print } },
+    known: { "sol-ring": solRing },
+    preferredPrint: { "sol-ring": solRing.default_print },
+    searching: false,
+  };
+
+  Scene.scene(
+    { update: builderUpdate, view: (model, h) => builderView(model, emptyViewInputs, asBuilder(h)) },
+    Scene.given(model),
+    observePoolWidth,
+    Scene.tap((sim) => expect(artSize(sim, "deck-row-sol-ring")).toBe("thumb")),
+    Scene.tap((sim) => expect(artSize(sim, "builder-commander")).toBe("thumb")),
+    Scene.Mount.resolve(BindBuilderCardPointer({ cardId: "sol-ring", kind: "deck" }), ClearedBuilderHover()),
+    Scene.Mount.resolve(BindBuilderCardPointer({ cardId: "sol-ring", kind: "commander" }), ClearedBuilderHover()),
+    Scene.Mount.resolve(BindCardArt, ClearedBuilderHover() as never),
+    Scene.Mount.resolve(BindCardArt, ClearedBuilderHover() as never),
   );
 });

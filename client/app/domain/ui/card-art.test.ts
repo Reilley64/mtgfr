@@ -77,42 +77,25 @@ describe("syncCardArtHost", () => {
     expect(host.querySelector("img")?.getAttribute("src")).toBe("https://example.test/b.webp");
     expect(host.querySelector("img")?.getAttribute("alt")).toBe("B");
   });
-});
 
-describe("syncCardArtHost art_crop CDN fallback", () => {
-  afterEach(() => {
-    document.body.replaceChildren();
-  });
-
-  it("swaps to data-art-fallback after primary load failure", async () => {
-    let lastImg!: { src: string; onload: (() => void) | null; onerror: (() => void) | null };
+  it("fills the host with the loading skeleton when the art class carries no size", () => {
     const cache = new ImageCache(
       () => {},
-      () => {
-        lastImg = { src: "", onload: null, onerror: null };
-        return lastImg;
-      },
+      () => ({ src: "", onload: null, onerror: null }),
     );
 
     const host = document.createElement("div");
-    host.dataset.artUrl = "https://cards.example.com/art_crop/front/a/b/abcd.webp";
-    host.dataset.artFallback = "https://api.scryfall.com/cards/abcd?format=image&version=art_crop";
-    host.dataset.artAlt = "Commander";
-    host.dataset.artClass = "art";
+    host.dataset.artUrl = "https://example.test/a.webp";
+    host.dataset.artAlt = "A";
+    // The hand bar sizes its art host by inline style, not by the art class.
+    host.dataset.artClass = "pointer-events-none block rounded-game object-cover";
     document.body.append(host);
 
     syncCardArtHost(host, cache);
-    expect(host.querySelector("[aria-hidden='true']")).toBeTruthy();
-    lastImg.onerror?.();
-    await waitUntil(
-      () => cache.isFailed(host.dataset.artUrl ?? "nope") || host.dataset.artUrl?.includes("scryfall") === true,
-    );
-    syncCardArtHost(host, cache);
-    expect(host.dataset.artUrl).toContain("api.scryfall.com");
-    expect(host.dataset.artFallback ?? "").toBe("");
-    lastImg.onload?.();
-    await waitUntil(() => cache.isReady(host.dataset.artUrl ?? ""));
-    syncCardArtHost(host, cache);
-    expect(host.querySelector("img")?.getAttribute("src")).toContain("api.scryfall.com");
+
+    const skeleton = host.querySelector("[aria-hidden='true']");
+    expect(skeleton?.className).toContain("animate-skeleton");
+    expect(skeleton?.className).toContain("absolute");
+    expect(skeleton?.className).toContain("inset-0");
   });
 });

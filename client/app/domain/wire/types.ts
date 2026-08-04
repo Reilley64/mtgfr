@@ -443,6 +443,8 @@ export type ActionView = {
   sacrifice_choices?: Array<number>;
   section: string;
   taps_self?: boolean;
+  /** True when the action only produces mana (a paid tap-for-mana mode) — never a playable border. */
+  mana_only?: boolean;
   targets?: Array<WireTarget>;
 };
 export type PendingChoiceView =

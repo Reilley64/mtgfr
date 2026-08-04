@@ -1,11 +1,17 @@
 // Priority context bar: Next / Resolve card / Resolve stack / End Turn / turn yield.
 //
 // Ported silhouette from Solid `priority-context-bar.tsx`: game button variants, primary
-// emphasis while this seat must act, Arena turn-yield rocker (amber earth, never priority gold).
+// emphasis while this seat must act, Arena turn-yield rocker (amber earth, never priority gold, h).
 
-import { type Html, html } from "foldkit/html";
+import type { Html, HtmlBuilder } from "foldkit/html";
 import { priorityPrimaryClass } from "~/priorityContextChrome";
-import { turnYieldRockerClass, turnYieldThumbClass, turnYieldTrackClass } from "~/turnYieldChrome";
+import {
+  turnYieldLabelClass,
+  turnYieldRockerClass,
+  turnYieldThumbClass,
+  turnYieldTrackClass,
+  type YieldTone,
+} from "~/turnYieldChrome";
 import { button } from "~/ui/button";
 import type { VisibleState, WireAttack } from "~/wire/types";
 import { formatMessage } from "../../domain/i18n/message";
@@ -22,10 +28,7 @@ import {
 } from "../messages";
 import { promptPresentation } from "../promptPresentation";
 import type { BoardModel } from "../submodel";
-import { HAND_BAR_H } from "./hand";
 import { simplePromptBarActions } from "./prompt-bar-actions";
-
-const h = html<Message>();
 
 /** The same decision the click path makes (`primaryActionFor`) — the button's label and what it
  * submits must never disagree. */
@@ -110,7 +113,39 @@ function showTurnYield(state: VisibleState): boolean {
   return state.viewer !== state.active_player;
 }
 
-export function priorityBarView(board: BoardModel, state: VisibleState, tableId: string | null): Html | null {
+/** Arena rocker: a `role="switch"` toggle whose label sits collapsed to its left until hover or
+ * keyboard focus opens it. Both turn-yield toggles share this shape — only the armed hue differs. */
+function rocker(
+  opts: { testId: string; tone: YieldTone; checked: boolean; label: string },
+  h: HtmlBuilder<Message>,
+): Html {
+  return h.button(
+    [
+      h.Type("button"),
+      h.Role("switch"),
+      h.DataAttribute("testid", opts.testId),
+      h.Attribute("aria-checked", opts.checked ? "true" : "false"),
+      h.Attribute("aria-label", opts.label),
+      h.Attribute("title", opts.label),
+      h.OnClick(TurnYieldToggled({ enabled: !opts.checked })),
+      h.Class(turnYieldRockerClass(opts.tone)),
+    ],
+    [
+      h.span([h.Class(turnYieldLabelClass()), h.Attribute("aria-hidden", "true")], [opts.label]),
+      h.span(
+        [h.Class(turnYieldTrackClass(opts.tone))],
+        [h.span([h.Class(turnYieldThumbClass(opts.tone)), h.Attribute("aria-hidden", "true")], ["≫"])],
+      ),
+    ],
+  );
+}
+
+export function priorityBarView(
+  board: BoardModel,
+  state: VisibleState,
+  tableId: string | null,
+  h: HtmlBuilder<Message>,
+): Html | null {
   const presentation = promptPresentation(board, state);
   if (presentation.mode === "modal") {
     // Rich prompts keep answer chrome inside the centered modal; an empty bar above the
@@ -118,16 +153,16 @@ export function priorityBarView(board: BoardModel, state: VisibleState, tableId:
     return null;
   }
   if (presentation.mode === "simple") {
-    const simpleActions = simplePromptBarActions(board, state, tableId);
+    const simpleActions = simplePromptBarActions(board, state, tableId, h);
 
     return h.div(
       [
         h.DataAttribute("testid", "priority-context-bar"),
         // Above pile (z-29) and prompt-modal (z-40) backdrops so Choose / Confirm stay clickable.
         h.Class("pointer-events-auto fixed bottom-(--b) right-md z-45 flex flex-col items-end gap-sm"),
-        h.Style({ "--b": `${HAND_BAR_H + 10}px` }),
+        h.Style({ "--b": `calc(var(--hand-bar-h) + 10px)` }),
       ],
-      [simpleActions, board.reject != null ? rejectView(board.reject) : null].filter((v): v is Html => v !== null),
+      [simpleActions, board.reject != null ? rejectView(board.reject, h) : null].filter((v): v is Html => v !== null),
     );
   }
 
@@ -167,39 +202,27 @@ export function priorityBarView(board: BoardModel, state: VisibleState, tableId:
       : null;
 
   const endTurnBtn: Html | null = showEndTurn(state, pendingAttackers)
-    ? button(
-        h,
+    ? rocker(
         {
           testId: "board-end-turn",
-          onClick: TurnYieldToggled({ enabled: !turnYielded }),
-          variant: turnYielded ? "game-yielded" : "game-quiet",
-          attrs: [
-            h.Attribute("aria-pressed", turnYielded ? "true" : "false"),
-            h.Attribute("title", turnYielded ? "Cancel end turn" : "End turn (Enter)"),
-          ],
+          tone: "end-turn",
+          checked: turnYielded,
+          // Constant name, like the until-my-turn rocker — armed state is the rocker's job, not the label's.
+          label: "End turn",
         },
-        [turnYielded ? "Ending turn…" : "End Turn"],
+        h,
       )
     : null;
 
   const turnYieldBtn: Html | null = showTurnYield(state)
-    ? h.button(
-        [
-          h.Type("button"),
-          h.Role("switch"),
-          h.DataAttribute("testid", "board-turn-yield"),
-          h.Attribute("aria-checked", turnYielded ? "true" : "false"),
-          h.Attribute("aria-label", "Auto-pass until my turn"),
-          h.Attribute("title", "Auto-pass until my turn"),
-          h.OnClick(TurnYieldToggled({ enabled: !turnYielded })),
-          h.Class(turnYieldRockerClass()),
-        ],
-        [
-          h.span(
-            [h.Class(turnYieldTrackClass())],
-            [h.span([h.Class(turnYieldThumbClass()), h.Attribute("aria-hidden", "true")], ["≫"])],
-          ),
-        ],
+    ? rocker(
+        {
+          testId: "board-turn-yield",
+          tone: "yield",
+          checked: turnYielded,
+          label: "Auto-pass until my turn",
+        },
+        h,
       )
     : null;
 
@@ -215,13 +238,17 @@ export function priorityBarView(board: BoardModel, state: VisibleState, tableId:
     ? button(h, { testId: "board-cancel-target", onClick: CancelActionClicked(), variant: "game-quiet" }, ["Cancel"])
     : null;
 
-  const companions = [endTurnBtn, passBtn, stackYieldBtn, turnYieldBtn, cancelBtn].filter((v): v is Html => v !== null);
+  const companions = [passBtn, stackYieldBtn, cancelBtn].filter((v): v is Html => v !== null);
+  // End Turn / until-my-turn are standing toggles, not per-window actions — they get their own
+  // row under Next and the companions so they never shuffle the action row's silhouette.
+  // Exactly one can show: End Turn is the active seat's, the rocker is everyone else's.
+  const rockers = [endTurnBtn, turnYieldBtn].filter((v): v is Html => v !== null);
 
   return h.div(
     [
       h.DataAttribute("testid", "priority-context-bar"),
       h.Class("pointer-events-auto fixed bottom-(--b) right-md z-25 flex flex-col items-end gap-sm"),
-      h.Style({ "--b": `${HAND_BAR_H + 10}px` }),
+      h.Style({ "--b": `calc(var(--hand-bar-h) + 10px)` }),
     ],
     [
       bandPanelView(board, state, attackers),
@@ -234,6 +261,15 @@ export function priorityBarView(board: BoardModel, state: VisibleState, tableId:
             : null,
         ].filter((v): v is Html => v !== null),
       ),
+      rockers.length > 0
+        ? h.div(
+            [
+              h.DataAttribute("testid", "priority-bar-rockers"),
+              h.Class("flex flex-row-reverse items-center justify-end gap-sm"),
+            ],
+            rockers,
+          )
+        : null,
       board.staged != null
         ? h.div(
             [
@@ -243,13 +279,13 @@ export function priorityBarView(board: BoardModel, state: VisibleState, tableId:
             [`${formatMessage(board.staged.action.label)}: click a highlighted card`],
           )
         : null,
-      board.reject != null ? rejectView(board.reject) : null,
+      board.reject != null ? rejectView(board.reject, h) : null,
     ].filter((v): v is Html => v !== null),
   );
 }
 
 /** Illegal-action feedback: role="alert" so a failed action announces, not just paints red. */
-function rejectView(reject: string): Html {
+function rejectView(reject: string, h: HtmlBuilder<Message>): Html {
   return h.div(
     [h.DataAttribute("testid", "board-reject"), h.Role("alert"), h.Class("text-caption text-burn-red")],
     [reject],

@@ -615,6 +615,14 @@ impl Game {
     /// Paid tap-for-mana activates (filter lands, karoos, signets) for the wire radial — **not**
     /// part of [`Game::meaningful_actions`], so they never stop auto-pass (turn-priority-and-stack spec). Appended onto
     /// [`Game::actions`] by [`Game::refresh_actions`] so the client can show them.
+    ///
+    /// ponytail: bare mana production is never halt-worthy, which is wrong once a player controls a
+    /// mana-persist static (Kruphix, Omnath, Upwelling) or a controller-facing "whenever you tap a
+    /// land for mana" payoff — no such card is scripted in `crates/cards/data/` today. When the
+    /// first one lands, add `Game::mana_matters(player)` and OR it into
+    /// [`Game::has_meaningful_action`] (not into `meaningful_actions`, which would duplicate radial
+    /// rows), and carry it as a snapshot boolean so the client borders every `taps_for_mana`
+    /// permanent, basics included. See OpenSpec `engine` / `wire-protocol` (`mana_only` / meaningful-action carve-out).
     pub(crate) fn paid_mana_activates(&self, player: PlayerId) -> Vec<MeaningfulAction> {
         if self.mulliganing {
             return Vec::new();
@@ -795,7 +803,17 @@ impl Game {
         (0..MAX_MODES)
             .map_while(|m| nth_mode(&def, m))
             .map(|a| {
-                let spec = a.effect.target();
+                // A mode whose targets are deferred to the post-cast clause chain (Hull Breach
+                // mode 2's artifact-and-enchantment, Decisive Denial mode 0's ally-then-enemy
+                // fight, Prismari Charm mode 1's "one or two targets") takes no per-mode target —
+                // the same gate `Game::validate_modes` rejects one with, so the two can't disagree.
+                let deferred = !a.effect.clone().target_count().is_single()
+                    || crate::ability_target_clauses(&a).len() > 1;
+                let spec = if deferred {
+                    TargetSpec::None
+                } else {
+                    a.effect.target()
+                };
                 ModeInfo {
                     label: a.effect.message(),
                     needs_target: spec != TargetSpec::None,

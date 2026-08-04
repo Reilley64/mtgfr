@@ -26,7 +26,7 @@ test("session folds me", () => {
 
   Story.story(
     update,
-    Story.with(model),
+    Story.given(model),
     Story.message(GotAuthMessage({ message: Auth.Message.ReceivedMe({ me: null }) })),
     Story.Command.resolve(redirect, NavigationCompleted()),
     Story.model((m) => {
@@ -42,7 +42,7 @@ test("session stores me Gravatar hash from the ReceivedMe command", () => {
 
   Story.story(
     update,
-    Story.with({ ...model, route: NotFoundRoute({ path: "/done" }) }),
+    Story.given({ ...model, route: NotFoundRoute({ path: "/done" }) }),
     Story.message(
       GotAuthMessage({
         message: Auth.Message.ReceivedMe({ me: { id: 1, email, username: "alice" } }),
@@ -60,7 +60,7 @@ test("session ignores stale me Gravatar hash results", () => {
 
   Story.story(
     update,
-    Story.with({
+    Story.given({
       ...model,
       sessionLoaded: true,
       session: { me: { id: 1, email: "alice@example.com", username: "alice" }, meGravatarHash: null },

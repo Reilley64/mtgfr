@@ -4,7 +4,7 @@ import type { ObjectView, PlayerView, VisibleState } from "~/wire/types";
 import type { GameFoldState } from "../game/fold";
 import { CARD_W, ZONE } from "./geometry/layout";
 import { STACK_CARD_W, stackFaceScreenOrigin, stackPeekFor, stackPresentation } from "./geometry/stackLayout";
-import { FlightsSynced, HandActionActivated } from "./messages";
+import { FlightsSynced, HandActionActivated, KeyboardEscape } from "./messages";
 import { handFlightScale, spawnFlight, stackFlightScale, stepFlights } from "./motion/flights";
 import { BOARD_VIEWPORT, initialBoardModel, syncBoardWithGame, updateBoard } from "./submodel";
 
@@ -771,6 +771,125 @@ describe("stack flight settle handoff", () => {
     );
     expect(after.flights.has(handId)).toBe(true);
     expect(after.handHidden.has(handId)).toBe(true);
+  });
+
+  it("drops the seed when escape cancels the X prompt that owns it", () => {
+    const handId = 11;
+    const fireball: ObjectView = { ...spell(handId, "Fireball"), zone: ZONE.Hand };
+    const action = {
+      id: 4,
+      kind: "cast" as const,
+      label: testMessageRef("Cast Fireball"),
+      needs_target: false,
+      object: handId,
+      section: "hand" as const,
+      has_x: true,
+      min_x: 0,
+      max_x: 3,
+    };
+    const fold = gameFold(state({ objects: [fireball], actions: [action] }));
+    const [afterCast] = updateBoard(
+      { ...initialBoardModel(), viewport: { ...BOARD_VIEWPORT } },
+      HandActionActivated({ action, x: 500, y: 400 }),
+      fold,
+      "T1",
+    );
+    expect(afterCast.xPrompt).not.toBeNull();
+    expect(afterCast.flights.get(handId)?.hold).toBe(true);
+    expect(afterCast.handHidden.has(handId)).toBe(true);
+
+    // Backing out of the prompt un-plays the card: its seed has no session, no provenance and
+    // no clock left, so anything kept here stays painted over a hidden hand tile forever.
+    const [afterEscape] = updateBoard(afterCast, KeyboardEscape(), fold, "T1");
+    expect(afterEscape.xPrompt).toBeNull();
+    expect(afterEscape.flights.size).toBe(0);
+    expect(afterEscape.handHidden.has(handId)).toBe(false);
+    expect(afterEscape.hideCardIds.size).toBe(0);
+  });
+
+  it("drops a held seed once the card has left hand and no provenance claims it", () => {
+    // Snapshot (or a delta whose provenance already fired) leaves the seed unclaimed: its id is
+    // still the hand card, the stack object owns a new id. Nothing else ever releases it.
+    const handId = 7;
+    const spellId = 42;
+    const bolt = spell(spellId, "Lightning Bolt");
+    const board0 = { ...initialBoardModel(), viewport: { ...BOARD_VIEWPORT }, cameraFitPlayers: 2 };
+    const face = restingStackFace(board0, 1, 0);
+    const scale = stackFlightScale(board0.camera.zoom);
+    const parked = {
+      ...spawnFlight({
+        id: handId,
+        print: bolt.print ?? "",
+        name: bolt.name,
+        x: face.x,
+        y: face.y,
+        scale,
+        targetX: face.x,
+        targetY: face.y,
+        targetScale: scale,
+        kind: "stack",
+        fromCardId: handId,
+        hold: true,
+      }),
+      phase: "settled" as const,
+    };
+
+    const afterGame = syncBoardWithGame(
+      {
+        ...board0,
+        flights: new Map([[handId, parked]]),
+        handHidden: new Set([handId]),
+        hideCardIds: new Set([handId]),
+        ownedIds: new Set([handId]),
+      },
+      gameFold(
+        state({
+          objects: [bolt],
+          stack: [{ controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: spellId }],
+        }),
+      ),
+    );
+
+    expect(afterGame.flights.size).toBe(0);
+    expect(afterGame.hideCardIds.size).toBe(0);
+    expect(afterGame.handHidden.has(handId)).toBe(false);
+  });
+
+  it("keeps a held seed while the card still rests in the viewer's hand", () => {
+    const handId = 7;
+    const inHand: ObjectView = { ...spell(handId, "Lightning Bolt"), zone: ZONE.Hand };
+    const board0 = { ...initialBoardModel(), viewport: { ...BOARD_VIEWPORT }, cameraFitPlayers: 2 };
+    const face = restingStackFace(board0, 1, 0);
+    const scale = stackFlightScale(board0.camera.zoom);
+    const seeded = spawnFlight({
+      id: handId,
+      print: inHand.print ?? "",
+      name: inHand.name,
+      x: 400,
+      y: 700,
+      scale,
+      targetX: face.x,
+      targetY: face.y,
+      targetScale: scale,
+      kind: "stack",
+      fromCardId: handId,
+      hold: true,
+    });
+
+    // An unrelated delta lands before the cast is processed — the seed must survive it.
+    const afterGame = syncBoardWithGame(
+      {
+        ...board0,
+        flights: new Map([[handId, seeded]]),
+        handHidden: new Set([handId]),
+        hideCardIds: new Set([handId]),
+        ownedIds: new Set([handId]),
+      },
+      gameFold(state({ objects: [inHand] })),
+    );
+
+    expect(afterGame.flights.has(handId)).toBe(true);
+    expect(afterGame.handHidden.has(handId)).toBe(true);
   });
 
   it("FlightsSynced hands off a settled held land flight once the permanent is on the battlefield", () => {

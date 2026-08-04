@@ -47,6 +47,8 @@ const ExitFxStruct = S.Struct({
 
 export const ArtLoaded = m("ArtLoaded");
 export const BoardCameraZoomed = m("BoardCameraZoomed", { x: S.Number, y: S.Number, factor: S.Number });
+/** Window resized — the canvas layers size their backing store from the board viewport. */
+export const BoardViewportResized = m("BoardViewportResized", { width: S.Number, height: S.Number, dpr: S.Number });
 export const BoardPointerDown = m("BoardPointerDown", CanvasPoint);
 export const BoardPointerMove = m("BoardPointerMove", CanvasPoint);
 export const BoardPointerUp = m("BoardPointerUp", CanvasPoint);
@@ -209,6 +211,12 @@ export const RadialDismissed = m("RadialDismissed");
 export const AltDown = m("AltDown");
 /** Alt key released: dismiss the inspect dock. */
 export const AltUp = m("AltUp");
+
+// ── Shift (whole-pile combat declaration) ─────────────────────────────────────
+/** Shift key held: a combat drop commits every copy in the dragged cluster. */
+export const ShiftDown = m("ShiftDown");
+/** Shift key released (or the window lost focus, which eats the keyup). */
+export const ShiftUp = m("ShiftUp");
 /** Hand or stack DOM overlay hover — preferred over canvas hit when Alt-pinning. */
 export const InspectAuxHovered = m("InspectAuxHovered", {
   source: S.Union([S.Literal("hand"), S.Literal("stack")]),
@@ -227,6 +235,9 @@ export const CardNameSuggestionsFetched = m("CardNameSuggestionsFetched", {
   query: S.String,
   names: S.Array(S.String),
 });
+/** The superseded typeahead search has been stopped. Carries nothing: the query to search next is
+ *  whatever the draft holds by the time this lands, which is later than the keystroke that sent it. */
+export const CompletedCancelSearchCardNames = m("CompletedCancelSearchCardNames");
 /** Toggle DFC face in the inspect overlay. */
 export const InspectFlipFace = m("InspectFlipFace");
 /** Dismiss inspect overlay (Escape / backdrop click). */
@@ -284,6 +295,7 @@ export const FirstPlayerRevealFinished = m("FirstPlayerRevealFinished");
 export const Message = S.Union([
   ArtLoaded,
   BoardCameraZoomed,
+  BoardViewportResized,
   BoardPointerDown,
   BoardPointerMove,
   BoardPointerUp,
@@ -346,9 +358,12 @@ export const Message = S.Union([
   RadialDismissed,
   AltDown,
   AltUp,
+  ShiftDown,
+  ShiftUp,
   InspectAuxHovered,
   InspectCardFetched,
   CardNameSuggestionsFetched,
+  CompletedCancelSearchCardNames,
   InspectFlipFace,
   InspectDismissed,
   PileExpanded,

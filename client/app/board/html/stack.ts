@@ -6,7 +6,7 @@
 // share an ability's source permanent id.
 
 import { Option } from "effect";
-import { type Attribute, type Html, html } from "foldkit/html";
+import type { Attribute, Html, HtmlBuilder } from "foldkit/html";
 import { button } from "~/ui/button";
 import { cardArt } from "~/ui/card-art";
 import type { VisibleState } from "~/wire/types";
@@ -34,8 +34,6 @@ import {
   TargetChosen,
 } from "../messages";
 import type { BoardModel } from "../submodel";
-
-const h = html<Message>();
 
 type StackItem = {
   row: number;
@@ -115,22 +113,25 @@ function stackItems(board: BoardModel, state: VisibleState, showGhost: boolean):
   return items;
 }
 
-function stackFace(opts: {
-  row: number;
-  source: number;
-  imageName: string | null;
-  print: string;
-  cardId?: string;
-  label: string;
-  isTop: boolean;
-  staged?: boolean;
-  legalTarget?: boolean;
-  cardH: number;
-  /** Caller-specific placement utilities reading the CSS vars in `style` (`--b`/`--x`/`--y`/`--z`). */
-  positionClass: string;
-  /** Placement data only (CSS variables); sizes come from `--stack-w`/`--card-h` on the container. */
-  style: Record<string, string>;
-}): Html {
+function stackFace(
+  opts: {
+    row: number;
+    source: number;
+    imageName: string | null;
+    print: string;
+    cardId?: string;
+    label: string;
+    isTop: boolean;
+    staged?: boolean;
+    legalTarget?: boolean;
+    cardH: number;
+    /** Caller-specific placement utilities reading the CSS vars in `style` (`--b`/`--x`/`--y`/`--z`). */
+    positionClass: string;
+    /** Placement data only (CSS variables); sizes come from `--stack-w`/`--card-h` on the container. */
+    style: Record<string, string>;
+  },
+  h: HtmlBuilder<Message>,
+): Html {
   const faceClass = [
     "group/stack-face absolute w-(--stack-w) rounded-game shadow-hand",
     "data-[legal-target=true]:cursor-pointer data-[legal-target=true]:ring-2 data-[legal-target=true]:ring-island-blue",
@@ -145,7 +146,7 @@ function stackFace(opts: {
     opts.imageName && opts.print
       ? cardArt(h, {
           print: opts.print,
-          size: "large",
+          size: "display",
           alt: opts.imageName,
           className: "block h-(--card-h) w-(--stack-w) rounded-game",
         })
@@ -201,7 +202,7 @@ function stackFace(opts: {
   return h.div(faceAttrs, [art]);
 }
 
-function holdBar(holdMs: number, holdPeak: number, show: boolean): Html | null {
+function holdBar(holdMs: number, holdPeak: number, show: boolean, h: HtmlBuilder<Message>): Html | null {
   if (!show || holdMs <= 0) return null;
   const total = Math.max(holdPeak, holdMs, 1);
   const pct = Math.min(100, (holdMs / total) * 100);
@@ -223,7 +224,7 @@ function holdBar(holdMs: number, holdPeak: number, show: boolean): Html | null {
   );
 }
 
-function pileCaption(state: VisibleState, showStaged: boolean): Html | null {
+function pileCaption(state: VisibleState, showStaged: boolean, h: HtmlBuilder<Message>): Html | null {
   if (showStaged) {
     return h.div(
       [
@@ -256,6 +257,7 @@ function pileView(
   showStaged: boolean,
   allowDwell: boolean,
   legalTargets: ReadonlySet<number>,
+  h: HtmlBuilder<Message>,
 ): Html {
   const pileH = cardH + Math.max(0, items.length - 1) * peek;
   const holdMs = state.stack_hold_remaining_ms ?? 0;
@@ -266,23 +268,26 @@ function pileView(
     .filter((item) => !hideStackRestingFace(board, item.source))
     .map((item) => {
       const isTop = item.row === items.length - 1;
-      return stackFace({
-        row: item.row,
-        source: item.source,
-        imageName: item.imageName,
-        print: item.print,
-        cardId: item.cardId,
-        label: item.label,
-        isTop,
-        staged: item.staged,
-        legalTarget: !item.staged && legalTargets.has(item.source),
-        cardH,
-        positionClass: "bottom-(--b) left-0 z-(--z)",
-        style: {
-          "--b": `${item.row * peek}px`,
-          "--z": String(item.row),
+      return stackFace(
+        {
+          row: item.row,
+          source: item.source,
+          imageName: item.imageName,
+          print: item.print,
+          cardId: item.cardId,
+          label: item.label,
+          isTop,
+          staged: item.staged,
+          legalTarget: !item.staged && legalTargets.has(item.source),
+          cardH,
+          positionClass: "bottom-(--b) left-0 z-(--z)",
+          style: {
+            "--b": `${item.row * peek}px`,
+            "--z": String(item.row),
+          },
         },
-      });
+        h,
+      );
     });
 
   const showMagnifier = stackExpandAvailable(items.length, peek);
@@ -323,7 +328,7 @@ function pileView(
     ),
     h.div(
       [h.Class("absolute top-full right-0 left-0 mt-sm flex flex-col items-center gap-sm")],
-      [holdBar(holdMs, holdPeak, showHold), pileCaption(state, showStaged)].filter((v): v is Html => v !== null),
+      [holdBar(holdMs, holdPeak, showHold, h), pileCaption(state, showStaged, h)].filter((v): v is Html => v !== null),
     ),
   ]);
 }
@@ -336,6 +341,7 @@ function stripView(
   showStaged: boolean,
   allowDwell: boolean,
   legalTargets: ReadonlySet<number>,
+  h: HtmlBuilder<Message>,
 ): Html {
   const viewportW = board.viewport.width;
   const n = items.length;
@@ -356,24 +362,27 @@ function stripView(
       const col = item.row % perRow;
       const rowY = Math.floor(item.row / perRow);
       const isTop = item.row === n - 1;
-      return stackFace({
-        row: item.row,
-        source: item.source,
-        imageName: item.imageName,
-        print: item.print,
-        cardId: item.cardId,
-        label: item.label,
-        isTop,
-        staged: item.staged,
-        legalTarget: !item.staged && legalTargets.has(item.source),
-        cardH,
-        positionClass: "top-(--y) left-(--x) z-(--z)",
-        style: {
-          "--x": `${col * hPeek}px`,
-          "--y": `${rowY * cardH * 0.35}px`,
-          "--z": String(item.row),
+      return stackFace(
+        {
+          row: item.row,
+          source: item.source,
+          imageName: item.imageName,
+          print: item.print,
+          cardId: item.cardId,
+          label: item.label,
+          isTop,
+          staged: item.staged,
+          legalTarget: !item.staged && legalTargets.has(item.source),
+          cardH,
+          positionClass: "top-(--y) left-(--x) z-(--z)",
+          style: {
+            "--x": `${col * hPeek}px`,
+            "--y": `${rowY * cardH * 0.35}px`,
+            "--z": String(item.row),
+          },
         },
-      });
+        h,
+      );
     });
 
   const positionClass =
@@ -421,8 +430,8 @@ function stripView(
       ],
       faces,
     ),
-    holdBar(holdMs, holdPeak, showHold),
-    pileCaption(state, showStaged),
+    holdBar(holdMs, holdPeak, showHold, h),
+    pileCaption(state, showStaged, h),
   ]);
 }
 
@@ -439,7 +448,7 @@ function showStackGhost(board: BoardModel, state: VisibleState): boolean {
   return pendingStackGhost(state) != null;
 }
 
-export function stackView(board: BoardModel, state: VisibleState): Html | null {
+export function stackView(board: BoardModel, state: VisibleState, h: HtmlBuilder<Message>): Html | null {
   const showStaged = showStackGhost(board, state);
   const items = stackItems(board, state, showStaged);
   if (items.length === 0) return null;
@@ -456,7 +465,7 @@ export function stackView(board: BoardModel, state: VisibleState): Html | null {
   const legalTargets = aimingObjectIds(board.staged, state.pending_choice, state);
 
   if (presentation === "pile") {
-    return pileView(board, state, items, peek, cardH, showStaged, allowDwell, legalTargets);
+    return pileView(board, state, items, peek, cardH, showStaged, allowDwell, legalTargets, h);
   }
-  return stripView(board, state, items, presentation, showStaged, allowDwell, legalTargets);
+  return stripView(board, state, items, presentation, showStaged, allowDwell, legalTargets, h);
 }

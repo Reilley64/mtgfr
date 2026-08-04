@@ -12,7 +12,7 @@
 //! Implemented today: 2–4 player Commander, stack/priority, mana economy, triggered
 //! and activated abilities, combat (incl. first strike, trample, multi-block), commander
 //! rules, data-driven card scripts, and [`PendingChoice`] pauses. See `CONTEXT.md`,
-//! `docs/fidelity/` (per-deck increments via fidelity-grind), `docs/agent-navigation.md`, and `docs/CR_INDEX.md`
+//! `docs/fidelity/` (per-deck increments via fidelity-grind), `docs/AGENT_NAVIGATION.md`, and `docs/CR_INDEX.md`
 //! for vocabulary, gaps, and CR lookup.
 
 /// The card-DSL vocabulary — `CardDef`, `Effect` and its families, filters, mana, triggers —
@@ -599,11 +599,15 @@ impl Game {
             if self.players[seat as usize].lost {
                 continue;
             }
-            for kind in self
+            let meaningful = self
                 .meaningful_actions(player)
                 .into_iter()
-                .chain(self.paid_mana_activates(player))
-            {
+                .map(|k| (k, false));
+            let mana_only = self
+                .paid_mana_activates(player)
+                .into_iter()
+                .map(|k| (k, true));
+            for (kind, mana_only) in meaningful.chain(mana_only) {
                 let id = match previous
                     .iter()
                     .find(|a| a.player == player && a.kind == kind)
@@ -615,7 +619,12 @@ impl Game {
                         id
                     }
                 };
-                self.actions.push(LegalAction { id, player, kind });
+                self.actions.push(LegalAction {
+                    id,
+                    player,
+                    kind,
+                    mana_only,
+                });
             }
         }
     }

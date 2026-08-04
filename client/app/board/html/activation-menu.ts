@@ -1,8 +1,9 @@
 import { Option } from "effect";
-import { type Html, html } from "foldkit/html";
+import type { Html, HtmlBuilder } from "foldkit/html";
 import { costPips } from "~/costPips";
 import { manaFontClass } from "~/oracleText";
 import type { VisibleState } from "~/wire/types";
+import { engagedIds } from "../engagement";
 import { layout, ZONE } from "../geometry/layout";
 import {
   ACTIVATION_MENU_WIDTH_PX,
@@ -24,13 +25,11 @@ import {
 import type { BoardModel } from "../submodel";
 import { pipChip } from "./pip-chip";
 
-const h = html<Message>();
-
-function costPipView(ms: string, code: string, sizePx: number): Html {
+function costPipView(ms: string, code: string, sizePx: number, h: HtmlBuilder<Message>): Html {
   return pipChip(h, { ms, code, sizePx });
 }
 
-function costChipView(opt: RadialOption): Html | null {
+function costChipView(opt: RadialOption, h: HtmlBuilder<Message>): Html | null {
   const chip = activationCostChip(opt);
   if (chip == null) return null;
 
@@ -49,8 +48,20 @@ function costChipView(opt: RadialOption): Html | null {
     ],
     [
       chip.kind === "tap" || chip.kind === "tap_and_mana" ? tap : null,
-      ...mana.map((pip) => costPipView(pip.ms, pip.code, 14)),
+      ...mana.map((pip) => costPipView(pip.ms, pip.code, 14, h)),
     ].filter((child): child is Html => child !== null),
+  );
+}
+
+/** `×k` when more than one copy in the cluster can still activate this ability. */
+function availableChipView(opt: RadialOption, h: HtmlBuilder<Message>): Html | null {
+  if (opt.kind !== "action" || opt.available == null) return null;
+  return h.span(
+    [
+      h.DataAttribute("testid", `activation-menu-available-${radialOptionKey(opt)}`),
+      h.Class("shrink-0 tabular-nums text-snow/70"),
+    ],
+    [`×${opt.available}`],
   );
 }
 
@@ -67,10 +78,12 @@ function rowClass(): string {
 export function selectedRadialOptions(board: BoardModel, state: VisibleState): RadialOption[] {
   const id = board.selectedId;
   if (id == null) return [];
-  const card = layout(state, state.viewer).find((c) => c.id === id);
+  const cards = layout(state, state.viewer, engagedIds(state, board));
+  const card = cards.find((c) => c.id === id) ?? cards.find((c) => c.clusterMembers.includes(id));
   if (card == null) return [];
   return radialOptions(
-    id,
+    // `clusterMembers` already holds the face id, and is empty for an uncollapsed permanent.
+    [card.id, ...card.clusterMembers],
     state.actions,
     card.tapsForMana,
     card.tapped,
@@ -80,7 +93,7 @@ export function selectedRadialOptions(board: BoardModel, state: VisibleState): R
   );
 }
 
-export function activationMenuView(board: BoardModel, state: VisibleState): Html | null {
+export function activationMenuView(board: BoardModel, state: VisibleState, h: HtmlBuilder<Message>): Html | null {
   const id = board.selectedId;
   if (id == null) return null;
   const obj = state.objects.find((object) => object.id === id);
@@ -89,7 +102,7 @@ export function activationMenuView(board: BoardModel, state: VisibleState): Html
   const options = selectedRadialOptions(board, state);
   if (options.length === 0) return null;
 
-  const cards = layout(state, state.viewer);
+  const cards = layout(state, state.viewer, engagedIds(state, board));
   const card =
     cards.find((renderCard) => renderCard.id === id) ??
     cards.find((renderCard) => renderCard.clusterMembers.includes(id));
@@ -152,9 +165,11 @@ export function activationMenuView(board: BoardModel, state: VisibleState): Html
                 return Option.some(RadialOptionPicked({ index }));
               }),
             ],
-            [h.span([h.Class("min-w-0 flex-1 line-clamp-2 text-left")], [opt.label]), costChipView(opt)].filter(
-              (child): child is Html => child !== null,
-            ),
+            [
+              h.span([h.Class("min-w-0 flex-1 line-clamp-2 text-left")], [opt.label]),
+              availableChipView(opt, h),
+              costChipView(opt, h),
+            ].filter((child): child is Html => child !== null),
           );
         }),
       ),
