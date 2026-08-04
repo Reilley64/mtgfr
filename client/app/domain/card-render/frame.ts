@@ -206,8 +206,8 @@ function hasPT(face: FaceData): boolean {
  */
 function squareSlots(w: number, h: number, face: FaceData): SlotRects {
   const art: Rect = { x: 0, y: 0, w, h };
-  // A token has no title bar to draw. Its arched top is a clip shape applied at paint time, not
-  // a slot.
+  // A token draws art alone — no frame, no name. Nothing else on the battlefield is borderless, so
+  // the absence is the tell, and the art is bigger for it.
   if (face.isToken) {
     return { frame: [], art, crown: null, ptPlate: null, title: null, type: null, text: null, pt: null };
   }
