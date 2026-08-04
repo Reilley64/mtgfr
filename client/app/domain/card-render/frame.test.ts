@@ -49,6 +49,10 @@ const TYPE_BAR = { x: 58, y: 592, w: 634, h: 61 };
 const TEXT_BOX = { x: 58, y: 662, w: 634, h: 267 };
 const PT_PLATE = { x: 579, y: 932, w: 130, h: 64 };
 const TOP_STRIP_H = 195;
+/** The printed black border the square crops off, so the tile's own outline is the only rim. */
+const CARD_BORDER = 30;
+/** Asset pixels → square-face pixels: the asset's width inside its printed border. */
+const SQUARE_SCALE = CANONICAL.permanent.w / (ASSET_W - 2 * CARD_BORDER);
 
 function scaled(r: Rect, sx: number, sy: number): Rect {
   return { x: r.x * sx, y: r.y * sy, w: r.w * sx, h: r.h * sy };
@@ -245,28 +249,49 @@ describe("slotRects", () => {
 
   it("fills the Arena square with art and lays the top strip over it", () => {
     const { w, h } = CANONICAL.permanent;
-    const s = w / ASSET_W;
+    const s = SQUARE_SCALE;
+    const stripH = TOP_STRIP_H - CARD_BORDER;
     const slots = slotRects("permanent", face());
     expect(slots.art).toEqual({ x: 0, y: 0, w, h });
-    expect(slots.frame[0]?.src).toEqual({ x: 0, y: 0, w: ASSET_W, h: TOP_STRIP_H });
-    expectRectClose(slots.frame[0]?.dst ?? null, { x: 0, y: 0, w, h: TOP_STRIP_H * s });
-    expectRectClose(slots.title, scaled(TITLE_BAR, s, s));
+    expect(slots.frame[0]?.src).toEqual({
+      x: CARD_BORDER,
+      y: CARD_BORDER,
+      w: ASSET_W - 2 * CARD_BORDER,
+      h: stripH,
+    });
+    expectRectClose(slots.frame[0]?.dst ?? null, { x: 0, y: 0, w, h: stripH * s });
+    expectRectClose(
+      slots.title,
+      scaled({ ...TITLE_BAR, x: TITLE_BAR.x - CARD_BORDER, y: TITLE_BAR.y - CARD_BORDER }, s, s),
+    );
     expect(slots.type).toBeNull();
     expect(slots.text).toBeNull();
+  });
+
+  // The asset's own black border drew a square rim inside the tile's rounded outline, so the two
+  // edges disagreed at every corner. The face is cropped to the frame's colour; the tile's stroke
+  // is the only black rim.
+  it("crops the printed black border off the Arena square", () => {
+    const [strip, left, right] = slotRects("permanent", face()).frame;
+
+    expect(strip?.src.x).toBe(CARD_BORDER);
+    expect(strip?.src.y).toBe(CARD_BORDER);
+    expect(strip?.src.x + (strip?.src.w ?? 0)).toBe(ASSET_W - CARD_BORDER);
+    expect(left?.src.x).toBe(CARD_BORDER);
+    expect((right?.src.x ?? 0) + (right?.src.w ?? 0)).toBe(ASSET_W - CARD_BORDER);
   });
 
   // The top strip alone left the square open below y=195: no side border past the title and no
   // bottom edge at all, so the art bled to three edges. The border has to close the ring.
   it("borders the Arena square on all four edges", () => {
     const { w, h } = CANONICAL.permanent;
-    const s = w / ASSET_W;
-    const side = ART_WINDOW.x * s;
-    const top = TOP_STRIP_H * s;
+    const s = SQUARE_SCALE;
+    const side = (ART_WINDOW.x - CARD_BORDER) * s;
+    const top = (TOP_STRIP_H - CARD_BORDER) * s;
     const [, left, right, bottom] = slotRects("permanent", face()).frame;
 
     // Each edge is sourced from the asset's matching edge, so it keeps the card's own colour. M15
     // prints no coloured band under the text box, so the bottom is the side rail laid on its side.
-    expect(left?.src.x).toBe(0);
     expect(right?.src.x).toBe(ASSET_W - ART_WINDOW.x);
     expect(bottom?.src).toEqual(left?.src);
     expect(bottom?.turn).toBe("ccw");
@@ -280,9 +305,8 @@ describe("slotRects", () => {
   // A 750x1050 frame squashed into the square would run at 71% of its own height; the strip keeps
   // the frame art's own aspect, which is why it scales by the square's width in both axes.
   it("scales the square's top strip by width in both axes, not by the square's height", () => {
-    const { w } = CANONICAL.permanent;
     const strip = slotRects("permanent", face()).frame[0];
-    expect(strip?.dst.h).toBeCloseTo(TOP_STRIP_H * (w / ASSET_W), 3);
+    expect(strip?.dst.h).toBeCloseTo((TOP_STRIP_H - CARD_BORDER) * SQUARE_SCALE, 3);
     expect(strip?.dst.h).not.toBeCloseTo(TOP_STRIP_H * (CANONICAL.permanent.h / ASSET_H), 3);
   });
 

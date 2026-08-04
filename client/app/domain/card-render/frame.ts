@@ -145,21 +145,32 @@ const TITLE_BAR: Rect = { x: 58, y: 43, w: 634, h: 66 };
 const TYPE_BAR: Rect = { x: 58, y: 592, w: 634, h: 61 };
 const TEXT_BOX: Rect = { x: 58, y: 662, w: 634, h: 267 };
 const PT_PLATE: Rect = { x: 579, y: 932, w: 130, h: 64 };
-/** Card top down through the crown's bottom edge (measured at y+h = 195). */
-const TOP_STRIP: Rect = { x: 0, y: 0, w: ASSET_W, h: 195 };
 /**
- * The square's remaining three edges. `SIDE_W` is the gap from the card edge to the art window —
- * black border plus the frame's bevel — which is what the top strip already shows at its own left
- * and right, so the sides continue it without a seam.
+ * The printed black card border, measured off the asset's own top and left edges. The square crops
+ * it away: `board/bitmap/paint-cards.ts` clips the tile to a rounded rect and strokes its outline,
+ * so a printed square border inside that reads as a second edge that misses the corners. Cropped,
+ * the face is the card's colour to its own edge and the tile's outline is the only black rim.
+ */
+const CARD_BORDER = 30;
+/** Card top down through the crown's bottom edge (measured at y+h = 195), inside the border. */
+const TOP_STRIP: Rect = {
+  x: CARD_BORDER,
+  y: CARD_BORDER,
+  w: ASSET_W - 2 * CARD_BORDER,
+  h: 195 - CARD_BORDER,
+};
+/**
+ * The square's remaining three edges. `SIDE_W` is the gap from the card edge to the art window, so
+ * a rail is what is left of it once the printed border is cropped off — the same colour the top
+ * strip shows at its own left and right, so the sides continue it without a seam.
  *
  * M15 prints no coloured band along the bottom of a card: under the text box it is the black
  * collector border, which on a dark board reads as no border at all. The bottom edge is therefore
- * the same side rail laid on its side, turned so the rail's outer black edge lands on the card's
- * bottom. Its texture stretches along the card's width; at the size a permanent paints, it reads
- * as the border the sides already draw.
+ * the same side rail laid on its side. Its texture stretches along the card's width; at the size a
+ * permanent paints, it reads as the border the sides already draw.
  */
 const SIDE_W = ART_WINDOW.x;
-const rail = (x: number): Rect => ({ x, y: ART_WINDOW.y, w: SIDE_W, h: ART_WINDOW.h });
+const rail = (x: number): Rect => ({ x, y: ART_WINDOW.y, w: SIDE_W - CARD_BORDER, h: ART_WINDOW.h });
 const WHOLE_ASSET: Rect = { x: 0, y: 0, w: ASSET_W, h: ASSET_H };
 
 /** WUBRG index (`engine::Color::index`) → frame asset key. */
@@ -200,16 +211,17 @@ function squareSlots(w: number, h: number, face: FaceData): SlotRects {
   if (face.isToken) {
     return { frame: [], art, crown: null, ptPlate: null, title: null, type: null, text: null, pt: null };
   }
-  const s = w / ASSET_W;
+  // Scaled by the asset's width inside its printed border, since that is what the square draws.
+  const s = w / (ASSET_W - 2 * CARD_BORDER);
   const strip: Blit = { src: TOP_STRIP, dst: { x: 0, y: 0, w, h: TOP_STRIP.h * s } };
-  const side = SIDE_W * s;
+  const side = rail(0).w * s;
   const flank = { y: strip.dst.h, w: side, h: h - strip.dst.h - side };
   return {
     frame: [
       strip,
-      { src: rail(0), dst: { x: 0, ...flank } },
+      { src: rail(CARD_BORDER), dst: { x: 0, ...flank } },
       { src: rail(ASSET_W - SIDE_W), dst: { x: w - side, ...flank } },
-      { src: rail(0), dst: { x: 0, y: h - side, w, h: side }, turn: "ccw" },
+      { src: rail(CARD_BORDER), dst: { x: 0, y: h - side, w, h: side }, turn: "ccw" },
     ],
     art,
     crown: face.legendary ? { src: TOP_STRIP, dst: strip.dst } : null,
@@ -217,7 +229,8 @@ function squareSlots(w: number, h: number, face: FaceData): SlotRects {
     // live P/T badge in that corner which tracks counters and damage without redrawing the face,
     // and two readouts on one tile is a bug. Drop that badge first if the printed plate should win.
     ptPlate: null,
-    title: scale(TITLE_BAR, s, s),
+    // The face's origin is the asset's border corner, so a printed rect shifts by it before scaling.
+    title: scale({ ...TITLE_BAR, x: TITLE_BAR.x - CARD_BORDER, y: TITLE_BAR.y - CARD_BORDER }, s, s),
     type: null,
     text: null,
     pt: null,

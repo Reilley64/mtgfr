@@ -145,10 +145,12 @@ describe("drawFace", () => {
     drawFace(ctx, inputs());
 
     const [, frame] = drawn();
-    const scale = CANONICAL.permanent.w / ASSET_W;
-    // src: the strip, not the 1050-tall card. dst: scaled by width in both axes, so it keeps shape.
-    expect(frame.slice(1, 5)).toEqual([0, 0, ASSET_W, 195]);
-    expect(frame.slice(5)).toEqual([0, 0, CANONICAL.permanent.w, 195 * scale]);
+    const strip = slotRects("permanent", face()).frame[0];
+    // src: the strip inside the printed border, not the 1050-tall card. dst: scaled by width in
+    // both axes, so it keeps shape.
+    expect(frame.slice(1, 5)).toEqual([strip?.src.x, strip?.src.y, strip?.src.w, strip?.src.h]);
+    expect(frame[7]).toBe(CANONICAL.permanent.w);
+    expect(frame[8]).toBeCloseTo((strip?.src.h ?? 0) * (CANONICAL.permanent.w / (ASSET_W - 60)), 3);
   });
 
   // M15 has no coloured band along the card's bottom, so the square's bottom edge is the side rail
