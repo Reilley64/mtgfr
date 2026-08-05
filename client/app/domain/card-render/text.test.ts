@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { cardTextBlock, fitCardText, LINE_HEIGHT, type Measure, type Piece, wrapOracle } from "./text";
+import {
+  blockHeight,
+  cardTextBlock,
+  fitCardText,
+  LINE_HEIGHT,
+  lineStep,
+  type Measure,
+  PARA_GAP,
+  type Piece,
+  wrapOracle,
+} from "./text";
 
 /** A fake metric: every glyph is half the font size wide, every pip one em. No canvas. */
 const measure: Measure = (piece, fontPx) => (piece.kind === "symbol" ? fontPx : piece.value.length * fontPx * 0.5);
@@ -76,9 +86,51 @@ describe("cardTextBlock", () => {
     expect(block.lines[2]?.every((piece) => piece.reminder)).toBe(true);
   });
 
+  it("leans emphasis back to roman and never inks the asterisks", () => {
+    // Scryfall marks emphasis in flavor with `*…*`; print sets those words upright against italics.
+    const block = cardTextBlock("", "—*Phyrexian Scriptures*, vol. 2", 400, 20, measure);
+    const [line = []] = block.lines;
+
+    expect(prose(line)).toBe("—Phyrexian Scriptures, vol. 2");
+    expect(prose(line.filter((piece) => !piece.reminder))).toBe("Phyrexian Scriptures");
+    expect(prose(line.filter((piece) => piece.reminder))).toBe("—, vol. 2");
+  });
+
   it("rules no divider when the card prints only one of the two", () => {
     expect(cardTextBlock("Flying", "", 400, 20, measure).divider).toBeNull();
     expect(cardTextBlock("", "It watches.", 400, 20, measure).divider).toBeNull();
+  });
+
+  it("sets air between abilities, and none inside one", () => {
+    const two = cardTextBlock("Flying\nTrample", "", 400, 20, measure);
+    expect([...two.starts]).toEqual([1]);
+    expect(blockHeight(two, 20)).toBeCloseTo(20 * (2 * LINE_HEIGHT + PARA_GAP));
+    expect(lineStep(two, 1, 20)).toBeCloseTo(20 * (LINE_HEIGHT + PARA_GAP));
+
+    // The same words wrapping inside one ability step at the plain pitch.
+    const wrapped = cardTextBlock("Flying Trample", "", 100, 20, measure);
+    expect(wrapped.lines.length).toBe(2);
+    expect(blockHeight(wrapped, 20)).toBeCloseTo(20 * 2 * LINE_HEIGHT);
+  });
+
+  it("opens no gap at the divider — the blank row is already wider than one", () => {
+    const block = cardTextBlock("Flying", "It watches.", 400, 20, measure);
+    expect([...block.starts]).toEqual([]);
+  });
+
+  it("runs an attribution straight on under its quote", () => {
+    // Print sets flavor as one unbroken block: `—Darius, to Kassandra` follows the quote at the
+    // plain pitch, not with the air that opens a new ability.
+    const block = cardTextBlock("Flying", '"Watch."\n—Darius', 400, 20, measure);
+    expect(block.lines.map(prose)).toEqual(["Flying", "", '"Watch."', "—Darius"]);
+    expect([...block.starts]).toEqual([]);
+  });
+
+  it("shrinks a multi-ability card sooner than the same words as one ability", () => {
+    const box = { w: 400, h: 20 * LINE_HEIGHT * 2 };
+    expect(fitCardText("Flying\nTrample", "", box, 20, measure)).toBeLessThan(
+      fitCardText("Flying Trample", "", box, 20, measure),
+    );
   });
 
   it("counts the divider row against the fit, so flavor cannot overhang the box", () => {

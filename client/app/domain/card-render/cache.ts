@@ -95,6 +95,13 @@ export class CardFaceCache {
       const urls = faceAssetUrls(face);
       const frameImage = this.images.get(urls.frame);
       if (frameImage == null) continue;
+      // The plate and the crown are vendored alongside the frame and arrive on their own requests.
+      // Only the art earns a redraw, so a face drawn while one was still in flight would keep the
+      // hole for the rest of the session — wait for them, unless the load has failed outright.
+      const pending = [urls.pt, urls.crown].some(
+        (url) => url != null && this.images.get(url) == null && !this.images.isFailed(url),
+      );
+      if (pending) continue;
 
       const artUrl = artUrlFor(face);
       const art = artUrl == null ? null : (this.images.get(artUrl) ?? null);

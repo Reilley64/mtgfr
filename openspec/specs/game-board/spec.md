@@ -106,7 +106,7 @@ Battlefield paint order SHALL be felt → seats → resting cards → avatars �
 
 ### Requirement: Rendered Card Face
 
-A rendered card face SHALL be drawn from the M15 frame assets — art, name, type line, rules text, flavor text and the power/toughness plate composed onto a real frame — never a crop of the printed card image. Frame, legend crown, and power/toughness plate SHALL be chosen from the card's colours and type; no land SHALL take a plate. Typography SHALL follow the printed card: the name and type line set in the title face, rules and flavor in the body face, mana symbols in rules text drawn as coloured disks bearing their mana-font glyph rather than braces, reminder text and flavor text set in italics, and rules text shrunk to fit its box the way a crowded printed box sets smaller. A card that prints both rules and flavor text SHALL separate them with the printed flavor divider — a soft shadow across most of the text box, not a drawn line. The mana cost SHALL never be drawn: the hand bar's pip tray owns cost.
+A rendered card face SHALL be drawn from the M15 frame assets — art, name, type line, rules text, flavor text and the power/toughness plate composed onto a real frame — never a crop of the printed card image. Frame, legend crown, and power/toughness plate SHALL be chosen from the card's colours and type; no land SHALL take a plate. Typography SHALL follow the printed card: the name and type line set in the title face, rules and flavor in the body face, mana symbols in rules text drawn as coloured disks bearing their mana-font glyph rather than braces, reminder text and flavor text set in italics, and rules text shrunk to fit its box the way a crowded printed box sets smaller. Each printed ability SHALL open on its own line with more air above it than the lines within one ability take, the way print sets a multi-ability text box, and that air SHALL count against the fit so a card cannot overhang the box by it. Flavor text SHALL set as one unbroken italic block — an attribution runs straight on under its quote at the plain pitch, and where the printing marks emphasis those words SHALL lean back to roman with the markup itself never inked. A card that prints both rules and flavor text SHALL separate them with the printed flavor divider — a soft shadow across most of the text box, not a drawn line. The power/toughness plate SHALL be laid over the rules text, so a wordy card's box cannot run through it. A face SHALL NOT be drawn until every vendored frame piece it needs — frame, legend crown and power/toughness plate — has loaded or failed, since only the printing's art earns a redraw and a piece missed once would leave its hole for the session. The mana cost SHALL never be drawn: the hand bar's pip tray owns cost.
 
 The full card face SHALL be drawn for hand and command-zone tiles; the square permanent face SHALL be drawn for the battlefield and draws neither type line nor rules text, having no room for them.
 
@@ -116,9 +116,21 @@ Art and flavor SHALL both come from the printing the object plays — the printi
 - **WHEN** a face's rules text contains a mana symbol such as `{T}` or `{G}`
 - **THEN** it draws as the coloured disk with its mana-font glyph, and no braces appear on the card
 
+#### Scenario: The power/toughness plate draws whole
+- **WHEN** a creature's frame asset loads before its power/toughness plate does
+- **THEN** the face waits for the plate rather than drawing a hollow one, and the plate lands over the rules text
+
+#### Scenario: Abilities are set apart
+- **WHEN** a card prints more than one ability
+- **THEN** each ability after the first opens with extra air above it, while lines that wrap inside one ability keep the plain pitch
+
 #### Scenario: Flavor sits under the divider
 - **WHEN** a card prints both rules text and flavor text
 - **THEN** the flavor sets in italics below a divider ruled between the two blocks
+
+#### Scenario: Flavor sets as one block
+- **WHEN** a printing's flavor is a quote with an attribution under it, or leans on an emphasised phrase
+- **THEN** the attribution follows at the plain pitch with no ability-sized air above it, and the emphasised phrase sets roman with no emphasis markup drawn
 
 #### Scenario: Flavor follows the printing the deck plays
 - **WHEN** a card is played from a deck that chose a printing other than the card's default

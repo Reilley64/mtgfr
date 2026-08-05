@@ -111,6 +111,43 @@ describe("CardFaceCache", () => {
     expect(cache.get(face(), "permanent")).toBeDefined();
   });
 
+  it("holds the face back until the P/T plate lands — only the art earns a redraw", () => {
+    const images = readyImages();
+    let notify = () => {};
+    images.subscribe.mockImplementation((fn: () => void) => {
+      notify = fn;
+      return () => {};
+    });
+    // The frame is in; the plate is its own request and still in flight.
+    images.get.mockImplementation((url: string) =>
+      url.includes("/pt/") ? undefined : ({ width: 750, height: 1050 } as unknown as HTMLImageElement),
+    );
+    const { make } = stubCanvas();
+    const cache = new CardFaceCache(images, make);
+
+    cache.request(face(), "permanent");
+    expect(cache.get(face(), "permanent")).toBeUndefined();
+
+    images.get.mockReturnValue({ width: 750, height: 1050 } as unknown as HTMLImageElement);
+    notify();
+
+    expect(cache.get(face(), "permanent")).toBeDefined();
+  });
+
+  it("draws without the plate once its load has failed, rather than never drawing", () => {
+    const images = readyImages();
+    images.get.mockImplementation((url: string) =>
+      url.includes("/pt/") ? undefined : ({ width: 750, height: 1050 } as unknown as HTMLImageElement),
+    );
+    images.isFailed.mockImplementation((url: string) => url.includes("/pt/"));
+    const { make } = stubCanvas();
+    const cache = new CardFaceCache(images, make);
+
+    cache.request(face(), "permanent");
+
+    expect(cache.get(face(), "permanent")).toBeDefined();
+  });
+
   it("draws the frame with no art rather than waiting for art that may never load", () => {
     const images = readyImages();
     // Frame assets resolve; the CDN art url does not.

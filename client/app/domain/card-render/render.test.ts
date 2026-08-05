@@ -250,6 +250,17 @@ describe("drawFace", () => {
     expect(crown?.slice(1)).toEqual(topStrip?.slice(1));
   });
 
+  it("lays the P/T plate over the rules text, so a wordy card cannot run through it", () => {
+    const { ctx, ops } = fakeCtx();
+    drawFace(ctx, inputs({ variant: "full", face: face({ oracle: "Trample" }) }));
+
+    const last = (match: (op: string, args: unknown[]) => boolean) =>
+      ops.reduce((found, o, index) => (match(o.op, o.args) ? index : found), -1);
+    expect(last((op) => op === "drawImage")).toBeGreaterThan(
+      last((op, args) => op === "fillText" && args[0] === "Trample"),
+    );
+  });
+
   it("blits the P/T plate from its corner of the asset on a full face", () => {
     const { ctx, drawn } = fakeCtx();
     drawFace(ctx, inputs({ variant: "full" }));

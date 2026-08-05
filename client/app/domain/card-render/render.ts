@@ -1,7 +1,7 @@
 import { BODY_FONT, frameAssetUrl, TITLE_FONT } from "./assets";
 import { type Blit, type FaceData, type FaceVariant, frameKey, type Rect, slotRects } from "./frame";
 import { drawManaSymbol } from "./symbols";
-import { cardTextBlock, fitCardText, LINE_HEIGHT, type Measure, SYMBOL_EM } from "./text";
+import { blockHeight, cardTextBlock, fitCardText, LINE_HEIGHT, lineStep, type Measure, SYMBOL_EM } from "./text";
 
 /*
  * Printed type sizes, as a fraction of the slot each sits in. A real M15 card sets its name in about
@@ -79,7 +79,6 @@ export function drawFace(ctx: CanvasRenderingContext2D, input: FaceInput): void 
     for (const piece of slots.frame) blit(ctx, input.frameImage, piece);
   }
   if (input.crownImage != null && slots.crown != null) blit(ctx, input.crownImage, slots.crown);
-  if (input.ptImage != null && slots.ptPlate != null) blit(ctx, input.ptImage, slots.ptPlate);
 
   ctx.fillStyle = INK;
   ctx.textBaseline = "middle";
@@ -87,6 +86,8 @@ export function drawFace(ctx: CanvasRenderingContext2D, input: FaceInput): void 
   if (slots.title != null) drawFitted(ctx, face.name, slots.title, TITLE_FONT, slots.title.h * TITLE_SCALE);
   if (slots.type != null) drawFitted(ctx, face.typeLine, slots.type, TITLE_FONT, slots.type.h * TYPE_SCALE);
   if (slots.text != null) drawTextBox(ctx, face, slots.text, measure);
+  // The plate goes on last: a wordy card's text box runs under it, and print has the plate on top.
+  if (input.ptImage != null && slots.ptPlate != null) blit(ctx, input.ptImage, slots.ptPlate);
   if (slots.pt != null) drawPT(ctx, face, slots.pt);
 
   ctx.restore();
@@ -154,13 +155,15 @@ function drawTextBox(ctx: CanvasRenderingContext2D, face: FaceData, box: Rect, m
   const padY = box.h * TEXT_PAD_Y;
   const inner = { w: box.w - 2 * padX, h: box.h - 2 * padY };
   const size = fitCardText(face.oracle, face.flavor, inner, box.h * RULES_SCALE, measure);
-  const { lines, divider } = cardTextBlock(face.oracle, face.flavor, inner.w, size, measure);
-  const step = size * LINE_HEIGHT;
+  const block = cardTextBlock(face.oracle, face.flavor, inner.w, size, measure);
+  const { lines, divider } = block;
 
   ctx.textAlign = "left";
   ctx.textBaseline = "middle";
-  let y = box.y + Math.max(padY, (box.h - lines.length * step) / 2) + step / 2;
+  let y = box.y + Math.max(padY, (box.h - blockHeight(block, size)) / 2) + (size * LINE_HEIGHT) / 2;
   for (const [index, line] of lines.entries()) {
+    // Print sets extra air where one ability ends and the next begins.
+    if (index > 0) y += lineStep(block, index, size);
     if (index === divider) drawDivider(ctx, box, y);
     let x = box.x + padX;
     for (const piece of line) {
@@ -173,7 +176,6 @@ function drawTextBox(ctx: CanvasRenderingContext2D, face: FaceData, box: Rect, m
       }
       x += measure(piece, size);
     }
-    y += step;
   }
 }
 
