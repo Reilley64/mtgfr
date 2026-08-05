@@ -172,6 +172,26 @@ Hard-won loop rules (already baked into the script — do not soften them):
   with none; a forced-attack clause invented whole). Every implementer must open live
   Scryfall for its increment's *Cards:* line and, when the premise is wrong, **correct that
   backlog section in place** before writing code.
+- **The *Sketch* is a hypothesis from the wave that filed it, not a spec.** The premise rule above
+  covers the card; this covers the engineering. Two of the four wave-13 Legends sketches were
+  substantively wrong in ways that would have shipped needless machinery: Takklemaggot's described a
+  decision the card does not offer ("if they can't *or won't*" — the branch is reachable only on an
+  empty candidate list) and proposed two permanent shapes selected by an ETB flag, when an existing
+  pause's free `player` axis already covered it; Psychic Purge's quoted only the trigger and silently
+  dropped "deals 1 damage to any target". Re-derive the design from the oracle text *and the current
+  engine* before implementing, and correct the entry in place so the error dies with the wave.
+- **"No single choke point exists" is a survey result, not a verdict.** Wave 12 surveyed the draw
+  path, found the mint functions pure (so unable to raise a pause) and only one batch site able to,
+  and deferred Chains of Mephistopheles as possibly unlandable. The answer was to *build* the choke
+  point — one mutating funnel with a parked batch so a pause resumes mid-draw — and convert the
+  bypassing sites onto it. A missing seam is work, not a blocker; a survey must say which of the two
+  it found.
+- **Reach for the free axis on an existing pause before minting a new one.** Three of four wave-13
+  slices needed a new player-facing choice and *none* added a wire surface: one reused an existing
+  `ChooseAttachHost` `player` field, one answered a new pause with the existing
+  `Intent::ChooseCopyTarget` plus a wording flag, and one's new fields projected through the `..`
+  already in `projection/choice.rs`. Twelve pre-allocated proto field numbers went unused. Budget
+  them anyway — an unused reservation costs nothing and a collision costs a wave.
 - **When the orchestrator stalls, rescue then abandon it.** A stalled implement stage
   ("no progress for 180000ms") leaves the shared tree RED mid-edit — a half-added `CardDef`
   field is 157 compile errors, a half-added enum variant is a non-exhaustive `match` in
@@ -180,6 +200,31 @@ Hard-won loop rules (already baked into the script — do not soften them):
   the workflow orchestrator for this grind and dispatch the three stages as direct agents —
   in the mirror-mastery grind that converted three consecutive stalled waves into three clean
   ones with no other change.
+- **Parallel slices share one cargo lock and one working tree — brief them accordingly.** Two rules,
+  both learned the expensive way in the Legends grind. **(1) A slice runs only its own test binary**
+  (`cargo test -p engine --test leg_w<N>_<slice>`), never the full suite: four concurrent
+  `nextest --profile ci` runs serialize on the build-dir lock, so each slice waits on the others and
+  reports "23m elapsed, three full suites sharing the machine" instead of finishing. Worse, they
+  outlive the agent — five orphaned cargo processes held the lock with *zero* `rustc` running and
+  stalled the orchestrator's own regeneration for 28 minutes. **At wave close, confirm no cargo
+  process survives its slice before running central verification**, and check `pgrep -c rustc`: a
+  cargo process with no compiler under it is a lock-holding zombie, not progress. **(2) No test may
+  rewrite a checked-in file in place.** `gen_dsl_reference`'s check-mode test overwrote the real
+  `DSL_REFERENCE.md` with `# stale` and restored it afterwards; with two suites overlapping, the
+  second captured `# stale` as its "original" and restored *that*, destroying the file. Recovery is
+  `git show HEAD:<path> > <path>` — never `git checkout --`, which a sibling session's edits share.
+  Fixed by running it in a temp dir; audit for the pattern before fanning out.
+- **Budget the stack, not just the wave.** `Effect` grows a card at a time and is now ~9 KiB
+  (`Ability` ~11 KiB), so a test binding a hundred card locals overflows a test thread's 2 MiB stack
+  and aborts as **SIGABRT with no assertion to point at** — and nextest's threads get *less* stack
+  than `cargo test`'s, so a split test can pass under one and abort under the other. `.cargo/config.toml`
+  sets `RUST_MIN_STACK` for every cargo-spawned process; keep per-test card counts modest anyway. The
+  same growth surfaces as clippy `large_enum_variant` and `large_const_arrays` — the established
+  answer is an `#[allow]` with a `ponytail:` naming the upgrade (box the widest variants), and
+  `static` rather than `const` for large ability arrays.
+- **A declined increment must take its tests with it.** A slice that writes tests, then decides the
+  increment cannot land, leaves permanently-red tests that read as a broken wave. Deleting them is
+  part of declining, not cleanup.
 - When a wave goes red or a bug resists a first glance, use **`systematic-debugging`**
   (root cause before fix) rather than patching symptoms.
 - **Commit per green wave**; on a red wave stop and surface it to the user.
@@ -239,6 +284,13 @@ pool that supports it. After client catch-up (the wire is settled by then):
 1. Re-run the deck checklist: every card checked, or carrying a precise residual note the
    user has seen. Every remaining `approximates` in the pool must name *why* (absent
    subsystem, unobservable, dead variant) — never a silently dropped ability.
+   **Two blind spots make "the audit is green" weaker than it reads.** `tooling/fidelity_report_audit.py`
+   excuses an unticked card whose name appears *anywhere* in a blocking increment's prose — a
+   substring match, so Recall sat unticked for two waves because an unrelated increment mentioned it
+   in passing, and the audit called the whole set agreed. And **"no `approximates`" is not a proxy
+   for "faithful"**: frame-only stubs (front matter + oracle comment, no `[[abilities]]`) carry no
+   note at all. So at wave close, read the unticked list by hand and confirm each remaining card is
+   genuinely unsupportable, and spot-check that every newly-ticked card actually has abilities.
 2. **Live smoke game (do not skip):** follow **`verification-before-completion`**, then drive
    the project **`verify`** skill — boot the real server + client from the worktree (own
    ports — never kill or reuse another session's dev servers) and drive a multiplayer game
