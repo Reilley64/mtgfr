@@ -114,6 +114,14 @@ describe("cardTextBlock", () => {
     expect(blockHeight(wrapped, 20)).toBeCloseTo(20 * 2 * LINE_HEIGHT);
   });
 
+  it("steps a wrapped line by barely more than the type it sets", () => {
+    // Print's rules type is nearly as tall as its pitch: Armillary Sphere (`c14`) steps 35, 34, 35 at
+    // 1040 tall with 32px glyph bands. Airier leading here would shrink the type to keep the box.
+    const block = cardTextBlock("Flying Trample", "", 100, 20, measure);
+    expect(block.lines.length).toBe(2);
+    expect(lineStep(block, 1, 20)).toBeLessThan(20 * 1.05);
+  });
+
   it("sets quotes the way print does, not as typewriter ticks", () => {
     const block = cardTextBlock("Gaea's Cradle can't be blocked.", '"Watch," she said. "Then go."', 900, 20, measure);
     expect(block.lines.map(prose).join(" ")).toBe("Gaea’s Cradle can’t be blocked.  “Watch,” she said. “Then go.”");

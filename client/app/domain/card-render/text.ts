@@ -9,20 +9,22 @@
 import { emphasisSpans, type OraclePart, splitOracleText } from "../oracleText";
 
 /**
- * Line height as a multiple of font size, *within* one printed paragraph. A printed M15 card's
- * rules lines step about 37px at a 35px body — measured row by row off Scryfall's png for Llanowar
- * Elves (`fdn`), whose flavor block wraps to four lines at a 36.7px pitch.
+ * Line height as a multiple of font size, *within* one printed paragraph. A printed M15 card steps
+ * its rules lines about 37px — and sets them in a body nearly that tall, so the pitch is barely more
+ * than the type. Armillary Sphere (`c14`) is the clean case: at 1040 tall its lines step 35, 34, 35
+ * against our 35, 35, 35, while its glyph bands run 32px tall where ours ran 28. Same leading,
+ * larger type — so this drops by exactly what [`RULES_SCALE`] gained and the pitch holds.
  */
-export const LINE_HEIGHT = 1.06;
+export const LINE_HEIGHT = 0.995;
 
 /**
- * Extra air where a new ability opens, as a multiple of font size. Print opens a hair, not a blank
- * line: on Scryfall's png for Guard Gomazoa (`pca`) the row scan puts `Defender, flying` and the
- * ability under it 40px apart, against 37px between that ability's own two wrapped lines. The
- * region score cannot see this — paper texture swamps it, and a sweep from 0.3 to 0.8 moves the
- * text box under 1% either way — so it is set off the printed pitch.
+ * Extra air where a new ability opens, as a multiple of font size. Print opens a third of an em —
+ * clearly more than the pitch, well short of a blank line. Nezahal, Primal Tide (`rix`) measures it
+ * cleanly: four abilities at 1040 tall, its ability boundaries step 43, 43 and 41 against 31, 31 and
+ * 30 between the lines of one ability. This is what makes a wordy card shrink — the gaps count
+ * against the fit — and it is why print sets Nezahal smaller than a short card like Guard Gomazoa.
  */
-export const PARA_GAP = 0.1;
+export const PARA_GAP = 0.35;
 
 /** How far `fitOracleSize` will shrink before it lets the text overhang. */
 const MIN_SCALE = 0.6;

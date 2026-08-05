@@ -129,7 +129,8 @@ describe("drawFace", () => {
   });
 
   // Measured off Scryfall's png for an M15 printing at the face's own 745x1040: a printed name is
-  // set in about 40px, a type line in 34px and rules text in 35px.
+  // set in about 40px, a type line in 34px and rules text in 37px — the body all but as tall as the
+  // 37px pitch it steps at, which is what Guard Gomazoa's `Defender, flying` scans at.
   it("sets each slot at the size a printed card uses", () => {
     const { ctx, ops } = fakeCtx();
     drawFace(ctx, inputs({ variant: "full", face: face({ typeLine: "Creature — Elf Druid", oracle: "Haste." }) }));
@@ -144,8 +145,8 @@ describe("drawFace", () => {
     expect(name).toBeLessThan(42);
     expect(typeLine).toBeGreaterThan(32);
     expect(typeLine).toBeLessThan(36);
-    expect(Math.max(...sizesIn(BODY_FONT))).toBeGreaterThan(33);
-    expect(Math.max(...sizesIn(BODY_FONT))).toBeLessThan(37);
+    expect(Math.max(...sizesIn(BODY_FONT))).toBeGreaterThan(35);
+    expect(Math.max(...sizesIn(BODY_FONT))).toBeLessThan(39);
   });
 
   it("draws a rules-text mana symbol as a disk with its mana-font glyph, not braces", () => {

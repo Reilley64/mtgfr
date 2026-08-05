@@ -25,7 +25,14 @@ import {
  */
 const TITLE_SCALE = 0.605;
 const TYPE_SCALE = 0.5555;
-const RULES_SCALE = 0.115;
+/**
+ * Rules text is set off the printed glyphs, not off the region score. Guard Gomazoa (`pca`) sets the
+ * same first line as we do — `Defender, flying` — and prints it 263px wide and 34px tall against our
+ * 246 and 32: print is about 6.5% larger, both measures agreeing. The region score cannot arbitrate
+ * this and must not be asked to: mismatched glyphs cost area, so it rewards under-inking, and at
+ * `0.08` — text far smaller than any printed card — every reference card scores *better* than here.
+ */
+const RULES_SCALE = 0.1225;
 const PT_SCALE = 0.62;
 
 /** Printed ink — the near-black a card's text is set in, not pure black. */
