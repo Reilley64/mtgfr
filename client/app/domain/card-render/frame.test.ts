@@ -67,7 +67,7 @@ function expectRectClose(actual: Rect | null, want: Rect): void {
   expect(actual.h).toBeCloseTo(want.h, 3);
 }
 
-const VARIANTS: FaceVariant[] = ["permanent", "full", "stack"];
+const VARIANTS: FaceVariant[] = ["permanent", "full"];
 
 function textRects(slots: SlotRects): (Rect | null)[] {
   return [slots.art, slots.title, slots.type, slots.text, slots.pt];
@@ -245,10 +245,6 @@ describe("slotRects", () => {
     expectRectClose(plate?.dst ?? null, scaled(PT_PLATE, w / ASSET_W, h / ASSET_H));
     expect(slotRects("full", face({ kind: { kind: "instant" } })).ptPlate).toBeNull();
     expect(slotRects("full", face({ kind: { kind: "instant" } })).pt).toBeNull();
-  });
-
-  it("gives the stack variant the same slots as a full face", () => {
-    expect(slotRects("stack", face())).toEqual(slotRects("full", face()));
   });
 
   it("fills the Arena square with art and lays the top strip over it", () => {

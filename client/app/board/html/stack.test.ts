@@ -4,9 +4,10 @@
 import { Submodel } from "foldkit";
 import { Scene } from "foldkit/test";
 import { expect, test } from "vitest";
+import { faceDataFrom } from "~/card-render/frame";
 import { testMessageRef } from "~/i18n/testMessageRef";
 import { testHtml } from "~/test-html";
-import { BindCardArt } from "~/ui/card-art";
+import { BindCardFace } from "~/ui/card-face";
 import type { ActionView, ObjectView, VisibleState } from "~/wire/types";
 import type { GameFoldState } from "../../game/fold";
 import { SubmitIntent } from "../../game/intents";
@@ -17,7 +18,7 @@ import { type Message, StackCollapseClicked, TargetChosen } from "../messages";
 import { spawnFlight } from "../motion/flights";
 import { type BoardModel, initialBoardModel, updateBoard } from "../submodel";
 import { boardOverlays } from "./overlays";
-import { resolveBoardCardArtMounts, resolveBoardCardFaceMounts, resolveBoardOverlayMounts } from "./scene-helpers";
+import { resolveBoardCardFaceMounts, resolveBoardOverlayMounts } from "./scene-helpers";
 
 const h = testHtml<Message>();
 
@@ -110,7 +111,7 @@ function spellOnStack(
   };
 }
 
-test("stack overlay renders card art for spells on the stack", () => {
+test("stack overlay renders the drawn card face for spells on the stack", () => {
   const { objects, stack } = spellOnStack(42, "Lightning Bolt", "bolt-print");
   const model: ViewModel = {
     board: initialBoardModel(),
@@ -121,10 +122,35 @@ test("stack overlay renders card art for spells on the stack", () => {
     { update: (m) => [m, []], view: overlayView },
     Scene.given(model),
     resolveBoardOverlayMounts(),
-    resolveBoardCardArtMounts(),
+    resolveBoardCardFaceMounts(),
     Scene.expect(Scene.testId("stack-overlay")).toExist(),
     Scene.expect(Scene.testId("stack-face-0")).toExist(),
-    Scene.expect(Scene.selector("[data-art-url]")).toExist(),
+    Scene.expect(Scene.selector(String.raw`[data-testid="stack-face-0"] [data-face]`)).toExist(),
+  );
+});
+
+test("stack face draws the whole printed card, with the catalog's words on it", () => {
+  // The stack is where a player reads what is about to resolve, so it shows the full face the hand
+  // bar shows — rules and flavor included — not a crop of the art.
+  const { objects, stack } = spellOnStack(42, "Lightning Bolt", "bolt-print");
+  const bolt: ObjectView = { ...(objects[0] as ObjectView), card_id: "bolt" };
+  const text = { card_id: "bolt", type_line: "Instant", oracle: "Deals 3 damage to any target.", flavor: "" };
+  const model: ViewModel = {
+    board: { ...initialBoardModel(), cardText: new Map([["bolt", text]]) },
+    fold: gameFold(gameState({ objects: [bolt], stack })),
+    tableId: "T1",
+  };
+  const face = JSON.stringify({ ...faceDataFrom(bolt), typeLine: "Instant", oracle: text.oracle, flavor: "" });
+  Scene.scene(
+    { update: (m) => [m, []], view: overlayView },
+    Scene.given(model),
+    resolveBoardOverlayMounts(),
+    resolveBoardCardFaceMounts(),
+    Scene.expect(Scene.selector(String.raw`[data-testid="stack-face-0"] [data-face]`)).toHaveAttr("data-face", face),
+    Scene.expect(Scene.selector(String.raw`[data-testid="stack-face-0"] [data-face]`)).toHaveAttr(
+      "data-face-variant",
+      "full",
+    ),
   );
 });
 
@@ -274,10 +300,10 @@ test("ability stack face keeps card art while its source permanent is mid-battle
     { update: (m) => [m, []], view: overlayView },
     Scene.given(abilityDuringSourceFlight("battlefield")),
     resolveBoardOverlayMounts(),
-    resolveBoardCardArtMounts(),
+    resolveBoardCardFaceMounts(),
     Scene.expect(Scene.testId("stack-overlay")).toExist(),
     Scene.expect(Scene.testId("stack-face-0")).toExist(),
-    Scene.expect(Scene.selector("[data-art-url]")).toExist(),
+    Scene.expect(Scene.selector(String.raw`[data-testid="stack-face-0"] [data-face]`)).toExist(),
     Scene.expect(Scene.testId("stack-top-caption")).toContainText("Draw a card"),
   );
 });
@@ -309,11 +335,11 @@ test("ability stack face uses entry print when the source id is no longer in obj
     { update: (m) => [m, []], view: overlayView },
     Scene.given(model),
     resolveBoardOverlayMounts(),
-    resolveBoardCardArtMounts(),
+    resolveBoardCardFaceMounts(),
     Scene.expect(Scene.testId("stack-overlay")).toExist(),
     Scene.expect(Scene.testId("stack-face-0")).toExist(),
-    // BindCardArt only mounts when print+name resolve — proves entry.print was used.
-    Scene.expect(Scene.selector("[data-art-url]")).toExist(),
+    // The face only draws when print+name resolve — proves entry.print was used.
+    Scene.expect(Scene.selector(String.raw`[data-testid="stack-face-0"] [data-face]`)).toExist(),
   );
 });
 
@@ -322,10 +348,10 @@ test("ability stack face keeps card art while its source permanent is mid from-s
     { update: (m) => [m, []], view: overlayView },
     Scene.given(abilityDuringSourceFlight("from-stack")),
     resolveBoardOverlayMounts(),
-    resolveBoardCardArtMounts(),
+    resolveBoardCardFaceMounts(),
     Scene.expect(Scene.testId("stack-overlay")).toExist(),
     Scene.expect(Scene.testId("stack-face-0")).toExist(),
-    Scene.expect(Scene.selector("[data-art-url]")).toExist(),
+    Scene.expect(Scene.selector(String.raw`[data-testid="stack-face-0"] [data-face]`)).toExist(),
     Scene.expect(Scene.testId("stack-top-caption")).toContainText("Draw a card"),
   );
 });
@@ -378,7 +404,7 @@ test("stack pile caption lists every declared target", () => {
     { update: (m) => [m, []], view: overlayView },
     Scene.given(model),
     resolveBoardOverlayMounts(),
-    resolveBoardCardArtMounts(),
+    resolveBoardCardFaceMounts(),
     Scene.expect(Scene.testId("stack-top-caption")).toContainText("Bear"),
     Scene.expect(Scene.testId("stack-top-caption")).toContainText("Bob"),
   );
@@ -454,12 +480,11 @@ test("staged ghost appears on the stack during arrow targeting", () => {
     { update: (m) => [m, []], view: overlayView },
     Scene.given(model),
     resolveBoardOverlayMounts(),
-    resolveBoardCardArtMounts(1),
-    resolveBoardCardFaceMounts(1),
+    resolveBoardCardFaceMounts(2),
     Scene.expect(Scene.testId("stack-overlay")).toExist(),
     Scene.expect(Scene.testId("stack-face-0")).toExist(),
     Scene.expect(Scene.testId("stack-staged-hint")).toContainText("Choose a target"),
-    Scene.expect(Scene.selector("[data-art-url]")).toExist(),
+    Scene.expect(Scene.selector(String.raw`[data-testid="stack-face-0"] [data-face]`)).toExist(),
   );
 });
 
@@ -517,8 +542,7 @@ test("legal stack face is highlighted and click submits take_action", () => {
     },
     Scene.given({ board, fold, tableId: "T1" }),
     resolveBoardOverlayMounts(),
-    resolveBoardCardArtMounts(2),
-    resolveBoardCardFaceMounts(1),
+    resolveBoardCardFaceMounts(3),
     Scene.expect(Scene.selector('[data-legal-target="true"]')).toExist(),
     Scene.expect(Scene.selector('[data-testid="stack-face-0"][data-legal-target="true"]')).toExist(),
     Scene.expect(Scene.testId("stack-face-0")).toHaveAttr("role", "button"),
@@ -527,7 +551,7 @@ test("legal stack face is highlighted and click submits take_action", () => {
     // Keyboard path: Enter on a focused legal target picks it, same as click.
     Scene.keydown(Scene.testId("stack-face-0"), "Enter"),
     Scene.expect(Scene.selector('[data-legal-target="true"]')).not.toExist(),
-    Scene.Mount.expectEnded(BindCardArt),
+    Scene.Mount.expectEnded(BindCardFace),
   );
   const [nextBoard, commands] = updateBoard(board, TargetChosen({ target: { kind: "object", id: 42 } }), fold, "T1");
   expect(nextBoard.staged).toBeNull();
@@ -614,11 +638,11 @@ test("pending choose_target shows source card art on the stack while aiming (Inn
     { update: (m) => [m, []], view: overlayView },
     Scene.given(model),
     resolveBoardOverlayMounts(),
-    resolveBoardCardArtMounts(),
+    resolveBoardCardFaceMounts(),
     Scene.expect(Scene.testId("stack-overlay")).toExist(),
     Scene.expect(Scene.testId("stack-face-0")).toExist(),
     Scene.expect(Scene.testId("stack-staged-hint")).toContainText("Choose a target"),
-    Scene.expect(Scene.selector("[data-art-url]")).toExist(),
+    Scene.expect(Scene.selector(String.raw`[data-testid="stack-face-0"] [data-face]`)).toExist(),
   );
 });
 
@@ -687,11 +711,11 @@ test("pending proliferate shows source card art on the stack after the ability l
     { update: (m) => [m, []], view: overlayView },
     Scene.given(model),
     resolveBoardOverlayMounts(),
-    resolveBoardCardArtMounts(),
+    resolveBoardCardFaceMounts(),
     Scene.expect(Scene.testId("stack-overlay")).toExist(),
     Scene.expect(Scene.testId("stack-face-0")).toExist(),
     Scene.expect(Scene.testId("stack-staged-hint")).toContainText("Choose a target"),
-    Scene.expect(Scene.selector("[data-art-url]")).toExist(),
+    Scene.expect(Scene.selector(String.raw`[data-testid="stack-face-0"] [data-face]`)).toExist(),
   );
 });
 
@@ -771,7 +795,7 @@ test("pending choose_target does not duplicate a spell already on the stack", ()
     { update: (m) => [m, []], view: overlayView },
     Scene.given(model),
     resolveBoardOverlayMounts(),
-    resolveBoardCardArtMounts(),
+    resolveBoardCardFaceMounts(),
     Scene.expect(Scene.testId("stack-overlay")).toExist(),
     Scene.expect(Scene.testId("stack-face-0")).toExist(),
     Scene.expect(Scene.testId("stack-face-1")).toBeAbsent(),
@@ -849,7 +873,7 @@ test("a second trigger from one permanent gets its own top face while aiming", (
     { update: (m) => [m, []], view: overlayView },
     Scene.given(model),
     resolveBoardOverlayMounts(),
-    resolveBoardCardArtMounts(2),
+    resolveBoardCardFaceMounts(2),
     Scene.expect(Scene.testId("stack-face-0")).toExist(),
     Scene.expect(Scene.testId("stack-face-1")).toHaveAttr("data-staged", "true"),
     Scene.expect(Scene.testId("stack-staged-hint")).toContainText("Choose a target"),
@@ -899,7 +923,7 @@ test("expand button appears for a tall stack and opens strip view", () => {
     },
     Scene.given(model),
     resolveBoardOverlayMounts(),
-    resolveBoardCardArtMounts(STACK_EXPAND_COUNT),
+    resolveBoardCardFaceMounts(STACK_EXPAND_COUNT),
     Scene.expect(Scene.testId("stack-expand")).toExist(),
     Scene.click(Scene.testId("stack-expand")),
     Scene.expect(Scene.testId("stack-overlay-expanded")).toExist(),
@@ -923,7 +947,7 @@ test("hold bar renders when stack_hold_remaining_ms is positive", () => {
     { update: (m) => [m, []], view: overlayView },
     Scene.given(model),
     resolveBoardOverlayMounts(),
-    resolveBoardCardArtMounts(),
+    resolveBoardCardFaceMounts(),
     Scene.expect(Scene.testId("stack-hold-bar")).toExist(),
     Scene.expect(Scene.selector('[data-testid="stack-hold-bar"].opacity-0')).not.toExist(),
   );

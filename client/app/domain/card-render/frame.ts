@@ -2,7 +2,12 @@ import { ZONE } from "../../board/geometry/layout";
 import type { ObjectView } from "../wire/types";
 import { ASSET_H, ASSET_W, type FrameKey } from "./assets";
 
-export type FaceVariant = "permanent" | "full" | "stack";
+/**
+ * `permanent` is the square battlefield tile; `full` is the whole printed card, which the hand bar
+ * and the stack both show. They share the name so they share a cache entry: a card cast from hand
+ * draws its face once and the stack shows that same bitmap.
+ */
+export type FaceVariant = "permanent" | "full";
 
 /**
  * Everything the renderer draws about one card, read off the board's own `ObjectView`.
@@ -14,7 +19,7 @@ export type FaceVariant = "permanent" | "full" | "stack";
  *
  * `typeLine`, `oracle` and `flavor` come from `CatalogCard` over the catalog RPC, not from a new wire field —
  * `faceDataFrom` leaves them `""` and the caller folds them in (see `card-text.ts`). Only the
- * `full`/`stack` variants draw them; the square permanent has no room and shows none.
+ * `full` variant draws them; the square permanent has no room and shows none.
  */
 export type FaceData = {
   /** Scryfall print id — the art key on the card CDN, and part of the face cache key. */
@@ -126,13 +131,12 @@ export type SlotRects = {
 };
 
 /**
- * The size each variant renders at before it is scaled down at paint time. `full`/`stack` use the
+ * The size each variant renders at before it is scaled down at paint time. `full` uses the
  * printed card's proportions at Scryfall `normal` size; `permanent` is the Arena-style square.
  */
 export const CANONICAL: Record<FaceVariant, { w: number; h: number }> = {
   permanent: { w: 745, h: 745 },
   full: { w: 745, h: 1040 },
-  stack: { w: 745, h: 1040 },
 };
 
 /*
@@ -278,7 +282,7 @@ function squareSlots(w: number, h: number, face: FaceData): SlotRects {
 
 /**
  * Where each slot lands on the canonical face. `permanent` shows a title over full-bleed art —
- * card inspect is the read-the-card surface — while `full`/`stack` draw the whole printed frame.
+ * card inspect is the read-the-card surface — while `full` draws the whole printed frame.
  */
 export function slotRects(variant: FaceVariant, face: FaceData): SlotRects {
   const { w, h } = CANONICAL[variant];
