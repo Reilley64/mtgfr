@@ -3,6 +3,7 @@ import {
   blockHeight,
   cardTextBlock,
   fitCardText,
+  hangIndent,
   LINE_HEIGHT,
   lineStep,
   type Measure,
@@ -46,7 +47,7 @@ describe("wrapOracle", () => {
 
   it("marks reminder text so it can print italic", () => {
     const [line] = wrapOracle("Flying (It can't be blocked.)", 400, 10, measure);
-    expect(prose(line.filter((piece) => piece.reminder))).toBe("(It can't be blocked.)");
+    expect(prose(line.filter((piece) => piece.reminder))).toBe("(It can’t be blocked.)");
   });
 });
 
@@ -113,6 +114,34 @@ describe("cardTextBlock", () => {
     expect(blockHeight(wrapped, 20)).toBeCloseTo(20 * 2 * LINE_HEIGHT);
   });
 
+  it("sets quotes the way print does, not as typewriter ticks", () => {
+    const block = cardTextBlock("Gaea's Cradle can't be blocked.", '"Watch," she said. "Then go."', 900, 20, measure);
+    expect(block.lines.map(prose).join(" ")).toBe("Gaea’s Cradle can’t be blocked.  “Watch,” she said. “Then go.”");
+  });
+
+  it("sets a modal spell's modes tight — they are one ability, not several", () => {
+    // Print runs `Choose one —` straight into its bullets at the plain pitch (Abrade, `hou`).
+    const block = cardTextBlock("Choose one —\n• Deal 3 damage.\n• Destroy target artifact.", "", 400, 20, measure);
+    expect([...block.starts]).toEqual([]);
+    expect(blockHeight(block, 20)).toBeCloseTo(20 * 3 * LINE_HEIGHT);
+  });
+
+  it("hangs a mode's wrapped lines under its own text, clear of the bullet", () => {
+    // Abrade's first mode wraps, and print sets `creature.` in line with `Abrade`, not with the dot.
+    const block = cardTextBlock("• Abrade deals 3 damage to target creature.", "", 200, 20, measure);
+    expect(block.lines.length).toBeGreaterThan(1);
+    expect([...block.hangs]).toEqual([...block.lines.keys()].slice(1));
+    expect(hangIndent(20, measure)).toBeCloseTo(measure({ kind: "text", value: "• ", reminder: false }, 20));
+  });
+
+  it("wraps a hung line short, so the indent cannot push a mode past the box", () => {
+    const wide = cardTextBlock("Deal 3 damage to any target now", "", 200, 20, measure);
+    const mode = cardTextBlock("• Deal 3 damage to any target now", "", 200, 20, measure);
+    // The bullet paragraph has the same words plus a bullet and a narrower second line, so it can
+    // only set in as many lines as the plain one, never fewer.
+    expect(mode.lines.length).toBeGreaterThanOrEqual(wide.lines.length);
+  });
+
   it("opens no gap at the divider — the blank row is already wider than one", () => {
     const block = cardTextBlock("Flying", "It watches.", 400, 20, measure);
     expect([...block.starts]).toEqual([]);
@@ -122,7 +151,7 @@ describe("cardTextBlock", () => {
     // Print sets flavor as one unbroken block: `—Darius, to Kassandra` follows the quote at the
     // plain pitch, not with the air that opens a new ability.
     const block = cardTextBlock("Flying", '"Watch."\n—Darius', 400, 20, measure);
-    expect(block.lines.map(prose)).toEqual(["Flying", "", '"Watch."', "—Darius"]);
+    expect(block.lines.map(prose)).toEqual(["Flying", "", "“Watch.”", "—Darius"]);
     expect([...block.starts]).toEqual([]);
   });
 

@@ -1,7 +1,17 @@
 import { BODY_FONT, frameAssetUrl, TITLE_FONT } from "./assets";
 import { type Blit, type FaceData, type FaceVariant, frameKey, type Rect, slotRects } from "./frame";
 import { drawManaSymbol } from "./symbols";
-import { blockHeight, cardTextBlock, fitCardText, LINE_HEIGHT, lineStep, type Measure, SYMBOL_EM } from "./text";
+import {
+  blockHeight,
+  cardTextBlock,
+  fitCardText,
+  hangIndent,
+  LINE_HEIGHT,
+  lineStep,
+  type Measure,
+  SYMBOL_EM,
+  smartQuotes,
+} from "./text";
 
 /*
  * Printed type sizes, as a fraction of the slot each sits in. A real M15 card sets its name in about
@@ -83,8 +93,10 @@ export function drawFace(ctx: CanvasRenderingContext2D, input: FaceInput): void 
   ctx.fillStyle = INK;
   ctx.textBaseline = "middle";
 
-  if (slots.title != null) drawFitted(ctx, face.name, slots.title, TITLE_FONT, slots.title.h * TITLE_SCALE);
-  if (slots.type != null) drawFitted(ctx, face.typeLine, slots.type, TITLE_FONT, slots.type.h * TYPE_SCALE);
+  if (slots.title != null)
+    drawFitted(ctx, smartQuotes(face.name), slots.title, TITLE_FONT, slots.title.h * TITLE_SCALE);
+  if (slots.type != null)
+    drawFitted(ctx, smartQuotes(face.typeLine), slots.type, TITLE_FONT, slots.type.h * TYPE_SCALE);
   if (slots.text != null) drawTextBox(ctx, face, slots.text, measure);
   // The plate goes on last: a wordy card's text box runs under it, and print has the plate on top.
   if (input.ptImage != null && slots.ptPlate != null) blit(ctx, input.ptImage, slots.ptPlate);
@@ -165,7 +177,7 @@ function drawTextBox(ctx: CanvasRenderingContext2D, face: FaceData, box: Rect, m
     // Print sets extra air where one ability ends and the next begins.
     if (index > 0) y += lineStep(block, index, size);
     if (index === divider) drawDivider(ctx, box, y);
-    let x = box.x + padX;
+    let x = box.x + padX + (block.hangs.has(index) ? hangIndent(size, measure) : 0);
     for (const piece of line) {
       if (piece.kind === "symbol") {
         drawManaSymbol(ctx, piece, x, y, size);
@@ -180,21 +192,22 @@ function drawTextBox(ctx: CanvasRenderingContext2D, face: FaceData, box: Rect, m
 }
 
 /**
- * The rule between rules text and flavor: on a printed card a soft shadow about 80% of the box
- * wide, centred, not a drawn line. Measured off a printed card at 1040 tall: the paper darkens over
- * about four rows into one darkest row a fifth below the paper, then lifts for a row underneath.
+ * The rule between rules text and flavor: a whisper, not a line. A printed M15 card separates the
+ * two blocks with air — scanned row by row across seven printings at 1040 tall (Abrade `hou`, Black
+ * Knight `30a`, Phyrexian Arena `c15`, Rhystic Study `pz1`, Sol Ring `vma`, Fungusaur `30a`, Guard
+ * Gomazoa `pca`), no row between the blocks darkens more than about 3% below the paper, and what
+ * little there is comes off the glyph edges around it. So the blank row does the separating, and
+ * this only breathes on it.
  */
 function drawDivider(ctx: CanvasRenderingContext2D, box: Rect, y: number): void {
   const w = box.w * DIVIDER_W;
   const x = box.x + (box.w - w) / 2;
   const ramp = ctx.createLinearGradient(0, y - 4, 0, y + 1);
   ramp.addColorStop(0, "rgba(23, 19, 13, 0)");
-  ramp.addColorStop(0.75, "rgba(23, 19, 13, 0.12)");
-  ramp.addColorStop(1, "rgba(23, 19, 13, 0.31)");
+  ramp.addColorStop(0.75, "rgba(23, 19, 13, 0.02)");
+  ramp.addColorStop(1, "rgba(23, 19, 13, 0.05)");
   ctx.fillStyle = ramp;
   ctx.fillRect(x, y - 4, w, 5);
-  ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
-  ctx.fillRect(x, y + 1.5, w, 1);
   ctx.fillStyle = INK;
 }
 

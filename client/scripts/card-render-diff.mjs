@@ -194,6 +194,11 @@ async function main() {
   const out = outIndex >= 0 ? args[outIndex + 1] : join(tmpdir(), "card-render-diff");
 
   const run = promisify(execFile);
+  // A browser caches an ES module by url for the life of the page, and the probe imports the whole
+  // card-render graph — so a second run in the same tab would score the code as it stood when that
+  // tab loaded, silently. Reload first, and every run measures the source on disk.
+  const { stdout: href } = await run("agent-browser", ["eval", "location.href"]);
+  await run("agent-browser", ["open", JSON.parse(href)]);
   const { stdout } = await run("agent-browser", ["eval", probeSource(printId, wantImages)], {
     maxBuffer: 64 * 1024 * 1024,
   });
