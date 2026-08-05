@@ -1,0 +1,20 @@
+# Rampage 1 (Whenever this creature becomes blocked, it gets +1/+1 until end of turn for each creature blocking it
+# beyond the first.)
+name = "Hunding Gjornersen"
+otags = ["block-trigger", "deprecated-legend-type", "french-vanilla", "rampage", "unique-mana-cost"]
+id = "dd4f3a78-3167-42d0-8334-5ac36750a253"
+default_print = "4049abac-cb54-4af2-b2df-ffb8fdc22e84"
+oracle = "Rampage 1 (Whenever this creature becomes blocked, it gets +1/+1 until end of turn for each creature blocking it beyond the first.)"
+legendary = true
+subtypes = ["Human", "Warrior"]
+keywords = [{ rampage = 1 }]
+
+[cost]
+generic = 3
+white = 1
+blue = 2
+
+[kind]
+type = "creature"
+power = 5
+toughness = 4

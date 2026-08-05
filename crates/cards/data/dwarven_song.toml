@@ -1,0 +1,26 @@
+# One or more target creatures become red until end of turn.
+name = "Dwarven Song"
+otags = ["color-change", "cycle-leg-color-wash-instant", "multiple-targets", "single-target-instant-sorcery"]
+id = "29b7a220-cfcf-4b44-a5fb-737fd47d46cb"
+default_print = "29a50f72-9524-4440-9380-9d3e0b693351"
+oracle = "One or more target creatures become red until end of turn."
+
+[cost]
+red = 1
+
+[kind]
+type = "instant"
+
+# One or more target creatures become red until end of turn.
+[[abilities]]
+oracle = "One or more target creatures become red until end of turn."
+timing = "spell"
+
+# One or more target creatures become red until end of turn.
+[[abilities.effects]]
+type = "pump"
+mode = "target_becomes_color"
+color = "red"
+target = "creature"
+count = { min = 1, unbounded = true }
+until_end_of_turn = true

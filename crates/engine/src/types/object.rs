@@ -22,7 +22,9 @@ pub(crate) fn fresh_permanent(
         tapped: printed.enters_tapped,
         summoning_sick,
         entered_this_turn: true,
+        started_turn_untapped: false,
         attacked_this_turn: false,
+        attacked_on_last_own_turn: false,
         monstrous: false,
         plus_counters: 0,
         kind_counters: [0; CounterKind::COUNT],
@@ -52,9 +54,11 @@ pub(crate) fn fresh_permanent(
         chosen_subtype: None,
         chosen_color: None,
         chosen_opponent: None,
+        returned_as_non_aura: false,
         entered_with_x: 0,
         entered_multikicker_count: 0,
         cast_time_enchant_target: None,
+        linked_twin: None,
         enchant_rewrite_host: None,
         vow_protected: None,
         phased_out: false,
@@ -322,6 +326,14 @@ pub(crate) struct Permanent {
     /// back to `false` to keep their "as if it had been there since before the turn" contract,
     /// the same way they override `summoning_sick`.
     pub(crate) entered_this_turn: bool,
+    /// Whether this permanent was untapped as the turn began — Rasputin Dreamweaver's "if
+    /// Rasputin started the turn untapped", backing
+    /// [`Condition::SourceStartedTheTurnUntapped`](cards::Condition). Stamped for every
+    /// battlefield permanent in [`Event::StepBegan`]'s Untap block, which runs *before* the
+    /// step's untapping turn-based action — so a permanent that was tapped last turn still reads
+    /// `false` at the upkeep that follows, which is the whole point of the clause. `false` for a
+    /// permanent minted mid-turn (it did not exist when the turn started).
+    pub(crate) started_turn_untapped: bool,
     /// Whether this permanent was declared as an attacker this turn (CR 508.1, [`Event::AttackerDeclared`]).
     /// Backs [`Condition::SourceAttackedThisTurn`] (Agent Frank Horrigan's "has indestructible as
     /// long as it attacked this turn"). Turn-scoped like `entered_this_turn` above — set the
@@ -331,6 +343,18 @@ pub(crate) struct Permanent {
     /// while the permanent is still in combat this turn: this stays `true` after end of combat,
     /// after the permanent is removed from combat, or after it changes controllers mid-combat.
     pub(crate) attacked_this_turn: bool,
+    /// Whether this permanent attacked during its controller's *previous* turn (Giant Turtle's
+    /// "This creature can't attack if it attacked during your last turn", CR 508.1a). `attacked_this_turn`
+    /// above can't answer that on its own — it is cleared at *every* Untap, so the intervening
+    /// opponents' turns wipe it long before its controller's next combat. This one is rolled once
+    /// per turn, at the active player's cleanup step, from that same flag: a fact recorded during
+    /// the controller's turn N reads back throughout their turn N+1 and is overwritten at N+1's
+    /// cleanup.
+    ///
+    /// ponytail: rolled for the permanents its controller holds *at that cleanup*, so a creature
+    /// that changes controllers between attacking and its owner's next turn carries the flag to the
+    /// new controller rather than staying tied to the seat it attacked under.
+    pub(crate) attacked_on_last_own_turn: bool,
     /// Whether this permanent has become monstrous (CR 701.28b) — a one-way state, not
     /// turn-scoped: it is never cleared at any Untap step, and a permanent that leaves the
     /// battlefield and returns is a new object that starts `false` again ([`fresh_permanent`]).
@@ -469,6 +493,13 @@ pub(crate) struct Permanent {
     /// permanent's own `each_upkeep` trigger. `None` until the choice is answered (see
     /// [`Effect::Choice(ChoiceEffect::ChooseOpponent)`]), and for every permanent without one.
     pub(crate) chosen_opponent: Option<PlayerId>,
+    /// Takklemaggot came back from its host's death "as a non-Aura enchantment" (its only
+    /// printed alternative, taken when the dead creature's controller had no creature to choose):
+    /// it keeps the [`CardKind::Aura`] printed on its card but stops being one, so the CR 704.5m
+    /// unattached-Aura sweep skips it and [`Game::effective_subtypes`] drops "Aura" from its type
+    /// line. Set by the return itself, never by a card script, and gone the next time this card
+    /// changes zones (CR 400.7 — a new object each time). `false` for every other permanent.
+    pub(crate) returned_as_non_aura: bool,
     /// The {X} chosen for the spell that became this permanent (CR 601.2b), fixed for the rest
     /// of this permanent's existence — read by [`Game::ability_source_x`] so a later-resolving
     /// ability (an ETB trigger, an `mv_max_x` filter) can still reference "X" once the casting
@@ -477,6 +508,10 @@ pub(crate) struct Permanent {
     /// "put X +1/+1 counters on [a separate token]" ETB is the case that actually needs it, since
     /// nothing places counters on Fractal Harness itself. 0 for a token or a permanent with no
     /// {X} in its cost.
+    ///
+    /// An as-enters replacement effect can write it too ([`Event::EnteredWithXSet`]): Wood
+    /// Elemental's "the number of Forests sacrificed as it entered" is a number fixed at entry and
+    /// read back by an ability, which is exactly what this slot holds.
     pub(crate) entered_with_x: u32,
     /// How many times the spell that became this permanent paid its Multikicker cost (CR
     /// 702.33c), fixed for the rest of this permanent's existence — copied from
@@ -495,6 +530,14 @@ pub(crate) struct Permanent {
     /// dropped, rather than reanimating whatever moved in). `None` for every permanent whose
     /// spell had no chosen target, or wasn't cast with `enchant_graveyard` set.
     pub(crate) cast_time_enchant_target: Option<ObjectId>,
+    /// The permanent this one is paired with — Stangg's Twin token and Stangg himself, linked as
+    /// the token is created ([`Event::TwinLinked`]) and read back by
+    /// [`TargetSpec::LinkedTwin`](cards::TargetSpec). Held on *both* halves so either one's
+    /// "when the other leaves the battlefield" ability can still find its partner: the leaving
+    /// permanent's own record is gone by the time its trigger resolves, so the lookup always
+    /// scans the battlefield for the survivor that points back at it. `None` for every permanent
+    /// that isn't half of a printed pair.
+    pub(crate) linked_twin: Option<ObjectId>,
     /// The creature this [`CardDef::enchant_graveyard`] Aura reanimated and attached itself to —
     /// the object its rewritten enchant ability names (CR 613.3/702: "it loses 'enchant creature
     /// card in a graveyard' and gains 'enchant creature put onto the battlefield with this
@@ -690,6 +733,13 @@ pub(crate) struct Player {
     /// bumps this; drawing from an empty library ([`Event::DrewFromEmptyLibrary`]) does not —
     /// CR 120.3, you don't draw if the library is empty.
     pub(crate) draws_this_turn: u32,
+    /// Cards this player has drawn during the draw step they are currently in — reset as every
+    /// [`Step::Draw`] begins and bumped only while this player is the active player in that step,
+    /// so it is zero for everyone else and for every other step. Chains of Mephistopheles'
+    /// "except the first one they draw in each of their draw steps" reads it: the exempt draw is
+    /// the one taken while this is still 0. Counts drawing from an empty library too — CR 121.3
+    /// makes that an attempted draw, and the next one is no longer their first.
+    pub(crate) draws_this_draw_step: u32,
     /// How many times this player has lost life this turn (turn-scoped; reset each turn at
     /// untap) — the life-loss sibling of `draws_this_turn`. A [`Event::LifeChanged`] with a
     /// *negative* amount bumps this (CR 118.9/119.3 — only a decrease is a life loss; gaining
@@ -731,6 +781,11 @@ pub(crate) struct Player {
     /// each turn at untap). Feeds [`Condition::CastInstantOrSorceryThisTurn`] (Hall of Oracles's
     /// counter ability's activation restriction).
     pub(crate) instant_or_sorcery_cast_this_turn: bool,
+    /// Whether this player has cast a *sorcery* spell this turn (turn-scoped; reset each turn at
+    /// untap) — the sorcery-only sibling of `instant_or_sorcery_cast_this_turn` above. Feeds
+    /// [`cards::TargetSpec::PlayerWhoCastASorceryThisTurn`] (Backdraft's "choose a player who cast
+    /// one or more sorcery spells this turn").
+    pub(crate) sorcery_cast_this_turn: bool,
     /// The greatest mana value among instant and sorcery spells this player has cast this turn
     /// (turn-scoped; reset each turn at untap, 0 if none) — Rootha, Mastering the Moment's "X is
     /// the greatest mana value among instant and sorcery spells you've cast this turn." Feeds
@@ -742,6 +797,13 @@ pub(crate) struct Player {
     /// [`Amount::InstantsAndSorceriesCastThisTurn`]. A copied spell doesn't bump this —
     /// same "cast" boundary as `instant_or_sorcery_cast_this_turn` above.
     pub(crate) instants_and_sorceries_cast_this_turn: u32,
+    /// How many *instant* spells this player has cast this turn (turn-scoped; reset each turn at
+    /// untap, 0 if none) — the filter-scoped tally behind Ichneumon Druid's "an instant spell
+    /// other than the first instant spell that player casts each turn", read by
+    /// [`Game::cast_tally_for`] for [`cards::SpellFilter::Instant`]. The sorcery-inclusive
+    /// `instants_and_sorceries_cast_this_turn` above would count a sorcery towards the Druid's
+    /// "first instant" and let the second instant slip through.
+    pub(crate) instant_spells_cast_this_turn: u32,
     /// Whether this player may cast spells this turn as though they had flash (turn-scoped;
     /// reset each turn at untap) — CR 601.3a, granted by [`Effect::Misc(MiscEffect::GrantFlashThisTurn)`]
     /// (Alchemist's Refuge). Unfiltered: every spell, not a subset. Read by
@@ -752,6 +814,17 @@ pub(crate) struct Player {
     /// [`Effect::Misc(MiscEffect::GrantChannelColorlessManaThisTurn)`]. Read by
     /// [`Game::channel_colorless_mana`](crate::Game::channel_colorless_mana).
     pub(crate) channel_colorless_mana_this_turn: bool,
+    /// Whether this player may spend mana as though it were mana of any type to pay a spell's mana
+    /// cost (turn-scoped; reset each turn at untap) — CR 609.4b, granted by
+    /// [`Effect::Misc(MiscEffect::GrantSpendManaAsAnyTypeForOneSpellThisTurn)`] (North Star).
+    /// Widens [`Game::mana_substitutions`](crate::Game) into every color pair while it holds, and
+    /// is cleared by the next [`Event::SpellCast`] this player makes — North Star's "for one
+    /// spell."
+    /// ponytail: colors only. The card says "any *type*", which includes colorless {C} pips;
+    /// nothing in this pool prints a {C} pip a North Star player would want to relax, and
+    /// [`ManaPool::substituted`] is a color→color widening. Widen the substitution vocabulary if
+    /// a {C} cost ever needs it.
+    pub(crate) spend_mana_as_any_type_this_turn: bool,
     /// Whether this player has already used Serra Paragon's graveyard-play permission this turn
     /// (turn-scoped; reset each turn at untap) — CR 118.9's "once during each of your turns."
     /// Set when a land / permanent spell is played or cast from the graveyard under
@@ -763,6 +836,21 @@ pub(crate) struct Player {
     /// can't cast spells." Set by [`Event::AttackerDeclared`] (`Game::apply`), keyed by the
     /// attacker's own controller; read by [`Game::cant_cast_if_attacked_this_turn`].
     pub(crate) attacked_this_turn: bool,
+    /// Whether a nontoken permanent entered the battlefield under this player's control this turn
+    /// — the second half of Arboria's "unless that player cast a spell or put a nontoken permanent
+    /// onto the battlefield during their last turn". The existing
+    /// `nontoken_creatures_entered_this_turn` tally next to it is creature-only, which Arboria is
+    /// not. Read once per turn, at this player's own cleanup step, and reset there (see
+    /// [`Game::roll_own_turn_history`]) rather than at the shared Untap reset — the point of the
+    /// pair is to survive the other seats' turns.
+    pub(crate) nontoken_permanent_entered_this_turn: bool,
+    /// Whether this player cast a spell or put a nontoken permanent onto the battlefield during
+    /// their *previous* turn (Arboria) — the per-player twin of
+    /// [`Permanent::attacked_on_last_own_turn`], rolled at the same cleanup step from
+    /// `spells_cast_this_turn` and `nontoken_permanent_entered_this_turn` above. `false` for a
+    /// player who has not yet taken a turn, which is what Arboria wants: no last turn, nothing done
+    /// during it, no attacking them.
+    pub(crate) acted_on_last_own_turn: bool,
     /// Monotonic counter for derive-per-op RNG — bumped once per random operation for this seat.
     pub(crate) op_iteration: u64,
     /// Times this player has cast their commander from the command zone (tax = 2× this).

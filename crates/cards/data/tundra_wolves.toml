@@ -1,0 +1,16 @@
+# First strike (This creature deals combat damage before creatures without first strike.)
+name = "Tundra Wolves"
+otags = ["french-vanilla", "real-life-animal-name"]
+id = "2155864e-5788-4e72-a800-e2cf25cf59a7"
+default_print = "15f573db-f4f8-4311-ba47-234e5171da3d"
+oracle = "First strike (This creature deals combat damage before creatures without first strike.)"
+subtypes = ["Wolf"]
+keywords = ["first_strike"]
+
+[cost]
+white = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1

@@ -1,0 +1,90 @@
+# Enchant creature you control
+# When this Aura enters, tap enchanted creature and put three pupa counters on this Aura.
+# Enchanted creature doesn't untap during your untap step if this Aura has a pupa counter on it.
+# At the beginning of your upkeep, remove a pupa counter from this Aura. If you can't, sacrifice
+# it, put a +1/+1 counter on enchanted creature, and that creature gains flying.
+name = "Cocoon"
+otags = ["single-english-word-name", "triggered-ability"]
+id = "9e35d450-00af-4f40-a4ee-bc7844ff5628"
+default_print = "a82c87b1-de37-4423-a1a4-533a1d8108b2"
+oracle = "Enchant creature you control\nWhen this Aura enters, tap enchanted creature and put three pupa counters on this Aura.\nEnchanted creature doesn't untap during your untap step if this Aura has a pupa counter on it.\nAt the beginning of your upkeep, remove a pupa counter from this Aura. If you can't, sacrifice it, put a +1/+1 counter on enchanted creature, and that creature gains flying."
+subtypes = ["Aura"]
+enchant = { types = "creature", controller = "you" }
+
+[cost]
+green = 1
+
+[kind]
+type = "aura"
+
+# When this Aura enters, tap enchanted creature and put three pupa counters on this Aura.
+[[abilities]]
+oracle = "When this Aura enters, tap enchanted creature and put three pupa counters on this Aura."
+timing = "etb"
+
+# tap enchanted creature
+[[abilities.effects]]
+type = "control"
+mode = "tap_target"
+target = "enchanted_creature"
+
+# and put three pupa counters on this Aura.
+[[abilities.effects]]
+type = "counters"
+mode = "put_counters"
+count = 3
+target = "this"
+kind = "pupa"
+
+# Enchanted creature doesn't untap during your untap step if this Aura has a pupa counter on it.
+[[abilities]]
+oracle = "Enchanted creature doesn't untap during your untap step if this Aura has a pupa counter on it."
+timing = "static"
+condition = { type = "compare", left = { per_counter_of_kind = "pupa" }, op = "at_least", right = 1 }
+
+# Enchanted creature doesn't untap during your untap step
+[[abilities.effects]]
+type = "static"
+mode = "grant_to_attached"
+doesnt_untap = true
+
+# At the beginning of your upkeep, remove a pupa counter from this Aura.
+[[abilities]]
+oracle = "At the beginning of your upkeep, remove a pupa counter from this Aura."
+timing = "upkeep"
+condition = { type = "compare", left = { per_counter_of_kind = "pupa" }, op = "at_least", right = 1 }
+
+# remove a pupa counter from this Aura.
+[[abilities.effects]]
+type = "counters"
+mode = "remove_counter_from_self"
+kind = "pupa"
+
+# At the beginning of your upkeep, … If you can't [remove a pupa counter], sacrifice it, put a
+# +1/+1 counter on enchanted creature, and that creature gains flying.
+# ponytail: the "if you can't" half is its own upkeep trigger with the complementary
+# intervening-if, and the sacrifice is written last so `enchanted_creature` still resolves for the
+# two effects above it — the printed order sacrifices first and then leans on last known
+# information, which lands on the same board.
+[[abilities]]
+timing = "upkeep"
+condition = { type = "compare", left = { per_counter_of_kind = "pupa" }, op = "at_most", right = 0 }
+
+# put a +1/+1 counter on enchanted creature
+[[abilities.effects]]
+type = "counters"
+mode = "put_counters"
+count = 1
+target = "enchanted_creature"
+
+# and that creature gains flying.
+[[abilities.effects]]
+type = "pump"
+mode = "grant_keywords_indefinitely"
+target = "enchanted_creature"
+keywords = ["flying"]
+
+# sacrifice it
+[[abilities.effects]]
+type = "sacrifice"
+mode = "source"

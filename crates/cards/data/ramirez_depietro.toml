@@ -1,0 +1,19 @@
+# First strike
+name = "Ramirez DePietro"
+otags = ["deprecated-legend-type", "french-vanilla"]
+id = "48b9c510-03ed-41cb-8c17-16110d447490"
+default_print = "c9890742-f1cb-41fd-bf14-297b3ca88b93"
+oracle = "First strike"
+legendary = true
+subtypes = ["Human", "Pirate"]
+keywords = ["first_strike"]
+
+[cost]
+generic = 3
+blue = 1
+black = 2
+
+[kind]
+type = "creature"
+power = 4
+toughness = 3

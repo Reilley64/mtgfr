@@ -2,7 +2,7 @@
 //! until wired; `to_pb` exists for the round-trip tests.
 #![allow(dead_code)]
 
-use schema::{IntentEnvelope, WireIntent};
+use schema::{IntentEnvelope, WireBand, WireIntent};
 
 use crate::grpc::map::common::{
     opt_wire_target_from_pb, u8_trunc, wire_attack_from_pb, wire_attack_to_pb, wire_block_from_pb,
@@ -109,12 +109,18 @@ pub fn wire_intent_to_pb(intent: WireIntent) -> pb::WireIntent {
             discard_cost,
             x,
         }),
-        WireIntent::DeclareAttackers { player, attackers } => {
-            Intent::DeclareAttackers(pb::WireIntentDeclareAttackers {
-                player: u32::from(player),
-                attackers: attackers.into_iter().map(wire_attack_to_pb).collect(),
-            })
-        }
+        WireIntent::DeclareAttackers {
+            player,
+            attackers,
+            bands,
+        } => Intent::DeclareAttackers(pb::WireIntentDeclareAttackers {
+            player: u32::from(player),
+            attackers: attackers.into_iter().map(wire_attack_to_pb).collect(),
+            bands: bands
+                .into_iter()
+                .map(|b| pb::WireBand { members: b.members })
+                .collect(),
+        }),
         WireIntent::DeclareBlockers { player, blocks } => {
             Intent::DeclareBlockers(pb::WireIntentDeclareBlockers {
                 player: u32::from(player),
@@ -551,12 +557,18 @@ pub fn wire_intent_from_pb(intent: pb::WireIntent) -> Result<WireIntent, String>
             discard_cost,
             x,
         },
-        Intent::DeclareAttackers(pb::WireIntentDeclareAttackers { player, attackers }) => {
-            WireIntent::DeclareAttackers {
-                player: u8_trunc(player),
-                attackers: attackers.into_iter().map(wire_attack_from_pb).collect(),
-            }
-        }
+        Intent::DeclareAttackers(pb::WireIntentDeclareAttackers {
+            player,
+            attackers,
+            bands,
+        }) => WireIntent::DeclareAttackers {
+            player: u8_trunc(player),
+            attackers: attackers.into_iter().map(wire_attack_from_pb).collect(),
+            bands: bands
+                .into_iter()
+                .map(|b| WireBand { members: b.members })
+                .collect(),
+        },
         Intent::DeclareBlockers(pb::WireIntentDeclareBlockers { player, blocks }) => {
             WireIntent::DeclareBlockers {
                 player: u8_trunc(player),
@@ -974,6 +986,26 @@ mod tests {
         };
         let pb = intent_envelope_to_pb(envelope.clone());
         assert_eq!(intent_envelope_from_pb(pb).unwrap(), envelope);
+    }
+
+    // CR 702.22c: the declared band must survive the gRPC edge, or the client can stage one and the
+    // engine still sees a flat attacker list.
+    #[test]
+    fn declared_attacking_bands_round_trip_through_pb() {
+        let attack = |attacker| schema::WireAttack {
+            attacker,
+            defender: 1,
+            defender_planeswalker: None,
+        };
+        let intent = WireIntent::DeclareAttackers {
+            player: 0,
+            attackers: vec![attack(5), attack(6)],
+            bands: vec![WireBand {
+                members: vec![5, 6],
+            }],
+        };
+        let pb = wire_intent_to_pb(intent.clone());
+        assert_eq!(wire_intent_from_pb(pb).unwrap(), intent);
     }
 
     #[test]

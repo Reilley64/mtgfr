@@ -52,6 +52,14 @@ The rules engine SHALL emit full-information events and game state and remain au
 - **WHEN** the engine pauses on a private library-top, search, or discard choice
 - **THEN** the pending-choice view is emitted only to the awaited seat
 
+#### Scenario: A permanent that reveals hidden zones widens the projection, not the engine
+- **WHEN** a battlefield permanent makes every hand public (Revelation) or every library top public (Field of Dreams)
+- **THEN** the projection itemizes those cards into every seat's visible state, and the engine's rules logic still never branches on who can see what
+
+Each such widening SHALL be derived live from battlefield static abilities and read only by the
+board projection. Each SHALL default to revealing nothing, so a projection that fails to notice the
+permanent over-hides rather than leaks.
+
 ### Requirement: Visible state is a complete redacted board snapshot
 Each viewer's visible state SHALL carry turn structure, per-seat public player views (life, commander tax and damage, hand and library counts, mana pool, username, public avatar hash without email), every object visible to that viewer, the stack (bottom-first) with labels and targets, combat declaration state including attackers that remain blocked after blockers leave, optional pending choice, the viewer's own legal actions (empty for spectators), priority/yield flags, stack-hold countdown, and whether pre-game mulligans are in progress. During mulligans, each player view SHALL also carry public mulligan status fields while card identities remain private under ordinary hand redaction.
 
@@ -103,6 +111,16 @@ Client-to-server game actions SHALL use an intent envelope with one arm per inte
 - **WHEN** an intent is rejected for a game rule reason
 - **THEN** the acknowledgment includes a message reference the client can format, not only a free-form English string
 
+#### Scenario: One declare-attackers arm carries both plain and banded attacks
+- **WHEN** the client declares attackers with no band
+- **THEN** the empty `bands` field maps to the plain declare-attackers engine intent
+- **WHEN** the client declares attackers with at least one band
+- **THEN** the populated `bands` field maps to the banded engine intent (CR 702.22c)
+
+The declare-attackers arm SHALL carry `bands` as a repeated wrapper message alongside `attackers`,
+since proto3 has no repeated-of-repeated. The same wrapper shape SHALL be mirrored in `crates/schema`
+and in the client's hand-written wire types, so the generic `protoMap` walk needs no per-field code.
+
 ### Requirement: Player-facing game text uses message references
 Server-authored player-facing game text (rejects, stack and action labels, pending-choice effect and mode labels, auto-action notices, and catalog ability summaries) SHALL be carried as message references: a stable key, typed params, and optional child references. English prose SHALL live in the client catalog. Card and object names that identify visible objects MAY remain plain strings; hidden names MUST NOT be embedded in message-reference params. Auth, lobby, and deck gRPC status English messages are outside this game-text contract.
 
@@ -118,7 +136,7 @@ Each stack entry for an ability SHALL carry the one printed sentence that abilit
 - **THEN** the stack entry's ability sentence is empty and the client renders the entry's label
 
 ### Requirement: Pending choices project to a stable generic wire shape
-The pending-choice view oneof SHALL cover every engine pause the board renders (targets, payments, combat damage, digs, search, edicts, modes, copy target, legend-rule keep, mana color, piles, partition, dredge, and related prompts). Spell-target and ability-target pauses SHALL project as a shared choose-target shape. Repeatable yes/no and draw-up-to loops SHALL use shared generic arms. Choice items SHALL carry display labels so the prompt UI need not join against the object list for visible identity. The choose-copy-target arm SHALL carry a discriminator when the same answer shape is reused for a non-copy primer such as optional put-counter-on-creature.
+The pending-choice view oneof SHALL cover every engine pause the board renders (targets, payments, combat damage, digs, search, edicts, modes, copy target, legend-rule keep, mana color, piles, partition, dredge, and related prompts). Spell-target and ability-target pauses SHALL project as a shared choose-target shape. Repeatable yes/no and draw-up-to loops SHALL use shared generic arms. Choice items SHALL carry display labels so the prompt UI need not join against the object list for visible identity. The choose-copy-target arm SHALL carry a discriminator per non-copy pause that reuses its "one chosen object" answer shape — optional put-counter-on-creature, re-aim of a chosen creature, and choose-a-damage-source — so clients swap prompt wording without a new answer shape or a new arm.
 
 #### Scenario: Optional put-counter reuses copy-target answers
 - **WHEN** the engine pauses on optional put-counter-on-creature

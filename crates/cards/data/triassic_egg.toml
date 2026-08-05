@@ -1,0 +1,64 @@
+# {3}, {T}: Put a hatchling counter on this artifact.
+# Sacrifice this artifact: Choose one. Activate only if there are two or more hatchling counters on
+# this artifact.
+# • You may put a creature card from your hand onto the battlefield.
+# • Return target creature card from your graveyard to the battlefield.
+# ponytail: the "Choose one" is spelled as two sacrifice abilities rather than one modal ability —
+# `modal` is a card-level flag over a card's whole ability list, and this card also has the
+# unrelated counter ability. Both spellings pick a mode at announcement for the same cost under the
+# same gate (CR 601.2b), so they are indistinguishable at the table; make it a real mode set when a
+# card in the pool copies or counts activated abilities.
+name = "Triassic Egg"
+otags = ["activated-ability", "aesthetic-counter", "counter-fuel-aesthetic", "modal", "reanimate-creature", "sacrifice-self", "sneak-creature"]
+id = "4f27abe8-3e98-4bb8-afdb-e4b718d83032"
+default_print = "ce3756f7-0d99-4562-b32d-66de18a58fdf"
+oracle = "{3}, {T}: Put a hatchling counter on this artifact.\nSacrifice this artifact: Choose one. Activate only if there are two or more hatchling counters on this artifact.\n• You may put a creature card from your hand onto the battlefield.\n• Return target creature card from your graveyard to the battlefield."
+
+[cost]
+generic = 4
+
+[kind]
+type = "artifact"
+
+# {3}, {T}: Put a hatchling counter on this artifact.
+[[abilities]]
+oracle = "{3}, {T}: Put a hatchling counter on this artifact."
+timing = "activated"
+taps_self = true
+activation_cost = { generic = 3 }
+
+# Put a hatchling counter on this artifact.
+[[abilities.effects]]
+type = "counters"
+mode = "put_counters"
+count = 1
+target = "this"
+kind = "hatchling"
+
+# Sacrifice this artifact: … Activate only if there are two or more hatchling counters on this
+# artifact.
+# • You may put a creature card from your hand onto the battlefield.
+[[abilities]]
+timing = "activated"
+sacrifice = "this"
+condition = { type = "compare", left = { per_counter_of_kind = "hatchling" }, op = "at_least", right = 2 }
+
+# You may put a creature card from your hand onto the battlefield.
+[[abilities.effects]]
+type = "choice"
+mode = "put_creature_from_hand"
+keep = true
+
+# Sacrifice this artifact: … Activate only if there are two or more hatchling counters on this
+# artifact.
+# • Return target creature card from your graveyard to the battlefield.
+[[abilities]]
+timing = "activated"
+sacrifice = "this"
+condition = { type = "compare", left = { per_counter_of_kind = "hatchling" }, op = "at_least", right = 2 }
+
+# Return target creature card from your graveyard to the battlefield.
+[[abilities.effects]]
+type = "zone"
+mode = "reanimate_to_battlefield"
+target = "your_graveyard"

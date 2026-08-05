@@ -1,0 +1,31 @@
+# {T}: Lady Caleria deals 3 damage to target attacking or blocking creature.
+name = "Lady Caleria"
+otags = ["activated-ability", "burn-creature", "deprecated-legend-type", "hate-attacker", "hate-blocker", "repeatable-crime", "repeatable-removal", "spot-removal"]
+id = "74284bbc-b011-4e16-b8d5-7ddacc77f9d7"
+default_print = "84b9a2b7-6ff7-4a81-86ae-64cc77c23030"
+oracle = "{T}: Lady Caleria deals 3 damage to target attacking or blocking creature."
+legendary = true
+subtypes = ["Elf", "Archer"]
+
+[cost]
+generic = 3
+green = 2
+white = 2
+
+[kind]
+type = "creature"
+power = 3
+toughness = 6
+
+# {T}: Lady Caleria deals 3 damage to target attacking or blocking creature.
+[[abilities]]
+oracle = "{T}: Lady Caleria deals 3 damage to target attacking or blocking creature."
+timing = "activated"
+taps_self = true
+
+# Lady Caleria deals 3 damage to target attacking or blocking creature.
+[[abilities.effects]]
+type = "damage"
+mode = "target"
+amount = 3
+target = { permanent = { types = "creature", attacking_or_blocking = true } }

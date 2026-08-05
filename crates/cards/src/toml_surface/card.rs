@@ -5,7 +5,7 @@ use serde::Deserialize;
 use crate::de::{TimingName, arc_strs, one_u8};
 use crate::toml_surface::{CostToml, KindToml};
 use crate::{
-    Ability, AlternativeCost, Amount, BecomesTargetedScope, CardDef, CastXMax, Color,
+    Ability, Activator, AlternativeCost, Amount, BecomesTargetedScope, CardDef, CastXMax, Color,
     CombatDamageScope, Condition, Cost, CounterKind, CumulativeUpkeepCost, Effect, EnterAsCopy,
     EscapeCost, HandActivatedAbility, Keyword, PermanentFilter, SacrificeCost, SpellFilter,
     SpendToCastPredicate, Suspend, WatchedPlayer, intern_card_def,
@@ -56,6 +56,11 @@ pub struct AbilityToml {
     /// feeding whichever struct `timing` resolves to (`ActivationCost` or [`Ability`]).
     #[serde(default)]
     pub(crate) once_each_turn: bool,
+    /// "Activate no more than N times each turn" (CR 602.2b — Vampire Bats: "Activate no more
+    /// than twice each turn"), the general form of `once_each_turn` above. `None` leaves the cap
+    /// to `once_each_turn`.
+    #[serde(default)]
+    pub(crate) max_activations_per_turn: Option<u32>,
     /// "Activate only as a sorcery" (CR 602.5b): restricts activation to a legal
     /// sorcery-speed moment (Ozolith, the Shattered Spire's counter ability).
     #[serde(default)]
@@ -80,11 +85,20 @@ pub struct AbilityToml {
     /// *your* upkeep.
     #[serde(default)]
     pub(crate) only_during_your_upkeep: bool,
-    /// "Only this creature's owner may activate this ability" (CR 602.5c — Personal
-    /// Incarnation): the pool's one activation restriction keyed to ownership rather than
-    /// control.
+    /// "Activate only during the declare blockers step" (CR 602.5b — Lesser Werewolf): the step
+    /// alone, with no controller half — both seats are in the combat it belongs to.
     #[serde(default)]
-    pub(crate) only_owner_may_activate: bool,
+    pub(crate) only_during_declare_blockers: bool,
+    /// "Activate only before the combat damage step" (CR 602.5b — Angus Mackenzie): the
+    /// activation-side twin of `cast_only_before_combat_damage`. The widest window in this family
+    /// — the whole turn up to the first combat damage step, so the upkeep and the precombat main
+    /// phase are inside it, and it does not reopen afterwards.
+    #[serde(default)]
+    pub(crate) only_before_combat_damage_step: bool,
+    /// Who may activate this ability (CR 602.2b/602.5b/c) — see [`Activator`]. Defaults to
+    /// `controller`, the unstated CR 602.2 baseline.
+    #[serde(default)]
+    pub(crate) activator: Activator,
     /// "Return this to its owner's hand" as part of the cost (Rootha, Mercurial
     /// Artist's "Return Rootha to its owner's hand").
     #[serde(default)]
@@ -167,6 +181,12 @@ pub struct AbilityToml {
     /// trigger/timing.
     #[serde(default)]
     pub(crate) nth_each_turn: Option<u8>,
+    /// Restricts a `cast_spell` trigger to every matching cast *after* the watched player's
+    /// Nth that turn (Ichneumon Druid's "an instant spell other than the first instant spell
+    /// that player casts each turn" — `1`). `None` (the default, omitted in TOML) exempts no
+    /// cast. Ignored for every other trigger/timing.
+    #[serde(default)]
+    pub(crate) after_nth_each_turn: Option<u8>,
     /// Restricts a `cast_spell` trigger to a spell cast from its controller's hand (CR
     /// 601's default cast zone) — Dirgur Focusmage's "you cast … from your hand". `false`
     /// (the default, omitted in TOML) fires on a cast from any zone (flashback/escape,
@@ -180,6 +200,11 @@ pub struct AbilityToml {
     /// Decisive Mentor's "one or more" — `1`). Ignored for every other trigger/timing.
     #[serde(default)]
     pub(crate) at_least: u8,
+    /// Which counter kind a `you_remove_last_counter_from_this` trigger watches (Divine
+    /// Intervention's `intervention`). Required for that timing, ignored for every other
+    /// trigger/timing.
+    #[serde(default)]
+    pub(crate) counter_kind: Option<CounterKind>,
     /// Which cast a `spend_mana_to_cast` trigger accepts (Study Hall/Opal Palace's
     /// `commander`, Path of Ancestry's `creature_sharing_type_with_commander`). Ignored for
     /// every other trigger/timing; the field is required only when `timing =
@@ -231,7 +256,11 @@ pub struct CardToml {
     /// Nested faces/tokens may omit it (`""`).
     #[serde(default)]
     pub id: String,
-    /// Scryfall card UUID for the default Printing — required on top-level pool TOMLs.
+    /// Scryfall card UUID for the default Printing — required on top-level pool TOMLs. Token
+    /// profiles (`data/tokens/`) may omit it (`""`) when the token predates printed token cards
+    /// and has no Scryfall printing to key (fidelity increment #97) — an empty `default_print`
+    /// already renders as the card back client-side, so this is the faithful "no printing"
+    /// value rather than a gap.
     #[serde(default)]
     pub default_print: String,
     /// Printed card name and card-pool registry key. The filename is arbitrary; this field
@@ -262,6 +291,10 @@ pub struct CardToml {
     /// Snow supertype (CR 205.4g) — `snow = true`; absent (`false`) for every ordinary card.
     #[serde(default)]
     pub snow: bool,
+    /// World supertype (CR 205.4a) — `world = true`; absent (`false`) for every ordinary card.
+    /// Enforced by the world rule (CR 704.5k).
+    #[serde(default)]
+    pub world: bool,
     /// "This spell can't be countered" (CR 701.5g) — `uncounterable = true`; absent
     /// (`false`) for every ordinary card.
     #[serde(default)]
@@ -356,12 +389,26 @@ pub struct CardToml {
     /// that already happened). Absent (`false`) for every ordinary card.
     #[serde(default)]
     pub cast_only_during_declare_blockers: bool,
-    /// "Cast this spell only during your declare attackers step" (CR 601.3e — Camouflage) —
-    /// `cast_only_during_declare_attackers = true`: the attack-side twin of the window above,
-    /// and narrower still, since it is closed on every other player's turn as well as in every
-    /// other step. Absent (`false`) for every ordinary card.
+    /// "Cast this spell only during the declare attackers step" (CR 601.3e — Teleport) —
+    /// `cast_only_during_declare_attackers = true`: the attack-side twin of the window above, and
+    /// like it any player's step, since the printed restriction names the step rather than *your*
+    /// step. A card that does print "your" (Camouflage) adds the seat half as
+    /// `condition = { type = "during_your_turn" }` on its spell ability. Absent (`false`) for every
+    /// ordinary card.
     #[serde(default)]
     pub cast_only_during_declare_attackers: bool,
+    /// "Cast this spell only during an opponent's turn after their upkeep step" (CR 601.3e —
+    /// Reset) — `cast_only_after_upkeep = true` for the second half; the first half is
+    /// `cast_only_during_opponents_turn`. Closed through the upkeep, open from the draw step on.
+    /// Absent (`false`) for every ordinary card.
+    #[serde(default)]
+    pub cast_only_after_upkeep: bool,
+    /// "Cast this spell only after combat" (CR 601.3e — Glyph of Reincarnation) —
+    /// `cast_only_after_combat = true`: closed from untap through the end of combat step, open from
+    /// the postcombat main phase on. The phase-scoped mirror of `cast_only_before_combat_damage`.
+    /// Absent (`false`) for every ordinary card.
+    #[serde(default)]
+    pub cast_only_after_combat: bool,
     #[serde(default)]
     /// Machine-readable fidelity note for modeled divergences. Set this whenever a
     /// `# ponytail:` comment marks a deliberate simplification; leave absent for faithful
@@ -527,6 +574,7 @@ impl From<CardToml> for CardDef {
             enchant_graveyard: card.enchant_graveyard,
             legendary: card.legendary,
             snow: card.snow,
+            world: card.world,
             uncounterable: card.uncounterable,
             modal: card.modal,
             modal_choose: card.modal_choose,
@@ -555,6 +603,8 @@ impl From<CardToml> for CardDef {
             cast_only_before_combat_damage: card.cast_only_before_combat_damage,
             cast_only_during_declare_blockers: card.cast_only_during_declare_blockers,
             cast_only_during_declare_attackers: card.cast_only_during_declare_attackers,
+            cast_only_after_upkeep: card.cast_only_after_upkeep,
+            cast_only_after_combat: card.cast_only_after_combat,
             approximates: card.approximates.map(|s| &*Box::leak(s.into_boxed_str())),
             oracle: card.oracle.map(|s| &*Box::leak(s.into_boxed_str())),
             // Derived from `data/prints/` at pool load, never authored on the card.

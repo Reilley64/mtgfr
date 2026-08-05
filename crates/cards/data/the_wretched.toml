@@ -1,0 +1,29 @@
+# At end of combat, gain control of all creatures blocking this creature for as long as you
+# control this creature.
+name = "The Wretched"
+otags = ["hate-blocker", "theft-creature", "triggered-ability", "type-errata-name-self", "virtual-legendary"]
+id = "27af77e5-6680-43d3-9202-40be9b5d14a0"
+default_print = "edf30a58-f77c-4887-a0b2-9d939243d86e"
+oracle = "At end of combat, gain control of all creatures blocking this creature for as long as you control this creature."
+subtypes = ["Demon"]
+
+[cost]
+generic = 3
+black = 2
+
+[kind]
+type = "creature"
+power = 2
+toughness = 5
+
+# At end of combat, gain control of all creatures blocking this creature for as long as you
+# control this creature.
+[[abilities]]
+oracle = "At end of combat, gain control of all creatures blocking this creature for as long as you control this creature."
+timing = "end_of_combat"
+
+# gain control of all creatures blocking this creature for as long as you control this creature
+[[abilities.effects]]
+type = "control"
+mode = "gain_control_all_while"
+filter = { types = "creature", blocking_source = true }

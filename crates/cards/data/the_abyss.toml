@@ -1,0 +1,29 @@
+# At the beginning of each player's upkeep, destroy target nonartifact creature that player
+# controls of their choice. It can't be regenerated.
+name = "The Abyss"
+otags = ["removal-creature", "removal-destroy", "symmetrical", "triggered-ability"]
+id = "a02a7816-c967-4503-bb08-f8db44915250"
+default_print = "86a27d68-3e58-4ade-976d-36381beed451"
+oracle = "At the beginning of each player's upkeep, destroy target nonartifact creature that player controls of their choice. It can't be regenerated."
+world = true
+
+[cost]
+generic = 3
+black = 1
+
+[kind]
+type = "enchantment"
+
+# At the beginning of each player's upkeep, destroy target nonartifact creature that player
+# controls of their choice. It can't be regenerated.
+[[abilities]]
+oracle = "At the beginning of each player's upkeep, destroy target nonartifact creature that player controls of their choice. It can't be regenerated."
+timing = "each_upkeep"
+
+# destroy target nonartifact creature that player controls of their choice. It can't be
+# regenerated.
+[[abilities.effects]]
+type = "destroy"
+mode = "target"
+target = { permanent = { types = "creature", exclude = "artifact", controller = "active_player" } }
+cant_be_regenerated = true

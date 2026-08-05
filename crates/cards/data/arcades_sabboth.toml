@@ -1,0 +1,64 @@
+# Flying
+# At the beginning of your upkeep, sacrifice Arcades Sabboth unless you pay {G}{W}{U}.
+# Each untapped creature you control gets +0/+2 as long as it's not attacking.
+# {W}: Arcades Sabboth gets +0/+1 until end of turn.
+name = "Arcades Sabboth"
+otags = ["activated-ability", "anthem", "armoring", "cycle-dmr-tricolor-legend", "cycle-leg-elder-dragon", "deprecated-legend-type", "drawback", "evasion", "synergy-untapped", "toughness-boost-to-all", "triggered-ability", "unique-mana-cost"]
+id = "8ead94c5-8447-4f20-87ec-efdccde689fc"
+default_print = "175695bb-2630-4269-a407-9138c7008e81"
+oracle = "Flying\nAt the beginning of your upkeep, sacrifice Arcades Sabboth unless you pay {G}{W}{U}.\nEach untapped creature you control gets +0/+2 as long as it's not attacking.\n{W}: Arcades Sabboth gets +0/+1 until end of turn."
+legendary = true
+subtypes = ["Elder", "Dragon"]
+keywords = ["flying"]
+
+[cost]
+generic = 2
+white = 2
+blue = 2
+green = 2
+
+[kind]
+type = "creature"
+power = 7
+toughness = 7
+
+# At the beginning of your upkeep, sacrifice Arcades Sabboth unless you pay {G}{W}{U}.
+[[abilities]]
+oracle = "At the beginning of your upkeep, sacrifice Arcades Sabboth unless you pay {G}{W}{U}."
+timing = "upkeep"
+
+# sacrifice Arcades Sabboth unless you pay {G}{W}{U}
+[[abilities.effects]]
+type = "choice"
+mode = "pay_or_else"
+cost = { green = 1, white = 1, blue = 1 }
+otherwise = [{ type = "sacrifice", mode = "source" }]
+
+# Each untapped creature you control gets +0/+2 as long as it's not attacking.
+[[abilities]]
+oracle = "Each untapped creature you control gets +0/+2 as long as it's not attacking."
+timing = "static"
+
+# Each untapped creature you control gets +0/+2 as long as it's not attacking.
+# Both halves gate per affected creature and are re-read live: `tapped = false` is "Each untapped creature", and
+# `not_attacking` is "as long as it's not attacking" — a vigilant attacker is untapped yet still loses the boost.
+# "you control" comes from the anthem's own default controller scope, not from the filter.
+[[abilities.effects]]
+type = "static"
+mode = "filtered_anthem"
+power = 0
+toughness = 2
+filter = { types = "creature", tapped = false, not_attacking = true }
+
+# {W}: Arcades Sabboth gets +0/+1 until end of turn.
+[[abilities]]
+oracle = "{W}: Arcades Sabboth gets +0/+1 until end of turn."
+timing = "activated"
+activation_cost = { white = 1 }
+
+# Arcades Sabboth gets +0/+1 until end of turn.
+[[abilities.effects]]
+type = "pump"
+mode = "pump_self_until_end_of_turn"
+power = 0
+toughness = 1

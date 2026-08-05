@@ -1,0 +1,29 @@
+# {2}, {T}: Prevent all combat damage that would be dealt by target creature this turn.
+name = "Horn of Deafening"
+otags = ["activated-ability", "damage-prevention", "repeatable-crime"]
+id = "50a1c14a-003f-424b-bb8e-2e2d51465a90"
+default_print = "bfbd36dd-3e6f-40c7-a166-0e8ecaabe7fa"
+oracle = "{2}, {T}: Prevent all combat damage that would be dealt by target creature this turn."
+
+[cost]
+generic = 4
+
+[kind]
+type = "artifact"
+
+# {2}, {T}: Prevent all combat damage that would be dealt by target creature this turn.
+[[abilities]]
+oracle = "{2}, {T}: Prevent all combat damage that would be dealt by target creature this turn."
+timing = "activated"
+activation_cost = { generic = 2 }
+taps_self = true
+
+# Prevent all combat damage that would be dealt by target creature this turn.
+[[abilities.effects]]
+type = "misc"
+mode = "prevent_next_damage"
+target = "creature"
+target_is_source = true
+any_recipient = true
+combat_only = true
+all_damage = true

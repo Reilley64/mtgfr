@@ -1,0 +1,40 @@
+# At the beginning of your draw step, you may draw two additional cards. If you do, choose two
+# cards in your hand drawn this turn. For each of those cards, pay 4 life or put the card on
+# top of your library.
+name = "Sylvan Library"
+id = "92eed395-62ca-4293-882b-8565c40daab5"
+default_print = "6ada256f-2e55-4c1f-b4d3-d7b10b498956"
+oracle = "At the beginning of your draw step, you may draw two additional cards. If you do, choose two cards in your hand drawn this turn. For each of those cards, pay 4 life or put the card on top of your library."
+
+[cost]
+generic = 1
+green = 1
+
+[kind]
+type = "enchantment"
+
+# At the beginning of your draw step, you may draw two additional cards. If you do, choose two
+# cards in your hand drawn this turn. For each of those cards, pay 4 life or put the card on
+# top of your library.
+[[abilities]]
+oracle = "At the beginning of your draw step, you may draw two additional cards. If you do, choose two cards in your hand drawn this turn. For each of those cards, pay 4 life or put the card on top of your library."
+timing = "draw_step"
+optional = true
+
+# you may draw two additional cards.
+[[abilities.effects]]
+type = "draw"
+mode = "cards"
+count = 2
+
+# If you do, choose two cards in your hand drawn this turn. For each of those cards, pay 4 life
+# or put the card on top of your library.
+# ponytail: one subset choice instead of two per-card either/ors — "choose two, then for each pay
+# 4 life or put it back" is the same offer as "put up to two of them back and pay 4 life for each
+# one you don't", and the second is a pause the pool already has.
+[[abilities.effects]]
+type = "choice"
+mode = "put_from_hand_on_top"
+count = 2
+drawn_this_turn = true
+life_per_declined = 4

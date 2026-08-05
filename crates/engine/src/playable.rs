@@ -373,12 +373,40 @@ impl Game {
         if def.cast_only_during_declare_blockers && self.step != Step::DeclareBlockers {
             return false;
         }
-        // "Cast this spell only during your declare attackers step" (CR 601.3e — Camouflage): the
-        // attack-side twin, with the extra "your" the blocker one doesn't print — Camouflage hides
-        // *your* attackers, so someone else's combat is never its window.
-        if def.cast_only_during_declare_attackers
-            && (self.step != Step::DeclareAttackers || self.active_player != player)
-        {
+        // "Cast this spell only during the declare attackers step" (CR 601.3e — Teleport): the
+        // attack-side twin of the window above, read the same way. The step belongs to the active
+        // player's turn but priority inside it goes around the table (CR 506.3), and the printed
+        // restriction names the step rather than *your* step — so every player's declare attackers
+        // step is a window.
+        if def.cast_only_during_declare_attackers && self.step != Step::DeclareAttackers {
+            return false;
+        }
+        // "…after their upkeep step" (CR 601.3e — Reset): closed for the upkeep and open from the
+        // draw step on. `Step`'s ordering is the turn order, so this is the mirror of the
+        // `before`-windows above. The untap step needs no mention — nobody receives priority
+        // there (CR 502.3) — but it sorts before upkeep anyway, so the comparison covers it.
+        if def.cast_only_after_upkeep && self.step <= Step::Upkeep {
+            return false;
+        }
+        // "Cast this spell only after combat" (CR 601.3e — Glyph of Reincarnation): the phase-scoped
+        // mirror of the sibling above. Combat is over once the end of combat step has ended, so the
+        // postcombat main phase is the first open moment — and `Step`'s turn ordering makes that the
+        // single comparison. A turn with no combat phase never reaches those steps at all.
+        if def.cast_only_after_combat && self.step < Step::Main2 {
+            return false;
+        }
+        // A `condition` on a *spell* ability is a cast restriction (CR 601.3e), not the
+        // intervening-if (CR 603.4) it is on a triggered one: a spell ability never triggers, so
+        // cast time is the only moment it can be read. It composes with the card-level windows
+        // above — Camouflage prints "only during *your* declare attackers step", whose step half is
+        // the flag above and whose seat half is `during_your_turn` here.
+        // ponytail: only `during_your_turn` is wired. Route this through `condition_holds` when a
+        // card prints a board-state cast condition ("Cast this spell only if …").
+        let cast_only_during_your_turn = def
+            .abilities
+            .iter()
+            .any(|a| a.timing == Timing::Spell && a.condition == Some(Condition::DuringYourTurn));
+        if cast_only_during_your_turn && self.active_player != player {
             return false;
         }
         // "Players can't cast spells during combat" (CR 601.2i-adjacent — Basandra, Battle
@@ -713,6 +741,7 @@ mod tests {
 
     fn flash_cost(generic: u8) -> Cost {
         Cost {
+            x_defined: None,
             generic,
             colored: [0; Color::COUNT],
             colorless: 0,
@@ -736,6 +765,7 @@ mod tests {
             },
             legendary: false,
             snow: false,
+            world: false,
             uncounterable: false,
             modal,
             modal_choose: 1,
@@ -761,6 +791,7 @@ mod tests {
                                 multikicker_scaled: false,
                                 kicked_scaled: false,
                                 main_phase_scaled: false,
+                                unbounded: false,
                             },
                             divided: Division::None,
                             cant_be_regenerated: false,
@@ -809,6 +840,8 @@ mod tests {
             cast_only_before_combat_damage: false,
             cast_only_during_declare_blockers: false,
             cast_only_during_declare_attackers: false,
+            cast_only_after_upkeep: false,
+            cast_only_after_combat: false,
             approximates: None,
             oracle: None,
             sets: empty_slice(),

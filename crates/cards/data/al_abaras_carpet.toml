@@ -1,0 +1,28 @@
+# {5}, {T}: Prevent all damage that would be dealt to you this turn by attacking creatures without
+# flying.
+name = "Al-abara's Carpet"
+otags = ["activated-ability", "damage-prevention-you", "fog-selective", "hate-attacker", "namesake-spell", "virtual-legendary"]
+id = "0f5b0c77-1e3d-46a1-ae0e-03ed79196cd9"
+default_print = "e9f381b3-fbfd-4bd0-87e8-5c2615f8e8e8"
+oracle = "{5}, {T}: Prevent all damage that would be dealt to you this turn by attacking creatures without flying."
+
+[cost]
+generic = 5
+
+[kind]
+type = "artifact"
+
+# {5}, {T}: Prevent all damage that would be dealt to you this turn by attacking creatures without
+# flying.
+[[abilities]]
+oracle = "{5}, {T}: Prevent all damage that would be dealt to you this turn by attacking creatures without flying."
+timing = "activated"
+activation_cost = { generic = 5 }
+taps_self = true
+
+# Prevent all damage that would be dealt to you this turn by attacking creatures without flying.
+[[abilities.effects]]
+type = "misc"
+mode = "prevent_next_damage"
+all_damage = true
+from_filter = { types = "creature", attacking = true, without_flying = true }

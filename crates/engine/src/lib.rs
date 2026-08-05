@@ -49,6 +49,7 @@ mod triggers;
 mod types;
 mod zones;
 
+pub use crate::core::GameOutcome;
 pub use message::*;
 pub use mulligan::hand_size_after_mulligans;
 /// What a would-be counter placement is aimed at — see [`replacements::CounterRecipient`].
@@ -58,6 +59,8 @@ pub(crate) use resolution::ResolveCtx;
 /// All-players search fan-out continuation state (Veteran Explorer) — see
 /// [`resolution::SearchFanout`].
 pub(crate) use resolution::SearchFanout;
+/// The one draw funnel's parked batch and its follow-up rider — see [`Game::draw_with_replacements`].
+pub(crate) use resolution::{DrawAfter, DrawBatch};
 pub use state::{ControlCondition, DyingCreatureStats};
 pub(crate) use state::{Modifier, ModifierDuration, ModifierKind};
 pub use types::*;
@@ -187,6 +190,19 @@ pub struct Game {
     /// new object (CR 400.7) and rightly won't match. Reset alongside
     /// [`permanents_died_this_turn`](Self::permanents_died_this_turn) at every Untap step.
     pub(crate) damaged_this_turn: Vec<(ObjectId, ObjectId)>,
+    /// `(source, recipient, amount)` rows for every point of damage actually dealt this turn (CR
+    /// 120.3), recorded in `apply` as each damage event lands so prevention and redirection have
+    /// already had their say. The history behind `Amount::DamageDealtToThisThisTurnByOthersNamed`
+    /// (Blazing Effigy) and `Condition::DealtDamageToOpponentThisTurn` (Whirling Dervish). Unlike
+    /// [`damaged_this_turn`](Self::damaged_this_turn) — which answers "did this hit that at all" —
+    /// these rows keep the amount and the source, so several hits from the same source are several
+    /// rows. Reset at every Untap step.
+    pub(crate) damage_dealt_this_turn: Vec<(ObjectId, Target, i32)>,
+    /// Every hand-object id drawn this turn, in draw order — Sylvan Library's "choose two cards in
+    /// your hand **drawn this turn**". Pushed by `Event::CardDrawn`, reset at every Untap step.
+    /// Ids, not counts, because the card that matters is a specific object: a card drawn and then
+    /// put back is a new object when it returns (CR 400.7) and stops matching, which is right.
+    pub(crate) drawn_this_turn: Vec<ObjectId>,
     /// `(looker, card)` pairs for every hand card a player has privately looked at (CR 701.20 —
     /// Glasses of Urza). Read only by the wire redaction layer, which itemizes a hand card to its
     /// owner and to anyone holding a pair for it. Never cleared: a card that leaves the hand is a
@@ -194,6 +210,14 @@ pub struct Game {
     /// drawn after the look were never in it — which is exactly what "look at" means, as against a
     /// standing window onto the hand.
     pub(crate) hand_cards_seen: Vec<(PlayerId, ObjectId)>,
+    /// `(card, owner)` for every hand card that came back from a death replacement which shuts it
+    /// down for a turn cycle — Firestorm Phoenix's "Until that player's next turn, that player
+    /// plays with that card revealed in their hand and can't play it." Both halves of that clause
+    /// read this one list: [`Game::has_seen_hand_card`] treats an entry as a standing window onto
+    /// the card for every seat, and the cast path refuses it. Cleared for the active player at
+    /// their untap step, the same "until your next turn" boundary
+    /// [`CombatExtras::repelled_until_next_turn`] uses.
+    pub(crate) revealed_unplayable_until_next_turn: Vec<(ObjectId, PlayerId)>,
     /// "Prevent the next N damage that would be dealt to `target` this turn" (CR 615 — Healing
     /// Salve, Samite Healer, Conservator): each entry is a *consumable* shield, `(what it
     /// protects, how many points are left on it)`. Spent at the two damage chokes
@@ -244,6 +268,9 @@ pub struct Game {
     /// [`Game::finish_instant_sorcery_resolution`], so the one-spell-at-a-time resolution model
     /// is enough lifetime management.
     pub(crate) resolution_finish: Option<FinishPolicy>,
+    /// The game ended in a draw (CR 104.4 — Divine Intervention). Not a loss for anyone, so it
+    /// can't be read off the players' `lost` flags; see [`Game::outcome`].
+    pub(crate) drawn: bool,
 }
 
 impl Game {
@@ -270,6 +297,14 @@ impl Game {
     }
 
     fn submit_inner(&mut self, intent: Intent) -> Result<Vec<Event>, Reject> {
+        // CR 104.4b: a draw ends the game immediately for every player still in it, so nothing
+        // further is legal — not even conceding.
+        // ponytail: reuses `WrongTiming` rather than minting a `Reject::GameOver`, which would need
+        // a proto/client arm; add the dedicated variant when the client shows an end-of-game state.
+        if self.drawn {
+            return Err(Reject::WrongTiming);
+        }
+
         // While a choice is pending, only an answer intent from that player is legal (the
         // specific handler rejects an answer that doesn't match the pending choice's kind).
         // Conceding is the exception: a player must be able to quit whoever the game is waiting on,
@@ -408,6 +443,11 @@ impl Game {
                 Intent::DeclareAttackers { player, attackers } => {
                     self.declare_attackers(player, &attackers)?
                 }
+                Intent::DeclareAttackersInBands {
+                    player,
+                    attackers,
+                    bands,
+                } => self.declare_attackers_in_bands(player, &attackers, &bands)?,
                 Intent::DeclareBlockers { player, blocks } => {
                     self.declare_blockers(player, &blocks)?
                 }
@@ -677,6 +717,7 @@ mod forced_action_tests {
         let mut game = Game::with_players(2, 0);
         game.pending_choice = Some(PendingChoice::ChooseTarget {
             player: P0,
+            controller: P0,
             source: 0,
             effect: Some(Effect::Draw(DrawEffect::Cards {
                 who: PlayerSet::You,
@@ -704,6 +745,7 @@ mod forced_action_tests {
         let mut game = Game::with_players(2, 0);
         game.pending_choice = Some(PendingChoice::ChooseTarget {
             player: P0,
+            controller: P0,
             source: 0,
             effect: Some(Effect::Draw(DrawEffect::Cards {
                 who: PlayerSet::You,
@@ -727,6 +769,7 @@ mod forced_action_tests {
         let mut game = Game::with_players(2, 0);
         game.pending_choice = Some(PendingChoice::ChooseTarget {
             player: P0,
+            controller: P0,
             source: 0,
             effect: Some(Effect::Draw(DrawEffect::Cards {
                 who: PlayerSet::You,
@@ -867,6 +910,7 @@ mod refresh_actions_tests {
             },
             legendary: false,
             snow: false,
+            world: false,
             uncounterable: false,
             enchant: None,
             enchant_graveyard: false,
@@ -892,6 +936,8 @@ mod refresh_actions_tests {
             cast_only_before_combat_damage: false,
             cast_only_during_declare_blockers: false,
             cast_only_during_declare_attackers: false,
+            cast_only_after_upkeep: false,
+            cast_only_after_combat: false,
             approximates: None,
             oracle: None,
             sets: empty_slice(),
@@ -988,6 +1034,7 @@ mod refresh_actions_tests {
                 },
                 legendary: false,
                 snow: false,
+                world: false,
                 uncounterable: false,
                 enchant: None,
                 enchant_graveyard: false,
@@ -1013,6 +1060,8 @@ mod refresh_actions_tests {
                 cast_only_before_combat_damage: false,
                 cast_only_during_declare_blockers: false,
                 cast_only_during_declare_attackers: false,
+                cast_only_after_upkeep: false,
+                cast_only_after_combat: false,
                 approximates: None,
                 oracle: None,
                 sets: empty_slice(),

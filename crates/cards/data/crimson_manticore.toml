@@ -1,0 +1,34 @@
+# Flying
+# {R}, {T}: This creature deals 1 damage to target attacking or blocking creature.
+name = "Crimson Manticore"
+otags = ["activated-ability", "burn-creature", "evasion", "hate-attacker", "hate-blocker", "pinger", "repeatable-crime", "repeatable-removal", "spot-removal"]
+id = "35d4e500-28c8-44c9-990f-3aa25ed5dd14"
+default_print = "9de6ffe8-70af-4505-bc2d-b0113cd6db99"
+oracle = "Flying\n{R}, {T}: This creature deals 1 damage to target attacking or blocking creature."
+subtypes = ["Manticore"]
+keywords = ["flying"]
+
+[cost]
+generic = 2
+red = 2
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# {R}, {T}: This creature deals 1 damage to target attacking or blocking creature.
+[[abilities]]
+oracle = "{R}, {T}: This creature deals 1 damage to target attacking or blocking creature."
+timing = "activated"
+taps_self = true
+
+[abilities.activation_cost]
+red = 1
+
+# This creature deals 1 damage to target attacking or blocking creature.
+[[abilities.effects]]
+type = "damage"
+mode = "target"
+amount = 1
+target = { permanent = { types = "creature", attacking_or_blocking = true } }

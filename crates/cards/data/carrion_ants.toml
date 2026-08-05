@@ -1,0 +1,31 @@
+# {1}: This creature gets +1/+1 until end of turn.
+name = "Carrion Ants"
+otags = ["activated-ability", "bottomless-mana-sink", "shade-pump", "type-errata-specific-insect"]
+id = "87bc6be7-4734-4a11-806e-e9e4f5616fe0"
+default_print = "6d1b1f70-2f64-4ced-a183-53c6b564b193"
+oracle = "{1}: This creature gets +1/+1 until end of turn."
+subtypes = ["Insect"]
+
+[cost]
+generic = 2
+black = 2
+
+[kind]
+type = "creature"
+power = 0
+toughness = 1
+
+# {1}: This creature gets +1/+1 until end of turn.
+[[abilities]]
+oracle = "{1}: This creature gets +1/+1 until end of turn."
+timing = "activated"
+
+[abilities.activation_cost]
+generic = 1
+
+# This creature gets +1/+1 until end of turn.
+[[abilities.effects]]
+type = "pump"
+mode = "pump_self_until_end_of_turn"
+power = 1
+toughness = 1

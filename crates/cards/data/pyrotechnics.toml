@@ -1,0 +1,28 @@
+# Pyrotechnics deals 4 damage divided as you choose among any number of targets.
+name = "Pyrotechnics"
+otags = ["burn-any", "multi-removal", "multiple-targets", "single-english-word-name", "single-target-instant-sorcery", "spot-removal"]
+id = "794b9ddf-1660-441f-9cc2-a0f5d4d0cf22"
+default_print = "51893dd5-e70f-44bb-85d4-e31480ba84d6"
+oracle = "Pyrotechnics deals 4 damage divided as you choose among any number of targets."
+
+[cost]
+generic = 4
+red = 1
+
+[kind]
+type = "sorcery"
+
+# Pyrotechnics deals 4 damage divided as you choose among any number of targets.
+[[abilities]]
+oracle = "Pyrotechnics deals 4 damage divided as you choose among any number of targets."
+timing = "spell"
+
+# Pyrotechnics deals 4 damage divided as you choose among any number of targets. (Each target is
+# assigned at least 1, so 4 damage reaches at most four of them.)
+[[abilities.effects]]
+type = "damage"
+mode = "target"
+amount = 4
+target = "any"
+count = { max = 4 }
+divided = true

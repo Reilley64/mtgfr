@@ -38,6 +38,23 @@ use super::*;
 /// is the mirror image of the every-player flavor: it fires under its own controller at the
 /// beginning of every *other* player's untap step, explicitly excluding the controller's own
 /// (Drumbellower).
+/// Which half of a block declaration a [`Trigger::BlocksOrBecomesBlockedBy`] watches (CR 509.1a /
+/// CR 509.1h). One creature-pair produces both halves — the blocker "blocks", the attacker
+/// "becomes blocked by" — and most cards print them fused, so [`Either`](Self::Either) is the
+/// default and the only value the five older cards use. Infernal Medusa is why the split exists:
+/// its two halves take *different* filters ("blocks a creature" / "becomes blocked by a non-Wall
+/// creature"), which one fused trigger cannot say.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum BlockSide {
+    /// "…blocks or becomes blocked by…" (Cockatrice, Thicket Basilisk) — either side fires.
+    #[default]
+    Either,
+    /// "Whenever this creature blocks a \[filter\]" — this creature is the *blocker*.
+    Blocks,
+    /// "Whenever this creature becomes blocked by a \[filter\]" — this creature is the *attacker*.
+    BecomesBlockedBy,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Trigger {
     /// When this permanent enters the battlefield (ETB). Spelled `"etb"` in TOML.
@@ -61,6 +78,13 @@ pub enum Trigger {
     BecomesMonstrous,
     /// When this creature is declared as an attacker.
     Attacks,
+    /// Whenever this creature attacks and isn't blocked (Floral Spuzzem, CR 509.1h): fires once
+    /// every attacked seat's block declaration is final, over the attackers nobody blocked, from
+    /// [`Game::seal_blocks`] — the earliest moment "isn't blocked" has an answer. Not a per-event
+    /// scan for the same reason [`BlocksOrBecomesBlocked`](Self::BlocksOrBecomesBlocked) isn't:
+    /// the fact being watched is a property of the whole declaration, not of one
+    /// [`Event::BlockerDeclared`]. Spelled `"attacks_and_isnt_blocked"` in TOML.
+    AttacksAndIsntBlocked,
     /// Whenever this creature blocks or becomes blocked (Goblin Cadets, CR 509/CR 509.1h): fires
     /// off [`Event::BlockerDeclared`] when this creature is named as either the blocker or the
     /// attacker — once per creature per combat, not once per (blocker, attacker) pair, so a
@@ -76,8 +100,13 @@ pub enum Trigger {
     /// [`TriggerContext::blocking_partner`], which fills the payoff's
     /// [`DestroyEffect::ThatCreature`](crate::DestroyEffect::ThatCreature). Batch-scanned from
     /// [`Game::declare_blockers`] like the variant above, not [`Game::enqueue_triggers`]'s
-    /// per-event pass. Spelled `"blocks_or_becomes_blocked_by"` in TOML, with a sibling `filter`.
-    BlocksOrBecomesBlockedBy { filter: PermanentFilter },
+    /// per-event pass. Spelled `"blocks_or_becomes_blocked_by"` in TOML, with a sibling `filter`;
+    /// `"blocks_creature"` and `"becomes_blocked_by"` are the same trigger narrowed to one
+    /// [`BlockSide`], which is what lets Infernal Medusa give its two halves different filters.
+    BlocksOrBecomesBlockedBy {
+        filter: PermanentFilter,
+        side: BlockSide,
+    },
     /// Whenever this creature attacks or blocks (Mana-Charged Dragon, CR 508.1a / CR 509.3a) —
     /// unlike [`BlocksOrBecomesBlocked`](Self::BlocksOrBecomesBlocked), the *attacker* half of a
     /// block declaration doesn't fire this (an attacker "becomes blocked", it doesn't "block").
@@ -86,6 +115,14 @@ pub enum Trigger {
     /// side only, deduped like [`Game::queue_blocks_or_becomes_blocked_triggers`] so a creature
     /// blocking multiple attackers still fires once.
     AttacksOrBlocks,
+    /// Whenever this creature blocks (Elder Land Wurm's "When this creature blocks, it loses
+    /// defender", CR 509.1a) — the blocker-only half of
+    /// [`AttacksOrBlocks`](Self::AttacksOrBlocks), and unlike
+    /// [`BlocksOrBecomesBlocked`](Self::BlocksOrBecomesBlocked) it never fires off the *attacker*
+    /// side. Batch-scanned from [`Game::declare_blockers`] alongside `AttacksOrBlocks` and deduped
+    /// the same way, so a creature blocking multiple attackers still fires once. Spelled
+    /// `"blocks"` in TOML.
+    Blocks,
     /// When this permanent dies — CR 700.4's "put into a graveyard from the battlefield", for any
     /// permanent type (Lich's enchantment), or — for a token — ceases to exist.
     Dies,
@@ -289,6 +326,25 @@ pub enum Trigger {
     /// slot [`PlayerAttacksYourOpponent`](Self::PlayerAttacksYourOpponent) uses; see
     /// [`Game::queue_enchanted_creature_attacks_triggers`].
     EnchantedCreatureAttacks,
+    /// Whenever the creature this Aura is attached to is declared as an attacker **or** as a
+    /// blocker (CR 508.1/509.1a — Imprison's "Whenever enchanted creature attacks or blocks").
+    /// The both-sides twin of [`EnchantedCreatureAttacks`](Self::EnchantedCreatureAttacks), placed
+    /// and controlled the same way; only the attack half carries the `attack` tuple, since a
+    /// blocker defends nobody. Queued from
+    /// [`Game::queue_enchanted_creature_attacks_triggers`] on the attack side and from
+    /// `Game::seal_blocks` on the block side. Spelled `"enchanted_creature_attacks_or_blocks"`.
+    EnchantedCreatureAttacksOrBlocks,
+    /// Whenever a player activates an ability of the creature this Aura is attached to whose
+    /// activation cost contains `{T}` and which isn't a mana ability (CR 602.2/605.1a — Imprison's
+    /// "Whenever a player activates an ability of enchanted creature with {T} in its activation
+    /// cost that isn't a mana ability"). *Any* player's activation fires it, unlike
+    /// [`ActivateAbility`](Self::ActivateAbility)'s [`WatchedPlayer`] scope, and unlike that watch
+    /// this one is not `{X}`-gated. The activated ability's source (the host) rides in
+    /// [`TriggerContext::triggering_ability`], which is what
+    /// [`MiscEffect::CounterTriggeringAbility`](crate::MiscEffect) counters. Fired from
+    /// `Game::activate_ability` once the ability is on the stack, so the counter lands above it
+    /// (CR 603.3b). Spelled `"enchanted_creature_activates_tap_ability"`.
+    EnchantedCreatureActivatesTapAbility,
     /// Whenever the creature this Aura is attached to dies (CR "When enchanted creature dies…",
     /// Angelic Destiny). The death twin of [`EnchantedCreatureAttacks`](Self::EnchantedCreatureAttacks):
     /// placed on the Aura, controlled by *that Aura's own controller*, not the dying creature's.
@@ -308,6 +364,16 @@ pub enum Trigger {
     /// it. The dealt amount rides in [`TriggerContext::triggering_damage_dealt`]
     /// (`Amount::TriggeringDamageDealt`); see [`Game::queue_enchanted_creature_deals_damage_triggers`].
     EnchantedCreatureDealsDamage,
+    /// [`EnchantedCreatureDealsDamage`](Self::EnchantedCreatureDealsDamage) scoped to the damage
+    /// landing on *this* Aura's controller (Backfire: "Whenever enchanted creature deals damage to
+    /// **you**, this Aura deals that much damage to that creature's controller"). Damage to any
+    /// other player, or to a creature, never fires it — so hanging Backfire on your own attacker
+    /// costs its controller nothing. The dealt amount rides in
+    /// [`TriggerContext::triggering_damage_dealt`] exactly as the unscoped watch's does, and
+    /// [`TriggerContext::combat_damage_source_controller`] carries the host's controller for
+    /// "that creature's controller" ([`PlayerSet::DamagingPermanentsController`]). See
+    /// [`Game::queue_enchanted_creature_deals_damage_triggers`].
+    EnchantedCreatureDealsDamageToYou,
     /// Whenever *any* enchanted creature dies (CR 603.6c, Hateful Eidolon: "Whenever an
     /// enchanted creature dies, draw a card for each Aura you controlled that was attached to
     /// it.") — a watch-others twin of [`EnchantedCreatureDies`](Self::EnchantedCreatureDies):
@@ -350,6 +416,16 @@ pub enum Trigger {
     /// the [`TriggerContext`]'s `discarded` field so the effect can act on "that card"; see
     /// [`Game::queue_discard_triggers`].
     YouDiscard,
+    /// When a spell or ability an *opponent* controls causes you to discard **this card** —
+    /// Psychic Purge's second ability. Unlike every other trigger here, this one functions while
+    /// the card sits in its owner's hand (CR 603.6d) and fires on the card's own discard, so the
+    /// only object ever scanned is the card that was just discarded, addressed by its new
+    /// graveyard-object id (CR 603.10a last-known information — the ability is no longer in the
+    /// zone it functioned in by the time it goes on the stack). `you` is the discarding player;
+    /// the causing spell/ability's controller rides in [`TriggerContext::triggering_caster`] and
+    /// fills the payoff's [`PlayerSet::TriggeringPlayer`](crate::PlayerSet) ("that player loses 5
+    /// life"). Fires off [`Event::Discarded`]'s `cause`; see [`Game::enqueue_triggers`].
+    OpponentsSpellOrAbilityCausesYouToDiscardThis,
     /// Whenever this permanent's controller *plays* a land (CR 305.1 — the special action, not
     /// the landfall "enters"): Fastbond's "whenever you play a land". Fieldless and
     /// controller-scoped like [`YouDiscard`](Self::YouDiscard) above; fires off
@@ -412,6 +488,15 @@ pub enum Trigger {
     /// `source`); every player other than the controller is an opponent (CR 102.3). See
     /// [`Game::queue_deals_damage_to_opponent_triggers`].
     DealsDamageToOpponent,
+    /// Whenever this permanent deals damage to *any* player — its own controller included (CR
+    /// 603.3, Pit Scorpion: "Whenever this creature deals damage to a player, that player gets a
+    /// poison counter."). The unscoped twin of
+    /// [`DealsDamageToOpponent`](Self::DealsDamageToOpponent): same events, same
+    /// [`TriggerContext::damage_recipient`] fill, but no opponent test, so damage redirected onto
+    /// the controller (or dealt after a control swap) still fires it. Cards that really do print
+    /// "an opponent" keep the opponent-scoped tag. See
+    /// [`Game::queue_deals_damage_to_opponent_triggers`], which queues both.
+    DealsDamageToPlayer,
     /// Whenever this permanent's controller is dealt damage, combat or noncombat alike (CR 120.1
     /// — Living Artifact's "Whenever you're dealt damage, put that many vitality counters on this
     /// Aura", Lich's "sacrifice that many nontoken permanents"). Controller-scoped on the
@@ -437,6 +522,13 @@ pub enum Trigger {
         filter: SpellFilter,
         caster: WatchedPlayer,
         nth_each_turn: Option<u8>,
+        /// Restrict to every matching cast *after* the caster's Nth this turn — Ichneumon Druid's
+        /// "an instant spell **other than the first** instant spell that player casts each turn"
+        /// is `Some(1)`: the first is exempt, the second and every one after it fire. The
+        /// open-ended twin of `nth_each_turn` above, which pins exactly one cast; read off the
+        /// same filter-scoped tally ([`Game::cast_tally_for`]). Both may be set, in which case
+        /// both must hold — no pool card does.
+        after_nth_each_turn: Option<u8>,
         /// Restrict to a spell cast from its controller's hand (CR 601's default cast zone) —
         /// Dirgur Focusmage's "you cast … from your hand": `false` (the default) fires on a cast
         /// from *any* zone (flashback/escape from a graveyard, the command zone, an impulse-play
@@ -635,6 +727,16 @@ pub enum Trigger {
     /// ponytail: fieldless — "you" is the only scope any pool card needs (flag-don't-force; add an
     /// opponent/any-player scope the moment a second consumer wants one).
     YouProliferate,
+    /// "When you remove the last intervention counter from this enchantment, …" (Divine
+    /// Intervention). An ordinary triggered ability on the *removal* (CR 603.2), not a state
+    /// trigger (CR 603.8) on the count being zero: it fires from the removal that empties the
+    /// permanent of `kind`, so a permanent that never had one, or that reaches zero and then gains
+    /// another, can't fire it a second time without another removal.
+    /// ponytail: "you" is unchecked — the trigger fires off whichever removal empties the source,
+    /// not only its controller's (CR 603.2's "you remove" would mute a Clockspinning an opponent
+    /// controls). Nothing in the pool removes another player's named counters; thread the removing
+    /// player through [`Event::KindCountersPlaced`](crate::Event) when one does.
+    YouRemoveLastCounterFromThis { kind: CounterKind },
 }
 
 /// Which cast a [`Trigger::SpendManaToCast`] watch accepts as "this mana was spent to cast …",
@@ -963,9 +1065,24 @@ pub struct TriggerContext {
     /// "unless that player pays" payoff (Rhystic Study's "you may draw a card unless that player
     /// pays {1}" — [`Effect::Choice(ChoiceEffect::MayDrawUnlessPays)`]). Distinct from `TriggerContext::controller`
     /// (the watcher's own controller) precisely when `caster: WatchedPlayer::Opponent`/`AnyPlayer`
-    /// — `controller` alone can't name the payer for those scopes. `None` for every other
-    /// trigger. See [`Game::queue_cast_spell_triggers`] for where this is captured.
+    /// — `controller` alone can't name the payer for those scopes. Also fills a matched payoff's
+    /// [`PlayerSet::TriggeringPlayer`](crate::PlayerSet) ("that player"), so Ichneumon Druid's
+    /// "deals 4 damage to that player" reads the caster rather than the watcher's controller.
+    ///
+    /// More broadly: *the player behind the spell or ability that fired this watch*. That is why
+    /// [`Trigger::OpponentsSpellOrAbilityCausesYouToDiscardThis`] reuses it for the controller of
+    /// the spell or ability that caused the discard (Psychic Purge's "that player loses 5 life")
+    /// rather than growing a second field with the same meaning. `None` for every other trigger.
+    /// See [`Game::queue_cast_spell_triggers`] and [`Game::enqueue_triggers`] for where this is
+    /// captured.
     pub triggering_caster: Option<PlayerId>,
+    /// The player who drew the card, for a [`Trigger::PlayerDraws`] watch whose payoff names
+    /// *that* player rather than the watcher's controller (Underworld Dreams' "deals 1 damage to
+    /// that player") — the draw-side twin of `triggering_caster` above, and distinct from
+    /// `TriggerContext::controller` precisely when `drawer: WatchedPlayer::Opponent`/`AnyPlayer`.
+    /// `None` for every other trigger. See [`Game::queue_player_draws_triggers`] for where this
+    /// is captured.
+    pub drawing_player: Option<PlayerId>,
     /// The creature on the other side of a [`Trigger::BlocksOrBecomesBlockedBy`] block pair
     /// (Cockatrice's "that creature") — the attacker for the blocker's fire, the blocker for the
     /// attacker's. `None` for every other trigger. Feeds
@@ -1008,6 +1125,7 @@ impl TriggerContext {
             left_battlefield_host: None,
             triggering_ability: None,
             triggering_caster: None,
+            drawing_player: None,
             blocking_partner: None,
         }
     }

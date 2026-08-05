@@ -267,6 +267,7 @@ fn view_player(view: &PendingChoiceView) -> u8 {
         | PendingChoiceView::Scry { player, .. }
         | PendingChoiceView::Surveil { player, .. }
         | PendingChoiceView::ReorderTop { player, .. }
+        | PendingChoiceView::LookAtTop { player, .. }
         | PendingChoiceView::SearchLibrary { player, .. }
         | PendingChoiceView::SelectFromTop { player, .. }
         | PendingChoiceView::DistributeTop { player, .. }

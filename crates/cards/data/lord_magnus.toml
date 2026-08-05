@@ -1,0 +1,43 @@
+# First strike
+# Creatures with plainswalk can be blocked as though they didn't have plainswalk.
+# Creatures with forestwalk can be blocked as though they didn't have forestwalk.
+name = "Lord Magnus"
+otags = ["deprecated-legend-type", "hate-landwalk"]
+id = "59258149-1c18-421b-b940-d0aa29da572a"
+default_print = "2a02aabb-c464-4672-b37b-d5d713ef8939"
+oracle = "First strike\nCreatures with plainswalk can be blocked as though they didn't have plainswalk.\nCreatures with forestwalk can be blocked as though they didn't have forestwalk."
+legendary = true
+subtypes = ["Human", "Druid"]
+keywords = ["first_strike"]
+
+[cost]
+generic = 3
+white = 2
+green = 1
+
+[kind]
+type = "creature"
+power = 4
+toughness = 3
+
+# Creatures with plainswalk can be blocked as though they didn't have plainswalk.
+[[abilities]]
+oracle = "Creatures with plainswalk can be blocked as though they didn't have plainswalk."
+timing = "static"
+
+# Creatures with plainswalk can be blocked as though they didn't have plainswalk.
+[[abilities.effects]]
+type = "static"
+mode = "landwalk_negated"
+land = "plains"
+
+# Creatures with forestwalk can be blocked as though they didn't have forestwalk.
+[[abilities]]
+oracle = "Creatures with forestwalk can be blocked as though they didn't have forestwalk."
+timing = "static"
+
+# Creatures with forestwalk can be blocked as though they didn't have forestwalk.
+[[abilities.effects]]
+type = "static"
+mode = "landwalk_negated"
+land = "forest"

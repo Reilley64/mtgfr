@@ -1,0 +1,28 @@
+# At the beginning of each player's upkeep, if that player controls a Plains, they gain 1 life.
+name = "Spiritual Sanctuary"
+otags = ["alliteration", "intervening-if-clause", "repeatable-lifegain", "symmetrical", "synergy-plains"]
+id = "91edef61-2487-405c-a3ec-67a814dfeff2"
+default_print = "654dd1e0-a91d-44ee-af20-c025bf360c3f"
+oracle = "At the beginning of each player's upkeep, if that player controls a Plains, they gain 1 life."
+
+[cost]
+generic = 2
+white = 2
+
+[kind]
+type = "enchantment"
+
+# At the beginning of each player's upkeep, if that player controls a Plains, they gain 1 life.
+[[abilities]]
+oracle = "At the beginning of each player's upkeep, if that player controls a Plains, they gain 1 life."
+timing = "each_upkeep"
+condition = { type = "for_triggering_player", inner = { type = "controls_lands_with_subtype", subtypes = [
+  "Plains",
+], count = 1 } }
+
+# they gain 1 life.
+[[abilities.effects]]
+type = "life"
+mode = "gain"
+who = "triggering_player"
+amount = 1

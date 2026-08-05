@@ -1,0 +1,35 @@
+# Choose one —
+# • Destroy target blue permanent.
+# • Return target Island to its owner's hand.
+name = "Active Volcano"
+otags = ["color-break", "hate-blue", "hate-island", "modal", "removal-bounce", "removal-destroy", "removal-land", "removal-nonland", "single-target-instant-sorcery", "spot-removal"]
+id = "205ffa76-ff8e-4405-b21a-42358a9883c2"
+default_print = "35d304de-5a24-487e-87f9-0ba9b6d70296"
+oracle = "Choose one —\n• Destroy target blue permanent.\n• Return target Island to its owner's hand."
+modal = true
+
+[cost]
+red = 1
+
+[kind]
+type = "instant"
+
+# Mode 0 — "Destroy target blue permanent."
+[[abilities]]
+timing = "spell"
+
+# Destroy target blue permanent.
+[[abilities.effects]]
+type = "destroy"
+mode = "target"
+target = { permanent = { color = "blue" } }
+
+# Mode 1 — "Return target Island to its owner's hand."
+[[abilities]]
+timing = "spell"
+
+# Return target Island to its owner's hand.
+[[abilities.effects]]
+type = "zone"
+mode = "return_to_hand"
+target = { permanent = { types = "land", subtypes = ["Island"] } }

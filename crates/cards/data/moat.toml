@@ -1,0 +1,25 @@
+# Creatures without flying can't attack.
+name = "Moat"
+otags = ["prevent-attack", "single-english-word-name", "symmetrical", "synergy-flying"]
+id = "42208fea-8c24-451f-861d-6d70c0a7a502"
+default_print = "952ba126-0915-47f0-9b6a-a0a6dcd22c6f"
+oracle = "Creatures without flying can't attack."
+
+[cost]
+generic = 2
+white = 2
+
+[kind]
+type = "enchantment"
+
+# Creatures without flying can't attack.
+[[abilities]]
+oracle = "Creatures without flying can't attack."
+timing = "static"
+
+# Creatures without flying can't attack. (Board-wide: the filter leaves `controller` at its default
+# "any", so the ban reaches every seat's creatures rather than only Moat's controller's.)
+[[abilities.effects]]
+type = "static"
+mode = "cant_attack_filter"
+filter = { types = "creature", without_flying = true }

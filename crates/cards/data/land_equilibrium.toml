@@ -1,0 +1,29 @@
+# If an opponent who controls at least as many lands as you do would put a land onto the
+# battlefield, that player instead puts that land onto the battlefield then sacrifices a land of
+# their choice.
+name = "Land Equilibrium"
+otags = ["land-hate", "replacement-effect", "sacrifice-land", "static"]
+id = "a3711453-b17d-4b1c-b726-9b41f36d07ab"
+default_print = "9c406b25-03f8-4aaa-9ea7-48bf754166b7"
+oracle = "If an opponent who controls at least as many lands as you do would put a land onto the battlefield, that player instead puts that land onto the battlefield then sacrifices a land of their choice."
+
+[cost]
+generic = 2
+blue = 2
+
+[kind]
+type = "enchantment"
+
+# If an opponent who controls at least as many lands as you do would put a land onto the
+# battlefield, that player instead puts that land onto the battlefield then sacrifices a land of
+# their choice.
+[[abilities]]
+oracle = "If an opponent who controls at least as many lands as you do would put a land onto the battlefield, that player instead puts that land onto the battlefield then sacrifices a land of their choice."
+timing = "static"
+
+# If an opponent who controls at least as many lands as you do would put a land onto the
+# battlefield, that player instead puts that land onto the battlefield then sacrifices a land of
+# their choice.
+[[abilities.effects]]
+type = "static"
+mode = "opponent_land_entry_costs_a_land"

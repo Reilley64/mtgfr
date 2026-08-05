@@ -138,7 +138,8 @@ function preventCombatDamageLabel(params: MessageParams): string {
 }
 
 function staticAllLandsOfTypeBecome(params: MessageParams): string {
-  const all = `All ${humanize(param(params, "land_types"))}s are`;
+  // Living Plane says "All lands"; the type-scoped globals name a land type and pluralize it.
+  const all = bool(params, "all_lands") ? "All lands are" : `All ${humanize(param(params, "land_types"))}s are`;
   if (!bool(params, "creature")) return `${all} ${humanize(param(params, "set_subtypes"))}`;
   const colors = humanize(param(params, "add_colors"));
   const color = colors === "" ? "" : `${colors} `;
@@ -155,6 +156,24 @@ function staticAnthem(params: MessageParams): string {
   const keywords = String(param(params, "keywords"));
   if (keywords !== "") return `${scope} have ${humanize(keywords)}`;
   return `${scope} get${bool(params, "self_only") ? "s" : ""} +${param(params, "power")}/+${param(params, "toughness")}`;
+}
+
+// A filtered anthem can grant keywords, a P/T delta, or both (Arcades Sabboth grants only the
+// delta), so neither clause can be the whole sentence on its own.
+function staticFilteredAnthem(params: MessageParams): string {
+  const permanents = humanize(param(params, "filter", "Permanents"));
+  const scope = bool(params, "all_players") ? permanents : `${permanents} you control`;
+  // The engine joins an empty keyword slice to the literal "none", so a P/T-only anthem
+  // (Arcades Sabboth) has to read that as "no keyword clause" rather than print it.
+  const keywords = String(param(params, "keywords", "none"));
+  const loseKeywords = String(param(params, "lose_keywords", "none"));
+  const power = param(params, "power", 0);
+  const toughness = param(params, "toughness", 0);
+  const clauses: string[] = [];
+  if (Number(power) !== 0 || Number(toughness) !== 0) clauses.push(`get +${power}/+${toughness}`);
+  if (keywords !== "none") clauses.push(`have ${humanize(keywords)}`);
+  if (loseKeywords !== "none") clauses.push(`lose ${humanize(loseKeywords)}`);
+  return `${scope} ${clauses.join(" and ")}`;
 }
 
 export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
@@ -190,6 +209,9 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.choice_choose_color": literal("Choose a color"),
   "effect.choice_choose_creature_type": literal("Choose a creature type"),
   "effect.choice_choose_opponent": literal("Choose an opponent"),
+  "effect.choice_choose_target_players_damaging_sorcery": literal(
+    "Choose one of that player's sorcery spells that dealt damage this turn",
+  ),
   "effect.choice_control_player_to_play_card_from_hand": (params) =>
     `Look at ${param(params, "target")}'s hand and choose a card from it. That player plays that card if able`,
   "effect.choice_councils_dilemma_vote": (params) =>
@@ -217,9 +239,17 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.choice_each_player_discards_hand_then_draws": (params) =>
     `Each player discards their hand, then draws ${param(params, "count")}`,
   "effect.choice_each_player_exiles_from_graveyard": literal("Each player exiles a card from their graveyard"),
+  "effect.choice_each_player_may_put_permanent_from_hand_repeating": literal(
+    "Starting with you, each player may put a permanent card from their hand onto the battlefield, repeating until no one does",
+  ),
   "effect.choice_each_player_names_card_then_reveals_top": literal(
     "Each player chooses a card name. Then each player reveals the top card of their library. If the card a player revealed has the name they chose, that player puts it into their hand. If it does not, that player puts it on the bottom of their library",
   ),
+  "effect.choice_target_player_names_card_then_reveals_top": literal(
+    "Target player chooses a card name, then reveals the top card of their library. If that card has the chosen name, that player puts it into their hand. If it does not, the player puts it into their graveyard",
+  ),
+  "effect.choice_name_card_then_target_reveals_at_random_and_discards": (params) =>
+    `Choose a card name. Target opponent reveals ${param(params, "count")} cards at random from their hand. Then that player discards all cards with that name revealed this way`,
   "effect.choice_each_player_discards": (params) => {
     const [subject, s] = edictSubject(params);
     return `${subject} discard${s} ${bool(params, "down_to_fewest") ? "down to the fewest cards in hand" : "a card"}`;
@@ -232,8 +262,12 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     }
     return `${subject} sacrifice${s} a permanent`;
   },
-  "effect.choice_each_player_shuffles_hand_and_graveyard_then_draws": (params) =>
-    `Each player shuffles their hand and graveyard into their library, then draws ${param(params, "count")}`,
+  "effect.choice_each_player_shuffles_hand_then_draws": (params) => {
+    const zones = bool(params, "include_graveyard") ? "their hand and graveyard" : "their hand";
+    // No `count` is Winds of Change's "that many" — a per-player number, so it stays a phrase.
+    const count = params.count === undefined ? "that many cards" : String(param(params, "count"));
+    return `Each player shuffles ${zones} into their library, then draws ${count}`;
+  },
   "effect.choice_join_forces_pay_mana": literal("Starting with you, each player may pay any amount of mana"),
   "effect.choice_triggering_player_may_attach_this_aura_to_chosen": (params) =>
     `That permanent's controller may attach this Aura to a ${humanize(param(params, "filter"))} of their choice`,
@@ -255,14 +289,20 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   ),
   "effect.choice_may_put_counter_on_creature": literal("You may put a +1/+1 counter on a creature"),
   "effect.choice_may_return_from_graveyard": (params) =>
-    `You may return ${humanize(param(params, "filter", "a card"))} from your graveyard to your hand`,
+    param(params, "reincarnate") === "true"
+      ? `Return ${humanize(param(params, "filter", "a card"))} from its owner's graveyard to the battlefield under its owner's control`
+      : `You may return ${humanize(param(params, "filter", "a card"))} from your graveyard to your hand`,
   "effect.choice_may_sacrifice": (params) => `You may sacrifice ${humanize(param(params, "filter", "a permanent"))}`,
   "effect.choice_phase_out": literal("Any number of other target creatures you control phase out"),
   "effect.choice_proliferate": (params) => `Proliferate ${param(params, "times")} times`,
   "effect.choice_put_counter_then_may_become_copy_of_card_from_list": literal(
     "Put a +1/+1 counter on this creature, then you may have this creature become a copy of an artifact or creature card from among those cards until end of turn",
   ),
-  "effect.choice_discard_your_hand": literal("Discard your hand"),
+  "effect.choice_discard_your_hand": (params) => {
+    const who = param(params, "who");
+    if (who === "" || who === "you") return "Discard your hand";
+    return `${playerSubject(params)} discard${playerVerbSuffix(params)} their hand`;
+  },
   "effect.choice_each_player_chooses_war_or_peace": literal("Each player chooses war or peace"),
   "effect.choice_put_creature_from_hand": literal(
     "You may put a creature card from your hand onto the battlefield. It gains haste. Sacrifice it at the beginning of the next end step",
@@ -270,10 +310,19 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.choice_put_creature_from_hand_attacking": literal(
     "You may put a creature card from your hand onto the battlefield tapped and attacking",
   ),
-  "effect.choice_put_from_hand_on_top": (params) =>
-    `Put ${param(params, "count")} cards from your hand on top of your library in any order`,
+  "effect.choice_put_from_hand_on_top": (params) => {
+    const count = param(params, "count");
+    const life = param(params, "life_per_declined", "0");
+    const from = bool(params, "drawn_this_turn") ? "in your hand drawn this turn" : "from your hand";
+    if (life !== "0") {
+      return `Choose ${count} cards ${from}. For each of those cards, pay ${life} life or put the card on top of your library`;
+    }
+    return `Put ${count} cards ${from} on top of your library in any order`;
+  },
   "effect.choice_put_land_from_hand": (params) =>
     `Put a land from hand onto the battlefield${bool(params, "tapped") ? " tapped" : ""}`,
+  "effect.choice_sacrifice_any_number": (params) =>
+    `Sacrifice any number of ${humanize(param(params, "filter", "permanents"))}`,
   "effect.choice_sacrifice_own": (params) =>
     `Sacrifice ${param(params, "count")} ${humanize(param(params, "filter", "permanents"))}`,
   "effect.choice_pay_or_else": (params, children) => `Pay ${param(params, "cost")} or: ${children.join(", then ")}`,
@@ -298,6 +347,9 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.control_gain_control_all_until_end_of_turn": literal(
     "Untap all creatures and gain control of them until end of turn",
   ),
+  "effect.control_gain_control_all_while": literal(
+    "Gain control of all matching creatures for as long as you control this creature",
+  ),
   "effect.control_gain_control_until_end_of_turn": literal("Gain control of target creature until end of turn"),
   "effect.control_gain_control_while": literal(
     "Gain control of target creature for as long as you control this and it remains tapped",
@@ -306,17 +358,21 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.control_grant_source_abilities_until_end_of_turn": literal(
     "It gains this creature's other abilities until end of turn",
   ),
+  "effect.control_move_aura": literal("Attach target Aura to another permanent of the same type"),
   "effect.control_regenerate_shield": literal("Regenerate target"),
   "effect.control_remove_from_combat": literal("Remove target from combat"),
   "effect.control_revert_all_creatures_to_owners": literal("Each player gains control of all creatures they own"),
   "effect.control_tap_source": literal("Tap this permanent"),
   "effect.control_tap_target": literal("Tap target"),
+  "effect.control_opponent_gains_control_all": (params) =>
+    `An opponent gains control of all ${humanize(param(params, "filter", "permanents"))}`,
   "effect.control_target_opponent_gains_control": literal(
     "Target opponent gains control of target permanent you control",
   ),
   "effect.control_tap_all": (params) => `Tap all ${humanize(param(params, "filter", "permanents"))} you control`,
   "effect.control_tap_all_target_player_controls": (params) =>
     `Tap all ${humanize(param(params, "filter", "permanents"))} target player controls`,
+  "effect.control_tap_blockers_of_target": literal("Tap all creatures blocking target attacking creature"),
   "effect.control_untap_all": (params) => `Untap all ${humanize(param(params, "filter", "permanents"))} you control`,
   "effect.control_untap_target": literal("Untap target"),
   "effect.copy_change_target_of_target_spell_or_ability": (params) =>
@@ -369,6 +425,10 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
       ? `Put ${param(params, "count")} +1/+1 counters`
       : `Put ${param(params, "count")} ${humanize(param(params, "kind"))} counters`,
   "effect.counters_put_counters_each": (params) => `Put ${param(params, "count")} +1/+1 counters on each`,
+  "effect.counters_remove_counter_from_attached": (params) =>
+    params.kind === "plus_one_plus_one"
+      ? "Remove a +1/+1 counter from the enchanted permanent"
+      : `Remove a ${humanize(param(params, "kind"))} counter from the enchanted permanent`,
   "effect.counters_remove_counter_from_self": (params) =>
     params.kind === "plus_one_plus_one"
       ? "Remove a +1/+1 counter from it"
@@ -382,6 +442,10 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     `Deal ${param(params, "amount")} damage to the permanent that entered`,
   "effect.damage_to_players": (params) => `Deal ${param(params, "amount")} damage to ${playerPhrase(params)}`,
   "effect.destroy_all": (params) => `Destroy all ${humanize(param(params, "filter", "permanents"))}`,
+  "effect.destroy_blocked_by_target": literal("Destroy all creatures that were blocked by it this turn"),
+  "effect.destroy_blocked_by_target_reincarnate": literal(
+    "Destroy all creatures that were blocked by it this turn, then reanimate a creature card for each",
+  ),
   "effect.destroy_target": literal("Destroy target"),
   "effect.destroy_triggering_damaged_creature": literal("Destroy that creature"),
   "effect.dig_cascade": literal("Cascade"),
@@ -409,6 +473,8 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.dig_look_at_target_players_hand": literal("Look at target player's hand"),
   "effect.dig_look_at_top": (params) =>
     `Look at the top ${param(params, "count")} cards, put up to ${param(params, "up_to")} ${topDest(params)}, rest on the bottom`,
+  "effect.dig_look_at_target_players_top": (params) =>
+    `Look at the top ${param(params, "count")} cards of target player's library`,
   "effect.dig_may_shuffle_target_players_library": literal("You may have that player shuffle"),
   "effect.dig_opponent_splits_exile_piles": literal(
     "Exile the top four cards in one pile, then the top four in a second pile. An opponent chooses one pile; put it into your graveyard. You may cast a card from the other pile without paying its mana cost; put the rest into your hand",
@@ -443,7 +509,9 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.exile_all": (params) => `Exile all ${humanize(param(params, "filter", "permanents"))}`,
   "effect.exile_all_graveyards": literal("Exile all graveyards"),
   "effect.exile_graveyard": literal("Exile target player's graveyard"),
+  "effect.exile_linked_twin": literal("Exile its twin"),
   "effect.exile_object": literal("Exile it"),
+  "effect.exile_source": literal("Exile it"),
   "effect.exile_target": literal("Exile target"),
   "effect.exile_target_minting_illusion_on_leave": literal("Exile target"),
   "effect.exile_until_source_leaves": literal("Exile target until this leaves the battlefield"),
@@ -452,7 +520,11 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.life_each_player_becomes_highest": literal(
     "Each player's life total becomes the highest life total among all players",
   ),
+  "effect.life_exchange": literal("Exchange life totals with target opponent"),
   "effect.life_gain": (params) => `${playerClause(params, "gain")} ${param(params, "amount")} life`,
+  "effect.life_gain_when_target_is_damaged_by_attacker_this_turn": literal(
+    "Whenever that creature is dealt damage by an attacking creature this turn, you gain that much life",
+  ),
   "effect.life_lose": (params) => `${playerClause(params, "lose")} ${param(params, "amount")} life`,
   "effect.life_source_owner_loses_half_their_life": literal("Its owner loses half their life, rounded up"),
   "effect.mana_add": literal("Add mana"),
@@ -463,6 +535,8 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.mana_target_player_taps_lands_for_mana": literal(
     "Target player activates a mana ability of each land they control",
   ),
+  "effect.mana_target_land_produces_colorless_instead_of": (params) =>
+    `If target land is tapped for mana, it produces colorless mana instead of ${param(params, "color")} mana`,
   "effect.mill_exile_discarded_with_this": literal("Exile that card from your graveyard with this"),
   "effect.mill_exile_from_graveyard_may_play": literal("Exile that card from your graveyard; play it this turn"),
   "effect.mill_exile_target_from_graveyard_create_token_copy": (params) =>
@@ -470,6 +544,7 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.mill_exile_target_from_graveyard_with_this": literal(
     "Exile target noncreature, nonland card from your graveyard",
   ),
+  "effect.mill_exile_top_face_down_with_this": literal("Exile the top card of your library face down"),
   "effect.mill_exile_top_may_play": (params) =>
     `Exile the top ${param(params, "count")} card(s)${bool(params, "face_down") ? " face down" : ""}; play ${millPlayDuration(params)}${bool(params, "free_while_source") ? " without paying its mana cost" : ""}`,
   "effect.mill_mill": (params) => `${playerClause(params, "mill")} ${param(params, "count")}`,
@@ -480,16 +555,24 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.misc_counter_target_activated_ability": literal("Counter target activated ability"),
   "effect.misc_counter_target_spell": (params) =>
     `Counter target ${humanize(param(params, "filter", "spell"))}${params.unless_pays == null ? "" : ` unless its controller pays ${param(params, "unless_pays")}`}`,
+  // Imprison's "counter that ability" — the ability is the one that triggered this, never chosen.
+  "effect.misc_counter_triggering_ability": () => "Counter that ability",
+  "effect.misc_counter_triggering_spell": (params) =>
+    `Counter it${params.unless_pays === false ? "" : ` unless its controller pays ${param(params, "amount")}`}`,
   "effect.misc_fight": (params) =>
     bool(params, "ally_is_shared_target")
       ? "Then it fights up to one target creature you do not control"
       : "Target creature you control fights target creature you do not control",
   "effect.misc_flip_source": literal("Flip this permanent"),
+  "effect.misc_source_cant_be_regenerated_this_turn": literal("This creature can't be regenerated this turn"),
   "effect.misc_get_emblem": literal("You get an emblem"),
   "effect.misc_grant_channel_colorless_mana_this_turn": literal(
     "Until end of turn, any time you could activate a mana ability, you may pay 1 life. If you do, add {C}",
   ),
   "effect.misc_grant_flash_this_turn": literal("You may cast spells this turn as though they had flash"),
+  "effect.misc_grant_spend_mana_as_any_type_for_one_spell_this_turn": literal(
+    "For one spell this turn, you may spend mana as though it were mana of any type to pay that spell's mana cost",
+  ),
   "effect.misc_must_attack_all": literal("Creatures the active player controls attack this turn if able"),
   "effect.misc_blocks_each_attacker_if_able": literal(
     "Target creature defending player controls can block any number of creatures this turn. It blocks each attacking creature this turn if able",
@@ -516,14 +599,19 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   ),
   "effect.misc_schedule_next_cast_trigger": (_params, children) =>
     `When you next cast a spell this turn: ${children.join(", then ")}`,
+  "effect.misc_schedule_when_target_dies_this_turn": (_params, children) =>
+    `When that creature dies this turn: ${children.join(", then ")}`,
   "effect.misc_schedule_this_turn_combat_damage_copy": literal(
     "Whenever a creature you control deals combat damage to a player this turn, copy the exiled card; you may cast the copy without paying its mana cost",
   ),
   "effect.misc_skip_next_untap_opponent_creatures": literal(
     "Creatures your opponents control do not untap during their next untap steps",
   ),
+  "effect.misc_skip_next_untaps": (params) =>
+    `It does not untap during its controller's next ${param(params, "count")} untap steps`,
   "effect.misc_take_extra_turn": literal("Take an extra turn after this one"),
   "effect.misc_you_lose_the_game": literal("You lose the game"),
+  "effect.misc_game_is_a_draw": literal("The game is a draw"),
   "effect.pump_animate_self_until_end_of_turn": (params) =>
     `Becomes a ${param(params, "base_power")}/${param(params, "base_toughness")} creature until end of turn`,
   "effect.pump_enchanted_attacker_pump_attacking_opponent_else_controller_loses_life": (params) =>
@@ -533,6 +621,9 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.pump_grant_chosen_color_protection_until_end_of_turn": literal(
     "Target creature you control gains protection from the color of your choice until end of turn",
   ),
+  "effect.pump_grant_chosen_landwalk_self_until_end_of_turn": literal(
+    "This creature gains landwalk of the chosen type until the end of that turn",
+  ),
   "effect.pump_grant_keywords_to_permanents_you_control_until_end_of_turn": (params) =>
     `Permanents you control gain ${humanize(param(params, "keywords"))} until end of turn`,
   "effect.pump_pump_creatures_you_control_until_end_of_turn": (params) =>
@@ -540,6 +631,9 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.pump_pump_each_creature_until_end_of_turn": (params) => pumpLabel(params, "Each creature gets"),
   "effect.pump_pump_other_attackers_attacking_your_opponents": (params) =>
     `Each other creature that's attacking one of your opponents gets +${param(params, "power")}/+${param(params, "toughness")} until end of turn`,
+  "effect.pump_grant_keywords_indefinitely": (params) => `Target creature gains ${humanize(param(params, "keywords"))}`,
+  "effect.pump_grant_self_keywords_until_next_upkeep": (params) =>
+    `Gains ${humanize(param(params, "keywords"))} until your next upkeep`,
   "effect.pump_pump_self_until_end_of_turn": (params) => pumpLabel(params, ""),
   "effect.pump_pump_until_end_of_turn": (params) => pumpLabel(params, ""),
   "effect.pump_radiance_chosen_color_protection_until_end_of_turn": literal(
@@ -549,11 +643,38 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     `${bool(params, "other") ? "Other creatures" : "Creatures"} you control have base power and toughness ${param(params, "power")}/${param(params, "toughness")} until end of turn`,
   "effect.pump_set_base_pt_target_until_end_of_turn": (params) =>
     `Target creature has base power and toughness ${param(params, "power")}/${param(params, "toughness")} until end of turn`,
+  "effect.pump_set_base_pt_creatures_that_damaged_source_this_turn": (params) =>
+    `Change the base power and toughness of all creatures that dealt damage to this creature this turn to ${param(params, "power")}/${param(params, "toughness")}`,
   "effect.pump_set_own_base_pt_from_amount": (params) =>
     `This creature has base power and toughness each equal to ${param(params, "amount")}`,
+  "effect.pump_set_own_base_pt_from_target_until_end_of_next_upkeep": literal(
+    "Change this creature's base power and toughness to the power and toughness of target creature until the end of your next upkeep",
+  ),
+  "effect.pump_set_own_base_toughness_from_amount": (params) =>
+    `Change this creature's base toughness to ${param(params, "amount")}`,
+  "effect.pump_switch_pt_until_end_of_turn": literal("Switch target creature's power and toughness until end of turn"),
   "effect.pump_strip_keywords_from_opponents_creatures": (params) =>
     `Creatures your opponents control lose ${humanize(param(params, "keywords"))} until end of turn and can't have ${humanize(param(params, "keywords"))} this turn`,
+  // Hammerheim / Radjan Spirit / Tolaria / Urborg / Shelkin Brownie / Elder Land Wurm. Either
+  // list is "none" when the effect names only the other one; `choose_one` is Urborg's CR 609.4
+  // "first strike **or** swampwalk", so it swaps the conjunction rather than adding a clause.
+  "effect.pump_target_loses_keywords": (params) => {
+    const list = (name: string): string => {
+      const raw = String(param(params, name));
+      return raw === "none" ? "" : humanize(raw);
+    };
+    const families = list("families")
+      .split(" and ")
+      .filter(Boolean)
+      .map((family) => (family === "bands with" ? 'all "bands with other" abilities' : `all ${family} abilities`));
+    const lost = [...list("keywords").split(" and ").filter(Boolean), ...families].join(
+      bool(params, "choose_one") ? " or " : " and ",
+    );
+    return `Target creature loses ${lost}${bool(params, "until_end_of_turn") ? " until end of turn" : ""}`;
+  },
+  "effect.pump_target_becomes_chosen_color": () => `Target becomes the color of your choice`,
   "effect.pump_target_becomes_color": (params) => `Target spell or permanent becomes ${param(params, "color")}`,
+  "effect.pump_that_creature_becomes_color": (params) => `That creature becomes ${param(params, "color")}`,
   "effect.pump_target_becomes_subtypes_while_source_remains": (params) =>
     `Target land becomes a ${humanize(param(params, "set_subtypes"))} until this permanent leaves the battlefield`,
   "effect.pump_becomes_copy_of_target": literal(
@@ -574,19 +695,40 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.reveal_until": (params) =>
     `Reveal cards from the top of your library until you reveal ${param(params, "count")} ${humanize(param(params, "filter", "card"))}, put them ${searchDest(param(params, "matched_dest"))}, and put the rest on the bottom of your library`,
   "effect.sacrifice_enchanted_creature": literal("That creature's controller sacrifices it"),
+  "effect.sacrifice_linked_twin": literal("Sacrifice its twin"),
   "effect.sacrifice_object": literal("Sacrifice it"),
   "effect.sacrifice_source": literal("Sacrifice it"),
   "effect.scry": (params) => `Scry ${param(params, "count")}`,
   "effect.sequence": (_params, children) => children.join(", then "),
   "effect.static_all_lands_of_type_become": (params) => staticAllLandsOfTypeBecome(params),
   "effect.static_anthem": (params) => staticAnthem(params),
+  "effect.static_opponent_land_entry_costs_a_land": literal(
+    "If an opponent who controls at least as many lands as you do would put a land onto the battlefield, that player instead puts that land onto the battlefield then sacrifices a land of their choice",
+  ),
   "effect.static_attack_tax": (params) =>
     `Creatures can't attack you unless their controller pays {${param(params, "amount")}} for each creature they control that's attacking you`,
   "effect.static_base_power_toughness_from_amount": (params) =>
     `${definingPtLead(param(params, "when"))} power and toughness are each equal to ${param(params, "power")}`,
+  "effect.static_cant_attack_filter": (params) => `${humanize(param(params, "filter", "Creatures"))} can't attack`,
   "effect.static_cant_attack_if_cast_this_turn": literal(
     "Each opponent who cast a spell this turn can't attack with creatures",
   ),
+  "effect.static_max_attackers_each_combat": (params) =>
+    `No more than ${param(params, "count", "1")} creature(s) can attack each combat`,
+  "effect.static_max_blockers_each_combat": (params) =>
+    `No more than ${param(params, "count", "1")} creature(s) can block each combat`,
+  "effect.static_cant_attack_if_attacked_last_own_turn": () =>
+    "This creature can't attack if it attacked during your last turn",
+  "effect.static_cant_attack_player_unless_they_acted": () =>
+    "Creatures can't attack a player unless that player cast a spell or put a nontoken permanent onto the battlefield during their last turn",
+  "effect.misc_that_creature_cant_attack_next_own_turn": () =>
+    "That creature can't attack during its controller's next turn",
+  "effect.misc_source_assigns_no_combat_damage_this_turn": () => "This creature assigns no combat damage this turn",
+  "effect.misc_source_cant_attack_this_combat": () => "This creature can't attack this combat",
+  "effect.misc_your_attacks_dont_tap_while_source_untapped_this_combat": () =>
+    "Attacking doesn't cause creatures you control to tap this combat while this creature is untapped",
+  "effect.misc_that_creature_and_its_blockers_assign_no_combat_damage_this_turn": () =>
+    "Prevent all combat damage that would be dealt this turn by that creature and each creature blocking it",
   "effect.static_cant_attack_unless_defender_controls": (params) =>
     `This creature can't attack unless defending player controls ${param(params, "filter")}`,
   "effect.static_cant_be_attacked_by": (params) => `${humanize(param(params, "filter", "Creatures"))} can't attack you`,
@@ -594,8 +736,24 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     `You may skip your draw-step draw; if you do, ${humanize(param(params, "filter", "creatures"))} can't attack you until your next turn`,
   "effect.static_can_block_additional": (params) =>
     `This creature can block ${param(params, "count", "1")} additional creature(s) each combat`,
+  "effect.static_landwalk_negated": (params) => {
+    const landwalk = param(params, "landwalk", "landwalk");
+    return `Creatures with ${landwalk} can be blocked as though they didn't have ${landwalk}`;
+  },
   "effect.static_cant_be_blocked_by": (params) =>
     `This creature can't be blocked by ${humanize(param(params, "filter", "creatures"))}`,
+  "effect.static_cant_be_targeted_by": (params) => {
+    const spells = param(params, "spells", "all");
+    const subject = bool(params, "attached") ? "Enchanted permanent" : "This permanent";
+    const what = spells === "all" ? "spells" : `${humanize(spells)} spells`;
+    return `${subject} can't be the target of ${what}`;
+  },
+  "effect.static_cant_be_targeted_by_subtype_only_effects": (params) => {
+    const subtypes = humanize(param(params, "subtypes", "permanents"));
+    return `This permanent can't be the target of spells or abilities that can target only ${subtypes} permanents`;
+  },
+  "effect.static_must_be_blocked_by": (params) =>
+    `All ${humanize(param(params, "filter", "creatures"))} able to block this creature do so`,
   "effect.static_cant_block_attackers": (params) =>
     `This creature can't block ${humanize(param(params, "filter", "creatures"))}`,
   "effect.static_cant_block_filter": (params) => `${humanize(param(params, "filter", "Creatures"))} can't block`,
@@ -610,11 +768,21 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     bool(params, "self_only")
       ? "This permanent doesn't untap during your untap step"
       : `${humanize(param(params, "filter", "Permanents"))} don't untap during their controllers' untap steps`,
+  "effect.static_return_to_hand_instead_of_dying": literal(
+    "If this creature would die, return it to its owner's hand instead. Until that player's next turn, that player plays with that card revealed in their hand and can't play it",
+  ),
   "effect.static_players_skip_untap_steps": literal("Players skip their untap steps"),
+  "effect.static_players_play_with_hands_revealed": literal("Players play with their hands revealed"),
+  "effect.static_players_play_with_library_tops_revealed": literal(
+    "Players play with the top card of their libraries revealed",
+  ),
   "effect.static_untap_at_most_one": (params) =>
     `Players can't untap more than one ${humanize(param(params, "filter", "permanent"))} during their untap steps`,
   "effect.static_may_skip_turn_while_tapped": literal(
     "If you would begin your turn while this permanent is tapped, you may skip that turn instead. If you do, untap this permanent",
+  ),
+  "effect.static_regenerates_instead_of_being_destroyed": literal(
+    "If this permanent would be destroyed, regenerate it",
   ),
   "effect.static_must_attack_each_combat": (params) =>
     bool(params, "self_only")
@@ -626,25 +794,31 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.static_control_attached": literal("You control enchanted creature"),
   "effect.static_counter_replacement": (params) =>
     `+1/+1 counters placed: (n + ${param(params, "add")}) x ${param(params, "times")}`,
+  "effect.static_counter_maximum": (params) =>
+    `This permanent can't have more than ${param(params, "max")} ${humanize(param(params, "kind"))} counters on it`,
   "effect.static_counter_scaled_attack_tax": literal(
     "Creatures with counters on them can't attack you unless their controller pays generic mana equal to their counters",
   ),
   "effect.static_creatures_you_control_enter_with_counters": (params) =>
     `${humanize(param(params, "filter", "Creatures"))} you control enter with ${param(params, "count")} additional +1/+1 counters`,
+  "effect.static_opponents_permanents_enter_tapped": (params) =>
+    `${humanize(param(params, "filter", "Permanents"))} your opponents control enter tapped`,
   "effect.static_enters_with_counters": (params) =>
     params.kind == null
       ? `Enters with ${param(params, "amount")} +1/+1 counters`
       : `Enters with ${param(params, "amount")} ${humanize(param(params, "kind"))} counters`,
+  "effect.static_filtered_anthem": (params) => staticFilteredAnthem(params),
   "effect.static_grant_activated_ability": (params) =>
     `${humanize(param(params, "filter", "Permanents"))} gain an activated ability`,
   "effect.static_grant_mana_ability": (params) =>
     `${humanize(param(params, "filter", "Artifacts"))} you control gain a mana ability`,
   "effect.static_grant_to_attached": (params) =>
     `Attached creature gets +${param(params, "power")}/+${param(params, "toughness")}`,
-  "effect.static_keyword_anthem": (params) =>
-    `${bool(params, "all_players") ? "All permanents" : "Permanents you control"} have ${humanize(param(params, "keywords"))}`,
   "effect.static_life_gain_replacement": (params) => `life gained: n + ${param(params, "plus")}`,
   "effect.static_life_gain_becomes_draw": literal("If you would gain life, draw that many cards instead"),
+  "effect.static_draws_after_the_first_each_draw_step_become_discard_then_draw": literal(
+    "If a player would draw a card except the first one they draw in each of their draw steps, that player discards a card instead. If the player discards a card this way, they draw a card. If the player doesn't discard a card this way, they mill a card",
+  ),
   "effect.static_no_maximum_hand_size": literal("You have no maximum hand size"),
   "effect.static_play_any_number_of_lands": literal("You may play any number of lands on each of your turns"),
   "effect.static_play_from_graveyard_once_per_turn": literal(
@@ -666,6 +840,8 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.static_redirect_unblocked_damage_to_self": literal(
     "As long as this creature is untapped, all damage that would be dealt to you by unblocked creatures is dealt to this creature instead",
   ),
+  "effect.static_replace_damage_to_you": (params) =>
+    `If an ${humanize(param(params, "source", "any"))} source would deal ${param(params, "at_least")} or more damage to you, it deals ${param(params, "becomes")} damage to you instead`,
   "effect.static_reduce_spell_cost": (params) =>
     `${bool(params, "first_x_spell_each_turn") ? "The first spell you cast with {X} in its mana cost each turn" : humanize(param(params, "filter", "Spells you cast"))} cost {${param(params, "amount")}} less`,
   "effect.static_tax_spell_cost": (params) =>
@@ -766,8 +942,11 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   ),
   "effect.zone_reanimate_to_battlefield": literal("Reanimate to battlefield"),
   "effect.zone_reflexive_trigger": (_params, children) => children[0] ?? "",
+  "effect.zone_return_all_exiled_with_this": (params) =>
+    `Put all cards exiled with this permanent into their owner's ${bool(params, "to_graveyard") ? "graveyard" : "hand"}`,
   "effect.zone_return_all_to_hand": (params) =>
     `Return all ${humanize(param(params, "filter", "permanents"))} to their owners' hands`,
+  "effect.zone_return_dying_enchanted_creature_to_hand": literal("Return that card to its owner's hand"),
   "effect.zone_return_exiled_card_to_owners_graveyard": literal("Return the exiled card to its owner's graveyard"),
   "effect.zone_return_flickered_card": literal("Return that card to the battlefield under its owner's control"),
   "effect.zone_return_from_graveyard_attached_to_token": (params) =>

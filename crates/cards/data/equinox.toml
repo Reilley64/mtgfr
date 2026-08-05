@@ -1,0 +1,34 @@
+# Enchant land
+# Enchanted land has "{T}: Counter target spell if it would destroy a land you control."
+name = "Equinox"
+otags = ["activated-ability", "protects-land", "single-english-word-name"]
+id = "0fa2cb01-476e-4e82-94e6-9639e53a7743"
+default_print = "840c6586-a7a9-4ae8-96be-a995a0693eb6"
+oracle = "Enchant land\nEnchanted land has \"{T}: Counter target spell if it would destroy a land you control.\""
+subtypes = ["Aura"]
+# ponytail: "if it would destroy a land you control" becomes a *targeting* restriction — the
+# granted ability can only be aimed at a spell already predicted to destroy one — rather than a
+# resolution-time gate on an otherwise-legal counter. The prediction reads the spell's script and
+# its chosen targets, so a destroy behind a modal branch or a kill by another route (sacrifice,
+# -X/-X, exile) doesn't qualify. Increment #192.
+approximates = "The counter condition is enforced when the ability is aimed rather than as it resolves, and \"would destroy\" is predicted from the spell's script."
+enchant = { types = "land" }
+
+[cost]
+white = 1
+
+[kind]
+type = "aura"
+
+# Enchanted land has "{T}: Counter target spell if it would destroy a land you control."
+[[abilities]]
+oracle = "Enchanted land has \"{T}: Counter target spell if it would destroy a land you control.\""
+timing = "static"
+
+# Enchanted land has "{T}: Counter target spell if it would destroy a land you control."
+[[abilities.effects]]
+type = "static"
+mode = "grant_to_attached"
+granted_ability = { cost = { taps_self = true }, effects = [
+  { type = "misc", mode = "counter_target_spell", filter = "would_destroy_land_you_control" },
+] }

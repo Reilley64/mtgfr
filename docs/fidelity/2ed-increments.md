@@ -452,11 +452,9 @@ free. No new filter axis was needed.
 
 ponytail: the mire read applies last, after any global land-type change, instead of by CR 613.4
 timestamp — a counter carries no timestamp to sort by. Give `Permanent` a mire timestamp if a board
-ever holds both a mired land and a Conversion. Separately, this engine validates an activated
-ability's target at resolution rather than at activation (CR 608.2b instead of CR 602.2b, a
-documented posture — see `cast.rs`'s `activate_ability`), so pointing the Tomb at a Swamp costs the
-{2} and fizzles instead of being refused. Left alone: changing it touches every targeted activated
-ability in the pool.
+ever holds both a mired land and a Conversion. (The second ponytail here — that an activated
+ability's target was validated only at resolution, so pointing the Tomb at a Swamp cost the {2} and
+fizzled instead of being refused — was resolved by leg #105's CR 601.2c activation-time gate.)
 
 ### 8f. `leaves-the-battlefield-unbounded-upkeep-series` — 1 card, L
 Depends on: 8d.
@@ -1451,7 +1449,8 @@ Timetwister itself goes to the graveyard after (so it isn't shuffled in). *Sketc
 on that effect with the zones to shuffle and no discard step.
 *Cards:* timetwister.
 
-*Landed:* a sibling `ChoiceEffect` variant (`each_player_shuffles_hand_and_graveyard_then_draws`),
+*Landed:* a sibling `ChoiceEffect` variant (`each_player_shuffles_hand_then_draws`, named
+`each_player_shuffles_hand_and_graveyard_then_draws` until Legends' Winds of Change joined it),
 not a flag on the wheel — the zones read, the zone written, and the triggers fired all differ, and a
 bool that flips discard-to-shuffle *and* adds the graveyard is two axes wearing one name. The move
 itself needed nothing new: `Event::TuckedToLibrary` already accepts any origin (the graveyard
@@ -2258,9 +2257,10 @@ meaning of the existing one — the chosen creature becomes `from_source` and th
 front of the ability's controller.
 
 The `unblocked` filter axis is the mirror of `blocking`, read off the same declared-blocks list from
-the other end. Targets aren't re-validated at activation in this engine (the established CR 608.2b
-posture), so naming a creature that gets blocked fizzles the ability at resolution rather than
-rejecting the activation; the regression test pins that with a trampler.
+the other end. (At the time this landed, targets weren't re-validated at activation, so naming a
+creature that gets blocked fizzled at resolution; leg #105's CR 601.2c gate later made that an
+outright refusal, and `forcefield.toml`'s `approximates` records the residual — Forcefield's
+"of your choice" is not really a target at all.)
 
 ### 70. `damage-replaced-by-counter-removal` — 1 card, M — **done**
 Depends on: #4.

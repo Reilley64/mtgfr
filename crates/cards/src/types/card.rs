@@ -317,6 +317,99 @@ impl TextWords {
     }
 }
 
+/// The \[quality\] in "bands with other \[quality\]" (CR 702.22b) — what every member of a band
+/// declared on that keyword's strength has to be (CR 702.22c).
+/// ponytail: a purpose-built axis rather than a [`PermanentFilter`](crate::PermanentFilter), which
+/// would make [`Keyword`] non-`Copy` for the sake of the two printed qualities.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BandsWithQuality {
+    /// "bands with other legendary creatures" — the five Legends color lands' grant (CR 205.4a's
+    /// Legendary supertype).
+    Legendary,
+    /// "bands with other creatures named \[name\]" — Master of the Hunt's Wolves of the Hunt
+    /// tokens, the only printed name-keyed quality. Matched against the creature's name (CR 201.2).
+    Named(&'static str),
+}
+
+/// [`BandsWithQuality`] as TOML spells it: the bare string `"legendary"`, or the single-key table
+/// `{ named = "Wolves of the Hunt" }`. Its own type because serde's `'de` lifetime cannot yield the
+/// `&'static str` [`BandsWithQuality::Named`] carries to keep [`Keyword`] `Copy`.
+#[cfg(feature = "card-dsl")]
+#[derive(serde::Deserialize)]
+#[cfg_attr(
+    feature = "card-schema",
+    derive(schemars::JsonSchema),
+    schemars(rename = "BandsWithQuality")
+)]
+#[serde(rename_all = "snake_case")]
+enum BandsWithQualityToml {
+    Legendary,
+    Named(String),
+}
+
+#[cfg(feature = "card-dsl")]
+impl<'de> serde::Deserialize<'de> for BandsWithQuality {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        Ok(match BandsWithQualityToml::deserialize(deserializer)? {
+            BandsWithQualityToml::Legendary => BandsWithQuality::Legendary,
+            // ponytail: leaked rather than interned. The pool is parsed once per process and the
+            // names live as long as the card definitions do, so a leak per printed name is the
+            // whole cost of keeping `Keyword` `Copy`.
+            BandsWithQualityToml::Named(name) => {
+                BandsWithQuality::Named(Box::leak(name.into_boxed_str()))
+            }
+        })
+    }
+}
+
+#[cfg(feature = "card-schema")]
+impl schemars::JsonSchema for BandsWithQuality {
+    fn schema_name() -> String {
+        BandsWithQualityToml::schema_name()
+    }
+
+    fn json_schema(generator: &mut schemars::r#gen::SchemaGenerator) -> schemars::schema::Schema {
+        BandsWithQualityToml::json_schema(generator)
+    }
+}
+
+/// A whole family of parametrized keywords, named the way a card names it: "all landwalk
+/// abilities" (Hammerheim), "all \"bands with other\" abilities" (Shelkin Brownie, Tolaria). Used
+/// by keyword *removal* — see [`PumpEffect::TargetLosesKeywords`](crate::PumpEffect) — where a
+/// card sweeps every member of the family rather than naming one.
+///
+/// A family rather than the expanded list of members because both families are open: a sixth
+/// [`BasicLandType`] or a second [`BandsWithQuality`] (Master of the Hunt's "bands with other
+/// creatures named Wolves of the Hunt") would silently fall out of an enumerated list.
+///
+/// In TOML a bare string in `keyword_families`: `keyword_families = ["landwalk"]`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "card-dsl",
+    derive(serde::Deserialize),
+    serde(rename_all = "snake_case")
+)]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
+pub enum KeywordFamily {
+    /// Every [`Keyword::Landwalk`], whatever the land type (CR 702.14).
+    Landwalk,
+    /// Every [`Keyword::BandsWith`], whatever the quality (CR 702.22b). Says nothing about plain
+    /// [`Keyword::Banding`] — Tolaria names both, separately.
+    BandsWith,
+}
+
+impl KeywordFamily {
+    /// Whether `keyword` is a member of this family.
+    pub fn matches(self, keyword: Keyword) -> bool {
+        match self {
+            KeywordFamily::Landwalk => {
+                matches!(keyword, Keyword::Landwalk(_) | Keyword::LegendaryLandwalk)
+            }
+            KeywordFamily::BandsWith => matches!(keyword, Keyword::BandsWith(_)),
+        }
+    }
+}
+
 /// The evergreen keywords that change combat/timing math in the Phase 1 pool.
 ///
 /// In TOML a keyword is a bare string (`"flying"`) or, for the parametrized ones, a
@@ -367,6 +460,14 @@ pub enum Keyword {
     /// `{ landwalk = "island" }`. See [`Game::can_block`].
     #[cfg_attr(feature = "card-dsl", serde(rename = "landwalk"))]
     Landwalk(BasicLandType),
+    /// Legendary landwalk (CR 702.14a): the ability names a land *supertype*, not one of
+    /// [`BasicLandType`]'s subtypes, so it can't ride [`Landwalk`](Self::Landwalk)'s payload.
+    /// Its own variant rather than a widened payload because all of Magic prints exactly two —
+    /// Livonya Silone and Ayumi, the Last Visitor. Widen `Landwalk` to a land filter when a
+    /// *third* off-subtype walk (desertwalk, snow, nonbasic) needs one.
+    /// A member of [`KeywordFamily::Landwalk`], so "loses all landwalk abilities" (Hammerheim)
+    /// strips it too.
+    LegendaryLandwalk,
     /// Can't be the target of spells or abilities *opponents* control (CR 702.11). Its own
     /// controller can still target it. See the target-legality retain in
     /// [`Game::legal_targets_for`].
@@ -399,13 +500,25 @@ pub enum Keyword {
     /// "This creature can't block" (CR 509.1a — Bloodghast is never a legal blocker). Read by
     /// [`Game::can_block`].
     CantBlock,
-    /// Banding (CR 702.22). Only the damage-assignment half is modeled: when a creature with
-    /// banding is among an attacker's blockers, *its* controller divides that attacker's combat
-    /// damage rather than the attacking player (CR 702.22e). See [`Game::damage_assigner`].
-    /// ponytail: attacking as a band is not modeled — `Intent::DeclareAttackers` carries a flat
-    /// list of attackers with no grouping, and bands would have to travel through the intent, the
-    /// projection, the proto, and the client's attack UI. See increment #79.
+    /// Banding (CR 702.22). Attacking in a band (CR 702.22c) is
+    /// [`Game::declare_attackers_in_bands`]; a band is blocked as a group (CR 702.22h/i); and both
+    /// halves of the damage-division transfer move the division off the player CR 510.1c/d would
+    /// give it to — CR 702.22j sends a blocked attacker's division to the defending player
+    /// ([`Game::attacker_damage_assigner`]) and CR 702.22k sends a blocker's division to the active
+    /// player ([`Game::blocker_damage_assigner`]).
+    /// ponytail: a band cannot be declared over the wire — `Intent::DeclareAttackersInBands` has no
+    /// `WireIntent` counterpart, so the proto and the client's attack UI still see a flat attacker
+    /// list. See increment #121.
     Banding,
+    /// "Bands with other \[quality\]" (CR 702.22b) — a special form of banding whose \[quality\]
+    /// is the membership test for a band declared on its strength (CR 702.22c). The five Legends
+    /// color lands each *grant* it to their color's legendary creatures ("White legendary creatures
+    /// you control have 'bands with other legendary creatures.'"); Master of the Hunt's Wolves of
+    /// the Hunt token prints it with a card *name* as the quality. In TOML,
+    /// `{ bands_with = "legendary" }` or `{ bands_with = { named = "Wolves of the Hunt" } }`. See
+    /// [`Game::declare_attackers_in_bands`].
+    #[cfg_attr(feature = "card-dsl", serde(rename = "bands_with"))]
+    BandsWith(BandsWithQuality),
     /// Brazen Borrower's printed "can block only creatures with flying" static — MTG names no
     /// keyword for it.
     /// ponytail: modeled as a card-specific keyword-bag arm on the shared block-legality check
@@ -440,6 +553,13 @@ pub enum Keyword {
     /// Combat damage only: applied at [`Game::damage_player`](crate::Game::damage_player), after
     /// that choke's prevention guards, so fully prevented combat damage places no counters.
     Toxic(u8),
+    /// Rampage N (CR 702.23): "Whenever this creature becomes blocked, it gets +N/+N until end of
+    /// turn for each creature blocking it beyond the first." The keyword *is* the triggered
+    /// ability — [`Game::queue_rampage_triggers`](crate::Game::queue_rampage_triggers) fabricates
+    /// it at declare blockers rather than each card authoring the trigger by hand. Multiple
+    /// instances trigger separately (CR 702.23c), and the count is read when the trigger resolves,
+    /// not continuously (CR 702.23b).
+    Rampage(u8),
 }
 
 /// A small set of the permanent card types a card carries, as a bitset (creature, artifact,
@@ -471,6 +591,14 @@ impl TypeSet {
     /// Whether the two sets share any type.
     pub fn intersects(self, other: TypeSet) -> bool {
         self.0 & other.0 != 0
+    }
+
+    /// The types both sets have — Gauntlets of Chaos narrowing "artifact, creature, or land" down
+    /// to the types its chosen first target actually has. Beware the empty set's double meaning
+    /// (see [`NONE`](Self::NONE)): an empty intersection means "shares nothing", which as a
+    /// filter's `types` would read as "no restriction", so callers must handle it explicitly.
+    pub const fn intersection(self, other: TypeSet) -> TypeSet {
+        TypeSet(self.0 & other.0)
     }
 
     /// Whether this set is empty (a filter with no type restriction).
@@ -604,6 +732,19 @@ pub struct Ability {
     pub cost: Cost,
     /// An intervening-if condition (CR 603.4): the trigger only goes on the stack when this
     /// holds when it would trigger. `None` for an unconditional trigger.
+    ///
+    /// On a [`Timing::Spell`] ability there is nothing to intervene on, so the same field reads as
+    /// a cast restriction instead (CR 601.3e — the "Cast this spell only …" clause), checked in
+    /// [`Game::cast_timing_ok`] alongside the card-level `cast_only_*` windows it composes with:
+    /// Camouflage's "only during *your* declare attackers step" is
+    /// [`CardDef::cast_only_during_declare_attackers`] for the step plus
+    /// [`Condition::DuringYourTurn`] here for the seat.
+    ///
+    /// On a [`Timing::Activated`] ability it reads as an activation restriction instead (CR 602.2b
+    /// — Triassic Egg's "Activate only if there are two or more hatchling counters on this
+    /// artifact"), checked in `Game::ability_activation_gate` alongside the timing windows
+    /// [`ActivationCost`]'s own `only_*` flags spell. Board-state gates belong here; timing
+    /// windows belong there.
     pub condition: Option<Condition>,
     /// "This ability triggers only once each turn" (Morbid Opportunist, Tocasia's Welcome, Dina
     /// Essence Brewer's draw ability): caps a *triggered* ability at its first placement per
@@ -685,13 +826,18 @@ pub struct CardDef {
     /// type mirroring `enchant` if a second graveyard-enchanting Aura needs a narrower one.
     pub enchant_graveyard: bool,
     /// Whether the card is legendary — the only cards that may be a deck's commander.
-    /// ponytail: a bare bool, not a full CR 205.4a supertype set; snow is the only other
-    /// supertype the pool tracks today ([`Self::snow`]).
+    /// ponytail: a bare bool, not a full CR 205.4a supertype set; snow and world are the only
+    /// other supertypes the pool tracks today ([`Self::snow`], [`Self::world`]).
     pub legendary: bool,
     /// Whether the card is snow (CR 205.4g — Snow-Covered Forest, Ohran Frostfang). Read by
     /// snow-matters filters ([`crate::CardFilter::SnowLand`], [`crate::PermanentFilter::snow`]).
     /// `false` (default) for every ordinary card. `snow = true` in TOML.
     pub snow: bool,
+    /// Whether the card is world (CR 205.4a — Concordant Crossroads and the rest of Legends'
+    /// World Enchantments). Read by the world rule (CR 704.5k): all but the most recently
+    /// entered World permanent are put into their owners' graveyards as a state-based action.
+    /// `false` (default) for every ordinary card. `world = true` in TOML.
+    pub world: bool,
     /// "This spell can't be countered" (CR 701.5g, e.g. Altered Ego). Checked in
     /// [`Game::counter_spell`], the shared choke for both the unconditional
     /// [`Effect::Misc(MiscEffect::CounterTargetSpell)`] arm and a declined `PayOrCounter` — the counter fizzles,
@@ -821,11 +967,27 @@ pub struct CardDef {
     /// rearrange a declaration that has already happened. `cast_only_during_declare_blockers =
     /// true` in TOML; `false` for every ordinary card.
     pub cast_only_during_declare_blockers: bool,
-    /// "Cast this spell only during your declare attackers step" (CR 601.3e — Camouflage): the
-    /// attack-side twin of the window above, and narrower still — *your* declare attackers step,
-    /// so it is closed on every other player's turn as well as in every other step.
-    /// `cast_only_during_declare_attackers = true` in TOML; `false` for every ordinary card.
+    /// "Cast this spell only during the declare attackers step" (CR 601.3e — Teleport): the
+    /// attack-side twin of the window above, and like it any player's step — the step belongs to
+    /// the active player's turn, but priority inside it goes around the table (CR 506.3), and the
+    /// printed restriction names the step rather than *your* step. Camouflage, which does print
+    /// "your", pairs this with [`Condition::DuringYourTurn`] on its spell ability (see
+    /// [`Ability::condition`]) for the seat half. `cast_only_during_declare_attackers = true` in
+    /// TOML; `false` for every ordinary card.
     pub cast_only_during_declare_attackers: bool,
+    /// "…after their upkeep step" (CR 601.3e — Reset): closed through the upkeep, open from the
+    /// draw step on. A separate flag rather than a variant of one shared timing enum because
+    /// these restrictions *compose* — Reset prints this and
+    /// [`Self::cast_only_during_opponents_turn`] in one sentence, exactly as Siren's Call pairs
+    /// two others — so a mutually-exclusive enum could not express any of them.
+    /// `cast_only_after_upkeep = true` in TOML; `false` for every ordinary card.
+    pub cast_only_after_upkeep: bool,
+    /// "Cast this spell only after combat" (CR 601.3e — Glyph of Reincarnation): closed from untap
+    /// through the end of combat step, open from the postcombat main phase on. The phase-scoped
+    /// mirror of [`Self::cast_only_before_combat_damage`], and like every flag in this family it
+    /// composes rather than excluding the others.
+    /// `cast_only_after_combat = true` in TOML; `false` for every ordinary card.
+    pub cast_only_after_combat: bool,
     /// A one-line plain-English note on how this card's modeled behavior diverges from its
     /// printed rules text (a dropped clause, a coarsened trigger, a folded-together mechanic) —
     /// the same fact a `# ponytail:` TOML comment records, but as a datum the catalog/deck
@@ -1389,6 +1551,7 @@ pub fn becomes_treasure(printed: CardDef) -> CardDef {
         default_print: printed.default_print,
         cost: printed.cost,
         legendary: printed.legendary,
+        world: printed.world,
         colors: printed.colors,
         devoid: printed.devoid,
         ..treasure_token()
@@ -1406,12 +1569,15 @@ fn treasure_token_builtin() -> CardDef {
             self_damage: 0,
             loyalty: None,
             once_each_turn: false,
+            max_activations_per_turn: None,
             sorcery_speed: false,
             only_during_opponents_turn: false,
             only_during_your_turn: false,
-            only_owner_may_activate: false,
+            activator: Activator::Controller,
             only_before_attackers: false,
             only_during_your_upkeep: false,
+            only_during_declare_blockers: false,
+            only_before_combat_damage_step: false,
             remove_counters: 0,
             remove_counters_kind: None,
             remove_counters_x: false,
@@ -1458,6 +1624,7 @@ fn treasure_token_builtin() -> CardDef {
         kind: CardKind::Artifact,
         legendary: false,
         snow: false,
+        world: false,
         uncounterable: false,
         modal: false,
         modal_choose: 1,
@@ -1481,6 +1648,8 @@ fn treasure_token_builtin() -> CardDef {
         cast_only_before_combat_damage: false,
         cast_only_during_declare_blockers: false,
         cast_only_during_declare_attackers: false,
+        cast_only_after_upkeep: false,
+        cast_only_after_combat: false,
         approximates: None,
         oracle: None,
         sets: empty_slice(),
@@ -1535,6 +1704,7 @@ pub fn rogue_token_stub() -> CardDef {
         },
         legendary: false,
         snow: false,
+        world: false,
         uncounterable: false,
         modal: false,
         modal_choose: 1,
@@ -1558,6 +1728,8 @@ pub fn rogue_token_stub() -> CardDef {
         cast_only_before_combat_damage: false,
         cast_only_during_declare_blockers: false,
         cast_only_during_declare_attackers: false,
+        cast_only_after_upkeep: false,
+        cast_only_after_combat: false,
         approximates: None,
         oracle: None,
         sets: empty_slice(),
@@ -1614,6 +1786,7 @@ pub fn illusion_token() -> CardDef {
         },
         legendary: false,
         snow: false,
+        world: false,
         uncounterable: false,
         modal: false,
         modal_choose: 1,
@@ -1637,6 +1810,8 @@ pub fn illusion_token() -> CardDef {
         cast_only_before_combat_damage: false,
         cast_only_during_declare_blockers: false,
         cast_only_during_declare_attackers: false,
+        cast_only_after_upkeep: false,
+        cast_only_after_combat: false,
         approximates: None,
         oracle: None,
         sets: empty_slice(),

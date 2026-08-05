@@ -5,7 +5,7 @@ otags = ["activated-ability", "damage-prevention", "damage-prevention-you", "fau
 id = "bd6823fb-a696-4e6d-9c5e-3b55dfe03730"
 default_print = "239a5d29-95cf-468a-8b07-aea1f7dc8d52"
 oracle = "{1}: The next time an unblocked creature of your choice would deal combat damage to you this turn, prevent all but 1 of that damage."
-approximates = "the creature is named as a target when the ability is activated rather than chosen as it resolves, so the pick is revealed a step early and one that stops being unblocked fizzles the ability instead of being made freely later"
+approximates = "the creature is named as a target when the ability is activated rather than chosen as it resolves, so the pick is revealed a step early, a blocked creature is refused outright instead of being a legal-but-wasted choice, and one that stops being unblocked fizzles the ability instead of being picked freely later"
 
 [cost]
 generic = 3

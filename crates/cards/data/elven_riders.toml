@@ -1,0 +1,29 @@
+# This creature can't be blocked except by Walls and/or creatures with flying.
+name = "Elven Riders"
+otags = ["fake-flying", "hate-typal-non-wall", "type-errata"]
+id = "9a6ff511-3c8f-446e-8cad-b8997a753958"
+default_print = "a4bf2a88-2771-4ea8-b448-35642e034965"
+oracle = "This creature can't be blocked except by Walls and/or creatures with flying."
+subtypes = ["Elf"]
+
+[cost]
+generic = 3
+green = 2
+
+[kind]
+type = "creature"
+power = 3
+toughness = 3
+
+# This creature can't be blocked except by Walls and/or creatures with flying.
+[[abilities]]
+oracle = "This creature can't be blocked except by Walls and/or creatures with flying."
+timing = "static"
+
+# This creature can't be blocked except by Walls and/or creatures with flying. (Authored inverted, as every
+# "can't be blocked by" restriction is: the filter names the creatures turned away — the ones that are neither a
+# Wall nor a flyer, since either exception on its own lets a blocker through.)
+[[abilities.effects]]
+type = "static"
+mode = "cant_be_blocked_by"
+filter = { types = "creature", exclude_subtypes = ["Wall"], without_flying = true }

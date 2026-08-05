@@ -17,6 +17,7 @@ pub(super) fn map_identical(request: &ChoiceRequest) -> Option<PendingChoice> {
             activated,
         } => Some(PendingChoice::ChooseTarget {
             player: *player,
+            controller: *player,
             source: *source,
             effect: Some(effect.clone()),
             legal: legal.clone(),
@@ -52,11 +53,11 @@ pub(super) fn map_identical(request: &ChoiceRequest) -> Option<PendingChoice> {
         ChoiceRequest::ChooseColor {
             player,
             source,
-            until_end_of_turn,
+            use_,
         } => Some(PendingChoice::ChooseColor {
             player: *player,
             source: *source,
-            until_end_of_turn: *until_end_of_turn,
+            use_: *use_,
         }),
         ChoiceRequest::ChooseMode {
             player,
@@ -121,11 +122,13 @@ pub(super) fn map_identical(request: &ChoiceRequest) -> Option<PendingChoice> {
             player,
             source,
             cost,
+            then,
             otherwise,
         } => Some(PendingChoice::PayOrElse {
             player: *player,
             source: *source,
             cost: *cost,
+            then,
             otherwise,
         }),
         ChoiceRequest::ChooseTargetPlayers {

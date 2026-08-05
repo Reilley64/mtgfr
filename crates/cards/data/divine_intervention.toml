@@ -1,0 +1,49 @@
+# This enchantment enters with two intervention counters on it.
+# At the beginning of your upkeep, remove an intervention counter from this enchantment.
+# When you remove the last intervention counter from this enchantment, the game is a draw.
+name = "Divine Intervention"
+otags = ["aesthetic-counter", "prevents-win-loss", "triggered-ability", "unique-counter"]
+id = "0158a440-6573-4f12-958b-a5f0cf190d5b"
+default_print = "e250897e-a875-4c3c-bfec-4a09143dd587"
+oracle = "This enchantment enters with two intervention counters on it.\nAt the beginning of your upkeep, remove an intervention counter from this enchantment.\nWhen you remove the last intervention counter from this enchantment, the game is a draw."
+
+[cost]
+generic = 6
+white = 2
+
+[kind]
+type = "enchantment"
+
+# This enchantment enters with two intervention counters on it.
+[[abilities]]
+oracle = "This enchantment enters with two intervention counters on it."
+timing = "static"
+
+# This enchantment enters with two intervention counters on it.
+[[abilities.effects]]
+type = "static"
+mode = "enters_with_counters"
+count = 2
+kind = "intervention"
+
+# At the beginning of your upkeep, remove an intervention counter from this enchantment.
+[[abilities]]
+oracle = "At the beginning of your upkeep, remove an intervention counter from this enchantment."
+timing = "upkeep"
+
+# remove an intervention counter from this enchantment.
+[[abilities.effects]]
+type = "counters"
+mode = "remove_counter_from_self"
+kind = "intervention"
+
+# When you remove the last intervention counter from this enchantment, the game is a draw.
+[[abilities]]
+oracle = "When you remove the last intervention counter from this enchantment, the game is a draw."
+timing = "you_remove_last_counter_from_this"
+counter_kind = "intervention"
+
+# the game is a draw.
+[[abilities.effects]]
+type = "misc"
+mode = "game_is_a_draw"

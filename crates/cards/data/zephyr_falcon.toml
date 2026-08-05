@@ -1,0 +1,17 @@
+# Flying, vigilance
+name = "Zephyr Falcon"
+otags = ["evasion", "french-vanilla", "type-errata-falcon"]
+id = "b5e44bd6-0b67-4770-868d-c46af5b6a42f"
+default_print = "6d11923e-98c6-4041-b115-f4847fb71149"
+oracle = "Flying, vigilance"
+subtypes = ["Bird"]
+keywords = ["flying", "vigilance"]
+
+[cost]
+generic = 1
+blue = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1

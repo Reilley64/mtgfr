@@ -1,0 +1,38 @@
+# Enchant creature
+# Enchanted creature can't be the target of spells and can't be enchanted by other Auras.
+name = "Anti-Magic Aura"
+otags = ["gives-shroud", "hate-aura", "parasitic-aura"]
+id = "6f78c1e2-e38f-431b-8864-8aad982e9912"
+default_print = "54642f0e-2d5f-49eb-8181-054c84038072"
+oracle = "Enchant creature\nEnchanted creature can't be the target of spells and can't be enchanted by other Auras."
+subtypes = ["Aura"]
+
+[cost]
+generic = 2
+blue = 1
+
+[kind]
+type = "aura"
+
+# Enchanted creature can't be the target of spells and can't be enchanted by other Auras.
+[[abilities]]
+oracle = "Enchanted creature can't be the target of spells and can't be enchanted by other Auras."
+timing = "static"
+
+# Enchanted creature can't be the target of spells ...
+[[abilities.effects]]
+type = "static"
+mode = "cant_be_targeted_by"
+spells = "all"
+attached = true
+
+# The two halves are separate statics because they are enforced in different places: one restricts
+# targeting (CR 115), the other attaching (CR 303.4, checked continuously as a CR 704.5n action).
+[[abilities]]
+timing = "static"
+
+# ... and can't be enchanted by other Auras.
+[[abilities.effects]]
+type = "static"
+mode = "grant_to_attached"
+cant_be_enchanted = true

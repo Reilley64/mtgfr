@@ -1,0 +1,35 @@
+# {W}{B}, {T}: Prevent all combat damage that would be dealt by target creature this turn.
+name = "Lady Evangela"
+otags = ["activated-ability", "damage-prevention", "deprecated-legend-type", "repeatable-crime"]
+id = "8800d672-424b-4a7b-886f-7eb9d7a56cfe"
+default_print = "a01adcbd-0ebd-4f18-9942-4638fa0de358"
+oracle = "{W}{B}, {T}: Prevent all combat damage that would be dealt by target creature this turn."
+legendary = true
+subtypes = ["Human", "Cleric"]
+
+[cost]
+white = 1
+blue = 1
+black = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 2
+
+# {W}{B}, {T}: Prevent all combat damage that would be dealt by target creature this turn.
+[[abilities]]
+oracle = "{W}{B}, {T}: Prevent all combat damage that would be dealt by target creature this turn."
+timing = "activated"
+activation_cost = { white = 1, black = 1 }
+taps_self = true
+
+# Prevent all combat damage that would be dealt by target creature this turn.
+[[abilities.effects]]
+type = "misc"
+mode = "prevent_next_damage"
+target = "creature"
+target_is_source = true
+any_recipient = true
+combat_only = true
+all_damage = true

@@ -1,0 +1,17 @@
+# (no rules text — vanilla creature)
+name = "Jerrard of the Closed Fist"
+otags = ["deprecated-legend-type"]
+id = "fd20576d-4abe-4af8-ac53-ab9356593fe7"
+default_print = "621d4d0b-bcff-4855-bbaf-7aeeabeafe99"
+legendary = true
+subtypes = ["Human", "Knight"]
+
+[cost]
+generic = 3
+red = 1
+green = 2
+
+[kind]
+type = "creature"
+power = 6
+toughness = 5

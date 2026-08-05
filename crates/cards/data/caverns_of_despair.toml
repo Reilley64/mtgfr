@@ -1,0 +1,37 @@
+# No more than two creatures can attack each combat.
+# No more than two creatures can block each combat.
+name = "Caverns of Despair"
+otags = ["prevent-attack", "prevent-block", "symmetrical"]
+id = "a1034a02-36cf-4586-a001-9dc3fb76e904"
+default_print = "209f7479-b3a0-4c27-9602-78babb8d2e99"
+oracle = "No more than two creatures can attack each combat.\nNo more than two creatures can block each combat."
+world = true
+
+[cost]
+generic = 2
+red = 2
+
+[kind]
+type = "enchantment"
+
+# No more than two creatures can attack each combat.
+[[abilities]]
+oracle = "No more than two creatures can attack each combat."
+timing = "static"
+
+# No more than two creatures can attack each combat.
+[[abilities.effects]]
+type = "static"
+mode = "max_attackers_each_combat"
+count = 2
+
+# No more than two creatures can block each combat.
+[[abilities]]
+oracle = "No more than two creatures can block each combat."
+timing = "static"
+
+# No more than two creatures can block each combat.
+[[abilities.effects]]
+type = "static"
+mode = "max_blockers_each_combat"
+count = 2

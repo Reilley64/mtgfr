@@ -63,4 +63,20 @@ pub enum ManaEffect {
     /// mana ability, and a dual's either-credit stays undecided in the pool anyway. Raise a
     /// per-land pending choice if a card ever makes the pick matter.
     TargetPlayerTapsLandsForMana,
+
+    /// Quarum Trench Gnomes' "{T}: If target Plains is tapped for mana, it produces colorless mana
+    /// instead of white mana. (This effect lasts indefinitely.)"
+    ///
+    /// A durationless rewrite of what the land's *free tap* credits (CR 605.1a), registered as an
+    /// indefinite modifier on the land and read back at
+    /// [`Game::land_mana_credit`](crate::Game) — the one choke every read of a land's `produces`
+    /// goes through, so the tap intent and the auto-tap planner both see it. Not a type change: the
+    /// Plains stays a Plains, keeps every other ability it has, and dies to Flashfires still.
+    ///
+    /// `color` is the color that becomes colorless; a land that doesn't produce it is unaffected.
+    TargetLandProducesColorlessInsteadOf {
+        color: Color,
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        target: TargetSpec,
+    },
 }

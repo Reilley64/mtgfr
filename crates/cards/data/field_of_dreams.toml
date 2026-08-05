@@ -1,0 +1,23 @@
+# Players play with the top card of their libraries revealed.
+name = "Field of Dreams"
+otags = ["peek-library", "symmetrical"]
+id = "6dcc62f8-2fd9-473b-9e6a-2dd7e610f855"
+default_print = "6a63e119-3b1b-4964-a4b9-b10170ff542b"
+oracle = "Players play with the top card of their libraries revealed."
+world = true
+
+[cost]
+blue = 1
+
+[kind]
+type = "enchantment"
+
+# Players play with the top card of their libraries revealed.
+[[abilities]]
+oracle = "Players play with the top card of their libraries revealed."
+timing = "static"
+
+# Players play with the top card of their libraries revealed.
+[[abilities.effects]]
+type = "static"
+mode = "players_play_with_library_tops_revealed"

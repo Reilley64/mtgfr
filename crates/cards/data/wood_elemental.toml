@@ -1,0 +1,43 @@
+# As this creature enters, sacrifice any number of untapped Forests.
+# Wood Elemental's power and toughness are each equal to the number of Forests sacrificed as it
+# entered.
+name = "Wood Elemental"
+id = "2b6da458-e075-4696-a74f-c8846e0cc370"
+default_print = "71ced69c-921c-4a31-a213-0faf927134ef"
+oracle = "As this creature enters, sacrifice any number of untapped Forests.\nWood Elemental's power and toughness are each equal to the number of Forests sacrificed as it entered."
+otags = ["characteristic-defining-ability", "sacrifice-outlet"]
+subtypes = ["Elemental"]
+
+[cost]
+generic = 3
+green = 1
+
+[kind]
+type = "creature"
+power = 0
+toughness = 0
+
+# As this creature enters, sacrifice any number of untapped Forests.
+[[abilities]]
+oracle = "As this creature enters, sacrifice any number of untapped Forests."
+timing = "as_enters"
+
+# sacrifice any number of untapped Forests.
+[[abilities.effects]]
+type = "choice"
+mode = "sacrifice_any_number"
+filter = { types = "land", subtypes = ["Forest"], controller = "you", tapped = false }
+
+# Wood Elemental's power and toughness are each equal to the number of Forests sacrificed as it
+# entered.
+[[abilities]]
+oracle = "Wood Elemental's power and toughness are each equal to the number of Forests sacrificed as it entered."
+timing = "static"
+
+# power and toughness are each equal to the number of Forests sacrificed as it entered — the
+# as-enters choice locks that count in as the X this permanent entered with.
+[[abilities.effects]]
+type = "static"
+mode = "base_power_toughness_from_amount"
+power = "x"
+toughness = "x"

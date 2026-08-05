@@ -1,0 +1,30 @@
+# Defender (This creature can't attack.)
+# Prevent all damage that would be dealt to this creature by creatures it's blocking.
+name = "Wall of Vapor"
+otags = ["damage-prevention", "damage-prevention-self", "drawback", "synergy-blocker-self"]
+id = "7d08d128-863c-4cca-837f-847ff44acef5"
+default_print = "309c1b2a-0230-4b66-84a0-32b8cd6d31eb"
+oracle = "Defender (This creature can't attack.)\nPrevent all damage that would be dealt to this creature by creatures it's blocking."
+subtypes = ["Wall"]
+keywords = ["defender"]
+
+[cost]
+generic = 3
+blue = 1
+
+[kind]
+type = "creature"
+power = 0
+toughness = 1
+
+# Prevent all damage that would be dealt to this creature by creatures it's blocking.
+[[abilities]]
+oracle = "Prevent all damage that would be dealt to this creature by creatures it's blocking."
+timing = "static"
+
+# Prevent all damage that would be dealt to this creature by creatures it's blocking.
+[[abilities.effects]]
+type = "static"
+mode = "prevent_damage"
+to_self = true
+source_relation = "blocked_by_this"

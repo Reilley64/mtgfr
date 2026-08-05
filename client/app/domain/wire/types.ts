@@ -258,6 +258,9 @@ export type StackObjectView = {
 // planeswalker being attacked, when the attack named one (CR 508.1a).
 export type WireAttack = { attacker: U32; defender: number; defender_planeswalker?: U32 | null };
 export type WireBlock = { attacker: U32; blocker: U32 };
+/** One declared attacking band (CR 702.22c). Wrapper object, not a bare `U32[]`, because proto3
+ * has no repeated-of-repeated — this shape is what `protoMap`'s generic walk already handles. */
+export type WireBand = { members: Array<U32> };
 export type WireDamage = { amount: number; blocker: U32 };
 export type WireTarget = { id: U32; kind: "object" } | { kind: "player"; player: number };
 export type ModeView = { label: MessageRef; needs_target: boolean; targets: Array<WireTarget> };
@@ -303,6 +306,7 @@ export type VisibleEvent =
   | { kind: "regeneration_shield_created"; object: U32 }
   | { kind: "regenerated"; object: U32 }
   | { kind: "regeneration_shields_expired"; object: U32 }
+  | { kind: "cant_be_regenerated_this_turn_marked"; object: U32 }
   | { kind: "lost_summoning_sickness"; object: U32 }
   | { count: number; kind: "counters_placed"; object: U32 }
   | { count: number; counter_kind: number; kind: "kind_counters_placed"; object: U32 }
@@ -364,6 +368,7 @@ export type VisibleEvent =
   | { kind: "commander_cast_from_command_zone"; player: number }
   | { kind: "flash_permission_granted"; player: number }
   | { kind: "channel_colorless_mana_granted"; player: number }
+  | { kind: "spend_mana_as_any_type_granted"; player: number }
   | { amount: number; kind: "commander_damage_dealt"; player: number; source: U32 }
   | { amount: number; kind: "combat_damage_dealt_to_player"; player: number; source: U32 }
   | { amount: number; kind: "combat_damage_dealt_to_creature"; source: U32; target: U32 }
@@ -421,6 +426,7 @@ export type VisibleEvent =
   | { amount: number; kind: "life_changed"; player: number; source?: null | number }
   | { kind: "drew_from_empty_library"; player: number }
   | { kind: "player_lost"; player: number }
+  | { kind: "game_drawn" }
   | { kind: "citys_blessing_gained"; player: number }
   | { card?: string | null; from?: null | U32; kind: "card_drawn"; object: U32; player: number }
   | { by: number; kind: "sacrificed"; object: U32 }
@@ -509,6 +515,8 @@ export type PendingChoiceView =
   | { items: Array<ChoiceItem>; kind: "scry"; player: number }
   | { items: Array<ChoiceItem>; kind: "surveil"; player: number }
   | { items: Array<ChoiceItem>; kind: "reorder_top"; player: number }
+  // Visions: the "put them back in any order" half is a no-op, so this is a look-and-dismiss pause.
+  | { items: Array<ChoiceItem>; kind: "look_at_top"; player: number }
   | { items: Array<ChoiceItem>; kind: "search_library"; player: number }
   | { items: Array<ChoiceItem>; kind: "select_from_top"; player: number; up_to: number }
   | {
@@ -611,6 +619,7 @@ export type PendingChoiceView =
   | {
       items: Array<ChoiceItem>;
       choose_block_target?: boolean;
+      choose_damage_source?: boolean;
       kind: "choose_copy_target";
       player: number;
       put_counter_on_creature?: boolean;
@@ -659,7 +668,7 @@ export type WireIntent =
       target?: null | WireTarget;
       x?: number;
     }
-  | { attackers: Array<WireAttack>; kind: "declare_attackers"; player: number }
+  | { attackers: Array<WireAttack>; bands?: Array<WireBand>; kind: "declare_attackers"; player: number }
   | { blocks: Array<WireBlock>; kind: "declare_blockers"; player: number }
   | { kind: "choose_order"; order: Array<number>; player: number }
   | { kind: "choose_targets"; player: number; targets: Array<WireTarget> }

@@ -1,0 +1,17 @@
+# Defender (This creature can't attack.)
+name = "Wall of Heat"
+otags = ["drawback", "french-vanilla"]
+id = "c7bbfd32-2a6f-44e9-b51e-9b272f48d458"
+default_print = "ff6b2307-2c56-4f63-900e-88a3ac6f0b32"
+oracle = "Defender (This creature can't attack.)"
+subtypes = ["Wall"]
+keywords = ["defender"]
+
+[cost]
+generic = 2
+red = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 6

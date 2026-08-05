@@ -1,0 +1,23 @@
+# Players play with their hands revealed.
+name = "Revelation"
+otags = ["color-break", "reveal-hand", "single-english-word-name", "symmetrical"]
+id = "251ff4e4-3be4-424e-8dd7-eb4ede7b415c"
+default_print = "07892b6c-08d2-47b5-8d64-0e4d1bdc3080"
+oracle = "Players play with their hands revealed."
+world = true
+
+[cost]
+green = 1
+
+[kind]
+type = "enchantment"
+
+# Players play with their hands revealed.
+[[abilities]]
+oracle = "Players play with their hands revealed."
+timing = "static"
+
+# Players play with their hands revealed.
+[[abilities.effects]]
+type = "static"
+mode = "players_play_with_hands_revealed"

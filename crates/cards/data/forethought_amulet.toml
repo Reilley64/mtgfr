@@ -1,0 +1,41 @@
+# At the beginning of your upkeep, sacrifice this artifact unless you pay {3}.
+# If an instant or sorcery source would deal 3 or more damage to you, it deals 2 damage to you
+# instead.
+name = "Forethought Amulet"
+otags = ["damage-prevention-you", "drawback", "triggered-ability", "upkeep-cost"]
+id = "0edf0988-9ed8-4fe6-aa47-4921870f05a8"
+default_print = "700f53d3-0a84-4c55-8495-786f0f0783db"
+oracle = "At the beginning of your upkeep, sacrifice this artifact unless you pay {3}.\nIf an instant or sorcery source would deal 3 or more damage to you, it deals 2 damage to you instead."
+
+[cost]
+generic = 5
+
+[kind]
+type = "artifact"
+
+# At the beginning of your upkeep, sacrifice this artifact unless you pay {3}.
+[[abilities]]
+oracle = "At the beginning of your upkeep, sacrifice this artifact unless you pay {3}."
+timing = "upkeep"
+
+# sacrifice this artifact unless you pay {3}.
+[[abilities.effects]]
+type = "choice"
+mode = "pay_or_else"
+cost = { generic = 3 }
+otherwise = [{ type = "sacrifice", mode = "source" }]
+
+# If an instant or sorcery source would deal 3 or more damage to you, it deals 2 damage to you
+# instead.
+[[abilities]]
+oracle = "If an instant or sorcery source would deal 3 or more damage to you, it deals 2 damage to you instead."
+timing = "static"
+
+# If an instant or sorcery source would deal 3 or more damage to you, it deals 2 damage to you
+# instead.
+[[abilities.effects]]
+type = "static"
+mode = "replace_damage_to_you"
+source = "instant_or_sorcery"
+at_least = 3
+becomes = 2

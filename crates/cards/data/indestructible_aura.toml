@@ -1,0 +1,24 @@
+# Prevent all damage that would be dealt to target creature this turn.
+name = "Indestructible Aura"
+otags = ["damage-prevention", "damage-prevention-creature", "fun-ruling", "meme", "single-target-instant-sorcery", "misnomer"]
+id = "e10e8d56-bba6-412d-970e-c24969f32b5b"
+default_print = "0397a4f3-6d7c-43d1-9fc2-c0eaf780ecb0"
+oracle = "Prevent all damage that would be dealt to target creature this turn."
+
+[cost]
+white = 1
+
+[kind]
+type = "instant"
+
+# Prevent all damage that would be dealt to target creature this turn.
+[[abilities]]
+oracle = "Prevent all damage that would be dealt to target creature this turn."
+timing = "spell"
+
+# Prevent all damage that would be dealt to target creature this turn.
+[[abilities.effects]]
+type = "misc"
+mode = "prevent_next_damage"
+target = "creature"
+all_damage = true

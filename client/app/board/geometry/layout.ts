@@ -392,10 +392,13 @@ function colCard(card: RenderCard): RenderCard {
   return card;
 }
 
-/** A face-down "deck" placeholder for a player's hidden library, showing its card count.
- * Empty libraries omit the slot (same as an empty graveyard/exile pile). */
-function deckCard(owner: number, count: number): RenderCard | null {
+/** A player's deck slot: the revealed top card face-up when the server itemized one (Field of
+ * Dreams — "Players play with the top card of their libraries revealed"), otherwise a face-down
+ * placeholder. Either way it shows the whole library's count; an empty library omits the slot
+ * (same as an empty graveyard/exile pile). */
+function deckCard(owner: number, count: number, revealedTop?: ObjectView): RenderCard | null {
   if (count <= 0) return null;
+  if (revealedTop) return { ...toCard(revealedTop), zone: ZONE.Library, pile: count };
   return {
     id: libraryPileId(owner), // synthetic (no object); negative so it never collides with a real id
     x: 0,
@@ -592,7 +595,7 @@ export function layout(state: VisibleState, viewer: number, engaged: ReadonlySet
     const slots: (RenderCard | null)[] = [
       cmd ? toCard(cmd) : null,
       pileCard(inZone(ZONE.Exile, who), ZONE.Exile),
-      deckCard(who, p.library_count),
+      deckCard(who, p.library_count, inZone(ZONE.Library, who)[0]),
       pileCard(inZone(ZONE.Graveyard, who), ZONE.Graveyard),
     ];
     (flip ? [...slots].reverse() : slots).forEach((card, i) => {

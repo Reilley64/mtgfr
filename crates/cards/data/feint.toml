@@ -1,0 +1,30 @@
+# Tap all creatures blocking target attacking creature. Prevent all combat damage that would be
+# dealt this turn by that creature and each creature blocking it.
+name = "Feint"
+id = "1bb8fe05-abb3-40a8-9e80-5d99ed0e4284"
+default_print = "95b265bc-a94d-403b-8232-8fdfa0f8d9d5"
+oracle = "Tap all creatures blocking target attacking creature. Prevent all combat damage that would be dealt this turn by that creature and each creature blocking it."
+
+[cost]
+red = 1
+
+[kind]
+type = "instant"
+
+# Tap all creatures blocking target attacking creature. Prevent all combat damage that would be
+# dealt this turn by that creature and each creature blocking it.
+[[abilities]]
+oracle = "Tap all creatures blocking target attacking creature. Prevent all combat damage that would be dealt this turn by that creature and each creature blocking it."
+timing = "spell"
+
+# Tap all creatures blocking target attacking creature.
+[[abilities.effects]]
+type = "control"
+mode = "tap_blockers_of_target"
+target = { permanent = { types = "creature", attacking = true } }
+
+# Prevent all combat damage that would be dealt this turn by that creature and each creature
+# blocking it. — "that creature" is the attacker the step above targeted.
+[[abilities.effects]]
+type = "misc"
+mode = "that_creature_and_its_blockers_assign_no_combat_damage_this_turn"

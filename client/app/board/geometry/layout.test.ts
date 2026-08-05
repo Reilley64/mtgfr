@@ -443,6 +443,23 @@ describe("layout", () => {
     expect(cards).toHaveLength(7);
   });
 
+  it("shows the revealed top card of a library on the deck slot", () => {
+    // Field of Dreams — "Players play with the top card of their libraries revealed." The server
+    // itemizes exactly that one card per seat, so the deck slot wears its face instead of a back,
+    // while still counting the whole library.
+    const state = mkState({
+      players: [mkPlayer({ player: 0, library_count: 30 }), mkPlayer({ player: 1, library_count: 25 })],
+      objects: [mkObject({ id: 7, name: "Shock", owner: 1, controller: 1, zone: ZONE.Library, print: "abc" })],
+    });
+
+    const cards = layout(state, 0);
+
+    const opponentDeck = cards.find((c) => c.zone === ZONE.Library && c.owner === 1);
+    expect(opponentDeck).toMatchObject({ name: "Shock", print: "abc", faceDown: false, pile: 25 });
+    const viewerDeck = cards.find((c) => c.zone === ZONE.Library && c.owner === 0);
+    expect(viewerDeck).toMatchObject({ name: "Library", faceDown: true, pile: 30 });
+  });
+
   it("omits the library slot when the library is empty", () => {
     const state = mkState({
       players: [mkPlayer({ player: 0, library_count: 0 })],

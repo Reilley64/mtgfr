@@ -108,6 +108,7 @@ import {
   combatStagingClearsOnStepChange,
   handleCombatDrop,
   stagedAttackersForDisplay,
+  stagedBands,
 } from "./geometry/combat-staging";
 import { hitAvatar, hitTest } from "./geometry/hit-test";
 import {
@@ -252,6 +253,9 @@ export type BoardModel = {
   gyExilePick: CostPickState | null;
   // Combat staging.
   combatAttackers: WireAttack[];
+  /** Staged attackers grouped into one attacking band (CR 702.22c); empty for every attack that
+   * has no band, which is every attack but a banding one. */
+  combatBand: number[];
   combatBlocks: WireBlock[];
   attackersConfirmed: boolean;
   blockersConfirmed: boolean;
@@ -366,6 +370,7 @@ export function initialBoardModel(): BoardModel {
     discardPick: null,
     gyExilePick: null,
     combatAttackers: [],
+    combatBand: [],
     combatBlocks: [],
     attackersConfirmed: false,
     blockersConfirmed: false,
@@ -2325,6 +2330,7 @@ function trySubmitReadyPendingDraft(
       pc.kind === "scry" ||
       pc.kind === "surveil" ||
       pc.kind === "reorder_top" ||
+      pc.kind === "look_at_top" ||
       pc.kind === "select_from_top" ||
       pc.kind === "distribute_top" ||
       pc.kind === "partition_revealed")
@@ -2405,8 +2411,14 @@ function primaryClickModel(model: BoardModel, fold: GameFoldState, tableId: stri
       state.actions?.find((a) => a.kind === "declare_attackers")?.required_attacks ?? [],
       model.attackersConfirmed || state.combat.attackers_declared,
     );
-    const intent: WireIntent = { kind: "declare_attackers", player: me, attackers };
-    return [{ ...model, combatAttackers: [], attackersConfirmed: true }, boardIntentSubmit(tableId, intent)];
+    // CR 702.22c: bands ride along on the same declaration. `stagedBands` drops a band the player
+    // pared back below two members, so an ordinary attack still submits `bands: []`.
+    const bands = stagedBands(model.combatBand, attackers);
+    const intent: WireIntent = { kind: "declare_attackers", player: me, attackers, bands };
+    return [
+      { ...model, combatAttackers: [], combatBand: [], attackersConfirmed: true },
+      boardIntentSubmit(tableId, intent),
+    ];
   }
   if (action.kind === "confirm-blockers") {
     const intent: WireIntent = { kind: "declare_blockers", player: me, blocks: model.combatBlocks };
@@ -2474,6 +2486,7 @@ export function syncCombatStaging(model: BoardModel, fold: Pick<GameFoldState, "
   return {
     ...model,
     combatAttackers: [],
+    combatBand: [],
     combatBlocks: [],
     attackersConfirmed: false,
     blockersConfirmed: false,
@@ -2880,6 +2893,12 @@ export function updateBoard(
     }
     case "CombatCancelBlocker":
       return [{ ...model, combatBlocks: model.combatBlocks.filter((b) => b.blocker !== message.blockerId) }, []];
+    case "CombatBandToggled": {
+      const band = model.combatBand.includes(message.attackerId)
+        ? model.combatBand.filter((id) => id !== message.attackerId)
+        : [...model.combatBand, message.attackerId];
+      return [{ ...model, combatBand: band }, []];
+    }
     case "PromptCardToggled": {
       const synced = syncPromptDraft(model, fold);
       const pc = fold.state?.pending_choice;

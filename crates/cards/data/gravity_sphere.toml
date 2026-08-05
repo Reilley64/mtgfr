@@ -1,0 +1,27 @@
+# All creatures lose flying.
+name = "Gravity Sphere"
+otags = ["lose-flying", "static", "symmetrical", "universal-keyword-removal"]
+id = "8ddf93fe-980b-4dc4-b56f-6a2ee50100a6"
+default_print = "a2749332-e99a-4a0c-b3a3-5578b552fa11"
+oracle = "All creatures lose flying."
+world = true
+
+[cost]
+generic = 2
+red = 1
+
+[kind]
+type = "enchantment"
+
+# All creatures lose flying.
+[[abilities]]
+oracle = "All creatures lose flying."
+timing = "static"
+
+# All creatures lose flying.
+[[abilities.effects]]
+type = "static"
+mode = "filtered_anthem"
+lose_keywords = ["flying"]
+all_players = true
+filter = { types = "creature" }

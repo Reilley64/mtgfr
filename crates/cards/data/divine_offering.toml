@@ -1,0 +1,30 @@
+# Destroy target artifact. You gain life equal to its mana value.
+name = "Divine Offering"
+otags = ["hate-high-mv", "lifegain", "removal-artifact", "removal-destroy", "scales-with-mana-value", "single-target-instant-sorcery", "spot-removal"]
+id = "231f8edb-4ea1-44be-8794-b76a31462dfc"
+default_print = "fe7c7a65-5a96-4986-877b-b34583092bb6"
+oracle = "Destroy target artifact. You gain life equal to its mana value."
+
+[cost]
+generic = 1
+white = 1
+
+[kind]
+type = "instant"
+
+# Destroy target artifact. You gain life equal to its mana value.
+[[abilities]]
+oracle = "Destroy target artifact. You gain life equal to its mana value."
+timing = "spell"
+
+# Destroy target artifact.
+[[abilities.effects]]
+type = "destroy"
+mode = "target"
+target = { permanent = { types = "artifact" } }
+
+# You gain life equal to its mana value.
+[[abilities.effects]]
+type = "life"
+mode = "gain"
+amount = "spell_first_target_mana_value"

@@ -1,0 +1,25 @@
+# Typhoon deals damage to each opponent equal to the number of Islands that player controls.
+name = "Typhoon"
+otags = ["burn-player", "group-slug", "hate-island", "single-english-word-name"]
+id = "ef295a34-0325-49dd-87a6-546dde395082"
+default_print = "254e0403-67d8-4e73-8d89-c901ebeba49f"
+oracle = "Typhoon deals damage to each opponent equal to the number of Islands that player controls."
+
+[cost]
+generic = 2
+green = 1
+
+[kind]
+type = "sorcery"
+
+# Typhoon deals damage to each opponent equal to the number of Islands that player controls.
+[[abilities]]
+oracle = "Typhoon deals damage to each opponent equal to the number of Islands that player controls."
+timing = "spell"
+
+# Typhoon deals damage to each opponent equal to the number of Islands that player controls.
+[[abilities.effects]]
+type = "damage"
+mode = "to_players"
+who = "each_opponent"
+amount = { per_permanent = { types = "land", subtypes = ["Island"], controller = "you" } }

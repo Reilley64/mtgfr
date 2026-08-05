@@ -270,7 +270,7 @@ Alt/Option SHALL pin a face-up hand, stack, or battlefield card into the topmost
 
 ### Requirement: Action Session and Targeting
 
-Local action sessions SHALL stage X, modes, cost picks, targets, and combat declarations via pure planners; the engine SHALL remain authoritative for payment and legality. Targeting SHALL use engine-projected legal targets (arrows on-board; pickers off-board). Combat staging SHALL drop onto life orbs / planeswalkers / attackers; required attacks SHALL merge before confirm; Shift SHALL stage whole clusters. `CancelActionClicked` / Escape SHALL clear local sessions without answering engine `pending_choice`. Auto-tap preview SHALL prefer in-flight session actions over hover.
+Local action sessions SHALL stage X, modes, cost picks, targets, and combat declarations via pure planners; the engine SHALL remain authoritative for payment and legality. Targeting SHALL use engine-projected legal targets (arrows on-board; pickers off-board). Combat staging SHALL drop onto life orbs / planeswalkers / attackers; required attacks SHALL merge before confirm; Shift SHALL stage whole clusters. A band-grouping panel (`board-band-panel`) SHALL appear beside the confirm control only while attackers are staged, unconfirmed, and at least one of them carries an effective `banding` or `bands_with:*` keyword; it SHALL offer one `board-band-chip-<id>` toggle per staged attacker (including members with no banding keyword of their own, per CR 702.22c) carrying `data-banded` / `aria-pressed`. Toggled members SHALL ride out on the same declare-attackers intent as `bands`; a band pared below two members SHALL submit no band. Band legality SHALL remain the engine's (`Game::band_is_legal`), surfacing an illegal grouping as an ordinary reject. `CancelActionClicked` / Escape SHALL clear local sessions without answering engine `pending_choice`. Auto-tap preview SHALL prefer in-flight session actions over hover.
 
 #### Scenario: Local cancel vs engine choice
 - **WHEN** the player presses Escape during a local staged cast
@@ -279,6 +279,14 @@ Local action sessions SHALL stage X, modes, cost picks, targets, and combat decl
 #### Scenario: Shift-drop cluster
 - **WHEN** the player Shift-drops a five-copy cluster onto a defender
 - **THEN** all five copies stage as attackers against that defender
+
+#### Scenario: Ordinary attack pays nothing for banding
+- **WHEN** the staged attackers include no creature with a banding keyword
+- **THEN** no band panel renders and the declaration submits with an empty `bands`
+
+#### Scenario: Grouping staged attackers into a band
+- **WHEN** the player toggles two staged attackers in the band panel and confirms the attack
+- **THEN** the declare-attackers intent carries those two as one band and the local band staging clears
 
 ### Requirement: System Overlays
 

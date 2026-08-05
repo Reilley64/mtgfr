@@ -1,0 +1,44 @@
+# Cast this spell only during combat before blockers are declared.
+# Untap target attacking creature and remove it from combat. Gain control of that creature
+# until end of turn.
+name = "Disharmony"
+otags = ["combat-timing-restriction", "hate-attacker", "remove-from-combat", "single-english-word-name", "single-target-instant-sorcery", "theft-creature", "threaten", "untapper-creature"]
+id = "fc4f1aa1-e252-4454-9ad9-d41682dff13b"
+default_print = "37fd8d07-0eed-4b41-9468-b524439cd204"
+oracle = "Cast this spell only during combat before blockers are declared.\nUntap target attacking creature and remove it from combat. Gain control of that creature until end of turn."
+
+# Cast this spell only during combat before blockers are declared. (Both halves of the window: one
+# flag opens combat, the other closes it at the declaration.)
+cast_only_during_combat = true
+cast_only_before_blockers = true
+
+[cost]
+generic = 2
+red = 1
+
+[kind]
+type = "instant"
+
+# Untap target attacking creature and remove it from combat. Gain control of that creature until
+# end of turn.
+[[abilities]]
+oracle = "Untap target attacking creature and remove it from combat. Gain control of that creature until end of turn."
+timing = "spell"
+
+# Untap target attacking creature
+[[abilities.effects]]
+type = "control"
+mode = "untap_target"
+target = { permanent = { types = "creature", attacking = true } }
+
+# and remove it from combat.
+[[abilities.effects]]
+type = "control"
+mode = "remove_from_combat"
+target = { permanent = { types = "creature", attacking = true } }
+
+# Gain control of that creature until end of turn.
+[[abilities.effects]]
+type = "control"
+mode = "gain_control_until_end_of_turn"
+target = { permanent = { types = "creature", attacking = true } }

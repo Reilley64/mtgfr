@@ -1,0 +1,23 @@
+# Counter target activated ability from an artifact source. (Mana abilities can't be targeted.)
+name = "Rust"
+otags = ["counterspell-ability", "hate-artifact", "interrupt", "single-english-word-name", "single-target-instant-sorcery"]
+id = "597ca66c-6bb1-4661-8ed9-8236f546e536"
+default_print = "ad4974c8-34c5-4290-b325-7586a67f6d56"
+oracle = "Counter target activated ability from an artifact source. (Mana abilities can't be targeted.)"
+
+[cost]
+green = 1
+
+[kind]
+type = "instant"
+
+# Counter target activated ability from an artifact source.
+[[abilities]]
+oracle = "Counter target activated ability from an artifact source."
+timing = "spell"
+
+# Counter target activated ability from an artifact source.
+[[abilities.effects]]
+type = "misc"
+mode = "counter_target_activated_ability"
+artifact_source = true

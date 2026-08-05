@@ -58,12 +58,19 @@ impl Game {
             None,
             Object::Permanent(Permanent {
                 entered_this_turn: false,
+                // The helper's "as if it had been there since before the turn" contract covers
+                // Rasputin Dreamweaver's "started the turn untapped" too — unless the card's own
+                // `enters_tapped` says otherwise, which `fresh_permanent` has already applied.
+                started_turn_untapped: !card_def(def).enters_tapped,
                 ..fresh_permanent(def, player, false, false)
             }),
         );
         self.permanent_mut(id).continuous_timestamp = self.stamp_continuous_timestamp();
+        // Board-wide, the same as the [`Event::PermanentEntered`] path this helper stands in for:
+        // a both-sided static (Gravity Sphere's "All creatures lose flying") reaches permanents
+        // this player doesn't own, so an owner-scoped drop would leave their cached keywords stale.
         self.characteristics_cache
-            .write(|cache| cache.invalidate_owner(self, player));
+            .write(|cache| cache.invalidate_all_battlefield(self));
         id
     }
 
@@ -78,6 +85,7 @@ impl Game {
             Object::Permanent(Permanent {
                 summoning_sick: false,
                 entered_this_turn: false,
+                started_turn_untapped: true,
                 ..fresh_token(def, player)
             }),
         );
@@ -156,6 +164,13 @@ impl Game {
         {
             return Event::MovedToExile { card: new_id, from };
         }
+        // Firestorm Phoenix's "If this creature would die, return it to its owner's hand instead"
+        // (CR 614.1b) — a self-replacement read off the live permanent, so a copy of the Phoenix
+        // gets it too. Ordered after the exile replacements above: a finality counter and this
+        // clause are two replacements for one event (CR 616.1), and no pool card carries both.
+        if self.returns_to_hand_instead_of_dying(from) && !self.is_commander(from) {
+            return Event::ReturnedToHand { card: new_id, from };
+        }
         // Serra Paragon's granted rider (CR 118.9 — "When this permanent is put into a graveyard
         // from the battlefield, exile it and you gain 2 life.") is a real placed trigger, not a
         // zone redirect: the tagged permanent genuinely dies here (a commander still diverts to
@@ -217,6 +232,7 @@ mod tests {
             },
             legendary: false,
             snow: false,
+            world: false,
             uncounterable: false,
             enchant: None,
             enchant_graveyard: false,
@@ -242,6 +258,8 @@ mod tests {
             cast_only_before_combat_damage: false,
             cast_only_during_declare_blockers: false,
             cast_only_during_declare_attackers: false,
+            cast_only_after_upkeep: false,
+            cast_only_after_combat: false,
             approximates: None,
             oracle: None,
             sets: empty_slice(),
@@ -292,6 +310,7 @@ mod tests {
             },
             legendary: false,
             snow: false,
+            world: false,
             uncounterable: false,
             enchant: None,
             enchant_graveyard: false,
@@ -317,6 +336,8 @@ mod tests {
             cast_only_before_combat_damage: false,
             cast_only_during_declare_blockers: false,
             cast_only_during_declare_attackers: false,
+            cast_only_after_upkeep: false,
+            cast_only_after_combat: false,
             approximates: None,
             oracle: None,
             sets: empty_slice(),

@@ -22,7 +22,7 @@ timing = "static"
 # Other enchantments you control have shroud.
 [[abilities.effects]]
 type = "static"
-mode = "keyword_anthem"
+mode = "filtered_anthem"
 keywords = ["shroud"]
 filter = { types = ["enchantment"], other = true }
 

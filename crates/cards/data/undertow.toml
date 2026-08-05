@@ -1,0 +1,24 @@
+# Creatures with islandwalk can be blocked as though they didn't have islandwalk.
+name = "Undertow"
+otags = ["cycle-leg-anti-landwalk-enchant", "hate-landwalk", "single-english-word-name"]
+id = "1dc51112-ee5d-492a-9c79-80ebcad60bc8"
+default_print = "cf05e5c9-b7e4-4bd8-ab73-b54565710527"
+oracle = "Creatures with islandwalk can be blocked as though they didn't have islandwalk."
+
+[cost]
+generic = 2
+blue = 1
+
+[kind]
+type = "enchantment"
+
+# Creatures with islandwalk can be blocked as though they didn't have islandwalk.
+[[abilities]]
+oracle = "Creatures with islandwalk can be blocked as though they didn't have islandwalk."
+timing = "static"
+
+# Creatures with islandwalk can be blocked as though they didn't have islandwalk.
+[[abilities.effects]]
+type = "static"
+mode = "landwalk_negated"
+land = "island"

@@ -56,7 +56,7 @@ min_level = 2
 # Permanents you control with counters on them have ward {1}.
 [[abilities.effects]]
 type = "static"
-mode = "keyword_anthem"
+mode = "filtered_anthem"
 keywords = [{ ward = 1 }]
 filter = { controller = "you", with_counter = "any" }
 

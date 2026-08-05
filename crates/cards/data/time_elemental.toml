@@ -1,0 +1,50 @@
+# When this creature attacks or blocks, at end of combat, sacrifice it and it deals 5 damage to you.
+# {2}{U}{U}, {T}: Return target permanent that isn't enchanted to its owner's hand.
+name = "Time Elemental"
+otags = ["attack-trigger", "block-trigger", "delayed-trigger", "removal-bounce", "repeatable-removal", "spot-removal"]
+id = "d89075a3-4413-4796-a055-eef51fddb7f3"
+default_print = "720672dc-d75a-44c3-a48d-d2fe3993fbbf"
+oracle = "When this creature attacks or blocks, at end of combat, sacrifice it and it deals 5 damage to you.\n{2}{U}{U}, {T}: Return target permanent that isn't enchanted to its owner's hand."
+subtypes = ["Elemental"]
+
+[cost]
+generic = 2
+blue = 1
+
+[kind]
+type = "creature"
+power = 0
+toughness = 2
+
+# When this creature attacks or blocks, at end of combat, sacrifice it and it deals 5 damage to
+# you.
+[[abilities]]
+oracle = "When this creature attacks or blocks, at end of combat, sacrifice it and it deals 5 damage to you."
+timing = "attacks_or_blocks"
+
+# at end of combat, sacrifice it and it deals 5 damage to you.
+[[abilities.effects]]
+type = "misc"
+mode = "schedule_at_next_upkeep"
+who = "you"
+fire_at = "end_combat"
+then = { type = "sequence", steps = [
+  { type = "sacrifice", mode = "source" },
+  { type = "damage", mode = "to_players", who = "you", amount = 5 },
+] }
+
+# {2}{U}{U}, {T}: Return target permanent that isn't enchanted to its owner's hand.
+[[abilities]]
+oracle = "{2}{U}{U}, {T}: Return target permanent that isn't enchanted to its owner's hand."
+timing = "activated"
+taps_self = true
+
+[abilities.activation_cost]
+generic = 2
+blue = 2
+
+# Return target permanent that isn't enchanted to its owner's hand.
+[[abilities.effects]]
+type = "zone"
+mode = "return_to_hand"
+target = { permanent = { enchanted = false } }

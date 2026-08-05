@@ -1,0 +1,35 @@
+# You may choose not to untap this creature during your untap step.
+# {T}: Gain control of target legendary creature for as long as you control this creature and this creature remains
+# tapped.
+name = "Willow Satyr"
+otags = ["activated-ability", "hate-legendary", "hate-set-mechanic", "theft-creature"]
+subtypes = ["Satyr"]
+id = "c7c660bd-5f58-464c-bc75-dd244b7ca535"
+default_print = "2afe33f6-d93b-4ca5-bf21-396efbb9b94f"
+oracle = "You may choose not to untap this creature during your untap step.\n{T}: Gain control of target legendary creature for as long as you control this creature and this creature remains tapped."
+
+# You may choose not to untap this creature during your untap step.
+may_choose_not_to_untap = true
+
+[cost]
+generic = 2
+green = 2
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# {T}: Gain control of target legendary creature for as long as you control this creature and this creature remains
+# tapped.
+[[abilities]]
+oracle = "{T}: Gain control of target legendary creature for as long as you control this creature and this creature remains tapped."
+timing = "activated"
+taps_self = true
+
+# Gain control of target legendary creature for as long as you control this creature and this creature remains tapped.
+[[abilities.effects]]
+type = "control"
+mode = "gain_control_while"
+target = { permanent = { types = "creature", legendary = true } }
+while_source_tapped = true

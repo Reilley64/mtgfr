@@ -384,6 +384,38 @@ describe("formatMessage", () => {
     ).toBe("That player may pay any amount of mana; prevent that much of the next 2 damage dealt to them");
   });
 
+  it("names a filtered anthem's P/T delta, its keywords, or both", () => {
+    // Arcades Sabboth: "Each untapped creature you control gets +0/+2 as long as it's not
+    // attacking" — a delta and no keyword, which used to read "have none".
+    expect(
+      formatMessage({
+        key: "effect.static_filtered_anthem",
+        params: [
+          { name: "keywords", string_value: "none" },
+          { name: "filter", string_value: "permanent_creature_untapped" },
+          { name: "all_players", bool_value: false },
+          { name: "power", int_value: 0 },
+          { name: "toughness", int_value: 2 },
+        ],
+        children: [],
+      }),
+    ).toBe("permanent creature untapped you control get +0/+2");
+    // Avatar of Slaughter: "All creatures have double strike" — a keyword and no delta.
+    expect(
+      formatMessage({
+        key: "effect.static_filtered_anthem",
+        params: [
+          { name: "keywords", string_value: "double_strike" },
+          { name: "filter", string_value: "permanent_creature" },
+          { name: "all_players", bool_value: true },
+          { name: "power", int_value: 0 },
+          { name: "toughness", int_value: 0 },
+        ],
+        children: [],
+      }),
+    ).toBe("permanent creature have double strike");
+  });
+
   it("formats catalog keyword summaries", () => {
     expect(formatMessage({ key: "keyword.flying", params: [], children: [] })).toBe("Flying");
     expect(

@@ -1,0 +1,28 @@
+# Choose target Wall creature. At this turn's next end of combat, destroy all creatures that were
+# blocked by that creature this turn.
+name = "Glyph of Doom"
+id = "a3b3e02f-c75d-4cd6-8c57-d85ce00975fb"
+default_print = "332bfce9-052d-42e9-a407-4a1dd59e0f2a"
+oracle = "Choose target Wall creature. At this turn's next end of combat, destroy all creatures that were blocked by that creature this turn."
+
+[cost]
+black = 1
+
+[kind]
+type = "instant"
+
+# Choose target Wall creature. At this turn's next end of combat, destroy all creatures that were
+# blocked by that creature this turn.
+[[abilities]]
+oracle = "Choose target Wall creature. At this turn's next end of combat, destroy all creatures that were blocked by that creature this turn."
+timing = "spell"
+
+# Choose target Wall creature. At this turn's next end of combat, destroy all creatures that were
+# blocked by that creature this turn.
+[[abilities.effects]]
+type = "destroy"
+mode = "blocked_by_target"
+at = "end_combat"
+target = { permanent = { types = "creature", subtypes = [
+  "Wall",
+] } }

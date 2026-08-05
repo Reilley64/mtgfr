@@ -1,0 +1,31 @@
+# {0}: Change this creature's base toughness to 1 plus the power of target creature blocking or
+# blocked by this creature. (This effect lasts indefinitely.)
+name = "Sentinel"
+id = "c30e8efb-d097-4388-8d5c-1037ccc29fba"
+default_print = "ffd4921f-cda5-4318-837d-a3fe4f0d9362"
+oracle = "{0}: Change this creature's base toughness to 1 plus the power of target creature blocking or blocked by this creature. (This effect lasts indefinitely.)"
+subtypes = ["Shapeshifter"]
+
+[cost]
+generic = 4
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+also = ["artifact"]
+
+# {0}: Change this creature's base toughness to 1 plus the power of target creature blocking or
+# blocked by this creature. (This effect lasts indefinitely.)
+[[abilities]]
+oracle = "{0}: Change this creature's base toughness to 1 plus the power of target creature blocking or blocked by this creature. (This effect lasts indefinitely.)"
+timing = "activated"
+activation_cost = { generic = 0 }
+
+# Change this creature's base toughness to 1 plus the power of target creature blocking or blocked
+# by this creature.
+[[abilities.effects]]
+type = "pump"
+mode = "set_own_base_toughness_from_amount"
+target = { permanent = { types = "creature", in_combat_with_source = true } }
+amount = { left = 1, op = "add", right = "target_power" }

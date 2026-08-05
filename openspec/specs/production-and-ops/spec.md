@@ -8,12 +8,17 @@ Run mtgfr on a home k3s cluster behind Cloudflare Tunnel with reproducible Terra
 
 ### Requirement: Public edge and network topology
 
-Public traffic SHALL reach the cluster only through Cloudflare Tunnel (no inbound public ports on the k3s host). TLS SHALL terminate at Cloudflare; in-cluster traffic MAY be HTTP. The public hostname SHALL proxy to `edh-web` (`:8080`). Browser clients SHALL use same-origin `/api` only. Cloudflare Configuration Rules SHALL disable response buffering for SSE. The BFF SHALL NOT expose `/api/admin/*` or `/health/drain` on the public path; Axum health probes SHALL remain on API `:8080` inside the cluster. Public BFF meta SHALL be limited to health/version-style routes under `/api/meta/*` plus Faro collect.
+Public traffic SHALL reach the cluster only through Cloudflare Tunnel (no inbound public ports on the k3s host). TLS SHALL terminate at Cloudflare; in-cluster traffic MAY be HTTP. The public hostname SHALL proxy to `edh-web` (`:8080`). Browser clients SHALL use same-origin `/api` only. Cloudflare Configuration Rules SHALL disable response buffering for SSE. The BFF SHALL NOT expose `/api/admin/*` or `/health/drain` on the public path; Axum health probes SHALL remain on API `:8080` inside the cluster. Public BFF meta SHALL be limited to health/version-style routes under `/api/meta/*` plus Faro collect. A Terraform-owned Cloudflare Cache Rule SHALL make `/api/meta/coverage/v1` cache-eligible at the edge while respecting origin cache directives; the BFF route SHALL own the TTLs via its `cache-control` response header (`s-maxage` for the edge, a short `max-age` for browsers, which a purge cannot reach). A Terraform apply that changes the deployed images SHALL purge that single URL (free-plan purge-by-URL; no tag or prefix purge).
 
 #### Scenario: Player reaches the SPA over TLS without open cluster ports
 
 - **WHEN** a player opens the public hostname in a browser
 - **THEN** Cloudflare Tunnel delivers traffic to `edh-web` and no cluster node port needs to be publicly reachable
+
+#### Scenario: Deploy purges the cached coverage meta
+
+- **WHEN** an apply rolls a new `server_image` or `web_image`
+- **THEN** the coverage meta URL is purged from the Cloudflare edge so the new faithful counts are not held for the remaining edge TTL
 
 ### Requirement: Kubernetes namespaces and ownership
 

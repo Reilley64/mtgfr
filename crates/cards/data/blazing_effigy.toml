@@ -1,0 +1,31 @@
+# When this creature dies, it deals X damage to target creature, where X is 3 plus the amount of
+# damage dealt to this creature this turn by other sources named Blazing Effigy.
+name = "Blazing Effigy"
+otags = ["burn-creature", "death-trigger-self", "removal-creature", "spot-removal"]
+id = "7879b37c-5e2a-4945-9378-47744b715a6c"
+default_print = "921011ff-1696-4575-9198-abe993a0ee7a"
+oracle = "When this creature dies, it deals X damage to target creature, where X is 3 plus the amount of damage dealt to this creature this turn by other sources named Blazing Effigy."
+subtypes = ["Elemental"]
+
+[cost]
+generic = 1
+red = 1
+
+[kind]
+type = "creature"
+power = 0
+toughness = 3
+
+# When this creature dies, it deals X damage to target creature, where X is 3 plus the amount of
+# damage dealt to this creature this turn by other sources named Blazing Effigy.
+[[abilities]]
+oracle = "When this creature dies, it deals X damage to target creature, where X is 3 plus the amount of damage dealt to this creature this turn by other sources named Blazing Effigy."
+timing = "dies"
+
+# it deals X damage to target creature, where X is 3 plus the amount of damage dealt to this
+# creature this turn by other sources named Blazing Effigy.
+[[abilities.effects]]
+type = "damage"
+mode = "target"
+target = "creature"
+amount = { left = 3, op = "add", right = "damage_dealt_to_source_this_turn_by_others_named_the_same" }

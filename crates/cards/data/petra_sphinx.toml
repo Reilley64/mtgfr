@@ -1,0 +1,34 @@
+# {T}: Target player chooses a card name, then reveals the top card of their library. If that card
+# has the chosen name, that player puts it into their hand. If it doesn't, the player puts it into
+# their graveyard.
+name = "Petra Sphinx"
+otags = ["activated-ability", "library-manipulation", "named-choice", "self-mill"]
+id = "f1ae89ff-b23b-44b2-a30c-6f2ae3216189"
+default_print = "5ef99f07-c987-451a-b18a-2719eea654cd"
+oracle = "{T}: Target player chooses a card name, then reveals the top card of their library. If that card has the chosen name, that player puts it into their hand. If it doesn't, the player puts it into their graveyard."
+subtypes = ["Sphinx"]
+
+[cost]
+generic = 2
+white = 3
+
+[kind]
+type = "creature"
+power = 3
+toughness = 4
+
+# {T}: Target player chooses a card name, then reveals the top card of their library. If that card
+# has the chosen name, that player puts it into their hand. If it doesn't, the player puts it into
+# their graveyard.
+[[abilities]]
+oracle = "{T}: Target player chooses a card name, then reveals the top card of their library. If that card has the chosen name, that player puts it into their hand. If it doesn't, the player puts it into their graveyard."
+timing = "activated"
+taps_self = true
+
+# Target player chooses a card name, then reveals the top card of their library. If that card has
+# the chosen name, that player puts it into their hand. If it doesn't, the player puts it into
+# their graveyard.
+[[abilities.effects]]
+type = "choice"
+mode = "target_player_names_card_then_reveals_top"
+target = "player"

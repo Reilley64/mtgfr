@@ -1,0 +1,26 @@
+# This creature can't be blocked by creatures with power 3 or greater.
+name = "Amrou Kithkin"
+otags = ["nimble"]
+id = "79644192-8f99-4d04-b151-6f74a4dbda0a"
+default_print = "278d86b4-8d62-4932-a66d-062971295631"
+oracle = "This creature can't be blocked by creatures with power 3 or greater."
+subtypes = ["Kithkin"]
+
+[cost]
+white = 2
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# This creature can't be blocked by creatures with power 3 or greater.
+[[abilities]]
+oracle = "This creature can't be blocked by creatures with power 3 or greater."
+timing = "static"
+
+# This creature can't be blocked by creatures with power 3 or greater.
+[[abilities.effects]]
+type = "static"
+mode = "cant_be_blocked_by"
+filter = { types = "creature", power_min = 3 }

@@ -1,0 +1,32 @@
+# Wall creatures you control get +1/+0 and have banding. (Any creatures with banding, and up to
+# one without, can attack in a band. Bands are blocked as a group. If any creatures with
+# banding you control are blocking or being blocked by a creature, you divide that creature's
+# combat damage, not its controller, among any of the creatures it's being blocked by or is
+# blocking.)
+name = "Fortified Area"
+otags = ["anthem", "gives-banding", "keyword-anthem", "power-boost-to-all", "typal-wall"]
+id = "cef37acf-ee97-48bf-a605-b17efcce5ce8"
+default_print = "8f89968f-0182-4639-96fd-0dc94b6ad926"
+oracle = "Wall creatures you control get +1/+0 and have banding. (Any creatures with banding, and up to one without, can attack in a band. Bands are blocked as a group. If any creatures with banding you control are blocking or being blocked by a creature, you divide that creature's combat damage, not its controller, among any of the creatures it's being blocked by or is blocking.)"
+approximates = "while attacking, a granted band does not take over the division of a blocker's combat damage: that blocker deals its full damage to each creature it's blocking instead"
+
+[cost]
+generic = 1
+white = 2
+
+[kind]
+type = "enchantment"
+
+# Wall creatures you control get +1/+0 and have banding.
+[[abilities]]
+oracle = "Wall creatures you control get +1/+0 and have banding."
+timing = "static"
+
+# Wall creatures you control get +1/+0 and have banding.
+[[abilities.effects]]
+type = "static"
+mode = "anthem"
+subtypes = ["Wall"]
+power = 1
+toughness = 0
+keywords = ["banding"]

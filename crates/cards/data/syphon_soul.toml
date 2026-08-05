@@ -1,0 +1,33 @@
+# Syphon Soul deals 2 damage to each other player. You gain life equal to the damage dealt this
+# way.
+name = "Syphon Soul"
+otags = ["alliteration", "burn-player", "drain-life", "group-slug", "per-player"]
+id = "d47e55a6-7a16-4ed9-a94b-f1575588ee9e"
+default_print = "dc308882-1c12-4da0-8eae-caf4cc3d43e1"
+oracle = "Syphon Soul deals 2 damage to each other player. You gain life equal to the damage dealt this way."
+
+[cost]
+generic = 2
+black = 1
+
+[kind]
+type = "sorcery"
+
+# Syphon Soul deals 2 damage to each other player. You gain life equal to the damage dealt this
+# way.
+[[abilities]]
+oracle = "Syphon Soul deals 2 damage to each other player. You gain life equal to the damage dealt this way."
+timing = "spell"
+
+# Syphon Soul deals 2 damage to each other player.
+[[abilities.effects]]
+type = "damage"
+mode = "to_players"
+who = "each_opponent"
+amount = 2
+
+# You gain life equal to the damage dealt this way.
+[[abilities.effects]]
+type = "life"
+mode = "gain"
+amount = "damage_dealt_this_way"

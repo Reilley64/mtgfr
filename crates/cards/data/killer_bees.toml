@@ -1,0 +1,31 @@
+# Flying
+# {G}: This creature gets +1/+1 until end of turn.
+name = "Killer Bees"
+otags = ["activated-ability", "bottomless-mana-sink", "evasion", "real-life-animal-name", "shade-pump", "type-errata-specific-insect"]
+id = "5da1f1af-d2e5-4e14-914b-d93f15626636"
+default_print = "096c7da0-a341-4044-9033-95e7bf2d605a"
+oracle = "Flying\n{G}: This creature gets +1/+1 until end of turn."
+subtypes = ["Insect"]
+keywords = ["flying"]
+
+[cost]
+generic = 1
+green = 2
+
+[kind]
+type = "creature"
+power = 0
+toughness = 1
+
+# {G}: This creature gets +1/+1 until end of turn.
+[[abilities]]
+oracle = "{G}: This creature gets +1/+1 until end of turn."
+timing = "activated"
+activation_cost = { green = 1 }
+
+# This creature gets +1/+1 until end of turn.
+[[abilities.effects]]
+type = "pump"
+mode = "pump_self_until_end_of_turn"
+power = 1
+toughness = 1

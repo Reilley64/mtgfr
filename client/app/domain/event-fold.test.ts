@@ -99,3 +99,9 @@ test("prevention and hand-peeking lines name their target", () => {
   );
   expect(describeEvent({ kind: "looked_at_hand", player: 0, target: 1 }, state())).toBe("Alice looks at Bob's hand");
 });
+
+// CR 104.4: a draw ends the game for everyone at once, so no `player_lost` fires and there is no
+// seat to name. Before this line the client showed nothing — the game simply stopped responding.
+test("a draw says so, since no player_lost fires to explain the stop", () => {
+  expect(describeEvent({ kind: "game_drawn" }, state())).toBe("The game is a draw");
+});

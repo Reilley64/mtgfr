@@ -1,0 +1,35 @@
+# Protection from red
+# Creatures named Ivory Guardians get +1/+1 as long as an opponent controls a nontoken red permanent.
+name = "Ivory Guardians"
+otags = ["creature-type-guardian", "evasion", "hate-red", "quadratic", "scales-with-multiple", "type-errata", "weaker-in-singleton-formats"]
+id = "78171447-1bc8-4588-b427-5b82701324c5"
+default_print = "e8142471-0ded-410b-bdd5-ac241735b0ce"
+oracle = "Protection from red\nCreatures named Ivory Guardians get +1/+1 as long as an opponent controls a nontoken red permanent."
+subtypes = ["Giant", "Cleric"]
+keywords = [{ protection = "red" }]
+
+[cost]
+generic = 4
+white = 2
+
+[kind]
+type = "creature"
+power = 3
+toughness = 3
+
+# Creatures named Ivory Guardians get +1/+1 as long as an opponent controls a nontoken red permanent.
+[[abilities]]
+oracle = "Creatures named Ivory Guardians get +1/+1 as long as an opponent controls a nontoken red permanent."
+timing = "static"
+
+# Creatures named Ivory Guardians get +1/+1 as long as an opponent controls a nontoken red permanent.
+# `all_players`: the clause names no controller, so a second Ivory Guardians across the table is buffed too — and
+# every Guardians buffs every other, itself included.
+[[abilities.effects]]
+type = "static"
+mode = "filtered_anthem"
+all_players = true
+power = 1
+toughness = 1
+filter = { types = "creature", name = "Ivory Guardians" }
+condition = { type = "compare", left = { per_permanent = { controller = "opponent", token = "nontoken", color = "red" } }, op = "at_least", right = 1 }

@@ -1,0 +1,46 @@
+# {B}: If this creature's power is 1 or more, it gets -1/-0 until end of turn and put a -0/-1
+# counter on target creature blocking or blocked by this creature. Activate only during the
+# declare blockers step.
+name = "Lesser Werewolf"
+otags = [
+  "activated-ability",
+  "deprecated-p-t-counter",
+  "hate-blocker",
+  "power-matters-self",
+  "removal-toughness",
+  "repeatable-crime",
+  "spot-removal",
+  "synergy-blocker-self",
+]
+id = "5542afeb-285f-4889-9d09-46ce20d0d189"
+default_print = "baae02e4-7db9-4a7b-a4ee-ecb22fcb77bd"
+oracle = "{B}: If this creature's power is 1 or more, it gets -1/-0 until end of turn and put a -0/-1 counter on target creature blocking or blocked by this creature. Activate only during the declare blockers step."
+subtypes = ["Werewolf"]
+
+[cost]
+generic = 3
+black = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 4
+
+# {B}: If this creature's power is 1 or more, it gets -1/-0 until end of turn and put a -0/-1
+# counter on target creature blocking or blocked by this creature. Activate only during the
+# declare blockers step.
+[[abilities]]
+oracle = "{B}: If this creature's power is 1 or more, it gets -1/-0 until end of turn and put a -0/-1 counter on target creature blocking or blocked by this creature. Activate only during the declare blockers step."
+timing = "activated"
+activation_cost = { black = 1 }
+only_during_declare_blockers = true
+
+# If this creature's power is 1 or more, it gets -1/-0 until end of turn and put a -0/-1 counter
+# on target creature blocking or blocked by this creature.
+[[abilities.effects]]
+type = "conditional"
+condition = { type = "compare", left = "source_power", op = "at_least", right = 1 }
+then = [
+  { type = "pump", mode = "pump_self_until_end_of_turn", power = -1, toughness = 0 },
+  { type = "counters", mode = "put_counters", count = 1, kind = "minus_zero_minus_one", target = { permanent = { types = "creature", in_combat_with_source = true } } },
+]

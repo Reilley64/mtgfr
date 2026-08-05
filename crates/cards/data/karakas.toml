@@ -1,0 +1,24 @@
+# {T}: Add {W}.
+# {T}: Return target legendary creature to its owner's hand.
+name = "Karakas"
+otags = ["activated-ability", "cycle-leg-legendary-land", "hate-legendary", "hate-set-mechanic", "removal-bounce", "removal-creature", "repeatable-crime", "repeatable-removal", "spot-removal", "synergy-legendary", "utility-land"]
+id = "59119143-c0fa-49dd-adf0-e2fd3029c48b"
+default_print = "e52214e1-404a-405a-b08e-20e13c087338"
+oracle = "{T}: Add {W}.\n{T}: Return target legendary creature to its owner's hand."
+legendary = true
+
+[kind]
+type = "land"
+produces = "white"
+
+# {T}: Return target legendary creature to its owner's hand.
+[[abilities]]
+oracle = "{T}: Return target legendary creature to its owner's hand."
+timing = "activated"
+taps_self = true
+
+# Return target legendary creature to its owner's hand.
+[[abilities.effects]]
+type = "zone"
+mode = "return_to_hand"
+target = { permanent = { types = "creature", legendary = true } }

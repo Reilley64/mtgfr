@@ -1,0 +1,26 @@
+# Starting with you, each player may put a permanent card from their hand onto the battlefield.
+# Repeat this process until no one puts a card onto the battlefield.
+name = "Eureka"
+otags = ["cheat-into-play", "symmetrical"]
+id = "917f2b4b-79ec-4ded-b4c8-cbcf363cb23b"
+default_print = "71725234-14fa-4a29-9efc-6dd2366d9798"
+oracle = "Starting with you, each player may put a permanent card from their hand onto the battlefield. Repeat this process until no one puts a card onto the battlefield."
+
+[cost]
+generic = 2
+green = 2
+
+[kind]
+type = "sorcery"
+
+# Starting with you, each player may put a permanent card from their hand onto the battlefield.
+# Repeat this process until no one puts a card onto the battlefield.
+[[abilities]]
+oracle = "Starting with you, each player may put a permanent card from their hand onto the battlefield. Repeat this process until no one puts a card onto the battlefield."
+timing = "spell"
+
+# Starting with you, each player may put a permanent card from their hand onto the battlefield.
+# Repeat this process until no one puts a card onto the battlefield.
+[[abilities.effects]]
+type = "choice"
+mode = "each_player_may_put_permanent_from_hand_repeating"

@@ -1,0 +1,29 @@
+# If a player would draw a card except the first one they draw in each of their draw steps, that player discards a
+# card instead. If the player discards a card this way, they draw a card. If the player doesn't discard a card this
+# way, they mill a card.
+name = "Chains of Mephistopheles"
+otags = ["draw-hate", "replacement-effect", "symmetrical"]
+id = "eae87919-6322-4bd2-ae9c-b1ce25d686da"
+default_print = "2bb0e884-5bb4-41f3-b04b-6f638357c166"
+oracle = "If a player would draw a card except the first one they draw in each of their draw steps, that player discards a card instead. If the player discards a card this way, they draw a card. If the player doesn't discard a card this way, they mill a card."
+
+[cost]
+generic = 1
+black = 1
+
+[kind]
+type = "enchantment"
+
+# If a player would draw a card except the first one they draw in each of their draw steps, that player discards a
+# card instead. If the player discards a card this way, they draw a card. If the player doesn't discard a card this
+# way, they mill a card.
+[[abilities]]
+oracle = "If a player would draw a card except the first one they draw in each of their draw steps, that player discards a card instead. If the player discards a card this way, they draw a card. If the player doesn't discard a card this way, they mill a card."
+timing = "static"
+
+# If a player would draw a card except the first one they draw in each of their draw steps, that player discards a
+# card instead. If the player discards a card this way, they draw a card. If the player doesn't discard a card this
+# way, they mill a card.
+[[abilities.effects]]
+type = "static"
+mode = "draws_after_the_first_each_draw_step_become_discard_then_draw"

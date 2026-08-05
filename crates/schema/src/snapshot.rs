@@ -853,6 +853,21 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
 
     let live = game.live_object_ids();
 
+    // The only widening of the per-viewer privacy gate below: Revelation ("Players play with their
+    // hands revealed") and Field of Dreams ("...the top card of their libraries revealed"). Both
+    // default to revealing nothing, so a projection that fails to see the enchantment over-hides.
+    // Seats only — a spectator holds none, so they stay at counts (see
+    // `a_spectator_reads_no_revealed_hand_or_library_top`).
+    let hands_revealed = viewer.is_some() && game.hands_revealed_to_all();
+    let revealed_library_tops: Vec<engine::ObjectId> =
+        if viewer.is_some() && game.library_tops_revealed_to_all() {
+            (0..game.player_count() as u8)
+                .filter_map(|p| game.library_top(PlayerId(p)))
+                .collect()
+        } else {
+            Vec::new()
+        };
+
     let players = (0..game.player_count() as u8)
         .map(|p| {
             let pid = PlayerId(p);
@@ -897,12 +912,13 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
         .copied()
         .filter(|&id| {
             // A hand card is private to its owner, plus whoever has looked at it (CR 701.20 —
-            // Glasses of Urza); libraries are never itemized.
+            // Glasses of Urza); a library is itemized down to at most its revealed top card.
             match game.zone_of(id) {
-                Zone::Library => false,
+                Zone::Library => revealed_library_tops.contains(&id),
                 Zone::Hand => {
                     viewer == Some(game.owner_of(id))
                         || viewer.is_some_and(|v| game.has_seen_hand_card(v, id))
+                        || hands_revealed
                 }
                 _ => true,
             }
@@ -1472,6 +1488,142 @@ mod tests {
             snap.players[1].library_count, 3,
             "libraries are counts only"
         );
+    }
+
+    /// Pass priority once so the state-based-action sweep runs (CR 704.3).
+    fn sweep(game: &mut Game) {
+        game.submit(engine::Intent::PassPriority {
+            player: game.priority_holder(),
+        })
+        .expect("passing priority is always legal");
+    }
+
+    #[test]
+    fn revelation_itemizes_every_hand_to_every_seat() {
+        // "Players play with their hands revealed." — everyone, the enchantment's own controller
+        // included, so each seat reads the other's hand by name and its own as before.
+        let mut game = Game::new();
+        let p0 = PlayerId(0);
+        let p1 = PlayerId(1);
+        game.spawn_on_battlefield(p0, def("Revelation"));
+        let mine = game.spawn_in_hand(p0, def("Shock"));
+        let theirs = game.spawn_in_hand(p1, def("Grizzly Bears"));
+
+        let names = |viewer: PlayerId, id: ObjectId| {
+            snapshot(&game, viewer)
+                .objects
+                .iter()
+                .find(|o| o.id == id)
+                .map(|o| o.name.clone())
+        };
+        assert_eq!(names(p0, theirs).as_deref(), Some("Grizzly Bears"));
+        assert_eq!(names(p1, mine).as_deref(), Some("Shock"));
+        assert_eq!(
+            names(p0, mine).as_deref(),
+            Some("Shock"),
+            "the controller's own hand is revealed too, and still readable to them",
+        );
+    }
+
+    #[test]
+    fn revelation_leaving_the_battlefield_hides_every_hand_again() {
+        // Fail-closed: the widening is a continuous effect of a battlefield permanent, so it is
+        // gone with the permanent — here to the world rule (CR 704.5k), which evicts any World
+        // enchantment a newer one joins.
+        let mut game = Game::new();
+        let p0 = PlayerId(0);
+        let p1 = PlayerId(1);
+        game.spawn_on_battlefield(p0, def("Revelation"));
+        let theirs = game.spawn_in_hand(p1, def("Grizzly Bears"));
+        assert!(snapshot(&game, p0).objects.iter().any(|o| o.id == theirs));
+
+        game.spawn_on_battlefield(p0, def("Concordant Crossroads"));
+        sweep(&mut game);
+
+        let snap = snapshot(&game, p0);
+        assert!(
+            !snap.objects.iter().any(|o| o.id == theirs),
+            "an opponent's hand goes back to a bare count the instant Revelation dies",
+        );
+        assert_eq!(snap.players[1].hand_count, 1);
+    }
+
+    #[test]
+    fn field_of_dreams_itemizes_the_library_top_and_nothing_beneath_it() {
+        // "Players play with the top card of their libraries revealed." — exactly one card per
+        // library. A projection that revealed the whole library would pass a top-card-only check.
+        let mut game = Game::new();
+        let p0 = PlayerId(0);
+        let p1 = PlayerId(1);
+        game.spawn_on_battlefield(p0, def("Field of Dreams"));
+        let theirs = game.stack_library(p1, &[def("Shock"), def("Grizzly Bears"), def("Forest")]);
+        let mine = game.stack_library(p0, &[def("Island"), def("Mountain")]);
+
+        let snap = snapshot(&game, p0);
+        let library: Vec<_> = snap
+            .objects
+            .iter()
+            .filter(|o| o.zone == engine::Zone::Library as u8)
+            .collect();
+        let mut ids: Vec<_> = library.iter().map(|o| o.id).collect();
+        ids.sort_unstable();
+        let mut expected = vec![mine[0], theirs[0]];
+        expected.sort_unstable();
+        assert_eq!(ids, expected, "one card per library, and it is the top one");
+        assert_eq!(
+            library
+                .iter()
+                .find(|o| o.id == theirs[0])
+                .map(|o| o.name.as_str()),
+            Some("Shock"),
+            "an opponent's top card is named",
+        );
+        assert_eq!(
+            snap.players[1].library_count, 3,
+            "the count still covers the whole library",
+        );
+    }
+
+    #[test]
+    fn a_revealed_library_top_follows_the_draw_down_the_library() {
+        let mut game = Game::new();
+        let p0 = PlayerId(0);
+        let p1 = PlayerId(1);
+        game.spawn_on_battlefield(p0, def("Field of Dreams"));
+        let theirs = game.stack_library(p1, &[def("Shock"), def("Grizzly Bears")]);
+        game.draw_card(p1);
+
+        let snap = snapshot(&game, p0);
+        assert!(
+            snap.objects
+                .iter()
+                .any(|o| o.id == theirs[1] && o.name == "Grizzly Bears"),
+            "the new top card is revealed",
+        );
+        assert!(
+            !snap
+                .objects
+                .iter()
+                .any(|o| o.id == theirs[0] && o.zone == engine::Zone::Library as u8),
+            "the drawn card is no longer in the library",
+        );
+    }
+
+    #[test]
+    fn a_spectator_reads_no_revealed_hand_or_library_top() {
+        // ponytail: a revealed zone is public information at the table, but a spectator holds no
+        // seat, so the projection keeps them at counts — over-hiding, never over-revealing. Widen
+        // to `viewer == None` the day spectator UX asks for it.
+        let mut game = Game::new();
+        let p0 = PlayerId(0);
+        let p1 = PlayerId(1);
+        game.spawn_on_battlefield(p0, def("Revelation"));
+        let theirs = game.spawn_in_hand(p1, def("Grizzly Bears"));
+        let library = game.stack_library(p1, &[def("Shock")]);
+
+        let spec = spectator_snapshot(&game);
+        assert!(!spec.objects.iter().any(|o| o.id == theirs));
+        assert!(!spec.objects.iter().any(|o| o.id == library[0]));
     }
 
     #[test]
@@ -2215,7 +2367,9 @@ mod tests {
     /// an ordering choice.
     fn two_simultaneous_death_triggers() -> engine::CardDef {
         use engine::*;
-        const ABILITIES: [Ability; 2] = [
+        // `static`, not `const`: `Ability` is ~11 KiB, so a `const` array would be copied into
+        // every use site instead of living once in the binary.
+        static ABILITIES: [Ability; 2] = [
             Ability {
                 oracle: None,
                 timing: Timing::Triggered(Trigger::CreatureYouControlDies),
@@ -2270,6 +2424,8 @@ mod tests {
             cast_only_before_combat_damage: false,
             cast_only_during_declare_blockers: false,
             cast_only_during_declare_attackers: false,
+            cast_only_after_upkeep: false,
+            cast_only_after_combat: false,
             approximates: None,
             oracle: None,
             sets: empty_slice(),
@@ -2277,7 +2433,7 @@ mod tests {
             otags: empty_slice(),
             keywords: empty_slice(),
             conditional_keywords: empty_slice(),
-            abilities: ABILITIES.into(),
+            abilities: ABILITIES.to_vec().into(),
             cycling: None,
             cycling_sacrifice: SacrificeCost::None,
             flashback: None,
@@ -2310,6 +2466,7 @@ mod tests {
             may_choose_not_to_untap: false,
             dredge: None,
             snow: false,
+            world: false,
         }
     }
 

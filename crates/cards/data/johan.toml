@@ -1,0 +1,41 @@
+# At the beginning of combat on your turn, you may have Johan gain "Johan can't attack" until end of
+# combat. If you do, attacking doesn't cause creatures you control to tap this combat if Johan is
+# untapped.
+name = "Johan"
+id = "ad33ada7-4f89-4cab-88db-1f4d024baa36"
+default_print = "2f2f3b3e-63f3-4cab-aa95-030990157ed5"
+oracle = "At the beginning of combat on your turn, you may have Johan gain \"Johan can't attack\" until end of combat. If you do, attacking doesn't cause creatures you control to tap this combat if Johan is untapped."
+otags = ["deprecated-legend-type", "triggered-ability", "type-errata"]
+subtypes = ["Human", "Wizard"]
+legendary = true
+
+[cost]
+generic = 3
+red = 1
+green = 1
+white = 1
+
+[kind]
+type = "creature"
+power = 5
+toughness = 4
+
+# At the beginning of combat on your turn, you may have Johan gain "Johan can't attack" until end of
+# combat. If you do, attacking doesn't cause creatures you control to tap this combat if Johan is
+# untapped.
+[[abilities]]
+oracle = "At the beginning of combat on your turn, you may have Johan gain \"Johan can't attack\" until end of combat. If you do, attacking doesn't cause creatures you control to tap this combat if Johan is untapped."
+timing = "begin_combat"
+optional = true
+
+# you may have Johan gain "Johan can't attack" until end of combat.
+[[abilities.effects]]
+type = "misc"
+mode = "source_cant_attack_this_combat"
+
+# If you do, attacking doesn't cause creatures you control to tap this combat if Johan is untapped.
+# The "if you do" needs no gate of its own — the whole clause is one optional trigger, so declining
+# it runs neither step.
+[[abilities.effects]]
+type = "misc"
+mode = "your_attacks_dont_tap_while_source_untapped_this_combat"

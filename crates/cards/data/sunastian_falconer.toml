@@ -1,0 +1,30 @@
+# {T}: Add {C}{C}.
+name = "Sunastian Falconer"
+otags = ["activated-ability", "adds-multiple-mana", "deprecated-legend-type", "mana-dork"]
+id = "3d6314b5-3ace-4793-9549-7b17db2a735d"
+default_print = "bd0eb8b1-e48d-4e83-86df-d6aa86f95ffd"
+oracle = "{T}: Add {C}{C}."
+legendary = true
+subtypes = ["Human", "Shaman"]
+
+[cost]
+generic = 3
+red = 1
+green = 1
+
+[kind]
+type = "creature"
+power = 4
+toughness = 4
+
+# {T}: Add {C}{C}.
+[[abilities]]
+oracle = "{T}: Add {C}{C}."
+timing = "activated"
+taps_self = true
+
+# Add {C}{C}.
+[[abilities.effects]]
+type = "mana"
+mode = "add"
+mana = ["colorless", "colorless"]

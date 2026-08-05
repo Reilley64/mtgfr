@@ -1,0 +1,33 @@
+# {T}: Target player discards a card at random. Activate only during your turn.
+name = "Gwendlyn Di Corci"
+otags = ["activated-ability", "deprecated-legend-type", "discard", "discard-with-set-s-mechanic", "random-discard", "repeatable-crime"]
+id = "de44e7c8-01f9-44f9-9716-9e8a5b82b1ff"
+default_print = "a496823b-c864-4591-b395-5493383d11a7"
+oracle = "{T}: Target player discards a card at random. Activate only during your turn."
+legendary = true
+subtypes = ["Human", "Rogue"]
+
+[cost]
+blue = 1
+black = 2
+red = 1
+
+[kind]
+type = "creature"
+power = 3
+toughness = 5
+
+# {T}: Target player discards a card at random. Activate only during your turn.
+[[abilities]]
+oracle = "{T}: Target player discards a card at random. Activate only during your turn."
+timing = "activated"
+taps_self = true
+only_during_your_turn = true
+
+# Target player discards a card at random.
+[[abilities.effects]]
+type = "choice"
+mode = "discard"
+count = 1
+who = "target_player"
+random = true

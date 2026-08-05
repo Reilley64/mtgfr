@@ -990,6 +990,30 @@ test("choose_copy_target swaps to block wording for False Orders' re-aim", () =>
   );
 });
 
+test("choose_copy_target swaps to damage-source wording for Backdraft's sorcery pick", () => {
+  const s = state({
+    pending_choice: {
+      kind: "choose_copy_target",
+      player: 0,
+      source: 1,
+      choose_damage_source: true,
+      items: [
+        { id: 9, label: "Syphon Soul" },
+        { id: 10, label: "Breath of Darigaaz" },
+      ],
+    },
+  });
+
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.given(viewModel(s)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("pending-card-pick-modal")).toExist(),
+    Scene.expect(Scene.testId("pick-title")).toHaveText("Choose which sorcery's damage is halved"),
+    Scene.expect(Scene.testId("prompt-submit")).toHaveText("Choose"),
+  );
+});
+
 test("choose_copy_target keeps copy wording for real copy prompts", () => {
   const s = state({
     pending_choice: {

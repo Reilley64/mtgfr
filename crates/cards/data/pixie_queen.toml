@@ -1,0 +1,34 @@
+# Flying
+# {G}{G}{G}, {T}: Target creature gains flying until end of turn.
+name = "Pixie Queen"
+otags = ["activated-ability", "evasion", "gives-flying", "repeatable-crime", "type-errata-name-self"]
+id = "38a7d4ef-d296-4896-9b6b-2fd3ad518243"
+default_print = "b9527c2a-23bb-4d33-9e72-6e0ab3de0e6b"
+oracle = "Flying\n{G}{G}{G}, {T}: Target creature gains flying until end of turn."
+subtypes = ["Faerie"]
+keywords = ["flying"]
+
+[cost]
+generic = 2
+green = 2
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# {G}{G}{G}, {T}: Target creature gains flying until end of turn.
+[[abilities]]
+oracle = "{G}{G}{G}, {T}: Target creature gains flying until end of turn."
+timing = "activated"
+taps_self = true
+activation_cost = { green = 3 }
+
+# Target creature gains flying until end of turn.
+[[abilities.effects]]
+type = "pump"
+mode = "pump_until_end_of_turn"
+target = "creature"
+power = 0
+toughness = 0
+keywords = ["flying"]

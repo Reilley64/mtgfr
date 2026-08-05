@@ -1,0 +1,37 @@
+# {G}{W}{U}, {T}: Prevent all combat damage that would be dealt this turn. Activate only before
+# the combat damage step.
+name = "Angus Mackenzie"
+otags = ["activated-ability", "deprecated-legend-type", "fog", "protects-planeswalker", "symmetrical"]
+id = "d5e6ac6b-5786-4d98-8037-0867e365fc93"
+default_print = "bb3920ac-7d61-494e-b7dd-bd37d4dee143"
+oracle = "{G}{W}{U}, {T}: Prevent all combat damage that would be dealt this turn. Activate only before the combat damage step."
+legendary = true
+subtypes = ["Human", "Cleric"]
+
+[cost]
+white = 1
+blue = 1
+green = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# {G}{W}{U}, {T}: Prevent all combat damage that would be dealt this turn. Activate only before
+# the combat damage step.
+[[abilities]]
+oracle = "{G}{W}{U}, {T}: Prevent all combat damage that would be dealt this turn. Activate only before the combat damage step."
+timing = "activated"
+taps_self = true
+only_before_combat_damage_step = true
+
+[abilities.activation_cost]
+white = 1
+blue = 1
+green = 1
+
+# Prevent all combat damage that would be dealt this turn.
+[[abilities.effects]]
+type = "misc"
+mode = "prevent_all_combat_damage_this_turn"

@@ -1,0 +1,31 @@
+# {1}{G}, {T}: Target creature gets -2/-0 until end of turn.
+name = "Pradesh Gypsies"
+otags = ["activated-ability", "repeatable-crime", "type-addition-human"]
+id = "37c49483-bef6-47c6-9354-ead8560d48da"
+default_print = "a4c9b18c-4993-4ce1-b2bd-ab14c9f3aad7"
+oracle = "{1}{G}, {T}: Target creature gets -2/-0 until end of turn."
+subtypes = ["Human", "Nomad"]
+
+[cost]
+generic = 2
+green = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# {1}{G}, {T}: Target creature gets -2/-0 until end of turn.
+[[abilities]]
+oracle = "{1}{G}, {T}: Target creature gets -2/-0 until end of turn."
+timing = "activated"
+taps_self = true
+activation_cost = { generic = 1, green = 1 }
+
+# Target creature gets -2/-0 until end of turn.
+[[abilities.effects]]
+type = "pump"
+mode = "pump_until_end_of_turn"
+target = "creature"
+power = -2
+toughness = 0

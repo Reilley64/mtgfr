@@ -1,0 +1,17 @@
+# (no rules text — vanilla creature)
+name = "Lady Orca"
+otags = ["deprecated-legend-type"]
+id = "fcae9e87-50af-46b4-ab48-42ed92985e10"
+default_print = "db766e38-5407-431c-bcf4-f33791a7e5f9"
+legendary = true
+subtypes = ["Demon"]
+
+[cost]
+generic = 5
+black = 1
+red = 1
+
+[kind]
+type = "creature"
+power = 7
+toughness = 4

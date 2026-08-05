@@ -1,0 +1,24 @@
+# Whenever an opponent draws a card, this enchantment deals 1 damage to that player.
+name = "Underworld Dreams"
+otags = ["burn-player", "draw-hate", "group-slug", "pinger", "triggered-ability"]
+id = "967cf377-ae26-464d-85ac-8448b5a911f7"
+default_print = "03919c86-1c4a-43b0-a2db-54ca6ae1ac57"
+oracle = "Whenever an opponent draws a card, this enchantment deals 1 damage to that player."
+
+[cost]
+black = 3
+
+[kind]
+type = "enchantment"
+
+# Whenever an opponent draws a card, ...
+[[abilities]]
+timing = "player_draws"
+drawer = "opponent"
+
+# ...this enchantment deals 1 damage to that player.
+[[abilities.effects]]
+type = "damage"
+mode = "to_players"
+who = "triggering_player"
+amount = 1

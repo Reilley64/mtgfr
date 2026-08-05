@@ -1,0 +1,38 @@
+# Cast this spell only after combat.
+# Destroy all creatures that were blocked by target Wall this turn. They can't be regenerated. For
+# each creature that died this way, put a creature card from the graveyard of the player who
+# controlled that creature the last time it became blocked by that Wall onto the battlefield under
+# its owner's control.
+name = "Glyph of Reincarnation"
+id = "93d9a1c6-9f6f-487f-a46c-bfd80946ccdf"
+default_print = "a67e8214-a192-4143-9d5e-d0e254e1bf6e"
+oracle = "Cast this spell only after combat.\nDestroy all creatures that were blocked by target Wall this turn. They can't be regenerated. For each creature that died this way, put a creature card from the graveyard of the player who controlled that creature the last time it became blocked by that Wall onto the battlefield under its owner's control."
+# Cast this spell only after combat.
+cast_only_after_combat = true
+
+[cost]
+green = 1
+
+[kind]
+type = "instant"
+
+# Destroy all creatures that were blocked by target Wall this turn. They can't be regenerated. For
+# each creature that died this way, put a creature card from the graveyard of the player who
+# controlled that creature the last time it became blocked by that Wall onto the battlefield under
+# its owner's control.
+[[abilities]]
+oracle = "Destroy all creatures that were blocked by target Wall this turn. They can't be regenerated. For each creature that died this way, put a creature card from the graveyard of the player who controlled that creature the last time it became blocked by that Wall onto the battlefield under its owner's control."
+timing = "spell"
+
+# Destroy all creatures that were blocked by target Wall this turn. They can't be regenerated. For
+# each creature that died this way, put a creature card from the graveyard of the player who
+# controlled that creature the last time it became blocked by that Wall onto the battlefield under
+# its owner's control.
+[[abilities.effects]]
+type = "destroy"
+mode = "blocked_by_target"
+cant_be_regenerated = true
+reincarnate = true
+target = { permanent = { types = "creature", subtypes = [
+  "Wall",
+] } }

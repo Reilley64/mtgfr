@@ -1,0 +1,33 @@
+# Trample
+# As long as you control another creature, prevent all damage that would be dealt to this creature
+# by spells that target it.
+name = "Bronze Horse"
+otags = ["damage-prevention", "damage-prevention-self", "hate-target", "type-addition-from-none"]
+id = "a7887b24-977d-4a40-bb30-4bf467e5dba6"
+default_print = "0003b07e-0d6e-4844-93c7-3f1f6a7d8c4d"
+oracle = "Trample\nAs long as you control another creature, prevent all damage that would be dealt to this creature by spells that target it."
+subtypes = ["Horse"]
+keywords = ["trample"]
+
+[cost]
+generic = 7
+
+[kind]
+type = "creature"
+power = 4
+toughness = 4
+also = ["artifact"]
+
+# As long as you control another creature, prevent all damage that would be dealt to this creature
+# by spells that target it.
+[[abilities]]
+oracle = "As long as you control another creature, prevent all damage that would be dealt to this creature by spells that target it."
+timing = "static"
+condition = { type = "compare", left = { per_permanent = { types = "creature", controller = "you", other = true } }, op = "at_least", right = 1 }
+
+# Prevent all damage that would be dealt to this creature by spells that target it.
+[[abilities.effects]]
+type = "static"
+mode = "prevent_damage"
+to_self = true
+source_relation = "spell_targeting_this"

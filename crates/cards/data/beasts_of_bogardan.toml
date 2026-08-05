@@ -1,0 +1,32 @@
+# Protection from red
+# This creature gets +1/+1 as long as an opponent controls a nontoken white permanent.
+name = "Beasts of Bogardan"
+otags = ["alliteration", "evasion", "hate-red", "hate-white"]
+id = "9b0bc2d3-d64b-455a-a258-d3c91892f1a7"
+default_print = "cec0fe2c-e7e6-42d1-8128-58d70a7f1177"
+oracle = "Protection from red\nThis creature gets +1/+1 as long as an opponent controls a nontoken white permanent."
+subtypes = ["Beast"]
+keywords = [{ protection = "red" }]
+
+[cost]
+generic = 4
+red = 1
+
+[kind]
+type = "creature"
+power = 3
+toughness = 3
+
+# This creature gets +1/+1 as long as an opponent controls a nontoken white permanent.
+[[abilities]]
+oracle = "This creature gets +1/+1 as long as an opponent controls a nontoken white permanent."
+timing = "static"
+
+# This creature gets +1/+1 as long as an opponent controls a nontoken white permanent.
+[[abilities.effects]]
+type = "static"
+mode = "anthem"
+self_only = true
+power = 1
+toughness = 1
+condition = { type = "compare", left = { per_permanent = { controller = "opponent", token = "nontoken", color = "white" } }, op = "at_least", right = 1 }

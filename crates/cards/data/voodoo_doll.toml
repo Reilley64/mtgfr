@@ -1,0 +1,67 @@
+# At the beginning of your upkeep, put a pin counter on this artifact.
+# At the beginning of your end step, if this artifact is untapped, destroy this artifact and it
+# deals damage to you equal to the number of pin counters on it.
+# {X}{X}, {T}: This artifact deals damage equal to the number of pin counters on it to any
+# target. X is the number of pin counters on this artifact.
+name = "Voodoo Doll"
+id = "4d330c40-3d72-4528-a254-d036683958d3"
+default_print = "c60ea64d-0209-4ca4-bee6-f9eb63784c9e"
+oracle = "At the beginning of your upkeep, put a pin counter on this artifact.\nAt the beginning of your end step, if this artifact is untapped, destroy this artifact and it deals damage to you equal to the number of pin counters on it.\n{X}{X}, {T}: This artifact deals damage equal to the number of pin counters on it to any target. X is the number of pin counters on this artifact."
+
+[cost]
+generic = 6
+
+[kind]
+type = "artifact"
+
+# At the beginning of your upkeep, put a pin counter on this artifact.
+[[abilities]]
+oracle = "At the beginning of your upkeep, put a pin counter on this artifact."
+timing = "upkeep"
+
+# put a pin counter on this artifact
+[[abilities.effects]]
+type = "counters"
+mode = "put_counters"
+count = 1
+target = "this"
+kind = "pin"
+
+# At the beginning of your end step, if this artifact is untapped, destroy this artifact and it
+# deals damage to you equal to the number of pin counters on it.
+[[abilities]]
+oracle = "At the beginning of your end step, if this artifact is untapped, destroy this artifact and it deals damage to you equal to the number of pin counters on it."
+timing = "end_step"
+condition = { type = "source_untapped" }
+
+# it deals damage to you equal to the number of pin counters on it
+# ponytail: the damage is dealt before the destroy, not after as the oracle reads. The count is
+# last-known information either way (CR 608.2h), but `per_counter_of_kind` reads the live
+# battlefield object, which the destroy has already replaced with a graveyard card. Swap the order
+# back once amounts resolve against LKI.
+[[abilities.effects]]
+type = "damage"
+mode = "to_players"
+who = "you"
+amount = { per_counter_of_kind = "pin" }
+
+# destroy this artifact
+[[abilities.effects]]
+type = "destroy"
+mode = "target"
+target = "this"
+
+# {X}{X}, {T}: This artifact deals damage equal to the number of pin counters on it to any
+# target. X is the number of pin counters on this artifact.
+[[abilities]]
+oracle = "{X}{X}, {T}: This artifact deals damage equal to the number of pin counters on it to any target. X is the number of pin counters on this artifact."
+timing = "activated"
+taps_self = true
+activation_cost = { x = 2, x_defined = { per_counter_of_kind = "pin" } }
+
+# This artifact deals damage equal to the number of pin counters on it to any target.
+[[abilities.effects]]
+type = "damage"
+mode = "target"
+amount = { per_counter_of_kind = "pin" }
+target = "any"

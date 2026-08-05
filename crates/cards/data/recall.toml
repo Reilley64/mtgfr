@@ -1,0 +1,39 @@
+# Discard X cards, then return a card from your graveyard to your hand for each card discarded
+# this way. Exile Recall.
+name = "Recall"
+otags = ["discard-outlet", "graveyard-recursion", "x-spell"]
+id = "4158f397-4ee4-4f53-90f2-3b64bfe4f9b8"
+default_print = "33296718-0625-4422-a65c-b21cf99c52ec"
+oracle = "Discard X cards, then return a card from your graveyard to your hand for each card discarded this way. Exile Recall."
+
+[cost]
+x = 2
+blue = 1
+
+[kind]
+type = "sorcery"
+
+# Discard X cards, then return a card from your graveyard to your hand for each card discarded
+# this way. Exile Recall.
+[[abilities]]
+oracle = "Discard X cards, then return a card from your graveyard to your hand for each card discarded this way. Exile Recall."
+timing = "spell"
+
+# Discard X cards,
+[[abilities.effects]]
+type = "choice"
+mode = "discard"
+count = "x"
+
+# then return a card from your graveyard to your hand for each card discarded this way.
+[[abilities.effects]]
+type = "choice"
+mode = "may_return_from_graveyard"
+filter = "any_card"
+mandatory = true
+count = "cards_discarded_this_way"
+
+# Exile Recall.
+[[abilities.effects]]
+type = "zone"
+mode = "exile_self_on_resolve"

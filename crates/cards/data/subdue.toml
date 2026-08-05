@@ -1,0 +1,37 @@
+# Prevent all combat damage that would be dealt by target creature this turn. That creature
+# gets +0/+X until end of turn, where X is its mana value.
+name = "Subdue"
+otags = ["combat-trick", "damage-prevention", "scales-with-mana-value", "single-english-word-name", "single-target-instant-sorcery"]
+id = "81bac4b8-277b-415a-9064-a80a68fd7051"
+default_print = "123d6097-8021-46cd-a8c3-01013245e347"
+oracle = "Prevent all combat damage that would be dealt by target creature this turn. That creature gets +0/+X until end of turn, where X is its mana value."
+
+[cost]
+green = 1
+
+[kind]
+type = "instant"
+
+# Prevent all combat damage that would be dealt by target creature this turn. That creature gets
+# +0/+X until end of turn, where X is its mana value.
+[[abilities]]
+oracle = "Prevent all combat damage that would be dealt by target creature this turn. That creature gets +0/+X until end of turn, where X is its mana value."
+timing = "spell"
+
+# Prevent all combat damage that would be dealt by target creature this turn.
+[[abilities.effects]]
+type = "misc"
+mode = "prevent_next_damage"
+target = "creature"
+target_is_source = true
+any_recipient = true
+combat_only = true
+all_damage = true
+
+# That creature gets +0/+X until end of turn, where X is its mana value.
+[[abilities.effects]]
+type = "pump"
+mode = "pump_until_end_of_turn"
+target = "creature"
+power = 0
+toughness = "target_mana_value"

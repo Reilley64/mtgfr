@@ -1,0 +1,30 @@
+# Enchant creature
+# Whenever enchanted creature becomes tapped, put a -0/-2 counter on it.
+name = "Spirit Shackle"
+otags = ["alliteration", "deprecated-p-t-counter", "hate-tapped", "removal-toughness", "spot-removal", "triggered-ability", "uninspired"]
+id = "ddb770c1-a783-49c9-a36d-2434b8580743"
+default_print = "686898fa-353b-46a6-ace3-677a1a88bb3b"
+oracle = "Enchant creature\nWhenever enchanted creature becomes tapped, put a -0/-2 counter on it."
+subtypes = ["Aura"]
+
+# Enchant creature
+enchant = { types = "creature" }
+
+[cost]
+black = 2
+
+[kind]
+type = "aura"
+
+# Whenever enchanted creature becomes tapped, put a -0/-2 counter on it.
+[[abilities]]
+oracle = "Whenever enchanted creature becomes tapped, put a -0/-2 counter on it."
+timing = "enchanted_permanent_becomes_tapped"
+
+# put a -0/-2 counter on it.
+[[abilities.effects]]
+type = "counters"
+mode = "put_counters"
+count = 1
+kind = "minus_zero_minus_two"
+target = "enchanted_creature"

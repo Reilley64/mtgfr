@@ -21,7 +21,7 @@ timing = "static"
 
 [[abilities.effects]]
 type = "static"
-mode = "keyword_anthem"
+mode = "filtered_anthem"
 keywords = ["double_strike"]
 all_players = true
 

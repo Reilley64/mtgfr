@@ -136,6 +136,8 @@ export const CombatBlockerDropped = m("CombatBlockerDropped", {
   attackerId: S.NullOr(S.Number),
 });
 export const CombatCancelAttacker = m("CombatCancelAttacker", { attackerId: S.Number });
+/** Add/remove a staged attacker from the declared attacking band (CR 702.22c). */
+export const CombatBandToggled = m("CombatBandToggled", { attackerId: S.Number });
 export const CombatCancelBlocker = m("CombatCancelBlocker", { blockerId: S.Number });
 
 /** Engine `pending_choice` answer — carries a fully-formed `WireIntent` (answer_may /
@@ -328,6 +330,7 @@ export const Message = S.Union([
   CombatBlockerDropped,
   CombatCancelAttacker,
   CombatCancelBlocker,
+  CombatBandToggled,
   PendingChoiceAnswered,
   PromptCardToggled,
   PromptSubmitted,

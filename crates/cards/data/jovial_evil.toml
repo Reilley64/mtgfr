@@ -1,0 +1,28 @@
+# Jovial Evil deals X damage to target opponent, where X is twice the number of white creatures
+# that player controls.
+name = "Jovial Evil"
+otags = ["burn-player", "hate-white", "single-target-instant-sorcery"]
+id = "274c5367-f02e-44a0-be8a-5ed03c831bda"
+default_print = "c993c74c-a574-423b-81c8-96b0a7a6e529"
+oracle = "Jovial Evil deals X damage to target opponent, where X is twice the number of white creatures that player controls."
+
+[cost]
+generic = 2
+black = 1
+
+[kind]
+type = "sorcery"
+
+# Jovial Evil deals X damage to target opponent, where X is twice the number of white creatures
+# that player controls.
+[[abilities]]
+oracle = "Jovial Evil deals X damage to target opponent, where X is twice the number of white creatures that player controls."
+timing = "spell"
+
+# Jovial Evil deals X damage to target opponent, where X is twice the number of white creatures
+# that player controls.
+[[abilities.effects]]
+type = "damage"
+mode = "to_players"
+who = "target_opponent"
+amount = { left = 2, op = "multiply", right = { per_permanent = { types = "creature", color = "white", controller = "you" } } }

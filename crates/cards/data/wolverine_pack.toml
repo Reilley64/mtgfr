@@ -1,0 +1,18 @@
+# Rampage 2 (Whenever this creature becomes blocked, it gets +2/+2 until end of turn for each creature blocking it
+# beyond the first.)
+name = "Wolverine Pack"
+otags = ["block-trigger", "french-vanilla", "rampage", "type-errata-name-self"]
+id = "d67d9d82-2786-48fc-8107-11d12c5813d0"
+default_print = "fab6d1e8-0985-4560-aea2-7ad1925a2f5a"
+oracle = "Rampage 2 (Whenever this creature becomes blocked, it gets +2/+2 until end of turn for each creature blocking it beyond the first.)"
+subtypes = ["Wolverine"]
+keywords = [{ rampage = 2 }]
+
+[cost]
+generic = 2
+green = 2
+
+[kind]
+type = "creature"
+power = 2
+toughness = 4

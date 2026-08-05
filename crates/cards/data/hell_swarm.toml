@@ -1,0 +1,24 @@
+# All creatures get -1/-0 until end of turn.
+name = "Hell Swarm"
+otags = ["mass-shrink"]
+id = "f8df23ed-e239-435a-a4a9-cf10da6df28f"
+default_print = "64164d1b-75f4-456e-a717-90ce554dc16c"
+oracle = "All creatures get -1/-0 until end of turn."
+
+[cost]
+black = 1
+
+[kind]
+type = "instant"
+
+# All creatures get -1/-0 until end of turn.
+[[abilities]]
+oracle = "All creatures get -1/-0 until end of turn."
+timing = "spell"
+
+# All creatures get -1/-0 until end of turn.
+[[abilities.effects]]
+type = "pump"
+mode = "weaken_each_creature"
+power = 1
+toughness = 0

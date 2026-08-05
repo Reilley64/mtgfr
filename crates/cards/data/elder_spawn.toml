@@ -1,0 +1,45 @@
+# At the beginning of your upkeep, unless you sacrifice an Island, sacrifice this creature and it deals 6 damage
+# to you.
+# This creature can't be blocked by red creatures.
+name = "Elder Spawn"
+otags = ["burn-you", "creature-type-name", "evasion", "hate-red", "hungry-demon", "repeatable-sacrifice-outlet", "sacrifice-outlet-land", "synergy-island", "triggered-ability", "unique-creature-type", "upkeep-cost"]
+id = "363b2213-4c70-4cb0-b895-81393c1082a7"
+default_print = "99cc045e-01a8-4f14-a86d-0a67ec35d6b7"
+oracle = "At the beginning of your upkeep, unless you sacrifice an Island, sacrifice this creature and it deals 6 damage to you.\nThis creature can't be blocked by red creatures."
+subtypes = ["Spawn"]
+
+[cost]
+generic = 4
+blue = 3
+
+[kind]
+type = "creature"
+power = 6
+toughness = 6
+
+# At the beginning of your upkeep, unless you sacrifice an Island, sacrifice this creature and it
+# deals 6 damage to you.
+[[abilities]]
+oracle = "At the beginning of your upkeep, unless you sacrifice an Island, sacrifice this creature and it deals 6 damage to you."
+timing = "upkeep"
+
+# unless you sacrifice an Island, sacrifice this creature and it deals 6 damage to you.
+[[abilities.effects]]
+type = "choice"
+mode = "may_sacrifice"
+filter = { types = "land", subtypes = ["Island"] }
+otherwise = [
+  { type = "sacrifice", mode = "source" },
+  { type = "damage", mode = "to_players", amount = 6 },
+]
+
+# This creature can't be blocked by red creatures.
+[[abilities]]
+oracle = "This creature can't be blocked by red creatures."
+timing = "static"
+
+# This creature can't be blocked by red creatures.
+[[abilities.effects]]
+type = "static"
+mode = "cant_be_blocked_by"
+filter = { types = "creature", color = "red" }

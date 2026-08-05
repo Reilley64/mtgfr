@@ -1,0 +1,29 @@
+# Token: Snake (poisonous, Serpent Generator)
+# Sources: serpent_generator.toml
+# Legends predates printed token cards, so no Scryfall printing exists for this token. `id` is a
+# locally synthetic, non-UUID lookup key (fidelity increment #97's token-id convention for
+# pre-token-era tokens) rather than a fabricated Scryfall id — `default_print` is left empty.
+# Distinct from `tokens/snake.toml` (Ophiomancer's deathtouch Snake, no poison ability).
+name = "Snake"
+id = "leg-token-snake-poison"
+subtypes = ["Snake"]
+oracle = "Whenever this creature deals damage to a player, that player gets a poison counter. (A player with ten or more poison counters loses the game.)"
+approximates = "the deals_damage_to_opponent tag is opponent-scoped, so damage this token deals to its own controller (a redirection or a control swap mid-damage) poisons no one — same residual as Pit Scorpion (#118)"
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+also = ["artifact"]
+
+# Whenever this creature deals damage to a player, that player gets a poison counter.
+[[abilities]]
+timing = "deals_damage_to_opponent"
+
+# that player gets a poison counter.
+[[abilities.effects]]
+type = "counters"
+mode = "put_counters_on_player"
+kind = "poison"
+count = 1
+who = "damaged_player"

@@ -1,0 +1,32 @@
+# {T}: If target Plains is tapped for mana, it produces colorless mana instead of white mana.
+# (This effect lasts indefinitely.)
+name = "Quarum Trench Gnomes"
+otags = ["activated-ability", "land-hate", "mana-denial", "synergy-plains"]
+id = "ce5e52c9-4cb1-42aa-8403-bcd143d68704"
+default_print = "1c3b33bf-3074-406e-86f3-2a9843cf4862"
+oracle = "{T}: If target Plains is tapped for mana, it produces colorless mana instead of white mana. (This effect lasts indefinitely.)"
+subtypes = ["Gnome"]
+
+[cost]
+generic = 3
+red = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# {T}: If target Plains is tapped for mana, it produces colorless mana instead of white mana.
+# (This effect lasts indefinitely.)
+[[abilities]]
+oracle = "{T}: If target Plains is tapped for mana, it produces colorless mana instead of white mana. (This effect lasts indefinitely.)"
+timing = "activated"
+taps_self = true
+
+# If target Plains is tapped for mana, it produces colorless mana instead of white mana. (This
+# effect lasts indefinitely.)
+[[abilities.effects]]
+type = "mana"
+mode = "target_land_produces_colorless_instead_of"
+color = "white"
+target = { permanent = { types = "land", subtypes = ["Plains"] } }

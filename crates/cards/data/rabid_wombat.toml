@@ -1,0 +1,31 @@
+# Vigilance
+# This creature gets +2/+2 for each Aura attached to it.
+name = "Rabid Wombat"
+id = "c886eeb5-f86f-48c8-9adb-af13015972b1"
+default_print = "9d9b9eb8-6367-4ab5-8e00-a9c9e1d69032"
+otags = ["enchantment-engine", "uril-ability", "vigilance"]
+oracle = "Vigilance\nThis creature gets +2/+2 for each Aura attached to it."
+subtypes = ["Wombat"]
+keywords = ["vigilance"]
+
+[cost]
+generic = 2
+green = 2
+
+[kind]
+type = "creature"
+power = 0
+toughness = 1
+
+# This creature gets +2/+2 for each Aura attached to it.
+[[abilities]]
+oracle = "This creature gets +2/+2 for each Aura attached to it."
+timing = "static"
+
+# This creature gets +2/+2 for each Aura attached to it.
+[[abilities.effects]]
+type = "static"
+mode = "anthem"
+self_only = true
+power = { left = 2, op = "multiply", right = { auras_attached_to_source = {} } }
+toughness = { left = 2, op = "multiply", right = { auras_attached_to_source = {} } }

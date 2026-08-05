@@ -1,0 +1,49 @@
+# Enchant creature
+# When enchanted creature dies, return that card to its owner's hand. If that card is returned to
+# its owner's hand this way, you may pay {U}{U}{U}. If you do, return this card to its owner's hand.
+name = "Puppet Master"
+otags = ["death-trigger", "parasitic-aura", "recursion-creature", "recursion-self", "reusable"]
+subtypes = ["Aura"]
+id = "42c7e933-f169-444b-917d-b4dca918d989"
+default_print = "b5d26ddc-ad1e-4a97-85fb-34da685c3142"
+oracle = "Enchant creature\nWhen enchanted creature dies, return that card to its owner's hand. If that card is returned to its owner's hand this way, you may pay {U}{U}{U}. If you do, return this card to its owner's hand."
+approximates = "The optional {U}{U}{U} payment is a second trigger off the same death rather than a clause gated on the host card actually reaching its owner's hand, so it is offered even when the creature card left the graveyard in response to the first half"
+
+# Enchant creature
+enchant = { types = "creature" }
+
+[cost]
+blue = 3
+
+[kind]
+type = "aura"
+
+# When enchanted creature dies, return that card to its owner's hand.
+[[abilities]]
+oracle = "When enchanted creature dies, return that card to its owner's hand."
+timing = "enchanted_creature_dies"
+
+# return that card to its owner's hand
+[[abilities.effects]]
+type = "zone"
+mode = "return_dying_enchanted_creature_to_hand"
+
+# If that card is returned to its owner's hand this way, you may pay {U}{U}{U}. If you do, return
+# this card to its owner's hand.
+# ponytail: the printed card is one trigger whose optional payment is gated on the host card
+#   actually having been returned; here the payment offer is a second trigger off the same death,
+#   so it is offered even when the host left the graveyard in response. Both halves still resolve
+#   in the same death batch and the Aura is already a graveyard card by then (CR 704.5m), which is
+#   what `return_this_to_hand` needs. Fold the two together when the DSL grows a controller-side
+#   "you may pay {cost}, if you do" sequence step to hang off the first half's success.
+[[abilities]]
+timing = "enchanted_creature_dies"
+optional = true
+
+[abilities.cost]
+blue = 3
+
+# return this card to its owner's hand
+[[abilities.effects]]
+type = "zone"
+mode = "return_this_to_hand"

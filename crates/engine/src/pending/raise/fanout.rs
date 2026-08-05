@@ -151,6 +151,7 @@ pub(super) fn next_vote(
 pub(super) fn next_card_name(
     mut remaining: Vec<PlayerId>,
     source: ObjectId,
+    use_: crate::CardNameUse,
 ) -> Option<PendingChoice> {
     if remaining.is_empty() {
         return None;
@@ -160,6 +161,7 @@ pub(super) fn next_card_name(
         player,
         source,
         remaining,
+        use_,
     })
 }
 

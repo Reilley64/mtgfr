@@ -1,0 +1,32 @@
+# At the beginning of your upkeep, change Halfdane's base power and toughness to the power and
+# toughness of target creature other than Halfdane until the end of your next upkeep.
+name = "Halfdane"
+id = "2ee13155-a3b8-4cad-8e68-5d2c5aba3bb4"
+default_print = "cac1e57a-0ef5-442b-a492-059fc6ff3dfc"
+oracle = "At the beginning of your upkeep, change Halfdane's base power and toughness to the power and toughness of target creature other than Halfdane until the end of your next upkeep."
+subtypes = ["Shapeshifter"]
+legendary = true
+
+[cost]
+generic = 1
+white = 1
+blue = 1
+black = 1
+
+[kind]
+type = "creature"
+power = 3
+toughness = 3
+
+# At the beginning of your upkeep, change Halfdane's base power and toughness to the power and
+# toughness of target creature other than Halfdane until the end of your next upkeep.
+[[abilities]]
+oracle = "At the beginning of your upkeep, change Halfdane's base power and toughness to the power and toughness of target creature other than Halfdane until the end of your next upkeep."
+timing = "upkeep"
+
+# change Halfdane's base power and toughness to the power and toughness of target creature other
+# than Halfdane until the end of your next upkeep.
+[[abilities.effects]]
+type = "pump"
+mode = "set_own_base_pt_from_target_until_end_of_next_upkeep"
+target = { permanent = { types = "creature", other = true } }

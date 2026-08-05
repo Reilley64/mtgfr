@@ -1,0 +1,30 @@
+# {T}: Target creature loses flying until end of turn.
+name = "Radjan Spirit"
+otags = ["activated-ability", "removes-flying", "repeatable-crime"]
+id = "c9ffce6c-a113-4c9d-9148-5ace68f68793"
+default_print = "03701cfd-4343-4ba0-a0b9-32db69acde6c"
+oracle = "{T}: Target creature loses flying until end of turn."
+subtypes = ["Spirit"]
+
+[cost]
+generic = 3
+green = 1
+
+[kind]
+type = "creature"
+power = 3
+toughness = 2
+
+# {T}: Target creature loses flying until end of turn.
+[[abilities]]
+oracle = "{T}: Target creature loses flying until end of turn."
+timing = "activated"
+taps_self = true
+
+# Target creature loses flying until end of turn.
+[[abilities.effects]]
+type = "pump"
+mode = "target_loses_keywords"
+target = "creature"
+keywords = ["flying"]
+until_end_of_turn = true

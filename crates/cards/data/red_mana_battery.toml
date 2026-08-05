@@ -1,0 +1,51 @@
+# {2}, {T}: Put a charge counter on this artifact.
+# {T}, Remove any number of charge counters from this artifact: Add {R}, then add an additional
+# {R} for each charge counter removed this way.
+name = "Red Mana Battery"
+otags = ["activated-ability", "adds-multiple-mana", "counter-fuel-charge", "cycle-leg-battery", "mana-rock", "mana-storage", "mini-refund", "notorious-templating"]
+id = "8ceb295c-a611-4ac7-940b-557bf60f8a8b"
+default_print = "e4e507bc-441d-4f44-85d4-cf93ca199d2e"
+oracle = "{2}, {T}: Put a charge counter on this artifact.\n{T}, Remove any number of charge counters from this artifact: Add {R}, then add an additional {R} for each charge counter removed this way."
+
+[cost]
+generic = 4
+
+[kind]
+type = "artifact"
+
+# {2}, {T}: Put a charge counter on this artifact.
+[[abilities]]
+oracle = "{2}, {T}: Put a charge counter on this artifact."
+timing = "activated"
+taps_self = true
+activation_cost = { generic = 2 }
+
+# Put a charge counter on this artifact.
+[[abilities.effects]]
+type = "counters"
+mode = "put_counters"
+count = 1
+target = "this"
+kind = "charge"
+
+# {T}, Remove any number of charge counters from this artifact: Add {R}, then add an additional
+# {R} for each charge counter removed this way.
+[[abilities]]
+oracle = "{T}, Remove any number of charge counters from this artifact: Add {R}, then add an additional {R} for each charge counter removed this way."
+timing = "activated"
+taps_self = true
+remove_counters_x = true
+remove_counters_kind = "charge"
+
+# Add {R},
+[[abilities.effects]]
+type = "mana"
+mode = "add"
+mana = ["red"]
+
+# then add an additional {R} for each charge counter removed this way.
+[[abilities.effects]]
+type = "mana"
+mode = "add"
+mana = ["red"]
+repeat = "x"

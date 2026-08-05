@@ -1,0 +1,26 @@
+# Red legendary creatures you control have "bands with other legendary creatures." (Any legendary creatures can attack
+# in a band as long as at least one has "bands with other legendary creatures." Bands are blocked as a group. If at
+# least two legendary creatures you control, one of which has "bands with other legendary creatures," are blocking or
+# being blocked by the same creature, you divide that creature's combat damage, not its controller, among any of the
+# creatures it's being blocked by or is blocking.)
+name = "Mountain Stronghold"
+otags = ["cycle-leg-banding-land", "gives-banding", "keyword-anthem", "manaless-land", "synergy-legendary", "synergy-red", "utility-land"]
+id = "af147bb6-aa46-4fc9-af96-de3740c19fd5"
+default_print = "314fd1d7-4bd8-4d95-b7c2-1aa6660ab88a"
+oracle = "Red legendary creatures you control have \"bands with other legendary creatures.\" (Any legendary creatures can attack in a band as long as at least one has \"bands with other legendary creatures.\" Bands are blocked as a group. If at least two legendary creatures you control, one of which has \"bands with other legendary creatures,\" are blocking or being blocked by the same creature, you divide that creature's combat damage, not its controller, among any of the creatures it's being blocked by or is blocking.)"
+
+# No `produces`: this is a land with no mana ability at all — the static grant below is the whole card.
+[kind]
+type = "land"
+
+# Red legendary creatures you control have "bands with other legendary creatures."
+[[abilities]]
+oracle = "Red legendary creatures you control have \"bands with other legendary creatures.\""
+timing = "static"
+
+# Red legendary creatures you control have "bands with other legendary creatures."
+[[abilities.effects]]
+type = "static"
+mode = "filtered_anthem"
+keywords = [{ bands_with = "legendary" }]
+filter = { types = ["creature"], color = "red", legendary = true, controller = "you" }

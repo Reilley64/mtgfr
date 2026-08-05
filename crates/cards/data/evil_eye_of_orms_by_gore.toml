@@ -1,0 +1,40 @@
+# Non-Eye creatures you control can't attack.
+# This creature can't be blocked except by Walls.
+name = "Evil Eye of Orms-by-Gore"
+otags = ["alliteration", "drawback", "evasion", "hate-typal-non-wall", "type-errata"]
+id = "3f79780a-accd-4782-94a8-a6e71fb3ada7"
+default_print = "e3b3dbd4-7c3d-49df-98b0-068db5399083"
+oracle = "Non-Eye creatures you control can't attack.\nThis creature can't be blocked except by Walls."
+subtypes = ["Eye"]
+
+[cost]
+generic = 4
+black = 1
+
+[kind]
+type = "creature"
+power = 3
+toughness = 6
+
+# Non-Eye creatures you control can't attack.
+[[abilities]]
+oracle = "Non-Eye creatures you control can't attack."
+timing = "static"
+
+# Non-Eye creatures you control can't attack. (The Eye is itself an Eye, so it is not caught by its own ban.)
+[[abilities.effects]]
+type = "static"
+mode = "cant_attack_filter"
+filter = { types = "creature", controller = "you", exclude_subtypes = ["Eye"] }
+
+# This creature can't be blocked except by Walls.
+[[abilities]]
+oracle = "This creature can't be blocked except by Walls."
+timing = "static"
+
+# This creature can't be blocked except by Walls. (Authored inverted, as every "can't be blocked by" restriction
+# is: the filter names the creatures turned away.)
+[[abilities.effects]]
+type = "static"
+mode = "cant_be_blocked_by"
+filter = { types = "creature", exclude_subtypes = ["Wall"] }

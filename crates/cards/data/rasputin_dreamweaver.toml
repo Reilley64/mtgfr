@@ -1,0 +1,96 @@
+# Rasputin enters with seven dream counters on it.
+# Remove a dream counter from Rasputin: Add {C}.
+# Remove a dream counter from Rasputin: Prevent the next 1 damage that would be dealt to Rasputin
+# this turn.
+# At the beginning of your upkeep, if Rasputin started the turn untapped, put a dream counter on it.
+# Rasputin can't have more than seven dream counters on it.
+name = "Rasputin Dreamweaver"
+id = "fef452ee-9018-4175-bb79-476544e48433"
+default_print = "78418809-f048-4611-88cb-369f427d9c44"
+oracle = "Rasputin enters with seven dream counters on it.\nRemove a dream counter from Rasputin: Add {C}.\nRemove a dream counter from Rasputin: Prevent the next 1 damage that would be dealt to Rasputin this turn.\nAt the beginning of your upkeep, if Rasputin started the turn untapped, put a dream counter on it.\nRasputin can't have more than seven dream counters on it."
+otags = [
+    "activated-ability",
+    "counters-matter",
+    "damage-prevention",
+    "deprecated-legend-type",
+    "triggered-ability",
+    "type-errata",
+]
+subtypes = ["Human", "Wizard"]
+legendary = true
+
+[cost]
+generic = 4
+white = 1
+blue = 1
+
+[kind]
+type = "creature"
+power = 4
+toughness = 1
+
+# Rasputin enters with seven dream counters on it.
+[[abilities]]
+oracle = "Rasputin enters with seven dream counters on it."
+timing = "static"
+
+# Rasputin enters with seven dream counters on it.
+[[abilities.effects]]
+type = "static"
+mode = "enters_with_counters"
+count = 7
+kind = "dream"
+
+# Remove a dream counter from Rasputin: Add {C}.
+[[abilities]]
+oracle = "Remove a dream counter from Rasputin: Add {C}."
+timing = "activated"
+remove_counters = 1
+remove_counters_kind = "dream"
+
+# Add {C}.
+[[abilities.effects]]
+type = "mana"
+mode = "add"
+mana = ["colorless"]
+
+# Remove a dream counter from Rasputin: Prevent the next 1 damage that would be dealt to Rasputin
+# this turn.
+[[abilities]]
+oracle = "Remove a dream counter from Rasputin: Prevent the next 1 damage that would be dealt to Rasputin this turn."
+timing = "activated"
+remove_counters = 1
+remove_counters_kind = "dream"
+
+# Prevent the next 1 damage that would be dealt to Rasputin this turn.
+[[abilities.effects]]
+type = "misc"
+mode = "prevent_next_damage"
+amount = 1
+shield_source = true
+
+# At the beginning of your upkeep, if Rasputin started the turn untapped, put a dream counter on it.
+[[abilities]]
+oracle = "At the beginning of your upkeep, if Rasputin started the turn untapped, put a dream counter on it."
+timing = "upkeep"
+condition = { type = "source_started_the_turn_untapped" }
+
+# put a dream counter on it.
+[[abilities.effects]]
+type = "counters"
+mode = "put_counters"
+count = 1
+target = "this"
+kind = "dream"
+
+# Rasputin can't have more than seven dream counters on it.
+[[abilities]]
+oracle = "Rasputin can't have more than seven dream counters on it."
+timing = "static"
+
+# Rasputin can't have more than seven dream counters on it.
+[[abilities.effects]]
+type = "static"
+mode = "counter_maximum"
+kind = "dream"
+max = 7

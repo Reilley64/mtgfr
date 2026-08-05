@@ -1,0 +1,34 @@
+# Tap target untapped creature you control. If you do, add an amount of {C} equal to that
+# creature's mana value.
+name = "Energy Tap"
+otags = ["mana-ritual", "tapper-creature"]
+id = "106ae855-574b-411d-8689-cbb9eeb4f602"
+default_print = "37e69940-bdc8-48ff-a296-540343910adf"
+oracle = "Tap target untapped creature you control. If you do, add an amount of {C} equal to that creature's mana value."
+
+[cost]
+blue = 1
+
+[kind]
+type = "sorcery"
+
+# Tap target untapped creature you control. If you do, add an amount of {C} equal to that creature's
+# mana value.
+[[abilities]]
+oracle = "Tap target untapped creature you control. If you do, add an amount of {C} equal to that creature's mana value."
+timing = "spell"
+
+# Tap target untapped creature you control.
+[[abilities.effects]]
+type = "control"
+mode = "tap_target"
+target = { permanent = { types = "creature", controller = "you", tapped = false } }
+
+# If you do, add an amount of {C} equal to that creature's mana value. The "if you do" needs no gate
+# of its own: the only target is the creature, so one that is no longer an untapped creature you
+# control on resolution makes the whole spell fizzle before this step runs (CR 608.2b).
+[[abilities.effects]]
+type = "mana"
+mode = "add"
+mana = ["colorless"]
+repeat = "target_mana_value"

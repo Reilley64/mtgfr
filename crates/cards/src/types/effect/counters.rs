@@ -147,6 +147,15 @@ pub enum CountersEffect {
         kind: Option<CounterKind>,
     },
 
+    /// "Remove a sleep counter from that creature" (Venarian Gold) — the enchanted-permanent twin
+    /// of [`Self::RemoveCounterFromSelf`], for the Auras that stack their countdown on the host
+    /// instead of on themselves. Untargeted: "that creature" is whatever the source is attached
+    /// to, so an Aura that has come unattached (or a host with none of `kind` left) is a no-op.
+    RemoveCounterFromAttached {
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        kind: Option<CounterKind>,
+    },
+
     /// "Put a loyalty counter on each Garruk you control" (the Wolf token minted by Garruk,
     /// Cursed Huntsman's `0`) — a permanent-type filter walk, same shape as
     /// [`Self::PutCountersEach`], but loyalty is the scalar `Permanent::loyalty`

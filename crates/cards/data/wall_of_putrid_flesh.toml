@@ -1,0 +1,31 @@
+# Defender (This creature can't attack.)
+# Protection from white
+# Prevent all damage that would be dealt to this creature by enchanted creatures.
+name = "Wall of Putrid Flesh"
+otags = ["damage-prevention", "damage-prevention-self", "drawback", "evasion", "hate-aura", "hate-white"]
+id = "e31d4be7-cd24-4287-b8ca-66f8612731a6"
+default_print = "07a17b74-a9c9-419a-8369-9ab4fec213f2"
+oracle = "Defender (This creature can't attack.)\nProtection from white\nPrevent all damage that would be dealt to this creature by enchanted creatures."
+subtypes = ["Wall"]
+keywords = ["defender", { protection = "white" }]
+
+[cost]
+generic = 2
+black = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 4
+
+# Prevent all damage that would be dealt to this creature by enchanted creatures.
+[[abilities]]
+oracle = "Prevent all damage that would be dealt to this creature by enchanted creatures."
+timing = "static"
+
+# Prevent all damage that would be dealt to this creature by enchanted creatures.
+[[abilities.effects]]
+type = "static"
+mode = "prevent_damage"
+to_self = true
+source_filter = { types = "creature", enchanted = true }

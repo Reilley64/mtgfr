@@ -1,0 +1,32 @@
+# Vigilance
+# Bartel Runeaxe can't be the target of Aura spells.
+name = "Bartel Runeaxe"
+otags = ["deprecated-legend-type", "hate-aura", "vigilance"]
+id = "9beccf09-c024-408b-9f84-fe2c7462babb"
+default_print = "3c635e33-c9f1-4508-986d-c0289921c299"
+oracle = "Vigilance\nBartel Runeaxe can't be the target of Aura spells."
+legendary = true
+subtypes = ["Giant", "Warrior"]
+keywords = ["vigilance"]
+
+[cost]
+generic = 3
+black = 1
+red = 1
+green = 1
+
+[kind]
+type = "creature"
+power = 6
+toughness = 5
+
+# Bartel Runeaxe can't be the target of Aura spells.
+[[abilities]]
+oracle = "Bartel Runeaxe can't be the target of Aura spells."
+timing = "static"
+
+# Bartel Runeaxe can't be the target of Aura spells.
+[[abilities.effects]]
+type = "static"
+mode = "cant_be_targeted_by"
+spells = "aura"

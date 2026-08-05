@@ -1,0 +1,34 @@
+# Flying
+# {G}{G}: This creature gains first strike until end of turn.
+name = "Emerald Dragonfly"
+otags = ["activated-ability", "evasion", "gains-first-strike", "real-life-animal-name", "type-errata-specific-insect"]
+id = "b067aa04-5977-4371-85d1-78d2884df03f"
+default_print = "931f2093-4d43-449e-82e8-beb97d25a0e8"
+oracle = "Flying\n{G}{G}: This creature gains first strike until end of turn."
+subtypes = ["Insect"]
+keywords = ["flying"]
+
+[cost]
+generic = 1
+green = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# {G}{G}: This creature gains first strike until end of turn.
+[[abilities]]
+oracle = "{G}{G}: This creature gains first strike until end of turn."
+timing = "activated"
+
+[abilities.activation_cost]
+green = 2
+
+# This creature gains first strike until end of turn.
+[[abilities.effects]]
+type = "pump"
+mode = "pump_self_until_end_of_turn"
+power = 0
+toughness = 0
+keywords = ["first_strike"]

@@ -1,0 +1,43 @@
+# Whenever this creature blocks a creature, destroy that creature at end of combat.
+# Whenever this creature becomes blocked by a non-Wall creature, destroy that creature at end
+# of combat.
+name = "Infernal Medusa"
+otags = ["block-trigger", "delayed-trigger", "hate-blocker", "hate-typal-non-wall", "old-blocking-deathtouch", "synergy-blocker-self", "type-errata"]
+id = "2cf5ce1f-d5f6-44cd-96e5-87d990d7e770"
+default_print = "26a5333f-2761-42b8-ae8b-1d360b109daf"
+oracle = "Whenever this creature blocks a creature, destroy that creature at end of combat.\nWhenever this creature becomes blocked by a non-Wall creature, destroy that creature at end of combat."
+subtypes = ["Gorgon"]
+
+[cost]
+generic = 3
+black = 2
+
+[kind]
+type = "creature"
+power = 2
+toughness = 4
+
+# Whenever this creature blocks a creature, destroy that creature at end of combat.
+[[abilities]]
+oracle = "Whenever this creature blocks a creature, destroy that creature at end of combat."
+timing = "blocks_creature"
+filter = { types = "creature" }
+
+# destroy that creature at end of combat
+[[abilities.effects]]
+type = "destroy"
+mode = "that_creature"
+at = "end_combat"
+
+# Whenever this creature becomes blocked by a non-Wall creature, destroy that creature at end
+# of combat.
+[[abilities]]
+oracle = "Whenever this creature becomes blocked by a non-Wall creature, destroy that creature at end of combat."
+timing = "becomes_blocked_by"
+filter = { types = "creature", exclude_subtypes = ["Wall"] }
+
+# destroy that creature at end of combat
+[[abilities.effects]]
+type = "destroy"
+mode = "that_creature"
+at = "end_combat"

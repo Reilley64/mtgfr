@@ -1,0 +1,27 @@
+# {T}: Add {B}.
+# {T}: Target creature loses first strike or swampwalk until end of turn.
+name = "Urborg"
+otags = ["activated-ability", "cycle-leg-legendary-land", "hate-first-strike", "hate-landwalk", "removes-first-strike", "removes-landwalk", "repeatable-crime", "utility-land"]
+id = "b6114962-035e-4e7f-9009-4739bf83a05a"
+default_print = "5319f782-2713-43b1-9b28-0d1ec7a39203"
+oracle = "{T}: Add {B}.\n{T}: Target creature loses first strike or swampwalk until end of turn."
+legendary = true
+
+[kind]
+type = "land"
+produces = "black"
+
+# {T}: Target creature loses first strike or swampwalk until end of turn.
+[[abilities]]
+oracle = "{T}: Target creature loses first strike or swampwalk until end of turn."
+timing = "activated"
+taps_self = true
+
+# Target creature loses first strike or swampwalk until end of turn.
+[[abilities.effects]]
+type = "pump"
+mode = "target_loses_keywords"
+target = "creature"
+keywords = ["first_strike", { landwalk = "swamp" }]
+until_end_of_turn = true
+choose_one = true

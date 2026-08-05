@@ -201,6 +201,10 @@ cards-toml-validate-pool:
     @just cards-toml-validate crates/cards/data/*.toml
     @just cards-toml-validate --token crates/cards/data/tokens/*.toml
 
+[doc("Cross-check a fidelity report against the card pool and its increment backlog")]
+fidelity-audit slug:
+    python3 tooling/fidelity_report_audit.py {{ slug }}
+
 [doc("Scan engine for likely missing CR citations (advisory)")]
 engine-cr-scan:
     python3 scripts/scan_missing_cr.py
