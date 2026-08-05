@@ -21,6 +21,7 @@ keywords = ["flash"]
 
 # Commander creatures you control get +2/+2.
 [[abilities]]
+oracle = "Commander creatures you control get +2/+2."
 timing = "static"
 
 # Commander creatures you control get +2/+2.

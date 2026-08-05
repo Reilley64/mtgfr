@@ -13,6 +13,7 @@ type = "instant"
 
 # Regenerate target creature.
 [[abilities]]
+oracle = "Regenerate target creature."
 timing = "spell"
 
 # Regenerate target creature.

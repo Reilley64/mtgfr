@@ -16,6 +16,7 @@ type = "artifact"
 # {1}: The next time a source of your choice would deal damage to target creature this turn,
 # that source deals that damage to you instead.
 [[abilities]]
+oracle = "{1}: The next time a source of your choice would deal damage to target creature this turn, that source deals that damage to you instead."
 timing = "activated"
 activation_cost = { generic = 1 }
 

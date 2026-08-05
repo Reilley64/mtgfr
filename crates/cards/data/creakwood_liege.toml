@@ -20,6 +20,7 @@ toughness = 2
 
 # Other black creatures you control get +1/+1.
 [[abilities]]
+oracle = "Other black creatures you control get +1/+1."
 timing = "static"
 
 # Other black creatures you control get +1/+1.
@@ -33,6 +34,7 @@ exclude_source = true
 
 # Other green creatures you control get +1/+1.
 [[abilities]]
+oracle = "Other green creatures you control get +1/+1."
 timing = "static"
 
 # Other green creatures you control get +1/+1.
@@ -46,6 +48,7 @@ exclude_source = true
 
 # At the beginning of your upkeep, you may create a 1/1 black and green Worm creature token.
 [[abilities]]
+oracle = "At the beginning of your upkeep, you may create a 1/1 black and green Worm creature token."
 timing = "upkeep"
 optional = true
 

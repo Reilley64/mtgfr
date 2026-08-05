@@ -15,6 +15,7 @@ type = "sorcery"
 
 # Target player draws a card and loses 1 life.
 [[abilities]]
+oracle = "Target player draws a card and loses 1 life."
 timing = "spell"
 
 # Target player draws a card

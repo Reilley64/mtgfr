@@ -12,6 +12,7 @@ produces = "colorless"
 
 # {T}: Each player gains control of all creatures they own.
 [[abilities]]
+oracle = "{T}: Each player gains control of all creatures they own."
 timing = "activated"
 taps_self = true
 

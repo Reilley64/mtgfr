@@ -13,6 +13,7 @@ type = "instant"
 
 # Counter target spell.
 [[abilities]]
+oracle = "Counter target spell."
 timing = "spell"
 
 # Counter target spell.

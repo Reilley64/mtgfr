@@ -19,6 +19,7 @@ toughness = 6
 
 # Attacking creatures you control have deathtouch.
 [[abilities]]
+oracle = "Attacking creatures you control have deathtouch."
 timing = "static"
 
 # Attacking creatures you control have deathtouch.
@@ -30,6 +31,7 @@ attacking_only = true
 
 # Whenever a creature you control deals combat damage to a player, draw a card.
 [[abilities]]
+oracle = "Whenever a creature you control deals combat damage to a player, draw a card."
 timing = "deals_combat_damage_to_player"
 who = "your_creatures"
 

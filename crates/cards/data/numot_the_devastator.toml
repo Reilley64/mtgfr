@@ -24,6 +24,7 @@ toughness = 5
 # Whenever Numot, the Devastator deals combat damage to a player, you may pay {2}{R}. If you do,
 # destroy up to two target lands.
 [[abilities]]
+oracle = "Whenever Numot, the Devastator deals combat damage to a player, you may pay {2}{R}. If you do, destroy up to two target lands."
 timing = "deals_combat_damage_to_player"
 who = "this"
 optional = true

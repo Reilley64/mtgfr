@@ -23,6 +23,7 @@ toughness = 1
 
 # Sacrifice this creature: Creatures you control gain indestructible until end of turn.
 [[abilities]]
+oracle = "Sacrifice this creature: Creatures you control gain indestructible until end of turn."
 timing = "activated"
 sacrifice = "this"
 

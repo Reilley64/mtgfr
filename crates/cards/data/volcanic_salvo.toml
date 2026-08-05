@@ -16,6 +16,7 @@ type = "sorcery"
 
 # Volcanic Salvo deals 6 damage to each of up to two target creatures and/or planeswalkers.
 [[abilities]]
+oracle = "Volcanic Salvo deals 6 damage to each of up to two target creatures and/or planeswalkers."
 timing = "spell"
 
 # Volcanic Salvo deals 6 damage to each of up to two target creatures and/or planeswalkers.

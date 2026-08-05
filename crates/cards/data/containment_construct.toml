@@ -22,6 +22,7 @@ toughness = 1
 # Whenever you discard a card, you may exile that card from your graveyard. If you do, you may
 # play that card this turn.
 [[abilities]]
+oracle = "Whenever you discard a card, you may exile that card from your graveyard. If you do, you may play that card this turn."
 timing = "you_discard"
 optional = true
 

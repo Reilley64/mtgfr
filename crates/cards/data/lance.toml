@@ -15,6 +15,7 @@ type = "aura"
 
 # Enchanted creature has first strike.
 [[abilities]]
+oracle = "Enchanted creature has first strike."
 timing = "static"
 
 # Enchanted creature has first strike.

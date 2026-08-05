@@ -26,6 +26,7 @@ toughness = 0
 
 # This creature enters with X +1/+1 counters on it.
 [[abilities]]
+oracle = "This creature enters with X +1/+1 counters on it."
 timing = "static"
 
 # This creature enters with X +1/+1 counters on it.
@@ -36,6 +37,7 @@ count = "x"
 
 # At the beginning of your upkeep, double the number of +1/+1 counters on this creature.
 [[abilities]]
+oracle = "At the beginning of your upkeep, double the number of +1/+1 counters on this creature."
 timing = "upkeep"
 
 # double the number of +1/+1 counters on this creature.

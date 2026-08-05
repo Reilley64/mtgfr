@@ -16,6 +16,7 @@ type = "artifact"
 
 # Equipped creature has hexproof and haste.
 [[abilities]]
+oracle = "Equipped creature has hexproof and haste."
 timing = "static"
 
 # Equipped creature has hexproof and haste.
@@ -28,6 +29,7 @@ keywords = ["hexproof", "haste"]
 
 # Equip {1}
 [[abilities]]
+oracle = "Equip {1}"
 timing = "activated"
 
 [abilities.activation_cost]

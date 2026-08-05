@@ -14,6 +14,7 @@ type = "enchantment"
 
 # Whenever an opponent casts their second spell each turn, you create a Treasure token.
 [[abilities]]
+oracle = "Whenever an opponent casts their second spell each turn, you create a Treasure token."
 timing = "cast_spell"
 caster = "opponent"
 nth_each_turn = 2

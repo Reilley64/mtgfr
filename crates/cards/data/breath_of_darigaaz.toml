@@ -20,6 +20,7 @@ type = "sorcery"
 # Breath of Darigaaz deals 1 damage to each creature without flying and each player. If this
 # spell was kicked, it deals 4 damage to each creature without flying and each player instead.
 [[abilities]]
+oracle = "Breath of Darigaaz deals 1 damage to each creature without flying and each player. If this spell was kicked, it deals 4 damage to each creature without flying and each player instead."
 timing = "spell"
 
 # deals 1 damage to each creature without flying ... If this spell was kicked, it deals 4 damage

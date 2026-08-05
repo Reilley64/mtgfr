@@ -18,6 +18,7 @@ type = "artifact"
 
 # This artifact doesn't untap during your untap step.
 [[abilities]]
+oracle = "This artifact doesn't untap during your untap step."
 timing = "static"
 
 # This artifact doesn't untap during your untap step.
@@ -29,6 +30,7 @@ self_only = true
 # If you would begin your turn while this artifact is tapped, you may skip that turn instead.
 # If you do, untap this artifact.
 [[abilities]]
+oracle = "If you would begin your turn while this artifact is tapped, you may skip that turn instead. If you do, untap this artifact."
 timing = "static"
 
 # If you would begin your turn while this artifact is tapped, you may skip that turn instead.
@@ -39,6 +41,7 @@ mode = "may_skip_turn_while_tapped"
 
 # {T}: Take an extra turn after this one.
 [[abilities]]
+oracle = "{T}: Take an extra turn after this one."
 timing = "activated"
 taps_self = true
 

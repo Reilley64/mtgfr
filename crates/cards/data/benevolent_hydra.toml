@@ -31,6 +31,7 @@ count = "x"
 # If one or more +1/+1 counters would be put on another creature you control, that many plus one
 # +1/+1 counters are put on it instead.
 [[abilities]]
+oracle = "If one or more +1/+1 counters would be put on another creature you control, that many plus one +1/+1 counters are put on it instead."
 timing = "static"
 
 # If one or more +1/+1 counters would be put on another creature you control, that many plus
@@ -44,6 +45,7 @@ other = true
 # {T}, Remove a +1/+1 counter from this creature: Put a +1/+1 counter on another target creature
 # you control.
 [[abilities]]
+oracle = "{T}, Remove a +1/+1 counter from this creature: Put a +1/+1 counter on another target creature you control."
 timing = "activated"
 taps_self = true
 remove_counters = 1

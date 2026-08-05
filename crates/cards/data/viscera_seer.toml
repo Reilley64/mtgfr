@@ -16,6 +16,7 @@ toughness = 1
 
 # Sacrifice a creature: Scry 1.
 [[abilities]]
+oracle = "Sacrifice a creature: Scry 1."
 timing = "activated"
 sacrifice = "creature"
 

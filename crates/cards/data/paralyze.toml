@@ -19,6 +19,7 @@ type = "aura"
 
 # When this Aura enters, tap enchanted creature.
 [[abilities]]
+oracle = "When this Aura enters, tap enchanted creature."
 timing = "etb"
 
 # tap enchanted creature.
@@ -29,6 +30,7 @@ target = "enchanted_creature"
 
 # Enchanted creature doesn't untap during its controller's untap step.
 [[abilities]]
+oracle = "Enchanted creature doesn't untap during its controller's untap step."
 timing = "static"
 
 # Enchanted creature doesn't untap during its controller's untap step.
@@ -40,6 +42,7 @@ doesnt_untap = true
 # At the beginning of the upkeep of enchanted creature's controller, that player may pay {4}.
 # If the player does, untap the creature.
 [[abilities]]
+oracle = "At the beginning of the upkeep of enchanted creature's controller, that player may pay {4}. If the player does, untap the creature."
 timing = "each_upkeep"
 condition = { type = "enchanted_permanents_controllers_upkeep" }
 

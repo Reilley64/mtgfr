@@ -13,6 +13,7 @@ type = "instant"
 
 # Target creature gets +3/+3 until end of turn.
 [[abilities]]
+oracle = "Target creature gets +3/+3 until end of turn."
 timing = "spell"
 
 # Target creature gets +3/+3 until end of turn.

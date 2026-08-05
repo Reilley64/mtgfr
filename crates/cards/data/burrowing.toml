@@ -17,6 +17,7 @@ type = "aura"
 # Enchanted creature has mountainwalk. (It can't be blocked as long as defending player
 # controls a Mountain.)
 [[abilities]]
+oracle = "Enchanted creature has mountainwalk. (It can't be blocked as long as defending player controls a Mountain.)"
 timing = "static"
 
 # Enchanted creature has mountainwalk.

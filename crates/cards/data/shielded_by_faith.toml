@@ -17,6 +17,7 @@ type = "aura"
 
 # Enchanted creature has indestructible.
 [[abilities]]
+oracle = "Enchanted creature has indestructible."
 timing = "static"
 
 # Enchanted creature has indestructible.
@@ -29,6 +30,7 @@ keywords = ["indestructible"]
 
 # Whenever a creature enters, you may attach this Aura to that creature.
 [[abilities]]
+oracle = "Whenever a creature enters, you may attach this Aura to that creature."
 timing = "permanent_enters"
 filter = "creature"
 controller = "any_player"

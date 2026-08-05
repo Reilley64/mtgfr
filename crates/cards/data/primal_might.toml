@@ -16,6 +16,7 @@ type = "sorcery"
 # Target creature you control gets +X/+X until end of turn. Then it fights up to one target
 # creature you don't control.
 [[abilities]]
+oracle = "Target creature you control gets +X/+X until end of turn. Then it fights up to one target creature you don't control."
 timing = "spell"
 
 # Target creature you control gets +X/+X until end of turn.

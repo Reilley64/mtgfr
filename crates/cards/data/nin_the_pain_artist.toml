@@ -18,6 +18,7 @@ toughness = 1
 
 # {X}{U}{R}, {T}: Nin deals X damage to target creature. That creature's controller draws X cards.
 [[abilities]]
+oracle = "{X}{U}{R}, {T}: Nin deals X damage to target creature. That creature's controller draws X cards."
 timing = "activated"
 taps_self = true
 

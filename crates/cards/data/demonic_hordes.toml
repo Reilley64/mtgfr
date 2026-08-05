@@ -20,6 +20,7 @@ toughness = 5
 
 # {T}: Destroy target land.
 [[abilities]]
+oracle = "{T}: Destroy target land."
 timing = "activated"
 taps_self = true
 
@@ -32,6 +33,7 @@ target = { permanent = { types = "land" } }
 # At the beginning of your upkeep, unless you pay {B}{B}{B}, tap this creature and sacrifice a
 # land of an opponent's choice.
 [[abilities]]
+oracle = "At the beginning of your upkeep, unless you pay {B}{B}{B}, tap this creature and sacrifice a land of an opponent's choice."
 timing = "upkeep"
 
 # unless you pay {B}{B}{B}, tap this creature and sacrifice a land of an opponent's choice

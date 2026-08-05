@@ -17,6 +17,7 @@ toughness = 1
 
 # {T}: Prevent the next 1 damage that would be dealt to any target this turn.
 [[abilities]]
+oracle = "{T}: Prevent the next 1 damage that would be dealt to any target this turn."
 timing = "activated"
 taps_self = true
 

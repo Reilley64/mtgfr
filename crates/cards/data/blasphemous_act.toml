@@ -18,6 +18,7 @@ type = "sorcery"
 
 # Blasphemous Act deals 13 damage to each creature.
 [[abilities]]
+oracle = "Blasphemous Act deals 13 damage to each creature."
 timing = "spell"
 
 # Blasphemous Act deals 13 damage to each creature.

@@ -15,6 +15,7 @@ type = "sorcery"
 
 # Put target permanent on top of its owner's library.
 [[abilities]]
+oracle = "Put target permanent on top of its owner's library."
 timing = "spell"
 
 # Put target permanent on top of its owner's library.

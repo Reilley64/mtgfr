@@ -23,6 +23,7 @@ toughness = 2
 
 # The Goose Mother enters with X +1/+1 counters on it.
 [[abilities]]
+oracle = "The Goose Mother enters with X +1/+1 counters on it."
 timing = "static"
 
 # The Goose Mother enters with X +1/+1 counters on it.
@@ -33,6 +34,7 @@ count = "x"
 
 # When The Goose Mother enters, create half X Food tokens, rounded up.
 [[abilities]]
+oracle = "When The Goose Mother enters, create half X Food tokens, rounded up."
 timing = "etb"
 
 # create half X Food tokens, rounded up

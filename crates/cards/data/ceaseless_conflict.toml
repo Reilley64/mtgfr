@@ -16,6 +16,7 @@ type = "sorcery"
 # Destroy all creatures. Then create a 3/2 red and white Spirit creature token for each nontoken
 # creature you controlled that was destroyed this way.
 [[abilities]]
+oracle = "Destroy all creatures. Then create a 3/2 red and white Spirit creature token for each nontoken creature you controlled that was destroyed this way."
 timing = "spell"
 
 # Destroy all creatures.

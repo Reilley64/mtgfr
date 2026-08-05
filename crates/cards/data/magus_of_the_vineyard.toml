@@ -16,6 +16,7 @@ toughness = 1
 
 # At the beginning of each player's first main phase, that player adds {G}{G}.
 [[abilities]]
+oracle = "At the beginning of each player's first main phase, that player adds {G}{G}."
 timing = "each_player_first_main_phase"
 
 # that player adds {G}{G}.

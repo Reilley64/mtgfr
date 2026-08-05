@@ -23,6 +23,7 @@ toughness = 4
 # Backup 1 (When this creature enters, put a +1/+1 counter on target creature. If that's another
 # creature, it gains the following abilities until end of turn.)
 [[abilities]]
+oracle = "Backup 1 (When this creature enters, put a +1/+1 counter on target creature. If that's another creature, it gains the following abilities until end of turn.)"
 timing = "etb"
 
 # put a +1/+1 counter on target creature
@@ -40,6 +41,7 @@ mode = "grant_source_abilities_until_end_of_turn"
 # Whenever this creature attacks, return target nonland permanent card with mana value X or less
 # from your graveyard to the battlefield, where X is this creature's power.
 [[abilities]]
+oracle = "Whenever this creature attacks, return target nonland permanent card with mana value X or less from your graveyard to the battlefield, where X is this creature's power."
 timing = "attacks"
 
 # return target nonland permanent card with mana value X or less from your graveyard to the

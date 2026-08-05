@@ -21,6 +21,7 @@ toughness = 3
 # {T}: Put this creature and each creature it's blocking on top of their owners' libraries, then
 # those players shuffle.
 [[abilities]]
+oracle = "{T}: Put this creature and each creature it's blocking on top of their owners' libraries, then those players shuffle."
 timing = "activated"
 taps_self = true
 

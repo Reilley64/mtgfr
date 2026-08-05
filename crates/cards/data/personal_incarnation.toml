@@ -35,6 +35,7 @@ redirect_to_controller = true
 
 # When this creature dies, its owner loses half their life, rounded up.
 [[abilities]]
+oracle = "When this creature dies, its owner loses half their life, rounded up."
 timing = "dies"
 
 # its owner loses half their life, rounded up

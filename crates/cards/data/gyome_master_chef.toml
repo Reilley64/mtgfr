@@ -24,6 +24,7 @@ toughness = 3
 # At the beginning of your end step, create a number of Food tokens equal to the number of
 # nontoken creatures you had enter the battlefield under your control this turn.
 [[abilities]]
+oracle = "At the beginning of your end step, create a number of Food tokens equal to the number of nontoken creatures you had enter the battlefield under your control this turn."
 timing = "end_step"
 
 # create a number of Food tokens equal to the number of nontoken creatures you had enter the

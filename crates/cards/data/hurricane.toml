@@ -14,6 +14,7 @@ type = "sorcery"
 
 # Hurricane deals X damage to each creature with flying and each player.
 [[abilities]]
+oracle = "Hurricane deals X damage to each creature with flying and each player."
 timing = "spell"
 
 # Hurricane deals X damage to each creature with flying ...

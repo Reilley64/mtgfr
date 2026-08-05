@@ -13,6 +13,7 @@ produces = "colorless"
 
 # {T}: Add {C}.
 [[abilities]]
+oracle = "{T}: Add {C}."
 timing = "activated"
 taps_self = true
 
@@ -24,6 +25,7 @@ mana = ["colorless"]
 
 # {4}, {T}: Target creature can't be blocked this turn.
 [[abilities]]
+oracle = "{4}, {T}: Target creature can't be blocked this turn."
 timing = "activated"
 taps_self = true
 

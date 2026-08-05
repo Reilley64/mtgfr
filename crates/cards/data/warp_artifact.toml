@@ -18,6 +18,7 @@ type = "aura"
 # At the beginning of the upkeep of enchanted artifact's controller, this Aura deals 1 damage to
 # that player.
 [[abilities]]
+oracle = "At the beginning of the upkeep of enchanted artifact's controller, this Aura deals 1 damage to that player."
 timing = "each_upkeep"
 condition = { type = "enchanted_permanents_controllers_upkeep" }
 

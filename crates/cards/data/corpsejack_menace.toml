@@ -20,6 +20,7 @@ toughness = 4
 # If one or more +1/+1 counters would be put on a creature you control, twice that many +1/+1
 # counters are put on it instead.
 [[abilities]]
+oracle = "If one or more +1/+1 counters would be put on a creature you control, twice that many +1/+1 counters are put on it instead."
 timing = "static"
 
 # twice that many +1/+1 counters are put on it instead

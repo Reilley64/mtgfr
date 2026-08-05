@@ -24,6 +24,7 @@ toughness = 1
 
 # When this creature enters, destroy target artifact.
 [[abilities]]
+oracle = "When this creature enters, destroy target artifact."
 timing = "etb"
 
 # destroy target artifact.

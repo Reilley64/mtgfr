@@ -13,6 +13,7 @@ type = "instant"
 
 # Draw three cards, then put two cards from your hand on top of your library in any order.
 [[abilities]]
+oracle = "Draw three cards, then put two cards from your hand on top of your library in any order."
 timing = "spell"
 
 # Draw three cards

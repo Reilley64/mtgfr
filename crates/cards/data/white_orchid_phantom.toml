@@ -20,6 +20,7 @@ toughness = 2
 # When this creature enters, destroy up to one target nonbasic land. Its controller may search
 # their library for a basic land card, put it onto the battlefield tapped, then shuffle.
 [[abilities]]
+oracle = "When this creature enters, destroy up to one target nonbasic land. Its controller may search their library for a basic land card, put it onto the battlefield tapped, then shuffle."
 timing = "etb"
 optional = true
 

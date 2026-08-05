@@ -21,6 +21,7 @@ toughness = 4
 
 # Other red creatures you control get +1/+1.
 [[abilities]]
+oracle = "Other red creatures you control get +1/+1."
 timing = "static"
 
 # Other red creatures you control get +1/+1.
@@ -34,6 +35,7 @@ exclude_source = true
 
 # Other white creatures you control get +1/+1.
 [[abilities]]
+oracle = "Other white creatures you control get +1/+1."
 timing = "static"
 
 # Other white creatures you control get +1/+1.
@@ -47,6 +49,7 @@ exclude_source = true
 
 # Whenever you cast a red spell, this creature deals 3 damage to target player or planeswalker.
 [[abilities]]
+oracle = "Whenever you cast a red spell, this creature deals 3 damage to target player or planeswalker."
 timing = "cast_spell"
 spell_filter = { color = "red" }
 caster = "you"
@@ -60,6 +63,7 @@ target = "player_or_planeswalker"
 
 # Whenever you cast a white spell, you gain 3 life.
 [[abilities]]
+oracle = "Whenever you cast a white spell, you gain 3 life."
 timing = "cast_spell"
 spell_filter = { color = "white" }
 caster = "you"

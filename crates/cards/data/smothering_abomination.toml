@@ -22,6 +22,7 @@ toughness = 3
 
 # At the beginning of your upkeep, sacrifice a creature.
 [[abilities]]
+oracle = "At the beginning of your upkeep, sacrifice a creature."
 timing = "upkeep"
 
 # sacrifice a creature.
@@ -33,6 +34,7 @@ count = 1
 
 # Whenever you sacrifice a creature, draw a card.
 [[abilities]]
+oracle = "Whenever you sacrifice a creature, draw a card."
 timing = "you_sacrifice"
 filter = "creature"
 

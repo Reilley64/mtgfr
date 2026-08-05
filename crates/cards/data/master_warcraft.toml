@@ -19,6 +19,7 @@ type = "instant"
 # You choose which creatures attack this turn.
 # You choose which creatures block this turn and how those creatures block.
 [[abilities]]
+oracle = "You choose which creatures attack this turn. You choose which creatures block this turn and how those creatures block."
 timing = "spell"
 
 # You choose which creatures attack this turn.

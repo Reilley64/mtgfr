@@ -19,6 +19,7 @@ toughness = 4
 # Landfall — Whenever a land you control enters, this creature gets +4/+4 and gains trample
 # until end of turn.
 [[abilities]]
+oracle = "Landfall — Whenever a land you control enters, this creature gets +4/+4 and gains trample until end of turn."
 timing = "permanent_enters"
 filter = "land"
 controller = "you"

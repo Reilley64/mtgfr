@@ -18,6 +18,7 @@ type = "instant"
 
 # Add an amount of {B} equal to the sacrificed creature's mana value.
 [[abilities]]
+oracle = "Add an amount of {B} equal to the sacrificed creature's mana value."
 timing = "spell"
 
 # Add an amount of {B} equal to the sacrificed creature's mana value.

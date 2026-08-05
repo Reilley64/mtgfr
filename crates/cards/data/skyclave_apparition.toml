@@ -20,6 +20,7 @@ toughness = 2
 # When this creature leaves the battlefield, the exiled card's owner creates an X/X blue Illusion
 # creature token, where X is the mana value of the exiled card.
 [[abilities]]
+oracle = "When this creature enters, exile up to one target nonland, nontoken permanent you don't control with mana value 4 or less. When this creature leaves the battlefield, the exiled card's owner creates an X/X blue Illusion creature token, where X is the mana value of the exiled card."
 timing = "etb"
 optional = true
 

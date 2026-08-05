@@ -16,6 +16,7 @@ type = "artifact"
 
 # You have no maximum hand size.
 [[abilities]]
+oracle = "You have no maximum hand size."
 timing = "static"
 
 # You have no maximum hand size.
@@ -26,6 +27,7 @@ mode = "no_maximum_hand_size"
 # If an effect causes you to discard a card, discard it, but you may put it on top of your library
 # instead of into your graveyard.
 [[abilities]]
+oracle = "If an effect causes you to discard a card, discard it, but you may put it on top of your library instead of into your graveyard."
 timing = "static"
 
 # If an effect causes you to discard a card, discard it, but you may put it on top of your library

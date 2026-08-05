@@ -22,6 +22,7 @@ toughness = 5
 # Join forces — Whenever this creature attacks or blocks, each player starting with you may pay
 # any amount of mana.
 [[abilities]]
+oracle = "Join forces — Whenever this creature attacks or blocks, each player starting with you may pay any amount of mana."
 timing = "attacks_or_blocks"
 
 # each player starting with you may pay any amount of mana.

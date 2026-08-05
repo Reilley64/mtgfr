@@ -14,6 +14,7 @@ type = "sorcery"
 
 # Return target card from your graveyard to your hand.
 [[abilities]]
+oracle = "Return target card from your graveyard to your hand."
 timing = "spell"
 
 # Return target card from your graveyard to your hand.

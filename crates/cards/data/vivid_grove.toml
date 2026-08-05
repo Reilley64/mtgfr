@@ -13,6 +13,7 @@ type = "land"
 
 # This land enters tapped with two charge counters on it.
 [[abilities]]
+oracle = "This land enters tapped with two charge counters on it."
 timing = "static"
 
 # This land enters tapped with two charge counters on it.
@@ -24,6 +25,7 @@ kind = "charge"
 
 # {T}: Add {G}.
 [[abilities]]
+oracle = "{T}: Add {G}."
 timing = "activated"
 taps_self = true
 
@@ -35,6 +37,7 @@ mana = ["green"]
 
 # {T}, Remove a charge counter from this land: Add one mana of any color.
 [[abilities]]
+oracle = "{T}, Remove a charge counter from this land: Add one mana of any color."
 timing = "activated"
 taps_self = true
 remove_counters = 1

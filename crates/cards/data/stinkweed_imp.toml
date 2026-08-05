@@ -25,6 +25,7 @@ toughness = 2
 
 # Whenever this creature deals combat damage to a creature, destroy that creature.
 [[abilities]]
+oracle = "Whenever this creature deals combat damage to a creature, destroy that creature."
 timing = "deals_combat_damage_to_creature"
 
 # destroy that creature.

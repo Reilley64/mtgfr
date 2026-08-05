@@ -19,6 +19,7 @@ toughness = 5
 
 # This creature can't attack unless defending player controls an Island.
 [[abilities]]
+oracle = "This creature can't attack unless defending player controls an Island."
 timing = "static"
 
 # can't attack unless defending player controls an Island
@@ -29,6 +30,7 @@ filter = { types = "land", subtypes = ["Island"] }
 
 # When you control no Islands, sacrifice this creature.
 [[abilities]]
+oracle = "When you control no Islands, sacrifice this creature."
 timing = "each_end_step"
 
 [abilities.condition]

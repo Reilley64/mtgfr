@@ -7,7 +7,7 @@ Define how Magic card and token behavior is authored as data, validated, interne
 ## Requirements
 
 ### Requirement: Cards are authored as structured definition files
-The system SHALL represent each deckable card as a structured definition file that loads into a printed card definition. Authors SHALL be able to add or change a card without changing rules-engine code when the required effect vocabulary already exists. Each definition file SHALL open with the card's verbatim oracle text as a leading comment, then identity and rules fields, cost, kind, and ability blocks. Each ability block SHALL be preceded by a comment quoting the oracle sentence(s) it implements.
+The system SHALL represent each deckable card as a structured definition file that loads into a printed card definition. Authors SHALL be able to add or change a card without changing rules-engine code when the required effect vocabulary already exists. Each definition file SHALL open with the card's verbatim oracle text as a leading comment, then identity and rules fields, cost, kind, and ability blocks. Each ability block SHALL be preceded by a comment quoting the oracle sentence(s) it implements, and SHALL repeat that quotation as the block's own recorded sentence whenever it can be quoted verbatim.
 
 #### Scenario: Author a simple damage spell
 - **WHEN** an author writes a definition for a spell whose effect vocabulary already exists

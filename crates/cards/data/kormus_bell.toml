@@ -13,6 +13,7 @@ type = "artifact"
 
 # All Swamps are 1/1 black creatures that are still lands.
 [[abilities]]
+oracle = "All Swamps are 1/1 black creatures that are still lands."
 timing = "static"
 
 # All Swamps are 1/1 black creatures that are still lands.

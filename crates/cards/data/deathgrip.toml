@@ -13,6 +13,7 @@ type = "enchantment"
 
 # {B}{B}: Counter target green spell.
 [[abilities]]
+oracle = "{B}{B}: Counter target green spell."
 timing = "activated"
 
 [abilities.activation_cost]

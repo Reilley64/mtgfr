@@ -14,6 +14,7 @@ type = "instant"
 
 # Each opponent sacrifices a creature or planeswalker of their choice and gets a poison counter.
 [[abilities]]
+oracle = "Each opponent sacrifices a creature or planeswalker of their choice and gets a poison counter."
 timing = "spell"
 
 # Each opponent sacrifices a creature or planeswalker of their choice

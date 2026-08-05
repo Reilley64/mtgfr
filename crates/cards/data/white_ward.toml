@@ -15,6 +15,7 @@ type = "aura"
 
 # Enchanted creature has protection from white. This effect doesn't remove this Aura.
 [[abilities]]
+oracle = "Enchanted creature has protection from white. This effect doesn't remove this Aura."
 timing = "static"
 
 # Enchanted creature has protection from white.

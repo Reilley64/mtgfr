@@ -15,6 +15,7 @@ type = "artifact"
 
 # As this artifact enters, choose an opponent.
 [[abilities]]
+oracle = "As this artifact enters, choose an opponent."
 timing = "as_enters"
 
 # As this artifact enters, choose an opponent.
@@ -25,6 +26,7 @@ mode = "choose_opponent"
 # At the beginning of the chosen player's upkeep, this artifact deals X damage to that player,
 # where X is the number of cards in their hand minus 4.
 [[abilities]]
+oracle = "At the beginning of the chosen player's upkeep, this artifact deals X damage to that player, where X is the number of cards in their hand minus 4."
 timing = "each_upkeep"
 condition = { type = "chosen_players_upkeep" }
 

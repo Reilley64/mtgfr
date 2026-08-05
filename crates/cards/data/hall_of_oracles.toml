@@ -17,6 +17,7 @@ produces = "colorless"
 
 # {1}, {T}: Add one mana of any color.
 [[abilities]]
+oracle = "{1}, {T}: Add one mana of any color."
 timing = "activated"
 taps_self = true
 activation_cost = { generic = 1 }
@@ -30,6 +31,7 @@ mana = ["any"]
 # {T}: Put a +1/+1 counter on target creature. Activate only as a sorcery and only if you've
 # cast an instant or sorcery spell this turn.
 [[abilities]]
+oracle = "{T}: Put a +1/+1 counter on target creature. Activate only as a sorcery and only if you've cast an instant or sorcery spell this turn."
 timing = "activated"
 taps_self = true
 sorcery_speed = true

@@ -21,6 +21,7 @@ toughness = 0
 
 # This creature enters with five +1/+1 counters on it.
 [[abilities]]
+oracle = "This creature enters with five +1/+1 counters on it."
 timing = "static"
 
 # This creature enters with five +1/+1 counters on it.
@@ -32,6 +33,7 @@ count = 5
 # If damage would be dealt to this creature while it has a +1/+1 counter on it, prevent that damage, remove that many
 # +1/+1 counters from it, then give each player a rad counter for each +1/+1 counter removed this way.
 [[abilities]]
+oracle = "If damage would be dealt to this creature while it has a +1/+1 counter on it, prevent that damage, remove that many +1/+1 counters from it, then give each player a rad counter for each +1/+1 counter removed this way."
 timing = "static"
 
 # If damage would be dealt to this creature while it has a +1/+1 counter on it, prevent that damage, remove that many

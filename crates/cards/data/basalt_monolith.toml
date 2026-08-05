@@ -15,6 +15,7 @@ type = "artifact"
 
 # This artifact doesn't untap during your untap step.
 [[abilities]]
+oracle = "This artifact doesn't untap during your untap step."
 timing = "static"
 
 # This artifact doesn't untap during your untap step.
@@ -25,6 +26,7 @@ self_only = true
 
 # {T}: Add {C}{C}{C}.
 [[abilities]]
+oracle = "{T}: Add {C}{C}{C}."
 timing = "activated"
 taps_self = true
 
@@ -36,6 +38,7 @@ mana = ["colorless", "colorless", "colorless"]
 
 # {3}: Untap this artifact.
 [[abilities]]
+oracle = "{3}: Untap this artifact."
 timing = "activated"
 
 [abilities.activation_cost]

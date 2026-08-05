@@ -25,6 +25,7 @@ toughness = 0
 # At the beginning of your upkeep, you may have this creature become a copy of target creature,
 # except it doesn't copy that creature's color and it has this ability.
 [[abilities]]
+oracle = "At the beginning of your upkeep, you may have this creature become a copy of target creature, except it doesn't copy that creature's color and it has this ability."
 timing = "upkeep"
 optional = true
 

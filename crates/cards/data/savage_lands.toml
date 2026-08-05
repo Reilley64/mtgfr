@@ -13,6 +13,7 @@ type = "land"
 
 # {T}: Add {B}, {R}, or {G}.
 [[abilities]]
+oracle = "{T}: Add {B}, {R}, or {G}."
 timing = "activated"
 taps_self = true
 

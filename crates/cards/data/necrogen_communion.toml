@@ -18,6 +18,7 @@ type = "aura"
 
 # Enchanted creature has toxic 2. (Players dealt combat damage by it also get two poison counters.)
 [[abilities]]
+oracle = "Enchanted creature has toxic 2. (Players dealt combat damage by it also get two poison counters.)"
 timing = "static"
 
 # Enchanted creature has toxic 2.
@@ -28,6 +29,7 @@ keywords = [{ toxic = 2 }]
 
 # When enchanted creature dies, return that card to the battlefield under your control.
 [[abilities]]
+oracle = "When enchanted creature dies, return that card to the battlefield under your control."
 timing = "enchanted_creature_dies"
 
 # return that card to the battlefield under your control

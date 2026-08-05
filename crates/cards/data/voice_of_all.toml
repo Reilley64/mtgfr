@@ -20,6 +20,7 @@ toughness = 2
 
 # As this creature enters, choose a color.
 [[abilities]]
+oracle = "As this creature enters, choose a color."
 timing = "as_enters"
 
 # As this creature enters, choose a color.
@@ -29,6 +30,7 @@ mode = "choose_color"
 
 # This creature has protection from the chosen color.
 [[abilities]]
+oracle = "This creature has protection from the chosen color."
 timing = "static"
 
 # This creature has protection from the chosen color.

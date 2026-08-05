@@ -20,6 +20,7 @@ type = "sorcery"
 
 # Destroy X target nonland permanents.
 [[abilities]]
+oracle = "Destroy X target nonland permanents."
 timing = "spell"
 
 # Destroy X target nonland permanents.

@@ -15,6 +15,7 @@ subtypes = ["Lair"]
 # When this land enters, sacrifice it unless you return a non-Lair land you control to its
 # owner's hand.
 [[abilities]]
+oracle = "When this land enters, sacrifice it unless you return a non-Lair land you control to its owner's hand."
 timing = "etb"
 
 # sacrifice it unless you return a non-Lair land you control to its owner's hand.
@@ -25,6 +26,7 @@ filter = { types = "land", controller = "you", nonlair = true }
 
 # {T}: Add {G}, {W}, or {U}.
 [[abilities]]
+oracle = "{T}: Add {G}, {W}, or {U}."
 timing = "activated"
 taps_self = true
 

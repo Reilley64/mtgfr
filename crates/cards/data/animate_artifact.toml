@@ -19,6 +19,7 @@ type = "aura"
 # As long as enchanted artifact isn't a creature, it's an artifact creature with power and
 # toughness each equal to its mana value.
 [[abilities]]
+oracle = "As long as enchanted artifact isn't a creature, it's an artifact creature with power and toughness each equal to its mana value."
 timing = "static"
 
 # ... power and toughness each equal to its mana value.

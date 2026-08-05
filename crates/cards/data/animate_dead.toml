@@ -22,6 +22,7 @@ type = "aura"
 # graveyard" and gains "enchant creature put onto the battlefield with this Aura." Return
 # enchanted creature card to the battlefield under your control and attach this Aura to it.
 [[abilities]]
+oracle = "When this Aura enters, if it's on the battlefield, it loses \"enchant creature card in a graveyard\" and gains \"enchant creature put onto the battlefield with this Aura.\" Return enchanted creature card to the battlefield under your control and attach this Aura to it."
 timing = "etb"
 
 # Return enchanted creature card to the battlefield under your control
@@ -37,6 +38,7 @@ mode = "attach_self_to_reanimated"
 
 # Enchanted creature gets -1/-0.
 [[abilities]]
+oracle = "Enchanted creature gets -1/-0."
 timing = "static"
 
 # Enchanted creature gets -1/-0.
@@ -48,6 +50,7 @@ toughness = 0
 
 # When this Aura leaves the battlefield, that creature's controller sacrifices it.
 [[abilities]]
+oracle = "When this Aura leaves the battlefield, that creature's controller sacrifices it."
 timing = "this_leaves_battlefield"
 
 # that creature's controller sacrifices it

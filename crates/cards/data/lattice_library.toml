@@ -18,6 +18,7 @@ type = "enchantment"
 
 # This enchantment enters with X study counters on it.
 [[abilities]]
+oracle = "This enchantment enters with X study counters on it."
 timing = "static"
 
 # This enchantment enters with X study counters on it.

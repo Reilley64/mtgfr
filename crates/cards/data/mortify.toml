@@ -15,6 +15,7 @@ type = "instant"
 
 # Destroy target creature or enchantment.
 [[abilities]]
+oracle = "Destroy target creature or enchantment."
 timing = "spell"
 
 # Destroy target creature or enchantment.

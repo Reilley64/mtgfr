@@ -10,6 +10,7 @@ type = "land"
 # {T}, Sacrifice this land: Search your library for a basic land card, put it onto the battlefield
 # tapped, then shuffle. Then if you control four or more lands, untap that land.
 [[abilities]]
+oracle = "{T}, Sacrifice this land: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle. Then if you control four or more lands, untap that land."
 timing = "activated"
 taps_self = true
 sacrifice = "this"

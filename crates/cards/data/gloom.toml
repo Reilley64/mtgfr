@@ -15,6 +15,7 @@ type = "enchantment"
 
 # White spells cost {3} more to cast.
 [[abilities]]
+oracle = "White spells cost {3} more to cast."
 timing = "static"
 
 # White spells cost {3} more to cast.
@@ -26,6 +27,7 @@ filter = { color = "white" }
 
 # Activated abilities of white enchantments cost {3} more to activate.
 [[abilities]]
+oracle = "Activated abilities of white enchantments cost {3} more to activate."
 timing = "static"
 
 # Activated abilities of white enchantments cost {3} more to activate.

@@ -18,6 +18,7 @@ also = ["artifact"]
 # {T}, Mill a card: Add {C}. (To mill a card, put the top card of your library into your
 # graveyard.)
 [[abilities]]
+oracle = "{T}, Mill a card: Add {C}. (To mill a card, put the top card of your library into your graveyard.)"
 timing = "activated"
 taps_self = true
 mill_self = 1

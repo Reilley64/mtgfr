@@ -21,6 +21,7 @@ toughness = 5
 # When you cycle this card, you may search your library for a basic land card, reveal that card, put it into your
 # hand, then shuffle. (Do this before you draw.)
 [[abilities]]
+oracle = "When you cycle this card, you may search your library for a basic land card, reveal that card, put it into your hand, then shuffle. (Do this before you draw.)"
 timing = "cycled"
 optional = true
 

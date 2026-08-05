@@ -23,6 +23,7 @@ toughness = 4
 # Whenever an opponent attacks with creatures, if two or more of those creatures are attacking
 # you and/or planeswalkers you control, draw a card.
 [[abilities]]
+oracle = "Whenever an opponent attacks with creatures, if two or more of those creatures are attacking you and/or planeswalkers you control, draw a card."
 timing = "opponent_attacks_you_with_creatures"
 at_least = 2
 
@@ -34,6 +35,7 @@ count = 1
 
 # Whenever an opponent casts their second spell each turn, draw a card.
 [[abilities]]
+oracle = "Whenever an opponent casts their second spell each turn, draw a card."
 timing = "cast_spell"
 caster = "opponent"
 nth_each_turn = 2

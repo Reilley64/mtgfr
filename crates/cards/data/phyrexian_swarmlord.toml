@@ -22,6 +22,7 @@ toughness = 4
 # At the beginning of your upkeep, create a 1/1 green Phyrexian Insect creature token with infect for each poison
 # counter your opponents have.
 [[abilities]]
+oracle = "At the beginning of your upkeep, create a 1/1 green Phyrexian Insect creature token with infect for each poison counter your opponents have."
 timing = "upkeep"
 
 # create a 1/1 green Phyrexian Insect creature token with infect for each poison counter your opponents have.

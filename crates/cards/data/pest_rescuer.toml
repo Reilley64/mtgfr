@@ -20,6 +20,7 @@ toughness = 2
 # At the beginning of each upkeep, if you don't control a Pest creature token, create a 1/1 black
 # and green Pest creature token with "When this token dies, you gain 1 life."
 [[abilities]]
+oracle = "At the beginning of each upkeep, if you don't control a Pest creature token, create a 1/1 black and green Pest creature token with \"When this token dies, you gain 1 life.\""
 timing = "each_upkeep"
 
 [abilities.condition]

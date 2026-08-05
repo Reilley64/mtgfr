@@ -19,6 +19,7 @@ toughness = 3
 
 # Sacrifice a creature: This creature gets +2/+1 until end of turn.
 [[abilities]]
+oracle = "Sacrifice a creature: This creature gets +2/+1 until end of turn."
 timing = "activated"
 sacrifice = "creature"
 

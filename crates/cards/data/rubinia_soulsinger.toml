@@ -26,6 +26,7 @@ toughness = 3
 # {T}: Gain control of target creature for as long as you control Rubinia Soulsinger and Rubinia Soulsinger remains
 # tapped.
 [[abilities]]
+oracle = "{T}: Gain control of target creature for as long as you control Rubinia Soulsinger and Rubinia Soulsinger remains tapped."
 timing = "activated"
 taps_self = true
 

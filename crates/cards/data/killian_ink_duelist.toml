@@ -23,6 +23,7 @@ toughness = 2
 
 # Spells you cast that target a creature cost {2} less to cast.
 [[abilities]]
+oracle = "Spells you cast that target a creature cost {2} less to cast."
 timing = "static"
 
 # Spells you cast that target a creature cost {2} less to cast.

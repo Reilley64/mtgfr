@@ -17,6 +17,7 @@ toughness = 2
 
 # When this creature dies, exile all creatures.
 [[abilities]]
+oracle = "When this creature dies, exile all creatures."
 timing = "dies"
 
 # exile all creatures.

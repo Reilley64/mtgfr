@@ -14,6 +14,7 @@ type = "instant"
 
 # Counter target creature spell. Draw cards equal to that spell's mana value.
 [[abilities]]
+oracle = "Counter target creature spell. Draw cards equal to that spell's mana value."
 timing = "spell"
 
 # Counter target creature spell.

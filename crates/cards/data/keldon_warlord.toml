@@ -20,6 +20,7 @@ toughness = 0
 # Keldon Warlord's power and toughness are each equal to the number of non-Wall creatures you
 # control.
 [[abilities]]
+oracle = "Keldon Warlord's power and toughness are each equal to the number of non-Wall creatures you control."
 timing = "static"
 
 # power and toughness are each equal to the number of non-Wall creatures you control

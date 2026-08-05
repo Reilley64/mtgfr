@@ -30,6 +30,7 @@ black = 2
 
 # When this creature enters, create a 0/1 white Goat creature token.
 [[abilities]]
+oracle = "When this creature enters, create a 0/1 white Goat creature token."
 timing = "etb"
 
 # create a 0/1 white Goat creature token.

@@ -18,6 +18,7 @@ toughness = 1
 # When this creature enters, search your library for a Forest card, put that card onto the
 # battlefield, then shuffle.
 [[abilities]]
+oracle = "When this creature enters, search your library for a Forest card, put that card onto the battlefield, then shuffle."
 timing = "etb"
 
 # search your library for a Forest card, put that card onto the battlefield, then shuffle.

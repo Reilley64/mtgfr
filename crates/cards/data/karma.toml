@@ -16,6 +16,7 @@ type = "enchantment"
 # At the beginning of each player's upkeep, this enchantment deals damage to that player equal
 # to the number of Swamps they control.
 [[abilities]]
+oracle = "At the beginning of each player's upkeep, this enchantment deals damage to that player equal to the number of Swamps they control."
 timing = "each_upkeep"
 
 # this enchantment deals damage to that player equal to the number of Swamps they control.

@@ -14,6 +14,7 @@ type = "sorcery"
 
 # Take an extra turn after this one.
 [[abilities]]
+oracle = "Take an extra turn after this one."
 timing = "spell"
 
 # Take an extra turn after this one.

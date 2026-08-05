@@ -26,6 +26,7 @@ toughness = 3
 # Undergrowth — When Izoni enters, create a 1/1 black and green Insect creature token for each
 # creature card in your graveyard.
 [[abilities]]
+oracle = "Undergrowth — When Izoni enters, create a 1/1 black and green Insect creature token for each creature card in your graveyard."
 timing = "etb"
 
 # create a 1/1 black and green Insect creature token for each creature card in your graveyard.

@@ -14,6 +14,7 @@ type = "sorcery"
 
 # Search your library for up to three creature cards, put them into your graveyard, then shuffle.
 [[abilities]]
+oracle = "Search your library for up to three creature cards, put them into your graveyard, then shuffle."
 timing = "spell"
 
 # Search your library for up to three creature cards, put them into your graveyard, then shuffle.

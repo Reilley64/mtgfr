@@ -14,6 +14,7 @@ type = "artifact"
 
 # {T}: Mill two cards.
 [[abilities]]
+oracle = "{T}: Mill two cards."
 timing = "activated"
 taps_self = true
 
@@ -25,6 +26,7 @@ count = 2
 
 # {2}, Exile this artifact: Shuffle any number of target cards from your graveyard into your library.
 [[abilities]]
+oracle = "{2}, Exile this artifact: Shuffle any number of target cards from your graveyard into your library."
 timing = "activated"
 exile_self = true
 

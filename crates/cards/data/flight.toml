@@ -15,6 +15,7 @@ type = "aura"
 
 # Enchanted creature has flying.
 [[abilities]]
+oracle = "Enchanted creature has flying."
 timing = "static"
 
 # Enchanted creature has flying.

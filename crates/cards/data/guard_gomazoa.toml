@@ -19,6 +19,7 @@ toughness = 3
 
 # Prevent all combat damage that would be dealt to this creature.
 [[abilities]]
+oracle = "Prevent all combat damage that would be dealt to this creature."
 timing = "static"
 
 # Prevent all combat damage that would be dealt to this creature.

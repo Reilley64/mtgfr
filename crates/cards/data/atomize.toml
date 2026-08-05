@@ -16,6 +16,7 @@ type = "instant"
 
 # Destroy target nonland permanent.
 [[abilities]]
+oracle = "Destroy target nonland permanent."
 timing = "spell"
 
 # Destroy target nonland permanent.
@@ -26,6 +27,7 @@ target = { permanent = "nonland" }
 
 # Proliferate.
 [[abilities]]
+oracle = "Proliferate."
 timing = "spell"
 
 # Proliferate.

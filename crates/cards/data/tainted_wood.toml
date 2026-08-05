@@ -11,6 +11,7 @@ type = "land"
 
 # {T}: Add {C}.
 [[abilities]]
+oracle = "{T}: Add {C}."
 timing = "activated"
 taps_self = true
 
@@ -22,6 +23,7 @@ mana = ["colorless"]
 
 # {T}: Add {B} or {G}. Activate only if you control a Swamp.
 [[abilities]]
+oracle = "{T}: Add {B} or {G}. Activate only if you control a Swamp."
 timing = "activated"
 taps_self = true
 

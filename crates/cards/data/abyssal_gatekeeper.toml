@@ -17,6 +17,7 @@ toughness = 1
 
 # When this creature dies, each player sacrifices a creature of their choice.
 [[abilities]]
+oracle = "When this creature dies, each player sacrifices a creature of their choice."
 timing = "dies"
 
 # each player sacrifices a creature of their choice.

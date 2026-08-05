@@ -17,6 +17,7 @@ toughness = 1
 
 # When this creature enters, exchange control of target land you control and target land an opponent controls.
 [[abilities]]
+oracle = "When this creature enters, exchange control of target land you control and target land an opponent controls."
 timing = "etb"
 
 # exchange control of target land you control and target land an opponent controls

@@ -22,6 +22,7 @@ toughness = 1
 
 # Whenever you cast a creature spell, put a +1/+1 counter on Animar.
 [[abilities]]
+oracle = "Whenever you cast a creature spell, put a +1/+1 counter on Animar."
 timing = "cast_spell"
 spell_filter = "creature"
 caster = "you"
@@ -35,6 +36,7 @@ target = "this"
 
 # Creature spells you cast cost {1} less to cast for each +1/+1 counter on Animar.
 [[abilities]]
+oracle = "Creature spells you cast cost {1} less to cast for each +1/+1 counter on Animar."
 timing = "static"
 
 # Creature spells you cast cost {1} less to cast for each +1/+1 counter on Animar.

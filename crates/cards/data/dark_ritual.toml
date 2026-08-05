@@ -13,6 +13,7 @@ type = "instant"
 
 # Add {B}{B}{B}.
 [[abilities]]
+oracle = "Add {B}{B}{B}."
 timing = "spell"
 
 # Add {B}{B}{B}.

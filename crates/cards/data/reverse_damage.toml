@@ -17,6 +17,7 @@ type = "instant"
 # The next time a source of your choice would deal damage to you this turn, prevent that
 # damage. You gain life equal to the damage prevented this way.
 [[abilities]]
+oracle = "The next time a source of your choice would deal damage to you this turn, prevent that damage. You gain life equal to the damage prevented this way."
 timing = "spell"
 
 # The next time a source of your choice would deal damage to you this turn, prevent that

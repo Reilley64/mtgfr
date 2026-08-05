@@ -22,6 +22,7 @@ toughness = 2
 # Magecraft — Whenever you cast or copy an instant or sorcery spell, Veyran gets +1/+1 until end
 # of turn.
 [[abilities]]
+oracle = "Magecraft — Whenever you cast or copy an instant or sorcery spell, Veyran gets +1/+1 until end of turn."
 timing = "magecraft"
 
 # Veyran gets +1/+1 until end of turn.
@@ -35,6 +36,7 @@ target = "this"
 # If you casting or copying an instant or sorcery spell causes a triggered ability of a permanent
 # you control to trigger, that ability triggers an additional time.
 [[abilities]]
+oracle = "If you casting or copying an instant or sorcery spell causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time."
 timing = "static"
 
 # If you casting or copying an instant or sorcery spell causes a triggered ability of a permanent

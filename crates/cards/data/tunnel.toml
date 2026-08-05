@@ -13,6 +13,7 @@ type = "instant"
 
 # Destroy target Wall. It can't be regenerated.
 [[abilities]]
+oracle = "Destroy target Wall. It can't be regenerated."
 timing = "spell"
 
 # Destroy target Wall. It can't be regenerated.

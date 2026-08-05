@@ -22,6 +22,7 @@ toughness = 2
 # Whenever you cast a historic spell, return target creature card with mana value 3 or less from
 # your graveyard to the battlefield.
 [[abilities]]
+oracle = "Whenever you cast a historic spell, return target creature card with mana value 3 or less from your graveyard to the battlefield."
 timing = "cast_spell"
 spell_filter = "historic"
 caster = "you"

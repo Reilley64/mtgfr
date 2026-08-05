@@ -21,6 +21,7 @@ toughness = 6
 # When this creature enters, if you cast it from your hand, destroy all nonartifact, nonblack
 # creatures. They can't be regenerated.
 [[abilities]]
+oracle = "When this creature enters, if you cast it from your hand, destroy all nonartifact, nonblack creatures. They can't be regenerated."
 timing = "etb"
 
 [abilities.condition]

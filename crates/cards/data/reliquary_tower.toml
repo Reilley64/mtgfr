@@ -13,6 +13,7 @@ produces = "colorless"
 
 # You have no maximum hand size.
 [[abilities]]
+oracle = "You have no maximum hand size."
 timing = "static"
 
 # You have no maximum hand size.

@@ -23,6 +23,7 @@ toughness = 6
 # When Malfegor enters, discard your hand. Each opponent sacrifices a creature of their choice for
 # each card discarded this way.
 [[abilities]]
+oracle = "When Malfegor enters, discard your hand. Each opponent sacrifices a creature of their choice for each card discarded this way."
 timing = "etb"
 
 # discard your hand.

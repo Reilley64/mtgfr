@@ -19,6 +19,7 @@ toughness = 3
 # Whenever this creature attacks, you gain 2 life. Then creatures you control gain trample and get
 # +X/+X until end of turn, where X is the amount of life you gained this turn.
 [[abilities]]
+oracle = "Whenever this creature attacks, you gain 2 life. Then creatures you control gain trample and get +X/+X until end of turn, where X is the amount of life you gained this turn."
 timing = "attacks"
 
 # you gain 2 life

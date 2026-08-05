@@ -15,6 +15,7 @@ type = "instant"
 
 # Counter target spell with mana value X.
 [[abilities]]
+oracle = "Counter target spell with mana value X."
 timing = "spell"
 
 # Counter target spell with mana value X.

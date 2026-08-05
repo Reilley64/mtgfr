@@ -16,6 +16,7 @@ type = "artifact"
 
 # This artifact doesn't untap during your untap step.
 [[abilities]]
+oracle = "This artifact doesn't untap during your untap step."
 timing = "static"
 
 # This artifact doesn't untap during your untap step.
@@ -26,6 +27,7 @@ self_only = true
 
 # At the beginning of your upkeep, you may pay {4}. If you do, untap this artifact.
 [[abilities]]
+oracle = "At the beginning of your upkeep, you may pay {4}. If you do, untap this artifact."
 timing = "upkeep"
 optional = true
 
@@ -40,6 +42,7 @@ target = "this"
 
 # At the beginning of your draw step, if this artifact is tapped, it deals 1 damage to you.
 [[abilities]]
+oracle = "At the beginning of your draw step, if this artifact is tapped, it deals 1 damage to you."
 timing = "draw_step"
 condition = { type = "source_tapped" }
 
@@ -51,6 +54,7 @@ then = [{ type = "damage", mode = "to_players", amount = 1 }]
 
 # {T}: Add {C}{C}{C}.
 [[abilities]]
+oracle = "{T}: Add {C}{C}{C}."
 timing = "activated"
 taps_self = true
 

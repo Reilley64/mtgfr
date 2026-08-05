@@ -18,6 +18,7 @@ toughness = 1
 
 # {B}: Regenerate this creature.
 [[abilities]]
+oracle = "{B}: Regenerate this creature."
 timing = "activated"
 
 [abilities.activation_cost]

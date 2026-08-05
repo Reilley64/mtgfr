@@ -15,6 +15,7 @@ type = "instant"
 # Put target attacking creature on the bottom of its owner's library. Its controller gains life
 # equal to its toughness.
 [[abilities]]
+oracle = "Put target attacking creature on the bottom of its owner's library. Its controller gains life equal to its toughness."
 timing = "spell"
 
 # Its controller gains life equal to its toughness. (Read before the tuck moves the creature off

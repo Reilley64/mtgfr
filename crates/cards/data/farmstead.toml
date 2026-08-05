@@ -20,6 +20,7 @@ type = "aura"
 # Enchanted land has "At the beginning of your upkeep, you may pay {W}{W}. If you do, you gain
 # 1 life."
 [[abilities]]
+oracle = "Enchanted land has \"At the beginning of your upkeep, you may pay {W}{W}. If you do, you gain 1 life.\""
 timing = "static"
 
 # Enchanted land has "At the beginning of your upkeep, you may pay {W}{W}. If you do, you gain

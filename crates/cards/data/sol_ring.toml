@@ -13,6 +13,7 @@ type = "artifact"
 
 # {T}: Add {C}{C}.
 [[abilities]]
+oracle = "{T}: Add {C}{C}."
 timing = "activated"
 taps_self = true
 

@@ -20,6 +20,7 @@ toughness = 3
 # Other Zombie creatures have swampwalk. (They can't be blocked as long as defending player
 # controls a Swamp.)
 [[abilities]]
+oracle = "Other Zombie creatures have swampwalk. (They can't be blocked as long as defending player controls a Swamp.)"
 timing = "static"
 
 # Other Zombie creatures have swampwalk.
@@ -33,6 +34,7 @@ keywords = [{ landwalk = "swamp" }]
 
 # Other Zombies have "{B}: Regenerate this permanent."
 [[abilities]]
+oracle = "Other Zombies have \"{B}: Regenerate this permanent.\""
 timing = "static"
 
 # Other Zombies have "{B}: Regenerate this permanent."

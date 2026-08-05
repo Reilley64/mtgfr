@@ -15,6 +15,7 @@ type = "artifact"
 # As long as this artifact is untapped, players can't untap more than one land during their
 # untap steps.
 [[abilities]]
+oracle = "As long as this artifact is untapped, players can't untap more than one land during their untap steps."
 timing = "static"
 condition = { type = "source_untapped" }
 

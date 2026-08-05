@@ -25,6 +25,7 @@ toughness = 2
 
 # When this creature enters, draw two cards.
 [[abilities]]
+oracle = "When this creature enters, draw two cards."
 timing = "etb"
 
 # draw two cards.

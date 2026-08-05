@@ -22,6 +22,7 @@ toughness = 5
 # copies that spell for each other creature they control that the spell could target. Each copy
 # targets a different one of those creatures.
 [[abilities]]
+oracle = "Whenever a player casts an instant or sorcery spell that targets only this creature, that player copies that spell for each other creature they control that the spell could target. Each copy targets a different one of those creatures."
 timing = "spell_targets_this"
 spell_filter = "instant_or_sorcery"
 

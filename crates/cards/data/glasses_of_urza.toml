@@ -13,6 +13,7 @@ type = "artifact"
 
 # {T}: Look at target player's hand.
 [[abilities]]
+oracle = "{T}: Look at target player's hand."
 timing = "activated"
 taps_self = true
 

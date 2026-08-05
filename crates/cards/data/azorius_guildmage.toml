@@ -17,6 +17,7 @@ toughness = 2
 
 # {2}{W}: Tap target creature.
 [[abilities]]
+oracle = "{2}{W}: Tap target creature."
 timing = "activated"
 
 [abilities.activation_cost]
@@ -31,6 +32,7 @@ target = "creature"
 
 # {2}{U}: Counter target activated ability. (Mana abilities can't be targeted.)
 [[abilities]]
+oracle = "{2}{U}: Counter target activated ability. (Mana abilities can't be targeted.)"
 timing = "activated"
 
 [abilities.activation_cost]

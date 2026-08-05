@@ -20,6 +20,7 @@ toughness = 1
 
 # Untap all creatures you control during each other player's untap step.
 [[abilities]]
+oracle = "Untap all creatures you control during each other player's untap step."
 timing = "each_other_player_untap_step"
 
 # Untap all creatures you control

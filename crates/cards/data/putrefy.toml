@@ -15,6 +15,7 @@ type = "instant"
 
 # Destroy target artifact or creature. It can't be regenerated.
 [[abilities]]
+oracle = "Destroy target artifact or creature. It can't be regenerated."
 timing = "spell"
 
 # Destroy target artifact or creature. It can't be regenerated.

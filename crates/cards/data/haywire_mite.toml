@@ -21,6 +21,7 @@ also = ["artifact"]
 
 # When this creature dies, you gain 2 life.
 [[abilities]]
+oracle = "When this creature dies, you gain 2 life."
 timing = "dies"
 
 # you gain 2 life
@@ -31,6 +32,7 @@ amount = 2
 
 # {G}, Sacrifice this creature: Exile target noncreature artifact or noncreature enchantment.
 [[abilities]]
+oracle = "{G}, Sacrifice this creature: Exile target noncreature artifact or noncreature enchantment."
 timing = "activated"
 sacrifice = "this"
 activation_cost = { green = 1 }

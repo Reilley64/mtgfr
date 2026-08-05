@@ -16,6 +16,7 @@ type = "instant"
 # Counter target spell. If that spell is countered this way, put that card on your choice of the
 # top or bottom of its owner's library instead of into that player's graveyard.
 [[abilities]]
+oracle = "Counter target spell. If that spell is countered this way, put that card on your choice of the top or bottom of its owner's library instead of into that player's graveyard."
 timing = "spell"
 
 # Counter target spell. If that spell is countered this way, put that card on your choice of the

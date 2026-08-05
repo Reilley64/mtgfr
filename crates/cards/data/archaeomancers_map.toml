@@ -18,6 +18,7 @@ type = "artifact"
 # When this artifact enters, search your library for up to two basic Plains cards, reveal them,
 # put them into your hand, then shuffle.
 [[abilities]]
+oracle = "When this artifact enters, search your library for up to two basic Plains cards, reveal them, put them into your hand, then shuffle."
 timing = "etb"
 
 # search your library for up to two basic Plains cards, reveal them, put them into your hand,
@@ -32,6 +33,7 @@ count = 2
 # Whenever a land an opponent controls enters, if that player controls more lands than you, you
 # may put a land card from your hand onto the battlefield.
 [[abilities]]
+oracle = "Whenever a land an opponent controls enters, if that player controls more lands than you, you may put a land card from your hand onto the battlefield."
 timing = "permanent_enters"
 filter = "land"
 controller = "opponent"

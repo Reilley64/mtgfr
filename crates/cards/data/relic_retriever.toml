@@ -20,6 +20,7 @@ toughness = 1
 
 # At the beginning of each end step, if a card left your graveyard this turn, create a Treasure token.
 [[abilities]]
+oracle = "At the beginning of each end step, if a card left your graveyard this turn, create a Treasure token."
 timing = "each_end_step"
 
 [abilities.condition]

@@ -22,6 +22,7 @@ type = "enchantment"
 
 # At the beginning of combat on your turn, put a +1/+1 counter on target creature you control.
 [[abilities]]
+oracle = "At the beginning of combat on your turn, put a +1/+1 counter on target creature you control."
 timing = "begin_combat"
 
 # put a +1/+1 counter on target creature you control.
@@ -33,6 +34,7 @@ target = "creature_you_control"
 
 # {G}: Level 2
 [[abilities]]
+oracle = "{G}: Level 2"
 timing = "activated"
 sorcery_speed = true
 
@@ -47,6 +49,7 @@ level = 2
 
 # Permanents you control with counters on them have ward {1}.
 [[abilities]]
+oracle = "Permanents you control with counters on them have ward {1}."
 timing = "static"
 min_level = 2
 
@@ -59,6 +62,7 @@ filter = { controller = "you", with_counter = "any" }
 
 # {3}{G}: Level 3
 [[abilities]]
+oracle = "{3}{G}: Level 3"
 timing = "activated"
 sorcery_speed = true
 
@@ -75,6 +79,7 @@ level = 3
 # If you would put one or more counters on a permanent or player, put twice that many of each of
 # those kinds of counters on that permanent or player instead.
 [[abilities]]
+oracle = "If you would put one or more counters on a permanent or player, put twice that many of each of those kinds of counters on that permanent or player instead."
 timing = "static"
 min_level = 3
 

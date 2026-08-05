@@ -15,6 +15,7 @@ produces = ["black", "green"]
 
 # {4}, {T}: Scry 1.
 [[abilities]]
+oracle = "{4}, {T}: Scry 1."
 timing = "activated"
 taps_self = true
 activation_cost = { generic = 4 }

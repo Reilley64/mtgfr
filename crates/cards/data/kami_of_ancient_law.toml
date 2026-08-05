@@ -19,6 +19,7 @@ toughness = 2
 
 # Sacrifice this creature: Destroy target enchantment.
 [[abilities]]
+oracle = "Sacrifice this creature: Destroy target enchantment."
 timing = "activated"
 sacrifice = "this"
 

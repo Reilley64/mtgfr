@@ -15,6 +15,7 @@ type = "artifact"
 
 # {T}: Add {C}.
 [[abilities]]
+oracle = "{T}: Add {C}."
 timing = "activated"
 taps_self = true
 
@@ -26,6 +27,7 @@ mana = ["colorless"]
 
 # {1}, {T}, Sacrifice this artifact: Draw a card.
 [[abilities]]
+oracle = "{1}, {T}, Sacrifice this artifact: Draw a card."
 timing = "activated"
 taps_self = true
 sacrifice = "this"

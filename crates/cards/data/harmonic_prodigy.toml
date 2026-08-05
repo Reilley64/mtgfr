@@ -21,6 +21,7 @@ toughness = 3
 # If a triggered ability of a Shaman or another Wizard you control triggers, that ability triggers
 # an additional time.
 [[abilities]]
+oracle = "If a triggered ability of a Shaman or another Wizard you control triggers, that ability triggers an additional time."
 timing = "static"
 
 # If a triggered ability of a Shaman or another Wizard you control triggers, that ability triggers

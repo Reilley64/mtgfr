@@ -27,6 +27,7 @@ toughness = 4
 
 # Pegasus creatures you control have lifelink.
 [[abilities]]
+oracle = "Pegasus creatures you control have lifelink."
 timing = "static"
 
 # Pegasus creatures you control have lifelink.
@@ -39,6 +40,7 @@ subtypes = ["Pegasus"]
 # Constellation — Whenever an enchantment you control enters, create a 2/2 white Pegasus creature
 # token with flying.
 [[abilities]]
+oracle = "Constellation — Whenever an enchantment you control enters, create a 2/2 white Pegasus creature token with flying."
 timing = "permanent_enters"
 filter = "enchantment"
 controller = "you"

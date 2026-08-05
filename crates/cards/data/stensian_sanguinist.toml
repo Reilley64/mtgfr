@@ -23,6 +23,7 @@ toughness = 2
 # Whenever you attack, target creature gains deathtouch until end of turn. Whenever that creature
 # deals combat damage to a player this combat, this creature becomes prepared.
 [[abilities]]
+oracle = "Whenever you attack, target creature gains deathtouch until end of turn. Whenever that creature deals combat damage to a player this combat, this creature becomes prepared."
 timing = "you_attack_with_creatures"
 at_least = 1
 
@@ -53,6 +54,7 @@ type = "sorcery"
 
 # Each opponent loses X life. You gain life equal to the life lost this way.
 [[back.abilities]]
+oracle = "Each opponent loses X life. You gain life equal to the life lost this way."
 timing = "spell"
 
 # Each opponent loses X life. You gain life equal to the life lost this way.

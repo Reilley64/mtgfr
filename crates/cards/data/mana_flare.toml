@@ -16,6 +16,7 @@ type = "enchantment"
 # Whenever a player taps a land for mana, that player adds one mana of any type that land
 # produced.
 [[abilities]]
+oracle = "Whenever a player taps a land for mana, that player adds one mana of any type that land produced."
 timing = "static"
 
 # Whenever a player taps a land for mana, that player adds one mana of any type that land

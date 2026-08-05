@@ -15,6 +15,7 @@ type = "instant"
 # Destroy target creature. It can't be regenerated. That creature's controller creates a 3/3 green
 # Frog Lizard creature token.
 [[abilities]]
+oracle = "Destroy target creature. It can't be regenerated. That creature's controller creates a 3/3 green Frog Lizard creature token."
 timing = "spell"
 
 # Destroy target creature. It can't be regenerated.

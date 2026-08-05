@@ -17,6 +17,7 @@ type = "land"
 # {T}, Pay 1 life, Sacrifice this land: Search your library for a basic land card, put it onto
 # the battlefield, then shuffle.
 [[abilities]]
+oracle = "{T}, Pay 1 life, Sacrifice this land: Search your library for a basic land card, put it onto the battlefield, then shuffle."
 timing = "activated"
 taps_self = true
 pay_life = 1

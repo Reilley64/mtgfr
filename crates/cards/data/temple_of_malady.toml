@@ -16,6 +16,7 @@ produces = ["black", "green"]
 # When this land enters, scry 1. (Look at the top card of your library. You may put that card on
 # the bottom.)
 [[abilities]]
+oracle = "When this land enters, scry 1. (Look at the top card of your library. You may put that card on the bottom.)"
 timing = "etb"
 
 # scry 1.

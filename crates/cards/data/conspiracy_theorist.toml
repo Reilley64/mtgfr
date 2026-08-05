@@ -19,6 +19,7 @@ toughness = 2
 
 # Whenever this creature attacks, you may pay {1} and discard a card. If you do, draw a card.
 [[abilities]]
+oracle = "Whenever this creature attacks, you may pay {1} and discard a card. If you do, draw a card."
 timing = "attacks"
 optional = true
 

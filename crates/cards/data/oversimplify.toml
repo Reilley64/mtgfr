@@ -18,6 +18,7 @@ type = "sorcery"
 # a number of +1/+1 counters on it equal to the total power of creatures they controlled that
 # were exiled this way.
 [[abilities]]
+oracle = "Exile all creatures. Each player creates a 0/0 green and blue Fractal creature token and puts a number of +1/+1 counters on it equal to the total power of creatures they controlled that were exiled this way."
 timing = "spell"
 
 # Exile all creatures.

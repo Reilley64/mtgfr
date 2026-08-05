@@ -16,6 +16,7 @@ type = "sorcery"
 
 # Proliferate X times.
 [[abilities]]
+oracle = "Proliferate X times."
 timing = "spell"
 
 # Proliferate X times.

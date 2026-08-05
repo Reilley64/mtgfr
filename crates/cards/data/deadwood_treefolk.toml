@@ -22,6 +22,7 @@ toughness = 6
 # When this creature enters or leaves the battlefield, return another target creature card from your graveyard to your
 # hand.
 [[abilities]]
+oracle = "When this creature enters or leaves the battlefield, return another target creature card from your graveyard to your hand."
 timing = "etb"
 
 # return another target creature card from your graveyard to your hand.
@@ -33,6 +34,7 @@ target = { card_in_graveyard = { whose = "yours", filter = "creature", other = t
 # When this creature enters or leaves the battlefield, return another target creature card from your graveyard to your
 # hand.
 [[abilities]]
+oracle = "When this creature enters or leaves the battlefield, return another target creature card from your graveyard to your hand."
 timing = "this_leaves_battlefield"
 
 # return another target creature card from your graveyard to your hand.

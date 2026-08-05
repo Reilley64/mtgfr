@@ -20,6 +20,7 @@ toughness = 1
 # When this creature dies, you may search your library for up to two basic land cards, reveal
 # them, put them into your hand, then shuffle.
 [[abilities]]
+oracle = "When this creature dies, you may search your library for up to two basic land cards, reveal them, put them into your hand, then shuffle."
 timing = "dies"
 optional = true
 
@@ -33,6 +34,7 @@ count = 2
 
 # {2}, Sacrifice this creature: Draw a card.
 [[abilities]]
+oracle = "{2}, Sacrifice this creature: Draw a card."
 timing = "activated"
 activation_cost = { generic = 2 }
 sacrifice = "this"

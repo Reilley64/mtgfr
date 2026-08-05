@@ -17,6 +17,7 @@ toughness = 2
 
 # Creatures you control with counters on them have trample.
 [[abilities]]
+oracle = "Creatures you control with counters on them have trample."
 timing = "static"
 
 # Creatures you control with counters on them have trample.
@@ -29,6 +30,7 @@ has_counters = true
 # Whenever you cast your first spell with {X} in its mana cost each turn, put X +1/+1 counters on
 # Nev.
 [[abilities]]
+oracle = "Whenever you cast your first spell with {X} in its mana cost each turn, put X +1/+1 counters on Nev."
 timing = "cast_spell"
 spell_filter = "has_x"
 caster = "you"

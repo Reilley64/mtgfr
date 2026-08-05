@@ -17,6 +17,7 @@ toughness = 1
 
 # {T}: Destroy target tapped creature.
 [[abilities]]
+oracle = "{T}: Destroy target tapped creature."
 timing = "activated"
 taps_self = true
 

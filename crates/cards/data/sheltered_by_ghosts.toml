@@ -22,6 +22,7 @@ type = "aura"
 # When this Aura enters, exile target nonland permanent an opponent controls until this Aura
 # leaves the battlefield.
 [[abilities]]
+oracle = "When this Aura enters, exile target nonland permanent an opponent controls until this Aura leaves the battlefield."
 timing = "etb"
 
 # exile target nonland permanent an opponent controls until this Aura leaves the battlefield.
@@ -32,6 +33,7 @@ target = { permanent = { types = "nonland", controller = "opponent" } }
 
 # Enchanted creature gets +1/+0 and has lifelink and ward {2}.
 [[abilities]]
+oracle = "Enchanted creature gets +1/+0 and has lifelink and ward {2}."
 timing = "static"
 
 # Enchanted creature gets +1/+0 and has lifelink and ward {2}.

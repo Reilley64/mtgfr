@@ -24,6 +24,7 @@ toughness = 4
 
 # When this creature enters, you gain 2 life for each time it was kicked.
 [[abilities]]
+oracle = "When this creature enters, you gain 2 life for each time it was kicked."
 timing = "etb"
 
 # you gain 2 life for each time it was kicked.

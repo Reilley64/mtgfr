@@ -25,6 +25,7 @@ type = "artifact"
 # If one or more +1/+1 counters would be put on an artifact or creature you control, that many
 # plus one +1/+1 counters are put on it instead.
 [[abilities]]
+oracle = "If one or more +1/+1 counters would be put on an artifact or creature you control, that many plus one +1/+1 counters are put on it instead."
 timing = "static"
 
 # If one or more +1/+1 counters would be put on an artifact or creature you control, that many plus one +1/+1 counters
@@ -37,6 +38,7 @@ filter = { types = "artifact_or_creature", controller = "you" }
 
 # {1}{G}, {T}: Put a +1/+1 counter on target artifact or creature you control. Activate only as a sorcery.
 [[abilities]]
+oracle = "{1}{G}, {T}: Put a +1/+1 counter on target artifact or creature you control. Activate only as a sorcery."
 timing = "activated"
 taps_self = true
 activation_cost = { generic = 1, green = 1 }

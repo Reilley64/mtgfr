@@ -21,6 +21,7 @@ toughness = 4
 
 # Each creature that's enchanted by an Aura you control can't attack you or planeswalkers you control.
 [[abilities]]
+oracle = "Each creature that's enchanted by an Aura you control can't attack you or planeswalkers you control."
 timing = "static"
 
 # Each creature that's enchanted by an Aura you control can't attack you or planeswalkers you control.
@@ -32,6 +33,7 @@ filter = { enchanted_by_you = true }
 # At the beginning of your end step, each opponent loses X life and you gain X life, where X is
 # the number of Auras you control.
 [[abilities]]
+oracle = "At the beginning of your end step, each opponent loses X life and you gain X life, where X is the number of Auras you control."
 timing = "end_step"
 
 # each opponent loses X life and you gain X life, where X is the number of Auras you control

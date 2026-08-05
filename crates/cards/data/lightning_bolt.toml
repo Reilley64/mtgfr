@@ -13,6 +13,7 @@ type = "instant"
 
 # Lightning Bolt deals 3 damage to any target.
 [[abilities]]
+oracle = "Lightning Bolt deals 3 damage to any target."
 timing = "spell"
 
 # Lightning Bolt deals 3 damage to any target.

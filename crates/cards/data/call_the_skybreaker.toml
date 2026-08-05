@@ -22,6 +22,7 @@ type = "sorcery"
 
 # Create a 5/5 blue and red Elemental creature token with flying.
 [[abilities]]
+oracle = "Create a 5/5 blue and red Elemental creature token with flying."
 timing = "spell"
 
 # Create a 5/5 blue and red Elemental creature token with flying.

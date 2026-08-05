@@ -18,6 +18,7 @@ type = "enchantment"
 
 # As this enchantment enters, you lose life equal to your life total.
 [[abilities]]
+oracle = "As this enchantment enters, you lose life equal to your life total."
 timing = "as_enters"
 
 # As this enchantment enters, you lose life equal to your life total.
@@ -28,6 +29,7 @@ amount = "your_life_total"
 
 # You don't lose the game for having 0 or less life.
 [[abilities]]
+oracle = "You don't lose the game for having 0 or less life."
 timing = "static"
 
 # You don't lose the game for having 0 or less life.
@@ -37,6 +39,7 @@ mode = "you_dont_lose_at_zero_life"
 
 # If you would gain life, draw that many cards instead.
 [[abilities]]
+oracle = "If you would gain life, draw that many cards instead."
 timing = "static"
 
 # If you would gain life, draw that many cards instead.
@@ -47,6 +50,7 @@ mode = "life_gain_becomes_draw"
 # Whenever you're dealt damage, sacrifice that many nontoken permanents. If you can't, you lose
 # the game.
 [[abilities]]
+oracle = "Whenever you're dealt damage, sacrifice that many nontoken permanents. If you can't, you lose the game."
 timing = "you_are_dealt_damage"
 
 # Whenever you're dealt damage, sacrifice that many nontoken permanents. If you can't, you lose
@@ -61,6 +65,7 @@ lose_game_if_short = true
 
 # When this enchantment is put into a graveyard from the battlefield, you lose the game.
 [[abilities]]
+oracle = "When this enchantment is put into a graveyard from the battlefield, you lose the game."
 timing = "dies"
 
 # When this enchantment is put into a graveyard from the battlefield, you lose the game.

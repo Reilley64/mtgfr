@@ -25,6 +25,7 @@ toughness = 0
 # This creature and enchanted creature each get +1/+1 for each creature you control and +1/+1 for
 # each Aura you control.
 [[abilities]]
+oracle = "This creature and enchanted creature each get +1/+1 for each creature you control and +1/+1 for each Aura you control."
 timing = "static"
 
 # This creature ... get +1/+1 for each creature you control

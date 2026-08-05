@@ -15,6 +15,7 @@ type = "aura"
 
 # {R}: Enchanted creature gets +1/+0 until end of turn.
 [[abilities]]
+oracle = "{R}: Enchanted creature gets +1/+0 until end of turn."
 timing = "activated"
 
 [abilities.activation_cost]

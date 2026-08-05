@@ -18,6 +18,7 @@ toughness = 8
 # Whenever this creature deals combat damage to an opponent, it deals that much damage to each
 # other opponent.
 [[abilities]]
+oracle = "Whenever this creature deals combat damage to an opponent, it deals that much damage to each other opponent."
 timing = "deals_combat_damage_to_player"
 who = "this"
 

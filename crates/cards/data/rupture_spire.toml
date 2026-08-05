@@ -13,6 +13,7 @@ type = "land"
 
 # When this land enters, sacrifice it unless you pay {1}.
 [[abilities]]
+oracle = "When this land enters, sacrifice it unless you pay {1}."
 timing = "etb"
 
 # sacrifice it unless you pay {1}.
@@ -24,6 +25,7 @@ otherwise = [{ type = "sacrifice", mode = "source" }]
 
 # {T}: Add one mana of any color.
 [[abilities]]
+oracle = "{T}: Add one mana of any color."
 timing = "activated"
 taps_self = true
 

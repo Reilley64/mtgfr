@@ -19,6 +19,7 @@ type = "instant"
 
 # Return target permanent to its owner's hand.
 [[abilities]]
+oracle = "Return target permanent to its owner's hand."
 timing = "spell"
 
 # Return target permanent to its owner's hand.

@@ -12,6 +12,7 @@ type = "land"
 
 # {T}: Add {C}.
 [[abilities]]
+oracle = "{T}: Add {C}."
 timing = "activated"
 taps_self = true
 
@@ -23,6 +24,7 @@ mana = ["colorless"]
 
 # {1}, {T}: Put a storage counter on this land.
 [[abilities]]
+oracle = "{1}, {T}: Put a storage counter on this land."
 timing = "activated"
 taps_self = true
 activation_cost = { generic = 1 }
@@ -37,6 +39,7 @@ kind = "storage"
 
 # {1}, Remove X storage counters from this land: Add X mana in any combination of {R} and/or {G}.
 [[abilities]]
+oracle = "{1}, Remove X storage counters from this land: Add X mana in any combination of {R} and/or {G}."
 timing = "activated"
 activation_cost = { generic = 1 }
 remove_counters_x = true

@@ -21,6 +21,7 @@ toughness = 4
 # At the beginning of your upkeep, create a 1/1 green Saproling creature token for each +1/+1
 # counter on this creature.
 [[abilities]]
+oracle = "At the beginning of your upkeep, create a 1/1 green Saproling creature token for each +1/+1 counter on this creature."
 timing = "upkeep"
 
 # create a 1/1 green Saproling creature token for each +1/+1 counter on this creature.

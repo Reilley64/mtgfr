@@ -17,6 +17,7 @@ type = "instant"
 # Exile target artifact or creature. Its controller creates a 4/4 blue and red Elemental creature
 # token.
 [[abilities]]
+oracle = "Exile target artifact or creature. Its controller creates a 4/4 blue and red Elemental creature token."
 timing = "spell"
 
 # Exile target artifact or creature.

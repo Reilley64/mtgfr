@@ -23,6 +23,7 @@ toughness = 3
 # your next turn, that creature attacks each combat if able and attacks a player other than you if
 # able.)
 [[abilities]]
+oracle = "Whenever an enchantment you control enters, tap up to one target creature and goad it. (Until your next turn, that creature attacks each combat if able and attacks a player other than you if able.)"
 timing = "permanent_enters"
 filter = "enchantment"
 controller = "you"
@@ -42,6 +43,7 @@ target = "creature"
 
 # Whenever one or more creatures that are enchanted by an Aura you control attack, draw a card.
 [[abilities]]
+oracle = "Whenever one or more creatures that are enchanted by an Aura you control attack, draw a card."
 timing = "creature_enchanted_by_your_aura_attacks"
 at_least = 1
 

@@ -16,6 +16,7 @@ type = "enchantment"
 # At the beginning of the end step, if no creatures are on the battlefield, sacrifice this
 # enchantment.
 [[abilities]]
+oracle = "At the beginning of the end step, if no creatures are on the battlefield, sacrifice this enchantment."
 timing = "each_end_step"
 
 [abilities.condition]
@@ -32,6 +33,7 @@ then = [{ type = "sacrifice", mode = "source" }]
 
 # {R}: This enchantment deals 1 damage to each creature and each player.
 [[abilities]]
+oracle = "{R}: This enchantment deals 1 damage to each creature and each player."
 timing = "activated"
 activation_cost = { red = 1 }
 

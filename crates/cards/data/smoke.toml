@@ -13,6 +13,7 @@ type = "enchantment"
 
 # Players can't untap more than one creature during their untap steps.
 [[abilities]]
+oracle = "Players can't untap more than one creature during their untap steps."
 timing = "static"
 
 # Players can't untap more than one creature during their untap steps.

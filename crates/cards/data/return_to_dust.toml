@@ -16,6 +16,7 @@ type = "instant"
 # Exile target artifact or enchantment. If you cast this spell during your main phase, you may
 # exile up to one other target artifact or enchantment.
 [[abilities]]
+oracle = "Exile target artifact or enchantment. If you cast this spell during your main phase, you may exile up to one other target artifact or enchantment."
 timing = "spell"
 
 # Exile target artifact or enchantment. If you cast this spell during your main phase, you may

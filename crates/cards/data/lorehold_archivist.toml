@@ -25,6 +25,7 @@ toughness = 2
 # At the beginning of your upkeep, if there are three or more artifact and/or creature cards in
 # your graveyard, this creature becomes prepared.
 [[abilities]]
+oracle = "At the beginning of your upkeep, if there are three or more artifact and/or creature cards in your graveyard, this creature becomes prepared."
 timing = "upkeep"
 
 [abilities.condition]
@@ -49,6 +50,7 @@ type = "sorcery"
 
 # Exile target artifact or creature card from your graveyard. Create a token that's a copy of it.
 [[back.abilities]]
+oracle = "Exile target artifact or creature card from your graveyard. Create a token that's a copy of it."
 timing = "spell"
 
 # Exile target artifact or creature card from your graveyard. Create a token that's a copy of it.

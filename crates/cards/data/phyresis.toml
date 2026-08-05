@@ -17,6 +17,7 @@ type = "aura"
 
 # Enchanted creature has infect.
 [[abilities]]
+oracle = "Enchanted creature has infect."
 timing = "static"
 
 # Enchanted creature has infect.

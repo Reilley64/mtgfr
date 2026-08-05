@@ -19,6 +19,7 @@ type = "aura"
 
 # All creatures able to block enchanted creature do so.
 [[abilities]]
+oracle = "All creatures able to block enchanted creature do so."
 timing = "static"
 
 # All creatures able to block enchanted creature do so.

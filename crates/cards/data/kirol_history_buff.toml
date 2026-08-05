@@ -54,6 +54,7 @@ type = "sorcery"
 
 # Mill a card. Put two +1/+1 counters on target creature.
 [[back.abilities]]
+oracle = "Mill a card. Put two +1/+1 counters on target creature."
 timing = "spell"
 
 # Mill a card.

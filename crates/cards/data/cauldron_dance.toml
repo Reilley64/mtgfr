@@ -23,6 +23,7 @@ type = "instant"
 # You may put a creature card from your hand onto the battlefield. That creature gains haste. Its
 # controller sacrifices it at the beginning of the next end step.
 [[abilities]]
+oracle = "Return target creature card from your graveyard to the battlefield. That creature gains haste. Return it to your hand at the beginning of the next end step. You may put a creature card from your hand onto the battlefield. That creature gains haste. Its controller sacrifices it at the beginning of the next end step."
 timing = "spell"
 
 # Return target creature card from your graveyard to the battlefield.

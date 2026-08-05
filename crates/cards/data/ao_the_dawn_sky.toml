@@ -27,6 +27,7 @@ toughness = 4
 #   your library in a random order.
 # • Put two +1/+1 counters on each permanent you control that's a creature or Vehicle.
 [[abilities]]
+oracle = "When Ao dies, choose one — • Look at the top seven cards of your library. Put any number of nonland permanent cards with total mana value 4 or less from among them onto the battlefield. Put the rest on the bottom of your library in a random order. • Put two +1/+1 counters on each permanent you control that's a creature or Vehicle."
 timing = "dies"
 
 # choose one —

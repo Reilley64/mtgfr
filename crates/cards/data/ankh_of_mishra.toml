@@ -13,6 +13,7 @@ type = "artifact"
 
 # Whenever a land enters, this artifact deals 2 damage to that land's controller.
 [[abilities]]
+oracle = "Whenever a land enters, this artifact deals 2 damage to that land's controller."
 timing = "permanent_enters"
 filter = "land"
 controller = "any_player"

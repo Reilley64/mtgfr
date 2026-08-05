@@ -26,6 +26,7 @@ toughness = 3
 # library for a Plains card and put it onto the battlefield tapped. Then if an opponent controls
 # more lands than you, repeat this process once. If you search your library this way, shuffle.
 [[abilities]]
+oracle = "When this creature enters, if an opponent controls more lands than you, you may search your library for a Plains card and put it onto the battlefield tapped. Then if an opponent controls more lands than you, repeat this process once. If you search your library this way, shuffle."
 timing = "etb"
 optional = true
 

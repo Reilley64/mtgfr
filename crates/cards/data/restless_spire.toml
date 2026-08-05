@@ -17,6 +17,7 @@ produces = ["blue", "red"]
 # {U}{R}: Until end of turn, this land becomes a 2/1 blue and red Elemental creature with "During your turn, this
 # creature has first strike." It's still a land.
 [[abilities]]
+oracle = "{U}{R}: Until end of turn, this land becomes a 2/1 blue and red Elemental creature with \"During your turn, this creature has first strike.\" It's still a land."
 timing = "activated"
 activation_cost = { blue = 1, red = 1 }
 
@@ -32,6 +33,7 @@ add_colors = ["blue", "red"]
 
 # During your turn, this creature has first strike.
 [[abilities]]
+oracle = "During your turn, this creature has first strike."
 timing = "static"
 
 # this creature has first strike
@@ -44,6 +46,7 @@ condition = { type = "during_your_turn" }
 
 # Whenever this land attacks, scry 1.
 [[abilities]]
+oracle = "Whenever this land attacks, scry 1."
 timing = "attacks"
 
 # scry 1.

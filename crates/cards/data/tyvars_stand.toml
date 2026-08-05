@@ -20,6 +20,7 @@ type = "instant"
 # (It can't be the target of spells or abilities your opponents control. Damage and effects that
 # say "destroy" don't destroy it.)
 [[abilities]]
+oracle = "Target creature you control gets +X/+X and gains hexproof and indestructible until end of turn. (It can't be the target of spells or abilities your opponents control. Damage and effects that say \"destroy\" don't destroy it.)"
 timing = "spell"
 
 # Target creature you control gets +X/+X and gains hexproof and indestructible until end of

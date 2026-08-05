@@ -17,6 +17,7 @@ type = "artifact"
 
 # As this artifact enters, choose a creature type.
 [[abilities]]
+oracle = "As this artifact enters, choose a creature type."
 timing = "as_enters"
 
 # choose a creature type.
@@ -26,6 +27,7 @@ mode = "choose_creature_type"
 
 # Creatures you control of the chosen type get +1/+1.
 [[abilities]]
+oracle = "Creatures you control of the chosen type get +1/+1."
 timing = "static"
 
 # Creatures you control of the chosen type get +1/+1.
@@ -38,6 +40,7 @@ chosen_subtype = true
 
 # {T}: Add one mana of any color.
 [[abilities]]
+oracle = "{T}: Add one mana of any color."
 timing = "activated"
 taps_self = true
 

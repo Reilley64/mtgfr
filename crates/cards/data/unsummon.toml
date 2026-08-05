@@ -13,6 +13,7 @@ type = "instant"
 
 # Return target creature to its owner's hand.
 [[abilities]]
+oracle = "Return target creature to its owner's hand."
 timing = "spell"
 
 # Return target creature to its owner's hand.

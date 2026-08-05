@@ -19,6 +19,7 @@ toughness = 2
 
 # Whenever this creature deals damage to an opponent, that player discards a card at random.
 [[abilities]]
+oracle = "Whenever this creature deals damage to an opponent, that player discards a card at random."
 timing = "deals_damage_to_opponent"
 
 # that player discards a card at random.

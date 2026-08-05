@@ -15,6 +15,7 @@ type = "enchantment"
 
 # You may play any number of lands on each of your turns.
 [[abilities]]
+oracle = "You may play any number of lands on each of your turns."
 timing = "static"
 
 # You may play any number of lands on each of your turns.
@@ -25,6 +26,7 @@ mode = "play_any_number_of_lands"
 # Whenever you play a land, if it wasn't the first land you played this turn, this enchantment
 # deals 1 damage to you.
 [[abilities]]
+oracle = "Whenever you play a land, if it wasn't the first land you played this turn, this enchantment deals 1 damage to you."
 timing = "you_play_a_land"
 condition = { type = "lands_played_this_turn_at_least", at_least = 2 }
 

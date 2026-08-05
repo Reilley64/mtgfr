@@ -17,6 +17,7 @@ type = "aura"
 
 # When this Aura enters, draw a card for each Aura you control that's attached to a creature.
 [[abilities]]
+oracle = "When this Aura enters, draw a card for each Aura you control that's attached to a creature."
 timing = "etb"
 
 # draw a card for each Aura you control that's attached to a creature.
@@ -27,6 +28,7 @@ count = { per_permanent = { subtypes = ["Aura"], controller = "you", attached_to
 
 # Enchanted creature gets +1/+1 for each Aura you control that's attached to a creature.
 [[abilities]]
+oracle = "Enchanted creature gets +1/+1 for each Aura you control that's attached to a creature."
 timing = "static"
 
 # Enchanted creature gets +1/+1 for each Aura you control that's attached to a creature.

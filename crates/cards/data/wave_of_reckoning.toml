@@ -16,6 +16,7 @@ type = "sorcery"
 
 # Each creature deals damage to itself equal to its power.
 [[abilities]]
+oracle = "Each creature deals damage to itself equal to its power."
 timing = "spell"
 
 # Each creature deals damage to itself equal to its power.

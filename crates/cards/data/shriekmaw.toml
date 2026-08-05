@@ -25,6 +25,7 @@ toughness = 2
 
 # When this creature enters, destroy target nonartifact, nonblack creature.
 [[abilities]]
+oracle = "When this creature enters, destroy target nonartifact, nonblack creature."
 timing = "etb"
 
 # destroy target nonartifact, nonblack creature.

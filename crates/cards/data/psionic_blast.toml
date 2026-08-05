@@ -14,6 +14,7 @@ type = "instant"
 
 # Psionic Blast deals 4 damage to any target and 2 damage to you.
 [[abilities]]
+oracle = "Psionic Blast deals 4 damage to any target and 2 damage to you."
 timing = "spell"
 
 # Psionic Blast deals 4 damage to any target ...

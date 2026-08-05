@@ -21,6 +21,7 @@ toughness = 4
 # The first spell you cast with {X} in its mana cost each turn costs {1} less to cast for each
 # +1/+1 counter on Zimone.
 [[abilities]]
+oracle = "The first spell you cast with {X} in its mana cost each turn costs {1} less to cast for each +1/+1 counter on Zimone."
 timing = "static"
 
 # The first spell you cast with {X} in its mana cost each turn costs {1} less to cast for each
@@ -35,6 +36,7 @@ first_x_spell_each_turn = true
 # Whenever you cast your first spell with {X} in its mana cost each turn, put two +1/+1 counters
 # on Zimone.
 [[abilities]]
+oracle = "Whenever you cast your first spell with {X} in its mana cost each turn, put two +1/+1 counters on Zimone."
 timing = "cast_spell"
 spell_filter = "has_x"
 caster = "you"

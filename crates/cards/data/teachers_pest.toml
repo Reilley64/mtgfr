@@ -26,6 +26,7 @@ toughness = 1
 
 # Whenever this creature attacks, you gain 1 life.
 [[abilities]]
+oracle = "Whenever this creature attacks, you gain 1 life."
 timing = "attacks"
 
 # you gain 1 life.
@@ -36,6 +37,7 @@ amount = 1
 
 # {B}{G}: Return this card from your graveyard to the battlefield tapped.
 [[abilities]]
+oracle = "{B}{G}: Return this card from your graveyard to the battlefield tapped."
 timing = "activated"
 
 [abilities.activation_cost]

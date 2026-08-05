@@ -14,6 +14,7 @@ type = "sorcery"
 
 # Search your library for a snow land card, put it onto the battlefield tapped, then shuffle.
 [[abilities]]
+oracle = "Search your library for a snow land card, put it onto the battlefield tapped, then shuffle."
 timing = "spell"
 
 # Search your library for a snow land card, put it onto the battlefield tapped, then shuffle.

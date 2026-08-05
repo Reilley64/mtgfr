@@ -17,6 +17,7 @@ type = "enchantment"
 # When this enchantment leaves the battlefield, return the exiled card to the battlefield under
 # its owner's control.
 [[abilities]]
+oracle = "When this enchantment enters, exile another target nonland permanent. When this enchantment leaves the battlefield, return the exiled card to the battlefield under its owner's control."
 timing = "etb"
 
 # exile another target nonland permanent

@@ -17,6 +17,7 @@ type = "instant"
 
 # Magma Opus deals 4 damage divided as you choose among any number of targets.
 [[abilities]]
+oracle = "Magma Opus deals 4 damage divided as you choose among any number of targets."
 timing = "spell"
 
 # Magma Opus deals 4 damage divided as you choose among any number of targets.
@@ -30,6 +31,7 @@ divided = true
 
 # Tap two target permanents.
 [[abilities]]
+oracle = "Tap two target permanents."
 timing = "spell"
 
 # Tap two target permanents.
@@ -41,6 +43,7 @@ count = { min = 2, max = 2 }
 
 # Create a 4/4 blue and red Elemental creature token.
 [[abilities]]
+oracle = "Create a 4/4 blue and red Elemental creature token."
 timing = "spell"
 
 # Create a 4/4 blue and red Elemental creature token.
@@ -52,6 +55,7 @@ count = 1
 
 # Draw two cards.
 [[abilities]]
+oracle = "Draw two cards."
 timing = "spell"
 
 # Draw two cards.

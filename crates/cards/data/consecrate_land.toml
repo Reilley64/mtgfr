@@ -16,6 +16,7 @@ type = "aura"
 
 # Enchanted land has indestructible and can't be enchanted by other Auras.
 [[abilities]]
+oracle = "Enchanted land has indestructible and can't be enchanted by other Auras."
 timing = "static"
 
 # Enchanted land has indestructible and can't be enchanted by other Auras.

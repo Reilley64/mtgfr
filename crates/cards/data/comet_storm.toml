@@ -21,6 +21,7 @@ type = "instant"
 # Choose any target, then choose another target for each time this spell was kicked. Comet Storm
 # deals X damage to each of them.
 [[abilities]]
+oracle = "Choose any target, then choose another target for each time this spell was kicked. Comet Storm deals X damage to each of them."
 timing = "spell"
 
 # Choose any target, then choose another target for each time this spell was kicked. Comet Storm

@@ -21,6 +21,7 @@ toughness = 3
 
 # Whenever you gain life, each opponent loses 1 life.
 [[abilities]]
+oracle = "Whenever you gain life, each opponent loses 1 life."
 timing = "you_gain_life"
 
 # each opponent loses 1 life
@@ -33,6 +34,7 @@ amount = 1
 # {1}, Sacrifice another creature: Dina gets +X/+0 until end of turn, where X is the sacrificed
 # creature's power.
 [[abilities]]
+oracle = "{1}, Sacrifice another creature: Dina gets +X/+0 until end of turn, where X is the sacrificed creature's power."
 timing = "activated"
 activation_cost = { generic = 1 }
 sacrifice = { creature = { other = true } }

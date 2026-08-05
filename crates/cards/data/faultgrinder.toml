@@ -24,6 +24,7 @@ toughness = 4
 
 # When this creature enters, destroy target land.
 [[abilities]]
+oracle = "When this creature enters, destroy target land."
 timing = "etb"
 
 # destroy target land.

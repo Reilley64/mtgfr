@@ -18,6 +18,7 @@ type = "instant"
 # Clash with an opponent. Counter target spell. If you win the clash, at the beginning of your next
 # main phase, add {C} for each 1 mana in that spell's mana cost.
 [[abilities]]
+oracle = "Clash with an opponent. Counter target spell. If you win the clash, at the beginning of your next main phase, add {C} for each 1 mana in that spell's mana cost."
 timing = "spell"
 
 # Clash with an opponent.

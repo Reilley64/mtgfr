@@ -19,6 +19,7 @@ toughness = 8
 # When this creature enters, if you cast it from your hand, destroy all creatures your opponents
 # control, then tap all other creatures you control.
 [[abilities]]
+oracle = "When this creature enters, if you cast it from your hand, destroy all creatures your opponents control, then tap all other creatures you control."
 timing = "etb"
 
 [abilities.condition]

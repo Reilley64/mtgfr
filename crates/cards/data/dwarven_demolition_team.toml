@@ -17,6 +17,7 @@ toughness = 1
 
 # {T}: Destroy target Wall.
 [[abilities]]
+oracle = "{T}: Destroy target Wall."
 timing = "activated"
 taps_self = true
 

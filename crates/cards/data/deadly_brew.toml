@@ -16,6 +16,7 @@ type = "sorcery"
 # Each player sacrifices a creature or planeswalker of their choice. If you sacrificed a permanent
 # this way, you may return another permanent card from your graveyard to your hand.
 [[abilities]]
+oracle = "Each player sacrifices a creature or planeswalker of their choice. If you sacrificed a permanent this way, you may return another permanent card from your graveyard to your hand."
 timing = "spell"
 
 # Each player sacrifices a creature or planeswalker of their choice.

@@ -14,6 +14,7 @@ type = "instant"
 
 # Draw two cards, then sacrifice a permanent.
 [[abilities]]
+oracle = "Draw two cards, then sacrifice a permanent."
 timing = "spell"
 
 # Draw two cards,

@@ -17,6 +17,7 @@ toughness = 2
 # Sacrifice another creature or artifact: Surveil 1. (Look at the top card of your library. You
 # may put it into your graveyard.)
 [[abilities]]
+oracle = "Sacrifice another creature or artifact: Surveil 1. (Look at the top card of your library. You may put it into your graveyard.)"
 timing = "activated"
 sacrifice = { permanent = { types = "artifact_or_creature", other = true } }
 

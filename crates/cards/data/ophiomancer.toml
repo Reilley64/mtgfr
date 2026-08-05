@@ -21,6 +21,7 @@ toughness = 2
 # At the beginning of each upkeep, if you control no Snakes, create a 1/1 black Snake creature
 # token with deathtouch.
 [[abilities]]
+oracle = "At the beginning of each upkeep, if you control no Snakes, create a 1/1 black Snake creature token with deathtouch."
 timing = "each_upkeep"
 
 [abilities.condition]

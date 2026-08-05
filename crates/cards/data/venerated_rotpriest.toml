@@ -18,6 +18,7 @@ toughness = 2
 
 # Whenever a creature you control becomes the target of a spell, target opponent gets a poison counter.
 [[abilities]]
+oracle = "Whenever a creature you control becomes the target of a spell, target opponent gets a poison counter."
 timing = "becomes_targeted"
 targeted = "creature_you_control"
 

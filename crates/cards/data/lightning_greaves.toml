@@ -16,6 +16,7 @@ type = "artifact"
 
 # Equipped creature has haste and shroud.
 [[abilities]]
+oracle = "Equipped creature has haste and shroud."
 timing = "static"
 
 # Equipped creature has haste and shroud.
@@ -28,6 +29,7 @@ keywords = ["haste", "shroud"]
 
 # Equip {0}
 [[abilities]]
+oracle = "Equip {0}"
 timing = "activated"
 
 # Equip {0}

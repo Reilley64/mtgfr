@@ -23,6 +23,7 @@ toughness = 4
 
 # When Tanazir Quandrix enters, double the number of +1/+1 counters on target creature you control.
 [[abilities]]
+oracle = "When Tanazir Quandrix enters, double the number of +1/+1 counters on target creature you control."
 timing = "etb"
 
 # double the number of +1/+1 counters on target creature you control.
@@ -34,6 +35,7 @@ target = "creature_you_control"
 # Whenever Tanazir Quandrix attacks, you may have the base power and toughness of other creatures
 # you control become equal to Tanazir Quandrix's power and toughness until end of turn.
 [[abilities]]
+oracle = "Whenever Tanazir Quandrix attacks, you may have the base power and toughness of other creatures you control become equal to Tanazir Quandrix's power and toughness until end of turn."
 timing = "attacks"
 optional = true
 

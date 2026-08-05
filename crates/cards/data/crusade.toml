@@ -13,6 +13,7 @@ type = "enchantment"
 
 # White creatures get +1/+1.
 [[abilities]]
+oracle = "White creatures get +1/+1."
 timing = "static"
 
 # White creatures get +1/+1.

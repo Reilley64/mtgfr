@@ -17,6 +17,7 @@ toughness = 2
 
 # When this creature enters, return target creature to its owner's hand.
 [[abilities]]
+oracle = "When this creature enters, return target creature to its owner's hand."
 timing = "etb"
 
 # return target creature to its owner's hand.

@@ -21,6 +21,7 @@ toughness = 0
 
 # This creature enters with X +1/+1 counters on it.
 [[abilities]]
+oracle = "This creature enters with X +1/+1 counters on it."
 timing = "static"
 
 # This creature enters with X +1/+1 counters on it.
@@ -32,6 +33,7 @@ count = "x"
 # For each 1 damage that would be dealt to this creature, if it has a +1/+1 counter on it,
 # remove a +1/+1 counter from it and prevent that 1 damage.
 [[abilities]]
+oracle = "For each 1 damage that would be dealt to this creature, if it has a +1/+1 counter on it, remove a +1/+1 counter from it and prevent that 1 damage."
 timing = "static"
 
 # For each 1 damage that would be dealt to this creature, if it has a +1/+1 counter on it,
@@ -42,6 +44,7 @@ mode = "prevent_damage_to_self_removing_counter_per_point"
 
 # {R}: Prevent the next 1 damage that would be dealt to this creature this turn.
 [[abilities]]
+oracle = "{R}: Prevent the next 1 damage that would be dealt to this creature this turn."
 timing = "activated"
 
 [abilities.activation_cost]
@@ -56,6 +59,7 @@ shield_source = true
 
 # {R}{R}{R}: Put a +1/+1 counter on this creature. Activate only during your upkeep.
 [[abilities]]
+oracle = "{R}{R}{R}: Put a +1/+1 counter on this creature. Activate only during your upkeep."
 timing = "activated"
 
 [abilities.activation_cost]

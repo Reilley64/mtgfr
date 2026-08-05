@@ -19,6 +19,7 @@ type = "sorcery"
 
 # Create a token that's a copy of target permanent you control.
 [[abilities]]
+oracle = "Create a token that's a copy of target permanent you control."
 timing = "spell"
 
 # Create a token that's a copy of target permanent you control.

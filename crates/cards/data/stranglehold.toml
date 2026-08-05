@@ -16,6 +16,7 @@ type = "enchantment"
 
 # Your opponents can't search libraries.
 [[abilities]]
+oracle = "Your opponents can't search libraries."
 timing = "static"
 
 # Your opponents can't search libraries.

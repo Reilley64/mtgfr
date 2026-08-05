@@ -20,6 +20,7 @@ toughness = 3
 
 # Whenever you attack with two or more creatures, draw a card.
 [[abilities]]
+oracle = "Whenever you attack with two or more creatures, draw a card."
 timing = "you_attack_with_creatures"
 at_least = 2
 
@@ -31,6 +32,7 @@ count = 1
 
 # Whenever another player attacks with two or more creatures, they draw a card if none of those creatures attacked you.
 [[abilities]]
+oracle = "Whenever another player attacks with two or more creatures, they draw a card if none of those creatures attacked you."
 timing = "another_player_attacks_with_creatures"
 at_least = 2
 

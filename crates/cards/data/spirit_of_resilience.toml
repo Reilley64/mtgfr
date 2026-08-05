@@ -20,6 +20,7 @@ toughness = 2
 # you may have this creature become a copy of an artifact or creature card from among those
 # cards until end of turn.
 [[abilities]]
+oracle = "Whenever one or more cards leave your graveyard, put a +1/+1 counter on this creature, then you may have this creature become a copy of an artifact or creature card from among those cards until end of turn."
 timing = "cards_leave_your_graveyard"
 
 # put a +1/+1 counter on this creature, then you may have this creature become a copy of an

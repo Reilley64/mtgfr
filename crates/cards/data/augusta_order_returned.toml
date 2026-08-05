@@ -22,6 +22,7 @@ toughness = 3
 # Whenever Augusta attacks, each player exiles a card from their graveyard. When one or more
 # nonland cards are exiled this way, put that many +1/+1 counters on target attacking creature.
 [[abilities]]
+oracle = "Whenever Augusta attacks, each player exiles a card from their graveyard. When one or more nonland cards are exiled this way, put that many +1/+1 counters on target attacking creature."
 timing = "attacks"
 
 # each player exiles a card from their graveyard

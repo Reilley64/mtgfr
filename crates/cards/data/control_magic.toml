@@ -16,6 +16,7 @@ type = "aura"
 
 # You control enchanted creature.
 [[abilities]]
+oracle = "You control enchanted creature."
 timing = "static"
 
 # You control enchanted creature.

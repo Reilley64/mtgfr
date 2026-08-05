@@ -14,6 +14,7 @@ produces = "green"
 
 # {T}: Put a +1/+1 counter on each green creature that entered this turn.
 [[abilities]]
+oracle = "{T}: Put a +1/+1 counter on each green creature that entered this turn."
 timing = "activated"
 taps_self = true
 

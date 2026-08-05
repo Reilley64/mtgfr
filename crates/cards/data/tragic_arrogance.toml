@@ -17,6 +17,7 @@ type = "sorcery"
 # creature, an enchantment, and a planeswalker. Then each player sacrifices all other nonland
 # permanents they control.
 [[abilities]]
+oracle = "For each player, you choose from among the permanents that player controls an artifact, a creature, an enchantment, and a planeswalker. Then each player sacrifices all other nonland permanents they control."
 timing = "spell"
 
 # For each player, you choose from among the permanents that player controls an artifact, a

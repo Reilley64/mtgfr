@@ -23,6 +23,7 @@ also = ["artifact"]
 # When this creature enters, you may search your library for a basic land card, put that card onto
 # the battlefield tapped, then shuffle.
 [[abilities]]
+oracle = "When this creature enters, you may search your library for a basic land card, put that card onto the battlefield tapped, then shuffle."
 timing = "etb"
 optional = true
 
@@ -37,6 +38,7 @@ tapped = true
 
 # When this creature dies, you may draw a card.
 [[abilities]]
+oracle = "When this creature dies, you may draw a card."
 timing = "dies"
 optional = true
 

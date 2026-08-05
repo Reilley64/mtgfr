@@ -16,6 +16,7 @@ type = "aura"
 
 # Enchanted creature gets +10/+10 and has trample and annihilator 2.
 [[abilities]]
+oracle = "Enchanted creature gets +10/+10 and has trample and annihilator 2."
 timing = "static"
 
 # Enchanted creature gets +10/+10 and has trample
@@ -28,6 +29,7 @@ keywords = ["trample"]
 
 # (Whenever it attacks, defending player sacrifices two permanents of their choice.)
 [[abilities]]
+oracle = "(Whenever it attacks, defending player sacrifices two permanents of their choice.)"
 timing = "enchanted_creature_attacks"
 
 # defending player sacrifices two permanents of their choice

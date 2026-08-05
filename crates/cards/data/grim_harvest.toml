@@ -22,6 +22,7 @@ type = "instant"
 
 # Return target creature card from your graveyard to your hand.
 [[abilities]]
+oracle = "Return target creature card from your graveyard to your hand."
 timing = "spell"
 
 # Return target creature card from your graveyard to your hand.

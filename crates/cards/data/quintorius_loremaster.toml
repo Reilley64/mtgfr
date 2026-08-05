@@ -26,6 +26,7 @@ toughness = 5
 # At the beginning of your end step, exile target noncreature, nonland card from your graveyard.
 # Create a 3/2 red and white Spirit creature token.
 [[abilities]]
+oracle = "At the beginning of your end step, exile target noncreature, nonland card from your graveyard. Create a 3/2 red and white Spirit creature token."
 timing = "end_step"
 
 # exile target noncreature, nonland card from your graveyard

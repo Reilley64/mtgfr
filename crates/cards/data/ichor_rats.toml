@@ -20,6 +20,7 @@ toughness = 1
 
 # When this creature enters, each player gets a poison counter.
 [[abilities]]
+oracle = "When this creature enters, each player gets a poison counter."
 timing = "etb"
 
 # each player gets a poison counter.

@@ -17,6 +17,7 @@ type = "aura"
 
 # Enchanted creature gets -1/-1.
 [[abilities]]
+oracle = "Enchanted creature gets -1/-1."
 timing = "static"
 
 # Enchanted creature gets -1/-1.
@@ -28,6 +29,7 @@ toughness = -1
 
 # When enchanted creature dies, return this card from your graveyard to the battlefield.
 [[abilities]]
+oracle = "When enchanted creature dies, return this card from your graveyard to the battlefield."
 timing = "enchanted_creature_dies"
 
 # return this card from your graveyard to the battlefield

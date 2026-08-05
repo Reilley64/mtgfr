@@ -14,6 +14,7 @@ type = "artifact"
 
 # Red creatures get +1/+1.
 [[abilities]]
+oracle = "Red creatures get +1/+1."
 timing = "static"
 
 # Red creatures get +1/+1. Every red creature on the table, not just its controller's.
@@ -27,6 +28,7 @@ toughness = 1
 
 # Whenever a Mountain is tapped for mana, its controller adds an additional {R}.
 [[abilities]]
+oracle = "Whenever a Mountain is tapped for mana, its controller adds an additional {R}."
 timing = "static"
 
 # Whenever a Mountain is tapped for mana, its controller adds an additional {R}. A mana ability

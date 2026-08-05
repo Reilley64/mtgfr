@@ -19,6 +19,7 @@ toughness = 3
 
 # Whenever a player casts a spell, you may put a +1/+1 counter on this creature.
 [[abilities]]
+oracle = "Whenever a player casts a spell, you may put a +1/+1 counter on this creature."
 timing = "cast_spell"
 spell_filter = "all"
 caster = "any_player"
@@ -34,6 +35,7 @@ target = "this"
 # At the beginning of your upkeep, you may move any number of +1/+1 counters from this creature
 # onto other creatures.
 [[abilities]]
+oracle = "At the beginning of your upkeep, you may move any number of +1/+1 counters from this creature onto other creatures."
 timing = "upkeep"
 optional = true
 

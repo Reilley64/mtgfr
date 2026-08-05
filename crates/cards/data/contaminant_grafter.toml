@@ -21,6 +21,7 @@ toughness = 5
 
 # Whenever one or more creatures you control deal combat damage to one or more players, proliferate.
 [[abilities]]
+oracle = "Whenever one or more creatures you control deal combat damage to one or more players, proliferate."
 timing = "deals_combat_damage_to_player"
 who = "your_creatures_batch"
 
@@ -33,6 +34,7 @@ times = 1
 # Corrupted — At the beginning of your end step, if an opponent has three or more poison counters, draw a card, then
 # you may put a land card from your hand onto the battlefield.
 [[abilities]]
+oracle = "Corrupted — At the beginning of your end step, if an opponent has three or more poison counters, draw a card, then you may put a land card from your hand onto the battlefield."
 timing = "end_step"
 
 # if an opponent has three or more poison counters (the Corrupted ability word, CR 702.165 — an

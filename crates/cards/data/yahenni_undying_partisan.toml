@@ -21,6 +21,7 @@ toughness = 2
 
 # Whenever a creature an opponent controls dies, put a +1/+1 counter on Yahenni.
 [[abilities]]
+oracle = "Whenever a creature an opponent controls dies, put a +1/+1 counter on Yahenni."
 timing = "creature_an_opponent_controls_dies"
 
 # put a +1/+1 counter on Yahenni.
@@ -32,6 +33,7 @@ target = "this"
 
 # Sacrifice another creature: Yahenni gains indestructible until end of turn.
 [[abilities]]
+oracle = "Sacrifice another creature: Yahenni gains indestructible until end of turn."
 timing = "activated"
 sacrifice = { creature = { other = true } }
 

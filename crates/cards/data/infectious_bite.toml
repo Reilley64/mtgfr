@@ -16,6 +16,7 @@ type = "instant"
 # Target creature you control deals damage equal to its power to target creature you don't
 # control.
 [[abilities]]
+oracle = "Target creature you control deals damage equal to its power to target creature you don't control."
 timing = "spell"
 
 # Target creature you control deals damage equal to its power to target creature you don't control.

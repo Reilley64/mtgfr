@@ -20,6 +20,7 @@ type = "sorcery"
 # there are no more scream counters on it, put it into your graveyard and each player returns all creature cards from their
 # graveyard to the battlefield.
 [[abilities]]
+oracle = "Exile All Hallow's Eve with two scream counters on it. At the beginning of your upkeep, if this card is exiled with a scream counter on it, remove a scream counter from it. If there are no more scream counters on it, put it into your graveyard and each player returns all creature cards from their graveyard to the battlefield."
 timing = "spell"
 
 # Exile All Hallow's Eve with two scream counters on it. [The upkeep countdown and the last-counter expiry — "put it into

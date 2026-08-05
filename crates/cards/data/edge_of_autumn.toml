@@ -20,6 +20,7 @@ type = "sorcery"
 # If you control four or fewer lands, search your library for a basic land card, put it onto the battlefield
 # tapped, then shuffle.
 [[abilities]]
+oracle = "If you control four or fewer lands, search your library for a basic land card, put it onto the battlefield tapped, then shuffle."
 timing = "spell"
 
 # If you control four or fewer lands, search your library for a basic land card, put it onto the battlefield

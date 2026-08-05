@@ -19,6 +19,7 @@ type = "instant"
 # Target creature gains trample and gets +X/+0 until end of turn, where X is its power. At the
 # beginning of the next end step, destroy that creature if it attacked this turn.
 [[abilities]]
+oracle = "Target creature gains trample and gets +X/+0 until end of turn, where X is its power. At the beginning of the next end step, destroy that creature if it attacked this turn."
 timing = "spell"
 
 # Target creature gains trample and gets +X/+0 until end of turn, where X is its power.

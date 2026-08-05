@@ -19,6 +19,7 @@ type = "aura"
 
 # When this Aura enters, you gain 4 life.
 [[abilities]]
+oracle = "When this Aura enters, you gain 4 life."
 timing = "etb"
 
 # you gain 4 life.
@@ -30,6 +31,7 @@ amount = 4
 # Enchanted permanent can't attack or block, and its activated abilities can't be activated
 # unless they're mana abilities.
 [[abilities]]
+oracle = "Enchanted permanent can't attack or block, and its activated abilities can't be activated unless they're mana abilities."
 timing = "static"
 
 # Enchanted permanent can't attack or block, and its activated abilities can't be activated

@@ -22,6 +22,7 @@ toughness = 4
 # creature you control, where X is one plus the number of instant and sorcery spells you've
 # cast this turn. They gain haste. Exile them at the beginning of the next end step.
 [[abilities]]
+oracle = "At the beginning of combat on your turn, create X tokens that are copies of another target creature you control, where X is one plus the number of instant and sorcery spells you've cast this turn. They gain haste. Exile them at the beginning of the next end step."
 timing = "begin_combat"
 
 # create X tokens that are copies of another target creature you control, where X is one plus

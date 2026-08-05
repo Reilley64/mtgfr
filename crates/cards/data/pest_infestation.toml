@@ -32,6 +32,7 @@ count = { min = 0, max = 0, x_scaled = true }
 # Create twice X 1/1 black and green Pest creature tokens with "When this token dies, you gain 1
 # life."
 [[abilities]]
+oracle = "Create twice X 1/1 black and green Pest creature tokens with \"When this token dies, you gain 1 life.\""
 timing = "spell"
 
 # Create twice X 1/1 black and green Pest creature tokens with "When this token dies, you gain 1

@@ -13,6 +13,7 @@ produces = "colorless"
 
 # {3}, {T}, Sacrifice a creature: You gain life equal to the sacrificed creature's toughness.
 [[abilities]]
+oracle = "{3}, {T}, Sacrifice a creature: You gain life equal to the sacrificed creature's toughness."
 timing = "activated"
 taps_self = true
 activation_cost = { generic = 3 }

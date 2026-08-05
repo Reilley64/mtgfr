@@ -16,6 +16,7 @@ toughness = 2
 
 # Whenever this creature deals combat damage to a player, draw a card.
 [[abilities]]
+oracle = "Whenever this creature deals combat damage to a player, draw a card."
 timing = "deals_combat_damage_to_player"
 who = "this"
 
@@ -28,6 +29,7 @@ count = 1
 # Whenever you cast an instant or sorcery spell with mana value 5 or greater, create a token
 # that's a copy of this creature.
 [[abilities]]
+oracle = "Whenever you cast an instant or sorcery spell with mana value 5 or greater, create a token that's a copy of this creature."
 timing = "cast_spell"
 spell_filter = "instant_or_sorcery"
 caster = "you"
@@ -47,6 +49,7 @@ count = 1
 
 # {2}{U}: Creatures named Leitmotif Composer can't be blocked this turn.
 [[abilities]]
+oracle = "{2}{U}: Creatures named Leitmotif Composer can't be blocked this turn."
 timing = "activated"
 activation_cost = { generic = 2, blue = 1 }
 

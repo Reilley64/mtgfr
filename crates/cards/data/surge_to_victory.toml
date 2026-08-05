@@ -19,6 +19,7 @@ type = "sorcery"
 # combat damage to a player this turn, copy the exiled card. You may cast the copy without
 # paying its mana cost.
 [[abilities]]
+oracle = "Exile target instant or sorcery card from your graveyard. Creatures you control get +X/+0 until end of turn, where X is that card's mana value. Whenever a creature you control deals combat damage to a player this turn, copy the exiled card. You may cast the copy without paying its mana cost."
 timing = "spell"
 
 # Exile target instant or sorcery card from your graveyard.

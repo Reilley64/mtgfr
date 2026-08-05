@@ -13,6 +13,7 @@ type = "sorcery"
 
 # Target player mills five cards.
 [[abilities]]
+oracle = "Target player mills five cards."
 timing = "spell"
 
 # Target player mills five cards.

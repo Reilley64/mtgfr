@@ -13,6 +13,7 @@ type = "artifact"
 
 # {1}, {T}: Add {B}{R}.
 [[abilities]]
+oracle = "{1}, {T}: Add {B}{R}."
 timing = "activated"
 taps_self = true
 activation_cost = { generic = 1 }

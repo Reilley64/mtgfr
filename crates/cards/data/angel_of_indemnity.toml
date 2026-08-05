@@ -28,6 +28,7 @@ toughness = 5
 # When this creature enters, return target permanent card with mana value 4 or less from your
 # graveyard to the battlefield.
 [[abilities]]
+oracle = "When this creature enters, return target permanent card with mana value 4 or less from your graveyard to the battlefield."
 timing = "etb"
 
 # return target permanent card with mana value 4 or less from your graveyard to the battlefield

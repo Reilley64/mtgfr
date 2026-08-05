@@ -18,6 +18,7 @@ toughness = 1
 
 # Sacrifice a creature: Put a +1/+1 counter on this creature.
 [[abilities]]
+oracle = "Sacrifice a creature: Put a +1/+1 counter on this creature."
 timing = "activated"
 sacrifice = "creature"
 

@@ -27,6 +27,7 @@ toughness = 5
 
 # At the beginning of each end step, if you gained life this turn, this creature becomes prepared.
 [[abilities]]
+oracle = "At the beginning of each end step, if you gained life this turn, this creature becomes prepared."
 timing = "each_end_step"
 
 [abilities.condition]
@@ -52,6 +53,7 @@ type = "sorcery"
 # For each opponent, you create a 1/1 black and green Pest creature token with "When this token
 # dies, you gain 1 life."
 [[back.abilities]]
+oracle = "For each opponent, you create a 1/1 black and green Pest creature token with \"When this token dies, you gain 1 life.\""
 timing = "spell"
 
 # For each opponent, you create a 1/1 black and green Pest creature token with "When this token

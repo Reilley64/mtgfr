@@ -15,6 +15,7 @@ type = "sorcery"
 
 # Each player shuffles their hand and graveyard into their library, then draws seven cards.
 [[abilities]]
+oracle = "Each player shuffles their hand and graveyard into their library, then draws seven cards."
 timing = "spell"
 
 # Each player shuffles their hand and graveyard into their library, then draws seven cards.

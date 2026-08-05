@@ -17,6 +17,7 @@ toughness = 1
 
 # {T}: This creature deals 1 damage to any target.
 [[abilities]]
+oracle = "{T}: This creature deals 1 damage to any target."
 timing = "activated"
 taps_self = true
 

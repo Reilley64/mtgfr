@@ -15,6 +15,7 @@ type = "enchantment"
 
 # At the beginning of your upkeep, sacrifice this enchantment unless you pay {W}{W}.
 [[abilities]]
+oracle = "At the beginning of your upkeep, sacrifice this enchantment unless you pay {W}{W}."
 timing = "upkeep"
 
 # sacrifice this enchantment unless you pay {W}{W}.
@@ -26,6 +27,7 @@ otherwise = [{ type = "sacrifice", mode = "source" }]
 
 # All Mountains are Plains.
 [[abilities]]
+oracle = "All Mountains are Plains."
 timing = "static"
 
 # All Mountains are Plains.

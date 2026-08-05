@@ -24,6 +24,7 @@ toughness = 2
 # Whenever you cast an instant or sorcery spell, you may pay {U}{R}. If you do, copy that spell.
 # You may choose new targets for the copy.
 [[abilities]]
+oracle = "Whenever you cast an instant or sorcery spell, you may pay {U}{R}. If you do, copy that spell. You may choose new targets for the copy."
 timing = "cast_spell"
 spell_filter = "instant_or_sorcery"
 caster = "you"
@@ -43,6 +44,7 @@ may_choose_new_targets = true
 # Whenever another nontoken creature you control enters, you may pay {G}{U}. If you do, create a
 # token that's a copy of that creature.
 [[abilities]]
+oracle = "Whenever another nontoken creature you control enters, you may pay {G}{U}. If you do, create a token that's a copy of that creature."
 timing = "permanent_enters"
 filter = { types = "creature", token = "nontoken" }
 controller = "you"

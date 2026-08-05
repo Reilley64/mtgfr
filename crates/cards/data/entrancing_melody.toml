@@ -15,6 +15,7 @@ type = "sorcery"
 
 # Gain control of target creature with mana value X.
 [[abilities]]
+oracle = "Gain control of target creature with mana value X."
 timing = "spell"
 
 # Gain control of target creature with mana value X.

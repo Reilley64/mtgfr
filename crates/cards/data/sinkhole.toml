@@ -13,6 +13,7 @@ type = "sorcery"
 
 # Destroy target land.
 [[abilities]]
+oracle = "Destroy target land."
 timing = "spell"
 
 # Destroy target land.

@@ -23,6 +23,7 @@ also = ["enchantment"]
 
 # Aura spells you cast cost {1} less to cast.
 [[abilities]]
+oracle = "Aura spells you cast cost {1} less to cast."
 timing = "static"
 
 # Aura spells you cast cost {1} less to cast.

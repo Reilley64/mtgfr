@@ -19,6 +19,7 @@ type = "sorcery"
 # Exile that card and put the rest on the bottom of your library in a random order. You may cast
 # the exiled card without paying its mana cost.
 [[abilities]]
+oracle = "Shuffle your library, then reveal cards from the top of it until you reveal a nonland card. Exile that card and put the rest on the bottom of your library in a random order. You may cast the exiled card without paying its mana cost."
 timing = "spell"
 
 # Shuffle your library,

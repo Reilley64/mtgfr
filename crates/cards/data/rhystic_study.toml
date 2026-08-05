@@ -14,6 +14,7 @@ type = "enchantment"
 
 # Whenever an opponent casts a spell, you may draw a card unless that player pays {1}.
 [[abilities]]
+oracle = "Whenever an opponent casts a spell, you may draw a card unless that player pays {1}."
 timing = "cast_spell"
 caster = "opponent"
 

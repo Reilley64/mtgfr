@@ -16,6 +16,7 @@ type = "enchantment"
 
 # Creatures you control get +1/+1.
 [[abilities]]
+oracle = "Creatures you control get +1/+1."
 timing = "static"
 
 # Creatures you control get +1/+1.
@@ -27,6 +28,7 @@ toughness = 1
 
 # Whenever you tap a land for mana, add one mana of any type that land produced.
 [[abilities]]
+oracle = "Whenever you tap a land for mana, add one mana of any type that land produced."
 timing = "static"
 
 # Whenever you tap a land for mana, add one mana of any type that land produced.

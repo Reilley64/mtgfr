@@ -20,6 +20,7 @@ toughness = 6
 
 # Each opponent who cast a spell this turn can't attack with creatures.
 [[abilities]]
+oracle = "Each opponent who cast a spell this turn can't attack with creatures."
 timing = "static"
 
 [[abilities.effects]]
@@ -28,6 +29,7 @@ mode = "cant_attack_if_cast_this_turn"
 
 # Each opponent who attacked with a creature this turn can't cast spells.
 [[abilities]]
+oracle = "Each opponent who attacked with a creature this turn can't cast spells."
 timing = "static"
 
 [[abilities.effects]]

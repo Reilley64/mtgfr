@@ -17,6 +17,7 @@ toughness = 3
 
 # {W}{W}, {T}: Destroy target black permanent.
 [[abilities]]
+oracle = "{W}{W}, {T}: Destroy target black permanent."
 timing = "activated"
 taps_self = true
 

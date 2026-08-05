@@ -24,6 +24,7 @@ also = ["enchantment"]
 # Whenever an enchanted creature dies, draw a card for each Aura you controlled that was
 # attached to it.
 [[abilities]]
+oracle = "Whenever an enchanted creature dies, draw a card for each Aura you controlled that was attached to it."
 timing = "an_enchanted_creature_dies"
 
 # draw a card for each Aura you controlled that was attached to it.

@@ -14,6 +14,7 @@ type = "instant"
 
 # The owner of target nonland permanent shuffles it into their library, then draws two cards.
 [[abilities]]
+oracle = "The owner of target nonland permanent shuffles it into their library, then draws two cards."
 timing = "spell"
 
 # The owner of target nonland permanent shuffles it into their library

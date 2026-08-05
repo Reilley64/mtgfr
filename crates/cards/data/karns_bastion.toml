@@ -13,6 +13,7 @@ produces = "colorless"
 
 # {4}, {T}: Proliferate.
 [[abilities]]
+oracle = "{4}, {T}: Proliferate."
 timing = "activated"
 taps_self = true
 [abilities.activation_cost]

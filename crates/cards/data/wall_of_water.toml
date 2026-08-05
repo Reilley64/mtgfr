@@ -19,6 +19,7 @@ toughness = 5
 
 # {U}: This creature gets +1/+0 until end of turn.
 [[abilities]]
+oracle = "{U}: This creature gets +1/+0 until end of turn."
 timing = "activated"
 
 [abilities.activation_cost]

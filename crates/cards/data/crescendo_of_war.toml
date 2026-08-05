@@ -16,6 +16,7 @@ type = "enchantment"
 
 # At the beginning of each upkeep, put a strife counter on this enchantment.
 [[abilities]]
+oracle = "At the beginning of each upkeep, put a strife counter on this enchantment."
 timing = "each_upkeep"
 
 # put a strife counter on this enchantment.
@@ -28,6 +29,7 @@ kind = "strife"
 
 # Attacking creatures get +1/+0 for each strife counter on this enchantment.
 [[abilities]]
+oracle = "Attacking creatures get +1/+0 for each strife counter on this enchantment."
 timing = "static"
 
 # Attacking creatures get +1/+0 for each strife counter on this enchantment.
@@ -40,6 +42,7 @@ all_players = true
 
 # Blocking creatures you control get +1/+0 for each strife counter on this enchantment.
 [[abilities]]
+oracle = "Blocking creatures you control get +1/+0 for each strife counter on this enchantment."
 timing = "static"
 
 # Blocking creatures you control get +1/+0 for each strife counter on this enchantment.

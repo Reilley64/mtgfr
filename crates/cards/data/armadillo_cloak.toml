@@ -18,6 +18,7 @@ type = "aura"
 
 # Enchanted creature gets +2/+2 and has trample.
 [[abilities]]
+oracle = "Enchanted creature gets +2/+2 and has trample."
 timing = "static"
 
 # Enchanted creature gets +2/+2 and has trample
@@ -30,6 +31,7 @@ keywords = ["trample"]
 
 # Whenever enchanted creature deals damage, you gain that much life.
 [[abilities]]
+oracle = "Whenever enchanted creature deals damage, you gain that much life."
 timing = "enchanted_creature_deals_damage"
 
 # you gain that much life

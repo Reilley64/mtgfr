@@ -14,6 +14,7 @@ type = "instant"
 
 # Target creature gets +4/+2 and gains trample until end of turn.
 [[abilities]]
+oracle = "Target creature gets +4/+2 and gains trample until end of turn."
 timing = "spell"
 
 # Target creature gets +4/+2 and gains trample until end of turn.

@@ -18,6 +18,7 @@ toughness = 1
 # When this creature dies, each player may search their library for up to two basic land cards, put them onto the
 # battlefield, then shuffle.
 [[abilities]]
+oracle = "When this creature dies, each player may search their library for up to two basic land cards, put them onto the battlefield, then shuffle."
 timing = "dies"
 
 # each player may search their library for up to two basic land cards, put them onto the battlefield, then shuffle.

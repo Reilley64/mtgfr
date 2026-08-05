@@ -14,6 +14,7 @@ type = "enchantment"
 
 # All Forests are 1/1 creatures that are still lands.
 [[abilities]]
+oracle = "All Forests are 1/1 creatures that are still lands."
 timing = "static"
 
 # All Forests are 1/1 creatures that are still lands.

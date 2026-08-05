@@ -21,6 +21,7 @@ toughness = 1
 
 # Instant and sorcery spells you cast cost {1} less to cast.
 [[abilities]]
+oracle = "Instant and sorcery spells you cast cost {1} less to cast."
 timing = "static"
 
 # Instant and sorcery spells you cast cost {1} less to cast.
@@ -34,6 +35,7 @@ filter = "instant_or_sorcery"
 # copy it for each time you've cast your commander from the command zone this game. You may
 # choose new targets for the copies.
 [[abilities]]
+oracle = "{2}{U}, Sacrifice this creature: When you next cast an instant or sorcery spell this turn, copy it for each time you've cast your commander from the command zone this game. You may choose new targets for the copies."
 timing = "activated"
 sacrifice = "this"
 

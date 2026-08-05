@@ -20,6 +20,7 @@ toughness = 1
 # If one or more +1/+1 counters would be put on a permanent you control, that many plus one +1/+1
 # counters are put on that permanent instead.
 [[abilities]]
+oracle = "If one or more +1/+1 counters would be put on a permanent you control, that many plus one +1/+1 counters are put on that permanent instead."
 timing = "static"
 
 # If one or more +1/+1 counters would be put on a permanent you control, that many plus one +1/+1 counters are put on
@@ -32,6 +33,7 @@ add = 1
 
 # {T}: Add X mana of any one color, where X is this creature's power.
 [[abilities]]
+oracle = "{T}: Add X mana of any one color, where X is this creature's power."
 timing = "activated"
 taps_self = true
 

@@ -14,6 +14,7 @@ type = "artifact"
 
 # {T}: Target player exiles a card from their graveyard.
 [[abilities]]
+oracle = "{T}: Target player exiles a card from their graveyard."
 timing = "activated"
 taps_self = true
 
@@ -25,6 +26,7 @@ target = "player"
 
 # {1}, Exile this artifact: Exile all graveyards. Draw a card.
 [[abilities]]
+oracle = "{1}, Exile this artifact: Exile all graveyards. Draw a card."
 timing = "activated"
 exile_self = true
 

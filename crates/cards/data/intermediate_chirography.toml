@@ -21,6 +21,7 @@ type = "enchantment"
 
 # When this Class enters, create a 2/1 white and black Inkling creature token with flying.
 [[abilities]]
+oracle = "When this Class enters, create a 2/1 white and black Inkling creature token with flying."
 timing = "etb"
 
 # create a 2/1 white and black Inkling creature token with flying.
@@ -46,6 +47,7 @@ level = 2
 
 # Whenever you lose life for the first time each turn, put a +1/+1 counter on target creature you control.
 [[abilities]]
+oracle = "Whenever you lose life for the first time each turn, put a +1/+1 counter on target creature you control."
 timing = "you_lose_life_first_time_each_turn"
 min_level = 2
 
@@ -58,6 +60,7 @@ target = "creature_you_control"
 
 # {2}{B}: Level 3
 [[abilities]]
+oracle = "{2}{B}: Level 3"
 timing = "activated"
 sorcery_speed = true
 
@@ -74,6 +77,7 @@ level = 3
 # At the beginning of each end step, if a modified creature died under your control this turn, create a 2/1 white and
 # black Inkling creature token with flying.
 [[abilities]]
+oracle = "At the beginning of each end step, if a modified creature died under your control this turn, create a 2/1 white and black Inkling creature token with flying."
 timing = "each_end_step"
 min_level = 3
 

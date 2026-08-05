@@ -16,6 +16,7 @@ type = "instant"
 # Return target creature to its owner's hand.
 # Draw a card.
 [[abilities]]
+oracle = "Return target creature to its owner's hand. Draw a card."
 timing = "spell"
 
 # Return target creature to its owner's hand.

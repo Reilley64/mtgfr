@@ -29,6 +29,7 @@ toughness = 3
 # your opponents, that attacking player draws a card and you put two +1/+1 counters on a creature
 # you control.
 [[abilities]]
+oracle = "Whenever a player attacks one of your opponents, if that opponent has more life than another of your opponents, that attacking player draws a card and you put two +1/+1 counters on a creature you control."
 timing = "player_attacks_your_opponent"
 
 [abilities.condition]

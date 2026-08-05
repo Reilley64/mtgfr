@@ -17,6 +17,7 @@ type = "instant"
 # Change the text of target spell or permanent by replacing all instances of one basic land type
 # with another.
 [[abilities]]
+oracle = "Change the text of target spell or permanent by replacing all instances of one basic land type with another."
 timing = "spell"
 
 # Change the text of target spell or permanent by replacing all instances of one basic land type

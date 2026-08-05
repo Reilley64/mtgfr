@@ -25,6 +25,7 @@ toughness = 6
 # When this creature enters, creatures you control gain flying and get +X/+X until end of turn,
 # where X is the number of creatures you control.
 [[abilities]]
+oracle = "When this creature enters, creatures you control gain flying and get +X/+X until end of turn, where X is the number of creatures you control."
 timing = "etb"
 
 # creatures you control gain flying and get +X/+X until end of turn, where X is the number of creatures you control.

@@ -16,6 +16,7 @@ type = "enchantment"
 # Whenever one or more creatures you control with mana value 3 or less enter, draw a card. This
 # ability triggers only once each turn.
 [[abilities]]
+oracle = "Whenever one or more creatures you control with mana value 3 or less enter, draw a card. This ability triggers only once each turn."
 timing = "permanent_enters"
 filter = { types = "creature", mv_max = 3 }
 controller = "you"

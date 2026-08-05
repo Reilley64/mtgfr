@@ -20,6 +20,7 @@ toughness = 2
 # At the beginning of each end step, put a corpse counter on this creature for each creature
 # that died this turn.
 [[abilities]]
+oracle = "At the beginning of each end step, put a corpse counter on this creature for each creature that died this turn."
 timing = "each_end_step"
 
 # put a corpse counter on this creature for each creature that died this turn.
@@ -32,6 +33,7 @@ kind = "corpse"
 
 # Remove a corpse counter from this creature: Regenerate this creature.
 [[abilities]]
+oracle = "Remove a corpse counter from this creature: Regenerate this creature."
 timing = "activated"
 remove_counters = 1
 remove_counters_kind = "corpse"

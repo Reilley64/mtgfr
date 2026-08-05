@@ -33,6 +33,7 @@ type = "instant"
 
 # Fire deals 2 damage divided as you choose among one or two targets.
 [[half.abilities]]
+oracle = "Fire deals 2 damage divided as you choose among one or two targets."
 timing = "spell"
 
 # Fire deals 2 damage divided as you choose among one or two targets.
@@ -58,6 +59,7 @@ type = "instant"
 
 # Tap target permanent.
 [[half.abilities]]
+oracle = "Tap target permanent."
 timing = "spell"
 
 # Tap target permanent.
@@ -68,6 +70,7 @@ target = { permanent = {} }
 
 # Draw a card.
 [[half.abilities]]
+oracle = "Draw a card."
 timing = "spell"
 
 # Draw a card.

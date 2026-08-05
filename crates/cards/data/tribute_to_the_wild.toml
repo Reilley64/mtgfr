@@ -14,6 +14,7 @@ type = "instant"
 
 # Each opponent sacrifices an artifact or enchantment of their choice.
 [[abilities]]
+oracle = "Each opponent sacrifices an artifact or enchantment of their choice."
 timing = "spell"
 
 # Each opponent sacrifices an artifact or enchantment of their choice.

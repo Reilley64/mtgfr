@@ -18,6 +18,7 @@ type = "sorcery"
 
 # Create X 4/4 white Angel creature tokens with flying.
 [[abilities]]
+oracle = "Create X 4/4 white Angel creature tokens with flying."
 timing = "spell"
 
 # Create X 4/4 white Angel creature tokens with flying.

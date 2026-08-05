@@ -21,6 +21,7 @@ toughness = 2
 
 # This creature gets +1/+1 for each creature card in your graveyard.
 [[abilities]]
+oracle = "This creature gets +1/+1 for each creature card in your graveyard."
 timing = "static"
 
 # This creature gets +1/+1 for each creature card in your graveyard.
@@ -34,6 +35,7 @@ toughness = { per_permanent = { types = "creature", controller = "you" }, zone =
 # {T}, Sacrifice another creature: Search your library for a land card, put it onto the battlefield
 # tapped, then shuffle.
 [[abilities]]
+oracle = "{T}, Sacrifice another creature: Search your library for a land card, put it onto the battlefield tapped, then shuffle."
 timing = "activated"
 taps_self = true
 sacrifice = { creature = { other = true } }

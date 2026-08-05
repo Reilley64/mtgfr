@@ -17,6 +17,7 @@ type = "aura"
 
 # You control enchanted permanent.
 [[abilities]]
+oracle = "You control enchanted permanent."
 timing = "static"
 
 # You control enchanted permanent.

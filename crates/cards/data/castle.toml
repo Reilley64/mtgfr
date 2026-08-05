@@ -14,6 +14,7 @@ type = "enchantment"
 
 # Untapped creatures you control get +0/+2.
 [[abilities]]
+oracle = "Untapped creatures you control get +0/+2."
 timing = "static"
 
 # Untapped creatures you control get +0/+2.

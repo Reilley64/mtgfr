@@ -20,6 +20,7 @@ toughness = 1
 
 # This creature has haste as long as an opponent has 10 or less life.
 [[abilities]]
+oracle = "This creature has haste as long as an opponent has 10 or less life."
 timing = "static"
 
 # This creature has haste
@@ -33,6 +34,7 @@ condition = { type = "an_opponent_has_life_at_most", at_most = 10 }
 # Landfall — Whenever a land you control enters, you may return this card from your graveyard to
 # the battlefield.
 [[abilities]]
+oracle = "Landfall — Whenever a land you control enters, you may return this card from your graveyard to the battlefield."
 timing = "permanent_enters"
 filter = "land"
 controller = "you"

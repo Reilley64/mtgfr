@@ -17,6 +17,7 @@ type = "aura"
 
 # As this Aura enters, choose a color.
 [[abilities]]
+oracle = "As this Aura enters, choose a color."
 timing = "as_enters"
 
 # As this Aura enters, choose a color.
@@ -26,6 +27,7 @@ mode = "choose_color"
 
 # Enchanted creature has protection from the chosen color.
 [[abilities]]
+oracle = "Enchanted creature has protection from the chosen color."
 timing = "static"
 
 # Enchanted creature has protection from the chosen color.
@@ -36,6 +38,7 @@ protection_from_chosen_color = true
 
 # {W}: Return this Aura to its owner's hand.
 [[abilities]]
+oracle = "{W}: Return this Aura to its owner's hand."
 timing = "activated"
 
 [abilities.activation_cost]

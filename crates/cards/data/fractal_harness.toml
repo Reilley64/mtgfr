@@ -25,6 +25,7 @@ type = "artifact"
 # When this Equipment enters, create a 0/0 green and blue Fractal creature token. Put X +1/+1
 # counters on it and attach this Equipment to it.
 [[abilities]]
+oracle = "When this Equipment enters, create a 0/0 green and blue Fractal creature token. Put X +1/+1 counters on it and attach this Equipment to it."
 timing = "etb"
 
 # create a 0/0 green and blue Fractal creature token. Put X +1/+1 counters on it
@@ -41,6 +42,7 @@ mode = "attach_self_to_minted_token"
 
 # Whenever equipped creature attacks, double the number of +1/+1 counters on it.
 [[abilities]]
+oracle = "Whenever equipped creature attacks, double the number of +1/+1 counters on it."
 timing = "enchanted_creature_attacks"
 
 # double the number of +1/+1 counters on it.
@@ -50,6 +52,7 @@ mode = "double_counters_on_attached_creature"
 
 # Equip {2}
 [[abilities]]
+oracle = "Equip {2}"
 timing = "activated"
 
 [abilities.activation_cost]

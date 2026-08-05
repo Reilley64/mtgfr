@@ -25,6 +25,7 @@ toughness = 4
 
 # When Galazeth Prismari enters, create a Treasure token.
 [[abilities]]
+oracle = "When Galazeth Prismari enters, create a Treasure token."
 timing = "etb"
 
 # create a Treasure token
@@ -36,6 +37,7 @@ count = 1
 # Artifacts you control have "{T}: Add one mana of any color. Spend this mana only to cast an
 # instant or sorcery spell."
 [[abilities]]
+oracle = "Artifacts you control have \"{T}: Add one mana of any color. Spend this mana only to cast an instant or sorcery spell.\""
 timing = "static"
 
 # Artifacts you control have "{T}: Add one mana of any color. Spend this mana only to cast an

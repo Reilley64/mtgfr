@@ -19,6 +19,7 @@ also = ["artifact"]
 
 # This creature enters with X +1/+1 counters on it.
 [[abilities]]
+oracle = "This creature enters with X +1/+1 counters on it."
 timing = "static"
 
 # This creature enters with X +1/+1 counters on it.

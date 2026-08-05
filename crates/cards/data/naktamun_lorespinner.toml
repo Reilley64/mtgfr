@@ -22,6 +22,7 @@ toughness = 3
 # At the beginning of your upkeep, if a player has one or fewer cards in hand, this creature
 # becomes prepared.
 [[abilities]]
+oracle = "At the beginning of your upkeep, if a player has one or fewer cards in hand, this creature becomes prepared."
 timing = "upkeep"
 
 [abilities.condition]
@@ -47,6 +48,7 @@ type = "sorcery"
 
 # Each player discards their hand, then draws seven cards.
 [[back.abilities]]
+oracle = "Each player discards their hand, then draws seven cards."
 timing = "spell"
 
 # Each player discards their hand, then draws seven cards.

@@ -18,6 +18,7 @@ type = "aura"
 # Enchanted creature gets +4/+4, has flying and first strike, and is an Angel in addition to its
 # other types.
 [[abilities]]
+oracle = "Enchanted creature gets +4/+4, has flying and first strike, and is an Angel in addition to its other types."
 timing = "static"
 
 # Enchanted creature gets +4/+4, has flying and first strike
@@ -31,6 +32,7 @@ keywords = ["flying", "first_strike"]
 # Enchanted creature gets +4/+4, has flying and first strike, and is an Angel in addition to its
 # other types.
 [[abilities]]
+oracle = "Enchanted creature gets +4/+4, has flying and first strike, and is an Angel in addition to its other types."
 timing = "static"
 
 # is an Angel in addition to its other types
@@ -41,6 +43,7 @@ add_subtypes = ["Angel"]
 
 # When enchanted creature dies, return this card to its owner's hand.
 [[abilities]]
+oracle = "When enchanted creature dies, return this card to its owner's hand."
 timing = "enchanted_creature_dies"
 
 # return this card to its owner's hand

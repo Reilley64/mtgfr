@@ -16,6 +16,7 @@ type = "aura"
 
 # Enchanted creature gets +0/+2 and has reach.
 [[abilities]]
+oracle = "Enchanted creature gets +0/+2 and has reach."
 timing = "static"
 
 # Enchanted creature gets +0/+2 and has reach.

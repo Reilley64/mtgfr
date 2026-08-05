@@ -20,6 +20,7 @@ type = "instant"
 # Prophetic Bolt deals 4 damage to any target. Look at the top four cards of your library. Put one of those cards into
 # your hand and the rest on the bottom of your library in any order.
 [[abilities]]
+oracle = "Prophetic Bolt deals 4 damage to any target. Look at the top four cards of your library. Put one of those cards into your hand and the rest on the bottom of your library in any order."
 timing = "spell"
 
 # Prophetic Bolt deals 4 damage to any target.

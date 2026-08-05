@@ -18,6 +18,7 @@ type = "artifact"
 
 # {1}, {T}: Target creature gains banding until end of turn.
 [[abilities]]
+oracle = "{1}, {T}: Target creature gains banding until end of turn."
 timing = "activated"
 taps_self = true
 activation_cost = { generic = 1 }

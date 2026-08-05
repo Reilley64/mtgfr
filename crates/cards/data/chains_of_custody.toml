@@ -23,6 +23,7 @@ type = "aura"
 # When this Aura enters, exile target nonland permanent an opponent controls until this Aura
 # leaves the battlefield.
 [[abilities]]
+oracle = "When this Aura enters, exile target nonland permanent an opponent controls until this Aura leaves the battlefield."
 timing = "etb"
 
 # exile target nonland permanent an opponent controls until this Aura leaves the battlefield
@@ -34,6 +35,7 @@ target = { permanent = { types = "nonland", controller = "opponent" } }
 # Enchanted creature has ward {2}. (Whenever it becomes the target of a spell or ability an
 # opponent controls, counter it unless that player pays {2}.)
 [[abilities]]
+oracle = "Enchanted creature has ward {2}. (Whenever it becomes the target of a spell or ability an opponent controls, counter it unless that player pays {2}.)"
 timing = "static"
 
 # Enchanted creature has ward {2}.

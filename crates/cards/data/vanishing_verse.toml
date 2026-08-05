@@ -14,6 +14,7 @@ type = "instant"
 
 # Exile target monocolored permanent.
 [[abilities]]
+oracle = "Exile target monocolored permanent."
 timing = "spell"
 
 # Exile target monocolored permanent.

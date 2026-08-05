@@ -24,6 +24,7 @@ type = "instant"
 # Untap target creature an opponent controls and gain control of it until end of turn. That
 # creature gains haste until end of turn.
 [[abilities]]
+oracle = "Untap target creature an opponent controls and gain control of it until end of turn. That creature gains haste until end of turn."
 timing = "spell"
 
 # Untap target creature an opponent controls

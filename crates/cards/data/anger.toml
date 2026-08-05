@@ -21,6 +21,7 @@ toughness = 2
 # As long as this card is in your graveyard and you control a Mountain, creatures you control
 # have haste.
 [[abilities]]
+oracle = "As long as this card is in your graveyard and you control a Mountain, creatures you control have haste."
 timing = "static"
 
 # creatures you control have haste

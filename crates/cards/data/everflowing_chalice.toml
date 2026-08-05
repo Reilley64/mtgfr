@@ -18,6 +18,7 @@ type = "artifact"
 
 # This artifact enters with a charge counter on it for each time it was kicked.
 [[abilities]]
+oracle = "This artifact enters with a charge counter on it for each time it was kicked."
 timing = "static"
 
 # This artifact enters with a charge counter on it for each time it was kicked.
@@ -29,6 +30,7 @@ kind = "charge"
 
 # {T}: Add {C} for each charge counter on this artifact.
 [[abilities]]
+oracle = "{T}: Add {C} for each charge counter on this artifact."
 timing = "activated"
 taps_self = true
 

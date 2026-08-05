@@ -19,6 +19,7 @@ also = ["artifact"]
 
 # {1}: Regenerate this creature.
 [[abilities]]
+oracle = "{1}: Regenerate this creature."
 timing = "activated"
 
 [abilities.activation_cost]

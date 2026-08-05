@@ -20,6 +20,7 @@ toughness = 1
 
 # Sacrifice this creature: Exile target player's graveyard.
 [[abilities]]
+oracle = "Sacrifice this creature: Exile target player's graveyard."
 timing = "activated"
 sacrifice = "this"
 

@@ -22,6 +22,7 @@ type = "sorcery"
 # more life than the player's life total before the damage was dealt, the planeswalker's
 # loyalty before the damage was dealt, or the creature's toughness.
 [[abilities]]
+oracle = "Drain Life deals X damage to any target. You gain life equal to the damage dealt, but not more life than the player's life total before the damage was dealt, the planeswalker's loyalty before the damage was dealt, or the creature's toughness."
 timing = "spell"
 
 # Drain Life deals X damage to any target. You gain life equal to the damage dealt, but not

@@ -21,6 +21,7 @@ toughness = 1
 
 # This creature enters with X +1/+1 counters on it.
 [[abilities]]
+oracle = "This creature enters with X +1/+1 counters on it."
 timing = "static"
 
 # This creature enters with X +1/+1 counters on it.
@@ -32,6 +33,7 @@ count = "x"
 # At the beginning of your upkeep, if this creature has one or more +1/+1 counters on it, you may
 # remove a +1/+1 counter from it. If you do, draw a card.
 [[abilities]]
+oracle = "At the beginning of your upkeep, if this creature has one or more +1/+1 counters on it, you may remove a +1/+1 counter from it. If you do, draw a card."
 timing = "upkeep"
 optional = true
 condition = { type = "compare", left = "per_counter_on_source", op = "at_least", right = 1 }

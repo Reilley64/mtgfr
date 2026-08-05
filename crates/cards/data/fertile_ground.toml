@@ -19,6 +19,7 @@ type = "aura"
 
 # Whenever enchanted land is tapped for mana, its controller adds an additional one mana of any color.
 [[abilities]]
+oracle = "Whenever enchanted land is tapped for mana, its controller adds an additional one mana of any color."
 timing = "static"
 
 # Whenever enchanted land is tapped for mana, its controller adds an additional one mana of any color.

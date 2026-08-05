@@ -15,6 +15,7 @@ type = "artifact"
 # {2}, {T}, Sacrifice this artifact: Search your library for up to two basic land cards, reveal
 # them, put them into your hand, then shuffle.
 [[abilities]]
+oracle = "{2}, {T}, Sacrifice this artifact: Search your library for up to two basic land cards, reveal them, put them into your hand, then shuffle."
 timing = "activated"
 taps_self = true
 sacrifice = "this"

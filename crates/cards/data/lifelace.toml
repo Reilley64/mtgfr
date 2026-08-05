@@ -13,6 +13,7 @@ type = "instant"
 
 # Target spell or permanent becomes green. (Mana symbols on that permanent remain unchanged.)
 [[abilities]]
+oracle = "Target spell or permanent becomes green. (Mana symbols on that permanent remain unchanged.)"
 timing = "spell"
 
 # Target spell or permanent becomes green. The reminder text is a rules clarification, not an

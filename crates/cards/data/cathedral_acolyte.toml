@@ -19,6 +19,7 @@ toughness = 2
 
 # Each creature you control with a counter on it has ward {1}.
 [[abilities]]
+oracle = "Each creature you control with a counter on it has ward {1}."
 timing = "static"
 
 # Each creature you control with a counter on it has ward {1}.
@@ -30,6 +31,7 @@ has_counters = true
 
 # {T}: Put a +1/+1 counter on target creature that entered this turn.
 [[abilities]]
+oracle = "{T}: Put a +1/+1 counter on target creature that entered this turn."
 timing = "activated"
 taps_self = true
 

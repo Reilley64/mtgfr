@@ -20,6 +20,7 @@ toughness = 3
 # Mentor (Whenever this creature attacks, put a +1/+1 counter on target attacking creature
 # with lesser power.)
 [[abilities]]
+oracle = "Mentor (Whenever this creature attacks, put a +1/+1 counter on target attacking creature with lesser power.)"
 timing = "attacks"
 
 # put a +1/+1 counter on target attacking creature with lesser power
@@ -31,6 +32,7 @@ target = { permanent = { types = "creature", attacking = true, power_less_than_s
 
 # Prevent all noncombat damage that would be dealt to other creatures you control.
 [[abilities]]
+oracle = "Prevent all noncombat damage that would be dealt to other creatures you control."
 timing = "static"
 
 # Prevent all noncombat damage that would be dealt to other creatures you control
@@ -40,6 +42,7 @@ mode = "prevent_noncombat_damage_to_other_creatures_you_control"
 
 # {R}{W}: Tajic gains first strike until end of turn.
 [[abilities]]
+oracle = "{R}{W}: Tajic gains first strike until end of turn."
 timing = "activated"
 activation_cost = { red = 1, white = 1 }
 

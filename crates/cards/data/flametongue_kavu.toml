@@ -17,6 +17,7 @@ toughness = 2
 
 # When this creature enters, it deals 4 damage to target creature.
 [[abilities]]
+oracle = "When this creature enters, it deals 4 damage to target creature."
 timing = "etb"
 
 # it deals 4 damage to target creature.

@@ -10,6 +10,7 @@ type = "artifact"
 
 # {T}, Sacrifice this artifact: Add three mana of any one color.
 [[abilities]]
+oracle = "{T}, Sacrifice this artifact: Add three mana of any one color."
 timing = "activated"
 taps_self = true
 sacrifice = "this"

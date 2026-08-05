@@ -16,6 +16,7 @@ produces = ["white", "black"]
 # {2}{W}{B}, {T}: Surveil 1. (Look at the top card of your library. You may put it into your
 # graveyard.)
 [[abilities]]
+oracle = "{2}{W}{B}, {T}: Surveil 1. (Look at the top card of your library. You may put it into your graveyard.)"
 timing = "activated"
 taps_self = true
 

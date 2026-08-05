@@ -18,6 +18,7 @@ type = "aura"
 
 # {G}: Regenerate enchanted creature.
 [[abilities]]
+oracle = "{G}: Regenerate enchanted creature."
 timing = "activated"
 
 [abilities.activation_cost]

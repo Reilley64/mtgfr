@@ -16,6 +16,7 @@ type = "sorcery"
 # Destroy each nonland permanent with mana value 2 or less. Add {B} or {G} for each permanent
 # destroyed this way.
 [[abilities]]
+oracle = "Destroy each nonland permanent with mana value 2 or less. Add {B} or {G} for each permanent destroyed this way."
 timing = "spell"
 
 # Destroy each nonland permanent with mana value 2 or less.

@@ -21,6 +21,7 @@ toughness = 1
 # Zombie creature token with decayed. (It can't block. When it attacks, sacrifice it at end of
 # combat.)
 [[abilities]]
+oracle = "At the beginning of your end step, if you control no creatures with decayed, create a 2/2 black Zombie creature token with decayed. (It can't block. When it attacks, sacrifice it at end of combat.)"
 timing = "end_step"
 
 [abilities.condition]

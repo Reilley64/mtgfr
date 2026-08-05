@@ -22,6 +22,7 @@ toughness = 1
 
 # Instant and sorcery spells you cast cost {1} less to cast.
 [[abilities]]
+oracle = "Instant and sorcery spells you cast cost {1} less to cast."
 timing = "static"
 
 # Instant and sorcery spells you cast cost {1} less to cast.

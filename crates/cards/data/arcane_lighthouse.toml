@@ -14,6 +14,7 @@ produces = "colorless"
 # {1}, {T}: Until end of turn, creatures your opponents control lose hexproof and shroud and
 # can't have hexproof or shroud.
 [[abilities]]
+oracle = "{1}, {T}: Until end of turn, creatures your opponents control lose hexproof and shroud and can't have hexproof or shroud."
 timing = "activated"
 taps_self = true
 [abilities.activation_cost]

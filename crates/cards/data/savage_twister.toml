@@ -15,6 +15,7 @@ type = "sorcery"
 
 # Savage Twister deals X damage to each creature.
 [[abilities]]
+oracle = "Savage Twister deals X damage to each creature."
 timing = "spell"
 
 # Savage Twister deals X damage to each creature.

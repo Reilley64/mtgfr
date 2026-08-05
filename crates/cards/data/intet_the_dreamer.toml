@@ -26,6 +26,7 @@ toughness = 6
 # of your library face down. You may look at that card for as long as it remains exiled. You may
 # play that card without paying its mana cost for as long as Intet remains on the battlefield.
 [[abilities]]
+oracle = "Whenever Intet deals combat damage to a player, you may pay {2}{U}. If you do, exile the top card of your library face down. You may look at that card for as long as it remains exiled. You may play that card without paying its mana cost for as long as Intet remains on the battlefield."
 timing = "deals_combat_damage_to_player"
 who = "this"
 optional = true

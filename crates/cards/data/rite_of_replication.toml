@@ -17,6 +17,7 @@ type = "sorcery"
 # Create a token that's a copy of target creature. If this spell was kicked, create five of those
 # tokens instead.
 [[abilities]]
+oracle = "Create a token that's a copy of target creature. If this spell was kicked, create five of those tokens instead."
 timing = "spell"
 
 # Create a token that's a copy of target creature. If this spell was kicked, create five of those

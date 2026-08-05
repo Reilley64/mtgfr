@@ -14,6 +14,7 @@ type = "sorcery"
 
 # Blaze deals X damage to any target.
 [[abilities]]
+oracle = "Blaze deals X damage to any target."
 timing = "spell"
 
 # Blaze deals X damage to any target.

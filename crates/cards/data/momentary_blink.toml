@@ -20,6 +20,7 @@ type = "instant"
 
 # Exile target creature you control, then return it to the battlefield under its owner's control.
 [[abilities]]
+oracle = "Exile target creature you control, then return it to the battlefield under its owner's control."
 timing = "spell"
 
 # Exile target creature you control, then return it to the battlefield under its owner's control.

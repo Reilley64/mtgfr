@@ -16,6 +16,7 @@ type = "instant"
 # Draw a card for each creature you control with a +1/+1 counter on it. Those creatures gain
 # indestructible until end of turn.
 [[abilities]]
+oracle = "Draw a card for each creature you control with a +1/+1 counter on it. Those creatures gain indestructible until end of turn."
 timing = "spell"
 
 # Draw a card for each creature you control with a +1/+1 counter on it.

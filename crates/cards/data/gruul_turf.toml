@@ -13,6 +13,7 @@ type = "land"
 
 # When this land enters, return a land you control to its owner's hand.
 [[abilities]]
+oracle = "When this land enters, return a land you control to its owner's hand."
 timing = "etb"
 
 # return a land you control to its owner's hand.
@@ -23,6 +24,7 @@ target = { permanent = { types = "land", controller = "you" } }
 
 # {T}: Add {R}{G}.
 [[abilities]]
+oracle = "{T}: Add {R}{G}."
 timing = "activated"
 taps_self = true
 

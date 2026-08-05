@@ -19,6 +19,7 @@ toughness = 4
 
 # This creature can block an additional creature each combat.
 [[abilities]]
+oracle = "This creature can block an additional creature each combat."
 timing = "static"
 
 # This creature can block an additional creature each combat.

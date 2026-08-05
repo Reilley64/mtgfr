@@ -17,6 +17,7 @@ type = "aura"
 
 # Enchanted creature has fear.
 [[abilities]]
+oracle = "Enchanted creature has fear."
 timing = "static"
 
 # Enchanted creature has fear.

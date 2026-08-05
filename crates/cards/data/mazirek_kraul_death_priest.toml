@@ -25,6 +25,7 @@ toughness = 2
 
 # Whenever a player sacrifices another permanent, put a +1/+1 counter on each creature you control.
 [[abilities]]
+oracle = "Whenever a player sacrifices another permanent, put a +1/+1 counter on each creature you control."
 timing = "any_player_sacrifices"
 filter = { other = true }
 

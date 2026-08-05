@@ -26,6 +26,7 @@ toughness = 3
 
 # Whenever you attack with two or more creatures, this creature becomes prepared.
 [[abilities]]
+oracle = "Whenever you attack with two or more creatures, this creature becomes prepared."
 timing = "you_attack_with_creatures"
 at_least = 2
 
@@ -48,6 +49,7 @@ type = "sorcery"
 
 # Return all enchantment cards from your graveyard to the battlefield.
 [[back.abilities]]
+oracle = "Return all enchantment cards from your graveyard to the battlefield."
 timing = "spell"
 
 # Return all enchantment cards from your graveyard to the battlefield.

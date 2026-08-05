@@ -15,6 +15,7 @@ produces = ["green", "blue"]
 
 # {2}{G}{U}, {T}: Surveil 1.
 [[abilities]]
+oracle = "{2}{G}{U}, {T}: Surveil 1."
 timing = "activated"
 taps_self = true
 activation_cost = { generic = 2, green = 1, blue = 1 }

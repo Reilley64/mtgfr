@@ -17,6 +17,7 @@ toughness = 1
 
 # {T}: Draw a card, then discard a card.
 [[abilities]]
+oracle = "{T}: Draw a card, then discard a card."
 timing = "activated"
 taps_self = true
 

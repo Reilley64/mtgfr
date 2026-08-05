@@ -16,6 +16,7 @@ type = "instant"
 # Radiance — Choose a color. Target creature and each other creature that shares a color with
 # it gain protection from the chosen color until end of turn.
 [[abilities]]
+oracle = "Radiance — Choose a color. Target creature and each other creature that shares a color with it gain protection from the chosen color until end of turn."
 timing = "spell"
 
 # Choose a color.

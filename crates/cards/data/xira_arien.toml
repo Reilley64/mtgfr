@@ -21,6 +21,7 @@ toughness = 2
 
 # {B}{R}{G}, {T}: Target player draws a card.
 [[abilities]]
+oracle = "{B}{R}{G}, {T}: Target player draws a card."
 timing = "activated"
 taps_self = true
 

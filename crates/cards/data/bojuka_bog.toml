@@ -16,6 +16,7 @@ produces = "black"
 
 # When this land enters, exile target player's graveyard.
 [[abilities]]
+oracle = "When this land enters, exile target player's graveyard."
 timing = "etb"
 
 # exile target player's graveyard

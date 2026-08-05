@@ -20,6 +20,7 @@ toughness = 4
 # less from your graveyard. If you do, it gains "When this permanent is put into a graveyard from the battlefield, exile
 # it and you gain 2 life."
 [[abilities]]
+oracle = "Once during each of your turns, you may play a land from your graveyard or cast a permanent spell with mana value 3 or less from your graveyard. If you do, it gains \"When this permanent is put into a graveyard from the battlefield, exile it and you gain 2 life.\""
 timing = "static"
 
 # Once during each of your turns, you may play a land from your graveyard or cast a permanent spell with mana value 3 or

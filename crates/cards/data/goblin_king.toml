@@ -17,6 +17,7 @@ toughness = 2
 
 # Other Goblins get +1/+1 and have mountainwalk.
 [[abilities]]
+oracle = "Other Goblins get +1/+1 and have mountainwalk."
 timing = "static"
 
 # Other Goblins get +1/+1 and have mountainwalk.

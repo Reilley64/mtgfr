@@ -20,6 +20,7 @@ toughness = 1
 
 # When this creature enters, each player sacrifices a creature of their choice.
 [[abilities]]
+oracle = "When this creature enters, each player sacrifices a creature of their choice."
 timing = "etb"
 
 # each player sacrifices a creature of their choice.
@@ -31,6 +32,7 @@ filter = "creature"
 
 # Whenever a player sacrifices a permanent, put a +1/+1 counter on this creature.
 [[abilities]]
+oracle = "Whenever a player sacrifices a permanent, put a +1/+1 counter on this creature."
 timing = "any_player_sacrifices"
 filter = {}
 

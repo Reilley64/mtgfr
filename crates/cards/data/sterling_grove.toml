@@ -16,6 +16,7 @@ type = "enchantment"
 
 # Other enchantments you control have shroud.
 [[abilities]]
+oracle = "Other enchantments you control have shroud."
 timing = "static"
 
 # Other enchantments you control have shroud.
@@ -28,6 +29,7 @@ filter = { types = ["enchantment"], other = true }
 # {1}, Sacrifice this enchantment: Search your library for an enchantment card, reveal it, then
 # shuffle and put that card on top.
 [[abilities]]
+oracle = "{1}, Sacrifice this enchantment: Search your library for an enchantment card, reveal it, then shuffle and put that card on top."
 timing = "activated"
 sacrifice = "this"
 

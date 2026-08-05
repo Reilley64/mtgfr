@@ -15,6 +15,7 @@ type = "artifact"
 # {2}: This artifact becomes a 3/6 Golem artifact creature until end of combat. Activate only
 # during combat.
 [[abilities]]
+oracle = "{2}: This artifact becomes a 3/6 Golem artifact creature until end of combat. Activate only during combat."
 timing = "activated"
 
 [abilities.activation_cost]

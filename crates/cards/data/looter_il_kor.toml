@@ -19,6 +19,7 @@ toughness = 1
 
 # Whenever this creature deals damage to an opponent, draw a card, then discard a card.
 [[abilities]]
+oracle = "Whenever this creature deals damage to an opponent, draw a card, then discard a card."
 timing = "deals_damage_to_opponent"
 
 # draw a card

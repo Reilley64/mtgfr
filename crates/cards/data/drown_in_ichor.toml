@@ -15,6 +15,7 @@ type = "sorcery"
 
 # Target creature gets -4/-4 until end of turn. Proliferate.
 [[abilities]]
+oracle = "Target creature gets -4/-4 until end of turn. Proliferate."
 timing = "spell"
 
 # Target creature gets -4/-4 until end of turn.

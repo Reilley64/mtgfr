@@ -10,6 +10,7 @@ type = "land"
 
 # {1}, {T}: Add {R}{W}.
 [[abilities]]
+oracle = "{1}, {T}: Add {R}{W}."
 timing = "activated"
 taps_self = true
 activation_cost = { generic = 1 }

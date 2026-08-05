@@ -18,6 +18,7 @@ toughness = 9
 # When you cast this spell, you may return target creature card from your graveyard to the
 # battlefield.
 [[abilities]]
+oracle = "When you cast this spell, you may return target creature card from your graveyard to the battlefield."
 timing = "when_you_cast_this"
 optional = true
 
@@ -30,6 +31,7 @@ target = { card_in_graveyard = { whose = "yours", filter = "creature" } }
 # Annihilator 2 (Whenever this creature attacks, defending player sacrifices two permanents of
 # their choice.)
 [[abilities]]
+oracle = "Annihilator 2 (Whenever this creature attacks, defending player sacrifices two permanents of their choice.)"
 timing = "attacks"
 
 # defending player sacrifices two permanents of their choice

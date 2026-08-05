@@ -19,6 +19,7 @@ toughness = 2
 
 # Magecraft — Whenever you cast or copy an instant or sorcery spell, draw a card.
 [[abilities]]
+oracle = "Magecraft — Whenever you cast or copy an instant or sorcery spell, draw a card."
 timing = "magecraft"
 
 # draw a card

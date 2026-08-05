@@ -16,6 +16,7 @@ type = "instant"
 
 # Return target creature card from your graveyard to your hand.
 [[abilities]]
+oracle = "Return target creature card from your graveyard to your hand."
 timing = "spell"
 
 # Return target creature card from your graveyard to your hand.
@@ -27,6 +28,7 @@ target = { card_in_graveyard = { whose = "yours", filter = "creature" } }
 # Storm (When you cast this spell, copy it for each spell cast before it this turn. You may choose new targets for
 # the copies.)
 [[abilities]]
+oracle = "Storm (When you cast this spell, copy it for each spell cast before it this turn. You may choose new targets for the copies.)"
 timing = "when_you_cast_this"
 
 # copy it for each spell cast before it this turn. You may choose new targets for the copies.

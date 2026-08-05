@@ -14,6 +14,7 @@ type = "instant"
 # Search your library for an artifact or enchantment card, reveal it, then shuffle and put that
 # card on top.
 [[abilities]]
+oracle = "Search your library for an artifact or enchantment card, reveal it, then shuffle and put that card on top."
 timing = "spell"
 
 # Search your library for an artifact or enchantment card, reveal it, then shuffle and put that

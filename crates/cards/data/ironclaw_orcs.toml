@@ -17,6 +17,7 @@ toughness = 2
 
 # This creature can't block creatures with power 2 or greater.
 [[abilities]]
+oracle = "This creature can't block creatures with power 2 or greater."
 timing = "static"
 
 # This creature can't block creatures with power 2 or greater.

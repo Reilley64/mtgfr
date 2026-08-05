@@ -18,6 +18,7 @@ toughness = 1
 
 # {T}: Add {G}.
 [[abilities]]
+oracle = "{T}: Add {G}."
 timing = "activated"
 taps_self = true
 
@@ -29,6 +30,7 @@ mana = ["green"]
 
 # Threshold — This creature gets +3/+3 as long as there are seven or more cards in your graveyard.
 [[abilities]]
+oracle = "Threshold — This creature gets +3/+3 as long as there are seven or more cards in your graveyard."
 timing = "static"
 
 # This creature gets +3/+3 as long as there are seven or more cards in your graveyard.

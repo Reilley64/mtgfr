@@ -21,6 +21,7 @@ toughness = 2
 
 # When this creature enters, return a creature you control to its owner's hand.
 [[abilities]]
+oracle = "When this creature enters, return a creature you control to its owner's hand."
 timing = "etb"
 
 # return a creature you control to its owner's hand.
@@ -31,6 +32,7 @@ target = "creature_you_control"
 
 # When this creature enters, exile target card from a graveyard.
 [[abilities]]
+oracle = "When this creature enters, exile target card from a graveyard."
 timing = "etb"
 
 # exile target card from a graveyard.

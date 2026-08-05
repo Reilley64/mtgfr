@@ -15,6 +15,7 @@ type = "instant"
 
 # Counter target instant or sorcery spell unless its controller pays {1}.
 [[abilities]]
+oracle = "Counter target instant or sorcery spell unless its controller pays {1}."
 timing = "spell"
 
 # Counter target instant or sorcery spell unless its controller pays {1}.
@@ -27,6 +28,7 @@ filter = "instant_or_sorcery"
 # Storm (When you cast this spell, copy it for each spell cast before it this turn. You may choose new targets for
 # the copies.)
 [[abilities]]
+oracle = "Storm (When you cast this spell, copy it for each spell cast before it this turn. You may choose new targets for the copies.)"
 timing = "when_you_cast_this"
 
 # copy it for each spell cast before it this turn. You may choose new targets for the copies.

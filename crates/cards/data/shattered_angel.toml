@@ -19,6 +19,7 @@ toughness = 3
 
 # Whenever a land an opponent controls enters, you may gain 3 life.
 [[abilities]]
+oracle = "Whenever a land an opponent controls enters, you may gain 3 life."
 timing = "permanent_enters"
 controller = "opponent"
 filter = { types = "land" }

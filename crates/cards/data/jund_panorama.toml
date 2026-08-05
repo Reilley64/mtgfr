@@ -15,6 +15,7 @@ produces = "colorless"
 # {1}, {T}, Sacrifice this land: Search your library for a basic Swamp, Mountain, or Forest card,
 # put it onto the battlefield tapped, then shuffle.
 [[abilities]]
+oracle = "{1}, {T}, Sacrifice this land: Search your library for a basic Swamp, Mountain, or Forest card, put it onto the battlefield tapped, then shuffle."
 timing = "activated"
 taps_self = true
 sacrifice = "this"

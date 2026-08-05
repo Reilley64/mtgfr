@@ -22,6 +22,7 @@ toughness = 4
 
 # When this creature enters, return target nonland permanent to its owner's hand.
 [[abilities]]
+oracle = "When this creature enters, return target nonland permanent to its owner's hand."
 timing = "etb"
 
 # return target nonland permanent to its owner's hand.

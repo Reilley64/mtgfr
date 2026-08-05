@@ -18,6 +18,7 @@ type = "sorcery"
 
 # All creatures get -X/-X until end of turn.
 [[abilities]]
+oracle = "All creatures get -X/-X until end of turn."
 timing = "spell"
 
 # All creatures get -X/-X until end of turn.

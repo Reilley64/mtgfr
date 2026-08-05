@@ -19,6 +19,7 @@ type = "aura"
 # When enchanted creature dies, this Aura deals damage equal to that creature's toughness to the
 # creature's controller.
 [[abilities]]
+oracle = "When enchanted creature dies, this Aura deals damage equal to that creature's toughness to the creature's controller."
 timing = "enchanted_creature_dies"
 
 # this Aura deals damage equal to that creature's toughness to the creature's controller.

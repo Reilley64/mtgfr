@@ -21,6 +21,7 @@ toughness = 0
 
 # This creature enters with X +1/+1 counters on it.
 [[abilities]]
+oracle = "This creature enters with X +1/+1 counters on it."
 timing = "static"
 
 # This creature enters with X +1/+1 counters on it.
@@ -31,6 +32,7 @@ count = "x"
 
 # {2}{G}, Remove a +1/+1 counter from this creature: Destroy target artifact or enchantment.
 [[abilities]]
+oracle = "{2}{G}, Remove a +1/+1 counter from this creature: Destroy target artifact or enchantment."
 timing = "activated"
 activation_cost = { generic = 2, green = 1 }
 remove_counters = 1

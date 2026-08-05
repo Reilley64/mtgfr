@@ -22,6 +22,7 @@ toughness = 3
 # create a tapped and attacking token that's a copy of that token. At the beginning of the next
 # end step, sacrifice those tokens.
 [[abilities]]
+oracle = "Whenever this creature attacks, for each creature token you control that entered this turn, create a tapped and attacking token that's a copy of that token. At the beginning of the next end step, sacrifice those tokens."
 timing = "attacks"
 
 # for each creature token you control that entered this turn, create a tapped and attacking

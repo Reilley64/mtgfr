@@ -18,6 +18,7 @@ toughness = 2
 
 # When this creature enters, return target instant or sorcery card from your graveyard to your hand.
 [[abilities]]
+oracle = "When this creature enters, return target instant or sorcery card from your graveyard to your hand."
 timing = "etb"
 
 # return target instant or sorcery card from your graveyard to your hand.

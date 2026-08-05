@@ -26,6 +26,7 @@ blue = 1
 # When this creature is turned face up, you may exchange control of target creature you control and target creature an
 # opponent controls.
 [[abilities]]
+oracle = "When this creature is turned face up, you may exchange control of target creature you control and target creature an opponent controls."
 timing = "turned_face_up"
 optional = true
 

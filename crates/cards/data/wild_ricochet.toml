@@ -16,6 +16,7 @@ type = "instant"
 # You may choose new targets for target instant or sorcery spell. Then copy that spell. You may choose new targets
 # for the copy.
 [[abilities]]
+oracle = "You may choose new targets for target instant or sorcery spell. Then copy that spell. You may choose new targets for the copy."
 timing = "spell"
 
 # You may choose new targets for target instant or sorcery spell.

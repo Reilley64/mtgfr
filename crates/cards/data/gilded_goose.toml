@@ -21,6 +21,7 @@ toughness = 2
 
 # When this creature enters, create a Food token.
 [[abilities]]
+oracle = "When this creature enters, create a Food token."
 timing = "etb"
 
 # create a Food token

@@ -20,6 +20,7 @@ type = "instant"
 
 # Prevent all combat damage that would be dealt this turn.
 [[abilities]]
+oracle = "Prevent all combat damage that would be dealt this turn."
 timing = "spell"
 
 # Prevent all combat damage that would be dealt this turn.

@@ -19,6 +19,7 @@ type = "instant"
 
 # You draw a card and lose 1 life.
 [[abilities]]
+oracle = "You draw a card and lose 1 life."
 timing = "spell"
 
 # You draw a card

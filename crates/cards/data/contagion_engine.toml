@@ -15,6 +15,7 @@ type = "artifact"
 
 # When this artifact enters, put a -1/-1 counter on each creature target player controls.
 [[abilities]]
+oracle = "When this artifact enters, put a -1/-1 counter on each creature target player controls."
 timing = "etb"
 
 # put a -1/-1 counter on each creature target player controls
@@ -28,6 +29,7 @@ target_player = true
 
 # {4}, {T}: Proliferate twice.
 [[abilities]]
+oracle = "{4}, {T}: Proliferate twice."
 timing = "activated"
 taps_self = true
 activation_cost = { generic = 4 }

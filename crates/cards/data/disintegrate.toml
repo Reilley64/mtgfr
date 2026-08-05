@@ -16,6 +16,7 @@ type = "sorcery"
 # Disintegrate deals X damage to any target. If it's a creature, it can't be regenerated this
 # turn, and if it would die this turn, exile it instead.
 [[abilities]]
+oracle = "Disintegrate deals X damage to any target. If it's a creature, it can't be regenerated this turn, and if it would die this turn, exile it instead."
 timing = "spell"
 
 # Disintegrate deals X damage to any target. If it's a creature, it can't be regenerated this

@@ -25,6 +25,7 @@ type = "sorcery"
 
 # Target player draws two cards.
 [[abilities]]
+oracle = "Target player draws two cards."
 timing = "spell"
 
 # Target player draws two cards.

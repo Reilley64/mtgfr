@@ -17,6 +17,7 @@ type = "instant"
 
 # Punishing Fire deals 2 damage to any target.
 [[abilities]]
+oracle = "Punishing Fire deals 2 damage to any target."
 timing = "spell"
 
 # Punishing Fire deals 2 damage to any target.
@@ -29,6 +30,7 @@ target = "any"
 # Whenever an opponent gains life, you may pay {R}. If you do, return this card from your
 # graveyard to your hand.
 [[abilities]]
+oracle = "Whenever an opponent gains life, you may pay {R}. If you do, return this card from your graveyard to your hand."
 timing = "opponent_gains_life"
 optional = true
 

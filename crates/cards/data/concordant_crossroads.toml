@@ -19,6 +19,7 @@ type = "enchantment"
 
 # All creatures have haste.
 [[abilities]]
+oracle = "All creatures have haste."
 timing = "static"
 
 # All creatures have haste.

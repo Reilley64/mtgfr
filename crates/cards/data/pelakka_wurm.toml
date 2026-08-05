@@ -20,6 +20,7 @@ toughness = 7
 
 # When this creature enters, you gain 7 life.
 [[abilities]]
+oracle = "When this creature enters, you gain 7 life."
 timing = "etb"
 
 # you gain 7 life.
@@ -30,6 +31,7 @@ amount = 7
 
 # When this creature dies, draw a card.
 [[abilities]]
+oracle = "When this creature dies, draw a card."
 timing = "dies"
 
 # draw a card.

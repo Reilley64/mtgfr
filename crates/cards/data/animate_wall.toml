@@ -16,6 +16,7 @@ type = "aura"
 
 # Enchanted Wall can attack as though it didn't have defender.
 [[abilities]]
+oracle = "Enchanted Wall can attack as though it didn't have defender."
 timing = "static"
 
 # Enchanted Wall can attack as though it didn't have defender.

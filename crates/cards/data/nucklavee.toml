@@ -18,6 +18,7 @@ toughness = 4
 
 # When this creature enters, you may return target red sorcery card from your graveyard to your hand.
 [[abilities]]
+oracle = "When this creature enters, you may return target red sorcery card from your graveyard to your hand."
 timing = "etb"
 optional = true
 
@@ -29,6 +30,7 @@ target = { card_in_graveyard = { whose = "yours", filter = { sorcery_with_color 
 
 # When this creature enters, you may return target blue instant card from your graveyard to your hand.
 [[abilities]]
+oracle = "When this creature enters, you may return target blue instant card from your graveyard to your hand."
 timing = "etb"
 optional = true
 

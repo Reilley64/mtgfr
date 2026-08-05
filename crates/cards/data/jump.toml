@@ -13,6 +13,7 @@ type = "instant"
 
 # Target creature gains flying until end of turn.
 [[abilities]]
+oracle = "Target creature gains flying until end of turn."
 timing = "spell"
 
 # Target creature gains flying until end of turn.

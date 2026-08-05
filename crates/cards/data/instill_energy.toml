@@ -18,6 +18,7 @@ type = "aura"
 # Enchanted creature can attack as though it had haste.
 # {0}: Untap enchanted creature. Activate only during your turn and only once each turn.
 [[abilities]]
+oracle = "Enchanted creature can attack as though it had haste. {0}: Untap enchanted creature. Activate only during your turn and only once each turn."
 timing = "static"
 
 # Enchanted creature can attack as though it had haste.

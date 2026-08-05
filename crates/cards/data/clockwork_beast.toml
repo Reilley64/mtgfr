@@ -22,6 +22,7 @@ also = ["artifact"]
 
 # This creature enters with seven +1/+0 counters on it.
 [[abilities]]
+oracle = "This creature enters with seven +1/+0 counters on it."
 timing = "static"
 
 # This creature enters with seven +1/+0 counters on it.
@@ -34,6 +35,7 @@ kind = "plus_one_plus_zero"
 # At end of combat, if this creature attacked or blocked this combat, remove a +1/+0 counter
 # from it.
 [[abilities]]
+oracle = "At end of combat, if this creature attacked or blocked this combat, remove a +1/+0 counter from it."
 timing = "end_of_combat"
 
 # if this creature attacked or blocked this combat

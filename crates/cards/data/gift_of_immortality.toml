@@ -21,6 +21,7 @@ type = "aura"
 
 # When enchanted creature dies, return that card to the battlefield under its owner's control.
 [[abilities]]
+oracle = "When enchanted creature dies, return that card to the battlefield under its owner's control."
 timing = "enchanted_creature_dies"
 
 # return that card to the battlefield under its owner's control

@@ -12,6 +12,7 @@ produces = "colorless"
 
 # {G}{U}, {T}: You may cast spells this turn as though they had flash.
 [[abilities]]
+oracle = "{G}{U}, {T}: You may cast spells this turn as though they had flash."
 timing = "activated"
 taps_self = true
 [abilities.activation_cost]

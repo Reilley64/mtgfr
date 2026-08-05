@@ -21,6 +21,7 @@ toughness = 4
 # Whenever this creature deals combat damage to a player, create that many 0/1 colorless Eldrazi
 # Spawn creature tokens. They have "Sacrifice this token: Add {C}."
 [[abilities]]
+oracle = "Whenever this creature deals combat damage to a player, create that many 0/1 colorless Eldrazi Spawn creature tokens. They have \"Sacrifice this token: Add {C}.\""
 timing = "deals_combat_damage_to_player"
 who = "this"
 

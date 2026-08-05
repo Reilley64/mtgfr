@@ -18,6 +18,7 @@ also = ["artifact"]
 
 # This creature attacks each combat if able.
 [[abilities]]
+oracle = "This creature attacks each combat if able."
 timing = "static"
 
 # This creature attacks each combat if able.
@@ -28,6 +29,7 @@ self_only = true
 
 # This creature can't be blocked by Walls.
 [[abilities]]
+oracle = "This creature can't be blocked by Walls."
 timing = "static"
 
 # This creature can't be blocked by Walls.

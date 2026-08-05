@@ -19,6 +19,7 @@ toughness = 2
 
 # Whenever a creature deals combat damage to one of your opponents, its controller may draw a card.
 [[abilities]]
+oracle = "Whenever a creature deals combat damage to one of your opponents, its controller may draw a card."
 timing = "deals_combat_damage_to_player"
 who = "any_creature_damaging_your_opponent"
 

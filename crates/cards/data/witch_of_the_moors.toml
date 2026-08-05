@@ -22,6 +22,7 @@ toughness = 4
 # creature of their choice and you return up to one target creature card from your graveyard to
 # your hand.
 [[abilities]]
+oracle = "At the beginning of your end step, if you gained life this turn, each opponent sacrifices a creature of their choice and you return up to one target creature card from your graveyard to your hand."
 timing = "end_step"
 
 [abilities.condition]

@@ -22,6 +22,7 @@ type = "artifact"
 # Living weapon (When this Equipment enters, create a 0/0 black Phyrexian Germ creature token,
 # then attach this to it.)
 [[abilities]]
+oracle = "Living weapon (When this Equipment enters, create a 0/0 black Phyrexian Germ creature token, then attach this to it.)"
 timing = "etb"
 
 # create a 0/0 black Phyrexian Germ creature token
@@ -37,6 +38,7 @@ mode = "attach_self_to_minted_token"
 
 # Equipped creature gets +1/+1.
 [[abilities]]
+oracle = "Equipped creature gets +1/+1."
 timing = "static"
 
 # Equipped creature gets +1/+1.
@@ -49,6 +51,7 @@ toughness = 1
 # Whenever equipped creature attacks, you may search your library for a basic land card, put it
 # onto the battlefield tapped, then shuffle.
 [[abilities]]
+oracle = "Whenever equipped creature attacks, you may search your library for a basic land card, put it onto the battlefield tapped, then shuffle."
 timing = "enchanted_creature_attacks"
 optional = true
 
@@ -62,6 +65,7 @@ tapped = true
 
 # Equip {3}
 [[abilities]]
+oracle = "Equip {3}"
 timing = "activated"
 
 [abilities.activation_cost]

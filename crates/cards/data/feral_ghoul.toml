@@ -20,6 +20,7 @@ toughness = 2
 
 # Whenever another creature you control dies, put a +1/+1 counter on this creature.
 [[abilities]]
+oracle = "Whenever another creature you control dies, put a +1/+1 counter on this creature."
 timing = "creature_you_control_dies"
 
 # put a +1/+1 counter on this creature
@@ -31,6 +32,7 @@ target = "this"
 
 # When this creature dies, each opponent gets a number of rad counters equal to its power.
 [[abilities]]
+oracle = "When this creature dies, each opponent gets a number of rad counters equal to its power."
 timing = "dies"
 
 # each opponent gets a number of rad counters equal to its power

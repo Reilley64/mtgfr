@@ -17,6 +17,7 @@ toughness = 3
 
 # {T}: This creature deals 2 damage to any target and 3 damage to you.
 [[abilities]]
+oracle = "{T}: This creature deals 2 damage to any target and 3 damage to you."
 timing = "activated"
 taps_self = true
 

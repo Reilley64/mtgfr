@@ -16,6 +16,7 @@ type = "instant"
 
 # Electrolyze deals 2 damage divided as you choose among one or two targets.
 [[abilities]]
+oracle = "Electrolyze deals 2 damage divided as you choose among one or two targets."
 timing = "spell"
 
 # Electrolyze deals 2 damage divided as you choose among one or two targets.
@@ -29,6 +30,7 @@ divided = true
 
 # Draw a card.
 [[abilities]]
+oracle = "Draw a card."
 timing = "spell"
 
 # Draw a card.

@@ -16,6 +16,7 @@ type = "sorcery"
 
 # Each player draws X cards.
 [[abilities]]
+oracle = "Each player draws X cards."
 timing = "spell"
 
 # Each player draws X cards.

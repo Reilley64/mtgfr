@@ -20,6 +20,7 @@ type = "instant"
 # turn's upkeep.
 # You draw a card at the beginning of the next turn's upkeep.
 [[abilities]]
+oracle = "Counter target spell. Its controller may draw up to two cards at the beginning of the next turn's upkeep. You draw a card at the beginning of the next turn's upkeep."
 timing = "spell"
 
 # Counter target spell.

@@ -19,6 +19,7 @@ toughness = 2
 
 # This creature gets +1/+0 for each artifact you control.
 [[abilities]]
+oracle = "This creature gets +1/+0 for each artifact you control."
 timing = "static"
 
 # This creature gets +1/+0 for each artifact you control.
@@ -30,6 +31,7 @@ power = { per_permanent = { types = "artifact", controller = "you" } }
 
 # Magecraft — Whenever you cast or copy an instant or sorcery spell, create a Treasure token.
 [[abilities]]
+oracle = "Magecraft — Whenever you cast or copy an instant or sorcery spell, create a Treasure token."
 timing = "magecraft"
 
 # create a Treasure token.

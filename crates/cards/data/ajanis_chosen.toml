@@ -19,6 +19,7 @@ toughness = 3
 # Whenever an enchantment you control enters, create a 2/2 white Cat creature token. If that
 # enchantment is an Aura, you may attach it to the token.
 [[abilities]]
+oracle = "Whenever an enchantment you control enters, create a 2/2 white Cat creature token. If that enchantment is an Aura, you may attach it to the token."
 timing = "permanent_enters"
 filter = "enchantment"
 controller = "you"

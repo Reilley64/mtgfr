@@ -22,6 +22,7 @@ toughness = 4
 # At the beginning of your upkeep, you may gain control of target permanent until end of turn. If you do, untap it and
 # it gains haste until end of turn.
 [[abilities]]
+oracle = "At the beginning of your upkeep, you may gain control of target permanent until end of turn. If you do, untap it and it gains haste until end of turn."
 timing = "upkeep"
 optional = true
 

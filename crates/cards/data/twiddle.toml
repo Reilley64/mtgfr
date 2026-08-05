@@ -13,6 +13,7 @@ type = "instant"
 
 # You may tap or untap target artifact, creature, or land.
 [[abilities]]
+oracle = "You may tap or untap target artifact, creature, or land."
 timing = "spell"
 
 # You may tap or untap target artifact, creature, or land.

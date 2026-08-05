@@ -19,6 +19,7 @@ type = "sorcery"
 # Rebirth deals damage equal to that card's mana value to any target.
 # Exile Vengeful Rebirth.
 [[abilities]]
+oracle = "Return target card from your graveyard to your hand. If you return a nonland card to your hand this way, Vengeful Rebirth deals damage equal to that card's mana value to any target. Exile Vengeful Rebirth."
 timing = "spell"
 
 # Return target card from your graveyard to your hand.

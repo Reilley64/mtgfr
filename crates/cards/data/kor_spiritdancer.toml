@@ -18,6 +18,7 @@ toughness = 2
 
 # This creature gets +2/+2 for each Aura attached to it.
 [[abilities]]
+oracle = "This creature gets +2/+2 for each Aura attached to it."
 timing = "static"
 
 # This creature gets +2/+2 for each Aura attached to it.
@@ -30,6 +31,7 @@ toughness = { left = 2, op = "multiply", right = { auras_attached_to_source = {}
 
 # Whenever you cast an Aura spell, you may draw a card.
 [[abilities]]
+oracle = "Whenever you cast an Aura spell, you may draw a card."
 timing = "cast_spell"
 spell_filter = "aura"
 optional = true

@@ -17,6 +17,7 @@ type = "enchantment"
 # Whenever you gain life, you may pay {2}. If you do, create a 4/4 green Fungus Beast creature
 # token with trample.
 [[abilities]]
+oracle = "Whenever you gain life, you may pay {2}. If you do, create a 4/4 green Fungus Beast creature token with trample."
 timing = "you_gain_life"
 optional = true
 

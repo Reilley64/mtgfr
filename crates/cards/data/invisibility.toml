@@ -18,6 +18,7 @@ type = "aura"
 
 # Enchanted creature can't be blocked except by Walls.
 [[abilities]]
+oracle = "Enchanted creature can't be blocked except by Walls."
 timing = "static"
 
 # Enchanted creature can't be blocked except by Walls. (Authored inverted, as every "can't be

@@ -15,6 +15,7 @@ type = "enchantment"
 # At the beginning of each player's upkeep, this enchantment deals X damage to that player,
 # where X is the number of untapped lands they controlled at the beginning of this turn.
 [[abilities]]
+oracle = "At the beginning of each player's upkeep, this enchantment deals X damage to that player, where X is the number of untapped lands they controlled at the beginning of this turn."
 timing = "each_upkeep"
 
 # this enchantment deals X damage to that player, where X is the number of untapped lands they

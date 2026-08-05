@@ -13,6 +13,7 @@ type = "artifact"
 
 # {3}, {T}: Prevent the next 2 damage that would be dealt to you this turn.
 [[abilities]]
+oracle = "{3}, {T}: Prevent the next 2 damage that would be dealt to you this turn."
 timing = "activated"
 activation_cost = { generic = 3 }
 taps_self = true

@@ -21,6 +21,7 @@ toughness = 6
 
 # As this creature enters, each player chooses war or peace.
 [[abilities]]
+oracle = "As this creature enters, each player chooses war or peace."
 timing = "as_enters"
 
 [[abilities.effects]]
@@ -29,6 +30,7 @@ mode = "each_player_chooses_war_or_peace"
 
 # Creatures controlled by players who chose war get +3/+0.
 [[abilities]]
+oracle = "Creatures controlled by players who chose war get +3/+0."
 timing = "static"
 
 [[abilities.effects]]
@@ -40,6 +42,7 @@ war_choice = true
 
 # Creatures controlled by players who chose peace get +0/+3.
 [[abilities]]
+oracle = "Creatures controlled by players who chose peace get +0/+3."
 timing = "static"
 
 [[abilities.effects]]

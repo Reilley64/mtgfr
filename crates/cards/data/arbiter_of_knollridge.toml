@@ -21,6 +21,7 @@ toughness = 5
 # When this creature enters, each player's life total becomes the highest life total among all
 # players.
 [[abilities]]
+oracle = "When this creature enters, each player's life total becomes the highest life total among all players."
 timing = "etb"
 
 # each player's life total becomes the highest life total among all players.

@@ -13,6 +13,7 @@ type = "land"
 
 # When this land enters, you gain 1 life.
 [[abilities]]
+oracle = "When this land enters, you gain 1 life."
 timing = "etb"
 
 # you gain 1 life.
@@ -23,6 +24,7 @@ amount = 1
 
 # {T}: Add {B} or {R}.
 [[abilities]]
+oracle = "{T}: Add {B} or {R}."
 timing = "activated"
 taps_self = true
 

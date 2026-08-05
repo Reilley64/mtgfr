@@ -15,6 +15,7 @@ type = "artifact"
 
 # {1}, {T}: Destroy all artifacts, creatures, and enchantments.
 [[abilities]]
+oracle = "{1}, {T}: Destroy all artifacts, creatures, and enchantments."
 timing = "activated"
 taps_self = true
 

@@ -23,6 +23,7 @@ toughness = 0
 # As long as Gaea's Liege isn't attacking, its power and toughness are each equal to the number
 # of Forests you control.
 [[abilities]]
+oracle = "As long as Gaea's Liege isn't attacking, its power and toughness are each equal to the number of Forests you control."
 timing = "static"
 
 # Its power and toughness are each equal to the number of Forests you control.
@@ -36,6 +37,7 @@ toughness = { per_permanent = { types = "land", subtypes = ["Forest"], controlle
 # As long as Gaea's Liege is attacking, its power and toughness are each equal to the number of
 # Forests defending player controls.
 [[abilities]]
+oracle = "As long as Gaea's Liege is attacking, its power and toughness are each equal to the number of Forests defending player controls."
 timing = "static"
 
 # Its power and toughness are each equal to the number of Forests defending player controls.
@@ -48,6 +50,7 @@ toughness = { per_permanent = { types = "land", subtypes = ["Forest"], controlle
 
 # {T}: Target land becomes a Forest until this creature leaves the battlefield.
 [[abilities]]
+oracle = "{T}: Target land becomes a Forest until this creature leaves the battlefield."
 timing = "activated"
 taps_self = true
 

@@ -25,6 +25,7 @@ white = 1
 
 # Enchanted creature gets +1/+1 and has vigilance.
 [[abilities]]
+oracle = "Enchanted creature gets +1/+1 and has vigilance."
 timing = "static"
 
 # Enchanted creature gets +1/+1 and has vigilance.

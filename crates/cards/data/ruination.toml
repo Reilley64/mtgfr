@@ -14,6 +14,7 @@ type = "sorcery"
 
 # Destroy all nonbasic lands.
 [[abilities]]
+oracle = "Destroy all nonbasic lands."
 timing = "spell"
 
 # Destroy all nonbasic lands.

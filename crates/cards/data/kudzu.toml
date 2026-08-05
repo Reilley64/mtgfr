@@ -21,6 +21,7 @@ type = "aura"
 # When enchanted land becomes tapped, destroy it. That land's controller may attach this Aura
 # to a land of their choice.
 [[abilities]]
+oracle = "When enchanted land becomes tapped, destroy it. That land's controller may attach this Aura to a land of their choice."
 timing = "enchanted_permanent_becomes_tapped"
 
 # destroy it

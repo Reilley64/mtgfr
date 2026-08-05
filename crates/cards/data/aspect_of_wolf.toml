@@ -18,6 +18,7 @@ type = "aura"
 # Enchanted creature gets +X/+Y, where X is half the number of Forests you control, rounded
 # down, and Y is half the number of Forests you control, rounded up.
 [[abilities]]
+oracle = "Enchanted creature gets +X/+Y, where X is half the number of Forests you control, rounded down, and Y is half the number of Forests you control, rounded up."
 timing = "static"
 
 # Enchanted creature gets +X/+Y, where X is half the number of Forests you control, rounded

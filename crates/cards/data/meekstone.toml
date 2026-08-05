@@ -13,6 +13,7 @@ type = "artifact"
 
 # Creatures with power 3 or greater don't untap during their controllers' untap steps.
 [[abilities]]
+oracle = "Creatures with power 3 or greater don't untap during their controllers' untap steps."
 timing = "static"
 
 # Creatures with power 3 or greater don't untap during their controllers' untap steps.

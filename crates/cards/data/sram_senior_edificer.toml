@@ -20,6 +20,7 @@ toughness = 2
 
 # Whenever you cast an Aura, Equipment, or Vehicle spell, draw a card.
 [[abilities]]
+oracle = "Whenever you cast an Aura, Equipment, or Vehicle spell, draw a card."
 timing = "cast_spell"
 spell_filter = { has_subtype = ["Aura", "Equipment", "Vehicle"] }
 

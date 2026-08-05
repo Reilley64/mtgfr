@@ -21,6 +21,7 @@ type = "instant"
 # had become blocked by only that creature this combat become unblocked. You may have it block
 # an attacking creature of your choice.
 [[abilities]]
+oracle = "Remove target creature defending player controls from combat. Creatures it was blocking that had become blocked by only that creature this combat become unblocked. You may have it block an attacking creature of your choice."
 timing = "spell"
 
 # Remove target creature defending player controls from combat. Creatures it was blocking that

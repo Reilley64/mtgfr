@@ -15,6 +15,7 @@ type = "sorcery"
 
 # Destroy X target Mountains.
 [[abilities]]
+oracle = "Destroy X target Mountains."
 timing = "spell"
 
 # Destroy X target Mountains.

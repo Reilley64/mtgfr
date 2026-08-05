@@ -15,6 +15,7 @@ type = "aura"
 
 # Enchanted creature gets -2/-1.
 [[abilities]]
+oracle = "Enchanted creature gets -2/-1."
 timing = "static"
 
 # Enchanted creature gets -2/-1.

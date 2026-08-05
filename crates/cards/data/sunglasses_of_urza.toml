@@ -13,6 +13,7 @@ type = "artifact"
 
 # You may spend white mana as though it were red mana.
 [[abilities]]
+oracle = "You may spend white mana as though it were red mana."
 timing = "static"
 
 # You may spend white mana as though it were red mana.

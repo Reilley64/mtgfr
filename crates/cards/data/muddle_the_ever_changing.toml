@@ -23,6 +23,7 @@ toughness = 3
 # Whenever you cast an instant or sorcery spell, Muddle becomes a copy of up to one target
 # nonlegendary creature you control until end of turn, except it has myriad.
 [[abilities]]
+oracle = "Whenever you cast an instant or sorcery spell, Muddle becomes a copy of up to one target nonlegendary creature you control until end of turn, except it has myriad."
 timing = "magecraft"
 optional = true
 

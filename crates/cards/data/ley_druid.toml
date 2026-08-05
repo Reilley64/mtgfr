@@ -17,6 +17,7 @@ toughness = 1
 
 # {T}: Untap target land.
 [[abilities]]
+oracle = "{T}: Untap target land."
 timing = "activated"
 taps_self = true
 

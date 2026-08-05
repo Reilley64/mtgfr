@@ -13,6 +13,7 @@ type = "artifact"
 
 # Whenever a creature dies, you may pay {1}. If you do, you gain 1 life.
 [[abilities]]
+oracle = "Whenever a creature dies, you may pay {1}. If you do, you gain 1 life."
 timing = "creature_dies"
 optional = true
 

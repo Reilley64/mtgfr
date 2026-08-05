@@ -26,6 +26,7 @@ toughness = 6
 
 # Whenever Agent Frank Horrigan enters or attacks, proliferate twice.
 [[abilities]]
+oracle = "Whenever Agent Frank Horrigan enters or attacks, proliferate twice."
 timing = "etb"
 
 # proliferate twice.
@@ -36,6 +37,7 @@ times = 2
 
 # Whenever Agent Frank Horrigan enters or attacks, proliferate twice.
 [[abilities]]
+oracle = "Whenever Agent Frank Horrigan enters or attacks, proliferate twice."
 timing = "attacks"
 
 # proliferate twice.

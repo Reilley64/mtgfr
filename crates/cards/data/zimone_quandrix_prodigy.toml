@@ -22,6 +22,7 @@ toughness = 2
 
 # {1}, {T}: You may put a land card from your hand onto the battlefield tapped.
 [[abilities]]
+oracle = "{1}, {T}: You may put a land card from your hand onto the battlefield tapped."
 timing = "activated"
 taps_self = true
 activation_cost = { generic = 1 }

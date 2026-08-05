@@ -16,6 +16,7 @@ type = "instant"
 # Clash with an opponent. Lash Out deals 4 damage to target creature. If you win the clash, Lash Out
 # deals 2 damage to that creature's controller.
 [[abilities]]
+oracle = "Clash with an opponent. Lash Out deals 4 damage to target creature. If you win the clash, Lash Out deals 2 damage to that creature's controller."
 timing = "spell"
 
 # Clash with an opponent.

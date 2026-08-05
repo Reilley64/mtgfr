@@ -15,6 +15,7 @@ type = "artifact"
 
 # {T}: Add one mana of any color.
 [[abilities]]
+oracle = "{T}: Add one mana of any color."
 timing = "activated"
 taps_self = true
 

@@ -23,6 +23,7 @@ toughness = 2
 
 # Enchantment spells you cast cost {1} less to cast.
 [[abilities]]
+oracle = "Enchantment spells you cast cost {1} less to cast."
 timing = "static"
 
 # Enchantment spells you cast cost {1} less to cast.
@@ -35,6 +36,7 @@ filter = "enchantment"
 # Whenever an enchantment you control is put into a graveyard from the battlefield, put a
 # +1/+1 counter on this creature.
 [[abilities]]
+oracle = "Whenever an enchantment you control is put into a graveyard from the battlefield, put a +1/+1 counter on this creature."
 timing = "enchantment_you_control_dies"
 
 # put a +1/+1 counter on this creature.

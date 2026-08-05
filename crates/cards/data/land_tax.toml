@@ -20,6 +20,7 @@ type = "enchantment"
 # your library for up to three basic land cards, reveal them, put them into your hand, then
 # shuffle.
 [[abilities]]
+oracle = "At the beginning of your upkeep, if an opponent controls more lands than you, you may search your library for up to three basic land cards, reveal them, put them into your hand, then shuffle."
 timing = "upkeep"
 optional = true
 

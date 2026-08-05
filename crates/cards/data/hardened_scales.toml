@@ -17,6 +17,7 @@ type = "enchantment"
 # If one or more +1/+1 counters would be put on a creature you control, that many plus one +1/+1
 # counters are put on it instead.
 [[abilities]]
+oracle = "If one or more +1/+1 counters would be put on a creature you control, that many plus one +1/+1 counters are put on it instead."
 timing = "static"
 
 # that many plus one +1/+1 counters are put on it instead

@@ -25,6 +25,7 @@ toughness = 4
 
 # Spirits you control get +1/+0.
 [[abilities]]
+oracle = "Spirits you control get +1/+0."
 timing = "static"
 
 # Spirits you control get +1/+0.
@@ -37,6 +38,7 @@ subtypes = ["Spirit"]
 
 # Whenever one or more cards leave your graveyard, create a 3/2 red and white Spirit creature token.
 [[abilities]]
+oracle = "Whenever one or more cards leave your graveyard, create a 3/2 red and white Spirit creature token."
 timing = "cards_leave_your_graveyard"
 
 # create a 3/2 red and white Spirit creature token.

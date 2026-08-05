@@ -16,6 +16,7 @@ type = "instant"
 
 # Exile target creature. Its controller manifests the top card of their library.
 [[abilities]]
+oracle = "Exile target creature. Its controller manifests the top card of their library."
 timing = "spell"
 
 # Exile target creature.

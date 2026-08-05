@@ -26,6 +26,7 @@ target = "creature"
 
 # You lose 2 life.
 [[abilities]]
+oracle = "You lose 2 life."
 timing = "spell"
 
 # You lose 2 life.

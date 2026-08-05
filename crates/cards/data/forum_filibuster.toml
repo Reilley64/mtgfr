@@ -17,6 +17,7 @@ type = "enchantment"
 # flying. When you do, return up to one target Aura or Equipment card from your graveyard to the
 # battlefield attached to that token.
 [[abilities]]
+oracle = "At the beginning of your upkeep, create a 2/1 white and black Inkling creature token with flying. When you do, return up to one target Aura or Equipment card from your graveyard to the battlefield attached to that token."
 timing = "upkeep"
 
 # create a 2/1 white and black Inkling creature token with flying

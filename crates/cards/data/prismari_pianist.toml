@@ -20,6 +20,7 @@ toughness = 1
 # Whenever you cast an instant or sorcery spell, create a 1/1 blue and red Elemental creature token.
 # If that spell's mana value is 5 or greater, create three of those tokens instead.
 [[abilities]]
+oracle = "Whenever you cast an instant or sorcery spell, create a 1/1 blue and red Elemental creature token. If that spell's mana value is 5 or greater, create three of those tokens instead."
 timing = "cast_spell"
 spell_filter = "instant_or_sorcery"
 

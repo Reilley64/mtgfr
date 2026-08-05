@@ -15,6 +15,7 @@ type = "instant"
 
 # Target player draws X cards.
 [[abilities]]
+oracle = "Target player draws X cards."
 timing = "spell"
 
 # Target player draws X cards.

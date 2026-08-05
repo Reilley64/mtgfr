@@ -23,6 +23,7 @@ toughness = 1
 # At the beginning of combat on your turn, if you control three or more creatures, this creature
 # gets +1/+1 until end of turn and you gain 1 life.
 [[abilities]]
+oracle = "At the beginning of combat on your turn, if you control three or more creatures, this creature gets +1/+1 until end of turn and you gain 1 life."
 timing = "begin_combat"
 
 # this creature gets +1/+1 until end of turn

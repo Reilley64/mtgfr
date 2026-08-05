@@ -24,6 +24,7 @@ blue = 1
 
 # When this creature is turned face up, change the target of target spell or ability with a single target.
 [[abilities]]
+oracle = "When this creature is turned face up, change the target of target spell or ability with a single target."
 timing = "turned_face_up"
 
 # change the target of target spell or ability with a single target

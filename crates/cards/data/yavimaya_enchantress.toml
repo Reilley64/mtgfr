@@ -17,6 +17,7 @@ toughness = 2
 
 # This creature gets +1/+1 for each enchantment on the battlefield.
 [[abilities]]
+oracle = "This creature gets +1/+1 for each enchantment on the battlefield."
 timing = "static"
 
 # This creature gets +1/+1 for each enchantment on the battlefield.

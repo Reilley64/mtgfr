@@ -16,6 +16,7 @@ type = "sorcery"
 
 # Destroy all artifacts, creatures, and enchantments.
 [[abilities]]
+oracle = "Destroy all artifacts, creatures, and enchantments."
 timing = "spell"
 
 # Destroy all artifacts, creatures, and enchantments.

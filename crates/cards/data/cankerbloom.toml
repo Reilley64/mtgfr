@@ -21,6 +21,7 @@ toughness = 2
 
 # {1}, Sacrifice this creature: Choose one —
 [[abilities]]
+oracle = "{1}, Sacrifice this creature: Choose one —"
 timing = "activated"
 activation_cost = { generic = 1 }
 sacrifice = "this"

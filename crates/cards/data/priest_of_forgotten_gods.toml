@@ -19,6 +19,7 @@ toughness = 2
 # {T}, Sacrifice two other creatures: Any number of target players each lose 2 life and sacrifice
 # a creature of their choice. You add {B}{B} and draw a card.
 [[abilities]]
+oracle = "{T}, Sacrifice two other creatures: Any number of target players each lose 2 life and sacrifice a creature of their choice. You add {B}{B} and draw a card."
 timing = "activated"
 taps_self = true
 sacrifice = { creature = { other = true }, count = 2 }

@@ -14,6 +14,7 @@ type = "sorcery"
 
 # Exile two target nonartifact creatures.
 [[abilities]]
+oracle = "Exile two target nonartifact creatures."
 timing = "spell"
 
 # Exile two target nonartifact creatures.
@@ -25,6 +26,7 @@ count = { min = 2, max = 2 }
 
 # Ashes to Ashes deals 5 damage to you.
 [[abilities]]
+oracle = "Ashes to Ashes deals 5 damage to you."
 timing = "spell"
 
 # Ashes to Ashes deals 5 damage to you.

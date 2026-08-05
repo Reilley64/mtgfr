@@ -23,6 +23,7 @@ toughness = 0
 
 # Lily Bowen enters with two +1/+1 counters on it.
 [[abilities]]
+oracle = "Lily Bowen enters with two +1/+1 counters on it."
 timing = "static"
 
 # Lily Bowen enters with two +1/+1 counters on it.
@@ -35,6 +36,7 @@ count = 2
 # is 16 or less. Otherwise, remove all but one +1/+1 counter from it, then you gain 1 life for
 # each +1/+1 counter removed this way.
 [[abilities]]
+oracle = "At the beginning of your upkeep, double the number of +1/+1 counters on Lily Bowen if its power is 16 or less. Otherwise, remove all but one +1/+1 counter from it, then you gain 1 life for each +1/+1 counter removed this way."
 timing = "upkeep"
 
 # double the number of +1/+1 counters on Lily Bowen if its power is 16 or less. Otherwise, remove

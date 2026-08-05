@@ -23,6 +23,7 @@ type = "enchantment"
 # Sacrifice it at the beginning of the next end step. (To populate, create a token that's a copy of
 # a creature token you control.)
 [[abilities]]
+oracle = "At the beginning of combat on your turn, populate. The token created this way gains haste. Sacrifice it at the beginning of the next end step. (To populate, create a token that's a copy of a creature token you control.)"
 timing = "begin_combat"
 
 # populate. (To populate, create a token that's a copy of a creature token you control.) The token

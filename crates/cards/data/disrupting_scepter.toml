@@ -13,6 +13,7 @@ type = "artifact"
 
 # {3}, {T}: Target player discards a card. Activate only during your turn.
 [[abilities]]
+oracle = "{3}, {T}: Target player discards a card. Activate only during your turn."
 timing = "activated"
 taps_self = true
 

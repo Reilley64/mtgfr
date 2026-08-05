@@ -18,6 +18,7 @@ type = "sorcery"
 # Exile X target creatures. For each creature exiled this way, its controller creates a 2/2 green
 # Boar creature token.
 [[abilities]]
+oracle = "Exile X target creatures. For each creature exiled this way, its controller creates a 2/2 green Boar creature token."
 timing = "spell"
 
 # Exile X target creatures.

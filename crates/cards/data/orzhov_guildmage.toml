@@ -18,6 +18,7 @@ toughness = 2
 
 # {2}{W}: Target player gains 1 life.
 [[abilities]]
+oracle = "{2}{W}: Target player gains 1 life."
 timing = "activated"
 activation_cost = { generic = 2, white = 1 }
 
@@ -30,6 +31,7 @@ amount = 1
 
 # {2}{B}: Each player loses 1 life.
 [[abilities]]
+oracle = "{2}{B}: Each player loses 1 life."
 timing = "activated"
 activation_cost = { generic = 2, black = 1 }
 

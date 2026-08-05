@@ -25,6 +25,7 @@ toughness = 2
 # spell from among them without paying its mana cost. Then put the rest on the bottom of your
 # library in a random order.
 [[abilities]]
+oracle = "When this creature enters, exile the top eight cards of your library. You may cast an Aura spell from among them without paying its mana cost. Then put the rest on the bottom of your library in a random order."
 timing = "etb"
 
 # exile the top eight cards of your library. You may cast an Aura spell from among them without
@@ -38,6 +39,7 @@ filter = "aura"
 # Whenever this creature attacks, it gets +X/+X until end of turn, where X is the number of Auras
 # you control.
 [[abilities]]
+oracle = "Whenever this creature attacks, it gets +X/+X until end of turn, where X is the number of Auras you control."
 timing = "attacks"
 
 # it gets +X/+X until end of turn, where X is the number of Auras you control

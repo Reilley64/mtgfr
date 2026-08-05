@@ -21,6 +21,7 @@ toughness = 4
 # Whenever a creature dealt damage by this creature this turn dies, put a +1/+1 counter on this
 # creature.
 [[abilities]]
+oracle = "Whenever a creature dealt damage by this creature this turn dies, put a +1/+1 counter on this creature."
 timing = "creature_dealt_damage_by_this_dies"
 
 # Put a +1/+1 counter on this creature.

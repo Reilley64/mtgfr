@@ -22,6 +22,7 @@ type = "aura"
 # Enchanted creature has indestructible and is goaded. (It attacks each combat if able and attacks
 # a player other than you if able.)
 [[abilities]]
+oracle = "Enchanted creature has indestructible and is goaded. (It attacks each combat if able and attacks a player other than you if able.)"
 timing = "static"
 
 # Enchanted creature has indestructible and is goaded.
@@ -35,6 +36,7 @@ goad = true
 
 # {1}{W}: Exile enchanted creature.
 [[abilities]]
+oracle = "{1}{W}: Exile enchanted creature."
 timing = "activated"
 
 [abilities.activation_cost]

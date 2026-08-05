@@ -25,6 +25,7 @@ toughness = 2
 # Whenever Kaalia attacks an opponent, you may put an Angel, Demon, or Dragon creature card from
 # your hand onto the battlefield tapped and attacking that opponent.
 [[abilities]]
+oracle = "Whenever Kaalia attacks an opponent, you may put an Angel, Demon, or Dragon creature card from your hand onto the battlefield tapped and attacking that opponent."
 timing = "attacks"
 
 # you may put an Angel, Demon, or Dragon creature card from your hand onto the battlefield tapped

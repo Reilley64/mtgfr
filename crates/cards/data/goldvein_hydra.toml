@@ -20,6 +20,7 @@ toughness = 0
 
 # This creature enters with X +1/+1 counters on it.
 [[abilities]]
+oracle = "This creature enters with X +1/+1 counters on it."
 timing = "static"
 
 # This creature enters with X +1/+1 counters on it.
@@ -30,6 +31,7 @@ count = "x"
 
 # When this creature dies, create a number of tapped Treasure tokens equal to its power.
 [[abilities]]
+oracle = "When this creature dies, create a number of tapped Treasure tokens equal to its power."
 timing = "dies"
 
 # create a number of tapped Treasure tokens equal to its power

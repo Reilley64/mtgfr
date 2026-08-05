@@ -20,6 +20,7 @@ also = ["artifact"]
 
 # This creature enters with X +1/+1 counters on it.
 [[abilities]]
+oracle = "This creature enters with X +1/+1 counters on it."
 timing = "static"
 
 # This creature enters with X +1/+1 counters on it.
@@ -31,6 +32,7 @@ count = "x"
 # When this creature dies, create a 1/1 colorless Thopter artifact creature token with flying
 # for each +1/+1 counter on this creature.
 [[abilities]]
+oracle = "When this creature dies, create a 1/1 colorless Thopter artifact creature token with flying for each +1/+1 counter on this creature."
 timing = "dies"
 
 # create a 1/1 colorless Thopter artifact creature token with flying for each +1/+1 counter

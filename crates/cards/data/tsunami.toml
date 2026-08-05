@@ -14,6 +14,7 @@ type = "sorcery"
 
 # Destroy all Islands.
 [[abilities]]
+oracle = "Destroy all Islands."
 timing = "spell"
 
 # Destroy all Islands.

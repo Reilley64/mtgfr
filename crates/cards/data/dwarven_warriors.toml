@@ -17,6 +17,7 @@ toughness = 1
 
 # {T}: Target creature with power 2 or less can't be blocked this turn.
 [[abilities]]
+oracle = "{T}: Target creature with power 2 or less can't be blocked this turn."
 timing = "activated"
 taps_self = true
 

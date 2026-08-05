@@ -15,6 +15,7 @@ type = "sorcery"
 
 # Add {R} for each tapped land your opponents control.
 [[abilities]]
+oracle = "Add {R} for each tapped land your opponents control."
 timing = "spell"
 
 # Add {R} for each tapped land an opponent controls.

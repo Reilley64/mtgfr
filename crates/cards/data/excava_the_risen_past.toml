@@ -26,6 +26,7 @@ toughness = 3
 # it. It's a 1/1 Spirit creature with flying in addition to its other types. (If a creature with a
 # finality counter on it would die, exile it instead.)
 [[abilities]]
+oracle = "Whenever Excava attacks, return up to one target artifact, creature, or non-Aura enchantment card with mana value 3 or less from your graveyard to the battlefield with a finality counter on it. It's a 1/1 Spirit creature with flying in addition to its other types. (If a creature with a finality counter on it would die, exile it instead.)"
 timing = "attacks"
 optional = true
 

@@ -13,6 +13,7 @@ type = "enchantment"
 
 # Whenever you cast a permanent spell with a mana cost that contains {X}, double the value of X.
 [[abilities]]
+oracle = "Whenever you cast a permanent spell with a mana cost that contains {X}, double the value of X."
 timing = "static"
 
 # double the value of X.

@@ -16,6 +16,7 @@ produces = "white"
 # {W}, {T}: Put target card from your graveyard on the bottom of your library. Activate only
 # if you control two or more white permanents.
 [[abilities]]
+oracle = "{W}, {T}: Put target card from your graveyard on the bottom of your library. Activate only if you control two or more white permanents."
 timing = "activated"
 taps_self = true
 activation_cost = { white = 1 }

@@ -18,6 +18,7 @@ toughness = 1
 # {T}: Target creature you control gains protection from the color of your choice until end of
 # turn.
 [[abilities]]
+oracle = "{T}: Target creature you control gains protection from the color of your choice until end of turn."
 timing = "activated"
 taps_self = true
 

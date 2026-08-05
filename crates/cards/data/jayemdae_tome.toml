@@ -14,6 +14,7 @@ type = "artifact"
 
 # {4}, {T}: Draw a card.
 [[abilities]]
+oracle = "{4}, {T}: Draw a card."
 timing = "activated"
 taps_self = true
 

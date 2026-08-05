@@ -18,6 +18,7 @@ toughness = 2
 
 # Landfall — Whenever a land you control enters, proliferate.
 [[abilities]]
+oracle = "Landfall — Whenever a land you control enters, proliferate."
 timing = "permanent_enters"
 filter = "land"
 controller = "you"

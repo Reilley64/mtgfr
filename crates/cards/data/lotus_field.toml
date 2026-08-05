@@ -15,6 +15,7 @@ type = "land"
 
 # When this land enters, sacrifice two lands.
 [[abilities]]
+oracle = "When this land enters, sacrifice two lands."
 timing = "etb"
 
 # sacrifice two lands.
@@ -26,6 +27,7 @@ count = 2
 
 # {T}: Add three mana of any one color.
 [[abilities]]
+oracle = "{T}: Add three mana of any one color."
 timing = "activated"
 taps_self = true
 

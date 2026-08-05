@@ -17,6 +17,7 @@ type = "sorcery"
 # Chain Reaction deals X damage to each creature, where X is the number of creatures on the
 # battlefield.
 [[abilities]]
+oracle = "Chain Reaction deals X damage to each creature, where X is the number of creatures on the battlefield."
 timing = "spell"
 
 # Chain Reaction deals X damage to each creature, where X is the number of creatures on the

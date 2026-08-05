@@ -15,6 +15,7 @@ type = "instant"
 
 # Destroy target artifact, enchantment, or planeswalker.
 [[abilities]]
+oracle = "Destroy target artifact, enchantment, or planeswalker."
 timing = "spell"
 
 # Destroy target artifact, enchantment, or planeswalker.

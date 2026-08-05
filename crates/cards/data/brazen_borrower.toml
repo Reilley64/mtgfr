@@ -38,6 +38,7 @@ type = "instant"
 
 # Return target nonland permanent an opponent controls to its owner's hand.
 [[adventure.abilities]]
+oracle = "Return target nonland permanent an opponent controls to its owner's hand."
 timing = "spell"
 
 # Return target nonland permanent an opponent controls to its owner's hand.

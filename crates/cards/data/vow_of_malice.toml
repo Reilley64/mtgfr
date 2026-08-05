@@ -18,6 +18,7 @@ type = "aura"
 
 # Enchanted creature gets +2/+2, has intimidate, and can't attack you or planeswalkers you control.
 [[abilities]]
+oracle = "Enchanted creature gets +2/+2, has intimidate, and can't attack you or planeswalkers you control."
 timing = "static"
 
 # Enchanted creature gets +2/+2, has intimidate, and can't attack you or planeswalkers you control.

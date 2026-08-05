@@ -17,6 +17,7 @@ type = "aura"
 
 # Enchanted creature can't attack or block, and its activated abilities can't be activated.
 [[abilities]]
+oracle = "Enchanted creature can't attack or block, and its activated abilities can't be activated."
 timing = "static"
 
 # Enchanted creature can't attack or block, and its activated abilities can't be activated.
@@ -29,6 +30,7 @@ activated_abilities = "none"
 
 # Whenever a creature an opponent controls enters, you may attach this Aura to that creature.
 [[abilities]]
+oracle = "Whenever a creature an opponent controls enters, you may attach this Aura to that creature."
 timing = "permanent_enters"
 filter = "creature"
 controller = "opponent"

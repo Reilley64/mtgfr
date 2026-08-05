@@ -23,6 +23,7 @@ also = ["artifact"]
 
 # Creature tokens you control have haste.
 [[abilities]]
+oracle = "Creature tokens you control have haste."
 timing = "static"
 
 # Creature tokens you control have haste.
@@ -36,6 +37,7 @@ keywords = ["haste"]
 # token. Then you may choose a token you control. If you do, each other token you control becomes a
 # copy of that token.
 [[abilities]]
+oracle = "At the beginning of combat on your turn, create a 2/1 blue Phyrexian Myr artifact creature token. Then you may choose a token you control. If you do, each other token you control becomes a copy of that token."
 timing = "begin_combat"
 
 # create a 2/1 blue Phyrexian Myr artifact creature token

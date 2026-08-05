@@ -17,6 +17,7 @@ type = "aura"
 
 # As this Aura enters, choose a basic land type.
 [[abilities]]
+oracle = "As this Aura enters, choose a basic land type."
 timing = "as_enters"
 
 # choose a basic land type.
@@ -26,6 +27,7 @@ mode = "choose_basic_land_type"
 
 # Enchanted land is the chosen type.
 [[abilities]]
+oracle = "Enchanted land is the chosen type."
 timing = "static"
 
 # Enchanted land is the chosen type.

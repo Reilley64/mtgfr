@@ -13,6 +13,7 @@ produces = "colorless"
 
 # {1}, {T}: Add one mana of any color.
 [[abilities]]
+oracle = "{1}, {T}: Add one mana of any color."
 timing = "activated"
 taps_self = true
 activation_cost = { generic = 1 }
@@ -27,6 +28,7 @@ track_provenance = true
 # When you spend this mana to cast your commander, scry X, where X is the number of times it's
 # been cast from the command zone this game.
 [[abilities]]
+oracle = "When you spend this mana to cast your commander, scry X, where X is the number of times it's been cast from the command zone this game."
 timing = "spend_mana_to_cast"
 spend_predicate = "commander"
 

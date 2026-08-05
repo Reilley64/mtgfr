@@ -26,6 +26,7 @@ toughness = 2
 
 # Whenever an opponent draws their second card each turn, this creature becomes prepared.
 [[abilities]]
+oracle = "Whenever an opponent draws their second card each turn, this creature becomes prepared."
 timing = "player_draws"
 drawer = "opponent"
 nth_each_turn = 2

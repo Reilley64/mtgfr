@@ -17,6 +17,7 @@ type = "artifact"
 
 # When this artifact enters, proliferate.
 [[abilities]]
+oracle = "When this artifact enters, proliferate."
 timing = "etb"
 
 # proliferate
@@ -27,6 +28,7 @@ times = 1
 
 # {T}: Add one mana of any color.
 [[abilities]]
+oracle = "{T}: Add one mana of any color."
 timing = "activated"
 taps_self = true
 
@@ -38,6 +40,7 @@ mana = ["any"]
 
 # Corrupted — {T}: Add three mana of any one color. Activate only if an opponent has three or more poison counters.
 [[abilities]]
+oracle = "Corrupted — {T}: Add three mana of any one color. Activate only if an opponent has three or more poison counters."
 timing = "activated"
 taps_self = true
 

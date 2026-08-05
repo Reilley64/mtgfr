@@ -14,6 +14,7 @@ type = "artifact"
 
 # {5}, {T}: Create a 1/1 colorless Insect artifact creature token with flying named Wasp.
 [[abilities]]
+oracle = "{5}, {T}: Create a 1/1 colorless Insect artifact creature token with flying named Wasp."
 timing = "activated"
 taps_self = true
 

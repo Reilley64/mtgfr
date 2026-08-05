@@ -13,6 +13,7 @@ type = "artifact"
 
 # {3}, {T}: This artifact deals 1 damage to any target.
 [[abilities]]
+oracle = "{3}, {T}: This artifact deals 1 damage to any target."
 timing = "activated"
 taps_self = true
 

@@ -14,6 +14,7 @@ type = "enchantment"
 
 # Whenever a creature attacks, you gain 1 life.
 [[abilities]]
+oracle = "Whenever a creature attacks, you gain 1 life."
 timing = "creature_attacks"
 
 # you gain 1 life.

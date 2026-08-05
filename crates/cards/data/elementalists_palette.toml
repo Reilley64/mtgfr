@@ -15,6 +15,7 @@ type = "artifact"
 
 # {T}: Add one mana of any color.
 [[abilities]]
+oracle = "{T}: Add one mana of any color."
 timing = "activated"
 taps_self = true
 
@@ -26,6 +27,7 @@ mana = ["any"]
 
 # Whenever you cast a spell with {X} in its mana cost, put two charge counters on this artifact.
 [[abilities]]
+oracle = "Whenever you cast a spell with {X} in its mana cost, put two charge counters on this artifact."
 timing = "cast_spell"
 spell_filter = "has_x"
 caster = "you"
@@ -41,6 +43,7 @@ target = "this"
 # {T}: Add {C} for each charge counter on this artifact. Spend this mana only on costs that
 # contain {X}.
 [[abilities]]
+oracle = "{T}: Add {C} for each charge counter on this artifact. Spend this mana only on costs that contain {X}."
 timing = "activated"
 taps_self = true
 

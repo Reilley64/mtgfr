@@ -34,6 +34,7 @@ amount = 3
 
 # Target creature gets +4/+4 until end of turn.
 [[abilities]]
+oracle = "Target creature gets +4/+4 until end of turn."
 timing = "spell"
 
 # Target creature gets +4/+4 until end of turn.

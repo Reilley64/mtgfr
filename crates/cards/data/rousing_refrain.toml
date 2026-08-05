@@ -26,6 +26,7 @@ red = 1
 # Add {R} for each card in target opponent's hand. Until end of turn, you don't lose this mana as
 # steps and phases end. Exile Rousing Refrain with three time counters on it.
 [[abilities]]
+oracle = "Add {R} for each card in target opponent's hand. Until end of turn, you don't lose this mana as steps and phases end. Exile Rousing Refrain with three time counters on it."
 timing = "spell"
 
 # Add {R} for each card in target opponent's hand. Until end of turn, you don't lose this mana as

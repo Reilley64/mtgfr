@@ -22,6 +22,7 @@ toughness = 1
 
 # When this creature leaves the battlefield, it deals 6 damage to target creature.
 [[abilities]]
+oracle = "When this creature leaves the battlefield, it deals 6 damage to target creature."
 timing = "this_leaves_battlefield"
 
 # it deals 6 damage to target creature.

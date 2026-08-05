@@ -17,6 +17,7 @@ type = "sorcery"
 
 # Draw three cards.
 [[abilities]]
+oracle = "Draw three cards."
 timing = "spell"
 
 # Draw three cards.

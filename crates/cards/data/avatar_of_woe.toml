@@ -21,6 +21,7 @@ toughness = 5
 
 # {T}: Destroy target creature. It can't be regenerated.
 [[abilities]]
+oracle = "{T}: Destroy target creature. It can't be regenerated."
 timing = "activated"
 taps_self = true
 

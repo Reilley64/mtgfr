@@ -20,6 +20,7 @@ toughness = 1
 
 # Whenever this creature or another creature dies, target player loses 1 life and you gain 1 life.
 [[abilities]]
+oracle = "Whenever this creature or another creature dies, target player loses 1 life and you gain 1 life."
 timing = "creature_dies_including_this"
 
 # target player loses 1 life and you gain 1 life

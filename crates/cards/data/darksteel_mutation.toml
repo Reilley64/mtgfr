@@ -18,6 +18,7 @@ type = "aura"
 # Enchanted creature is an Insect artifact creature with base power and toughness 0/1 and has
 # indestructible, and it loses all other abilities, card types, and creature types.
 [[abilities]]
+oracle = "Enchanted creature is an Insect artifact creature with base power and toughness 0/1 and has indestructible, and it loses all other abilities, card types, and creature types."
 timing = "static"
 
 # Enchanted creature is an Insect artifact creature with base power and toughness 0/1
@@ -30,6 +31,7 @@ toughness = 1
 # Enchanted creature is an Insect artifact creature with base power and toughness 0/1 and has
 # indestructible, and it loses all other abilities, card types, and creature types.
 [[abilities]]
+oracle = "Enchanted creature is an Insect artifact creature with base power and toughness 0/1 and has indestructible, and it loses all other abilities, card types, and creature types."
 timing = "static"
 
 # is an Insect artifact creature ... and it loses all other abilities, card types, and creature types
@@ -44,6 +46,7 @@ lose_all_abilities = true
 # Enchanted creature is an Insect artifact creature with base power and toughness 0/1 and has
 # indestructible, and it loses all other abilities, card types, and creature types.
 [[abilities]]
+oracle = "Enchanted creature is an Insect artifact creature with base power and toughness 0/1 and has indestructible, and it loses all other abilities, card types, and creature types."
 timing = "static"
 
 # has indestructible

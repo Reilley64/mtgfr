@@ -18,6 +18,7 @@ type = "aura"
 
 # Whenever you're dealt damage, put that many vitality counters on this Aura.
 [[abilities]]
+oracle = "Whenever you're dealt damage, put that many vitality counters on this Aura."
 timing = "you_are_dealt_damage"
 
 # put that many vitality counters on this Aura.
@@ -31,6 +32,7 @@ target = "this"
 # At the beginning of your upkeep, you may remove a vitality counter from this Aura. If you do,
 # you gain 1 life.
 [[abilities]]
+oracle = "At the beginning of your upkeep, you may remove a vitality counter from this Aura. If you do, you gain 1 life."
 timing = "upkeep"
 optional = true
 condition = { type = "compare", left = { per_counter_of_kind = "vitality" }, op = "at_least", right = 1 }

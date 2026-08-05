@@ -17,6 +17,7 @@ toughness = 2
 
 # {1}{R}: Target creature gains haste until end of turn.
 [[abilities]]
+oracle = "{1}{R}: Target creature gains haste until end of turn."
 timing = "activated"
 activation_cost = { generic = 1, red = 1 }
 
@@ -31,6 +32,7 @@ keywords = ["haste"]
 
 # {1}{W}: Target creature gains first strike until end of turn.
 [[abilities]]
+oracle = "{1}{W}: Target creature gains first strike until end of turn."
 timing = "activated"
 activation_cost = { generic = 1, white = 1 }
 

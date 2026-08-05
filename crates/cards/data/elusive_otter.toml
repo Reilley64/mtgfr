@@ -35,6 +35,7 @@ type = "sorcery"
 
 # Distribute X +1/+1 counters among any number of target creatures you control.
 [[adventure.abilities]]
+oracle = "Distribute X +1/+1 counters among any number of target creatures you control."
 timing = "spell"
 
 # Distribute X +1/+1 counters among any number of target creatures you control.

@@ -18,6 +18,7 @@ toughness = 1
 
 # Sacrifice this creature: It deals 1 damage to any target.
 [[abilities]]
+oracle = "Sacrifice this creature: It deals 1 damage to any target."
 timing = "activated"
 sacrifice = "this"
 

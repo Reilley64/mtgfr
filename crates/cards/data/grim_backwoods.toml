@@ -14,6 +14,7 @@ produces = "colorless"
 
 # {T}: Add {C}.
 [[abilities]]
+oracle = "{T}: Add {C}."
 timing = "activated"
 taps_self = true
 
@@ -25,6 +26,7 @@ mana = ["colorless"]
 
 # {2}{B}{G}, {T}, Sacrifice a creature: Draw a card.
 [[abilities]]
+oracle = "{2}{B}{G}, {T}, Sacrifice a creature: Draw a card."
 timing = "activated"
 taps_self = true
 sacrifice = "creature"

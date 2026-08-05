@@ -19,6 +19,7 @@ type = "sorcery"
 
 # Fireball deals X damage divided evenly, rounded down, among any number of targets.
 [[abilities]]
+oracle = "Fireball deals X damage divided evenly, rounded down, among any number of targets."
 timing = "spell"
 
 # Fireball deals X damage divided evenly, rounded down, among any number of targets.

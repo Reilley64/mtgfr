@@ -16,6 +16,7 @@ type = "enchantment"
 
 # Attacking Pests you control get +1/+0 and have deathtouch.
 [[abilities]]
+oracle = "Attacking Pests you control get +1/+0 and have deathtouch."
 timing = "static"
 
 # Attacking Pests you control get +1/+0 and have deathtouch.
@@ -31,6 +32,7 @@ keywords = ["deathtouch"]
 # {1}{G}: Exile target card from a graveyard. If a creature card is exiled this way, create a 1/1
 # black and green Pest creature token with "When this token dies, you gain 1 life."
 [[abilities]]
+oracle = "{1}{G}: Exile target card from a graveyard. If a creature card is exiled this way, create a 1/1 black and green Pest creature token with \"When this token dies, you gain 1 life.\""
 timing = "activated"
 
 [abilities.activation_cost]

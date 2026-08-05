@@ -17,6 +17,7 @@ type = "artifact"
 
 # Equipped creature gets +2/+2.
 [[abilities]]
+oracle = "Equipped creature gets +2/+2."
 timing = "static"
 
 # Equipped creature gets +2/+2.
@@ -28,6 +29,7 @@ toughness = 2
 
 # As long as equipped creature is legendary, it has hexproof.
 [[abilities]]
+oracle = "As long as equipped creature is legendary, it has hexproof."
 timing = "static"
 
 # As long as equipped creature is legendary, it has hexproof.
@@ -39,6 +41,7 @@ legendary_only = true
 
 # Equip {1}
 [[abilities]]
+oracle = "Equip {1}"
 timing = "activated"
 
 [abilities.activation_cost]

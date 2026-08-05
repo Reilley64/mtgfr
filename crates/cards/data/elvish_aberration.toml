@@ -19,6 +19,7 @@ toughness = 5
 
 # {T}: Add {G}{G}{G}.
 [[abilities]]
+oracle = "{T}: Add {G}{G}{G}."
 timing = "activated"
 taps_self = true
 

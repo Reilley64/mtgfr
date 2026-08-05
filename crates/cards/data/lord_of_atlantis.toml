@@ -18,6 +18,7 @@ toughness = 2
 # Other Merfolk get +1/+1 and have islandwalk. (They can't be blocked as long as defending
 # player controls an Island.)
 [[abilities]]
+oracle = "Other Merfolk get +1/+1 and have islandwalk. (They can't be blocked as long as defending player controls an Island.)"
 timing = "static"
 
 # Other Merfolk get +1/+1 and have islandwalk.

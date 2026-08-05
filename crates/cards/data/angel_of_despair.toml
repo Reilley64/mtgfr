@@ -20,6 +20,7 @@ toughness = 5
 
 # When this creature enters, destroy target permanent.
 [[abilities]]
+oracle = "When this creature enters, destroy target permanent."
 timing = "etb"
 
 # destroy target permanent.

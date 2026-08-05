@@ -16,6 +16,7 @@ type = "aura"
 
 # Enchanted creature gets +1/+1 and has protection from creatures.
 [[abilities]]
+oracle = "Enchanted creature gets +1/+1 and has protection from creatures."
 timing = "static"
 
 # Enchanted creature gets +1/+1 and has protection from creatures.

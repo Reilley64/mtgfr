@@ -18,6 +18,7 @@ type = "instant"
 # Clash with an opponent. Prevent all combat damage that would be dealt this turn. If you win the
 # clash, creatures your opponents control don't untap during their controllers' next untap steps.
 [[abilities]]
+oracle = "Clash with an opponent. Prevent all combat damage that would be dealt this turn. If you win the clash, creatures your opponents control don't untap during their controllers' next untap steps."
 timing = "spell"
 
 # Clash with an opponent.

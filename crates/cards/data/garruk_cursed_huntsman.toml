@@ -22,6 +22,7 @@ loyalty = 5
 # 0: Create two 2/2 black and green Wolf creature tokens with "When this token dies, put a loyalty
 # counter on each Garruk you control."
 [[abilities]]
+oracle = "0: Create two 2/2 black and green Wolf creature tokens with \"When this token dies, put a loyalty counter on each Garruk you control.\""
 timing = "activated"
 loyalty = 0
 
@@ -35,6 +36,7 @@ count = 2
 
 # −3: Destroy target creature. Draw a card.
 [[abilities]]
+oracle = "−3: Destroy target creature. Draw a card."
 timing = "activated"
 loyalty = -3
 
@@ -52,6 +54,7 @@ count = 1
 
 # −6: You get an emblem with "Creatures you control get +3/+3 and have trample."
 [[abilities]]
+oracle = "−6: You get an emblem with \"Creatures you control get +3/+3 and have trample.\""
 timing = "activated"
 loyalty = -6
 

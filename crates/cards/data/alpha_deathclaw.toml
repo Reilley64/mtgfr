@@ -22,6 +22,7 @@ toughness = 6
 
 # When this creature enters or becomes monstrous, destroy target permanent.
 [[abilities]]
+oracle = "When this creature enters or becomes monstrous, destroy target permanent."
 timing = "etb"
 
 # destroy target permanent.
@@ -32,6 +33,7 @@ target = { permanent = {} }
 
 # When this creature enters or becomes monstrous, destroy target permanent.
 [[abilities]]
+oracle = "When this creature enters or becomes monstrous, destroy target permanent."
 timing = "becomes_monstrous"
 
 # destroy target permanent.
@@ -42,6 +44,7 @@ target = { permanent = {} }
 
 # {5}{B}{G}: Monstrosity 4.
 [[abilities]]
+oracle = "{5}{B}{G}: Monstrosity 4."
 timing = "activated"
 activation_cost = { generic = 5, black = 1, green = 1 }
 

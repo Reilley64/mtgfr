@@ -16,6 +16,7 @@ type = "instant"
 
 # Destroy target permanent. Its controller creates a 3/3 green Beast creature token.
 [[abilities]]
+oracle = "Destroy target permanent. Its controller creates a 3/3 green Beast creature token."
 timing = "spell"
 
 # Destroy target permanent.

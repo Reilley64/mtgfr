@@ -22,6 +22,7 @@ toughness = 1
 # {1}{B}: Exile target card from an opponent's graveyard. If no cards are in that graveyard, flip
 # this creature.
 [[abilities]]
+oracle = "{1}{B}: Exile target card from an opponent's graveyard. If no cards are in that graveyard, flip this creature."
 timing = "activated"
 
 [abilities.activation_cost]
@@ -52,6 +53,7 @@ toughness = 2
 
 # {4}{B}: Put target creature card from a graveyard onto the battlefield under your control.
 [[back.abilities]]
+oracle = "{4}{B}: Put target creature card from a graveyard onto the battlefield under your control."
 timing = "activated"
 
 [back.abilities.activation_cost]

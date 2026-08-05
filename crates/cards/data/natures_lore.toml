@@ -16,6 +16,7 @@ type = "sorcery"
 
 # Search your library for a Forest card, put that card onto the battlefield, then shuffle.
 [[abilities]]
+oracle = "Search your library for a Forest card, put that card onto the battlefield, then shuffle."
 timing = "spell"
 
 # Search your library for a Forest card, put that card onto the battlefield, then shuffle.

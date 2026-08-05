@@ -16,6 +16,7 @@ type = "instant"
 # Counter target spell unless its controller pays {X}. If that player doesn't, they tap all
 # lands with mana abilities they control and lose all unspent mana.
 [[abilities]]
+oracle = "Counter target spell unless its controller pays {X}. If that player doesn't, they tap all lands with mana abilities they control and lose all unspent mana."
 timing = "spell"
 
 # Counter target spell unless its controller pays {X}. If that player doesn't, they tap all

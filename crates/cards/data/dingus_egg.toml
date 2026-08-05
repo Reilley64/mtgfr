@@ -15,6 +15,7 @@ type = "artifact"
 # Whenever a land is put into a graveyard from the battlefield, this artifact deals 2 damage to
 # that land's controller.
 [[abilities]]
+oracle = "Whenever a land is put into a graveyard from the battlefield, this artifact deals 2 damage to that land's controller."
 timing = "land_put_into_graveyard"
 
 # ...this artifact deals 2 damage to that land's controller.

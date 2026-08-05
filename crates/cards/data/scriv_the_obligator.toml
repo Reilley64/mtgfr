@@ -32,6 +32,7 @@ toughness = 3
 # creature attacks, it gets +2/+0 until end of turn if it's attacking one of your opponents.
 # Otherwise, its controller loses 2 life."
 [[abilities]]
+oracle = "Whenever Scriv enters or attacks, create a white Aura enchantment token named Contract attached to target creature an opponent controls. The token has enchant creature and \"Whenever enchanted creature attacks, it gets +2/+0 until end of turn if it's attacking one of your opponents. Otherwise, its controller loses 2 life.\""
 timing = "etb"
 
 # create a white Aura enchantment token named Contract
@@ -51,6 +52,7 @@ target = { permanent = { types = "creature", controller = "opponent" } }
 # creature attacks, it gets +2/+0 until end of turn if it's attacking one of your opponents.
 # Otherwise, its controller loses 2 life."
 [[abilities]]
+oracle = "Whenever Scriv enters or attacks, create a white Aura enchantment token named Contract attached to target creature an opponent controls. The token has enchant creature and \"Whenever enchanted creature attacks, it gets +2/+0 until end of turn if it's attacking one of your opponents. Otherwise, its controller loses 2 life.\""
 timing = "attacks"
 
 # create a white Aura enchantment token named Contract

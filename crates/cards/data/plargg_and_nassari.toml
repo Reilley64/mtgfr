@@ -22,6 +22,7 @@ toughness = 4
 # they exile a nonland card. An opponent chooses a nonland card exiled this way. You may cast up
 # to two spells from among the other cards exiled this way without paying their mana costs.
 [[abilities]]
+oracle = "At the beginning of your upkeep, each player exiles cards from the top of their library until they exile a nonland card. An opponent chooses a nonland card exiled this way. You may cast up to two spells from among the other cards exiled this way without paying their mana costs."
 timing = "upkeep"
 
 # each player exiles cards from the top of their library until they exile a nonland card. An

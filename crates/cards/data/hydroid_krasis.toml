@@ -21,6 +21,7 @@ toughness = 0
 
 # When you cast this spell, you gain half X life and draw half X cards. Round down each time.
 [[abilities]]
+oracle = "When you cast this spell, you gain half X life and draw half X cards. Round down each time."
 timing = "when_you_cast_this"
 
 # you gain half X life
@@ -37,6 +38,7 @@ count = { left = "x", op = "divide_rounding_down", right = 2 }
 
 # This creature enters with X +1/+1 counters on it.
 [[abilities]]
+oracle = "This creature enters with X +1/+1 counters on it."
 timing = "static"
 
 # This creature enters with X +1/+1 counters on it.

@@ -23,6 +23,7 @@ loyalty = 6
 
 # 0: You draw a card and lose 1 life. Proliferate.
 [[abilities]]
+oracle = "0: You draw a card and lose 1 life. Proliferate."
 timing = "activated"
 loyalty = 0
 
@@ -47,6 +48,7 @@ times = 1
 # −2: Target creature becomes a Treasure artifact with "{T}, Sacrifice this artifact: Add one mana of
 # any color" and loses all other card types and abilities.
 [[abilities]]
+oracle = "−2: Target creature becomes a Treasure artifact with \"{T}, Sacrifice this artifact: Add one mana of any color\" and loses all other card types and abilities."
 timing = "activated"
 loyalty = -2
 
@@ -60,6 +62,7 @@ target = "creature"
 # −9: If target player has fewer than nine poison counters, they get a number of poison counters equal to the
 # difference.
 [[abilities]]
+oracle = "−9: If target player has fewer than nine poison counters, they get a number of poison counters equal to the difference."
 timing = "activated"
 loyalty = -9
 

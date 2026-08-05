@@ -21,6 +21,7 @@ toughness = 2
 
 # Whenever Laelia attacks, exile the top card of your library. You may play that card this turn.
 [[abilities]]
+oracle = "Whenever Laelia attacks, exile the top card of your library. You may play that card this turn."
 timing = "attacks"
 
 # exile the top card of your library. You may play that card this turn.
@@ -32,6 +33,7 @@ count = 1
 # Whenever one or more cards are put into exile from your library and/or your graveyard, put a
 # +1/+1 counter on Laelia.
 [[abilities]]
+oracle = "Whenever one or more cards are put into exile from your library and/or your graveyard, put a +1/+1 counter on Laelia."
 timing = "cards_exiled_from_your_library_or_graveyard"
 
 # put a +1/+1 counter on Laelia.

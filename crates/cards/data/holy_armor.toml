@@ -16,6 +16,7 @@ type = "aura"
 
 # Enchanted creature gets +0/+2.
 [[abilities]]
+oracle = "Enchanted creature gets +0/+2."
 timing = "static"
 
 # Enchanted creature gets +0/+2.
@@ -26,6 +27,7 @@ toughness = 2
 
 # {W}: Enchanted creature gets +0/+1 until end of turn.
 [[abilities]]
+oracle = "{W}: Enchanted creature gets +0/+1 until end of turn."
 timing = "activated"
 
 [abilities.activation_cost]

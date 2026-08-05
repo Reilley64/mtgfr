@@ -16,6 +16,7 @@ type = "aura"
 
 # Enchanted land is a Swamp.
 [[abilities]]
+oracle = "Enchanted land is a Swamp."
 timing = "static"
 
 # Enchanted land is a Swamp.

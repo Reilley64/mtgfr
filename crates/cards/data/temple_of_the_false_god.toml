@@ -13,6 +13,7 @@ type = "land"
 
 # {T}: Add {C}{C}. Activate only if you control five or more lands.
 [[abilities]]
+oracle = "{T}: Add {C}{C}. Activate only if you control five or more lands."
 timing = "activated"
 taps_self = true
 

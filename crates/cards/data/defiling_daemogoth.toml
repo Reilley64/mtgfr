@@ -20,6 +20,7 @@ toughness = 4
 
 # Whenever a creature you control deals combat damage to a player, you gain 1 life.
 [[abilities]]
+oracle = "Whenever a creature you control deals combat damage to a player, you gain 1 life."
 timing = "deals_combat_damage_to_player"
 who = "your_creatures"
 
@@ -32,6 +33,7 @@ amount = 1
 # At the beginning of your end step, each opponent loses X life, where X is the amount of life you
 # gained this turn.
 [[abilities]]
+oracle = "At the beginning of your end step, each opponent loses X life, where X is the amount of life you gained this turn."
 timing = "end_step"
 
 # each opponent loses X life, where X is the amount of life you gained this turn

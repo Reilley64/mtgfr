@@ -20,6 +20,7 @@ type = "artifact"
 
 # When this artifact enters, create a 1/1 white Spirit creature token with flying.
 [[abilities]]
+oracle = "When this artifact enters, create a 1/1 white Spirit creature token with flying."
 timing = "etb"
 
 # create a 1/1 white Spirit creature token with flying.

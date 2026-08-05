@@ -13,6 +13,7 @@ type = "instant"
 
 # Target blocking creature gets +7/+7 until end of turn.
 [[abilities]]
+oracle = "Target blocking creature gets +7/+7 until end of turn."
 timing = "spell"
 
 # Target blocking creature gets +7/+7 until end of turn.

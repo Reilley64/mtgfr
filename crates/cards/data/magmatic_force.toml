@@ -17,6 +17,7 @@ toughness = 7
 
 # At the beginning of each upkeep, this creature deals 3 damage to any target.
 [[abilities]]
+oracle = "At the beginning of each upkeep, this creature deals 3 damage to any target."
 timing = "each_upkeep"
 
 # this creature deals 3 damage to any target.

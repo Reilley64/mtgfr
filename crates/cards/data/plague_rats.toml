@@ -20,6 +20,7 @@ toughness = 0
 # Plague Rats's power and toughness are each equal to the number of creatures named Plague Rats
 # on the battlefield.
 [[abilities]]
+oracle = "Plague Rats's power and toughness are each equal to the number of creatures named Plague Rats on the battlefield."
 timing = "static"
 
 # power and toughness are each equal to the number of creatures named Plague Rats on the

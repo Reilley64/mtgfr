@@ -23,6 +23,7 @@ toughness = 4
 # {R}, {T}, Sacrifice another creature: Brion Stoutarm deals damage equal to the sacrificed
 # creature's power to target player or planeswalker.
 [[abilities]]
+oracle = "{R}, {T}, Sacrifice another creature: Brion Stoutarm deals damage equal to the sacrificed creature's power to target player or planeswalker."
 timing = "activated"
 taps_self = true
 activation_cost = { red = 1 }

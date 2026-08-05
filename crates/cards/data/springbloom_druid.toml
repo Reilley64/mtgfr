@@ -19,6 +19,7 @@ toughness = 1
 # When this creature enters, you may sacrifice a land. If you do, search your library for up to two
 # basic land cards, put them onto the battlefield tapped, then shuffle.
 [[abilities]]
+oracle = "When this creature enters, you may sacrifice a land. If you do, search your library for up to two basic land cards, put them onto the battlefield tapped, then shuffle."
 timing = "etb"
 
 # you may sacrifice a land.

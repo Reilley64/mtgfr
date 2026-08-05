@@ -19,6 +19,7 @@ type = "artifact"
 
 # This artifact enters with X charge counters on it.
 [[abilities]]
+oracle = "This artifact enters with X charge counters on it."
 timing = "static"
 
 # This artifact enters with X charge counters on it.

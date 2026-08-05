@@ -17,6 +17,7 @@ toughness = 3
 
 # Whenever you proliferate, each opponent loses 2 life and you gain 2 life.
 [[abilities]]
+oracle = "Whenever you proliferate, each opponent loses 2 life and you gain 2 life."
 timing = "you_proliferate"
 
 # each opponent loses 2 life and you gain 2 life.

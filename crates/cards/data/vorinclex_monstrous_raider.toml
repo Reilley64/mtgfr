@@ -25,6 +25,7 @@ toughness = 6
 # If you would put one or more counters on a permanent or player, put twice that many of each of
 # those kinds of counters on that permanent or player instead.
 [[abilities]]
+oracle = "If you would put one or more counters on a permanent or player, put twice that many of each of those kinds of counters on that permanent or player instead."
 timing = "static"
 
 # put twice that many of each of those kinds of counters on that permanent or player instead
@@ -39,6 +40,7 @@ recipients = "permanents_and_players"
 # If an opponent would put one or more counters on a permanent or player, they put half that many
 # of each of those kinds of counters on that permanent or player instead, rounded down.
 [[abilities]]
+oracle = "If an opponent would put one or more counters on a permanent or player, they put half that many of each of those kinds of counters on that permanent or player instead, rounded down."
 timing = "static"
 
 # they put half that many of each of those kinds of counters on that permanent or player instead,

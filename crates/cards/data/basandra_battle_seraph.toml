@@ -22,6 +22,7 @@ toughness = 4
 
 # Players can't cast spells during combat.
 [[abilities]]
+oracle = "Players can't cast spells during combat."
 timing = "static"
 
 [[abilities.effects]]
@@ -30,6 +31,7 @@ mode = "cant_cast_during_combat"
 
 # {R}: Target creature attacks this turn if able.
 [[abilities]]
+oracle = "{R}: Target creature attacks this turn if able."
 timing = "activated"
 
 [abilities.activation_cost]

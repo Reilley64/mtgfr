@@ -24,6 +24,7 @@ toughness = 6
 # Whenever Oros deals combat damage to a player, you may pay {2}{W}. If you do, Oros deals 3
 # damage to each nonwhite creature.
 [[abilities]]
+oracle = "Whenever Oros deals combat damage to a player, you may pay {2}{W}. If you do, Oros deals 3 damage to each nonwhite creature."
 timing = "deals_combat_damage_to_player"
 who = "this"
 optional = true

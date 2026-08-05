@@ -19,6 +19,7 @@ toughness = 1
 
 # At the beginning of your upkeep, sacrifice this creature unless you pay {U}.
 [[abilities]]
+oracle = "At the beginning of your upkeep, sacrifice this creature unless you pay {U}."
 timing = "upkeep"
 
 # Sacrifice this creature unless you pay {U}.

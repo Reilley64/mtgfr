@@ -15,6 +15,7 @@ type = "instant"
 
 # Create a 4/4 green Beast creature token.
 [[abilities]]
+oracle = "Create a 4/4 green Beast creature token."
 timing = "spell"
 
 # Create a 4/4 green Beast creature token.
@@ -25,6 +26,7 @@ token = "695b14a0-920a-47bd-bd4a-7989862cdd0a"
 
 # Storm (When you cast this spell, copy it for each spell cast before it this turn.)
 [[abilities]]
+oracle = "Storm (When you cast this spell, copy it for each spell cast before it this turn.)"
 timing = "when_you_cast_this"
 
 # copy it for each spell cast before it this turn

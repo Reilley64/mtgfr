@@ -23,6 +23,7 @@ toughness = 1
 # the next end step if it didn't attack this turn. Activate only during an opponent's turn, before
 # attackers are declared.
 [[abilities]]
+oracle = "{T}: Choose target non-Wall creature the active player has controlled continuously since the beginning of the turn. That creature attacks this turn if able. Destroy it at the beginning of the next end step if it didn't attack this turn. Activate only during an opponent's turn, before attackers are declared."
 timing = "activated"
 taps_self = true
 # Activate only during an opponent's turn, before attackers are declared.

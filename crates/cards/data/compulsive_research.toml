@@ -16,6 +16,7 @@ type = "sorcery"
 # Target player draws three cards. Then that player discards two cards unless they discard a
 # land card.
 [[abilities]]
+oracle = "Target player draws three cards. Then that player discards two cards unless they discard a land card."
 timing = "spell"
 
 # Target player draws three cards.

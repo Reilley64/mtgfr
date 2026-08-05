@@ -34,6 +34,7 @@ count = 2
 # Draw two cards and create two Treasure tokens. (They're artifacts with "{T}, Sacrifice this
 # token: Add one mana of any color.")
 [[abilities]]
+oracle = "Draw two cards and create two Treasure tokens. (They're artifacts with \"{T}, Sacrifice this token: Add one mana of any color.\")"
 timing = "spell"
 
 # create two Treasure tokens

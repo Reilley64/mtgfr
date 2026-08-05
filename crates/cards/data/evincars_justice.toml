@@ -19,6 +19,7 @@ type = "sorcery"
 
 # Evincar's Justice deals 2 damage to each creature and each player.
 [[abilities]]
+oracle = "Evincar's Justice deals 2 damage to each creature and each player."
 timing = "spell"
 
 # 2 damage to each creature

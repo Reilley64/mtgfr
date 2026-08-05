@@ -22,6 +22,7 @@ toughness = 3
 # When this creature enters, look at the top three cards of your library, then put one of them
 # into your hand and the rest on the bottom of your library in any order.
 [[abilities]]
+oracle = "When this creature enters, look at the top three cards of your library, then put one of them into your hand and the rest on the bottom of your library in any order."
 timing = "etb"
 
 # look at the top three cards of your library, then put one of them into your hand and the rest on
@@ -37,6 +38,7 @@ rest = "bottom"
 
 # When this creature enters, sacrifice it unless {W} was spent to cast it.
 [[abilities]]
+oracle = "When this creature enters, sacrifice it unless {W} was spent to cast it."
 timing = "etb"
 
 # sacrifice it unless {W} was spent to cast it.

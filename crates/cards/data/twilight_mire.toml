@@ -13,6 +13,7 @@ type = "land"
 
 # {T}: Add {C}.
 [[abilities]]
+oracle = "{T}: Add {C}."
 timing = "activated"
 taps_self = true
 
@@ -24,6 +25,7 @@ mana = ["colorless"]
 
 # {B/G}, {T}: Add {B}{B}, {B}{G}, or {G}{G}.
 [[abilities]]
+oracle = "{B/G}, {T}: Add {B}{B}, {B}{G}, or {G}{G}."
 timing = "activated"
 taps_self = true
 activation_cost = { hybrid = [["black", "green"]] }
