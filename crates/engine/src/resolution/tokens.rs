@@ -32,6 +32,7 @@ impl Game {
                 enters_tapped_and_attacking: _,
                 attacking_context,
                 must_attack_defender,
+                link_as_twin,
             } => {
                 // Mint sequential ids matching the order `apply` will push them (CR 111.1).
                 let count = self.resolve_count(count, controller, source, target, x);
@@ -117,6 +118,12 @@ impl Game {
                         // Hellkite, CR 603.7b): schedule a delayed exile against this specific
                         // minted token, not a re-scan (mirrors `CreateTokenCopy`'s
                         // `sacrifice_at_next_end_step`).
+                        // "Create Stangg Twin…" — tie the minted token to its creator so either
+                        // half can name the other once one of them has left (CR 400.7 doesn't
+                        // apply; the link is board state on both permanents).
+                        if link_as_twin {
+                            events.push(Event::TwinLinked { a: source, b: next });
+                        }
                         if exile_at_next_end_step {
                             events.push(Event::DelayedTriggerScheduled {
                                 controller,

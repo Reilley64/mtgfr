@@ -1,0 +1,24 @@
+# Destroy all Forests.
+name = "Acid Rain"
+otags = ["color-break", "hate-forest", "mass-land-denial", "removal-destroy", "removal-land", "sweeper"]
+sets = ["leg", "me4"]
+id = "6ae3c3a2-bd17-4fea-ae27-9d2d1eaf8cc0"
+default_print = "13281377-6d16-4ed3-8aa6-c47d6eb783df"
+oracle = "Destroy all Forests."
+
+[cost]
+generic = 3
+blue = 1
+
+[kind]
+type = "sorcery"
+
+# Destroy all Forests.
+[[abilities]]
+timing = "spell"
+
+# Destroy all Forests.
+[[abilities.effects]]
+type = "destroy"
+mode = "all"
+filter = { types = "land", subtypes = ["Forest"] }

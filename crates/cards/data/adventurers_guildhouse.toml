@@ -1,0 +1,26 @@
+# Green legendary creatures you control have "bands with other legendary creatures." (Any legendary creatures can
+# attack in a band as long as at least one has "bands with other legendary creatures." Bands are blocked as a group.
+# If at least two legendary creatures you control, one of which has "bands with other legendary creatures," are
+# blocking or being blocked by the same creature, you divide that creature's combat damage, not its controller, among
+# any of the creatures it's being blocked by or is blocking.)
+name = "Adventurers' Guildhouse"
+otags = ["cycle-leg-banding-land", "gives-banding", "keyword-anthem", "manaless-land", "synergy-green", "synergy-legendary", "utility-land"]
+sets = ["leg"]
+id = "bf29b215-d4f5-4641-97ef-b65d4c463e72"
+default_print = "32865e68-5842-4f17-b2ea-4ffa743b511f"
+oracle = "Green legendary creatures you control have \"bands with other legendary creatures.\" (Any legendary creatures can attack in a band as long as at least one has \"bands with other legendary creatures.\" Bands are blocked as a group. If at least two legendary creatures you control, one of which has \"bands with other legendary creatures,\" are blocking or being blocked by the same creature, you divide that creature's combat damage, not its controller, among any of the creatures it's being blocked by or is blocking.)"
+
+# No `produces`: this is a land with no mana ability at all — the static grant below is the whole card.
+[kind]
+type = "land"
+
+# Green legendary creatures you control have "bands with other legendary creatures."
+[[abilities]]
+timing = "static"
+
+# Green legendary creatures you control have "bands with other legendary creatures."
+[[abilities.effects]]
+type = "static"
+mode = "filtered_anthem"
+keywords = [{ bands_with = "legendary" }]
+filter = { types = ["creature"], color = "green", legendary = true, controller = "you" }

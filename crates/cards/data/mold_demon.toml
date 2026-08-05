@@ -1,0 +1,29 @@
+# When this creature enters, sacrifice it unless you sacrifice two Swamps.
+name = "Mold Demon"
+otags = ["sacrifice-outlet-land", "synergy-swamp", "triggered-ability", "type-errata-name-self", "unique-type-line", "virtual-vanilla"]
+sets = ["leg"]
+id = "7ce9513e-50f3-4d36-889b-b180a8a16252"
+default_print = "649a33aa-7eac-4161-ae1a-fcbc758abccf"
+oracle = "When this creature enters, sacrifice it unless you sacrifice two Swamps."
+subtypes = ["Fungus", "Demon"]
+
+[cost]
+generic = 5
+black = 2
+
+[kind]
+type = "creature"
+power = 6
+toughness = 6
+
+# When this creature enters, sacrifice it unless you sacrifice two Swamps.
+[[abilities]]
+timing = "etb"
+
+# sacrifice it unless you sacrifice two Swamps.
+[[abilities.effects]]
+type = "choice"
+mode = "may_sacrifice"
+filter = { types = "land", subtypes = ["Swamp"] }
+count = 2
+otherwise = [{ type = "sacrifice", mode = "source" }]

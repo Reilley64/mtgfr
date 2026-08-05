@@ -1,0 +1,29 @@
+# Attach target Aura attached to a creature or land to another permanent of that type.
+name = "Enchantment Alteration"
+otags = ["aura-mover", "instant-speed-tricks", "multiple-targets", "reconfigure-attachment"]
+sets = ["bchr", "chr", "leg", "usg"]
+id = "c80935bf-c17f-4940-ad9f-3f4e3e8f71bc"
+default_print = "bf52f8a0-d027-47f1-bb91-508ef1a74409"
+oracle = "Attach target Aura attached to a creature or land to another permanent of that type."
+
+[cost]
+blue = 1
+
+[kind]
+type = "instant"
+
+# Attach target Aura attached to a creature or land to another permanent of that type.
+[[abilities]]
+timing = "spell"
+
+# Attach target Aura attached to a creature or land to another permanent of that type.
+# "of that type" is not a static filter — the engine narrows the second clause to the card types
+# the Aura's current host actually has, and drops that host ("another").
+[[abilities.effects]]
+type = "control"
+mode = "move_aura"
+target = { permanent = { subtypes = ["Aura"], attached_to = { types = [
+  "creature",
+  "land",
+] } } }
+second = { permanent = { types = ["creature", "land"] } }

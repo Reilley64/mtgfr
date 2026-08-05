@@ -19,5 +19,12 @@ pub enum SacrificeEffect {
         object: Option<ObjectId>,
     },
 
+    /// "Sacrifice Stangg when that token leaves the battlefield" — sacrifice the permanent this
+    /// one is paired with, the other half of the pair the token was minted into
+    /// (`token.link_as_twin`). Untargeted: the partner is whichever battlefield permanent points
+    /// back at the source, so it is found at resolution even though the source itself has already
+    /// left. Nothing happens if the partner is already gone.
+    LinkedTwin,
+
     Source,
 }

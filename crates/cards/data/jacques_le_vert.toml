@@ -1,0 +1,31 @@
+# Green creatures you control get +0/+2.
+name = "Jacques le Vert"
+otags = ["deprecated-legend-type", "synergy-green"]
+sets = ["leg", "me1"]
+id = "c030ca14-33cb-40b3-a1f5-b6d0cb0efd49"
+default_print = "6fde1e41-bb06-457e-8c61-4a41535e3a73"
+oracle = "Green creatures you control get +0/+2."
+legendary = true
+subtypes = ["Human", "Warrior"]
+
+[cost]
+generic = 1
+white = 1
+red = 1
+green = 1
+
+[kind]
+type = "creature"
+power = 3
+toughness = 2
+
+# Green creatures you control get +0/+2.
+[[abilities]]
+timing = "static"
+
+# Green creatures you control get +0/+2.
+[[abilities.effects]]
+type = "static"
+mode = "anthem"
+colors = ["green"]
+toughness = 2

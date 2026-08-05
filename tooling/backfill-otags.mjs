@@ -13,6 +13,7 @@
 import { readFileSync, writeFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { gunzipSync } from "node:zlib";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const DATA_DIR = join(ROOT, "crates/cards/data");
@@ -25,10 +26,17 @@ const ONLY_MISSING = process.argv.includes("--only-missing");
 async function fetchBulk(type) {
   const meta = await fetch(`https://api.scryfall.com/bulk-data/${type}`, { headers: UA });
   if (!meta.ok) throw new Error(`bulk meta ${type}: ${meta.status}`);
-  const { download_uri } = await meta.json();
-  const res = await fetch(download_uri, { headers: UA });
+  // The tag bulks ship as JSONL only; the card bulks still offer a JSON array.
+  const { download_uri, jsonl_download_uri } = await meta.json();
+  const uri = download_uri ?? jsonl_download_uri;
+  if (!uri) throw new Error(`bulk ${type}: no download uri`);
+  const res = await fetch(uri, { headers: UA });
   if (!res.ok) throw new Error(`bulk download ${type}: ${res.status}`);
-  return res.json();
+  if (download_uri) return res.json();
+  // `.jsonl.gz` is served as a plain object, so fetch does not decompress it for us.
+  const raw = Buffer.from(await res.arrayBuffer());
+  const body = (uri.endsWith(".gz") ? gunzipSync(raw) : raw).toString("utf8");
+  return body.split("\n").filter(Boolean).map((line) => JSON.parse(line));
 }
 
 function topSlugs(tagEntries) {

@@ -213,6 +213,7 @@ impl Game {
                     self,
                     PendingChoice::ChooseTarget {
                         player: controller,
+                        controller,
                         source: spell,
                         effect: None,
                         legal,

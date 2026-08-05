@@ -1,0 +1,24 @@
+# Counter target instant spell.
+name = "Flash Counter"
+otags = ["counterspell-instant", "interrupt", "single-target-instant-sorcery"]
+sets = ["8ed", "leg"]
+id = "75b2dd64-a2f5-4032-a19f-5b485dc44b16"
+default_print = "dc14e61f-481a-4bfa-aca0-fb63dc952be6"
+oracle = "Counter target instant spell."
+
+[cost]
+generic = 1
+blue = 1
+
+[kind]
+type = "instant"
+
+# Counter target instant spell.
+[[abilities]]
+timing = "spell"
+
+# Counter target instant spell.
+[[abilities.effects]]
+type = "misc"
+mode = "counter_target_spell"
+filter = "instant"

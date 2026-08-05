@@ -337,6 +337,12 @@ pub fn pending_choice_view_to_pb(choice: PendingChoiceView) -> pb::PendingChoice
                 items: choice_items_to_pb(items),
             })
         }
+        PendingChoiceView::LookAtTop { player, items } => {
+            Choice::LookAtTop(pb::PendingChoiceViewLookAtTop {
+                player: u32::from(player),
+                items: choice_items_to_pb(items),
+            })
+        }
         PendingChoiceView::Scry { player, items } => Choice::Scry(pb::PendingChoiceViewScry {
             player: u32::from(player),
             items: choice_items_to_pb(items),
@@ -537,10 +543,12 @@ pub fn pending_choice_view_to_pb(choice: PendingChoiceView) -> pb::PendingChoice
         PendingChoiceView::PutFromHandOnTop {
             player,
             count,
+            life_per_declined,
             items,
         } => Choice::PutFromHandOnTop(pb::PendingChoiceViewPutFromHandOnTop {
             player: u32::from(player),
             count,
+            life_per_declined,
             items: choice_items_to_pb(items),
         }),
         PendingChoiceView::PutLandFromHand { player, items } => {
@@ -704,12 +712,14 @@ pub fn pending_choice_view_to_pb(choice: PendingChoiceView) -> pb::PendingChoice
             items,
             put_counter_on_creature,
             choose_block_target,
+            choose_damage_source,
         } => Choice::ChooseCopyTarget(pb::PendingChoiceViewChooseCopyTarget {
             player: u32::from(player),
             source,
             items: choice_items_to_pb(items),
             put_counter_on_creature,
             choose_block_target,
+            choose_damage_source,
         }),
         PendingChoiceView::ChooseAttachHost {
             player,
@@ -985,6 +995,11 @@ pub fn visible_event_to_pb(event: VisibleEvent) -> Option<pb::VisibleEvent> {
         VisibleEvent::RegenerationShieldsExpired { object } => {
             Event::RegenerationShieldsExpired(pb::VisibleEventRegenerationShieldsExpired { object })
         }
+        VisibleEvent::CantBeRegeneratedThisTurnMarked { object } => {
+            Event::CantBeRegeneratedThisTurnMarked(
+                pb::VisibleEventCantBeRegeneratedThisTurnMarked { object },
+            )
+        }
         VisibleEvent::LostSummoningSickness { object } => {
             Event::LostSummoningSickness(pb::VisibleEventLostSummoningSickness { object })
         }
@@ -1037,7 +1052,7 @@ pub fn visible_event_to_pb(event: VisibleEvent) -> Option<pb::VisibleEvent> {
             power,
             toughness,
         }),
-        VisibleEvent::TempBoostsEnded { object } => {
+        VisibleEvent::TempBoostsEnded { object, .. } => {
             Event::TempBoostsEnded(pb::VisibleEventTempBoostsEnded { object })
         }
         VisibleEvent::BasePtSetUntilEndOfTurn {
@@ -1248,6 +1263,11 @@ pub fn visible_event_to_pb(event: VisibleEvent) -> Option<pb::VisibleEvent> {
         }
         VisibleEvent::ChannelColorlessManaGranted { player } => {
             Event::ChannelColorlessManaGranted(pb::VisibleEventChannelColorlessManaGranted {
+                player: u32::from(player),
+            })
+        }
+        VisibleEvent::SpendManaAsAnyTypeGranted { player } => {
+            Event::SpendManaAsAnyTypeGranted(pb::VisibleEventSpendManaAsAnyTypeGranted {
                 player: u32::from(player),
             })
         }
@@ -1563,6 +1583,7 @@ pub fn visible_event_to_pb(event: VisibleEvent) -> Option<pb::VisibleEvent> {
                 player: u32::from(player),
             })
         }
+        VisibleEvent::GameDrawn => Event::GameDrawn(pb::VisibleEventGameDrawn {}),
         VisibleEvent::MulliganTaken { .. }
         | VisibleEvent::HandKept { .. }
         | VisibleEvent::MulligansFinished => {

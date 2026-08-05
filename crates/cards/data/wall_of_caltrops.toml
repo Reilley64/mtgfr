@@ -1,0 +1,44 @@
+# Defender (This creature can't attack.)
+# Whenever this creature blocks a creature, if at least one other Wall creature is blocking that
+# creature and no non-Wall creatures are blocking that creature, this creature gains banding until
+# end of turn.
+name = "Wall of Caltrops"
+otags = ["block-trigger", "conditional-keyword-grant", "synergy-blocker-self", "typal-wall"]
+sets = ["leg"]
+id = "20fa17d4-9c3e-470b-9993-a4a2799e33d1"
+default_print = "664ad588-3002-4f63-93bd-38663171018f"
+oracle = "Defender (This creature can't attack.)\nWhenever this creature blocks a creature, if at least one other Wall creature is blocking that creature and no non-Wall creatures are blocking that creature, this creature gains banding until end of turn."
+subtypes = ["Wall"]
+keywords = ["defender"]
+
+[cost]
+generic = 1
+white = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 1
+
+# Whenever this creature blocks a creature, if at least one other Wall creature is blocking that
+# creature and no non-Wall creatures are blocking that creature, this creature gains banding until
+# end of turn.
+[[abilities]]
+timing = "blocks_creature"
+filter = { types = "creature" }
+# The intervening-if (CR 603.4), both halves counted over the blockers of the creature this Wall
+# is blocking: "at least one other Wall creature" (`other` excludes this Wall itself) and "no
+# non-Wall creatures".
+condition = { type = "all", conditions = [
+  { type = "compare", left = { creatures_blocking_that_creature = { types = "creature", subtypes = ["Wall"], other = true } }, op = "at_least", right = 1 },
+  { type = "compare", left = { creatures_blocking_that_creature = { types = "creature", exclude_subtypes = ["Wall"] } }, op = "at_most", right = 0 },
+] }
+
+# this creature gains banding until end of turn.
+[[abilities.effects]]
+type = "pump"
+mode = "pump_until_end_of_turn"
+target = "this"
+power = 0
+toughness = 0
+keywords = ["banding"]

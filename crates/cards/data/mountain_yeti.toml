@@ -1,0 +1,20 @@
+# Mountainwalk (This creature can't be blocked as long as defending player controls a
+# Mountain.)
+# Protection from white
+name = "Mountain Yeti"
+otags = ["evasion", "french-vanilla", "hate-white"]
+sets = ["bchr", "chr", "leg", "me1"]
+id = "375ea10b-da68-4c66-b3eb-f5113c09ea4b"
+default_print = "bc6a062c-06ff-4295-83f2-48868c664d76"
+oracle = "Mountainwalk (This creature can't be blocked as long as defending player controls a Mountain.)\nProtection from white"
+subtypes = ["Yeti"]
+keywords = [{ landwalk = "mountain" }, { protection = "white" }]
+
+[cost]
+generic = 2
+red = 2
+
+[kind]
+type = "creature"
+power = 3
+toughness = 3

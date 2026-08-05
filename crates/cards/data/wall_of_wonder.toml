@@ -1,0 +1,45 @@
+# Defender (This creature can't attack.)
+# {2}{U}{U}: This creature gets +4/-4 until end of turn and can attack this turn as though it didn't have defender.
+name = "Wall of Wonder"
+otags = ["activated-ability", "pump-self", "removes-defender-self", "turns-off-defender-self", "typal-wall"]
+sets = ["7ed", "bchr", "chr", "leg"]
+id = "10889b44-d031-413c-a8c4-d6c13c400e01"
+default_print = "bcd9af40-b46c-44b4-878e-8eb026c96b51"
+oracle = "Defender (This creature can't attack.)\n{2}{U}{U}: This creature gets +4/-4 until end of turn and can attack this turn as though it didn't have defender."
+subtypes = ["Wall"]
+keywords = ["defender"]
+
+[cost]
+generic = 2
+blue = 2
+
+[kind]
+type = "creature"
+power = 2
+toughness = 5
+
+# {2}{U}{U}: This creature gets +4/-4 until end of turn and can attack this turn as though it didn't
+# have defender.
+[[abilities]]
+timing = "activated"
+activation_cost = { generic = 2, blue = 2 }
+
+# This creature gets +4/-4 until end of turn
+[[abilities.effects]]
+type = "pump"
+mode = "pump_self_until_end_of_turn"
+power = 4
+toughness = -4
+
+# and can attack this turn as though it didn't have defender.
+# ponytail: modeled as losing defender until end of turn rather than as a standing attack
+# permission. CR 702.3b gives defender exactly one rules meaning — "a creature with defender can't
+# attack" — and `Game::can_attack` is the engine's only reader of the keyword, so waiving the
+# restriction for the turn and removing the keyword for the turn are the same observable behavior.
+# Split them the day a card cares whether a creature *has* defender.
+[[abilities.effects]]
+type = "pump"
+mode = "target_loses_keywords"
+target = "this"
+keywords = ["defender"]
+until_end_of_turn = true

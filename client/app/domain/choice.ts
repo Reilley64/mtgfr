@@ -52,6 +52,7 @@ export const FORMULATOR_FOR_KIND: { [K in PendingChoiceView["kind"]]: Formulator
   scry: "cardPick",
   surveil: "cardPick",
   reorder_top: "cardPick",
+  look_at_top: "cardPick",
   search_library: "cardPick",
   select_from_top: "cardPick",
   distribute_top: "partition",
@@ -439,6 +440,10 @@ export function answerFromDraft(pc: PendingChoiceView, draft: PromptDraft): Answ
         return { kind: "revealed", choice: draft.choice };
       }
       return null;
+    // Visions looks and puts everything back where it was. The engine ignores the order this
+    // answer carries but still checks it partitions the shown cards, so send them all on top.
+    case "look_at_top":
+      return { kind: "arrange", top: pc.items.map((it) => it.id), bottom: [] };
     case "reorder_top": {
       const all = pc.items.map((it) => it.id);
       const ordered =

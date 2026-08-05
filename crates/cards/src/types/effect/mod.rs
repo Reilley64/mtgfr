@@ -36,7 +36,9 @@ pub use player_set::PlayerSet;
 pub use pump::PumpEffect;
 pub use reveal::RevealEffect;
 pub use sacrifice::SacrificeEffect;
-pub use r#static::{CounterPlacer, CounterRecipients, DefiningPtWhen, StaticEffect};
+pub use r#static::{
+    CounterPlacer, CounterRecipients, DefiningPtWhen, SourceRelation, StaticEffect,
+};
 pub use token::TokenEffect;
 pub use zone::ZoneEffect;
 

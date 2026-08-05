@@ -19,8 +19,8 @@ use crate::de::{
 use crate::toml_surface::CostToml;
 use crate::{
     AdditionalCost, Amount, AmountZone, ArithOp, Color, ColorFilter, Condition, Cost, CounterAxis,
-    CounterKind, Division, FilterController, Keyword, LandProduces, Mana, Parity, PermanentFilter,
-    ProtectionScope, SacrificeCost, TargetCount, TokenFilter, TypeSet,
+    CounterKind, Division, FilterController, FilterOwner, Keyword, LandProduces, Mana, Parity,
+    PermanentFilter, ProtectionScope, SacrificeCost, TargetCount, TokenFilter, TypeSet,
 };
 
 // ── schema-building helpers ─────────────────────────────────────────────────────────
@@ -238,12 +238,16 @@ struct AmountTableSchema {
     per_permanent: Option<PermanentFilter>,
     zone: Option<AmountZone>,
     per_counter_of_kind: Option<CounterKind>,
+    /// A modifier on `per_counter_of_kind`, not an amount of its own — see the visitor's `Table`.
+    on_attached: Option<bool>,
     condition: Option<Condition>,
     then: Option<Amount>,
     #[schemars(rename = "else")]
     otherwise: Option<Amount>,
     permanents_destroyed_this_way: Option<PermanentFilter>,
     auras_attached_to_source: Option<EmptyTableSchema>,
+    creatures_blocking_that_creature: Option<PermanentFilter>,
+    discard_cost_was_land: Option<i32>,
     left: Option<Amount>,
     op: Option<ArithOp>,
     right: Option<Amount>,
@@ -285,10 +289,12 @@ struct PermanentFilterTableSchema {
     types: Option<TypeSet>,
     subtypes: Option<Vec<String>>,
     controller: Option<FilterController>,
+    owner: Option<FilterOwner>,
     token: Option<TokenFilter>,
     other: Option<bool>,
     enchanted: Option<bool>,
     attached_to_creature: Option<bool>,
+    attached_to: Option<PermanentFilter>,
     enchanted_by_you: Option<bool>,
     mv_max: Option<u8>,
     mv_min: Option<u8>,
@@ -299,15 +305,23 @@ struct PermanentFilterTableSchema {
     power_max: Option<u8>,
     power_min: Option<u8>,
     power_parity: Option<Parity>,
+    toughness_max: Option<u8>,
+    toughness_min: Option<u8>,
     noncreature: Option<bool>,
     exclude: Option<TypeSet>,
     color: Option<ColorFilter>,
     not_color: Option<Color>,
     modified: Option<bool>,
     attacking: Option<bool>,
+    not_attacking: Option<bool>,
     attacking_you: Option<bool>,
     blocking: Option<bool>,
+    blocking_source: Option<bool>,
+    attacking_or_blocking: Option<bool>,
+    tapped_or_blocking: Option<bool>,
     unblocked: Option<bool>,
+    blocked_by_a_wall_this_turn: Option<bool>,
+    in_combat_with_source: Option<bool>,
     power_less_than_source: Option<bool>,
     toughness_less_than_source_power: Option<bool>,
     entered_this_turn: Option<bool>,
@@ -317,6 +331,7 @@ struct PermanentFilterTableSchema {
     basic: Option<bool>,
     name: Option<String>,
     nonlegendary: Option<bool>,
+    legendary: Option<bool>,
     nonlair: Option<bool>,
     without_flying: Option<bool>,
     without_keyword: Option<Keyword>,
@@ -326,6 +341,7 @@ struct PermanentFilterTableSchema {
     creature_or_vehicle: Option<bool>,
     snow: Option<bool>,
     exclude_subtypes: Option<Vec<String>>,
+    exclude_name: Option<String>,
 }
 
 impl JsonSchema for PermanentFilter {
@@ -369,12 +385,22 @@ fn sacrifice_cost_table_schema(generator: &mut SchemaGenerator) -> Schema {
         "permanent".to_owned(),
         generator.subschema_for::<PermanentFilter>(),
     );
+    // "Sacrifice this artifact and any number of creatures you control" (Sword of the Ages) —
+    // countless by construction, so it takes no `count` sibling.
+    object.object().properties.insert(
+        "this_and_any_number".to_owned(),
+        generator.subschema_for::<PermanentFilter>(),
+    );
     object
         .object()
         .properties
         .insert("count".to_owned(), generator.subschema_for::<u8>());
     object.object().additional_properties = Some(Box::new(Schema::Bool(false)));
-    object.subschemas().any_of = Some(vec![required_key("creature"), required_key("permanent")]);
+    object.subschemas().any_of = Some(vec![
+        required_key("creature"),
+        required_key("permanent"),
+        required_key("this_and_any_number"),
+    ]);
     Schema::Object(object)
 }
 

@@ -1,0 +1,29 @@
+# {T}: This creature deals 1 damage to target attacking or blocking creature.
+name = "D'Avenant Archer"
+otags = ["activated-ability", "burn-creature", "hate-attacker", "hate-blocker", "pinger", "repeatable-crime", "repeatable-removal", "spot-removal", "type-addition-human"]
+sets = ["5ed", "6ed", "bchr", "chr", "leg", "me3"]
+id = "81bc4a5e-812f-4809-b6df-271c3c22f4fc"
+default_print = "dfc44b22-c46c-4b7e-91ff-3eff416bb357"
+oracle = "{T}: This creature deals 1 damage to target attacking or blocking creature."
+subtypes = ["Human", "Soldier", "Archer"]
+
+[cost]
+generic = 2
+white = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 2
+
+# {T}: This creature deals 1 damage to target attacking or blocking creature.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# This creature deals 1 damage to target attacking or blocking creature.
+[[abilities.effects]]
+type = "damage"
+mode = "target"
+amount = 1
+target = { permanent = { types = "creature", attacking_or_blocking = true } }

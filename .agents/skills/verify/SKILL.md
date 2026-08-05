@@ -65,6 +65,11 @@ names/shapes, or use a gRPC client (e.g. `grpcurl`) straight against `:50051` wi
 
 ## Reading state / driving intents
 
+- **`drive.py` (next to this file) already does all of the below.** It seats a two-player game
+  through the BFF and drives it to a stall or 400 steps over plain `urllib`, branching on the ack's
+  `accepted` and remembering rejected `(action, target)` pairs so the search advances. Start from it
+  rather than re-deriving a driver; the notes here are what it encodes and what to fix when a run
+  wedges.
 - State: the first frame of `Game.Stream` (BFF: `GET /api/rpc/game/<table>/stream`, SSE) is a full snapshot for that caller's seat — take the first frame where `frame == "snapshot"`, then hang up.
 - Intents: `Game.SubmitIntent` (BFF: `POST /api/rpc/game/<table>/intent`) with `{"table_id","client_seq":<int, monotonic>,"intent":{...}}`. Useful kinds: `take_action {player,id}` (ids from `state.actions`), `pass_priority {player}`, `discard {player,cards}`, `arrange_top {player,top,bottom}` (answers scry).
 - **A rejected intent still acks HTTP 200.** The ack is `{accepted, reject_reason}` — a driver that

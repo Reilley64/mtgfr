@@ -1,0 +1,71 @@
+# Enchant creature
+# At the beginning of the upkeep of enchanted creature's controller, put a -0/-1 counter on that
+# creature.
+# When enchanted creature dies, that creature's controller chooses a creature that this card could
+# enchant. If the player does, return this card to the battlefield under your control attached to
+# that creature. If they don't, return this card to the battlefield under your control as a
+# non-Aura enchantment. It loses "enchant creature" and gains "At the beginning of that player's
+# upkeep, this enchantment deals 1 damage to that player."
+name = "Takklemaggot"
+otags = ["burn-player", "cheat-death-self", "death-trigger", "parasitic-aura", "pinger", "removal-toughness", "repeatable-removal", "spot-removal", "transferrable-aura", "triggered-ability"]
+sets = ["bchr", "chr", "leg", "me3"]
+id = "31d01633-86f8-4a3f-9c28-f6968e056ba3"
+default_print = "d8f49b3d-7fcb-4169-9298-cdf7a1dbe3f5"
+oracle = "Enchant creature\nAt the beginning of the upkeep of enchanted creature's controller, put a -0/-1 counter on that creature.\nWhen enchanted creature dies, that creature's controller chooses a creature that this card could enchant. If the player does, return this card to the battlefield under your control attached to that creature. If they don't, return this card to the battlefield under your control as a non-Aura enchantment. It loses \"enchant creature\" and gains \"At the beginning of that player's upkeep, this enchantment deals 1 damage to that player.\""
+subtypes = ["Aura"]
+
+# Enchant creature
+enchant = { types = "creature" }
+
+[cost]
+generic = 2
+black = 2
+
+[kind]
+type = "aura"
+
+# At the beginning of the upkeep of enchanted creature's controller, put a -0/-1 counter on that
+# creature.
+[[abilities]]
+timing = "each_upkeep"
+condition = { type = "enchanted_permanents_controllers_upkeep" }
+
+# put a -0/-1 counter on that creature.
+[[abilities.effects]]
+type = "counters"
+mode = "put_counters"
+count = 1
+kind = "minus_zero_minus_one"
+target = "enchanted_creature"
+
+# When enchanted creature dies, that creature's controller chooses a creature that this card could
+# enchant. If the player does, return this card to the battlefield under your control attached to
+# that creature. If they don't, return this card to the battlefield under your control as a
+# non-Aura enchantment.
+[[abilities]]
+timing = "enchanted_creature_dies"
+
+# that creature's controller chooses a creature that this card could enchant ... return this card
+# to the battlefield under your control attached to that creature ... if they don't, ... as a
+# non-Aura enchantment.
+[[abilities.effects]]
+type = "zone"
+mode = "return_this_aura_from_graveyard_attached_to_chosen_host"
+chosen_by = "dying_enchanted_creatures_controller"
+hostless_returns_as_non_aura = true
+
+# It ... gains "At the beginning of that player's upkeep, this enchantment deals 1 damage to that
+# player."
+# ponytail: scripted as a printed ability gated on the seat the non-Aura return remembers rather
+# than as an ability granted on re-entry — `chosen_players_upkeep` reads nothing at all while this
+# is still an ordinary Aura, so the gate and the grant are observationally the same thing.
+[[abilities]]
+timing = "each_upkeep"
+condition = { type = "chosen_players_upkeep" }
+
+# this enchantment deals 1 damage to that player.
+[[abilities.effects]]
+type = "damage"
+mode = "to_players"
+who = "triggering_player"
+amount = 1

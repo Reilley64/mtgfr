@@ -742,6 +742,10 @@ pub enum PendingChoiceView {
     /// Selection). Private to that player; every card goes back on top, so unlike
     /// [`Self::Scry`] there is no second pile to answer with.
     ReorderTop { player: u8, items: Vec<ChoiceItem> },
+    /// The looked-at cards, top of a library the player may only *look* at (Visions). Private to
+    /// that player; the answer is a dismissal, so unlike [`Self::ReorderTop`] not even the order
+    /// is decided.
+    LookAtTop { player: u8, items: Vec<ChoiceItem> },
     /// The matching library cards found. Private to the searching player.
     SearchLibrary { player: u8, items: Vec<ChoiceItem> },
     /// The looked-at top cards; the player may select up to `up_to` into a zone. Private to them.
@@ -896,10 +900,13 @@ pub enum PendingChoiceView {
     },
     /// This player must put `count` cards from their hand (`items`, private to them) on top of
     /// their library, in an order they choose (Brainstorm) — unlike [`Self::Discard`], the
-    /// answer's order matters (first-named ends up on top).
+    /// answer's order matters (first-named ends up on top). When `life_per_declined` is nonzero
+    /// (Sylvan Library) `count` is a *maximum*: any number from zero up may be put back, and each
+    /// one declined costs that much life.
     PutFromHandOnTop {
         player: u8,
         count: u32,
+        life_per_declined: u32,
         items: Vec<ChoiceItem>,
     },
     /// This player may put one hand land (`items`, private to them) onto the battlefield, or
@@ -1078,14 +1085,19 @@ pub enum PendingChoiceView {
     /// Cursed Mirror). Answered with the chosen creature, or a decline (the "you may").
     /// `put_counter_on_creature` marks the reused "put a +1/+1 counter on a creature" primer, and
     /// `choose_block_target` the reused "have this creature block an attacking creature of your
-    /// choice" re-aim (False Orders), so clients can swap the copy wording without needing a
-    /// separate answer shape.
+    /// choice" re-aim (False Orders), and `choose_damage_source` the reused "pick which object's
+    /// damage this turn sizes the amount" primer (Backdraft), so clients can swap the copy wording
+    /// without needing a separate answer shape.
+    ///
+    /// ponytail: three mutually exclusive wording flags where an enum belongs — the upgrade is
+    /// wire-breaking, so it waits until a fourth reuse makes it worth a proto field.
     ChooseCopyTarget {
         player: u8,
         source: ObjectId,
         items: Vec<ChoiceItem>,
         put_counter_on_creature: bool,
         choose_block_target: bool,
+        choose_damage_source: bool,
     },
     /// This player (the deployed attachment's controller) must choose a host among `items` (the
     /// eligible battlefield creatures, public) for the Aura or Equipment it just put onto the
@@ -1121,6 +1133,7 @@ impl PendingChoiceView {
             | Self::Scry { items, .. }
             | Self::Surveil { items, .. }
             | Self::ReorderTop { items, .. }
+            | Self::LookAtTop { items, .. }
             | Self::SearchLibrary { items, .. }
             | Self::SelectFromTop { items, .. }
             | Self::DistributeTop { items, .. }

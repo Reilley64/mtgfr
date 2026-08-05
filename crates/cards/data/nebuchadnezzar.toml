@@ -1,0 +1,38 @@
+# {X}, {T}: Choose a card name. Target opponent reveals X cards at random from their hand. Then that
+# player discards all cards with that name revealed this way. Activate only during your turn.
+name = "Nebuchadnezzar"
+sets = ["leg"]
+id = "7c48448e-4e13-4cda-999e-e06ae0f7dcea"
+default_print = "e3f17ce3-711b-4bd9-addf-dd440fa7d2b7"
+otags = ["activated-ability", "hand-disruption", "named-choice", "random-discard", "reveal-hand"]
+oracle = "{X}, {T}: Choose a card name. Target opponent reveals X cards at random from their hand. Then that player discards all cards with that name revealed this way. Activate only during your turn."
+legendary = true
+subtypes = ["Human", "Wizard"]
+
+[cost]
+generic = 3
+blue = 1
+black = 1
+
+[kind]
+type = "creature"
+power = 3
+toughness = 3
+
+# {X}, {T}: Choose a card name. Target opponent reveals X cards at random from their hand. Then that
+# player discards all cards with that name revealed this way. Activate only during your turn.
+[[abilities]]
+timing = "activated"
+taps_self = true
+only_during_your_turn = true
+
+[abilities.activation_cost]
+x = 1
+
+# Choose a card name. Target opponent reveals X cards at random from their hand. Then that player
+# discards all cards with that name revealed this way.
+[[abilities.effects]]
+type = "choice"
+mode = "name_card_then_target_reveals_at_random_and_discards"
+target = "opponent"
+count = "x"

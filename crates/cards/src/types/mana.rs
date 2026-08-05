@@ -21,6 +21,15 @@ pub struct Cost {
     /// color instead of into [`Cost::generic`], so the ordinary colored-pip planner enforces it.
     /// `None` for every other `{X}` cost, where any mana pays.
     pub x_color: Option<Color>,
+    /// A card-defined value for `{X}` (CR 107.3b — Voodoo Doll's "{X}{X}, {T}: … X is the number
+    /// of pin counters on this artifact"). When set, the activating player does not choose X: the
+    /// activation gate resolves this [`Amount`] against the source and feeds it to
+    /// [`Cost::with_x`], so `{X}{X}` on a Doll with three pin counters is `{6}`.
+    /// `None` for every ordinary `{X}` cost, where the player announces the value (CR 601.2b).
+    /// ponytail: read only on the *activated-ability* path (`Game::ability_activation_gate`); no
+    /// pool spell prints a defined X in its cast cost. Thread it through `Game::cast_cost` when
+    /// one does.
+    pub x_defined: Option<Amount>,
     /// Hybrid mana pips (CR 107.4e — `{a/b}`), one entry per symbol: each is payable by mana of
     /// color `a` *or* `b`, a dual credit touching either color, or an "any" wildcard — strictly
     /// more flexible than a mono colored pip, so [`ManaPool::spend_plan`] pays these after the
@@ -57,6 +66,7 @@ impl Cost {
         colorless: 0,
         x: 0,
         x_color: None,
+        x_defined: None,
         hybrid: &[],
         phyrexian: &[],
         additional: AdditionalCost {

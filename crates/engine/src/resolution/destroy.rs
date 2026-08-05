@@ -36,6 +36,7 @@ impl Game {
                             creature: Some(object),
                             attack_rider,
                             at: None,
+                            then: None,
                         }),
                     }];
                 }
@@ -103,10 +104,70 @@ impl Game {
                 }
                 events
             }
+            // "Destroy all creatures that were blocked by target Wall this turn" (Glyph of
+            // Reincarnation; Glyph of Doom once its delayed ability fires). A mass destroy like
+            // `All`, but driven off the turn-scoped block ledger instead of a board scan.
+            DestroyEffect::BlockedByTarget {
+                cant_be_regenerated,
+                at,
+                reincarnate,
+                blocker,
+                ..
+            } => {
+                let wall = blocker.unwrap_or_else(|| expect_object_target(target, "destroy"));
+                // Glyph of Doom's "at this turn's next end of combat": only the Wall is baked in;
+                // the ledger is re-read when this fires, so a block declared in the meantime — or
+                // after the Wall itself has died — is still swept.
+                if let Some(fire_at) = at {
+                    return vec![Event::DelayedTriggerScheduled {
+                        controller,
+                        source,
+                        fire_at,
+                        effect: Effect::Destroy(DestroyEffect::BlockedByTarget {
+                            target: TargetSpec::None,
+                            cant_be_regenerated,
+                            at: None,
+                            reincarnate,
+                            blocker: Some(wall),
+                        }),
+                    }];
+                }
+                let mut next = self.next_object_id();
+                let mut events = Vec::new();
+                for (id, _) in self.blocked_by_this_turn(wall) {
+                    let Object::Permanent(ref p) = self.objects[id as usize] else {
+                        continue;
+                    };
+                    if self.zone_of(id) != Zone::Battlefield {
+                        continue;
+                    }
+                    if self.has_keyword(id, Keyword::Indestructible) {
+                        continue;
+                    }
+                    // CR 701.15b/d — the shield replaces the destruction unless the card says
+                    // "can't be regenerated", which Glyph of Reincarnation does.
+                    if !cant_be_regenerated && self.regeneration_shield_available(id) {
+                        events.push(Event::Regenerated { object: id });
+                        continue;
+                    }
+                    if p.token {
+                        events.push(Event::TokenCeasedToExist {
+                            token: id,
+                            controller: p.owner,
+                            def: p.def,
+                        });
+                        continue;
+                    }
+                    events.push(self.graveyard_or_command(id, next));
+                    next += 1;
+                }
+                events
+            }
             DestroyEffect::ThatCreature {
                 creature,
                 attack_rider,
                 at,
+                then,
             } => {
                 let Some(id) = creature else {
                     return Vec::new();
@@ -122,6 +183,7 @@ impl Game {
                             creature,
                             attack_rider,
                             at: None,
+                            then,
                         }),
                     }];
                 }
@@ -147,7 +209,19 @@ impl Game {
                 if self.regeneration_shield_available(id) {
                     return vec![Event::Regenerated { object: id }];
                 }
-                vec![self.graveyard_or_command(id, self.next_object_id())]
+                let mut events = vec![self.graveyard_or_command(id, self.next_object_id())];
+                // Infinite Authority's "at the beginning of the next end step, if that creature
+                // was destroyed this way, put a +1/+1 counter on the first creature": only this
+                // branch actually destroyed anything, so reaching it *is* the intervening-if.
+                if let Some(then) = then {
+                    events.push(Event::DelayedTriggerScheduled {
+                        controller,
+                        source,
+                        fire_at: Step::End,
+                        effect: then.clone(),
+                    });
+                }
+                events
             }
         }
     }
@@ -217,6 +291,22 @@ impl Game {
                 }
                 events
             }
+            // "Exile Stangg Twin when Stangg leaves the battlefield." The partner is found on the
+            // battlefield, so it needs no zone check; a token partner ceases to exist (CR 111.7).
+            ExileEffect::LinkedTwin => {
+                let Some(id) = self.linked_twin(source) else {
+                    return Vec::new();
+                };
+                let permanent = self.permanent(id);
+                if permanent.token {
+                    return vec![Event::TokenCeasedToExist {
+                        token: id,
+                        controller: permanent.owner,
+                        def: permanent.def,
+                    }];
+                }
+                vec![self.exile_or_command(id, self.next_object_id())]
+            }
             ExileEffect::Object { object } => {
                 let id = object.expect("filled in when the delayed exile was scheduled");
                 if self.zone_of(id) != Zone::Battlefield {
@@ -230,6 +320,29 @@ impl Game {
                         def: permanent.def,
                     }];
                 }
+                vec![self.exile_or_command(id, self.next_object_id())]
+            }
+            // "…then exile this artifact and those creature cards" (Sword of the Ages): one card
+            // that paid the activation's sacrifice cost, followed to wherever it is now — the
+            // graveyard card the sacrificed permanent became, unless something has since moved it
+            // (CR 400.7), in which case this does nothing.
+            ExileEffect::SacrificedCard { object } => {
+                let id = object.expect("filled in as the sacrifice cost was paid");
+                let id = self.current_id(id);
+                if self.zone_of(id) != Zone::Graveyard {
+                    return Vec::new();
+                }
+                vec![self.exile_or_command(id, self.next_object_id())]
+            }
+            // "When this creature dies, exile it" (Cyclopean Mummy). The trigger's `source` is
+            // still the battlefield id (CR 603.6c look-back); `return_this_source` follows the
+            // move to the graveyard card and folds in the token/left-the-game guard.
+            ExileEffect::Source => {
+                let Some(id) =
+                    self.return_this_source(source, &[Zone::Graveyard, Zone::Battlefield])
+                else {
+                    return Vec::new();
+                };
                 vec![self.exile_or_command(id, self.next_object_id())]
             }
             ExileEffect::Target { .. } => {
@@ -322,6 +435,21 @@ impl Game {
                     },
                 ]
             }
+            // "Sacrifice Stangg when that token leaves the battlefield."
+            SacrificeEffect::LinkedTwin => {
+                let Some(id) = self.linked_twin(source) else {
+                    return Vec::new();
+                };
+                let def = self.def_id_of(id);
+                vec![
+                    self.sacrifice_event(id),
+                    Event::Sacrificed {
+                        object: id,
+                        by: self.controller_of(id),
+                        def,
+                    },
+                ]
+            }
             SacrificeEffect::Source => {
                 let def = self.def_id_of(source);
                 vec![
@@ -351,6 +479,79 @@ impl Game {
         self.record_destroyed_this_way(&evs);
         self.apply_all(&evs);
         events.extend(evs);
+    }
+
+    /// Glyph of Doom / Glyph of Reincarnation: "Destroy all creatures that were blocked by target
+    /// Wall this turn." The ledger-driven sibling of [`Game::resolve_destroy_all`] — same mint →
+    /// snapshot → apply, plus Glyph of Reincarnation's payoff, which needs to know *which*
+    /// creatures actually died and whose graveyard each one names. That mapping is read off the
+    /// minted events (a regenerated or indestructible creature mints nothing and so reanimates
+    /// nothing) crossed with the ledger's recorded controllers.
+    pub(crate) fn resolve_destroy_blocked_by_target(
+        &mut self,
+        effect: DestroyEffect,
+        controller: PlayerId,
+        source: ObjectId,
+        target: Option<Target>,
+        x: u32,
+        events: &mut Vec<Event>,
+    ) {
+        let DestroyEffect::BlockedByTarget {
+            at,
+            reincarnate,
+            blocker,
+            ..
+        } = effect
+        else {
+            debug_assert!(
+                false,
+                "resolve_destroy_blocked_by_target on the wrong effect"
+            );
+            return;
+        };
+        let wall = blocker.or(match target {
+            Some(Target::Object(id)) => Some(id),
+            _ => None,
+        });
+        let ledger = wall
+            .map(|w| self.blocked_by_this_turn(w))
+            .unwrap_or_default();
+
+        let evs = self.execute_effect(Effect::Destroy(effect), controller, source, target, x);
+        // Whose graveyard each death names, in the ledger's own order (CR 700.2 leaves the order
+        // of a "for each" fan-out to the effect's controller; declaration order is deterministic
+        // and matches how the deaths were minted).
+        let died: Vec<ObjectId> =
+            evs.iter()
+                .filter_map(|e| match e {
+                    Event::MovedToGraveyard { from, .. }
+                    | Event::MovedToCommandZone { from, .. } => Some(*from),
+                    _ => None,
+                })
+                .collect();
+        let graveyards: Vec<PlayerId> = ledger
+            .iter()
+            .filter(|(id, _)| died.contains(id))
+            .map(|&(_, owner)| owner)
+            .collect();
+
+        self.record_destroyed_this_way(&evs);
+        self.apply_effect_events_with_replacements(evs, events);
+
+        // `at` already turned this into a delayed ability; the payoff rides with it.
+        if !reincarnate || at.is_some() {
+            return;
+        }
+        // "put a creature card … onto the battlefield under its owner's control" — not "you may"
+        // (CR 700.2), one prompt per listed graveyard.
+        self.prompt_next_graveyard_return(
+            graveyards,
+            controller,
+            source,
+            CardFilter::Creature,
+            true,
+            true,
+        );
     }
 
     /// Volcanic Eruption: "Destroy X target Mountains. … damage equal to the number of Mountains

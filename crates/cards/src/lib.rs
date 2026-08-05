@@ -173,12 +173,11 @@ fn load_token_defs(dir: &Path) {
                 path.display()
             );
         }
-        if def.default_print.is_empty() {
-            panic!(
-                "{}: token CardDef.default_print (Scryfall card UUID) is required",
-                path.display()
-            );
-        }
+        // `default_print` is optional for token profiles (fidelity increment #97): a token
+        // predating printed token cards (e.g. Legends) has no Scryfall printing to key at all.
+        // An empty `default_print` already renders as the card back client-side
+        // (`client/app/domain/ui/card-art.ts` `cardArtUrl`), so there's no synthetic UUID to
+        // invent — leaving it empty is the faithful representation of "no printing exists".
         if by_id_owned
             .insert(def.id.to_string(), def.clone())
             .is_some()

@@ -15,7 +15,32 @@ pub enum MiscEffect {
 
     BecomePrepared,
 
-    CounterTargetActivatedAbility,
+    CounterTargetActivatedAbility {
+        /// "from an artifact source" (Rust, Ayesha Tanaka) — narrows the legal targets to
+        /// abilities whose source permanent is an artifact, carried on
+        /// [`TargetSpec::ActivatedAbilityOnStack`]. `false` (Azorius Guildmage) counters any
+        /// activated ability on the stack.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        artifact_source: bool,
+        /// "unless that ability's controller pays {W}" (Ayesha Tanaka) — the activated-ability
+        /// twin of [`Self::CounterTargetSpell`]'s own `unless_pays`, spelled as a full [`Cost`]
+        /// rather than a generic [`Amount`] because this one is a colored mana symbol. `None`
+        /// (Rust, Azorius Guildmage) counters outright.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        unless_pays: Option<Cost>,
+    },
+
+    /// "Counter that ability" on a [`Trigger::EnchantedCreatureActivatesTapAbility`](crate::Trigger)
+    /// watch — Imprison. CR 115.1: "that ability" is not a target, so it is the activated ability
+    /// that fired the watch, baked in at trigger placement from
+    /// [`TriggerContext::triggering_ability`](crate::TriggerContext) rather than chosen — the
+    /// ability twin of [`Self::CounterTriggeringSpell`]. Abilities on the stack are keyed by their
+    /// source permanent (see [`TargetSpec::ActivatedAbilityOnStack`](crate::TargetSpec)'s identity
+    /// ponytail), so this counters the topmost stack ability from that source.
+    CounterTriggeringAbility {
+        #[cfg_attr(feature = "card-dsl", serde(skip))]
+        triggering_ability: Option<ObjectId>,
+    },
 
     CounterTargetSpell {
         #[cfg_attr(feature = "card-dsl", serde(default))]
@@ -31,6 +56,18 @@ pub enum MiscEffect {
         /// `unless_pays`.
         #[cfg_attr(feature = "card-dsl", serde(default))]
         strips_mana_on_decline: bool,
+    },
+
+    /// "counter it" / "counter that spell" on a [`Trigger::CastSpell`] watch — Presence of the
+    /// Master, Nether Void, In the Eye of Chaos, Invoke Prejudice. CR 115.1: "it" is not a target,
+    /// so the spell is the one that fired the watch, baked in at trigger placement from
+    /// [`TriggerContext::triggering_spell`] rather than chosen. The optional `unless_pays` rider is
+    /// CR 701.5c, offered to the spell's own controller.
+    CounterTriggeringSpell {
+        #[cfg_attr(feature = "card-dsl", serde(skip))]
+        triggering_spell: Option<ObjectId>,
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        unless_pays: Option<Amount>,
     },
 
     /// "Target creature you control fights target creature you don't control" (CR 701.12).
@@ -71,6 +108,15 @@ pub enum MiscEffect {
 
     GrantFlashThisTurn,
 
+    /// North Star: "For one spell this turn, you may spend mana as though it were mana of any type
+    /// to pay that spell's mana cost" (CR 609.4b). The turn-scoped, one-shot twin of
+    /// [`StaticEffect::SpendManaAsThoughAnotherColor`](crate::StaticEffect) — Sunglasses of Urza
+    /// widens one color into one other color for as long as it's on the battlefield, this widens
+    /// every color into every color for a single spell. Sets
+    /// [`Player::spend_mana_as_any_type_this_turn`], the same one-shot turn-flag shape
+    /// [`GrantFlashThisTurn`](Self::GrantFlashThisTurn) takes.
+    GrantSpendManaAsAnyTypeForOneSpellThisTurn,
+
     MustAttackRandomOpponent,
 
     /// "Creatures the active player controls attack this turn if able" (CR 508.1a — Siren's
@@ -105,6 +151,64 @@ pub enum MiscEffect {
         #[cfg_attr(feature = "card-dsl", serde(default = "de::target_creature"))]
         target: TargetSpec,
     },
+
+    /// Wall of Dust's "Whenever this creature blocks a creature, that creature can't attack during
+    /// its controller's next turn" (CR 508.1a). Not a target — the creature is the one on the other
+    /// side of the block pair, baked in when the ability is placed, exactly like
+    /// [`DestroyEffect::ThatCreature`](crate::DestroyEffect::ThatCreature)'s Cockatrice fill.
+    /// `None` means no context ever filled it in, and nothing is banned.
+    ///
+    /// Resolution records the creature in `CombatExtras::cant_attack_next_own_turn`;
+    /// `Game::roll_own_turn_history` promotes it at the cleanup step of the turn it was blocked in
+    /// (attackers are declared by the active player, so that is the boundary of "its controller's
+    /// next turn") and spends it one turn later.
+    ThatCreatureCantAttackNextOwnTurn {
+        #[cfg_attr(feature = "card-dsl", serde(skip))]
+        creature: Option<ObjectId>,
+    },
+
+    /// Johan's "you may have Johan gain \"Johan can't attack\" until end of combat" — the
+    /// combat-scoped twin of
+    /// [`ThatCreatureCantAttackNextOwnTurn`](Self::ThatCreatureCantAttackNextOwnTurn) above, and
+    /// always the source rather than a target. Recorded in `CombatState::cant_attack_this_combat`,
+    /// so `Event::CombatCleared` is its whole expiry and a second combat phase starts clean.
+    ///
+    /// ponytail: a combat-scoped entry rather than a real granted "can't attack" ability (CR
+    /// 613.1f layer 6), so nothing can read the grant back off Johan or strip it. Nothing in the
+    /// pool asks; a `ModifierKind` grant is the upgrade path if something does.
+    SourceCantAttackThisCombat,
+
+    /// Johan's "attacking doesn't cause creatures you control to tap this combat if Johan is
+    /// untapped" — the controller-wide, conditional twin of
+    /// [`Keyword::Vigilance`](crate::Keyword), read at the attack declaration rather than granted
+    /// to each creature. Recorded in `CombatState::attacks_dont_tap` as `(controller, source)`;
+    /// the source's untapped-ness is checked live when attackers are declared, which is what
+    /// "if Johan is untapped" asks for.
+    YourAttacksDontTapWhileSourceUntappedThisCombat,
+
+    /// Floral Spuzzem's "this creature assigns no combat damage this turn" (CR 510.1a). Always the
+    /// source, never a target, like
+    /// [`SourceCantBeRegeneratedThisTurn`](Self::SourceCantBeRegeneratedThisTurn). Records the
+    /// source in `CombatExtras::assigns_no_combat_damage_this_turn`, which
+    /// `Game::deals_this_batch` — the one gate both the damage assignment and the division
+    /// question read — answers `false` for, so the creature neither divides nor deals. Not
+    /// prevention: the damage is never assigned in the first place, so a "damage can't be
+    /// prevented" rider would not bring it back.
+    SourceAssignsNoCombatDamageThisTurn,
+
+    /// Feint's "Prevent all combat damage that would be dealt this turn by that creature and each
+    /// creature blocking it" — the one-combat-group scope between
+    /// [`SourceAssignsNoCombatDamageThisTurn`](Self::SourceAssignsNoCombatDamageThisTurn)'s single
+    /// creature and [`PreventAllCombatDamageThisTurn`](Self::PreventAllCombatDamageThisTurn)'s
+    /// whole table. Takes no target of its own: "that creature" is the enclosing
+    /// [`Effect::Sequence`](crate::Effect::Sequence)'s shared target, the attacker its first step
+    /// (`TapBlockersOfTarget`) already chose.
+    ///
+    /// ponytail: modeled as the same "assigns no combat damage" ledger the Spuzzem writes rather
+    /// than as a CR 615 prevention shield, so a hypothetical "damage can't be prevented" rider
+    /// would not bring the damage back. Nothing in the pool pairs the two; if one lands, this
+    /// needs a real by-source shield at the damage choke instead.
+    ThatCreatureAndItsBlockersAssignNoCombatDamageThisTurn,
 
     PreventAllCombatDamageThisTurn,
 
@@ -144,6 +248,23 @@ pub enum MiscEffect {
         /// redirect send it to the same player who armed the shield, so there is nothing to name.
         #[cfg_attr(feature = "card-dsl", serde(default))]
         redirect_to_controller: bool,
+        /// "… is dealt to **that spell's controller** instead" (Reverberation, CR 615.10) — the
+        /// redirect goes to whoever controls the object this ability targeted, not to the
+        /// ability's own controller. Set alongside `target_is_source`, which is what makes the
+        /// targeted spell the source being watched.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        redirect_to_target_controller: bool,
+        /// "… is dealt to **this creature** instead" (Shimian Night Stalker, CR 615.10) — the
+        /// moved damage lands on the ability's own source permanent, which no
+        /// [`TargetSpec`](crate::TargetSpec) can name (the target is the watched attacker). The
+        /// redirect-side twin of `shield_source`.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        redirect_to_source: bool,
+        /// "… is dealt to **target creature** … instead" (Nova Pentacle, CR 615.10) — the targeted
+        /// creature is the damage's new home rather than the thing being shielded, so the shield
+        /// itself stands in front of this ability's controller ("would deal damage to you").
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        redirect_to_target: bool,
         /// "Damage that would be dealt to **this creature**" (Personal Incarnation): the shield
         /// covers the permanent that armed it. Not a `target` — the ability targets nothing, and
         /// no [`TargetSpec`](crate::TargetSpec) can name an effect's own source.
@@ -160,10 +281,34 @@ pub enum MiscEffect {
         /// protects — is what every other card in the pool prints.
         #[cfg_attr(feature = "card-dsl", serde(default))]
         target_is_source: bool,
+        /// "Prevent all combat damage that would be dealt **by** target creature this turn" (Lady
+        /// Evangela, Horn of Deafening, Subdue, Kry Shield): the shield names only a source, so it
+        /// stands in front of every recipient at once. Set alongside `target_is_source`, which
+        /// says *which* source; Forcefield sets that one alone, because it also names the one
+        /// player it protects.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        any_recipient: bool,
         /// "Would deal *combat* damage" (Forcefield): only damage dealt in a combat damage step
         /// is stopped. `false` (default) covers combat and noncombat alike.
         #[cfg_attr(feature = "card-dsl", serde(default))]
         combat_only: bool,
+        /// "… by **attacking creatures without flying**" (Al-abara's Carpet) — a gate on the
+        /// damage's *source*, the turn-scoped twin of
+        /// [`StaticEffect::PreventDamage`](crate::StaticEffect::PreventDamage)'s `source_filter`.
+        /// A source that isn't a permanent never matches one.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        from_filter: Option<PermanentFilter>,
+        /// "… a spell or ability that **targets that creature**" (Silhouette) — the same
+        /// source/recipient relationship [`StaticEffect::PreventDamage`](crate::StaticEffect::PreventDamage)'s
+        /// `source_relation` reads, on a turn-scoped shield instead of a permanent's static.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        from_relation: Option<SourceRelation>,
+        /// "Prevent **all** damage … this turn" (Al-abara's Carpet, Silhouette) rather than "the
+        /// next …": CR 615.6 — this shield is never used up, so it stands in front of every
+        /// qualifying hit until it expires at end of turn. `false` (every other pool shield) is
+        /// consumed by what it prevents.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        all_damage: bool,
     },
 
     /// Guardian Angel's second sentence: "Until end of turn, you may pay {1} any time you could
@@ -205,6 +350,12 @@ pub enum MiscEffect {
         then: &'static Effect,
         #[cfg_attr(feature = "card-dsl", serde(default))]
         fire_at: Step,
+        /// "At the beginning of **your** next upkeep" (Hazezon Tamar) rather than "the next turn's
+        /// upkeep" (Arcane Denial, the default): the delayed trigger waits for `who`'s own upkeep
+        /// instead of firing on whichever upkeep begins first. Only meaningful with the default
+        /// `fire_at = "upkeep"` — the other timings the pool schedules are all unscoped.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        your_upkeep: bool,
     },
 
     ScheduleColorlessManaForCounteredSpellNextMainPhase,
@@ -215,9 +366,47 @@ pub enum MiscEffect {
         then: &'static [Effect],
     },
 
+    /// "When that creature dies this turn, …" (Reincarnation) — CR 603.7's *object*-armed delayed
+    /// trigger: it watches the resolving ability's own target permanent rather than a step
+    /// ([`ScheduleAtNextUpkeep`](Self::ScheduleAtNextUpkeep)), a spell filter
+    /// ([`ScheduleNextCastTrigger`](Self::ScheduleNextCastTrigger)) or a damage event
+    /// ([`ArmCombatDamageWatch`](Self::ArmCombatDamageWatch)). One-shot: the watch is consumed
+    /// when that permanent dies, and expires unfired at the next turn's untap step ("this turn").
+    /// `then` runs with the dead creature as its trigger context, so a payoff that names "its
+    /// owner" (Reincarnation's graveyard) can read it.
+    ScheduleWhenTargetDiesThisTurn {
+        #[cfg_attr(feature = "card-dsl", serde(default = "de::target_creature"))]
+        target: TargetSpec,
+        #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::static_slice"))]
+        then: &'static [Effect],
+    },
+
     ScheduleThisTurnCombatDamageCopy,
 
+    /// "This creature can't be regenerated this turn" (Clergy of the Holy Nimbus's second
+    /// ability, CR 701.15d) — sets the same suppression flag Disintegrate/Terror bundle with
+    /// their own destruction, but on its own, with no damage or destroy attached. Always the
+    /// ability's own source, never a target — the printed ability names "this creature", not
+    /// "target creature".
+    SourceCantBeRegeneratedThisTurn,
+
     SkipNextUntapOpponentCreatures,
+
+    /// "It doesn't untap during its controller's next **two** untap steps" (Telekinesis) — the
+    /// targeted, countable twin of
+    /// [`SkipNextUntapOpponentCreatures`](Self::SkipNextUntapOpponentCreatures) above. Marks the
+    /// chosen permanent `count` times on [`Game::skip_next_untap`](crate::Game), one mark spent
+    /// per untap step it would otherwise have untapped in, so the marks stack rather than
+    /// overwrite: two Telekineses owe the creature four missed untap steps.
+    ///
+    /// Not [`StaticEffect::DoesntUntap`](crate::StaticEffect::DoesntUntap): that one is a
+    /// continuous effect a live permanent radiates, and Telekinesis is an instant that leaves
+    /// nothing behind.
+    SkipNextUntaps {
+        #[cfg_attr(feature = "card-dsl", serde(default = "de::target_creature"))]
+        target: TargetSpec,
+        count: u8,
+    },
 
     /// "Take an extra turn after this one" (Time Walk; CR 505.6a). Queues one turn for the
     /// controller, taken as this turn ends and before the rotation moves on — see
@@ -229,6 +418,13 @@ pub enum MiscEffect {
     /// the loss is a life total, so no prevention, protection or life-total static can hold it
     /// off.
     YouLoseTheGame,
+
+    /// "The game is a draw" (CR 104.4 — Divine Intervention). Its own game outcome, not everybody
+    /// losing: the game ends the moment this resolves with no winner and no loser
+    /// ([`Game::outcome`](crate::Game::outcome) reports
+    /// [`GameOutcome::Draw`](crate::GameOutcome)), so no player's `lost` flag is set and none of
+    /// the CR 800.4a elimination bookkeeping runs.
+    GameIsADraw,
 
     YouChooseWhichCreaturesAttack,
 

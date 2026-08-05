@@ -119,8 +119,20 @@ impl Game {
     fn redirected_damage_events(&self, source: ObjectId, to: Target, amount: i32) -> Vec<Event> {
         match to {
             Target::Player(player) => {
-                self.player_damage_events_inner(source, player, amount, false)
-                    .0
+                // The moved damage is dealt to this player for real (CR 615.10), so it carries the
+                // same "damage was dealt to a player" marker an ordinary hit does — Pit Scorpion's
+                // watch and the turn's damage ledger both read it. `player_damage_events_inner`
+                // mints only the life loss; every other caller pushes the marker itself.
+                let (mut events, dealt) =
+                    self.player_damage_events_inner(source, player, amount, false);
+                if dealt > 0 {
+                    events.push(Event::DamageDealtToPlayer {
+                        source,
+                        player,
+                        amount: dealt,
+                    });
+                }
+                events
             }
             Target::Object(object) => {
                 self.creature_damage_events_inner(source, object, amount, false, false, false)
@@ -151,7 +163,9 @@ impl Game {
         target: Target,
         source: ObjectId,
     ) -> bool {
-        if shield.target != target {
+        // A source-keyed shield (Lady Evangela's "dealt **by** target creature this turn") names
+        // no recipient at all, so it stands in front of whoever the named source is hitting.
+        if !shield.any_recipient && shield.target != target {
             return false;
         }
         // A named source (Forcefield's chosen creature) replaces the colour gate rather than
@@ -162,7 +176,81 @@ impl Game {
         if shield.combat_only && !self.in_combat_damage_step() {
             return false;
         }
+        // "… by attacking creatures without flying" (Al-abara's Carpet) — the turn-scoped twin of
+        // a `StaticEffect::PreventDamage` source filter, read from the shielded side's own
+        // perspective. A non-permanent source (a spell) never matches one.
+        if let Some(filter) = shield.from_filter {
+            let you = match target {
+                Target::Player(player) => player,
+                Target::Object(object) => self.controller_of(object),
+            };
+            if !self.permanent_matches(&filter, source, you, target.object_id()) {
+                return false;
+            }
+        }
+        // "… a spell or ability that targets that creature" (Silhouette) — only a shield standing
+        // in front of a *permanent* can read a relationship to the source.
+        if let Some(relation) = shield.from_relation {
+            let Target::Object(object) = target else {
+                return false;
+            };
+            if !self.source_relates(relation, source, object) {
+                return false;
+            }
+        }
         self.color_matches(shield.from_color, source)
+    }
+
+    /// Whether the damage's `source` stands in the named relationship to the shielded permanent
+    /// `object` (CR 615) — the two "by …" clauses that read the shielded object rather than the
+    /// source's own characteristics. Shared by the permanent statics (Wall of Vapor, Bronze Horse)
+    /// and the turn-scoped shields (Silhouette), so both answer the same question the same way.
+    pub(crate) fn source_relates(
+        &self,
+        relation: SourceRelation,
+        source: ObjectId,
+        object: ObjectId,
+    ) -> bool {
+        match relation {
+            // "creatures it's blocking" — per damage source, not per combat: a creature blocking
+            // two attackers (CR 509.1) shields against each of them independently.
+            SourceRelation::BlockedByThis => self.combat.blocks.contains(&(object, source)),
+            // "spells that target it" — the source is still a spell on the stack while it
+            // resolves, so its chosen targets are readable here (CR 608.2). Both target clauses
+            // count: the shield asks whether the spell targets the creature at all.
+            SourceRelation::SpellTargetingThis => {
+                let Object::Spell(spell) = &self.objects[source as usize] else {
+                    return false;
+                };
+                let targeted =
+                    |list: &crate::TargetList| list.iter().any(|t| t == Target::Object(object));
+                targeted(&spell.targets) || targeted(&spell.targets_second)
+            }
+            // "a spell or ability that targets that creature would *cause a source* to deal
+            // damage to it" — the question is about the item that caused the damage, not about
+            // the source it named, so it is answered from the resolution frame rather than from
+            // `source`'s own characteristics. `resolving_targets` is armed only while a stack
+            // item's effects are running, so damage minted outside a resolution (combat) reads
+            // an empty list and is never caught.
+            SourceRelation::SpellOrAbilityTargetingThis => self
+                .resolution_frame
+                .resolving_targets
+                .contains(&Target::Object(object)),
+        }
+    }
+
+    /// Whether a permanent's own [`StaticEffect::PreventDamage`] shield prevents this whole hit
+    /// (CR 615) — Guard Gomazoa's "prevent all combat damage that would be dealt to" and the
+    /// Legends family that narrows it with a source gate. Read at
+    /// [`creature_damage_events_inner`](Self::creature_damage_events_inner), the one choke every
+    /// creature-damage path routes through, so combat, fight, burn and sweeps are all covered.
+    pub(crate) fn static_damage_prevented(&self, target: ObjectId, source: ObjectId) -> bool {
+        self.replacement_registry().damage_prevented_to_permanent(
+            self,
+            target,
+            source,
+            self.in_combat_damage_step(),
+        )
     }
 
     /// Whether damage being dealt right now is combat damage — read off the step rather than
@@ -215,6 +303,13 @@ impl Game {
         exile_instead_of_dying: bool,
         allow_redirect: bool,
     ) -> (Vec<Event>, i32) {
+        // Guard Gomazoa / Wall of Vapor (CR 615): the shielded permanent's own "prevent all
+        // damage that would be dealt to this creature by …" static eats the whole hit before any
+        // spendable shield pays for it. Silent, like the other whole-event shields — nothing in
+        // the pool reads a prevented total on the creature side.
+        if self.static_damage_prevented(object, source) {
+            return (Vec::new(), 0);
+        }
         // Rock Hydra's per-point shield (CR 615) is spent first and only covers as many points as
         // it has counters; whatever it can't pay for falls through to the ordinary shields below
         // and is dealt for real.
@@ -281,6 +376,15 @@ impl Game {
     ) -> (Vec<Event>, i32) {
         let (mut events, amount) =
             self.spend_prevention_shields(Target::Player(player), source, amount, allow_redirect);
+        // Forethought Amulet's "it deals 2 damage to you instead" (CR 615.9) — a replacement that
+        // rewrites the amount rather than subtracting from it, so it is read *after* the shields
+        // have taken their bite. CR 615.9 lets the affected player order the two; with one
+        // rewrite in the pool and prevention only ever shrinking the hit, the order is unobservable
+        // except when a shield drops a hit below the rewrite's threshold, which is the reading
+        // that leaves the player better off.
+        let amount = self
+            .replacement_registry()
+            .replaced_damage_to_player(self, player, source, amount);
         // CR 615: damage a shield ate entirely was never dealt — no life loss, and the caller's
         // `amount > 0` guard drops the `DamageDealtToPlayer` marker and lifelink with it.
         if !events.is_empty() && amount <= 0 {

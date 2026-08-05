@@ -3,6 +3,8 @@
 //! Pause peel behind [`Game::run`] (card-dsl-and-card-pool spec deepen). Pause bookkeeping stays in
 //! [`crate::pending`]; this module only raises the choice.
 
+use std::sync::Arc;
+
 use crate::*;
 
 impl Game {
@@ -68,7 +70,7 @@ impl Game {
                 pending::ChoiceRequest::ChooseColor {
                     player: controller,
                     source,
-                    until_end_of_turn: false,
+                    use_: ChosenColorUse::Remember,
                 },
             ),
             // Black Vise's "As this artifact enters, choose an opponent": the shared "an opponent
@@ -86,9 +88,33 @@ impl Game {
                 pending::ChoiceRequest::ChooseColor {
                     player: controller,
                     source,
-                    until_end_of_turn: true,
+                    use_: ChosenColorUse::SetUntilEndOfTurn,
                 },
             ),
+            // Alchor's Tomb's "target permanent you control becomes the color of your choice": the
+            // same picker again, but the color lands on the *chosen target* rather than the (CR 609.3)
+            // ability's own source, and with the duration the card printed. A target that has left
+            // since leaves nothing to ask about (CR 608.2b).
+            Effect::Pump(PumpEffect::TargetBecomesColor {
+                color: None,
+                until_end_of_turn,
+                ..
+            }) => {
+                let Some(object) = target.and_then(Target::object_id) else {
+                    return;
+                };
+                pending::raise(
+                    self,
+                    pending::ChoiceRequest::ChooseColor {
+                        player: controller,
+                        source: object,
+                        use_: match until_end_of_turn {
+                            true => ChosenColorUse::SetUntilEndOfTurn,
+                            false => ChosenColorUse::SetIndefinitely,
+                        },
+                    },
+                )
+            }
             // "Choose one —" reached mid-resolution — a modal spell's own resolution step (CR
             // 608.2, Zimone's Hypothesis), not a triggered ability (those choose their mode at
             // placement, see `place_pending_triggers`). Pause on a ChooseMode; the chosen mode
@@ -106,6 +132,77 @@ impl Game {
                         target,
                         x,
                         modes: options,
+                        at_placement: false,
+                        activated: false,
+                    },
+                );
+            }
+            // Urborg's "target creature loses first strike or swampwalk until end of turn": CR
+            // 609.4 puts the pick at *resolution*, made by the ability's controller with the target
+            // already locked — unlike a printed "Choose one —", which is chosen as the ability is
+            // activated (CR 601.2b, the `Effect::ChooseOne` branch in `Game::activate`). Each mode
+            // is this same effect narrowed to one keyword; `answer_choose_mode` runs it straight
+            // away against this resolution's own target.
+            // Gabriel Angelfire's "choose flying, first strike, trample, or rampage 3": the same
+            // CR 609.4 resolution-time pick as Urborg's right below, on a self-grant with no target
+            // to lock in. Each mode is this same effect narrowed to one keyword.
+            Effect::Pump(PumpEffect::GrantSelfKeywordsUntilNextUpkeep { keywords, .. }) => {
+                let modes: Arc<[Effect]> = keywords
+                    .iter()
+                    .enumerate()
+                    .map(|(i, _)| {
+                        Effect::Pump(PumpEffect::GrantSelfKeywordsUntilNextUpkeep {
+                            keywords: &keywords[i..=i],
+                            choose_one: false,
+                        })
+                    })
+                    .collect();
+                if modes.is_empty() {
+                    return;
+                }
+                pending::raise(
+                    self,
+                    pending::ChoiceRequest::ChooseMode {
+                        player: controller,
+                        source,
+                        target,
+                        x,
+                        modes,
+                        at_placement: false,
+                        activated: false,
+                    },
+                );
+            }
+            Effect::Pump(PumpEffect::TargetLosesKeywords {
+                target: spec,
+                keywords,
+                until_end_of_turn,
+                ..
+            }) => {
+                let modes: Arc<[Effect]> = keywords
+                    .iter()
+                    .enumerate()
+                    .map(|(i, _)| {
+                        Effect::Pump(PumpEffect::TargetLosesKeywords {
+                            target: spec,
+                            keywords: &keywords[i..=i],
+                            families: &[],
+                            until_end_of_turn,
+                            choose_one: false,
+                        })
+                    })
+                    .collect();
+                if modes.is_empty() {
+                    return;
+                }
+                pending::raise(
+                    self,
+                    pending::ChoiceRequest::ChooseMode {
+                        player: controller,
+                        source,
+                        target,
+                        x,
+                        modes,
                         at_placement: false,
                         activated: false,
                     },
@@ -152,6 +249,28 @@ impl Game {
                     source,
                 },
             ),
+            // Backdraft's "half the damage dealt by **one of those** sorcery spells this turn":
+            // the controller picks which of the *targeted* player's damaging sorceries the
+            // following damage step halves. One candidate is no decision — settle it without
+            // asking; none leaves the pick unset, which the amount reads back as 0.
+            Effect::Choice(ChoiceEffect::ChooseTargetPlayersDamagingSorcery) => {
+                let Some(Target::Player(chosen)) = target else {
+                    return;
+                };
+                let candidates = self.damaging_sorceries_cast_by(chosen);
+                if candidates.len() < 2 {
+                    self.resolution_frame.chosen_damage_source = candidates.first().copied();
+                    return;
+                }
+                pending::raise_choice(
+                    self,
+                    PendingChoice::ChooseDamageSource {
+                        player: controller,
+                        source,
+                        candidates,
+                    },
+                );
+            }
             _ => unreachable!("choose pause family received a non-family effect"),
         }
     }

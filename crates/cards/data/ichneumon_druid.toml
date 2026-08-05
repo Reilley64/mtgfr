@@ -1,0 +1,33 @@
+# Whenever an opponent casts an instant spell other than the first instant spell that player
+# casts each turn, this creature deals 4 damage to that player.
+name = "Ichneumon Druid"
+otags = ["burn-player", "cast-trigger-other", "hate-instant", "type-addition-human"]
+sets = ["leg"]
+id = "6aba2a04-0117-429e-a5df-6ba4645129d8"
+default_print = "cf2313bb-6f9b-49d6-b069-9f3b77b6e107"
+oracle = "Whenever an opponent casts an instant spell other than the first instant spell that player casts each turn, this creature deals 4 damage to that player."
+subtypes = ["Human", "Druid"]
+
+[cost]
+generic = 1
+green = 2
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# Whenever an opponent casts an instant spell other than the first instant spell that player
+# casts each turn, this creature deals 4 damage to that player.
+[[abilities]]
+timing = "cast_spell"
+caster = "opponent"
+spell_filter = "instant"
+after_nth_each_turn = 1
+
+# this creature deals 4 damage to that player.
+[[abilities.effects]]
+type = "damage"
+mode = "to_players"
+who = "triggering_player"
+amount = 4

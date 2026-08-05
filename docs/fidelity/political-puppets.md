@@ -99,7 +99,11 @@ Armillary Sphere's printed reveal.
 - [x] Soul Snare → #205 (residual: "or a planeswalker you control" unmodeled — the standing
   pool-wide no-planeswalker-permanent limitation, flagged in its `approximates`)
 - [x] Spell Crumple → #214
-- [x] Spurnmage Advocate → #218
+- [ ] Spurnmage Advocate → #218 — **was never this card.** #218 scripted text no printed card
+  has: the front matter was wrong ({1}{W} 2/2 Human Cleric, not {W} 1/1 Human Nomad) and the body
+  exiled two graveyard cards as an activation cost and removed an attacker from combat, which is
+  Labyrinth of Skophos' text. Front matter corrected by the `leg` grind (increment 8); the body is
+  `leg` increment 120.
 - [x] Trade Secrets → #231
 - [x] Vedalken Plotter → #228
 - [x] Vow of Duty → #203 (residual: "or planeswalkers you control" unmodeled — same standing

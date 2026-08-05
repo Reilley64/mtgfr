@@ -1,0 +1,15 @@
+# (no rules text — vanilla creature)
+name = "Barbary Apes"
+sets = ["leg"]
+id = "39bfe194-1662-4c0e-a7c6-ea7764d29b65"
+default_print = "df25ffdd-995d-46ae-856b-f6368f9438ed"
+subtypes = ["Ape"]
+
+[cost]
+generic = 1
+green = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2

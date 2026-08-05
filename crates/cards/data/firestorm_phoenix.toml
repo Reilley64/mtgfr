@@ -1,0 +1,31 @@
+# Flying
+# If this creature would die, return it to its owner's hand instead. Until that player's next turn,
+# that player plays with that card revealed in their hand and can't play it.
+name = "Firestorm Phoenix"
+otags = ["evasion", "regrowth-self"]
+sets = ["leg", "me3"]
+id = "5653b40f-c566-4a14-b188-a9268ea36218"
+default_print = "3247a7dd-f48c-4cb4-8475-4864acccef7a"
+oracle = "Flying\nIf this creature would die, return it to its owner's hand instead. Until that player's next turn, that player plays with that card revealed in their hand and can't play it."
+subtypes = ["Phoenix"]
+keywords = ["flying"]
+
+[cost]
+generic = 4
+red = 2
+
+[kind]
+type = "creature"
+power = 3
+toughness = 2
+
+# If this creature would die, return it to its owner's hand instead. Until that player's next turn,
+# that player plays with that card revealed in their hand and can't play it.
+[[abilities]]
+timing = "static"
+
+# If this creature would die, return it to its owner's hand instead. Until that player's next turn,
+# that player plays with that card revealed in their hand and can't play it.
+[[abilities.effects]]
+type = "static"
+mode = "return_to_hand_instead_of_dying"

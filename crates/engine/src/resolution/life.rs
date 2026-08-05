@@ -84,6 +84,40 @@ impl Game {
                     })
                     .collect()
             }
+            // Mirror Universe: "Exchange life totals with target opponent" (CR 118.7). Sized as
+            // a delta per player, same pairwise shape as `EachPlayerBecomesHighest` above — one
+            // `LifeChanged` for the controller, one for the opponent, so a life-gain trigger on
+            // either side sees exactly one change, not a gain/loss pair per point exchanged.
+            // Glyph of Life arms a delayed watch on `Game`, which needs `&mut self`.
+            LifeEffect::GainWhenTargetIsDamagedByAttackerThisTurn { .. } => {
+                unreachable!("a pausing/composite effect resolves via Game::run")
+            }
+            LifeEffect::Exchange { who } => self
+                .players_in(who, controller, target)
+                .into_iter()
+                .flat_map(|other| {
+                    let delta = self.life(other) - self.life(controller);
+                    match delta.cmp(&0) {
+                        std::cmp::Ordering::Equal => vec![],
+                        std::cmp::Ordering::Greater => vec![
+                            self.life_gain(controller, delta, source),
+                            Event::LifeChanged {
+                                player: other,
+                                amount: -delta,
+                                source: Some(source),
+                            },
+                        ],
+                        std::cmp::Ordering::Less => vec![
+                            Event::LifeChanged {
+                                player: controller,
+                                amount: delta,
+                                source: Some(source),
+                            },
+                            self.life_gain(other, -delta, source),
+                        ],
+                    }
+                })
+                .collect(),
             LifeEffect::SourceOwnerLosesHalfTheirLife => {
                 let owner = self.owner_of(source);
                 // Rounded *up*, so an odd life total costs the extra point. A player already at

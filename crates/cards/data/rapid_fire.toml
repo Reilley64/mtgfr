@@ -1,0 +1,39 @@
+# Cast this spell only before blockers are declared.
+# Target creature gains first strike until end of turn. If it doesn't have rampage, that creature gains rampage 2 until
+# end of turn. (Whenever the creature becomes blocked, it gets +2/+2 until end of turn for each creature blocking it
+# beyond the first.)
+name = "Rapid Fire"
+otags = ["block-trigger", "gives-first-strike", "gives-rampage", "single-target-instant-sorcery"]
+sets = ["leg"]
+id = "63c7248e-a7a2-4e32-b4d2-55dbc63e51e5"
+default_print = "e26e7c9c-e6de-47f4-8394-7e853408f84c"
+oracle = "Cast this spell only before blockers are declared.\nTarget creature gains first strike until end of turn. If it doesn't have rampage, that creature gains rampage 2 until end of turn. (Whenever the creature becomes blocked, it gets +2/+2 until end of turn for each creature blocking it beyond the first.)"
+cast_only_before_blockers = true
+
+[cost]
+generic = 3
+white = 1
+
+[kind]
+type = "instant"
+
+# Target creature gains first strike until end of turn. If it doesn't have rampage, that creature gains rampage 2 until
+# end of turn.
+[[abilities]]
+timing = "spell"
+
+# Target creature gains first strike until end of turn.
+[[abilities.effects]]
+type = "pump"
+mode = "pump_until_end_of_turn"
+power = 0
+toughness = 0
+target = "creature"
+keywords = ["first_strike"]
+
+# If it doesn't have rampage, that creature gains rampage 2 until end of turn.
+[[abilities.effects]]
+type = "conditional"
+condition = { type = "target_has_rampage" }
+negate = true
+then = [{ type = "pump", mode = "pump_until_end_of_turn", power = 0, toughness = 0, target = "creature", keywords = [{ rampage = 2 }] }]

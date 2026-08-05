@@ -981,6 +981,14 @@ impl Game {
                 .filter(|&p| p != controller)
                 .map(Target::Player)
                 .collect(),
+            // "Choose a player who cast one or more sorcery spells this turn" (Backdraft): a
+            // living player carrying this turn's sorcery-cast flag. No seat qualifies before the
+            // first sorcery of the turn resolves onto the stack, so Backdraft is uncastable then.
+            TargetSpec::PlayerWhoCastASorceryThisTurn => self
+                .living_players()
+                .filter(|&p| self.players[p.0 as usize].sorcery_cast_this_turn)
+                .map(Target::Player)
+                .collect(),
             // Populate: creature tokens the choosing player controls (CR 701.32).
             TargetSpec::CreatureTokenYouControl => self
                 .live_object_ids()
@@ -1106,6 +1114,39 @@ impl Game {
                     if let SpellFilter::Color(color) = filter {
                         return self.colors_of(id)[color.index()];
                     }
+                    // Avoid Fate / Ring of Immortals's "targets a permanent you control": "you" is
+                    // this enumeration's own `controller` (the counterer choosing a target), not
+                    // `self.controller_of(id)` (the candidate spell's own caster, below) — the same
+                    // reason `Color` and `ManaValueEqualsX` special-case here rather than going
+                    // through `spell_matches_filter`. Re-evaluated live every call, so the CR
+                    // 608.2b resolution re-check (this same function, via `target_still_legal`)
+                    // sees a target permanent's control change in response. Any one of the
+                    // candidate's targets qualifying is enough (CR 608.2b: a spell may have more
+                    // than one target).
+                    if filter == SpellFilter::InstantOrAuraTargetsPermanentYouControl {
+                        let is_instant_or_aura = matches!(
+                            self.def_of(id).kind,
+                            CardKind::Aura
+                                | CardKind::Spell {
+                                    speed: SpellSpeed::Instant
+                                }
+                        );
+                        return is_instant_or_aura
+                            && self.spell_targets(id).into_iter().any(|t| {
+                                matches!(t, Target::Object(pid)
+                                    if self.as_permanent(pid).is_some()
+                                        && self.controller_of(pid) == controller)
+                            });
+                    }
+                    // Equinox's "if it would destroy a land you control" — same inline treatment
+                    // and for the same two reasons: "you" is this enumeration's own `controller`
+                    // (the counterer), and the prediction reads the candidate's *chosen* targets
+                    // off the stack, which `spell_matches_filter`'s `CardDef` can't see. Live on
+                    // every call, so the CR 608.2b resolution re-check drops the counter if the
+                    // land it would have destroyed changed hands in response.
+                    if filter == SpellFilter::WouldDestroyLandYouControl {
+                        return self.spell_would_destroy_land_of(id, controller);
+                    }
                     // A counter/target-spell filter never reads the cast-from zone; pass the
                     // plain hand-cast default (see `spell_matches_filter`).
                     self.spell_matches_filter(
@@ -1149,7 +1190,7 @@ impl Game {
             // readily. Keyed by the ability's `source` id (see the spec's identity ponytail); only
             // `activated` entries are yielded, so a triggered ability on the stack is not a legal
             // target, and a mana ability never reaches the stack to be one.
-            TargetSpec::ActivatedAbilityOnStack => self
+            TargetSpec::ActivatedAbilityOnStack { artifact_source } => self
                 .stack
                 .iter()
                 .filter_map(|item| match item {
@@ -1159,6 +1200,16 @@ impl Game {
                         ..
                     } => Some(Target::Object(*source)),
                     _ => None,
+                })
+                // "from an artifact source" (Rust, Ayesha Tanaka): the ability's source permanent
+                // has to be an artifact right now (CR 109.5 — a source that has left the
+                // battlefield is read from last known information, which this pool never needs).
+                .filter(|target| match target {
+                    Target::Object(source) => {
+                        !artifact_source
+                            || self.effective_types(*source).intersects(TypeSet::ARTIFACT)
+                    }
+                    Target::Player(_) => false,
                 })
                 .collect(),
             // A fixed reference to the ability's own source (Hangarback's "this creature",
@@ -1200,18 +1251,21 @@ impl Game {
                 // The ability on the stack is the target, not its source permanent — the source's
                 // own shroud/hexproof/protection (CR 702.11/702.16b/702.18) doesn't shield its
                 // ability, so don't run the battlefield-permanent filter against the source id.
-                | TargetSpec::ActivatedAbilityOnStack
+                | TargetSpec::ActivatedAbilityOnStack { .. }
         ) {
             return targets;
         }
         // Shroud/hexproof/protection (CR 702.18, 702.11, 702.16b) all restrict who can target a
-        // permanent. Only battlefield permanents are filtered — a keyword ability functions only
-        // on the battlefield (CR 113.6a), so e.g. a pro-black creature card in a graveyard is
-        // still a legal Reanimate target.
+        // permanent, as does the filtered "can't be the target of (Aura) spells" static. Only
+        // battlefield permanents are filtered — a keyword ability functions only on the battlefield
+        // (CR 113.6a), so e.g. a pro-black creature card in a graveyard is still a legal Reanimate
+        // target.
         targets.retain(|t| match *t {
             Target::Object(id) => {
                 self.as_permanent(id).is_none()
-                    || !self.untargetable_by(id, controller, source_colors)
+                    || (!self.untargetable_by(id, controller, source_colors)
+                        && !self.cant_be_targeted_by_spell(id, source)
+                        && !self.cant_be_targeted_by_subtype_only_effect(id, spec))
             }
             Target::Player(_) => true,
         });
@@ -1227,6 +1281,76 @@ impl Game {
             });
         }
         targets
+    }
+
+    /// True if a live [`StaticEffect::CantBeTargetedBy`] turns the spell `source` away from `id`
+    /// (Bartel Runeaxe's "can't be the target of Aura spells", Anti-Magic Aura's "Enchanted
+    /// creature can't be the target of spells"). Filtered, so deliberately narrower than
+    /// [`Keyword::Shroud`]: only *spells* are stopped, never an ability (CR 111.1).
+    // ponytail: `source` counts as a spell when it isn't a battlefield permanent — the same test the
+    // Aura-cast retain in `legal_targets_for` uses. An activated ability of a card outside the
+    // battlefield would read as a spell; no pool card both has one and meets one of these shields.
+    // ponytail: rescans the battlefield per candidate target. Fine at Commander board sizes; collect
+    // the shields once per `legal_targets_for` call if a profile ever says otherwise.
+    fn cant_be_targeted_by_spell(&self, id: ObjectId, source: ObjectId) -> bool {
+        if self.as_permanent(source).is_some() {
+            return false;
+        }
+        let caster = self.controller_of(source);
+        let from_zone = self.zone_of(source);
+        self.battlefield().into_iter().any(|shield| {
+            self.functional_abilities(shield).iter().any(|ability| {
+                let (spells, attached) = match (ability.timing, &ability.effect) {
+                    (
+                        Timing::Static,
+                        Effect::Static(StaticEffect::CantBeTargetedBy { spells, attached }),
+                    ) => (*spells, *attached),
+                    _ => return false,
+                };
+                // Anti-Magic Aura shields the host it's attached to; Bartel Runeaxe shields itself.
+                let shielded = if attached {
+                    self.attached_to(shield)
+                } else {
+                    Some(shield)
+                };
+                shielded == Some(id)
+                    && self.spell_matches_filter(
+                        spells,
+                        self.def_of(source),
+                        None,
+                        caster,
+                        from_zone,
+                    )
+            })
+        })
+    }
+
+    /// True if a live [`StaticEffect::CantBeTargetedBySubtypeOnlyEffects`] on `id` turns away a
+    /// source whose target restriction is `spec` (Wall of Shadows' "can't be the target of spells
+    /// that can target only Walls or of abilities that can target only Walls").
+    ///
+    /// Unlike [`Self::cant_be_targeted_by_spell`] this reads nothing about the source at all —
+    /// only the restriction it declares — which is exactly why it reaches abilities too. A spec is
+    /// "\[subtype\]-only" when it requires at least one subtype and every subtype it requires is
+    /// shielded; [`TargetSpec::Permanent`] is the only spec that carries a subtype restriction, so
+    /// every other spec (a bare "target creature", "any target") can reach non-Walls and passes.
+    fn cant_be_targeted_by_subtype_only_effect(&self, id: ObjectId, spec: TargetSpec) -> bool {
+        let TargetSpec::Permanent(filter) = spec else {
+            return false;
+        };
+        if filter.subtypes.is_empty() {
+            return false;
+        }
+        self.functional_abilities(id).iter().any(|ability| {
+            let (
+                Timing::Static,
+                Effect::Static(StaticEffect::CantBeTargetedBySubtypeOnlyEffects { subtypes }),
+            ) = (ability.timing, &ability.effect)
+            else {
+                return false;
+            };
+            filter.subtypes.iter().all(|s| subtypes.contains(s))
+        })
     }
 
     /// True if `id` (a battlefield permanent) can't legally be targeted by something
@@ -1269,6 +1393,46 @@ impl Game {
     /// Number of cards in `player`'s library.
     pub fn library_size(&self, player: PlayerId) -> usize {
         self.players[player.0 as usize].library.len()
+    }
+
+    /// The top card of `player`'s library — the one a draw would take (CR 121.3) — or `None` for an
+    /// empty library. The only card of a library the projection layer may ever name, and then only
+    /// while [`Game::library_tops_revealed_to_all`] holds.
+    pub fn library_top(&self, player: PlayerId) -> Option<ObjectId> {
+        self.players[player.0 as usize].library.first().copied()
+    }
+
+    /// Whether a live battlefield permanent has the table playing with its hands revealed
+    /// (Revelation). Unscoped like [`Game::players_skip_untap_steps`] — "players" is everyone, the
+    /// enchantment's own controller included.
+    ///
+    /// Read by `schema`'s board projection and by nothing in the rules, so a revealed hand behaves
+    /// in every other respect like a hidden one. A `false` here is the private default: the gate it
+    /// widens starts closed, so failing to spot the enchantment over-hides rather than leaks.
+    pub fn hands_revealed_to_all(&self) -> bool {
+        self.any_battlefield_static(|effect| {
+            matches!(effect, StaticEffect::PlayersPlayWithHandsRevealed)
+        })
+    }
+
+    /// Whether a live battlefield permanent has the table playing with the top card of every
+    /// library revealed (Field of Dreams). The library twin of [`Game::hands_revealed_to_all`],
+    /// with the same fail-closed default; it licenses naming [`Game::library_top`] and no other
+    /// card of any library.
+    pub fn library_tops_revealed_to_all(&self) -> bool {
+        self.any_battlefield_static(|effect| {
+            matches!(effect, StaticEffect::PlayersPlayWithLibraryTopsRevealed)
+        })
+    }
+
+    /// Whether any battlefield permanent has a live static ability whose effect matches `wanted`.
+    fn any_battlefield_static(&self, wanted: impl Fn(&StaticEffect) -> bool) -> bool {
+        self.battlefield().into_iter().any(|source| {
+            self.functional_abilities(source).iter().any(|ability| {
+                ability.timing == Timing::Static
+                    && matches!(&ability.effect, Effect::Static(effect) if wanted(effect))
+            })
+        })
     }
 
     pub fn op_iteration(&self, player: PlayerId) -> u64 {
@@ -1384,6 +1548,16 @@ impl Game {
     /// Ids of all live permanents on the battlefield. Excludes phased-out permanents (CR 702.26e:
     /// treated as though they don't exist), so every scan routed through here — statics, combat,
     /// state-based actions, targeting, board counts — skips them until they phase in.
+    /// The surviving half of a printed pair (Stangg and Stangg Twin) — the battlefield permanent
+    /// whose [`Permanent::linked_twin`] points back at `object`. Scanned rather than read off
+    /// `object` itself because the leaves-the-battlefield triggers that ask for it resolve after
+    /// `object` has left, when its own permanent record is gone.
+    pub(crate) fn linked_twin(&self, object: ObjectId) -> Option<ObjectId> {
+        self.battlefield()
+            .into_iter()
+            .find(|&id| self.permanent(id).linked_twin == Some(object))
+    }
+
     pub(crate) fn battlefield(&self) -> Vec<ObjectId> {
         self.objects
             .iter()
@@ -1450,6 +1624,52 @@ impl Game {
     /// permanent at all (CR 609.7) — so this takes a bare [`ObjectId`], not a battlefield one.
     pub(crate) fn color_matches(&self, filter: ColorFilter, object: ObjectId) -> bool {
         filter.matched_by(&self.colors_of(object))
+    }
+
+    /// Whether the spell `spell` on the stack "would destroy a land `player` controls" — Equinox's
+    /// counter condition, read off the spell's script and its already-chosen targets:
+    ///
+    /// - a targeted destroy clause counts when one of the spell's chosen targets is a land
+    ///   `player` controls (Stone Rain aimed at your Plains), and
+    /// - a mass destroy clause counts when some land `player` controls matches its sweep filter,
+    ///   evaluated with the *casting* seat as "you" so an Armageddon-shaped "destroy all lands you
+    ///   control" reads off its own controller.
+    ///
+    /// ponytail: prediction, not simulation — a destroy inside a modal or conditional branch, or a
+    /// kill by any other route (sacrifice, -X/-X, exile), reads as "would not destroy". The scan
+    /// walks a spell ability's own effect and one level of [`Effect::Sequence`], which is every
+    /// shape the pool's land destruction prints. Increment #192.
+    fn spell_would_destroy_land_of(&self, spell: ObjectId, player: PlayerId) -> bool {
+        let caster = self.controller_of(spell);
+        let your_lands: Vec<ObjectId> = self
+            .battlefield()
+            .into_iter()
+            .filter(|&id| {
+                self.controller_of(id) == player
+                    && self.effective_types(id).intersects(TypeSet::LAND)
+            })
+            .collect();
+        if your_lands.is_empty() {
+            return false;
+        }
+        let targets = self.spell_targets(spell);
+        self.def_of(spell)
+            .abilities
+            .iter()
+            .filter(|a| matches!(a.timing, Timing::Spell))
+            .flat_map(|a| match &a.effect {
+                Effect::Sequence { steps } => steps.to_vec(),
+                effect => vec![effect.clone()],
+            })
+            .any(|effect| match effect {
+                Effect::Destroy(DestroyEffect::Target { .. }) => targets
+                    .iter()
+                    .any(|t| matches!(t, Target::Object(id) if your_lands.contains(id))),
+                Effect::Destroy(DestroyEffect::All { filter, .. }) => your_lands
+                    .iter()
+                    .any(|&id| self.permanent_matches(&filter, id, caster, Some(spell))),
+                _ => false,
+            })
     }
 
     /// Whether the permanent `id` satisfies `filter`. `you` is the effect's controller (the
@@ -1526,6 +1746,15 @@ impl Game {
             }
             _ => {}
         }
+        // Owner, relative to "you" — CR 108.3, and *not* the controller read above: Remove
+        // Enchantments returns only the enchantments you both own and control, and destroys the
+        // ones you control but someone else owns.
+        match filter.owner {
+            FilterOwner::Any => {}
+            FilterOwner::You if self.owner_of(id) != you => return false,
+            FilterOwner::Opponent if self.owner_of(id) == you => return false,
+            _ => {}
+        }
         // Token-ness.
         match filter.token {
             TokenFilter::Any => {}
@@ -1551,6 +1780,17 @@ impl Game {
                 .attached_to(id)
                 .is_some_and(|host| self.is_creature_on_battlefield(host));
             if host_is_creature != want {
+                return false;
+            }
+        }
+        // Attached-to-<filter>: the general form of the axis above — this (Aura or Equipment)
+        // candidate's own host must itself match a whole nested filter (Enchantment Alteration's
+        // "Aura attached to a creature or land"). Unattached never matches.
+        if let Some(host_filter) = filter.attached_to {
+            let host_matches = self
+                .attached_to(id)
+                .is_some_and(|host| self.permanent_matches(host_filter, host, you, source));
+            if !host_matches {
                 return false;
             }
         }
@@ -1592,6 +1832,18 @@ impl Game {
         // ceiling above and read just as live — a creature that shrinks below it walks free.
         if let Some(min) = filter.power_min
             && self.power(id) < min as i32
+        {
+            return false;
+        }
+        // Toughness bounds (Pendelhaven's "target 1/1 creature", whose 1/1 is all four P/T bounds
+        // pinned to 1). Read live off the layered toughness, like the power bounds above.
+        if let Some(max) = filter.toughness_max
+            && self.toughness(id) > max as i32
+        {
+            return false;
+        }
+        if let Some(min) = filter.toughness_min
+            && self.toughness(id) < min as i32
         {
             return false;
         }
@@ -1660,8 +1912,21 @@ impl Game {
         {
             return false;
         }
+        // Excluded printed name (Akron Legionnaire's "except for creatures named Akron
+        // Legionnaire") — by name, so a second copy of the card is exempt as well.
+        if let Some(name) = filter.exclude_name
+            && printed.name == name
+        {
+            return false;
+        }
         // Declared as an attacker this combat (Tajic's Mentor — "target attacking creature").
         if filter.attacking && !self.combat.attackers.contains(&id) {
+            return false;
+        }
+        // *Not* declared as an attacker this combat (Arcades Sabboth's "as long as it's not
+        // attacking") — read off the same declared-attackers list as the axis above, so the answer
+        // flips the instant attackers are declared and again when combat ends (CR 506.4).
+        if filter.not_attacking && self.combat.attackers.contains(&id) {
             return false;
         }
         // Attacking this filter's own controller (Soul Snare's "attacking you or a planeswalker
@@ -1674,14 +1939,72 @@ impl Game {
         if filter.blocking && !self.combat.blocks.iter().any(|&(b, _)| b == id) {
             return false;
         }
+        // Blocking *this* creature (The Wretched's "all creatures blocking this creature") — the
+        // same declared-blocks list as the axis above, but read as a pair rather than as "blocks
+        // anything". With no source there is no "this creature" to block, so nothing matches.
+        //
+        // The Wretched's trigger resolves *during* the end-of-combat step, by which point
+        // `Event::CombatCleared` has already emptied `combat.blocks` — so the pair is read from the
+        // turn-scoped `blocked_this_turn` ledger that outlives it. ponytail: turn-scoped, so with a
+        // second combat phase in one turn a creature that blocked The Wretched in the *first*
+        // combat still reads as blocking it. No extra-combat card is in the pool; narrow to a
+        // combat-scoped snapshot when one lands.
+        if filter.blocking_source
+            && !self
+                .combat_extras
+                .blocked_this_turn
+                .iter()
+                .any(|&(b, a, _)| b == id && Some(a) == source)
+        {
+            return false;
+        }
+        // Attacking *or* blocking (Tor Wauki's "target attacking or blocking creature") — the
+        // union of the two axes above, which as an intersection would match nothing.
+        if filter.attacking_or_blocking
+            && !self.combat.attackers.contains(&id)
+            && !self.combat.blocks.iter().any(|&(b, _)| b == id)
+        {
+            return false;
+        }
+        // Tapped *or* blocking (Tetsuo Umezawa's "target tapped or blocking creature") — likewise a
+        // union: blocking never taps (CR 509.1), so intersecting the two would match nothing.
+        if filter.tapped_or_blocking
+            && !self.is_tapped(id)
+            && !self.combat.blocks.iter().any(|&(b, _)| b == id)
+        {
+            return false;
+        }
         // Nothing is blocking *it* (Forcefield's "an unblocked creature of your choice") — the
         // mirror image of the line above, read off the same declared-blocks list.
         if filter.unblocked && self.is_blocked(id) {
             return false;
         }
+        // A Wall blocked it earlier this turn (Glyph of Delusion) — the turn-scoped ledger, not
+        // the combat-scoped block list the two lines above read, because the Glyph is cast after
+        // the combat the block happened in.
+        if filter.blocked_by_a_wall_this_turn && !self.blocked_by_a_wall_this_turn(id) {
+            return false;
+        }
+        // Blocking or blocked by the filter's own source (Lesser Werewolf, Sentinel) — one
+        // declared block read from both ends, so it holds whether the source is the attacker or
+        // the blocker. No source in hand means no pairing to be half of.
+        if filter.in_combat_with_source
+            && !source.is_some_and(|src| {
+                self.combat.blocks.iter().any(|&(blocker, attacker)| {
+                    (blocker == id && attacker == src) || (blocker == src && attacker == id)
+                })
+            })
+        {
+            return false;
+        }
         // Nonlegendary exclusion (CR 205.4a — Muddle, the Ever-Changing's "nonlegendary
         // creature you control"). Reads the current (possibly copied) def.
         if filter.nonlegendary && self.def_of(id).legendary {
+            return false;
+        }
+        // Legendary requirement (CR 205.4a — Karakas' "target legendary creature"). Same
+        // (possibly copied) def the exclusion above reads.
+        if filter.legendary && !self.def_of(id).legendary {
             return false;
         }
         // Non-Lair land exclusion (CR 305 — Treva's Ruins' "non-Lair land"). Reads the printed
@@ -1768,6 +2091,7 @@ mod permanent_filter_tests {
             id: "",
             default_print: "",
             cost: Cost {
+                x_defined: None,
                 generic: mv,
                 colored: [0; Color::COUNT],
                 colorless: 0,
@@ -1781,6 +2105,7 @@ mod permanent_filter_tests {
             kind,
             legendary: false,
             snow: false,
+            world: false,
             uncounterable: false,
             modal: false,
             modal_choose: 1,
@@ -1804,6 +2129,8 @@ mod permanent_filter_tests {
             cast_only_before_combat_damage: false,
             cast_only_during_declare_blockers: false,
             cast_only_during_declare_attackers: false,
+            cast_only_after_upkeep: false,
+            cast_only_after_combat: false,
             approximates: None,
             oracle: None,
             sets: empty_slice(),

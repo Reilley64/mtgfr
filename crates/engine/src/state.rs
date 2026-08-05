@@ -5,7 +5,8 @@
 //! once-per-turn flags, until-EOT control (CR 720), and inspect-ledger provenance.
 
 use crate::{
-    CardDef, CardId, Color, Effect, Keyword, ObjectId, PlayerId, SpellFilter, Step, TypeSet,
+    CardDef, CardId, Color, Effect, Keyword, KeywordFamily, ObjectId, PlayerId, SpellFilter, Step,
+    TypeSet,
 };
 
 /// The CR 611.2b duration condition scoping a control-changing effect (Rubinia Soulsinger's "for
@@ -60,7 +61,7 @@ pub(crate) struct CombatExtras {
     /// turn, so a combat-only shield cleared at Untap is behavior-exact (same turn-boundary idiom
     /// `must_attack`/`pending_next_cast` use). Combat-damage-to-a-*player* only — the N-point
     /// (Inkshield) shape stays this-turn/per-player; the permanent per-source shape (Guard
-    /// Gomazoa, Fog Bank, #220) is a separate static, [`Effect::Static(StaticEffect::PreventCombatDamage)`],
+    /// Gomazoa, Fog Bank, #220) is a separate static, [`Effect::Static(StaticEffect::PreventDamage)`],
     /// scanned live off the permanent rather than stored here.
     pub combat_damage_prevention_shields: Vec<(PlayerId, CardDef)>,
     /// "Prevent all combat damage that would be dealt this turn" (Moment's Peace, #150 — the
@@ -98,6 +99,37 @@ pub(crate) struct CombatExtras {
     /// whoever's it is, while this one is cleared only at the *shielded* player's own next Untap,
     /// which is exactly "until your next turn".
     pub repelled_until_next_turn: Vec<(PlayerId, crate::PermanentFilter)>,
+    /// "…creatures that were blocked by that creature **this turn**" (the Glyph cycle — Glyph of
+    /// Delusion, Glyph of Doom, Glyph of Reincarnation): each entry is `(blocker, attacker, the
+    /// attacker's controller at the moment it became blocked)`, appended at every
+    /// [`Event::BlockerDeclared`](crate::Event) and never pruned within the turn.
+    ///
+    /// Turn-scoped rather than combat-scoped, which is what separates it from
+    /// `CombatState::blocked_ever` — that one answers CR 509.1h's "is this attacker still blocked"
+    /// and dies with [`Event::CombatCleared`](crate::Event), while these three Glyphs are cast
+    /// *after* the combat the block happened in and need the memory to outlive it. The recorded
+    /// controller is the one Glyph of Reincarnation names ("the player who controlled that creature
+    /// the last time it became blocked by that Wall"), so it is snapshotted here rather than read
+    /// live off a creature that is about to die. Cleared at the next turn's Untap step, the same
+    /// "this turn" boundary [`must_attack`](Self::must_attack) uses.
+    pub blocked_this_turn: Vec<(ObjectId, ObjectId, PlayerId)>,
+    /// "That creature can't attack during its controller's next turn" (Wall of Dust): creatures
+    /// banned from a turn that hasn't started yet. Written when the block trigger resolves and
+    /// promoted into [`cant_attack_this_own_turn`](Self::cant_attack_this_own_turn) at the cleanup
+    /// step of the turn the block happened in — attackers are declared by the active player, so
+    /// that cleanup is the boundary between "its controller's turn" and "its controller's *next*
+    /// turn" (see [`Game::roll_own_turn_history`](crate::Game)).
+    pub cant_attack_next_own_turn: Vec<ObjectId>,
+    /// The armed half of [`cant_attack_next_own_turn`](Self::cant_attack_next_own_turn): creatures
+    /// whose banned turn is the one now being played. Read by
+    /// [`Game::can_attack`](crate::Game) alongside the printed attack restrictions, and dropped at
+    /// that turn's own cleanup, one turn after it was promoted.
+    pub cant_attack_this_own_turn: Vec<ObjectId>,
+    /// "This creature assigns no combat damage this turn" (Floral Spuzzem, CR 510.1a). Read by
+    /// [`Game::deals_this_batch`](crate::Game) — the one gate both the damage assignment and the
+    /// division question go through — and cleared at the next Untap step, the same "this turn"
+    /// boundary [`must_attack`](Self::must_attack) uses.
+    pub assigns_no_combat_damage_this_turn: Vec<ObjectId>,
 }
 
 /// Active play and control permissions stored outside `Card`/`Permanent` so they stay `Copy`.
@@ -412,6 +444,12 @@ pub(crate) struct DelayedTriggers {
     /// the next time a step matching `fire_at` begins
     /// ([`Game::fire_delayed_triggers`](crate::Game::fire_delayed_triggers)).
     pub scheduled: Vec<(PlayerId, ObjectId, Step, Effect)>,
+    /// Each `(controller, source, effect)` for "at the beginning of **your** next upkeep" (Hazezon
+    /// Tamar) — the controller-scoped upkeep twin of `scheduled` above, which fires on whoever's
+    /// upkeep comes first (Arcane Denial's "the next turn's upkeep"). Fired and drained alongside
+    /// `scheduled` at the Upkeep step, filtered to the entries whose controller is the active
+    /// player.
+    pub scheduled_your_upkeep: Vec<(PlayerId, ObjectId, Effect)>,
     /// Each `(controller, source, filter, then)`, armed by
     /// [`Effect::Misc(MiscEffect::ScheduleNextCastTrigger)`](crate::Effect::Misc(MiscEffect::ScheduleNextCastTrigger)) — CR 603.7's
     /// event-armed sibling of `scheduled` above: fires once the next time `controller` casts a
@@ -430,6 +468,15 @@ pub(crate) struct DelayedTriggers {
     /// then removed. Cleared unconsumed at end of combat (CR "this combat" — `Game::apply`'s
     /// `Step::EndCombat` arm), unlike `pending_next_cast`'s turn-boundary expiry.
     pub pending_combat_damage_watch: Vec<(PlayerId, ObjectId, ObjectId)>,
+    /// Each `(controller, source, watched, then)`, armed by
+    /// [`Effect::Misc(MiscEffect::ScheduleWhenTargetDiesThisTurn)`](crate::Effect::Misc(MiscEffect::ScheduleWhenTargetDiesThisTurn))
+    /// (Reincarnation's "when that creature dies this turn") — object-armed like
+    /// `pending_combat_damage_watch` above, but carrying its own payoff the way
+    /// `pending_next_cast` does, and keyed on a death rather than on combat damage. Fires once
+    /// and is removed ([`Game::fire_dies_this_turn_triggers`](crate::Game::fire_dies_this_turn_triggers));
+    /// cleared unconsumed at the next turn's Untap step (CR "this turn" — `Game::apply`'s
+    /// `Step::Untap` arm), the same boundary `pending_next_cast` clears at.
+    pub pending_dies_this_turn: Vec<(PlayerId, ObjectId, ObjectId, &'static [Effect])>,
     /// Each `(controller, source, card)`, armed by
     /// [`Effect::Misc(MiscEffect::ScheduleThisTurnCombatDamageCopy)`](crate::Effect::Misc(MiscEffect::ScheduleThisTurnCombatDamageCopy))
     /// (Surge to Victory) — CR 603.7's *repeatable* sibling of `pending_combat_damage_watch`
@@ -442,6 +489,17 @@ pub(crate) struct DelayedTriggers {
     /// same boundary `pending_next_cast` itself clears at. See
     /// [`Game::fire_combat_damage_copy_triggers`].
     pub pending_combat_damage_copy: Vec<(PlayerId, ObjectId, ObjectId)>,
+    /// Each `(controller, source, watched)`, armed by
+    /// [`Effect::Life(LifeEffect::GainWhenTargetIsDamagedByAttackerThisTurn)`](crate::Effect::Life(crate::LifeEffect::GainWhenTargetIsDamagedByAttackerThisTurn))
+    /// (Glyph of Life's "whenever that creature is dealt damage by an attacking creature this
+    /// turn, you gain that much life") — the *receiving*-side twin of
+    /// `pending_combat_damage_copy` above: keyed on the creature the damage is dealt **to**
+    /// rather than on the dealer or its controller, and fired from the creature-damage choke
+    /// ([`Game::fire_attacker_damage_life_triggers`](crate::Game::fire_attacker_damage_life_triggers))
+    /// so noncombat damage from an attacking creature counts too. Repeatable like
+    /// `pending_combat_damage_copy` — never removed on fire, cleared unconsumed at the next
+    /// turn's Untap step (CR "this turn" — `Game::apply`'s `Step::Untap` arm).
+    pub pending_attacker_damage_life: Vec<(PlayerId, ObjectId, ObjectId)>,
 }
 
 /// A permanent's controller/token-ness/card-def facts, snapshotted at the moment `Effect::Destroy(DestroyEffect::DestroyAll)`
@@ -475,9 +533,28 @@ pub(crate) enum ModifierDuration {
     EndOfTurn,
     /// "Until end of combat" (Jade Statue): swept at the End of Combat step (CR 511.3).
     EndOfCombat,
+    /// "Until the end of your next upkeep" (Halfdane): swept as `player` leaves the *second*
+    /// upkeep this modifier has seen. `armed` is that one-upkeep skip — the effect is registered
+    /// during an upkeep of its own, so the first end-of-upkeep sweep only arms it and the next one
+    /// takes it off.
+    EndOfNextUpkeep { player: PlayerId, armed: bool },
+    /// "Until your next upkeep" (Gabriel Angelfire): swept as `player`'s upkeep step *begins*,
+    /// before that step's own triggers are placed. Registered during an upkeep of its own, but —
+    /// unlike [`EndOfNextUpkeep`](Self::EndOfNextUpkeep) — the step-begin sweep for that upkeep has
+    /// already run by then, so there is no one-sweep skip to arm.
+    UntilNextUpkeep { player: PlayerId },
     /// No printed duration at all (the lace cycle's "becomes black"): never swept — it lapses on
     /// its own when the object leaves the battlefield and becomes a new object (CR 400.7).
     Indefinite,
+}
+
+impl ModifierDuration {
+    /// Whether the cleanup-step sweep ([`Event::TempBoostsEnded`](crate::Event::TempBoostsEnded))
+    /// takes this modifier off. The durationless ones never end, and "until the end of your next
+    /// upkeep" has its own sweep.
+    pub(crate) fn ends_at_cleanup(self) -> bool {
+        matches!(self, Self::EndOfTurn | Self::EndOfCombat)
+    }
 }
 
 /// What one registered [`Modifier`] does to its host, in CR 613 layer terms.
@@ -490,13 +567,29 @@ pub(crate) enum ModifierKind {
         toughness: i32,
         keywords: &'static [Keyword],
     },
-    /// "Loses hexproof and shroud and can't have hexproof or shroud" (arcane_lighthouse, CR
-    /// 702.11e/702.18d): subtracted from the fully-unioned keyword set, so a grant landing later
-    /// the same turn is filtered right back out.
-    LoseKeywords(&'static [Keyword]),
+    /// "Loses `keywords`" — plus every keyword in `families` ("all landwalk abilities", "all
+    /// \"bands with other\" abilities"), which no fixed list could stay honest about.
+    ///
+    /// `cant_have` picks which of the two CR readings applies. `true` is "loses … **and can't
+    /// have** …" (arcane_lighthouse, CR 702.11e/702.18d): subtracted from the fully-unioned
+    /// keyword set, so a grant landing later the same turn is filtered right back out. `false` is
+    /// a plain CR 613.1f removal (the Legends strippers): one timestamped entry in the keyword
+    /// layer, which beats every grant stamped before it and loses to every grant stamped after.
+    LoseKeywords {
+        keywords: &'static [Keyword],
+        families: &'static [KeywordFamily],
+        cant_have: bool,
+    },
     /// "Has base power and toughness 3/6" (CR 613.3(7b) — Biomass Mutation, Jade Statue's
     /// animated form).
     BasePtSet { power: i32, toughness: i32 },
+    /// "Change this creature's base toughness to N" (Sentinel, Wall of Tombstones): the
+    /// toughness-only half of [`BasePtSet`](Self::BasePtSet), still a layer-7b set (CR 613.3(7b)) —
+    /// it replaces the running base toughness and leaves the running base power alone.
+    BaseToughnessSet { toughness: i32 },
+    /// "Switch this creature's power and toughness" (Transmutation, CR 613.4e): applied after
+    /// every other P/T layer, which is why it is its own layer rather than a base set.
+    PtSwitch,
     /// "Becomes a blue and red Elemental creature … it's still a land" (Restless Spire): the
     /// layer-4 type/subtype ADD and the layer-5 color ADD one self-animation clause makes at once.
     Became {
@@ -510,6 +603,11 @@ pub(crate) enum ModifierKind {
     /// "Becomes a copy of target creature until end of turn" (CR 707.2 — Cursed Mirror): the
     /// printed [`CardId`] to put back on the permanent when the duration ends.
     RevertsToDef(CardId),
+    /// "If target Plains is tapped for mana, it produces colorless mana instead of white mana"
+    /// (Quarum Trench Gnomes) — the land's free-tap credit only, read at
+    /// [`Game::land_mana_credit`](crate::Game). Not a CR 613 layer: it rewrites what one ability
+    /// produces rather than any characteristic of the permanent.
+    ProducesColorlessInsteadOf(Color),
 }
 
 /// One continuous modification an effect made to one object, with the CR 613.7 timestamp it took
@@ -567,9 +665,28 @@ pub struct PreventionShield {
     /// chosen creature). `None` — every shield but Forcefield's — leaves `from_color` as the only
     /// gate.
     pub from_source: Option<crate::ObjectId>,
+    /// "Prevent all combat damage that would be dealt **by** target creature this turn" (Lady
+    /// Evangela, Horn of Deafening, Subdue, Kry Shield): the shield is keyed to its
+    /// [`from_source`](Self::from_source) alone and stands in front of every recipient at once —
+    /// creature or player — rather than the one thing `target` names, which it ignores. `false`
+    /// is every other shield in the pool, Forcefield's included: that one also names a source,
+    /// but only in front of "you".
+    pub any_recipient: bool,
     /// "Would deal *combat* damage" (Forcefield): the shield only stands in front of damage dealt
     /// in a combat damage step. `false` — every other shield — covers combat and noncombat alike.
     pub combat_only: bool,
+    /// "… by attacking creatures without flying" (Al-abara's Carpet): a gate on the damage's
+    /// *source*, read as an ordinary permanent filter from the shielded side's perspective. A
+    /// source that isn't a permanent never matches one. `None` gates nothing.
+    pub from_filter: Option<crate::PermanentFilter>,
+    /// "… a spell or ability that targets that creature" (Silhouette): a relationship between the
+    /// damage's source and the shielded *permanent*, which no filter axis can express. `None` on
+    /// every other shield.
+    pub from_relation: Option<crate::SourceRelation>,
+    /// "Prevent **all** damage … this turn" (Al-abara's Carpet, Silhouette) rather than "the next
+    /// N": CR 615.6 — the shield is never used up, so it stands in front of every qualifying hit
+    /// until it expires at end of turn. `false` shields are consumed by what they prevent.
+    pub persistent: bool,
     /// Reverse Damage's "you gain life equal to the damage prevented this way" — paid to the
     /// shield's own controller as the spend is minted.
     pub gain_life: bool,

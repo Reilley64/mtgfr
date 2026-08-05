@@ -1,0 +1,36 @@
+# {T}: This creature deals 2 damage to any target and 3 damage to itself.
+name = "Psionic Entity"
+otags = ["activated-ability", "burn-any", "pinger", "spot-removal", "type-errata"]
+sets = ["4bb", "4ed", "leg", "ren"]
+id = "37aae6d1-1de0-47d1-85dd-d4a6d9635c05"
+default_print = "6641a587-c066-4f0a-a951-b91d3f749eb2"
+oracle = "{T}: This creature deals 2 damage to any target and 3 damage to itself."
+subtypes = ["Illusion"]
+
+[cost]
+generic = 4
+blue = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# {T}: This creature deals 2 damage to any target and 3 damage to itself.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# This creature deals 2 damage to any target ...
+[[abilities.effects]]
+type = "damage"
+mode = "target"
+amount = 2
+target = "any"
+
+# ... and 3 damage to itself.
+[[abilities.effects]]
+type = "damage"
+mode = "target"
+amount = 3
+target = "this"

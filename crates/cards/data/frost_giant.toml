@@ -1,0 +1,19 @@
+# Rampage 2 (Whenever this creature becomes blocked, it gets +2/+2 until end of turn for each creature blocking it
+# beyond the first.)
+name = "Frost Giant"
+otags = ["block-trigger", "french-vanilla", "rampage"]
+sets = ["leg", "me3"]
+id = "56ed6af3-8f85-4907-9364-eca71f21bb11"
+default_print = "a742bfa4-3730-4bfd-865c-92fb4b40f2f2"
+oracle = "Rampage 2 (Whenever this creature becomes blocked, it gets +2/+2 until end of turn for each creature blocking it beyond the first.)"
+subtypes = ["Giant"]
+keywords = [{ rampage = 2 }]
+
+[cost]
+generic = 3
+red = 3
+
+[kind]
+type = "creature"
+power = 4
+toughness = 4

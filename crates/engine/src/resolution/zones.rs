@@ -239,6 +239,20 @@ impl Game {
                 };
                 vec![self.reanimate_event(card, new_controller, false)]
             }
+            // Puppet Master: the same snapshot, to the hand instead of the battlefield.
+            ZoneEffect::ReturnDyingEnchantedCreatureToHand { dying } => {
+                let Some(dying) = dying else {
+                    return Vec::new();
+                };
+                let card = self.current_id(dying);
+                if self.zone_of(card) != Zone::Graveyard {
+                    return Vec::new();
+                }
+                vec![Event::ReturnedToHand {
+                    card: self.next_object_id(),
+                    from: card,
+                }]
+            }
             // Hofri Ghostforge: "exile it. If you do, create a token that's a copy of that
             // creature, except it's a Spirit in addition to its other types ...". `dead` is the
             // pre-death battlefield id; `current_id` follows its `Moved` lineage into the graveyard
@@ -299,6 +313,35 @@ impl Game {
                     card: self.next_object_id(),
                     from: exiled,
                 }]
+            }
+            // Knowledge Vault: "put all cards exiled with this artifact into their owner's hand"
+            // (the `{0}` cash-out) or "…graveyard" (the leaves-the-battlefield trigger). Reads the
+            // source's CR 400.10a pile and empties it in the same batch, so the departure trigger
+            // the cash-out itself sets off finds nothing left to bury. A card already out of exile
+            // is skipped but still unlinked — the association is over either way.
+            ZoneEffect::ReturnAllExiledWithThis { to_graveyard } => {
+                let mut next = self.next_object_id();
+                self.exile_links
+                    .with_source
+                    .iter()
+                    .filter(|&&(linked, _)| linked == source)
+                    .flat_map(|&(_, exiled)| {
+                        let unlink = Event::CardExiledWithSourceLeftExile {
+                            source,
+                            object: exiled,
+                        };
+                        if self.zone_of(exiled) != Zone::Exile {
+                            return vec![unlink];
+                        }
+                        let card = next;
+                        next += 1;
+                        let move_event = match to_graveyard {
+                            true => Event::ReturnedExiledCardToGraveyard { card, from: exiled },
+                            false => Event::ReturnedToHand { card, from: exiled },
+                        };
+                        vec![move_event, unlink]
+                    })
+                    .collect()
             }
             // Gift of Immortality: the delayed CR 603.7 payoff scheduled by
             // `ScheduleReturnThisAuraAttachedToReanimated`, fired at the next end step. Guard-
@@ -602,5 +645,30 @@ impl Game {
             },
             Event::LibraryShuffled { player: owner },
         ]
+    }
+
+    /// Spurnmage Advocate's "Return two target cards from an opponent's graveyard to their hand"
+    /// (CR 601.2c/603.3d): the cards are an independent target clause, chosen as the ability went
+    /// on the stack and read back off `targets_second` — the ability's own target is the attacking
+    /// creature its destroy step takes. A card that has left the graveyard since is skipped
+    /// (CR 608.2b). Each event is applied before the next id is minted, so the ids stay distinct.
+    pub(crate) fn resolve_return_target_cards_from_graveyard(
+        &mut self,
+        ctx: ResolveCtx,
+        events: &mut Vec<Event>,
+    ) {
+        for chosen in ctx.targets_second.iter() {
+            let Some(object) = chosen.object_id() else {
+                continue;
+            };
+            if self.zone_of(object) != Zone::Graveyard {
+                continue;
+            }
+            let event = Event::ReturnedToHand {
+                card: self.next_object_id(),
+                from: object,
+            };
+            self.push_apply(events, event);
+        }
     }
 }

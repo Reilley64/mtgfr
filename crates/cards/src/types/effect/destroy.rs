@@ -67,6 +67,51 @@ pub enum DestroyEffect {
         /// Stinkweed Imp's shape. Same schedule-or-do-it-now knob as [`Self::Target::at`].
         #[cfg_attr(feature = "card-dsl", serde(default))]
         at: Option<Step>,
+        /// "At the beginning of the next end step, **if that creature was destroyed this way**,
+        /// put a +1/+1 counter on the first creature" (Infinite Authority): scheduled as a second
+        /// CR 603.7 delayed ability *only* on the branch where this destruction actually put the
+        /// creature in a graveyard, which is what makes the intervening-if free — a regenerated,
+        /// indestructible or already-gone creature never reaches it. Carried through `at`'s
+        /// re-schedule so an end-of-combat destroy still gets its end-step payoff. Runs against
+        /// this ability's own source, so `this` is the Aura's host.
+        #[cfg_attr(
+            feature = "card-dsl",
+            serde(default, deserialize_with = "de::opt_static_effect")
+        )]
+        #[cfg_attr(feature = "card-schema", schemars(with = "Option<Effect>"))]
+        then: Option<&'static Effect>,
+    },
+
+    /// "Destroy all creatures that were blocked by target Wall **this turn**" (Glyph of
+    /// Reincarnation, and Glyph of Doom's delayed form). Neither a board scan like
+    /// [`Self::All`] nor a single chosen victim like [`Self::Target`]: the victims are read out
+    /// of the Glyph cycle's turn-scoped ledger (`CombatExtras::blocked_this_turn`) through
+    /// `Game::blocked_by_this_turn`, keyed by the *targeted blocker*. It has to be that ledger
+    /// rather than the live block list, because both cards are cast after the combat the block
+    /// happened in — CR 509.1h's "still blocked" fact dies at end of combat, and these want the
+    /// rest of the turn.
+    BlockedByTarget {
+        /// The blocker whose ledger is read — "target Wall".
+        target: TargetSpec,
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        cant_be_regenerated: bool,
+        /// `Some(step)` postpones the sweep to a CR 603.7 delayed triggered ability at that step
+        /// (Glyph of Doom's "at this turn's next end of combat"). Only the *blocker* is baked in
+        /// when it is scheduled (into `blocker` below) — the ledger itself is re-read when the
+        /// delayed ability fires, so a block declared after this resolved is still swept, the
+        /// same late-reading shape [`Self::All`]'s `at` has.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        at: Option<Step>,
+        /// Glyph of Reincarnation's "For each creature that died this way, put a creature card
+        /// from the graveyard of the player who controlled that creature the last time it became
+        /// blocked by that Wall onto the battlefield under its owner's control." `false` (the
+        /// default) is Glyph of Doom — destroy and stop.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        reincarnate: bool,
+        /// The blocker this sweep already chose, baked in when `at` scheduled the delayed
+        /// ability. `None` everywhere else, where the resolved `target` is read instead.
+        #[cfg_attr(feature = "card-dsl", serde(skip))]
+        blocker: Option<ObjectId>,
     },
 }
 

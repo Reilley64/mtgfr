@@ -1,0 +1,26 @@
+# Creatures can't attack a player unless that player cast a spell or put a nontoken permanent onto the battlefield during their last turn.
+name = "Arboria"
+otags = ["prevent-attack", "symmetrical"]
+sets = ["dmr", "leg", "me3"]
+id = "acb3e93c-a1d3-458f-b8c3-c426cd359fa4"
+default_print = "095078b0-0f26-442f-9d3b-45e30cdb33c4"
+oracle = "Creatures can't attack a player unless that player cast a spell or put a nontoken permanent onto the battlefield during their last turn."
+world = true
+
+[cost]
+generic = 2
+green = 2
+
+[kind]
+type = "enchantment"
+
+# Creatures can't attack a player unless that player cast a spell or put a nontoken permanent onto
+# the battlefield during their last turn.
+[[abilities]]
+timing = "static"
+
+# Creatures can't attack a player unless that player cast a spell or put a nontoken permanent onto
+# the battlefield during their last turn.
+[[abilities.effects]]
+type = "static"
+mode = "cant_attack_player_unless_they_acted"

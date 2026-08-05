@@ -83,30 +83,46 @@ impl Game {
             // "Each player discards their hand, then draws seven cards." (Wheel of Fortune):
             // loop APNAP order, each living player discarding their whole hand (`discard_ids` —
             // no choice, so no `PendingChoice`, unlike a partial-hand `Effect::Choice(ChoiceEffect::Discard)`) then
-            // drawing `count`.
+            // drawing `count`. Every seat discards before anyone draws — a discard never touches a
+            // library, so no seat's draws see a different board for it, and that leaves the draws
+            // as one batch for the funnel (each is replaceable, and a replacement pauses).
             Effect::Choice(ChoiceEffect::EachPlayerDiscardsHandThenDraws { count }) => {
                 let n = self.resolve_count(count, controller, source, target, x);
-                for player in self.apnap_order() {
+                let order = self.apnap_order();
+                for &player in &order {
                     let hand = self.hand_of(player);
                     self.discard_ids(&hand, player, events);
-                    for event in self.draw_events(player, n) {
-                        self.push_apply(events, event);
-                    }
                 }
+                let seats = order.into_iter().map(|player| (player, n)).collect();
+                self.draw_with_replacements(seats, DrawAfter::Nothing, events);
             }
             // "Each player shuffles their hand and graveyard into their library, then draws seven
-            // cards." (Timetwister): the same APNAP loop as the wheel above, but each old card is
-            // tucked back into the library (`TuckedToLibrary`, the zone move the graveyard
-            // shuffle-backs already use) and the library shuffled once per player before they
-            // draw. Timetwister itself is still on the stack here, so it isn't swept up (CR
-            // 608.2m puts it into the graveyard only once the effect has finished).
-            Effect::Choice(ChoiceEffect::EachPlayerShufflesHandAndGraveyardThenDraws { count }) => {
-                let n = self.resolve_count(count, controller, source, target, x);
+            // cards." (Timetwister), and Winds of Change's hands-only "then draws that many
+            // cards": the same APNAP loop as the wheel above, but each old card is tucked back
+            // into the library (`TuckedToLibrary`, the zone move the graveyard shuffle-backs
+            // already use) and the library shuffled once per player before they draw. The spell
+            // itself is still on the stack here, so it isn't swept up (CR 608.2m puts it into the
+            // graveyard only once the effect has finished).
+            Effect::Choice(ChoiceEffect::EachPlayerShufflesHandThenDraws {
+                include_graveyard,
+                count,
+            }) => {
+                let mut seats = Vec::new();
                 for player in self.apnap_order() {
-                    let recycled: Vec<ObjectId> = self
-                        .hand_of(player)
+                    let hand = self.hand_of(player);
+                    // "That many" is this player's hand size, read before they shuffle — so it is
+                    // per player, unlike Timetwister's one number for the table.
+                    let n = match count {
+                        Some(count) => self.resolve_count(count, controller, source, target, x),
+                        None => hand.len() as u32,
+                    };
+                    let recycled: Vec<ObjectId> = hand
                         .into_iter()
-                        .chain(self.graveyard_cards(player))
+                        .chain(if include_graveyard {
+                            self.graveyard_cards(player)
+                        } else {
+                            Vec::new()
+                        })
                         .collect();
                     for from in recycled {
                         self.push_apply(
@@ -120,19 +136,24 @@ impl Game {
                         );
                     }
                     self.push_apply(events, Event::LibraryShuffled { player });
-                    for event in self.draw_events(player, n) {
-                        self.push_apply(events, event);
-                    }
+                    seats.push((player, n));
                 }
+                // Every seat recycles and shuffles before anyone draws, so the draws are one
+                // batch for the funnel — see the wheel above. A seat's own shuffle still precedes
+                // its own draws either way.
+                self.draw_with_replacements(seats, DrawAfter::Nothing, events);
             }
-            // Malfegor's "discard your hand": the controller discards their whole hand (no choice,
-            // so no `PendingChoice`), setting `cards_discarded_this_way` to its size so a following
-            // Sequence step (Malfegor's each-opponent sacrifice) reads "for each card discarded
-            // this way".
-            Effect::Choice(ChoiceEffect::DiscardYourHand) => {
-                let hand = self.hand_of(controller);
-                self.resolution_frame.cards_discarded_this_way = hand.len() as u32;
-                self.discard_ids(&hand, controller, events);
+            // Malfegor's "discard your hand" and Nicol Bolas's "that player discards their hand":
+            // every seat in `who` discards its whole hand (no choice, so no `PendingChoice`),
+            // setting `cards_discarded_this_way` to the total so a following Sequence step
+            // (Malfegor's each-opponent sacrifice) reads "for each card discarded this way".
+            Effect::Choice(ChoiceEffect::DiscardYourHand { who }) => {
+                self.resolution_frame.cards_discarded_this_way = 0;
+                for player in self.players_in(who, controller, target) {
+                    let hand = self.hand_of(player);
+                    self.resolution_frame.cards_discarded_this_way += hand.len() as u32;
+                    self.discard_ids(&hand, player, events);
+                }
             }
             // Advanced Reconstruction's base ability: "exile a card from your graveyard at
             // random. You may play the exiled card this turn." The card is picked by the
@@ -209,6 +230,51 @@ impl Game {
                 };
                 self.combat_extras.may_block_any_number.push(creature);
                 self.combat_extras.must_block_all.push(creature);
+            }
+            // Wall of Dust: "Whenever this creature blocks a creature, that creature can't attack
+            // during its controller's next turn." Turn-scoped combat bookkeeping written straight,
+            // like Blaze of Glory's pair above — the creature was fixed when the trigger was
+            // placed, so nothing is chosen here.
+            Effect::Misc(MiscEffect::ThatCreatureCantAttackNextOwnTurn { creature }) => {
+                let Some(creature) = creature else {
+                    return;
+                };
+                self.combat_extras.cant_attack_next_own_turn.push(creature);
+            }
+            // Johan: "you may have Johan gain \"Johan can't attack\" until end of combat."
+            // Combat-scoped rather than turn-scoped, so it lives on `CombatState` and dies with
+            // `Event::CombatCleared` — otherwise the same straight write as the pair above.
+            Effect::Misc(MiscEffect::SourceCantAttackThisCombat) => {
+                self.combat.cant_attack_this_combat.push(source);
+            }
+            // Johan: "If you do, attacking doesn't cause creatures you control to tap this combat
+            // if Johan is untapped." The "if Johan is untapped" half is deliberately *not*
+            // resolved here — `Game::attacks_dont_tap` reads it live at the declaration.
+            Effect::Misc(MiscEffect::YourAttacksDontTapWhileSourceUntappedThisCombat) => {
+                self.combat.attacks_dont_tap.push((controller, source));
+            }
+            // Floral Spuzzem: "…this creature assigns no combat damage this turn." Same turn-scoped
+            // combat bookkeeping, always about the source (CR 510.1a).
+            Effect::Misc(MiscEffect::SourceAssignsNoCombatDamageThisTurn) => {
+                self.combat_extras
+                    .assigns_no_combat_damage_this_turn
+                    .push(source);
+            }
+            // Feint: "…by that creature and each creature blocking it." The same ledger the
+            // Spuzzem writes, over one combat group — the attacker the `Sequence`'s tap step chose
+            // plus whatever is blocking it now. See the variant's `ponytail:` on why this is an
+            // assignment ban rather than a CR 615 shield.
+            Effect::Misc(MiscEffect::ThatCreatureAndItsBlockersAssignNoCombatDamageThisTurn) => {
+                let Some(Target::Object(attacker)) = target else {
+                    return;
+                };
+                let blockers = self.blockers_of(attacker);
+                self.combat_extras
+                    .assigns_no_combat_damage_this_turn
+                    .push(attacker);
+                self.combat_extras
+                    .assigns_no_combat_damage_this_turn
+                    .extend(blockers);
             }
             Effect::Misc(MiscEffect::MustAttackTarget { .. }) => {
                 let Some(Target::Object(creature)) = target else {
@@ -294,10 +360,17 @@ impl Game {
                 from_color,
                 gain_life,
                 redirect_to_controller,
+                redirect_to_target_controller,
+                redirect_to_source,
+                redirect_to_target,
                 shield_source,
                 all_but,
                 target_is_source,
+                any_recipient,
                 combat_only,
+                from_filter,
+                from_relation,
+                all_damage,
                 ..
             }) => {
                 // No point total is "prevent *that* damage" (the Circles, Reverse Damage) — the
@@ -327,7 +400,9 @@ impl Game {
                         // every other one covers whatever the ability targeted, or its controller.
                         target: if shield_source {
                             Target::Object(source)
-                        } else if target_is_source {
+                        } else if target_is_source || redirect_to_target {
+                            // Nova Pentacle targets the creature the damage *moves to*, not the
+                            // thing it protects — "would deal damage to you" is the controller.
                             Target::Player(controller)
                         } else {
                             target.unwrap_or(Target::Player(controller))
@@ -339,9 +414,32 @@ impl Game {
                         }),
                         from_color,
                         from_source,
+                        any_recipient,
                         combat_only,
+                        from_filter,
+                        from_relation,
+                        persistent: all_damage,
                         gain_life,
-                        redirect_to: redirect_to_controller.then_some(Target::Player(controller)),
+                        // Reverberation sends the moved damage to the *targeted spell's*
+                        // controller; Jade Monolith's `redirect_to_controller` sends it to the
+                        // seat that armed the shield. No card sets both.
+                        redirect_to: if redirect_to_source {
+                            // Shimian Night Stalker's "is dealt to this creature instead".
+                            Some(Target::Object(source))
+                        } else if redirect_to_target {
+                            // Nova Pentacle's "is dealt to target creature … instead".
+                            target
+                        } else {
+                            match (redirect_to_target_controller, from_source) {
+                                (true, Some(watched)) => {
+                                    Some(Target::Player(self.controller_of(watched)))
+                                }
+                                (true, None) => None,
+                                (false, _) => {
+                                    redirect_to_controller.then_some(Target::Player(controller))
+                                }
+                            }
+                        },
                     });
             }
             // Guardian Angel's "until end of turn, you may pay {1} any time you could cast an

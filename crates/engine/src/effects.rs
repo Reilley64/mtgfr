@@ -85,6 +85,20 @@ impl Game {
         // multi-target expansion produces (Volcanic Eruption), so only the resolution boundary
         // knows where the count starts over.
         self.resolution_frame.destroyed_this_way.clear();
+        // Same reasoning for "damage dealt this way" (Syphon Soul): a resolution that dealt
+        // nothing must read 0, not the previous burn spell's total.
+        self.resolution_frame.damage_dealt_this_way = 0;
+        // And for the picked damage source (Backdraft): a resolution whose chooser step found no
+        // candidate must halve nothing, not the previous Backdraft's pick.
+        self.resolution_frame.chosen_damage_source = None;
+        // CR 701.8: who *causes* any discard this item makes — its own controller, stamped onto
+        // every `Event::Discarded` by `discard_ids` so Psychic Purge can ask whether "a spell or
+        // ability an opponent controls" made you discard it. Armed here, per stack item, because
+        // the discards that pause for a choice are answered outside any resolution call.
+        self.resolution_frame.discard_cause = Some(match &top {
+            StackItem::Spell(object) => self.spell(*object).controller,
+            StackItem::Ability { controller, .. } => *controller,
+        });
         match top {
             StackItem::Spell(object) => self.resolve_spell(object, events),
             StackItem::Ability {
@@ -98,9 +112,10 @@ impl Game {
                 activated: _,
             } => {
                 // CR 608.2b: an ability whose stored target is no longer legal fizzles —
-                // it leaves the stack with no effect. This is where protection (CR 702.16b)
-                // actually filters a targeted ability (activation itself isn't re-validated —
-                // see `Game::activate_ability`'s own doc), sourced from the ability's own
+                // it leaves the stack with no effect. The *first* gate is CR 601.2c at
+                // announcement (`Game::activate_ability` refuses an illegal choice outright);
+                // this is the re-check for a target that stops qualifying afterwards, e.g.
+                // protection (CR 702.16b) gained in response, sourced from the ability's own
                 // permanent's colors (Nin, the Pain Artist, a UR source).
                 // The target-legality `{X}` is the ability's source's own entered X (see
                 // `Game::ability_source_x`) — needed for a `mv_max_x` re-check (Kinetic Ooze),
@@ -130,6 +145,12 @@ impl Game {
                 // `CopyTargetSpell`, minting a copy spell on top of the stack) must land on top
                 // of whatever's left once this ability is gone, not underneath it.
                 self.push_apply(events, Event::AbilityResolved { source });
+                // What this ability targets, readable by a `SpellOrAbilityTargetingThis` shield
+                // (Silhouette) for as long as its effects run — armed here, past the fizzle gate,
+                // so an ability that never resolves never counts, and cleared right after so no
+                // later damage is attributed to it.
+                self.resolution_frame.resolving_targets =
+                    target.into_iter().chain(targets_second.iter()).collect();
                 // A triggered ability carries `x = 0`; an activated (or copied) ability whose
                 // cost contains `{X}` resolves its `Amount::X` against the chosen value
                 // (CR 107.3). A pausing effect leaves a PendingChoice behind.
@@ -145,6 +166,7 @@ impl Game {
                     },
                     events,
                 );
+                self.resolution_frame.resolving_targets.clear();
             }
         }
     }
@@ -326,6 +348,10 @@ impl Game {
                             spell.x,
                         )
                     });
+                // Same arming as the ability arm above: a spell that targets the creature but
+                // points the damage at some other source (a fight) is still "a spell that targets
+                // that creature causing a source to deal damage to it".
+                self.resolution_frame.resolving_targets = self.spell_targets(object);
                 if !all_targets_illegal {
                     for (ability, target) in steps {
                         // CR 608.2b/c: a step whose stored target is no longer legal is skipped —
@@ -358,6 +384,7 @@ impl Game {
                         );
                     }
                 }
+                self.resolution_frame.resolving_targets.clear();
                 // A resolution-time optional rider on this spell's own ability (Sevinne's
                 // Reclamation's "you may copy this spell") paused mid-resolution — leave this
                 // spell as a live `Object::Spell` on the stack until that choice is answered
@@ -573,7 +600,8 @@ impl Game {
                 }
             }
             Some(kind) => {
-                let n = self.kind_counters_after_replacements(controller, perm, counters as i32);
+                let n =
+                    self.kind_counters_after_replacements(controller, perm, kind, counters as i32);
                 if n > 0 {
                     self.push_apply(
                         events,
@@ -816,7 +844,37 @@ impl Game {
     /// ponytail: a pausing effect is assumed self-contained — a spell that scries *then*
     /// does more (Preordain's "then draw a card") would need the remaining effects
     /// deferred to the choice's answer. No such multi-effect card is in the pool.
-    pub(crate) fn run(&mut self, effect: Effect, ctx: ResolveCtx, events: &mut Vec<Event>) {
+    pub(crate) fn run(&mut self, effect: Effect, mut ctx: ResolveCtx, events: &mut Vec<Event>) {
+        // A fixed-reference spec (CR 115: the source itself, its Aura's host, or Animate Dead's
+        // cast-time graveyard card) is settled from `source`, never chosen.
+        // `Game::place_targeted_ability` settles it for the ability's *top-level* effect — but a
+        // *nested* effect (a `PayOrElse` `otherwise` arm, a `Conditional` branch, a `Sequence`
+        // step whose parent reported `TargetSpec::None`) never went through placement and arrives
+        // here with no target, so settle it here too: without this, Cosmic Horror's "destroy this
+        // creature unless you pay {3}{B}{B}{B}" silently no-ops on the guard below. An empty
+        // result (the source has since left the battlefield) leaves it `None` and the guard drops
+        // the step, matching placement's `Placement::NoLegalTarget`.
+        if ctx.target.is_none()
+            && matches!(
+                effect.target(),
+                TargetSpec::ThisPermanent
+                    | TargetSpec::EnchantedCreature
+                    | TargetSpec::ThisAurasGraveyardTarget
+            )
+        {
+            // Shroud/hexproof/protection never filter these specs (`Game::legal_targets_for`
+            // returns before the untargetable pass), so the source colors it wants are moot.
+            ctx.target = self
+                .legal_targets_for(
+                    effect.target(),
+                    ctx.source,
+                    ctx.controller,
+                    [false; Color::COUNT],
+                    ctx.x,
+                )
+                .first()
+                .copied();
+        }
         let ResolveCtx {
             controller,
             source,
@@ -843,7 +901,8 @@ impl Game {
             // (`resolution/pause_arrange`).
             Effect::Dig(DigEffect::Scry { .. })
             | Effect::Dig(DigEffect::Surveil { .. })
-            | Effect::Dig(DigEffect::RearrangeTargetPlayersTop { .. }) => {
+            | Effect::Dig(DigEffect::RearrangeTargetPlayersTop { .. })
+            | Effect::Dig(DigEffect::LookAtTargetPlayersTop { .. }) => {
                 self.run_arrange_top(effect, controller, source, target, x)
             }
             // Clash (CR 701.22): pick an opponent, both reveal + scry-1 their top, score the clash.
@@ -902,9 +961,12 @@ impl Game {
             | Effect::Choice(ChoiceEffect::TriggeringPlayerMayPayAnyAmountToPrevent { .. })
             | Effect::Choice(ChoiceEffect::TriggeringPlayerMayAttachThisAuraToChosen { .. })
             | Effect::Choice(ChoiceEffect::EachPlayerNamesCardThenRevealsTop)
+            | Effect::Choice(ChoiceEffect::TargetPlayerNamesCardThenRevealsTop { .. })
+            | Effect::Choice(ChoiceEffect::NameCardThenTargetRevealsAtRandomAndDiscards { .. })
             | Effect::Choice(ChoiceEffect::EachOtherTokenBecomesCopyOfChosen)
             | Effect::Choice(ChoiceEffect::PutCounterThenMayBecomeCopyOfCardFromList { .. })
             | Effect::Choice(ChoiceEffect::SacrificeOwn { .. })
+            | Effect::Choice(ChoiceEffect::SacrificeAnyNumber { .. })
             | Effect::Choice(ChoiceEffect::DefendingPlayerSacrifices { .. })
             | Effect::Choice(ChoiceEffect::SacrificeSelfUnlessReturnLand { .. }) => {
                 self.run_edict_pause(effect, ctx, events)
@@ -928,6 +990,22 @@ impl Game {
             // picks one, pausing on an OpponentChoosesExiledNonland choice.
             Effect::Dig(DigEffect::EachPlayerExilesUntilNonlandOpponentPicks) => {
                 self.each_player_exiles_until_nonland(controller, source, events)
+            }
+            // "Sacrifice it unless you sacrifice two Swamps" with fewer than two Swamps around:
+            // the offer can't be made, so the penalty is taken outright rather than prompting the
+            // controller for a payment they can't afford (CR 601.2f). Ahead of the may-pause peel
+            // below because that raise skips a choice it can't build, which would otherwise drop
+            // the penalty on the floor.
+            Effect::Choice(ChoiceEffect::MaySacrifice {
+                filter,
+                count,
+                otherwise,
+                ..
+            }) if !otherwise.is_empty()
+                && self.edict_options(controller, filter, Some(source)).len()
+                    < count.max(1) as usize =>
+            {
+                self.run_sequence(otherwise, ctx, events)
             }
             // MaySacrifice / MayReturnFromGraveyard / MayDiscard / MayDraw* /
             // PayOrElse — may pause peel (`resolution/pause_may`).
@@ -955,20 +1033,52 @@ impl Game {
             | Effect::Choice(ChoiceEffect::ChooseOpponent)
             | Effect::Choice(ChoiceEffect::SetOwnColorUntilEndOfTurn)
             | Effect::ChooseOne { .. }
+            // Urborg's resolution-time "first strike **or** swampwalk" (CR 609.4) — peeled to the
+            // mode pause before the pump minter, which only ever sees a settled keyword list.
+            | Effect::Pump(PumpEffect::TargetLosesKeywords {
+                choose_one: true, ..
+            })
+            // Gabriel Angelfire's "choose flying, first strike, trample, or rampage 3" — the same
+            // CR 609.4 resolution-time pick, on the grant side.
+            | Effect::Pump(PumpEffect::GrantSelfKeywordsUntilNextUpkeep {
+                choose_one: true, ..
+            })
+            // Alchor's Tomb's "becomes the color of your choice" (CR 609.3) — peeled to the color
+            // picker; an authored color (`Some`) skips this and mints its SET straight away.
+            | Effect::Pump(PumpEffect::TargetBecomesColor { color: None, .. })
             | Effect::Copy(CopyEffect::Demonstrate { .. })
             | Effect::Choice(ChoiceEffect::Proliferate { .. })
+            // Backdraft's "one of those sorcery spells" — the same shape: a resolution-time pick
+            // with no board mutation of its own, recorded for the following step to read.
+            | Effect::Choice(ChoiceEffect::ChooseTargetPlayersDamagingSorcery)
             | Effect::Choice(ChoiceEffect::PhaseOut) => self.run_choose_pause(effect, ctx),
             // Kinetic Ooze — see `resolution/counters.rs::resolve_double_counters_on_target_creatures`.
             Effect::Counters(CountersEffect::DoubleCountersOnTargetCreatures { .. }) => {
                 self.resolve_double_counters_on_target_creatures(ctx, events)
             }
+            // Spurnmage Advocate — see `resolution/zones.rs::resolve_return_target_cards_from_graveyard`.
+            Effect::Zone(ZoneEffect::ReturnTargetCardsFromGraveyardToHand { .. }) => {
+                self.resolve_return_target_cards_from_graveyard(ctx, events)
+            }
+            // Rohgahh of Kher Keep — see `resolution/control.rs::resolve_opponent_gains_control_all`.
+            Effect::Control(ControlEffect::OpponentGainsControlAll {
+                filter,
+                with_source,
+            }) => self.resolve_opponent_gains_control_all(ctx, filter, with_source, events),
             // Donation — see `resolution/control.rs::resolve_target_opponent_gains_control`.
             Effect::Control(ControlEffect::TargetOpponentGainsControl { .. }) => {
                 self.resolve_target_opponent_gains_control(ctx, events)
             }
             // Exchange control — see `resolution/control.rs::resolve_exchange_control`.
-            Effect::Control(ControlEffect::ExchangeControl { .. }) => {
-                self.resolve_exchange_control(ctx, events)
+            Effect::Control(ControlEffect::ExchangeControl {
+                destroy_attached_auras,
+                ..
+            }) => self.resolve_exchange_control(ctx, destroy_attached_auras, events),
+            // Enchantment Alteration — see `resolution/control.rs::resolve_move_aura`.
+            Effect::Control(ControlEffect::MoveAura { .. }) => self.resolve_move_aura(ctx, events),
+            // Juxtapose — see `resolution/control.rs::resolve_exchange_greatest_mana_value`.
+            Effect::Control(ControlEffect::ExchangeGreatestManaValue { types, .. }) => {
+                self.resolve_exchange_greatest_mana_value(ctx, types, events)
             }
             // Perpetual Timepiece / Quandrix Command mode 3 — exile-cast pause peel
             // (`resolution/pause_exile_cast`).
@@ -989,7 +1099,18 @@ impl Game {
                 unless_pays: None,
                 countered_dest: Some(_),
                 ..
-            }) => self.run_counter_spell(effect, ctx, events),
+            })
+            // "counter it" off a cast trigger reads its own `triggering_spell` field rather than a
+            // chosen target, so both halves (taxed and plain) live in the peel.
+            | Effect::Misc(MiscEffect::CounterTriggeringSpell { .. })
+            // Ayesha Tanaka's "unless that ability's controller pays {W}" pauses the same way its
+            // spell-side twin does; the plain counter (Rust) stays on the mint path.
+            | Effect::Misc(MiscEffect::CounterTargetActivatedAbility {
+                unless_pays: Some(_),
+                ..
+            }) => {
+                self.run_counter_spell(effect, ctx, events)
+            }
             // Fight / MoveCounters — fight pause peel (`resolution/pause_fight`).
             Effect::Misc(MiscEffect::Fight { .. })
             | Effect::Counters(CountersEffect::MoveCounters { .. }) => {
@@ -1028,6 +1149,7 @@ impl Game {
             | Effect::Choice(ChoiceEffect::PutFromHandOnTop { .. })
             | Effect::Choice(ChoiceEffect::PutLandFromHand { .. })
             | Effect::Choice(ChoiceEffect::PutCreatureFromHand { .. })
+            | Effect::Choice(ChoiceEffect::EachPlayerMayPutPermanentFromHandRepeating)
             | Effect::Choice(ChoiceEffect::CastCreatureFaceDown) => {
                 self.run_hand_pause(effect, ctx)
             }
@@ -1107,7 +1229,7 @@ impl Game {
             // see `resolution/sequence_steps.rs::run_sequence_step`.
             Effect::Zone(ZoneEffect::ScheduleReturnThisAuraAttachedToReanimated)
             | Effect::Zone(ZoneEffect::ScheduleReturnReanimatedToHand)
-            | Effect::Zone(ZoneEffect::ReturnThisAuraFromGraveyardAttachedToChosenHost)
+            | Effect::Zone(ZoneEffect::ReturnThisAuraFromGraveyardAttachedToChosenHost { .. })
             | Effect::Zone(ZoneEffect::ScheduleReturnThisAuraFromGraveyardAttachedToChosenHost) => {
                 self.run_sequence_step(effect, ctx, events)
             }
@@ -1115,6 +1237,9 @@ impl Game {
             // (`resolve_destroy_all` / `resolve_exile_all` / `resolve_mill_self`).
             Effect::Destroy(destroy @ DestroyEffect::All { .. }) => {
                 self.resolve_destroy_all(destroy, controller, source, target, x, events)
+            }
+            Effect::Destroy(destroy @ DestroyEffect::BlockedByTarget { .. }) => {
+                self.resolve_destroy_blocked_by_target(destroy, controller, source, target, x, events)
             }
             Effect::Destroy(destroy @ DestroyEffect::Target { .. }) => {
                 self.resolve_destroy_target(destroy, controller, source, target, x, events)
@@ -1144,12 +1269,12 @@ impl Game {
             Effect::Choice(ChoiceEffect::EachPlayerDiscardsHandThenDraws { .. }) => {
                 self.run_misc_choreo(effect, ctx, events)
             }
-            // Timetwister — see `resolution/resolve_misc.rs`.
-            Effect::Choice(ChoiceEffect::EachPlayerShufflesHandAndGraveyardThenDraws {
-                ..
-            }) => self.run_misc_choreo(effect, ctx, events),
+            // Timetwister and Winds of Change — see `resolution/resolve_misc.rs`.
+            Effect::Choice(ChoiceEffect::EachPlayerShufflesHandThenDraws { .. }) => {
+                self.run_misc_choreo(effect, ctx, events)
+            }
             // Malfegor's "discard your hand" — see `resolution/resolve_misc.rs`.
-            Effect::Choice(ChoiceEffect::DiscardYourHand) => {
+            Effect::Choice(ChoiceEffect::DiscardYourHand { .. }) => {
                 self.run_misc_choreo(effect, ctx, events)
             }
             // `CreateToken`'s `enters_with` choreography — see
@@ -1188,6 +1313,23 @@ impl Game {
             Effect::Misc(MiscEffect::BlocksEachAttackerIfAble { .. }) => {
                 self.run_misc_choreo(effect, ctx, events)
             }
+            // Wall of Dust — see `resolution/resolve_misc.rs`.
+            Effect::Misc(MiscEffect::ThatCreatureCantAttackNextOwnTurn { .. }) => {
+                self.run_misc_choreo(effect, ctx, events)
+            }
+            // Floral Spuzzem's damage rider — see `resolution/resolve_misc.rs`.
+            Effect::Misc(MiscEffect::SourceAssignsNoCombatDamageThisTurn) => {
+                self.run_misc_choreo(effect, ctx, events)
+            }
+            // Johan's begin-combat pair — see `resolution/resolve_misc.rs`.
+            Effect::Misc(MiscEffect::SourceCantAttackThisCombat)
+            | Effect::Misc(MiscEffect::YourAttacksDontTapWhileSourceUntappedThisCombat) => {
+                self.run_misc_choreo(effect, ctx, events)
+            }
+            // Feint's second sentence — see `resolution/resolve_misc.rs`.
+            Effect::Misc(MiscEffect::ThatCreatureAndItsBlockersAssignNoCombatDamageThisTurn) => {
+                self.run_misc_choreo(effect, ctx, events)
+            }
             // Master Warcraft — see `resolution/resolve_misc.rs`.
             Effect::Misc(MiscEffect::YouChooseWhichCreaturesAttack)
             | Effect::Misc(MiscEffect::YouChooseWhichCreaturesBlock) => {
@@ -1214,18 +1356,43 @@ impl Game {
                     }
                 }
             }
-            // Each of these draws may be replaced by dredge (CR 702.52): `draw_with_dredge` draws one
-            // card at a time, pausing on `ChooseDredge` before any draw the controller has an eligible
-            // dredger for (accepting mills + returns, declining draws). `answer_choose_dredge` re-enters
-            // it for the remaining draws and resumes the deferred sequence once the batch is done.
-            // Only a draw the controller themselves takes routes through dredge — every other
-            // player set mints through the ordinary path, where no seat has a dredge choice yet.
-            Effect::Draw(DrawEffect::Cards {
-                who: PlayerSet::You,
-                count,
-            }) => {
+            // Every draw goes through the one funnel, whoever takes it: each is its own event
+            // (CR 121.2) and may be replaced by dredge (CR 702.52) or by Chains of Mephistopheles
+            // (CR 614), both of which pause for an answer. `Game::run_draw_batch` draws the seats
+            // in APNAP-ish `players_in` order, one card at a time, and the answering handler
+            // re-enters it; the deferred sequence resumes once the batch stops pausing.
+            // Breena's "that player draws a card and you put N +1/+1 counters on a creature": the
+            // counters half stays in the pure mint, the draw goes through the funnel like every
+            // other draw.
+            // ponytail: counters are placed before the draw, the reverse of the printed order, so
+            // a paused draw can't strand them. Nothing observes the order — different player,
+            // different object, no rules dependency either way.
+            Effect::Counters(CountersEffect::AttackerDrawsControllerCounters { attacker, .. }) => {
+                let drawer = attacker.expect("the attacking player is filled in at placement");
+                let evs = self.execute_effect(effect, controller, source, target, x);
+                self.apply_effect_events_with_replacements(evs, events);
+                self.draw_with_replacements(vec![(drawer, 1)], DrawAfter::Nothing, events);
+            }
+            Effect::Draw(DrawEffect::Cards { who, count }) => {
                 let n = self.resolve_count(count, controller, source, target, x);
-                self.draw_with_dredge(controller, n, false, events);
+                let seats = self
+                    .players_in(who, controller, target)
+                    .into_iter()
+                    .map(|player| (player, n))
+                    .collect();
+                self.draw_with_replacements(seats, DrawAfter::Nothing, events);
+            }
+            // Glyph of Life arms a CR 603.7 repeatable watch on the chosen creature rather than
+            // minting a gain now (the amount isn't known yet), so it needs `&mut self` to record
+            // it — see `DelayedTriggers::pending_attacker_damage_life` and
+            // `Game::fire_attacker_damage_life_triggers`.
+            Effect::Life(LifeEffect::GainWhenTargetIsDamagedByAttackerThisTurn { .. }) => {
+                let Some(Target::Object(watched)) = target else {
+                    return;
+                };
+                self.delayed_triggers
+                    .pending_attacker_damage_life
+                    .push((controller, source, watched));
             }
             _ => {
                 let evs = self.execute_effect(effect, controller, source, target, x);

@@ -1,0 +1,20 @@
+# Trample
+# Rampage 2 (Whenever this creature becomes blocked, it gets +2/+2 until end of turn for each creature blocking it
+# beyond the first.)
+name = "Craw Giant"
+otags = ["block-trigger", "french-vanilla", "rampage", "unique-mana-cost"]
+sets = ["5ed", "bchr", "chr", "leg", "tsb"]
+id = "152b621e-4c18-438c-9999-77e2685fda79"
+default_print = "81c5ee8f-a060-486c-a7f1-7bd600f6911a"
+oracle = "Trample\nRampage 2 (Whenever this creature becomes blocked, it gets +2/+2 until end of turn for each creature blocking it beyond the first.)"
+subtypes = ["Giant"]
+keywords = ["trample", { rampage = 2 }]
+
+[cost]
+generic = 3
+green = 4
+
+[kind]
+type = "creature"
+power = 6
+toughness = 4

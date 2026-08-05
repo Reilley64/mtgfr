@@ -395,6 +395,12 @@ pub(crate) fn answer(game: &mut Game, intent: Intent) -> Result<Vec<Event>, Reje
             }
             _ => Err(Reject::IllegalChoice),
         },
+        PendingChoice::SacrificeAnyNumber { .. } => match intent {
+            Intent::ChooseSacrifices { player, sacrifices } => {
+                game.answer_sacrifice_any_number(player, sacrifices)
+            }
+            _ => Err(Reject::IllegalChoice),
+        },
         PendingChoice::Devour { .. } => match intent {
             Intent::ChooseSacrifices { player, sacrifices } => {
                 game.answer_devour(player, sacrifices)
@@ -441,6 +447,13 @@ pub(crate) fn answer(game: &mut Game, intent: Intent) -> Result<Vec<Event>, Reje
             }
             _ => Err(Reject::IllegalChoice),
         },
+        // Reuses `ChooseCopyTarget` — the answer is "one chosen object", the same shape.
+        PendingChoice::ChooseDamageSource { .. } => match intent {
+            Intent::ChooseCopyTarget { player, copy } => {
+                game.answer_choose_damage_source(player, copy)
+            }
+            _ => Err(Reject::IllegalChoice),
+        },
     }
 }
 
@@ -464,6 +477,7 @@ pub(crate) fn forced(game: &Game) -> Option<Intent> {
             hand,
             count,
             or_one_matching,
+            ..
         } => {
             // A land-escape-valve filter with a matching card in hand is a genuine choice (discard
             // the whole hand vs. the single land) even when `count` happens to equal the hand
@@ -580,6 +594,7 @@ pub(crate) fn forced(game: &Game) -> Option<Intent> {
         | PendingChoice::ChooseExiledToCastFree { .. }
         | PendingChoice::RevealedCardToBattlefieldOrHand { .. }
         | PendingChoice::ChooseOwnSacrifices { .. }
+        | PendingChoice::SacrificeAnyNumber { .. }
         | PendingChoice::Devour { .. }
         | PendingChoice::ChooseManaColor { .. }
         | PendingChoice::ChooseCreatureType { .. }
@@ -588,7 +603,8 @@ pub(crate) fn forced(game: &Game) -> Option<Intent> {
         | PendingChoice::ChooseTokenToCopy { .. }
         | PendingChoice::ChooseCopyCardFromList { .. }
         | PendingChoice::ChooseAttachHost { .. }
-        | PendingChoice::ChooseLegendaryKeep { .. } => None,
+        | PendingChoice::ChooseLegendaryKeep { .. }
+        | PendingChoice::ChooseDamageSource { .. } => None,
     }
 }
 

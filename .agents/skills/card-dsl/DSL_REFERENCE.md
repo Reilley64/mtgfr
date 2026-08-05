@@ -21,11 +21,13 @@ This mirrors the DSL's top-level card shape with owned fields, then folds into t
 | `back` | CardToml \| null | no | - | A "prepare" DFC's back face (soc/sos) — an inline `[back]` `CardDef` table, parsed via `CardDef`'s own impl and interned below. Absent for ordinary cards. |
 | `bestow` | CostToml \| null | no | - | Bestow (CR 702.103) — `[bestow]` with the same `[cost]`-table shape as `[echo]`; absent for a card without bestow. |
 | `cascade` | boolean | no | `false` | Cascade (CR 702.85) — `cascade = true`; absent (`false`) for a card without cascade. |
+| `cast_only_after_combat` | boolean | no | `false` | "Cast this spell only after combat" (CR 601.3e — Glyph of Reincarnation) — `cast_only_after_combat = true`: closed from untap through the end of combat step, open from the postcombat main phase on. The phase-scoped mirror of `cast_only_before_combat_damage`. Absent (`false`) for every ordinary card. |
+| `cast_only_after_upkeep` | boolean | no | `false` | "Cast this spell only during an opponent's turn after their upkeep step" (CR 601.3e — Reset) — `cast_only_after_upkeep = true` for the second half; the first half is `cast_only_during_opponents_turn`. Closed through the upkeep, open from the draw step on. Absent (`false`) for every ordinary card. |
 | `cast_only_before_attackers` | boolean | no | `false` | "Cast this spell only before attackers are declared" (CR 601.3e — Master Warcraft) — `cast_only_before_attackers = true`; absent (`false`) for every ordinary card. |
 | `cast_only_before_blockers` | boolean | no | `false` | "Cast this spell only during combat before blockers are declared" (CR 601.3e — Blaze of Glory) — the declare-blockers half of `cast_only_before_attackers`, open until the first defending player declares. Pair it with `cast_only_during_combat`, which is the other half of Blaze of Glory's printed sentence; alone it leaves the pre-combat main phase open. Absent (`false`) for every ordinary card. |
 | `cast_only_before_combat_damage` | boolean | no | `false` | "Cast this spell only before the combat damage step" (CR 601.3e — Berserk) — `cast_only_before_combat_damage = true`: legal from untap through declare blockers, and closed for the rest of the turn from the first combat damage step on. Absent (`false`) for every ordinary card. |
 | `cast_only_during_combat` | boolean | no | `false` | "Cast this spell only during combat" (CR 601.3e) — `cast_only_during_combat = true`; absent (`false`) for every ordinary card. |
-| `cast_only_during_declare_attackers` | boolean | no | `false` | "Cast this spell only during your declare attackers step" (CR 601.3e — Camouflage) — `cast_only_during_declare_attackers = true`: the attack-side twin of the window above, and narrower still, since it is closed on every other player's turn as well as in every other step. Absent (`false`) for every ordinary card. |
+| `cast_only_during_declare_attackers` | boolean | no | `false` | "Cast this spell only during the declare attackers step" (CR 601.3e — Teleport) — `cast_only_during_declare_attackers = true`: the attack-side twin of the window above, and like it any player's step, since the printed restriction names the step rather than *your* step. A card that does print "your" (Camouflage) adds the seat half as `condition = { type = "during_your_turn" }` on its spell ability. Absent (`false`) for every ordinary card. |
 | `cast_only_during_declare_blockers` | boolean | no | `false` | "Cast this spell only during the declare blockers step" (CR 601.3e — False Orders) — `cast_only_during_declare_blockers = true`: a single step rather than everything up to one, open before *and* after the declaration (False Orders rearranges a declaration that already happened). Absent (`false`) for every ordinary card. |
 | `cast_only_during_opponents_turn` | boolean | no | `false` | "Cast this spell only during an opponent's turn" (CR 601.3e — Siren's Call) — `cast_only_during_opponents_turn = true`; the cast-side twin of an activated ability's `only_during_opponents_turn`, composable with `cast_only_before_attackers` (together they are Siren's Call's printed restriction). Absent (`false`) for every ordinary card. |
 | `cast_x_max` | string \| null | no | - | A non-mana cast-time cap on {X} (CR 601.2b — Open the Way's player-count bound) — `cast_x_max = "player_count"`; absent (`None`) for every ordinary {X} spell. |
@@ -38,7 +40,7 @@ This mirrors the DSL's top-level card shape with owned fields, then folds into t
 | `cumulative_upkeep` | CumulativeUpkeepCost \| null | no | - | Cumulative upkeep (CR 702.24) — `[cumulative_upkeep]` (`graveyard_cards = N`); absent for a card without cumulative upkeep. |
 | `cycling` | CostToml \| null | no | - | Cycling {N} (CR 702.29a) — `cycling = { generic = N }`; absent for a card with none. |
 | `cycling_sacrifice` | SacrificeCost | no | - | A sacrifice folded into the cycling cost (CR 702.29b — Edge of Autumn's "Cycling—Sacrifice a land"), same [`SacrificeCost`] table/shorthand shape as an activation sacrifice cost. Absent (`SacrificeCost::None`) for ordinary cycling. |
-| `default_print` | string | no | `` | Scryfall card UUID for the default Printing — required on top-level pool TOMLs. |
+| `default_print` | string | no | `` | Scryfall card UUID for the default Printing — required on top-level pool TOMLs. Token profiles (`data/tokens/`) may omit it (`""`) when the token predates printed token cards and has no Scryfall printing to key (fidelity increment #97) — an empty `default_print` already renders as the card back client-side, so this is the faithful "no printing" value rather than a gap. |
 | `delve` | boolean | no | `false` | Delve (CR 702.66) — `delve = true`; absent (`false`) for a card without delve. |
 | `demonstrate` | boolean | no | `false` | Demonstrate (CR 702.147) — `demonstrate = true`; absent (`false`) for a card without demonstrate. |
 | `devoid` | boolean | no | `false` | Devoid (CR 702.114a) — `devoid = true`; absent (`false`) for every ordinary card. |
@@ -80,6 +82,7 @@ This mirrors the DSL's top-level card shape with owned fields, then folds into t
 | `suspend` | Suspend \| null | no | - | Suspend N—[cost] (CR 702.62, Rousing Refrain) — a `[suspend]` table whose `cost` sub-table is leaked to `'static` by the `Suspend` impl. Absent for ordinary cards. |
 | `uncounterable` | boolean | no | `false` | "This spell can't be countered" (CR 701.5g) — `uncounterable = true`; absent (`false`) for every ordinary card. |
 | `vanishing` | integer \| null | no | `null` | Vanishing N (CR 702.63) — `vanishing = N` for a vanishing permanent; absent (`None`) for every other card. |
+| `world` | boolean | no | `false` | World supertype (CR 205.4a) — `world = true`; absent (`false`) for every ordinary card. Enforced by the world rule (CR 704.5k). |
 
 ## CostToml
 
@@ -100,6 +103,7 @@ A `[cost]` table spells each color by name (`white = 1`) rather than as the [`Co
 | `white` | integer | no | `0` | White mana pips (`{W}`). |
 | `x` | XPips | no | - | `{X}` pips. `true` means one `{X}`; an integer gives the count of `{X}` symbols. |
 | `x_color` | Color \| null | no | - | A color restriction on the mana spent for `{X}` (CR 601.2g) — Drain Life's "Spend only black mana on X" is `x_color = "black"`. The chosen value is paid as colored pips of that color instead of as generic. Absent for every other `{X}` cost, where any mana pays. |
+| `x_defined` | Amount \| null | no | - | A card-defined value for `{X}` (CR 107.3b) — Voodoo Doll's "X is the number of pin counters on this artifact" is `x = 2, x_defined = { per_counter_of_kind = "pin" }`. The activating player announces nothing; the activation gate resolves this amount instead. Absent for every ordinary `{X}` cost, where the player chooses X. |
 
 ## KindToml
 

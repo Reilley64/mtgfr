@@ -2,6 +2,12 @@ use super::*;
 #[cfg(feature = "card-dsl")]
 use crate::de;
 
+/// A count field whose implicit value is one, not [`Amount`]'s flat zero.
+#[cfg(feature = "card-dsl")]
+fn one_card() -> Amount {
+    Amount::Fixed(1)
+}
+
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(
@@ -44,6 +50,18 @@ pub enum ChoiceEffect {
     /// is written to the source's own [`Permanent::chosen_opponent`], read back by a
     /// [`Condition::ChosenPlayersUpkeep`] gate on its upkeep trigger.
     ChooseOpponent,
+
+    /// Backdraft's "half the damage dealt by **one of those** sorcery spells this turn": the
+    /// spell's controller picks which of the *targeted* player's damaging sorceries is halved.
+    /// Declares no target of its own — the enclosing [`Sequence`](Effect::Sequence) supplies the
+    /// chosen player, exactly as [`Self::MayPutCounterOnCreature`] does. Pauses on
+    /// [`PendingChoice::ChooseDamageSource`](crate::PendingChoice) over that player's sorceries
+    /// with a row in this turn's damage ledger, and writes the pick onto
+    /// [`ResolutionFrame::chosen_damage_source`](crate::resolution::ResolutionFrame) for a later
+    /// step's [`Amount::DamageDealtByChosenSorceryThisTurn`] to read. With one such sorcery
+    /// there is nothing to decide and the pick is settled without asking; with none, nothing is
+    /// recorded and the amount reads 0.
+    ChooseTargetPlayersDamagingSorcery,
 
     CouncilsDilemmaVote {
         #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::static_str_slice"))]
@@ -100,14 +118,24 @@ pub enum ChoiceEffect {
     },
 
     /// Timetwister's "Each player shuffles their hand and graveyard into their library, then draws
-    /// seven cards." The recycling sibling of
+    /// seven cards", and Winds of Change's "Each player shuffles the cards from their hand into
+    /// their library, then draws that many cards." The recycling sibling of
     /// [`EachPlayerDiscardsHandThenDraws`](Self::EachPlayerDiscardsHandThenDraws): same APNAP
     /// fan-out and same redraw, but the old cards are tucked back into the library and shuffled
     /// instead of discarded, so no card reaches a graveyard and `you_discard` triggers stay quiet.
-    /// A separate variant rather than a flag on the discard one — the zones moved, the zone moved
-    /// *to*, and the triggers fired all differ.
-    EachPlayerShufflesHandAndGraveyardThenDraws {
-        count: Amount,
+    /// A separate variant from the discard one rather than a flag on it — the zones moved, the
+    /// zone moved *to*, and the triggers fired all differ. Timetwister and Winds of Change differ
+    /// in none of those, so they share this variant and are told apart by its two knobs.
+    EachPlayerShufflesHandThenDraws {
+        /// Timetwister sweeps graveyards back in alongside hands; Winds of Change touches only
+        /// hands.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        include_graveyard: bool,
+        /// Timetwister's flat seven, shared by the table. `None` is Winds of Change's "that many":
+        /// each player redraws exactly what they shuffled away, a count read per player just
+        /// before that player shuffles rather than one number for everyone.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        count: Option<Amount>,
     },
 
     /// Each player in `who` discards a card of their choice (Syphon Mind, "Each other player
@@ -128,22 +156,60 @@ pub enum ChoiceEffect {
         down_to_fewest: bool,
     },
 
-    /// The effect's controller discards their whole hand (Malfegor's "discard your hand"). A
-    /// choiceless whole-hand discard (the discard sibling of
-    /// [`EachPlayerDiscardsHandThenDraws`](Self::EachPlayerDiscardsHandThenDraws), scoped to the
-    /// controller), emitting the normal [`Event::Discarded`](crate::Event) markers so
-    /// `Trigger::YouDiscard` fires and setting
+    /// Every player in `who` discards their whole hand (Malfegor's "discard your hand"; Nicol
+    /// Bolas's "that player discards their hand"). A choiceless whole-hand discard (the discard
+    /// sibling of [`EachPlayerDiscardsHandThenDraws`](Self::EachPlayerDiscardsHandThenDraws)),
+    /// emitting the normal [`Event::Discarded`](crate::Event) markers so `Trigger::YouDiscard`
+    /// fires and setting
     /// [`ResolutionFrame::cards_discarded_this_way`](crate::resolution::ResolutionFrame) to the
-    /// hand's size so a following Sequence step reads it (Malfegor's "for each card discarded this
-    /// way").
-    // ponytail: choiceless, so it sits a little oddly under ChoiceEffect. Only Malfegor needs it
-    // today — promote to its own Effect::Discard(DiscardEffect) family (mirroring Effect::Sacrifice)
-    // once a second/third choiceless discard card makes the family pay for itself.
-    DiscardYourHand,
+    /// discarded total so a following Sequence step reads it (Malfegor's "for each card discarded
+    /// this way").
+    // ponytail: choiceless, so it sits a little oddly under ChoiceEffect. Only Malfegor and Nicol
+    // Bolas need it today — promote to its own Effect::Discard(DiscardEffect) family (mirroring
+    // Effect::Sacrifice) once a third choiceless discard card makes the family pay for itself.
+    DiscardYourHand {
+        /// Whose hand goes: `you` (Malfegor, the default) or `damaged_player` (Nicol Bolas's
+        /// "that player", filled in from the trigger that placed the ability — CR 603.10a).
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        who: PlayerSet,
+    },
 
     EachPlayerExilesFromGraveyard,
 
+    /// Eureka's "Starting with you, each player may put a permanent card from their hand onto the
+    /// battlefield. Repeat this process until no one puts a card onto the battlefield." The
+    /// round-robin sibling of [`PutCreatureFromHand`](Self::PutCreatureFromHand), which it reuses
+    /// for each seat's offer: the lap runs in turn order from the caster (CR 101.4), a seat with no
+    /// permanent card in hand is skipped rather than asked, and any seat that acts puts every other
+    /// seat back in the queue — so the process ends exactly when a full lap passes with nobody
+    /// putting a card out. Whatever lands is kept (no Cauldron Dance sacrifice) and enters
+    /// untapped.
+    EachPlayerMayPutPermanentFromHandRepeating,
+
     EachPlayerNamesCardThenRevealsTop,
+
+    /// Petra Sphinx: "Target player chooses a card name, then reveals the top card of their
+    /// library. If that card has the chosen name, that player puts it into their hand. If it
+    /// doesn't, the player puts it into their graveyard." The targeted-player sibling of
+    /// [`EachPlayerNamesCardThenRevealsTop`](Self::EachPlayerNamesCardThenRevealsTop): one seat
+    /// instead of a fan-out, the *targeted* player names rather than the ability's controller
+    /// (CR 201.2 — whoever the card says chooses, chooses), and a miss goes to the graveyard
+    /// rather than the bottom of the library.
+    TargetPlayerNamesCardThenRevealsTop {
+        target: TargetSpec,
+    },
+
+    /// Nebuchadnezzar: "Choose a card name. Target opponent reveals X cards at random from their
+    /// hand. Then that player discards all cards with that name revealed this way." Unlike the two
+    /// reveal-the-top namers above, the ability's *controller* names the card and a different
+    /// player pays for it — the reveal comes off the injected per-op RNG (CR 701.30, the same
+    /// randomness [`Discard`](Self::Discard)'s `random` uses), so the discard is whatever the
+    /// reveal happened to turn up rather than every copy in hand.
+    NameCardThenTargetRevealsAtRandomAndDiscards {
+        target: TargetSpec,
+        /// How many cards the targeted player reveals — Nebuchadnezzar's `{X}`.
+        count: Amount,
+    },
 
     EachPlayerSacrifices {
         /// Who pays the edict — `each_player` (Promise of Loyalty), `each_opponent` (Martyr's
@@ -319,6 +385,12 @@ pub enum ChoiceEffect {
 
     MayReturnFromGraveyard {
         filter: CardFilter,
+        /// How many cards are returned, one prompt at a time (Recall's "return a card from your
+        /// graveyard to your hand **for each card discarded this way**"). Defaults to the single
+        /// return every other user of this effect wants. A count larger than the graveyard holds
+        /// returns as many as it can (CR 700.2).
+        #[cfg_attr(feature = "card-dsl", serde(default = "one_card"))]
+        count: Amount,
         #[cfg_attr(feature = "card-dsl", serde(default))]
         if_you_sacrificed_this_way: bool,
         /// "you return" (Witherbloom Command mode 0) rather than "you may return" (Deadly Brew,
@@ -326,16 +398,43 @@ pub enum ChoiceEffect {
         /// No legal card in the graveyard still quietly does nothing (no pause).
         #[cfg_attr(feature = "card-dsl", serde(default))]
         mandatory: bool,
+        /// Reincarnation's "return a creature card from **its owner's** graveyard **to the
+        /// battlefield** under that creature's owner's control": both halves of the same rider,
+        /// so one flag rather than two that must always be set together — the same compound
+        /// `reincarnate` [`DestroyEffect::BlockedByTarget`](crate::DestroyEffect::BlockedByTarget)
+        /// already carries for Glyph of Reincarnation. `false` (the default) is every other user:
+        /// the ability's controller's own graveyard, back to their hand.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        reincarnate: bool,
+        /// The creature whose death this return is paying off, baked in by
+        /// `contextualize_effect` when the delayed trigger fires. Read only under
+        /// `reincarnate` above, to name whose graveyard. `None` everywhere else.
+        #[cfg_attr(feature = "card-dsl", serde(skip))]
+        dead: Option<ObjectId>,
     },
 
     MaySacrifice {
         #[cfg_attr(feature = "card-dsl", serde(default))]
         filter: PermanentFilter,
+        /// How many permanents the offer costs — Mold Demon's "unless you sacrifice **two**
+        /// Swamps". `0` (the default) reads as one, the shape every other user wants. Fewer than
+        /// this many legal permanents means the offer can't be made at all: no prompt, straight to
+        /// `otherwise`.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        count: u8,
         #[cfg_attr(
             feature = "card-dsl",
             serde(default, deserialize_with = "de::static_slice")
         )]
         then: &'static [Effect],
+        /// What happens when the offer is declined (or can't be made) — Mold Demon's "sacrifice
+        /// it", Elder Spawn's "sacrifice this creature and it deals 6 damage to you". Empty (the
+        /// default) is the plain "you may … if you do" shape where declining costs nothing.
+        #[cfg_attr(
+            feature = "card-dsl",
+            serde(default, deserialize_with = "de::static_slice")
+        )]
+        otherwise: &'static [Effect],
     },
 
     PhaseOut,
@@ -368,11 +467,31 @@ pub enum ChoiceEffect {
 
     PutFromHandOnTop {
         count: u32,
+        /// Only cards drawn this turn are offered (Sylvan Library's "choose two cards in your hand
+        /// drawn this turn"). `false` (Brainstorm) offers the whole hand.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        drawn_this_turn: bool,
+        /// Life paid for each card the player *declines* to put back, which also makes `count` a
+        /// maximum rather than an exact price — Sylvan Library's "for each of those cards, pay 4
+        /// life **or** put the card on top of your library". 0 (Brainstorm) keeps `count` exact
+        /// and charges nothing.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        life_per_declined: u32,
     },
 
     PutLandFromHand {
         #[cfg_attr(feature = "card-dsl", serde(default))]
         tapped: bool,
+    },
+
+    /// "As this creature enters, sacrifice any number of untapped Forests" (Wood Elemental) — the
+    /// free-subset sibling of [`SacrificeOwn`](Self::SacrificeOwn), whose `count` is a price to
+    /// pay in full. Any subset of the controller's matching permanents (including none) is a legal
+    /// answer, and the number sacrificed is remembered on the source as the X it entered with, so
+    /// a characteristic-defining `power = "x"` can read it back for as long as it is on the
+    /// battlefield.
+    SacrificeAnyNumber {
+        filter: PermanentFilter,
     },
 
     SacrificeOwn {
@@ -393,6 +512,22 @@ pub enum ChoiceEffect {
     /// Nature's is "this creature deals 8 damage to you". Always pauses: only the player can answer.
     PayOrElse {
         cost: Cost,
+        /// Primordial Ooze's "you may pay {X}, where X is the number of +1/+1 counters on it":
+        /// generic pips whose count is a board read taken as the offer is made, added to
+        /// [`Cost::generic`] above. Not [`Cost::x`] — that is CR 107.3's *chosen* value, and this
+        /// one is derived, so the payer never picks it. `None` for every fixed "unless you pay".
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        extra_generic: Option<Amount>,
+        /// Imprison's "**if you do**, tap the creature, remove it from combat, …" — what paying
+        /// *buys*, on top of dodging `otherwise`. Empty (the default) for every plain "unless you
+        /// pay", where paying only avoids the penalty. The both-branches shape is why Imprison is
+        /// this variant rather than
+        /// [`TriggeringPlayerMayPay`](Self::TriggeringPlayerMayPay), which has no `otherwise`.
+        #[cfg_attr(
+            feature = "card-dsl",
+            serde(default, deserialize_with = "de::static_slice")
+        )]
+        then: &'static [Effect],
         #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::static_slice"))]
         otherwise: &'static [Effect],
     },
