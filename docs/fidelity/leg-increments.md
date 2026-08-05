@@ -2506,3 +2506,22 @@ because it is an engine-wide gap that outlives the set.
 *Sketch:* record the casting player on the stack object at cast time and read that instead of
 `controller_of` wherever a cast is attributed after the fact. Acceptance: a sorcery cast off an
 opponent's library appears in the *caster's* damaging-sorcery candidate list, not the owner's.
+
+### 218. `drop-a-must-attack-whose-defender-left-the-game` — 0 cards, S
+Depends on: nothing.
+`Game::required_attacks` and the declaration validator disagree about a `must_attack` requirement
+whose recorded defender is no longer a legal player (`required_legal == false`). The seed side
+(`crates/engine/src/combat.rs:502-524`) skips the requirement entirely; the validator
+(`crates/engine/src/combat.rs:1250-1276`) still rejects a declaration that leaves the creature home,
+because it tests "is this creature attacking at all?" before it tests whether the recorded defender
+is still legal. A client seeding its declaration from `required_attacks` therefore submits something
+the engine rejects, with nothing in the frame explaining what is missing. CR 508.1a/508.1d put the
+validator on the wrong side: a requirement naming a player who has left the game cannot be obeyed,
+so it does not force the creature to attack anything. Surfaced by the Phase 6 smoke drive as a
+code-reading observation, not reproduced live — no Legends card records a defender and then outlives
+that player in a two-player-remaining board. Filed here rather than against a card because it is an
+engine-wide gap that outlives the set.
+*Sketch:* hoist the `required_legal` test above the "is it attacking?" test in the validator so an
+unfulfillable requirement is dropped on both sides. Acceptance: with the recorded defender eliminated,
+a declaration that leaves the required creature home is accepted, and `required_attacks` and the
+validator agree on every board.
