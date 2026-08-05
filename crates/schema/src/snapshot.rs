@@ -197,6 +197,27 @@ fn stack_source_art(game: &engine::Game, source: engine::ObjectId) -> (String, S
     )
 }
 
+/// The printed sentence an ability on the stack prints, found by matching the effect the stack
+/// entry carries back to the source card's ability list — [`engine::Game::stack`] is where an
+/// internal stack item becomes a [`engine::StackEntry`], and the effect is all the ability
+/// identity that survives that. Empty means "show the effect's generated label instead".
+///
+/// ponytail: an ability granted by another permanent is on no card's list, and a card printing
+/// two abilities with the identical effect is ambiguous — both fall back to the label. Thread an
+/// ability index through the stack item if a real card needs better.
+fn stack_ability_oracle(
+    game: &engine::Game,
+    source: engine::ObjectId,
+    effect: &engine::Effect,
+) -> String {
+    let def = game.def_of(source);
+    let mut printed = def.abilities.iter().filter(|a| a.effect == *effect);
+    let (Some(only), None) = (printed.next(), printed.next()) else {
+        return String::new();
+    };
+    only.oracle.unwrap_or_default().to_string()
+}
+
 /// Wire form of one of `game`'s stored [`engine::LegalAction`]s. `MeaningfulAction::PlayLand`/
 /// `Cast` bucket by their carried zone; `Activate` buckets by the source's zone (battlefield
 /// radial vs graveyard bar for `functions_in_graveyard`); the combat declarations are "combat"
@@ -1024,6 +1045,8 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
                     print,
                     card_id,
                     name,
+                    // A spell on the stack is the whole card, so its face shows the card's text.
+                    ability_oracle: String::new(),
                 }
             }
             engine::StackEntry::Ability {
@@ -1034,6 +1057,7 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
             } => {
                 let targets: Vec<WireTarget> = target.map(WireTarget::of).into_iter().collect();
                 let (print, card_id, name) = stack_source_art(game, source);
+                let ability_oracle = stack_ability_oracle(game, source, &effect);
                 StackObjectView {
                     kind: "ability".to_string(),
                     source,
@@ -1044,6 +1068,7 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
                     print,
                     card_id,
                     name,
+                    ability_oracle,
                 }
             }
         })
@@ -2339,6 +2364,43 @@ mod tests {
             }
             other => panic!("expected an OrderTriggers choice, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn an_ability_on_the_stack_carries_the_sentence_that_prints_it() {
+        // An ability waiting to resolve is one printed sentence, not its whole source card, so the
+        // stack face draws that sentence — matched back to the card by the effect the entry carries.
+        let mut game = Game::new();
+        let arena = game.spawn_on_battlefield(PlayerId(0), def("Phyrexian Arena"));
+        game.stack_library(PlayerId(0), &[def("Grizzly Bears"), def("Grizzly Bears")]);
+        game.stack_library(PlayerId(1), &[def("Grizzly Bears"), def("Grizzly Bears")]);
+        while game.stack().is_empty() {
+            game.submit(engine::Intent::PassPriority {
+                player: game.priority_holder(),
+            })
+            .unwrap();
+        }
+
+        let stack = snapshot(&game, PlayerId(0)).stack;
+        assert_eq!(stack.len(), 1, "the arena's upkeep trigger, alone");
+        assert_eq!(stack[0].source, arena);
+        assert_eq!(
+            stack[0].ability_oracle,
+            "At the beginning of your upkeep, you draw a card and you lose 1 life."
+        );
+    }
+
+    #[test]
+    fn an_ability_whose_card_records_no_sentence_leaves_the_label_to_draw_it() {
+        // A granted ability is on no card's printed list, and a card that records no sentence for
+        // the ability that matched projects nothing — either way the client falls back to `label`.
+        let mut game = Game::new();
+        let arena = game.spawn_on_battlefield(PlayerId(0), def("Phyrexian Arena"));
+        let granted = Effect::Life(engine::LifeEffect::Gain {
+            who: engine::PlayerSet::You,
+            amount: engine::Amount::Fixed(1),
+        });
+        assert_eq!(super::stack_ability_oracle(&game, arena, &granted), "");
     }
 
     #[test]

@@ -77,6 +77,9 @@ function stackItems(board: BoardModel, state: VisibleState, showGhost: boolean):
     const print = object?.print || entry.print || "";
     const name = object?.name || entry.name || null;
     const cardId = object?.card_id || entry.card_id || undefined;
+    // A tombstone is gone from `objects`, so its own identity is all there is to draw a face from.
+    const face =
+      object != null ? faceOf(object) : print ? withText({ ...BLANK_FACE, print, name: name ?? "" }, cardId) : null;
     return {
       row,
       source: entry.source,
@@ -85,9 +88,9 @@ function stackItems(board: BoardModel, state: VisibleState, showGhost: boolean):
       cardId,
       label,
       staged: false,
-      // A tombstone is gone from `objects`, so its own identity is all there is to draw a face from.
-      face:
-        object != null ? faceOf(object) : print ? withText({ ...BLANK_FACE, print, name: name ?? "" }, cardId) : null,
+      // An ability on the stack is the one sentence that prints it, not its source card's whole
+      // text box; the flavor belongs to the card, so it goes with the rest of the card's words.
+      face: face != null && entry.ability_oracle ? { ...face, oracle: entry.ability_oracle, flavor: "" } : face,
     };
   });
   if (!showGhost) return items;

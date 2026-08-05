@@ -70,6 +70,7 @@ pub fn stack_object_view_to_pb(entry: StackObjectView) -> pb::StackObjectView {
         print: entry.print,
         card_id: entry.card_id,
         name: entry.name,
+        ability_oracle: entry.ability_oracle,
     }
 }
 
@@ -1798,6 +1799,7 @@ mod tests {
                 print: "shock-print".into(),
                 card_id: "shock-id".into(),
                 name: "Shock".into(),
+                ability_oracle: String::new(),
             }],
             combat: CombatView::default(),
             can_act: true,

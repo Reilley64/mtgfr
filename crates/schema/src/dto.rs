@@ -417,6 +417,11 @@ pub struct StackObjectView {
     /// Source card display name for art alt / inspect. Empty when anonymized.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub name: String,
+    /// The one printed sentence this ability prints, for the text box of its stack face — an
+    /// ability on the stack is not its whole source card. Empty for a spell (which shows its
+    /// card's own text) and for an ability whose sentence isn't recorded, which shows `label`.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub ability_oracle: String,
 }
 
 /// One labelled item offered by a pending choice (a legal target, or a blocker to assign

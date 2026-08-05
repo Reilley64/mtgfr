@@ -154,6 +154,46 @@ test("stack face draws the whole printed card, with the catalog's words on it", 
   );
 });
 
+test("an ability's stack face shows only the sentence that prints it", () => {
+  // An ability waiting to resolve is one printed sentence, not its source permanent's whole text
+  // box — and the flavor is the card's, not the ability's, so it goes with the rest.
+  const { objects } = spellOnStack(42, "Phyrexian Arena", "arena-print");
+  const arena: ObjectView = { ...(objects[0] as ObjectView), card_id: "arena", kind: { kind: "enchantment" } };
+  const sentence = "At the beginning of your upkeep, you draw a card and you lose 1 life.";
+  const text = {
+    card_id: "arena",
+    type_line: "Enchantment",
+    oracle: sentence,
+    flavor: "The Rathi cabal exacts a heavy toll.",
+  };
+  const model: ViewModel = {
+    board: { ...initialBoardModel(), cardText: new Map([["arena", text]]) },
+    fold: gameFold(
+      gameState({
+        objects: [arena],
+        stack: [
+          {
+            ability_oracle: sentence,
+            controller: 0,
+            kind: "ability",
+            label: testMessageRef("Draw a card"),
+            source: 42,
+          },
+        ],
+      }),
+    ),
+    tableId: "T1",
+  };
+  const face = JSON.stringify({ ...faceDataFrom(arena), typeLine: "Enchantment", oracle: sentence, flavor: "" });
+  Scene.scene(
+    { update: (m) => [m, []], view: overlayView },
+    Scene.given(model),
+    resolveBoardOverlayMounts(),
+    resolveBoardCardFaceMounts(),
+    Scene.expect(Scene.selector(String.raw`[data-testid="stack-face-0"] [data-face]`)).toHaveAttr("data-face", face),
+  );
+});
+
 test("spell stack face stays hidden while its stack entrance flight is in progress", () => {
   const { objects, stack } = spellOnStack(42, "Lightning Bolt", "bolt-print");
   const flight = {

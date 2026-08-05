@@ -110,6 +110,13 @@ Server-authored player-facing game text (rejects, stack and action labels, pendi
 - **WHEN** a spell is on the stack
 - **THEN** its stack label is a message reference rendered through the client catalog
 
+### Requirement: A stack ability carries the sentence that prints it
+Each stack entry for an ability SHALL carry the one printed sentence that ability prints, when its source card records one, so the client can draw the ability rather than its source card's whole text box. The sentence SHALL be resolved server-side by matching the effect the stack entry carries back to the source card's printed abilities. It SHALL be empty for a spell entry, for an ability granted by another permanent, and whenever the match is ambiguous or the card records no sentence — in which case the client draws the entry's label instead.
+
+#### Scenario: A granted ability carries no sentence
+- **WHEN** an ability on the stack was granted by another permanent rather than printed on its source card
+- **THEN** the stack entry's ability sentence is empty and the client renders the entry's label
+
 ### Requirement: Pending choices project to a stable generic wire shape
 The pending-choice view oneof SHALL cover every engine pause the board renders (targets, payments, combat damage, digs, search, edicts, modes, copy target, legend-rule keep, mana color, piles, partition, dredge, and related prompts). Spell-target and ability-target pauses SHALL project as a shared choose-target shape. Repeatable yes/no and draw-up-to loops SHALL use shared generic arms. Choice items SHALL carry display labels so the prompt UI need not join against the object list for visible identity. The choose-copy-target arm SHALL carry a discriminator when the same answer shape is reused for a non-copy primer such as optional put-counter-on-creature.
 

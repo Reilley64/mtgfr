@@ -172,12 +172,17 @@ Active seated players SHALL see a bottom DOM bar in Arena order: command, hand, 
 
 The stack SHALL be a right-edge DOM overlay with pile / expanded strip / full-grid presentations. Labels SHALL format wire `MessageRef`s. Declared targets SHALL paint one Island Blue arrow per resolvable destination on the Mount layer. Legal aim faces SHALL set `data-legal-target` and submit on click/keyboard. Priority holders hovering a non-empty stack SHALL emit `SetStackDwell`. Resting stack faces SHALL hide only for `kind: "stack"` flights. Pending board-aim without a stack entry for the source SHALL show a source-art ghost; spell sources already on the stack SHALL NOT duplicate.
 
-Each stack face SHALL be the whole rendered card face — the same one the hand bar draws, sharing its cache entry — since the stack is where a player reads what is about to resolve. An entry whose source object has already left the snapshot SHALL draw its face from the printing and name the entry carries.
+Each stack face SHALL be the whole rendered card face — the same one the hand bar draws, sharing its cache entry — since the stack is where a player reads what is about to resolve. An entry whose source object has already left the snapshot SHALL draw its face from the printing and name the entry carries. An ability entry that carries its own printed sentence SHALL draw that sentence in the text box in place of the source card's text and flavor, because an ability on the stack is not its whole source card.
 
 #### Scenario: A spell on the stack shows its printed card
 
 - **WHEN** a spell sits on the stack and the snapshot's card text for it has arrived
 - **THEN** its stack face draws the full rendered card, rules text and flavor included, rather than a crop of the art
+
+#### Scenario: An ability on the stack shows only its own sentence
+
+- **WHEN** an ability sits on the stack and the entry carries the printed sentence for it
+- **THEN** its stack face draws that sentence alone in the text box, without the source card's other abilities or its flavor
 
 #### Scenario: Multi-target caption
 - **WHEN** a stack object has multiple resolved targets

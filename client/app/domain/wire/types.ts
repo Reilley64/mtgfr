@@ -238,6 +238,12 @@ export type ObjectView = {
   zone: number;
 };
 export type StackObjectView = {
+  /**
+   * The one printed sentence this ability prints, for the text box of its stack face — an ability
+   * on the stack is not its whole source card. Absent for a spell, which shows its card's own
+   * text, and for an ability whose sentence isn't recorded, which shows `label`.
+   */
+  ability_oracle?: string;
   card_id?: string;
   controller: number;
   kind: string;
