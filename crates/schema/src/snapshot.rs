@@ -2192,6 +2192,7 @@ mod tests {
         use engine::*;
         const ABILITIES: [Ability; 2] = [
             Ability {
+                oracle: None,
                 timing: Timing::Triggered(Trigger::CreatureYouControlDies),
                 effect: Effect::Life(LifeEffect::Gain {
                     who: PlayerSet::You,
@@ -2204,6 +2205,7 @@ mod tests {
                 cost: Cost::FREE,
             },
             Ability {
+                oracle: None,
                 timing: Timing::Triggered(Trigger::CreatureYouControlDies),
                 effect: Effect::Draw(DrawEffect::Cards {
                     who: PlayerSet::You,

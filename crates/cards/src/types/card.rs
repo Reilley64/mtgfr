@@ -581,6 +581,10 @@ pub enum Timing {
 pub struct Ability {
     pub timing: Timing,
     pub effect: Effect,
+    /// This one ability's printed sentence, quoted verbatim from [`CardDef::oracle`]. An ability
+    /// on the stack is not its whole source card, so this is what the stack shows while it waits
+    /// to resolve; `None` falls back to the effect's generated message.
+    pub oracle: Option<&'static str>,
     /// The minimum Class level this ability requires to function (CR 717.5 — a Class's
     /// level-gated triggered/static/activated abilities). An ability functions only while its
     /// source permanent's [`Permanent::level`] is at least `min_level`; `0` (every ordinary
@@ -1439,6 +1443,7 @@ fn treasure_token_builtin() -> CardDef {
             persist_until_end_of_turn: false,
             recipient: None,
         }),
+        oracle: None,
         optional: false,
         min_level: 0,
         cost: Cost::FREE,

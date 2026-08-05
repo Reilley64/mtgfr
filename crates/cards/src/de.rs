@@ -1685,6 +1685,7 @@ impl<'de> Deserialize<'de> for Ability {
         Ok(Ability {
             timing,
             effect,
+            oracle: flat.oracle.map(|s| &*Box::leak(s.into_boxed_str())),
             optional: flat.optional,
             cost: flat.cost,
             condition: flat.condition,

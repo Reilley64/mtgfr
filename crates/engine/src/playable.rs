@@ -746,6 +746,7 @@ mod tests {
             abilities: if modal {
                 arc_slice([
                     Ability {
+                        oracle: None,
                         timing: Timing::Spell,
                         effect: Effect::Damage(DamageEffect::Target {
                             amount: Amount::Fixed(2),
@@ -773,6 +774,7 @@ mod tests {
                         once_each_turn: false,
                     },
                     Ability {
+                        oracle: None,
                         timing: Timing::Spell,
                         effect: Effect::Destroy(DestroyEffect::All {
                             filter: PermanentFilter::of(TypeSet::ARTIFACT),
@@ -848,6 +850,7 @@ mod tests {
 
     fn spell_ability(effect: Effect) -> Ability {
         Ability {
+            oracle: None,
             timing: Timing::Spell,
             effect,
             optional: false,
@@ -998,6 +1001,7 @@ mod tests {
             CardDef {
                 abilities: arc_slice([
                     Ability {
+                        oracle: None,
                         timing: Timing::Spell,
                         effect: Effect::Damage(DamageEffect::Target {
                             amount: Amount::Fixed(3),
@@ -1015,6 +1019,7 @@ mod tests {
                         once_each_turn: false,
                     },
                     Ability {
+                        oracle: None,
                         timing: Timing::Spell,
                         effect: Effect::Destroy(DestroyEffect::Target {
                             target: TargetSpec::Permanent(PermanentFilter::of(TypeSet::ARTIFACT)),

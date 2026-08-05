@@ -841,6 +841,7 @@ mod tests {
         keywords: empty_slice(),
         conditional_keywords: empty_slice(),
         abilities: arc_slice([engine::Ability {
+            oracle: None,
             timing: engine::Timing::Triggered(engine::Trigger::Etb),
             effect: engine::Effect::Damage(DamageEffect::Target {
                 amount: engine::Amount::Fixed(1),

@@ -15,6 +15,7 @@ type = "enchantment"
 # At the beginning of your upkeep, you draw a card and you lose 1 life.
 [[abilities]]
 timing = "upkeep"
+oracle = "At the beginning of your upkeep, you draw a card and you lose 1 life."
 
 # you draw a card
 [[abilities.effects]]

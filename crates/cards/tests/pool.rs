@@ -5784,3 +5784,40 @@ fn every_creature_type_printed_in_the_pool_can_be_chosen() {
         missing.join(", ")
     );
 }
+
+/// An ability's `oracle` is the one printed sentence the stack shows while that ability waits to
+/// resolve — not the whole card's text box. Every ability that records one must therefore quote
+/// its own card verbatim, so this holds the pool to that: whitespace-normalised, an ability's
+/// sentence is a substring of its card's `oracle`. Abilities without one fall back to the
+/// effect's generated label, which is the default for the ~10% the backfill could not match.
+#[test]
+fn every_ability_oracle_quotes_its_own_card() {
+    let squash = |s: &str| s.split_whitespace().collect::<Vec<_>>().join(" ");
+    let mut wrong: Vec<String> = Vec::new();
+    for def in registry().values() {
+        let card = def.oracle.map(squash).unwrap_or_default();
+        for ability in def.abilities.iter() {
+            let Some(sentence) = ability.oracle else {
+                continue;
+            };
+            if !card.contains(&squash(sentence)) {
+                wrong.push(format!("{}: {sentence:?}", def.name));
+            }
+        }
+    }
+    wrong.sort();
+    assert!(
+        wrong.is_empty(),
+        "these ability oracles are not printed on their card: {}",
+        wrong.join("; ")
+    );
+}
+
+#[test]
+fn an_ability_carries_the_sentence_that_prints_it() {
+    let arena = get_by_name("Phyrexian Arena").expect("Phyrexian Arena is in the pool");
+    assert_eq!(
+        arena.abilities[0].oracle,
+        Some("At the beginning of your upkeep, you draw a card and you lose 1 life.")
+    );
+}

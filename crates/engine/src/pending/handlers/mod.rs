@@ -220,6 +220,7 @@ mod tests {
             abilities: effects
                 .iter()
                 .map(|effect| Ability {
+                    oracle: None,
                     timing: Timing::Triggered(Trigger::Upkeep),
                     effect: effect.clone(),
                     optional: false,

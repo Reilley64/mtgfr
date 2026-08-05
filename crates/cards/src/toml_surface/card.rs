@@ -193,6 +193,11 @@ pub struct AbilityToml {
     /// wrapper).
     #[serde(default)]
     pub(crate) effects: Vec<Effect>,
+    /// This one ability's printed sentence, quoted verbatim from the card's `oracle` — what
+    /// the stack shows while the ability waits to resolve, since an ability on the stack is
+    /// not its whole source card. Unset falls back to the effect's generated label.
+    #[serde(default)]
+    pub(crate) oracle: Option<String>,
 }
 
 /// One entry of `CardDef::conditional_keywords` as spelled in TOML — an

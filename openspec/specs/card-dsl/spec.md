@@ -101,6 +101,13 @@ Oracle text, flavor text, oracle tags, and set codes SHALL be catalog metadata f
 - **WHEN** a deck builder searches for a thematic tag such as ramp or typal-spirit
 - **THEN** matching uses oracle tags even if that tag is not itself a rules keyword
 
+### Requirement: An ability may carry its own printed sentence
+An ability block SHALL be able to record the one printed sentence that prints it, quoted verbatim from its card's oracle text, so that surfaces showing a single ability — the stack, where a player reads what is about to resolve — can show that sentence rather than the whole card's text box. Like all catalog metadata the rules engine MUST NOT parse it. Every recorded ability sentence SHALL be a whitespace-normalised substring of its card's oracle text. An ability that records none SHALL fall back to the message the effect generates.
+
+#### Scenario: An ability quotes the sentence that prints it
+- **WHEN** an ability block records a sentence that is not printed on its card
+- **THEN** the pool test that holds every ability sentence to its card's oracle text fails
+
 ### Requirement: Printing records carry what a printing prints
 Every printed detail that differs between printings of one card SHALL live in printing records — one file per card under `crates/cards/data/prints/`, recording each printing's Scryfall card UUID, its set code, and the flavor text that printing prints. Flavor SHALL NOT be authored on the card definition, because a card has no one flavor. A card definition's set codes SHALL be derived from its printing records at pool load, not authored a second time on the card; authoring either `flavor` or `sets` on a card SHALL be a load error. The records SHALL be generated from Scryfall bulk data (`just cards-printings`) rather than hand-maintained.
 
