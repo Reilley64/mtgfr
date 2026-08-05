@@ -45,7 +45,7 @@ function face(overrides: Partial<ObjectView> = {}): FaceData {
 /** Measured off the vendored 750x1050 assets — see the constants in `frame.ts`. */
 const ART_WINDOW = { x: 58, y: 119, w: 634, h: 463 };
 const TITLE_BAR = { x: 58, y: 49, w: 634, h: 66 };
-const TYPE_BAR = { x: 58, y: 589, w: 634, h: 61 };
+const TYPE_BAR = { x: 58, y: 592, w: 634, h: 61 };
 const TEXT_BOX = { x: 58, y: 661, w: 633, h: 305 };
 const PT_PLATE = { x: 579, y: 932, w: 130, h: 64 };
 const TOP_STRIP_H = 195;

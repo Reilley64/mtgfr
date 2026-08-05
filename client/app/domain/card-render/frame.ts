@@ -146,7 +146,10 @@ export const CANONICAL: Record<FaceVariant, { w: number; h: number }> = {
  * is opaque there, so alpha cannot segment a plate, and the renderer only ever reads their width (to
  * shrink an overlong line) and their vertical centre. Both are calibrated against Scryfall's png for
  * an M15 printing with `client/scripts/card-render-diff.mjs` — a printed name inks rows 64..92 of a
- * 1040-tall face, a printed type line rows 599..623 — so nudge them only against that measurement.
+ * 1040-tall face, a printed type line rows 601..625 — so nudge them only against that measurement.
+ * Nudge them against the *glyphs*, at that: a printed type line and ours ink to within a pixel of the
+ * same width on every clean reference, but print starts its rows 2 to 4 lower on all nine, which is
+ * the three the bar carries here.
  *
  * `TEXT_BOX` is the printed paper, read off a Scryfall 744x1040 png by luminance: the pale box runs
  * y 655..957 there, which is these numbers once scaled to the asset. Getting the bottom right is
@@ -156,7 +159,7 @@ export const CANONICAL: Record<FaceVariant, { w: number; h: number }> = {
  */
 const ART_WINDOW: Rect = { x: 58, y: 119, w: 634, h: 463 };
 const TITLE_BAR: Rect = { x: 58, y: 49, w: 634, h: 66 };
-const TYPE_BAR: Rect = { x: 58, y: 589, w: 634, h: 61 };
+const TYPE_BAR: Rect = { x: 58, y: 592, w: 634, h: 61 };
 const TEXT_BOX: Rect = { x: 58, y: 661, w: 633, h: 305 };
 const PT_PLATE: Rect = { x: 579, y: 932, w: 130, h: 64 };
 /**
