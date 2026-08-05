@@ -159,7 +159,14 @@ function drawFitted(ctx: CanvasRenderingContext2D, text: string, box: Rect, font
   ctx.fillText(text, box.x + box.w * BAR_PAD_X, box.y + box.h / 2);
 }
 
-/** Body font for one run — reminder text prints italic, the way a printed card sets it. */
+/**
+ * Body font for one run — reminder text prints italic, the way a printed card sets it.
+ *
+ * ponytail: only the roman MPlantin is vendored, so the browser slants it rather than setting a
+ * true italic, and a synthetic slant keeps roman's wider set width. Llanowar Elves (`fdn`) shows the
+ * cost: its rules line inks 166px against print's 165, but its italic flavor wraps to five lines
+ * where print takes four. Vendor `mplantin-italic.ttf` beside the roman to close it.
+ */
 function bodyFont(fontPx: number, reminder: boolean): string {
   return `${reminder ? "italic " : ""}${fontPx}px ${BODY_FONT}, serif`;
 }

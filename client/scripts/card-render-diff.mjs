@@ -14,6 +14,14 @@
  * A perfect score is not the goal: the printed card also carries a mana cost, set symbol, holo
  * stamp and artist line that we deliberately never draw, and its art is a different crop of the same
  * painting. Read the per-region numbers, and read them as a before/after when tuning the frame.
+ *
+ * It cannot tune type, though, and must not be asked to. Two sets of glyphs that do not land on each
+ * other cost area in proportion to how much ink they carry, so the score rewards *less* ink: at a
+ * rules size of 0.08 — text far smaller than any printed card — every reference card here scores
+ * better than at the size print actually sets. Type is set by measuring printed glyphs instead: pick
+ * a card whose line reads the same on both sides (Guard Gomazoa's `Defender, flying`), and compare
+ * that line's inked width and height. Use this score for what it is good at — where a thing sits and
+ * what colour it is.
  */
 
 /** Per-channel distance under which two pixels count as the same colour to the eye. */
