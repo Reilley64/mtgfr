@@ -747,6 +747,13 @@
             }
           ]
         },
+        "on_attached": {
+          "description": "A modifier on `per_counter_of_kind`, not an amount of its own — see the visitor's `Table`.",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
         "op": {
           "anyOf": [
             {

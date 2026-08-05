@@ -238,6 +238,8 @@ struct AmountTableSchema {
     per_permanent: Option<PermanentFilter>,
     zone: Option<AmountZone>,
     per_counter_of_kind: Option<CounterKind>,
+    /// A modifier on `per_counter_of_kind`, not an amount of its own — see the visitor's `Table`.
+    on_attached: Option<bool>,
     condition: Option<Condition>,
     then: Option<Amount>,
     #[schemars(rename = "else")]
