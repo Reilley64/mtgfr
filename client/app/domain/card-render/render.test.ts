@@ -24,6 +24,7 @@ function fakeCtx() {
       arc: record("arc"),
       createLinearGradient: vi.fn(() => ({ addColorStop: () => {} })),
       translate: record("translate"),
+      scale: record("scale"),
       rotate: record("rotate"),
       roundRect: record("roundRect"),
       rect: record("rect"),
@@ -178,6 +179,20 @@ describe("drawFace", () => {
     expect(ops.some((o) => o.op === "fillRect")).toBe(true);
     const fonts = ops.filter((o) => o.op === "font").map((o) => String(o.args[0]));
     expect(fonts.some((f) => f.startsWith("italic") && f.includes(BODY_FONT))).toBe(true);
+  });
+
+  it("sets flavor at a true italic's width, so it wraps where print wraps it", () => {
+    // Print sets Phyrexian Arena's whole flavor on one line; slanted roman is wide enough to spill
+    // onto a second. The fake measure charges 8px a character, so these 79 fit the 613px box only
+    // once condensed.
+    const flavor = "A drop of humanity for a sea of power, and a drop of power for a sea of humanity";
+    const { ctx, ops } = fakeCtx();
+    drawFace(ctx, inputs({ variant: "full", face: face({ oracle: "Flying", flavor, power: "", toughness: "" }) }));
+
+    // One row for the rules line, one for the flavor — everything below the type bar.
+    const box = slotRects("full", face()).text;
+    const rows = ops.filter((o) => o.op === "fillText").map((o) => Number(o.args[2]));
+    expect(new Set(rows.filter((y) => y > (box?.y ?? 0))).size).toBe(2);
   });
 
   it("rules no divider when the card prints no flavor", () => {

@@ -51,6 +51,17 @@ const TEXT_PAD_Y = 0.03;
 const BAR_PAD_X = 0.008;
 /** The flavor divider's width, as a fraction of the text box — a printed one stops short of both edges. */
 const DIVIDER_W = 0.9;
+/**
+ * How much narrower a true italic sets than its roman. Only the roman MPlantin is vendored, so the
+ * browser slants it — and a slant is a shear, which keeps roman's advance to the pixel. Phyrexian
+ * Arena (`c15`) shows what that costs: print inks its whole flavor 588px wide on one line, where the
+ * same words measure 625 in our roman at the size print sets. So condense the slanted runs to what
+ * print measures, and a flavor line lands on the line print gives it.
+ *
+ * ponytail: a real italic redraws letterforms, it does not squeeze roman ones — `a` and `g` are
+ * different glyphs. Vendor `mplantin-italic.ttf` beside the roman and drop this.
+ */
+const ITALIC_SET = 0.92;
 
 export type FaceInput = {
   face: FaceData;
@@ -87,7 +98,7 @@ export function drawFace(ctx: CanvasRenderingContext2D, input: FaceInput): void 
   const measure: Measure = (piece, fontPx) => {
     if (piece.kind === "symbol") return fontPx * SYMBOL_EM;
     ctx.font = bodyFont(fontPx, piece.reminder);
-    return ctx.measureText(piece.value).width;
+    return ctx.measureText(piece.value).width * (piece.reminder ? ITALIC_SET : 1);
   };
 
   ctx.save();
@@ -159,16 +170,21 @@ function drawFitted(ctx: CanvasRenderingContext2D, text: string, box: Rect, font
   ctx.fillText(text, box.x + box.w * BAR_PAD_X, box.y + box.h / 2);
 }
 
-/**
- * Body font for one run — reminder text prints italic, the way a printed card sets it.
- *
- * ponytail: only the roman MPlantin is vendored, so the browser slants it rather than setting a
- * true italic, and a synthetic slant keeps roman's wider set width. Llanowar Elves (`fdn`) shows the
- * cost: its rules line inks 166px against print's 165, but its italic flavor wraps to five lines
- * where print takes four. Vendor `mplantin-italic.ttf` beside the roman to close it.
- */
+/** Body font for one run — reminder and flavor text print italic, the way a printed card sets them. */
 function bodyFont(fontPx: number, reminder: boolean): string {
   return `${reminder ? "italic " : ""}${fontPx}px ${BODY_FONT}, serif`;
+}
+
+/** One run of body text, a slanted one condensed to the set width print gives it — see [`ITALIC_SET`]. */
+function fillRun(ctx: CanvasRenderingContext2D, value: string, reminder: boolean, x: number, y: number): void {
+  if (!reminder) {
+    ctx.fillText(value, x, y);
+    return;
+  }
+  ctx.save();
+  ctx.scale(ITALIC_SET, 1);
+  ctx.fillText(value, x / ITALIC_SET, y);
+  ctx.restore();
 }
 
 /**
@@ -198,7 +214,7 @@ function drawTextBox(ctx: CanvasRenderingContext2D, face: FaceData, box: Rect, m
       } else {
         ctx.font = bodyFont(size, piece.reminder);
         ctx.fillStyle = INK;
-        ctx.fillText(piece.value, x, y);
+        fillRun(ctx, piece.value, piece.reminder, x, y);
       }
       x += measure(piece, size);
     }
