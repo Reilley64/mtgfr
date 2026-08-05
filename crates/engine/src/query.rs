@@ -981,6 +981,14 @@ impl Game {
                 .filter(|&p| p != controller)
                 .map(Target::Player)
                 .collect(),
+            // "Choose a player who cast one or more sorcery spells this turn" (Backdraft): a
+            // living player carrying this turn's sorcery-cast flag. No seat qualifies before the
+            // first sorcery of the turn resolves onto the stack, so Backdraft is uncastable then.
+            TargetSpec::PlayerWhoCastASorceryThisTurn => self
+                .living_players()
+                .filter(|&p| self.players[p.0 as usize].sorcery_cast_this_turn)
+                .map(Target::Player)
+                .collect(),
             // Populate: creature tokens the choosing player controls (CR 701.32).
             TargetSpec::CreatureTokenYouControl => self
                 .live_object_ids()
@@ -1129,6 +1137,15 @@ impl Game {
                                     if self.as_permanent(pid).is_some()
                                         && self.controller_of(pid) == controller)
                             });
+                    }
+                    // Equinox's "if it would destroy a land you control" — same inline treatment
+                    // and for the same two reasons: "you" is this enumeration's own `controller`
+                    // (the counterer), and the prediction reads the candidate's *chosen* targets
+                    // off the stack, which `spell_matches_filter`'s `CardDef` can't see. Live on
+                    // every call, so the CR 608.2b resolution re-check drops the counter if the
+                    // land it would have destroyed changed hands in response.
+                    if filter == SpellFilter::WouldDestroyLandYouControl {
+                        return self.spell_would_destroy_land_of(id, controller);
                     }
                     // A counter/target-spell filter never reads the cast-from zone; pass the
                     // plain hand-cast default (see `spell_matches_filter`).
@@ -1609,6 +1626,52 @@ impl Game {
         filter.matched_by(&self.colors_of(object))
     }
 
+    /// Whether the spell `spell` on the stack "would destroy a land `player` controls" — Equinox's
+    /// counter condition, read off the spell's script and its already-chosen targets:
+    ///
+    /// - a targeted destroy clause counts when one of the spell's chosen targets is a land
+    ///   `player` controls (Stone Rain aimed at your Plains), and
+    /// - a mass destroy clause counts when some land `player` controls matches its sweep filter,
+    ///   evaluated with the *casting* seat as "you" so an Armageddon-shaped "destroy all lands you
+    ///   control" reads off its own controller.
+    ///
+    /// ponytail: prediction, not simulation — a destroy inside a modal or conditional branch, or a
+    /// kill by any other route (sacrifice, -X/-X, exile), reads as "would not destroy". The scan
+    /// walks a spell ability's own effect and one level of [`Effect::Sequence`], which is every
+    /// shape the pool's land destruction prints. Increment #192.
+    fn spell_would_destroy_land_of(&self, spell: ObjectId, player: PlayerId) -> bool {
+        let caster = self.controller_of(spell);
+        let your_lands: Vec<ObjectId> = self
+            .battlefield()
+            .into_iter()
+            .filter(|&id| {
+                self.controller_of(id) == player
+                    && self.effective_types(id).intersects(TypeSet::LAND)
+            })
+            .collect();
+        if your_lands.is_empty() {
+            return false;
+        }
+        let targets = self.spell_targets(spell);
+        self.def_of(spell)
+            .abilities
+            .iter()
+            .filter(|a| matches!(a.timing, Timing::Spell))
+            .flat_map(|a| match &a.effect {
+                Effect::Sequence { steps } => steps.to_vec(),
+                effect => vec![effect.clone()],
+            })
+            .any(|effect| match effect {
+                Effect::Destroy(DestroyEffect::Target { .. }) => targets
+                    .iter()
+                    .any(|t| matches!(t, Target::Object(id) if your_lands.contains(id))),
+                Effect::Destroy(DestroyEffect::All { filter, .. }) => your_lands
+                    .iter()
+                    .any(|&id| self.permanent_matches(&filter, id, caster, Some(spell))),
+                _ => false,
+            })
+    }
+
     /// Whether the permanent `id` satisfies `filter`. `you` is the effect's controller (the
     /// "you" the filter's `controller` axis is relative to); `source` is the filter's own source
     /// permanent, read by the `other` axis ("another permanent") and by
@@ -1876,6 +1939,25 @@ impl Game {
         if filter.blocking && !self.combat.blocks.iter().any(|&(b, _)| b == id) {
             return false;
         }
+        // Blocking *this* creature (The Wretched's "all creatures blocking this creature") — the
+        // same declared-blocks list as the axis above, but read as a pair rather than as "blocks
+        // anything". With no source there is no "this creature" to block, so nothing matches.
+        //
+        // The Wretched's trigger resolves *during* the end-of-combat step, by which point
+        // `Event::CombatCleared` has already emptied `combat.blocks` — so the pair is read from the
+        // turn-scoped `blocked_this_turn` ledger that outlives it. ponytail: turn-scoped, so with a
+        // second combat phase in one turn a creature that blocked The Wretched in the *first*
+        // combat still reads as blocking it. No extra-combat card is in the pool; narrow to a
+        // combat-scoped snapshot when one lands.
+        if filter.blocking_source
+            && !self
+                .combat_extras
+                .blocked_this_turn
+                .iter()
+                .any(|&(b, a, _)| b == id && Some(a) == source)
+        {
+            return false;
+        }
         // Attacking *or* blocking (Tor Wauki's "target attacking or blocking creature") — the
         // union of the two axes above, which as an intersection would match nothing.
         if filter.attacking_or_blocking
@@ -2009,6 +2091,7 @@ mod permanent_filter_tests {
             id: "",
             default_print: "",
             cost: Cost {
+                x_defined: None,
                 generic: mv,
                 colored: [0; Color::COUNT],
                 colorless: 0,

@@ -890,7 +890,8 @@ impl Game {
             // (`resolution/pause_arrange`).
             Effect::Dig(DigEffect::Scry { .. })
             | Effect::Dig(DigEffect::Surveil { .. })
-            | Effect::Dig(DigEffect::RearrangeTargetPlayersTop { .. }) => {
+            | Effect::Dig(DigEffect::RearrangeTargetPlayersTop { .. })
+            | Effect::Dig(DigEffect::LookAtTargetPlayersTop { .. }) => {
                 self.run_arrange_top(effect, controller, source, target, x)
             }
             // Clash (CR 701.22): pick an opponent, both reveal + scry-1 their top, score the clash.
@@ -1134,6 +1135,7 @@ impl Game {
             | Effect::Choice(ChoiceEffect::PutFromHandOnTop { .. })
             | Effect::Choice(ChoiceEffect::PutLandFromHand { .. })
             | Effect::Choice(ChoiceEffect::PutCreatureFromHand { .. })
+            | Effect::Choice(ChoiceEffect::EachPlayerMayPutPermanentFromHandRepeating)
             | Effect::Choice(ChoiceEffect::CastCreatureFaceDown) => {
                 self.run_hand_pause(effect, ctx)
             }

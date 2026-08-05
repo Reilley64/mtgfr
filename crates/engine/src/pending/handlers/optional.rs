@@ -680,6 +680,7 @@ impl Game {
         let Some(PendingChoice::PayOrElse {
             source,
             cost,
+            then,
             otherwise,
             ..
         }) = self.pending_choice.clone()
@@ -687,28 +688,27 @@ impl Game {
             return Err(Reject::IllegalChoice);
         };
 
-        if !pay {
-            self.finish_answer();
-            let mut events = Vec::new();
-            for effect in otherwise {
-                self.run(
-                    effect.clone(),
-                    ResolveCtx {
-                        controller: player,
-                        source,
-                        target: None,
-                        targets_second: TargetList::default(),
-                        x: 0,
-                        spent_mana: [0; 6],
-                    },
-                    &mut events,
-                );
-            }
-            return Ok(events);
-        }
+        // Both branches run their steps against the same frame — only which list runs differs.
+        // `then` is empty for every plain "unless you pay", so paying does nothing extra there.
         let mut events = Vec::new();
-        self.settle_payment(player, cost, None, None, &mut events)?;
+        if pay {
+            self.settle_payment(player, cost, None, None, &mut events)?;
+        }
         self.finish_answer();
+        for effect in if pay { then } else { otherwise } {
+            self.run(
+                effect.clone(),
+                ResolveCtx {
+                    controller: player,
+                    source,
+                    target: None,
+                    targets_second: TargetList::default(),
+                    x: 0,
+                    spent_mana: [0; 6],
+                },
+                &mut events,
+            );
+        }
         Ok(events)
     }
 

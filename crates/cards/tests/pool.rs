@@ -1182,7 +1182,13 @@ fn the_pool_loads_with_expected_card_shapes() {
             target: TargetSpec::Creature,
         })
     ));
+}
 
+// Split off from the shapes test above, not a separate concern: `Effect` is a wide enum and every
+// `let card = …` here is a fresh frame slot, so one thousand-line function overflows a test
+// thread's 2 MiB stack. Split again if this one grows to the same size.
+#[test]
+fn the_pool_loads_modal_and_commander_shapes() {
     // Prismari Command: a modal "choose two" instant — four modes, pick two distinct.
     let prismari = get_by_name("Prismari Command").expect("Prismari Command is in the pool");
     assert!(prismari.modal && prismari.modal_choose == 2);
@@ -1445,7 +1451,11 @@ fn the_pool_loads_with_expected_card_shapes() {
             count: Amount::Fixed(1)
         })
     ));
+}
 
+// Third slice of the same shapes test — see the stack note above.
+#[test]
+fn the_pool_loads_copy_and_replacement_shapes() {
     // Rite of Replication: "Kicker {5} ... Create a token that's a copy of target creature.
     // If this spell was kicked, create five of those tokens instead." {2}{U}{U} sorcery.
     let rite = get_by_name("Rite of Replication").expect("Rite of Replication is in the pool");
@@ -5626,6 +5636,7 @@ fn unlimited_global_land_type_changes_carry_only_the_rider_they_print() {
         types.effect,
         Effect::Static(StaticEffect::AllLandsOfTypeBecome {
             land_types: &["Mountain"],
+            all_lands: false,
             set_subtypes: &["Plains"],
             add_types: TypeSet::NONE,
             base_power: 0,
@@ -5643,6 +5654,7 @@ fn unlimited_global_land_type_changes_carry_only_the_rider_they_print() {
         types.effect,
         Effect::Static(StaticEffect::AllLandsOfTypeBecome {
             land_types: &["Swamp"],
+            all_lands: false,
             set_subtypes: &[],
             add_types: TypeSet::CREATURE,
             base_power: 1,
@@ -5660,6 +5672,7 @@ fn unlimited_global_land_type_changes_carry_only_the_rider_they_print() {
         types.effect,
         Effect::Static(StaticEffect::AllLandsOfTypeBecome {
             land_types: &["Forest"],
+            all_lands: false,
             set_subtypes: &[],
             add_types: TypeSet::CREATURE,
             base_power: 1,

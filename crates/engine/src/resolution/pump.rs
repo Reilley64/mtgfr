@@ -83,6 +83,30 @@ impl Game {
             // keyword-only `TempBoost`, the single-`Keyword` twin of `PumpUntilEndOfTurn`'s
             // `&'static` `keywords` slice: the scope isn't known until resolution, so it's leaked
             // fresh here rather than baked in at TOML-parse time.
+            // Giant Slug: "At the beginning of your next upkeep, choose a basic land type. This
+            // creature gains landwalk of the chosen type until the end of that turn." The land-type
+            // twin of the protection grant right below — the preceding `ChooseBasicLandType` step in
+            // the same `Sequence` wrote the pick to the Slug's own `Permanent::chosen_subtype`, and
+            // the keyword is leaked here because the type isn't known at TOML-parse time.
+            PumpEffect::GrantChosenLandwalkSelfUntilEndOfTurn => {
+                // CR 608.2c: the delayed trigger can fire long after the Slug left the battlefield,
+                // and a Slug that is gone has neither a choice to read nor anything to boost.
+                let Some(land) = self
+                    .as_permanent(source)
+                    .and_then(|p| p.chosen_subtype)
+                    .and_then(BasicLandType::from_subtype)
+                else {
+                    return Vec::new();
+                };
+                vec![Event::TempBoost {
+                    object: source,
+                    power: 0,
+                    toughness: 0,
+                    keywords: Box::leak(Box::new([Keyword::Landwalk(land)])),
+                    source_name,
+                    ends_at_end_of_combat: false,
+                }]
+            }
             PumpEffect::GrantChosenColorProtectionUntilEndOfTurn { .. } => {
                 let object = expect_object_target(target, "a chosen-color protection grant");
                 let Some(color) = self.as_permanent(source).and_then(|p| p.chosen_color) else {

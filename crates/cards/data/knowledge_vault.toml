@@ -1,0 +1,61 @@
+# {2}, {T}: Exile the top card of your library face down.
+# {0}: Sacrifice this artifact. If you do, discard your hand, then put all cards exiled with
+# this artifact into their owner's hand.
+# When this artifact leaves the battlefield, put all cards exiled with it into their owner's
+# graveyard.
+name = "Knowledge Vault"
+sets = ["leg", "me3"]
+id = "77d3cc31-837a-408a-b7f8-5aa9de78e1b7"
+default_print = "c416fca6-e201-4dbc-b9c7-248d70967746"
+oracle = "{2}, {T}: Exile the top card of your library face down.\n{0}: Sacrifice this artifact. If you do, discard your hand, then put all cards exiled with this artifact into their owner's hand.\nWhen this artifact leaves the battlefield, put all cards exiled with it into their owner's graveyard."
+
+[cost]
+generic = 4
+
+[kind]
+type = "artifact"
+
+# {2}, {T}: Exile the top card of your library face down.
+[[abilities]]
+timing = "activated"
+taps_self = true
+activation_cost = { generic = 2 }
+
+# Exile the top card of your library face down.
+[[abilities.effects]]
+type = "mill"
+mode = "exile_top_face_down_with_this"
+
+# {0}: Sacrifice this artifact. If you do, discard your hand, then put all cards exiled with this
+# artifact into their owner's hand.
+# ponytail: the "If you do" is unguarded — the sacrifice is the first step of the sequence and the
+# two payoffs run whether or not it happened. Only a replacement effect that stops the sacrifice
+# (there is none in the pool) could tell the difference; add a conditional once one exists.
+[[abilities]]
+timing = "activated"
+
+# Sacrifice this artifact.
+[[abilities.effects]]
+type = "sacrifice"
+mode = "source"
+
+# discard your hand
+[[abilities.effects]]
+type = "choice"
+mode = "discard_your_hand"
+
+# then put all cards exiled with this artifact into their owner's hand
+[[abilities.effects]]
+type = "zone"
+mode = "return_all_exiled_with_this"
+
+# When this artifact leaves the battlefield, put all cards exiled with it into their owner's
+# graveyard.
+[[abilities]]
+timing = "this_leaves_battlefield"
+
+# put all cards exiled with it into their owner's graveyard
+[[abilities.effects]]
+type = "zone"
+mode = "return_all_exiled_with_this"
+to_graveyard = true

@@ -32,7 +32,8 @@ REPO = pathlib.Path(__file__).resolve().parent.parent
 DATA = REPO / "crates" / "cards" / "data"
 FIDELITY = REPO / "docs" / "fidelity"
 
-CARD_RE = re.compile(r"^- \[([ x])\] \*\*(.+?)\*\*", re.M)
+CARD_RE = re.compile(r"^- \[([ x])\] \*\*(.+?)\*\*(.*)$", re.M)
+OWNS_RE = re.compile(r"increments? ([\d, ]*\d)")
 HEADER_RE = re.compile(r"^### (\d+)\. (.+)$", re.M)
 NAME_RE = re.compile(r'^name = "(.*)"', re.M)
 
@@ -70,21 +71,34 @@ def increments(slug: str) -> list[tuple[int, bool, str]]:
 
 def audit(slug: str) -> list[str]:
     report = (FIDELITY / f"{slug}.md").read_text()
-    cards = [(name, tick == "x") for tick, name in CARD_RE.findall(report)]
+    cards = [(name, tick == "x") for tick, name, _ in CARD_RE.findall(report)]
+    owned = {
+        name: [int(n) for n in OWNS_RE.search(rest).group(1).replace(" ", "").split(",")]
+        for _, name, rest in CARD_RE.findall(report)
+        if OWNS_RE.search(rest)
+    }
     pool = pool_names()
     incs = increments(slug)
+    open_incs = {n for n, landed, _ in incs if not landed}
 
     findings = []
 
-    # A card is fairly unticked while *any* increment that mentions it is still open — most cards
-    # here are named by several, and one open increment is enough to hold the tick back. Both
-    # checks below share this, or the second one re-reports every card the first one excused.
-    # A single-card increment is often named for its card and never spells it out in prose
+    # A card is fairly unticked while any increment it waits on is still open. The report line
+    # names them ("— increment 2, 44"), and that link beats reading the backlog prose: a substring
+    # scan over open bodies over-excuses, which is how Recall sat unticked for two waves on the
+    # strength of #124 mentioning it in passing. Only cards the report leaves unlinked — section A
+    # and C entries, which need no engine work — fall back to the prose scan; a single-card
+    # increment is often named for its card and never spells it out in the body
     # (`### 39. gabriel-angelfire`), so the slug counts as a mention too.
     blocked = {
         name
         for name, _ in cards
-        if any(name in body or slugify(name) in body for _, landed, body in incs if not landed)
+        if name in owned and set(owned[name]) & open_incs
+    } | {
+        name
+        for name, _ in cards
+        if name not in owned
+        and any(name in body or slugify(name) in body for _, landed, body in incs if not landed)
     }
 
     for name, ticked in cards:

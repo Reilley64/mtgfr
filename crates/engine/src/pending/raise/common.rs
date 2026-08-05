@@ -122,11 +122,13 @@ pub(super) fn map_identical(request: &ChoiceRequest) -> Option<PendingChoice> {
             player,
             source,
             cost,
+            then,
             otherwise,
         } => Some(PendingChoice::PayOrElse {
             player: *player,
             source: *source,
             cost: *cost,
+            then,
             otherwise,
         }),
         ChoiceRequest::ChooseTargetPlayers {

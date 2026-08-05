@@ -622,8 +622,9 @@ impl<'de> Deserialize<'de> for ProtectionScope {
 /// amount (`{ left = <Amount>, op = "multiply", right = <Amount> }` — see [`ArithOp`]; both sides
 /// are full amounts, so these nest), a
 /// "destroyed this way" count (`{ permanents_destroyed_this_way = <filter> }`, filter optional
-/// — defaults to matching every destroyed permanent), or a count of Auras attached to the
-/// effect's source (`{ auras_attached_to_source = {} }`).
+/// — defaults to matching every destroyed permanent), a count of Auras attached to the
+/// effect's source (`{ auras_attached_to_source = {} }`), or a count of the creatures blocking a
+/// block's other creature (`{ creatures_blocking_that_creature = <filter> }`).
 impl<'de> Deserialize<'de> for Amount {
     fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         struct AmountVisitor;
@@ -763,6 +764,12 @@ impl<'de> Deserialize<'de> for Amount {
                     /// `permanents_destroyed_this_way` table-vs-nullary-keyword split.
                     #[serde(default)]
                     auras_attached_to_source: Option<de::IgnoredAny>,
+                    /// `{ creatures_blocking_that_creature = <filter> }` —
+                    /// [`Amount::CreaturesBlockingThatCreature`] (Wall of Caltrops' co-blocker
+                    /// intervening-if). Its own key rather than `per_permanent` for the same
+                    /// reason as `permanents_destroyed_this_way`: the filter may be empty.
+                    #[serde(default)]
+                    creatures_blocking_that_creature: Option<PermanentFilter>,
                     /// `{ discard_cost_was_land = 2 }` — [`Amount::DiscardCostWasLand`] (Land's
                     /// Edge's "If the discarded card was a land card, ~ deals 2 damage…").
                     #[serde(default)]
@@ -799,32 +806,43 @@ impl<'de> Deserialize<'de> for Amount {
                     t.condition,
                     t.permanents_destroyed_this_way,
                     t.auras_attached_to_source,
+                    t.creatures_blocking_that_creature,
                     t.discard_cost_was_land,
                 ) {
-                    (Some(filter), None, None, None, None, None) => {
+                    (Some(filter), None, None, None, None, None, None) => {
                         Ok(Amount::PerPermanentMatching {
                             filter,
                             zone: t.zone,
                         })
                     }
-                    (None, Some(kind), None, None, None, None) => Ok(match t.on_attached {
+                    (None, Some(kind), None, None, None, None, None) => Ok(match t.on_attached {
                         true => Amount::PerCounterOfKindOnAttached { kind },
                         false => Amount::PerCounterOfKindOnSource { kind },
                     }),
-                    (None, None, Some(condition), None, None, None) => Ok(Amount::IfCondition {
-                        condition,
-                        then: &*Box::leak(Box::new(t.then.unwrap_or(Amount::Fixed(0)))),
-                        else_: &*Box::leak(Box::new(t.otherwise.unwrap_or(Amount::Fixed(0)))),
-                    }),
-                    (None, None, None, Some(filter), None, None) => {
+                    (None, None, Some(condition), None, None, None, None) => {
+                        Ok(Amount::IfCondition {
+                            condition,
+                            then: &*Box::leak(Box::new(t.then.unwrap_or(Amount::Fixed(0)))),
+                            else_: &*Box::leak(Box::new(t.otherwise.unwrap_or(Amount::Fixed(0)))),
+                        })
+                    }
+                    (None, None, None, Some(filter), None, None, None) => {
                         Ok(Amount::PermanentsDestroyedThisWay { filter })
                     }
-                    (None, None, None, None, Some(_), None) => Ok(Amount::AurasAttachedToSource),
-                    (None, None, None, None, None, Some(n)) => Ok(Amount::DiscardCostWasLand(n)),
+                    (None, None, None, None, Some(_), None, None) => {
+                        Ok(Amount::AurasAttachedToSource)
+                    }
+                    (None, None, None, None, None, Some(filter), None) => {
+                        Ok(Amount::CreaturesBlockingThatCreature { filter })
+                    }
+                    (None, None, None, None, None, None, Some(n)) => {
+                        Ok(Amount::DiscardCostWasLand(n))
+                    }
                     _ => Err(de::Error::custom(
                         "an amount table needs exactly one of `per_permanent`, `per_counter_of_kind`, \
                          `condition` (with `then`/`else`), `permanents_destroyed_this_way`, \
-                         `auras_attached_to_source`, `discard_cost_was_land`, or `left`+`op`+`right`",
+                         `auras_attached_to_source`, `creatures_blocking_that_creature`, \
+                         `discard_cost_was_land`, or `left`+`op`+`right`",
                     )),
                 }
             }
@@ -1143,7 +1161,7 @@ impl<'de> Deserialize<'de> for TypeSet {
 /// `enchanted_by_you`, `mv_max`, `mv_min`, `mv_eq_x`, `mv_max_x`, `power_max`, `power_min`, `power_parity`,
 /// `toughness_max`, `toughness_min`,
 /// `noncreature`, `exclude`, `color`, `not_color`, `modified`, `attacking`, `not_attacking`, `attacking_you`,
-/// `blocking`, `attacking_or_blocking`, `tapped_or_blocking`, `unblocked`, `blocked_by_a_wall_this_turn`, `in_combat_with_source`, `power_less_than_source`,
+/// `blocking`, `blocking_source`, `attacking_or_blocking`, `tapped_or_blocking`, `unblocked`, `blocked_by_a_wall_this_turn`, `in_combat_with_source`, `power_less_than_source`,
 /// `toughness_less_than_source_power`, `entered_this_turn`,
 /// `has_mana_ability`,
 /// `controlled_since_turn_start`, `did_not_attack_this_turn`,
@@ -1263,6 +1281,10 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     attacking_you: bool,
                     #[serde(default)]
                     blocking: bool,
+                    /// The Wretched's "all creatures blocking **this** creature" — `blocking`
+                    /// narrowed to the filter's own source as the attacker.
+                    #[serde(default)]
+                    blocking_source: bool,
                     #[serde(default)]
                     attacking_or_blocking: bool,
                     #[serde(default)]
@@ -1366,6 +1388,7 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     not_attacking: t.not_attacking,
                     attacking_you: t.attacking_you,
                     blocking: t.blocking,
+                    blocking_source: t.blocking_source,
                     attacking_or_blocking: t.attacking_or_blocking,
                     tapped_or_blocking: t.tapped_or_blocking,
                     unblocked: t.unblocked,
@@ -1440,8 +1463,16 @@ impl<'de> Deserialize<'de> for SacrificeCost {
             ) -> Result<SacrificeCost, A::Error> {
                 let mut filter: Option<PermanentFilter> = None;
                 let mut count: u8 = 1;
+                let mut this_and_any_number = false;
                 while let Some(key) = map.next_key::<String>()? {
                     match key.as_str() {
+                        // "Sacrifice this artifact and any number of creatures you control"
+                        // (Sword of the Ages): the source plus an open-ended pick list matching
+                        // this filter — the `count`-free sibling of `permanent` below.
+                        "this_and_any_number" => {
+                            this_and_any_number = true;
+                            filter = Some(map.next_value()?);
+                        }
                         "creature" => {
                             let mut f: PermanentFilter = map.next_value()?;
                             f.types = TypeSet::CREATURE;
@@ -1461,6 +1492,9 @@ impl<'de> Deserialize<'de> for SacrificeCost {
                 }
                 let filter =
                     filter.ok_or_else(|| de::Error::custom("expected a sacrifice-cost key"))?;
+                if this_and_any_number {
+                    return Ok(SacrificeCost::ThisAndAnyNumber { filter });
+                }
                 Ok(SacrificeCost::Creature { filter, count })
             }
         }
@@ -1566,6 +1600,13 @@ pub(crate) enum TriggerTag {
     /// fires off any attached permanent (see [`Game::queue_enchanted_creature_attacks_triggers`],
     /// which reads [`Game::attachments`] rather than filtering to Auras).
     EnchantedCreatureAttacks,
+    /// Imprison's "whenever enchanted creature attacks **or blocks**". See
+    /// [`Trigger::EnchantedCreatureAttacksOrBlocks`].
+    EnchantedCreatureAttacksOrBlocks,
+    /// Imprison's "whenever a player activates an ability of enchanted creature with {T} in its
+    /// activation cost that isn't a mana ability". See
+    /// [`Trigger::EnchantedCreatureActivatesTapAbility`].
+    EnchantedCreatureActivatesTapAbility,
     EnchantedCreatureDies,
     /// Whenever the enchanted host deals damage, combat or noncombat (Armadillo Cloak's "you gain
     /// that much life"). See [`Trigger::EnchantedCreatureDealsDamage`].
@@ -1717,6 +1758,12 @@ impl<'de> Deserialize<'de> for Ability {
                 }
                 TriggerTag::CreatureAttacks => Trigger::CreatureAttacks,
                 TriggerTag::EnchantedCreatureAttacks => Trigger::EnchantedCreatureAttacks,
+                TriggerTag::EnchantedCreatureAttacksOrBlocks => {
+                    Trigger::EnchantedCreatureAttacksOrBlocks
+                }
+                TriggerTag::EnchantedCreatureActivatesTapAbility => {
+                    Trigger::EnchantedCreatureActivatesTapAbility
+                }
                 TriggerTag::EnchantedCreatureDies => Trigger::EnchantedCreatureDies,
                 TriggerTag::EnchantedCreatureDealsDamage => Trigger::EnchantedCreatureDealsDamage,
                 TriggerTag::EnchantedCreatureDealsDamageToYou => {

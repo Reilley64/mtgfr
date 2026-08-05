@@ -66,6 +66,28 @@ impl Game {
                     },
                 ]
             }
+            // Knowledge Vault: "Exile the top card of your library face down." The library-topped
+            // twin of `ExileDiscardedWithThis` above — `ExiledFromLibraryToChooseCastFree` is the
+            // plain library→exile move (no play permission attached, unlike
+            // `ExiledFromLibraryMayPlay`), and the link puts the card in this source's pile.
+            MillEffect::ExileTopFaceDownWithThis => {
+                let Some(from) = self.library_top(controller) else {
+                    return Vec::new();
+                };
+                let exiled = self.next_object_id();
+                vec![
+                    Event::ExiledFromLibraryToChooseCastFree {
+                        player: controller,
+                        card: exiled,
+                        from,
+                        face_down: true,
+                    },
+                    Event::ExiledWithSource {
+                        source,
+                        object: exiled,
+                    },
+                ]
+            }
             // Quintorius's end step: exile the chosen graveyard card into this source's own
             // exiled-with pile — same shape as `ExileDiscardedWithThis` above, but the card is a
             // chosen target rather than a just-discarded one, and there's no impulse-play

@@ -351,6 +351,7 @@ impl<'a> ChoiceCtx<'a> {
                     engine::ArrangeRest::Bottom => PendingChoiceView::Scry { player, items },
                     engine::ArrangeRest::Graveyard => PendingChoiceView::Surveil { player, items },
                     engine::ArrangeRest::Nowhere => PendingChoiceView::ReorderTop { player, items },
+                    engine::ArrangeRest::LookOnly => PendingChoiceView::LookAtTop { player, items },
                 }
             }
             engine::PendingChoice::SearchLibrary {
@@ -641,9 +642,11 @@ impl<'a> ChoiceCtx<'a> {
                 player,
                 hand,
                 count,
+                life_per_declined,
             } => PendingChoiceView::PutFromHandOnTop {
                 player: player.0,
                 count: count as u32,
+                life_per_declined,
                 items: private_items(player, self.viewer, hand, |ids| self.label_items(ids)),
             },
             engine::PendingChoice::DeclineUntap {
@@ -1247,6 +1250,8 @@ mod coverage_tests {
                     candidates: vec![hand_card],
                     keep: false,
                     defender: None,
+                    round: None,
+                    permanent_cards: false,
                 },
                 |view| matches!(view, PendingChoiceView::PutCreatureFromHand { .. }),
             ),

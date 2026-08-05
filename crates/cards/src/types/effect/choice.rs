@@ -164,6 +164,16 @@ pub enum ChoiceEffect {
 
     EachPlayerExilesFromGraveyard,
 
+    /// Eureka's "Starting with you, each player may put a permanent card from their hand onto the
+    /// battlefield. Repeat this process until no one puts a card onto the battlefield." The
+    /// round-robin sibling of [`PutCreatureFromHand`](Self::PutCreatureFromHand), which it reuses
+    /// for each seat's offer: the lap runs in turn order from the caster (CR 101.4), a seat with no
+    /// permanent card in hand is skipped rather than asked, and any seat that acts puts every other
+    /// seat back in the queue — so the process ends exactly when a full lap passes with nobody
+    /// putting a card out. Whatever lands is kept (no Cauldron Dance sacrifice) and enters
+    /// untapped.
+    EachPlayerMayPutPermanentFromHandRepeating,
+
     EachPlayerNamesCardThenRevealsTop,
 
     /// Petra Sphinx: "Target player chooses a card name, then reveals the top card of their
@@ -445,6 +455,16 @@ pub enum ChoiceEffect {
 
     PutFromHandOnTop {
         count: u32,
+        /// Only cards drawn this turn are offered (Sylvan Library's "choose two cards in your hand
+        /// drawn this turn"). `false` (Brainstorm) offers the whole hand.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        drawn_this_turn: bool,
+        /// Life paid for each card the player *declines* to put back, which also makes `count` a
+        /// maximum rather than an exact price — Sylvan Library's "for each of those cards, pay 4
+        /// life **or** put the card on top of your library". 0 (Brainstorm) keeps `count` exact
+        /// and charges nothing.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        life_per_declined: u32,
     },
 
     PutLandFromHand {
@@ -486,6 +506,16 @@ pub enum ChoiceEffect {
         /// one is derived, so the payer never picks it. `None` for every fixed "unless you pay".
         #[cfg_attr(feature = "card-dsl", serde(default))]
         extra_generic: Option<Amount>,
+        /// Imprison's "**if you do**, tap the creature, remove it from combat, …" — what paying
+        /// *buys*, on top of dodging `otherwise`. Empty (the default) for every plain "unless you
+        /// pay", where paying only avoids the penalty. The both-branches shape is why Imprison is
+        /// this variant rather than
+        /// [`TriggeringPlayerMayPay`](Self::TriggeringPlayerMayPay), which has no `otherwise`.
+        #[cfg_attr(
+            feature = "card-dsl",
+            serde(default, deserialize_with = "de::static_slice")
+        )]
+        then: &'static [Effect],
         #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::static_slice"))]
         otherwise: &'static [Effect],
     },

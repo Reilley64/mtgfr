@@ -66,6 +66,18 @@ pub enum ControlEffect {
         filter: PermanentFilter,
     },
 
+    /// "Gain control of all creatures blocking this creature **for as long as you control this
+    /// creature**" (The Wretched, CR 611.2b) — the filtered, condition-scoped mass steal:
+    /// [`GainControlAllUntilEndOfTurn`](Self::GainControlAllUntilEndOfTurn)'s filter with
+    /// [`GainControlWhile`](Self::GainControlWhile)'s duration instead of a turn. Each match is
+    /// handed over under its own `ControlCondition`, so control reverts by the same state-based
+    /// sweep the single-target form uses the moment the source leaves or changes hands. Unlike
+    /// Insurrection's turn-scoped form it neither untaps nor grants haste — The Wretched prints
+    /// neither.
+    GainControlAllWhile {
+        filter: PermanentFilter,
+    },
+
     GainControlUntilEndOfTurn {
         target: TargetSpec,
     },

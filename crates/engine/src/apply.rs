@@ -119,10 +119,14 @@ impl Game {
             let printed = card_def(p.def);
             // A creature with lethal marked damage dies (CR 704.5g); a planeswalker with 0 loyalty
             // is put into its owner's graveyard (CR 704.5i).
+            // "Creature" here is the *effective* card type, not the printed one: a land animated by
+            // a type-changing continuous effect (Living Plane's "All lands are 1/1 creatures that
+            // are still lands") is a creature for the death SBAs too (CR 613.4, CR 704.5f/g).
+            let is_creature = self.effective_types(id).intersects(TypeSet::CREATURE);
             let dies = match &printed.kind {
                 // CR 702.103e: a bestowed permanent that's attached is an Aura, not a creature —
                 // the toughness-≤0 / lethal-damage creature death SBAs don't apply to it.
-                CardKind::Creature { .. } if !self.is_bestowed_and_attached(id) => {
+                _ if is_creature && !self.is_bestowed_and_attached(id) => {
                     let toughness = self.toughness(id);
                     // 0-or-less toughness is a death SBA even for an indestructible creature (CR 702.12, CR 704)
                     // (CR 704.5f); lethal damage / deathtouch is not, if it's indestructible
@@ -143,10 +147,7 @@ impl Game {
             // 704.5f's 0-toughness death is not a "destroy" and isn't replaceable this way, so the
             // shield only applies when toughness is still positive (i.e. lethal damage or
             // deathtouch is the reason, not 0-or-less toughness).
-            if self.regeneration_shield_available(id)
-                && matches!(&printed.kind, CardKind::Creature { .. })
-                && self.toughness(id) > 0
-            {
+            if self.regeneration_shield_available(id) && is_creature && self.toughness(id) > 0 {
                 events.push(Event::Regenerated { object: id });
                 continue;
             }
@@ -694,9 +695,12 @@ impl Game {
                 // cast this turn"), and Amount::InstantsAndSorceriesCastThisTurn (Rionya,
                 // Fire Dancer's "X is one plus the number of instant and sorcery spells you've
                 // cast this turn").
-                if matches!(&printed.kind, CardKind::Spell { .. }) {
+                if let CardKind::Spell { speed, .. } = &printed.kind {
+                    let sorcery = matches!(speed, SpellSpeed::Sorcery);
                     let player = &mut self.players[controller.0 as usize];
                     player.instant_or_sorcery_cast_this_turn = true;
+                    // Backdraft's "a player who cast one or more sorcery spells this turn".
+                    player.sorcery_cast_this_turn |= sorcery;
                     player.greatest_instant_or_sorcery_mana_value_cast_this_turn = player
                         .greatest_instant_or_sorcery_mana_value_cast_this_turn
                         .max(printed.mana_value());
@@ -1165,6 +1169,7 @@ impl Game {
                     self.permanents_died_this_turn = 0;
                     self.damaged_this_turn.clear();
                     self.damage_dealt_this_turn.clear();
+                    self.drawn_this_turn.clear();
                     for player in &mut self.players {
                         player.life_gained_this_turn = 0;
                         player.spells_cast_this_turn = 0;
@@ -1178,6 +1183,7 @@ impl Game {
                         player.land_entered_under_your_control_this_turn = false;
                         player.card_left_graveyard_this_turn = false;
                         player.instant_or_sorcery_cast_this_turn = false;
+                        player.sorcery_cast_this_turn = false;
                         player.greatest_instant_or_sorcery_mana_value_cast_this_turn = 0;
                         player.instants_and_sorceries_cast_this_turn = 0;
                         player.flash_permission_this_turn = false;
@@ -1524,6 +1530,16 @@ impl Game {
                     "",
                     ModifierDuration::Indefinite,
                     ModifierKind::BaseToughnessSet { toughness },
+                );
+            }
+            // Quarum Trench Gnomes: durationless, so it stacks in the registry and lapses only
+            // when the land leaves the battlefield and becomes a new object (CR 400.7).
+            Event::LandProducesColorlessInsteadOf { land, color } => {
+                self.register_modifier(
+                    land,
+                    "",
+                    ModifierDuration::Indefinite,
+                    ModifierKind::ProducesColorlessInsteadOf(color),
                 );
             }
             // Transmutation (CR 613.4e).
@@ -3123,6 +3139,7 @@ impl Game {
                     .library
                     .retain(|&o| o != from);
                 self.players[player.0 as usize].draws_this_turn += 1;
+                self.drawn_this_turn.push(object);
             }
             Event::MulliganTaken {
                 player,

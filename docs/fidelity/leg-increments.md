@@ -571,6 +571,19 @@ nested conditional, and famously the hardest-templated card in the set.
 counter to identify the exempt first draw. The replacement's body is itself a draw, which must not
 re-trigger the replacement for the same event (CR 614.5). Land the replacement hook first as its
 own slice; the card body is small once the hook exists.
+*Site inventory (wave 12 — surveyed, not landed):* there is no single mutable draw choke to hang the
+hook on. Every `Event::CardDrawn` is minted by one of two *pure* functions — `Game::draw_events`
+(9 callers: the draw-step turn-based draw in `priority.rs`, hand smoothing, the mulligan deal, four
+pause handlers, two `resolve_misc` sites, `resolution/counters.rs`) and `Game::mint_draws_for` (the
+`DrawEffect::Cards` mint) — so neither can raise the discard pause the replacement's body needs.
+The nearest existing seat is `Game::draw_with_dredge`, which *is* already a draw-replacement choke
+(dredge, CR 702.52) complete with a mid-batch pause and a `remaining` resume, but only three paths
+reach it (`Effect::Draw { who: You }`, `replacements.rs`'s Lich swap, and dredge's own resume). So
+the hook is really "route every draw through `draw_with_dredge`", which is what makes this an L:
+each of the other nine sites has to become mutating-with-events and tolerate a pause mid-batch, and
+two of them are themselves inside pause handlers. Chains cannot be scripted with an `approximates`
+in the meantime — a replacement that catches only some draws would silently mis-play rather than
+under-play — so the card stays unauthored until the reroute lands.
 
 ### 25. `any-player-may-activate` — 2 cards, M — **LANDED** (wave 6; Clergy's regeneration shield split to #128)
 Depends on: nothing.
@@ -628,12 +641,20 @@ Landed: `CounterKind::Intervention`, `MiscEffect::GameIsADraw` → `Event::GameD
 `you_remove_last_counter_from_this` + `counter_kind` sibling), `Game::outcome() -> Option<GameOutcome>`,
 and a post-draw `submit` gate. Tests: `crates/engine/tests/leg_game_is_a_draw.rs`.
 
-### 28. `becomes-color-of-your-choice` — 1 card, M
+### 28. `becomes-color-of-your-choice` — 1 card, M — **LANDED** (wave 12, approximated)
 Depends on: #14.
-Dream Coat: "Enchanted creature becomes the color or colors of your choice. Activate only once each
-turn." *Sketch:* #14's `SetColor` effect taking a player-chosen color *set* (one or more) rather
-than a fixed color — a pending choice at resolution. `once_each_turn` already exists on
-`AbilityToml`.
+Dream Coat: "Enchant creature — {0}: Enchanted creature becomes the color or colors of your choice.
+Activate only once each turn." (The backlog text above omitted the "Enchant creature" line and the
+`{0}:` activation cost; both are printed.) *Sketch:* #14's `SetColor` effect taking a player-chosen
+color *set* (one or more) rather than a fixed color — a pending choice at resolution.
+`once_each_turn` already exists on `AbilityToml`.
+
+*Landed:* **no engine change.** `PumpEffect::TargetBecomesColor { color: None }` already pauses on
+`PendingChoice::ChooseColor` and sets (CR 613.3c layer 5) rather than adds, and `once_each_turn` is
+already an `AbilityToml` field — so Dream Coat is pure authoring: an `activated` ability with no
+cost, `target = "enchanted_creature"`. The *set* half of the sketch did not land: `Intent::ChooseColor`
+carries one `Color` and is wire-locked, so only a single colour can be chosen. Recorded in the
+card's `approximates` and filed as **#191**. Tests: `crates/engine/tests/leg_w12_d.rs`.
 
 ### 29. `elder-spawn` — 1 card, S — **PARTIAL** (wave 7; the block half landed, the upkeep half moved to #106)
 Depends on: #106 for the remaining half.
@@ -671,17 +692,28 @@ of `control`/`tap_target` (`tapped = false`, `controller = "you"`) then `mana`/`
 is the spell's only target, so one that is no longer an untapped creature you control on resolution
 fizzles the whole spell before the mana step is reached (CR 608.2b).
 
-### 32. `granted-land-ability-with-conditional-counter` — 1 card, M
+### 32. `granted-land-ability-with-conditional-counter` — 1 card, M — **LANDED** (wave 12, approximated)
 Depends on: nothing.
 Equinox: enchanted land gains "{T}: Counter target spell if it would destroy a land you control."
 Two new things: granting an *activated* ability to the enchanted permanent, and a counter whose
 effect is conditional on what the countered spell would do. *Sketch:* an aura effect that grants a
-full `Ability` (the DSL can already express the ability; it cannot express granting one), plus a
+full `Ability` (~~the DSL can already express the ability; it cannot express granting one~~ — false
+when written and false since: `StaticEffect::GrantToAttached` with a `granted_ability` carrying a
+`cost` and `effects` has been the shape for several waves), plus a
 `SpellFilter::would_destroy_land_you_control` — which is a prediction, so implement it as "the
 spell has a destroy effect whose filter could match a land you control", and mark the
 approximation.
 
-### 33. `eureka` — 1 card, M
+*Landed:* only the filter was new. `SpellFilter::WouldDestroyLandYouControl` matches through
+`Game::spell_would_destroy_land_of` (`crates/engine/src/query.rs`), which reads the spell's script
+and its already-chosen targets: a `Destroy::Target` clause counts when a chosen target is a land you
+control, a `Destroy::All` clause counts when one of your lands matches its sweep filter (evaluated
+with the *casting* seat as "you", so Armageddon-shaped "lands you control" reads off its own
+controller). ponytail: prediction, not simulation — a destroy behind a modal or conditional branch,
+or a kill by sacrifice / -X/-X / exile, reads as "would not destroy". Recorded in the card's
+`approximates` and filed as **#192**. Tests: `crates/engine/tests/leg_w12_d.rs`.
+
+### 33. `eureka` — 1 card, M — **LANDED** (wave 12)
 Depends on: nothing.
 "Starting with you, each player may put a permanent card from their hand onto the battlefield.
 Repeat this process until no one puts a card onto the battlefield." *Sketch:* a repeating
@@ -813,7 +845,7 @@ Nine tests in `crates/engine/tests/leg_exchange_control.rs`.
 controller chooses one of them" is a deterministic pick, not a choice — split out as **#124** and
 recorded in `juxtapose.toml`'s `approximates`.
 
-### 41. `delayed-chosen-landwalk` — 1 card, M
+### 41. `delayed-chosen-landwalk` — 1 card, M — **LANDED** (wave 12)
 Depends on: #4 (the landwalk vocabulary), #5 (grants).
 Giant Slug: "{5}: At the beginning of your next upkeep, choose a basic land type. This creature
 gains landwalk of the chosen type until the end of that turn." *Sketch:* a delayed trigger whose
@@ -849,7 +881,7 @@ ledger appended at declare-blockers and cleared at cleanup. Every Glyph is a sma
 ledger exists; Glyph of Delusion additionally needs #26's counter-gated untap suppression *granted*
 to another creature (#32's ability-granting).
 
-### 44. `global-characteristic-rewrite` — 2 cards, L
+### 44. `global-characteristic-rewrite` — 2 cards, L — **LANDED** (wave 12)
 Depends on: #2, #5.
 Gravity Sphere ("All creatures lose flying") and Living Plane ("All lands are 1/1 creatures that
 are still lands"). The first is #5's removal applied globally and continuously; the second is the
@@ -876,7 +908,7 @@ creatures that died this way." *Sketch:* the destroy-all already exists; the new
 `Amount` reading how many permanents the *preceding effect in this resolution* destroyed. A
 resolution-scoped counter threaded through the effect list, not a turn-scoped one.
 
-### 47. `imprison` — 1 card, L
+### 47. `imprison` — 1 card, L — **LANDED** (wave 12)
 Depends on: nothing.
 Two pay-or-destroy-this-Aura triggers: one on the enchanted creature activating a non-mana {T}
 ability (counter that ability), one on it attacking or blocking (tap it, **remove it from
@@ -884,6 +916,27 @@ combat**, and un-block anything it was solely blocking). *Sketch:* removal from 
 expensive piece — the combat assignment must support withdrawing a creature mid-combat and
 recomputing which attackers become unblocked. The "counter that ability" half needs abilities on
 the stack to be counterable targets, which the engine may not model separately from spells.
+
+*Landed (wave 12), and the sketch was wrong about both "expensive" pieces — they already shipped.*
+`ControlEffect::RemoveFromCombat { release_solely_blocked }` is False Orders' effect and is *exactly*
+Imprison's second clause, un-blocking included; and activated abilities have been counterable since
+Azorius Guildmage (`TargetSpec::ActivatedAbilityOnStack` + `Event::AbilityCountered { source }`,
+keyed by the ability's source permanent). So the card is L only in how many small pieces it needs,
+none of them new rules:
+- `Trigger::EnchantedCreatureAttacksOrBlocks` and `Trigger::EnchantedCreatureActivatesTapAbility`.
+  The attack half hangs off the existing `queue_enchanted_creature_attacks_triggers`; the block half
+  is a new `queue_enchanted_creature_blocks_triggers` called from `seal_blocks`, deduplicated per
+  blocker so a creature blocking a band fires once. The activation half hangs off `activate_ability`
+  gated on `ActivationCost::taps_self` — a mana ability resolves and returns well before that point
+  (CR 605.3a), so `taps_self` is the whole "isn't a mana ability" test.
+- `ChoiceEffect::PayOrElse` gained a `then` list: what paying *buys*, alongside the `otherwise` it
+  already avoided. Empty for every existing "unless you pay", so nothing else moved; this is what
+  makes "you may pay {1}. If you do, X. If you don't, Y." a plain composition instead of a bespoke
+  effect.
+- `MiscEffect::CounterTriggeringAbility` is the untargeted twin of `CounterTargetActivatedAbility`
+  (CR 115.1 — "that ability" is not a target). It reads the ability out of
+  `TriggerContext::triggering_ability`, baked in at placement by the existing `fill_triggering_*`
+  machinery, which now also recurses into `PayOrElse`'s branches.
 
 ### 48. `counter-unless-pays-x` — 3 cards, M — **LANDED**
 Depends on: #2 (two of the three are World enchantments), #108.
@@ -947,14 +1000,18 @@ are the one axis a `CardDef` alone can answer. "Your opponents" is baked into th
 than read from a `filter.controller` for the same reason. A card gating on power, colour, or its own
 controller needs a def-level matcher first; nothing in Legends does.
 
-### 52. `exiled-with-this-face-down` — 1 card, M
+### 52. `exiled-with-this-face-down` — 1 card, M — **LANDED** (wave 12)
 Depends on: nothing.
 Knowledge Vault: exile cards face down "with this artifact", return them all on sacrifice, dump
-them to the graveyard on LTB. *Sketch:* an "exiled with" association between an exiled card and a
-source permanent (the engine exiles cards but does not track *which* permanent exiled them), plus
-face-down exile visibility. Two effects then reference the set.
+them to the graveyard on LTB. *Sketch (corrected in wave 12 — the two prerequisites it named
+already existed):* the "exiled with" association is `ExileLinks::with_source` in
+`crates/engine/src/state.rs`, written by `Event::ExiledWithSource` and cleared by
+`Event::CardExiledWithSourceLeftExile`; per-viewer face-down exile redaction is
+`hidden_pile_card` in `crates/schema/src/snapshot.rs`. All this needed was the two effects that
+reference the set: `mill mode = "exile_top_face_down_with_this"` and
+`zone mode = "return_all_exiled_with_this"` (with `to_graveyard` for the LTB half).
 
-### 53. `land-etb-sacrifice-replacement` — 1 card, M
+### 53. `land-etb-sacrifice-replacement` — 1 card, M — **LANDED** (wave 12)
 Depends on: nothing.
 Land Equilibrium: "If an opponent who controls at least as many lands as you do would put a land
 onto the battlefield, that player instead puts that land onto the battlefield then sacrifices a
@@ -1123,12 +1180,14 @@ trigger whose effect targets the Aura's own card in the graveyard, with an optio
 The Aura is in the graveyard by the time the trigger resolves, so the effect must address it as a
 card object, not a permanent.
 
-### 66. `change-land-mana-production` — 1 card, M
+### 66. `change-land-mana-production` — 1 card, M — **LANDED** (wave 12)
 Depends on: nothing.
-Quarum Trench Gnomes: "If target Plains is tapped for mana, it produces colorless mana instead of
-white mana. (This effect lasts indefinitely.)" *Sketch:* a mana-production replacement applied per
-permanent — the engine resolves mana abilities directly with no interception point. Add one, keyed
-by the produced color, and make it #14-indefinite.
+Quarum Trench Gnomes: "{T}: If target Plains is tapped for mana, it produces colorless mana instead
+of white mana. (This effect lasts indefinitely.)" *Sketch:* a mana-production replacement applied
+per permanent — the engine resolves mana abilities directly with no interception point. Add one,
+keyed by the produced color, and make it #14-indefinite. The rewrite is the resolution of a
+**targeted activated ability with a `{T}` cost**, not a static — the sketch above dropped both the
+tap cost and the "target Plains" targeting, which the printed card carries.
 
 ### 67. `pump-per-attached-aura` — 1 card, S — **LANDED** (wave 11)
 Depends on: nothing.
@@ -1232,7 +1291,7 @@ Storm World: "deals X damage to that player, where X is 4 minus the number of ca
 clamped at zero (a negative X deals no damage, CR 107.1b). The engine's amounts are all
 non-negative counts today, so the clamp belongs in the amount, not the damage effect.
 
-### 76. `sacrifice-any-number-as-cost` — 1 card, M
+### 76. `sacrifice-any-number-as-cost` — 1 card, M — **LANDED** (wave 12)
 Depends on: nothing.
 Sword of the Ages: "{T}, Sacrifice this artifact and any number of creatures you control: deals X
 damage to any target, where X is the total power of the creatures sacrificed this way, then exile
@@ -1241,13 +1300,23 @@ player-chosen set at activation, like #11's counter cost), an `Amount::TotalPowe
 snapshotting power *as the cost was paid* (they are in the graveyard by resolution), and a
 graveyard-exile of exactly those cards.
 
-### 77. `sylvan-library` — 1 card, M
+### 77. `sylvan-library` — 1 card, M — **LANDED** (wave 12)
 Depends on: nothing.
 "At the beginning of your draw step, you may draw two additional cards. If you do, choose two cards
 in your hand drawn this turn. For each of those cards, pay 4 life or put the card on top of your
 library." *Sketch:* a per-card "drawn this turn" annotation on hand cards (#36 wants per-card hand
 annotations too), plus a two-of-N choice with a per-card either/or payment. The put-on-top ordering
 matters when both are returned.
+*Landed (wave 12):* the annotation is `Game::drawn_this_turn`, a list of hand-object ids pushed by
+`Event::CardDrawn` and cleared at untap beside `damage_dealt_this_turn` — ids rather than a per-card
+flag, because a card drawn and put back is a new object when it returns (CR 400.7) and correctly
+stops matching. #36 can read the same list. The two-of-N either/or is *not* a new pause: "choose two,
+then for each pay 4 life or put it on top" is the same offer as "put up to two of them back and pay 4
+life for each one you don't", so `ChoiceEffect::PutFromHandOnTop` grew `drawn_this_turn` (narrows the
+candidates) and `life_per_declined` (makes `count` a ceiling and prices the shortfall), and Brainstorm
+is unchanged with both at their defaults. The answer's order still lands first-named-on-top, so the
+ordering holds when both go back. `PendingChoiceView::PutFromHandOnTop` carries `life_per_declined`
+so a client can tell the ceiling from an exact count.
 
 ### 78. `takklemaggot` — 1 card, L
 Depends on: nothing.
@@ -1279,12 +1348,21 @@ enchantment's controller. *Sketch:* the target chooser becomes an axis on the ta
 (`chosen_by: Who`) rather than always the ability's controller — a pending choice routed to a
 different player. #60 and #78 need the same routing; land it here and reuse.
 
-### 81. `granted-upkeep-tax-to-all-creatures` — 1 card, M
+### 81. `granted-upkeep-tax-to-all-creatures` — 1 card, M — **LANDED** (wave 12)
 Depends on: #32.
 The Tabernacle at Pendrell Vale: All creatures have "At the beginning of your upkeep, destroy this
 creature unless you pay {1}." *Sketch:* #32's ability-granting applied globally by filter, where
 the granted ability is a *triggered* one whose "your" resolves per affected creature's controller.
 The self-reference ("this creature") must bind to each grantee, not to the Tabernacle.
+
+*Landed:* faithful, one engine gap. `StaticEffect::GrantActivatedAbility { filter, granted_ability }`
+already applied battlefield-wide, and `GrantedAbility` already carries an optional `trigger` — but
+trigger synthesis only scanned *attachment* grants. `Game::granted_attachment_triggers` was widened
+(and renamed `granted_triggers`, `crates/engine/src/characteristics.rs`) to also sweep filter-scoped
+grants, mirroring `granted_activated_abilities`. Both bindings then fall out of the existing
+machinery for free: the synthesized trigger is queued with the *grantee* as its source, so
+`queue_trigger_group` binds "your" to the grantee's controller and `target = "this"` to the grantee.
+The tax itself is the existing `choice`/`pay_or_else`. Tests: `crates/engine/tests/leg_w12_d.rs`.
 
 ### 82. `time-elemental` — 1 card, S — **LANDED** (wave 8)
 Depends on: nothing.
@@ -1340,7 +1418,7 @@ library (the engine's look effects are self-scoped), with the reveal going only 
 a per-player visibility grant the projection layer must honour (#35's machinery). The optional
 shuffle is ordinary.
 
-### 86. `voodoo-doll` — 1 card, M
+### 86. `voodoo-doll` — 1 card, M — **LANDED** (wave 12)
 Depends on: nothing.
 Pin counters accumulate every upkeep; an end-step trigger destroys the doll and burns its
 controller for the count if it is untapped; and `{X}{X}, {T}` deals that many damage where **X is
@@ -1349,13 +1427,26 @@ defined as the counter count**, not chosen. *Sketch:* a `Cost::Mana` whose gener
 intervening-if on the end-step trigger ("if this artifact is untapped") is the existing
 intervening-if shape.
 
-### 87. `conditional-banding-grant` — 1 card, M
+### 87. `conditional-banding-grant` — 1 card, M — **LANDED** (wave 12)
 Depends on: #3.
 Wall of Caltrops: "Whenever this creature blocks a creature, if at least one other Wall creature is
 blocking that creature and no non-Wall creatures are blocking that creature, this creature gains
 banding until end of turn." *Sketch:* a `blocks` trigger with an intervening-if that counts the
 *other* blockers of the same attacker by filter — a co-blocker predicate the combat assignment can
 answer once #3 has built the band/group vocabulary.
+
+*Landed (wave 12).* No combat-assignment work was needed: the co-blocker predicate is one new
+`Amount::CreaturesBlockingThatCreature { filter }`, and the card is then an ordinary `blocks_creature`
+trigger whose intervening-if is two `compare`s against it ("at least 1 other Wall", "at most 0
+non-Walls"). Two things that had to give way:
+- the intervening-if is checked at *placement* only (CR 603.4), and only `TriggerContext` knows which
+  attacker was blocked (`blocking_partner`), so `Game::compare_operand` answers this amount directly
+  the way it already does for `TriggeringSpellManaValue`; `resolve_amount` keeps a `0` placeholder
+  because no effect resolves it.
+- `queue_blocks_or_becomes_blocked_by_triggers` was calling `condition_holds` without a source, so
+  "**other** Wall" had nothing to exclude itself from. It now goes through
+  `Game::ability_condition_holds`, which fills `ctx.source`, letting the plain `PermanentFilter::other`
+  axis carry the exclusion instead of a new one.
 
 ### 88. `cant-be-targeted-by-wall-only-effects` — 1 card, M — **LANDED** (wave 11)
 Depends on: #15.
@@ -1576,15 +1667,29 @@ the object kind is the discriminant in the decline handler and no new pending-ch
 change was needed. `TargetSpec::ActivatedAbilityOnStack` grew the matching `artifact_source`
 target-legality filter. Ayesha's banding carries the pool's standing damage-division `approximates`.
 
-### 104. `blocking-this-creature-and-indefinite-gain-control` — 1 card, L
+### 104. `blocking-this-creature-and-indefinite-gain-control` — 1 card, L — **LANDED** (wave 12)
 Depends on: nothing.
 The Wretched: "At end of combat, gain control of all creatures blocking this creature for as
 long as you control this creature."
 *Sketch:* two gaps at once. `PermanentFilter::blocking` means "blocking *some* attacker" — there
 is no axis for "blocking **this** creature". And `GainControlAllUntilEndOfTurn` is the only mass
-control-change; nothing expresses the "for as long as you control this creature" duration, which
-is a conditional continuous effect that ends when the source leaves or changes controller
-(CR 611.2b), not a turn-scoped one.
+control-change; ~~nothing expresses~~ the "for as long as you control this creature" duration…
+(half false: Rubinia Soulsinger's single-target `GainControlWhile` already had it.)
+
+*Landed:* faithful, and much smaller than L. The duration half needed nothing new —
+`Event::ConditionedControlGained` + `ControlCondition` + the state-based
+`check_conditioned_control_reversions` already revert on the source leaving or changing controller
+(CR 611.2b). Added: `ControlEffect::GainControlAllWhile { filter }` (the filtered mass form of
+Rubinia's steal, minting one `ConditionedControlGained` per match) and the
+`PermanentFilter::blocking_source` axis, which reads the declared block as a *pair* against the
+filter's own source. No new `Event`, no wire change.
+
+One wrinkle worth knowing: `Event::CombatCleared` is applied at the *top* of the end-of-combat step,
+before the trigger it queued resolves, so `combat.blocks` is already empty by then.
+`blocking_source` therefore reads `CombatExtras::blocked_this_turn`, the turn-scoped ledger that
+outlives the clear. ponytail: turn-scoped, so with a second combat phase in one turn a creature that
+blocked The Wretched in the *first* combat would still read as blocking it (CR 506.4 says it
+stopped). No extra-combat card is in the pool. Tests: `crates/engine/tests/leg_w12_d.rs`.
 
 ### 105. `filter-completeness-and-disjunction` — 3 cards, M — **LANDED** (wave 8)
 Depends on: nothing.
@@ -1633,7 +1738,7 @@ read it; and CR 115.1 means "counter **it**" does not target at all, so routing 
 targeting machinery would have been unfaithful (it would have made the ability fizzle on an
 untargetable spell and shown a target prompt that Magic never asks for).
 
-### 109. `exile-the-source-from-the-graveyard` — 1 card, M
+### 109. `exile-the-source-from-the-graveyard` — 1 card, M — **LANDED** (wave 12)
 Depends on: nothing.
 Cyclopean Mummy: "When this creature dies, exile it."
 *Sketch:* no effect mode exiles the ability's own source once it has left the battlefield.
@@ -1858,7 +1963,7 @@ this to the same treatment `PlayerLost` gets rather than building one. If a dedi
 surface does get built, the `Reject::WrongTiming` ponytail in `Game::submit_inner` (which stands in
 for a `Reject::GameOver` the client could not display) should be revisited with it.
 
-### 123. `token-named-band-quality` — 1 card, M
+### 123. `token-named-band-quality` — 1 card, M — **LANDED** (wave 12)
 Depends on: #3 slice 4 (landed) and **#97**, which owns the token-id convention this needs.
 Master of the Hunt — "{2}{G}{G}: Create a 1/1 green Wolf creature token named Wolves of the Hunt.
 It has 'bands with other creatures named Wolves of the Hunt.'" — is the set's only card whose
@@ -1882,6 +1987,11 @@ New arms are owed in `Game::keyword_token` (`crates/engine/src/message.rs`) and 
 activated ability, and the three tests slice 4 wrote are the coverage: the token carries the keyword
 and the Master does not, a two-wolf pack is blocked as a group, and a differently-named creature
 cannot join the band.
+
+*Landed (wave 12), exactly as sketched* — the reverted slice-4 design was re-applied verbatim,
+including the hand-written `BandsWithQuality` deserialize and the quality-discovery rewrite of
+`Game::band_is_legal`. #97's convention gave the token profile `tokens/wolves_of_the_hunt.toml` an
+`id` of `leg-token-wolves-of-the-hunt` with an empty `default_print`.
 
 ### 124. `greatest-mana-value-tiebreak-choice` — 1 card, M
 Depends on: #40 (landed — the exchange itself).
@@ -2149,7 +2259,7 @@ state already runs on `Event::CombatCleared` — rather than a new effect mode. 
 Wall +10/+0, ends combat, starts a second combat and asserts the Wall's power is back to base is
 the acceptance criterion; drop Glyph of Destruction's `approximates` when it passes.
 
-### 135. `choose-a-player-who-and-pick-one-of-those` — 1 card, M — raised by wave 10 (#19)
+### 135. `choose-a-player-who-and-pick-one-of-those` — 1 card, M — **first clause landed** (wave 12)
 Depends on: #19 (landed — which is what made the residual visible).
 Backdraft: "**Choose a player who cast one or more sorcery spells this turn.** Backdraft deals
 damage to that player equal to half the damage dealt by **one of those** sorcery spells this turn,
@@ -2169,6 +2279,14 @@ offering the ledger rows attributable to the chosen player's sorceries, which
 #130's cause-tracking would also want. Acceptance: a player who cast no sorcery cannot be chosen,
 and with two damaging sorceries in the graveyard the controller can pick the smaller one; drop
 Backdraft's `approximates` when both pass.
+*Landed (wave 12) — first clause only:* no `PlayerFilter` after all. The one axis a real card asks
+for is a *turn-history* one, and turn history is already per-player bookkeeping, so this is
+`Player::sorcery_cast_this_turn` (a bool set beside `instant_or_sorcery_cast_this_turn` on
+`Event::SpellCast`, cleared at untap with its siblings) read by one new spec,
+`TargetSpec::PlayerWhoCastASorceryThisTurn`. Backdraft's damage effect targets that spec instead of
+`player`, so a seat that cast no sorcery is not offered and cannot be chosen. Grow a real
+`PlayerFilter` when a second player axis shows up; one axis does not need a filter type. The second
+clause is unlanded — see #176.
 
 ### 145. `per-step-fixed-reference-targets` — 0 cards, S — **LANDED** (wave 11)
 Depends on: #26 (landed — which is where this surfaced).
@@ -2190,7 +2308,7 @@ they have today, since CR 601.2c fixes them at announcement. Acceptance: rewrite
 `etb` ability with both effects, assert the tap lands on the enchanted creature and the three pupa
 counters on the Aura, and drop the split's `ponytail:` comment.
 
-### 150. `look-at-top-n-without-rearranging` — 1 card, S
+### 150. `look-at-top-n-without-rearranging` — 1 card, S — **LANDED** (wave 12)
 Depends on: #85 (landed — which scripted Visions on the nearest existing effect).
 Visions' "Look at the top five cards of target player's library" is scripted as
 `rearrange_target_players_top` with a count of five, because the pool has no *look-only* pause: every
@@ -2204,6 +2322,15 @@ the client can show the cards and the player can dismiss them, which is the one 
 pause cannot express (an arrange answer is always an order). Acceptance: cast Visions at an opponent
 whose top five are known, dismiss the look, and assert the library order is byte-identical; drop
 Visions' `approximates` when it passes.
+*Landed (wave 12):* not a new pause after all — `ArrangeRest::LookOnly`, a fourth destination on the
+pause the arrange family already raises. The candidate list, the per-player visibility grant and the
+answer intent are all unchanged; what changes is that `Game::arrange_top` short-circuits on
+`LookOnly`, discarding whatever order the answer carried and emitting no events, so the library comes
+back byte-identical. The card side is `DigEffect::LookAtTargetPlayersTop { count }`
+(`mode = "look_at_target_players_top"`), the look-only sibling of `RearrangeTargetPlayersTop`, and the
+projection distinguishes the two (`PendingChoiceView::LookAtTop` vs `ReorderTop`) so a client can
+render a dismissable look rather than a reorder widget. Visions dropped its `approximates`.
+Test: `crates/engine/tests/leg_w12_a.rs`.
 
 ### 151. `restrict-a-multi-target-clause-to-one-graveyard` — 1 card, S
 Depends on: #120 (landed — which put the clause on the card).
@@ -2266,3 +2393,56 @@ field to `PendingChoiceViewMaySacrifice` in `proto/mtgfr/v1/stream.proto` plus
 `crates/server/src/grpc/map/stream.rs`, and have the board prompt require that many picks before it
 enables Confirm. Wire-additive, so it belongs in a wave that is already regenerating. Acceptance: a
 Mold Demon prompt projects `count = 2` and the board refuses to submit one Swamp.
+
+### 176. `pick-which-of-those-sorceries-backdraft-halves` — 1 card, M — residual of #135 (wave 12)
+Depends on: #135 (first clause landed — which is what left this half visible).
+Backdraft's second chooser clause: "half the damage dealt by **one of those** sorcery spells this
+turn". #135's first clause landed, so only a player who cast a sorcery can be chosen, but the amount
+is still `Amount::HalfGreatestDamageDealtByTargetPlayersSorceryThisTurn` — it always takes that
+player's biggest-hitting sorcery. That is the pick a controller usually wants, but not always: a
+smaller sorcery is right when the bigger one's half would kill a player they want alive, or when
+Backdraft is aimed at themselves. Recorded in `backdraft.toml`'s `approximates`, together with the
+separate divergence that the chooser is modelled as a *target* (printed Backdraft is castable with
+no eligible player and simply does nothing; this one is uncastable).
+*Sketch:* a resolution-time pause offering the chosen player's damaging sorceries — the ledger rows
+in `Game::damage_dealt_this_turn` whose dealer is a sorcery that player controls, totalled per
+dealer exactly as the amount already totals them — plus an `Amount` reading the pick off the
+`ResolutionFrame` instead of taking the max. The pause is a plain "choose one of these objects",
+which the pool has no generic form of yet; #130's cause-tracking would want the same candidate list.
+Acceptance: with two damaging sorceries cast this turn the controller can pick the smaller one and
+Backdraft deals half *that*; drop the first half of Backdraft's `approximates` when it passes.
+
+### 191. `choose-a-set-of-colors` — 1 card, M — residual of #28 (wave 12)
+Depends on: nothing.
+Dream Coat says "becomes the color **or colors** of your choice"; the landed card can only be given
+one. `PendingChoice::ChooseColor` and `Intent::ChooseColor` both carry a single `Color`, and the
+intent is wire-locked, so a two-colour answer cannot be submitted at all. Recorded in
+`dream_coat.toml`'s `approximates`. The set half matters in play: Dream Coat's whole job is dodging
+colour-specific removal and squeezing past protection/landwalk, and a multicolour creature is
+sometimes the safer answer (mono-colour is strictly worse against "protection from the colour of
+your choice" effects but better against a single hoser, so neither dominates).
+*Sketch:* widen `PendingChoice::ChooseColor` and `Intent::ChooseColor` to a `Vec<Color>` (or add a
+sibling `ChooseColors`), project it as a multi-select in `PendingChoiceView`, and have
+`PumpEffect::TargetBecomesColor` take `Option<Vec<Color>>` — the layer-5 set already writes a whole
+`ColorSet`, so the engine side below the intent is close to free. Wire-breaking on
+`Intent::ChooseColor`, so it belongs in a wave already regenerating protos. Acceptance: Dream Coat's
+controller submits two colours and the enchanted creature's colours are exactly those two; drop
+`dream_coat.toml`'s `approximates` when it passes.
+
+### 192. `resolve-would-destroy-by-simulation` — 1 card, L — residual of #32 (wave 12)
+Depends on: nothing.
+`SpellFilter::WouldDestroyLandYouControl` (Equinox) predicts "would destroy a land you control" by
+reading the spell's script: a targeted destroy clause aimed at one of your lands, or a mass destroy
+clause whose sweep filter matches one. That covers every land-destruction shape the pool prints, but
+it is a *targeting* restriction evaluated by prediction, so it misses a destroy behind a modal or
+`conditional` branch, a `choice` the caster has not answered yet, an X-dependent sweep, and every
+non-destroy kill (sacrifice, -X/-X, exile) that printed Equinox also wouldn't stop but for different
+reasons. Recorded in `equinox.toml`'s `approximates`.
+*Sketch:* the honest version is a dry-run: mint the spell's events against a scratch clone of the
+game and ask whether any `Event::Destroyed` (or `MovedToGraveyard` from a destroy) names a land you
+control. The engine is pure and event-sourced, which makes a speculative `Game` clone cheap and
+deterministic — but pausing effects (`Game::run` intercepts them) have no answer without a player,
+so the dry-run needs a "no-choice" resolution mode that abandons on the first pause and falls back to
+today's prediction. Same machinery would serve any other "if it would…" restriction. Acceptance: a
+modal spell whose land-destruction mode is chosen reads as a legal Equinox target while the same
+card with the other mode chosen does not.

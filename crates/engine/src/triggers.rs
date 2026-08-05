@@ -2614,7 +2614,7 @@ impl Game {
                 // Bespoke-queued, so like the combat-damage scanner this one consults attachment
                 // grants itself (Infinite Authority's "Whenever enchanted creature blocks or
                 // becomes blocked by a creature with toughness 3 or less").
-                let granted = self.granted_attachment_triggers(watcher);
+                let granted = self.granted_triggers(watcher);
                 let abilities: Vec<Ability> = self
                     .functional_abilities(watcher)
                     .iter()
@@ -2634,7 +2634,12 @@ impl Game {
                         }
                         _ => false,
                     })
-                    .filter(|a| a.condition.is_none_or(|c| self.condition_holds(c, ctx)))
+                    // `watcher` as the source, so an intervening-if's source-relative reads (Wall
+                    // of Caltrops' "at least one **other** Wall") exclude the watcher itself.
+                    .filter(|a| {
+                        a.condition
+                            .is_none_or(|c| self.ability_condition_holds(c, watcher, ctx))
+                    })
                     .map(|a| Ability {
                         effect: contextualize_effect(a.effect.clone(), ctx),
                         ..*a
@@ -2808,6 +2813,54 @@ impl Game {
                 aura,
                 self.def_of(aura),
                 Trigger::EnchantedCreatureAttacks,
+            );
+            // Imprison watches both halves of "attacks or blocks"; this is the attack one, and
+            // `Game::seal_blocks` fires the other off the block declaration.
+            self.queue_trigger_group(
+                ctx,
+                aura,
+                self.def_of(aura),
+                Trigger::EnchantedCreatureAttacksOrBlocks,
+            );
+        }
+    }
+
+    /// Queue [`Trigger::EnchantedCreatureActivatesTapAbility`] (Imprison): `activator` just put a
+    /// non-mana `{T}` ability of `host` on the stack, so every permanent attached to `host` fires,
+    /// controlled by *that Aura's own* controller — any player's activation, since the printed
+    /// wording is "whenever **a player** activates". The activated ability's source rides in
+    /// [`TriggerContext::triggering_ability`] for
+    /// [`MiscEffect::CounterTriggeringAbility`](cards::MiscEffect) to counter.
+    pub(crate) fn queue_enchanted_creature_activates_tap_ability_triggers(
+        &mut self,
+        host: ObjectId,
+    ) {
+        for aura in self.attachments(host) {
+            let ctx = TriggerContext {
+                triggering_ability: Some(host),
+                ..TriggerContext::of(self.controller_of(aura))
+            };
+            self.queue_trigger_group(
+                ctx,
+                aura,
+                self.def_of(aura),
+                Trigger::EnchantedCreatureActivatesTapAbility,
+            );
+        }
+    }
+
+    /// The block half of [`Trigger::EnchantedCreatureAttacksOrBlocks`] (Imprison): each permanent
+    /// attached to a creature that was just declared as a blocker fires, controlled by *that
+    /// Aura's own* controller. No `attack` tuple — a blocker defends nobody. Called once per
+    /// declared blocker from [`Game::seal_blocks`], deduped by the caller.
+    pub(crate) fn queue_enchanted_creature_blocks_triggers(&mut self, blocker: ObjectId) {
+        for aura in self.attachments(blocker) {
+            let ctx = TriggerContext::of(self.controller_of(aura));
+            self.queue_trigger_group(
+                ctx,
+                aura,
+                self.def_of(aura),
+                Trigger::EnchantedCreatureAttacksOrBlocks,
             );
         }
     }
@@ -3355,7 +3408,7 @@ impl Game {
             };
             // This scanner is bespoke — it doesn't route through `queue_trigger_group`, where
             // every other flavor picks attachment grants up — so it consults them itself.
-            let granted_triggers = self.granted_attachment_triggers(id);
+            let granted_triggers = self.granted_triggers(id);
             let abilities: Vec<Ability> = self
                 .functional_abilities(id)
                 .iter()
@@ -4384,11 +4437,12 @@ impl Game {
         // A Backup grant (CR 702.166) makes `source` gain another permanent's abilities until end
         // of turn — so scan those too, alongside its own def's, addressing them as `source`'s.
         let granted = self.granted_source_abilities(source);
-        // An Aura/Equipment attached to `source` can grant it a triggered ability too (Farmstead's
-        // "Enchanted land has \"At the beginning of your upkeep, …\""). Scanned here, at the shared
-        // choke, so every trigger flavor routed through `queue_trigger_group` picks a grant up
-        // without its own scanner learning about attachments.
-        let attached = self.granted_attachment_triggers(source);
+        // An Aura/Equipment attached to `source` — or a filter-scoped grant anywhere on the
+        // battlefield (The Tabernacle at Pendrell Vale) — can grant it a triggered ability too
+        // (Farmstead's "Enchanted land has \"At the beginning of your upkeep, …\""). Scanned here,
+        // at the shared choke, so every trigger flavor routed through `queue_trigger_group` picks
+        // a grant up without its own scanner learning about grants.
+        let attached = self.granted_triggers(source);
         let abilities: Vec<Ability> = def
             .abilities
             .iter()
@@ -4445,6 +4499,22 @@ impl Game {
         // `ctx` — `resolve_amount` reads live board state and has only a `0` placeholder for it.
         if let Amount::TriggeringSpellManaValue = amount {
             return ctx.cast_mana_value.map(|mv| mv as i32);
+        }
+        // "…is blocking that creature" (Wall of Caltrops): the creature counted *against* is the
+        // other side of the block that fired the trigger, which only `ctx` knows. The filter's
+        // source-relative axes (`other`) read `ctx.source`, so a lone Wall doesn't count itself.
+        if let Amount::CreaturesBlockingThatCreature { filter } = amount {
+            let partner = ctx.blocking_partner?;
+            return Some(
+                self.combat
+                    .blocks
+                    .iter()
+                    .filter(|&&(blocker, attacker)| {
+                        attacker == partner
+                            && self.permanent_matches(&filter, blocker, ctx.controller, ctx.source)
+                    })
+                    .count() as i32,
+            );
         }
         // A target-reading operand needs a chosen target, and `resolve_amount` panics without one
         // — the placement-time second-target-clause scan evaluates gates before targets exist
@@ -5032,6 +5102,88 @@ impl Game {
             );
             self.run_as_enters(controller, source, ability.effect, events);
             if self.pending_choice.is_some() {
+                return;
+            }
+        }
+        self.run_land_entry_equilibrium(events);
+    }
+
+    /// Land Equilibrium's "If an opponent who controls at least as many lands as you do would put
+    /// a land onto the battlefield, that player instead puts that land onto the battlefield then
+    /// sacrifices a land of their choice" (CR 614.1b).
+    ///
+    /// Rides the CR 614.12 phase because the sacrifice is worded to happen *after* the land is on
+    /// the battlefield — the land itself is never replaced away, so there is nothing to intercept
+    /// earlier. The comparison is the one the replacement made, i.e. as the board stood *before*
+    /// the land entered, which is why the entering land is discounted from its controller's total.
+    ///
+    /// ponytail: one sacrifice per batch. Answering the edict does not re-enter this scan, so two
+    /// lands entering at once under two Equilibriums would ask for one land rather than several.
+    /// The follow-up would be a fan-out `remaining` list; nothing in the pool reaches it — Land
+    /// Equilibrium is the only card with the static, and lands enter one at a time in practice.
+    fn run_land_entry_equilibrium(&mut self, events: &mut Vec<Event>) {
+        if self.pending_choice.is_some() {
+            return;
+        }
+        let sources: Vec<(ObjectId, PlayerId)> = self
+            .battlefield()
+            .into_iter()
+            .filter(|&id| !self.is_phased_out(id))
+            .filter(|&id| {
+                self.functional_abilities(id).iter().any(|ability| {
+                    ability.timing == Timing::Static
+                        && matches!(
+                            ability.effect,
+                            Effect::Static(StaticEffect::OpponentLandEntryCostsALand)
+                        )
+                })
+            })
+            .map(|id| (id, self.controller_of(id)))
+            .collect();
+        if sources.is_empty() {
+            return;
+        }
+        let entered: Vec<ObjectId> = events
+            .iter()
+            .filter_map(|event| match *event {
+                Event::PermanentEntered { permanent, .. }
+                | Event::ReanimatedToBattlefield { permanent, .. }
+                | Event::ReturnedFromLinkedExile { permanent, .. }
+                | Event::FlickeredToBattlefield { permanent, .. }
+                | Event::SearchedToBattlefield { permanent, .. }
+                | Event::PutOntoBattlefieldFromHand { permanent, .. }
+                | Event::LandPlayed { permanent, .. } => Some(permanent),
+                Event::TokenCreated { token, .. } => Some(token),
+                _ => None,
+            })
+            .filter(|&id| self.as_permanent(id).is_some())
+            .filter(|&id| self.effective_types(id).intersects(TypeSet::LAND))
+            .collect();
+        let filter = PermanentFilter {
+            types: TypeSet::LAND,
+            ..PermanentFilter::default()
+        };
+        for land in entered {
+            let player = self.controller_of(land);
+            for &(source, controller) in &sources {
+                if player == controller {
+                    continue;
+                }
+                // "controls at least as many lands as you do", counted before this land entered.
+                if self.lands_controlled(player) - 1 < self.lands_controlled(controller) {
+                    continue;
+                }
+                self.prompt_next_sacrifice(
+                    vec![player],
+                    false,
+                    filter,
+                    1,
+                    None,
+                    &[],
+                    controller,
+                    source,
+                    events,
+                );
                 return;
             }
         }

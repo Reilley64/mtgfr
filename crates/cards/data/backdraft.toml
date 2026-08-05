@@ -6,7 +6,7 @@ sets = ["leg"]
 id = "80734bb0-5032-4355-9304-49f4a4557aba"
 default_print = "58d5b9fe-b66a-48c9-94c4-db783e605f37"
 oracle = "Choose a player who cast one or more sorcery spells this turn. Backdraft deals damage to that player equal to half the damage dealt by one of those sorcery spells this turn, rounded down."
-approximates = "any player may be chosen rather than only one who cast a sorcery this turn (a player who cast none simply takes 0), and the damage is always sized off that player's biggest-hitting sorcery rather than one you pick"
+approximates = "the damage is always sized off the chosen player's biggest-hitting sorcery rather than one you pick, and the chooser is a target (so Backdraft is uncastable when no player has cast a sorcery, rather than castable and blank)"
 
 [cost]
 generic = 1
@@ -25,5 +25,5 @@ timing = "spell"
 [[abilities.effects]]
 type = "damage"
 mode = "target"
-target = "player"
+target = "player_who_cast_a_sorcery_this_turn"
 amount = "half_greatest_damage_dealt_by_target_players_sorcery_this_turn"

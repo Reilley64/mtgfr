@@ -143,6 +143,17 @@ pub enum ZoneEffect {
         filter: PermanentFilter,
     },
 
+    /// Knowledge Vault's two ways out of its own pile: "put all cards exiled with this artifact
+    /// into their owner's hand" (the `{0}` cash-out) and "…into their owner's graveyard"
+    /// (`to_graveyard`, the leaves-the-battlefield punishment). Empties the source's CR 400.10a
+    /// "exiled with" association ([`MillEffect::ExileTopFaceDownWithThis`](crate::MillEffect)),
+    /// so a second reading finds nothing — which is what makes the cash-out beat the departure
+    /// trigger it sets off.
+    ReturnAllExiledWithThis {
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        to_graveyard: bool,
+    },
+
     ReturnExiledCardToOwnersGraveyard {
         #[cfg_attr(feature = "card-dsl", serde(skip))]
         exiled: ObjectId,

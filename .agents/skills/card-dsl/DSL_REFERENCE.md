@@ -103,6 +103,7 @@ A `[cost]` table spells each color by name (`white = 1`) rather than as the [`Co
 | `white` | integer | no | `0` | White mana pips (`{W}`). |
 | `x` | XPips | no | - | `{X}` pips. `true` means one `{X}`; an integer gives the count of `{X}` symbols. |
 | `x_color` | Color \| null | no | - | A color restriction on the mana spent for `{X}` (CR 601.2g) — Drain Life's "Spend only black mana on X" is `x_color = "black"`. The chosen value is paid as colored pips of that color instead of as generic. Absent for every other `{X}` cost, where any mana pays. |
+| `x_defined` | Amount \| null | no | - | A card-defined value for `{X}` (CR 107.3b) — Voodoo Doll's "X is the number of pin counters on this artifact" is `x = 2, x_defined = { per_counter_of_kind = "pin" }`. The activating player announces nothing; the activation gate resolves this amount instead. Absent for every ordinary `{X}` cost, where the player chooses X. |
 
 ## KindToml
 

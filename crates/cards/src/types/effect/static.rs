@@ -30,9 +30,17 @@ pub enum StaticEffect {
     /// a land *also* is: Kormus Bell's Swamps stay Swamps.
     AllLandsOfTypeBecome {
         /// The land types this applies to — a land carrying any of them is caught. Each of the
-        /// three cards names exactly one.
-        #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::static_str_slice"))]
+        /// three type-scoped cards names exactly one. Ignored when `all_lands` is set.
+        #[cfg_attr(
+            feature = "card-dsl",
+            serde(default, deserialize_with = "de::static_str_slice")
+        )]
         land_types: &'static [&'static str],
+        /// Living Plane's "All **lands** are 1/1 creatures that are still lands" — scope the sweep
+        /// by the card type instead of by a land subtype, so a nonbasic with no land subtype at
+        /// all is caught too. Set this or `land_types`, not both.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        all_lands: bool,
         #[cfg_attr(
             feature = "card-dsl",
             serde(default, deserialize_with = "de::static_str_slice")
@@ -53,6 +61,16 @@ pub enum StaticEffect {
         )]
         add_colors: &'static [Color],
     },
+
+    /// Land Equilibrium's "If an opponent who controls at least as many lands as you do would put
+    /// a land onto the battlefield, that player instead puts that land onto the battlefield then
+    /// sacrifices a land of their choice."
+    ///
+    /// A CR 614 replacement whose *body* is a sacrifice, not a substitution: the land still enters.
+    /// It keys off any way a land enters — a land drop, a search, a reanimation — because "put onto
+    /// the battlefield" is the whole event class, and the land count is compared as it stood before
+    /// the land entered.
+    OpponentLandEntryCostsALand,
 
     Anthem {
         #[cfg_attr(feature = "card-dsl", serde(default))]
@@ -635,6 +653,15 @@ pub enum StaticEffect {
             serde(default, deserialize_with = "de::static_slice")
         )]
         keywords: &'static [Keyword],
+        /// Keywords the matching permanents *lose* instead (Gravity Sphere's "All creatures lose
+        /// flying"). Folded into the same keyword layer as `keywords` at the same timestamp, so a
+        /// later grant still wins (CR 613.1f). A card may spell both; the pool's grants leave this
+        /// empty.
+        #[cfg_attr(
+            feature = "card-dsl",
+            serde(default, deserialize_with = "de::static_slice")
+        )]
+        lose_keywords: &'static [Keyword],
         #[cfg_attr(feature = "card-dsl", serde(default))]
         filter: PermanentFilter,
         #[cfg_attr(feature = "card-dsl", serde(default))]
@@ -680,6 +707,14 @@ pub enum StaticEffect {
     /// the one funnel every life gain passes through, which is what makes it cover lifelink and
     /// drains as well as a printed "you gain N life".
     LifeGainBecomesDraw,
+
+    /// Chains of Mephistopheles' "If a player would draw a card except the first one they draw in
+    /// each of their draw steps, that player discards a card instead. If the player discards a
+    /// card this way, they draw a card. If the player doesn't discard a card this way, they mill a
+    /// card." — a CR 614 replacement applying to *every* player's draws, not just the controller's,
+    /// checked at the one draw funnel (`Game::draw_with_replacements`). The replacement's own draw
+    /// is not replaced again (CR 614.5).
+    DrawsAfterTheFirstEachDrawStepBecomeDiscardThenDraw,
 
     LifeGainReplacement {
         #[cfg_attr(feature = "card-dsl", serde(default))]

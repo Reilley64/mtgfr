@@ -8,7 +8,10 @@ name = "Wolves of the Hunt"
 id = "leg-token-wolves-of-the-hunt"
 colors = ["green"]
 subtypes = ["Wolf"]
-approximates = "\"bands with other creatures named Wolves of the Hunt\" is not modeled — BandsWithQuality has only the Legendary quality; the name-keyed quality (and this ability) lands with #123"
+oracle = "Bands with other creatures named Wolves of the Hunt"
+# "bands with other creatures named Wolves of the Hunt" — the band's [quality] is this token's own
+# name (CR 702.22b), so a pack of them attacks, and is blocked, as one band.
+keywords = [{ bands_with = { named = "Wolves of the Hunt" } }]
 
 [kind]
 type = "creature"

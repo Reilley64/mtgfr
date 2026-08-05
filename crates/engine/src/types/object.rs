@@ -766,6 +766,11 @@ pub(crate) struct Player {
     /// each turn at untap). Feeds [`Condition::CastInstantOrSorceryThisTurn`] (Hall of Oracles's
     /// counter ability's activation restriction).
     pub(crate) instant_or_sorcery_cast_this_turn: bool,
+    /// Whether this player has cast a *sorcery* spell this turn (turn-scoped; reset each turn at
+    /// untap) — the sorcery-only sibling of `instant_or_sorcery_cast_this_turn` above. Feeds
+    /// [`cards::TargetSpec::PlayerWhoCastASorceryThisTurn`] (Backdraft's "choose a player who cast
+    /// one or more sorcery spells this turn").
+    pub(crate) sorcery_cast_this_turn: bool,
     /// The greatest mana value among instant and sorcery spells this player has cast this turn
     /// (turn-scoped; reset each turn at untap, 0 if none) — Rootha, Mastering the Moment's "X is
     /// the greatest mana value among instant and sorcery spells you've cast this turn." Feeds

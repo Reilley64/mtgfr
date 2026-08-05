@@ -95,6 +95,15 @@ pub enum PumpEffect {
         target: TargetSpec,
     },
 
+    /// Giant Slug's "this creature gains landwalk of the chosen type until the end of that turn."
+    /// The land-type twin of [`GrantChosenColorProtectionUntilEndOfTurn`](Self::GrantChosenColorProtectionUntilEndOfTurn):
+    /// a preceding [`ChoiceEffect::ChooseBasicLandType`](crate::ChoiceEffect) step in the same
+    /// [`Effect::Sequence`](crate::Effect::Sequence) has already stored the pick on the source's
+    /// own [`Permanent::chosen_subtype`](crate::Permanent), so the [`Keyword::Landwalk`](crate::Keyword)
+    /// isn't known until resolution and is leaked fresh there. Targetless — "this creature" is the
+    /// source itself, which for Giant Slug is also the permanent holding the choice.
+    GrantChosenLandwalkSelfUntilEndOfTurn,
+
     /// The old "Radiance" keyword action's batch twin of
     /// [`GrantChosenColorProtectionUntilEndOfTurn`](Self::GrantChosenColorProtectionUntilEndOfTurn)
     /// (Bathe in Light): "Target creature and each other creature that shares a color with it

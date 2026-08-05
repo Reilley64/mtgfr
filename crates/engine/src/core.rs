@@ -78,6 +78,7 @@ impl Game {
             permanents_died_this_turn: 0,
             damaged_this_turn: Vec::new(),
             damage_dealt_this_turn: Vec::new(),
+            drawn_this_turn: Vec::new(),
             hand_cards_seen: Vec::new(),
             revealed_unplayable_until_next_turn: Vec::new(),
             damage_prevention_shields: Vec::new(),

@@ -320,20 +320,57 @@ impl TextWords {
 /// The \[quality\] in "bands with other \[quality\]" (CR 702.22b) — what every member of a band
 /// declared on that keyword's strength has to be (CR 702.22c).
 /// ponytail: a purpose-built axis rather than a [`PermanentFilter`](crate::PermanentFilter), which
-/// would make [`Keyword`] non-`Copy` for the sake of two printed qualities. Master of the Hunt's
-/// "bands with other creatures named Wolves of the Hunt" is the second one and arrives with
-/// increment #3's slice 4.
+/// would make [`Keyword`] non-`Copy` for the sake of the two printed qualities.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(
-    feature = "card-dsl",
-    derive(serde::Deserialize),
-    serde(rename_all = "snake_case")
-)]
-#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
 pub enum BandsWithQuality {
     /// "bands with other legendary creatures" — the five Legends color lands' grant (CR 205.4a's
     /// Legendary supertype).
     Legendary,
+    /// "bands with other creatures named \[name\]" — Master of the Hunt's Wolves of the Hunt
+    /// tokens, the only printed name-keyed quality. Matched against the creature's name (CR 201.2).
+    Named(&'static str),
+}
+
+/// [`BandsWithQuality`] as TOML spells it: the bare string `"legendary"`, or the single-key table
+/// `{ named = "Wolves of the Hunt" }`. Its own type because serde's `'de` lifetime cannot yield the
+/// `&'static str` [`BandsWithQuality::Named`] carries to keep [`Keyword`] `Copy`.
+#[cfg(feature = "card-dsl")]
+#[derive(serde::Deserialize)]
+#[cfg_attr(
+    feature = "card-schema",
+    derive(schemars::JsonSchema),
+    schemars(rename = "BandsWithQuality")
+)]
+#[serde(rename_all = "snake_case")]
+enum BandsWithQualityToml {
+    Legendary,
+    Named(String),
+}
+
+#[cfg(feature = "card-dsl")]
+impl<'de> serde::Deserialize<'de> for BandsWithQuality {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        Ok(match BandsWithQualityToml::deserialize(deserializer)? {
+            BandsWithQualityToml::Legendary => BandsWithQuality::Legendary,
+            // ponytail: leaked rather than interned. The pool is parsed once per process and the
+            // names live as long as the card definitions do, so a leak per printed name is the
+            // whole cost of keeping `Keyword` `Copy`.
+            BandsWithQualityToml::Named(name) => {
+                BandsWithQuality::Named(Box::leak(name.into_boxed_str()))
+            }
+        })
+    }
+}
+
+#[cfg(feature = "card-schema")]
+impl schemars::JsonSchema for BandsWithQuality {
+    fn schema_name() -> String {
+        BandsWithQualityToml::schema_name()
+    }
+
+    fn json_schema(generator: &mut schemars::r#gen::SchemaGenerator) -> schemars::schema::Schema {
+        BandsWithQualityToml::json_schema(generator)
+    }
 }
 
 /// A whole family of parametrized keywords, named the way a card names it: "all landwalk
@@ -474,10 +511,12 @@ pub enum Keyword {
     /// list. See increment #121.
     Banding,
     /// "Bands with other \[quality\]" (CR 702.22b) — a special form of banding whose \[quality\]
-    /// is the membership test for a band declared on its strength (CR 702.22c). Granted, never
-    /// printed: the five Legends color lands each grant it to their color's legendary creatures
-    /// ("White legendary creatures you control have 'bands with other legendary creatures.'"). In
-    /// TOML, `{ bands_with = "legendary" }`. See [`Game::declare_attackers_in_bands`].
+    /// is the membership test for a band declared on its strength (CR 702.22c). The five Legends
+    /// color lands each *grant* it to their color's legendary creatures ("White legendary creatures
+    /// you control have 'bands with other legendary creatures.'"); Master of the Hunt's Wolves of
+    /// the Hunt token prints it with a card *name* as the quality. In TOML,
+    /// `{ bands_with = "legendary" }` or `{ bands_with = { named = "Wolves of the Hunt" } }`. See
+    /// [`Game::declare_attackers_in_bands`].
     #[cfg_attr(feature = "card-dsl", serde(rename = "bands_with"))]
     BandsWith(BandsWithQuality),
     /// Brazen Borrower's printed "can block only creatures with flying" static — MTG names no

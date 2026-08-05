@@ -346,23 +346,25 @@ fn backdraft_deals_half_the_damage_the_chosen_players_sorcery_dealt() {
 }
 
 #[test]
-fn backdraft_deals_nothing_to_a_player_whose_sorceries_dealt_no_damage() {
+fn backdraft_cannot_choose_a_player_who_has_cast_no_sorcery() {
     let mut game = Game::with_players(2, 7);
     stock_libraries(&mut game);
     let backdraft = game.spawn_in_hand(PlayerId(0), card("Backdraft"));
-    let before = game.life(PlayerId(1));
 
-    cast_and_resolve(
+    let rejected = cast(
         &mut game,
         PlayerId(0),
         backdraft,
         Some(Target::Player(PlayerId(1))),
     );
 
-    assert_eq!(
-        game.life(PlayerId(1)),
-        before,
-        "no sorcery, no damage — 0 is never dealt (CR 120.8)"
+    // "Choose a player who cast one or more sorcery spells this turn" is modeled as a target
+    // restriction, so a seat that has cast none is simply not choosable. The card's
+    // `approximates` owns the residual: printed Backdraft is castable with no legal chooser and
+    // does nothing, where this one cannot be cast at all.
+    assert!(
+        matches!(rejected, Err(Reject::IllegalTarget)),
+        "a player who cast no sorcery is not a legal choice: {rejected:?}"
     );
 }
 

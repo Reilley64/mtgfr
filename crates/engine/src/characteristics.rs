@@ -593,14 +593,36 @@ impl Game {
         if !self.is_face_down(land) {
             let effective = Self::basic_land_types(&self.effective_subtypes(land));
             if effective != Self::basic_land_types(subtypes) {
-                return Self::mana_credit_for_colors(effective);
+                return self.colorless_rewrite(land, Self::mana_credit_for_colors(effective));
             }
         }
-        match produces? {
+        let credit = match produces? {
             LandProduces::Mana(m) => Some(m),
             LandProduces::CommanderIdentity => self.commander_identity_credit(player),
             LandProduces::OpponentColors => self.opponent_producible_colors_credit(player),
+        };
+        self.colorless_rewrite(land, credit)
+    }
+
+    /// Quarum Trench Gnomes' "it produces colorless mana instead of white mana", applied to a
+    /// credit [`Game::land_mana_credit`] has otherwise finished deriving. A credit that isn't the
+    /// named color — a Plains turned Swamp by Evil Presence, or a land the Gnomes never hit — comes
+    /// back untouched, which is the card's own "if … is tapped for mana" gate doing nothing.
+    fn colorless_rewrite(&self, land: ObjectId, credit: Option<Mana>) -> Option<Mana> {
+        let credit = credit?;
+        let Mana::Color(color) = credit else {
+            return Some(credit);
+        };
+        let rewritten = self
+            .modifier_provenance
+            .modifiers
+            .iter()
+            .filter(|m| m.host == land)
+            .any(|m| matches!(m.kind, ModifierKind::ProducesColorlessInsteadOf(c) if c == color));
+        if !rewritten {
+            return Some(credit);
         }
+        Some(Mana::Colorless)
     }
 
     /// The colors a single land (its base tap-for-one `produces` plus every `add_mana` ability's
@@ -1133,8 +1155,11 @@ impl Game {
                     timestamp,
                     kind: ContinuousEffectKind::LoseKeywords { keywords, families },
                 }),
+                // The mana rewrite is not a layer this pipeline models — it is read at the point a
+                // land is tapped for mana, in [`Game::land_mana_credit`].
                 ModifierKind::LoseKeywords { .. }
                 | ModifierKind::SetColor(_)
+                | ModifierKind::ProducesColorlessInsteadOf(_)
                 | ModifierKind::RevertsToDef(_) => {}
             }
         }
@@ -1207,6 +1232,7 @@ impl Game {
                     Timing::Static,
                     Effect::Static(StaticEffect::FilteredAnthem {
                         keywords,
+                        lose_keywords,
                         filter,
                         all_players,
                         power,
@@ -1254,14 +1280,26 @@ impl Game {
                         kind: ContinuousEffectKind::PtDelta { power, toughness },
                     });
                 }
-                if keywords.is_empty() {
-                    continue;
+                if !keywords.is_empty() {
+                    effects.push(ContinuousEffect {
+                        source,
+                        timestamp,
+                        kind: ContinuousEffectKind::GrantKeywords { keywords },
+                    });
                 }
-                effects.push(ContinuousEffect {
-                    source,
-                    timestamp,
-                    kind: ContinuousEffectKind::GrantKeywords { keywords },
-                });
+                // Gravity Sphere's "All creatures lose flying" — same layer and same timestamp as
+                // the grant above, so the fold in `compute_effective_keywords_uncached` orders a
+                // strip against every grant by CR 613.1f rather than by which clause was written.
+                if !lose_keywords.is_empty() {
+                    effects.push(ContinuousEffect {
+                        source,
+                        timestamp,
+                        kind: ContinuousEffectKind::LoseKeywords {
+                            keywords: lose_keywords,
+                            families: &[],
+                        },
+                    });
+                }
             }
         }
         effects
@@ -1846,12 +1884,32 @@ impl Game {
             return statics;
         }
         let subtypes = self.effective_subtypes(id);
+        // Living Plane's "All lands" is scoped by card type instead of by subtype, so it needs the
+        // type layer as it stands *before* these globals apply — see `types_before_land_globals`.
+        let any_all_lands = statics.iter().any(|(_, _, effect)| {
+            matches!(
+                effect,
+                StaticEffect::AllLandsOfTypeBecome {
+                    all_lands: true,
+                    ..
+                }
+            )
+        });
+        let is_land = any_all_lands && self.types_before_land_globals(id).intersects(TypeSet::LAND);
         statics
             .into_iter()
             .filter(|(_, _, effect)| {
-                let StaticEffect::AllLandsOfTypeBecome { land_types, .. } = effect else {
+                let StaticEffect::AllLandsOfTypeBecome {
+                    land_types,
+                    all_lands,
+                    ..
+                } = effect
+                else {
                     return false;
                 };
+                if *all_lands {
+                    return is_land;
+                }
                 land_types.iter().any(|ty| subtypes.contains(ty))
             })
             .collect()
@@ -1863,6 +1921,26 @@ impl Game {
     /// "All Swamps are 1/1 black creatures that are still lands").
     /// Reads printed types for a non-permanent (CR 613 applies only to the permanent).
     pub fn effective_types(&self, id: ObjectId) -> TypeSet {
+        let mut types = self.types_before_land_globals(id);
+        // "All Swamps are 1/1 black creatures that are **still lands**" — always additive, so
+        // there is no set-types global to order against the layer above.
+        for (_, _, effect) in self.land_type_statics_on(id) {
+            let StaticEffect::AllLandsOfTypeBecome { add_types, .. } = effect else {
+                continue;
+            };
+            types = types.union(add_types);
+        }
+        types
+    }
+
+    /// [`Game::effective_types`] up to but excluding the global land-type statics — the answer
+    /// [`Game::land_type_statics_on`] needs to decide whether an "All **lands**" global (Living
+    /// Plane) catches `id`, without asking `effective_types` for the answer it is computing.
+    ///
+    /// Safe to cut the layer here because [`StaticEffect::AllLandsOfTypeBecome`] only ever *adds*
+    /// card types and never adds Land: nothing downstream of this cut can turn a non-land into one,
+    /// so the land-ness this reads is final.
+    fn types_before_land_globals(&self, id: ObjectId) -> TypeSet {
         // CR 708.2: a face-down permanent (a manifest) is a creature and nothing else — its real
         // card types are hidden, and no type layer applies while it's face down.
         if self.is_face_down(id) {
@@ -1892,14 +1970,6 @@ impl Game {
         runtime_effects.sort_by_key(|effect| (effect.layer(), effect.timestamp, effect.source));
         for effect in runtime_effects {
             let ContinuousEffectKind::SetTypes { add_types, .. } = effect.kind else {
-                continue;
-            };
-            types = types.union(add_types);
-        }
-        // "All Swamps are 1/1 black creatures that are **still lands**" — always additive, so
-        // there is no set-types global to order against the layer above.
-        for (_, _, effect) in self.land_type_statics_on(id) {
-            let StaticEffect::AllLandsOfTypeBecome { add_types, .. } = effect else {
                 continue;
             };
             types = types.union(add_types);
@@ -2734,18 +2804,25 @@ impl Game {
         grants
     }
 
-    /// Every *triggered* ability granted to `host` by a live
-    /// [`Effect::Static(StaticEffect::GrantToAttached)`] Aura/Equipment attached to it (Power
-    /// Fist's "Whenever this creature deals combat damage to a player, put that many +1/+1
-    /// counters on it."), synthesized directly as an [`Ability`] — unlike the activated twin
-    /// ([`Game::granted_activated_abilities`]), there is no `ability_at` index to address, since
-    /// a triggered ability isn't activated. Recomputed live off the same attachment scan, so it
-    /// disappears the instant the Aura/Equipment leaves (CR 702.26e for a phased-out one).
-    /// Read by [`Game::queue_trigger_group`], the shared choke most trigger flavors route
-    /// through, and separately by the combat-damage-to-a-player scanner, which is bespoke and
-    /// doesn't route through it.
-    pub(crate) fn granted_attachment_triggers(&self, host: ObjectId) -> Vec<Ability> {
-        self.attachments(host)
+    /// Every *triggered* ability granted to `host`, synthesized directly as an [`Ability`] —
+    /// unlike the activated twin ([`Game::granted_activated_abilities`]), there is no `ability_at`
+    /// index to address, since a triggered ability isn't activated. The same two grant kinds land
+    /// here as there: a live [`Effect::Static(StaticEffect::GrantToAttached)`] Aura/Equipment
+    /// attached to `host` (Power Fist's "Whenever this creature deals combat damage to a player,
+    /// put that many +1/+1 counters on it.") and a filter-scoped
+    /// [`Effect::Static(StaticEffect::GrantActivatedAbility)`] anywhere on the battlefield whose
+    /// filter `host` matches (The Tabernacle at Pendrell Vale's "All creatures have 'At the
+    /// beginning of your upkeep, destroy this creature unless you pay {1}.'"). Recomputed live off
+    /// the board, so a grant disappears the instant its source leaves (CR 702.26e for a phased-out
+    /// one). The synthesized ability belongs to `host`, which is what makes the granted text's
+    /// "this creature" bind to each grantee and its "your" resolve to that grantee's controller —
+    /// [`Game::queue_trigger_group`] is called with `host` as the source and its controller as the
+    /// trigger context. Read there, at the shared choke most trigger flavors route through, and
+    /// separately by the combat-damage-to-a-player scanner, which is bespoke and doesn't route
+    /// through it.
+    pub(crate) fn granted_triggers(&self, host: ObjectId) -> Vec<Ability> {
+        let mut granted: Vec<Ability> = self
+            .attachments(host)
             .into_iter()
             // A phased-out Aura/Equipment grants nothing (CR 702.26e), mirroring `attachment_grants`.
             .filter(|&id| !self.is_phased_out(id))
@@ -2760,33 +2837,40 @@ impl Game {
                                 granted_ability: Some(g),
                                 ..
                             }),
-                        ) => g.trigger.map(|trigger| {
-                            let effect = match g.effects {
-                                [single] => single.clone(),
-                                steps => Effect::Sequence {
-                                    steps: steps.into(),
-                                },
-                            };
-                            Ability {
-                                timing: Timing::Triggered(trigger),
-                                effect,
-                                optional: g.optional,
-                                min_level: 0,
-                                // Only the mana half of the grant's `cost` is a *triggered*
-                                // ability's cost (Farmstead's "you may pay {W}{W}") — an
-                                // `Ability::cost` is a `Cost`, and the rest of an
-                                // `ActivationCost` (tapping, sacrificing) has no meaning for
-                                // something that was never activated.
-                                cost: g.cost.mana,
-                                condition: None,
-                                once_each_turn: false,
-                            }
-                        }),
+                        ) => granted_triggered_ability(g),
                         _ => None,
                     })
                     .collect::<Vec<_>>()
             })
-            .collect()
+            .collect();
+        // The battlefield-wide, filter-scoped half — the exact scan
+        // `granted_activated_abilities` runs, kept in lockstep with it, but keeping the grants
+        // whose `trigger` is set instead of the ones where it isn't.
+        for (source, object) in self.objects.iter().enumerate() {
+            let Object::Permanent(p) = object else {
+                continue;
+            };
+            let source = source as ObjectId;
+            for ability in self.functional_abilities(source).iter().cloned() {
+                let (
+                    Timing::Static,
+                    Effect::Static(StaticEffect::GrantActivatedAbility {
+                        filter,
+                        granted_ability: Some(g),
+                    }),
+                ) = (ability.timing, ability.effect.clone())
+                else {
+                    continue;
+                };
+                // `you` is the *granting* permanent's controller, so a `controller = "you"` filter
+                // reads off the lord (as its printed text does), not off the candidate.
+                if !self.permanent_matches(&filter, host, p.owner, Some(source)) {
+                    continue;
+                }
+                granted.extend(granted_triggered_ability(g));
+            }
+        }
+        granted
     }
 
     /// The ability at `index` on `object`, in a stable order: its own
@@ -3286,6 +3370,11 @@ impl Game {
             // permanent's* controller separately from `caster` here (which is the casting player).
             // Never true here: no cost-reducer filters on this shape.
             SpellFilter::CreatureNotSharingColorWithCreatureYouControl => false,
+            // Equinox's "if it would destroy a land you control" needs the candidate spell's
+            // *chosen targets* off the stack, not a `CardDef`, plus the counterer's seat — both
+            // only available in `legal_targets_for`'s `SpellOnStack` enumeration, where it is
+            // matched inline. Never true here.
+            SpellFilter::WouldDestroyLandYouControl => false,
             // Balefire Liege's "cast a red spell" / "cast a white spell" — CR 105.1/202.2, the
             // spell's own colors (a multicolored spell matches every one of its colors).
             SpellFilter::Color(color) => color_identity(&def)[color.index()],
@@ -3472,6 +3561,33 @@ impl Game {
     }
 }
 
+/// A [`GrantedAbility`] read as the *triggered* ability it grants, or `None` when it grants an
+/// activated one instead (`trigger` unset — [`Game::granted_activated_abilities`]'s half). Shared
+/// by both halves of [`Game::granted_triggers`] so an attachment grant and a filter-scoped one
+/// synthesize identically.
+fn granted_triggered_ability(g: &GrantedAbility) -> Option<Ability> {
+    let trigger = g.trigger?;
+    let effect = match g.effects {
+        [single] => single.clone(),
+        steps => Effect::Sequence {
+            steps: steps.into(),
+        },
+    };
+    Some(Ability {
+        timing: Timing::Triggered(trigger),
+        effect,
+        optional: g.optional,
+        min_level: 0,
+        // Only the mana half of the grant's `cost` is a *triggered* ability's cost (Farmstead's
+        // "you may pay {W}{W}") — an `Ability::cost` is a `Cost`, and the rest of an
+        // `ActivationCost` (tapping, sacrificing) has no meaning for something that was never
+        // activated.
+        cost: g.cost.mana,
+        condition: None,
+        once_each_turn: false,
+    })
+}
+
 /// Whether a source with `source_colors` (and, when known, `source_is_creature`) matches a
 /// [`ProtectionScope`] — the predicate shared by [`Game::protection_blocks_source_colors`] (no
 /// source object, so `source_is_creature` is `None` and `Creatures` never matches) and
@@ -3495,6 +3611,7 @@ mod cache_tests {
     use super::*;
 
     const FREE: Cost = Cost {
+        x_defined: None,
         generic: 0,
         colored: [0; Color::COUNT],
         colorless: 0,
@@ -3951,6 +4068,7 @@ mod characteristic_query_tests {
     const P1: PlayerId = PlayerId(1);
 
     const FREE: Cost = Cost {
+        x_defined: None,
         generic: 0,
         colored: [0; Color::COUNT],
         colorless: 0,

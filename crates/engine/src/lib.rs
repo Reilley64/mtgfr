@@ -196,6 +196,11 @@ pub struct Game {
     /// these rows keep the amount and the source, so several hits from the same source are several
     /// rows. Reset at every Untap step.
     pub(crate) damage_dealt_this_turn: Vec<(ObjectId, Target, i32)>,
+    /// Every hand-object id drawn this turn, in draw order — Sylvan Library's "choose two cards in
+    /// your hand **drawn this turn**". Pushed by `Event::CardDrawn`, reset at every Untap step.
+    /// Ids, not counts, because the card that matters is a specific object: a card drawn and then
+    /// put back is a new object when it returns (CR 400.7) and stops matching, which is right.
+    pub(crate) drawn_this_turn: Vec<ObjectId>,
     /// `(looker, card)` pairs for every hand card a player has privately looked at (CR 701.20 —
     /// Glasses of Urza). Read only by the wire redaction layer, which itemizes a hand card to its
     /// owner and to anyone holding a pair for it. Never cleared: a card that leaves the hand is a

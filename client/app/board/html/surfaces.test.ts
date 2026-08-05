@@ -1491,6 +1491,33 @@ test("scry uses a center modal with Top and Bottom arrange lanes", () => {
   );
 });
 
+test("visions look-at-top shows the revealed cards with a single Done dismissal", () => {
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        pending_choice: {
+          kind: "look_at_top",
+          player: 0,
+          items: [
+            { id: 1, label: "Island" },
+            { id: 2, label: "Forest" },
+          ],
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-look-at-top-modal")).toExist(),
+    Scene.expect(Scene.testId("prompt-look-at-top-cards")).toExist(),
+    Scene.expect(Scene.testId("prompt-card-1")).toExist(),
+    Scene.expect(Scene.testId("prompt-card-2")).toExist(),
+    Scene.expect(Scene.testId("prompt-submit")).toHaveText("Done"),
+    // The order is not the player's to set, so no Top/Bottom lanes.
+    Scene.expect(Scene.testId("pending-arrange-modal")).toBeAbsent(),
+    Scene.expect(Scene.testId("prompt-arrange-lanes")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
+  );
+});
+
 test("order_triggers uses a center modal with drag rows and arrow controls", () => {
   overlayScene(
     overlayModel(

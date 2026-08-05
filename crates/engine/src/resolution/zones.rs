@@ -314,6 +314,35 @@ impl Game {
                     from: exiled,
                 }]
             }
+            // Knowledge Vault: "put all cards exiled with this artifact into their owner's hand"
+            // (the `{0}` cash-out) or "…graveyard" (the leaves-the-battlefield trigger). Reads the
+            // source's CR 400.10a pile and empties it in the same batch, so the departure trigger
+            // the cash-out itself sets off finds nothing left to bury. A card already out of exile
+            // is skipped but still unlinked — the association is over either way.
+            ZoneEffect::ReturnAllExiledWithThis { to_graveyard } => {
+                let mut next = self.next_object_id();
+                self.exile_links
+                    .with_source
+                    .iter()
+                    .filter(|&&(linked, _)| linked == source)
+                    .flat_map(|&(_, exiled)| {
+                        let unlink = Event::CardExiledWithSourceLeftExile {
+                            source,
+                            object: exiled,
+                        };
+                        if self.zone_of(exiled) != Zone::Exile {
+                            return vec![unlink];
+                        }
+                        let card = next;
+                        next += 1;
+                        let move_event = match to_graveyard {
+                            true => Event::ReturnedExiledCardToGraveyard { card, from: exiled },
+                            false => Event::ReturnedToHand { card, from: exiled },
+                        };
+                        vec![move_event, unlink]
+                    })
+                    .collect()
+            }
             // Gift of Immortality: the delayed CR 603.7 payoff scheduled by
             // `ScheduleReturnThisAuraAttachedToReanimated`, fired at the next end step. Guard-
             // return with no return if this Aura has since left the graveyard (moved/exiled some

@@ -898,6 +898,10 @@ pub enum ArrangeRest {
     /// Nowhere: "put them back in any order" (Natural Selection) returns every card to the top,
     /// so the only thing the answer decides is the order and a bottom pile is illegal.
     Nowhere,
+    /// Nowhere, and not even reordered: a look-only pause (Visions' "Look at the top five cards of
+    /// target player's library"). The pause exists so one seat sees the cards; the answer is a
+    /// dismissal whose order is ignored, and the library comes out byte-identical.
+    LookOnly,
 }
 
 /// What answering a [`PendingChoice::ChooseColor`] does with the named color. Engine-internal —
@@ -930,6 +934,10 @@ pub enum CardNameUse {
     SubjectRevealsHandAtRandomThenDiscards { subject: PlayerId, count: u32 },
 }
 
+// ponytail: same call as `StackItem` below — the variants that carry an `Effect` are wide because
+// `Effect` is ~9 KiB, and boxing one of them only promotes the next to largest. Revisit when
+// `Effect` itself shrinks.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PendingChoice {
     /// `player` must order their simultaneously-triggered abilities (put on the stack
@@ -1116,6 +1124,9 @@ pub enum PendingChoice {
         player: PlayerId,
         source: ObjectId,
         cost: Cost,
+        /// What paying *buys* — Imprison's "if you do, tap the creature, remove it from combat,
+        /// …". Empty for every "unless you pay", where paying only dodges `otherwise`.
+        then: &'static [Effect],
         otherwise: &'static [Effect],
     },
     /// `player` (a land card's controller, about to play it) may pay `life` to have it enter
@@ -1617,6 +1628,12 @@ pub enum PendingChoice {
         player: PlayerId,
         hand: Vec<ObjectId>,
         count: usize,
+        /// Life paid for each of the `count` the player declines to put back — Sylvan Library's
+        /// "for each of those cards, pay 4 life **or** put the card on top of your library",
+        /// which is the same offer read as one subset choice with a price on the rest. Nonzero
+        /// makes `count` a maximum: any answer from zero cards to `count` is legal, and the
+        /// shortfall is charged. 0 (Brainstorm) keeps `count` exact.
+        life_per_declined: u32,
     },
     /// `player` may put one of `candidates` (their hand's land cards) onto the battlefield
     /// (`tapped` if it enters tapped), or decline ("up to one" — CR 305.9 special action, an
@@ -1638,6 +1655,13 @@ pub enum PendingChoice {
         candidates: Vec<ObjectId>,
         keep: bool,
         defender: Option<PlayerId>,
+        /// Eureka's "repeat this process": the seats still owed an offer after `player` before the
+        /// lap closes. `None` is a one-seat offer (Cauldron Dance, Kaalia). Answering re-raises for
+        /// the head of this queue; a seat that *acts* refills it with every other seat (so the
+        /// process only ends once a whole lap declines), and an empty queue ends it.
+        round: Option<Vec<PlayerId>>,
+        /// Any permanent card in hand is eligible, not only creature cards (Eureka).
+        permanent_cards: bool,
     },
     /// `player` may cast one of `candidates` — the creature cards in their hand whose mana cost
     /// could be paid by some amount of, or all of, the mana spent on the `{X}` paid (CR 107.3,
@@ -2087,6 +2111,7 @@ pub const CREATURE_TYPES: &[&str] = &[
     "Fungus",
     "Gargoyle",
     "Giant",
+    "Gnome",
     "Goblin",
     "Golem",
     "Gorgon",
@@ -2151,6 +2176,7 @@ pub const CREATURE_TYPES: &[&str] = &[
     "Shaman",
     "Shapeshifter",
     "Skeleton",
+    "Slug",
     "Snake",
     "Soldier",
     "Sorcerer",
@@ -2797,6 +2823,12 @@ pub enum Event {
     /// simply outranks the earlier one on timestamp (CR 613.7). Public battlefield status, like
     /// `BasePtSetUntilEndOfTurn`.
     BaseToughnessSetIndefinite { object: ObjectId, toughness: i32 },
+    /// A land's free tap now credits `{C}` where it used to credit `color`, indefinitely (Quarum
+    /// Trench Gnomes' "If target Plains is tapped for mana, it produces colorless mana instead of
+    /// white mana"). A `ModifierKind::ProducesColorlessInsteadOf` with
+    /// `ModifierDuration::Indefinite`, read back at `Game::land_mana_credit`. Public battlefield
+    /// status — every seat can see which land was hit.
+    LandProducesColorlessInsteadOf { land: ObjectId, color: Color },
     /// A permanent's power and toughness were switched until end of turn (CR 613.4e —
     /// Transmutation). A `ModifierKind::PtSwitch` on the modifier registry, applied after every
     /// other P/T layer and swept at cleanup with the rest. Public battlefield status, like

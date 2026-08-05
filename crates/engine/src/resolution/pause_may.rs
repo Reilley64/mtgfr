@@ -231,6 +231,7 @@ impl Game {
             Effect::Choice(ChoiceEffect::PayOrElse {
                 cost,
                 extra_generic,
+                then,
                 otherwise,
             }) => {
                 // Primordial Ooze's "pay {X}, where X is the number of +1/+1 counters on it": a
@@ -252,6 +253,7 @@ impl Game {
                         player: controller,
                         source,
                         cost,
+                        then,
                         otherwise,
                     },
                 )

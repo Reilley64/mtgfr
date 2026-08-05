@@ -322,6 +322,29 @@ impl Game {
                 }
                 vec![self.exile_or_command(id, self.next_object_id())]
             }
+            // "…then exile this artifact and those creature cards" (Sword of the Ages): one card
+            // that paid the activation's sacrifice cost, followed to wherever it is now — the
+            // graveyard card the sacrificed permanent became, unless something has since moved it
+            // (CR 400.7), in which case this does nothing.
+            ExileEffect::SacrificedCard { object } => {
+                let id = object.expect("filled in as the sacrifice cost was paid");
+                let id = self.current_id(id);
+                if self.zone_of(id) != Zone::Graveyard {
+                    return Vec::new();
+                }
+                vec![self.exile_or_command(id, self.next_object_id())]
+            }
+            // "When this creature dies, exile it" (Cyclopean Mummy). The trigger's `source` is
+            // still the battlefield id (CR 603.6c look-back); `return_this_source` follows the
+            // move to the graveyard card and folds in the token/left-the-game guard.
+            ExileEffect::Source => {
+                let Some(id) =
+                    self.return_this_source(source, &[Zone::Graveyard, Zone::Battlefield])
+                else {
+                    return Vec::new();
+                };
+                vec![self.exile_or_command(id, self.next_object_id())]
+            }
             ExileEffect::Target { .. } => {
                 let object = expect_object_target(target, "exile");
                 vec![self.exile_or_command(object, self.next_object_id())]

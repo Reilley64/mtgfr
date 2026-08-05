@@ -30,6 +30,18 @@ pub enum MiscEffect {
         unless_pays: Option<Cost>,
     },
 
+    /// "Counter that ability" on a [`Trigger::EnchantedCreatureActivatesTapAbility`](crate::Trigger)
+    /// watch — Imprison. CR 115.1: "that ability" is not a target, so it is the activated ability
+    /// that fired the watch, baked in at trigger placement from
+    /// [`TriggerContext::triggering_ability`](crate::TriggerContext) rather than chosen — the
+    /// ability twin of [`Self::CounterTriggeringSpell`]. Abilities on the stack are keyed by their
+    /// source permanent (see [`TargetSpec::ActivatedAbilityOnStack`](crate::TargetSpec)'s identity
+    /// ponytail), so this counters the topmost stack ability from that source.
+    CounterTriggeringAbility {
+        #[cfg_attr(feature = "card-dsl", serde(skip))]
+        triggering_ability: Option<ObjectId>,
+    },
+
     CounterTargetSpell {
         #[cfg_attr(feature = "card-dsl", serde(default))]
         unless_pays: Option<Amount>,

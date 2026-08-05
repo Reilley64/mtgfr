@@ -968,7 +968,32 @@ impl Game {
     fn matches_bands_with_quality(&self, object: ObjectId, quality: BandsWithQuality) -> bool {
         match quality {
             BandsWithQuality::Legendary => self.def_of(object).legendary,
+            // CR 201.2: a card's name is what's printed on its name line, so this is a plain
+            // comparison against the object's own name — no copy or text-change layer reads here
+            // that `def_of` hasn't already applied.
+            BandsWithQuality::Named(name) => self.def_of(object).name == name,
         }
+    }
+
+    /// Every \[quality\] some creature among `creatures` could form a band under — the
+    /// "bands with other \[quality\]" keywords those creatures actually carry.
+    ///
+    /// Discovered from the creatures rather than enumerated over [`BandsWithQuality`], because
+    /// [`BandsWithQuality::Named`] is parameterized by a card name: there is no finite list to
+    /// walk.
+    fn bands_with_qualities(&self, creatures: &[ObjectId]) -> Vec<BandsWithQuality> {
+        let mut qualities = Vec::new();
+        for &creature in creatures {
+            for keyword in self.effective_keywords(creature) {
+                let Keyword::BandsWith(quality) = keyword else {
+                    continue;
+                };
+                if !qualities.contains(&quality) {
+                    qualities.push(quality);
+                }
+            }
+        }
+        qualities
     }
 
     /// Whether `band` is a legal attacking band within the declaration `attackers` (CR 702.22c —
@@ -1007,14 +1032,12 @@ impl Game {
         if with_banding >= 1 && band.len() - with_banding <= 1 {
             return true;
         }
-        // CR 702.22c's second sentence — a "bands with other \[quality\]" band. Every printed
-        // quality is tried: a band only needs *some* quality under which it holds.
-        [BandsWithQuality::Legendary].into_iter().any(|quality| {
+        // CR 702.22c's second sentence — a "bands with other \[quality\]" band. Every quality the
+        // band's own members carry is tried: a band only needs *some* quality under which it
+        // holds, and carrying the keyword is what put the quality in the list.
+        self.bands_with_qualities(band).into_iter().any(|quality| {
             band.iter()
-                .any(|&m| self.has_keyword(m, Keyword::BandsWith(quality)))
-                && band
-                    .iter()
-                    .all(|&m| self.matches_bands_with_quality(m, quality))
+                .all(|&m| self.matches_bands_with_quality(m, quality))
         })
     }
 
@@ -1407,6 +1430,18 @@ impl Game {
         // Rampage N (CR 702.23) — the keyword *is* the trigger, so it's synthesized, not scanned
         // for; the attacker side only, and once per attacker however many creatures blocked it.
         self.queue_rampage_triggers(blocks);
+        // Imprison's "whenever enchanted creature attacks or blocks" — the block half, fired off
+        // each blocker's *attached permanents* rather than off the blocker itself. Deduped by
+        // blocker: `blocks` holds one pair per blocked attacker, so a creature that blocked a band
+        // appears once per member (CR 702.22h) but has blocked only once (CR 509.1a).
+        let mut blocked_with: Vec<ObjectId> = Vec::new();
+        for &(blocker, _) in blocks {
+            if blocked_with.contains(&blocker) {
+                continue;
+            }
+            blocked_with.push(blocker);
+            self.queue_enchanted_creature_blocks_triggers(blocker);
+        }
         self.combat.blocked_by.extend(seats); // these defenders' block declarations are final
         // Floral Spuzzem's "whenever this creature attacks and isn't blocked" — the last thing,
         // since it can only be answered once every attacked seat above is done declaring.
@@ -1586,8 +1621,9 @@ impl Game {
         {
             return Some(bander);
         }
-        // Every printed quality is tried: the condition only needs to hold under some one of them.
-        [BandsWithQuality::Legendary]
+        // Every quality these creatures carry is tried: the condition only needs to hold under
+        // some one of them.
+        self.bands_with_qualities(creatures)
             .into_iter()
             .find_map(|quality| {
                 let carrier = creatures.iter().copied().find(|&c| {

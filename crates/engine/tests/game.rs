@@ -510,6 +510,7 @@ fn casting_pays_the_spells_cost_from_the_pool() {
 /// A mana [`Cost`] with `generic` generic and `colored` WUBRG pips, plus an `additional` rider.
 const fn flash_cost(generic: u8, colored: [u8; 5], additional: AdditionalCost) -> Cost {
     Cost {
+        x_defined: None,
         generic,
         colored,
         colorless: 0,
@@ -1982,6 +1983,7 @@ static TWO_ETB: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     id: "",
     default_print: "",
     cost: Cost {
+        x_defined: None,
         generic: 1,
         colored: [0, 0, 0, 0, 0],
         colorless: 0,
@@ -2348,6 +2350,7 @@ static MAY_PAY_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         once_each_turn: false,
         condition: None,
         cost: Cost {
+            x_defined: None,
             generic: 1,
             colored: [0, 0, 0, 0, 0],
             colorless: 0,
@@ -20832,6 +20835,7 @@ static COLORLESS_ROCK: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     id: "",
     default_print: "",
     cost: Cost {
+        x_defined: None,
         generic: 0,
         colored: [0, 0, 0, 0, 0],
         colorless: 1,
@@ -21581,6 +21585,7 @@ fn vanilla(name: &'static str, generic: u8, colored: [u8; 5]) -> CardDef {
         id: "",
         default_print: "",
         cost: Cost {
+            x_defined: None,
             generic,
             colored,
             colorless: 0,
@@ -21881,6 +21886,7 @@ fn hybrid_filter_land(name: &'static str, a: Color, b: Color) -> CardDef {
             activator: Activator::Controller,
             taps_self: true,
             mana: Cost {
+                x_defined: None,
                 generic: 0,
                 colored: [0; 5],
                 colorless: 0,
@@ -28971,6 +28977,7 @@ fn rupture_spire_sacrificed_when_pay_declined() {
 fn echo_label_renders_colored_pips() {
     // Keldon Vandals' echo {2}{R} — the label must render the colored pip, not just generic.
     let cost = Cost {
+        x_defined: None,
         generic: 2,
         colored: [0, 0, 0, 1, 0], // {R}
         colorless: 0,
@@ -28984,6 +28991,7 @@ fn echo_label_renders_colored_pips() {
     let message = Effect::Choice(ChoiceEffect::PayOrElse {
         cost,
         extra_generic: None,
+        then: &[],
         otherwise: &[],
     })
     .message();
@@ -29160,6 +29168,7 @@ fn generic_only_sacrifice_unless_pay_label() {
     // Rupture Spire's own ETB trigger — "sacrifice it unless you pay {1}" — is generic-only and
     // must keep rendering that way.
     let cost = Cost {
+        x_defined: None,
         generic: 1,
         colored: [0; 5],
         colorless: 0,
@@ -29173,6 +29182,7 @@ fn generic_only_sacrifice_unless_pay_label() {
     let message = Effect::Choice(ChoiceEffect::PayOrElse {
         cost,
         extra_generic: None,
+        then: &[],
         otherwise: &[],
     })
     .message();
@@ -39302,6 +39312,7 @@ static NONCREATURE_PERMANENT_MV2: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     id: "",
     default_print: "",
     cost: Cost {
+        x_defined: None,
         generic: 2,
         colored: [0, 0, 0, 0, 0],
         colorless: 0,
@@ -39397,6 +39408,7 @@ static NONCREATURE_PERMANENT_MV4: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     id: "",
     default_print: "",
     cost: Cost {
+        x_defined: None,
         generic: 4,
         colored: [0, 0, 0, 0, 0],
         colorless: 0,
@@ -39706,6 +39718,7 @@ static NONCREATURE_PERMANENT_MV5: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     id: "",
     default_print: "",
     cost: Cost {
+        x_defined: None,
         generic: 5,
         colored: [0, 0, 0, 0, 0],
         colorless: 0,
@@ -64322,6 +64335,8 @@ fn brainstorm_clamps_to_hand_size_when_hand_is_smaller_than_count() {
             player: PlayerId(0),
             hand: vec![drawn],
             count: 1,
+            // Brainstorm charges nothing for a declined card, so `count` stays exact.
+            life_per_declined: 0,
         }),
         "count clamps to the 1-card hand, not the printed 2"
     );
@@ -67106,6 +67121,7 @@ static TEST_STEELBANE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
                 activator: Activator::Controller,
                 taps_self: false,
                 mana: Cost {
+                    x_defined: None,
                     generic: 2,
                     colored: [0, 0, 0, 0, 1], // {G}
                     colorless: 0,
@@ -69244,6 +69260,7 @@ static FOUR_MANA_VALUE_SORCERY: LazyLock<CardDef> = LazyLock::new(|| CardDef {
 /// actually chosen.
 static TWO_MANA_VALUE_X_SORCERY: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     cost: Cost {
+        x_defined: None,
         generic: 2,
         colored: [0; 5],
         colorless: 0,

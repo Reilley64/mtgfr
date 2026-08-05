@@ -603,6 +603,11 @@ pub(crate) enum ModifierKind {
     /// "Becomes a copy of target creature until end of turn" (CR 707.2 — Cursed Mirror): the
     /// printed [`CardId`] to put back on the permanent when the duration ends.
     RevertsToDef(CardId),
+    /// "If target Plains is tapped for mana, it produces colorless mana instead of white mana"
+    /// (Quarum Trench Gnomes) — the land's free-tap credit only, read at
+    /// [`Game::land_mana_credit`](crate::Game). Not a CR 613 layer: it rewrites what one ability
+    /// produces rather than any characteristic of the permanent.
+    ProducesColorlessInsteadOf(Color),
 }
 
 /// One continuous modification an effect made to one object, with the CR 613.7 timestamp it took

@@ -334,6 +334,50 @@ function arrangeLanesPrompt(
   );
 }
 
+/**
+ * Visions: "look at the top five cards … then put them back in any order" — our engine puts every
+ * card back exactly where it was, so there is nothing to decide. Show the cards and let the player
+ * dismiss; the arrange lanes would promise a reordering that never happens.
+ */
+function lookAtTopPrompt(
+  pending: Extract<PendingChoiceView, { kind: "look_at_top" }>,
+  state: VisibleState,
+  h: HtmlBuilder<Message>,
+): Html {
+  const faces = pending.items.map((item) =>
+    h.div(
+      [h.DataAttribute("testid", `prompt-card-${item.id}`), h.Class("relative rounded-[9px] p-0")],
+      [promptCardFace(h, { print: choiceItemPrint(item, state), label: item.label, size: "sm" })],
+    ),
+  );
+  return promptModalFrame(
+    {
+      testId: "pending-look-at-top-modal",
+      title: `Look at the top ${pending.items.length}`,
+      body: [
+        h.div(
+          [
+            h.DataAttribute("testid", "prompt-look-at-top-cards"),
+            h.Class("flex min-h-0 w-[min(92vw,720px)] flex-1 flex-col gap-3 overflow-y-auto overscroll-contain"),
+          ],
+          [
+            h.div(
+              [h.Class("shrink-0 text-caption text-mist")],
+              ["These go back on top in the same order — nothing to choose."],
+            ),
+            h.div(
+              [h.Class("flex min-h-[100px] flex-wrap justify-center gap-2 rounded-panel bg-glass/40 p-2")],
+              faces.length > 0 ? faces : [h.div([h.Class("self-center text-caption text-mist")], ["None"])],
+            ),
+          ],
+        ),
+      ],
+      actions: [submitButton("Done", false, h)],
+    },
+    h,
+  );
+}
+
 function cardPickPrompt(
   pending: PendingChoiceView,
   items: ReadonlyArray<ChoiceItem>,
@@ -1454,6 +1498,10 @@ function cardPickForKind(
 
   if (pending.kind === "scry" || pending.kind === "surveil" || pending.kind === "reorder_top") {
     return arrangeLanesPrompt(pending, state, board, h);
+  }
+
+  if (pending.kind === "look_at_top") {
+    return lookAtTopPrompt(pending, state, h);
   }
 
   if (pending.kind === "select_from_top") {

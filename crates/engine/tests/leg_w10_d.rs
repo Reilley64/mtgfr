@@ -182,7 +182,7 @@ fn winter_blast_kills_a_small_flier_it_taps() {
 
 // ── Increment #85: Visions ─────────────────────────────────────────────────────────────────────
 // "Look at the top five cards of target player's library. You may then have that player shuffle
-// that library." Approximated by the look-and-reorder shape (increment 150).
+// that library." The look itself is a look-only pause (increment 150, `leg_w12_a.rs`).
 
 #[test]
 fn visions_looks_at_five_of_the_targeted_players_library_then_offers_a_shuffle() {

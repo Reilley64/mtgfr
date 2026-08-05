@@ -45,6 +45,13 @@ pub enum TargetSpec {
     /// Rendezvous, Witherbloom Command mode 3).
     #[cfg_attr(feature = "card-dsl", serde(rename = "opponent"))]
     OpponentPlayer,
+    /// A living player who has cast one or more sorcery spells this turn (Backdraft). The only
+    /// player spec that reads turn history rather than the board.
+    #[cfg_attr(
+        feature = "card-dsl",
+        serde(rename = "player_who_cast_a_sorcery_this_turn")
+    )]
+    PlayerWhoCastASorceryThisTurn,
     /// "Any target": a creature, a player, or a planeswalker (modern wording, CR 115.4).
     /// ponytail: battles aren't a modeled permanent type, so creature-or-player-or-planeswalker
     /// is the entire "any target" set this pool can produce — revisit when battles land.
@@ -311,6 +318,20 @@ pub enum SpellFilter {
         serde(rename = "creature_not_sharing_color_with_creature_you_control")
     )]
     CreatureNotSharingColorWithCreatureYouControl,
+    /// A spell that *would destroy* a land the filtering permanent's controller controls
+    /// (Equinox's "Counter target spell if it would destroy a land you control"). "You" is the
+    /// counterer, so — like
+    /// [`InstantOrAuraTargetsPermanentYouControl`](Self::InstantOrAuraTargetsPermanentYouControl)
+    /// — it is matched inline in [`Game::legal_targets_for`](crate::Game)'s `SpellOnStack`
+    /// enumeration, the only place holding that seat, and `Game::spell_matches_filter` never
+    /// matches it.
+    /// ponytail: "would destroy" is predicted from the spell's script rather than simulated — a
+    /// destroy clause whose already-chosen target is a land you control, or whose sweep filter
+    /// some land you control matches. A destroy buried behind a modal/conditional branch, one
+    /// reached only through an unpredictable choice, or a kill by some other route (sacrifice,
+    /// -X/-X, exile) reads as "would not destroy". Increment #192.
+    #[cfg_attr(feature = "card-dsl", serde(rename = "would_destroy_land_you_control"))]
+    WouldDestroyLandYouControl,
 }
 
 /// Which library cards a [`Effect::Dig(DigEffect::SearchLibrary)`] may find (CR 701.19 — "search for a card").
@@ -929,6 +950,13 @@ pub struct PermanentFilter {
     /// [`CombatState::blocks`], the same declared-blocks list `anthem_static`'s own
     /// `blocking_only` axis consults.
     pub blocking: bool,
+    /// Restrict to creatures blocking **this** creature — the filter's own source (The Wretched's
+    /// "all creatures blocking this creature"). Narrower than [`blocking`](Self::blocking), which
+    /// only asks whether the candidate blocks *some* attacker: this reads the
+    /// [`CombatState::blocks`] pair, so a creature blocking a different attacker doesn't match.
+    /// Matches nothing when the filter is evaluated with no source. `false` (default) imposes no
+    /// restriction.
+    pub blocking_source: bool,
     /// Restrict to creatures that are either attacking or blocking (Tor Wauki's "target
     /// *attacking or blocking* creature" — a Legends idiom, printed on four of that set's archers).
     /// The union of [`attacking`](Self::attacking) and [`blocking`](Self::blocking), which as two
@@ -1142,6 +1170,7 @@ impl PermanentFilter {
             not_attacking: false,
             attacking_you: false,
             blocking: false,
+            blocking_source: false,
             attacking_or_blocking: false,
             tapped_or_blocking: false,
             unblocked: false,

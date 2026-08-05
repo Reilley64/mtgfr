@@ -299,6 +299,7 @@ message PendingChoiceView {
     PendingChoiceViewMayExileDiscardedToPlay may_exile_discarded_to_play = 69;
     PendingChoiceViewPayLifeOrEntersTapped pay_life_or_enters_tapped = 70;
     PendingChoiceViewReorderTop reorder_top = 71;
+    PendingChoiceViewLookAtTop look_at_top = 72;
   }
 }
 
@@ -448,6 +449,13 @@ message PendingChoiceViewScry {
 // The looked-at cards, top of a library the player may reorder but not split (Natural
 // Selection). Private to that player; every card goes back on top, so there is no second pile.
 message PendingChoiceViewReorderTop {
+  uint32 player = 1;
+  repeated ChoiceItem items = 2;
+}
+
+// The looked-at cards, top of a library the player may only look at (Visions). Private to that
+// player; the answer is a dismissal, so not even the order is decided.
+message PendingChoiceViewLookAtTop {
   uint32 player = 1;
   repeated ChoiceItem items = 2;
 }
@@ -625,10 +633,13 @@ message PendingChoiceViewDiscard {
 // This player must put `count` cards from their hand (`items`, private to them) on top of
 // their library, in an order they choose (Brainstorm) — unlike `PendingChoiceViewDiscard`, the
 // answer's order matters (first-named ends up on top).
+// When `life_per_declined` is nonzero (Sylvan Library) `count` is a maximum: any number from
+// zero up may be put back, and each one declined costs that much life.
 message PendingChoiceViewPutFromHandOnTop {
   uint32 player = 1;
   uint32 count = 2;
   repeated ChoiceItem items = 3;
+  uint32 life_per_declined = 4;
 }
 
 // This player may put one hand land (`items`, private to them) onto the battlefield, or

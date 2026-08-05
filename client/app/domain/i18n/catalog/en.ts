@@ -138,7 +138,8 @@ function preventCombatDamageLabel(params: MessageParams): string {
 }
 
 function staticAllLandsOfTypeBecome(params: MessageParams): string {
-  const all = `All ${humanize(param(params, "land_types"))}s are`;
+  // Living Plane says "All lands"; the type-scoped globals name a land type and pluralize it.
+  const all = bool(params, "all_lands") ? "All lands are" : `All ${humanize(param(params, "land_types"))}s are`;
   if (!bool(params, "creature")) return `${all} ${humanize(param(params, "set_subtypes"))}`;
   const colors = humanize(param(params, "add_colors"));
   const color = colors === "" ? "" : `${colors} `;
@@ -165,11 +166,13 @@ function staticFilteredAnthem(params: MessageParams): string {
   // The engine joins an empty keyword slice to the literal "none", so a P/T-only anthem
   // (Arcades Sabboth) has to read that as "no keyword clause" rather than print it.
   const keywords = String(param(params, "keywords", "none"));
+  const loseKeywords = String(param(params, "lose_keywords", "none"));
   const power = param(params, "power", 0);
   const toughness = param(params, "toughness", 0);
   const clauses: string[] = [];
   if (Number(power) !== 0 || Number(toughness) !== 0) clauses.push(`get +${power}/+${toughness}`);
   if (keywords !== "none") clauses.push(`have ${humanize(keywords)}`);
+  if (loseKeywords !== "none") clauses.push(`lose ${humanize(loseKeywords)}`);
   return `${scope} ${clauses.join(" and ")}`;
 }
 
@@ -233,6 +236,9 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.choice_each_player_discards_hand_then_draws": (params) =>
     `Each player discards their hand, then draws ${param(params, "count")}`,
   "effect.choice_each_player_exiles_from_graveyard": literal("Each player exiles a card from their graveyard"),
+  "effect.choice_each_player_may_put_permanent_from_hand_repeating": literal(
+    "Starting with you, each player may put a permanent card from their hand onto the battlefield, repeating until no one does",
+  ),
   "effect.choice_each_player_names_card_then_reveals_top": literal(
     "Each player chooses a card name. Then each player reveals the top card of their library. If the card a player revealed has the name they chose, that player puts it into their hand. If it does not, that player puts it on the bottom of their library",
   ),
@@ -301,8 +307,15 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.choice_put_creature_from_hand_attacking": literal(
     "You may put a creature card from your hand onto the battlefield tapped and attacking",
   ),
-  "effect.choice_put_from_hand_on_top": (params) =>
-    `Put ${param(params, "count")} cards from your hand on top of your library in any order`,
+  "effect.choice_put_from_hand_on_top": (params) => {
+    const count = param(params, "count");
+    const life = param(params, "life_per_declined", "0");
+    const from = bool(params, "drawn_this_turn") ? "in your hand drawn this turn" : "from your hand";
+    if (life !== "0") {
+      return `Choose ${count} cards ${from}. For each of those cards, pay ${life} life or put the card on top of your library`;
+    }
+    return `Put ${count} cards ${from} on top of your library in any order`;
+  },
   "effect.choice_put_land_from_hand": (params) =>
     `Put a land from hand onto the battlefield${bool(params, "tapped") ? " tapped" : ""}`,
   "effect.choice_sacrifice_any_number": (params) =>
@@ -330,6 +343,9 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.control_gain_control": literal("Gain control of target creature"),
   "effect.control_gain_control_all_until_end_of_turn": literal(
     "Untap all creatures and gain control of them until end of turn",
+  ),
+  "effect.control_gain_control_all_while": literal(
+    "Gain control of all matching creatures for as long as you control this creature",
   ),
   "effect.control_gain_control_until_end_of_turn": literal("Gain control of target creature until end of turn"),
   "effect.control_gain_control_while": literal(
@@ -454,6 +470,8 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.dig_look_at_target_players_hand": literal("Look at target player's hand"),
   "effect.dig_look_at_top": (params) =>
     `Look at the top ${param(params, "count")} cards, put up to ${param(params, "up_to")} ${topDest(params)}, rest on the bottom`,
+  "effect.dig_look_at_target_players_top": (params) =>
+    `Look at the top ${param(params, "count")} cards of target player's library`,
   "effect.dig_may_shuffle_target_players_library": literal("You may have that player shuffle"),
   "effect.dig_opponent_splits_exile_piles": literal(
     "Exile the top four cards in one pile, then the top four in a second pile. An opponent chooses one pile; put it into your graveyard. You may cast a card from the other pile without paying its mana cost; put the rest into your hand",
@@ -490,6 +508,7 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.exile_graveyard": literal("Exile target player's graveyard"),
   "effect.exile_linked_twin": literal("Exile its twin"),
   "effect.exile_object": literal("Exile it"),
+  "effect.exile_source": literal("Exile it"),
   "effect.exile_target": literal("Exile target"),
   "effect.exile_target_minting_illusion_on_leave": literal("Exile target"),
   "effect.exile_until_source_leaves": literal("Exile target until this leaves the battlefield"),
@@ -513,6 +532,8 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.mana_target_player_taps_lands_for_mana": literal(
     "Target player activates a mana ability of each land they control",
   ),
+  "effect.mana_target_land_produces_colorless_instead_of": (params) =>
+    `If target land is tapped for mana, it produces colorless mana instead of ${param(params, "color")} mana`,
   "effect.mill_exile_discarded_with_this": literal("Exile that card from your graveyard with this"),
   "effect.mill_exile_from_graveyard_may_play": literal("Exile that card from your graveyard; play it this turn"),
   "effect.mill_exile_target_from_graveyard_create_token_copy": (params) =>
@@ -520,6 +541,7 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.mill_exile_target_from_graveyard_with_this": literal(
     "Exile target noncreature, nonland card from your graveyard",
   ),
+  "effect.mill_exile_top_face_down_with_this": literal("Exile the top card of your library face down"),
   "effect.mill_exile_top_may_play": (params) =>
     `Exile the top ${param(params, "count")} card(s)${bool(params, "face_down") ? " face down" : ""}; play ${millPlayDuration(params)}${bool(params, "free_while_source") ? " without paying its mana cost" : ""}`,
   "effect.mill_mill": (params) => `${playerClause(params, "mill")} ${param(params, "count")}`,
@@ -530,6 +552,8 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.misc_counter_target_activated_ability": literal("Counter target activated ability"),
   "effect.misc_counter_target_spell": (params) =>
     `Counter target ${humanize(param(params, "filter", "spell"))}${params.unless_pays == null ? "" : ` unless its controller pays ${param(params, "unless_pays")}`}`,
+  // Imprison's "counter that ability" — the ability is the one that triggered this, never chosen.
+  "effect.misc_counter_triggering_ability": () => "Counter that ability",
   "effect.misc_counter_triggering_spell": (params) =>
     `Counter it${params.unless_pays === false ? "" : ` unless its controller pays ${param(params, "amount")}`}`,
   "effect.misc_fight": (params) =>
@@ -593,6 +617,9 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     `Enchanted creature loses ${humanize(param(params, "keywords"))}`,
   "effect.pump_grant_chosen_color_protection_until_end_of_turn": literal(
     "Target creature you control gains protection from the color of your choice until end of turn",
+  ),
+  "effect.pump_grant_chosen_landwalk_self_until_end_of_turn": literal(
+    "This creature gains landwalk of the chosen type until the end of that turn",
   ),
   "effect.pump_grant_keywords_to_permanents_you_control_until_end_of_turn": (params) =>
     `Permanents you control gain ${humanize(param(params, "keywords"))} until end of turn`,
@@ -672,6 +699,9 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.sequence": (_params, children) => children.join(", then "),
   "effect.static_all_lands_of_type_become": (params) => staticAllLandsOfTypeBecome(params),
   "effect.static_anthem": (params) => staticAnthem(params),
+  "effect.static_opponent_land_entry_costs_a_land": literal(
+    "If an opponent who controls at least as many lands as you do would put a land onto the battlefield, that player instead puts that land onto the battlefield then sacrifices a land of their choice",
+  ),
   "effect.static_attack_tax": (params) =>
     `Creatures can't attack you unless their controller pays {${param(params, "amount")}} for each creature they control that's attacking you`,
   "effect.static_base_power_toughness_from_amount": (params) =>
@@ -783,6 +813,9 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     `Attached creature gets +${param(params, "power")}/+${param(params, "toughness")}`,
   "effect.static_life_gain_replacement": (params) => `life gained: n + ${param(params, "plus")}`,
   "effect.static_life_gain_becomes_draw": literal("If you would gain life, draw that many cards instead"),
+  "effect.static_draws_after_the_first_each_draw_step_become_discard_then_draw": literal(
+    "If a player would draw a card except the first one they draw in each of their draw steps, that player discards a card instead. If the player discards a card this way, they draw a card. If the player doesn't discard a card this way, they mill a card",
+  ),
   "effect.static_no_maximum_hand_size": literal("You have no maximum hand size"),
   "effect.static_play_any_number_of_lands": literal("You may play any number of lands on each of your turns"),
   "effect.static_play_from_graveyard_once_per_turn": literal(
@@ -906,6 +939,8 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   ),
   "effect.zone_reanimate_to_battlefield": literal("Reanimate to battlefield"),
   "effect.zone_reflexive_trigger": (_params, children) => children[0] ?? "",
+  "effect.zone_return_all_exiled_with_this": (params) =>
+    `Put all cards exiled with this permanent into their owner's ${bool(params, "to_graveyard") ? "graveyard" : "hand"}`,
   "effect.zone_return_all_to_hand": (params) =>
     `Return all ${humanize(param(params, "filter", "permanents"))} to their owners' hands`,
   "effect.zone_return_dying_enchanted_creature_to_hand": literal("Return that card to its owner's hand"),

@@ -168,12 +168,18 @@ pub(crate) enum ChoiceRequest {
         or_one_matching: Option<crate::CardFilter>,
     },
     /// [`Effect::Choice(ChoiceEffect::PutFromHandOnTop)`] — empty (or zero-count) hand skips.
-    PutFromHandOnTop { player: crate::PlayerId, count: u32 },
+    PutFromHandOnTop {
+        player: crate::PlayerId,
+        count: u32,
+        drawn_this_turn: bool,
+        life_per_declined: u32,
+    },
     /// [`Effect::Choice(ChoiceEffect::PayOrElse)`] — always pauses.
     PayOrElse {
         player: crate::PlayerId,
         source: crate::ObjectId,
         cost: crate::Cost,
+        then: &'static [crate::Effect],
         otherwise: &'static [crate::Effect],
     },
     /// [`Effect::Choice(ChoiceEffect::SacrificeSelfUnlessReturnLand)`] — no candidates → `None` (caller sacrifices).
@@ -238,6 +244,9 @@ pub(crate) enum ChoiceRequest {
         subtypes: &'static [&'static str],
         keep: bool,
         defender: Option<crate::PlayerId>,
+        /// Eureka's round-robin queue — see [`PendingChoice::PutCreatureFromHand`](crate::PendingChoice).
+        round: Option<Vec<crate::PlayerId>>,
+        permanent_cards: bool,
     },
     /// [`Effect::Choice(ChoiceEffect::CastCreatureFaceDown)`] — no payable creature skips.
     CastCreatureFaceDown {
@@ -537,8 +546,13 @@ pub(super) fn choice_from_request(game: &Game, request: ChoiceRequest) -> Option
             count,
             or_one_matching,
         } => optional::discard(game, player, count, or_one_matching),
-        ChoiceRequest::PutFromHandOnTop { player, count } => {
-            optional::put_from_hand_on_top(game, player, count)
+        ChoiceRequest::PutFromHandOnTop {
+            player,
+            count,
+            drawn_this_turn,
+            life_per_declined,
+        } => {
+            optional::put_from_hand_on_top(game, player, count, drawn_this_turn, life_per_declined)
         }
         ChoiceRequest::SacrificeUnlessReturnLand {
             player,
@@ -603,7 +617,18 @@ pub(super) fn choice_from_request(game: &Game, request: ChoiceRequest) -> Option
             subtypes,
             keep,
             defender,
-        } => library::put_creature_from_hand(game, player, source, subtypes, keep, defender),
+            round,
+            permanent_cards,
+        } => library::put_creature_from_hand(
+            game,
+            player,
+            source,
+            subtypes,
+            keep,
+            defender,
+            round,
+            permanent_cards,
+        ),
         ChoiceRequest::CastCreatureFaceDown { player, spent_mana } => {
             library::cast_creature_face_down(game, player, spent_mana)
         }

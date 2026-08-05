@@ -66,8 +66,11 @@ impl Game {
             }),
         );
         self.permanent_mut(id).continuous_timestamp = self.stamp_continuous_timestamp();
+        // Board-wide, the same as the [`Event::PermanentEntered`] path this helper stands in for:
+        // a both-sided static (Gravity Sphere's "All creatures lose flying") reaches permanents
+        // this player doesn't own, so an owner-scoped drop would leave their cached keywords stale.
         self.characteristics_cache
-            .write(|cache| cache.invalidate_owner(self, player));
+            .write(|cache| cache.invalidate_all_battlefield(self));
         id
     }
 

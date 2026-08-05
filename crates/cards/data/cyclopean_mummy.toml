@@ -15,3 +15,12 @@ black = 1
 type = "creature"
 power = 2
 toughness = 1
+
+# When this creature dies, exile it.
+[[abilities]]
+timing = "dies"
+
+# When this creature dies, exile it.
+[[abilities.effects]]
+type = "exile"
+mode = "source"

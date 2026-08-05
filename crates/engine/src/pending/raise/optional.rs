@@ -292,8 +292,15 @@ pub(super) fn put_from_hand_on_top(
     game: &Game,
     player: PlayerId,
     count: u32,
+    drawn_this_turn: bool,
+    life_per_declined: u32,
 ) -> Option<PendingChoice> {
-    let hand = game.hand_of(player);
+    let mut hand = game.hand_of(player);
+    // Sylvan Library chooses among "cards in your hand drawn this turn" only — a card drawn and
+    // already played this turn is no longer in hand, so the intersection is the candidate set.
+    if drawn_this_turn {
+        hand.retain(|c| game.drawn_this_turn.contains(c));
+    }
     let count = (count as usize).min(hand.len());
     if count == 0 {
         return None;
@@ -302,6 +309,7 @@ pub(super) fn put_from_hand_on_top(
         player,
         hand,
         count,
+        life_per_declined,
     })
 }
 

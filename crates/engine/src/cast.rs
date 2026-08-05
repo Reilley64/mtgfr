@@ -1315,6 +1315,23 @@ impl Game {
                 }
                 Ok(chosen)
             }
+            // "Sacrifice this artifact and any number of creatures you control" (Sword of the
+            // Ages): the source is always sacrificed and goes first, then whatever else was
+            // named — zero picks is a legal payment (CR 601.2f), so there is no count check.
+            SacrificeCost::ThisAndAnyNumber { filter } => {
+                let mut chosen = vec![source];
+                for &s in named {
+                    let legal = !chosen.contains(&s)
+                        && self.as_permanent(s).is_some()
+                        && self.controller_of(s) == player
+                        && self.permanent_matches(&filter, s, player, Some(source));
+                    if !legal {
+                        return Err(Reject::CannotActivate);
+                    }
+                    chosen.push(s);
+                }
+                Ok(chosen)
+            }
         }
     }
 
@@ -2501,6 +2518,14 @@ impl Game {
         x: u32,
     ) -> Result<Vec<Event>, Reject> {
         let (ability, cost) = self.ability_activation_gate(player, object, ability_index)?;
+        // CR 107.3b: a card-*defined* {X} (Voodoo Doll's "X is the number of pin counters on this
+        // artifact") is never announced, so whatever the activator passed is discarded and the
+        // cost's own amount is resolved against the source instead. Computed here, before any cost
+        // event lands, so `{X}{X}` reads the pin-counter count as it stood at activation.
+        let x = match cost.mana.x_defined {
+            Some(amount) => self.resolve_amount(amount, player, object, None, 0).max(0) as u32,
+            None => x,
+        };
         // A player-declared-X counter-removal cost (CR 601.2b/602.2b — Fungal Reaches' "Remove X
         // storage counters from this land"): the chosen `x` can't exceed the source's actual count
         // of that kind (X = 0 is always legal, CR 107.3c, so this only ever rejects a too-large X,
@@ -2682,15 +2707,21 @@ impl Game {
         // Steeper's "+X/+0"; Dina, Essence Brewer's "gain X life and put X counters", X = that
         // power; Miren, the Moaning Well's "gain life equal to the sacrificed creature's
         // toughness") — by the time the ability resolves off the stack, the creature is gone and
-        // there's nothing left to read `Amount::SourcePower`/`SourceToughness` from. No pool card
-        // combines `SourcePower`/`SourceToughness` with a multi-creature sacrifice cost, so the
-        // first sacrificed creature is the only one that can matter here.
-        let effect = match sacrificed.first() {
-            Some(&id) => {
-                contextualize_sacrifice_effect(ability.effect, self.power(id), self.toughness(id))
-            }
-            None => ability.effect,
+        // there's nothing left to read `Amount::SourcePower`/`SourceToughness` from. Summed over
+        // every permanent sacrificed, which is Sword of the Ages' "X is the total power of the
+        // creatures sacrificed this way" and is identical to reading the single creature for every
+        // one-creature sacrifice cost in the pool.
+        let effect = match sacrificed.is_empty() {
+            false => contextualize_sacrifice_effect(
+                ability.effect,
+                sacrificed.iter().map(|&id| self.power(id)).sum(),
+                sacrificed.iter().map(|&id| self.toughness(id)).sum(),
+            ),
+            true => ability.effect,
         };
+        // "…then exile this artifact and those creature cards" (Sword of the Ages) — the cards are
+        // pinned here, as the cost is paid, for the same reason the power above is.
+        let effect = contextualize_exiled_sacrifices(effect, &sacrificed);
         // "If the discarded card was a land card, ~" (Land's Edge, CR 602.2b) — read before the
         // discard events fire below, same reason as the sacrifice read above. `named` is empty
         // (so `was_land` is trivially `false`) for every ability without a discard cost.
@@ -3027,6 +3058,13 @@ impl Game {
         // so a fixed-cost activation queues nothing.
         if cost.mana.x > 0 {
             self.queue_activate_ability_triggers(player, object);
+        }
+        // Imprison's "whenever a player activates an ability of enchanted creature with {T} in its
+        // activation cost that isn't a mana ability". Fired off the just-placed ability so the
+        // counter trigger lands above it (CR 603.3b); a mana ability never reaches here (it
+        // resolved above, CR 605.3a), so `taps_self` is the whole test.
+        if cost.taps_self {
+            self.queue_enchanted_creature_activates_tap_ability_triggers(object);
         }
         Ok(events)
     }

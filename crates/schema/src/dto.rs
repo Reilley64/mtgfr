@@ -742,6 +742,10 @@ pub enum PendingChoiceView {
     /// Selection). Private to that player; every card goes back on top, so unlike
     /// [`Self::Scry`] there is no second pile to answer with.
     ReorderTop { player: u8, items: Vec<ChoiceItem> },
+    /// The looked-at cards, top of a library the player may only *look* at (Visions). Private to
+    /// that player; the answer is a dismissal, so unlike [`Self::ReorderTop`] not even the order
+    /// is decided.
+    LookAtTop { player: u8, items: Vec<ChoiceItem> },
     /// The matching library cards found. Private to the searching player.
     SearchLibrary { player: u8, items: Vec<ChoiceItem> },
     /// The looked-at top cards; the player may select up to `up_to` into a zone. Private to them.
@@ -896,10 +900,13 @@ pub enum PendingChoiceView {
     },
     /// This player must put `count` cards from their hand (`items`, private to them) on top of
     /// their library, in an order they choose (Brainstorm) — unlike [`Self::Discard`], the
-    /// answer's order matters (first-named ends up on top).
+    /// answer's order matters (first-named ends up on top). When `life_per_declined` is nonzero
+    /// (Sylvan Library) `count` is a *maximum*: any number from zero up may be put back, and each
+    /// one declined costs that much life.
     PutFromHandOnTop {
         player: u8,
         count: u32,
+        life_per_declined: u32,
         items: Vec<ChoiceItem>,
     },
     /// This player may put one hand land (`items`, private to them) onto the battlefield, or
@@ -1121,6 +1128,7 @@ impl PendingChoiceView {
             | Self::Scry { items, .. }
             | Self::Surveil { items, .. }
             | Self::ReorderTop { items, .. }
+            | Self::LookAtTop { items, .. }
             | Self::SearchLibrary { items, .. }
             | Self::SelectFromTop { items, .. }
             | Self::DistributeTop { items, .. }

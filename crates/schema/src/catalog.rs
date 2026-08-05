@@ -95,6 +95,9 @@ pub(crate) fn wire_keyword(keyword: engine::Keyword) -> String {
         Keyword::CantBlock => "cant_block".into(),
         Keyword::Banding => "banding".into(),
         Keyword::BandsWith(BandsWithQuality::Legendary) => "bands_with:legendary".into(),
+        // The quality is a card name, so it rides in the id — the client only reads the
+        // `bands_with:` prefix (see `board/geometry/combat-staging.ts`).
+        Keyword::BandsWith(BandsWithQuality::Named(name)) => format!("bands_with:named:{name}"),
         Keyword::CanBlockOnlyFlyers => "can_block_only_flyers".into(),
         Keyword::Decayed => "decayed".into(),
         Keyword::Myriad => "myriad".into(),
@@ -152,6 +155,9 @@ pub(crate) fn keyword_label(keyword: engine::Keyword) -> String {
         Keyword::Banding => "Banding".into(),
         Keyword::BandsWith(BandsWithQuality::Legendary) => {
             "Bands with other legendary creatures".into()
+        }
+        Keyword::BandsWith(BandsWithQuality::Named(name)) => {
+            format!("Bands with other creatures named {name}")
         }
         Keyword::CanBlockOnlyFlyers => "Can block only creatures with flying".into(),
         Keyword::Decayed => "Decayed".into(),

@@ -495,6 +495,8 @@ export type PendingChoiceView =
   | { items: Array<ChoiceItem>; kind: "scry"; player: number }
   | { items: Array<ChoiceItem>; kind: "surveil"; player: number }
   | { items: Array<ChoiceItem>; kind: "reorder_top"; player: number }
+  // Visions: the "put them back in any order" half is a no-op, so this is a look-and-dismiss pause.
+  | { items: Array<ChoiceItem>; kind: "look_at_top"; player: number }
   | { items: Array<ChoiceItem>; kind: "search_library"; player: number }
   | { items: Array<ChoiceItem>; kind: "select_from_top"; player: number; up_to: number }
   | {

@@ -109,6 +109,22 @@ impl Game {
                 }
                 vec![Event::AbilityCountered { source: source_id }]
             }
+            // Imprison's "counter that ability" (CR 115.1): the ability is the one that fired the
+            // watch, baked in at placement, not a chosen target — otherwise identical to the
+            // targeted counter above, down to the on-stack check (it may have already resolved or
+            // been countered in response).
+            MiscEffect::CounterTriggeringAbility { triggering_ability } => {
+                let Some(source_id) = triggering_ability else {
+                    return Vec::new();
+                };
+                let on_stack = self.stack.iter().any(|item| {
+                    matches!(item, StackItem::Ability { source, activated: true, .. } if *source == source_id)
+                });
+                if !on_stack {
+                    return Vec::new();
+                }
+                vec![Event::AbilityCountered { source: source_id }]
+            }
             // Schedule a CR 603.7 delayed trigger: resolve `who` to a concrete player now (the
             // effect itself doesn't fire until the matching step begins — see
             // `Game::fire_delayed_triggers`).

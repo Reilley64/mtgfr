@@ -741,6 +741,7 @@ mod tests {
 
     fn flash_cost(generic: u8) -> Cost {
         Cost {
+            x_defined: None,
             generic,
             colored: [0; Color::COUNT],
             colorless: 0,

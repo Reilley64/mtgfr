@@ -234,6 +234,12 @@ impl Game {
             Amount::BlockersBeyondFirst { per } => {
                 per * self.blockers_of(source).len().saturating_sub(1) as i32
             }
+            // Wall of Caltrops' co-blocker count reads the *other* creature in the block, which
+            // only `TriggerContext::blocking_partner` knows — so `Game::compare_operand` answers
+            // it at trigger placement (CR 603.4) and this path has nothing to read.
+            // ponytail: `0` rather than a panic, matching `TriggeringSpellManaValue`'s placeholder
+            // — no effect resolves this amount today; give it a partner-carrying frame if one does.
+            Amount::CreaturesBlockingThatCreature { .. } => 0,
             // Reads the mana value the preceding `Effect::Dig(DigEffect::ExileTargetGraveyardCardRecordManaValue)`
             // step snapshotted (Surge to Victory's team +X/+0 pump); `0` if unset — unreachable in
             // practice, since a fizzled target drops the whole ability before this reads.

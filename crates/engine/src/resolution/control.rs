@@ -208,6 +208,25 @@ impl Game {
                     controller: self.owner_of(object),
                 })
                 .collect(),
+            // The Wretched (CR 611.2b): `GainControlAllUntilEndOfTurn`'s filtered sweep handed over
+            // under `GainControlWhile`'s condition instead of a turn — no untap, no haste, the card
+            // prints neither. `blocking_source = true` needs the source passed to the filter, which
+            // is how "blocking **this** creature" resolves to the right attacker. Each match gets
+            // its own `ControlCondition`, so `check_conditioned_control_reversions` hands them all
+            // back the moment the source leaves the battlefield or changes controller.
+            ControlEffect::GainControlAllWhile { filter } => self
+                .battlefield()
+                .into_iter()
+                .filter(|&id| self.permanent_matches(&filter, id, controller, Some(source)))
+                .map(|object| Event::ConditionedControlGained {
+                    object,
+                    controller,
+                    condition: crate::ControlCondition {
+                        source,
+                        needs_tapped: false,
+                    },
+                })
+                .collect(),
             ControlEffect::GainControlWhile {
                 while_source_tapped,
                 ..

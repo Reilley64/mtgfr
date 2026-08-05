@@ -23,6 +23,12 @@ impl Game {
         if !is_partition(&top, &bottom, &cards) {
             return Err(Reject::IllegalChoice); // not a split of exactly the shown cards
         }
+        // A look-only pause (Visions) decides nothing: the answer names the cards it saw and the
+        // library is left exactly as it was — the order the answer happens to carry is ignored.
+        if rest_dest == ArrangeRest::LookOnly {
+            self.finish_answer();
+            return Ok(Vec::new());
+        }
         if rest_dest == ArrangeRest::Nowhere && !bottom.is_empty() {
             // "Put them back in any order" — there is nowhere else to put one.
             return Err(Reject::IllegalChoice);
@@ -645,6 +651,8 @@ impl Game {
             source,
             keep,
             defender,
+            round,
+            permanent_cards,
             ..
         }) = self.pending_choice.clone()
         else {
@@ -657,6 +665,7 @@ impl Game {
 
         let mut events = Vec::new();
         let Some(from) = choice else {
+            self.offer_next_in_put_round(player, source, round, false, keep, permanent_cards);
             return Ok(events);
         };
         let permanent = self.next_object_id();
@@ -708,7 +717,51 @@ impl Game {
                 },
             );
         }
+        self.offer_next_in_put_round(player, source, round, true, keep, permanent_cards);
         Ok(events)
+    }
+
+    /// Eureka's "Repeat this process until no one puts a card onto the battlefield": raise the next
+    /// seat's offer, if the lap is still running. `round` is the queue of seats still owed one after
+    /// `player` (`None` for Cauldron Dance / Kaalia's single offer, which never repeats). A seat that
+    /// `acted` puts every other seat back in the queue ahead of itself, so the process can only end
+    /// once a whole lap has passed with nobody acting; a decline just moves to the next seat, and an
+    /// empty queue ends it. `raise` skips seats holding nothing eligible on its own.
+    fn offer_next_in_put_round(
+        &mut self,
+        player: PlayerId,
+        source: ObjectId,
+        round: Option<Vec<PlayerId>>,
+        acted: bool,
+        keep: bool,
+        permanent_cards: bool,
+    ) {
+        let Some(declined) = round else {
+            return;
+        };
+        let lap = match acted {
+            true => {
+                let mut lap = self.turn_order_from(player);
+                lap.rotate_left(1);
+                lap
+            }
+            false => declined,
+        };
+        let Some((&next, rest)) = lap.split_first() else {
+            return;
+        };
+        pending::raise(
+            self,
+            pending::ChoiceRequest::PutCreatureFromHand {
+                player: next,
+                source,
+                subtypes: &[],
+                keep,
+                defender: None,
+                round: Some(rest.to_vec()),
+                permanent_cards,
+            },
+        );
     }
 
     /// Answer a [`PendingChoice::ChooseDredge`] (CR 702.52). `dredger == Some(id)` replaces the draw:

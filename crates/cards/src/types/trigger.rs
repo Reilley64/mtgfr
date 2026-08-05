@@ -326,6 +326,25 @@ pub enum Trigger {
     /// slot [`PlayerAttacksYourOpponent`](Self::PlayerAttacksYourOpponent) uses; see
     /// [`Game::queue_enchanted_creature_attacks_triggers`].
     EnchantedCreatureAttacks,
+    /// Whenever the creature this Aura is attached to is declared as an attacker **or** as a
+    /// blocker (CR 508.1/509.1a — Imprison's "Whenever enchanted creature attacks or blocks").
+    /// The both-sides twin of [`EnchantedCreatureAttacks`](Self::EnchantedCreatureAttacks), placed
+    /// and controlled the same way; only the attack half carries the `attack` tuple, since a
+    /// blocker defends nobody. Queued from
+    /// [`Game::queue_enchanted_creature_attacks_triggers`] on the attack side and from
+    /// `Game::seal_blocks` on the block side. Spelled `"enchanted_creature_attacks_or_blocks"`.
+    EnchantedCreatureAttacksOrBlocks,
+    /// Whenever a player activates an ability of the creature this Aura is attached to whose
+    /// activation cost contains `{T}` and which isn't a mana ability (CR 602.2/605.1a — Imprison's
+    /// "Whenever a player activates an ability of enchanted creature with {T} in its activation
+    /// cost that isn't a mana ability"). *Any* player's activation fires it, unlike
+    /// [`ActivateAbility`](Self::ActivateAbility)'s [`WatchedPlayer`] scope, and unlike that watch
+    /// this one is not `{X}`-gated. The activated ability's source (the host) rides in
+    /// [`TriggerContext::triggering_ability`], which is what
+    /// [`MiscEffect::CounterTriggeringAbility`](crate::MiscEffect) counters. Fired from
+    /// `Game::activate_ability` once the ability is on the stack, so the counter lands above it
+    /// (CR 603.3b). Spelled `"enchanted_creature_activates_tap_ability"`.
+    EnchantedCreatureActivatesTapAbility,
     /// Whenever the creature this Aura is attached to dies (CR "When enchanted creature dies…",
     /// Angelic Destiny). The death twin of [`EnchantedCreatureAttacks`](Self::EnchantedCreatureAttacks):
     /// placed on the Aura, controlled by *that Aura's own controller*, not the dying creature's.

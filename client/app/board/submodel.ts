@@ -2314,6 +2314,7 @@ function trySubmitReadyPendingDraft(
       pc.kind === "scry" ||
       pc.kind === "surveil" ||
       pc.kind === "reorder_top" ||
+      pc.kind === "look_at_top" ||
       pc.kind === "select_from_top" ||
       pc.kind === "distribute_top" ||
       pc.kind === "partition_revealed")

@@ -244,6 +244,7 @@ struct AmountTableSchema {
     otherwise: Option<Amount>,
     permanents_destroyed_this_way: Option<PermanentFilter>,
     auras_attached_to_source: Option<EmptyTableSchema>,
+    creatures_blocking_that_creature: Option<PermanentFilter>,
     discard_cost_was_land: Option<i32>,
     left: Option<Amount>,
     op: Option<ArithOp>,
@@ -313,6 +314,7 @@ struct PermanentFilterTableSchema {
     not_attacking: Option<bool>,
     attacking_you: Option<bool>,
     blocking: Option<bool>,
+    blocking_source: Option<bool>,
     attacking_or_blocking: Option<bool>,
     tapped_or_blocking: Option<bool>,
     unblocked: Option<bool>,
@@ -381,12 +383,22 @@ fn sacrifice_cost_table_schema(generator: &mut SchemaGenerator) -> Schema {
         "permanent".to_owned(),
         generator.subschema_for::<PermanentFilter>(),
     );
+    // "Sacrifice this artifact and any number of creatures you control" (Sword of the Ages) —
+    // countless by construction, so it takes no `count` sibling.
+    object.object().properties.insert(
+        "this_and_any_number".to_owned(),
+        generator.subschema_for::<PermanentFilter>(),
+    );
     object
         .object()
         .properties
         .insert("count".to_owned(), generator.subschema_for::<u8>());
     object.object().additional_properties = Some(Box::new(Schema::Bool(false)));
-    object.subschemas().any_of = Some(vec![required_key("creature"), required_key("permanent")]);
+    object.subschemas().any_of = Some(vec![
+        required_key("creature"),
+        required_key("permanent"),
+        required_key("this_and_any_number"),
+    ]);
     Schema::Object(object)
 }
 

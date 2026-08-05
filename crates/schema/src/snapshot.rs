@@ -2325,7 +2325,9 @@ mod tests {
     /// an ordering choice.
     fn two_simultaneous_death_triggers() -> engine::CardDef {
         use engine::*;
-        const ABILITIES: [Ability; 2] = [
+        // `static`, not `const`: `Ability` is ~11 KiB, so a `const` array would be copied into
+        // every use site instead of living once in the binary.
+        static ABILITIES: [Ability; 2] = [
             Ability {
                 timing: Timing::Triggered(Trigger::CreatureYouControlDies),
                 effect: Effect::Life(LifeEffect::Gain {
@@ -2387,7 +2389,7 @@ mod tests {
             otags: empty_slice(),
             keywords: empty_slice(),
             conditional_keywords: empty_slice(),
-            abilities: ABILITIES.into(),
+            abilities: ABILITIES.to_vec().into(),
             cycling: None,
             cycling_sacrifice: SacrificeCost::None,
             flashback: None,

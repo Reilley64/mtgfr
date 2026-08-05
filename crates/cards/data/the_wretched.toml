@@ -16,3 +16,14 @@ black = 2
 type = "creature"
 power = 2
 toughness = 5
+
+# At end of combat, gain control of all creatures blocking this creature for as long as you
+# control this creature.
+[[abilities]]
+timing = "end_of_combat"
+
+# gain control of all creatures blocking this creature for as long as you control this creature
+[[abilities.effects]]
+type = "control"
+mode = "gain_control_all_while"
+filter = { types = "creature", blocking_source = true }

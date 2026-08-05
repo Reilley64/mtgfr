@@ -784,18 +784,39 @@ impl Game {
             player: chooser,
             hand,
             count,
+            life_per_declined,
         }) = self.pending_choice.clone()
         else {
             return Err(Reject::IllegalChoice);
         };
         let distinct = cards.iter().collect::<std::collections::HashSet<_>>().len();
         let all_in_hand = cards.iter().all(|c| hand.contains(c));
-        if player != chooser || !all_in_hand || cards.len() != count || distinct != cards.len() {
+        // A price on the declined cards (Sylvan Library) makes `count` a ceiling — putting none
+        // back and paying for all of them is a legal answer. Without one (Brainstorm) it's exact.
+        let counted = if life_per_declined > 0 {
+            cards.len() <= count
+        } else {
+            cards.len() == count
+        };
+        if player != chooser || !all_in_hand || !counted || distinct != cards.len() {
             return Err(Reject::IllegalChoice); // invalid — the choice stays pending
         }
 
         self.finish_answer();
         let mut events = Vec::new();
+        // "For each of those cards, pay 4 life or put the card on top of your library": every
+        // card of the `count` that didn't go back is paid for instead.
+        let declined = (count - cards.len()) as u32 * life_per_declined;
+        if declined > 0 {
+            self.push_apply(
+                &mut events,
+                Event::LifeChanged {
+                    player,
+                    amount: -(declined as i32),
+                    source: None,
+                },
+            );
+        }
         for &from in cards.iter().rev() {
             let card = self.next_object_id();
             let def = self.def_id_of(from);

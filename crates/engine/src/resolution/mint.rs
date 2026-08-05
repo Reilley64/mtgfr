@@ -25,6 +25,7 @@ impl Game {
                 | ControlEffect::GainControlUntilEndOfTurn { .. }
                 | ControlEffect::ExchangeAllCreaturesUntilEndOfTurn { .. }
                 | ControlEffect::GainControlAllUntilEndOfTurn { .. }
+                | ControlEffect::GainControlAllWhile { .. }
                 | ControlEffect::GainControlWhile { .. }
                 | ControlEffect::GoadTarget { .. }
                 | ControlEffect::GrantSourceAbilitiesUntilEndOfTurn
@@ -93,6 +94,7 @@ impl Game {
                 | MiscEffect::FlipSource
                 | MiscEffect::GetEmblem { .. }
                 | MiscEffect::CounterTargetActivatedAbility { .. }
+                | MiscEffect::CounterTriggeringAbility { .. }
                 | MiscEffect::CounterTargetSpell { .. }
                 | MiscEffect::GrantChannelColorlessManaThisTurn
                 | MiscEffect::GrantFlashThisTurn
@@ -142,6 +144,7 @@ impl Game {
                 | ZoneEffect::ReturnDyingEnchantedCreatureToHand { .. }
                 | ZoneEffect::ReanimateToBattlefield { .. }
                 | ZoneEffect::ReturnAllToHand { .. }
+                | ZoneEffect::ReturnAllExiledWithThis { .. }
                 | ZoneEffect::ReturnExiledCardToOwnersGraveyard { .. }
                 | ZoneEffect::ReturnFlickeredCard { .. }
                 | ZoneEffect::ReturnFromGraveyardToHand { .. }

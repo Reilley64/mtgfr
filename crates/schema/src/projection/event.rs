@@ -399,6 +399,14 @@ pub(crate) fn project_event(
         | Event::BaseToughnessSetIndefinite { object, .. } => {
             VisibleEvent::BasePtSetIndefinite { object }
         }
+        // ponytail: projected as the "re-read this object" bookkeeping boost — a land's mana
+        // credit is read from a fresh snapshot each delta, so the client shows nothing new here.
+        // Give it its own `VisibleEvent` if the log ever needs to name the rewrite.
+        Event::LandProducesColorlessInsteadOf { land, .. } => VisibleEvent::TempBoost {
+            object: land,
+            power: 0,
+            toughness: 0,
+        },
         Event::PtSwitchedUntilEndOfTurn { object } => VisibleEvent::TempBoost {
             object,
             power: 0,
