@@ -1106,6 +1106,9 @@ function cardPickConfig(pending: PendingChoiceView): {
       if (pending.choose_block_target) {
         return { title: "Choose an attacking creature to block", submitLabel: "Block", declineLabel };
       }
+      if (pending.choose_damage_source) {
+        return { title: "Choose which sorcery's damage is halved", submitLabel: "Choose" };
+      }
       return { title: "Choose a copy target", submitLabel: "Copy" };
     case "choose_attach_host":
       return { title: "Choose what to attach to", submitLabel: "Attach", declineLabel };

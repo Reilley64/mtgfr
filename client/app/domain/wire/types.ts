@@ -599,6 +599,7 @@ export type PendingChoiceView =
   | {
       items: Array<ChoiceItem>;
       choose_block_target?: boolean;
+      choose_damage_source?: boolean;
       kind: "choose_copy_target";
       player: number;
       put_counter_on_creature?: boolean;

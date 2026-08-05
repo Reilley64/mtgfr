@@ -192,9 +192,9 @@ the record shows what unblocked it.
 - [x] **Ayesha Tanaka** {W}{W}{U}{U} · Legendary Creature — Human Artificer — increment 103
       (approximated: while attacking, her banding does not take over the division of a blocker's
       combat damage — CR 702.22k)
-- [ ] **Backdraft** {1}{R} · Instant — increment 19, 135, 176
-      (approximated: the damage is sized off the chosen player's biggest-hitting sorcery
-      rather than one you pick, and the chooser is a target — increment 176)
+- [x] **Backdraft** {1}{R} · Instant — increment 19, 135, 176
+      (approximated: the chooser is a target, so this Backdraft is uncastable when no player has
+      cast a sorcery rather than castable and blank — increment 216)
 - [x] **Backfire** {U} · Enchantment — Aura — increment 20
 - [x] **Bartel Runeaxe** {3}{B}{R}{G} · Legendary Creature — Giant Warrior — increment 15
 - [x] **Beasts of Bogardan** {4}{R} · Creature — Beast — increment 13
@@ -207,7 +207,7 @@ the record shows what unblocked it.
 - [x] **Bronze Horse** {7} · Artifact Creature — Horse — increment 12
 - [x] **Cathedral of Serra** — · Land — increment 3 (slices 1, 2, 3)
 - [x] **Caverns of Despair** {2}{R}{R} · World Enchantment — increment 2, 23
-- [ ] **Chains of Mephistopheles** {1}{B} · Enchantment — increment 24
+- [x] **Chains of Mephistopheles** {1}{B} · Enchantment — increment 24
 - [x] **Chromium** {2}{W}{W}{U}{U}{B}{B} · Legendary Creature — Elder Dragon — increment 1, 119
 - [x] **Clergy of the Holy Nimbus** {W} · Creature — Human Cleric — increments 25, 128
 - [x] **Cocoon** {G} · Enchantment — Aura — increment 26
@@ -264,7 +264,7 @@ the record shows what unblocked it.
 - [x] **Hellfire** {2}{B}{B}{B} · Sorcery — increment 46
 - [x] **Horn of Deafening** {4} · Artifact — increment 94
 - [x] **Hunding Gjornersen** {3}{W}{U}{U} · Legendary Creature — Human Warrior — increment 1, 119
-- [ ] **Ichneumon Druid** {1}{G}{G} · Creature — Human Druid — increment 101
+- [x] **Ichneumon Druid** {1}{G}{G} · Creature — Human Druid — increment 101
 - [x] **Imprison** {B} · Enchantment — Aura — increment 47
 - [x] **In the Eye of Chaos** {2}{U} · World Enchantment — increment 2, 48
 - [x] **Indestructible Aura** {W} · Instant — increment 94
@@ -310,7 +310,7 @@ the record shows what unblocked it.
 - [x] **Presence of the Master** {3}{W} · Enchantment — increment 108
 - [x] **Primordial Ooze** {R} · Creature — Ooze — increment 63
 - [x] **Psionic Entity** {4}{U} · Creature — Illusion — increment 110
-- [ ] **Psychic Purge** {U} · Sorcery — increment 64
+- [x] **Psychic Purge** {U} · Sorcery — increment 64
 - [x] **Puppet Master** {U}{U}{U} · Enchantment — Aura — increment 65
 - [x] **Quagmire** {2}{B} · Enchantment — increment 4
 - [x] **Quarum Trench Gnomes** {3}{R} · Creature — Gnome — increment 66
@@ -339,7 +339,7 @@ the record shows what unblocked it.
 - [x] **Silhouette** {1}{U} · Instant — increment 12, 130
 - [x] **Spectral Cloak** {U}{U} · Enchantment — Aura — increment 117
 - [x] **Spirit Shackle** {B}{B} · Enchantment — Aura — increment 102
-- [ ] **Spiritual Sanctuary** {2}{W}{W} · Enchantment — increment 116
+- [x] **Spiritual Sanctuary** {2}{W}{W} · Enchantment — increment 116
 - [x] **Stangg** {4}{R}{G} · Legendary Creature — Human Warrior — increment 74
 - [x] **Storm World** {R} · World Enchantment — increment 2, 75
 - [x] **Subdue** {G} · Instant — increment 94
@@ -347,7 +347,7 @@ the record shows what unblocked it.
 - [x] **Sylvan Library** {1}{G} · Enchantment — increment 77
 - [x] **Sylvan Paradise** {G} · Instant — increment 96, 129
 - [x] **Syphon Soul** {2}{B} · Sorcery — increment 113
-- [ ] **Takklemaggot** {2}{B}{B} · Enchantment — Aura — increment 78
+- [x] **Takklemaggot** {2}{B}{B} · Enchantment — Aura
 - [x] **Telekinesis** {U}{U} · Instant — increment 79
 - [x] **Teleport** {U}{U}{U} · Instant — increment 114
 - [x] **Tetsuo Umezawa** {U}{B}{R} · Legendary Creature — Human Archer — increment 8, 15

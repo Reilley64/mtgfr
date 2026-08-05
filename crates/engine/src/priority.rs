@@ -1664,26 +1664,14 @@ impl Game {
             })
     }
 
-    /// The draw step's own draw, dredge replacement and all (CR 702.52). Returns after raising
-    /// [`PendingChoice::ChooseDredge`] when a dredger is eligible — `answer_choose_dredge` then
-    /// performs the draw or the mill+return and resumes the step loop. Shared with
-    /// [`Game::answer_may`], which lands here when Island Sanctuary's skip is declined.
+    /// The draw step's own draw, replacements and all — dredge (CR 702.52), Chains of
+    /// Mephistopheles (CR 614; this is the one draw its "except the first one they draw in each of
+    /// their draw steps" exempts, as long as nothing has drawn in this draw step yet). Returns
+    /// with a pause live when a replacement raised one; the answering handler finishes the draw
+    /// and resumes the step loop via [`DrawAfter::DrawStep`]. Shared with [`Game::answer_may`],
+    /// which lands here when Island Sanctuary's skip is declined.
     pub(crate) fn draw_step_draw(&mut self, player: PlayerId, events: &mut Vec<Event>) {
-        let dredgers = self.dredge_options(player);
-        if !dredgers.is_empty() {
-            crate::pending::raise_choice(
-                self,
-                PendingChoice::ChooseDredge {
-                    player,
-                    eligible: dredgers,
-                    remaining: 1,
-                    from_draw_step: true,
-                },
-            );
-            return;
-        }
-        let drawn = self.draw_card(player);
-        events.extend(drawn);
+        self.draw_with_replacements(vec![(player, 1)], DrawAfter::DrawStep, events);
     }
 
     /// The automatic actions performed as a step begins (untap, draw, cleanup).

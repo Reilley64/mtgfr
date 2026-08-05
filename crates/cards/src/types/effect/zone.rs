@@ -197,7 +197,22 @@ pub enum ZoneEffect {
         creature: Option<ObjectId>,
     },
 
-    ReturnThisAuraFromGraveyardAttachedToChosenHost,
+    ReturnThisAuraFromGraveyardAttachedToChosenHost {
+        /// Who picks the new host. [`PlayerSet::You`] — the default, and the unwritten one on
+        /// Screams from Within / Ghoulish Impetus, which say only "return this card to the
+        /// battlefield" and leave CR 303.4f's choice with the Aura's own controller.
+        /// `dying_enchanted_creatures_controller` is Takklemaggot's "**that creature's
+        /// controller** chooses a creature that this card could enchant", baked in at trigger
+        /// placement (CR 603.10a) because the host is a graveyard card by resolution.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        chosen_by: PlayerSet,
+        /// Takklemaggot's "if they don't, return this card to the battlefield under your control
+        /// as a **non-Aura enchantment**": with no legal host it comes back anyway, unattached
+        /// and no longer an Aura, instead of staying in the graveyard the way an ordinary
+        /// transferrable Aura does.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        hostless_returns_as_non_aura: bool,
+    },
 
     ReturnThisFromGraveyardToBattlefield {
         #[cfg_attr(feature = "card-dsl", serde(default))]

@@ -1085,14 +1085,19 @@ pub enum PendingChoiceView {
     /// Cursed Mirror). Answered with the chosen creature, or a decline (the "you may").
     /// `put_counter_on_creature` marks the reused "put a +1/+1 counter on a creature" primer, and
     /// `choose_block_target` the reused "have this creature block an attacking creature of your
-    /// choice" re-aim (False Orders), so clients can swap the copy wording without needing a
-    /// separate answer shape.
+    /// choice" re-aim (False Orders), and `choose_damage_source` the reused "pick which object's
+    /// damage this turn sizes the amount" primer (Backdraft), so clients can swap the copy wording
+    /// without needing a separate answer shape.
+    ///
+    /// ponytail: three mutually exclusive wording flags where an enum belongs — the upgrade is
+    /// wire-breaking, so it waits until a fourth reuse makes it worth a proto field.
     ChooseCopyTarget {
         player: u8,
         source: ObjectId,
         items: Vec<ChoiceItem>,
         put_counter_on_creature: bool,
         choose_block_target: bool,
+        choose_damage_source: bool,
     },
     /// This player (the deployed attachment's controller) must choose a host among `items` (the
     /// eligible battlefield creatures, public) for the Aura or Equipment it just put onto the

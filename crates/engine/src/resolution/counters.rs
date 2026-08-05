@@ -226,21 +226,20 @@ impl Game {
                     protected: controller,
                 })
                 .collect(),
-            // Breena: the attacking player (context) draws one; the controller's chosen creature
-            // gets `counters` +1/+1 counters.
-            CountersEffect::AttackerDrawsControllerCounters { attacker, counters } => {
-                let drawer = attacker.expect("the attacking player is filled in at placement");
+            // Breena's counter half: the controller's chosen creature gets `counters` +1/+1
+            // counters. The attacking player's draw is *not* here — a draw can pause on a
+            // replacement, which a pure mint can't, so `Game::run` runs it through the draw funnel.
+            CountersEffect::AttackerDrawsControllerCounters { counters, .. } => {
                 let object = expect_object_target(target, "Breena's counter half");
-                let mut events = self.draw_events(drawer, 1);
                 let n = self.counters_after_replacements(controller, object, counters as i32);
-                if n > 0 {
-                    events.push(Event::CountersPlaced {
-                        object,
-                        count: n,
-                        source_name,
-                    });
+                if n == 0 {
+                    return Vec::new();
                 }
-                events
+                vec![Event::CountersPlaced {
+                    object,
+                    count: n,
+                    source_name,
+                }]
             }
             // A Class's "Level N" ability (CR 717.2): the activation gate only offered this while
             // the source sat at level N-1, so resolution just records the new level.

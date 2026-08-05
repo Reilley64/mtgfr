@@ -12,3 +12,17 @@ white = 2
 
 [kind]
 type = "enchantment"
+
+# At the beginning of each player's upkeep, if that player controls a Plains, they gain 1 life.
+[[abilities]]
+timing = "each_upkeep"
+condition = { type = "for_triggering_player", inner = { type = "controls_lands_with_subtype", subtypes = [
+  "Plains",
+], count = 1 } }
+
+# they gain 1 life.
+[[abilities.effects]]
+type = "life"
+mode = "gain"
+who = "triggering_player"
+amount = 1

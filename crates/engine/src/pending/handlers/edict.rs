@@ -279,7 +279,7 @@ impl Game {
         // host among legal enchant targets — the same deployed-Aura attach path a searched-out or
         // reanimated Aura uses.
         if matches!(&printed.kind, CardKind::Aura) {
-            self.maybe_pause_attach_deployed_aura(source, player);
+            self.maybe_pause_attach_deployed_aura(source, player, player);
         }
         Ok(events)
     }
@@ -416,6 +416,9 @@ impl Game {
                     from: id,
                     def,
                     player,
+                    // The resolving spell/ability's controller (armed in `resolve_top`) — CR
+                    // 701.8's "caused you to discard", which Psychic Purge watches for.
+                    cause: self.resolution_frame.discard_cause,
                 },
             );
         }

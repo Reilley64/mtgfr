@@ -121,6 +121,7 @@ message_keys! {
     EFFECT_CHOICE_CHOOSE_COLOR => "effect.choice_choose_color",
     EFFECT_CHOICE_CHOOSE_CREATURE_TYPE => "effect.choice_choose_creature_type",
     EFFECT_CHOICE_CHOOSE_OPPONENT => "effect.choice_choose_opponent",
+    EFFECT_CHOICE_CHOOSE_TARGET_PLAYERS_DAMAGING_SORCERY => "effect.choice_choose_target_players_damaging_sorcery",
     EFFECT_CHOICE_CONTROL_PLAYER_TO_PLAY_CARD_FROM_HAND => "effect.choice_control_player_to_play_card_from_hand",
     EFFECT_CHOICE_COUNCILS_DILEMMA_VOTE => "effect.choice_councils_dilemma_vote",
     EFFECT_CHOICE_DEFENDERS_DIVIDE_BLOCKERS_AMONG_ATTACKERS => "effect.choice_defenders_divide_blockers_among_attackers",
@@ -1325,8 +1326,8 @@ fn amount_token(amount: Amount) -> &'static str {
         Amount::DamageDealtToSourceThisTurnByOthersNamedTheSame => {
             "damage_dealt_to_source_this_turn_by_others_named_the_same"
         }
-        Amount::HalfGreatestDamageDealtByTargetPlayersSorceryThisTurn => {
-            "half_greatest_damage_dealt_by_target_players_sorcery_this_turn"
+        Amount::HalfDamageDealtByChosenSorceryThisTurn => {
+            "half_damage_dealt_by_chosen_sorcery_this_turn"
         }
         Amount::BlockersBeyondFirst { .. } => "blockers_beyond_first",
         Amount::CreaturesBlockingThatCreature { .. } => "creatures_blocking_that_creature",
@@ -1895,7 +1896,7 @@ impl EffectMessage for Effect {
             Effect::Zone(ReturnObjectToHand { .. }) => {
                 MessageRef::new(MessageKey::EFFECT_ZONE_RETURN_OBJECT_TO_HAND)
             }
-            Effect::Zone(ReturnThisAuraFromGraveyardAttachedToChosenHost) => {
+            Effect::Zone(ReturnThisAuraFromGraveyardAttachedToChosenHost { .. }) => {
                 MessageRef::new(MessageKey::EFFECT_ZONE_RETURN_THIS_AURA_FROM_GRAVEYARD_ATTACHED_TO_CHOSEN_HOST)
             }
             Effect::Zone(ScheduleReturnThisAuraFromGraveyardAttachedToChosenHost) => {
@@ -2312,6 +2313,9 @@ impl EffectMessage for Effect {
             }
             Effect::Choice(MayBlockAttackerOfYourChoice) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_MAY_BLOCK_ATTACKER_OF_YOUR_CHOICE)
+            }
+            Effect::Choice(ChooseTargetPlayersDamagingSorcery) => {
+                MessageRef::new(MessageKey::EFFECT_CHOICE_CHOOSE_TARGET_PLAYERS_DAMAGING_SORCERY)
             }
             Effect::Choice(MayDrawUnlessPays { cost, .. }) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_MAY_DRAW_UNLESS_PAYS)

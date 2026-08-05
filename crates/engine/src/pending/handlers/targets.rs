@@ -553,4 +553,27 @@ impl Game {
         self.advance_spell_target_clauses(spell, clause as usize + 1, anchor, chooser, &mut events);
         Ok(events)
     }
+
+    /// Answer a [`PendingChoice::ChooseDamageSource`]: `chosen` is the damage-ledger dealer the
+    /// rest of this resolution sizes its amount off (Backdraft's "one of those sorcery spells").
+    /// The pick is mandatory and must be one of the offered candidates — the choice is only
+    /// raised when two or more exist, so `None` is never a legal answer. Mutates no board state,
+    /// only the resolution frame the following step reads, so it mints no events.
+    pub(crate) fn answer_choose_damage_source(
+        &mut self,
+        _player: PlayerId,
+        chosen: Option<ObjectId>,
+    ) -> Result<Vec<Event>, Reject> {
+        let Some(PendingChoice::ChooseDamageSource { candidates, .. }) =
+            self.pending_choice.clone()
+        else {
+            return Err(Reject::IllegalChoice);
+        };
+        let Some(chosen) = chosen.filter(|id| candidates.contains(id)) else {
+            return Err(Reject::IllegalChoice);
+        };
+        self.finish_answer();
+        self.resolution_frame.chosen_damage_source = Some(chosen);
+        Ok(Vec::new())
+    }
 }

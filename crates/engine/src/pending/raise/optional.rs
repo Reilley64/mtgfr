@@ -285,6 +285,7 @@ pub(super) fn discard(
         hand,
         count,
         or_one_matching,
+        draw_replacement: false,
     })
 }
 

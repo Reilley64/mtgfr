@@ -1,0 +1,38 @@
+# Psychic Purge deals 1 damage to any target.
+# When a spell or ability an opponent controls causes you to discard this card, that player loses
+# 5 life.
+name = "Psychic Purge"
+otags = ["burn-any", "single-target-instant-sorcery", "spot-removal", "triggered-ability"]
+sets = ["leg", "me1"]
+id = "6af596d2-f075-4f55-b088-a5237fcdaa51"
+default_print = "b1103d4d-b50a-4e2c-b18a-a181bc819881"
+oracle = "Psychic Purge deals 1 damage to any target.\nWhen a spell or ability an opponent controls causes you to discard this card, that player loses 5 life."
+
+[cost]
+blue = 1
+
+[kind]
+type = "sorcery"
+
+# Psychic Purge deals 1 damage to any target.
+[[abilities]]
+timing = "spell"
+
+# Psychic Purge deals 1 damage to any target.
+[[abilities.effects]]
+type = "damage"
+mode = "target"
+amount = 1
+target = "any"
+
+# When a spell or ability an opponent controls causes you to discard this card, that player loses
+# 5 life.
+[[abilities]]
+timing = "opponents_spell_or_ability_causes_you_to_discard_this"
+
+# that player loses 5 life.
+[[abilities.effects]]
+type = "life"
+mode = "lose"
+who = "triggering_player"
+amount = 5

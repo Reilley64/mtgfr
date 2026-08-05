@@ -54,6 +54,7 @@ pub(crate) fn fresh_permanent(
         chosen_subtype: None,
         chosen_color: None,
         chosen_opponent: None,
+        returned_as_non_aura: false,
         entered_with_x: 0,
         entered_multikicker_count: 0,
         cast_time_enchant_target: None,
@@ -492,6 +493,13 @@ pub(crate) struct Permanent {
     /// permanent's own `each_upkeep` trigger. `None` until the choice is answered (see
     /// [`Effect::Choice(ChoiceEffect::ChooseOpponent)`]), and for every permanent without one.
     pub(crate) chosen_opponent: Option<PlayerId>,
+    /// Takklemaggot came back from its host's death "as a non-Aura enchantment" (its only
+    /// printed alternative, taken when the dead creature's controller had no creature to choose):
+    /// it keeps the [`CardKind::Aura`] printed on its card but stops being one, so the CR 704.5m
+    /// unattached-Aura sweep skips it and [`Game::effective_subtypes`] drops "Aura" from its type
+    /// line. Set by the return itself, never by a card script, and gone the next time this card
+    /// changes zones (CR 400.7 — a new object each time). `false` for every other permanent.
+    pub(crate) returned_as_non_aura: bool,
     /// The {X} chosen for the spell that became this permanent (CR 601.2b), fixed for the rest
     /// of this permanent's existence — read by [`Game::ability_source_x`] so a later-resolving
     /// ability (an ETB trigger, an `mv_max_x` filter) can still reference "X" once the casting
@@ -725,6 +733,13 @@ pub(crate) struct Player {
     /// bumps this; drawing from an empty library ([`Event::DrewFromEmptyLibrary`]) does not —
     /// CR 120.3, you don't draw if the library is empty.
     pub(crate) draws_this_turn: u32,
+    /// Cards this player has drawn during the draw step they are currently in — reset as every
+    /// [`Step::Draw`] begins and bumped only while this player is the active player in that step,
+    /// so it is zero for everyone else and for every other step. Chains of Mephistopheles'
+    /// "except the first one they draw in each of their draw steps" reads it: the exempt draw is
+    /// the one taken while this is still 0. Counts drawing from an empty library too — CR 121.3
+    /// makes that an attempted draw, and the next one is no longer their first.
+    pub(crate) draws_this_draw_step: u32,
     /// How many times this player has lost life this turn (turn-scoped; reset each turn at
     /// untap) — the life-loss sibling of `draws_this_turn`. A [`Event::LifeChanged`] with a
     /// *negative* amount bumps this (CR 118.9/119.3 — only a decrease is a life loss; gaining
@@ -782,6 +797,13 @@ pub(crate) struct Player {
     /// [`Amount::InstantsAndSorceriesCastThisTurn`]. A copied spell doesn't bump this —
     /// same "cast" boundary as `instant_or_sorcery_cast_this_turn` above.
     pub(crate) instants_and_sorceries_cast_this_turn: u32,
+    /// How many *instant* spells this player has cast this turn (turn-scoped; reset each turn at
+    /// untap, 0 if none) — the filter-scoped tally behind Ichneumon Druid's "an instant spell
+    /// other than the first instant spell that player casts each turn", read by
+    /// [`Game::cast_tally_for`] for [`cards::SpellFilter::Instant`]. The sorcery-inclusive
+    /// `instants_and_sorceries_cast_this_turn` above would count a sorcery towards the Druid's
+    /// "first instant" and let the second instant slip through.
+    pub(crate) instant_spells_cast_this_turn: u32,
     /// Whether this player may cast spells this turn as though they had flash (turn-scoped;
     /// reset each turn at untap) — CR 601.3a, granted by [`Effect::Misc(MiscEffect::GrantFlashThisTurn)`]
     /// (Alchemist's Refuge). Unfiltered: every spell, not a subset. Read by

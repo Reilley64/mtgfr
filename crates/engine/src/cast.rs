@@ -546,6 +546,9 @@ impl Game {
                     from: id,
                     def,
                     player,
+                    // A cost discard is the caster's own payment (CR 601.2h), never something an
+                    // opponent's spell or ability caused — Psychic Purge's watch stays silent.
+                    cause: None,
                 },
             );
         }
@@ -2825,6 +2828,9 @@ impl Game {
                     from: id,
                     def,
                     player,
+                    // A cost discard is the caster's own payment (CR 601.2h), never something an
+                    // opponent's spell or ability caused — Psychic Purge's watch stays silent.
+                    cause: None,
                 },
             );
         }

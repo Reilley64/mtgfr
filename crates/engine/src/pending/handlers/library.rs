@@ -156,7 +156,7 @@ impl Game {
         if selected.len() == 1
             && let Some(permanent) = deployed
         {
-            self.maybe_pause_attach_deployed_aura(permanent, player);
+            self.maybe_pause_attach_deployed_aura(permanent, player, player);
         }
 
         // Every non-selected looked-at card goes to `rest`, in a random order (CR "in a random
@@ -778,8 +778,6 @@ impl Game {
         let Some(PendingChoice::ChooseDredge {
             player: chooser,
             eligible,
-            remaining,
-            from_draw_step,
         }) = self.pending_choice.clone()
         else {
             return Err(Reject::IllegalChoice);
@@ -817,16 +815,11 @@ impl Game {
                 events.extend(drawn);
             }
         }
-        // A draw-step pause draws exactly one card (`remaining == 1`) and resumes the step-transition
-        // loop it interrupted. A mid-resolution "draw N" re-enters the draw loop for the remaining
-        // draws — each re-checks dredge eligibility against the now-live graveyard/library (CR 702.52),
-        // pausing again or drawing the rest; its sequence tail is resumed by `resume_deferred_sequence`
-        // after this returns (once the batch stops pausing).
-        if from_draw_step {
-            events.extend(self.advance_step());
-        } else {
-            self.draw_with_dredge(player, remaining as u32 - 1, false, &mut events);
-        }
+        // This draw is settled either way; the rest of the batch it interrupted draws on, each
+        // remaining draw re-checking dredge eligibility against the now-live graveyard/library
+        // (CR 702.52). Whatever the batch's caller owes afterwards — the draw step's own
+        // transition, Trade Secrets' next leg — rides on the batch and runs when it is paid.
+        self.run_draw_batch(&mut events);
         Ok(events)
     }
 

@@ -2070,6 +2070,15 @@ impl Game {
         if self.counters_of_kind(id, CounterKind::Mire) > 0 {
             subtypes = vec!["Swamp"];
         }
+        // Takklemaggot returned "as a non-Aura enchantment" — the one card that drops the Aura
+        // subtype without any continuous effect saying so, so it is read straight off the
+        // permanent (see [`Permanent::returned_as_non_aura`]).
+        if self
+            .as_permanent(id)
+            .is_some_and(|p| p.returned_as_non_aura)
+        {
+            subtypes.retain(|&s| s != "Aura");
+        }
         subtypes
     }
 

@@ -88,6 +88,17 @@ impl Game {
         // Same reasoning for "damage dealt this way" (Syphon Soul): a resolution that dealt
         // nothing must read 0, not the previous burn spell's total.
         self.resolution_frame.damage_dealt_this_way = 0;
+        // And for the picked damage source (Backdraft): a resolution whose chooser step found no
+        // candidate must halve nothing, not the previous Backdraft's pick.
+        self.resolution_frame.chosen_damage_source = None;
+        // CR 701.8: who *causes* any discard this item makes — its own controller, stamped onto
+        // every `Event::Discarded` by `discard_ids` so Psychic Purge can ask whether "a spell or
+        // ability an opponent controls" made you discard it. Armed here, per stack item, because
+        // the discards that pause for a choice are answered outside any resolution call.
+        self.resolution_frame.discard_cause = Some(match &top {
+            StackItem::Spell(object) => self.spell(*object).controller,
+            StackItem::Ability { controller, .. } => *controller,
+        });
         match top {
             StackItem::Spell(object) => self.resolve_spell(object, events),
             StackItem::Ability {
@@ -1037,6 +1048,9 @@ impl Game {
             | Effect::Pump(PumpEffect::TargetBecomesColor { color: None, .. })
             | Effect::Copy(CopyEffect::Demonstrate { .. })
             | Effect::Choice(ChoiceEffect::Proliferate { .. })
+            // Backdraft's "one of those sorcery spells" — the same shape: a resolution-time pick
+            // with no board mutation of its own, recorded for the following step to read.
+            | Effect::Choice(ChoiceEffect::ChooseTargetPlayersDamagingSorcery)
             | Effect::Choice(ChoiceEffect::PhaseOut) => self.run_choose_pause(effect, ctx),
             // Kinetic Ooze — see `resolution/counters.rs::resolve_double_counters_on_target_creatures`.
             Effect::Counters(CountersEffect::DoubleCountersOnTargetCreatures { .. }) => {
@@ -1215,7 +1229,7 @@ impl Game {
             // see `resolution/sequence_steps.rs::run_sequence_step`.
             Effect::Zone(ZoneEffect::ScheduleReturnThisAuraAttachedToReanimated)
             | Effect::Zone(ZoneEffect::ScheduleReturnReanimatedToHand)
-            | Effect::Zone(ZoneEffect::ReturnThisAuraFromGraveyardAttachedToChosenHost)
+            | Effect::Zone(ZoneEffect::ReturnThisAuraFromGraveyardAttachedToChosenHost { .. })
             | Effect::Zone(ZoneEffect::ScheduleReturnThisAuraFromGraveyardAttachedToChosenHost) => {
                 self.run_sequence_step(effect, ctx, events)
             }
@@ -1342,18 +1356,31 @@ impl Game {
                     }
                 }
             }
-            // Each of these draws may be replaced by dredge (CR 702.52): `draw_with_dredge` draws one
-            // card at a time, pausing on `ChooseDredge` before any draw the controller has an eligible
-            // dredger for (accepting mills + returns, declining draws). `answer_choose_dredge` re-enters
-            // it for the remaining draws and resumes the deferred sequence once the batch is done.
-            // Only a draw the controller themselves takes routes through dredge — every other
-            // player set mints through the ordinary path, where no seat has a dredge choice yet.
-            Effect::Draw(DrawEffect::Cards {
-                who: PlayerSet::You,
-                count,
-            }) => {
+            // Every draw goes through the one funnel, whoever takes it: each is its own event
+            // (CR 121.2) and may be replaced by dredge (CR 702.52) or by Chains of Mephistopheles
+            // (CR 614), both of which pause for an answer. `Game::run_draw_batch` draws the seats
+            // in APNAP-ish `players_in` order, one card at a time, and the answering handler
+            // re-enters it; the deferred sequence resumes once the batch stops pausing.
+            // Breena's "that player draws a card and you put N +1/+1 counters on a creature": the
+            // counters half stays in the pure mint, the draw goes through the funnel like every
+            // other draw.
+            // ponytail: counters are placed before the draw, the reverse of the printed order, so
+            // a paused draw can't strand them. Nothing observes the order — different player,
+            // different object, no rules dependency either way.
+            Effect::Counters(CountersEffect::AttackerDrawsControllerCounters { attacker, .. }) => {
+                let drawer = attacker.expect("the attacking player is filled in at placement");
+                let evs = self.execute_effect(effect, controller, source, target, x);
+                self.apply_effect_events_with_replacements(evs, events);
+                self.draw_with_replacements(vec![(drawer, 1)], DrawAfter::Nothing, events);
+            }
+            Effect::Draw(DrawEffect::Cards { who, count }) => {
                 let n = self.resolve_count(count, controller, source, target, x);
-                self.draw_with_dredge(controller, n, false, events);
+                let seats = self
+                    .players_in(who, controller, target)
+                    .into_iter()
+                    .map(|player| (player, n))
+                    .collect();
+                self.draw_with_replacements(seats, DrawAfter::Nothing, events);
             }
             // Glyph of Life arms a CR 603.7 repeatable watch on the chosen creature rather than
             // minting a gain now (the amount isn't known yet), so it needs `&mut self` to record

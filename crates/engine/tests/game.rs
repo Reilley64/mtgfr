@@ -26132,6 +26132,7 @@ static AURA_CAST_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             filter: SpellFilter::Aura,
             caster: WatchedPlayer::You,
             nth_each_turn: None,
+            after_nth_each_turn: None,
             from_hand: false,
         }),
         effect: Effect::Draw(DrawEffect::Cards {
@@ -51503,6 +51504,7 @@ fn dirgur_test() -> CardDef {
                 filter: SpellFilter::InstantOrSorcery,
                 caster: WatchedPlayer::You,
                 nth_each_turn: None,
+                after_nth_each_turn: None,
                 from_hand: true,
             }),
             effect: Effect::Misc(MiscEffect::BecomePrepared),
@@ -51946,6 +51948,7 @@ fn unfiltered_cast_trigger_still_fires_from_any_zone() {
                 filter: SpellFilter::InstantOrSorcery,
                 caster: WatchedPlayer::You,
                 nth_each_turn: None,
+                after_nth_each_turn: None,
                 from_hand: false,
             }),
             effect: Effect::Life(LifeEffect::Gain {
@@ -59019,6 +59022,7 @@ static MANAFORM_HELLKITE_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             filter: SpellFilter::NoncreatureSpells,
             caster: WatchedPlayer::You,
             nth_each_turn: None,
+            after_nth_each_turn: None,
             from_hand: false,
         }),
         effect: Effect::Token(TokenEffect::Create {
@@ -84497,6 +84501,7 @@ const CAST_WATCH_DRAW: Ability = Ability {
         filter: SpellFilter::AllSpells,
         caster: WatchedPlayer::You,
         nth_each_turn: None,
+        after_nth_each_turn: None,
         from_hand: false,
     }),
     effect: Effect::Draw(DrawEffect::Cards {

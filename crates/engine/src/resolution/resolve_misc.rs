@@ -83,16 +83,18 @@ impl Game {
             // "Each player discards their hand, then draws seven cards." (Wheel of Fortune):
             // loop APNAP order, each living player discarding their whole hand (`discard_ids` —
             // no choice, so no `PendingChoice`, unlike a partial-hand `Effect::Choice(ChoiceEffect::Discard)`) then
-            // drawing `count`.
+            // drawing `count`. Every seat discards before anyone draws — a discard never touches a
+            // library, so no seat's draws see a different board for it, and that leaves the draws
+            // as one batch for the funnel (each is replaceable, and a replacement pauses).
             Effect::Choice(ChoiceEffect::EachPlayerDiscardsHandThenDraws { count }) => {
                 let n = self.resolve_count(count, controller, source, target, x);
-                for player in self.apnap_order() {
+                let order = self.apnap_order();
+                for &player in &order {
                     let hand = self.hand_of(player);
                     self.discard_ids(&hand, player, events);
-                    for event in self.draw_events(player, n) {
-                        self.push_apply(events, event);
-                    }
                 }
+                let seats = order.into_iter().map(|player| (player, n)).collect();
+                self.draw_with_replacements(seats, DrawAfter::Nothing, events);
             }
             // "Each player shuffles their hand and graveyard into their library, then draws seven
             // cards." (Timetwister), and Winds of Change's hands-only "then draws that many
@@ -105,6 +107,7 @@ impl Game {
                 include_graveyard,
                 count,
             }) => {
+                let mut seats = Vec::new();
                 for player in self.apnap_order() {
                     let hand = self.hand_of(player);
                     // "That many" is this player's hand size, read before they shuffle — so it is
@@ -133,10 +136,12 @@ impl Game {
                         );
                     }
                     self.push_apply(events, Event::LibraryShuffled { player });
-                    for event in self.draw_events(player, n) {
-                        self.push_apply(events, event);
-                    }
+                    seats.push((player, n));
                 }
+                // Every seat recycles and shuffles before anyone draws, so the draws are one
+                // batch for the funnel — see the wheel above. A seat's own shuffle still precedes
+                // its own draws either way.
+                self.draw_with_replacements(seats, DrawAfter::Nothing, events);
             }
             // Malfegor's "discard your hand" and Nicol Bolas's "that player discards their hand":
             // every seat in `who` discards its whole hand (no choice, so no `PendingChoice`),

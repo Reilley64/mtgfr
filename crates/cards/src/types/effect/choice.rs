@@ -51,6 +51,18 @@ pub enum ChoiceEffect {
     /// [`Condition::ChosenPlayersUpkeep`] gate on its upkeep trigger.
     ChooseOpponent,
 
+    /// Backdraft's "half the damage dealt by **one of those** sorcery spells this turn": the
+    /// spell's controller picks which of the *targeted* player's damaging sorceries is halved.
+    /// Declares no target of its own — the enclosing [`Sequence`](Effect::Sequence) supplies the
+    /// chosen player, exactly as [`Self::MayPutCounterOnCreature`] does. Pauses on
+    /// [`PendingChoice::ChooseDamageSource`](crate::PendingChoice) over that player's sorceries
+    /// with a row in this turn's damage ledger, and writes the pick onto
+    /// [`ResolutionFrame::chosen_damage_source`](crate::resolution::ResolutionFrame) for a later
+    /// step's [`Amount::HalfDamageDealtByChosenSorceryThisTurn`] to read. With one such sorcery
+    /// there is nothing to decide and the pick is settled without asking; with none, nothing is
+    /// recorded and the amount reads 0.
+    ChooseTargetPlayersDamagingSorcery,
+
     CouncilsDilemmaVote {
         #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::static_str_slice"))]
         options: &'static [&'static str],

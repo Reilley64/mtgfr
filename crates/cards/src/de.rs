@@ -105,6 +105,17 @@ where
     Ok(&*Box::leak(Box::new(Amount::deserialize(d)?)))
 }
 
+/// Leak one owned [`Condition`] into the `&'static Condition`
+/// [`Condition::ForTriggeringPlayer`](crate::Condition::ForTriggeringPlayer)'s `inner` needs — a
+/// `Copy` `Condition` cannot hold another `Condition` by value without an infinitely sized cycle,
+/// the same reason [`static_amount`] above exists.
+pub fn static_condition<'de, D>(d: D) -> Result<&'static Condition, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    Ok(&*Box::leak(Box::new(Condition::deserialize(d)?)))
+}
+
 /// Leak one owned [`Cost`] into the `&'static Cost` a `Copy` field needs (the `Cost` sibling of
 /// [`static_effect`] — [`Suspend::cost`] can't hold a `Cost` by value without bloating a `Copy`
 /// [`CardDef`], since `Cost` embeds an [`AdditionalCost`]).
@@ -723,8 +734,8 @@ impl<'de> Deserialize<'de> for Amount {
                     "damage_dealt_to_source_this_turn_by_others_named_the_same" => {
                         Amount::DamageDealtToSourceThisTurnByOthersNamedTheSame
                     }
-                    "half_greatest_damage_dealt_by_target_players_sorcery_this_turn" => {
-                        Amount::HalfGreatestDamageDealtByTargetPlayersSorceryThisTurn
+                    "half_damage_dealt_by_chosen_sorcery_this_turn" => {
+                        Amount::HalfDamageDealtByChosenSorceryThisTurn
                     }
                     other => return Err(E::unknown_variant(other, KEYWORDS)),
                 })
@@ -1100,7 +1111,7 @@ pub const AMOUNT_KEYWORDS: &[&str] = &[
     "counters_removed_this_way",
     "damage_dealt_this_way",
     "damage_dealt_to_source_this_turn_by_others_named_the_same",
-    "half_greatest_damage_dealt_by_target_players_sorcery_this_turn",
+    "half_damage_dealt_by_chosen_sorcery_this_turn",
 ];
 
 pub const PERMANENT_FILTER_SHORTHANDS: &[&str] = &[
@@ -1627,6 +1638,7 @@ pub(crate) enum TriggerTag {
     PermanentBecomesTapped,
     EnchantedPermanentBecomesTapped,
     YouDiscard,
+    OpponentsSpellOrAbilityCausesYouToDiscardThis,
     YouDiscardNonland,
     YouPlayALand,
     DealsCombatDamageToPlayer,
@@ -1790,6 +1802,9 @@ impl<'de> Deserialize<'de> for Ability {
                     Trigger::EnchantedPermanentBecomesTapped
                 }
                 TriggerTag::YouDiscard => Trigger::YouDiscard,
+                TriggerTag::OpponentsSpellOrAbilityCausesYouToDiscardThis => {
+                    Trigger::OpponentsSpellOrAbilityCausesYouToDiscardThis
+                }
                 TriggerTag::YouDiscardNonland => Trigger::YouDiscardNonland,
                 TriggerTag::YouPlayALand => Trigger::YouPlayALand,
                 TriggerTag::DealsCombatDamageToPlayer => {
@@ -1804,6 +1819,7 @@ impl<'de> Deserialize<'de> for Ability {
                     filter: flat.spell_filter,
                     caster: flat.caster,
                     nth_each_turn: flat.nth_each_turn,
+                    after_nth_each_turn: flat.after_nth_each_turn,
                     from_hand: flat.from_hand,
                 },
                 TriggerTag::PlayerDraws => Trigger::PlayerDraws {

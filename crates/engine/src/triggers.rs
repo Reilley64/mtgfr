@@ -969,8 +969,28 @@ impl Game {
                 }
                 // A discard (CR 701.8) — distinct from `MovedToGraveyard`, which also fires for a
                 // sacrifice/destroy: `YouDiscard` watches specifically for this marker.
-                Event::Discarded { card, player, .. } => {
+                Event::Discarded {
+                    card, player, def, cause, ..
+                } => {
                     self.queue_discard_triggers(player, card);
+                    // Psychic Purge's "when a spell or ability an opponent controls causes you to
+                    // discard this card" (CR 603.6d — a triggered ability that functions from
+                    // hand). Only the discarded card itself is scanned, addressed by its new
+                    // graveyard-object id with the `def` the event carried (CR 603.10a
+                    // last-known information), and only when the cause is an *opponent* of the
+                    // discarding player (CR 102.3).
+                    if cause.is_some_and(|by| by != player) {
+                        let ctx = TriggerContext {
+                            triggering_caster: cause,
+                            ..TriggerContext::of(player)
+                        };
+                        self.queue_trigger_group(
+                            ctx,
+                            card,
+                            card_def(def).as_ref().clone(),
+                            Trigger::OpponentsSpellOrAbilityCausesYouToDiscardThis,
+                        );
+                    }
                     // Conspiracy Theorist's "one or more nonland cards" (CR 701.8): record every
                     // discard now, then drain once per batch below — mirrors
                     // `graveyard_exits_this_batch`. The nonland filter happens on drain (a card's
@@ -3523,6 +3543,10 @@ impl Game {
         let player = &self.players[caster.0 as usize];
         match filter {
             SpellFilter::HasXInCost => player.x_spells_cast_this_turn,
+            // Ichneumon Druid's "other than the *first instant spell* that player casts each
+            // turn" counts instants only — a sorcery cast first must not exempt the instant
+            // that follows it.
+            SpellFilter::Instant => player.instant_spells_cast_this_turn,
             _ => player.spells_cast_this_turn,
         }
     }
@@ -3588,16 +3612,18 @@ impl Game {
                         filter,
                         caster,
                         nth_each_turn,
+                        after_nth_each_turn,
                         from_hand,
                     }) => {
                         let caster_matches = caster.accepts(spell_controller, controller);
-                        // ponytail: only `SpellFilter::HasXInCost` gets its own tally
-                        //   (`x_spells_cast_this_turn`) — every other filter still falls back to
-                        //   the whole-turn `spells_cast_this_turn`, which is correct for the
+                        // ponytail: only `SpellFilter::HasXInCost` (`x_spells_cast_this_turn`)
+                        //   and `SpellFilter::Instant` (`instant_spells_cast_this_turn`) get
+                        //   their own tally — every other filter still falls back to the
+                        //   whole-turn `spells_cast_this_turn`, which is correct for the
                         //   unfiltered users (Monologue Tax/Mangara's "their second spell") but
-                        //   would misfire for a *filtered* `nth_each_turn` on any other filter
-                        //   axis. No card in the pool pairs `nth_each_turn` with a non-`has_x`
-                        //   filter today; add that filter's own tally when one does.
+                        //   would misfire for a *filtered* `nth_each_turn`/`after_nth_each_turn`
+                        //   on any other filter axis. No card in the pool pairs either with a
+                        //   third filter today; add that filter's own tally when one does.
                         let cast_tally = self.cast_tally_for(filter, spell_controller);
                         caster_matches
                             // A `cast_spell` trigger's own `from_hand` gate (below) is the pool's
@@ -3622,6 +3648,10 @@ impl Game {
                                 ),
                             }
                             && nth_each_turn.is_none_or(|n| cast_tally == u32::from(n))
+                            // "other than the first instant spell that player casts each turn":
+                            // the tally is post-increment, so the exempt cast reads `== n` and
+                            // every one after it reads `> n`.
+                            && after_nth_each_turn.is_none_or(|n| cast_tally > u32::from(n))
                             && (!from_hand || cast_from_hand)
                     }
                     _ => false,
@@ -3868,6 +3898,7 @@ impl Game {
                             filter,
                             caster: WatchedPlayer::You,
                             nth_each_turn: None,
+                            after_nth_each_turn: None,
                             from_hand: false,
                         }),
                         effect: contextualize_effect(effect, ctx),
@@ -4737,6 +4768,22 @@ impl Game {
                 .is_some_and(|object| {
                     self.permanent_matches(&filter, object, ctx.controller, ctx.source)
                 }),
+            // CR 603.4 scoped to the triggering player (Spiritual Sanctuary's "at the beginning of
+            // each player's upkeep, **if that player** controls a Plains"): re-run the inner
+            // condition with `controller` swapped for the seat the trigger is about, so every
+            // "you"-worded variant above reads from that seat instead. No triggering player on the
+            // context (any trigger that threads no `active_player`) means nothing to ask about, so
+            // it doesn't hold — the same fail-closed posture the source-based conditions take.
+            Condition::ForTriggeringPlayer { inner } => match ctx.active_player {
+                Some(player) => self.condition_holds(
+                    *inner,
+                    TriggerContext {
+                        controller: player,
+                        ..ctx
+                    },
+                ),
+                None => false,
+            },
             Condition::YouHaveCitysBlessing => {
                 self.players[ctx.controller.0 as usize].has_citys_blessing
             }
@@ -6275,6 +6322,7 @@ mod tests {
                     filter: SpellFilter::AllSpells,
                     caster: WatchedPlayer::You,
                     nth_each_turn: None,
+                    after_nth_each_turn: None,
                     from_hand: false,
                 })]),
                 false,
@@ -6288,6 +6336,7 @@ mod tests {
                     filter: SpellFilter::AllSpells,
                     caster: WatchedPlayer::Opponent,
                     nth_each_turn: None,
+                    after_nth_each_turn: None,
                     from_hand: false,
                 })]),
                 false,

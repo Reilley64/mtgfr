@@ -806,13 +806,15 @@ message PendingChoiceViewChooseCardName {
 // reuse the same "pick one object or decline" wire shape; `put_counter_on_creature` tells the
 // client to render "put a +1/+1 counter on a creature" copy instead of copy-entry wording, and
 // `choose_block_target` to render False Orders' "have it block an attacking creature of your
-// choice" re-aim.
+// choice" re-aim, and `choose_damage_source` to render Backdraft's "choose which sorcery's damage
+// this turn is halved" pick (mandatory — no decline).
 message PendingChoiceViewChooseCopyTarget {
   uint32 player = 1;
   uint32 source = 2;
   repeated ChoiceItem items = 3;
   bool put_counter_on_creature = 4;
   bool choose_block_target = 5;
+  bool choose_damage_source = 6;
 }
 
 // This player (the deployed attachment's controller) must choose a host among `items` (the

@@ -181,6 +181,12 @@ pub struct AbilityToml {
     /// trigger/timing.
     #[serde(default)]
     pub(crate) nth_each_turn: Option<u8>,
+    /// Restricts a `cast_spell` trigger to every matching cast *after* the watched player's
+    /// Nth that turn (Ichneumon Druid's "an instant spell other than the first instant spell
+    /// that player casts each turn" — `1`). `None` (the default, omitted in TOML) exempts no
+    /// cast. Ignored for every other trigger/timing.
+    #[serde(default)]
+    pub(crate) after_nth_each_turn: Option<u8>,
     /// Restricts a `cast_spell` trigger to a spell cast from its controller's hand (CR
     /// 601's default cast zone) — Dirgur Focusmage's "you cast … from your hand". `false`
     /// (the default, omitted in TOML) fires on a cast from any zone (flashback/escape,

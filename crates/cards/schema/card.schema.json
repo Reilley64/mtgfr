@@ -34,6 +34,16 @@
           ],
           "description": "Who may activate this ability (CR 602.2b/602.5b/c) — see [`Activator`]. Defaults to `controller`, the unstated CR 602.2 baseline."
         },
+        "after_nth_each_turn": {
+          "default": null,
+          "description": "Restricts a `cast_spell` trigger to every matching cast *after* the watched player's Nth that turn (Ichneumon Druid's \"an instant spell other than the first instant spell that player casts each turn\" — `1`). `None` (the default, omitted in TOML) exempts no cast. Ignored for every other trigger/timing.",
+          "format": "uint8",
+          "minimum": 0.0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
         "at_least": {
           "default": 0,
           "description": "The attacker-count threshold for a `you_attack_with_creatures`/ `opponent_attacks_you_with_creatures`/`creature_enchanted_by_your_aura_attacks` trigger (Firemane Commando/Mangara/Tomik's \"two or more creatures\" — `2`; Killian, Decisive Mentor's \"one or more\" — `1`). Ignored for every other trigger/timing.",
@@ -667,7 +677,7 @@
             "counters_removed_this_way",
             "damage_dealt_this_way",
             "damage_dealt_to_source_this_turn_by_others_named_the_same",
-            "half_greatest_damage_dealt_by_target_players_sorcery_this_turn"
+            "half_damage_dealt_by_chosen_sorcery_this_turn"
           ],
           "type": "string"
         },
@@ -2865,6 +2875,25 @@
           },
           "required": [
             "filter",
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "CR 603.4's intervening-if read against **the player the trigger is about** rather than the ability's own controller — Spiritual Sanctuary's \"At the beginning of each player's upkeep, **if that player** controls a Plains, they gain 1 life.\" Every other `Condition` here means \"you\" (`ctx.controller`); this one re-scopes an arbitrary `inner` condition to the triggering player, so the whole existing vocabulary is reusable from that seat without each variant growing a subject of its own.\n\n`inner` is `&'static` for the same reason [`Compare`](Self::Compare)'s operands are: a `Condition` holding a `Condition` by value would be an infinitely sized cycle.\n\nponytail: the triggering player is read from [`TriggerContext::active_player`] — the one field the each-player step triggers thread. It holds nowhere else (no subject, so it doesn't hold), which is the same posture the source-object-based conditions take. Widen the resolution (drawing player, triggering caster, …) when a card needs another seat.",
+          "properties": {
+            "inner": {
+              "$ref": "#/$defs/Condition"
+            },
+            "type": {
+              "enum": [
+                "for_triggering_player"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "inner",
             "type"
           ],
           "type": "object"
@@ -6927,6 +6956,19 @@
             },
             {
               "properties": {
+                "chosen_by": {
+                  "allOf": [
+                    {
+                      "$ref": "#/$defs/PlayerSet"
+                    }
+                  ],
+                  "description": "Who picks the new host. [`PlayerSet::You`] — the default, and the unwritten one on Screams from Within / Ghoulish Impetus, which say only \"return this card to the battlefield\" and leave CR 303.4f's choice with the Aura's own controller. `dying_enchanted_creatures_controller` is Takklemaggot's \"**that creature's controller** chooses a creature that this card could enchant\", baked in at trigger placement (CR 603.10a) because the host is a graveyard card by resolution."
+                },
+                "hostless_returns_as_non_aura": {
+                  "default": false,
+                  "description": "Takklemaggot's \"if they don't, return this card to the battlefield under your control as a **non-Aura enchantment**\": with no legal host it comes back anyway, unattached and no longer an Aura, instead of staying in the graveyard the way an ordinary transferrable Aura does.",
+                  "type": "boolean"
+                },
                 "mode": {
                   "enum": [
                     "return_this_aura_from_graveyard_attached_to_chosen_host"
@@ -8080,6 +8122,21 @@
                 "mode": {
                   "enum": [
                     "choose_opponent"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "Backdraft's \"half the damage dealt by **one of those** sorcery spells this turn\": the spell's controller picks which of the *targeted* player's damaging sorceries is halved. Declares no target of its own — the enclosing [`Sequence`](Effect::Sequence) supplies the chosen player, exactly as [`Self::MayPutCounterOnCreature`] does. Pauses on [`PendingChoice::ChooseDamageSource`](crate::PendingChoice) over that player's sorceries with a row in this turn's damage ledger, and writes the pick onto [`ResolutionFrame::chosen_damage_source`](crate::resolution::ResolutionFrame) for a later step's [`Amount::HalfDamageDealtByChosenSorceryThisTurn`] to read. With one such sorcery there is nothing to decide and the pick is settled without asking; with none, nothing is recorded and the amount reads 0.",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "choose_target_players_damaging_sorcery"
                   ],
                   "type": "string"
                 }
@@ -14133,6 +14190,7 @@
             "any_player_sacrifices",
             "enchanted_permanent_becomes_tapped",
             "you_discard",
+            "opponents_spell_or_ability_causes_you_to_discard_this",
             "you_discard_nonland",
             "you_play_a_land",
             "deals_combat_damage_to_player",

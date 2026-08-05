@@ -416,6 +416,16 @@ pub enum Trigger {
     /// the [`TriggerContext`]'s `discarded` field so the effect can act on "that card"; see
     /// [`Game::queue_discard_triggers`].
     YouDiscard,
+    /// When a spell or ability an *opponent* controls causes you to discard **this card** —
+    /// Psychic Purge's second ability. Unlike every other trigger here, this one functions while
+    /// the card sits in its owner's hand (CR 603.6d) and fires on the card's own discard, so the
+    /// only object ever scanned is the card that was just discarded, addressed by its new
+    /// graveyard-object id (CR 603.10a last-known information — the ability is no longer in the
+    /// zone it functioned in by the time it goes on the stack). `you` is the discarding player;
+    /// the causing spell/ability's controller rides in [`TriggerContext::triggering_caster`] and
+    /// fills the payoff's [`PlayerSet::TriggeringPlayer`](crate::PlayerSet) ("that player loses 5
+    /// life"). Fires off [`Event::Discarded`]'s `cause`; see [`Game::enqueue_triggers`].
+    OpponentsSpellOrAbilityCausesYouToDiscardThis,
     /// Whenever this permanent's controller *plays* a land (CR 305.1 — the special action, not
     /// the landfall "enters"): Fastbond's "whenever you play a land". Fieldless and
     /// controller-scoped like [`YouDiscard`](Self::YouDiscard) above; fires off
@@ -512,6 +522,13 @@ pub enum Trigger {
         filter: SpellFilter,
         caster: WatchedPlayer,
         nth_each_turn: Option<u8>,
+        /// Restrict to every matching cast *after* the caster's Nth this turn — Ichneumon Druid's
+        /// "an instant spell **other than the first** instant spell that player casts each turn"
+        /// is `Some(1)`: the first is exempt, the second and every one after it fire. The
+        /// open-ended twin of `nth_each_turn` above, which pins exactly one cast; read off the
+        /// same filter-scoped tally ([`Game::cast_tally_for`]). Both may be set, in which case
+        /// both must hold — no pool card does.
+        after_nth_each_turn: Option<u8>,
         /// Restrict to a spell cast from its controller's hand (CR 601's default cast zone) —
         /// Dirgur Focusmage's "you cast … from your hand": `false` (the default) fires on a cast
         /// from *any* zone (flashback/escape from a graveyard, the command zone, an impulse-play
@@ -1048,8 +1065,16 @@ pub struct TriggerContext {
     /// "unless that player pays" payoff (Rhystic Study's "you may draw a card unless that player
     /// pays {1}" — [`Effect::Choice(ChoiceEffect::MayDrawUnlessPays)`]). Distinct from `TriggerContext::controller`
     /// (the watcher's own controller) precisely when `caster: WatchedPlayer::Opponent`/`AnyPlayer`
-    /// — `controller` alone can't name the payer for those scopes. `None` for every other
-    /// trigger. See [`Game::queue_cast_spell_triggers`] for where this is captured.
+    /// — `controller` alone can't name the payer for those scopes. Also fills a matched payoff's
+    /// [`PlayerSet::TriggeringPlayer`](crate::PlayerSet) ("that player"), so Ichneumon Druid's
+    /// "deals 4 damage to that player" reads the caster rather than the watcher's controller.
+    ///
+    /// More broadly: *the player behind the spell or ability that fired this watch*. That is why
+    /// [`Trigger::OpponentsSpellOrAbilityCausesYouToDiscardThis`] reuses it for the controller of
+    /// the spell or ability that caused the discard (Psychic Purge's "that player loses 5 life")
+    /// rather than growing a second field with the same meaning. `None` for every other trigger.
+    /// See [`Game::queue_cast_spell_triggers`] and [`Game::enqueue_triggers`] for where this is
+    /// captured.
     pub triggering_caster: Option<PlayerId>,
     /// The player who drew the card, for a [`Trigger::PlayerDraws`] watch whose payoff names
     /// *that* player rather than the watcher's controller (Underworld Dreams' "deals 1 damage to

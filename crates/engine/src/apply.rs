@@ -234,8 +234,11 @@ impl Game {
                 // legal target), the target's card object has left the graveyard and this
                 // exemption naturally lapses — the ordinary CR 704.5m sweep then applies to it,
                 // both while it's still unattached and later, once its reanimated host dies.
+                // Takklemaggot back from its host's death "as a non-Aura enchantment" is exempt
+                // for the plainest reason: this sweep is about Auras, and it isn't one any more.
                 None => {
                     matches!(&printed.kind, CardKind::Aura)
+                        && !p.returned_as_non_aura
                         && awaiting_host != Some(id)
                         && !(printed.enchant_graveyard
                             && p.cast_time_enchant_target
@@ -505,6 +508,18 @@ impl Game {
         }
     }
 
+    /// Bump `player`'s per-draw-step draw tally when the draw they just took happened inside
+    /// *their own* draw step — the counter Chains of Mephistopheles' "except the first one they
+    /// draw in each of their draw steps" reads. A draw in any other step, or an opponent's draw
+    /// taken during the active player's draw step, leaves it alone: neither is a draw in the
+    /// drawer's own draw step.
+    fn note_draw_step_draw(&mut self, player: PlayerId) {
+        if self.step != Step::Draw || self.active_player != player {
+            return;
+        }
+        self.players[player.0 as usize].draws_this_draw_step += 1;
+    }
+
     /// Remove a spell object from the stack (it resolved or left the stack).
     pub(crate) fn remove_spell_from_stack(&mut self, object: ObjectId) {
         self.stack
@@ -705,6 +720,9 @@ impl Game {
                         .greatest_instant_or_sorcery_mana_value_cast_this_turn
                         .max(printed.mana_value());
                     player.instants_and_sorceries_cast_this_turn += 1;
+                    // Feeds the `instant` `nth_each_turn`/`after_nth_each_turn` gate (Ichneumon
+                    // Druid's "other than the first instant spell that player casts each turn").
+                    player.instant_spells_cast_this_turn += u32::from(!sorcery);
                 }
             }
             Event::AdventureSpellCast {
@@ -782,13 +800,15 @@ impl Game {
                     self.players[controller.0 as usize].x_spells_cast_this_turn += 1;
                 }
                 // The adventure half is always an instant/sorcery (CR 715.2a).
-                if matches!(adventure.kind, CardKind::Spell { .. }) {
+                if let CardKind::Spell { speed, .. } = &adventure.kind {
+                    let instant = matches!(speed, SpellSpeed::Instant);
                     let player = &mut self.players[controller.0 as usize];
                     player.instant_or_sorcery_cast_this_turn = true;
                     player.greatest_instant_or_sorcery_mana_value_cast_this_turn = player
                         .greatest_instant_or_sorcery_mana_value_cast_this_turn
                         .max(adventure.mana_value());
                     player.instants_and_sorceries_cast_this_turn += 1;
+                    player.instant_spells_cast_this_turn += u32::from(instant);
                 }
             }
             Event::SplitHalfSpellCast {
@@ -871,13 +891,15 @@ impl Game {
                     self.players[controller.0 as usize].x_spells_cast_this_turn += 1;
                 }
                 // Both halves of a split card are instants or sorceries (CR 709.1).
-                if matches!(def.kind, CardKind::Spell { .. }) {
+                if let CardKind::Spell { speed, .. } = &def.kind {
+                    let instant = matches!(speed, SpellSpeed::Instant);
                     let player = &mut self.players[controller.0 as usize];
                     player.instant_or_sorcery_cast_this_turn = true;
                     player.greatest_instant_or_sorcery_mana_value_cast_this_turn = player
                         .greatest_instant_or_sorcery_mana_value_cast_this_turn
                         .max(def.mana_value());
                     player.instants_and_sorceries_cast_this_turn += 1;
+                    player.instant_spells_cast_this_turn += u32::from(instant);
                 }
             }
             Event::SpellTargetsChosen {
@@ -1162,6 +1184,12 @@ impl Game {
             } => {
                 self.step = step;
                 self.active_player = active_player;
+                // "Each of their draw steps" (Chains of Mephistopheles): the per-draw-step draw
+                // tally restarts as the step does, so the first draw taken inside it is the
+                // exempt one however many draws the turn already held.
+                if step == Step::Draw {
+                    self.players[active_player.0 as usize].draws_this_draw_step = 0;
+                }
                 // A new turn refreshes the active player's land drop and clears every player's
                 // "this turn" tallies (life gained / spells cast) — the turn boundary.
                 if step == Step::Untap {
@@ -1186,6 +1214,7 @@ impl Game {
                         player.sorcery_cast_this_turn = false;
                         player.greatest_instant_or_sorcery_mana_value_cast_this_turn = 0;
                         player.instants_and_sorceries_cast_this_turn = 0;
+                        player.instant_spells_cast_this_turn = 0;
                         player.flash_permission_this_turn = false;
                         player.channel_colorless_mana_this_turn = false;
                         player.spend_mana_as_any_type_this_turn = false;
@@ -3011,7 +3040,8 @@ impl Game {
                 }
             }
             Event::DrewFromEmptyLibrary { player } => {
-                self.players[player.0 as usize].attempted_empty_draw = true
+                self.players[player.0 as usize].attempted_empty_draw = true;
+                self.note_draw_step_draw(player);
             }
             Event::CitysBlessingGained { player } => {
                 self.players[player.0 as usize].has_citys_blessing = true;
@@ -3139,6 +3169,7 @@ impl Game {
                     .library
                     .retain(|&o| o != from);
                 self.players[player.0 as usize].draws_this_turn += 1;
+                self.note_draw_step_draw(player);
                 self.drawn_this_turn.push(object);
             }
             Event::MulliganTaken {

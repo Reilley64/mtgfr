@@ -267,9 +267,15 @@ impl Game {
             // Screams from Within: the immediate dies-return, choosing a new host (unlike Gift
             // of Immortality's same-creature return above). Pauses via the shared helper — see
             // its doc comment.
-            Effect::Zone(ZoneEffect::ReturnThisAuraFromGraveyardAttachedToChosenHost) => {
-                self.return_aura_from_graveyard_attached_to_chosen_host(source, events)
-            }
+            Effect::Zone(ZoneEffect::ReturnThisAuraFromGraveyardAttachedToChosenHost {
+                chosen_by,
+                hostless_returns_as_non_aura,
+            }) => self.return_aura_from_graveyard_attached_to_chosen_host(
+                source,
+                chosen_by,
+                hostless_returns_as_non_aura,
+                events,
+            ),
             // Ghoulish Impetus: schedule the same choose-host return above at the next end step
             // (CR 603.7), mirroring `ScheduleReturnThisAuraAttachedToReanimated`'s emit shape. No
             // read-back needed — this Aura's own `source` is all the delayed payload needs.
@@ -281,7 +287,10 @@ impl Game {
                         source,
                         fire_at: Step::End,
                         effect: Effect::Zone(
-                            ZoneEffect::ReturnThisAuraFromGraveyardAttachedToChosenHost,
+                            ZoneEffect::ReturnThisAuraFromGraveyardAttachedToChosenHost {
+                                chosen_by: PlayerSet::You,
+                                hostless_returns_as_non_aura: false,
+                            },
                         ),
                     },
                 );

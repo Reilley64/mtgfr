@@ -174,7 +174,7 @@ impl Game {
                 | ZoneEffect::AttachMintedAuraToTarget { .. }
                 | ZoneEffect::ScheduleReturnThisAuraAttachedToReanimated
                 | ZoneEffect::ScheduleReturnReanimatedToHand
-                | ZoneEffect::ReturnThisAuraFromGraveyardAttachedToChosenHost
+                | ZoneEffect::ReturnThisAuraFromGraveyardAttachedToChosenHost { .. }
                 | ZoneEffect::ScheduleReturnThisAuraFromGraveyardAttachedToChosenHost
                 | ZoneEffect::ShuffleTargetPermanentIntoLibraryThenReveal { .. }
                 | ZoneEffect::ExileSelfWithTimeCounters { .. }

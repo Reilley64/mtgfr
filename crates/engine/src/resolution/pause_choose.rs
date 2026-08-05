@@ -249,6 +249,28 @@ impl Game {
                     source,
                 },
             ),
+            // Backdraft's "half the damage dealt by **one of those** sorcery spells this turn":
+            // the controller picks which of the *targeted* player's damaging sorceries the
+            // following damage step halves. One candidate is no decision — settle it without
+            // asking; none leaves the pick unset, which the amount reads back as 0.
+            Effect::Choice(ChoiceEffect::ChooseTargetPlayersDamagingSorcery) => {
+                let Some(Target::Player(chosen)) = target else {
+                    return;
+                };
+                let candidates = self.damaging_sorceries_cast_by(chosen);
+                if candidates.len() < 2 {
+                    self.resolution_frame.chosen_damage_source = candidates.first().copied();
+                    return;
+                }
+                pending::raise_choice(
+                    self,
+                    PendingChoice::ChooseDamageSource {
+                        player: controller,
+                        source,
+                        candidates,
+                    },
+                );
+            }
             _ => unreachable!("choose pause family received a non-family effect"),
         }
     }

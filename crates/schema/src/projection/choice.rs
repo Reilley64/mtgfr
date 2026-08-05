@@ -557,6 +557,7 @@ impl<'a> ChoiceCtx<'a> {
                 items: self.label_items(options),
                 put_counter_on_creature: true,
                 choose_block_target: false,
+                choose_damage_source: false,
             },
             // False Orders' "you may have it block an attacking creature of your choice" is the
             // same "pick one public object or decline" answer, so it rides `ChooseCopyTarget` too,
@@ -572,6 +573,7 @@ impl<'a> ChoiceCtx<'a> {
                 items: self.label_items(options),
                 put_counter_on_creature: false,
                 choose_block_target: true,
+                choose_damage_source: false,
             },
             engine::PendingChoice::ChooseOwnSacrifices {
                 player,
@@ -1002,6 +1004,22 @@ impl<'a> ChoiceCtx<'a> {
                 items: self.label_items(candidates),
                 put_counter_on_creature: false,
                 choose_block_target: false,
+                choose_damage_source: false,
+            },
+            // Backdraft's "one of those sorcery spells" is the same "pick one public object"
+            // answer over damage-ledger dealers, with its own wording discriminator. Mandatory:
+            // the engine only raises it when two or more candidates exist.
+            engine::PendingChoice::ChooseDamageSource {
+                player,
+                source,
+                candidates,
+            } => PendingChoiceView::ChooseCopyTarget {
+                player: player.0,
+                source,
+                items: self.label_items(candidates),
+                put_counter_on_creature: false,
+                choose_block_target: false,
+                choose_damage_source: true,
             },
         }
     }
@@ -1232,6 +1250,7 @@ mod coverage_tests {
                     hand: vec![hand_card],
                     count: 2,
                     or_one_matching: None,
+                    draw_replacement: false,
                 },
                 |view| matches!(view, PendingChoiceView::Discard { count: 2, .. }),
             ),
@@ -1413,6 +1432,37 @@ mod coverage_tests {
         assert!(
             put_counter_on_creature,
             "the reused copy-target view must advertise counter wording"
+        );
+    }
+
+    #[test]
+    fn choose_damage_source_marks_the_reused_copy_target_view() {
+        let mut game = Game::new();
+        let source = game.spawn_in_hand(PlayerId(0), def("Backdraft"));
+        let soul = game.spawn_in_hand(PlayerId(0), def("Syphon Soul"));
+        let breath = game.spawn_in_hand(PlayerId(0), def("Breath of Darigaaz"));
+        let view = project_pending_choice(
+            &game,
+            Some(PlayerId(0)),
+            PendingChoice::ChooseDamageSource {
+                player: PlayerId(0),
+                source,
+                candidates: vec![soul, breath],
+            },
+        );
+
+        let PendingChoiceView::ChooseCopyTarget {
+            items,
+            choose_damage_source,
+            ..
+        } = view
+        else {
+            panic!("expected ChooseCopyTarget");
+        };
+        assert_eq!(items.len(), 2, "both damaging sorceries are on offer");
+        assert!(
+            choose_damage_source,
+            "the reused copy-target view must advertise damage-source wording"
         );
     }
 

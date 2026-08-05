@@ -431,17 +431,15 @@ pub enum Amount {
     /// [`ResolutionFrame::damage_dealt_this_way`]. Counts damage *dealt*, so prevention and
     /// redirection have already had their say (CR 615, CR 120.8: 0 damage is never dealt).
     DamageDealtThisWay,
-    /// Half — rounded down — the damage dealt this turn by the biggest-hitting sorcery the
-    /// *targeted player* cast (Backdraft's "half the damage dealt by one of those sorcery spells
-    /// this turn, rounded down"), read off the turn-scoped
-    /// [`Game::damage_dealt_this_turn`](crate::Game) ledger. 0 when that player cast no sorcery
-    /// that dealt damage, which is what makes Backdraft's "choose a player who cast one or more
-    /// sorcery spells" bite even though the target itself is unrestricted.
-    ///
-    /// ponytail: "one of those" is the caster's pick; this always takes the largest. The upgrade
-    /// path is a `PendingChoice::ChooseDamageSource` over the ledger rows, which no other card
-    /// needs yet.
-    HalfGreatestDamageDealtByTargetPlayersSorceryThisTurn,
+    /// Half — rounded down — the damage dealt this turn by the sorcery a preceding
+    /// [`ChoiceEffect::ChooseTargetPlayersDamagingSorcery`] step picked (Backdraft's "half the
+    /// damage dealt by one of those sorcery spells this turn, rounded down"): every row that
+    /// sorcery has in the turn-scoped [`Game::damage_dealt_this_turn`](crate::Game) ledger,
+    /// totalled — one spell can deal damage in several rows (Breath of Darigaaz hits every seat)
+    /// and "the damage dealt by one of those sorcery spells" is that whole spell's output. 0 when
+    /// nothing was picked, which is what makes Backdraft's "choose a player who cast one or more
+    /// sorcery spells" bite for a player whose sorceries all dealt nothing.
+    HalfDamageDealtByChosenSorceryThisTurn,
     /// `per` times the number of creatures blocking the source beyond the first — rampage N's
     /// "+N/+N until end of turn for each creature blocking it beyond the first" (CR 702.23a).
     /// Resolved against the *living* blockers at the moment the ability resolves, which is exactly
@@ -976,6 +974,9 @@ Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
             // `RemoveFromCombat` step pulled out of combat — the same way `MayPutCounterOnCreature`
             // above does: the `Sequence` arm supplies it, this step declares none of its own.
             | Effect::Choice(ChoiceEffect::MayBlockAttackerOfYourChoice)
+            // Backdraft's "one of those sorcery spells" reads the chosen *player* off the same
+            // shared `Sequence` target its damage step declares, and names no target of its own.
+            | Effect::Choice(ChoiceEffect::ChooseTargetPlayersDamagingSorcery)
             | Effect::Choice(ChoiceEffect::DefendersSplitBlockersIntoPiles)
             | Effect::Choice(ChoiceEffect::DefendersDivideBlockersAmongAttackers)
             | Effect::Choice(ChoiceEffect::MayDrawUnlessPays { .. })
@@ -1156,7 +1157,7 @@ Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
             | Effect::Zone(ZoneEffect::ReturnFlickeredCard { .. })
             // The new host is chosen at resolution (`ChooseAttachHost`), not a cast/
             // activation target — same as `ReturnThisAuraAttachedTo` above.
-            | Effect::Zone(ZoneEffect::ReturnThisAuraFromGraveyardAttachedToChosenHost)
+            | Effect::Zone(ZoneEffect::ReturnThisAuraFromGraveyardAttachedToChosenHost { .. })
             | Effect::Zone(ZoneEffect::ScheduleReturnThisAuraFromGraveyardAttachedToChosenHost)
             | Effect::Static(StaticEffect::DiscardToLibraryTopInstead)
             | Effect::Static(StaticEffect::ReturnToHandInsteadOfDying)
@@ -2406,6 +2407,24 @@ pub enum Condition {
     TargetMatches {
         filter: PermanentFilter,
     },
+    /// CR 603.4's intervening-if read against **the player the trigger is about** rather than the
+    /// ability's own controller — Spiritual Sanctuary's "At the beginning of each player's upkeep,
+    /// **if that player** controls a Plains, they gain 1 life." Every other `Condition` here means
+    /// "you" (`ctx.controller`); this one re-scopes an arbitrary `inner` condition to the
+    /// triggering player, so the whole existing vocabulary is reusable from that seat without
+    /// each variant growing a subject of its own.
+    ///
+    /// `inner` is `&'static` for the same reason [`Compare`](Self::Compare)'s operands are: a
+    /// `Condition` holding a `Condition` by value would be an infinitely sized cycle.
+    ///
+    /// ponytail: the triggering player is read from [`TriggerContext::active_player`] — the one
+    ///   field the each-player step triggers thread. It holds nowhere else (no subject, so it
+    ///   doesn't hold), which is the same posture the source-object-based conditions take. Widen
+    ///   the resolution (drawing player, triggering caster, …) when a card needs another seat.
+    ForTriggeringPlayer {
+        #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::static_condition"))]
+        inner: &'static Condition,
+    },
 }
 
 /// Whether `sacrifices` is a legal answer to a sacrifice edict over `options`: every id a
@@ -2905,6 +2924,18 @@ fn fill_dying_enchanted_creature_payoff(
                 amount: fill(amount),
             })
         }
+        // Takklemaggot: "**that creature's controller** chooses a creature that this card could
+        // enchant". The host is a graveyard card by the time this resolves, so the chooser comes
+        // from the same snapshot Creature Bond's arm above reads.
+        Effect::Zone(ZoneEffect::ReturnThisAuraFromGraveyardAttachedToChosenHost {
+            chosen_by: PlayerSet::DyingEnchantedCreaturesController { .. },
+            hostless_returns_as_non_aura,
+        }) => Effect::Zone(ZoneEffect::ReturnThisAuraFromGraveyardAttachedToChosenHost {
+            chosen_by: PlayerSet::DyingEnchantedCreaturesController {
+                player: Some(controller),
+            },
+            hostless_returns_as_non_aura,
+        }),
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
@@ -3235,8 +3266,17 @@ fn fill_spells_cast_before_this(effect: Effect, n: u32) -> Effect {
 
 /// Rewrite a [`TriggerContext::triggering_caster`]-reading effect placeholder to the player who
 /// cast the spell that fired the watch: [`Effect::Choice(ChoiceEffect::MayDrawUnlessPays)`] (Rhystic Study's "unless
-/// that player pays {1}") — mirrors [`fill_triggering_spell`] above, one field over.
+/// that player pays {1}") — mirrors [`fill_triggering_spell`] above, one field over — and the
+/// [`PlayerSet::TriggeringPlayer`] slot (Ichneumon Druid's "deals 4 damage to **that player**"),
+/// the same "the one player this trigger is about" seat [`fill_drawing_player`] below fills from
+/// the drawer.
 fn fill_triggering_caster(effect: Effect, caster: PlayerId) -> Effect {
+    let effect = fill_player(effect, &|who| match who {
+        PlayerSet::TriggeringPlayer { .. } => PlayerSet::TriggeringPlayer {
+            player: Some(caster),
+        },
+        other => other,
+    });
     match effect {
         Effect::Choice(ChoiceEffect::MayDrawUnlessPays { cost, .. }) => Effect::Choice(ChoiceEffect::MayDrawUnlessPays {
             cost,

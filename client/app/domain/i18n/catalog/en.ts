@@ -209,6 +209,9 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.choice_choose_color": literal("Choose a color"),
   "effect.choice_choose_creature_type": literal("Choose a creature type"),
   "effect.choice_choose_opponent": literal("Choose an opponent"),
+  "effect.choice_choose_target_players_damaging_sorcery": literal(
+    "Choose one of that player's sorcery spells that dealt damage this turn",
+  ),
   "effect.choice_control_player_to_play_card_from_hand": (params) =>
     `Look at ${param(params, "target")}'s hand and choose a card from it. That player plays that card if able`,
   "effect.choice_councils_dilemma_vote": (params) =>

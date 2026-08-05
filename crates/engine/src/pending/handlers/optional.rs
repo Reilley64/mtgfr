@@ -65,21 +65,19 @@ impl Game {
             if !yes {
                 return Ok(Vec::new());
             }
-            let events = self.draw_events(player, 2);
-            self.apply_all(&events);
-            pending::raise_choice(
-                self,
-                PendingChoice::MayDrawUpTo {
-                    player: caster,
+            // The opponent's two draws are replaceable like any other (dredge, Chains of
+            // Mephistopheles), so the caster's own "up to `max`" gate rides on the draw batch
+            // instead of following this call.
+            let mut events = Vec::new();
+            self.draw_with_replacements(
+                vec![(player, 2)],
+                DrawAfter::TradeSecretsCaster {
+                    caster,
+                    opponent: player,
+                    source,
                     max,
-                    effect: Effect::Choice(ChoiceEffect::MayDrawUpToThenOpponentMayRepeat {
-                        count: Amount::Fixed(i32::from(max)),
-                    }),
-                    resume: MayDrawUpToResume::TradeSecretsRepeat {
-                        opponent: player,
-                        source,
-                    },
                 },
+                &mut events,
             );
             return Ok(events);
         }
@@ -127,9 +125,7 @@ impl Game {
                 // controller, unlike every other arm in this function) — draw them `count` cards
                 // directly, no further pause (CR 601.2c: no pay window rides behind this).
                 let n = self.resolve_count(count, player, source, None, 0);
-                let evs = self.draw_events(player, n);
-                self.apply_all(&evs);
-                events.extend(evs);
+                self.draw_with_replacements(vec![(player, n)], DrawAfter::Nothing, &mut events);
             } else if let Effect::Choice(ChoiceEffect::MayDrawUnlessPays { cost, caster }) = effect
             {
                 // Rhystic Study: `player` (the controller) said they want to draw, so now
@@ -251,24 +247,21 @@ impl Game {
             return Err(Reject::IllegalChoice);
         }
         self.finish_answer();
-        let events = self.draw_events(player, count as u32);
-        self.apply_all(&events);
-        if let MayDrawUpToResume::TradeSecretsRepeat { opponent, source } = resume {
-            pending::raise_choice(
-                self,
-                PendingChoice::MayYesNo {
-                    player: opponent,
+        // Trade Secrets' repeat offer rides on the batch — these draws are replaceable too, and a
+        // replacement's pause must not be overwritten by the offer.
+        let after = match resume {
+            MayDrawUpToResume::Default => DrawAfter::Nothing,
+            MayDrawUpToResume::TradeSecretsRepeat { opponent, source } => {
+                DrawAfter::TradeSecretsRepeat {
+                    caster: player,
+                    opponent,
                     source,
-                    effect: Effect::Choice(ChoiceEffect::MayDrawUpToThenOpponentMayRepeat {
-                        count: Amount::Fixed(i32::from(max)),
-                    }),
-                    resume: MayYesNoResume::TradeSecretsRepeat {
-                        caster: player,
-                        max,
-                    },
-                },
-            );
-        }
+                    max,
+                }
+            }
+        };
+        let mut events = Vec::new();
+        self.draw_with_replacements(vec![(player, count as u32)], after, &mut events);
         Ok(events)
     }
 
@@ -324,6 +317,9 @@ impl Game {
                     from: id,
                     def,
                     player,
+                    // A cost discard is the caster's own payment (CR 601.2h), never something an
+                    // opponent's spell or ability caused — Psychic Purge's watch stays silent.
+                    cause: None,
                 },
             );
         }
@@ -477,8 +473,8 @@ impl Game {
 
         if !pay {
             self.finish_answer();
-            let evs = self.draw_events(controller, 1);
-            self.apply_all(&evs);
+            let mut evs = Vec::new();
+            self.draw_with_replacements(vec![(controller, 1)], DrawAfter::Nothing, &mut evs);
             return Ok(evs);
         }
         let mut events = Vec::new();

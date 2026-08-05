@@ -4127,6 +4127,7 @@ fn unlimited_triggers_fire_off_the_event_their_oracle_names() {
             filter: SpellFilter::Enchantment,
             caster: WatchedPlayer::You,
             nth_each_turn: None,
+            after_nth_each_turn: None,
             from_hand: false,
         })
     );

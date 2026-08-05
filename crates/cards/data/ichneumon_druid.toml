@@ -16,3 +16,18 @@ green = 2
 type = "creature"
 power = 1
 toughness = 1
+
+# Whenever an opponent casts an instant spell other than the first instant spell that player
+# casts each turn, this creature deals 4 damage to that player.
+[[abilities]]
+timing = "cast_spell"
+caster = "opponent"
+spell_filter = "instant"
+after_nth_each_turn = 1
+
+# this creature deals 4 damage to that player.
+[[abilities.effects]]
+type = "damage"
+mode = "to_players"
+who = "triggering_player"
+amount = 4

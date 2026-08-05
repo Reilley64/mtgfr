@@ -1026,16 +1026,11 @@ pub enum PendingChoice {
     /// Dredge N), offered only when the library holds at least N (CR 702.52a). Answered by
     /// [`Intent::ChooseDredge`] — picking one mills N and returns it graveyard→hand instead of
     /// drawing; declining (`None`) performs the normal draw. Each of a "draw N"'s draws is its own
-    /// replaceable event (CR 121.2), so after this one resolves the answer handler re-enters the draw
-    /// loop for `remaining - 1`, re-checking `eligible` against the now-live graveyard/library.
-    /// `from_draw_step` distinguishes the two draw chokes that raise this: the turn-based draw step
-    /// (`remaining == 1`; resume by re-entering [`Game::advance_step`]) versus a mid-resolution
-    /// [`Effect::Draw(DrawEffect::Cards)`] (resume via the deferred sequence, like every other resolution pause).
+    /// replaceable event (CR 121.2), so the rest of the batch this draw came from — and whatever
+    /// its caller owes afterwards — waits in [`ResumeState::draw_batch`] while this is answered.
     ChooseDredge {
         player: PlayerId,
         eligible: Vec<(ObjectId, u8)>,
-        remaining: u8,
-        from_draw_step: bool,
     },
     /// `player` may pay `cost` to get an optional triggered ability (`source`'s `effect`).
     /// Answered by [`Intent::PayOptionalCost`].
@@ -1613,11 +1608,15 @@ pub enum PendingChoice {
     /// `or_one_matching` mirrors [`Effect::Choice(ChoiceEffect::Discard)::or_one_matching`]: when `Some`, a one-card
     /// answer matching the filter is accepted instead of the full `count`-card answer
     /// (Compulsive Research's land escape valve).
+    /// `draw_replacement` marks the discard Chains of Mephistopheles substitutes for a draw
+    /// (CR 614): answering it draws the card the replacement then owes and resumes the interrupted
+    /// draw batch, and it is not a resolution's "discarded this way" tally.
     DiscardCards {
         player: PlayerId,
         hand: Vec<ObjectId>,
         count: usize,
         or_one_matching: Option<CardFilter>,
+        draw_replacement: bool,
     },
     /// `player` puts exactly `count` cards from `hand` (their whole hand, kept for stable
     /// validation) on top of their library, in an order they choose (Brainstorm's
@@ -2050,6 +2049,22 @@ pub enum PendingChoice {
         name: &'static str,
         options: Vec<ObjectId>,
     },
+    /// `player` must pick one of `candidates` — objects that dealt damage this turn, i.e. the
+    /// rows of [`Game::damage_dealt_this_turn`](crate::Game) some effect narrowed — so the rest
+    /// of the resolution can size an amount off *that* object's damage rather than the whole
+    /// ledger's ("half the damage dealt by **one of those** sorcery spells this turn" —
+    /// Backdraft, [`Effect::Choice(ChoiceEffect::ChooseTargetPlayersDamagingSorcery)`]). The
+    /// answer lands on [`ResolutionFrame::chosen_damage_source`](crate::resolution::ResolutionFrame),
+    /// which is what makes the pause reusable: the *effect* decides which ledger rows are on
+    /// offer, the pause and the answer are the same for all of them. Mandatory — the effect only
+    /// raises it when two or more candidates exist, so there is always a real decision and never
+    /// a decline. Answered by [`Intent::ChooseCopyTarget`] (reused — the answer is "one chosen
+    /// object").
+    ChooseDamageSource {
+        player: PlayerId,
+        source: ObjectId,
+        candidates: Vec<ObjectId>,
+    },
 }
 
 /// Every creature type printed on a creature card in the pool, offered as the candidate list
@@ -2284,7 +2299,8 @@ impl PendingChoice {
             | PendingChoice::ChooseTokenToCopy { player, .. }
             | PendingChoice::ChooseCopyCardFromList { player, .. }
             | PendingChoice::ChooseAttachHost { player, .. }
-            | PendingChoice::ChooseLegendaryKeep { player, .. } => *player,
+            | PendingChoice::ChooseLegendaryKeep { player, .. }
+            | PendingChoice::ChooseDamageSource { player, .. } => *player,
             // The answering seat is the caster, not the target player whose board is being pruned.
             PendingChoice::CasterKeepPermanents { caster, .. } => *caster,
             // The chooser (Nils' controller) answers, not the player whose creature is countered.
@@ -3670,6 +3686,13 @@ pub enum Event {
         from: ObjectId,
         def: CardId,
         player: PlayerId,
+        /// Who controlled the spell or ability that *caused* this discard — Psychic Purge's
+        /// "when a spell or ability an opponent controls causes you to discard this card".
+        /// `None` for a discard nothing on the stack caused: a discard-cost payment (the
+        /// caster's own choice, CR 601.2h) or the cleanup hand-size trim (CR 514.1, a turn-based
+        /// action). Read off [`ResolutionFrame::discard_cause`](crate::resolution::ResolutionFrame)
+        /// at the shared [`Game::discard_ids`](crate::Game) choke, not projected to the client.
+        cause: Option<PlayerId>,
     },
     /// A card was put from hand onto the top of its owner's library (Brainstorm resolving,
     /// [`Effect::Choice(ChoiceEffect::PutFromHandOnTop)`]): `card` is its new library-object id, `from` the hand-object

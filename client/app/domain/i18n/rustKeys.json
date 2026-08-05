@@ -95,6 +95,7 @@
   "effect.choice_choose_color",
   "effect.choice_choose_creature_type",
   "effect.choice_choose_opponent",
+  "effect.choice_choose_target_players_damaging_sorcery",
   "effect.choice_control_player_to_play_card_from_hand",
   "effect.choice_councils_dilemma_vote",
   "effect.choice_defenders_divide_blockers_among_attackers",

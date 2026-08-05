@@ -354,32 +354,11 @@ impl Game {
             Amount::CreaturesSacrificedThisWay => {
                 self.resolution_frame.creatures_sacrificed_this_way as i32
             }
-            Amount::HalfGreatestDamageDealtByTargetPlayersSorceryThisTurn => {
-                let Some(Target::Player(chosen)) = target else {
+            Amount::HalfDamageDealtByChosenSorceryThisTurn => {
+                let Some(chosen) = self.resolution_frame.chosen_damage_source else {
                     return 0;
                 };
-                // One sorcery can deal damage in several rows (Syphon Soul hits each opponent), so
-                // total each dealer before picking the biggest — "the damage dealt by one of those
-                // sorcery spells" is that whole spell's output.
-                let mut by_spell: Vec<(ObjectId, i32)> = Vec::new();
-                for &(dealer, _, dealt) in &self.damage_dealt_this_turn {
-                    let def = self.def_of(dealer);
-                    if !matches!(
-                        def.kind,
-                        CardKind::Spell {
-                            speed: SpellSpeed::Sorcery,
-                            ..
-                        }
-                    ) || self.controller_of(dealer) != chosen
-                    {
-                        continue;
-                    }
-                    match by_spell.iter_mut().find(|(id, _)| *id == dealer) {
-                        Some(row) => row.1 += dealt,
-                        None => by_spell.push((dealer, dealt)),
-                    }
-                }
-                by_spell.iter().map(|&(_, total)| total).max().unwrap_or(0) / 2
+                self.damage_dealt_this_turn_by(chosen) / 2
             }
         }
     }
@@ -396,6 +375,47 @@ impl Game {
     ) -> u32 {
         self.resolve_amount(amount, controller, source, target, x)
             .max(0) as u32
+    }
+
+    /// Every row this turn's damage ledger holds for `dealer`, totalled. One spell can deal
+    /// damage in several rows (Breath of Darigaaz hits each seat, Syphon Soul each opponent), and
+    /// a card that reads "the damage dealt by" that spell means its whole output.
+    pub(crate) fn damage_dealt_this_turn_by(&self, dealer: ObjectId) -> i32 {
+        self.damage_dealt_this_turn
+            .iter()
+            .filter(|&&(who, _, _)| who == dealer)
+            .map(|&(_, _, dealt)| dealt)
+            .sum()
+    }
+
+    /// The sorcery spells `player` cast this turn that actually dealt damage — the candidates
+    /// Backdraft's "one of those sorcery spells this turn" picks from. In ledger order (the order
+    /// they first dealt damage), deduplicated, so a multi-row sorcery is offered once.
+    ///
+    /// ponytail: "cast by" is read as [`Game::controller_of`], which is the owner once the sorcery
+    /// has hit its graveyard — a sorcery cast off *another* player's library or hand lands in the
+    /// wrong seat's candidate list. The engine keeps only a per-player
+    /// `sorcery_cast_this_turn` flag, not a caster per cast object; recording the caster is the
+    /// upgrade path.
+    pub(crate) fn damaging_sorceries_cast_by(&self, player: PlayerId) -> Vec<ObjectId> {
+        let mut sorceries: Vec<ObjectId> = Vec::new();
+        for &(dealer, _, _) in &self.damage_dealt_this_turn {
+            if sorceries.contains(&dealer) {
+                continue;
+            }
+            if !matches!(
+                self.def_of(dealer).kind,
+                CardKind::Spell {
+                    speed: SpellSpeed::Sorcery,
+                    ..
+                }
+            ) || self.controller_of(dealer) != player
+            {
+                continue;
+            }
+            sorceries.push(dealer);
+        }
+        sorceries
     }
 
     /// How many permanents (battlefield) or cards (graveyard) match `filter`. On the battlefield

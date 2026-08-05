@@ -43,7 +43,7 @@ mod tokens;
 mod zones;
 
 pub(crate) use frame::{ResolutionFrame, SearchFanout};
-pub(crate) use resume::ResumeState;
+pub(crate) use resume::{DrawAfter, DrawBatch, ResumeState};
 
 use crate::*;
 

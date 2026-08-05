@@ -561,7 +561,7 @@ declaration, with the running count scoped to the combat phase. Declaration is a
 in one place, so this is a legality predicate rather than new orchestration — the work is the
 per-combat counter and its reset.
 
-### 24. `chains-of-mephistopheles` — 1 card, L
+### 24. `chains-of-mephistopheles` — 1 card, L — **LANDED** (wave 13)
 Depends on: nothing.
 "If a player would draw a card except the first one they draw in each of their draw steps, that
 player discards a card instead. If the player discards a card this way, they draw a card. If the
@@ -571,19 +571,25 @@ nested conditional, and famously the hardest-templated card in the set.
 counter to identify the exempt first draw. The replacement's body is itself a draw, which must not
 re-trigger the replacement for the same event (CR 614.5). Land the replacement hook first as its
 own slice; the card body is small once the hook exists.
-*Site inventory (wave 12 — surveyed, not landed):* there is no single mutable draw choke to hang the
-hook on. Every `Event::CardDrawn` is minted by one of two *pure* functions — `Game::draw_events`
-(9 callers: the draw-step turn-based draw in `priority.rs`, hand smoothing, the mulligan deal, four
-pause handlers, two `resolve_misc` sites, `resolution/counters.rs`) and `Game::mint_draws_for` (the
-`DrawEffect::Cards` mint) — so neither can raise the discard pause the replacement's body needs.
-The nearest existing seat is `Game::draw_with_dredge`, which *is* already a draw-replacement choke
-(dredge, CR 702.52) complete with a mid-batch pause and a `remaining` resume, but only three paths
-reach it (`Effect::Draw { who: You }`, `replacements.rs`'s Lich swap, and dredge's own resume). So
-the hook is really "route every draw through `draw_with_dredge`", which is what makes this an L:
-each of the other nine sites has to become mutating-with-events and tolerate a pause mid-batch, and
-two of them are themselves inside pause handlers. Chains cannot be scripted with an `approximates`
-in the meantime — a replacement that catches only some draws would silently mis-play rather than
-under-play — so the card stays unauthored until the reroute lands.
+*What landed (wave 13):* the reroute wave 12 surveyed. `Game::draw_with_dredge` became
+`Game::draw_with_replacements(seats, after, events)` — the one draw funnel — with
+`Game::run_draw_batch` draining a `ResumeState::draw_batch` (`DrawBatch { seats, after, paused }`)
+one draw at a time and `Game::draw_one_with_replacements` applying Chains then dredge to each. Every
+in-game draw site now calls it: `Effect::Draw(DrawEffect::Cards)` for *all* `who` values (not just
+`You`), the draw-step turn-based draw, Lich's life-gain swap, Wheel of Fortune / Timetwister /
+Winds of Change, Breena's counters half (hoisted out of the pure mint), and the four pause handlers
+in `pending/handlers/optional.rs`. Whatever a caller owed *after* its draws rides on the batch as
+`DrawAfter` (the draw step's own transition; Trade Secrets' two legs) rather than following the
+call, since any draw may pause. The exempt draw is identified by an event-sourced
+`Player::draws_this_draw_step`, reset on `StepBegan(Draw)` and bumped only while the drawer is the
+active player in their own draw step — a plain "the turn-based draw is exempt" flag would be wrong
+when that draw is skipped (Island Sanctuary), since the next draw in that step is still their first.
+Chains' own substituted draw is taken with the replacement disabled (CR 614.5). Only the pre-game
+draws (mulligan deal, hand smoothing) stay off the funnel — no permanent is on the battlefield yet
+— along with `Game::cast`'s alternative-cost rider, which no printed card uses to draw.
+*Known ceilings (`ponytail:` in the code):* Chains is applied before dredge on a draw both could
+replace, rather than letting the drawing player order them (CR 616.1); Breena places its counters
+before its draw, the reverse of printed order, so a paused draw can't strand them.
 
 ### 25. `any-player-may-activate` — 2 cards, M — **LANDED** (wave 6; Clergy's regeneration shield split to #128)
 Depends on: nothing.
@@ -1163,13 +1169,14 @@ and it deals X damage to you." *Sketch:* an attack *requirement* on a single cre
 #10's ban, and much cheaper than #56's filtered block requirement), plus an optional payment whose
 amount is a live counter count with an if-you-don't consequence.
 
-### 64. `discarded-from-hand-trigger` — 1 card, M
+### 64. `discarded-from-hand-trigger` — 1 card, M — **LANDED** (wave 13)
 Depends on: nothing.
-Psychic Purge: "When a spell or ability an opponent controls causes you to discard this card, that
-player loses 5 life." A trigger that fires **from the hand**, and only for opponent-caused
-discards. *Sketch:* the trigger system watches the battlefield, stack, and graveyard; it needs a
-hand-scoped trigger check for this shape, and the discard event needs to carry its cause (which
-player's spell or ability, or a turn-based action).
+Psychic Purge: "Psychic Purge deals 1 damage to any target. / When a spell or ability an opponent
+controls causes you to discard this card, that player loses 5 life." (The card has *two* abilities;
+an earlier revision of this entry quoted only the trigger.) A trigger that fires **from the hand**,
+and only for opponent-caused discards. *Sketch:* the trigger system watches the battlefield, stack,
+and graveyard; it needs a hand-scoped trigger check for this shape, and the discard event needs to
+carry its cause (which player's spell or ability, or a turn-based action).
 
 ### 65. `puppet-master` — 1 card, M — **LANDED** (wave 11)
 Depends on: nothing.
@@ -1318,15 +1325,31 @@ is unchanged with both at their defaults. The answer's order still lands first-n
 ordering holds when both go back. `PendingChoiceView::PutFromHandOnTop` carries `life_per_declined`
 so a client can tell the ceiling from an exact count.
 
-### 78. `takklemaggot` — 1 card, L
+### 78. `takklemaggot` — 1 card, L — **LANDED** (wave 13)
 Depends on: nothing.
 An Aura that, when its host dies, returns to the battlefield under *your* control attached to a
-creature the dead creature's *controller* chooses — or, if they can't or won't, returns as a
-**non-Aura enchantment** that loses "enchant creature" and gains a wholly different triggered
-ability. *Sketch:* the engine has no way for a permanent to change its own ability set and subtype
-on re-entry. Model it as two distinct permanent shapes selected at ETB by a flag set on the return
-effect — cleaner than mutating abilities, and honest about what is happening. The opponent-chooses-
-the-host part is a pending choice held by a non-controller (#60 has the same shape).
+creature the dead creature's *controller* chooses — or, if there is no creature it could enchant,
+returns as a **non-Aura enchantment** that loses "enchant creature" and gains a wholly different
+triggered ability.
+
+*The original sketch was wrong twice, and the honest model is much smaller than it feared.* (1)
+There is no player decision between the two branches: the ruling is "if the player can choose a
+creature, they **must** do so, no matter who controls it", so the non-Aura branch is reached only
+when the candidate list is empty — not when the player declines. (2) Nothing needs two permanent
+shapes or a second `PendingChoice`. `PendingChoice::ChooseAttachHost` already carries a free
+`player` axis, and `maybe_pause_attach_deployed_aura` already builds the candidate list from
+`CardDef::enchant`.
+
+What actually landed: two defaulted fields on the existing
+`ZoneEffect::ReturnThisAuraFromGraveyardAttachedToChosenHost` — `chosen_by` (a `PlayerSet`, filled
+at trigger placement by `fill_dying_enchanted_creature_payoff` from the same CR 603.10a snapshot
+Creature Bond reads) and `hostless_returns_as_non_aura`. On the empty-candidate branch the return
+sets one new runtime flag, `Permanent::returned_as_non_aura`, read in exactly two places: the CR
+704.5m unattached-Aura sweep skips it, and `effective_subtypes` drops "Aura" from its type line.
+The gained ability is scripted as a printed third ability gated on
+`condition = "chosen_players_upkeep"` (Black Vise's), which reads the `Permanent::chosen_opponent`
+the non-Aura return writes — inert while it is still an ordinary Aura, so gate and grant are
+observationally the same thing. No new event, no new pending choice, no client work.
 
 ### 79. `skip-next-two-untap-steps` — 1 card, S — **LANDED** (wave 10)
 Depends on: #26.
@@ -1633,7 +1656,7 @@ that block it. Split into `blocks { filter }` and `becomes_blocked_by { filter }
 `blocking_partner`. The divergence is reachable rather than theoretical: Animate Wall is in the
 pool, so an attacking Wall blocked by the Medusa is a real board state.
 
-### 101. `filtered-per-turn-cast-tally` — 1 card, M
+### 101. `filtered-per-turn-cast-tally` — 1 card, M — **LANDED** (wave 13)
 Depends on: nothing.
 Ichneumon Druid: "Whenever an opponent casts an instant spell other than the first instant spell
 that player casts each turn, this creature deals 4 damage to that player."
@@ -1818,7 +1841,7 @@ player."
 threads the *drawing* player, so `who = "triggering_player"` panics at resolution on the
 "filled in at placement" expect. Thread the drawing player into the context.
 
-### 116. `condition-scoped-to-the-triggering-player` — 1 card, M
+### 116. `condition-scoped-to-the-triggering-player` — 1 card, M — **LANDED** (wave 13)
 Depends on: nothing.
 Spiritual Sanctuary: "At the beginning of each player's upkeep, if that player controls a
 Plains, they gain 1 life."
@@ -2394,7 +2417,7 @@ field to `PendingChoiceViewMaySacrifice` in `proto/mtgfr/v1/stream.proto` plus
 enables Confirm. Wire-additive, so it belongs in a wave that is already regenerating. Acceptance: a
 Mold Demon prompt projects `count = 2` and the board refuses to submit one Swamp.
 
-### 176. `pick-which-of-those-sorceries-backdraft-halves` — 1 card, M — residual of #135 (wave 12)
+### 176. `pick-which-of-those-sorceries-backdraft-halves` — 1 card, M — residual of #135 (wave 12) — **LANDED** (wave 13)
 Depends on: #135 (first clause landed — which is what left this half visible).
 Backdraft's second chooser clause: "half the damage dealt by **one of those** sorcery spells this
 turn". #135's first clause landed, so only a player who cast a sorcery can be chosen, but the amount
@@ -2411,6 +2434,12 @@ dealer exactly as the amount already totals them — plus an `Amount` reading th
 which the pool has no generic form of yet; #130's cause-tracking would want the same candidate list.
 Acceptance: with two damaging sorceries cast this turn the controller can pick the smaller one and
 Backdraft deals half *that*; drop the first half of Backdraft's `approximates` when it passes.
+*Landed as* `ChoiceEffect::ChooseTargetPlayersDamagingSorcery` (a targetless first step that reads
+the enclosing `Sequence`'s chosen player) pausing on the reusable `PendingChoice::ChooseDamageSource`
+— "pick one of these damage-ledger dealers", answered with the existing `Intent::ChooseCopyTarget` —
+plus `Amount::HalfDamageDealtByChosenSorceryThisTurn` reading the pick off
+`ResolutionFrame::chosen_damage_source`. Fewer than two candidates settle without asking. The
+chooser-is-a-target divergence survives as #216.
 
 ### 191. `choose-a-set-of-colors` — 1 card, M — residual of #28 (wave 12)
 Depends on: nothing.
@@ -2446,3 +2475,34 @@ so the dry-run needs a "no-choice" resolution mode that abandons on the first pa
 today's prediction. Same machinery would serve any other "if it would…" restriction. Acceptance: a
 modal spell whose land-destruction mode is chosen reads as a legal Equinox target while the same
 card with the other mode chosen does not.
+
+### 216. `castable-with-no-eligible-chooser` — 1 card, M — residual of #176 (wave 13)
+Depends on: nothing.
+Backdraft's "Choose a player who cast one or more sorcery spells this turn" is modelled as a
+*target* (`player_who_cast_a_sorcery_this_turn`), so the spell is uncastable when no player has cast
+a sorcery. Printed Backdraft has no targets at all: it is castable at any time and simply does
+nothing on resolution when there is no eligible player to choose. The divergence bites when a
+Backdraft is the only card in hand and casting it (to fill the graveyard, to trigger a
+prowess/magecraft-shaped ability, or to bait a counterspell) is worth more than its damage. Recorded
+in `backdraft.toml`'s `approximates`.
+*Sketch:* the pool has no "choose a player" that isn't a target — every player-picking effect today
+either targets or fans out over all players. The shape wanted is a resolution-time
+`PendingChoice` over the eligible players (the same "pick one of these" family as #176's
+`ChooseDamageSource`, one rung up from objects to players), recorded on the `ResolutionFrame` for the
+damage step to aim at, with the spell declaring no target. That also unblocks any other "choose a
+player who …" Legends prints. Acceptance: Backdraft is castable with no sorcery cast this turn, and
+resolves dealing no damage.
+
+### 217. `record-the-caster-of-each-spell` — 0 cards, M
+Depends on: nothing.
+The engine keeps a per-player `sorcery_cast_this_turn` flag but never records *who cast* a given
+spell object. Anything that has to answer "which spells did this player cast this turn?" therefore
+falls back to `controller_of`, which for a spell already in a graveyard is the card's **owner**. The
+two disagree whenever a spell is cast from a zone its owner does not control — Word of Command, a
+`may cast` off an opponent's library or hand, and every future "cast target opponent's card" — and
+the answer lands in the wrong seat's list. Surfaced by #176 (Backdraft's candidate list) and
+recorded as a `ponytail:` in `crates/engine/src/amount.rs`; filed here rather than against Backdraft
+because it is an engine-wide gap that outlives the set.
+*Sketch:* record the casting player on the stack object at cast time and read that instead of
+`controller_of` wherever a cast is attributed after the fact. Acceptance: a sorcery cast off an
+opponent's library appears in the *caster's* damaging-sorcery candidate list, not the owner's.

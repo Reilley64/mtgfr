@@ -59,6 +59,8 @@ pub(crate) use resolution::ResolveCtx;
 /// All-players search fan-out continuation state (Veteran Explorer) — see
 /// [`resolution::SearchFanout`].
 pub(crate) use resolution::SearchFanout;
+/// The one draw funnel's parked batch and its follow-up rider — see [`Game::draw_with_replacements`].
+pub(crate) use resolution::{DrawAfter, DrawBatch};
 pub use state::{ControlCondition, DyingCreatureStats};
 pub(crate) use state::{Modifier, ModifierDuration, ModifierKind};
 pub use types::*;

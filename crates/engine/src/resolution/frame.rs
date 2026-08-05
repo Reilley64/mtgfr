@@ -94,11 +94,32 @@ pub(crate) struct ResolutionFrame {
     /// panicking on `Object::Removed`. Object ids are never reused, so matching on the id makes
     /// a stale entry from an unrelated earlier vanish harmless.
     pub(crate) vanished_permanent_owner: Option<(ObjectId, PlayerId)>,
+    /// The object this resolution's [`Effect::Choice(ChoiceEffect::ChooseTargetPlayersDamagingSorcery)`](crate::Effect::Choice(crate::ChoiceEffect::ChooseTargetPlayersDamagingSorcery))
+    /// step settled — the one damage-ledger dealer a following
+    /// [`Amount::HalfDamageDealtByChosenSorceryThisTurn`](crate::Amount) sizes off (Backdraft's
+    /// "one of those sorcery spells"). Settled without a pause when only one candidate exists,
+    /// off [`PendingChoice::ChooseDamageSource`](crate::PendingChoice) when several do, and left
+    /// `None` when none do — which reads back as 0 damage. Cleared as each stack item begins
+    /// resolving ([`Game::resolve_top`](crate::Game)), like the other resolution-local scratch,
+    /// so a resolution that never picked can't read the previous one's.
+    pub(crate) chosen_damage_source: Option<ObjectId>,
     /// An all-players [`Effect::Dig(DigEffect::SearchLibrary)`](crate::Effect::Dig(DigEffect::SearchLibrary)) fan-out's (Veteran
     /// Explorer) still-to-search players and the filter/destination/count each of their searches
     /// restarts fresh with. `None` once the last queued player's search ends (or for any
     /// single-searcher search, which never populates this).
     pub(crate) search_fanout: Option<SearchFanout>,
+    /// Who controls the spell or ability now resolving, stamped onto every
+    /// [`Event::Discarded`](crate::Event::Discarded) that resolution's discards mint
+    /// ([`Game::discard_ids`](crate::Game)) — Psychic Purge's "when a spell or ability an
+    /// opponent controls causes you to discard this card". Armed per stack item in
+    /// [`Game::resolve_top`](crate::Game) and lives in the frame rather than as a `discard_ids`
+    /// parameter because the pause/resume discard answers (a discard edict, Compulsive
+    /// Research's rider) run outside any resolution call and have no controller in scope.
+    ///
+    /// ponytail: the cleanup hand-size trim answers through the same choke with a *stale* value
+    ///   still armed, so it clears this explicitly. Any future discard path that runs outside a
+    ///   resolution must do the same.
+    pub(crate) discard_cause: Option<PlayerId>,
 }
 
 /// Continuation state for a multi-seat [`PlayerSet`](crate::PlayerSet) search: the

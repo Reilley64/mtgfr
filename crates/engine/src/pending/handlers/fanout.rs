@@ -724,21 +724,29 @@ impl Game {
         player: PlayerId,
         cards: Vec<ObjectId>,
     ) -> Result<Vec<Event>, Reject> {
-        let (chooser, hand, count, or_one_matching, is_cleanup) = match self.pending_choice.clone()
-        {
-            Some(PendingChoice::DiscardToHandSize {
-                player,
-                hand,
-                count,
-            }) => (player, hand, count, None, true),
-            Some(PendingChoice::DiscardCards {
-                player,
-                hand,
-                count,
-                or_one_matching,
-            }) => (player, hand, count, or_one_matching, false),
-            _ => return Err(Reject::IllegalChoice),
-        };
+        let (chooser, hand, count, or_one_matching, is_cleanup, draw_replacement) =
+            match self.pending_choice.clone() {
+                Some(PendingChoice::DiscardToHandSize {
+                    player,
+                    hand,
+                    count,
+                }) => (player, hand, count, None, true, false),
+                Some(PendingChoice::DiscardCards {
+                    player,
+                    hand,
+                    count,
+                    or_one_matching,
+                    draw_replacement,
+                }) => (
+                    player,
+                    hand,
+                    count,
+                    or_one_matching,
+                    false,
+                    draw_replacement,
+                ),
+                _ => return Err(Reject::IllegalChoice),
+            };
         // Exactly `count` distinct cards, each currently in this player's hand — or, when the
         // effect carries a land-escape-valve filter, a single matching card instead (Compulsive
         // Research's "unless they discard a land card").
@@ -754,19 +762,31 @@ impl Game {
         self.finish_answer();
         let mut events = Vec::new();
         // CR 701.8: every discard fires "whenever you discard" watchers — a cleanup hand-size
-        // trim counts exactly the same as an effect discard.
+        // trim counts exactly the same as an effect discard. But the cleanup trim is a turn-based
+        // action (CR 514.1), not something a spell or ability *caused*, and it runs with whatever
+        // `resolve_top` last armed still in the frame — so clear the cause before it discards.
+        if is_cleanup {
+            self.resolution_frame.discard_cause = None;
+        }
         self.discard_ids(&cards, player, &mut events);
         // Recall's "for each card discarded this way": tally what an *effect* discard actually
         // took, so a following step in the same resolution can read it back through
         // `Amount::CardsDiscardedThisWay`. A short hand discards fewer than asked (CR 700.2), and
         // that smaller number is what the rider is owed. A cleanup trim is not "this way".
-        if !is_cleanup {
+        // Chains of Mephistopheles' substituted discard is nobody's resolution either — it
+        // replaced a draw, it isn't a step of the effect that asked for one.
+        if !is_cleanup && !draw_replacement {
             self.resolution_frame.cards_discarded_this_way = cards.len() as u32;
         }
         // A cleanup discard resumes the step-transition loop it interrupted; an effect discard's
         // sequence tail (if any) is resumed by [`Game::resume_deferred_sequence`] after this returns.
         if is_cleanup {
             events.extend(self.advance_step());
+        }
+        // "If the player discards a card this way, they draw a card." — then the rest of the draw
+        // batch this discard interrupted.
+        if draw_replacement {
+            self.finish_chains_draw(player, &mut events);
         }
         Ok(events)
     }
