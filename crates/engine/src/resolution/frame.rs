@@ -96,7 +96,7 @@ pub(crate) struct ResolutionFrame {
     pub(crate) vanished_permanent_owner: Option<(ObjectId, PlayerId)>,
     /// The object this resolution's [`Effect::Choice(ChoiceEffect::ChooseTargetPlayersDamagingSorcery)`](crate::Effect::Choice(crate::ChoiceEffect::ChooseTargetPlayersDamagingSorcery))
     /// step settled — the one damage-ledger dealer a following
-    /// [`Amount::HalfDamageDealtByChosenSorceryThisTurn`](crate::Amount) sizes off (Backdraft's
+    /// [`Amount::DamageDealtByChosenSorceryThisTurn`](crate::Amount) sizes off (Backdraft's
     /// "one of those sorcery spells"). Settled without a pause when only one candidate exists,
     /// off [`PendingChoice::ChooseDamageSource`](crate::PendingChoice) when several do, and left
     /// `None` when none do — which reads back as 0 damage. Cleared as each stack item begins

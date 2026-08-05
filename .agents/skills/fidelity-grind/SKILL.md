@@ -151,8 +151,9 @@ Hard-won loop rules (already baked into the script — do not soften them):
   slot re-confirming it.
 - **Verify gate (every wave, opus, adversarial):** follow **`verification-before-completion`**
   — no green claim without fresh command evidence. Run full `cargo test --workspace` and
-  **`just server-check`** — the whole recipe, not the clippy line out of it. `just server-lint`
-  also validates the entire card pool against the generated JSON Schemas, and that validation is
+  **`just server-check`** — the whole recipe, not the clippy line out of it. `just server-lint` is
+  *only* `cargo clippy --all-targets`; the pool validation is the separate `cards-toml-validate-pool`
+  and `cards-schema-check` recipes that `server-check` (and CI) depend on, and that validation is
   the *only* thing that catches drift between the TOML surface's two hand-synced structs: the
   deserializer's private `Table` in `crates/cards/src/de.rs` and its schema mirror
   `AmountTableSchema` (and siblings) in `crates/cards/src/toml_surface/dsl_schema.rs`. Both are

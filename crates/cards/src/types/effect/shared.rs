@@ -431,15 +431,15 @@ pub enum Amount {
     /// [`ResolutionFrame::damage_dealt_this_way`]. Counts damage *dealt*, so prevention and
     /// redirection have already had their say (CR 615, CR 120.8: 0 damage is never dealt).
     DamageDealtThisWay,
-    /// Half — rounded down — the damage dealt this turn by the sorcery a preceding
-    /// [`ChoiceEffect::ChooseTargetPlayersDamagingSorcery`] step picked (Backdraft's "half the
-    /// damage dealt by one of those sorcery spells this turn, rounded down"): every row that
+    /// The damage dealt this turn by the sorcery a preceding
+    /// [`ChoiceEffect::ChooseTargetPlayersDamagingSorcery`] step picked (Backdraft's "the damage
+    /// dealt by one of those sorcery spells this turn"): every row that
     /// sorcery has in the turn-scoped [`Game::damage_dealt_this_turn`](crate::Game) ledger,
     /// totalled — one spell can deal damage in several rows (Breath of Darigaaz hits every seat)
     /// and "the damage dealt by one of those sorcery spells" is that whole spell's output. 0 when
     /// nothing was picked, which is what makes Backdraft's "choose a player who cast one or more
     /// sorcery spells" bite for a player whose sorceries all dealt nothing.
-    HalfDamageDealtByChosenSorceryThisTurn,
+    DamageDealtByChosenSorceryThisTurn,
     /// `per` times the number of creatures blocking the source beyond the first — rampage N's
     /// "+N/+N until end of turn for each creature blocking it beyond the first" (CR 702.23a).
     /// Resolved against the *living* blockers at the moment the ability resolves, which is exactly
@@ -1312,6 +1312,9 @@ Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
         // a creature is only a legal first target *because* some Wall blocked it, and the second
         // clause is which one. `Game::narrow_blocked_by_target_wall_clause` then cuts the Walls
         // down to the ones that blocked whatever clause 0 named.
+        // ponytail: the flag *is* the clause — a card that ever wants `blocked_by_a_wall_this_turn`
+        //   as a plain filter, with no Wall to target, would silently acquire a second target here.
+        //   Give that card an authored `second` the way `MoveAura` has one when it shows up.
         if let TargetSpec::Permanent(filter) = self.clone().target()
             && filter.blocked_by_a_wall_this_turn
         {
@@ -3728,10 +3731,19 @@ fn map_effect_amount_slots(effect: Effect, f: &impl Fn(Amount) -> Amount) -> Eff
             lose_game_if_short,
             then,
         }),
-        Effect::Damage(DamageEffect::ToPlayers { who, amount }) => Effect::Damage(DamageEffect::ToPlayers {
-            who,
-            amount: f(amount),
-        }),
+        // Every damage shape that carries an `Amount`, matched on one arm — a placeholder is a
+        // property of the amount slot, not of who the damage is aimed at, and Land's Edge proved
+        // that naming only the seat-facing variant leaves the targeted one live to the resolver.
+        Effect::Damage(mut damage) => {
+            match &mut damage {
+                DamageEffect::EachCreature { amount, .. }
+                | DamageEffect::ToPlayers { amount, .. }
+                | DamageEffect::Radiance { amount, .. }
+                | DamageEffect::Target { amount, .. } => *amount = f(*amount),
+                DamageEffect::ToEnteringPermanent { .. } => {}
+            }
+            Effect::Damage(damage)
+        }
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
@@ -4107,30 +4119,13 @@ pub fn contextualize_exiled_sacrifices(effect: Effect, cards: &[ObjectId]) -> Ef
 /// time the ability resolves off the stack. Called at [`Game::activate_ability`], mirroring
 /// [`contextualize_sacrifice_effect`] above.
 pub fn contextualize_discard_effect(effect: Effect, was_land: bool) -> Effect {
-    let fill = |amount: Amount| match amount {
+    // Every amount slot, not just the damage one: the placeholder is only ever legal because
+    // `Game::resolve_amount` panics on one that survives to resolution, and a Land's Edge shaped
+    // as a `sequence` (discard, *then* damage) would slip a live one past a hand-rolled match.
+    map_effect_amount_slots(effect, &|amount| match amount {
         Amount::DiscardCostWasLand(n) => Amount::Fixed(if was_land { n } else { 0 }),
         other => other,
-    };
-    match effect {
-        Effect::Damage(DamageEffect::Target {
-            amount,
-            target,
-            count,
-            divided,
-            cant_be_regenerated,
-            exile_instead_of_dying,
-            gain_life_equal_to_damage,
-        }) => Effect::Damage(DamageEffect::Target {
-            amount: fill(amount),
-            target,
-            count,
-            divided,
-            cant_be_regenerated,
-            exile_instead_of_dying,
-            gain_life_equal_to_damage,
-        }),
-        other => other,
-    }
+    })
 }
 
 #[cfg(test)]

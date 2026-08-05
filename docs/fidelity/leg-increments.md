@@ -796,6 +796,16 @@ source type and a threshold. *Sketch:* a `ReplaceDamageAmount { source_filter, w
 new_amount }` hook in the damage path, ordered after prevention (CR 615.9 — the recipient chooses
 the order, but with one effect it does not matter here).
 
+*Landed:* `StaticEffect::ReplaceDamageToYou { source, at_least, becomes }` with a matching
+`ReplacementEffect::ReplaceDamageToYou` registry arm and a `replaced_damage_to_player()` query in
+`crates/engine/src/replacements.rs`. Read in `player_damage_events_inner`
+(`crates/engine/src/resolution/damage.rs`) **after** the prevention shields take their bite — CR
+615.9 rewrites the amount rather than subtracting from it, so a shield that has already eaten some
+of the damage feeds the rewrite its reduced number. `forethought_amulet.toml` is faithful (the
+upkeep `pay_or_else` sacrifice plus the static), no `approximates`. Covered by the threshold on
+both sides (3 rewrites, a sub-threshold Shock does not), a permanent source left untouched, and an
+opponent left unprotected.
+
 ### 39. `gabriel-angelfire` — 1 card, M — **LANDED** (wave 11)
 Depends on: #1, #5.
 "At the beginning of your upkeep, choose flying, first strike, trample, or rampage 3. Gabriel
@@ -1848,6 +1858,13 @@ Plains, they gain 1 life."
 *Sketch:* every `Condition` evaluates against `ctx.controller`. An `each_upkeep` trigger needs
 its intervening-if clause scoped to the player whose upkeep it is (CR 603.4), which means
 `Condition` gains a subject rather than always meaning "you".
+*Landed (wave 13):* the sketch's "`Condition` gains a subject" would have meant a subject field on
+every variant. Shipped instead as a wrapper — `Condition::ForTriggeringPlayer { inner: &'static
+Condition }` (`crates/cards/src/types/effect/shared.rs`) re-runs the inner condition with
+`controller` swapped for `ctx.active_player` (`crates/engine/src/triggers.rs:4777`), so every
+existing "you"-worded variant reads from the triggering seat for free and none of them changed
+shape. A context that threads no `active_player` has nothing to ask about and the condition does
+not hold — the same fail-closed posture the source-based conditions take.
 
 ### 117. `grant-to-attached-under-a-condition` — 1 card, M — **LANDED** (wave 11)
 Depends on: nothing.
@@ -2525,3 +2542,22 @@ engine-wide gap that outlives the set.
 unfulfillable requirement is dropped on both sides. Acceptance: with the recorded defender eliminated,
 a declaration that leaves the required creature home is accepted, and `required_attacks` and the
 validator agree on every board.
+
+### 219. `redirect-destination-as-one-axis` — 0 cards, S
+Depends on: nothing.
+`MiscEffect::PreventNextDamage` carries the redirect destination as four independent booleans —
+`redirect_to_controller`, `redirect_to_target_controller`, `redirect_to_source`, `redirect_to_target`
+(`crates/cards/src/types/effect/misc.rs`). They are one choice, and nothing enforces that: neither
+the `de.rs` visitor nor the generated JSON Schema refuses two at once, so a card setting both
+`redirect_to_source` and `redirect_to_target` deserializes, passes pool validation, and reaches
+`crates/engine/src/resolution/resolve_misc.rs` as an incoherent instruction resolved by whichever
+flag that file happens to test first. No shipped card sets more than one, so this is an
+unrepresentable-illegal-state cleanup rather than a live defect — but the cost of the shape is
+already visible in `crates/cards/tests/pool.rs`, where constructing one value means spelling out the
+whole boolean set.
+*Sketch:* collapse to `redirect: Option<RedirectTarget>` with a four-variant enum. The deserializer
+then makes the illegal combination unrepresentable for free and the schema gains an `enum`
+constraint instead of four unconstrained booleans. Mechanical but wide — five card TOMLs, the two
+mirrored surface structs, ten engine match sites and the pool constructions — which is why it wants
+its own diff rather than riding inside a set-sized card PR. Acceptance: the two-destination card
+that loads today fails to deserialize, and every existing redirect card plays unchanged.

@@ -734,8 +734,8 @@ impl<'de> Deserialize<'de> for Amount {
                     "damage_dealt_to_source_this_turn_by_others_named_the_same" => {
                         Amount::DamageDealtToSourceThisTurnByOthersNamedTheSame
                     }
-                    "half_damage_dealt_by_chosen_sorcery_this_turn" => {
-                        Amount::HalfDamageDealtByChosenSorceryThisTurn
+                    "damage_dealt_by_chosen_sorcery_this_turn" => {
+                        Amount::DamageDealtByChosenSorceryThisTurn
                     }
                     other => return Err(E::unknown_variant(other, KEYWORDS)),
                 })
@@ -1111,7 +1111,7 @@ pub const AMOUNT_KEYWORDS: &[&str] = &[
     "counters_removed_this_way",
     "damage_dealt_this_way",
     "damage_dealt_to_source_this_turn_by_others_named_the_same",
-    "half_damage_dealt_by_chosen_sorcery_this_turn",
+    "damage_dealt_by_chosen_sorcery_this_turn",
 ];
 
 pub const PERMANENT_FILTER_SHORTHANDS: &[&str] = &[

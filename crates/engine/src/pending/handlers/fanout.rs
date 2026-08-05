@@ -768,7 +768,19 @@ impl Game {
         if is_cleanup {
             self.resolution_frame.discard_cause = None;
         }
+        // Chains of Mephistopheles' substituted discard runs outside any resolution too, and the
+        // frame still holds whatever asked for the *draw* it replaced. The discard is caused by
+        // Chains' own static ability (CR 614), so Psychic Purge's "a spell or ability an opponent
+        // controls causes you to discard this" reads Chains' controller, not the drawing spell's.
+        // Restored afterwards: the resolution this interrupted may discard again on its own account.
+        let stale_cause = draw_replacement.then(|| {
+            let chains = self.chains_controller();
+            std::mem::replace(&mut self.resolution_frame.discard_cause, chains)
+        });
         self.discard_ids(&cards, player, &mut events);
+        if let Some(cause) = stale_cause {
+            self.resolution_frame.discard_cause = cause;
+        }
         // Recall's "for each card discarded this way": tally what an *effect* discard actually
         // took, so a following step in the same resolution can read it back through
         // `Amount::CardsDiscardedThisWay`. A short hand discards fewer than asked (CR 700.2), and

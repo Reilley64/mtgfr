@@ -135,6 +135,13 @@ impl Game {
                 &mut events,
             );
         }
+        // A parked draw batch isn't the quitter's to forfeit either. Their own replacement answer
+        // is gone with them and `ResumeState::clear_for_removed` has already dropped their seat, but
+        // the seats behind them are still owed their draws — and a batch parked on the draw step
+        // still owes the turn its advance. A no-op when nothing is parked.
+        if abandoned.is_some() {
+            self.run_draw_batch(&mut events);
+        }
         events
     }
 

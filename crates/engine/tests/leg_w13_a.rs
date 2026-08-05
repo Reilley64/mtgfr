@@ -256,3 +256,138 @@ fn timetwister_under_chains_mills_every_seat_instead_of_refilling_it() {
         );
     }
 }
+
+/// Three seats, each holding cards to discard, under someone's Chains. Vision Skeins is the
+/// multi-seat batch: every one of the six draws pauses, so the batch has to resume *into the next
+/// seat* five times rather than only within one seat's run.
+fn three_seats_under_chains(fodder_each: usize) -> (Game, Vec<usize>) {
+    let mut game = Game::with_players(3, 0);
+    stock_libraries(&mut game);
+    // Chains sits with player 1, not the active player: it replaces every seat's draws whoever
+    // controls it, and keeping it off player 0 means the concede test can drop the *active* seat
+    // (the one APNAP pauses first) without CR 800.4a taking the replacement off the board too.
+    game.spawn_on_battlefield(PlayerId(1), card("Chains of Mephistopheles"));
+    for p in 0..3u8 {
+        for _ in 0..fodder_each {
+            game.spawn_in_hand(PlayerId(p), card("Grizzly Bears"));
+        }
+    }
+    let libraries = (0..3).map(|p| game.library_size(PlayerId(p))).collect();
+    (game, libraries)
+}
+
+#[test]
+fn a_multi_seat_draw_batch_resumes_into_the_next_seat_after_each_pause() {
+    let (mut game, libraries) = three_seats_under_chains(2);
+    let skeins = game.spawn_in_hand(PlayerId(0), card("Vision Skeins"));
+    let hands: Vec<usize> = (0..3).map(|p| game.hand(PlayerId(p)).len()).collect();
+
+    cast_by(&mut game, PlayerId(0), skeins, None);
+    resolve_top_of_stack(&mut game);
+
+    // "Each player draws two cards" — six draws, every one of them replaced, and the batch parks
+    // and re-enters between each.
+    assert_eq!(
+        answer_chains_discards(&mut game),
+        6,
+        "two per seat, replaced"
+    );
+    for p in 0..3u8 {
+        let player = PlayerId(p);
+        assert_eq!(
+            game.library_size(player),
+            libraries[p as usize] - 2,
+            "player {p} took both of their granted draws"
+        );
+        // Discard one, draw one (CR 614.5 exempts the draw the replacement grants), twice over.
+        let expected = hands[p as usize] - usize::from(p == 0);
+        assert_eq!(
+            game.hand(player).len(),
+            expected,
+            "player {p}'s hand is level after two discard-then-draws"
+        );
+    }
+}
+
+#[test]
+fn conceding_on_a_chains_discard_still_pays_the_rest_of_the_batch() {
+    let (mut game, libraries) = three_seats_under_chains(2);
+    let skeins = game.spawn_in_hand(PlayerId(0), card("Vision Skeins"));
+
+    cast_by(&mut game, PlayerId(0), skeins, None);
+    resolve_top_of_stack(&mut game);
+
+    // The batch is parked on player 0's first discard. They quit rather than answer it.
+    let Some(PendingChoice::DiscardCards { player, .. }) = game.pending_choice() else {
+        panic!("the first draw of the batch pauses for a discard");
+    };
+    assert_eq!(player, PlayerId(0), "APNAP puts the active player first");
+    game.submit(Intent::Concede {
+        player: PlayerId(0),
+    })
+    .expect("a player may always quit");
+
+    // The quitter forfeits their own draws, but the two seats behind them in the batch are still
+    // owed theirs — the batch must not strand on the choice that left with them.
+    assert_eq!(answer_chains_discards(&mut game), 4, "two each for 1 and 2");
+    for p in 1..3u8 {
+        assert_eq!(
+            game.library_size(PlayerId(p)),
+            libraries[p as usize] - 2,
+            "player {p} was paid in full"
+        );
+    }
+}
+
+#[test]
+fn psychic_purge_discarded_to_chains_charges_the_chains_controller() {
+    let mut game = Game::with_players(3, 0);
+    stock_libraries(&mut game);
+    // Player 0 controls Chains; player 1 casts the spell that asks player 2 to draw. Those are
+    // different seats on purpose: the discard is caused by Chains' static ability, not by the
+    // spell whose draw it replaced, so the 5 life is player 0's to lose.
+    game.spawn_on_battlefield(PlayerId(0), card("Chains of Mephistopheles"));
+    let recall = game.spawn_in_hand(PlayerId(1), card("Ancestral Recall"));
+    let purge = game.spawn_in_hand(PlayerId(2), card("Psychic Purge"));
+    let life_before: Vec<i32> = (0..3).map(|p| game.life(PlayerId(p))).collect();
+
+    // Ancestral Recall is an instant, so player 1 only needs priority to hold it up.
+    game.submit(Intent::PassPriority {
+        player: PlayerId(0),
+    })
+    .expect("the active player may pass");
+    cast_by(
+        &mut game,
+        PlayerId(1),
+        recall,
+        Some(Target::Player(PlayerId(2))),
+    );
+    resolve_top_of_stack(&mut game);
+
+    let Some(PendingChoice::DiscardCards { player, .. }) = game.pending_choice() else {
+        panic!("player 2's draw is replaced by a discard");
+    };
+    assert_eq!(player, PlayerId(2));
+    game.submit(Intent::Discard {
+        player: PlayerId(2),
+        cards: vec![purge],
+    })
+    .expect("Psychic Purge is in hand and may be the discard");
+    // "When a spell or ability an opponent controls causes you to discard this card, that player
+    // loses 5 life." Drain the rest of the batch, then let the trigger resolve.
+    answer_chains_discards(&mut game);
+    while !game.stack_is_empty() {
+        resolve_top_of_stack(&mut game);
+    }
+
+    assert_eq!(
+        game.life(PlayerId(0)),
+        life_before[0] - 5,
+        "the Chains controller caused the discard"
+    );
+    assert_eq!(
+        game.life(PlayerId(1)),
+        life_before[1],
+        "the spell that asked for the draw did not cause the discard"
+    );
+}

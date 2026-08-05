@@ -58,7 +58,7 @@ pub enum ChoiceEffect {
     /// [`PendingChoice::ChooseDamageSource`](crate::PendingChoice) over that player's sorceries
     /// with a row in this turn's damage ledger, and writes the pick onto
     /// [`ResolutionFrame::chosen_damage_source`](crate::resolution::ResolutionFrame) for a later
-    /// step's [`Amount::HalfDamageDealtByChosenSorceryThisTurn`] to read. With one such sorcery
+    /// step's [`Amount::DamageDealtByChosenSorceryThisTurn`] to read. With one such sorcery
     /// there is nothing to decide and the pick is settled without asking; with none, nothing is
     /// recorded and the amount reads 0.
     ChooseTargetPlayersDamagingSorcery,

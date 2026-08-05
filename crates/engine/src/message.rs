@@ -1326,9 +1326,7 @@ fn amount_token(amount: Amount) -> &'static str {
         Amount::DamageDealtToSourceThisTurnByOthersNamedTheSame => {
             "damage_dealt_to_source_this_turn_by_others_named_the_same"
         }
-        Amount::HalfDamageDealtByChosenSorceryThisTurn => {
-            "half_damage_dealt_by_chosen_sorcery_this_turn"
-        }
+        Amount::DamageDealtByChosenSorceryThisTurn => "damage_dealt_by_chosen_sorcery_this_turn",
         Amount::BlockersBeyondFirst { .. } => "blockers_beyond_first",
         Amount::CreaturesBlockingThatCreature { .. } => "creatures_blocking_that_creature",
         Amount::Combine { .. } => "combine",

@@ -145,21 +145,30 @@ impl Game {
             .collect()
     }
 
-    /// Whether a draw-replacing Chains of Mephistopheles is on the battlefield —
+    /// Who controls a draw-replacing Chains of Mephistopheles, if one is on the battlefield —
     /// "If a player would draw a card except the first one they draw in each of their draw steps,
     /// that player discards a card instead." (CR 614). It replaces *every* player's draws, whoever
-    /// controls it, so unlike [`Game::controls_static`] this scan isn't player-scoped.
-    pub(crate) fn draws_become_discard_then_draw(&self) -> bool {
-        self.battlefield().into_iter().any(|id| {
-            self.functional_abilities(id).iter().any(|ability| {
-                ability.timing == Timing::Static
-                    && matches!(
-                        ability.effect,
-                        Effect::Static(
-                            StaticEffect::DrawsAfterTheFirstEachDrawStepBecomeDiscardThenDraw
+    /// controls it, so unlike [`Game::controls_static`] this scan isn't player-scoped. The
+    /// controller is what stamps the substituted discard's cause (Psychic Purge reads it — the
+    /// discard is caused by Chains' own static ability, not by whatever asked for the draw).
+    ///
+    /// ponytail: two Chains behave as one — the first found is the cause, and a second copy
+    ///   neither doubles the replacement (CR 614.5 already exempts the draw it grants) nor gets a
+    ///   say in the cause. Return the full set and pause on the ordering if a real deck runs two.
+    pub(crate) fn chains_controller(&self) -> Option<PlayerId> {
+        self.battlefield().into_iter().find_map(|id| {
+            self.functional_abilities(id)
+                .iter()
+                .any(|ability| {
+                    ability.timing == Timing::Static
+                        && matches!(
+                            ability.effect,
+                            Effect::Static(
+                                StaticEffect::DrawsAfterTheFirstEachDrawStepBecomeDiscardThenDraw
+                            )
                         )
-                    )
-            })
+                })
+                .then(|| self.controller_of(id))
         })
     }
 
@@ -299,7 +308,7 @@ impl Game {
         events: &mut Vec<Event>,
     ) -> bool {
         if apply_chains
-            && self.draws_become_discard_then_draw()
+            && self.chains_controller().is_some()
             && !self.is_first_draw_of_own_draw_step(player)
         {
             let hand = self.hand_of(player);

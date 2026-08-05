@@ -17,6 +17,7 @@ type = "enchantment"
 [[abilities]]
 timing = "static"
 
+# Creatures with swampwalk can be blocked as though they didn't have swampwalk.
 [[abilities.effects]]
 type = "static"
 mode = "landwalk_negated"

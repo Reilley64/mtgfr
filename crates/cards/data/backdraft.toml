@@ -31,4 +31,4 @@ mode = "choose_target_players_damaging_sorcery"
 type = "damage"
 mode = "target"
 target = "player_who_cast_a_sorcery_this_turn"
-amount = "half_damage_dealt_by_chosen_sorcery_this_turn"
+amount = { left = "damage_dealt_by_chosen_sorcery_this_turn", op = "divide_rounding_down", right = 2 }

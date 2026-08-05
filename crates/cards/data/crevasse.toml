@@ -17,6 +17,7 @@ type = "enchantment"
 [[abilities]]
 timing = "static"
 
+# Creatures with mountainwalk can be blocked as though they didn't have mountainwalk.
 [[abilities.effects]]
 type = "static"
 mode = "landwalk_negated"

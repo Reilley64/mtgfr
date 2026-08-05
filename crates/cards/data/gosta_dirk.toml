@@ -24,6 +24,7 @@ toughness = 4
 [[abilities]]
 timing = "static"
 
+# Creatures with islandwalk can be blocked as though they didn't have islandwalk.
 [[abilities.effects]]
 type = "static"
 mode = "landwalk_negated"

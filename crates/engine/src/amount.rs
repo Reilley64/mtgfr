@@ -354,11 +354,11 @@ impl Game {
             Amount::CreaturesSacrificedThisWay => {
                 self.resolution_frame.creatures_sacrificed_this_way as i32
             }
-            Amount::HalfDamageDealtByChosenSorceryThisTurn => {
+            Amount::DamageDealtByChosenSorceryThisTurn => {
                 let Some(chosen) = self.resolution_frame.chosen_damage_source else {
                     return 0;
                 };
-                self.damage_dealt_this_turn_by(chosen) / 2
+                self.damage_dealt_this_turn_by(chosen)
             }
         }
     }
