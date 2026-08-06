@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { emptyManaPool } from "~/manaPips";
+import { manaTrayPos } from "./layout";
 import { projectManaTrays } from "./manaTrayProject";
 
 describe("projectManaTrays", () => {
@@ -17,11 +18,12 @@ describe("projectManaTrays", () => {
       2,
       cam,
     );
+    const world = manaTrayPos(0, 0, 2);
     expect(trays).toHaveLength(1);
     expect(trays[0]).toMatchObject({
       seat: 0,
-      x: -8 * 2 + 10,
-      y: 640 * 2 + 20,
+      x: world.x * cam.zoom + cam.panX,
+      y: world.y * cam.zoom + cam.panY,
       zoom: 2,
     });
     expect(trays[0].chips).toEqual([{ kind: "glyph", ms: "w", code: "W", amount: 2 }]);

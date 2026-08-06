@@ -38,6 +38,7 @@ export type BitmapFrame = {
   dpr: number;
   camera: Camera;
   cards: readonly RenderCard[];
+  avatarPositions?: Readonly<Record<number, { x: number; y: number }>>;
   viewer: number;
   players: readonly PlayerView[];
   priority: number;
@@ -513,7 +514,7 @@ function paintAvatars(ctx: CanvasRenderingContext2D, frame: BitmapFrame, cache: 
   const radius = AVATAR_R * frame.camera.zoom;
 
   for (const player of frame.players) {
-    const pos = avatarPos(player.player, frame.viewer, count);
+    const pos = frame.avatarPositions?.[player.player] ?? avatarPos(player.player, frame.viewer, count);
     const screen = worldToScreen(frame.camera, pos.x, pos.y);
     const offsets = avatarLabelOffsets(player.player, frame.viewer, count);
     const stroke = frame.priority === player.player ? colors.priorityGold : seatColor(player.player, 0.9);
@@ -596,7 +597,7 @@ function paintCombatArrows(ctx: CanvasRenderingContext2D, frame: BitmapFrame): v
   const avatars: Record<number, { x: number; y: number }> = {};
   const count = Math.max(1, frame.players.length);
   for (const player of frame.players) {
-    const pos = avatarPos(player.player, frame.viewer, count);
+    const pos = frame.avatarPositions?.[player.player] ?? avatarPos(player.player, frame.viewer, count);
     avatars[player.player] = worldToScreen(frame.camera, pos.x, pos.y);
   }
 
@@ -622,7 +623,7 @@ function paintStackTargetArrows(ctx: CanvasRenderingContext2D, frame: BitmapFram
   const count = Math.max(1, frame.players.length);
   const avatars: Record<number, { x: number; y: number }> = {};
   for (const player of frame.players) {
-    const pos = avatarPos(player.player, frame.viewer, count);
+    const pos = frame.avatarPositions?.[player.player] ?? avatarPos(player.player, frame.viewer, count);
     avatars[player.player] = worldToScreen(frame.camera, pos.x, pos.y);
   }
   for (const { from, to } of stackTargetArrowEndpoints({

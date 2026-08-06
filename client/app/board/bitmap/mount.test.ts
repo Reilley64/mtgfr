@@ -4,8 +4,7 @@ import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ActionView, PlayerView } from "~/wire/types";
 import { BLANK_FACE } from "../../domain/card-render/frame";
 import { gravatarUrl } from "../../domain/gravatar";
-import type { RenderCard } from "../geometry/layout";
-import { ZONE } from "../geometry/layout";
+import { AVATAR_LIFE_LABEL_BELOW, avatarPos, type RenderCard, ZONE } from "../geometry/layout";
 import { spawnExitFx } from "../motion/exit-fx";
 import { spawnFlight } from "../motion/flights";
 import {
@@ -584,7 +583,30 @@ describe("paintBitmapLayer", () => {
 
     expect(cache.get).toHaveBeenCalledWith(gravatarUrl(hash));
     expect(calls).toContain("image:gravatar");
-    expect(calls).toContain("text:40@728");
+    expect(calls).toContain(`text:40@${avatarPos(0, 0, 1).y + AVATAR_LIFE_LABEL_BELOW}`);
+  });
+
+  it("paints avatars at content-aware world positions supplied by the frame", () => {
+    const calls: string[] = [];
+    vi.stubGlobal("window", { devicePixelRatio: 1 });
+    const ctx = mockCtx(calls);
+    const canvas = {
+      width: 0,
+      height: 0,
+      getContext: vi.fn(() => ctx),
+      style: {},
+    } as unknown as HTMLCanvasElement;
+
+    paintBitmapLayer(
+      canvas,
+      frame({
+        cards: [],
+        avatarPositions: { 0: { x: 700, y: 500 } },
+      }),
+      { get: vi.fn(() => undefined) },
+    );
+
+    expect(ctx.arc).toHaveBeenCalledWith(700, 500, 40, 0, Math.PI * 2);
   });
 
   // Poison is a lose condition (CR 704.5c) and rad drives a mill clock — both belong on the orb.

@@ -6,6 +6,9 @@
  */
 import { afterEach, expect, it, vi } from "vitest";
 import { emptyGameFold } from "../game/fold";
+import { fitCamera } from "./geometry/interaction";
+import { boardBounds } from "./geometry/layout";
+import { handMetrics } from "./html/hand";
 import { BoardViewportResized } from "./messages";
 import { initialBoardModel, updateBoard } from "./submodel";
 
@@ -46,6 +49,25 @@ it("refits the camera to the new size while the player has not panned or zoomed"
   );
 
   expect(model.camera.zoom).toBeGreaterThan(0.7);
+});
+
+it("refits a resized viewport using the stored content-aware bounds", () => {
+  const viewport = { width: 2560, height: 1440 };
+  const base = boardBounds(4);
+  const expanded = { ...base, maxX: base.maxX + 1800 };
+  const fitted = {
+    ...initialBoardModel(),
+    cameraFitPlayers: 4,
+    cameraFitBounds: expanded,
+    cameraFitBoundsKey: "expanded",
+    camera: { panX: 10, panY: 20, zoom: 0.7 },
+  };
+
+  const [model] = updateBoard(fitted, BoardViewportResized({ ...viewport, dpr: 1 }), emptyGameFold(), null);
+
+  expect(model.camera).toEqual(
+    fitCamera({ x: viewport.width, y: viewport.height }, 4, handMetrics(viewport).barH, expanded),
+  );
 });
 
 it("leaves a camera the player moved alone", () => {

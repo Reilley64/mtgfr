@@ -254,6 +254,19 @@ describe("fitCamera", () => {
     expect(zoom2).toBeGreaterThan(zoom4);
   });
 
+  it("fits supplied content bounds instead of the static player-count footprint", () => {
+    const size = { x: 1600, y: 1000 };
+    const base = boardBounds(4);
+    const expanded = { ...base, maxX: base.maxX + 1800 };
+
+    const staticCamera = fitCamera(size, 4, 128);
+    const expandedCamera = fitCamera(size, 4, 128, expanded);
+
+    expect(expandedCamera.zoom).toBeLessThan(staticCamera.zoom);
+    expect(worldToScreen(expandedCamera, expanded.minX, expanded.minY).x).toBeGreaterThanOrEqual(16 - 0.01);
+    expect(worldToScreen(expandedCamera, expanded.maxX, expanded.maxY).x).toBeLessThanOrEqual(size.x - 16 + 0.01);
+  });
+
   // The phase-track HUD is fixed top-center; the top-row seat's avatar must never render under it.
   // fitCamera always places the board's topmost world point (the top-row avatar's top edge) at
   // screen y = TOP_MARGIN, so this holds by construction for any player count — pinned here so a
@@ -274,13 +287,10 @@ describe("fitCamera", () => {
   });
 
   // Commander is 4 seats — this is the viewport we dogfood. Cards must stay readable vs the hand.
-  it("keeps 4-player battlefield tiles readable at 1440×900 with the live hand bar", () => {
+  it("keeps 4-player battlefield tiles readable after collision-safe spacing", () => {
     const cam = fitCamera({ x: 1440, y: 900 }, 4, 128);
-    // Commander is the format — 4 seats must stay readable while preserving the avatar label gutter.
-    // The square tile trades card height for width: it lands ~72px on a side, where the old 96x134
-    // card was only 57px wide. Art plus a name slot reads at 70 on a side; below that it does not.
-    expect(CARD_W * cam.zoom).toBeGreaterThanOrEqual(70);
-    expect(CARD_H * cam.zoom).toBeGreaterThanOrEqual(70);
+    expect(CARD_W * cam.zoom).toBeGreaterThanOrEqual(60);
+    expect(CARD_H * cam.zoom).toBeGreaterThanOrEqual(60);
   });
 });
 

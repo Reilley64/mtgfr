@@ -12,6 +12,7 @@
 import type { ObjectView, VisibleState, WireKind } from "~/wire/types";
 import { BLANK_FACE, type FaceData, faceDataFrom } from "../../domain/card-render/frame";
 import { ZONE } from "../../domain/zones";
+import { PERMANENT_SIDE, PERMANENT_STEP, type PermanentRowMetrics, permanentRowMetrics } from "./permanent-layout";
 
 export { ZONE };
 
@@ -123,8 +124,8 @@ export interface RenderCard {
  * A resting permanent is an Arena-style square tile: name slot and art, no oracle text. Square so
  * three rows of seven fit four seats without the camera zooming out past readability.
  */
-export const CARD_W = 96;
-export const CARD_H = 96;
+export const CARD_W = PERMANENT_SIDE;
+export const CARD_H = PERMANENT_SIDE;
 
 /**
  * A card in motion keeps the printed card's proportions — a flight paints the full face and the
@@ -154,9 +155,8 @@ export type AvatarLabelOffsets = {
 // Sized for the 4-seat Commander footprint: every world unit of height/gutter costs zoom on every
 // card, so gaps stay tight and avatars hang outside the inter-seat gutter (not inside it).
 const GAP = 8;
-const CARD_HSTEP = CARD_W + GAP; // horizontal distance between card centers
-const VSTEP = CARD_H + GAP;
-const ROW_H = VSTEP; // one battlefield row (card + gap, h)
+const CARD_HSTEP = PERMANENT_STEP; // horizontal distance between card centers
+const ROW_H = PERMANENT_STEP; // one battlefield row (tilted card extent + clearance)
 const BATTLE_H = 3 * ROW_H;
 // Avatars hang off the *outer* edge of each band (above the top row / below the bottom), not in
 // the gutter between seats — so the inter-row gutter only needs a hair of separation.
@@ -175,16 +175,14 @@ const COL_X = -(COL_W + 2 * GAP); // just left of the battlefield's first card (
 // Horizontal grid: the two table columns. A seat's content spans its zone column (COL_X) out to a
 // nominal SEAT_COLS battlefield slots; the second column starts a COLUMN_GAP past that so boards
 // don't touch. BAND_W is the seat outline/footprint width used for the highlight and bounds.
-// Rows that exceed SEAT_COLS pack (compress step) inside the seat — see client-game-board-and-interaction spec.
-// 7 slots + 1×CARD_HSTEP column gap: packs on wide boards, keeps the 2×2 table dense.
+// Rows beyond SEAT_COLS shrink collision-safely, then expand at the 24-unit size floor. Seven
+// full-size slots plus one permanent step between table columns keeps the normal 2×2 table dense.
 const SEAT_COLS = 7;
-const SEAT_RIGHT = SEAT_COLS * CARD_HSTEP;
+const BATTLEFIELD_ROW_W = (SEAT_COLS - 1) * PERMANENT_STEP + PERMANENT_SIDE;
+const SEAT_RIGHT = BATTLEFIELD_ROW_W + GAP;
 const COLUMN_GAP = CARD_HSTEP;
 const SEAT_STRIDE_X = SEAT_RIGHT - COL_X + COLUMN_GAP; // x distance between column 0 and column 1
 const BAND_W = SEAT_RIGHT - COL_X + GAP; // seat footprint width (zone column + nominal battlefield)
-
-/** Seat-local centerward offset per attachment index (peek behind/above the host). */
-const ATTACH_OFFSET = CARD_H * 0.2;
 
 // Base RGB per seat (Commander-ready: 4 seats). Build rgba(...) strings at the
 // call site so callers pick their own alpha.
@@ -268,7 +266,8 @@ export function avatarPos(seat: number, viewer: number, count: number): { x: num
 export function landRowCenter(seat: number, viewer: number, count: number): { x: number; y: number } {
   const o = seatOrigin(seat, viewer, count);
   const landsY = isFlipped(seat, viewer, count) ? o.y : o.y + 2 * ROW_H;
-  return { x: centerOutX(o.x, 0, 1) + CARD_W / 2, y: landsY + CARD_H / 2 };
+  const metrics = permanentRowMetrics(1, BATTLEFIELD_ROW_W);
+  return { x: centerOutX(o.x, 0, 1, metrics) + CARD_W / 2, y: landsY + ROW_H / 2 };
 }
 
 /** Synthetic canvas id for a seat's Library pile face (`deckCard`). */
@@ -308,7 +307,17 @@ export function manaTrayPos(seat: number, viewer: number, count: number): { x: n
 
 /** World-space bounding box of the whole table (the union of every seat's band + avatar), so the
  * camera fits it. Shape depends only on how many seats are occupied, not on which is the viewer. */
-export function boardBounds(count: number): { minX: number; minY: number; maxX: number; maxY: number } {
+export type BoardBounds = Readonly<{ minX: number; minY: number; maxX: number; maxY: number }>;
+
+export type BoardLayout = Readonly<{
+  cards: readonly RenderCard[];
+  seatBands: ReadonlyMap<number, { x: number; y: number; w: number; h: number }>;
+  avatarPositions: Readonly<Record<number, { x: number; y: number }>>;
+  bounds: BoardBounds;
+  boundsKey: string;
+}>;
+
+export function boardBounds(count: number): BoardBounds {
   let minX = Infinity,
     minY = Infinity,
     maxX = -Infinity,
@@ -508,31 +517,30 @@ function toSlotCard(slot: RowSlot): RenderCard {
   return card;
 }
 
-/** Horizontal step when packing `n` cards into the seat band (top-left xs in [0, SEAT_RIGHT - CARD_W]). */
-function packStep(n: number): number {
-  return (SEAT_RIGHT - CARD_W) / (n - 1);
-}
-
 /** Center-out X for Creatures / Lands rows. Packs inside the seat when n > SEAT_COLS. */
-function centerOutX(originX: number, i: number, n: number): number {
+function centerOutX(originX: number, i: number, n: number, metrics: PermanentRowMetrics): number {
   if (n <= SEAT_COLS) return originX + ((SEAT_COLS - n) / 2 + i) * CARD_HSTEP;
-  return originX + i * packStep(n);
+  return originX + i * metrics.step;
 }
 
 /**
  * Noncreature row X: artifacts then enchantments from seat-local left; planeswalkers from
  * seat-local right. Packs inside the seat when left + PW counts exceed SEAT_COLS.
  */
-function noncreatureXs(originX: number, leftCount: number, pwCount: number): { left: number[]; pws: number[] } {
+function noncreatureXs(
+  originX: number,
+  leftCount: number,
+  pwCount: number,
+  metrics: PermanentRowMetrics,
+): { left: number[]; pws: number[] } {
   const n = leftCount + pwCount;
   if (n <= SEAT_COLS) {
     const left = Array.from({ length: leftCount }, (_, i) => originX + i * CARD_HSTEP);
     const pws = Array.from({ length: pwCount }, (_, i) => originX + (SEAT_COLS - pwCount + i) * CARD_HSTEP);
     return { left, pws };
   }
-  const step = packStep(n);
-  const left = Array.from({ length: leftCount }, (_, i) => originX + i * step);
-  const pws = Array.from({ length: pwCount }, (_, i) => originX + (leftCount + i) * step);
+  const left = Array.from({ length: leftCount }, (_, i) => originX + i * metrics.step);
+  const pws = Array.from({ length: pwCount }, (_, i) => originX + (leftCount + i) * metrics.step);
   return { left, pws };
 }
 
@@ -541,7 +549,25 @@ function isNoncreatureLeft(kind: Kind): boolean {
   return kind !== "creature" && kind !== "land" && kind !== "planeswalker";
 }
 
-export function layout(state: VisibleState, viewer: number, engaged: ReadonlySet<number> = new Set()): RenderCard[] {
+type SeatRows = Readonly<{
+  who: number;
+  player: VisibleState["players"][number];
+  cell: { col: number; row: number };
+  flip: boolean;
+  landSlots: RowSlot[];
+  landMetrics: PermanentRowMetrics;
+  creatureSlots: RowSlot[];
+  creatureMetrics: PermanentRowMetrics;
+  leftSlots: RowSlot[];
+  pwSlots: RowSlot[];
+  noncreatureMetrics: PermanentRowMetrics;
+}>;
+
+export function layoutBoard(
+  state: VisibleState,
+  viewer: number,
+  engaged: ReadonlySet<number> = new Set(),
+): BoardLayout {
   const count = state.players.length;
   const out: RenderCard[] = [];
 
@@ -568,13 +594,86 @@ export function layout(state: VisibleState, viewer: number, engaged: ReadonlySet
   // Attachment hosts and committed permanents share one rule: never collapse into a cluster.
   const neverMerge = new Set([...hostsWithAttachments, ...engaged]);
 
-  /** Host id → world top-left of the host card (filled as free permanents are placed). */
-  const hostPos = new Map<number, { x: number; y: number; flip: boolean }>();
+  const seats: SeatRows[] = state.players.map((player) => {
+    const who = player.player;
+    const cell = seatCell(who, viewer, count);
+    const flip = cell.row === 0;
+    const bf = controls(ZONE.Battlefield, who).filter((card) => !stacksOnHost(card));
+    const planeswalkers = bf.filter((card) => card.kind.kind === "planeswalker");
+    const creatures = bf.filter((card) => card.kind.kind === "creature");
+    const lands = bf.filter((card) => card.kind.kind === "land");
+    const leftBlock = bf.filter((card) => isNoncreatureLeft(card.kind.kind));
+    leftBlock.sort((left, right) => {
+      const rank = (kind: Kind) => (kind === "artifact" ? 0 : kind === "enchantment" ? 1 : 2);
+      return rank(left.kind.kind) - rank(right.kind.kind);
+    });
 
-  for (const p of state.players) {
-    const who = p.player;
-    const o = seatOrigin(who, viewer, count);
-    const flip = isFlipped(who, viewer, count);
+    const noncreatureSlots = rowSlots([...leftBlock, ...planeswalkers], neverMerge);
+    const leftSlots = noncreatureSlots.filter((slot) => isNoncreatureLeft(slot.members[0].kind.kind));
+    const pwSlots = noncreatureSlots.filter((slot) => slot.members[0].kind.kind === "planeswalker");
+    const creatureSlots = rowSlots(creatures, neverMerge);
+    const landSlots = rowSlots(lands, neverMerge);
+
+    return {
+      who,
+      player,
+      cell,
+      flip,
+      landSlots,
+      landMetrics: permanentRowMetrics(landSlots.length, BATTLEFIELD_ROW_W),
+      creatureSlots,
+      creatureMetrics: permanentRowMetrics(creatureSlots.length, BATTLEFIELD_ROW_W),
+      leftSlots,
+      pwSlots,
+      noncreatureMetrics: permanentRowMetrics(noncreatureSlots.length, BATTLEFIELD_ROW_W),
+    };
+  });
+
+  const columnWidths: [number, number] = [BATTLEFIELD_ROW_W, BATTLEFIELD_ROW_W];
+  for (const seat of seats) {
+    columnWidths[seat.cell.col] = Math.max(
+      columnWidths[seat.cell.col],
+      seat.landMetrics.width,
+      seat.creatureMetrics.width,
+      seat.noncreatureMetrics.width,
+    );
+  }
+  const columnRights: [number, number] = [
+    Math.max(SEAT_RIGHT, columnWidths[0] + GAP),
+    Math.max(SEAT_RIGHT, columnWidths[1] + GAP),
+  ];
+  const columnOrigins: [number, number] = [0, columnRights[0] - COL_X + COLUMN_GAP];
+  const seatBands = new Map<number, { x: number; y: number; w: number; h: number }>();
+  const avatarPositions: Record<number, { x: number; y: number }> = {};
+
+  const originFor = (seat: SeatRows) => ({
+    x: columnOrigins[seat.cell.col],
+    y: seat.cell.row * BAND_STRIDE,
+  });
+
+  for (const seat of seats) {
+    const origin = originFor(seat);
+    const band = {
+      x: origin.x + COL_X - GAP,
+      y: origin.y - GAP,
+      w: columnRights[seat.cell.col] - COL_X + GAP,
+      h: BATTLE_H + GAP,
+    };
+    seatBands.set(seat.who, band);
+    avatarPositions[seat.who] = {
+      x: band.x + band.w / 2,
+      y: seat.flip ? origin.y - AVATAR_R - GAP : origin.y + BATTLE_H + AVATAR_R + GAP,
+    };
+  }
+
+  /** Host id → world top-left and size of the host card (filled as free permanents are placed). */
+  const hostPos = new Map<number, { x: number; y: number; flip: boolean; side: number }>();
+
+  for (const seat of seats) {
+    const p = seat.player;
+    const who = seat.who;
+    const o = originFor(seat);
+    const flip = seat.flip;
     // Centerward → outer: Noncreature, Creatures, Lands. Flipped seats reverse so the same
     // reading holds (center = combat/noncreature, outer = mana).
     const noncreatureY = flip ? o.y + 2 * ROW_H : o.y;
@@ -594,44 +693,37 @@ export function layout(state: VisibleState, viewer: number, engaged: ReadonlySet
       if (card) out.push(place(colCard(card), o.x + COL_X, o.y + i * COL_STRIDE));
     });
 
-    // Free permanents + orphan attachments (host missing). Stacked attachments wait for pass 2.
-    const bf = controls(ZONE.Battlefield, who).filter((c) => !stacksOnHost(c));
-    const planeswalkers = bf.filter((c) => c.kind.kind === "planeswalker");
-    const creatures = bf.filter((c) => c.kind.kind === "creature");
-    const lands = bf.filter((c) => c.kind.kind === "land");
-    // Artifacts, enchantments, and any other non-PW kind (safety net for unexpected WireKinds).
-    const leftBlock = bf.filter((c) => isNoncreatureLeft(c.kind.kind));
-    // Stable type order within the left block: artifacts, then enchantments, then the rest.
-    leftBlock.sort((a, b) => {
-      const rank = (k: Kind) => (k === "artifact" ? 0 : k === "enchantment" ? 1 : 2);
-      return rank(a.kind.kind) - rank(b.kind.kind);
-    });
-
-    const placeSlot = (slot: RowSlot, x: number, y: number) => {
-      const card = place(toSlotCard(slot), x, y);
+    const placeSlot = (slot: RowSlot, x: number, rowY: number, metrics: PermanentRowMetrics) => {
+      const y = rowY + (ROW_H - metrics.side) / 2;
+      const card = place({ ...toSlotCard(slot), w: metrics.side, h: metrics.side }, x, y);
       out.push(card);
-      for (const m of slot.members) hostPos.set(m.id, { x, y, flip });
+      for (const member of slot.members) hostPos.set(member.id, { x, y, flip, side: metrics.side });
     };
 
-    const ncSlots = rowSlots([...leftBlock, ...planeswalkers], neverMerge);
-    const leftSlots = ncSlots.filter((s) => isNoncreatureLeft(s.members[0].kind.kind));
-    const pwSlots = ncSlots.filter((s) => s.members[0].kind.kind === "planeswalker");
-    const { left: leftXs, pws: pwXs } = noncreatureXs(o.x, leftSlots.length, pwSlots.length);
-    leftSlots.forEach((slot, i) => {
-      placeSlot(slot, leftXs[i], noncreatureY);
-    });
-    pwSlots.forEach((slot, i) => {
-      placeSlot(slot, pwXs[i], noncreatureY);
+    seat.landSlots.forEach((slot, index) => {
+      placeSlot(slot, centerOutX(o.x, index, seat.landSlots.length, seat.landMetrics), landsY, seat.landMetrics);
     });
 
-    const creatureSlots = rowSlots(creatures, neverMerge);
-    creatureSlots.forEach((slot, i) => {
-      placeSlot(slot, centerOutX(o.x, i, creatureSlots.length), creaturesY);
+    seat.creatureSlots.forEach((slot, index) => {
+      placeSlot(
+        slot,
+        centerOutX(o.x, index, seat.creatureSlots.length, seat.creatureMetrics),
+        creaturesY,
+        seat.creatureMetrics,
+      );
     });
 
-    const landSlots = rowSlots(lands, neverMerge);
-    landSlots.forEach((slot, i) => {
-      placeSlot(slot, centerOutX(o.x, i, landSlots.length), landsY);
+    const { left: leftXs, pws: pwXs } = noncreatureXs(
+      o.x,
+      seat.leftSlots.length,
+      seat.pwSlots.length,
+      seat.noncreatureMetrics,
+    );
+    seat.leftSlots.forEach((slot, index) => {
+      placeSlot(slot, leftXs[index], noncreatureY, seat.noncreatureMetrics);
+    });
+    seat.pwSlots.forEach((slot, index) => {
+      placeSlot(slot, pwXs[index], noncreatureY, seat.noncreatureMetrics);
     });
   }
 
@@ -650,10 +742,43 @@ export function layout(state: VisibleState, viewer: number, engaged: ReadonlySet
     if (!host) continue; // defensive — stacksOnHost already required a free host
     const hostIdx = out.findIndex((c) => c.id === hostId);
     if (hostIdx < 0) continue;
-    const dy = host.flip ? ATTACH_OFFSET : -ATTACH_OFFSET;
-    const cards = list.map((a, i) => place(toCard(a), host.x, host.y + dy * (i + 1)));
+    const dy = (host.flip ? 1 : -1) * host.side * 0.2;
+    const cards = list.map((attachment, index) =>
+      place({ ...toCard(attachment), w: host.side, h: host.side }, host.x, host.y + dy * (index + 1)),
+    );
     out.splice(hostIdx, 0, ...cards);
   }
 
-  return out;
+  let bounds: BoardBounds;
+  if (seats.length === 0) {
+    bounds = boardBounds(1);
+  } else {
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    for (const seat of seats) {
+      const band = seatBands.get(seat.who);
+      const avatar = avatarPositions[seat.who];
+      if (band == null || avatar == null) continue;
+      const labelY = avatar.y + avatarLabelOffsets(seat.who, viewer, count).commander;
+      minX = Math.min(minX, band.x, avatar.x - AVATAR_R);
+      minY = Math.min(minY, band.y, avatar.y - AVATAR_R, labelY);
+      maxX = Math.max(maxX, band.x + band.w, avatar.x + AVATAR_R);
+      maxY = Math.max(maxY, band.y + band.h, avatar.y + AVATAR_R, labelY);
+    }
+    bounds = { minX, minY, maxX, maxY };
+  }
+
+  return {
+    cards: out,
+    seatBands,
+    avatarPositions,
+    bounds,
+    boundsKey: `${bounds.minX}:${bounds.minY}:${bounds.maxX}:${bounds.maxY}`,
+  };
+}
+
+export function layout(state: VisibleState, viewer: number, engaged: ReadonlySet<number> = new Set()): RenderCard[] {
+  return [...layoutBoard(state, viewer, engaged).cards];
 }

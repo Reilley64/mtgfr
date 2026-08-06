@@ -6,7 +6,7 @@ import type { ActionView, ObjectView, PlayerView, VisibleState } from "~/wire/ty
 import { TARGET_COLOR } from "../action/targeting";
 import { TAP_TILT } from "../bitmap/paint-cards";
 import { COMMANDER_GOLD, PLAYABLE_BORDER } from "../chrome";
-import { ZONE } from "../geometry/layout";
+import { layoutBoard, seatColor, ZONE } from "../geometry/layout";
 import { sceneShapes } from "./scene";
 
 type Group = Canvas.Group;
@@ -229,6 +229,30 @@ describe("sceneShapes", () => {
     expect(circles.length).toBeGreaterThanOrEqual(2);
   });
 
+  it("uses content-aware seat bands and avatar positions for an expanded table column", () => {
+    const state = boardFixture();
+    state.players = [0, 1, 2, 3].map((seat) => player({ player: seat }));
+    state.objects = [
+      ...Array.from({ length: 59 }, (_, index) => object({ id: index + 1, name: `Unique Bear ${index}` })),
+      object({ id: 1000, controller: 2, owner: 2, name: "Side Bear" }),
+    ];
+    const board = layoutBoard(state, state.viewer);
+    const shapes = sceneShapes(state, { camera: { panX: 0, panY: 0, zoom: 1 } });
+    const sideBand = shapes.find((shape) => shape._tag === "Rect" && shape.stroke === seatColor(2, 0.28));
+    const sideAvatar = shapes.find((shape) => shape._tag === "Circle" && shape.stroke === seatColor(2, 0.9));
+
+    const expectedBand = board.seatBands.get(2);
+    expect(expectedBand).toBeDefined();
+    if (expectedBand == null) throw new Error("missing side seat band");
+    expect(sideBand).toMatchObject({
+      x: expectedBand.x,
+      y: expectedBand.y,
+      width: expectedBand.w,
+      height: expectedBand.h,
+    });
+    expect(sideAvatar).toMatchObject(board.avatarPositions[2] ?? {});
+  });
+
   it("does not paint resting card names as canvas text", () => {
     const state = boardFixture();
     const shapes = sceneShapes(state);
@@ -282,6 +306,20 @@ describe("sceneShapes", () => {
     }
 
     expect(group.rotate).toBeCloseTo(TAP_TILT);
+  });
+
+  it("renders every crowded tapped permanent at the tapped angle", () => {
+    const crowded = boardFixture();
+    crowded.objects = Array.from({ length: 12 }, (_, index) =>
+      object({ id: index + 1, name: `Unique Bear ${index}`, tapped: true }),
+    );
+
+    const cardGroups = sceneShapes(crowded).filter(
+      (shape): shape is Group => shape._tag === "Group" && shapeContainsText(shape, "2/2"),
+    );
+
+    expect(cardGroups).toHaveLength(12);
+    expect(cardGroups.every((group) => group.rotate === TAP_TILT)).toBe(true);
   });
 
   it("paints arrows above resting cards and avatars", () => {

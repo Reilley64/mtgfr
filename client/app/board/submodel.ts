@@ -125,11 +125,12 @@ import {
   resolveClick,
 } from "./geometry/interaction";
 import {
-  avatarPos,
+  type BoardBounds,
   FLIGHT_CARD_H,
   FLIGHT_CARD_W,
   landRowCenter,
   layout,
+  layoutBoard,
   type RenderCard,
   seatSlot,
   ZONE,
@@ -224,6 +225,8 @@ export type FirstPlayerReveal = { winner: number; steps: SpotlightStep[]; index:
 export type BoardModel = {
   camera: Camera;
   cameraFitPlayers: number | null;
+  cameraFitBounds: BoardBounds | null;
+  cameraFitBoundsKey: string | null;
   /** True after the player pans/zooms — stops automatic fitCamera from fighting them. */
   cameraUserMoved: boolean;
   exitFx: Map<number, ExitFx>;
@@ -347,6 +350,8 @@ export function initialBoardModel(): BoardModel {
   return {
     camera: { panX: 0, panY: 0, zoom: 1 },
     cameraFitPlayers: null,
+    cameraFitBounds: null,
+    cameraFitBoundsKey: null,
     cameraUserMoved: false,
     exitFx: new Map(),
     flights: new Map(),
@@ -426,18 +431,28 @@ export function syncBoardWithGame(model: BoardModel, fold: BoardFold): BoardMode
     next = { ...next, priorityElapsed: 0, lastPriorityHolder: fold.state.priority };
   }
   const playerCount = Math.max(1, fold.state.players.length);
-  if (!next.cameraUserMoved && next.cameraFitPlayers !== playerCount) {
+  const boardLayout = layoutBoard(fold.state, fold.state.viewer, engagedIds(fold.state, next));
+  const playerCountChanged = next.cameraFitPlayers !== playerCount;
+  const contentBoundsChanged = next.cameraFitBoundsKey != null && next.cameraFitBoundsKey !== boardLayout.boundsKey;
+  if (!next.cameraUserMoved && (playerCountChanged || contentBoundsChanged)) {
     const fitted = fitCamera(
       { x: next.viewport.width, y: next.viewport.height },
       playerCount,
       handMetrics(next.viewport).barH,
+      boardLayout.bounds,
     );
     next = {
       ...next,
       flights: remapFlightsForZoom(next.flights, next.camera.zoom, fitted.zoom),
       camera: fitted,
       cameraFitPlayers: playerCount,
+      cameraFitBounds: boardLayout.bounds,
+      cameraFitBoundsKey: boardLayout.boundsKey,
     };
+  } else if (!next.cameraUserMoved && next.cameraFitBoundsKey == null) {
+    // Focused fixtures and hot-reload state may already carry a fitted player count from before
+    // content bounds existed. Establish their baseline without unexpectedly remapping flights.
+    next = { ...next, cameraFitBounds: boardLayout.bounds, cameraFitBoundsKey: boardLayout.boundsKey };
   }
 
   // Drop radial selection when the permanent leaves the battlefield.
@@ -631,8 +646,12 @@ function playerOrigin(model: BoardModel, fold: BoardFold, seat: number): Vec2 {
     const aim = stackFlightAim(model, { count: 1, row: 0 });
     return { x: aim.x, y: aim.y };
   }
-  const count = Math.max(1, fold.state.players.length);
-  const pos = avatarPos(seat, fold.state.viewer, count);
+  const boardLayout = layoutBoard(fold.state, fold.state.viewer, engagedIds(fold.state, model));
+  const pos = boardLayout.avatarPositions[seat];
+  if (pos == null) {
+    const aim = stackFlightAim(model, { count: 1, row: 0 });
+    return { x: aim.x, y: aim.y };
+  }
   return worldToScreen(model.camera, pos.x, pos.y);
 }
 
@@ -1079,12 +1098,8 @@ function pointerMoveModel(model: BoardModel, x: number, y: number): BoardModel {
 function avatarSeatAt(fold: GameFoldState, model: BoardModel, x: number, y: number): number | null {
   const state = fold.state;
   if (state == null) return null;
-  const count = Math.max(1, state.players.length);
-  const positions: Record<number, Vec2> = {};
-  for (const p of state.players) {
-    positions[p.player] = avatarPos(p.player, state.viewer, count);
-  }
-  return hitAvatar(model.camera, x, y, positions);
+  const boardLayout = layoutBoard(state, state.viewer, engagedIds(state, model));
+  return hitAvatar(model.camera, x, y, boardLayout.avatarPositions);
 }
 
 function stagedLegalObjectIds(staged: StagedAction): Set<number> {
@@ -2561,6 +2576,7 @@ export function updateBoard(
         { x: viewport.width, y: viewport.height },
         model.cameraFitPlayers,
         handMetrics(viewport).barH,
+        model.cameraFitBounds ?? undefined,
       );
       return [
         {

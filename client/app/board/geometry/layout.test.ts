@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { emptyManaPool } from "~/manaPips";
 import type { ObjectView, PlayerView, VisibleState } from "~/wire/types";
+import { hitTest } from "./hit-test";
 import {
   AVATAR_LABEL_BELOW,
   AVATAR_R,
@@ -11,6 +12,7 @@ import {
   FLIGHT_CARD_H,
   FLIGHT_CARD_W,
   layout,
+  layoutBoard,
   manaTrayPos,
   STEP,
   STEP_NAMES,
@@ -19,11 +21,23 @@ import {
   seatSlot,
   ZONE,
 } from "./layout";
+import {
+  MIN_CROWDED_PERMANENT_SIDE,
+  PERMANENT_CLEARANCE,
+  PERMANENT_STEP,
+  permanentRowMetrics,
+  tiltedPermanentExtent,
+} from "./permanent-layout";
 
-// Geometry constants mirrored from layout.ts (CARD_W=96, CARD_H=96, GAP=8, AVATAR_R=40):
-// STEP=104, ROW_H=104, BATTLE_H=312, BAND_GAP=8, BAND_STRIDE=320, COL_X=-64, COL_STRIDE=78.
-// Quadrant grid: SEAT_COLS=7, SEAT_STRIDE_X=896 (column 1 origin), BAND_W=800.
-// ATTACH_OFFSET = CARD_H * 0.2 = 19.2.
+const TEST_GAP = 8;
+const TEST_COL_X = -64;
+const TEST_BATTLE_H = 3 * PERMANENT_STEP;
+const TEST_BAND_STRIDE = TEST_BATTLE_H + TEST_GAP;
+const TEST_ROW_W = 6 * PERMANENT_STEP + CARD_W;
+const TEST_SEAT_RIGHT = TEST_ROW_W + TEST_GAP;
+const TEST_SEAT_STRIDE_X = TEST_SEAT_RIGHT - TEST_COL_X + PERMANENT_STEP;
+const TEST_BAND_W = TEST_SEAT_RIGHT - TEST_COL_X + TEST_GAP;
+const TEST_CARD_Y_IN_ROW = (PERMANENT_STEP - CARD_H) / 2;
 
 describe("card tile shape", () => {
   it("rests permanents in a square tile so a four-seat board reads at a glance", () => {
@@ -88,6 +102,37 @@ function mkState(overrides: Partial<VisibleState> = {}): VisibleState {
   };
 }
 
+function depthFixture(): VisibleState {
+  const objects = [0, 1].flatMap((controller) => [
+    mkObject({
+      id: controller * 10 + 1,
+      controller,
+      owner: controller,
+      name: "Forest",
+      kind: { kind: "land", colors: [4] },
+    }),
+    mkObject({ id: controller * 10 + 2, controller, owner: controller, name: "Bear" }),
+    mkObject({
+      id: controller * 10 + 3,
+      controller,
+      owner: controller,
+      name: "Sol Ring",
+      kind: { kind: "artifact" },
+    }),
+  ]);
+  return mkState({ players: [mkPlayer({ player: 0 }), mkPlayer({ player: 1 })], objects });
+}
+
+function crowdedCreatureFixture(count: number): VisibleState {
+  return mkState({
+    players: [mkPlayer({ player: 0 })],
+    objects: [
+      ...Array.from({ length: count }, (_, index) => mkObject({ id: index + 1, name: `Unique Bear ${index}` })),
+      mkObject({ id: 1000, name: "Forest", kind: { kind: "land", colors: [4] } }),
+    ],
+  });
+}
+
 describe("seatSlot", () => {
   it("is viewer-relative", () => {
     expect(seatSlot(2, 2, 4)).toBe(0);
@@ -124,42 +169,67 @@ describe("seatCell", () => {
 });
 
 describe("seatBand", () => {
-  // 2×2 quadrant: you bottom-left (col 0, row 1 → band y 312); front above you (col 0, row 0 →
-  // y -8); side beside you (col 1, row 1 → x 824); diagonal top-right (col 1, row 0).
   it("puts the viewer's own band at the bottom-left of a 4-player table", () => {
-    expect(seatBand(0, 0, 4)).toEqual({ x: -72, y: 312, w: 800, h: 320 });
+    expect(seatBand(0, 0, 4)).toEqual({
+      x: TEST_COL_X - TEST_GAP,
+      y: TEST_BAND_STRIDE - TEST_GAP,
+      w: TEST_BAND_W,
+      h: TEST_BATTLE_H + TEST_GAP,
+    });
   });
 
   it("puts the seat after the viewer directly in front (top-left)", () => {
-    expect(seatBand(1, 0, 4)).toEqual({ x: -72, y: -8, w: 800, h: 320 });
+    expect(seatBand(1, 0, 4)).toEqual({
+      x: TEST_COL_X - TEST_GAP,
+      y: -TEST_GAP,
+      w: TEST_BAND_W,
+      h: TEST_BATTLE_H + TEST_GAP,
+    });
   });
 
   it("puts the next seat to the side (bottom-right) and the last diagonal (top-right)", () => {
-    expect(seatBand(2, 0, 4)).toMatchObject({ x: 824, y: 312 }); // side, beside you
-    expect(seatBand(3, 0, 4)).toMatchObject({ x: 824, y: -8 }); // diagonal
+    expect(seatBand(2, 0, 4)).toMatchObject({
+      x: TEST_SEAT_STRIDE_X + TEST_COL_X - TEST_GAP,
+      y: TEST_BAND_STRIDE - TEST_GAP,
+    });
+    expect(seatBand(3, 0, 4)).toMatchObject({ x: TEST_SEAT_STRIDE_X + TEST_COL_X - TEST_GAP, y: -TEST_GAP });
   });
 
   it("assigns quadrants by turn order regardless of which seat is the viewer", () => {
     // Viewer is seat 2: turn order after them is 3 (front), 0 (side), 1 (diagonal).
-    expect(seatBand(2, 2, 4)).toMatchObject({ x: -72, y: 312 }); // self, bottom-left
-    expect(seatBand(3, 2, 4)).toMatchObject({ x: -72, y: -8 }); // front
-    expect(seatBand(0, 2, 4)).toMatchObject({ x: 824, y: 312 }); // side
-    expect(seatBand(1, 2, 4)).toMatchObject({ x: 824, y: -8 }); // diagonal
+    expect(seatBand(2, 2, 4)).toMatchObject({ x: TEST_COL_X - TEST_GAP, y: TEST_BAND_STRIDE - TEST_GAP });
+    expect(seatBand(3, 2, 4)).toMatchObject({ x: TEST_COL_X - TEST_GAP, y: -TEST_GAP });
+    expect(seatBand(0, 2, 4)).toMatchObject({
+      x: TEST_SEAT_STRIDE_X + TEST_COL_X - TEST_GAP,
+      y: TEST_BAND_STRIDE - TEST_GAP,
+    });
+    expect(seatBand(1, 2, 4)).toMatchObject({ x: TEST_SEAT_STRIDE_X + TEST_COL_X - TEST_GAP, y: -TEST_GAP });
   });
 });
 
 describe("avatarPos", () => {
   it("sits below the viewer's own bottom-left band", () => {
-    expect(avatarPos(0, 0, 4)).toEqual({ x: 328, y: 680 });
+    const band = seatBand(0, 0, 4);
+    expect(avatarPos(0, 0, 4)).toEqual({
+      x: band.x + band.w / 2,
+      y: TEST_BAND_STRIDE + TEST_BATTLE_H + AVATAR_R + TEST_GAP,
+    });
   });
 
   it("sits above the flipped front seat's band", () => {
-    expect(avatarPos(1, 0, 4)).toEqual({ x: 328, y: -48 });
+    const band = seatBand(1, 0, 4);
+    expect(avatarPos(1, 0, 4)).toEqual({ x: band.x + band.w / 2, y: -AVATAR_R - TEST_GAP });
   });
 
   it("sits below the upright side seat and above the flipped diagonal", () => {
-    expect(avatarPos(2, 0, 4)).toEqual({ x: 1224, y: 680 }); // side, avatar below
-    expect(avatarPos(3, 0, 4)).toEqual({ x: 1224, y: -48 }); // diagonal, avatar above
+    expect(avatarPos(2, 0, 4)).toEqual({
+      x: seatBand(2, 0, 4).x + TEST_BAND_W / 2,
+      y: TEST_BAND_STRIDE + TEST_BATTLE_H + AVATAR_R + TEST_GAP,
+    });
+    expect(avatarPos(3, 0, 4)).toEqual({
+      x: seatBand(3, 0, 4).x + TEST_BAND_W / 2,
+      y: -AVATAR_R - TEST_GAP,
+    });
   });
 });
 
@@ -168,7 +238,7 @@ describe("manaTrayPos", () => {
   it("sits under the zone column below the viewer's upright band", () => {
     const band = seatBand(0, 0, 4);
     const tray = manaTrayPos(0, 0, 4);
-    expect(tray).toEqual({ x: -8, y: 640 });
+    expect(tray).toEqual({ x: -8, y: band.y + band.h + TEST_GAP });
     expect(tray.x).toBeLessThan(band.x + band.w / 2);
     expect(tray.y).toBeGreaterThan(band.y + band.h);
   });
@@ -181,8 +251,11 @@ describe("manaTrayPos", () => {
   });
 
   it("keeps the same seat-relative offset for side and diagonal", () => {
-    expect(manaTrayPos(2, 0, 4)).toEqual({ x: 888, y: 640 });
-    expect(manaTrayPos(3, 0, 4)).toEqual({ x: 888, y: -16 });
+    expect(manaTrayPos(2, 0, 4)).toEqual({
+      x: TEST_SEAT_STRIDE_X - 8,
+      y: seatBand(2, 0, 4).y + seatBand(2, 0, 4).h + TEST_GAP,
+    });
+    expect(manaTrayPos(3, 0, 4)).toEqual({ x: TEST_SEAT_STRIDE_X - 8, y: -16 });
   });
 });
 
@@ -190,15 +263,25 @@ describe("boardBounds", () => {
   // A 2-player table is a single (left) column; 3 and 4 players both span both columns, so their
   // bounds match (the 3p table just leaves the diagonal cell empty).
   it("fits a 2-player table (one column)", () => {
-    expect(boardBounds(2)).toEqual({ minX: -72, minY: -128, maxX: 728, maxY: 760 });
+    expect(boardBounds(2)).toEqual({
+      minX: TEST_COL_X - TEST_GAP,
+      minY: -128,
+      maxX: TEST_SEAT_RIGHT,
+      maxY: TEST_BAND_STRIDE + TEST_BATTLE_H + AVATAR_R + TEST_GAP + AVATAR_LABEL_BELOW,
+    });
   });
 
   it("fits a 3-player table (both columns, no diagonal)", () => {
-    expect(boardBounds(3)).toEqual({ minX: -72, minY: -128, maxX: 1624, maxY: 760 });
+    expect(boardBounds(3)).toEqual({
+      minX: TEST_COL_X - TEST_GAP,
+      minY: -128,
+      maxX: TEST_SEAT_STRIDE_X + TEST_SEAT_RIGHT,
+      maxY: TEST_BAND_STRIDE + TEST_BATTLE_H + AVATAR_R + TEST_GAP + AVATAR_LABEL_BELOW,
+    });
   });
 
   it("fits a 4-player table (full 2×2)", () => {
-    expect(boardBounds(4)).toEqual({ minX: -72, minY: -128, maxX: 1624, maxY: 760 });
+    expect(boardBounds(4)).toEqual(boardBounds(3));
   });
 
   it("reserves label space on the outer side of flipped and upright seats", () => {
@@ -212,6 +295,75 @@ describe("boardBounds", () => {
 });
 
 describe("layout", () => {
+  it("layers every seat from its controller avatar toward table center", () => {
+    const cards = layout(depthFixture(), 0).filter((card) => card.zone === ZONE.Battlefield);
+    for (const controller of [0, 1]) {
+      const owned = cards.filter((card) => card.controller === controller);
+      expect(owned.map((card) => card.kind)).toEqual(["land", "creature", "artifact"]);
+    }
+  });
+
+  it("shrinks only an overcrowded row and keeps its tilted cards separated", () => {
+    const uncrowded = layout(crowdedCreatureFixture(7), 0);
+    const cards = layout(crowdedCreatureFixture(12), 0).filter((card) => card.zone === ZONE.Battlefield);
+    const creatures = cards.filter((card) => card.kind === "creature");
+    const land = cards.find((card) => card.kind === "land");
+    const uncrowdedLand = uncrowded.find((card) => card.kind === "land");
+    expect(new Set(creatures.map((card) => card.w)).size).toBe(1);
+    expect(creatures[0]?.w).toBeLessThan(CARD_W);
+    expect(land).toMatchObject({ w: CARD_W, h: CARD_H });
+    expect(land?.y).toBe(uncrowdedLand?.y);
+    for (let index = 1; index < creatures.length; index += 1) {
+      expect(
+        creatures[index].x - creatures[index - 1].x - tiltedPermanentExtent(creatures[index].w),
+      ).toBeGreaterThanOrEqual(PERMANENT_CLEARANCE - 1e-9);
+    }
+  });
+
+  it("keeps full-size maximum-tilt rows vertically separated", () => {
+    const rows = layout(depthFixture(), 0)
+      .filter((card) => card.controller === 0 && card.zone === ZONE.Battlefield)
+      .sort((left, right) => left.y - right.y);
+    for (let index = 1; index < rows.length; index += 1) {
+      expect(rows[index].y - rows[index - 1].y - tiltedPermanentExtent(CARD_H)).toBeGreaterThanOrEqual(
+        PERMANENT_CLEARANCE - 1e-9,
+      );
+    }
+  });
+
+  it("does not change permanent size when it becomes tapped", () => {
+    const upright = layout(crowdedCreatureFixture(7), 0).find((card) => card.kind === "creature");
+    const tappedState = crowdedCreatureFixture(7);
+    tappedState.objects = tappedState.objects.map((object) => ({ ...object, tapped: true }));
+    const tapped = layout(tappedState, 0).find((card) => card.kind === "creature");
+    expect(upright).toBeDefined();
+    expect(tapped).toBeDefined();
+    if (upright == null || tapped == null) throw new Error("missing permanent fixture");
+    expect(tapped).toMatchObject({ w: upright.w, h: upright.h });
+  });
+
+  it("widens content bounds and shifts the next table column for a minimum-size row", () => {
+    const crowded = Array.from({ length: 59 }, (_, index) => mkObject({ id: index + 1, name: `Unique Bear ${index}` }));
+    const sideSeat = mkObject({ id: 1000, controller: 2, owner: 2, name: "Side Bear" });
+    const state = mkState({
+      players: [0, 1, 2, 3].map((player) => mkPlayer({ player })),
+      objects: [...crowded, sideSeat],
+    });
+
+    const board = layoutBoard(state, 0);
+    const crowdedCards = board.cards.filter((card) => card.controller === 0 && card.kind === "creature");
+    const leftBand = board.seatBands.get(0);
+    const rightBand = board.seatBands.get(2);
+
+    expect(crowdedCards).toHaveLength(59);
+    expect(crowdedCards.every((card) => card.w === MIN_CROWDED_PERMANENT_SIDE)).toBe(true);
+    expect(board.bounds.maxX).toBeGreaterThan(boardBounds(4).maxX);
+    expect(leftBand).toBeDefined();
+    expect(rightBand).toBeDefined();
+    if (leftBand == null || rightBand == null) throw new Error("missing seat bands");
+    expect(rightBand.x).toBeGreaterThanOrEqual(leftBand.x + leftBand.w);
+  });
+
   // Board layout collisions (foldkit remaining-bugs task 9): zone-column faces are half-size art;
   // combat chrome (P/T) on those faces shares the art AABB. Prefer face-only in the column —
   // P/T belongs on battlefield permanents (and inspect), not on command/GY/exile miniatures.
@@ -418,27 +570,54 @@ describe("layout", () => {
     const cards = layout(state, 0);
     const byId = new Map(cards.map((c) => [c.id, c]));
 
-    // Viewer (o.y=320): Noncreature / Creatures / Lands at 320 / 424 / 528. Lone card centers
-    // on the row: (SEAT_COLS - 1)/2 * CARD_HSTEP = 3 * 104 = 312.
-    expect(byId.get(1)).toMatchObject({ x: 312, y: 424, w: 96, h: 96, zone: ZONE.Battlefield });
-    expect(byId.get(2)).toMatchObject({ x: 312, y: 528, w: 96, h: 96 });
+    const singleCardX = 3 * PERMANENT_STEP;
+    expect(byId.get(1)).toMatchObject({
+      x: singleCardX,
+      y: TEST_BAND_STRIDE + PERMANENT_STEP + TEST_CARD_Y_IN_ROW,
+      w: CARD_W,
+      h: CARD_H,
+      zone: ZONE.Battlefield,
+    });
+    expect(byId.get(2)).toMatchObject({
+      x: singleCardX,
+      y: TEST_BAND_STRIDE + 2 * PERMANENT_STEP + TEST_CARD_Y_IN_ROW,
+      w: CARD_W,
+      h: CARD_H,
+    });
     // Zone column top -> bottom for the viewer: commander, deck (no exile), graveyard.
-    // COL_STRIDE = 78 → commander@320, deck@476, graveyard@554. A pile is a stack of cards, not a
-    // permanent, so it keeps the printed card's proportions rather than the battlefield square.
-    expect(byId.get(3)).toMatchObject({ x: -64, y: 320, w: 48, h: 67, pile: 0 });
-    expect(byId.get(4)).toMatchObject({ x: -64, y: 554, w: 48, h: 67, pile: 1, zone: ZONE.Graveyard });
+    const columnStride = TEST_BATTLE_H / 4;
+    expect(byId.get(3)).toMatchObject({ x: TEST_COL_X, y: TEST_BAND_STRIDE, w: 48, h: 67, pile: 0 });
+    expect(byId.get(4)).toMatchObject({
+      x: TEST_COL_X,
+      y: TEST_BAND_STRIDE + 3 * columnStride,
+      w: 48,
+      h: 67,
+      pile: 1,
+      zone: ZONE.Graveyard,
+    });
 
-    // Opponent (o.y=0, flipped): Creatures at o.y+ROW_H = 104.
-    expect(byId.get(5)).toMatchObject({ x: 312, y: 104, w: 96, h: 96 });
+    expect(byId.get(5)).toMatchObject({
+      x: singleCardX,
+      y: PERMANENT_STEP + TEST_CARD_Y_IN_ROW,
+      w: CARD_W,
+      h: CARD_H,
+    });
 
     // Opponent's library placeholder is the only zone-column card (synthetic id -1 - owner = -2),
     // and it lands at the flipped column's second slot (deck is index 1 once reversed).
     const opponentDeck = cards.find((c) => c.id === -2);
-    expect(opponentDeck).toMatchObject({ x: -64, y: 78, w: 48, h: 67, pile: 25, faceDown: true });
+    expect(opponentDeck).toMatchObject({ x: TEST_COL_X, y: columnStride, w: 48, h: 67, pile: 25, faceDown: true });
 
     // Viewer's own library placeholder is the third slot (index 2) in the unreversed column.
     const viewerDeck = cards.find((c) => c.id === -1);
-    expect(viewerDeck).toMatchObject({ x: -64, y: 476, w: 48, h: 67, pile: 30, faceDown: true });
+    expect(viewerDeck).toMatchObject({
+      x: TEST_COL_X,
+      y: TEST_BAND_STRIDE + 2 * columnStride,
+      w: 48,
+      h: 67,
+      pile: 30,
+      faceDown: true,
+    });
 
     expect(cards).toHaveLength(7);
   });
@@ -486,11 +665,10 @@ describe("layout", () => {
       ],
     });
     const byId = new Map(layout(state, 0).map((c) => [c.id, c]));
-    // Viewer o.y = BAND_STRIDE (1p still uses bottom-left cell).
-    expect(byId.get(1)?.y).toBe(320); // Noncreature
-    expect(byId.get(2)?.y).toBe(320); // Noncreature
-    expect(byId.get(3)?.y).toBe(424); // Creatures
-    expect(byId.get(4)?.y).toBe(528); // Lands
+    expect(byId.get(1)?.y).toBe(TEST_BAND_STRIDE + TEST_CARD_Y_IN_ROW);
+    expect(byId.get(2)?.y).toBe(TEST_BAND_STRIDE + TEST_CARD_Y_IN_ROW);
+    expect(byId.get(3)?.y).toBe(TEST_BAND_STRIDE + PERMANENT_STEP + TEST_CARD_Y_IN_ROW);
+    expect(byId.get(4)?.y).toBe(TEST_BAND_STRIDE + 2 * PERMANENT_STEP + TEST_CARD_Y_IN_ROW);
   });
 
   it("left-aligns artifacts then enchantments; right-aligns planeswalkers", () => {
@@ -504,12 +682,10 @@ describe("layout", () => {
       ],
     });
     const byId = new Map(layout(state, 0).map((c) => [c.id, c]));
-    // Left block: artifacts then enchantments from x=0,1,2 * 104.
     expect(byId.get(1)?.x).toBe(0);
-    expect(byId.get(2)?.x).toBe(104);
-    expect(byId.get(3)?.x).toBe(208);
-    // Single PW right-aligned: slot SEAT_COLS-1 → 6 * 104 = 624.
-    expect(byId.get(4)?.x).toBe(624);
+    expect(byId.get(2)?.x).toBe(PERMANENT_STEP);
+    expect(byId.get(3)?.x).toBe(2 * PERMANENT_STEP);
+    expect(byId.get(4)?.x).toBe(6 * PERMANENT_STEP);
   });
 
   it("paints planeswalker loyalty in the P/T badge, falling back to WireKind when live loyalty is absent", () => {
@@ -544,9 +720,11 @@ describe("layout", () => {
     });
     const cards = layout(state, 0);
     const xs = cards.filter((c) => c.zone === ZONE.Battlefield).map((c) => c.x);
-    // 11 slots → packed into [0, SEAT_RIGHT - CARD_W] = [0, 632]; no spill past the seat.
     expect(Math.min(...xs)).toBe(0);
-    expect(Math.max(...xs)).toBe(632);
+    const rightmost = cards
+      .filter((card) => card.zone === ZONE.Battlefield)
+      .reduce((max, card) => Math.max(max, card.x + card.w), -Infinity);
+    expect(rightmost).toBeCloseTo(TEST_ROW_W);
     expect(new Set(xs).size).toBe(xs.length);
   });
 
@@ -569,9 +747,9 @@ describe("layout", () => {
       .map((c) => c.x)
       .sort((a, b) => a - b);
     expect(xs[0]).toBe(0);
-    expect(xs[xs.length - 1]).toBe(632);
-    // Even center-out packing: equal steps across the band.
-    const step = (632 - 0) / 11;
+    const metrics = permanentRowMetrics(creatures.length, TEST_ROW_W);
+    expect(xs[xs.length - 1]).toBeCloseTo(TEST_ROW_W - metrics.side);
+    const step = metrics.step;
     for (let i = 0; i < xs.length; i++) {
       expect(xs[i]).toBeCloseTo(i * step, 5);
     }
@@ -629,7 +807,7 @@ describe("layout", () => {
     // 7 slots fit at full spacing — center-out, no pack to edges.
     const xs = bf.map((c) => c.x).sort((a, b) => a - b);
     expect(xs[0]).toBe(0);
-    expect(xs[xs.length - 1]).toBe(624); // (SEAT_COLS-1) * CARD_HSTEP
+    expect(xs[xs.length - 1]).toBe(6 * PERMANENT_STEP);
   });
 
   it("splits an engaged permanent out of its cluster and leaves the next free copy as the face", () => {
@@ -777,7 +955,7 @@ describe("layout", () => {
     );
     expect(bf.every((c) => c.cluster === 0)).toBe(true);
     expect(Math.min(...bf.map((c) => c.x))).toBe(0);
-    expect(Math.max(...bf.map((c) => c.x))).toBe(632);
+    expect(Math.max(...bf.map((c) => c.x + c.w))).toBeCloseTo(TEST_ROW_W);
   });
 
   it("clusters when keywords arrive in different order", () => {
@@ -813,75 +991,75 @@ describe("layout", () => {
     expect(bf.find((c) => c.cluster === 2)).toMatchObject({ id: 10, clusterMembers: [10, 11] });
   });
 
-  it("stacks attached equipment under the host, not in the Noncreature row", () => {
-    const state = mkState({
-      players: [mkPlayer({ player: 0 })],
-      objects: [
-        mkObject({
-          id: 1,
-          name: "Bear",
-          kind: { kind: "creature", power: 2, toughness: 2 },
-          power: 2,
-          toughness: 2,
-        }),
-        mkObject({ id: 2, name: "Bonesplitter", kind: { kind: "artifact" }, attached_to: 1 }),
-        mkObject({ id: 3, name: "Sol Ring", kind: { kind: "artifact" } }),
-      ],
+  it("sizes an attached permanent with its crowded host and keeps the host topmost", () => {
+    const hostObject = mkObject({ id: 50, name: "Equipped Bear" });
+    const equipmentObject = mkObject({
+      id: 51,
+      name: "Bonesplitter",
+      kind: { kind: "artifact" },
+      attached_to: hostObject.id,
     });
-    const cards = layout(state, 0);
-    const byId = new Map(cards.map((c) => [c.id, c]));
-    const host = byId.get(1);
-    const equip = byId.get(2);
-    const ring = byId.get(3);
+    const fillers = Array.from({ length: 11 }, (_, index) => mkObject({ id: index + 1, name: `Unique Bear ${index}` }));
+    const cards = layout(
+      mkState({ players: [mkPlayer({ player: 0 })], objects: [hostObject, equipmentObject, ...fillers] }),
+      0,
+    );
+    const host = cards.find((card) => card.id === hostObject.id);
+    const equip = cards.find((card) => card.id === equipmentObject.id);
     expect(host).toBeDefined();
     expect(equip).toBeDefined();
-    expect(ring).toBeDefined();
-    if (!host || !equip || !ring) return;
+    if (host == null || equip == null) throw new Error("missing attachment stack");
 
-    expect(host.y).toBe(424); // Creatures row
-    expect(ring.y).toBe(320); // Noncreature row
-    expect(ring.x).toBe(0); // left-aligned alone
-    // Attachment centerward of host (smaller Y when upright), same X; under host in array order.
+    expect(equip).toMatchObject({ w: host.w, h: host.h });
     expect(equip.x).toBe(host.x);
-    expect(equip.y).toBe(host.y - 19.2);
-    expect(cards.findIndex((c) => c.id === 2)).toBeLessThan(cards.findIndex((c) => c.id === 1));
+    expect(Math.abs(equip.y - host.y)).toBeCloseTo(host.h * 0.2);
+    expect(cards.findIndex((card) => card.id === equip.id)).toBe(cards.findIndex((card) => card.id === host.id) - 1);
+    const overlapX = host.x + host.w / 2;
+    const overlapY = host.y + host.h * 0.1;
+    expect(hitTest({ panX: 0, panY: 0, zoom: 1 }, overlapX, overlapY, cards)).toBe(host.id);
   });
 
-  it("stacks a cross-controller Aura on the opponent's host", () => {
-    // Viewer enchants the opponent's bear — Aura stays under P0's control but renders on P1's seat.
+  it("keeps a cross-controller Aura in its host's shifted placement column", () => {
+    const host = mkObject({
+      id: 1000,
+      name: "Side Bear",
+      controller: 2,
+      owner: 2,
+      kind: { kind: "creature", power: 2, toughness: 2 },
+      power: 2,
+      toughness: 2,
+    });
+    const aura = mkObject({
+      id: 1001,
+      name: "Pacifism",
+      controller: 0,
+      owner: 0,
+      kind: { kind: "enchantment" },
+      attached_to: host.id,
+    });
     const state = mkState({
-      players: [mkPlayer({ player: 0 }), mkPlayer({ player: 1 })],
+      players: [0, 1, 2, 3].map((player) => mkPlayer({ player })),
       objects: [
-        mkObject({
-          id: 1,
-          name: "Opposing Bear",
-          controller: 1,
-          owner: 1,
-          kind: { kind: "creature", power: 2, toughness: 2 },
-          power: 2,
-          toughness: 2,
-        }),
-        mkObject({
-          id: 2,
-          name: "Pacifism",
-          controller: 0,
-          owner: 0,
-          kind: { kind: "enchantment" },
-          attached_to: 1,
-        }),
+        host,
+        aura,
+        ...Array.from({ length: 59 }, (_, index) => mkObject({ id: index + 1, name: `Unique Bear ${index}` })),
       ],
     });
     const cards = layout(state, 0);
     const byId = new Map(cards.map((c) => [c.id, c]));
-    const host = byId.get(1);
-    const aura = byId.get(2);
-    expect(host).toBeDefined();
-    expect(aura).toBeDefined();
-    if (!host || !aura) return;
-    // Flipped opponent creature at y=104; Aura centerward (+ATTACH_OFFSET when flipped).
-    expect(host).toMatchObject({ x: 312, y: 104 });
-    expect(aura).toMatchObject({ x: host.x, y: host.y + 19.2 });
-    expect(cards.findIndex((c) => c.id === 2)).toBeLessThan(cards.findIndex((c) => c.id === 1));
+    const hostCard = byId.get(host.id);
+    const auraCard = byId.get(aura.id);
+    expect(hostCard).toBeDefined();
+    expect(auraCard).toBeDefined();
+    if (hostCard == null || auraCard == null) throw new Error("missing cross-controller stack");
+    expect(hostCard.x).toBeGreaterThan(boardBounds(4).maxX);
+    expect(auraCard).toMatchObject({
+      x: hostCard.x,
+      y: hostCard.y - hostCard.h * 0.2,
+      w: hostCard.w,
+      h: hostCard.h,
+    });
+    expect(cards.findIndex((card) => card.id === aura.id)).toBe(cards.findIndex((card) => card.id === host.id) - 1);
   });
 
   it("renders a donated permanent under its controller's row, not its owner's (Zedruu, CR 800.4a)", () => {
@@ -902,8 +1080,7 @@ describe("layout", () => {
       ],
     });
     const bear = layout(state, 0).find((c) => c.id === 1);
-    // P1's flipped creature row sits at y=104 (see the opponent-bear case above), NOT P0's row.
-    expect(bear).toMatchObject({ y: 104, owner: 0, controller: 1 });
+    expect(bear).toMatchObject({ y: PERMANENT_STEP + TEST_CARD_Y_IN_ROW, owner: 0, controller: 1 });
   });
 
   it("falls back to the Noncreature row when attached_to points at a missing host", () => {
@@ -915,8 +1092,8 @@ describe("layout", () => {
       ],
     });
     const byId = new Map(layout(state, 0).map((c) => [c.id, c]));
-    expect(byId.get(2)).toMatchObject({ x: 0, y: 320 }); // left block, Noncreature
-    expect(byId.get(3)).toMatchObject({ x: 104, y: 320 });
+    expect(byId.get(2)).toMatchObject({ x: 0, y: TEST_BAND_STRIDE + TEST_CARD_Y_IN_ROW });
+    expect(byId.get(3)).toMatchObject({ x: PERMANENT_STEP, y: TEST_BAND_STRIDE + TEST_CARD_Y_IN_ROW });
   });
 
   it("puts unexpected WireKinds in the Noncreature left block", () => {
@@ -929,8 +1106,8 @@ describe("layout", () => {
     });
     const byId = new Map(layout(state, 0).map((c) => [c.id, c]));
     // Artifacts rank before other leftover kinds; both on Noncreature.
-    expect(byId.get(2)).toMatchObject({ x: 0, y: 320 });
-    expect(byId.get(1)).toMatchObject({ x: 104, y: 320 });
+    expect(byId.get(2)).toMatchObject({ x: 0, y: TEST_BAND_STRIDE + TEST_CARD_Y_IN_ROW });
+    expect(byId.get(1)).toMatchObject({ x: PERMANENT_STEP, y: TEST_BAND_STRIDE + TEST_CARD_Y_IN_ROW });
   });
 
   it("flips Noncreature to the centerward edge for a top-row opponent", () => {
@@ -954,9 +1131,8 @@ describe("layout", () => {
       ],
     });
     const byId = new Map(layout(state, 0).map((c) => [c.id, c]));
-    // Flipped o.y=0: Noncreature at 208, Lands at 0.
-    expect(byId.get(1)?.y).toBe(208);
-    expect(byId.get(2)?.y).toBe(0);
+    expect(byId.get(1)?.y).toBe(2 * PERMANENT_STEP + TEST_CARD_Y_IN_ROW);
+    expect(byId.get(2)?.y).toBe(TEST_CARD_Y_IN_ROW);
   });
 });
 
