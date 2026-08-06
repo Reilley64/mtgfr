@@ -128,7 +128,7 @@ export function applyPublishedFrame(
   frame: BitmapFrame;
   sync: FlightSync | null;
 } {
-  const liveFlights = mergeFlightPoses(state.liveFlights, frame.flights);
+  const mergedFlights = mergeFlightPoses(state.liveFlights, frame.flights);
   const steppedExitFx = stepExitFx(
     new Map(mergeExitFxPoses(state.liveExitFx, frame.exitFx ?? []).map((fx) => [fx.id, fx])),
     0,
@@ -136,7 +136,22 @@ export function applyPublishedFrame(
   );
   const liveExitFx = [...steppedExitFx.exitFx.values()];
   const liveDragGhost = frame.dragGhost ?? null;
-  const mergedFrame = { ...frame, flights: liveFlights, exitFx: liveExitFx, dragGhost: liveDragGhost };
+  const mergedFrame = { ...frame, flights: mergedFlights, exitFx: liveExitFx, dragGhost: liveDragGhost };
+  const priorSettledHandoffs = new Map(
+    state.liveFlights
+      .filter(
+        (flight) =>
+          mergedFlights.some((mergedFlight) => mergedFlight.id === flight.id) &&
+          settledFlightHasAuthoritativeDestination(flight, mergedFrame),
+      )
+      .map((flight) => [flight.id, flight]),
+  );
+  const liveFlights = mergedFlights.map((flight) => priorSettledHandoffs.get(flight.id) ?? flight);
+  const handoffFrame = { ...mergedFrame, flights: liveFlights };
+  const authoritativeHandoffReady = liveFlights.some((flight) =>
+    settledFlightHasAuthoritativeDestination(flight, handoffFrame),
+  );
+  const shouldSync = steppedExitFx.completedIds.length > 0 || authoritativeHandoffReady;
   const { flights: _flights, exitFx: _exitFx, dragGhost: _dragGhost, ...restingFrame } = mergedFrame;
   const nextRestingSnapshot = restingPaintSnapshot(restingFrame);
 
@@ -153,10 +168,16 @@ export function applyPublishedFrame(
       flightsChanged(state.liveFlights, liveFlights) ||
       exitFxChanged(state.liveExitFx, liveExitFx) ||
       dragGhostChanged(state.liveDragGhost, liveDragGhost),
-    sync:
-      steppedExitFx.completedIds.length > 0 ? { flights: liveFlights, exitFx: liveExitFx, now: animationNow() } : null,
-    frame: mergedFrame,
+    sync: shouldSync ? { flights: liveFlights, exitFx: liveExitFx, now: animationNow() } : null,
+    frame: handoffFrame,
   };
+}
+
+function settledFlightHasAuthoritativeDestination(flight: CardFlight, frame: BitmapFrame): boolean {
+  if (flight.phase !== "settled" || flight.hold !== true) return false;
+  if (flight.kind === "battlefield") return frame.cards.some((card) => card.id === flight.id);
+  if (flight.kind === "stack") return (frame.stack ?? []).some((entry) => entry.source === flight.id);
+  return false;
 }
 
 export function tickFlightClock(

@@ -5,6 +5,7 @@ import type { GameFoldState } from "../game/fold";
 import { applyPublishedFrame, type BitmapFrame, bitmapFrameNeedsRaf, tickFlightClock } from "./bitmap/mount";
 import { layout, ZONE } from "./geometry/layout";
 import { FlightsSynced, HandActionActivated } from "./messages";
+import { spawnFlight } from "./motion/flights";
 import { BOARD_VIEWPORT, initialBoardModel, syncBoardWithGame, updateBoard } from "./submodel";
 
 type BoardModel = ReturnType<typeof initialBoardModel>;
@@ -328,4 +329,53 @@ describe("a played card is never left stuck at the end of its flight", () => {
       });
     }
   }
+
+  it("releases a settled held flight when a tapped permanent arrives", () => {
+    const tappedPermanent = { ...forest(PERMANENT_ID, ZONE.Battlefield), tapped: true };
+    const tappedFold = gameFold(2, state({ objects: [tappedPermanent], actions: [] }));
+    const held = {
+      ...spawnFlight({
+        id: PERMANENT_ID,
+        print: "forest-print",
+        name: "Forest",
+        x: 400,
+        y: 300,
+        scale: 1,
+        targetX: 400,
+        targetY: 300,
+        targetScale: 1,
+        kind: "battlefield",
+        fromCardId: HAND_ID,
+        hold: true,
+      }),
+      phase: "settled" as const,
+    };
+    const authoritativeModel = {
+      ...initialBoardModel(),
+      viewport: { ...BOARD_VIEWPORT },
+      flights: new Map([[PERMANENT_ID, held]]),
+      handHidden: new Set([HAND_ID]),
+      hideCardIds: new Set([PERMANENT_ID]),
+      ownedIds: new Set([PERMANENT_ID]),
+    };
+    const clock = {
+      liveFlights: [held],
+      liveExitFx: [],
+      liveDragGhost: null,
+      lastRestingSnapshot: null,
+    };
+
+    const first = applyPublishedFrame(clock, frameOf(authoritativeModel, tappedFold));
+    expect(first.sync).not.toBeNull();
+
+    if (first.sync == null) throw new Error("expected publish-time flight handoff");
+    const released = updateBoard(authoritativeModel, FlightsSynced(first.sync), tappedFold, "T1")[0];
+    expect(released.flights.size).toBe(0);
+    expect(released.hideCardIds.size).toBe(0);
+
+    const repaint = applyPublishedFrame(first.state, frameOf(released, tappedFold));
+    expect(repaint.paintResting).toBe(true);
+    expect(repaint.frame.cards.find((card) => card.id === PERMANENT_ID)?.tapped).toBe(true);
+    expect(repaint.sync).toBeNull();
+  });
 });

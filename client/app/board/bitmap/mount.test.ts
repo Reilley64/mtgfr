@@ -1211,6 +1211,81 @@ describe("bitmapFrameNeedsRaf", () => {
 });
 
 describe("flight clock helpers", () => {
+  it("synchronizes a settled held battlefield flight when its destination appears", () => {
+    const held = {
+      ...spawnFlight({
+        id: 90,
+        print: "forest-print",
+        name: "Forest",
+        x: 100,
+        y: 100,
+        scale: 1,
+        targetX: 100,
+        targetY: 100,
+        targetScale: 1,
+        kind: "battlefield",
+        hold: true,
+      }),
+      phase: "settled" as const,
+    };
+    const published = applyPublishedFrame(
+      flightClockState({ liveFlights: [held] }),
+      frame({ cards: [card({ id: 90, tapped: true })], flights: [held], hideCardIds: new Set([90]) }),
+    );
+
+    expect(bitmapFrameNeedsRaf(published.frame)).toBe(false);
+    expect(published.sync).toEqual({ flights: [held], exitFx: [], now: expect.any(Number) });
+
+    const unmatched = applyPublishedFrame(
+      flightClockState({ liveFlights: [held] }),
+      frame({ cards: [], flights: [held], hideCardIds: new Set([90]) }),
+    );
+    expect(unmatched.sync).toBeNull();
+
+    const staleIncoming = { ...held, phase: "flying" as const };
+    const raced = applyPublishedFrame(
+      flightClockState({ liveFlights: [held] }),
+      frame({ cards: [card({ id: 90, tapped: true })], flights: [staleIncoming], hideCardIds: new Set([90]) }),
+    );
+    expect(raced.sync).toEqual({ flights: [held], exitFx: [], now: expect.any(Number) });
+
+    const removed = applyPublishedFrame(
+      published.state,
+      frame({ cards: [card({ id: 90, tapped: true })], flights: [], hideCardIds: new Set() }),
+    );
+    expect(removed.sync).toBeNull();
+  });
+
+  it("synchronizes a settled held stack flight when its destination appears", () => {
+    const held = {
+      ...spawnFlight({
+        id: 91,
+        print: "bolt-print",
+        name: "Lightning Bolt",
+        x: 100,
+        y: 100,
+        scale: 1,
+        targetX: 100,
+        targetY: 100,
+        targetScale: 1,
+        kind: "stack",
+        hold: true,
+      }),
+      phase: "settled" as const,
+    };
+
+    const published = applyPublishedFrame(
+      flightClockState({ liveFlights: [held] }),
+      frame({
+        cards: [],
+        flights: [held],
+        stack: [{ controller: 0, kind: "spell", label: testMessageRef("Bolt"), source: 91 }],
+      }),
+    );
+
+    expect(published.sync).toEqual({ flights: [held], exitFx: [], now: expect.any(Number) });
+  });
+
   it("drag-ghost pose change paints the flight layer without resting paint", () => {
     const ghost = {
       print: "bolt",
