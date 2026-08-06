@@ -7,6 +7,7 @@ import { TARGET_COLOR } from "../action/targeting";
 import { CARD_RESTING_OUTLINE, COMMANDER_GOLD } from "../chrome";
 import { type Camera, worldToScreen } from "../geometry/camera";
 import { type RenderCard, seatColor, ZONE } from "../geometry/layout";
+import { PERMANENT_TAP_TILT } from "../geometry/permanent-layout";
 
 export interface Stroke {
   color: string;
@@ -22,7 +23,7 @@ export const DIM_CARD_VEIL = 0.45;
  * footprint — so a tapped tile tilts off square and darkens instead. Both track `tapFrac`, so the
  * tap animation still plays.
  */
-export const TAP_TILT = Math.PI / 12;
+export const TAP_TILT = PERMANENT_TAP_TILT;
 export const TAP_VEIL = 0.4;
 export const TAP_GLYPH = "\ue61a";
 export const TARGET_STROKE: Stroke = { color: TARGET_COLOR, dash: [2, 6] };
