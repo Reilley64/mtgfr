@@ -761,32 +761,43 @@ export function layoutBoard(
     byHost.set(hostId, list);
   }
 
-  const cardsBelowHost = (hostId: number, ancestors: ReadonlySet<number>): RenderCard[] => {
-    const host = hostPos.get(hostId);
-    if (host == null || ancestors.has(hostId)) return [];
-
+  const attachmentsBelowHost = (hostId: number, ancestors: ReadonlySet<number>): ObjectView[] => {
+    if (ancestors.has(hostId)) return [];
     const nextAncestors = new Set(ancestors);
     nextAncestors.add(hostId);
     const children = byHost.get(hostId) ?? [];
-    const cards: RenderCard[] = [];
-    for (const [index, attachment] of children.entries()) {
+    const attachments: ObjectView[] = [];
+    for (const attachment of children) {
       if (nextAncestors.has(attachment.id)) continue;
-      const dy = (host.flip ? 1 : -1) * host.side * 0.2 * (index + 1);
-      const pose = { x: host.x, y: host.y + dy, flip: host.flip, side: host.side };
-      hostPos.set(attachment.id, pose);
-      cards.push(...cardsBelowHost(attachment.id, nextAncestors));
-      cards.push(place({ ...toCard(attachment), w: pose.side, h: pose.side }, pose.x, pose.y));
+      attachments.push(...attachmentsBelowHost(attachment.id, nextAncestors), attachment);
     }
-    return cards;
+    return attachments;
   };
 
   const attachmentRoots = new Set(
     attachments.map((attachment) => attachmentRoot(attachment)).filter((id): id is number => id != null),
   );
   for (const rootId of attachmentRoots) {
+    const root = hostPos.get(rootId);
+    if (root == null) continue;
     const hostIdx = out.findIndex((card) => card.id === rootId);
     if (hostIdx < 0) continue;
-    out.splice(hostIdx, 0, ...cardsBelowHost(rootId, new Set()));
+    const attachments = attachmentsBelowHost(rootId, new Set());
+    const direction = root.flip ? 1 : -1;
+    const cards = attachments.map((attachment, index) => {
+      // Paint order runs farthest → nearest → root. Assign depths in the same direction so each
+      // card keeps one exposed centerward strip for hit testing, even across nested sibling trees.
+      const depth = attachments.length - index;
+      const pose = {
+        x: root.x,
+        y: root.y + direction * root.side * 0.2 * depth,
+        flip: root.flip,
+        side: root.side,
+      };
+      hostPos.set(attachment.id, pose);
+      return place({ ...toCard(attachment), w: pose.side, h: pose.side }, pose.x, pose.y);
+    });
+    out.splice(hostIdx, 0, ...cards);
   }
 
   let bounds: BoardBounds;

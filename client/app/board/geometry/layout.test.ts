@@ -1062,7 +1062,7 @@ describe("layout", () => {
     expect(cards.findIndex((card) => card.id === aura.id)).toBe(cards.findIndex((card) => card.id === host.id) - 1);
   });
 
-  it("resolves a crowded cross-controller nested attachment chain from its free root", () => {
+  it("allocates selectable stack depths across crowded sibling and nested attachments", () => {
     const root = mkObject({
       id: 1000,
       name: "Crowded Side Bear",
@@ -1088,6 +1088,14 @@ describe("layout", () => {
       kind: { kind: "enchantment" },
       attached_to: equipment.id,
     });
+    const shield = mkObject({
+      id: 1005,
+      name: "Shield of the Realm",
+      controller: 3,
+      owner: 3,
+      kind: { kind: "artifact" },
+      attached_to: root.id,
+    });
     const cycleA = mkObject({
       id: 1003,
       name: "Looping Equipment",
@@ -1110,6 +1118,7 @@ describe("layout", () => {
         root,
         equipment,
         aura,
+        shield,
         cycleA,
         cycleB,
         ...Array.from({ length: 59 }, (_, index) => mkObject({ id: index + 1, name: `Left Column Bear ${index}` })),
@@ -1128,36 +1137,50 @@ describe("layout", () => {
     const rootCard = cards.find((card) => card.id === root.id);
     const equipmentCard = cards.find((card) => card.id === equipment.id);
     const auraCard = cards.find((card) => card.id === aura.id);
+    const shieldCard = cards.find((card) => card.id === shield.id);
     expect(rootCard).toBeDefined();
     expect(equipmentCard).toBeDefined();
     expect(auraCard).toBeDefined();
-    if (rootCard == null || equipmentCard == null || auraCard == null) {
-      throw new Error("missing nested attachment chain");
+    expect(shieldCard).toBeDefined();
+    if (rootCard == null || equipmentCard == null || auraCard == null || shieldCard == null) {
+      throw new Error("missing attachment subtree");
     }
 
+    const depthStep = rootCard.h * 0.2;
     expect(rootCard.w).toBeLessThan(CARD_W);
     expect(rootCard.x).toBeGreaterThan(boardBounds(4).maxX);
     expect(equipmentCard).toMatchObject({
       x: rootCard.x,
-      y: rootCard.y - rootCard.h * 0.2,
+      y: rootCard.y - 2 * depthStep,
       w: rootCard.w,
       h: rootCard.h,
     });
     expect(auraCard).toMatchObject({
       x: equipmentCard.x,
-      y: equipmentCard.y - equipmentCard.h * 0.2,
+      y: rootCard.y - 3 * depthStep,
       w: equipmentCard.w,
       h: equipmentCard.h,
     });
+    expect(shieldCard).toMatchObject({
+      x: rootCard.x,
+      y: rootCard.y - depthStep,
+      w: rootCard.w,
+      h: rootCard.h,
+    });
+    expect(new Set([auraCard.y, equipmentCard.y, shieldCard.y, rootCard.y]).size).toBe(4);
     expect(cards.findIndex((card) => card.id === aura.id)).toBe(
       cards.findIndex((card) => card.id === equipment.id) - 1,
     );
     expect(cards.findIndex((card) => card.id === equipment.id)).toBe(
-      cards.findIndex((card) => card.id === root.id) - 1,
+      cards.findIndex((card) => card.id === shield.id) - 1,
     );
-    expect(
-      hitTest({ panX: 0, panY: 0, zoom: 1 }, rootCard.x + rootCard.w / 2, rootCard.y + rootCard.h * 0.1, cards),
-    ).toBe(root.id);
+    expect(cards.findIndex((card) => card.id === shield.id)).toBe(cards.findIndex((card) => card.id === root.id) - 1);
+    const identity = { panX: 0, panY: 0, zoom: 1 };
+    const hitX = rootCard.x + rootCard.w / 2;
+    expect(hitTest(identity, hitX, auraCard.y + depthStep / 2, cards)).toBe(aura.id);
+    expect(hitTest(identity, hitX, equipmentCard.y + depthStep / 2, cards)).toBe(equipment.id);
+    expect(hitTest(identity, hitX, shieldCard.y + depthStep / 2, cards)).toBe(shield.id);
+    expect(hitTest(identity, hitX, rootCard.y + rootCard.h * 0.1, cards)).toBe(root.id);
     expect(cards.find((card) => card.id === cycleA.id)).toMatchObject({ w: CARD_W, h: CARD_H });
     expect(cards.find((card) => card.id === cycleB.id)).toMatchObject({ w: CARD_W, h: CARD_H });
   });
