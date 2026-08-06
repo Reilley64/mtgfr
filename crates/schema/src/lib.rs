@@ -28,8 +28,8 @@ pub use dto::{
     Credentials, DeckCardEntry, DeckDetail, DeckError, DeckSummary, JoinRequest, LobbyView, Me,
     MessageParam, MessageRef, ModalView, ModeView, ModifierSourceView, ObjectView,
     PendingChoiceView, PlayerView, ReadyRequest, SaveDeckRequest, SeatView, SeedRequest,
-    SeedResponse, SeedSeat, SignupCredentials, StackObjectView, StartRequest, VisibleState,
-    WireCost, WireEitherMana, WireKind, WireManaPool, WireOfColorsMana,
+    SeedResponse, SeedSeat, SignupCredentials, StackObjectView, StackSourceFaceView, StartRequest,
+    VisibleState, WireCost, WireEitherMana, WireKind, WireManaPool, WireOfColorsMana,
 };
 pub use event::{DeltaEnvelope, VisibleEvent, redact, spectator_redact};
 pub use intent::{

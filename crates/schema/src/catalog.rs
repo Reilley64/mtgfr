@@ -491,9 +491,10 @@ fn type_line(def: &engine::CardDef) -> String {
 /// The printed words of one card as the deck plays it — what a rendered face draws and the game
 /// state never carries. `flavor` is the flavor of THAT printing ([`cards::print_flavor`]), not of
 /// the card's `default_print`: flavor is per printing, and a reprint prints other words.
-pub fn card_text(def: &engine::CardDef, flavor: Option<&str>) -> CardTextView {
+pub fn card_text(def: &engine::CardDef, print: &str, flavor: Option<&str>) -> CardTextView {
     CardTextView {
         card_id: def.id.to_string(),
+        print: print.to_string(),
         type_line: type_line(def),
         oracle: def.oracle.unwrap_or_default().to_string(),
         flavor: flavor.unwrap_or_default().to_string(),

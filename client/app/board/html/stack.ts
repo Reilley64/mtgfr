@@ -7,7 +7,8 @@
 
 import { Option } from "effect";
 import type { Attribute, Html, HtmlBuilder } from "foldkit/html";
-import { BLANK_FACE, type FaceData, faceDataFrom } from "~/card-render/frame";
+import { type FaceData, faceDataFrom, faceDataFromStackSource } from "~/card-render/frame";
+import { cardTextFor } from "~/cardText";
 import { button } from "~/ui/button";
 import { cardFace } from "~/ui/card-face";
 import type { ObjectView, VisibleState } from "~/wire/types";
@@ -62,12 +63,12 @@ function hideStackRestingFace(board: BoardModel, source: number): boolean {
 
 function stackItems(board: BoardModel, state: VisibleState, showGhost: boolean): StackItem[] {
   /** The catalog's words folded into a face once its lookup lands — as the hand bar does. */
-  const withText = (face: FaceData, cardId: string | undefined): FaceData => {
-    const text = cardId != null ? board.cardText.get(cardId) : null;
+  const withText = (face: FaceData, cardId: string | undefined, print: string): FaceData => {
+    const text = cardTextFor(board.cardText, cardId, print);
     if (text == null) return face;
     return { ...face, typeLine: text.type_line, oracle: text.oracle, flavor: text.flavor };
   };
-  const faceOf = (view: ObjectView): FaceData => withText(faceDataFrom(view), view.card_id);
+  const faceOf = (view: ObjectView): FaceData => withText(faceDataFrom(view), view.card_id, view.print ?? "");
 
   const items: StackItem[] = state.stack.map((entry, row) => {
     const object = state.objects.find((o) => o.id === entry.source);
@@ -79,7 +80,11 @@ function stackItems(board: BoardModel, state: VisibleState, showGhost: boolean):
     const cardId = object?.card_id || entry.card_id || undefined;
     // A tombstone is gone from `objects`, so its own identity is all there is to draw a face from.
     const face =
-      object != null ? faceOf(object) : print ? withText({ ...BLANK_FACE, print, name: name ?? "" }, cardId) : null;
+      object != null
+        ? faceOf(object)
+        : print && entry.source_face != null
+          ? withText(faceDataFromStackSource(entry.source_face, print, name ?? ""), cardId, print)
+          : null;
     return {
       row,
       source: entry.source,
@@ -90,7 +95,10 @@ function stackItems(board: BoardModel, state: VisibleState, showGhost: boolean):
       staged: false,
       // An ability on the stack is the one sentence that prints it, not its source card's whole
       // text box; the flavor belongs to the card, so it goes with the rest of the card's words.
-      face: face != null && entry.ability_oracle ? { ...face, oracle: entry.ability_oracle, flavor: "" } : face,
+      face:
+        face != null && entry.kind === "ability"
+          ? { ...face, oracle: entry.ability_oracle || label, flavor: "" }
+          : face,
     };
   });
   if (!showGhost) return items;

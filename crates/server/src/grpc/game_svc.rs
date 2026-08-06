@@ -95,9 +95,9 @@ impl pb::game_service_server::GameService for GameSvc {
             .map_err(|_| Status::not_found("unknown table or game not started"))?;
 
         let out = async_stream::stream! {
-            let mut known_card_text: std::collections::HashSet<String> = card_text
+            let mut known_card_text: std::collections::HashSet<(String, String)> = card_text
                 .iter()
-                .map(|text| text.card_id.clone())
+                .map(|text| (text.card_id.clone(), text.print.clone()))
                 .collect();
             yield Ok(map::stream_frame_to_pb(StreamFrame::Snapshot {
                 seq: snapshot_seq,

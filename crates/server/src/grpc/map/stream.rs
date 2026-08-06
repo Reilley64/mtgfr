@@ -2,7 +2,8 @@
 
 use schema::{
     ActionView, ChoiceItem, CombatView, ModalView, ModeView, ModifierSourceView, ObjectView,
-    PendingChoiceView, PlayerView, StackObjectView, StreamFrame, VisibleEvent, VisibleState,
+    PendingChoiceView, PlayerView, StackObjectView, StackSourceFaceView, StreamFrame, VisibleEvent,
+    VisibleState,
 };
 
 use crate::grpc::map::common::{
@@ -71,6 +72,16 @@ pub fn stack_object_view_to_pb(entry: StackObjectView) -> pb::StackObjectView {
         card_id: entry.card_id,
         name: entry.name,
         ability_oracle: entry.ability_oracle,
+        source_face: entry.source_face.map(stack_source_face_view_to_pb),
+    }
+}
+
+fn stack_source_face_view_to_pb(face: StackSourceFaceView) -> pb::StackSourceFaceView {
+    pb::StackSourceFaceView {
+        kind: Some(wire_kind_to_pb(face.kind)),
+        colors: face.colors.into_iter().map(u32::from).collect(),
+        is_token: face.is_token,
+        legendary: face.legendary,
     }
 }
 
@@ -1672,6 +1683,7 @@ pub fn visible_event_to_pb(event: VisibleEvent) -> Option<pb::VisibleEvent> {
 fn card_text_to_pb(text: schema::CardTextView) -> pb::CardTextView {
     pb::CardTextView {
         card_id: text.card_id,
+        print: text.print,
         type_line: text.type_line,
         oracle: text.oracle,
         flavor: text.flavor,
@@ -1826,6 +1838,7 @@ mod tests {
                 card_id: "shock-id".into(),
                 name: "Shock".into(),
                 ability_oracle: String::new(),
+                source_face: None,
             }],
             combat: CombatView::default(),
             can_act: true,
@@ -1892,6 +1905,7 @@ mod tests {
             state: state.clone(),
             card_text: vec![schema::CardTextView {
                 card_id: "bear".into(),
+                print: "bear-print".into(),
                 type_line: "Creature — Bear".into(),
                 oracle: String::new(),
                 flavor: "Rrrrr.".into(),

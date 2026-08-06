@@ -5,6 +5,7 @@ import { Submodel } from "foldkit";
 import { Scene } from "foldkit/test";
 import { expect, test } from "vitest";
 import { faceDataFrom } from "~/card-render/frame";
+import { cardTextKey } from "~/cardText";
 import { testMessageRef } from "~/i18n/testMessageRef";
 import { testHtml } from "~/test-html";
 import { BindCardFace } from "~/ui/card-face";
@@ -134,9 +135,15 @@ test("stack face draws the whole printed card, with the catalog's words on it", 
   // bar shows — rules and flavor included — not a crop of the art.
   const { objects, stack } = spellOnStack(42, "Lightning Bolt", "bolt-print");
   const bolt: ObjectView = { ...(objects[0] as ObjectView), card_id: "bolt" };
-  const text = { card_id: "bolt", type_line: "Instant", oracle: "Deals 3 damage to any target.", flavor: "" };
+  const text = {
+    card_id: "bolt",
+    print: "bolt-print",
+    type_line: "Instant",
+    oracle: "Deals 3 damage to any target.",
+    flavor: "",
+  };
   const model: ViewModel = {
-    board: { ...initialBoardModel(), cardText: new Map([["bolt", text]]) },
+    board: { ...initialBoardModel(), cardText: new Map([[cardTextKey("bolt", "bolt-print"), text]]) },
     fold: gameFold(gameState({ objects: [bolt], stack })),
     tableId: "T1",
   };
@@ -162,12 +169,13 @@ test("an ability's stack face shows only the sentence that prints it", () => {
   const sentence = "At the beginning of your upkeep, you draw a card and you lose 1 life.";
   const text = {
     card_id: "arena",
+    print: "arena-print",
     type_line: "Enchantment",
     oracle: sentence,
     flavor: "The Rathi cabal exacts a heavy toll.",
   };
   const model: ViewModel = {
-    board: { ...initialBoardModel(), cardText: new Map([["arena", text]]) },
+    board: { ...initialBoardModel(), cardText: new Map([[cardTextKey("arena", "arena-print"), text]]) },
     fold: gameFold(
       gameState({
         objects: [arena],
@@ -191,6 +199,44 @@ test("an ability's stack face shows only the sentence that prints it", () => {
     resolveBoardOverlayMounts(),
     resolveBoardCardFaceMounts(),
     Scene.expect(Scene.selector(String.raw`[data-testid="stack-face-0"] [data-face]`)).toHaveAttr("data-face", face),
+  );
+});
+
+test("an ability without a recorded sentence uses its label and clears the source flavor", () => {
+  const { objects } = spellOnStack(42, "Phyrexian Arena", "arena-print");
+  const arena: ObjectView = { ...(objects[0] as ObjectView), card_id: "arena", kind: { kind: "enchantment" } };
+  const text = {
+    card_id: "arena",
+    print: "arena-print",
+    type_line: "Enchantment",
+    oracle: "At the beginning of your upkeep, you draw a card and you lose 1 life.",
+    flavor: "The Rathi cabal exacts a heavy toll.",
+  };
+  const model: ViewModel = {
+    board: { ...initialBoardModel(), cardText: new Map([[cardTextKey("arena", "arena-print"), text]]) },
+    fold: gameFold(
+      gameState({
+        objects: [arena],
+        stack: [
+          {
+            controller: 0,
+            kind: "ability",
+            label: testMessageRef("Draw a card"),
+            source: 42,
+          },
+        ],
+      }),
+    ),
+    tableId: "T1",
+  };
+  const face = JSON.stringify({ ...faceDataFrom(arena), typeLine: "Enchantment", oracle: "Draw a card", flavor: "" });
+  Scene.scene(
+    { update: (m) => [m, []], view: overlayView },
+    Scene.given(model),
+    resolveBoardOverlayMounts(),
+    resolveBoardCardFaceMounts(),
+    Scene.expect(Scene.selector(String.raw`[data-testid="stack-face-0"] [data-face]`)).toHaveAttr("data-face", face),
+    Scene.expect(Scene.testId("stack-top-caption")).toBeAbsent(),
   );
 });
 
@@ -365,6 +411,12 @@ test("ability stack face uses entry print when the source id is no longer in obj
             print: "evolving-wilds-print",
             name: "Evolving Wilds",
             card_id: "evolving-wilds-id",
+            source_face: {
+              colors: [],
+              is_token: false,
+              kind: { kind: "land", colors: [] },
+              legendary: false,
+            },
           },
         ],
       }),
@@ -378,8 +430,23 @@ test("ability stack face uses entry print when the source id is no longer in obj
     resolveBoardCardFaceMounts(),
     Scene.expect(Scene.testId("stack-overlay")).toExist(),
     Scene.expect(Scene.testId("stack-face-0")).toExist(),
-    // The face only draws when print+name resolve — proves entry.print was used.
-    Scene.expect(Scene.selector(String.raw`[data-testid="stack-face-0"] [data-face]`)).toExist(),
+    Scene.expect(Scene.selector(String.raw`[data-testid="stack-face-0"] [data-face]`)).toHaveAttr(
+      "data-face",
+      JSON.stringify({
+        print: "evolving-wilds-print",
+        name: "Evolving Wilds",
+        colors: [],
+        isLand: true,
+        isToken: false,
+        legendary: false,
+        power: "",
+        toughness: "",
+        loyalty: "",
+        typeLine: "",
+        oracle: "Search your library for a basic land card",
+        flavor: "",
+      }),
+    ),
   );
 });
 

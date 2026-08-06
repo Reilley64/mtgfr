@@ -250,9 +250,16 @@ export type StackObjectView = {
   label: MessageRef;
   name?: string;
   print?: string;
+  source_face?: StackSourceFaceView;
   source: number;
   target?: null | WireTarget;
   targets?: Array<WireTarget>;
+};
+export type StackSourceFaceView = {
+  colors?: Array<number>;
+  is_token?: boolean;
+  kind: WireKind;
+  legendary?: boolean;
 };
 // `defender` is always the defending player's seat; `defender_planeswalker` names their
 // planeswalker being attacked, when the attack named one (CR 508.1a).
@@ -774,7 +781,7 @@ export type IntentEnvelope = { client_seq: number; intent: WireIntent; table_id:
 /** The printed words of one card, for the faces the board draws. `flavor` is the flavor of the
  * printing being played, not of the card's default print. The snapshot carries the viewer's whole
  * deck; a delta adds any other seat's card the same frame already shows them. */
-export type CardTextView = { card_id: string; type_line: string; oracle: string; flavor: string };
+export type CardTextView = { card_id: string; print: string; type_line: string; oracle: string; flavor: string };
 export type StreamFrame =
   | { frame: "snapshot"; seq: number; state: VisibleState; card_text?: Array<CardTextView> }
   | {

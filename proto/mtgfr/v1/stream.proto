@@ -131,6 +131,17 @@ message StackObjectView {
   // ability on the stack is not its whole source card. Empty for a spell (which shows its
   // card's own text) and for an ability whose sentence isn't recorded, which shows `label`.
   string ability_oracle = 11;
+  // Last-known renderer characteristics for the source. This remains authoritative when a
+  // sacrifice-as-cost source is no longer present in `VisibleState.objects`.
+  StackSourceFaceView source_face = 12;
+}
+
+message StackSourceFaceView {
+  WireKind kind = 1;
+  // Source colors as WUBRG indices, used to select the rendered frame.
+  repeated uint32 colors = 2;
+  bool is_token = 3;
+  bool legendary = 4;
 }
 
 // One labelled item offered by a pending choice (a legal target, or a blocker to assign damage
@@ -2109,6 +2120,8 @@ message CardTextView {
   // The flavor text of the printing THIS deck plays — flavor is per printing, not per card.
   // Empty when that printing prints none.
   string flavor = 4;
+  // Scryfall Printing UUID whose per-print flavor this record carries.
+  string print = 5;
 }
 
 message SnapshotFrame {

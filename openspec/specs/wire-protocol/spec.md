@@ -83,7 +83,7 @@ A connecting client SHALL receive an initial snapshot frame at the current seque
 - **THEN** the enclosed visible state is sufficient to render the board without fetching another snapshot
 
 ### Requirement: The stream carries the printed words of every card a viewer can see
-Frames SHALL carry a book of printed words — card id, type line, oracle text, and flavor text — for the cards the viewer may read, so a client never requests card text per card. Flavor SHALL be that of the printing being played, joined on the printing id, not the card's default printing.
+Frames SHALL carry a book of printed words — card id, printing id, type line, oracle text, and flavor text — for the cards the viewer may read, so a client never requests card text per card. Each record and connection-level deduplication SHALL be keyed by card id and printing id together. Flavor SHALL be that of the printing being played, joined on the printing id, not the card's default printing.
 
 The opening snapshot SHALL carry every card in the connecting viewer's own deck, plus any card the same snapshot's visible state already identifies — an opponent's permanent on the battlefield, a spell on the stack. Each delta SHALL carry the same for the cards its own visible state identifies and the snapshot did not already send; a client SHALL merge a delta's book into the one it holds rather than replacing it.
 
@@ -104,6 +104,10 @@ The public part of the book SHALL be derived from the already-redacted visible s
 #### Scenario: The book is joined on the printing being played
 - **WHEN** a seated viewer opens a stream and their deck plays a reprint
 - **THEN** the snapshot carries that card's type line, oracle text, and that printing's flavor
+
+#### Scenario: Two seats play different printings of one card
+- **WHEN** two visible objects share an oracle card id but use different printing ids
+- **THEN** the stream carries one text record per printing and the client retains both records
 
 ### Requirement: Mulligan progress is snapshot-sourced on the wire
 Until explicit mulligan visible-event arms exist on the stream contract, the API MUST NOT emit empty or placeholder mulligan event oneofs. Clients SHALL treat visible-state mulliganing and per-player mulligan status fields as the source of truth for mulligan UI. Keep and mulligan intents SHALL exist as dedicated intent arms; the authenticated seat SHALL be stamped at the projection boundary so a client cannot keep or mulligan for another player by altering the payload.
@@ -143,9 +147,15 @@ Server-authored player-facing game text (rejects, stack and action labels, pendi
 ### Requirement: A stack ability carries the sentence that prints it
 Each stack entry for an ability SHALL carry the one printed sentence that ability prints, when its source card records one, so the client can draw the ability rather than its source card's whole text box. The sentence SHALL be resolved server-side by matching the effect the stack entry carries back to the source card's printed abilities. It SHALL be empty for a spell entry, for an ability granted by another permanent, and whenever the match is ambiguous or the card records no sentence — in which case the client draws the entry's label instead.
 
+Each stack entry SHALL also carry the source's last-known renderer characteristics — kind, colours, token status and legendary status — so a spell or ability retains its authoritative frame after a sacrifice-as-cost or other departure removes the source from the visible object list. These facts SHALL identify only the already-public stack source and MUST NOT widen hidden card identity.
+
 #### Scenario: A granted ability carries no sentence
 - **WHEN** an ability on the stack was granted by another permanent rather than printed on its source card
 - **THEN** the stack entry's ability sentence is empty and the client renders the entry's label
+
+#### Scenario: A sacrificed source keeps renderer facts
+- **WHEN** an activated ability remains on the stack after its source has been sacrificed as a cost
+- **THEN** the stack entry carries the source's last-known kind, colours, token status and legendary status without reintroducing the source into visible objects
 
 ### Requirement: Pending choices project to a stable generic wire shape
 The pending-choice view oneof SHALL cover every engine pause the board renders (targets, payments, combat damage, digs, search, edicts, modes, copy target, legend-rule keep, mana color, piles, partition, dredge, and related prompts). Spell-target and ability-target pauses SHALL project as a shared choose-target shape. Repeatable yes/no and draw-up-to loops SHALL use shared generic arms. Choice items SHALL carry display labels so the prompt UI need not join against the object list for visible identity. The choose-copy-target arm SHALL carry a discriminator per non-copy pause that reuses its "one chosen object" answer shape — optional put-counter-on-creature, re-aim of a chosen creature, and choose-a-damage-source — so clients swap prompt wording without a new answer shape or a new arm.
@@ -209,4 +219,3 @@ A wire mana cost SHALL carry, alongside its generic amount, `{X}` count and per-
 #### Scenario: A hybrid-only cost is not empty
 - **WHEN** a viewer sees a card whose entire cost is hybrid symbols
 - **THEN** its wire cost reports a pip per hybrid symbol rather than an empty cost
-

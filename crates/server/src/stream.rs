@@ -120,10 +120,10 @@ pub fn card_text_book(prints: &std::collections::HashMap<String, String>) -> Vec
         .iter()
         .filter_map(|(card_id, print)| {
             let def = cards::get(card_id)?;
-            Some(card_text(&def, cards::print_flavor(print)))
+            Some(card_text(&def, print, cards::print_flavor(print)))
         })
         .collect();
-    book.sort_by(|a, b| a.card_id.cmp(&b.card_id));
+    book.sort_by(|a, b| (&a.card_id, &a.print).cmp(&(&b.card_id, &b.print)));
     book
 }
 
@@ -146,17 +146,22 @@ pub fn public_card_text(
 ) -> Vec<CardTextView> {
     let objects = state.objects.iter().map(|o| (&o.card_id, &o.print));
     let stack = state.stack.iter().map(|e| (&e.card_id, &e.print));
-    let mut seen: std::collections::HashSet<&str> = std::collections::HashSet::new();
+    let mut seen: std::collections::HashSet<(&str, &str)> = std::collections::HashSet::new();
     let mut book: Vec<CardTextView> = objects
         .chain(stack)
-        .filter(|(card_id, _)| !card_id.is_empty() && !own.contains_key(card_id.as_str()))
-        .filter(|(card_id, _)| seen.insert(card_id.as_str()))
+        .filter(|(card_id, print)| {
+            !card_id.is_empty()
+                && own
+                    .get(card_id.as_str())
+                    .is_none_or(|own_print| own_print != *print)
+        })
+        .filter(|(card_id, print)| seen.insert((card_id.as_str(), print.as_str())))
         .filter_map(|(card_id, print)| {
             let def = cards::get(card_id)?;
-            Some(card_text(&def, cards::print_flavor(print)))
+            Some(card_text(&def, print, cards::print_flavor(print)))
         })
         .collect();
-    book.sort_by(|a, b| a.card_id.cmp(&b.card_id));
+    book.sort_by(|a, b| (&a.card_id, &a.print).cmp(&(&b.card_id, &b.print)));
     book
 }
 
@@ -167,14 +172,14 @@ pub fn public_card_text(
 /// do not resend every visible permanent's rules text.
 pub fn retain_new_card_text(
     frame: &mut StreamFrame,
-    known: &mut std::collections::HashSet<String>,
+    known: &mut std::collections::HashSet<(String, String)>,
 ) {
     let StreamFrame::Delta(envelope) = frame else {
         return;
     };
     envelope
         .card_text
-        .retain(|text| known.insert(text.card_id.clone()));
+        .retain(|text| known.insert((text.card_id.clone(), text.print.clone())));
 }
 
 /// Table → [`ViewExtras`] for the opening snapshot (and for tests that build frames from a live
@@ -384,6 +389,46 @@ mod tests {
             "the deck's printing prints its own flavor: {:?}",
             book[0].flavor,
         );
+    }
+
+    #[test]
+    fn two_seats_can_receive_different_flavor_for_the_same_oracle_card() {
+        let bolt = def("Lightning Bolt");
+        let alpha = "7673784e-db4b-43a1-8d55-1bb9fc1e284f";
+        let m10 = "435589bb-27c6-4a6d-9d63-394d5092b9d8";
+        let mut game = Game::new();
+        game.spawn_on_battlefield(PlayerId(0), bolt.clone());
+        game.spawn_on_battlefield(PlayerId(1), bolt.clone());
+        let mut prints: [std::collections::HashMap<String, String>; 4] = Default::default();
+        prints[0].insert(bolt.id.to_string(), alpha.into());
+        prints[1].insert(bolt.id.to_string(), m10.into());
+        let extras = view_extras(
+            &[false; 4],
+            &[false; 4],
+            &std::array::from_fn(|_| Seat::default()),
+            0,
+            &prints,
+        );
+        let state = complete_visible(&game, Some(PlayerId(0)), &extras);
+        let mut book = card_text_book(&prints[0]);
+        book.extend(public_card_text(&state, &prints[0]));
+
+        assert_eq!(
+            book.len(),
+            2,
+            "each visible printing keeps its own text record"
+        );
+        let serialized: Vec<serde_json::Value> = book
+            .iter()
+            .map(|text| serde_json::to_value(text).expect("card text serializes"))
+            .collect();
+        assert!(serialized.iter().any(|text| text["print"] == alpha));
+        assert!(serialized.iter().any(|text| {
+            text["print"] == m10
+                && text["flavor"]
+                    .as_str()
+                    .is_some_and(|flavor| flavor.starts_with("The sparkmage shrieked"))
+        }));
     }
 
     #[test]

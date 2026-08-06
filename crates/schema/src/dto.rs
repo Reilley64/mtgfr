@@ -275,6 +275,8 @@ pub struct WireCost {
 pub struct CardTextView {
     /// Card id (Scryfall oracle id) — [`ObjectView::card_id`].
     pub card_id: String,
+    /// Printing UUID whose flavor this record carries — [`ObjectView::print`].
+    pub print: String,
     /// The printed type line ("Legendary Creature — Phyrexian Angel Horror").
     pub type_line: String,
     /// Printed (oracle) rules text; empty for a vanilla.
@@ -422,6 +424,23 @@ pub struct StackObjectView {
     /// card's own text) and for an ability whose sentence isn't recorded, which shows `label`.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub ability_oracle: String,
+    /// Last-known renderer characteristics of the source. Stack abilities outlive sacrificed
+    /// sources, so their faces cannot join these facts from [`VisibleState::objects`].
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_face: Option<StackSourceFaceView>,
+}
+
+/// Last-known characteristics needed to choose and decorate a stack source's rendered frame.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StackSourceFaceView {
+    pub kind: WireKind,
+    /// Source colors as WUBRG indices, for the authoritative frame color.
+    #[serde(default)]
+    pub colors: Vec<u8>,
+    #[serde(default)]
+    pub is_token: bool,
+    #[serde(default)]
+    pub legendary: bool,
 }
 
 /// One labelled item offered by a pending choice (a legal target, or a blocker to assign

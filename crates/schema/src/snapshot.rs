@@ -12,8 +12,8 @@ use serde::{Deserialize, Serialize};
 use crate::catalog::{wire_cost, wire_kind};
 use crate::dto::{
     ActionView, CardTextView, CombatView, CommanderDamageView, MessageRef, ModalView, ModeView,
-    ModifierSourceView, ObjectView, PlayerView, StackObjectView, VisibleState, WireKind,
-    WireManaPool,
+    ModifierSourceView, ObjectView, PlayerView, StackObjectView, StackSourceFaceView, VisibleState,
+    WireKind, WireManaPool,
 };
 use crate::event::DeltaEnvelope;
 use crate::intent::{WireAttack, WireBlock, WireTarget};
@@ -199,6 +199,25 @@ fn stack_source_art(game: &engine::Game, source: engine::ObjectId) -> (String, S
         card_id_src.id.to_string(),
         def.name.to_string(),
     )
+}
+
+/// Last-known renderer characteristics for a stack source. Unlike `objects`, this follows Moved
+/// and Removed arena entries so an activation keeps the same authoritative frame after its source
+/// is sacrificed as a cost.
+fn stack_source_face(game: &engine::Game, source: engine::ObjectId) -> StackSourceFaceView {
+    let def = game.def_of(source);
+    StackSourceFaceView {
+        kind: wire_kind(&def),
+        colors: game
+            .colors_of(source)
+            .iter()
+            .enumerate()
+            .filter(|(_, is_color)| **is_color)
+            .map(|(index, _)| index as u8)
+            .collect(),
+        is_token: game.is_token(source) || engine::token_def(def.id).is_some(),
+        legendary: def.legendary,
+    }
 }
 
 /// The printed sentence an ability on the stack prints, found by matching the effect the stack
@@ -1067,6 +1086,7 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
                     name,
                     // A spell on the stack is the whole card, so its face shows the card's text.
                     ability_oracle: String::new(),
+                    source_face: Some(stack_source_face(game, id)),
                 }
             }
             engine::StackEntry::Ability {
@@ -1089,6 +1109,7 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
                     card_id,
                     name,
                     ability_oracle,
+                    source_face: Some(stack_source_face(game, source)),
                 }
             }
         })
@@ -3858,6 +3879,11 @@ mod tests {
         assert_eq!(entry.print, expected_print);
         assert_eq!(entry.name, "Evolving Wilds");
         assert_eq!(entry.card_id, expected_card_id);
+        let serialized = serde_json::to_value(entry).expect("stack entry serializes");
+        assert_eq!(serialized["source_face"]["kind"]["kind"], "land");
+        assert_eq!(serialized["source_face"]["colors"], serde_json::json!([]));
+        assert_eq!(serialized["source_face"]["is_token"], false);
+        assert_eq!(serialized["source_face"]["legendary"], false);
 
         // Deck-chosen Printings overlay onto stack entries the same way as ChoiceItem picks.
         let preferred = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";

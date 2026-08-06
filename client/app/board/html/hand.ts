@@ -9,6 +9,7 @@
 import { Option } from "effect";
 import type { Attribute, Html, HtmlBuilder } from "foldkit/html";
 import { type FaceData, faceDataFrom } from "~/card-render/frame";
+import { cardTextFor } from "~/cardText";
 import { type CostPip, costPips } from "~/costPips";
 import { cardFace } from "~/ui/card-face";
 import type { ActionView, CardTextView, ObjectView, VisibleState, WireCost } from "~/wire/types";
@@ -378,7 +379,7 @@ export type HandViewInputs = {
    * `board.handHidden` and any external hide set. */
   hiddenIds: ReadonlySet<number>;
   handDrag: HandDragState | null;
-  /** Printed words by card id, from the snapshot's book of the viewer's own deck. */
+  /** Printed words by `(card id, print)`, from the snapshot's book of the viewer's own deck. */
   cardText?: ReadonlyMap<string, CardTextView>;
   /** Object ids legal for the live local discard cost; null when not discarding. */
   discardCostIds?: ReadonlySet<number> | null;
@@ -414,7 +415,7 @@ export function handView(inputs: HandViewInputs, h: HtmlBuilder<Message>): Html 
 
   /** The face to draw, with the catalog's words folded in once its lookup lands. */
   const faceOf = (object: ObjectView): FaceData => {
-    const text = object.card_id != null ? cardText.get(object.card_id) : null;
+    const text = cardTextFor(cardText, object.card_id, object.print);
     const face = faceDataFrom(object);
     if (text == null) return face;
     return { ...face, typeLine: text.type_line, oracle: text.oracle, flavor: text.flavor };

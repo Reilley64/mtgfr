@@ -110,7 +110,7 @@ A rendered card face SHALL be drawn from the M15 frame assets — art, name, typ
 
 The full card face SHALL be drawn for hand, stack and command-zone tiles; the square permanent face SHALL be drawn for the battlefield and draws neither type line nor rules text, having no room for them.
 
-Art and flavor SHALL both come from the printing the object plays — the printing the deck chose, not the card's default printing. The printed words a face draws — type line, rules text and that printing's flavor — SHALL arrive on the stream: the viewer's whole deck with the opening snapshot, any other seat's card once a frame shows the board that card, each delta's words merged into the book rather than replacing it. The board MUST NOT request card text per card, from the catalog or from any card API.
+Art and flavor SHALL both come from the printing the object plays — the printing the deck chose, not the card's default printing. The printed words a face draws — type line, rules text and that printing's flavor — SHALL arrive on the stream, keyed by card id and printing together: the viewer's whole deck with the opening snapshot, any other seat's card once a frame shows the board that card, each delta's words merged into the book rather than replacing it. Two visible copies of the same oracle card using different printings SHALL retain their distinct flavor. The board MUST NOT request card text per card, from the catalog or from any card API.
 
 #### Scenario: Rules text sets mana symbols as pips
 - **WHEN** a face's rules text contains a mana symbol such as `{T}` or `{G}`
@@ -172,7 +172,7 @@ Active seated players SHALL see a bottom DOM bar in Arena order: command, hand, 
 
 The stack SHALL be a right-edge DOM overlay with pile / expanded strip / full-grid presentations. Labels SHALL format wire `MessageRef`s. Declared targets SHALL paint one Island Blue arrow per resolvable destination on the Mount layer. Legal aim faces SHALL set `data-legal-target` and submit on click/keyboard. Priority holders hovering a non-empty stack SHALL emit `SetStackDwell`. Resting stack faces SHALL hide only for `kind: "stack"` flights. Pending board-aim without a stack entry for the source SHALL show a source-art ghost; spell sources already on the stack SHALL NOT duplicate.
 
-Each stack face SHALL be the whole rendered card face — the same one the hand bar draws, sharing its cache entry — since the stack is where a player reads what is about to resolve. An entry whose source object has already left the snapshot SHALL draw its face from the printing and name the entry carries. An ability entry that carries its own printed sentence SHALL draw that sentence in the text box in place of the source card's text and flavor, because an ability on the stack is not its whole source card.
+Each stack face SHALL be the whole rendered card face — the same one the hand bar draws, sharing its cache entry — since the stack is where a player reads what is about to resolve. An entry whose source object has already left the snapshot SHALL draw its face from the printing, name and last-known renderer characteristics the entry carries, retaining the source's land/colour frame, legend crown and printed corner badge. An ability entry SHALL draw its own printed sentence in the text box, or its generated label when no sentence is recorded, in place of the source card's text and flavor, because an ability on the stack is not its whole source card.
 
 Resolved target captions SHALL list every destination below the stack card. Generated ability labels SHALL NOT be repeated below a rendered ability card; an untargeted resolved entry SHALL render no caption.
 
@@ -185,6 +185,16 @@ Resolved target captions SHALL list every destination below the stack card. Gene
 
 - **WHEN** an ability sits on the stack and the entry carries the printed sentence for it
 - **THEN** its stack face draws that sentence alone in the text box, without the source card's other abilities or its flavor
+
+#### Scenario: An ability without a recorded sentence uses its label
+
+- **WHEN** an ability sits on the stack and its entry carries no printed sentence
+- **THEN** its stack face draws the generated label alone in the text box, without the source card's rules text or flavor
+
+#### Scenario: A departed source keeps its frame
+
+- **WHEN** a sacrificed land's ability remains on the stack after the source leaves the visible object list
+- **THEN** the stack face still draws with the land frame and the source's last-known renderer characteristics
 
 #### Scenario: Multi-target caption
 - **WHEN** a stack object has multiple resolved targets

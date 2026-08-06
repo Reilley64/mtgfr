@@ -1,4 +1,4 @@
-import type { ObjectView } from "../wire/types";
+import type { ObjectView, StackSourceFaceView, WireKind } from "../wire/types";
 import { ZONE } from "../zones";
 import { ASSET_H, ASSET_W, type FrameKey } from "./assets";
 
@@ -17,9 +17,9 @@ export type FaceVariant = "permanent" | "full";
  * through the **flavor**, which the printing writes. No mana cost: the pip tray under the card owns
  * cost, so the face never draws one.
  *
- * `typeLine`, `oracle` and `flavor` come from `CatalogCard` over the catalog RPC, not from a new wire field —
- * `faceDataFrom` leaves them `""` and the caller folds them in (see `card-text.ts`). Only the
- * `full` variant draws them; the square permanent has no room and shows none.
+ * `typeLine`, `oracle` and `flavor` come from the snapshot/delta card-text records. `faceDataFrom`
+ * leaves them `""` and the caller folds in the record for this `(card_id, print)`. Only the `full`
+ * variant draws them; the square permanent has no room and shows none.
  */
 export type FaceData = {
   /** Scryfall print id — the art key on the card CDN, and part of the face cache key. */
@@ -71,6 +71,16 @@ function badges(view: ObjectView): { power: string; toughness: string; loyalty: 
   return blank;
 }
 
+function printedBadges(kind: WireKind): { power: string; toughness: string; loyalty: string } {
+  const blank = { power: "", toughness: "", loyalty: "" };
+  if (kind.kind === "creature") {
+    return { power: String(kind.power), toughness: String(kind.toughness), loyalty: "" };
+  }
+  if (kind.kind === "planeswalker") return { ...blank, loyalty: String(kind.loyalty) };
+  if (kind.kind === "battle") return { ...blank, loyalty: String(kind.defense) };
+  return blank;
+}
+
 /** A face with nothing to draw — the library placeholder, and a base for test fixtures. */
 export const BLANK_FACE: FaceData = {
   print: "",
@@ -97,6 +107,22 @@ export function faceDataFrom(view: ObjectView): FaceData {
     isToken: view.is_token,
     legendary: view.legendary,
     ...badges(view),
+    typeLine: "",
+    oracle: "",
+    flavor: "",
+  };
+}
+
+/** Build a face from authoritative last-known stack-source facts after the source leaves objects. */
+export function faceDataFromStackSource(source: StackSourceFaceView, print: string, name: string): FaceData {
+  return {
+    print,
+    name,
+    colors: source.colors ?? [],
+    isLand: source.kind.kind === "land",
+    isToken: source.is_token ?? false,
+    legendary: source.legendary ?? false,
+    ...printedBadges(source.kind),
     typeLine: "",
     oracle: "",
     flavor: "",

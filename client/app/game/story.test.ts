@@ -1,5 +1,6 @@
 import { Story } from "foldkit";
 import { expect, test } from "vitest";
+import { cardTextKey } from "~/cardText";
 import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ActionView } from "~/wire/types";
 import { ZONE } from "../board/geometry/layout";
@@ -188,13 +189,22 @@ test("ReceivedSnapshot books the viewer's own printed words, replacing the last 
       message: ReceivedSnapshot({
         seq: 1,
         state: state(),
-        card_text: [{ card_id: "bolt", type_line: "Instant", oracle: "Deals 3 damage.", flavor: "Fast as fire." }],
+        card_text: [
+          {
+            card_id: "bolt",
+            print: "bolt-print",
+            type_line: "Instant",
+            oracle: "Deals 3 damage.",
+            flavor: "Fast as fire.",
+          },
+        ],
       }),
     }),
   );
 
-  expect(booked.game?.board.cardText.get("bolt")).toEqual({
+  expect(booked.game?.board.cardText.get(cardTextKey("bolt", "bolt-print"))).toEqual({
     card_id: "bolt",
+    print: "bolt-print",
     type_line: "Instant",
     oracle: "Deals 3 damage.",
     flavor: "Fast as fire.",
@@ -207,13 +217,47 @@ test("ReceivedSnapshot books the viewer's own printed words, replacing the last 
       message: ReceivedSnapshot({
         seq: 2,
         state: state(),
-        card_text: [{ card_id: "swamp", type_line: "Basic Land — Swamp", oracle: "", flavor: "" }],
+        card_text: [
+          { card_id: "swamp", print: "swamp-print", type_line: "Basic Land — Swamp", oracle: "", flavor: "" },
+        ],
       }),
     }),
   );
 
-  expect(reseated.game?.board.cardText.has("bolt")).toBe(false);
-  expect(reseated.game?.board.cardText.get("swamp")?.type_line).toBe("Basic Land — Swamp");
+  expect(reseated.game?.board.cardText.has(cardTextKey("bolt", "bolt-print"))).toBe(false);
+  expect(reseated.game?.board.cardText.get(cardTextKey("swamp", "swamp-print"))?.type_line).toBe("Basic Land — Swamp");
+});
+
+test("ReceivedSnapshot keeps different printings of the same card as separate text records", () => {
+  const [model] = init();
+  const given = {
+    ...model,
+    route: PregameTableRoute({ deckId: "0", table: "ABC123" }),
+    game: { ...emptyGameSlice(), active: true, tableId: "ABC123" },
+  };
+
+  const [booked] = update(
+    given,
+    GotGameMessage({
+      message: ReceivedSnapshot({
+        seq: 1,
+        state: state(),
+        card_text: [
+          { card_id: "bolt", print: "alpha", type_line: "Instant", oracle: "Deals 3 damage.", flavor: "" },
+          {
+            card_id: "bolt",
+            print: "m10",
+            type_line: "Instant",
+            oracle: "Deals 3 damage.",
+            flavor: "The sparkmage shrieked.",
+          },
+        ],
+      }),
+    }),
+  );
+
+  expect(booked.game?.board.cardText.size).toBe(2);
+  expect(Array.from(booked.game?.board.cardText.values() ?? []).map((text) => text.print)).toEqual(["alpha", "m10"]);
 });
 
 test("ReceivedDelta adds an opponent's printed words without dropping the viewer's own", () => {
@@ -230,7 +274,9 @@ test("ReceivedDelta adds an opponent's printed words without dropping the viewer
       message: ReceivedSnapshot({
         seq: 1,
         state: state(),
-        card_text: [{ card_id: "bolt", type_line: "Instant", oracle: "Deals 3 damage.", flavor: "" }],
+        card_text: [
+          { card_id: "bolt", print: "bolt-print", type_line: "Instant", oracle: "Deals 3 damage.", flavor: "" },
+        ],
       }),
     }),
   );
@@ -244,13 +290,13 @@ test("ReceivedDelta adds an opponent's printed words without dropping the viewer
         state: state(),
         events: [],
         auto_actions: undefined,
-        card_text: [{ card_id: "bears", type_line: "Creature — Bear", oracle: "", flavor: "" }],
+        card_text: [{ card_id: "bears", print: "bears-print", type_line: "Creature — Bear", oracle: "", flavor: "" }],
       }),
     }),
   );
 
-  expect(merged.game?.board.cardText.get("bears")?.type_line).toBe("Creature — Bear");
-  expect(merged.game?.board.cardText.get("bolt")?.oracle).toBe("Deals 3 damage.");
+  expect(merged.game?.board.cardText.get(cardTextKey("bears", "bears-print"))?.type_line).toBe("Creature — Bear");
+  expect(merged.game?.board.cardText.get(cardTextKey("bolt", "bolt-print"))?.oracle).toBe("Deals 3 damage.");
 
   // A later frame that mentions nobody new leaves the book alone.
   const [quiet] = update(

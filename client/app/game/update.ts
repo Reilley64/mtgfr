@@ -8,6 +8,7 @@ import {
   raiseResultDialog,
   syncBoardWithGame,
 } from "../board/submodel";
+import { cardTextKey } from "../domain/cardText";
 import { type Message as AppMessage, GotBoardMessage, GotGameMessage } from "../messages";
 import type { GameSlice } from "../model";
 import type { RpcClient } from "../resources";
@@ -70,7 +71,7 @@ export function updateGame(
       const [next, commands] = mergeGameFold(game, applySnapshotPure(game, message.seq, message.state));
       // The snapshot carries the whole book of the viewer's own deck, so it replaces rather than
       // merges: reconnecting into another seat must not keep the previous seat's words.
-      const cardText = new Map(message.card_text.map((text) => [text.card_id, text]));
+      const cardText = new Map(message.card_text.map((text) => [cardTextKey(text.card_id, text.print), text]));
       return [{ ...next, board: { ...next.board, cardText } }, mapBoardCommands(commands)];
     }
     case "ReceivedDelta": {
@@ -81,7 +82,7 @@ export function updateGame(
       const arriving = message.card_text ?? [];
       if (arriving.length === 0) return [next, mapBoardCommands(commands)];
       const cardText = new Map(next.board.cardText);
-      for (const text of arriving) cardText.set(text.card_id, text);
+      for (const text of arriving) cardText.set(cardTextKey(text.card_id, text.print), text);
       return [{ ...next, board: { ...next.board, cardText } }, mapBoardCommands(commands)];
     }
     case "StreamStatus":

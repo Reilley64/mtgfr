@@ -11,6 +11,13 @@ describe("costPips", () => {
     ]);
   });
 
+  it("emits one X pip for each printed X symbol", () => {
+    expect(costPips({ has_x: true, x_symbols: 2, generic: 0, colored: [0, 0, 0, 0, 0] }).map((p) => p.code)).toEqual([
+      "X",
+      "X",
+    ]);
+  });
+
   it("expands colored counts into one pip each", () => {
     expect(costPips({ generic: 0, colored: [0, 0, 3, 0, 0] }).map((p) => p.code)).toEqual(["B", "B", "B"]);
   });

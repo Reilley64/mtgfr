@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { cardTextKey } from "~/cardText";
 import { testHtml } from "~/test-html";
 import type { Message } from "../messages";
 
@@ -268,9 +269,10 @@ describe("handView rendered face", () => {
         handDrag: null,
         cardText: new Map([
           [
-            "bolt",
+            cardTextKey("bolt", "lea-161"),
             {
               card_id: "bolt",
+              print: "lea-161",
               type_line: "Instant",
               oracle: "Deals 3 damage to any target.",
               flavor: "The sparkmage shrieked.",
@@ -286,6 +288,39 @@ describe("handView rendered face", () => {
       typeLine: "Instant",
       oracle: "Deals 3 damage to any target.",
       flavor: "The sparkmage shrieked.",
+    });
+  });
+
+  it("reads an empty-print text record from an older server during a rolling deploy", () => {
+    const bolt = object(42, { name: "Lightning Bolt", print: "lea-161", card_id: "bolt" });
+    const tree = handView(
+      {
+        viewport: HAND_DESIGN_VIEWPORT,
+        state: state({ objects: [bolt], actions: [] }),
+        hiddenId: null,
+        flyingIds: new Set(),
+        hiddenIds: new Set(),
+        handDrag: null,
+        cardText: new Map([
+          [
+            cardTextKey("bolt", ""),
+            {
+              card_id: "bolt",
+              print: "",
+              type_line: "Instant",
+              oracle: "Deals 3 damage to any target.",
+              flavor: "",
+            },
+          ],
+        ]),
+      },
+      h,
+    );
+
+    const host = findWithAttr(findTestId(tree, "hand-card-face-42"), "data-face");
+    expect(JSON.parse(attr(host, "data-face") ?? "{}")).toMatchObject({
+      typeLine: "Instant",
+      oracle: "Deals 3 damage to any target.",
     });
   });
 

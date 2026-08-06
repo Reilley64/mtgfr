@@ -271,7 +271,7 @@ export type BoardModel = {
   inspectPin: InspectPin | null;
   /** Catalog data for the current inspect pin. `undefined` = fetch in-flight; `null` = not found. */
   inspectCard: CatalogCard | null | undefined;
-  /** Printed words for the faces the bar draws, by card id. The snapshot carries the viewer's
+  /** Printed words for the faces the bar draws, by `(card id, print)`. The snapshot carries the viewer's
    *  whole deck once per connection, so there is nothing to fetch per card. */
   cardText: ReadonlyMap<string, CardTextView>;
   /** Which face of a DFC to show in the inspect overlay. */

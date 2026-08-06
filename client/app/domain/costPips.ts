@@ -26,7 +26,8 @@ export type CostPip = { ms: string; code: string };
  */
 export function costPips(cost: WireCost, opts?: { showZero?: boolean }): CostPip[] {
   const out: CostPip[] = [];
-  if (cost.has_x) push(out, "X");
+  const xSymbols = cost.x_symbols ?? (cost.has_x ? 1 : 0);
+  for (let i = 0; i < xSymbols; i++) push(out, "X");
   if (cost.generic > 0) push(out, String(cost.generic));
   repeat(out, cost.colored, (i) => COLOR_PIP[i]);
   repeat(out, cost.hybrid, (i) => HYBRID_PIP[i]);
