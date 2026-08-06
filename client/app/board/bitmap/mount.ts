@@ -141,7 +141,11 @@ export function applyPublishedFrame(
     state.liveFlights
       .filter((flight) => {
         const mergedFlight = mergedFlights.find((candidate) => candidate.id === flight.id);
-        return mergedFlight?.hold === true && settledFlightHasAuthoritativeDestination(flight, mergedFrame);
+        return (
+          mergedFlight?.hold === true &&
+          sameFlightAim(flight, mergedFlight) &&
+          settledFlightHasAuthoritativeDestination(flight, mergedFrame)
+        );
       })
       .map((flight) => [flight.id, flight]),
   );
@@ -177,6 +181,10 @@ function settledFlightHasAuthoritativeDestination(flight: CardFlight, frame: Bit
   if (flight.kind === "battlefield") return frame.cards.some((card) => card.id === flight.id);
   if (flight.kind === "stack") return (frame.stack ?? []).some((entry) => entry.source === flight.id);
   return false;
+}
+
+function sameFlightAim(a: CardFlight, b: CardFlight): boolean {
+  return a.targetX === b.targetX && a.targetY === b.targetY && a.targetScale === b.targetScale;
 }
 
 export function tickFlightClock(

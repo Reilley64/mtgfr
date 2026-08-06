@@ -1258,6 +1258,25 @@ describe("flight clock helpers", () => {
     expect(released.sync).toBeNull();
     expect(bitmapFrameNeedsRaf(released.frame)).toBe(true);
 
+    const authoritativeHeldRetarget = {
+      ...held,
+      phase: "flying" as const,
+      targetX: 300,
+      targetY: 250,
+      targetScale: 0.75,
+    };
+    const retargeted = applyPublishedFrame(
+      flightClockState({ liveFlights: [held] }),
+      frame({
+        cards: [card({ id: 90, tapped: true })],
+        flights: [authoritativeHeldRetarget],
+        hideCardIds: new Set([90]),
+      }),
+    );
+    expect(retargeted.frame.flights).toEqual([authoritativeHeldRetarget]);
+    expect(retargeted.sync).toBeNull();
+    expect(bitmapFrameNeedsRaf(retargeted.frame)).toBe(true);
+
     const removed = applyPublishedFrame(
       published.state,
       frame({ cards: [card({ id: 90, tapped: true })], flights: [], hideCardIds: new Set() }),
