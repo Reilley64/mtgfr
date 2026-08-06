@@ -1,4 +1,5 @@
 export const PERMANENT_SIDE = 96;
+export const MIN_CROWDED_PERMANENT_SIDE = 24;
 export const PERMANENT_TAP_TILT = Math.PI / 12;
 export const PERMANENT_CLEARANCE = 8;
 export const PERMANENT_MAX_CHROME_OUTSET = 3;
@@ -11,14 +12,20 @@ export function tiltedPermanentExtent(side: number): number {
 
 export const PERMANENT_STEP = Math.ceil(tiltedPermanentExtent(PERMANENT_SIDE) + PERMANENT_CLEARANCE);
 
-export type PermanentRowMetrics = Readonly<{ side: number; step: number }>;
+export type PermanentRowMetrics = Readonly<{ side: number; step: number; width: number }>;
 
 export function permanentRowMetrics(slotCount: number, rowWidth: number): PermanentRowMetrics {
-  if (slotCount <= 1) return { side: PERMANENT_SIDE, step: PERMANENT_STEP };
-  if (slotCount <= 7) return { side: PERMANENT_SIDE, step: PERMANENT_STEP };
+  if (slotCount <= 1) return { side: PERMANENT_SIDE, step: PERMANENT_STEP, width: rowWidth };
+  if (slotCount <= 7) return { side: PERMANENT_SIDE, step: PERMANENT_STEP, width: rowWidth };
 
   const gaps = slotCount - 1;
   const numerator = rowWidth - gaps * (2 * PERMANENT_MAX_CHROME_OUTSET * TILT_AXIS_FACTOR + PERMANENT_CLEARANCE);
-  const side = Math.min(PERMANENT_SIDE, Math.max(1, numerator / (1 + gaps * TILT_AXIS_FACTOR)));
-  return { side, step: (rowWidth - side) / gaps };
+  const fittedSide = Math.min(PERMANENT_SIDE, numerator / (1 + gaps * TILT_AXIS_FACTOR));
+  if (fittedSide >= MIN_CROWDED_PERMANENT_SIDE) {
+    return { side: fittedSide, step: (rowWidth - fittedSide) / gaps, width: rowWidth };
+  }
+
+  const side = MIN_CROWDED_PERMANENT_SIDE;
+  const step = tiltedPermanentExtent(side) + PERMANENT_CLEARANCE;
+  return { side, step, width: gaps * step + side };
 }
