@@ -174,6 +174,8 @@ The stack SHALL be a right-edge DOM overlay with pile / expanded strip / full-gr
 
 Each stack face SHALL be the whole rendered card face — the same one the hand bar draws, sharing its cache entry — since the stack is where a player reads what is about to resolve. An entry whose source object has already left the snapshot SHALL draw its face from the printing and name the entry carries. An ability entry that carries its own printed sentence SHALL draw that sentence in the text box in place of the source card's text and flavor, because an ability on the stack is not its whole source card.
 
+Resolved target captions SHALL list every destination below the stack card. Generated ability labels SHALL NOT be repeated below a rendered ability card; an untargeted resolved entry SHALL render no caption.
+
 #### Scenario: A spell on the stack shows its printed card
 
 - **WHEN** a spell sits on the stack, whoever cast it
@@ -187,6 +189,11 @@ Each stack face SHALL be the whole rendered card face — the same one the hand 
 #### Scenario: Multi-target caption
 - **WHEN** a stack object has multiple resolved targets
 - **THEN** the caption lists all labels joined with `, ` after ` → `
+
+#### Scenario: Ability card does not repeat its generated label
+
+- **WHEN** an ability card is rendered on the stack
+- **THEN** its generated label is absent beneath the card, while any resolved target caption remains
 
 #### Scenario: Ability face during source flight
 - **WHEN** a battlefield flight owns an ability’s source permanent
@@ -315,4 +322,3 @@ When the fold log is non-empty, a DOM log panel above the hand bar SHALL show th
 #### Scenario: Collapsed window
 - **WHEN** the log has more than 30 retained lines and is collapsed
 - **THEN** only the newest 30 paint, with expand revealing older retained lines
-

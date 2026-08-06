@@ -254,14 +254,10 @@ function pileCaption(state: VisibleState, showStaged: boolean, h: HtmlBuilder<Me
   const top = state.stack[state.stack.length - 1];
   if (top == null) return null;
   const target = formatStackTargetSuffix(stackEntryTargets(top), state);
-  const ability = top.kind === "ability" ? formatMessage(top.label) : "";
-  if (ability === "" && target === "") return null;
+  if (target === "") return null;
   return h.div(
     [h.DataAttribute("testid", "stack-top-caption"), h.Class("max-w-(--stack-w) text-center text-chip text-seafoam")],
-    [
-      ability !== "" ? h.div([h.Class("font-semibold")], [ability]) : null,
-      target !== "" ? h.div([], [target]) : null,
-    ].filter((v): v is Html => v !== null),
+    [h.div([], [target])],
   );
 }
 

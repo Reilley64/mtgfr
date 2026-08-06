@@ -344,7 +344,7 @@ test("ability stack face keeps card art while its source permanent is mid-battle
     Scene.expect(Scene.testId("stack-overlay")).toExist(),
     Scene.expect(Scene.testId("stack-face-0")).toExist(),
     Scene.expect(Scene.selector(String.raw`[data-testid="stack-face-0"] [data-face]`)).toExist(),
-    Scene.expect(Scene.testId("stack-top-caption")).toContainText("Draw a card"),
+    Scene.expect(Scene.testId("stack-top-caption")).toBeAbsent(),
   );
 });
 
@@ -392,11 +392,11 @@ test("ability stack face keeps card art while its source permanent is mid from-s
     Scene.expect(Scene.testId("stack-overlay")).toExist(),
     Scene.expect(Scene.testId("stack-face-0")).toExist(),
     Scene.expect(Scene.selector(String.raw`[data-testid="stack-face-0"] [data-face]`)).toExist(),
-    Scene.expect(Scene.testId("stack-top-caption")).toContainText("Draw a card"),
+    Scene.expect(Scene.testId("stack-top-caption")).toBeAbsent(),
   );
 });
 
-test("stack pile caption lists every declared target", () => {
+test("an ability caption lists targets without repeating its generated label", () => {
   const { objects } = spellOnStack(42, "Electrolyze", "electrolyze-print");
   const bear: ObjectView = {
     controller: 1,
@@ -427,8 +427,8 @@ test("stack pile caption lists every declared target", () => {
         stack: [
           {
             controller: 0,
-            kind: "spell",
-            label: testMessageRef("Electrolyze"),
+            kind: "ability",
+            label: testMessageRef("Draw a card"),
             source: 42,
             targets: [
               { kind: "object", id: 22 },
@@ -447,6 +447,7 @@ test("stack pile caption lists every declared target", () => {
     resolveBoardCardFaceMounts(),
     Scene.expect(Scene.testId("stack-top-caption")).toContainText("Bear"),
     Scene.expect(Scene.testId("stack-top-caption")).toContainText("Bob"),
+    Scene.expect(Scene.testId("stack-top-caption")).not.toContainText("Draw a card"),
   );
 });
 

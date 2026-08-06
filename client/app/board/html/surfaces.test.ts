@@ -392,14 +392,14 @@ test("turn chrome drives phase and label chrome from data attributes", () => {
   );
 });
 
-test("stack context renders resolve stack affordance and top caption", () => {
+test("stack context renders resolve stack affordance without an untargeted caption", () => {
   const state = gameState({
     stack: [{ controller: 1, kind: "ability", label: testMessageRef("Ward 2"), source: 99 }],
   });
   overlayScene(
     overlayModel(initialBoardModel(), state),
     Scene.expect(Scene.testId("board-stack-yield")).toExist(),
-    Scene.expect(Scene.testId("stack-top-caption")).toExist(),
+    Scene.expect(Scene.testId("stack-top-caption")).toBeAbsent(),
   );
 });
 
