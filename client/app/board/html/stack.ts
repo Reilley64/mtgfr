@@ -46,8 +46,8 @@ type StackItem = {
   cardId?: string;
   label: string;
   staged: boolean;
-  /** The rendered face, or null for a tombstone the snapshot no longer carries an object for. */
-  face: FaceData | null;
+  /** The rendered face for every stack entry, including metadata-free tombstones. */
+  face: FaceData;
 };
 
 /** Hide a resting stack face only while a *stack* flight owns that object id.
@@ -81,18 +81,13 @@ function stackItems(board: BoardModel, state: VisibleState, showGhost: boolean):
     const name = object?.name || entry.name || null;
     const cardId = object?.card_id || entry.card_id || undefined;
     // A tombstone is gone from `objects`, so its own identity is all there is to draw a face from.
-    const face =
+    // When that identity is unavailable, public stack text still deserves a neutral card face.
+    const baseFace =
       object != null
         ? faceOf(object)
-        : print
-          ? withText(
-              entry.source_face != null
-                ? faceDataFromStackSource(entry.source_face, print, name ?? "")
-                : { ...BLANK_FACE, print, name: name ?? "" },
-              cardId,
-              print,
-            )
-          : null;
+        : entry.source_face != null
+          ? withText(faceDataFromStackSource(entry.source_face, print, name ?? label), cardId, print)
+          : withText({ ...BLANK_FACE, print, name: name ?? label }, cardId, print);
     return {
       row,
       kind: entry.kind,
@@ -104,10 +99,7 @@ function stackItems(board: BoardModel, state: VisibleState, showGhost: boolean):
       staged: false,
       // An ability on the stack is the one sentence that prints it, not its source card's whole
       // text box; the flavor belongs to the card, so it goes with the rest of the card's words.
-      face:
-        face != null && entry.kind === "ability"
-          ? { ...face, oracle: entry.ability_oracle || label, flavor: "" }
-          : face,
+      face: entry.kind === "ability" ? { ...baseFace, oracle: entry.ability_oracle || label, flavor: "" } : baseFace,
     };
   });
   if (!showGhost) return items;
@@ -154,7 +146,7 @@ function stackFace(
     print: string;
     cardId?: string;
     label: string;
-    face: FaceData | null;
+    face: FaceData;
     isTop: boolean;
     staged?: boolean;
     legalTarget?: boolean;
@@ -178,22 +170,12 @@ function stackFace(
 
   // The whole printed card, not a crop of its art — the stack is where a player reads what is
   // about to resolve, so it shows the same rendered face the hand bar does.
-  const cardBody: Html =
-    opts.face && opts.print
-      ? cardFace(h, {
-          face: opts.face,
-          width: STACK_CARD_W,
-          height: opts.cardH,
-          className: "block h-(--card-h) w-(--stack-w) rounded-game",
-        })
-      : h.div(
-          [
-            h.Class(
-              "flex h-(--card-h) w-(--stack-w) items-center justify-center rounded-game bg-forest-hud px-1 text-center font-semibold text-caption text-seafoam",
-            ),
-          ],
-          [opts.label],
-        );
+  const cardBody = cardFace(h, {
+    face: opts.face,
+    width: STACK_CARD_W,
+    height: opts.cardH,
+    className: "block h-(--card-h) w-(--stack-w) rounded-game",
+  });
 
   const faceAttrs: Attribute<Message>[] = [
     h.Class(faceClass),

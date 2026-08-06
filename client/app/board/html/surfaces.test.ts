@@ -398,6 +398,7 @@ test("stack context renders resolve stack affordance without an untargeted capti
   });
   overlayScene(
     overlayModel(initialBoardModel(), state),
+    resolveBoardCardFaceMounts(),
     Scene.expect(Scene.testId("board-stack-yield")).toExist(),
     Scene.expect(Scene.testId("stack-top-caption")).toBeAbsent(),
   );
@@ -412,6 +413,7 @@ test("armed stack yield state renders separately", () => {
         yielded: true,
       }),
     ),
+    resolveBoardCardFaceMounts(),
     Scene.expect(Scene.testId("board-stack-yield-armed")).toExist(),
   );
 });
@@ -528,6 +530,7 @@ test("staged targeting shows cancel affordance and staged hint", () => {
       },
       gameState({ objects: [target] }),
     ),
+    resolveBoardCardFaceMounts(),
     Scene.expect(Scene.testId("board-cancel-target")).toExist(),
     Scene.expect(Scene.testId("board-staged-hint")).toHaveText("You gain 1 life: click a highlighted card"),
   );
@@ -1430,6 +1433,7 @@ test("multi on-board choose_target shows Confirm count chrome", () => {
         },
       }),
     ),
+    resolveBoardCardFaceMounts(),
     Scene.expect(Scene.testId("pending-target-aim")).toExist(),
     Scene.expect(Scene.testId("pending-target-count")).toHaveText("1 / 2 selected"),
     Scene.expect(Scene.testId("prompt-submit")).toBeEnabled(),
@@ -3307,6 +3311,7 @@ test("tiny board HUD close controls keep coarse pointer hit targets", () => {
   overlayScene(
     overlayModel({ ...initialBoardModel(), legendOpen: true, stackExpand: true }, gameState({ stack })),
     resolveBoardCardArtMounts(0),
+    resolveBoardCardFaceMounts(6),
     Scene.tap((sim) => {
       expect(className(findAttr(sim.html, "aria-label", "Dismiss hint"))).toContain("hit-quiet");
       expect(className(findAttr(sim.html, "aria-label", "Close legend"))).toContain("hit-quiet");

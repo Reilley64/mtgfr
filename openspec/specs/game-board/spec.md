@@ -174,6 +174,13 @@ The stack SHALL be a right-edge DOM overlay with pile / expanded strip / full-gr
 
 Each stack face SHALL be the whole rendered card face — the same one the hand bar draws, sharing its cache entry — since the stack is where a player reads what is about to resolve. An entry whose source object has already left the snapshot SHALL draw its face from the printing, name and last-known renderer characteristics the entry carries, retaining the source's land/colour frame, legend crown and printed corner badge. An ability entry SHALL draw its own printed sentence in the text box, or its generated label when no sentence is recorded, in place of the source card's text and flavor, because an ability on the stack is not its whole source card.
 
+Every stack entry SHALL have a card-shaped visual representation. A spell's active entrance flight
+MAY temporarily serve as that representation instead of a duplicate resting face. A triggered or
+activated ability SHALL always render its own stationary face immediately; no flight belonging to
+its source card may suppress it. When public source renderer metadata is incomplete, the ability
+SHALL render a neutral card frame with its public sentence or generated label and MUST NOT reveal
+redacted identity or degrade to a plain text-only tile.
+
 Resolved target captions SHALL list every destination below the stack card. Generated ability labels SHALL NOT be repeated below a rendered ability card; an untargeted resolved entry SHALL render no caption.
 
 #### Scenario: A spell on the stack shows its printed card
@@ -208,6 +215,19 @@ Resolved target captions SHALL list every destination below the stack card. Gene
 #### Scenario: Ability face during source flight
 - **WHEN** a battlefield flight owns an ability’s source permanent
 - **THEN** the ability’s stack face remains visible
+
+#### Scenario: Trigger shares its source with a spell flight
+
+- **WHEN** one or more triggered abilities share a source id with a spell whose stack entrance
+  flight is active
+- **THEN** the spell's resting face may remain suppressed, while every ability entry renders its
+  own stationary card face
+
+#### Scenario: Ability source metadata is incomplete
+
+- **WHEN** an ability stack entry has no usable printing or renderer metadata
+- **THEN** it renders a neutral card frame using only public ability text, never a plain text tile
+  or hidden card identity
 
 ### Requirement: Screen Motion
 

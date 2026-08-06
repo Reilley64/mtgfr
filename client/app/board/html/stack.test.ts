@@ -4,7 +4,7 @@
 import { Submodel } from "foldkit";
 import { Scene } from "foldkit/test";
 import { expect, test } from "vitest";
-import { faceDataFrom } from "~/card-render/frame";
+import { BLANK_FACE, faceDataFrom } from "~/card-render/frame";
 import { cardTextKey } from "~/cardText";
 import { testMessageRef } from "~/i18n/testMessageRef";
 import { testHtml } from "~/test-html";
@@ -559,6 +559,42 @@ test("an older server tombstone without source face still renders its ability ca
       Scene.expect(Scene.testId("stack-top-caption")).toBeAbsent(),
     );
   }).not.toThrow();
+});
+
+test("an ability with no source metadata still renders a neutral card face", () => {
+  const model: ViewModel = {
+    board: initialBoardModel(),
+    fold: gameFold(
+      gameState({
+        objects: [],
+        stack: [
+          {
+            controller: 0,
+            kind: "ability",
+            label: testMessageRef("Create a Treasure token"),
+            source: 77,
+          },
+        ],
+      }),
+    ),
+    tableId: "T1",
+  };
+
+  Scene.scene(
+    { update: (m) => [m, []], view: overlayView },
+    Scene.given(model),
+    resolveBoardOverlayMounts(),
+    resolveBoardCardFaceMounts(),
+    Scene.expect(Scene.selector('[data-testid="stack-face-0"] [data-face]')).toHaveAttr(
+      "data-face",
+      JSON.stringify({
+        ...BLANK_FACE,
+        name: "Create a Treasure token",
+        oracle: "Create a Treasure token",
+      }),
+    ),
+    Scene.expect(Scene.testId("stack-top-caption")).toBeAbsent(),
+  );
 });
 
 test("ability stack face keeps card art while its source permanent is mid from-stack flight", () => {
