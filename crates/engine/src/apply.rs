@@ -1131,6 +1131,10 @@ impl Game {
                     }),
                 );
                 assert_eq!(id, spell);
+                let front = self.permanent(source).def;
+                self.play_permissions
+                    .prepared_spell_fronts
+                    .push((spell, front));
                 self.stack.push(StackItem::Spell(spell));
                 // Casting a copy is still casting a spell (feeds `spells_cast_this_turn`).
                 // ponytail: the broader cast-spell *triggers* (magecraft, CR 700's "whenever you

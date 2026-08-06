@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { cardTextKey } from "~/cardText";
 import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ObjectView, PlayerView, VisibleState } from "~/wire/types";
 import type { GameFoldState } from "../game/fold";
@@ -111,10 +112,22 @@ describe("stack flight settle handoff", () => {
   it("retargets stack entrance flights to the resting stack face center", () => {
     const spellId = 42;
     const fromHand = 7;
-    const bolt = spell(spellId, "Lightning Bolt");
+    const bolt = { ...spell(spellId, "Lightning Bolt"), card_id: "lightning-bolt" };
     const board = {
       ...initialBoardModel(),
       viewport: { ...BOARD_VIEWPORT },
+      cardText: new Map([
+        [
+          cardTextKey("lightning-bolt", bolt.print ?? ""),
+          {
+            card_id: "lightning-bolt",
+            print: bolt.print ?? "",
+            type_line: "Instant",
+            oracle: "Lightning Bolt deals 3 damage to any target.",
+            flavor: "The sparkmage shrieked.",
+          },
+        ],
+      ]),
       flights: new Map([
         [
           spellId,
@@ -157,6 +170,117 @@ describe("stack flight settle handoff", () => {
     expect(flight?.targetX).toBe(face.x);
     expect(flight?.targetY).toBe(face.y);
     expect(flight?.targetScale).toBe(stackFlightScale(after.camera.zoom));
+    expect(flight?.print).toBe("Lightning Bolt-print");
+    expect(flight?.name).toBe("Lightning Bolt");
+    expect(flight?.face).toMatchObject({
+      name: "Lightning Bolt",
+      typeLine: "Instant",
+      oracle: "Lightning Bolt deals 3 damage to any target.",
+      flavor: "The sparkmage shrieked.",
+    });
+  });
+
+  it("refreshes a prepared stack flight with the active back-face words", () => {
+    const spellId = 42;
+    const fromHand = 7;
+    const prepared = { ...spell(spellId, "Pack a Punch"), card_id: "kirol-history-buff" };
+    const board = {
+      ...initialBoardModel(),
+      viewport: { ...BOARD_VIEWPORT },
+      cardText: new Map([
+        [
+          cardTextKey("kirol-history-buff", prepared.print ?? ""),
+          {
+            card_id: "kirol-history-buff",
+            print: prepared.print ?? "",
+            type_line: "Legendary Creature — Vampire Cleric",
+            oracle: "Front-face words.",
+            flavor: "Front-face flavor.",
+          },
+        ],
+      ]),
+    };
+    const activeFaceText = {
+      card_id: "kirol-history-buff",
+      print: prepared.print ?? "",
+      type_line: "Sorcery",
+      oracle: "Mill a card. Put two +1/+1 counters on target creature.",
+      flavor: "Back-face flavor.",
+    };
+
+    const after = syncBoardWithGame(
+      board,
+      gameFold(
+        state({
+          objects: [prepared],
+          stack: [
+            {
+              controller: 0,
+              kind: "spell",
+              label: testMessageRef("Pack a Punch"),
+              source: spellId,
+              active_face_text: activeFaceText,
+            },
+          ],
+        }),
+        {
+          stackEntrances: new Map([[spellId, { from: fromHand, controller: 0 }]]),
+        },
+      ),
+    );
+
+    expect(after.flights.get(spellId)?.face).toMatchObject({
+      name: "Pack a Punch",
+      typeLine: "Sorcery",
+      oracle: activeFaceText.oracle,
+      flavor: "Back-face flavor.",
+    });
+  });
+
+  it("seeds a local stack entrance with the rendered hand face", () => {
+    const card = {
+      ...spell(7, "Lightning Bolt"),
+      card_id: "lightning-bolt",
+      zone: ZONE.Hand,
+    };
+    const action = {
+      id: 9,
+      kind: "cast",
+      label: testMessageRef("Cast Lightning Bolt"),
+      needs_target: false,
+      object: card.id,
+      section: "hand",
+    };
+    const board = {
+      ...initialBoardModel(),
+      viewport: { ...BOARD_VIEWPORT },
+      cardText: new Map([
+        [
+          cardTextKey("lightning-bolt", card.print ?? ""),
+          {
+            card_id: "lightning-bolt",
+            print: card.print ?? "",
+            type_line: "Instant",
+            oracle: "Lightning Bolt deals 3 damage to any target.",
+            flavor: "The sparkmage shrieked.",
+          },
+        ],
+      ]),
+    };
+
+    const [after] = updateBoard(
+      board,
+      HandActionActivated({ action, x: 400, y: 700 }),
+      gameFold(state({ objects: [card], actions: [action] })),
+      "T1",
+    );
+
+    expect(after.flights.get(card.id)?.face).toMatchObject({
+      name: "Lightning Bolt",
+      typeLine: "Instant",
+      oracle: "Lightning Bolt deals 3 damage to any target.",
+      flavor: "The sparkmage shrieked.",
+    });
   });
 
   it("aims a multi-card pile flight at that spell's resting face, not viewport mid-right", () => {

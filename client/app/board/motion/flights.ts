@@ -42,6 +42,8 @@ export type FlightSpawn = {
   id: number;
   print: string;
   name: string;
+  /** The rendered face worn by the originating hand or stack card. */
+  face?: FaceData;
   x: number;
   y: number;
   scale: number;
@@ -63,6 +65,7 @@ export function spawnFlight(spawn: FlightSpawn): CardFlight {
     id: spawn.id,
     print: spawn.print,
     name: spawn.name,
+    face: spawn.face,
     x: spawn.x,
     y: spawn.y,
     scale: spawn.scale,

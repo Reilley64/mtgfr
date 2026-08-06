@@ -55,7 +55,7 @@ export function syncCardFaceHost(element: HTMLElement, faces: Faces = sharedFace
   canvas.style.height = `${h}px`;
   canvas.className = className;
   canvas.setAttribute("role", "img");
-  canvas.setAttribute("aria-label", face.name);
+  canvas.setAttribute("aria-label", element.dataset.faceAlt ?? face.name);
   const ctx = canvas.getContext("2d");
   ctx?.drawImage(drawn, 0, 0, canvas.width, canvas.height);
   element.replaceChildren(canvas);
@@ -80,7 +80,14 @@ export const BindCardFace = Mount.define(
         const observer = new MutationObserver(paint);
         observer.observe(element, {
           attributes: true,
-          attributeFilter: ["data-face", "data-face-variant", "data-face-w", "data-face-h", "data-face-class"],
+          attributeFilter: [
+            "data-face",
+            "data-face-variant",
+            "data-face-w",
+            "data-face-h",
+            "data-face-class",
+            "data-face-alt",
+          ],
         });
         return { unsub, observer };
       }),
@@ -108,6 +115,8 @@ export function cardFace<M>(
     className: string;
     style?: Record<string, string>;
     testId?: string;
+    /** Caller-specific accessible description; ordinary card faces keep `face.name`. */
+    accessibleDescription?: string;
   },
 ): Html {
   return h.div(
@@ -118,6 +127,7 @@ export function cardFace<M>(
       h.DataAttribute("face-w", String(opts.width)),
       h.DataAttribute("face-h", String(opts.height)),
       h.DataAttribute("face-class", opts.className),
+      ...(opts.accessibleDescription ? [h.DataAttribute("face-alt", opts.accessibleDescription)] : []),
       h.OnMount(BindCardFace() as never),
       ...(opts.style ? [h.Style(opts.style)] : []),
       ...(opts.testId ? [h.DataAttribute("testid", opts.testId)] : []),

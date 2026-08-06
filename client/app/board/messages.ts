@@ -22,6 +22,7 @@ const CardFlight = S.Struct({
   id: S.Number,
   print: S.String,
   name: S.String,
+  face: S.optional(S.Any),
   x: S.Number,
   y: S.Number,
   scale: S.Number,

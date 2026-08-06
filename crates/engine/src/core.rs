@@ -468,7 +468,17 @@ impl Game {
     pub fn front_def_of(&self, id: ObjectId) -> CardDef {
         match &self.objects[id as usize] {
             Object::Card(c) => card_def(c.def).as_ref().clone(),
-            Object::Spell(s) => card_def(s.def).as_ref().clone(),
+            Object::Spell(s) => self
+                .play_permissions
+                .prepared_spell_fronts
+                .iter()
+                .chain(self.play_permissions.adventure_fronts.iter())
+                .chain(self.play_permissions.split_halves_on_stack.iter())
+                .find_map(|(spell, front)| (*spell == id).then_some(*front))
+                .map(card_def)
+                .unwrap_or_else(|| card_def(s.def))
+                .as_ref()
+                .clone(),
             Object::Permanent(p) => card_def(p.def).as_ref().clone(),
             Object::Moved { to } => self.front_def_of(*to),
             Object::Removed { def, .. } => card_def(*def).as_ref().clone(),
@@ -777,6 +787,17 @@ impl Game {
     /// `id` isn't a permanent. Read by the characteristics overrides and the wire redaction layer.
     pub fn is_face_down(&self, id: ObjectId) -> bool {
         self.as_permanent(id).is_some_and(|p| p.face_down)
+    }
+
+    /// Whether the spell at `id` was cast face down (CR 702.37b). Kept separate from
+    /// [`Self::is_face_down`] because permanent characteristic layers must not inspect a spell,
+    /// while wire projection must redact both objects.
+    pub fn is_spell_face_down(&self, id: ObjectId) -> bool {
+        match &self.objects[id as usize] {
+            Object::Spell(spell) => spell.face_down,
+            Object::Moved { to } => self.is_spell_face_down(*to),
+            _ => false,
+        }
     }
 
     /// Whether the card at `id` sits face down in a hidden/graveyard/exile/command zone (CR

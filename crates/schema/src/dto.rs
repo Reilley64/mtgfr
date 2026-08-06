@@ -428,6 +428,11 @@ pub struct StackObjectView {
     /// sources, so their faces cannot join these facts from [`VisibleState::objects`].
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source_face: Option<StackSourceFaceView>,
+    /// Printed words for the active spell face. Multi-face inline definitions intentionally share
+    /// the physical front's `(card_id, print)`, so these cannot safely occupy the global text book.
+    /// Absent for abilities and for older draining projections.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub active_face_text: Option<CardTextView>,
 }
 
 /// Last-known characteristics needed to choose and decorate a stack source's rendered frame.

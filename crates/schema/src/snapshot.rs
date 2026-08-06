@@ -9,7 +9,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::catalog::{wire_cost, wire_kind};
+use crate::catalog::{card_text, wire_cost, wire_kind};
 use crate::dto::{
     ActionView, CardTextView, CombatView, CommanderDamageView, MessageRef, ModalView, ModeView,
     ModifierSourceView, ObjectView, PlayerView, StackObjectView, StackSourceFaceView, VisibleState,
@@ -178,6 +178,9 @@ pub fn complete_visible(
             && !print.is_empty()
         {
             entry.print = print.clone();
+        }
+        if let Some(text) = &mut entry.active_face_text {
+            text.print.clone_from(&entry.print);
         }
     }
     state
@@ -963,7 +966,7 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
             // CR 708.2: a face-down permanent (a manifest) is anonymized — its real name, card
             // kind, and mana cost are hidden from every viewer (the engine already reports its
             // 2/2 P/T, creature type, and empty keywords). The client renders it as a card back.
-            let manifest_face_down = game.is_face_down(id);
+            let rules_face_down = game.is_face_down(id) || game.is_spell_face_down(id);
             // CR 701.9: a face-down exile-pile card (Abstract Performance's first pile) is
             // anonymized for every viewer but its owner while it awaits the opponent's pick —
             // same anonymization shape as a manifest, but per-viewer rather than hidden from
@@ -972,7 +975,7 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
             // dedicated "hidden pile card" shape — harmless, since the client only ever branches
             // on `face_down` (a card back) and never reads `kind`/`mana_cost` while it's set.
             let hidden_pile_card = game.is_card_face_down(id) && viewer != Some(game.owner_of(id));
-            let face_down = manifest_face_down || hidden_pile_card;
+            let face_down = rules_face_down || hidden_pile_card;
             ObjectView {
                 id,
                 zone: game.zone_of(id) as u8,
@@ -1073,12 +1076,28 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
                     .into_iter()
                     .map(WireTarget::of)
                     .collect();
-                let (print, card_id, name) = stack_source_art(game, id);
+                let face_down = game.is_spell_face_down(id);
+                let (print, card_id, name) = if face_down {
+                    (String::new(), String::new(), String::new())
+                } else {
+                    stack_source_art(game, id)
+                };
+                let active_face_text = if face_down {
+                    None
+                } else {
+                    let mut text = card_text(&game.def_of(id), &print, None);
+                    text.card_id.clone_from(&card_id);
+                    Some(text)
+                };
                 StackObjectView {
                     kind: "spell".to_string(),
                     source: id,
                     controller: game.controller_of(id).0,
-                    label: named_message("card.name", game.def_of(id).name),
+                    label: if face_down {
+                        message("action.cast_face_down")
+                    } else {
+                        named_message("card.name", game.def_of(id).name)
+                    },
                     target: game.spell_target(id).map(WireTarget::of),
                     targets,
                     print,
@@ -1086,7 +1105,8 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
                     name,
                     // A spell on the stack is the whole card, so its face shows the card's text.
                     ability_oracle: String::new(),
-                    source_face: Some(stack_source_face(game, id)),
+                    source_face: (!face_down).then(|| stack_source_face(game, id)),
+                    active_face_text,
                 }
             }
             engine::StackEntry::Ability {
@@ -1110,6 +1130,7 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
                     name,
                     ability_oracle,
                     source_face: Some(stack_source_face(game, source)),
+                    active_face_text: None,
                 }
             }
         })
@@ -2337,6 +2358,40 @@ mod tests {
                 .any(|t| matches!(t, WireTarget::Object { id } if *id == game.current_id(corpse))),
             "legal targets include the reanimated bear"
         );
+
+        let target = action
+            .targets
+            .iter()
+            .find_map(|target| match target {
+                WireTarget::Object { id } => Some(*id),
+                _ => None,
+            })
+            .expect("prepared spell has a creature target");
+        game.submit(engine::Intent::CastPrepared {
+            player: PlayerId(0),
+            source: kirol,
+            target: Some(engine::Target::Object(target)),
+            x: 0,
+        })
+        .expect("cast Pack a Punch");
+
+        let cast = snapshot(&game, PlayerId(0));
+        let entry = cast
+            .stack
+            .iter()
+            .find(|entry| entry.kind == "spell")
+            .expect("prepared back-face spell is on the stack");
+        assert_eq!(game.front_def_of(entry.source).name, "Kirol, History Buff");
+        assert_eq!(entry.card_id, "df1c0d06-2109-4297-9271-8a003fc892bc");
+        assert_eq!(entry.print, "676ba521-66e4-42cf-a315-70d03cb7334e");
+        let serialized = serde_json::to_value(entry).expect("stack entry serializes");
+        assert_eq!(serialized["name"], "Pack a Punch");
+        assert_eq!(serialized["active_face_text"]["type_line"], "Sorcery");
+        assert_eq!(
+            serialized["active_face_text"]["oracle"],
+            "Mill a card. Put two +1/+1 counters on target creature. It gains trample until end of turn."
+        );
+        assert_eq!(serialized["active_face_text"]["print"], serialized["print"]);
     }
 
     #[test]
@@ -3655,6 +3710,39 @@ mod tests {
             view.colors.is_empty(),
             "a colored frame would reveal the hidden card"
         );
+    }
+
+    #[test]
+    fn a_face_down_spell_reveals_neither_identity_nor_active_face_words() {
+        let mut game = Game::new();
+        let p0 = PlayerId(0);
+        game.fund_mana(p0);
+        let akroma = game.spawn_in_hand(p0, def("Akroma, Angel of Fury"));
+
+        game.submit(engine::Intent::CastFaceDown {
+            player: p0,
+            card: akroma,
+        })
+        .expect("cast Akroma face down");
+
+        let snap = snapshot(&game, p0);
+        let entry = snap.stack.first().expect("face-down spell is on the stack");
+        assert_eq!(entry.label.key, "action.cast_face_down");
+        assert!(entry.card_id.is_empty());
+        assert!(entry.print.is_empty());
+        assert!(entry.name.is_empty());
+        assert!(entry.source_face.is_none());
+        assert!(entry.active_face_text.is_none());
+
+        let object = snap
+            .objects
+            .iter()
+            .find(|object| object.id == entry.source)
+            .expect("face-down stack object is projected as a card back");
+        assert!(object.face_down);
+        assert!(object.card_id.is_empty());
+        assert!(object.name.is_empty());
+        assert!(object.print.is_empty());
     }
 
     /// Master Warcraft (CR 508.1a) hands the attack declaration to its caster, so the client must

@@ -32,7 +32,8 @@ import type {
   WireTarget,
 } from "~/wire/types";
 import { clampX } from "~/xCost";
-import type { FaceData } from "../domain/card-render/frame";
+import { type FaceData, faceDataFrom } from "../domain/card-render/frame";
+import { cardTextFor } from "../domain/cardText";
 import { formatMessage } from "../domain/i18n/message";
 import { type InspectPin, inspectPinChanged, pinFromCard, pinFromPlayer } from "../domain/inspect";
 import { humanReason } from "../domain/reject";
@@ -651,6 +652,26 @@ function hiddenCardIds(flights: ReadonlyMap<number, CardFlight>, exitFx: Readonl
   return hidden;
 }
 
+/** The same full rendered face the hand and resting stack surfaces derive from an object. */
+function renderedFaceData(model: BoardModel, card: ObjectView): FaceData {
+  const face = faceDataFrom(card);
+  const text = cardTextFor(model.cardText, card.card_id, card.print ?? "");
+  if (text == null) return face;
+  return { ...face, typeLine: text.type_line, oracle: text.oracle, flavor: text.flavor };
+}
+
+/** Refresh a stack flight from authority, including words for a non-front active spell face. */
+function renderedStackSpellFace(
+  model: BoardModel,
+  card: ObjectView,
+  entry: VisibleState["stack"][number] | undefined,
+): FaceData {
+  const face = renderedFaceData(model, card);
+  const text = entry?.active_face_text;
+  if (text == null) return face;
+  return { ...face, typeLine: text.type_line, oracle: text.oracle, flavor: text.flavor };
+}
+
 function battlefieldPoseFromCard(camera: Camera, card: RenderCard): BattlefieldPose {
   const target = cardTarget(camera, card);
   return {
@@ -804,6 +825,9 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
 
   for (const [spell, meta] of fold.provenance.stackEntrances) {
     const aim = stackFlightAimForSource(model, state.stack, spell);
+    const stackCard = state.objects.find((object) => object.id === spell);
+    const stackEntry = state.stack.find((entry) => entry.source === spell && entry.kind === "spell");
+    const authoritativeFace = stackCard == null ? undefined : renderedStackSpellFace(model, stackCard, stackEntry);
     if (!flights.has(spell) && flights.has(meta.from)) {
       flights = rebindFlightId(flights, meta.from, spell);
     }
@@ -836,7 +860,14 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
       flights.set(
         spell,
         retargetFlight(
-          { ...existing, kind: "stack", fromCardId: meta.from },
+          {
+            ...existing,
+            print: stackCard?.print || stackEntry?.print || existing.print,
+            name: stackCard?.name || stackEntry?.name || existing.name,
+            face: authoritativeFace ?? existing.face,
+            kind: "stack",
+            fromCardId: meta.from,
+          },
           {
             x: aim.x,
             y: aim.y,
@@ -854,8 +885,9 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
       spell,
       spawnFlight({
         id: spell,
-        print: "",
-        name: "",
+        print: stackCard?.print || stackEntry?.print || "",
+        name: stackCard?.name || stackEntry?.name || "",
+        face: authoritativeFace,
         x: start.x,
         y: start.y,
         scale: handFlightScale(model.camera.zoom, handMetrics(model.viewport).cardW),
@@ -1662,6 +1694,7 @@ function seedDropFromHand(
       id: card.id,
       print: card.print ?? existing.print,
       name: card.name,
+      face: renderedFaceData(model, card),
       targetX: aim.x,
       targetY: aim.y,
       targetScale: aim.scale,
@@ -1699,6 +1732,7 @@ function seedDropFromHand(
     id: card.id,
     print: card.print ?? "",
     name: card.name,
+    face: renderedFaceData(model, card),
     x: screenOrigin.x,
     y: screenOrigin.y,
     scale: startScale,

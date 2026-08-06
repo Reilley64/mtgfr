@@ -193,6 +193,12 @@ function fillRun(ctx: CanvasRenderingContext2D, value: string, reminder: boolean
  */
 function drawTextBox(ctx: CanvasRenderingContext2D, face: FaceData, box: Rect, measure: Measure): void {
   if (face.oracle === "" && face.flavor === "") return;
+  // A crowded card stops shrinking at the readability floor. Clip that remaining ink to the
+  // printed paper so neither extra rows nor a single unbreakable word can cross the text box.
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(box.x, box.y, box.w, box.h);
+  ctx.clip();
   const padX = box.w * TEXT_PAD_X;
   const padY = box.h * TEXT_PAD_Y;
   const inner = { w: box.w - 2 * padX, h: box.h - 2 * padY };
@@ -219,6 +225,7 @@ function drawTextBox(ctx: CanvasRenderingContext2D, face: FaceData, box: Rect, m
       x += measure(piece, size);
     }
   }
+  ctx.restore();
 }
 
 /**

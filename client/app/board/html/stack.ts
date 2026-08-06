@@ -48,6 +48,7 @@ type StackItem = {
   staged: boolean;
   /** The rendered face for every stack entry, including metadata-free tombstones. */
   face: FaceData;
+  accessibleDescription?: string;
 };
 
 /** Hide a resting stack face only while a *stack* flight owns that object id.
@@ -88,6 +89,15 @@ function stackItems(board: BoardModel, state: VisibleState, showGhost: boolean):
         : entry.source_face != null
           ? withText(faceDataFromStackSource(entry.source_face, print, name ?? label), cardId, print)
           : withText({ ...BLANK_FACE, print, name: name ?? label }, cardId, print);
+    const spellFace =
+      entry.active_face_text == null
+        ? baseFace
+        : {
+            ...baseFace,
+            typeLine: entry.active_face_text.type_line,
+            oracle: entry.active_face_text.oracle,
+            flavor: entry.active_face_text.flavor,
+          };
     return {
       row,
       kind: entry.kind,
@@ -99,7 +109,9 @@ function stackItems(board: BoardModel, state: VisibleState, showGhost: boolean):
       staged: false,
       // An ability on the stack is the one sentence that prints it, not its source card's whole
       // text box; the flavor belongs to the card, so it goes with the rest of the card's words.
-      face: entry.kind === "ability" ? { ...baseFace, oracle: entry.ability_oracle || label, flavor: "" } : baseFace,
+      face: entry.kind === "ability" ? { ...baseFace, oracle: entry.ability_oracle || label, flavor: "" } : spellFace,
+      accessibleDescription:
+        entry.kind === "ability" ? `${name ?? label}: ${entry.ability_oracle || label}` : undefined,
     };
   });
   if (!showGhost) return items;
@@ -147,6 +159,7 @@ function stackFace(
     cardId?: string;
     label: string;
     face: FaceData;
+    accessibleDescription?: string;
     isTop: boolean;
     staged?: boolean;
     legalTarget?: boolean;
@@ -172,6 +185,7 @@ function stackFace(
   // about to resolve, so it shows the same rendered face the hand bar does.
   const cardBody = cardFace(h, {
     face: opts.face,
+    accessibleDescription: opts.accessibleDescription,
     width: STACK_CARD_W,
     height: opts.cardH,
     className: "block h-(--card-h) w-(--stack-w) rounded-game",
@@ -291,6 +305,7 @@ function pileView(
           cardId: item.cardId,
           label: item.label,
           face: item.face,
+          accessibleDescription: item.accessibleDescription,
           isTop,
           staged: item.staged,
           legalTarget: !item.staged && legalTargets.has(item.source),
@@ -386,6 +401,7 @@ function stripView(
           cardId: item.cardId,
           label: item.label,
           face: item.face,
+          accessibleDescription: item.accessibleDescription,
           isTop,
           staged: item.staged,
           legalTarget: !item.staged && legalTargets.has(item.source),

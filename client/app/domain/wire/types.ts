@@ -244,6 +244,8 @@ export type StackObjectView = {
    * text, and for an ability whose sentence isn't recorded, which shows `label`.
    */
   ability_oracle?: string;
+  /** Active spell-face words; absent on older draining servers and on abilities. */
+  active_face_text?: CardTextView;
   card_id?: string;
   controller: number;
   kind: string;

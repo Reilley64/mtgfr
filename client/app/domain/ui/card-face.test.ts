@@ -24,7 +24,6 @@ function host(overrides: Partial<FaceData> = {}): HTMLElement {
   element.dataset.faceW = "100";
   element.dataset.faceH = "140";
   element.dataset.faceClass = "rounded-game";
-  element.dataset.faceAlt = "Llanowar Elves";
   document.body.append(element);
   return element;
 }
@@ -46,6 +45,17 @@ describe("syncCardFaceHost", () => {
     expect(canvas?.width).toBe(200);
     expect(canvas?.height).toBe(280);
     expect(canvas?.style.width).toBe("100px");
+  });
+
+  it("uses a caller-supplied accessible description for a stack ability", () => {
+    const element = host({ name: "Phyrexian Arena" });
+    element.dataset.faceAlt = "Phyrexian Arena: At the beginning of your upkeep, you draw a card and lose 1 life.";
+
+    syncCardFaceHost(element, stubCache(true), 1);
+
+    expect(element.querySelector("canvas")?.getAttribute("aria-label")).toBe(
+      "Phyrexian Arena: At the beginning of your upkeep, you draw a card and lose 1 life.",
+    );
   });
 
   it("asks the cache to draw a face it does not have, and shows a skeleton meanwhile", () => {

@@ -63,9 +63,9 @@ describe("fitCardText", () => {
     expect(wrapOracle(long, 200, fitted, measure).length * fitted * LINE_HEIGHT).toBeLessThanOrEqual(60);
   });
 
-  it("stops shrinking at 60% of the maximum rather than vanishing", () => {
-    // No size in range fits this much text in this box; the floor holds and the text overhangs,
-    // which is what a real card does when its text box is over-full.
+  it("stops shrinking at the renderer's 60% readability floor", () => {
+    // No size in range fits this much text in this box. The renderer clips the remaining ink to
+    // the text box instead of shrinking the type until it vanishes.
     const wall = "Whenever this creature attacks, ".repeat(12);
     expect(fitCardText(wall, "", { w: 200, h: 60 }, 20, measure)).toBe(12);
   });

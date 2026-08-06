@@ -83,11 +83,12 @@ pub fn subscribe(
     table.quiet_since = None;
     let viewer = table.seat_of(user_id).map(PlayerId);
     let extras = table_view_extras(table);
-    let snapshot = complete_visible(
+    let mut snapshot = complete_visible(
         table.game.as_ref().expect("game checked above"),
         viewer,
         &extras,
     );
+    hydrate_active_face_text(&mut snapshot);
     // The viewer's own deck, plus whatever of anyone else's the snapshot already shows them — a
     // reconnect lands mid-game with opponents' permanents already on the battlefield, and those
     // faces have to draw their words without waiting for the next delta to mention them.
@@ -165,6 +166,20 @@ pub fn public_card_text(
     book
 }
 
+/// Add per-print flavor to schema-projected active spell-face words. Schema deliberately has no
+/// card-registry dependency; the transport is the existing boundary that joins printing flavor.
+fn hydrate_active_face_text(state: &mut VisibleState) {
+    for entry in &mut state.stack {
+        let Some(text) = &mut entry.active_face_text else {
+            continue;
+        };
+        text.print.clone_from(&entry.print);
+        text.flavor = cards::print_flavor(&entry.print)
+            .unwrap_or_default()
+            .to_string();
+    }
+}
+
 /// Keep only card words this connection has not already received.
 ///
 /// [`frame_for`] is deliberately connection-agnostic and derives the complete public book from
@@ -230,6 +245,7 @@ pub fn frame_for(
     // `schema` composes the frame but cannot join printed words (no card registry there), so the
     // book is filled here from the state it just built.
     if let StreamFrame::Delta(env) = &mut frame {
+        hydrate_active_face_text(&mut env.state);
         let own = match viewer {
             Some(PlayerId(seat)) => extras.prints[seat as usize].clone(),
             None => Default::default(),
@@ -389,6 +405,51 @@ mod tests {
             "the deck's printing prints its own flavor: {:?}",
             book[0].flavor,
         );
+    }
+
+    #[test]
+    fn frame_for_joins_the_active_spell_face_to_its_print_flavor() {
+        let mut game = Game::new();
+        game.fund_mana(PlayerId(0));
+        let bolt = game.spawn_in_hand(PlayerId(0), def("Lightning Bolt"));
+        game.submit(engine::Intent::Cast {
+            player: PlayerId(0),
+            object: bolt,
+            target: Some(engine::Target::Player(PlayerId(1))),
+            x: 0,
+            modes: vec![],
+            discard_cost: vec![],
+            graveyard_exile: vec![],
+            sacrifice_cost: vec![],
+            kicked: false,
+            bought_back: false,
+            evoked: false,
+            strive_count: 0,
+            replicate_count: 0,
+            multikicker_count: 0,
+            alternative_cost: false,
+        })
+        .expect("cast Lightning Bolt");
+        let card_id = def("Lightning Bolt").id.to_string();
+        let print = "435589bb-27c6-4a6d-9d63-394d5092b9d8";
+        let mut prints: [std::collections::HashMap<String, String>; 4] = Default::default();
+        prints[0].insert(card_id, print.into());
+        let extras = ViewExtras {
+            prints,
+            ..ViewExtras::default()
+        };
+
+        let StreamFrame::Delta(DeltaEnvelope { state, .. }) =
+            frame_for(Some(PlayerId(0)), 1, &[], &game, vec![], &extras)
+        else {
+            panic!("expected delta frame");
+        };
+        let active = state.stack[0]
+            .active_face_text
+            .as_ref()
+            .expect("spell carries active-face text");
+        assert_eq!(active.print, print);
+        assert!(active.flavor.starts_with("The sparkmage shrieked"));
     }
 
     #[test]

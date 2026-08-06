@@ -277,6 +277,21 @@ describe("drawFace", () => {
     );
   });
 
+  it("clips overfull rules text to the printed text box at the readability floor", () => {
+    const wall = "Whenever this creature attacks, draw a card. ".repeat(80);
+    const renderedFace = face({ oracle: wall, power: "", toughness: "" });
+    const box = slotRects("full", renderedFace).text;
+    const { ctx, ops } = fakeCtx();
+
+    drawFace(ctx, inputs({ variant: "full", face: renderedFace, ptImage: null }));
+
+    expect(box).not.toBeNull();
+    expect(ops.some((op) => op.op === "rect" && op.args.join(",") === [box?.x, box?.y, box?.w, box?.h].join(","))).toBe(
+      true,
+    );
+    expect(ops.filter((op) => op.op === "clip")).toHaveLength(1);
+  });
+
   it("blits the P/T plate from its corner of the asset on a full face", () => {
     const { ctx, drawn } = fakeCtx();
     drawFace(ctx, inputs({ variant: "full" }));

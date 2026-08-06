@@ -134,6 +134,9 @@ message StackObjectView {
   // Last-known renderer characteristics for the source. This remains authoritative when a
   // sacrifice-as-cost source is no longer present in `VisibleState.objects`.
   StackSourceFaceView source_face = 12;
+  // Printed words for the spell face actually being cast. Optional so draining servers/clients
+  // retain the legacy `(card_id, print)` text-book fallback.
+  CardTextView active_face_text = 13;
 }
 
 message StackSourceFaceView {

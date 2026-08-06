@@ -161,6 +161,56 @@ test("stack face draws the whole printed card, with the catalog's words on it", 
   );
 });
 
+test("a prepared spell stack face prefers the active back-face words", () => {
+  const { objects } = spellOnStack(42, "Pack a Punch", "kirol-print");
+  const spell: ObjectView = { ...(objects[0] as ObjectView), card_id: "kirol-history-buff" };
+  const front = {
+    card_id: "kirol-history-buff",
+    print: "kirol-print",
+    type_line: "Legendary Creature — Vampire Cleric",
+    oracle: "Front-face words.",
+    flavor: "Front-face flavor.",
+  };
+  const active = {
+    card_id: "kirol-history-buff",
+    print: "kirol-print",
+    type_line: "Sorcery",
+    oracle: "Mill a card. Put two +1/+1 counters on target creature. It gains trample until end of turn.",
+    flavor: "Back-face flavor.",
+  };
+  const stack = [
+    {
+      controller: 0,
+      kind: "spell",
+      label: testMessageRef("Pack a Punch"),
+      source: spell.id,
+      active_face_text: active,
+    },
+  ];
+  const model: ViewModel = {
+    board: {
+      ...initialBoardModel(),
+      cardText: new Map([[cardTextKey("kirol-history-buff", "kirol-print"), front]]),
+    },
+    fold: gameFold(gameState({ objects: [spell], stack })),
+    tableId: "T1",
+  };
+  const face = JSON.stringify({
+    ...faceDataFrom(spell),
+    typeLine: active.type_line,
+    oracle: active.oracle,
+    flavor: active.flavor,
+  });
+
+  Scene.scene(
+    { update: (m) => [m, []], view: overlayView },
+    Scene.given(model),
+    resolveBoardOverlayMounts(),
+    resolveBoardCardFaceMounts(),
+    Scene.expect(Scene.selector(String.raw`[data-testid="stack-face-0"] [data-face]`)).toHaveAttr("data-face", face),
+  );
+});
+
 test("an ability's stack face shows only the sentence that prints it", () => {
   // An ability waiting to resolve is one printed sentence, not its source permanent's whole text
   // box — and the flavor is the card's, not the ability's, so it goes with the rest.
@@ -199,6 +249,10 @@ test("an ability's stack face shows only the sentence that prints it", () => {
     resolveBoardOverlayMounts(),
     resolveBoardCardFaceMounts(),
     Scene.expect(Scene.selector(String.raw`[data-testid="stack-face-0"] [data-face]`)).toHaveAttr("data-face", face),
+    Scene.expect(Scene.selector(String.raw`[data-testid="stack-face-0"] [data-face]`)).toHaveAttr(
+      "data-face-alt",
+      `Phyrexian Arena: ${sentence}`,
+    ),
   );
 });
 

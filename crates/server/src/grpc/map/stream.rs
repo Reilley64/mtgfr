@@ -73,6 +73,7 @@ pub fn stack_object_view_to_pb(entry: StackObjectView) -> pb::StackObjectView {
         name: entry.name,
         ability_oracle: entry.ability_oracle,
         source_face: entry.source_face.map(stack_source_face_view_to_pb),
+        active_face_text: entry.active_face_text.map(card_text_to_pb),
     }
 }
 
@@ -1839,6 +1840,13 @@ mod tests {
                 name: "Shock".into(),
                 ability_oracle: String::new(),
                 source_face: None,
+                active_face_text: Some(schema::CardTextView {
+                    card_id: "shock-id".into(),
+                    print: "shock-print".into(),
+                    type_line: "Instant".into(),
+                    oracle: "Shock deals 2 damage to any target.".into(),
+                    flavor: "A spark is enough.".into(),
+                }),
             }],
             combat: CombatView::default(),
             can_act: true,
@@ -1922,6 +1930,13 @@ mod tests {
         let st = snap.state.expect("snapshot state");
         assert_eq!(st.viewer, 0);
         assert_eq!(st.objects.len(), 1);
+        let active = st.stack[0]
+            .active_face_text
+            .as_ref()
+            .expect("active spell-face text maps onto the wire");
+        assert_eq!(active.type_line, "Instant");
+        assert_eq!(active.oracle, "Shock deals 2 damage to any target.");
+        assert_eq!(active.flavor, "A spark is enough.");
         assert_eq!(
             st.objects[0].kind.as_ref().and_then(|k| k.kind.as_ref()),
             Some(&pb::wire_kind::Kind::Creature(pb::wire_kind::Creature {

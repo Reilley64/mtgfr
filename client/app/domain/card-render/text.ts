@@ -26,7 +26,7 @@ export const LINE_HEIGHT = 0.995;
  */
 export const PARA_GAP = 0.35;
 
-/** How far `fitOracleSize` will shrink before it lets the text overhang. */
+/** Readability floor; the renderer clips any remaining overflow to the printed text box. */
 const MIN_SCALE = 0.6;
 
 /**
@@ -76,7 +76,7 @@ function wrapPieces(paragraph: Piece[], maxWidth: number, fontPx: number, measur
   let width = 0;
   for (const piece of paragraph) {
     const advance = measure(piece, fontPx);
-    // A single word wider than the box still ships — better an overhang than a dropped word.
+    // A single word wider than the box stays intact; the renderer clips its ink at the box edge.
     if (line.length > 0 && width + advance > maxWidth - (lines.length > 0 ? hang : 0)) {
       lines.push(line);
       line = [];
@@ -192,9 +192,8 @@ export const blockHeight = (block: TextBlock, fontPx: number): number =>
   fontPx * (block.lines.length * LINE_HEIGHT + block.starts.size * PARA_GAP);
 
 /**
- * The largest size whose wrapped block fits the box, never below 60% of `maxFontPx`. A card with
- * more text than its box holds overhangs at that floor rather than shrinking to illegibility —
- * which is what an over-full printed text box does too.
+ * The largest size whose wrapped block fits the box, never below 60% of `maxFontPx`. The renderer
+ * clips a block that still does not fit at that floor rather than shrinking it to illegibility.
  */
 export function fitCardText(
   oracle: string,

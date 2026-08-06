@@ -21,7 +21,12 @@ import type { RenderCard } from "./geometry/layout";
 import { avatarPos, layout, STEP, ZONE } from "./geometry/layout";
 import { ACTIVATION_MENU_WIDTH_PX, activationMenuEstimatedHeight, activationMenuPlacement } from "./geometry/radial";
 import { boardOverlays } from "./html/overlays";
-import { resolveBoardCardArtMounts, resolveBoardOverlayMounts, resolveLiveBoardMounts } from "./html/scene-helpers";
+import {
+  resolveBoardCardArtMounts,
+  resolveBoardCardFaceMounts,
+  resolveBoardOverlayMounts,
+  resolveLiveBoardMounts,
+} from "./html/scene-helpers";
 import { CopyBoardLog } from "./log-commands";
 import {
   BoardPointerUp,
@@ -735,6 +740,7 @@ test("stack owns Resolve card, hides primary pass", () => {
   );
   overlayScene(
     model,
+    resolveBoardCardFaceMounts(),
     Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
     Scene.expect(Scene.testId("board-pass")).toExist(),
   );
