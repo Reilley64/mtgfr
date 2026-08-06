@@ -1062,6 +1062,106 @@ describe("layout", () => {
     expect(cards.findIndex((card) => card.id === aura.id)).toBe(cards.findIndex((card) => card.id === host.id) - 1);
   });
 
+  it("resolves a crowded cross-controller nested attachment chain from its free root", () => {
+    const root = mkObject({
+      id: 1000,
+      name: "Crowded Side Bear",
+      controller: 2,
+      owner: 2,
+      kind: { kind: "creature", power: 2, toughness: 2 },
+      power: 2,
+      toughness: 2,
+    });
+    const equipment = mkObject({
+      id: 1001,
+      name: "Bonesplitter",
+      controller: 0,
+      owner: 0,
+      kind: { kind: "artifact" },
+      attached_to: root.id,
+    });
+    const aura = mkObject({
+      id: 1002,
+      name: "Artifact Ward",
+      controller: 1,
+      owner: 1,
+      kind: { kind: "enchantment" },
+      attached_to: equipment.id,
+    });
+    const cycleA = mkObject({
+      id: 1003,
+      name: "Looping Equipment",
+      controller: 3,
+      owner: 3,
+      kind: { kind: "artifact" },
+      attached_to: 1004,
+    });
+    const cycleB = mkObject({
+      id: 1004,
+      name: "Looping Aura",
+      controller: 3,
+      owner: 3,
+      kind: { kind: "enchantment" },
+      attached_to: cycleA.id,
+    });
+    const state = mkState({
+      players: [0, 1, 2, 3].map((player) => mkPlayer({ player })),
+      objects: [
+        root,
+        equipment,
+        aura,
+        cycleA,
+        cycleB,
+        ...Array.from({ length: 59 }, (_, index) => mkObject({ id: index + 1, name: `Left Column Bear ${index}` })),
+        ...Array.from({ length: 11 }, (_, index) =>
+          mkObject({
+            id: 2000 + index,
+            controller: 2,
+            owner: 2,
+            name: `Side Column Bear ${index}`,
+          }),
+        ),
+      ],
+    });
+
+    const cards = layout(state, 0);
+    const rootCard = cards.find((card) => card.id === root.id);
+    const equipmentCard = cards.find((card) => card.id === equipment.id);
+    const auraCard = cards.find((card) => card.id === aura.id);
+    expect(rootCard).toBeDefined();
+    expect(equipmentCard).toBeDefined();
+    expect(auraCard).toBeDefined();
+    if (rootCard == null || equipmentCard == null || auraCard == null) {
+      throw new Error("missing nested attachment chain");
+    }
+
+    expect(rootCard.w).toBeLessThan(CARD_W);
+    expect(rootCard.x).toBeGreaterThan(boardBounds(4).maxX);
+    expect(equipmentCard).toMatchObject({
+      x: rootCard.x,
+      y: rootCard.y - rootCard.h * 0.2,
+      w: rootCard.w,
+      h: rootCard.h,
+    });
+    expect(auraCard).toMatchObject({
+      x: equipmentCard.x,
+      y: equipmentCard.y - equipmentCard.h * 0.2,
+      w: equipmentCard.w,
+      h: equipmentCard.h,
+    });
+    expect(cards.findIndex((card) => card.id === aura.id)).toBe(
+      cards.findIndex((card) => card.id === equipment.id) - 1,
+    );
+    expect(cards.findIndex((card) => card.id === equipment.id)).toBe(
+      cards.findIndex((card) => card.id === root.id) - 1,
+    );
+    expect(
+      hitTest({ panX: 0, panY: 0, zoom: 1 }, rootCard.x + rootCard.w / 2, rootCard.y + rootCard.h * 0.1, cards),
+    ).toBe(root.id);
+    expect(cards.find((card) => card.id === cycleA.id)).toMatchObject({ w: CARD_W, h: CARD_H });
+    expect(cards.find((card) => card.id === cycleB.id)).toMatchObject({ w: CARD_W, h: CARD_H });
+  });
+
   it("renders a donated permanent under its controller's row, not its owner's (Zedruu, CR 800.4a)", () => {
     // Viewer (P0) donated a bear to P1: P0 still owns it (CR 108.3) but P1 controls it, so it must
     // render in P1's flipped creature row — not P0's — grouped by controller, badged by owner.

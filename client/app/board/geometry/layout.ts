@@ -574,19 +574,41 @@ export function layoutBoard(
   const inZone = (zone: number, who: number) => state.objects.filter((o) => o.zone === zone && o.owner === who);
   const controls = (zone: number, who: number) => state.objects.filter((o) => o.zone === zone && o.controller === who);
 
-  // Hosts that will get a row slot — attachments whose host is missing fall back to a free slot
-  // so they never vanish from the board.
-  const freeHostIds = new Set(
-    state.objects.filter((o) => o.zone === ZONE.Battlefield && !isAttached(o)).map((o) => o.id),
-  );
+  const battlefieldObjects = state.objects.filter((object) => object.zone === ZONE.Battlefield);
+  const battlefieldById = new Map(battlefieldObjects.map((object) => [object.id, object]));
   const attachedHostId = (o: ObjectView): number | null => (o.attached_to == null ? null : o.attached_to);
-  const stacksOnHost = (o: ObjectView) => {
-    const hostId = attachedHostId(o);
-    return isAttached(o) && hostId != null && freeHostIds.has(hostId);
+  const attachmentRootMemo = new Map<number, number | null>();
+  const attachmentRoot = (object: ObjectView, visiting: ReadonlySet<number> = new Set()): number | null => {
+    const memoized = attachmentRootMemo.get(object.id);
+    if (memoized !== undefined || attachmentRootMemo.has(object.id)) return memoized ?? null;
+    if (visiting.has(object.id)) {
+      attachmentRootMemo.set(object.id, null);
+      return null;
+    }
+
+    const hostId = attachedHostId(object);
+    if (hostId == null) {
+      attachmentRootMemo.set(object.id, object.id);
+      return object.id;
+    }
+    const host = battlefieldById.get(hostId);
+    if (host == null) {
+      attachmentRootMemo.set(object.id, null);
+      return null;
+    }
+
+    const nextVisiting = new Set(visiting);
+    nextVisiting.add(object.id);
+    const root = attachmentRoot(host, nextVisiting);
+    attachmentRootMemo.set(object.id, root);
+    return root;
   };
+  // Only chains that terminate at a free battlefield root stack. Missing hosts and cycles fall
+  // back to their controller's semantic row so malformed authority never makes a card vanish.
+  const stacksOnHost = (object: ObjectView) => isAttached(object) && attachmentRoot(object) != null;
   const hostsWithAttachments = new Set(
-    state.objects
-      .filter((o) => o.zone === ZONE.Battlefield && stacksOnHost(o))
+    battlefieldObjects
+      .filter((o) => stacksOnHost(o))
       .map((o) => attachedHostId(o))
       .filter((id): id is number => id != null),
   );
@@ -727,26 +749,44 @@ export function layoutBoard(
     });
   }
 
-  // Attached Auras/Equipment stack on their host (any controller), under the host in draw/hit order.
-  const attachments = state.objects.filter((o) => o.zone === ZONE.Battlefield && stacksOnHost(o));
+  // Attached Auras/Equipment stack on their immediate host (any controller). Descendant subtrees
+  // emit before their parent, leaving every host above its attachment in draw/hit order.
+  const attachments = battlefieldObjects.filter((object) => stacksOnHost(object));
   const byHost = new Map<number, ObjectView[]>();
-  for (const a of attachments) {
-    const hostId = attachedHostId(a);
+  for (const attachment of attachments) {
+    const hostId = attachedHostId(attachment);
     if (hostId == null) continue;
     const list = byHost.get(hostId) ?? [];
-    list.push(a);
+    list.push(attachment);
     byHost.set(hostId, list);
   }
-  for (const [hostId, list] of byHost) {
+
+  const cardsBelowHost = (hostId: number, ancestors: ReadonlySet<number>): RenderCard[] => {
     const host = hostPos.get(hostId);
-    if (!host) continue; // defensive — stacksOnHost already required a free host
-    const hostIdx = out.findIndex((c) => c.id === hostId);
+    if (host == null || ancestors.has(hostId)) return [];
+
+    const nextAncestors = new Set(ancestors);
+    nextAncestors.add(hostId);
+    const children = byHost.get(hostId) ?? [];
+    const cards: RenderCard[] = [];
+    for (const [index, attachment] of children.entries()) {
+      if (nextAncestors.has(attachment.id)) continue;
+      const dy = (host.flip ? 1 : -1) * host.side * 0.2 * (index + 1);
+      const pose = { x: host.x, y: host.y + dy, flip: host.flip, side: host.side };
+      hostPos.set(attachment.id, pose);
+      cards.push(...cardsBelowHost(attachment.id, nextAncestors));
+      cards.push(place({ ...toCard(attachment), w: pose.side, h: pose.side }, pose.x, pose.y));
+    }
+    return cards;
+  };
+
+  const attachmentRoots = new Set(
+    attachments.map((attachment) => attachmentRoot(attachment)).filter((id): id is number => id != null),
+  );
+  for (const rootId of attachmentRoots) {
+    const hostIdx = out.findIndex((card) => card.id === rootId);
     if (hostIdx < 0) continue;
-    const dy = (host.flip ? 1 : -1) * host.side * 0.2;
-    const cards = list.map((attachment, index) =>
-      place({ ...toCard(attachment), w: host.side, h: host.side }, host.x, host.y + dy * (index + 1)),
-    );
-    out.splice(hostIdx, 0, ...cards);
+    out.splice(hostIdx, 0, ...cardsBelowHost(rootId, new Set()));
   }
 
   let bounds: BoardBounds;
