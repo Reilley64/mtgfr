@@ -315,6 +315,57 @@ test("spell stack face stays hidden while a settled stack flight is still in the
   );
 });
 
+test("every triggered ability keeps its face while its source spell is flying onto the stack", () => {
+  const { objects } = spellOnStack(42, "Source Spell", "source-print");
+  const flight = spawnFlight({
+    id: 42,
+    kind: "stack",
+    name: "Source Spell",
+    print: "source-print",
+    scale: 0.8,
+    targetScale: 1,
+    targetX: 100,
+    targetY: 40,
+    x: 20,
+    y: 10,
+    fromCardId: 7,
+  });
+  const stack: VisibleState["stack"] = [
+    { controller: 0, kind: "spell", label: testMessageRef("Source Spell"), source: 42 },
+    {
+      ability_oracle: "Whenever you cast this spell, draw a card.",
+      controller: 0,
+      kind: "ability",
+      label: testMessageRef("Draw a card"),
+      source: 42,
+    },
+    {
+      ability_oracle: "Whenever you cast this spell, gain 1 life.",
+      controller: 0,
+      kind: "ability",
+      label: testMessageRef("Gain 1 life"),
+      source: 42,
+    },
+  ];
+  const model: ViewModel = {
+    board: { ...initialBoardModel(), flights: new Map([[42, flight]]) },
+    fold: gameFold(gameState({ objects, stack })),
+    tableId: "T1",
+  };
+
+  Scene.scene(
+    { update: (m) => [m, []], view: overlayView },
+    Scene.given(model),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("stack-face-0")).toBeAbsent(),
+    Scene.expect(Scene.testId("stack-face-1")).toExist(),
+    resolveBoardCardFaceMounts(2),
+    Scene.expect(Scene.selector('[data-testid="stack-face-1"] [data-face]')).toExist(),
+    Scene.expect(Scene.testId("stack-face-2")).toExist(),
+    Scene.expect(Scene.selector('[data-testid="stack-face-2"] [data-face]')).toExist(),
+  );
+});
+
 function abilityDuringSourceFlight(kind: "battlefield" | "from-stack"): ViewModel {
   // Trigger on the stack: entry.source is the permanent id. A battlefield / from-stack flight for
   // that same id puts it in hideCardIds so the resting battlefield face stays hidden — but the

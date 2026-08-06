@@ -39,6 +39,7 @@ import type { BoardModel } from "../submodel";
 
 type StackItem = {
   row: number;
+  kind: string;
   source: number;
   imageName: string | null;
   print: string;
@@ -53,8 +54,9 @@ type StackItem = {
  * Ability entries reuse the source permanent's id — a battlefield / from-stack flight for that
  * permanent must not blank the ability face (ETB triggers would otherwise show only the effect
  * caption). */
-function hideStackRestingFace(board: BoardModel, source: number): boolean {
-  const flight = board.flights.get(source);
+function hideStackRestingFace(board: BoardModel, item: StackItem): boolean {
+  if (item.kind !== "spell") return false;
+  const flight = board.flights.get(item.source);
   if (flight == null || flight.kind !== "stack") return false;
   // Any in-model stack flight still owns the face — including settled frames before FlightsSynced
   // drops it. Revealing HTML while the canvas flight is still painted reads as a short second ease.
@@ -93,6 +95,7 @@ function stackItems(board: BoardModel, state: VisibleState, showGhost: boolean):
           : null;
     return {
       row,
+      kind: entry.kind,
       source: entry.source,
       imageName: entry.kind === "spell" ? label : name,
       print,
@@ -114,6 +117,7 @@ function stackItems(board: BoardModel, state: VisibleState, showGhost: boolean):
     const card = board.staged.card;
     items.push({
       row: state.stack.length,
+      kind: "spell",
       source: card.id,
       imageName: card.name,
       print: card.print ?? "",
@@ -129,6 +133,7 @@ function stackItems(board: BoardModel, state: VisibleState, showGhost: boolean):
   if (pending != null) {
     items.push({
       row: state.stack.length,
+      kind: "spell",
       source: pending.id,
       imageName: pending.name,
       print: pending.print ?? "",
@@ -292,7 +297,7 @@ function pileView(
   const showHold = holdMs > 0 && !showStaged;
 
   const faces = items
-    .filter((item) => !hideStackRestingFace(board, item.source))
+    .filter((item) => !hideStackRestingFace(board, item))
     .map((item) => {
       const isTop = item.row === items.length - 1;
       return stackFace(
@@ -385,7 +390,7 @@ function stripView(
   const showHold = holdMs > 0 && !showStaged;
 
   const faces = items
-    .filter((item) => !hideStackRestingFace(board, item.source))
+    .filter((item) => !hideStackRestingFace(board, item))
     .map((item) => {
       const col = item.row % perRow;
       const rowY = Math.floor(item.row / perRow);
