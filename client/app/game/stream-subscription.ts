@@ -24,6 +24,7 @@ function frameToMessage(frame: GameFrame): GameMessage {
     state: frame.state,
     events: frame.events,
     auto_actions: frame.auto_actions,
+    card_text: frame.card_text,
   });
 }
 

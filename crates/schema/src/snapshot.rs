@@ -95,6 +95,10 @@ pub fn compose_delta(input: DeltaCompose<'_>) -> StreamFrame {
         events: visible,
         state,
         auto_actions: input.auto_actions,
+        // Left empty here and filled by the transport: joining printed words needs the card
+        // registry (`cards::get` / `cards::print_flavor`), which `schema` deliberately does not
+        // depend on outside tests. See `server::stream::frame_for`.
+        card_text: Vec::new(),
     })
 }
 
@@ -3577,6 +3581,59 @@ mod tests {
         );
         // No mana cost at all; `colors = ["green"]` on the token.
         assert_eq!(colors(beast), vec![4], "the Beast token is green");
+    }
+
+    #[test]
+    fn a_face_down_permanent_reveals_neither_legendary_nor_colors() {
+        let mut game = Game::new();
+        let p0 = PlayerId(0);
+        let p1 = PlayerId(1);
+        let target = game.spawn_on_battlefield(p1, def("Grizzly Bears"));
+        let top = game.stack_library(p1, &[def("Ao, the Dawn Sky")])[0];
+        let shift = game.spawn_in_hand(p0, def("Reality Shift"));
+        game.fund_mana(p0);
+
+        game.submit(engine::Intent::Cast {
+            player: p0,
+            object: shift,
+            target: Some(engine::Target::Object(target)),
+            x: 0,
+            modes: vec![],
+            discard_cost: vec![],
+            graveyard_exile: vec![],
+            sacrifice_cost: vec![],
+            kicked: false,
+            bought_back: false,
+            evoked: false,
+            strive_count: 0,
+            replicate_count: 0,
+            multikicker_count: 0,
+            alternative_cost: false,
+        })
+        .unwrap();
+        while !game.stack().is_empty() {
+            game.submit(engine::Intent::PassPriority {
+                player: game.priority_holder(),
+            })
+            .unwrap();
+        }
+
+        let manifested = game.current_id(top);
+        let snap = snapshot(&game, p0);
+        let view = snap
+            .objects
+            .iter()
+            .find(|object| object.id == manifested)
+            .expect("manifested permanent projected");
+        assert!(view.face_down, "the viewer sees a card back");
+        assert!(
+            !view.legendary,
+            "the legend crown would reveal the hidden card"
+        );
+        assert!(
+            view.colors.is_empty(),
+            "a colored frame would reveal the hidden card"
+        );
     }
 
     /// Master Warcraft (CR 508.1a) hands the attack declaration to its caster, so the client must

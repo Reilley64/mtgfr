@@ -1,5 +1,5 @@
-import { ZONE } from "../../board/geometry/layout";
 import type { ObjectView } from "../wire/types";
+import { ZONE } from "../zones";
 import { ASSET_H, ASSET_W, type FrameKey } from "./assets";
 
 /**
@@ -132,10 +132,11 @@ export type SlotRects = {
 
 /**
  * The size each variant renders at before it is scaled down at paint time. `full` uses the
- * printed card's proportions at Scryfall `normal` size; `permanent` is the Arena-style square.
+ * printed card's proportions at Scryfall `normal` size; `permanent` is 512², just above the
+ * 96-world-pixel tile's 480px maximum screen footprint at 5× zoom without wasting cache memory.
  */
 export const CANONICAL: Record<FaceVariant, { w: number; h: number }> = {
-  permanent: { w: 745, h: 745 },
+  permanent: { w: 512, h: 512 },
   full: { w: 745, h: 1040 },
 };
 

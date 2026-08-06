@@ -81,6 +81,31 @@ describe("CardFaceCache", () => {
     expect(drawn).toHaveLength(1);
   });
 
+  it("evicts old full faces before their bitmap bytes exceed the cache budget", () => {
+    const cache = new CardFaceCache(readyImages(), stubCanvas().make);
+    const faces = Array.from({ length: 33 }, (_, index) => face({ print: `print-${index}`, name: `Card ${index}` }));
+
+    for (const card of faces) cache.request(card, "full");
+
+    // 33 × 745 × 1040 × 4 bytes is just over a 96 MiB budget. A count-only cap of 240 keeps
+    // every one and can grow to roughly 740 MiB before evicting anything.
+    expect(cache.get(faces[0], "full")).toBeUndefined();
+    const last = faces.at(-1);
+    if (last == null) throw new Error("expected a final face fixture");
+    expect(cache.get(last, "full")).toBeDefined();
+  });
+
+  it("keeps a busy four-seat board of permanent faces inside the bitmap budget", () => {
+    const cache = new CardFaceCache(readyImages(), stubCanvas().make);
+    const permanents = Array.from({ length: 90 }, (_, index) =>
+      face({ print: `permanent-${index}`, name: `Permanent ${index}` }),
+    );
+
+    for (const permanent of permanents) cache.request(permanent, "permanent");
+
+    expect(cache.get(permanents[0], "permanent")).toBeDefined();
+  });
+
   it("redraws when the creature's power changes", () => {
     const { drawn, make } = stubCanvas();
     const cache = new CardFaceCache(readyImages(), make);

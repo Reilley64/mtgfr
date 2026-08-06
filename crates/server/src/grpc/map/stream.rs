@@ -1727,6 +1727,11 @@ pub fn stream_frame_to_pb(frame: StreamFrame) -> pb::StreamResponse {
                 .into_iter()
                 .map(message_ref_to_pb)
                 .collect(),
+            card_text: envelope
+                .card_text
+                .into_iter()
+                .map(card_text_to_pb)
+                .collect(),
         }),
         StreamFrame::Heartbeat => Frame::Heartbeat(pb::Heartbeat {}),
     };
@@ -1951,6 +1956,7 @@ mod tests {
                     .with_params(vec![MessageParam::string("name", "Goblin")])
                     .with_children(vec![MessageRef::key("auto.automatic")]),
             ],
+            card_text: vec![],
         }));
         let Some(pb::stream_response::Frame::Delta(delta)) = pb.frame else {
             panic!("expected Delta frame");
@@ -1999,6 +2005,7 @@ mod tests {
             ],
             state,
             auto_actions: vec![],
+            card_text: vec![],
         }));
         let Some(pb::stream_response::Frame::Delta(delta)) = pb.frame else {
             panic!("expected Delta frame");

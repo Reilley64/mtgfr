@@ -46,6 +46,30 @@ describe("restingPaintChanged", () => {
     expect(restingPaintChanged(upright, tapped)).toBe(true);
   });
 
+  it("is true when only a card's rendered frame changes", () => {
+    const face = {
+      print: "p",
+      name: "Painter's Servant",
+      colors: [0],
+      isLand: false,
+      isToken: false,
+      legendary: false,
+      power: "1",
+      toughness: "3",
+      loyalty: "",
+      typeLine: "Artifact Creature — Scarecrow",
+      oracle: "",
+      flavor: "",
+    };
+    const before = restingPaintSnapshot({ ...baseResting, cards: [{ id: 1, face }] } as never);
+    const after = restingPaintSnapshot({
+      ...baseResting,
+      cards: [{ id: 1, face: { ...face, colors: [1] } }],
+    } as never);
+
+    expect(restingPaintChanged(before, after)).toBe(true);
+  });
+
   it("is true when only stack declared targets change", () => {
     const before = restingPaintSnapshot({
       ...baseResting,

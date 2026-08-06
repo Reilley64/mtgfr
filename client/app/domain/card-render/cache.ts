@@ -18,8 +18,8 @@ export function faceKey(face: FaceData, variant: FaceVariant): string {
 type Images = Pick<ImageCache, "get" | "preload" | "subscribe" | "isFailed">;
 type MakeCanvas = (w: number, h: number) => OffscreenCanvas;
 
-/** How many drawn faces to keep. A four-seat board rarely shows more than a hundred at once. */
-const MAX_FACES = 240;
+/** Keep decoded RGBA canvases below a tablet-safe ceiling, regardless of face dimensions. */
+const MAX_BITMAP_BYTES = 96 * 1024 * 1024;
 
 /**
  * Drawn card faces, keyed by everything the draw reads.
@@ -34,6 +34,7 @@ const MAX_FACES = 240;
  */
 export class CardFaceCache {
   private faces = new Map<string, OffscreenCanvas>();
+  private bitmapBytes = 0;
   private pending = new Map<string, { face: FaceData; variant: FaceVariant }>();
   private listeners = new Set<() => void>();
 
@@ -62,6 +63,7 @@ export class CardFaceCache {
    */
   clear(): void {
     this.faces.clear();
+    this.bitmapBytes = 0;
     this.pending.clear();
     for (const listener of this.listeners) listener();
   }
@@ -130,7 +132,10 @@ export class CardFaceCache {
         crownImage: urls.crown == null ? null : (this.images.get(urls.crown) ?? null),
       });
 
+      const previous = this.faces.get(key);
+      if (previous != null) this.bitmapBytes -= canvasBytes(previous);
       this.faces.set(key, canvas);
+      this.bitmapBytes += canvasBytes(canvas);
       if (!waitingOnArt) this.pending.delete(key);
       this.evict();
       drew = true;
@@ -142,12 +147,18 @@ export class CardFaceCache {
   // face, which on a board that only grows is the same thing. Track access time if a long game
   // starts thrashing.
   private evict(): void {
-    while (this.faces.size > MAX_FACES) {
+    while (this.bitmapBytes > MAX_BITMAP_BYTES) {
       const oldest = this.faces.keys().next();
       if (oldest.done) return;
+      const canvas = this.faces.get(oldest.value);
+      if (canvas != null) this.bitmapBytes -= canvasBytes(canvas);
       this.faces.delete(oldest.value);
     }
   }
+}
+
+function canvasBytes(canvas: OffscreenCanvas): number {
+  return canvas.width * canvas.height * 4;
 }
 
 /** The `art` size is the art box alone — exactly what the art window draws. Tokens have no print. */

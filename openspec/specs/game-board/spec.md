@@ -110,7 +110,7 @@ A rendered card face SHALL be drawn from the M15 frame assets — art, name, typ
 
 The full card face SHALL be drawn for hand, stack and command-zone tiles; the square permanent face SHALL be drawn for the battlefield and draws neither type line nor rules text, having no room for them.
 
-Art and flavor SHALL both come from the printing the object plays — the printing the deck chose, not the card's default printing. The printed words a face draws — type line, rules text and that printing's flavor — SHALL arrive with the opening snapshot for the viewer's whole deck; the board MUST NOT request card text per card, from the catalog or from any card API.
+Art and flavor SHALL both come from the printing the object plays — the printing the deck chose, not the card's default printing. The printed words a face draws — type line, rules text and that printing's flavor — SHALL arrive on the stream: the viewer's whole deck with the opening snapshot, any other seat's card once a frame shows the board that card, each delta's words merged into the book rather than replacing it. The board MUST NOT request card text per card, from the catalog or from any card API.
 
 #### Scenario: Rules text sets mana symbols as pips
 - **WHEN** a face's rules text contains a mana symbol such as `{T}` or `{G}`
@@ -176,7 +176,7 @@ Each stack face SHALL be the whole rendered card face — the same one the hand 
 
 #### Scenario: A spell on the stack shows its printed card
 
-- **WHEN** a spell sits on the stack and the snapshot's card text for it has arrived
+- **WHEN** a spell sits on the stack, whoever cast it
 - **THEN** its stack face draws the full rendered card, rules text and flavor included, rather than a crop of the art
 
 #### Scenario: An ability on the stack shows only its own sentence

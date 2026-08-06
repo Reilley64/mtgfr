@@ -75,7 +75,14 @@ export function updateGame(
     }
     case "ReceivedDelta": {
       const [next, commands] = mergeGameFold(game, applyDeltaPure(game, deltaEnvelope(message)));
-      return [next, mapBoardCommands(commands)];
+      // A delta carries only the cards this frame newly showed the viewer, so it adds to the book
+      // the snapshot opened with rather than replacing it — an opponent's spell resolving off the
+      // stack must not take its own words with it while the card is still in a graveyard.
+      const arriving = message.card_text ?? [];
+      if (arriving.length === 0) return [next, mapBoardCommands(commands)];
+      const cardText = new Map(next.board.cardText);
+      for (const text of arriving) cardText.set(text.card_id, text);
+      return [{ ...next, board: { ...next.board, cardText } }, mapBoardCommands(commands)];
     }
     case "StreamStatus":
       return [{ ...game, connected: message.connected }, []];

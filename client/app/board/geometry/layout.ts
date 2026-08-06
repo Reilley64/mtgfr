@@ -11,17 +11,9 @@
 
 import type { ObjectView, VisibleState, WireKind } from "~/wire/types";
 import { BLANK_FACE, type FaceData, faceDataFrom } from "../../domain/card-render/frame";
+import { ZONE } from "../../domain/zones";
 
-/** Zone discriminants — must match `engine::Zone`'s declaration order. */
-export const ZONE = {
-  Library: 0,
-  Hand: 1,
-  Battlefield: 2,
-  Graveyard: 3,
-  Exile: 4,
-  Command: 5,
-  Stack: 6,
-} as const;
+export { ZONE };
 
 /** Step discriminants — must match `engine::Step`'s declaration order. */
 export const STEP = {

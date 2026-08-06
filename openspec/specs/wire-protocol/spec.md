@@ -82,16 +82,28 @@ A connecting client SHALL receive an initial snapshot frame at the current seque
 - **WHEN** a client receives a delta envelope
 - **THEN** the enclosed visible state is sufficient to render the board without fetching another snapshot
 
-### Requirement: The snapshot carries the viewer's own printed card words
-The opening snapshot frame SHALL carry a book of printed words — card id, type line, oracle text, and flavor text — for every card in the connecting viewer's own deck, so a client never requests card text per card. Flavor SHALL be that of the printing the viewer's deck plays, joined on the printing id, not the card's default printing. The book SHALL be built from the viewer's seat alone: a spectator SHALL receive none, and no viewer SHALL receive another seat's list, which is that seat's private decklist.
+### Requirement: The stream carries the printed words of every card a viewer can see
+Frames SHALL carry a book of printed words — card id, type line, oracle text, and flavor text — for the cards the viewer may read, so a client never requests card text per card. Flavor SHALL be that of the printing being played, joined on the printing id, not the card's default printing.
 
-#### Scenario: Spectator gets no card text
-- **WHEN** a spectator opens a stream
-- **THEN** the snapshot's card-text book is empty
+The opening snapshot SHALL carry every card in the connecting viewer's own deck, plus any card the same snapshot's visible state already identifies — an opponent's permanent on the battlefield, a spell on the stack. Each delta SHALL carry the same for the cards its own visible state identifies and the snapshot did not already send; a client SHALL merge a delta's book into the one it holds rather than replacing it.
 
-#### Scenario: The book is the viewer's deck, joined on its printings
+The public part of the book SHALL be derived from the already-redacted visible state, so a card contributes words only when that state still carries its card id: a face-down permanent, a hidden pile card, and every card in another seat's library or hand contribute none. A viewer SHALL NOT receive another seat's decklist, which is that seat's private information.
+
+#### Scenario: Spectator reads the board they are watching
+- **WHEN** a spectator opens a stream on a game with permanents on the battlefield
+- **THEN** the snapshot carries the printed words of those permanents and no seat's decklist
+
+#### Scenario: An opponent's spell arrives with its words
+- **WHEN** an opponent casts a card the viewer has never seen and the resulting delta shows its card id on the stack
+- **THEN** that delta carries the card's type line, oracle text, and printing flavor, and the viewer's own deck's words remain in their book
+
+#### Scenario: A redacted object contributes no words
+- **WHEN** a frame's visible state has blanked an object's card id, as redaction does for a face-down permanent
+- **THEN** no printed words for that card are sent
+
+#### Scenario: The book is joined on the printing being played
 - **WHEN** a seated viewer opens a stream and their deck plays a reprint
-- **THEN** the snapshot carries that card's type line, oracle text, and that printing's flavor, and carries no card outside that viewer's deck
+- **THEN** the snapshot carries that card's type line, oracle text, and that printing's flavor
 
 ### Requirement: Mulligan progress is snapshot-sourced on the wire
 Until explicit mulligan visible-event arms exist on the stream contract, the API MUST NOT emit empty or placeholder mulligan event oneofs. Clients SHALL treat visible-state mulliganing and per-player mulligan status fields as the source of truth for mulligan UI. Keep and mulligan intents SHALL exist as dedicated intent arms; the authenticated seat SHALL be stamped at the projection boundary so a client cannot keep or mulligan for another player by altering the payload.

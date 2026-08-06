@@ -771,10 +771,18 @@ export type VisibleState = {
   yielded?: boolean;
 };
 export type IntentEnvelope = { client_seq: number; intent: WireIntent; table_id: string };
-/** The printed words of one card in the viewer's own deck — the only faces the bar ever draws.
- * `flavor` is the flavor of the printing that deck plays, not of the card's default print. */
+/** The printed words of one card, for the faces the board draws. `flavor` is the flavor of the
+ * printing being played, not of the card's default print. The snapshot carries the viewer's whole
+ * deck; a delta adds any other seat's card the same frame already shows them. */
 export type CardTextView = { card_id: string; type_line: string; oracle: string; flavor: string };
 export type StreamFrame =
   | { frame: "snapshot"; seq: number; state: VisibleState; card_text?: Array<CardTextView> }
-  | { auto_actions?: Array<MessageRef>; events: Array<VisibleEvent>; seq: number; state: VisibleState; frame: "delta" }
+  | {
+      auto_actions?: Array<MessageRef>;
+      card_text?: Array<CardTextView>;
+      events: Array<VisibleEvent>;
+      seq: number;
+      state: VisibleState;
+      frame: "delta";
+    }
   | { frame: "heartbeat" };

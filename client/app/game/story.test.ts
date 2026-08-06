@@ -87,7 +87,9 @@ test("ReceivedDelta folds into game seq", () => {
       game: { ...emptyGameSlice(), active: true, tableId: "ABC123" },
     }),
     Story.message(
-      GotGameMessage({ message: ReceivedDelta({ seq: 7, state: state(), events: [], auto_actions: undefined }) }),
+      GotGameMessage({
+        message: ReceivedDelta({ seq: 7, state: state(), events: [], auto_actions: undefined, card_text: undefined }),
+      }),
     ),
     Story.model((m) => {
       expect(m.game?.seq).toBe(7);
@@ -132,6 +134,7 @@ test("ReceivedDelta auto-continues a play mode pick that sync prunes to one acti
         state: { ...state([card]), actions: [cycleAction] },
         events: [],
         auto_actions: undefined,
+        card_text: undefined,
       }),
     }),
   );
@@ -159,6 +162,7 @@ test("ReceivedDelta with land_played provenance spawns a board flight", () => {
           state: state([object()]),
           events: [{ kind: "land_played", from: 9, permanent: 3, player: 0 }],
           auto_actions: undefined,
+          card_text: undefined,
         }),
       }),
     ),
@@ -210,4 +214,51 @@ test("ReceivedSnapshot books the viewer's own printed words, replacing the last 
 
   expect(reseated.game?.board.cardText.has("bolt")).toBe(false);
   expect(reseated.game?.board.cardText.get("swamp")?.type_line).toBe("Basic Land — Swamp");
+});
+
+test("ReceivedDelta adds an opponent's printed words without dropping the viewer's own", () => {
+  const [model] = init();
+  const given = {
+    ...model,
+    route: PregameTableRoute({ deckId: "0", table: "ABC123" }),
+    game: { ...emptyGameSlice(), active: true, tableId: "ABC123" },
+  };
+
+  const [booked] = update(
+    given,
+    GotGameMessage({
+      message: ReceivedSnapshot({
+        seq: 1,
+        state: state(),
+        card_text: [{ card_id: "bolt", type_line: "Instant", oracle: "Deals 3 damage.", flavor: "" }],
+      }),
+    }),
+  );
+
+  // An opponent casts something: the delta carries only that card's words.
+  const [merged] = update(
+    booked,
+    GotGameMessage({
+      message: ReceivedDelta({
+        seq: 2,
+        state: state(),
+        events: [],
+        auto_actions: undefined,
+        card_text: [{ card_id: "bears", type_line: "Creature — Bear", oracle: "", flavor: "" }],
+      }),
+    }),
+  );
+
+  expect(merged.game?.board.cardText.get("bears")?.type_line).toBe("Creature — Bear");
+  expect(merged.game?.board.cardText.get("bolt")?.oracle).toBe("Deals 3 damage.");
+
+  // A later frame that mentions nobody new leaves the book alone.
+  const [quiet] = update(
+    merged,
+    GotGameMessage({
+      message: ReceivedDelta({ seq: 3, state: state(), events: [], auto_actions: undefined, card_text: undefined }),
+    }),
+  );
+
+  expect(quiet.game?.board.cardText.size).toBe(2);
 });
