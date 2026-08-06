@@ -139,11 +139,10 @@ export function applyPublishedFrame(
   const mergedFrame = { ...frame, flights: mergedFlights, exitFx: liveExitFx, dragGhost: liveDragGhost };
   const priorSettledHandoffs = new Map(
     state.liveFlights
-      .filter(
-        (flight) =>
-          mergedFlights.some((mergedFlight) => mergedFlight.id === flight.id) &&
-          settledFlightHasAuthoritativeDestination(flight, mergedFrame),
-      )
+      .filter((flight) => {
+        const mergedFlight = mergedFlights.find((candidate) => candidate.id === flight.id);
+        return mergedFlight?.hold === true && settledFlightHasAuthoritativeDestination(flight, mergedFrame);
+      })
       .map((flight) => [flight.id, flight]),
   );
   const liveFlights = mergedFlights.map((flight) => priorSettledHandoffs.get(flight.id) ?? flight);

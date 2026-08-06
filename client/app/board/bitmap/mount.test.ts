@@ -1249,6 +1249,15 @@ describe("flight clock helpers", () => {
     );
     expect(raced.sync).toEqual({ flights: [held], exitFx: [], now: expect.any(Number) });
 
+    const authoritativeRelease = { ...held, hold: false, phase: "flying" as const, targetX: 300 };
+    const released = applyPublishedFrame(
+      flightClockState({ liveFlights: [held] }),
+      frame({ cards: [card({ id: 90, tapped: true })], flights: [authoritativeRelease], hideCardIds: new Set([90]) }),
+    );
+    expect(released.frame.flights).toEqual([authoritativeRelease]);
+    expect(released.sync).toBeNull();
+    expect(bitmapFrameNeedsRaf(released.frame)).toBe(true);
+
     const removed = applyPublishedFrame(
       published.state,
       frame({ cards: [card({ id: 90, tapped: true })], flights: [], hideCardIds: new Set() }),
