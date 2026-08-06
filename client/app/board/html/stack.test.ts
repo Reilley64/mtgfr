@@ -450,6 +450,66 @@ test("ability stack face uses entry print when the source id is no longer in obj
   );
 });
 
+test("an older server tombstone without source face still renders its ability card", () => {
+  const text = {
+    card_id: "evolving-wilds-id",
+    print: "",
+    type_line: "Land",
+    oracle: "{T}, Sacrifice this land: Search your library for a basic land card.",
+    flavor: "Every path is a choice.",
+  };
+  const model: ViewModel = {
+    board: {
+      ...initialBoardModel(),
+      cardText: new Map([[cardTextKey("evolving-wilds-id", ""), text]]),
+    },
+    fold: gameFold(
+      gameState({
+        objects: [],
+        stack: [
+          {
+            controller: 0,
+            kind: "ability",
+            label: testMessageRef("Search your library for a basic land card"),
+            source: 77,
+            print: "evolving-wilds-print",
+            name: "Evolving Wilds",
+            card_id: "evolving-wilds-id",
+          },
+        ],
+      }),
+    ),
+    tableId: "T1",
+  };
+  expect(() => {
+    Scene.scene(
+      { update: (m) => [m, []], view: overlayView },
+      Scene.given(model),
+      resolveBoardOverlayMounts(),
+      resolveBoardCardFaceMounts(),
+      Scene.expect(Scene.testId("stack-face-0")).toExist(),
+      Scene.expect(Scene.selector(String.raw`[data-testid="stack-face-0"] [data-face]`)).toHaveAttr(
+        "data-face",
+        JSON.stringify({
+          print: "evolving-wilds-print",
+          name: "Evolving Wilds",
+          colors: [],
+          isLand: false,
+          isToken: false,
+          legendary: false,
+          power: "",
+          toughness: "",
+          loyalty: "",
+          typeLine: "Land",
+          oracle: "Search your library for a basic land card",
+          flavor: "",
+        }),
+      ),
+      Scene.expect(Scene.testId("stack-top-caption")).toBeAbsent(),
+    );
+  }).not.toThrow();
+});
+
 test("ability stack face keeps card art while its source permanent is mid from-stack flight", () => {
   Scene.scene(
     { update: (m) => [m, []], view: overlayView },

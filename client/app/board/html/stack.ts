@@ -7,7 +7,7 @@
 
 import { Option } from "effect";
 import type { Attribute, Html, HtmlBuilder } from "foldkit/html";
-import { type FaceData, faceDataFrom, faceDataFromStackSource } from "~/card-render/frame";
+import { BLANK_FACE, type FaceData, faceDataFrom, faceDataFromStackSource } from "~/card-render/frame";
 import { cardTextFor } from "~/cardText";
 import { button } from "~/ui/button";
 import { cardFace } from "~/ui/card-face";
@@ -82,8 +82,14 @@ function stackItems(board: BoardModel, state: VisibleState, showGhost: boolean):
     const face =
       object != null
         ? faceOf(object)
-        : print && entry.source_face != null
-          ? withText(faceDataFromStackSource(entry.source_face, print, name ?? ""), cardId, print)
+        : print
+          ? withText(
+              entry.source_face != null
+                ? faceDataFromStackSource(entry.source_face, print, name ?? "")
+                : { ...BLANK_FACE, print, name: name ?? "" },
+              cardId,
+              print,
+            )
           : null;
     return {
       row,
